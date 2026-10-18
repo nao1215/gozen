@@ -1,0 +1,343 @@
+package rpg_test
+
+import (
+	"bytes"
+	"encoding/json"
+	"math/rand/v2"
+	"os"
+	"path/filepath"
+	"reflect"
+	"slices"
+	"strings"
+	"testing"
+
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/testgame"
+	"github.com/nao1215/gozen/rpg"
+)
+
+func saveBytes(t *testing.T, s *rpg.State) []byte {
+	t.Helper()
+	b, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+func rewriteSave(t *testing.T, b []byte, edit func(map[string]any)) []byte {
+	t.Helper()
+	var obj map[string]any
+	if err := json.Unmarshal(b, &obj); err != nil {
+		t.Fatal(err)
+	}
+	edit(obj)
+	out, err := json.Marshal(obj)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+func TestSaveEnvelopeCompatibility(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.ID, db.Game.DataVersion = "test-adventure", 2
+	st := testgame.State(db, 1)
+	b := saveBytes(t, st)
+	var envelope struct {
+		FormatVersion int             `json:"format_version"`
+		GameID        string          `json:"game_id"`
+		DataVersion   int             `json:"data_version"`
+		State         json.RawMessage `json:"state"`
+	}
+	if err := json.Unmarshal(b, &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if envelope.FormatVersion != 1 || envelope.GameID != db.Game.ID || envelope.DataVersion != 2 || len(envelope.State) == 0 {
+		t.Fatalf("識別項目 %s", b)
+	}
+	t.Run("新形式の往復と乱数", func(t *testing.T) {
+		rng := rand.New(rand.NewPCG(9, 8))    //nolint:gosec // Deterministic gameplay test, not a security token.
+		oracle := rand.New(rand.NewPCG(9, 8)) //nolint:gosec // Deterministic gameplay test, not a security token.
+		got, err := rpg.Parse(db, b, rng)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(b, saveBytes(t, got)) || got.LoadReport.Changed() {
+			t.Fatal("往復で保存状態が変わった")
+		}
+		if rng.Uint64() != oracle.Uint64() {
+			t.Fatal("ロードが乱数を消費した")
+		}
+	})
+	t.Run("削除前の版から移行", func(t *testing.T) {
+		older := rewriteSave(t, b, func(m map[string]any) { m["data_version"] = 1 })
+		got, err := rpg.Parse(db, older, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.LoadReport.SavedDataVersion != 1 || got.LoadReport.DataVersion != 2 || !got.LoadReport.Changed() {
+			t.Fatalf("版の通知 %+v", got.LoadReport)
+		}
+	})
+	tests := []struct {
+		name string
+		edit func(map[string]any)
+	}{
+		{"別作品", func(m map[string]any) { m["game_id"] = "other" }},
+		{"未来形式", func(m map[string]any) { m["format_version"] = 2; m["state"] = "future" }},
+		{"未来データ", func(m map[string]any) { m["data_version"] = 3 }},
+		{"負のデータ版", func(m map[string]any) { m["data_version"] = -1 }},
+		{"包みの版０", func(m map[string]any) { m["format_version"] = 0 }},
+		{"本文欠損", func(m map[string]any) { delete(m, "state") }},
+		{"本文null", func(m map[string]any) { m["state"] = nil }},
+		{"本文空", func(m map[string]any) { m["state"] = map[string]any{} }},
+		{"未知項目", func(m map[string]any) { m["future"] = true }},
+		{"未知状態項目", func(m map[string]any) { m["state"].(map[string]any)["future"] = true }},                          //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		{"仲間null", func(m map[string]any) { m["state"].(map[string]any)["actors"].(map[string]any)["scout"] = nil }}, //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		{"仲間ID不一致", func(m map[string]any) {
+			m["state"].(map[string]any)["actors"].(map[string]any)["scout"].(map[string]any)["id"] = "guide" //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		}},
+		{"人数重複", func(m map[string]any) { m["state"].(map[string]any)["party"] = []string{"scout", "scout"} }},          //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		{"仲間の記録欠損", func(m map[string]any) { m["state"].(map[string]any)["party"] = []string{"guide"} }},                //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		{"所持金null", func(m map[string]any) { m["state"].(map[string]any)["gold"] = nil }},                               //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		{"所持品個数null", func(m map[string]any) { m["state"].(map[string]any)["items"].(map[string]any)["potion"] = nil }}, //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		{"本文の大文字違い", func(m map[string]any) {
+			state := m["state"].(map[string]any) //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+			state["Gold"] = state["gold"]
+			delete(state, "gold")
+		}},
+	}
+	for _, key := range []string{"format_version", "data_version", "game_id"} {
+		for _, value := range []any{nil, true, []any{}, map[string]any{}, 1.5} {
+			tests = append(tests, struct {
+				name string
+				edit func(map[string]any)
+			}{key + "/" + string(mustJSON(t, value)), func(m map[string]any) { m[key] = value }})
+		}
+		tests = append(tests, struct {
+			name string
+			edit func(map[string]any)
+		}{key + "/欠損", func(m map[string]any) { delete(m, key) }})
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			bad := rewriteSave(t, b, tc.edit)
+			before := bytes.Clone(bad)
+			for _, legacy := range []bool{false, true} {
+				if got, err := rpg.ParseWithConfig(db, bad, nil, rpg.Config{AllowLegacy: legacy}); err == nil || got != nil {
+					t.Fatalf("不正な保存を受け入れた %s", bad)
+				}
+			}
+			if !bytes.Equal(before, bad) {
+				t.Fatal("入力を変更した")
+			}
+		})
+	}
+	for _, bad := range [][]byte{nil, []byte(`null`), []byte(`[]`), []byte(`{}`), b[:len(b)-1], append(bytes.Clone(b), []byte(` {}`)...), bytes.Replace(b, []byte(`"format_version": 1`), []byte(`"format_version": 1, "format_version": 1`), 1), bytes.Replace(b, []byte(`"gold": 100`), []byte(`"gold": 100, "gold": 200`), 1)} {
+		if got, err := rpg.ParseWithConfig(db, bad, nil, rpg.Config{AllowLegacy: true}); err == nil || got != nil {
+			t.Errorf("破損を受け入れた %s", bad)
+		}
+	}
+	t.Run("ID省略の旧作品", func(t *testing.T) {
+		old := testgame.Load(t, nil)
+		bytes := saveBytes(t, testgame.State(old, 1))
+		if _, err := rpg.Parse(old, bytes, nil); err != nil {
+			t.Fatal(err)
+		}
+		old.Game.ID = "rpg"
+		if _, err := rpg.Parse(old, bytes, nil); err == nil {
+			t.Fatal("空IDを勝手に別のIDへ移した")
+		}
+	})
+	t.Run("旧fixtureの明示移行", func(t *testing.T) {
+		legacyState := testgame.State(db, 17)
+		legacyState.Join("guide")
+		legacyState.Party = []string{"guide", "scout"}
+		legacyState.Gold, legacyState.Items = 321, map[string]int{}
+		legacyState.Actors["scout"].HP = 17
+		legacyState.Steps, legacyState.Frames = 123, 4567
+		legacyState.Done["greet"] = true
+		legacy, err := json.Marshal(legacyState)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := rpg.Parse(db, legacy, nil); err == nil {
+			t.Fatal("外部旧形式を暗黙に受け入れた")
+		}
+		got, err := rpg.ParseWithConfig(db, legacy, nil, rpg.Config{AllowLegacy: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !got.LoadReport.Legacy || got.Gold != 321 || len(got.Items) != 0 || got.Party[0] != "guide" || got.Actors["scout"].HP != 17 || got.Steps != 123 || got.Frames != 4567 || !got.Done["greet"] {
+			t.Fatalf("移行で主要状態が変わった %+v", got)
+		}
+		modern := saveBytes(t, got)
+		again, err := rpg.Parse(db, modern, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(modern, saveBytes(t, again)) || again.LoadReport.Changed() {
+			t.Fatal("書き戻し後の状態が変わった")
+		}
+		path := filepath.Join(t.TempDir(), "save1.json")
+		if err := os.WriteFile(path, legacy, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		backup, err := got.SaveFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		saved, err := os.ReadFile(backup) //nolint:gosec // Paths are isolated test fixtures or declared schema artifact paths.
+		if err != nil || !bytes.Equal(saved, legacy) {
+			t.Fatalf("元ファイルの控え %s %v", backup, err)
+		}
+		next, err := got.SaveFile(path)
+		if err != nil || next != "" {
+			t.Fatalf("移行済みなのに控えを増やした %q %v", next, err)
+		}
+	})
+}
+
+func mustJSON(t *testing.T, v any) []byte {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+func TestLoadReportsRemovedData(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.ID = "test-adventure"
+	db.Classes["ranger"].Tree = []data.TreeNode{{ID: "cure", Skill: "heal", Max: 5}}
+	st := testgame.State(db, 1)
+	st.Join("guide")
+	a := st.Actors["scout"]
+	a.Learnt = []string{"fire", "heal"}
+	a.States["poison"] = 3
+	a.Tree["cure"] = 8
+	a.Tree["old"] = 3
+	a.SP = 2
+	st.Items["key"] = 1
+	st.Location = "vault"
+	st.Flags["free_flag"] = true
+	st.Done["old_event"] = true
+	st.Vars["old_var"] = "kept"
+	b := saveBytes(t, st)
+	delete(db.Actors, "guide")
+	delete(db.Skills, "fire")
+	delete(db.States, "poison")
+	delete(db.Items, "stick")
+	delete(db.Items, "key")
+	delete(db.Locations, "vault")
+	got, err := rpg.Parse(db, b, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var paths []string
+	for _, c := range got.LoadReport.Changes {
+		paths = append(paths, c.Path+"/"+c.ID)
+		if c.Reason == "" {
+			t.Fatal("理由がない")
+		}
+	}
+	want := []string{"actors/guide", "actors/scout/equip/weapon/stick", "actors/scout/learnt/fire", "actors/scout/states/poison", "actors/scout/tree/cure", "actors/scout/tree/old", "items/key", "location/vault"}
+	if !reflect.DeepEqual(paths, want) {
+		t.Fatalf("変更一覧\n%v\n必要な一覧\n%v", paths, want)
+	}
+	if got.Actors["scout"].SP != 8 || got.Location != "camp" || !slices.Equal(got.Party, []string{"scout"}) || len(got.Actors["scout"].Equip) != 0 || !got.Flags["free_flag"] || !got.Done["old_event"] || got.Vars["old_var"] != "kept" {
+		t.Fatal("補正結果が不正")
+	}
+	for range 10 {
+		next, err := rpg.Parse(db, b, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(next.LoadReport, got.LoadReport) {
+			t.Fatal("通知順が不定")
+		}
+	}
+	path := filepath.Join(t.TempDir(), "save.json")
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	original, err := os.ReadFile(path) //nolint:gosec // Paths are isolated test fixtures or declared schema artifact paths.
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(original, b) {
+		t.Fatal("ロードで元ファイルを変えた")
+	}
+	backup, err := got.SaveFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original, err = os.ReadFile(backup) //nolint:gosec // Paths are isolated test fixtures or declared schema artifact paths.
+	if err != nil || !bytes.Equal(original, b) {
+		t.Fatal("削除前の状態を失った")
+	}
+	modern, err := os.ReadFile(path) //nolint:gosec // Paths are isolated test fixtures or declared schema artifact paths.
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := rpg.Parse(db, modern, nil)
+	if err != nil || again.LoadReport.Changed() {
+		t.Fatalf("補正を繰り返した %v", err)
+	}
+	if !bytes.Equal(modern, saveBytes(t, again)) {
+		t.Fatal("補正後の往復で変わった")
+	}
+	delete(db.Actors, "scout")
+	if _, err := rpg.Parse(db, b, nil); err == nil || !strings.Contains(err.Error(), "仲間") {
+		t.Fatalf("全員消えた保存を受け入れた %v", err)
+	}
+}
+
+func TestLoadReportsRemovedDungeonData(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Locations["old/maze"] = &data.Location{Dungeon: &data.Dungeon{Tiles: map[string]*data.Tile{"S": {}}, Roamers: []data.Roamer{{}}}}
+	st := testgame.State(db, 1)
+	st.Location = "old/maze"
+	st.Pos = rpg.Pos{In: "old/maze", X: 1, Y: 1, Facing: 2}
+	st.Mapped = map[string][]byte{"old/maze/1": {1}, "gone/1": {1}}
+	st.Put = map[string]string{"old/maze/1@1,1": "S", "old/maze/1@2,1": "Z", "gone/1@1,1": "S"}
+	st.Roamers = []rpg.Roamer{{Kind: 0, Troop: "one", X: 2, Y: 1}, {Kind: 1, Troop: "one"}, {Kind: 0, Troop: "gone"}}
+	got, err := rpg.Parse(db, saveBytes(t, st), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Mapped) != 1 || len(got.Put) != 1 || got.Put["old/maze/1@1,1"] != "S" || len(got.Roamers) != 1 || got.Pos != st.Pos {
+		t.Fatalf("迷宮の補正が不正 %+v", got.LoadReport)
+	}
+	if len(got.LoadReport.Changes) != 5 {
+		t.Fatalf("迷宮の削除一覧が不足 %+v", got.LoadReport)
+	}
+	b := saveBytes(t, got)
+	delete(db.Locations, "old/maze")
+	moved, err := rpg.Parse(db, b, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if moved.Location != "camp" || moved.Pos.In != "" || len(moved.Roamers) != 0 || len(moved.Mapped) != 0 || len(moved.Put) != 0 {
+		t.Fatal("消えた迷宮の記録を残した")
+	}
+}
+
+func TestSaveKeepsDungeonRecordsAfterReturningToTown(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Locations["maze"] = &data.Location{Dungeon: &data.Dungeon{Roamers: []data.Roamer{{}}}}
+	st := testgame.State(db, 1)
+	st.Pos = rpg.Pos{In: "maze", X: 2, Y: 3, Facing: 1}
+	st.Roamers = []rpg.Roamer{{Kind: 0, Troop: "one", X: 3, Y: 4, Calm: 10, Walk: 2}}
+	st.Mapped["maze/1"] = []byte{1, 0, 1}
+	b := saveBytes(t, st)
+	got, err := rpg.Parse(db, b, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.LoadReport.Changed() || !bytes.Equal(b, saveBytes(t, got)) {
+		t.Fatalf("帰還後の有効な迷宮の記録を変更した %+v", got.LoadReport)
+	}
+}

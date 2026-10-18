@@ -1,0 +1,176 @@
+version: '1'
+suite:
+  name: Gozen CLI generated artifacts and overwrite protection
+scenarios:
+- name: trial dry run writes nothing including an explicitly named list
+  steps:
+  - run:
+      command: rpgtool trial "${specdir}/fixtures/game" "trial output 日本語" -n -list trial-list.txt
+  - assert:
+      exit_code: 0
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: trial reloads and existing output stays intact
+  steps:
+  - fixture:
+      file: expected.png
+      from: fixtures/game/assets/mote.png
+  - run:
+      command: rpgtool trial "${specdir}/fixtures/game" "trial output 日本語" -list trial-list.txt
+  - assert:
+      exit_code: 0
+  - assert:
+      dir:
+        path: trial output 日本語
+        recursive: true
+        contains:
+        - game.yaml
+        - data/world.yaml
+        - assets/regular.ttf
+        - assets/mote.png
+  - assert:
+      file:
+        path: trial output 日本語/assets/mote.png
+        equals_file: expected.png
+  - run:
+      command: rpgcheck "trial output 日本語"
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: 'ok: 2 locations'
+      stderr:
+        equals: ''
+  - fixture:
+      file: trial output 日本語/sentinel.txt
+      content: 'keep
+
+        '
+  - run:
+      command: rpgtool trial "${specdir}/fixtures/game" "trial output 日本語"
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: already exists
+      changes:
+        created: []
+        modified: []
+        deleted: []
+  - assert:
+      file:
+        path: trial output 日本語/sentinel.txt
+        equals: 'keep
+
+          '
+- name: release checks approvals and produces reloadable output
+  steps:
+  - fixture:
+      file: overlay/approvals.json
+      content: '[{"file": "mote.png", "source": "dd6fc1bb744b21e9181f1c61ad9c68c613247523a23223c7ac3bdc69cd849f5f", "required":
+        false, "approved": true}]'
+  - fixture:
+      file: inspect.jsonl
+      content: '{"file": "mote.png", "source": "dd6fc1bb744b21e9181f1c61ad9c68c613247523a23223c7ac3bdc69cd849f5f", "required":
+        false, "approved": true}
+
+        '
+  - run:
+      command: rpgtool release "${specdir}/fixtures/game" "release output" -overlay overlay -inspect inspect.jsonl
+  - assert:
+      exit_code: 0
+  - run:
+      command: rpgcheck "release output"
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: Structure checked
+      stderr:
+        equals: ''
+  - run:
+      command: rpgtool release "${specdir}/fixtures/game" "release output" -overlay overlay -inspect inspect.jsonl
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: already exists
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: design emits JSON timeline image and report with no build metadata
+  steps:
+  - run:
+      command: rpgtool design "${specdir}/fixtures/game" -out "design output" -v
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: report.md
+  - assert:
+      dir:
+        path: design output
+        recursive: true
+        contains:
+        - report.md
+        - summary.json
+        - band.png
+        - timeline/walker.jsonl
+        - debug.log
+  - assert:
+      file:
+        path: design output/summary.json
+        json:
+          path: $.hash
+          equals: ''
+  - assert:
+      image:
+        path: design output/band.png
+        format: png
+        width: 1600
+  - run:
+      command: rpgtool design "${specdir}/fixtures/game" -out "design output"
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: already exists
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: memos generate an escaped HTML report and thumbnail
+  steps:
+  - fixture:
+      file: notes/2026-01-01/001.json
+      content: '{"kind":"note","label":"Note","text":"<marker>","image":"001.png"}
+
+        '
+  - fixture:
+      file: notes/2026-01-01/001.png
+      from: fixtures/game/assets/mote.png
+  - run:
+      command: rpgtool memos notes -out "note output"
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: 1 memos
+      stderr:
+        equals: ''
+  - assert:
+      file:
+        path: note output/index.html
+        contains: '&lt;marker&gt;'
+  - assert:
+      image:
+        path: note output/thumbs/2026-01-01_001.jpg
+        format: jpeg
+        width: 480
+        height: 480
+  - run:
+      command: rpgtool memos notes -out "note output"
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: already exists
+      changes:
+        created: []
+        modified: []
+        deleted: []

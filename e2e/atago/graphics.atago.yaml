@@ -1,0 +1,41 @@
+version: '1'
+suite:
+  name: Gozen actual screenshot capture
+scenarios:
+- name: shots captures the original sample through its runner
+  tags:
+  - graphics
+  steps:
+  - fixture:
+      file: shots.yaml
+      content: 'shots: [{id: camp, start: camp, wait: 2}]
+
+        '
+  - run:
+      command: rpgtool shots "${specdir}/fixtures/game" shots.yaml -raw -bin "${env:GOZEN_GAME_BIN}" -out captures -timeout
+        30s
+      timeout: 45s
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ok
+      stderr:
+        equals: ''
+  - assert:
+      image:
+        path: captures/01_camp.png
+        format: png
+        width: 960
+        height: 540
+  - assert:
+      image:
+        path: captures/01_camp.jpg
+        format: jpeg
+        width: 960
+        height: 540
+  - assert:
+      file:
+        path: captures/shots.json
+        json:
+          path: $[0].status
+          equals: ok

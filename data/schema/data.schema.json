@@ -1,0 +1,4 @@
+{
+  "$ref": "types.schema.json#/$defs/DataFile",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

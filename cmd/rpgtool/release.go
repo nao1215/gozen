@@ -1,0 +1,84 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/layer2/assetpolicy"
+
+	"github.com/nao1215/gozen/assetfs"
+)
+
+func (c *command) release(args []string) error {
+	fl := flag.NewFlagSet("rpgtool release", flag.ContinueOnError)
+	inspect := fl.String("inspect", "", "制作側の検査記録（JSON Lines）。必須")
+	overlay := fl.String("overlay", "", "差し替えのディレクトリ（省略時は作品の承認設定）")
+	prefix := fl.String("prefix", "assets", "素材のディレクトリ")
+	if err := c.parse(fl, args); err != nil {
+		return err
+	}
+	if fl.NArg() != 2 || *inspect == "" {
+		return cli.Invalid("usage: rpgtool release -inspect FILE [-overlay DIR] <game dir> <out dir>")
+	}
+	src, out := fl.Arg(0), fl.Arg(1)
+	if !cli.Relative(*prefix) {
+		return cli.Invalid("invalid -prefix")
+	}
+	policy, ins, outputs, err := releaseInputs(src, overlay, *inspect)
+	if err != nil {
+		return err
+	}
+	if err := checkReferences(src, *overlay, *prefix, policy, ins, outputs); err != nil {
+		return err
+	}
+	var res assetfs.Result
+	err = cli.Publish(out, []string{src, *overlay}, func(stage string) error {
+		var e error
+		res, e = (assetfs.Tree{Src: src, Top: *overlay, Prefix: *prefix, Dst: stage, Outputs: outputs, Skip: []string{"asset-policy.yaml"}}).Build(ins)
+		return e
+	})
+	if err != nil {
+		return err
+	}
+	c.out.Printf("%s: %d ファイル、差し替え %d 枚（承認記録 %d 枚）\n", out, res.Files, len(res.Replaced), len(ins))
+	return nil
+}
+
+func checkReferences(src, top, prefix string, policy assetpolicy.Policy, records []assetfs.Approval, outputs []string) error {
+	files, missing, err := assetpolicy.References(os.DirFS(src), prefix, policy.Extensions)
+	if err != nil {
+		return err
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("参照された素材が無い: %v", missing)
+	}
+	gate := assetfs.Gate{Base: os.DirFS(src), Top: os.DirFS(top), Prefix: prefix, Records: records, Outputs: outputs, Watch: []string{""}}
+	for _, file := range files {
+		if err := gate.Check(file); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func releaseInputs(src string, overlay *string, inspect string) (assetpolicy.Policy, []assetfs.Approval, []string, error) {
+	p, err := assetpolicy.Load(os.DirFS(src), "asset-policy.yaml")
+	if err != nil {
+		return p, nil, nil, err
+	}
+	if *overlay == "" {
+		if p.Overlay == "" {
+			return p, nil, nil, fmt.Errorf("差し替えのディレクトリを -overlay か作品の承認設定で指定する")
+		}
+		*overlay = filepath.Join(src, p.Overlay)
+	}
+	records, outputs, err := p.ReadRecords(os.DirFS(*overlay))
+	if err != nil {
+		return p, nil, nil, err
+	}
+	ins, err := p.ReadInspections(inspect, records)
+	return p, ins, outputs, err
+}

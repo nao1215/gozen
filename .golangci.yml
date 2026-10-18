@@ -1,0 +1,36 @@
+version: "2"
+run:
+  go: "1.26"
+  timeout: 5m
+linters:
+  default: none
+  enable:
+    - errcheck
+    - errorlint
+    - exhaustive
+    - gosec
+    - govet
+    - ineffassign
+    - nolintlint
+    - staticcheck
+    - unused
+  settings:
+    errcheck:
+      check-blank: true
+      check-type-assertions: true
+      disable-default-exclusions: true
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
+  exclusions:
+    generated: strict
+    presets: []
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/nao1215/gozen

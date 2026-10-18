@@ -1,0 +1,190 @@
+version: '1'
+suite:
+  name: Gozen CLI argument and stream contracts
+scenarios:
+- name: rpgcheck top-level help
+  steps:
+  - run:
+      command: rpgcheck --help
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - 'Requirements:'
+        - https://github.com/nao1215/gozen#rpgcheck
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: rpgtool top-level help
+  steps:
+  - run:
+      command: rpgtool --help
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - 'Requirements:'
+        - https://github.com/nao1215/gozen#rpgtool
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: help for ${sub}
+  matrix:
+  - sub: check
+  - sub: layout
+  - sub: sim
+  - sub: curve
+  - sub: floors
+  - sub: trace
+  - sub: book
+  - sub: design
+  - sub: memos
+  - sub: release
+  - sub: trial
+  - sub: shots
+  steps:
+  - run:
+      command: rpgtool ${sub} --help
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - 'Requirements:'
+        - https://github.com/nao1215/gozen#rpgtool
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: invalid arguments for ${sub}
+  matrix:
+  - sub: check
+  - sub: layout
+  - sub: sim
+  - sub: curve
+  - sub: floors
+  - sub: trace
+  - sub: book
+  - sub: design
+  - sub: memos
+  - sub: release
+  - sub: trial
+  - sub: shots
+  steps:
+  - run:
+      command: rpgtool ${sub} --unknown
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: unknown flag
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject rpgcheck
+  steps:
+  - run:
+      command: rpgcheck
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: usage
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject rpgcheck missing-game
+  steps:
+  - run:
+      command: rpgcheck missing-game
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: game.yaml
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject rpgtool sim -n 0 unused troop
+  steps:
+  - run:
+      command: rpgtool sim -n 0 unused troop
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: positive
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject rpgtool check unused extra
+  steps:
+  - run:
+      command: rpgtool check unused extra
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: expects one
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject rpgtool curve unused location -grind NaN
+  steps:
+  - run:
+      command: rpgtool curve unused location -grind NaN
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: finite
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject rpgtool trial unused output -config ../escape.yaml
+  steps:
+  - run:
+      command: rpgtool trial unused output -config ../escape.yaml
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: relative
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject rpgtool shots -raw unused list.yaml
+  steps:
+  - run:
+      command: rpgtool shots -raw unused list.yaml
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: requires
+      changes:
+        created: []
+        modified: []
+        deleted: []

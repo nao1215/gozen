@@ -1,0 +1,124 @@
+# Architecture policy: docs/decisions/0008-architecture-and-api.md
+version: 3
+workdir: .
+allow:
+  depOnAnyVendor: false
+  deepScan: true
+  # Reserved package and internal directories do not all contain Go files in T1.
+  ignoreNotFoundComponents: true
+exclude:
+  - .cache
+  - build
+  - bin
+  - dist
+excludeFiles:
+  # Runtime dependency policy; external test harnesses may compose layers.
+  - '^.*_test\.go$'
+vendors:
+  onnx: { in: [github.com/yalue/onnxruntime_go, "github.com/yalue/onnxruntime_go/**"] }
+  yaml: { in: [github.com/goccy/go-yaml, "github.com/goccy/go-yaml/**"] }
+  image: { in: [golang.org/x/image, "golang.org/x/image/**"] }
+  ebiten: { in: [github.com/hajimehoshi/ebiten/v2, "github.com/hajimehoshi/ebiten/v2/**"] }
+components:
+  expr: { in: [expr, "expr/internal/**", "internal/expr/**"] }
+  text: { in: [text, "text/internal/**", "internal/text/**"] }
+  assetfs: { in: [assetfs, "assetfs/internal/**", "internal/assetfs/**"] }
+  savefile: { in: [savefile, "savefile/internal/**", "internal/savefile/**"] }
+  data: { in: [data, "data/internal/**", "internal/data/**"] }
+  rpg: { in: [rpg, "rpg/internal/**", "internal/rpg/**"] }
+  battle: { in: [battle, "battle/internal/**", "internal/battle/**"] }
+  event: { in: [event, "event/internal/**", "internal/event/**"] }
+  world: { in: [world, "world/internal/**", "internal/world/**"] }
+  dungeon: { in: [dungeon, "dungeon/internal/**", "internal/dungeon/**"] }
+  headless: { in: [headless, "headless/internal/**", "internal/headless/**"] }
+  gfx: { in: [gfx, "gfx/internal/**", "internal/gfx/**"] }
+  sound: { in: [sound, "sound/internal/**", "internal/sound/**"] }
+  play: { in: [play, "play/internal/**", "internal/play/**"] }
+  runner: { in: [runner, "runner/internal/**", "internal/runner/**"] }
+  private1: { in: "internal/layer1/**" }
+  private2: { in: "internal/layer2/**" }
+  private3: { in: "internal/layer3/**" }
+  private4: { in: "internal/layer4/**" }
+  private5: { in: "internal/layer5/**" }
+  private6: { in: "internal/layer6/**" }
+  commands: { in: ["cmd/rpgtool/**", "cmd/rpgcheck/**", "cmd/internal/**"] }
+  promptgenCommand: { in: "cmd/promptgen/**" }
+  mosaicCommand: { in: "cmd/mosaic/**" }
+  promptgen: { in: "internal/promptgen/**" }
+  mosaic: { in: "internal/mosaic/**" }
+  experiments: { in: "x/**" }
+  examples: { in: "examples/**" }
+  dev: { in: "internal/dev/**" }
+  testgame: { in: "internal/testgame/**" }
+deps:
+  expr:
+    mayDependOn: [expr, private1]
+  text:
+    mayDependOn: [text, private1]
+  assetfs:
+    mayDependOn: [assetfs, private1]
+  savefile:
+    mayDependOn: [savefile, private1]
+  data:
+    mayDependOn: [data, expr, text, assetfs, savefile, private1, private2]
+    canUse: [yaml]
+  rpg:
+    mayDependOn: [rpg, expr, text, assetfs, savefile, private1, private2]
+  private2:
+    canUse: [yaml]
+    mayDependOn: [private2, expr, text, assetfs, savefile, private1]
+  battle:
+    mayDependOn: [battle, expr, text, assetfs, savefile, data, rpg, private1, private2, private3]
+  event:
+    mayDependOn: [event, expr, text, assetfs, savefile, data, rpg, private1, private2, private3]
+  world:
+    mayDependOn: [world, expr, text, assetfs, savefile, data, rpg, private1, private2, private3]
+  dungeon:
+    mayDependOn: [dungeon, expr, text, assetfs, savefile, data, rpg, private1, private2, private3]
+  private3:
+    mayDependOn: [private3, expr, text, assetfs, savefile, data, rpg, private1, private2]
+  headless:
+    mayDependOn: [headless, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, private1, private2, private3, private4]
+  private4:
+    mayDependOn: [private4, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, private1, private2, private3]
+  gfx:
+    mayDependOn: [gfx, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, private1, private2, private3, private4, private5]
+    canUse: [ebiten, image]
+  sound:
+    mayDependOn: [sound, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, private1, private2, private3, private4, private5]
+    canUse: [ebiten, image]
+  play:
+    mayDependOn: [play, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, private1, private2, private3, private4, private5]
+    canUse: [ebiten, image]
+  private5:
+    mayDependOn: [private5, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, private1, private2, private3, private4]
+    canUse: [ebiten, image]
+  runner:
+    mayDependOn: [runner, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, gfx, sound, play, private1, private2, private3, private4, private5, private6]
+    canUse: [ebiten, image]
+  private6:
+    mayDependOn: [private6, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, gfx, sound, play, private1, private2, private3, private4, private5]
+    canUse: [ebiten, image]
+  commands:
+    mayDependOn: [commands, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, gfx, sound, play, private1, private2, private3, private4, private5]
+    canUse: [yaml, ebiten, image]
+  promptgenCommand:
+    mayDependOn: [promptgen]
+  mosaicCommand:
+    mayDependOn: [mosaic]
+  promptgen:
+    mayDependOn: [promptgen, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless]
+    canUse: [yaml, image]
+  mosaic:
+    mayDependOn: [mosaic, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless]
+    canUse: [yaml, image, onnx]
+  experiments:
+    mayDependOn: [expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, gfx, sound, play, runner]
+    canUse: [yaml, ebiten, image]
+  examples:
+    mayDependOn: [expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, gfx, sound, play, runner]
+    canUse: [ebiten, image]
+  dev:
+    mayDependOn: [dev]
+  testgame:
+    mayDependOn: [expr, text, assetfs, savefile, data, rpg]

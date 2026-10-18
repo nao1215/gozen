@@ -1,0 +1,93 @@
+classes:
+  walker:
+    name: Walker
+    stats: {mhp: 30, mmp: 5, atk: 8, def: 3, mat: 2, mdf: 2, agi: 8, luk: 1}
+    exp_for: level * 30
+actors: {walker: {name: Walker, class: walker}}
+skills:
+  attack: {name: Tap, effects: [{damage: 8, variance: 0}]}
+  guard: {name: Wait, scope: self}
+  nudge: {name: Nudge, effects: [{damage: 1, variance: 0}]}
+enemies:
+  pebble:
+    name: Pebble
+    image: pebble.png
+    stats: {mhp: 16, mmp: 0, atk: 1, def: 0, mat: 0, mdf: 0, agi: 1, luk: 1}
+    gold: 3
+    ai: [{use: nudge}]
+troops: {lesson: {members: [pebble]}}
+locations:
+  camp:
+    name: Trail camp
+    background: landscape.png
+    safe: true
+    people:
+      - name: Courier
+        image: courier.png
+        talk:
+          - say: A little light can guide a long journey.
+          - say: Practice with Pebble, then light the marker. The ridge path will open.
+          - set: {flag.briefed: true}
+    actions:
+      - label: Practice
+        do:
+          - battle: lesson
+            on_win:
+              - set: {flag.trained: true}
+              - say: Well done! You are ready to light the marker.
+      - label: Light the marker
+        when: flag.trained && !flag.marker_lit
+        do: [{call: greeting}]
+      - {label: Save journey, do: [{save: true}]}
+      - {label: Rest, do: [{heal: all}, {say: Ready for another walk.}]}
+    exits:
+      - {to: ridge, label: Walk to the ridge, when: flag.marker_lit}
+      - {to: chamber, label: Explore chamber}
+  ridge:
+    name: Lantern ridge
+    background: ridge.png
+    safe: true
+    actions:
+      - {label: Save journey, do: [{save: true}]}
+    exits: [{to: camp, label: Return to camp}]
+  chamber:
+    name: Observation room
+    safe: true
+    dungeon:
+      floor: "#304c54"
+      ceiling: "#172a37"
+      map: |
+        #######
+        #S...L#
+        #.###.#
+        #C....#
+        #######
+      tiles:
+        S: {start: true, facing: east}
+        L:
+          name: Window lantern
+          once: true
+          mark: "#edbe70"
+          symbol: L
+          do:
+            - say: From this window, the little trail looks like a ribbon.
+            - set: {flag.window_seen: true}
+        C:
+          name: Camp door
+          mark: "#97daca"
+          symbol: C
+          do: [{move: camp}]
+events:
+  greeting:
+    do:
+      - say: The marker glows. A path to Lantern ridge is now open.
+      - set: {flag.marker_lit: true}
+  arrival:
+    trigger: enter
+    location: ridge
+    once: true
+    do:
+      - say: The ridge lantern answers your light. The trail is connected again!
+      - gold: 4
+      - set: {flag.complete: true}
+      - say: Journey complete. Save here, or return to explore the observation room.

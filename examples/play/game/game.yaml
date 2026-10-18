@@ -1,0 +1,72 @@
+schema_version: 1
+id: wayfinder-demo
+title: Wayfinder
+subtitle: A little light on the trail
+screen: {width: 960, height: 540}
+fonts: {regular: regular.ttf}
+title_background: landscape.png
+start: {location: camp, party: [walker]}
+battle: {variance: 0, critical: 0, escape: 1}
+terms: {currency: G, level: Lv., hp: HP, mp: MP, exp: EXP}
+ui:
+  window: "#142c36e8"
+  border: "#7ba8aa"
+  text: "#f2eddb"
+  accent: "#edbe70"
+  cursor: "#97daca"
+text:
+  はじめから: New journey
+  つづきから: Continue
+  ギャラリー: Gallery
+  せってい: Settings
+  おわる: Quit
+  セーブ: Save
+  ロード: Load
+  もどる: Back
+  メニュー: Menu
+  '話す：': 'Talk: '
+  ステータス: Status
+  どうぐ: Items
+  スキル: Skills
+  そうび: Equipment
+  タイトルへ: Return to title
+  とじる: Close
+  オート: Auto
+  たたかう: Fight
+  にげる: Escape
+  'Z / Enter: けってい   X / Esc: もどる   O: せってい   M: ミュート   F11: ぜんがめん': 'Enter: choose   Esc: back   O: settings   M: mute   F11: fullscreen'
+  "こうげき": "Attack"
+  "ぼうぎょ": "Guard"
+  "は どうする？": ": choose an action"
+  "判断理由 B / L1": "Decisions B / L1"
+  "たたかいに かった！": "Practice complete!"
+  "AUTO  (X でかいじょ)": "AUTO (X to cancel)"
+  "{first}が あらわれた！": "{first} is ready to practice!"
+  "{user}の {skill}！": "{user}: {skill}!"
+  "{user}は {skill}を つかった！": "{user} uses {skill}!"
+  "{target}に {amount}の ダメージ！": "{target} takes {amount} damage."
+  "{target}は {amount}の ダメージを うけた！": "{target} takes {amount} damage."
+  "{target}を たおした！": "{target} finishes practice."
+  "%d%sを てにいれた！": "Received %d%s."
+  "どこに セーブしますか？": "Choose a save slot"
+  "どの きろくから はじめますか？": "Choose a journey to continue"
+  ": ---- からっぽ ----": ": ---- Empty ----"
+  ": ---- 読めないセーブ ----": ": ---- Unreadable ----"
+  "スロット%dに セーブしました。": "Saved in slot %d."
+  "スロット%dに 上書きしますか？": "Overwrite slot %d?"
+  "スロット%dを ロードしますか？（セーブしていない 進み具合は 消えます）": "Load slot %d? Unsaved progress will be lost."
+  "セーブできなかった: ": "Could not save: "
+  "ロードできなかった: ": "Could not load: "
+  "はい": "Yes"
+  "いいえ": "No"
+  "タイトルに もどりますか？（セーブして いない ところは 消えます）": "Return to title? Unsaved progress will be lost."
+  "北": "North"
+  "東": "East"
+  "南": "South"
+  "西": "West"
+  "を むいている": " facing"
+  "↑すすむ ←→むきをかえる ↓ふりむく": "Up: walk   Left/Right: turn   Down: turn back"
+  "X メニュー": "X: menu"
+  "記録する": "Save"
+  "記録を読む": "Load"
+  "探索 %d%%": "Explored %d%%"
