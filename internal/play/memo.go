@@ -25,13 +25,14 @@ import (
 const DefaultMemoDir = memo.DefaultDir
 
 type memoBox struct {
-	kinds []data.MemoKind
-	list  *list
-	kind  int
-	typed bool
-	text  string
-	comp  string
-	age   int
+	kinds     []data.MemoKind
+	list      *list
+	kind      int
+	typed     bool
+	text      string
+	comp      string
+	age       int
+	committed bool
 
 	composer textinput.Composer
 	ext      chan extInput
@@ -66,6 +67,7 @@ func (g *Game) openMemo() {
 	}
 	m.composer.OnComposition = func(c *textinput.Composition) { m.comp = c.Text() }
 	m.composer.OnCommit = func(c *textinput.Commit) {
+		m.committed = true
 		if before, after := c.IsSurroundingTextReplaced(); before || after {
 			b, a := c.SurroundingText()
 			m.text = b + c.Text() + a
@@ -318,7 +320,7 @@ func (g *Game) updateMemo() {
 	}
 	scripted := in.script != nil
 	if !scripted {
-		handled, err := m.composer.Update()
+		handled, err := m.readInput(m.composer.Update, ebiten.AppendInputChars)
 		if err != nil {
 			log.Print(err)
 		}
@@ -345,6 +347,21 @@ func (g *Game) updateMemo() {
 		m.composer.Confirm()
 		g.saveMemo()
 	}
+}
+
+// readInput は変換確定を優先し、通常文字の経路との重複を避ける。
+// 文字を受け取ったフレームでは Enter・Backspace を保存・削除に使わない。
+func (m *memoBox) readInput(update func() (bool, error), chars func([]rune) []rune) (bool, error) {
+	m.committed = false
+	handled, err := update()
+	if handled || m.committed || m.comp != "" {
+		return true, err
+	}
+	if rs := chars(nil); len(rs) > 0 {
+		m.text += string(rs)
+		return true, err
+	}
+	return false, err
 }
 
 func (g *Game) closeMemo() {

@@ -1108,10 +1108,10 @@ func (b *bot) dive() {
 		if g.GuardTile != "" && b.tileOnFloor(g.GuardTile) {
 
 			for range 4 {
-				if !b.inDungeon() || b.floor() != f || b.run.Cleared || !b.tileOnFloor(g.GuardTile) {
+				if b.worn || !b.inDungeon() || b.floor() != f || b.run.Cleared || !b.tileOnFloor(g.GuardTile) {
 					break
 				}
-				if !b.walkChar(g.GuardTile, g.StairsWords) {
+				if !b.walkChar(g.GuardTile, g.StairsWords) && !b.worn {
 					b.walkThrough(g.GuardTile, g.StairsWords)
 				}
 			}
@@ -1139,13 +1139,16 @@ func (b *bot) dive() {
 				break
 			}
 		}
-		if stairs != "" && !b.walkChar(stairs, g.StairsWords) && b.inDungeon() && b.floor() == f {
+		if stairs != "" && !b.walkChar(stairs, g.StairsWords) && !b.worn && b.inDungeon() && b.floor() == f {
 
 			b.walkThrough(stairs, g.StairsWords)
 		}
-		if stairs != "" && b.inDungeon() && b.floor() == f && !b.run.Cleared {
+		if stairs != "" && !b.worn && b.inDungeon() && b.floor() == f && !b.run.Cleared {
 			b.stepOff()
 			b.walkChar(stairs, g.StairsWords)
+		}
+		if b.worn {
+			break
 		}
 		if b.inDungeon() && b.floor() == f && !b.run.Cleared {
 			b.logf("could not go down (pos %v)\n%s", b.st.Pos, b.mapText())
@@ -1211,7 +1214,7 @@ func (b *bot) goHome() {
 	if !b.inDungeon() {
 		return
 	}
-	if g.GateTile != "" && b.tileOnFloor(g.GateTile) {
+	if (g.BackItem != "" || g.BackEvent == "") && g.GateTile != "" && b.tileOnFloor(g.GateTile) {
 		b.walkChar(g.GateTile, g.HomeWords)
 		if !b.inDungeon() {
 			return
@@ -1220,11 +1223,13 @@ func (b *bot) goHome() {
 	if g.BackEvent == "" {
 		return
 	}
-	if g.BackItem != "" && b.st.ItemCount(g.BackItem, false) > 0 {
-		b.st.AddItem(g.BackItem, -1)
-	} else {
-		b.run.Stranded++
-		b.adv(b.c.Time.Stranded, b.where())
+	if g.BackItem != "" {
+		if b.st.ItemCount(g.BackItem, false) > 0 {
+			b.st.AddItem(g.BackItem, -1)
+		} else {
+			b.run.Stranded++
+			b.adv(b.c.Time.Stranded, b.where())
+		}
 	}
 	b.adv(b.c.Time.Menu, b.where())
 	b.act(func() error { return b.d.Run(context.Background(), b.db.Events[g.BackEvent].Do) })

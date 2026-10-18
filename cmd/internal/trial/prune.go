@@ -468,6 +468,18 @@ func reach(fs files, scenes []yaml.MapSlice, asides []yaml.MapSlice, allow map[s
 
 	g := del(del(fs.game(), "gallery"), "asides")
 	scan(g)
+	// before・after は戦闘設定でのみイベントを参照する。タイルの after は別のタイル。
+	if v, ok := get(g, "battle"); ok {
+		if battle, ok := v.(yaml.MapSlice); ok {
+			for _, key := range []string{"before", "after"} {
+				if v, ok := get(battle, key); ok {
+					if id, ok := str(v); ok && id != "" {
+						add(ref{"events", id})
+					}
+				}
+			}
+		}
+	}
 	gal, _ := get(fs.game(), "gallery")
 	gm := mapping(gal)
 	if m, ok := get(gm, "music"); ok {

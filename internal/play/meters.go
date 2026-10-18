@@ -17,6 +17,12 @@ func (g *Game) meterValue(m *data.Meter) (v, mx float64) {
 	if mx == 0 {
 		mx = 100
 	}
+	if m.MaxValue.Set() {
+		value, err := m.MaxValue.Number(g.st.Env())
+		if err == nil {
+			mx = max(1, value)
+		}
+	}
 	var err error
 	v, err = m.Value.Number(g.st.Env())
 	if err != nil {
@@ -64,6 +70,9 @@ func (g *Game) drawMeterRow(dst *ebiten.Image, m *data.Meter, x, y, w float64) {
 	g.text(dst, m.Label, x, y, size, g.th.dim)
 	bx := x + gfx.TextWidth(m.Label, size) + 12
 	right := fmt.Sprintf("%d", int(v))
+	if m.MaxValue.Set() {
+		right = fmt.Sprintf("%d/%d", int(v), int(mx))
+	}
 	full := v >= mx
 	if full && m.Full != "" {
 		right = m.Full

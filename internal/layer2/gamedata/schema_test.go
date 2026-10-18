@@ -84,7 +84,7 @@ var schemaReferences = map[string]string{
 	"Shop.goods": "items[]", "Shop.keeper": "assets/ の画像", "Shop.spent": "数値の var の名前", "Person.image": "assets/ の画像",
 	"Aside.actor": "actors", "Aside.face": "表情画像またはパターン", "Aside.call": "events", "Aside.skip": "events のパターン[]",
 	"BattleCfg.tactic_presets": "TacticPreset の ID と定義", "TacticPreset.rows": "キーは ai、値は TacticRow[]", "TacticAction.target": "tactic_targets",
-	"BattleCfg.attack_skill": "skills", "BattleCfg.guard_skill": "skills", "BattleCfg.after_win": "events", "BattleCfg.auto_tactics": "キーは ai、値は TacticRow[]",
+	"BattleCfg.attack_skill": "skills", "BattleCfg.guard_skill": "skills", "BattleCfg.after_win": "events", "BattleCfg.before": "events", "BattleCfg.after": "events", "BattleCfg.auto_tactics": "キーは ai、値は TacticRow[]",
 	"Passive.actor": "actors", "Passive.state": "states", "GameOver.event": "events", "Meter.actor": "actors", "CardBubble.actor": "actors", "CardBubble.state": "states",
 	"Command.join": "actors", "Command.leave": "actors", "Command.heal": "actors または all", "Command.battle": "troops", "Command.fighters": "actors[]",
 	"Command.move": "locations", "Command.dive": "generate を持つ locations", "Command.at": "到着迷宮の tiles の文字", "Command.call": "events", "Command.shop": "shops",

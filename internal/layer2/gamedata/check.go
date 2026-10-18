@@ -262,6 +262,7 @@ func (db *DB) Check() []error {
 	for i, m := range g.Meters {
 		w := fmt.Sprintf("game.yaml meters[%d]", i)
 		c.expr(w+".value", m.Value, FieldNames)
+		c.expr(w+".max_value", m.MaxValue, FieldNames)
 		c.expr(w+".when", m.When, FieldNames)
 		if !m.Value.Set() || m.Max < 0 {
 			c.errorf(w, "a meter needs value (and max 0 or more)")
@@ -352,9 +353,11 @@ func (db *DB) Check() []error {
 		}
 		c.expr(w+".value", v.Value, FieldNames)
 	}
-	if ev := g.Battle.AfterWin; ev != "" {
-		_, ok := db.Events[ev]
-		c.ref("game.yaml battle.after_win", "event", ev, ok)
+	for name, ev := range map[string]string{"after_win": g.Battle.AfterWin, "before": g.Battle.Before, "after": g.Battle.After} {
+		if ev != "" {
+			_, ok := db.Events[ev]
+			c.ref("game.yaml battle."+name, "event", ev, ok)
+		}
 	}
 	for name, w := range map[string]*float64{"front_weight": g.Battle.FrontWeight, "back_weight": g.Battle.BackWeight} {
 		if w != nil {

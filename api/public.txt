@@ -248,12 +248,14 @@ github.com/nao1215/gozen/data field Aside.Name
 github.com/nao1215/gozen/data field Aside.Skip
 github.com/nao1215/gozen/data field Aside.When
 github.com/nao1215/gozen/data field BattleCfg.AI
+github.com/nao1215/gozen/data field BattleCfg.After
 github.com/nao1215/gozen/data field BattleCfg.AfterWin
 github.com/nao1215/gozen/data field BattleCfg.Attack
 github.com/nao1215/gozen/data field BattleCfg.AutoStart
 github.com/nao1215/gozen/data field BattleCfg.AutoTactics
 github.com/nao1215/gozen/data field BattleCfg.AutoTempo
 github.com/nao1215/gozen/data field BattleCfg.BackWeight
+github.com/nao1215/gozen/data field BattleCfg.Before
 github.com/nao1215/gozen/data field BattleCfg.BossWinMusic
 github.com/nao1215/gozen/data field BattleCfg.Critical
 github.com/nao1215/gozen/data field BattleCfg.CriticalRate
@@ -635,6 +637,7 @@ github.com/nao1215/gozen/data field Meter.FullColor
 github.com/nao1215/gozen/data field Meter.Label
 github.com/nao1215/gozen/data field Meter.Marks
 github.com/nao1215/gozen/data field Meter.Max
+github.com/nao1215/gozen/data field Meter.MaxValue
 github.com/nao1215/gozen/data field Meter.Value
 github.com/nao1215/gozen/data field Meter.When
 github.com/nao1215/gozen/data field MoodRule.Mood

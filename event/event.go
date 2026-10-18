@@ -138,8 +138,11 @@ const (
 )
 
 type frame struct {
-	cmds []data.Command
-	pc   int
+	cmds         []data.Command
+	pc           int
+	prepared     bool
+	location     string
+	checkedAfter bool
 }
 
 // Runner runs events.
@@ -158,8 +161,9 @@ type Runner struct {
 	asked  *data.Command // the choice whose answer is waited for
 	battle *data.Command
 	// Extra is looked up before the state's names (a battle's scope, for troop events).
-	Extra    expr.Env
-	gameOver bool
+	Extra        expr.Env
+	gameOver     bool
+	afterPending bool // 勝敗の分岐を確定した後、次の選択・戦闘より前に後処理を行う
 	// pages are the pictures of an image's files still to show, a tap before each
 	pages []data.CG
 	// later は今のイベントが終わってから独立に走る命令（勝利後の after_win）。end では消えない
@@ -194,7 +198,7 @@ func (r *Runner) Start(cmds []data.Command) {
 
 // Running reports whether there is anything left to run.
 func (r *Runner) Running() bool {
-	return r.gameOver || len(r.stack) > 0 || len(r.notes) > 0 || r.options != nil || r.battle != nil || len(r.later) > 0
+	return r.gameOver || len(r.stack) > 0 || len(r.notes) > 0 || r.options != nil || r.battle != nil || len(r.later) > 0 || r.afterPending
 }
 
 // Asking is the command whose answer is waited for: the choice or the battle just asked
@@ -209,6 +213,7 @@ func (r *Runner) Asking() *data.Command {
 
 // Stop drops everything left.
 func (r *Runner) Stop() {
+	r.afterPending = false
 	r.stack, r.notes, r.options, r.battle, r.later, r.pick, r.ups = nil, nil, nil, nil, nil, nil, nil
 }
 
@@ -255,6 +260,7 @@ func (r *Runner) Answer(n int) {
 	case r.battle != nil:
 		c := r.battle
 		r.battle = nil
+		r.afterPending = r.db.Events[r.db.Game.Battle.After] != nil
 		switch n {
 		case BattleWon:
 			r.push(c.OnWin)
@@ -315,6 +321,11 @@ func (r *Runner) Next() Request {
 		}
 		if len(r.stack) == 0 {
 			if len(r.later) == 0 {
+				if r.afterPending {
+					r.afterPending = false
+					r.push(r.db.Events[r.db.Game.Battle.After].Do)
+					continue
+				}
 				return nil
 			}
 			r.stack = []frame{{cmds: r.later[0]}}
@@ -332,6 +343,24 @@ func (r *Runner) Next() Request {
 			continue
 		}
 		c := &top.cmds[top.pc]
+		if r.afterPending && (c.Battle != "" || len(c.Choice) > 0) {
+			r.afterPending = false
+			top.checkedAfter, top.location = true, r.st.Location
+			r.push(r.db.Events[r.db.Game.Battle.After].Do)
+			continue
+		}
+		if (top.prepared || top.checkedAfter) && top.location != r.st.Location {
+			r.Stop()
+			return nil
+		}
+		if c.Battle != "" && !top.prepared {
+			if ev := r.db.Events[r.db.Game.Battle.Before]; ev != nil {
+				top.prepared, top.location = true, r.st.Location
+				r.push(ev.Do)
+				continue
+			}
+		}
+		top.prepared, top.checkedAfter = false, false
 		top.pc++
 		if req := r.run(c); req != nil {
 			return req

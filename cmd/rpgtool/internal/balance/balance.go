@@ -100,13 +100,14 @@ type Result struct {
 }
 
 type runner struct {
-	err  error
-	db   *data.DB
-	o    Config
-	used map[string]map[string]int
-	cost *expr.Expr
-	when *expr.Expr
-	fl   *Floor
+	measuring bool // 単体勝率の測定では探索資源を消費しない。
+	err       error
+	db        *data.DB
+	o         Config
+	used      map[string]map[string]int
+	cost      *expr.Expr
+	when      *expr.Expr
+	fl        *Floor
 }
 
 func Run(db *data.DB, o Config) (Result, error) {
@@ -164,8 +165,7 @@ func Run(db *data.DB, o Config) (Result, error) {
 					break
 				}
 			}
-			r.end(st, b)
-			hp += partyHP(st)
+			hp += r.end(st, b)
 			if b.Result == battle.Lost {
 				r.lost(st)
 			} else if o.RestEvery > 0 && (partyHP(st) < o.WornHP || partyMP(st) < o.WornMP) {
@@ -315,6 +315,8 @@ func (r Result) Unused() map[string][]string {
 }
 
 func (r *runner) rate(st *rpg.State, troop string, floor int) float64 {
+	r.measuring = true
+	defer func() { r.measuring = false }()
 	wins := 0
 	for i := range r.o.Tries {
 		c, err := clone(r.db, st, uint64(i))
@@ -331,6 +333,15 @@ func (r *runner) rate(st *rpg.State, troop string, floor int) float64 {
 }
 
 func (r *runner) fight(st *rpg.State, troop string) *battle.Battle {
+	if r.o.Events && !r.measuring {
+		if ev := r.db.Events[r.db.Game.Battle.Before]; ev != nil {
+			r.run(st, ev.Do)
+			if st.Location != r.o.Location {
+				r.returnAndResume(st)
+				r.run(st, ev.Do)
+			}
+		}
+	}
 	b := battle.New(r.db, st, troop)
 	headless.AutoBattle(r.db, st, b, nil, r.o.MaxTurns, func(steps []battle.Step) {
 		for _, s := range steps {
@@ -373,6 +384,7 @@ func (r *runner) rest(st *rpg.State) {
 	if ev := r.db.Events[r.o.RestEvent]; ev != nil {
 		r.run(st, ev.Do)
 	}
+	st.Location = r.o.Location
 }
 
 func (r *runner) goBack(st *rpg.State) {
@@ -386,7 +398,7 @@ func (r *runner) goBack(st *rpg.State) {
 	}
 }
 
-func (r *runner) end(st *rpg.State, b *battle.Battle) {
+func (r *runner) end(st *rpg.State, b *battle.Battle) float64 {
 	b.End()
 	if r.o.Events && b.Result == battle.Won {
 		if ev := r.db.Events[r.db.Game.Battle.AfterWin]; ev != nil {
@@ -403,6 +415,26 @@ func (r *runner) end(st *rpg.State, b *battle.Battle) {
 			}
 		}
 	}
+	// 帰還後の回復で戦闘直後の消耗率を上書きしない。
+	hp := partyHP(st)
+	if r.o.Events && b.Result != battle.Lost {
+		if ev := r.db.Events[r.db.Game.Battle.After]; ev != nil {
+			r.run(st, ev.Do)
+			if st.Location != r.o.Location {
+				r.returnAndResume(st)
+			}
+		}
+	}
+	return hp
+}
+
+func (r *runner) returnAndResume(st *rpg.State) {
+	if r.fl != nil {
+		r.fl.Backs++
+		r.fl.WentBack = true
+	}
+	r.rest(st)
+	r.supply(st)
 }
 
 func (r *runner) lost(st *rpg.State) {
@@ -415,10 +447,15 @@ func (r *runner) lost(st *rpg.State) {
 		r.run(st, ev.Do)
 		r.fl.GoldLost += max(0, g-st.Gold)
 	}
+	r.rest(st)
 }
 
 func (r *runner) run(st *rpg.State, cmds []data.Command) {
-	ev := event.New(r.db, st, event.HostFunc(func(event.Effect) {}))
+	ev := event.New(r.db, st, event.HostFunc(func(effect event.Effect) {
+		if move, ok := effect.(event.MoveEffect); ok {
+			st.Location = move.Location
+		}
+	}))
 	ev.Log = func(err error) { r.err = errors.Join(r.err, err) }
 	ev.Start(cmds)
 	for range 10000 {

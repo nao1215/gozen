@@ -54,7 +54,7 @@ func newTacticEditor(g *Game, parent *tacticsScreen, adding bool) *tacticEditor 
 	return e
 }
 
-func (e *tacticEditor) overlay() bool { return true }
+func (e *tacticEditor) overlay() bool { return false }
 
 func catalogIDs[T any](m map[string]T) []string {
 	ids := make([]string, 0, len(m))
@@ -311,7 +311,7 @@ func (e *tacticEditor) update(g *Game) {
 
 func (e *tacticEditor) draw(g *Game, dst *ebiten.Image) {
 	sw, _ := g.screen()
-	fill(dst, withAlpha(colorBlack, 0xf8))
+	fill(dst, colorBlack)
 	g.text(dst, g.st.Actors[e.actor].Name()+" / "+lang.T("作戦の行を編集"), 30, 25, sizeL, g.th.text)
 	e.fields.draw(g, dst, !e.choosing)
 	e.options.draw(g, dst, e.choosing)
@@ -342,7 +342,7 @@ func (s *tacticText) update(g *Game) {
 	}
 }
 func (s *tacticText) draw(g *Game, dst *ebiten.Image) {
-	fill(dst, withAlpha(colorBlack, 0xf8))
+	fill(dst, colorBlack)
 	g.text(dst, lang.T("説明の全文"), 30, 25, sizeL, g.th.text)
 	s.lines.draw(g, dst, true)
 	g.text(dst, lang.T("↑ ↓ スクロール　決定・取消で戻る"), 30, 674, sizeS, g.th.border)

@@ -15,6 +15,7 @@ Gozen の配置、公開契約、依存関係、検査についての設計判�
 | T3 表示の所有権と起動の境界 | [0011-presentation-ownership](0011-presentation-ownership.md) |
 | T2 共有モデルと規則の所有者 | [0010-core-ownership](0010-core-ownership.md) |
 | T4 CLI の所有権と出力 | [0012](0012-cli-ownership-and-output.md) |
+| SW1 戦闘イベントと可変上限 | [0013](0013-battle-hooks-and-meter-limits.md) |
 | D9・D10 導入経路と単一モジュールへの変更 | [0009-single-module](0009-single-module.md) |
 
 判断を変更するときは、現在の制約、具体的な利用者、代案、影響を記録します。設定の除外を増やして依存違反を隠す変更は採りません。

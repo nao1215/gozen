@@ -44,3 +44,5 @@ T3 の描画・音声の共有実装は `internal/layer5/gfx`・`internal/layer5
 T4 で `rpgcheck` と `rpgtool` の 12 サブコマンドを実装しました。CLI だけの解析・シミュレーションは `cmd/internal/` と `cmd/rpgtool/internal/` に置き、安定 API は増やしません。[ADR 0012](../decisions/0012-cli-ownership-and-output.md) と [CLI の使い方](../development/cli.md) を参照してください。
 
 T5 で制作支援の `promptgen` と `mosaic` を専用 internal に実装しました。ONNX binding は mosaic component だけが利用し、公開 API と既存の層の許可は増やしません。4 CLI が同じ `./...` と CLI E2E の対象です。[制作支援 CLI](../development/production-tools.md) に入出力と前提を記載します。
+
+SW1 で戦闘前後の共通イベントと可変メーター上限を追加しました。実行順と CLI の扱いは [戦闘イベントとメーター](battle-hooks.md)、公開する3フィールドの利用目的は [ADR 0013](../decisions/0013-battle-hooks-and-meter-limits.md) に記載します。

@@ -241,14 +241,18 @@ type MemoVar struct {
 // menu it is shown on the page of actor (or on every page when actor is empty). At max the
 // bar takes full_color and full is written after it.
 type Meter struct {
-	Label     string  `yaml:"label"`
-	Value     Expr    `yaml:"value"`
-	Max       float64 `yaml:"max"` // default 100
-	When      Expr    `yaml:"when"`
-	Color     Color   `yaml:"color"`
-	Full      string  `yaml:"full"`
-	FullColor Color   `yaml:"full_color"`
-	Actor     string  `yaml:"actor"`
+	Label string  `yaml:"label"`
+	Value Expr    `yaml:"value"`
+	Max   float64 `yaml:"max"` // default 100
+	// MaxValue はゲーム作者が状態に応じた上限を指定する式。評価成功時は
+	// Max より優先し、1 以上に丸める。未指定・評価失敗時は Max を使う。
+	// 指定時は現在値/上限を表示する（満杯時の Full は引き続き優先）。
+	MaxValue  Expr   `yaml:"max_value"`
+	When      Expr   `yaml:"when"`
+	Color     Color  `yaml:"color"`
+	Full      string `yaml:"full"`
+	FullColor Color  `yaml:"full_color"`
+	Actor     string `yaml:"actor"`
 	// Marks are values marked on the bar (where something becomes possible).
 	Marks []float64 `yaml:"marks"`
 }
@@ -351,6 +355,14 @@ type BattleCfg struct {
 	BackWeight  *float64 `yaml:"back_weight"`
 	// AfterWin is an event run after every battle won (a gauge to fill, a line to say).
 	AfterWin string `yaml:"after_win"`
+	// Before は戦闘要求の直前に実行するイベント ID。空なら何もしない。
+	// ゲーム作者の資源消費や参加条件に使う。移動したら元の進行を中止し、
+	// 画面の再試行はこの処理後の状態から始まる。
+	Before string `yaml:"before"`
+	// After は結果を反映した後、次の選択・戦闘またはイベント終了時に
+	// 実行するイベント ID。ゲーム作者の資源判定・帰還に使う。空なら省略し、
+	// 敗北分岐がない通常敗北では全滅処理を優先する。
+	After string `yaml:"after"`
 	// FoeScale multiplies the stats of the foes that are not bosses (mhp: 1.4, atk: 1.25…):
 	// the tension of the common battles, tuned in one place.
 	FoeScale map[string]float64 `yaml:"foe_scale"`

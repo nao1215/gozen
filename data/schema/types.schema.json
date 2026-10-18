@@ -529,6 +529,17 @@
     "BattleCfg": {
       "additionalProperties": false,
       "properties": {
+        "after": {
+          "type": "string",
+          "x-contract": {
+            "default": "空文字",
+            "legacy_default": "空文字",
+            "zero": "数値以外",
+            "required": "省略可",
+            "reference": "events",
+            "version": "０・１"
+          }
+        },
         "after_win": {
           "type": "string",
           "x-contract": {
@@ -615,6 +626,17 @@
             "zero": "両版で値０を保持",
             "required": "省略可",
             "reference": "なし",
+            "version": "０・１"
+          }
+        },
+        "before": {
+          "type": "string",
+          "x-contract": {
+            "default": "空文字",
+            "legacy_default": "空文字",
+            "zero": "数値以外",
+            "required": "省略可",
+            "reference": "events",
             "version": "０・１"
           }
         },
@@ -6245,6 +6267,23 @@
             "required": "省略可",
             "reference": "なし",
             "version": "０・１（省略・０の違いは数値監査表）"
+          }
+        },
+        "max_value": {
+          "description": "式。構文・名前・型は data.Load で検査する",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "未指定の式（条件は成立、数式は０。個別の継承は下記）",
+            "legacy_default": "未指定の式（条件は成立、数式は０。個別の継承は下記）",
+            "zero": "式の数値０（条件なら不成立）",
+            "required": "省略可",
+            "reference": "式の文脈は DSL と data.Load で検査",
+            "version": "０・１"
           }
         },
         "value": {
