@@ -1,0 +1,7 @@
+# Keep line endings stable on every OS so golden files and schemas compare byte-for-byte.
+* text=auto eol=lf
+*.png binary
+*.gif binary
+*.jpg binary
+*.ttf binary
+*.onnx binary
