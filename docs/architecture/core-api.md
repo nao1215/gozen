@@ -16,6 +16,7 @@
 | `event` | フロントエンドが命令を実行し、待機要求に答える | `Runner`、`Request` の各値、即時効果の `Effect` と `Host.Handle` |
 | `battle` | フロントエンドがターンを進め、行動を選び、結果を表示する | `Battle`・`Unit`・`Action`・`Step`、AI 判断を観測する `Decision`・`RuleEvaluation` |
 | `world` | ホストが移動・操作候補を表示し、到着や自動イベントを処理する | `Entry`、`Entries`・`Entry.Commands`・`Arrive`・`Auto`・`PickTroop` |
+| `dungeon` | 独自の探索操作を組み立てるホストと評価道具 | 一歩単位の操作と地図の観測。公開する各識別子の用途は [ADR 0014](../decisions/0014-dungeon-host-adoption.md) |
 | `headless` | ゲーム作者と検査道具が画面なしで進行・分岐を確かめる | `Driver`、`Explore` と `Config`、観測結果の `Path`・`Step`、`AutoBattle` |
 | `assetfs` | ホストが素材を差し替え、承認結果を確認し、配布用にコピーする | `New`・`Config`・`OverlayFS`、`Approval`・`Gate`・`Tree` |
 

@@ -135,6 +135,8 @@ Requirements: Go and a catalog YAML. No cgo, models or remote service. Assembles
 go run ./cmd/promptgen --config docs/examples/production/catalog.yaml --scene landscape --format json
 ```
 
+Use `--scenes ids.txt --format json` to build multiple scene IDs (one per line) with a single catalog load. See [batch output and exit status](docs/development/production-tools.md#promptgen).
+
 ### mosaic
 
 Requirements: Go; inference additionally needs a C compiler, compatible ONNX Runtime library and user models. Manual-only processing needs none of those runtime dependencies. [Setup and model contracts](docs/development/production-tools.md).

@@ -23,7 +23,7 @@ flowchart TB
   Private --> L1
 ```
 
-`savefile` は状態や定義を知らない保存先・バイト列の基礎として第 1 層に置きます。`dungeon` は `internal/layer3/dungeon` に置き、D2 の v0 公開契約には含めません。
+`savefile` は状態や定義を知らない保存先・バイト列の基礎として第 1 層に置きます。`dungeon` の実装は `internal/layer3/dungeon` に置きます。SW2 で独自の探索操作に必要な公開入口を追加しました。用途と範囲は [ADR 0014](../decisions/0014-dungeon-host-adoption.md) を参照してください。
 
 表示パッケージ間の呼出しも横依存に含まれます。たとえば `play` から `gfx` へ直接 import する構成は採りません。共有の実装は所有層を付けた `internal/` に寄せ、組立ては上位に置きます。`rpg` と `data`、規則同士でも同じ方針です。共有の型や処理も、依存方向に従って所有者を決めます。
 
@@ -46,3 +46,5 @@ T4 で `rpgcheck` と `rpgtool` の 12 サブコマンドを実装しました�
 T5 で制作支援の `promptgen` と `mosaic` を専用 internal に実装しました。ONNX binding は mosaic component だけが利用し、公開 API と既存の層の許可は増やしません。4 CLI が同じ `./...` と CLI E2E の対象です。[制作支援 CLI](../development/production-tools.md) に入出力と前提を記載します。
 
 SW1 で戦闘前後の共通イベントと可変メーター上限を追加しました。実行順と CLI の扱いは [戦闘イベントとメーター](battle-hooks.md)、公開する3フィールドの利用目的は [ADR 0013](../decisions/0013-battle-hooks-and-meter-limits.md) に記載します。
+
+利用側の呼び出し・保存先・CLI 検査の切り替えは [ゲームから Gozen を利用する](adoption.md) を参照してください。

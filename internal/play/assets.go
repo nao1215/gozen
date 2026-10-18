@@ -19,19 +19,21 @@ import (
 )
 
 type pictures struct {
-	fsys    fs.FS
-	mu      sync.Mutex
-	workers sync.WaitGroup
-	imgs    map[string]*picEntry
-	loading map[string]*picLoad
-	bytes   int
-	budget  int
-	clock   int
-	heads   map[string]image.Rectangle
-	boxes   map[string][]float64
-	blurs   map[string]*ebiten.Image
-	shades  map[string][2]float64
-	shaded  map[string]*ebiten.Image
+	fsys         fs.FS
+	mu           sync.Mutex
+	workers      sync.WaitGroup
+	decoded      map[string]image.Image
+	decodedBytes int
+	imgs         map[string]*picEntry
+	loading      map[string]*picLoad
+	bytes        int
+	budget       int
+	clock        int
+	heads        map[string]image.Rectangle
+	boxes        map[string][]float64
+	blurs        map[string]*ebiten.Image
+	shades       map[string][2]float64
+	shaded       map[string]*ebiten.Image
 
 	seen func(path string, ok bool)
 
@@ -52,7 +54,7 @@ type picLoad struct {
 const picBudget = 256 << 20
 
 func newPictures(fsys fs.FS) *pictures {
-	return &pictures{fsys: fsys, imgs: map[string]*picEntry{}, loading: map[string]*picLoad{}, budget: picBudget,
+	return &pictures{fsys: fsys, imgs: map[string]*picEntry{}, loading: map[string]*picLoad{}, decoded: map[string]image.Image{}, budget: picBudget,
 		heads: map[string]image.Rectangle{}, blurs: map[string]*ebiten.Image{}, boxes: map[string][]float64{},
 		shades: map[string][2]float64{}, shaded: map[string]*ebiten.Image{}}
 }
@@ -113,6 +115,10 @@ func (p *pictures) fetch(path string) *ebiten.Image {
 	p.imgs[path] = e
 	p.heads[path] = head
 	p.bytes += e.bytes
+	if p.bytes+p.decodedBytes > p.budget {
+		clear(p.decoded)
+		p.decodedBytes = 0
+	}
 	p.trim()
 	p.mu.Unlock()
 	l.img = img
@@ -130,6 +136,8 @@ func (p *pictures) reset() {
 	p.blurs = map[string]*ebiten.Image{}
 	p.shaded = map[string]*ebiten.Image{}
 	p.bytes = 0
+	clear(p.decoded)
+	p.decodedBytes = 0
 }
 
 func (p *pictures) trim() {
@@ -152,17 +160,35 @@ func (p *pictures) trim() {
 }
 
 func (p *pictures) load(path string) (*ebiten.Image, image.Rectangle) {
+	p.mu.Lock()
+	src := p.decoded[path]
+	if src != nil {
+		delete(p.decoded, path)
+		p.decodedBytes -= src.Bounds().Dx() * src.Bounds().Dy() * 4
+	}
+	p.mu.Unlock()
+	if src == nil {
+		src = p.decode(path)
+	}
+	if src == nil {
+		return missing, image.Rectangle{}
+	}
+	return ebiten.NewImageFromImage(src), findHead(src)
+}
+
+// decode は CPU 上の画像だけを返す。画面ループの終了後も安全に読み終えられる。
+func (p *pictures) decode(path string) image.Image {
 	b, err := fs.ReadFile(p.fsys, "assets/"+path)
 	if err != nil {
 		log.Printf("picture %s: %v", path, err)
-		return missing, image.Rectangle{}
+		return nil
 	}
 	src, _, err := image.Decode(bytes.NewReader(b))
 	if err != nil {
 		log.Printf("picture %s: %v", path, err)
-		return missing, image.Rectangle{}
+		return nil
 	}
-	return ebiten.NewImageFromImage(src), findHead(src)
+	return src
 }
 
 func (p *pictures) preload(paths ...string) {
@@ -173,7 +199,24 @@ func (p *pictures) preload(paths ...string) {
 			if path == "" {
 				continue
 			}
-			p.fetch(path)
+			p.mu.Lock()
+			ready := p.imgs[path] != nil || p.decoded[path] != nil || p.loading[path] != nil
+			gen := p.gen
+			p.mu.Unlock()
+			if ready {
+				continue
+			}
+			src := p.decode(path)
+			if src == nil {
+				continue
+			}
+			n := src.Bounds().Dx() * src.Bounds().Dy() * 4
+			p.mu.Lock()
+			if gen == p.gen && p.imgs[path] == nil && p.decoded[path] == nil && p.loading[path] == nil && n <= p.budget-p.bytes-p.decodedBytes {
+				p.decoded[path] = src
+				p.decodedBytes += n
+			}
+			p.mu.Unlock()
 		}
 	}()
 }
@@ -378,4 +421,6 @@ func (p *pictures) close() {
 	clear(p.imgs)
 	clear(p.blurs)
 	clear(p.shaded)
+	clear(p.decoded)
+	p.decodedBytes = 0
 }

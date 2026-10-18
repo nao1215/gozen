@@ -224,7 +224,7 @@ func (g *Catalog) validate() error {
 	layers := map[string]layer{}
 	for _, l := range g.c.Layers {
 		_, exists := layers[l.ID]
-		if !identifier.MatchString(l.ID) || slices.Contains([]string{"config", "plan", "scene", "format", "help", "h", "lint"}, l.ID) || exists || l.Min < 0 || l.Max < 0 || (l.Max > 0 && l.Max < l.Min) || len(l.Items) == 0 || !separator(l.Separator) {
+		if !identifier.MatchString(l.ID) || slices.Contains([]string{"config", "plan", "scene", "scenes", "format", "help", "h", "lint"}, l.ID) || exists || l.Min < 0 || l.Max < 0 || (l.Max > 0 && l.Max < l.Min) || len(l.Items) == 0 || !separator(l.Separator) {
 			return problem(lang.T("層の定義が不正です。%s"), l.ID)
 		}
 		layers[l.ID] = l

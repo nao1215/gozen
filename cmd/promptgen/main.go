@@ -58,7 +58,7 @@ func configArg(args []string) (string, error) {
 func run(args []string, out, diagnostics io.Writer) error {
 	for _, arg := range args {
 		if arg == "--help" || arg == "-help" || arg == "-h" {
-			_, err := fmt.Fprintln(out, "Usage: promptgen [lint] --config FILE [--scene ID | --plan FILE] [--<layer> ID ...] [--format json|text]\nLayers are defined in the catalog. Flags precede positional arguments.\n"+requirements)
+			_, err := fmt.Fprintln(out, "Usage: promptgen [lint] --config FILE [--scene ID | --plan FILE | --scenes FILE --format json] [--<layer> ID ...] [--format json|text]\n--scenes reads one scene ID per line and writes JSON Lines with id, result and optional error.\nLayers are defined in the catalog. Flags precede positional arguments.\n"+requirements)
 			return err
 		}
 	}
@@ -79,6 +79,7 @@ func run(args []string, out, diagnostics io.Writer) error {
 	fs.String("config", name, "設定ファイル")
 	planFile := fs.String("plan", "", "ID だけを持つ構図ファイル")
 	scene := fs.String("scene", "", "設定内の構図 ID")
+	scenes := fs.String("scenes", "", "構図 ID の一覧。1 行 1 ID。JSON Lines でまとめて出力")
 	format := fs.String("format", "text", "出力形式。json または text")
 	overrides := map[string][]string{}
 	for _, id := range c.LayerIDs() {
@@ -100,6 +101,12 @@ func run(args []string, out, diagnostics io.Writer) error {
 	}
 	if *planFile != "" && *scene != "" {
 		return errors.New("--plan と --scene は同時に指定できません")
+	}
+	if *scenes != "" {
+		if lint || *scene != "" || *planFile != "" || len(overrides) != 0 || *format != "json" {
+			return errors.New("--scenes は --format json と使い、lint・--scene・--plan・層の指定とは併用できません")
+		}
+		return batchScenes(c, *scenes, out)
 	}
 	if lint {
 		if *scene != "" || *planFile != "" || len(overrides) != 0 {

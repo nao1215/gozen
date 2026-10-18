@@ -135,6 +135,8 @@ Requirements: Go と catalog YAML。cgo・モデル・外部サービス不要�
 go run ./cmd/promptgen --config docs/examples/production/catalog.yaml --scene landscape --format json
 ```
 
+複数の構図は `--scenes ids.txt --format json`（1行1 ID）で一括出力できます。[出力と終了値](docs/development/production-tools.md#promptgen)を参照してください。
+
 ### mosaic
 
 Requirements: Go。推論には C コンパイラ、対応する ONNX Runtime、利用者のモデルも必要です。手修正だけの処理では推論用の実行環境は不要です。[準備とモデルの契約](docs/development/production-tools.md)。
