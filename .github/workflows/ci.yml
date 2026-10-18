@@ -10,6 +10,23 @@ permissions:
   contents: read
 
 jobs:
+  quick:
+    # Cheap check for private pushes: vet and tests on Linux under Xvfb.
+    if: ${{ github.event.repository.private && github.event_name != 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a
+        with:
+          xvfb: true
+      - run: go vet ./...
+      - run: xvfb-run --auto-servernum go test -count=1 ./...
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -29,6 +46,9 @@ jobs:
         run: make lint
 
   unit:
+    # Full matrix while public, or on manual dispatch. Private repositories have a
+    # limited Actions budget, so pushes there run only the quick job below.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:
@@ -49,6 +69,9 @@ jobs:
           CGO_ENABLED: "1"
 
   build:
+    # Full matrix while public, or on manual dispatch. Private repositories have a
+    # limited Actions budget, so pushes there run only the quick job below.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:
@@ -86,6 +109,9 @@ jobs:
           CGO_ENABLED: "0"
 
   graphics:
+    # Full matrix while public, or on manual dispatch. Private repositories have a
+    # limited Actions budget, so pushes there run only the quick job below.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:
@@ -134,6 +160,9 @@ jobs:
           } finally { Pop-Location }
 
   cli-e2e:
+    # Full matrix while public, or on manual dispatch. Private repositories have a
+    # limited Actions budget, so pushes there run only the quick job below.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:
@@ -170,6 +199,9 @@ jobs:
           } finally { Pop-Location }
 
   inference-build:
+    # Full matrix while public, or on manual dispatch. Private repositories have a
+    # limited Actions budget, so pushes there run only the quick job below.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:
@@ -193,6 +225,9 @@ jobs:
           CGO_ENABLED: "1"
 
   race:
+    # Full matrix while public, or on manual dispatch. Private repositories have a
+    # limited Actions budget, so pushes there run only the quick job below.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -208,6 +243,9 @@ jobs:
           CGO_ENABLED: "1"
 
   examples:
+    # Full matrix while public, or on manual dispatch. Private repositories have a
+    # limited Actions budget, so pushes there run only the quick job below.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:
