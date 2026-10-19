@@ -311,7 +311,7 @@ var english = map[string]string{
 	"南":          "South",
 	"東":          "East",
 	"西":          "West",
-	"を むいている":    " facing",
+	"%sを むいている":  "Facing %s",
 	"探索 %d%%":    "Explored %d%%",
 	"けはい":        "Nearby",
 	"\u3000（%s）": "  (%s)",
@@ -386,7 +386,7 @@ var english = map[string]string{
 	"連勝":                                                 "Streak",
 	"Lv ごとの勝率（全回復）":                                      "Win rate by level (healed)",
 	"測定 %d/%d":                                           "Measuring %d/%d",
-	"測り終えた。連勝は今の HP から回復せずに勝ち続けた数の中央値（--as-is --streak 9）": "Done. Streak: median wins in a row from the current HP without healing (--as-is --streak 9)",
+	"測り終えた。連勝は今の HP から回復せずに勝ち続けた数の中央値（--as-is --streak 9）": "Done. Streak: median wins in a row without healing (--streak 9)",
 	// screens: reloading (development)
 	"埋め込みのデータで動いている（--dir で起動すると読み直せる）": "Running on embedded data (start with --dir to reload)",
 	"絵と音を読み直した":     "Reloaded pictures and sounds",

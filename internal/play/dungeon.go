@@ -207,7 +207,7 @@ func (s *dungeonScene) draw(g *Game, dst *ebiten.Image) {
 	}
 	g.text(dst, loc.Name, 64, 70, sizeL, g.th.text)
 	compass := []string{lang.T("北"), lang.T("東"), lang.T("南"), lang.T("西")}[g.st.Pos.Facing&3]
-	gfx.DrawTextRight(dst, compass+lang.T("を むいている"), 416, 46, sizeS*0.85, g.th.cursor)
+	gfx.DrawTextRight(dst, fmt.Sprintf(lang.T("%sを むいている"), compass), 416, 46, sizeS*0.85, g.th.cursor)
 	if !d.NoMap {
 		s.drawMap(g, dst, d, sw-36-232, 28, 232, true)
 	} else if len(dungeon.HuntersOn(g.db, g.st)) > 0 {
