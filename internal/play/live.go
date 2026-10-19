@@ -198,6 +198,7 @@ func (g *Game) reloadAssets() {
 		f.Forget()
 	}
 	g.pics.reset()
+	g.closePuppets()
 	if !g.opts.NoSound || g.opts.Audio != nil {
 		sound.LoadEffects(g.opts.FS)
 		sound.SetVary(g.db.Game.UI.SfxVary.Values())

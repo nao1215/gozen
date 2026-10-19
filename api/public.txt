@@ -273,6 +273,7 @@ github.com/nao1215/gozen/data field Actor.Level
 github.com/nao1215/gozen/data field Actor.Name
 github.com/nao1215/gozen/data field Actor.NoStanding
 github.com/nao1215/gozen/data field Actor.Profile
+github.com/nao1215/gozen/data field Actor.Puppet
 github.com/nao1215/gozen/data field Actor.Reactions
 github.com/nao1215/gozen/data field Actor.Tree
 github.com/nao1215/gozen/data field Affect.Add

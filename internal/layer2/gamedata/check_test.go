@@ -53,6 +53,10 @@ func TestCheckMore(t *testing.T) {
 		{"level_scale: no cap", map[string]string{"data/z.yaml": `troops: {b: {members: [mote], level_scale: {level: 5, rate: 0.05}}}`}, `troops.b.level_scale.max: 0 (want more than 0, up to 0.5)`},
 		{"level_scale: cap too high", map[string]string{"data/z.yaml": `troops: {b: {members: [mote], level_scale: {level: 5, rate: 0.05, max: 2}}}`}, `troops.b.level_scale.max: 2 (want`},
 		{"level_scale: unknown stat", map[string]string{"data/z.yaml": `troops: {b: {members: [mote], level_scale: {level: 5, rate: 0.05, max: 0.2, stats: [power]}}}`}, `troops.b.level_scale.stats: unknown stat "power"`},
+		{"actor: no puppet file", map[string]string{"data/z.yaml": `actors: {third: {name: Third, class: ranger, puppet: p/none.yaml}}`}, `actors.third.puppet: no file assets/p/none.yaml`},
+		{"actor: bad puppet", map[string]string{"data/z.yaml": `actors: {third: {name: Third, class: ranger, puppet: p/rig.yaml}}`, "assets/p/rig.yaml": "base: b.jpg\n"}, `actors.third.puppet: p/rig.yaml: base: picture "b.jpg" must be a relative PNG`},
+		{"actor: puppet picture missing", map[string]string{"data/z.yaml": `actors: {third: {name: Third, class: ranger, puppet: p/rig.yaml}}`, "assets/p/rig.yaml": "base: base.png\n"}, `actors.third.puppet: no file assets/p/base.png`},
+		{"actor: puppet without the face", map[string]string{"data/z.yaml": `actors: {third: {name: Third, class: ranger, puppet: p/rig.yaml}}`, "assets/p/rig.yaml": "base: base.png\nfaces: {smile: {}}\n", "assets/p/base.png": "x"}, `p/rig.yaml has no face "normal"`},
 		// 1. 石セットと合成
 		{"セットの系列IDが不正", map[string]string{"data/z.yaml": `stone_sets: {s: {family: "bad id", name: S, stones: [hat], stats: {atk: 1}}}`}, `stone_sets.s.family:`},
 		{"stone set: unknown stone", map[string]string{"data/z.yaml": `stone_sets: {s: {name: S, stones: [nope], stats: {atk: 1}}}`}, `stone_sets.s.stones: unknown item "nope"`},
@@ -160,7 +164,12 @@ gallery:
     - {id: second, title: 同名, event: sub, flag: b}
 `,
 		"assets/chars/stranger.png": "x",
+		"assets/p/rig.yaml":         "base: base.png\nfaces: {normal: {}}\neyes: {closed: eyes.png}\n",
+		"assets/p/base.png":         "x",
+		"assets/p/eyes.png":         "x",
 		"data/z.yaml": madeDungeon + `
+actors:
+  fourth: {name: Fourth, class: ranger, puppet: p/rig.yaml}
 stone_sets:
   s: {name: S, stones: [hat, blade], skill: fire, stats: {atk: 1}}
 fusions:

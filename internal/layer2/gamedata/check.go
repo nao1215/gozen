@@ -2,6 +2,7 @@ package gamedata
 
 import (
 	"fmt"
+	"io/fs"
 	"maps"
 	"math"
 	"path"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/expr"
+	"github.com/nao1215/gozen/internal/layer2/puppetdef"
 	"github.com/nao1215/gozen/internal/text/catalog"
 	lang "github.com/nao1215/gozen/text"
 )
@@ -70,6 +72,30 @@ func (c *checker) picture(where string, p Picture) {
 func (c *checker) file(where, p string) {
 	if p != "" && !c.db.Exists("assets/"+p) {
 		c.errorf(where, "no file assets/%s", p)
+	}
+}
+
+// puppet checks a moving portrait's YAML and that its pictures exist. Picture sizes
+// and positions are checked when the game loads it (and by gozen puppet).
+func (c *checker) puppet(where string, a *Actor) {
+	if a.Puppet == "" {
+		return
+	}
+	b, err := fs.ReadFile(c.db.FS, "assets/"+a.Puppet)
+	if err != nil {
+		c.errorf(where, "no file assets/%s", a.Puppet)
+		return
+	}
+	spec, err := puppetdef.Parse(b)
+	if err != nil {
+		c.errorf(where, "%s: %v", a.Puppet, err)
+		return
+	}
+	for _, p := range spec.Pictures() {
+		c.file(where, path.Join(path.Dir(a.Puppet), p))
+	}
+	if face := a.Face; face != "" && !slices.Contains(spec.FaceNames(), face) {
+		c.errorf(where, "%s has no face %q (the actor's face)", a.Puppet, face)
 	}
 }
 
@@ -406,6 +432,7 @@ func (db *DB) Check() []error {
 		if a.Faces != "" && !db.Exists("assets/"+a.Faces+"/"+a.Face+".png") {
 			c.errorf(w, "no face assets/%s/%s.png", a.Faces, a.Face)
 		}
+		c.puppet(w+".puppet", a)
 		for s, it := range a.Equip {
 			if !slots[s] {
 				c.errorf(w+".equip", "unknown slot %q", s)

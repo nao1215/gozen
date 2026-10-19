@@ -766,8 +766,11 @@ type Actor struct {
 	FaceShadeTop float64 `yaml:"face_shade_top"`
 	// NoStanding: the actor is not shown standing in the talks nor in the cut-ins (the
 	// protagonist the player stands in for); the face icon stays.
-	NoStanding bool       `yaml:"no_standing"`
-	FaceRule   []FaceRule `yaml:"face_rules"`
+	NoStanding bool `yaml:"no_standing"`
+	// Puppet is a moving portrait under assets/ (see docs/architecture/puppet.md). The
+	// talk window draws it instead of the face picture when it has a face of that name.
+	Puppet   string     `yaml:"puppet"`
+	FaceRule []FaceRule `yaml:"face_rules"`
 	// Reactions are faces shown for a moment: on hit, act, heal, win, fall.
 	Reactions map[string]string `yaml:"reactions"`
 	// Tree are the nodes of the class's skill tree raised from the start (node -> level),

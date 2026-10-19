@@ -55,6 +55,7 @@ func (t *talk) open(g *Game, s event.Say) {
 	if s.Face != "" {
 		g.pics.get(s.Face)
 		g.onStage(s)
+		g.openPuppet(s, still)
 	}
 }
 
@@ -168,6 +169,7 @@ func novelTextReaches(lines []string, size, right float64) bool {
 
 func (t *talk) update(g *Game) (done bool, answer int) {
 	t.age++
+	g.stepPuppet(t)
 	if g.novelInput() {
 		return false, -1
 	}
@@ -235,7 +237,10 @@ func (t *talk) draw(g *Game, dst *ebiten.Image) {
 		if t.still {
 			rise = 1
 		}
-		if ih >= 600 {
+		if p, _ := g.talkPuppet(s); p != nil {
+			// A moving portrait stands like a tall picture, whatever its size.
+			g.drawPuppet(dst, p, cx, sh+120, sh*1.02, float32(rise), s.Right)
+		} else if ih >= 600 {
 			g.drawStanding(dst, s.Face, cx, sh+120, sh*1.02, float32(rise), s.Right, nil)
 		} else {
 			g.drawStanding(dst, s.Face, cx, y+10, math.Min(ih, 280), float32(rise), false, nil)

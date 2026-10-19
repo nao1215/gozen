@@ -200,6 +200,7 @@ type Game struct {
 	opts     Options
 	st       *rpg.State
 	pics     *pictures
+	puppets  puppetSet
 	in       input
 	th       theme
 	tick     int
@@ -1633,6 +1634,7 @@ func (g *Game) Close() error {
 		err = errors.Join(err, os.RemoveAll(g.tmpSave))
 		g.tmpSave = ""
 	}
+	g.closePuppets()
 	if g.pics != nil {
 		g.pics.close()
 	}

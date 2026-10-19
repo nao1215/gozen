@@ -341,6 +341,17 @@
             "version": "０・１"
           }
         },
+        "puppet": {
+          "type": "string",
+          "x-contract": {
+            "default": "空文字",
+            "legacy_default": "空文字",
+            "zero": "数値以外",
+            "required": "省略可",
+            "reference": "なし",
+            "version": "０・１"
+          }
+        },
         "reactions": {
           "additionalProperties": {
             "type": "string"

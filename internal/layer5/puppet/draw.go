@@ -43,6 +43,9 @@ func New(rig *Rig, rng *rand.Rand, tps int) *Puppet {
 	}
 }
 
+// Rig is the rig the puppet draws.
+func (p *Puppet) Rig() *Rig { return p.rig }
+
 func (p *Puppet) image(pt *Patch) *ebiten.Image {
 	img, ok := p.images[pt]
 	if !ok {

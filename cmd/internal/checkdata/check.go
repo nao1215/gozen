@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
+	"slices"
 
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer5/puppet"
 
 	"github.com/nao1215/gozen/data"
 )
@@ -19,6 +22,15 @@ func Load(fsys fs.FS, out, diagnostics io.Writer) (*data.DB, error) {
 	db, err := data.Load(fsys, ".")
 	if err != nil {
 		return nil, err
+	}
+	// data.Load checks a puppet's YAML and files; the picture sizes and positions
+	// are checked by loading it as the game does (without the GPU).
+	for _, id := range slices.Sorted(maps.Keys(db.Actors)) {
+		if p := db.Actors[id].Puppet; p != "" {
+			if _, err := puppet.Load(fsys, "assets/"+p); err != nil {
+				return nil, fmt.Errorf("actors.%s.puppet: %w", id, err)
+			}
+		}
 	}
 	if _, err = fmt.Fprintf(out, "ok: %d locations, %d events, %d actors, %d skills, %d items, %d enemies, %d troops, %d ai sets\n", len(db.Locations), len(db.Events), len(db.Actors), len(db.Skills), len(db.Items), len(db.Enemies), len(db.Troops), len(db.AI)); err != nil {
 		return nil, err

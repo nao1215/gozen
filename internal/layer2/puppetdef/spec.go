@@ -201,6 +201,34 @@ func (s *Spec) FirstFace() string {
 	return ""
 }
 
+// Pictures lists every picture path the spec names (relative to its file), once each.
+func (s *Spec) Pictures() []string {
+	var out []string
+	add := func(p string) {
+		if p != "" && p != FaceKeyword && !slices.Contains(out, p) {
+			out = append(out, p)
+		}
+	}
+	overlays := func(e *Eyes, m *Mouth) {
+		if e != nil {
+			add(e.Closed.Image)
+		}
+		if m != nil {
+			for _, f := range m.Frames {
+				add(f.Image)
+			}
+		}
+	}
+	add(s.Base)
+	overlays(s.Eyes, s.Mouth)
+	for _, n := range s.FaceNames() {
+		f := s.Faces[n]
+		add(f.Image)
+		overlays(f.Eyes, f.Mouth)
+	}
+	return out
+}
+
 // ReactionOf returns the reaction a name plays: a defined one or a built-in kind.
 func (s *Spec) ReactionOf(name string) (Reaction, bool) {
 	if r, ok := s.Reactions[name]; ok {
