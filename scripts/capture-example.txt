@@ -1,6 +1,6 @@
 # Wayfinder capture. Frames f*.png are the GIF; practice_b*.png and sentry_b*.png are the battle frames the game writes by itself.
 # Menu indexes at camp (marker lit): 0 Talk, 1 Practice, 2 Save, 3 Rest, 4 Ridge, 5 Chamber, 6 Village, 7 Grotto.
-# Village: 0 Talk, 1 Rest, 2 Save, 3 Return. The village gives only a still; the halls follow.
+# Village: 0 Innkeeper, 1 Bram, 2 Rest, 3 Save, 4 Return; after Bram joins the cursor stays on Rest (1) and Return is 3. The village gives only a still; the halls follow.
 wait 50
 shot s-title
 shot f000
@@ -94,23 +94,15 @@ shot f026
 wait 12
 press ok
 wait 30
+press ok
+wait 80
 shot f027
 wait 12
 shot f028
 wait 12
-press ok
-wait 80
-shot f029
-wait 12
-shot f030
-wait 12
 press down
 press ok
 wait 80
-shot f031
-wait 12
-shot f032
-wait 12
 press down 6
 press ok
 wait 50
@@ -119,26 +111,31 @@ press ok
 wait 35
 read 12
 wait 20
-press down 3
+press down
+press ok
+wait 35
+read 12
+wait 20
+press down 2
 press ok
 wait 60
 press down 5
 press ok
 wait 60
-shot f033
+shot f029
 wait 12
-shot f034
+shot f030
 wait 12
 press up
 wait 14
-shot f035
+shot f031
 wait 8
 face P
 wait 20
 shot s-dungeon
-shot f036
+shot f032
 wait 12
-shot f037
+shot f033
 wait 12
 press up
 wait 10
@@ -146,37 +143,37 @@ play sentry
 wait 30
 face T
 wait 20
-shot f038
+shot f034
 wait 12
 press up
 wait 30
-shot f039
+shot f035
 wait 12
 read 12
 wait 20
 face G
 wait 20
-shot f040
+shot f036
 wait 12
 face K
 wait 20
 press up
 wait 30
-shot f041
+shot f037
 wait 12
 read 12
 wait 20
 face L
 wait 20
-shot f042
+shot f038
 wait 12
-shot f043
+shot f039
 wait 12
 press up
 wait 30
-shot f044
+shot f040
 wait 12
-shot f045
+shot f041
 wait 12
 read 12
 wait 30

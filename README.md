@@ -75,6 +75,10 @@ Screens from the same run:
 |:--|:--|:--|
 | ![title](docs/images/wayfinder-title.jpg) | ![conversation](docs/images/wayfinder-talk.jpg) | ![battle](docs/images/wayfinder-battle.jpg) |
 
+| Dungeon | Party | Cut-in |
+|:--|:--|:--|
+| ![dungeon](docs/images/wayfinder-dungeon.jpg) | ![party battle](docs/images/wayfinder-party.jpg) | ![cut-in](docs/images/wayfinder-cutin.jpg) |
+
 ## Why Gozen?
 
 Pick the tool that fits the job:

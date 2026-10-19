@@ -23,8 +23,8 @@ subprocess.run(
 # Check real progress as well as successful encoding. A script can finish
 # normally after a misplaced key or a wait limit.
 save = json.loads((work / "saves/save1.json").read_text())["state"]
-if save["location"] != "ridge" or not save["flags"].get("complete") or save["gold"] != 7:
-    raise RuntimeError("capture did not complete and save the journey (slot 1)")
+if save["location"] != "ridge" or not save["flags"].get("complete") or save["gold"] != 7 or save["party"] != ["walker", "sela"]:
+    raise RuntimeError("capture did not complete and save the journey with Sela (slot 1)")
 trace = [json.loads(line) for line in (work / "trace.jsonl").read_text().splitlines()]
 states = [line for line in trace if line["t"] == "state"]
 visited = {line["location"] for line in states}
@@ -33,7 +33,7 @@ if not {"camp", "ridge", "chamber"} <= visited:
 shown = {name for line in trace if line["t"] == "view" for name in line["pictures"]}
 missing = {"title.jpg", "camp.jpg", "ridge.jpg", "town.jpg", "grotto.jpg", "wall.jpg", "courier.png", "innkeeper.png",
            "pebble.png", "walker/normal.png", "floor.jpg", "door.jpg", "gate.jpg", "chest.png", "chest_open.png", "wheel.png",
-           "lantern.png"} - shown
+           "lantern.png", "bram/normal.png", "sela/normal.png"} - shown
 if missing:
     raise RuntimeError(f"capture never showed: {sorted(missing)}")
 terminal = next(line for line in reversed(states) if line.get("terminal"))
@@ -52,9 +52,28 @@ animation = sorted(
 )
 if len(animation) < 40:
     raise RuntimeError(f"only {len(animation)} frames were captured")
-# The halls' fight is longer than the practice; every third of its frames keeps the GIF small.
+# The party's fight in the halls: Bram's skill shows a cut-in. The trace gives the tick of
+# the cut-in and of every frame, so the stills and the kept frames follow the game.
+shot_tick = {Path(line["file"]).name: line["tick"] for line in trace if line["t"] == "shot"}
+cutins = [line["tick"] for line in trace if line.get("cutin")]
+if not cutins:
+    raise RuntimeError("the halls' fight showed no cut-in")
+cut = cutins[0]
 sentry = [p for p in animation if p.name.startswith("sentry_b")]
-animation = [p for p in animation if not p.name.startswith("sentry_b") or sentry.index(p) % 3 == 0]
+before = [p for p in sentry if shot_tick[p.name] < cut]
+during = [p for p in sentry if cut + 15 <= shot_tick[p.name] <= cut + 50]
+if not before or not during:
+    raise RuntimeError("no frames of the party or of the cut-in")
+stills = {"party": before[-1], "cutin": min(during, key=lambda p: abs(shot_tick[p.name] - cut - 30))}
+# Every fourth frame of the fight and the frames of the open cut-in keep the GIF small.
+animation = [p for p in animation if not p.name.startswith("sentry_b")
+             or sentry.index(p) % 4 == 0 or cut + 15 <= shot_tick[p.name] <= cut + 50]
+for name, frame in stills.items():
+    subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(frame),
+         "-q:v", "3", f"docs/images/wayfinder-{name}.jpg"],
+        check=True, timeout=30,
+    )
 battle = [p for p in animation if p.name.startswith("practice_b")]
 if not battle or not any(p.name.startswith("sentry_b") for p in animation):
     raise RuntimeError("no battle frames were captured")
@@ -63,19 +82,23 @@ subprocess.run(
      "-q:v", "3", "docs/images/wayfinder-battle.jpg"],
     check=True, timeout=30,
 )
+# The game writes some frames with an alpha channel. A mixed sequence breaks ffmpeg's
+# single palette (every GIF frame alike, or false colors), so every frame becomes RGB first.
 for index, frame in enumerate(animation):
-    frame.rename(work / f"frame-{index:03d}.png")
+    subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(frame), "-pix_fmt", "rgb24",
+         str(work / f"frame-{index:03d}.png")],
+        check=True, timeout=30,
+    )
 
-width, height, fps = 800, 450, 5
+width, height, fps = 640, 360, 5
 Path("docs/images").mkdir(parents=True, exist_ok=True)
 subprocess.run(
-    # The game writes some frames with an alpha channel; -reinit_filter 0 keeps one
-    # filter graph (one palette) for the mixed frames instead of a broken GIF.
-    ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-framerate", str(fps), "-reinit_filter", "0",
+    ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-framerate", str(fps),
      "-i", str(work / "frame-%03d.png"), "-fps_mode", "cfr", "-filter_complex",
      f"format=rgb24,scale={width}:{height}:flags=lanczos,split[a][b];"
-     "[a]palettegen=max_colors=192:stats_mode=diff[p];"
-     "[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle",
+     "[a]palettegen=max_colors=112:stats_mode=diff[p];"
+     "[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle",
      "-loop", "0", "docs/images/wayfinder.gif"],
     check=True, timeout=120,
 )

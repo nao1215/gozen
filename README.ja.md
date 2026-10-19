@@ -75,6 +75,10 @@ New journey を選び、配達人と話し、練習戦闘に勝ち（Auto なら
 |:--|:--|:--|
 | ![title](docs/images/wayfinder-title.jpg) | ![conversation](docs/images/wayfinder-talk.jpg) | ![battle](docs/images/wayfinder-battle.jpg) |
 
+| Dungeon | Party | Cut-in |
+|:--|:--|:--|
+| ![dungeon](docs/images/wayfinder-dungeon.jpg) | ![party battle](docs/images/wayfinder-party.jpg) | ![cut-in](docs/images/wayfinder-cutin.jpg) |
+
 ## なぜ Gozen か
 
 用途に合う道具を選んでください。

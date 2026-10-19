@@ -10,7 +10,7 @@ go run ./examples/play --help
 go run ./examples/play --dev --mute --start camp --seed 7
 ```
 
-Wayfinder は独自の小さなサンプル。キャンプで会話・練習戦闘を行い、道標を灯して尾根へ進み、保存・復元を試す。隣の部屋ではグリッド移動を試す。遊び方と Xvfb による PNG・GIF の再生成は [サンプルガイド](../examples/wayfinder.md) を参照する。通常起動の保存は OS の config ディレクトリ配下の `gozen/wayfinder-demo`。開始位置指定の試走は保存先を省略すると一時保存になる。素材とフォントの出典は [素材台帳](../examples/play-assets.md) に記載する。
+Wayfinder は独自の小さなサンプル。キャンプで会話・練習戦闘を行い、道標を灯して尾根へ進み、保存・復元を試す。尾根と村で仲間が加わり、観測の回廊（一人称の迷宮）では宝箱・見張りとの戦闘（カットイン）・門を開ける仕掛けを試す。遊び方と Xvfb による PNG・GIF の再生成は [サンプルガイド](../examples/wayfinder.md) を参照する。通常起動の保存は OS の config ディレクトリ配下の `gozen/wayfinder-demo`。開始位置指定の試走は保存先を省略すると一時保存になる。素材とフォントの出典は [素材台帳](../examples/play-assets.md) に記載する。
 
 `runner.Run` が受ける起動オプションは `gozen` と同じ GNU 形式（[ADR 0018](../decisions/0018-gnu-options-and-help.md)）。`--seed 7` と `--seed=7` を受け、`-dev` のような単一ダッシュの長い名前はエラーになる。`--help` は `[Usage]`・`[Examples]`・種類ごとの `[Options]`（ゲーム、試走、自動操作、スクリプトと記録、メモと見直し）・`Requirements:`・リンクの形で、`--dev` が要るオプションはまとまりの名前に `(--dev)` と書く。
 
