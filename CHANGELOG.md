@@ -12,7 +12,7 @@ Changes before the first public release are tracked under Unreleased. All packag
 - Original minimal, headless and graphical examples with asset source and license records. The Wayfinder pictures are CC BY 4.0; the code is MIT.
 - Architecture dependency checks, public API inventory checks and CLI contract tests using atago.
 - CI for lint, unit tests across three operating systems and minimum/stable Go versions, graphics, CLI contracts, native and cross-builds, examples, race detection, govulncheck and CodeQL.
-- A development balance panel (F7 with `--dev`): win rate, HP left after a win and win rate by level for the battles at the current location, measured inside the game loop with the same functions and seeds as `gozen sim`, and measured again after a hot reload. `gozen sim` gains `-state` (start from a saved state such as an F9 note's `.save`) and `-hp`.
+- A development balance panel (F7 with `--dev`): win rate, HP left after a win and win rate by level for the battles at the current location, measured inside the game loop with the same functions and seeds as `gozen sim`, and measured again after a hot reload. `gozen sim` gains `-state` (start from a saved state such as an F9 note's `.save`), `-as-is` (keep its HP, MP and states), `-hp` and `-streak`. When the party is hurt the panel puts the current-HP win rate under the healed one and shows how many wins in a row the current HP lasts.
 - Contribution and security reporting guidance, plus Dependabot updates for Go modules and GitHub Actions.
 
 ### Verification limits

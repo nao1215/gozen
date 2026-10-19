@@ -37,7 +37,7 @@ The ridge path is hidden until its marker is lit. Revisiting the ridge after loa
 | O / F2 | Settings |
 | F11 / Alt+Enter | Fullscreen |
 | M | Mute |
-| F7 (with `--dev`) | Balance panel: win rate, HP left and win rate by level for the battles here ([details](../development/graphics.md#バランス表示)) |
+| F7 (with `--dev`) | Balance panel: win rate (healed and as now), HP left, wins in a row and win rate by level for the battles here ([details](../development/graphics.md#バランス表示)) |
 | Up, Left / Right, Down in the room | Forward, turn, turn around |
 
 Normal saves use the platform config directory under `gozen/wayfinder-demo`: typically `$XDG_CONFIG_HOME` or `~/.config` on Linux, `%AppData%` on Windows, and `~/Library/Application Support` on macOS. An explicit `--save-dir` is the complete destination. The scripted capture uses a private temporary directory and removes it when finished. A development run with `--start` also isolates saves unless a destination is explicit (`runner/runner.go:128`, `internal/play/play.go:356`).
@@ -54,7 +54,7 @@ xvfb-run --auto-servernum --error-file=/dev/stderr bash scripts/capture-example.
 
 The script builds the actual sample, fixes its seed, selects its menu actions, talks to the courier, runs the practice battle, lights the marker, walks to the ridge, saves, returns to the title, restores the slot, visits the village, and walks to the lantern in the observation room. The game writes about sixty PNG frames from its Draw loop, five per second of animation. Before encoding, Python checks that the actual save contains the ridge location, the completion flag and 7G, that the trace ends at the lantern in the room, and that every generated picture was shown. It encodes a 12.8-second, 800×450 GIF (about 1.5 MB) to `docs/images/wayfinder.gif` and writes four 960×540 JPEG screenshots (`wayfinder-title.jpg`, `-talk.jpg`, `-battle.jpg`, `-village.jpg`). The GIF is a sequence of real captured frames played at five per second, not a continuous screen recording. The generated executable stays in ignored `build/capture/`; temporary saves, traces and intermediate frames are removed. Existing showcase files are replaced.
 
-`capture-example.txt` is the input sequence, `capture-example.sh` owns temporary paths and prerequisites, and `capture-example.py` validates progress and encodes the images. Failures return a nonzero status. The script checks the final room position in the trace and the encoded GIF dimensions and duration with ffprobe. The game run has a 240-second timeout. `scripts/capture-balance.sh` (with `scripts/capture-balance.txt`) captures the development balance panel in the grotto to `docs/images/wayfinder-balance.jpg` in the same 960×540 JPEG form.
+`capture-example.txt` is the input sequence, `capture-example.sh` owns temporary paths and prerequisites, and `capture-example.py` validates progress and encodes the images. Failures return a nonzero status. The script checks the final room position in the trace and the encoded GIF dimensions and duration with ffprobe. The game run has a 240-second timeout. `scripts/capture-balance.sh` (with `scripts/capture-balance.txt`) fights the Cobble once, then captures the development balance panel for the hurt party in the grotto to `docs/images/wayfinder-balance.jpg` in the same 960×540 JPEG form.
 
 ![Balance panel in the grotto](../images/wayfinder-balance.jpg)
 

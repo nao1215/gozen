@@ -68,15 +68,20 @@ go run ./examples/play --dev --mute --seed 7 --start camp --script script.txt --
 ![Wayfinder の洞窟でのバランス表示](../images/wayfinder-balance.jpg)
 
 - 今いる場所で出会う敵の群れごとの行。遭遇の重みの割合（`encounters`、when の成り立つ物）、場所の行動の `battle`、戦闘中ならその群れ（先頭に置いて色を付ける）。最大 6 行。
-- 勝率の棒、勝った後の一行の残り HP の帯（10%〜90% 点の帯と中央値の線）、平均ターン。
-- Lv ごとの勝率の線。今の Lv（一行でいちばん高い Lv）から 5 Lv 上まで。各点は全員をその Lv の経験値にした場合（`gozen sim -level`）。
+- 勝率の棒、勝った後の一行の残り HP の帯（10%〜90% 点の帯と中央値の線）、平均ターン（全回復）。
+- 誰かの HP・MP が減っているか状態異常があるときは、棒と帯を 2 段にする。上の段が全回復、暗い下の段が今の HP・MP・状態のまま戦った場合（`gozen sim -as-is`）。全快なら 1 段だけ。
+- 連勝。今の HP から回復せずに同じ群れと戦い続けて、負ける・引き分ける・逃げるまでに勝った数の中央値（上限 9、`9+` は上限まで）。戦闘の間の経験値や Lv 上がりは `battle.End` のとおり入る（`gozen sim -as-is -streak 9`）。
+- Lv ごとの勝率の線（全回復）。今の Lv（一行でいちばん高い Lv）から 5 Lv 上まで。各点は全員をその Lv の経験値にした場合（`gozen sim -level`）。
 
-数字は今の一行を全回復した状態から、`gozen sim -n 200 -seed 1 -turns 60` と同じ関数・同じ乱数の種（i 戦目は `PCG(1, i)`）で数える。F9 のメモの `.save` を渡すと、端末で同じ数を確かめられる（メモがイベントの途中なら、イベントの始まりの状態になる）。
+数字は `gozen sim -n 200 -seed 1 -turns 60` と同じ関数・同じ乱数の種（i 戦目は `PCG(1, i)`）で数える。F9 のメモの `.save` を渡すと、端末で同じ数を確かめられる（メモがイベントの途中なら、イベントの始まりの状態になる）。
 
 ```sh
 go run ./cmd/gozen sim <game-dir> <troop> -state notes/<date>/<number>.save -hp
 go run ./cmd/gozen sim <game-dir> <troop> -state notes/<date>/<number>.save -level 4
+go run ./cmd/gozen sim <game-dir> <troop> -state notes/<date>/<number>.save -as-is -hp -streak 9
 ```
+
+全回復の数は、場所・データ・一行の Lv や装備が変わった時の状態で測る。今の HP の数と連勝は、HP・MP・状態・経験値が変わってから 45 tick（約 0.75 秒）変わらなくなった時に、その分だけ測り直す。戦闘中は測り直さない（戦闘の結果は終わった時に一行へ戻る）。続けて回復したり戦ったりしても、落ち着くまで 200 戦を回し直さない。
 
 計算はゲームの更新の中で 1 フレーム 3ms までに分け、別の goroutine でゲームの状態や定義を読まない。ゲームの状態・乱数は変えない。表示を閉じている間は計算しない。`--dir` で起動して F5 で読み直す（DB が替わる）と、場所を移ると、一行の Lv・経験値・装備・スキルの木が変わると測り直す。画面の文字は `lang.T` を通すので、`game.yaml` の `text` で言い換えられる（Wayfinder は英語に置き換えている）。
 
