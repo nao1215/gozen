@@ -65,9 +65,9 @@ during = [p for p in sentry if cut + 15 <= shot_tick[p.name] <= cut + 50]
 if not before or not during:
     raise RuntimeError("no frames of the party or of the cut-in")
 stills = {"party": before[-1], "cutin": min(during, key=lambda p: abs(shot_tick[p.name] - cut - 30))}
-# Every fourth frame of the fight and the frames of the open cut-in keep the GIF small.
+# Every sixth frame of the fight and the frames of the open cut-in keep the GIF small.
 animation = [p for p in animation if not p.name.startswith("sentry_b")
-             or sentry.index(p) % 4 == 0 or cut + 15 <= shot_tick[p.name] <= cut + 50]
+             or sentry.index(p) % 6 == 0 or cut + 15 <= shot_tick[p.name] <= cut + 50]
 for name, frame in stills.items():
     subprocess.run(
         ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(frame),
