@@ -83,16 +83,58 @@ func TestJourneyAndSaveRoundTrip(t *testing.T) {
 	if restored.Gold != 7 {
 		t.Fatal("arrival reward repeated after loading")
 	}
+	// The halls: a chest in a dead end, a sentry fight, a wheel that opens the gate to the lantern.
+	if err := driver.Walk('T'); err != nil {
+		t.Fatal(err)
+	}
+	if !restored.Flags["chest_opened"] || restored.Gold != 12 {
+		t.Fatalf("chest: gold=%d flags=%v", restored.Gold, restored.Flags)
+	}
+	if err := driver.Walk('L'); err == nil {
+		t.Fatal("the lantern was reachable before the sentries and the gate")
+	}
+	battles := driver.Battles
+	if err := driver.Walk('P'); err != nil {
+		t.Fatal(err)
+	}
+	if driver.Battles != battles+1 || !restored.Flags["sentries_passed"] || restored.Gold != 18 {
+		t.Fatalf("sentries: battles=%d gold=%d flags=%v", driver.Battles, restored.Gold, restored.Flags)
+	}
+	if err := driver.Walk('L'); err == nil {
+		t.Fatal("the lantern was reachable before the wheel")
+	}
+	if err := driver.Walk('K'); err != nil {
+		t.Fatal(err)
+	}
+	if !restored.Flags["gate_open"] {
+		t.Fatal("the wheel did not open the gate")
+	}
+	// Saving in the halls keeps the spent chest, the passed sentries and the open gate.
+	encoded, err = restored.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	inHalls, err := rpg.Parse(db, encoded, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	driver.Restore(inHalls)
+	if inHalls.Location != "chamber" || inHalls.Gold != 18 || !inHalls.Flags["gate_open"] {
+		t.Fatalf("restored halls: location=%s gold=%d flags=%v", inHalls.Location, inHalls.Gold, inHalls.Flags)
+	}
+	if err := driver.Walk('T'); err == nil {
+		t.Fatal("the opened chest was found again after loading")
+	}
 	if err := driver.Walk('L'); err != nil {
 		t.Fatal(err)
 	}
-	if !restored.Flags["window_seen"] || restored.Pos.X != 5 || restored.Pos.Y != 1 {
-		t.Fatalf("room walk did not reach the lantern: pos=%+v flags=%v", restored.Pos, restored.Flags)
+	if !inHalls.Flags["window_seen"] || inHalls.Pos.X != 13 || inHalls.Pos.Y != 9 || inHalls.Gold != 18 {
+		t.Fatalf("halls walk did not reach the lantern: pos=%+v gold=%d flags=%v", inHalls.Pos, inHalls.Gold, inHalls.Flags)
 	}
 	if err := driver.Walk('C'); err != nil {
 		t.Fatal(err)
 	}
-	if restored.Location != "camp" {
-		t.Fatal("room has no working return route")
+	if inHalls.Location != "camp" {
+		t.Fatal("the halls have no working return route")
 	}
 }

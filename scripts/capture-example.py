@@ -32,21 +32,31 @@ if not {"camp", "ridge", "chamber"} <= visited:
     raise RuntimeError(f"capture did not visit every place: {sorted(visited)}")
 shown = {name for line in trace if line["t"] == "view" for name in line["pictures"]}
 missing = {"title.jpg", "camp.jpg", "ridge.jpg", "town.jpg", "grotto.jpg", "wall.jpg", "courier.png", "innkeeper.png",
-           "pebble.png", "walker/normal.png"} - shown
+           "pebble.png", "walker/normal.png", "floor.jpg", "door.jpg", "gate.jpg", "chest.png", "chest_open.png", "wheel.png",
+           "lantern.png"} - shown
 if missing:
     raise RuntimeError(f"capture never showed: {sorted(missing)}")
 terminal = next(line for line in reversed(states) if line.get("terminal"))
-if terminal["location"] != "chamber" or terminal["pos"] != [5, 1]:
-    raise RuntimeError("capture did not walk to the lantern in the observation room")
+if terminal["location"] != "chamber" or terminal["pos"] != [13, 9]:
+    raise RuntimeError("capture did not walk to the lantern in the observation halls")
+said = "\n".join(line.get("text", "") for line in trace)
+for words in ("Inside the chest", "The sentries roll aside", "You turn the wheel", "From this window"):
+    if words not in said:
+        raise RuntimeError(f"capture did not show {words!r} in the observation halls")
+if terminal["gold"] != 18:
+    raise RuntimeError("capture did not collect the chest and win the sentry fight (18G)")
 
 animation = sorted(
-    (p for p in work.glob("*.png") if (p.name[0] == "f" and p.name[1:4].isdigit()) or p.name.startswith("practice_b")),
+    (p for p in work.glob("*.png") if (p.name[0] == "f" and p.name[1:4].isdigit()) or p.name.startswith(("practice_b", "sentry_b"))),
     key=lambda p: p.stat().st_mtime_ns,
 )
 if len(animation) < 40:
     raise RuntimeError(f"only {len(animation)} frames were captured")
+# The halls' fight is longer than the practice; every third of its frames keeps the GIF small.
+sentry = [p for p in animation if p.name.startswith("sentry_b")]
+animation = [p for p in animation if not p.name.startswith("sentry_b") or sentry.index(p) % 3 == 0]
 battle = [p for p in animation if p.name.startswith("practice_b")]
-if not battle:
+if not battle or not any(p.name.startswith("sentry_b") for p in animation):
     raise RuntimeError("no battle frames were captured")
 subprocess.run(
     ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(battle[len(battle) // 2]),
@@ -59,7 +69,9 @@ for index, frame in enumerate(animation):
 width, height, fps = 800, 450, 5
 Path("docs/images").mkdir(parents=True, exist_ok=True)
 subprocess.run(
-    ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-framerate", str(fps),
+    # The game writes some frames with an alpha channel; -reinit_filter 0 keeps one
+    # filter graph (one palette) for the mixed frames instead of a broken GIF.
+    ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-framerate", str(fps), "-reinit_filter", "0",
      "-i", str(work / "frame-%03d.png"), "-fps_mode", "cfr", "-filter_complex",
      f"format=rgb24,scale={width}:{height}:flags=lanczos,split[a][b];"
      "[a]palettegen=max_colors=192:stats_mode=diff[p];"
@@ -75,8 +87,17 @@ stream = json.loads(probe.stdout)["streams"][0]
 if (stream["width"], stream["height"]) != (width, height) or abs(float(stream["duration"]) - len(animation) / fps) > 0.5:
     raise RuntimeError("GIF dimensions or duration do not match the captured sequence")
 
+# A GIF whose frames all decode alike still has the right size and duration.
+md5 = subprocess.run(
+    ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", "docs/images/wayfinder.gif", "-f", "framemd5", "-"],
+    check=True, stdout=subprocess.PIPE, text=True, timeout=60,
+)
+distinct = {line.rsplit(",", 1)[-1].strip() for line in md5.stdout.splitlines() if line and not line.startswith("#")}
+if len(distinct) < len(animation) // 3:
+    raise RuntimeError(f"GIF frames are too alike ({len(distinct)} distinct of {len(animation)})")
+
 # Still screenshots for the README, as JPEG.
-for name in ("title", "talk", "village"):
+for name in ("title", "talk", "village", "dungeon"):
     subprocess.run(
         ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(work / f"s-{name}.png"),
          "-q:v", "3", f"docs/images/wayfinder-{name}.jpg"],

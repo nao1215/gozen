@@ -27,6 +27,7 @@ troops:
   lesson: {members: [pebble]}
   cobble: {members: [cobble]}
   rockfall: {members: [cobble, pebble, cobble]}
+  sentries: {members: [pebble, pebble], can_escape: false}
 locations:
   camp:
     name: Trail camp
@@ -97,22 +98,80 @@ locations:
             on_win: [{say: The grotto is quiet again.}]
     exits: [{to: camp, label: Return to camp}]
   chamber:
-    name: Observation room
+    name: Observation halls
     safe: true
+    battle_background: grotto.jpg
     dungeon:
-      wall: {file: wall.jpg, tint: "#a9bcc6"}
-      floor: "#304c54"
-      ceiling: "#172a37"
+      wall: {file: wall.jpg, tint: "#c4d0d6"}
+      door: door.jpg
+      floor: "#b4c2c6"
+      floor_texture: floor.jpg
+      ceiling: "#2c4652"
+      darkness: 0.35
       map: |
-        #######
-        #S...L#
-        #.###.#
-        #C....#
-        #######
+        ###############
+        C.S...#.....#T#
+        #####.#.###.#.#
+        #.....#...#...#
+        #.###.###.#####
+        #...#.D...P...#
+        ###.#.###.#.#.#
+        #K..#...#...#G#
+        #####.#.#.###.#
+        #.....#.#...#L#
+        ###############
       tiles:
         S: {start: true, facing: east}
+        T:
+          name: Old chest
+          picture: chest.png
+          size: 0.45
+          solid: "true"
+          once: true
+          after: t
+          mark: "#edbe70"
+          do:
+            - say: Inside the chest, a pouch of 5G left by an earlier walker.
+            - gold: 5
+            - set: {flag.chest_opened: true}
+        t: {name: Open chest, picture: chest_open.png, size: 0.45, solid: "true"}
+        P:
+          name: Pebble sentry
+          picture: pebble.png
+          size: 0.42
+          solid: "true"
+          once: true
+          after: .
+          mark: "#d79a86"
+          symbol: "!"
+          do:
+            - battle: sentries
+              on_win:
+                - say: The sentries roll aside and let you pass.
+                - set: {flag.sentries_passed: true}
+        K:
+          name: Gate wheel
+          look: wall
+          picture: wheel.png
+          size: 0.5
+          trigger: bump
+          once: true
+          mark: "#97daca"
+          symbol: W
+          do:
+            - say: You turn the wheel. Far off, an iron gate rattles open.
+            - set: {flag.gate_open: true}
+        G:
+          name: Iron gate
+          look: door
+          picture: gate.jpg
+          when: "!flag.gate_open"
+          solid: "true"
+          do: [{say: The gate is shut tight. A wheel somewhere must open it.}]
         L:
           name: Window lantern
+          picture: lantern.png
+          size: 0.85
           once: true
           mark: "#edbe70"
           symbol: L
@@ -121,6 +180,7 @@ locations:
             - set: {flag.window_seen: true}
         C:
           name: Camp door
+          look: door
           mark: "#97daca"
           symbol: C
           do: [{move: camp}]

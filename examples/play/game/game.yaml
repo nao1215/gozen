@@ -50,6 +50,7 @@ text:
   "たたかいに かった！": "Practice complete!"
   "AUTO  (X でかいじょ)": "AUTO (X to cancel)"
   "{first}が あらわれた！": "{first} is ready to practice!"
+  "{first}たちが あらわれた！": "{first}s roll up, ready to practice!"
   "{user}の {skill}！": "{user}: {skill}!"
   "{user}は {skill}を つかった！": "{user} uses {skill}!"
   "{target}に {amount}の ダメージ！": "{target} takes {amount} damage."
