@@ -6,6 +6,7 @@
 package chat
 
 import (
+	"maps"
 	"time"
 	"unicode/utf8"
 )
@@ -18,7 +19,8 @@ type Message struct {
 	Text string
 	// At is the game time the message was posted.
 	At time.Duration
-	// Values are numbers attached to the message (a tip).
+	// Values are numbers attached to the message (a tip). Log copies the map when a
+	// message is posted and when it is returned, so a caller never shares it with the log.
 	Values map[string]float64
 }
 
@@ -61,8 +63,10 @@ func New(cfg Config) *Log {
 }
 
 // Post cuts the text, runs the filters and logs the message with a new ID. It returns
-// the logged message, or ok false when a filter dropped it.
+// a copy of the logged message, or ok false when a filter dropped it. The log keeps its
+// own copy of m.Values.
 func (l *Log) Post(m Message) (Message, bool) {
+	m.Values = maps.Clone(m.Values)
 	if utf8.RuneCountInString(m.Text) > l.cfg.MaxRunes {
 		m.Text = string([]rune(m.Text)[:l.cfg.MaxRunes])
 	}
@@ -78,7 +82,25 @@ func (l *Log) Post(m Message) (Message, bool) {
 	if over := len(l.msgs) - l.cfg.Max; over > 0 {
 		l.msgs = append(l.msgs[:0], l.msgs[over:]...)
 	}
-	return m, true
+	return cloneMessage(m), true
+}
+
+// cloneMessage copies the Values map so the log and its callers never share it.
+func cloneMessage(m Message) Message {
+	m.Values = maps.Clone(m.Values)
+	return m
+}
+
+// cloneMessages copies ms and each message's Values.
+func cloneMessages(ms []Message) []Message {
+	if len(ms) == 0 {
+		return nil
+	}
+	out := make([]Message, len(ms))
+	for i, m := range ms {
+		out[i] = cloneMessage(m)
+	}
+	return out
 }
 
 // Pull polls the sources in order and posts what they return, with At set to now when
@@ -98,17 +120,19 @@ func (l *Log) Pull(now time.Duration, srcs ...Source) []Message {
 	return out
 }
 
-// Recent is up to the last n messages, oldest first. The slice is a copy.
+// Recent is up to the last n messages, oldest first. The slice and each message's
+// Values are copies.
 func (l *Log) Recent(n int) []Message {
 	n = min(max(n, 0), len(l.msgs))
-	return append([]Message(nil), l.msgs[len(l.msgs)-n:]...)
+	return cloneMessages(l.msgs[len(l.msgs)-n:])
 }
 
-// Since is the kept messages with an ID above id, oldest first. The slice is a copy.
+// Since is the kept messages with an ID above id, oldest first. The slice and each
+// message's Values are copies.
 func (l *Log) Since(id uint64) []Message {
 	for i, m := range l.msgs {
 		if m.ID > id {
-			return append([]Message(nil), l.msgs[i:]...)
+			return cloneMessages(l.msgs[i:])
 		}
 	}
 	return nil

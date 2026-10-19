@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/goccy/go-yaml"
+
+	"github.com/nao1215/gozen/internal/layer1/decodeguard"
 )
 
 // Script is what a Crowd says, as Load and Parse read it.
@@ -39,7 +41,7 @@ func Load(fsys fs.FS, path string) (*Script, error) {
 // Parse reads and validates a crowd script from YAML.
 func Parse(b []byte) (*Script, error) {
 	var s Script
-	if err := yaml.UnmarshalWithOptions(b, &s, yaml.Strict()); err != nil {
+	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &s, yaml.Strict()) }); err != nil {
 		return nil, err
 	}
 	return &s, s.Validate()
@@ -50,7 +52,7 @@ func (s *Script) Validate() error {
 	if len(s.Names) == 0 || slices.Contains(s.Names, "") {
 		return errors.New("names: none or empty")
 	}
-	if s.Rate <= 0 || s.Rate > 100 {
+	if !(s.Rate > 0 && s.Rate <= 100) { // also rejects NaN
 		return errors.New("rate: must be in (0, 100]")
 	}
 	if len(s.Lines[s.Start]) == 0 {

@@ -102,6 +102,7 @@ func TestCrowd(t *testing.T) {
 		strings.Replace(script, "start: idle", "start: calm", 1),
 		strings.Replace(script, "names: [a, b, c]", "names: []", 1),
 		strings.Replace(script, "rate: 2", "rat: 2", 1),
+		strings.Replace(script, "rate: 2", "rate: .nan", 1),
 	} {
 		if _, err := Parse([]byte(bad)); err == nil {
 			t.Errorf("accepted:\n%s", bad)
@@ -118,6 +119,52 @@ func FuzzMask(f *testing.F) {
 		out, ok := m.Filter(Message{Text: s})
 		if !ok || len([]rune(out.Text)) != len([]rune(s)) {
 			t.Fatalf("%q -> %q", s, out.Text)
+		}
+	})
+}
+
+// The log never shares a Values map with its callers: changing the posted map, the
+// returned message or a Recent/Since copy leaves the logged message as it was.
+func TestValuesAreCopied(t *testing.T) {
+	l := New(Config{})
+	in := map[string]float64{"tip": 100}
+	out, ok := l.Post(Message{From: "p", Text: "x", Values: in})
+	if !ok {
+		t.Fatal("dropped")
+	}
+	in["tip"] = 1
+	out.Values["tip"] = 2
+	l.Recent(1)[0].Values["tip"] = 3
+	l.Since(0)[0].Values["tip"] = 4
+	if got := l.Recent(1)[0].Values["tip"]; got != 100 {
+		t.Fatalf("logged tip changed to %v", got)
+	}
+	if m, _ := l.Post(Message{From: "p", Text: "y"}); m.Values != nil {
+		t.Fatalf("nil Values became %v", m.Values)
+	}
+}
+
+// Parse never panics, and whatever it accepts is a script NewCrowd can run.
+func FuzzParse(f *testing.F) {
+	f.Add([]byte(script))
+	f.Add([]byte("names: [a]\nrate: .nan\nstart: x\nlines: {x: [y]}\n"))
+	f.Add([]byte("names: [a]\nrate: 1e309\nstart: x\nlines: {x: [y]}\n"))
+	f.Add([]byte("names: [a]\nrate: 1\nstart: x\nlines: {x: [\"\"]}\n"))
+	f.Add([]byte("&a [*a]"))
+	f.Add([]byte{})
+	f.Fuzz(func(t *testing.T, b []byte) {
+		s, err := Parse(b)
+		if err != nil {
+			return
+		}
+		if !(s.Rate > 0 && s.Rate <= 100) || len(s.Names) == 0 || len(s.Lines[s.Start]) == 0 {
+			t.Fatalf("accepted an invalid script: %+v", s)
+		}
+		c := NewCrowd(s, CrowdConfig{})
+		for sec := 1; sec <= 3; sec++ {
+			if got := len(c.Poll(time.Duration(sec) * time.Second)); got > maxPerPoll {
+				t.Fatalf("%d messages in one poll", got)
+			}
 		}
 	})
 }
