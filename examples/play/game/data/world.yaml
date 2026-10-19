@@ -1,13 +1,15 @@
 classes:
   walker:
     name: Walker
-    stats: {mhp: 30, mmp: 5, atk: 8, def: 3, mat: 2, mdf: 2, agi: 8, luk: 1}
+    # Level 1 matches the original sample (30 HP, Tap 8); each level adds 8 HP and 2 attack.
+    stats: {mhp: "22 + level * 8", mmp: 5, atk: "6 + level * 2", def: 3, mat: 2, mdf: 2, agi: 8, luk: 1}
     exp_for: level * 30
 actors: {walker: {name: Walker, class: walker, faces: walker}}
 skills:
-  attack: {name: Tap, effects: [{damage: 8, variance: 0}]}
+  attack: {name: Tap, effects: [{damage: a.atk, variance: 0}]}
   guard: {name: Wait, scope: self}
   nudge: {name: Nudge, effects: [{damage: 1, variance: 0}]}
+  roll: {name: Roll, effects: [{damage: 6, variance: 0.6}]}
 enemies:
   pebble:
     name: Pebble
@@ -15,7 +17,16 @@ enemies:
     stats: {mhp: 16, mmp: 0, atk: 1, def: 0, mat: 0, mdf: 0, agi: 1, luk: 1}
     gold: 3
     ai: [{use: nudge}]
-troops: {lesson: {members: [pebble]}}
+  cobble:
+    name: Cobble
+    image: pebble.png
+    stats: {mhp: 44, mmp: 0, atk: 1, def: 0, mat: 0, mdf: 0, agi: 1, luk: 1}
+    gold: 5
+    ai: [{use: roll}]
+troops:
+  lesson: {members: [pebble]}
+  cobble: {members: [cobble]}
+  rockfall: {members: [cobble, pebble, cobble]}
 locations:
   camp:
     name: Trail camp
@@ -76,6 +87,14 @@ locations:
         do:
           - battle: lesson
             on_win: [{say: The Pebble rolls away happily.}]
+      - label: Face the Cobble
+        do:
+          - battle: cobble
+            on_win: [{say: The Cobble settles down.}]
+      - label: Brave the rockfall
+        do:
+          - battle: rockfall
+            on_win: [{say: The grotto is quiet again.}]
     exits: [{to: camp, label: Return to camp}]
   chamber:
     name: Observation room
