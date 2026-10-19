@@ -156,6 +156,14 @@ func (m *Mind) Recall(key string) (any, bool) {
 	return e.Value, ok
 }
 
+// NewSession starts a new conversation with the same person, such as the next stream
+// or a later visit: the recent texts used to find repeats and the pending question are
+// cleared, while the mood, the memory and the cooldowns are kept.
+func (m *Mind) NewSession() {
+	m.recent = map[string][]string{}
+	m.asked, m.askTill = "", 0
+}
+
 func (m *Mind) now() time.Duration {
 	if m.cfg.Clock == nil {
 		return 0

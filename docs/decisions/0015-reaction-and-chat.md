@@ -42,6 +42,7 @@ Stimulus（言葉・出来事・数値） → Analyzer（コード） → Tag �
 | `(*Mind).Ask(id) (Reaction, error)` | ゲームの都合で人物から問いを出す（話題を振る） |
 | `Reaction{Rule, Lines, Face, Delta, Mood, Confidence, Tags, Ask}` | 画面が台詞・表情を出し、ゲームが機嫌などに使う |
 | `(*Mind).Mood`・`Recall`・`Save`・`Restore` | 機嫌と記憶を読み、保存・復元する（JSON のバイト列） |
+| `(*Mind).NewSession` | 次の配信・次の来訪など、同じ人物との新しい会話を始める。連投を見る直近の言葉と答え待ちの問いを忘れ、機嫌・記憶・冷却は残す（2026-10-19、配信者のゲームが配信をまたぐために追加） |
 | `Normalize(s)` | 辞書と同じ正規化を、ゲームの独自の解析器で使う |
 
 標準の解析器（辞書の外の処理だけをコードに置く）:

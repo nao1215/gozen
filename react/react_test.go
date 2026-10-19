@@ -291,3 +291,18 @@ func FuzzReact(f *testing.F) {
 		}
 	})
 }
+
+// A new session forgets repeats and the pending question but keeps mood and memory.
+func TestNewSession(t *testing.T) {
+	m := mind(t)
+	do(t, m, say("猫"))
+	do(t, m, say("今日は雨"))
+	mood := m.Mood()
+	m.NewSession()
+	if r := do(t, m, say("今日は雨")); r.Rule == "dodge.repeat" || r.Ask != "" {
+		t.Fatalf("after a new session: %s ask %q", r.Rule, r.Ask)
+	}
+	if v, ok := m.Recall("cats"); !ok || v != 1.0 || m.Mood() != mood {
+		t.Fatalf("memory %v %v, mood %v want %v", v, ok, m.Mood(), mood)
+	}
+}

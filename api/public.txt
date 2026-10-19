@@ -1448,6 +1448,7 @@ github.com/nao1215/gozen/react interface Analyzer.Analyze
 github.com/nao1215/gozen/react method Book.Validate
 github.com/nao1215/gozen/react method Mind.Ask
 github.com/nao1215/gozen/react method Mind.Mood
+github.com/nao1215/gozen/react method Mind.NewSession
 github.com/nao1215/gozen/react method Mind.React
 github.com/nao1215/gozen/react method Mind.Recall
 github.com/nao1215/gozen/react method Mind.Restore
