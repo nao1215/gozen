@@ -4,9 +4,9 @@
 
 | 配置 | 利用者と責務 | 互換性 |
 | --- | --- | --- |
-| `expr`、`text`、`assetfs`、`savefile` | 式、翻訳、素材 FS、保存先を扱う作者 | v0 の契約対象 |
+| `expr`、`text`、`assetfs`、`savefile`、`chat` | 式、翻訳、素材 FS、保存先、流れるメッセージの記録を扱う作者 | v0 の契約対象 |
 | `data`、`rpg` | 定義の読み込み・検証、状態・保存を扱う作者 | v0 の契約対象 |
-| `battle`、`event`、`world`、`dungeon` | 規則を利用・拡張する作者 | v0 の契約対象 |
+| `battle`、`event`、`world`、`dungeon`、`react` | 規則を利用・拡張する作者、言葉と出来事に反応する人物を作る作者 | v0 の契約対象 |
 | `headless` | 画面なしで進行を検査する作者・CLI | v0 の契約対象 |
 | `gfx`、`sound`、`play`、`puppet`、`runner` | 表示・再生・画面・動く立ち絵・起動を組み込む作者 | v0 の契約対象 |
 | `internal/<package>/`、`<package>/internal/` | 所有パッケージの実装 | 非公開 |
@@ -18,7 +18,7 @@
 | `internal/promptgen/`、`internal/mosaic/`（配下を含む） | `gozen prompt`・`gozen mosaic` 専用の実装。入口は各 `command` パッケージ | `cmd/gozen` と自身の実装だけから利用 |
 | `examples/` | 新規の一般向けサンプル | 公開 API の利用例 |
 
-T2 で第 1〜4 層、T3 で第 5・6 層の公開 API を提供します。[中核 API](core-api.md) と [表示 API](presentation-api.md) に用途と所有権をまとめます。`api/public.txt:1` が現在の宣言一覧です。将来の `x/` の識別子も一覧に入れますが、それによって安定契約にはなりません。
+第 1〜4 層の公開 API は描画しない中核の実装時（T2）、第 5・6 層は表示層の実装時（T3）に作りました（記号は [設計判断](../decisions/index.md#記号)）。[中核 API](core-api.md) と [表示 API](presentation-api.md) に用途と所有権をまとめます。`api/public.txt:1` が現在の宣言一覧です。将来の `x/` の識別子も一覧に入れますが、それによって安定契約にはなりません。
 
 制作支援の専用 internal は 6 層の共有実装に含めず、対応する CLI が所有します。内容の扱いは [ADR 0004](../decisions/0004-content-boundary.md)、モジュール構成は [ADR 0009](../decisions/0009-single-module.md) に従います。
 

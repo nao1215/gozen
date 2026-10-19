@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: Every gozen subcommand with its options and examples - check, layout, sim, curve, floors, trace, book, design, memos, release, trial, shots, prompt, mosaic and version.
+description: Every gozen subcommand with its options and examples - check, layout, sim, curve, floors, trace, book, design, memos, release, trial, shots, puppet, prompt, mosaic and version.
 weight: 60
 toc: true
 ---
@@ -26,6 +26,7 @@ gozen help <command>          # the same as gozen <command> --help
 | [release](#release) | Build a release tree with approved assets only |
 | [trial](#trial) | Build a trial tree with the reachable part of the game |
 | [shots](#shots) | Launch the game and take the screenshots of a list |
+| [puppet](#puppet) | Check a moving portrait and cut its difference pictures small |
 | [prompt](/production-tools/#gozen-prompt) | Assemble image-generation text from a catalog |
 | [mosaic](/production-tools/#gozen-mosaic) | Pixelate regions of images, with optional ONNX detection |
 | [version](#version) | Print the gozen version |
@@ -273,6 +274,21 @@ shots:
 | `--only IDS` | Take only these shots |
 
 `shots` needs what the game window needs: a display and the graphics libraries (on Linux, Xvfb for unattended runs). A failed launch is recorded in the work tree and exits 1.
+
+## puppet
+
+Loads a moving portrait (a puppet YAML for the [puppet](/go-api/#moving-portraits-puppet) package) with the same checks as `puppet.Load` and prints where each face, closed-eyes and mouth picture lies on the base picture. A difference picture as large as the base is cut down to the part that differs.
+
+```shell
+gozen puppet streamer/puppet.yaml                        # check it and show the positions
+gozen puppet streamer/puppet.yaml --out streamer-packed  # write it with small difference pictures
+```
+
+| Option | Meaning |
+|:--|:--|
+| `-o, --out DIR` | Write the puppet YAML and the cut pictures (each with `at`) to this new directory. The written YAML has no comments. |
+
+It needs nothing beyond the gozen binary: no cgo, display or sound device.
 
 ## version
 

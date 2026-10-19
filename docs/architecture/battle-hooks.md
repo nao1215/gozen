@@ -24,4 +24,4 @@
 
 体験版の絞り込みでは `battle.before`・`battle.after` を根として呼び先・素材・状態変化をたどる。タイルの `after` は別のタイルを指すため、イベント参照として扱わない。根拠: `cmd/internal/trial/prune.go:428` の `reach`、`cmd/internal/trial/battle_hooks_test.go:11`。
 
-メモの入力経路は `play.Development.ExternalInput` または runner の `-external-input` で選択する既存契約を維持する。通常は画面内入力。IME の確定と通常文字が同時に届いても二重に追加せず、入力を消費したフレームの Enter を保存に使わない。OS の実際の IME 接続は環境ごとの確認が必要で、単体テストの成功は実機の入力確認を意味しない。根拠: `play/play.go:46`、`internal/play/memo.go:354` の `readInput`。
+メモの入力経路は `play.Development.ExternalInput` または runner の `--external-input` で選択する既存契約を維持する。通常は画面内入力。IME の確定と通常文字が同時に届いても二重に追加せず、入力を消費したフレームの Enter を保存に使わない。OS の実際の IME 接続は環境ごとの確認が必要で、単体テストの成功は実機の入力確認を意味しない。根拠: `play/play.go:46`、`internal/play/memo.go:354` の `readInput`。

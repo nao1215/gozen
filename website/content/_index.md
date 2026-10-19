@@ -8,7 +8,7 @@ Gozen is a 2D RPG framework for Go and [Ebitengine](https://ebitengine.org/). Yo
 
 ## Try it in 30 seconds
 
-With Go 1.26.4 or later, paste this. It needs no display and no assets:
+With Go 1.26.9 or later, paste this. It needs no display and no assets:
 
 ```shell
 go run github.com/nao1215/gozen/examples/minimal@latest
@@ -62,7 +62,7 @@ The rules are shared by the window, a headless driver and the command line, so a
 - [The edit–play loop](/edit-play-loop/): `--dev`, F5, F7, F9, autoplay, traces and notes.
 - [Commands](/commands/): every `gozen` subcommand and its options.
 - [Using AI agents](/ai-agents/): let an agent write the game and keep `gozen check` green.
-- [Go API](/go-api/): headless tests, embedding the runner, reactions and chat.
+- [Go API](/go-api/): headless tests, embedding the runner, reactions and chat, moving portraits.
 
 ## Features
 
@@ -70,7 +70,9 @@ The rules are shared by the window, a headless driver and the command line, so a
 - Turn-based battles with a party, auto battle and per-enemy tactics
 - Skill trees, shops, a field menu and a picture gallery
 - First-person grid dungeons, fixed or generated floors
+- Moving portraits from one picture and a few difference pictures: blinking, talking, breathing, head and hair sway, reactions and face changes
 - Characters that react to typed words and events, and a chat log
+- Engine words in English and Japanese, chosen by `language` in game.yaml
 - A headless driver that shares the rules with the window
 
 ## Limitations

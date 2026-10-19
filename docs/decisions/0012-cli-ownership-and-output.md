@@ -1,6 +1,6 @@
 # ADR 0012: 汎用 CLI の所有権と出力先
 
-状態: 採用。対応: T4、D2、D8、D10。入口は [ADR 0016](0016-single-cli.md) で変更しました。`cmd/rpgcheck`・`cmd/rpgtool` は `cmd/gozen` の 1 本に、`cmd/rpgtool/internal` は `cmd/gozen/internal` になりました。以下は採用時の記録で、出力・終了値・上書き防止の規約は `gozen` の全サブコマンドに引き継ぎます。
+状態: 一部変更。対応: T4、D2、D8、D10。勝率の計算の置き場所は [ADR 0017](0017-dev-balance-panel.md)、オプションの書き方は [ADR 0018](0018-gnu-options-and-help.md) で変わりました。入口は [ADR 0016](0016-single-cli.md) で変更しました。`cmd/rpgcheck`・`cmd/rpgtool` は `cmd/gozen` の 1 本に、`cmd/rpgtool/internal` は `cmd/gozen/internal` になりました。以下は採用時の記録で、出力・終了値・上書き防止の規約は `gozen` の全サブコマンドに引き継ぎます。
 
 ## 問題
 

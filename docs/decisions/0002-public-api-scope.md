@@ -1,6 +1,6 @@
 # ADR 0002: v0 の公開契約
 
-状態: 採用。日付: 2026-10-18。対応: D2。
+状態: 一部変更。日付: 2026-10-18。対応: D2。公開パッケージの一覧と実験の置き場所は、下の「後の ADR で変わった所」のとおり変わりました。今の公開パッケージの正本は `api/public.txt` です。
 
 ## 背景
 
@@ -21,3 +21,14 @@ v0 の契約対象は `data`、`rpg`、`battle`、`event`、`expr`、`world`、`
 ## 結果
 
 `dungeon` は層の分類に含まれますが、現時点の公開契約には含めません。実装は internal を優先します。公開判断と配置の一覧は [境界](../architecture/boundaries.md) を参照してください。
+
+## 後の ADR で変わった所
+
+この ADR の決定は採用時の記録です。次の点は後の ADR で変わりました。
+
+- `dungeon` は [ADR 0014](0014-dungeon-host-adoption.md) で第 3 層の公開入口として契約に加えました。上の「結果」の「現時点の公開契約には含めません」は採用時の状態です。
+- `react`（第 3 層）と `chat`（第 1 層）は [ADR 0015](0015-reaction-and-chat.md) で加えました。
+- `puppet`（第 5 層）は [ADR 0020](0020-moving-portraits.md) で加えました。
+- 勝率の計算（`balance`）は `x/` ではなく `internal/headless/balance` に置き、`gozen sim` と開発用のバランス表示で共有します（[ADR 0017](0017-dev-balance-panel.md)）。設計評価（`designeval`）は `cmd/gozen/internal/designeval` にあります。公開するかは別の ADR で決めます。
+
+公開する型と関数を絞る方針と、`x/` の実験に互換を約束しない方針は変わっていません。

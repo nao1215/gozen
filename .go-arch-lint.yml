@@ -4,7 +4,7 @@ workdir: .
 allow:
   depOnAnyVendor: false
   deepScan: true
-  # Reserved package and internal directories do not all contain Go files in T1.
+  # Reserved directories such as x/ do not all contain Go files yet.
   ignoreNotFoundComponents: true
 exclude:
   - .cache
