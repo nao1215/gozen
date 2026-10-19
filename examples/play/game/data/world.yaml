@@ -4,12 +4,41 @@ classes:
     # Level 1 matches the original sample (30 HP, Tap 8); each level adds 8 HP and 2 attack.
     stats: {mhp: "22 + level * 8", mmp: 5, atk: "6 + level * 2", def: 3, mat: 2, mdf: 2, agi: 8, luk: 1}
     exp_for: level * 30
-actors: {walker: {name: Walker, class: walker, faces: walker}}
+  guard:
+    name: Guard
+    stats: {mhp: 40, mmp: 4, atk: 7, def: 6, mat: 1, mdf: 2, agi: 5, luk: 1}
+    exp_for: level * 30
+    skills: [{level: 1, skill: shield_rush}]
+  mender:
+    name: Mender
+    stats: {mhp: 26, mmp: 12, atk: 5, def: 2, mat: 6, mdf: 5, agi: 7, luk: 1}
+    exp_for: level * 30
+    skills: [{level: 1, skill: mend}]
+actors:
+  walker: {name: Walker, class: walker, faces: walker}
+  bram:
+    name: Bram
+    class: guard
+    faces: bram
+    cutin_lines: [Stand behind me!]
+    ai:
+      - {use: shield_rush, when: "self.mp >= 2", priority: 1}
+      - {use: attack}
+  sela:
+    name: Sela
+    class: mender
+    faces: sela
+    back: true
+    ai:
+      - {use: mend, when: "allies.hp_rate < 0.8", target: ally_lowest_hp_rate, priority: 1}
+      - {use: attack}
 skills:
   attack: {name: Tap, effects: [{damage: a.atk, variance: 0}]}
   guard: {name: Wait, scope: self}
   nudge: {name: Nudge, effects: [{damage: 1, variance: 0}]}
   roll: {name: Roll, effects: [{damage: 6, variance: 0.6}]}
+  shield_rush: {name: Shield Rush, mp: 2, scope: all_enemies, cutin: true, effects: [{damage: 9, variance: 0}]}
+  mend: {name: Mend, mp: 3, scope: one_ally, anim: heal, effects: [{heal: 12, variance: 0}]}
 enemies:
   pebble:
     name: Pebble
@@ -75,6 +104,14 @@ locations:
         talk:
           - say: {who: Innkeeper, face: innkeeper.png, text: Welcome to Lamplight. The beds are warm and the soup is hot.}
           - say: {who: Innkeeper, face: innkeeper.png, text: Rest here whenever the trail wears you down.}
+      - name: Bram
+        image: bram/normal.png
+        when: "!flag.bram_joined"
+        talk:
+          - say: {who: Bram, face: bram/normal.png, text: "You walk the old trail? The halls past the camp have sentries in them."}
+          - say: {who: Bram, face: bram/normal.png, text: My shield could use the exercise. I will come along.}
+          - join: bram
+          - set: {flag.bram_joined: true}
     actions:
       - {label: Rest at the inn, do: [{heal: all}, {say: You feel ready to walk again.}]}
       - {label: Save journey, do: [{save: true}]}
@@ -197,4 +234,7 @@ events:
       - say: The ridge lantern answers your light. The trail is connected again!
       - gold: 4
       - set: {flag.complete: true}
+      - say: {who: Sela, face: sela/normal.png, text: "I keep the lanterns up here. Whoever lit the marker below is a friend of mine."}
+      - say: {who: Sela, face: sela/normal.png, text: Let me walk with you. I can mend a scrape or two.}
+      - join: sela
       - say: Journey complete. Save here, or return to explore the observation room.

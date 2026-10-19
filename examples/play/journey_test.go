@@ -54,6 +54,9 @@ func TestJourneyAndSaveRoundTrip(t *testing.T) {
 	if !state.Flags["complete"] || state.Gold != 7 {
 		t.Fatalf("arrival reward: gold=%d flags=%v", state.Gold, state.Flags)
 	}
+	if got := state.Party; len(got) != 2 || got[1] != "sela" {
+		t.Fatalf("Sela did not join at the ridge: party=%v", got)
+	}
 	// Use the same versioned save bytes as the screen, with isolated disk storage.
 	encoded, err := state.Save()
 	if err != nil {
@@ -72,10 +75,21 @@ func TestJourneyAndSaveRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	driver.Restore(restored)
-	if restored.Location != "ridge" || !restored.Flags["complete"] || restored.Gold != 7 {
-		t.Fatalf("restored progress: location=%s gold=%d flags=%v", restored.Location, restored.Gold, restored.Flags)
+	if restored.Location != "ridge" || !restored.Flags["complete"] || restored.Gold != 7 || len(restored.Party) != 2 {
+		t.Fatalf("restored progress: location=%s gold=%d party=%v flags=%v", restored.Location, restored.Gold, restored.Party, restored.Flags)
 	}
-	for _, loc := range []string{"camp", "ridge", "camp", "chamber"} {
+	for _, loc := range []string{"camp", "ridge", "camp", "town"} {
+		if err := driver.GoTo(loc); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := driver.Do("Bram"); err != nil {
+		t.Fatal(err)
+	}
+	if got := restored.Party; len(got) != 3 || got[2] != "bram" || driver.Has("Bram") {
+		t.Fatalf("Bram did not join in the village: party=%v", got)
+	}
+	for _, loc := range []string{"camp", "chamber"} {
 		if err := driver.GoTo(loc); err != nil {
 			t.Fatal(err)
 		}

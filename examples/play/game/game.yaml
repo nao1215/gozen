@@ -51,6 +51,8 @@ text:
   "AUTO  (X でかいじょ)": "AUTO (X to cancel)"
   "{first}が あらわれた！": "{first} is ready to practice!"
   "{first}たちが あらわれた！": "{first}s roll up, ready to practice!"
+  "「%s」": "\"%s\""
+  "が なかまに くわわった！": " joins the party!"
   "{user}の {skill}！": "{user}: {skill}!"
   "{user}は {skill}を つかった！": "{user} uses {skill}!"
   "{target}に {amount}の ダメージ！": "{target} takes {amount} damage."
