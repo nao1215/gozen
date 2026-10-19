@@ -427,7 +427,7 @@ func (m *menu) openEquip(g *Game) {
 		if it := g.db.Items[a.Equip[s.ID]]; it != nil {
 			name = it.Name
 		}
-		items = append(items, listItem{label: s.Name + "：" + name})
+		items = append(items, listItem{label: s.Name + lang.T("：") + name})
 	}
 
 	items = append(items, listItem{label: lang.T("★ さいきょうそうび（ぜんいん）")})

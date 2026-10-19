@@ -283,5 +283,5 @@ func (s *battleScene) stateNames(g *Game, u *battle.Unit) string {
 			names = append(names, d.Name)
 		}
 	}
-	return strings.Join(names, "・")
+	return strings.Join(names, lang.T("・"))
 }

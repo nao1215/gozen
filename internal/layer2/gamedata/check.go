@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/expr"
+	"github.com/nao1215/gozen/internal/text/catalog"
 	lang "github.com/nao1215/gozen/text"
 )
 
@@ -158,6 +159,9 @@ func (db *DB) Check() []error {
 	}
 	_, ok = db.Events[g.Start.Event]
 	c.ref("game.yaml start.event", "event", g.Start.Event, ok)
+	if _, err := catalog.Words(g.Language); err != nil {
+		c.errorf("game.yaml language", "%q is not a built-in language (use %s or %s)", g.Language, catalog.English, catalog.Japanese)
+	}
 	c.file("game.yaml fonts.regular", g.Fonts.Regular)
 	c.file("game.yaml fonts.pop", g.Fonts.Pop)
 	c.picture("game.yaml title_background", g.TitleBG)

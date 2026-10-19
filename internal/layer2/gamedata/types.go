@@ -115,8 +115,11 @@ type Game struct {
 	SchemaVersion int `yaml:"schema_version,omitempty"`
 	// DataVersion は作品の内容の版。０（省略）は未管理。セーブ形式版とは別。
 	DataVersion int `yaml:"data_version,omitempty"`
-	// Text changes the engine's own words on the screens (text): the engine's
-	// Japanese text (a format with its verbs too) -> the game's.
+	// Language picks the engine's built-in words for the screens: "en" (English, the
+	// default when empty) or "ja" (Japanese). The host passes it to text.Use.
+	Language string `yaml:"language"`
+	// Text changes the engine's own words on the screens (text), on top of Language: the
+	// engine's key, its Japanese source text (a format with its verbs too) -> the game's.
 	Text     map[string]string `yaml:"text"`
 	ID       string            `yaml:"id"` // names the save directory
 	Title    string            `yaml:"title"`

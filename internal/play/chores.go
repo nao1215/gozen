@@ -59,7 +59,7 @@ func (g *Game) offerGear() {
 		for _, sl := range g.db.Game.Slots {
 			if id, ok := up[sl.ID]; ok {
 				keys = append(keys, a.ID+":"+sl.ID+":"+id)
-				names = append(names, a.Name()+"："+g.db.Items[id].Name)
+				names = append(names, a.Name()+lang.T("：")+g.db.Items[id].Name)
 			}
 		}
 	}
@@ -72,7 +72,7 @@ func (g *Game) offerGear() {
 	if sig == "" {
 		return
 	}
-	list := strings.Join(names[:min(2, len(names))], "、")
+	list := strings.Join(names[:min(2, len(names))], lang.T("、"))
 	if len(names) > 2 {
 		list += fmt.Sprintf(lang.T(" ほか%d"), len(names)-2)
 	}

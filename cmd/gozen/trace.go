@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/internal/clihelp"
 
+	"github.com/nao1215/gozen/internal/text/catalog"
 	lang "github.com/nao1215/gozen/text"
 )
 
@@ -78,10 +80,13 @@ func (c *command) traceCmd(args []string) (err error) {
 		switch k {
 		case "start":
 			what = fmt.Sprintf("%v seed %.0f", l["game"], num(l["seed"]))
+			if err := useTraceLanguage(l); err != nil {
+				return err
+			}
 		case "say":
 			what = str(l["text"])
 			if w := str(l["who"]); w != "" {
-				what = w + "「" + what + "」"
+				what = w + fmt.Sprintf(lang.T("「%s」"), what)
 			}
 			if c := strs(l["choices"]); len(c) > 0 {
 				what += " ? " + strings.Join(c, " / ")
@@ -146,7 +151,7 @@ func (c *command) traceCmd(args []string) (err error) {
 				}
 				row := ""
 				if b, ok := m["back"].(bool); ok && b {
-					row = "後"
+					row = lang.T("後")
 				}
 				ps = append(ps, fmt.Sprintf("%s%s Lv%v %v/%v %v/%v", str(m["name"]), row, m["lv"], m["hp"], m["mhp"], m["mp"], m["mmp"]))
 			}
@@ -262,4 +267,14 @@ func decodeTrace(b []byte, out *map[string]any) error {
 		}
 	}
 	return nil
+}
+
+// useTraceLanguage shows the engine's words in the language the trace was written in.
+// Traces from before the language was recorded were written with the Japanese words.
+func useTraceLanguage(start map[string]any) error {
+	language := cmp.Or(str(start["language"]), lang.Japanese)
+	if _, err := catalog.Words(language); err != nil {
+		language = lang.English
+	}
+	return lang.Use(language, nil)
 }

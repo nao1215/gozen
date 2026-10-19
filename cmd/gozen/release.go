@@ -43,7 +43,7 @@ func (c *command) release(args []string) error {
 	if err != nil {
 		return err
 	}
-	c.out.Printf("%s: %d ファイル、差し替え %d 枚（承認記録 %d 枚）\n", out, res.Files, len(res.Replaced), len(ins))
+	c.out.Printf("%s: %d files, %d replaced (%d approval records)\n", out, res.Files, len(res.Replaced), len(ins))
 	return nil
 }
 
@@ -53,7 +53,7 @@ func checkReferences(src, top, prefix string, policy assetpolicy.Policy, records
 		return err
 	}
 	if len(missing) > 0 {
-		return fmt.Errorf("参照された素材が無い: %v", missing)
+		return fmt.Errorf("referenced assets are missing: %v", missing)
 	}
 	gate := assetfs.Gate{Base: os.DirFS(src), Top: os.DirFS(top), Prefix: prefix, Records: records, Outputs: outputs, Watch: []string{""}}
 	for _, file := range files {
@@ -71,7 +71,7 @@ func releaseInputs(src string, overlay *string, inspect string) (assetpolicy.Pol
 	}
 	if *overlay == "" {
 		if p.Overlay == "" {
-			return p, nil, nil, fmt.Errorf("差し替えのディレクトリを --overlay か作品の承認設定で指定する")
+			return p, nil, nil, fmt.Errorf("give the replacement directory with --overlay or in the game's asset policy")
 		}
 		*overlay = filepath.Join(src, p.Overlay)
 	}

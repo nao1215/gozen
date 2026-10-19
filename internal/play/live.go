@@ -251,7 +251,9 @@ func (g *Game) reload() {
 	g.db = db
 	g.unlockNeedsBackup = db.Game.Gallery.MigrateUnlocks(g.unlocked) || g.unlockNeedsBackup
 	g.spUsed = nil
-	lang.Use(db.Game.Text)
+	if err := lang.Use(db.Game.Language, db.Game.Text); err != nil {
+		log.Printf("live reload: %v", err)
+	}
 	g.setFaceBoxes()
 	g.reloadAssets()
 	msg := lang.T("読み直した")
@@ -493,10 +495,10 @@ func liveErrText(msg string) string {
 	what := m[3]
 	hint := ""
 	if u := liveErrUnknown.FindStringSubmatch(what); u != nil {
-		what = lang.T("知らない項目") + "「" + u[1] + "」"
+		what = fmt.Sprintf(lang.T("知らない項目「%s」"), u[1])
 		hint = lang.T("本体が古い。作り直すと読める") + lang.T("（動いている本体が知らない書き方）")
 	}
-	out := []string{m[1] + " " + m[2] + lang.T("行目") + "  " + clip(what, 50)}
+	out := []string{fmt.Sprintf(lang.T("%s %s行目"), m[1], m[2]) + "  " + clip(what, 50)}
 	for _, l := range strings.Split(rest, "\n") {
 		if t := strings.TrimSpace(l); strings.HasPrefix(t, ">") {
 			out = append(out, clip(strings.TrimSpace(strings.TrimPrefix(t, ">")), 60))

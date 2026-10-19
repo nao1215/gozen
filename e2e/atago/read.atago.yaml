@@ -55,7 +55,7 @@ scenarios:
   - assert:
       exit_code: 0
       stdout:
-        contains: レイアウト検査済み
+        contains: Layout checked
       stderr:
         equals: ''
       changes:
@@ -75,7 +75,7 @@ scenarios:
   - assert:
       exit_code: 0
       stdout:
-        contains: '# CLI expedition'
+        contains: ['# CLI expedition', '## Locations', '## Enemies']
       stderr:
         equals: ''
       changes:

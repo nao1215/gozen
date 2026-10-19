@@ -434,7 +434,7 @@ func (t *treeView) draw(g *Game, dst *ebiten.Image) {
 		}
 	}
 	if s := g.db.Skills[cur.Skill]; s != nil && s.MP > 0 {
-		desc += fmt.Sprintf("（MP %d）", s.MP)
+		desc += fmt.Sprintf(lang.T("（MP %d）"), s.MP)
 	}
 	note, nc := "", treeCanColor
 	switch {

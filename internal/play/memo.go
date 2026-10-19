@@ -1,6 +1,7 @@
 package play
 
 import (
+	"cmp"
 	"fmt"
 	"image"
 	"log"
@@ -92,7 +93,7 @@ func shownPicture(c data.CG) string {
 
 func (g *Game) memoInfo() memo.Memo {
 	now := time.Now()
-	m := memo.Memo{Source: memo.Human, Time: now.Format(time.RFC3339), Tick: g.tick, Seed: g.opts.Seed, Game: g.db.Game.Title}
+	m := memo.Memo{Source: memo.Human, Time: now.Format(time.RFC3339), Tick: g.tick, Seed: g.opts.Seed, Game: g.db.Game.Title, Language: cmp.Or(g.db.Game.Language, lang.English)}
 	if !g.started.IsZero() {
 		m.Seconds = float64(now.Sub(g.started).Milliseconds()) / 1000
 	}

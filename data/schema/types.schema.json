@@ -4985,6 +4985,22 @@
             "version": "０・１"
           }
         },
+        "language": {
+          "enum": [
+            "",
+            "en",
+            "ja"
+          ],
+          "type": "string",
+          "x-contract": {
+            "default": "en（英語）",
+            "legacy_default": "en（英語）",
+            "zero": "数値以外",
+            "required": "省略可",
+            "reference": "en（英語）・ja（日本語）",
+            "version": "０・１"
+          }
+        },
         "max_party": {
           "type": "integer",
           "x-contract": {
@@ -5129,7 +5145,7 @@
             "legacy_default": "空の対応表",
             "zero": "数値以外",
             "required": "省略可",
-            "reference": "text の辞書の原文",
+            "reference": "text の辞書の原文（キーはエンジンの日本語の文言）。language の文言の上に重ねる",
             "version": "０・１"
           }
         },

@@ -15,6 +15,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nao1215/gozen/internal/layer2/gamedata"
+
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/internal/clihelp"
 
@@ -40,6 +42,9 @@ func (c *command) design(args []string) (err error) {
 	dir := fs.Arg(0)
 	if *cfgPath == "" {
 		*cfgPath = filepath.Join(dir, "designeval.yaml")
+	}
+	if err := gamedata.UseWords(os.DirFS(dir)); err != nil {
+		return err
 	}
 	db0, err := data.Load(os.DirFS(dir), ".")
 	if err != nil {
@@ -123,7 +128,7 @@ func (c *command) design(args []string) (err error) {
 			cfgRun.Debug = cfg.Debug
 			start := time.Now()
 			runs[i] = designeval.Play(db, cfgRun, p)
-			c.stderr.Printf("%s: %d 日、%.0f 分、%s で遊んだ\n", p.ID, runs[i].Days, runs[i].End/60, time.Since(start).Round(time.Second))
+			c.stderr.Printf("%s: %d days, %.0f minutes, played in %s\n", p.ID, runs[i].Days, runs[i].End/60, time.Since(start).Round(time.Second))
 		}()
 	}
 	for _, err := range errs {
@@ -163,7 +168,7 @@ func (c *command) design(args []string) (err error) {
 	prevName, prev := previousRun(*root, filepath.Base(*out))
 	report := designReport(cfg, runs, sums, filepath.Base(*out), hash, prevName, prev)
 	if len(notes) > 0 {
-		report += fmt.Sprintf("\n## メモ\n\n通信簿で目立った所を、テストプレイのメモ（source bot）として %d 件残した（%s。gozen memos で一覧）。\n\n", len(notes), *memos)
+		report += fmt.Sprintf(lang.T("\n## メモ\n\n通信簿で目立った所を、テストプレイのメモ（source bot）として %d 件残した（%s。gozen memos で一覧）。\n\n"), len(notes), *memos)
 		for _, n := range notes {
 			report += "- " + n + "\n"
 		}
@@ -241,9 +246,9 @@ func previousRun(root, name string) (string, map[string]designeval.Summary) {
 
 func minutes(m float64) string {
 	if m >= 60 {
-		return fmt.Sprintf("%d時間%02d分", int(m)/60, int(m)%60)
+		return fmt.Sprintf(lang.T("%d時間%02d分"), int(m)/60, int(m)%60)
 	}
-	return fmt.Sprintf("%.1f分", m)
+	return fmt.Sprintf(lang.T("%.1f分"), m)
 }
 
 func gapText(g designeval.Gap) string {
@@ -257,7 +262,7 @@ func gapWhere(g designeval.Gap) string {
 	if g.N == 0 || g.At == "" {
 		return ""
 	}
-	return fmt.Sprintf("%s（%d 日目、%s から）", g.At, g.Day, minutes(g.From))
+	return fmt.Sprintf(lang.T("%s（%d 日目、%s から）"), g.At, g.Day, minutes(g.From))
 }
 
 func kindName(cfg *designeval.Config, k string) string {
@@ -274,25 +279,25 @@ func designReport(cfg *designeval.Config, runs []*designeval.Run, sums []designe
 	p := func(f string, a ...any) {
 		appendf(&w, f+"\n", a...)
 	}
-	p("# 流れの通信簿（%s）", name)
+	p(lang.T("# 流れの通信簿（%s）"), name)
 	p("")
-	p("版 %s。時間は見積もり（designeval.yaml の time の係数で、歩数・戦闘のターン・台詞の文字数・操作を秒に直した物）。遊び手は %d 人。", hash, len(runs))
-	p("ご褒美は %s。期待は designeval.yaml の expects、解放は kind %q のご褒美。", rewardKinds(cfg), cfg.Release)
+	p(lang.T("版 %s。時間は見積もり（designeval.yaml の time の係数で、歩数・戦闘のターン・台詞の文字数・操作を秒に直した物）。遊び手は %d 人。"), hash, len(runs))
+	p(lang.T("ご褒美は %s。期待は designeval.yaml の expects、解放は kind %q のご褒美。"), rewardKinds(cfg), cfg.Release)
 	p("")
-	p("## 一覧")
+	p(lang.T("## 一覧"))
 	p("")
 	p(lang.T("| 遊び手 | 結末まで | 日数 | 最深 | Lv | 戦闘 | 負け | 全滅 | %s | ご褒美の間隔 平均 / 最長 | 何も起きない最長 | 期待→解放 平均 / 最長 |"), kindName(cfg, cfg.Release))
 	p("|---|---|---|---|---|---|---|---|---|---|---|---|")
 	for _, s := range sums {
 		clear := minutes(s.ClearMin)
 		if !s.Cleared {
-			clear = "届かず（" + minutes(s.EndMin) + "）"
+			clear = fmt.Sprintf(lang.T("届かず（%s）"), minutes(s.EndMin))
 		}
-		p("| %s（%s） | %s | %d | B%dF | %d | %d | %d | %d | %d | %s | %s | %s |", s.Name, s.ID, clear, s.Days, s.Deepest, s.Level,
+		p(lang.T("| %s（%s） | %s | %d | B%dF | %d | %d | %d | %d | %d | %s | %s | %s |"), s.Name, s.ID, clear, s.Days, s.Deepest, s.Level,
 			s.Battles, s.Lost, s.Wipes, s.Rewards[cfg.Release], gapText(s.Gap), minutes(s.Dry.Max), gapText(s.Release))
 	}
 	p("")
-	p("## 噛み合い（目安。落とさず印だけ）")
+	p(lang.T("## 噛み合い（目安。落とさず印だけ）"))
 	p("")
 	byID := map[string]designeval.Summary{}
 	for _, s := range sums {
@@ -306,7 +311,7 @@ func designReport(cfg *designeval.Config, runs []*designeval.Run, sums []designe
 			if d > t.Within || d < -t.Within {
 				mark = "×"
 			}
-			p("- %s と %s の結末までの差: %s と %s（%+.0f%%、目安 %.0f%% 以内）%s", b.Name, a.Name, minutes(b.ClearMin), minutes(a.ClearMin), 100*d, 100*t.Within, mark)
+			p(lang.T("- %s と %s の結末までの差: %s と %s（%+.0f%%、目安 %.0f%% 以内）%s"), b.Name, a.Name, minutes(b.ClearMin), minutes(a.ClearMin), 100*d, 100*t.Within, mark)
 			an, bn := a.ClearMin-a.ReleaseMin, b.ClearMin-b.ReleaseMin
 			dn := (bn - an) / an
 			mark = "○"
@@ -315,20 +320,20 @@ func designReport(cfg *designeval.Config, runs []*designeval.Run, sums []designe
 			}
 			p(lang.T("- 報酬の場面を読む時間を除くと: %s と %s（%+.0f%%）%s。報酬の場面に %s と %s。"), minutes(bn), minutes(an), 100*dn, mark, minutes(b.ReleaseMin), minutes(a.ReleaseMin))
 		} else if ok {
-			p("- %s と %s の差: どちらかが結末に届かなかった", b.Name, a.Name)
+			p(lang.T("- %s と %s の差: どちらかが結末に届かなかった"), b.Name, a.Name)
 		}
 	}
 	if s, ok := byID[t.MustClear]; ok {
 		if s.Cleared {
-			p("- %s: 結末まで行けた（%s、負け %d、全滅 %d）○", s.Name, minutes(s.ClearMin), s.Lost, s.Wipes)
+			p(lang.T("- %s: 結末まで行けた（%s、負け %d、全滅 %d）○"), s.Name, minutes(s.ClearMin), s.Lost, s.Wipes)
 		} else {
-			p("- %s: 結末に届かなかった（B%dF まで、%d 日）×", s.Name, s.Deepest, s.Days)
+			p(lang.T("- %s: 結末に届かなかった（B%dF まで、%d 日）×"), s.Name, s.Deepest, s.Days)
 		}
 	}
 	p("")
-	p("番人ごとの、初めて着いたときの勝率（HP・MP を満たして %d 戦）と Lv、挑んだ回数と勝ち、勝率を上げるために足した戦闘:", cfg.Game.Tries)
+	p(lang.T("番人ごとの、初めて着いたときの勝率（HP・MP を満たして %d 戦）と Lv、挑んだ回数と勝ち、勝率を上げるために足した戦闘:"), cfg.Game.Tries)
 	p("")
-	head := "| 番人 |"
+	head := lang.T("| 番人 |")
 	sep := "|---|"
 	for _, s := range sums {
 		head += " " + s.Name + " |"
@@ -347,9 +352,9 @@ func designReport(cfg *designeval.Config, runs []*designeval.Run, sums []designe
 			cell := "—"
 			for _, b := range s.Bosses {
 				if b.Floor == f && b.Measured {
-					cell = fmt.Sprintf("%.0f%% Lv%d、%d 戦 %d 勝、+%d", 100*b.Rate, b.Level, b.Tries, b.Wins, b.Grind)
+					cell = fmt.Sprintf(lang.T("%.0f%% Lv%d、%d 戦 %d 勝、+%d"), 100*b.Rate, b.Level, b.Tries, b.Wins, b.Grind)
 				} else if b.Floor == f {
-					cell = fmt.Sprintf("測る前に挑んだ、%d 戦 %d 勝", b.Tries, b.Wins)
+					cell = fmt.Sprintf(lang.T("測る前に挑んだ、%d 戦 %d 勝"), b.Tries, b.Wins)
 				}
 			}
 			line += " " + cell + " |"
@@ -358,13 +363,13 @@ func designReport(cfg *designeval.Config, runs []*designeval.Run, sums []designe
 	}
 	if len(cfg.Duels.List) > 0 {
 		p("")
-		p("1 対 1 の相手ごとの勝率（%d 戦。戦う仲間の Lv）。出てきた日の朝（その日に戦う前）の初戦と、負けてすぐ挑み直す再戦、少し後の日の再戦。本当に戦った数と勝ち:", cfg.Duels.Tries)
+		p(lang.T("1 対 1 の相手ごとの勝率（%d 戦。戦う仲間の Lv）。出てきた日の朝（その日に戦う前）の初戦と、負けてすぐ挑み直す再戦、少し後の日の再戦。本当に戦った数と勝ち:"), cfg.Duels.Tries)
 		if len(cfg.Duels.First) == 2 {
-			p("（目安: 初戦 %.0f〜%.0f%%、再戦 %.0f%% 以上。平均は %s で、外れた所に ×）", 100*cfg.Duels.First[0], 100*cfg.Duels.First[1], 100*cfg.Duels.Later,
-				map[bool]string{true: "全員", false: strings.Join(cfg.Duels.Personas, "・")}[len(cfg.Duels.Personas) == 0])
+			p(lang.T("（目安: 初戦 %.0f〜%.0f%%、再戦 %.0f%% 以上。平均は %s で、外れた所に ×）"), 100*cfg.Duels.First[0], 100*cfg.Duels.First[1], 100*cfg.Duels.Later,
+				map[bool]string{true: lang.T("全員"), false: strings.Join(cfg.Duels.Personas, lang.T("・"))}[len(cfg.Duels.Personas) == 0])
 		}
 		p("")
-		p("%s 平均 |", strings.Replace(head, "番人", "相手", 1))
+		p(lang.T("%s 平均 |"), strings.Replace(head, lang.T("番人"), lang.T("相手"), 1))
 		p("%s---|", sep)
 		for i, a := range designeval.DuelAverages(cfg, sums) {
 			line := "| " + a.Name + " |"
@@ -372,12 +377,12 @@ func designReport(cfg *designeval.Config, runs []*designeval.Run, sums []designe
 				cell := "—"
 				if i < len(s.Duels) && s.Duels[i].Opened {
 					d := s.Duels[i]
-					cell = fmt.Sprintf("初戦 %.0f%%・挑み直し %.0f%% Lv%d", 100*d.First, 100*d.Again, d.FirstLevel)
+					cell = fmt.Sprintf(lang.T("初戦 %.0f%%・挑み直し %.0f%% Lv%d"), 100*d.First, 100*d.Again, d.FirstLevel)
 					if d.Grown {
-						cell += fmt.Sprintf("、後 %.0f%% Lv%d", 100*d.Later, d.LaterLevel)
+						cell += fmt.Sprintf(lang.T("、後 %.0f%% Lv%d"), 100*d.Later, d.LaterLevel)
 					}
 					if d.Tries > 0 {
-						cell += fmt.Sprintf("、%d 戦 %d 勝", d.Tries, d.Wins)
+						cell += fmt.Sprintf(lang.T("、%d 戦 %d 勝"), d.Tries, d.Wins)
 					}
 				}
 				line += " " + cell + " |"
@@ -390,39 +395,39 @@ func designReport(cfg *designeval.Config, runs []*designeval.Run, sums []designe
 			}
 			avg := "—"
 			if a.NFirst > 0 {
-				avg = fmt.Sprintf("初戦 %.0f%%%s・挑み直し %.0f%%%s", 100*a.First, mark("first"), 100*a.Again, mark("again"))
+				avg = fmt.Sprintf(lang.T("初戦 %.0f%%%s・挑み直し %.0f%%%s"), 100*a.First, mark("first"), 100*a.Again, mark("again"))
 			}
 			if a.NLater > 0 {
-				avg += fmt.Sprintf("、後 %.0f%%%s", 100*a.Later, mark("later"))
+				avg += fmt.Sprintf(lang.T("、後 %.0f%%%s"), 100*a.Later, mark("later"))
 			}
 			p("%s %s |", line, avg)
 		}
 	}
 	p("")
-	p("## 遊び手ごと")
+	p(lang.T("## 遊び手ごと"))
 	for i, s := range sums {
 		r := runs[i]
 		p("")
-		p("### %s（%s）", s.Name, s.ID)
+		p(lang.T("### %s（%s）"), s.Name, s.ID)
 		p("")
 		p("%s", r.Persona.Desc)
 		p("")
 		if s.Cleared {
-			p("- 結末まで %s（%d 日目）。最深 B%dF、平均 Lv%d。", minutes(s.ClearMin), s.Days, s.Deepest, s.Level)
+			p(lang.T("- 結末まで %s（%d 日目）。最深 B%dF、平均 Lv%d。"), minutes(s.ClearMin), s.Days, s.Deepest, s.Level)
 		} else {
-			p("- 結末に届かなかった（%s、%d 日、最深 B%dF、平均 Lv%d）。", minutes(s.EndMin), s.Days, s.Deepest, s.Level)
+			p(lang.T("- 結末に届かなかった（%s、%d 日、最深 B%dF、平均 Lv%d）。"), minutes(s.EndMin), s.Days, s.Deepest, s.Level)
 		}
-		p("- 過ごした時間: 街 %s、迷宮 %s。戦闘 %d 回、負け %d（やり直し %d）、全滅 %d、氷片なしで帰った %d。", minutes(s.Minutes["town"]), minutes(s.Minutes["dungeon"]), s.Battles, s.Lost, s.Retries, s.Wipes, s.Stranded)
-		p("- ご褒美の間隔（どれか）: 平均 %s。長い順: %s。", minutes(s.Gap.Avg), spansText(s.Gap.Top))
-		p("- 何も起きない（ご褒美も期待も無い）長い順: %s。", spansText(s.Dry.Top))
+		p(lang.T("- 過ごした時間: 街 %s、迷宮 %s。戦闘 %d 回、負け %d（やり直し %d）、全滅 %d、氷片なしで帰った %d。"), minutes(s.Minutes["town"]), minutes(s.Minutes["dungeon"]), s.Battles, s.Lost, s.Retries, s.Wipes, s.Stranded)
+		p(lang.T("- ご褒美の間隔（どれか）: 平均 %s。長い順: %s。"), minutes(s.Gap.Avg), spansText(s.Gap.Top))
+		p(lang.T("- 何も起きない（ご褒美も期待も無い）長い順: %s。"), spansText(s.Dry.Top))
 		p(lang.T("- 報酬の場面を読んだ時間: %s（結末までの %.0f%%）。"), minutes(s.ReleaseMin), 100*s.ReleaseMin/max(1e-9, s.ClearMin))
 		if s.Release.N > 0 {
-			p("- 期待から解放まで: %d 回、平均 %s、最長 %s（%s）。最後の解放の後に残った期待 %d。", s.Release.N, minutes(s.Release.Avg), minutes(s.Release.Max), gapWhere(s.Release), s.Unreleased)
+			p(lang.T("- 期待から解放まで: %d 回、平均 %s、最長 %s（%s）。最後の解放の後に残った期待 %d。"), s.Release.N, minutes(s.Release.Avg), minutes(s.Release.Max), gapWhere(s.Release), s.Unreleased)
 		} else {
-			p("- 期待から解放まで: 解放が一度も無い（期待 %d 回）。", s.Expects)
+			p(lang.T("- 期待から解放まで: 解放が一度も無い（期待 %d 回）。"), s.Expects)
 		}
 		p("")
-		p("| ご褒美 | 回数 | 間隔 平均 / 最長 | 最長の所 |")
+		p(lang.T("| ご褒美 | 回数 | 間隔 平均 / 最長 | 最長の所 |"))
 		p("|---|---|---|---|")
 		kinds := []string{}
 		for k := range s.Rewards {
@@ -441,67 +446,67 @@ func designReport(cfg *designeval.Config, runs []*designeval.Run, sums []designe
 		}
 		if len(r.Problems) > 0 {
 			p("")
-			p("遊べなかった所（%d 件、先頭 5 件）:", len(r.Problems))
+			p(lang.T("遊べなかった所（%d 件、先頭 5 件）:"), len(r.Problems))
 			for _, e := range r.Problems[:min(5, len(r.Problems))] {
 				p("- %s", e)
 			}
 		}
 	}
 	p("")
-	p("## 前の回との差")
+	p(lang.T("## 前の回との差"))
 	p("")
 	if prev == nil {
-		p("前の回が無い（%s に summary.json のある回が無い）。", "build/designeval")
+		p(lang.T("前の回が無い（%s に summary.json のある回が無い）。"), "build/designeval")
 	} else {
-		p("前の回: %s", prevName)
+		p(lang.T("前の回: %s"), prevName)
 		p("")
-		p("| 遊び手 | 指標 | 前 | 今 | 差 |")
+		p(lang.T("| 遊び手 | 指標 | 前 | 今 | 差 |"))
 		p("|---|---|---|---|---|")
 		for _, s := range sums {
 			o, ok := prev[s.ID]
 			if !ok {
-				p("| %s | （前の回にいない） | | | |", s.Name)
+				p(lang.T("| %s | （前の回にいない） | | | |"), s.Name)
 				continue
 			}
 			row := func(label string, a, b float64, unit string) {
 				p("| %s | %s | %.1f%s | %.1f%s | %+.1f%s |", s.Name, label, a, unit, b, unit, b-a, unit)
 			}
-			row("結末まで（分）", o.ClearMin, s.ClearMin, "")
-			row("負け", float64(o.Lost), float64(s.Lost), "")
+			row(lang.T("結末まで（分）"), o.ClearMin, s.ClearMin, "")
+			row(lang.T("負け"), float64(o.Lost), float64(s.Lost), "")
 			row(lang.T("報酬の回数"), float64(o.Rewards[cfg.Release]), float64(s.Rewards[cfg.Release]), "")
-			row("ご褒美の間隔の平均（分）", o.Gap.Avg, s.Gap.Avg, "")
-			row("ご褒美の間隔の最長（分）", o.Gap.Max, s.Gap.Max, "")
-			row("何も起きない最長（分）", o.Dry.Max, s.Dry.Max, "")
-			row("期待→解放の平均（分）", o.Release.Avg, s.Release.Avg, "")
-			row("期待→解放の最長（分）", o.Release.Max, s.Release.Max, "")
+			row(lang.T("ご褒美の間隔の平均（分）"), o.Gap.Avg, s.Gap.Avg, "")
+			row(lang.T("ご褒美の間隔の最長（分）"), o.Gap.Max, s.Gap.Max, "")
+			row(lang.T("何も起きない最長（分）"), o.Dry.Max, s.Dry.Max, "")
+			row(lang.T("期待→解放の平均（分）"), o.Release.Avg, s.Release.Avg, "")
+			row(lang.T("期待→解放の最長（分）"), o.Release.Max, s.Release.Max, "")
 			for _, b := range s.Bosses {
 				for _, ob := range o.Bosses {
 					if ob.Floor == b.Floor {
-						row(fmt.Sprintf("B%dF の着いたときの勝率", b.Floor), 100*ob.Rate, 100*b.Rate, "%")
+						row(fmt.Sprintf(lang.T("B%dF の着いたときの勝率"), b.Floor), 100*ob.Rate, 100*b.Rate, "%")
 					}
 				}
 			}
 		}
 	}
 	p("")
-	p("## 時間の帯")
+	p(lang.T("## 時間の帯"))
 	p("")
-	p("![帯](band.png)")
+	p(lang.T("![帯](band.png)"))
 	p("")
-	p("上から一覧の順に 1 人 1 段。横は時間（縦の細線は 1 時間ごと）。各段の上の帯は居場所（灰色は街、緑・紫・青・赤は迷宮の区画、色が濃いほど深い）、")
-	p("真ん中の線は設定で定義した報酬の種類、下の点は期待（紫）と負け（茶）。")
+	p(lang.T("上から一覧の順に 1 人 1 段。横は時間（縦の細線は 1 時間ごと）。各段の上の帯は居場所（灰色は街、緑・紫・青・赤は迷宮の区画、色が濃いほど深い）、"))
+	p(lang.T("真ん中の線は設定で定義した報酬の種類、下の点は期待（紫）と負け（茶）。"))
 	return w.String()
 }
 
 func spansText(sp []designeval.Span) string {
 	var parts []string
 	for _, x := range sp {
-		parts = append(parts, fmt.Sprintf("%s（%s、%d 日目、%s から）", minutes(x.Len), x.At, x.Day, minutes(x.From)))
+		parts = append(parts, fmt.Sprintf(lang.T("%s（%s、%d 日目、%s から）"), minutes(x.Len), x.At, x.Day, minutes(x.From)))
 	}
 	if len(parts) == 0 {
 		return "—"
 	}
-	return strings.Join(parts, "、")
+	return strings.Join(parts, lang.T("、"))
 }
 
 func rewardKinds(cfg *designeval.Config) string {
@@ -513,7 +518,7 @@ func rewardKinds(cfg *designeval.Config) string {
 			out = append(out, kindName(cfg, r.Kind))
 		}
 	}
-	return strings.Join(out, "・")
+	return strings.Join(out, lang.T("・"))
 }
 
 func countText(m map[string]int) string {
@@ -535,9 +540,9 @@ func countText(m map[string]int) string {
 	})
 	var parts []string
 	for _, x := range l {
-		parts = append(parts, fmt.Sprintf("%s %d（%.0f%%）", x.k, x.v, 100*float64(x.v)/float64(max(1, total))))
+		parts = append(parts, fmt.Sprintf(lang.T("%s %d（%.0f%%）"), x.k, x.v, 100*float64(x.v)/float64(max(1, total))))
 	}
-	return strings.Join(parts, "、")
+	return strings.Join(parts, lang.T("、"))
 }
 
 func rewardColor(kind string) color.NRGBA {

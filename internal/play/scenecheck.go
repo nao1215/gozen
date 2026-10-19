@@ -299,7 +299,7 @@ func (s *galleryScreen) drawCheck(g *Game, dst *ebiten.Image) {
 			gfx.DrawTextOutlineColor(dst, ls[0], x+w/2, y+h+20, sz, g.th.text, g.th.window, 1)
 		}
 		if v, has := c.verdict[sceneKey(scenes[cur])]; has {
-			gfx.DrawTextOutlineColor(dst, lang.T("判定")+": "+v.Label+"（"+v.Time[:min(len(v.Time), 16)]+"）", x+w/2, y+h+60, sizeS*0.85, g.th.dim, g.th.window, 1)
+			gfx.DrawTextOutlineColor(dst, fmt.Sprintf(lang.T("判定: %s（%s）"), v.Label, v.Time[:min(len(v.Time), 16)]), x+w/2, y+h+60, sizeS*0.85, g.th.dim, g.th.window, 1)
 		}
 	}
 	all := len(scenes)

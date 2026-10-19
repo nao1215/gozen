@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	lang "github.com/nao1215/gozen/text"
+	"github.com/nao1215/gozen/internal/text/catalog"
 
 	"github.com/goccy/go-yaml"
 )
@@ -238,6 +238,20 @@ func putter[V any](dst, src map[string]V) func(string) bool {
 	}
 }
 
+// word is the game's word for the engine's key in its own language and text, without the
+// process-wide words (the game is being loaded; the host has not chosen them yet).
+func (g *Game) word(key string) string {
+	if w, ok := g.Text[key]; ok {
+		return w
+	}
+	if words, err := catalog.Words(g.Language); err == nil {
+		if w, ok := words[key]; ok {
+			return w
+		}
+	}
+	return key
+}
+
 // defaults fills in what was left out.
 func (db *DB) defaults() {
 	g := &db.Game
@@ -248,7 +262,7 @@ func (db *DB) defaults() {
 		g.MaxParty = 4
 	}
 	if len(g.Slots) == 0 {
-		g.Slots = []Slot{{ID: "weapon", Name: lang.T("武器")}, {ID: "armor", Name: lang.T("防具")}, {ID: "accessory", Name: lang.T("装飾品")}}
+		g.Slots = []Slot{{ID: "weapon", Name: g.word("武器")}, {ID: "armor", Name: g.word("防具")}, {ID: "accessory", Name: g.word("装飾品")}}
 	}
 	b := &g.Battle
 	if b.FrontWeight == nil {

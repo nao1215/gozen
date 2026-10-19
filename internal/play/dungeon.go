@@ -253,7 +253,7 @@ func (s *dungeonScene) draw(g *Game, dst *ebiten.Image) {
 
 		hint := t.Name
 		if t.Hint != "" {
-			hint += "　（" + t.Hint + "）"
+			hint += fmt.Sprintf(lang.T("　（%s）"), t.Hint)
 		}
 		w := gfx.TextWidth(hint, sizeM) + 60
 		y := sh - 220

@@ -33,6 +33,9 @@ func (c *command) floorsCmd(args []string) error {
 	if *from <= 0 || *to < *from || *floor < 0 || *try < 0 || (*try > 0 && *floor == 0) {
 		return cli.Invalid("invalid floor range or seed count; --try requires --floor")
 	}
+	if err := data.UseWords(os.DirFS(dir)); err != nil {
+		return err
+	}
 	db, err := data.Load(os.DirFS(dir))
 	if err != nil {
 		return err

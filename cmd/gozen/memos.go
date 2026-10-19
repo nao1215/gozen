@@ -20,6 +20,9 @@ import (
 	"github.com/nao1215/gozen/cmd/internal/cli"
 
 	"github.com/nao1215/gozen/internal/layer1/memo"
+
+	"github.com/nao1215/gozen/internal/text/catalog"
+	lang "github.com/nao1215/gozen/text"
 )
 
 type memoEntry struct {
@@ -74,20 +77,44 @@ func (c *command) renderMemos(root, output string) (err error) {
 		}
 		ms = append(ms, e)
 	}
+	// The page speaks the language the notes were written in; notes from before the
+	// language was recorded were written with the Japanese words.
+	language := lang.Japanese
+	for _, m := range ms {
+		if m.Language != "" {
+			language = m.Language
+			break
+		}
+	}
+	if _, err := catalog.Words(language); err != nil {
+		language = lang.English
+	}
+	if err := lang.Use(language, nil); err != nil {
+		return err
+	}
 	out := filepath.Join(output, "index.html")
-	if err := os.WriteFile(out, []byte(memoHTML(ms)), 0o600); err != nil {
+	if err := os.WriteFile(out, []byte(memoHTML(ms, language)), 0o600); err != nil {
 		return err
 	}
 	c.out.Printf("%d memos exported\n", len(ms))
 	return nil
 }
 
+// sourceNames are the engine's keys for who wrote a note (put through lang.T when shown).
 var sourceNames = map[string]string{memo.Human: "人", memo.LLM: "LLM", memo.Autoplay: "自動の遊び", memo.Bot: "ボット"}
 
+// sourceTitle is the shown name of who wrote notes of source.
+func sourceTitle(source string) string {
+	if n, ok := sourceNames[source]; ok {
+		return lang.T(n)
+	}
+	return source
+}
+
 func sourceName(m *memoEntry) string {
-	n := cmp.Or(sourceNames[m.Source], m.Source)
+	n := sourceTitle(m.Source)
 	if m.Bot != "" {
-		n += "（" + m.Bot + "）"
+		n += fmt.Sprintf(lang.T("（%s）"), m.Bot)
 	}
 	return n
 }
@@ -104,7 +131,7 @@ func groupMemos(ms []*memoEntry) []*memoGroup {
 	var gs []*memoGroup
 	by := map[string]*memoGroup{}
 	for _, m := range ms {
-		place := cmp.Or(m.Place, m.Location, "（場所なし）")
+		place := cmp.Or(m.Place, m.Location, lang.T("（場所なし）"))
 		key, title := place, place
 		if m.Pos != nil {
 			key = fmt.Sprintf("%s#%03d", place, int(m.Floor))
@@ -123,7 +150,7 @@ func groupMemos(ms []*memoEntry) []*memoGroup {
 	return gs
 }
 
-func memoHTML(ms []*memoEntry) string {
+func memoHTML(ms []*memoEntry, language string) string {
 	var b strings.Builder
 	esc := html.EscapeString
 	kinds := map[string]string{}
@@ -136,12 +163,13 @@ func memoHTML(ms []*memoEntry) string {
 		if !slices.Contains(sources, m.Source) {
 			sources = append(sources, m.Source)
 		}
-		p := cmp.Or(m.Place, m.Location, "（場所なし）")
+		p := cmp.Or(m.Place, m.Location, lang.T("（場所なし）"))
 		if !slices.Contains(places, p) {
 			places = append(places, p)
 		}
 	}
-	appendText(&b, `<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>テストプレイのメモ</title><style>
+	appendf(&b, `<!doctype html><html lang="%s"><head><meta charset="utf-8"><title>%s</title>`, esc(language), esc(lang.T("テストプレイのメモ")))
+	appendText(&b, `<style>
 body{font-family:sans-serif;background:#1b1f27;color:#e8edf5;margin:20px}
 h1{font-size:22px} h2{font-size:18px;border-bottom:1px solid #445;padding-bottom:4px;margin-top:28px}
 .filters{position:sticky;top:0;background:#1b1f27;padding:8px 0;z-index:2}
@@ -157,9 +185,9 @@ h1{font-size:22px} h2{font-size:18px;border-bottom:1px solid #445;padding-bottom
 </style></head><body>
 `)
 
-	appendf(&b, "<h1>テストプレイのメモ（%d 件）</h1>\n<div class=\"filters\">", len(ms))
+	appendf(&b, "<h1>%s</h1>\n<div class=\"filters\">", esc(fmt.Sprintf(lang.T("テストプレイのメモ（%d 件）"), len(ms))))
 
-	appendText(&b, `<label>場所 <select id="place"><option value="">すべて</option>`)
+	appendf(&b, `<label>%s <select id="place"><option value="">%s</option>`, esc(lang.T("場所")), esc(lang.T("すべて")))
 
 	for _, p := range places {
 		appendf(&b, `<option>%s</option>`, esc(p))
@@ -167,10 +195,10 @@ h1{font-size:22px} h2{font-size:18px;border-bottom:1px solid #445;padding-bottom
 	}
 	appendText(&b, `</select></label>`)
 
-	appendText(&b, `<label>書いた人 <select id="source"><option value="">すべて</option>`)
+	appendf(&b, `<label>%s <select id="source"><option value="">%s</option>`, esc(lang.T("書いた人")), esc(lang.T("すべて")))
 
 	for _, s := range sources {
-		appendf(&b, `<option value="%s">%s</option>`, esc(s), esc(cmp.Or(sourceNames[s], s)))
+		appendf(&b, `<option value="%s">%s</option>`, esc(s), esc(sourceTitle(s)))
 
 	}
 	appendText(&b, `</select></label>`)
@@ -182,7 +210,7 @@ h1{font-size:22px} h2{font-size:18px;border-bottom:1px solid #445;padding-bottom
 	appendText(&b, "</div>\n")
 
 	for _, g := range groupMemos(ms) {
-		appendf(&b, `<section data-place="%s"><h2>%s（%d 件）</h2>`, esc(g.place), esc(g.title), len(g.ms))
+		appendf(&b, `<section data-place="%s"><h2>%s</h2>`, esc(g.place), esc(fmt.Sprintf(lang.T("%s（%d 件）"), g.title, len(g.ms))))
 
 		if g.dungeon {
 			appendText(&b, memoMap(g.ms))
@@ -227,37 +255,37 @@ func memoCard(b *strings.Builder, m *memoEntry, pin bool) {
 	if pin {
 		appendf(b, `<span class="pin">#%d</span> `, m.N)
 	}
-	appendf(b, "%s</div><div class=\"meta\">", esc(cmp.Or(m.Text, "（一言なし）")))
+	appendf(b, "%s</div><div class=\"meta\">", esc(cmp.Or(m.Text, lang.T("（一言なし）"))))
 	where := cmp.Or(m.Place, m.Location)
 	if m.Pos != nil {
 		where += fmt.Sprintf(" B%d (%d,%d) %s", int(m.Floor), m.Pos[0], m.Pos[1], m.Facing)
 	}
-	appendf(b, "%s・%s・%s・起動から %d 分", esc(sourceName(m)), esc(where), esc(strings.Replace(m.Time, "T", " ", 1)[:min(len(m.Time), 16)]), int(m.Seconds/60))
+	appendf(b, "%s", esc(fmt.Sprintf(lang.T("%s・%s・%s・起動から %d 分"), sourceName(m), where, strings.Replace(m.Time, "T", " ", 1)[:min(len(m.Time), 16)], int(m.Seconds/60))))
 	if m.Event != "" {
-		appendf(b, "<br>イベント %s", esc(m.Event))
+		appendf(b, "<br>%s", esc(fmt.Sprintf(lang.T("イベント %s"), m.Event)))
 	}
 	if len(m.Scenes) > 0 {
-		appendf(b, "<br>画面 %s", esc(strings.Join(m.Scenes, " > ")))
+		appendf(b, "<br>%s", esc(fmt.Sprintf(lang.T("画面 %s"), strings.Join(m.Scenes, " > "))))
 	}
 	if len(m.Vars) > 0 {
 		var vs []string
 		for _, k := range slices.Sorted(maps.Keys(m.Vars)) {
 			vs = append(vs, fmt.Sprintf("%s %v", k, m.Vars[k]))
 		}
-		appendf(b, "<br>%s", esc(strings.Join(vs, "、")))
+		appendf(b, "<br>%s", esc(strings.Join(vs, lang.T("、"))))
 	}
 	if m.Version != "" {
-		appendf(b, "<br>版 %s", esc(m.Version))
+		appendf(b, "<br>%s", esc(fmt.Sprintf(lang.T("版 %s"), m.Version)))
 	}
 	if m.Resume != nil {
-		appendf(b, "<br>再開 %s %s", esc(m.Resume.From), esc(m.Resume.Event))
+		appendf(b, "<br>%s", esc(fmt.Sprintf(lang.T("再開 %s %s"), m.Resume.From, m.Resume.Event)))
 	}
 	if len(m.Data) > 0 {
 		var ds []string
 		for _, k := range slices.Sorted(maps.Keys(m.Data)) {
 			ds = append(ds, fmt.Sprintf("%s %v", k, m.Data[k]))
 		}
-		appendf(b, "<br>%s", esc(strings.Join(ds, "、")))
+		appendf(b, "<br>%s", esc(strings.Join(ds, lang.T("、"))))
 	}
 	appendf(b, "<br>%s", esc(m.ID))
 	appendText(b, "</div>")
@@ -265,7 +293,7 @@ func memoCard(b *strings.Builder, m *memoEntry, pin bool) {
 	if m.Line != "" {
 		line := m.Line
 		if m.Who != "" {
-			line = m.Who + "「" + line + "」"
+			line = m.Who + fmt.Sprintf(lang.T("「%s」"), line)
 		}
 		appendf(b, `<div class="line">%s</div>`, esc(line))
 	}

@@ -8,12 +8,16 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/layer2/gamedata"
+
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/internal/clihelp"
 
 	"github.com/nao1215/gozen/data"
 	"github.com/nao1215/gozen/expr"
 	"github.com/nao1215/gozen/internal/headless/balance"
+
+	lang "github.com/nao1215/gozen/text"
 )
 
 func (c *command) curve(args []string) error {
@@ -52,6 +56,9 @@ func (c *command) curve(args []string) error {
 		if math.IsNaN(v) || math.IsInf(v, 0) || v < 0 || v > 1 {
 			return cli.Invalid("rates must be finite values in [0,1]")
 		}
+	}
+	if err := gamedata.UseWords(os.DirFS(dir)); err != nil {
+		return err
 	}
 	db, err := data.Load(os.DirFS(dir), ".")
 	if err != nil {
@@ -119,7 +126,7 @@ func (c *command) curve(args []string) error {
 		if f.Boss != "" {
 			boss = fmt.Sprintf("%3.0f%%", 100*f.BossRate)
 			if f.Grinding > 0 {
-				boss += fmt.Sprintf("→%.0f%%(+%d戦)", 100*f.BossRateEnd, f.Grinding)
+				boss += fmt.Sprintf(lang.T("→%.0f%%(+%d戦)"), 100*f.BossRateEnd, f.Grinding)
 			}
 		}
 		c.out.Printf("B%-4d %-4d %-7d %-6d %-6.1f %-7.2f %-6.2f %-6d %-6d %-7s %s\n", f.Floor, f.Level, f.Battles, f.Lost, f.Turns, f.HPLeft, f.MPLeft, f.Gold, f.Scenes, boss, strings.Join(f.Troops, " "))

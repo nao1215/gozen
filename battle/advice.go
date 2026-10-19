@@ -76,7 +76,7 @@ func (b *Battle) tacticLog(a Action, targets []*Unit, action string) string {
 			names = append(names, t.Name)
 		}
 	}
-	to := strings.Join(names, "・")
+	to := strings.Join(names, lang.T("・"))
 	if to == "" {
 		to = lang.T("対象なし")
 	}

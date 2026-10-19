@@ -1,35 +1,50 @@
-// Package text holds the words of the engine's screens (the menus, the battle's messages,
-// the hints), so a game can change them: game.yaml's text maps the engine's own words (the
-// key is the Japanese text as the engine writes it, a format with its %d and %s too) to the
-// game's.
-//
-//	text:
-//	  "にげられない！": "Can't run away!"
-//	  "%sを %dこ かった！": "Bought %[2]d %[1]s."
 package text
 
 import (
+	"fmt"
 	"maps"
 	"sync"
+
+	"github.com/nao1215/gozen/internal/text/catalog"
+)
+
+// The built-in languages, the values of game.yaml's language. The empty language is
+// English.
+const (
+	English  = catalog.English
+	Japanese = catalog.Japanese
 )
 
 var (
-	mu    sync.RWMutex
-	words map[string]string
+	mu     sync.RWMutex
+	active map[string]string // nil before the first Use: every key is its own word
 )
 
-// Use sets the game's words (nil: the engine's own).
-func Use(m map[string]string) {
+// Use makes T answer with the built-in words of language ("" is English) and the game's
+// words on top (words may be nil). It copies words, so the caller may change its map
+// afterwards. An unknown language is an error and changes nothing.
+//
+// The words are shared by the whole process: call Use once at the host boundary (the
+// runner does it from game.yaml), not from games running concurrently. Before the first
+// Use, T returns each key itself (the Japanese source).
+func Use(language string, words map[string]string) error {
+	m, err := catalog.Words(language)
+	if err != nil {
+		return fmt.Errorf("text: %w", err)
+	}
+	maps.Copy(m, words)
 	mu.Lock()
-	words = maps.Clone(m)
+	active = m
 	mu.Unlock()
+	return nil
 }
 
-// T is the game's word for the engine's s (s itself when the game has none).
+// T is the word for the engine's key s in the language and words chosen by Use (s itself
+// when there is none).
 func T(s string) string {
 	mu.RLock()
 	defer mu.RUnlock()
-	if w, ok := words[s]; ok {
+	if w, ok := active[s]; ok {
 		return w
 	}
 	return s

@@ -53,7 +53,7 @@ func musicEntries(db *data.DB) []musicEntry {
 			if mn == "" {
 				mn = mood
 			}
-			out = append(out, musicEntry{song: id, mood: mood, label: name + "・" + mn, oneShot: true})
+			out = append(out, musicEntry{song: id, mood: mood, label: name + lang.T("・") + mn, oneShot: true})
 		}
 	}
 	return out

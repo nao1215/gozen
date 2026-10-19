@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/layer2/gamedata"
+
 	"github.com/nao1215/gozen/cmd/internal/cli"
 
 	"github.com/goccy/go-yaml/ast"
@@ -26,6 +28,9 @@ import (
 
 func (c *command) layout(dir string, out io.Writer) error {
 	fsys := os.DirFS(dir)
+	if err := gamedata.UseWords(fsys); err != nil {
+		return err
+	}
 	db, err := data.Load(fsys, ".")
 	if err != nil {
 		return err

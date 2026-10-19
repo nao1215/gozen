@@ -88,8 +88,14 @@ locations:
 	if got[1].Label != "話す：Bard" || got[1].New || got[3].Label != "Dance　！" || !got[3].Marked {
 		t.Errorf("after hearing: %q", labels(got))
 	}
-	lang.Use(map[string]string{"　！": " (new)"})
-	defer lang.Use(nil)
+	if err := lang.Use(lang.Japanese, map[string]string{"　！": " (new)"}); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := lang.Use(lang.Japanese, nil); err != nil {
+			t.Error(err)
+		}
+	}()
 	if got := world.Entries(db, st); got[3].Label != "Dance (new)" {
 		t.Errorf("the game's mark: %q", got[3].Label)
 	}

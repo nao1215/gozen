@@ -32,7 +32,7 @@ var schemaDefaults = map[string]string{
 	"StoneSet.family": "省略時は従来の名前による系列。明示 ID とは別系列",
 	"GalleryScene.id": "省略時は従来のフラグまたはイベントと題名によるキー", "GalleryScene.legacy_keys": "旧キーからの引き継ぎなし",
 	"GalleryScene.pages": "頁選択なし。先頭から再生", "GalleryPage.picture": "回想開始から台詞と問いを数える", "GalleryPage.answers": "未指定の選択肢で止まる",
-	"Game.schema_version": "0（旧仕様）", "Game.data_version": "0（未管理）",
+	"Game.schema_version": "0（旧仕様）", "Game.language": "en（英語）", "Game.data_version": "0（未管理）",
 	"Game.equip_slots": "weapon・armor・accessory の３枠", "Game.id": "旧版は空文字。新版は必須。標準保存先の準備には空でない ID が必要",
 	"Actor.face": "normal", "Actor.face_shade_top": "face_shade を継承",
 	"BattleCfg.attack_skill": "attack", "BattleCfg.guard_skill": "guard", "BattleCfg.ai": "priority",
@@ -68,7 +68,7 @@ var schemaReferences = map[string]string{
 	"StoneSet.family": "表示名と独立した系列 ID。英数字で始まる英数字・_・-。同系列の全候補に同じ ID",
 	"GalleryScene.id": "回想の固定 ID。英数字で始まる英数字・_・-。回想内で一意", "GalleryScene.legacy_keys": "scene: で始まる旧開放キー[]。id が必須で別回想との共有不可",
 	"Start.location": "locations", "Start.party": "actors[]", "Start.items": "キーは items", "Start.event": "events",
-	"Game.text": "text の辞書の原文", "Fonts.regular": "assets/ のフォント", "Fonts.pop": "assets/ のフォント", "Fonts.title": "assets/ のフォント",
+	"Game.language": "en（英語）・ja（日本語）", "Game.text": "text の辞書の原文（キーはエンジンの日本語の文言）。language の文言の上に重ねる", "Fonts.regular": "assets/ のフォント", "Fonts.pop": "assets/ のフォント", "Fonts.title": "assets/ のフォント",
 	"Game.stand_ins": "assets/ の一覧ファイル", "TitleFigure.file": "assets/ の画像", "Picture.file": "assets/ の画像",
 	"CG.file": "assets/ の画像", "CG.files": "assets/ の画像またはパターン[]", "CG.pick": "頁番号を選ぶ式",
 	"MusicCue.song": "music.songs", "MusicCue.mood": "参照した曲の moods", "MoodRule.song": "music.songs", "MoodRule.play": "music.songs または曲/気分", "MoodRule.mood": "曲の moods",
@@ -348,8 +348,9 @@ func (b *schemaBuilder) constraints(t reflect.Type, n, props schemaNode) {
 		props["line"].(schemaNode)["minimum"] = 1                          //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
 		props["answers"].(schemaNode)["items"].(schemaNode)["minimum"] = 0 //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
 	case reflect.TypeFor[Game]():
-		props["schema_version"].(schemaNode)["enum"] = []int{0, 1} //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-		props["data_version"].(schemaNode)["minimum"] = 0          //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		props["schema_version"].(schemaNode)["enum"] = []int{0, 1}        //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		props["data_version"].(schemaNode)["minimum"] = 0                 //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		props["language"].(schemaNode)["enum"] = []string{"", "en", "ja"} //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
 		n["if"] = schemaNode{"required": []string{"schema_version"}, "properties": schemaNode{"schema_version": schemaNode{"const": 1}}}
 		n["then"] = schemaNode{"required": []string{"id"}, "properties": schemaNode{"id": schemaNode{"type": "string", "pattern": gameIDPattern.String()}}}
 	case reflect.TypeFor[Start]():

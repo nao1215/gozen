@@ -2,6 +2,7 @@ package play
 
 import (
 	"bufio"
+	"cmp"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -159,7 +160,7 @@ func (g *Game) traceStart() error {
 	if o.Review {
 		setup.Unsupported = append(setup.Unsupported, "review")
 	}
-	g.emit("start", traceLine{"version": traceVersion, "game": g.db.Game.Title, "seed": o.Seed,
+	g.emit("start", traceLine{"version": traceVersion, "game": g.db.Game.Title, "language": cmp.Or(g.db.Game.Language, lang.English), "seed": o.Seed,
 		"screen":   []int{g.db.Game.Screen.Width, g.db.Game.Screen.Height},
 		"location": o.Location, "party": o.Party, "level": o.Level, "flags": o.Flags, "gold": o.Gold, "items": o.Items, "calm": o.Calm,
 		"floor": o.Floor, "battle": o.Battle, "speed": max(1, o.Speed), "gallery_all": o.GalleryAll,

@@ -326,6 +326,9 @@ func New(opts Options) (_ *Game, err error) {
 	if opts.ReplayBattle < 0 || (opts.ReplayBattle > 0 && (opts.Replay == "" || opts.Until != 0)) {
 		return nil, errors.New(lang.T("--replay-battle は --replay と正の戦闘番号を指定し、--until と併用しない"))
 	}
+	if err := data.UseWords(opts.FS); err != nil {
+		return nil, err
+	}
 	db, err := data.Load(opts.FS)
 	if err != nil {
 		return nil, err
@@ -333,7 +336,9 @@ func New(opts Options) (_ *Game, err error) {
 	if db.Game.Screen.Width <= 0 || db.Game.Screen.Height <= 0 {
 		return nil, errors.New("play: screen dimensions must be positive")
 	}
-	lang.Use(db.Game.Text)
+	if err := lang.Use(db.Game.Language, db.Game.Text); err != nil {
+		return nil, err
+	}
 	var rep *replay
 	if opts.Replay != "" {
 		if rep, err = loadReplay(opts.Replay, &opts); err != nil {

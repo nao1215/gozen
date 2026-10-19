@@ -625,7 +625,7 @@ func (r *cgReview) drawInfo(g *Game, dst *ebiten.Image, it reviewItem) {
 	}
 	slot := it.slot
 	if it.title != "" {
-		slot += "（" + it.title + "）"
+		slot += fmt.Sprintf(lang.T("（%s）"), it.title)
 	}
 	var tags []string
 	for _, t := range g.db.Game.CGReview.Tags {

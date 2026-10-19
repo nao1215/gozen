@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/layer2/gamedata"
+
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/internal/clihelp"
 
@@ -36,6 +38,9 @@ func (c *command) sim(args []string) error {
 	dir, troop := fs.Arg(0), fs.Arg(1)
 	if *n <= 0 || *maxTurns <= 0 || *level < 0 {
 		return cli.Invalid("--battles and --turns must be positive; --level must be nonnegative")
+	}
+	if err := gamedata.UseWords(os.DirFS(dir)); err != nil {
+		return err
 	}
 	db, err := data.Load(os.DirFS(dir), ".")
 	if err != nil {

@@ -6,6 +6,8 @@ import (
 	"github.com/nao1215/gozen/cmd/gozen/internal/designeval"
 	"github.com/nao1215/gozen/internal/layer1/memo"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+
+	lang "github.com/nao1215/gozen/text"
 )
 
 func designMemos(root, run string, db *data.DB, cfg *designeval.Config, runs []*designeval.Run, sums []designeval.Summary) ([]string, error) {
@@ -43,13 +45,13 @@ func designMemos(root, run string, db *data.DB, cfg *designeval.Config, runs []*
 			return err
 		}
 		for _, sp := range s.Dry.Top {
-			if err := write(cfg.Memos.Dry, fmt.Sprintf("何も起きない時間が %s 続いた（ご褒美も期待も無い）。%s、%d 日目、遊び始めから %s。", minutes(sp.Len), sp.At, sp.Day, minutes(sp.From)),
+			if err := write(cfg.Memos.Dry, fmt.Sprintf(lang.T("何も起きない時間が %s 続いた（ご褒美も期待も無い）。%s、%d 日目、遊び始めから %s。"), minutes(sp.Len), sp.At, sp.Day, minutes(sp.From)),
 				snapAt(r, sp.From*60), map[string]any{"dry_min": sp.Len, "from_min": sp.From}); err != nil {
 				return out, err
 			}
 		}
 		if g := s.Gap; g.N > 0 {
-			if err := write(cfg.Memos.Gap, fmt.Sprintf("ご褒美の間隔がいちばん長い所（%s）。%s、%d 日目、遊び始めから %s。", minutes(g.Max), g.At, g.Day, minutes(g.From)),
+			if err := write(cfg.Memos.Gap, fmt.Sprintf(lang.T("ご褒美の間隔がいちばん長い所（%s）。%s、%d 日目、遊び始めから %s。"), minutes(g.Max), g.At, g.Day, minutes(g.From)),
 				snapAt(r, g.From*60), map[string]any{"gap_min": g.Max, "from_min": g.From}); err != nil {
 				return out, err
 			}
@@ -58,14 +60,14 @@ func designMemos(root, run string, db *data.DB, cfg *designeval.Config, runs []*
 			if !b.Measured || b.Rate >= cfg.Memos.BossBelow {
 				continue
 			}
-			if err := write(cfg.Memos.Boss, fmt.Sprintf("B%dF の番人 %s に、着いたときの勝率 %.0f%%（平均 Lv%d）。勝率を上げるのに %d 戦足した。", b.Floor, b.Name, 100*b.Rate, b.Level, b.Grind),
+			if err := write(cfg.Memos.Boss, fmt.Sprintf(lang.T("B%dF の番人 %s に、着いたときの勝率 %.0f%%（平均 Lv%d）。勝率を上げるのに %d 戦足した。"), b.Floor, b.Name, 100*b.Rate, b.Level, b.Grind),
 				b.At, map[string]any{"boss": b.Troop, "rate": b.Rate, "level": b.Level, "grind": b.Grind}); err != nil {
 				return out, err
 			}
 		}
 		for i := range r.Stuck[:min(5, len(r.Stuck))] {
 			sn := &r.Stuck[i]
-			if err := write(cfg.Memos.Stuck, fmt.Sprintf("つまずいた: %s（%s、%d 日目）。", sn.Note, sn.Place, sn.Day), sn, map[string]any{"note": sn.Note}); err != nil {
+			if err := write(cfg.Memos.Stuck, fmt.Sprintf(lang.T("つまずいた: %s（%s、%d 日目）。"), sn.Note, sn.Place, sn.Day), sn, map[string]any{"note": sn.Note}); err != nil {
 				return out, err
 			}
 		}

@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nao1215/gozen/internal/layer2/gamedata"
+
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/layer2/assetpolicy"
@@ -24,6 +26,8 @@ import (
 	"github.com/goccy/go-yaml"
 
 	"github.com/nao1215/gozen/assetfs"
+
+	lang "github.com/nao1215/gozen/text"
 )
 
 type shotList struct {
@@ -101,6 +105,9 @@ func (c *command) shots(args []string) (err error) {
 		return err
 	}
 	gameDir, err = filepath.Abs(gameDir)
+	if err := gamedata.UseWords(os.DirFS(gameDir)); err != nil {
+		return err
+	}
 	if err != nil {
 		return err
 	}
@@ -187,7 +194,7 @@ func (c *command) shots(args []string) (err error) {
 	for _, r := range results {
 		n[r.Status]++
 	}
-	c.out.Printf("%s: 撮れた %d、承認待ち %d、失敗 %d（%s）\n", *out, n["ok"], n["approval_wait"], n["failed"], filepath.Join(*out, "index.html"))
+	c.out.Printf("%s: %d shot, %d awaiting approval, %d failed (%s)\n", *out, n["ok"], n["approval_wait"], n["failed"], filepath.Join(*out, "index.html"))
 	if n["failed"] > 0 || n["approval_wait"] > 0 {
 		return fmt.Errorf("shots: %d failed, %d awaiting approval", n["failed"], n["approval_wait"])
 	}
@@ -206,7 +213,7 @@ func readShotList(p string) (*shotList, error) {
 	seen := map[string]bool{}
 	for i, it := range l.Shots {
 		if !cli.ID(it.ID) || seen[it.ID] {
-			return nil, fmt.Errorf("%s: shots[%d]: id が無いか重なる（%q）", p, i, it.ID)
+			return nil, fmt.Errorf("%s: shots[%d]: the id is missing or repeated (%q)", p, i, it.ID)
 		}
 		seen[it.ID] = true
 		if it.Wait < 0 || it.Line < 0 || it.Floor < 0 || it.Level < 0 {
@@ -221,10 +228,10 @@ func readShotList(p string) (*shotList, error) {
 			return nil, fmt.Errorf("%s: invalid picture path", it.ID)
 		}
 		if it.Scene != "" && it.Event != "" {
-			return nil, fmt.Errorf("%s: %s: scene と event は 1 つだけ", p, it.ID)
+			return nil, fmt.Errorf("%s: %s: give only one of scene and event", p, it.ID)
 		}
 		if it.Scene == "" && it.Event == "" && it.Start == "" {
-			return nil, fmt.Errorf("%s: %s: scene・event・start のどれかが要る", p, it.ID)
+			return nil, fmt.Errorf("%s: %s: give scene, event or start", p, it.ID)
 		}
 	}
 	if len(l.Shots) == 0 {
@@ -326,12 +333,12 @@ func shootOne(r *shotResult, it shotItem, list *shotList, bin, gameDir, out, nam
 	}
 	r.Pictures, r.Line = tr.pictures, tr.line
 	if (it.Scene != "" || it.Event != "") && tr.ready != "line" {
-		fail("台詞まで進めなかった（%s。line %d・picture %s を見直す）", orDash(tr.ready), it.Line, orDash(it.Picture))
+		fail("did not reach the line (%s; check line %d and picture %s)", orDash(tr.ready), it.Line, orDash(it.Picture))
 		return
 	}
 	png0 := filepath.Join(work, "shot.png")
 	if _, err := os.Stat(png0); err != nil {
-		fail("画面を撮れなかった（%s）", filepath.Join(work, "game.stderr.log"))
+		fail("could not capture the screen (%s)", filepath.Join(work, "game.stderr.log"))
 		return
 	}
 	if gate != nil {
@@ -451,10 +458,10 @@ func shotRepeats(items []shotItem) []string {
 	for i := 1; i < len(items); i++ {
 		a, b := items[i-1], items[i]
 		if a.Phase != "" && a.Phase == b.Phase {
-			out = append(out, fmt.Sprintf("%s と %s が同じ段階 %s", a.ID, b.ID, a.Phase))
+			out = append(out, fmt.Sprintf(lang.T("%s と %s が同じ段階 %s"), a.ID, b.ID, a.Phase))
 		}
 		if a.Pose != "" && a.Pose == b.Pose {
-			out = append(out, fmt.Sprintf("%s と %s が同じ構図 %s", a.ID, b.ID, a.Pose))
+			out = append(out, fmt.Sprintf(lang.T("%s と %s が同じ構図 %s"), a.ID, b.ID, a.Pose))
 		}
 	}
 	return out
@@ -472,7 +479,7 @@ func writeShotIndex(out string, list *shotList, rs []shotResult, raw bool) error
 	e := html.EscapeString
 	title := list.Title
 	if title == "" {
-		title = "スクリーンショット"
+		title = lang.T("スクリーンショット")
 	}
 	appendText(&b, "<!doctype html><meta charset=utf-8><title>"+e(title)+"</title>\n<style>body{font-family:sans-serif;background:#222;color:#ddd;margin:24px}"+
 		"table{border-collapse:collapse}td,th{border:1px solid #555;padding:6px;vertical-align:top}img{width:480px}a{color:#9cf}.w{color:#fc6}.f{color:#f77}</style>\n")
@@ -480,21 +487,21 @@ func writeShotIndex(out string, list *shotList, rs []shotResult, raw bool) error
 	appendText(&b, "<h1>"+e(title)+"</h1>\n")
 
 	if raw {
-		appendText(&b, "<p class=f>承認未検査の版（--raw）。手元で場面を見るだけの物で、紹介ページに使わない。</p>\n")
+		appendText(&b, "<p class=f>"+e(lang.T("承認未検査の版（--raw）。手元で場面を見るだけの物で、紹介ページに使わない。"))+"</p>\n")
 
 	}
 	n := map[string]int{}
 	for _, r := range rs {
 		n[r.Status]++
 	}
-	appendf(&b, "<p>撮れた %d 枚、承認待ち %d 枚、失敗 %d 枚。%s に作った。</p>\n", n["ok"], n["approval_wait"], n["failed"], time.Now().Format("2006-01-02 15:04"))
+	appendText(&b, "<p>"+e(fmt.Sprintf(lang.T("撮れた %d 枚、承認待ち %d 枚、失敗 %d 枚。%s に作った。"), n["ok"], n["approval_wait"], n["failed"], time.Now().Format("2006-01-02 15:04")))+"</p>\n")
 
 	var items []shotItem
 	for _, r := range rs {
 		items = append(items, r.item)
 	}
 	if rep := shotRepeats(items); len(rep) > 0 {
-		appendText(&b, "<p class=w>並びの重なり: "+e(strings.Join(rep, "、"))+"</p>\n")
+		appendText(&b, "<p class=w>"+e(fmt.Sprintf(lang.T("並びの重なり: %s"), strings.Join(rep, lang.T("、"))))+"</p>\n")
 
 	}
 	row := func(r shotResult) {
@@ -508,34 +515,34 @@ func writeShotIndex(out string, list *shotList, rs []shotResult, raw bool) error
 		appendText(&b, "</td><td><b>"+e(it.Title)+"</b><br>id "+e(it.ID))
 
 		if it.Who != "" {
-			appendText(&b, "<br>人物 "+e(it.Who))
+			appendText(&b, "<br>"+e(fmt.Sprintf(lang.T("人物 %s"), it.Who)))
 
 		}
 		if it.Phase != "" || it.Pose != "" {
-			appendText(&b, "<br>段階 "+e(orDash(it.Phase))+"・構図 "+e(orDash(it.Pose)))
+			appendText(&b, "<br>"+e(fmt.Sprintf(lang.T("段階 %s・構図 %s"), orDash(it.Phase), orDash(it.Pose))))
 
 		}
 		var where []string
 		if it.Scene != "" {
-			where = append(where, "回想「"+it.Scene+"」")
+			where = append(where, fmt.Sprintf(lang.T("回想「%s」"), it.Scene))
 		}
 		if it.Event != "" {
-			where = append(where, "イベント "+it.Event)
+			where = append(where, fmt.Sprintf(lang.T("イベント %s"), it.Event))
 		}
 		if it.Picture != "" {
-			where = append(where, fmt.Sprintf("%s の %d 行目", it.Picture, max(1, it.Line)))
+			where = append(where, fmt.Sprintf(lang.T("%s の %d 行目"), it.Picture, max(1, it.Line)))
 		}
 		if it.Start != "" {
-			s := "場所 " + it.Start
+			s := fmt.Sprintf(lang.T("場所 %s"), it.Start)
 			if it.Floor > 0 {
 				s += fmt.Sprintf(" B%d", it.Floor)
 			}
 			if it.Battle != "" {
-				s += " 戦闘 " + it.Battle
+				s += fmt.Sprintf(lang.T(" 戦闘 %s"), it.Battle)
 			}
 			where = append(where, s)
 		}
-		appendText(&b, "<br>"+e(strings.Join(where, "、")))
+		appendText(&b, "<br>"+e(strings.Join(where, lang.T("、"))))
 
 		if it.Note != "" {
 			appendText(&b, "<br>"+e(it.Note))
@@ -555,7 +562,7 @@ func writeShotIndex(out string, list *shotList, rs []shotResult, raw bool) error
 		appendText(&b, "</td></tr>\n")
 
 	}
-	for _, st := range []struct{ status, head string }{{"ok", "撮れた物"}, {"approval_wait", "承認待ち（制作記録と素材を確かめて撮り直す）"}, {"failed", "撮れなかった物"}} {
+	for _, st := range []struct{ status, head string }{{"ok", lang.T("撮れた物")}, {"approval_wait", lang.T("承認待ち（制作記録と素材を確かめて撮り直す）")}, {"failed", lang.T("撮れなかった物")}} {
 		if n[st.status] == 0 {
 			continue
 		}

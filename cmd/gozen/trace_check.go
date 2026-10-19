@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
+
+	lang "github.com/nao1215/gozen/text"
 )
 
 type traceIssue struct {
@@ -78,7 +80,7 @@ func (c *traceChecker) add(tick int, kind, format string, a ...any) {
 
 func (c *traceChecker) say() string {
 	if c.sayWho != "" {
-		return c.sayWho + "「" + c.sayText + "」"
+		return c.sayWho + fmt.Sprintf(lang.T("「%s」"), c.sayText)
 	}
 	return c.sayText
 }
@@ -95,6 +97,9 @@ func (c *traceChecker) line(l map[string]any, raw []byte) error {
 	tick := int(num(l["tick"]))
 	switch k {
 	case "start":
+		if err := useTraceLanguage(l); err != nil {
+			return err
+		}
 		if s := num(l["speed"]); s > 1 {
 			c.speed = s
 		}
@@ -130,7 +135,7 @@ func (c *traceChecker) stand(s standLine) {
 		}
 		key := fmt.Sprintf("%d|%s", s.Set, f.ID)
 		if x, ok := c.pos[key]; ok && x != f.X {
-			c.add(s.Since, "moved", "%s の立ち位置が会話の途中で %.2f から %.2f に動いた（直前の台詞: %s）", who(f.ID), x, f.X, c.say())
+			c.add(s.Since, "moved", lang.T("%s の立ち位置が会話の途中で %.2f から %.2f に動いた（直前の台詞: %s）"), who(f.ID), x, f.X, c.say())
 		}
 		pos[key] = f.X
 	}
@@ -154,7 +159,7 @@ func (c *traceChecker) stand(s standLine) {
 	}
 	for _, f := range s.Figures {
 		if !f.Leaving && f.Alpha >= 0.5 && c.carried[f.ID] && !c.spoke[f.ID] {
-			c.add(s.Since, "left-over", "背景が替わったのに %s が舞台に残っている（背景 %s、直前の台詞: %s）", who(f.ID), bgName(s), c.say())
+			c.add(s.Since, "left-over", lang.T("背景が替わったのに %s が舞台に残っている（背景 %s、直前の台詞: %s）"), who(f.ID), bgName(s), c.say())
 			delete(c.carried, f.ID)
 		}
 	}
@@ -165,7 +170,7 @@ func (c *traceChecker) stand(s standLine) {
 		for _, f := range s.Figures {
 			ids = append(ids, who(f.ID))
 		}
-		c.add(s.Since, "over-cg", "一枚絵 %s の上に立ち絵（%s）が見えた（直前の台詞: %s）", s.CG, strings.Join(ids, "・"), c.say())
+		c.add(s.Since, "over-cg", lang.T("一枚絵 %s の上に立ち絵（%s）が見えた（直前の台詞: %s）"), s.CG, strings.Join(ids, lang.T("・")), c.say())
 	}
 
 	if s.Speaker != "" && s.Standing && !s.Fading {
@@ -180,10 +185,10 @@ func (c *traceChecker) stand(s standLine) {
 			switch {
 			case !s.Hides:
 				c.reported[key] = true
-				c.add(s.Since, "no-stand", "話している %s の立ち絵が出ていない（%s）", who(s.Speaker), c.say())
+				c.add(s.Since, "no-stand", lang.T("話している %s の立ち絵が出ていない（%s）"), who(s.Speaker), c.say())
 			case s.CGBG:
 				c.reported[key] = true
-				c.add(s.Since, "no-stand", "場所の背景 %s が立ち絵を隠したまま %s が話す（faces: true が要る。%s）", s.CG, who(s.Speaker), c.say())
+				c.add(s.Since, "no-stand", lang.T("場所の背景 %s が立ち絵を隠したまま %s が話す（faces: true が要る。%s）"), s.CG, who(s.Speaker), c.say())
 			}
 		}
 	}
@@ -204,7 +209,7 @@ func (c *traceChecker) music(l map[string]any, tick int) {
 	wanted := str(l["wanted"])
 	if wanted != c.wantSong {
 		if c.waiting && c.late(tick-c.wantAt) {
-			c.add(c.wantAt, "music-late", "曲 %s を頼んでから %.1f 秒鳴らないまま次の曲 %q を頼んだ", c.wantSong, float64(tick-c.wantAt)/60/c.speed, wanted)
+			c.add(c.wantAt, "music-late", lang.T("曲 %s を頼んでから %.1f 秒鳴らないまま次の曲 %q を頼んだ"), c.wantSong, float64(tick-c.wantAt)/60/c.speed, wanted)
 		}
 		c.wantSong = wanted
 		c.wantAt = int(num(l["asked_at"]))
@@ -216,14 +221,14 @@ func (c *traceChecker) music(l map[string]any, tick int) {
 	if w, ok := l["wait"]; ok {
 		c.waiting = false
 		if c.late(int(num(w))) {
-			c.add(c.wantAt, "music-late", "曲 %s を頼んでから鳴り始めるまで %.1f 秒（直前の台詞: %s）", str(l["song"]), num(w)/60/c.speed, c.say())
+			c.add(c.wantAt, "music-late", lang.T("曲 %s を頼んでから鳴り始めるまで %.1f 秒（直前の台詞: %s）"), str(l["song"]), num(w)/60/c.speed, c.say())
 		}
 	}
 }
 
 func (c *traceChecker) musicEnd(tick int) {
 	if c.waiting && c.late(tick-c.wantAt) {
-		c.add(c.wantAt, "music-late", "曲 %s を頼んだが終わりまで鳴らなかった（%.1f 秒）", c.wantSong, float64(tick-c.wantAt)/60/c.speed)
+		c.add(c.wantAt, "music-late", lang.T("曲 %s を頼んだが終わりまで鳴らなかった（%.1f 秒）"), c.wantSong, float64(tick-c.wantAt)/60/c.speed)
 	}
 	c.waiting = false
 }
@@ -260,8 +265,8 @@ func checkTrace(path string, musicLate float64, w io.Writer) (n int, err error) 
 		output.Printf("%02d:%05.2f %-10s %s\n", int(sec)/60, sec-float64(int(sec)/60*60), is.kind, is.text)
 	}
 	if c.stands == 0 && c.sayN > 0 {
-		output.Println("stand の行が無い（古い trace か、会話の窓を描いていない）。立ち絵は調べていない")
+		output.Println(lang.T("stand の行が無い（古い trace か、会話の窓を描いていない）。立ち絵は調べていない"))
 	}
-	output.Printf("check: %d 件（台詞 %d、stand %d）\n", len(c.issues), c.sayN, c.stands)
+	output.Printf(lang.T("check: %d 件（台詞 %d、stand %d）\n"), len(c.issues), c.sayN, c.stands)
 	return len(c.issues), output.Err
 }

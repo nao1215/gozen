@@ -438,7 +438,7 @@ func (s *galleryScreen) update(g *Game) {
 	}
 	sc := gal.Scenes[s.menu.sel]
 	if len(sc.Pages) > 0 {
-		items := []listItem{{label: lang.T("はじめから")}}
+		items := []listItem{{label: lang.T("最初から")}}
 		for _, page := range sc.Pages {
 			items = append(items, listItem{label: page.Title})
 		}

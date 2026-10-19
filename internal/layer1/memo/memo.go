@@ -41,6 +41,9 @@ type Memo struct {
 	Tick    int     `json:"tick"`
 	Seed    uint64  `json:"seed,omitempty"`
 	Game    string  `json:"game,omitempty"`
+	// Language is the language of the engine's words when the note was written (en, ja).
+	// Notes written before it was recorded have none and were written in Japanese.
+	Language string `json:"language,omitempty"`
 
 	Location string         `json:"location,omitempty"`
 	Place    string         `json:"place,omitempty"`

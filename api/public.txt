@@ -582,6 +582,7 @@ github.com/nao1215/gozen/data field Game.Gallery
 github.com/nao1215/gozen/data field Game.GameOver
 github.com/nao1215/gozen/data field Game.ID
 github.com/nao1215/gozen/data field Game.JoinExp
+github.com/nao1215/gozen/data field Game.Language
 github.com/nao1215/gozen/data field Game.MaxParty
 github.com/nao1215/gozen/data field Game.Memo
 github.com/nao1215/gozen/data field Game.Meters
@@ -1682,6 +1683,8 @@ github.com/nao1215/gozen/sound func Load
 github.com/nao1215/gozen/sound method Clip.Play
 github.com/nao1215/gozen/sound package sound
 github.com/nao1215/gozen/sound type Clip
+github.com/nao1215/gozen/text const English
+github.com/nao1215/gozen/text const Japanese
 github.com/nao1215/gozen/text func T
 github.com/nao1215/gozen/text func Use
 github.com/nao1215/gozen/text package text
