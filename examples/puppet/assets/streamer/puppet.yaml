@@ -1,0 +1,25 @@
+# The streamer of the puppet example. Coordinates are pixels of streamer.png.
+base: streamer.png
+face: smile
+faces:
+  smile: {}
+  surprised:
+    image: surprised.png
+    at: [214, 230]
+    eyes: {off: true}   # the surprised face has its own wide eyes and open mouth
+    mouth: {off: true}
+eyes:
+  closed: {image: eyes_closed.png, at: [227, 265]}
+  every: [2, 5.5]
+  double: 0.25
+mouth:
+  frames:
+    - {image: mouth_closed.png, at: [300, 381]}
+    - {image: mouth_half.png, at: [300, 381]}
+    - face              # the open mouth of the base picture
+  speed: 11
+head: {center: [373, 281], radius: 216, neck: [373, 590]}
+hair:
+  - rect: [108, 178, 157, 379]
+  - rect: [465, 178, 178, 379]
+  - rect: [227, 0, 108, 114]
