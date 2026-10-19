@@ -14,7 +14,12 @@ Changes before the first public release are tracked under Unreleased. All packag
 - CI for lint, unit tests across three operating systems and minimum/stable Go versions, graphics, CLI contracts, native and cross-builds, examples, race detection, govulncheck and CodeQL.
 - A development balance panel (F7 with `--dev`): win rate, HP left after a win and win rate by level for the battles at the current location, measured inside the game loop with the same functions and seeds as `gozen sim`, and measured again after a hot reload. `gozen sim` gains `--state` (start from a saved state such as an F9 note's `.save`), `--as-is` (keep its HP, MP and states), `--hp` and `--streak`. When the party is hurt the panel puts the current-HP win rate under the healed one and shows how many wins in a row the current HP lasts.
 - GNU-style options for the gozen command, its prompt and mosaic subcommands and the game runner: `--name value` and `--name=value`, one-letter forms for common options (`-n`, `-o`, `-v`, `-h`), options before or after arguments, and `--` to end them. Single-dash long options such as `-seed` are rejected. Every `--help` has the same shape: a title line with the version, [Usage], [Examples], grouped [Options], notes with the requirements, and the project links.
+- The engine's own words (menus, battle messages, settings, saves, gallery, development panels) come in English and Japanese. `language: en` (the default) or `language: ja` in game.yaml picks them, and `text` lays the game's own wording on top. A test keeps the English list in step with every key the code shows. `text.Use` now takes the language (`text.English`, `text.Japanese`). `gozen book`, `design`, `memos`, `shots` and `trace` write their documents in the game's language; gozen's own diagnostics are English. `gozen check` warns when `language` is unset but the game is written in Japanese, and when the regular font lacks letters of the chosen words.
 - Contribution and security reporting guidance, plus Dependabot updates for Go modules and GitHub Actions.
+
+### Changed
+
+- Breaking: a game without `language` now shows the engine's words in English. Japanese games add `language: ja` to game.yaml. Wayfinder sets `language: en` and keeps only its own wording in `text`.
 
 ### Verification limits
 

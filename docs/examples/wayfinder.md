@@ -45,7 +45,7 @@ The ridge path is hidden until its marker is lit. Revisiting the ridge after loa
 
 Normal saves use the platform config directory under `gozen/wayfinder-demo`: typically `$XDG_CONFIG_HOME` or `~/.config` on Linux, `%AppData%` on Windows, and `~/Library/Application Support` on macOS. An explicit `--save-dir` is the complete destination. The scripted capture uses a private temporary directory and removes it when finished. A development run with `--start` also isolates saves unless a destination is explicit (`runner/runner.go:128`, `internal/play/play.go:356`).
 
-The bundled Go Regular font supports the English sample text. Some optional settings and status labels still use the engine's Japanese defaults. Full localization and a larger font are left to the game author. Main journey dialogue, battle commands and save prompts have English overrides in `examples/play/game/game.yaml:18`.
+The bundled Go Regular font supports the English sample text. `language: en` in `examples/play/game/game.yaml:5` gives the engine's English words; `text:` keeps only Wayfinder's own wording (its battles are practice bouts). Go Regular has no glyph for a few symbols the engine draws (the ◀ ▶ arrows of the settings and the shop, ★), which show as boxes; a larger font is left to the game author.
 
 ## Capture
 

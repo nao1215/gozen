@@ -172,7 +172,7 @@ gozen trace run.jsonl --check
 
 ## book
 
-Writes the locations, events, scenes, troops and items of the game to stdout as one Markdown document. A quick way to review a whole game, or what an agent wrote. The section headings are currently in Japanese.
+Writes the locations, events, scenes, troops and items of the game to stdout as one Markdown document. A quick way to review a whole game, or what an agent wrote. The headings follow the game's `language`.
 
 ```shell
 gozen book game > book.md

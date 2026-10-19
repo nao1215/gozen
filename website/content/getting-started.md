@@ -133,47 +133,19 @@ func main() {
 }
 ```
 
-`game/game.yaml` names the game, the font and the start. Gozen's built-in menu and battle messages are Japanese; the `text` map replaces them, so an English game lists them here. [Wayfinder's game.yaml](https://github.com/nao1215/gozen/blob/main/examples/play/game/game.yaml) has a longer list, including the dungeon and the balance panel.
+`game/game.yaml` names the game, the font and the start. `language: en` gives Gozen's built-in menus and battle messages in English (`ja` gives Japanese; English is the default). The `text` map changes any of them to the game's own wording; its keys are the engine's Japanese source text, listed in [the English catalog](https://github.com/nao1215/gozen/blob/main/internal/text/catalog/english.go).
 
 ```yaml
 schema_version: 1
 id: first-steps
 title: First steps
+language: en
 screen: {width: 960, height: 540}
 fonts: {regular: regular.ttf}
 start: {location: village, party: [hero]}
 terms: {currency: G, level: Lv., hp: HP, mp: MP, exp: EXP}
 text:
-  はじめから: New game
-  つづきから: Continue
-  ギャラリー: Gallery
-  せってい: Settings
-  おわる: Quit
-  セーブ: Save
-  ロード: Load
-  もどる: Back
-  メニュー: Menu
-  '話す：': 'Talk: '
-  ステータス: Status
-  どうぐ: Items
-  スキル: Skills
-  そうび: Equipment
-  タイトルへ: Return to title
-  とじる: Close
-  オート: Auto
-  たたかう: Fight
-  にげる: Escape
-  こうげき: Attack
-  ぼうぎょ: Guard
-  'Z / Enter: けってい   X / Esc: もどる   O: せってい   M: ミュート   F11: ぜんがめん': 'Enter: choose   Esc: back   O: settings   M: mute   F11: fullscreen'
-  'は どうする？': ': choose an action'
-  'たたかいに かった！': 'Victory!'
-  '{first}が あらわれた！': '{first} appears!'
-  '{first}たちが あらわれた！': '{first}s appear!'
-  '{target}に {amount}の ダメージ！': '{target} takes {amount} damage.'
-  '{target}は {amount}の ダメージを うけた！': '{target} takes {amount} damage.'
-  '{target}を たおした！': '{target} is defeated.'
-  '%d%sを てにいれた！': 'Received %d%s.'
+  はじめから: Begin the tale
 ```
 
 `game/data/world.yaml` holds the rest. Any number of files in `data/` are merged:

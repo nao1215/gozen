@@ -324,7 +324,7 @@ func stoneOfferIssues(db *data.DB) []msgIssue {
 			longest = lang.T("空いた枠には、強い石を回しておく。")
 		}
 		text := fmt.Sprintf(lang.T("%s　%s → %s"), db.Actors[id].Name, worst, worst) + "\n" + longest
-		out = append(out, sayIssue(&db.Game, "（石屋の勧め "+id+"）", 0, text)...)
+		out = append(out, sayIssue(&db.Game, fmt.Sprintf(lang.T("（石屋の勧め %s）"), id), 0, text)...)
 	}
 	return out
 }
@@ -357,7 +357,7 @@ func spOfferIssues(db *data.DB) []msgIssue {
 			}
 		}
 		if worst != "" {
-			out = append(out, sayIssue(&db.Game, "（修練所の勧め "+id+"）", 0, worst)...)
+			out = append(out, sayIssue(&db.Game, fmt.Sprintf(lang.T("（修練所の勧め %s）"), id), 0, worst)...)
 		}
 	}
 	return out

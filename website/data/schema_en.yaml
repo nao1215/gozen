@@ -3,6 +3,8 @@
 # The site build fails when a cell with Japanese text has no entry here.
 # v0 and v1 are schema_version 0 and schema_version 1.
 cells:
+  "en（英語）": "`en` (English)"
+  "en（英語）・ja（日本語）": "`en` (English) or `ja` (Japanese)"
   ".（床）": "`.` (floor)"
   "0（template の Rule 変換時に１）": "0 (1 when a template is turned into a rule)"
   "0（全頁を順に表示）": "0 (show every page in order)"
@@ -60,7 +62,7 @@ cells:
   "states または bad": "`states` or `bad`"
   "stone_sets の ID を返す式": "expression that returns a `stone_sets` ID"
   "template で必須": "required for template"
-  "text の辞書の原文": "source text of the text dictionary"
+  "text の辞書の原文（キーはエンジンの日本語の文言）。language の文言の上に重ねる": "the engine's words, keyed by their Japanese source text; laid over the words of `language`"
   "tiles の文字": "character of tiles"
   "tiles または組込み文字": "character of tiles or a built-in one"
   "to・do のいずれか必須": "to or do is required"
