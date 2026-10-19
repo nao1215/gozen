@@ -15,6 +15,7 @@ import (
 	"github.com/goccy/go-yaml"
 
 	"github.com/nao1215/gozen/assetfs"
+	"github.com/nao1215/gozen/internal/layer1/decodeguard"
 )
 
 type Approval = assetfs.Approval
@@ -56,7 +57,7 @@ func Load(base fs.FS, name string) (Policy, error) {
 	}
 	// 書かれた設定は全体で受け取り、標準形式の項目が紛れ込まないようにする。
 	p = Policy{}
-	if err := yaml.UnmarshalWithOptions(b, &p, yaml.Strict()); err != nil {
+	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &p, yaml.Strict()) }); err != nil {
 		return p, err
 	}
 	if !fs.ValidPath(p.Report) || p.Records.File == "" || p.Records.Source == "" || p.Inspection.File == "" || (p.Inspection.Approved == "" && (p.Inspection.Status == "" || len(p.Inspection.Accepted) == 0)) {

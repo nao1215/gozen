@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nao1215/gozen/internal/layer1/decodeguard"
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
@@ -207,7 +208,7 @@ func readShotList(p string) (*shotList, error) {
 		return nil, err
 	}
 	var l shotList
-	if err := yaml.UnmarshalWithOptions(b, &l, yaml.Strict()); err != nil {
+	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &l, yaml.Strict()) }); err != nil {
 		return nil, fmt.Errorf("%s: %w", p, err)
 	}
 	seen := map[string]bool{}

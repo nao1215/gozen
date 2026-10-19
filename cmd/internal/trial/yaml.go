@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
+
+	"github.com/nao1215/gozen/internal/layer1/decodeguard"
 )
 
 type files map[string]any
@@ -37,7 +39,7 @@ func readFiles(fsys fs.FS) (files, error) {
 			return nil, err
 		}
 		var v any
-		if err := yaml.UnmarshalWithOptions(b, &v, yaml.UseOrderedMap()); err != nil {
+		if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &v, yaml.UseOrderedMap()) }); err != nil {
 			return nil, fmt.Errorf("%s: %w", p, err)
 		}
 		out[p] = v

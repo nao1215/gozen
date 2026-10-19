@@ -10,6 +10,7 @@ import (
 	"github.com/goccy/go-yaml"
 
 	"github.com/nao1215/gozen/expr"
+	"github.com/nao1215/gozen/internal/layer1/decodeguard"
 )
 
 // Built-in tags that the analyzers attach besides the lexicon tags.
@@ -152,7 +153,7 @@ func Load(fsys fs.FS, path string) (*Book, error) {
 // Parse reads and validates a book from YAML.
 func Parse(b []byte) (*Book, error) {
 	var bk Book
-	if err := yaml.UnmarshalWithOptions(b, &bk, yaml.Strict()); err != nil {
+	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &bk, yaml.Strict()) }); err != nil {
 		return nil, err
 	}
 	if err := bk.Validate(); err != nil {

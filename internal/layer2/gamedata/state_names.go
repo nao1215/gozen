@@ -10,6 +10,7 @@ import (
 	"github.com/goccy/go-yaml"
 
 	"github.com/nao1215/gozen/expr"
+	"github.com/nao1215/gozen/internal/layer1/decodeguard"
 	lang "github.com/nao1215/gozen/text"
 )
 
@@ -29,7 +30,7 @@ type StateName struct {
 func (d *StateName) UnmarshalYAML(b []byte) error {
 	type raw StateName
 	var value raw
-	if err := yaml.UnmarshalWithOptions(b, &value, yaml.Strict()); err != nil {
+	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &value, yaml.Strict()) }); err != nil {
 		return err
 	}
 	v := reflect.ValueOf(value.Initial)

@@ -11,6 +11,7 @@ import (
 	"github.com/goccy/go-yaml"
 
 	"github.com/nao1215/gozen/expr"
+	"github.com/nao1215/gozen/internal/layer1/decodeguard"
 	lang "github.com/nao1215/gozen/text"
 )
 
@@ -40,7 +41,7 @@ func Load(fsys fs.FS, name string) (*Config, error) {
 
 func Parse(b []byte) (*Config, error) {
 	var c Config
-	if err := yaml.UnmarshalWithOptions(b, &c, yaml.Strict(), yaml.UseOrderedMap()); err != nil {
+	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &c, yaml.Strict(), yaml.UseOrderedMap()) }); err != nil {
 		return nil, fmt.Errorf("trial: %s", yaml.FormatError(err, false, true))
 	}
 	for k, v := range c.Assume {

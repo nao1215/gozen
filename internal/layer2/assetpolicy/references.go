@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
+
+	"github.com/nao1215/gozen/internal/layer1/decodeguard"
 )
 
 // References は YAML の文字列から指定拡張子の素材を列挙し、パターンを展開する。
@@ -45,7 +47,7 @@ func References(base fs.FS, prefix string, extensions []string) (pics, missing [
 			return err
 		}
 		var v any
-		if err := yaml.Unmarshal(b, &v); err != nil {
+		if err := decodeguard.Run(func() error { return yaml.Unmarshal(b, &v) }); err != nil {
 			return err
 		}
 		walkStrings(v, func(s string) {

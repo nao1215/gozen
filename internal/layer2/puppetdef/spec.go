@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
+
+	"github.com/nao1215/gozen/internal/layer1/decodeguard"
 )
 
 // FaceKeyword in mouth frames means "the face picture's own mouth" (no overlay).
@@ -53,13 +55,13 @@ type Pic struct {
 // UnmarshalYAML accepts a bare path as well as the mapping.
 func (p *Pic) UnmarshalYAML(b []byte) error {
 	var s string
-	if err := yaml.Unmarshal(b, &s); err == nil {
+	if err := decodeguard.Run(func() error { return yaml.Unmarshal(b, &s) }); err == nil {
 		*p = Pic{Image: s}
 		return nil
 	}
 	type plain Pic
 	var v plain
-	if err := yaml.UnmarshalWithOptions(b, &v, yaml.Strict()); err != nil {
+	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &v, yaml.Strict()) }); err != nil {
 		return err
 	}
 	*p = Pic(v)
@@ -163,7 +165,7 @@ type Reaction struct {
 // Parse decodes and validates a puppet file.
 func Parse(b []byte) (*Spec, error) {
 	var s Spec
-	if err := yaml.UnmarshalWithOptions(b, &s, yaml.Strict()); err != nil {
+	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &s, yaml.Strict()) }); err != nil {
 		return nil, err
 	}
 	if err := s.Validate(); err != nil {

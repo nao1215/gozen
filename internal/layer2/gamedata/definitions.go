@@ -8,6 +8,8 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
+
+	"github.com/nao1215/gozen/internal/layer1/decodeguard"
 )
 
 // definitionShape は型への変換で失われる null を先に調べる。
@@ -154,7 +156,7 @@ func (doc *sourceDocument) decodeDefinitions(into any) (yaml.MapSlice, error) {
 		if typ == reflect.TypeFor[file]() {
 			return nil, nil
 		}
-	} else if err := yaml.NodeToValue(doc.root, &raw, yaml.UseOrderedMap()); err != nil {
+	} else if err := decodeguard.Run(func() error { return yaml.NodeToValue(doc.root, &raw, yaml.UseOrderedMap()) }); err != nil {
 		return nil, doc.yamlError(err)
 	}
 	where := ""
@@ -164,7 +166,7 @@ func (doc *sourceDocument) decodeDefinitions(into any) (yaml.MapSlice, error) {
 	if errs := doc.definitionShape(raw, typ, where); len(errs) > 0 {
 		return nil, joinDiagnostics(errs)
 	}
-	if err := yaml.NodeToValue(doc.root, into, yaml.Strict()); err != nil {
+	if err := decodeguard.Run(func() error { return yaml.NodeToValue(doc.root, into, yaml.Strict()) }); err != nil {
 		return nil, doc.definitionDecodeError(doc.root, typ, where, err)
 	}
 	// 位置だけを残し、ゲームの実行中に解析木を抱え続けない。
@@ -190,7 +192,7 @@ func (doc *sourceDocument) definitionDecodeError(node ast.Node, typ reflect.Type
 		for t.Kind() == reflect.Pointer {
 			t = t.Elem()
 		}
-		if e := yaml.NodeToValue(n, reflect.New(t).Interface(), yaml.Strict()); e != nil && e.Error() == err.Error() {
+		if e := decodeguard.Run(func() error { return yaml.NodeToValue(n, reflect.New(t).Interface(), yaml.Strict()) }); e != nil && e.Error() == err.Error() {
 			return doc.definitionDecodeError(n, t, w, e)
 		}
 		return nil

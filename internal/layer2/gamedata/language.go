@@ -5,6 +5,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 
+	"github.com/nao1215/gozen/internal/layer1/decodeguard"
 	"github.com/nao1215/gozen/internal/text/catalog"
 	lang "github.com/nao1215/gozen/text"
 )
@@ -19,7 +20,7 @@ func UseWords(fsys fs.FS) error {
 		Text     map[string]string `yaml:"text"`
 	}
 	if b, err := fs.ReadFile(fsys, "game.yaml"); err == nil {
-		if yaml.Unmarshal(b, &g) != nil {
+		if decodeguard.Run(func() error { return yaml.Unmarshal(b, &g) }) != nil {
 			g.Text = nil
 		}
 	}

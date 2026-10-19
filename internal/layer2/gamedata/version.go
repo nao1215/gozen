@@ -9,6 +9,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 
+	"github.com/nao1215/gozen/internal/layer1/decodeguard"
 	lang "github.com/nao1215/gozen/text"
 )
 
@@ -25,7 +26,7 @@ var gameIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 // 将来の項目があっても未知版の診断を優先し、null や文字列を０に丸めない。
 func checkVersionHeader(b []byte) error {
 	var raw yaml.MapSlice
-	if err := yaml.UnmarshalWithOptions(b, &raw, yaml.UseOrderedMap(), yaml.Strict()); err != nil {
+	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &raw, yaml.UseOrderedMap(), yaml.Strict()) }); err != nil {
 		return fmt.Errorf("game.yaml: %s", yaml.FormatError(err, false, true))
 	}
 	g := Game{}
