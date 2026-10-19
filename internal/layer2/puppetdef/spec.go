@@ -21,7 +21,7 @@ const FaceKeyword = "face"
 const DefaultFace = "default"
 
 // Reaction kinds understood by the presentation layer.
-var Kinds = []string{"hop", "shrink", "shake", "nod", "tilt"}
+var Kinds = []string{"hop", "shrink", "shake", "nod", "tilt", "freeze"}
 
 // Spec is one puppet file. Every coordinate is a pixel of the base picture with
 // the origin at its top left. Picture paths are relative to the YAML file.

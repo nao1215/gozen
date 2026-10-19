@@ -12,6 +12,8 @@ import (
 	"testing/fstest"
 
 	"github.com/goccy/go-yaml"
+
+	"github.com/nao1215/gozen/internal/layer2/puppetdef"
 )
 
 // Fixture pictures: a 120x160 figure. The base is a gray body with a face; the
@@ -390,5 +392,28 @@ func TestPackRoundTrip(t *testing.T) {
 		if name != "base.png" && img.Bounds().Dx()*img.Bounds().Dy()*4 > fw*fh {
 			t.Errorf("%s is %v, not cut down", name, img.Bounds())
 		}
+	}
+}
+
+// A freeze stops the idle motion while it plays and lets it go on afterwards.
+func TestFreeze(t *testing.T) {
+	m := NewMotion(load(t), seeded(1, 2), 60)
+	for range 30 {
+		m.Step()
+	}
+	m.React(puppetdef.Reaction{Kind: "freeze", Time: 0.5})
+	m.Step()
+	before := m.t
+	for range 20 {
+		m.Step()
+	}
+	if m.t != before || !m.frozen() {
+		t.Fatalf("time moved while frozen: %v -> %v", before, m.t)
+	}
+	for range 30 {
+		m.Step()
+	}
+	if m.frozen() || m.t == before {
+		t.Fatal("still frozen after its time")
 	}
 }

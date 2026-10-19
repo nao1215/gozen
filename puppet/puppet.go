@@ -102,7 +102,8 @@ func (p *Puppet) Speak() { p.p.Motion.Speak(true) }
 func (p *Puppet) Stop() { p.p.Motion.Speak(false) }
 
 // React plays a one-shot reaction: a name from the rig's reactions or one of the
-// built-in kinds hop, shrink, shake, nod and tilt. Reactions add up while playing.
+// built-in kinds hop, shrink, shake, nod, tilt and freeze (everything idles still for
+// a moment, as in a sudden silence). Reactions add up while playing.
 func (p *Puppet) React(name string) error {
 	r, ok := p.rig.r.Spec.ReactionOf(name)
 	if !ok {

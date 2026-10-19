@@ -180,7 +180,7 @@ func (m *Motion) React(r puppetdef.Reaction) {
 		a.amount = 1
 	}
 	if a.time == 0 {
-		a.time = map[string]float64{"hop": 0.45, "shrink": 0.5, "shake": 0.6, "nod": 0.5, "tilt": 1.4}[r.Kind]
+		a.time = map[string]float64{"hop": 0.45, "shrink": 0.5, "shake": 0.6, "nod": 0.5, "tilt": 1.4, "freeze": 1.5}[r.Kind]
 	}
 	if !(a.time > 0) { // an unknown kind: nothing to play
 		return
@@ -194,18 +194,25 @@ func (m *Motion) React(r puppetdef.Reaction) {
 // Step advances one update.
 func (m *Motion) Step() {
 	dt := m.dt
-	m.t += dt
+	frozen := m.frozen()
+	if !frozen {
+		m.t += dt
+	}
 	if m.fade < 1 {
 		m.fade = math.Min(1, m.fade+dt/m.p.fade)
 	}
-	m.stepBlink(dt)
+	if !frozen {
+		m.stepBlink(dt)
+	}
 	m.stepMouth(dt)
-	if m.speaking {
+	if m.speaking && !frozen {
 		m.talk = math.Min(1, m.talk+dt*4)
 	} else {
 		m.talk = math.Max(0, m.talk-dt*2)
 	}
-	m.stepTilt(dt)
+	if !frozen {
+		m.stepTilt(dt)
+	}
 	kept := m.reactions[:0]
 	for _, a := range m.reactions {
 		a.t += dt
@@ -214,7 +221,20 @@ func (m *Motion) Step() {
 		}
 	}
 	m.reactions = kept
-	m.stepHair(dt)
+	if !frozen {
+		m.stepHair(dt)
+	}
+}
+
+// frozen reports whether a freeze reaction is playing: breathing, sway, blinks,
+// tilts, hair and the mouth stop where they are (a stream's sudden silence).
+func (m *Motion) frozen() bool {
+	for _, a := range m.reactions {
+		if a.kind == "freeze" {
+			return true
+		}
+	}
+	return false
 }
 
 const blinkLen = 0.16
