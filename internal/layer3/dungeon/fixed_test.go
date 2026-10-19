@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nao1215/gozen/internal/layer1/optional"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
 	"github.com/nao1215/gozen/internal/testgame"
 )
@@ -61,7 +62,7 @@ func TestFixedSeedMakesOneMap(t *testing.T) {
 			}
 			maps[floor][db.Locations["deep"].Dungeon.Map] = true
 		}
-		if v, _ := st.Vars[dungeon.VarSeed].(float64); v != 7 { //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		if v := optional.Value[float64](st.Vars[dungeon.VarSeed]); v != 7 {
 			t.Errorf("the save's seed is %v, want the data's 7", v)
 		}
 	}

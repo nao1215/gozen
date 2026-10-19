@@ -18,6 +18,16 @@ var updateSchema = os.Getenv("GOZEN_UPDATE_SCHEMA") == "1"
 
 type schemaNode map[string]any
 
+// child is the schema node under key. Another shape means the schema builder above is
+// broken, so it panics with the key, which fails the running test.
+func child(n schemaNode, key string) schemaNode {
+	c, ok := n[key].(schemaNode)
+	if !ok {
+		panic(fmt.Sprintf("schema: %q is %T, not a node", key, n[key]))
+	}
+	return c
+}
+
 type fieldContract struct {
 	Default       string `json:"default"`
 	LegacyDefault string `json:"legacy_default"`
@@ -344,29 +354,29 @@ func (b *schemaBuilder) constraints(t reflect.Type, n, props schemaNode) {
 	}
 	switch t {
 	case reflect.TypeFor[GalleryPage]():
-		props["title"].(schemaNode)["pattern"] = "\\S"                     //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-		props["line"].(schemaNode)["minimum"] = 1                          //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-		props["answers"].(schemaNode)["items"].(schemaNode)["minimum"] = 0 //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		child(props, "title")["pattern"] = "\\S"
+		child(props, "line")["minimum"] = 1
+		child(child(props, "answers"), "items")["minimum"] = 0
 	case reflect.TypeFor[Game]():
-		props["schema_version"].(schemaNode)["enum"] = []int{0, 1}        //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-		props["data_version"].(schemaNode)["minimum"] = 0                 //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-		props["language"].(schemaNode)["enum"] = []string{"", "en", "ja"} //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		child(props, "schema_version")["enum"] = []int{0, 1}
+		child(props, "data_version")["minimum"] = 0
+		child(props, "language")["enum"] = []string{"", "en", "ja"}
 		n["if"] = schemaNode{"required": []string{"schema_version"}, "properties": schemaNode{"schema_version": schemaNode{"const": 1}}}
 		n["then"] = schemaNode{"required": []string{"id"}, "properties": schemaNode{"id": schemaNode{"type": "string", "pattern": gameIDPattern.String()}}}
 	case reflect.TypeFor[Start]():
-		props["party"].(schemaNode)["type"] = "array"     //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-		props["party"].(schemaNode)["minItems"] = 1       //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-		props["party"].(schemaNode)["uniqueItems"] = true //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		child(props, "party")["type"] = "array"
+		child(props, "party")["minItems"] = 1
+		child(props, "party")["uniqueItems"] = true
 	case reflect.TypeFor[Troop]():
 		n["required"] = []string{"members"}
-		props["members"].(schemaNode)["type"] = "array" //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-		props["members"].(schemaNode)["minItems"] = 1   //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		child(props, "members")["type"] = "array"
+		child(props, "members")["minItems"] = 1
 	case reflect.TypeFor[Class]():
-		props["stats"].(schemaNode)["required"] = StatNames //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-		props["stats"].(schemaNode)["type"] = "object"      //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		child(props, "stats")["required"] = StatNames
+		child(props, "stats")["type"] = "object"
 	case reflect.TypeFor[Enemy]():
-		props["stats"].(schemaNode)["required"] = StatNames //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-		props["stats"].(schemaNode)["type"] = "object"      //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		child(props, "stats")["required"] = StatNames
+		child(props, "stats")["type"] = "object"
 	case reflect.TypeFor[Command]():
 		var branches []any
 		for _, verb := range commandFields {
@@ -383,12 +393,12 @@ func (b *schemaBuilder) constraints(t reflect.Type, n, props schemaNode) {
 		}
 		n["oneOf"] = branches
 		for _, name := range []string{"end", "clear", "save"} {
-			props[name].(schemaNode)["const"] = true //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+			child(props, name)["const"] = true
 		}
 	case reflect.TypeFor[TacticAction]():
 		n["oneOf"] = []any{required("use"), required("item")}
 	case reflect.TypeFor[StateName]():
-		props["type"].(schemaNode)["enum"] = []string{"bool", "number", "string"} //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		child(props, "type")["enum"] = []string{"bool", "number", "string"}
 		var branches []any
 		for k, v := range map[string]string{"bool": "boolean", "number": "number", "string": "string"} {
 			branches = append(branches, schemaNode{"properties": schemaNode{"type": schemaNode{"const": k}, "initial": schemaNode{"type": v}}})
@@ -396,7 +406,7 @@ func (b *schemaBuilder) constraints(t reflect.Type, n, props schemaNode) {
 		sort.Slice(branches, func(i, j int) bool { return fmt.Sprint(branches[i]) < fmt.Sprint(branches[j]) })
 		n["oneOf"] = branches
 	case reflect.TypeFor[TacticRow]():
-		props["percent"].(schemaNode)["minimum"], props["percent"].(schemaNode)["maximum"] = 0, 100 //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		child(props, "percent")["minimum"], child(props, "percent")["maximum"] = 0, 100
 	}
 }
 

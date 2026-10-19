@@ -234,7 +234,7 @@ func TestHunterFasterThanOneCellAStep(t *testing.T) {
 		if len(st.Roamers) == 0 {
 			break
 		}
-		before := st.Vars[dungeon.VarHuntNear].(float64) //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		before := testgame.As[float64](t, st.Vars[dungeon.VarHuntNear])
 		h0 := st.Roamers[0]
 		moved, _ := dungeon.Forward(db, st)
 		if !moved {

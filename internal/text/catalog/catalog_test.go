@@ -160,7 +160,8 @@ var (
 )
 
 // args is the verb each argument of format s takes, by its position from 1.
-func args(s string) map[int]byte {
+func args(t *testing.T, s string) map[int]byte {
+	t.Helper()
 	out := map[int]byte{}
 	n := 0
 	for _, m := range verb.FindAllStringSubmatch(s, -1) {
@@ -169,8 +170,11 @@ func args(s string) map[int]byte {
 		}
 		for _, ix := range []string{m[1], m[2]} {
 			if ix != "" {
-				n, _ = strconv.Atoi(ix) //nolint:errcheck // the pattern matched digits
-				n--
+				i, err := strconv.Atoi(ix)
+				if err != nil {
+					t.Fatalf("%q: argument index %q: %v", s, ix, err)
+				}
+				n = i - 1
 			}
 		}
 		n++
@@ -187,7 +191,7 @@ func TestEnglishFormatsMatch(t *testing.T) {
 			t.Errorf("%q has an empty English word", k)
 			continue
 		}
-		ka, wa := args(k), args(w)
+		ka, wa := args(t, k), args(t, w)
 		for i, v := range ka {
 			if wa[i] != v {
 				t.Errorf("%q -> %q: argument %d takes %%%c, the English %%%c", k, w, i, v, wa[i])

@@ -30,6 +30,7 @@ Changes before the first public release are tracked under Unreleased. All packag
 - battle: state multipliers on a stat and state resistances are multiplied in a fixed order, so the same seed rounds the same way on every run. A party member's weapon element is taken in the game's slot order. `rpg.Actor.StateResist` follows the same order.
 - `rand(n)` and `rand(a, b)` in expressions return an error for NaN and cap counts above 2^53 instead of panicking. Event gold, damage and experience amounts that are NaN or out of range saturate instead of wrapping.
 - The expression parser rejects nesting deeper than about a hundred levels with an error instead of risking a stack overflow.
+- assetfs: `OverlayFS.Stale` returns the error when an original picture cannot be read (permission, I/O) instead of silently leaving it out; only a missing original is skipped. The development hot reload likewise treats only missing files as absent.
 
 ### Verification limits
 

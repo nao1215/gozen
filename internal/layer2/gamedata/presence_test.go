@@ -14,6 +14,15 @@ import (
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
+// mapAt walks nested YAML mappings by key and fails t when a fixture has another shape.
+func mapAt(t *testing.T, m map[string]any, keys ...string) map[string]any {
+	t.Helper()
+	for _, k := range keys {
+		m = testgame.As[map[string]any](t, m[k])
+	}
+	return m
+}
+
 // numericFixture は中立ゲームの生の YAML に１項目だけを指定して読み込む。
 func numericFixture(t *testing.T, version int, target, value string) (*data.DB, error) {
 	t.Helper()
@@ -25,23 +34,23 @@ func numericFixture(t *testing.T, version int, target, value string) (*data.DB, 
 		t.Fatal(err)
 	}
 	game["schema_version"], game["id"] = version, "neutral"
-	definitions["actors"].(map[string]any)["scout"].(map[string]any)["faces"] = "portrait" //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+	mapAt(t, definitions, "actors", "scout")["faces"] = "portrait"
 	game["title_figures"] = []any{map[string]any{"file": "x.png", "x": 0.5}}
 	game["card_bubbles"] = []any{map[string]any{}}
 	game["meters"] = []any{map[string]any{"value": "gold"}}
 	definitions["music"] = map[string]any{"songs": map[string]any{}}
-	definitions["classes"].(map[string]any)["ranger"].(map[string]any)["tree"] = []any{ //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+	mapAt(t, definitions, "classes", "ranger")["tree"] = []any{
 		map[string]any{"id": "root", "skill": "fire"},
 		map[string]any{"id": "child", "skill": "heal", "requires": []any{map[string]any{"node": "root"}}},
 	}
-	definitions["locations"].(map[string]any)["maze"] = map[string]any{"dungeon": map[string]any{ //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+	mapAt(t, definitions, "locations")["maze"] = map[string]any{"dungeon": map[string]any{
 		"generate": map[string]any{"width": 9, "height": 9, "start": "S", "place": []any{}},
 		"tiles":    map[string]any{"S": map[string]any{"start": true}},
 		"looks":    []any{map[string]any{"when": "true"}},
 		"roamers":  []any{map[string]any{"picture": "x.png", "troops": []any{map[string]any{"troop": "one"}}}},
 	}}
-	definitions["events"].(map[string]any)["numeric"] = map[string]any{"do": []any{map[string]any{"image": map[string]any{"files": []any{"x.png"}}}}}         //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-	definitions["events"].(map[string]any)["affection"] = map[string]any{"do": []any{map[string]any{"affect": map[string]any{"who": "all", "add": "sleep"}}}} //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+	mapAt(t, definitions, "events")["numeric"] = map[string]any{"do": []any{map[string]any{"image": map[string]any{"files": []any{"x.png"}}}}}
+	mapAt(t, definitions, "events")["affection"] = map[string]any{"do": []any{map[string]any{"affect": map[string]any{"who": "all", "add": "sleep"}}}}
 	parts := strings.Split(target, ".")
 	var node any = definitions
 	if parts[0] == "game" {
@@ -49,9 +58,9 @@ func numericFixture(t *testing.T, version int, target, value string) (*data.DB, 
 	}
 	for _, part := range parts[1 : len(parts)-1] {
 		if index, err := strconv.Atoi(part); err == nil {
-			node = node.([]any)[index] //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+			node = testgame.As[[]any](t, node)[index]
 		} else {
-			m := node.(map[string]any) //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+			m := testgame.As[map[string]any](t, node)
 			if m[part] == nil {
 				m[part] = map[string]any{}
 			}
@@ -59,7 +68,7 @@ func numericFixture(t *testing.T, version int, target, value string) (*data.DB, 
 		}
 	}
 	key := parts[len(parts)-1]
-	m := node.(map[string]any) //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+	m := testgame.As[map[string]any](t, node)
 	delete(m, key)
 	if value != "" {
 		var scalar any

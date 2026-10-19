@@ -153,3 +153,14 @@ func Expr(source string) *expr.Expr {
 	}
 	return e
 }
+
+// As returns v as a T. A fixture value of another type is a broken test, so it
+// fails t.
+func As[T any](t testing.TB, v any) T {
+	t.Helper()
+	x, ok := v.(T)
+	if !ok {
+		t.Fatalf("fixture: %T is not %T", v, x)
+	}
+	return x
+}

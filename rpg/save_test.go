@@ -3,6 +3,7 @@ package rpg_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -23,6 +24,19 @@ func saveBytes(t *testing.T, s *rpg.State) []byte {
 		t.Fatal(err)
 	}
 	return b
+}
+
+// object walks nested JSON objects by key. A fixture of another shape is a broken
+// test, so it panics with the path, which fails the running test.
+func object(m map[string]any, keys ...string) map[string]any {
+	for i, k := range keys {
+		next, ok := m[k].(map[string]any)
+		if !ok {
+			panic(fmt.Sprintf("fixture: %v is %T, not an object", keys[:i+1], m[k]))
+		}
+		m = next
+	}
+	return m
 }
 
 func rewriteSave(t *testing.T, b []byte, edit func(map[string]any)) []byte {
@@ -93,17 +107,17 @@ func TestSaveEnvelopeCompatibility(t *testing.T) {
 		{"本文null", func(m map[string]any) { m["state"] = nil }},
 		{"本文空", func(m map[string]any) { m["state"] = map[string]any{} }},
 		{"未知項目", func(m map[string]any) { m["future"] = true }},
-		{"未知状態項目", func(m map[string]any) { m["state"].(map[string]any)["future"] = true }},                          //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-		{"仲間null", func(m map[string]any) { m["state"].(map[string]any)["actors"].(map[string]any)["scout"] = nil }}, //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		{"未知状態項目", func(m map[string]any) { object(m, "state")["future"] = true }},
+		{"仲間null", func(m map[string]any) { object(m, "state", "actors")["scout"] = nil }},
 		{"仲間ID不一致", func(m map[string]any) {
-			m["state"].(map[string]any)["actors"].(map[string]any)["scout"].(map[string]any)["id"] = "guide" //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+			object(m, "state", "actors", "scout")["id"] = "guide"
 		}},
-		{"人数重複", func(m map[string]any) { m["state"].(map[string]any)["party"] = []string{"scout", "scout"} }},          //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-		{"仲間の記録欠損", func(m map[string]any) { m["state"].(map[string]any)["party"] = []string{"guide"} }},                //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-		{"所持金null", func(m map[string]any) { m["state"].(map[string]any)["gold"] = nil }},                               //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-		{"所持品個数null", func(m map[string]any) { m["state"].(map[string]any)["items"].(map[string]any)["potion"] = nil }}, //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		{"人数重複", func(m map[string]any) { object(m, "state")["party"] = []string{"scout", "scout"} }},
+		{"仲間の記録欠損", func(m map[string]any) { object(m, "state")["party"] = []string{"guide"} }},
+		{"所持金null", func(m map[string]any) { object(m, "state")["gold"] = nil }},
+		{"所持品個数null", func(m map[string]any) { object(m, "state", "items")["potion"] = nil }},
 		{"本文の大文字違い", func(m map[string]any) {
-			state := m["state"].(map[string]any) //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+			state := object(m, "state")
 			state["Gold"] = state["gold"]
 			delete(state, "gold")
 		}},

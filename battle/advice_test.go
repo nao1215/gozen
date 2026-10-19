@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/battle"
+	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 	"github.com/nao1215/gozen/rpg"
@@ -148,7 +149,7 @@ func TestBattleAdviceCauses(t *testing.T) {
 			run(b)
 			b.Result = battle.Fled
 			b.End()
-			got, _ := st.Vars["battle_advice_reason"].(string) //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+			got := optional.Value[string](st.Vars["battle_advice_reason"])
 			if got != tc.want {
 				t.Fatalf("助言の原因 %q、期待 %q", got, tc.want)
 			}

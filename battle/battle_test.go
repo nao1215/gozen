@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/battle"
+	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 	"github.com/nao1215/gozen/rpg"
@@ -427,7 +428,7 @@ troops:
 	}
 	b.Result = battle.Won
 	b.End()
-	if n, _ := st.Vars["kill_mote"].(float64); n != 2 { //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+	if n := optional.Value[float64](st.Vars["kill_mote"]); n != 2 {
 		t.Fatalf("kill_mote %v, want 2", st.Vars["kill_mote"])
 	}
 	want := db.Enemies["caller"].Exp + 2*db.Enemies["mote"].Exp
@@ -520,7 +521,7 @@ func TestLastKillIsTheLastBattle(t *testing.T) {
 	b.Foes[0].HP = 0
 	b.Result = battle.Won
 	b.End()
-	if v, _ := st.Vars[battle.VarLastKill+"mote"].(float64); v != 1 { //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+	if v := optional.Value[float64](st.Vars[battle.VarLastKill+"mote"]); v != 1 {
 		t.Fatalf("last_kill_mote %v、want 1", v)
 	}
 	b = battle.New(db, st, "two")
@@ -529,7 +530,7 @@ func TestLastKillIsTheLastBattle(t *testing.T) {
 	if v, ok := st.Vars[battle.VarLastKill+"mote"]; ok {
 		t.Errorf("逃げた戦いの後に前の数 %v が残った", v)
 	}
-	if v, _ := st.Vars["kill_mote"].(float64); v != 1 { //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+	if v := optional.Value[float64](st.Vars["kill_mote"]); v != 1 {
 		t.Errorf("kill_mote %v、want 1", v)
 	}
 }

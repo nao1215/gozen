@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/headless"
+	"github.com/nao1215/gozen/internal/layer1/optional"
 	"github.com/nao1215/gozen/internal/testgame"
 	"github.com/nao1215/gozen/rpg"
 )
@@ -42,7 +43,7 @@ events:
 	seen := map[string]bool{}
 	for _, p := range paths {
 		for _, k := range []string{"a", "b", "won", "lost"} {
-			if v, _ := p.St.Vars[k].(float64); v > 0 { //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+			if v := optional.Value[float64](p.St.Vars[k]); v > 0 {
 				seen[fmt.Sprintf("%s=%g", k, v)] = true
 			}
 		}
@@ -100,7 +101,7 @@ events:
 	seen := map[string]bool{}
 	for _, p := range paths {
 		for _, k := range []string{"a", "b"} {
-			if v, _ := p.St.Vars[k].(float64); v > 0 { //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+			if v := optional.Value[float64](p.St.Vars[k]); v > 0 {
 				seen[fmt.Sprintf("%s=%g", k, v)] = true
 			}
 		}

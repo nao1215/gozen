@@ -111,7 +111,7 @@ func TestStoneSuggestTheStrongestLoadout(t *testing.T) {
 	if st.Vars["o"] != 2.0 || st.Vars["o_pages"] != 2.0 {
 		t.Fatalf("vars = %v", st.Vars)
 	}
-	p1, p2 := st.Vars["o_page1"].(string), st.Vars["o_page2"].(string) //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+	p1, p2 := testgame.As[string](t, st.Vars["o_page1"]), testgame.As[string](t, st.Vars["o_page2"])
 	if !strings.Contains(p1, "Sage　White・Blue → Red・Gold Stone") || !strings.Contains(p2, "Monk　なし → White・Blue") || !strings.Contains(p2, "Frost guards.") {
 		t.Fatalf("pages = %q %q", p1, p2)
 	}
@@ -173,7 +173,7 @@ func TestStoneSuggestKeepsALoadoutAsStrong(t *testing.T) {
 	// the vow stone is the sage's alone
 	st.AddItem("vow", 1)
 	suggest(t, db, st)
-	if st.Vars["o"] != 1.0 || !strings.Contains(st.Vars["o_page1"].(string), "Sage") { //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+	if st.Vars["o"] != 1.0 || !strings.Contains(testgame.As[string](t, st.Vars["o_page1"]), "Sage") {
 		t.Errorf("vars = %v", st.Vars)
 	}
 }

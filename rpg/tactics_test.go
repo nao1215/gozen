@@ -129,8 +129,9 @@ func TestTacticsMigration(t *testing.T) {
 	st.Join("guide")
 	b := saveBytes(t, st)
 	old := rewriteSave(t, b, func(m map[string]any) {
-		for _, v := range m["state"].(map[string]any)["actors"].(map[string]any) { //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
-			delete(v.(map[string]any), "tactics") //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+		actors := object(m, "state", "actors")
+		for id := range actors {
+			delete(object(actors, id), "tactics")
 		}
 	})
 	for _, legacy := range []bool{false, true} {
@@ -193,7 +194,7 @@ func TestTacticsMigration(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			bad := rewriteSave(t, b, func(m map[string]any) {
-				m["state"].(map[string]any)["actors"].(map[string]any)["scout"].(map[string]any)["tactics"] = tc.plan //nolint:errcheck // A malformed fixture assertion fails this test; optional counters use zero.
+				object(m, "state", "actors", "scout")["tactics"] = tc.plan
 			})
 			rng := rand.New(rand.NewPCG(1, 2))    //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
 			oracle := rand.New(rand.NewPCG(1, 2)) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
