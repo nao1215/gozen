@@ -1,5 +1,7 @@
 # 動く立ち絵（puppet）
 
+![まばたき・口・頭と髪の揺れ・反応・表情の切り替え](../images/puppet.gif)
+
 一枚絵のキャラクターを、まばたき・口の動き・呼吸・頭の揺れと首かしげ・髪の揺れ・一回だけの反応・表情の切り替えで動かす。判断と代案は [ADR 0020](../decisions/0020-moving-portraits.md)。
 
 ## 使い方
@@ -23,6 +25,8 @@ op.GeoM.Scale(s, s)
 op.GeoM.Translate(x-float64(w)*s/2, screenH-float64(h)*s)
 p.Draw(screen, op)
 ```
+
+動く例は `go run ./examples/puppet`（配信者の胸から上の絵。Space で話す・止める、H・S・K・N・T で反応、F で表情）。`--tour --frames DIR` は全部の動きを順に見せて 30 fps の PNG を書く（上の GIF の元。Linux では `xvfb-run` の中で動く）。
 
 Puppet はゲームのスレッドだけで使う。`Update` は 1 回で `1/TPS` 秒進む（`Config.TPS` の既定は Ebitengine の既定の 60）。同じ乱数の種と同じ呼び出しの列なら同じ動きになる。画面から外すときは `Close`。
 

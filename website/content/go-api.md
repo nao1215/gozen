@@ -147,6 +147,32 @@ cat [A kitten? I keep one at the lighthouse.] 60
 
 Rules can also read numbers (`value.amount` for a tip), remember what was said (`remember`), ask a question and read the `answer`, and wait between reactions (`cooldown`). Games add their own tags with an `Analyzer`.
 
+## Moving portraits: puppet
+
+![a streamer who blinks, talks, sways, hops, nods, tilts her head and changes her face](/images/puppet.gif)
+
+`puppet` moves one picture like a streaming avatar: it blinks, moves the mouth while speaking, breathes, sways and tilts the head, lets the hair trail behind, plays one-shot reactions, and fades between faces. You give a base picture, small difference pictures (closed eyes, mouth shapes, other faces), and a few numbers in YAML; the head and hair move by deforming a mesh over the picture, so no layered artwork or rig is needed.
+
+```go
+rig, err := puppet.Load(fsys, "streamer/puppet.yaml")
+// handle err
+p, err := puppet.New(rig, puppet.Config{})
+// handle err
+
+// in Update
+p.Update()
+p.Speak() // while a line is shown; p.Stop() afterwards
+p.React("hop")
+p.SetFace("surprised")
+
+// in Draw, between the background and the UI
+op := &ebiten.DrawImageOptions{}
+op.GeoM.Scale(0.6, 0.6)
+p.Draw(screen, op)
+```
+
+A difference picture as large as the base is cut down to the part that differs when loading; `gozen puppet puppet.yaml --out small` writes the small pictures for shipping. In an RPG, `puppet: walker/puppet.yaml` on an actor makes the talk portrait move. `go run ./examples/puppet` shows the streamer above; keys try each motion.
+
 ## A message log: chat
 
 `chat.Log` keeps a flowing log of short messages from the player, bots, or a network you connect through a `Source`. It does not judge messages (that is `react`) and does not transport them. `chat.Mask` filters words out of messages from people before they are shown, and `chat.Crowd` produces background chatter from a script, by mood.
