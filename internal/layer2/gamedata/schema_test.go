@@ -463,14 +463,14 @@ func TestSchemaCoverage(t *testing.T) {
 		}
 	}
 	var md strings.Builder
-	md.WriteString(schemaIntroduction) //nolint:errcheck // strings.Builder writes always succeed.
+	md.WriteString(schemaIntroduction)
 	names := make([]string, 0, len(b.rows))
 	for name := range b.rows {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		fmt.Fprintf(&md, "\n## %s\n\n| 項目 | YAML の型 | 省略（旧版／新版） | ０ | 必須性・配置 | 参照先 | 仕様版 |\n| --- | --- | --- | --- | --- | --- | --- |\n", name) //nolint:errcheck // strings.Builder writes always succeed.
+		fmt.Fprintf(&md, "\n## %s\n\n| 項目 | YAML の型 | 省略（旧版／新版） | ０ | 必須性・配置 | 参照先 | 仕様版 |\n| --- | --- | --- | --- | --- | --- | --- |\n", name)
 		keys := make([]string, 0, len(b.rows[name]))
 		for key := range b.rows[name] {
 			keys = append(keys, key)
@@ -482,7 +482,7 @@ func TestSchemaCoverage(t *testing.T) {
 		}
 		for _, key := range keys {
 			c := b.rows[name][key]
-			fmt.Fprintf(&md, "| `%s` | %s | %s | %s | %s | %s | %s |\n", key, schemaTypeLabel(fields[key]), schemaDefaultLabel(c), c.Zero, c.Required, c.Reference, c.Version) //nolint:errcheck // strings.Builder writes always succeed.
+			fmt.Fprintf(&md, "| `%s` | %s | %s | %s | %s | %s | %s |\n", key, schemaTypeLabel(fields[key]), schemaDefaultLabel(c), c.Zero, c.Required, c.Reference, c.Version)
 		}
 	}
 	artifacts["../../../docs/schema.md"] = []byte(md.String())

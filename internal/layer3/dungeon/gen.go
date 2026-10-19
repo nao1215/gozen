@@ -132,7 +132,7 @@ func keepRecords(st *rpg.State, loc, m string) {
 	}
 	key := floorKey(st, loc)
 	h := fnv.New64a()
-	h.Write([]byte(m)) //nolint:errcheck,gosec // hash.Hash.Write always succeeds.
+	h.Write([]byte(m))
 	id := key + "#map=" + strconv.FormatUint(h.Sum64(), 36)
 	if st.Done[id] {
 		return
@@ -606,8 +606,8 @@ func placeOn(g *data.Generate, grid [][]rune, rooms []room, rng *rand.Rand, kind
 	}
 	var b strings.Builder
 	for _, row := range grid {
-		b.WriteString(string(row)) //nolint:errcheck // strings.Builder writes always succeed.
-		b.WriteByte('\n')          //nolint:errcheck // strings.Builder writes always succeed.
+		b.WriteString(string(row))
+		b.WriteByte('\n')
 	}
 	return b.String()
 }

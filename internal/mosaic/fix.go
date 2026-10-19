@@ -93,11 +93,11 @@ func (fx Fixes) Save(path, header string) error {
 	var sb strings.Builder
 	if header != "" {
 		for line := range strings.SplitSeq(strings.TrimRight(header, "\n"), "\n") {
-			sb.WriteString("# " + line + "\n") //nolint:errcheck // strings.Builder writes always succeed.
+			sb.WriteString("# " + line + "\n")
 		}
 	}
 	if len(keys) == 0 {
-		sb.WriteString("{}\n") //nolint:errcheck // strings.Builder writes always succeed.
+		sb.WriteString("{}\n")
 	}
 	for _, k := range keys {
 		kb, err := yaml.Marshal(k)
@@ -108,7 +108,7 @@ func (fx Fixes) Save(path, header string) error {
 		if err != nil {
 			return err
 		}
-		sb.WriteString(strings.TrimSpace(string(kb)) + ": " + strings.TrimSpace(string(vb)) + "\n") //nolint:errcheck // strings.Builder writes always succeed.
+		sb.WriteString(strings.TrimSpace(string(kb)) + ": " + strings.TrimSpace(string(vb)) + "\n")
 	}
 	return WriteFile(path, func(w io.Writer) error { _, err := io.WriteString(w, sb.String()); return err })
 }

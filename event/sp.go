@@ -99,7 +99,7 @@ func SPPage(db *data.DB, a *rpg.Actor, plan []string) string {
 func spKey(actors []*rpg.Actor) string {
 	var b strings.Builder
 	for _, a := range actors {
-		fmt.Fprintf(&b, "%s=%d;", a.ID, a.SP) //nolint:errcheck // strings.Builder writes always succeed.
+		fmt.Fprintf(&b, "%s=%d;", a.ID, a.SP)
 	}
 	return b.String()
 }

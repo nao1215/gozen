@@ -223,7 +223,7 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 		var heads strings.Builder
 		for _, l := range ls {
 			r, _ := utf8.DecodeRuneInString(l)
-			heads.WriteRune(r) //nolint:errcheck // strings.Builder writes always succeed.
+			heads.WriteRune(r)
 		}
 		m.match(heads.String(), AcrosticPrefix, found)
 	}
@@ -451,21 +451,21 @@ func (m *Mind) fill(l string, e *env) string {
 		i := strings.IndexByte(l, '{')
 		j := strings.IndexByte(l, '}')
 		if i < 0 || j < i {
-			b.WriteString(l) //nolint:errcheck // strings.Builder writes always succeed.
+			b.WriteString(l)
 			return b.String()
 		}
-		b.WriteString(l[:i]) //nolint:errcheck // strings.Builder writes always succeed.
+		b.WriteString(l[:i])
 		f := l[i+1 : j]
 		switch {
 		case f == "from":
-			b.WriteString(e.s.From) //nolint:errcheck // strings.Builder writes always succeed.
+			b.WriteString(e.s.From)
 		case f == "mood":
-			fmt.Fprintf(&b, "%.0f", m.mood) //nolint:errcheck // strings.Builder writes always succeed.
+			fmt.Fprintf(&b, "%.0f", m.mood)
 		case strings.HasPrefix(f, "slot."):
-			b.WriteString(e.found[f[5:]].Slot) //nolint:errcheck // strings.Builder writes always succeed.
+			b.WriteString(e.found[f[5:]].Slot)
 		case strings.HasPrefix(f, "mem."):
 			if v, ok := m.mem[f[4:]]; ok {
-				b.WriteString(format(v.Value)) //nolint:errcheck // strings.Builder writes always succeed.
+				b.WriteString(format(v.Value))
 			}
 		}
 		l = l[j+1:]

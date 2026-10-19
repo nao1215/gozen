@@ -270,9 +270,9 @@ func (g *Catalog) Lint() []Diagnostic {
 
 func (d Diagnostic) WriteText(w io.Writer) error {
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s %s %s %s\n", d.Context, d.Severity, d.Rule, d.Message) //nolint:errcheck // strings.Builder writes always succeed.
+	fmt.Fprintf(&b, "%s %s %s %s\n", d.Context, d.Severity, d.Rule, d.Message)
 	for _, word := range d.Words {
-		fmt.Fprintf(&b, "  %s %s group=%s sources=%+v\n", word.Side, word.Word, word.Group, word.Sources) //nolint:errcheck // strings.Builder writes always succeed.
+		fmt.Fprintf(&b, "  %s %s group=%s sources=%+v\n", word.Side, word.Word, word.Group, word.Sources)
 	}
 	_, err := io.WriteString(w, b.String())
 	return err

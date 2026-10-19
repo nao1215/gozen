@@ -53,32 +53,32 @@ func Render(s string, env expr.Env) string {
 	for {
 		i := strings.Index(s, "{")
 		if i < 0 {
-			b.WriteString(s) //nolint:errcheck // strings.Builder writes always succeed.
+			b.WriteString(s)
 			return b.String()
 		}
-		b.WriteString(s[:i]) //nolint:errcheck // strings.Builder writes always succeed.
+		b.WriteString(s[:i])
 		if strings.HasPrefix(s[i:], "{{") {
-			b.WriteString("{") //nolint:errcheck // strings.Builder writes always succeed.
+			b.WriteString("{")
 			s = s[i+2:]
 			continue
 		}
 		j := strings.Index(s[i:], "}")
 		if j < 0 {
-			b.WriteString(s[i:]) //nolint:errcheck // strings.Builder writes always succeed.
+			b.WriteString(s[i:])
 			return b.String()
 		}
 		src := s[i+1 : i+j]
 		s = s[i+j+1:]
 		e, err := parseExpr(src)
 		if err != nil {
-			b.WriteString("{" + src + "}") //nolint:errcheck // strings.Builder writes always succeed.
+			b.WriteString("{" + src + "}")
 			continue
 		}
 		v, err := e.Eval(env)
 		if err != nil {
-			b.WriteString("{" + src + "}") //nolint:errcheck // strings.Builder writes always succeed.
+			b.WriteString("{" + src + "}")
 			continue
 		}
-		b.WriteString(expr.Format(v)) //nolint:errcheck // strings.Builder writes always succeed.
+		b.WriteString(expr.Format(v))
 	}
 }

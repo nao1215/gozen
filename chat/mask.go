@@ -52,7 +52,7 @@ func (m *Mask) Filter(msg Message) (Message, bool) {
 		if hide[i] {
 			r = '*'
 		}
-		b.WriteRune(r) //nolint:errcheck // strings.Builder writes always succeed.
+		b.WriteRune(r)
 	}
 	msg.Text = b.String()
 	return msg, true

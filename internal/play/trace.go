@@ -79,7 +79,7 @@ type lineWriter struct{ w io.Writer }
 
 func (lw *lineWriter) Encode(l traceLine) error {
 	var b strings.Builder
-	b.WriteString("{") //nolint:errcheck // strings.Builder writes never fail.
+	b.WriteString("{")
 	keys := []string{"t", "tick"}
 	for _, k := range sortedKeys(boolKeys(l)) {
 		if k != "t" && k != "tick" {
@@ -99,15 +99,18 @@ func (lw *lineWriter) Encode(l traceLine) error {
 			return err
 		}
 		if !first {
-			b.WriteString(",") //nolint:errcheck // strings.Builder writes never fail.
+			b.WriteString(",")
 		}
 		first = false
-		kb, _ := json.Marshal(k)                             //nolint:errcheck // A string is always JSON encodable.
-		b.Write(kb)                                          //nolint:errcheck // strings.Builder writes never fail.
-		b.WriteString(":")                                   //nolint:errcheck // strings.Builder writes never fail.
-		b.WriteString(strings.TrimSuffix(vb.String(), "\n")) //nolint:errcheck // strings.Builder writes never fail.
+		kb, err := json.Marshal(k)
+		if err != nil {
+			return err
+		}
+		b.Write(kb)
+		b.WriteString(":")
+		b.WriteString(strings.TrimSuffix(vb.String(), "\n"))
 	}
-	b.WriteString("}\n") //nolint:errcheck // strings.Builder writes never fail.
+	b.WriteString("}\n")
 	n, err := io.WriteString(lw.w, b.String())
 	if err == nil && n != b.Len() {
 		return io.ErrShortWrite
@@ -179,7 +182,9 @@ func traceFingerprint(fsys fs.FS) (string, error) {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(h, "%d:%s:%d:", len(name), name, len(b)) //nolint:errcheck // The in-memory writer cannot fail.
+		if _, err := fmt.Fprintf(h, "%d:%s:%d:", len(name), name, len(b)); err != nil {
+			return err
+		}
 		_, err = h.Write(b)
 		return err
 	}

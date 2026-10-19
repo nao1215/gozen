@@ -40,9 +40,9 @@ func writeReview(c config, all []entry) error {
 		return err
 	}
 	var md strings.Builder
-	fmt.Fprintf(&md, "# モザイクの要確認（%d 枚）\n\n", len(rev))                                                                                              //nolint:errcheck // strings.Builder writes always succeed.
-	md.WriteString("review/sheet_NN.jpg の番号と対応する。黄色の枠が自動の範囲、水色・桃色が手で足した範囲。確かめたら `gozen mosaic manual check`（人は --fix の YAML に `checked: true`）。\n") //nolint:errcheck // strings.Builder writes always succeed.
-	md.WriteString("漏れは `add: [[x, y, 幅, 高さ]]`（元の絵の px）、誤検出は `drop: [[x, y, 幅, 高さ]]` で直す。\n\n")                                                     //nolint:errcheck // strings.Builder writes always succeed.
+	fmt.Fprintf(&md, "# モザイクの要確認（%d 枚）\n\n", len(rev))
+	md.WriteString("review/sheet_NN.jpg の番号と対応する。黄色の枠が自動の範囲、水色・桃色が手で足した範囲。確かめたら `gozen mosaic manual check`（人は --fix の YAML に `checked: true`）。\n")
+	md.WriteString("漏れは `add: [[x, y, 幅, 高さ]]`（元の絵の px）、誤検出は `drop: [[x, y, 幅, 高さ]]` で直す。\n\n")
 	if len(rev) == 0 {
 		return os.WriteFile(filepath.Join(c.out, "review.md"), []byte(md.String()), 0o600)
 	}
@@ -54,11 +54,11 @@ func writeReview(c config, all []entry) error {
 		sheet := image.NewRGBA(image.Rect(0, 0, sheetCols*thumbW, sheetRows*thumbH))
 		draw.Draw(sheet, sheet.Bounds(), image.NewUniform(color.RGBA{40, 40, 40, 255}), image.Point{}, draw.Src)
 		name := fmt.Sprintf("sheet_%02d.jpg", s+1)
-		fmt.Fprintf(&md, "## %s\n\n", name) //nolint:errcheck // strings.Builder writes always succeed.
+		fmt.Fprintf(&md, "## %s\n\n", name)
 		for k := 0; k < per && s*per+k < len(rev); k++ {
 			e := rev[s*per+k]
 			n := s*per + k + 1
-			fmt.Fprintf(&md, "- #%d `%s`: %s\n", n, e.File, strings.Join(e.Review, "。")) //nolint:errcheck // strings.Builder writes always succeed.
+			fmt.Fprintf(&md, "- #%d `%s`: %s\n", n, e.File, strings.Join(e.Review, "。"))
 			src := filepath.Join(c.gameDir, "assets", filepath.FromSlash(e.File))
 			if e.Output != "" {
 				src = filepath.Join(c.out, filepath.FromSlash(e.Output))
@@ -71,7 +71,7 @@ func writeReview(c config, all []entry) error {
 			cell := image.Rect(k%sheetCols*thumbW, k/sheetCols*thumbH, (k%sheetCols+1)*thumbW, (k/sheetCols+1)*thumbH)
 			thumb(sheet, cell, img, e, fmt.Sprintf("#%d", n))
 		}
-		md.WriteString("\n") //nolint:errcheck // strings.Builder writes always succeed.
+		md.WriteString("\n")
 		if err := encode(filepath.Join(dir, name), sheet, 88); err != nil {
 			return err
 		}

@@ -530,22 +530,22 @@ func (a *autopilot) arrived(g *Game) {
 
 func (a *autopilot) finish(g *Game) {
 	var b strings.Builder
-	fmt.Fprintf(&b, "autopilot report (%s of play, %d ticks)\n", time.Since(a.start).Round(time.Second), a.ticks)                   //nolint:errcheck // strings.Builder writes never fail.
-	fmt.Fprintf(&b, "  dives %d, floors walked %d, deepest B%dF, back to town %d\n", a.dives, a.floorsWalked, a.deepest, a.returns) //nolint:errcheck // strings.Builder writes never fail.
-	fmt.Fprintf(&b, "  action items used %d\n", a.commands)                                                                         //nolint:errcheck // strings.Builder writes never fail.
-	fmt.Fprintf(&b, "  battles %d, wipes %d, chests aimed at %d\n", a.battles, a.wipes, a.chests)                                   //nolint:errcheck // strings.Builder writes never fail.
+	fmt.Fprintf(&b, "autopilot report (%s of play, %d ticks)\n", time.Since(a.start).Round(time.Second), a.ticks)
+	fmt.Fprintf(&b, "  dives %d, floors walked %d, deepest B%dF, back to town %d\n", a.dives, a.floorsWalked, a.deepest, a.returns)
+	fmt.Fprintf(&b, "  action items used %d\n", a.commands)
+	fmt.Fprintf(&b, "  battles %d, wipes %d, chests aimed at %d\n", a.battles, a.wipes, a.chests)
 	if g.st != nil {
-		fmt.Fprintf(&b, "  gold %d\n", g.st.Gold) //nolint:errcheck // strings.Builder writes never fail.
+		fmt.Fprintf(&b, "  gold %d\n", g.st.Gold)
 		for _, m := range rpg.AllActors(g.st) {
-			fmt.Fprintf(&b, "  %s Lv%d HP %d/%d SP %d tree %v sets %v\n", m.Name(), m.Level, m.HP, m.Stat("mhp"), m.SP, m.Tree, m.Sets()) //nolint:errcheck // strings.Builder writes never fail.
+			fmt.Fprintf(&b, "  %s Lv%d HP %d/%d SP %d tree %v sets %v\n", m.Name(), m.Level, m.HP, m.Stat("mhp"), m.SP, m.Tree, m.Sets())
 		}
 	}
-	fmt.Fprintf(&b, "  problems %d\n", len(a.problems)) //nolint:errcheck // strings.Builder writes never fail.
+	fmt.Fprintf(&b, "  problems %d\n", len(a.problems))
 	for _, p := range a.problems {
-		fmt.Fprintf(&b, "    - %s\n", p) //nolint:errcheck // strings.Builder writes never fail.
+		fmt.Fprintf(&b, "    - %s\n", p)
 	}
 	for _, e := range a.errs {
-		fmt.Fprintf(&b, "    - event error: %s\n", e) //nolint:errcheck // strings.Builder writes never fail.
+		fmt.Fprintf(&b, "    - event error: %s\n", e)
 	}
 	if a.cfg.Report != "" {
 		if err := os.WriteFile(a.cfg.Report, []byte(b.String()), 0o600); err != nil {

@@ -354,7 +354,7 @@ func (l *lexer) next() (token, error) {
 			if l.src[l.pos] == '\\' && l.pos+1 < len(l.src) {
 				l.pos++
 			}
-			b.WriteByte(l.src[l.pos]) //nolint:errcheck // strings.Builder writes always succeed.
+			b.WriteByte(l.src[l.pos])
 			l.pos++
 		}
 		if l.pos >= len(l.src) {

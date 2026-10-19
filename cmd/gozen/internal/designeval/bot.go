@@ -1565,10 +1565,10 @@ func (b *bot) mapText() string {
 			if x == b.st.Pos.X && y == b.st.Pos.Y {
 				c = '*'
 			}
-			w.WriteRune(c) //nolint:errcheck // In-memory formatting cannot fail.
+			w.WriteRune(c)
 
 		}
-		w.WriteByte('\n') //nolint:errcheck // In-memory formatting cannot fail.
+		w.WriteByte('\n')
 
 	}
 	return w.String()

@@ -194,7 +194,7 @@ func stoneHoldingAll(s *rpg.State) string {
 	var b strings.Builder
 	for _, id := range s.DB.Ordered("items") {
 		if pool[id] > 0 {
-			fmt.Fprintf(&b, "%s=%d;", id, pool[id]) //nolint:errcheck // strings.Builder writes always succeed.
+			fmt.Fprintf(&b, "%s=%d;", id, pool[id])
 		}
 	}
 	return b.String()

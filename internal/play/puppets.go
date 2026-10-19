@@ -42,7 +42,7 @@ func (g *Game) talkPuppet(s event.Say) (*puppet.Puppet, int) {
 			return nil, 0
 		}
 		h := fnv.New64a()
-		_, _ = h.Write([]byte(s.Actor))                                             //nolint:errcheck // hash.Hash never fails to write.
+		h.Write([]byte(s.Actor))
 		p = puppet.New(rig, rand.New(rand.NewPCG(h.Sum64(), 1)), ebiten.DefaultTPS) //nolint:gosec // Animation timing, not security-sensitive data.
 		if g.puppets.live == nil {
 			g.puppets.live = map[string]*puppet.Puppet{}

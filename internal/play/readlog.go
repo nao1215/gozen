@@ -14,9 +14,9 @@ import (
 
 func lineKey(s event.Say) uint64 {
 	h := fnv.New64a()
-	_, _ = h.Write([]byte(s.Name)) //nolint:errcheck // hash.Hash.Write never returns an error.
-	_, _ = h.Write([]byte{0})      //nolint:errcheck // hash.Hash.Write never returns an error.
-	_, _ = h.Write([]byte(s.Text)) //nolint:errcheck // hash.Hash.Write never returns an error.
+	h.Write([]byte(s.Name))
+	h.Write([]byte{0})
+	h.Write([]byte(s.Text))
 	return h.Sum64()
 }
 

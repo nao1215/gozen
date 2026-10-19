@@ -1,6 +1,7 @@
 package play
 
 import (
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"io/fs"
@@ -55,19 +56,28 @@ func liveFingerprint(dir string) string {
 	d, a := fnv.New64a(), fnv.New64a()
 	for _, sub := range []string{"game.yaml", "data", "assets"} {
 		walkErr := filepath.WalkDir(filepath.Join(dir, sub), func(p string, e fs.DirEntry, err error) error {
-			if err != nil || e.IsDir() {
+			if errors.Is(err, fs.ErrNotExist) {
+				return nil // a missing data or assets directory, or a file removed while walking
+			}
+			if err != nil {
+				return err
+			}
+			if e.IsDir() {
 				return nil
 			}
 			info, err := e.Info()
-			if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
 				return nil
+			}
+			if err != nil {
+				return err
 			}
 			h := d
 			if sub == "assets" && liveMedia[strings.ToLower(filepath.Ext(p))] {
 				h = a
 			}
-			_, _ = fmt.Fprintf(h, "%s %d %d\n", p, info.Size(), info.ModTime().UnixNano()) //nolint:errcheck // hash.Hash.Write never returns an error.
-			return nil
+			_, err = fmt.Fprintf(h, "%s %d %d\n", p, info.Size(), info.ModTime().UnixNano())
+			return err
 		})
 		if walkErr != nil {
 			return "unreadable"

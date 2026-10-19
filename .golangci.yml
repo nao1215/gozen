@@ -6,11 +6,13 @@ linters:
   default: none
   enable:
     - errcheck
+    - errchkjson
     - errorlint
     - exhaustive
     - gosec
     - govet
     - ineffassign
+    - nilerr
     - nolintlint
     - staticcheck
     - unused
@@ -19,6 +21,30 @@ linters:
       check-blank: true
       check-type-assertions: true
       disable-default-exclusions: true
+      # Only calls whose documentation guarantees a nil error.
+      exclude-functions:
+        - (*bytes.Buffer).Write
+        - (*bytes.Buffer).WriteByte
+        - (*bytes.Buffer).WriteRune
+        - (*bytes.Buffer).WriteString
+        - (*strings.Builder).Write
+        - (*strings.Builder).WriteByte
+        - (*strings.Builder).WriteRune
+        - (*strings.Builder).WriteString
+        - (hash.Hash).Write
+        - (*io.PipeReader).CloseWithError
+        - (*io.PipeWriter).CloseWithError
+        - fmt.Fprint(*bytes.Buffer)
+        - fmt.Fprintf(*bytes.Buffer)
+        - fmt.Fprintln(*bytes.Buffer)
+        - fmt.Fprint(*strings.Builder)
+        - fmt.Fprintf(*strings.Builder)
+        - fmt.Fprintln(*strings.Builder)
+    gosec:
+      excludes:
+        # G104 repeats errcheck without its list of calls documented never to fail;
+        # errcheck above checks every ignored error, including `_ =`.
+        - G104
     nolintlint:
       require-explanation: true
       require-specific: true

@@ -96,9 +96,9 @@ func (g *Game) traceStandEnd() {
 
 	fading := g.cgOldT > 0 || (g.cg.File != "" && g.cgAge < g.cg.FadeTicks())
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s|%s|%v|%s|%s|%v|%v|%v|%d|", f.speaker, f.face, f.standing, loc, g.cg.File, hides, over, fading, g.stageGen) //nolint:errcheck // The in-memory writer cannot fail.
+	fmt.Fprintf(&b, "%s|%s|%v|%s|%s|%v|%v|%v|%d|", f.speaker, f.face, f.standing, loc, g.cg.File, hides, over, fading, g.stageGen)
 	for _, fg := range f.figures {
-		fmt.Fprintf(&b, "%s,%s,%.2f,%.1f,%v,%v;", fg.ID, fg.Face, fg.X, fg.Alpha, fg.Speaking, fg.Leaving) //nolint:errcheck // The in-memory writer cannot fail.
+		fmt.Fprintf(&b, "%s,%s,%.2f,%.1f,%v,%v;", fg.ID, fg.Face, fg.X, fg.Alpha, fg.Speaking, fg.Leaving)
 	}
 	key := b.String()
 	if idle {

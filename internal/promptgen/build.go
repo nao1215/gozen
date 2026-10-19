@@ -277,19 +277,19 @@ func (g *Catalog) renderPositive(ws []Word, sel []selected) string {
 
 func (r Result) WriteText(w io.Writer) error {
 	var b strings.Builder
-	fmt.Fprintf(&b, "positive: %s\nnegative: %s\n", r.Positive, r.Negative)                                 //nolint:errcheck // strings.Builder writes always succeed.
-	fmt.Fprintf(&b, lang.T("負語数。設定 %d/%d、固定 %d\n"), r.NegativeCount, r.NegativeLimit, r.FixedNegativeCount) //nolint:errcheck // strings.Builder writes always succeed.
+	fmt.Fprintf(&b, "positive: %s\nnegative: %s\n", r.Positive, r.Negative)
+	fmt.Fprintf(&b, lang.T("負語数。設定 %d/%d、固定 %d\n"), r.NegativeCount, r.NegativeLimit, r.FixedNegativeCount)
 	for _, word := range r.Words {
-		fmt.Fprintf(&b, "%s %s [%s] priority=%d fixed=%t\n", word.Side, word.Word, word.Group, word.Priority, word.Fixed) //nolint:errcheck // strings.Builder writes always succeed.
+		fmt.Fprintf(&b, "%s %s [%s] priority=%d fixed=%t\n", word.Side, word.Word, word.Group, word.Priority, word.Fixed)
 		for _, s := range word.Sources {
-			fmt.Fprintf(&b, "  %s/%s stage=%s priority=%d emphasis=%s strength=%d\n", s.Layer, s.ID, s.Stage, s.Priority, s.Emphasis, s.Strength) //nolint:errcheck // strings.Builder writes always succeed.
+			fmt.Fprintf(&b, "  %s/%s stage=%s priority=%d emphasis=%s strength=%d\n", s.Layer, s.ID, s.Stage, s.Priority, s.Emphasis, s.Strength)
 		}
 	}
 	for _, d := range r.Dropped {
-		fmt.Fprintf(&b, lang.T("脱落 %s %s reason=%s sources=%+v by=%+v\n"), d.Side, d.Word.Word, d.Reason, d.Sources, d.By) //nolint:errcheck // strings.Builder writes always succeed.
+		fmt.Fprintf(&b, lang.T("脱落 %s %s reason=%s sources=%+v by=%+v\n"), d.Side, d.Word.Word, d.Reason, d.Sources, d.By)
 	}
 	for _, d := range r.Diagnostics {
-		fmt.Fprintf(&b, "%s %s %s\n", d.Severity, d.Rule, d.Message) //nolint:errcheck // strings.Builder writes always succeed.
+		fmt.Fprintf(&b, "%s %s %s\n", d.Severity, d.Rule, d.Message)
 	}
 	_, err := io.WriteString(w, b.String())
 	return err

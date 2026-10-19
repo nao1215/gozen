@@ -29,7 +29,7 @@ func Normalize(s string) string {
 		if run > 2 {
 			continue
 		}
-		b.WriteRune(r) //nolint:errcheck // strings.Builder writes always succeed.
+		b.WriteRune(r)
 	}
 	return b.String()
 }

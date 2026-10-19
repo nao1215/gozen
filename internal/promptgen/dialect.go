@@ -53,23 +53,23 @@ func (d sdxl) Render(blocks []Block) string {
 		}
 		if out.Len() > 0 {
 			if b.Boundary == "block" {
-				out.WriteString(" BREAK ") //nolint:errcheck // strings.Builder writes always succeed.
+				out.WriteString(" BREAK ")
 			} else {
-				out.WriteString(", ") //nolint:errcheck // strings.Builder writes always succeed.
+				out.WriteString(", ")
 			}
 		}
 		for i, w := range b.Words {
 			if i > 0 {
-				out.WriteString(", ") //nolint:errcheck // strings.Builder writes always succeed.
+				out.WriteString(", ")
 			}
 			weight := d.Weight(w.Strength)
 			if w.Fixed {
 				weight = 1
 			}
 			if weight == 1 {
-				out.WriteString(w.Word) //nolint:errcheck // strings.Builder writes always succeed.
+				out.WriteString(w.Word)
 			} else {
-				out.WriteString("(" + w.Word + ":" + strconv.FormatFloat(weight, 'f', -1, 64) + ")") //nolint:errcheck // strings.Builder writes always succeed.
+				out.WriteString("(" + w.Word + ":" + strconv.FormatFloat(weight, 'f', -1, 64) + ")")
 			}
 		}
 	}

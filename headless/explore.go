@@ -331,13 +331,13 @@ func place(c *data.Command) string {
 	}
 	var b strings.Builder
 	if len(c.Choice) > 0 {
-		fmt.Fprintf(&b, "%p", &c.Choice[0]) //nolint:errcheck // strings.Builder writes always succeed.
+		fmt.Fprintf(&b, "%p", &c.Choice[0])
 	}
 	for _, s := range [][]data.Command{c.OnWin, c.OnLose, c.OnRun} {
 		if len(s) > 0 {
-			fmt.Fprintf(&b, "%p", &s[0]) //nolint:errcheck // strings.Builder writes always succeed.
+			fmt.Fprintf(&b, "%p", &s[0])
 		} else {
-			b.WriteString("-") //nolint:errcheck // strings.Builder writes always succeed.
+			b.WriteString("-")
 		}
 	}
 	return b.String() + "\x00"
