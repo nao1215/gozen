@@ -1,8 +1,14 @@
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
+<!-- CI, Security, Go Reference, license and OpenSSF Scorecard show their values once the repository is public (Scorecard after its first run on main). Add the GitHub Downloads badge after the first release. -->
 [![CI](https://github.com/nao1215/gozen/actions/workflows/ci.yml/badge.svg)](https://github.com/nao1215/gozen/actions/workflows/ci.yml)
 [![Security](https://github.com/nao1215/gozen/actions/workflows/security.yml/badge.svg)](https://github.com/nao1215/gozen/actions/workflows/security.yml)
 [![tested with atago](https://img.shields.io/badge/tested%20with-atago-7c3aed?logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTMuNiA0LjIgMTEuOSAxMmwtOC4zIDcuOC0xLjktMi4yTDcuOSAxMiAxLjcgNi40eiIvPjxyZWN0IGZpbGw9IiNmZmYiIHg9IjEyLjYiIHk9IjE3LjIiIHdpZHRoPSI5LjciIGhlaWdodD0iMi44IiByeD0iMS40Ii8%2BPC9zdmc%2B&logoColor=white)](https://github.com/nao1215/atago)
+[![measured with himorime](https://img.shields.io/badge/measured%20with-himorime-d9480f?logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCI%2BPHBhdGggZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIuNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBkPSJNNC4yIDE4LjVBOSA5IDAgMSAxIDE5LjggMTguNSIvPjxwYXRoIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmIiBzdHJva2Utd2lkdGg9IjIuNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBkPSJNMTIgMTQuNSAxNi41IDkiLz48Y2lyY2xlIGZpbGw9IiNmZmYiIGN4PSIxMiIgY3k9IjE0LjUiIHI9IjIuMiIvPjwvc3ZnPg==&logoColor=white)](https://github.com/nao1215/himorime)
 [![Go Reference](https://pkg.go.dev/badge/github.com/nao1215/gozen.svg)](https://pkg.go.dev/github.com/nao1215/gozen)
 ![GitHub](https://img.shields.io/github/license/nao1215/gozen)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/nao1215/gozen/badge)](https://scorecard.dev/viewer/?uri=github.com/nao1215/gozen)
 
 # Gozen
 
@@ -14,7 +20,7 @@ Documentation: **https://nao1215.github.io/gozen/**
 
 ## Try it in 30 seconds
 
-If you have Go 1.26.4 or later, paste this. It needs no display and no assets:
+If you have Go 1.26.9 or later, paste this. It needs no display and no assets:
 
 ```sh
 go run github.com/nao1215/gozen/examples/minimal@latest
@@ -58,19 +64,78 @@ The rules are shared by the window, a headless driver and the command line, so a
 | **Conversation** | **Village** |
 | ![conversation](docs/images/wayfinder-talk.jpg) | ![village](docs/images/wayfinder-village.jpg) |
 
-## Install
+## How to install
+
+The `gozen` command is distributed with `go install`, prebuilt archives and Linux packages on the release page, a Homebrew cask in `nao1215/tap`, and winget. The library is added with `go get`. Gozen has no release yet: until the first one, use `go install` or `go get`; the other channels start with it.
+
+### Use "go install"
+
+Building from source needs Go 1.26.9 or later.
 
 ```sh
 go install github.com/nao1215/gozen/cmd/gozen@latest
 ```
 
-As a library:
+With a C compiler, `CGO_ENABLED=1 go install ...` also builds the ONNX inference of `gozen mosaic`; without one, everything else works and the commands that need inference say how to reinstall.
+
+### Use Homebrew
+
+```sh
+brew install --cask nao1215/tap/gozen
+```
+
+### Use winget (Windows)
+
+```sh
+winget install --id nao1215.gozen
+```
+
+### Install from a package or binary
+
+[The release page](https://github.com/nao1215/gozen/releases) contains `.tar.gz` archives for Linux and macOS, `.zip` archives for Windows (amd64 and arm64), and `.deb`, `.rpm` and `.apk` packages for Linux. The prebuilt binaries have no ONNX inference; use `go install` with cgo for that.
+
+### As a library
 
 ```sh
 go get github.com/nao1215/gozen@latest
 ```
 
 The graphical game needs the platform graphics libraries (on Linux, X11 and OpenGL). See [OS setup](https://nao1215.github.io/gozen/install/#what-the-window-needs).
+
+## Verifying release integrity
+
+Every release ships supply-chain metadata so you can verify what you download:
+
+- Signed checksums: `checksums.txt` is signed with [cosign](https://github.com/sigstore/cosign) (keyless), producing `checksums.txt.sigstore.json`.
+- SBOM: an SPDX Software Bill of Materials is attached to each release archive.
+- Build provenance: SLSA build provenance is attested via GitHub OIDC, and is also attached to the release as `multiple.intoto.jsonl`.
+- Licenses: each archive and package carries the license texts of the linked dependencies under `THIRD_PARTY_LICENSES/`.
+
+Verify the signed checksums (then check your archive against `checksums.txt`):
+
+```sh
+cosign verify-blob \
+  --bundle checksums.txt.sigstore.json \
+  --certificate-identity-regexp 'https://github.com/nao1215/gozen/\.github/workflows/release\.yml@refs/tags/.*' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  checksums.txt
+sha256sum --check --ignore-missing checksums.txt
+```
+
+Verify the build provenance of a downloaded archive with the GitHub CLI:
+
+```sh
+gh attestation verify gozen_<version>_<os>_<arch>.tar.gz --repo nao1215/gozen
+```
+
+Or verify it against the `multiple.intoto.jsonl` release asset with [slsa-verifier](https://github.com/slsa-framework/slsa-verifier):
+
+```sh
+slsa-verifier verify-artifact gozen_<version>_<os>_<arch>.tar.gz \
+  --provenance-path multiple.intoto.jsonl \
+  --source-uri github.com/nao1215/gozen \
+  --source-tag v<version>
+```
 
 ## Recipes
 
@@ -130,6 +195,7 @@ location=trail battles=1 wins=1 gold=3
 | Command | What it does |
 |:--|:--|
 | `check` | validate definitions, references, expressions, pictures and text layout |
+| `layout` | check that dialogue and choices fit the message window |
 | `sim` | fight a battle many times and report the win rate |
 | `curve`, `floors` | simulate a dungeon dive and the size of its floors |
 | `trace` | read a play trace as a short timeline |
@@ -139,6 +205,7 @@ location=trail battles=1 wins=1 gold=3
 | `shots` | take screenshots of listed scenes |
 | `puppet` | check a moving portrait; cut its difference pictures small |
 | `prompt`, `mosaic` | build image-generation prompts; pixelate parts of pictures |
+| `version`, `help` | print the version; show the options and examples of a command |
 
 `gozen help <command>` shows the options and examples of each command. Every command is tested end to end with [atago](https://github.com/nao1215/atago).
 
@@ -148,9 +215,9 @@ location=trail battles=1 wins=1 gold=3
 - Turn-based battles with a party, auto battle and per-enemy tactics (gambits)
 - Skill trees, shops, a field menu and a picture gallery
 - First-person grid dungeons, fixed or generated floors
-- Moving portraits: blinking, lip flaps, breathing, head and hair sway and reactions from one picture ([puppet](https://pkg.go.dev/github.com/nao1215/gozen/puppet))
-- Characters that react to typed words and events, and a chat log ([react](https://pkg.go.dev/github.com/nao1215/gozen/react), [chat](https://pkg.go.dev/github.com/nao1215/gozen/chat))
 - Moving portraits from one picture and a few difference pictures: blinking, talking, breathing, head and hair sway, reactions and face changes ([puppet](https://pkg.go.dev/github.com/nao1215/gozen/puppet))
+- Characters that react to typed words and events, and a chat log ([react](https://pkg.go.dev/github.com/nao1215/gozen/react), [chat](https://pkg.go.dev/github.com/nao1215/gozen/chat))
+- Engine words (menus, battle messages, settings) in English and Japanese, chosen by `language` in game.yaml
 - A headless driver that shares the rules with the window
 
 ## Limitations
@@ -161,7 +228,7 @@ location=trail battles=1 wins=1 gold=3
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). For questions, see [SUPPORT.md](.github/SUPPORT.md). Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
 
 ## Support
 
@@ -170,3 +237,25 @@ If Gozen helps you, a star or a [GitHub Sponsors](https://github.com/sponsors/na
 ## License
 
 The code is [MIT](LICENSE). The pictures of the Wayfinder sample are [CC BY 4.0](examples/play/game/assets/LICENSE). The Go Regular font notice is in [ASSETS.md](ASSETS.md).
+
+## Contributors ✨
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/en/reference/emoji-key/)):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://debimate.jp/"><img src="https://avatars.githubusercontent.com/u/22737008?v=4?s=75" width="75px;" alt="CHIKAMATSU Naohiro"/><br /><sub><b>CHIKAMATSU Naohiro</b></sub></a><br /><a href="https://github.com/nao1215/gozen/commits?author=nao1215" title="Code">💻</a> <a href="https://github.com/nao1215/gozen/commits?author=nao1215" title="Documentation">📖</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!

@@ -1,0 +1,8 @@
+# osv-scanner configuration (also read by the OpenSSF Scorecard Vulnerabilities
+# check). No advisory is ignored. Add an [[IgnoredVulns]] entry only for an
+# advisory that has no fixed version and that govulncheck reports as not
+# reachable, with the reason, as in:
+#
+# [[IgnoredVulns]]
+# id = "GO-YYYY-NNNN"
+# reason = "why it does not affect gozen, and how that was checked"
