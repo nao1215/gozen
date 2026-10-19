@@ -1,0 +1,90 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nao1215/himorime/main/schema/himorime.schema.json
+#
+# gozen measured end to end with himorime (https://github.com/nao1215/himorime):
+# one process per call, from its first instruction to its exit.
+#
+#   make bench          measure the working tree
+#   make bench-compare  compare main with the working tree
+#
+# On a pull request, .github/workflows/bench.yml runs `himorime ci bench`:
+# the base of the pull request and its head are built and measured in
+# interleaved rounds on the same runner. See bench/README.md.
+#
+# The input is the neutral game of the CLI contract tests
+# (e2e/atago/fixtures/game). Both revisions read the working tree's copy
+# (${head_root}/..), so they read the same bytes.
+version: "1"
+
+name: gozen
+description: Start-up, checking, battle simulation and documentation of a small game.
+
+build:
+  command: [go, build, -trimpath, -buildvcs=false, -o, "${artifact}", ./cmd/gozen]
+  cwd: ..
+
+defaults:
+  warmup: 2
+  runs: 20
+  metrics:
+    cpu: true
+    memory: true
+  regression:
+    confidence: 0.95
+    latency:
+      max_percent: 10
+      min_difference: 1ms
+    cpu_total:
+      max_percent: 15
+      min_difference: 2ms
+    peak_rss:
+      max_percent: 15
+      min_difference: 2MiB
+
+benchmarks:
+  - name: version
+    description: Starting gozen and exiting.
+    tags: [smoke]
+    commands:
+      gozen:
+        command: ["${artifact}", version]
+
+  - name: check 1 game
+    description: >-
+      Checking the small test game: definitions, references, expressions,
+      pictures and, with the font, the text layout; --no-layout skips the font.
+    tags: [smoke]
+    baseline: layout
+    commands:
+      layout:
+        command: ["${artifact}", check, "${head_root}/../e2e/atago/fixtures/game"]
+      no-layout:
+        command: ["${artifact}", check, --no-layout, "${head_root}/../e2e/atago/fixtures/game"]
+
+  - name: check error
+    description: A game directory that does not exist, which exits 1.
+    tags: [smoke]
+    exit_codes: [1]
+    commands:
+      gozen:
+        command: ["${artifact}", check, "${workdir}/missing"]
+
+  - name: sim 200 battles
+    description: The default number of AUTO battles against one troop, where start-up dominates.
+    tags: [smoke]
+    commands:
+      gozen:
+        command: ["${artifact}", sim, "${head_root}/../e2e/atago/fixtures/game", lesson, -n, "200", --seed, "1"]
+
+  - name: sim 50k battles
+    description: Fifty thousand AUTO battles against one troop, where the battle rules dominate.
+    tags: [large]
+    commands:
+      gozen:
+        command: ["${artifact}", sim, "${head_root}/../e2e/atago/fixtures/game", lesson, -n, "50000", --seed, "1"]
+
+  - name: book 1 game
+    description: Writing the small test game as Markdown.
+    tags: [smoke]
+    commands:
+      gozen:
+        command: ["${artifact}", book, "${head_root}/../e2e/atago/fixtures/game"]

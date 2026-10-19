@@ -4,7 +4,7 @@ GOLANGCI_LINT ?= golangci-lint
 ATAGO ?= atago
 ACTIONLINT ?= actionlint
 
-.PHONY: test lint workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve
+.PHONY: test lint workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve bench bench-compare
 
 # One module: ./... includes the gozen command and its internal implementations.
 # Keep ONNX-dependent runtime tests separate; see docs/development/testing.md.
@@ -47,6 +47,14 @@ e2e-graphics: cli-build
 
 build:
 	$(GO) build -trimpath -buildvcs=false ./...
+
+# Measure gozen with the himorime suite in bench/ (requires himorime on PATH).
+bench:
+	himorime run bench
+
+# Compare main (or BASE) with the working tree on the himorime suite.
+bench-compare:
+	himorime compare --against $${BASE:-main} bench
 
 # The documentation website (GitHub Pages). Requires hugo; see website/hugo.toml.
 website:
