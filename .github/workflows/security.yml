@@ -1,11 +1,19 @@
 name: Security
 
+# govulncheck answers whether a known advisory in the standard library or a
+# dependency is reachable from this module's call graph; gosec in golangci-lint
+# looks at the code this repository writes. The vulnerability database changes
+# every day, so the schedule catches a new advisory against the dependencies
+# already in go.sum. While the repository is private the daily run is skipped to
+# save the Actions budget (docs/development/ci.md); pushes and pull requests
+# still scan.
+
 on:
   push:
     branches: [main]
   pull_request:
   schedule:
-    - cron: "30 2 * * 1"
+    - cron: "0 4 * * *"
   workflow_dispatch:
 
 permissions:
@@ -13,21 +21,61 @@ permissions:
 
 jobs:
   govulncheck:
+    if: ${{ github.event_name != 'schedule' || !github.event.repository.private }}
+    name: govulncheck (Go ${{ matrix.go }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    # Every Go line this module supports: a standard-library advisory is fixed in
+    # a specific patch, so an advisory fixed in the newest Go can still be live for
+    # someone building with the minimum. Keep the first entry equal to the go
+    # directive in go.mod.
+    strategy:
+      fail-fast: false
+      matrix:
+        go:
+          - "1.26.9"
+          - "stable"
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: stable
-      - name: Install pinned vulnerability scanner
-        run: go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
-      - name: Scan the gozen command and library packages, including ONNX bindings
-        run: govulncheck ./...
+          go-version: ${{ matrix.go }}
+          check-latest: true
+
+      # Pinned so a scanner release cannot change the verdict on its own. The
+      # advisory database is intentionally not pinned. The install step alone may
+      # switch toolchains to build the scanner; the scan runs with the matrix Go.
+      - name: Install govulncheck
         env:
+          GOTOOLCHAIN: auto
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+
+      # ACCEPTED lists advisories this module is known to reach and has defended
+      # against on its own side, one ID each, with why, which test holds the
+      # defense, and when to remove it. Leave it empty when there are none. Any
+      # other reachable advisory fails the job and prints the text report. cgo is
+      # on so the ONNX bindings of the mosaic command are scanned too.
+      - name: Scan the module
+        env:
+          ACCEPTED: ""
           CGO_ENABLED: "1"
+        run: |
+          set -o pipefail
+          govulncheck -format json ./... > "$RUNNER_TEMP/govulncheck.json"
+          jq -e -s 'length > 0' "$RUNNER_TEMP/govulncheck.json" > /dev/null
+          jq -r 'select(.finding != null and (.finding.trace[0].function // "") != "") | .finding.osv' \
+            "$RUNNER_TEMP/govulncheck.json" | sort -u > "$RUNNER_TEMP/called.txt"
+          tr ' ' '\n' <<< "$ACCEPTED" | sed '/^$/d' > "$RUNNER_TEMP/accepted.txt"
+          if grep -vxF -f "$RUNNER_TEMP/accepted.txt" "$RUNNER_TEMP/called.txt"; then
+            echo "::error::govulncheck found an advisory that is not in ACCEPTED"
+            govulncheck ./...
+            exit 1
+          fi
 
   codeql:
     # Code scanning uploads require GitHub Code Security on private repositories,
