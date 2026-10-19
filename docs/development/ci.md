@@ -25,6 +25,12 @@ Windows/macOS の graphics も有効で、失敗を許容する設定や skip �
 
 通常 CI はモデルも共有ライブラリも取得しません。`inference-build` は `TestONNX` を verbose で選択し、cgo コンパイルの成否とモデル未指定の skip 理由をログに残します。推論を実行したという意味ではありません。ローカルの明示的な推論検査は [制作支援ツール](production-tools.md#検証) の環境変数を設定してください。設定済みで読めないモデルや不適合なモデルは失敗します（`internal/mosaic/command/inference_test.go:62`）。
 
+## 文書サイト
+
+[Website workflow](../../.github/workflows/website.yml) は `website/` を Hugo で組み立て、Pagefind で索引を作り、GitHub Pages（https://nao1215.github.io/gozen/）へ公開します。Hugo と Pagefind は版と SHA256 を固定し、action は SHA で固定します。非公開の間は Actions の予算のため、どのジョブも走りません。公開後の main への push・pull request か、手動実行（workflow_dispatch）のときだけ走ります。公開の書込み権限（`pages: write`、`id-token: write`）は deploy ジョブだけに付け、verify ジョブが公開された頁の commit と主な頁を確かめます。
+
+手元では `make website`（hugo が必要）で `website/public/` に組み立てます。Schema の頁は `docs/schema.md` から組み立て、表の日本語は `website/data/schema_en.yaml` で英語にします。スキーマを変えて訳の無いセルができると、サイトの組み立てが失敗します。
+
 ## 権限と依存更新
 
 両 workflow の既定は `contents: read`、checkout は `persist-credentials: false` です。`pull_request_target`、秘密を必要とする実行、bot による commit、公開・デプロイの処理はありません。CodeQL の結果送信だけ、codeql ジョブに `security-events: write` を付けます（[ADR 0006](../decisions/0006-platforms-and-ci.md)）。fork PR でも解析は実行し、アップロードは無効にします。private vulnerability reporting と CodeQL の表示には GitHub 側の設定も必要で、このチェックアウトでは設定状態は未確認です。
