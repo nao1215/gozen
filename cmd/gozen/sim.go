@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math/rand/v2"
 	"os"
 	"strings"
 
@@ -11,8 +10,7 @@ import (
 
 	"github.com/nao1215/gozen/battle"
 	"github.com/nao1215/gozen/data"
-	"github.com/nao1215/gozen/headless"
-	"github.com/nao1215/gozen/rpg"
+	"github.com/nao1215/gozen/internal/headless/balance"
 )
 
 func (c *command) sim(args []string) error {
@@ -25,6 +23,8 @@ func (c *command) sim(args []string) error {
 	maxTurns := fs.Int("turns", 60, "a battle longer than this is a draw")
 	tree := fs.Bool("tree", true, "spend the skill points (on the open node of the lowest level, evenly)")
 	gear := fs.String("gear", "", "items to give the party and wear where they fit best (comma separated)")
+	state := fs.String("state", "", "start from this saved state (a note's .save from F9) with everyone recovered, instead of a new game")
+	hpBand := fs.Bool("hp", false, "also print the party's HP left after a win (10th, 50th and 90th percentile)")
 	if err := c.parse(fs, args); err != nil {
 		return err
 	}
@@ -42,83 +42,56 @@ func (c *command) sim(args []string) error {
 	if db.Troops[troop] == nil {
 		return fmt.Errorf("unknown troop %q", troop)
 	}
-	var wins, losses, flees, draws, turns, survivors int
-	for i := range *n {
-		rng := rand.New(rand.NewPCG(*seed, uint64(i))) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
-		st := rpg.New(db, rng)
+	prep := balance.Prep{Level: *level, Tree: *tree, Gear: commaList(*gear)}
+	var start balance.Start
+	if *state != "" {
 		if *party != "" {
-			st.Party = nil
-			for _, id := range strings.Split(*party, ",") {
-				if db.Actors[id] == nil {
-					return fmt.Errorf("unknown actor %q", id)
-				}
-				st.Join(id)
-			}
+			return cli.Invalid("-state and -party do not go together")
 		}
-		if *level > 0 {
-			for _, a := range st.Members() {
-				a.GainExp(a.ExpFor(*level) - a.Exp)
-				a.Recover()
-			}
+		b, err := os.ReadFile(*state)
+		if err != nil {
+			return err
 		}
-		for _, a := range st.Members() {
-			if *tree {
-				a.SpendSP()
-			}
+		start = balance.SavedStart(db, b, *seed, prep)
+	} else {
+		start = balance.FreshStart(db, *seed, commaList(*party), prep)
+	}
+	turn, begun := 0, false
+	o, err := balance.Sim(db, troop, *n, *maxTurns, start, func(i int, b *battle.Battle, steps []battle.Step) {
+		if !*verbose || i != 0 {
+			return
 		}
-		if *gear != "" {
-			for _, id := range strings.Split(*gear, ",") {
-				if db.Items[id] == nil {
-					return fmt.Errorf("unknown item %q", id)
-				}
-				st.AddItem(id, len(st.Members()))
-			}
-			for _, a := range st.Members() {
-				st.EquipBest(a)
-				a.Recover()
-			}
+		if !begun {
+			begun = true
+		} else if b.Turn != turn && b.Result == battle.Ongoing {
+			turn = b.Turn
+			c.out.Printf("-- turn %d\n", b.Turn)
 		}
-		b := battle.New(db, st, troop)
-		turn, begun := 0, false
-
-		headless.AutoBattle(db, st, b, nil, *maxTurns, func(steps []battle.Step) {
-			if !*verbose || i != 0 {
-				return
+		for _, s := range steps {
+			if s.Kind == battle.Event {
+				c.out.Println("  [event]")
+				continue
 			}
-			if !begun {
-				begun = true
-			} else if b.Turn != turn && b.Result == battle.Ongoing {
-				turn = b.Turn
-				c.out.Printf("-- turn %d\n", b.Turn)
-			}
-			for _, s := range steps {
-				if s.Kind == battle.Event {
-					c.out.Println("  [event]")
-					continue
-				}
-				c.out.Println("  " + s.Text)
-			}
-		})
-		turns += b.Turn
-		switch b.Result {
-		case battle.Won:
-			wins++
-			for _, u := range b.Party {
-				if u.Alive() {
-					survivors++
-				}
-			}
-		case battle.Lost:
-			losses++
-		case battle.Fled:
-			flees++
-		case battle.Ongoing:
-			draws++
+			c.out.Println("  " + s.Text)
 		}
+	})
+	if err != nil {
+		return err
 	}
 	c.out.Printf("%s: %d battles  win %.0f%%  lose %.0f%%  fled %.0f%%  draw %.0f%%  avg turns %.1f  avg standing after a win %.1f\n",
-		troop, *n, pct(wins, *n), pct(losses, *n), pct(flees, *n), pct(draws, *n), float64(turns)/float64(*n), float64(survivors)/float64(max(1, wins)))
+		troop, *n, pct(o.Won, *n), pct(o.Lost, *n), pct(o.Fled, *n), pct(o.Draw, *n), o.AvgTurns(), o.AvgStanding())
+	if lo, mid, hi, ok := o.HPBand(); ok && *hpBand {
+		c.out.Printf("hp left after a win: p10 %.0f%%  median %.0f%%  p90 %.0f%%\n", 100*lo, 100*mid, 100*hi)
+	}
 	return nil
+}
+
+// commaList は -party・-gear の並び。空なら nil、それ以外は空の要素も残す（未知の ID として報せる）。
+func commaList(s string) []string {
+	if s == "" {
+		return nil
+	}
+	return strings.Split(s, ",")
 }
 
 func pct(a, b int) float64 { return 100 * float64(a) / float64(b) }

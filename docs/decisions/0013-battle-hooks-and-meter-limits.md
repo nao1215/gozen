@@ -26,4 +26,4 @@
 
 ## 検証
 
-`headless/battle_hooks_test.go` は勝利・敗北・逃走、選択・連戦・終了、前処理の移動、通常敗北を検査する。`internal/play/battle_hooks_test.go` は再試行の状態、固定・可変上限と入力経路を検査する。参照の検証は `data/battle_hooks_test.go`、部分配布は `cmd/internal/trial/battle_hooks_test.go`、測定は `cmd/gozen/internal/balance/battle_hooks_test.go` が担当する。スキーマと API 一覧も同時に更新する。
+`headless/battle_hooks_test.go` は勝利・敗北・逃走、選択・連戦・終了、前処理の移動、通常敗北を検査する。`internal/play/battle_hooks_test.go` は再試行の状態、固定・可変上限と入力経路を検査する。参照の検証は `data/battle_hooks_test.go`、部分配布は `cmd/internal/trial/battle_hooks_test.go`、測定は `internal/headless/balance/battle_hooks_test.go` が担当する。スキーマと API 一覧も同時に更新する。

@@ -11,9 +11,9 @@ import (
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
 
-	"github.com/nao1215/gozen/cmd/gozen/internal/balance"
 	"github.com/nao1215/gozen/data"
 	"github.com/nao1215/gozen/expr"
+	"github.com/nao1215/gozen/internal/headless/balance"
 )
 
 func (c *command) curve(args []string) error {

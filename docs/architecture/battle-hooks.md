@@ -20,7 +20,7 @@
 
 ## 制作 CLI
 
-`gozen curve` の戦闘曲線は、イベント実行を有効にした探索で前後処理を反映する。資源による帰還は敗北・道具不足と区別し、設定された休息と補給を経て同じ階へ戻る。単体の勝率測定では探索の前処理を実行しない。HP の消耗率は後処理による帰還・回復の前に採る。根拠: `cmd/gozen/internal/balance/balance.go:317`・`cmd/gozen/internal/balance/balance.go:335`・`cmd/gozen/internal/balance/balance.go:401`・`cmd/gozen/internal/balance/balance.go:431` の `rate`・`fight`・`end`・`returnAndResume`。
+`gozen curve` の戦闘曲線は、イベント実行を有効にした探索で前後処理を反映する。資源による帰還は敗北・道具不足と区別し、設定された休息と補給を経て同じ階へ戻る。単体の勝率測定では探索の前処理を実行しない。HP の消耗率は後処理による帰還・回復の前に採る。根拠: `internal/headless/balance/balance.go:317`・`internal/headless/balance/balance.go:335`・`internal/headless/balance/balance.go:401`・`internal/headless/balance/balance.go:431` の `rate`・`fight`・`end`・`returnAndResume`。
 
 体験版の絞り込みでは `battle.before`・`battle.after` を根として呼び先・素材・状態変化をたどる。タイルの `after` は別のタイルを指すため、イベント参照として扱わない。根拠: `cmd/internal/trial/prune.go:428` の `reach`、`cmd/internal/trial/battle_hooks_test.go:11`。
 
