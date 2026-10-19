@@ -3,7 +3,6 @@ package command
 import (
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"image"
 	"os"
@@ -14,24 +13,6 @@ import (
 	"github.com/nao1215/gozen/internal/mosaic"
 	"github.com/nao1215/gozen/internal/mosaic/detect"
 )
-
-const inspectHelp = `gozen mosaic inspect: 絵ごとに「モザイクが必要な物が写っているか」「その分類」「モザイク済みか」を JSON で返す（1 行 1 枚）。
-何も書かない（出力も YAML も変えない）。
-
-  gozen mosaic inspect [flags] <game dir> [絵...]   絵は assets/ からの相対パス、またはファイルのパス（無ければ YAML に書かれた全部）
-
-返す物:
-  needs_mosaic   モザイクが必要な物が写っているか（自動の検出・手の指示・タグのどれかで）
-  categories     その分類（男性器・女性器・乳首。-labels で選んだ物）
-  objects        見つかった物（分類・スコア・範囲 [x,y,w,h]・その範囲がこの絵の中でモザイク済みか）
-  mosaicked      この絵そのものがモザイク済みか（全部の物の範囲に格子があるか）と、出力（-out）の絵が全部を基準のブロックで覆っているか
-  status         none（要らない）・todo（要るのに未処理）・done（済み）・review（人か LLM が見る）
-  review         見るべき理由
-ファイルのパスが出力（-out）の中なら、元の絵（assets/）で探して、その出力を調べる。
-
-report.json（auto が書く）が今の元の絵と手直しで作った物なら、モデルを動かさずに report から答える（速い。auto の結果と食い違わない）。
-元の絵か手直し（add・poly・drop・skip・block・margin・grow）が変わった絵は、モデルで探し直して status は todo（auto を動かし直す）。
--redetect なら全部の絵をモデルで探し直す。checked（目で確かめた印）の絵は、塗った物が無ければ none、出力があれば done。`
 
 type inspection struct {
 	Source      string     `json:"source"`
@@ -86,22 +67,15 @@ type manualFix struct {
 var categoryJa = map[string]string{"penis": "男性器", "pussy": "女性器", "nipple_f": "乳首"}
 
 func (cli *cli) inspectCmd(args []string) (err error) {
-	fs := flag.NewFlagSet("inspect", flag.ContinueOnError)
-	fs.SetOutput(cli.diag)
+	fs := newFlagSet("gozen mosaic inspect")
 	o := cli.commonFlags(fs)
-	pretty := fs.Bool("pretty", false, "字下げした JSON にする（既定は 1 行 1 枚）")
-	redetect := fs.Bool("redetect", false, "report.json を使わず、全部の絵をモデルで探し直す（遅い）")
-	fs.Usage = func() {
-		cli.diag.println(inspectHelp)
-		cli.diag.println("\nflags:")
-		fs.PrintDefaults()
-	}
-	if err := fs.Parse(args); err != nil {
-		return argumentError{err}
+	pretty := fs.Bool("pretty", false, "write indented JSON instead of one line per image")
+	redetect := fs.Bool("redetect", false, "detect every image with the model again instead of using report.json (slow)")
+	if err := cli.parse(fs, args, inspectPage); err != nil {
+		return err
 	}
 	if fs.NArg() < 1 {
-		fs.Usage()
-		return argumentError{fmt.Errorf("invalid or missing arguments")}
+		return argumentError{fmt.Errorf("expected a game directory: gozen mosaic inspect [OPTIONS] <game-dir> [IMAGE ...]")}
 	}
 	gameDir := fs.Arg(0)
 	c, err := o.setup(gameDir)

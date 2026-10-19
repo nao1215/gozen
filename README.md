@@ -164,10 +164,10 @@ Run these from the repository root. The validation and simulation fixture is a s
 
 Requirements: Go to build. Checks, simulations, reports and `prompt` need no display or C compiler; `shots` needs a game binary and a graphics runtime; `mosaic` inference needs a gozen built with cgo, a compatible ONNX Runtime library and models you supply. [OS requirements](docs/development/cli.md#requirements). `gozen help <command>` shows each subcommand's flags and requirements.
 
-`gozen check` validates definitions, references, expressions, asset existence and text layout. `-no-layout` skips the font-based layout check:
+`gozen check` validates definitions, references, expressions, asset existence and text layout. `--no-layout` skips the font-based layout check:
 
 ```sh
-go run ./cmd/gozen check -no-layout e2e/atago/fixtures/game
+go run ./cmd/gozen check --no-layout e2e/atago/fixtures/game
 ```
 
 ```text
@@ -178,7 +178,7 @@ Structure checked; layout was not checked. Use gozen layout <game-dir>.
 `gozen sim` fights a troop many times with a fixed seed and reports win rate and turns:
 
 ```sh
-go run ./cmd/gozen sim e2e/atago/fixtures/game lesson -n 3 -seed 7
+go run ./cmd/gozen sim e2e/atago/fixtures/game lesson -n 3 --seed 7
 ```
 
 ```text
@@ -201,7 +201,7 @@ Use `--scenes ids.txt --format json` to build multiple scene IDs (one per line) 
 go run ./cmd/gozen mosaic --help
 mkdir -p build/mosaic-input/assets
 cp docs/examples/production/pattern.png build/mosaic-input/assets/pattern.png
-go run ./cmd/gozen mosaic auto -fix docs/examples/production/fixes.yaml -out build/mosaic-output build/mosaic-input pattern.png
+go run ./cmd/gozen mosaic auto --fix docs/examples/production/fixes.yaml --out build/mosaic-output build/mosaic-input pattern.png
 ```
 
 This pixelates selected rectangles in an original synthetic pattern without inference. The input stays unchanged; the output and its report go under `build/mosaic-output`.

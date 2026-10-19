@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"math/rand/v2"
 	"os"
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/clihelp"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
@@ -17,12 +17,12 @@ import (
 )
 
 func (c *command) floorsCmd(args []string) error {
-	fs := flag.NewFlagSet("gozen floors", flag.ContinueOnError)
-	from := fs.Int("from", 1, "the first floor")
-	to := fs.Int("to", 20, "the last floor")
-	floor := fs.Int("floor", 0, "only this floor (with -try: the seeds compared)")
-	try := fs.Int("try", 0, "compare this many seeds (0..n-1) on -floor, one line each")
-	noMap := fs.Bool("nomap", false, "the numbers only")
+	fs := clihelp.NewFlagSet("gozen floors")
+	from := fs.Int("from", 1, "the first floor to show")
+	to := fs.Int("to", 20, "the last floor to show")
+	floor := fs.Int("floor", 0, "show only this floor; with --try, the floor whose seeds are compared")
+	try := fs.Int("try", 0, "compare `N` seeds (0 to N-1) on --floor, one line each")
+	noMap := fs.Bool("no-map", false, "print the numbers only, without the maps")
 	if err := c.parse(fs, args); err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ func (c *command) floorsCmd(args []string) error {
 	}
 	dir, loc := fs.Arg(0), fs.Arg(1)
 	if *from <= 0 || *to < *from || *floor < 0 || *try < 0 || (*try > 0 && *floor == 0) {
-		return cli.Invalid("invalid floor range or seed count; -try requires -floor")
+		return cli.Invalid("invalid floor range or seed count; --try requires --floor")
 	}
 	db, err := data.Load(os.DirFS(dir))
 	if err != nil {
@@ -47,7 +47,7 @@ func (c *command) floorsCmd(args []string) error {
 	}
 	if *try > 0 {
 		if *floor == 0 {
-			return fmt.Errorf("-try needs -floor")
+			return fmt.Errorf("--try needs --floor")
 		}
 		keep, had := g.Floors[*floor]
 		if g.Floors == nil {

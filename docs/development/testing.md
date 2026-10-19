@@ -65,6 +65,6 @@ go run ./examples/headless
 
 race 検査には cgo と C コンパイラが必要です。サンプルはメモリ内のオリジナル定義と生成画像を使い、移動・会話・戦闘・保存・復元を実行します。成功時は `location=trail battles=1 wins=1 gold=3` を出します。保存先の OS ファイル操作は `savefile` と `rpg` のテストが `t.TempDir()` で隔離します。
 
-スキーマを変えた場合は `go test ./internal/layer2/gamedata -run '^TestSchemaCoverage$' -args -update-schema` で `docs/schema.md` と `data/schema/` を更新し、通常の `go test` で一致を確認します。API 更新とは別の検査です。
+スキーマを変えた場合は `GOZEN_UPDATE_SCHEMA=1 go test ./internal/layer2/gamedata -run '^TestSchemaCoverage$'` で `docs/schema.md` と `data/schema/` を更新し、通常の `go test` で一致を確認します。API 更新とは別の検査です。
 
 これらは描画・実音声・CLI・ONNX の実行検査ではありません。

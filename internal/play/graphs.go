@@ -15,16 +15,16 @@ import (
 )
 
 // 開発用のバランス表示（--dev の F7）。今いる場所で出会う敵の群れごとに、gozen sim と同じ計算
-// （balance.SavedStart・Try・Add・StreakOne、-n 200 -seed 1 -turns 60）で、全回復した一行と
-// 今の HP・MP・状態のままの一行（-as-is）の勝率、勝った後の残り HP の帯、今の HP から回復せずに
-// 何連勝できるか（-as-is -streak 9）、Lv ごとの勝率（全回復）を描く。計算は Update の中で 1 フレーム
+// （balance.SavedStart・Try・Add・StreakOne、-n 200 --seed 1 --turns 60）で、全回復した一行と
+// 今の HP・MP・状態のままの一行（--as-is）の勝率、勝った後の残り HP の帯、今の HP から回復せずに
+// 何連勝できるか（--as-is --streak 9）、Lv ごとの勝率（全回復）を描く。計算は Update の中で 1 フレーム
 // graphBudget までに分け、ゲームの状態・乱数・DB を別の goroutine と共有しない。
 const (
 	graphTries  = 200
 	graphSeed   = 1
 	graphTurns  = 60
 	graphLevels = 5 // 今の Lv の上に何 Lv 分の勝率を測るか
-	graphStreak = 9 // 連勝の数の上限（gozen sim -streak）
+	graphStreak = 9 // 連勝の数の上限（gozen sim --streak）
 	graphRows   = 6
 	graphBudget = 3 * time.Millisecond
 	graphCheck  = 15 // 場所・一行・データの変化を確かめる間隔（tick）
@@ -45,14 +45,14 @@ var graphColors = []color.NRGBA{
 type graphKind int
 
 const (
-	graphHealed graphKind = iota // 全回復（gozen sim -state）
-	graphNow                     // 今の HP・MP・状態のまま（-as-is）
-	graphRun                     // 今の HP から回復せずに続けて戦う（-as-is -streak）
+	graphHealed graphKind = iota // 全回復（gozen sim --state）
+	graphNow                     // 今の HP・MP・状態のまま（--as-is）
+	graphRun                     // 今の HP から回復せずに続けて戦う（--as-is --streak）
 )
 
 type graphJob struct {
 	troop string
-	level int // 0 は今の一行のまま、それ以外はこの Lv に揃える（gozen sim -level）
+	level int // 0 は今の一行のまま、それ以外はこの Lv に揃える（gozen sim --level）
 	kind  graphKind
 }
 
@@ -314,7 +314,7 @@ func (g *Game) drawGraphs(screen *ebiten.Image) {
 	}
 	gfx.DrawTextLeft(screen, gfx.Ellipsis(head, sizeS*0.85, w-2*pad-60), left, y+8, sizeS*0.85, ink)
 	gfx.DrawTextRight(screen, "F7", x+w-pad, y+10, small, dim)
-	sub := fmt.Sprintf(lang.T("%d戦・seed %d（gozen sim -state と同じ。今の HP は -as-is）"), graphTries, graphSeed)
+	sub := fmt.Sprintf(lang.T("%d戦・seed %d（gozen sim --state と同じ。今の HP は --as-is）"), graphTries, graphSeed)
 	gfx.DrawTextLeft(screen, gfx.Ellipsis(sub, small, w-2*pad), left, y+36, small, dim)
 	legend := lang.T("今は全快。棒は全回復の勝率")
 	if p.hurt {
@@ -435,7 +435,7 @@ func (g *Game) drawGraphs(screen *ebiten.Image) {
 	n, total := p.progress()
 	foot := fmt.Sprintf(lang.T("測定 %d/%d"), n, total)
 	if n >= total {
-		foot = lang.T("測り終えた。連勝は今の HP から回復せずに勝ち続けた数の中央値（-as-is -streak 9）")
+		foot = lang.T("測り終えた。連勝は今の HP から回復せずに勝ち続けた数の中央値（--as-is --streak 9）")
 	}
 	gfx.DrawTextLeft(screen, gfx.Ellipsis(foot, small, w-2*pad), left, y+h-22, small, dim)
 }

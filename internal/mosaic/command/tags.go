@@ -82,7 +82,7 @@ func (tc *tagCache) get(rel, file string) (map[string]float32, error) {
 			if tc.dir != "" {
 				return nil, fmt.Errorf("tagger model: %w", err)
 			}
-			tc.diag.printf("warning: タガーのモデル %s が無いので、タグ無しで続ける（-tagger で場所を変えられる）\n", tc.dir)
+			tc.diag.printf("warning: タガーのモデル %s が無いので、タグ無しで続ける（--tagger で場所を変えられる）\n", tc.dir)
 			tc.noModel = true
 			return nil, nil
 		}

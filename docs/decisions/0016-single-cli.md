@@ -1,6 +1,6 @@
 # ADR 0016: CLI を gozen の 1 本にする
 
-状態: 採用。日付: 2026-10-19。[ADR 0012](0012-cli-ownership-and-output.md) の入口、[ADR 0001](0001-modules-and-layout.md)・[ADR 0009](0009-single-module.md) の CLI の配置、[ADR 0004](0004-content-boundary.md) の制作支援の配置の名前を変更します。
+状態: 採用。日付: 2026-10-19。オプションの書き方と help の形は [ADR 0018](0018-gnu-options-and-help.md) で変更しました（下の表の「flag はそのまま」は名前の対応で、書き方は GNU 形式です）。[ADR 0012](0012-cli-ownership-and-output.md) の入口、[ADR 0001](0001-modules-and-layout.md)・[ADR 0009](0009-single-module.md) の CLI の配置、[ADR 0004](0004-content-boundary.md) の制作支援の配置の名前を変更します。
 
 ## 利用者と問題
 
@@ -15,12 +15,12 @@ CLI は `cmd/gozen` の 1 本にします。導入は `go install github.com/nao
 | サブコマンド | 元の CLI |
 | --- | --- |
 | `check`、`layout`、`sim`、`curve`、`floors`、`trace`、`book`、`design`、`memos`、`release`、`trial`、`shots` | `rpgtool` の同名のサブコマンド |
-| `check -no-layout` | `rpgcheck` |
+| `check --no-layout` | `rpgcheck` |
 | `prompt` | `promptgen`（サブコマンド `lint` と flag はそのまま） |
 | `mosaic` | `mosaic`（サブコマンドと flag はそのまま） |
 | `version`、`help [command]` | 新規 |
 
-`rpgcheck` は廃止します。`rpgcheck` だけが持っていた振る舞いは、フォントの解析と文字の収まりの検査をしない構造だけの検査と、`Structure checked; layout was not checked.` の行でした。これは `gozen check -no-layout` に移します。終了値（成功 0、検査・I/O の失敗 1、引数の誤り 2）は同じです。`gozen help <command>` は `gozen <command> --help` と同じ出力です。
+`rpgcheck` は廃止します。`rpgcheck` だけが持っていた振る舞いは、フォントの解析と文字の収まりの検査をしない構造だけの検査と、`Structure checked; layout was not checked.` の行でした。これは `gozen check --no-layout` に移します。終了値（成功 0、検査・I/O の失敗 1、引数の誤り 2）は同じです。`gozen help <command>` は `gozen <command> --help` と同じ出力です。
 
 `prompt` と `mosaic` の引数・flag・出力・終了値は、それぞれ `internal/promptgen/command` と `internal/mosaic/command` が持ちます。`cmd/gozen` はプロセスの終了と振り分けだけを持ちます。`prompt` の終了値もほかのサブコマンドに揃え、help と成功が 0、引数の誤りが 2、それ以外の失敗が 1 です（従来の `promptgen` は引数の誤りも 1 でした）。診断の文も英語に揃えます。
 
@@ -41,7 +41,7 @@ README の CLI の節は `#gozen` の 1 つにします。help の Requirements 
 ## 影響
 
 - 4 本分の導入・ビルド・E2E の手順が 1 本になります。Makefile の `cli-build` は `bin/gozen` だけを作ります。CI の E2E と推論ビルドも `./cmd/gozen` を対象にします。
-- cgo を有効にして組み立てた `gozen` は ONNX の binding を含みます。共有ライブラリは実行時に `-ort` か `ONNXRUNTIME_LIB` で読み込むため、推論を使わない処理には共有ライブラリもモデルも不要です。
+- cgo を有効にして組み立てた `gozen` は ONNX の binding を含みます。共有ライブラリは実行時に `--ort` か `ONNXRUNTIME_LIB` で読み込むため、推論を使わない処理には共有ライブラリもモデルも不要です。
 - 汎用の CLI の入口から制作支援の実装へ依存が生じます。[ADR 0004](0004-content-boundary.md) の許可は `internal/promptgen`・`internal/mosaic`（それぞれの `command` を含む）に限ります。`cmd/gozen` は振り分けと、中立な一覧の help だけを持ちます。
 - [ADR 0012](0012-cli-ownership-and-output.md) の出力先・終了値・上書き防止の規約は、`prompt` を含む `gozen` の全サブコマンドに引き継ぎます。
 - 推論を Pure Go に置き換えたときは、build tag による分岐と `CGO_ENABLED=0` の版の診断を外します。

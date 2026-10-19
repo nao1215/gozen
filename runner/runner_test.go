@@ -18,12 +18,35 @@ func TestHelpAndErrorsDoNotExit(t *testing.T) {
 	if err := Run(context.Background(), nil, "invalid", Config{Args: []string{"--help"}, Output: &out}); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "Requirements:") {
-		t.Fatal("requirements missing")
+	for _, want := range []string{"Requirements:", "[Usage]", "[Examples]", "[Options]", "  Test play (--dev):", "-h, --help",
+		"Report an issue: https://github.com/nao1215/gozen/issues"} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("help lacks %q", want)
+		}
+	}
+	if strings.Contains(out.String(), "  Other:") {
+		t.Fatal("an option is missing from the help groups")
+	}
+	var short bytes.Buffer
+	if err := Run(context.Background(), nil, "invalid", Config{Args: []string{"-h"}, Output: &short}); err != nil || short.String() != out.String() {
+		t.Fatalf("-h differs from --help: %v", err)
 	}
 	want := errors.New("output unavailable")
 	if err := Run(context.Background(), nil, ".", Config{Args: []string{"--help"}, Output: failingWriter{want}}); !errors.Is(err, want) {
 		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"-dev"}, {"--dev", "-seed", "7"}, {"-mute"}} {
+		err := Run(context.Background(), nil, ".", Config{Args: args})
+		if err == nil || !strings.Contains(err.Error(), "single-dash long option") {
+			t.Fatalf("%v: %v", args, err)
+		}
+	}
+	// Both GNU value forms reach the same check after parsing.
+	for _, args := range [][]string{{"--seed=7", "--start=camp"}, {"--seed", "7", "--start", "camp"}} {
+		err := Run(context.Background(), nil, ".", Config{Args: args})
+		if err == nil || err.Error() != "--start requires --dev" {
+			t.Fatalf("%v: %v", args, err)
+		}
 	}
 	for _, args := range [][]string{{"--unknown"}, {"--start", "camp"}, {"--dev", "--script", "missing"}, {"extra"}} {
 		if err := Run(context.Background(), nil, ".", Config{Args: args}); err == nil {

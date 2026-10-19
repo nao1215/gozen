@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"math"
 	"os"
@@ -12,18 +11,19 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/clihelp"
 
 	lang "github.com/nao1215/gozen/text"
 )
 
 func (c *command) traceCmd(args []string) (err error) {
-	fl := flag.NewFlagSet("gozen trace", flag.ContinueOnError)
-	only := fl.String("only", "", "only these kinds (comma separated: say, scene, battle, menu, view, state, act, problem...)")
-	from := fl.Float64("from", 0, "from this second")
-	to := fl.Float64("to", 0, "to this second (0: the end)")
-	input := fl.Bool("input", false, "show the input too")
-	check := fl.Bool("check", false, "list the faults of the standing pictures and the music (trace_check.go); exit 1 if any")
-	musicLate := fl.Float64("music-late", 0.5, "with -check: a song heard later than this (seconds) after it was asked for is late")
+	fl := clihelp.NewFlagSet("gozen trace")
+	only := fl.String("only", "", "print only these `KINDS`, separated by commas: say, scene, battle, menu, view, state, act, problem, and so on")
+	from := fl.Float64("from", 0, "start at this `SECOND`")
+	to := fl.Float64("to", 0, "stop at this `SECOND`; 0 is the end")
+	input := fl.Bool("input", false, "also print the player's input")
+	check := fl.Bool("check", false, "list the faults of the standing pictures and the music instead, and exit 1 if there are any")
+	musicLate := fl.Float64("music-late", 0.5, "with --check, a song heard more than these `SECONDS` after it was asked for is late")
 	if err := c.parse(fl, args); err != nil {
 		return err
 	}

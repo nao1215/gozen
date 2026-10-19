@@ -28,7 +28,7 @@ func runGraphs(t *testing.T, g *Game) {
 	}
 }
 
-// 画面の数は gozen sim -state（全回復）・-as-is（今の HP）・-as-is -streak と同じ関数・同じ種で測った数と一致する。
+// 画面の数は gozen sim --state（全回復）・--as-is（今の HP）・--as-is --streak と同じ関数・同じ種で測った数と一致する。
 func TestGraphsMatchSim(t *testing.T) {
 	g := graphGame(t)
 	g.in.pressed[btnGraphs] = true

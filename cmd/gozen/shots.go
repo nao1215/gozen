@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"html"
 	"image"
@@ -19,6 +18,7 @@ import (
 	"time"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/layer2/assetpolicy"
 
 	"github.com/goccy/go-yaml"
@@ -75,21 +75,21 @@ type shotResult struct {
 }
 
 func (c *command) shots(args []string) (err error) {
-	fl := flag.NewFlagSet("gozen shots", flag.ContinueOnError)
-	bin := fl.String("bin", "", "Gozen runner を使うゲームのバイナリ（必須）")
-	overlay := fl.String("overlay", "", "承認済みの差し替え素材の置き場")
-	raw := fl.Bool("raw", false, "承認を確かめずに元の絵で撮る（手元で見るだけ。販売用の置き場に出さない）")
-	out := fl.String("out", "", "出力の置き場（既定 build/shots/<日時>）")
-	only := fl.String("only", "", "この id だけ撮る（カンマ区切り）")
-	timeout := fl.Duration("timeout", 4*time.Minute, "1 枚の時間の上限")
+	fl := clihelp.NewFlagSet("gozen shots")
+	bin := fl.String("bin", "", "the game binary `FILE` built with the Gozen runner; required")
+	overlay := fl.String("overlay", "", "take approved replaced assets from this `DIR` and check approval")
+	raw := fl.Bool("raw", false, "take the shots with the original assets without checking approval (for local review only)")
+	out := fl.StringP("out", "o", "", "write the shots to this new `DIR` (default: build/shots/<date-time>)")
+	only := fl.String("only", "", "take only these shot `IDS`, separated by commas")
+	timeout := fl.Duration("timeout", 4*time.Minute, "the time limit of one shot, such as 90s or 2m")
 	if err := c.parse(fl, args); err != nil {
 		return err
 	}
 	if fl.NArg() != 2 || *bin == "" || (*overlay == "") == !*raw {
-		return cli.Invalid("shots requires -bin and exactly one of -overlay DIR or -raw")
+		return cli.Invalid("shots requires --bin and exactly one of --overlay DIR or --raw")
 	}
 	if *timeout <= 0 {
-		return cli.Invalid("-timeout must be positive")
+		return cli.Invalid("--timeout must be positive")
 	}
 	gameDir, listPath := fl.Arg(0), fl.Arg(1)
 	*bin, err = exec.LookPath(*bin)
@@ -147,7 +147,7 @@ func (c *command) shots(args []string) (err error) {
 			found = found || it.ID == id
 		}
 		if !found {
-			return cli.Invalid("-only: unknown shot %q", id)
+			return cli.Invalid("--only: unknown shot %q", id)
 		}
 	}
 	if err := cli.Destination(*out, fl.Arg(0), *overlay, listPath); err != nil {
@@ -480,7 +480,7 @@ func writeShotIndex(out string, list *shotList, rs []shotResult, raw bool) error
 	appendText(&b, "<h1>"+e(title)+"</h1>\n")
 
 	if raw {
-		appendText(&b, "<p class=f>承認未検査の版（-raw）。手元で場面を見るだけの物で、紹介ページに使わない。</p>\n")
+		appendText(&b, "<p class=f>承認未検査の版（--raw）。手元で場面を見るだけの物で、紹介ページに使わない。</p>\n")
 
 	}
 	n := map[string]int{}

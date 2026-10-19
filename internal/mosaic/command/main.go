@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -15,6 +14,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/spf13/pflag"
 	_ "golang.org/x/image/webp"
 
 	"github.com/nao1215/gozen/internal/mosaic"
@@ -41,30 +41,30 @@ func env(name, def string) string {
 	return def
 }
 
-func (cli *cli) commonFlags(fs *flag.FlagSet) *options {
+func (cli *cli) commonFlags(fs *pflag.FlagSet) *options {
 	p := defaultParams
 	o := &options{outw: cli.out, diag: cli.diag}
-	fs.IntVar(&o.block, "block", 0, "モザイクの 1 ブロックの大きさ（px）。0 なら 既定のブロック幅（max(4, 長辺/100 の切り上げ)）。基準より小さい値は警告する")
-	fs.StringVar(&o.out, "out", env("MOSAIC_OUT", ""), "書き出すディレクトリ（既定は <game dir>/assets_mosaic）")
-	fs.StringVar(&o.model, "model", "", "検出モデル（ONNX）")
-	fs.StringVar(&o.faceModel, "face", "", "任意の顔検出 ONNX モデル。明示したファイルが読めない場合は失敗する")
-	fs.StringVar(&o.shape, "shape", env("MOSAIC_SHAPE", "box"), "auto の形状。box は矩形、mask は -seg で指定したモデルのマスク")
-	fs.IntVar(&o.dilate, "dilate", -1, "mask を太らせる px。-1 は 1 ブロック分")
-	fs.StringVar(&o.segModel, "seg", "", "-shape mask に必要な利用者指定の ONNX 分割モデル")
-	fs.StringVar(&o.lib, "ort", detect.LibraryPath(), "ONNX Runtime 共有ライブラリの場所（ONNXRUNTIME_LIB でも指定可）")
-	fs.Float64Var(&o.minScore, "threshold", float64(p.minScore), "このスコア以上の枠にモザイクを掛ける（低いほど漏れが減り、誤検出が増える）")
-	fs.Float64Var(&o.sure, "sure", float64(p.sureScore), "最高のスコアがこれより低い枠は、掛けた上で要確認に出す")
-	fs.StringVar(&o.labels, "labels", strings.Join(settings.Defaults.Targets, ","), "モザイクを掛ける物（nipple_f,penis,pussy から）")
-	fs.Float64Var(&o.margin, "margin", p.margin, "枠の辺のこの割合だけ広げる（既定 0。掛かったブロックはまるごと塗るので輪郭線は入る。足りない絵だけ広げる）")
-	fs.IntVar(&o.padBlocks, "pad", p.padBlocks, "枠を広げる幅の最小（ブロックの数。既定 0）")
-	fs.IntVar(&o.minBlocks, "min", p.minBlocks, "範囲の一辺の最小（ブロックの数。既定 0）")
-	fs.StringVar(&o.tagsFile, "tags", env("MOSAIC_TAGS", ""), "絵のタグのキャッシュの JSON（無い・古い絵は -tagger で付けて書き足す。空ならタグを使わない）")
-	fs.StringVar(&o.taggerDir, "tagger", env("MOSAIC_TAGGER", ""), "WD タガーのモデルのディレクトリ（model.onnx と selected_tags.csv）")
-	fs.StringVar(&o.fixFile, "fix", env("MOSAIC_FIX", ""), "人が書く手直しの YAML（絵ごとに範囲を足す・誤検出を捨てる・確かめた印）")
-	fs.StringVar(&o.manualFile, "manual", env("MOSAIC_MANUAL", ""), "gozen mosaic manual が書く手直しの YAML（auto も読む）")
-	fs.StringVar(&o.passes, "passes", env("MOSAIC_PASSES", "default"), "絵の見方（カンマ区切り）。default、all、または full640・flip640・native・flipnative・tile2・tile2x・tile3x・fliptile2x")
-	fs.IntVar(&o.threads, "threads", max(1, runtime.NumCPU()/2), "onnxruntime の CPU のスレッド数")
-	fs.IntVar(&o.quality, "quality", 90, "JPEG の画質")
+	fs.StringVar(&o.fixFile, "fix", env("MOSAIC_FIX", ""), "read hand-written fixes from this YAML `FILE`: regions to add, detections to drop, and checked marks per image (env MOSAIC_FIX)")
+	fs.StringVar(&o.manualFile, "manual", env("MOSAIC_MANUAL", ""), "read, and for manual write, the instructions YAML `FILE` that gozen mosaic manual keeps (env MOSAIC_MANUAL)")
+	fs.StringVar(&o.tagsFile, "tags", env("MOSAIC_TAGS", ""), "the image tag cache JSON `FILE`; missing or stale images are tagged with --tagger and added; empty uses no tags (env MOSAIC_TAGS)")
+	fs.StringVar(&o.model, "model", "", "the detection ONNX model `FILE`")
+	fs.StringVar(&o.lib, "ort", detect.LibraryPath(), "the ONNX Runtime shared library `FILE` (default: ONNXRUNTIME_LIB)")
+	fs.StringVar(&o.faceModel, "face", "", "an optional face detection ONNX model `FILE`; failing to read it is an error")
+	fs.StringVar(&o.segModel, "seg", "", "the segmentation ONNX model `FILE` that --shape mask needs")
+	fs.StringVar(&o.taggerDir, "tagger", env("MOSAIC_TAGGER", ""), "a WD tagger model `DIR` holding model.onnx and selected_tags.csv (env MOSAIC_TAGGER)")
+	fs.StringVar(&o.labels, "labels", strings.Join(settings.Defaults.Targets, ","), "the detector `CLASSES` to pixelate, separated by commas (default: every target class in the settings)")
+	fs.Float64Var(&o.minScore, "threshold", float64(p.minScore), "pixelate detections scoring at least this `SCORE`; lower misses less and finds more false regions")
+	fs.Float64Var(&o.sure, "sure", float64(p.sureScore), "pixelate, but also send to review, a region whose best score is below this `SCORE`")
+	fs.StringVar(&o.passes, "passes", env("MOSAIC_PASSES", "default"), "the detection `PASSES`, separated by commas: default, all, or full640, flip640, native, flipnative, tile2, tile2x, tile3x, fliptile2x (env MOSAIC_PASSES)")
+	fs.IntVar(&o.threads, "threads", max(1, runtime.NumCPU()/2), "ONNX Runtime CPU threads (default: half of the CPUs)")
+	fs.StringVar(&o.shape, "shape", env("MOSAIC_SHAPE", "box"), "the `SHAPE` of automatic regions: box (rectangles) or mask (the --seg model's mask) (env MOSAIC_SHAPE)")
+	fs.IntVar(&o.block, "block", 0, "the block size in `PIXELS`; 0 uses max(4, ceil(long side / 100)), and a smaller value than that warns")
+	fs.Float64Var(&o.margin, "margin", p.margin, "grow each detected box by this `FRACTION` of its sides; the touched blocks are filled whole, so the outline is covered")
+	fs.IntVar(&o.padBlocks, "pad", p.padBlocks, "grow each region by at least this many `BLOCKS`")
+	fs.IntVar(&o.minBlocks, "min", p.minBlocks, "make each side of a region at least this many `BLOCKS`")
+	fs.IntVar(&o.dilate, "dilate", -1, "grow masks by these `PIXELS`; -1 is one block")
+	fs.StringVarP(&o.out, "out", "o", env("MOSAIC_OUT", ""), "write the images and report.json to this `DIR` outside assets/ (default: <game-dir>/assets_mosaic; env MOSAIC_OUT)")
+	fs.IntVar(&o.quality, "quality", 90, "the JPEG `QUALITY` from 1 to 100; it does not change the block size")
 	return o
 }
 
@@ -85,7 +85,7 @@ func (o *options) setup(gameDir string) (config, error) {
 		}
 	}
 	if len(p.labels) == 0 {
-		return config{}, fmt.Errorf("-labels cannot be empty")
+		return config{}, fmt.Errorf("--labels cannot be empty")
 	}
 	out := o.out
 	if out == "" {
@@ -93,7 +93,7 @@ func (o *options) setup(gameDir string) (config, error) {
 	}
 	c := config{outw: o.outw, diag: o.diag, gameDir: gameDir, out: out, block: o.block, quality: o.quality, p: p, opts: o}
 	if o.shape != "mask" && o.shape != "box" {
-		return c, fmt.Errorf("-shape は mask か box（%q）", o.shape)
+		return c, fmt.Errorf("--shape は mask か box（%q）", o.shape)
 	}
 	var err error
 	if err = protectPaths(gameDir, out, o.fixFile, o.manualFile, o.tagsFile); err != nil {
@@ -103,7 +103,7 @@ func (o *options) setup(gameDir string) (config, error) {
 		return c, err
 	}
 	if len(c.passes) == 0 {
-		return c, fmt.Errorf("-passes cannot be empty")
+		return c, fmt.Errorf("--passes cannot be empty")
 	}
 	human, err := mosaic.LoadFixes(o.fixFile)
 	if err != nil {
@@ -145,7 +145,7 @@ func (c *config) open() error {
 	}
 	if c.opts.shape == "mask" {
 		if c.opts.segModel == "" {
-			return fmt.Errorf("-shape mask requires a user-supplied -seg model")
+			return fmt.Errorf("--shape mask requires a user-supplied --seg model")
 		}
 		if c.seg, err = segment.NewYoloSeg(c.opts.segModel, c.opts.lib, c.opts.threads, 1280, segment.SegLabels); err != nil {
 			return err
@@ -187,20 +187,14 @@ func (c *config) close() error {
 }
 
 func (cli *cli) autoCmd(args []string) (err error) {
-	fs := flag.NewFlagSet("auto", flag.ContinueOnError)
-	fs.SetOutput(cli.diag)
+	fs := newFlagSet("gozen mosaic auto")
 	o := cli.commonFlags(fs)
-	dry := fs.Bool("dry", false, "絵を書かずに、見つかった範囲と要確認の理由だけを表示する")
-	fs.Usage = func() {
-		cli.diag.println("usage: gozen mosaic auto [flags] <game dir> [assets/ からの相対パス...]")
-		fs.PrintDefaults()
-	}
-	if err := fs.Parse(args); err != nil {
-		return argumentError{err}
+	dry := fs.BoolP("dry-run", "n", false, "write nothing; print the regions found and the reasons to review")
+	if err := cli.parse(fs, args, autoPage); err != nil {
+		return err
 	}
 	if fs.NArg() < 1 {
-		fs.Usage()
-		return argumentError{fmt.Errorf("expected a game directory")}
+		return argumentError{fmt.Errorf("expected a game directory: gozen mosaic auto [OPTIONS] <game-dir> [IMAGE ...]")}
 	}
 	gameDir := fs.Arg(0)
 	c, err := o.setup(gameDir)

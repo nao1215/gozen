@@ -20,7 +20,7 @@ func (o *options) validate() error {
 	}
 	for name, v := range map[string]float64{"threshold": o.minScore, "sure": o.sure, "margin": o.margin} {
 		if math.IsNaN(v) || math.IsInf(v, 0) || v < 0 || v > 1 {
-			return fmt.Errorf("-%s must be finite and in [0,1]", name)
+			return fmt.Errorf("--%s must be finite and in [0,1]", name)
 		}
 	}
 	return nil

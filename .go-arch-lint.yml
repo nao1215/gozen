@@ -20,6 +20,7 @@ vendors:
   image: { in: [golang.org/x/image, "golang.org/x/image/**"] }
   ebiten: { in: [github.com/hajimehoshi/ebiten/v2, "github.com/hajimehoshi/ebiten/v2/**"] }
   width: { in: [golang.org/x/text/width] }
+  pflag: { in: [github.com/spf13/pflag] }
 components:
   expr: { in: [expr, "expr/internal/**", "internal/expr/**"] }
   text: { in: [text, "text/internal/**", "internal/text/**"] }
@@ -46,6 +47,8 @@ components:
   private6: { in: "internal/layer6/**" }
   # One CLI (ADR 0016): gozen owns prompt and mosaic through their internal command packages.
   commands: { in: ["cmd/gozen/**", "cmd/internal/**"] }
+  # GNU-style options and help pages shared by gozen, its production commands, and runner (ADR 0018).
+  clihelp: { in: "internal/clihelp/**" }
   promptgen: { in: "internal/promptgen/**" }
   mosaic: { in: "internal/mosaic/**" }
   experiments: { in: "x/**" }
@@ -102,20 +105,23 @@ deps:
     mayDependOn: [private5, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, private1, private2, private3, private4]
     canUse: [ebiten, image]
   runner:
-    mayDependOn: [runner, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, private1, private2, private3, private4, private5, private6]
-    canUse: [ebiten, image]
+    mayDependOn: [runner, clihelp, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, private1, private2, private3, private4, private5, private6]
+    canUse: [ebiten, image, pflag]
   private6:
     mayDependOn: [private6, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]
   commands:
-    mayDependOn: [commands, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, private1, private2, private3, private4, private5, promptgen, mosaic]
-    canUse: [yaml, ebiten, image]
+    mayDependOn: [commands, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, private1, private2, private3, private4, private5, promptgen, mosaic, clihelp]
+    canUse: [yaml, ebiten, image, pflag]
+  clihelp:
+    mayDependOn: [clihelp]
+    canUse: [pflag]
   promptgen:
-    mayDependOn: [promptgen, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless]
-    canUse: [yaml, image]
+    mayDependOn: [promptgen, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, clihelp]
+    canUse: [yaml, image, pflag]
   mosaic:
-    mayDependOn: [mosaic, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless]
-    canUse: [yaml, image, onnx]
+    mayDependOn: [mosaic, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, clihelp]
+    canUse: [yaml, image, onnx, pflag]
   experiments:
     mayDependOn: [expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, runner]
     canUse: [yaml, ebiten, image]

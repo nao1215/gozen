@@ -164,10 +164,10 @@ Xvfb・xauth・Python 3・ffmpeg・ffprobe が必要です。[撮影の詳細](d
 
 Requirements: ビルドに Go。通常の検査・シミュレーション・レポートと `prompt` は画面・C コンパイラ不要です。`shots` はゲームのバイナリと描画環境を使います。`mosaic` の推論には cgo で組み立てた gozen、対応する ONNX Runtime、利用者のモデルが必要です。[OS 別要件](docs/development/cli.md#requirements)。各サブコマンドの flag と前提は `gozen help <command>` で見られます。
 
-`gozen check` は定義・参照・式・素材の存在と文字の収まりを検査します。`-no-layout` はフォントを使う収まりの検査を省きます。
+`gozen check` は定義・参照・式・素材の存在と文字の収まりを検査します。`--no-layout` はフォントを使う収まりの検査を省きます。
 
 ```sh
-go run ./cmd/gozen check -no-layout e2e/atago/fixtures/game
+go run ./cmd/gozen check --no-layout e2e/atago/fixtures/game
 ```
 
 ```text
@@ -178,7 +178,7 @@ Structure checked; layout was not checked. Use gozen layout <game-dir>.
 `gozen sim` は乱数を固定して敵の編成と何度も戦い、勝率とターン数を報告します。
 
 ```sh
-go run ./cmd/gozen sim e2e/atago/fixtures/game lesson -n 3 -seed 7
+go run ./cmd/gozen sim e2e/atago/fixtures/game lesson -n 3 --seed 7
 ```
 
 ```text
@@ -201,7 +201,7 @@ go run ./cmd/gozen prompt --config docs/examples/production/catalog.yaml --scene
 go run ./cmd/gozen mosaic --help
 mkdir -p build/mosaic-input/assets
 cp docs/examples/production/pattern.png build/mosaic-input/assets/pattern.png
-go run ./cmd/gozen mosaic auto -fix docs/examples/production/fixes.yaml -out build/mosaic-output build/mosaic-input pattern.png
+go run ./cmd/gozen mosaic auto --fix docs/examples/production/fixes.yaml --out build/mosaic-output build/mosaic-input pattern.png
 ```
 
 新規に作った合成画像の矩形を、推論なしでピクセル化します。入力は変えず、出力画像と report は `build/mosaic-output` に置きます。

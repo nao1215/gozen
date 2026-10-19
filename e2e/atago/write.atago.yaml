@@ -5,7 +5,7 @@ scenarios:
 - name: trial dry run writes nothing including an explicitly named list
   steps:
   - run:
-      command: gozen trial "${specdir}/fixtures/game" "trial output 日本語" -n -list trial-list.txt
+      command: gozen trial "${specdir}/fixtures/game" "trial output 日本語" -n --list trial-list.txt
   - assert:
       exit_code: 0
       changes:
@@ -18,7 +18,7 @@ scenarios:
       file: expected.png
       from: fixtures/game/assets/mote.png
   - run:
-      command: gozen trial "${specdir}/fixtures/game" "trial output 日本語" -list trial-list.txt
+      command: gozen trial "${specdir}/fixtures/game" "trial output 日本語" --list trial-list.txt
   - assert:
       exit_code: 0
   - assert:
@@ -35,7 +35,7 @@ scenarios:
         path: trial output 日本語/assets/mote.png
         equals_file: expected.png
   - run:
-      command: gozen check -no-layout "trial output 日本語"
+      command: gozen check --no-layout "trial output 日本語"
   - assert:
       exit_code: 0
       stdout:
@@ -76,11 +76,11 @@ scenarios:
 
         '
   - run:
-      command: gozen release "${specdir}/fixtures/game" "release output" -overlay overlay -inspect inspect.jsonl
+      command: gozen release "${specdir}/fixtures/game" "release output" --overlay overlay --inspect inspect.jsonl
   - assert:
       exit_code: 0
   - run:
-      command: gozen check -no-layout "release output"
+      command: gozen check --no-layout "release output"
   - assert:
       exit_code: 0
       stdout:
@@ -88,7 +88,7 @@ scenarios:
       stderr:
         equals: ''
   - run:
-      command: gozen release "${specdir}/fixtures/game" "release output" -overlay overlay -inspect inspect.jsonl
+      command: gozen release "${specdir}/fixtures/game" "release output" --overlay overlay --inspect inspect.jsonl
   - assert:
       exit_code: 1
       stderr:
@@ -100,7 +100,7 @@ scenarios:
 - name: design emits JSON timeline image and report with no build metadata
   steps:
   - run:
-      command: gozen design "${specdir}/fixtures/game" -out "design output" -v
+      command: gozen design "${specdir}/fixtures/game" --out "design output" -v
   - assert:
       exit_code: 0
       stdout:
@@ -127,7 +127,7 @@ scenarios:
         format: png
         width: 1600
   - run:
-      command: gozen design "${specdir}/fixtures/game" -out "design output"
+      command: gozen design "${specdir}/fixtures/game" --out "design output"
   - assert:
       exit_code: 1
       stderr:
@@ -147,7 +147,7 @@ scenarios:
       file: notes/2026-01-01/001.png
       from: fixtures/game/assets/mote.png
   - run:
-      command: gozen memos notes -out "note output"
+      command: gozen memos notes --out "note output"
   - assert:
       exit_code: 0
       stdout:
@@ -165,7 +165,7 @@ scenarios:
         width: 480
         height: 480
   - run:
-      command: gozen memos notes -out "note output"
+      command: gozen memos notes --out "note output"
   - assert:
       exit_code: 1
       stderr:

@@ -3,7 +3,6 @@ package command
 import (
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"image"
 	"image/color"
@@ -11,6 +10,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -19,37 +19,18 @@ import (
 	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/math/fixed"
 
+	"github.com/spf13/pflag"
+
+	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/mosaic"
 )
-
-const manualHelp = `gozen mosaic manual: LLM が絵を見て、座標でモザイクを直す。元の絵（assets/）は変えない。
-指示は -manual の YAML（既定は環境変数 MOSAIC_MANUAL）に書き、auto も同じ指示を読む（いつでも作り直せる）。
-直すたびにその絵だけ作り直し、モザイクを掛けた後の確認図を <out>/manual/ に書く。
-
-  gozen mosaic manual list  [flags] <game dir>          要確認の絵と理由（report.json から。1 行 1 枚の JSON）
-  gozen mosaic manual show  [flags] <game dir> <絵>     その絵の検出・範囲・手直し（JSON）
-  gozen mosaic manual view  [flags] <game dir> <絵>     目盛り付きの図を書く（-src original|masked、-region で拡大）
-  gozen mosaic manual add   [flags] <game dir> <絵>     モザイクを足す（-rect・-box・-poly・-ellipse。何度でも書ける）
-  gozen mosaic manual drop  [flags] <game dir> <絵>     自動の範囲を捨てる（-region-id A2、または -rect・-box と重なる自動の枠。
-                                                 分割モデルだけで掛けた範囲は番号が無いので -rect で指す）
-  gozen mosaic manual grow  [flags] <game dir> <絵>     自動の範囲を広げる（-region-id A1|all か -rect（重なる範囲。分割モデルだけの物も）と、
-                                                 -by px、または -left -top -right -bottom px。負なら縮める）。
-                                                 -margin 0.3 でこの絵だけ枠を広げる割合を変える（既定 0）
-  gozen mosaic manual skip  [flags] <game dir> <絵>     自動の検出を全部使わない（手で足した物だけ）
-  gozen mosaic manual check [flags] <game dir> <絵>     確かめた印を付ける（要確認から外す）
-  gozen mosaic manual clear [flags] <game dir> <絵>     その絵の manual の指示を全部消す
-
-座標は元の絵の px（左上が 0,0）。-norm を付けると 0〜1 の割合（x は幅、y は高さに対する割合）。
-  -rect x,y,w,h        左上と幅・高さ
-  -box x0,y0,x1,y1     左上と右下の角
-  -poly x1,y1,x2,y2,…  多角形（3 点以上。区切りは , や空白）
-  -ellipse cx,cy,rx,ry 楕円（中心と半径。48 角形にする）
-範囲には、その範囲に少しでも掛かる格子のブロック（既定の大きさ）を全部塗る。輪郭線まで含めて指示する。
-view の図: 外側の目盛りは元の絵の px。薄い黄色の所が実際に塗った範囲（auto は性器の形に沿って塗る）。黄色の枠 A1… が自動の範囲、水色 M1… が手で足した矩形、桃色 P1… が手で足した多角形。`
 
 type coords [][]float64
 
 func (c *coords) String() string { return fmt.Sprint(*c) }
+
+// Type names the value kind for pflag.
+func (c *coords) Type() string { return "coords" }
 
 func (c *coords) Set(s string) error {
 	fields := strings.FieldsFunc(s, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' })
@@ -68,48 +49,72 @@ func (c *coords) Set(s string) error {
 	return nil
 }
 
+// manualOptions are the options of gozen mosaic manual beyond the common ones.
+type manualOptions struct {
+	o                                     *options
+	rects, boxes, polys, ellipses, region *coords
+	norm                                  *bool
+	note, regionID, src, viewOut          *string
+	by, left, top, right, bottom          *int
+	size, step                            *int
+}
+
+func manualFlags(cli *cli, fs *pflag.FlagSet) manualOptions {
+	m := manualOptions{o: cli.commonFlags(fs), rects: &coords{}, boxes: &coords{}, polys: &coords{}, ellipses: &coords{}, region: &coords{}}
+	fs.Var(m.rects, "rect", "add a rectangle `X,Y,W,H` (top left, width, height); repeatable")
+	fs.Var(m.boxes, "box", "add a box `X0,Y0,X1,Y1` (top left and bottom right corners); repeatable")
+	fs.Var(m.polys, "poly", "add a polygon `X1,Y1,X2,Y2,...` of 3 points or more; repeatable")
+	fs.Var(m.ellipses, "ellipse", "add an ellipse `CX,CY,RX,RY` (center and radii); repeatable")
+	m.norm = fs.Bool("norm", false, "read coordinates as fractions from 0 to 1 of the width and the height")
+	m.note = fs.String("note", "", "add this `TEXT` to the note of the image in the YAML")
+	m.regionID = fs.String("region-id", "", "for drop and grow, the automatic region `IDS` shown by view, such as A1, separated by commas; grow also takes all")
+	m.by = fs.Int("by", 0, "for grow, grow every side by these `PIXELS`; negative shrinks")
+	m.left = fs.Int("left", 0, "for grow, grow the left side by these `PIXELS`")
+	m.top = fs.Int("top", 0, "for grow, grow the top side by these `PIXELS`")
+	m.right = fs.Int("right", 0, "for grow, grow the right side by these `PIXELS`")
+	m.bottom = fs.Int("bottom", 0, "for grow, grow the bottom side by these `PIXELS`")
+	m.src = fs.String("src", "original", "for view, draw the `SOURCE` image: original or masked")
+	fs.Var(m.region, "region", "for view, zoom into the area `X,Y,W,H` (default: the whole image)")
+	m.size = fs.Int("size", 1536, "for view, the long side of the drawing in `PIXELS`")
+	m.step = fs.Int("step", 0, "for view, the scale interval in original `PIXELS`; 0 chooses one")
+	m.viewOut = fs.String("view-out", "", "for view, write the drawing to this `FILE` (default: <out>/manual/<image>.<source>.png)")
+	return m
+}
+
 func (cli *cli) manualCmd(args []string) (err error) {
-	if len(args) < 1 || args[0] == "help" || args[0] == "-h" {
-		cli.diag.println(manualHelp)
-		return argumentError{fmt.Errorf("invalid or missing arguments")}
+	if len(args) == 0 {
+		return argumentError{fmt.Errorf("a manual command is required: list, show, view, add, drop, grow, skip, check, or clear; use --help")}
+	}
+	if args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
+		if len(args) > 1 {
+			return argumentError{fmt.Errorf("help takes no arguments")}
+		}
+		fs := newFlagSet("gozen mosaic manual")
+		manualFlags(cli, fs)
+		cli.out.write(manualPage.String(fs))
+		return clihelp.ErrHelp
 	}
 	sub := args[0]
-	fs := flag.NewFlagSet("manual "+sub, flag.ContinueOnError)
-	fs.SetOutput(cli.diag)
-	o := cli.commonFlags(fs)
-	var rects, boxes, polys, ellipses, region coords
-	fs.Var(&rects, "rect", "x,y,w,h（何度でも）")
-	fs.Var(&boxes, "box", "x0,y0,x1,y1（何度でも）")
-	fs.Var(&polys, "poly", "x1,y1,x2,y2,...（何度でも）")
-	fs.Var(&ellipses, "ellipse", "cx,cy,rx,ry（何度でも）")
-	fs.Var(&region, "region", "view: 拡大する範囲 x,y,w,h（既定は絵の全体）")
-	norm := fs.Bool("norm", false, "座標を 0〜1 の割合で書く")
-	note := fs.String("note", "", "指示の理由（YAML の note に足す）")
-	regionID := fs.String("region-id", "", "drop・grow: 自動の範囲の番号（view の A1 など。カンマ区切り。grow は all も）")
-	by := fs.Int("by", 0, "grow: 四方に広げる px（負なら縮める）")
-	left := fs.Int("left", 0, "grow: 左へ広げる px")
-	top := fs.Int("top", 0, "grow: 上へ広げる px")
-	right := fs.Int("right", 0, "grow: 右へ広げる px")
-	bottom := fs.Int("bottom", 0, "grow: 下へ広げる px")
-	src := fs.String("src", "original", "view: 元の絵（original）か、モザイクを掛けた後（masked）か")
-	size := fs.Int("size", 1536, "view: 図の長辺（px）")
-	step := fs.Int("step", 0, "view: 目盛りの間隔（元の絵の px。0 なら自動）")
-	viewOut := fs.String("o", "", "view: 図を書く場所（既定は <out>/manual/<絵>.<src>.png）")
-	fs.Usage = func() {
-		cli.diag.println(manualHelp)
-		cli.diag.println("\nflags:")
-		fs.PrintDefaults()
+	if !slices.Contains([]string{"list", "show", "view", "add", "drop", "grow", "skip", "check", "clear"}, sub) {
+		return argumentError{fmt.Errorf("unknown manual command %q: use list, show, view, add, drop, grow, skip, check, or clear", sub)}
 	}
-	if err := fs.Parse(args[1:]); err != nil {
-		return argumentError{err}
+	fs := newFlagSet("gozen mosaic manual " + sub)
+	mo := manualFlags(cli, fs)
+	if err := cli.parse(fs, args[1:], manualPage); err != nil {
+		return err
 	}
+	o, rects, boxes, polys, ellipses, region := mo.o, *mo.rects, *mo.boxes, *mo.polys, *mo.ellipses, *mo.region
+	norm, note, regionID, by, left, top, right, bottom := mo.norm, mo.note, mo.regionID, mo.by, mo.left, mo.top, mo.right, mo.bottom
+	src, size, step, viewOut := mo.src, mo.size, mo.step, mo.viewOut
 	need := 2
 	if sub == "list" {
 		need = 1
 	}
 	if fs.NArg() != need {
-		fs.Usage()
-		return argumentError{fmt.Errorf("invalid or missing arguments")}
+		if need == 1 {
+			return argumentError{fmt.Errorf("expected a game directory: gozen mosaic manual list [OPTIONS] <game-dir>")}
+		}
+		return argumentError{fmt.Errorf("expected a game directory and an image: gozen mosaic manual %s [OPTIONS] <game-dir> <IMAGE>", sub)}
 	}
 	if *size < 1 || *size > 4096 || *step < 0 {
 		return fmt.Errorf("view size must be 1..4096 and step >= 0")
@@ -165,7 +170,7 @@ func (cli *cli) manualCmd(args []string) (err error) {
 	}
 	needsManual := sub == "add" || sub == "drop" || sub == "grow" || sub == "skip" || sub == "check" || sub == "clear"
 	if needsManual && o.manualFile == "" {
-		return errors.New("-manual（または環境変数 MOSAIC_MANUAL）に manual の YAML を指定する")
+		return errors.New("--manual（または環境変数 MOSAIC_MANUAL）に manual の YAML を指定する")
 	}
 	var geometryErr error
 	clip := func(x []int) [4]int {
@@ -186,7 +191,7 @@ func (cli *cli) manualCmd(args []string) (err error) {
 	case "view":
 		var r image.Rectangle
 		if len(region) > 0 {
-			v, err := conv(region[0], 4, "-region")
+			v, err := conv(region[0], 4, "--region")
 			if err != nil {
 				return err
 			}
@@ -197,7 +202,7 @@ func (cli *cli) manualCmd(args []string) (err error) {
 	case "add":
 		n := 0
 		for _, v := range rects {
-			x, err := conv(v, 4, "-rect")
+			x, err := conv(v, 4, "--rect")
 			if err != nil {
 				return err
 			}
@@ -205,7 +210,7 @@ func (cli *cli) manualCmd(args []string) (err error) {
 			n++
 		}
 		for _, v := range boxes {
-			x, err := conv(v, 4, "-box")
+			x, err := conv(v, 4, "--box")
 			if err != nil {
 				return err
 			}
@@ -213,7 +218,7 @@ func (cli *cli) manualCmd(args []string) (err error) {
 			n++
 		}
 		for _, v := range polys {
-			x, err := conv(v, -1, "-poly")
+			x, err := conv(v, -1, "--poly")
 			if err != nil {
 				return err
 			}
@@ -221,7 +226,7 @@ func (cli *cli) manualCmd(args []string) (err error) {
 			n++
 		}
 		for _, v := range ellipses {
-			x, err := conv(v, 4, "-ellipse")
+			x, err := conv(v, 4, "--ellipse")
 			if err != nil {
 				return err
 			}
@@ -232,19 +237,19 @@ func (cli *cli) manualCmd(args []string) (err error) {
 			n++
 		}
 		if n == 0 {
-			return errors.New("add には -rect・-box・-poly・-ellipse のどれかが要る")
+			return errors.New("add には --rect・--box・--poly・--ellipse のどれかが要る")
 		}
 		m.Checked = false
 	case "drop":
 		for _, v := range rects {
-			x, err := conv(v, 4, "-rect")
+			x, err := conv(v, 4, "--rect")
 			if err != nil {
 				return err
 			}
 			m.Drop = append(m.Drop, clip(x))
 		}
 		for _, v := range boxes {
-			x, err := conv(v, 4, "-box")
+			x, err := conv(v, 4, "--box")
 			if err != nil {
 				return err
 			}
@@ -258,28 +263,28 @@ func (cli *cli) manualCmd(args []string) (err error) {
 			for id := range strings.SplitSeq(*regionID, ",") {
 				i, err := strconv.Atoi(strings.TrimPrefix(strings.ToUpper(strings.TrimSpace(id)), "A"))
 				if err != nil || i < 1 || i > len(e.autoRegions()) {
-					return fmt.Errorf("-region-id %s が無い（自動の範囲は A1〜A%d）", id, len(e.autoRegions()))
+					return fmt.Errorf("--region-id %s が無い（自動の範囲は A1〜A%d）", id, len(e.autoRegions()))
 				}
 				m.Drop = append(m.Drop, e.autoRegions()[i-1])
 			}
 		}
 		if len(m.Drop) == len(c.manual[pic].Drop) {
-			return errors.New("drop には -region-id か -rect・-box が要る")
+			return errors.New("drop には --region-id か --rect・--box が要る")
 		}
 		m.Checked = false
 	case "grow":
 		set := map[string]bool{}
-		fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
+		fs.Visit(func(f *pflag.Flag) { set[f.Name] = true })
 		if set["margin"] {
 			if o.margin < 0 {
-				return errors.New("-margin は 0 以上")
+				return errors.New("--margin は 0 以上")
 			}
 			m.Margin = o.margin
 		}
 		d := [4]int{*left + *by, *top + *by, *right + *by, *bottom + *by}
 		if *regionID != "" {
 			if d == [4]int{} {
-				return errors.New("grow には -by か -left・-top・-right・-bottom が要る")
+				return errors.New("grow には --by か --left・--top・--right・--bottom が要る")
 			}
 			e, ok := reportEntry(c, pic)
 			if !ok {
@@ -295,7 +300,7 @@ func (cli *cli) manualCmd(args []string) (err error) {
 				for id := range strings.SplitSeq(*regionID, ",") {
 					i, err := strconv.Atoi(strings.TrimPrefix(strings.ToUpper(strings.TrimSpace(id)), "A"))
 					if err != nil || i < 1 || i > len(regs) {
-						return fmt.Errorf("-region-id %s が無い（自動の範囲は A1〜A%d）", id, len(regs))
+						return fmt.Errorf("--region-id %s が無い（自動の範囲は A1〜A%d）", id, len(regs))
 					}
 					ids = append(ids, i-1)
 				}
@@ -307,10 +312,10 @@ func (cli *cli) manualCmd(args []string) (err error) {
 		} else if len(rects) > 0 {
 
 			if d == [4]int{} {
-				return errors.New("grow には -by か -left・-top・-right・-bottom が要る")
+				return errors.New("grow には --by か --left・--top・--right・--bottom が要る")
 			}
 			for _, v := range rects {
-				x, err := conv(v, 4, "-rect")
+				x, err := conv(v, 4, "--rect")
 				if err != nil {
 					return err
 				}
@@ -318,7 +323,7 @@ func (cli *cli) manualCmd(args []string) (err error) {
 				m.Grow = append(m.Grow, [8]int{r[0], r[1], r[2], r[3], d[0], d[1], d[2], d[3]})
 			}
 		} else if !set["margin"] {
-			return errors.New("grow には -region-id か -rect（と広げる px）か -margin が要る")
+			return errors.New("grow には --region-id か --rect（と広げる px）か --margin が要る")
 		}
 		m.Checked = false
 	case "skip":
@@ -329,8 +334,7 @@ func (cli *cli) manualCmd(args []string) (err error) {
 	case "clear":
 		m = mosaic.Fix{}
 	default:
-		cli.diag.println(manualHelp)
-		return argumentError{fmt.Errorf("invalid or missing arguments")}
+		return argumentError{fmt.Errorf("unknown manual command %q", sub)}
 	}
 	if *note != "" {
 		m.Note = strings.TrimSpace(m.Note + " " + *note)
@@ -343,7 +347,7 @@ func (cli *cli) manualCmd(args []string) (err error) {
 	if geometryErr != nil {
 		return geometryErr
 	}
-	fs.Visit(func(f *flag.Flag) {
+	fs.Visit(func(f *pflag.Flag) {
 		if f.Name == "block" {
 			m.Block = o.block
 		}
@@ -442,7 +446,7 @@ func manualView(c config, pic, orig, src string, region image.Rectangle, size, s
 			img, err = decode(orig)
 		}
 	default:
-		return "", fmt.Errorf("-src は original か masked")
+		return "", fmt.Errorf("--src は original か masked")
 	}
 	if err != nil {
 		return "", err
@@ -453,7 +457,7 @@ func manualView(c config, pic, orig, src string, region image.Rectangle, size, s
 	}
 	region = region.Intersect(b)
 	if region.Empty() {
-		return "", fmt.Errorf("-region が絵の外")
+		return "", fmt.Errorf("--region が絵の外")
 	}
 	var ov overlay
 	if ok {

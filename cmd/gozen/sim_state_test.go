@@ -13,7 +13,7 @@ import (
 	"github.com/nao1215/gozen/rpg"
 )
 
-// gozen sim -state はメモの .save から、開発用のバランス表示（F7）と同じ関数・種で数える。
+// gozen sim --state はメモの .save から、開発用のバランス表示（F7）と同じ関数・種で数える。
 func TestSimFromSavedStateMatchesTheShared(t *testing.T) {
 	dir := fixture(t)
 	db, err := data.Load(os.DirFS(dir), ".")
@@ -34,9 +34,9 @@ func TestSimFromSavedStateMatchesTheShared(t *testing.T) {
 		level int
 		asIs  bool
 	}{{0, false}, {3, false}, {0, true}} {
-		args := []string{"sim", dir, "lesson", "-state", path, "-n", "40", "-seed", "6", "-level", fmt.Sprint(tc.level), "-hp", "-streak", "5"}
+		args := []string{"sim", dir, "lesson", "--state", path, "-n", "40", "--seed", "6", "--level", fmt.Sprint(tc.level), "--hp", "--streak", "5"}
 		if tc.asIs {
-			args = append(args, "-as-is")
+			args = append(args, "--as-is")
 		}
 		out, _ := invoke(t, 0, args...)
 		start := balance.SavedStart(db, save, 6, balance.Prep{Level: tc.level, Tree: true, AsIs: tc.asIs})
@@ -59,8 +59,8 @@ func TestSimFromSavedStateMatchesTheShared(t *testing.T) {
 			t.Fatalf("%+v: %q want %q", tc, out, line)
 		}
 	}
-	invoke(t, 2, "sim", dir, "lesson", "-as-is")
-	invoke(t, 2, "sim", dir, "lesson", "-state", path, "-streak", "-1")
-	invoke(t, 2, "sim", dir, "lesson", "-state", path, "-party", "scout")
-	invoke(t, 1, "sim", dir, "lesson", "-state", filepath.Join(t.TempDir(), "absent.save"))
+	invoke(t, 2, "sim", dir, "lesson", "--as-is")
+	invoke(t, 2, "sim", dir, "lesson", "--state", path, "--streak", "-1")
+	invoke(t, 2, "sim", dir, "lesson", "--state", path, "--party", "scout")
+	invoke(t, 1, "sim", dir, "lesson", "--state", filepath.Join(t.TempDir(), "absent.save"))
 }

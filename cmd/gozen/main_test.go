@@ -10,6 +10,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -55,13 +56,7 @@ func read(t *testing.T, p string) []byte {
 	return b
 }
 func TestHelpAndArgumentContract(t *testing.T) {
-	for _, sub := range append([]string{""}, slices.Sorted(func(yield func(string) bool) {
-		for s := range usages {
-			if !yield(s) {
-				return
-			}
-		}
-	})...) {
+	for _, sub := range append([]string{""}, slices.Sorted(maps.Keys(pages))...) {
 		args := []string{"--help"}
 		if sub != "" {
 			args = []string{sub, "--help"}
@@ -81,12 +76,12 @@ func TestHelpAndArgumentContract(t *testing.T) {
 	invoke(t, 2, "absent")
 	invoke(t, 2, "check", "one", "two")
 	for _, args := range [][]string{
-		{"sim", "unused", "lesson", "-n", "0"}, {"sim", "unused", "lesson", "-level", "-1"},
-		{"curve", "unused", "grotto", "-grind", "NaN"}, {"curve", "unused", "grotto", "-tries", "0"},
-		{"floors", "unused", "grotto", "-try", "1"}, {"floors", "unused", "grotto", "-from", "0"},
-		{"trace", "unused", "-to", "-1"}, {"trace", "unused", "-music-late", "Inf"},
-		{"trial", "unused", "-config", "../private.yaml"}, {"trial", "unused", "out", "extra", "-n"},
-		{"trial", "unused", "out", "-overlay", "overlay"}, {"shots", "unused", "list", "-raw"},
+		{"sim", "unused", "lesson", "-n", "0"}, {"sim", "unused", "lesson", "--level", "-1"},
+		{"curve", "unused", "grotto", "--grind", "NaN"}, {"curve", "unused", "grotto", "--tries", "0"},
+		{"floors", "unused", "grotto", "--try", "1"}, {"floors", "unused", "grotto", "--from", "0"},
+		{"trace", "unused", "--to", "-1"}, {"trace", "unused", "--music-late", "Inf"},
+		{"trial", "unused", "--config", "../private.yaml"}, {"trial", "unused", "out", "extra", "-n"},
+		{"trial", "unused", "out", "--overlay", "overlay"}, {"shots", "unused", "list", "--raw"},
 	} {
 		out, _ := invoke(t, 2, args...)
 		if out != "" {
@@ -94,6 +89,70 @@ func TestHelpAndArgumentContract(t *testing.T) {
 		}
 	}
 }
+func TestHelpPagesHaveTheSameShape(t *testing.T) {
+	for _, sub := range append([]string{"", "prompt", "mosaic"}, slices.Sorted(maps.Keys(pages))...) {
+		args := []string{"--help"}
+		if sub != "" {
+			args = []string{sub, "--help"}
+		}
+		out, _ := invoke(t, 0, args...)
+		for _, want := range []string{"[Usage]\n", "[Examples]\n", "[Options]\n", "  General:\n", "-h, --help",
+			"Documentation:   https://nao1215.github.io/gozen/\n", "Report an issue: https://github.com/nao1215/gozen/issues\n",
+			"GitHub Sponsors: https://github.com/sponsors/nao1215\n"} {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s: missing %q", sub, want)
+			}
+		}
+		if !strings.HasPrefix(out, strings.TrimSpace("gozen "+sub)+" - ") {
+			t.Errorf("%s: first line %q", sub, strings.SplitN(out, "\n", 2)[0])
+		}
+		if lines := strings.SplitN(out, "\n", 3); len(lines) < 3 || lines[1] != "" {
+			t.Errorf("%s: the title line wraps", sub)
+		}
+		if strings.Contains(out, "  Other:\n") {
+			t.Errorf("%s: an option is missing from the groups", sub)
+		}
+		for _, line := range strings.Split(out, "\n") {
+			// Example command lines may run longer, as in the other tools' help.
+			if len([]rune(line)) > 80 && !strings.HasPrefix(line, "    gozen ") {
+				t.Errorf("%s: line over 80 columns: %q", sub, line)
+			}
+		}
+	}
+	top, _ := invoke(t, 0, "--help")
+	if !strings.Contains(top, "[Commands]\n") || !strings.Contains(top, "-v, --version") || !strings.Contains(top, `Run "gozen <command> --help"`) {
+		t.Fatal(top)
+	}
+}
+
+func TestGNUOptionForms(t *testing.T) {
+	dir := fixture(t)
+	want, _ := invoke(t, 0, "sim", dir, "lesson", "--battles", "3", "--seed", "9")
+	for _, args := range [][]string{
+		{"sim", dir, "lesson", "--battles=3", "--seed=9"},
+		{"sim", "-n", "3", dir, "--seed", "9", "lesson"},
+		{"sim", "-n3", dir, "lesson", "--seed=9"},
+	} {
+		if got, _ := invoke(t, 0, args...); got != want {
+			t.Fatalf("%v: %q != %q", args, got, want)
+		}
+	}
+	for _, args := range [][]string{
+		{"sim", dir, "lesson", "-seed", "9"}, {"check", "-no-layout", dir}, {"memos", dir, "-out", "x"}, {"-version"},
+	} {
+		out, stderr := invoke(t, 2, args...)
+		if out != "" || !strings.Contains(stderr, "single-dash long option") {
+			t.Fatalf("%v: %q %q", args, out, stderr)
+		}
+	}
+	if v, _ := invoke(t, 0, "-v"); !strings.HasPrefix(v, "gozen ") {
+		t.Fatal(v)
+	}
+	if v, _ := invoke(t, 0, "--version"); !strings.HasPrefix(v, "gozen ") {
+		t.Fatal(v)
+	}
+}
+
 func TestDispatchHelpVersionAndDelegates(t *testing.T) {
 	top, _ := invoke(t, 0, "--help")
 	for _, sub := range []string{"prompt", "mosaic", "version", "help"} {
@@ -132,15 +191,15 @@ func TestDispatchHelpVersionAndDelegates(t *testing.T) {
 }
 func TestCheckWithoutLayout(t *testing.T) {
 	dir := fixture(t)
-	out, stderr := invoke(t, 0, "check", "-no-layout", dir)
+	out, stderr := invoke(t, 0, "check", "--no-layout", dir)
 	if !strings.Contains(out, "ok: 2 locations") || !strings.Contains(out, "Structure checked") || stderr != "" {
 		t.Fatalf("%q %q", out, stderr)
 	}
 	// Structure-only checks do not parse fonts; full checks do.
 	write(t, filepath.Join(dir, "assets", "regular.ttf"), "not a font")
-	invoke(t, 0, "check", dir, "-no-layout")
+	invoke(t, 0, "check", dir, "--no-layout")
 	invoke(t, 1, "check", dir)
-	if got := run([]string{"check", "-no-layout", dir}, failWriter{}, &bytes.Buffer{}); got != 1 {
+	if got := run([]string{"check", "--no-layout", dir}, failWriter{}, &bytes.Buffer{}); got != 1 {
 		t.Fatalf("lost output failure: %d", got)
 	}
 }
@@ -151,7 +210,7 @@ func (failWriter) Write([]byte) (int, error) { return 0, errors.New("failed outp
 
 func TestReadCommandsAndDeterminism(t *testing.T) {
 	dir := fixture(t)
-	for _, args := range [][]string{{"check", dir}, {"layout", dir}, {"book", dir}, {"sim", dir, "lesson", "-n", "3"}, {"curve", dir, "grotto", "-floors", "1", "-battles", "1", "-tries", "1"}, {"floors", dir, "grotto", "-floor", "1", "-try", "2"}} {
+	for _, args := range [][]string{{"check", dir}, {"layout", dir}, {"book", dir}, {"sim", dir, "lesson", "-n", "3"}, {"curve", dir, "grotto", "--floors", "1", "--battles", "1", "--tries", "1"}, {"floors", dir, "grotto", "--floor", "1", "--try", "2"}} {
 		out, stderr := invoke(t, 0, args...)
 		if out == "" || stderr != "" {
 			t.Fatalf("%v: %q %q", args, out, stderr)
@@ -161,30 +220,30 @@ func TestReadCommandsAndDeterminism(t *testing.T) {
 			t.Fatalf("nondeterministic %v", args)
 		}
 	}
-	before, _ := invoke(t, 0, "sim", dir, "lesson", "-n", "3", "-seed", "9")
-	after, _ := invoke(t, 0, "sim", "-seed", "9", dir, "-n", "3", "lesson")
+	before, _ := invoke(t, 0, "sim", dir, "lesson", "-n", "3", "--seed", "9")
+	after, _ := invoke(t, 0, "sim", "--seed", "9", dir, "-n", "3", "lesson")
 	if before != after {
 		t.Fatal("flag placement changes result")
 	}
-	out, _ := invoke(t, 0, "curve", dir, "grotto", "-floors", "1", "-battles", "0", "-tries", "1")
+	out, _ := invoke(t, 0, "curve", dir, "grotto", "--floors", "1", "--battles", "0", "--tries", "1")
 	if !strings.Contains(out, "B1") || !strings.Contains(out, "0") {
 		t.Fatal(out)
 	}
 	invoke(t, 1, "sim", dir, "absent", "-n", "1")
-	invoke(t, 2, "curve", dir, "grotto", "-boss", "x:lesson")
+	invoke(t, 2, "curve", dir, "grotto", "--boss", "x:lesson")
 }
 func TestTrialRoundTripNoOverwriteAndDryRun(t *testing.T) {
 	dir := fixture(t)
 	root := t.TempDir()
 	out := filepath.Join(root, "trial")
 	list := filepath.Join(root, "list.txt")
-	invoke(t, 0, "trial", dir, out, "-list", list, "-n")
+	invoke(t, 0, "trial", dir, out, "--list", list, "-n")
 	for _, p := range []string{out, list} {
 		if _, err := os.Lstat(p); !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("dry run wrote %s", p)
 		}
 	}
-	invoke(t, 0, "trial", dir, out, "-list", list)
+	invoke(t, 0, "trial", dir, out, "--list", list)
 	if _, err := data.Load(os.DirFS(out), "."); err != nil {
 		t.Fatal(err)
 	}
@@ -221,14 +280,14 @@ func TestReleaseRoundTripAndApprovalFailure(t *testing.T) {
 	dir := fixture(t)
 	top, inspect := approvals(t, dir, true)
 	out := filepath.Join(t.TempDir(), "release")
-	invoke(t, 0, "release", dir, "-overlay", top, out, "-inspect", inspect)
+	invoke(t, 0, "release", dir, "--overlay", top, out, "--inspect", inspect)
 	if _, err := data.Load(os.DirFS(out), "."); err != nil {
 		t.Fatal(err)
 	}
-	invoke(t, 1, "release", "-inspect", inspect, "-overlay", top, dir, out)
+	invoke(t, 1, "release", "--inspect", inspect, "--overlay", top, dir, out)
 	top, inspect = approvals(t, dir, false)
 	bad := filepath.Join(t.TempDir(), "rejected")
-	invoke(t, 1, "release", dir, bad, "-inspect", inspect, "-overlay", top)
+	invoke(t, 1, "release", dir, bad, "--inspect", inspect, "--overlay", top)
 	if _, err := os.Lstat(bad); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("rejected release produced output")
 	}
@@ -236,7 +295,7 @@ func TestReleaseRoundTripAndApprovalFailure(t *testing.T) {
 func TestDesignAndMemosArtifacts(t *testing.T) {
 	dir := fixture(t)
 	out := filepath.Join(t.TempDir(), "report")
-	invoke(t, 0, "design", dir, "-out", out, "-v")
+	invoke(t, 0, "design", dir, "--out", out, "-v")
 	for _, p := range []string{"summary.json", "report.md", "band.png", "timeline/walker.jsonl", "debug.log"} {
 		read(t, filepath.Join(out, p))
 	}
@@ -247,24 +306,24 @@ func TestDesignAndMemosArtifacts(t *testing.T) {
 	if summary["hash"] != "" {
 		t.Fatal("unexpected version metadata")
 	}
-	invoke(t, 1, "design", dir, "-out", out)
+	invoke(t, 1, "design", dir, "--out", out)
 	config := filepath.Join(dir, "designeval.yaml")
 	write(t, config, "personas: [{id: '../escape'}]\n")
-	invoke(t, 1, "design", dir, "-out", filepath.Join(t.TempDir(), "bad"))
+	invoke(t, 1, "design", dir, "--out", filepath.Join(t.TempDir(), "bad"))
 	memos := t.TempDir()
 	write(t, filepath.Join(memos, "2026-01-01/001.json"), `{"kind":"note","label":"Note","text":"<marker>","image":"001.png"}`)
 	if err := os.WriteFile(filepath.Join(memos, "2026-01-01/001.png"), read(t, filepath.Join(dir, "assets/mote.png")), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	html := filepath.Join(t.TempDir(), "html")
-	invoke(t, 0, "memos", memos, "-out", html)
+	invoke(t, 0, "memos", memos, "--out", html)
 	if !strings.Contains(string(read(t, filepath.Join(html, "index.html"))), "&lt;marker&gt;") {
 		t.Fatal("HTML was not escaped")
 	}
 	read(t, filepath.Join(html, "thumbs/2026-01-01_001.jpg"))
-	invoke(t, 1, "memos", memos, "-out", html)
+	invoke(t, 1, "memos", memos, "--out", html)
 	write(t, filepath.Join(memos, "2026-01-01/001.json"), `{"image":"../outside.png"}`)
-	invoke(t, 1, "memos", memos, "-out", filepath.Join(t.TempDir(), "bad"))
+	invoke(t, 1, "memos", memos, "--out", filepath.Join(t.TempDir(), "bad"))
 }
 func TestTraceValidationAndFailures(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "trace.jsonl")
@@ -278,7 +337,7 @@ func TestTraceValidationAndFailures(t *testing.T) {
 		invoke(t, 1, "trace", file)
 	}
 	write(t, file, "{\"t\":\"music\",\"tick\":0,\"wanted\":\"bell\",\"song\":\"\"}\n{\"t\":\"end\",\"tick\":120}\n")
-	out, _ = invoke(t, 1, "trace", file, "-check")
+	out, _ = invoke(t, 1, "trace", file, "--check")
 	if !strings.Contains(out, "music-late") {
 		t.Fatal(out)
 	}
@@ -307,23 +366,23 @@ func TestShotsProtocolAndTimeout(t *testing.T) {
 	list := filepath.Join(t.TempDir(), "shots.yaml")
 	write(t, list, "shots: [{id: camp, start: camp, wait: 1}]\n")
 	out := filepath.Join(t.TempDir(), "capture")
-	invoke(t, 0, "shots", dir, list, "-bin", bin, "-raw", "-out", out)
+	invoke(t, 0, "shots", dir, list, "--bin", bin, "--raw", "--out", out)
 	read(t, filepath.Join(out, "01_camp.png"))
 	read(t, filepath.Join(out, "01_camp.jpg"))
 	read(t, filepath.Join(out, "shots.json"))
-	invoke(t, 1, "shots", dir, list, "-bin", bin, "-raw", "-out", out)
+	invoke(t, 1, "shots", dir, list, "--bin", bin, "--raw", "--out", out)
 	write(t, list, "shots: [{id: '../escape', start: camp}]\n")
-	invoke(t, 1, "shots", dir, list, "-bin", bin, "-raw", "-out", filepath.Join(t.TempDir(), "bad"))
+	invoke(t, 1, "shots", dir, list, "--bin", bin, "--raw", "--out", filepath.Join(t.TempDir(), "bad"))
 	write(t, list, "shots: [{id: camp, start: camp, picture: mote.png}]\n")
 	top, _ := approvals(t, dir, false)
 	pending := filepath.Join(t.TempDir(), "pending")
-	invoke(t, 1, "shots", dir, list, "-bin", bin, "-overlay", top, "-out", pending)
+	invoke(t, 1, "shots", dir, list, "--bin", bin, "--overlay", top, "--out", pending)
 	if !strings.Contains(string(read(t, filepath.Join(pending, "shots.json"))), "approval_wait") {
 		t.Fatal("missing pending status")
 	}
 	t.Setenv("GOZEN_SHOT_HELPER", "wait")
 	began := time.Now()
-	invoke(t, 1, "shots", dir, list, "-bin", bin, "-raw", "-timeout", "50ms", "-out", filepath.Join(t.TempDir(), "timeout"))
+	invoke(t, 1, "shots", dir, list, "--bin", bin, "--raw", "--timeout", "50ms", "--out", filepath.Join(t.TempDir(), "timeout"))
 	if time.Since(began) > 3*time.Second {
 		t.Fatal("capture ignored timeout")
 	}

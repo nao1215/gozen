@@ -1,12 +1,12 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/clihelp"
 
 	"github.com/nao1215/gozen/battle"
 	"github.com/nao1215/gozen/data"
@@ -14,19 +14,19 @@ import (
 )
 
 func (c *command) sim(args []string) error {
-	fs := flag.NewFlagSet("gozen sim", flag.ContinueOnError)
-	n := fs.Int("n", 200, "battles to fight")
-	party := fs.String("party", "", "the party (actor ids, comma separated; default: the starting party)")
+	fs := clihelp.NewFlagSet("gozen sim")
+	n := fs.IntP("battles", "n", 200, "battles to fight")
+	party := fs.String("party", "", "the party, as actor `IDS` separated by commas (default: the starting party)")
 	level := fs.Int("level", 0, "the party's level (default: each actor's own)")
-	seed := fs.Uint64("seed", 1, "random seed")
-	verbose := fs.Bool("v", false, "print the first battle's messages")
-	maxTurns := fs.Int("turns", 60, "a battle longer than this is a draw")
-	tree := fs.Bool("tree", true, "spend the skill points (on the open node of the lowest level, evenly)")
-	gear := fs.String("gear", "", "items to give the party and wear where they fit best (comma separated)")
-	state := fs.String("state", "", "start from this saved state (a note's .save from F9) with everyone recovered, instead of a new game")
-	asIs := fs.Bool("as-is", false, "with -state: keep the saved HP, MP and states instead of recovering everyone")
-	streak := fs.Int("streak", 0, "also fight the troop again and again without recovery from each start, up to this many wins, and print how many were won in a row")
-	hpBand := fs.Bool("hp", false, "also print the party's HP left after a win (10th, 50th and 90th percentile)")
+	seed := fs.Uint64("seed", 1, "the random seed; the same seed gives the same result")
+	verbose := fs.BoolP("verbose", "v", false, "print the messages of the first battle")
+	maxTurns := fs.Int("turns", 60, "a battle longer than this many turns is a draw")
+	noTree := fs.Bool("no-tree", false, "do not spend the skill points (by default they go evenly to the open nodes of the lowest level)")
+	gear := fs.String("gear", "", "item `IDS`, separated by commas, to give the party and wear where they fit best")
+	state := fs.String("state", "", "start from this saved state `FILE` (a note's .save from F9) with everyone recovered, instead of a new game")
+	asIs := fs.Bool("as-is", false, "with --state, keep the saved HP, MP, and states instead of recovering everyone")
+	streak := fs.Int("streak", 0, "also fight the troop again and again without recovery from each start, up to `N` wins, and print how many were won in a row")
+	hpBand := fs.Bool("hp", false, "also print the party's HP left after a win (10th, 50th, and 90th percentile)")
 	if err := c.parse(fs, args); err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func (c *command) sim(args []string) error {
 	}
 	dir, troop := fs.Arg(0), fs.Arg(1)
 	if *n <= 0 || *maxTurns <= 0 || *level < 0 {
-		return cli.Invalid("-n and -turns must be positive; -level must be nonnegative")
+		return cli.Invalid("--battles and --turns must be positive; --level must be nonnegative")
 	}
 	db, err := data.Load(os.DirFS(dir), ".")
 	if err != nil {
@@ -45,16 +45,16 @@ func (c *command) sim(args []string) error {
 		return fmt.Errorf("unknown troop %q", troop)
 	}
 	if *asIs && *state == "" {
-		return cli.Invalid("-as-is needs -state")
+		return cli.Invalid("--as-is needs --state")
 	}
 	if *streak < 0 {
-		return cli.Invalid("-streak must be nonnegative")
+		return cli.Invalid("--streak must be nonnegative")
 	}
-	prep := balance.Prep{Level: *level, Tree: *tree, Gear: commaList(*gear), AsIs: *asIs}
+	prep := balance.Prep{Level: *level, Tree: !*noTree, Gear: commaList(*gear), AsIs: *asIs}
 	var start balance.Start
 	if *state != "" {
 		if *party != "" {
-			return cli.Invalid("-state and -party do not go together")
+			return cli.Invalid("--state and --party do not go together")
 		}
 		b, err := os.ReadFile(*state)
 		if err != nil {
@@ -102,7 +102,7 @@ func (c *command) sim(args []string) error {
 	return nil
 }
 
-// commaList は -party・-gear の並び。空なら nil、それ以外は空の要素も残す（未知の ID として報せる）。
+// commaList は --party・--gear の並び。空なら nil、それ以外は空の要素も残す（未知の ID として報せる）。
 func commaList(s string) []string {
 	if s == "" {
 		return nil

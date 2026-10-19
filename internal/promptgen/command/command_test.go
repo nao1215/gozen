@@ -19,6 +19,7 @@ func TestRunContracts(t *testing.T) {
 		contains string
 	}{
 		{[]string{"--help"}, false, "Requirements"},
+		{[]string{"-h"}, false, "[Examples]"},
 		{[]string{"lint", "--config", "missing.yaml", "--help"}, false, "Requirements"},
 		{[]string{"--config", catalog, "--scene", "landscape", "--format", "json"}, false, "quiet garden"},
 		{[]string{"lint", "--config", catalog, "--format", "json"}, false, "[]"},
@@ -27,6 +28,10 @@ func TestRunContracts(t *testing.T) {
 		{[]string{"--config", "missing.yaml"}, true, ""},
 		{[]string{"--config", catalog, "--subject", "unknown"}, true, ""},
 		{[]string{"--config", catalog, "free text"}, true, ""},
+		{[]string{"-c", catalog, "--scene=landscape"}, false, "quiet garden"},
+		{[]string{"--config=" + catalog, "--setting", "studio"}, false, "plain backdrop"},
+		{[]string{"-config", catalog}, true, ""},
+		{[]string{"--config", catalog, "-scene", "landscape"}, true, ""},
 	} {
 		var out, diag bytes.Buffer
 		err := run(tc.args, &out, &diag)

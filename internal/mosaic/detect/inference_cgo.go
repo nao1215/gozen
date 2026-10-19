@@ -23,13 +23,13 @@ func New(model, lib string, threads int) (*Detector, error) {
 
 func NewWithLabels(model, lib string, threads int, labels []string) (result *Detector, err error) {
 	if model == "" {
-		return nil, fmt.Errorf("missing -model: supply a detection ONNX model")
+		return nil, fmt.Errorf("missing --model: supply a detection ONNX model")
 	}
 	if _, err := os.Stat(model); err != nil {
 		return nil, fmt.Errorf("detection model: %w", err)
 	}
 	if lib == "" {
-		return nil, fmt.Errorf("missing -ort or ONNXRUNTIME_LIB: supply the ONNX Runtime shared library")
+		return nil, fmt.Errorf("missing --ort or ONNXRUNTIME_LIB: supply the ONNX Runtime shared library")
 	}
 	if !ort.IsInitialized() {
 		ort.SetSharedLibraryPath(lib)

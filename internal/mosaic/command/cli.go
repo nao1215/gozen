@@ -3,18 +3,13 @@ package command
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"io"
-)
 
-const requirements = "Requirements: Go 1.26.4+ to build. ONNX inference needs a C compiler and CGO_ENABLED=1 at build time, a user-supplied ONNX Runtime shared library (-ort or ONNXRUNTIME_LIB), and models (-model; optionally -face, -seg, -tagger). Help and manual-only processing need no ONNX runtime. A gozen built with CGO_ENABLED=0 reports that inference is missing and exits 1. See https://github.com/nao1215/gozen#gozen"
-const usage = `usage:
- gozen mosaic auto [flags] <game-dir> [asset-relative-images...]
- gozen mosaic inspect [flags] <game-dir> [images...]
- gozen mosaic manual <list|show|view|add|drop|grow|skip|check|clear> [flags] <game-dir> [image]
-Flags must precede positional arguments. Models are never bundled.
-`
+	"github.com/spf13/pflag"
+
+	"github.com/nao1215/gozen/internal/clihelp"
+)
 
 type output struct {
 	io.Writer
@@ -45,61 +40,48 @@ type argumentError struct{ error }
 func Run(args []string, out, diagnostics io.Writer) int {
 	c := &cli{&output{Writer: out}, &output{Writer: diagnostics}}
 	var err error
-	help := false
-	for _, a := range args {
-		if a == "--help" || a == "-help" || a == "-h" {
-			help = true
-		}
+	switch {
+	case len(args) == 0:
+		err = argumentError{fmt.Errorf("a command is required: auto, inspect, or manual; use --help")}
+	case args[0] == "-h" || args[0] == "--help":
+		c.out.write(topPage.String(newFlagSet("gozen mosaic")))
+	case args[0] == "auto":
+		err = c.autoCmd(args[1:])
+	case args[0] == "inspect":
+		err = c.inspectCmd(args[1:])
+	case args[0] == "manual":
+		err = c.manualCmd(args[1:])
+	default:
+		err = argumentError{fmt.Errorf("unknown command %q: use auto, inspect, or manual; see --help", args[0])}
 	}
-	if len(args) == 2 && args[0] == "manual" && args[1] == "help" {
-		help = true
-	}
-	if help {
-		c.out.write(usage)
-		if len(args) > 0 && args[0] == "manual" {
-			c.out.println(manualHelp)
-		}
-		if len(args) > 0 && args[0] == "inspect" {
-			c.out.println(inspectHelp)
-		}
-		fs := flag.NewFlagSet("gozen mosaic", flag.ContinueOnError)
-		fs.SetOutput(c.out)
-		c.commonFlags(fs)
-		fs.PrintDefaults()
-		if len(args) > 0 {
-			switch args[0] {
-			case "auto":
-				c.out.println("auto: -dry (no writes)")
-			case "inspect":
-				c.out.println("inspect: -pretty -redetect (no writes)")
-			case "manual":
-				c.out.println("manual: -rect -box -poly -ellipse -norm -region-id -by -left -top -right -bottom -note -src -region -size -step -o")
-			}
-		}
-		c.out.println(requirements)
-	} else if len(args) == 0 {
-		err = argumentError{fmt.Errorf("a subcommand is required\n%s", usage)}
-	} else {
-		switch args[0] {
-		case "auto":
-			err = c.autoCmd(args[1:])
-		case "manual":
-			err = c.manualCmd(args[1:])
-		case "inspect":
-			err = c.inspectCmd(args[1:])
-		default:
-			err = argumentError{fmt.Errorf("unknown subcommand %q\n%s", args[0], usage)}
-		}
+	if errors.Is(err, clihelp.ErrHelp) {
+		err = nil
 	}
 	err = errors.Join(err, c.out.err, c.diag.err)
 	if err == nil {
 		return 0
 	}
 	c.diag.println(err)
-	c.diag.println(requirements)
 	var arg argumentError
 	if errors.As(err, &arg) {
+		c.diag.println("Run \"gozen mosaic --help\" for usage. See " + clihelp.README)
 		return 2
 	}
+	c.diag.println(requirements)
 	return 1
+}
+
+func newFlagSet(name string) *pflag.FlagSet { return clihelp.NewFlagSet(name) }
+
+// parse parses options; on --help it prints the page and returns clihelp.ErrHelp.
+func (cli *cli) parse(fs *pflag.FlagSet, args []string, page clihelp.Page) error {
+	help, err := clihelp.Parse(fs, args)
+	if err != nil {
+		return argumentError{err}
+	}
+	if help {
+		cli.out.write(page.String(fs))
+		return clihelp.ErrHelp
+	}
+	return nil
 }

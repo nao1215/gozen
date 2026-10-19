@@ -1,31 +1,31 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/layer2/assetpolicy"
 
 	"github.com/nao1215/gozen/assetfs"
 )
 
 func (c *command) release(args []string) error {
-	fl := flag.NewFlagSet("gozen release", flag.ContinueOnError)
-	inspect := fl.String("inspect", "", "制作側の検査記録（JSON Lines）。必須")
-	overlay := fl.String("overlay", "", "差し替えのディレクトリ（省略時は作品の承認設定）")
-	prefix := fl.String("prefix", "assets", "素材のディレクトリ")
+	fl := clihelp.NewFlagSet("gozen release")
+	inspect := fl.String("inspect", "", "the inspection records `FILE` (JSON Lines) from production; required")
+	overlay := fl.String("overlay", "", "take replaced assets from this `DIR` (default: the game's approval settings)")
+	prefix := fl.String("prefix", "assets", "the asset `DIR` inside the game, separated by /")
 	if err := c.parse(fl, args); err != nil {
 		return err
 	}
 	if fl.NArg() != 2 || *inspect == "" {
-		return cli.Invalid("usage: gozen release -inspect FILE [-overlay DIR] <game dir> <out dir>")
+		return cli.Invalid("usage: gozen release --inspect FILE [--overlay DIR] <game-dir> <out-dir>")
 	}
 	src, out := fl.Arg(0), fl.Arg(1)
 	if !cli.Relative(*prefix) {
-		return cli.Invalid("invalid -prefix")
+		return cli.Invalid("invalid --prefix")
 	}
 	policy, ins, outputs, err := releaseInputs(src, overlay, *inspect)
 	if err != nil {
@@ -71,7 +71,7 @@ func releaseInputs(src string, overlay *string, inspect string) (assetpolicy.Pol
 	}
 	if *overlay == "" {
 		if p.Overlay == "" {
-			return p, nil, nil, fmt.Errorf("差し替えのディレクトリを -overlay か作品の承認設定で指定する")
+			return p, nil, nil, fmt.Errorf("差し替えのディレクトリを --overlay か作品の承認設定で指定する")
 		}
 		*overlay = filepath.Join(src, p.Overlay)
 	}

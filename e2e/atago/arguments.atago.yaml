@@ -5,6 +5,17 @@ scenarios:
 - name: help for ${sub} through gozen help
   matrix:
   - sub: check
+  - sub: layout
+  - sub: sim
+  - sub: curve
+  - sub: floors
+  - sub: trace
+  - sub: book
+  - sub: design
+  - sub: memos
+  - sub: release
+  - sub: trial
+  - sub: shots
   - sub: prompt
   - sub: mosaic
   - sub: version
@@ -17,22 +28,43 @@ scenarios:
         contains:
         - 'Requirements:'
         - https://github.com/nao1215/gozen#gozen
+        - "[Usage]\n"
+        - "[Examples]\n"
+        - "[Options]\n"
+        - "  -h, --help"
+        - "Documentation:   https://nao1215.github.io/gozen/\n"
+        - "Report an issue: https://github.com/nao1215/gozen/issues\n"
+        - "GitHub Sponsors: https://github.com/sponsors/nao1215\n"
       stderr:
         equals: ''
       changes:
         created: []
         modified: []
         deleted: []
-- name: gozen top-level help
+- name: gozen top-level help with ${opt}
+  matrix:
+  - opt: --help
+  - opt: -h
   steps:
   - run:
-      command: gozen --help
+      command: gozen ${opt}
   - assert:
       exit_code: 0
       stdout:
+        matches: '^gozen - '
         contains:
+        - "[Commands]\n"
+        - "  -v, --version"
+        - Run "gozen <command> --help" for a command's options and examples.
         - 'Requirements:'
         - https://github.com/nao1215/gozen#gozen
+        - "[Usage]\n"
+        - "[Examples]\n"
+        - "[Options]\n"
+        - "  -h, --help"
+        - "Documentation:   https://nao1215.github.io/gozen/\n"
+        - "Report an issue: https://github.com/nao1215/gozen/issues\n"
+        - "GitHub Sponsors: https://github.com/sponsors/nao1215\n"
       stderr:
         equals: ''
       changes:
@@ -41,6 +73,8 @@ scenarios:
         deleted: []
 - name: help for ${sub}
   matrix:
+  - sub: prompt
+  - sub: mosaic
   - sub: check
   - sub: layout
   - sub: sim
@@ -63,6 +97,13 @@ scenarios:
         contains:
         - 'Requirements:'
         - https://github.com/nao1215/gozen#gozen
+        - "[Usage]\n"
+        - "[Examples]\n"
+        - "[Options]\n"
+        - "  -h, --help"
+        - "Documentation:   https://nao1215.github.io/gozen/\n"
+        - "Report an issue: https://github.com/nao1215/gozen/issues\n"
+        - "GitHub Sponsors: https://github.com/sponsors/nao1215\n"
       stderr:
         equals: ''
       changes:
@@ -125,10 +166,10 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject gozen check -no-layout without a game
+- name: reject gozen check --no-layout without a game
   steps:
   - run:
-      command: gozen check -no-layout
+      command: gozen check --no-layout
   - assert:
       exit_code: 2
       stdout:
@@ -139,10 +180,10 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject gozen check -no-layout missing-game
+- name: reject gozen check --no-layout missing-game
   steps:
   - run:
-      command: gozen check -no-layout missing-game
+      command: gozen check --no-layout missing-game
   - assert:
       exit_code: 1
       stdout:
@@ -181,10 +222,10 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject gozen curve unused location -grind NaN
+- name: reject gozen curve unused location --grind NaN
   steps:
   - run:
-      command: gozen curve unused location -grind NaN
+      command: gozen curve unused location --grind NaN
   - assert:
       exit_code: 2
       stdout:
@@ -195,10 +236,10 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject gozen trial unused output -config ../escape.yaml
+- name: reject gozen trial unused output --config ../escape.yaml
   steps:
   - run:
-      command: gozen trial unused output -config ../escape.yaml
+      command: gozen trial unused output --config ../escape.yaml
   - assert:
       exit_code: 2
       stdout:
@@ -209,10 +250,10 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject gozen shots -raw unused list.yaml
+- name: reject gozen shots --raw unused list.yaml
   steps:
   - run:
-      command: gozen shots -raw unused list.yaml
+      command: gozen shots --raw unused list.yaml
   - assert:
       exit_code: 2
       stdout:
@@ -223,3 +264,77 @@ scenarios:
         created: []
         modified: []
         deleted: []
+- name: gozen ${sub} help starts with its title line
+  matrix:
+  - sub: sim
+  - sub: shots
+  - sub: prompt
+  - sub: mosaic
+  steps:
+  - run:
+      command: gozen help ${sub}
+  - assert:
+      exit_code: 0
+      stdout:
+        matches: '^gozen ${sub} - .+ \(\S+\)\n\n\[Usage\]\n'
+      stderr:
+        equals: ''
+- name: gozen version with ${opt}
+  matrix:
+  - opt: -v
+  - opt: --version
+  steps:
+  - run:
+      command: gozen ${opt}
+  - assert:
+      exit_code: 0
+      stdout:
+        matches: '^gozen \S+\n$'
+      stderr:
+        equals: ''
+- name: reject the single-dash long option in ${args}
+  matrix:
+  - args: sim unused lesson -seed 9
+  - args: check -no-layout unused
+  - args: memos notes -out html
+  - args: -version
+  - args: prompt -config catalog.yaml
+  - args: mosaic auto -out processed game
+  - args: mosaic manual add -rect 0,0,4,4 game pattern.png
+  steps:
+  - run:
+      command: gozen ${args}
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: single-dash long option
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: sim takes ${form}
+  matrix:
+  - form: --battles=3 --seed=9
+  - form: --battles 3 --seed 9
+  - form: -n3 --seed=9
+  steps:
+  - run:
+      command: gozen sim "${specdir}/fixtures/game" ${form} lesson
+  - assert:
+      exit_code: 0
+      stdout:
+        equals: "lesson: 3 battles  win 100%  lose 0%  fled 0%  draw 0%  avg turns 1.0  avg standing after a win 1.0\n"
+      stderr:
+        equals: ''
+- name: -- ends the options
+  steps:
+  - run:
+      command: gozen check --no-layout -- --help
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: game.yaml

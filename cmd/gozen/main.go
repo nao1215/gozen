@@ -4,70 +4,35 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"io"
 	"os"
-	"runtime/debug"
 	"strings"
 
+	"github.com/spf13/pflag"
+
 	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/clihelp"
 	mosaiccmd "github.com/nao1215/gozen/internal/mosaic/command"
 	promptcmd "github.com/nao1215/gozen/internal/promptgen/command"
 )
 
 type command struct{ out, stderr *cli.Output }
 
-var usages = map[string]string{
-	"check":   "[-no-layout] <game-dir>",
-	"layout":  "<game-dir>",
-	"sim":     "<game-dir> <troop> [flags]",
-	"curve":   "<game-dir> <location> [flags]",
-	"floors":  "<game-dir> <location> [flags]",
-	"trace":   "<trace.jsonl> [flags]",
-	"book":    "<game-dir>",
-	"design":  "<game-dir> [flags]",
-	"memos":   "<memo-dir> [-out DIR]",
-	"release": "-inspect FILE [-overlay DIR] <game-dir> <out-dir>",
-	"trial":   "[flags] <game-dir> [out-dir]",
-	"shots":   "-bin FILE (-raw | -overlay DIR) [flags] <game-dir> <list.yaml>",
-	"version": "",
-}
-
-// delegated lists subcommands whose argument parsing and exit codes belong to
-// their own internal command packages.
-var delegated = [][2]string{
-	{"prompt", "[lint] --config FILE [flags]   (see gozen prompt --help)"},
-	{"mosaic", "<auto|inspect|manual> [flags] <game-dir> ...   (see gozen mosaic --help)"},
-}
-
 func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }
-func (c *command) parse(f *flag.FlagSet, args []string) error {
-	parts := strings.Fields(f.Name())
-	sub := parts[len(parts)-1]
-	req := "No external runtime dependencies; cgo is not required."
-	if sub == "shots" {
-		req = "A Gozen game binary and its graphics runtime; Linux unattended capture needs Xvfb. See docs/development/graphics.md."
-	}
-	return cli.Parse(f, args, "gozen "+sub+" "+usages[sub], req, c.out)
-}
-func (c *command) help() {
-	c.out.Println("Usage: gozen <command> [arguments]")
-	for _, s := range []string{"check", "layout", "sim", "curve", "floors", "trace", "book", "design", "memos", "release", "trial", "shots"} {
-		c.out.Printf("  %-8s %s\n", s, usages[s])
-	}
-	for _, d := range delegated {
-		c.out.Printf("  %-8s %s\n", d[0], d[1])
-	}
-	c.out.Printf("  %-8s %s\n  %-8s %s\n", "version", "print the build version", "help", "[command]")
-	c.out.Println("\nRequirements:\n  No external runtime dependencies for checks, simulations, reports, and prompt; cgo is not required.\n  shots launches a graphics game; Linux unattended capture needs Xvfb.\n  mosaic inference needs a gozen built with cgo, an ONNX Runtime shared library, and user-supplied models.\n  See https://github.com/nao1215/gozen#gozen")
-}
 
-// version reports the module version recorded by go install, or devel for source builds.
-func version() string {
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
-		return info.Main.Version
+// parse parses a subcommand's options. On --help it prints the page and returns
+// clihelp.ErrHelp, which run turns into exit 0.
+func (c *command) parse(fs *pflag.FlagSet, args []string) error {
+	help, err := clihelp.Parse(fs, args)
+	if err != nil {
+		return cli.Invalid("%v", err)
 	}
-	return "devel"
+	if help {
+		parts := strings.Fields(fs.Name())
+		c.out.Print(pages[parts[len(parts)-1]].String(fs))
+		return clihelp.ErrHelp
+	}
+	return nil
 }
 
 func run(args []string, out, stderr io.Writer) int {
@@ -88,7 +53,7 @@ func run(args []string, out, stderr io.Writer) int {
 	}
 	c := &command{&cli.Output{Writer: out}, &cli.Output{Writer: stderr}}
 	err := c.execute(args)
-	if errors.Is(err, flag.ErrHelp) {
+	if errors.Is(err, clihelp.ErrHelp) {
 		err = nil
 	}
 	err = errors.Join(err, c.out.Err, c.stderr.Err)
@@ -98,24 +63,48 @@ func run(args []string, out, stderr io.Writer) int {
 	c.stderr.Println(err)
 	var u *cli.UsageError
 	if errors.As(err, &u) {
+		help := "gozen --help"
+		if len(args) > 0 && pages[args[0]].Summary != "" {
+			help = "gozen " + args[0] + " --help"
+		}
+		c.stderr.Println(`Run "` + help + `" for usage.`)
 		return 2
 	}
 	return 1
 }
 func (c *command) execute(args []string) error {
 	if len(args) == 0 {
-		return cli.Invalid("usage: gozen <command> [arguments]; use --help")
+		return cli.Invalid("usage: gozen <command> [OPTIONS] [ARGUMENTS]; use --help")
 	}
-	if args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		if len(args) != 1 {
-			return cli.Invalid("help takes no operands")
+	if strings.HasPrefix(args[0], "-") {
+		// Options of gozen itself: -h/--help and -v/--version.
+		fs := clihelp.NewFlagSet("gozen")
+		ver := fs.BoolP("version", "v", false, "print the gozen version and exit")
+		help, err := clihelp.Parse(fs, args)
+		if err != nil {
+			return cli.Invalid("%v", err)
 		}
-		c.help()
+		if fs.NArg() != 0 {
+			return cli.Invalid("options go after the command: gozen <command> [OPTIONS]; use --help")
+		}
+		switch {
+		case help:
+			c.out.Print(topPage.String(fs))
+		case *ver:
+			c.out.Println("gozen", clihelp.Version())
+		default:
+			return cli.Invalid("usage: gozen <command> [OPTIONS] [ARGUMENTS]; use --help")
+		}
 		return nil
 	}
 	sub := args[0]
 	args = args[1:]
 	switch sub {
+	case "help":
+		if len(args) != 0 {
+			return cli.Invalid("help takes at most one command")
+		}
+		return c.execute([]string{"--help"})
 	case "sim":
 		return c.sim(args)
 	case "curve":
@@ -133,24 +122,24 @@ func (c *command) execute(args []string) error {
 	case "shots":
 		return c.shots(args)
 	case "version":
-		f := flag.NewFlagSet("gozen version", flag.ContinueOnError)
+		f := clihelp.NewFlagSet("gozen version")
 		if err := c.parse(f, args); err != nil {
 			return err
 		}
 		if f.NArg() != 0 {
 			return cli.Invalid("version takes no operands")
 		}
-		c.out.Println("gozen", version())
+		c.out.Println("gozen", clihelp.Version())
 		return nil
 	case "check", "layout", "book", "memos":
-		f := flag.NewFlagSet("gozen "+sub, flag.ContinueOnError)
+		f := clihelp.NewFlagSet("gozen " + sub)
 		var memoOut *string
 		var noLayout *bool
 		if sub == "memos" {
-			memoOut = f.String("out", "", "new output directory (default <memo-dir>-html)")
+			memoOut = f.StringP("out", "o", "", "write the HTML to this new `DIR` (default: <memo-dir>-html)")
 		}
 		if sub == "check" {
-			noLayout = f.Bool("no-layout", false, "check definitions, references, expressions, and assets only; skip the font-based text layout check")
+			noLayout = f.Bool("no-layout", false, "check definitions, references, expressions, and assets only; do not read the font or check the text layout")
 		}
 		if err := c.parse(f, args); err != nil {
 			return err

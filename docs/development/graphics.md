@@ -12,6 +12,8 @@ go run ./examples/play --dev --mute --start camp --seed 7
 
 Wayfinder は独自の小さなサンプル。キャンプで会話・練習戦闘を行い、道標を灯して尾根へ進み、保存・復元を試す。隣の部屋ではグリッド移動を試す。遊び方と Xvfb による PNG・GIF の再生成は [サンプルガイド](../examples/wayfinder.md) を参照する。通常起動の保存は OS の config ディレクトリ配下の `gozen/wayfinder-demo`。開始位置指定の試走は保存先を省略すると一時保存になる。素材とフォントの出典は [素材台帳](../examples/play-assets.md) に記載する。
 
+`runner.Run` が受ける起動オプションは `gozen` と同じ GNU 形式（[ADR 0018](../decisions/0018-gnu-options-and-help.md)）。`--seed 7` と `--seed=7` を受け、`-dev` のような単一ダッシュの長い名前はエラーになる。`--help` は `[Usage]`・`[Examples]`・種類ごとの `[Options]`（ゲーム、試走、自動操作、スクリプトと記録、メモと見直し）・`Requirements:`・リンクの形で、`--dev` が要るオプションはまとまりの名前に `(--dev)` と書く。
+
 埋込み FS の作り方と終了コードの扱いは `examples/play/main.go`、API の契約は [表示 API](../architecture/presentation-api.md) を参照する。ライブラリがプロセスを終了することはない。
 
 ## Requirements
@@ -69,16 +71,16 @@ go run ./examples/play --dev --mute --seed 7 --start camp --script script.txt --
 
 - 今いる場所で出会う敵の群れごとの行。遭遇の重みの割合（`encounters`、when の成り立つ物）、場所の行動の `battle`、戦闘中ならその群れ（先頭に置いて色を付ける）。最大 6 行。
 - 勝率の棒、勝った後の一行の残り HP の帯（10%〜90% 点の帯と中央値の線）、平均ターン（全回復）。
-- 誰かの HP・MP が減っているか状態異常があるときは、棒と帯を 2 段にする。上の段が全回復、暗い下の段が今の HP・MP・状態のまま戦った場合（`gozen sim -as-is`）。全快なら 1 段だけ。
-- 連勝。今の HP から回復せずに同じ群れと戦い続けて、負ける・引き分ける・逃げるまでに勝った数の中央値（上限 9、`9+` は上限まで）。戦闘の間の経験値や Lv 上がりは `battle.End` のとおり入る（`gozen sim -as-is -streak 9`）。
-- Lv ごとの勝率の線（全回復）。今の Lv（一行でいちばん高い Lv）から 5 Lv 上まで。各点は全員をその Lv の経験値にした場合（`gozen sim -level`）。
+- 誰かの HP・MP が減っているか状態異常があるときは、棒と帯を 2 段にする。上の段が全回復、暗い下の段が今の HP・MP・状態のまま戦った場合（`gozen sim --as-is`）。全快なら 1 段だけ。
+- 連勝。今の HP から回復せずに同じ群れと戦い続けて、負ける・引き分ける・逃げるまでに勝った数の中央値（上限 9、`9+` は上限まで）。戦闘の間の経験値や Lv 上がりは `battle.End` のとおり入る（`gozen sim --as-is --streak 9`）。
+- Lv ごとの勝率の線（全回復）。今の Lv（一行でいちばん高い Lv）から 5 Lv 上まで。各点は全員をその Lv の経験値にした場合（`gozen sim --level`）。
 
-数字は `gozen sim -n 200 -seed 1 -turns 60` と同じ関数・同じ乱数の種（i 戦目は `PCG(1, i)`）で数える。F9 のメモの `.save` を渡すと、端末で同じ数を確かめられる（メモがイベントの途中なら、イベントの始まりの状態になる）。
+数字は `gozen sim -n 200 --seed 1 --turns 60` と同じ関数・同じ乱数の種（i 戦目は `PCG(1, i)`）で数える。F9 のメモの `.save` を渡すと、端末で同じ数を確かめられる（メモがイベントの途中なら、イベントの始まりの状態になる）。
 
 ```sh
-go run ./cmd/gozen sim <game-dir> <troop> -state notes/<date>/<number>.save -hp
-go run ./cmd/gozen sim <game-dir> <troop> -state notes/<date>/<number>.save -level 4
-go run ./cmd/gozen sim <game-dir> <troop> -state notes/<date>/<number>.save -as-is -hp -streak 9
+go run ./cmd/gozen sim <game-dir> <troop> --state notes/<date>/<number>.save --hp
+go run ./cmd/gozen sim <game-dir> <troop> --state notes/<date>/<number>.save --level 4
+go run ./cmd/gozen sim <game-dir> <troop> --state notes/<date>/<number>.save --as-is --hp --streak 9
 ```
 
 全回復の数は、場所・データ・一行の Lv や装備が変わった時の状態で測る。今の HP の数と連勝は、HP・MP・状態・経験値が変わってから 45 tick（約 0.75 秒）変わらなくなった時に、その分だけ測り直す。戦闘中は測り直さない（戦闘の結果は終わった時に一行へ戻る）。続けて回復したり戦ったりしても、落ち着くまで 200 戦を回し直さない。

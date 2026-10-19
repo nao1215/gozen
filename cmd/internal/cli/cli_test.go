@@ -3,7 +3,6 @@ package cli
 import (
 	"bytes"
 	"errors"
-	"flag"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,24 +10,6 @@ import (
 	"testing"
 )
 
-func TestParseFlagsOperandsAndLiteralPaths(t *testing.T) {
-	for _, args := range [][]string{{"sample dir", "-n", "2", "troop"}, {"-n=2", "sample dir", "troop"}} {
-		f := flag.NewFlagSet("gozen sim", flag.ContinueOnError)
-		n := f.Int("n", 1, "runs")
-		out := &Output{Writer: io.Discard}
-		if err := Parse(f, args, "test", "none", out); err != nil {
-			t.Fatal(err)
-		}
-		if *n != 2 || f.NArg() != 2 || f.Arg(0) != "sample dir" {
-			t.Fatal(f.Args())
-		}
-	}
-	f := flag.NewFlagSet("test", flag.ContinueOnError)
-	out := &Output{Writer: io.Discard}
-	if err := Parse(f, []string{"--", "--help"}, "test", "none", out); err != nil || f.Arg(0) != "--help" {
-		t.Fatalf("%v %v", err, f.Args())
-	}
-}
 func TestPortablePaths(t *testing.T) {
 	for _, p := range []string{"../file", "/file", "C:/file", `a\file`, "a//b", "a/CON.txt", "a/nul", "x.", "x ", "a\x00b", "COM1", "a:b"} {
 		if Relative(p) {

@@ -42,6 +42,34 @@ func invoke(t *testing.T, args ...string) (int, string, string) {
 	code := Run(args, &out, &diag)
 	return code, out.String(), diag.String()
 }
+func TestGNUOptions(t *testing.T) {
+	for _, args := range [][]string{{"--help"}, {"auto", "--help"}, {"inspect", "-h"}, {"manual", "help"}, {"manual", "grow", "--help"}} {
+		_, out, _ := invoke(t, args...)
+		for _, want := range []string{"[Usage]", "[Examples]", "[Options]", "Report an issue: https://github.com/nao1215/gozen/issues"} {
+			if !strings.Contains(out, want) {
+				t.Fatalf("%v: missing %q", args, want)
+			}
+		}
+		if lines := strings.SplitN(out, "\n", 3); len(lines) < 3 || lines[1] != "" {
+			t.Fatalf("%v: the title line wraps", args)
+		}
+		if strings.Contains(out, "  Other:") {
+			t.Fatalf("%v: ungrouped option", args)
+		}
+	}
+	game, out := fixture(t)
+	for _, args := range [][]string{{"auto", "-out", out, game}, {"manual", "add", "-rect", "0,0,4,4", game, "pattern.png"}} {
+		code, stdout, diag := invoke(t, args...)
+		if code != 2 || stdout != "" || !strings.Contains(diag, "single-dash long option") {
+			t.Fatalf("%v => %d %q %q", args, code, stdout, diag)
+		}
+	}
+	manual := filepath.Join(t.TempDir(), "manual.yaml")
+	if code, _, diag := invoke(t, "manual", "skip", "--manual="+manual, "-o", out, game, "pattern.png"); code != 0 {
+		t.Fatalf("GNU forms: %d %s", code, diag)
+	}
+}
+
 func TestHelpAndPrerequisites(t *testing.T) {
 	for _, args := range [][]string{{"--help"}, {"auto", "--help"}, {"inspect", "-h"}, {"manual", "help"}, {"manual", "add", "--help"}} {
 		code, out, diag := invoke(t, args...)
@@ -50,7 +78,7 @@ func TestHelpAndPrerequisites(t *testing.T) {
 		}
 	}
 	game, out := fixture(t)
-	code, _, diag := invoke(t, "auto", "-out", out, game, "pattern.png")
+	code, _, diag := invoke(t, "auto", "--out", out, game, "pattern.png")
 	if code != 1 || !strings.Contains(diag, "Requirements:") {
 		t.Fatalf("missing prerequisites: %d %s", code, diag)
 	}
@@ -74,7 +102,7 @@ func TestManualStateAndRollback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := []string{"-out", out, "-manual", manual, "-size", "48"}
+	base := []string{"--out", out, "--manual", manual, "--size", "48"}
 	call := func(sub string, flags ...string) int {
 		args := append([]string{"manual", sub}, base...)
 		args = append(args, flags...)
@@ -88,15 +116,15 @@ func TestManualStateAndRollback(t *testing.T) {
 	if call("skip") != 0 {
 		t.Fatal("manual-only skip failed")
 	}
-	if call("add", "-rect", "-2,0,8,8", "-rect", "12,12,8,8") != 0 {
+	if call("add", "--rect", "-2,0,8,8", "--rect", "12,12,8,8") != 0 {
 		t.Fatal("multiple clipped rectangles failed")
 	}
 	fx, err := mosaic.LoadFixes(manual)
 	if err != nil || len(fx["pattern.png"].Add) != 2 || fx["pattern.png"].Add[0] != [4]int{0, 0, 6, 8} {
 		t.Fatalf("saved geometry: %+v %v", fx, err)
 	}
-	if call("grow", "-rect", "0,0,4,4", "-by", "2") != 0 {
-		t.Fatal("grow -rect unreachable")
+	if call("grow", "--rect", "0,0,4,4", "--by", "2") != 0 {
+		t.Fatal("grow --rect unreachable")
 	}
 	if call("check") != 0 {
 		t.Fatal("check failed")
@@ -134,11 +162,11 @@ func TestInvalidGeometryAndOptions(t *testing.T) {
 	game, out := fixture(t)
 	manual := filepath.Join(filepath.Dir(game), "manual.yaml")
 	for _, flags := range [][]string{
-		{"-rect", "0,0,0,4"}, {"-rect", "0,0,-4,4"}, {"-box", "8,8,1,1"}, {"-rect", "50,50,4,4"},
-		{"-rect", "x1,2,3,4"}, {"-rect", "NaN,0,4,4"}, {"-rect", "1e100,0,4,4"}, {"-ellipse", "2,2,-1,3"},
-		{"-threshold", "NaN", "-rect", "0,0,4,4"}, {"-quality", "101", "-rect", "0,0,4,4"}, {"-block", "-1", "-rect", "0,0,4,4"},
+		{"--rect", "0,0,0,4"}, {"--rect", "0,0,-4,4"}, {"--box", "8,8,1,1"}, {"--rect", "50,50,4,4"},
+		{"--rect", "x1,2,3,4"}, {"--rect", "NaN,0,4,4"}, {"--rect", "1e100,0,4,4"}, {"--ellipse", "2,2,-1,3"},
+		{"--threshold", "NaN", "--rect", "0,0,4,4"}, {"--quality", "101", "--rect", "0,0,4,4"}, {"--block", "-1", "--rect", "0,0,4,4"},
 	} {
-		args := append([]string{"manual", "add", "-manual", manual, "-out", out}, flags...)
+		args := append([]string{"manual", "add", "--manual", manual, "--out", out}, flags...)
 		args = append(args, game, "pattern.png")
 		code, _, _ := invoke(t, args...)
 		if code == 0 {
@@ -156,7 +184,7 @@ func TestReadOnlyInspectionAndDryRun(t *testing.T) {
 	if err := (mosaic.Fixes{"pattern.png": {Skip: true, Add: [][4]int{{0, 0, 8, 8}}, Block: 4}}).Save(manual, ""); err != nil {
 		t.Fatal(err)
 	}
-	code, _, diag := invoke(t, "auto", "-manual", manual, "-out", out, game, "pattern.png")
+	code, _, diag := invoke(t, "auto", "--manual", manual, "--out", out, game, "pattern.png")
 	if code != 0 {
 		t.Fatal(diag)
 	}
@@ -167,7 +195,7 @@ func TestReadOnlyInspectionAndDryRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	code, text, diag := invoke(t, "inspect", "-manual", manual, "-out", out, "-tags", tags, game, "pattern.png")
+	code, text, diag := invoke(t, "inspect", "--manual", manual, "--out", out, "--tags", tags, game, "pattern.png")
 	if code != 0 {
 		t.Fatal(diag)
 	}
@@ -176,7 +204,7 @@ func TestReadOnlyInspectionAndDryRun(t *testing.T) {
 		t.Fatalf("inspection result %s %v", text, err)
 	}
 	dryOut := filepath.Join(filepath.Dir(game), "dry")
-	code, _, diag = invoke(t, "auto", "-dry", "-manual", manual, "-out", dryOut, "-tags", tags, game, "pattern.png")
+	code, _, diag = invoke(t, "auto", "--dry-run", "--manual", manual, "--out", dryOut, "--tags", tags, game, "pattern.png")
 	if code != 0 {
 		t.Fatal(diag)
 	}
@@ -192,7 +220,7 @@ func TestSourceProtection(t *testing.T) {
 	game, out := fixture(t)
 	manual := filepath.Join(filepath.Dir(game), "manual.yaml")
 	for _, destination := range []string{filepath.Join(game, "assets"), filepath.Join(game, "assets", "nested"), filepath.Dir(game)} {
-		code, _, _ := invoke(t, "manual", "skip", "-manual", manual, "-out", destination, game, "pattern.png")
+		code, _, _ := invoke(t, "manual", "skip", "--manual", manual, "--out", destination, game, "pattern.png")
 		if code == 0 {
 			t.Fatalf("accepted unsafe output %s", destination)
 		}
@@ -201,11 +229,11 @@ func TestSourceProtection(t *testing.T) {
 	if err := os.Symlink(filepath.Join(game, "assets"), link); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	code, _, _ := invoke(t, "manual", "skip", "-manual", manual, "-out", filepath.Join(link, "nested"), game, "pattern.png")
+	code, _, _ := invoke(t, "manual", "skip", "--manual", manual, "--out", filepath.Join(link, "nested"), game, "pattern.png")
 	if code == 0 {
 		t.Fatal("symlink source alias accepted")
 	}
-	code, _, _ = invoke(t, "auto", "-out", out, game, "../pattern.png")
+	code, _, _ = invoke(t, "auto", "--out", out, game, "../pattern.png")
 	if code == 0 {
 		t.Fatal("traversal accepted")
 	}
@@ -225,7 +253,7 @@ func TestWebPOutputIsHonest(t *testing.T) {
 	if err = (mosaic.Fixes{"pattern.webp": {Skip: true, Add: [][4]int{{0, 0, 8, 8}}}}).Save(manual, ""); err != nil {
 		t.Fatal(err)
 	}
-	code, _, diag := invoke(t, "auto", "-manual", manual, "-out", out, game, "pattern.webp")
+	code, _, diag := invoke(t, "auto", "--manual", manual, "--out", out, game, "pattern.webp")
 	if code != 0 {
 		t.Fatal(diag)
 	}
@@ -269,14 +297,14 @@ func TestUnknownReportAndOutputFailures(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(out, "report.json"), []byte("broken"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	code, _, diag := invoke(t, "manual", "list", "-out", out, game)
+	code, _, diag := invoke(t, "manual", "list", "--out", out, game)
 	if code != 1 || !strings.Contains(diag, "invalid report") {
 		t.Fatalf("corrupt report hidden: %d %s", code, diag)
 	}
 	if err := os.WriteFile(filepath.Join(out, "report.json"), []byte(`[{"file":"pattern.png","output":"../escape.png"}]`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	code, _, _ = invoke(t, "inspect", "-out", out, game, "pattern.png")
+	code, _, _ = invoke(t, "inspect", "--out", out, game, "pattern.png")
 	if code != 1 {
 		t.Fatal("unsafe report accepted")
 	}

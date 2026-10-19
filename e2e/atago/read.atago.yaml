@@ -5,7 +5,7 @@ scenarios:
 - name: '"${specdir}/fixtures/game" observable result'
   steps:
   - run:
-      command: gozen check -no-layout "${specdir}/fixtures/game"
+      command: gozen check --no-layout "${specdir}/fixtures/game"
       deterministic:
         runs: 2
         compare:
@@ -85,7 +85,7 @@ scenarios:
 - name: sim observable result
   steps:
   - run:
-      command: gozen sim "${specdir}/fixtures/game" lesson -n 3 -seed 9
+      command: gozen sim "${specdir}/fixtures/game" lesson -n 3 --seed 9
       deterministic:
         runs: 2
         compare:
@@ -105,7 +105,7 @@ scenarios:
 - name: floors observable result
   steps:
   - run:
-      command: gozen floors "${specdir}/fixtures/game" grotto -floor 1 -try 2
+      command: gozen floors "${specdir}/fixtures/game" grotto --floor 1 --try 2
       deterministic:
         runs: 2
         compare:
@@ -125,7 +125,7 @@ scenarios:
 - name: curve observable result
   steps:
   - run:
-      command: gozen curve "${specdir}/fixtures/game" grotto -floors 1 -battles 1 -tries 1
+      command: gozen curve "${specdir}/fixtures/game" grotto --floors 1 --battles 1 --tries 1
       deterministic:
         runs: 2
         compare:
@@ -154,7 +154,7 @@ scenarios:
 
         '
   - run:
-      command: gozen trace trace.jsonl -only say -from 1 -to 1
+      command: gozen trace trace.jsonl --only say --from 1 --to 1
   - assert:
       exit_code: 0
       stdout:
@@ -165,7 +165,7 @@ scenarios:
       stderr:
         equals: ''
   - run:
-      command: gozen trace trace.jsonl -check
+      command: gozen trace trace.jsonl --check
   - assert:
       exit_code: 1
       stdout:

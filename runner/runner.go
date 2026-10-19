@@ -1,10 +1,8 @@
 package runner
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -13,8 +11,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/spf13/pflag"
+
+	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/play"
-	lang "github.com/nao1215/gozen/text"
 )
 
 // Config supplies explicit arguments and the destination for help and reports.
@@ -28,7 +28,9 @@ type Config struct {
 // Run starts the game in embedded's relative directory sub. --dir overrides it.
 // --help succeeds without reading the game. Run must execute on the main thread;
 // Ebitengine supports one game loop per process. ctx cancellation is returned.
-// Development flags require --dev. See docs/development/graphics.md.
+// Options follow the GNU style (--name value or --name=value; single-dash long
+// options are rejected). Development options require --dev. See
+// docs/development/graphics.md.
 func Run(ctx context.Context, embedded fs.FS, sub string, cfg Config) (err error) {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -37,74 +39,63 @@ func Run(ctx context.Context, embedded fs.FS, sub string, cfg Config) (err error
 	if out == nil {
 		out = io.Discard
 	}
-	var help bytes.Buffer
-	fl := flag.NewFlagSet("game", flag.ContinueOnError)
-	fl.SetOutput(&help)
-	dev := fl.Bool("dev", false, "enable author tools; scripted runs isolate saves unless --save-dir is explicit")
-	collect := fl.Bool("build-info", false, "with --dev: include embedded revision metadata in notes")
-	external := fl.Bool("external-input", false, "with --dev: permit Linux zenity, falling back to in-window input")
-	fl.Usage = func() {
-		help.WriteString("Usage: game [flags]\n") //nolint:errcheck // The in-memory writer cannot fail.
-		fl.PrintDefaults()
-		help.WriteString("\nRequirements: a graphics display and platform graphics/audio libraries.\nRecording requires ffmpeg; external input optionally uses Linux zenity.\nEbitengine 2.10 supports pure Go builds; race tests require a C compiler. Linux display tests: Xvfb.\nSee https://github.com/nao1215/gozen/blob/main/docs/development/graphics.md\n") //nolint:errcheck // The in-memory writer cannot fail.
-	}
-	dir := fl.String("dir", "", "read the game from this directory instead of the embedded one")
-	seed := fl.Uint64("seed", 0, "fix the random numbers")
-	scriptFile := fl.String("script", "", "drive the game with a script (see docs/development/graphics.md)")
-	shots := fl.String("shots", "", "where the screenshots go")
-	record := fl.String("record", "", "with --script, --autoplay or --replay: record the play to this MP4 (needs ffmpeg)")
-	mute := fl.Bool("mute", false, "no sound")
+	fl := clihelp.NewFlagSet("game")
+	dev := fl.Bool("dev", false, "enable the author tools; scripted runs isolate saves unless --save-dir is given")
+	collect := fl.Bool("build-info", false, "with --dev, include the embedded revision metadata in notes")
+	external := fl.Bool("external-input", false, "with --dev, permit Linux zenity for text input, falling back to in-window input")
+	dir := fl.String("dir", "", "read the game from this `DIR` instead of the embedded one")
+	seed := fl.Uint64("seed", 0, "fix the random numbers with this `SEED`")
+	scriptFile := fl.String("script", "", "drive the game with this script `FILE` (see docs/development/graphics.md); needs --shots")
+	shots := fl.String("shots", "", "write screenshots to this `DIR`")
+	record := fl.String("record", "", "with --script, --autoplay, or --replay, record the play to this MP4 `FILE` (needs ffmpeg)")
+	mute := fl.Bool("mute", false, "play no sound")
 	fullscreen := fl.Bool("fullscreen", false, "start in full screen (F11 or Alt+Enter switches)")
-	galleryAll := fl.Bool("gallery-all", false, "debug: open every picture and scene of the gallery (not saved), to look at all of them")
-	windowScale := fl.Float64("window", 0, "the window's size, times the game's (0: the game's size, or smaller to fit the monitor)")
-	saveDir := fl.String("save-dir", "", "where to keep the saves")
-	start := fl.String("start", "", "test play: start a new game at this location")
-	fight := fl.String("battle", "", "test play: begin with a battle against this troop (with --start; a boss, a cut-in to look at)")
-	party := fl.String("party", "", "test play: the party (actor ids, comma separated)")
-	level := fl.Int("level", 0, "test play: the party's level")
-	flags := fl.String("flags", "", "test play: flags to set (comma separated; var.name=number sets a variable)")
-	gold := fl.Int("gold", 0, "test play: the money")
-	items := fl.String("items", "", "test play: items to put in the bag (id or id=count, comma separated)")
-	floor := fl.Int("floor", 0, "test play: with --start a made dungeon, start on this floor")
-	calm := fl.Bool("calm", false, "test play: no random battles")
-	auto := fl.Int("autoplay", 0, "play by itself for this many seconds (the debug play)")
-	report := fl.String("report", "", "with --autoplay: write the report here too")
-	shotEvery := fl.Int("shot-every", 0, "with --autoplay: a screenshot every this many seconds (in --shots)")
-	autoFloors := fl.Int("auto-floors", 0, "with --autoplay: go back to town after this many floors in a dive (default 3)")
-	speed := fl.Int("speed", 1, "with --autoplay: run this many times faster (for balancing; mute it)")
-	trace := fl.String("trace", "", "write what happens as JSON lines to this file (see docs/development/graphics.md)")
-	replay := fl.String("replay", "", "play this trace again and check that the game goes the same way")
-	replayBattle := fl.Int("replay-battle", 0, lang.T("--replay の戦闘番号（１から）を開始直前から結果まで再現して照合する"))
-	memos := fl.String("memos", "", "where the test player's notes (the F9 key) go: <dir>/<date>/<number>.png and .json")
-	fromMemo := fl.String("from-memo", "", "start from a test player's note (its .json or .save): the event it was in begun again and read on to its line")
-	allowLegacySave := fl.Bool("allow-legacy-save", false, lang.T("同じ作品と確認した版なしの外部メモを移行する（--from-memo）"))
-	until := fl.Int("until", 0, "stop before this tick, saving the screen as until_<tick>.png in --shots (with --replay: to a note's tick)")
-	traceShots := fl.Bool("trace-shots", false, "with --trace: save the screen (in --shots) each time what is shown changes")
-	scene := fl.String("scene", "", "start a scene of the gallery at once (its title, or its number from 1) and read on to --line")
-	event := fl.String("event", "", "test play: start this event at once (an event's id, or location.action as the notes name them) and read on to --line")
-	line := fl.Int("line", 0, "with --scene or --event: stop at this line (the lines and questions from its start; default 1)")
-	picture := fl.String("picture", "", "with --scene or --event: stop at the --line-th line shown over this picture (a page's file, cg/x.002.jpg)")
-	answers := fl.String("answers", "", "with --scene or --event: the answers to the questions on the way (0 is the first; comma separated)")
-	review := fl.Bool("review", false, "debug: start in the review of every event picture (one by one, tagging each; implies --gallery-all)")
-	reviewLog := fl.String("review-log", "", "where the review's tags go (JSON lines: the picture, its source, the tag, the time)")
-	reviewSources := fl.String("review-sources", "", "a JSON of each picture page to the picture it was made from (the review keeps its tags by that)")
-	parseErr := fl.Parse(cfg.Args)
-	if help.Len() > 0 {
-		if _, err := io.Copy(out, &help); err != nil {
-			return err
-		}
-	}
-	if errors.Is(parseErr, flag.ErrHelp) {
-		return nil
-	}
+	galleryAll := fl.Bool("gallery-all", false, "open every picture and scene of the gallery for this run (not saved)")
+	windowScale := fl.Float64("window", 0, "the window size as a `SCALE` of the game's size; 0 uses the game's size, or smaller to fit the monitor")
+	saveDir := fl.String("save-dir", "", "keep the saves in this `DIR`")
+	start := fl.String("start", "", "start a new game at this `LOCATION`")
+	fight := fl.String("battle", "", "with --start, begin with a battle against this `TROOP`")
+	party := fl.String("party", "", "the party, as actor `IDS` separated by commas")
+	level := fl.Int("level", 0, "the party's `LEVEL`")
+	flags := fl.String("flags", "", "the `FLAGS` to set, separated by commas; var.name=number sets a variable")
+	gold := fl.Int("gold", 0, "the money, in `GOLD`")
+	items := fl.String("items", "", "the `ITEMS` to put in the bag, as id or id=count separated by commas")
+	floor := fl.Int("floor", 0, "with --start at a generated dungeon, start on this `FLOOR`")
+	calm := fl.Bool("calm", false, "meet no random battles")
+	auto := fl.Int("autoplay", 0, "play by itself for these `SECONDS`")
+	report := fl.String("report", "", "with --autoplay, also write the report to this `FILE`")
+	shotEvery := fl.Int("shot-every", 0, "with --autoplay, take a screenshot in --shots every these `SECONDS`")
+	autoFloors := fl.Int("auto-floors", 0, "with --autoplay, go back to town after these `FLOORS` of a dive (default: 3)")
+	speed := fl.Int("speed", 1, "with --autoplay, run this many `TIMES` faster (for balancing; use --mute)")
+	trace := fl.String("trace", "", "write what happens as JSON Lines to this `FILE` (see docs/development/graphics.md)")
+	replay := fl.String("replay", "", "play this trace `FILE` again and check that the game goes the same way")
+	replayBattle := fl.Int("replay-battle", 0, "with --replay, replay battle `N` (from 1) from just before it begins to its result and compare")
+	memos := fl.String("memos", "", "write the test player's notes (F9) to this `DIR` as <dir>/<date>/<number>.png and .json")
+	fromMemo := fl.String("from-memo", "", "start from a test player's note `FILE` (.json or .save): its event begun again and read on to its line")
+	allowLegacySave := fl.Bool("allow-legacy-save", false, "with --from-memo, migrate an external note without a version, after checking that it is from the same game")
+	until := fl.Int("until", 0, "stop before this `TICK`, saving the screen as until_<tick>.png in --shots (with --replay, up to a note's tick)")
+	traceShots := fl.Bool("trace-shots", false, "with --trace, save the screen in --shots each time what is shown changes")
+	scene := fl.String("scene", "", "start this gallery `SCENE` at once (its title, or its number from 1) and read on to --line")
+	event := fl.String("event", "", "start this `EVENT` at once (an event id, or location.action as the notes name it) and read on to --line")
+	line := fl.Int("line", 0, "with --scene or --event, stop at this `LINE`, counting lines and questions from its start (default: 1)")
+	picture := fl.String("picture", "", "with --scene or --event, stop at the --line-th line shown over this picture `FILE` (a page's file, such as cg/x.002.jpg)")
+	answers := fl.String("answers", "", "with --scene or --event, the `ANSWERS` to the questions on the way, separated by commas (0 is the first)")
+	review := fl.Bool("review", false, "start in the review of every event picture, tagging them one by one (implies --gallery-all); needs --review-log")
+	reviewLog := fl.String("review-log", "", "write the review's tags to this JSON Lines `FILE` (the picture, its source, the tag, and the time)")
+	reviewSources := fl.String("review-sources", "", "a JSON `FILE` mapping each picture page to the picture it was made from, so the review keeps its tags by that")
+	help, parseErr := clihelp.Parse(fl, cfg.Args)
 	if parseErr != nil {
 		return parseErr
+	}
+	if help {
+		_, err := io.WriteString(out, page.String(fl))
+		return err
 	}
 	if fl.NArg() != 0 {
 		return fmt.Errorf("unexpected positional arguments: %v", fl.Args())
 	}
 	var devFlag string
-	fl.Visit(func(f *flag.Flag) {
+	fl.Visit(func(f *pflag.Flag) {
 		switch f.Name {
 		case "dev", "dir", "seed", "mute", "fullscreen", "window", "save-dir":
 		default:
@@ -202,4 +193,34 @@ func split(s string) []string {
 		return nil
 	}
 	return strings.Split(s, ",")
+}
+
+var page = clihelp.Page{
+	Name:    "game",
+	Summary: "a game built with the Gozen runner",
+	Usage:   []string{"game [OPTIONS]"},
+	About: "Starts the game. Players need no option. The options below choose the window and the saves, " +
+		"and, with --dev, start a test play at a place, script the game, play by itself, record, trace, " +
+		"and replay. Every option other than --dir, --seed, --mute, --fullscreen, --window, and --save-dir " +
+		"needs --dev. The examples use the Wayfinder sample of examples/play.",
+	Examples: []clihelp.Example{
+		{"play in full screen without sound", "game --fullscreen --mute"},
+		{"play by itself for a minute and write a trace", "game --dev --autoplay 60 --trace run.jsonl"},
+		{"start a test play in a place with a party", "game --dev --start camp --party walker --level 5 --calm"},
+		{"take screenshots with a script", "game --dev --script check.txt --shots shots"},
+		{"replay a trace and check that the game goes the same way", "game --dev --replay run.jsonl"},
+	},
+	Groups: []clihelp.Group{
+		{Title: "Game", Flags: []string{"dir", "seed", "mute", "fullscreen", "window", "save-dir", "dev"}},
+		{Title: "Test play (--dev)", Flags: []string{"start", "battle", "party", "level", "flags", "gold", "items", "floor", "calm", "scene", "event", "line", "picture", "answers"}},
+		{Title: "Autoplay (--dev)", Flags: []string{"autoplay", "report", "shot-every", "auto-floors", "speed"}},
+		{Title: "Scripts and records (--dev)", Flags: []string{"script", "shots", "record", "trace", "trace-shots", "replay", "replay-battle", "until"}},
+		{Title: "Notes and review (--dev)", Flags: []string{"memos", "from-memo", "allow-legacy-save", "gallery-all", "review", "review-log", "review-sources", "build-info", "external-input"}},
+		{Title: "General", Flags: []string{"help"}},
+	},
+	Notes: []string{
+		"Requirements: a graphics display and the platform graphics and audio libraries. Recording needs " +
+			"ffmpeg; text input with --external-input optionally uses Linux zenity. Unattended runs on Linux " +
+			"need Xvfb. See https://github.com/nao1215/gozen/blob/main/docs/development/graphics.md",
+	},
 }

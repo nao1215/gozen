@@ -3,7 +3,7 @@
 Gozen のゲーム作者向けの型・省略値・検証規則です。data.Load(fsys, path) は game.yaml と data/ 以下を読み込みます。
 機械可読スキーマは data/schema/ にあります。参照 ID と式の意味は Load で検査してください。
 仕様版 0 は互換読込、1 は省略と明示したゼロを区別します。保存の形式版とは別です。
-更新: go test ./internal/layer2/gamedata -run '^TestSchemaCoverage$' -args -update-schema
+更新: GOZEN_UPDATE_SCHEMA=1 go test ./internal/layer2/gamedata -run '^TestSchemaCoverage$'
 
 ## Action
 

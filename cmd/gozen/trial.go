@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,18 +9,19 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/clihelp"
 
 	"github.com/nao1215/gozen/assetfs"
 	"github.com/nao1215/gozen/cmd/internal/trial"
 )
 
 func (c *command) trialCmd(args []string) (err error) {
-	fl := flag.NewFlagSet("gozen trial", flag.ContinueOnError)
-	conf := fl.String("config", "trial.yaml", "範囲の設定（game dir からの相対パス）")
-	overlay := fl.String("overlay", "", "差し替えのディレクトリ（-inspect も必須）")
-	inspect := fl.String("inspect", "", "制作側の検査記録（JSON Lines）。差し替え時は必須")
-	list := fl.String("list", "", "残した・外した物の一覧を書くファイル（書かなければ書かない）")
-	dry := fl.Bool("n", false, "書かずに、残す物の数だけ出す")
+	fl := clihelp.NewFlagSet("gozen trial")
+	conf := fl.String("config", "trial.yaml", "the range settings `FILE`, relative to the game directory and separated by /")
+	overlay := fl.String("overlay", "", "take replaced assets from this `DIR` (needs --inspect)")
+	inspect := fl.String("inspect", "", "the inspection records `FILE` (JSON Lines) from production; needed with --overlay")
+	list := fl.String("list", "", "write the list of what was kept and dropped to this new `FILE`")
+	dry := fl.BoolP("dry-run", "n", false, "write nothing; print only how much would be kept")
 	if err := c.parse(fl, args); err != nil {
 		return err
 	}
@@ -30,10 +30,10 @@ func (c *command) trialCmd(args []string) (err error) {
 	}
 	src := fl.Arg(0)
 	if !cli.Relative(*conf) {
-		return cli.Invalid("-config must be a portable relative FS path")
+		return cli.Invalid("--config must be a portable relative FS path")
 	}
 	if (*overlay == "") != (*inspect == "") {
-		return cli.Invalid("-overlay and -inspect must be supplied together")
+		return cli.Invalid("--overlay and --inspect must be supplied together")
 	}
 	if !*dry {
 		if err := cli.Destination(fl.Arg(1), src, *overlay); err != nil {
@@ -68,7 +68,7 @@ func (c *command) trialCmd(args []string) (err error) {
 		return cli.Publish(out, []string{src}, func(stage string) error { return res.Write(src, stage) })
 	}
 	if *inspect == "" {
-		return fmt.Errorf("差し替えには -inspect が要る")
+		return fmt.Errorf("差し替えには --inspect が要る")
 	}
 
 	stage, err := os.MkdirTemp("", "gozen-trial-")

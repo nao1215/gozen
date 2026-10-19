@@ -12,7 +12,7 @@ scenarios:
 
         '
   - run:
-      command: gozen shots "${specdir}/fixtures/game" shots.yaml -raw -bin "${env:GOZEN_GAME_BIN}" -out captures -timeout
+      command: gozen shots "${specdir}/fixtures/game" shots.yaml --raw --bin "${env:GOZEN_GAME_BIN}" --out captures --timeout
         30s
       timeout: 45s
   - assert:

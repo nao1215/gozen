@@ -100,9 +100,9 @@ func (o *Odds) Add(b *battle.Battle) {
 // Start は i 戦目（0 から）の始まりの状態を作る。毎回新しい状態を返す。
 type Start func(i int) (*rpg.State, error)
 
-// Prep は始まりの状態への手直し（gozen sim の -level・-tree・-gear・-as-is）。ゼロ値は何もしない。
+// Prep は始まりの状態への手直し（gozen sim の --level・--no-tree・--gear・--as-is）。ゼロ値は何もしない。
 type Prep struct {
-	AsIs  bool     // SavedStart で全回復せず、保存された HP・MP・状態のまま始める（-level の Lv 上げは回復する）
+	AsIs  bool     // SavedStart で全回復せず、保存された HP・MP・状態のまま始める（--level の Lv 上げは回復する）
 	Level int      // 0 より大きければ、各仲間をこの Lv の経験値にして全回復する
 	Tree  bool     // スキルの点を振る
 	Gear  []string // 一行の人数ぶん袋に入れ、一番合う所に着ける
@@ -188,7 +188,7 @@ func StreakOne(db *data.DB, st *rpg.State, troop string, maxTurns, limit int) in
 	return wins
 }
 
-// Streak は start の i 番目の始まりごとの StreakOne（gozen sim -streak）。
+// Streak は start の i 番目の始まりごとの StreakOne（gozen sim --streak）。
 func Streak(db *data.DB, troop string, n, maxTurns, limit int, start Start) ([]int, error) {
 	out := make([]int, 0, n)
 	for i := range n {

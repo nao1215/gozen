@@ -3,7 +3,6 @@ package gamedata
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,7 +13,8 @@ import (
 	"testing"
 )
 
-var updateSchema = flag.Bool("update-schema", false, "YAML スキーマと項目一覧を更新する")
+// updateSchema は環境変数 GOZEN_UPDATE_SCHEMA=1 のときに真で、YAML スキーマと項目一覧を書き直す。
+var updateSchema = os.Getenv("GOZEN_UPDATE_SCHEMA") == "1"
 
 type schemaNode map[string]any
 
@@ -409,7 +409,7 @@ func schemaJSON(t *testing.T, v any) []byte {
 }
 
 // TestSchemaCoverage は型の追加・削除・命令タグ・数値契約と配布する表のずれを検出する。
-// 更新は go test ./internal/layer2/gamedata -run '^TestSchemaCoverage$' -args -update-schema。
+// 更新は GOZEN_UPDATE_SCHEMA=1 go test ./internal/layer2/gamedata -run '^TestSchemaCoverage$'。
 func TestSchemaCoverage(t *testing.T) {
 	b := newSchemaBuilder()
 	b.node(reflect.TypeFor[Game]())
@@ -486,7 +486,7 @@ func TestSchemaCoverage(t *testing.T) {
 	}
 	artifacts["../../../docs/schema.md"] = []byte(md.String())
 	for name, want := range artifacts {
-		if *updateSchema {
+		if updateSchema {
 			if err := os.MkdirAll(filepath.Dir(name), 0750); err != nil {
 				t.Fatal(err)
 			}
@@ -499,7 +499,7 @@ func TestSchemaCoverage(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !bytes.Equal(got, want) {
-			t.Errorf("%s が実装と不一致。-update-schema で再生成して差分を確認する", name)
+			t.Errorf("%s が実装と不一致。GOZEN_UPDATE_SCHEMA=1 で再生成して差分を確認する", name)
 		}
 	}
 	t.Logf("%d 型の YAML 項目と３スキーマ・項目一覧を照合", len(b.rows))
@@ -563,5 +563,5 @@ const schemaIntroduction = `# YAML 定義の契約
 Gozen のゲーム作者向けの型・省略値・検証規則です。data.Load(fsys, path) は game.yaml と data/ 以下を読み込みます。
 機械可読スキーマは data/schema/ にあります。参照 ID と式の意味は Load で検査してください。
 仕様版 0 は互換読込、1 は省略と明示したゼロを区別します。保存の形式版とは別です。
-更新: go test ./internal/layer2/gamedata -run '^TestSchemaCoverage$' -args -update-schema
+更新: GOZEN_UPDATE_SCHEMA=1 go test ./internal/layer2/gamedata -run '^TestSchemaCoverage$'
 `

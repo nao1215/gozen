@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"image"
 	"image/color"
@@ -17,6 +16,7 @@ import (
 	"time"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/clihelp"
 
 	"github.com/nao1215/gozen/cmd/gozen/internal/designeval"
 	"github.com/nao1215/gozen/data"
@@ -24,13 +24,13 @@ import (
 )
 
 func (c *command) design(args []string) (err error) {
-	fs := flag.NewFlagSet("gozen design", flag.ContinueOnError)
-	cfgPath := fs.String("config", "", "the personas and the measures")
-	root := fs.String("root", filepath.Join("build", "designeval"), "where the runs are kept")
-	out := fs.String("out", "", "the run's directory (default <root>/<date>)")
-	only := fs.String("only", "", "only these personas (ids, comma separated)")
-	memos := fs.String("memos", "", "optional directory for notes on marked places (empty or none disables notes)")
-	verbose := fs.Bool("v", false, "write each persona's dives, choices and stumbles to debug.log")
+	fs := clihelp.NewFlagSet("gozen design")
+	cfgPath := fs.String("config", "", "the personas and measures `FILE` (default: designeval.yaml in the game directory)")
+	root := fs.String("root", filepath.Join("build", "designeval"), "the `DIR` that keeps the runs when --out is not given")
+	out := fs.StringP("out", "o", "", "write the run to this new `DIR` (default: <root>/<date>)")
+	only := fs.String("only", "", "run only these persona `IDS`, separated by commas")
+	memos := fs.String("memos", "", "write notes on marked places to this `DIR`; empty or none writes no notes")
+	verbose := fs.BoolP("verbose", "v", false, "write each persona's dives, choices, and stumbles to debug.log")
 	if err := c.parse(fs, args); err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func (c *command) design(args []string) (err error) {
 			found = found || p.ID == id
 		}
 		if !found {
-			return cli.Invalid("-only: unknown persona %q", id)
+			return cli.Invalid("--only: unknown persona %q", id)
 		}
 	}
 	runs := make([]*designeval.Run, len(personas))
@@ -135,7 +135,7 @@ func (c *command) design(args []string) (err error) {
 		return debug.Err
 	}
 	if len(personas) == 0 {
-		return cli.Invalid("-only matched no personas")
+		return cli.Invalid("--only matched no personas")
 	}
 	sums := make([]designeval.Summary, len(runs))
 	for i, r := range runs {
