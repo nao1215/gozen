@@ -67,13 +67,13 @@ As a library:
 go get github.com/nao1215/gozen@latest
 ```
 
-The graphical game needs the platform graphics libraries (on Linux, X11 and OpenGL). See [OS setup](https://nao1215.github.io/gozen/docs/setup/).
+The graphical game needs the platform graphics libraries (on Linux, X11 and OpenGL). See [OS setup](https://nao1215.github.io/gozen/install/#what-the-window-needs).
 
 ## Recipes
 
 ### Let a coding agent write the game
 
-Point your agent at the [schema](https://nao1215.github.io/gozen/docs/schema/) and give it one rule: run `gozen check` until it passes. A typical round:
+Point your agent at the [schema](https://nao1215.github.io/gozen/schema/) and give it one rule: run `gozen check` until it passes. A typical round:
 
 ```sh
 gozen check game                                  # references, expressions, pictures, text layout
