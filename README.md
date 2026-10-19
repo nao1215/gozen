@@ -47,6 +47,9 @@ The rules are shared by the window, a headless driver and the command line, so a
 
 ## Screens
 
+<p align="center"><img src="docs/images/puppet.gif" width="300" alt="a streamer-style portrait that blinks, talks, sways and reacts"></p>
+<p align="center">Portraits that blink, talk, breathe and react, from one picture and a few small patches (<a href="examples/puppet">examples/puppet</a>).</p>
+
 | A party of three | Cut-in on a special skill |
 |:--|:--|
 | ![a battle with a party of three](docs/images/wayfinder-party.jpg) | ![a cut-in when Bram uses Shield Rush](docs/images/wayfinder-cutin.jpg) |
@@ -145,6 +148,7 @@ location=trail battles=1 wins=1 gold=3
 - Turn-based battles with a party, auto battle and per-enemy tactics (gambits)
 - Skill trees, shops, a field menu and a picture gallery
 - First-person grid dungeons, fixed or generated floors
+- Moving portraits: blinking, lip flaps, breathing, head and hair sway and reactions from one picture ([puppet](https://pkg.go.dev/github.com/nao1215/gozen/puppet))
 - Characters that react to typed words and events, and a chat log ([react](https://pkg.go.dev/github.com/nao1215/gozen/react), [chat](https://pkg.go.dev/github.com/nao1215/gozen/chat))
 - Moving portraits from one picture and a few difference pictures: blinking, talking, breathing, head and hair sway, reactions and face changes ([puppet](https://pkg.go.dev/github.com/nao1215/gozen/puppet))
 - A headless driver that shares the rules with the window
