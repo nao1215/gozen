@@ -1,0 +1,12 @@
+# Walker's talk portrait moves: blinks, talks, and sways the head and hair.
+base: normal.png
+faces:
+  normal: {}
+eyes:
+  closed: {image: eyes_closed.png, at: [166, 56]}
+mouth:
+  frames: [face, {image: mouth_open.png, at: [180, 92]}]
+head: {center: [205, 85], radius: 75, neck: [205, 175]}
+hair:
+  - rect: [130, 70, 50, 90]
+  - rect: [235, 70, 45, 80]

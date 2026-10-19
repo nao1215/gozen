@@ -15,7 +15,7 @@ classes:
     exp_for: level * 30
     skills: [{level: 1, skill: mend}]
 actors:
-  walker: {name: Walker, class: walker, faces: walker}
+  walker: {name: Walker, class: walker, faces: walker, puppet: walker/puppet.yaml}
   bram:
     name: Bram
     class: guard
@@ -224,6 +224,7 @@ locations:
 events:
   greeting:
     do:
+      - say: {who: walker, text: "There. The marker should take the light now."}
       - say: The marker glows. A path to Lantern ridge is now open.
       - set: {flag.marker_lit: true}
   arrival:
