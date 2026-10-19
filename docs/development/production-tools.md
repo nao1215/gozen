@@ -10,7 +10,7 @@
 go install github.com/nao1215/gozen/cmd/gozen@latest
 ```
 
-`gozen prompt` は Go 1.26.4 以降だけでビルドできます。実行時には利用者の catalog YAML が必要です。C コンパイラ、推論モデル、画面、画像生成サービスは不要です。
+`gozen prompt` は Go 1.26.9 以降だけでビルドできます。実行時には利用者の catalog YAML が必要です。C コンパイラ、推論モデル、画面、画像生成サービスは不要です。
 
 `gozen mosaic` の推論には、`gozen` のビルド時の cgo と C コンパイラ、実行時の ONNX Runtime 共有ライブラリと利用者の ONNX モデルが必要です。Go binding は `onnxruntime_go v1.36.0` で、同梱 C ヘッダは ONNX Runtime 1.29.0 の API を使います。共有ライブラリは対応する版・OS・CPU の物を選びます。モデル、共有ライブラリ、学習データは Gozen に同梱しません。モデルの利用条件は利用者が確認します。
 

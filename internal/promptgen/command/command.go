@@ -17,7 +17,7 @@ import (
 	"github.com/nao1215/gozen/internal/promptgen"
 )
 
-const requirements = "Requirements: Go 1.26.4 or later to build or install gozen, and a user-supplied catalog YAML file. No cgo, model, ONNX Runtime, display, or generation server is needed. See " + clihelp.README
+const requirements = "Requirements: Go 1.26.9 or later to build or install gozen, and a user-supplied catalog YAML file. No cgo, model, ONNX Runtime, display, or generation server is needed. See " + clihelp.README
 
 var page = clihelp.Page{
 	Name:    "gozen prompt",

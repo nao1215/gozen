@@ -1,8 +1,10 @@
 # 全体設計
 
+初期実装の段の記号（T1〜T7、SW1・SW2、D1〜D10）の意味は [設計判断の記号](../decisions/index.md#記号) にあります。
+
 Gozen はゲームの定義・状態・規則・進行を画面から分離し、同じ中核をライブラリ、描画なしの実行、ゲーム画面、検査 CLI から利用できる構成にします。T2 で描画しない中核を実装しました。利用可能な契約と所有権は [中核 API](core-api.md) を参照してください。T3 で表示・音声・起動を実装しました。[表示 API](presentation-api.md) に契約を記載します。
 
-モジュールは `github.com/nao1215/gozen` の 1 つです。Go の下限は 1.26.4。採用する直接依存の宣言は `go.mod:1` にあります。CLI は `cmd/gozen` の 1 本、制作支援の実装は `internal/promptgen/`・`internal/mosaic/` に置きます（[ADR 0016](../decisions/0016-single-cli.md)）。`go.work` とローカル参照用の `replace` は使いません。配置は [ADR 0001](../decisions/0001-modules-and-layout.md)、単一モジュールへの変更理由は [ADR 0009](../decisions/0009-single-module.md) に記録します。
+モジュールは `github.com/nao1215/gozen` の 1 つです。Go の下限は 1.26.9。採用する直接依存の宣言は `go.mod:1` にあります。CLI は `cmd/gozen` の 1 本、制作支援の実装は `internal/promptgen/`・`internal/mosaic/` に置きます（[ADR 0016](../decisions/0016-single-cli.md)）。`go.work` とローカル参照用の `replace` は使いません。配置は [ADR 0001](../decisions/0001-modules-and-layout.md)、単一モジュールへの変更理由は [ADR 0009](../decisions/0009-single-module.md) に記録します。
 
 ## 層と依存
 
@@ -16,12 +18,16 @@ flowchart TB
   L3 --> L2["2 モデル: data / rpg"]
   L2 --> L1["1 基礎: expr / text / assetfs / savefile / chat"]
   CLI["cmd/gozen"] --> L5
-  CLI --> L4
-  Example["examples: ゲーム側の組立て"] --> L6
-  X["x/: 実験"] --> L5
   CLI --> Private["internal/promptgen・internal/mosaic"]
-  Private --> L1
+  Private --> L4
+  CLI --> Help["internal/clihelp: GNU 形式のオプションと help"]
+  Private --> Help
+  L6 --> Help
+  Example["examples: ゲーム側の組立て"] --> L6
+  X["x/: 実験"] --> L6
 ```
+
+図の名前と `.go-arch-lint.yml` の component の対応は次のとおりです。各公開パッケージは同じ名前の component です。`internal/layerN/` は `privateN`（第 N 層の共有実装）、`cmd/gozen/**` と `cmd/internal/**` は `commands`、`internal/promptgen/**` と `internal/mosaic/**` は `promptgen` と `mosaic`、`internal/clihelp/**` は `clihelp`、`x/**` は `experiments` です。`internal/dev/**`（`dev`）は標準ライブラリだけを使い、`internal/testgame/**`（`testgame`）は第 1・2 層だけを使います。図と設定が食い違ったら設定が正で、図を直します。component を足すときは、この図と対応の段落を同じ変更で直します。
 
 `savefile` は状態や定義を知らない保存先・バイト列の基礎として第 1 層に置きます。`dungeon` の実装は `internal/layer3/dungeon` に置きます。SW2 で独自の探索操作に必要な公開入口を追加しました。用途と範囲は [ADR 0014](../decisions/0014-dungeon-host-adoption.md) を参照してください。
 

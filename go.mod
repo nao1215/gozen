@@ -1,6 +1,6 @@
 module github.com/nao1215/gozen
 
-go 1.26.4
+go 1.26.9
 
 require (
 	github.com/goccy/go-yaml v1.19.2

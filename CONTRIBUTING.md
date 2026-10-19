@@ -4,7 +4,7 @@ Gozen is developing its v0 API. Describe the behavior you need in an issue befor
 
 Read [AGENTS.md](AGENTS.md), the [architecture](docs/architecture/overview.md), [API rules](docs/architecture/api-guidelines.md), and relevant [ADRs](docs/decisions/index.md). Public packages live at the module root; implementation details belong in internal packages with an assigned layer. Keep dependencies directed downward and graphics outside the core. Explain the consumer and contract of each new export and review changes to `api/public.txt`.
 
-Use Go 1.26.4 or later. Install the pinned development tools listed in the [testing guide](docs/development/testing.md), then run:
+Use Go 1.26.9 or later. Install the pinned development tools listed in the [testing guide](docs/development/testing.md), then run:
 
 ```sh
 make test lint build

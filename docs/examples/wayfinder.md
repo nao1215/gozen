@@ -12,7 +12,7 @@ Wayfinder is an original, small game assembled with the public Gozen API. Practi
 
 ## Run
 
-From the repository root, with Go 1.26.4 or later and a [graphics environment](../development/graphics.md#requirements):
+From the repository root, with Go 1.26.9 or later and a [graphics environment](../development/graphics.md#requirements):
 
 ```sh
 go run ./examples/play --mute

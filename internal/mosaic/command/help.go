@@ -7,7 +7,7 @@ import (
 // The help pages of gozen mosaic. The examples use the synthetic fixture of
 // docs/examples/production (a game directory "game" with assets/pattern.png).
 
-const requirements = "Requirements: Go 1.26.4 or later to build gozen. ONNX inference needs a C compiler " +
+const requirements = "Requirements: Go 1.26.9 or later to build gozen. ONNX inference needs a C compiler " +
 	"and CGO_ENABLED=1 when gozen is built, an ONNX Runtime shared library (--ort or ONNXRUNTIME_LIB), " +
 	"and user-supplied models (--model; optionally --face, --seg, --tagger). Help, manual regions, " +
 	"and checks of an existing report need no ONNX Runtime. A gozen built with CGO_ENABLED=0 says " +

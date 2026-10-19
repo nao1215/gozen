@@ -18,9 +18,9 @@ go install github.com/nao1215/gozen/cmd/gozen@latest
 
 | OS | 通常コマンド | shots でゲームを起動するとき |
 | --- | --- | --- |
-| Linux | Go 1.26.4 以降でビルド | X11・OpenGL の実行環境。無人実行は Ubuntu で `sudo apt-get install xvfb xauth`。その他のライブラリは [画面の導入手順](graphics.md#requirements) |
-| Windows | Go 1.26.4 以降。Make、Bash、C コンパイラは不要 | GPU ドライバーとログインしたデスクトップ |
-| macOS | Go 1.26.4 以降。C コンパイラは不要 | デスクトップ環境 |
+| Linux | Go 1.26.9 以降でビルド | X11・OpenGL の実行環境。無人実行は Ubuntu で `sudo apt-get install xvfb xauth`。その他のライブラリは [画面の導入手順](graphics.md#requirements) |
+| Windows | Go 1.26.9 以降。Make、Bash、C コンパイラは不要 | GPU ドライバーとログインしたデスクトップ |
+| macOS | Go 1.26.9 以降。C コンパイラは不要 | デスクトップ環境 |
 
 `shots --bin` には Gozen の runner の起動フラグを持つゲームを指定します。外部コマンドやモデルの自動インストールは行いません。起動失敗は撮影結果の reason と `_work/<番号>_<id>/game.stderr.log` に残り、README の Requirements への案内と終了値 1 を返します。help はこれらの前提を要求しません。
 
@@ -88,6 +88,6 @@ try {
 } finally { Pop-Location }
 ```
 
-通常の spec はシェルに依存せず、`gozen` の全サブコマンドの 104 シナリオで help の形、GNU 形式のオプション、終了値、stdout/stderr、決定性、書込みの有無、生成物と上書き防止を検査します。`graphics` tag の撮影 spec は別に実行します。単体テストの撮影子プロセスは PNG と trace を返す模擬実装で、実ゲームの描画検証には数えません。
+通常の spec はシェルに依存せず、`gozen` の全サブコマンドについて help の形、GNU 形式のオプション、終了値、stdout/stderr、決定性、書込みの有無、生成物と上書き防止を検査します。`graphics` tag の撮影 spec は別に実行します。単体テストの撮影子プロセスは PNG と trace を返す模擬実装で、実ゲームの描画検証には数えません。
 
 macOS の直接手順は同じビルドコマンドから `.exe` を外し、`bin` を PATH に追加して `build/atago` から同じ atago コマンドを実行します。Windows・macOS の実行結果とリモート CI はローカルでは未確認です。公開前の点検は [リリース点検](release-checklist.md) に従ってください。
