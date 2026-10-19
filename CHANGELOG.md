@@ -22,6 +22,15 @@ Changes before the first public release are tracked under Unreleased. All packag
 
 - Breaking: a game without `language` now shows the engine's words in English. Japanese games add `language: ja` to game.yaml. Wayfinder sets `language: en` and keeps only its own wording in `text`.
 
+### Fixed
+
+- react: `Config.MaxRunes` also cuts the text that a game's own `Analyzer` receives. A `React` call whose condition fails to evaluate no longer records the text as recent, so a retry is not counted as a repeat; the turn still advances and expired memories are dropped, as the documentation now says.
+- chat: `Log` copies `Message.Values` when a message is posted and when `Post`, `Recent` and `Since` return it, so changing a returned map no longer rewrites the log. A crowd script with a NaN `rate` is rejected.
+- A YAML value with a tag where a list is expected (for example `names: !x 0`) made the YAML library panic. Crowd scripts, reaction books, puppet specs, game data and the command's configuration files now report it as an error. A fuzz test for `chat.Parse` and `react.Parse` keeps such inputs.
+- battle: state multipliers on a stat and state resistances are multiplied in a fixed order, so the same seed rounds the same way on every run. A party member's weapon element is taken in the game's slot order. `rpg.Actor.StateResist` follows the same order.
+- `rand(n)` and `rand(a, b)` in expressions return an error for NaN and cap counts above 2^53 instead of panicking. Event gold, damage and experience amounts that are NaN or out of range saturate instead of wrapping.
+- The expression parser rejects nesting deeper than about a hundred levels with an error instead of risking a stack overflow.
+
 ### Verification limits
 
 - Published installation, Windows/macOS runtime checks and remote CI results remain unverified locally. Cross-builds do not establish runtime support.
