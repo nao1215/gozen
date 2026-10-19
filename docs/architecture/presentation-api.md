@@ -11,9 +11,10 @@
 | `play.Run` | FS 内の game.yaml と data/ を使い、画面の読込みから終了・後始末まで実行する |
 | `play.Game`、`play.New`、`Game.Update/Draw/Layout/Close` | ホスト側の ebiten.Game と合成する作者がループを所有する。Close 必須、呼出しはゲームスレッドに限定 |
 | `runner.Config`、`Args`、`Output`、`runner.Run` | 埋込みゲームの作者が fs.FS とサブディレクトリを渡し、同じフラグ・help・制作モードを利用する。引数と出力先はアプリが渡す |
+| `puppet.Load`、`Rig`、`Rig.Size`、`Config`、`New`、`Puppet.Update/Draw/Speak/Stop/React/SetFace/Close` | 一枚絵の人物を動かしたい作者（配信者のゲーム、会話の立ち絵）が、YAML と差分の絵を読み、まばたき・口・呼吸・頭と髪の揺れ・反応・表情の切り替えを描く。ゲームスレッドだけで使う。[動く立ち絵](puppet.md)、[ADR 0020](../decisions/0020-moving-portraits.md) |
 | `event.Runner.BlockAside` | 画面を持つイベント利用者が、回想やオーバーレイ中の挿入イベントを同期 callback で抑止する。nil では既存の Host / 画像状態による判定を使う |
 
-`api/public.txt` の T3 差分は 35 宣言（型・フィールド・メソッド・定数をそれぞれ数える）。上表以外の画面、メモ、音声ミキサー、dungeon の API は増やさない。
+`puppet` は 17 宣言（ADR 0020）。`api/public.txt` の T3 差分は 35 宣言（型・フィールド・メソッド・定数をそれぞれ数える）。上表以外の画面、メモ、音声ミキサー、dungeon の API は増やさない。
 
 ## 起動と終了
 

@@ -10,7 +10,7 @@ Gozen はゲームの定義・状態・規則・進行を画面から分離し�
 
 ```mermaid
 flowchart TB
-  L6["6 入口: runner"] --> L5["5 表示: gfx / sound / play"]
+  L6["6 入口: runner"] --> L5["5 表示: gfx / sound / play / puppet"]
   L5 --> L4["4 進行: headless"]
   L4 --> L3["3 規則: battle / event / world / dungeon / react"]
   L3 --> L2["2 モデル: data / rpg"]
@@ -41,12 +41,14 @@ T2 の共有モデルは `internal/layer2/gamedata`、素材の制作記録は `
 
 T3 の描画・音声の共有実装は `internal/layer5/gfx`・`internal/layer5/sound`、画面実装は `internal/play`、汎用メモ記録は `internal/layer1/memo` が所有します。起動と終了、単一 Game の制約は [ADR 0011](../decisions/0011-presentation-ownership.md) に記録します。
 
-`gozen` は検査・シミュレーション・文書化・配布・撮影の 12 サブコマンドと、制作支援の `prompt`・`mosaic`、`version`・`help` を持ちます。CLI だけの解析・シミュレーションは `cmd/internal/` と `cmd/gozen/internal/` に置き、安定 API は増やしません。勝率の計算は CLI と開発用のバランス表示（F7）が共有するため、`headless` が所有する `internal/headless/balance` に置きます（[ADR 0017](../decisions/0017-dev-balance-panel.md)）。[ADR 0012](../decisions/0012-cli-ownership-and-output.md) と [CLI の使い方](../development/cli.md) を参照してください。
+`gozen` は検査・シミュレーション・文書化・配布・撮影・動く立ち絵の 13 サブコマンドと、制作支援の `prompt`・`mosaic`、`version`・`help` を持ちます。CLI だけの解析・シミュレーションは `cmd/internal/` と `cmd/gozen/internal/` に置き、安定 API は増やしません。勝率の計算は CLI と開発用のバランス表示（F7）が共有するため、`headless` が所有する `internal/headless/balance` に置きます（[ADR 0017](../decisions/0017-dev-balance-panel.md)）。[ADR 0012](../decisions/0012-cli-ownership-and-output.md) と [CLI の使い方](../development/cli.md) を参照してください。
 
 制作支援の `gozen prompt` と `gozen mosaic` は専用 internal の `command` パッケージに実装し、`cmd/gozen` は振り分けだけを持ちます。ONNX binding は mosaic component だけが利用し、公開 API と既存の層の許可は増やしません。`gozen` の全サブコマンドが同じ `./...` と CLI E2E の対象です。[制作支援 CLI](../development/production-tools.md) に入出力と前提を記載します。
 
 SW1 で戦闘前後の共通イベントと可変メーター上限を追加しました。実行順と CLI の扱いは [戦闘イベントとメーター](battle-hooks.md)、公開する3フィールドの利用目的は [ADR 0013](../decisions/0013-battle-hooks-and-meter-limits.md) に記載します。
 
 人物の反応（`react`）とチャット（`chat`）を追加しました。LLM を使わずに言葉と出来事へ反応する仕組みと、流れるメッセージの記録です。用途と API は [ADR 0015](../decisions/0015-reaction-and-chat.md) に記録します。
+
+一枚絵の人物を動かす `puppet`（第 5 層）を追加しました。差分の絵の合成と網目の変形の実装は `internal/layer5/puppet`、YAML の型と検証は `internal/layer2/puppetdef` に置きます。[動く立ち絵](puppet.md) と [ADR 0020](../decisions/0020-moving-portraits.md) を参照してください。
 
 利用側の呼び出し・保存先・CLI 検査の切り替えは [ゲームから Gozen を利用する](adoption.md) を参照してください。

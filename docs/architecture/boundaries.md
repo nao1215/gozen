@@ -8,7 +8,7 @@
 | `data`、`rpg` | 定義の読み込み・検証、状態・保存を扱う作者 | v0 の契約対象 |
 | `battle`、`event`、`world`、`dungeon` | 規則を利用・拡張する作者 | v0 の契約対象 |
 | `headless` | 画面なしで進行を検査する作者・CLI | v0 の契約対象 |
-| `gfx`、`sound`、`play`、`runner` | 表示・再生・画面・起動を組み込む作者 | v0 の契約対象 |
+| `gfx`、`sound`、`play`、`puppet`、`runner` | 表示・再生・画面・動く立ち絵・起動を組み込む作者 | v0 の契約対象 |
 | `internal/<package>/`、`<package>/internal/` | 所有パッケージの実装 | 非公開 |
 | `internal/layerN/` | 第 N 層で共有する小さな実装 | 同じ層以上からだけ利用 |
 | `internal/testgame/` | 新しく作る中立のテストデータの組立て | テスト専用、T2 で中立のゲームを新規作成 |

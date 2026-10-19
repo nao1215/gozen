@@ -36,8 +36,10 @@ CI は SHA 固定の setup-ebitengine で OS の依存を準備する。Linux �
 # Linux
 xvfb-run --auto-servernum --error-file=/dev/stderr make graphics
 # Windows / macOS（デスクトップ環境で）
-go test -tags=graphics ./runner -run TestGraphicsScreens -count=1
+go test -tags=graphics ./runner ./puppet -run TestGraphics -count=1
 ```
+
+`./puppet` の画素検査は、テストの間 1 つの Ebitengine のループを回し、各テストの描画と `ReadPixels` をループの Update の中で行う。小さな中立の図形で、基準の絵・半透明・まばたき・口パク・表情の切り替え（途中の混ざった色と最後の色）・跳ねる反応・Close 後に描かないことと、網目が図形の近くから出ないことを確かめる。
 
 タイトル・フィールド・会話・戦闘・dungeon・バランス表示（F7）の 6 シナリオを別プロセスで起動する。シードを固定し、テスト専用の保存先を使い、Draw 内で PNG を取得する。PNG の復号、960×540 の大きさ、単色でない内容、プロセスの正常終了を検査する。ピクセル完全一致の golden ではなく、配置や文字の見た目の品質は別に確認が必要。音声デバイスはミュートする。
 

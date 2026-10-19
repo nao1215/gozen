@@ -2,6 +2,8 @@
 
 `e2e/atago/fixtures/game` の YAML、名前、文章は T4 用に新規作成した一般向けのキャンプ探索です。`assets/mote.png` はコードで描いた 8×8 の単色の目印で、Gozen の MIT ライセンスです。
 
+`e2e/atago/fixtures/puppet` は `gozen puppet` の検査用に新規作成した中立の図形（灰色の体、丸い頭、目の帯、赤い口の形）で、Gozen の MIT ライセンスです。再生成のソースは [puppet-fixtures.go.txt](puppet-fixtures.go.txt)（使い方は下と同じ）。
+
 再生成のソースは [cli-fixtures.go.txt](cli-fixtures.go.txt)。リポジトリルートで拡張子を `.go` にして一時ディレクトリへコピーし、`go run <一時ファイル>` を実行すると、この fixture の PNG とフォントを書き直します。出力先はリポジトリ内の固定の fixture だけです。
 
 `assets/regular.ttf` は `golang.org/x/image v0.45.0/font/gofont/goregular` の Go Regular を変更せずコピーしたものです。作者は Bigelow & Holmes、出典は [Go fonts](https://go.googlesource.com/image/+/refs/tags/v0.45.0/font/gofont/ttfs/README)。公開 fixture と一緒に次の通知を提供します。バイナリのテスト生成物を配布するときも通知を添付してください。

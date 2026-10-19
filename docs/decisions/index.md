@@ -23,5 +23,6 @@ Gozen の配置、公開契約、依存関係、検査についての設計判�
 | 開発用のバランス表示と勝率計算の共有 | [0017-dev-balance-panel](0017-dev-balance-panel.md) |
 | CLI のオプションを GNU 形式にし、help の形を揃える | [0018-gnu-options-and-help](0018-gnu-options-and-help.md) |
 | エンジンの文言を英語と日本語で持ち、language で選ぶ | [0019-engine-languages](0019-engine-languages.md) |
+| 一枚絵を差分と網目の変形で動かす（puppet） | [0020-moving-portraits](0020-moving-portraits.md) |
 
 判断を変更するときは、現在の制約、具体的な利用者、代案、影響を記録します。設定の除外を増やして依存違反を隠す変更は採りません。

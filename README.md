@@ -134,6 +134,7 @@ location=trail battles=1 wins=1 gold=3
 | `memos` | collect test players' notes into one HTML page |
 | `trial`, `release` | cut a demo version; package approved pictures |
 | `shots` | take screenshots of listed scenes |
+| `puppet` | check a moving portrait; cut its difference pictures small |
 | `prompt`, `mosaic` | build image-generation prompts; pixelate parts of pictures |
 
 `gozen help <command>` shows the options and examples of each command. Every command is tested end to end with [atago](https://github.com/nao1215/atago).
@@ -145,6 +146,7 @@ location=trail battles=1 wins=1 gold=3
 - Skill trees, shops, a field menu and a picture gallery
 - First-person grid dungeons, fixed or generated floors
 - Characters that react to typed words and events, and a chat log ([react](https://pkg.go.dev/github.com/nao1215/gozen/react), [chat](https://pkg.go.dev/github.com/nao1215/gozen/chat))
+- Moving portraits from one picture and a few difference pictures: blinking, talking, breathing, head and hair sway, reactions and face changes ([puppet](https://pkg.go.dev/github.com/nao1215/gozen/puppet))
 - A headless driver that shares the rules with the window
 
 ## Limitations

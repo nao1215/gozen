@@ -43,6 +43,7 @@ OS のパスは引用して渡せます。フラグは位置引数の前後に�
 | `gozen release <game-dir> <new-dir> --overlay <dir> --inspect <file>` | 承認記録と参照素材を検査して配布木を生成 |
 | `gozen trial <game-dir> <new-dir>` | `trial.yaml` の範囲から到達可能な定義と素材だけを抽出。`--overlay` と `--inspect` は組で指定 |
 | `gozen shots <game-dir> <list.yaml> --bin <game> --raw --out <new-dir>` | 一覧に従ってゲームを起動し PNG・JPEG・HTML・shots.json を生成 |
+| `gozen puppet <puppet.yaml> --out <new-dir>` | 動く立ち絵の YAML と絵を `puppet.Load` と同じ規則で検査し、各差分の位置を表示。`--out` は違う所だけを切り出した小さな絵と `at` 付きの YAML を書く（[動く立ち絵](../architecture/puppet.md)） |
 
 生成先は空ディレクトリも含め既存のものを拒否します。生成先を入力の内側・親にしないでください。出力ファイル `trial --list` も既存ファイルを拒否します。`trial -n` は `--list` を指定しても書き込みません。設定の中立な実行例は `e2e/atago/fixtures/game/{trial,designeval}.yaml` です。
 
@@ -87,6 +88,6 @@ try {
 } finally { Pop-Location }
 ```
 
-通常の spec はシェルに依存せず、`gozen` の全サブコマンドの 96 シナリオで help の形、GNU 形式のオプション、終了値、stdout/stderr、決定性、書込みの有無、生成物と上書き防止を検査します。`graphics` tag の撮影 spec は別に実行します。単体テストの撮影子プロセスは PNG と trace を返す模擬実装で、実ゲームの描画検証には数えません。
+通常の spec はシェルに依存せず、`gozen` の全サブコマンドの 104 シナリオで help の形、GNU 形式のオプション、終了値、stdout/stderr、決定性、書込みの有無、生成物と上書き防止を検査します。`graphics` tag の撮影 spec は別に実行します。単体テストの撮影子プロセスは PNG と trace を返す模擬実装で、実ゲームの描画検証には数えません。
 
 macOS の直接手順は同じビルドコマンドから `.exe` を外し、`bin` を PATH に追加して `build/atago` から同じ atago コマンドを実行します。Windows・macOS の実行結果とリモート CI はローカルでは未確認です。公開前の点検は [リリース点検](release-checklist.md) に従ってください。

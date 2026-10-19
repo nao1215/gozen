@@ -27,7 +27,7 @@ Windows では Make や Bash がない前提です。リポジトリのルート
 | `make api-update` | `go run ./internal/dev/apigen` | レビューする一覧の更新 |
 | `make lint` | `go-arch-lint check`、`go test ./api -count=1`、`actionlint`、`golangci-lint run ./...`、`golangci-lint fmt --diff` を順に実行 | 依存・API・workflow・静的解析・整形 |
 | `make build` | `go build -trimpath -buildvcs=false ./...` | 中核・`gozen` と internal・サンプル・開発道具のコンパイル |
-| `make graphics` | `go test -tags=graphics ./runner -run TestGraphicsScreens -count=1` | 5 画面の実ループ・PNG 検査。Linux は Xvfb で包む |
+| `make graphics` | `go test -tags=graphics ./runner -run TestGraphicsScreens -count=1` と `go test -tags=graphics ./puppet -run TestGraphics -count=1` | 6 画面の実ループ・PNG 検査と、動く立ち絵の画素検査（1 つのループの中で描いて読む）。Linux は Xvfb で包む |
 | `make e2e` | [CLI の直接手順](cli.md#e2e) | `gozen` の全サブコマンドの atago v0.25.2 による契約検査 |
 | `make e2e-graphics` | `atago run --ci --parallel 1 --tag graphics e2e/atago`（ビルドと PATH 設定は CLI の手順参照） | ゲーム子プロセスの撮影 E2E。Linux は Xvfb で包む |
 

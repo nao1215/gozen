@@ -1,0 +1,52 @@
+// Writes the neutral figure of e2e/atago/fixtures/puppet: a gray body, a round
+// head, and the eyes as one bar (white when open, blue when closed), plus a red
+// mouth shape. Run from the repository root after renaming this file to .go.
+package main
+
+import (
+	"image"
+	"image/color"
+	"image/png"
+	"os"
+)
+
+func save(name string, img image.Image) {
+	f, err := os.Create("e2e/atago/fixtures/puppet/" + name)
+	if err != nil {
+		panic(err)
+	}
+	if err := png.Encode(f, img); err != nil {
+		panic(err)
+	}
+	if err := f.Close(); err != nil {
+		panic(err)
+	}
+}
+
+func figure(eyes color.NRGBA) *image.NRGBA {
+	img := image.NewNRGBA(image.Rect(0, 0, 64, 96))
+	for y := range 96 {
+		for x := range 64 {
+			dx, dy := float64(x)-31.5, float64(y)-25.5
+			switch {
+			case x >= 22 && x <= 41 && y >= 20 && y <= 25:
+				img.SetNRGBA(x, y, eyes)
+			case dx*dx+dy*dy <= 16*16 && y <= 43:
+				img.SetNRGBA(x, y, color.NRGBA{230, 210, 190, 255})
+			case x >= 8 && x <= 55 && y >= 40:
+				img.SetNRGBA(x, y, color.NRGBA{120, 120, 130, 255})
+			}
+		}
+	}
+	return img
+}
+
+func main() {
+	save("base.png", figure(color.NRGBA{250, 250, 250, 255}))
+	save("closed.png", figure(color.NRGBA{20, 40, 220, 255}))
+	mouth := image.NewNRGBA(image.Rect(0, 0, 12, 6))
+	for i := 0; i < len(mouth.Pix); i += 4 {
+		copy(mouth.Pix[i:], []byte{220, 30, 30, 255})
+	}
+	save("mouth.png", mouth)
+}
