@@ -4,7 +4,7 @@ GOLANGCI_LINT ?= golangci-lint
 ATAGO ?= atago
 ACTIONLINT ?= actionlint
 
-.PHONY: test lint workflows arch api api-update graphics e2e e2e-graphics cli-build build
+.PHONY: test lint workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve
 
 # One module: ./... includes the gozen command and its internal implementations.
 # Keep ONNX-dependent runtime tests separate; see docs/development/testing.md.
@@ -46,3 +46,10 @@ e2e-graphics: cli-build
 
 build:
 	$(GO) build -trimpath -buildvcs=false ./...
+
+# The documentation website (GitHub Pages). Requires hugo; see website/hugo.toml.
+website:
+	cd website && hugo --gc --minify --cleanDestinationDir
+
+website-serve:
+	cd website && hugo server

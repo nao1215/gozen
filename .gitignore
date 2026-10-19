@@ -15,6 +15,12 @@
 coverage.out
 profile.cov
 
+# Hugo build output and cache for the documentation website (built by
+# `make website`, published from CI).
+/website/public/
+/website/resources/
+/website/.hugo_build.lock
+
 # Local workspaces and environment files.
 go.work
 go.work.sum

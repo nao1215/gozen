@@ -1,0 +1,53 @@
+{{/* Build the Schema page from docs/schema.md, which a test in
+     internal/layer2/gamedata generates from the Go types, mounted under
+     assets/. The committed file stays the single source of truth for the
+     fields; data/schema_en.yaml holds the English wording of its cells. A cell
+     with Japanese text and no entry there fails the build, so a regenerated
+     schema can never publish a half-translated table. */}}
+
+{{ $tr := hugo.Data.schema_en }}
+{{ $md := (resources.Get "schema-intro.md").Content }}
+
+{{ with resources.Get "doc/schema.md" }}
+  {{ $out := slice $md }}
+  {{ range split .Content "\n" }}
+    {{ if hasPrefix . "## " }}
+      {{ $out = $out | append (printf "\n%s\n\n| Field | Type | Default | When 0 | Required | Refers to |\n|:--|:--|:--|:--|:--|:--|" .) }}
+    {{ else if hasPrefix . "| `" }}
+      {{ $cells := split (strings.TrimSuffix " |" (strings.TrimPrefix "| " .)) " | " }}
+      {{ if ne (len $cells) 7 }}
+        {{ errorf "docs/schema.md: a row without 7 cells: %s" . }}
+      {{ end }}
+      {{ $type := index $cells 1 }}
+      {{ range $tr.types }}
+        {{ $type = replace $type .ja .en }}
+      {{ end }}
+      {{ if findRE `[^\x00-\x7F→]` $type }}
+        {{ errorf "docs/schema.md: no English for the type %q; add it to website/data/schema_en.yaml" $type }}
+      {{ end }}
+      {{ $row := slice (index $cells 0) $type }}
+      {{ range $i, $c := first 4 (after 2 $cells) }}
+        {{ if findRE `[^\x00-\x7F]` $c }}
+          {{ $en := index $tr.cells $c }}
+          {{ if not $en }}
+            {{ errorf "docs/schema.md: no English for %q; add it to website/data/schema_en.yaml" $c }}
+          {{ end }}
+          {{ $row = $row | append $en }}
+        {{ else }}
+          {{ $row = $row | append $c }}
+        {{ end }}
+      {{ end }}
+      {{ $out = $out | append (printf "| %s |" (delimit $row " | ")) }}
+    {{ end }}
+  {{ end }}
+  {{ $.AddPage (dict
+      "path" "schema"
+      "title" "Schema"
+      "params" (dict
+        "description" "Every YAML field of a Gozen game: its type, default, what 0 means, when it is required, and what it refers to."
+        "toc" true
+        "filter" "Filter types…")
+      "content" (dict "mediaType" "text/markdown" "value" (delimit $out "\n"))) }}
+{{ else }}
+  {{ errorf "docs/schema.md is not mounted; see hugo.toml" }}
+{{ end }}

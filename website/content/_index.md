@@ -1,0 +1,88 @@
+---
+title: Gozen
+---
+
+Gozen is a 2D RPG framework for Go and [Ebitengine](https://ebitengine.org/). You, or your coding agent, write the game as YAML. `gozen check` and `gozen sim` catch broken references and bad balance before anyone plays. While you play, you leave a note on the exact moment, watch live win rates, and reload the YAML without restarting.
+
+![Wayfinder, the Gozen sample game](/images/wayfinder.gif)
+
+## Try it in 30 seconds
+
+With Go 1.26.4 or later, paste this. It needs no display and no assets:
+
+```shell
+go run github.com/nao1215/gozen/examples/minimal@latest
+```
+
+```text
+location=camp gold=2
+```
+
+That game is two YAML files and a 35-line Go host. To play the sample above in a window:
+
+```shell
+go run github.com/nao1215/gozen/examples/play@latest --mute
+```
+
+On Linux the window needs X11 and OpenGL; see [Install](/install/).
+
+## The loop
+
+Making an RPG is mostly tuning: a line that reads wrong, a boss that is too hard, a dungeon that is too long. Gozen shortens each round.
+
+| Step | What you do |
+|:--|:--|
+| Write | Put places, battles, skills, enemy tactics, events and dialogue in YAML. Text is easy to write, diff and review, for you and for an agent. |
+| Check | `gozen check game` reports broken references, wrong expressions, missing pictures and text that overflows its window, with file and line. |
+| Measure | `gozen sim` fights a battle hundreds of times and prints the win rate. `gozen curve` plays a whole dungeon dive. |
+| Play | Run the game with `--dev`: start anywhere, autoplay at high speed, record and replay a trace. |
+| Note | Press F9 to save a note with a screenshot and the game state. `--from-memo` starts the game again at that line. |
+| Fix | Edit the YAML and press F5. The game reloads its definitions and keeps your place. F7 shows the win rates of the battles here. |
+
+```text
+data/world.yaml:26:5: locations.grotto.encounters: unknown troop "lessn"
+```
+
+The rules are shared by the window, a headless driver and the command line, so a test in CI and a player see the same game.
+
+## Screens
+
+| A party of three | Cut-in on a special skill |
+|:--|:--|
+| ![a battle with a party of three](/images/wayfinder-party.jpg) | ![a cut-in when Bram uses Shield Rush](/images/wayfinder-cutin.jpg) |
+| First-person dungeon | Balance panel (F7) |
+| ![a first-person dungeon with a map](/images/wayfinder-dungeon.jpg) | ![win rates by troop, healed and as now](/images/wayfinder-balance.jpg) |
+
+## Where to go
+
+- [Install](/install/): the gozen command, the library, and what each OS needs for the window.
+- [Getting started](/getting-started/): run the samples, then start your own game.
+- [Writing a game](/writing-a-game/): how the YAML is laid out, with expressions and events.
+- [Schema](/schema/): every YAML field, its type, default and references.
+- [The edit–play loop](/edit-play-loop/): `--dev`, F5, F7, F9, autoplay, traces and notes.
+- [Commands](/commands/): every `gozen` subcommand and its options.
+- [Using AI agents](/ai-agents/): let an agent write the game and keep `gozen check` green.
+- [Go API](/go-api/): headless tests, embedding the runner, reactions and chat.
+
+## Features
+
+- YAML definitions with expressions, conditional events and versioned saves
+- Turn-based battles with a party, auto battle and per-enemy tactics
+- Skill trees, shops, a field menu and a picture gallery
+- First-person grid dungeons, fixed or generated floors
+- Characters that react to typed words and events, and a chat log
+- A headless driver that shares the rules with the window
+
+## Limitations
+
+- Gozen is young. The API may change before v1.
+- Runtime checks are done on Linux. Windows and macOS are built in CI but not yet played.
+- There is no graphical map or event editor; the game is text.
+
+## Install
+
+```shell
+go install github.com/nao1215/gozen/cmd/gozen@latest
+```
+
+As a library: `go get github.com/nao1215/gozen@latest`. The [install page](/install/) lists the graphics libraries for each OS.
