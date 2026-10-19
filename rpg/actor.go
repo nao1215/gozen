@@ -5,10 +5,12 @@
 package rpg
 
 import (
+	"maps"
 	"math"
 	"slices"
 
 	"github.com/nao1215/gozen/expr"
+	"github.com/nao1215/gozen/internal/layer1/safeint"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
@@ -176,7 +178,7 @@ func (a *Actor) ExpFor(level int) int {
 	if err != nil {
 		return math.MaxInt32
 	}
-	return int(v)
+	return safeint.From(v)
 }
 
 // ExpNext is the exp still needed for the next level (0 at the top).
@@ -192,18 +194,20 @@ func (a *Actor) Alive() bool { return a.HP > 0 }
 
 // StateResist is how much more (or less) likely state s is to take the actor outside
 // battle: the state_resist of the gear they have on and of the states they are in,
-// multiplied (0: never). The same as in battle, without a foe's own resistance.
+// multiplied (0: never). The same as in battle, without a foe's own resistance. The
+// factors are multiplied in slot order and then state ID order, so the result is the
+// same on every run.
 func (a *Actor) StateResist(s string) float64 {
 	r := 1.0
-	for _, it := range a.Equip {
-		if d := a.db.Items[it]; d != nil {
+	for _, slot := range a.db.Game.Slots {
+		if d := a.db.Items[a.Equip[slot.ID]]; d != nil {
 			if v, ok := d.StateResist[s]; ok {
 				r *= v
 			}
 		}
 	}
-	for id, n := range a.States {
-		if d := a.db.States[id]; d != nil && n > 0 {
+	for _, id := range slices.Sorted(maps.Keys(a.States)) {
+		if d, n := a.db.States[id], a.States[id]; d != nil && n > 0 {
 			if v, ok := d.StateResist[s]; ok {
 				r *= v
 			}

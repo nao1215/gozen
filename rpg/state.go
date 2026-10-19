@@ -3,11 +3,13 @@ package rpg
 import (
 	"errors"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"slices"
 	"strings"
 
 	"github.com/nao1215/gozen/expr"
+	"github.com/nao1215/gozen/internal/layer1/safeint"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
@@ -349,25 +351,33 @@ func (p inParty) Field(name string) (any, bool) {
 }
 
 // RandFunc is rand(): a number in [0, 1); rand(n): an integer in [0, n); rand(a, b): an
-// integer in [a, b].
+// integer in [a, b]. A count above 2^53 is treated as 2^53, and a NaN argument is an
+// error rather than a panic.
 func RandFunc(r *rand.Rand) expr.Func {
 	return func(args []any) (any, error) {
+		nums := make([]float64, len(args))
+		for i, v := range args {
+			n, _ := expr.ToNumber(v)
+			if math.IsNaN(n) {
+				return nil, errors.New("rand: an argument is not a number")
+			}
+			nums[i] = n
+		}
 		switch len(args) {
 		case 0:
 			return r.Float64(), nil
 		case 1:
-			n, _ := expr.ToNumber(args[0])
+			n := safeint.From(nums[0])
 			if n < 1 {
 				return 0.0, nil
 			}
-			return float64(r.IntN(int(n))), nil
+			return float64(r.IntN(n)), nil
 		case 2:
-			a, _ := expr.ToNumber(args[0])
-			b, _ := expr.ToNumber(args[1])
+			a, b := nums[0], nums[1]
 			if b < a {
 				return a, nil
 			}
-			return a + float64(r.IntN(int(b-a)+1)), nil
+			return a + float64(r.IntN(safeint.From(b-a)+1)), nil
 		}
 		return nil, errors.New("rand takes 0 to 2 arguments")
 	}

@@ -145,3 +145,24 @@ func TestNilExpr(t *testing.T) {
 		t.Error("a nil formula should be 0")
 	}
 }
+
+// Deep nesting is an error, not a stack overflow; ordinary nesting still parses.
+func TestNestingLimit(t *testing.T) {
+	for _, n := range []int{1, 50, 100} {
+		src := strings.Repeat("(", n) + "1" + strings.Repeat(")", n)
+		if _, err := Parse(src); err != nil {
+			t.Errorf("%d parentheses: %v", n, err)
+		}
+	}
+	for _, src := range []string{
+		strings.Repeat("(", 1000) + "1" + strings.Repeat(")", 1000),
+		strings.Repeat("(", 1_000_000),
+		strings.Repeat("!", 1000) + "true",
+		strings.Repeat("a[", 1000) + "0" + strings.Repeat("]", 1000),
+		strings.Repeat("true ? 1 : ", 1000) + "0",
+	} {
+		if _, err := Parse(src); err == nil || !strings.Contains(err.Error(), "nests too deeply") {
+			t.Errorf("%.20q...: %v", src, err)
+		}
+	}
+}

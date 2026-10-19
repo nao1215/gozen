@@ -383,11 +383,29 @@ func (l *lexer) next() (token, error) {
 
 // ---- parser
 
+// maxDepth bounds the parser's recursion: a parenthesis, bracket, call argument or
+// conditional branch costs two levels and a prefix operator one, so about a hundred
+// nested parentheses are allowed. A hostile expression is then an error instead of
+// exhausting the stack in the recursive parser and evaluator.
+const maxDepth = 256
+
 type parser struct {
-	lex lexer
-	tok token
-	err error
+	lex   lexer
+	tok   token
+	err   error
+	depth int
 }
+
+// enter counts one level of nesting; the caller defers p.leave.
+func (p *parser) enter() error {
+	p.depth++
+	if p.depth > maxDepth {
+		return fmt.Errorf("expression nests too deeply at %d", p.tok.pos)
+	}
+	return nil
+}
+
+func (p *parser) leave() { p.depth-- }
 
 func (p *parser) next() {
 	if p.err != nil {
@@ -418,6 +436,10 @@ func (p *parser) expect(op string) error {
 }
 
 func (p *parser) ternary() (node, error) {
+	defer p.leave()
+	if err := p.enter(); err != nil {
+		return nil, err
+	}
 	c, err := p.or()
 	if err != nil {
 		return nil, err
@@ -495,6 +517,10 @@ func (p *parser) multiplicative() (node, error) {
 }
 
 func (p *parser) unary() (node, error) {
+	defer p.leave()
+	if err := p.enter(); err != nil {
+		return nil, err
+	}
 	if p.is("!") || p.is("not") {
 		p.next()
 		x, err := p.unary()

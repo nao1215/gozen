@@ -14,6 +14,7 @@ import (
 	lang "github.com/nao1215/gozen/text"
 
 	"github.com/nao1215/gozen/expr"
+	"github.com/nao1215/gozen/internal/layer1/safeint"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
 	"github.com/nao1215/gozen/rpg"
@@ -435,7 +436,7 @@ func (r *Runner) run(c *data.Command) Request {
 	case "gold":
 		n, err := c.Gold.Number(env)
 		r.logf(err)
-		r.st.Gold = max(0, r.st.Gold+int(n))
+		r.st.Gold = max(0, r.st.Gold+safeint.From(n))
 	case "join":
 		// game.yaml の join_exp: 加わる前のパーティで下限を見て、遅れて加わる人を追いつかせる
 		floor := -1.0
@@ -464,7 +465,7 @@ func (r *Runner) run(c *data.Command) Request {
 			if (c.Hurt.Who == "all" || a.ID == c.Hurt.Who) && a.HP > 0 {
 				v, err := c.Hurt.Amount.Number(expr.Chain{expr.Map{"self": rpg.ActorView{A: a}}, env})
 				r.logf(err)
-				a.HP = max(1, a.HP-max(0, int(v)))
+				a.HP = max(1, a.HP-max(0, safeint.From(v)))
 			}
 		}
 	case "affect":
@@ -558,7 +559,7 @@ func (r *Runner) run(c *data.Command) Request {
 			if !a.Alive() {
 				continue
 			}
-			for _, up := range a.GainExp(int(n)) {
+			for _, up := range a.GainExp(safeint.From(n)) {
 				if names[up.Level] == nil {
 					levels = append(levels, up.Level)
 				}

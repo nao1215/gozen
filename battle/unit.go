@@ -6,6 +6,7 @@
 package battle
 
 import (
+	"maps"
 	"math"
 	"slices"
 	"strings"
@@ -74,11 +75,12 @@ func newEnemyUnit(b *Battle, id string, i int) *Unit {
 	return u
 }
 
-// Stat is the stat with the states' multipliers.
+// Stat is the stat with the states' multipliers, applied in state ID order so the
+// rounding is the same on every run.
 func (u *Unit) Stat(stat string) int {
 	v := float64(u.base[stat])
-	for s, n := range u.States {
-		if n <= 0 { // 一覧に出ない状態は能力にも効かせない
+	for _, s := range slices.Sorted(maps.Keys(u.States)) {
+		if n := u.States[s]; n <= 0 { // 一覧に出ない状態は能力にも効かせない
 			continue
 		}
 		if st := u.b.DB.States[s]; st != nil {
@@ -256,7 +258,7 @@ func (u *Unit) stateResist(s string) float64 {
 		}
 	}
 	if u.Actor != nil {
-		for _, it := range u.Actor.Equip {
+		for _, it := range u.worn() {
 			if d := u.b.DB.Items[it]; d != nil {
 				if v, ok := d.StateResist[s]; ok {
 					r *= v
@@ -264,8 +266,8 @@ func (u *Unit) stateResist(s string) float64 {
 			}
 		}
 	}
-	for id, n := range u.States {
-		if n <= 0 {
+	for _, id := range slices.Sorted(maps.Keys(u.States)) {
+		if u.States[id] <= 0 {
 			continue
 		}
 		if d := u.b.DB.States[id]; d != nil {
@@ -286,12 +288,24 @@ func (u *Unit) weaponElement() string {
 	if u.Actor == nil {
 		return ""
 	}
-	for _, it := range u.Actor.Equip {
+	for _, it := range u.worn() {
 		if d := u.b.DB.Items[it]; d != nil && d.Element != "" {
 			return d.Element
 		}
 	}
 	return ""
+}
+
+// worn is a party member's equipment in the order of the game's slots, so lookups and
+// products over it do not depend on map order.
+func (u *Unit) worn() []string {
+	var out []string
+	for _, s := range u.b.DB.Game.Slots {
+		if it := u.Actor.Equip[s.ID]; it != "" {
+			out = append(out, it)
+		}
+	}
+	return out
 }
 
 // weaponStates are the states a party member's weapon may inflict.
