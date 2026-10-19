@@ -111,6 +111,6 @@ reactions:               # 名前を付けた強さ違い。組み込みの名�
 | `head` | なし（頭・髪・首かしげ・話す動きなし） | `radius` は正、`neck` は `center` より下 |
 | `hair` | なし | `head` が要る。矩形は正の大きさ、多角形は 3 点以上 |
 | `motion.sway.shift`・`talk.nod` | 頭の半径の 2.5%・2% | 0 以上。角度は 45 度まで、`breath.depth` は 0.2 まで |
-| `reactions` | 組み込みの hop・shrink・shake・nod・tilt | `kind` は組み込みのどれか。`amount`（倍率、既定 1）と `time`（秒）は 0 以上 |
+| `reactions` | 組み込みの hop・shrink・shake・nod・tilt・freeze（呼吸・揺れ・まばたき・口を一時止める） | `kind` は組み込みのどれか。`amount`（倍率、既定 1）と `time`（秒）は 0 以上 |
 
 絵の誤り（無い、PNG でない、8192 画素より大きい、基準の外にはみ出す、全体の絵の大きさが基準と違う、違う所が無い）は `Load` が場所付きで返す。
