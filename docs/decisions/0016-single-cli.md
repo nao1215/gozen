@@ -34,7 +34,7 @@ README の CLI の節は `#gozen` の 1 つにします。help の Requirements 
 
 ## 代案
 
-1. cgo が要る物だけを別のバイナリにする案。`gozen-mosaic` を別に置き、`gozen mosaic` は PATH 上の `gozen-mosaic` を実行します（git や kubectl のプラグインの形）。本体を cgo なしに保てます。しかし導入が 2 回になり、版の不一致や PATH の探索という失敗の経路が増えます。推論は将来 Pure Go に置き換える予定で、そうなれば分ける理由が無くなります。そのため 1 本にします。
+1. cgo が要る物だけを別のバイナリにする案。`gozen-mosaic` を別に置き、`gozen mosaic` は PATH 上の `gozen-mosaic` を実行します（git や kubectl のプラグインの形）。本体を cgo なしに保てます。しかし導入が 2 回になり、版の不一致や PATH の探索という失敗の経路が増えます。cgo なしで組み立てた `gozen` も推論以外は動き、推論が要る時だけ入れ直し方を案内するので、別のバイナリにする利点は小さいです。そのため 1 本にします。
 2. 画像系（`prompt` と `mosaic`）を制作支援の別のバイナリにまとめる案。汎用の道具と制作支援を名前で分けられます。しかし利用者は同じ作者で、導入と help の規約が 2 本に分かれる問題が残ります。内容の境界は配置（internal のパッケージ）で守れるため採りません。
 3. 全部を 1 本にし、推論のために cgo を必須にする案。C コンパイラの無い環境では `gozen` 自体を組み立てられなくなります。検査やシミュレーションだけを使う利用者にも C コンパイラを要求するため採りません。この決定は、cgo を任意にした 1 本です。
 
@@ -44,4 +44,4 @@ README の CLI の節は `#gozen` の 1 つにします。help の Requirements 
 - cgo を有効にして組み立てた `gozen` は ONNX の binding を含みます。共有ライブラリは実行時に `--ort` か `ONNXRUNTIME_LIB` で読み込むため、推論を使わない処理には共有ライブラリもモデルも不要です。
 - 汎用の CLI の入口から制作支援の実装へ依存が生じます。[ADR 0004](0004-content-boundary.md) の許可は `internal/promptgen`・`internal/mosaic`（それぞれの `command` を含む）に限ります。`cmd/gozen` は振り分けと、中立な一覧の help だけを持ちます。
 - [ADR 0012](0012-cli-ownership-and-output.md) の出力先・終了値・上書き防止の規約は、`prompt` を含む `gozen` の全サブコマンドに引き継ぎます。
-- 推論を Pure Go に置き換えたときは、build tag による分岐と `CGO_ENABLED=0` の版の診断を外します。
+- 推論の Pure Go 化（ONNX Runtime を WebAssembly にして Pure Go の実行環境で動かす案）は 2026-10-19 に試し、精度は同等でしたが、タグ付けが 48 倍遅いなど速さが足りないため見送りました。推論は cgo の版のままとし、build tag による分岐と `CGO_ENABLED=0` の版の診断を保ちます。
