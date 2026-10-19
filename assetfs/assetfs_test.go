@@ -3,6 +3,7 @@ package assetfs
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -267,5 +268,36 @@ func TestOverlayManifest(t *testing.T) {
 	}
 	if s, err := p.Stale(); err != nil || s != nil {
 		t.Errorf("without a manifest, Stale = %v", s)
+	}
+}
+
+// deniedFS fails to open one name with a permission error.
+type deniedFS struct {
+	fs.FS
+	name string
+}
+
+func (d deniedFS) Open(name string) (fs.File, error) {
+	if name == d.name {
+		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrPermission}
+	}
+	return d.FS.Open(name)
+}
+
+// Stale reports an unreadable original instead of treating it as absent.
+func TestStaleReportsUnreadableOriginals(t *testing.T) {
+	base := fstest.MapFS{"assets/cg/a.jpg": {Data: []byte("raw a")}}
+	top := fstest.MapFS{
+		"cg/a.jpg":    {Data: []byte("mosaic a")},
+		"report.json": {Data: []byte(`[{"file": "cg/a.jpg", "source": "` + sum("raw old") + `"}]`)},
+	}
+	o := overlay(t, deniedFS{FS: base, name: "assets/cg/a.jpg"}, "assets", top).useManifest(defaultManifest)
+	if s, err := o.Stale(); !errors.Is(err, fs.ErrPermission) {
+		t.Fatalf("Stale = %v, %v; want a permission error", s, err)
+	}
+	// A missing original is still not counted.
+	o = overlay(t, fstest.MapFS{}, "assets", top).useManifest(defaultManifest)
+	if s, err := o.Stale(); err != nil || len(s) != 0 {
+		t.Fatalf("Stale without the original = %v, %v", s, err)
 	}
 }

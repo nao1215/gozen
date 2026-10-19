@@ -173,7 +173,8 @@ func (o *OverlayFS) Coverage(name string) Coverage {
 }
 
 // Stale は置き場にあるのに元の絵と合わないので重ねない絵（prefix からの相対パス、並べた物）を返す。
-// manifest が無ければ nil。
+// manifest が無ければ nil。元に無い絵（fs.ErrNotExist）は数えず、元を読めない時（権限・I/O）は
+// そのエラーを返す。
 func (o *OverlayFS) Stale() ([]string, error) {
 	o.mu.Lock()
 	o.load()
@@ -194,8 +195,15 @@ func (o *OverlayFS) Stale() ([]string, error) {
 		if o.prefix != "" && o.prefix != "." {
 			name = o.prefix + "/" + r
 		}
-		if st, err := fs.Stat(o.base, name); err != nil || st.IsDir() {
+		st, err := fs.Stat(o.base, name)
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil // 元に無い物（記録・作業の図など）は重ねないので数えない
+		}
+		if err != nil {
+			return err
+		}
+		if st.IsDir() {
+			return nil
 		}
 		if !o.fresh(name, r) {
 			out = append(out, r)
