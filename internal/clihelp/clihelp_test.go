@@ -77,3 +77,17 @@ func TestPageShape(t *testing.T) {
 		}
 	}
 }
+
+// A release build stamps the version with -ldflags; it wins over the build info.
+func TestVersionFromReleaseBuild(t *testing.T) {
+	old := version
+	t.Cleanup(func() { version = old })
+	version = "v1.2.3"
+	if got := Version(); got != "v1.2.3" {
+		t.Fatalf("Version() = %q", got)
+	}
+	version = ""
+	if got := Version(); got == "" {
+		t.Fatal("Version() is empty without a stamped version")
+	}
+}

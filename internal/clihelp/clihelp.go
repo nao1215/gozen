@@ -52,9 +52,15 @@ type Page struct {
 	Hint     string   // one line before the links, e.g. how to get a command's help
 }
 
-// Version reports the module version recorded by go install, or devel for
-// source builds.
+// version is set by the release build (-ldflags "-X ...clihelp.version=vX.Y.Z").
+var version string
+
+// Version reports the version set by the release build, the module version
+// recorded by go install, or devel for source builds.
 func Version() string {
+	if version != "" {
+		return version
+	}
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
 		return info.Main.Version
 	}

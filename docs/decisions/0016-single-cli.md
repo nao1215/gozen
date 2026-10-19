@@ -1,6 +1,6 @@
 # ADR 0016: CLI を gozen の 1 本にする
 
-状態: 採用。日付: 2026-10-19。オプションの書き方と help の形は [ADR 0018](0018-gnu-options-and-help.md) で変更しました（下の表の「flag はそのまま」は名前の対応で、書き方は GNU 形式です）。[ADR 0012](0012-cli-ownership-and-output.md) の入口、[ADR 0001](0001-modules-and-layout.md)・[ADR 0009](0009-single-module.md) の CLI の配置、[ADR 0004](0004-content-boundary.md) の制作支援の配置の名前を変更します。
+状態: 一部変更。日付: 2026-10-19。オプションの書き方と help の形は [ADR 0018](0018-gnu-options-and-help.md) で変更しました（下の表の「flag はそのまま」は名前の対応で、書き方は GNU 形式です）。[ADR 0012](0012-cli-ownership-and-output.md) の入口、[ADR 0001](0001-modules-and-layout.md)・[ADR 0009](0009-single-module.md) の CLI の配置、[ADR 0004](0004-content-boundary.md) の制作支援の配置の名前を変更します。
 
 ## 利用者と問題
 
@@ -44,4 +44,5 @@ README の CLI の節は `#gozen` の 1 つにします。help の Requirements 
 - cgo を有効にして組み立てた `gozen` は ONNX の binding を含みます。共有ライブラリは実行時に `--ort` か `ONNXRUNTIME_LIB` で読み込むため、推論を使わない処理には共有ライブラリもモデルも不要です。
 - 汎用の CLI の入口から制作支援の実装へ依存が生じます。[ADR 0004](0004-content-boundary.md) の許可は `internal/promptgen`・`internal/mosaic`（それぞれの `command` を含む）に限ります。`cmd/gozen` は振り分けと、中立な一覧の help だけを持ちます。
 - [ADR 0012](0012-cli-ownership-and-output.md) の出力先・終了値・上書き防止の規約は、`prompt` を含む `gozen` の全サブコマンドに引き継ぎます。
+- リリースの成果物（goreleaser のアーカイブ、Linux のパッケージ、Homebrew、winget）は `CGO_ENABLED=0` で組み立て、推論を含みません。6 つの OS・CPU の組み合わせに cgo のクロスコンパイラを持たないためです。推論が要る作者は、C コンパイラのある環境で `CGO_ENABLED=1 go install github.com/nao1215/gozen/cmd/gozen@latest` で入れ直します。推論の要る処理の診断がこの入れ直し方を出します（`internal/mosaic/detect/inference_nocgo.go`）。
 - 推論の Pure Go 化（ONNX Runtime を WebAssembly にして Pure Go の実行環境で動かす案）は 2026-10-19 に試し、精度は同等でしたが、タグ付けが 48 倍遅いなど速さが足りないため見送りました。推論は cgo の版のままとし、build tag による分岐と `CGO_ENABLED=0` の版の診断を保ちます。

@@ -33,3 +33,6 @@ go.work.sum
 .vscode/
 .DS_Store
 Thumbs.db
+
+# License texts collected by go-licenses for the release archives.
+/third_party_licenses/

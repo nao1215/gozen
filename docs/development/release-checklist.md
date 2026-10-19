@@ -31,3 +31,29 @@ ONNX 実推論は利用者指定のモデルと共有ライブラリを準備し
 - 画像と動画は一般向けのサンプルから作り、[素材台帳](../../ASSETS.md) と説明を揃えます。
 - 配布用ビルドは `-trimpath -buildvcs=false` を使います。`make cli-build` で `bin/gozen` を生成し、文字列とビルド情報を点検します。
 - タグ公開後は、README の `go install github.com/nao1215/gozen/cmd/gozen@version`（cgo あり・なしの両方） をリポジトリ外のクリーンな環境で確認します。公開前には未確認であることを明記します。
+
+## リリースの仕組み
+
+タグ `v*` の push で [Release workflow](../../.github/workflows/release.yml) が走ります。設定は [.goreleaser.yml](../../.goreleaser.yml) です。
+
+- 成果物: `gozen` の Linux・macOS・Windows（amd64・arm64）のアーカイブ、Linux の `.deb`・`.rpm`・`.apk`、アーカイブごとの SBOM、cosign（keyless）で署名した `checksums.txt`、GitHub attestation、SLSA provenance（`multiple.intoto.jsonl`）。依存のライセンス本文を `THIRD_PARTY_LICENSES/` に同梱します。
+- 配布先: `nao1215/homebrew-tap` の cask と、`microsoft/winget-pkgs` への pull request。
+- 成果物は `CGO_ENABLED=0` で組み立て、ONNX 推論を含みません（[ADR 0016](../decisions/0016-single-cli.md)）。
+- 公開の前に、Linux で全アーカイブとパッケージの中身・checksum を確かめ、Linux・macOS・Windows で実際に `gozen version` と `gozen check` を実行します（`scripts/smoke_artifacts.sh`）。
+
+初めてタグを打つ前に、リポジトリの secret を 2 つ登録します。無いと release ジョブは GoReleaser の前で止まり、何も公開しません。
+
+| secret | 書き込み先 | 種類と権限 |
+| --- | --- | --- |
+| `TAP_GITHUB_TOKEN` | `nao1215/homebrew-tap` | fine-grained、Contents: Read and write |
+| `WINGET_GITHUB_TOKEN` | `nao1215/winget-pkgs` への push と `microsoft/winget-pkgs` への pull request | classic、`public_repo` |
+
+手元では次で設定と成果物を確かめます（go-licenses v2 と syft が必要です）。`dist/` と `third_party_licenses/` は git の対象外です。
+
+```sh
+goreleaser check
+goreleaser release --snapshot --clean --skip=publish,sign
+./scripts/smoke_artifacts.sh dist
+```
+
+手順は、CHANGELOG の Unreleased を版の節に変える pull request をマージし、main の最新のコミットに annotated tag を打って push します。Release workflow の全ジョブ（smoke、release、provenance、verification）が成功し、Homebrew の cask と winget の pull request ができたことを確かめます。

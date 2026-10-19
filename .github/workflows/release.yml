@@ -1,0 +1,250 @@
+name: Release
+
+# Publishes a tagged release of the gozen command: archives for Linux, macOS and
+# Windows (amd64, arm64), Linux packages, an SBOM per archive, a cosign-signed
+# checksums.txt, a Homebrew cask, a winget pull request, a GitHub attestation and
+# SLSA provenance as a release asset. The publish job runs only after the
+# artifacts are built and executed on all three operating systems, because a
+# broken artifact cannot be taken back once the tag is published.
+#
+# Before the first tag, add the TAP_GITHUB_TOKEN and WINGET_GITHUB_TOKEN
+# secrets (docs/development/release-checklist.md). The release job stops before
+# GoReleaser when either is missing, so nothing is published half way.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Smoke-test artifacts on Linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Published binaries are built with the newest Go, not go.mod's minimum,
+      # so users of a prebuilt artifact get the current runtime and its fixes.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          check-latest: true
+
+      - name: Install rpm so the .rpm file list can be inspected
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm
+
+      - name: Install go-licenses
+        run: go install github.com/google/go-licenses/v2@v2.0.1
+
+      - name: Build artifacts (snapshot, no publish)
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          version: "~> v2"
+          args: release --snapshot --clean --skip=publish,sign,sbom
+
+      - name: Smoke-test artifacts
+        run: ./scripts/smoke_artifacts.sh dist
+
+      - name: Upload artifacts for the macOS and Windows smoke jobs
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist-snapshot
+          if-no-files-found: error
+          retention-days: 1
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+
+  smoke-cross:
+    name: Smoke-test artifacts on ${{ matrix.os }}
+    needs: smoke
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist-snapshot
+          path: dist
+
+      - name: Smoke-test the macOS artifacts
+        if: runner.os == 'macOS'
+        run: ./scripts/smoke_artifacts.sh dist
+
+      - name: Smoke-test the Windows artifacts
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
+          $zip = Get-ChildItem "dist/gozen_*_windows_$arch.zip" | Select-Object -First 1
+          if (-not $zip) { throw "no Windows $arch archive" }
+          $out = Join-Path $env:RUNNER_TEMP gozen
+          Expand-Archive -Path $zip.FullName -DestinationPath $out
+          foreach ($f in 'gozen.exe', 'LICENSE', 'THIRD_PARTY_LICENSES/github.com/hajimehoshi/ebiten/v2/LICENSE') {
+            if (-not (Test-Path (Join-Path $out $f))) { throw "$($zip.Name) has no $f" }
+          }
+          $exe = Join-Path $out gozen.exe
+          $version = & $exe version
+          if ($LASTEXITCODE -ne 0 -or $version -notlike 'gozen v*') { throw "gozen version printed '$version'" }
+          & $exe check e2e/atago/fixtures/game
+          if ($LASTEXITCODE -ne 0) { throw "gozen check failed" }
+
+  release:
+    name: Release
+    needs: [smoke, smoke-cross]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      # base64 of checksums.txt: the subjects the SLSA provenance job attests.
+      hashes: ${{ steps.hash.outputs.hashes }}
+    # id-token: keyless cosign signing and provenance via GitHub OIDC.
+    # attestations: publish build provenance for the release artifacts.
+    # contents: create the GitHub Release and upload assets.
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      # Homebrew and winget publish with tokens the built-in GITHUB_TOKEN cannot
+      # replace. Stop here, before anything is published, when one is missing.
+      - name: Check the publishing secrets
+        env:
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+          WINGET_GITHUB_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
+        run: |
+          missing=""
+          [ -n "$TAP_GITHUB_TOKEN" ] || missing="$missing TAP_GITHUB_TOKEN"
+          [ -n "$WINGET_GITHUB_TOKEN" ] || missing="$missing WINGET_GITHUB_TOKEN"
+          if [ -n "$missing" ]; then
+            echo "::error::missing repository secrets:$missing (see docs/development/release-checklist.md)"
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          check-latest: true
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Install Syft (SBOM generator)
+        uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+
+      - name: Install go-licenses
+        run: go install github.com/google/go-licenses/v2@v2.0.1
+
+      - name: Run GoReleaser
+        id: run-goreleaser
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+          WINGET_GITHUB_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.deb
+            dist/*.rpm
+            dist/*.apk
+            dist/checksums.txt
+
+      - name: Generate subject
+        id: hash
+        env:
+          ARTIFACTS: "${{ steps.run-goreleaser.outputs.artifacts }}"
+        run: |
+          set -euo pipefail
+          checksum_file=$(echo "$ARTIFACTS" | jq -r '.[] | select (.type=="Checksum") | .path')
+          echo "hashes=$(base64 -w0 < "$checksum_file")" >> "$GITHUB_OUTPUT"
+
+  # SLSA build provenance as a release asset (multiple.intoto.jsonl). The GitHub
+  # attestation above is not a release asset, so it is invisible to anyone who
+  # only has the downloaded files and to the Scorecard Signed-Releases check. The
+  # generator must be referenced by tag, not by commit SHA: slsa-verifier checks
+  # the reusable workflow's ref.
+  provenance:
+    name: SLSA provenance
+    needs: [release]
+    permissions:
+      actions: read # To read the workflow path.
+      id-token: write # To sign the provenance.
+      contents: write # To add assets to a release.
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: "${{ needs.release.outputs.hashes }}"
+      upload-assets: true
+
+  # Verify the published archives against the published provenance, the way a
+  # user would, so a provenance that does not verify fails the release run.
+  verification:
+    name: Verify SLSA provenance
+    needs: [release, provenance]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Install the verifier
+        uses: slsa-framework/slsa-verifier/actions/installer@ea584f4502babc6f60d9bc799dbbb13c1caa9ee6 # v2.7.1
+
+      - name: Download assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROVENANCE: "${{ needs.provenance.outputs.provenance-name }}"
+        run: |
+          set -euo pipefail
+          gh -R "$GITHUB_REPOSITORY" release download "$GITHUB_REF_NAME" -p "*.tar.gz" -p "*.zip"
+          gh -R "$GITHUB_REPOSITORY" release download "$GITHUB_REF_NAME" -p "$PROVENANCE"
+
+      # checksums.txt also lists the Linux packages and the SBOMs; only the
+      # archives are downloaded above, so only they are verified here.
+      - name: Verify assets
+        env:
+          CHECKSUMS: ${{ needs.release.outputs.hashes }}
+          PROVENANCE: "${{ needs.provenance.outputs.provenance-name }}"
+        run: |
+          set -euo pipefail
+          checksums=$(echo "$CHECKSUMS" | base64 -d)
+          while read -r _ fn; do
+            case "$fn" in
+              *.tar.gz|*.zip) ;;
+              *) continue ;;
+            esac
+            echo "Verifying $fn"
+            slsa-verifier verify-artifact --provenance-path "$PROVENANCE" \
+                                          --source-uri "github.com/$GITHUB_REPOSITORY" \
+                                          --source-tag "$GITHUB_REF_NAME" \
+                                          "$fn"
+          done <<<"$checksums"
