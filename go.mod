@@ -4,7 +4,7 @@ go 1.26.9
 
 require (
 	github.com/goccy/go-yaml v1.19.2
-	github.com/hajimehoshi/ebiten/v2 v2.10.4
+	github.com/hajimehoshi/ebiten/v2 v2.10.5
 	github.com/spf13/pflag v1.0.10
 	github.com/yalue/onnxruntime_go v1.36.0
 	golang.org/x/image v0.45.0
