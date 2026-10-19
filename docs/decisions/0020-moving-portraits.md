@@ -32,7 +32,9 @@
 | `SetFace(name)` | 表情をふわっと替える（既定 0.25 秒） |
 | `Close` | GPU の画像を解放する |
 
-公開は 17 宣言（型 3・関数 2・メソッド 8・フィールド 3・パッケージ）。合成・変形・動きは内部に置き、強さの値は YAML だけで変える。YAML の書き方は [動く立ち絵](../architecture/puppet.md) に書く。
+RPG の会話では、仲間の定義 `Actor.Puppet`（`data` の公開フィールド 1 つ）に puppet の YAML を書くと、会話の窓の立ち絵が puppet になる（`internal/play/puppets.go`）。台詞の表情の名前で `SetFace` し、文字が出ている間だけ口を動かす。
+
+`puppet` の公開は 17 宣言（型 3・関数 2・メソッド 8・フィールド 3・パッケージ）。合成・変形・動きは内部に置き、強さの値は YAML だけで変える。YAML の書き方は [動く立ち絵](../architecture/puppet.md) に書く。
 
 ### 層
 
@@ -53,6 +55,7 @@
 - `internal/layer2/puppetdef/spec_test.go`: 正しい YAML の読み込み、誤り 26 種（未知のキー、絵の拡張子、範囲、強さ、反応の種類、髪だけで頭が無い など）、`FuzzParse`。
 - `internal/layer5/puppet/puppet_test.go`: 差分の自動の切り出し（場所、縁の透明、小さな点の無視、違いが無い絵）、読み込みの誤り 8 種、同じ種で同じ動き・違う種で違う動き、まばたきの回数と口の形、表情の混ざり、反応が終わると元に戻ること、網目の元の座標が絵の中にあることと 3000 回の更新で頂点が絵から頭の半径以上離れないこと、頭の重み（首の付け根より下は動かない）、`--out` の書き出しを読み直して同じ差分になること。
 - `puppet/puppet_test.go`: 公開 API の読み込み・作成・反応・表情・誤り。`puppet/graphics_test.go`（`make graphics`、Xvfb）: 実際の描画を読み、基準の色・半透明・まばたき・口・表情の途中の色と最後の色・跳ねて下端が浮くこと・Close 後に描かないこと・網目が図形の外に描かないことを確かめる。
+- `internal/layer2/gamedata/check_test.go`: 仲間の `puppet` の誤り 4 種（ファイルが無い、YAML の誤り、絵が無い、仲間の表情が無い）と正しい書き方。
 - `e2e/atago/puppet.atago.yaml`: `gozen puppet` の表示、`--out` の書き出しと読み直し、既存の出力先、誤りの終了コード。
 - 未確認: WASM・Windows・macOS での描画。大きな絵（長辺 4000 画素以上）を何体も出したときの速さ。
 

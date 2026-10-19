@@ -182,6 +182,9 @@ func (m *Motion) React(r puppetdef.Reaction) {
 	if a.time == 0 {
 		a.time = map[string]float64{"hop": 0.45, "shrink": 0.5, "shake": 0.6, "nod": 0.5, "tilt": 1.4}[r.Kind]
 	}
+	if !(a.time > 0) { // an unknown kind: nothing to play
+		return
+	}
 	if len(m.reactions) >= 8 { // a burst of calls cannot pile up without bound
 		m.reactions = m.reactions[1:]
 	}
