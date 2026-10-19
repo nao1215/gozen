@@ -1,17 +1,14 @@
-# Asset sources and licenses
+# Asset licenses
 
-The sample games use original, general-audience content created for Gozen. No artwork, writing, sound, screenshots or recordings from another game are included.
+| Material | License |
+| --- | --- |
+| Source code, YAML game data, dialogue and the `examples/` games | [MIT](LICENSE) |
+| Wayfinder sample pictures in `examples/play/game/assets/` | CC BY 4.0, see [examples/play/game/assets/LICENSE](examples/play/game/assets/LICENSE) |
+| Showcase GIF and screenshots in `docs/images/` | The pictures inside are CC BY 4.0; the rest MIT |
+| Go Regular font embedded in Wayfinder (`golang.org/x/image v0.45.0/font/gofont/goregular`, Bigelow & Holmes) | BSD notice below |
+| CLI synthetic pattern images and catalog (`docs/examples/production/`) | MIT |
 
-| Material | Source / reproduction | License |
-| --- | --- | --- |
-| Wayfinder backgrounds, Pebble and Courier sprites | Geometric pixel art drawn at runtime by `examples/play/art.go`; no external image input | [MIT](LICENSE) |
-| Wayfinder title, characters, dialogue, maps and rules | `examples/play/game/*.yaml`, authored for this repository | MIT |
-| Minimal and headless examples | `examples/minimal/` and `examples/headless/`; headless picture generated in Go | MIT |
-| Showcase PNG and GIF | Actual Wayfinder Draw-loop captures; regenerate with `scripts/capture-example.sh` under Xvfb, as described in [the sample guide](docs/examples/wayfinder.md#capture) | MIT for original art and writing; the font notice below also applies |
-| Go Regular font embedded at runtime in Wayfinder | `golang.org/x/image v0.45.0/font/gofont/goregular`, Bigelow & Holmes; [upstream notice](https://go.googlesource.com/image/+/refs/tags/v0.45.0/font/gofont/ttfs/README) | BSD notice below |
-| CLI synthetic pattern images and catalog | `docs/examples/production/generate_fixture.py` and neighboring original fixtures; [details](docs/development/production-tools.md#合成画像での実行) | MIT |
-
-No music, recorded audio, image generation models or ONNX models are bundled with the sample. Go Regular is obtained through the Go dependency and included in the compiled example, rather than copied into its source directory. Include this notice when redistributing the example binary or its captures. Other CLI/test font fixtures have their notices in [CLI assets](docs/examples/cli-assets.md).
+No music, recorded audio or ONNX models are bundled. Include the font notice when redistributing the example binary or its captures. Other CLI/test font fixtures have their notices in [CLI assets](docs/examples/cli-assets.md).
 
 ## Go font notice
 

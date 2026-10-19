@@ -3,7 +3,7 @@ classes:
     name: Walker
     stats: {mhp: 30, mmp: 5, atk: 8, def: 3, mat: 2, mdf: 2, agi: 8, luk: 1}
     exp_for: level * 30
-actors: {walker: {name: Walker, class: walker}}
+actors: {walker: {name: Walker, class: walker, faces: walker}}
 skills:
   attack: {name: Tap, effects: [{damage: 8, variance: 0}]}
   guard: {name: Wait, scope: self}
@@ -19,14 +19,15 @@ troops: {lesson: {members: [pebble]}}
 locations:
   camp:
     name: Trail camp
-    background: landscape.png
+    background: camp.jpg
+    battle_background: grotto.jpg
     safe: true
     people:
       - name: Courier
         image: courier.png
         talk:
-          - say: A little light can guide a long journey.
-          - say: Practice with Pebble, then light the marker. The ridge path will open.
+          - say: {who: Courier, face: courier.png, text: A little light can guide a long journey.}
+          - say: {who: Courier, face: courier.png, text: "Practice with Pebble, then light the marker. The ridge path will open."}
           - set: {flag.briefed: true}
     actions:
       - label: Practice
@@ -43,17 +44,44 @@ locations:
     exits:
       - {to: ridge, label: Walk to the ridge, when: flag.marker_lit}
       - {to: chamber, label: Explore chamber}
+      - {to: town, label: Visit the village}
+      - {to: grotto, label: Enter the grotto}
   ridge:
     name: Lantern ridge
-    background: ridge.png
+    background: ridge.jpg
     safe: true
     actions:
       - {label: Save journey, do: [{save: true}]}
+    exits: [{to: camp, label: Return to camp}]
+  town:
+    name: Lamplight village
+    background: town.jpg
+    safe: true
+    people:
+      - name: Innkeeper
+        image: innkeeper.png
+        talk:
+          - say: {who: Innkeeper, face: innkeeper.png, text: Welcome to Lamplight. The beds are warm and the soup is hot.}
+          - say: {who: Innkeeper, face: innkeeper.png, text: Rest here whenever the trail wears you down.}
+    actions:
+      - {label: Rest at the inn, do: [{heal: all}, {say: You feel ready to walk again.}]}
+      - {label: Save journey, do: [{save: true}]}
+    exits: [{to: camp, label: Return to camp}]
+  grotto:
+    name: Echo grotto
+    background: grotto.jpg
+    safe: true
+    actions:
+      - label: Challenge a wild Pebble
+        do:
+          - battle: lesson
+            on_win: [{say: The Pebble rolls away happily.}]
     exits: [{to: camp, label: Return to camp}]
   chamber:
     name: Observation room
     safe: true
     dungeon:
+      wall: {file: wall.jpg, tint: "#a9bcc6"}
       floor: "#304c54"
       ceiling: "#172a37"
       map: |

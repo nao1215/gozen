@@ -1,66 +1,36 @@
+[![CI](https://github.com/nao1215/gozen/actions/workflows/ci.yml/badge.svg)](https://github.com/nao1215/gozen/actions/workflows/ci.yml)
+[![Security](https://github.com/nao1215/gozen/actions/workflows/security.yml/badge.svg)](https://github.com/nao1215/gozen/actions/workflows/security.yml)
+[![tested with atago](https://img.shields.io/badge/tested%20with-atago-7c3aed?logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTMuNiA0LjIgMTEuOSAxMmwtOC4zIDcuOC0xLjktMi4yTDcuOSAxMiAxLjcgNi40eiIvPjxyZWN0IGZpbGw9IiNmZmYiIHg9IjEyLjYiIHk9IjE3LjIiIHdpZHRoPSI5LjciIGhlaWdodD0iMi44IiByeD0iMS40Ii8%2BPC9zdmc%2B&logoColor=white)](https://github.com/nao1215/atago)
+[![Go Reference](https://pkg.go.dev/badge/github.com/nao1215/gozen.svg)](https://pkg.go.dev/github.com/nao1215/gozen)
+![GitHub](https://img.shields.io/github/license/nao1215/gozen)
+
 # Gozen
 
-[日本語](README.ja.md) · [MIT license](LICENSE) · [Asset licenses](ASSETS.md)
+Gozen is a 2D RPG framework and toolkit for Go and Ebitengine. A game is YAML plus your own pictures. The same rules run in a window, in a headless Go driver, and in command-line tools that validate and simulate the game, so balance and story progress can be tested in CI without a display.
 
-## Overview
+[日本語](README.ja.md)
 
-Gozen is a Go and Ebitengine 2D RPG framework and toolkit. Define a game in YAML, embed your own filesystem, and run the same game rules with a window or a headless driver. It is under development; the v0 API is being established.
+![Wayfinder, the Gozen sample game: title, conversation, battle, saving and walking](docs/images/wayfinder.gif)
 
-![Wayfinder: an original trail game built with Gozen](docs/images/wayfinder.gif)
+The animation above is Wayfinder, the sample in [examples/play](examples/play). It is the real game, recorded from its own Draw loop.
 
-The [Wayfinder sample](docs/examples/wayfinder.md) uses original code-drawn art and a short journey through conversation, battle, events, movement and saving. [Full-size screenshot](docs/images/wayfinder.png).
+Gozen is under development and the v0 API is still being established. There is no published release yet.
 
-## Features
+## Try it in 30 seconds
 
-- YAML definitions, reference validation, expressions and conditional events.
-- Turn-based battles, world navigation, grid exploration, and versioned saves.
-- Headless simulations sharing the rules used by the graphical game.
-- Ebitengine presentation, font rendering, audio and an embedded-game runner.
-- Four installable CLIs for validation, simulation, authoring and image processing.
-
-## Installation
-
-Use Go 1.26.4 or later. From a source checkout, install all four commands locally:
+If you have Go 1.26.4 or later, clone the repository and run the smallest game. It needs no display and no assets:
 
 ```sh
-mkdir -p bin
-GOBIN="$PWD/bin" go install -trimpath -buildvcs=false ./cmd/rpgcheck ./cmd/rpgtool ./cmd/promptgen ./cmd/mosaic
-```
-
-Add `bin` to PATH, or run the commands with `go run` as below. In PowerShell, set `$env:GOBIN = Join-Path $PWD bin` before the same `go install` command. The module is `github.com/nao1215/gozen`; all commands share its version. Published installation is not yet verified. After a release, the form will be `go install github.com/nao1215/gozen/cmd/rpgtool@latest` (substitute any of the four command names).
-
-## Requirements
-
-Go 1.26.4+ builds the examples and tools. The graphical sample needs a display and platform graphics libraries; use `--mute` to avoid audio-device initialization. Linux needs X11/OpenGL libraries even with a pure Go build. See [OS setup](docs/development/graphics.md#requirements) for Ubuntu packages and Windows/macOS preparation.
-
-| Component | Additional requirements |
-| --- | --- |
-| Core, headless examples, rpgcheck, normal rpgtool commands | None; no display or C compiler |
-| Graphical game / rpgtool shots | Graphics runtime; Xvfb + xauth for unattended Linux |
-| promptgen | User catalog YAML; no model or image-generation service |
-| mosaic inference | cgo + C compiler at build time; compatible ONNX Runtime library and user-supplied models at runtime |
-| Showcase capture | Linux graphics runtime, Xvfb, xauth, Bash, Python 3, ffmpeg/ffprobe |
-
-mosaic help and manual processing work without ONNX. A cgo-disabled build cannot perform inference. [OS-specific production-tool requirements](docs/development/production-tools.md#導入と-os-別の要件).
-
-## Quick start
-
-From the repository root:
-
-```sh
+git clone https://github.com/nao1215/gozen
+cd gozen
 go run ./examples/minimal
-# location=camp gold=2
-go run ./examples/headless
-# location=trail battles=1 wins=1 gold=3
-# With a display:
-go run ./examples/play --mute
 ```
 
-For unattended Linux use the capture command below, which runs and terminates the actual game. The interactive command keeps its window open until you close it.
+```text
+location=camp gold=2
+```
 
-## Minimal game
-
-[examples/minimal/main.go](examples/minimal/main.go) is a small Go host: `data.Load(files, ".")`, `rpg.New(db, nil)` and `headless.New(db, state).Start()` load and run an embedded game. It uses these two YAML files:
+The game is two YAML files and a 35-line Go host. `data.Load` reads an embedded `fs.FS`, `rpg.New` creates the state, and `headless.New(db, state).Start()` runs the arrival event of the first location.
 
 ```yaml
 # game.yaml
@@ -87,49 +57,141 @@ skills:
   guard: {name: Wait, scope: self}
 ```
 
-Even a game without battles defines the default `attack` and `guard` skill IDs. This example needs no assets and does not write saves.
+Even a game without battles defines the default `attack` and `guard` skill IDs.
 
-## Run the sample
+## Play the sample
+
+With a display (Linux needs X11 and OpenGL libraries; see [OS setup](docs/development/graphics.md#requirements)):
 
 ```sh
-go run ./examples/play --help
 go run ./examples/play --mute
 ```
 
-Choose **New journey**, talk to Courier, win **Practice** (choose **Auto** or attack manually), **Light the marker**, then **Walk to the ridge**. **Save journey** writes a slot; **Continue** at the title restores it. **Explore chamber** opens a room with grid movement. [Walkthrough and capture details](docs/examples/wayfinder.md).
+Choose New journey, talk to the courier, win the practice battle (Auto lets the engine fight), light the marker, and walk to the ridge. Save journey writes a slot, and Continue on the title screen restores it. The village has an inn, the grotto has a wild Pebble to fight again, and the observation room is a first-person grid with a minimap. [Walkthrough and controls](docs/examples/wayfinder.md).
 
-To regenerate the checked-in screenshot and nine-second GIF slideshow on Linux:
+Screens from the same run:
+
+| Title | Conversation | Battle |
+|:--|:--|:--|
+| ![title](docs/images/wayfinder-title.jpg) | ![conversation](docs/images/wayfinder-talk.jpg) | ![battle](docs/images/wayfinder-battle.jpg) |
+
+## Why Gozen?
+
+Pick the tool that fits the job:
+
+| You want | Use |
+|:--|:--|
+| A general 2D game library with no RPG rules | [Ebitengine](https://ebitengine.org/), which Gozen is built on |
+| A graphical editor for RPG maps and events | [RPG Maker](https://www.rpgmakerweb.com/) |
+| A full engine with a scene editor and many export targets | [Godot](https://godotengine.org/) |
+| An RPG defined as data in a Go program, with a headless driver and CLIs that check, simulate and screenshot it | Gozen |
+
+Gozen's emphasis is that the game is data you can test. The same definitions that draw the title screen are loaded by `rpgcheck` for references and expressions, by `rpgtool sim` for win rates, and by `headless` in a Go test, so a broken reference or a balance regression fails in CI instead of in front of a player.
+
+## Install
+
+Gozen is a single Go module, `github.com/nao1215/gozen`, and needs Go 1.26.4 or later. Published installation is not yet verified; until a release exists, install the four commands from a source checkout:
 
 ```sh
-xvfb-run --auto-servernum --error-file=/dev/stderr bash scripts/capture-example.sh
+mkdir -p bin
+GOBIN="$PWD/bin" go install -trimpath -buildvcs=false ./cmd/rpgcheck ./cmd/rpgtool ./cmd/promptgen ./cmd/mosaic
 ```
+
+In PowerShell, set `$env:GOBIN = Join-Path $PWD bin` first. After a release the form will be `go install github.com/nao1215/gozen/cmd/rpgtool@latest`; substitute any of the four command names. As a library, `go get github.com/nao1215/gozen@latest` adds the module.
+
+## Requirements
+
+Go 1.26.4+ builds the examples and tools. The graphical sample needs a display and platform graphics libraries; use `--mute` to avoid audio-device initialization. Linux needs X11 and OpenGL libraries even with a pure Go build. See [OS setup](docs/development/graphics.md#requirements) for Ubuntu packages and Windows and macOS preparation.
+
+| Component | Additional requirements |
+| --- | --- |
+| Core, headless examples, rpgcheck, normal rpgtool commands | None; no display or C compiler |
+| Graphical game, rpgtool shots | Graphics runtime; Xvfb and xauth for unattended Linux |
+| promptgen | User catalog YAML; no model or image-generation service |
+| mosaic inference | cgo and a C compiler at build time; compatible ONNX Runtime library and user-supplied models at runtime |
+| Recording the sample animation | Linux graphics runtime, Xvfb, xauth, Bash, Python 3, ffmpeg and ffprobe |
+
+## Recipes
+
+Run these from the repository root.
+
+### Drive a game from Go
+
+`headless` runs the rules without a window. [examples/headless](examples/headless/main.go) seeds randomness, moves, makes a choice, fights, saves and restores in memory:
+
+```sh
+go run ./examples/headless
+```
+
+```text
+location=trail battles=1 wins=1 gold=3
+```
+
+### Run an embedded game in a window
+
+[examples/play/main.go](examples/play/main.go) embeds a game directory and passes it to the runner:
+
+```go
+//go:embed game
+var files embed.FS
+
+fsys, err := fs.Sub(files, "game") // game.yaml, data/, assets/
+if err != nil {
+	log.Fatal(err)
+}
+err = runner.Run(ctx, fsys, ".", runner.Config{Args: os.Args[1:], Output: os.Stdout})
+```
+
+`runner` provides `--mute`, `--seed`, `--window` and `--save-dir`. Author tools such as `--start` and `--script` need `--dev`. Saves go under the OS config directory in `gozen/<game-id>`. A script run isolates saves unless a destination is explicit. The host owns the filesystem, output writers and process exit.
+
+To compose the screen inside an existing Ebitengine loop, use `play.New` and call `Game.Update`, `Draw`, `Layout` and `Close`; see the [presentation contracts](docs/architecture/presentation-api.md). Run graphics on the main thread, with one active game per process.
+
+### Record the animation above
+
+`scripts/capture-example.sh` builds Wayfinder, plays it from a script of key presses, takes frames from the Draw loop, checks that the saves contain the finished journey, and encodes the GIF. It runs in a virtual display, so it does not open a window on your screen:
+
+```sh
+xvfb-run --auto-servernum bash scripts/capture-example.sh
+```
+
+It needs Xvfb, xauth, Python 3, ffmpeg and ffprobe. [Capture details](docs/examples/wayfinder.md#capture).
 
 ## CLI commands
 
-Run these from the repository root. The validation/simulation fixture is intentionally separate from the embedded graphical sample. [All rpgtool subcommands](docs/development/cli.md#コマンド).
+Run these from the repository root. The validation and simulation fixture is a small neutral game, separate from the graphical sample. [All rpgtool subcommands](docs/development/cli.md#コマンド).
 
 ### rpgcheck
 
-Requirements: Go to build; no cgo, display or external runtime tools.
+Requirements: Go to build; no cgo, display or external runtime tools. It validates definitions, references, expressions and asset existence. Text layout is a separate rpgtool check.
 
 ```sh
 go run ./cmd/rpgcheck e2e/atago/fixtures/game
 ```
 
-Validates definitions, references, expressions and asset existence. Text layout is a separate rpgtool check.
+```text
+ok: 2 locations, 1 events, 1 actors, 2 skills, 0 items, 1 enemies, 1 troops, 0 ai sets
+Structure checked; layout was not checked. Use rpgtool layout <game-dir>.
+```
 
 ### rpgtool
 
-Requirements: Go to build. Normal checks, simulations and reports need no display or C compiler; `shots` needs a game binary and graphics runtime. [OS requirements](docs/development/cli.md#requirements).
+Requirements: Go to build. Checks, simulations and reports need no display or C compiler; `shots` needs a game binary and a graphics runtime. [OS requirements](docs/development/cli.md#requirements).
+
+`rpgtool sim` fights a troop many times with a fixed seed and reports win rate and turns:
 
 ```sh
-go run ./cmd/rpgtool --help
 go run ./cmd/rpgtool sim e2e/atago/fixtures/game lesson -n 3 -seed 7
 ```
 
+```text
+lesson: 3 battles  win 100%  lose 0%  fled 0%  draw 0%  avg turns 1.0  avg standing after a win 1.0
+```
+
+`go run ./cmd/rpgtool --help` lists the other subcommands: `check`, `layout`, `curve`, `floors`, `trace`, `book`, `design`, `memos`, `release`, `trial` and `shots`.
+
 ### promptgen
 
-Requirements: Go and a catalog YAML. No cgo, models or remote service. Assembles prompts; does not generate images or send jobs.
+Requirements: Go and a catalog YAML. No cgo, models or remote service. It assembles image-generation prompts; it does not generate pictures or send jobs.
 
 ```sh
 go run ./cmd/promptgen --config docs/examples/production/catalog.yaml --scene landscape --format json
@@ -139,7 +201,7 @@ Use `--scenes ids.txt --format json` to build multiple scene IDs (one per line) 
 
 ### mosaic
 
-Requirements: Go; inference additionally needs a C compiler, compatible ONNX Runtime library and user models. Manual-only processing needs none of those runtime dependencies. [Setup and model contracts](docs/development/production-tools.md).
+Requirements: Go; inference additionally needs a C compiler, a compatible ONNX Runtime library and models you supply. Manual-only processing needs none of those. [Setup and model contracts](docs/development/production-tools.md).
 
 ```sh
 go run ./cmd/mosaic --help
@@ -148,51 +210,56 @@ cp docs/examples/production/pattern.png build/mosaic-input/assets/pattern.png
 go run ./cmd/mosaic auto -fix docs/examples/production/fixes.yaml -out build/mosaic-output build/mosaic-input pattern.png
 ```
 
-This example pixelates selected rectangles in an original synthetic pattern without inference. Input stays unchanged; output and its report go under `build/mosaic-output`.
+This pixelates selected rectangles in an original synthetic pattern without inference. The input stays unchanged; the output and its report go under `build/mosaic-output`.
+
+## Features
+
+- YAML definitions with reference validation, expressions and conditional events.
+- Turn-based battles with auto-battle, world navigation, first-person grid exploration, and versioned saves.
+- Headless simulation that shares the rules of the graphical game.
+- Ebitengine presentation, font rendering, audio and an embedded-game runner.
+- Conversation portraits, standing figures on the title screen, location and battle backgrounds, and a field menu.
+- Four installable commands for validation, simulation, authoring and image processing.
 
 ## Configuration
 
-`game.yaml` holds the game ID, schema version, start party/location, window settings, fonts and translated UI text. YAML files under `data/` (including nested directories and `.yml` files) hold definitions and events. Asset paths are relative to `assets/` in the supplied `fs.FS`. See the [schema reference](docs/schema.md).
+`game.yaml` holds the game ID, schema version, start party and location, window settings, fonts and translated UI text. YAML files under `data/`, including nested directories, hold definitions and events. Asset paths are relative to `assets/` in the supplied `fs.FS`. The [schema reference](docs/schema.md) lists every field.
 
-`runner` exposes `--mute`, `--seed`, `--window` and `--save-dir`; author tools such as `--start` and `--script` require `--dev`. Normal saves go under the OS config directory in `gozen/<game-id>`. Scripted runs isolate saves unless a destination is explicit. [Startup and ownership contracts](docs/architecture/presentation-api.md).
+## Supported OS
 
-## API examples
-
-| Purpose | Entry point | Executable example |
-| --- | --- | --- |
-| Load embedded YAML and start rules | `data.Load`, `rpg.New`, `headless.New` | [minimal](examples/minimal/main.go) |
-| Seed randomness, move, fight, serialize and restore | `Driver.Run`, `State.Save`, `rpg.Parse` | [headless](examples/headless/main.go) |
-| Run an embedded game with flags and context | `runner.Run(ctx, fsys, ".", runner.Config{Args: args, Output: out})` | [play](examples/play/main.go) |
-| Compose a screen in an existing Ebitengine loop | `play.New`, `Game.Update/Draw/Layout/Close` | [presentation contracts](docs/architecture/presentation-api.md) |
-
-The host owns the filesystem, output writers and process exit. Run graphics on the main thread, with one active game per process, and close a composed `play.Game` after its loop stops.
-
-## Tests and build
-
-```sh
-make test lint build
-# Linux display checks:
-xvfb-run --auto-servernum --error-file=/dev/stderr make graphics
-```
-
-Lint requires go-arch-lint v1.19.0, golangci-lint v2.14.0 and actionlint v1.7.12. Make is optional: [direct commands and CLI E2E](docs/development/testing.md). The API inventory is checked by tests; examples introduce no public identifiers.
-
-## Supported operating systems
-
-Linux, Windows and macOS are CI targets; amd64 builds and Linux/macOS arm64 cross-builds are configured. T8 verified tests, builds, 58 CLI scenarios, five graphical screens and a screenshot pipeline on Linux amd64. Windows/macOS runtime, audio playback, ONNX inference and successful remote CI runs remain unverified. Cross-compilation alone is not runtime verification. [Release checklist](docs/development/release-checklist.md).
+Linux, Windows and macOS are CI targets, and amd64 builds and Linux/macOS arm64 cross-builds are configured. Tests, builds, the CLI scenarios, five graphical screens and the capture pipeline were verified on Linux amd64. Windows and macOS runtime, audio playback, ONNX inference and successful remote CI runs remain unverified; cross-compilation alone is not runtime verification. See the [release checklist](docs/development/release-checklist.md).
 
 ## Controls
 
-Arrow keys select menu entries; Enter/Z confirms; X/Esc goes back or opens the menu. In the observation room, Up walks, Left/Right turns and Down turns around. M mutes and F11 toggles fullscreen. [Save and load walkthrough](docs/examples/wayfinder.md#play-through).
+Arrow keys select menu entries; Enter or Z confirms; X or Esc goes back or opens the menu. In the observation room, Up walks, Left and Right turn, and Down turns around. M mutes and F11 toggles fullscreen.
+
+## Tests
+
+```sh
+make test lint build
+# Linux, in a virtual display:
+xvfb-run --auto-servernum make graphics
+```
+
+Lint needs go-arch-lint v1.19.0, golangci-lint v2.14.0 and actionlint v1.7.12. Make is optional; see [testing](docs/development/testing.md) for the direct commands and the CLI E2E scenarios.
 
 ## Limitations
 
-The project is under development and has no verified published installation yet. Some optional sample UI still uses Japanese defaults, and Go Regular lacks a few indicator glyphs. The small sample has no music. ONNX models/runtime are never bundled; actual inference needs a separately prepared environment. The `x/` directories are placeholders with no implemented Go packages; future experiments have no compatibility promise. See [v0 scope](docs/decisions/0002-public-api-scope.md) and the [release checklist](docs/development/release-checklist.md).
+- No published installation yet, and Windows and macOS runtime checks are pending.
+- Some optional sample UI still uses the engine's Japanese defaults, and Go Regular lacks a few indicator glyphs. The sample has no music.
+- The `x/` directories are placeholders with no implemented Go packages and no compatibility promise.
+- ONNX models and the runtime are never bundled.
 
-## Developer links
+See the [v0 scope](docs/decisions/0002-public-api-scope.md).
 
-[Release checklist](docs/development/release-checklist.md) · [Architecture](docs/architecture/overview.md) · [API rules](docs/architecture/api-guidelines.md) · [Core API](docs/architecture/core-api.md) · [Presentation API](docs/architecture/presentation-api.md) · [ADRs](docs/decisions/index.md) · [Testing](docs/development/testing.md) · [CI](docs/development/ci.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md) · [CLI guide](docs/development/cli.md) · [Production tools](docs/development/production-tools.md)
+## Documentation
+
+[Architecture](docs/architecture/overview.md) · [API rules](docs/architecture/api-guidelines.md) · [Core API](docs/architecture/core-api.md) · [Presentation API](docs/architecture/presentation-api.md) · [Decisions](docs/decisions/index.md) · [CI](docs/development/ci.md) · [CLI guide](docs/development/cli.md) · [Production tools](docs/development/production-tools.md) · [Release checklist](docs/development/release-checklist.md)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Report vulnerabilities as described in [SECURITY.md](SECURITY.md). Changes are listed in the [changelog](CHANGELOG.md).
 
 ## License
 
-[MIT](LICENSE). The Go font has a separate BSD notice in [ASSETS.md](ASSETS.md), which also records asset sources and reproduction steps.
+The code is [MIT](LICENSE). The sample pictures of Wayfinder are CC BY 4.0 ([examples/play/game/assets/LICENSE](examples/play/game/assets/LICENSE)). The Go Regular font notice is in [ASSETS.md](ASSETS.md).

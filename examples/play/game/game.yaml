@@ -4,7 +4,10 @@ title: Wayfinder
 subtitle: A little light on the trail
 screen: {width: 960, height: 540}
 fonts: {regular: regular.ttf}
-title_background: landscape.png
+title_background: title.jpg
+title_figures:
+  - {file: walker/normal.png, x: 0.72, height: 0.78}
+  - {file: courier.png, x: 0.9, height: 0.7}
 start: {location: camp, party: [walker]}
 battle: {variance: 0, critical: 0, escape: 1}
 terms: {currency: G, level: Lv., hp: HP, mp: MP, exp: EXP}
@@ -39,6 +42,11 @@ text:
   "ぼうぎょ": "Guard"
   "は どうする？": ": choose an action"
   "判断理由 B / L1": "Decisions B / L1"
+  "いつでも": "always"
+  "成立行なし": "no rule matched"
+  "対象なし": "no target"
+  "［%s・%s → %s・%s］": "%.0[1]s"
+  "［%sの作戦%d・%s → %s・%s］": "%.0[1]s"
   "たたかいに かった！": "Practice complete!"
   "AUTO  (X でかいじょ)": "AUTO (X to cancel)"
   "{first}が あらわれた！": "{first} is ready to practice!"

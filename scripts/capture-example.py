@@ -1,8 +1,13 @@
-"""Capture the actual sample loop; encode a small slideshow of its PNG frames."""
+"""Play Wayfinder from a key script, check that the journey really happened, and encode the GIF.
+
+The game writes the frames from its own Draw loop (script verb `shot`), so the
+recording is the real game, not a mock-up. Frames named fNNN.png are the
+animation; practice_bNNN.png are the battle frames the game writes while it
+plays the practice fight; s-*.png are the still screenshots.
+"""
 
 import json
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 
@@ -12,36 +17,69 @@ subprocess.run(
      "--window", "1", "--script", "scripts/capture-example.txt",
      "--shots", str(work), "--save-dir", str(work / "saves"),
      "--trace", str(work / "trace.jsonl")],
-    check=True, timeout=90,
+    check=True, timeout=240,
 )
-# Check real progress as well as successful image encoding. Scripts may otherwise
-# finish normally after a misplaced key or a wait limit.
-for slot in (1, 2):
-    save = json.loads((work / f"saves/save{slot}.json").read_text())
-    state = save["state"]
-    if state["location"] != "ridge" or not state["flags"].get("complete") or state["gold"] != 7:
-        raise RuntimeError(f"capture did not complete, save and restore the journey (slot {slot})")
+
+# Check real progress as well as successful encoding. A script can finish
+# normally after a misplaced key or a wait limit.
+save = json.loads((work / "saves/save1.json").read_text())["state"]
+if save["location"] != "ridge" or not save["flags"].get("complete") or save["gold"] != 7:
+    raise RuntimeError("capture did not complete and save the journey (slot 1)")
 trace = [json.loads(line) for line in (work / "trace.jsonl").read_text().splitlines()]
-terminal = next(line for line in reversed(trace) if line["t"] == "state" and line.get("terminal"))
-if terminal["location"] != "chamber" or terminal["pos"] != [2, 1]:
-    raise RuntimeError("capture did not move inside the observation room")
-frames = ["00-title", "01-camp", "02-talk", "03-battle", "04-marker",
-          "05-ridge", "06-save", "07-loaded", "08-room"]
-for index, name in enumerate(frames):
-    shutil.copyfile(work / f"{name}.png", work / f"frame-{index:02d}.png")
+states = [line for line in trace if line["t"] == "state"]
+visited = {line["location"] for line in states}
+if not {"camp", "ridge", "chamber"} <= visited:
+    raise RuntimeError(f"capture did not visit every place: {sorted(visited)}")
+shown = {name for line in trace if line["t"] == "view" for name in line["pictures"]}
+missing = {"title.jpg", "camp.jpg", "ridge.jpg", "town.jpg", "grotto.jpg", "wall.jpg", "courier.png", "innkeeper.png",
+           "pebble.png", "walker/normal.png"} - shown
+if missing:
+    raise RuntimeError(f"capture never showed: {sorted(missing)}")
+terminal = next(line for line in reversed(states) if line.get("terminal"))
+if terminal["location"] != "chamber" or terminal["pos"] != [5, 1]:
+    raise RuntimeError("capture did not walk to the lantern in the observation room")
+
+animation = sorted(
+    (p for p in work.glob("*.png") if (p.name[0] == "f" and p.name[1:4].isdigit()) or p.name.startswith("practice_b")),
+    key=lambda p: p.stat().st_mtime_ns,
+)
+if len(animation) < 40:
+    raise RuntimeError(f"only {len(animation)} frames were captured")
+battle = [p for p in animation if p.name.startswith("practice_b")]
+if not battle:
+    raise RuntimeError("no battle frames were captured")
 subprocess.run(
-    ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-framerate", "1",
-     "-reinit_filter", "0", "-i", str(work / "frame-%02d.png"), "-filter_complex",
-     "format=rgb24,scale=480:270:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse",
-     "-loop", "0", "docs/images/wayfinder.gif"], check=True, timeout=30,
+    ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(battle[len(battle) // 2]),
+     "-q:v", "3", "docs/images/wayfinder-battle.jpg"],
+    check=True, timeout=30,
+)
+for index, frame in enumerate(animation):
+    frame.rename(work / f"frame-{index:03d}.png")
+
+width, height, fps = 800, 450, 5
+Path("docs/images").mkdir(parents=True, exist_ok=True)
+subprocess.run(
+    ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-framerate", str(fps),
+     "-i", str(work / "frame-%03d.png"), "-fps_mode", "cfr", "-filter_complex",
+     f"format=rgb24,scale={width}:{height}:flags=lanczos,split[a][b];"
+     "[a]palettegen=max_colors=192:stats_mode=diff[p];"
+     "[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle",
+     "-loop", "0", "docs/images/wayfinder.gif"],
+    check=True, timeout=120,
 )
 probe = subprocess.run(
-    ["ffprobe", "-v", "error", "-show_entries", "stream=width,height,nb_frames,duration",
-     "-of", "json", "docs/images/wayfinder.gif"],
+    ["ffprobe", "-v", "error", "-show_entries", "stream=width,height,duration", "-of", "json", "docs/images/wayfinder.gif"],
     check=True, stdout=subprocess.PIPE, text=True, timeout=15,
 )
 stream = json.loads(probe.stdout)["streams"][0]
-if (stream["width"], stream["height"], int(stream["nb_frames"]), float(stream["duration"])) != (480, 270, len(frames), float(len(frames))):
-    raise RuntimeError("GIF dimensions, frame count or duration do not match the captured sequence")
-shutil.copyfile(work / "01-camp.png", "docs/images/wayfinder.png")
-print("Captured 9 screens, completed, saved and restored the journey; wrote PNG and GIF to docs/images.")
+if (stream["width"], stream["height"]) != (width, height) or abs(float(stream["duration"]) - len(animation) / fps) > 0.5:
+    raise RuntimeError("GIF dimensions or duration do not match the captured sequence")
+
+# Still screenshots for the README, as JPEG.
+for name in ("title", "talk", "village"):
+    subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(work / f"s-{name}.png"),
+         "-q:v", "3", f"docs/images/wayfinder-{name}.jpg"],
+        check=True, timeout=30,
+    )
+print(f"Captured {len(animation)} frames, completed, saved and restored the journey; wrote the GIF and screenshots to docs/images.")
