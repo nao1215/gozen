@@ -67,18 +67,21 @@ func flags() (fs *pflag.FlagSet, config, plan, scene, scenes, format *string) {
 
 // Run は gozen prompt の引数を処理し、終了値を返す。成功と help は 0、引数の誤りは 2、
 // それ以外の失敗は 1（ほかのサブコマンドと同じ）。失敗の内容と前提は diagnostics に書く。
-// writer は呼び出し側が所有する。
+// diagnostics に書けなかった時は、残る経路の終了値で 1 を返す。writer は呼び出し側が所有する。
 func Run(args []string, out, diagnostics io.Writer) int {
-	if err := run(args, out, diagnostics); err != nil {
-		var u usageError
-		if errors.As(err, &u) {
-			fmt.Fprintln(diagnostics, err, "\nRun \"gozen prompt --help\" for usage.") //nolint:errcheck // The exit code already reports failure.
-			return 2
-		}
-		fmt.Fprintln(diagnostics, err, "\n"+requirements) //nolint:errcheck // The exit code already reports failure.
+	err := run(args, out, diagnostics)
+	if err == nil {
+		return 0
+	}
+	code, msg := 1, fmt.Sprintln(err, "\n"+requirements)
+	var u usageError
+	if errors.As(err, &u) {
+		code, msg = 2, fmt.Sprintln(err, "\nRun \"gozen prompt --help\" for usage.")
+	}
+	if _, werr := io.WriteString(diagnostics, msg); werr != nil {
 		return 1
 	}
-	return 0
+	return code
 }
 
 // usageError は引数の誤り（終了値 2）。

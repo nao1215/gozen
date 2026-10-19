@@ -10,6 +10,7 @@ import (
 	lang "github.com/nao1215/gozen/text"
 
 	"github.com/nao1215/gozen/expr"
+	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/rpg"
 )
@@ -538,9 +539,9 @@ func (b *Battle) End() []string {
 	for _, f := range b.beaten() { // what was beaten, counted in var.kill_<enemy> (for requests)
 		if !f.Alive() && !f.Fled && f.EID != "" {
 			k := "kill_" + f.EID
-			n, _ := b.St.Vars[k].(float64) //nolint:errcheck // Optional state values intentionally default to zero when absent.
+			n := optional.Value[float64](b.St.Vars[k])
 			b.St.Vars[k] = n + 1
-			last, _ := b.St.Vars[VarLastKill+f.EID].(float64) //nolint:errcheck // Optional state values intentionally default to zero when absent.
+			last := optional.Value[float64](b.St.Vars[VarLastKill+f.EID])
 			b.St.Vars[VarLastKill+f.EID] = last + 1
 		}
 	}

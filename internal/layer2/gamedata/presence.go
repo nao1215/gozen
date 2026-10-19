@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
+
+	"github.com/nao1215/gozen/internal/layer1/optional"
 )
 
 // numericContract は仕様版１の数値の省略値と範囲。型は宣言されたフィールドから取る。
@@ -85,7 +87,7 @@ func walkNumberDefinitions(v reflect.Value, raw any, where string, visit func(re
 	}
 	switch v.Kind() { //nolint:exhaustive // Only schema container/scalar kinds need handling; other reflection kinds are intentionally ignored.
 	case reflect.Struct:
-		m, _ := raw.(yaml.MapSlice) //nolint:errcheck // Concrete type is established by the decoder, cache, or preceding reflect.Type check.
+		m := optional.Value[yaml.MapSlice](raw) // nil when the YAML is not a mapping
 		visit(v, m, where)
 		for field := range v.Type().Fields() {
 			tag, ok := field.Tag.Lookup("yaml")
@@ -101,7 +103,7 @@ func walkNumberDefinitions(v reflect.Value, raw any, where string, visit func(re
 			}
 		}
 	case reflect.Map:
-		m, _ := raw.(yaml.MapSlice) //nolint:errcheck // Concrete type is established by the decoder, cache, or preceding reflect.Type check.
+		m := optional.Value[yaml.MapSlice](raw) // nil when the YAML is not a mapping
 		keys := v.MapKeys()
 		slices.SortFunc(keys, func(a, b reflect.Value) int {
 			return strings.Compare(fmt.Sprint(a.Interface()), fmt.Sprint(b.Interface()))
@@ -114,7 +116,7 @@ func walkNumberDefinitions(v reflect.Value, raw any, where string, visit func(re
 			v.SetMapIndex(key, value)
 		}
 	case reflect.Slice, reflect.Array:
-		list, _ := raw.([]any) //nolint:errcheck // Concrete type is established by the decoder, cache, or preceding reflect.Type check.
+		list := optional.Value[[]any](raw) // nil when the YAML is not a list
 		for i := 0; i < v.Len(); i++ {
 			var entry any
 			if i < len(list) {
@@ -146,8 +148,7 @@ func (db *DB) resolveNumbers(raw yaml.MapSlice, into any, source string) error {
 	walkNumberDefinitions(reflect.ValueOf(into), raw, source, func(v reflect.Value, m yaml.MapSlice, where string) {
 		if db.Game.SchemaVersion == LegacySchemaVersion {
 			if v.Type() == reflect.TypeFor[ItemCount]() {
-				i := v.Addr().Interface().(*ItemCount) //nolint:errcheck // Concrete type is established by the decoder, cache, or preceding reflect.Type check.
-				if i.Count != nil && *i.Count == 0 {
+				if i, ok := v.Addr().Interface().(*ItemCount); ok && i.Count != nil && *i.Count == 0 {
 					i.Count = nil
 				}
 			}
@@ -252,11 +253,13 @@ func (c *checker) numericValues(into any, where string) {
 			}
 		}
 		if v.Type() == reflect.TypeFor[UIStyle]() {
-			for file, scale := range v.Addr().Interface().(*UIStyle).StageScale { //nolint:errcheck // Concrete type is established by the decoder, cache, or preceding reflect.Type check.
-				if scale == 0 {
-					c.errorf(w+".stage_scale."+file, "want a positive number, got 0")
-				} else {
-					c.numberRange(w+".stage_scale."+file, scale, 0, math.Inf(1))
+			if style, ok := v.Addr().Interface().(*UIStyle); ok {
+				for file, scale := range style.StageScale {
+					if scale == 0 {
+						c.errorf(w+".stage_scale."+file, "want a positive number, got 0")
+					} else {
+						c.numberRange(w+".stage_scale."+file, scale, 0, math.Inf(1))
+					}
 				}
 			}
 		}

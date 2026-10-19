@@ -33,7 +33,9 @@ var textCache sync.Map // string -> *expr.Expr
 
 func parseExpr(src string) (Expr, error) {
 	if e, ok := textCache.Load(src); ok {
-		return Expr{e.(*expr.Expr)}, nil //nolint:errcheck // Concrete type is established by the decoder, cache, or preceding reflect.Type check.
+		if parsed, ok := e.(*expr.Expr); ok {
+			return Expr{parsed}, nil
+		}
 	}
 	e, err := expr.Parse(src)
 	if err != nil {

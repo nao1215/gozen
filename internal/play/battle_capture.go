@@ -227,7 +227,11 @@ func (g *Game) traceBattleResult(s *battleScene) {
 	}
 	var rng []byte
 	if g.pcg != nil {
-		rng, _ = g.pcg.MarshalBinary() //nolint:errcheck // rand.PCG.MarshalBinary always returns a nil error.
+		var err error
+		if rng, err = g.pcg.MarshalBinary(); err != nil {
+			g.failure = err
+			return
+		}
 	}
 	result := map[battle.Result]string{battle.Won: "won", battle.Lost: "lost", battle.Fled: "fled"}[s.b.Result]
 	g.emit("battle_result", traceLine{"result": result, "gains": s.b.Gains, "summary": g.traceSummary(), "rand": rng})

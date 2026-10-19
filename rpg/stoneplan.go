@@ -400,7 +400,7 @@ func (s *State) ApplyStones(l StoneLoadout) {
 			if want[a.ID][it] > 0 {
 				want[a.ID][it]--
 			} else {
-				_ = s.Equip(a, sl, "") //nolint:errcheck // Removing existing equipment with an empty item cannot fail.
+				s.unequip(a, sl)
 			}
 		}
 	}

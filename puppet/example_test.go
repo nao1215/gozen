@@ -1,6 +1,7 @@
 package puppet_test
 
 import (
+	"log"
 	"math/rand/v2"
 	"os"
 
@@ -54,7 +55,13 @@ func Example() {
 	screen := &streamScreen{streamer: p, w: w, h: h}
 
 	// When a gift arrives:
-	_ = p.React("hop")         //nolint:errcheck // hop is a built-in reaction.
-	_ = p.SetFace("surprised") //nolint:errcheck // An unknown face keeps the current one.
-	_ = ebiten.RunGame(screen) //nolint:errcheck // The example ignores the loop's end.
+	if err := p.React("hop"); err != nil {
+		return
+	}
+	if err := p.SetFace("surprised"); err != nil {
+		return // the rig has no such face
+	}
+	if err := ebiten.RunGame(screen); err != nil {
+		log.Print(err)
+	}
 }

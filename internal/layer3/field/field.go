@@ -5,6 +5,7 @@
 package field
 
 import (
+	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/rpg"
 	lang "github.com/nao1215/gozen/text"
@@ -214,7 +215,7 @@ func talkOnEnter(st *rpg.State, id string, loc *data.Location) []data.Command {
 		}
 	}
 	key := "talk_turn_" + id
-	n, _ := st.Vars[key].(float64) //nolint:errcheck // Optional state values intentionally default to zero when absent.
+	n := optional.Value[float64](st.Vars[key])
 	st.Vars[key] = n + 1
 	return loc.People[here[int(n)%len(here)]].Talk
 }

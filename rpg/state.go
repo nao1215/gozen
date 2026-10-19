@@ -190,6 +190,16 @@ func (s *State) Equip(a *Actor, slot, item string) error {
 	return nil
 }
 
+// unequip puts what a wears in slot back in the bag: Equip with an empty item, which
+// cannot fail.
+func (s *State) unequip(a *Actor, slot string) {
+	if old := a.Equip[slot]; old != "" {
+		s.AddItem(old, 1)
+		delete(a.Equip, slot)
+	}
+	a.Clamp()
+}
+
 // Flag is a flag (false when never set).
 func (s *State) Flag(name string) bool { return s.Flags[name] }
 

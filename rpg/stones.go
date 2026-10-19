@@ -306,7 +306,7 @@ func (s *State) takeSpare(a *Actor, stone string) {
 		}
 		for _, sl := range s.DB.Game.Slots {
 			if m.Equip[sl.ID] == stone {
-				_ = s.Equip(m, sl.ID, "") //nolint:errcheck // Removing existing equipment with an empty item cannot fail.
+				s.unequip(m, sl.ID)
 				return
 			}
 		}

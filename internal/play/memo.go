@@ -236,7 +236,12 @@ func (g *Game) onEventStart(cmds []data.Command) {
 		return
 	}
 	if g.pcg != nil {
-		g.evRand, _ = g.pcg.MarshalBinary() //nolint:errcheck // rand.PCG.MarshalBinary always returns a nil error.
+		r, err := g.pcg.MarshalBinary()
+		if err != nil {
+			g.failure = err
+			return
+		}
+		g.evRand = r
 	}
 }
 
@@ -255,7 +260,12 @@ func (g *Game) memoResume(info *memo.Memo) []byte {
 			return nil
 		}
 		if g.pcg != nil {
-			info.Rand, _ = g.pcg.MarshalBinary() //nolint:errcheck // rand.PCG.MarshalBinary always returns a nil error.
+			r, err := g.pcg.MarshalBinary()
+			if err != nil {
+				g.failure = err
+				return nil
+			}
+			info.Rand = r
 		}
 		return b
 	}

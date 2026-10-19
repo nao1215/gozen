@@ -17,7 +17,7 @@ func eachCall(v reflect.Value, fn func(string)) {
 		}
 	case reflect.Struct:
 		if v.Type() == commandType {
-			if c := v.Interface().(Command); c.Call != "" { //nolint:errcheck // Concrete type is established by the decoder, cache, or preceding reflect.Type check.
+			if c, ok := v.Interface().(Command); ok && c.Call != "" {
 				fn(c.Call)
 			}
 		}

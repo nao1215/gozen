@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/expr"
+	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	lang "github.com/nao1215/gozen/text"
 )
@@ -27,7 +28,7 @@ func (s *State) initStateNames() {
 		kind, name, _ := strings.Cut(path, ".")
 		if kind == "flag" {
 			if _, ok := s.Flags[name]; !ok {
-				s.Flags[name], _ = d.Initial.(bool) //nolint:errcheck // Optional state values intentionally default to zero when absent.
+				s.Flags[name] = optional.Value[bool](d.Initial)
 			}
 		} else if _, ok := s.Vars[name]; !ok {
 			v := d.Initial

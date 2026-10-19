@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/expr"
+	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/rpg"
 	lang "github.com/nao1215/gozen/text"
@@ -50,7 +51,7 @@ func (r *Runner) stones(verb string, c *data.Command, env expr.Env) Request {
 		return Choice{Prompt: data.Render(c.Prompt, env), Options: labels}
 	case "stone_wearer":
 		name := c.StoneWearer
-		set, _ := r.st.Vars[name+"_set"].(string) //nolint:errcheck // Optional state values intentionally default to zero when absent.
+		set := optional.Value[string](r.st.Vars[name+"_set"])
 		ws := r.st.SetWearers(set)
 		if len(ws) == 0 {
 			return nil

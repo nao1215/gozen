@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/nao1215/gozen/expr"
+	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/rpg"
 )
@@ -49,7 +50,7 @@ func placeRoamers(db *data.DB, st *rpg.State, d *data.Dungeon) {
 	if len(d.Roamers) == 0 {
 		return
 	}
-	floor, _ := st.Vars[VarFloor].(float64) //nolint:errcheck // Optional state values intentionally default to zero when absent.
+	floor := optional.Value[float64](st.Vars[VarFloor])
 	env := expr.Chain{expr.Map{"floor": floor}, st.Env()}
 	w, h := d.Size()
 	dist := walkDistances(d, st, st.Pos.X, st.Pos.Y)
@@ -188,13 +189,13 @@ func roamerTile(d *data.Dungeon, st *rpg.State, i int) *data.Tile {
 
 // SettleRoamers takes off the roamer whose battle was won, and calms the one fled from.
 func SettleRoamers(st *rpg.State) {
-	if f, _ := st.Vars[VarRoamerFled].(float64); f > 0 { //nolint:errcheck // Optional state values intentionally default to zero when absent.
+	if f := optional.Value[float64](st.Vars[VarRoamerFled]); f > 0 {
 		delete(st.Vars, VarRoamerFled)
 		if i := int(f) - 1; i < len(st.Roamers) {
 			st.Roamers[i].Calm = st.Steps + roamFledSteps
 		}
 	}
-	n, _ := st.Vars[VarRoamerBeaten].(float64) //nolint:errcheck // Optional state values intentionally default to zero when absent.
+	n := optional.Value[float64](st.Vars[VarRoamerBeaten])
 	if n <= 0 {
 		return
 	}
@@ -269,7 +270,7 @@ func stepRoamer(d *data.Dungeon, st *rpg.State, dist []int, from [2]int, i int, 
 	here := dist[r.Y*w+r.X]
 	var best [2]int
 	found := false
-	calm, _ := st.Vars[VarRoamCalm].(float64)                   //nolint:errcheck // Optional state values intentionally default to zero when absent.
+	calm := optional.Value[float64](st.Vars[VarRoamCalm])
 	hunt := k.Move == "hunt" && here >= 0 && st.Steps >= r.Calm // 追う者は 遠くても 道を 知っている
 	if hunt || k.Move == "chase" && here >= 0 && here <= sight && float64(st.Steps) >= calm && st.Steps >= r.Calm {
 		beside := abs(r.X-from[0])+abs(r.Y-from[1]) == 1
@@ -350,7 +351,7 @@ func every(k data.Roamer, st *rpg.State) float64 {
 
 // floorEnv is the state's names with floor (the floor's number).
 func floorEnv(st *rpg.State) expr.Env {
-	floor, _ := st.Vars[VarFloor].(float64) //nolint:errcheck // Optional state values intentionally default to zero when absent.
+	floor := optional.Value[float64](st.Vars[VarFloor])
 	return expr.Chain{expr.Map{"floor": floor}, st.Env()}
 }
 
@@ -393,7 +394,7 @@ func Hunters(db *data.DB, st *rpg.State) []data.Command {
 			}
 			out = append(out, k.OnLeave...)
 		case ok && i < 0:
-			from, _ := st.Vars[VarHuntFrom].(float64) //nolint:errcheck // Optional state values intentionally default to zero when absent.
+			from := optional.Value[float64](st.Vars[VarHuntFrom])
 			if k.Wait.Set() {
 				if w, err := k.Wait.Number(env); err == nil && float64(st.Steps)-from < w {
 					continue

@@ -4,7 +4,7 @@ package main
 import (
 	"embed"
 	"fmt"
-	"os"
+	"log"
 
 	"github.com/nao1215/gozen/data"
 	"github.com/nao1215/gozen/headless"
@@ -16,8 +16,8 @@ var files embed.FS
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, err) //nolint:errcheck // The process already reports failure even if stderr cannot be written.
-		os.Exit(1)
+		log.SetFlags(0)
+		log.Fatal(err)
 	}
 }
 

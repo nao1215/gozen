@@ -12,6 +12,7 @@ import (
 	"image/png"
 	"io"
 	"io/fs"
+	"log"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -330,10 +331,11 @@ func main() {
 	if err == nil {
 		return
 	}
-	fmt.Fprintln(os.Stderr, err) //nolint:errcheck // The process already reports failure even if stderr cannot be written.
+	log.SetFlags(0)
+	log.Print(err)
 	var u usageError
 	if errors.As(err, &u) {
-		fmt.Fprintln(os.Stderr, `Run "puppet --help" for usage.`) //nolint:errcheck // As above.
+		log.Print(`Run "puppet --help" for usage.`)
 		os.Exit(2)
 	}
 	os.Exit(1)

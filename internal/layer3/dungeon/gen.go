@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/expr"
+	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/rpg"
 )
@@ -43,7 +44,7 @@ func DiveAt(db *data.DB, st *rpg.State, loc string, floor int, at, facing string
 	fixSeed(l.Dungeon.Generate, st)
 	floor = max(1, floor)
 	st.Vars[VarFloor] = float64(floor)
-	if d, _ := st.Vars[VarDeep].(float64); float64(floor) > d { //nolint:errcheck // Optional state values intentionally default to zero when absent.
+	if d := optional.Value[float64](st.Vars[VarDeep]); float64(floor) > d {
 		st.Vars[VarDeep] = float64(floor)
 	}
 	Make(db, st, loc)
@@ -63,8 +64,8 @@ func DiveAt(db *data.DB, st *rpg.State, loc string, floor int, at, facing string
 func Make(db *data.DB, st *rpg.State, loc string) {
 	d := db.Locations[loc].Dungeon
 	g := d.Generate
-	seed, _ := st.Vars[VarSeed].(float64)   //nolint:errcheck // Optional state values intentionally default to zero when absent.
-	floor, _ := st.Vars[VarFloor].(float64) //nolint:errcheck // Optional state values intentionally default to zero when absent.
+	seed := optional.Value[float64](st.Vars[VarSeed])
+	floor := optional.Value[float64](st.Vars[VarFloor])
 	s := uint64(seed)
 	if fs, ok := g.SeedFor(int(floor)); ok {
 		s = fs
@@ -163,7 +164,7 @@ func Remake(db *data.DB, st *rpg.State) {
 }
 
 func fmtF(v any) string {
-	f, _ := v.(float64) //nolint:errcheck // Optional state values intentionally default to zero when absent.
+	f := optional.Value[float64](v)
 	return strconv.FormatFloat(f, 'f', -1, 64)
 }
 

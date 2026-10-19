@@ -9,6 +9,7 @@ import (
 	"maps"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	world "github.com/nao1215/gozen/internal/layer3/field"
 	"github.com/nao1215/gozen/rpg"
@@ -537,7 +538,7 @@ func complete(d *data.Dungeon, st *rpg.State) []data.Command {
 	if len(d.Complete) == 0 {
 		return nil
 	}
-	if e, _ := st.Vars[VarExplored].(float64); e < 100 { //nolint:errcheck // Optional state values intentionally default to zero when absent.
+	if e := optional.Value[float64](st.Vars[VarExplored]); e < 100 {
 		return nil
 	}
 	key := completeKey(st, st.Location)
@@ -564,7 +565,7 @@ func doneKey(st *rpg.State, loc string, x, y int) string {
 // its floor too (each floor keeps its own map and opened chests).
 func floorKey(st *rpg.State, loc string) string {
 	if l := st.DB.Locations[loc]; l != nil && l.Dungeon != nil && l.Dungeon.Generate != nil {
-		f, _ := st.Vars[VarFloor].(float64) //nolint:errcheck // Optional state values intentionally default to zero when absent.
+		f := optional.Value[float64](st.Vars[VarFloor])
 		return loc + "/" + fmtF(f)
 	}
 	return loc
@@ -728,7 +729,7 @@ func Walked(db *data.DB, st *rpg.State) []data.Command {
 
 // Gauge is how full the encounter gauge is (0..1).
 func Gauge(st *rpg.State) float64 {
-	g, _ := st.Vars["gauge"].(float64) //nolint:errcheck // Optional state values intentionally default to zero when absent.
+	g := optional.Value[float64](st.Vars["gauge"])
 	return g
 }
 
