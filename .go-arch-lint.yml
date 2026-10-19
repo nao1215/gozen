@@ -19,17 +19,20 @@ vendors:
   yaml: { in: [github.com/goccy/go-yaml, "github.com/goccy/go-yaml/**"] }
   image: { in: [golang.org/x/image, "golang.org/x/image/**"] }
   ebiten: { in: [github.com/hajimehoshi/ebiten/v2, "github.com/hajimehoshi/ebiten/v2/**"] }
+  width: { in: [golang.org/x/text/width] }
 components:
   expr: { in: [expr, "expr/internal/**", "internal/expr/**"] }
   text: { in: [text, "text/internal/**", "internal/text/**"] }
   assetfs: { in: [assetfs, "assetfs/internal/**", "internal/assetfs/**"] }
   savefile: { in: [savefile, "savefile/internal/**", "internal/savefile/**"] }
+  chat: { in: [chat, "chat/internal/**", "internal/chat/**"] }
   data: { in: [data, "data/internal/**", "internal/data/**"] }
   rpg: { in: [rpg, "rpg/internal/**", "internal/rpg/**"] }
   battle: { in: [battle, "battle/internal/**", "internal/battle/**"] }
   event: { in: [event, "event/internal/**", "internal/event/**"] }
   world: { in: [world, "world/internal/**", "internal/world/**"] }
   dungeon: { in: [dungeon, "dungeon/internal/**", "internal/dungeon/**"] }
+  react: { in: [react, "react/internal/**", "internal/react/**"] }
   headless: { in: [headless, "headless/internal/**", "internal/headless/**"] }
   gfx: { in: [gfx, "gfx/internal/**", "internal/gfx/**"] }
   sound: { in: [sound, "sound/internal/**", "internal/sound/**"] }
@@ -59,6 +62,9 @@ deps:
     mayDependOn: [assetfs, private1]
   savefile:
     mayDependOn: [savefile, private1]
+  chat:
+    mayDependOn: [chat, private1]
+    canUse: [yaml, width]
   data:
     mayDependOn: [data, expr, text, assetfs, savefile, private1, private2]
     canUse: [yaml]
@@ -68,57 +74,60 @@ deps:
     canUse: [yaml]
     mayDependOn: [private2, expr, text, assetfs, savefile, private1]
   battle:
-    mayDependOn: [battle, expr, text, assetfs, savefile, data, rpg, private1, private2, private3]
+    mayDependOn: [battle, expr, text, assetfs, savefile, chat, data, rpg, private1, private2, private3]
   event:
-    mayDependOn: [event, expr, text, assetfs, savefile, data, rpg, private1, private2, private3]
+    mayDependOn: [event, expr, text, assetfs, savefile, chat, data, rpg, private1, private2, private3]
   world:
-    mayDependOn: [world, expr, text, assetfs, savefile, data, rpg, private1, private2, private3]
+    mayDependOn: [world, expr, text, assetfs, savefile, chat, data, rpg, private1, private2, private3]
   dungeon:
-    mayDependOn: [dungeon, expr, text, assetfs, savefile, data, rpg, private1, private2, private3]
+    mayDependOn: [dungeon, expr, text, assetfs, savefile, chat, data, rpg, private1, private2, private3]
+  react:
+    mayDependOn: [react, expr, private1]
+    canUse: [yaml, width]
   private3:
-    mayDependOn: [private3, expr, text, assetfs, savefile, data, rpg, private1, private2]
+    mayDependOn: [private3, expr, text, assetfs, savefile, chat, data, rpg, private1, private2]
   headless:
-    mayDependOn: [headless, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, private1, private2, private3, private4]
+    mayDependOn: [headless, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, private1, private2, private3, private4]
   private4:
-    mayDependOn: [private4, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, private1, private2, private3]
+    mayDependOn: [private4, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, private1, private2, private3]
   gfx:
-    mayDependOn: [gfx, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, private1, private2, private3, private4, private5]
+    mayDependOn: [gfx, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]
   sound:
-    mayDependOn: [sound, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, private1, private2, private3, private4, private5]
+    mayDependOn: [sound, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]
   play:
-    mayDependOn: [play, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, private1, private2, private3, private4, private5]
+    mayDependOn: [play, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]
   private5:
-    mayDependOn: [private5, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, private1, private2, private3, private4]
+    mayDependOn: [private5, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, private1, private2, private3, private4]
     canUse: [ebiten, image]
   runner:
-    mayDependOn: [runner, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, gfx, sound, play, private1, private2, private3, private4, private5, private6]
+    mayDependOn: [runner, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, private1, private2, private3, private4, private5, private6]
     canUse: [ebiten, image]
   private6:
-    mayDependOn: [private6, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, gfx, sound, play, private1, private2, private3, private4, private5]
+    mayDependOn: [private6, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]
   commands:
-    mayDependOn: [commands, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, gfx, sound, play, private1, private2, private3, private4, private5]
+    mayDependOn: [commands, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, private1, private2, private3, private4, private5]
     canUse: [yaml, ebiten, image]
   promptgenCommand:
     mayDependOn: [promptgen]
   mosaicCommand:
     mayDependOn: [mosaic]
   promptgen:
-    mayDependOn: [promptgen, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless]
+    mayDependOn: [promptgen, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless]
     canUse: [yaml, image]
   mosaic:
-    mayDependOn: [mosaic, expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless]
+    mayDependOn: [mosaic, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless]
     canUse: [yaml, image, onnx]
   experiments:
-    mayDependOn: [expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, gfx, sound, play, runner]
+    mayDependOn: [expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, runner]
     canUse: [yaml, ebiten, image]
   examples:
-    mayDependOn: [expr, text, assetfs, savefile, data, rpg, battle, event, world, dungeon, headless, gfx, sound, play, runner]
+    mayDependOn: [expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, runner]
     canUse: [ebiten, image]
   dev:
     mayDependOn: [dev]
   testgame:
-    mayDependOn: [expr, text, assetfs, savefile, data, rpg]
+    mayDependOn: [expr, text, assetfs, savefile, chat, data, rpg]

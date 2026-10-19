@@ -12,9 +12,9 @@ Gozen はゲームの定義・状態・規則・進行を画面から分離し�
 flowchart TB
   L6["6 入口: runner"] --> L5["5 表示: gfx / sound / play"]
   L5 --> L4["4 進行: headless"]
-  L4 --> L3["3 規則: battle / event / world / dungeon"]
+  L4 --> L3["3 規則: battle / event / world / dungeon / react"]
   L3 --> L2["2 モデル: data / rpg"]
-  L2 --> L1["1 基礎: expr / text / assetfs / savefile"]
+  L2 --> L1["1 基礎: expr / text / assetfs / savefile / chat"]
   CLI["cmd/rpgtool・cmd/rpgcheck"] --> L5
   CLI --> L4
   Example["examples: ゲーム側の組立て"] --> L6
@@ -46,5 +46,7 @@ T4 で `rpgcheck` と `rpgtool` の 12 サブコマンドを実装しました�
 T5 で制作支援の `promptgen` と `mosaic` を専用 internal に実装しました。ONNX binding は mosaic component だけが利用し、公開 API と既存の層の許可は増やしません。4 CLI が同じ `./...` と CLI E2E の対象です。[制作支援 CLI](../development/production-tools.md) に入出力と前提を記載します。
 
 SW1 で戦闘前後の共通イベントと可変メーター上限を追加しました。実行順と CLI の扱いは [戦闘イベントとメーター](battle-hooks.md)、公開する3フィールドの利用目的は [ADR 0013](../decisions/0013-battle-hooks-and-meter-limits.md) に記載します。
+
+人物の反応（`react`）とチャット（`chat`）を追加しました。LLM を使わずに言葉と出来事へ反応する仕組みと、流れるメッセージの記録です。用途と API は [ADR 0015](../decisions/0015-reaction-and-chat.md) に記録します。
 
 利用側の呼び出し・保存先・CLI 検査の切り替えは [ゲームから Gozen を利用する](adoption.md) を参照してください。
