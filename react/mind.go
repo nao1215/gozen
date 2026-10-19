@@ -37,7 +37,8 @@ type Tag struct {
 }
 
 // Analyzer is a game's own analysis. It reads the stimulus and the person (Recall,
-// Mood) and returns tags, which must be declared in Book.Tags or the lexicon.
+// Mood) and returns tags, which must be declared in Book.Tags or the lexicon. The
+// stimulus Text is already cut to Config.MaxRunes.
 type Analyzer interface {
 	Analyze(s Stimulus, m *Mind) []Tag
 }
@@ -52,7 +53,7 @@ type Config struct {
 	Clock func() time.Duration
 	// Analyzers run after the built-in analyzers.
 	Analyzers []Analyzer
-	// MaxRunes cuts longer text before analysis (0 means 400).
+	// MaxRunes cuts longer text before any analysis, the Analyzers included (0 means 400).
 	MaxRunes int
 	// History is how many recent texts per sender are kept to find repeats (0 means 8).
 	History int
@@ -204,14 +205,17 @@ func add(found map[string]Tag, t Tag) {
 
 // React analyzes the stimulus, chooses a rule (or a dodge) and applies it to the mood
 // and memory. An error means a condition failed to evaluate (for example comparing a
-// remembered string with a number); the state is then unchanged except the turn.
+// remembered string with a number). The turn then still advances and memories whose
+// limit has passed are dropped, as on every call; the mood, the remaining memory, the
+// recent texts, the pending question and the cooldowns are unchanged, so retrying the
+// same stimulus is not counted as a repeat.
 func (m *Mind) React(s Stimulus) (Reaction, error) {
 	m.turn++
 	m.expire()
-	text := s.Text
-	if utf8.RuneCountInString(text) > m.cfg.MaxRunes {
-		text = string([]rune(text)[:m.cfg.MaxRunes])
+	if utf8.RuneCountInString(s.Text) > m.cfg.MaxRunes {
+		s.Text = string([]rune(s.Text)[:m.cfg.MaxRunes])
 	}
+	text := s.Text
 	norm := Normalize(text)
 	found := map[string]Tag{}
 	m.match(norm, "", found)
@@ -286,7 +290,6 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 	e := &env{m: m, s: s, found: found, answer: answer, repeats: repeats, length: utf8.RuneCountInString(norm), conf: conf}
 	rule, err := m.choose(s, e)
 	if err != nil {
-		m.remember(s.From, norm)
 		return Reaction{}, err
 	}
 	delta := 0.0

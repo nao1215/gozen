@@ -306,3 +306,94 @@ func TestNewSession(t *testing.T) {
 		t.Fatalf("memory %v %v, mood %v want %v", v, ok, m.Mood(), mood)
 	}
 }
+
+// lengthAnalyzer records the text length it was given.
+type lengthAnalyzer struct{ got []int }
+
+func (a *lengthAnalyzer) Analyze(s Stimulus, _ *Mind) []Tag {
+	a.got = append(a.got, len([]rune(s.Text)))
+	return nil
+}
+
+// Config.MaxRunes also bounds what a game's own Analyzer reads.
+func TestMaxRunesReachesAnalyzers(t *testing.T) {
+	b, err := Parse([]byte(host))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := &lengthAnalyzer{}
+	m, err := New(b, "host", Config{MaxRunes: 10, Analyzers: []Analyzer{a}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	do(t, m, say(strings.Repeat("あ", 50)))
+	do(t, m, say("短い"))
+	if len(a.got) != 2 || a.got[0] != 10 || a.got[1] != 2 {
+		t.Fatalf("analyzer saw lengths %v, want [10 2]", a.got)
+	}
+}
+
+// A failed condition advances the turn and drops expired memories, and changes nothing
+// else: a retry of the same text is not counted as a repeat.
+func TestReactErrorKeepsState(t *testing.T) {
+	src := strings.Replace(host, "    rules:\n", "    rules:\n      - id: boom\n        kind: event.boom\n        when: from > 1\n        say: [x]\n", 1)
+	if src == host {
+		t.Fatal("the edit did not apply")
+	}
+	b, err := Parse([]byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := New(b, "host", Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	do(t, m, say("猫"))
+	before, err := m.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	boom := Stimulus{Kind: "event.boom", From: "viewer", Text: "今日は雨"}
+	for range 2 {
+		if _, err := m.React(boom); err == nil {
+			t.Fatal("comparing a name with a number succeeded")
+		}
+	}
+	after, err := m.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Replace(string(before), `"turn":1,`, `"turn":3,`, 1)
+	if string(after) != want {
+		t.Fatalf("state changed beyond the turn:\nbefore %s\nafter  %s", before, after)
+	}
+	if r := do(t, m, say("今日は雨")); r.Rule == "dodge.repeat" {
+		t.Fatalf("a failed text was remembered: %+v", r)
+	}
+}
+
+// Parse never panics, and a book it accepts makes a Mind for each person that can react.
+func FuzzParse(f *testing.F) {
+	f.Add([]byte(host))
+	f.Add([]byte("tags: !x 0\n"))
+	f.Add([]byte("people: [{id: a, rules: [{id: r, when: '(((('}]}]\n"))
+	f.Add([]byte{})
+	f.Fuzz(func(t *testing.T, b []byte) {
+		if len(b) > 64*1024 {
+			return
+		}
+		bk, err := Parse(b)
+		if err != nil {
+			return
+		}
+		for _, p := range bk.People {
+			m, err := New(bk, p.ID, Config{Clock: func() time.Duration { return 0 }})
+			if err != nil {
+				continue
+			}
+			if r, err := m.React(say("猫")); err == nil && (r.Mood < 0 || r.Mood > 100) {
+				t.Fatalf("mood out of range: %+v", r)
+			}
+		}
+	})
+}
