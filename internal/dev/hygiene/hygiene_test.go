@@ -44,6 +44,9 @@ func TestRepositoryLocations(t *testing.T) {
 			}
 			return nil
 		}
+		if name == ".git" { // a linked worktree's pointer to its repository
+			return nil
+		}
 		contents, err := fs.ReadFile(fsy, name)
 		if err != nil {
 			return err
