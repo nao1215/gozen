@@ -13,7 +13,7 @@ import (
 )
 
 func (c *command) release(args []string) error {
-	fl := flag.NewFlagSet("rpgtool release", flag.ContinueOnError)
+	fl := flag.NewFlagSet("gozen release", flag.ContinueOnError)
 	inspect := fl.String("inspect", "", "制作側の検査記録（JSON Lines）。必須")
 	overlay := fl.String("overlay", "", "差し替えのディレクトリ（省略時は作品の承認設定）")
 	prefix := fl.String("prefix", "assets", "素材のディレクトリ")
@@ -21,7 +21,7 @@ func (c *command) release(args []string) error {
 		return err
 	}
 	if fl.NArg() != 2 || *inspect == "" {
-		return cli.Invalid("usage: rpgtool release -inspect FILE [-overlay DIR] <game dir> <out dir>")
+		return cli.Invalid("usage: gozen release -inspect FILE [-overlay DIR] <game dir> <out dir>")
 	}
 	src, out := fl.Arg(0), fl.Arg(1)
 	if !cli.Relative(*prefix) {

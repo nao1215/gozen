@@ -18,13 +18,13 @@ import (
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
 
-	"github.com/nao1215/gozen/cmd/rpgtool/internal/designeval"
+	"github.com/nao1215/gozen/cmd/gozen/internal/designeval"
 	"github.com/nao1215/gozen/data"
 	lang "github.com/nao1215/gozen/text"
 )
 
 func (c *command) design(args []string) (err error) {
-	fs := flag.NewFlagSet("rpgtool design", flag.ContinueOnError)
+	fs := flag.NewFlagSet("gozen design", flag.ContinueOnError)
 	cfgPath := fs.String("config", "", "the personas and the measures")
 	root := fs.String("root", filepath.Join("build", "designeval"), "where the runs are kept")
 	out := fs.String("out", "", "the run's directory (default <root>/<date>)")
@@ -163,7 +163,7 @@ func (c *command) design(args []string) (err error) {
 	prevName, prev := previousRun(*root, filepath.Base(*out))
 	report := designReport(cfg, runs, sums, filepath.Base(*out), hash, prevName, prev)
 	if len(notes) > 0 {
-		report += fmt.Sprintf("\n## メモ\n\n通信簿で目立った所を、テストプレイのメモ（source bot）として %d 件残した（%s。rpgtool memos で一覧）。\n\n", len(notes), *memos)
+		report += fmt.Sprintf("\n## メモ\n\n通信簿で目立った所を、テストプレイのメモ（source bot）として %d 件残した（%s。gozen memos で一覧）。\n\n", len(notes), *memos)
 		for _, n := range notes {
 			report += "- " + n + "\n"
 		}

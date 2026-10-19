@@ -86,18 +86,18 @@ New journey を選び、配達人と話し、練習戦闘に勝ち（Auto なら
 | シーンエディタと多くの出力先を持つゲームエンジン | [Godot](https://godotengine.org/) |
 | Go のプログラムの中で、データとして定義した RPG を、描画なしのドライバーと検証・シミュレーション・撮影の CLI で扱う | Gozen |
 
-Gozen が大事にしているのは、ゲームを試せるデータとして扱うことです。タイトル画面を描く定義を、`rpgcheck` が参照と式の検査に、`rpgtool sim` が勝率の計測に、`headless` が Go のテストに、そのまま読み込みます。壊れた参照やバランスの退行は、プレイヤーの前ではなく CI で失敗します。
+Gozen が大事にしているのは、ゲームを試せるデータとして扱うことです。タイトル画面を描く定義を、`gozen check` が参照と式の検査に、`gozen sim` が勝率の計測に、`headless` が Go のテストに、そのまま読み込みます。壊れた参照やバランスの退行は、プレイヤーの前ではなく CI で失敗します。
 
 ## インストール
 
-Gozen は Go のモジュール `github.com/nao1215/gozen` 1 つで、Go 1.26.4 以降が必要です。公開版からの導入は未確認です。リリースまでは、ソースのチェックアウトから 4 つのコマンドを導入します。
+Gozen は Go のモジュール `github.com/nao1215/gozen` 1 つで、Go 1.26.4 以降が必要です。公開版からの導入は未確認です。リリースまでは、ソースのチェックアウトから `gozen` コマンドを導入します。
 
 ```sh
 mkdir -p bin
-GOBIN="$PWD/bin" go install -trimpath -buildvcs=false ./cmd/rpgcheck ./cmd/rpgtool ./cmd/promptgen ./cmd/mosaic
+GOBIN="$PWD/bin" go install -trimpath -buildvcs=false ./cmd/gozen
 ```
 
-PowerShell では先に `$env:GOBIN = Join-Path $PWD bin` を設定します。リリース後は `go install github.com/nao1215/gozen/cmd/rpgtool@latest` の形になり、4 つのコマンド名のどれにも替えられます。ライブラリとして使うときは `go get github.com/nao1215/gozen@latest` でモジュールを追加します。
+PowerShell では先に `$env:GOBIN = Join-Path $PWD bin` を設定します。リリース後は `go install github.com/nao1215/gozen/cmd/gozen@latest` の形になります。C コンパイラが無いと Go は cgo なしで組み立て、その `gozen mosaic` は ONNX 推論が無いことを知らせます。ライブラリとして使うときは `go get github.com/nao1215/gozen@latest` でモジュールを追加します。
 
 ## 動作環境
 
@@ -105,10 +105,10 @@ PowerShell では先に `$env:GOBIN = Join-Path $PWD bin` を設定します。�
 
 | 対象 | 追加の前提 |
 | --- | --- |
-| 中核・描画なしの例・rpgcheck・rpgtool の通常機能 | なし。画面・C コンパイラ不要 |
-| 画面付きゲーム・rpgtool shots | 描画環境。Linux の無人実行は Xvfb と xauth |
-| promptgen | 利用者の catalog YAML。モデル・画像生成サービス不要 |
-| mosaic の推論 | ビルド時に cgo と C コンパイラ。実行時に対応する ONNX Runtime と利用者のモデル |
+| 中核・描画なしの例・gozen の通常のサブコマンド | なし。画面・C コンパイラ不要 |
+| 画面付きゲーム・gozen shots | 描画環境。Linux の無人実行は Xvfb と xauth |
+| gozen prompt | 利用者の catalog YAML。モデル・画像生成サービス不要 |
+| gozen mosaic の推論 | ビルド時に cgo と C コンパイラ。実行時に対応する ONNX Runtime と利用者のモデル |
 | サンプル動画の撮影 | Linux の描画環境、Xvfb、xauth、Bash、Python 3、ffmpeg/ffprobe |
 
 ## レシピ
@@ -158,56 +158,50 @@ Xvfb・xauth・Python 3・ffmpeg・ffprobe が必要です。[撮影の詳細](d
 
 ## CLI 一覧と例
 
-以下はリポジトリのルートから実行します。検証・シミュレーションには、画面サンプルとは別の小さな中立の fixture を使います。[rpgtool の全サブコマンド](docs/development/cli.md#コマンド)。
+以下はリポジトリのルートから実行します。検証・シミュレーションには、画面サンプルとは別の小さな中立の fixture を使います。[gozen の全サブコマンド](docs/development/cli.md#コマンド)。
 
-### rpgcheck
+### gozen
 
-Requirements: ビルドに Go。cgo・画面・外部の実行ツールは不要です。定義・参照・式・素材の存在を検査します。文字の収まりは rpgtool で別に検査します。
+Requirements: ビルドに Go。通常の検査・シミュレーション・レポートと `prompt` は画面・C コンパイラ不要です。`shots` はゲームのバイナリと描画環境を使います。`mosaic` の推論には cgo で組み立てた gozen、対応する ONNX Runtime、利用者のモデルが必要です。[OS 別要件](docs/development/cli.md#requirements)。各サブコマンドの flag と前提は `gozen help <command>` で見られます。
+
+`gozen check` は定義・参照・式・素材の存在と文字の収まりを検査します。`-no-layout` はフォントを使う収まりの検査を省きます。
 
 ```sh
-go run ./cmd/rpgcheck e2e/atago/fixtures/game
+go run ./cmd/gozen check -no-layout e2e/atago/fixtures/game
 ```
 
 ```text
 ok: 2 locations, 1 events, 1 actors, 2 skills, 0 items, 1 enemies, 1 troops, 0 ai sets
-Structure checked; layout was not checked. Use rpgtool layout <game-dir>.
+Structure checked; layout was not checked. Use gozen layout <game-dir>.
 ```
 
-### rpgtool
-
-Requirements: ビルドに Go。通常の検査・シミュレーション・レポートは画面・C コンパイラ不要です。`shots` はゲームのバイナリと描画環境を使います。[OS 別要件](docs/development/cli.md#requirements)。
-
-`rpgtool sim` は乱数を固定して敵の編成と何度も戦い、勝率とターン数を報告します。
+`gozen sim` は乱数を固定して敵の編成と何度も戦い、勝率とターン数を報告します。
 
 ```sh
-go run ./cmd/rpgtool sim e2e/atago/fixtures/game lesson -n 3 -seed 7
+go run ./cmd/gozen sim e2e/atago/fixtures/game lesson -n 3 -seed 7
 ```
 
 ```text
 lesson: 3 battles  win 100%  lose 0%  fled 0%  draw 0%  avg turns 1.0  avg standing after a win 1.0
 ```
 
-`go run ./cmd/rpgtool --help` で他のサブコマンド（`check`・`layout`・`curve`・`floors`・`trace`・`book`・`design`・`memos`・`release`・`trial`・`shots`）を見られます。
+`go run ./cmd/gozen --help` で他のサブコマンド（`layout`・`curve`・`floors`・`trace`・`book`・`design`・`memos`・`release`・`trial`・`shots`・`prompt`・`mosaic`・`version`・`help`）を見られます。
 
-### promptgen
-
-Requirements: Go と catalog YAML。cgo・モデル・外部サービス不要です。画像生成用の文面を組み立てます。画像の生成やジョブの送信は行いません。
+`gozen prompt` は catalog YAML を使い、cgo・モデル・外部サービスは不要です。画像生成用の文面を組み立てます。画像の生成やジョブの送信は行いません。
 
 ```sh
-go run ./cmd/promptgen --config docs/examples/production/catalog.yaml --scene landscape --format json
+go run ./cmd/gozen prompt --config docs/examples/production/catalog.yaml --scene landscape --format json
 ```
 
-複数の構図は `--scenes ids.txt --format json`（1行1 ID）で一括出力できます。[出力と終了値](docs/development/production-tools.md#promptgen)を参照してください。
+複数の構図は `--scenes ids.txt --format json`（1行1 ID）で一括出力できます。[出力と終了値](docs/development/production-tools.md#gozen-prompt)を参照してください。
 
-### mosaic
-
-Requirements: Go。推論には C コンパイラ、対応する ONNX Runtime、利用者のモデルも必要です。手修正だけの処理では推論用の実行環境は不要です。[準備とモデルの契約](docs/development/production-tools.md)。
+`gozen mosaic` の推論には、ビルド時の C コンパイラ、対応する ONNX Runtime、利用者のモデルも必要です。手修正だけの処理では推論用の実行環境は不要です。[準備とモデルの契約](docs/development/production-tools.md)。
 
 ```sh
-go run ./cmd/mosaic --help
+go run ./cmd/gozen mosaic --help
 mkdir -p build/mosaic-input/assets
 cp docs/examples/production/pattern.png build/mosaic-input/assets/pattern.png
-go run ./cmd/mosaic auto -fix docs/examples/production/fixes.yaml -out build/mosaic-output build/mosaic-input pattern.png
+go run ./cmd/gozen mosaic auto -fix docs/examples/production/fixes.yaml -out build/mosaic-output build/mosaic-input pattern.png
 ```
 
 新規に作った合成画像の矩形を、推論なしでピクセル化します。入力は変えず、出力画像と report は `build/mosaic-output` に置きます。
@@ -219,7 +213,7 @@ go run ./cmd/mosaic auto -fix docs/examples/production/fixes.yaml -out build/mos
 - 画面付きと同じ規則を使う、描画なしのシミュレーション。
 - Ebitengine の画面、フォント描画、音声、埋め込みゲームの起動口。
 - 会話の立ち絵、タイトルの立ち絵、場所と戦闘の背景、フィールドメニュー。
-- 検証・シミュレーション・制作・画像処理を行う 4 つのコマンド。
+- 検証・シミュレーション・制作・画像処理をサブコマンドで行う `gozen` コマンド。
 
 ## 設定
 

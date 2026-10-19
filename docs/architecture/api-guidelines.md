@@ -28,11 +28,11 @@ CLI のプロセス終了は `main` の責務です。stdout は結果、stderr 
 
 ## CLI
 
-4 つの CLI は `go install github.com/nao1215/gozen/cmd/<name>@latest` で導入できる構成にします。`rpgtool`・`rpgcheck` は汎用、`promptgen`・`mosaic` の実装は各専用 internal に収めます。T4 で rpgcheck・rpgtool を実装しました。T5 で promptgen・mosaic を実装しました。推論アダプタは cgo ビルドと推論なしビルドを分けます。[制作支援 CLI](../development/production-tools.md) に要件を記載します。公開版の導入確認はリリース後に行います。[CLI の使い方](../development/cli.md) に実行例と前提を記載します。
+CLI は `gozen` の 1 本で、`go install github.com/nao1215/gozen/cmd/gozen@latest` で導入できる構成にします（[ADR 0016](../decisions/0016-single-cli.md)）。汎用のサブコマンドは `cmd/gozen`、制作支援の `prompt`・`mosaic` の実装は各専用 internal の `command` パッケージに収めます。推論アダプタは cgo ビルドと推論なしビルドを分け、cgo なしの `gozen` は推論が必要な時に不足を診断して非ゼロで終了します。[制作支援 CLI](../development/production-tools.md) に要件を記載します。公開版の導入確認はリリース後に行います。[CLI の使い方](../development/cli.md) に実行例と前提を記載します。
 
-各 CLI の `--help` は `Requirements` 欄を持ち、その CLI に必要な外部の物だけを列挙します。cgo の C コンパイラ、ONNX Runtime の共有ライブラリ、利用者指定のモデル、画面検査の Xvfb などは、実装で必要と確認したものだけを示します。外部前提がなければその旨を明示します。help 自体は推論や画面の初期化なしで成功させます。
+`gozen` とその各サブコマンドの `--help` は `Requirements` 欄を持ち、そのサブコマンドに必要な外部の物だけを列挙します。cgo の C コンパイラ、ONNX Runtime の共有ライブラリ、利用者指定のモデル、画面検査の Xvfb などは、実装で必要と確認したものだけを示します。外部前提がなければその旨を明示します。help 自体は推論や画面の初期化なしで成功させます。
 
-同じ欄に README の対応節（`README.md#rpgtool`、`#rpgcheck`、`#promptgen`、`#mosaic`）への案内を載せます。インストール先でも辿れる公開 URL を示し、各 README 節から OS 別の準備手順へ案内します。cgo が必要な CLI と不要な CLI を区別して記載します。
+同じ欄に README の対応節（`README.md#gozen`、公開 URL は `https://github.com/nao1215/gozen#gozen`）への案内を載せます。インストール先でも辿れる公開 URL を示し、README の節から OS 別の準備手順へ案内します。cgo が必要なサブコマンド（`mosaic` の推論）と不要なサブコマンドを区別して記載します。
 
 起動に必要な外部の物が足りない場合は、何がないか・どう準備するかを stderr に短く表示し、同じ README 節へ案内して非ゼロで終了します。help の表示成功とは区別し、共有ライブラリの探索やモデル読取りの実際の原因を隠しません。実装を追加するときは、help・前提不足・終了コードを CLI E2E で確かめます。
 

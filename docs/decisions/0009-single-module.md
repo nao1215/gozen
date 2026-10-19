@@ -10,9 +10,9 @@
 
 ## 決定
 
-`github.com/nao1215/gozen` の単一モジュールを使います。`tools/` を廃止し、`go.work` は作りません。制作支援の入口は `cmd/promptgen`・`cmd/mosaic`、実装は `internal/promptgen`・`internal/mosaic`（検出・分割・タグ付け・設定などの配下を含む）です。公開 API は増やしません。
+`github.com/nao1215/gozen` の単一モジュールを使います。`tools/` を廃止し、`go.work` は作りません。制作支援の入口は `gozen prompt`・`gozen mosaic`（[ADR 0016](0016-single-cli.md) で `cmd/gozen` に統合）、実装は `internal/promptgen`・`internal/mosaic`（検出・分割・タグ付け・設定などの配下を含む）です。公開 API は増やしません。
 
-4 つの CLI の公開後のインストール経路は `go install github.com/nao1215/gozen/cmd/<name>@latest` に統一します。単一の版とタグで扱い、別の tools タグや本体を先に公開する手順は不要です。各 CLI の help と前提不足の診断は [API 規約](../architecture/api-guidelines.md) に従います。
+CLI の公開後のインストール経路は `go install github.com/nao1215/gozen/cmd/gozen@latest` です。単一の版とタグで扱い、別の tools タグや本体を先に公開する手順は不要です。`gozen` の help と前提不足の診断は [API 規約](../architecture/api-guidelines.md) に従います。
 
 内容の基準はモジュールではなく配置で分けます。[ADR 0004](0004-content-boundary.md) の許可は上記の制作支援の配置だけに適用し、非公開の作品データはどこにも含めません。モデルは利用者が指定し、同梱しません。
 
@@ -24,6 +24,6 @@
 
 Make・CI・Dependabot はルートのモジュールを対象にします。ONNX の実行検査は通常のテストから分け、前提不足は理由付きで skip します。cgo 無効のビルドは ONNX 推論の動作保証とは扱いません。
 
-依存検査では制作支援の入口と実装を各ツールの component として分類します。ライブラリ・汎用 CLI・サンプル・実験から制作支援内部への依存を許可しません。新しい外部依存は実装時に必要性を確認して登録します。
+依存検査では制作支援の入口と実装を各ツールの component として分類します。ライブラリ・サンプル・実験から制作支援内部への依存を許可しません。CLI の入口から制作支援内部への依存は [ADR 0016](0016-single-cli.md) で許可しました。新しい外部依存は実装時に必要性を確認して登録します。
 
 共通開発規約は `AGENTS.md` に一本化し、`CLAUDE.md` は `@AGENTS.md` の 1 行にします。特定エージェントの調整手順は公開しません。

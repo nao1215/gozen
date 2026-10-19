@@ -1,4 +1,4 @@
-package main
+package command
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 )
 
 func TestRunContracts(t *testing.T) {
-	catalog := filepath.Join("..", "..", "docs", "examples", "production", "catalog.yaml")
+	catalog := filepath.Join("..", "..", "..", "docs", "examples", "production", "catalog.yaml")
 	for _, tc := range []struct {
 		args     []string
 		fail     bool
@@ -47,7 +47,7 @@ type badWriter struct{}
 func (badWriter) Write([]byte) (int, error) { return 0, io.ErrClosedPipe }
 
 func TestBatchScenes(t *testing.T) {
-	catalog := filepath.Join("..", "..", "docs", "examples", "production", "catalog.yaml")
+	catalog := filepath.Join("..", "..", "..", "docs", "examples", "production", "catalog.yaml")
 	ids := filepath.Join(t.TempDir(), "scenes.txt")
 	if err := os.WriteFile(ids, []byte("landscape\nmissing\n\nlandscape\n"), 0600); err != nil {
 		t.Fatal(err)

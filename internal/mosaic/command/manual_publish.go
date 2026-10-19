@@ -69,7 +69,7 @@ func publishManual(c config, pic, orig, sub string, size, step int) (err error) 
 			err = errors.Join(err, e)
 		}
 	}()
-	if err = c.manual.Save(tempName, "mosaic manual: asset-relative paths, original image pixel coordinates."); err != nil {
+	if err = c.manual.Save(tempName, "gozen mosaic manual: asset-relative paths, original image pixel coordinates."); err != nil {
 		return err
 	}
 	backup := stage + "-previous"

@@ -6,7 +6,7 @@
 
 利用側のモジュールに Gozen の公開版を require する。リリース前の手元での接続には、**利用側の** go.mod に `replace github.com/nao1215/gozen => ../gozen` のような相対指定を置ける。Gozen 自身の go.mod に replace や別モジュールは追加しない。
 
-4 CLI は `go run github.com/nao1215/gozen/cmd/<name>` または `go install github.com/nao1215/gozen/cmd/<name>@latest` で使う。開発用の CLI も依存として維持したい利用側は、Go の `tool` 宣言に4コマンドを登録すると `go mod tidy` が必要な依存を保持する。未公開版の `@latest` 導入はできないため、開発中は利用側の require と replace を使う版なしの `go run` を使う。
+CLI は `go run github.com/nao1215/gozen/cmd/gozen` または `go install github.com/nao1215/gozen/cmd/gozen@latest` で使う。開発用の CLI も依存として維持したい利用側は、Go の `tool` 宣言に `cmd/gozen` を登録すると `go mod tidy` が必要な依存を保持する。未公開版の `@latest` 導入はできないため、開発中は利用側の require と replace を使う版なしの `go run` を使う。
 
 ## 呼び出しの対応
 
@@ -32,9 +32,9 @@
 
 ## 内部化した道具を検査する
 
-体験版は `rpgtool trial -list <一覧> <入力> <新しい出力>` を実行し、出力の YAML・素材・一覧を公開 `data.Load` と FS 操作で検証する。生成先と一覧は新しいパスにする。文面生成は `promptgen --format json` の構造化出力を使う。いずれも internal の型を利用側へ露出させない。
+体験版は `gozen trial -list <一覧> <入力> <新しい出力>` を実行し、出力の YAML・素材・一覧を公開 `data.Load` と FS 操作で検証する。生成先と一覧は新しいパスにする。文面生成は `gozen prompt --format json` の構造化出力を使う。いずれも internal の型を利用側へ露出させない。
 
-メモ一覧は `rpgtool memos <入力> -out <新しい出力>` で生成し、`<新しい出力>/index.html` を読む。`-out` を省略すると出力は `<入力>-html` になる（`cmd/rpgtool/memos.go:33`）。入力の中には HTML を書かない。繰り返し同じ場所へ一覧を公開する利用側は、毎回別の作業ディレクトリへ生成してから、成功時だけ前の一覧を入れ替える。生成が失敗した場合は前の一覧と元の JSON・画像・保存データを保持する。[ADR 0012](../decisions/0012-cli-ownership-and-output.md) の上書き防止は維持する。
+メモ一覧は `gozen memos <入力> -out <新しい出力>` で生成し、`<新しい出力>/index.html` を読む。`-out` を省略すると出力は `<入力>-html` になる（`cmd/gozen/memos.go:33`）。入力の中には HTML を書かない。繰り返し同じ場所へ一覧を公開する利用側は、毎回別の作業ディレクトリへ生成してから、成功時だけ前の一覧を入れ替える。生成が失敗した場合は前の一覧と元の JSON・画像・保存データを保持する。[ADR 0012](../decisions/0012-cli-ownership-and-output.md) の上書き防止は維持する。
 
 メモの制作情報は明示した `--dev --build-info` でのみ記録する。`trace` は記録ファイルのベース名、`version` は実行ファイルに埋め込まれた revision がある場合だけになる（`internal/play/memo.go:242`、`internal/layer1/memo/memo.go:224`）。利用側の検査も、既定での非記録と明示指定時の記録を分ける。ビルド情報のない実行ファイルに revision の存在を要求しない。場所・地図・保存・再開と、トレースを指定した再生は制作情報の有無と別に検査する。
 

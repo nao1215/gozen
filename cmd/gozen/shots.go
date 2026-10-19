@@ -75,7 +75,7 @@ type shotResult struct {
 }
 
 func (c *command) shots(args []string) (err error) {
-	fl := flag.NewFlagSet("rpgtool shots", flag.ContinueOnError)
+	fl := flag.NewFlagSet("gozen shots", flag.ContinueOnError)
 	bin := fl.String("bin", "", "Gozen runner を使うゲームのバイナリ（必須）")
 	overlay := fl.String("overlay", "", "承認済みの差し替え素材の置き場")
 	raw := fl.Bool("raw", false, "承認を確かめずに元の絵で撮る（手元で見るだけ。販売用の置き場に出さない）")
@@ -94,7 +94,7 @@ func (c *command) shots(args []string) (err error) {
 	gameDir, listPath := fl.Arg(0), fl.Arg(1)
 	*bin, err = exec.LookPath(*bin)
 	if err != nil {
-		return fmt.Errorf("shots: game binary unavailable: %w; see https://github.com/nao1215/gozen#rpgtool", err)
+		return fmt.Errorf("shots: game binary unavailable: %w; see https://github.com/nao1215/gozen#gozen", err)
 	}
 	*bin, err = filepath.Abs(*bin)
 	if err != nil {
@@ -316,7 +316,7 @@ func shootOne(r *shotResult, it shotItem, list *shotList, bin, gameDir, out, nam
 	}
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 	if err := errors.Join(cmd.Run(), stdout.Close(), stderr.Close()); err != nil {
-		fail("game capture failed: %v; see %s. Graphics runtime requirements: https://github.com/nao1215/gozen#rpgtool", err, work)
+		fail("game capture failed: %v; see %s. Graphics runtime requirements: https://github.com/nao1215/gozen#gozen", err, work)
 		return
 	}
 	tr, err := readShotTrace(filepath.Join(work, "trace.jsonl"))

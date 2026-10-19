@@ -32,7 +32,7 @@ type memoEntry struct {
 
 func (c *command) memosCmd(args []string, destination string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("usage: rpgtool memos <dir of the notes, e.g. build/memos>")
+		return fmt.Errorf("usage: gozen memos <dir of the notes, e.g. build/memos>")
 	}
 	root := args[0]
 	if destination == "" {

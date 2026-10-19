@@ -17,7 +17,7 @@ import (
 )
 
 func (c *command) floorsCmd(args []string) error {
-	fs := flag.NewFlagSet("rpgtool floors", flag.ContinueOnError)
+	fs := flag.NewFlagSet("gozen floors", flag.ContinueOnError)
 	from := fs.Int("from", 1, "the first floor")
 	to := fs.Int("to", 20, "the last floor")
 	floor := fs.Int("floor", 0, "only this floor (with -try: the seeds compared)")

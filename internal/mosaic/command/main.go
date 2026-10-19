@@ -61,7 +61,7 @@ func (cli *cli) commonFlags(fs *flag.FlagSet) *options {
 	fs.StringVar(&o.tagsFile, "tags", env("MOSAIC_TAGS", ""), "絵のタグのキャッシュの JSON（無い・古い絵は -tagger で付けて書き足す。空ならタグを使わない）")
 	fs.StringVar(&o.taggerDir, "tagger", env("MOSAIC_TAGGER", ""), "WD タガーのモデルのディレクトリ（model.onnx と selected_tags.csv）")
 	fs.StringVar(&o.fixFile, "fix", env("MOSAIC_FIX", ""), "人が書く手直しの YAML（絵ごとに範囲を足す・誤検出を捨てる・確かめた印）")
-	fs.StringVar(&o.manualFile, "manual", env("MOSAIC_MANUAL", ""), "mosaic manual が書く手直しの YAML（auto も読む）")
+	fs.StringVar(&o.manualFile, "manual", env("MOSAIC_MANUAL", ""), "gozen mosaic manual が書く手直しの YAML（auto も読む）")
 	fs.StringVar(&o.passes, "passes", env("MOSAIC_PASSES", "default"), "絵の見方（カンマ区切り）。default、all、または full640・flip640・native・flipnative・tile2・tile2x・tile3x・fliptile2x")
 	fs.IntVar(&o.threads, "threads", max(1, runtime.NumCPU()/2), "onnxruntime の CPU のスレッド数")
 	fs.IntVar(&o.quality, "quality", 90, "JPEG の画質")
@@ -192,7 +192,7 @@ func (cli *cli) autoCmd(args []string) (err error) {
 	o := cli.commonFlags(fs)
 	dry := fs.Bool("dry", false, "絵を書かずに、見つかった範囲と要確認の理由だけを表示する")
 	fs.Usage = func() {
-		cli.diag.println("usage: mosaic auto [flags] <game dir> [assets/ からの相対パス...]")
+		cli.diag.println("usage: gozen mosaic auto [flags] <game dir> [assets/ からの相対パス...]")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {

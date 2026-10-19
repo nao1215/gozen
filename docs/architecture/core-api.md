@@ -1,6 +1,6 @@
 # 描画しない中核の使い方と公開契約
 
-ゲーム作者が定義を読み、状態を進め、画面なしでイベント・戦闘・保存を検査するための API です。表示・音声・起動は [表示 API](presentation-api.md)、実装済みの 4 CLI は [汎用 CLI](../development/cli.md) と [制作支援 CLI](../development/production-tools.md) を参照してください。実行可能な例は `examples/headless/main.go:1`、その結果を確かめるテストは `examples/headless/main_test.go:1` にあります。
+ゲーム作者が定義を読み、状態を進め、画面なしでイベント・戦闘・保存を検査するための API です。表示・音声・起動は [表示 API](presentation-api.md)、`gozen` CLI は [汎用 CLI](../development/cli.md) と [制作支援 CLI](../development/production-tools.md) を参照してください。実行可能な例は `examples/headless/main.go:1`、その結果を確かめるテストは `examples/headless/main_test.go:1` にあります。
 
 ## 利用者と公開する理由
 

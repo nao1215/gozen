@@ -63,7 +63,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ matrix.go }}
-      # One module: all four commands and their internal implementations are tested.
+      # One module: the gozen command and its internal implementations are tested.
       - run: go test ./...
         env:
           CGO_ENABLED: "1"
@@ -147,7 +147,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force bin, build/atago | Out-Null
           $suffix = if ($IsWindows) { '.exe' } else { '' }
-          go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/rpgtool$suffix" ./cmd/rpgtool
+          go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/gozen$suffix" ./cmd/gozen
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/gozen-game$suffix" ./examples/play
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -183,13 +183,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force bin, build/atago | Out-Null
           $suffix = if ($IsWindows) { '.exe' } else { '' }
-          go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/rpgcheck$suffix" ./cmd/rpgcheck
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/rpgtool$suffix" ./cmd/rpgtool
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/promptgen$suffix" ./cmd/promptgen
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/mosaic$suffix" ./cmd/mosaic
+          go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/gozen$suffix" ./cmd/gozen
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:PATH = (Join-Path $PWD bin) + [IO.Path]::PathSeparator + $env:PATH
           Push-Location build/atago
@@ -220,7 +214,7 @@ jobs:
         env:
           CGO_ENABLED: "1"
       - name: Build the inference-capable CLI
-        run: go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/ ./cmd/mosaic
+        run: go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/ ./cmd/gozen
         env:
           CGO_ENABLED: "1"
 

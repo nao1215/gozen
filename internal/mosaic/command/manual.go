@@ -22,22 +22,22 @@ import (
 	"github.com/nao1215/gozen/internal/mosaic"
 )
 
-const manualHelp = `mosaic manual: LLM が絵を見て、座標でモザイクを直す。元の絵（assets/）は変えない。
+const manualHelp = `gozen mosaic manual: LLM が絵を見て、座標でモザイクを直す。元の絵（assets/）は変えない。
 指示は -manual の YAML（既定は環境変数 MOSAIC_MANUAL）に書き、auto も同じ指示を読む（いつでも作り直せる）。
 直すたびにその絵だけ作り直し、モザイクを掛けた後の確認図を <out>/manual/ に書く。
 
-  mosaic manual list  [flags] <game dir>          要確認の絵と理由（report.json から。1 行 1 枚の JSON）
-  mosaic manual show  [flags] <game dir> <絵>     その絵の検出・範囲・手直し（JSON）
-  mosaic manual view  [flags] <game dir> <絵>     目盛り付きの図を書く（-src original|masked、-region で拡大）
-  mosaic manual add   [flags] <game dir> <絵>     モザイクを足す（-rect・-box・-poly・-ellipse。何度でも書ける）
-  mosaic manual drop  [flags] <game dir> <絵>     自動の範囲を捨てる（-region-id A2、または -rect・-box と重なる自動の枠。
+  gozen mosaic manual list  [flags] <game dir>          要確認の絵と理由（report.json から。1 行 1 枚の JSON）
+  gozen mosaic manual show  [flags] <game dir> <絵>     その絵の検出・範囲・手直し（JSON）
+  gozen mosaic manual view  [flags] <game dir> <絵>     目盛り付きの図を書く（-src original|masked、-region で拡大）
+  gozen mosaic manual add   [flags] <game dir> <絵>     モザイクを足す（-rect・-box・-poly・-ellipse。何度でも書ける）
+  gozen mosaic manual drop  [flags] <game dir> <絵>     自動の範囲を捨てる（-region-id A2、または -rect・-box と重なる自動の枠。
                                                  分割モデルだけで掛けた範囲は番号が無いので -rect で指す）
-  mosaic manual grow  [flags] <game dir> <絵>     自動の範囲を広げる（-region-id A1|all か -rect（重なる範囲。分割モデルだけの物も）と、
+  gozen mosaic manual grow  [flags] <game dir> <絵>     自動の範囲を広げる（-region-id A1|all か -rect（重なる範囲。分割モデルだけの物も）と、
                                                  -by px、または -left -top -right -bottom px。負なら縮める）。
                                                  -margin 0.3 でこの絵だけ枠を広げる割合を変える（既定 0）
-  mosaic manual skip  [flags] <game dir> <絵>     自動の検出を全部使わない（手で足した物だけ）
-  mosaic manual check [flags] <game dir> <絵>     確かめた印を付ける（要確認から外す）
-  mosaic manual clear [flags] <game dir> <絵>     その絵の manual の指示を全部消す
+  gozen mosaic manual skip  [flags] <game dir> <絵>     自動の検出を全部使わない（手で足した物だけ）
+  gozen mosaic manual check [flags] <game dir> <絵>     確かめた印を付ける（要確認から外す）
+  gozen mosaic manual clear [flags] <game dir> <絵>     その絵の manual の指示を全部消す
 
 座標は元の絵の px（左上が 0,0）。-norm を付けると 0〜1 の割合（x は幅、y は高さに対する割合）。
   -rect x,y,w,h        左上と幅・高さ

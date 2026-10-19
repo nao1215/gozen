@@ -2,18 +2,18 @@ version: '1'
 suite:
   name: Gozen production CLI contracts with original neutral inputs
 scenarios:
-- name: promptgen help does not read a missing catalog
+- name: gozen prompt help does not read a missing catalog
   steps:
   - run:
-      command: promptgen lint --config missing.yaml --help
+      command: gozen prompt lint --config missing.yaml --help
   - assert:
       exit_code: 0
       stdout:
-        contains: ['Requirements:', 'README.md#promptgen']
+        contains: ['Requirements:', 'gozen#gozen']
       stderr:
         equals: ''
       changes: {created: [], modified: [], deleted: []}
-- name: mosaic help for ${sub}
+- name: gozen mosaic help for ${sub}
   matrix:
   - sub: auto
   - sub: inspect
@@ -22,18 +22,18 @@ scenarios:
   - sub: manual grow
   steps:
   - run:
-      command: mosaic ${sub} --help
+      command: gozen mosaic ${sub} --help
   - assert:
       exit_code: 0
       stdout:
-        contains: ['Requirements:', 'README.md#mosaic', 'CGO_ENABLED=1']
+        contains: ['Requirements:', 'gozen#gozen', 'CGO_ENABLED=1']
       stderr:
         equals: ''
       changes: {created: [], modified: [], deleted: []}
-- name: promptgen builds neutral catalog and lints it
+- name: gozen prompt builds neutral catalog and lints it
   steps:
   - run:
-      command: promptgen --config "${specdir}/../../docs/examples/production/catalog.yaml" --scene landscape --format json
+      command: gozen prompt --config "${specdir}/../../docs/examples/production/catalog.yaml" --scene landscape --format json
   - assert:
       exit_code: 0
       stdout:
@@ -41,7 +41,7 @@ scenarios:
       stderr:
         equals: ''
   - run:
-      command: promptgen --config "${specdir}/../../docs/examples/production/catalog.yaml" --scene portrait --format json
+      command: gozen prompt --config "${specdir}/../../docs/examples/production/catalog.yaml" --scene portrait --format json
   - assert:
       exit_code: 0
       stdout:
@@ -49,7 +49,7 @@ scenarios:
       stderr:
         equals: ''
   - run:
-      command: promptgen lint --config "${specdir}/../../docs/examples/production/catalog.yaml" --format json
+      command: gozen prompt lint --config "${specdir}/../../docs/examples/production/catalog.yaml" --format json
   - assert:
       exit_code: 0
       stdout:
@@ -57,28 +57,28 @@ scenarios:
       stderr:
         equals: ''
       changes: {created: [], modified: [], deleted: []}
-- name: promptgen missing prerequisite points to installation information
+- name: gozen prompt missing prerequisite points to installation information
   steps:
   - run:
-      command: promptgen --config missing.yaml
+      command: gozen prompt --config missing.yaml
   - assert:
       exit_code: 1
       stderr:
-        contains: ['missing.yaml', 'Requirements:', 'README.md#promptgen']
+        contains: ['missing.yaml', 'Requirements:', 'gozen#gozen']
       changes: {created: [], modified: [], deleted: []}
-- name: mosaic inference missing prerequisites writes no output
+- name: gozen mosaic inference missing prerequisites writes no output
   steps:
   - fixture:
       file: game/assets/pattern.png
       from: ../../docs/examples/production/pattern.png
   - run:
-      command: mosaic auto -fix '' -tags '' -shape box -passes default -manual '' -out processed game pattern.png
+      command: gozen mosaic auto -fix '' -tags '' -shape box -passes default -manual '' -out processed game pattern.png
   - assert:
       exit_code: 1
       stderr:
-        contains: ['Requirements:', 'README.md#mosaic']
+        contains: ['Requirements:', 'gozen#gozen']
       changes: {created: [], modified: [], deleted: []}
-- name: mosaic manual workflow preserves input and read-only operations write nothing
+- name: gozen mosaic manual workflow preserves input and read-only operations write nothing
   steps:
   - fixture:
       file: game/assets/pattern.png
@@ -90,7 +90,7 @@ scenarios:
       file: edits.yaml
       content: 'pattern.png: {skip: true, block: 4, add: [[1, 1, 7, 7], [14, 10, 8, 9]]}'
   - run:
-      command: mosaic auto -fix '' -tags '' -shape box -passes default -manual edits.yaml -out processed game pattern.png
+      command: gozen mosaic auto -fix '' -tags '' -shape box -passes default -manual edits.yaml -out processed game pattern.png
   - assert:
       exit_code: 0
   - assert:
@@ -103,35 +103,35 @@ scenarios:
         recursive: true
         contains: [pattern.png, report.json, masks/pattern.png.png, review.md]
   - run:
-      command: mosaic inspect -fix '' -tags '' -shape box -passes default -manual edits.yaml -out processed game pattern.png
+      command: gozen mosaic inspect -fix '' -tags '' -shape box -passes default -manual edits.yaml -out processed game pattern.png
   - assert:
       exit_code: 0
       stdout:
         contains: ['"status":"done"', '"output_block":4']
       changes: {created: [], modified: [], deleted: []}
   - run:
-      command: mosaic auto -fix '' -tags '' -shape box -passes default -dry -manual edits.yaml -out dry-output game pattern.png
+      command: gozen mosaic auto -fix '' -tags '' -shape box -passes default -dry -manual edits.yaml -out dry-output game pattern.png
   - assert:
       exit_code: 0
       changes: {created: [], modified: [], deleted: []}
   - run:
-      command: mosaic manual grow -fix '' -tags '' -shape box -passes default -manual edits.yaml -out processed -size 48 -rect 0,0,8,8 -by 2 game pattern.png
+      command: gozen mosaic manual grow -fix '' -tags '' -shape box -passes default -manual edits.yaml -out processed -size 48 -rect 0,0,8,8 -by 2 game pattern.png
   - assert:
       exit_code: 0
   - run:
-      command: mosaic manual clear -fix '' -tags '' -shape box -passes default -manual edits.yaml -out processed game pattern.png
+      command: gozen mosaic manual clear -fix '' -tags '' -shape box -passes default -manual edits.yaml -out processed game pattern.png
   - assert:
       exit_code: 1
       stderr:
         contains: 'Requirements:'
       changes: {created: [], modified: [], deleted: []}
-- name: mosaic rejects empty regions without changing the fix file
+- name: gozen mosaic rejects empty regions without changing the fix file
   steps:
   - fixture:
       file: game/assets/pattern.png
       from: ../../docs/examples/production/pattern.png
   - run:
-      command: mosaic manual add -fix '' -tags '' -shape box -passes default -manual edits.yaml -out processed -rect 80,80,4,4 game pattern.png
+      command: gozen mosaic manual add -fix '' -tags '' -shape box -passes default -manual edits.yaml -out processed -rect 80,80,4,4 game pattern.png
   - assert:
       exit_code: 1
       stderr:

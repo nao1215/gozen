@@ -11,13 +11,13 @@ import (
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
 
-	"github.com/nao1215/gozen/cmd/rpgtool/internal/balance"
+	"github.com/nao1215/gozen/cmd/gozen/internal/balance"
 	"github.com/nao1215/gozen/data"
 	"github.com/nao1215/gozen/expr"
 )
 
 func (c *command) curve(args []string) error {
-	fs := flag.NewFlagSet("rpgtool curve", flag.ContinueOnError)
+	fs := flag.NewFlagSet("gozen curve", flag.ContinueOnError)
 	o := balance.Config{}
 	fs.IntVar(&o.Floors, "floors", 20, "how many floors")
 	fs.IntVar(&o.Battles, "battles", 7, "battles fought on each floor")

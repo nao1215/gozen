@@ -15,10 +15,10 @@ import (
 	"github.com/nao1215/gozen/internal/mosaic/detect"
 )
 
-const inspectHelp = `mosaic inspect: 絵ごとに「モザイクが必要な物が写っているか」「その分類」「モザイク済みか」を JSON で返す（1 行 1 枚）。
+const inspectHelp = `gozen mosaic inspect: 絵ごとに「モザイクが必要な物が写っているか」「その分類」「モザイク済みか」を JSON で返す（1 行 1 枚）。
 何も書かない（出力も YAML も変えない）。
 
-  mosaic inspect [flags] <game dir> [絵...]   絵は assets/ からの相対パス、またはファイルのパス（無ければ YAML に書かれた全部）
+  gozen mosaic inspect [flags] <game dir> [絵...]   絵は assets/ からの相対パス、またはファイルのパス（無ければ YAML に書かれた全部）
 
 返す物:
   needs_mosaic   モザイクが必要な物が写っているか（自動の検出・手の指示・タグのどれかで）

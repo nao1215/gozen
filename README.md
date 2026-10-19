@@ -86,18 +86,18 @@ Pick the tool that fits the job:
 | A full engine with a scene editor and many export targets | [Godot](https://godotengine.org/) |
 | An RPG defined as data in a Go program, with a headless driver and CLIs that check, simulate and screenshot it | Gozen |
 
-Gozen's emphasis is that the game is data you can test. The same definitions that draw the title screen are loaded by `rpgcheck` for references and expressions, by `rpgtool sim` for win rates, and by `headless` in a Go test, so a broken reference or a balance regression fails in CI instead of in front of a player.
+Gozen's emphasis is that the game is data you can test. The same definitions that draw the title screen are loaded by `gozen check` for references and expressions, by `gozen sim` for win rates, and by `headless` in a Go test, so a broken reference or a balance regression fails in CI instead of in front of a player.
 
 ## Install
 
-Gozen is a single Go module, `github.com/nao1215/gozen`, and needs Go 1.26.4 or later. Published installation is not yet verified; until a release exists, install the four commands from a source checkout:
+Gozen is a single Go module, `github.com/nao1215/gozen`, and needs Go 1.26.4 or later. Published installation is not yet verified; until a release exists, install the `gozen` command from a source checkout:
 
 ```sh
 mkdir -p bin
-GOBIN="$PWD/bin" go install -trimpath -buildvcs=false ./cmd/rpgcheck ./cmd/rpgtool ./cmd/promptgen ./cmd/mosaic
+GOBIN="$PWD/bin" go install -trimpath -buildvcs=false ./cmd/gozen
 ```
 
-In PowerShell, set `$env:GOBIN = Join-Path $PWD bin` first. After a release the form will be `go install github.com/nao1215/gozen/cmd/rpgtool@latest`; substitute any of the four command names. As a library, `go get github.com/nao1215/gozen@latest` adds the module.
+In PowerShell, set `$env:GOBIN = Join-Path $PWD bin` first. After a release the form will be `go install github.com/nao1215/gozen/cmd/gozen@latest`. Without a C compiler Go builds it without cgo, and `gozen mosaic` then reports that ONNX inference is missing. As a library, `go get github.com/nao1215/gozen@latest` adds the module.
 
 ## Requirements
 
@@ -105,10 +105,10 @@ Go 1.26.4+ builds the examples and tools. The graphical sample needs a display a
 
 | Component | Additional requirements |
 | --- | --- |
-| Core, headless examples, rpgcheck, normal rpgtool commands | None; no display or C compiler |
-| Graphical game, rpgtool shots | Graphics runtime; Xvfb and xauth for unattended Linux |
-| promptgen | User catalog YAML; no model or image-generation service |
-| mosaic inference | cgo and a C compiler at build time; compatible ONNX Runtime library and user-supplied models at runtime |
+| Core, headless examples, normal gozen subcommands | None; no display or C compiler |
+| Graphical game, gozen shots | Graphics runtime; Xvfb and xauth for unattended Linux |
+| gozen prompt | User catalog YAML; no model or image-generation service |
+| gozen mosaic inference | cgo and a C compiler at build time; compatible ONNX Runtime library and user-supplied models at runtime |
 | Recording the sample animation | Linux graphics runtime, Xvfb, xauth, Bash, Python 3, ffmpeg and ffprobe |
 
 ## Recipes
@@ -158,56 +158,50 @@ It needs Xvfb, xauth, Python 3, ffmpeg and ffprobe. [Capture details](docs/examp
 
 ## CLI commands
 
-Run these from the repository root. The validation and simulation fixture is a small neutral game, separate from the graphical sample. [All rpgtool subcommands](docs/development/cli.md#コマンド).
+Run these from the repository root. The validation and simulation fixture is a small neutral game, separate from the graphical sample. [All gozen subcommands](docs/development/cli.md#コマンド).
 
-### rpgcheck
+### gozen
 
-Requirements: Go to build; no cgo, display or external runtime tools. It validates definitions, references, expressions and asset existence. Text layout is a separate rpgtool check.
+Requirements: Go to build. Checks, simulations, reports and `prompt` need no display or C compiler; `shots` needs a game binary and a graphics runtime; `mosaic` inference needs a gozen built with cgo, a compatible ONNX Runtime library and models you supply. [OS requirements](docs/development/cli.md#requirements). `gozen help <command>` shows each subcommand's flags and requirements.
+
+`gozen check` validates definitions, references, expressions, asset existence and text layout. `-no-layout` skips the font-based layout check:
 
 ```sh
-go run ./cmd/rpgcheck e2e/atago/fixtures/game
+go run ./cmd/gozen check -no-layout e2e/atago/fixtures/game
 ```
 
 ```text
 ok: 2 locations, 1 events, 1 actors, 2 skills, 0 items, 1 enemies, 1 troops, 0 ai sets
-Structure checked; layout was not checked. Use rpgtool layout <game-dir>.
+Structure checked; layout was not checked. Use gozen layout <game-dir>.
 ```
 
-### rpgtool
-
-Requirements: Go to build. Checks, simulations and reports need no display or C compiler; `shots` needs a game binary and a graphics runtime. [OS requirements](docs/development/cli.md#requirements).
-
-`rpgtool sim` fights a troop many times with a fixed seed and reports win rate and turns:
+`gozen sim` fights a troop many times with a fixed seed and reports win rate and turns:
 
 ```sh
-go run ./cmd/rpgtool sim e2e/atago/fixtures/game lesson -n 3 -seed 7
+go run ./cmd/gozen sim e2e/atago/fixtures/game lesson -n 3 -seed 7
 ```
 
 ```text
 lesson: 3 battles  win 100%  lose 0%  fled 0%  draw 0%  avg turns 1.0  avg standing after a win 1.0
 ```
 
-`go run ./cmd/rpgtool --help` lists the other subcommands: `check`, `layout`, `curve`, `floors`, `trace`, `book`, `design`, `memos`, `release`, `trial` and `shots`.
+`go run ./cmd/gozen --help` lists the other subcommands: `layout`, `curve`, `floors`, `trace`, `book`, `design`, `memos`, `release`, `trial`, `shots`, `prompt`, `mosaic`, `version` and `help`.
 
-### promptgen
-
-Requirements: Go and a catalog YAML. No cgo, models or remote service. It assembles image-generation prompts; it does not generate pictures or send jobs.
+`gozen prompt` needs a catalog YAML, but no cgo, models or remote service. It assembles image-generation prompts; it does not generate pictures or send jobs.
 
 ```sh
-go run ./cmd/promptgen --config docs/examples/production/catalog.yaml --scene landscape --format json
+go run ./cmd/gozen prompt --config docs/examples/production/catalog.yaml --scene landscape --format json
 ```
 
-Use `--scenes ids.txt --format json` to build multiple scene IDs (one per line) with a single catalog load. See [batch output and exit status](docs/development/production-tools.md#promptgen).
+Use `--scenes ids.txt --format json` to build multiple scene IDs (one per line) with a single catalog load. See [batch output and exit status](docs/development/production-tools.md#gozen-prompt).
 
-### mosaic
-
-Requirements: Go; inference additionally needs a C compiler, a compatible ONNX Runtime library and models you supply. Manual-only processing needs none of those. [Setup and model contracts](docs/development/production-tools.md).
+`gozen mosaic` inference additionally needs a C compiler at build time, a compatible ONNX Runtime library and models you supply. Manual-only processing needs none of those. [Setup and model contracts](docs/development/production-tools.md).
 
 ```sh
-go run ./cmd/mosaic --help
+go run ./cmd/gozen mosaic --help
 mkdir -p build/mosaic-input/assets
 cp docs/examples/production/pattern.png build/mosaic-input/assets/pattern.png
-go run ./cmd/mosaic auto -fix docs/examples/production/fixes.yaml -out build/mosaic-output build/mosaic-input pattern.png
+go run ./cmd/gozen mosaic auto -fix docs/examples/production/fixes.yaml -out build/mosaic-output build/mosaic-input pattern.png
 ```
 
 This pixelates selected rectangles in an original synthetic pattern without inference. The input stays unchanged; the output and its report go under `build/mosaic-output`.
@@ -219,7 +213,7 @@ This pixelates selected rectangles in an original synthetic pattern without infe
 - Headless simulation that shares the rules of the graphical game.
 - Ebitengine presentation, font rendering, audio and an embedded-game runner.
 - Conversation portraits, standing figures on the title screen, location and battle backgrounds, and a field menu.
-- Four installable commands for validation, simulation, authoring and image processing.
+- One installable `gozen` command with subcommands for validation, simulation, authoring and image processing.
 
 ## Configuration
 

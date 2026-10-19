@@ -17,7 +17,7 @@ import (
 )
 
 func (c *command) traceCmd(args []string) (err error) {
-	fl := flag.NewFlagSet("rpgtool trace", flag.ContinueOnError)
+	fl := flag.NewFlagSet("gozen trace", flag.ContinueOnError)
 	only := fl.String("only", "", "only these kinds (comma separated: say, scene, battle, menu, view, state, act, problem...)")
 	from := fl.Float64("from", 0, "from this second")
 	to := fl.Float64("to", 0, "to this second (0: the end)")

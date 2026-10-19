@@ -10,7 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/nao1215/gozen/battle"
-	"github.com/nao1215/gozen/cmd/rpgtool/internal/balance"
+	"github.com/nao1215/gozen/cmd/gozen/internal/balance"
 	"github.com/nao1215/gozen/event"
 	"github.com/nao1215/gozen/headless"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"

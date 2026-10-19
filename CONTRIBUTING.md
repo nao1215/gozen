@@ -13,7 +13,7 @@ make e2e
 xvfb-run --auto-servernum --error-file=/dev/stderr make graphics e2e-graphics
 ```
 
-[Direct commands](docs/development/testing.md#make-と直接のコマンド) are available for environments without Make. All four CLIs and their internal implementations share the root module checks. Choose regression tests for observable behavior: errors, I/O failures, state transitions, deterministic inputs and save/load round trips. Isolate saves and do not initialize graphics in parallel. ONNX tests require user-supplied models and runtime; explain missing prerequisites when reporting a skip.
+[Direct commands](docs/development/testing.md#make-と直接のコマンド) are available for environments without Make. The `gozen` command and its internal implementations share the root module checks. Choose regression tests for observable behavior: errors, I/O failures, state transitions, deterministic inputs and save/load round trips. Isolate saves and do not initialize graphics in parallel. ONNX tests require user-supplied models and runtime; explain missing prerequisites when reporting a skip.
 
 Keep explanatory documentation under `docs/`. In a pull request, explain the change, its API impact, the commands run and their results, and anything not verified. Cross-compilation and skipped tests do not establish runtime support. Follow the [release checklist](docs/development/release-checklist.md) before publication. See the [CI guide](docs/development/ci.md) for the checks and permissions.
 

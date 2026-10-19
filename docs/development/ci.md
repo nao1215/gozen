@@ -7,12 +7,12 @@
 | ジョブ | 環境・検査 | 実行結果として扱う範囲 |
 | --- | --- | --- |
 | lint | Linux、stable。golangci-lint v2.14.0、go-arch-lint v1.19.0、actionlint v1.7.12。`make lint` | import の方向、API 一覧、静的解析、整形、workflow 構文 |
-| unit | Ubuntu・Windows・macOS × Go 1.26.4 / stable。cgo 有効の `go test ./...` | 非描画の契約。4 CLI と internal を含む |
+| unit | Ubuntu・Windows・macOS × Go 1.26.4 / stable。cgo 有効の `go test ./...` | 非描画の契約。`gozen` と internal を含む |
 | race | Linux、stable、cgo 有効の `go test -race ./...` | 非描画の契約に対する race 検査 |
 | build | 3 OS の amd64、Linux・macOS の arm64。cgo 無効 | 全パッケージのコンパイル。arm64 はクロスビルド。ONNX 推論なし |
 | graphics | 3 OS、stable。Linux は setup-ebitengine と Xvfb、Windows/macOS は native desktop | 5 画面の実ループと PNG 検査、実ゲームを子プロセスで起動する撮影 E2E。音声はミュート |
-| cli-e2e | 3 OS、stable、atago v0.25.2 | 実際の 4 CLI の終了値、標準出力・診断、ファイル変更、生成物。graphics tag は別ジョブへ |
-| inference-build | 3 OS、stable、cgo 有効 | ONNX アダプタと mosaic のビルド。モデル未指定の推論テストは理由付き skip |
+| cli-e2e | 3 OS、stable、atago v0.25.2 | 実際の `gozen` の全サブコマンドの終了値、標準出力・診断、ファイル変更、生成物。graphics tag は別ジョブへ |
+| inference-build | 3 OS、stable、cgo 有効 | ONNX アダプタと推論を含む `gozen` のビルド。モデル未指定の推論テストは理由付き skip |
 | examples | 3 OS、stable | `./examples/...` のビルド、minimal と headless の実行。画面の実行は graphics へ |
 | govulncheck | Linux、stable、cgo 有効、govulncheck v1.8.0 | `./...` の既知の脆弱性検査。ONNX binding も解析対象 |
 | codeql | Linux、stable、cgo 有効 | `./...` を明示してビルドし、Go の静的解析を実施 |

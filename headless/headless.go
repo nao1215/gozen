@@ -1,7 +1,7 @@
 // Package headless plays a game without a screen: it reads every line, answers the
 // choices from a list (the first option by default), fights every battle on AUTO, and
 // walks the party where it is told. It is for testing that a game can be played through
-// (a game's story test drives it) and for balancing (rpgtool walk).
+// (a game's story test drives it) and for balancing (gozen sim and curve).
 package headless
 
 import (
@@ -230,8 +230,8 @@ func (d *Driver) Fight(troop string) int {
 }
 
 // AutoBattle は b を AUTO で決着（または maxTurns）まで戦い、戦闘中イベント（troops の events）の
-// 命令も画面なしで実行する（選択は最初の選択肢、戦闘の中の戦闘は勝ちとする）。Fight・rpgtool sim・
-// balance（rpgtool curve）が同じ経路を使う。host が nil なら場所の移動・音・絵は無視する。
+// 命令も画面なしで実行する（選択は最初の選択肢、戦闘の中の戦闘は勝ちとする）。Fight・gozen sim・
+// balance（gozen curve）が同じ経路を使う。host が nil なら場所の移動・音・絵は無視する。
 // 判断理由の記録は b.OnDecision に渡す。
 // seen が nil でなければ、出た Step を順に渡す。結果は b.Result に残る（Ongoing なら引き分け）。
 func AutoBattle(db *data.DB, st *rpg.State, b *battle.Battle, host event.Host, maxTurns int, seen func([]battle.Step)) {

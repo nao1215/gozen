@@ -2,7 +2,7 @@
 
 Gozen はゲームの定義・状態・規則・進行を画面から分離し、同じ中核をライブラリ、描画なしの実行、ゲーム画面、検査 CLI から利用できる構成にします。T2 で描画しない中核を実装しました。利用可能な契約と所有権は [中核 API](core-api.md) を参照してください。T3 で表示・音声・起動を実装しました。[表示 API](presentation-api.md) に契約を記載します。
 
-モジュールは `github.com/nao1215/gozen` の 1 つです。Go の下限は 1.26.4。採用する直接依存の宣言は `go.mod:1` にあります。4 つの CLI は `cmd/`、制作支援の実装は `internal/promptgen/`・`internal/mosaic/` に置きます。`go.work` とローカル参照用の `replace` は使いません。配置は [ADR 0001](../decisions/0001-modules-and-layout.md)、単一モジュールへの変更理由は [ADR 0009](../decisions/0009-single-module.md) に記録します。
+モジュールは `github.com/nao1215/gozen` の 1 つです。Go の下限は 1.26.4。採用する直接依存の宣言は `go.mod:1` にあります。CLI は `cmd/gozen` の 1 本、制作支援の実装は `internal/promptgen/`・`internal/mosaic/` に置きます（[ADR 0016](../decisions/0016-single-cli.md)）。`go.work` とローカル参照用の `replace` は使いません。配置は [ADR 0001](../decisions/0001-modules-and-layout.md)、単一モジュールへの変更理由は [ADR 0009](../decisions/0009-single-module.md) に記録します。
 
 ## 層と依存
 
@@ -15,11 +15,11 @@ flowchart TB
   L4 --> L3["3 規則: battle / event / world / dungeon / react"]
   L3 --> L2["2 モデル: data / rpg"]
   L2 --> L1["1 基礎: expr / text / assetfs / savefile / chat"]
-  CLI["cmd/rpgtool・cmd/rpgcheck"] --> L5
+  CLI["cmd/gozen"] --> L5
   CLI --> L4
   Example["examples: ゲーム側の組立て"] --> L6
   X["x/: 実験"] --> L5
-  Production["cmd/promptgen・cmd/mosaic"] --> Private["internal/promptgen・internal/mosaic"]
+  CLI --> Private["internal/promptgen・internal/mosaic"]
   Private --> L1
 ```
 
@@ -41,9 +41,9 @@ T2 の共有モデルは `internal/layer2/gamedata`、素材の制作記録は `
 
 T3 の描画・音声の共有実装は `internal/layer5/gfx`・`internal/layer5/sound`、画面実装は `internal/play`、汎用メモ記録は `internal/layer1/memo` が所有します。起動と終了、単一 Game の制約は [ADR 0011](../decisions/0011-presentation-ownership.md) に記録します。
 
-T4 で `rpgcheck` と `rpgtool` の 12 サブコマンドを実装しました。CLI だけの解析・シミュレーションは `cmd/internal/` と `cmd/rpgtool/internal/` に置き、安定 API は増やしません。[ADR 0012](../decisions/0012-cli-ownership-and-output.md) と [CLI の使い方](../development/cli.md) を参照してください。
+`gozen` は検査・シミュレーション・文書化・配布・撮影の 12 サブコマンドと、制作支援の `prompt`・`mosaic`、`version`・`help` を持ちます。CLI だけの解析・シミュレーションは `cmd/internal/` と `cmd/gozen/internal/` に置き、安定 API は増やしません。[ADR 0012](../decisions/0012-cli-ownership-and-output.md) と [CLI の使い方](../development/cli.md) を参照してください。
 
-T5 で制作支援の `promptgen` と `mosaic` を専用 internal に実装しました。ONNX binding は mosaic component だけが利用し、公開 API と既存の層の許可は増やしません。4 CLI が同じ `./...` と CLI E2E の対象です。[制作支援 CLI](../development/production-tools.md) に入出力と前提を記載します。
+制作支援の `gozen prompt` と `gozen mosaic` は専用 internal の `command` パッケージに実装し、`cmd/gozen` は振り分けだけを持ちます。ONNX binding は mosaic component だけが利用し、公開 API と既存の層の許可は増やしません。`gozen` の全サブコマンドが同じ `./...` と CLI E2E の対象です。[制作支援 CLI](../development/production-tools.md) に入出力と前提を記載します。
 
 SW1 で戦闘前後の共通イベントと可変メーター上限を追加しました。実行順と CLI の扱いは [戦闘イベントとメーター](battle-hooks.md)、公開する3フィールドの利用目的は [ADR 0013](../decisions/0013-battle-hooks-and-meter-limits.md) に記載します。
 

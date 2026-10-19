@@ -6,7 +6,7 @@ ACTIONLINT ?= actionlint
 
 .PHONY: test lint workflows arch api api-update graphics e2e e2e-graphics cli-build build
 
-# One module: ./... includes all four commands and their internal implementations.
+# One module: ./... includes the gozen command and its internal implementations.
 # Keep ONNX-dependent runtime tests separate; see docs/development/testing.md.
 test:
 	$(GO) test ./...
@@ -33,10 +33,7 @@ graphics:
 
 cli-build:
 	mkdir -p bin
-	$(GO) build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/rpgcheck ./cmd/rpgcheck
-	$(GO) build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/rpgtool ./cmd/rpgtool
-	$(GO) build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/promptgen ./cmd/promptgen
-	$(GO) build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/mosaic ./cmd/mosaic
+	$(GO) build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/gozen ./cmd/gozen
 
 e2e: cli-build
 	mkdir -p build/atago

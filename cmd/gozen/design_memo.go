@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/nao1215/gozen/cmd/rpgtool/internal/designeval"
+	"github.com/nao1215/gozen/cmd/gozen/internal/designeval"
 	"github.com/nao1215/gozen/internal/layer1/memo"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )

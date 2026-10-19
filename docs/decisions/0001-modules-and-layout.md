@@ -10,7 +10,7 @@
 
 モジュールは `github.com/nao1215/gozen` の 1 つ、Go 1.26.4 を下限とする 1.26 系で始めます。CI は厳密な下限と stable を検査します。依存は Ebitengine v2.10.4、goccy/go-yaml v1.19.2、x/image v0.45.0 を採用します（`go.mod:1`）。
 
-ライブラリは `engine/` を挟まずモジュール直下に置き、実装は `internal/` に隠します。4 つの CLI は `cmd/rpgtool`・`cmd/rpgcheck`・`cmd/promptgen`・`cmd/mosaic` に置きます。制作支援の実装は `internal/promptgen`・`internal/mosaic` とその配下に置き、公開 API にしません。入れ子のモジュールも `go.work` も作りません。
+ライブラリは `engine/` を挟まずモジュール直下に置き、実装は `internal/` に隠します。CLI は `cmd/gozen` の 1 本に置きます（[ADR 0016](0016-single-cli.md) で 4 本から変更）。制作支援の実装は `internal/promptgen`・`internal/mosaic` とその配下に置き、公開 API にしません。入れ子のモジュールも `go.work` も作りません。
 
 ## 理由
 

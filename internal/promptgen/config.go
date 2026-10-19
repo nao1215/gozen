@@ -1,5 +1,5 @@
 // Package promptgen assembles deterministic prompts from user-owned catalogs.
-// Its only external consumer is cmd/promptgen; it sends no generation jobs.
+// Its only external consumer is the gozen prompt command (internal/promptgen/command); it sends no generation jobs.
 package promptgen
 
 import (
@@ -72,7 +72,7 @@ type Plan struct {
 	Select map[string][]string `yaml:"select" json:"select"`
 }
 
-// Catalog owns validated configuration for the promptgen CLI. Build does not mutate it.
+// Catalog owns validated configuration for the gozen prompt command. Build does not mutate it.
 type Catalog struct {
 	c       config
 	limit   int

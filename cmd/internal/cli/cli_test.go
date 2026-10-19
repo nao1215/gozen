@@ -13,7 +13,7 @@ import (
 
 func TestParseFlagsOperandsAndLiteralPaths(t *testing.T) {
 	for _, args := range [][]string{{"sample dir", "-n", "2", "troop"}, {"-n=2", "sample dir", "troop"}} {
-		f := flag.NewFlagSet("rpgtool sim", flag.ContinueOnError)
+		f := flag.NewFlagSet("gozen sim", flag.ContinueOnError)
 		n := f.Int("n", 1, "runs")
 		out := &Output{Writer: io.Discard}
 		if err := Parse(f, args, "test", "none", out); err != nil {

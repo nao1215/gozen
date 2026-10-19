@@ -1,6 +1,6 @@
 # ADR 0012: 汎用 CLI の所有権と出力先
 
-状態: 採用。対応: T4、D2、D8、D10。
+状態: 採用。対応: T4、D2、D8、D10。入口は [ADR 0016](0016-single-cli.md) で変更しました。`cmd/rpgcheck`・`cmd/rpgtool` は `cmd/gozen` の 1 本に、`cmd/rpgtool/internal` は `cmd/gozen/internal` になりました。以下は採用時の記録で、出力・終了値・上書き防止の規約は `gozen` の全サブコマンドに引き継ぎます。
 
 ## 問題
 

@@ -22,4 +22,4 @@ Linux の graphics は SHA 固定の setup-ebitengine で依存と Xvfb を用�
 
 ## 結果
 
-T1 で lint・API・architecture・unit・build、T3〜T5 で描画・4 CLI E2E・ONNX の cgo ビルド、T7 で独立した examples・race・govulncheck・CodeQL と workflow 構文検査を配線しました。リモート CI の成功は未確認です。ジョブの対象、OS 条件、権限、推論テストの skip の扱いは [CI の構成](../development/ci.md) に記録します。
+T1 で lint・API・architecture・unit・build、T3〜T5 で描画・CLI E2E（[ADR 0016](0016-single-cli.md) で `gozen` の 1 本に統合）・ONNX の cgo ビルド、T7 で独立した examples・race・govulncheck・CodeQL と workflow 構文検査を配線しました。リモート CI の成功は未確認です。ジョブの対象、OS 条件、権限、推論テストの skip の扱いは [CI の構成](../development/ci.md) に記録します。

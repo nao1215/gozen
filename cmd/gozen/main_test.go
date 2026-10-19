@@ -67,12 +67,14 @@ func TestHelpAndArgumentContract(t *testing.T) {
 			args = []string{sub, "--help"}
 		}
 		out, stderr := invoke(t, 0, args...)
-		if !strings.Contains(out, "Requirements:") || !strings.Contains(out, "https://github.com/nao1215/gozen#rpgtool") || stderr != "" {
+		if !strings.Contains(out, "Requirements:") || !strings.Contains(out, "https://github.com/nao1215/gozen#gozen") || stderr != "" {
 			t.Fatalf("%s: %q %q", sub, out, stderr)
 		}
 		if sub != "" {
 			invoke(t, 2, sub, "--unknown")
-			invoke(t, 2, sub)
+			if sub != "version" {
+				invoke(t, 2, sub)
+			}
 		}
 	}
 	invoke(t, 2)
@@ -92,6 +94,61 @@ func TestHelpAndArgumentContract(t *testing.T) {
 		}
 	}
 }
+func TestDispatchHelpVersionAndDelegates(t *testing.T) {
+	top, _ := invoke(t, 0, "--help")
+	for _, sub := range []string{"prompt", "mosaic", "version", "help"} {
+		if !strings.Contains(top, "  "+sub) {
+			t.Fatalf("top help lacks %s: %s", sub, top)
+		}
+	}
+	if out, _ := invoke(t, 0, "help"); out != top {
+		t.Fatal("gozen help differs from gozen --help")
+	}
+	if out, _ := invoke(t, 0, "help", "help"); out != top {
+		t.Fatal("gozen help help differs from gozen --help")
+	}
+	sub, _ := invoke(t, 0, "help", "sim")
+	if direct, _ := invoke(t, 0, "sim", "--help"); sub != direct {
+		t.Fatal("help sim differs from sim --help")
+	}
+	for _, name := range []string{"prompt", "mosaic"} {
+		out, stderr := invoke(t, 0, "help", name)
+		if !strings.Contains(out, "gozen "+name) || !strings.Contains(out, "https://github.com/nao1215/gozen#gozen") || stderr != "" {
+			t.Fatalf("help %s: %q %q", name, out, stderr)
+		}
+	}
+	invoke(t, 2, "help", "absent")
+	invoke(t, 2, "help", "sim", "extra")
+	invoke(t, 2, "version", "extra")
+	if out, _ := invoke(t, 0, "version"); !strings.HasPrefix(out, "gozen ") {
+		t.Fatal(out)
+	}
+	if out, _ := invoke(t, 0, "prompt", "--config", "../../docs/examples/production/catalog.yaml", "--scene", "landscape"); !strings.Contains(out, "quiet garden") {
+		t.Fatal(out)
+	}
+	invoke(t, 1, "prompt", "--config", "missing.yaml")
+	invoke(t, 2, "mosaic")
+	invoke(t, 2, "mosaic", "absent")
+}
+func TestCheckWithoutLayout(t *testing.T) {
+	dir := fixture(t)
+	out, stderr := invoke(t, 0, "check", "-no-layout", dir)
+	if !strings.Contains(out, "ok: 2 locations") || !strings.Contains(out, "Structure checked") || stderr != "" {
+		t.Fatalf("%q %q", out, stderr)
+	}
+	// Structure-only checks do not parse fonts; full checks do.
+	write(t, filepath.Join(dir, "assets", "regular.ttf"), "not a font")
+	invoke(t, 0, "check", dir, "-no-layout")
+	invoke(t, 1, "check", dir)
+	if got := run([]string{"check", "-no-layout", dir}, failWriter{}, &bytes.Buffer{}); got != 1 {
+		t.Fatalf("lost output failure: %d", got)
+	}
+}
+
+type failWriter struct{}
+
+func (failWriter) Write([]byte) (int, error) { return 0, errors.New("failed output") }
+
 func TestReadCommandsAndDeterminism(t *testing.T) {
 	dir := fixture(t)
 	for _, args := range [][]string{{"check", dir}, {"layout", dir}, {"book", dir}, {"sim", dir, "lesson", "-n", "3"}, {"curve", dir, "grotto", "-floors", "1", "-battles", "1", "-tries", "1"}, {"floors", dir, "grotto", "-floor", "1", "-try", "2"}} {

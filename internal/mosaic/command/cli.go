@@ -1,4 +1,4 @@
-// Package command implements the mosaic process contract. It never exits the process.
+// Package command implements the gozen mosaic process contract. It never exits the process.
 package command
 
 import (
@@ -8,11 +8,11 @@ import (
 	"io"
 )
 
-const requirements = "Requirements: Go 1.26.4+ to build. ONNX inference needs a C compiler and CGO_ENABLED=1 at build time, a user-supplied ONNX Runtime shared library (-ort or ONNXRUNTIME_LIB), and models (-model; optionally -face, -seg, -tagger). Help and manual-only processing need no ONNX runtime. See https://github.com/nao1215/gozen/blob/main/README.md#mosaic"
+const requirements = "Requirements: Go 1.26.4+ to build. ONNX inference needs a C compiler and CGO_ENABLED=1 at build time, a user-supplied ONNX Runtime shared library (-ort or ONNXRUNTIME_LIB), and models (-model; optionally -face, -seg, -tagger). Help and manual-only processing need no ONNX runtime. A gozen built with CGO_ENABLED=0 reports that inference is missing and exits 1. See https://github.com/nao1215/gozen#gozen"
 const usage = `usage:
- mosaic auto [flags] <game-dir> [asset-relative-images...]
- mosaic inspect [flags] <game-dir> [images...]
- mosaic manual <list|show|view|add|drop|grow|skip|check|clear> [flags] <game-dir> [image]
+ gozen mosaic auto [flags] <game-dir> [asset-relative-images...]
+ gozen mosaic inspect [flags] <game-dir> [images...]
+ gozen mosaic manual <list|show|view|add|drop|grow|skip|check|clear> [flags] <game-dir> [image]
 Flags must precede positional arguments. Models are never bundled.
 `
 
@@ -62,7 +62,7 @@ func Run(args []string, out, diagnostics io.Writer) int {
 		if len(args) > 0 && args[0] == "inspect" {
 			c.out.println(inspectHelp)
 		}
-		fs := flag.NewFlagSet("mosaic", flag.ContinueOnError)
+		fs := flag.NewFlagSet("gozen mosaic", flag.ContinueOnError)
 		fs.SetOutput(c.out)
 		c.commonFlags(fs)
 		fs.PrintDefaults()

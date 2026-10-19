@@ -40,9 +40,9 @@ func writeReview(c config, all []entry) error {
 		return err
 	}
 	var md strings.Builder
-	fmt.Fprintf(&md, "# モザイクの要確認（%d 枚）\n\n", len(rev))                                                                                       //nolint:errcheck // strings.Builder writes always succeed.
-	md.WriteString("review/sheet_NN.jpg の番号と対応する。黄色の枠が自動の範囲、水色・桃色が手で足した範囲。確かめたら `mosaic manual check`（人は -fix の YAML に `checked: true`）。\n") //nolint:errcheck // strings.Builder writes always succeed.
-	md.WriteString("漏れは `add: [[x, y, 幅, 高さ]]`（元の絵の px）、誤検出は `drop: [[x, y, 幅, 高さ]]` で直す。\n\n")                                              //nolint:errcheck // strings.Builder writes always succeed.
+	fmt.Fprintf(&md, "# モザイクの要確認（%d 枚）\n\n", len(rev))                                                                                             //nolint:errcheck // strings.Builder writes always succeed.
+	md.WriteString("review/sheet_NN.jpg の番号と対応する。黄色の枠が自動の範囲、水色・桃色が手で足した範囲。確かめたら `gozen mosaic manual check`（人は -fix の YAML に `checked: true`）。\n") //nolint:errcheck // strings.Builder writes always succeed.
+	md.WriteString("漏れは `add: [[x, y, 幅, 高さ]]`（元の絵の px）、誤検出は `drop: [[x, y, 幅, 高さ]]` で直す。\n\n")                                                    //nolint:errcheck // strings.Builder writes always succeed.
 	if len(rev) == 0 {
 		return os.WriteFile(filepath.Join(c.out, "review.md"), []byte(md.String()), 0o600)
 	}

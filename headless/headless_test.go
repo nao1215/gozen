@@ -42,7 +42,7 @@ locations:
 	}
 }
 
-// AutoBattle は戦闘中イベントの命令も実行する（rpgtool sim・curve が同じ経路を使う）。
+// AutoBattle は戦闘中イベントの命令も実行する（gozen sim・curve が同じ経路を使う）。
 func TestAutoBattleRunsTroopEvents(t *testing.T) {
 	db := testgame.Load(t, nil)
 	st := testgame.State(db, 1)

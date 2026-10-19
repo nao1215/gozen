@@ -2,7 +2,7 @@
 // effects of skills and items, and the rules (AI) that choose the foes' actions. It draws
 // nothing: each action comes out as a list of Steps (a message, a hit, a state put on)
 // which the screen plays one after the other, and the same battle runs headless in the
-// tests and in `rpgtool sim`.
+// tests and in `gozen sim`.
 package battle
 
 import (

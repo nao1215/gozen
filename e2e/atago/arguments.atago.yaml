@@ -2,32 +2,37 @@ version: '1'
 suite:
   name: Gozen CLI argument and stream contracts
 scenarios:
-- name: rpgcheck top-level help
+- name: help for ${sub} through gozen help
+  matrix:
+  - sub: check
+  - sub: prompt
+  - sub: mosaic
+  - sub: version
   steps:
   - run:
-      command: rpgcheck --help
+      command: gozen help ${sub}
   - assert:
       exit_code: 0
       stdout:
         contains:
         - 'Requirements:'
-        - https://github.com/nao1215/gozen#rpgcheck
+        - https://github.com/nao1215/gozen#gozen
       stderr:
         equals: ''
       changes:
         created: []
         modified: []
         deleted: []
-- name: rpgtool top-level help
+- name: gozen top-level help
   steps:
   - run:
-      command: rpgtool --help
+      command: gozen --help
   - assert:
       exit_code: 0
       stdout:
         contains:
         - 'Requirements:'
-        - https://github.com/nao1215/gozen#rpgtool
+        - https://github.com/nao1215/gozen#gozen
       stderr:
         equals: ''
       changes:
@@ -48,15 +53,16 @@ scenarios:
   - sub: release
   - sub: trial
   - sub: shots
+  - sub: version
   steps:
   - run:
-      command: rpgtool ${sub} --help
+      command: gozen ${sub} --help
   - assert:
       exit_code: 0
       stdout:
         contains:
         - 'Requirements:'
-        - https://github.com/nao1215/gozen#rpgtool
+        - https://github.com/nao1215/gozen#gozen
       stderr:
         equals: ''
       changes:
@@ -77,9 +83,10 @@ scenarios:
   - sub: release
   - sub: trial
   - sub: shots
+  - sub: version
   steps:
   - run:
-      command: rpgtool ${sub} --unknown
+      command: gozen ${sub} --unknown
   - assert:
       exit_code: 2
       stdout:
@@ -90,24 +97,52 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject rpgcheck
+- name: gozen version prints one line
   steps:
   - run:
-      command: rpgcheck
+      command: gozen version
+  - assert:
+      exit_code: 0
+      stdout:
+        matches: '^gozen \S+\n$'
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject help for an unknown command
+  steps:
+  - run:
+      command: gozen help absent
   - assert:
       exit_code: 2
       stdout:
         equals: ''
       stderr:
-        contains: usage
+        contains: unknown command
       changes:
         created: []
         modified: []
         deleted: []
-- name: reject rpgcheck missing-game
+- name: reject gozen check -no-layout without a game
   steps:
   - run:
-      command: rpgcheck missing-game
+      command: gozen check -no-layout
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: expects one directory
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject gozen check -no-layout missing-game
+  steps:
+  - run:
+      command: gozen check -no-layout missing-game
   - assert:
       exit_code: 1
       stdout:
@@ -118,10 +153,10 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject rpgtool sim -n 0 unused troop
+- name: reject gozen sim -n 0 unused troop
   steps:
   - run:
-      command: rpgtool sim -n 0 unused troop
+      command: gozen sim -n 0 unused troop
   - assert:
       exit_code: 2
       stdout:
@@ -132,10 +167,10 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject rpgtool check unused extra
+- name: reject gozen check unused extra
   steps:
   - run:
-      command: rpgtool check unused extra
+      command: gozen check unused extra
   - assert:
       exit_code: 2
       stdout:
@@ -146,10 +181,10 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject rpgtool curve unused location -grind NaN
+- name: reject gozen curve unused location -grind NaN
   steps:
   - run:
-      command: rpgtool curve unused location -grind NaN
+      command: gozen curve unused location -grind NaN
   - assert:
       exit_code: 2
       stdout:
@@ -160,10 +195,10 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject rpgtool trial unused output -config ../escape.yaml
+- name: reject gozen trial unused output -config ../escape.yaml
   steps:
   - run:
-      command: rpgtool trial unused output -config ../escape.yaml
+      command: gozen trial unused output -config ../escape.yaml
   - assert:
       exit_code: 2
       stdout:
@@ -174,10 +209,10 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject rpgtool shots -raw unused list.yaml
+- name: reject gozen shots -raw unused list.yaml
   steps:
   - run:
-      command: rpgtool shots -raw unused list.yaml
+      command: gozen shots -raw unused list.yaml
   - assert:
       exit_code: 2
       stdout:

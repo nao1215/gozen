@@ -16,7 +16,7 @@ import (
 )
 
 func (c *command) sim(args []string) error {
-	fs := flag.NewFlagSet("rpgtool sim", flag.ContinueOnError)
+	fs := flag.NewFlagSet("gozen sim", flag.ContinueOnError)
 	n := fs.Int("n", 200, "battles to fight")
 	party := fs.String("party", "", "the party (actor ids, comma separated; default: the starting party)")
 	level := fs.Int("level", 0, "the party's level (default: each actor's own)")

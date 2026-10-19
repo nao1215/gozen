@@ -16,7 +16,7 @@ import (
 )
 
 func (c *command) trialCmd(args []string) (err error) {
-	fl := flag.NewFlagSet("rpgtool trial", flag.ContinueOnError)
+	fl := flag.NewFlagSet("gozen trial", flag.ContinueOnError)
 	conf := fl.String("config", "trial.yaml", "範囲の設定（game dir からの相対パス）")
 	overlay := fl.String("overlay", "", "差し替えのディレクトリ（-inspect も必須）")
 	inspect := fl.String("inspect", "", "制作側の検査記録（JSON Lines）。差し替え時は必須")

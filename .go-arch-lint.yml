@@ -44,9 +44,8 @@ components:
   private4: { in: "internal/layer4/**" }
   private5: { in: "internal/layer5/**" }
   private6: { in: "internal/layer6/**" }
-  commands: { in: ["cmd/rpgtool/**", "cmd/rpgcheck/**", "cmd/internal/**"] }
-  promptgenCommand: { in: "cmd/promptgen/**" }
-  mosaicCommand: { in: "cmd/mosaic/**" }
+  # One CLI (ADR 0016): gozen owns prompt and mosaic through their internal command packages.
+  commands: { in: ["cmd/gozen/**", "cmd/internal/**"] }
   promptgen: { in: "internal/promptgen/**" }
   mosaic: { in: "internal/mosaic/**" }
   experiments: { in: "x/**" }
@@ -109,12 +108,8 @@ deps:
     mayDependOn: [private6, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]
   commands:
-    mayDependOn: [commands, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, private1, private2, private3, private4, private5]
+    mayDependOn: [commands, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, private1, private2, private3, private4, private5, promptgen, mosaic]
     canUse: [yaml, ebiten, image]
-  promptgenCommand:
-    mayDependOn: [promptgen]
-  mosaicCommand:
-    mayDependOn: [mosaic]
   promptgen:
     mayDependOn: [promptgen, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless]
     canUse: [yaml, image]

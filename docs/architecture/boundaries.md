@@ -13,10 +13,9 @@
 | `internal/layerN/` | 第 N 層で共有する小さな実装 | 同じ層以上からだけ利用 |
 | `internal/testgame/` | 新しく作る中立のテストデータの組立て | テスト専用、T2 で中立のゲームを新規作成 |
 | `internal/dev/`、`api/` | 開発時の API 検査 | 実行時から利用しない |
-| `cmd/rpgtool`、`cmd/rpgcheck` | 汎用の制作・検査 CLI | ライブラリから利用しない |
+| `cmd/gozen` | 唯一の CLI。汎用の制作・検査と、制作支援のサブコマンドへの振り分け | ライブラリから利用しない |
 | `x/adv`、`x/village`、`x/tactics`、`x/designeval`、`x/balance` | 将来の実験の予約領域。現在は `.gitkeep` のみで利用できる Go パッケージはない | 互換性を約束しない |
-| `cmd/promptgen`、`cmd/mosaic` | 制作支援 CLI の入口 | ライブラリ・汎用 CLI から利用しない |
-| `internal/promptgen/`、`internal/mosaic/`（配下を含む） | 各制作支援 CLI 専用の実装 | 対応する CLI と自身の実装だけから利用 |
+| `internal/promptgen/`、`internal/mosaic/`（配下を含む） | `gozen prompt`・`gozen mosaic` 専用の実装。入口は各 `command` パッケージ | `cmd/gozen` と自身の実装だけから利用 |
 | `examples/` | 新規の一般向けサンプル | 公開 API の利用例 |
 
 T2 で第 1〜4 層、T3 で第 5・6 層の公開 API を提供します。[中核 API](core-api.md) と [表示 API](presentation-api.md) に用途と所有権をまとめます。`api/public.txt:1` が現在の宣言一覧です。将来の `x/` の識別子も一覧に入れますが、それによって安定契約にはなりません。

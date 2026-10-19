@@ -20,15 +20,15 @@ Windows では Make や Bash がない前提です。リポジトリのルート
 
 | Make | 同じ処理を直接実行 | 現在の対象 |
 | --- | --- | --- |
-| `make test` | `go test ./...` | 中核・4 CLI と internal・サンプル・API・開発道具の契約テスト |
+| `make test` | `go test ./...` | 中核・`gozen` と internal・サンプル・API・開発道具の契約テスト |
 | `make arch` | `go-arch-lint check` | runtime の import と vendor、深い依存検査 |
 | `make api` | `go test ./api -count=1` | golden と現在の公開識別子の照合 |
 | `make workflows` | `actionlint` | GitHub Actions workflow の構文・式・シェル検査 |
 | `make api-update` | `go run ./internal/dev/apigen` | レビューする一覧の更新 |
 | `make lint` | `go-arch-lint check`、`go test ./api -count=1`、`actionlint`、`golangci-lint run ./...`、`golangci-lint fmt --diff` を順に実行 | 依存・API・workflow・静的解析・整形 |
-| `make build` | `go build -trimpath -buildvcs=false ./...` | 中核・4 CLI と internal・サンプル・開発道具のコンパイル |
+| `make build` | `go build -trimpath -buildvcs=false ./...` | 中核・`gozen` と internal・サンプル・開発道具のコンパイル |
 | `make graphics` | `go test -tags=graphics ./runner -run TestGraphicsScreens -count=1` | 5 画面の実ループ・PNG 検査。Linux は Xvfb で包む |
-| `make e2e` | [CLI の直接手順](cli.md#e2e) | 全 4 CLI の atago v0.25.2 による契約検査 |
+| `make e2e` | [CLI の直接手順](cli.md#e2e) | `gozen` の全サブコマンドの atago v0.25.2 による契約検査 |
 | `make e2e-graphics` | `atago run --ci --parallel 1 --tag graphics e2e/atago`（ビルドと PATH 設定は CLI の手順参照） | ゲーム子プロセスの撮影 E2E。Linux は Xvfb で包む |
 
 `e2e` は T4 で実際のバイナリと atago の検証に置き換えました。`graphics` は T3 の画面テスト、`e2e-graphics` は T4 の CLI 撮影パイプラインです。前提不足による失敗を成功や skip として数えません。
@@ -37,7 +37,7 @@ Windows では Make や Bash がない前提です。リポジトリのルート
 
 `make cli-build` と `make e2e-graphics`、CI の個別バイナリ生成では `-ldflags=-compressdwarf=false` も指定します。デバッグ情報を残したまま DWARF の圧縮を無効にし、圧縮データの偶然のバイト列を `strings` による内容照合で文字列として拾う問題を避けます。バイナリは圧縮時より大きくなります。内容検査の対象や判定条件は変えません。
 
-モジュールはルートの 1 つです。4 つの `cmd/` と `internal/promptgen`・`internal/mosaic` は同じ `./...` の検査対象です。`tools/` の個別検査や `go.work` は不要です。T5 で制作支援も実装し、通常検査と atago E2E に含めました。
+モジュールはルートの 1 つです。`cmd/gozen` と `internal/promptgen`・`internal/mosaic` は同じ `./...` の検査対象です。`tools/` の個別検査や `go.work` は不要です。T5 で制作支援も実装し、通常検査と atago E2E に含めました。
 
 ## 描画の検査
 
@@ -53,7 +53,7 @@ CLI は `e2e/atago/` に新規の中立 spec を作り、atago で終了コー�
 
 ## CI
 
-T7 の構成・OS・権限・固定したツール・依存更新は [CI の構成](ci.md) にまとめました。通常の lint・unit・build に加え、graphics、4 CLI の atago E2E、独立した examples、Linux の race、govulncheck、CodeQL を配線しています。ONNX の cgo コンパイルとモデル未指定時の skip 理由は独立した inference-build で確認します。定義したジョブと、実際のリモート実行結果を区別してください。公開前は [リリース点検](release-checklist.md) に従って実行結果と未確認事項を確認してください。
+T7 の構成・OS・権限・固定したツール・依存更新は [CI の構成](ci.md) にまとめました。通常の lint・unit・build に加え、graphics、`gozen` の atago E2E、独立した examples、Linux の race、govulncheck、CodeQL を配線しています。ONNX の cgo コンパイルとモデル未指定時の skip 理由は独立した inference-build で確認します。定義したジョブと、実際のリモート実行結果を区別してください。公開前は [リリース点検](release-checklist.md) に従って実行結果と未確認事項を確認してください。
 
 ## T2 の追加検査
 

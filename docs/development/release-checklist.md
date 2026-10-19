@@ -29,5 +29,5 @@ ONNX 実推論は利用者指定のモデルと共有ライブラリを準備し
 
 - Linux では `xvfb-run --auto-servernum --error-file=/dev/stderr bash scripts/capture-example.sh` でサンプルを撮影します。保存・復元と最終位置、GIF の寸法・枚数・長さの検査が成功することを確認し、PNG と GIF の表示内容も目視します。
 - 画像と動画は一般向けのサンプルから作り、[素材台帳](../../ASSETS.md) と説明を揃えます。
-- 配布用ビルドは `-trimpath -buildvcs=false` を使います。`make cli-build` で 4 CLI を生成し、文字列とビルド情報を点検します。
-- タグ公開後は、README の 4 つの `go install ...@version` をリポジトリ外のクリーンな環境で確認します。公開前には未確認であることを明記します。
+- 配布用ビルドは `-trimpath -buildvcs=false` を使います。`make cli-build` で `bin/gozen` を生成し、文字列とビルド情報を点検します。
+- タグ公開後は、README の `go install github.com/nao1215/gozen/cmd/gozen@version`（cgo あり・なしの両方） をリポジトリ外のクリーンな環境で確認します。公開前には未確認であることを明記します。
