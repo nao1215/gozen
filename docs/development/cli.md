@@ -29,7 +29,7 @@ OS のパスは引用して渡せます。フラグは位置引数の前後に�
 | `gozen check <game-dir>` | 定義・参照・式・素材の存在と文字レイアウトを検査。警告は stderr |
 | `gozen check -no-layout <game-dir>` | フォントの解析と文字レイアウトを省き、構造だけを検査。レイアウトは未検査と stdout に明示 |
 | `gozen layout <game-dir>` | ゲームのフォントと表示規則で会話・選択肢の文字の収まりを検査。警告だけなら 0 |
-| `gozen sim <game-dir> <troop> -n 100 -seed 7` | AUTO 戦闘の勝敗・平均ターン。party・level・gear・turns 等は help。`-state <file>` は保存データ（F9 のメモの `.save`）の一行を全回復して始め、`-hp` は勝った後の残り HP の帯を出す。開発用のバランス表示（F7）と同じ数になる |
+| `gozen sim <game-dir> <troop> -n 100 -seed 7` | AUTO 戦闘の勝敗・平均ターン。party・level・gear・turns 等は help。`-state <file>` は保存データ（F9 のメモの `.save`）の一行を全回復して始め（`-as-is` を足すと保存された HP・MP・状態のまま）、`-hp` は勝った後の残り HP の帯、`-streak N` は回復せずに続けて勝てた数（上限 N）を出す。開発用のバランス表示（F7）と同じ数になる |
 | `gozen curve <game-dir> <location> -floors 3 -battles 5` | 階別の成長と戦闘集計。boss・shops・rest・supplies 等を指定可能 |
 | `gozen floors <game-dir> <location> -floor 1 -try 3` | 生成迷宮の地図・歩数・遭遇の目安とシード比較 |
 | `gozen trace <trace.jsonl> -only say,battle` | JSONL を時系列表示。`-check` は立ち絵と音楽の記録を検査し、不備があれば 1 |

@@ -24,6 +24,8 @@ func (c *command) sim(args []string) error {
 	tree := fs.Bool("tree", true, "spend the skill points (on the open node of the lowest level, evenly)")
 	gear := fs.String("gear", "", "items to give the party and wear where they fit best (comma separated)")
 	state := fs.String("state", "", "start from this saved state (a note's .save from F9) with everyone recovered, instead of a new game")
+	asIs := fs.Bool("as-is", false, "with -state: keep the saved HP, MP and states instead of recovering everyone")
+	streak := fs.Int("streak", 0, "also fight the troop again and again without recovery from each start, up to this many wins, and print how many were won in a row")
 	hpBand := fs.Bool("hp", false, "also print the party's HP left after a win (10th, 50th and 90th percentile)")
 	if err := c.parse(fs, args); err != nil {
 		return err
@@ -42,7 +44,13 @@ func (c *command) sim(args []string) error {
 	if db.Troops[troop] == nil {
 		return fmt.Errorf("unknown troop %q", troop)
 	}
-	prep := balance.Prep{Level: *level, Tree: *tree, Gear: commaList(*gear)}
+	if *asIs && *state == "" {
+		return cli.Invalid("-as-is needs -state")
+	}
+	if *streak < 0 {
+		return cli.Invalid("-streak must be nonnegative")
+	}
+	prep := balance.Prep{Level: *level, Tree: *tree, Gear: commaList(*gear), AsIs: *asIs}
 	var start balance.Start
 	if *state != "" {
 		if *party != "" {
@@ -82,6 +90,14 @@ func (c *command) sim(args []string) error {
 		troop, *n, pct(o.Won, *n), pct(o.Lost, *n), pct(o.Fled, *n), pct(o.Draw, *n), o.AvgTurns(), o.AvgStanding())
 	if lo, mid, hi, ok := o.HPBand(); ok && *hpBand {
 		c.out.Printf("hp left after a win: p10 %.0f%%  median %.0f%%  p90 %.0f%%\n", 100*lo, 100*mid, 100*hi)
+	}
+	if *streak > 0 {
+		wins, err := balance.Streak(db, troop, *n, *maxTurns, *streak, start)
+		if err != nil {
+			return err
+		}
+		c.out.Printf("wins in a row without recovery (up to %d): p10 %d  median %d  p90 %d\n", *streak,
+			balance.Percentile(wins, 0.1), balance.Percentile(wins, 0.5), balance.Percentile(wins, 0.9))
 	}
 	return nil
 }

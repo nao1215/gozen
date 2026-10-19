@@ -138,3 +138,47 @@ func TestHereAndBand(t *testing.T) {
 		t.Fatal("empty odds")
 	}
 }
+
+func TestAsIsAndStreak(t *testing.T) {
+	db := testgame.Load(t, nil)
+	st := testgame.State(db, 3)
+	a := st.Members()[0]
+	a.HP, a.MP = 9, 0
+	a.States["poison"] = 3
+	save, err := st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := SavedStart(db, save, 1, Prep{AsIs: true})(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m := c.Members()[0]; m.HP != 9 || m.MP != 0 || m.States["poison"] != 3 {
+		t.Fatalf("as-is start changed the party: %d %d %v", m.HP, m.MP, m.States)
+	}
+	hurt, err := Sim(db, "two", 40, 60, SavedStart(db, save, 1, Prep{AsIs: true}), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	healed, err := Sim(db, "two", 40, 60, SavedStart(db, save, 1, Prep{}), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hurt.WinRate() >= healed.WinRate() {
+		t.Fatalf("hurt %v healed %v", hurt.WinRate(), healed.WinRate())
+	}
+	full, err := Streak(db, "one", 20, 60, 6, SavedStart(db, save, 1, Prep{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	low, err := Streak(db, "one", 20, 60, 6, SavedStart(db, save, 1, Prep{AsIs: true}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if Percentile(full, 0.5) <= Percentile(low, 0.5) || Percentile(full, 1) > 6 {
+		t.Fatalf("full %v low %v", full, low)
+	}
+	if Percentile(nil, 0.5) != 0 || Percentile([]int{4, 1, 3}, 0.5) != 3 {
+		t.Fatal("percentile")
+	}
+}

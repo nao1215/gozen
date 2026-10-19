@@ -100,8 +100,9 @@ func (o *Odds) Add(b *battle.Battle) {
 // Start は i 戦目（0 から）の始まりの状態を作る。毎回新しい状態を返す。
 type Start func(i int) (*rpg.State, error)
 
-// Prep は始まりの状態への手直し（gozen sim の -level・-tree・-gear）。ゼロ値は何もしない。
+// Prep は始まりの状態への手直し（gozen sim の -level・-tree・-gear・-as-is）。ゼロ値は何もしない。
 type Prep struct {
+	AsIs  bool     // SavedStart で全回復せず、保存された HP・MP・状態のまま始める（-level の Lv 上げは回復する）
 	Level int      // 0 より大きければ、各仲間をこの Lv の経験値にして全回復する
 	Tree  bool     // スキルの点を振る
 	Gear  []string // 一行の人数ぶん袋に入れ、一番合う所に着ける
@@ -154,20 +155,60 @@ func FreshStart(db *data.DB, seed uint64, party []string, p Prep) Start {
 	}
 }
 
-// SavedStart は保存データ save（rpg.State.Save の形、F9 のメモの .save）の一行を全回復した状態。
-// i 戦目の乱数は PCG(seed, i)。手直し p は全回復の後に当てる。
+// SavedStart は保存データ save（rpg.State.Save の形、F9 のメモの .save）の一行を全回復した状態
+// （p.AsIs なら保存された HP・MP・状態のまま）。i 戦目の乱数は PCG(seed, i)。手直し p は回復の後に当てる。
 func SavedStart(db *data.DB, save []byte, seed uint64, p Prep) Start {
 	return func(i int) (*rpg.State, error) {
 		st, err := rpg.Parse(db, save, rand.New(rand.NewPCG(seed, uint64(i)))) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
 		if err != nil {
 			return nil, err
 		}
-		recoverAll(st)
+		if !p.AsIs {
+			recoverAll(st)
+		}
 		if err := p.apply(db, st); err != nil {
 			return nil, err
 		}
 		return st, nil
 	}
+}
+
+// StreakOne は st の一行が回復せずに troop と続けて戦い、負けるか引き分けるか逃げるまでに
+// 勝った回数（最大 limit）。戦闘の間は battle.End で HP・MP・状態・経験値を一行に戻す。st は変わる。
+func StreakOne(db *data.DB, st *rpg.State, troop string, maxTurns, limit int) int {
+	wins := 0
+	for wins < limit {
+		b := Try(db, st, troop, maxTurns, nil)
+		b.End()
+		if b.Result != battle.Won {
+			break
+		}
+		wins++
+	}
+	return wins
+}
+
+// Streak は start の i 番目の始まりごとの StreakOne（gozen sim -streak）。
+func Streak(db *data.DB, troop string, n, maxTurns, limit int, start Start) ([]int, error) {
+	out := make([]int, 0, n)
+	for i := range n {
+		st, err := start(i)
+		if err != nil {
+			return out, err
+		}
+		out = append(out, StreakOne(db, st, troop, maxTurns, limit))
+	}
+	return out, nil
+}
+
+// Percentile は並べた値の p 点（0..1、最も近い順位）。空なら 0。
+func Percentile(v []int, p float64) int {
+	if len(v) == 0 {
+		return 0
+	}
+	s := append([]int(nil), v...)
+	sort.Ints(s)
+	return s[int(p*float64(len(s)-1)+0.5)]
 }
 
 // Sim は start の始まりから troop と n 回戦った集計（gozen sim）。seen は戦闘番号と Step を受ける。
