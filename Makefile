@@ -30,6 +30,7 @@ api-update:
 # Requires a display; Linux CI wraps this target with xvfb-run.
 graphics:
 	$(GO) test -tags=graphics ./runner -run TestGraphicsScreens -count=1
+	$(GO) test -tags=graphics ./puppet -run TestGraphics -count=1
 
 cli-build:
 	mkdir -p bin

@@ -38,6 +38,8 @@ components:
   gfx: { in: [gfx, "gfx/internal/**", "internal/gfx/**"] }
   sound: { in: [sound, "sound/internal/**", "internal/sound/**"] }
   play: { in: [play, "play/internal/**", "internal/play/**"] }
+  # Moving portraits (ADR 0020); the shared implementation is internal/layer5/puppet.
+  puppet: { in: [puppet, "puppet/internal/**"] }
   runner: { in: [runner, "runner/internal/**", "internal/runner/**"] }
   private1: { in: "internal/layer1/**" }
   private2: { in: "internal/layer2/**" }
@@ -101,17 +103,20 @@ deps:
   play:
     mayDependOn: [play, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]
+  puppet:
+    mayDependOn: [puppet, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, private1, private2, private3, private4, private5]
+    canUse: [ebiten, image]
   private5:
     mayDependOn: [private5, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, private1, private2, private3, private4]
     canUse: [ebiten, image]
   runner:
-    mayDependOn: [runner, clihelp, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, private1, private2, private3, private4, private5, private6]
+    mayDependOn: [runner, clihelp, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, puppet, private1, private2, private3, private4, private5, private6]
     canUse: [ebiten, image, pflag]
   private6:
-    mayDependOn: [private6, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, private1, private2, private3, private4, private5]
+    mayDependOn: [private6, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, puppet, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]
   commands:
-    mayDependOn: [commands, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, private1, private2, private3, private4, private5, promptgen, mosaic, clihelp]
+    mayDependOn: [commands, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, puppet, private1, private2, private3, private4, private5, promptgen, mosaic, clihelp]
     canUse: [yaml, ebiten, image, pflag]
   clihelp:
     mayDependOn: [clihelp]
@@ -123,10 +128,10 @@ deps:
     mayDependOn: [mosaic, expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, clihelp]
     canUse: [yaml, image, onnx, pflag]
   experiments:
-    mayDependOn: [expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, runner]
+    mayDependOn: [expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, puppet, runner]
     canUse: [yaml, ebiten, image]
   examples:
-    mayDependOn: [expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, runner]
+    mayDependOn: [expr, text, assetfs, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, sound, play, puppet, runner]
     canUse: [ebiten, image]
   dev:
     mayDependOn: [dev]

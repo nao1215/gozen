@@ -137,7 +137,7 @@ jobs:
       # Local Linux results do not establish these runners can render.
       - name: Render on the native desktop
         if: runner.os != 'Linux'
-        run: go test -tags=graphics ./runner -run TestGraphicsScreens -count=1
+        run: go test -tags=graphics ./runner ./puppet -run TestGraphics -count=1
       - name: Capture the CLI screenshot pipeline on Linux
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum --error-file=/dev/stderr make e2e-graphics
