@@ -17,7 +17,7 @@ var topPage = clihelp.Page{
 	Usage:   []string{"gozen <command> [OPTIONS] [ARGUMENTS]", "gozen help <command>"},
 	About: "gozen reads a game directory (game.yaml, data/, assets/) and checks the definitions, " +
 		"fights AUTO battles, measures the growth curve, documents the events, builds release " +
-		"and trial trees, and takes screenshots. Results go to stdout, diagnostics to stderr. " +
+		"and trial trees, takes screenshots, and checks moving portraits. Results go to stdout, diagnostics to stderr. " +
 		"Exit status: 0 for success and help, 1 when a check, I/O, simulation, or capture fails, " +
 		"2 for invalid arguments.",
 	Commands: [][2]string{
@@ -33,6 +33,7 @@ var topPage = clihelp.Page{
 		{"release", "Build a release tree with approved assets only"},
 		{"trial", "Build a trial tree with the reachable part of the game"},
 		{"shots", "Launch the game and take the screenshots of a list"},
+		{"puppet", "Check a moving portrait and cut its difference pictures"},
 		{"prompt", "Assemble image-generation text from a catalog"},
 		{"mosaic", "Pixelate regions of images, with optional ONNX detection"},
 		{"version", "Print the gozen version"},
@@ -247,6 +248,21 @@ var pages = map[string]clihelp.Page{
 				"(sudo apt-get install xvfb xauth). A failed launch is recorded in the work tree and exits 1. " +
 				"See " + clihelp.README,
 		},
+	},
+	"puppet": {
+		Summary: "check a moving portrait and cut its difference pictures",
+		Usage:   []string{"gozen puppet [OPTIONS] <puppet.yaml>"},
+		About: "Loads a puppet (a moving portrait for the puppet package) with the same checks as puppet.Load " +
+			"and prints where each face, closed-eyes, and mouth picture lies on the base. A difference " +
+			"picture as large as the base is cut down to the part that differs. With --out, writes the " +
+			"puppet YAML and the cut pictures (each with at) to a new directory, so the game ships small " +
+			"pictures. The written YAML has no comments.",
+		Examples: []clihelp.Example{
+			{"check a puppet and show the positions", "gozen puppet streamer/puppet.yaml"},
+			{"write it with small difference pictures", "gozen puppet streamer/puppet.yaml --out streamer-packed"},
+		},
+		Groups: []clihelp.Group{{Title: "Output", Flags: []string{"out"}}, general},
+		Notes:  []string{"The output directory must not exist yet. " + noRequirements},
 	},
 	"version": {
 		Summary:  "print the gozen version",

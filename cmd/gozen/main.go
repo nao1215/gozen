@@ -121,6 +121,8 @@ func (c *command) execute(args []string) error {
 		return c.trialCmd(args)
 	case "shots":
 		return c.shots(args)
+	case "puppet":
+		return c.puppetCmd(args)
 	case "version":
 		f := clihelp.NewFlagSet("gozen version")
 		if err := c.parse(f, args); err != nil {
