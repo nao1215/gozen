@@ -1,0 +1,30 @@
+name: gitleaks
+
+# Scans the commits of a pull request for committed secrets. While the
+# repository is private the job is skipped to save the Actions budget
+# (docs/development/ci.md); run `gitleaks git` locally instead.
+on: [pull_request]
+
+permissions:
+  contents: read
+  # The action lists the PR's commits to scope its scan, so it needs read
+  # access to pull requests; contents alone 403s on that call.
+  pull-requests: read
+
+jobs:
+  scan:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Dependabot-triggered runs get a read-only GITHUB_TOKEN, and the action's
+    # PR-commit listing 403s with it. Version bumps carry no secrets to scan.
+    if: ${{ !github.event.repository.private && github.actor != 'dependabot[bot]' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
