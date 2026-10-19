@@ -41,7 +41,7 @@ Windows では Make や Bash がない前提です。リポジトリのルート
 
 ## 描画の検査
 
-描画を行うテストは `graphics` build tag に分けています。Linux は `xvfb-run --auto-servernum --error-file=/dev/stderr make graphics`、Windows・macOS はデスクトップで表の直接コマンドを実行します。5 シナリオを別プロセスで実行し、game loop 内でピクセルを読み、画像の内容と正常終了を検査します。音声はミュートします。
+描画を行うテストは `graphics` build tag に分けています。Linux は `xvfb-run --auto-servernum --error-file=/dev/stderr make graphics`、Windows・macOS はデスクトップで表の直接コマンドを実行します。6 シナリオを別プロセスで実行し、game loop 内でピクセルを読み、画像の内容と正常終了を検査します。音声はミュートします。
 
 OS ごとの準備、サンプル、入力スクリプトは [画面の開発](graphics.md) にあります。通常テスト、クロスビルド、Xvfb の準備だけを描画の成功とは数えません。T3 では環境制限で実描画の検収が残っていました。T6 で Linux の 5 画面テストとサンプルの撮影を実行しました。Windows・macOS の実描画と実音声は未確認です。
 

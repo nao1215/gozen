@@ -37,7 +37,7 @@ xvfb-run --auto-servernum --error-file=/dev/stderr make graphics
 go test -tags=graphics ./runner -run TestGraphicsScreens -count=1
 ```
 
-タイトル・フィールド・会話・戦闘・dungeon の 5 シナリオを別プロセスで起動する。シードを固定し、テスト専用の保存先を使い、Draw 内で PNG を取得する。PNG の復号、960×540 の大きさ、単色でない内容、プロセスの正常終了を検査する。ピクセル完全一致の golden ではなく、配置や文字の見た目の品質は別に確認が必要。音声デバイスはミュートする。
+タイトル・フィールド・会話・戦闘・dungeon・バランス表示（F7）の 6 シナリオを別プロセスで起動する。シードを固定し、テスト専用の保存先を使い、Draw 内で PNG を取得する。PNG の復号、960×540 の大きさ、単色でない内容、プロセスの正常終了を検査する。ピクセル完全一致の golden ではなく、配置や文字の見た目の品質は別に確認が必要。音声デバイスはミュートする。
 
 Xvfb や描画環境がない場合は失敗する。skip や単なるコンパイルを描画の成功として扱わない。Xvfb 自体がソケットを作れる実行権限も必要になる。
 
@@ -60,3 +60,30 @@ go run ./examples/play --dev --mute --seed 7 --start camp --script script.txt --
 `--trace trace.jsonl` で入力と進行の記録、`--replay trace.jsonl` で再現照合、`--record output.mp4` で録画する。録画はスクリプト・自動操作・再現のいずれかが必要。詳細なフラグは `--help` を参照する。長時間再現と ffmpeg の統合実行は T3 ローカルでは未確認。
 
 メモは `--dev --memos notes` のとき F9 で作成する。画面、状態、注記を記録し、JSON を最後に確定する。ビルド revision の追加は `--build-info`、Linux の外部入力は `--external-input` で個別に有効化する。ソース探索や Git 実行は行わない。
+
+## バランス表示
+
+`--dev` で遊んでいる間、F7 でバランス表示を出し入れする。スクリプトでは `press graphs`。F2・F5・F9・F10・F11 とは別のキーで、`--dev` なしでは働かない。
+
+![Wayfinder の洞窟でのバランス表示](../images/wayfinder-balance.jpg)
+
+- 今いる場所で出会う敵の群れごとの行。遭遇の重みの割合（`encounters`、when の成り立つ物）、場所の行動の `battle`、戦闘中ならその群れ（先頭に置いて色を付ける）。最大 6 行。
+- 勝率の棒、勝った後の一行の残り HP の帯（10%〜90% 点の帯と中央値の線）、平均ターン。
+- Lv ごとの勝率の線。今の Lv（一行でいちばん高い Lv）から 5 Lv 上まで。各点は全員をその Lv の経験値にした場合（`gozen sim -level`）。
+
+数字は今の一行を全回復した状態から、`gozen sim -n 200 -seed 1 -turns 60` と同じ関数・同じ乱数の種（i 戦目は `PCG(1, i)`）で数える。F9 のメモの `.save` を渡すと、端末で同じ数を確かめられる（メモがイベントの途中なら、イベントの始まりの状態になる）。
+
+```sh
+go run ./cmd/gozen sim <game-dir> <troop> -state notes/<date>/<number>.save -hp
+go run ./cmd/gozen sim <game-dir> <troop> -state notes/<date>/<number>.save -level 4
+```
+
+計算はゲームの更新の中で 1 フレーム 3ms までに分け、別の goroutine でゲームの状態や定義を読まない。ゲームの状態・乱数は変えない。表示を閉じている間は計算しない。`--dir` で起動して F5 で読み直す（DB が替わる）と、場所を移ると、一行の Lv・経験値・装備・スキルの木が変わると測り直す。画面の文字は `lang.T` を通すので、`game.yaml` の `text` で言い換えられる（Wayfinder は英語に置き換えている）。
+
+見せ用の画像 `docs/images/wayfinder-balance.jpg` は次で作り直す。`scripts/capture-balance.txt` の入力で Wayfinder を洞窟から始め、F7 を押して測り終えるまで待って撮り、960×540 の JPEG にする。
+
+```sh
+xvfb-run --auto-servernum --error-file=/dev/stderr bash scripts/capture-balance.sh
+```
+
+`make graphics` の `balance` の場面も同じ表示を撮り、右上に勝率の棒の色が出ることを確かめる。

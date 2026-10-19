@@ -227,7 +227,7 @@ func (g *Game) traceSaves() (map[string]string, error) {
 var buttonNames = [numButtons]string{
 	btnUp: "up", btnDown: "down", btnLeft: "left", btnRight: "right", btnOK: "ok", btnCancel: "cancel",
 	btnMenu: "menu", btnLog: "log", btnAuto: "auto", btnHide: "hide", btnConfig: "config", btnNext: "next",
-	btnMemo: "memo", btnReload: "reload", btnTag: "tag",
+	btnMemo: "memo", btnReload: "reload", btnTag: "tag", btnGraphs: "graphs",
 }
 
 func (g *Game) traceInput() {

@@ -30,6 +30,7 @@ const (
 	btnMemo
 	btnReload
 	btnTag
+	btnGraphs
 	numButtons
 
 	btnNone button = -1
@@ -51,6 +52,7 @@ var keys = [numButtons][]ebiten.Key{
 	btnMemo:   {ebiten.KeyF9},
 	btnReload: {ebiten.KeyF5},
 	btnTag:    {ebiten.KeyF10},
+	btnGraphs: {ebiten.KeyF7},
 }
 
 var (
@@ -356,7 +358,7 @@ var scriptButtons = map[string]button{
 	"z": btnOK, "ok": btnOK, "enter": btnOK, "x": btnCancel, "cancel": btnCancel, "menu": btnMenu,
 	"tab": btnNext, "up": btnUp, "down": btnDown, "left": btnLeft, "right": btnRight,
 	"log": btnLog, "auto": btnAuto, "hide": btnHide, "config": btnConfig, "memo": btnMemo,
-	"reload": btnReload, "tag": btnTag,
+	"reload": btnReload, "tag": btnTag, "graphs": btnGraphs,
 }
 
 func (s *script) midEvent(in *input, name string) {

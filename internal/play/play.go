@@ -302,6 +302,8 @@ type Game struct {
 	quickN    int
 
 	live liveState
+
+	graphs graphPanel
 }
 
 func New(opts Options) (_ *Game, err error) {
@@ -630,6 +632,9 @@ func (g *Game) Update() error {
 		return nil
 	}
 	g.updateLive()
+	if g.opts.Development {
+		g.updateGraphs()
+	}
 	if g.auto != nil && len(g.stack) > 0 {
 		g.auto.step(g)
 	}
@@ -780,6 +785,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	g.drawTag(screen)
 	g.drawMemoToast(screen)
+	g.drawGraphs(screen)
 	g.drawLiveNotice(screen)
 	g.drawLoadNotice(screen)
 	if len(g.quick) > 0 {

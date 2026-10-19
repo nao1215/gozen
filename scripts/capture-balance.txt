@@ -1,0 +1,9 @@
+# Wayfinder balance panel (F7, --dev). Started in the grotto at Lv.1 with --seed 7.
+# The panel measures 3 troops x 6 levels x 200 battles inside the game loop; 1200 ticks is enough under Xvfb.
+wait 30
+press graphs
+wait 20
+press down
+wait 1200
+shot balance
+quit
