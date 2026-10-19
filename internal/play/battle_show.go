@@ -173,7 +173,7 @@ func (s *battleScene) drawCutIn(g *Game, dst *ebiten.Image) {
 	gfx.DrawTextOutlineColor(dst, c.u.Name, nx, cy-54, sizeM, g.th.text, g.th.window, a)
 	gfx.DrawTextOutlineColor(dst, c.name, nx, cy-12, sizeL*1.5, colorWhite, accent, a)
 	if c.line != "" {
-		gfx.DrawTextOutlineColor(dst, "「"+c.line+"」", nx, cy+50, sizeM, g.th.text, g.th.window, a)
+		gfx.DrawTextOutlineColor(dst, fmt.Sprintf(lang.T("「%s」"), c.line), nx, cy+50, sizeM, g.th.text, g.th.window, a)
 	}
 }
 
