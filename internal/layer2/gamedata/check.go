@@ -233,6 +233,12 @@ func (db *DB) Check() []error {
 			c.errorf(diag.OutOfRange, "game.yaml ui.balloon", "want a fraction of the screen's height in [0.01, 0.2], got %g", g.UI.Balloon)
 		}
 	}
+	if r := g.UI.Rollback; r != nil {
+		c.needsVersion("game.yaml ui.rollback", "ui.rollback", SchemaVersion4)
+		if *r < 0 || *r > MaxRollback {
+			c.errorf(diag.OutOfRange, "game.yaml ui.rollback", "want 0 to %d earlier events (0 turns rolling back off), got %d", MaxRollback, *r)
+		}
+	}
 	if tp := g.UI.TalkPortrait; tp != (TalkPortrait{}) {
 		c.needsVersion("game.yaml ui.talk_portrait", "ui.talk_portrait", SchemaVersion3)
 		if tp.X < 0 || tp.X > 1 || tp.Bottom < 0 || tp.Bottom > 4 || tp.Height < 0 || tp.Height > 4 {

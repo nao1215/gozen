@@ -540,6 +540,7 @@ github.com/nao1215/gozen/schema method DB.SceneWarnings
 github.com/nao1215/gozen/schema method DB.SetWarnings
 github.com/nao1215/gozen/schema method DB.StandIn
 github.com/nao1215/gozen/schema method DB.StateRegistry
+github.com/nao1215/gozen/schema method DB.StateUses
 github.com/nao1215/gozen/schema method DB.Uses
 github.com/nao1215/gozen/schema method Diagnostics.Error
 github.com/nao1215/gozen/schema method Diagnostics.Unwrap

@@ -30,6 +30,7 @@ UIStyle:
   field_notices: "Whether to show small notices on the field. The default is true."
   message: "The message window style: `box` (a framed box, the default) or `novel` (across the bottom like a visual novel)."
   name_tag: "The color of the speaker's name tag."
+  rollback: "How many earlier events the player can roll back into, besides the one running, from 0 to 64. The default is 8, and 0 turns rolling back off; needs schema version 4."
   sfx_vary: "How much repeated sound effects vary in pitch and volume."
   shadow: "The text shadow color."
   stage_drop: "Per standing picture, how far to move it down as a fraction of the screen height, to even out heights. The default is 0."

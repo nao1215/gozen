@@ -32,6 +32,11 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0022](0022-maps-and-painted-scenes.md) | Maps and painted scenes: rules are points, looks are pictures | Accepted (stages 0 to 4 done) | |
 | [0023](0023-verified-docs.md) | Checking the images and steps in the README and the site (image ledger, running the steps, links) | Accepted | |
 | [0024](0024-command-tree-and-diagnostic-codes.md) | A command tree of six tools, and diagnostic codes | Accepted | |
+| [0025](0025-replay-to-roll-back-skip-and-resume.md) | Replay to roll back, skip and resume (`schema_version: 4`, save format version 2) | Accepted (stage 0 done) | |
+| [0026](0026-read-lines-and-skipping.md) | Read lines keyed by their source, a versioned record, skip mode and scene skip | Accepted | |
+| [0027](0027-text-languages.md) | The languages of a game's text (source to translation) | Accepted | |
+| [0028](0028-staging-and-voice-words.md) | The words of staging and voice (`stand`, the map forms of `effect`, `music`, `wait`, `sfx`; `say.voice`) | Accepted | |
+| [0029](0029-dev-panel.md) | The development panel (F8) and one index of where names are written and read | Accepted (stage 0 done) | |
 
 The source of truth for the current public packages is `api/public.txt` and [Boundaries](../architecture/boundaries.md), not this list of ADRs.
 

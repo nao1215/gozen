@@ -13170,6 +13170,19 @@
           },
           "x-type": "color string"
         },
+        "rollback": {
+          "description": "How many earlier events the player can roll back into, besides the one running, from 0 to 64. The default is 8, and 0 turns rolling back off; needs schema version 4.",
+          "type": "integer",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
         "sfx_vary": {
           "$ref": "#/$defs/SfxVary",
           "description": "How much repeated sound effects vary in pitch and volume.",

@@ -22,10 +22,21 @@ const (
 	// custom commands declared in game.yaml's verbs), the left-hand sides of set (gold, item, actor, party, location),
 	// and game.yaml's verbs and screens (ADR 0021). YAML of version 1 is read as is.
 	SchemaVersion2 = 2
+	// SchemaVersion4 adds to 3 the vocabulary of novel games (ADR 0025 to 0029): ui.rollback
+	// first, then the choice id, stand, voice, the map forms of effect, music, wait and sfx,
+	// and the languages of the text. YAML of version 3 is read as is.
+	SchemaVersion4 = 4
 	// CurrentSchemaVersion is the latest YAML spec version that can be loaded. 3 adds to 2 the place presentation map and stage,
-	// the doll, speech bubbles, and the spot of expressions and set (ADR 0022). YAML of version 2 is read as is.
-	CurrentSchemaVersion = SchemaVersion3
+	// the doll, speech bubbles, and the spot of expressions and set (ADR 0022); 4 adds the novel game vocabulary.
+	CurrentSchemaVersion = SchemaVersion4
 )
+
+// MaxRollback is the most earlier events ui.rollback may keep (the history is a copy of the
+// state at the start of each event, so it is kept small).
+const MaxRollback = 64
+
+// DefaultRollback is how many earlier events the player can roll back into when ui.rollback is left out.
+const DefaultRollback = 8
 
 var gameIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 

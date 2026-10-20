@@ -451,14 +451,17 @@ type UIStyle struct {
 	// (schema_version 3). Empty, it stands as tall as the screen at the box's left end.
 	TalkPortrait TalkPortrait `yaml:"talk_portrait"`
 	// Backlog is how many lines the backlog keeps (default 300).
-	Backlog int   `yaml:"backlog"`
-	Window  Color `yaml:"window"`
-	Border  Color `yaml:"border"`
-	Text    Color `yaml:"text"`
-	Accent  Color `yaml:"accent"`
-	Cursor  Color `yaml:"cursor"`
-	Shadow  Color `yaml:"shadow"`
-	NameTag Color `yaml:"name_tag"`
+	Backlog int `yaml:"backlog"`
+	// Rollback is how many earlier events the player can roll back into, besides the one
+	// running (default 8; 0 turns rolling back off). Needs schema version 4 (ADR 0025).
+	Rollback *int  `yaml:"rollback"`
+	Window   Color `yaml:"window"`
+	Border   Color `yaml:"border"`
+	Text     Color `yaml:"text"`
+	Accent   Color `yaml:"accent"`
+	Cursor   Color `yaml:"cursor"`
+	Shadow   Color `yaml:"shadow"`
+	NameTag  Color `yaml:"name_tag"`
 	// StageScale is the size multiplier per portrait (picture file to multiplier; default 1). The head position stays the same and it is drawn smaller
 	// (to pull back pictures where the body fills the picture and looks bigger than the others).
 	StageScale map[string]float64 `yaml:"stage_scale"`

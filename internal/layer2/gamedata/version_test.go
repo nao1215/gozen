@@ -50,7 +50,7 @@ locations: {camp: {}}
 	for _, tc := range []struct {
 		name, header, want string
 	}{
-		{"未来版", "schema_version: 4", "schema_version"},
+		{"未来版", "schema_version: 5", "schema_version"},
 		{"版 2 の ID なし", "schema_version: 2", "id"},
 		{"負の仕様版", "schema_version: -1", "schema_version"},
 		{"負のデータ版", "data_version: -1", "data_version"},

@@ -62,4 +62,6 @@ Character reactions (`react`) and chat (`chat`) were added. They are a mechanism
 
 A map (`map:`) and a painted scene (`stage:`) were added as ways to show a location. The only position the rules know is the standing point (`State.Spot`); the geometry of points and polygons is owned by `internal/layer1/geom`, and the rules of roads and standing points by `internal/layer3/atlas`. See [maps and painted scenes](scenes.md) and [ADR 0022](../decisions/0022-maps-and-painted-scenes.md).
 
+Novel games are games whose places show events in the novel window (`ui.message: novel`); they are not a new kind of game. Rolling back, skipping a scene, jumping and resuming a save made in the middle of an event all replay an event from the state saved at its start ([ADR 0025](../decisions/0025-replay-to-roll-back-skip-and-resume.md)). Read lines are keyed by their source text and kept by the screen, not by the rules ([ADR 0026](../decisions/0026-read-lines-and-skipping.md)). The languages of a game's text, staging and voice, and the development panel are in [ADR 0027](../decisions/0027-text-languages.md), [ADR 0028](../decisions/0028-staging-and-voice-words.md) and [ADR 0029](../decisions/0029-dev-panel.md). Their YAML words need `schema_version: 4`.
+
 For switching a using module's calls, save location and CLI checks, see [using Gozen from a game](adoption.md).

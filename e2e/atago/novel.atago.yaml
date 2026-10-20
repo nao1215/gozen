@@ -1,0 +1,38 @@
+version: '1'
+suite:
+  name: Gozen novel games in check and play trace (ADR 0025 to 0029)
+scenarios:
+- name: the novel words at schema_version 3 ask for version 4
+  steps:
+  - fixture:
+      file: old/game.yaml
+      content: "schema_version: 3\nid: old\nstart: {location: room, party: [reader]}\nui: {message: novel, rollback: 4}\n"
+  - fixture:
+      file: old/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {}}
+  - run:
+      command: gozen check --only structure old
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: 'ui.rollback needs schema_version: 4'
+- name: version 4 takes the novel words
+  steps:
+  - fixture:
+      file: new/game.yaml
+      content: "schema_version: 4\nid: new\nstart: {location: room, party: [reader]}\nui: {message: novel, rollback: 4}\n"
+  - fixture:
+      file: new/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {}}
+  - run:
+      command: gozen check --only structure new
+  - assert:
+      exit_code: 0

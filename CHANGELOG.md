@@ -4,6 +4,11 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Added
+
+- Schema version 4 for novel games (ADR 0025 to 0029). Its first word is `ui.rollback` in game.yaml (0 to 64 earlier events to roll back into; read from the stage that rolls back). The words of version 4 in a game of version 3 or earlier are the error `<word> needs schema_version: 4`; YAML of version 3 is read as is.
+- `DB.StateUses` in the schema package indexes where each flag, var, item and other name of the state is written and read, for the coming checks of unused flags, `gozen book`'s flow and the `--dev` panel.
+
 ## v0.1.0 - 2026-10-21
 
 The first public release.
