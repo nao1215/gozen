@@ -356,7 +356,7 @@ func (r *Runner) Next() Request {
 			continue
 		}
 		if len(r.stack) > 64 {
-			r.logf(fmt.Errorf("events nested too deep (a call loop?)"))
+			r.logf(errors.New("events nested too deep (a call loop?)"))
 			r.Stop()
 			return nil
 		}

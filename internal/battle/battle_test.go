@@ -210,8 +210,10 @@ func TestCoverAndCounter(t *testing.T) {
 	st := testgame.State(db, 1)
 	st.Join("guide")
 	b := battle.New(db, st, "one")
-	db.States["guardian"] = &data.State{Name: "guardian", Cover: data.Expr{Expr: testgame.Expr("b.hp_rate < 0.5")},
-		Counter: data.Expr{Expr: testgame.Expr("1")}}
+	db.States["guardian"] = &data.State{
+		Name: "guardian", Cover: data.Expr{Expr: testgame.Expr("b.hp_rate < 0.5")},
+		Counter: data.Expr{Expr: testgame.Expr("1")},
+	}
 	db.Order["states"] = append(db.Order["states"], "guardian")
 	if len(b.Party) < 2 {
 		t.Fatal("fixture must supply two party members")

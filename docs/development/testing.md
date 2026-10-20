@@ -4,11 +4,12 @@
 
 The lower bound of Go is 1.26.9, at `go.mod:3`. Normal tests check the contracts of layers 1 to 6, shared internals, the neutral test game and loading of the samples. They do not initialize a screen, audio or inference. Normal tests and builds need no Xvfb, ONNX shared library, model or game assets. The cgo build of mosaic uses a C compiler. A test also runs that detects the form of paths of common personal environments and private host names. It does not replace checks for content specific to a work.
 
-lint uses golangci-lint v2.14.0, the dependency direction uses go-arch-lint v1.19.0 (config version 3), and workflow syntax uses actionlint v1.7.12. Go's work cache and temporary directory need write permission. In a restricted environment, point `GOCACHE`, `GOTMPDIR` and `GOLANGCI_LINT_CACHE` to writable places, and create the directories first.
+lint uses golangci-lint v2.14.0 (the linters and formatters are in `.golangci.yml`), the dependency direction uses go-arch-lint v1.19.0 (config version 3), workflow syntax uses actionlint v1.7.12, and workflow security uses zizmor v1.31.1 (its policy is in `.github/zizmor.yml`). Go's work cache and temporary directory need write permission. In a restricted environment, point `GOCACHE`, `GOTMPDIR` and `GOLANGCI_LINT_CACHE` to writable places, and create the directories first.
 
 ```sh
 go install github.com/fe3dback/go-arch-lint@v1.19.0
 go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+pipx install zizmor==1.31.1
 ```
 
 golangci-lint is not installed: `make lint` builds and runs it with `go run` under `GOTOOLCHAIN=go1.27.2` (`LINT_GO` in the Makefile), the same Go as the CI lint job. gofmt's output changes between Go releases (Go 1.27 aligns map literals with wide characters differently from 1.26), so a golangci-lint built with another Go reports formatting that CI does not, or misses what CI reports. The first run downloads that toolchain. Without Make, run `GOTOOLCHAIN=go1.27.2 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run ./...` and the same with `fmt --diff` (in PowerShell, set `$env:GOTOOLCHAIN` first).
@@ -17,16 +18,17 @@ The declared dependency versions are at `go.mod:5`. T3 actually uses go-yaml, Eb
 
 ## Make and direct commands
 
-Windows is assumed to have neither Make nor Bash. At the repository root, run the direct commands below from PowerShell or the command prompt. Put the external tools `go-arch-lint` and `actionlint` on PATH; golangci-lint runs through `go run` as above.
+Windows is assumed to have neither Make nor Bash. At the repository root, run the direct commands below from PowerShell or the command prompt. Put the external tools `go-arch-lint`, `actionlint` and `zizmor` on PATH; golangci-lint runs through `go run` as above.
 
 | Make | Same thing run directly | Current target |
 | --- | --- | --- |
 | `make test` | `go test ./...` | contract tests of the core, `gozen` and internal, samples, API and development tools |
 | `make arch` | `go-arch-lint check` | runtime imports and vendor, deep dependency check |
 | `make api` | `go test ./api -count=1` | comparing the golden with the current public identifiers |
-| `make workflows` | `actionlint` | syntax, expressions and shell of GitHub Actions workflows |
+| `make tidy` | `go mod tidy -diff`, also in `examples/go-zen` | go.mod and go.sum hold what the imports need, no more |
+| `make workflows` | `actionlint`, `zizmor --offline .github/workflows` | syntax, expressions and shell of GitHub Actions workflows; their pins, credentials, injection and caches |
 | `make api-update` | `go run ./internal/dev/apigen` | updating the list to review |
-| `make lint` | `go-arch-lint check`, `go test ./api -count=1`, `actionlint`, `golangci-lint run ./...`, `golangci-lint fmt --diff`, in order | dependencies, API, workflows, static analysis, formatting |
+| `make lint` | `go-arch-lint check`, `go test ./api -count=1`, `make tidy`, `make workflows`, `golangci-lint run ./...`, `golangci-lint fmt --diff`, then the same two in `examples/go-zen`, in order | dependencies, API, modules, workflows, static analysis, formatting |
 | `make build` | `go build -trimpath -buildvcs=false ./...` | compiling the core, `gozen` and internal, samples and development tools |
 | `make graphics` | `go test -tags=graphics ./play -run TestGraphicsScreens -count=1` and `go test -tags=graphics ./puppet -run TestGraphics -count=1` | real loop and PNG checks of 6 screens, and pixel checks of the moving standing pictures (drawn and read inside one loop). Wrapped in Xvfb on Linux |
 | `make e2e` | [direct steps for the CLI](cli.md#e2e) | contract checks of every `gozen` subcommand with atago v0.25.2 |

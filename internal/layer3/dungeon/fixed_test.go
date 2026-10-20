@@ -1,7 +1,7 @@
 package dungeon_test
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -130,8 +130,9 @@ func TestOldRecordsForgottenOnANewMap(t *testing.T) {
 }
 
 func TestIndependentGamesInParallel(t *testing.T) {
+	t.Parallel()
 	for seed := uint64(1); seed <= 8; seed++ {
-		t.Run(fmt.Sprint(seed), func(t *testing.T) {
+		t.Run(strconv.FormatUint(seed, 10), func(t *testing.T) {
 			t.Parallel()
 			db := testgame.Load(t, map[string]string{"data/deep.yaml": fixedGame})
 			st := testgame.State(db, seed)

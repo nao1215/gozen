@@ -1,21 +1,58 @@
 version: "2"
 run:
   go: "1.26"
-  timeout: 5m
+  timeout: 10m
+  # Also analyze the screen tests, which only build with -tags=graphics.
+  build-tags:
+    - graphics
+issues:
+  # Report every finding, not the first 50 per linter or 3 of a kind.
+  max-issues-per-linter: 0
+  max-same-issues: 0
 linters:
   default: none
   enable:
+    - asasalint
+    - bidichk
+    - bodyclose
+    - contextcheck
+    - copyloopvar
+    - durationcheck
     - errcheck
     - errchkjson
     - errorlint
     - exhaustive
+    - exptostd
+    - fatcontext
+    - forcetypeassert
+    - gocheckcompilerdirectives
+    - gocritic
+    - godot
     - gosec
     - govet
     - ineffassign
+    - intrange
+    - makezero
+    - mirror
+    - misspell
+    - modernize
+    - nakedret
     - nilerr
+    - nilnesserr
+    - noctx
     - nolintlint
+    - nosprintfhostport
+    - perfsprint
+    - reassign
+    - revive
     - staticcheck
+    - tparallel
+    - unconvert
+    - unparam
     - unused
+    - usestdlibvars
+    - usetesting
+    - wastedassign
   settings:
     errcheck:
       check-blank: true
@@ -34,27 +71,102 @@ linters:
         - (hash.Hash).Write
         - (*io.PipeReader).CloseWithError
         - (*io.PipeWriter).CloseWithError
+        # Returns the matched error and whether it matched, not a failure.
+        - errors.AsType
         - fmt.Fprint(*bytes.Buffer)
         - fmt.Fprintf(*bytes.Buffer)
         - fmt.Fprintln(*bytes.Buffer)
         - fmt.Fprint(*strings.Builder)
         - fmt.Fprintf(*strings.Builder)
         - fmt.Fprintln(*strings.Builder)
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+      # Style checks that rewrite working code to a different taste without
+      # catching a defect: an `if` chain where the branches test different
+      # things, `err =` reusing a declared error, combined parameter types,
+      # local names equal to a package name, early `continue`, and where a
+      # type sits relative to its methods.
+      # appendAssign is off because every site it flags builds a new slice from
+      # an existing prefix on purpose (`next := append(line, r)`).
+      disabled-checks:
+        - appendAssign
+        - ifElseChain
+        - importShadow
+        - nestingReduce
+        - paramTypeCombine
+        - sloppyReassign
+        - tooManyResultsChecker
+        - typeDefFirst
+        - unnamedResult
     gosec:
       excludes:
         # G104 repeats errcheck without its list of calls documented never to fail;
         # errcheck above checks every ignored error, including `_ =`.
         - G104
+    govet:
+      enable-all: true
+      disable:
+        # Field order follows meaning, not padding.
+        - fieldalignment
+        # Shadowing err in a nested scope is idiomatic Go.
+        - shadow
+    modernize:
+      disable:
+        # Its fix splits one string built in a loop into several builders and
+        # can reorder the pieces; short strings built with += are fine.
+        - stringsbuilder
+    perfsprint:
+      # Same reason as modernize's stringsbuilder above.
+      concat-loop: false
     nolintlint:
       require-explanation: true
       require-specific: true
       allow-unused: false
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: exported
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-naming
+        - name: unexported-return
+        - name: unreachable-code
+        - name: unused-parameter
+        - name: var-declaration
+        - name: var-naming
   exclusions:
     generated: strict
     presets: []
+    rules:
+      # The documentation contract is for the public API (api/public.txt);
+      # internal packages document what needs explaining, not every export.
+      - path: (^|/)internal/
+        linters:
+          - revive
+        text: "^exported: "
+      # A parameter that every caller sets to one value still names a
+      # dimension (a waist height, a lower bound); unparam's unused and
+      # always-nil results stay on.
+      - linters:
+          - unparam
+        text: "always receives"
 formatters:
   enable:
-    - gofmt
+    - gofumpt
     - goimports
   settings:
     goimports:

@@ -22,8 +22,10 @@ func designMemos(root, run string, db *data.DB, cfg *designeval.Config, runs []*
 			if kind == "" {
 				return nil
 			}
-			m := memo.Memo{Source: memo.Bot, Bot: r.Persona.Name, Kind: kind, Label: label[kind], Text: text,
-				Seed: r.Seed, Game: db.Game.ID, Data: d}
+			m := memo.Memo{
+				Source: memo.Bot, Bot: r.Persona.Name, Kind: kind, Label: label[kind], Text: text,
+				Seed: r.Seed, Game: db.Game.ID, Data: d,
+			}
 			m.Data["persona"] = r.Persona.ID
 			m.Data["run"] = run
 			var save []byte

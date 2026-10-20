@@ -59,11 +59,13 @@ func Summarize(r *Run, release string) Summary {
 	if r.Cleared {
 		end = r.ClearT
 	}
-	s := Summary{ID: r.Persona.ID, Name: r.Persona.Name, Cleared: r.Cleared, ClearMin: r.ClearT / 60, EndMin: r.End / 60,
+	s := Summary{
+		ID: r.Persona.ID, Name: r.Persona.Name, Cleared: r.Cleared, ClearMin: r.ClearT / 60, EndMin: r.End / 60,
 		ReleaseMin: r.ReleaseSec / 60, Days: r.Days, Deepest: r.Deepest, Level: r.Level, Battles: r.Battles, Lost: r.Lost, Retries: r.Retries,
 		Wipes: r.Wipes, Stranded: r.Stranded, Rewards: map[string]int{}, KindGap: map[string]Gap{},
-		ReleaseWho: map[string]int{}, ReleaseFlow: map[string]int{}, Bosses: r.Bosses, Duels: r.Duels, Problems: len(r.Problems), Minutes: map[string]float64{}}
-	var all, any []float64
+		ReleaseWho: map[string]int{}, ReleaseFlow: map[string]int{}, Bosses: r.Bosses, Duels: r.Duels, Problems: len(r.Problems), Minutes: map[string]float64{},
+	}
+	var all, either []float64
 	kinds := map[string][]float64{}
 	for _, e := range ev {
 		if e.T > end {
@@ -86,14 +88,14 @@ func Summarize(r *Run, release string) Summary {
 			s.Expects++
 		}
 		if e.Reward || e.Expect {
-			any = append(any, e.T)
+			either = append(either, e.T)
 		}
 	}
 	s.Gap = gaps(all, end, r)
 	for k, ts := range kinds {
 		s.KindGap[k] = gaps(ts, end, r)
 	}
-	s.Dry = gaps(any, end, r)
+	s.Dry = gaps(either, end, r)
 
 	pending := -1.0
 	var waits []float64

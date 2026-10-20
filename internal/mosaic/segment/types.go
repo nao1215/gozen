@@ -1,3 +1,5 @@
+// Package segment outlines the detected objects with a user-supplied ONNX
+// segmentation model.
 package segment
 
 import (

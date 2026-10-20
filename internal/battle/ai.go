@@ -70,8 +70,10 @@ func (b *Battle) evaluateRules(u *Unit, results *[]RuleEvaluation) []candidate {
 			candidate, reason, detail = b.ruleApplicability(u, i, r, env)
 		}
 		if results != nil {
-			*results = append(*results, RuleEvaluation{Index: i, Skill: r.Use, Item: r.Item,
-				Reason: reason, Detail: detail, Target: decisionUnit(candidate.Target)})
+			*results = append(*results, RuleEvaluation{
+				Index: i, Skill: r.Use, Item: r.Item,
+				Reason: reason, Detail: detail, Target: decisionUnit(candidate.Target),
+			})
 		}
 		if reason == RuleApplicable {
 			out = append(out, candidate)
@@ -204,9 +206,11 @@ func (b *Battle) decide(u *Unit, timing DecisionTiming) Action {
 		if b.gambit(u) {
 			mode = "gambit"
 		}
-		b.OnDecision(Decision{Troop: b.TroopID, Turn: b.Turn, Phase: b.phase, Timing: timing,
+		b.OnDecision(Decision{
+			Troop: b.TroopID, Turn: b.Turn, Phase: b.phase, Timing: timing,
 			Mode: mode, User: *decisionUnit(u), Rules: reported, Selected: selected,
-			Committed: committed, Skill: a.Skill, Item: a.Item, Target: decisionUnit(a.Target)})
+			Committed: committed, Skill: a.Skill, Item: a.Item, Target: decisionUnit(a.Target),
+		})
 	}
 	return a
 }

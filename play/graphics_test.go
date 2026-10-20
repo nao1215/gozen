@@ -37,7 +37,7 @@ func TestGraphicsScreens(t *testing.T) {
 			if body == "" {
 				body = "wait 80\nshot frame\nquit\n"
 			}
-			if err := os.WriteFile(script, []byte(body), 0600); err != nil {
+			if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			// the Go Zen sample (1920x1080) at half size in the window

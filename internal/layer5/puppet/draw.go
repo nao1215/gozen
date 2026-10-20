@@ -56,8 +56,10 @@ func (p *Puppet) image(pt *Patch) *ebiten.Image {
 }
 
 func (p *Puppet) compose(pose Pose) {
-	key := canvasKey{face: pose.Face, prev: pose.PrevFace, mouth: pose.Mouth,
-		fade: int(math.Round(pose.Fade * 32)), blink: int(math.Round(pose.Blink * 32)), valid: true}
+	key := canvasKey{
+		face: pose.Face, prev: pose.PrevFace, mouth: pose.Mouth,
+		fade: int(math.Round(pose.Fade * 32)), blink: int(math.Round(pose.Blink * 32)), valid: true,
+	}
 	if key == p.key {
 		return
 	}

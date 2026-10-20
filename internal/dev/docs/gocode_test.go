@@ -59,7 +59,7 @@ func goSnippet(body string) string {
 	}
 	imports.WriteString(")\n\n")
 	declarations := true
-	for _, line := range strings.Split(body, "\n") {
+	for line := range strings.SplitSeq(body, "\n") {
 		if line == "" || strings.HasPrefix(line, "//") || line[0] == '\t' || line[0] == ' ' || line == "}" || line == ")" {
 			continue
 		}
@@ -82,7 +82,7 @@ func exportData(t *testing.T) map[string]string {
 		paths = append(paths, p)
 	}
 	sort.Strings(paths)
-	cmd := exec.Command("go", append([]string{"list", "-export", "-deps", "-f", "{{.ImportPath}}\t{{.Export}}"}, paths...)...) //nolint:gosec // go list of fixed packages.
+	cmd := exec.CommandContext(t.Context(), "go", append([]string{"list", "-export", "-deps", "-f", "{{.ImportPath}}\t{{.Export}}"}, paths...)...) //nolint:gosec // go list of fixed packages.
 	cmd.Dir = root
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

@@ -37,7 +37,7 @@ type params struct {
 	hasHead                   bool
 }
 
-func resolveParams(s *puppetdef.Spec, w, h int) params {
+func resolveParams(s *puppetdef.Spec, _, h int) params {
 	p := params{
 		breathDepth: 0.006, breathPeriod: 3.8,
 		swayAngle: 2.5 * math.Pi / 180, swayPeriod: 6.5,
@@ -121,8 +121,10 @@ type Motion struct {
 // NewMotion starts the motion at time zero. tps is updates per second.
 func NewMotion(rig *Rig, rng *rand.Rand, tps int) *Motion {
 	w, h := rig.Size()
-	m := &Motion{rig: rig, p: resolveParams(rig.Spec, w, h), rng: rng, dt: 1 / float64(tps), mouth: -1, fade: 1,
-		springs: resolveSprings(rig.Spec, h), w: float64(w), h: float64(h)}
+	m := &Motion{
+		rig: rig, p: resolveParams(rig.Spec, w, h), rng: rng, dt: 1 / float64(tps), mouth: -1, fade: 1,
+		springs: resolveSprings(rig.Spec, h), w: float64(w), h: float64(h),
+	}
 	for i := range m.phase {
 		m.phase[i] = rng.Float64() * 2 * math.Pi
 	}

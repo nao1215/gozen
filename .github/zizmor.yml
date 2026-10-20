@@ -1,0 +1,8 @@
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        # The SLSA generator verifies its own tag; a SHA pin breaks it
+        # (https://github.com/slsa-framework/slsa-github-generator#referencing-slsa-builders-and-generators).
+        slsa-framework/slsa-github-generator/*: ref-pin
+        "*": hash-pin

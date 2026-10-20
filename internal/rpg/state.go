@@ -3,6 +3,7 @@ package rpg
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"math/rand/v2"
 	"slices"
@@ -77,9 +78,7 @@ func New(db *data.DB, rng *rand.Rand) *State {
 	for _, id := range st.Party {
 		s.Join(id)
 	}
-	for it, n := range st.Items {
-		s.Items[it] = n
-	}
+	maps.Copy(s.Items, st.Items)
 	s.Gold = st.Gold
 	s.Location = st.Location
 	return s

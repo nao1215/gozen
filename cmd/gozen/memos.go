@@ -35,7 +35,7 @@ type memoEntry struct {
 
 func (c *command) memosCmd(args []string, destination string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("usage: gozen play notes <dir of the notes, e.g. build/memos>")
+		return errors.New("usage: gozen play notes <dir of the notes, e.g. build/memos>")
 	}
 	root := args[0]
 	if destination == "" {
@@ -43,6 +43,7 @@ func (c *command) memosCmd(args []string, destination string) error {
 	}
 	return cli.Publish(destination, []string{root}, func(stage string) error { return c.renderMemos(root, stage) })
 }
+
 func (c *command) renderMemos(root, output string) (err error) {
 	images, err := os.OpenRoot(root)
 	if err != nil {
@@ -59,7 +60,7 @@ func (c *command) renderMemos(root, output string) (err error) {
 		day, _, _ := strings.Cut(a.ID, "/")
 		if e.Image != "" {
 			if !cli.ID(e.Image) || !cli.Relative(a.ID) {
-				return fmt.Errorf("invalid memo image path")
+				return errors.New("invalid memo image path")
 			}
 			source := day + "/" + e.Image
 			e.Shot = "images/" + day + "_" + e.Image
@@ -191,7 +192,6 @@ h1{font-size:22px} h2{font-size:18px;border-bottom:1px solid #445;padding-bottom
 
 	for _, p := range places {
 		appendf(&b, `<option>%s</option>`, esc(p))
-
 	}
 	appendText(&b, `</select></label>`)
 
@@ -199,13 +199,11 @@ h1{font-size:22px} h2{font-size:18px;border-bottom:1px solid #445;padding-bottom
 
 	for _, s := range sources {
 		appendf(&b, `<option value="%s">%s</option>`, esc(s), esc(sourceTitle(s)))
-
 	}
 	appendText(&b, `</select></label>`)
 
 	for _, k := range kindOrder {
 		appendf(&b, `<label><input type="checkbox" class="kf" value="%s" checked> <span class="kind k-%s">%s</span></label>`, esc(k), esc(k), esc(kinds[k]))
-
 	}
 	appendText(&b, "</div>\n")
 
@@ -214,7 +212,6 @@ h1{font-size:22px} h2{font-size:18px;border-bottom:1px solid #445;padding-bottom
 
 		if g.dungeon {
 			appendText(&b, memoMap(g.ms))
-
 		}
 		appendText(&b, `<div class="cards">`)
 
@@ -298,7 +295,6 @@ func memoCard(b *strings.Builder, m *memoEntry, pin bool) {
 		appendf(b, `<div class="line">%s</div>`, esc(line))
 	}
 	appendText(b, "</div>")
-
 }
 
 func memoMap(ms []*memoEntry) string {

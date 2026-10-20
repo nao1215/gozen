@@ -117,8 +117,10 @@ func (g *Catalog) build(p Plan, partial bool) (Result, error) {
 				strength := g.emphasis(t)
 				emphasis := g.c.Emphasis[strength]
 				priority := g.c.Priorities[t.Priority]
-				w := Word{Word: core(t.Word), Side: side, Priority: priority, Strength: strength, Emphasis: emphasis,
-					Sources: []Source{{s.l.ID, s.id, t.Priority, priority, emphasis, strength}}}
+				w := Word{
+					Word: core(t.Word), Side: side, Priority: priority, Strength: strength, Emphasis: emphasis,
+					Sources: []Source{{s.l.ID, s.id, t.Priority, priority, emphasis, strength}},
+				}
 				if side == "positive" && s.l.Separate {
 					w.Group = s.l.ID + "/" + s.id
 				}

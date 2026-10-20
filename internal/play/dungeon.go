@@ -71,7 +71,6 @@ func (s *dungeonScene) update(g *Game) {
 		return
 	}
 	if freshUp && g.st != nil {
-
 		g.st.Bumped = ""
 	}
 	s.busy = false
@@ -211,7 +210,6 @@ func (s *dungeonScene) draw(g *Game, dst *ebiten.Image) {
 	if !d.NoMap {
 		s.drawMap(g, dst, d, sw-36-232, 28, 232, true)
 	} else if len(dungeon.HuntersOn(g.db, g.st)) > 0 {
-
 		s.drawMap(g, dst, d, sw-36-232, 28, 232, false)
 	}
 
@@ -320,8 +318,8 @@ func (s *dungeonScene) drawMap(g *Game, dst *ebiten.Image, d *data.Dungeon, x, y
 
 	fx := min(max(0, p.X-nx/2), w-nx)
 	fy := min(max(0, p.Y-ny/2), h-ny)
-	ox := x + 12 + (float64(n-nx))*cell/2
-	oy := y + 12 + (float64(n-ny))*cell/2
+	ox := x + 12 + float64(n-nx)*cell/2
+	oy := y + 12 + float64(n-ny)*cell/2
 	floor := color.NRGBA{0xf4, 0xe4, 0xec, 0xe0}
 	wall := color.NRGBA{0x5a, 0x44, 0x58, 0xff}
 	door := color.NRGBA{0xc8, 0x8a, 0x4a, 0xff}
@@ -425,7 +423,6 @@ func (v *viewer) cell(f, s int) dungeon.Cell {
 	x, y := dungeon.Rel(v.st.Pos, f, s)
 	c := dungeon.CellAt(v.d, v.st, x, y)
 	if f == 0 && s == 0 && block(c) {
-
 		c.Look = "floor"
 	}
 	v.cells[k] = c
@@ -638,7 +635,7 @@ func (v *viewer) strips(pic data.Picture, base color.NRGBA, n int, tAt func(int)
 			vs = append(vs, vx)
 		}
 		if i > 0 {
-			for j := 0; j < rows; j++ {
+			for j := range rows {
 				a := uint16((i-1)*(rows+1) + j) //nolint:gosec // The strip uses a small fixed subdivision count, at most 16 rows.
 				b := uint16(i*(rows+1) + j)     //nolint:gosec // The strip uses a small fixed subdivision count, at most 16 rows.
 				is = append(is, a, a+1, b, a+1, b+1, b)
@@ -757,7 +754,7 @@ func (v *viewer) flat(x, z, y float64, col color.NRGBA, pic data.Picture) {
 			vs = append(vs, vx)
 		}
 		if j > 0 {
-			for i := 0; i < n; i++ {
+			for i := range n {
 				a := uint16((j-1)*(n+1) + i)
 				b := uint16(j*(n+1) + i)
 				is = append(is, a, a+1, b, a+1, b+1, b)
@@ -869,7 +866,7 @@ func (v *viewer) floorDecal(pic data.Picture, x, z, size float64, rot int) {
 			vs = append(vs, vx)
 		}
 		if j > 0 {
-			for i := 0; i < n; i++ {
+			for i := range n {
 				a := uint16((j-1)*(n+1) + i)
 				b := uint16(j*(n+1) + i)
 				is = append(is, a, a+1, b, a+1, b+1, b)

@@ -2,6 +2,7 @@ package command
 
 import (
 	"bufio"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"time"
@@ -134,6 +136,9 @@ func megabytes(n int64) string { return fmt.Sprintf("%.0f MB", float64(n)/1e6) }
 // download fetches every file into a temporary directory, checks each SHA-256,
 // and only then replaces the cache directory. A mismatch deletes what was fetched.
 func (m modelSpec) download(diag *output) (err error) {
+	// Ctrl-C ends the transfer with an error, so the partial directory is removed below.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 	dir, err := m.dir()
 	if err != nil {
 		return err
@@ -154,7 +159,7 @@ func (m modelSpec) download(diag *output) (err error) {
 	client := &http.Client{Timeout: httpTimes}
 	for _, f := range m.Files {
 		diag.printf("fetching %s\n", m.url(f))
-		if err := fetchFile(client, m.url(f), filepath.Join(tmp, f.Name), f); err != nil {
+		if err := fetchFile(ctx, client, m.url(f), filepath.Join(tmp, f.Name), f); err != nil {
 			if errors.Is(err, errSkipOptional) {
 				continue
 			}
@@ -169,8 +174,12 @@ func (m modelSpec) download(diag *output) (err error) {
 
 var errSkipOptional = errors.New("optional file is absent")
 
-func fetchFile(client *http.Client, url, dst string, f fileSpec) (err error) {
-	resp, err := client.Get(url) // #nosec G107 G704 -- the URL is pinned in this package
+func fetchFile(ctx context.Context, client *http.Client, url, dst string, f fileSpec) (err error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(req) // #nosec G107 G704 -- the URL is pinned in this package
 	if err != nil {
 		return err
 	}

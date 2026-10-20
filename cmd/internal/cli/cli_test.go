@@ -25,6 +25,7 @@ func TestPortablePaths(t *testing.T) {
 		t.Fatal("invalid file ID policy")
 	}
 }
+
 func TestPublishPreservesExistingAndRejectsOverlaps(t *testing.T) {
 	root := t.TempDir()
 	src := filepath.Join(root, "source")

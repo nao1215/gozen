@@ -119,7 +119,7 @@ func walkNumberDefinitions(v reflect.Value, raw any, where string, visit func(re
 		}
 	case reflect.Slice, reflect.Array:
 		list := optional.Value[[]any](raw) // nil when the YAML is not a list
-		for i := 0; i < v.Len(); i++ {
+		for i := range v.Len() {
 			var entry any
 			if i < len(list) {
 				entry = list[i]
@@ -150,7 +150,7 @@ func (db *DB) resolveNumbers(raw yaml.MapSlice, into any, source string) error {
 	walkNumberDefinitions(reflect.ValueOf(into), raw, source, func(v reflect.Value, m yaml.MapSlice, where string) {
 		if db.Game.SchemaVersion == LegacySchemaVersion {
 			if v.Type() == reflect.TypeFor[ItemCount]() {
-				if i, ok := v.Addr().Interface().(*ItemCount); ok && i.Count != nil && *i.Count == 0 {
+				if i, ok := reflect.TypeAssert[*ItemCount](v.Addr()); ok && i.Count != nil && *i.Count == 0 {
 					i.Count = nil
 				}
 			}
@@ -242,7 +242,7 @@ func (c *checker) numericValues(into any, where string) {
 				}
 				value = value.Elem()
 			}
-			n := 0.0
+			var n float64
 			if value.Kind() == reflect.Int {
 				n = float64(value.Int())
 			} else {
@@ -255,7 +255,7 @@ func (c *checker) numericValues(into any, where string) {
 			}
 		}
 		if v.Type() == reflect.TypeFor[UIStyle]() {
-			if style, ok := v.Addr().Interface().(*UIStyle); ok {
+			if style, ok := reflect.TypeAssert[*UIStyle](v.Addr()); ok {
 				for file, scale := range style.StageScale {
 					if scale == 0 {
 						c.errorf(diag.OutOfRange, w+".stage_scale."+file, "want a positive number, got 0")

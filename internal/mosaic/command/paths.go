@@ -2,6 +2,7 @@ package command
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"math"
@@ -30,7 +31,7 @@ func parseClasses(v string) ([]string, error) {
 
 func (o *options) validate() error {
 	if o.block < 0 || o.block > 256 || o.padBlocks < 0 || o.padBlocks > 256 || o.minBlocks < 0 || o.minBlocks > 256 || o.dilate < -1 || o.dilate > 256 || o.threads < 1 || o.threads > 1024 || o.quality < 1 || o.quality > 100 {
-		return fmt.Errorf("invalid numeric options: block/pad/min 0..256, dilate -1..256, threads 1..1024, quality 1..100")
+		return errors.New("invalid numeric options: block/pad/min 0..256, dilate -1..256, threads 1..1024, quality 1..100")
 	}
 	for name, v := range map[string]float64{"threshold": o.minScore, "sure": o.sure, "margin": o.margin} {
 		if math.IsNaN(v) || math.IsInf(v, 0) || v < 0 || v > 1 {
@@ -51,8 +52,8 @@ func canonical(name string) (string, error) {
 	for {
 		r, err := filepath.EvalSymlinks(a)
 		if err == nil {
-			for i := len(tail) - 1; i >= 0; i-- {
-				r = filepath.Join(r, tail[i])
+			for _, t := range slices.Backward(tail) {
+				r = filepath.Join(r, t)
 			}
 			return r, nil
 		}
@@ -67,6 +68,7 @@ func canonical(name string) (string, error) {
 		a = parent
 	}
 }
+
 func within(p, root string) bool {
 	r, err := filepath.Rel(root, p)
 	return err == nil && (r == "." || r != ".." && !strings.HasPrefix(r, ".."+string(filepath.Separator)) && !filepath.IsAbs(r))
@@ -82,14 +84,14 @@ func protectPaths(game, out string, files ...string) error {
 		return err
 	}
 	if overlap(dst, source) {
-		return fmt.Errorf("output must be separate from source assets")
+		return errors.New("output must be separate from source assets")
 	}
 	root, err := canonical(game)
 	if err != nil {
 		return err
 	}
 	if within(root, dst) {
-		return fmt.Errorf("output cannot contain the input game")
+		return errors.New("output cannot contain the input game")
 	}
 	var selected []string
 	for _, name := range files {
@@ -101,25 +103,27 @@ func protectPaths(game, out string, files ...string) error {
 			return err
 		}
 		if within(p, source) || overlap(p, dst) {
-			return fmt.Errorf("fix/manual/tags files must be outside assets and output")
+			return errors.New("fix/manual/tags files must be outside assets and output")
 		}
 		for _, other := range selected {
 			if p == other {
-				return fmt.Errorf("fix/manual/tags must use separate files")
+				return errors.New("fix/manual/tags must use separate files")
 			}
 			a, ea := os.Stat(p)
 			b, eb := os.Stat(other)
 			if ea == nil && eb == nil && os.SameFile(a, b) {
-				return fmt.Errorf("fix/manual/tags files alias each other")
+				return errors.New("fix/manual/tags files alias each other")
 			}
 		}
 		selected = append(selected, p)
 	}
 	return nil
 }
+
 func relativePicture(rel string) bool {
 	return fs.ValidPath(rel) && rel != "." && !strings.ContainsAny(rel, "\\:")
 }
+
 func validPicture(c config, rel string) error {
 	if !relativePicture(rel) {
 		return fmt.Errorf("invalid asset-relative image %q", rel)
@@ -134,7 +138,7 @@ func validPicture(c config, rel string) error {
 		return err
 	}
 	if !within(p, root) {
-		return fmt.Errorf("image escapes source assets")
+		return errors.New("image escapes source assets")
 	}
 	dst := filepath.Join(c.out, filepath.FromSlash(rel))
 	resolved, err := canonical(dst)
@@ -146,12 +150,12 @@ func validPicture(c config, rel string) error {
 		return err
 	}
 	if !within(resolved, out) {
-		return fmt.Errorf("image output escapes output directory")
+		return errors.New("image output escapes output directory")
 	}
 	a, ea := os.Stat(source)
 	b, eb := os.Stat(dst)
 	if ea == nil && eb == nil && os.SameFile(a, b) {
-		return fmt.Errorf("output aliases original image")
+		return errors.New("output aliases original image")
 	}
 	return nil
 }
@@ -170,7 +174,7 @@ func protectView(c config, orig, dst string) error {
 		return err
 	}
 	if within(target, source) || target == input {
-		return fmt.Errorf("view output cannot replace source images")
+		return errors.New("view output cannot replace source images")
 	}
 	for _, name := range []string{c.opts.manualFile, c.opts.fixFile, c.opts.tagsFile} {
 		if name != "" {
@@ -179,7 +183,7 @@ func protectView(c config, orig, dst string) error {
 				return err
 			}
 			if p == target {
-				return fmt.Errorf("view output cannot replace configuration")
+				return errors.New("view output cannot replace configuration")
 			}
 		}
 	}
@@ -195,7 +199,7 @@ func validateReport(c config) error {
 			return err
 		}
 		if d.Type()&os.ModeSymlink != 0 {
-			return fmt.Errorf("output tree must not contain symlinks")
+			return errors.New("output tree must not contain symlinks")
 		}
 		return nil
 	}); err != nil {
@@ -214,7 +218,7 @@ func validateReport(c config) error {
 	}
 	for _, e := range entries {
 		if !relativePicture(e.File) || (e.Output != "" && !relativePicture(e.Output)) {
-			return fmt.Errorf("invalid paths in report")
+			return errors.New("invalid paths in report")
 		}
 		if err = validPicture(c, e.File); err != nil {
 			return err

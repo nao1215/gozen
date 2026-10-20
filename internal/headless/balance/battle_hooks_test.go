@@ -21,7 +21,8 @@ func TestResourceReturnsAndMeasurement(t *testing.T) {
         then: [{move: camp}]
   rest:
     do: [{set: {var.energy: 2}}, {move: camp}]
-`})
+`,
+	})
 	cfg := Config{Location: "field", Floors: 1, Battles: 5, Tries: 3, Events: true, FloorEvent: "arrive", RestEvent: "rest"}
 	result, err := Run(db, cfg)
 	if err != nil {

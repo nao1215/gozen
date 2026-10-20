@@ -241,7 +241,7 @@ func (s *atlasScene) update(g *Game) {
 	}
 	if in.click {
 		if c, ok := s.pointAt(g, float64(in.mouse.X), float64(in.mouse.Y)); ok {
-			s.go_(g, c)
+			s.goTo(g, c)
 		}
 		return
 	}
@@ -264,7 +264,7 @@ func (s *atlasScene) update(g *Game) {
 		return
 	}
 	if in.ok() {
-		s.go_(g, s.choices[s.sel])
+		s.goTo(g, s.choices[s.sel])
 	}
 }
 
@@ -337,7 +337,7 @@ func (s *atlasScene) take(g *Game, e world.Entry) {
 	case e.Kind == world.Menu:
 		g.push(newMenu(g))
 	case e.Choice != nil:
-		s.go_(g, *e.Choice)
+		s.goTo(g, *e.Choice)
 	default:
 		g.sfx("decide")
 		g.events.Start(e.Commands(g.db, g.st))
@@ -347,7 +347,7 @@ func (s *atlasScene) take(g *Game, e world.Entry) {
 
 // go_ sets off to a choice: its commands run one at a time, a road's after the token has
 // walked it.
-func (s *atlasScene) go_(g *Game, c atlas.Choice) {
+func (s *atlasScene) goTo(g *Game, c atlas.Choice) {
 	g.sfx("decide")
 	e := world.Entry{Kind: world.Exit, Choice: &c, Spot: c.Point}
 	s.queue = e.Commands(g.db, g.st)
@@ -815,7 +815,7 @@ func (s *atlasScene) scriptWalk(g *Game, arg string) (button, bool) {
 	}
 	for _, c := range s.choices {
 		if c.Point == arg {
-			s.go_(g, c)
+			s.goTo(g, c)
 			if c.Locked || p.To != "" {
 				return 0, true
 			}

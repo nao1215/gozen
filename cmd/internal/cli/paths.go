@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -20,7 +21,7 @@ func Relative(name string) bool {
 	if !fs.ValidPath(name) || strings.ContainsAny(name, "\\:") {
 		return false
 	}
-	for _, part := range strings.Split(name, "/") {
+	for part := range strings.SplitSeq(name, "/") {
 		if strings.TrimRight(part, ". ") != part {
 			return false
 		}
@@ -43,7 +44,7 @@ func ID(name string) bool { return name != "." && Relative(name) && !strings.Con
 // Canonical resolves symlinks in the existing prefix even for a new destination.
 func Canonical(name string) (string, error) {
 	if name == "" {
-		return "", fmt.Errorf("empty path")
+		return "", errors.New("empty path")
 	}
 	absolute, err := filepath.Abs(name)
 	if err != nil {
@@ -54,8 +55,8 @@ func Canonical(name string) (string, error) {
 	for {
 		resolved, err := filepath.EvalSymlinks(p)
 		if err == nil {
-			for i := len(suffix) - 1; i >= 0; i-- {
-				resolved = filepath.Join(resolved, suffix[i])
+			for _, s := range slices.Backward(suffix) {
+				resolved = filepath.Join(resolved, s)
 			}
 			return resolved, nil
 		}
@@ -70,6 +71,7 @@ func Canonical(name string) (string, error) {
 		p = parent
 	}
 }
+
 func within(p, root string) bool {
 	rel, err := filepath.Rel(root, p)
 	if err == nil && (rel == "." || rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)) {

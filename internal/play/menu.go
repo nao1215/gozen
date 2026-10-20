@@ -3,6 +3,8 @@ package play
 import (
 	"fmt"
 	"image"
+	"strconv"
+	"strings"
 
 	lang "github.com/nao1215/gozen/internal/text"
 
@@ -323,7 +325,7 @@ func (m *menu) updateTarget(g *Game) {
 		}
 	}
 	if g.in.ok() || g.in.click {
-		kind, id, _ := cutKey(m.using)
+		kind, id, _ := strings.Cut(m.using, ":")
 		skill, item := id, ""
 		if kind == "item" {
 			skill, item = "", id
@@ -337,7 +339,7 @@ func (m *menu) updateTarget(g *Game) {
 }
 
 func (m *menu) apply(g *Game, target *rpg.Actor) {
-	kind, id, _ := cutKey(m.using)
+	kind, id, _ := strings.Cut(m.using, ":")
 	user := m.members(g)[m.member]
 	var msgs []string
 	var err error
@@ -364,15 +366,6 @@ func (m *menu) apply(g *Game, target *rpg.Actor) {
 			m.targetOn = false
 		}
 	}
-}
-
-func cutKey(s string) (string, string, bool) {
-	for i := range len(s) {
-		if s[i] == ':' {
-			return s[:i], s[i+1:], true
-		}
-	}
-	return s, "", false
 }
 
 func (m *menu) openSkills(g *Game) {
@@ -553,7 +546,7 @@ func (m *menu) draw(g *Game, dst *ebiten.Image) {
 			m.items.draw(g, dst, !m.targetOn)
 			if len(m.ids) > 0 {
 				id := m.ids[m.items.sel]
-				desc := ""
+				var desc string
 				if m.mode == "item" {
 					desc = g.db.Items[id].Desc
 					if it := g.db.Items[id]; it.Equipment() {
@@ -612,7 +605,7 @@ func (m *menu) draw(g *Game, dst *ebiten.Image) {
 	}
 }
 
-func equipDesc(g *Game, it *data.Item) string {
+func equipDesc(_ *Game, it *data.Item) string {
 	s := ""
 	for _, st := range data.StatNames {
 		if v := it.Stats[st]; v != 0 {
@@ -665,7 +658,7 @@ func (m *menu) drawStatus(g *Game, dst *ebiten.Image, a *rpg.Actor) {
 	for i, st := range data.StatNames[2:] {
 		yy := y + 232 + float64(i)*34
 		g.text(dst, lang.T(data.StatLabels[st]), x+30, yy, sizeS*0.9, g.th.border)
-		gfx.DrawTextRight(dst, fmt.Sprint(a.Stat(st)), x+300, yy, sizeS*0.9, g.th.text)
+		gfx.DrawTextRight(dst, strconv.Itoa(a.Stat(st)), x+300, yy, sizeS*0.9, g.th.text)
 	}
 	yy := y + 114
 	for _, s := range g.db.Game.Slots {

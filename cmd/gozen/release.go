@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -72,7 +72,7 @@ func releaseInputs(src string, overlay *string, inspect string) (assetpolicy.Pol
 	}
 	if *overlay == "" {
 		if p.Overlay == "" {
-			return p, nil, nil, fmt.Errorf("give the replacement directory with --overlay or in the game's asset policy")
+			return p, nil, nil, errors.New("give the replacement directory with --overlay or in the game's asset policy")
 		}
 		*overlay = filepath.Join(src, p.Overlay)
 	}

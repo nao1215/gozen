@@ -26,8 +26,8 @@ func bubbleImage() *ebiten.Image {
 	}
 	n := bubbleDotR * 2
 	pix := make([]byte, n*n*4)
-	for y := 0; y < n; y++ {
-		for x := 0; x < n; x++ {
+	for y := range n {
+		for x := range n {
 			dx, dy := float64(x)+0.5-bubbleDotR, float64(y)+0.5-bubbleDotR
 			d := math.Sqrt(dx*dx+dy*dy) / bubbleDotR
 			a := 0.0
@@ -59,7 +59,7 @@ func bubbleHash(a, b, c int) float64 {
 	return float64(h&0xffffff) / float64(0x1000000)
 }
 
-func (g *Game) drawCardBubbles(dst *ebiten.Image, actor string, states map[string]int, slot int, x, y, w, h float64) {
+func (g *Game) drawCardBubbles(dst *ebiten.Image, actor string, states map[string]int, slot int, x, y, w, _ float64) {
 	rules := g.db.Game.CardBubbles
 	if len(rules) == 0 {
 		return
@@ -102,7 +102,7 @@ func (g *Game) drawBubbleRule(dst *ebiten.Image, ri, slot int, x, y, w float64) 
 	img := bubbleImage()
 	life := rise / speed * 60
 	t := float64(g.tick)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		off := bubbleHash(slot, ri, i)
 		ph := t/life + off + float64(i)/float64(n)
 		cycle := int(math.Floor(ph))

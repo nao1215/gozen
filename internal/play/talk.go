@@ -42,7 +42,6 @@ func (g *Game) talkBox() (x, y, w, h float64) {
 }
 
 func (t *talk) open(g *Game, s event.Say) {
-
 	still := g.tick-t.closed <= 1 && s.Face != "" && t.say.Face != "" && speakerKey(s) == speakerKey(t.say) && s.Right == t.say.Right
 	*t = talk{say: s, active: true, still: still, read: g.isRead(s)}
 	g.remember(logLine{name: s.Name, text: s.Text})

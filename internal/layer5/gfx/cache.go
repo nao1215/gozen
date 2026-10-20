@@ -1,3 +1,4 @@
+// Package gfx draws shapes, images, and text on Ebitengine images.
 package gfx
 
 import (

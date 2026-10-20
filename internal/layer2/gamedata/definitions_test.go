@@ -9,8 +9,9 @@ import (
 	"testing/fstest"
 )
 
-const definitionGame = `start: {location: camp, party: [scout]}`
-const definitionData = `
+const (
+	definitionGame = `start: {location: camp, party: [scout]}`
+	definitionData = `
 classes:
   ranger:
     stats: {mhp: 10, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}
@@ -19,6 +20,7 @@ actors: {scout: {class: ranger}}
 skills: {attack: {}, guard: {}}
 locations: {camp: {}}
 `
+)
 
 func loadDefinition(extra string) (*DB, error) {
 	return Load(fstest.MapFS{

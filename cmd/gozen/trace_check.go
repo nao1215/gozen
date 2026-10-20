@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/nao1215/gozen/internal/diag"
@@ -182,7 +183,7 @@ func (c *traceChecker) stand(s standLine) {
 				shown = true
 			}
 		}
-		key := fmt.Sprint(c.sayN)
+		key := strconv.Itoa(c.sayN)
 		if !shown && !c.reported[key] {
 			switch {
 			case !s.Hides:
@@ -242,14 +243,16 @@ func checkTrace(path string, musicLate float64, w io.Writer) (n int, err error) 
 	}
 	defer func() { err = errors.Join(err, f.Close()) }()
 	output := &cli.Output{Writer: w}
-	c := &traceChecker{musicLate: musicLate, speed: 1, reported: map[string]bool{}, pos: map[string]float64{},
-		carried: map[string]bool{}, spoke: map[string]bool{}}
+	c := &traceChecker{
+		musicLate: musicLate, speed: 1, reported: map[string]bool{}, pos: map[string]float64{},
+		carried: map[string]bool{}, spoke: map[string]bool{},
+	}
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 1<<20), 1<<24)
 	last := 0
 	for sc.Scan() {
-		var l map[string]any
-		if err := decodeTrace(sc.Bytes(), &l); err != nil {
+		l, err := decodeTrace(sc.Bytes())
+		if err != nil {
 			return 0, err
 		}
 		last = int(num(l["tick"]))

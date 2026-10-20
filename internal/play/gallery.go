@@ -588,7 +588,6 @@ func newSceneReplay(g *Game, sc data.GalleryScene) *sceneReplay {
 	if sc.Location != "" {
 		st.Location = sc.Location
 	} else if id := g.db.EventPlaces()[sc.Event]; id != "" {
-
 		if l := g.db.Locations[id]; l.Dungeon == nil {
 			st.Location = id
 		} else if r.bg.File == "" {
@@ -618,7 +617,6 @@ func newSceneReplay(g *Game, sc data.GalleryScene) *sceneReplay {
 	g.req = nil
 	do := g.db.Events[sc.Event].Do
 	if len(sc.Set) > 0 {
-
 		do = append([]data.Command{{SetV: sc.Set}}, do...)
 	}
 	g.events.Start(do)

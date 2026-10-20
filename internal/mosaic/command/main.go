@@ -9,6 +9,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -18,7 +19,7 @@ import (
 	"github.com/nao1215/gozen/internal/diag"
 
 	"github.com/spf13/pflag"
-	_ "golang.org/x/image/webp"
+	_ "golang.org/x/image/webp" // decodes the WebP pictures a game may hold
 
 	"github.com/nao1215/gozen/internal/mosaic"
 	"github.com/nao1215/gozen/internal/mosaic/detect"
@@ -106,7 +107,7 @@ func (o *options) setup(gameDir string) (config, error) {
 		}
 	}
 	if len(p.labels) == 0 {
-		return config{}, fmt.Errorf("--labels cannot be empty")
+		return config{}, errors.New("--labels cannot be empty")
 	}
 	out := o.out
 	if out == "" {
@@ -123,7 +124,7 @@ func (o *options) setup(gameDir string) (config, error) {
 		return c, err
 	}
 	if len(c.passes) == 0 {
-		return c, fmt.Errorf("--passes cannot be empty")
+		return c, errors.New("--passes cannot be empty")
 	}
 	human, err := mosaic.LoadFixes(o.fixFile)
 	if err != nil {
@@ -133,9 +134,7 @@ func (o *options) setup(gameDir string) (config, error) {
 		return c, err
 	}
 	c.fixes = mosaic.Fixes{}
-	for k, f := range human {
-		c.fixes[k] = f
-	}
+	maps.Copy(c.fixes, human)
 	for k, f := range c.manual {
 		c.fixes[k] = mosaic.Combine(c.fixes[k], f)
 	}
@@ -179,7 +178,7 @@ func (c *config) open() error {
 	}
 	if c.opts.shape == "mask" {
 		if c.opts.segModel == "" {
-			return fmt.Errorf("--shape mask requires a user-supplied --seg model")
+			return errors.New("--shape mask requires a user-supplied --seg model")
 		}
 		if c.seg, err = segment.NewYoloSeg(c.opts.segModel, c.opts.lib, c.opts.threads, 1280, segment.SegLabels); err != nil {
 			return err
@@ -483,7 +482,7 @@ func decode(path string) (image.Image, error) {
 func encode(path string, img image.Image, quality int) (err error) {
 	ext := strings.ToLower(filepath.Ext(path))
 	if ext != ".png" && ext != ".jpg" && ext != ".jpeg" {
-		return fmt.Errorf("output extension must be PNG or JPEG")
+		return errors.New("output extension must be PNG or JPEG")
 	}
 	return mosaic.WriteFile(path, func(w io.Writer) error {
 		if ext == ".png" {
@@ -583,7 +582,7 @@ func removeTracked(out, rel string) error {
 		return err
 	}
 	if !within(dst, root) {
-		return fmt.Errorf("report output escapes destination")
+		return errors.New("report output escapes destination")
 	}
 	if err = os.Remove(p); err != nil && !os.IsNotExist(err) {
 		return err

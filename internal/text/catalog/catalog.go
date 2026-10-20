@@ -3,7 +3,10 @@
 // choice.
 package catalog
 
-import "fmt"
+import (
+	"fmt"
+	"maps"
+)
 
 // The built-in languages. The empty language is English.
 const (
@@ -18,9 +21,7 @@ func Words(language string) (map[string]string, error) {
 	out := make(map[string]string, len(english))
 	switch language {
 	case English, "":
-		for k, w := range english {
-			out[k] = w
-		}
+		maps.Copy(out, english)
 	case Japanese:
 		for k := range english {
 			out[k] = k

@@ -50,11 +50,13 @@ func rgba(c color.NRGBA) color.RGBA {
 	}
 	return r
 }
+
 func px(dst *ebiten.Image) *image.RGBA {
 	img := image.NewRGBA(dst.Bounds())
 	dst.ReadPixels(img.Pix)
 	return img
 }
+
 func shift(x, y int) *ebiten.DrawImageOptions {
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(x), float64(y))

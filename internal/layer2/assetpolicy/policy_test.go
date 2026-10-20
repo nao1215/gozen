@@ -13,7 +13,7 @@ func sum(s string) string { return fmt.Sprintf("%x", sha256.Sum256([]byte(s))) }
 func write(t *testing.T, dir string, files map[string]string) {
 	t.Helper()
 	for name, s := range files {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte(s), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(s), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}

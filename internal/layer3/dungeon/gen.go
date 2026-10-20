@@ -3,6 +3,7 @@ package dungeon
 import (
 	"hash/fnv"
 	"math/rand/v2"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -25,7 +26,7 @@ const (
 
 // Dive makes floor floor of the dungeon loc (a new dive when the seed is to change) and
 // puts the party at its start.
-func Dive(db *data.DB, st *rpg.State, loc string, floor int, newSeed bool) {
+func Dive(db *data.DB, st *rpg.State, loc string, floor int, _ bool) {
 	DiveAt(db, st, loc, floor, "", "")
 }
 
@@ -351,7 +352,7 @@ func mazeGrid(g *data.Generate, rng *rand.Rand) ([][]rune, []room) {
 // toward its count, and only the rest are placed.
 func Drawn(g *data.Generate, m string, rng *rand.Rand, kind func(rune) Kind, count func(data.Expr) int) string {
 	var grid [][]rune
-	for _, ln := range strings.Split(strings.Trim(m, "\n"), "\n") {
+	for ln := range strings.SplitSeq(strings.Trim(m, "\n"), "\n") {
 		grid = append(grid, []rune(ln))
 	}
 	return placeOn(g, grid, nil, rng, kind, count, true)
@@ -488,14 +489,22 @@ func placeOn(g *data.Generate, grid [][]rune, rooms []room, rng *rand.Rand, kind
 	steps4 := [][2]int{{0, 1}, {1, 0}, {0, -1}, {-1, 0}}
 	var guards [][2]int // what near put in front of the stairs: not a wall to the rest (the party beats it)
 	blocks := func(c [2]int, ch rune) bool {
-		was := grid[c[1]][c[0]]
+		// put the cells back in reverse order once the walk is measured
+		type saved struct {
+			at [2]int
+			ch rune
+		}
+		undo := []saved{{c, grid[c[1]][c[0]]}}
+		defer func() {
+			for _, u := range slices.Backward(undo) {
+				grid[u.at[1]][u.at[0]] = u.ch
+			}
+		}()
 		grid[c[1]][c[0]] = ch
-		defer func() { grid[c[1]][c[0]] = was }()
 		for _, g := range guards {
 			if g != c {
-				old := grid[g[1]][g[0]]
+				undo = append(undo, saved{g, grid[g[1]][g[0]]})
 				grid[g[1]][g[0]] = '.'
-				defer func() { grid[g[1]][g[0]] = old }()
 			}
 		}
 		return !walkable(grid, start, kind)

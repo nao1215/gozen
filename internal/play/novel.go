@@ -3,6 +3,7 @@ package play
 import (
 	"image"
 	"math"
+	"slices"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 
@@ -44,8 +45,8 @@ func (g *Game) novelButtonRects() []image.Rectangle {
 	sw, sh := g.screen()
 	var out []image.Rectangle
 	x := sw - 40
-	for i := len(novelButtons) - 1; i >= 0; i-- {
-		w := gfx.TextWidth(lang.T(novelButtons[i].label), sizeS) + 28
+	for _, btn := range slices.Backward(novelButtons) {
+		w := gfx.TextWidth(lang.T(btn.label), sizeS) + 28
 		x -= w
 		out = append([]image.Rectangle{image.Rect(int(x), int(sh-40), int(x+w), int(sh-10))}, out...)
 		x -= 10
@@ -63,7 +64,7 @@ func (g *Game) novelInput() bool {
 	}
 	press := map[button]bool{}
 	for b := range numButtons {
-		press[button(b)] = g.in.pressed[b]
+		press[b] = g.in.pressed[b]
 	}
 	if g.in.click && g.novel() && t.active {
 		for i, r := range g.novelButtonRects() {
@@ -130,7 +131,7 @@ func (t *talk) drawNovel(g *Game, dst *ebiten.Image) {
 	}
 	y := sh - novelH
 
-	for i := 0; i < 24; i++ {
+	for i := range 24 {
 		a := uint8(float64(g.th.window.A) * float64(i) / 24)
 		rect(dst, 0, y-24+float64(i), sw, 1, withAlpha(g.th.window, a))
 	}

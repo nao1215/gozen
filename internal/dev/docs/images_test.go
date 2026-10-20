@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -71,7 +72,7 @@ func TestDocImages(t *testing.T) {
 	if mode == "update" {
 		// A picture that still matches is kept, so a remake does not churn the binary files.
 		for _, name := range made {
-			if compareFiles(filepath.Join(committed, name), filepath.Join(out, name), m.Images[name].tolerance()) == nil {
+			if compareFiles(t.Context(), filepath.Join(committed, name), filepath.Join(out, name), m.Images[name].tolerance()) == nil {
 				t.Logf("docs/images/%s is up to date", name)
 				continue
 			}
@@ -88,7 +89,7 @@ func TestDocImages(t *testing.T) {
 	}
 	var stale []string
 	for _, name := range made {
-		if err := compareFiles(filepath.Join(committed, name), filepath.Join(out, name), m.Images[name].tolerance()); err != nil {
+		if err := compareFiles(t.Context(), filepath.Join(committed, name), filepath.Join(out, name), m.Images[name].tolerance()); err != nil {
 			stale = append(stale, fmt.Sprintf("docs/images/%s: %v", name, err))
 		}
 	}
@@ -415,10 +416,10 @@ func encodeJPEG(t *testing.T, frame string, e jpegEncoding, dst string) error {
 	} else if cfg.Width != e.Width || cfg.Height != e.Height {
 		args = append(args, "-vf", fmt.Sprintf("scale=%d:%d:flags=lanczos", e.Width, e.Height))
 	}
-	if err := ffmpeg(t, append(args, "-q:v", fmt.Sprint(max(e.Quality, 1)), dst)...); err != nil {
+	if err := ffmpeg(t, append(args, "-q:v", strconv.Itoa(max(e.Quality, 1)), dst)...); err != nil {
 		return err
 	}
-	frames, err := decodeFrames(dst)
+	frames, err := decodeFrames(t.Context(), dst)
 	if err != nil {
 		return err
 	}
@@ -458,11 +459,11 @@ func encodeGIF(t *testing.T, work string, frames []string, e gifEncoding, dst st
 	}
 	filter += fmt.Sprintf("scale=%d:%d:flags=lanczos,split[a][b];[a]palettegen=max_colors=%d:stats_mode=diff[p];"+
 		"[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle", e.Width, e.Height, max(e.Colors, 2))
-	if err := ffmpeg(t, "-framerate", fmt.Sprint(e.FPS), "-i", filepath.Join(dir, "frame-%04d.png"),
+	if err := ffmpeg(t, "-framerate", strconv.Itoa(e.FPS), "-i", filepath.Join(dir, "frame-%04d.png"),
 		"-fps_mode", "cfr", "-filter_complex", filter, "-loop", "0", dst); err != nil {
 		return err
 	}
-	got, err := decodeFrames(dst)
+	got, err := decodeFrames(t.Context(), dst)
 	if err != nil {
 		return err
 	}
@@ -490,7 +491,7 @@ func encodeGIF(t *testing.T, work string, frames []string, e gifEncoding, dst st
 }
 
 // decodeFrames reads a picture, a GIF or a video as full frames.
-func decodeFrames(file string) ([]goimage.Image, error) {
+func decodeFrames(ctx context.Context, file string) ([]goimage.Image, error) {
 	switch strings.ToLower(filepath.Ext(file)) {
 	case ".gif":
 		b, err := os.ReadFile(file) //nolint:gosec // A picture of this repository or of the test.
@@ -503,7 +504,7 @@ func decodeFrames(file string) ([]goimage.Image, error) {
 		}
 		return composeGIF(g), nil
 	case ".mp4", ".webm", ".mov":
-		return decodeVideo(file)
+		return decodeVideo(ctx, file)
 	default:
 		b, err := os.ReadFile(file) //nolint:gosec // A picture of this repository or of the test.
 		if err != nil {
@@ -547,13 +548,13 @@ func composeGIF(g *gif.GIF) []goimage.Image {
 }
 
 // decodeVideo extracts every frame of a video with ffmpeg.
-func decodeVideo(file string) (frames []goimage.Image, err error) {
+func decodeVideo(ctx context.Context, file string) (frames []goimage.Image, err error) {
 	dir, err := os.MkdirTemp("", "gozen-video-")
 	if err != nil {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, os.RemoveAll(dir)) }()
-	cmd := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "error", "-i", file, "-pix_fmt", "rgb24", filepath.Join(dir, "%05d.png")) //nolint:gosec // ffmpeg on a picture of this repository or of the test.
+	cmd := exec.CommandContext(ctx, "ffmpeg", "-hide_banner", "-loglevel", "error", "-i", file, "-pix_fmt", "rgb24", filepath.Join(dir, "%05d.png")) //nolint:gosec // ffmpeg on a picture of this repository or of the test.
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
@@ -565,7 +566,7 @@ func decodeVideo(file string) (frames []goimage.Image, err error) {
 	}
 	sort.Strings(names)
 	for _, n := range names {
-		f, err := decodeFrames(n)
+		f, err := decodeFrames(ctx, n)
 		if err != nil {
 			return nil, err
 		}
@@ -585,8 +586,8 @@ func diffRatio(a, b goimage.Image) float64 {
 		return 1
 	}
 	differ := 0
-	for y := 0; y < ab.Dy(); y++ {
-		for x := 0; x < ab.Dx(); x++ {
+	for y := range ab.Dy() {
+		for x := range ab.Dx() {
 			r1, g1, b1, a1 := a.At(ab.Min.X+x, ab.Min.Y+y).RGBA()
 			r2, g2, b2, a2 := b.At(bb.Min.X+x, bb.Min.Y+y).RGBA()
 			if far(r1, r2) || far(g1, g2) || far(b1, b2) || far(a1, a2) {
@@ -618,7 +619,7 @@ func compareFrames(committed, fresh []goimage.Image, tolerance float64) error {
 		return fmt.Errorf("%d frames, now %d", len(committed), len(fresh))
 	}
 	if len(fresh) == 0 {
-		return fmt.Errorf("no frames")
+		return errors.New("no frames")
 	}
 	cb, fb := committed[0].Bounds(), fresh[0].Bounds()
 	if cb.Dx() != fb.Dx() || cb.Dy() != fb.Dy() {
@@ -636,12 +637,12 @@ func compareFrames(committed, fresh []goimage.Image, tolerance float64) error {
 	return nil
 }
 
-func compareFiles(committed, fresh string, tolerance float64) error {
-	old, err := decodeFrames(committed)
+func compareFiles(ctx context.Context, committed, fresh string, tolerance float64) error {
+	old, err := decodeFrames(ctx, committed)
 	if err != nil {
 		return fmt.Errorf("the committed picture: %w", err)
 	}
-	now, err := decodeFrames(fresh)
+	now, err := decodeFrames(ctx, fresh)
 	if err != nil {
 		return fmt.Errorf("the fresh picture: %w", err)
 	}

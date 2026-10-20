@@ -29,15 +29,15 @@ func TestActorTacticsRoundTrip(t *testing.T) {
 			t.Fatalf("分岐探索の保存コピーで作戦を失った %v", path.Errs)
 		}
 	}
-	copy := paths[0].St
-	d := New(db, copy)
+	saved := paths[0].St
+	d := New(db, saved)
 	var decisions []battle.Decision
 	d.OnDecision = func(v battle.Decision) { decisions = append(decisions, v) }
 	d.fight("one")
 	if len(decisions) == 0 || decisions[0].Selected != 1 || decisions[0].Rules[0].Reason != battle.RuleInvalidTactic || decisions[0].Skill != "fire" {
 		t.Fatalf("描画なしの戦闘で作戦を使わない %+v", decisions)
 	}
-	copy.Actors["scout"].Tactics.Rows[0].Action = "attack"
+	saved.Actors["scout"].Tactics.Rows[0].Action = "attack"
 	if st.Actors["scout"].Tactics.Rows[0].Action != "gone" {
 		t.Fatal("探索先の変更が元セーブへ波及した")
 	}

@@ -24,7 +24,7 @@ func TestScenesByCommands(t *testing.T) {
 	}
 	labels := query[[]map[string]any](t, s, "menu")
 	for _, e := range labels {
-		if strings.Contains(e["label"].(string), "Notice board") { //nolint:errcheck // a label is a string
+		if label, ok := e["label"].(string); ok && strings.Contains(label, "Notice board") {
 			t.Fatalf("a thing with once is offered again: %v", labels)
 		}
 	}

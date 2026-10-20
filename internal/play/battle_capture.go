@@ -2,7 +2,6 @@ package play
 
 import (
 	"bufio"
-
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,9 +40,11 @@ func (g *Game) traceBattleCapture(troop string) {
 	if g.tr == nil || g.tr.enc == nil || g.tr.err != nil {
 		return
 	}
-	c := battleCapture{Version: 1, Tick: g.tick, Troop: troop,
+	c := battleCapture{
+		Version: 1, Tick: g.tick, Troop: troop,
 		Fighters: slices.Clone(g.st.Fighters), Calm: g.st.Calm, Auto: g.autoBattle,
-		Setup: traceSetup{Config: g.cfg, Read: g.read, Unlocked: g.unlocked}, AutoRead: g.autoRead, Engine: battleEngine, Fade: g.fadeT}
+		Setup: traceSetup{Config: g.cfg, Read: g.read, Unlocked: g.unlocked}, AutoRead: g.autoRead, Engine: battleEngine, Fade: g.fadeT,
+	}
 	var err error
 	c.Save, err = g.st.Save()
 	if err == nil && g.pcg != nil {
@@ -182,7 +183,7 @@ func loadBattleReplay(path string, o *Options) (_ *replay, err error) {
 		case "act":
 			name, ok := l["name"].(string)
 			if !ok {
-				return nil, fmt.Errorf("replay: action has no name")
+				return nil, errors.New("replay: action has no name")
 			}
 			if name != "battle_auto" || *h.Tick <= r.capture.Tick {
 				return nil, errors.New(lang.T("戦闘記録に再現できない直接操作がある"))
@@ -216,9 +217,11 @@ func (g *Game) traceBattleStep(s battle.Step) {
 		}
 		return traceLine{"id": u.ID(), "enemy": u.Enemy, "index": u.Index}
 	}
-	g.emit("battle_step", traceLine{"kind": s.Kind, "user": unit(s.User), "target": unit(s.Target),
+	g.emit("battle_step", traceLine{
+		"kind": s.Kind, "user": unit(s.User), "target": unit(s.Target),
 		"skill": s.Skill, "amount": s.Amount, "stat": s.Stat, "hp": s.HP, "mp": s.MP,
-		"crit": s.Crit, "weak": s.Weak, "resisted": s.Resisted, "state": s.State, "element": s.Element})
+		"crit": s.Crit, "weak": s.Weak, "resisted": s.Resisted, "state": s.State, "element": s.Element,
+	})
 }
 
 func (g *Game) traceBattleResult(s *battleScene) {

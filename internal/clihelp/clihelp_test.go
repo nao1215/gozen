@@ -56,14 +56,18 @@ func TestPageShape(t *testing.T) {
 	fs.StringP("out", "o", "", "write to `DIR`")
 	fs.Int("tries", 3, "tries")
 	fs.Bool("extra", false, "a flag left out of every group")
-	p := Page{Name: "demo", Summary: "a demo", Usage: []string{"demo [OPTIONS]"},
+	p := Page{
+		Name: "demo", Summary: "a demo", Usage: []string{"demo [OPTIONS]"},
 		Examples: []Example{{"run it", "demo -o x"}},
 		Groups:   []Group{{Title: "Output", Flags: []string{"out", "tries"}}, {Title: "General", Flags: []string{"help"}}},
-		Notes:    []string{"Requirements: none."}}
+		Notes:    []string{"Requirements: none."},
+	}
 	got := p.String(fs)
-	for _, want := range []string{"demo - a demo (", "[Usage]\n  demo [OPTIONS]\n", "[Examples]\n  - run it\n    demo -o x\n",
+	for _, want := range []string{
+		"demo - a demo (", "[Usage]\n  demo [OPTIONS]\n", "[Examples]\n  - run it\n    demo -o x\n",
 		"[Options]\n  Output:\n    -o, --out DIR", "--tries N", "(default: 3)", "  Other:\n", "--extra", "  General:\n    -h, --help",
-		"Requirements: none.", Links} {
+		"Requirements: none.", Links,
+	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in\n%s", want, got)
 		}
@@ -71,7 +75,7 @@ func TestPageShape(t *testing.T) {
 	if strings.Index(got, "Other:") > strings.Index(got, "General:") {
 		t.Error("General must stay last")
 	}
-	for _, line := range strings.Split(got, "\n") {
+	for line := range strings.SplitSeq(got, "\n") {
 		if len(line) > Width {
 			t.Errorf("line longer than %d: %q", Width, line)
 		}

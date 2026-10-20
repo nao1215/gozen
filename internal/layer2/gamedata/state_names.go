@@ -295,7 +295,7 @@ func (db *DB) SetWarnings() []error {
 		switch v.Kind() { //nolint:exhaustive // Only schema container/scalar kinds need handling; other reflection kinds are intentionally ignored.
 		case reflect.Struct:
 			for f := range v.Type().Fields() {
-				tag := strings.Split(f.Tag.Get("yaml"), ",")[0]
+				tag, _, _ := strings.Cut(f.Tag.Get("yaml"), ",")
 				if tag != "" && tag != "-" {
 					walk(v.FieldByIndex(f.Index), numberPath(w, tag))
 				}
@@ -305,7 +305,7 @@ func (db *DB) SetWarnings() []error {
 				walk(v.MapIndex(k), numberPath(w, fmt.Sprint(k.Interface())))
 			}
 		case reflect.Slice:
-			for i := 0; i < v.Len(); i++ {
+			for i := range v.Len() {
 				walk(v.Index(i), fmt.Sprintf("%s[%d]", w, i))
 			}
 		}

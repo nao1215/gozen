@@ -40,7 +40,6 @@ func (s *battleScene) recordDecisions() {
 }
 
 func (s *battleScene) reasonButton(g *Game) image.Rectangle {
-
 	sw, _ := g.screen()
 	x := int(sw/2) - 115
 	return image.Rect(x, 164, x+230, 210)
@@ -69,8 +68,8 @@ func newTacticReasons(g *Game, decisions []battle.Decision) *tacticReasons {
 	s.history = newList(nil, 24, 108, 390, 9)
 	s.rules = newList(nil, 434, 108, sw-458, 9)
 	s.history.size, s.rules.size = sizeS, sizeS
-	for i := len(decisions) - 1; i >= 0; i-- {
-		d := cloneTacticDecision(decisions[i])
+	for _, decision := range slices.Backward(decisions) {
+		d := cloneTacticDecision(decision)
 		s.decisions = append(s.decisions, d)
 		timing := lang.T("行動時")
 		if d.Timing == battle.DecisionTurnStart {

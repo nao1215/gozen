@@ -1,6 +1,7 @@
 package designeval
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"math"
@@ -181,11 +182,11 @@ func Load(fsys fs.FS, path string) (*Config, error) {
 func (c *Config) Validate(db *data.DB) error { return c.check(db) }
 func (c *Config) check(db *data.DB) error {
 	if c.Game.Days < 0 || c.Game.Tries < 0 || c.Game.MaxTurns < 0 || c.Duels.Tries < 0 {
-		return fmt.Errorf("counts must be nonnegative")
+		return errors.New("counts must be nonnegative")
 	}
 	for _, v := range []float64{c.Time.CharsPerSec, c.Time.Line, c.Time.Notice, c.Time.Choice, c.Time.Step, c.Time.Turn, c.Time.Move, c.Time.Menu, c.Time.Battle, c.Time.BattleTurn, c.Time.Retry, c.Time.Shop, c.Time.Stranded} {
 		if math.IsNaN(v) || math.IsInf(v, 0) || v < 0 {
-			return fmt.Errorf("time coefficients must be finite and nonnegative")
+			return errors.New("time coefficients must be finite and nonnegative")
 		}
 	}
 	for i := range c.Time.Images {
@@ -221,7 +222,7 @@ func (c *Config) check(db *data.DB) error {
 		}
 	}
 	if len(c.Personas) == 0 {
-		return fmt.Errorf("no personas")
+		return errors.New("no personas")
 	}
 	seen := map[string]bool{}
 	for _, p := range c.Personas {

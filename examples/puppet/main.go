@@ -324,8 +324,7 @@ func main() {
 	}
 	log.SetFlags(0)
 	log.Print(err)
-	var u usageError
-	if errors.As(err, &u) {
+	if _, ok := errors.AsType[usageError](err); ok {
 		log.Print(`Run "puppet --help" for usage.`)
 		os.Exit(2)
 	}

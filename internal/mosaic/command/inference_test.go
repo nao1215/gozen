@@ -29,6 +29,7 @@ func TestONNXDetection(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
 func TestONNXSegmentation(t *testing.T) {
 	model, lib := inferenceInputs(t, "GOZEN_MOSAIC_SEG_MODEL")
 	d, err := segment.NewYoloSeg(model, lib, 1, 1280, segment.SegLabels)
@@ -44,6 +45,7 @@ func TestONNXSegmentation(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
 func TestONNXTagging(t *testing.T) {
 	dir, lib := inferenceInputs(t, "GOZEN_MOSAIC_TAGGER_DIR")
 	d, err := tagger.New(dir, lib, 1)
@@ -59,6 +61,7 @@ func TestONNXTagging(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
 func inferenceInputs(t *testing.T, key string) (string, string) {
 	t.Helper()
 	model, lib := os.Getenv(key), os.Getenv("ONNXRUNTIME_LIB")

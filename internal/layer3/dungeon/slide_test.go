@@ -123,7 +123,7 @@ func TestSlidesPlacedKeepTheWayOpen(t *testing.T) {
 	db := testgame.Load(t, map[string]string{"data/ice.yaml": slides})
 	st := testgame.State(db, 1)
 	place := []data.Put{{Char: ">", Far: true}}
-	for _, ch := range strings.Split("T T T P P 1 1 1 1 2 2 2 2 i i i i i i", " ") {
+	for ch := range strings.SplitSeq("T T T P P 1 1 1 1 2 2 2 2 i i i i i i", " ") {
 		place = append(place, data.Put{Char: ch})
 	}
 	g := &data.Generate{Width: 15, Height: 15, Rooms: 3, Start: "S", Place: place}

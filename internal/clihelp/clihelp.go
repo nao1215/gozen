@@ -160,7 +160,7 @@ func (p Page) String(fs *pflag.FlagSet) string {
 		b.WriteString("  " + u + "\n")
 	}
 	if p.About != "" {
-		for _, para := range strings.Split(p.About, "\n\n") {
+		for para := range strings.SplitSeq(p.About, "\n\n") {
 			b.WriteString("\n" + Wrap(para, 2))
 		}
 	}
@@ -307,7 +307,7 @@ func wrapWith(s, first, rest string) string {
 	start := len(first)
 	limit := max(Width-len(rest), 20)
 	col := 0
-	for _, word := range strings.Fields(s) {
+	for word := range strings.FieldsSeq(s) {
 		switch {
 		case col == 0:
 			line += word

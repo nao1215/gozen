@@ -48,7 +48,8 @@ func (b *noticeBoard) update() {
 			out = append(out, n)
 			continue
 		}
-		if n.t--; n.t > 0 {
+		n.t--
+		if n.t > 0 {
 			out = append(out, n)
 		}
 	}

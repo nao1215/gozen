@@ -54,7 +54,7 @@ func (badWriter) Write([]byte) (int, error) { return 0, io.ErrClosedPipe }
 func TestBatchScenes(t *testing.T) {
 	catalog := filepath.Join("..", "..", "..", "docs", "examples", "production", "catalog.yaml")
 	ids := filepath.Join(t.TempDir(), "scenes.txt")
-	if err := os.WriteFile(ids, []byte("landscape\nmissing\n\nlandscape\n"), 0600); err != nil {
+	if err := os.WriteFile(ids, []byte("landscape\nmissing\n\nlandscape\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	args := []string{"--config", catalog, "--scenes", ids, "--format", "json"}
@@ -79,7 +79,7 @@ func TestBatchScenes(t *testing.T) {
 	if err := run(args, badWriter{}, io.Discard); !errors.Is(err, io.ErrClosedPipe) {
 		t.Fatalf("lost batch output error: %v", err)
 	}
-	if err := os.WriteFile(ids, []byte("landscape\n"), 0600); err != nil {
+	if err := os.WriteFile(ids, []byte("landscape\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := run(args, io.Discard, io.Discard); err != nil {

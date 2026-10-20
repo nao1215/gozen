@@ -2,7 +2,6 @@ package command
 
 import (
 	"errors"
-	"fmt"
 	"image"
 	"io/fs"
 	"os"
@@ -23,14 +22,14 @@ func publishManual(c config, pic, orig, sub string, size, step int) (err error) 
 	defer func() { err = errors.Join(err, os.RemoveAll(stage)) }()
 	if st, statErr := os.Stat(c.out); statErr == nil {
 		if !st.IsDir() {
-			return fmt.Errorf("output is not a directory")
+			return errors.New("output is not a directory")
 		}
 		if err = fs.WalkDir(os.DirFS(c.out), ".", func(_ string, d fs.DirEntry, e error) error {
 			if e != nil {
 				return e
 			}
 			if d.Type()&os.ModeSymlink != 0 {
-				return fmt.Errorf("output tree must not contain symlinks")
+				return errors.New("output tree must not contain symlinks")
 			}
 			return nil
 		}); err != nil {
@@ -49,7 +48,7 @@ func publishManual(c config, pic, orig, sub string, size, step int) (err error) 
 		return err
 	}
 	if sub != "check" {
-		if _, err = manualView(c, pic, orig, "masked", image.Rectangle{}, size, step, ""); err != nil {
+		if err = manualView(c, pic, orig, "masked", image.Rectangle{}, size, step, ""); err != nil {
 			return err
 		}
 	}

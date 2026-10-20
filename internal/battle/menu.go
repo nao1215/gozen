@@ -29,7 +29,7 @@ func UseInMenu(db *data.DB, st *rpg.State, user *rpg.Actor, skill, item string, 
 		uu = b.Party[0]
 	}
 	var use *data.Usage
-	name := ""
+	var name string
 	if item != "" {
 		it := db.Items[item]
 		if it == nil || it.Use == nil || !slices.Contains(it.Use.Where, "menu") {

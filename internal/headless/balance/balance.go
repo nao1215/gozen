@@ -1,8 +1,9 @@
+// Package balance measures win rates and the difficulty curve of a game by
+// running its battles without a screen, for gozen sim and gozen curve.
 package balance
 
 import (
 	"errors"
-	"fmt"
 	"math/rand/v2"
 	"sort"
 
@@ -471,7 +472,7 @@ func (r *runner) run(st *rpg.State, cmds []data.Command) {
 			ev.Answer(event.BattleWon)
 		}
 	}
-	r.err = errors.Join(r.err, fmt.Errorf("balance: event step limit exceeded"))
+	r.err = errors.Join(r.err, errors.New("balance: event step limit exceeded"))
 }
 
 func recoverAll(st *rpg.State) {

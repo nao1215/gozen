@@ -1,4 +1,4 @@
-// Package world is the rules of the field without a screen: what can be done at the
+// Package field is the rules of the field without a screen: what can be done at the
 // location the party is at, the events that start on arriving or by themselves, and the
 // random battles. The screen (play) and the headless driver (headless)
 // both use it.

@@ -44,7 +44,8 @@ type Policy struct {
 
 // LoadPolicy reads the work's settings. If omitted, it uses a neutral approval format.
 func Load(base fs.FS, name string) (Policy, error) {
-	p := Policy{Report: "approvals.json", Extensions: []string{".png", ".jpg", ".jpeg", ".webp"},
+	p := Policy{
+		Report: "approvals.json", Extensions: []string{".png", ".jpg", ".jpeg", ".webp"},
 		Inspection: RecordFields{File: "file", Source: "source", Required: "required", Approved: "approved"},
 		Records:    RecordFields{File: "file", Source: "source", Required: "required", Approved: "approved", Output: "output"},
 	}
@@ -61,7 +62,7 @@ func Load(base fs.FS, name string) (Policy, error) {
 		return p, err
 	}
 	if !fs.ValidPath(p.Report) || p.Records.File == "" || p.Records.Source == "" || p.Inspection.File == "" || (p.Inspection.Approved == "" && (p.Inspection.Status == "" || len(p.Inspection.Accepted) == 0)) {
-		return p, fmt.Errorf("assetfs: invalid approval policy")
+		return p, errors.New("assetfs: invalid approval policy")
 	}
 	return p, nil
 }
@@ -71,7 +72,7 @@ func field(m map[string]any, key string) any {
 	if key == "" {
 		return nil
 	}
-	for _, k := range strings.Split(key, ".") {
+	for k := range strings.SplitSeq(key, ".") {
 		x, ok := v.(map[string]any)
 		if !ok {
 			return nil

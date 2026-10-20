@@ -9,7 +9,6 @@ import (
 
 	"github.com/nao1215/gozen/internal/battle"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
@@ -108,7 +107,7 @@ func TestRuleApplicability(t *testing.T) {
 }
 
 // decisionScenario also uses randomness in expressions and target selection, and mixes defend, fast skills, items and once.
-func decisionScenario(t *testing.T, mode string, seed uint64) (*battle.Battle, *rpg.State) {
+func decisionScenario(t *testing.T, mode string, seed uint64) *battle.Battle {
 	t.Helper()
 	db := testgame.Load(t, map[string]string{"data/decision.yaml": `
 skills:
@@ -139,7 +138,7 @@ skills:
 	st := testgame.State(db, seed)
 	st.Join("guide")
 	st.Actors["scout"].Learnt = []string{"wall", "rain"}
-	return battle.New(db, st, "two"), st
+	return battle.New(db, st, "two")
 }
 
 // decisionRun keeps no pointers, so each step, the end-of-turn state and the final random value can be compared.
@@ -185,9 +184,9 @@ func TestDecisionTraceDoesNotChangeBattle(t *testing.T) {
 	for _, mode := range []string{"gambit", ""} {
 		for seed := uint64(1); seed <= 24; seed++ {
 			t.Run(fmt.Sprintf("%s/%d", mode, seed), func(t *testing.T) {
-				plain, _ := decisionScenario(t, mode, seed)
+				plain := decisionScenario(t, mode, seed)
 				want := decisionRun(t, plain)
-				traced, _ := decisionScenario(t, mode, seed)
+				traced := decisionScenario(t, mode, seed)
 				var records []battle.Decision
 				traced.OnDecision = func(d battle.Decision) { records = append(records, d) }
 				got := decisionRun(t, traced)
@@ -230,9 +229,9 @@ func TestDecisionTraceDoesNotChangeBattle(t *testing.T) {
 }
 
 func TestDecisionRecordCannotMutateBattle(t *testing.T) {
-	plain, _ := decisionScenario(t, "gambit", 7)
+	plain := decisionScenario(t, "gambit", 7)
 	want := decisionRun(t, plain)
-	traced, _ := decisionScenario(t, "gambit", 7)
+	traced := decisionScenario(t, "gambit", 7)
 	traced.OnDecision = func(d battle.Decision) {
 		d.User.ID = "changed"
 		if d.Target != nil {
@@ -325,8 +324,8 @@ func TestDecisionSelectionAndOnce(t *testing.T) {
 }
 
 func TestCandidateEvaluationUsesTheSameRandomSequence(t *testing.T) {
-	a, _ := decisionScenario(t, "gambit", 9)
-	b, _ := decisionScenario(t, "gambit", 9)
+	a := decisionScenario(t, "gambit", 9)
+	b := decisionScenario(t, "gambit", 9)
 	a.Turn, b.Turn = 3, 3
 	x := a.Candidates(a.Party[0])
 	y, reasons := b.EvaluateRules(b.Party[0])

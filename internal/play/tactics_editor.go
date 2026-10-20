@@ -147,8 +147,10 @@ func (e *tacticEditor) refresh(g *Game) {
 	e.fields.items = []listItem{
 		{label: lang.T("条件を選ぶ")},
 		{label: lang.T("HP / MP の閾値") + "  " + p, disabled: !tacticThreshold(g.db, e.row.Condition)},
-		{label: lang.T("対象を選ぶ")}, {label: lang.T("行動を選ぶ")},
-		{label: lang.T("この行を確定")}, {label: lang.T("この行の変更を取消")},
+		{label: lang.T("対象を選ぶ")},
+		{label: lang.T("行動を選ぶ")},
+		{label: lang.T("この行を確定")},
+		{label: lang.T("この行の変更を取消")},
 		{label: lang.T("説明とエラーの全文")},
 	}
 	if g.db.Game.Battle.SimpleTactics {
@@ -167,7 +169,7 @@ func (e *tacticEditor) refresh(g *Game) {
 			selected = strconv.Itoa(*e.row.Percent)
 		}
 		if tacticThreshold(g.db, e.row.Condition) {
-			for p := 0; p <= 100; p++ {
+			for p := range 101 {
 				e.options.items = append(e.options.items, listItem{id: strconv.Itoa(p), label: fmt.Sprintf("%d%%", p)})
 			}
 		}
@@ -325,7 +327,7 @@ type tacticText struct{ lines *list }
 func newTacticText(g *Game, text string) *tacticText {
 	sw, _ := g.screen()
 	var items []listItem
-	for _, part := range strings.Split(text, "\n") {
+	for part := range strings.SplitSeq(text, "\n") {
 		for _, line := range gfx.Wrap(part, sizeS, sw-140) {
 			items = append(items, listItem{label: line})
 		}
@@ -341,6 +343,7 @@ func (s *tacticText) update(g *Game) {
 		g.pop()
 	}
 }
+
 func (s *tacticText) draw(g *Game, dst *ebiten.Image) {
 	fill(dst, colorBlack)
 	g.text(dst, lang.T("説明の全文"), 30, 25, sizeL, g.th.text)

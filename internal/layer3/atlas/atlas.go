@@ -74,6 +74,7 @@ func (q *queue) Push(x any) {
 		*q = append(*q, it)
 	}
 }
+
 func (q *queue) Pop() any {
 	old := *q
 	it := old[len(old)-1]
@@ -251,7 +252,7 @@ func Reach(db *data.DB, st *rpg.State, arg string) []data.Command {
 
 // Cross is going along a road: its steps are added to the party's steps, each step may
 // meet a battle of its encounters (not when calm), and its do follows.
-func Cross(db *data.DB, st *rpg.State, r *data.Road) []data.Command {
+func Cross(_ *data.DB, st *rpg.State, r *data.Road) []data.Command {
 	n := r.StepsOrOne()
 	st.Steps += n
 	var cmds []data.Command

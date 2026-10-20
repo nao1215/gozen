@@ -41,8 +41,10 @@ type baked struct {
 
 func (g *Game) scenes() *sceneCache {
 	if g.sceneCache == nil {
-		g.sceneCache = &sceneCache{baked: map[string]baked{}, pending: map[string]bool{},
-			sheets: map[string]*ebiten.Image{}, faces: map[string]*ebiten.Image{}, renderers: map[string]*stage.Renderer{}}
+		g.sceneCache = &sceneCache{
+			baked: map[string]baked{}, pending: map[string]bool{},
+			sheets: map[string]*ebiten.Image{}, faces: map[string]*ebiten.Image{}, renderers: map[string]*stage.Renderer{},
+		}
 	}
 	return g.sceneCache
 }
@@ -107,9 +109,7 @@ func (g *Game) dollSheet(sp dollSpec) *ebiten.Image {
 	b, done := c.baked[key]
 	if !done && !c.pending[key] {
 		c.pending[key] = true
-		c.wg.Add(1)
-		go func() {
-			defer c.wg.Done()
+		c.wg.Go(func() {
 			pic := g.pics.decode(sp.picture)
 			var found *[4]int
 			if pic != nil {
@@ -124,7 +124,7 @@ func (g *Game) dollSheet(sp dollSpec) *ebiten.Image {
 			c.mu.Lock()
 			c.baked[key] = out
 			c.mu.Unlock()
-		}()
+		})
 	}
 	c.mu.Unlock()
 	if !done && g.waitsForDolls() {
@@ -201,8 +201,10 @@ func (g *Game) foundFace(picture string, size image.Point) *[4]int {
 
 // bakeDoll bakes a doll with the colors of its picture (plain colors without one).
 func bakeDoll(pic image.Image, sp dollSpec) *image.RGBA {
-	pal := doll.Palette{Hair: color.RGBA{90, 60, 40, 255}, Skin: color.RGBA{250, 214, 186, 255}, Top: color.RGBA{90, 120, 180, 255},
-		Sleeve: color.RGBA{90, 120, 180, 255}, Bottom: color.RGBA{80, 70, 60, 255}, Shoes: color.RGBA{70, 50, 40, 255}}
+	pal := doll.Palette{
+		Hair: color.RGBA{90, 60, 40, 255}, Skin: color.RGBA{250, 214, 186, 255}, Top: color.RGBA{90, 120, 180, 255},
+		Sleeve: color.RGBA{90, 120, 180, 255}, Bottom: color.RGBA{80, 70, 60, 255}, Shoes: color.RGBA{70, 50, 40, 255},
+	}
 	hair := ""
 	var parts []doll.Part
 	if d := sp.doll; d != nil {

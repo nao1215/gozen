@@ -3,6 +3,7 @@ package gozen
 import (
 	"errors"
 	"io/fs"
+	"slices"
 	"sort"
 )
 
@@ -11,9 +12,9 @@ type layered struct{ layers []fs.FS } // later layers are higher
 
 func (l layered) Open(name string) (fs.File, error) {
 	var err error
-	for i := len(l.layers) - 1; i >= 0; i-- {
+	for _, v := range slices.Backward(l.layers) {
 		var f fs.File
-		if f, err = l.layers[i].Open(name); err == nil || !errors.Is(err, fs.ErrNotExist) {
+		if f, err = v.Open(name); err == nil || !errors.Is(err, fs.ErrNotExist) {
 			return f, err // ReadDir merges directory contents from all layers
 		}
 	}

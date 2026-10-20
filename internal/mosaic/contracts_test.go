@@ -12,13 +12,14 @@ import (
 
 func pattern() *image.RGBA {
 	m := image.NewRGBA(image.Rect(0, 0, 24, 24))
-	for y := 0; y < 24; y++ {
-		for x := 0; x < 24; x++ {
+	for y := range 24 {
+		for x := range 24 {
 			m.SetRGBA(x, y, color.RGBA{uint8(x * 8), uint8(y * 8), uint8((x + y) * 4), 255})
 		}
 	}
 	return m
 }
+
 func TestPixelationContracts(t *testing.T) {
 	img := pattern()
 	before := bytes.Clone(img.Pix)
@@ -56,6 +57,7 @@ func TestPixelationContracts(t *testing.T) {
 		}
 	}
 }
+
 func TestShapesAndFixRoundTrip(t *testing.T) {
 	m := image.NewAlpha(image.Rect(0, 0, 10, 10))
 	m.SetAlpha(4, 4, color.Alpha{255})

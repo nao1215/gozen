@@ -1,4 +1,4 @@
-// Package data loads the game's YAML into the DB and checks structure, references and expressions before the game starts.
+// Package gamedata loads the game's YAML into the DB and checks structure, references and expressions before the game starts.
 // Pass Load an fs.FS holding game.yaml, the YAML under data/ and the assets under assets/.
 // See the Schema page (https://nao1215.github.io/gozen/schema/) for all fields, data/schema/ for the machine-readable schema, and docs/architecture/core-api.md for the candidate public entry points.
 // The editor schema alone does not guarantee references or expressions, so Load's semantic checks are also needed.
@@ -7,16 +7,15 @@ package gamedata
 import (
 	"fmt"
 	"image/color"
+	"io/fs"
+	"path"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
-
-	"io/fs"
-	"path"
-	"slices"
-	"sort"
 
 	"github.com/nao1215/gozen/internal/expr"
 )
@@ -1116,12 +1115,7 @@ func (l *LevelScale) Scales(stat string) bool {
 	if len(l.Stats) == 0 {
 		return stat == "mhp" || stat == "atk" || stat == "mat"
 	}
-	for _, s := range l.Stats {
-		if s == stat {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(l.Stats, stat)
 }
 
 // Escapable reports whether the party may run.
@@ -1294,14 +1288,14 @@ type MoodRule struct {
 
 // Fits reports whether the item goes in an equip slot: its slot, or a numbered one of it
 // (an item of slot stone fits stone1, stone2, stone3).
-func (i *Item) Fits(slot string) bool {
-	if i.Slot == "" {
+func (it *Item) Fits(slot string) bool {
+	if it.Slot == "" {
 		return false
 	}
-	if i.Slot == slot {
+	if it.Slot == slot {
 		return true
 	}
-	rest, ok := strings.CutPrefix(slot, i.Slot)
+	rest, ok := strings.CutPrefix(slot, it.Slot)
 	if !ok || rest == "" {
 		return false
 	}

@@ -153,8 +153,8 @@ func (c *checker) tacticRows(w, id string, rows []TacticRow) {
 				c.errs = append(c.errs, err)
 				continue
 			}
-			if strings.HasPrefix(d.where, "tactic.") {
-				c.errorf(diag.Shape, fmt.Sprintf("%s[%d].%s", w, i, strings.TrimPrefix(d.where, "tactic.")), "%s", d.message)
+			if after, ok := strings.CutPrefix(d.where, "tactic."); ok {
+				c.errorf(diag.Shape, fmt.Sprintf("%s[%d].%s", w, i, after), "%s", d.message)
 			} else {
 				c.errs = append(c.errs, err)
 			}
@@ -337,8 +337,10 @@ func (c *checker) tacticRow(row TacticRow) Rule {
 	if len(c.errs) != 0 {
 		return Rule{}
 	}
-	r := Rule{Use: action.Use, Item: action.Item, Target: target.Selector,
-		When: cond.When, Chance: cond.Chance, Priority: cond.Priority, Weight: cond.Weight, Once: cond.Once, Say: cond.Say}
+	r := Rule{
+		Use: action.Use, Item: action.Item, Target: target.Selector,
+		When: cond.When, Chance: cond.Chance, Priority: cond.Priority, Weight: cond.Weight, Once: cond.Once, Say: cond.Say,
+	}
 	if target.Scope == "self" && u.Scope == "one_ally" {
 		r.Target = Target{Preset: "self"}
 	}
@@ -373,8 +375,8 @@ func (c *checker) tacticRow(row TacticRow) Rule {
 
 func copyTacticExpr(e Expr) Expr {
 	if e.Set() {
-		copy := *e.Expr
-		return Expr{&copy}
+		clone := *e.Expr
+		return Expr{&clone}
 	}
 	return Expr{}
 }

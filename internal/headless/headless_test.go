@@ -68,7 +68,8 @@ events:
     do:
       - battle: one
       - end: true
-`})
+`,
+	})
 	st := testgame.State(db, 1)
 	for _, a := range st.Members() {
 		a.Level = 30

@@ -192,9 +192,11 @@ func (db *DB) Check() []error {
 	c.stateDeclarations()
 	c.tacticCatalog()
 	c.numericValues(&db.Game, "game.yaml")
-	c.numericValues(&file{Classes: db.Classes, Actors: db.Actors, Items: db.Items, Skills: db.Skills,
+	c.numericValues(&file{
+		Classes: db.Classes, Actors: db.Actors, Items: db.Items, Skills: db.Skills,
 		States: db.States, Enemies: db.Enemies, Troops: db.Troops, Locations: db.Locations,
-		Events: db.Events, Shops: db.Shops, AI: db.AI, Music: &db.Music}, "")
+		Events: db.Events, Shops: db.Shops, AI: db.AI, Music: &db.Music,
+	}, "")
 	g := &db.Game
 	_, ok := db.Locations[g.Start.Location]
 	c.ref("game.yaml start.location", "location", g.Start.Location, ok)
@@ -1107,7 +1109,7 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			_, ok := db.Actors[id]
 			c.ref(w+"."+verb, "actor", id, ok)
 		case "hurt", "affect":
-			who := ""
+			var who string
 			if cmd.Hurt != nil {
 				who = cmd.Hurt.Who
 				c.expr(w+".hurt.amount", cmd.Hurt.Amount, append(slices.Clone(names), "self"))
@@ -1483,12 +1485,12 @@ func (c *checker) step(t *vtype, st expr.Step) (*vtype, string) {
 	case vAny:
 		return tAny, ""
 	case vNum, vStr, vBool, vFunc:
-		return nil, fmt.Sprintf("%s has no fields", t.desc)
+		return nil, t.desc + " has no fields"
 	case vList:
 		if st.Index && st.Name == "" {
 			return t.elem, ""
 		}
-		return nil, fmt.Sprintf("%s is a list: index it with a number", t.desc)
+		return nil, t.desc + " is a list: index it with a number"
 	case vDyn:
 		if st.Name == "" { // expression index: the name is unknown
 			return t.elem, ""

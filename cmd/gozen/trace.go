@@ -53,7 +53,7 @@ func (c *command) traceCmd(args []string) (err error) {
 	}
 	defer func() { err = errors.Join(err, f.Close()) }()
 	kinds := map[string]bool{}
-	for _, k := range strings.Split(*only, ",") {
+	for k := range strings.SplitSeq(*only, ",") {
 		if k != "" {
 			kinds[k] = true
 		}
@@ -63,8 +63,8 @@ func (c *command) traceCmd(args []string) (err error) {
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 1<<20), 1<<24)
 	for sc.Scan() {
-		var l map[string]any
-		if err := decodeTrace(sc.Bytes(), &l); err != nil {
+		l, err := decodeTrace(sc.Bytes())
+		if err != nil {
 			return err
 		}
 		k := str(l["t"])
@@ -232,6 +232,7 @@ func num(v any) float64 {
 	}
 	return f
 }
+
 func str(v any) string {
 	s, ok := v.(string)
 	if !ok {
@@ -254,20 +255,21 @@ func strs(v any) []string {
 	return out
 }
 
-func decodeTrace(b []byte, out *map[string]any) error {
-	if err := json.Unmarshal(b, out); err != nil {
-		return diag.TraceBroken.Wrap(err)
+func decodeTrace(b []byte) (map[string]any, error) {
+	var out map[string]any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil, diag.TraceBroken.Wrap(err)
 	}
-	if str((*out)["t"]) == "" {
-		return diag.TraceBroken.Errorf("trace record needs a nonempty string t")
+	if str(out["t"]) == "" {
+		return nil, diag.TraceBroken.Errorf("trace record needs a nonempty string t")
 	}
-	if v, ok := (*out)["tick"]; ok {
+	if v, ok := out["tick"]; ok {
 		n, isNumber := v.(float64)
 		if !isNumber || n < 0 || n > float64(math.MaxInt) || math.IsNaN(n) || math.IsInf(n, 0) {
-			return diag.TraceBroken.Errorf("invalid trace tick")
+			return nil, diag.TraceBroken.Errorf("invalid trace tick")
 		}
 	}
-	return nil
+	return out, nil
 }
 
 // useTraceLanguage shows the engine's words in the language the trace was written in.

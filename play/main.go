@@ -111,11 +111,13 @@ func Main(ctx context.Context, fsys fs.FS, dir string, args []string, cfg Config
 	if err != nil {
 		return err
 	}
-	opts := runtime.Options{Development: *dev, CollectBuildInfo: *collect, ExternalInput: *external, Report: out, FS: game, Seed: *seed, NoSound: *mute || cfg.Mute, SaveDir: *saveDir, ShotDir: *shots,
+	opts := runtime.Options{
+		Development: *dev, CollectBuildInfo: *collect, ExternalInput: *external, Report: out, FS: game, Seed: *seed, NoSound: *mute || cfg.Mute, SaveDir: *saveDir, ShotDir: *shots,
 		Location: *start, Battle: *fight, Party: split(*party), Level: *level, Flags: split(*flags), Gold: *gold, Items: split(*items), Calm: *calm, Floor: *floor,
 		Replay: *replay, ReplayBattle: *replayBattle, TraceShots: *traceShots, Fullscreen: *fullscreen, Window: *windowScale, GalleryAll: *galleryAll, MemoDir: *memos,
 		FromMemo: *fromMemo, AllowLegacySave: *allowLegacySave, TracePath: *trace, Until: *until, Scene: *scene, Event: *event, Line: *line, Picture: *picture,
-		LiveDir: "", Review: *review, ReviewLog: *reviewLog, ReviewSources: *reviewSources}
+		LiveDir: "", Review: *review, ReviewLog: *reviewLog, ReviewSources: *reviewSources,
+	}
 	if *dev {
 		opts.LiveDir = *dirFlag
 	}

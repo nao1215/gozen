@@ -115,8 +115,8 @@ func checkSite(site fs.FS, base string, inRepo func(string) bool) []string {
 				continue
 			}
 			target := raw
-			if strings.HasPrefix(target, base) {
-				target = basePath + strings.TrimPrefix(target, base)
+			if after, ok := strings.CutPrefix(target, base); ok {
+				target = basePath + after
 			}
 			lower := strings.ToLower(target)
 			if strings.Contains(lower, "://") || strings.HasPrefix(lower, "//") || strings.HasPrefix(lower, "mailto:") || strings.HasPrefix(lower, "data:") || strings.HasPrefix(lower, "javascript:") {
@@ -212,7 +212,7 @@ func TestReadmeLinks(t *testing.T) {
 			}
 		case strings.Contains(target, "://"):
 		default:
-			p := strings.SplitN(target, "#", 2)[0]
+			p, _, _ := strings.Cut(target, "#")
 			if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(p))); err != nil { //nolint:gosec // A path named by README.md, looked up in this repository.
 				t.Errorf("README.md: %s: no such file", target)
 			}

@@ -12,15 +12,15 @@ import (
 
 // lineOf is the line (from 1) of the first line of src holding s.
 func lineOf(src, s string) int {
-	i := strings.Index(src, s)
-	if i < 0 {
+	before, _, ok := strings.Cut(src, s)
+	if !ok {
 		return 0
 	}
-	return strings.Count(src[:i], "\n") + 1
+	return strings.Count(before, "\n") + 1
 }
 
-func scenesWith(old, new string) (string, map[string]string) {
-	src := strings.Replace(testgame.ScenesData, old, new, 1)
+func scenesWith(old, repl string) (string, map[string]string) {
+	src := strings.Replace(testgame.ScenesData, old, repl, 1)
 	return src, testgame.ScenesFiles(map[string]string{"data/town.yaml": src})
 }
 
@@ -85,7 +85,7 @@ func TestSceneErrors(t *testing.T) {
 				t.Fatal("loaded")
 			}
 			at := fmt.Sprintf("data/town.yaml:%d:", lineOf(src, c.line))
-			for _, line := range strings.Split(err.Error(), "\n") {
+			for line := range strings.SplitSeq(err.Error(), "\n") {
 				if strings.Contains(line, c.path) && strings.Contains(line, c.msg) {
 					if !strings.HasPrefix(line, at) {
 						t.Errorf("at %s, want %s", line, at)
@@ -211,13 +211,14 @@ func TestSceneNeedsVersion3(t *testing.T) {
 			t.Errorf("no %q in %v", want, err)
 		}
 	}
-	_, err = testgame.TryLoad(map[string]string{"game.yaml": "schema_version: 2\nid: v2\n" + testgame.Game,
-		"data/x.yaml": "events: {look: {do: [{if: \"spot == 'a'\", then: [{say: x}]}]}}"})
+	_, err = testgame.TryLoad(map[string]string{
+		"game.yaml":   "schema_version: 2\nid: v2\n" + testgame.Game,
+		"data/x.yaml": "events: {look: {do: [{if: \"spot == 'a'\", then: [{say: x}]}]}}",
+	})
 	if err == nil || !strings.Contains(err.Error(), "the name spot needs schema_version: 3") {
 		t.Fatalf("spot at version 2: %v", err)
 	}
-	var d data.Diagnostics
-	if !errors.As(err, &d) && err == nil {
+	if _, ok := errors.AsType[data.Diagnostics](err); !ok {
 		t.Fatal("not diagnostics")
 	}
 }

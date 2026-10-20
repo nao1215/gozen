@@ -402,7 +402,6 @@ func fromReport(c *config, in *inspection, e entry, fx mosaic.Fix, tags map[stri
 	painted := e.Output != ""
 	in.NeedsMosaic = painted || len(in.Categories) > 0
 	if fx.Checked && !painted {
-
 		in.NeedsMosaic = false
 	}
 	in.Review = append(in.Review, e.Review...)

@@ -7,6 +7,7 @@ import (
 	"maps"
 	"math"
 	"slices"
+	"strconv"
 
 	lang "github.com/nao1215/gozen/internal/text"
 
@@ -550,7 +551,6 @@ func (s *battleScene) show(g *Game, st battle.Step) {
 			kind, fc = "slash", fxColor("slash", data.Color{})
 		}
 		if st.User == nil || st.User != s.actor {
-
 			kind, power, fc = "strike", 0, color.NRGBA{0xd0, 0xb0, 0xc0, 0xff}
 		}
 		if st.Crit || st.Weak {
@@ -558,7 +558,6 @@ func (s *battleScene) show(g *Game, st battle.Step) {
 		}
 		dur := s.addFx(g, kind, float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()), fc, power)
 		if physicalFx(kind) && slices.Contains(elemental, st.Element) {
-
 			s.addFx(g, st.Element, float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()), fxColor(st.Element, data.Color{}), 0)
 		}
 
@@ -577,7 +576,7 @@ func (s *battleScene) show(g *Game, st battle.Step) {
 		dur := s.addFx(g, "heal", float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()), hc, min(1, s.lastPower))
 		s.atHit(g, "heal", dur, func() {
 			s.catchUp(st)
-			s.pops = append(s.pops, popup{text: "+" + fmt.Sprint(st.Amount), x: cx, y: s.popY(cx, float64(r.Min.Y)+20), color: c})
+			s.pops = append(s.pops, popup{text: "+" + strconv.Itoa(st.Amount), x: cx, y: s.popY(cx, float64(r.Min.Y)+20), color: c})
 			s.reactTo(g, st.Target, "heal", 40)
 			if st.Kind == battle.Revive {
 				delete(s.gone, st.Target)
@@ -643,7 +642,7 @@ func (s *battleScene) damageHit(g *Game, st battle.Step, r image.Rectangle, kind
 	if st.Stat == "mp" {
 		c = mpColor
 	}
-	text := fmt.Sprint(st.Amount)
+	text := strconv.Itoa(st.Amount)
 	s.retirePops(cx)
 	cy = s.popY(cx, cy)
 	if st.Crit && st.Stat != "mp" {
@@ -657,7 +656,6 @@ func (s *battleScene) damageHit(g *Game, st battle.Step, r image.Rectangle, kind
 		tags = append(tags, popup{text: lang.T("CRITICAL!"), color: colorGold})
 	}
 	if st.Target.Enemy && st.Element != "" && (st.Weak || st.Resisted) {
-
 		g.st.Vars["known_"+st.Target.EID+"_"+st.Element] = 1.0
 	}
 	if st.Weak && st.Amount > 0 {
@@ -749,7 +747,7 @@ func (s *battleScene) usage(id string) *data.Usage {
 	return nil
 }
 
-func (s *battleScene) reactTo(g *Game, u *battle.Unit, kind string, t int) {
+func (s *battleScene) reactTo(_ *Game, u *battle.Unit, kind string, t int) {
 	var face string
 	if u.Actor != nil {
 		face = u.Actor.Def().Reactions[kind]
@@ -873,7 +871,7 @@ func (s *battleScene) openSkills(g *Game, u *battle.Unit) {
 	for _, id := range u.Actor.Skills() {
 		sk := s.b.DB.Skills[id]
 		ok, _ := s.b.CanUse(u, id)
-		items = append(items, listItem{label: sk.Name, right: fmt.Sprintf("%d", sk.MP), disabled: !ok || !slices.Contains(sk.Where, "battle")})
+		items = append(items, listItem{label: sk.Name, right: strconv.Itoa(sk.MP), disabled: !ok || !slices.Contains(sk.Where, "battle")})
 		s.subIDs = append(s.subIDs, id)
 	}
 	s.openSub(g, items, "skill")

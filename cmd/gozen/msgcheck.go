@@ -468,7 +468,7 @@ func stoneOfferIssues(db *data.DB) []msgIssue {
 			}
 		}
 		longest := ""
-		for mask := 0; mask < 1<<min(len(cands), 16); mask++ {
+		for mask := range 1 << min(len(cands), 16) {
 			n, text := 0, ""
 			for i, c := range cands {
 				if mask&(1<<i) != 0 {

@@ -74,7 +74,7 @@ func (r *Runner) suggestSP(name string) {
 
 // SPPage is the page of a member's plan, e.g. 「名前　ノード Lv1→2、ノード Lv2、技 Lv1・技 Lv2 を覚える」.
 // (the nodes raised, then those new with a skill) and the pitch of their class on the next line.
-func SPPage(db *data.DB, a *rpg.Actor, plan []string) string {
+func SPPage(_ *data.DB, a *rpg.Actor, plan []string) string {
 	var steps, learn []string
 	for _, s := range a.PlanSteps(plan) {
 		switch n := a.Node(s.Node); {

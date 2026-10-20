@@ -112,7 +112,6 @@ func (n floorNumbers) line() string {
 
 	if n.downWarp < n.down {
 		appendf(&b, " (warp %d)", n.downWarp)
-
 	}
 	appendf(&b, "  battles %.1f (all %.1f) ", n.battles, n.battlesAll)
 

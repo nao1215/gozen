@@ -149,12 +149,11 @@ func checkSaveShape(b []byte, typ reflect.Type, path string) error {
 	switch typ.Kind() { //nolint:exhaustive // Only schema container/scalar kinds need handling; other reflection kinds are intentionally ignored.
 	case reflect.Struct:
 		fields := map[string]reflect.Type{}
-		for i := range typ.NumField() {
-			f := typ.Field(i)
+		for f := range typ.Fields() {
 			if !f.IsExported() {
 				continue
 			}
-			key := strings.Split(f.Tag.Get("json"), ",")[0]
+			key, _, _ := strings.Cut(f.Tag.Get("json"), ",")
 			if key == "-" {
 				continue
 			}

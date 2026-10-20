@@ -81,8 +81,7 @@ func (e *Error) Unwrap() error { return e.Err }
 
 // Of returns the code of the first coded error in err's chain, or 0.
 func Of(err error) Code {
-	var e *Error
-	if errors.As(err, &e) {
+	if e, ok := errors.AsType[*Error](err); ok {
 		return e.Code
 	}
 	return 0
@@ -109,7 +108,7 @@ type Entry struct {
 const since = "v0.1.0"
 
 // codeText matches a code in its published form anywhere in a string.
-var codeText = regexp.MustCompile(`\bGZN([0-9]{4})\b`)
+var codeText = regexp.MustCompile(`\bGZN(\d{4})\b`)
 
 var (
 	registry []Entry

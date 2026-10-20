@@ -22,8 +22,10 @@ func snapshotTactics(a *rpg.Actor) *tacticRules {
 	if rows == nil {
 		return nil
 	}
-	t := &tacticRules{labels: make([]string, len(rows)), rules: make([]gamedata.Rule, len(rows)), reasons: make([]RuleReason, len(rows)), details: make([]string, len(rows)),
-		skills: a.Skills(), manual: a.Tactics != nil && a.Tactics.Mode == rpg.TacticsManual}
+	t := &tacticRules{
+		labels: make([]string, len(rows)), rules: make([]gamedata.Rule, len(rows)), reasons: make([]RuleReason, len(rows)), details: make([]string, len(rows)),
+		skills: a.Skills(), manual: a.Tactics != nil && a.Tactics.Mode == rpg.TacticsManual,
+	}
 	for i, row := range rows {
 		t.rules[i] = row.Rule
 		t.labels[i] = row.Condition

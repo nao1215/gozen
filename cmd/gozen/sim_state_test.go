@@ -5,6 +5,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -34,7 +35,7 @@ func TestSimFromSavedStateMatchesTheShared(t *testing.T) {
 		level int
 		asIs  bool
 	}{{0, false}, {3, false}, {0, true}} {
-		args := []string{"sim", "battle", dir, "lesson", "--state", path, "-n", "40", "--seed", "6", "--level", fmt.Sprint(tc.level), "--hp", "--streak", "5"}
+		args := []string{"sim", "battle", dir, "lesson", "--state", path, "-n", "40", "--seed", "6", "--level", strconv.Itoa(tc.level), "--hp", "--streak", "5"}
 		if tc.asIs {
 			args = append(args, "--as-is")
 		}

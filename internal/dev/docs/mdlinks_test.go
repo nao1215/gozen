@@ -15,7 +15,7 @@ import (
 var (
 	mdLink    = regexp.MustCompile(`\]\(([^)\s]+)\)`)
 	mdHeading = regexp.MustCompile(`(?m)^#{1,6}\s+(.+?)\s*#*\s*$`)
-	codeFence = regexp.MustCompile("(?ms)^\\s*```.*?^\\s*```")
+	codeFence = regexp.MustCompile("(?ms)^\\s*```.*?^\\s*```") //nolint:gocritic // badRegexp: (?m) makes the second ^ match at a line start
 )
 
 // githubSlug is the anchor GitHub gives a heading.

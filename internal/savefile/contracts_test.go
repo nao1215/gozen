@@ -30,10 +30,11 @@ func TestExplicitSaveRootAndInvalidIDs(t *testing.T) {
 		t.Fatal("games share save directory")
 	}
 }
+
 func TestWriteFailurePreservesDirectoryAndCleansTemporary(t *testing.T) {
 	root := t.TempDir()
 	target := filepath.Join(root, "occupied")
-	if err := os.Mkdir(target, 0700); err != nil {
+	if err := os.Mkdir(target, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := savefile.Write(target, []byte("must fail")); err == nil {
@@ -47,6 +48,7 @@ func TestWriteFailurePreservesDirectoryAndCleansTemporary(t *testing.T) {
 		t.Fatalf("failed write leaked or modified entries: %v", entries)
 	}
 }
+
 func TestLoadPreservesIOCause(t *testing.T) {
 	_, err := savefile.Load(fstest.MapFS{}, "absent.json")
 	if !errors.Is(err, fs.ErrNotExist) {

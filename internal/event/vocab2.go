@@ -218,7 +218,7 @@ func (r *Runner) trade(verb string, c *data.Command) {
 		t = c.Sell
 	}
 	n := max(1, t.Count)
-	ok := false
+	var ok bool
 	if verb == "buy" {
 		ok = r.st.Buy(t.Shop, t.Item, n)
 	} else {

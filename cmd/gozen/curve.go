@@ -109,7 +109,7 @@ func (c *command) curve(args []string) (err error) {
 		return fmt.Errorf("--scene-event: unknown event %q", o.SceneEvent)
 	}
 	if (o.SceneEvent == "") != (o.SceneWhen == "") {
-		return fmt.Errorf("--scene-event and --scene-when go together")
+		return errors.New("--scene-event and --scene-when go together")
 	}
 	if o.SceneWhen != "" {
 		if _, err := expr.Parse(o.SceneWhen); err != nil {
@@ -223,7 +223,7 @@ func (c *command) curve(args []string) (err error) {
 
 func parseSupplies(db *data.DB, s string) (map[string]int, error) {
 	out := map[string]int{}
-	for _, p := range strings.Split(s, ",") {
+	for p := range strings.SplitSeq(s, ",") {
 		id, n, ok := strings.Cut(strings.TrimSpace(p), ":")
 		if !ok || id == "" || n == "" {
 			return nil, fmt.Errorf("--supplies %q: want item:count", p)

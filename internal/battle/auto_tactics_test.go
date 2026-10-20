@@ -13,8 +13,10 @@ import (
 
 func autoCapabilityBattle(t *testing.T, seed uint64) (*battle.Battle, *rpg.State) {
 	t.Helper()
-	db := testgame.Load(t, map[string]string{"game.yaml": testgame.AutoTacticsGame,
-		"data/tactics.yaml": testgame.Tactics, "data/auto.yaml": testgame.AutoTacticsData})
+	db := testgame.Load(t, map[string]string{
+		"game.yaml":         testgame.AutoTacticsGame,
+		"data/tactics.yaml": testgame.Tactics, "data/auto.yaml": testgame.AutoTacticsData,
+	})
 	db.Classes["ranger"].AI = data.AIRef{Name: "capability"}
 	st := testgame.State(db, seed)
 	st.Items["potion"] = 0
@@ -92,8 +94,10 @@ func TestAutoTacticsPreserveEvaluationOrder(t *testing.T) {
 					// An unlearned row still consumes RNG for when and chance. The order of items the actor does not hold is kept too.
 					for _, index := range []int{0, 3, 4} {
 						id := fmt.Sprintf("rng_%d", index)
-						condition := data.TacticCondition{Name: "おまかせの条件", Kind: "template",
-							When: decisionExpr("rand() < 0.9"), Chance: decisionExpr("0.8 + rand() * 0.2"), Priority: index, Weight: 2, Once: true}
+						condition := data.TacticCondition{
+							Name: "おまかせの条件", Kind: "template",
+							When: decisionExpr("rand() < 0.9"), Chance: decisionExpr("0.8 + rand() * 0.2"), Priority: index, Weight: 2, Once: true,
+						}
 						db.TacticConditions[id] = &condition
 						db.Game.Battle.AutoTactics["capability"][index].Condition = id
 						r := &db.AI["capability"][index]

@@ -15,13 +15,12 @@ type Block struct {
 	Boundary string
 }
 
-func dialectByName(name string) (sdxl, error) {
-	switch name {
-	case "sdxl":
-		return sdxl{}, nil
-	default:
-		return sdxl{}, problem(lang.T("未知の方言です。%s"), name)
+// checkDialect accepts the dialects the catalog can be written for; sdxl is the only one.
+func checkDialect(name string) error {
+	if name != "sdxl" {
+		return problem(lang.T("未知の方言です。%s"), name)
 	}
+	return nil
 }
 
 const sdxlMaxWeight = 1.5
@@ -82,7 +81,7 @@ func abstractTerm(s string) error {
 	if core(s) == "" || scoreTerm.MatchString(s) {
 		return problem("%s", lang.T("語が空か方言固有の指定です"))
 	}
-	for _, token := range strings.Fields(s) {
+	for token := range strings.FieldsSeq(s) {
 		if strings.EqualFold(token, "BREAK") || token == "AND" {
 			return problem("%s", lang.T("区切りは抽象指定で書いてください"))
 		}
@@ -107,8 +106,10 @@ func (sdxl) ValidateTerm(s string) error {
 	return nil
 }
 
-var tokenParts = regexp.MustCompile(`[A-Za-z0-9]+|[^A-Za-z0-9\s]`)
-var outputWeight = regexp.MustCompile(`\([^():]+:([0-9.]+)\)`)
+var (
+	tokenParts   = regexp.MustCompile(`[A-Za-z0-9]+|[^A-Za-z0-9\s]`)
+	outputWeight = regexp.MustCompile(`\([^():]+:([0-9.]+)\)`)
+)
 
 func (sdxl) CountTokens(s string) int {
 	s = outputWeight.ReplaceAllStringFunc(s, func(v string) string { body, _, _ := strings.Cut(v[1:], ":"); return body })
@@ -135,7 +136,7 @@ func (d sdxl) ValidateOutput(r Result) []Diagnostic {
 		if side == "positive" && value == "" && len(words) == 0 {
 			continue
 		}
-		for _, block := range strings.Split(value, " BREAK ") {
+		for block := range strings.SplitSeq(value, " BREAK ") {
 			if strings.TrimSpace(block) == "" {
 				out = append(out, diagnostic("sdxl.break", "error", lang.T("空の区切りがあります"), words))
 			}
@@ -143,8 +144,8 @@ func (d sdxl) ValidateOutput(r Result) []Diagnostic {
 				out = append(out, diagnostic("sdxl.tokens", "warning", lang.T("区切り内が近似77トークンを超えています"), words))
 			}
 		}
-		for _, block := range strings.Split(value, " BREAK ") {
-			for _, raw := range strings.Split(block, ",") {
+		for block := range strings.SplitSeq(value, " BREAK ") {
+			for raw := range strings.SplitSeq(block, ",") {
 				tag := strings.TrimSpace(raw)
 				if tag == "" {
 					continue

@@ -105,8 +105,10 @@ func thumb(dst *image.RGBA, cell image.Rectangle, img image.Image, e entry, labe
 	}
 	tag := image.Rect(at.Min.X, at.Min.Y, at.Min.X+8*len(label)+8, at.Min.Y+18)
 	draw.Draw(dst, tag, image.NewUniform(color.RGBA{0, 0, 0, 255}), image.Point{}, draw.Src)
-	d := font.Drawer{Dst: dst, Src: image.NewUniform(color.White), Face: basicfont.Face7x13,
-		Dot: fixed.P(tag.Min.X+4, tag.Min.Y+14)}
+	d := font.Drawer{
+		Dst: dst, Src: image.NewUniform(color.White), Face: basicfont.Face7x13,
+		Dot: fixed.P(tag.Min.X+4, tag.Min.Y+14),
+	}
 	d.DrawString(label)
 }
 

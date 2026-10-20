@@ -517,7 +517,7 @@ func liveErrText(msg string) string {
 		hint = lang.T("本体が古い。作り直すと読める") + lang.T("（動いている本体が知らない書き方）")
 	}
 	out := []string{fmt.Sprintf(lang.T("%s %s行目"), m[1], m[2]) + "  " + clip(what, 50)}
-	for _, l := range strings.Split(rest, "\n") {
+	for l := range strings.SplitSeq(rest, "\n") {
 		if t := strings.TrimSpace(l); strings.HasPrefix(t, ">") {
 			out = append(out, clip(strings.TrimSpace(strings.TrimPrefix(t, ">")), 60))
 			break

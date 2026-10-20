@@ -166,7 +166,6 @@ func Run(ctx context.Context, opts Options) (err error) {
 		ebiten.SetTPS(60 * opts.Speed)
 	}
 	if opts.Video != nil || opts.Audio != nil {
-
 		ebiten.SetTPS(ebiten.SyncWithFPS)
 	}
 	unwatched := opts.Script != "" || opts.Autopilot != nil
@@ -735,8 +734,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.traceFrameStart()
 	defer g.traceFrameEnd(screen)
 	from := 0
-	for i := len(g.stack) - 1; i >= 0; i-- {
-		if o, ok := g.stack[i].(overlay); !ok || !o.overlay() {
+	for i, v := range slices.Backward(g.stack) {
+		if o, ok := v.(overlay); !ok || !o.overlay() {
 			from = i
 			break
 		}
@@ -1148,12 +1147,10 @@ func (g *Game) Mood(m string) {
 
 func (g *Game) Image(c data.CG) {
 	if !c.Faces && g.db.StandIn(c.File) {
-
 		c.Faces = true
 	}
 	if c.Same(g.cg) {
 		if c.Faces {
-
 			g.leaveStage()
 		}
 		return
@@ -1184,7 +1181,6 @@ func (g *Game) Image(c data.CG) {
 		}
 	}
 	if data.PageBase(c.File) != data.PageBase(g.cg.File) {
-
 		g.leaveStage()
 	}
 	g.cg, g.cgAge = c, 0
@@ -1552,8 +1548,8 @@ func (g *Game) updateMusic() {
 }
 
 func (g *Game) currentBattle() *battleScene {
-	for i := len(g.stack) - 1; i >= 0; i-- {
-		if b, ok := g.stack[i].(*battleScene); ok {
+	for _, v := range slices.Backward(g.stack) {
+		if b, ok := v.(*battleScene); ok {
 			return b
 		}
 	}
@@ -1571,7 +1567,6 @@ func (g *Game) slotPath(i int) string {
 
 func (g *Game) save(i int) error {
 	if g.testRun() && !g.storeGiven {
-
 		return nil
 	}
 	return g.writeSave(g.slotPath(i))
@@ -1600,7 +1595,6 @@ func resumeAt(db *data.DB, st *rpg.State) {
 
 func (g *Game) anySave() bool {
 	for i := range saveSlots + 1 {
-
 		if g.storeHas(g.slotPath(i)) {
 			return true
 		}
@@ -1612,7 +1606,7 @@ func slotName(i int) string {
 	if i == autoSlot {
 		return lang.T("オート")
 	}
-	return fmt.Sprint(i + 1)
+	return strconv.Itoa(i + 1)
 }
 
 func (g *Game) slotLabel(i int) (string, bool) {

@@ -245,8 +245,8 @@ func previousRun(root, name string) (string, map[string]designeval.Summary) {
 		}
 	}
 	sort.Strings(names)
-	for i := len(names) - 1; i >= 0; i-- {
-		b, err := os.ReadFile(filepath.Join(root, names[i], "summary.json")) //nolint:gosec // Explicit caller-selected input or file within a newly reserved output tree.
+	for _, name := range slices.Backward(names) {
+		b, err := os.ReadFile(filepath.Join(root, name, "summary.json")) //nolint:gosec // Explicit caller-selected input or file within a newly reserved output tree.
 		if err != nil {
 			continue
 		}
@@ -261,7 +261,7 @@ func previousRun(root, name string) (string, map[string]designeval.Summary) {
 		for _, p := range s.Personas {
 			out[p.ID] = p
 		}
-		return names[i], out
+		return name, out
 	}
 	return "", nil
 }
@@ -311,11 +311,11 @@ func designReport(cfg *designeval.Config, runs []*designeval.Run, sums []designe
 	p(lang.T("| 遊び手 | 結末まで | 日数 | 最深 | Lv | 戦闘 | 負け | 全滅 | %s | ご褒美の間隔 平均 / 最長 | 何も起きない最長 | 期待→解放 平均 / 最長 |"), kindName(cfg, cfg.Release))
 	p("|---|---|---|---|---|---|---|---|---|---|---|---|")
 	for _, s := range sums {
-		clear := minutes(s.ClearMin)
+		reached := minutes(s.ClearMin)
 		if !s.Cleared {
-			clear = fmt.Sprintf(lang.T("届かず（%s）"), minutes(s.EndMin))
+			reached = fmt.Sprintf(lang.T("届かず（%s）"), minutes(s.EndMin))
 		}
-		p(lang.T("| %s（%s） | %s | %d | B%dF | %d | %d | %d | %d | %d | %s | %s | %s |"), s.Name, s.ID, clear, s.Days, s.Deepest, s.Level,
+		p(lang.T("| %s（%s） | %s | %d | B%dF | %d | %d | %d | %d | %d | %s | %s | %s |"), s.Name, s.ID, reached, s.Days, s.Deepest, s.Level,
 			s.Battles, s.Lost, s.Wipes, s.Rewards[cfg.Release], gapText(s.Gap), minutes(s.Dry.Max), gapText(s.Release))
 	}
 	p("")

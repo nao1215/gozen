@@ -181,7 +181,7 @@ func TestActorTacticsDecisionRecording(t *testing.T) {
 	traced.OnDecision = func(d battle.Decision) { decisions = append(decisions, d) }
 	headless.AutoBattle(db, quiet.St, quiet, nil, 3, nil)
 	headless.AutoBattle(db, traced.St, traced, nil, 3, nil)
-	if len(decisions) == 0 || quiet.Rand.Uint64() != traced.Rand.Uint64() || !reflect.DeepEqual(quiet.St.Actors, traced.St.Actors) || quiet.Result != traced.Result {
+	if len(decisions) == 0 || quiet.Rand.Uint64() != traced.Rand.Uint64() || !reflect.DeepEqual(quiet.St.Actors, traced.St.Actors) || quiet.Result != traced.Result { //nolint:govet // deepequalerrors: the errors are inside the one *data.DB both sides point at
 		t.Fatal("理由の記録で乱数・行動・結果が変わった")
 	}
 }

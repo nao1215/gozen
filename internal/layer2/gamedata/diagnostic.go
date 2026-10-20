@@ -44,8 +44,7 @@ func duplicateDiagnostic(at sourcePosition, where string, previous sourcePositio
 
 // coded gives a diagnostic its code; other errors are returned as they are.
 func coded(err error, code diag.Code) error {
-	var d *diagnostic
-	if errors.As(err, &d) {
+	if d, ok := errors.AsType[*diagnostic](err); ok {
 		d.code = code
 	}
 	return err
@@ -143,8 +142,8 @@ func (db *DB) readSource(b []byte, name string) (*sourceDocument, error) {
 					doc.tokenPaths[entry.Value.GetToken()] = numberPath(where, "<<")
 					if seq, ok := entry.Value.(*ast.SequenceNode); ok {
 						// In a YAML merge sequence, the first map takes priority.
-						for i := len(seq.Values) - 1; i >= 0; i-- {
-							walk(seq.Values[i], where)
+						for _, v := range slices.Backward(seq.Values) {
+							walk(v, where)
 						}
 					} else {
 						walk(entry.Value, where)
@@ -259,8 +258,7 @@ func yamlCode(err error) diag.Code {
 
 // yamlError uses the original token of the type, expression or syntax, and does not guess a position by searching the text or re-parsing.
 func (doc *sourceDocument) yamlError(err error) error {
-	var ye yaml.Error
-	if errors.As(err, &ye) {
+	if ye, ok := errors.AsType[yaml.Error](err); ok {
 		where := doc.tokenPaths[ye.GetToken()]
 		if where == "" {
 			where = "$"
@@ -282,8 +280,7 @@ func (doc *sourceDocument) locateReported(err error) error {
 		}
 		return joinDiagnostics(errs)
 	}
-	var existing *diagnostic
-	if errors.As(err, &existing) {
+	if _, ok := errors.AsType[*diagnostic](err); ok {
 		return err
 	}
 	where, message, ok := strings.Cut(err.Error(), ": ")
@@ -412,13 +409,14 @@ func Diagnose(err error, severity string) Diagnostics {
 			for _, sep := range []string{" ", "."} { // "game.yaml fonts.regular" means fonts.regular of game.yaml
 				path = strings.TrimPrefix(path, "game.yaml"+sep)
 			}
-			out = append(out, Diagnostic{File: d.position.file, Line: d.position.line, Col: d.position.column,
-				Path: path, Message: d.message, Severity: severity, Code: d.code.String(), err: e})
+			out = append(out, Diagnostic{
+				File: d.position.file, Line: d.position.line, Col: d.position.column,
+				Path: path, Message: d.message, Severity: severity, Code: d.code.String(), err: e,
+			})
 			continue
 		}
 		msg := e.Error()
-		var marked *diag.Error
-		if errors.As(e, &marked) {
+		if marked, ok := errors.AsType[*diag.Error](e); ok {
 			msg = marked.Err.Error()
 		}
 		out = append(out, Diagnostic{Message: msg, Severity: severity, Code: diag.Of(e).String(), err: e})

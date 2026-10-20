@@ -39,8 +39,10 @@ func TestImagePickAndLookAreChecked(t *testing.T) {
 		`{file: cg/d_1.png, look: glow}`,            // look is only for dream
 		`{file: cg/d_1.png, haze: "#ffc0d0"}`,       // haze goes with look: dream
 	} {
-		_, err := testgame.TryLoad(map[string]string{"data/z.yaml": "events:\n  main:\n    do:\n      - image: " + bad + "\n",
-			"assets/cg/d_1.png": "x"})
+		_, err := testgame.TryLoad(map[string]string{
+			"data/z.yaml":       "events:\n  main:\n    do:\n      - image: " + bad + "\n",
+			"assets/cg/d_1.png": "x",
+		})
 		if err == nil {
 			t.Errorf("%s: want an error", bad)
 		}

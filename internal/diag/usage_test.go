@@ -127,7 +127,7 @@ func TestCodes_AreProvokedByE2E(t *testing.T) {
 // reportedText is a code as a diagnostic reports it: at the end of a line, or
 // in the code field of JSON. A code named elsewhere (gozen help GZN1101) is
 // not one the command reported.
-var reportedText = regexp.MustCompile(`\[(GZN[0-9]{4})\]|"code": ?\\?"(GZN[0-9]{4})`)
+var reportedText = regexp.MustCompile(`\[(GZN\d{4})\]|"code": ?\\?"(GZN\d{4})`)
 
 func reported(text string) []Code {
 	var out []Code

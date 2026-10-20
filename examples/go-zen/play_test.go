@@ -46,7 +46,7 @@ func standIns(t *testing.T) (fs.FS, []string) {
 		return m, nil
 	}
 	var missing []string
-	for _, line := range strings.Split(err.Error(), "\n") {
+	for line := range strings.SplitSeq(err.Error(), "\n") {
 		if sm := missingArt.FindStringSubmatch(line); sm != nil {
 			if _, ok := m["assets/"+sm[1]]; !ok {
 				missing = append(missing, sm[1])

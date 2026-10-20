@@ -125,13 +125,13 @@ func TestBuildLeavesNoRawPicture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := read(t, filepath.Join(out, "assets/cg/x.jpg")); got != "mosaic x" {
+	if got := read(t, filepath.Join(out, "assets", "cg", "x.jpg")); got != "mosaic x" {
 		t.Errorf("x = %q", got)
 	}
-	if got := read(t, filepath.Join(out, "assets/cg/y.jpg")); got != "raw y" {
+	if got := read(t, filepath.Join(out, "assets", "cg", "y.jpg")); got != "raw y" {
 		t.Errorf("y = %q", got)
 	}
-	if read(t, filepath.Join(src, "assets/cg/x.jpg")) != "raw x" {
+	if read(t, filepath.Join(src, "assets", "cg", "x.jpg")) != "raw x" {
 		t.Error("the original was changed")
 	}
 	if strings.Join(res.Replaced, ",") != "cg/x.jpg" || res.Files != 5 {

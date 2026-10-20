@@ -51,8 +51,10 @@ func (g *Game) traceStandFigures(figs []stageFigure) {
 		if x > 0.5 {
 			side = "right"
 		}
-		g.tr.stand.figures = append(g.tr.stand.figures, standFig{ID: f.id, Face: f.face, Side: side,
-			X: math.Round(x*100) / 100, Alpha: math.Round(a*10) / 10, Speaking: f.dim == 0 && !f.leaving, Leaving: f.leaving})
+		g.tr.stand.figures = append(g.tr.stand.figures, standFig{
+			ID: f.id, Face: f.face, Side: side,
+			X: math.Round(x*100) / 100, Alpha: math.Round(a*10) / 10, Speaking: f.dim == 0 && !f.leaving, Leaving: f.leaving,
+		})
 	}
 }
 

@@ -121,8 +121,7 @@ func (c *command) finish(err error) int {
 		return 0
 	}
 	c.stderr.Println(err)
-	var u *cli.UsageError
-	if errors.As(err, &u) {
+	if _, ok := errors.AsType[*cli.UsageError](err); ok {
 		help := "gozen --help"
 		if c.path != "" {
 			help = "gozen " + c.path + " --help"

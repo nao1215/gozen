@@ -1,6 +1,7 @@
 package gamedata
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"slices"
@@ -341,7 +342,7 @@ func (c *Command) Verb() (string, error) {
 		return c.custom[0], nil
 	}
 	if len(verbs) == 0 {
-		return "", fmt.Errorf("a command without a verb")
+		return "", errors.New("a command without a verb")
 	}
 	if len(verbs) > 1 {
 		sort.Strings(verbs)

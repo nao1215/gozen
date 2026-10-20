@@ -3,6 +3,7 @@ package play
 import (
 	"fmt"
 	"image/color"
+	"strconv"
 	"strings"
 	"time"
 
@@ -389,7 +390,7 @@ func (g *Game) drawGraphs(screen *ebiten.Image) {
 			gfx.DrawTextRight(screen, fmt.Sprintf("%.1f", healed.odds.AvgTurns()), turnR, mid-11, body, ink)
 		}
 		if r := p.res[graphJob{troop: e.Troop, kind: graphRun}]; r != nil && len(r.wins) >= graphTries {
-			run := fmt.Sprintf("%d", balance.Percentile(r.wins, 0.5))
+			run := strconv.Itoa(balance.Percentile(r.wins, 0.5))
 			if balance.Percentile(r.wins, 0.5) >= graphStreak {
 				run = fmt.Sprintf("%d+", graphStreak)
 			}

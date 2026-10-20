@@ -220,12 +220,11 @@ func (g *Game) drawLines(dst *ebiten.Image, s string, x, y, w, size float64, c c
 	return float64(len(lines)) * gfx.LineHeight(size)
 }
 
-func (g *Game) drawLinesFit(dst *ebiten.Image, s string, x, y, w, size float64, lines int, c color.Color) float64 {
+func (g *Game) drawLinesFit(dst *ebiten.Image, s string, x, y, w, size float64, lines int, c color.Color) {
 	ls, sz := gfx.FitLines(s, size, w, lines)
 	for i, ln := range ls {
 		g.text(dst, ln, x, y+float64(i)*gfx.LineHeight(sz), sz, c)
 	}
-	return float64(len(ls)) * gfx.LineHeight(sz)
 }
 
 var pixel = func() *ebiten.Image {

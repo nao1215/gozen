@@ -240,7 +240,8 @@ events:
       - battle: one
       - end: true
       - say: "never"
-`})
+`,
+	})
 	st := testgame.State(db, 1)
 	r := event.New(db, st, &host{})
 	r.Log = func(err error) { t.Error(err) }

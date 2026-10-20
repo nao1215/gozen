@@ -13,7 +13,8 @@ var effectPlayers []*audio.Player
 
 var effects = map[string][]byte{}
 
-var Effects = []string{"cursor", "decide", "cancel", "buzzer", "hit", "crit", "magic", "heal", "buff", "debuff", "item", "fall", "win", "escape", "step",
+var Effects = []string{
+	"cursor", "decide", "cancel", "buzzer", "hit", "crit", "magic", "heal", "buff", "debuff", "item", "fall", "win", "escape", "step",
 
 	"cutin", "encounter", "boss", "stairs", "chest",
 
@@ -24,7 +25,8 @@ var Effects = []string{"cursor", "decide", "cancel", "buzzer", "hit", "crit", "m
 
 	"levelup",
 
-	"treasure"}
+	"treasure",
+}
 
 func Play(name string) {
 	b := effects[name]

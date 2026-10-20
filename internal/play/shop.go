@@ -166,11 +166,11 @@ func (s *shop) countRects(g *Game) (minus, plus, box image.Rectangle) {
 	x0 := cx - gfx.TextWidth(line, sizeL)/2
 	y0, y1 := int(sh/2-24), int(sh/2+30)
 	at := func(prefix string) image.Rectangle {
-		i := strings.Index(line, prefix)
-		if i < 0 {
+		before, _, ok := strings.Cut(line, prefix)
+		if !ok {
 			return image.Rectangle{}
 		}
-		x := x0 + gfx.TextWidth(line[:i], sizeL)
+		x := x0 + gfx.TextWidth(before, sizeL)
 		return image.Rect(int(x-18), y0, int(x+gfx.TextWidth(prefix, sizeL)+18), y1)
 	}
 	return at("◀"), at("▶"), image.Rect(int(cx-cw/2), int(sh/2-80), int(cx+cw/2), int(sh/2+80))

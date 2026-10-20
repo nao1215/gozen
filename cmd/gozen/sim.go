@@ -109,8 +109,10 @@ func (c *command) sim(args []string) error {
 		if err != nil {
 			return err
 		}
-		r := simResult{State: file, Troop: troop, Battles: *n, Won: o.Won, Lost: o.Lost, Fled: o.Fled, Draw: o.Draw,
-			WinRate: o.WinRate(), AvgTurns: o.AvgTurns(), AvgStanding: o.AvgStanding()}
+		r := simResult{
+			State: file, Troop: troop, Battles: *n, Won: o.Won, Lost: o.Lost, Fled: o.Fled, Draw: o.Draw,
+			WinRate: o.WinRate(), AvgTurns: o.AvgTurns(), AvgStanding: o.AvgStanding(),
+		}
 		if lo, mid, hi, ok := o.HPBand(); ok && *hpBand {
 			r.HP = &band{lo, mid, hi}
 		}

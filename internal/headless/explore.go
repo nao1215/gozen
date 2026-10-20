@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"runtime/debug"
+	"strconv"
 	"strings"
 
 	"github.com/nao1215/gozen/internal/event"
@@ -133,6 +134,7 @@ func (e *explorer) move(loc string) {
 	e.p.Moves = append(e.p.Moves, loc)
 	e.p.Steps = append(e.p.Steps, Step{Kind: "move", Loc: loc})
 }
+
 func (e *explorer) music(c data.MusicCue) {
 	e.p.Steps = append(e.p.Steps, Step{Kind: "music", Song: c.Song})
 }
@@ -364,22 +366,22 @@ func resultName(res int) string {
 	case event.BattleFled:
 		return "fled"
 	}
-	return fmt.Sprint(res)
+	return strconv.Itoa(res)
 }
 
-func (h *explorer) handle(e event.Effect) {
-	switch e := e.(type) {
+func (e *explorer) handle(eff event.Effect) {
+	switch eff := eff.(type) {
 	case event.MoveEffect:
-		h.move(e.Location)
+		e.move(eff.Location)
 	case event.MusicEffect:
-		h.music(e.Cue)
+		e.music(eff.Cue)
 	case event.MoodEffect:
-		h.mood(e.Name)
+		e.mood(eff.Name)
 	case event.ImageEffect:
-		h.image(e.Picture)
+		e.image(eff.Picture)
 	case event.SoundEffect:
-		h.sFX(e.Name)
+		e.sFX(eff.Name)
 	case event.VisualEffect:
-		h.effect(e.Name)
+		e.effect(eff.Name)
 	}
 }

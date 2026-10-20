@@ -2,6 +2,7 @@ package gozen
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -126,5 +127,5 @@ func toPlain(v any) (any, error) {
 		}
 		return out, nil
 	}
-	return nil, fmt.Errorf("the value is an object: ask for one of its fields")
+	return nil, errors.New("the value is an object: ask for one of its fields")
 }

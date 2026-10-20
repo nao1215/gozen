@@ -144,7 +144,7 @@ events:
 	if len(db.SetWarnings()) != 2 {
 		t.Fatalf("自己参照を警告した %s", warnings)
 	}
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		if fmt.Sprint(db.SetWarnings()) != warnings {
 			t.Fatal("警告の順が変わった")
 		}

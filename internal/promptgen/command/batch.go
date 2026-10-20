@@ -19,7 +19,7 @@ func batchScenes(c *promptgen.Catalog, path string, out io.Writer) error {
 	}
 	enc := json.NewEncoder(out)
 	failed := false
-	for _, line := range strings.Split(string(b), "\n") {
+	for line := range strings.SplitSeq(string(b), "\n") {
 		id := strings.TrimSpace(line)
 		if id == "" {
 			continue

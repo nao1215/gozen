@@ -22,6 +22,7 @@ title: Trail lesson
 start: {location: camp, party: [walker]}
 battle: {variance: 0, critical: 0, escape: 1}
 `
+
 const definitions = `
 classes:
   walker:

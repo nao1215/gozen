@@ -38,14 +38,24 @@ func TestSchemaDefaultBehavior(t *testing.T) {
 				typ, key string
 				value    any
 			}{
-				{"Game", "max_party", db.Game.MaxParty}, {"Screen", "width", db.Game.Screen.Width}, {"Screen", "height", db.Game.Screen.Height},
-				{"BattleCfg", "variance", db.Game.Battle.Variance}, {"BattleCfg", "critical_rate", db.Game.Battle.CriticalRate},
-				{"BattleCfg", "guard_rate", db.Game.Battle.GuardRate}, {"BattleCfg", "front_weight", *db.Game.Battle.FrontWeight}, {"BattleCfg", "back_weight", *db.Game.Battle.BackWeight},
-				{"Class", "sp", db.Classes["ranger"].SP}, {"Class", "max_level", db.Classes["ranger"].Max},
-				{"Actor", "level", db.Actors["scout"].Level}, {"Actor", "face", db.Actors["scout"].Face},
-				{"Enemy", "actions", db.Enemies["mote"].Actions}, {"Enemy", "scale", db.Enemies["mote"].Scale},
-				{"Usage", "hits", db.Skills["attack"].Hits}, {"Music", "volume", db.Music.Volume},
-				{"Terms", "currency", db.Game.Terms.Currency}, {"Terms", "level", db.Game.Terms.Level},
+				{"Game", "max_party", db.Game.MaxParty},
+				{"Screen", "width", db.Game.Screen.Width},
+				{"Screen", "height", db.Game.Screen.Height},
+				{"BattleCfg", "variance", db.Game.Battle.Variance},
+				{"BattleCfg", "critical_rate", db.Game.Battle.CriticalRate},
+				{"BattleCfg", "guard_rate", db.Game.Battle.GuardRate},
+				{"BattleCfg", "front_weight", *db.Game.Battle.FrontWeight},
+				{"BattleCfg", "back_weight", *db.Game.Battle.BackWeight},
+				{"Class", "sp", db.Classes["ranger"].SP},
+				{"Class", "max_level", db.Classes["ranger"].Max},
+				{"Actor", "level", db.Actors["scout"].Level},
+				{"Actor", "face", db.Actors["scout"].Face},
+				{"Enemy", "actions", db.Enemies["mote"].Actions},
+				{"Enemy", "scale", db.Enemies["mote"].Scale},
+				{"Usage", "hits", db.Skills["attack"].Hits},
+				{"Music", "volume", db.Music.Volume},
+				{"Terms", "currency", db.Game.Terms.Currency},
+				{"Terms", "level", db.Game.Terms.Level},
 			} {
 				want := schema.Defs[sample.typ].Properties[sample.key].Contract.Default
 				if got := fmt.Sprint(sample.value); got != want {

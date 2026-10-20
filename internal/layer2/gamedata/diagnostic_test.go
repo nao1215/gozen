@@ -47,7 +47,7 @@ func TestSemanticDiagnosticLocations(t *testing.T) {
 			t.Fatal("意味検査で DB が失われた")
 		}
 		// Re-checking old data does not change positions, and map iteration order does not make the output fluctuate.
-		for i := 0; i < 20; i++ {
+		for range 20 {
 			if got := joinDiagnostics(db.Check()).Error(); got != first {
 				t.Fatalf("診断の順序か位置が変わった。\n%s\n%s", first, got)
 			}
@@ -86,7 +86,7 @@ func TestSemanticDiagnosticLocations(t *testing.T) {
 	t.Run("マップ内の診断順序", func(t *testing.T) {
 		db, first := wantDiagnostics(t, map[string]string{"data/z.yaml": "events:\n  sample:\n    do:\n      - set: {var.z: wrong_z, var.a: wrong_a, var.m: wrong_m}\n"},
 			"events.sample.do[0].set.var.z:", "events.sample.do[0].set.var.a:", "events.sample.do[0].set.var.m:")
-		for i := 0; i < 30; i++ {
+		for range 30 {
 			if got := joinDiagnostics(db.Check()).Error(); got != first {
 				t.Fatalf("マップ内の診断順序が変わった。\n%s\n%s", first, got)
 			}

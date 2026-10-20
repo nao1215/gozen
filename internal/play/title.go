@@ -89,7 +89,6 @@ func (t *title) draw(g *Game, dst *ebiten.Image) {
 	g.drawPicture(dst, gm.TitleBG, 0, 0, sw, sh, 1)
 	fill(dst, withAlpha(colorBlack, 0x40))
 	if len(gm.TitleFigures) > 0 {
-
 		for i, f := range gm.TitleFigures {
 			rise := math.Max(0, math.Min(1, float64(t.age-i*8)/40))
 			bottom, h := f.Bottom, f.Height

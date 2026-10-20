@@ -3,7 +3,6 @@ package gfx
 import (
 	"bytes"
 	"image/color"
-
 	"math"
 	"strings"
 

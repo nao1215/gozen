@@ -237,11 +237,11 @@ func readShotList(p string) (*shotList, error) {
 		}
 	}
 	if len(l.Shots) == 0 {
-		return nil, fmt.Errorf("shots: empty list")
+		return nil, errors.New("shots: empty list")
 	}
 	for _, prefix := range l.Watch {
 		if prefix != "" && !cli.Relative(strings.TrimSuffix(prefix, "/")) {
-			return nil, fmt.Errorf("shots: invalid watch prefix")
+			return nil, errors.New("shots: invalid watch prefix")
 		}
 	}
 	if l.Seed == 0 {
@@ -278,9 +278,11 @@ func shootOne(r *shotResult, it shotItem, list *shotList, bin, gameDir, out, nam
 	if seed == 0 {
 		seed = list.Seed
 	}
-	a := []string{"--dev", "--dir", gameDir, "--mute", "--seed", strconv.FormatUint(seed, 10), "--window", "1",
+	a := []string{
+		"--dev", "--dir", gameDir, "--mute", "--seed", strconv.FormatUint(seed, 10), "--window", "1",
 		"--save-dir", filepath.Join(work, "save"), "--memos", filepath.Join(work, "memos"),
-		"--script", filepath.Join(work, "script.txt"), "--shots", work, "--trace", filepath.Join(work, "trace.jsonl")}
+		"--script", filepath.Join(work, "script.txt"), "--shots", work, "--trace", filepath.Join(work, "trace.jsonl"),
+	}
 	add := func(k, v string) {
 		if v != "" {
 			a = append(a, k, v)
@@ -447,7 +449,7 @@ func orDash(s string) string {
 
 func split(s string) []string {
 	var out []string
-	for _, f := range strings.Split(s, ",") {
+	for f := range strings.SplitSeq(s, ",") {
 		if f = strings.TrimSpace(f); f != "" {
 			out = append(out, f)
 		}
@@ -490,7 +492,6 @@ func writeShotIndex(out string, list *shotList, rs []shotResult, raw bool) error
 
 	if raw {
 		appendText(&b, "<p class=f>"+e(lang.T("承認未検査の版（--raw）。手元で場面を見るだけの物で、紹介ページに使わない。"))+"</p>\n")
-
 	}
 	n := map[string]int{}
 	for _, r := range rs {
@@ -504,7 +505,6 @@ func writeShotIndex(out string, list *shotList, rs []shotResult, raw bool) error
 	}
 	if rep := shotRepeats(items); len(rep) > 0 {
 		appendText(&b, "<p class=w>"+e(fmt.Sprintf(lang.T("並びの重なり: %s"), strings.Join(rep, lang.T("、"))))+"</p>\n")
-
 	}
 	row := func(r shotResult) {
 		it := r.item
@@ -512,17 +512,14 @@ func writeShotIndex(out string, list *shotList, rs []shotResult, raw bool) error
 
 		if r.Status == "ok" {
 			appendf(&b, "<a href=%q><img src=%q loading=lazy></a>", r.PNG, r.JPEG)
-
 		}
 		appendText(&b, "</td><td><b>"+e(it.Title)+"</b><br>id "+e(it.ID))
 
 		if it.Who != "" {
 			appendText(&b, "<br>"+e(fmt.Sprintf(lang.T("人物 %s"), it.Who)))
-
 		}
 		if it.Phase != "" || it.Pose != "" {
 			appendText(&b, "<br>"+e(fmt.Sprintf(lang.T("段階 %s・構図 %s"), orDash(it.Phase), orDash(it.Pose))))
-
 		}
 		var where []string
 		if it.Scene != "" {
@@ -548,11 +545,9 @@ func writeShotIndex(out string, list *shotList, rs []shotResult, raw bool) error
 
 		if it.Note != "" {
 			appendText(&b, "<br>"+e(it.Note))
-
 		}
 		if r.Status == "ok" {
 			appendText(&b, "<br>"+e(r.Size)+" <a href="+strconv.Quote(r.JPEG)+">JPEG</a>")
-
 		} else {
 			cls := "w"
 			if r.Status == "failed" {
@@ -562,7 +557,6 @@ func writeShotIndex(out string, list *shotList, rs []shotResult, raw bool) error
 
 		}
 		appendText(&b, "</td></tr>\n")
-
 	}
 	for _, st := range []struct{ status, head string }{{"ok", lang.T("撮れた物")}, {"approval_wait", lang.T("承認待ち（制作記録と素材を確かめて撮り直す）")}, {"failed", lang.T("撮れなかった物")}} {
 		if n[st.status] == 0 {

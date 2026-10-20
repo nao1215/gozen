@@ -21,7 +21,7 @@ func yamlAt(src []byte, path string) ([]byte, error) {
 		return nil, err
 	}
 	missing := func() error { return fmt.Errorf("%s: %w", path, fs.ErrNotExist) }
-	for _, part := range strings.Split(path, ".") {
+	for part := range strings.SplitSeq(path, ".") {
 		name, rest, _ := strings.Cut(part, "[")
 		if name != "" {
 			switch x := v.(type) {

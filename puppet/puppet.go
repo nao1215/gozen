@@ -14,6 +14,7 @@
 package puppet
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"math/rand/v2"
@@ -63,7 +64,7 @@ type Puppet struct {
 // New makes a puppet from rig. GPU images are made on the first Draw.
 func New(rig *Rig, cfg Config) (*Puppet, error) {
 	if rig == nil || rig.r == nil {
-		return nil, fmt.Errorf("puppet: nil rig")
+		return nil, errors.New("puppet: nil rig")
 	}
 	if cfg.TPS < 0 {
 		return nil, fmt.Errorf("puppet: TPS %d is negative", cfg.TPS)

@@ -33,8 +33,10 @@ func (o *output) write(s string) {
 	}
 }
 
-type cli struct{ out, diag *output }
-type argumentError struct{ error }
+type (
+	cli           struct{ out, diag *output }
+	argumentError struct{ error }
+)
 
 // Run runs gozen art mosaic. It returns 0 for success/help, 2 for argument errors, and 1
 // for processing or I/O errors. Caller owns writers. No process state or working
@@ -66,21 +68,20 @@ func Fetch(args []string, out, diagnostics io.Writer) int {
 	return c.finish(c.fetchCmd(args), "gozen art fetch --help", fetchRequirements)
 }
 
-func (c *cli) finish(err error, help, requirements string) int {
+func (cli *cli) finish(err error, help, requirements string) int {
 	if errors.Is(err, clihelp.ErrHelp) {
 		err = nil
 	}
-	err = errors.Join(err, c.out.err, c.diag.err)
+	err = errors.Join(err, cli.out.err, cli.diag.err)
 	if err == nil {
 		return 0
 	}
-	c.diag.println(err)
-	var arg argumentError
-	if errors.As(err, &arg) {
-		c.diag.println("Run \"" + help + "\" for usage. See " + clihelp.README)
+	cli.diag.println(err)
+	if _, ok := errors.AsType[argumentError](err); ok {
+		cli.diag.println("Run \"" + help + "\" for usage. See " + clihelp.README)
 		return 2
 	}
-	c.diag.println(requirements)
+	cli.diag.println(requirements)
 	return 1
 }
 

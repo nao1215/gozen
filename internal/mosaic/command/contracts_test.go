@@ -26,8 +26,8 @@ func fixture(t *testing.T) (string, string) {
 		t.Fatal(err)
 	}
 	img := image.NewRGBA(image.Rect(0, 0, 24, 24))
-	for y := 0; y < 24; y++ {
-		for x := 0; x < 24; x++ {
+	for y := range 24 {
+		for x := range 24 {
 			img.SetRGBA(x, y, color.RGBA{uint8(x * 8), uint8(y * 8), 0, 255})
 		}
 	}
@@ -36,6 +36,7 @@ func fixture(t *testing.T) (string, string) {
 	}
 	return game, filepath.Join(root, "output")
 }
+
 func invoke(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
 	var out, diag bytes.Buffer
@@ -46,6 +47,7 @@ func invoke(t *testing.T, args ...string) (int, string, string) {
 	code := run(args, &out, &diag)
 	return code, out.String(), diag.String()
 }
+
 func TestGNUOptions(t *testing.T) {
 	for _, args := range [][]string{{"--help"}, {"auto", "--help"}, {"inspect", "-h"}, {"manual", "help"}, {"manual", "grow", "--help"}} {
 		_, out, _ := invoke(t, args...)
@@ -99,6 +101,7 @@ func TestHelpAndPrerequisites(t *testing.T) {
 		t.Fatal("lost help output failure")
 	}
 }
+
 func TestManualStateAndRollback(t *testing.T) {
 	game, out := fixture(t)
 	manual := filepath.Join(filepath.Dir(game), "manual.yaml")
@@ -162,13 +165,22 @@ func TestManualStateAndRollback(t *testing.T) {
 		t.Fatal("source modified")
 	}
 }
+
 func TestInvalidGeometryAndOptions(t *testing.T) {
 	game, out := fixture(t)
 	manual := filepath.Join(filepath.Dir(game), "manual.yaml")
 	for _, flags := range [][]string{
-		{"--rect", "0,0,0,4"}, {"--rect", "0,0,-4,4"}, {"--box", "8,8,1,1"}, {"--rect", "50,50,4,4"},
-		{"--rect", "x1,2,3,4"}, {"--rect", "NaN,0,4,4"}, {"--rect", "1e100,0,4,4"}, {"--ellipse", "2,2,-1,3"},
-		{"--threshold", "NaN", "--rect", "0,0,4,4"}, {"--quality", "101", "--rect", "0,0,4,4"}, {"--block", "-1", "--rect", "0,0,4,4"},
+		{"--rect", "0,0,0,4"},
+		{"--rect", "0,0,-4,4"},
+		{"--box", "8,8,1,1"},
+		{"--rect", "50,50,4,4"},
+		{"--rect", "x1,2,3,4"},
+		{"--rect", "NaN,0,4,4"},
+		{"--rect", "1e100,0,4,4"},
+		{"--ellipse", "2,2,-1,3"},
+		{"--threshold", "NaN", "--rect", "0,0,4,4"},
+		{"--quality", "101", "--rect", "0,0,4,4"},
+		{"--block", "-1", "--rect", "0,0,4,4"},
 	} {
 		args := append([]string{"manual", "add", "--manual", manual, "--out", out}, flags...)
 		args = append(args, game, "pattern.png")
@@ -181,6 +193,7 @@ func TestInvalidGeometryAndOptions(t *testing.T) {
 		}
 	}
 }
+
 func TestReadOnlyInspectionAndDryRun(t *testing.T) {
 	game, out := fixture(t)
 	manual := filepath.Join(filepath.Dir(game), "manual.yaml")
@@ -220,6 +233,7 @@ func TestReadOnlyInspectionAndDryRun(t *testing.T) {
 		t.Fatal("read-only command changed tag cache")
 	}
 }
+
 func TestSourceProtection(t *testing.T) {
 	game, out := fixture(t)
 	manual := filepath.Join(filepath.Dir(game), "manual.yaml")
@@ -242,6 +256,7 @@ func TestSourceProtection(t *testing.T) {
 		t.Fatal("traversal accepted")
 	}
 }
+
 func TestWebPOutputIsHonest(t *testing.T) {
 	// An original lossless WebP fixture verifies the actual decoder and output naming.
 	game, out := fixture(t)

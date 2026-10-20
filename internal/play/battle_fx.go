@@ -103,7 +103,6 @@ func (s *battleScene) addFx(g *Game, kind string, x, y, w, h float64, c color.NR
 		base += 8
 	}
 	if !s.auto && !g.in.fast && !g.in.held[btnOK] {
-
 		base = base * 3 / 2
 	}
 	dur := g.fxTicks(base)
@@ -117,8 +116,10 @@ func (s *battleScene) addFx(g *Game, kind string, x, y, w, h float64, c color.NR
 }
 
 func fxHit(kind string) float64 {
-	return map[string]float64{"slash": 0.2, "pierce": 0.24, "strike": 0.16, "fire": 0.2, "ice": 0.24,
-		"thunder": 0.18, "holy": 0.24, "dark": 0.36, "magic": 0.3, "heal": 0.22}[kind]
+	return map[string]float64{
+		"slash": 0.2, "pierce": 0.24, "strike": 0.16, "fire": 0.2, "ice": 0.24,
+		"thunder": 0.18, "holy": 0.24, "dark": 0.36, "magic": 0.3, "heal": 0.22,
+	}[kind]
 }
 
 func (s *battleScene) addScreen(g *Game, kind string, x, y float64, c color.NRGBA, alpha float64, dur int) {
@@ -177,8 +178,10 @@ func (b *fxBatch) reset() { b.vs, b.is = b.vs[:0], b.is[:0] }
 
 func (b *fxBatch) v(x, y float64, c color.NRGBA, a float64) uint32 {
 	a = clamp01(a)
-	b.vs = append(b.vs, ebiten.Vertex{DstX: float32(x), DstY: float32(y), SrcX: 1, SrcY: 1,
-		ColorR: float32(c.R) / 255, ColorG: float32(c.G) / 255, ColorB: float32(c.B) / 255, ColorA: float32(a)})
+	b.vs = append(b.vs, ebiten.Vertex{
+		DstX: float32(x), DstY: float32(y), SrcX: 1, SrcY: 1,
+		ColorR: float32(c.R) / 255, ColorG: float32(c.G) / 255, ColorB: float32(c.B) / 255, ColorA: float32(a),
+	})
 	return uint32(len(b.vs) - 1) //nolint:gosec // One frame cannot allocate 2^32 vertices.
 }
 

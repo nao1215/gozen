@@ -111,7 +111,6 @@ func (g *Game) walkStep(char string) (button, bool) {
 
 func (g *Game) walkArrived() bool {
 	if g.walkGoal[2] == 0 || g.st == nil {
-
 		return false
 	}
 	p := g.st.Pos

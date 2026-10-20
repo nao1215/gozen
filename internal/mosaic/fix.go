@@ -1,6 +1,7 @@
 package mosaic
 
 import (
+	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -64,7 +65,7 @@ func LoadFixes(path string) (Fixes, error) {
 		return nil, err
 	}
 	if len(file.Docs) != 1 || file.Docs[0].Body == nil {
-		return nil, fmt.Errorf("fix YAML requires one nonempty document")
+		return nil, errors.New("fix YAML requires one nonempty document")
 	}
 	if err := yaml.NodeToValue(file.Docs[0].Body, &fx, yaml.Strict()); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
@@ -140,12 +141,12 @@ func ValidateFixes(fx Fixes) error {
 			return fmt.Errorf("invalid image path %q", k)
 		}
 		if f.Block < 0 || f.Block > 256 {
-			return fmt.Errorf("block must be 0..256")
+			return errors.New("block must be 0..256")
 		}
 		for _, g := range f.Grow {
 			for _, v := range g {
 				if v < -1_000_000 || v > 1_000_000 {
-					return fmt.Errorf("grow coordinate exceeds limit")
+					return errors.New("grow coordinate exceeds limit")
 				}
 			}
 			if g[2] <= 0 || g[3] <= 0 {
@@ -158,7 +159,7 @@ func ValidateFixes(fx Fixes) error {
 		for _, r := range append(append([][4]int{}, f.Add...), f.Drop...) {
 			for _, v := range r {
 				if v < -1_000_000 || v > 1_000_000 {
-					return fmt.Errorf("rectangle coordinate exceeds limit")
+					return errors.New("rectangle coordinate exceeds limit")
 				}
 			}
 			if r[2] <= 0 || r[3] <= 0 {
@@ -168,7 +169,7 @@ func ValidateFixes(fx Fixes) error {
 		for _, p := range f.Poly {
 			for _, v := range p {
 				if v < -1_000_000 || v > 1_000_000 {
-					return fmt.Errorf("polygon coordinate exceeds limit")
+					return errors.New("polygon coordinate exceeds limit")
 				}
 			}
 			if len(p) < 6 || len(p)%2 != 0 || len(p) > 8192 {
@@ -180,7 +181,7 @@ func ValidateFixes(fx Fixes) error {
 				twiceArea += int64(p[i])*int64(p[j+1]) - int64(p[j])*int64(p[i+1])
 			}
 			if twiceArea == 0 {
-				return fmt.Errorf("polygon area must be nonzero")
+				return errors.New("polygon area must be nonzero")
 			}
 
 		}

@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"maps"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -139,9 +140,7 @@ func ScenesFiles(extra map[string]string) map[string]string {
 		"assets/bg/plaza_depth.png": string(Depth(96, 54)),
 		"assets/faces.json":         ScenesFaces,
 	}
-	for k, v := range extra {
-		files[k] = v
-	}
+	maps.Copy(files, extra)
 	return files
 }
 

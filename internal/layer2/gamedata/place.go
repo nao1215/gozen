@@ -17,7 +17,7 @@ func eachCall(v reflect.Value, fn func(string)) {
 		}
 	case reflect.Struct:
 		if v.Type() == commandType {
-			if c, ok := v.Interface().(Command); ok && c.Call != "" {
+			if c, ok := reflect.TypeAssert[Command](v); ok && c.Call != "" {
 				fn(c.Call)
 			}
 		}

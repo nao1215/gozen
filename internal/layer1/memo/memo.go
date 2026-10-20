@@ -1,3 +1,5 @@
+// Package memo writes and reads the play memos: a note with a screenshot and
+// the save it was taken from.
 package memo
 
 import (
@@ -8,12 +10,10 @@ import (
 	"image/png"
 	"io/fs"
 	"os"
-
 	"path/filepath"
 	"runtime/debug"
 	"sort"
 	"strings"
-
 	"time"
 )
 
@@ -169,8 +169,8 @@ func WriteAt(base string, m *Memo, shot image.Image, save []byte) (_ string, err
 func Read(path string) (Memo, []byte, error) {
 	var m Memo
 	jsonPath, savePath := path, ""
-	if strings.HasSuffix(path, ".save") {
-		jsonPath, savePath = strings.TrimSuffix(path, ".save")+".json", path
+	if before, ok := strings.CutSuffix(path, ".save"); ok {
+		jsonPath, savePath = before+".json", path
 	}
 	if b, err := os.ReadFile(jsonPath); err == nil { //nolint:gosec // The caller explicitly selects the note to read.
 		if err := json.Unmarshal(b, &m); err != nil {

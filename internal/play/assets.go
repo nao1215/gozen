@@ -1,10 +1,12 @@
+// Package play is the screen of a running game: input, drawing, and sound on
+// top of the rules the headless driver also uses.
 package play
 
 import (
 	"bytes"
 	"image"
 	"image/color"
-	_ "image/jpeg"
+	_ "image/jpeg" // decoders for the pictures image.Decode reads
 	_ "image/png"
 	"io/fs"
 	"log"
@@ -54,9 +56,11 @@ type picLoad struct {
 const picBudget = 256 << 20
 
 func newPictures(fsys fs.FS) *pictures {
-	return &pictures{fsys: fsys, imgs: map[string]*picEntry{}, loading: map[string]*picLoad{}, decoded: map[string]image.Image{}, budget: picBudget,
+	return &pictures{
+		fsys: fsys, imgs: map[string]*picEntry{}, loading: map[string]*picLoad{}, decoded: map[string]image.Image{}, budget: picBudget,
 		heads: map[string]image.Rectangle{}, blurs: map[string]*ebiten.Image{}, boxes: map[string][]float64{},
-		shades: map[string][2]float64{}, shaded: map[string]*ebiten.Image{}}
+		shades: map[string][2]float64{}, shaded: map[string]*ebiten.Image{},
+	}
 }
 
 var missing = func() *ebiten.Image {
@@ -192,9 +196,7 @@ func (p *pictures) decode(path string) image.Image {
 }
 
 func (p *pictures) preload(paths ...string) {
-	p.workers.Add(1)
-	go func() {
-		defer p.workers.Done()
+	p.workers.Go(func() {
 		for _, path := range paths {
 			if path == "" {
 				continue
@@ -218,7 +220,7 @@ func (p *pictures) preload(paths ...string) {
 			}
 			p.mu.Unlock()
 		}
-	}()
+	})
 }
 
 func (p *pictures) head(path string) image.Rectangle {

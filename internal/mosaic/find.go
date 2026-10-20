@@ -13,8 +13,8 @@ type Found struct {
 func Find(img image.Image, r image.Rectangle) Found {
 	r = r.Intersect(img.Bounds())
 	for block := 4; block <= min(r.Dx(), r.Dy())/3; block++ {
-		for oy := 0; oy < block; oy++ {
-			for ox := 0; ox < block; ox++ {
+		for oy := range block {
+			for ox := range block {
 				var previous [4]uint32
 				distinct := false
 				count := 0

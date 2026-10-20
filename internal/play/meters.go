@@ -3,6 +3,7 @@ package play
 import (
 	"fmt"
 	"image/color"
+	"strconv"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -69,7 +70,7 @@ func (g *Game) drawMeterRow(dst *ebiten.Image, m *gamedata.Meter, x, y, w float6
 	v, mx := g.meterValue(m)
 	g.text(dst, m.Label, x, y, size, g.th.dim)
 	bx := x + gfx.TextWidth(m.Label, size) + 12
-	right := fmt.Sprintf("%d", int(v))
+	right := strconv.Itoa(int(v))
 	if m.MaxValue.Set() {
 		right = fmt.Sprintf("%d/%d", int(v), int(mx))
 	}

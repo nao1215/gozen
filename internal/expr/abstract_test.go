@@ -2,6 +2,7 @@ package expr
 
 import (
 	"math"
+	"slices"
 	"testing"
 )
 
@@ -105,10 +106,8 @@ func within(r Range, v any) bool {
 		if r.StrAny {
 			return true
 		}
-		for _, s := range r.Strs {
-			if s == x {
-				return true
-			}
+		if slices.Contains(r.Strs, x) {
+			return true
 		}
 	case nil:
 		return r.Nil

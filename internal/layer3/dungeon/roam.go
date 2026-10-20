@@ -1,8 +1,8 @@
 package dungeon
 
 import (
-	"fmt"
 	"math"
+	"strconv"
 
 	"github.com/nao1215/gozen/internal/expr"
 	"github.com/nao1215/gozen/internal/layer1/optional"
@@ -175,15 +175,17 @@ func roamerTile(d *data.Dungeon, st *rpg.State, i int) *data.Tile {
 	if len(k.Meet) > 0 {
 		return &data.Tile{Name: k.Name, Picture: pic, Size: size, Mark: k.Mark, Trigger: "step", Do: k.Meet}
 	}
-	beaten, err := expr.Parse(fmt.Sprint(i + 1))
+	beaten, err := expr.Parse(strconv.Itoa(i + 1))
 	if err != nil {
 		return nil
 	}
 	return &data.Tile{
 		Name: k.Name, Picture: pic, Size: size, Mark: k.Mark, Trigger: "step",
-		Do: []data.Command{{Battle: r.Troop,
-			OnWin: []data.Command{{SetV: map[string]data.Expr{"var." + VarRoamerBeaten: {Expr: beaten}}}},
-			OnRun: []data.Command{{SetV: map[string]data.Expr{"var." + VarRoamerFled: {Expr: beaten}}}}}},
+		Do: []data.Command{{
+			Battle: r.Troop,
+			OnWin:  []data.Command{{SetV: map[string]data.Expr{"var." + VarRoamerBeaten: {Expr: beaten}}}},
+			OnRun:  []data.Command{{SetV: map[string]data.Expr{"var." + VarRoamerFled: {Expr: beaten}}}},
+		}},
 	}
 }
 

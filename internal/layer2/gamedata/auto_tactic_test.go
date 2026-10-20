@@ -34,8 +34,10 @@ func TestAutoTacticValidation(t *testing.T) {
 				if tc.name == "OFFも検査" {
 					src = strings.Replace(src, "enabled: true", "enabled: false", 1)
 				}
-				_, err := testgame.TryLoad(map[string]string{"game.yaml": src,
-					"data/tactics.yaml": testgame.Tactics, "data/auto.yaml": testgame.AutoTacticsData})
+				_, err := testgame.TryLoad(map[string]string{
+					"game.yaml":         src,
+					"data/tactics.yaml": testgame.Tactics, "data/auto.yaml": testgame.AutoTacticsData,
+				})
 				if tc.want == "" {
 					if err != nil {
 						t.Fatal(err)

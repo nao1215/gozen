@@ -77,7 +77,7 @@ func (c *command) trialCmd(args []string) (err error) {
 		return cli.Publish(out, []string{src}, func(stage string) error { return res.Write(src, stage) })
 	}
 	if *inspect == "" {
-		return fmt.Errorf("replacing needs --inspect")
+		return errors.New("replacing needs --inspect")
 	}
 
 	stage, err := os.MkdirTemp("", "gozen-trial-")
@@ -144,7 +144,6 @@ func writeList(p string, res *trial.Result) error {
 	for _, sec := range []string{"events", "locations", "troops", "enemies", "skills", "ai", "shops", "songs"} {
 		appendf(&b, "# %s: kept %d\n%s\n# %s: removed %d\n%s\n", sec, len(res.Kept[sec]), strings.Join(res.Kept[sec], "\n"),
 			sec, len(res.Removed[sec]), strings.Join(res.Removed[sec], "\n"))
-
 	}
 	appendf(&b, "# pictures and sounds %d\n%s\n", len(res.Assets), strings.Join(res.Assets, "\n"))
 
@@ -152,13 +151,11 @@ func writeList(p string, res *trial.Result) error {
 
 	for _, k := range sortedStrings(res.Why) {
 		appendf(&b, "%s <- %s\n", k, res.Why[k])
-
 	}
 	appendf(&b, "# ranges of variables and flags\n")
 
 	for _, k := range sortedStrings(res.Domains) {
 		appendf(&b, "%s = %s\t<- %s\n", k, res.Domains[k], strings.Join(res.DomainWhy[k], "; "))
-
 	}
 	if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
 		return err

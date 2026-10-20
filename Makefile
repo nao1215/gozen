@@ -11,8 +11,9 @@ GOLANGCI_LINT_VERSION ?= v2.14.0
 GOLANGCI_LINT ?= GOTOOLCHAIN=$(LINT_GO) $(GO) run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 ATAGO ?= atago
 ACTIONLINT ?= actionlint
+ZIZMOR ?= zizmor
 
-.PHONY: website-go-zen go-zen go-zen-graphics test coverage lint workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
+.PHONY: website-go-zen go-zen go-zen-graphics test coverage lint tidy workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
 
 # One module: ./... includes the gozen command and its internal implementations.
 # Keep ONNX-dependent runtime tests separate; see docs/development/testing.md.
@@ -24,12 +25,22 @@ test:
 coverage:
 	$(GO) test -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
 
-lint: arch api workflows
+lint: arch api tidy workflows
 	$(GOLANGCI_LINT) run ./...
 	$(GOLANGCI_LINT) fmt --diff
+	cd examples/go-zen && $(GOLANGCI_LINT) run ./... && $(GOLANGCI_LINT) fmt --diff
 
+# go.mod and go.sum of both modules match what the imports need.
+tidy:
+	$(GO) mod tidy -diff
+	cd examples/go-zen && $(GO) mod tidy -diff
+
+# actionlint checks the syntax, expressions and shell of the workflows; zizmor
+# checks their security (pins, credentials, injection, cache poisoning) with
+# .github/zizmor.yml, offline so local and CI runs agree.
 workflows:
 	$(ACTIONLINT)
+	$(ZIZMOR) --offline .github/workflows
 
 arch:
 	$(ARCH_LINT) check

@@ -1,3 +1,5 @@
+// Package designeval plays a game with scripted personas for gozen design and
+// summarizes each run against the measures of its configuration.
 package designeval
 
 import (
@@ -197,10 +199,12 @@ func Play(db *data.DB, c *Config, p Persona) *Run {
 	}
 	pcg := rand.NewPCG(seed, 1)
 	st := rpg.New(db, rand.New(pcg)) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
-	b := &bot{db: db, c: c, p: p, st: st, run: &Run{Persona: p, Seed: seed}, pcg: pcg,
+	b := &bot{
+		db: db, c: c, p: p, st: st, run: &Run{Persona: p, Seed: seed}, pcg: pcg,
 		rewardCounts: map[string]int{}, used: map[string]int{}, seen: map[string]bool{}, prev: map[*Rule]float64{}, know: map[string]map[string]bool{},
 		errs: map[string]bool{}, asked: map[string]int{}, policyFailed: map[string]bool{}, noRetry: noRetryTroops(db),
-		bosses: map[int]*Boss{}, gateDone: map[string]bool{}}
+		bosses: map[int]*Boss{}, gateDone: map[string]bool{},
+	}
 	d := headless.New(db, st)
 	d.Record = true
 	d.OnStep = func(s headless.Step) {
@@ -408,7 +412,7 @@ func (b *bot) note(err error) {
 	if err == nil {
 		return
 	}
-	for _, e := range strings.Split(err.Error(), "\n") {
+	for e := range strings.SplitSeq(err.Error(), "\n") {
 		if e == "" || b.errs[e] {
 			continue
 		}
@@ -653,8 +657,6 @@ func (b *bot) pickIDs(opts, ids, words, rot []string) int {
 		}
 	}
 	if len(rot) > 0 {
-
-	narrow:
 		for _, w := range words {
 			var in []int
 			for _, i := range cands {
@@ -664,7 +666,7 @@ func (b *bot) pickIDs(opts, ids, words, rot []string) int {
 			}
 			if len(in) > 0 {
 				cands = in
-				break narrow
+				break
 			}
 		}
 		best, bestN, bw := -1, 1<<30, ""
@@ -1141,7 +1143,6 @@ func (b *bot) dive() {
 			}
 		}
 		if stairs != "" && !b.walkChar(stairs, g.StairsWords) && !b.worn && b.inDungeon() && b.floor() == f {
-
 			b.walkThrough(stairs, g.StairsWords)
 		}
 		if stairs != "" && !b.worn && b.inDungeon() && b.floor() == f && !b.run.Cleared {
@@ -1580,6 +1581,7 @@ func (b *bot) duelRateNow(db *data.DB, st *rpg.State, troop string, fighters []s
 	b.note(err)
 	return rate
 }
+
 func (b *bot) winRateNow(db *data.DB, st *rpg.State, troop string, tries, turns int) float64 {
 	rate, err := balance.WinRateNow(db, st, troop, tries, turns)
 	b.note(err)

@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"slices"
+	"strconv"
 
 	lang "github.com/nao1215/gozen/internal/text"
 
@@ -139,7 +140,7 @@ func (f *formation) draw(g *Game, dst *ebiten.Image) {
 		in := slices.Index(g.st.Party, id)
 		mark := "　"
 		if in >= 0 {
-			mark = fmt.Sprintf("%d", in+1)
+			mark = strconv.Itoa(in + 1)
 		}
 		g.text(dst, mark, 60, y, sizeM, g.th.accent)
 		g.text(dst, a.Name(), 100, y, sizeM, g.th.text)
@@ -293,22 +294,20 @@ func (t *treeView) update(g *Game) {
 }
 
 func (t *treeView) raise(g *Game, a *rpg.Actor, cur gamedata.TreeNode) {
-	{
-		if a.Raise(cur.ID) {
-			g.sfx("decide")
-			t.msg, t.msgT = fmt.Sprintf(lang.T("%s が Lv%d に なった！"), t.nodeName(g, cur.ID), a.Tree[cur.ID]), 60
-		} else {
-			g.sfx("buzzer")
-			switch {
-			case a.SP <= 0:
-				t.msg = lang.T("SPが たりない。")
-			case !a.NodeReached(cur.ID):
-				t.msg = lang.T("まだ とれない。（さきに ひつような スキルを あげよう）")
-			default:
-				t.msg = lang.T("これいじょう あげられない。")
-			}
-			t.msgT = 90
+	if a.Raise(cur.ID) {
+		g.sfx("decide")
+		t.msg, t.msgT = fmt.Sprintf(lang.T("%s が Lv%d に なった！"), t.nodeName(g, cur.ID), a.Tree[cur.ID]), 60
+	} else {
+		g.sfx("buzzer")
+		switch {
+		case a.SP <= 0:
+			t.msg = lang.T("SPが たりない。")
+		case !a.NodeReached(cur.ID):
+			t.msg = lang.T("まだ とれない。（さきに ひつような スキルを あげよう）")
+		default:
+			t.msg = lang.T("これいじょう あげられない。")
 		}
+		t.msgT = 90
 	}
 }
 
@@ -436,7 +435,8 @@ func (t *treeView) draw(g *Game, dst *ebiten.Image) {
 	if s := g.db.Skills[cur.Skill]; s != nil && s.MP > 0 {
 		desc += fmt.Sprintf(lang.T("（MP %d）"), s.MP)
 	}
-	note, nc := "", treeCanColor
+	var note string
+	nc := treeCanColor
 	switch {
 	case a.Tree[cur.ID] >= cur.Max:
 		note, nc = lang.T("これ以上 あげられない"), color.NRGBA{0xe0, 0xc0, 0x60, 0xff}
@@ -540,8 +540,10 @@ func (f *fusion) refresh(g *Game) {
 				have = false
 			}
 		}
-		items = append(items, listItem{label: label + " → " + g.db.Items[fu.To].Name, right: fmt.Sprintf("%d%s", fu.Price, cur),
-			disabled: !have || g.st.Gold < fu.Price})
+		items = append(items, listItem{
+			label: label + " → " + g.db.Items[fu.To].Name, right: fmt.Sprintf("%d%s", fu.Price, cur),
+			disabled: !have || g.st.Gold < fu.Price,
+		})
 		f.idx = append(f.idx, i)
 	}
 	items = append(items, listItem{label: lang.T("やめる")})

@@ -328,7 +328,7 @@ func (s *stageScene) walkOn(g *Game) {
 	_, _, left := s.sc.Toward(s.player.at, *s.goal, 1)
 	if len(s.way) > 1 {
 		_, _, left = s.sc.Toward(s.player.at, next, 1)
-		left += 1 // not there yet: the way goes on
+		left++ // not there yet: the way goes on
 	}
 	to := s.sc.Move(s.player.at, dx, dy)
 	crowded := s.crowded(to)

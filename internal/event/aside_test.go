@@ -34,8 +34,10 @@ events:
 
 func asideLines(t *testing.T, ev string, on float64) []string {
 	t.Helper()
-	db := testgame.Load(t, map[string]string{"data/z.yaml": asideEvents, "game.yaml": testgame.Game + asideGame,
-		"assets/npc/girl.png": "x", "assets/npc/girl_smile.png": "x", "assets/npc/man.png": "x", "assets/cg/x.png": "x"})
+	db := testgame.Load(t, map[string]string{
+		"data/z.yaml": asideEvents, "game.yaml": testgame.Game + asideGame,
+		"assets/npc/girl.png": "x", "assets/npc/girl_smile.png": "x", "assets/npc/man.png": "x", "assets/cg/x.png": "x",
+	})
 	st := testgame.State(db, 1)
 	st.Vars["on"] = on
 	r := event.New(db, st, &host{})
@@ -79,8 +81,10 @@ func TestAsides(t *testing.T) {
 }
 
 func TestAsideCallbackForPresentation(t *testing.T) {
-	db := testgame.Load(t, map[string]string{"data/z.yaml": asideEvents, "game.yaml": testgame.Game + asideGame,
-		"assets/npc/girl.png": "x", "assets/npc/girl_smile.png": "x", "assets/npc/man.png": "x", "assets/cg/x.png": "x"})
+	db := testgame.Load(t, map[string]string{
+		"data/z.yaml": asideEvents, "game.yaml": testgame.Game + asideGame,
+		"assets/npc/girl.png": "x", "assets/npc/girl_smile.png": "x", "assets/npc/man.png": "x", "assets/cg/x.png": "x",
+	})
 	st := testgame.State(db, 1)
 	st.Vars["on"] = 1
 	r := event.New(db, st, event.HostFunc(func(event.Effect) {}))

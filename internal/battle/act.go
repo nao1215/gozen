@@ -3,6 +3,7 @@ package battle
 import (
 	"maps"
 	"math"
+	"slices"
 
 	lang "github.com/nao1215/gozen/internal/text"
 
@@ -281,12 +282,7 @@ func (b *Battle) targets(u *Unit, scope string, chosen *Unit, hits int) []*Unit 
 }
 
 func contains(us []*Unit, u *Unit) bool {
-	for _, x := range us {
-		if x == u {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(us, u)
 }
 
 // effEnv is the scope of an effect: a (the user), b (the target) and the battle's names.
@@ -587,7 +583,7 @@ func (b *Battle) summon(u *Unit, e *data.Effect) []Step {
 	if alive >= most {
 		return []Step{{Kind: Message, Text: lang.T("しかし なにも あらわれなかった。")}}
 	}
-	n := &Unit{}
+	var n *Unit
 	if slot >= 0 {
 		n = newEnemyUnit(b, e.Summon, slot)
 		b.gone = append(b.gone, b.Foes[slot]) // its kill and its rewards stay

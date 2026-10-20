@@ -10,7 +10,7 @@ A private repository has a limit on Actions time. While it is private, only `qui
 
 | Job | Environment and check | What counts as a result |
 | --- | --- | --- |
-| lint | Linux, Go 1.27.2 (`LINT_GO` of the Makefile, not stable: gofmt's output changes between Go releases). golangci-lint v2.14.0 (built by `make lint` with that Go), go-arch-lint v1.19.0, actionlint v1.7.12. `make lint` | import direction, API list, static analysis, formatting, workflow syntax |
+| lint | Linux, Go 1.27.2 (`LINT_GO` of the Makefile, not stable: gofmt's output changes between Go releases). golangci-lint v2.14.0 (built by `make lint` with that Go), go-arch-lint v1.19.0, actionlint v1.7.12, zizmor v1.31.1. `make lint` | import direction, API list, tidy modules, static analysis, formatting, workflow syntax and security |
 | unit | Ubuntu, Windows and macOS × Go 1.26.9 / stable. `go test ./...` with cgo enabled | non-graphics contracts, including `gozen` and internal |
 | race | Linux, stable, `go test -race ./...` with cgo enabled | race check of the non-graphics contracts |
 | build | amd64 on 3 OSes, arm64 on Linux and macOS. cgo disabled | compiling all packages. arm64 is a cross-build. No ONNX inference |

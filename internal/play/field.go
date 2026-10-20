@@ -243,7 +243,6 @@ func (f *field) draw(g *Game, dst *ebiten.Image) {
 		focus = f.entries[f.menu.sel].Person
 	}
 	if len(g.stack) > 1 || g.talk.active || g.events != nil && g.events.Running() {
-
 		people = nil
 	}
 	places := f.place(g, people)

@@ -1,5 +1,6 @@
 //go:build cgo
 
+// Package tagger tags a picture with a user-supplied ONNX tagging model.
 package tagger
 
 import (
@@ -26,7 +27,7 @@ type Tagger struct {
 
 func New(dir, lib string, threads int) (result *Tagger, err error) {
 	if dir == "" || lib == "" {
-		return nil, fmt.Errorf("tagging needs an explicit model directory and ONNX Runtime shared library")
+		return nil, errors.New("tagging needs an explicit model directory and ONNX Runtime shared library")
 	}
 	names, err := readNames(filepath.Join(dir, "selected_tags.csv"))
 	if err != nil {
@@ -48,7 +49,7 @@ func New(dir, lib string, threads int) (result *Tagger, err error) {
 	}
 	size := int(ins[0].Dimensions[1])
 	if size < 1 || size > 4096 || ins[0].Dimensions[0] != 1 || ins[0].Dimensions[2] != int64(size) || ins[0].Dimensions[3] != 3 {
-		return nil, fmt.Errorf("tagger input must be fixed [1,H,H,3], H in 1..4096")
+		return nil, errors.New("tagger input must be fixed [1,H,H,3], H in 1..4096")
 	}
 	opts, err := ort.NewSessionOptions()
 	if err != nil {
@@ -100,7 +101,7 @@ func (t *Tagger) Tags(img image.Image) (result map[string]float32, err error) {
 	xdraw.CatmullRom.Scale(small, small.Bounds(), sq, sq.Bounds(), draw.Src, nil)
 
 	data := make([]float32, t.size*t.size*3)
-	for i := 0; i < t.size*t.size; i++ {
+	for i := range t.size * t.size {
 		p := small.Pix[i*4 : i*4+3]
 		data[i*3], data[i*3+1], data[i*3+2] = float32(p[2]), float32(p[1]), float32(p[0])
 	}
@@ -116,7 +117,7 @@ func (t *Tagger) Tags(img image.Image) (result map[string]float32, err error) {
 	defer func() { err = errors.Join(err, outs[0].Destroy()) }()
 	o, ok := outs[0].(*ort.Tensor[float32])
 	if !ok {
-		return nil, fmt.Errorf("the tagger output is not float32")
+		return nil, errors.New("the tagger output is not float32")
 	}
 	v := o.GetData()
 	if len(v) != len(t.names) {

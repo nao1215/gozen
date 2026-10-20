@@ -2,6 +2,7 @@ package trial
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/goccy/go-yaml"
@@ -17,7 +18,7 @@ func (a *analysis) blocked() []any {
 	return append(out, yaml.MapSlice{{Key: "end", Value: true}})
 }
 
-func (a *analysis) gates(fs files) (int, error) {
+func (a *analysis) gates(fs files) int {
 	n := 0
 	events := map[string]yaml.MapSlice{}
 	for _, sp := range fs.section("events") {
@@ -79,7 +80,7 @@ func (a *analysis) gates(fs files) (int, error) {
 		}
 		fs.setSection(sp.file, "events", keep)
 	}
-	return n, nil
+	return n
 }
 
 func floorOf(m yaml.MapSlice) any {
@@ -556,12 +557,7 @@ func reach(fs files, scenes []yaml.MapSlice, asides []yaml.MapSlice, allow map[s
 }
 
 func isDeletable(sec string) bool {
-	for _, s := range deletable {
-		if s == sec {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(deletable, sec)
 }
 
 func speakers(v any, faces, whos map[string]bool) {

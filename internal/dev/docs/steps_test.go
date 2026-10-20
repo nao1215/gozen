@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -71,7 +72,7 @@ func TestDocSteps(t *testing.T) {
 func stepEnv(t *testing.T, rootAbs, tmp string) []string {
 	t.Helper()
 	goEnv := func(key string) string {
-		out, err := exec.Command("go", "env", key).Output() //nolint:gosec // go env of a fixed key.
+		out, err := exec.CommandContext(t.Context(), "go", "env", key).Output() //nolint:gosec // go env of a fixed key.
 		if err != nil {
 			t.Fatalf("go env %s: %v", key, err)
 		}
@@ -81,7 +82,7 @@ func stepEnv(t *testing.T, rootAbs, tmp string) []string {
 	tools := filepath.Join(tmp, "tools")
 	command(t, rootAbs, 5*time.Minute, "go", "build", "-trimpath", "-buildvcs=false", "-o", filepath.Join(tools, exe("gozen")), "./cmd/gozen")
 	proxy := filepath.Join(tmp, "proxy")
-	if err := buildProxy(rootAbs, proxy); err != nil {
+	if err := buildProxy(t.Context(), rootAbs, proxy); err != nil {
 		t.Fatal(err)
 	}
 	gopath := filepath.Join(tmp, "gopath")
@@ -135,8 +136,8 @@ func fileURL(p string) string {
 
 // buildProxy writes a GOPROXY directory that serves the checkout as docsVersion:
 // the tracked and untracked (not ignored) files, as `go mod download` would see a release.
-func buildProxy(rootAbs, dir string) error {
-	out, err := exec.Command("git", "-C", rootAbs, "ls-files", "-z", "--cached", "--others", "--exclude-standard").Output() //nolint:gosec // git on this checkout.
+func buildProxy(ctx context.Context, rootAbs, dir string) error {
+	out, err := exec.CommandContext(ctx, "git", "-C", rootAbs, "ls-files", "-z", "--cached", "--others", "--exclude-standard").Output() //nolint:gosec // git on this checkout.
 	if err != nil {
 		return fmt.Errorf("listing the module's files: %w", err)
 	}
@@ -247,8 +248,8 @@ func commands(body string) []string {
 		if cur.Len() == 0 && (trimmed == "" || strings.HasPrefix(trimmed, "#")) {
 			continue
 		}
-		if strings.HasSuffix(trimmed, "\\") {
-			cur.WriteString(strings.TrimSpace(strings.TrimSuffix(trimmed, "\\")) + " ")
+		if before, ok := strings.CutSuffix(trimmed, "\\"); ok {
+			cur.WriteString(strings.TrimSpace(before) + " ")
 			continue
 		}
 		cur.WriteString(trimmed)
@@ -321,7 +322,7 @@ func runShell(t *testing.T, rootAbs, dir, cwd string, env []string, b block) (st
 			}
 		}
 		if built == 0 {
-			return "", cwd, fmt.Errorf("verify: build, but no `go run` to build")
+			return "", cwd, errors.New("verify: build, but no `go run` to build")
 		}
 	}
 	if err := os.MkdirAll(dir, 0o750); err != nil {
@@ -361,7 +362,7 @@ func runShell(t *testing.T, rootAbs, dir, cwd string, env []string, b block) (st
 		out, err := bash(t, dir, each, env, "set -eo pipefail\n"+c.cmd+"\n")
 		printed.WriteString(out)
 		if err != nil {
-			errs = append(errs, fmt.Sprintf("command %d `%s`: %v", c.n, c.cmd, err))
+			errs = append(errs, fmt.Sprintf("command %d %#q: %v", c.n, c.cmd, err))
 		}
 	}
 	if len(errs) > 0 {

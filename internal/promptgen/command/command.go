@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,8 +42,10 @@ var page = clihelp.Page{
 		{"check the catalog", "gozen art prompt lint --config catalog.yaml --format json"},
 	},
 	Groups: []clihelp.Group{
-		{Title: "Input", Flags: []string{"config", "scene", "plan", "scenes"},
-			Extra: [][2]string{{"    --<layer> ID", "select this item of a layer the catalog defines; repeat it to select several"}}},
+		{
+			Title: "Input", Flags: []string{"config", "scene", "plan", "scenes"},
+			Extra: [][2]string{{"    --<layer> ID", "select this item of a layer the catalog defines; repeat it to select several"}},
+		},
 		{Title: "Output", Flags: []string{"format"}},
 		{Title: "General", Flags: []string{"help"}},
 	},
@@ -56,9 +59,10 @@ var page = clihelp.Page{
 }
 
 // flags defines the fixed options of gozen art prompt on a new flag set.
-func flags() (fs *pflag.FlagSet, config, plan, scene, scenes, format *string) {
+func flags() (fs *pflag.FlagSet, plan, scene, scenes, format *string) {
 	fs = clihelp.NewFlagSet("gozen art prompt")
-	config = fs.StringP("config", "c", "", "read the catalog from this `FILE`; required")
+	// configArg reads --config before the layers are known; the flag is here for parsing and help.
+	fs.StringP("config", "c", "", "read the catalog from this `FILE`; required")
 	scene = fs.String("scene", "", "assemble the scene with this `ID` in the catalog")
 	plan = fs.String("plan", "", "assemble the plan in this `FILE`, which holds only item IDs")
 	scenes = fs.String("scenes", "", "assemble every scene ID in this `FILE`, one per line, as JSON Lines")
@@ -75,8 +79,7 @@ func Run(args []string, out, diagnostics io.Writer) int {
 		return 0
 	}
 	code, msg := 1, fmt.Sprintln(err, "\n"+requirements)
-	var u usageError
-	if errors.As(err, &u) {
+	if _, ok := errors.AsType[usageError](err); ok {
 		code, msg = 2, fmt.Sprintln(err, "\nRun \"gozen art prompt --help\" for usage.")
 	}
 	if _, werr := io.WriteString(diagnostics, msg); werr != nil {
@@ -133,7 +136,7 @@ func configArg(args []string) (string, error) {
 
 func run(args []string, out, diagnostics io.Writer) error {
 	if clihelp.HelpRequested(args) {
-		fs, _, _, _, _, _ := flags()
+		fs, _, _, _, _ := flags()
 		_, err := io.WriteString(out, page.String(fs))
 		return err
 	}
@@ -149,7 +152,7 @@ func run(args []string, out, diagnostics io.Writer) error {
 	if err != nil {
 		return err
 	}
-	fs, _, planFile, scene, scenes, format := flags()
+	fs, planFile, scene, scenes, format := flags()
 	overrides := map[string][]string{}
 	for _, id := range c.LayerIDs() {
 		if fs.Lookup(id) != nil {
@@ -225,13 +228,10 @@ func run(args []string, out, diagnostics io.Writer) error {
 	if p.Select == nil {
 		p.Select = map[string][]string{}
 	}
-	for id, values := range overrides {
-		p.Select[id] = values
-	}
+	maps.Copy(p.Select, overrides)
 	result, err := c.Build(p)
 	if err != nil {
-		var validation *promptgen.ValidationError
-		if errors.As(err, &validation) {
+		if validation, ok := errors.AsType[*promptgen.ValidationError](err); ok {
 			if *format == "json" {
 				if writeErr := json.NewEncoder(out).Encode(result); writeErr != nil {
 					return writeErr

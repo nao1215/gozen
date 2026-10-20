@@ -66,8 +66,11 @@ var autoPage = clihelp.Page{
 		{"show what would be pixelated, writing nothing", "gozen art mosaic auto -n --model model.onnx game"},
 		{"pixelate faces with a face detection model", "gozen art mosaic auto --model face.onnx --classes face game"},
 	},
-	Groups: []clihelp.Group{inputGroup, detectionGroup, regionGroup,
-		{Title: "Output", Flags: []string{"out", "quality", "dry-run"}}, generalGroup},
+	Groups: []clihelp.Group{
+		inputGroup, detectionGroup, regionGroup,
+		{Title: "Output", Flags: []string{"out", "quality", "dry-run"}},
+		generalGroup,
+	},
 	Notes: []string{
 		classesNote,
 		"Pixelation averages the original pixels of each cell. A block of 0 uses max(4, ceil(long side / 100)) " +
@@ -91,8 +94,11 @@ var inspectPage = clihelp.Page{
 		{"inspect every referenced image as indented JSON", "gozen art mosaic inspect --pretty -o processed game"},
 		{"detect every image again instead of trusting the report", "gozen art mosaic inspect --redetect --model model.onnx game"},
 	},
-	Groups: []clihelp.Group{inputGroup, detectionGroup, regionGroup,
-		{Title: "Output", Flags: []string{"out", "quality", "pretty", "redetect"}}, generalGroup},
+	Groups: []clihelp.Group{
+		inputGroup, detectionGroup, regionGroup,
+		{Title: "Output", Flags: []string{"out", "quality", "pretty", "redetect"}},
+		generalGroup,
+	},
 	Notes: []string{
 		classesNote,
 		"Fields: needs_mosaic (whether a region needs pixelation, from detection, fixes, or tags), " +
@@ -139,7 +145,8 @@ var manualPage = clihelp.Page{
 		{Title: "Drop and grow", Flags: []string{"region-id", "by", "left", "top", "right", "bottom"}},
 		{Title: "View", Flags: []string{"src", "region", "size", "step", "view-out"}},
 		inputGroup, detectionGroup, regionGroup,
-		{Title: "Output", Flags: []string{"out", "quality"}}, generalGroup,
+		{Title: "Output", Flags: []string{"out", "quality"}},
+		generalGroup,
 	},
 	Notes: []string{
 		"Coordinates are pixels of the original image with 0,0 at the top left; with --norm they are " +

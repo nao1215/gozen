@@ -321,7 +321,6 @@ func (s *tacticsScreen) draw(g *Game, dst *ebiten.Image) {
 		if i == 1 && len(l.items) == 0 {
 			g.window(dst, l.x, l.y, l.w, float64(l.rows)*l.rowH+24)
 		} else {
-
 			l.draw(g, dst, s.focus == i || i < 2)
 		}
 	}

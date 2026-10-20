@@ -95,10 +95,10 @@ func (s *battleScene) drawCutIn(g *Game, dst *ebiten.Image) {
 
 	band := func(y0, y1 float64, col color.NRGBA) {
 		var path vector.Path
-		path.MoveTo(float32((-slant)*g.ui), float32((y1)*g.ui))
+		path.MoveTo(float32((-slant)*g.ui), float32(y1*g.ui))
 		path.LineTo(float32((sw+slant)*g.ui), float32((y1-slant)*g.ui))
 		path.LineTo(float32((sw+slant)*g.ui), float32((y0-slant)*g.ui))
-		path.LineTo(float32((-slant)*g.ui), float32((y0)*g.ui))
+		path.LineTo(float32((-slant)*g.ui), float32(y0*g.ui))
 		path.Close()
 		op := &vector.DrawPathOptions{AntiAlias: true}
 		op.ColorScale.ScaleWithColor(col)

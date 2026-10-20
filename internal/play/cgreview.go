@@ -464,8 +464,10 @@ func (r *cgReview) tagOf(g *Game, id string) data.CGReviewTag {
 }
 
 func (r *cgReview) write(g *Game, it reviewItem, t data.CGReviewTag, off bool, note string) {
-	l := reviewLine{Time: time.Now().Format(time.RFC3339), Src: it.src, Page: it.page, Slot: it.slot,
-		Tag: t.ID, Label: t.Label, OK: t.OK, Off: off, Note: note}
+	l := reviewLine{
+		Time: time.Now().Format(time.RFC3339), Src: it.src, Page: it.page, Slot: it.slot,
+		Tag: t.ID, Label: t.Label, OK: t.OK, Off: off, Note: note,
+	}
 	r.apply(l)
 	g.emit("cg_review_tag", traceLine{"page": it.page, "src": it.src, "tag": t.ID, "off": off, "note": note})
 	b, err := json.Marshal(l)

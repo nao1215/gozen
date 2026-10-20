@@ -1,6 +1,7 @@
 package rpg
 
 import (
+	"maps"
 	"slices"
 	"sort"
 
@@ -57,7 +58,7 @@ func (s *State) isStone(id string) bool {
 }
 
 // stoneSlots are the slots of a member that take stones.
-func (s *State) stoneSlots(a *Actor) []string {
+func (s *State) stoneSlots(_ *Actor) []string {
 	var out []string
 	for k := range s.stoneKinds() {
 		probe := &data.Item{Slot: k}
@@ -263,9 +264,7 @@ func (s *State) BestStones() (best StoneLoadout, score, now int) {
 	best, score = cur, now
 	bestMoves := 0
 	left := map[string]int{}
-	for id, n := range pool {
-		left[id] = n
-	}
+	maps.Copy(left, pool)
 	chosen := make([][]string, len(members))
 	nodes := 0
 	var walk func(i, worth int)

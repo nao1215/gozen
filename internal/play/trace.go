@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"cmp"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"log"
+	"maps"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -131,9 +133,7 @@ func (g *Game) emit(kind string, fields traceLine) {
 		return
 	}
 	line := traceLine{"t": kind, "tick": g.tick}
-	for k, v := range fields {
-		line[k] = v
-	}
+	maps.Copy(line, fields)
 	g.tr.lines++
 	if g.tr.enc != nil && g.tr.err == nil {
 		g.tr.err = g.tr.enc.Encode(line)
@@ -163,12 +163,14 @@ func (g *Game) traceStart() error {
 	if o.Review {
 		setup.Unsupported = append(setup.Unsupported, "review")
 	}
-	g.emit("start", traceLine{"version": traceVersion, "game": g.db.Game.Title, "language": cmp.Or(g.db.Game.Language, lang.English), "seed": o.Seed,
+	g.emit("start", traceLine{
+		"version": traceVersion, "game": g.db.Game.Title, "language": cmp.Or(g.db.Game.Language, lang.English), "seed": o.Seed,
 		"screen":   []int{g.db.Game.Screen.Width, g.db.Game.Screen.Height},
 		"location": o.Location, "party": o.Party, "level": o.Level, "flags": o.Flags, "gold": o.Gold, "items": o.Items, "calm": o.Calm,
 		"floor": o.Floor, "battle": o.Battle, "speed": max(1, o.Speed), "gallery_all": o.GalleryAll,
 		"scene": o.Scene, "event": o.Event, "line": o.Line, "picture": o.Picture, "answers": o.Answers,
-		"autopilot": g.isAutopilot(), "fingerprint": fingerprint, "setup": setup})
+		"autopilot": g.isAutopilot(), "fingerprint": fingerprint, "setup": setup,
+	})
 	return g.tr.err
 }
 
@@ -200,7 +202,7 @@ func traceFingerprint(fsys fs.FS) (string, error) {
 		}
 		return nil
 	})
-	return fmt.Sprintf("%x", h.Sum(nil)), err
+	return hex.EncodeToString(h.Sum(nil)), err
 }
 
 type traceSetup struct {
@@ -322,7 +324,6 @@ func (g *Game) traceTick() {
 	wanted := sound.WantedSong()
 	tr := g.tr
 	if wanted != tr.wantSong {
-
 		tr.wantSong, tr.wantAt, tr.waiting = wanted, g.tick, wanted != "" && wanted != song
 	}
 	if key := song + "/" + module + "|" + g.baseSong + "/" + mood + "|" + wanted; key != tr.music {
@@ -351,8 +352,10 @@ func (g *Game) traceState(terminal ...bool) {
 		if u := g.battleUnit(a.ID); u != nil {
 			hp, mp, states = u.HP, u.MP, u.States
 		}
-		party = append(party, traceLine{"id": a.ID, "name": a.Name(), "lv": a.Level, "hp": hp, "mhp": a.Stat("mhp"),
-			"mp": mp, "mmp": a.Stat("mmp"), "back": a.Back, "states": states})
+		party = append(party, traceLine{
+			"id": a.ID, "name": a.Name(), "lv": a.Level, "hp": hp, "mhp": a.Stat("mhp"),
+			"mp": mp, "mmp": a.Stat("mmp"), "back": a.Back, "states": states,
+		})
 	}
 	l := traceLine{"location": st.Location, "gold": st.Gold, "party": party, "summary": g.traceSummary()}
 	if loc := g.db.Locations[st.Location]; loc != nil && loc.Dungeon != nil {
@@ -788,7 +791,7 @@ func (r *replay) check(g *Game, line traceLine) {
 		r.diverge = fmt.Sprintf(lang.T("ティック %d で余分な %s 行（%d 行目）"), g.tick, k, i+1)
 		return
 	}
-	want, got := comparable(r.expect[k][i]), comparable(line)
+	want, got := comparableLine(r.expect[k][i]), comparableLine(line)
 	if r.capture != nil {
 		want, got = battleComparable(want), battleComparable(got)
 	}
@@ -821,7 +824,7 @@ func (r *replay) finish(g *Game) {
 	}
 	if !r.partial && r.capture == nil {
 		want, exists := r.end["state"]
-		if !exists || comparable(traceLine{"state": want}) != comparable(traceLine{"state": g.traceSummary()}) {
+		if !exists || comparableLine(traceLine{"state": want}) != comparableLine(traceLine{"state": g.traceSummary()}) {
 			r.diverge = lang.T("終端のゲーム状態が一致しない")
 		}
 	}
@@ -859,7 +862,7 @@ func (g *Game) traceSummary() any {
 	return out
 }
 
-func comparable(l traceLine) string {
+func comparableLine(l traceLine) string {
 	c := traceLine{}
 	for k, v := range l {
 		if k != "tick" {

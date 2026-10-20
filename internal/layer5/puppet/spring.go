@@ -73,8 +73,10 @@ func resolveSprings(s *puppetdef.Spec, h int) []spring {
 		add(sp)
 	}
 	for _, p := range s.Springs {
-		sp := spring{shapes: []puppetdef.Shape{{Rect: p.Rect, Poly: p.Poly}}, side: p.Root.Side, head: p.Follow != "body",
-			mask: [2]float64{1, 1}, k: 60, c: 7, gain: 1, limit: 0.15 * unit}
+		sp := spring{
+			shapes: []puppetdef.Shape{{Rect: p.Rect, Poly: p.Poly}}, side: p.Root.Side, head: p.Follow != "body",
+			mask: [2]float64{1, 1}, k: 60, c: 7, gain: 1, limit: 0.15 * unit,
+		}
 		if p.Root.At != nil {
 			sp.side = ""
 			sp.root = [2]float64{p.Root.At[0], p.Root.At[1]}

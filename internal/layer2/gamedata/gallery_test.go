@@ -7,7 +7,7 @@ import (
 	"testing/fstest"
 )
 
-// A gallery CG groups its variants with files, and opens under the same name (the first file) whichever stage is viewed
+// A gallery CG groups its variants with files, and opens under the same name (the first file) whichever stage is viewed.
 func TestGalleryCGPages(t *testing.T) {
 	fsys := fstest.MapFS{
 		"assets/cg/x.jpg":     {Data: []byte("x")},
@@ -36,7 +36,7 @@ func TestGalleryCGPages(t *testing.T) {
 	}
 }
 
-// A flashback opened by a flag alone keeps the old name (scene:flag); those with when or seen get a per-scene name
+// A flashback opened by a flag alone keeps the old name (scene:flag); those with when or seen get a per-scene name.
 func TestGallerySceneKey(t *testing.T) {
 	if k := (GalleryScene{Event: "e", Flag: "f", Title: "T"}).Key(); k != "scene:f" {
 		t.Errorf("flag alone: %q", k)
@@ -67,9 +67,11 @@ func TestGalleryKeyMigrationKeepsUnlocks(t *testing.T) {
 		{ID: "current", LegacyKeys: []string{"scene:false"}},
 		{Event: "old", Flag: "unchanged"},
 	}}
-	unlocked := map[string]bool{"scene:old/別の旧題": true, "scene:flag": true, "scene:locked": false,
+	unlocked := map[string]bool{
+		"scene:old/別の旧題": true, "scene:flag": true, "scene:locked": false,
 		"scene:false": false, "scene:id:current": true, "scene:unchanged": true,
-		"scene:unknown": true, "cg:cg/a.jpg": true, "pic:cg/page.jpg": true}
+		"scene:unknown": true, "cg:cg/a.jpg": true, "pic:cg/page.jpg": true,
+	}
 	want := maps.Clone(unlocked)
 	want["scene:id:first"], want["scene:id:second"] = true, true
 	if !g.MigrateUnlocks(unlocked) || !maps.Equal(unlocked, want) {
@@ -80,7 +82,7 @@ func TestGalleryKeyMigrationKeepsUnlocks(t *testing.T) {
 	}
 }
 
-// The expression pages('cg/x') is the number of pictures of that name (x.jpg, x.002.jpg ...; x_y.jpg is a different picture). For a pattern, the number that match
+// The expression pages('cg/x') is the number of pictures of that name (x.jpg, x.002.jpg ...; x_y.jpg is a different picture). For a pattern, the number that match.
 func TestCountPages(t *testing.T) {
 	fsys := fstest.MapFS{
 		"assets/cg/x.jpg":     {Data: []byte("x")},

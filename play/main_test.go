@@ -18,8 +18,10 @@ func TestHelpAndErrorsDoNotExit(t *testing.T) {
 	if err := Main(context.Background(), nil, "invalid", []string{"--help"}, Config{Output: &out}); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"Requirements:", "[Usage]", "[Examples]", "[Options]", "  Test play (--dev):", "-h, --help",
-		"Report an issue: https://github.com/nao1215/gozen/issues"} {
+	for _, want := range []string{
+		"Requirements:", "[Usage]", "[Examples]", "[Options]", "  Test play (--dev):", "-h, --help",
+		"Report an issue: https://github.com/nao1215/gozen/issues",
+	} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("help lacks %q", want)
 		}
@@ -54,6 +56,7 @@ func TestHelpAndErrorsDoNotExit(t *testing.T) {
 		}
 	}
 }
+
 func TestEmbeddedRootAndCancellation(t *testing.T) {
 	source := fstest.MapFS{"game/game.yaml": {Data: []byte("neutral")}}
 	sub, err := gameFS(source, "game", "")

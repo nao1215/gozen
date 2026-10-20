@@ -170,12 +170,16 @@ func shotPixelSum(t *testing.T, root, name string) uint64 {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var sum uint64
+	// weigh each sample by its column and row, counted from 1, so a moved token changes the sum
+	var sum, wy uint64
 	bd := img.Bounds()
 	for y := bd.Min.Y; y < bd.Max.Y; y += 2 {
+		wy++
+		var wx uint64
 		for x := bd.Min.X; x < bd.Max.X; x += 2 {
+			wx++
 			r, g, b, _ := img.At(x, y).RGBA()
-			sum += uint64(r)*uint64(x+1) + uint64(g)*uint64(y+1) + uint64(b)
+			sum += uint64(r)*wx + uint64(g)*wy + uint64(b)
 		}
 	}
 	return sum

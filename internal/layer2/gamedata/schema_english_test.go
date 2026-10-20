@@ -2,6 +2,7 @@ package gamedata
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -60,9 +61,7 @@ func loadSchemaEnglish(t *testing.T) *schemaEnglish {
 		if err := yaml.Unmarshal(b, &part); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
-		for typ, d := range part {
-			e.fields[typ] = d
-		}
+		maps.Copy(e.fields, part)
 	}
 	return e
 }
@@ -101,12 +100,12 @@ func (b *schemaBuilder) translate(e *schemaEnglish) []string {
 		def := child(b.defs, name)
 		desc := e.fields[name]
 		if desc["_"] == "" {
-			problems = append(problems, fmt.Sprintf("%s: no description `_` in website/data/schema_fields", name))
+			problems = append(problems, name+": no description `_` in website/data/schema_fields")
 		}
 		def["description"] = desc["_"]
 		props := def
-		if any, ok := def["anyOf"].([]any); ok {
-			for _, a := range any {
+		if anyOf, ok := def["anyOf"].([]any); ok {
+			for _, a := range anyOf {
 				if n, ok := a.(schemaNode); ok && n["properties"] != nil {
 					props = n
 				}

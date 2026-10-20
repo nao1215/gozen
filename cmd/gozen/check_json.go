@@ -48,9 +48,11 @@ func (c *command) checkJSON(dir, only string) error {
 			diags = append(diags, gamedata.Diagnostic{Path: "fonts", Message: msg.Error(), Severity: "error", Code: diag.Of(err).String()})
 		}
 		for _, m := range issues {
-			diags = append(diags, gamedata.Diagnostic{File: m.file, Line: m.line,
+			diags = append(diags, gamedata.Diagnostic{
+				File: m.file, Line: m.line,
 				Message: fmt.Sprintf("a text of %d lines does not fit the message window (%s): %s", m.lines, m.kind, m.text), Severity: "warning",
-				Code: diag.TextOverflow.String()})
+				Code: diag.TextOverflow.String(),
+			})
 		}
 	}
 	if diags == nil {

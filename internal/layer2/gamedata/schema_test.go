@@ -513,10 +513,10 @@ func TestSchemaCoverage(t *testing.T) {
 	}
 	for name, want := range artifacts {
 		if updateSchema {
-			if err := os.MkdirAll(filepath.Dir(name), 0750); err != nil {
+			if err := os.MkdirAll(filepath.Dir(name), 0o750); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(name, want, 0600); err != nil {
+			if err := os.WriteFile(name, want, 0o600); err != nil {
 				t.Fatal(err)
 			}
 		}

@@ -3,6 +3,7 @@ package play
 import (
 	"image/color"
 	"math"
+	"slices"
 	"sort"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -251,8 +252,10 @@ func (g *Game) drawStageBalloons(dst *ebiten.Image, s *stageScene) {
 		}
 		hx, hy := s.r.HeadOf(p.w.at, pw, ph)
 		ts := math.Max(sh*balloonMin, base*s.balloonScale(p))
-		b := &balloon{p: p, ts: ts, face: ts * balloonFace, pad: ts * 0.4, headX: hx / g.ui, headY: hy / g.ui,
-			alpha: math.Min(1, math.Min(left, bubbleShow-left)/0.25)}
+		b := &balloon{
+			p: p, ts: ts, face: ts * balloonFace, pad: ts * 0.4, headX: hx / g.ui, headY: hy / g.ui,
+			alpha: math.Min(1, math.Min(left, bubbleShow-left)/0.25),
+		}
 		b.h = b.face + b.pad*1.4
 		b.w = math.Min(sw-16, math.Max(b.h*balloonMinW, b.pad*0.7+b.face+b.pad+gfx.TextWidth(p.line, ts)+b.pad*1.6))
 		b.x = math.Max(8, math.Min(sw-8-b.w, b.headX-b.w/2))
@@ -281,8 +284,8 @@ func (g *Game) drawStageBalloons(dst *ebiten.Image, s *stageScene) {
 		}
 		b.y = math.Max(8, math.Min(sh-8-b.h, b.y))
 	}
-	for i := len(bs) - 1; i >= 0; i-- { // the far ones first, the near one on top
-		g.drawBalloon(dst, bs[i])
+	for _, b := range slices.Backward(bs) { // the far ones first, the near one on top
+		g.drawBalloon(dst, b)
 	}
 }
 

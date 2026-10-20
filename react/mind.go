@@ -133,8 +133,10 @@ func New(b *Book, id string, cfg Config) (*Mind, error) {
 	if rng == nil {
 		rng = rand.New(rand.NewPCG(1, 2)) //nolint:gosec // G404: reproducible line choice, not security
 	}
-	m := &Mind{book: b, p: p, cfg: cfg, rng: rng, lex: map[string][]lexWord{},
-		mem: map[string]entry{}, cool: map[string]int{}, recent: map[string][]string{}}
+	m := &Mind{
+		book: b, p: p, cfg: cfg, rng: rng, lex: map[string][]lexWord{},
+		mem: map[string]entry{}, cool: map[string]int{}, recent: map[string][]string{},
+	}
 	for tag, words := range b.doc.Lexicon {
 		m.tags = append(m.tags, tag)
 		for _, w := range words {
@@ -551,8 +553,10 @@ type state struct {
 // Save returns the mood, memory, cooldowns, pending question and recent texts as JSON.
 // The random generator's position is not saved.
 func (m *Mind) Save() ([]byte, error) {
-	return json.Marshal(state{Version: 1, Person: m.p.ID, Mood: m.mood, Turn: m.turn, Mem: m.mem, Cool: m.cool,
-		Asked: m.asked, AskTill: m.askTill, Last: m.last, Recent: m.recent})
+	return json.Marshal(state{
+		Version: 1, Person: m.p.ID, Mood: m.mood, Turn: m.turn, Mem: m.mem, Cool: m.cool,
+		Asked: m.asked, AskTill: m.askTill, Last: m.last, Recent: m.recent,
+	})
 }
 
 // Restore replaces the state with one that Save returned for the same person. On an

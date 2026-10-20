@@ -50,6 +50,7 @@ func TestRecordingShortWriteAndReset(t *testing.T) {
 		t.Fatal("recorder retained failure")
 	}
 }
+
 func TestPCMReadFailure(t *testing.T) {
 	want := errors.New("broken stream")
 	p := &pcm{data: make([]int16, 10)}

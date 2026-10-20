@@ -153,8 +153,10 @@ type DollPart struct {
 }
 
 // DollPartKinds are the parts a doll can wear or carry.
-var DollPartKinds = []string{"apron", "cape", "robe", "skirt", "dress", "coat", "shield", "staff", "glasses",
-	"hat", "hood", "bag", "goggles", "muffler", "shawl", "ponytail", "lashes"}
+var DollPartKinds = []string{
+	"apron", "cape", "robe", "skirt", "dress", "coat", "shield", "staff", "glasses",
+	"hat", "hood", "bag", "goggles", "muffler", "shawl", "ponytail", "lashes",
+}
 
 // DollHairs are the hair styles of a doll.
 var DollHairs = []string{"short", "long", "bald", "bun"}

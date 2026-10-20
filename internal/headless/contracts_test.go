@@ -25,6 +25,7 @@ func TestCanceledRunDoesNotChangeState(t *testing.T) {
 		t.Fatalf("canceled run changed gold to %d", st.Gold)
 	}
 }
+
 func TestRunErrorsAreNotLostAtClearOrReusedAfterRestore(t *testing.T) {
 	db := testgame.Load(t, nil)
 	st := testgame.State(db, 8)
@@ -40,6 +41,7 @@ func TestRunErrorsAreNotLostAtClearOrReusedAfterRestore(t *testing.T) {
 		t.Fatal(d.St.Gold)
 	}
 }
+
 func TestExploreRejectsEmptyOutcomes(t *testing.T) {
 	db := testgame.Load(t, nil)
 	paths := headless.Explore(db, testgame.State(db, 1), []data.Command{{Battle: "one"}}, headless.Config{

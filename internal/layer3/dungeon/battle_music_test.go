@@ -8,7 +8,7 @@ import (
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
-// Music for ordinary fights per floor band (the place's battle_music and the looks' battle_music)
+// Music for ordinary fights per floor band (the place's battle_music and the looks' battle_music).
 const bandMusic = `
 music:
   songs:

@@ -120,7 +120,7 @@ func (g *Game) YAML(path string) ([]byte, error) {
 		return nil, err
 	}
 	var v any = root
-	for _, part := range strings.Split(path, ".") {
+	for part := range strings.SplitSeq(path, ".") {
 		m := pathStep.FindStringSubmatch(part)
 		if m == nil {
 			return nil, fmt.Errorf("%w: %s", ErrNotFound, path)

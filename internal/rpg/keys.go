@@ -12,8 +12,10 @@ import (
 
 // Keys are the names of an actor's fields.
 func (v ActorView) Keys() []string {
-	return append([]string{"id", "name", "level", "exp", "hp", "mp", "hp_rate", "mp_rate", "alive", "dead",
-		"class", "equip", "states", "back", "sp", "wears", "tactics", "skills", "sets"}, data.StatNames...)
+	return append([]string{
+		"id", "name", "level", "exp", "hp", "mp", "hp_rate", "mp_rate", "alive", "dead",
+		"class", "equip", "states", "back", "sp", "wears", "tactics", "skills", "sets",
+	}, data.StatNames...)
 }
 
 // Keys are the names of a group's fields.

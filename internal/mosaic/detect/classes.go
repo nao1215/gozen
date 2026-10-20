@@ -1,3 +1,5 @@
+// Package detect finds the regions to mosaic in a picture with a
+// user-supplied ONNX detection model.
 package detect
 
 import (

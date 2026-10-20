@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -114,9 +115,18 @@ func TestTacticCompile(t *testing.T) {
 	db := tacticDB(t)
 	known := []string{"fire", "heal", "group_heal", "raise", "group_raise", "big", "random_hit", "all_hit", "retreat"}
 	for _, tc := range []struct{ target, action string }{
-		{"enemy", "attack"}, {"ally", "heal"}, {"self", "heal"}, {"self", "guard"}, {"ally", "potion"},
-		{"allies", "group_heal"}, {"enemies", "big"}, {"fallen", "raise"}, {"fallen_all", "group_raise"},
-		{"random", "random_hit"}, {"everyone", "all_hit"}, {"none", "retreat"},
+		{"enemy", "attack"},
+		{"ally", "heal"},
+		{"self", "heal"},
+		{"self", "guard"},
+		{"ally", "potion"},
+		{"allies", "group_heal"},
+		{"enemies", "big"},
+		{"fallen", "raise"},
+		{"fallen_all", "group_raise"},
+		{"random", "random_hit"},
+		{"everyone", "all_hit"},
+		{"none", "retreat"},
 	} {
 		t.Run(tc.target+"/"+tc.action, func(t *testing.T) {
 			rule, errs := db.CompileTactic(tacticRow("any", tc.target, tc.action), known)
@@ -418,7 +428,7 @@ func TestSimpleTacticCatalog(t *testing.T) {
 		}, true},
 		{"９条件", func(db *data.DB) {
 			for i := range 8 {
-				db.TacticConditions[fmt.Sprint(i)] = &data.TacticCondition{Name: "条件", Kind: "always"}
+				db.TacticConditions[strconv.Itoa(i)] = &data.TacticCondition{Name: "条件", Kind: "always"}
 			}
 		}, true},
 		{"行に対象", func(db *data.DB) { db.Game.Battle.AutoTactics["simple"][0].Target = "enemy" }, true},

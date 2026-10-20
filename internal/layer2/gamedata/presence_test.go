@@ -91,7 +91,7 @@ func numericFixture(t *testing.T, version int, target, value string) (*data.DB, 
 // numericValue reads the filled-in value from a Go field. Expected values are defined independently in the table below.
 func numericValue(db *data.DB, path string) any {
 	v := reflect.ValueOf(db)
-	for _, name := range strings.Split(path, ".") {
+	for name := range strings.SplitSeq(path, ".") {
 		for v.Kind() == reflect.Pointer {
 			v = v.Elem()
 		}

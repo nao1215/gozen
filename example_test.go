@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"maps"
 	"testing/fstest"
 
 	"github.com/nao1215/gozen"
@@ -142,9 +143,7 @@ func ExampleValidate() {
 
 func agentCheck() error {
 	broken := fstest.MapFS{"data/more.yaml": {Data: []byte("events:\n  ambush:\n    do:\n    - battle: wolves\n")}}
-	for name, f := range trail {
-		broken[name] = f
-	}
+	maps.Copy(broken, trail)
 	for _, d := range gozen.Validate(broken, ".") {
 		if _, err := fmt.Printf("%s:%d:%d %s: %s (%s)\n", d.File, d.Line, d.Col, d.Path, d.Message, d.Severity); err != nil {
 			return err

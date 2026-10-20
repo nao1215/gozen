@@ -30,6 +30,7 @@ func fixture(t *testing.T) string {
 	}
 	return dir
 }
+
 func invoke(t *testing.T, want int, args ...string) (string, string) {
 	t.Helper()
 	var out, stderr bytes.Buffer
@@ -39,6 +40,7 @@ func invoke(t *testing.T, want int, args ...string) (string, string) {
 	}
 	return out.String(), stderr.String()
 }
+
 func write(t *testing.T, p, s string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
@@ -48,6 +50,7 @@ func write(t *testing.T, p, s string) {
 		t.Fatal(err)
 	}
 }
+
 func read(t *testing.T, p string) []byte {
 	t.Helper()
 	b, err := os.ReadFile(p) //nolint:gosec // Test-owned path under t.TempDir.
@@ -97,12 +100,18 @@ func TestHelpAndArgumentContract(t *testing.T) {
 	invoke(t, 2, "check", "one", "two")
 	invoke(t, 2, "check", "--only", "fonts", "unused")
 	for _, args := range [][]string{
-		{"sim", "battle", "unused", "lesson", "-n", "0"}, {"sim", "battle", "unused", "lesson", "--level", "-1"},
-		{"sim", "dive", "unused", "grotto", "--grind", "NaN"}, {"sim", "dive", "unused", "grotto", "--tries", "0"},
-		{"sim", "floors", "unused", "grotto", "--try", "1"}, {"sim", "floors", "unused", "grotto", "--from", "0"},
-		{"play", "trace", "unused", "--to", "-1"}, {"play", "trace", "unused", "--music-late", "Inf"},
-		{"pack", "trial", "unused", "--config", "../private.yaml"}, {"pack", "trial", "unused", "out", "extra", "-n"},
-		{"pack", "trial", "unused", "out", "--overlay", "overlay"}, {"play", "shots", "unused", "list", "--raw"},
+		{"sim", "battle", "unused", "lesson", "-n", "0"},
+		{"sim", "battle", "unused", "lesson", "--level", "-1"},
+		{"sim", "dive", "unused", "grotto", "--grind", "NaN"},
+		{"sim", "dive", "unused", "grotto", "--tries", "0"},
+		{"sim", "floors", "unused", "grotto", "--try", "1"},
+		{"sim", "floors", "unused", "grotto", "--from", "0"},
+		{"play", "trace", "unused", "--to", "-1"},
+		{"play", "trace", "unused", "--music-late", "Inf"},
+		{"pack", "trial", "unused", "--config", "../private.yaml"},
+		{"pack", "trial", "unused", "out", "extra", "-n"},
+		{"pack", "trial", "unused", "out", "--overlay", "overlay"},
+		{"play", "shots", "unused", "list", "--raw"},
 	} {
 		out, _ := invoke(t, 2, args...)
 		if out != "" {
@@ -133,9 +142,11 @@ func TestGroupsAndUnknownCommands(t *testing.T) {
 func TestHelpPagesHaveTheSameShape(t *testing.T) {
 	for _, sub := range helpPaths() {
 		out, _ := invoke(t, 0, append(strings.Fields(sub), "--help")...)
-		for _, want := range []string{"[Usage]\n", "[Examples]\n", "[Options]\n", "  General:\n", "-h, --help",
+		for _, want := range []string{
+			"[Usage]\n", "[Examples]\n", "[Options]\n", "  General:\n", "-h, --help",
 			"Documentation:   https://nao1215.github.io/gozen/\n", "Report an issue: https://github.com/nao1215/gozen/issues\n",
-			"GitHub Sponsors: https://github.com/sponsors/nao1215\n"} {
+			"GitHub Sponsors: https://github.com/sponsors/nao1215\n",
+		} {
 			if !strings.Contains(out, want) {
 				t.Errorf("%s: missing %q", sub, want)
 			}
@@ -152,7 +163,7 @@ func TestHelpPagesHaveTheSameShape(t *testing.T) {
 		if _, ok := groups[sub]; (ok || sub == "" || sub == "art mosaic") != strings.Contains(out, "[Commands]\n") {
 			t.Errorf("%s: [Commands] belongs to the top and the groups only", sub)
 		}
-		for _, line := range strings.Split(out, "\n") {
+		for line := range strings.SplitSeq(out, "\n") {
 			// Example command lines may run longer, as in the other tools' help.
 			if len([]rune(line)) > 80 && !strings.HasPrefix(line, "    gozen ") && !strings.HasPrefix(line, "  gozen ") && !strings.HasPrefix(line, "    xvfb-run ") {
 				t.Errorf("%s: line over 80 columns: %q", sub, line)
@@ -247,6 +258,7 @@ func TestHelpExplainsCodes(t *testing.T) {
 		t.Fatalf("%q %q", out, stderr)
 	}
 }
+
 func TestCheckWithoutLayout(t *testing.T) {
 	dir := fixture(t)
 	out, stderr := invoke(t, 0, "check", "--only", "structure", dir)
@@ -290,6 +302,7 @@ func TestReadCommandsAndDeterminism(t *testing.T) {
 	invoke(t, 2, "sim", "battle", dir, "absent", "-n", "1")
 	invoke(t, 2, "sim", "dive", dir, "grotto", "--boss", "x:lesson")
 }
+
 func TestTrialRoundTripNoOverwriteAndDryRun(t *testing.T) {
 	dir := fixture(t)
 	root := t.TempDir()
@@ -305,7 +318,7 @@ func TestTrialRoundTripNoOverwriteAndDryRun(t *testing.T) {
 	if _, err := data.Load(os.DirFS(out), "."); err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(read(t, filepath.Join(dir, "assets/mote.png")), read(t, filepath.Join(out, "assets/mote.png"))) {
+	if !bytes.Equal(read(t, filepath.Join(dir, "assets", "mote.png")), read(t, filepath.Join(out, "assets", "mote.png"))) {
 		t.Fatal("asset changed")
 	}
 	invoke(t, 1, "pack", "trial", dir, out)
@@ -316,10 +329,11 @@ func TestTrialRoundTripNoOverwriteAndDryRun(t *testing.T) {
 	}
 	invoke(t, 1, "pack", "trial", dir, filepath.Join(dir, "output"))
 }
+
 func approvals(t *testing.T, dir string, approved bool) (string, string) {
 	t.Helper()
 	top := t.TempDir()
-	sum := sha256.Sum256(read(t, filepath.Join(dir, "assets/mote.png")))
+	sum := sha256.Sum256(read(t, filepath.Join(dir, "assets", "mote.png")))
 	record := map[string]any{"file": "mote.png", "source": hex.EncodeToString(sum[:]), "required": false, "approved": approved}
 	b, err := json.Marshal([]any{record})
 	if err != nil {
@@ -334,6 +348,7 @@ func approvals(t *testing.T, dir string, approved bool) (string, string) {
 	write(t, inspect, string(b)+"\n")
 	return top, inspect
 }
+
 func TestReleaseRoundTripAndApprovalFailure(t *testing.T) {
 	dir := fixture(t)
 	top, inspect := approvals(t, dir, true)
@@ -350,6 +365,7 @@ func TestReleaseRoundTripAndApprovalFailure(t *testing.T) {
 		t.Fatal("rejected release produced output")
 	}
 }
+
 func TestDesignAndMemosArtifacts(t *testing.T) {
 	dir := fixture(t)
 	out := filepath.Join(t.TempDir(), "report")
@@ -369,8 +385,8 @@ func TestDesignAndMemosArtifacts(t *testing.T) {
 	write(t, config, "personas: [{id: '../escape'}]\n")
 	invoke(t, 1, "sim", "design", dir, "--out", filepath.Join(t.TempDir(), "bad"))
 	memos := t.TempDir()
-	write(t, filepath.Join(memos, "2026-01-01/001.json"), `{"kind":"note","label":"Note","text":"<marker>","image":"001.png"}`)
-	if err := os.WriteFile(filepath.Join(memos, "2026-01-01/001.png"), read(t, filepath.Join(dir, "assets/mote.png")), 0o600); err != nil {
+	write(t, filepath.Join(memos, "2026-01-01", "001.json"), `{"kind":"note","label":"Note","text":"<marker>","image":"001.png"}`)
+	if err := os.WriteFile(filepath.Join(memos, "2026-01-01", "001.png"), read(t, filepath.Join(dir, "assets", "mote.png")), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	html := filepath.Join(t.TempDir(), "html")
@@ -378,11 +394,12 @@ func TestDesignAndMemosArtifacts(t *testing.T) {
 	if !strings.Contains(string(read(t, filepath.Join(html, "index.html"))), "&lt;marker&gt;") {
 		t.Fatal("HTML was not escaped")
 	}
-	read(t, filepath.Join(html, "thumbs/2026-01-01_001.jpg"))
+	read(t, filepath.Join(html, "thumbs", "2026-01-01_001.jpg"))
 	invoke(t, 1, "play", "notes", memos, "--out", html)
-	write(t, filepath.Join(memos, "2026-01-01/001.json"), `{"image":"../outside.png"}`)
+	write(t, filepath.Join(memos, "2026-01-01", "001.json"), `{"image":"../outside.png"}`)
 	invoke(t, 1, "play", "notes", memos, "--out", filepath.Join(t.TempDir(), "bad"))
 }
+
 func TestTraceValidationAndFailures(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "trace.jsonl")
 	write(t, file, "{\"t\":\"say\",\"tick\":60,\"text\":\"A clear path.\"}\n")
@@ -414,6 +431,7 @@ func TestFailedOutputIsNonzero(t *testing.T) {
 		}
 	}
 }
+
 func TestShotsProtocolAndTimeout(t *testing.T) {
 	t.Setenv("GOZEN_SHOT_HELPER", "ok")
 	bin, err := os.Executable()
@@ -486,13 +504,13 @@ func TestMain(m *testing.M) {
 
 func TestTrialPrunesUnreachableContent(t *testing.T) {
 	dir := fixture(t)
-	p := filepath.Join(dir, "data/world.yaml")
+	p := filepath.Join(dir, "data", "world.yaml")
 	world := string(read(t, p))
 	world = strings.Replace(world, "actions: [{label: Finish, do: [{call: finish}]}]", "actions: [{label: Finish, do: [{call: finish}]}, {label: Locked, when: flag.locked, do: [{call: locked}]}]", 1)
 	world += "\n  locked: {do: [{say: A closed gate.}, {image: hidden.png}]}\n"
 	write(t, p, world)
 	write(t, filepath.Join(dir, "trial.yaml"), "assume: {flag.locked: false}\n")
-	if err := os.WriteFile(filepath.Join(dir, "assets/hidden.png"), read(t, filepath.Join(dir, "assets/mote.png")), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "assets", "hidden.png"), read(t, filepath.Join(dir, "assets", "mote.png")), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	output := filepath.Join(t.TempDir(), "trial")
@@ -504,7 +522,7 @@ func TestTrialPrunesUnreachableContent(t *testing.T) {
 	if db.Events["locked"] != nil {
 		t.Fatal("unreachable event retained")
 	}
-	if _, err := os.Stat(filepath.Join(output, "assets/hidden.png")); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(output, "assets", "hidden.png")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("unreachable asset retained")
 	}
 }

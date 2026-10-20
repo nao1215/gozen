@@ -58,7 +58,6 @@ func paginateWith(s string, size float64, lines int, wrap func(string, float64) 
 }
 
 func splitPages(s string, size float64, lines int, wr func(string, float64) []string) []string {
-
 	var parts []string
 	for _, u := range sentences(s) {
 		body := strings.TrimRight(u, "\n")

@@ -45,7 +45,7 @@ func choiceWidth(gm *data.Game, options []string) float64 {
 	return math.Min(w, math.Max(300, maxW))
 }
 
-func PromptLines(gm *data.Game, text string, options []string) ([]string, float64, bool) {
+func PromptLines(gm *data.Game, text string, _ []string) ([]string, float64, bool) {
 	size, width := messageMetrics(gm)
 	return gfx.FitLinesCut(text, size, width, talkLines)
 }

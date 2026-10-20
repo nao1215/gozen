@@ -31,7 +31,8 @@ func TestBattleHooksOrderAndReturn(t *testing.T) {
         on_win: [{set: {var.branch: 1}}]
         on_lose: [{set: {var.branch: 2}}]
         on_escape: [{set: {var.branch: 3}}]
-`})
+`,
+				})
 				cmds := append([]data.Command{}, db.Events["encounter"].Do...)
 				switch next {
 				case "choice":

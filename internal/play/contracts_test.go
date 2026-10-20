@@ -51,6 +51,7 @@ func gameFiles(t *testing.T) fstest.MapFS {
 `)},
 	}
 }
+
 func openGame(t *testing.T, opts Options) *Game {
 	t.Helper()
 	opts.FS = gameFiles(t)
@@ -69,6 +70,7 @@ func openGame(t *testing.T, opts Options) *Game {
 	})
 	return g
 }
+
 func TestSceneTransitionAndSaveRoundTrip(t *testing.T) {
 	g := openGame(t, Options{Seed: 12, Location: "camp"})
 	g.Handle(event.MoveEffect{Location: "room"})
@@ -96,6 +98,7 @@ func TestSceneTransitionAndSaveRoundTrip(t *testing.T) {
 		t.Fatal("load did not restore dungeon screen")
 	}
 }
+
 func TestCreationFailureReleasesResources(t *testing.T) {
 	fsys := gameFiles(t)
 	fsys["assets/test.ttf"].Data = []byte("not a font")
@@ -113,6 +116,7 @@ func TestCreationFailureReleasesResources(t *testing.T) {
 		t.Fatal("updated closed game")
 	}
 }
+
 func TestScriptSaveIsolationAndCancellation(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", root)
@@ -137,6 +141,7 @@ func TestScriptSaveIsolationAndCancellation(t *testing.T) {
 		t.Fatalf("player directory changed: %v %v", entries, err)
 	}
 }
+
 func TestNotesOptInAndBuildInfoOptOut(t *testing.T) {
 	g := openGame(t, Options{Location: "camp"})
 	g.in.pressed[btnMemo] = true
@@ -150,9 +155,10 @@ func TestNotesOptInAndBuildInfoOptOut(t *testing.T) {
 		t.Fatal("recorded disabled notes")
 	}
 }
+
 func TestSaveAndReadProgressWriteFailure(t *testing.T) {
 	blocked := filepath.Join(t.TempDir(), "file")
-	if err := os.WriteFile(blocked, []byte("occupied"), 0600); err != nil {
+	if err := os.WriteFile(blocked, []byte("occupied"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	g := openGame(t, Options{Location: "camp"})
@@ -168,6 +174,7 @@ func TestSaveAndReadProgressWriteFailure(t *testing.T) {
 	g.failure = nil
 	g.readDirty = false
 }
+
 func TestScriptValidation(t *testing.T) {
 	for _, s := range []string{"unknown", "wait -1", "press unknown", "shot ../escape", strings.Repeat("x", 70000)} {
 		if _, err := parseScript(s); err == nil {
@@ -212,7 +219,7 @@ func TestBattleCaptureWithoutBuildMetadata(t *testing.T) {
 
 func TestSettingsReadFailure(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.Mkdir(filepath.Join(dir, "config.json"), 0700); err != nil {
+	if err := os.Mkdir(filepath.Join(dir, "config.json"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := New(Options{FS: gameFiles(t), NoSound: true, SaveDir: dir}); err == nil {

@@ -181,7 +181,7 @@ func faceCheck(img image.Image, box *[4]int) image.Image {
 	}
 	cx, cy := (x0+x1)/2, (y0+y1)/2
 	r := max(x1-x0, y1-y0) * doll.FaceMargin / 2
-	for a := 0; a < 2000; a++ {
+	for a := range 2000 {
 		th := float64(a) / 2000 * 2 * math.Pi
 		for t := 0.0; t < 3; t++ {
 			out.Set(int(cx+(r-t)*math.Cos(th)), int(cy+(r-t)*math.Sin(th)), green)

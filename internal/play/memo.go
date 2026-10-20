@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"image"
 	"log"
-
 	"path/filepath"
-
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -163,8 +162,8 @@ func (g *Game) currentEvent() string {
 		return ""
 	}
 	frames, _ := g.events.Frames()
-	for i := len(frames) - 1; i >= 0; i-- {
-		if name := g.commandsName(frames[i]); name != "" {
+	for _, frame := range slices.Backward(frames) {
+		if name := g.commandsName(frame); name != "" {
 			return name
 		}
 	}
@@ -273,13 +272,17 @@ func (g *Game) memoResume(info *memo.Memo) []byte {
 	b := g.currentBattle()
 	switch {
 	case inEvent && g.evSnap != nil && g.evName != "":
-		info.Resume = &memo.Resume{From: "event", Event: g.evName, Line: g.evLines, Answers: g.evAnswers, InBattle: b != nil,
-			Note: lang.T("イベントの始まりから始め直し、メモの台詞まで読み進める")}
+		info.Resume = &memo.Resume{
+			From: "event", Event: g.evName, Line: g.evLines, Answers: g.evAnswers, InBattle: b != nil,
+			Note: lang.T("イベントの始まりから始め直し、メモの台詞まで読み進める"),
+		}
 		info.Rand = g.evRand
 		return g.evSnap
 	case inEvent && g.evSnap != nil:
-		info.Resume = &memo.Resume{From: "arrival", Line: g.evLines, Answers: g.evAnswers, InBattle: b != nil,
-			Note: lang.T("名前の分からないイベント（場所に着いた時など）の始まりの状態から。着いた時のイベントはそこから始まる")}
+		info.Resume = &memo.Resume{
+			From: "arrival", Line: g.evLines, Answers: g.evAnswers, InBattle: b != nil,
+			Note: lang.T("名前の分からないイベント（場所に着いた時など）の始まりの状態から。着いた時のイベントはそこから始まる"),
+		}
 		info.Rand = g.evRand
 		return g.evSnap
 	case b != nil:

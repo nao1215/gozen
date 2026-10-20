@@ -41,9 +41,7 @@ type Actor struct {
 func NewActor(db *data.DB, id string) *Actor {
 	d := db.Actors[id]
 	a := &Actor{ID: id, Level: d.Level, Back: d.Back, Equip: map[string]string{}, States: map[string]int{}, Tactics: &ActorTactics{Version: TacticsVersion, Mode: TacticsAuto}, db: db}
-	for s, it := range d.Equip {
-		a.Equip[s] = it
-	}
+	maps.Copy(a.Equip, d.Equip)
 	a.Exp = a.ExpFor(a.Level)
 	a.Tree = map[string]int{}
 	if c := a.Class(); c != nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strconv"
 )
 
 type node interface {
@@ -306,7 +307,7 @@ func Format(v any) string {
 		return ""
 	case float64:
 		if x == math.Trunc(x) && math.Abs(x) < 1e15 {
-			return fmt.Sprintf("%d", int64(x))
+			return strconv.FormatInt(int64(x), 10)
 		}
 		return fmt.Sprintf("%g", x)
 	case string:

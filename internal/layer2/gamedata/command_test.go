@@ -62,7 +62,8 @@ func TestCommandFieldMatrix(t *testing.T) {
 		if role != "" && role != "verb" && role != "internal" && !slices.ContainsFunc(fields, func(field struct {
 			name, owners string
 			values       []string
-		}) bool {
+		},
+		) bool {
 			return field.name == f.Tag.Get("yaml")
 		}) {
 			t.Errorf("%s の付随項目の検査例が無い", f.Name)

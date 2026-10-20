@@ -26,16 +26,19 @@ func (o *Output) Write(b []byte) (int, error) {
 	o.Err = err
 	return n, err
 }
+
 func (o *Output) Printf(f string, a ...any) {
 	if o.Err == nil {
 		_, o.Err = fmt.Fprintf(o, f, a...)
 	}
 }
+
 func (o *Output) Println(a ...any) {
 	if o.Err == nil {
 		_, o.Err = fmt.Fprintln(o, a...)
 	}
 }
+
 func (o *Output) Print(a ...any) {
 	if o.Err == nil {
 		_, o.Err = fmt.Fprint(o, a...)
@@ -58,8 +61,7 @@ func Invalid(code diag.Code, f string, a ...any) error {
 
 // Parse turns an error of clihelp.Parse into an argument error, keeping its code.
 func Parse(err error) error {
-	var d *diag.Error
-	if errors.As(err, &d) {
+	if d, ok := errors.AsType[*diag.Error](err); ok {
 		return &UsageError{d.Err.Error(), d.Code}
 	}
 	return &UsageError{err.Error(), diag.BadValue}

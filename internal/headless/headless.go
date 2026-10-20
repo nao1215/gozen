@@ -529,19 +529,19 @@ func (d *Driver) Run(ctx context.Context, cmds []data.Command) error {
 	return d.settle()
 }
 
-func (h *Driver) handle(e event.Effect) {
+func (d *Driver) handle(e event.Effect) {
 	switch e := e.(type) {
 	case event.MoveEffect:
-		h.move(e.Location)
+		d.move(e.Location)
 	case event.MusicEffect:
-		h.music(e.Cue)
+		d.music(e.Cue)
 	case event.MoodEffect:
-		h.mood(e.Name)
+		d.mood(e.Name)
 	case event.ImageEffect:
-		h.image(e.Picture)
+		d.image(e.Picture)
 	case event.SoundEffect:
-		h.sFX(e.Name)
+		d.sFX(e.Name)
 	case event.VisualEffect:
-		h.effect(e.Name)
+		d.effect(e.Name)
 	}
 }

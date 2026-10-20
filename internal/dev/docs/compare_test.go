@@ -83,7 +83,7 @@ func TestComposeGIF(t *testing.T) {
 	if err := f.Close(); err != nil {
 		t.Fatal(err)
 	}
-	frames, err := decodeFrames(file)
+	frames, err := decodeFrames(t.Context(), file)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestComposeGIF(t *testing.T) {
 	if frames[1].At(0, 0) != frames[0].At(0, 0) || frames[1].At(1, 1) == frames[0].At(1, 1) {
 		t.Error("the second frame is not the first with the patch")
 	}
-	if err := compareFiles(file, file, 0); err != nil {
+	if err := compareFiles(t.Context(), file, file, 0); err != nil {
 		t.Error(err)
 	}
 }

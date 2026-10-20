@@ -28,6 +28,7 @@ func TestRecordRoundTripAndOptOut(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
 func TestFailedRecordRollsBack(t *testing.T) {
 	root := t.TempDir()
 	m := &Memo{Data: map[string]any{"invalid": make(chan int)}}
@@ -42,6 +43,7 @@ func TestFailedRecordRollsBack(t *testing.T) {
 		t.Fatalf("partial record remains: %v", files)
 	}
 }
+
 func TestConcurrentReservations(t *testing.T) {
 	root := t.TempDir()
 	var wg sync.WaitGroup
@@ -69,10 +71,11 @@ func TestConcurrentReservations(t *testing.T) {
 		t.Fatal(len(seen))
 	}
 }
+
 func TestReadRejectsTraversalAndWriteFailures(t *testing.T) {
 	root := t.TempDir()
 	p := filepath.Join(root, "note.json")
-	if err := os.WriteFile(p, []byte(`{"save":"../outside.save"}`), 0600); err != nil {
+	if err := os.WriteFile(p, []byte(`{"save":"../outside.save"}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := Read(p); !errors.Is(err, fs.ErrInvalid) {

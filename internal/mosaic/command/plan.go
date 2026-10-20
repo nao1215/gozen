@@ -46,6 +46,7 @@ func rating(tags map[string]float32) string {
 	}
 	return r
 }
+
 func tagMax(tags map[string]float32, names []string) float32 {
 	var m float32
 	for _, n := range names {
@@ -124,5 +125,5 @@ func plan(bounds image.Rectangle, boxes []detect.Box, faces []image.Rectangle, f
 	if fx.Checked {
 		reasons = nil
 	}
-	return
+	return groups, skipped, regions, reasons, areas
 }

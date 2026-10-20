@@ -36,7 +36,7 @@ func (c *coords) Type() string { return "coords" }
 func (c *coords) Set(s string) error {
 	fields := strings.FieldsFunc(s, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' })
 	if len(fields) == 0 {
-		return fmt.Errorf("coordinates cannot be empty")
+		return errors.New("coordinates cannot be empty")
 	}
 	var v []float64
 	for _, field := range fields {
@@ -118,13 +118,13 @@ func (cli *cli) manualCmd(args []string) (err error) {
 		return argumentError{diag.Operands.Errorf("expected a game directory and an image: gozen art mosaic manual %s [OPTIONS] <game-dir> <IMAGE>", sub)}
 	}
 	if *size < 1 || *size > 4096 || *step < 0 {
-		return fmt.Errorf("view size must be 1..4096 and step >= 0")
+		return errors.New("view size must be 1..4096 and step >= 0")
 	}
 	if sub != "add" && sub != "drop" && (len(boxes)+len(polys)+len(ellipses) > 0) {
-		return fmt.Errorf("box, polygon, and ellipse flags require add or drop")
+		return errors.New("box, polygon, and ellipse flags require add or drop")
 	}
 	if sub == "drop" && (len(polys)+len(ellipses) > 0) {
-		return fmt.Errorf("drop requires rectangles")
+		return errors.New("drop requires rectangles")
 	}
 	gameDir := fs.Arg(0)
 	c, err := o.setup(gameDir)
@@ -154,7 +154,7 @@ func (cli *cli) manualCmd(args []string) (err error) {
 		for i, f := range v {
 			if *norm {
 				if f < 0 || f > 1 {
-					return nil, fmt.Errorf("normalized coordinates must be in [0,1]")
+					return nil, errors.New("normalized coordinates must be in [0,1]")
 				}
 				if i%2 == 0 {
 					f *= float64(b.Dx())
@@ -167,7 +167,7 @@ func (cli *cli) manualCmd(args []string) (err error) {
 		return out, nil
 	}
 	if sub != "add" && sub != "drop" && sub != "grow" && len(rects)+len(boxes)+len(polys)+len(ellipses) > 0 {
-		return fmt.Errorf("geometry flags require add, drop, or grow")
+		return errors.New("geometry flags require add, drop, or grow")
 	}
 	needsManual := sub == "add" || sub == "drop" || sub == "grow" || sub == "skip" || sub == "check" || sub == "clear"
 	if needsManual && o.manualFile == "" {
@@ -176,12 +176,12 @@ func (cli *cli) manualCmd(args []string) (err error) {
 	var geometryErr error
 	clip := func(x []int) [4]int {
 		if x[2] <= 0 || x[3] <= 0 {
-			geometryErr = fmt.Errorf("rectangle width and height must be positive")
+			geometryErr = errors.New("rectangle width and height must be positive")
 			return [4]int{}
 		}
 		r := clipRect(x, b)
 		if r[2] <= 0 || r[3] <= 0 {
-			geometryErr = fmt.Errorf("rectangle does not intersect the image")
+			geometryErr = errors.New("rectangle does not intersect the image")
 		}
 		return r
 	}
@@ -198,7 +198,7 @@ func (cli *cli) manualCmd(args []string) (err error) {
 			}
 			r = mosaic.Rect([4]int{v[0], v[1], v[2], v[3]})
 		}
-		_, err := manualView(c, pic, origPath, *src, r, *size, *step, *viewOut)
+		err := manualView(c, pic, origPath, *src, r, *size, *step, *viewOut)
 		return err
 	case "add":
 		n := 0
@@ -232,7 +232,7 @@ func (cli *cli) manualCmd(args []string) (err error) {
 				return err
 			}
 			if x[2] <= 0 || x[3] <= 0 {
-				return fmt.Errorf("ellipse radii must be positive")
+				return errors.New("ellipse radii must be positive")
 			}
 			m.Poly = append(m.Poly, ellipse(x[0], x[1], x[2], x[3], 48))
 			n++
@@ -342,7 +342,7 @@ func (cli *cli) manualCmd(args []string) (err error) {
 	}
 	for _, p := range m.Polygons() {
 		if !p.Hits(p.Bounds().Intersect(b)) {
-			return fmt.Errorf("polygon does not intersect the image")
+			return errors.New("polygon does not intersect the image")
 		}
 	}
 	if geometryErr != nil {
@@ -363,7 +363,6 @@ func (cli *cli) manualCmd(args []string) (err error) {
 	}
 	c.fixes[pic] = mosaic.Combine(human[pic], m)
 	return publishManual(c, pic, origPath, sub, *size, *step)
-
 }
 
 func clipRect(x []int, b image.Rectangle) [4]int {
@@ -433,7 +432,7 @@ func manualShow(c config, pic string) error {
 	return enc.Encode(out)
 }
 
-func manualView(c config, pic, orig, src string, region image.Rectangle, size, step int, dst string) (string, error) {
+func manualView(c config, pic, orig, src string, region image.Rectangle, size, step int, dst string) error {
 	var img image.Image
 	var err error
 	e, ok := reportEntry(c, pic)
@@ -447,10 +446,10 @@ func manualView(c config, pic, orig, src string, region image.Rectangle, size, s
 			img, err = decode(orig)
 		}
 	default:
-		return "", fmt.Errorf("--src は original か masked")
+		return errors.New("--src は original か masked")
 	}
 	if err != nil {
-		return "", err
+		return err
 	}
 	b := img.Bounds()
 	if region.Empty() {
@@ -458,7 +457,7 @@ func manualView(c config, pic, orig, src string, region image.Rectangle, size, s
 	}
 	region = region.Intersect(b)
 	if region.Empty() {
-		return "", fmt.Errorf("--region が絵の外")
+		return errors.New("--region が絵の外")
 	}
 	var ov overlay
 	if ok {
@@ -476,13 +475,13 @@ func manualView(c config, pic, orig, src string, region image.Rectangle, size, s
 		dst = filepath.Join(c.out, "manual", name+"."+src+".png")
 	}
 	if err := protectView(c, orig, dst); err != nil {
-		return "", err
+		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
-		return "", err
+		return err
 	}
 	if err := encode(dst, view, 95); err != nil {
-		return "", err
+		return err
 	}
 	display := dst
 	if c.displayOut != "" {
@@ -491,7 +490,7 @@ func manualView(c config, pic, orig, src string, region image.Rectangle, size, s
 		}
 	}
 	c.outw.printf("view: %s（%s、範囲 %v、元の絵 %dx%d）\n", display, src, xywh(region), b.Dx(), b.Dy())
-	return dst, nil
+	return nil
 }
 
 type overlay struct {
@@ -517,7 +516,6 @@ func renderView(img image.Image, region image.Rectangle, size, step int, ov over
 		xdraw.CatmullRom.Scale(out, at, img, region, draw.Src, nil)
 	}
 	if ov.painted != nil {
-
 		for py := at.Min.Y; py < at.Max.Y; py++ {
 			for px := at.Min.X; px < at.Max.X; px++ {
 				x := region.Min.X + int(float64(px-at.Min.X)/scale)

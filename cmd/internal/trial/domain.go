@@ -244,7 +244,7 @@ func (a *analysis) domains(fs files, gallery bool, start domains, why map[string
 			d[k] = d[k].Union(v)
 		}
 	}
-	for round := 0; round < 40; round++ {
+	for round := range 40 {
 		changed := map[string]bool{}
 		for _, s := range as {
 			if !a.analyzed[s.key] {

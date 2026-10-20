@@ -1,7 +1,7 @@
 package event_test
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -14,7 +14,7 @@ import (
 
 func TestCommandFieldRuntime(t *testing.T) {
 	for _, outcome := range []int{event.BattleWon, event.BattleLost, event.BattleFled} {
-		t.Run(fmt.Sprint(outcome), func(t *testing.T) {
+		t.Run(strconv.Itoa(outcome), func(t *testing.T) {
 			db := testgame.Load(t, map[string]string{
 				"game.yaml": "schema_version: 1\nid: neutral\n" + testgame.Game,
 				"data/z.yaml": `events: {contract: {do: [

@@ -13,8 +13,10 @@ import (
 
 func autoTacticsDB(t *testing.T) *data.DB {
 	t.Helper()
-	db := testgame.Load(t, map[string]string{"game.yaml": testgame.AutoTacticsGame,
-		"data/tactics.yaml": testgame.Tactics, "data/auto.yaml": testgame.AutoTacticsData})
+	db := testgame.Load(t, map[string]string{
+		"game.yaml":         testgame.AutoTacticsGame,
+		"data/tactics.yaml": testgame.Tactics, "data/auto.yaml": testgame.AutoTacticsData,
+	})
 	db.Classes["ranger"].AI = data.AIRef{Name: "capability"}
 	db.Classes["ranger"].Tree = []data.TreeNode{{ID: "care", Skill: "group_heal", Max: 1}}
 	return db

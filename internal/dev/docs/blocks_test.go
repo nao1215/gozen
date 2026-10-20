@@ -301,7 +301,7 @@ func checkYAMLBlocks(blocks []block) []string {
 			msg = strings.ReplaceAll(msg, "game.yaml:", "game.yaml (the docgame's with the examples' as=game.yaml merged in):")
 			what := "the load examples of the page"
 			if g != "" {
-				what = fmt.Sprintf("the load examples of group=%s", g)
+				what = "the load examples of group=" + g
 			}
 			bad = append(bad, fmt.Sprintf("%s: %s do not load together over internal/dev/docs/testdata/docgame:\n%s", loads[0].where, what, msg))
 		}

@@ -24,13 +24,13 @@ func New(model, lib string, threads int) (*Detector, error) {
 
 func NewWithLabels(model, lib string, threads int, labels []string) (result *Detector, err error) {
 	if model == "" {
-		return nil, fmt.Errorf("missing --model: supply a detection ONNX model")
+		return nil, errors.New("missing --model: supply a detection ONNX model")
 	}
 	if _, err := os.Stat(model); err != nil {
 		return nil, fmt.Errorf("detection model: %w", err)
 	}
 	if lib == "" {
-		return nil, fmt.Errorf("missing --ort or ONNXRUNTIME_LIB: supply the ONNX Runtime shared library")
+		return nil, errors.New("missing --ort or ONNXRUNTIME_LIB: supply the ONNX Runtime shared library")
 	}
 	if !ort.IsInitialized() {
 		ort.SetSharedLibraryPath(lib)
@@ -87,7 +87,7 @@ func metadataClasses(model, lib string) []string {
 
 func (d *Detector) Close() error { return d.sess.Destroy() }
 
-func (d *Detector) Detect(img image.Image, passes []Pass, min float32) ([]Box, error) {
+func (d *Detector) Detect(img image.Image, passes []Pass, minScore float32) ([]Box, error) {
 	var out []Box
 	b := img.Bounds()
 	for _, p := range passes {
@@ -98,7 +98,7 @@ func (d *Detector) Detect(img image.Image, passes []Pass, min float32) ([]Box, e
 			regions = tiles(b, p.Tiles, p.Overlap)
 		}
 		for _, r := range regions {
-			boxes, err := d.run(img, r, p.Size, p.Flip, min)
+			boxes, err := d.run(img, r, p.Size, p.Flip, minScore)
 			if err != nil {
 				return nil, err
 			}
@@ -111,7 +111,7 @@ func (d *Detector) Detect(img image.Image, passes []Pass, min float32) ([]Box, e
 	return out, nil
 }
 
-func (d *Detector) run(img image.Image, region image.Rectangle, size int, flip bool, min float32) (result []Box, err error) {
+func (d *Detector) run(img image.Image, region image.Rectangle, size int, flip bool, minScore float32) (result []Box, err error) {
 	rw, rh := region.Dx(), region.Dy()
 	if size <= 0 {
 		size = max(rw, rh)
@@ -152,7 +152,7 @@ func (d *Detector) run(img image.Image, region image.Rectangle, size int, flip b
 	defer func() { err = errors.Join(err, outs[0].Destroy()) }()
 	t, ok := outs[0].(*ort.Tensor[float32])
 	if !ok {
-		return nil, fmt.Errorf("the model output is not float32")
+		return nil, errors.New("the model output is not float32")
 	}
 	shape := t.GetShape()
 	if len(shape) != 3 || shape[0] != 1 || shape[2] < 0 || shape[1] != int64(4+len(d.labels)) {
@@ -164,7 +164,7 @@ func (d *Detector) run(img image.Image, region image.Rectangle, size int, flip b
 	for a := range n {
 		for c := range d.labels {
 			s := v[(4+c)*n+a]
-			if s < min {
+			if s < minScore {
 				continue
 			}
 			cx, cy, w, h := float64(v[a]), float64(v[n+a]), float64(v[2*n+a]), float64(v[3*n+a])

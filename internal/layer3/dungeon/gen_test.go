@@ -11,8 +11,10 @@ import (
 )
 
 func TestAMadeFloorIsAllReachable(t *testing.T) {
-	g := &data.Generate{Width: 21, Height: 21, Rooms: 4, Start: "S",
-		Place: []data.Put{{Char: ">", Far: true}, {Char: "T"}, {Char: "T"}}}
+	g := &data.Generate{
+		Width: 21, Height: 21, Rooms: 4, Start: "S",
+		Place: []data.Put{{Char: ">", Far: true}, {Char: "T"}, {Char: "T"}},
+	}
 	for seed := range uint64(40) {
 		m := Maze(g, rand.New(rand.NewPCG(seed, 1)), func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
 		rows := strings.Split(strings.TrimRight(m, "\n"), "\n")
@@ -63,8 +65,10 @@ func TestAMadeFloorIsAllReachable(t *testing.T) {
 
 func TestEventsAtSetPlaces(t *testing.T) {
 	at := [2]int{3, 3}
-	g := &data.Generate{Width: 21, Height: 21, Rooms: 3, Start: "S",
-		Place: []data.Put{{Char: "E", At: &at}, {Char: "W", Steps: 6}, {Char: ">", Far: true}}}
+	g := &data.Generate{
+		Width: 21, Height: 21, Rooms: 3, Start: "S",
+		Place: []data.Put{{Char: "E", At: &at}, {Char: "W", Steps: 6}, {Char: ">", Far: true}},
+	}
 	for seed := range uint64(20) {
 		m := Maze(g, rand.New(rand.NewPCG(seed, 3)), func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
 		rows := strings.Split(strings.TrimRight(m, "\n"), "\n")
@@ -121,7 +125,8 @@ func TestSolidThingsNeverShutTheWay(t *testing.T) {
 		case floor > 2:
 			side = 15
 		}
-		g := &data.Generate{Width: side, Height: side, Rooms: max(1, 5*side*side/(25*25)), Start: "S",
+		g := &data.Generate{
+			Width: side, Height: side, Rooms: max(1, 5*side*side/(25*25)), Start: "S",
 			Place: []data.Put{
 				{Char: ">", Far: true},
 				{Char: "T", Count: num(2 + floor/4)},
@@ -134,7 +139,8 @@ func TestSolidThingsNeverShutTheWay(t *testing.T) {
 				{Char: "f", Count: num(b2i(floor >= 11 && floor <= 15)), Far: true},
 				{Char: "X", Count: num(1 + floor/4)},
 				{Char: "y", Count: num(b2i(floor >= 4)), Far: true},
-			}}
+			},
+		}
 		for seed := range uint64(150) {
 			m := MazeSolid(g, rand.New(rand.NewPCG(seed, uint64(floor)*7919+1)), solid, func(e data.Expr) int { //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
 				if !e.Set() {
@@ -207,8 +213,10 @@ func num(n int) data.Expr {
 
 // Place on a wall (place's wall): the stairs entrance is a wall tile with exactly one open neighbor. far is the one whose neighbor is far away, steps is near the arrival point.
 func TestPutInAWall(t *testing.T) {
-	g := &data.Generate{Width: 21, Height: 21, Rooms: 4, Start: "S",
-		Place: []data.Put{{Char: ">", Far: true, Wall: true}, {Char: "<", Wall: true, Steps: 2}, {Char: "T"}}}
+	g := &data.Generate{
+		Width: 21, Height: 21, Rooms: 4, Start: "S",
+		Place: []data.Put{{Char: ">", Far: true, Wall: true}, {Char: "<", Wall: true, Steps: 2}, {Char: "T"}},
+	}
 	kind := func(r rune) Kind { return Kind{Solid: r == '>' || r == '<' || r == 'T'} }
 	for seed := range uint64(40) {
 		m := MazeKinds(g, rand.New(rand.NewPCG(seed, 1)), kind, func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
@@ -269,13 +277,15 @@ func TestPutInAWall(t *testing.T) {
 
 // near: place in front of the down stairs. If the stairs are at a dead end or corridor, placing it cuts off just the stairs tile (and a few tiles between) from the rest of the floor.
 func TestPutNearTheStairs(t *testing.T) {
-	g := &data.Generate{Width: 21, Height: 21, Rooms: 4, Start: "S",
-		Place: []data.Put{{Char: ">", Far: true}, {Char: "!", Near: ">"}, {Char: "T"}, {Char: "T"}}}
+	g := &data.Generate{
+		Width: 21, Height: 21, Rooms: 4, Start: "S",
+		Place: []data.Put{{Char: ">", Far: true}, {Char: "!", Near: ">"}, {Char: "T"}, {Char: "T"}},
+	}
 	placed, cut := 0, 0
 	for seed := range uint64(60) {
 		m := Maze(g, rand.New(rand.NewPCG(seed, 1)), func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
 		rows := strings.Split(strings.TrimRight(m, "\n"), "\n")
-		var sx, sy, ax, ay, gx, gy = 0, 0, -1, -1, -1, -1
+		sx, sy, ax, ay, gx, gy := 0, 0, -1, -1, -1, -1
 		for y, r := range rows {
 			for x, c := range r {
 				switch c {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -356,9 +357,7 @@ func (f policyFunc) Decide(_ context.Context, _ *gozen.Session, q gozen.Request)
 // Game.YAML also reads definitions in files in subdirectories of data/.
 func TestYAMLInSubdirectories(t *testing.T) {
 	fsys := fstest.MapFS{}
-	for name, f := range trail {
-		fsys[name] = f
-	}
+	maps.Copy(fsys, trail)
 	fsys["data/scenes/more.yaml"] = &fstest.MapFile{Data: []byte("events:\n  deep: {do: [{gold: 1}]}\n")}
 	g, err := gozen.Load(fsys, ".")
 	if err != nil {

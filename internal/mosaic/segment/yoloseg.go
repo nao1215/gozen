@@ -22,7 +22,7 @@ type YoloSeg struct {
 
 func NewYoloSeg(model, lib string, threads, size int, labels []string) (result *YoloSeg, err error) {
 	if model == "" || lib == "" || size < 1 || size > 4096 || len(labels) == 0 {
-		return nil, fmt.Errorf("segmentation needs explicit model/runtime paths, labels, and input size in 1..4096")
+		return nil, errors.New("segmentation needs explicit model/runtime paths, labels, and input size in 1..4096")
 	}
 	if !ort.IsInitialized() {
 		ort.SetSharedLibraryPath(lib)
@@ -52,7 +52,7 @@ func NewYoloSeg(model, lib string, threads, size int, labels []string) (result *
 
 func (y *YoloSeg) Close() error { return y.sess.Destroy() }
 
-func (y *YoloSeg) Find(img image.Image, min float32, flip bool) (result []Object, err error) {
+func (y *YoloSeg) Find(img image.Image, minScore float32, flip bool) (result []Object, err error) {
 	b := img.Bounds()
 	scale := float64(y.size) / float64(max(b.Dx(), b.Dy()))
 	nw, nh := max(1, int(float64(b.Dx())*scale+0.5)), max(1, int(float64(b.Dy())*scale+0.5))
@@ -91,7 +91,7 @@ func (y *YoloSeg) Find(img image.Image, min float32, flip bool) (result []Object
 	pt, ok1 := outs[0].(*ort.Tensor[float32])
 	mt, ok2 := outs[1].(*ort.Tensor[float32])
 	if !ok1 || !ok2 {
-		return nil, fmt.Errorf("the segmentation output is not float32")
+		return nil, errors.New("the segmentation output is not float32")
 	}
 	nc := len(y.labels)
 	ps, msh := pt.GetShape(), mt.GetShape()
@@ -115,7 +115,7 @@ func (y *YoloSeg) Find(img image.Image, min float32, flip bool) (result []Object
 				best, bc = v, c
 			}
 		}
-		if best < min {
+		if best < minScore {
 			continue
 		}
 		cx, cy, w, h := float64(p[a]), float64(p[n+a]), float64(p[2*n+a]), float64(p[3*n+a])

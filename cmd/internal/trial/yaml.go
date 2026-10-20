@@ -191,6 +191,7 @@ func mapping(v any) yaml.MapSlice {
 	}
 	return m
 }
+
 func sequence(v any) []any {
 	s, ok := v.([]any)
 	if !ok {

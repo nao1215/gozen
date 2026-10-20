@@ -71,7 +71,7 @@ func TestRegisteredEntries(t *testing.T) {
 		if !strings.HasPrefix(text, e.Code.String()+" - ") || !strings.Contains(text, URL) {
 			t.Errorf("%s: %q", e.Code, text)
 		}
-		for _, line := range strings.Split(text, "\n") {
+		for line := range strings.SplitSeq(text, "\n") {
 			if len(line) > 80 && !strings.HasPrefix(line, "http") {
 				t.Errorf("%s: line over 80 columns: %q", e.Code, line)
 			}

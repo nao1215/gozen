@@ -372,10 +372,8 @@ func abstractBinop(op string, l, r Range) Range {
 		return num(a-d, b-c)
 	case "*":
 		ps := []float64{a * c, a * d, b * c, b * d}
-		for _, p := range ps {
-			if math.IsNaN(p) {
-				return anyNumber()
-			}
+		if slices.ContainsFunc(ps, math.IsNaN) {
+			return anyNumber()
 		}
 		return num(slices.Min(ps), slices.Max(ps))
 	case "/":
@@ -383,10 +381,8 @@ func abstractBinop(op string, l, r Range) Range {
 			return anyNumber() // dividing by 0 gives 0; dividing near 0 gives something large
 		}
 		ps := []float64{a / c, a / d, b / c, b / d}
-		for _, p := range ps {
-			if math.IsNaN(p) {
-				return anyNumber()
-			}
+		if slices.ContainsFunc(ps, math.IsNaN) {
+			return anyNumber()
 		}
 		return num(slices.Min(ps), slices.Max(ps))
 	case "%":

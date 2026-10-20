@@ -1,3 +1,4 @@
+// Package sound plays the background music and sound effects.
 package sound
 
 import (

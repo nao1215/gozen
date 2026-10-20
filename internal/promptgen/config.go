@@ -3,10 +3,10 @@
 package promptgen
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
-
 	"regexp"
 	"slices"
 	"strings"
@@ -90,11 +90,10 @@ func Parse(data []byte, ruleData ...[]byte) (*Catalog, error) {
 	if err := decode(data, &c); err != nil {
 		return nil, err
 	}
-	d, err := dialectByName(c.Dialect)
-	if err != nil {
+	if err := checkDialect(c.Dialect); err != nil {
 		return nil, err
 	}
-	g := &Catalog{c: c, limit: 100, dialect: d}
+	g := &Catalog{c: c, limit: 100, dialect: sdxl{}}
 	if c.NegativeLimit != nil {
 		g.limit = *c.NegativeLimit
 	}
@@ -127,7 +126,7 @@ func Parse(data []byte, ruleData ...[]byte) (*Catalog, error) {
 // Load reads a catalog and optional relative validation rules from fsys.
 func Load(fsys fs.FS, name string) (*Catalog, error) {
 	if fsys == nil || !fs.ValidPath(name) {
-		return nil, fmt.Errorf("invalid catalog filesystem or path")
+		return nil, errors.New("invalid catalog filesystem or path")
 	}
 	data, err := fs.ReadFile(fsys, name)
 	if err != nil {
@@ -141,7 +140,7 @@ func Load(fsys fs.FS, name string) (*Catalog, error) {
 		return Parse(data)
 	}
 	if !fs.ValidPath(c.Validation) || strings.ContainsAny(c.Validation, "\\:") {
-		return nil, fmt.Errorf("validation rules must use a relative filesystem path")
+		return nil, errors.New("validation rules must use a relative filesystem path")
 	}
 	rules, err := fs.ReadFile(fsys, path.Join(path.Dir(name), c.Validation))
 	if err != nil {
@@ -172,11 +171,11 @@ func (g *Catalog) Scene(id string) (Plan, error) {
 	if !ok {
 		return Plan{}, problem(lang.T("未知の構図です。%s"), id)
 	}
-	copy := Plan{Select: map[string][]string{}}
+	clone := Plan{Select: map[string][]string{}}
 	for k, v := range p.Select {
-		copy.Select[k] = slices.Clone(v)
+		clone.Select[k] = slices.Clone(v)
 	}
-	return copy, nil
+	return clone, nil
 }
 
 func sortedKeys[V any](m map[string]V) []string {

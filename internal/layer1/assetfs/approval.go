@@ -28,7 +28,7 @@ func field(m map[string]any, key string) any {
 	if key == "" {
 		return nil
 	}
-	for _, k := range strings.Split(key, ".") {
+	for k := range strings.SplitSeq(key, ".") {
 		x, ok := v.(map[string]any)
 		if !ok {
 			return nil

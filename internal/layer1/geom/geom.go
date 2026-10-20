@@ -3,7 +3,10 @@
 // between points) and the screen share it; it knows nothing of games.
 package geom
 
-import "math"
+import (
+	"math"
+	"slices"
+)
 
 // Pt is a point of a picture, in its pixels (y down).
 type Pt struct{ X, Y float64 }
@@ -109,15 +112,11 @@ func (q Poly) SelfCrossing() bool {
 
 // Touches reports whether two polygons overlap: a point of one is in the other, or edges cross.
 func (q Poly) Touches(r Poly) bool {
-	for _, p := range q {
-		if r.Inside(p) {
-			return true
-		}
+	if slices.ContainsFunc(q, r.Inside) {
+		return true
 	}
-	for _, p := range r {
-		if q.Inside(p) {
-			return true
-		}
+	if slices.ContainsFunc(r, q.Inside) {
+		return true
 	}
 	for i := range q {
 		for j := range r {

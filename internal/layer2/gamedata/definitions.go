@@ -3,6 +3,7 @@ package gamedata
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 
@@ -151,9 +152,7 @@ func definitionFields(typ reflect.Type) map[string]reflect.Type {
 		}
 		name, options, _ := strings.Cut(tag, ",")
 		if options == "inline" {
-			for k, v := range definitionFields(field.Type) {
-				fields[k] = v
-			}
+			maps.Copy(fields, definitionFields(field.Type))
 		} else {
 			fields[name] = field.Type
 		}
@@ -186,7 +185,7 @@ func (doc *sourceDocument) decodeDefinitions(into any) (yaml.MapSlice, error) {
 	doc.root, doc.tokenPaths = nil, nil
 	mapping, ok := raw.(yaml.MapSlice)
 	if !ok {
-		return nil, fmt.Errorf("definition root must be a mapping")
+		return nil, errors.New("definition root must be a mapping")
 	}
 	return mapping, nil
 }
@@ -194,8 +193,7 @@ func (doc *sourceDocument) decodeDefinitions(into any) (yaml.MapSlice, error) {
 // definitionDecodeError maps the original child node to a type only for errors from custom decoders that carry no token.
 // It does not convert back to a YAML string, so original positions are kept even for blocks, quotes and nesting.
 func (doc *sourceDocument) definitionDecodeError(node ast.Node, typ reflect.Type, where string, err error) error {
-	var ye yaml.Error
-	if errors.As(err, &ye) {
+	if _, ok := errors.AsType[yaml.Error](err); ok {
 		return doc.yamlError(err)
 	}
 	for typ.Kind() == reflect.Pointer {

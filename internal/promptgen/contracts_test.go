@@ -17,6 +17,7 @@ func catalog(t *testing.T) *Catalog {
 	}
 	return c
 }
+
 func TestNeutralGoldenAndDeterminism(t *testing.T) {
 	c := catalog(t)
 	p, err := c.Scene("portrait")
@@ -63,6 +64,7 @@ func TestNeutralGoldenAndDeterminism(t *testing.T) {
 		t.Fatal("Scene leaked mutable state")
 	}
 }
+
 func TestSelectionsAndStrictInput(t *testing.T) {
 	c := catalog(t)
 	for _, p := range []Plan{
@@ -103,6 +105,7 @@ func TestSelectionsAndStrictInput(t *testing.T) {
 		t.Fatal("accepted escaping FS path")
 	}
 }
+
 func TestRulesReplacementAndFailedIO(t *testing.T) {
 	b, err := os.ReadFile("../../docs/examples/production/catalog.yaml")
 	if err != nil {

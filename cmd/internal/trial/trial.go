@@ -1,3 +1,5 @@
+// Package trial builds the trial edition of a game for gozen pack trial: the
+// part of the game a configuration keeps, with the rest pruned away.
 package trial
 
 import (
@@ -6,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing/fstest"
@@ -49,9 +52,7 @@ func Build(src fs.FS, cfg *Config) (*Result, error) {
 	sourceEvents := sortedKeys(defsOf(base)["events"])
 	a := newAnalysis(cfg, base)
 	res := &Result{src: src}
-	if res.Gates, err = a.gates(base); err != nil {
-		return nil, err
-	}
+	res.Gates = a.gates(base)
 	a = newAnalysis(cfg, base)
 
 	main, full := a.bottom(), a.bottom()
@@ -74,7 +75,7 @@ func Build(src fs.FS, cfg *Config) (*Result, error) {
 		storyKept, storyActive := reach(story, nil, storyAsides, nil, nil)
 		keepOnly(story, storyKept)
 		setGallery(story, nil, storyActive)
-		storyAssets, _ := collectAssets(story, src, all, cfg.Keep)
+		storyAssets, _ := collectAssets(story, all, cfg.Keep)
 		main2 := a.domains(story, false, main, nil)
 
 		out = (&pruner{a: a, d: full}).prune(base)
@@ -94,7 +95,7 @@ func Build(src fs.FS, cfg *Config) (*Result, error) {
 		keepOnly(out, kept)
 		dropCalls(out, kept["events"])
 		setGallery(out, scenes, active)
-		got, missing := collectAssets(out, src, all, cfg.Keep)
+		got, missing := collectAssets(out, all, cfg.Keep)
 		res.Missing = missing
 		filterGallery(out, got)
 		res.DomainWhy = map[string][]string{}
@@ -117,7 +118,7 @@ func Build(src fs.FS, cfg *Config) (*Result, error) {
 		}
 		res.Files[p] = b
 	}
-	got, _ := collectAssets(out, src, all, cfg.Keep)
+	got, _ := collectAssets(out, all, cfg.Keep)
 	for p := range got {
 		res.Assets = append(res.Assets, p)
 	}
@@ -151,12 +152,7 @@ func Build(src fs.FS, cfg *Config) (*Result, error) {
 }
 
 func contains(l []string, s string) bool {
-	for _, x := range l {
-		if x == s {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(l, s)
 }
 
 func pruneList(a *analysis, d domains, l []yaml.MapSlice) []yaml.MapSlice {
@@ -322,7 +318,7 @@ func overrideGame(fs files, over yaml.MapSlice) {
 
 var assetExt = map[string]bool{".png": true, ".jpg": true, ".jpeg": true, ".webp": true, ".ogg": true, ".wav": true, ".mp3": true, ".ttf": true, ".otf": true, ".txt": true}
 
-func collectAssets(fs files, src fs.FS, all []string, keep []string) (map[string]bool, []string) {
+func collectAssets(fs files, all []string, keep []string) (map[string]bool, []string) {
 	got := map[string]bool{}
 	lost := map[string]bool{}
 	exists := map[string]bool{}
@@ -453,7 +449,7 @@ func (r *Result) text(a string) ([]byte, error) {
 		have[x] = true
 	}
 	var out []string
-	for _, line := range strings.Split(string(b), "\n") {
+	for line := range strings.SplitSeq(string(b), "\n") {
 		t := strings.TrimSpace(line)
 		if t != "" && !strings.HasPrefix(t, "#") && assetExt[strings.ToLower(path.Ext(t))] && !have[cleanPath(t)] {
 			continue
