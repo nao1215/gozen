@@ -7,7 +7,7 @@ Changes before the first public release are tracked under Unreleased. All packag
 ### Added
 
 - `skills/gozen`: an Agent Skill for Claude Code and Codex. It holds the minimal game, the required parts, the YAML traps, the error codes and `gozen sim`, and the rule to run `gozen check` until it passes. Its commands are run by the docs tests.
-- Go Zen in the browser: `make website` builds the sample for `GOOS=js` into the site at `/play/go-zen/`; the program fetches the game's files before it starts.
+- Go Zen in the browser: `make website` builds the sample for `GOOS=js` into the site at `/play/go-zen/`; the program fetches the game's files before it starts, with the pictures as WebP of the same size (57 MB of files become 18 MB) and the page showing how much is left. The engine reads WebP pictures (backgrounds, portraits, puppets) besides PNG and JPEG. `make website-play-check` opens the built page in headless Chrome and fails when nothing is drawn; the Website workflow runs it.
 - YAML game loading and validation, expressions, events, battle rules, world navigation and versioned saves.
 - Headless execution, Ebitengine presentation, audio and an embedded-game runner.
 - The gozen command with six tools: check, sim (battle, dive, floors, design), play (trace, notes, shots), book, pack (release, trial) and art (prompt, mosaic, fetch, faces, puppet), plus version and help; ONNX inference in art mosaic and art faces needs a cgo build and uses user-supplied models and runtime libraries.

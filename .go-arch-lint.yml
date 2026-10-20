@@ -23,7 +23,8 @@ vendors:
   ebiten: { in: [github.com/hajimehoshi/ebiten/v2, "github.com/hajimehoshi/ebiten/v2/**"] }
   width: { in: [golang.org/x/text/width] }
   pflag: { in: [github.com/spf13/pflag] }
-  # The browser's localStorage for the saves of a web build (internal/play/store_js.go).
+  # The browser's localStorage for the saves of a web build (internal/play/store_js.go),
+  # and the page that the browser build of Go Zen reports its loading to.
   js: { in: [syscall/js] }
 components:
   expr: { in: ["internal/expr", "internal/expr/**"] }
@@ -135,7 +136,7 @@ deps:
     canUse: [yaml, ebiten, image]
   examples:
     mayDependOn: [gozen, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, play, puppet]
-    canUse: [ebiten, image]
+    canUse: [ebiten, image, js]
   dev:
     mayDependOn: [dev, diag]
   testgame:

@@ -6,23 +6,15 @@ name: Website
 # The repository has a limited Actions budget while it is private (see
 # docs/development/ci.md), so every job runs only once the repository is public,
 # or when started by hand with workflow_dispatch.
+#
+# The site carries Go Zen built from this checkout's engine (/play/go-zen/), so
+# the build runs on every push and pull request: a change anywhere can stop the
+# game in the browser, and the build opens it in headless Chrome.
 on:
   push:
     branches: [main]
-    paths:
-      - "website/**"
-      - "docs/images/**"
-      - "data/schema/**"
-      - "internal/dev/docs/**"
-      - ".github/workflows/website.yml"
   pull_request:
     branches: [main]
-    paths:
-      - "website/**"
-      - "docs/images/**"
-      - "data/schema/**"
-      - "internal/dev/docs/**"
-      - ".github/workflows/website.yml"
   workflow_dispatch:
 
 permissions: {}
@@ -35,7 +27,7 @@ jobs:
   build:
     if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
     env:
@@ -61,6 +53,10 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # web/assets.py writes Go Zen's pictures as WebP with Pillow.
+      - name: Install Pillow
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends python3-pil
+
       # make website also builds Go Zen for the browser into public/play/go-zen.
       - name: Build website
         # The commit is stamped into every page so the deploy can be verified
@@ -77,6 +73,20 @@ jobs:
       # repository to a file of the checkout (internal/dev/docs).
       - name: Check the links of the built site
         run: make website-check
+
+      # Opens /play/go-zen/ in headless Chrome (preinstalled on the runner) and
+      # fails when the game draws nothing, or the page logs an exception or a
+      # failed request; it presses Enter once and keeps both screenshots.
+      - name: Check that Go Zen runs in the browser
+        run: make website-play-check
+
+      - name: Keep the screenshots of the browser check
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: web-play
+          path: build/web-play
+          if-no-files-found: ignore
 
       - name: Index the site with Pagefind
         run: |

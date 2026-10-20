@@ -28,7 +28,7 @@ import (
 // read-only after Load and may be shared by several puppets.
 type Rig struct{ r *puppet.Rig }
 
-// Load reads the puppet YAML at path in fsys and the PNG pictures it names
+// Load reads the puppet YAML at path in fsys and the pictures it names (PNG, or WebP)
 // (relative to the YAML's directory), and checks them: unknown keys, missing or
 // misplaced pictures, overlays outside the base, and bad strengths are errors.
 // A difference picture as large as the base is cut down to the part that differs.

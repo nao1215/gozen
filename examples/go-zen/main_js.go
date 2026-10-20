@@ -6,11 +6,14 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"sync"
+	"syscall/js"
 	"testing/fstest"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -20,24 +23,33 @@ import (
 )
 
 // In a browser the game's files are not in the program: the page serves them next to it
-// (game/files.json lists them), and they are fetched once before the game starts. The
-// game runs as a gozen.Session on a play.Screen; the saves go to the page's localStorage.
+// (game/files.json lists them, written by web/assets.py with the pictures as WebP), and
+// they are fetched once before the game starts, while the page shows how much is left.
+// The game runs as a gozen.Session on a play.Screen; the saves go to the page's
+// localStorage.
 func main() {
+	if err := run(); err != nil {
+		page("goZenFail", err.Error())
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	fsys, err := fetchGame("game/")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	g, err := gozen.Load(fsys, ".")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	s, err := gozen.New(g, gozen.Config{})
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	sc, err := play.New(s, play.Config{})
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer func() {
 		if err := sc.Close(); err != nil {
@@ -45,28 +57,88 @@ func main() {
 		}
 	}()
 	ebiten.SetWindowTitle("Go Zen")
-	if err := ebiten.RunGame(sc); err != nil {
-		log.Print(err)
+	page("goZenStarting")
+	return ebiten.RunGame(&shown{Screen: sc})
+}
+
+// shown is the game's screen that takes the page's loading note away once the first
+// frame is drawn: the first frames read the pictures and can take some seconds, and
+// until then the canvas is black.
+type shown struct {
+	*play.Screen
+	done bool
+}
+
+func (s *shown) Draw(dst *ebiten.Image) {
+	s.Screen.Draw(dst)
+	if !s.done {
+		s.done = true
+		page("goZenReady")
 	}
 }
 
-// fetchGame reads the list base+"files.json" and every file in it.
+// page calls a function of index.html when the page has it.
+func page(name string, args ...any) {
+	if f := js.Global().Get(name); f.Type() == js.TypeFunction {
+		f.Invoke(args...)
+	}
+}
+
+// file is one entry of files.json: the name the game reads, the file the page serves
+// under it (a picture may be served as WebP) and that file's size.
+type file struct {
+	Name string `json:"name"`
+	File string `json:"file"`
+	Size int64  `json:"size"`
+}
+
+// fetchGame reads the list base+"files.json" and every file in it, a few at a time.
 func fetchGame(base string) (fstest.MapFS, error) {
-	var names []string
+	var files []file
 	b, err := get(base + "files.json")
 	if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(b, &names); err != nil {
+	if err := json.Unmarshal(b, &files); err != nil {
 		return nil, fmt.Errorf("files.json: %w", err)
 	}
+	var total int64
+	for _, f := range files {
+		total += f.Size
+	}
+	const workers = 6
+	var (
+		mu   sync.Mutex
+		done int64
+		errs []error
+		wg   sync.WaitGroup
+	)
+	next := make(chan file)
 	fsys := fstest.MapFS{}
-	for _, n := range names {
-		b, err := get(base + (&url.URL{Path: n}).EscapedPath())
-		if err != nil {
-			return nil, err
-		}
-		fsys[n] = &fstest.MapFile{Data: b}
+	page("goZenProgress", 0, float64(total))
+	for range workers {
+		wg.Go(func() {
+			for f := range next {
+				b, err := get(base + (&url.URL{Path: f.File}).EscapedPath())
+				mu.Lock()
+				if err != nil {
+					errs = append(errs, err)
+				} else {
+					fsys[f.Name] = &fstest.MapFile{Data: b}
+					done += int64(len(b))
+					page("goZenProgress", float64(done), float64(total))
+				}
+				mu.Unlock()
+			}
+		})
+	}
+	for _, f := range files {
+		next <- f
+	}
+	close(next)
+	wg.Wait()
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
 	}
 	return fsys, nil
 }

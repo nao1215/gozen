@@ -33,7 +33,7 @@ actors:
 
 | Picture | Content |
 | --- | --- |
-| Base picture | A transparent PNG. It doubles as one of the faces (often the usual face) |
+| Base picture | A transparent PNG (or WebP, which a browser build uses to download less). It doubles as one of the faces (often the usual face) |
 | Closed eyes | A picture with eyes closed. It may be a whole picture the same size as the base, or a small picture of only the eye part (placed at `at`) |
 | Mouth shapes | Closed, half open and so on. The mouth of the base picture can also be used as one shape (`face`) |
 | Other faces | A whole picture, or a small picture of only the parts that differ |
@@ -106,7 +106,7 @@ reactions:               # named variants of strength. The built-in names can be
 | `motion.sway.shift`, `talk.nod` | 2.5% and 2% of the head radius | 0 or more. The angle up to 45 degrees, `breath.depth` up to 0.2 |
 | `reactions` | the built-in hop, shrink, shake, nod, tilt, freeze (temporarily stops breathing, sway, blinking and mouth) | `kind` is one of the built-ins. `amount` (multiplier, default 1) and `time` (seconds) are 0 or more |
 
-Picture errors (missing, not a PNG, larger than 8192 pixels, sticking out of the base, a whole picture whose size differs from the base, no differing part) are returned by `Load` with a location.
+Picture errors (missing, not a PNG or WebP, larger than 8192 pixels, sticking out of the base, a whole picture whose size differs from the base, no differing part) are returned by `Load` with a location.
 
 ## Swaying parts (springs)
 

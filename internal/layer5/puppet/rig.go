@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
-	"image/png"
+	_ "image/png" // the pictures of a puppet are PNG,
 	"io/fs"
 	"path"
+
+	_ "golang.org/x/image/webp" // or WebP in a browser build (smaller to download)
 
 	"github.com/nao1215/gozen/internal/layer2/puppetdef"
 )
@@ -227,14 +229,14 @@ func (l *loader) read(name string) (*image.NRGBA, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := png.DecodeConfig(bytes.NewReader(b))
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(b))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", name, err)
 	}
 	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width > MaxSide || cfg.Height > MaxSide {
 		return nil, fmt.Errorf("%s: %dx%d is not within 1 to %d pixels", name, cfg.Width, cfg.Height, MaxSide)
 	}
-	img, err := png.Decode(bytes.NewReader(b))
+	img, _, err := image.Decode(bytes.NewReader(b))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", name, err)
 	}

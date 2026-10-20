@@ -13,7 +13,7 @@ ATAGO ?= atago
 ACTIONLINT ?= actionlint
 ZIZMOR ?= zizmor
 
-.PHONY: website-go-zen go-zen go-zen-graphics test coverage lint tidy workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
+.PHONY: website-go-zen website-play-check go-zen go-zen-graphics test coverage lint tidy workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
 
 # One module: ./... includes the gozen command and its internal implementations.
 # Keep ONNX-dependent runtime tests separate; see docs/development/testing.md.
@@ -98,14 +98,18 @@ website:
 
 # Go Zen in the browser (GOOS=js) under website/public/play/go-zen/: the program, Go's
 # wasm_exec.js, the page, and the game's files, which the program fetches before it starts.
+# web/assets.py writes the pictures as WebP (needs Pillow with WebP, python3-pil).
 WEB_GO_ZEN = website/public/play/go-zen
 website-go-zen:
 	mkdir -p $(WEB_GO_ZEN)
 	cd examples/go-zen && GOOS=js GOARCH=wasm $(GO) build -trimpath -buildvcs=false -ldflags="-s -w" -o ../../$(WEB_GO_ZEN)/go-zen.wasm .
 	install -m 644 "$$($(GO) env GOROOT)/lib/wasm/wasm_exec.js" examples/go-zen/web/index.html $(WEB_GO_ZEN)/
-	rm -rf $(WEB_GO_ZEN)/game
-	cp -r examples/go-zen/game $(WEB_GO_ZEN)/game
-	cd examples/go-zen && $(GO) run ./web/files ../../$(WEB_GO_ZEN)/game
+	python3 examples/go-zen/web/assets.py examples/go-zen/game $(WEB_GO_ZEN)/game
+
+# Opens the built Go Zen page in headless Chrome and fails when nothing is drawn
+# (after make website; needs google-chrome and node).
+website-play-check:
+	node scripts/web_play_check.mjs -serve website/public /play/go-zen/ -enter 1 -shots build/web-play
 
 website-serve:
 	cd website && hugo server
