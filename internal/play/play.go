@@ -797,10 +797,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.rendering = true
 	if g.meter.on {
 		start := time.Now()
-		defer func() {
-			g.meter.drawn(start)
-			g.drawMeter(screen)
-		}()
+		defer g.meter.drawn(start)
 	}
 	if g.drawn != nil {
 		defer g.drawnOnce.Do(func() { close(g.drawn) })
@@ -910,6 +907,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.drawLoadNotice(screen)
 	if len(g.quick) > 0 {
 		g.drawQuickMemos(screen)
+	}
+	if g.meter.on {
+		// Over everything else and before a script's shot, so the shot shows it.
+		g.drawMeter(screen)
 	}
 	if s := g.in.script; s != nil && s.shot != "" {
 		g.saveShot(screen, s.shot)

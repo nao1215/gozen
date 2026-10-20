@@ -105,6 +105,8 @@ type configScreen struct {
 	list *list
 	done func()
 	err  string
+	// rows are what each row of the list sets, in order; the last row goes back.
+	rows []cfgRow
 	// voiceRow is the row of the voice volume (-1: the game has no voices), followed by a
 	// row for each of voiced.
 	voiceRow int
@@ -112,6 +114,38 @@ type configScreen struct {
 	// langRow is the row of the language (-1: the game offers one).
 	langRow int
 }
+
+// cfgRow is what a row of the settings sets. The settings show only the rows the game
+// uses: a game without battles has no battle rows, one without voices no voice rows.
+type cfgRow int
+
+const (
+	rowText cfgRow = iota
+	rowAutoWait
+	rowWindow
+	rowBGM
+	rowSE
+	rowFullscreen
+	rowBattleSpeed
+	rowBattleAuto
+	rowSkipAll
+	rowSP
+	rowVoice
+	rowVoiceOf
+	rowLanguage
+	rowBack
+)
+
+// row is what the list's row i sets.
+func (s *configScreen) row(i int) cfgRow {
+	if i < 0 || i >= len(s.rows) {
+		return rowBack
+	}
+	return s.rows[i]
+}
+
+// hasBattles reports whether the game can fight: every battle is a troop's.
+func (g *Game) hasBattles() bool { return len(g.db.Troops) > 0 }
 
 func newConfigScreen(g *Game) *configScreen {
 	s := &configScreen{list: newList(nil, 0, 0, 640, 11)}
@@ -135,38 +169,46 @@ func (s *configScreen) refresh(g *Game) {
 	wait := []string{lang.T("みじかい"), lang.T("ややみじかい"), lang.T("ふつう"), lang.T("ややながい"), lang.T("ながい")}
 	bar := func(v int) string { return fmt.Sprintf("%3d%%", clampInt(v, 0, 10)*10) }
 	on := map[bool]string{true: lang.T("オン"), false: lang.T("オフ")}
-	s.list.items = []listItem{
-		{label: lang.T("文字の速さ"), right: "◀ " + speed[clampInt(c.TextSpeed, 0, 4)] + " ▶"},
-		{label: lang.T("オートの待ち"), right: "◀ " + wait[clampInt(c.AutoWait, 0, 4)] + " ▶"},
-		{label: lang.T("ウィンドウの濃さ"), right: "◀ " + bar(c.Window) + " ▶"},
-		{label: lang.T("BGM の音量"), right: "◀ " + bar(c.BGM) + " ▶"},
-		{label: lang.T("効果音の音量"), right: "◀ " + bar(c.SE) + " ▶"},
-		{label: lang.T("全画面"), right: "◀ " + on[c.Fullscreen] + " ▶"},
-		{label: lang.T("戦闘の速さ"), right: "◀ " + []string{lang.T("ふつう"), lang.T("はやい"), lang.T("とてもはやい")}[clampInt(c.BattleSpeed, 0, 2)] + " ▶"},
-		{label: lang.T("戦闘をオートではじめる"), right: "◀ " + on[g.autoStartBattle()] + " ▶"},
-		{label: lang.T("早送りで飛ばす文"), right: "◀ " + map[bool]string{false: lang.T("読んだ文だけ"), true: lang.T("すべて")}[c.SkipAll] + " ▶"},
+	s.list.items, s.rows = nil, nil
+	add := func(r cfgRow, label, value string) {
+		it := listItem{label: label}
+		if value != "" {
+			it.right = "◀ " + value + " ▶"
+		}
+		s.list.items, s.rows = append(s.list.items, it), append(s.rows, r)
 	}
+	add(rowText, lang.T("文字の速さ"), speed[clampInt(c.TextSpeed, 0, 4)])
+	add(rowAutoWait, lang.T("オートの待ち"), wait[clampInt(c.AutoWait, 0, 4)])
+	add(rowWindow, lang.T("ウィンドウの濃さ"), bar(c.Window))
+	add(rowBGM, lang.T("BGM の音量"), bar(c.BGM))
+	add(rowSE, lang.T("効果音の音量"), bar(c.SE))
+	add(rowFullscreen, lang.T("全画面"), on[c.Fullscreen])
+	if g.hasBattles() {
+		add(rowBattleSpeed, lang.T("戦闘の速さ"), []string{lang.T("ふつう"), lang.T("はやい"), lang.T("とてもはやい")}[clampInt(c.BattleSpeed, 0, 2)])
+		add(rowBattleAuto, lang.T("戦闘をオートではじめる"), on[g.autoStartBattle()])
+	}
+	add(rowSkipAll, lang.T("早送りで飛ばす文"), map[bool]string{false: lang.T("読んだ文だけ"), true: lang.T("すべて")}[c.SkipAll])
 	if g.showSP() {
-		s.list.items = append(s.list.items, listItem{label: lang.T("SP の割り振り"), right: "◀ " + map[bool]string{false: lang.T("おまかせ"), true: lang.T("自分で")}[c.ManualSP] + " ▶"})
+		add(rowSP, lang.T("SP の割り振り"), map[bool]string{false: lang.T("おまかせ"), true: lang.T("自分で")}[c.ManualSP])
 	}
 	s.voiceRow, s.voiced = -1, nil
 	if g.usesVoices() {
 		s.voiceRow, s.voiced = len(s.list.items), g.voicedActors()
-		s.list.items = append(s.list.items, listItem{label: lang.T("ボイスの音量"), right: "◀ " + bar(c.Voice) + " ▶"})
+		add(rowVoice, lang.T("ボイスの音量"), bar(c.Voice))
 		for _, id := range s.voiced {
 			v, ok := c.VoiceBy[id]
 			if !ok {
 				v = 10
 			}
-			s.list.items = append(s.list.items, listItem{label: fmt.Sprintf(lang.T("　%s の声"), g.db.Actors[id].Name), right: "◀ " + bar(v) + " ▶"})
+			add(rowVoiceOf, fmt.Sprintf(lang.T("　%s の声"), g.db.Actors[id].Name), bar(v))
 		}
 	}
 	s.langRow = -1
 	if offered := g.db.Game.Offered(); len(offered) > 1 {
 		s.langRow = len(s.list.items)
-		s.list.items = append(s.list.items, listItem{label: lang.T("言語"), right: "◀ " + languageName(g.language()) + " ▶"})
+		add(rowLanguage, lang.T("言語"), languageName(g.language()))
 	}
-	s.list.items = append(s.list.items, listItem{label: lang.T("もどる")})
+	add(rowBack, lang.T("もどる"), "")
 }
 
 func (g *Game) showSP() bool {
@@ -230,8 +272,6 @@ func (s *configScreen) update(g *Game) {
 	}
 }
 
-const cfgSP = 9
-
 func (s *configScreen) change(g *Game, d int, wrap bool) {
 	c := &g.cfg
 	step := func(v, lo, hi int) int {
@@ -241,19 +281,32 @@ func (s *configScreen) change(g *Game, d int, wrap bool) {
 		}
 		return clampInt(v, lo, hi)
 	}
-	if s.langRow >= 0 && s.list.sel == s.langRow {
-		offered := g.db.Game.Offered()
-		i := slices.Index(offered, g.language())
-		c.Language = offered[(i+d+len(offered))%len(offered)]
-		if err := g.useLanguage(); err != nil {
-			log.Printf("language: %v", err)
-		}
-	}
-	switch i := s.list.sel - s.voiceRow; {
-	case s.voiceRow >= 0 && i == 0:
+	switch s.row(s.list.sel) {
+	case rowText:
+		c.TextSpeed = step(c.TextSpeed, 0, 4)
+	case rowAutoWait:
+		c.AutoWait = step(c.AutoWait, 0, 4)
+	case rowWindow:
+		c.Window = step(c.Window, 0, 10)
+	case rowBGM:
+		c.BGM = step(c.BGM, 0, 10)
+	case rowSE:
+		c.SE = step(c.SE, 0, 10)
+	case rowFullscreen:
+		c.Fullscreen = !c.Fullscreen
+	case rowBattleSpeed:
+		c.BattleSpeed = step(c.BattleSpeed, 0, 2)
+	case rowBattleAuto:
+		v := !g.autoStartBattle()
+		c.BattleAuto = &v
+	case rowSkipAll:
+		c.SkipAll = !c.SkipAll
+	case rowSP:
+		c.ManualSP = !c.ManualSP
+	case rowVoice:
 		c.Voice = step(c.Voice, 0, 10)
-	case s.voiceRow >= 0 && i > 0 && i <= len(s.voiced):
-		id := s.voiced[i-1]
+	case rowVoiceOf:
+		id := s.voiced[s.list.sel-s.voiceRow-1]
 		v, ok := c.VoiceBy[id]
 		if !ok {
 			v = 10
@@ -262,31 +315,15 @@ func (s *configScreen) change(g *Game, d int, wrap bool) {
 			c.VoiceBy = map[string]int{}
 		}
 		c.VoiceBy[id] = step(v, 0, 10)
-	}
-	switch s.list.sel {
-	case 0:
-		c.TextSpeed = step(c.TextSpeed, 0, 4)
-	case 1:
-		c.AutoWait = step(c.AutoWait, 0, 4)
-	case 2:
-		c.Window = step(c.Window, 0, 10)
-	case 3:
-		c.BGM = step(c.BGM, 0, 10)
-	case 4:
-		c.SE = step(c.SE, 0, 10)
-	case 5:
-		c.Fullscreen = !c.Fullscreen
-	case 6:
-		c.BattleSpeed = step(c.BattleSpeed, 0, 2)
-	case 7:
-		v := !g.autoStartBattle()
-		c.BattleAuto = &v
-	case 8:
-		c.SkipAll = !c.SkipAll
-	case cfgSP:
-		if g.showSP() {
-			c.ManualSP = !c.ManualSP
+	case rowLanguage:
+		offered := g.db.Game.Offered()
+		i := slices.Index(offered, g.language())
+		c.Language = offered[(i+d+len(offered))%len(offered)]
+		if err := g.useLanguage(); err != nil {
+			log.Printf("language: %v", err)
 		}
+		g.talk.reword(g)
+	case rowBack:
 	}
 	g.applyConfig()
 	g.sfx("cursor")
@@ -320,7 +357,7 @@ func (s *configScreen) draw(g *Game, dst *ebiten.Image) {
 	}
 	g.window(dst, l.x, y, l.w, 70)
 	sample := lang.T("見本の文章です。ウィンドウの濃さを確かめてください。")
-	if l.sel == cfgSP && g.showSP() {
+	if s.row(l.sel) == rowSP {
 		sample = lang.T("おまかせ：SP が余っていれば、振り方を見せて勧めます。頼めばまとめて振ります。")
 		if g.cfg.ManualSP {
 			sample = lang.T("自分で：勧めません。スキルツリーで自分で振ります。")

@@ -54,6 +54,18 @@ type run struct {
 	Script string   `yaml:"script"`
 	Args   []string `yaml:"args"`
 	Check  []string `yaml:"check"`
+	Edit   *edit    `yaml:"edit"`
+}
+
+// edit changes a copy of a game's files while a run plays, so a picture can show the hot
+// reload (F5): the directory Copy is copied to {game} before the run starts, and once the
+// run has written the shot After, Old in File (under the copy) becomes New.
+type edit struct {
+	Copy  string `yaml:"copy"`
+	After string `yaml:"after"`
+	File  string `yaml:"file"`
+	Old   string `yaml:"old"`
+	New   string `yaml:"new"`
 }
 
 // pick chooses frames of a run by their shot names and the trace.
@@ -139,6 +151,9 @@ func (m manifest) validate(readFile func(string) ([]byte, error)) []string {
 		if !slices.ContainsFunc(r.Args, func(a string) bool { return strings.Contains(a, "{out}") }) {
 			bad = append(bad, fmt.Sprintf("run %s: no argument writes to {out}", name))
 		}
+		if e := r.Edit; e != nil {
+			bad = append(bad, e.validate(name, scripts[name], r.Args, readFile)...)
+		}
 	}
 	for file, im := range m.Images {
 		where := "image " + file
@@ -189,6 +204,32 @@ func (m manifest) validate(readFile func(string) ([]byte, error)) []string {
 		}
 	}
 	sort.Strings(bad)
+	return bad
+}
+
+// validate reports what is wrong in a run's edit: the copy, the shot it waits for and the
+// text it changes must exist, and the run must read the copy.
+func (e edit) validate(run, script string, args []string, readFile func(string) ([]byte, error)) []string {
+	where := "run " + run + ": edit"
+	var bad []string
+	if _, err := readFile(path.Join(e.Copy, "game.yaml")); e.Copy == "" || err != nil {
+		bad = append(bad, fmt.Sprintf("%s: copy %q is no game directory", where, e.Copy))
+	}
+	if !slices.ContainsFunc(args, func(a string) bool { return strings.Contains(a, "{game}") }) {
+		bad = append(bad, where+": no argument reads the copy ({game})")
+	}
+	if e.After == "" || !regexp.MustCompile(`(?m)^shot `+regexp.QuoteMeta(e.After)+`\s*$`).MatchString(script) {
+		bad = append(bad, fmt.Sprintf("%s: the script has no `shot %s`", where, e.After))
+	}
+	b, err := readFile(path.Join(e.Copy, e.File))
+	switch {
+	case err != nil:
+		bad = append(bad, fmt.Sprintf("%s: file %s: %v", where, e.File, err))
+	case e.Old == "" || strings.Count(string(b), e.Old) != 1:
+		bad = append(bad, fmt.Sprintf("%s: %s must hold old exactly once", where, e.File))
+	case e.New == e.Old:
+		bad = append(bad, where+": new is old")
+	}
 	return bad
 }
 

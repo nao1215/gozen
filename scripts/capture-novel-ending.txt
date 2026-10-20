@@ -1,0 +1,7 @@
+# Novel sample capture (run novel-ending): Brenna's ending, its picture over the stage
+# with the line under it (s-ending).
+gap 1
+wait 150
+shot s-ending
+wait 2
+quit

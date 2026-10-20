@@ -31,6 +31,7 @@ Headless checks of a translated game load it with an overlay that sets `language
 - `lang/<code>.yaml` has one field, `text`; a key that is a word of the engine is not a stray key. A language offered without its file has every text untranslated.
 - `gozen check`: a translation with other `{expressions}` than its source is an error; a key that is no text of the game is GZN0110, each text not translated GZN0111 (with its path; `--format json` lists them all). The layout check lays out the lines in each language offered (the files tagged `[ja]`), and the glyph check reads `lang/` too. `gozen book` stays in the language written (the author decided against `--language`).
 - The settings have a "Language" row when two or more are offered; `config.json` keeps `language`, which wins over `game.yaml` at start.
+- Changing the language shows what is on the screen in it at once: the open line, its speaker, the question and its options, and the backlog. A line keeps its source and the values its `{expressions}` had when it was shown (`gamedata.Phrase`), so it is translated again without evaluating them again.
 
 ## Alternatives
 

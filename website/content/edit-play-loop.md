@@ -38,9 +38,19 @@ The usual keys still work: O or F2 for settings, F11 for full screen, M to mute.
 
 ## F8: the development panel
 
+| State: flip a flag, step a number | Flags: what each event sets and reads |
+|:--|:--|
+| ![flag.thanked_hedda and chose.toast in the development panel](/images/novel-panel.jpg) | ![the flags each event sets and reads](/images/novel-flags.jpg) |
+| Scenes: jump to an event | Command: run a line of YAML |
+| ![the Scenes tab jumps to the late night](/images/playtest-jump.gif) | ![a set typed into the Command tab, then the State tab shows the flag](/images/playtest-command.gif) |
+| Frames: ticks and frames a second, the slowest Update and Draw | |
+| ![the frame meter over the tavern](/images/playtest-frames.jpg) | |
+
 The panel holds the game while it is open; left and right change its tab. Every change it makes goes through `set` or starts an event, the same as a headless test's `Do`, and the trace records it: `dev_set` for a change, `jump` for a jump, `dev_do` for a command. A script does the same with `jump EVENT [LINE]` (start an event from the state as it is, read on to the line) and `do YAML` (run a line of commands, such as `do - set: {flag.met: true}`). The Frames tab hides the panel and leaves the frame meter, and the game goes on until F8 closes it. The flags table and `gozen book`'s Flow section come from one index of where each name is written and read.
 
 ## F5: reload
+
+![Hedda's line is edited in the YAML and F5 shows the new text at the same place](/images/playtest-reload.gif)
 
 With `--dir`, the game watches `game.yaml`, `data/` and `assets/`. Pictures and sounds are reloaded on their own. For definitions, press F5: the game loads them, checks them, and swaps them in. If you are in a battle or a menu, it waits until you are back on the field.
 
@@ -70,6 +80,8 @@ gozen sim battle game crab --state notes/2026-10-19/001.save --as-is --streak 9
 The panel measures a little each frame (at most 3 ms) and never changes the game state or its random numbers. It measures again when you move, reload, or change the party's level, equipment or skills.
 
 ## F9: notes
+
+![F9 opens a note, a comment is typed and saved](/images/playtest-memo.gif)
 
 F9 opens a note on the current moment. Pick a kind, type a short comment (it may be empty) and press Enter. The game writes `notes/<date>/<number>.png` (the screen), `.json` (the place, the line, the party, your comment) and `.save` (the state).
 

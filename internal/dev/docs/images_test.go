@@ -124,14 +124,23 @@ func makeImages(t *testing.T, m manifest, rootAbs, work, out string) []string {
 		if err := os.MkdirAll(dir, 0o750); err != nil {
 			t.Fatal(err)
 		}
+		game := filepath.Join(work, "games", name)
 		args := make([]string, len(r.Args))
 		for i, a := range r.Args {
 			a = strings.ReplaceAll(a, "{script}", filepath.Join(rootAbs, filepath.FromSlash(r.Script)))
+			a = strings.ReplaceAll(a, "{game}", game)
 			args[i] = strings.ReplaceAll(a, "{out}", dir)
 		}
 		t.Logf("run %s: %s %s", name, m.Samples[r.Sample].Package, strings.Join(r.Args, " "))
 		// A filmed run writes a 1920x1080 PNG every few ticks; on a busy machine that is slow.
-		command(t, rootAbs, 15*time.Minute, bins[r.Sample], args...)
+		if r.Edit != nil {
+			if err := os.CopyFS(game, os.DirFS(filepath.Join(rootAbs, filepath.FromSlash(r.Edit.Copy)))); err != nil {
+				t.Fatalf("run %s: %v", name, err)
+			}
+			commandEditing(t, rootAbs, 15*time.Minute, dir, game, *r.Edit, bins[r.Sample], args...)
+		} else {
+			command(t, rootAbs, 15*time.Minute, bins[r.Sample], args...)
+		}
 		if len(r.Check) > 0 {
 			command(t, rootAbs, time.Minute, r.Check[0], append(slices.Clone(r.Check[1:]), dir)...)
 		}
@@ -183,6 +192,53 @@ func command(t *testing.T, dir string, limit time.Duration, name string, args ..
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("%s %s: %v\nstdout:\n%s\nstderr:\n%s", name, strings.Join(args, " "), err, tail(stdout.String()), tail(stderr.String()))
+	}
+}
+
+// commandEditing runs a command like command, and once it has written the shot e.After
+// under dir, changes e.File in the game's copy as e says (the hot reload's pictures).
+func commandEditing(t *testing.T, dir string, limit time.Duration, out, game string, e edit, name string, args ...string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), limit)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // The commands of the manifest.
+	cmd.Dir = dir
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	shot := filepath.Join(out, e.After+".png")
+	edited := false
+	for {
+		select {
+		case err := <-done:
+			if err == nil && !edited {
+				err = fmt.Errorf("it ended before the shot %s", e.After)
+			}
+			if err != nil {
+				t.Fatalf("%s %s: %v\nstdout:\n%s\nstderr:\n%s", name, strings.Join(args, " "), err, tail(stdout.String()), tail(stderr.String()))
+			}
+			return
+		case <-time.After(20 * time.Millisecond):
+		}
+		if edited {
+			continue
+		}
+		if _, err := os.Stat(shot); err != nil {
+			continue
+		}
+		file := filepath.Join(game, filepath.FromSlash(e.File))
+		b, err := os.ReadFile(file) //nolint:gosec // The copy of a sample's file this test made.
+		if err == nil {
+			err = os.WriteFile(file, []byte(strings.Replace(string(b), e.Old, e.New, 1)), 0o600) //nolint:gosec // The copy of a sample's file this test made, named by the manifest.
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		edited = true
 	}
 }
 

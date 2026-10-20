@@ -31,6 +31,8 @@ type talk struct {
 	keys []uint64
 	// voiceT is how many ticks the line's voice lasts (auto waits for it).
 	voiceT int
+	// asked is the question while choice is open, to ask it again in another language.
+	asked event.Choice
 }
 
 const (
@@ -50,13 +52,8 @@ func (t *talk) open(g *Game, s event.Say) {
 	still := g.tick-t.closed <= 1 && s.Face != "" && t.say.Face != "" && speakerKey(s) == speakerKey(t.say) && s.Right == t.say.Right
 	*t = talk{say: s, active: true, still: still, read: g.isRead(s)}
 	g.lineVoice(t, s, g.in.fast && (t.read || g.cfg.SkipAll))
-	g.remember(logLine{name: s.Name, text: s.Text})
-
-	t.pages, t.size = MessagePages(&g.db.Game, s.Text)
-	if len(t.pages) == 0 {
-		t.pages = [][]string{{""}}
-	}
-	t.setPage(0)
+	g.remember(logLine{name: s.Name, text: s.Text, line: &s})
+	t.layout(g)
 	if s.Face != "" {
 		g.pics.get(s.Face)
 		if g.castOn {
@@ -117,11 +114,27 @@ func (t *talk) setPage(i int) {
 	}
 }
 
-func (t *talk) ask(g *Game, c event.Choice) {
+// layout breaks the line into the window's pages and shows the first.
+func (t *talk) layout(g *Game) {
+	t.pages, t.size = MessagePages(&g.db.Game, t.say.Text)
+	if len(t.pages) == 0 {
+		t.pages = [][]string{{""}}
+	}
+	t.setPage(0)
+}
+
+func (t *talk) ask(g *Game, c event.Choice) { t.question(g, c, false) }
+
+// question opens a choice; again asks the open one again (in another language) without
+// logging or voicing its prompt a second time.
+func (t *talk) question(g *Game, c event.Choice, again bool) {
 	switch {
+	case c.Prompt != "" && again:
+		*t = talk{say: c.Question(), active: true, still: true}
+		t.layout(g)
 	case c.Prompt != "":
-		t.open(g, event.Say{Text: c.Prompt})
-	case t.say.Text != "" && len(t.pages) > 0 && g.tick-t.closed <= 3:
+		t.open(g, c.Question())
+	case t.say.Text != "" && len(t.pages) > 0 && (again || g.tick-t.closed <= 3):
 
 		prev := *t
 		*t = talk{say: prev.say, pages: prev.pages, size: prev.size, active: true, still: true}
@@ -131,6 +144,7 @@ func (t *talk) ask(g *Game, c event.Choice) {
 	}
 	t.shown = t.total
 	t.keys = c.Keys
+	t.asked = c
 	var items []listItem
 	for i, o := range c.Options {
 		it := listItem{label: o}
@@ -169,6 +183,55 @@ func (t *talk) ask(g *Game, c event.Choice) {
 	t.choice = l
 }
 
+// reword shows the open line or question again in the language the game shows now
+// (ADR 0027): its text, its speaker's name and the options, keeping the page, the
+// letters already shown and the option selected.
+func (t *talk) reword(g *Game) {
+	if !t.active {
+		return
+	}
+	old := speakerKey(t.say)
+	t.say = t.say.Reword(g.db)
+	if k := speakerKey(t.say); k != old {
+		g.renameOnStage(old, k)
+	}
+	if t.choice != nil {
+		sel, top := t.choice.sel, t.choice.top
+		if !t.bare {
+			// A question without a prompt stays under the last page of the line before it.
+			t.layout(g)
+			t.setPage(len(t.pages) - 1)
+		}
+		t.question(g, t.asked.Reword(g.db), true)
+		t.choice.sel, t.choice.top = sel, top
+		return
+	}
+	if t.bare {
+		return
+	}
+	page, shown, full := t.page, t.shown, t.shown >= t.total
+	t.layout(g)
+	t.setPage(min(page, len(t.pages)-1))
+	t.shown = min(shown, t.total)
+	if full {
+		t.shown = t.total
+	}
+}
+
+// renameOnStage gives a speaker who stands on the stage the key of their name in another
+// language, so their next line does not bring them on again.
+func (g *Game) renameOnStage(old, k string) {
+	for i := range g.stage {
+		if g.stage[i].id == old {
+			g.stage[i].id = k
+		}
+	}
+	if x, ok := g.sides[old]; ok {
+		g.sides[k] = x
+		delete(g.sides, old)
+	}
+}
+
 func novelTextReaches(lines []string, size, right float64) bool {
 	if size <= 0 {
 		size = novelSize
@@ -194,7 +257,8 @@ func (t *talk) update(g *Game) (done bool, answer int) {
 			if k := t.choice.sel; k < len(t.keys) && !g.live.quiet {
 				g.markKey(t.keys[k])
 			}
-			g.remember(logLine{text: "→ " + t.choice.items[t.choice.sel].label, answer: true})
+			asked := t.asked
+			g.remember(logLine{text: "→ " + t.choice.items[t.choice.sel].label, answer: true, asked: &asked, pick: t.choice.sel})
 			return true, t.choice.sel
 		}
 		return false, -1

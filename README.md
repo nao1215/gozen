@@ -23,7 +23,7 @@
 
 # Gozen
 
-Gozen is a 2D RPG framework for Go and Ebitengine. You write the game in YAML. `gozen check` finds broken references. `gozen sim battle` measures balance. While you play, F9 saves a note, F7 shows win rates, and F5 reloads the YAML.
+Gozen is a framework for 2D RPGs and visual novels in Go and Ebitengine. You write the game in YAML: places, battles and skills for an RPG; lines, choices and staging for a novel, with roll back, skip and a second language. `gozen check` finds broken references. `gozen sim battle` measures balance. While you play, F5 reloads the YAML, F9 saves a note, and F7 and F8 show win rates and flags.
 
 The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan, an ebiten gozen (御膳) is a set meal on one tray: shrimp tempura with soba, small side dishes, and a sweet such as dango. Gozen is that tray for Ebitengine: the engine served with everything an RPG needs. The name also starts with Go.
 
@@ -65,28 +65,26 @@ Play Go Zen and After the Pass in the browser: https://nao1215.github.io/gozen/p
 | Check | `gozen check` prints file and line: `data/world.yaml:26:5: locations.grotto.encounters: unknown troop "lessn" [GZN1101]`. |
 | Measure | `gozen sim battle` prints a win rate. `gozen sim dive` plays a dungeon dive. F7 shows the same numbers in the game. |
 | Play | `--dev` starts anywhere, autoplays, records and replays a trace. |
-| Note | F9 saves a screenshot and the state. `--from-memo` starts at that line. |
+| Note | F9 saves the moment. `--from-memo` starts at that line. |
 | Fix | Edit the YAML under `--dir` and press F5. The game keeps your place. |
 
-The window, a headless session and the command line share the rules.
+The window, a headless session and the command line share the rules. The keys are in [Playtesting](#playtesting).
 
 ## Screens
 
 All from [Go Zen](examples/go-zen) at 1920x1080.
 
-| Conversation | Event picture |
+| Conversation | Painted scene |
 |:--|:--|
-| ![Maren talks, a moving portrait that blinks and changes its face](docs/images/go-zen-face.gif) | ![Maren with a map by the dry fountain](docs/images/go-zen-picture.jpg) |
-| Painted scene | Town map |
-| ![Maren walks the plaza and Ox says a line in a balloon](docs/images/go-zen-plaza.gif) | ![the party's face walks the road to the well](docs/images/go-zen-map.gif) |
-| First-person dungeon | Shop |
-| ![steps and turns in a brick corridor](docs/images/go-zen-dungeon.gif) | ![the shop's goods](docs/images/go-zen-shop.jpg) |
+| ![Maren talks, a moving portrait that blinks and changes its face](docs/images/go-zen-face.gif) | ![Maren walks the plaza and Ox says a line in a balloon](docs/images/go-zen-plaza.gif) |
+| Town map | First-person dungeon |
+| ![the party's face walks the road to the well](docs/images/go-zen-map.gif) | ![steps and turns in a brick corridor](docs/images/go-zen-dungeon.gif) |
 | Battle | Cut-in |
 | ![four against the Brass Warden, with damage numbers](docs/images/go-zen-battle.gif) | ![Ox's Shield Rush cut-in](docs/images/go-zen-cutin.gif) |
-| Balance panel (F7) | Title |
-| ![win rates by troop](docs/images/go-zen-balance.jpg) | ![the title screen](docs/images/go-zen-title.jpg) |
-| Skill tree | |
-| ![Maren's skill tree with Ink Burst chosen](docs/images/go-zen-tree.jpg) | |
+| Shop | Skill tree |
+| ![the shop's goods](docs/images/go-zen-shop.jpg) | ![Maren's skill tree with Ink Burst chosen](docs/images/go-zen-tree.jpg) |
+| Title | |
+| ![the title screen](docs/images/go-zen-title.jpg) | |
 
 ### Novel games
 
@@ -95,10 +93,24 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 | Roll back (Q, wheel) | Skip to the line not read (N) |
 |:--|:--|
 | ![Back goes over two lines and a choice, with the state](docs/images/novel-back.gif) | ![the option taken again, then Skip stops at the first line not read](docs/images/novel-skip.gif) |
-| Choices and flags (F8) | State (F8) |
-| ![the flags each event sets and reads](docs/images/novel-flags.jpg) | ![flag.thanked_hedda and chose.toast in the development panel](docs/images/novel-panel.jpg) |
 | Two languages | Staging (`stand`, `effect`) |
-| ![the settings switch to Japanese and the next line is in Japanese](docs/images/novel-language.gif) | ![Brenna slides in and her portrait shakes](docs/images/novel-stage.gif) |
+| ![the settings switch to Japanese, the line on the screen turns Japanese at once, and so does the next](docs/images/novel-language.gif) | ![Brenna slides in and her portrait shakes](docs/images/novel-stage.gif) |
+| Event picture with its line | |
+| ![Brenna's ending: a picture of her cheering at the bar, with the line under it](docs/images/novel-picture.jpg) | |
+
+## Playtesting
+
+Start the game with `--dev` and these keys work while you play.
+
+| F5: edit the YAML under `--dir`, the line changes in place | F9: a note with the screen and the state |
+|:--|:--|
+| ![Hedda's line is edited in the YAML and F5 shows the new text at the same place](docs/images/playtest-reload.gif) | ![F9 opens a note, a comment is typed and saved](docs/images/playtest-memo.gif) |
+| F7: win rates of the battles here | F8 State: flip a flag, step a number |
+| ![win rates by troop](docs/images/go-zen-balance.jpg) | ![flag.thanked_hedda and chose.toast in the development panel](docs/images/novel-panel.jpg) |
+| F8 Flags: what each event sets and reads | F8 Scenes: jump to an event |
+| ![the flags each event sets and reads](docs/images/novel-flags.jpg) | ![the Scenes tab jumps to the late night](docs/images/playtest-jump.gif) |
+| F8 Command: run a line of YAML | F8 Frames: ticks and frames a second, the slowest Update and Draw |
+| ![a set typed into the Command tab, then the State tab shows the flag](docs/images/playtest-command.gif) | ![the frame meter over the tavern](docs/images/playtest-frames.jpg) |
 
 ## Install
 

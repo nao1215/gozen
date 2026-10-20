@@ -211,7 +211,10 @@ func (g *Game) panelAct(d int) {
 		if evs := g.panelEvents(); p.sel < len(evs) {
 			g.devJump(evs[p.sel], 1)
 		}
-	case tabFlags, tabCommand, tabFrames, numTabs:
+	case tabCommand:
+		// A script types the line (type) and presses OK; a player presses Enter.
+		g.devDo(p.text)
+	case tabFlags, tabFrames, numTabs:
 	}
 }
 
@@ -310,67 +313,105 @@ func (g *Game) drawPanel(screen *ebiten.Image) {
 		p.top = p.sel - rows + 1
 	}
 	y := 52.0
-	line := func(i int, s string) {
-		c := g.th.text
-		if i == p.sel {
-			c = g.th.cursor
-			s = "> " + s
-		} else {
-			s = "  " + s
+	table := func(cells [][]string) {
+		xs := panelColumns(cells, 24+gfx.TextWidth("> ", size), size)
+		for i, row := range cells {
+			if i < p.top || i >= p.top+rows {
+				continue
+			}
+			c := g.th.text
+			if i == p.sel {
+				c = g.th.cursor
+				gfx.DrawTextLeft(screen, ">", 24, y, size, c)
+			}
+			for j, s := range row {
+				gfx.DrawTextLeft(screen, s, xs[j], y, size, c)
+			}
+			y += rowH
 		}
-		gfx.DrawTextLeft(screen, s, 24, y, size, c)
-		y += rowH
 	}
 	switch p.tab {
 	case tabState:
-		uses := g.panelUses()
-		for i, n := range g.stateRows() {
-			if i < p.top || i >= p.top+rows {
-				continue
-			}
-			u := uses[n]
-			w, r := 0, 0
-			if u != nil {
-				w, r = len(u.Sets), len(u.Reads)
-			}
-			line(i, fmt.Sprintf("%-28s %-12s  writes %d  reads %d", n, g.stateValue(n), w, r))
-		}
+		table(g.stateTable())
 	case tabFlags:
 		g.drawFlagTable(screen, y, rows, rowH, size)
 	case tabScenes:
-		for i, id := range g.panelEvents() {
-			if i < p.top || i >= p.top+rows {
-				continue
-			}
-			ev := g.db.Events[id]
-			trig := ev.Trigger
-			if ev.Location != "" {
-				trig += "@" + ev.Location
-			}
-			once := ""
-			if ev.Once {
-				once = "once"
-				if g.st != nil && g.st.Done[id] {
-					once = "done"
-				}
-			}
-			ran := 0
-			if g.st != nil {
-				ran = g.st.Ran[id][0]
-			}
-			read, all := g.readRate(id)
-			rate := "-"
-			if all > 0 {
-				rate = fmt.Sprintf("%d%%", read*100/all)
-			}
-			line(i, fmt.Sprintf("%-22s %-18s %-5s ran %-3d read %s", id, trig, once, ran, rate))
-		}
+		table(g.scenesTable())
 	case tabCommand:
 		gfx.DrawTextLeft(screen, lang.T("YAML の命令を一行（例: set: {flag.met: true}）。Enter で実行"), 24, y, size, g.th.dim)
 		gfx.DrawTextLeft(screen, "> "+p.text+"_", 24, y+rowH*1.5, size, g.th.text)
 	case tabFrames, numTabs:
 	}
 	_ = sw
+}
+
+// panelGap is the room between two columns of the panel's tables.
+const panelGap = 24.0
+
+// panelColumns are the left edges of the columns of a table of cells drawn from x in the
+// panel's font at size: each column starts where the widest cell of the one before it
+// ends, measured in the font, so the values line up whatever the length of a name.
+func panelColumns(cells [][]string, x, size float64) []float64 {
+	var widths []float64
+	for _, row := range cells {
+		for j, s := range row {
+			if j >= len(widths) {
+				widths = append(widths, 0)
+			}
+			widths[j] = max(widths[j], gfx.TextWidth(s, size))
+		}
+	}
+	xs := make([]float64, len(widths))
+	for j := range widths {
+		xs[j] = x
+		x += widths[j] + panelGap
+	}
+	return xs
+}
+
+// stateTable is the state tab: each name, its value and how many places write and read it.
+func (g *Game) stateTable() [][]string {
+	uses := g.panelUses()
+	var out [][]string
+	for _, n := range g.stateRows() {
+		w, r := 0, 0
+		if u := uses[n]; u != nil {
+			w, r = len(u.Sets), len(u.Reads)
+		}
+		out = append(out, []string{n, g.stateValue(n), fmt.Sprintf("writes %d", w), fmt.Sprintf("reads %d", r)})
+	}
+	return out
+}
+
+// scenesTable is the scenes tab: each event, its trigger, whether it runs once, how many
+// times it ran and how much of it was read.
+func (g *Game) scenesTable() [][]string {
+	var out [][]string
+	for _, id := range g.panelEvents() {
+		ev := g.db.Events[id]
+		trig := ev.Trigger
+		if ev.Location != "" {
+			trig += "@" + ev.Location
+		}
+		once := ""
+		if ev.Once {
+			once = "once"
+			if g.st != nil && g.st.Done[id] {
+				once = "done"
+			}
+		}
+		ran := 0
+		if g.st != nil {
+			ran = g.st.Ran[id][0]
+		}
+		read, all := g.readRate(id)
+		rate := "-"
+		if all > 0 {
+			rate = fmt.Sprintf("%d%%", read*100/all)
+		}
+		out = append(out, []string{id, trig, once, fmt.Sprintf("ran %d", ran), "read " + rate})
+	}
+	return out
 }
 
 // panelUses is the index of names, made once for the data (DB.StateUses).
@@ -392,7 +433,13 @@ func (g *Game) drawFlagTable(screen *ebiten.Image, y float64, rows int, rowH, si
 		}
 	}
 	sw, _ := g.screen()
-	const nameW, colW = 220.0, 44.0
+	const colW = 44.0
+	// The flags' columns start after the longest event id, measured in the font.
+	nameW := 0.0
+	for _, id := range g.panelEvents() {
+		nameW = max(nameW, gfx.TextWidth(id, size*0.9))
+	}
+	nameW = min(nameW+panelGap, sw/2)
 	fit := max(0, int((sw-48-nameW)/colW))
 	shown := flags[:min(fit, len(flags))]
 	for j, f := range shown {

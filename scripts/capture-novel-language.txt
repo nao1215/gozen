@@ -1,5 +1,5 @@
 # Novel sample capture (run novel-language): Hedda's line of the toast in English (la###),
-# the settings open and the language changes to Japanese (lb###), the settings close and
+# the settings open and the language changes to Japanese, the line behind them with it (lb###), the settings close and
 # the next line comes in Japanese (lc###). A frame every 5 ticks.
 gap 1
 wait 120
@@ -52,7 +52,7 @@ shot lb006
 wait 2
 shot lb007
 wait 2
-press down 9
+press down 7
 shot lb008
 wait 2
 shot lb009

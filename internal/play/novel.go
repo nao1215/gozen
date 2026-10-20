@@ -5,9 +5,10 @@ import (
 	"math"
 	"slices"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-
 	"github.com/hajimehoshi/ebiten/v2"
+
+	"github.com/nao1215/gozen/internal/event"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 	lang "github.com/nao1215/gozen/internal/text"
@@ -16,6 +17,23 @@ import (
 type logLine struct {
 	name, text string
 	answer     bool
+	// line is the line logged, or asked and pick the question and the option taken, so the
+	// backlog shows them in the language the game shows now (ADR 0027).
+	line  *event.Say
+	asked *event.Choice
+	pick  int
+}
+
+// shown is the entry's speaker and text in the language the game shows now.
+func (l logLine) shown(db *data.DB) (name, text string) {
+	switch {
+	case l.line != nil:
+		s := l.line.Reword(db)
+		return s.Name, s.Text
+	case l.asked != nil && l.pick >= 0 && l.pick < len(l.asked.Options):
+		return "", "→ " + l.asked.Reword(db).Options[l.pick]
+	}
+	return l.name, l.text
 }
 
 func (g *Game) novel() bool { return g.db.Game.UI.Message == "novel" }
@@ -373,7 +391,8 @@ type backlogView struct{ top int }
 
 func (g *Game) logEntryH(i int) float64 {
 	sw, _ := g.screen()
-	return float64(max(1, len(gfx.Wrap(g.backlog[i].text, sizeM, sw-380))))*sizeM*1.4 + 30
+	_, text := g.backlog[i].shown(g.db)
+	return float64(max(1, len(gfx.Wrap(text, sizeM, sw-380))))*sizeM*1.4 + 30
 }
 
 func (g *Game) logLastTop() int {
@@ -411,6 +430,7 @@ func (v *backlogView) draw(g *Game, dst *ebiten.Image) {
 	y := 100.0
 	for i := v.top; i < len(g.backlog); i++ {
 		l := g.backlog[i]
+		l.name, l.text = l.shown(g.db)
 		c := g.th.text
 		if l.answer {
 			c = g.th.accent

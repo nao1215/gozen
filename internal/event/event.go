@@ -110,6 +110,30 @@ type Say struct {
 	Key uint64
 	// Instead is the replacement line used when the speaker is down during battle (instead of data.Say).
 	Instead []Say
+	// text and who are what Text and Name were made from, so Reword can show the line
+	// again in another language (the zero Phrase keeps the text as it is).
+	text, who data.Phrase
+}
+
+// Reword is the line in the language the game shows now (ADR 0027), filled in with the
+// values its {expressions} had when it was first shown.
+func (s Say) Reword(db *data.DB) Say {
+	if s.text.Source != "" {
+		s.Text = data.Again(db, s.text)
+	}
+	if a, ok := db.Actors[s.Actor]; ok {
+		s.Name = data.Again(db, data.Phrase{Source: a.Name, Values: s.who.Values})
+	} else if s.who.Source != "" {
+		s.Name = data.Again(db, s.who)
+	}
+	if len(s.Instead) > 0 {
+		alt := make([]Say, len(s.Instead))
+		for i, l := range s.Instead {
+			alt[i] = l.Reword(db)
+		}
+		s.Instead = alt
+	}
+	return s
 }
 
 // Choice is a question: the screen answers with the index of the option taken.
@@ -120,6 +144,28 @@ type Choice struct {
 	// Keys are the keys of the options' sources (ChoiceKey of the prompt and the label as
 	// written), in the same order: the screen marks an option taken before (ADR 0026).
 	Keys []uint64
+	// prompt and labels are what Prompt and Options were made from (labels is empty, or
+	// has one phrase per option), so Reword can ask again in another language.
+	prompt data.Phrase
+	labels []data.Phrase
+}
+
+// Question is the prompt as a line to read, which Reword shows again in another language.
+func (c Choice) Question() Say { return Say{Text: c.Prompt, text: c.prompt} }
+
+// Reword is the question in the language the game shows now (ADR 0027).
+func (c Choice) Reword(db *data.DB) Choice {
+	if c.prompt.Source != "" {
+		c.Prompt = data.Again(db, c.prompt)
+	}
+	if len(c.labels) == len(c.Options) && len(c.labels) > 0 {
+		opts := make([]string, len(c.Options))
+		for i, p := range c.labels {
+			opts[i] = data.Again(db, p)
+		}
+		c.Options = opts
+	}
+	return c
 }
 
 // SourceKey is the key of a line's source: a 64-bit FNV-1a hash of who and text as written in
@@ -489,6 +535,7 @@ func (r *Runner) run(c *data.Command) Request {
 	case "choice":
 		var labels, ids []string
 		var keys []uint64
+		var words []data.Phrase
 		r.options, r.optionAt = nil, nil
 		for i, o := range c.Choice {
 			ok, err := o.When.Bool(env)
@@ -496,7 +543,8 @@ func (r *Runner) run(c *data.Command) Request {
 			if ok {
 				r.options = append(r.options, o)
 				r.optionAt = append(r.optionAt, i)
-				labels = append(labels, data.Render(r.db.Tr(o.Label), env))
+				label, p := data.Fill(r.db, o.Label, env)
+				labels, words = append(labels, label), append(words, p)
 				ids = append(ids, o.ID)
 				keys = append(keys, ChoiceKey(c.Prompt, o.Label))
 			}
@@ -506,7 +554,8 @@ func (r *Runner) run(c *data.Command) Request {
 			return nil
 		}
 		r.asked = c
-		return Choice{Prompt: data.Render(r.db.Tr(c.Prompt), env), Options: labels, IDs: ids, Keys: keys}
+		prompt, p := data.Fill(r.db, c.Prompt, env)
+		return Choice{Prompt: prompt, Options: labels, IDs: ids, Keys: keys, prompt: p, labels: words}
 	case "ran":
 		r.st.MarkRan(c.Ran)
 	case "done":
@@ -793,7 +842,8 @@ func (r *Runner) say(s *data.Say, env expr.Env) Request {
 
 // line builds one line (false when it has nothing to show).
 func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
-	out := Say{Text: data.Render(r.db.Tr(s.Text), env), Name: s.Who, Key: SourceKey(s.Who, s.Text)}
+	out := Say{Name: s.Who, Key: SourceKey(s.Who, s.Text)}
+	out.Text, out.text = data.Fill(r.db, s.Text, env)
 	if s.Voice != "" {
 		out.Voice, _ = r.db.VoicePath(s.Who, s.Voice)
 	}
@@ -818,7 +868,10 @@ func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
 		}
 		out.Right = s.Side != "left"
 	}
-	out.Name = data.Render(r.db.Tr(out.Name), env)
+	out.Name, out.who = data.Fill(r.db, out.Name, env)
+	if out.Actor != "" {
+		out.who.Source = "" // Reword takes the actor's name as the language shows it
+	}
 	if strings.TrimSpace(out.Text) == "" && out.Face == "" {
 		return Say{}, false
 	}

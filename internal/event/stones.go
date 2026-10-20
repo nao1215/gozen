@@ -48,7 +48,8 @@ func (r *Runner) stones(verb string, c *data.Command, env expr.Env) Request {
 		}
 		r.pick = func(n int) { r.fillOffer(name, offers[n].Set, r.st.Actors[offers[n].Actor]) }
 		r.asked = c
-		return Choice{Prompt: data.Render(r.db.Tr(c.Prompt), env), Options: labels}
+		prompt, p := data.Fill(r.db, c.Prompt, env)
+		return Choice{Prompt: prompt, Options: labels, prompt: p}
 	case "stone_wearer":
 		name := c.StoneWearer
 		set := optional.Value[string](r.st.Vars[name+"_set"])
@@ -68,7 +69,8 @@ func (r *Runner) stones(verb string, c *data.Command, env expr.Env) Request {
 			}
 		}
 		r.asked = c
-		return Choice{Prompt: data.Render(r.db.Tr(c.Prompt), env), Options: labels}
+		prompt, p := data.Fill(r.db, c.Prompt, env)
+		return Choice{Prompt: prompt, Options: labels, prompt: p}
 	case "stone_decline":
 		r.setVar(c.StoneDecline+"_no", stoneHoldingAll(r.st))
 	case "equip_stones":

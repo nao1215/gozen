@@ -79,6 +79,30 @@ runs:
     sample: novel
     script: scripts/capture-novel-panel.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  novel-ending:
+    sample: novel
+    script: scripts/capture-novel-ending.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, with_brenna, --line, "7", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  # The hot reload (F5): the game runs from a copy of its files ({game}, --dir), and
+  # `edit` changes a line in the copy once the shot `after` is written.
+  playtest-reload:
+    sample: novel
+    script: scripts/capture-playtest-reload.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --dir, "{game}", --event, toast, --line, "3", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
+    edit:
+      copy: examples/novel/game
+      after: rl011
+      file: data/story.yaml
+      old: "Somebody gets the first toast. Make it a good one."
+      new: "First toast is yours. Keep it short, the cider is getting cold."
+  playtest-memo:
+    sample: novel
+    script: scripts/capture-playtest-memo.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --line, "3", --memos, "{out}/memos", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  playtest-panel:
+    sample: novel
+    script: scripts/capture-playtest-panel.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --line, "3", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   puppet-tour:
     sample: puppet
     args: [--tour, --frames, "{out}/frames"]
@@ -156,10 +180,6 @@ images:
     run: opening
     shot: s-title
     jpeg: {width: 960, height: 540, quality: 3}
-  go-zen-picture.jpg:
-    run: opening
-    shot: s-cg
-    jpeg: {width: 960, height: 540, quality: 3}
   go-zen-shop.jpg:
     run: shop
     shot: s-shop
@@ -211,6 +231,38 @@ images:
     run: novel-panel
     shot: s-panel-flags
     jpeg: {width: 960, height: 540, quality: 3}
+  novel-picture.jpg:
+    run: novel-ending
+    shot: s-ending
+    jpeg: {width: 960, height: 540, quality: 3}
+  # The README's Playtesting section, beside the balance panel (F7) and the panel's State
+  # and Flags tabs (novel-panel.jpg, novel-flags.jpg).
+  playtest-reload.gif:
+    run: playtest-reload
+    frames:
+      - {shots: "rl*"}
+    gif: {fps: 12, width: 960, height: 540, colors: 128}
+  playtest-memo.gif:
+    run: playtest-memo
+    frames:
+      - {shots: "me*"}
+    gif: {fps: 12, width: 960, height: 540, colors: 128}
+  playtest-command.gif:
+    run: playtest-panel
+    frames:
+      - {shots: "pc*"}
+    gif: {fps: 12, width: 960, height: 540, colors: 96}
+  playtest-jump.gif:
+    run: playtest-panel
+    frames:
+      - {shots: "pj*"}
+    gif: {fps: 12, width: 960, height: 540, colors: 128}
+  # The meter's numbers change from run to run; they are a small part of the picture.
+  playtest-frames.jpg:
+    run: playtest-panel
+    shot: s-frames
+    jpeg: {width: 960, height: 540, quality: 3}
+    tolerance: 0.03
   puppet.gif:
     run: puppet-tour
     frames:
