@@ -98,6 +98,7 @@ locations:
           - heal: all
           - say: {who: Pomm, face: pomm/normal.png, text: "Soup, a bed, and a blanket that smells like bread. Sleep."}
           - say: "Everyone wakes up warm, fed, and a little sorry to leave the bed."
+      - {label: Skill tree, do: [{open: skills}]}
       - {label: Save, do: [{save: true}]}
       - label: Ask Pomm how to fight smarter
         when: flag.ox_joined

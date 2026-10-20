@@ -423,7 +423,14 @@ func New(opts Options) (_ *Game, err error) {
 			return nil, fmt.Errorf("title font: %w", err)
 		}
 	}
-	if err := gfx.LoadTitleFont(titleFont); err != nil {
+	var subFont []byte
+	if f.Subtitle != "" {
+		var err error
+		if subFont, err = fs.ReadFile(opts.FS, "assets/"+f.Subtitle); err != nil {
+			return nil, fmt.Errorf("subtitle font: %w", err)
+		}
+	}
+	if err := gfx.LoadTitleFont(titleFont, subFont); err != nil {
 		return nil, fmt.Errorf("title font: %w", err)
 	}
 	if opts.Autopilot != nil {

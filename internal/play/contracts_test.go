@@ -175,6 +175,31 @@ func TestSaveAndReadProgressWriteFailure(t *testing.T) {
 	g.readDirty = false
 }
 
+// TestScriptPlayEvery: `play NAME EVERY` films a battle every EVERY ticks, 20 without it.
+func TestScriptPlayEvery(t *testing.T) {
+	for _, c := range []struct {
+		src  string
+		want int
+	}{{"play fight", 3}, {"play fight 6", 10}} {
+		s, err := parseScript(c.src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s.inBattle = func() bool { return true }
+		shots := 0
+		for range 60 {
+			s.step(&input{})
+			if s.shot != "" {
+				shots++
+				s.shot = ""
+			}
+		}
+		if shots != c.want {
+			t.Errorf("%q: %d shots in 60 ticks, want %d", c.src, shots, c.want)
+		}
+	}
+}
+
 func TestScriptValidation(t *testing.T) {
 	for _, s := range []string{"unknown", "wait -1", "press unknown", "shot ../escape", strings.Repeat("x", 70000)} {
 		if _, err := parseScript(s); err == nil {

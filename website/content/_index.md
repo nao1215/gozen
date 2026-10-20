@@ -6,7 +6,7 @@ Gozen is a 2D RPG framework for Go and [Ebitengine](https://ebitengine.org/). Yo
 
 The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan, an ebiten gozen (御膳) is a set meal on one tray: shrimp tempura with soba, small side dishes, and a sweet such as dango. Gozen is that tray for Ebitengine: the engine served with everything an RPG needs. The name also starts with Go.
 
-![Go Zen, the Gozen sample game: a talk with moving portraits](/images/go-zen.gif)
+![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](/images/go-zen.gif)
 
 ## Try it in 30 seconds
 
@@ -59,15 +59,17 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 
 | Conversation | Event picture |
 |:--|:--|
-| ![Maren talks, a moving portrait](/images/go-zen-talk.jpg) | ![Maren with a map by the dry fountain](/images/go-zen-picture.jpg) |
+| ![Maren talks, a moving portrait that blinks and changes its face](/images/go-zen-face.gif) | ![Maren with a map by the dry fountain](/images/go-zen-picture.jpg) |
 | Painted scene | Town map |
-| ![the plaza with a balloon](/images/go-zen-plaza.jpg) | ![the town map with name plates](/images/go-zen-map.jpg) |
+| ![Maren walks the plaza and Ox says a line in a balloon](/images/go-zen-plaza.gif) | ![the party's face walks the road to the well](/images/go-zen-map.gif) |
 | First-person dungeon | Shop |
-| ![a brick corridor and the map](/images/go-zen-dungeon.jpg) | ![the shop's goods](/images/go-zen-shop.jpg) |
+| ![steps and turns in a brick corridor](/images/go-zen-dungeon.gif) | ![the shop's goods](/images/go-zen-shop.jpg) |
 | Battle | Cut-in |
-| ![four against the Brass Warden](/images/go-zen-battle.jpg) | ![Ox's Shield Rush cut-in](/images/go-zen-cutin.jpg) |
+| ![four against the Brass Warden, with damage numbers](/images/go-zen-battle.gif) | ![Ox's Shield Rush cut-in](/images/go-zen-cutin.gif) |
 | Balance panel (F7) | Title |
 | ![win rates by troop](/images/go-zen-balance.jpg) | ![the title screen](/images/go-zen-title.jpg) |
+| Skill tree | |
+| ![Maren's skill tree with Ink Burst chosen](/images/go-zen-tree.jpg) | |
 
 ## Where to go
 

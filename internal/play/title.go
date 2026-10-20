@@ -115,9 +115,26 @@ func (t *title) draw(g *Game, dst *ebiten.Image) {
 	if g.titleCentered() {
 		tx = sw / 2
 	}
-	gfx.DrawTitleText(dst, gm.Title, tx, sh*0.1, 96, 0.12, g.th.text, withAlpha(g.th.window, 0xff), a)
+	tt := gm.TitleText
+	size, track, subSize, subTrack := 96.0, 0.12, 30.0, 0.3
+	if tt.Size > 0 {
+		size = tt.Size
+	}
+	if tt.Tracking != nil {
+		track = *tt.Tracking
+	}
+	if tt.SubtitleSize > 0 {
+		subSize = tt.SubtitleSize
+	}
+	if tt.SubtitleTracking != nil {
+		subTrack = *tt.SubtitleTracking
+	}
+	fill, edge := tt.Color.Or(g.th.text), tt.Edge.Or(withAlpha(g.th.window, 0xff))
+	gfx.DrawTitleText(dst, gm.Title, tx, sh*0.1, size, track, fill, edge, a, false)
 	if gm.Subtitle != "" {
-		gfx.DrawTitleText(dst, gm.Subtitle, tx, sh*0.1+124, 30, 0.3, g.th.text, g.th.window, a)
+		// 124 pixels below a title of 96, as before title_text.
+		subEdge := tt.Edge.Or(g.th.window)
+		gfx.DrawTitleText(dst, gm.Subtitle, tx, sh*0.1+size*124/96, subSize, subTrack, fill, subEdge, a, true)
 	}
 	t.menu.draw(g, dst, true)
 

@@ -28,7 +28,7 @@ The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan
 
 Documentation: https://nao1215.github.io/gozen/
 
-![Go Zen, the Gozen sample game: a talk with moving portraits](docs/images/go-zen.gif)
+![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](docs/images/go-zen.gif)
 
 ## Try it
 
@@ -73,15 +73,17 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 
 | Conversation | Event picture |
 |:--|:--|
-| ![Maren talks, a moving portrait](docs/images/go-zen-talk.jpg) | ![Maren with a map by the dry fountain](docs/images/go-zen-picture.jpg) |
+| ![Maren talks, a moving portrait that blinks and changes its face](docs/images/go-zen-face.gif) | ![Maren with a map by the dry fountain](docs/images/go-zen-picture.jpg) |
 | Painted scene | Town map |
-| ![the plaza with a balloon](docs/images/go-zen-plaza.jpg) | ![the town map with name plates](docs/images/go-zen-map.jpg) |
+| ![Maren walks the plaza and Ox says a line in a balloon](docs/images/go-zen-plaza.gif) | ![the party's face walks the road to the well](docs/images/go-zen-map.gif) |
 | First-person dungeon | Shop |
-| ![a brick corridor and the map](docs/images/go-zen-dungeon.jpg) | ![the shop's goods](docs/images/go-zen-shop.jpg) |
+| ![steps and turns in a brick corridor](docs/images/go-zen-dungeon.gif) | ![the shop's goods](docs/images/go-zen-shop.jpg) |
 | Battle | Cut-in |
-| ![four against the Brass Warden](docs/images/go-zen-battle.jpg) | ![Ox's Shield Rush cut-in](docs/images/go-zen-cutin.jpg) |
+| ![four against the Brass Warden, with damage numbers](docs/images/go-zen-battle.gif) | ![Ox's Shield Rush cut-in](docs/images/go-zen-cutin.gif) |
 | Balance panel (F7) | Title |
 | ![win rates by troop](docs/images/go-zen-balance.jpg) | ![the title screen](docs/images/go-zen-title.jpg) |
+| Skill tree | |
+| ![Maren's skill tree with Ink Burst chosen](docs/images/go-zen-tree.jpg) | |
 
 ## Install
 
@@ -110,33 +112,6 @@ go get github.com/nao1215/gozen@latest
 ```
 
 The window needs the platform graphics libraries: [OS setup](https://nao1215.github.io/gozen/install/#what-the-window-needs).
-
-## Verifying release integrity
-
-Each release has a cosign-signed `checksums.txt`, an SPDX SBOM per archive, SLSA provenance (`multiple.intoto.jsonl`), and the dependency licenses under `THIRD_PARTY_LICENSES/`.
-
-<!-- verify: skip needs the files of a published release -->
-```sh
-cosign verify-blob \
-  --bundle checksums.txt.sigstore.json \
-  --certificate-identity-regexp 'https://github.com/nao1215/gozen/\.github/workflows/release\.yml@refs/tags/.*' \
-  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-  checksums.txt
-sha256sum --check --ignore-missing checksums.txt
-```
-
-<!-- verify: skip needs a published release and a GitHub login -->
-```sh
-gh attestation verify gozen_<version>_<os>_<arch>.tar.gz --repo nao1215/gozen
-```
-
-<!-- verify: skip needs the files of a published release -->
-```sh
-slsa-verifier verify-artifact gozen_<version>_<os>_<arch>.tar.gz \
-  --provenance-path multiple.intoto.jsonl \
-  --source-uri github.com/nao1215/gozen \
-  --source-tag v<version>
-```
 
 ## Recipes
 

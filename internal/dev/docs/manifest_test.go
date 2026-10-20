@@ -58,6 +58,7 @@ type run struct {
 
 // pick chooses frames of a run by their shot names and the trace.
 type pick struct {
+	Run    string `yaml:"run"` // in frames, take them from this run instead of the image's
 	Shots  string `yaml:"shots"`
 	Every  int    `yaml:"every"`
 	Near   string `yaml:"near"`
@@ -169,6 +170,9 @@ func (m manifest) validate(readFile func(string) ([]byte, error)) []string {
 		for _, p := range append(slices.Clone(im.Frames), derefPick(im.Pick)...) {
 			if _, err := path.Match(p.Shots, "x"); err != nil || p.Shots == "" {
 				bad = append(bad, fmt.Sprintf("%s: bad shots pattern %q", where, p.Shots))
+			}
+			if _, ok := m.Runs[p.Run]; p.Run != "" && !ok {
+				bad = append(bad, fmt.Sprintf("%s: frames from an unknown run %q", where, p.Run))
 			}
 		}
 	}
@@ -425,6 +429,7 @@ func TestManifestValidate(t *testing.T) {
 			"two.jpg":   {Run: "r", Shot: "two", JPEG: &jpegEncoding{}},
 			"three.gif": {Run: "r", Shot: "one", JPEG: &jpegEncoding{}},
 			"four.gif":  {Run: "x", Frames: []pick{{Shots: "["}}, GIF: &gifEncoding{}},
+			"five.gif":  {Run: "r", Frames: []pick{{Shots: "a*"}, {Run: "y", Shots: "b*"}}, GIF: &gifEncoding{}},
 		},
 	}
 	got := strings.Join(m.validate(read), "\n")
@@ -436,6 +441,7 @@ func TestManifestValidate(t *testing.T) {
 		"image three.gif: a .jpg is one frame",
 		"image four.gif: unknown run",
 		`image four.gif: bad shots pattern "["`,
+		`image five.gif: frames from an unknown run "y"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in:\n%s", want, got)

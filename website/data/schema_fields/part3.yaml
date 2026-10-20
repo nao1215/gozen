@@ -61,6 +61,7 @@ Fonts:
   _: "The font files used by the game, as paths under assets/. All are optional: without them the text is set in Go Regular, which Gozen carries and which has Latin letters only."
   pop: "The font used for pop-up text such as damage numbers."
   regular: "The font used for ordinary text. When omitted, the built-in Go Regular is used; it has Latin letters only, so a game in Japanese or another script names its own font here. gozen check warns about characters the built-in font cannot draw."
+  subtitle: "The font of the title screen's subtitle. When empty, the title's font is used."
   title: "The font of the title screen's title and subtitle. When empty, the regular font is used."
 Front:
   _: "A part of a painted stage that stands up from the ground (a pillar or a stall) and hides people standing behind it."
@@ -136,6 +137,7 @@ Game:
   title_art: "A picture drawn on the title screen, such as a logo or key art."
   title_background: "The background picture of the title screen."
   title_figures: "Pictures standing on the title screen in order, with later ones in front. When used, `title_art` is not drawn."
+  title_text: "How the title screen letters the title and the subtitle: sizes, the space between letters and colors. Needs schema version 3."
   title_music: "The song and mood played on the title screen."
   ui: "The look of the game's menus and windows."
   verbs: "Names of custom commands implemented in Go. A declared name may be used as a command."

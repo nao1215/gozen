@@ -34,6 +34,7 @@ UIStyle:
   shadow: "The text shadow color."
   stage_drop: "Per standing picture, how far to move it down as a fraction of the screen height, to even out heights. The default is 0."
   stage_scale: "Per standing picture, a size multiplier keyed by picture file. The default is 1."
+  talk_portrait: "Where the speaker's standing picture stands beside the `box` message window, to bring the speaker closer. The default is a picture as tall as the screen at the window's left end; needs schema version 3."
   text: "The text color."
   window: "The window background color."
 Usage:

@@ -1,0 +1,13 @@
+# Go Zen capture of the skill tree (run tree): at the Dry Cup, choose Skill tree and move the
+# cursor to Maren's Ink Burst, whose description shows below (s-tree).
+wait 60
+press down
+wait 10
+press down
+wait 10
+press ok
+wait 30
+press right
+wait 20
+shot s-tree
+quit

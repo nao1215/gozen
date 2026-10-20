@@ -130,7 +130,8 @@ func makeImages(t *testing.T, m manifest, rootAbs, work, out string) []string {
 			args[i] = strings.ReplaceAll(a, "{out}", dir)
 		}
 		t.Logf("run %s: %s %s", name, m.Samples[r.Sample].Package, strings.Join(r.Args, " "))
-		command(t, rootAbs, 5*time.Minute, bins[r.Sample], args...)
+		// A filmed run writes a 1920x1080 PNG every few ticks; on a busy machine that is slow.
+		command(t, rootAbs, 15*time.Minute, bins[r.Sample], args...)
 		if len(r.Check) > 0 {
 			command(t, rootAbs, time.Minute, r.Check[0], append(slices.Clone(r.Check[1:]), dir)...)
 		}
@@ -149,7 +150,7 @@ func makeImages(t *testing.T, m manifest, rootAbs, work, out string) []string {
 		switch {
 		case im.GIF != nil:
 			var frames []string
-			frames, err = p.frames(im.Frames)
+			frames, err = montage(runs, im)
 			if err == nil {
 				err = encodeGIF(t, work, frames, *im.GIF, dst)
 			}
@@ -394,6 +395,32 @@ func (p *played) frames(picks []pick) ([]string, error) {
 		if keep[n] {
 			files = append(files, p.files[n])
 		}
+	}
+	return files, nil
+}
+
+// montage returns the frames of an animation that may join several runs: the
+// picks of each run, in the order the runs first appear in the list.
+func montage(runs map[string]*played, im image) ([]string, error) {
+	var order []string
+	groups := map[string][]pick{}
+	for _, s := range im.Frames {
+		r := s.Run
+		if r == "" {
+			r = im.Run
+		}
+		if _, seen := groups[r]; !seen {
+			order = append(order, r)
+		}
+		groups[r] = append(groups[r], s)
+	}
+	var files []string
+	for _, r := range order {
+		f, err := runs[r].frames(groups[r])
+		if err != nil {
+			return nil, fmt.Errorf("run %s: %w", r, err)
+		}
+		files = append(files, f...)
 	}
 	return files, nil
 }

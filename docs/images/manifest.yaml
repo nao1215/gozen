@@ -33,6 +33,18 @@ runs:
     sample: go-zen
     script: scripts/capture-go-zen-map.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --start, town, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  plaza:
+    sample: go-zen
+    script: scripts/capture-go-zen-plaza.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, plaza, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  face:
+    sample: go-zen
+    script: scripts/capture-go-zen-face.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, opening, --line, "12", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  tree:
+    sample: go-zen
+    script: scripts/capture-go-zen-tree.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, inn, --party, "maren,ox,tilly,kes", --level, "6", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   shop:
     sample: go-zen
     script: scripts/capture-go-zen-shop.txt
@@ -44,7 +56,7 @@ runs:
   battle:
     sample: go-zen
     script: scripts/capture-go-zen-battle.txt
-    args: [--dev, --mute, --seed, "7", --window, "1", --start, b2, --party, "maren,ox,tilly,kes", --level, "6", --battle, warden, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, b2, --party, "maren,ox,tilly,kes", --level, "6", --battle, warden, --until, "950", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
   balance:
     sample: go-zen
     script: scripts/capture-go-zen-balance.txt
@@ -63,16 +75,65 @@ runs:
 #                             `middle: true` the middle frame
 #   frames: [pick, ...]       the frames of an animation; `every: N` keeps
 #                             every Nth, `from`/`to` keep the frames from..to
-#                             ticks after `near: EVENT`
+#                             ticks after `near: EVENT`; `run: NAME` takes a
+#                             pick from another run, and the runs follow one
+#                             another in the order they first appear
 #   jpeg: {width, height, quality}             (quality is ffmpeg's -q:v)
 #   gif: {fps, width, height, colors, crop}    (crop is ffmpeg's w:h:x:y)
 #   tolerance: share of pixels that may differ in the stale check (default 0.02)
+#
+# The captures take a frame every 5 ticks (12 a second), and the GIFs play
+# them at the game's speed (fps 12), 960 wide. The README's first one, at
+# fps 10, walks the map at a little under twice the speed.
 images:
+  # The README's first picture: the town map, the dungeon, a battle with its
+  # cut-in, and a talk, about 12 seconds.
   go-zen.gif:
-    run: opening
+    run: map
     frames:
-      - {shots: "t[0-9][0-9][0-9]"}
-    gif: {fps: 6, width: 640, height: 360, colors: 128}
+      - {shots: "m*", every: 2}
+      - {run: dungeon, shots: "da*"}
+      - {run: battle, shots: "fight_b*", every: 2, near: cutin, from: -725, to: -665}
+      - {run: battle, shots: "fight_b*", every: 2, near: cutin, from: -560, to: -500}
+      - {run: battle, shots: "fight_b*", every: 2, near: cutin, from: -185, to: -125}
+      - {run: battle, shots: "fight_b*", near: cutin, from: -5, to: 110}
+      - {run: face, shots: "fa01[4-9]"}
+      - {run: face, shots: "fb0[01][0-9]"}
+    gif: {fps: 10, width: 960, height: 540, colors: 96}
+  go-zen-face.gif:
+    run: face
+    frames:
+      - {shots: "f*"}
+    gif: {fps: 12, width: 960, height: 540, colors: 128, crop: "1280:720:0:0"}
+  go-zen-plaza.gif:
+    run: plaza
+    frames:
+      - {shots: "p*"}
+    gif: {fps: 12, width: 960, height: 540, colors: 96}
+  go-zen-map.gif:
+    run: map
+    frames:
+      - {shots: "m*"}
+    gif: {fps: 12, width: 960, height: 540, colors: 128}
+  go-zen-dungeon.gif:
+    run: dungeon
+    frames:
+      - {shots: "d*"}
+    gif: {fps: 12, width: 960, height: 540, colors: 96}
+  go-zen-battle.gif:
+    run: battle
+    frames:
+      - {shots: "fight_b*", near: cutin, from: -290, to: -110}
+    gif: {fps: 12, width: 960, height: 540, colors: 96}
+  go-zen-cutin.gif:
+    run: battle
+    frames:
+      - {shots: "fight_b*", near: cutin, from: -10, to: 120}
+    gif: {fps: 12, width: 960, height: 540, colors: 128}
+  go-zen-tree.jpg:
+    run: tree
+    shot: s-tree
+    jpeg: {width: 960, height: 540, quality: 3}
   go-zen-title.jpg:
     run: opening
     shot: s-title
@@ -81,33 +142,9 @@ images:
     run: opening
     shot: s-cg
     jpeg: {width: 960, height: 540, quality: 3}
-  go-zen-talk.jpg:
-    run: opening
-    shot: s-talk
-    jpeg: {width: 960, height: 540, quality: 3}
-  go-zen-plaza.jpg:
-    run: opening
-    shot: s-plaza
-    jpeg: {width: 960, height: 540, quality: 3}
-  go-zen-map.jpg:
-    run: map
-    shot: s-map
-    jpeg: {width: 960, height: 540, quality: 3}
   go-zen-shop.jpg:
     run: shop
     shot: s-shop
-    jpeg: {width: 960, height: 540, quality: 3}
-  go-zen-dungeon.jpg:
-    run: dungeon
-    shot: s-dungeon
-    jpeg: {width: 960, height: 540, quality: 3}
-  go-zen-battle.jpg:
-    run: battle
-    pick: {shots: "fight_b*", before: cutin}
-    jpeg: {width: 960, height: 540, quality: 3}
-  go-zen-cutin.jpg:
-    run: battle
-    pick: {shots: "fight_b*", near: cutin, at: 30}
     jpeg: {width: 960, height: 540, quality: 3}
   go-zen-balance.jpg:
     run: balance

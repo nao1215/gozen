@@ -12,7 +12,10 @@ source code is separate and is licensed under the MIT license in the repository
 root. CC BY 4.0 grants only the rights the author holds in these works.
 
 The font fonts/mplus-1p-regular.ttf is not covered by this license: it is M+ 1p by
-the M+ FONTS PROJECT under the M+ FONTS LICENSE (see ASSETS.md).
+the M+ FONTS PROJECT under the M+ FONTS LICENSE (see ASSETS.md). The fonts
+fonts/uncial-antiqua-regular.ttf (Uncial Antiqua) and fonts/cinzel.ttf (Cinzel) are
+not covered either: they are under the SIL Open Font License 1.1, whose text with
+their copyright notices is in fonts/OFL-uncial-antiqua.txt and fonts/OFL-cinzel.txt.
 
 The license text follows.
 

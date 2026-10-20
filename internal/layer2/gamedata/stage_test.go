@@ -150,6 +150,35 @@ func TestBalloonSize(t *testing.T) {
 	}
 }
 
+// TestTalkPortrait: game.yaml ui.talk_portrait is in fractions of the screen, at version 3.
+func TestTalkPortrait(t *testing.T) {
+	for _, c := range []struct{ head, want string }{
+		{"schema_version: 3\nid: b\nui: {talk_portrait: {x: 0.2, bottom: 1.9, height: 2}}\n", ""},
+		{"schema_version: 3\nid: b\nui: {talk_portrait: {x: 1.5}}\n", "ui.talk_portrait: want x from 0 to 1"},
+		{"schema_version: 3\nid: b\nui: {talk_portrait: {height: -1}}\n", "ui.talk_portrait: want x from 0 to 1"},
+		{"schema_version: 2\nid: b\nui: {talk_portrait: {height: 2}}\n", "ui.talk_portrait needs schema_version: 3"},
+	} {
+		_, err := testgame.TryLoad(map[string]string{"game.yaml": c.head + testgame.Game})
+		if c.want == "" && err != nil || c.want != "" && (err == nil || !strings.Contains(err.Error(), c.want)) {
+			t.Errorf("%q: %v", c.head, err)
+		}
+	}
+}
+
+// TestTitleText: game.yaml title_text has sizes and tracking of 0 or more, at version 3.
+func TestTitleText(t *testing.T) {
+	for _, c := range []struct{ head, want string }{
+		{"schema_version: 3\nid: b\ntitle_text: {size: 160, tracking: 0, color: \"#ffffff\"}\n", ""},
+		{"schema_version: 3\nid: b\ntitle_text: {subtitle_tracking: -0.1}\n", "title_text: sizes and tracking must be 0 or more"},
+		{"schema_version: 2\nid: b\ntitle_text: {size: 160}\n", "title_text needs schema_version: 3"},
+	} {
+		_, err := testgame.TryLoad(map[string]string{"game.yaml": c.head + testgame.Game})
+		if c.want == "" && err != nil || c.want != "" && (err == nil || !strings.Contains(err.Error(), c.want)) {
+			t.Errorf("%q: %v", c.head, err)
+		}
+	}
+}
+
 // TestFaceWarnings warns of the scenes' pictures without a usable face box.
 func TestFaceWarnings(t *testing.T) {
 	for _, c := range []struct{ faces, want string }{

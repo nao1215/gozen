@@ -6,6 +6,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/nao1215/gozen/internal/event"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 )
 
@@ -236,11 +237,26 @@ func (t *talk) draw(g *Game, dst *ebiten.Image) {
 		if t.still {
 			rise = 1
 		}
+		bottom, tall := sh+120, sh*1.02
+		if tp := g.db.Game.UI.TalkPortrait; tp != (data.TalkPortrait{}) {
+			if tp.X > 0 {
+				cx = sw * tp.X
+				if s.Right {
+					cx = sw * (1 - tp.X)
+				}
+			}
+			if tp.Bottom > 0 {
+				bottom = sh * tp.Bottom
+			}
+			if tp.Height > 0 {
+				tall = sh * tp.Height
+			}
+		}
 		if p, _ := g.talkPuppet(s); p != nil {
 			// A moving portrait stands like a tall picture, whatever its size.
-			g.drawPuppet(dst, p, cx, sh+120, sh*1.02, float32(rise), s.Right)
+			g.drawPuppet(dst, p, cx, bottom, tall, float32(rise), s.Right)
 		} else if ih >= 600 {
-			g.drawStanding(dst, s.Face, cx, sh+120, sh*1.02, float32(rise), s.Right, nil)
+			g.drawStanding(dst, s.Face, cx, bottom, tall, float32(rise), s.Right, nil)
 		} else {
 			g.drawStanding(dst, s.Face, cx, y+10, math.Min(ih, 280), float32(rise), false, nil)
 		}

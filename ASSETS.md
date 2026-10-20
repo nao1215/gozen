@@ -5,6 +5,7 @@
 | Source code, YAML game data, dialogue and the `examples/` games | [MIT](LICENSE) |
 | Go Zen sample pictures and music in `examples/go-zen/game/assets/` (a module of its own, not in the gozen module) | CC BY 4.0, see [examples/go-zen/game/assets/LICENSE](examples/go-zen/game/assets/LICENSE) and [examples/go-zen/ASSETS.md](examples/go-zen/ASSETS.md) |
 | M+ 1p font of the Go Zen sample (`examples/go-zen/game/assets/fonts/`) | M+ FONTS LICENSE, see [examples/go-zen/ASSETS.md](examples/go-zen/ASSETS.md) |
+| Uncial Antiqua and Cinzel, the title fonts of the Go Zen sample (`examples/go-zen/game/assets/fonts/`) | SIL Open Font License 1.1, the texts are next to the fonts; see [examples/go-zen/ASSETS.md](examples/go-zen/ASSETS.md) |
 | Showcase GIF and screenshots in `docs/images/` | The pictures inside are CC BY 4.0; the rest MIT |
 | Go Regular font built into the engine (`golang.org/x/image/font/gofont/goregular`, Bigelow & Holmes). A game whose game.yaml has no `fonts.regular` (the minimal example among them) sets its text in it. It has Latin letters only | BSD notice below |
 | CLI synthetic pattern images and catalog (`docs/examples/production/`) | MIT |

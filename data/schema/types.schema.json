@@ -5582,6 +5582,19 @@
           },
           "x-type": "string"
         },
+        "subtitle": {
+          "description": "The font of the title screen's subtitle. When empty, the title's font is used.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string (the title's font)",
+            "legacy_default": "empty string (the title's font)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "string"
+        },
         "title": {
           "description": "The font of the title screen's title and subtitle. When empty, the regular font is used.",
           "type": "string",
@@ -6636,6 +6649,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "[MusicCue](#musiccue) or string"
+        },
+        "title_text": {
+          "$ref": "#/$defs/TitleText",
+          "description": "How the title screen letters the title and the subtitle: sizes, the space between letters and colors. Needs schema version 3.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "[TitleText](#titletext)"
         },
         "ui": {
           "$ref": "#/$defs/UIStyle",
@@ -11712,6 +11738,52 @@
       ],
       "type": "object"
     },
+    "TalkPortrait": {
+      "additionalProperties": false,
+      "description": "Where the speaker's standing picture or moving portrait stands beside the `box` message window, in fractions of the screen. A height above 1 with the bottom below the screen shows only the upper body. The speaker on the right stands mirrored.",
+      "properties": {
+        "bottom": {
+          "description": "Where its bottom edge stands, as a fraction of the screen height, from 0 to 4. The default is 120 pixels below the screen.",
+          "type": "number",
+          "x-contract": {
+            "default": "0 (120 pixels below the screen)",
+            "legacy_default": "0 (120 pixels below the screen)",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "number"
+        },
+        "height": {
+          "description": "Its height as a fraction of the screen height, from 0 to 4. The default is 1.02.",
+          "type": "number",
+          "x-contract": {
+            "default": "0 (1.02 times the screen height)",
+            "legacy_default": "0 (1.02 times the screen height)",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "number"
+        },
+        "x": {
+          "description": "Its horizontal center as a fraction of the screen width, from 0 to 1; the right speaker stands at 1 minus it. The default is 230 pixels right of the window's left end.",
+          "type": "number",
+          "x-contract": {
+            "default": "0 (230 pixels right of the window's left end)",
+            "legacy_default": "0 (230 pixels right of the window's left end)",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
     "Target": {
       "anyOf": [
         {
@@ -12392,6 +12464,93 @@
       "required": [
         "file"
       ],
+      "type": "object"
+    },
+    "TitleText": {
+      "additionalProperties": false,
+      "description": "How the title screen letters the title and the subtitle. Sizes are in the screen's pixels; tracking is the space between letters as a part of the size.",
+      "properties": {
+        "color": {
+          "description": "The color that fills the letters. The default is the `ui` text color.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the `ui` text color)",
+            "legacy_default": "no color (the `ui` text color)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "color string"
+        },
+        "edge": {
+          "description": "The color of the letters' outline. The default is the `ui` window color.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the `ui` window color)",
+            "legacy_default": "no color (the `ui` window color)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "color string"
+        },
+        "size": {
+          "description": "The title's letter size in pixels. The default is 96.",
+          "type": "number",
+          "x-contract": {
+            "default": "0 (96 pixels)",
+            "legacy_default": "0 (96 pixels)",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "number"
+        },
+        "subtitle_size": {
+          "description": "The subtitle's letter size in pixels. The default is 30.",
+          "type": "number",
+          "x-contract": {
+            "default": "0 (30 pixels)",
+            "legacy_default": "0 (30 pixels)",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "number"
+        },
+        "subtitle_tracking": {
+          "description": "The space between the subtitle's letters, as a part of its size. The default is 0.3.",
+          "type": "number",
+          "x-contract": {
+            "default": "not set (0.3)",
+            "legacy_default": "not set (0.3)",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "number"
+        },
+        "tracking": {
+          "description": "The space between the title's letters, as a part of its size. The default is 0.12.",
+          "type": "number",
+          "x-contract": {
+            "default": "not set (0.12)",
+            "legacy_default": "not set (0.12)",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "number"
+        }
+      },
       "type": "object"
     },
     "Token": {
@@ -13075,6 +13234,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string → number"
+        },
+        "talk_portrait": {
+          "$ref": "#/$defs/TalkPortrait",
+          "description": "Where the speaker's standing picture stands beside the `box` message window, to bring the speaker closer. The default is a picture as tall as the screen at the window's left end; needs schema version 3.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "[TalkPortrait](#talkportrait)"
         },
         "text": {
           "description": "The text color.",

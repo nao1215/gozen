@@ -242,6 +242,7 @@ github.com/nao1215/gozen/schema field FloorPlan.Note
 github.com/nao1215/gozen/schema field FloorPlan.Seed
 github.com/nao1215/gozen/schema field Fonts.Pop
 github.com/nao1215/gozen/schema field Fonts.Regular
+github.com/nao1215/gozen/schema field Fonts.Subtitle
 github.com/nao1215/gozen/schema field Fonts.Title
 github.com/nao1215/gozen/schema field Gallery.CGs
 github.com/nao1215/gozen/schema field Gallery.Music
@@ -299,6 +300,7 @@ github.com/nao1215/gozen/schema field Game.TitleArt
 github.com/nao1215/gozen/schema field Game.TitleBG
 github.com/nao1215/gozen/schema field Game.TitleBGM
 github.com/nao1215/gozen/schema field Game.TitleFigures
+github.com/nao1215/gozen/schema field Game.TitleText
 github.com/nao1215/gozen/schema field Game.UI
 github.com/nao1215/gozen/schema field Game.Verbs
 github.com/nao1215/gozen/schema field GameOver.Background

@@ -400,8 +400,8 @@ func parseScript(src string) (*script, error) {
 			}
 			c.x, c.y = x, c.n
 			c.n = 1
-		case "press", "shot", "until", "quit", "walk", "face", "play":
-		case "lines":
+		case "press", "shot", "until", "quit", "walk", "face":
+		case "lines", "play":
 			if len(f) < 3 {
 				c.n = 0
 			}
@@ -701,7 +701,12 @@ func (s *script) step(in *input) {
 				s.wait = 2
 				return
 			case s.inBattle != nil && s.inBattle():
-				if s.limit%20 == 0 {
+				// `play NAME EVERY` films a battle every EVERY ticks (20 when not given).
+				every := 20
+				if c.n > 0 {
+					every = c.n
+				}
+				if s.limit%every == 0 {
 					shoot("_b")
 				}
 				return

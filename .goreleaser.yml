@@ -124,7 +124,7 @@ release:
     `gozen` command (without ONNX inference; see the README).
 
     Every archive is signed and ships with an SBOM and build provenance; see
-    [Verifying release integrity](https://github.com/nao1215/gozen#verifying-release-integrity).
+    [Verifying a release](https://nao1215.github.io/gozen/install/#verifying-a-release).
   footer: |
     **Full changelog**: https://github.com/nao1215/gozen/compare/{{ .PreviousTag }}...{{ .Tag }}
 

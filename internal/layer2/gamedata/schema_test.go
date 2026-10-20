@@ -61,6 +61,8 @@ var schemaDefaults = map[string]string{
 	"Troop.can_escape": "true", "TroopEvent.once": "true", "Shop.sell": "true",
 	"LevelScale.stats": "[mhp, atk, mat]", "Music.volume": "0.7", "UIStyle.message": "box",
 	"UIStyle.field_notices": "true", "UIStyle.stage_scale": "空の対応表。未指定の絵は倍率１", "UIStyle.stage_drop": "空の対応表。未指定の絵は移動０",
+	"TalkPortrait.x": "０（窓の左端から230ピクセル右）", "TalkPortrait.bottom": "０（画面の下端より120ピクセル下）", "TalkPortrait.height": "０（画面の高さの1.02倍）",
+	"TitleText.size": "０（96ピクセル）", "TitleText.subtitle_size": "０（30ピクセル）", "TitleText.tracking": "未指定（0.12）", "TitleText.subtitle_tracking": "未指定（0.3）", "TitleText.color": "未指定の色（ui の text）", "TitleText.edge": "未指定の色（ui の window）", "Fonts.subtitle": "空文字（題の書体）",
 	"CG.fit": "contain", "CG.look": "通常表示", "CG.haze": "dream の場合は薄い桃色",
 	"CG.fade": "表示は0.25秒。消去は表示中の秒数を継承", "CG.page": "0（全頁を順に表示）",
 	"DungeonLook.darkness": "元の迷宮の darkness を継承", "Roamer.far": "通常は max(6, 最遠距離 × 3/5)、appear ありは０",
@@ -257,12 +259,12 @@ var version2Fields = map[string]bool{
 
 // version3Fields are the fields added in spec version 3 (ADR 0022). version3Types are types whose fields are all spec version 3.
 var (
-	version3Fields = map[string]bool{"Location.map": true, "Location.stage": true, "Person.bubbles": true, "Actor.doll": true, "UIStyle.balloon": true}
+	version3Fields = map[string]bool{"Location.map": true, "Location.stage": true, "Person.bubbles": true, "Actor.doll": true, "UIStyle.balloon": true, "UIStyle.talk_portrait": true, "Game.title_text": true, "Fonts.subtitle": true}
 	version3Types  = map[reflect.Type]bool{
 		reflect.TypeFor[Atlas](): true, reflect.TypeFor[Token](): true, reflect.TypeFor[MapPoint](): true, reflect.TypeFor[Road](): true,
 		reflect.TypeFor[Stage](): true, reflect.TypeFor[ScaleMark](): true, reflect.TypeFor[Front](): true, reflect.TypeFor[Spot](): true,
 		reflect.TypeFor[StageExit](): true, reflect.TypeFor[StagePerson](): true, reflect.TypeFor[Thing](): true,
-		reflect.TypeFor[Doll](): true, reflect.TypeFor[DollPart](): true, reflect.TypeFor[Bubble](): true,
+		reflect.TypeFor[Doll](): true, reflect.TypeFor[DollPart](): true, reflect.TypeFor[Bubble](): true, reflect.TypeFor[TalkPortrait](): true, reflect.TypeFor[TitleText](): true,
 	}
 )
 

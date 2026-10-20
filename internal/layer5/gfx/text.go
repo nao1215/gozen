@@ -14,23 +14,35 @@ var (
 	regularSource *text.GoTextFaceSource
 	popSource     *text.GoTextFaceSource
 	titleSource   *text.GoTextFaceSource
+	subSource     *text.GoTextFaceSource
 )
 
-func LoadTitleFont(b []byte) error {
-	titleSource = nil
-	if b == nil {
-		return nil
+// LoadTitleFont sets the typefaces of the title and the subtitle (nil: the regular one,
+// and for the subtitle the title's).
+func LoadTitleFont(title, subtitle []byte) error {
+	titleSource, subSource = nil, nil
+	for _, f := range []struct {
+		b   []byte
+		dst **text.GoTextFaceSource
+	}{{title, &titleSource}, {subtitle, &subSource}} {
+		if f.b == nil {
+			continue
+		}
+		src, err := text.NewGoTextFaceSource(bytes.NewReader(f.b))
+		if err != nil {
+			return err
+		}
+		*f.dst = src
 	}
-	src, err := text.NewGoTextFaceSource(bytes.NewReader(b))
-	if err != nil {
-		return err
-	}
-	titleSource = src
 	return nil
 }
 
-func DrawTitleText(dst *ebiten.Image, s string, x, y, size, tracking float64, fill, edge color.Color, alpha float32) {
+// DrawTitleText draws the title (or with subtitle the subtitle) centered on x.
+func DrawTitleText(dst *ebiten.Image, s string, x, y, size, tracking float64, fill, edge color.Color, alpha float32, subtitle bool) {
 	src := titleSource
+	if subtitle && subSource != nil {
+		src = subSource
+	}
 	if src == nil {
 		src = regularSource
 	}

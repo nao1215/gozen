@@ -233,6 +233,12 @@ func (db *DB) Check() []error {
 			c.errorf(diag.OutOfRange, "game.yaml ui.balloon", "want a fraction of the screen's height in [0.01, 0.2], got %g", g.UI.Balloon)
 		}
 	}
+	if tp := g.UI.TalkPortrait; tp != (TalkPortrait{}) {
+		c.needsVersion("game.yaml ui.talk_portrait", "ui.talk_portrait", SchemaVersion3)
+		if tp.X < 0 || tp.X > 1 || tp.Bottom < 0 || tp.Bottom > 4 || tp.Height < 0 || tp.Height > 4 {
+			c.errorf(diag.OutOfRange, "game.yaml ui.talk_portrait", "want x from 0 to 1, and bottom and height from 0 to 4 (fractions of the screen), got x %g, bottom %g, height %g", tp.X, tp.Bottom, tp.Height)
+		}
+	}
 	c.file("game.yaml fonts.regular", g.Fonts.Regular)
 	c.file("game.yaml fonts.pop", g.Fonts.Pop)
 	c.picture("game.yaml title_background", g.TitleBG)
@@ -245,6 +251,14 @@ func (db *DB) Check() []error {
 		}
 	}
 	c.file("game.yaml fonts.title", g.Fonts.Title)
+	c.file("game.yaml fonts.subtitle", g.Fonts.Subtitle)
+	if tt := g.TitleText; tt != (TitleText{}) {
+		c.needsVersion("game.yaml title_text", "title_text", SchemaVersion3)
+		bad := tt.Size < 0 || tt.SubtitleSize < 0 || tt.Tracking != nil && *tt.Tracking < 0 || tt.SubtitleTracking != nil && *tt.SubtitleTracking < 0
+		if bad {
+			c.errorf(diag.OutOfRange, "game.yaml title_text", "sizes and tracking must be 0 or more")
+		}
+	}
 	c.file("game.yaml stand_ins", g.StandIns)
 	c.picture("game.yaml game_over.background", g.GameOver.Background)
 	_, ok = db.Events[g.GameOver.Event]

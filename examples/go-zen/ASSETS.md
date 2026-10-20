@@ -9,13 +9,15 @@ Go Zen is the sample game of Gozen. Its Go code and YAML (`main.go`, `files.go`,
 | `maren/`, `ox/`, `tilly/`, `kes/`, `vance/` | Moving portraits (`puppet.yaml`, the base picture and its difference pictures) and the whole-figure picture of each face | CC BY 4.0 |
 | `pomm/`, `barnaby/`, `ansel/` | Standing pictures of the townsfolk | CC BY 4.0 |
 | `icons/` | Round face icons for the balloons and the map's token | CC BY 4.0 |
-| `maps/town.jpg` | The town map of Pellmere | CC BY 4.0 |
+| `maps/town.jpg` | The town map of Pellmere, also behind the title | CC BY 4.0 |
 | `cg/cg1_fountain.jpg` | The event picture (also in the gallery) | CC BY 4.0 |
-| `bg/` | The title, the plaza as a painted scene with its depth (`plaza_depth.png`), the plaza with the water back, the shop, the inn, the well, the gate, Hobb's Landing, the valve hall, and the battle backgrounds | CC BY 4.0 |
+| `bg/` | The plaza as a painted scene with its depth (`plaza_depth.png`), the plaza with the water back, the shop, the inn, the well, the gate, Hobb's Landing, the valve hall, and the battle backgrounds | CC BY 4.0 |
 | `dungeon/`, `tiles/`, `props/` | The dungeon's walls, floors, ceilings, doors and stairs, chests, crates, levers, the key, the valve and the vent, and the townsfolk's things (the water cart, Hobb's desk, the notice) | CC BY 4.0 |
 | `enemies/`, `<id>/cutin.png` | Enemies and the cut-in pictures | CC BY 4.0 |
 | `bgm/*.ogg` | The Go Zen soundtrack (title, town, dungeon, battle, boss, victory) | CC BY 4.0 |
 | `fonts/mplus-1p-regular.ttf` | M+ 1p regular 1.060, M+ FONTS PROJECT | M+ FONTS LICENSE (below) |
+| `fonts/uncial-antiqua-regular.ttf` | Uncial Antiqua, the title's letters; Brian J. Bonislawsky (Astigmatic), from Google Fonts | SIL Open Font License 1.1 (`fonts/OFL-uncial-antiqua.txt`) |
+| `fonts/cinzel.ttf` | Cinzel (variable), the subtitle's letters; the Cinzel Project Authors, from Google Fonts | SIL Open Font License 1.1 (`fonts/OFL-cinzel.txt`) |
 
 The pictures and the music are Copyright (c) 2026 CHIKAMATSU Naohiro and licensed under the
 Creative Commons Attribution 4.0 International license

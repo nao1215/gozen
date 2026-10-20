@@ -22,7 +22,7 @@ From the first release on, `gozen` is also published as prebuilt binaries. Gozen
 brew install --cask nao1215/tap/gozen   # macOS and Linux with Homebrew
 ```
 
-[The release page](https://github.com/nao1215/gozen/releases) has `.tar.gz` and `.zip` archives for Linux, macOS and Windows (amd64 and arm64) and `.deb`, `.rpm` and `.apk` packages for Linux. The prebuilt binaries are built without cgo, so they have no ONNX inference for `gozen art mosaic`. Each release signs `checksums.txt` with cosign and attaches SBOMs and SLSA provenance; the README's [Verifying release integrity](https://github.com/nao1215/gozen#verifying-release-integrity) shows the commands.
+[The release page](https://github.com/nao1215/gozen/releases) has `.tar.gz` and `.zip` archives for Linux, macOS and Windows (amd64 and arm64) and `.deb`, `.rpm` and `.apk` packages for Linux. The prebuilt binaries are built without cgo, so they have no ONNX inference for `gozen art mosaic`. Each release signs `checksums.txt` with cosign and attaches SBOMs and SLSA provenance; [Verifying a release](#verifying-a-release) shows the commands.
 
 To keep the command pinned with your game, add it as a Go tool in your module and run it with `go tool gozen`:
 
@@ -30,6 +30,33 @@ To keep the command pinned with your game, add it as a Go tool in your module an
 ```shell
 go get -tool github.com/nao1215/gozen/cmd/gozen@latest
 go tool gozen check game
+```
+
+## Verifying a release
+
+Each release has a cosign-signed `checksums.txt`, an SPDX SBOM per archive, SLSA provenance (`multiple.intoto.jsonl`), and the dependency licenses under `THIRD_PARTY_LICENSES/`.
+
+<!-- verify: skip needs the files of a published release -->
+```shell
+cosign verify-blob \
+  --bundle checksums.txt.sigstore.json \
+  --certificate-identity-regexp 'https://github.com/nao1215/gozen/\.github/workflows/release\.yml@refs/tags/.*' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  checksums.txt
+sha256sum --check --ignore-missing checksums.txt
+```
+
+<!-- verify: skip needs a published release and a GitHub login -->
+```shell
+gh attestation verify gozen_<version>_<os>_<arch>.tar.gz --repo nao1215/gozen
+```
+
+<!-- verify: skip needs the files of a published release -->
+```shell
+slsa-verifier verify-artifact gozen_<version>_<os>_<arch>.tar.gz \
+  --provenance-path multiple.intoto.jsonl \
+  --source-uri github.com/nao1215/gozen \
+  --source-tag v<version>
 ```
 
 ## The library

@@ -138,7 +138,9 @@ type Game struct {
 	// TitleFigures stand on the title screen in their order (the later ones in front); with
 	// them, title_art is not drawn.
 	TitleFigures []TitleFigure `yaml:"title_figures"`
-	TitleBGM     MusicCue      `yaml:"title_music"`
+	// TitleText letters the title and the subtitle on the title screen (schema_version 3).
+	TitleText TitleText `yaml:"title_text"`
+	TitleBGM  MusicCue  `yaml:"title_music"`
 	// Gallery is what the title's gallery shows: the event pictures seen and the scenes
 	// whose flag was set, in any play (kept beside the saves).
 	Gallery  Gallery `yaml:"gallery"`
@@ -298,6 +300,20 @@ type Fonts struct {
 	Pop     string `yaml:"pop"`
 	// Title is the typeface of the title screen's title and subtitle (none: the regular one).
 	Title string `yaml:"title"`
+	// Subtitle is the typeface of the title screen's subtitle (none: the title's).
+	Subtitle string `yaml:"subtitle"`
+}
+
+// TitleText is how the title screen letters the title and the subtitle. Sizes are in the
+// screen's pixels; tracking is the space between letters as a part of the size.
+type TitleText struct {
+	Size             float64  `yaml:"size"`              // 0: 96
+	Tracking         *float64 `yaml:"tracking"`          // nil: 0.12
+	SubtitleSize     float64  `yaml:"subtitle_size"`     // 0: 30
+	SubtitleTracking *float64 `yaml:"subtitle_tracking"` // nil: 0.3
+	// Color fills the letters and Edge outlines them (none: the ui's text and window colors).
+	Color Color `yaml:"color"`
+	Edge  Color `yaml:"edge"`
 }
 
 // TitleFigure is one picture standing on the title screen. X is its center and Bottom its
@@ -431,6 +447,9 @@ type UIStyle struct {
 	// fraction of the screen's height (0.037 when not given; schema_version 3). The face
 	// beside it is three times as tall.
 	Balloon float64 `yaml:"balloon"`
+	// TalkPortrait places the speaker's standing picture beside the "box" message window
+	// (schema_version 3). Empty, it stands as tall as the screen at the box's left end.
+	TalkPortrait TalkPortrait `yaml:"talk_portrait"`
 	// Backlog is how many lines the backlog keeps (default 300).
 	Backlog int   `yaml:"backlog"`
 	Window  Color `yaml:"window"`
@@ -452,6 +471,19 @@ type UIStyle struct {
 	// SfxVary is the variation when the same sound effect plays repeatedly in a short time (sound's vary.go).
 	// pitch is the pitch (default 0.03 for ±3%) and volume is the volume (default 0.1 for ±10%). 0 turns it off.
 	SfxVary SfxVary `yaml:"sfx_vary"`
+}
+
+// TalkPortrait is where the speaker's standing picture (or moving portrait) stands beside
+// the "box" message window, in fractions of the screen; 0 keeps a field's default. A
+// height above 1 brings the speaker closer: with the bottom below the screen, only the
+// upper body shows above the window. The speaker on the right stands mirrored at 1-x.
+type TalkPortrait struct {
+	// X is the picture's center as a fraction of the screen's width (0: 230 pixels right of the window's left end).
+	X float64 `yaml:"x"`
+	// Bottom is where the picture's bottom edge stands, as a fraction of the screen's height (0: 120 pixels below the screen).
+	Bottom float64 `yaml:"bottom"`
+	// Height is the picture's height as a fraction of the screen's height (0: 1.02).
+	Height float64 `yaml:"height"`
 }
 
 // SfxVary is the variation in pitch and volume of sound effects played in succession (defaults if not written).
