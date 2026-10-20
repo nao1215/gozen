@@ -41,6 +41,10 @@ type pictures struct {
 	seen func(path string, ok bool)
 
 	gen int
+
+	// after, when set, holds the preloading back until it is closed (a browser's build: the
+	// first frame first, on its one thread).
+	after <-chan struct{}
 }
 
 type picEntry struct {
@@ -198,6 +202,9 @@ func (p *pictures) decode(path string) image.Image {
 
 func (p *pictures) preload(paths ...string) {
 	p.workers.Go(func() {
+		if p.after != nil {
+			<-p.after
+		}
 		for _, path := range paths {
 			if path == "" {
 				continue

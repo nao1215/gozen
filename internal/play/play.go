@@ -17,6 +17,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 
 	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/layer1/memo"
+	"github.com/nao1215/gozen/internal/layer1/pace"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/atlas"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
@@ -200,6 +202,9 @@ type Game struct {
 	cancel  context.CancelFunc
 	failure error
 	closed  bool
+	// drawn is closed once the first frame is drawn (the dolls of a browser's build wait for it).
+	drawn     chan struct{}
+	drawnOnce sync.Once
 	// store is where saves go. storeGiven tells whether the location was given explicitly or is an in-memory trial play (in which case a trial play writes too).
 	store      Store
 	storeGiven bool
@@ -370,7 +375,10 @@ func New(opts Options) (_ *Game, err error) {
 		opts.Seed = newSeed()
 	}
 	runctx, cancel := context.WithCancel(context.Background())
-	g := &Game{context: runctx, cancel: cancel, db: db, opts: opts, pics: newPictures(opts.FS), rep: rep, stageK: 1, started: time.Now()}
+	g := &Game{context: runctx, cancel: cancel, db: db, opts: opts, pics: newPictures(opts.FS), rep: rep, stageK: 1, started: time.Now(), drawn: make(chan struct{})}
+	if pace.OneThread {
+		g.pics.after = g.drawn
+	}
 	defer func() {
 		if err != nil {
 			err = errors.Join(err, g.Close())
@@ -716,6 +724,9 @@ func (g *Game) Update() error {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	g.rendering = true
+	if g.drawn != nil {
+		defer g.drawnOnce.Do(func() { close(g.drawn) })
+	}
 	if g.opts.CollectBuildInfo && os.Getenv("GOZEN_DEBUG") != "" {
 		t0 := time.Now()
 		defer func() {
@@ -1673,6 +1684,9 @@ func (g *Game) Close() error {
 		err = errors.Join(err, g.tr.err)
 	}
 	g.closePuppets()
+	if g.drawn != nil { // no first frame to wait for any more
+		g.drawnOnce.Do(func() { close(g.drawn) })
+	}
 	if g.pics != nil {
 		g.pics.close()
 	}

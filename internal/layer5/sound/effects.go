@@ -7,11 +7,19 @@ import (
 	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2/audio"
+
+	"github.com/nao1215/gozen/internal/layer1/pace"
 )
 
 var effectPlayers []*audio.Player
 
+// effects are the effects by name (under mu): the built-in ones (synthEffects) and those
+// of the game's files, which win over a built-in one of the same name.
 var effects = map[string][]byte{}
+
+// effectsGen counts the sessions (Close), so that effects made in the background for a
+// session that has ended are dropped.
+var effectsGen int
 
 var Effects = []string{
 	"cursor", "decide", "cancel", "buzzer", "hit", "crit", "magic", "heal", "buff", "debuff", "item", "fall", "win", "escape", "step",
@@ -29,14 +37,14 @@ var Effects = []string{
 }
 
 func Play(name string) {
+	mu.Lock()
 	b := effects[name]
+	off, vol := muted, seVolume()
+	mu.Unlock()
 	if rec != nil && b != nil {
 		rec.voices = append(rec.voices, voice{b: b})
 		return
 	}
-	mu.Lock()
-	off, vol := muted, seVolume()
-	mu.Unlock()
 	if ctx == nil || off || b == nil {
 		return
 	}
@@ -48,10 +56,16 @@ func Play(name string) {
 	effectPlayers = append(effectPlayers, p)
 }
 
+// synthPace paces synth when the effects are made in the background (in a browser).
+var synthPace pace.Pacer
+
 func synth(seconds float64, f func(t float64) float64) []byte {
 	n := int(seconds * SampleRate)
 	b := make([]byte, n*8)
 	for i := range n {
+		if i%1024 == 0 {
+			synthPace.Breathe()
+		}
 		v := float32(max(-1, min(1, f(float64(i)/SampleRate))))
 		bits := math.Float32bits(v)
 		binary.LittleEndian.PutUint32(b[i*8:], bits)
@@ -97,7 +111,34 @@ func arpeggio(notes []float64, gap, decay, vol float64) func(float64) float64 {
 	}
 }
 
-func makeEffects() {
+// makeEffects makes the built-in effects: in a browser in the background, so that the
+// first frames do not wait for them (an effect played before is not heard).
+func makeEffects(background bool) {
+	mu.Lock()
+	gen := effectsGen
+	mu.Unlock()
+	run := func() {
+		made := synthEffects()
+		mu.Lock()
+		defer mu.Unlock()
+		if gen != effectsGen {
+			return
+		}
+		for name, b := range made {
+			if _, ok := effects[name]; !ok {
+				effects[name] = b
+			}
+		}
+	}
+	if background {
+		go run()
+		return
+	}
+	run()
+}
+
+func synthEffects() map[string][]byte {
+	effects := map[string][]byte{}
 	//nolint:gosec // Deterministic synthetic audio noise, not a secret.
 	rng := rand.New(rand.NewPCG(11, 12))
 	noise := func() float64 { return rng.Float64()*2 - 1 }
@@ -183,10 +224,11 @@ func makeEffects() {
 		lp += (noise() - lp) * (0.05 + t*2)
 		return lp * math.Sin(math.Pi*t/0.22) * 0.5
 	})
-	makeActionEffects(noise)
+	makeActionEffects(effects, noise)
+	return effects
 }
 
-func makeActionEffects(noise func() float64) {
+func makeActionEffects(effects map[string][]byte, noise func() float64) {
 	lp := 0.0
 	sweep := func(t, f0, f1, dur float64) float64 {
 		k := math.Log(f1/f0) / dur

@@ -62,11 +62,12 @@ func NewRenderer(s *Scene, bg, depth image.Image) (*Renderer, error) {
 	b := bg.Bounds().Sub(bg.Bounds().Min)
 	r := &Renderer{s: s, shader: sh, bg: ebiten.NewImageFromImage(bg)}
 	r.gray = Gray16(depth, b)
+	// the depth's two bytes in red and green (b starts at 0, as the gray does)
 	d := image.NewRGBA(b)
 	for y := range b.Dy() {
+		g, o := r.gray.Pix[y*r.gray.Stride:], d.Pix[y*d.Stride:]
 		for x := range b.Dx() {
-			v := r.gray.Gray16At(x, y).Y
-			d.SetRGBA(x, y, color.RGBA{uint8(v >> 8), uint8(v), 0, 255}) //nolint:gosec // the two bytes
+			o[4*x], o[4*x+1], o[4*x+2], o[4*x+3] = g[2*x], g[2*x+1], 0, 255
 		}
 	}
 	fi := image.NewRGBA(b)

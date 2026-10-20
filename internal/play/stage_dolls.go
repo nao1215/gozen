@@ -5,12 +5,14 @@ import (
 	"image"
 	"image/color"
 	"log"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	"github.com/nao1215/gozen/internal/layer1/pace"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/doll"
 	"github.com/nao1215/gozen/internal/layer5/stage"
@@ -24,6 +26,9 @@ type sceneCache struct {
 	baked   map[string]baked // baked, not yet on the GPU
 	pending map[string]bool
 	wg      sync.WaitGroup
+	// slots lets as many dolls bake at once as there are threads, in the order asked for:
+	// in a browser, one after another, so that the first ones show soon.
+	slots chan struct{}
 
 	sheets    map[string]*ebiten.Image
 	faces     map[string]*ebiten.Image
@@ -42,7 +47,7 @@ type baked struct {
 func (g *Game) scenes() *sceneCache {
 	if g.sceneCache == nil {
 		g.sceneCache = &sceneCache{
-			baked: map[string]baked{}, pending: map[string]bool{},
+			baked: map[string]baked{}, pending: map[string]bool{}, slots: make(chan struct{}, runtime.GOMAXPROCS(0)),
 			sheets: map[string]*ebiten.Image{}, faces: map[string]*ebiten.Image{}, renderers: map[string]*stage.Renderer{},
 		}
 	}
@@ -110,6 +115,11 @@ func (g *Game) dollSheet(sp dollSpec) *ebiten.Image {
 	if !done && !c.pending[key] {
 		c.pending[key] = true
 		c.wg.Go(func() {
+			if pace.OneThread && g.drawn != nil && !g.waitsForDolls() {
+				<-g.drawn // one thread: the first frame first
+			}
+			c.slots <- struct{}{}
+			defer func() { <-c.slots }()
 			pic := g.pics.decode(sp.picture)
 			var found *[4]int
 			if pic != nil {
@@ -222,7 +232,12 @@ func bakeDoll(pic image.Image, sp dollSpec) *image.RGBA {
 	if hair == "" {
 		hair = doll.HairShort
 	}
-	return doll.Bake(pal, hair, parts, stage.SheetW, stage.SheetH, sp.camera)
+	b := doll.NewBaker(pal, hair, parts, stage.SheetW, stage.SheetH, sp.camera)
+	var p pace.Pacer
+	for !b.Step() {
+		p.Breathe()
+	}
+	return b.Sheet()
 }
 
 // hexRGBA reads #rrggbb (checked by gozen check; black when not).

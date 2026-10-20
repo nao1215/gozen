@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/nao1215/gozen/internal/diag"
 
@@ -91,17 +92,12 @@ func walkNumberDefinitions(v reflect.Value, raw any, where string, visit func(re
 	case reflect.Struct:
 		m := optional.Value[yaml.MapSlice](raw) // nil when the YAML is not a mapping
 		visit(v, m, where)
-		for field := range v.Type().Fields() {
-			tag, ok := field.Tag.Lookup("yaml")
-			if !ok || tag == "-" {
-				continue
-			}
-			name, options, _ := strings.Cut(tag, ",")
-			if options == "inline" {
-				walkNumberDefinitions(v.FieldByIndex(field.Index), raw, where, visit)
+		for _, field := range yamlFields(v.Type()) {
+			if field.inline {
+				walkNumberDefinitions(v.FieldByIndex(field.index), raw, where, visit)
 			} else {
-				entry, _ := numberEntry(m, name)
-				walkNumberDefinitions(v.FieldByIndex(field.Index), entry, numberPath(where, name), visit)
+				entry, _ := numberEntry(m, field.name)
+				walkNumberDefinitions(v.FieldByIndex(field.index), entry, numberPath(where, field.name), visit)
 			}
 		}
 	case reflect.Map:
@@ -127,6 +123,67 @@ func walkNumberDefinitions(v reflect.Value, raw any, where string, visit func(re
 			walkNumberDefinitions(v.Index(i), entry, fmt.Sprintf("%s[%d]", where, i), visit)
 		}
 	}
+}
+
+// yamlField is a struct field with a YAML tag (not "-"): its name in the YAML and whether
+// it is inlined.
+type yamlField struct {
+	index  []int
+	name   string
+	inline bool
+}
+
+// yamlFieldsOf keeps the YAML fields of each struct type walked (the walk visits every
+// definition of a game, and reading the tags again each time is most of its work).
+var yamlFieldsOf sync.Map // reflect.Type -> []yamlField
+
+func yamlFields(t reflect.Type) []yamlField {
+	if v, ok := yamlFieldsOf.Load(t); ok {
+		if fs, ok := v.([]yamlField); ok {
+			return fs
+		}
+	}
+	var fs []yamlField
+	for field := range t.Fields() {
+		tag, ok := field.Tag.Lookup("yaml")
+		if !ok || tag == "-" {
+			continue
+		}
+		name, options, _ := strings.Cut(tag, ",")
+		fs = append(fs, yamlField{index: field.Index, name: name, inline: options == "inline"})
+	}
+	yamlFieldsOf.Store(t, fs)
+	return fs
+}
+
+// contractField is a field of a type in numericContracts that has a contract.
+type contractField struct {
+	index []int
+	name  string
+	rule  numericContract
+}
+
+// contractFieldsOf keeps the fields with a contract of each type, in the type's order (nil
+// for a type without contracts, which most of the walked ones are).
+var contractFieldsOf sync.Map // reflect.Type -> []contractField
+
+func contractFields(t reflect.Type) []contractField {
+	if v, ok := contractFieldsOf.Load(t); ok {
+		if fs, ok := v.([]contractField); ok {
+			return fs
+		}
+	}
+	var fs []contractField
+	if rules := numericContracts[t]; rules != nil {
+		for field := range t.Fields() {
+			name, _, _ := strings.Cut(field.Tag.Get("yaml"), ",")
+			if rule, ok := rules[name]; ok {
+				fs = append(fs, contractField{index: field.Index, name: name, rule: rule})
+			}
+		}
+	}
+	contractFieldsOf.Store(t, fs)
+	return fs
 }
 
 func numberPath(where, name string) string {
@@ -156,13 +213,9 @@ func (db *DB) resolveNumbers(raw yaml.MapSlice, into any, source string) error {
 			}
 			return
 		}
-		for field := range v.Type().Fields() {
-			name, _, _ := strings.Cut(field.Tag.Get("yaml"), ",")
-			rule, ok := numericContracts[v.Type()][name]
-			if !ok {
-				continue
-			}
-			value := v.FieldByIndex(field.Index)
+		for _, field := range contractFields(v.Type()) {
+			name, rule := field.name, field.rule
+			value := v.FieldByIndex(field.index)
 			entry, given := numberEntry(m, name)
 			if given && !numericScalar(entry, value.Type()) {
 				errs = append(errs, fmt.Errorf("%s.%s: expected %s number, got %T", where, name, value.Type(), entry))
@@ -229,13 +282,9 @@ func (c *checker) numericValues(into any, where string) {
 		return
 	}
 	walkNumberDefinitions(reflect.ValueOf(into), nil, where, func(v reflect.Value, _ yaml.MapSlice, w string) {
-		for field := range v.Type().Fields() {
-			name, _, _ := strings.Cut(field.Tag.Get("yaml"), ",")
-			rule, ok := numericContracts[v.Type()][name]
-			if !ok {
-				continue
-			}
-			value := v.FieldByIndex(field.Index)
+		for _, field := range contractFields(v.Type()) {
+			name, rule := field.name, field.rule
+			value := v.FieldByIndex(field.index)
 			if value.Kind() == reflect.Pointer {
 				if value.IsNil() {
 					continue

@@ -18,16 +18,26 @@
 <script src="wasm_exec.js"></script>
 <script>
   // The program calls these: how much of the game's files it has, that the game starts,
-  // that its first frame is drawn, or why it could not start.
+  // that its first frame is drawn, or why it could not start. goZenTimes keeps when the
+  // files were all fetched, the game started and its first frame was drawn (for checks).
   const note = document.getElementById("note");
   const bar = document.querySelector("#bar div");
   const mb = (n) => (n / 1e6).toFixed(1);
+  window.goZenTimes = {};
   window.goZenProgress = (done, total) => {
     note.textContent = `Loading the game's files: ${mb(done)} MB / ${mb(total)} MB`;
     bar.style.width = `${total ? (100 * done) / total : 0}%`;
+    if (done >= total) goZenTimes.fetched = performance.now();
   };
-  window.goZenStarting = () => { note.textContent = "Starting the game..."; bar.style.width = "100%"; };
-  window.goZenReady = () => document.getElementById("loading").remove();
+  window.goZenStarting = () => {
+    goZenTimes.starting = performance.now();
+    note.textContent = "Starting the game...";
+    bar.style.width = "100%";
+  };
+  window.goZenReady = () => {
+    goZenTimes.ready = performance.now();
+    document.getElementById("loading").remove();
+  };
   window.goZenFail = (msg) => { note.textContent = "Could not start: " + msg; };
 
   note.textContent = "Loading the program...";

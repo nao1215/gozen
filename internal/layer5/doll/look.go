@@ -118,18 +118,36 @@ func HairStyleFrom(img image.Image, p Palette) string {
 // OpaqueBounds is the part of a picture that is not clear (all of it when it is all clear).
 func OpaqueBounds(img image.Image) image.Rectangle {
 	b := img.Bounds()
-	out := image.Rectangle{}
+	alpha := alphaOf(img)
+	x0, y0, x1, y1 := b.Max.X, b.Max.Y, b.Min.X, b.Min.Y
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		for x := b.Min.X; x < b.Max.X; x++ {
-			if _, _, _, a := img.At(x, y).RGBA(); a > 0x1000 {
-				out = out.Union(image.Rect(x, y, x+1, y+1))
+			if alpha(x, y) > 0x1000 {
+				x0, y0, x1, y1 = min(x0, x), min(y0, y), max(x1, x+1), max(y1, y+1)
 			}
 		}
 	}
-	if out.Empty() {
+	if x0 >= x1 {
 		return b
 	}
-	return out
+	return image.Rect(x0, y0, x1, y1)
+}
+
+// alphaOf reads a picture's alpha as At(x, y).RGBA() does, straight from the pixels of the
+// kinds the decoders make (a browser's build reads WebP, whose At is slow).
+func alphaOf(img image.Image) func(x, y int) uint32 {
+	switch m := img.(type) {
+	case *image.NRGBA:
+		return func(x, y int) uint32 { return uint32(m.Pix[m.PixOffset(x, y)+3]) * 0x101 }
+	case *image.RGBA:
+		return func(x, y int) uint32 { return uint32(m.Pix[m.PixOffset(x, y)+3]) * 0x101 }
+	case *image.NYCbCrA:
+		return func(x, y int) uint32 { return uint32(m.A[m.AOffset(x, y)]) * 0x101 }
+	}
+	return func(x, y int) uint32 {
+		_, _, _, a := img.At(x, y).RGBA()
+		return a
+	}
 }
 
 // cut copies a rectangle of a picture (in fractions of its visible part) at w x h pixels.
@@ -148,8 +166,9 @@ func headSpan(img image.Image) (mid, width float64) {
 	b := OpaqueBounds(img)
 	y := b.Min.Y + int(0.06*float64(b.Dy()))
 	x0, x1 := -1, -1
+	alpha := alphaOf(img)
 	for x := b.Min.X; x < b.Max.X; x++ {
-		if _, _, _, a := img.At(x, y).RGBA(); a > 0x8000 {
+		if alpha(x, y) > 0x8000 {
 			if x0 < 0 {
 				x0 = x
 			}

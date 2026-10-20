@@ -266,9 +266,8 @@ func shapes(hair string, parts []Part) []solid {
 	return s
 }
 
-// swingX turns v about the x axis through the pivot by a.
-func swingX(v, pivot vec, a float64) vec {
-	c, s := math.Cos(a), math.Sin(a)
+// swingCS turns v about the x axis through the pivot by the angle of cosine c and sine s.
+func swingCS(v, pivot vec, c, s float64) vec {
 	y, z := v[1]-pivot[1], v[2]-pivot[2]
 	return vec{v[0], pivot[1] + c*y - s*z, pivot[2] + s*y + c*z}
 }
@@ -288,24 +287,50 @@ func limbAngle(s solid, leg float64) float64 {
 	return 0
 }
 
-// hit is where a ray enters a solid, and the normal there; t < 0 when it misses.
-func hit(s solid, o, d vec, leg float64) (float64, vec) {
-	a := limbAngle(s, leg)
-	lo, ld := o, d
-	if a != 0 {
-		lo = swingX(o, s.pivot, -a)
-		ld = swingX(d, vec{}, -a)
+// posed is a solid in one picture of a sheet, with what all the picture's rays share (they
+// are parallel) worked out once. A turned limb meets the rays turned back the other way.
+type posed struct {
+	s      *solid
+	turned bool
+	cb, sb float64   // the cosine and sine that turn a ray into the limb's own frame
+	cf, sf float64   // and those that turn a normal back
+	ld     vec       // the rays' direction in the solid's frame
+	den    []float64 // each plane's normal along ld
+	x0, x1 int       // the pixels whose rays may meet the solid's sphere
+	y0, y1 int
+}
+
+func posePart(s *solid, d vec, leg float64, den []float64) posed {
+	p := posed{s: s, ld: d, den: den[:0]}
+	if a := limbAngle(*s, leg); a != 0 {
+		p.turned = true
+		p.cb, p.sb = math.Cos(-a), math.Sin(-a)
+		p.cf, p.sf = math.Cos(a), math.Sin(a)
+		p.ld = swingCS(d, vec{}, p.cb, p.sb)
+	}
+	for _, pl := range s.planes {
+		p.den = append(p.den, dot(vec{pl[0], pl[1], pl[2]}, p.ld))
+	}
+	return p
+}
+
+// hit is where the ray from o (along the picture's direction) enters the solid, and the
+// normal there; t < 0 when it misses.
+func (p *posed) hit(o vec) (float64, vec) {
+	s := p.s
+	lo := o
+	if p.turned {
+		lo = swingCS(o, s.pivot, p.cb, p.sb)
 	}
 	q := sub(lo, s.a)
-	if bq := dot(q, ld); bq*bq-(dot(q, q)-s.r*s.r) < 0 {
+	if bq := dot(q, p.ld); bq*bq-(dot(q, q)-s.r*s.r) < 0 {
 		return -1, vec{} // the ray misses the solid's sphere
 	}
 	tin, tout := -math.MaxFloat64, math.MaxFloat64
 	var nin vec
-	for _, pl := range s.planes {
-		n := vec{pl[0], pl[1], pl[2]}
-		den := dot(n, ld)
-		num := pl[3] - dot(n, q)
+	for i, pl := range s.planes {
+		den := p.den[i]
+		num := pl[3] - (pl[0]*q[0] + pl[1]*q[1] + pl[2]*q[2])
 		if math.Abs(den) < 1e-12 {
 			if num < 0 {
 				return -1, nin
@@ -315,7 +340,7 @@ func hit(s solid, o, d vec, leg float64) (float64, vec) {
 		t := num / den
 		if den < 0 {
 			if t > tin {
-				tin, nin = t, n
+				tin, nin = t, vec{pl[0], pl[1], pl[2]}
 			}
 		} else if t < tout {
 			tout = t
@@ -327,8 +352,8 @@ func hit(s solid, o, d vec, leg float64) (float64, vec) {
 	if tin < 0 {
 		return -1, nin
 	}
-	if a != 0 {
-		nin = swingX(nin, vec{}, a)
+	if p.turned {
+		nin = swingCS(nin, vec{}, p.cf, p.sf)
 	}
 	return tin, nin
 }
@@ -337,6 +362,31 @@ func hit(s solid, o, d vec, leg float64) (float64, vec) {
 // degrees above (a fixed camera looking down on a painted background). Its feet are at the
 // bottom of each picture, the top of the head at about 0.9 of the height.
 func Bake(pal Palette, hair string, parts []Part, fw, fh int, elev float64) *image.RGBA {
+	b := NewBaker(pal, hair, parts, fw, fh, elev)
+	for !b.Step() {
+	}
+	return b.Sheet()
+}
+
+// Baker bakes a doll's sheet a picture at a time (Step), so that a program with one
+// thread (a browser's) can draw its frames between the pictures.
+type Baker struct {
+	colors []color.RGBA
+	solids []solid
+	sheet  *image.RGBA
+	fw, fh int
+	el     float64
+	next   int // the next picture: side*Poses + pose
+
+	depth []float64
+	frame *image.RGBA
+	posed []posed
+	dens  [][]float64
+	rows  [][]int // the solids each row of pixels may meet
+}
+
+// NewBaker starts baking a doll; see Bake.
+func NewBaker(pal Palette, hair string, parts []Part, fw, fh int, elev float64) *Baker {
 	if hair == HairBald {
 		pal.Skin = pal.Hair // the top of a bald head is the skin (the face may be a beard)
 	}
@@ -345,78 +395,121 @@ func Bake(pal Palette, hair string, parts []Part, fw, fh int, elev float64) *ima
 		colors = append(colors, p.Color)
 	}
 	solids := shapes(hair, parts)
+	return &Baker{
+		colors: colors, solids: solids, sheet: image.NewRGBA(image.Rect(0, 0, fw*Sides, fh*Poses)),
+		fw: fw, fh: fh, el: elev * math.Pi / 180,
+		depth: make([]float64, fw*fh), frame: image.NewRGBA(image.Rect(0, 0, fw, fh)),
+		posed: make([]posed, len(solids)), dens: make([][]float64, len(solids)), rows: make([][]int, fh),
+	}
+}
+
+// Sheet is the sheet baked so far (all of it once Step has said it is done).
+func (b *Baker) Sheet() *image.RGBA { return b.sheet }
+
+// Step bakes the next picture of the sheet and reports whether the sheet is done.
+func (b *Baker) Step() bool {
+	if b.next >= Sides*Poses {
+		return true
+	}
+	side, pose := b.next/Poses, b.next%Poses
+	b.next++
+	b.picture(side, pose)
+	return b.next >= Sides*Poses
+}
+
+func (b *Baker) picture(side, pose int) {
+	fw, fh, el := b.fw, b.fh, b.el
 	dc, dr := vec{0, 0.55, 0}, 0.7 // the whole doll lies in this sphere
-	sheet := image.NewRGBA(image.Rect(0, 0, fw*Sides, fh*Poses))
-	el := elev * math.Pi / 180
 	k := unitsH / float64(fh)
 	light := vec{-0.45, 0.75, 0.5}
 	light = scale(light, 1/length(light))
-	depth := make([]float64, fw*fh)
-	for side := range Sides {
-		th := float64(side) * math.Pi / 4
-		cam := vec{math.Sin(th) * math.Cos(el), math.Sin(el), math.Cos(th) * math.Cos(el)}
-		right := vec{math.Cos(th), 0, -math.Sin(th)}
-		up := vec{cam[1]*right[2] - cam[2]*right[1], cam[2]*right[0] - cam[0]*right[2], cam[0]*right[1] - cam[1]*right[0]}
-		d := scale(cam, -1)
-		// the light turns with the camera: always from the viewer's upper left
-		lw := vec{
-			right[0]*light[0] + up[0]*light[1] + cam[0]*light[2],
-			right[1]*light[0] + up[1]*light[1] + cam[1]*light[2],
-			right[2]*light[0] + up[2]*light[1] + cam[2]*light[2],
+	th := float64(side) * math.Pi / 4
+	cam := vec{math.Sin(th) * math.Cos(el), math.Sin(el), math.Cos(th) * math.Cos(el)}
+	right := vec{math.Cos(th), 0, -math.Sin(th)}
+	up := vec{cam[1]*right[2] - cam[2]*right[1], cam[2]*right[0] - cam[0]*right[2], cam[0]*right[1] - cam[1]*right[0]}
+	d := scale(cam, -1)
+	// the light turns with the camera: always from the viewer's upper left
+	lw := vec{
+		right[0]*light[0] + up[0]*light[1] + cam[0]*light[2],
+		right[1]*light[0] + up[1]*light[1] + cam[1]*light[2],
+		right[2]*light[0] + up[2]*light[1] + cam[2]*light[2],
+	}
+	leg := 0.0
+	if pose > 0 {
+		leg = 0.5 * math.Sin(float64(pose-1)*math.Pi/2+math.Pi/2)
+	}
+	depth, frame, rows := b.depth, b.frame, b.rows
+	for i := range depth {
+		depth[i] = math.Inf(1)
+	}
+	clear(frame.Pix)
+	for i := range rows {
+		rows[i] = rows[i][:0]
+	}
+	// The rays are parallel, so a solid's sphere covers a disc of the picture: only the
+	// pixels around it (with a pixel to spare) try the solid.
+	half := float64(fw)/2 - 0.5
+	for i := range b.solids {
+		s := &b.solids[i]
+		p := posePart(s, d, leg, b.dens[i])
+		b.dens[i] = p.den
+		c := s.a
+		if p.turned {
+			c = swingCS(c, s.pivot, p.cf, p.sf)
 		}
-		for pose := range Poses {
-			leg := 0.0
-			if pose > 0 {
-				leg = 0.5 * math.Sin(float64(pose-1)*math.Pi/2+math.Pi/2)
+		cu, cv, r := dot(c, right)/k, dot(c, up)/k, s.r/k
+		p.x0, p.x1 = int(math.Floor(cu+half-r))-1, int(math.Ceil(cu+half+r))+1
+		p.y0, p.y1 = int(math.Floor(float64(fh)-0.5-cv-r))-1, int(math.Ceil(float64(fh)-0.5-cv+r))+1
+		b.posed[i] = p
+		for y := max(0, p.y0); y <= min(fh-1, p.y1); y++ {
+			rows[y] = append(rows[y], i)
+		}
+	}
+	for py := range fh {
+		for px := range fw {
+			u := (float64(px) + 0.5 - float64(fw)/2) * k
+			v := (float64(fh) - float64(py) - 0.5) * k
+			o := vec{right[0]*u + up[0]*v + cam[0]*2, right[1]*u + up[1]*v + cam[1]*2, right[2]*u + up[2]*v + cam[2]*2}
+			oc := sub(o, dc)
+			bq := dot(oc, d)
+			if bq*bq-(dot(oc, oc)-dr*dr) < 0 {
+				continue // the ray misses the doll's sphere
 			}
-			for i := range depth {
-				depth[i] = math.Inf(1)
-			}
-			frame := image.NewRGBA(image.Rect(0, 0, fw, fh))
-			for py := range fh {
-				for px := range fw {
-					u := (float64(px) + 0.5 - float64(fw)/2) * k
-					v := (float64(fh) - float64(py) - 0.5) * k
-					o := vec{right[0]*u + up[0]*v + cam[0]*2, right[1]*u + up[1]*v + cam[1]*2, right[2]*u + up[2]*v + cam[2]*2}
-					oc := sub(o, dc)
-					bq := dot(oc, d)
-					if bq*bq-(dot(oc, oc)-dr*dr) < 0 {
-						continue // the ray misses the doll's sphere
-					}
-					best, ci := math.MaxFloat64, 0
-					var bn vec
-					for _, s := range solids {
-						if t, n := hit(s, o, d, leg); t >= 0 && t < best {
-							best, ci, bn = t, s.col, n
-						}
-					}
-					if best < math.MaxFloat64 {
-						frame.SetRGBA(px, py, shade(colors[ci], 0.62+0.38*math.Max(0, dot(bn, lw))))
-						depth[py*fw+px] = best
-					}
+			best, ci := math.MaxFloat64, 0
+			var bn vec
+			for _, i := range rows[py] {
+				p := &b.posed[i]
+				if px < p.x0 || px > p.x1 {
+					continue
+				}
+				if t, n := p.hit(o); t >= 0 && t < best {
+					best, ci, bn = t, p.s.col, n
 				}
 			}
-			// a thin outline: at the silhouette and where the depth jumps (an arm before the body)
-			for py := range fh {
-				for px := range fw {
-					c := frame.RGBAAt(px, py)
-					if c.A == 0 {
-						continue
-					}
-					z := depth[py*fw+px]
-					for _, o := range [][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
-						x, y := px+o[0], py+o[1]
-						if x < 0 || y < 0 || x >= fw || y >= fh || frame.RGBAAt(x, y).A == 0 || depth[y*fw+x]-z > 0.06 {
-							c = shade(c, 0.8)
-							break
-						}
-					}
-					sheet.SetRGBA(side*fw+px, pose*fh+py, c)
-				}
+			if best < math.MaxFloat64 {
+				frame.SetRGBA(px, py, shade(b.colors[ci], 0.62+0.38*math.Max(0, dot(bn, lw))))
+				depth[py*fw+px] = best
 			}
 		}
 	}
-	return sheet
+	// a thin outline: at the silhouette and where the depth jumps (an arm before the body)
+	for py := range fh {
+		for px := range fw {
+			c := frame.RGBAAt(px, py)
+			if c.A == 0 {
+				continue
+			}
+			z := depth[py*fw+px]
+			for _, o := range [][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
+				x, y := px+o[0], py+o[1]
+				if x < 0 || y < 0 || x >= fw || y >= fh || frame.RGBAAt(x, y).A == 0 || depth[y*fw+x]-z > 0.06 {
+					c = shade(c, 0.8)
+					break
+				}
+			}
+			b.sheet.SetRGBA(side*fw+px, pose*fh+py, c)
+		}
+	}
 }
 
 // Side is which side of a baked sheet the camera sees of someone facing (fx, fy) on the

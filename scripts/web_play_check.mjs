@@ -8,8 +8,11 @@
 //
 // It prints the page's console, its exceptions and failed requests, and fails on any
 // of them. With -shots it writes title.png (the first picture drawn) and, with
-// -enter N, enter.png after N presses of Enter. CHROME names the browser (default
-// google-chrome); its profile goes under TMPDIR and is removed afterwards.
+// -enter N, enter.png after N presses of Enter. It prints how long the page took to
+// fetch the game's files and then to draw the first frame (from the page's goZenTimes),
+// and the longest the page stood still after that (no animation frame). CHROME names
+// the browser (default google-chrome); its profile goes under TMPDIR and is removed
+// afterwards.
 import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -187,6 +190,26 @@ async function key(type) {
   });
 }
 
+// The page's times: fetching the files, from them to the first frame, and the longest
+// gap between animation frames after the first frame.
+async function timings() {
+  const r = await send("Runtime.evaluate", {
+    returnByValue: true,
+    expression: `({ t: window.goZenTimes || {}, gaps: window.goZenGaps || [] })`,
+  });
+  const { t, gaps } = r.result.value;
+  const s = (ms) => (ms / 1000).toFixed(2);
+  if (t.fetched !== undefined && t.ready !== undefined) {
+    console.log(`files fetched at ${s(t.fetched)}s; the first frame ${s(t.ready - t.fetched)}s after them` +
+      (t.starting !== undefined ? ` (the game started ${s(t.starting - t.fetched)}s after them)` : ""));
+  }
+  if (t.ready !== undefined) {
+    let worst = [0, 0];
+    for (const g of gaps) if (g[0] >= t.ready && g[1] > worst[1]) worst = g;
+    console.log(`longest stand-still after the first frame: ${s(worst[1])}s (at ${s(worst[0])}s)`);
+  }
+}
+
 async function main() {
   ws = new WebSocket(await target());
   await new Promise((r, e) => { ws.onopen = r; ws.onerror = e; });
@@ -217,6 +240,14 @@ async function main() {
   await send("Network.enable");
   await send("Page.enable");
   await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 720, deviceScaleFactor: 1, mobile: false });
+  // Every animation frame notes the time since the one before: a long gap is the page
+  // standing still (the program holding the browser's one thread).
+  await send("Page.addScriptToEvaluateOnNewDocument", {
+    source: `window.goZenGaps = [];
+      { let last = 0;
+        const tick = (t) => { if (last) goZenGaps.push([last, t - last]); last = t; requestAnimationFrame(tick); };
+        requestAnimationFrame(tick); }`,
+  });
   const start = Date.now();
   await send("Page.navigate", { url });
 
@@ -251,6 +282,7 @@ async function main() {
     await sleep(1500);
     await shot("enter.png");
   }
+  await timings();
   if (failed) console.log("FAIL: the page logged an error (above)");
   finish(failed ? 1 : 0);
 }

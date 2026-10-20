@@ -171,6 +171,12 @@ func Gray16(img image.Image, size image.Rectangle) *image.Gray16 {
 		return g
 	}
 	b := img.Bounds()
+	if m, ok := img.(*image.Gray16); ok && b.Size() == size.Size() { // a 16-bit gray PNG of the size
+		for y := range size.Dy() {
+			copy(g.Pix[y*g.Stride:y*g.Stride+2*size.Dx()], m.Pix[m.PixOffset(b.Min.X, b.Min.Y+y):])
+		}
+		return g
+	}
 	for y := size.Min.Y; y < size.Max.Y; y++ {
 		sy := b.Min.Y + (y-size.Min.Y)*b.Dy()/size.Dy()
 		for x := size.Min.X; x < size.Max.X; x++ {

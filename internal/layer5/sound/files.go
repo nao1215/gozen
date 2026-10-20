@@ -40,7 +40,9 @@ func LoadEffects(fsys fs.FS) int {
 			log.Printf("sfx %s: %v", e.Name(), err)
 			continue
 		}
+		mu.Lock()
 		effects[strings.TrimSuffix(e.Name(), path.Ext(e.Name()))] = pcm
+		mu.Unlock()
 		n++
 	}
 	return n

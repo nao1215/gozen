@@ -19,6 +19,7 @@ func Close() error {
 	volume = 0.7
 	bgmScale, seScale = 1, 1
 	clear(effects)
+	effectsGen++
 	varyMu.Lock()
 	clear(lastPlayed)
 	varyMu.Unlock()

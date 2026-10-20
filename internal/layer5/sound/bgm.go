@@ -16,6 +16,8 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
+
+	"github.com/nao1215/gozen/internal/layer1/pace"
 )
 
 const SampleRate = 44100
@@ -96,7 +98,7 @@ func Init() error {
 	if ctx.SampleRate() != SampleRate {
 		return fmt.Errorf("sound: audio context requires sample rate %d", SampleRate)
 	}
-	makeEffects()
+	makeEffects(pace.OneThread)
 	return nil
 }
 
@@ -185,7 +187,9 @@ func (p *pcm) fill(r io.Reader, progress func()) error {
 	buf := make([]byte, 16<<10)
 	odd := 0
 	i, extra := 0, 0
+	var pc pace.Pacer
 	for {
+		pc.Breathe()
 		n, err := r.Read(buf[odd:])
 		n += odd
 		even := n &^ 1
@@ -367,6 +371,7 @@ type Modular struct {
 	fsys     fs.FS
 	loading  map[string]bool
 	kept     map[string]bool
+	later    []string // kept songs that wait for the songs loading now
 	budget   int
 	used     map[string]int
 	clock    int
@@ -433,6 +438,10 @@ func (m *Modular) Keep(songs ...string) {
 	}
 	for _, s := range songs {
 		m.kept[s] = true
+		if len(m.loading) > 0 { // the song wanted now comes first
+			m.later = append(m.later, s)
+			continue
+		}
 		m.fetch(s, Neutral)
 	}
 }
@@ -507,6 +516,13 @@ func (m *Modular) stream(s Song, first string, fsys fs.FS) {
 	show()
 	delete(m.loading, s.Name)
 	m.trim()
+	if len(m.loading) == 0 {
+		later := m.later
+		m.later = nil
+		for _, k := range later {
+			m.fetch(k, Neutral)
+		}
+	}
 	m.mu.Unlock()
 }
 

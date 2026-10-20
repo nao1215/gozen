@@ -24,7 +24,7 @@ type voice struct {
 
 func InitRecord(w io.Writer, tps int) {
 	rec = &recorder{w: w, tps: tps}
-	makeEffects()
+	makeEffects(false)
 }
 
 func recordBGM(m *Modular, fsys fs.FS, songs []Song) {
