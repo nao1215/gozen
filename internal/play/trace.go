@@ -235,7 +235,7 @@ func (g *Game) traceSaves() (map[string]string, error) {
 var buttonNames = [numButtons]string{
 	btnUp: "up", btnDown: "down", btnLeft: "left", btnRight: "right", btnOK: "ok", btnCancel: "cancel",
 	btnMenu: "menu", btnLog: "log", btnAuto: "auto", btnHide: "hide", btnConfig: "config", btnNext: "next",
-	btnMemo: "memo", btnReload: "reload", btnTag: "tag", btnGraphs: "graphs",
+	btnMemo: "memo", btnReload: "reload", btnTag: "tag", btnGraphs: "graphs", btnSkip: "skip", btnSceneSkip: "scene_skip",
 }
 
 func (g *Game) traceInput() {
@@ -374,7 +374,7 @@ func (g *Game) traceState(terminal ...bool) {
 func (g *Game) traceRequest(r event.Request) {
 	switch r := r.(type) {
 	case event.Say:
-		l := traceLine{"text": r.Text}
+		l := traceLine{"text": r.Text, "read": g.isRead(r)}
 		if r.Name != "" {
 			l["who"] = r.Name
 		}
@@ -790,6 +790,11 @@ func (r *replay) check(g *Game, line traceLine) {
 	if i >= len(r.expect[k]) {
 		r.diverge = fmt.Sprintf(lang.T("ティック %d で余分な %s 行（%d 行目）"), g.tick, k, i+1)
 		return
+	}
+	if _, ok := r.expect[k][i]["read"]; k == "say" && !ok {
+		// A trace from before read marks (ADR 0026) has no read field to compare.
+		line = maps.Clone(line)
+		delete(line, "read")
 	}
 	want, got := comparableLine(r.expect[k][i]), comparableLine(line)
 	if r.capture != nil {

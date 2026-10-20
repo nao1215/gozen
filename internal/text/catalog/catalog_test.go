@@ -25,7 +25,7 @@ var indirect = map[string]struct {
 	"internal/play/menu.go":             {[]string{"data.StatLabels[st]"}, nil},
 	"internal/play/shop.go":             {[]string{"data.StatLabels[d.stat]"}, nil},
 	"cmd/gozen/memos.go":                {[]string{"n"}, []string{"人", "LLM", "自動の遊び", "ボット"}},
-	"internal/play/novel.go":            {[]string{"btn.label", "novelButtons[i].label"}, []string{"ログ", "オート", "非表示", "設定"}},
+	"internal/play/novel.go":            {[]string{"btn.label", "buttons[i].label"}, []string{"ログ", "オート", "スキップ", "非表示", "設定", "シーン送り"}},
 	"internal/layer2/gamedata/load.go":  {nil, []string{"武器", "防具", "装飾品"}},
 	"internal/layer2/gamedata/types.go": {nil, []string{"最大HP", "最大MP", "攻撃力", "防御力", "魔法力", "魔法防御", "素早さ", "運"}},
 }

@@ -20,6 +20,8 @@ type fastTo struct {
 	seen    int
 	seenAt  int
 	page    bool
+	// scene is scene skip: it stops before a line not read, a choice or a battle (skipBefore).
+	scene bool
 }
 
 func (g *Game) startFromMemo(path string) error {
@@ -74,6 +76,10 @@ func (g *Game) fastStep() {
 	f := g.fast
 	f.ticks++
 	stop := func(why string) {
+		if f.scene {
+			g.endSceneSkip(why)
+			return
+		}
 		g.fast = nil
 		g.emit("from_memo_ready", traceLine{"lines": g.evLines, "want": f.lines, "why": why, "picture": g.cg.File})
 	}

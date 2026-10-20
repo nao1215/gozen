@@ -36,3 +36,36 @@ scenarios:
       command: gozen check --only structure new
   - assert:
       exit_code: 0
+- name: play trace shows the lines not read and what skipping did
+  steps:
+  - fixture:
+      file: run.jsonl
+      content: |
+        {"t":"start","tick":0,"language":"en","game":"Novel","seed":1}
+        {"t":"say","tick":10,"text":"The lamps are lit.","read":true}
+        {"t":"skip","tick":12,"on":true}
+        {"t":"say","tick":16,"who":"Courier","text":"Gold 5.","read":true}
+        {"t":"skip","tick":20,"on":false,"why":"unread"}
+        {"t":"say","tick":20,"text":"A bell rings far off.","read":false}
+        {"t":"skip","tick":40,"scene":true,"on":true,"event":"story","line":3,"read":6,"lines":6}
+        {"t":"skip","tick":52,"scene":true,"on":false,"why":"choice","event":"story","line":4}
+        {"t":"end","tick":60}
+  - run:
+      command: gozen play trace run.jsonl --only say,skip
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - 'The lamps are lit.'
+        - 'A bell rings far off.  [unread]'
+        - 'skip on'
+        - 'skip off (unread)'
+        - 'scene skip from story line 3 (6 of 6 lines read)'
+        - 'scene skip off (choice) at line 4'
+        not_contains: 'lit.  [unread]'
+  - run:
+      command: gozen play trace run.jsonl --check
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: 'check: 0'

@@ -92,6 +92,11 @@ func (c *command) traceCmd(args []string) (err error) {
 			if c := strs(l["choices"]); len(c) > 0 {
 				what += " ? " + strings.Join(c, " / ")
 			}
+			if read, ok := l["read"].(bool); ok && !read {
+				what += "  [unread]"
+			}
+		case "skip":
+			what = skipText(l)
 		case "notice":
 			what = "notice: " + str(l["text"])
 		case "answer":
@@ -223,6 +228,28 @@ func (c *command) traceCmd(args []string) (err error) {
 	}
 	c.out.Println("lines:", strings.Join(parts, ", "))
 	return nil
+}
+
+// skipText describes a line of skip mode or scene skip (ADR 0026).
+func skipText(l map[string]any) string {
+	what := "skip"
+	if l["scene"] == true {
+		what = "scene skip"
+	}
+	if l["on"] == true {
+		if l["scene"] == true {
+			return fmt.Sprintf("%s from %s line %v (%v of %v lines read)", what, str(l["event"]), l["line"], l["read"], l["lines"])
+		}
+		return what + " on"
+	}
+	what += " off"
+	if why := str(l["why"]); why != "" {
+		what += " (" + why + ")"
+	}
+	if l["scene"] == true {
+		what += fmt.Sprintf(" at line %v", l["line"])
+	}
+	return what
 }
 
 func num(v any) float64 {

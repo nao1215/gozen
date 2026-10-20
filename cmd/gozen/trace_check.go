@@ -47,6 +47,9 @@ type traceChecker struct {
 	wantAt   int
 	waiting  bool
 	stands   int
+
+	// skipping is skip mode or scene skip, from the trace's skip lines (ADR 0026).
+	skipping bool
 }
 
 type standFigure struct {
@@ -109,6 +112,11 @@ func (c *traceChecker) line(l map[string]any, raw []byte) error {
 	case "say":
 		c.sayWho, c.sayText, c.sayTick = str(l["who"]), str(l["text"]), tick
 		c.sayN++
+		if read, ok := l["read"].(bool); ok && !read && c.skipping {
+			c.add(tick, "skip-unread", lang.T("スキップ中に読んでいない台詞を飛ばした（%s）"), c.say())
+		}
+	case "skip":
+		c.skipping = l["on"] == true
 	case "stand":
 		var s standLine
 		if err := json.Unmarshal(raw, &s); err != nil {
@@ -268,8 +276,11 @@ func checkTrace(path string, musicLate float64, w io.Writer) (n int, err error) 
 	for _, is := range c.issues {
 		sec := float64(is.tick) / 60
 		code := diag.PictureFault
-		if strings.HasPrefix(is.kind, "music") {
+		switch {
+		case strings.HasPrefix(is.kind, "music"):
 			code = diag.MusicFault
+		case strings.HasPrefix(is.kind, "skip"):
+			code = diag.SkipFault
 		}
 		output.Println(code.Mark(fmt.Sprintf("%02d:%05.2f %-10s %s", int(sec)/60, sec-float64(int(sec)/60*60), is.kind, is.text)))
 	}

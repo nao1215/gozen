@@ -34,7 +34,7 @@ Runs with `--dev` that start somewhere other than the beginning (`--start`, `--s
 | F9 | Write a note: a screenshot, the game state and your comment. |
 | F10 | Tag the picture on screen, when picture review is on. |
 
-The usual keys still work: O or F2 for settings, F11 for full screen, M to mute.
+The usual keys still work: O or F2 for settings, F11 for full screen, M to mute. In conversations, Ctrl held passes the lines read, N turns skip mode on and off, and Page Down skips a scene whose lines were all read ([novel games](/writing-a-game/#novel-games)); a script presses them with `press skip` and `press scene_skip`.
 
 ## F5: reload
 

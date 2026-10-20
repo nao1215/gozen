@@ -17,6 +17,11 @@ var (
 		Detail:  "play trace --check found a song heard later than --music-late seconds after the game asked for it.",
 		Fix:     "Make the song shorter to load (a smaller file) or ask for it earlier.",
 	})
+	SkipFault = register(1404, "SkipFault", Entry{
+		Summary: "skipping passed a line that was not read",
+		Detail:  "play trace --check found a line marked not read while skip mode or scene skip was on. Skipping stops before every line not read.",
+		Fix:     "Record the trace again with this engine; if it happens again, report it with the trace.",
+	})
 )
 
 // GZN15xx: an output path.

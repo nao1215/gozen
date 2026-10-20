@@ -1,0 +1,15 @@
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {reader: {name: Reader, class: walker}}
+skills: {attack: {}, guard: {}}
+locations:
+  room: {name: Room}
+events:
+  story:
+    do:
+      - say: "The lamps are lit."
+      - say: {who: Courier, text: "The road is long."}
+      - say: "A bell rings far off."
+      - choice:
+          - {label: Wait, do: [{say: "You wait."}]}
+          - {label: Go, do: [{say: "You go."}]}
+      - say: "The night goes on."

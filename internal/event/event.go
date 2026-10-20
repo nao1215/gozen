@@ -7,6 +7,7 @@ package event
 import (
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"math"
 	"path"
 	"slices"
@@ -76,6 +77,9 @@ type Say struct {
 	Text  string
 	Right bool // the picture stands on the right
 	Actor string
+	// Key is the key of the line's source (SourceKey of who and text as written, before
+	// {expressions} and translation): the screen remembers read lines by it (ADR 0026).
+	Key uint64
 	// Instead is the replacement line used when the speaker is down during battle (instead of data.Say).
 	Instead []Say
 }
@@ -85,6 +89,26 @@ type Choice struct {
 	IDs     []string // identifiers in the same order as the displayed choices (empty if unspecified)
 	Prompt  string
 	Options []string
+	// Keys are the keys of the options' sources (ChoiceKey of the prompt and the label as
+	// written), in the same order: the screen marks an option taken before (ADR 0026).
+	Keys []uint64
+}
+
+// SourceKey is the key of a line's source: a 64-bit FNV-1a hash of who and text as written in
+// the YAML, joined by a zero byte. A line keeps its key whatever its {expressions} hold and
+// in whatever language it is shown (ADR 0026).
+func SourceKey(who, text string) uint64 {
+	h := fnv.New64a()
+	h.Write([]byte(who))
+	h.Write([]byte{0})
+	h.Write([]byte(text))
+	return h.Sum64()
+}
+
+// ChoiceKey is the key of an option's source: "choice", the prompt and the label as written,
+// joined by zero bytes.
+func ChoiceKey(prompt, label string) uint64 {
+	return SourceKey("choice\x00"+prompt, label)
 }
 
 // Battle is a battle to fight: the screen answers with its battle.Result.
@@ -407,6 +431,7 @@ func (r *Runner) run(c *data.Command) Request {
 		return req
 	case "choice":
 		var labels, ids []string
+		var keys []uint64
 		r.options = nil
 		for _, o := range c.Choice {
 			ok, err := o.When.Bool(env)
@@ -415,6 +440,7 @@ func (r *Runner) run(c *data.Command) Request {
 				r.options = append(r.options, o)
 				labels = append(labels, data.Render(o.Label, env))
 				ids = append(ids, o.ID)
+				keys = append(keys, ChoiceKey(c.Prompt, o.Label))
 			}
 		}
 		if len(labels) == 0 {
@@ -422,7 +448,7 @@ func (r *Runner) run(c *data.Command) Request {
 			return nil
 		}
 		r.asked = c
-		return Choice{Prompt: data.Render(c.Prompt, env), Options: labels, IDs: ids}
+		return Choice{Prompt: data.Render(c.Prompt, env), Options: labels, IDs: ids, Keys: keys}
 	case "ran":
 		r.st.MarkRan(c.Ran)
 	case "done":
@@ -704,7 +730,7 @@ func (r *Runner) say(s *data.Say, env expr.Env) Request {
 
 // line builds one line (false when it has nothing to show).
 func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
-	out := Say{Text: data.Render(s.Text, env), Name: s.Who}
+	out := Say{Text: data.Render(s.Text, env), Name: s.Who, Key: SourceKey(s.Who, s.Text)}
 	if a, ok := r.db.Actors[s.Who]; ok {
 		out.Name = a.Name
 		out.Actor = s.Who

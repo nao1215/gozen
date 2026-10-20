@@ -27,6 +27,8 @@ type talk struct {
 	bare   bool
 	size   float64
 	read   bool
+	// keys are the keys of the choice's options (event.Choice.Keys).
+	keys []uint64
 }
 
 const (
@@ -121,9 +123,14 @@ func (t *talk) ask(g *Game, c event.Choice) {
 		*t = talk{active: true, bare: true, pages: [][]string{{""}}}
 	}
 	t.shown = t.total
+	t.keys = c.Keys
 	var items []listItem
-	for _, o := range c.Options {
-		items = append(items, listItem{label: o})
+	for i, o := range c.Options {
+		it := listItem{label: o}
+		if i < len(c.Keys) && g.read[c.Keys[i]] {
+			it.color = g.th.accent // taken before (ADR 0026)
+		}
+		items = append(items, it)
 	}
 	bx, by, bw, bh := g.talkBox()
 	w := choiceWidth(&g.db.Game, c.Options)
@@ -177,13 +184,20 @@ func (t *talk) update(g *Game) (done bool, answer int) {
 		chose, _ := t.choice.update(g)
 		if chose {
 			t.active, t.closed = false, g.tick
+			if k := t.choice.sel; k < len(t.keys) && !g.live.quiet {
+				g.markKey(t.keys[k])
+			}
 			g.remember(logLine{text: "→ " + t.choice.items[t.choice.sel].label, answer: true})
 			return true, t.choice.sel
 		}
 		return false, -1
 	}
 
-	fast := g.in.fast && (t.read || g.cfg.SkipAll || (g.rep != nil && g.rep.version == 1) || t.say.Text == "")
+	if g.skipping && (g.in.ok() || g.in.click) {
+		g.stopSkip("input")
+		return false, -1
+	}
+	fast := (g.in.fast || g.skipping) && (t.read || g.cfg.SkipAll || (g.rep != nil && g.rep.version == 1) || t.say.Text == "")
 	if t.shown < t.total {
 		t.shown += g.cfg.textStep()
 		if fast {

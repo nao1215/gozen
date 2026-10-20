@@ -436,6 +436,17 @@ scenarios:
       exit_code: 1
       stdout:
         contains: ['[GZN1402]', '[GZN1403]']
+- name: GZN1404 for a line not read that skipping passed
+  steps:
+  - fixture:
+      file: run.jsonl
+      content: "{\"t\":\"skip\",\"tick\":0,\"on\":true}\n{\"t\":\"say\",\"tick\":4,\"text\":\"Hello.\",\"read\":false}\n{\"t\":\"end\",\"tick\":10}\n"
+  - run:
+      command: gozen play trace run.jsonl --check
+  - assert:
+      exit_code: 1
+      stdout:
+        contains: ['[GZN1404]', 'skip-unread', 'Hello.']
 - name: GZN1501 and GZN1502 for an output that exists or lies inside an input
   steps:
   - fixture:

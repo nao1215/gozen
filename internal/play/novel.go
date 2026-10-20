@@ -36,16 +36,28 @@ const (
 	novelSize = 28.0
 )
 
-var novelButtons = []struct {
+type novelButton struct {
 	label string
 	b     button
-}{{"ログ", btnLog}, {"オート", btnAuto}, {"非表示", btnHide}, {"設定", btnConfig}}
+}
+
+var novelButtons = []novelButton{{"ログ", btnLog}, {"オート", btnAuto}, {"スキップ", btnSkip}, {"非表示", btnHide}, {"設定", btnConfig}}
+
+// sceneSkipButton shows on the novel bar only while the running event can be skipped.
+var sceneSkipButton = novelButton{"シーン送り", btnSceneSkip}
+
+func (g *Game) novelButtons() []novelButton {
+	if g.sceneSkippable() {
+		return append([]novelButton{sceneSkipButton}, novelButtons...)
+	}
+	return novelButtons
+}
 
 func (g *Game) novelButtonRects() []image.Rectangle {
 	sw, sh := g.screen()
 	var out []image.Rectangle
 	x := sw - 40
-	for _, btn := range slices.Backward(novelButtons) {
+	for _, btn := range slices.Backward(g.novelButtons()) {
 		w := gfx.TextWidth(lang.T(btn.label), sizeS) + 28
 		x -= w
 		out = append([]image.Rectangle{image.Rect(int(x), int(sh-40), int(x+w), int(sh-10))}, out...)
@@ -67,9 +79,10 @@ func (g *Game) novelInput() bool {
 		press[b] = g.in.pressed[b]
 	}
 	if g.in.click && g.novel() && t.active {
+		buttons := g.novelButtons()
 		for i, r := range g.novelButtonRects() {
 			if g.in.mouse.In(r) {
-				press[novelButtons[i].b] = true
+				press[buttons[i].b] = true
 				g.in.click = false
 			}
 		}
@@ -86,6 +99,12 @@ func (g *Game) novelInput() bool {
 		return true
 	case press[btnAuto]:
 		g.autoRead = !g.autoRead
+		return true
+	case press[btnSkip] && t.active:
+		g.toggleSkip()
+		return true
+	case press[btnSceneSkip] && t.active:
+		g.sceneSkip()
 		return true
 	case (press[btnHide] || g.in.esc || g.in.rclick) && g.novel() && t.choice == nil:
 		t.hidden = true
@@ -155,15 +174,16 @@ func (t *talk) drawNovel(g *Game, dst *ebiten.Image) {
 		bob := math.Sin(float64(g.tick)/6) * 4
 		gfx.DrawText(dst, "▼", sw-150, y+novelH-80+bob, sizeS, g.th.cursor)
 	}
+	buttons := g.novelButtons()
 	for i, r := range g.novelButtonRects() {
 		c := g.th.dim
-		if novelButtons[i].b == btnAuto && g.autoRead {
+		if buttons[i].b == btnAuto && g.autoRead || buttons[i].b == btnSkip && g.skipping {
 			c = g.th.accent
 		}
 		if g.in.mouse.In(r) {
 			c = g.th.cursor
 		}
-		gfx.DrawText(dst, lang.T(novelButtons[i].label), float64(r.Min.X+r.Dx()/2), float64(r.Min.Y)+2, sizeS, c)
+		gfx.DrawText(dst, lang.T(buttons[i].label), float64(r.Min.X+r.Dx()/2), float64(r.Min.Y)+2, sizeS, c)
 	}
 	if t.choice != nil {
 		t.choice.draw(g, dst, true)

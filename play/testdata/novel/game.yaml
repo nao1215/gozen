@@ -1,0 +1,9 @@
+# A short story in the novel window for the graphics test of skip mode and scene skip (no
+# artwork). The test copies it to a temporary directory and adds assets/regular.ttf (the Go font).
+schema_version: 4
+id: novel-test
+title: Novel test
+screen: {width: 640, height: 360}
+fonts: {regular: regular.ttf}
+start: {location: room, party: [reader]}
+ui: {message: novel}

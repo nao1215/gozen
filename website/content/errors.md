@@ -22,7 +22,7 @@ Codes are assigned one family at a time. A diagnostic without a code still exits
 | `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 10 codes |
 | `GZN12xx` | 1 | fonts and text layout | 1 codes |
 | `GZN13xx` | 1 | a simulation could not run or reported a problem | not yet |
-| `GZN14xx` | 1 | a trace of a play is broken or shows faults | 3 codes |
+| `GZN14xx` | 1 | a trace of a play is broken or shows faults | 4 codes |
 | `GZN15xx` | 1 | an output path: it exists, overlaps an input, or cannot be written | 2 codes |
 | `GZN16xx` | 1 | taking screenshots with the game binary | not yet |
 | `GZN17xx` | 1 | building a release or a trial tree | 4 codes |
@@ -225,6 +225,14 @@ A song came later than asked for.
 play trace --check found a song heard later than --music-late seconds after the game asked for it.
 
 Fix: Make the song shorter to load (a smaller file) or ask for it earlier.
+
+### GZN1404
+
+Skipping passed a line that was not read.
+
+play trace --check found a line marked not read while skip mode or scene skip was on. Skipping stops before every line not read.
+
+Fix: Record the trace again with this engine; if it happens again, report it with the trace.
 
 ## GZN15xx
 

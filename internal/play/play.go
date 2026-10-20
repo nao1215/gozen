@@ -293,6 +293,17 @@ type Game struct {
 	unlockReadErr     error
 	unlockNeedsBackup bool
 
+	// readErr keeps read.json from being overwritten when it could not be read; readNeedsBackup
+	// keeps the record before the envelope as a backup on the next write (ADR 0026).
+	readErr         error
+	readNeedsBackup bool
+	// skipping is skip mode: lines read pass until one that was not, a choice, a battle or
+	// the end of the events (ADR 0026).
+	skipping bool
+	// sceneLines caches the lines of each event for scene skip and the read rate.
+	sceneLines   map[string][]uint64
+	sceneLinesDB *data.DB
+
 	walkGoal [3]int
 	lastView *ebiten.Image
 	freeze   *ebiten.Image
@@ -1360,6 +1371,7 @@ func (g *Game) pump() bool {
 	}
 	if g.req == nil {
 		if !g.events.Running() {
+			g.stopSkip("end")
 			if g.sides != nil || g.stage != [2]stageActor{} {
 				g.stageGen++
 			}
@@ -1396,6 +1408,9 @@ func (g *Game) pump() bool {
 		}
 	case event.Wait:
 		g.waitT--
+		if g.skipping {
+			g.waitT = 0
+		}
 		if g.waitT <= 0 {
 			g.req = nil
 		}
@@ -1432,10 +1447,11 @@ func (g *Game) updateTap() bool {
 	auto := g.autoRead && float64(-g.tapT) >= 120*g.cfg.autoScale()
 
 	slide := g.tapAuto > 0 && float64(-g.tapT) >= g.tapAuto*60
-	return g.tapT <= 0 && (g.in.advance() || g.in.fast || auto || slide)
+	return g.tapT <= 0 && (g.in.advance() || g.in.fast || g.skipping || auto || slide)
 }
 
 func (g *Game) begin(r event.Request) {
+	g.skipBefore(r)
 	g.traceRequest(r)
 	switch r.(type) {
 	case event.Say, event.Choice:

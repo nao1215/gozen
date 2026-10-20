@@ -246,6 +246,20 @@ Every file name is relative to `assets/`. A character's `faces` is a directory o
 
 The engine's own words (menus, battle messages, settings, saves) come in English and Japanese. `language:` in `game.yaml` picks one: `en` (the default) or `ja`. `text:` lays the game's own wording over that language; a key is the engine's Japanese source text, a format with its `%d` and `%s` too, and the value may reorder them (`%[2]d`). [The English catalog](https://github.com/nao1215/gozen/blob/main/internal/text/catalog/english.go) lists every key. `terms:` names the currency and stats. `gozen check` warns when `language` is unset but the game is written in Japanese, and when the regular font lacks letters of the chosen words.
 
+## Novel games
+
+A novel game is a game whose places mostly run events. `ui.message: novel` in `game.yaml` shows the lines in a band across the bottom of the screen, with the speakers' standing pictures above it:
+
+<!-- verify: load as=game.yaml -->
+```yaml
+ui:
+  message: novel
+```
+
+The band has buttons for the backlog, auto, skip, hiding the window and the settings. The player can also hold Ctrl to pass the lines already read, press N to turn skip mode on (it stays on until a line not read, a choice, a battle or the end of the events), and press Page Down, or the "Skip scene" button that shows when every line of the running event was read, to go at once to the next choice or line not read. The setting "Text to skip" makes skipping pass lines not read too.
+
+A line counts as read by its source: the speaker and the text as written, before `{expressions}` are filled in. The read lines are kept in `read.json` beside the saves, so they last across saves and new games. Runs for testing (`--script`, `--start`, autoplay) do not touch them unless you pass `--save-dir`. In a trace, every `say` line says whether it was read, and `gozen play trace --check` fails when skipping passed a line that was not.
+
 ## Saves
 
 Saves are JSON files in the OS config directory, under the game `id`. They record the schema and data versions; raise `data_version` in `game.yaml` when you change definitions in a way old saves should notice, and the loader reports what it repaired.

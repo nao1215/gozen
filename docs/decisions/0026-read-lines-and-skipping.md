@@ -1,6 +1,6 @@
 # ADR 0026: Read lines, their record, and skipping
 
-Status: Accepted (2026-10-21). Not implemented yet. Home: `internal/event` (the key of a line), `internal/play` (the record, skip mode, scene skip).
+Status: Accepted (2026-10-21). Implemented: the source key, the record's envelope, the marks of options taken, skip mode, scene skip, the read rate, the trace and the script (`TestGraphicsNovel`, `internal/play/skip_test.go`). Home: `internal/event` (the key of a line), `internal/play` (the record, skip mode, scene skip).
 
 ## Users and problem
 
@@ -14,7 +14,7 @@ The runner gives every line (`event.Say.Key`) a 64-bit FNV-1a hash of its source
 
 The old key stays readable for one version: a line counts as read when either key is in the record, and only the new key is written.
 
-A choice remembers its options the same way: an option taken once is marked when the choice is asked again. Its key is the source of the prompt and the label (`"choice"`, prompt and label joined by a zero byte), in the same record, so it is the player's and does not roll back ([ADR 0025](0025-replay-to-roll-back-skip-and-resume.md)).
+A choice remembers its options the same way: an option taken once is drawn in the accent color when the choice is asked again. Its key is the source of the prompt and the label (`"choice"`, prompt and label joined by a zero byte), in the same record, so it is the player's and does not roll back ([ADR 0025](0025-replay-to-roll-back-skip-and-resume.md)).
 
 ### The record has an envelope
 
@@ -22,7 +22,7 @@ A choice remembers its options the same way: an option taken once is marked when
 
 ### Skip mode, scene skip and the read rate
 
-- Skip mode: a "Skip" button on the novel bar and a key (N) turn it on, and it stays on until a line that was not read (unless the setting "Text to skip: all" is on), a choice, a battle, the end of the events, or a click or the key again. While it is on, lines and waits pass as with Ctrl. Ctrl held keeps working as before.
+- Skip mode: a "Skip" button on the novel bar and a key (N) turn it on, and it stays on until a line that was not read (unless the setting "Text to skip: all" is on), a choice, a battle, the end of the events, or a click or the key again. While it is on, lines, waits and pictures waiting for a click pass as with Ctrl (a picture does not stop skipping, as it does not stop Ctrl). Ctrl held keeps working as before. N is the key because S already moves down (WASD).
 - Scene skip: when every line of the running event was read (the lines are collected from the event's commands, into the branches of `if`, `choice` and `battle` and the events it calls, whatever the conditions), the novel bar shows "Skip scene" (key Page Down). It replays at once, quietly, to the next choice, the next line not read, a battle or the end of the event. It uses the replay of [ADR 0025](0025-replay-to-roll-back-skip-and-resume.md).
 - The read rate of an event is the share of its lines that were read. The `--dev` panel lists it per event ([ADR 0029](0029-dev-panel.md)); `gozen book` does not (the author decided not to add `--read`).
 
