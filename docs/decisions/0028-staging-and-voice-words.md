@@ -1,6 +1,6 @@
 # ADR 0028: The words of staging and voice
 
-Status: Accepted (2026-10-21). Staging (stage 3) is done; voice is the stage "Voice" under "Plan". Home: `internal/layer2/gamedata` (the words and the checks), `internal/event` (the effects), `internal/play` and `internal/layer5/sound` (the screen and the sound).
+Status: Accepted (2026-10-21). Staging (stage 3) and voice (stage 4) are done. Home: `internal/layer2/gamedata` (the words and the checks), `internal/event` (the effects), `internal/play` and `internal/layer5/sound` (the screen and the sound).
 
 ## Users and problem
 
@@ -45,6 +45,15 @@ Lines get no inline tags (`{w=0.5}` and the like): `{}` is already the expressio
 - None of these is a boundary of rolling back ([ADR 0025](0025-replay-to-roll-back-skip-and-resume.md)): the replay plays them again quietly.
 - Not done: the warning of `stand` and `say.side` in one event.
 
+### As built (voice)
+
+- `say.voice` is found by `DB.VoicePath`: in the speaker's `voices` folder when the speaker is an actor with one (the extension may be left out, `.ogg` tried before `.wav`), otherwise as a path under `assets/`. The runner puts the file on `event.Say.Voice` and sends `VoiceEffect` just before the line.
+- The screen plays a voice when its line opens and stops the one before (`ui.voice.cut`, default true). A line passed by skip mode, by Ctrl over a line read, by scene skip, or by a quiet replay does not speak; the line a replay lands on (rolling back, a load, a note, F5) does. Auto waits for the voice and a third of a second after it (`ui.voice.auto_wait`, default true); the voice's length comes from the decoded file, so a trace and its replay agree with sound or without.
+- The settings gain "Voice volume" and a row for each actor with `voices` (`config.json` `voice`, `voice_by`). A voice is decoded when first played and kept in a cache of 16.
+- `gozen check` reports a missing file (GZN1105), a sound that is not Ogg or WAV (GZN1107), a missing `voices` folder, and warns of the lines of a voiced actor without a voice with their paths (GZN0109). A trace has `voice` lines (`file`, `who`, `ticks`, `missing`); `gozen play trace --check` reports a voice played while skipping (GZN1404) and a voice that could not be read (GZN1406). The file of a trace's voice is not looked up again, since the trace does not name the game's folder.
+- The examples ship no voices (the author's decision); the tests make short tones (`testgame.Wav`).
+- Not done: replaying a voice from the backlog.
+
 ## Alternatives
 
 1. Several verbs (`show`, `hide`, `move`). More to learn for the same work. Not chosen.
@@ -55,4 +64,4 @@ Lines get no inline tags (`{w=0.5}` and the like): `{}` is already the expressio
 | Stage | Content |
 | --- | --- |
 | 3 | `stand`, the map forms of `effect`, `music`, `wait` and `sfx` (done) |
-| 4 | `say.voice`, `actors.<id>.voices`, `ui.voice`, the volumes, the checks and the trace |
+| 4 | `say.voice`, `actors.<id>.voices`, `ui.voice`, the volumes, the checks and the trace (done) |

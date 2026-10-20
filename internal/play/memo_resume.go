@@ -82,6 +82,7 @@ func (g *Game) fastStep() {
 		}
 		g.fast = nil
 		g.emit("from_memo_ready", traceLine{"lines": g.evLines, "want": f.lines, "why": why, "picture": g.cg.File})
+		g.landedVoice()
 	}
 	reached := g.evLines >= f.lines
 	what, t := g.waiting()

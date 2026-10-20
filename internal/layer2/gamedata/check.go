@@ -50,6 +50,8 @@ type checker struct {
 	choseReads [][2]string
 	// reactions are the words of the reactions of moving portraits (reactionNames).
 	reactions []string
+	// voiced counts the lines of each actor with voices, and those without a voice.
+	voiced map[string]*voiceCount
 }
 
 // errorf records a problem with its diagnostic code (ADR 0024). A few checks
@@ -251,6 +253,9 @@ func (db *DB) Check() []error {
 		if *r < 0 || *r > MaxRollback {
 			c.errorf(diag.OutOfRange, "game.yaml ui.rollback", "want 0 to %d earlier events (0 turns rolling back off), got %d", MaxRollback, *r)
 		}
+	}
+	if v := g.UI.Voice; v.Cut != nil || v.AutoWait != nil {
+		c.needsVersion("game.yaml ui.voice", "ui.voice", SchemaVersion4)
 	}
 	if tp := g.UI.TalkPortrait; tp != (TalkPortrait{}) {
 		c.needsVersion("game.yaml ui.talk_portrait", "ui.talk_portrait", SchemaVersion3)
@@ -511,6 +516,7 @@ func (db *DB) Check() []error {
 			c.errorf(diag.MissingAsset, w, "no face assets/%s/%s.png", a.Faces, a.Face)
 		}
 		c.puppet(w+".puppet", a)
+		c.voices(w+".voices", a)
 		c.doll(w+".doll", a.Doll)
 		for s, it := range a.Equip {
 			if !slots[s] {
@@ -853,6 +859,7 @@ func (db *DB) Check() []error {
 	c.faceWarnings()
 	c.iconWarnings()
 	c.choseReferences()
+	c.voiceWarnings()
 	db.sceneWarns, db.sceneWarned = sortedDiagnostics(c.warns), true
 	return sortedDiagnostics(c.errs)
 }
@@ -1065,6 +1072,7 @@ func (c *checker) say(w string, s *Say, names []string) {
 		c.file(w+".face", s.Face)
 	}
 	c.text(w+".who", s.Who, names)
+	c.voice(w, s)
 	if s.Side != "" && s.Side != "left" && s.Side != "right" {
 		c.errorf(diag.NotAWord, w+".side", "want left or right")
 	}

@@ -55,6 +55,7 @@ Say:
   text: "The line. A line may be written as just this text."
   side: "`left` or `right`, where the speaker stands. The default is `left` for an actor and `right` for any other speaker."
   instead: "In battle, replacement lines by other actors, said when `who` is down: the first speaker not down says theirs. Not used outside battle."
+  voice: "The line's voice: for an actor with `voices`, a name in that folder (the `.ogg` or `.wav` may be left out); for anyone else, a path under `assets/`. Needs schema version 4."
 ScaleMark:
   _: "A person's pixel height measured with the feet at a given point, used to scale dolls in a stage."
   at: "The feet position as `[x, y]` in background pixels."

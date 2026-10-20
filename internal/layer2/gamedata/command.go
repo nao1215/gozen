@@ -191,6 +191,9 @@ type Say struct {
 	Face string `yaml:"face"` // a face of the actor (or a picture path)
 	Text string `yaml:"text"`
 	Side string `yaml:"side"` // left, right (default: left for party, right for others)
+	// Voice is the line's voice: a name in the speaker's voices folder, or a path under
+	// assets/ (schema_version 4, ADR 0028).
+	Voice string `yaml:"voice"`
 	// Instead is a substitute used when who is down during battle. It shows the line of the first member who is not down
 	// (skipped if everyone is down or there is none). It is not used outside battle.
 	Instead []Say `yaml:"instead"`

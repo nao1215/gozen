@@ -140,6 +140,9 @@ func (g *Game) autoAdvance() bool {
 	if g.battleAutoTalk() {
 		return float64(t.full) > wait/g.autoTempo()
 	}
+	if t.voiceT > 0 && g.db.Game.UI.Voice.Waits() && t.age < t.voiceT+20 {
+		return false // auto waits for the voice to end, and a breath after it
+	}
 	return g.autoRead && float64(t.full) > wait
 }
 

@@ -97,6 +97,14 @@ func (c *command) traceCmd(args []string) (err error) {
 			}
 		case "skip":
 			what = skipText(l)
+		case "voice":
+			what = str(l["file"])
+			if w := str(l["who"]); w != "" {
+				what = w + ": " + what
+			}
+			if l["missing"] == true {
+				what += "  MISSING"
+			}
 		case "rollback":
 			what = fmt.Sprintf("back from line %v to line %v of %s", l["from"], l["to"], cmp.Or(str(l["event"]), "(an arrival)"))
 			if l["back_into"] == true {

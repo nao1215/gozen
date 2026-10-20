@@ -30,6 +30,7 @@ Actor:
   puppet: "A moving portrait under assets/. The talk window draws it instead of the face picture when it has a face of that name."
   reactions: "Faces shown for a moment on events such as hit, act, heal, win and fall, mapping the event name to a face."
   tree: "Skill tree nodes already raised at the start, mapping a node ID to its level. They are paid from the starting SP."
+  voices: "A folder under `assets/` holding the actor's voices, named by `say.voice`. `gozen check` counts the actor's lines without a voice. Needs schema version 4."
 Affect:
   _: "Puts a state on party members or removes one outside battle."
   add: "The state to add, an ID of states. Either `add` or `remove` is required."

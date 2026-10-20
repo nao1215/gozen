@@ -158,3 +158,14 @@ Detection runs an ONNX model you supply, through ONNX Runtime. Nothing is bundle
 The detection model is a YOLO-style ONNX model with an `images` input and an `output0` output shaped `[1, 4 + classes, N]`. A model that is given but cannot be read is an error; Gozen never falls back to another method silently.
 
 Without a C compiler, `go install` builds `gozen` without inference. Help, hand-written regions and `inspect` of an existing report still work; a command that needs detection says how to rebuild and exits 1.
+
+## Recording voices
+
+Voices need no tool of their own: they are sound files under `assets/` that the lines name ([Add voices](/cookbook/#add-voices)). A convention that keeps a recording session in order:
+
+- one folder per actor, given as the actor's `voices` (`assets/keeper/voice/`);
+- one file per line, named by the event and the line's number in it (`dinner_001.ogg`, `dinner_002.ogg`), so that a script for the actor can be sorted by event;
+- Ogg Vorbis or WAV, mono or stereo, any sample rate (the engine resamples).
+
+`gozen check` warns of the lines of an actor with `voices` that have no voice yet (GZN0109), with their paths; `--format json` gives them to a script that writes the list of lines still to record.
+

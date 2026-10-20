@@ -458,6 +458,43 @@ scenarios:
       exit_code: 1
       stdout:
         contains: ['[GZN1405]', 'rollback']
+- name: GZN1406 for a voice that could not be read
+  steps:
+  - fixture:
+      file: run.jsonl
+      content: "{\"t\":\"say\",\"tick\":4,\"text\":\"Hello.\",\"read\":false}\n{\"t\":\"voice\",\"tick\":4,\"file\":\"keeper/voice/hello.ogg\",\"missing\":true}\n{\"t\":\"end\",\"tick\":10}\n"
+  - run:
+      command: gozen play trace run.jsonl --check
+  - assert:
+      exit_code: 1
+      stdout:
+        contains: ['[GZN1406]', 'keeper/voice/hello.ogg']
+- name: GZN0109 for the lines of a voiced actor without a voice
+  steps:
+  - fixture:
+      file: voiced/game.yaml
+      content: "schema_version: 4\nid: voiced\nstart: {location: room, party: [reader]}\n"
+  - fixture:
+      file: voiced/assets/reader/voice/hello.wav
+      content: "a stub"
+  - fixture:
+      file: voiced/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker, voices: reader/voice}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {}}
+        events:
+          scene:
+            do:
+              - say: {who: reader, voice: hello, text: Hello.}
+              - say: {who: reader, text: Goodbye.}
+  - run:
+      command: gozen check --only structure voiced
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: ['[GZN0109]', '1 of 2 lines of reader have no voice', 'events.scene.do[1].say']
 - name: GZN1501 and GZN1502 for an output that exists or lies inside an input
   steps:
   - fixture:

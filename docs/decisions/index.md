@@ -35,7 +35,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0025](0025-replay-to-roll-back-skip-and-resume.md) | Replay to roll back, skip and resume (`schema_version: 4`, save format version 2) | Accepted (stages 0, 2 and 2b done) | |
 | [0026](0026-read-lines-and-skipping.md) | Read lines keyed by their source, a versioned record, skip mode and scene skip | Accepted (done) | |
 | [0027](0027-text-languages.md) | The languages of a game's text (source to translation) | Accepted | |
-| [0028](0028-staging-and-voice-words.md) | The words of staging and voice (`stand`, the map forms of `effect`, `music`, `wait`, `sfx`; `say.voice`) | Accepted (staging done) | |
+| [0028](0028-staging-and-voice-words.md) | The words of staging and voice (`stand`, the map forms of `effect`, `music`, `wait`, `sfx`; `say.voice`) | Accepted (done) | |
 | [0029](0029-dev-panel.md) | The development panel (F8) and one index of where names are written and read | Accepted (stage 0 done) | |
 
 The source of truth for the current public packages is `api/public.txt` and [Boundaries](../architecture/boundaries.md), not this list of ADRs.

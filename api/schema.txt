@@ -28,6 +28,7 @@ github.com/nao1215/gozen/schema field Actor.Profile
 github.com/nao1215/gozen/schema field Actor.Puppet
 github.com/nao1215/gozen/schema field Actor.Reactions
 github.com/nao1215/gozen/schema field Actor.Tree
+github.com/nao1215/gozen/schema field Actor.Voices
 github.com/nao1215/gozen/schema field BattleCfg.AI
 github.com/nao1215/gozen/schema field BattleCfg.After
 github.com/nao1215/gozen/schema field BattleCfg.AfterWin
@@ -415,6 +416,7 @@ github.com/nao1215/gozen/schema field Say.Face
 github.com/nao1215/gozen/schema field Say.Instead
 github.com/nao1215/gozen/schema field Say.Side
 github.com/nao1215/gozen/schema field Say.Text
+github.com/nao1215/gozen/schema field Say.Voice
 github.com/nao1215/gozen/schema field Say.Who
 github.com/nao1215/gozen/schema field SceneReviewCfg.Groups
 github.com/nao1215/gozen/schema field SceneReviewCfg.Tags
@@ -548,6 +550,7 @@ github.com/nao1215/gozen/schema method DB.StandIn
 github.com/nao1215/gozen/schema method DB.StateRegistry
 github.com/nao1215/gozen/schema method DB.StateUses
 github.com/nao1215/gozen/schema method DB.Uses
+github.com/nao1215/gozen/schema method DB.VoicePath
 github.com/nao1215/gozen/schema method Diagnostics.Error
 github.com/nao1215/gozen/schema method Diagnostics.Unwrap
 github.com/nao1215/gozen/schema method Dungeon.At

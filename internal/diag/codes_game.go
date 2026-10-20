@@ -38,6 +38,11 @@ var (
 		Detail:  "The targets of one set are assigned one after another in key order, so a right-hand side that reads another target of the same set depends on that order.",
 		Fix:     "Split it into two set commands in the order you mean.",
 	})
+	Unvoiced = register(109, "Unvoiced", Entry{
+		Summary: "lines of a voiced actor have no voice",
+		Detail:  "An actor with a voices folder has lines without say.voice. They are shown without a voice; the warning counts them so the recording can be finished.",
+		Fix:     "Record the lines it names and add voice to each, or leave them silent on purpose.",
+	})
 	DevOnlySet = register(108, "DevOnlySet", Entry{
 		Summary: "a set changes an actor's stats or level outside the development mode",
 		Detail:  "Setting a party member's stats or level is for the development mode (--dev) and tests. The game skips it when played normally.",

@@ -22,6 +22,11 @@ var (
 		Detail:  "play trace --check found a line marked not read while skip mode or scene skip was on. Skipping stops before every line not read.",
 		Fix:     "Record the trace again with this engine; if it happens again, report it with the trace.",
 	})
+	VoiceFault = register(1406, "VoiceFault", Entry{
+		Summary: "a voice could not be read in the play",
+		Detail:  "play trace --check found a voice line marked missing: the file of a line's voice was not there or was not a sound the engine reads.",
+		Fix:     "Add the file under assets/ (ogg or wav), or fix the say.voice that names it; gozen check lists missing voices too.",
+	})
 	RollbackFault = register(1405, "RollbackFault", Entry{
 		Summary: "rolling back did not go back",
 		Detail:  "play trace --check found a rollback line whose event stayed and whose line did not go back. Rolling back replays the event from its start to the line before.",

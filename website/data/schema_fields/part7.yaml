@@ -37,6 +37,7 @@ UIStyle:
   stage_scale: "Per standing picture, a size multiplier keyed by picture file. The default is 1."
   talk_portrait: "Where the speaker's standing picture stands beside the `box` message window, to bring the speaker closer. The default is a picture as tall as the screen at the window's left end; needs schema version 3."
   text: "The text color."
+  voice: "How voices play: `cut` and `auto_wait`. Needs schema version 4."
   window: "The window background color."
 Usage:
   _: "What using an item or skill does: its targets, effects and presentation."
@@ -54,3 +55,7 @@ Usage:
   sfx: "The sound effect played when it is used."
   speed: "A bonus added to the user's speed for turn order, as an expression. By default nothing is added."
   where: "A list of where it can be used: `battle`, `menu`. Items default to both, skills to `battle`."
+VoiceStyle:
+  _: "How the voices of lines play."
+  cut: "Whether the next line stops a voice still playing. The default is true; false lets it finish."
+  auto_wait: "Whether auto waits for a voice to end as well as for the text. The default is true."

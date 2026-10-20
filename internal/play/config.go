@@ -29,9 +29,15 @@ type config struct {
 	ManualSP    bool `json:"manual_sp"`
 
 	BattleAuto *bool `json:"battle_auto,omitempty"`
+
+	// Voice is the volume of voices (0 to 10), VoiceBy that of each voiced actor (ADR 0028).
+	Voice   int            `json:"voice"`
+	VoiceBy map[string]int `json:"voice_by,omitempty"`
 }
 
-func defaultConfig() config { return config{TextSpeed: 2, AutoWait: 2, Window: 9, BGM: 7, SE: 7} }
+func defaultConfig() config {
+	return config{TextSpeed: 2, AutoWait: 2, Window: 9, BGM: 7, SE: 7, Voice: 8}
+}
 
 func (c config) textStep() int { return []int{1, 2, 3, 5, 9999}[clampInt(c.TextSpeed, 0, 4)] }
 
@@ -77,6 +83,7 @@ func (g *Game) applyConfig() {
 	}
 	g.th.window.A = uint8(float64(g.windowA) * float64(clampInt(g.cfg.Window, 0, 10)) / 10)
 	sound.SetVolumes(float64(clampInt(g.cfg.BGM, 0, 10))/10, float64(clampInt(g.cfg.SE, 0, 10))/10)
+	sound.SetVoiceVolume(float64(clampInt(g.cfg.Voice, 0, 10)) / 10)
 	if g.cfg.Fullscreen != ebiten.IsFullscreen() {
 		ebiten.SetFullscreen(g.cfg.Fullscreen)
 	}
@@ -94,6 +101,10 @@ type configScreen struct {
 	list *list
 	done func()
 	err  string
+	// voiceRow is the row of the voice volume (-1: the game has no voices), followed by a
+	// row for each of voiced.
+	voiceRow int
+	voiced   []string
 }
 
 func newConfigScreen(g *Game) *configScreen {
@@ -131,6 +142,18 @@ func (s *configScreen) refresh(g *Game) {
 	}
 	if g.showSP() {
 		s.list.items = append(s.list.items, listItem{label: lang.T("SP の割り振り"), right: "◀ " + map[bool]string{false: lang.T("おまかせ"), true: lang.T("自分で")}[c.ManualSP] + " ▶"})
+	}
+	s.voiceRow, s.voiced = -1, nil
+	if g.usesVoices() {
+		s.voiceRow, s.voiced = len(s.list.items), g.voicedActors()
+		s.list.items = append(s.list.items, listItem{label: lang.T("ボイスの音量"), right: "◀ " + bar(c.Voice) + " ▶"})
+		for _, id := range s.voiced {
+			v, ok := c.VoiceBy[id]
+			if !ok {
+				v = 10
+			}
+			s.list.items = append(s.list.items, listItem{label: fmt.Sprintf(lang.T("　%s の声"), g.db.Actors[id].Name), right: "◀ " + bar(v) + " ▶"})
+		}
 	}
 	s.list.items = append(s.list.items, listItem{label: lang.T("もどる")})
 }
@@ -206,6 +229,20 @@ func (s *configScreen) change(g *Game, d int, wrap bool) {
 			return lo
 		}
 		return clampInt(v, lo, hi)
+	}
+	switch i := s.list.sel - s.voiceRow; {
+	case s.voiceRow >= 0 && i == 0:
+		c.Voice = step(c.Voice, 0, 10)
+	case s.voiceRow >= 0 && i > 0 && i <= len(s.voiced):
+		id := s.voiced[i-1]
+		v, ok := c.VoiceBy[id]
+		if !ok {
+			v = 10
+		}
+		if c.VoiceBy == nil {
+			c.VoiceBy = map[string]int{}
+		}
+		c.VoiceBy[id] = step(v, 0, 10)
 	}
 	switch s.list.sel {
 	case 0:

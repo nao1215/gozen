@@ -106,6 +106,8 @@ func Explore(ctx context.Context, s *Session, script string, opt ExploreOptions)
 				path.Effects = append(path.Effects, Effect{Kind: "move", Name: st.Loc, At: at})
 			case "stand":
 				path.Effects = append(path.Effects, Effect{Kind: "stand", Name: st.Who, At: at})
+			case "voice":
+				path.Effects = append(path.Effects, Effect{Kind: "voice", Name: st.File, At: at})
 			}
 		}
 		if p.St != nil {

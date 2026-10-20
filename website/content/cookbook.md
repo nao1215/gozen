@@ -20,6 +20,7 @@ The recipes refer to a few IDs they do not define: the actor and class `walker`,
 | [Remember things with flags and conditions](#remember-things-with-flags-and-conditions) | `set`, `flag.*` and `var.*`, `when`, `trigger: auto` |
 | [Let the player roll back and save in a scene](#let-the-player-roll-back-and-save-in-a-scene) | `ui.rollback`, a choice's `id`, `chose.*` |
 | [Stage portraits and effects](#stage-portraits-and-effects) | `stand`, `effect`, `music` fades, `wait` and `sfx` that hold |
+| [Add voices](#add-voices) | `say.voice`, actor `voices`, `ui.voice` |
 | [Add a companion who joins](#add-a-companion-who-joins) | `actors`, `join`, `leave` |
 | [Grow by level and learn skills](#grow-by-level-and-learn-skills) | class `stats` formulas, `exp_for`, `skills` by level |
 | [Make items and equipment](#make-items-and-equipment) | item `use`, `kind`, `slot`, `stats`, class `equip` |
@@ -261,6 +262,35 @@ events:
 ```
 
 `at` is `left`, `center`, `right` or a fraction of the screen's width. A name that is not an actor needs `face`, a picture under `assets/`; an actor's `face` is one of its faces. The headless session sees `stand` as an effect (`Effect.Kind` `stand`, with the actor), so a test can check who stands in a scene. Every map form needs `schema_version: 4`; the old string forms work as before. Reference: [Stand](/schema/#stand), [EffectCue](/schema/#effectcue), [WaitCue](/schema/#waitcue), [SFXCue](/schema/#sfxcue), [MusicCue](/schema/#musiccue).
+
+## Add voices
+
+A line's `voice` names its recording. For an actor with `voices`, a folder under `assets/`, it is a name in that folder, and the extension (`.ogg` or `.wav`) may be left out; for anyone else it is a path under `assets/`.
+
+<!-- verify: load group=voices as=game.yaml -->
+```yaml
+# game.yaml
+schema_version: 4
+ui:
+  message: novel
+  voice:
+    cut: true        # the next line stops a voice still playing (the default)
+    auto_wait: true  # auto waits for the voice to end (the default)
+```
+
+<!-- verify: load group=voices -->
+```yaml
+actors:
+  keeper: {name: Keeper, class: walker, voices: keeper/voice}
+events:
+  welcome:
+    do:
+      # plays assets/keeper/voice/welcome_001.ogg
+      - say: {who: keeper, voice: welcome_001, text: Come in out of the cold.}
+      - say: {who: Traveler, voice: voice/traveler_001.ogg, text: Thank you.}
+```
+
+A voice plays when its line opens and stops at the next line. Skip mode, Ctrl over a line read, scene skip and the replay of rolling back pass the voices of the lines they pass; the line they land on speaks. The settings have a voice volume and a volume for each actor with `voices`. `gozen check` reports a voice file that is not there and counts the lines of a voiced actor without one (GZN0109). The headless session sees each voice as an effect (`Effect.Kind` `voice`, with the file), and a trace has a `voice` line for each voice played. Reference: [Say](/schema/#say) (`voice`), [Actor](/schema/#actor) (`voices`), [VoiceStyle](/schema/#voicestyle).
 
 ## Add a companion who joins
 

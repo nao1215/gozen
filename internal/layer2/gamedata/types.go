@@ -454,14 +454,17 @@ type UIStyle struct {
 	Backlog int `yaml:"backlog"`
 	// Rollback is how many earlier events the player can roll back into, besides the one
 	// running (default 8; 0 turns rolling back off). Needs schema version 4 (ADR 0025).
-	Rollback *int  `yaml:"rollback"`
-	Window   Color `yaml:"window"`
-	Border   Color `yaml:"border"`
-	Text     Color `yaml:"text"`
-	Accent   Color `yaml:"accent"`
-	Cursor   Color `yaml:"cursor"`
-	Shadow   Color `yaml:"shadow"`
-	NameTag  Color `yaml:"name_tag"`
+	Rollback *int `yaml:"rollback"`
+	// Voice shapes how voices play: cut at the next line, auto waits for them
+	// (schema_version 4, ADR 0028).
+	Voice   VoiceStyle `yaml:"voice"`
+	Window  Color      `yaml:"window"`
+	Border  Color      `yaml:"border"`
+	Text    Color      `yaml:"text"`
+	Accent  Color      `yaml:"accent"`
+	Cursor  Color      `yaml:"cursor"`
+	Shadow  Color      `yaml:"shadow"`
+	NameTag Color      `yaml:"name_tag"`
 	// StageScale is the size multiplier per portrait (picture file to multiplier; default 1). The head position stays the same and it is drawn smaller
 	// (to pull back pictures where the body fills the picture and looks bigger than the others).
 	StageScale map[string]float64 `yaml:"stage_scale"`
@@ -827,6 +830,9 @@ type Actor struct {
 	// talk window draws it instead of the face picture when it has a face of that name.
 	Puppet   string     `yaml:"puppet"`
 	FaceRule []FaceRule `yaml:"face_rules"`
+	// Voices is a folder under assets/ holding the actor's voices, named by say.voice
+	// (schema_version 4, ADR 0028).
+	Voices string `yaml:"voices"`
 	// Reactions are faces shown for a moment: on hit, act, heal, win, fall.
 	Reactions map[string]string `yaml:"reactions"`
 	// Tree are the nodes of the class's skill tree raised from the start (node -> level),

@@ -88,6 +88,10 @@ func (ImageEffect) isEffect()  {}
 func (SoundEffect) isEffect()  {}
 func (VisualEffect) isEffect() {}
 func (StandEffect) isEffect()  {}
+func (VoiceEffect) isEffect()  {}
+
+// VoiceEffect is the voice of the line that comes next: File under assets/, Who the speaker.
+type VoiceEffect struct{ File, Who string }
 
 // Request is something the screen must show before the event goes on.
 type Request interface{ isRequest() }
@@ -99,6 +103,8 @@ type Say struct {
 	Text  string
 	Right bool // the picture stands on the right
 	Actor string
+	// Voice is the line's voice, a file under assets/ ("" for none; ADR 0028).
+	Voice string
 	// Key is the key of the line's source (SourceKey of who and text as written, before
 	// {expressions} and translation): the screen remembers read lines by it (ADR 0026).
 	Key uint64
@@ -474,6 +480,9 @@ func (r *Runner) run(c *data.Command) Request {
 	case "say":
 		req := r.say(c.Say, env)
 		if line, ok := req.(Say); ok {
+			if line.Voice != "" {
+				r.emit(VoiceEffect{File: line.Voice, Who: c.Say.Who})
+			}
 			r.aside(line, env)
 		}
 		return req
@@ -785,6 +794,9 @@ func (r *Runner) say(s *data.Say, env expr.Env) Request {
 // line builds one line (false when it has nothing to show).
 func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
 	out := Say{Text: data.Render(s.Text, env), Name: s.Who, Key: SourceKey(s.Who, s.Text)}
+	if s.Voice != "" {
+		out.Voice, _ = r.db.VoicePath(s.Who, s.Voice)
+	}
 	if a, ok := r.db.Actors[s.Who]; ok {
 		out.Name = a.Name
 		out.Actor = s.Who

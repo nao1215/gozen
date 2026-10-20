@@ -451,6 +451,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string → integer"
+        },
+        "voices": {
+          "description": "A folder under `assets/` holding the actor's voices, named by `say.voice`. `gozen check` counts the actor's lines without a voice. Needs schema version 4.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         }
       },
       "required": [
@@ -9587,6 +9600,19 @@
               },
               "x-type": "string"
             },
+            "voice": {
+              "description": "The line's voice: for an actor with `voices`, a name in that folder (the `.ogg` or `.wav` may be left out); for anyone else, a path under `assets/`. Needs schema version 4.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            },
             "who": {
               "description": "Who speaks: an actor ID, or any name to show.",
               "type": "string",
@@ -13536,6 +13562,19 @@
           },
           "x-type": "color string"
         },
+        "voice": {
+          "$ref": "#/$defs/VoiceStyle",
+          "description": "How voices play: `cut` and `auto_wait`. Needs schema version 4.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[VoiceStyle](#voicestyle)"
+        },
         "window": {
           "description": "The window background color.",
           "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
@@ -13766,6 +13805,45 @@
             "version": "0, 1, 2"
           },
           "x-type": "string[]"
+        }
+      },
+      "type": "object"
+    },
+    "VoiceStyle": {
+      "additionalProperties": false,
+      "description": "How the voices of lines play.",
+      "properties": {
+        "auto_wait": {
+          "description": "Whether auto waits for a voice to end as well as for the text. The default is true.",
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "cut": {
+          "description": "Whether the next line stops a voice still playing. The default is true; false lets it finish.",
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
         }
       },
       "type": "object"

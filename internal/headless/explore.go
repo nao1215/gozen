@@ -73,7 +73,7 @@ type Step struct {
 	Actor string // say: the speaker's actor ID (empty if not a party member)
 	Face  string // say: face image
 	Text  string // say, notice, choice: the text (for choice, the chosen item). sfx: the sound effect name
-	File  string // image: the image shown (empty when cleared)
+	File  string // image: the image shown (empty when cleared). voice: the voice's file
 	Faces bool   // image: do not hide the portraits
 	Song  string // music: the song
 	Loc   string // move: the destination
@@ -385,5 +385,7 @@ func (e *explorer) handle(eff event.Effect) {
 		e.effect(eff.Name)
 	case event.StandEffect:
 		e.p.Steps = append(e.p.Steps, Step{Kind: "stand", Who: eff.Who, Face: eff.Face})
+	case event.VoiceEffect:
+		e.p.Steps = append(e.p.Steps, Step{Kind: "voice", Who: eff.Who, File: eff.File})
 	}
 }

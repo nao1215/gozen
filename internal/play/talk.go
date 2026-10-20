@@ -29,6 +29,8 @@ type talk struct {
 	read   bool
 	// keys are the keys of the choice's options (event.Choice.Keys).
 	keys []uint64
+	// voiceT is how many ticks the line's voice lasts (auto waits for it).
+	voiceT int
 }
 
 const (
@@ -47,6 +49,7 @@ func (g *Game) talkBox() (x, y, w, h float64) {
 func (t *talk) open(g *Game, s event.Say) {
 	still := g.tick-t.closed <= 1 && s.Face != "" && t.say.Face != "" && speakerKey(s) == speakerKey(t.say) && s.Right == t.say.Right
 	*t = talk{say: s, active: true, still: still, read: g.isRead(s)}
+	g.lineVoice(t, s, g.in.fast && (t.read || g.cfg.SkipAll))
 	g.remember(logLine{name: s.Name, text: s.Text})
 
 	t.pages, t.size = MessagePages(&g.db.Game, s.Text)

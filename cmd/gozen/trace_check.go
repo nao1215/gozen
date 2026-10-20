@@ -117,6 +117,13 @@ func (c *traceChecker) line(l map[string]any, raw []byte) error {
 		}
 	case "skip":
 		c.skipping = l["on"] == true
+	case "voice":
+		switch {
+		case c.skipping:
+			c.add(tick, "skip-voice", lang.T("スキップ中にボイス %s が鳴った"), str(l["file"]))
+		case l["missing"] == true:
+			c.add(tick, "voice", lang.T("ボイス %s が読めない（%s）"), str(l["file"]), c.say())
+		}
 	case "rollback":
 		if from, to := num(l["from"]), num(l["to"]); l["back_into"] != true && to >= from {
 			c.add(tick, "rollback", lang.T("戻る操作で行が戻っていない（%v 行目から %v 行目）"), from, to)
@@ -287,6 +294,8 @@ func checkTrace(path string, musicLate float64, w io.Writer) (n int, err error) 
 			code = diag.SkipFault
 		case is.kind == "rollback":
 			code = diag.RollbackFault
+		case is.kind == "voice":
+			code = diag.VoiceFault
 		}
 		output.Println(code.Mark(fmt.Sprintf("%02d:%05.2f %-10s %s", int(sec)/60, sec-float64(int(sec)/60*60), is.kind, is.text)))
 	}

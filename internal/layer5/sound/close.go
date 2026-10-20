@@ -18,6 +18,7 @@ func Close() error {
 	muted = false
 	volume = 0.7
 	bgmScale, seScale = 1, 1
+	closeVoices()
 	clear(effects)
 	effectsGen++
 	varyMu.Lock()

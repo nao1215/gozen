@@ -464,6 +464,7 @@ func (g *Game) liveCatchUp(f *fastTo, name string, alive func() bool) (seen int)
 		}
 		g.cgUnder, g.cgOldT = data.CG{}, 0
 		g.stageLeftT, g.stageOutT = min(g.stageLeftT, g.tick-12), min(g.stageOutT, g.tick-10)
+		g.landedVoice() // only the line it lands on speaks
 	}()
 	for g.fast != nil {
 		if g.evName == name {

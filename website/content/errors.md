@@ -17,12 +17,12 @@ Codes are assigned one family at a time. A diagnostic without a code still exits
 
 | Codes | Exit | Meaning | Assigned |
 |:--|:--|:--|:--|
-| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 8 codes |
+| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 9 codes |
 | `GZN02xx` | 0 | warnings of a measurement or a record | not yet |
 | `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 10 codes |
 | `GZN12xx` | 1 | fonts and text layout | 1 codes |
 | `GZN13xx` | 1 | a simulation could not run or reported a problem | not yet |
-| `GZN14xx` | 1 | a trace of a play is broken or shows faults | 5 codes |
+| `GZN14xx` | 1 | a trace of a play is broken or shows faults | 6 codes |
 | `GZN15xx` | 1 | an output path: it exists, overlaps an input, or cannot be written | 2 codes |
 | `GZN16xx` | 1 | taking screenshots with the game binary | not yet |
 | `GZN17xx` | 1 | building a release or a trial tree | 4 codes |
@@ -101,6 +101,14 @@ A set changes an actor's stats or level outside the development mode.
 Setting a party member's stats or level is for the development mode (--dev) and tests. The game skips it when played normally.
 
 Fix: Use a command the game keeps (an item, a class change, experience), or keep it in a development-only event.
+
+### GZN0109
+
+Lines of a voiced actor have no voice.
+
+An actor with a voices folder has lines without say.voice. They are shown without a voice; the warning counts them so the recording can be finished.
+
+Fix: Record the lines it names and add voice to each, or leave them silent on purpose.
 
 ## GZN11xx
 
@@ -241,6 +249,14 @@ Rolling back did not go back.
 play trace --check found a rollback line whose event stayed and whose line did not go back. Rolling back replays the event from its start to the line before.
 
 Fix: Record the trace again with this engine; if it happens again, report it with the trace.
+
+### GZN1406
+
+A voice could not be read in the play.
+
+play trace --check found a voice line marked missing: the file of a line's voice was not there or was not a sound the engine reads.
+
+Fix: Add the file under assets/ (ogg or wav), or fix the say.voice that names it; gozen check lists missing voices too.
 
 ## GZN15xx
 
