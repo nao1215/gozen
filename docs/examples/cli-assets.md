@@ -6,7 +6,7 @@ The YAML, names and text in `e2e/atago/fixtures/game` are a general-audience cam
 
 The source for regenerating is [cli-fixtures.go.txt](cli-fixtures.go.txt). At the repository root, copy it to a temporary directory with the extension `.go` and run `go run <temporary file>`; it rewrites this fixture's PNGs and font. The output goes only to the fixed fixtures inside the repository.
 
-`assets/regular.ttf` is the Go Regular font from `golang.org/x/image v0.45.0/font/gofont/goregular`, copied unchanged. The authors are Bigelow & Holmes; the source is [Go fonts](https://go.googlesource.com/image/+/refs/tags/v0.45.0/font/gofont/ttfs/README). The following notice is provided with the public fixture. Attach the notice also when you distribute binary test outputs.
+`assets/regular.ttf` is the Go Regular font from `golang.org/x/image/font/gofont/goregular` (the version in go.mod), copied unchanged. The authors are Bigelow & Holmes; the source is [Go fonts](https://go.googlesource.com/image/+/refs/tags/v0.45.0/font/gofont/ttfs/README). The following notice is provided with the public fixture. Attach the notice also when you distribute binary test outputs.
 
 ```text
 These fonts were created by the Bigelow & Holmes foundry specifically for the

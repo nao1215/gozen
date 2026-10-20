@@ -1,4 +1,0 @@
-# Wayfinder as a game directory: the sample embeds its font from Go's own fonts.
-copy:
-  game: examples/play/game
-  game/assets/regular.ttf: e2e/atago/fixtures/game/assets/regular.ttf

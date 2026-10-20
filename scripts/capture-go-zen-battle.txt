@@ -1,0 +1,5 @@
+# Go Zen capture of the Brass Warden fight (run battle) on AUTO: fight_bNNN frames, with
+# Ox's Shield Rush cut-in.
+wait 40
+play fight
+quit

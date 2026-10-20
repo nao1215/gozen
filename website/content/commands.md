@@ -378,4 +378,3 @@ gozen help sim battle
 gozen help GZN2101
 ```
 
-An old command name exits 2 and says the new one, for example `unknown command "curve"; it is now "gozen sim dive"`.

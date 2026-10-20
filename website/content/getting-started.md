@@ -1,6 +1,6 @@
 ---
 title: Getting started
-description: Run the minimal Gozen game, play the Wayfinder sample, then start your own game with a Go host, two YAML files, and gozen check.
+description: Run the minimal Gozen game, play the Go Zen sample, then start your own game with a Go host, two YAML files, and gozen check.
 weight: 20
 ---
 
@@ -17,7 +17,7 @@ go run github.com/nao1215/gozen/examples/minimal@latest
 location=camp gold=2
 ```
 
-[examples/minimal](https://github.com/nao1215/gozen/tree/main/examples/minimal) is a 35-line Go host and 17 lines of YAML. It loads the embedded files, creates the game state, and runs the arrival event of the first place without opening a window:
+[examples/minimal](https://github.com/nao1215/gozen/tree/main/examples/minimal) is a 43-line Go host and 17 lines of YAML. It loads the embedded files, creates the game state, and runs the arrival event of the first place without opening a window:
 
 <!-- verify: same examples/minimal/game.yaml -->
 ```yaml
@@ -48,13 +48,17 @@ skills:
 
 Every game needs the two battle skills `attack` and `guard`, even one without battles.
 
-## 2. Play Wayfinder
+## 2. Play Go Zen
 
-Wayfinder is the sample game in [examples/play](https://github.com/nao1215/gozen/tree/main/examples/play): a camp, a ridge, a village with two companions, a grotto with practice fights, and a first-person maze with a chest, a gate and a cut-in.
+Go Zen is the sample game in [examples/go-zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen): a town on a painted map, a plaza to walk, a shop and an inn, a three-floor dungeon under the town, moving portraits, and a soundtrack. It takes about forty minutes.
 
-<!-- verify: build opens the game window and waits for a player -->
+The sample is a module of its own, so its pictures and music do not come with `go get`. Play it from a clone:
+
+<!-- verify: skip needs a clone of the repository and opens the game window -->
 ```shell
-go run github.com/nao1215/gozen/examples/play@latest --mute
+git clone https://github.com/nao1215/gozen
+cd gozen/examples/go-zen
+go run . --mute
 ```
 
 | Input | Meaning |
@@ -64,24 +68,23 @@ go run github.com/nao1215/gozen/examples/play@latest --mute
 | O / F2 | Settings |
 | F11 / Alt+Enter | Fullscreen |
 | M | Mute |
-| Up, Left / Right, Down in the maze | Walk forward (or use what is ahead), turn, turn around |
+| Arrows on the map and in the plaza | Choose a point, walk |
+| Up, Left / Right, Down in the dungeon | Walk forward (or use what is ahead), turn, turn around |
 
-A short route: **New journey**, talk to the Courier, **Practice** (choose **Auto** in battle), **Light the marker**, **Walk to the ridge**. Sela joins at the ridge; Bram joins in the village. **Explore chamber** is the maze: turn the wheel (W) to open the gate.
-
-Saves go to the OS config directory (`~/.config/gozen/wayfinder-demo` on Linux, `%AppData%` on Windows, `~/Library/Application Support` on macOS). `--save-dir DIR` puts them elsewhere.
+Saves go to the OS config directory (`~/.config/gozen/go-zen` on Linux, `%AppData%` on Windows, `~/Library/Application Support` on macOS). `--save-dir DIR` puts them elsewhere.
 
 Now try the author tools on it. With `--dev`, F7 shows the win rates of the battles at the current place:
 
-<!-- verify: build opens the game window and waits for a player -->
+<!-- verify: skip needs a clone of the repository and opens the game window -->
 ```shell
-go run github.com/nao1215/gozen/examples/play@latest --dev --mute --start grotto --party walker,bram,sela
+go run . --dev --mute --start b2 --party maren,ox,tilly
 ```
 
-![the balance panel in the grotto](/images/wayfinder-balance.jpg)
+![the balance panel in the Cistern Hall](/images/go-zen-balance.jpg)
 
 ## 3. Start your own game
 
-A game is a directory with `game.yaml`, `data/*.yaml` and `assets/`, plus a small Go program that embeds it and hands it to the runner.
+A game is a directory with `game.yaml`, `data/*.yaml` and `assets/`, plus a small Go program that embeds it and hands it to `play.Main`.
 
 ```text
 mygame/
@@ -91,7 +94,6 @@ mygame/
     ├── game.yaml
     ├── data/world.yaml
     └── assets/
-        ├── regular.ttf
         └── slime.png
 ```
 
@@ -104,7 +106,7 @@ go get github.com/nao1215/gozen@latest
 mkdir -p game/data game/assets
 ```
 
-`main.go` runs the game and passes the command-line options to the runner, so `--dev`, `--dir` and the rest work in your game too:
+`main.go` runs the game and passes the command-line options to `play.Main`, so `--dev`, `--dir` and the rest work in your game too:
 
 <!-- verify: file main.go -->
 ```go
@@ -134,7 +136,7 @@ func main() {
 }
 ```
 
-`game/game.yaml` names the game, the font and the start. `language: en` gives Gozen's built-in menus and battle messages in English (`ja` gives Japanese; English is the default). The `text` map changes any of them to the game's own wording; its keys are the engine's Japanese source text, listed in [the English catalog](https://github.com/nao1215/gozen/blob/main/internal/text/catalog/english.go).
+`game/game.yaml` names the game and the start. Without `fonts`, the game uses the Go font built into Gozen, which has Latin letters only; for Japanese and other scripts, put your own font under `assets/` and name it in `fonts.regular`. `language: en` gives Gozen's built-in menus and battle messages in English (`ja` gives Japanese; English is the default). The `text` map changes any of them to the game's own wording; its keys are the engine's Japanese source text, listed in [the English catalog](https://github.com/nao1215/gozen/blob/main/internal/text/catalog/english.go).
 
 <!-- verify: file game/game.yaml -->
 ```yaml
@@ -143,7 +145,6 @@ id: first-steps
 title: First steps
 language: en
 screen: {width: 960, height: 540}
-fonts: {regular: regular.ttf}
 start: {location: village, party: [hero]}
 terms: {currency: G, level: Lv., hp: HP, mp: MP, exp: EXP}
 text:
@@ -194,12 +195,11 @@ locations:
     exits: [{to: village, label: Back to the village}]
 ```
 
-The game needs a font and a picture for the enemy. `go mod tidy` fetches what `main.go` imports, Go's own fonts among them, and Wayfinder's pictures are CC BY 4.0 (credit "Gozen sample art, CHIKAMATSU Naohiro" if you ship them):
+The enemy needs a picture. Any PNG will do; this one is a small marker from Gozen's own tests (MIT):
 
 ```shell
 go mod tidy
-cp "$(go list -m -f '{{.Dir}}' golang.org/x/image)/font/gofont/ttfs/Go-Regular.ttf" game/assets/regular.ttf
-cp "$(go list -m -f '{{.Dir}}' github.com/nao1215/gozen)/examples/play/game/assets/pebble.png" game/assets/slime.png
+cp "$(go list -m -f '{{.Dir}}' github.com/nao1215/gozen)/e2e/atago/fixtures/game/assets/mote.png" game/assets/slime.png
 ```
 
 Check it, then ask how hard the fight is:
@@ -220,7 +220,7 @@ slimes: 200 battles  win 100%  lose 0%  fled 0%  draw 0%  avg turns 4.5  avg sta
 A typo is caught with its place in the file:
 
 ```text
-data/world.yaml:30:10: locations.village.exits[0].to: unknown location "feild"
+data/world.yaml:30:10: locations.village.exits[0].to: unknown location "feild" [GZN1101]
 ```
 
 Play it. `--dir game` reads the YAML from disk instead of the embedded copy, so F5 reloads your edits while the game runs:

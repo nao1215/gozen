@@ -6,11 +6,13 @@ Changes before the first public release are tracked under Unreleased. All packag
 
 ### Added
 
+- `skills/gozen`: an Agent Skill for Claude Code and Codex. It holds the minimal game, the required parts, the YAML traps, the error codes and `gozen sim`, and the rule to run `gozen check` until it passes. Its commands are run by the docs tests.
+- Go Zen in the browser: `make website` builds the sample for `GOOS=js` into the site at `/play/go-zen/`; the program fetches the game's files before it starts.
 - YAML game loading and validation, expressions, events, battle rules, world navigation and versioned saves.
 - Headless execution, Ebitengine presentation, audio and an embedded-game runner.
 - The gozen command with six tools: check, sim (battle, dive, floors, design), play (trace, notes, shots), book, pack (release, trial) and art (prompt, mosaic, fetch, faces, puppet), plus version and help; ONNX inference in art mosaic and art faces needs a cgo build and uses user-supplied models and runtime libraries.
 - Diagnostic codes (ADR 0024): a diagnostic can end with a code such as `[GZN1101]` whose first digit is the exit status, `gozen check --format json` and `gozen.Diagnostic` carry it as `code`, `gozen help GZN1101` explains it, and the site lists them on the Error codes page. An old command name exits 2 and names the new one (`gozen curve` is `gozen sim dive`); `check --no-layout` is `check --only structure` and `layout` is `check --only layout`. A troop or location named on the command line that the game does not have exits 2.
-- Original minimal, headless and graphical examples with asset source and license records. The Wayfinder pictures are CC BY 4.0; the code is MIT.
+- Original minimal, headless and graphical examples with asset source and license records. The Go Zen sample (`examples/go-zen`, a module of its own) has CC BY 4.0 pictures and music; the code is MIT.
 - Architecture dependency checks, public API inventory checks and CLI contract tests using atago.
 - CI for lint, unit tests across three operating systems and minimum/stable Go versions, graphics, CLI contracts, native and cross-builds, examples, race detection, govulncheck and CodeQL.
 - A development balance panel (F7 with `--dev`): win rate, HP left after a win and win rate by level for the battles at the current location, measured inside the game loop with the same functions and seeds as `gozen sim battle`, and measured again after a hot reload. `gozen sim battle` gains `--state` (start from a saved state such as an F9 note's `.save`), `--as-is` (keep its HP, MP and states), `--hp` and `--streak`. When the party is hurt the panel puts the current-HP win rate under the healed one and shows how many wins in a row the current HP lasts.
@@ -28,6 +30,7 @@ Changes before the first public release are tracked under Unreleased. All packag
 
 ### Changed
 
+- The sample game is Go Zen (`examples/go-zen`): a town on a painted map, a plaza to walk, a three-floor dungeon, moving portraits and a soundtrack, at 1920x1080. Wayfinder (`examples/play`) was removed; the README and site pictures are taken from Go Zen.
 - The minimum Go version is raised from 1.26.4 to 1.26.9: govulncheck at 1.26.4 reaches standard-library advisories in net/http, os, encoding/xml and encoding/asn1 that 1.26.9 fixes.
 - Schema version 2 (ADR 0021): the commands `pick` (a menu entry of the current place), `turn`, `step` and `walk` (dungeons), `use` (an item from the menu, with `target`) and `equip`; `set` on `gold`, `item.ID`, `party`, `location` and `actor.ID.tactics` (the last three take names as written: `location: camp`, `party: [hero, sela]`), and on `actor.ID.hp`, `mp`, `exp`, `level` and `sp` only in the development mode and tests (`gozen check` warns where game data does it); the expression names `menu`, `map`, `cell(x, y)`, `result`, `over`, `cleared`, `repairs` and `actor.ID.tactics`; and `verbs` and `screens` in game.yaml to declare a game's own commands and screens. Versions 0 and 1 read as before; the new words need `schema_version: 2`. The examples use version 2.
 - An unknown command name is still an error unless game.yaml declares it in `verbs`, now with the nearest command (`did you mean "say"?`). `gozen check --format json` prints every error and warning as a JSON array of `{file, line, col, path, message, severity}`. `data.Load` returns definition errors as `data.Diagnostics` with the same fields.

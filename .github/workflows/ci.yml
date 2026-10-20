@@ -160,7 +160,7 @@ jobs:
           $suffix = if ($IsWindows) { '.exe' } else { '' }
           go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/gozen$suffix" ./cmd/gozen
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/gozen-game$suffix" ./examples/play
+          go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/gozen-game$suffix" ./play/testdata/host
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:PATH = (Join-Path $PWD bin) + [IO.Path]::PathSeparator + $env:PATH
           $env:GOZEN_GAME_BIN = Join-Path $PWD "bin/gozen-game$suffix"

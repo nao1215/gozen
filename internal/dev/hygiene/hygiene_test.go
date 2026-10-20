@@ -38,6 +38,9 @@ func TestRepositoryLocations(t *testing.T) {
 			return walkErr
 		}
 		if d.IsDir() {
+			if name == "website/public" { // the built site (git ignores it), the browser build among it
+				return fs.SkipDir
+			}
 			switch d.Name() {
 			case ".git", ".agents", ".codex", ".aws", ".cache", "bin", "build", "dist", "vendor":
 				return fs.SkipDir

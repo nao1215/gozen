@@ -1,0 +1,11 @@
+# Go Zen capture of the Cistern Hall (run dungeon): two steps from the stairs, then turn east
+# down the corridor.
+wait 60
+press up
+wait 15
+press up
+wait 15
+press left
+wait 40
+shot s-dungeon
+quit

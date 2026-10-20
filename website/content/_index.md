@@ -6,7 +6,7 @@ Gozen is a 2D RPG framework for Go and [Ebitengine](https://ebitengine.org/). Yo
 
 The name: a gozen (御膳) is a Japanese meal served on a tray. Ebitengine takes its name from ebiten, shrimp tempura; Gozen sets that ebiten on a tray with everything an RPG needs, and the name starts with Go.
 
-![Wayfinder, the Gozen sample game](/images/wayfinder.gif)
+![Go Zen, the Gozen sample game: a talk with moving portraits](/images/go-zen.gif)
 
 ## Try it in 30 seconds
 
@@ -21,12 +21,16 @@ go run github.com/nao1215/gozen/examples/minimal@latest
 location=camp gold=2
 ```
 
-That game is two YAML files and a 35-line Go host. To play the sample above in a window:
+That game is two YAML files and a 43-line Go host. The sample above is [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen), a module of its own. Play it from a clone:
 
-<!-- verify: build opens the game window and waits for a player -->
+<!-- verify: skip needs a clone of the repository and opens the game window -->
 ```shell
-go run github.com/nao1215/gozen/examples/play@latest --mute
+git clone https://github.com/nao1215/gozen
+cd gozen/examples/go-zen
+go run . --mute
 ```
+
+Or [play Go Zen in the browser](/play/).
 
 On Linux the window needs X11 and OpenGL; see [Install](/install/).
 
@@ -51,11 +55,19 @@ The rules are shared by the window, a headless driver and the command line, so a
 
 ## Screens
 
-| A party of three | Cut-in on a special skill |
+All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at 1920x1080.
+
+| Conversation | Event picture |
 |:--|:--|
-| ![a battle with a party of three](/images/wayfinder-party.jpg) | ![a cut-in when Bram uses Shield Rush](/images/wayfinder-cutin.jpg) |
-| First-person dungeon | Balance panel (F7) |
-| ![a first-person dungeon with a map](/images/wayfinder-dungeon.jpg) | ![win rates by troop, healed and as now](/images/wayfinder-balance.jpg) |
+| ![Maren talks, a moving portrait](/images/go-zen-talk.jpg) | ![Maren with a map by the dry fountain](/images/go-zen-picture.jpg) |
+| Painted scene | Town map |
+| ![the plaza with a balloon](/images/go-zen-plaza.jpg) | ![the town map with name plates](/images/go-zen-map.jpg) |
+| First-person dungeon | Shop |
+| ![a brick corridor and the map](/images/go-zen-dungeon.jpg) | ![the shop's goods](/images/go-zen-shop.jpg) |
+| Battle | Cut-in |
+| ![four against the Brass Warden](/images/go-zen-battle.jpg) | ![Ox's Shield Rush cut-in](/images/go-zen-cutin.jpg) |
+| Balance panel (F7) | Title |
+| ![win rates by troop](/images/go-zen-balance.jpg) | ![the title screen](/images/go-zen-title.jpg) |
 
 ## Where to go
 

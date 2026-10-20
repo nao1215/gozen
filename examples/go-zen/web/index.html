@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Go Zen - a Gozen sample game</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #10181c; color: #f4f1e6; font-family: sans-serif; }
+  #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+</style>
+</head>
+<body>
+<div id="loading">Loading Go Zen (about 60 MB)...</div>
+<script src="wasm_exec.js"></script>
+<script>
+  // the game's canvas appears once its files are fetched: the note goes then
+  new MutationObserver((_, o) => {
+    if (document.querySelector("canvas")) { document.getElementById("loading").remove(); o.disconnect(); }
+  }).observe(document.body, { childList: true, subtree: true });
+  const go = new Go();
+  WebAssembly.instantiateStreaming(fetch("go-zen.wasm"), go.importObject).then((r) => {
+    go.run(r.instance);
+  }).catch((e) => {
+    document.getElementById("loading").textContent = "Could not start: " + e;
+  });
+</script>
+</body>
+</html>

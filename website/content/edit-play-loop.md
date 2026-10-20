@@ -43,7 +43,7 @@ If the edit has an error, the game keeps the old definitions and shows the error
 
 ## F7: balance panel
 
-![win rates by troop in the grotto, healed and as now](/images/wayfinder-balance.jpg)
+![win rates by troop in the Cistern Hall](/images/go-zen-balance.jpg)
 
 For each troop you can meet here (random encounters and battle actions, up to six), the panel shows:
 
@@ -56,10 +56,10 @@ For each troop you can meet here (random encounters and battle actions, up to si
 
 These are the same numbers `gozen sim battle` prints, with the same seed, so you can check them in a terminal. A note's `.save` file is the party at that moment:
 
-<!-- verify: each fixture=wayfinder -->
+<!-- verify: each fixture=go-zen -->
 ```shell
-gozen sim battle game cobble --state notes/2026-10-19/001.save --hp
-gozen sim battle game cobble --state notes/2026-10-19/001.save --as-is --streak 9
+gozen sim battle game crab --state notes/2026-10-19/001.save --hp
+gozen sim battle game crab --state notes/2026-10-19/001.save --as-is --streak 9
 ```
 
 The panel measures a little each frame (at most 3 ms) and never changes the game state or its random numbers. It measures again when you move, reload, or change the party's level, equipment or skills.

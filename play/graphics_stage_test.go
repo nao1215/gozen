@@ -38,7 +38,7 @@ func TestGraphicsStage(t *testing.T) {
 		t.Fatal(err)
 	}
 	trace := filepath.Join(root, "run.jsonl")
-	args := []string{"run", "../examples/play", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "square",
+	args := []string{"run", "./testdata/host", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "square",
 		"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", trace}
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
@@ -135,7 +135,7 @@ func TestGraphicsMap(t *testing.T) {
 		t.Fatal(err)
 	}
 	trace := filepath.Join(root, "run.jsonl")
-	args := []string{"run", "../examples/play", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "town",
+	args := []string{"run", "./testdata/host", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "town",
 		"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", trace}
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
@@ -199,7 +199,7 @@ func TestGraphicsWild(t *testing.T) {
 	if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	args := []string{"run", "../examples/play", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "town",
+	args := []string{"run", "./testdata/host", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "town",
 		"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", filepath.Join(root, "run.jsonl")}
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()

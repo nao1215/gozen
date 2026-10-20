@@ -474,8 +474,8 @@ func TestCommandsAndCompileOnly(t *testing.T) {
 		t.Fatalf("commands: %q", got)
 	}
 	for in, want := range map[string]string{
-		"go run github.com/nao1215/gozen/examples/play@latest --mute": "go install github.com/nao1215/gozen/examples/play@latest",
-		"xvfb-run -a go run . --dev --script s.txt":                   `xvfb-run -a go build -o "$GOZEN_DOCS_TMP/a.out" .`,
+		"go run github.com/nao1215/gozen/examples/minimal@latest --mute": "go install github.com/nao1215/gozen/examples/minimal@latest",
+		"xvfb-run -a go run . --dev --script s.txt":                      `xvfb-run -a go build -o "$GOZEN_DOCS_TMP/a.out" .`,
 	} {
 		if got, ok := compileOnly(in); !ok || got != want {
 			t.Errorf("compileOnly(%q) = %q", in, got)

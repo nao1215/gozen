@@ -244,7 +244,7 @@ Tiles are characters with their own pictures, conditions and commands; `trigger:
 
 Every file name is relative to `assets/`. A character's `faces` is a directory of expressions (`normal.png`, `smile.png`, ...), and `say` lines pick one with `face`. `gozen check` reports every picture that does not exist, and lays out every line with the game's font to catch text that overflows its window.
 
-The engine's own words (menus, battle messages, settings, saves) come in English and Japanese. `language:` in `game.yaml` picks one: `en` (the default) or `ja`. `text:` lays the game's own wording over that language; a key is the engine's Japanese source text, a format with its `%d` and `%s` too, and the value may reorder them (`%[2]d`). [The English catalog](https://github.com/nao1215/gozen/blob/main/internal/text/catalog/english.go) lists every key. `terms:` names the currency and stats. `gozen check` warns when `language` is unset but the game is written in Japanese, and when the regular font lacks letters of the chosen words. [Wayfinder's game.yaml](https://github.com/nao1215/gozen/blob/main/examples/play/game/game.yaml) keeps only its own wording in `text:`.
+The engine's own words (menus, battle messages, settings, saves) come in English and Japanese. `language:` in `game.yaml` picks one: `en` (the default) or `ja`. `text:` lays the game's own wording over that language; a key is the engine's Japanese source text, a format with its `%d` and `%s` too, and the value may reorder them (`%[2]d`). [The English catalog](https://github.com/nao1215/gozen/blob/main/internal/text/catalog/english.go) lists every key. `terms:` names the currency and stats. `gozen check` warns when `language` is unset but the game is written in Japanese, and when the regular font lacks letters of the chosen words.
 
 ## Saves
 
@@ -252,4 +252,4 @@ Saves are JSON files in the OS config directory, under the game `id`. They recor
 
 ## A bigger example
 
-[Wayfinder's world.yaml](https://github.com/nao1215/gozen/blob/main/examples/play/game/data/world.yaml) is 240 lines and uses all of the above: talk, flags, three companions, AI rules, a cut-in, a hand-drawn maze with a chest, a gate and a wheel, and a triggered event.
+[Go Zen's data](https://github.com/nao1215/gozen/tree/main/examples/go-zen/game/data) uses all of the above: a town on a map with a painted plaza, talk with moving portraits, flags, three companions, AI rules and presets, cut-ins, hand-drawn mazes with chests, keys and gates, a generated floor, and boss fights.

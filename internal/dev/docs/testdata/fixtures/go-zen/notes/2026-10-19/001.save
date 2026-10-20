@@ -1,0 +1,206 @@
+{
+  "format_version": 1,
+  "game_id": "go-zen",
+  "data_version": 1,
+  "state": {
+    "actors": {
+      "kes": {
+        "id": "kes",
+        "level": 5,
+        "exp": 350,
+        "hp": 40,
+        "mp": 0,
+        "equip": {
+          "armor": "coat_work",
+          "weapon": "coil_basic"
+        },
+        "learnt": null,
+        "states": {},
+        "sp": 5,
+        "tree": {
+          "storm_coil": 1
+        },
+        "back": true,
+        "tactics": {
+          "preset": "balanced",
+          "version": 1,
+          "mode": "preset",
+          "rows": null
+        }
+      },
+      "maren": {
+        "id": "maren",
+        "level": 4,
+        "exp": 198,
+        "hp": 0,
+        "mp": 6,
+        "equip": {
+          "accessory": "charm_wool",
+          "armor": "coat_cloth",
+          "weapon": "rod_basic"
+        },
+        "learnt": null,
+        "states": {},
+        "sp": 4,
+        "tree": {
+          "chart": 1
+        },
+        "back": false,
+        "tactics": {
+          "preset": "balanced",
+          "version": 1,
+          "mode": "preset",
+          "rows": null
+        }
+      },
+      "ox": {
+        "id": "ox",
+        "level": 6,
+        "exp": 364,
+        "hp": 93,
+        "mp": 1,
+        "equip": {
+          "armor": "plate_scrap",
+          "weapon": "shield_pot"
+        },
+        "learnt": null,
+        "states": {},
+        "sp": 5,
+        "tree": {
+          "hold_line": 1
+        },
+        "back": false,
+        "tactics": {
+          "preset": "balanced",
+          "version": 1,
+          "mode": "preset",
+          "rows": null
+        }
+      },
+      "tilly": {
+        "id": "tilly",
+        "level": 6,
+        "exp": 364,
+        "hp": 37,
+        "mp": 5,
+        "equip": {
+          "armor": "robe_pilgrim",
+          "weapon": "staff_wood"
+        },
+        "learnt": null,
+        "states": {},
+        "sp": 5,
+        "tree": {
+          "blessing": 1,
+          "mend": 1
+        },
+        "back": true,
+        "tactics": {
+          "preset": "balanced",
+          "version": 1,
+          "mode": "preset",
+          "rows": null
+        }
+      }
+    },
+    "party": [
+      "maren",
+      "tilly",
+      "ox",
+      "kes"
+    ],
+    "items": {
+      "brass_key": 1,
+      "elixir": 1,
+      "hobb_key": 1,
+      "ink_vial": 2,
+      "old_gear": 6,
+      "tonic": 2
+    },
+    "gold": 221,
+    "flags": {
+      "cell_open": true,
+      "entered": true,
+      "gate1": true,
+      "gate2": true,
+      "got_key": true,
+      "kes_joined": true,
+      "lied_to_ox": true,
+      "opening_seen": true,
+      "ox_joined": true,
+      "shop_tour": true,
+      "tilly_joined": true
+    },
+    "vars": {
+      "battle_advice_actor": "Kes",
+      "battle_advice_reason": "mp_shortage",
+      "battle_advice_row": 1,
+      "debt": 200,
+      "explored": 44,
+      "gauge": 0,
+      "kill_drip_slime": 8,
+      "kill_pipe_rat": 6,
+      "kill_rust_crab": 6,
+      "last_kill_rust_crab": 2
+    },
+    "location": "b2",
+    "steps": 272,
+    "frames": 0,
+    "done": {
+      "b1@1,13": true,
+      "b1@11,9": true,
+      "b1@13,13": true,
+      "b1@3,1": true,
+      "b2@15,9": true,
+      "b2@3,1": true,
+      "b2@9,11": true,
+      "landing_arrival": true,
+      "well_scene": true
+    },
+    "ran": {
+      "break_into_two": [
+        1,
+        6
+      ],
+      "kes_meet": [
+        1,
+        7
+      ],
+      "landing_arrival": [
+        1,
+        8
+      ],
+      "opening": [
+        1,
+        1
+      ],
+      "ox_talk": [
+        1,
+        5
+      ],
+      "shop_tour": [
+        1,
+        2
+      ],
+      "tilly_talk": [
+        1,
+        4
+      ],
+      "well_scene": [
+        1,
+        3
+      ]
+    },
+    "pos": {
+      "in": "b2",
+      "X": 9,
+      "Y": 11,
+      "facing": 0
+    },
+    "mapped": {
+      "b1": "AQEBAQEBAQEBAQEBAQAAAQEBAQEBAQEBAQEBAQAAAQEBAQEBAQEBAQEBAQAAAQEBAQEBAQEBAQEBAQAAAQEBAQEBAQEBAQEBAQABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQABAQEBAQEBAQEBAQEBAQABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAAABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAAABAQEBAQEBAQEBAQEB",
+      "b2": "AQEBAQEBAQEBAAAAAAAAAAEBAQEBAQEBAQEBAQEBAQEBAQEBAAAAAAAAAAABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQABAQEBAQEBAAAAAAAAAQEBAQEBAQEBAQEBAQEBAQEAAAAAAQABAQEBAQEBAQEBAQEBAQEBAQEBAQEAAAAAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAAAAAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAAAAAQEBAAAAAAABAQEBAQEBAQEBAQEBAAAAAAAAAQEBAQEBAQABAQEBAQEBAQEBAQEBAAAAAAAAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAAAAAAAAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAAAAAAAAAQEBAQEBAQEBAQAAAAAAAAEBAQEBAAAAAAAAAQEBAQEBAQEBAQEAAAAAAAEBAQEBAAAAAAAAAQEBAAABAQEBAQEAAAAAAAAAAAAAAAAAAAAAAQEBAQEAAQEBAQEAAAAAAAAAAAAAAAAAAAAAAQEBAQEAAQEBAQEAAAAAAAAAAAAAAAAAAAAAAQEBAQEBAQEBAQEAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "town": "AQEAAQE="
+    }
+  }
+}

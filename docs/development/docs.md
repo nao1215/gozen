@@ -19,8 +19,8 @@ All pictures of the README, the site and `docs/` are in `docs/images/`, and each
 
 | Item | Content |
 | --- | --- |
-| `samples` | The name of a sample and its Go package (such as `./examples/play`). Built first |
-| `runs` | The arguments for one run of a sample. `{script}` is the script file and `{out}` is the new directory of that run (where shots, saves and traces go). `check` runs after the run with that run's directory as its last argument, and confirms that play went as planned (for Wayfinder, `scripts/capture-example.py`) |
+| `samples` | The name of a sample and its Go package (such as `./examples/go-zen`; a sample with its own `go.mod` is built in its directory). Built first |
+| `runs` | The arguments for one run of a sample. `{script}` is the script file and `{out}` is the new directory of that run (where shots, saves and traces go). `check` runs after the run with that run's directory as its last argument, and confirms that play went as planned |
 | `images` | For each image, its run, the source frames (`shot: NAME` is `shot NAME` of the script, `pick` takes one frame by a glob of names and an event of the trace, `frames` is the sequence of frames of a moving image) and the encoding (`jpeg`, `gif`). `tolerance` is the share of pixels allowed to differ in the staleness check (default 2%) |
 
 To change the sample, change `samples` and `runs`; the names, references and checks of the images stay as they are. To add an image, add a `shot` to the sample's script, write one line in the ledger, run `make docs-images`, and reference it from a document. Hand-made images cannot be placed, with one exception: a picture that is not a capture, such as the logo (`gozen-logo*.svg`, `gozen-favicon*.svg`, `gozen-ogp.png`), is listed under `static` with its source and license and is not remade. `go test` fails on each of these:
@@ -40,7 +40,7 @@ To change the sample, change `samples` and `runs`; the names, references and che
 - Still image: the size is the same, and the share of pixels where any color differs by more than 48/255 is at most `tolerance`
 - GIF and video: the number of frames is the same, and the first, 1/4, half, 3/4 and last frames meet the condition above (a GIF is compared as it looks with the difference rectangles composited; a video is split into frames with ffmpeg)
 
-If stale, it fails and points to `make docs-images`. In CI the generated images are kept as the artifact `docs-images`. The Wayfinder images on the author's machine were remade and checked to show no difference (the whole remake takes about 3 minutes).
+If stale, it fails and points to `make docs-images`. In CI the generated images are kept as the artifact `docs-images`. The Go Zen images on the author's machine were remade and checked to show no difference (the whole remake takes about 10 minutes, most of it the F7 measurement).
 
 ## Verifying the steps
 
@@ -109,4 +109,4 @@ The vocabulary of adult content belongs only to the mosaic tool ([ADR 0004](../d
 
 ## CI time estimates
 
-On the author's machine (Linux, Xvfb), remaking and comparing images takes about 3 minutes (most of it the full Wayfinder run), running the steps about 40 seconds (with the build cache; the first time takes several minutes for fetching dependencies and building Ebitengine), and building the site and checking links a few seconds. The Docs workflow in CI runs images and steps side by side. While private, it follows the budget rule of [CI configuration](ci.md) and runs only after the repository is public and on manual runs. The checks that need no display (ledger and references, marks, YAML examples, README links) are part of the usual `go test ./...`.
+On the author's machine (Linux, Xvfb), remaking and comparing images takes about 3 minutes (most of it the Go Zen runs), running the steps about 40 seconds (with the build cache; the first time takes several minutes for fetching dependencies and building Ebitengine), and building the site and checking links a few seconds. The Docs workflow in CI runs images and steps side by side. While private, it follows the budget rule of [CI configuration](ci.md) and runs only after the repository is public and on manual runs. The checks that need no display (ledger and references, marks, YAML examples, README links) are part of the usual `go test ./...`.

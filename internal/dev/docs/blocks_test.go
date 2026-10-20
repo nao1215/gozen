@@ -20,7 +20,7 @@ import (
 	"github.com/nao1215/gozen"
 )
 
-// The documents whose steps are checked: README.md and the website's pages.
+// The documents whose steps are checked: README.md, the website's pages and the skill.
 func stepDocuments(t testing.TB) []string {
 	t.Helper()
 	pages, err := filepath.Glob(filepath.Join(root, "website", "content", "*.md"))
@@ -30,6 +30,22 @@ func stepDocuments(t testing.TB) []string {
 	docs := []string{"README.md"}
 	for _, p := range pages {
 		docs = append(docs, path.Join("website/content", filepath.Base(p)))
+	}
+	// the skill for coding agents (skills/gozen): its commands are run the same way
+	skill, err := filepath.Glob(filepath.Join(root, "skills", "*", "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	refs, err := filepath.Glob(filepath.Join(root, "skills", "*", "references", "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range append(skill, refs...) {
+		rel, err := filepath.Rel(root, p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		docs = append(docs, filepath.ToSlash(rel))
 	}
 	return docs
 }

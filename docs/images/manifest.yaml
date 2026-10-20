@@ -15,8 +15,8 @@
 # images, their references and the checks stay the same.
 
 samples:
-  wayfinder:
-    package: ./examples/play
+  go-zen:
+    package: ./examples/go-zen
   puppet:
     package: ./examples/puppet
 
@@ -25,15 +25,30 @@ samples:
 # run afterwards with the run directory as its last argument and fails the
 # run when the play did not go as planned.
 runs:
-  journey:
-    sample: wayfinder
-    script: scripts/capture-example.txt
+  opening:
+    sample: go-zen
+    script: scripts/capture-go-zen.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
-    check: [python3, scripts/capture-example.py]
+  map:
+    sample: go-zen
+    script: scripts/capture-go-zen-map.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, town, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  shop:
+    sample: go-zen
+    script: scripts/capture-go-zen-shop.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, shop, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  dungeon:
+    sample: go-zen
+    script: scripts/capture-go-zen-dungeon.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, b2, --party, "maren,ox,tilly,kes", --calm, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  battle:
+    sample: go-zen
+    script: scripts/capture-go-zen-battle.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, b2, --party, "maren,ox,tilly,kes", --level, "6", --battle, warden, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
   balance:
-    sample: wayfinder
-    script: scripts/capture-balance.txt
-    args: [--dev, --mute, --seed, "7", --window, "1", --start, grotto, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+    sample: go-zen
+    script: scripts/capture-go-zen-balance.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, b2, --party, "maren,ox,tilly", --level, "1", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   puppet-tour:
     sample: puppet
     args: [--tour, --frames, "{out}/frames"]
@@ -53,45 +68,50 @@ runs:
 #   gif: {fps, width, height, colors, crop}    (crop is ffmpeg's w:h:x:y)
 #   tolerance: share of pixels that may differ in the stale check (default 0.02)
 images:
-  wayfinder.gif:
-    run: journey
+  go-zen.gif:
+    run: opening
     frames:
-      - {shots: "f[0-9][0-9][0-9]"}
-      - {shots: "practice_b*"}
-      - {shots: "sentry_b*", every: 6}
-      - {shots: "sentry_b*", near: cutin, from: 15, to: 50}
-    gif: {fps: 5, width: 640, height: 360, colors: 112}
-  wayfinder-title.jpg:
-    run: journey
+      - {shots: "t[0-9][0-9][0-9]"}
+    gif: {fps: 6, width: 640, height: 360, colors: 128}
+  go-zen-title.jpg:
+    run: opening
     shot: s-title
     jpeg: {width: 960, height: 540, quality: 3}
-  wayfinder-talk.jpg:
-    run: journey
+  go-zen-picture.jpg:
+    run: opening
+    shot: s-cg
+    jpeg: {width: 960, height: 540, quality: 3}
+  go-zen-talk.jpg:
+    run: opening
     shot: s-talk
     jpeg: {width: 960, height: 540, quality: 3}
-  wayfinder-battle.jpg:
-    run: journey
-    pick: {shots: "practice_b*", middle: true}
+  go-zen-plaza.jpg:
+    run: opening
+    shot: s-plaza
     jpeg: {width: 960, height: 540, quality: 3}
-  wayfinder-village.jpg:
-    run: journey
-    shot: s-village
+  go-zen-map.jpg:
+    run: map
+    shot: s-map
     jpeg: {width: 960, height: 540, quality: 3}
-  wayfinder-dungeon.jpg:
-    run: journey
+  go-zen-shop.jpg:
+    run: shop
+    shot: s-shop
+    jpeg: {width: 960, height: 540, quality: 3}
+  go-zen-dungeon.jpg:
+    run: dungeon
     shot: s-dungeon
     jpeg: {width: 960, height: 540, quality: 3}
-  wayfinder-party.jpg:
-    run: journey
-    pick: {shots: "sentry_b*", before: cutin}
+  go-zen-battle.jpg:
+    run: battle
+    pick: {shots: "fight_b*", before: cutin}
     jpeg: {width: 960, height: 540, quality: 3}
-  wayfinder-cutin.jpg:
-    run: journey
-    pick: {shots: "sentry_b*", near: cutin, at: 30}
+  go-zen-cutin.jpg:
+    run: battle
+    pick: {shots: "fight_b*", near: cutin, at: 30}
     jpeg: {width: 960, height: 540, quality: 3}
-  wayfinder-balance.jpg:
+  go-zen-balance.jpg:
     run: balance
-    shot: balance
+    shot: s-balance
     jpeg: {width: 960, height: 540, quality: 3}
   puppet.gif:
     run: puppet-tour

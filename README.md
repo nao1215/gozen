@@ -28,7 +28,7 @@ The name: a gozen (御膳) is a Japanese meal on a tray. Ebitengine is named aft
 
 Documentation: https://nao1215.github.io/gozen/
 
-![Wayfinder, the Gozen sample game](docs/images/wayfinder.gif)
+![Go Zen, the Gozen sample game: a talk with moving portraits](docs/images/go-zen.gif)
 
 ## Try it
 
@@ -43,12 +43,16 @@ go run github.com/nao1215/gozen/examples/minimal@latest
 location=camp gold=2
 ```
 
-That game is two YAML files and a 35-line Go host. The sample above, in a window:
+That game is two YAML files and a 43-line Go host. The sample above is [Go Zen](examples/go-zen), a module of its own. Play it from a clone:
 
-<!-- verify: build opens the game window and waits for a player -->
+<!-- verify: skip needs a clone of the repository and opens the game window -->
 ```sh
-go run github.com/nao1215/gozen/examples/play@latest --mute
+git clone https://github.com/nao1215/gozen
+cd gozen/examples/go-zen
+go run . --mute
 ```
+
+Play Go Zen in the browser: https://nao1215.github.io/gozen/play/
 
 ## The loop
 
@@ -65,16 +69,19 @@ The window, a headless session and the command line share the rules.
 
 ## Screens
 
-<p align="center"><img src="docs/images/puppet.gif" width="300" alt="a streamer-style portrait that blinks, talks, breathes, sways and changes her face"></p>
-<p align="center">A portrait from one picture and a few patches (<a href="examples/puppet">examples/puppet</a>).</p>
+All from [Go Zen](examples/go-zen) at 1920x1080.
 
-| A party of three | Cut-in on a special skill |
+| Conversation | Event picture |
 |:--|:--|
-| ![a battle with a party of three](docs/images/wayfinder-party.jpg) | ![a cut-in when Bram uses Shield Rush](docs/images/wayfinder-cutin.jpg) |
-| First-person dungeon | Balance panel (F7) |
-| ![a first-person dungeon with a map](docs/images/wayfinder-dungeon.jpg) | ![win rates by troop, at full HP and at the current HP](docs/images/wayfinder-balance.jpg) |
-| Conversation | Village |
-| ![conversation](docs/images/wayfinder-talk.jpg) | ![village](docs/images/wayfinder-village.jpg) |
+| ![Maren talks, a moving portrait](docs/images/go-zen-talk.jpg) | ![Maren with a map by the dry fountain](docs/images/go-zen-picture.jpg) |
+| Painted scene | Town map |
+| ![the plaza with a balloon](docs/images/go-zen-plaza.jpg) | ![the town map with name plates](docs/images/go-zen-map.jpg) |
+| First-person dungeon | Shop |
+| ![a brick corridor and the map](docs/images/go-zen-dungeon.jpg) | ![the shop's goods](docs/images/go-zen-shop.jpg) |
+| Battle | Cut-in |
+| ![four against the Brass Warden](docs/images/go-zen-battle.jpg) | ![Ox's Shield Rush cut-in](docs/images/go-zen-cutin.jpg) |
+| Balance panel (F7) | Title |
+| ![win rates by troop](docs/images/go-zen-balance.jpg) | ![the title screen](docs/images/go-zen-title.jpg) |
 
 ## Install
 
@@ -140,7 +147,10 @@ slsa-verifier verify-artifact gozen_<version>_<os>_<arch>.tar.gz \
 
 Tested YAML recipes are in the [cookbook](https://nao1215.github.io/gozen/cookbook/).
 
-With a coding agent, give it the [schema](https://nao1215.github.io/gozen/schema/) and one rule: run `gozen check` until it passes.
+With a coding agent, install the [gozen skill](skills/gozen/SKILL.md). It holds the schema links and one rule: run `gozen check` until it passes.
+
+- Claude Code: copy `skills/gozen` to `~/.claude/skills/gozen`.
+- Codex: copy `skills/gozen` to `~/.codex/skills/gozen`.
 
 <!-- verify: run fixture=cave -->
 ```sh
@@ -227,7 +237,7 @@ A star or a [GitHub Sponsors](https://github.com/sponsors/nao1215) sponsorship h
 
 ## License
 
-The code is [MIT](LICENSE). The Wayfinder pictures are [CC BY 4.0](examples/play/game/assets/LICENSE). Font notices are in [ASSETS.md](ASSETS.md).
+The code is [MIT](LICENSE). The Go Zen pictures and music are [CC BY 4.0](examples/go-zen/game/assets/LICENSE). Font notices are in [ASSETS.md](ASSETS.md).
 
 ## Contributors ✨
 
@@ -249,4 +259,4 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/e
 
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
-This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind are welcome.

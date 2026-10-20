@@ -1,0 +1,6 @@
+# Go Zen capture of the town map (run map): choose a point, then a shot.
+wait 60
+press down
+wait 40
+shot s-map
+quit

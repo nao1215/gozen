@@ -23,3 +23,7 @@ The origin, license, and generation method of assets are kept in the example's d
 ## Addendum (2026-10-19)
 
 The Wayfinder art was changed from shapes drawn in code to generated images. The license of the art is separate from that of the code: the code is MIT, and the example art is CC BY 4.0 (`examples/play/game/assets/LICENSE`). How the art was made is not recorded in published material.
+
+## Addendum (2026-10-20)
+
+Wayfinder (`examples/play`) was removed. The sample game is Go Zen (`examples/go-zen`), a module of its own so that its pictures and music are not in the gozen module. Its pictures and music are CC BY 4.0 (`examples/go-zen/game/assets/LICENSE`), its font is M+ 1p under the M+ FONTS LICENSE (`examples/go-zen/ASSETS.md`). The README and site pictures are taken from it. The graphics tests run it, or their own small games, through `play/testdata/host`.

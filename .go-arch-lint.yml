@@ -11,6 +11,8 @@ exclude:
   - build
   - bin
   - dist
+  # the graphics tests' window host, a test harness like the _test.go files
+  - play/testdata
 excludeFiles:
   # Runtime dependency policy; external test harnesses may compose layers.
   - '^.*_test\.go$'

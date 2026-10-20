@@ -40,7 +40,7 @@ go tool gozen check game
 go get github.com/nao1215/gozen@latest
 ```
 
-The rules, the headless driver and the YAML loader are pure Go and run anywhere Go does. Only the game window (the `play` and `runner` packages) needs the platform graphics libraries below.
+The rules, the headless driver and the YAML loader are pure Go and run anywhere Go does. Only the game window (the `play` package) needs the platform graphics libraries below.
 
 ## What the window needs
 
@@ -52,29 +52,28 @@ Gozen draws with [Ebitengine](https://ebitengine.org/) v2.10. A normal build nee
 | Windows | A GPU driver with OpenGL and a logged-in desktop. |
 | macOS | A desktop session. For the race detector, `xcode-select --install`. |
 
-Check the setup with the sample game:
+Check the setup with a small window, a moving portrait:
 
 <!-- verify: build opens the game window and waits for a player -->
 ```shell
-go run github.com/nao1215/gozen/examples/play@latest --mute
+go run github.com/nao1215/gozen/examples/puppet@latest
 ```
 
 Runtime checks are done on Linux. Windows and macOS are built in CI but have not been played yet; reports are welcome.
 
 ## Without a screen (CI, servers)
 
-On Linux, run the game inside Xvfb, a virtual display. This takes a screenshot of the title screen and quits:
+On Linux, run the window inside Xvfb, a virtual display. This plays the portrait's motions once, writes the frames and quits:
 
 <!-- verify: run except=1 installs system packages with sudo; the check runs inside Xvfb -->
 ```shell
 sudo apt-get install xvfb xauth
-printf 'wait 60\nshot title\nquit\n' > check.txt
-xvfb-run -a go run github.com/nao1215/gozen/examples/play@latest --dev --mute --script check.txt --shots shots
+xvfb-run -a go run github.com/nao1215/gozen/examples/puppet@latest --tour --frames frames
 ```
 
-`shots/title.png` is the result. Scripted runs, traces and `gozen play shots` work the same way inside Xvfb.
+`frames/` has the pictures. In your own game, `--dev --script FILE --shots DIR` takes screenshots the same way. Scripted runs, traces and `gozen play shots` work the same way inside Xvfb.
 
-Tests that only use the rules (`headless`, `data`, `battle` and so on) need no display at all.
+Tests that only use the rules (`gozen.Session` and `gozen.Explore`) need no display at all.
 
 ## Optional tools
 

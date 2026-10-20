@@ -1,0 +1,6 @@
+# Go Zen balance panel (F7, --dev) in the Cistern Hall: the panel measures inside the game loop.
+wait 30
+press graphs
+wait 5200
+shot s-balance
+quit

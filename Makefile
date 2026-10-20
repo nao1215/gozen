@@ -12,7 +12,7 @@ GOLANGCI_LINT ?= GOTOOLCHAIN=$(LINT_GO) $(GO) run github.com/golangci/golangci-l
 ATAGO ?= atago
 ACTIONLINT ?= actionlint
 
-.PHONY: go-zen go-zen-graphics test coverage lint workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
+.PHONY: website-go-zen go-zen go-zen-graphics test coverage lint workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
 
 # One module: ./... includes the gozen command and its internal implementations.
 # Keep ONNX-dependent runtime tests separate; see docs/development/testing.md.
@@ -65,7 +65,7 @@ e2e: cli-build
 	cd build/atago && PATH="$(CURDIR)/bin:$$PATH" $(ATAGO) run --ci --parallel 4 --skip-tag graphics ../../e2e/atago
 
 e2e-graphics: cli-build
-	$(GO) build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/gozen-game ./examples/play
+	$(GO) build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/gozen-game ./play/testdata/host
 	mkdir -p build/atago
 	cd build/atago && PATH="$(CURDIR)/bin:$$PATH" GOZEN_GAME_BIN="$(CURDIR)/bin/gozen-game" $(ATAGO) run --ci --parallel 1 --tag graphics ../../e2e/atago
 
@@ -83,6 +83,18 @@ bench-compare:
 # The documentation website (GitHub Pages). Requires hugo; see website/hugo.toml.
 website:
 	cd website && hugo --gc --minify --cleanDestinationDir
+	$(MAKE) website-go-zen
+
+# Go Zen in the browser (GOOS=js) under website/public/play/go-zen/: the program, Go's
+# wasm_exec.js, the page, and the game's files, which the program fetches before it starts.
+WEB_GO_ZEN = website/public/play/go-zen
+website-go-zen:
+	mkdir -p $(WEB_GO_ZEN)
+	cd examples/go-zen && GOOS=js GOARCH=wasm $(GO) build -trimpath -buildvcs=false -ldflags="-s -w" -o ../../$(WEB_GO_ZEN)/go-zen.wasm .
+	install -m 644 "$$($(GO) env GOROOT)/lib/wasm/wasm_exec.js" examples/go-zen/web/index.html $(WEB_GO_ZEN)/
+	rm -rf $(WEB_GO_ZEN)/game
+	cp -r examples/go-zen/game $(WEB_GO_ZEN)/game
+	cd examples/go-zen && $(GO) run ./web/files ../../$(WEB_GO_ZEN)/game
 
 website-serve:
 	cd website && hugo server

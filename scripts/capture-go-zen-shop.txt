@@ -1,0 +1,11 @@
+# Go Zen capture of the shop (run shop): Barnaby's tour, then the goods to buy.
+wait 40
+play tour
+wait 20
+press down
+press ok
+wait 40
+press ok
+wait 40
+shot s-shop
+quit

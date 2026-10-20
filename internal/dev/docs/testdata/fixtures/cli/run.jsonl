@@ -1,450 +1,471 @@
-{"t":"start","tick":0,"answers":null,"autopilot":false,"battle":"","calm":false,"event":"","fingerprint":"a05f0b39b2ff79fc75a0e7fade1732a0e1b69d32c9ed1c569fae986c980c8059","flags":null,"floor":0,"gallery_all":false,"game":"Wayfinder","gold":0,"items":null,"language":"en","level":0,"line":0,"location":"","party":null,"picture":"","scene":"","screen":[960,540],"seed":7,"setup":{"config":{"text_speed":2,"auto_wait":2,"window":9,"bgm":7,"se":7,"fullscreen":false,"battle_speed":0,"skip_all":false,"manual_sp":false},"read":{},"unlocked":{},"saves":{}},"speed":1,"version":2}
-{"t":"scene","tick":1,"stack":["title"]}
-{"t":"music","tick":1,"asked":"","module":"","mood":"","song":"","wanted":""}
-{"t":"menu","tick":5,"items":["New journey","Continue (x)","Gallery (x)","Settings","Quit"],"sel":0}
+{"t":"start","tick":0,"answers":null,"autopilot":false,"battle":"warden","calm":false,"event":"","fingerprint":"6f360765de647fb837947c4a22aaefb8c5ff6846cf430a9a55a30ff45bb116f3","flags":null,"floor":0,"gallery_all":false,"game":"Go Zen","gold":0,"items":null,"language":"en","level":6,"line":0,"location":"b2","party":["maren","ox","tilly","kes"],"picture":"","scene":"","screen":[1920,1080],"seed":7,"setup":{"config":{"text_speed":2,"auto_wait":2,"window":9,"bgm":7,"se":7,"fullscreen":false,"battle_speed":0,"skip_all":false,"manual_sp":false},"read":{},"unlocked":{},"saves":{}},"speed":1,"version":2}
+{"t":"battle_capture","tick":0,"capture":{"version":1,"tick":0,"troop":"warden","save":"ewogICJmb3JtYXRfdmVyc2lvbiI6IDEsCiAgImdhbWVfaWQiOiAiZ28temVuIiwKICAiZGF0YV92ZXJzaW9uIjogMSwKICAic3RhdGUiOiB7CiAgICAiYWN0b3JzIjogewogICAgICAia2VzIjogewogICAgICAgICJpZCI6ICJrZXMiLAogICAgICAgICJsZXZlbCI6IDYsCiAgICAgICAgImV4cCI6IDM2MCwKICAgICAgICAiaHAiOiA1MiwKICAgICAgICAibXAiOiAyOCwKICAgICAgICAiZXF1aXAiOiB7CiAgICAgICAgICAiYXJtb3IiOiAiY29hdF93b3JrIiwKICAgICAgICAgICJ3ZWFwb24iOiAiY29pbF9iYXNpYyIKICAgICAgICB9LAogICAgICAgICJsZWFybnQiOiBudWxsLAogICAgICAgICJzdGF0ZXMiOiB7fSwKICAgICAgICAic3AiOiAwLAogICAgICAgICJ0cmVlIjogewogICAgICAgICAgIm92ZXJjbG9jayI6IDIsCiAgICAgICAgICAic3BhcmVfcGFydHMiOiAyLAogICAgICAgICAgInN0b3JtX2NvaWwiOiAzCiAgICAgICAgfSwKICAgICAgICAiYmFjayI6IHRydWUsCiAgICAgICAgInRhY3RpY3MiOiB7CiAgICAgICAgICAidmVyc2lvbiI6IDEsCiAgICAgICAgICAibW9kZSI6ICJhdXRvIiwKICAgICAgICAgICJyb3dzIjogbnVsbAogICAgICAgIH0KICAgICAgfSwKICAgICAgIm1hcmVuIjogewogICAgICAgICJpZCI6ICJtYXJlbiIsCiAgICAgICAgImxldmVsIjogNiwKICAgICAgICAiZXhwIjogMzYwLAogICAgICAgICJocCI6IDcwLAogICAgICAgICJtcCI6IDIwLAogICAgICAgICJlcXVpcCI6IHsKICAgICAgICAgICJhcm1vciI6ICJjb2F0X2Nsb3RoIiwKICAgICAgICAgICJ3ZWFwb24iOiAicm9kX2Jhc2ljIgogICAgICAgIH0sCiAgICAgICAgImxlYXJudCI6IG51bGwsCiAgICAgICAgInN0YXRlcyI6IHt9LAogICAgICAgICJzcCI6IDAsCiAgICAgICAgInRyZWUiOiB7CiAgICAgICAgICAiY2hhcnQiOiAyLAogICAgICAgICAgImlua19idXJzdCI6IDIsCiAgICAgICAgICAia2Vlbl9leWUiOiAxLAogICAgICAgICAgInN1cmVfZm9vdCI6IDIKICAgICAgICB9LAogICAgICAgICJiYWNrIjogZmFsc2UsCiAgICAgICAgInRhY3RpY3MiOiB7CiAgICAgICAgICAidmVyc2lvbiI6IDEsCiAgICAgICAgICAibW9kZSI6ICJhdXRvIiwKICAgICAgICAgICJyb3dzIjogbnVsbAogICAgICAgIH0KICAgICAgfSwKICAgICAgIm94IjogewogICAgICAgICJpZCI6ICJveCIsCiAgICAgICAgImxldmVsIjogNiwKICAgICAgICAiZXhwIjogMzYwLAogICAgICAgICJocCI6IDExOCwKICAgICAgICAibXAiOiAxMSwKICAgICAgICAiZXF1aXAiOiB7CiAgICAgICAgICAiYXJtb3IiOiAicGxhdGVfc2NyYXAiLAogICAgICAgICAgIndlYXBvbiI6ICJzaGllbGRfcG90IgogICAgICAgIH0sCiAgICAgICAgImxlYXJudCI6IG51bGwsCiAgICAgICAgInN0YXRlcyI6IHt9LAogICAgICAgICJzcCI6IDAsCiAgICAgICAgInRyZWUiOiB7CiAgICAgICAgICAiYnVsd2FyayI6IDIsCiAgICAgICAgICAiaG9sZF9saW5lIjogMiwKICAgICAgICAgICJpcm9uX2hpZGUiOiAyCiAgICAgICAgfSwKICAgICAgICAiYmFjayI6IGZhbHNlLAogICAgICAgICJ0YWN0aWNzIjogewogICAgICAgICAgInZlcnNpb24iOiAxLAogICAgICAgICAgIm1vZGUiOiAiYXV0byIsCiAgICAgICAgICAicm93cyI6IG51bGwKICAgICAgICB9CiAgICAgIH0sCiAgICAgICJ0aWxseSI6IHsKICAgICAgICAiaWQiOiAidGlsbHkiLAogICAgICAgICJsZXZlbCI6IDYsCiAgICAgICAgImV4cCI6IDM2MCwKICAgICAgICAiaHAiOiA2MiwKICAgICAgICAibXAiOiAyOCwKICAgICAgICAiZXF1aXAiOiB7CiAgICAgICAgICAiYXJtb3IiOiAicm9iZV9waWxncmltIiwKICAgICAgICAgICJ3ZWFwb24iOiAic3RhZmZfd29vZCIKICAgICAgICB9LAogICAgICAgICJsZWFybnQiOiBudWxsLAogICAgICAgICJzdGF0ZXMiOiB7fSwKICAgICAgICAic3AiOiAwLAogICAgICAgICJ0cmVlIjogewogICAgICAgICAgImJsZXNzaW5nIjogMiwKICAgICAgICAgICJtZW5kIjogMiwKICAgICAgICAgICJzZWNvbmRfY2hhbmNlIjogMSwKICAgICAgICAgICJzaGFyZWRfY3VwIjogMgogICAgICAgIH0sCiAgICAgICAgImJhY2siOiB0cnVlLAogICAgICAgICJ0YWN0aWNzIjogewogICAgICAgICAgInZlcnNpb24iOiAxLAogICAgICAgICAgIm1vZGUiOiAiYXV0byIsCiAgICAgICAgICAicm93cyI6IG51bGwKICAgICAgICB9CiAgICAgIH0KICAgIH0sCiAgICAicGFydHkiOiBbCiAgICAgICJtYXJlbiIsCiAgICAgICJveCIsCiAgICAgICJ0aWxseSIsCiAgICAgICJrZXMiCiAgICBdLAogICAgIml0ZW1zIjogewogICAgICAib2xkX2dlYXIiOiAzLAogICAgICAidG9uaWMiOiAyCiAgICB9LAogICAgImdvbGQiOiA2MCwKICAgICJmbGFncyI6IHt9LAogICAgInZhcnMiOiB7CiAgICAgICJleHBsb3JlZCI6IDAKICAgIH0sCiAgICAibG9jYXRpb24iOiAiYjIiLAogICAgInN0ZXBzIjogMCwKICAgICJmcmFtZXMiOiAwLAogICAgImRvbmUiOiB7fSwKICAgICJwb3MiOiB7CiAgICAgICJpbiI6ICJiMiIsCiAgICAgICJYIjogMSwKICAgICAgIlkiOiAxLAogICAgICAiZmFjaW5nIjogMgogICAgfSwKICAgICJtYXBwZWQiOiB7CiAgICAgICJiMiI6ICJBUUVCQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBUUVCQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBUUFCQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiCiAgICB9CiAgfQp9","rand":"cGNnOgAAAAAAAAAHAAAAAAAAADI=","fighters":null,"calm":false,"auto":false,"auto_read":false,"setup":{"config":{"text_speed":2,"auto_wait":2,"window":9,"bgm":7,"se":7,"fullscreen":false,"battle_speed":0,"skip_all":false,"manual_sp":false},"read":{},"unlocked":{},"saves":null},"fingerprint":"6f360765de647fb837947c4a22aaefb8c5ff6846cf430a9a55a30ff45bb116f3","engine":"gozen-play-v1","fade":0},"number":1}
+{"t":"scene","tick":1,"location":"b2","stack":["dungeon","battle"]}
+{"t":"state","tick":1,"facing":"south","gold":60,"location":"b2","party":[{"back":false,"hp":70,"id":"maren","lv":6,"mhp":70,"mmp":20,"mp":20,"name":"Maren","states":{}},{"back":false,"hp":118,"id":"ox","lv":6,"mhp":118,"mmp":11,"mp":11,"name":"Ox","states":{}},{"back":true,"hp":62,"id":"tilly","lv":6,"mhp":62,"mmp":28,"mp":28,"name":"Tilly","states":{}},{"back":true,"hp":52,"id":"kes","lv":6,"mhp":52,"mmp":28,"mp":28,"name":"Kes","states":{}}],"pos":[1,1],"summary":{"actors":{"kes":{"back":true,"equip":{"armor":"coat_work","weapon":"coil_basic"},"exp":360,"hp":52,"id":"kes","learnt":null,"level":6,"mp":28,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"overclock":2,"spare_parts":2,"storm_coil":3}},"maren":{"back":false,"equip":{"armor":"coat_cloth","weapon":"rod_basic"},"exp":360,"hp":70,"id":"maren","learnt":null,"level":6,"mp":20,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"chart":2,"ink_burst":2,"keen_eye":1,"sure_foot":2}},"ox":{"back":false,"equip":{"armor":"plate_scrap","weapon":"shield_pot"},"exp":360,"hp":118,"id":"ox","learnt":null,"level":6,"mp":11,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"bulwark":2,"hold_line":2,"iron_hide":2}},"tilly":{"back":true,"equip":{"armor":"robe_pilgrim","weapon":"staff_wood"},"exp":360,"hp":62,"id":"tilly","learnt":null,"level":6,"mp":28,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"blessing":2,"mend":2,"second_chance":1,"shared_cup":2}}},"done":{},"flags":{},"gold":60,"items":{"old_gear":3,"tonic":2},"location":"b2","mapped":{"b2":"AQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["maren","ox","tilly","kes"],"pos":{"X":1,"Y":1,"facing":2,"in":"b2"},"steps":0,"vars":{"explored":0}}}
+{"t":"music","tick":1,"asked":"boss","asked_at":1,"module":"","mood":"neutral","song":"boss","wanted":"boss"}
 {"t":"stand","tick":10,"idle":true,"since":5}
-{"t":"view","tick":20,"pictures":["courier.png","title.jpg","walker/normal.png"],"since":5}
-{"t":"shot","tick":52,"file":"s-title.png"}
-{"t":"shot","tick":54,"file":"f000.png"}
-{"t":"shot","tick":71,"file":"f001.png"}
-{"t":"shot","tick":88,"file":"f002.png"}
-{"t":"shot","tick":105,"file":"f003.png"}
-{"t":"input","tick":122,"press":["ok"]}
-{"t":"scene","tick":122,"location":"camp","stack":["field"]}
-{"t":"state","tick":122,"gold":0,"location":"camp","party":[{"back":false,"hp":30,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}}],"summary":{"actors":{"walker":{"back":false,"equip":{},"exp":0,"hp":30,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{},"flags":{},"gold":0,"items":{},"location":"camp","mapped":{},"party":["walker"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"steps":0,"vars":{}}}
-{"t":"menu","tick":122,"items":null}
-{"t":"menu","tick":126,"items":["Talk: Courier","Practice","Save journey","Rest","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":0}
-{"t":"autosave","tick":130,"at":"camp"}
-{"t":"view","tick":134,"pictures":["camp.jpg","courier.png","walker/normal.png"],"since":122}
-{"t":"shot","tick":162,"file":"f004.png"}
-{"t":"shot","tick":177,"file":"f005.png"}
-{"t":"shot","tick":192,"file":"f006.png"}
-{"t":"input","tick":207,"press":["ok"]}
-{"t":"menu","tick":207,"items":null}
-{"t":"say","tick":208,"face":"courier.png","text":"A little light can guide a long journey.","who":"Courier"}
-{"t":"stand","tick":212,"hides":false,"location":"camp","set":1,"since":208}
-{"t":"view","tick":217,"pictures":["camp.jpg","courier.png"],"since":208}
-{"t":"shot","tick":252,"file":"s-talk.png"}
-{"t":"shot","tick":254,"file":"f007.png"}
-{"t":"shot","tick":269,"file":"f008.png"}
-{"t":"input","tick":284,"press":["ok"]}
-{"t":"say","tick":284,"face":"courier.png","text":"Practice with Pebble, then light the marker. The ridge path will open.","who":"Courier"}
-{"t":"shot","tick":329,"file":"f009.png"}
-{"t":"shot","tick":344,"file":"f010.png"}
-{"t":"input","tick":359,"press":["ok"]}
-{"t":"menu","tick":359,"items":["Talk: Courier","Practice","Save journey","Rest","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":0}
-{"t":"stand","tick":363,"idle":true,"since":359}
-{"t":"view","tick":368,"pictures":["camp.jpg","courier.png","walker/normal.png"],"since":359}
-{"t":"input","tick":382,"press":["down"]}
-{"t":"menu","tick":382,"items":["Talk: Courier","Practice","Save journey","Rest","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":1}
-{"t":"input","tick":391,"press":["ok"]}
-{"t":"menu","tick":391,"items":null}
-{"t":"request","tick":392,"troop":"lesson","what":"battle"}
-{"t":"battle_capture","tick":392,"capture":{"version":1,"tick":392,"troop":"lesson","save":"ewogICJmb3JtYXRfdmVyc2lvbiI6IDEsCiAgImdhbWVfaWQiOiAid2F5ZmluZGVyLWRlbW8iLAogICJkYXRhX3ZlcnNpb24iOiAwLAogICJzdGF0ZSI6IHsKICAgICJhY3RvcnMiOiB7CiAgICAgICJ3YWxrZXIiOiB7CiAgICAgICAgImlkIjogIndhbGtlciIsCiAgICAgICAgImxldmVsIjogMSwKICAgICAgICAiZXhwIjogMCwKICAgICAgICAiaHAiOiAzMCwKICAgICAgICAibXAiOiA1LAogICAgICAgICJlcXVpcCI6IHt9LAogICAgICAgICJsZWFybnQiOiBudWxsLAogICAgICAgICJzdGF0ZXMiOiB7fSwKICAgICAgICAic3AiOiAwLAogICAgICAgICJ0cmVlIjoge30sCiAgICAgICAgImJhY2siOiBmYWxzZSwKICAgICAgICAidGFjdGljcyI6IHsKICAgICAgICAgICJ2ZXJzaW9uIjogMSwKICAgICAgICAgICJtb2RlIjogImF1dG8iLAogICAgICAgICAgInJvd3MiOiBudWxsCiAgICAgICAgfQogICAgICB9CiAgICB9LAogICAgInBhcnR5IjogWwogICAgICAid2Fsa2VyIgogICAgXSwKICAgICJpdGVtcyI6IHt9LAogICAgImdvbGQiOiAwLAogICAgImZsYWdzIjogewogICAgICAiYnJpZWZlZCI6IHRydWUKICAgIH0sCiAgICAidmFycyI6IHt9LAogICAgImxvY2F0aW9uIjogImNhbXAiLAogICAgInN0ZXBzIjogMCwKICAgICJmcmFtZXMiOiAyNzAsCiAgICAiZG9uZSI6IHt9LAogICAgInBvcyI6IHsKICAgICAgImluIjogIiIsCiAgICAgICJYIjogMCwKICAgICAgIlkiOiAwLAogICAgICAiZmFjaW5nIjogMAogICAgfSwKICAgICJtYXBwZWQiOiB7fQogIH0KfQ==","rand":"cGNnOgAAAAAAAAAHAAAAAAAAADI=","fighters":null,"calm":false,"auto":false,"auto_read":false,"setup":{"config":{"text_speed":2,"auto_wait":2,"window":9,"bgm":7,"se":7,"fullscreen":false,"battle_speed":0,"skip_all":false,"manual_sp":false},"read":{"11557784210628857530":true,"5381842281772817088":true},"unlocked":{},"saves":null},"fingerprint":"a05f0b39b2ff79fc75a0e7fade1732a0e1b69d32c9ed1c569fae986c980c8059","engine":"gozen-play-v1","fade":0},"number":1}
-{"t":"scene","tick":392,"location":"camp","stack":["field","battle"]}
-{"t":"state","tick":392,"gold":0,"location":"camp","party":[{"back":false,"hp":30,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}}],"summary":{"actors":{"walker":{"back":false,"equip":{},"exp":0,"hp":30,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{},"flags":{"briefed":true},"gold":0,"items":{},"location":"camp","mapped":{},"party":["walker"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"steps":0,"vars":{}}}
-{"t":"view","tick":404,"pictures":["grotto.jpg","pebble.png","walker/normal.png"],"since":392}
-{"t":"battle_step","tick":419,"amount":0,"crit":false,"element":"","hp":0,"kind":0,"mp":0,"resisted":false,"skill":"","stat":"","state":"","target":null,"user":null,"weak":false}
-{"t":"battle","tick":419,"text":"Pebble is ready to practice!"}
-{"t":"shot","tick":441,"file":"f011.png"}
-{"t":"menu","tick":454,"items":["Attack","Skills (x)","Guard","Items","Auto","Run"],"sel":0}
-{"t":"shot","tick":456,"file":"f012.png"}
-{"t":"act","tick":471,"name":"battle_auto"}
-{"t":"ai_decision","tick":471,"decision":{"troop":"lesson","turn":1,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"walker","enemy":false,"index":0},"rules":null,"selected":-1,"committed":false,"skill":"attack"}}
-{"t":"ai_decision","tick":471,"decision":{"troop":"lesson","turn":1,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"walker","enemy":false,"index":0},"rules":null,"selected":-1,"committed":true,"skill":"attack"}}
-{"t":"shot","tick":471,"file":"practice_b001.png"}
-{"t":"menu","tick":471,"items":null}
-{"t":"battle_step","tick":472,"amount":0,"crit":false,"element":"","hp":30,"kind":1,"mp":5,"resisted":false,"skill":"attack","stat":"","state":"","target":null,"user":{"enemy":false,"id":"walker","index":0},"weak":false}
-{"t":"battle","tick":472,"text":"Walker: Tap!"}
-{"t":"shot","tick":491,"file":"practice_b002.png"}
-{"t":"battle_step","tick":503,"amount":8,"crit":false,"element":"","hp":8,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"pebble","index":0},"user":{"enemy":false,"id":"walker","index":0},"weak":false}
-{"t":"battle","tick":503,"text":"Pebble takes 8 damage!"}
-{"t":"shot","tick":511,"file":"practice_b003.png"}
-{"t":"shot","tick":531,"file":"practice_b004.png"}
-{"t":"ai_decision","tick":538,"decision":{"troop":"lesson","turn":1,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"pebble","enemy":true,"index":0},"rules":[{"index":0,"skill":"nudge","reason":"applicable","target":{"id":"walker","enemy":false,"index":0},"selection":"selected"}],"selected":0,"committed":true,"skill":"nudge","target":{"id":"walker","enemy":false,"index":0}}}
-{"t":"battle_step","tick":539,"amount":0,"crit":false,"element":"","hp":8,"kind":1,"mp":0,"resisted":false,"skill":"nudge","stat":"","state":"","target":null,"user":{"enemy":true,"id":"pebble","index":0},"weak":false}
-{"t":"battle","tick":539,"text":"Pebble: Nudge!"}
-{"t":"shot","tick":551,"file":"practice_b005.png"}
-{"t":"battle_step","tick":570,"amount":1,"crit":false,"element":"","hp":29,"kind":2,"mp":5,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"walker","index":0},"user":{"enemy":true,"id":"pebble","index":0},"weak":false}
-{"t":"battle","tick":570,"text":"Walker takes 1 damage!"}
-{"t":"shot","tick":571,"file":"practice_b006.png"}
-{"t":"shot","tick":591,"file":"practice_b007.png"}
-{"t":"state","tick":600,"gold":0,"location":"camp","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}}],"summary":{"actors":{"walker":{"back":false,"equip":{},"exp":0,"hp":30,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{},"flags":{"briefed":true},"gold":0,"items":{},"location":"camp","mapped":{},"party":["walker"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"steps":0,"vars":{}}}
-{"t":"ai_decision","tick":606,"decision":{"troop":"lesson","turn":2,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"walker","enemy":false,"index":0},"rules":null,"selected":-1,"committed":false,"skill":"attack"}}
-{"t":"ai_decision","tick":607,"decision":{"troop":"lesson","turn":2,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"walker","enemy":false,"index":0},"rules":null,"selected":-1,"committed":true,"skill":"attack"}}
-{"t":"battle_step","tick":608,"amount":0,"crit":false,"element":"","hp":29,"kind":1,"mp":5,"resisted":false,"skill":"attack","stat":"","state":"","target":null,"user":{"enemy":false,"id":"walker","index":0},"weak":false}
-{"t":"battle","tick":608,"text":"Walker: Tap!"}
-{"t":"shot","tick":611,"file":"practice_b008.png"}
-{"t":"shot","tick":631,"file":"practice_b009.png"}
-{"t":"battle_step","tick":639,"amount":8,"crit":false,"element":"","hp":0,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"pebble","index":0},"user":{"enemy":false,"id":"walker","index":0},"weak":false}
-{"t":"battle","tick":639,"text":"Pebble takes 8 damage!"}
-{"t":"battle_fx","tick":643,"boss":false,"slow":0,"stop":0,"what":"finish"}
-{"t":"shot","tick":651,"file":"practice_b010.png"}
-{"t":"shot","tick":671,"file":"practice_b011.png"}
-{"t":"battle_step","tick":674,"amount":0,"crit":false,"element":"","hp":0,"kind":7,"mp":0,"resisted":false,"skill":"","stat":"","state":"","target":{"enemy":true,"id":"pebble","index":0},"user":null,"weak":false}
-{"t":"battle","tick":674,"text":"Pebble finishes practice."}
-{"t":"shot","tick":691,"file":"practice_b012.png"}
-{"t":"shot","tick":711,"file":"practice_b013.png"}
-{"t":"battle_music","tick":715,"fanfare":true,"mood":""}
-{"t":"battle_end","tick":715,"messages":["Practice complete!","Received 3G."],"result":"won"}
-{"t":"battle_result","tick":715,"gains":{"LevelUps":null,"Exp":0,"Gold":3,"Items":null},"rand":"cGNnOldLefaeAeXagfgHYSzlwWg=","result":"won","summary":{"actors":{"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{},"flags":{"briefed":true},"gold":3,"items":{},"location":"camp","mapped":{},"party":["walker"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"steps":0,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
-{"t":"shot","tick":731,"file":"practice_b014.png"}
-{"t":"shot","tick":740,"file":"practice_001.png"}
-{"t":"input","tick":742,"press":["ok"]}
-{"t":"shot","tick":754,"file":"practice_b015.png"}
-{"t":"shot","tick":767,"file":"practice_002.png"}
-{"t":"input","tick":769,"press":["ok"]}
-{"t":"shot","tick":777,"file":"practice_b016.png"}
-{"t":"battle_close","tick":779,"auto":true,"ticks":387}
-{"t":"scene","tick":779,"location":"camp","stack":["field"]}
-{"t":"state","tick":779,"gold":3,"location":"camp","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}}],"summary":{"actors":{"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{},"flags":{"briefed":true},"gold":3,"items":{},"location":"camp","mapped":{},"party":["walker"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"steps":0,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
-{"t":"say","tick":780,"text":"Well done! You are ready to light the marker."}
-{"t":"stand","tick":786,"hides":false,"location":"camp","set":2,"since":782}
-{"t":"view","tick":791,"pictures":["camp.jpg"],"since":782}
-{"t":"shot","tick":800,"file":"practice_003.png"}
-{"t":"input","tick":802,"press":["ok"]}
-{"t":"menu","tick":805,"items":["Talk: Courier","Practice","Light the marker","Save journey","Rest","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":1}
-{"t":"stand","tick":809,"idle":true,"since":805}
-{"t":"autosave","tick":810,"at":"camp"}
-{"t":"view","tick":814,"pictures":["camp.jpg","courier.png","walker/normal.png"],"since":805}
-{"t":"shot","tick":867,"file":"f013.png"}
-{"t":"shot","tick":882,"file":"f014.png"}
-{"t":"input","tick":897,"press":["down"]}
-{"t":"menu","tick":897,"items":["Talk: Courier","Practice","Light the marker","Save journey","Rest","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":2}
-{"t":"input","tick":906,"press":["ok"]}
-{"t":"menu","tick":906,"items":null}
-{"t":"say","tick":907,"face":"walker/normal.png","text":"There. The marker should take the light now.","who":"Walker"}
-{"t":"stand","tick":912,"hides":false,"location":"camp","set":2,"since":907}
-{"t":"view","tick":919,"pictures":["camp.jpg","walker/normal.png"],"since":906}
-{"t":"shot","tick":956,"file":"f015.png"}
-{"t":"shot","tick":971,"file":"f016.png"}
-{"t":"input","tick":986,"press":["ok"]}
-{"t":"say","tick":986,"text":"The marker glows. A path to Lantern ridge is now open."}
-{"t":"view","tick":995,"pictures":["camp.jpg"],"since":986}
-{"t":"input","tick":1017,"press":["ok"]}
-{"t":"menu","tick":1017,"items":["Talk: Courier","Practice","Light the marker","Save journey","Rest","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":2}
-{"t":"menu","tick":1018,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":2}
-{"t":"stand","tick":1021,"idle":true,"since":1017}
-{"t":"view","tick":1026,"pictures":["camp.jpg","courier.png","walker/normal.png"],"since":1017}
-{"t":"input","tick":1040,"press":["down"]}
-{"t":"menu","tick":1040,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":3}
-{"t":"input","tick":1049,"press":["down"]}
-{"t":"menu","tick":1049,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":4}
-{"t":"input","tick":1058,"press":["ok"]}
-{"t":"menu","tick":1058,"items":null}
-{"t":"say","tick":1060,"text":"The ridge lantern answers your light. The trail is connected again!"}
-{"t":"stand","tick":1065,"hides":false,"location":"ridge","set":4,"since":1061}
-{"t":"view","tick":1070,"pictures":["ridge.jpg"],"since":1061}
-{"t":"shot","tick":1128,"file":"f017.png"}
-{"t":"shot","tick":1143,"file":"f018.png"}
-{"t":"shot","tick":1158,"file":"f019.png"}
-{"t":"input","tick":1173,"press":["ok"]}
-{"t":"say","tick":1173,"face":"sela/normal.png","text":"I keep the lanterns up here. Whoever lit the marker below is a friend of mine.","who":"Sela"}
-{"t":"view","tick":1182,"pictures":["ridge.jpg","sela/normal.png"],"since":1173}
-{"t":"state","tick":1200,"gold":7,"location":"ridge","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}}],"summary":{"actors":{"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"ridge","mapped":{},"party":["walker"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":1,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
-{"t":"input","tick":1212,"press":["ok"]}
-{"t":"say","tick":1212,"face":"sela/normal.png","text":"Let me walk with you. I can mend a scrape or two.","who":"Sela"}
-{"t":"input","tick":1242,"press":["ok"]}
-{"t":"say","tick":1242,"text":"Sela joins the party!"}
-{"t":"view","tick":1251,"pictures":["ridge.jpg"],"since":1242}
-{"t":"input","tick":1262,"press":["ok"]}
-{"t":"say","tick":1262,"text":"Journey complete. Save here, or return to explore the observation room."}
-{"t":"input","tick":1299,"press":["ok"]}
-{"t":"menu","tick":1299,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":0}
-{"t":"autosave","tick":1300,"at":"ridge"}
-{"t":"menu","tick":1300,"items":["Save journey","→ Return to camp","Menu X"],"sel":0}
-{"t":"stand","tick":1303,"idle":true,"since":1299}
-{"t":"view","tick":1308,"pictures":["ridge.jpg","sela/normal.png","walker/normal.png"],"since":1299}
-{"t":"input","tick":1332,"press":["ok"]}
-{"t":"menu","tick":1332,"items":null}
-{"t":"request","tick":1333,"what":"save"}
-{"t":"scene","tick":1333,"location":"ridge","stack":["field","saveMenu"]}
-{"t":"state","tick":1333,"gold":7,"location":"ridge","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}}],"summary":{"actors":{"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"ridge","mapped":{},"party":["walker","sela"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":1,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
-{"t":"menu","tick":1333,"items":["1: ---- Empty ----","2: ---- Empty ----","3: ---- Empty ----"],"sel":0}
-{"t":"view","tick":1342,"pictures":["ridge.jpg"],"since":1333}
-{"t":"shot","tick":1362,"file":"f020.png"}
-{"t":"shot","tick":1377,"file":"f021.png"}
-{"t":"input","tick":1392,"press":["ok"]}
-{"t":"menu","tick":1392,"items":null}
-{"t":"shot","tick":1462,"file":"f022.png"}
-{"t":"scene","tick":1472,"location":"ridge","stack":["field"]}
-{"t":"state","tick":1472,"gold":7,"location":"ridge","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}}],"summary":{"actors":{"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"ridge","mapped":{},"party":["walker","sela"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":1,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
-{"t":"menu","tick":1473,"items":["Save journey","→ Return to camp","Menu X"],"sel":0}
-{"t":"shot","tick":1477,"file":"f023.png"}
-{"t":"view","tick":1485,"pictures":["ridge.jpg","sela/normal.png","walker/normal.png"],"since":1472}
-{"t":"input","tick":1492,"press":["menu"]}
-{"t":"scene","tick":1492,"location":"ridge","stack":["field","menu"]}
-{"t":"state","tick":1492,"gold":7,"location":"ridge","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}}],"summary":{"actors":{"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"ridge","mapped":{},"party":["walker","sela"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":1,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
-{"t":"menu","tick":1492,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":0}
-{"t":"input","tick":1522,"press":["down"]}
-{"t":"menu","tick":1522,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":1}
-{"t":"input","tick":1531,"press":["down"]}
-{"t":"menu","tick":1531,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":2}
-{"t":"input","tick":1540,"press":["down"]}
-{"t":"menu","tick":1540,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":3}
-{"t":"input","tick":1549,"press":["down"]}
-{"t":"menu","tick":1549,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":4}
-{"t":"input","tick":1558,"press":["down"]}
-{"t":"menu","tick":1558,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":5}
-{"t":"input","tick":1567,"press":["down"]}
-{"t":"menu","tick":1567,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":6}
-{"t":"input","tick":1576,"press":["down"]}
-{"t":"menu","tick":1576,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":7}
-{"t":"input","tick":1585,"press":["ok"]}
-{"t":"scene","tick":1585,"location":"ridge","stack":["field","menu","confirm"]}
-{"t":"state","tick":1585,"gold":7,"location":"ridge","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}}],"summary":{"actors":{"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"ridge","mapped":{},"party":["walker","sela"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":1,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
-{"t":"view","tick":1595,"pictures":["ridge.jpg"],"since":1585}
-{"t":"input","tick":1615,"press":["ok"]}
-{"t":"scene","tick":1615,"stack":["title"]}
-{"t":"menu","tick":1615,"items":["New journey","Continue","Gallery (x)","Settings","Quit"],"sel":1}
-{"t":"view","tick":1624,"pictures":["courier.png","title.jpg","walker/normal.png"],"since":1615}
-{"t":"shot","tick":1685,"file":"f024.png"}
-{"t":"shot","tick":1700,"file":"f025.png"}
-{"t":"shot","tick":1715,"file":"f026.png"}
-{"t":"input","tick":1730,"press":["ok"]}
-{"t":"scene","tick":1730,"stack":["title","saveMenu"]}
-{"t":"menu","tick":1730,"items":["1: Walker  Lv.1  Lantern ridge  0:00:21  10/20 19:58","2: ---- Empty ---- (x)","3: ---- Empty ---- (x)","Auto: Walker  Lv.1  Lantern ridge  0:00:19  10/20 19:58"],"sel":0}
-{"t":"input","tick":1770,"press":["ok"]}
-{"t":"scene","tick":1770,"location":"ridge","stack":["field"]}
-{"t":"state","tick":1770,"gold":7,"location":"ridge","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}}],"summary":{"actors":{"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"ridge","mapped":{},"party":["walker","sela"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":1,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
-{"t":"menu","tick":1770,"items":null}
-{"t":"menu","tick":1771,"items":["Save journey","→ Return to camp","Menu X"],"sel":0}
-{"t":"view","tick":1779,"pictures":["ridge.jpg","sela/normal.png","walker/normal.png"],"since":1770}
-{"t":"state","tick":1800,"gold":7,"location":"ridge","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}}],"summary":{"actors":{"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"ridge","mapped":{},"party":["walker","sela"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":1,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
-{"t":"shot","tick":1860,"file":"f027.png"}
-{"t":"shot","tick":1875,"file":"f028.png"}
-{"t":"input","tick":1890,"press":["down"]}
-{"t":"menu","tick":1890,"items":["Save journey","→ Return to camp","Menu X"],"sel":1}
-{"t":"input","tick":1899,"press":["ok"]}
-{"t":"menu","tick":1899,"items":null}
-{"t":"autosave","tick":1900,"at":"camp"}
-{"t":"menu","tick":1900,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":0}
-{"t":"view","tick":1909,"pictures":["camp.jpg","courier.png","sela/normal.png","walker/normal.png"],"since":1900}
-{"t":"input","tick":1989,"press":["down"]}
-{"t":"menu","tick":1989,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":1}
-{"t":"input","tick":1998,"press":["down"]}
-{"t":"menu","tick":1998,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":2}
-{"t":"input","tick":2007,"press":["down"]}
-{"t":"menu","tick":2007,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":3}
-{"t":"input","tick":2016,"press":["down"]}
-{"t":"menu","tick":2016,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":4}
-{"t":"input","tick":2025,"press":["down"]}
-{"t":"menu","tick":2025,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":5}
-{"t":"input","tick":2034,"press":["down"]}
-{"t":"menu","tick":2034,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":6}
-{"t":"input","tick":2043,"press":["ok"]}
-{"t":"menu","tick":2043,"items":null}
-{"t":"menu","tick":2044,"items":["Talk: Innkeeper","Talk: Bram","Rest at the inn","Save journey","→ Return to camp","Menu X"],"sel":0}
-{"t":"autosave","tick":2050,"at":"town"}
-{"t":"view","tick":2054,"pictures":["bram/normal.png","innkeeper.png","sela/normal.png","town.jpg","walker/normal.png"],"since":2044}
-{"t":"shot","tick":2103,"file":"s-village.png"}
-{"t":"input","tick":2105,"press":["ok"]}
-{"t":"say","tick":2106,"face":"innkeeper.png","text":"Welcome to Lamplight. The beds are warm and the soup is hot.","who":"Innkeeper"}
-{"t":"menu","tick":2108,"items":null}
-{"t":"stand","tick":2112,"hides":false,"location":"town","set":8,"since":2108}
-{"t":"view","tick":2117,"pictures":["innkeeper.png","town.jpg"],"since":2108}
-{"t":"input","tick":2150,"press":["ok"]}
-{"t":"say","tick":2150,"face":"innkeeper.png","text":"Rest here whenever the trail wears you down.","who":"Innkeeper"}
-{"t":"input","tick":2178,"press":["ok"]}
-{"t":"menu","tick":2178,"items":["Talk: Innkeeper","Talk: Bram","Rest at the inn","Save journey","→ Return to camp","Menu X"],"sel":0}
-{"t":"stand","tick":2182,"idle":true,"since":2178}
-{"t":"view","tick":2187,"pictures":["bram/normal.png","innkeeper.png","sela/normal.png","town.jpg","walker/normal.png"],"since":2178}
-{"t":"input","tick":2201,"press":["down"]}
-{"t":"menu","tick":2201,"items":["Talk: Innkeeper","Talk: Bram","Rest at the inn","Save journey","→ Return to camp","Menu X"],"sel":1}
-{"t":"input","tick":2210,"press":["ok"]}
-{"t":"menu","tick":2210,"items":null}
-{"t":"say","tick":2211,"face":"bram/normal.png","text":"You walk the old trail? The halls past the camp have sentries in them.","who":"Bram"}
-{"t":"stand","tick":2215,"hides":false,"location":"town","set":10,"since":2211}
-{"t":"view","tick":2220,"pictures":["bram/normal.png","town.jpg"],"since":2211}
-{"t":"input","tick":2255,"press":["ok"]}
-{"t":"say","tick":2255,"face":"bram/normal.png","text":"My shield could use the exercise. I will come along.","who":"Bram"}
-{"t":"input","tick":2286,"press":["ok"]}
-{"t":"say","tick":2286,"text":"Bram joins the party!"}
-{"t":"view","tick":2295,"pictures":["town.jpg"],"since":2286}
-{"t":"input","tick":2306,"press":["ok"]}
-{"t":"menu","tick":2306,"items":["Talk: Innkeeper","Talk: Bram","Rest at the inn","Save journey","→ Return to camp","Menu X"],"sel":1}
-{"t":"menu","tick":2307,"items":["Talk: Innkeeper","Rest at the inn","Save journey","→ Return to camp","Menu X"],"sel":1}
-{"t":"stand","tick":2310,"idle":true,"since":2306}
-{"t":"view","tick":2315,"pictures":["bram/normal.png","innkeeper.png","sela/normal.png","town.jpg","walker/normal.png"],"since":2306}
-{"t":"input","tick":2329,"press":["down"]}
-{"t":"menu","tick":2329,"items":["Talk: Innkeeper","Rest at the inn","Save journey","→ Return to camp","Menu X"],"sel":2}
-{"t":"input","tick":2338,"press":["down"]}
-{"t":"menu","tick":2338,"items":["Talk: Innkeeper","Rest at the inn","Save journey","→ Return to camp","Menu X"],"sel":3}
-{"t":"input","tick":2347,"press":["ok"]}
-{"t":"menu","tick":2347,"items":null}
-{"t":"menu","tick":2348,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":0}
-{"t":"autosave","tick":2350,"at":"camp"}
-{"t":"view","tick":2357,"pictures":["bram/normal.png","camp.jpg","courier.png","sela/normal.png","walker/normal.png"],"since":2348}
-{"t":"state","tick":2400,"gold":7,"location":"camp","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}},{"back":false,"hp":40,"id":"bram","lv":1,"mhp":40,"mmp":4,"mp":4,"name":"Bram","states":{}}],"summary":{"actors":{"bram":{"back":false,"equip":{},"exp":0,"hp":40,"id":"bram","learnt":null,"level":1,"mp":4,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"bram_joined":true,"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"camp","mapped":{},"party":["walker","sela","bram"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":4,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
-{"t":"input","tick":2417,"press":["down"]}
-{"t":"menu","tick":2417,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":1}
-{"t":"input","tick":2426,"press":["down"]}
-{"t":"menu","tick":2426,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":2}
-{"t":"input","tick":2435,"press":["down"]}
-{"t":"menu","tick":2435,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":3}
-{"t":"input","tick":2444,"press":["down"]}
-{"t":"menu","tick":2444,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":4}
-{"t":"input","tick":2453,"press":["down"]}
-{"t":"menu","tick":2453,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":5}
-{"t":"input","tick":2462,"press":["ok"]}
-{"t":"scene","tick":2463,"location":"chamber","stack":["dungeon"]}
-{"t":"state","tick":2463,"facing":"east","gold":7,"location":"chamber","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}},{"back":false,"hp":40,"id":"bram","lv":1,"mhp":40,"mmp":4,"mp":4,"name":"Bram","states":{}}],"pos":[2,1],"summary":{"actors":{"bram":{"back":false,"equip":{},"exp":0,"hp":40,"id":"bram","learnt":null,"level":1,"mp":4,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"bram_joined":true,"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"chamber","mapped":{"chamber":"AAEBAQAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["walker","sela","bram"],"pos":{"X":2,"Y":1,"facing":1,"in":"chamber"},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":5,"vars":{"explored":1,"kill_pebble":1,"last_kill_pebble":1}}}
-{"t":"menu","tick":2463,"items":null}
-{"t":"autosave","tick":2470,"at":"chamber"}
-{"t":"view","tick":2474,"pictures":["bram/normal.png","door.jpg","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":2463}
-{"t":"shot","tick":2532,"file":"f029.png"}
-{"t":"shot","tick":2547,"file":"f030.png"}
-{"t":"input","tick":2562,"press":["up"]}
-{"t":"shot","tick":2586,"file":"f031.png"}
-{"t":"input","tick":2597,"held":["up"],"press":["up"]}
-{"t":"view","tick":2606,"pictures":["bram/normal.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":2597}
-{"t":"input","tick":2608,"held":["up"],"press":["up"]}
-{"t":"view","tick":2617,"pictures":["bram/normal.png","floor.jpg","pebble.png","sela/normal.png","walker/normal.png","wall.jpg"],"since":2608}
-{"t":"input","tick":2619,"held":["right"],"press":["right"]}
-{"t":"view","tick":2628,"pictures":["bram/normal.png","door.jpg","floor.jpg","pebble.png","sela/normal.png","walker/normal.png","wall.jpg"],"since":2619}
-{"t":"input","tick":2630,"held":["up"],"press":["up"]}
-{"t":"view","tick":2639,"pictures":["bram/normal.png","door.jpg","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":2630}
-{"t":"input","tick":2641,"held":["up"],"press":["up"]}
-{"t":"input","tick":2652,"held":["up"],"press":["up"]}
-{"t":"input","tick":2663,"held":["up"],"press":["up"]}
-{"t":"input","tick":2674,"held":["left"],"press":["left"]}
-{"t":"view","tick":2683,"pictures":["bram/normal.png","door.jpg","floor.jpg","pebble.png","sela/normal.png","walker/normal.png","wall.jpg"],"since":2674}
-{"t":"input","tick":2685,"held":["up"],"press":["up"]}
-{"t":"view","tick":2694,"pictures":["bram/normal.png","floor.jpg","pebble.png","sela/normal.png","walker/normal.png","wall.jpg"],"since":2685}
-{"t":"input","tick":2696,"held":["up"],"press":["up"]}
-{"t":"view","tick":2705,"pictures":["bram/normal.png","chest.png","floor.jpg","gate.jpg","lantern.png","pebble.png","sela/normal.png","walker/normal.png","wall.jpg"],"since":2696}
-{"t":"input","tick":2707,"held":["up"],"press":["up"]}
-{"t":"shot","tick":2740,"file":"s-dungeon.png"}
-{"t":"shot","tick":2742,"file":"f032.png"}
-{"t":"shot","tick":2757,"file":"f033.png"}
-{"t":"input","tick":2772,"press":["up"]}
-{"t":"request","tick":2773,"troop":"sentries","what":"battle"}
-{"t":"battle_capture","tick":2773,"capture":{"version":1,"tick":2773,"troop":"sentries","save":"ewogICJmb3JtYXRfdmVyc2lvbiI6IDEsCiAgImdhbWVfaWQiOiAid2F5ZmluZGVyLWRlbW8iLAogICJkYXRhX3ZlcnNpb24iOiAwLAogICJzdGF0ZSI6IHsKICAgICJhY3RvcnMiOiB7CiAgICAgICJicmFtIjogewogICAgICAgICJpZCI6ICJicmFtIiwKICAgICAgICAibGV2ZWwiOiAxLAogICAgICAgICJleHAiOiAwLAogICAgICAgICJocCI6IDQwLAogICAgICAgICJtcCI6IDQsCiAgICAgICAgImVxdWlwIjoge30sCiAgICAgICAgImxlYXJudCI6IG51bGwsCiAgICAgICAgInN0YXRlcyI6IHt9LAogICAgICAgICJzcCI6IDAsCiAgICAgICAgInRyZWUiOiB7fSwKICAgICAgICAiYmFjayI6IGZhbHNlLAogICAgICAgICJ0YWN0aWNzIjogewogICAgICAgICAgInZlcnNpb24iOiAxLAogICAgICAgICAgIm1vZGUiOiAiYXV0byIsCiAgICAgICAgICAicm93cyI6IG51bGwKICAgICAgICB9CiAgICAgIH0sCiAgICAgICJzZWxhIjogewogICAgICAgICJpZCI6ICJzZWxhIiwKICAgICAgICAibGV2ZWwiOiAxLAogICAgICAgICJleHAiOiAwLAogICAgICAgICJocCI6IDI2LAogICAgICAgICJtcCI6IDEyLAogICAgICAgICJlcXVpcCI6IHt9LAogICAgICAgICJsZWFybnQiOiBudWxsLAogICAgICAgICJzdGF0ZXMiOiB7fSwKICAgICAgICAic3AiOiAwLAogICAgICAgICJ0cmVlIjoge30sCiAgICAgICAgImJhY2siOiB0cnVlLAogICAgICAgICJ0YWN0aWNzIjogewogICAgICAgICAgInZlcnNpb24iOiAxLAogICAgICAgICAgIm1vZGUiOiAiYXV0byIsCiAgICAgICAgICAicm93cyI6IG51bGwKICAgICAgICB9CiAgICAgIH0sCiAgICAgICJ3YWxrZXIiOiB7CiAgICAgICAgImlkIjogIndhbGtlciIsCiAgICAgICAgImxldmVsIjogMSwKICAgICAgICAiZXhwIjogMCwKICAgICAgICAiaHAiOiAyOSwKICAgICAgICAibXAiOiA1LAogICAgICAgICJlcXVpcCI6IHt9LAogICAgICAgICJsZWFybnQiOiBudWxsLAogICAgICAgICJzdGF0ZXMiOiB7fSwKICAgICAgICAic3AiOiAwLAogICAgICAgICJ0cmVlIjoge30sCiAgICAgICAgImJhY2siOiBmYWxzZSwKICAgICAgICAidGFjdGljcyI6IHsKICAgICAgICAgICJ2ZXJzaW9uIjogMSwKICAgICAgICAgICJtb2RlIjogImF1dG8iLAogICAgICAgICAgInJvd3MiOiBudWxsCiAgICAgICAgfQogICAgICB9CiAgICB9LAogICAgInBhcnR5IjogWwogICAgICAid2Fsa2VyIiwKICAgICAgInNlbGEiLAogICAgICAiYnJhbSIKICAgIF0sCiAgICAiaXRlbXMiOiB7fSwKICAgICJnb2xkIjogNywKICAgICJmbGFncyI6IHsKICAgICAgImJyYW1fam9pbmVkIjogdHJ1ZSwKICAgICAgImJyaWVmZWQiOiB0cnVlLAogICAgICAiY29tcGxldGUiOiB0cnVlLAogICAgICAibWFya2VyX2xpdCI6IHRydWUsCiAgICAgICJ0cmFpbmVkIjogdHJ1ZQogICAgfSwKICAgICJ2YXJzIjogewogICAgICAiZXhwbG9yZWQiOiAxOCwKICAgICAgImtpbGxfcGViYmxlIjogMSwKICAgICAgImxhc3Rfa2lsbF9wZWJibGUiOiAxCiAgICB9LAogICAgImxvY2F0aW9uIjogImNoYW1iZXIiLAogICAgInN0ZXBzIjogMTYsCiAgICAiZnJhbWVzIjogMjI3MywKICAgICJkb25lIjogewogICAgICAiYXJyaXZhbCI6IHRydWUsCiAgICAgICJjaGFtYmVyQDEwLDUiOiB0cnVlCiAgICB9LAogICAgInJhbiI6IHsKICAgICAgImFycml2YWwiOiBbCiAgICAgICAgMSwKICAgICAgICAyCiAgICAgIF0sCiAgICAgICJncmVldGluZyI6IFsKICAgICAgICAxLAogICAgICAgIDEKICAgICAgXQogICAgfSwKICAgICJwb3MiOiB7CiAgICAgICJpbiI6ICJjaGFtYmVyIiwKICAgICAgIlgiOiA5LAogICAgICAiWSI6IDUsCiAgICAgICJmYWNpbmciOiAxCiAgICB9LAogICAgIm1hcHBlZCI6IHsKICAgICAgImNoYW1iZXIiOiAiQUFFQkFRRUJBUUFBQUFBQUFBQUFBQUFCQVFFQkFRQUFBQUFBQUFBQUFBRUJBUUVCQVFBQUFBQUFBQUFBQUFBQUFBQUJBUUFBQUFBQUFBQUFBQUFBQUFFQkFRRUJBQUVBQUFBQUFBQUFBQUVCQVFFQkFRRUFBQUFBQUFBQUFBRUFBUUVCQUFFQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIKICAgIH0KICB9Cn0=","rand":"cGNnOgAAAAAAAAAHAAAAAAAAADI=","fighters":null,"calm":false,"auto":false,"auto_read":false,"setup":{"config":{"text_speed":2,"auto_wait":2,"window":9,"bgm":7,"se":7,"fullscreen":false,"battle_speed":0,"skip_all":false,"manual_sp":false},"read":{"10159392634904574088":true,"10700469337319404540":true,"11414008579811395249":true,"11557784210628857530":true,"13318217276270531740":true,"1331835760144682496":true,"17124106859312233389":true,"2691819585462509027":true,"4824974099444316624":true,"5073362913915894809":true,"5381842281772817088":true,"619487572792316442":true,"8749358213280194533":true,"8803364950620362473":true,"9632500898926737426":true},"unlocked":{},"saves":null},"fingerprint":"a05f0b39b2ff79fc75a0e7fade1732a0e1b69d32c9ed1c569fae986c980c8059","engine":"gozen-play-v1","fade":0},"number":2}
-{"t":"scene","tick":2773,"location":"chamber","stack":["dungeon","battle"]}
-{"t":"state","tick":2773,"facing":"east","gold":7,"location":"chamber","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}},{"back":false,"hp":40,"id":"bram","lv":1,"mhp":40,"mmp":4,"mp":4,"name":"Bram","states":{}}],"pos":[9,5],"summary":{"actors":{"bram":{"back":false,"equip":{},"exp":0,"hp":40,"id":"bram","learnt":null,"level":1,"mp":4,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true,"chamber@10,5":true},"flags":{"bram_joined":true,"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"chamber","mapped":{"chamber":"AAEBAQEBAQAAAAAAAAAAAAABAQEBAQAAAAAAAAAAAAEBAQEBAQAAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAAAAAEBAQEBAAEAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAEAAQEBAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["walker","sela","bram"],"pos":{"X":9,"Y":5,"facing":1,"in":"chamber"},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":16,"vars":{"explored":18,"kill_pebble":1,"last_kill_pebble":1}}}
-{"t":"view","tick":2782,"pictures":["bram/normal.png","grotto.jpg","pebble.png","sela/normal.png","walker/normal.png"],"since":2773}
-{"t":"battle_step","tick":2800,"amount":0,"crit":false,"element":"","hp":0,"kind":0,"mp":0,"resisted":false,"skill":"","stat":"","state":"","target":null,"user":null,"weak":false}
-{"t":"battle","tick":2800,"text":"Pebbles roll up, ready to practice!"}
-{"t":"shot","tick":2811,"file":"sentry_b001.png"}
-{"t":"shot","tick":2831,"file":"sentry_b002.png"}
-{"t":"act","tick":2836,"name":"battle_auto"}
-{"t":"ai_decision","tick":2836,"decision":{"troop":"sentries","turn":1,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"walker","enemy":false,"index":0},"rules":null,"selected":-1,"committed":false,"skill":"attack"}}
-{"t":"ai_decision","tick":2836,"decision":{"troop":"sentries","turn":1,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"sela","enemy":false,"index":1},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"attack","reason":"applicable","target":{"id":"pebble","enemy":true,"index":0},"selection":"selected"}],"selected":1,"committed":false,"skill":"attack","target":{"id":"pebble","enemy":true,"index":0}}}
-{"t":"ai_decision","tick":2836,"decision":{"troop":"sentries","turn":1,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"bram","enemy":false,"index":2},"rules":[{"index":0,"skill":"shield_rush","reason":"applicable","selection":"selected"},{"index":1,"skill":"attack","reason":"applicable","target":{"id":"pebble","enemy":true,"index":1},"selection":"lower_priority"}],"selected":0,"committed":false,"skill":"shield_rush"}}
-{"t":"ai_decision","tick":2836,"decision":{"troop":"sentries","turn":1,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"walker","enemy":false,"index":0},"rules":null,"selected":-1,"committed":true,"skill":"attack"}}
-{"t":"shot","tick":2836,"file":"sentry_b003.png"}
-{"t":"battle_step","tick":2837,"amount":0,"crit":false,"element":"","hp":29,"kind":1,"mp":5,"resisted":false,"skill":"attack","stat":"","state":"","target":null,"user":{"enemy":false,"id":"walker","index":0},"weak":false}
-{"t":"battle","tick":2837,"text":"Walker: Tap!"}
-{"t":"shot","tick":2852,"file":"sentry_b004.png"}
-{"t":"battle_step","tick":2868,"amount":8,"crit":false,"element":"","hp":8,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"pebble","index":1},"user":{"enemy":false,"id":"walker","index":0},"weak":false}
-{"t":"battle","tick":2868,"text":"PebbleB takes 8 damage!"}
-{"t":"shot","tick":2872,"file":"sentry_b005.png"}
-{"t":"shot","tick":2892,"file":"sentry_b006.png"}
-{"t":"ai_decision","tick":2903,"decision":{"troop":"sentries","turn":1,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"sela","enemy":false,"index":1},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"attack","reason":"applicable","target":{"id":"pebble","enemy":true,"index":0},"selection":"selected"}],"selected":1,"committed":true,"skill":"attack","target":{"id":"pebble","enemy":true,"index":0}}}
-{"t":"battle_step","tick":2904,"amount":0,"crit":false,"element":"","hp":26,"kind":1,"mp":12,"resisted":false,"skill":"attack","stat":"","state":"","target":null,"user":{"enemy":false,"id":"sela","index":1},"weak":false}
-{"t":"battle","tick":2904,"text":"Sela: Tap!"}
-{"t":"shot","tick":2912,"file":"sentry_b007.png"}
-{"t":"shot","tick":2932,"file":"sentry_b008.png"}
-{"t":"battle_step","tick":2935,"amount":5,"crit":false,"element":"","hp":11,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"pebble","index":0},"user":{"enemy":false,"id":"sela","index":1},"weak":false}
-{"t":"battle","tick":2935,"text":"PebbleA takes 5 damage!"}
-{"t":"shot","tick":2952,"file":"sentry_b009.png"}
-{"t":"ai_decision","tick":2970,"decision":{"troop":"sentries","turn":1,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"bram","enemy":false,"index":2},"rules":[{"index":0,"skill":"shield_rush","reason":"applicable","selection":"selected"},{"index":1,"skill":"attack","reason":"applicable","target":{"id":"pebble","enemy":true,"index":1},"selection":"lower_priority"}],"selected":0,"committed":true,"skill":"shield_rush"}}
-{"t":"battle_step","tick":2971,"amount":0,"crit":false,"element":"","hp":40,"kind":1,"mp":2,"resisted":false,"skill":"shield_rush","stat":"","state":"","target":null,"user":{"enemy":false,"id":"bram","index":2},"weak":false}
-{"t":"battle","tick":2971,"text":"Bram: Shield Rush!"}
-{"t":"battle","tick":2971,"cutin":"Shield Rush"}
-{"t":"shot","tick":2972,"file":"sentry_b010.png"}
-{"t":"shot","tick":2992,"file":"sentry_b011.png"}
-{"t":"state","tick":3000,"facing":"east","gold":7,"location":"chamber","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}},{"back":false,"hp":40,"id":"bram","lv":1,"mhp":40,"mmp":4,"mp":2,"name":"Bram","states":{}}],"pos":[9,5],"summary":{"actors":{"bram":{"back":false,"equip":{},"exp":0,"hp":40,"id":"bram","learnt":null,"level":1,"mp":4,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true,"chamber@10,5":true},"flags":{"bram_joined":true,"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"chamber","mapped":{"chamber":"AAEBAQEBAQAAAAAAAAAAAAABAQEBAQAAAAAAAAAAAAEBAQEBAQAAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAAAAAEBAQEBAAEAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAEAAQEBAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["walker","sela","bram"],"pos":{"X":9,"Y":5,"facing":1,"in":"chamber"},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":16,"vars":{"explored":18,"kill_pebble":1,"last_kill_pebble":1}}}
-{"t":"shot","tick":3012,"file":"sentry_b012.png"}
-{"t":"shot","tick":3032,"file":"sentry_b013.png"}
-{"t":"shot","tick":3052,"file":"sentry_b014.png"}
-{"t":"battle_step","tick":3061,"amount":9,"crit":false,"element":"","hp":2,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"pebble","index":0},"user":{"enemy":false,"id":"bram","index":2},"weak":false}
-{"t":"battle","tick":3061,"text":"PebbleA takes 9 damage!"}
-{"t":"shot","tick":3072,"file":"sentry_b015.png"}
-{"t":"shot","tick":3092,"file":"sentry_b016.png"}
-{"t":"battle_step","tick":3096,"amount":9,"crit":false,"element":"","hp":0,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"pebble","index":1},"user":{"enemy":false,"id":"bram","index":2},"weak":false}
-{"t":"battle","tick":3096,"text":"PebbleB takes 9 damage!"}
-{"t":"shot","tick":3112,"file":"sentry_b017.png"}
-{"t":"battle_step","tick":3131,"amount":0,"crit":false,"element":"","hp":0,"kind":7,"mp":0,"resisted":false,"skill":"","stat":"","state":"","target":{"enemy":true,"id":"pebble","index":1},"user":null,"weak":false}
-{"t":"battle","tick":3131,"text":"PebbleB finishes practice."}
-{"t":"shot","tick":3132,"file":"sentry_b018.png"}
-{"t":"shot","tick":3152,"file":"sentry_b019.png"}
-{"t":"ai_decision","tick":3172,"decision":{"troop":"sentries","turn":1,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"pebble","enemy":true,"index":0},"rules":[{"index":0,"skill":"nudge","reason":"applicable","target":{"id":"walker","enemy":false,"index":0},"selection":"selected"}],"selected":0,"committed":true,"skill":"nudge","target":{"id":"walker","enemy":false,"index":0}}}
-{"t":"shot","tick":3172,"file":"sentry_b020.png"}
-{"t":"battle_step","tick":3173,"amount":0,"crit":false,"element":"","hp":2,"kind":1,"mp":0,"resisted":false,"skill":"nudge","stat":"","state":"","target":null,"user":{"enemy":true,"id":"pebble","index":0},"weak":false}
-{"t":"battle","tick":3173,"text":"PebbleA: Nudge!"}
-{"t":"shot","tick":3192,"file":"sentry_b021.png"}
-{"t":"battle_step","tick":3204,"amount":1,"crit":false,"element":"","hp":28,"kind":2,"mp":5,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"walker","index":0},"user":{"enemy":true,"id":"pebble","index":0},"weak":false}
-{"t":"battle","tick":3204,"text":"Walker takes 1 damage!"}
-{"t":"shot","tick":3212,"file":"sentry_b022.png"}
-{"t":"shot","tick":3232,"file":"sentry_b023.png"}
-{"t":"ai_decision","tick":3240,"decision":{"troop":"sentries","turn":2,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"walker","enemy":false,"index":0},"rules":null,"selected":-1,"committed":false,"skill":"attack"}}
-{"t":"ai_decision","tick":3240,"decision":{"troop":"sentries","turn":2,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"sela","enemy":false,"index":1},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"attack","reason":"applicable","target":{"id":"pebble","enemy":true,"index":0},"selection":"selected"}],"selected":1,"committed":false,"skill":"attack","target":{"id":"pebble","enemy":true,"index":0}}}
-{"t":"ai_decision","tick":3240,"decision":{"troop":"sentries","turn":2,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"bram","enemy":false,"index":2},"rules":[{"index":0,"skill":"shield_rush","reason":"applicable","selection":"selected"},{"index":1,"skill":"attack","reason":"applicable","target":{"id":"pebble","enemy":true,"index":0},"selection":"lower_priority"}],"selected":0,"committed":false,"skill":"shield_rush"}}
-{"t":"ai_decision","tick":3241,"decision":{"troop":"sentries","turn":2,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"sela","enemy":false,"index":1},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"attack","reason":"applicable","target":{"id":"pebble","enemy":true,"index":0},"selection":"selected"}],"selected":1,"committed":true,"skill":"attack","target":{"id":"pebble","enemy":true,"index":0}}}
-{"t":"battle_step","tick":3242,"amount":0,"crit":false,"element":"","hp":26,"kind":1,"mp":12,"resisted":false,"skill":"attack","stat":"","state":"","target":null,"user":{"enemy":false,"id":"sela","index":1},"weak":false}
-{"t":"battle","tick":3242,"text":"Sela: Tap!"}
-{"t":"shot","tick":3252,"file":"sentry_b024.png"}
-{"t":"shot","tick":3272,"file":"sentry_b025.png"}
-{"t":"battle_step","tick":3273,"amount":5,"crit":false,"element":"","hp":0,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"pebble","index":0},"user":{"enemy":false,"id":"sela","index":1},"weak":false}
-{"t":"battle","tick":3273,"text":"PebbleA takes 5 damage!"}
-{"t":"battle_fx","tick":3277,"boss":false,"slow":0,"stop":0,"what":"finish"}
-{"t":"shot","tick":3292,"file":"sentry_b026.png"}
-{"t":"battle_step","tick":3308,"amount":0,"crit":false,"element":"","hp":0,"kind":7,"mp":0,"resisted":false,"skill":"","stat":"","state":"","target":{"enemy":true,"id":"pebble","index":0},"user":null,"weak":false}
-{"t":"battle","tick":3308,"text":"PebbleA finishes practice."}
-{"t":"shot","tick":3312,"file":"sentry_b027.png"}
-{"t":"shot","tick":3332,"file":"sentry_b028.png"}
-{"t":"battle_music","tick":3349,"fanfare":true,"mood":""}
-{"t":"battle_end","tick":3349,"messages":["Practice complete!","Received 6G."],"result":"won"}
-{"t":"battle_result","tick":3349,"gains":{"LevelUps":null,"Exp":0,"Gold":6,"Items":null},"rand":"cGNnOhqp1bR3n46wCSwNv9mXQoA=","result":"won","summary":{"actors":{"bram":{"back":false,"equip":{},"exp":0,"hp":40,"id":"bram","learnt":null,"level":1,"mp":2,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":28,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true,"chamber@10,5":true},"flags":{"bram_joined":true,"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":13,"items":{},"location":"chamber","mapped":{"chamber":"AAEBAQEBAQAAAAAAAAAAAAABAQEBAQAAAAAAAAAAAAEBAQEBAQAAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAAAAAEBAQEBAAEAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAEAAQEBAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["walker","sela","bram"],"pos":{"X":9,"Y":5,"facing":1,"in":"chamber"},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":16,"vars":{"explored":18,"kill_pebble":3,"last_kill_pebble":2}}}
-{"t":"shot","tick":3352,"file":"sentry_b029.png"}
-{"t":"shot","tick":3372,"file":"sentry_b030.png"}
-{"t":"shot","tick":3374,"file":"sentry_001.png"}
-{"t":"input","tick":3376,"press":["ok"]}
-{"t":"shot","tick":3395,"file":"sentry_b031.png"}
-{"t":"shot","tick":3401,"file":"sentry_002.png"}
-{"t":"input","tick":3403,"press":["ok"]}
-{"t":"battle_close","tick":3413,"auto":true,"ticks":640}
-{"t":"scene","tick":3413,"location":"chamber","stack":["dungeon"]}
-{"t":"state","tick":3413,"facing":"east","gold":13,"location":"chamber","party":[{"back":false,"hp":28,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}},{"back":false,"hp":40,"id":"bram","lv":1,"mhp":40,"mmp":4,"mp":2,"name":"Bram","states":{}}],"pos":[9,5],"summary":{"actors":{"bram":{"back":false,"equip":{},"exp":0,"hp":40,"id":"bram","learnt":null,"level":1,"mp":2,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":28,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true,"chamber@10,5":true},"flags":{"bram_joined":true,"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":13,"items":{},"location":"chamber","mapped":{"chamber":"AAEBAQEBAQAAAAAAAAAAAAABAQEBAQAAAAAAAAAAAAEBAQEBAQAAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAAAAAEBAQEBAAEAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAEAAQEBAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["walker","sela","bram"],"pos":{"X":9,"Y":5,"facing":1,"in":"chamber"},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":16,"vars":{"explored":18,"kill_pebble":3,"last_kill_pebble":2}}}
-{"t":"say","tick":3414,"text":"The sentries roll aside and let you pass."}
-{"t":"stand","tick":3418,"hides":false,"location":"chamber","set":13,"since":3414}
-{"t":"view","tick":3423,"pictures":["chest.png","floor.jpg","gate.jpg","lantern.png","pebble.png","wall.jpg"],"since":3414}
-{"t":"shot","tick":3433,"file":"sentry_003.png"}
-{"t":"input","tick":3435,"press":["ok"]}
-{"t":"autosave","tick":3440,"at":"chamber"}
-{"t":"stand","tick":3442,"idle":true,"since":3438}
-{"t":"view","tick":3447,"pictures":["bram/normal.png","chest.png","floor.jpg","gate.jpg","lantern.png","sela/normal.png","walker/normal.png","wall.jpg"],"since":3438}
-{"t":"input","tick":3470,"held":["left"],"press":["left"]}
-{"t":"view","tick":3479,"pictures":["bram/normal.png","chest.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3470}
-{"t":"input","tick":3481,"held":["up"],"press":["up"]}
-{"t":"input","tick":3492,"held":["up"],"press":["up"]}
-{"t":"view","tick":3501,"pictures":["bram/normal.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3492}
-{"t":"input","tick":3503,"held":["left"],"press":["left"]}
-{"t":"view","tick":3512,"pictures":["bram/normal.png","door.jpg","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3503}
-{"t":"input","tick":3514,"held":["up"],"press":["up"]}
-{"t":"input","tick":3525,"held":["up"],"press":["up"]}
-{"t":"input","tick":3536,"held":["right"],"press":["right"]}
-{"t":"view","tick":3545,"pictures":["bram/normal.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3536}
-{"t":"input","tick":3547,"held":["up"],"press":["up"]}
-{"t":"input","tick":3558,"held":["up"],"press":["up"]}
-{"t":"input","tick":3569,"held":["right"],"press":["right"]}
-{"t":"input","tick":3580,"held":["up"],"press":["up"]}
-{"t":"view","tick":3589,"pictures":["bram/normal.png","chest.png","floor.jpg","gate.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3580}
-{"t":"input","tick":3591,"held":["up"],"press":["up"]}
-{"t":"state","tick":3600,"facing":"east","gold":13,"location":"chamber","party":[{"back":false,"hp":28,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}},{"back":false,"hp":40,"id":"bram","lv":1,"mhp":40,"mmp":4,"mp":2,"name":"Bram","states":{}}],"pos":[9,1],"summary":{"actors":{"bram":{"back":false,"equip":{},"exp":0,"hp":40,"id":"bram","learnt":null,"level":1,"mp":2,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":28,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true,"chamber@10,5":true},"flags":{"bram_joined":true,"briefed":true,"complete":true,"marker_lit":true,"sentries_passed":true,"trained":true},"gold":13,"items":{},"location":"chamber","mapped":{"chamber":"AAEBAQEBAQEBAQEAAAAAAAABAQEBAQEBAQAAAAAAAAEBAQEBAQEBAQEAAAAAAAAAAAABAQEBAQEAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAEAAQEBAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["walker","sela","bram"],"pos":{"X":9,"Y":1,"facing":1,"in":"chamber"},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":24,"vars":{"explored":29,"kill_pebble":3,"last_kill_pebble":2}}}
-{"t":"view","tick":3600,"pictures":["bram/normal.png","chest.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3591}
-{"t":"input","tick":3602,"held":["up"],"press":["up"]}
-{"t":"input","tick":3613,"held":["up"],"press":["up"]}
-{"t":"input","tick":3624,"held":["right"],"press":["right"]}
-{"t":"view","tick":3633,"pictures":["bram/normal.png","door.jpg","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3624}
-{"t":"input","tick":3635,"held":["up"],"press":["up"]}
-{"t":"view","tick":3644,"pictures":["bram/normal.png","floor.jpg","gate.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3635}
-{"t":"input","tick":3646,"held":["up"],"press":["up"]}
-{"t":"input","tick":3657,"held":["left"],"press":["left"]}
-{"t":"view","tick":3666,"pictures":["bram/normal.png","chest.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3657}
-{"t":"input","tick":3668,"held":["up"],"press":["up"]}
-{"t":"input","tick":3679,"held":["up"],"press":["up"]}
-{"t":"view","tick":3688,"pictures":["bram/normal.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3679}
-{"t":"input","tick":3690,"held":["left"],"press":["left"]}
-{"t":"view","tick":3699,"pictures":["bram/normal.png","chest.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3690}
+{"t":"view","tick":42,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/normal.png","ox/normal.png","tilly/normal.png"],"since":5}
+{"t":"shot","tick":61,"file":"fight_b001.png"}
+{"t":"shot","tick":81,"file":"fight_b002.png"}
+{"t":"battle_step","tick":91,"amount":0,"crit":false,"element":"","hp":0,"kind":0,"mp":0,"resisted":false,"skill":"","stat":"","state":"","target":null,"user":null,"weak":false}
+{"t":"battle","tick":91,"text":"The Brass Warden rises in a cloud of steam and bars the valve door."}
+{"t":"shot","tick":101,"file":"fight_b003.png"}
+{"t":"shot","tick":121,"file":"fight_b004.png"}
+{"t":"menu","tick":126,"items":["Attack","Skills","Guard","Items","Auto","Run (x)"],"sel":0}
+{"t":"act","tick":127,"name":"battle_auto"}
+{"t":"ai_decision","tick":127,"decision":{"troop":"warden","turn":1,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"maren","enemy":false,"index":0},"rules":[{"index":0,"skill":"forged_map","reason":"skill_unlearned"},{"index":1,"skill":"chart","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":2,"skill":"guard","reason":"condition_false"},{"index":3,"skill":"ink_burst","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":4,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":false,"skill":"chart","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":127,"decision":{"troop":"warden","turn":1,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"ox","enemy":false,"index":1},"rules":[{"index":0,"skill":"hold_line","reason":"applicable","target":{"id":"ox","enemy":false,"index":1},"selection":"selected"},{"index":1,"skill":"shield_rush","reason":"applicable","selection":"later_rule"},{"index":2,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":0,"committed":false,"skill":"hold_line","target":{"id":"ox","enemy":false,"index":1}}}
+{"t":"ai_decision","tick":127,"decision":{"troop":"warden","turn":1,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"tilly","enemy":false,"index":2},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"blessing","reason":"applicable","selection":"selected"},{"index":2,"skill":"lucky_toss","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":false,"skill":"blessing"}}
+{"t":"ai_decision","tick":127,"decision":{"troop":"warden","turn":1,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"kes","enemy":false,"index":3},"rules":[{"index":0,"skill":"storm_coil","reason":"condition_false"},{"index":1,"skill":"overclock","reason":"condition_false"},{"index":2,"skill":"arc_bolt","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":2,"committed":false,"skill":"arc_bolt","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":127,"decision":{"troop":"warden","turn":1,"phase":"act","timing":"action","mode":"gambit","user":{"id":"maren","enemy":false,"index":0},"rules":[{"index":0,"skill":"forged_map","reason":"skill_unlearned"},{"index":1,"skill":"chart","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":2,"skill":"guard","reason":"condition_false"},{"index":3,"skill":"ink_burst","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":4,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":true,"skill":"chart","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"shot","tick":127,"file":"fight_b005.png"}
+{"t":"menu","tick":127,"items":null}
+{"t":"battle_step","tick":128,"amount":0,"crit":false,"element":"","hp":70,"kind":1,"mp":18,"resisted":false,"skill":"chart","stat":"","state":"","target":null,"user":{"enemy":false,"id":"maren","index":0},"weak":false}
+{"t":"battle","tick":128,"text":"Maren: Chart![Maren row 1: No foe is marked → Brass Warden, Chart]"}
+{"t":"shot","tick":142,"file":"fight_b006.png"}
+{"t":"battle_step","tick":159,"amount":0,"crit":false,"element":"","hp":651,"kind":5,"mp":0,"resisted":false,"skill":"","stat":"","state":"marked","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"maren","index":0},"weak":false}
+{"t":"battle","tick":159,"text":"Brass Warden is now Marked!"}
+{"t":"shot","tick":162,"file":"fight_b007.png"}
+{"t":"shot","tick":182,"file":"fight_b008.png"}
+{"t":"ai_decision","tick":194,"decision":{"troop":"warden","turn":1,"phase":"act","timing":"action","mode":"gambit","user":{"id":"kes","enemy":false,"index":3},"rules":[{"index":0,"skill":"storm_coil","reason":"condition_false"},{"index":1,"skill":"overclock","reason":"condition_false"},{"index":2,"skill":"arc_bolt","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":2,"committed":true,"skill":"arc_bolt","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"battle_step","tick":195,"amount":0,"crit":false,"element":"","hp":52,"kind":1,"mp":25,"resisted":false,"skill":"arc_bolt","stat":"","state":"","target":null,"user":{"enemy":false,"id":"kes","index":3},"weak":false}
+{"t":"battle","tick":195,"text":"Kes: Arc Bolt![Kes row 3: Always → Brass Warden, Arc Bolt]"}
+{"t":"shot","tick":202,"file":"fight_b009.png"}
+{"t":"shot","tick":222,"file":"fight_b010.png"}
+{"t":"battle_step","tick":226,"amount":51,"crit":false,"element":"thunder","hp":600,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"kes","index":3},"weak":false}
+{"t":"battle","tick":226,"text":"Brass Warden takes 51 damage!"}
+{"t":"shot","tick":242,"file":"fight_b011.png"}
+{"t":"ai_decision","tick":261,"decision":{"troop":"warden","turn":1,"phase":"act","timing":"action","mode":"gambit","user":{"id":"tilly","enemy":false,"index":2},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"blessing","reason":"applicable","selection":"selected"},{"index":2,"skill":"lucky_toss","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":true,"skill":"blessing"}}
+{"t":"battle_step","tick":262,"amount":0,"crit":false,"element":"","hp":62,"kind":1,"mp":24,"resisted":false,"skill":"blessing","stat":"","state":"","target":null,"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":262,"text":"Tilly: Blessing![Tilly row 2: Always → Maren, Ox, Tilly, Kes, Blessing]"}
+{"t":"shot","tick":262,"file":"fight_b012.png"}
+{"t":"shot","tick":282,"file":"fight_b013.png"}
+{"t":"battle_step","tick":293,"amount":0,"crit":false,"element":"","hp":70,"kind":5,"mp":18,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"maren","index":0},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":293,"text":"Maren is now Blessed!"}
+{"t":"shot","tick":302,"file":"fight_b014.png"}
+{"t":"shot","tick":322,"file":"fight_b015.png"}
+{"t":"battle_step","tick":328,"amount":0,"crit":false,"element":"","hp":118,"kind":5,"mp":11,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"ox","index":1},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":328,"text":"Ox is now Blessed!"}
+{"t":"shot","tick":342,"file":"fight_b016.png"}
+{"t":"shot","tick":362,"file":"fight_b017.png"}
+{"t":"battle_step","tick":363,"amount":0,"crit":false,"element":"","hp":62,"kind":5,"mp":24,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"tilly","index":2},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":363,"text":"Tilly is now Blessed!"}
+{"t":"shot","tick":382,"file":"fight_b018.png"}
+{"t":"battle_step","tick":398,"amount":0,"crit":false,"element":"","hp":52,"kind":5,"mp":25,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"kes","index":3},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":398,"text":"Kes is now Blessed!"}
+{"t":"shot","tick":402,"file":"fight_b019.png"}
+{"t":"shot","tick":422,"file":"fight_b020.png"}
+{"t":"ai_decision","tick":433,"decision":{"troop":"warden","turn":1,"phase":"act","timing":"action","mode":"gambit","user":{"id":"ox","enemy":false,"index":1},"rules":[{"index":0,"skill":"hold_line","reason":"applicable","target":{"id":"ox","enemy":false,"index":1},"selection":"selected"},{"index":1,"skill":"shield_rush","reason":"applicable","selection":"later_rule"},{"index":2,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":0,"committed":true,"skill":"hold_line","target":{"id":"ox","enemy":false,"index":1}}}
+{"t":"battle_step","tick":434,"amount":0,"crit":false,"element":"","hp":118,"kind":1,"mp":9,"resisted":false,"skill":"hold_line","stat":"","state":"","target":null,"user":{"enemy":false,"id":"ox","index":1},"weak":false}
+{"t":"battle","tick":434,"text":"Ox: Hold the Line![Ox row 1: Not on guard → Ox, Hold the Line]"}
+{"t":"shot","tick":442,"file":"fight_b021.png"}
+{"t":"shot","tick":462,"file":"fight_b022.png"}
+{"t":"battle_step","tick":465,"amount":0,"crit":false,"element":"","hp":118,"kind":5,"mp":9,"resisted":false,"skill":"","stat":"","state":"warded","target":{"enemy":false,"id":"ox","index":1},"user":{"enemy":false,"id":"ox","index":1},"weak":false}
+{"t":"battle","tick":465,"text":"Ox plants both feet."}
+{"t":"shot","tick":482,"file":"fight_b023.png"}
+{"t":"ai_decision","tick":500,"decision":{"troop":"warden","turn":1,"phase":"act","timing":"action","mode":"gambit","user":{"id":"brass_warden","enemy":true,"index":0},"rules":[{"index":0,"skill":"slam","reason":"condition_false"},{"index":1,"skill":"crush","reason":"applicable","target":{"id":"maren","enemy":false,"index":0},"selection":"selected"}],"selected":1,"committed":true,"skill":"crush","target":{"id":"maren","enemy":false,"index":0}}}
+{"t":"battle_step","tick":501,"amount":0,"crit":false,"element":"","hp":600,"kind":1,"mp":0,"resisted":false,"skill":"crush","stat":"","state":"","target":null,"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":501,"text":"Brass Warden: Crush!"}
+{"t":"shot","tick":502,"file":"fight_b024.png"}
+{"t":"shot","tick":522,"file":"fight_b025.png"}
+{"t":"battle_step","tick":532,"amount":51,"crit":false,"element":"","hp":19,"kind":2,"mp":18,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"maren","index":0},"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":532,"text":"Maren takes 51 damage!"}
+{"t":"shot","tick":542,"file":"fight_b026.png"}
+{"t":"view","tick":558,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/worried.png","ox/normal.png","tilly/normal.png"],"since":538}
+{"t":"shot","tick":562,"file":"fight_b027.png"}
+{"t":"ai_decision","tick":568,"decision":{"troop":"warden","turn":2,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"maren","enemy":false,"index":0},"rules":[{"index":0,"skill":"forged_map","reason":"skill_unlearned"},{"index":1,"skill":"chart","reason":"condition_false"},{"index":2,"skill":"guard","reason":"condition_false"},{"index":3,"skill":"ink_burst","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":4,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":3,"committed":false,"skill":"ink_burst","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":568,"decision":{"troop":"warden","turn":2,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"ox","enemy":false,"index":1},"rules":[{"index":0,"skill":"hold_line","reason":"condition_false"},{"index":1,"skill":"shield_rush","reason":"applicable","selection":"selected"},{"index":2,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":false,"skill":"shield_rush"}}
+{"t":"ai_decision","tick":568,"decision":{"troop":"warden","turn":2,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"tilly","enemy":false,"index":2},"rules":[{"index":0,"skill":"mend","reason":"applicable","target":{"id":"maren","enemy":false,"index":0},"selection":"selected"},{"index":1,"skill":"blessing","reason":"applicable","selection":"later_rule"},{"index":2,"skill":"lucky_toss","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":0,"committed":false,"skill":"mend","target":{"id":"maren","enemy":false,"index":0}}}
+{"t":"ai_decision","tick":568,"decision":{"troop":"warden","turn":2,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"kes","enemy":false,"index":3},"rules":[{"index":0,"skill":"storm_coil","reason":"condition_false"},{"index":1,"skill":"overclock","reason":"applicable","target":{"id":"maren","enemy":false,"index":0},"selection":"selected"},{"index":2,"skill":"arc_bolt","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":false,"skill":"overclock","target":{"id":"maren","enemy":false,"index":0}}}
+{"t":"ai_decision","tick":569,"decision":{"troop":"warden","turn":2,"phase":"act","timing":"action","mode":"gambit","user":{"id":"maren","enemy":false,"index":0},"rules":[{"index":0,"skill":"forged_map","reason":"skill_unlearned"},{"index":1,"skill":"chart","reason":"condition_false"},{"index":2,"skill":"guard","reason":"condition_false"},{"index":3,"skill":"ink_burst","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":4,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":3,"committed":true,"skill":"ink_burst","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"battle_step","tick":570,"amount":0,"crit":false,"element":"","hp":19,"kind":1,"mp":14,"resisted":false,"skill":"ink_burst","stat":"","state":"","target":null,"user":{"enemy":false,"id":"maren","index":0},"weak":false}
+{"t":"battle","tick":570,"text":"Maren: Ink Burst![Maren row 3: Always → Brass Warden, Ink Burst]"}
+{"t":"shot","tick":582,"file":"fight_b028.png"}
+{"t":"view","tick":592,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/normal.png","ox/normal.png","tilly/normal.png"],"since":578}
+{"t":"state","tick":600,"facing":"south","gold":60,"location":"b2","party":[{"back":false,"hp":19,"id":"maren","lv":6,"mhp":70,"mmp":20,"mp":14,"name":"Maren","states":{"blessed":2}},{"back":false,"hp":118,"id":"ox","lv":6,"mhp":118,"mmp":11,"mp":9,"name":"Ox","states":{"blessed":2,"warded":2}},{"back":true,"hp":62,"id":"tilly","lv":6,"mhp":62,"mmp":28,"mp":24,"name":"Tilly","states":{"blessed":2}},{"back":true,"hp":52,"id":"kes","lv":6,"mhp":52,"mmp":28,"mp":25,"name":"Kes","states":{"blessed":2}}],"pos":[1,1],"summary":{"actors":{"kes":{"back":true,"equip":{"armor":"coat_work","weapon":"coil_basic"},"exp":360,"hp":52,"id":"kes","learnt":null,"level":6,"mp":28,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"overclock":2,"spare_parts":2,"storm_coil":3}},"maren":{"back":false,"equip":{"armor":"coat_cloth","weapon":"rod_basic"},"exp":360,"hp":70,"id":"maren","learnt":null,"level":6,"mp":20,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"chart":2,"ink_burst":2,"keen_eye":1,"sure_foot":2}},"ox":{"back":false,"equip":{"armor":"plate_scrap","weapon":"shield_pot"},"exp":360,"hp":118,"id":"ox","learnt":null,"level":6,"mp":11,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"bulwark":2,"hold_line":2,"iron_hide":2}},"tilly":{"back":true,"equip":{"armor":"robe_pilgrim","weapon":"staff_wood"},"exp":360,"hp":62,"id":"tilly","learnt":null,"level":6,"mp":28,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"blessing":2,"mend":2,"second_chance":1,"shared_cup":2}}},"done":{},"flags":{},"gold":60,"items":{"old_gear":3,"tonic":2},"location":"b2","mapped":{"b2":"AQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["maren","ox","tilly","kes"],"pos":{"X":1,"Y":1,"facing":2,"in":"b2"},"steps":0,"vars":{"explored":0}}}
+{"t":"battle_step","tick":601,"amount":44,"crit":false,"element":"","hp":556,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"maren","index":0},"weak":false}
+{"t":"battle","tick":601,"text":"Brass Warden takes 44 damage!"}
+{"t":"shot","tick":602,"file":"fight_b029.png"}
+{"t":"shot","tick":622,"file":"fight_b030.png"}
+{"t":"ai_decision","tick":636,"decision":{"troop":"warden","turn":2,"phase":"act","timing":"action","mode":"gambit","user":{"id":"kes","enemy":false,"index":3},"rules":[{"index":0,"skill":"storm_coil","reason":"condition_false"},{"index":1,"skill":"overclock","reason":"applicable","target":{"id":"maren","enemy":false,"index":0},"selection":"selected"},{"index":2,"skill":"arc_bolt","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":true,"skill":"overclock","target":{"id":"maren","enemy":false,"index":0}}}
+{"t":"battle_step","tick":637,"amount":0,"crit":false,"element":"","hp":52,"kind":1,"mp":21,"resisted":false,"skill":"overclock","stat":"","state":"","target":null,"user":{"enemy":false,"id":"kes","index":3},"weak":false}
+{"t":"battle","tick":637,"text":"Kes: Overclock![Kes row 2: A friend is hurt → Maren, Overclock]"}
+{"t":"shot","tick":642,"file":"fight_b031.png"}
+{"t":"shot","tick":662,"file":"fight_b032.png"}
+{"t":"battle_step","tick":668,"amount":0,"crit":false,"element":"","hp":19,"kind":5,"mp":14,"resisted":false,"skill":"","stat":"","state":"hasted","target":{"enemy":false,"id":"maren","index":0},"user":{"enemy":false,"id":"kes","index":3},"weak":false}
+{"t":"battle","tick":668,"text":"Maren is now Hasted!"}
+{"t":"shot","tick":682,"file":"fight_b033.png"}
+{"t":"shot","tick":702,"file":"fight_b034.png"}
+{"t":"ai_decision","tick":703,"decision":{"troop":"warden","turn":2,"phase":"act","timing":"action","mode":"gambit","user":{"id":"tilly","enemy":false,"index":2},"rules":[{"index":0,"skill":"mend","reason":"applicable","target":{"id":"maren","enemy":false,"index":0},"selection":"selected"},{"index":1,"skill":"blessing","reason":"applicable","selection":"later_rule"},{"index":2,"skill":"lucky_toss","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":0,"committed":true,"skill":"mend","target":{"id":"maren","enemy":false,"index":0}}}
+{"t":"battle_step","tick":704,"amount":0,"crit":false,"element":"","hp":62,"kind":1,"mp":21,"resisted":false,"skill":"mend","stat":"","state":"","target":null,"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":704,"text":"Tilly: Mend![Tilly row 1: A friend is hurt → Maren, Mend]"}
+{"t":"shot","tick":722,"file":"fight_b035.png"}
+{"t":"battle_step","tick":735,"amount":51,"crit":false,"element":"","hp":70,"kind":3,"mp":14,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"maren","index":0},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":735,"text":"Maren recovers 51 HP!"}
+{"t":"shot","tick":742,"file":"fight_b036.png"}
+{"t":"shot","tick":762,"file":"fight_b037.png"}
+{"t":"ai_decision","tick":770,"decision":{"troop":"warden","turn":2,"phase":"act","timing":"action","mode":"gambit","user":{"id":"ox","enemy":false,"index":1},"rules":[{"index":0,"skill":"hold_line","reason":"condition_false"},{"index":1,"skill":"shield_rush","reason":"applicable","selection":"selected"},{"index":2,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":true,"skill":"shield_rush"}}
+{"t":"battle_step","tick":771,"amount":0,"crit":false,"element":"","hp":118,"kind":1,"mp":5,"resisted":false,"skill":"shield_rush","stat":"","state":"","target":null,"user":{"enemy":false,"id":"ox","index":1},"weak":false}
+{"t":"battle","tick":771,"text":"Ox: Shield Rush![Ox row 2: Always → Brass Warden, Shield Rush]"}
+{"t":"battle","tick":771,"cutin":"Shield Rush"}
+{"t":"shot","tick":782,"file":"fight_b038.png"}
+{"t":"view","tick":793,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/normal.png","ox/cutin.png","ox/normal.png","tilly/normal.png"],"since":772}
+{"t":"shot","tick":802,"file":"fight_b039.png"}
+{"t":"shot","tick":822,"file":"fight_b040.png"}
+{"t":"shot","tick":842,"file":"fight_b041.png"}
+{"t":"view","tick":850,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/normal.png","ox/normal.png","tilly/normal.png"],"since":836}
+{"t":"battle_step","tick":861,"amount":39,"crit":false,"element":"","hp":517,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"ox","index":1},"weak":false}
+{"t":"battle","tick":861,"text":"Brass Warden takes 39 damage!"}
+{"t":"shot","tick":862,"file":"fight_b042.png"}
+{"t":"shot","tick":882,"file":"fight_b043.png"}
+{"t":"ai_decision","tick":896,"decision":{"troop":"warden","turn":2,"phase":"act","timing":"action","mode":"gambit","user":{"id":"brass_warden","enemy":true,"index":0},"rules":[{"index":0,"skill":"slam","reason":"condition_false"},{"index":1,"skill":"crush","reason":"applicable","target":{"id":"ox","enemy":false,"index":1},"selection":"selected"}],"selected":1,"committed":true,"skill":"crush","target":{"id":"ox","enemy":false,"index":1}}}
+{"t":"battle_step","tick":897,"amount":0,"crit":false,"element":"","hp":517,"kind":1,"mp":0,"resisted":false,"skill":"crush","stat":"","state":"","target":null,"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":897,"text":"Brass Warden: Crush!"}
+{"t":"shot","tick":902,"file":"fight_b044.png"}
+{"t":"shot","tick":922,"file":"fight_b045.png"}
+{"t":"battle_step","tick":928,"amount":17,"crit":false,"element":"","hp":101,"kind":2,"mp":5,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"ox","index":1},"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":928,"text":"Ox takes 17 damage!"}
+{"t":"shot","tick":942,"file":"fight_b046.png"}
+{"t":"view","tick":952,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/normal.png","ox/frown.png","tilly/normal.png"],"since":934}
+{"t":"shot","tick":962,"file":"fight_b047.png"}
+{"t":"ai_decision","tick":964,"decision":{"troop":"warden","turn":3,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"maren","enemy":false,"index":0},"rules":[{"index":0,"skill":"forged_map","reason":"skill_unlearned"},{"index":1,"skill":"chart","reason":"condition_false"},{"index":2,"skill":"guard","reason":"condition_false"},{"index":3,"skill":"ink_burst","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":4,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":3,"committed":false,"skill":"ink_burst","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":964,"decision":{"troop":"warden","turn":3,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"ox","enemy":false,"index":1},"rules":[{"index":0,"skill":"hold_line","reason":"condition_false"},{"index":1,"skill":"shield_rush","reason":"applicable","selection":"selected"},{"index":2,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":false,"skill":"shield_rush"}}
+{"t":"ai_decision","tick":964,"decision":{"troop":"warden","turn":3,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"tilly","enemy":false,"index":2},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"blessing","reason":"applicable","selection":"selected"},{"index":2,"skill":"lucky_toss","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":false,"skill":"blessing"}}
+{"t":"ai_decision","tick":964,"decision":{"troop":"warden","turn":3,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"kes","enemy":false,"index":3},"rules":[{"index":0,"skill":"storm_coil","reason":"condition_false"},{"index":1,"skill":"overclock","reason":"condition_false"},{"index":2,"skill":"arc_bolt","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":2,"committed":false,"skill":"arc_bolt","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":965,"decision":{"troop":"warden","turn":3,"phase":"act","timing":"action","mode":"gambit","user":{"id":"maren","enemy":false,"index":0},"rules":[{"index":0,"skill":"forged_map","reason":"skill_unlearned"},{"index":1,"skill":"chart","reason":"condition_false"},{"index":2,"skill":"guard","reason":"condition_false"},{"index":3,"skill":"ink_burst","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":4,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":3,"committed":true,"skill":"ink_burst","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"battle_step","tick":966,"amount":0,"crit":false,"element":"","hp":70,"kind":1,"mp":10,"resisted":false,"skill":"ink_burst","stat":"","state":"","target":null,"user":{"enemy":false,"id":"maren","index":0},"weak":false}
+{"t":"battle","tick":966,"text":"Maren: Ink Burst![Maren row 3: Always → Brass Warden, Ink Burst]"}
+{"t":"shot","tick":982,"file":"fight_b048.png"}
+{"t":"view","tick":989,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/normal.png","ox/normal.png","tilly/normal.png"],"since":975}
+{"t":"battle_step","tick":997,"amount":49,"crit":false,"element":"","hp":468,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"maren","index":0},"weak":false}
+{"t":"battle","tick":997,"text":"Brass Warden takes 49 damage!"}
+{"t":"shot","tick":1002,"file":"fight_b049.png"}
+{"t":"shot","tick":1022,"file":"fight_b050.png"}
+{"t":"ai_decision","tick":1032,"decision":{"troop":"warden","turn":3,"phase":"act","timing":"action","mode":"gambit","user":{"id":"kes","enemy":false,"index":3},"rules":[{"index":0,"skill":"storm_coil","reason":"condition_false"},{"index":1,"skill":"overclock","reason":"condition_false"},{"index":2,"skill":"arc_bolt","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":2,"committed":true,"skill":"arc_bolt","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"battle_step","tick":1033,"amount":0,"crit":false,"element":"","hp":52,"kind":1,"mp":18,"resisted":false,"skill":"arc_bolt","stat":"","state":"","target":null,"user":{"enemy":false,"id":"kes","index":3},"weak":false}
+{"t":"battle","tick":1033,"text":"Kes: Arc Bolt![Kes row 3: Always → Brass Warden, Arc Bolt]"}
+{"t":"shot","tick":1042,"file":"fight_b051.png"}
+{"t":"shot","tick":1062,"file":"fight_b052.png"}
+{"t":"battle_step","tick":1064,"amount":61,"crit":false,"element":"thunder","hp":407,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"kes","index":3},"weak":false}
+{"t":"battle","tick":1064,"text":"Brass Warden takes 61 damage!"}
+{"t":"shot","tick":1082,"file":"fight_b053.png"}
+{"t":"ai_decision","tick":1099,"decision":{"troop":"warden","turn":3,"phase":"act","timing":"action","mode":"gambit","user":{"id":"tilly","enemy":false,"index":2},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"blessing","reason":"applicable","selection":"selected"},{"index":2,"skill":"lucky_toss","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":true,"skill":"blessing"}}
+{"t":"battle_step","tick":1100,"amount":0,"crit":false,"element":"","hp":62,"kind":1,"mp":17,"resisted":false,"skill":"blessing","stat":"","state":"","target":null,"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":1100,"text":"Tilly: Blessing![Tilly row 2: Always → Maren, Ox, Tilly, Kes, Blessing]"}
+{"t":"shot","tick":1102,"file":"fight_b054.png"}
+{"t":"shot","tick":1122,"file":"fight_b055.png"}
+{"t":"battle_step","tick":1131,"amount":0,"crit":false,"element":"","hp":70,"kind":5,"mp":10,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"maren","index":0},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":1131,"text":"Maren is now Blessed!"}
+{"t":"shot","tick":1142,"file":"fight_b056.png"}
+{"t":"shot","tick":1162,"file":"fight_b057.png"}
+{"t":"battle_step","tick":1166,"amount":0,"crit":false,"element":"","hp":101,"kind":5,"mp":5,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"ox","index":1},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":1166,"text":"Ox is now Blessed!"}
+{"t":"shot","tick":1182,"file":"fight_b058.png"}
+{"t":"state","tick":1200,"facing":"south","gold":60,"location":"b2","party":[{"back":false,"hp":70,"id":"maren","lv":6,"mhp":70,"mmp":20,"mp":10,"name":"Maren","states":{"blessed":3,"hasted":2}},{"back":false,"hp":101,"id":"ox","lv":6,"mhp":118,"mmp":11,"mp":5,"name":"Ox","states":{"blessed":3,"warded":1}},{"back":true,"hp":62,"id":"tilly","lv":6,"mhp":62,"mmp":28,"mp":17,"name":"Tilly","states":{"blessed":3}},{"back":true,"hp":52,"id":"kes","lv":6,"mhp":52,"mmp":28,"mp":18,"name":"Kes","states":{"blessed":3}}],"pos":[1,1],"summary":{"actors":{"kes":{"back":true,"equip":{"armor":"coat_work","weapon":"coil_basic"},"exp":360,"hp":52,"id":"kes","learnt":null,"level":6,"mp":28,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"overclock":2,"spare_parts":2,"storm_coil":3}},"maren":{"back":false,"equip":{"armor":"coat_cloth","weapon":"rod_basic"},"exp":360,"hp":70,"id":"maren","learnt":null,"level":6,"mp":20,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"chart":2,"ink_burst":2,"keen_eye":1,"sure_foot":2}},"ox":{"back":false,"equip":{"armor":"plate_scrap","weapon":"shield_pot"},"exp":360,"hp":118,"id":"ox","learnt":null,"level":6,"mp":11,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"bulwark":2,"hold_line":2,"iron_hide":2}},"tilly":{"back":true,"equip":{"armor":"robe_pilgrim","weapon":"staff_wood"},"exp":360,"hp":62,"id":"tilly","learnt":null,"level":6,"mp":28,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"blessing":2,"mend":2,"second_chance":1,"shared_cup":2}}},"done":{},"flags":{},"gold":60,"items":{"old_gear":3,"tonic":2},"location":"b2","mapped":{"b2":"AQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["maren","ox","tilly","kes"],"pos":{"X":1,"Y":1,"facing":2,"in":"b2"},"steps":0,"vars":{"explored":0}}}
+{"t":"battle_step","tick":1201,"amount":0,"crit":false,"element":"","hp":62,"kind":5,"mp":17,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"tilly","index":2},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":1201,"text":"Tilly is now Blessed!"}
+{"t":"shot","tick":1202,"file":"fight_b059.png"}
+{"t":"shot","tick":1222,"file":"fight_b060.png"}
+{"t":"battle_step","tick":1236,"amount":0,"crit":false,"element":"","hp":52,"kind":5,"mp":18,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"kes","index":3},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":1236,"text":"Kes is now Blessed!"}
+{"t":"shot","tick":1242,"file":"fight_b061.png"}
+{"t":"shot","tick":1262,"file":"fight_b062.png"}
+{"t":"ai_decision","tick":1271,"decision":{"troop":"warden","turn":3,"phase":"act","timing":"action","mode":"gambit","user":{"id":"ox","enemy":false,"index":1},"rules":[{"index":0,"skill":"hold_line","reason":"condition_false"},{"index":1,"skill":"shield_rush","reason":"applicable","selection":"selected"},{"index":2,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":true,"skill":"shield_rush"}}
+{"t":"battle_step","tick":1272,"amount":0,"crit":false,"element":"","hp":101,"kind":1,"mp":1,"resisted":false,"skill":"shield_rush","stat":"","state":"","target":null,"user":{"enemy":false,"id":"ox","index":1},"weak":false}
+{"t":"battle","tick":1272,"text":"Ox: Shield Rush![Ox row 2: Always → Brass Warden, Shield Rush]"}
+{"t":"battle","tick":1272,"cutin":"Shield Rush"}
+{"t":"shot","tick":1282,"file":"fight_b063.png"}
+{"t":"view","tick":1292,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/normal.png","ox/cutin.png","ox/normal.png","tilly/normal.png"],"since":1273}
+{"t":"shot","tick":1302,"file":"fight_b064.png"}
+{"t":"shot","tick":1322,"file":"fight_b065.png"}
+{"t":"shot","tick":1342,"file":"fight_b066.png"}
+{"t":"view","tick":1352,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/normal.png","ox/normal.png","tilly/normal.png"],"since":1336}
+{"t":"battle_step","tick":1362,"amount":40,"crit":false,"element":"","hp":367,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"ox","index":1},"weak":false}
+{"t":"battle","tick":1362,"text":"Brass Warden takes 40 damage!"}
+{"t":"shot","tick":1362,"file":"fight_b067.png"}
+{"t":"shot","tick":1382,"file":"fight_b068.png"}
+{"t":"ai_decision","tick":1397,"decision":{"troop":"warden","turn":3,"phase":"act","timing":"action","mode":"gambit","user":{"id":"brass_warden","enemy":true,"index":0},"rules":[{"index":0,"skill":"slam","reason":"applicable","selection":"selected"},{"index":1,"skill":"crush","reason":"applicable","target":{"id":"ox","enemy":false,"index":1},"selection":"later_rule"}],"selected":0,"committed":true,"skill":"slam"}}
+{"t":"battle_step","tick":1398,"amount":0,"crit":false,"element":"","hp":367,"kind":1,"mp":0,"resisted":false,"skill":"slam","stat":"","state":"","target":null,"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":1398,"text":"Brass Warden: Slam!"}
+{"t":"shot","tick":1402,"file":"fight_b069.png"}
+{"t":"shot","tick":1422,"file":"fight_b070.png"}
+{"t":"battle_step","tick":1429,"amount":22,"crit":false,"element":"","hp":48,"kind":2,"mp":10,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"maren","index":0},"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":1429,"text":"Maren takes 22 damage!"}
+{"t":"shot","tick":1442,"file":"fight_b071.png"}
+{"t":"view","tick":1452,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/worried.png","ox/normal.png","tilly/normal.png"],"since":1436}
+{"t":"shot","tick":1462,"file":"fight_b072.png"}
+{"t":"battle_step","tick":1464,"amount":3,"crit":false,"element":"","hp":98,"kind":2,"mp":1,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"ox","index":1},"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":1464,"text":"Ox takes 3 damage!"}
+{"t":"shot","tick":1482,"file":"fight_b073.png"}
+{"t":"view","tick":1492,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/normal.png","ox/frown.png","tilly/normal.png"],"since":1476}
+{"t":"battle_step","tick":1499,"amount":26,"crit":false,"element":"","hp":36,"kind":2,"mp":17,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"tilly","index":2},"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":1499,"text":"Tilly takes 26 damage!"}
+{"t":"shot","tick":1502,"file":"fight_b074.png"}
+{"t":"shot","tick":1522,"file":"fight_b075.png"}
+{"t":"view","tick":1533,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/normal.png","ox/normal.png","tilly/worried.png"],"since":1512}
+{"t":"battle_step","tick":1534,"amount":24,"crit":false,"element":"","hp":28,"kind":2,"mp":18,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"kes","index":3},"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":1534,"text":"Kes takes 24 damage!"}
+{"t":"shot","tick":1542,"file":"fight_b076.png"}
+{"t":"view","tick":1559,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/scared.png","maren/normal.png","ox/normal.png","tilly/normal.png"],"since":1547}
+{"t":"shot","tick":1562,"file":"fight_b077.png"}
+{"t":"battle_step","tick":1570,"amount":0,"crit":false,"element":"","hp":98,"kind":6,"mp":1,"resisted":false,"skill":"","stat":"","state":"warded","target":{"enemy":false,"id":"ox","index":1},"user":null,"weak":false}
+{"t":"battle","tick":1570,"text":"Ox recovers from Warded!"}
+{"t":"shot","tick":1582,"file":"fight_b078.png"}
+{"t":"view","tick":1594,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/normal.png","ox/normal.png","tilly/normal.png"],"since":1581}
+{"t":"shot","tick":1602,"file":"fight_b079.png"}
+{"t":"ai_decision","tick":1605,"decision":{"troop":"warden","turn":4,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"maren","enemy":false,"index":0},"rules":[{"index":0,"skill":"forged_map","reason":"skill_unlearned"},{"index":1,"skill":"chart","reason":"condition_false"},{"index":2,"skill":"guard","reason":"condition_false"},{"index":3,"skill":"ink_burst","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":4,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":3,"committed":false,"skill":"ink_burst","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":1605,"decision":{"troop":"warden","turn":4,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"ox","enemy":false,"index":1},"rules":[{"index":0,"skill":"hold_line","reason":"condition_false"},{"index":1,"skill":"shield_rush","reason":"mp_shortage"},{"index":2,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"}],"selected":2,"committed":false,"skill":"attack","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":1605,"decision":{"troop":"warden","turn":4,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"tilly","enemy":false,"index":2},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"blessing","reason":"applicable","selection":"selected"},{"index":2,"skill":"lucky_toss","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":false,"skill":"blessing"}}
+{"t":"ai_decision","tick":1605,"decision":{"troop":"warden","turn":4,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"kes","enemy":false,"index":3},"rules":[{"index":0,"skill":"storm_coil","reason":"condition_false"},{"index":1,"skill":"overclock","reason":"condition_false"},{"index":2,"skill":"arc_bolt","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":2,"committed":false,"skill":"arc_bolt","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":1606,"decision":{"troop":"warden","turn":4,"phase":"act","timing":"action","mode":"gambit","user":{"id":"maren","enemy":false,"index":0},"rules":[{"index":0,"skill":"forged_map","reason":"skill_unlearned"},{"index":1,"skill":"chart","reason":"condition_false"},{"index":2,"skill":"guard","reason":"condition_false"},{"index":3,"skill":"ink_burst","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":4,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":3,"committed":true,"skill":"ink_burst","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"battle_step","tick":1607,"amount":0,"crit":false,"element":"","hp":48,"kind":1,"mp":6,"resisted":false,"skill":"ink_burst","stat":"","state":"","target":null,"user":{"enemy":false,"id":"maren","index":0},"weak":false}
+{"t":"battle","tick":1607,"text":"Maren: Ink Burst![Maren row 3: Always → Brass Warden, Ink Burst]"}
+{"t":"shot","tick":1622,"file":"fight_b080.png"}
+{"t":"battle_step","tick":1638,"amount":43,"crit":false,"element":"","hp":324,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"maren","index":0},"weak":false}
+{"t":"battle","tick":1638,"text":"Brass Warden takes 43 damage!"}
+{"t":"shot","tick":1642,"file":"fight_b081.png"}
+{"t":"shot","tick":1662,"file":"fight_b082.png"}
+{"t":"ai_decision","tick":1673,"decision":{"troop":"warden","turn":4,"phase":"act","timing":"action","mode":"gambit","user":{"id":"kes","enemy":false,"index":3},"rules":[{"index":0,"skill":"storm_coil","reason":"condition_false"},{"index":1,"skill":"overclock","reason":"condition_false"},{"index":2,"skill":"arc_bolt","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":2,"committed":true,"skill":"arc_bolt","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"battle_step","tick":1674,"amount":0,"crit":false,"element":"","hp":28,"kind":1,"mp":15,"resisted":false,"skill":"arc_bolt","stat":"","state":"","target":null,"user":{"enemy":false,"id":"kes","index":3},"weak":false}
+{"t":"battle","tick":1674,"text":"Kes: Arc Bolt![Kes row 3: Always → Brass Warden, Arc Bolt]"}
+{"t":"shot","tick":1682,"file":"fight_b083.png"}
+{"t":"shot","tick":1702,"file":"fight_b084.png"}
+{"t":"battle_step","tick":1705,"amount":67,"crit":false,"element":"thunder","hp":257,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"kes","index":3},"weak":false}
+{"t":"battle","tick":1705,"text":"Brass Warden takes 67 damage!"}
+{"t":"shot","tick":1722,"file":"fight_b085.png"}
+{"t":"ai_decision","tick":1740,"decision":{"troop":"warden","turn":4,"phase":"act","timing":"action","mode":"gambit","user":{"id":"tilly","enemy":false,"index":2},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"blessing","reason":"applicable","selection":"selected"},{"index":2,"skill":"lucky_toss","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":true,"skill":"blessing"}}
+{"t":"battle_step","tick":1741,"amount":0,"crit":false,"element":"","hp":36,"kind":1,"mp":13,"resisted":false,"skill":"blessing","stat":"","state":"","target":null,"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":1741,"text":"Tilly: Blessing![Tilly row 2: Always → Maren, Ox, Tilly, Kes, Blessing]"}
+{"t":"shot","tick":1742,"file":"fight_b086.png"}
+{"t":"shot","tick":1762,"file":"fight_b087.png"}
+{"t":"battle_step","tick":1772,"amount":0,"crit":false,"element":"","hp":48,"kind":5,"mp":6,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"maren","index":0},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":1772,"text":"Maren is now Blessed!"}
+{"t":"shot","tick":1782,"file":"fight_b088.png"}
+{"t":"state","tick":1800,"facing":"south","gold":60,"location":"b2","party":[{"back":false,"hp":48,"id":"maren","lv":6,"mhp":70,"mmp":20,"mp":6,"name":"Maren","states":{"blessed":3,"hasted":1}},{"back":false,"hp":98,"id":"ox","lv":6,"mhp":118,"mmp":11,"mp":1,"name":"Ox","states":{"blessed":3}},{"back":true,"hp":36,"id":"tilly","lv":6,"mhp":62,"mmp":28,"mp":13,"name":"Tilly","states":{"blessed":3}},{"back":true,"hp":28,"id":"kes","lv":6,"mhp":52,"mmp":28,"mp":15,"name":"Kes","states":{"blessed":3}}],"pos":[1,1],"summary":{"actors":{"kes":{"back":true,"equip":{"armor":"coat_work","weapon":"coil_basic"},"exp":360,"hp":52,"id":"kes","learnt":null,"level":6,"mp":28,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"overclock":2,"spare_parts":2,"storm_coil":3}},"maren":{"back":false,"equip":{"armor":"coat_cloth","weapon":"rod_basic"},"exp":360,"hp":70,"id":"maren","learnt":null,"level":6,"mp":20,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"chart":2,"ink_burst":2,"keen_eye":1,"sure_foot":2}},"ox":{"back":false,"equip":{"armor":"plate_scrap","weapon":"shield_pot"},"exp":360,"hp":118,"id":"ox","learnt":null,"level":6,"mp":11,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"bulwark":2,"hold_line":2,"iron_hide":2}},"tilly":{"back":true,"equip":{"armor":"robe_pilgrim","weapon":"staff_wood"},"exp":360,"hp":62,"id":"tilly","learnt":null,"level":6,"mp":28,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"blessing":2,"mend":2,"second_chance":1,"shared_cup":2}}},"done":{},"flags":{},"gold":60,"items":{"old_gear":3,"tonic":2},"location":"b2","mapped":{"b2":"AQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["maren","ox","tilly","kes"],"pos":{"X":1,"Y":1,"facing":2,"in":"b2"},"steps":0,"vars":{"explored":0}}}
+{"t":"shot","tick":1802,"file":"fight_b089.png"}
+{"t":"battle_step","tick":1807,"amount":0,"crit":false,"element":"","hp":98,"kind":5,"mp":1,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"ox","index":1},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":1807,"text":"Ox is now Blessed!"}
+{"t":"shot","tick":1822,"file":"fight_b090.png"}
+{"t":"battle_step","tick":1842,"amount":0,"crit":false,"element":"","hp":36,"kind":5,"mp":13,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"tilly","index":2},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":1842,"text":"Tilly is now Blessed!"}
+{"t":"shot","tick":1842,"file":"fight_b091.png"}
+{"t":"shot","tick":1862,"file":"fight_b092.png"}
+{"t":"battle_step","tick":1877,"amount":0,"crit":false,"element":"","hp":28,"kind":5,"mp":15,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"kes","index":3},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":1877,"text":"Kes is now Blessed!"}
+{"t":"shot","tick":1882,"file":"fight_b093.png"}
+{"t":"shot","tick":1902,"file":"fight_b094.png"}
+{"t":"ai_decision","tick":1912,"decision":{"troop":"warden","turn":4,"phase":"act","timing":"action","mode":"gambit","user":{"id":"ox","enemy":false,"index":1},"rules":[{"index":0,"skill":"hold_line","reason":"condition_false"},{"index":1,"skill":"shield_rush","reason":"mp_shortage"},{"index":2,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"}],"selected":2,"committed":true,"skill":"attack","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"battle_step","tick":1913,"amount":0,"crit":false,"element":"","hp":98,"kind":1,"mp":1,"resisted":false,"skill":"attack","stat":"","state":"","target":null,"user":{"enemy":false,"id":"ox","index":1},"weak":false}
+{"t":"battle","tick":1913,"text":"Ox: Strike![Ox row 3: Always → Brass Warden, Strike]"}
+{"t":"shot","tick":1922,"file":"fight_b095.png"}
+{"t":"shot","tick":1942,"file":"fight_b096.png"}
+{"t":"battle_step","tick":1944,"amount":37,"crit":false,"element":"","hp":220,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"ox","index":1},"weak":false}
+{"t":"battle","tick":1944,"text":"Brass Warden takes 37 damage!"}
+{"t":"shot","tick":1962,"file":"fight_b097.png"}
+{"t":"ai_decision","tick":1979,"decision":{"troop":"warden","turn":4,"phase":"act","timing":"action","mode":"gambit","user":{"id":"brass_warden","enemy":true,"index":0},"rules":[{"index":0,"skill":"slam","reason":"condition_false"},{"index":1,"skill":"crush","reason":"applicable","target":{"id":"ox","enemy":false,"index":1},"selection":"selected"}],"selected":1,"committed":true,"skill":"crush","target":{"id":"ox","enemy":false,"index":1}}}
+{"t":"battle_step","tick":1980,"amount":0,"crit":false,"element":"","hp":220,"kind":1,"mp":0,"resisted":false,"skill":"crush","stat":"","state":"","target":null,"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":1980,"text":"Brass Warden: Crush!"}
+{"t":"shot","tick":1982,"file":"fight_b098.png"}
+{"t":"shot","tick":2002,"file":"fight_b099.png"}
+{"t":"battle_step","tick":2011,"amount":32,"crit":false,"element":"","hp":66,"kind":2,"mp":1,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"ox","index":1},"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":2011,"text":"Ox takes 32 damage!"}
+{"t":"shot","tick":2022,"file":"fight_b100.png"}
+{"t":"view","tick":2033,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/normal.png","ox/frown.png","tilly/normal.png"],"since":2017}
+{"t":"shot","tick":2042,"file":"fight_b101.png"}
+{"t":"battle_step","tick":2047,"amount":0,"crit":false,"element":"","hp":48,"kind":6,"mp":6,"resisted":false,"skill":"","stat":"","state":"hasted","target":{"enemy":false,"id":"maren","index":0},"user":null,"weak":false}
+{"t":"battle","tick":2047,"text":"Maren recovers from Hasted!"}
+{"t":"shot","tick":2062,"file":"fight_b102.png"}
+{"t":"view","tick":2070,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/normal.png","ox/normal.png","tilly/normal.png"],"since":2057}
+{"t":"battle_step","tick":2082,"amount":0,"crit":false,"element":"","hp":220,"kind":6,"mp":0,"resisted":false,"skill":"","stat":"","state":"marked","target":{"enemy":true,"id":"brass_warden","index":0},"user":null,"weak":false}
+{"t":"battle","tick":2082,"text":"Brass Warden recovers from Marked!"}
+{"t":"shot","tick":2082,"file":"fight_b103.png"}
+{"t":"shot","tick":2102,"file":"fight_b104.png"}
+{"t":"ai_decision","tick":2117,"decision":{"troop":"warden","turn":5,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"maren","enemy":false,"index":0},"rules":[{"index":0,"skill":"forged_map","reason":"condition_false"},{"index":1,"skill":"chart","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":2,"skill":"guard","reason":"condition_false"},{"index":3,"skill":"ink_burst","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":4,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":false,"skill":"chart","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":2117,"decision":{"troop":"warden","turn":5,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"ox","enemy":false,"index":1},"rules":[{"index":0,"skill":"hold_line","reason":"condition_false"},{"index":1,"skill":"shield_rush","reason":"mp_shortage"},{"index":2,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"}],"selected":2,"committed":false,"skill":"attack","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":2117,"decision":{"troop":"warden","turn":5,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"tilly","enemy":false,"index":2},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"blessing","reason":"applicable","selection":"selected"},{"index":2,"skill":"lucky_toss","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":false,"skill":"blessing"}}
+{"t":"ai_decision","tick":2117,"decision":{"troop":"warden","turn":5,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"kes","enemy":false,"index":3},"rules":[{"index":0,"skill":"storm_coil","reason":"condition_false"},{"index":1,"skill":"overclock","reason":"condition_false"},{"index":2,"skill":"arc_bolt","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":2,"committed":false,"skill":"arc_bolt","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":2118,"decision":{"troop":"warden","turn":5,"phase":"act","timing":"action","mode":"gambit","user":{"id":"maren","enemy":false,"index":0},"rules":[{"index":0,"skill":"forged_map","reason":"condition_false"},{"index":1,"skill":"chart","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":2,"skill":"guard","reason":"condition_false"},{"index":3,"skill":"ink_burst","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":4,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":true,"skill":"chart","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"battle_step","tick":2119,"amount":0,"crit":false,"element":"","hp":48,"kind":1,"mp":4,"resisted":false,"skill":"chart","stat":"","state":"","target":null,"user":{"enemy":false,"id":"maren","index":0},"weak":false}
+{"t":"battle","tick":2119,"text":"Maren: Chart![Maren row 1: No foe is marked → Brass Warden, Chart]"}
+{"t":"shot","tick":2122,"file":"fight_b105.png"}
+{"t":"shot","tick":2142,"file":"fight_b106.png"}
+{"t":"battle_step","tick":2150,"amount":0,"crit":false,"element":"","hp":220,"kind":5,"mp":0,"resisted":false,"skill":"","stat":"","state":"marked","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"maren","index":0},"weak":false}
+{"t":"battle","tick":2150,"text":"Brass Warden is now Marked!"}
+{"t":"shot","tick":2162,"file":"fight_b107.png"}
+{"t":"shot","tick":2182,"file":"fight_b108.png"}
+{"t":"ai_decision","tick":2185,"decision":{"troop":"warden","turn":5,"phase":"act","timing":"action","mode":"gambit","user":{"id":"kes","enemy":false,"index":3},"rules":[{"index":0,"skill":"storm_coil","reason":"condition_false"},{"index":1,"skill":"overclock","reason":"condition_false"},{"index":2,"skill":"arc_bolt","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":2,"committed":true,"skill":"arc_bolt","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"battle_step","tick":2186,"amount":0,"crit":false,"element":"","hp":28,"kind":1,"mp":12,"resisted":false,"skill":"arc_bolt","stat":"","state":"","target":null,"user":{"enemy":false,"id":"kes","index":3},"weak":false}
+{"t":"battle","tick":2186,"text":"Kes: Arc Bolt![Kes row 3: Always → Brass Warden, Arc Bolt]"}
+{"t":"shot","tick":2202,"file":"fight_b109.png"}
+{"t":"battle_step","tick":2217,"amount":65,"crit":false,"element":"thunder","hp":155,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"kes","index":3},"weak":false}
+{"t":"battle","tick":2217,"text":"Brass Warden takes 65 damage!"}
+{"t":"shot","tick":2222,"file":"fight_b110.png"}
+{"t":"shot","tick":2242,"file":"fight_b111.png"}
+{"t":"ai_decision","tick":2252,"decision":{"troop":"warden","turn":5,"phase":"act","timing":"action","mode":"gambit","user":{"id":"ox","enemy":false,"index":1},"rules":[{"index":0,"skill":"hold_line","reason":"condition_false"},{"index":1,"skill":"shield_rush","reason":"mp_shortage"},{"index":2,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"}],"selected":2,"committed":true,"skill":"attack","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"battle_step","tick":2253,"amount":0,"crit":false,"element":"","hp":66,"kind":1,"mp":1,"resisted":false,"skill":"attack","stat":"","state":"","target":null,"user":{"enemy":false,"id":"ox","index":1},"weak":false}
+{"t":"battle","tick":2253,"text":"Ox: Strike![Ox row 3: Always → Brass Warden, Strike]"}
+{"t":"shot","tick":2262,"file":"fight_b112.png"}
+{"t":"shot","tick":2282,"file":"fight_b113.png"}
+{"t":"battle_step","tick":2284,"amount":35,"crit":false,"element":"","hp":120,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"ox","index":1},"weak":false}
+{"t":"battle","tick":2284,"text":"Brass Warden takes 35 damage!"}
+{"t":"shot","tick":2302,"file":"fight_b114.png"}
+{"t":"ai_decision","tick":2319,"decision":{"troop":"warden","turn":5,"phase":"act","timing":"action","mode":"gambit","user":{"id":"tilly","enemy":false,"index":2},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"blessing","reason":"applicable","selection":"selected"},{"index":2,"skill":"lucky_toss","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":true,"skill":"blessing"}}
+{"t":"battle_step","tick":2320,"amount":0,"crit":false,"element":"","hp":36,"kind":1,"mp":9,"resisted":false,"skill":"blessing","stat":"","state":"","target":null,"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":2320,"text":"Tilly: Blessing![Tilly row 2: Always → Maren, Ox, Tilly, Kes, Blessing]"}
+{"t":"shot","tick":2322,"file":"fight_b115.png"}
+{"t":"shot","tick":2342,"file":"fight_b116.png"}
+{"t":"battle_step","tick":2351,"amount":0,"crit":false,"element":"","hp":48,"kind":5,"mp":4,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"maren","index":0},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":2351,"text":"Maren is now Blessed!"}
+{"t":"shot","tick":2362,"file":"fight_b117.png"}
+{"t":"shot","tick":2382,"file":"fight_b118.png"}
+{"t":"battle_step","tick":2386,"amount":0,"crit":false,"element":"","hp":66,"kind":5,"mp":1,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"ox","index":1},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":2386,"text":"Ox is now Blessed!"}
+{"t":"state","tick":2400,"facing":"south","gold":60,"location":"b2","party":[{"back":false,"hp":48,"id":"maren","lv":6,"mhp":70,"mmp":20,"mp":4,"name":"Maren","states":{"blessed":3}},{"back":false,"hp":66,"id":"ox","lv":6,"mhp":118,"mmp":11,"mp":1,"name":"Ox","states":{"blessed":3}},{"back":true,"hp":36,"id":"tilly","lv":6,"mhp":62,"mmp":28,"mp":9,"name":"Tilly","states":{"blessed":3}},{"back":true,"hp":28,"id":"kes","lv":6,"mhp":52,"mmp":28,"mp":12,"name":"Kes","states":{"blessed":3}}],"pos":[1,1],"summary":{"actors":{"kes":{"back":true,"equip":{"armor":"coat_work","weapon":"coil_basic"},"exp":360,"hp":52,"id":"kes","learnt":null,"level":6,"mp":28,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"overclock":2,"spare_parts":2,"storm_coil":3}},"maren":{"back":false,"equip":{"armor":"coat_cloth","weapon":"rod_basic"},"exp":360,"hp":70,"id":"maren","learnt":null,"level":6,"mp":20,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"chart":2,"ink_burst":2,"keen_eye":1,"sure_foot":2}},"ox":{"back":false,"equip":{"armor":"plate_scrap","weapon":"shield_pot"},"exp":360,"hp":118,"id":"ox","learnt":null,"level":6,"mp":11,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"bulwark":2,"hold_line":2,"iron_hide":2}},"tilly":{"back":true,"equip":{"armor":"robe_pilgrim","weapon":"staff_wood"},"exp":360,"hp":62,"id":"tilly","learnt":null,"level":6,"mp":28,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"blessing":2,"mend":2,"second_chance":1,"shared_cup":2}}},"done":{},"flags":{},"gold":60,"items":{"old_gear":3,"tonic":2},"location":"b2","mapped":{"b2":"AQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["maren","ox","tilly","kes"],"pos":{"X":1,"Y":1,"facing":2,"in":"b2"},"steps":0,"vars":{"explored":0}}}
+{"t":"shot","tick":2402,"file":"fight_b119.png"}
+{"t":"battle_step","tick":2421,"amount":0,"crit":false,"element":"","hp":36,"kind":5,"mp":9,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"tilly","index":2},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":2421,"text":"Tilly is now Blessed!"}
+{"t":"shot","tick":2422,"file":"fight_b120.png"}
+{"t":"shot","tick":2442,"file":"fight_b121.png"}
+{"t":"battle_step","tick":2456,"amount":0,"crit":false,"element":"","hp":28,"kind":5,"mp":12,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"kes","index":3},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":2456,"text":"Kes is now Blessed!"}
+{"t":"shot","tick":2462,"file":"fight_b122.png"}
+{"t":"shot","tick":2482,"file":"fight_b123.png"}
+{"t":"ai_decision","tick":2491,"decision":{"troop":"warden","turn":5,"phase":"act","timing":"action","mode":"gambit","user":{"id":"brass_warden","enemy":true,"index":0},"rules":[{"index":0,"skill":"slam","reason":"condition_false"},{"index":1,"skill":"crush","reason":"applicable","target":{"id":"maren","enemy":false,"index":0},"selection":"selected"}],"selected":1,"committed":true,"skill":"crush","target":{"id":"maren","enemy":false,"index":0}}}
+{"t":"battle_step","tick":2492,"amount":0,"crit":false,"element":"","hp":120,"kind":1,"mp":0,"resisted":false,"skill":"crush","stat":"","state":"","target":null,"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":2492,"text":"Brass Warden: Crush!"}
+{"t":"shot","tick":2502,"file":"fight_b124.png"}
+{"t":"shot","tick":2522,"file":"fight_b125.png"}
+{"t":"battle_step","tick":2523,"amount":54,"crit":false,"element":"","hp":0,"kind":2,"mp":4,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"maren","index":0},"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":2523,"text":"Maren takes 54 damage!"}
+{"t":"shot","tick":2542,"file":"fight_b126.png"}
+{"t":"view","tick":2548,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/sad.png","ox/normal.png","tilly/normal.png"],"since":2529}
+{"t":"battle_step","tick":2558,"amount":0,"crit":false,"element":"","hp":0,"kind":7,"mp":4,"resisted":false,"skill":"","stat":"","state":"","target":{"enemy":false,"id":"maren","index":0},"user":null,"weak":false}
+{"t":"battle","tick":2558,"text":"Maren has fallen..."}
+{"t":"shot","tick":2562,"file":"fight_b127.png"}
+{"t":"shot","tick":2582,"file":"fight_b128.png"}
+{"t":"ai_decision","tick":2600,"decision":{"troop":"warden","turn":6,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"ox","enemy":false,"index":1},"rules":[{"index":0,"skill":"hold_line","reason":"condition_false"},{"index":1,"skill":"shield_rush","reason":"mp_shortage"},{"index":2,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"}],"selected":2,"committed":false,"skill":"attack","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":2600,"decision":{"troop":"warden","turn":6,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"tilly","enemy":false,"index":2},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"blessing","reason":"applicable","selection":"selected"},{"index":2,"skill":"lucky_toss","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":false,"skill":"blessing"}}
+{"t":"ai_decision","tick":2600,"decision":{"troop":"warden","turn":6,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"kes","enemy":false,"index":3},"rules":[{"index":0,"skill":"storm_coil","reason":"condition_false"},{"index":1,"skill":"overclock","reason":"condition_false"},{"index":2,"skill":"arc_bolt","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":2,"committed":false,"skill":"arc_bolt","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":2601,"decision":{"troop":"warden","turn":6,"phase":"act","timing":"action","mode":"gambit","user":{"id":"kes","enemy":false,"index":3},"rules":[{"index":0,"skill":"storm_coil","reason":"condition_false"},{"index":1,"skill":"overclock","reason":"condition_false"},{"index":2,"skill":"arc_bolt","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":2,"committed":true,"skill":"arc_bolt","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"battle_step","tick":2602,"amount":0,"crit":false,"element":"","hp":28,"kind":1,"mp":9,"resisted":false,"skill":"arc_bolt","stat":"","state":"","target":null,"user":{"enemy":false,"id":"kes","index":3},"weak":false}
+{"t":"battle","tick":2602,"text":"Kes: Arc Bolt![Kes row 3: Always → Brass Warden, Arc Bolt]"}
+{"t":"shot","tick":2602,"file":"fight_b129.png"}
+{"t":"shot","tick":2622,"file":"fight_b130.png"}
+{"t":"battle_step","tick":2633,"amount":66,"crit":false,"element":"thunder","hp":54,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"kes","index":3},"weak":false}
+{"t":"battle","tick":2633,"text":"Brass Warden takes 66 damage!"}
+{"t":"shot","tick":2642,"file":"fight_b131.png"}
+{"t":"shot","tick":2662,"file":"fight_b132.png"}
+{"t":"ai_decision","tick":2668,"decision":{"troop":"warden","turn":6,"phase":"act","timing":"action","mode":"gambit","user":{"id":"tilly","enemy":false,"index":2},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"blessing","reason":"applicable","selection":"selected"},{"index":2,"skill":"lucky_toss","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":1,"committed":true,"skill":"blessing"}}
+{"t":"battle_step","tick":2669,"amount":0,"crit":false,"element":"","hp":36,"kind":1,"mp":5,"resisted":false,"skill":"blessing","stat":"","state":"","target":null,"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":2669,"text":"Tilly: Blessing![Tilly row 2: Always → Ox, Tilly, Kes, Blessing]"}
+{"t":"shot","tick":2682,"file":"fight_b133.png"}
+{"t":"battle_step","tick":2700,"amount":0,"crit":false,"element":"","hp":66,"kind":5,"mp":1,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"ox","index":1},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":2700,"text":"Ox is now Blessed!"}
+{"t":"shot","tick":2702,"file":"fight_b134.png"}
+{"t":"shot","tick":2722,"file":"fight_b135.png"}
+{"t":"battle_step","tick":2735,"amount":0,"crit":false,"element":"","hp":36,"kind":5,"mp":5,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"tilly","index":2},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":2735,"text":"Tilly is now Blessed!"}
+{"t":"shot","tick":2742,"file":"fight_b136.png"}
+{"t":"shot","tick":2762,"file":"fight_b137.png"}
+{"t":"battle_step","tick":2770,"amount":0,"crit":false,"element":"","hp":28,"kind":5,"mp":9,"resisted":false,"skill":"","stat":"","state":"blessed","target":{"enemy":false,"id":"kes","index":3},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":2770,"text":"Kes is now Blessed!"}
+{"t":"shot","tick":2782,"file":"fight_b138.png"}
+{"t":"shot","tick":2802,"file":"fight_b139.png"}
+{"t":"ai_decision","tick":2805,"decision":{"troop":"warden","turn":6,"phase":"act","timing":"action","mode":"gambit","user":{"id":"ox","enemy":false,"index":1},"rules":[{"index":0,"skill":"hold_line","reason":"condition_false"},{"index":1,"skill":"shield_rush","reason":"mp_shortage"},{"index":2,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"}],"selected":2,"committed":true,"skill":"attack","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"battle_step","tick":2806,"amount":0,"crit":false,"element":"","hp":66,"kind":1,"mp":1,"resisted":false,"skill":"attack","stat":"","state":"","target":null,"user":{"enemy":false,"id":"ox","index":1},"weak":false}
+{"t":"battle","tick":2806,"text":"Ox: Strike![Ox row 3: Always → Brass Warden, Strike]"}
+{"t":"shot","tick":2822,"file":"fight_b140.png"}
+{"t":"battle_step","tick":2837,"amount":31,"crit":false,"element":"","hp":23,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"ox","index":1},"weak":false}
+{"t":"battle","tick":2837,"text":"Brass Warden takes 31 damage!"}
+{"t":"shot","tick":2842,"file":"fight_b141.png"}
+{"t":"shot","tick":2862,"file":"fight_b142.png"}
+{"t":"ai_decision","tick":2872,"decision":{"troop":"warden","turn":6,"phase":"act","timing":"action","mode":"gambit","user":{"id":"brass_warden","enemy":true,"index":0},"rules":[{"index":0,"skill":"slam","reason":"applicable","selection":"selected"},{"index":1,"skill":"crush","reason":"applicable","target":{"id":"kes","enemy":false,"index":3},"selection":"later_rule"}],"selected":0,"committed":true,"skill":"slam"}}
+{"t":"battle_step","tick":2873,"amount":0,"crit":false,"element":"","hp":23,"kind":1,"mp":0,"resisted":false,"skill":"slam","stat":"","state":"","target":null,"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":2873,"text":"Brass Warden: Slam!"}
+{"t":"shot","tick":2882,"file":"fight_b143.png"}
+{"t":"shot","tick":2902,"file":"fight_b144.png"}
+{"t":"battle_step","tick":2904,"amount":5,"crit":false,"element":"","hp":61,"kind":2,"mp":1,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"ox","index":1},"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":2904,"text":"Ox takes 5 damage!"}
+{"t":"shot","tick":2922,"file":"fight_b145.png"}
+{"t":"view","tick":2929,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/sad.png","ox/frown.png","tilly/normal.png"],"since":2911}
+{"t":"battle_step","tick":2939,"amount":24,"crit":false,"element":"","hp":12,"kind":2,"mp":5,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"tilly","index":2},"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":2939,"text":"Tilly takes 24 damage!"}
+{"t":"shot","tick":2942,"file":"fight_b146.png"}
+{"t":"view","tick":2961,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/normal.png","maren/sad.png","ox/normal.png","tilly/worried.png"],"since":2951}
+{"t":"shot","tick":2962,"file":"fight_b147.png"}
+{"t":"battle_step","tick":2974,"amount":28,"crit":false,"element":"","hp":0,"kind":2,"mp":9,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"kes","index":3},"user":{"enemy":true,"id":"brass_warden","index":0},"weak":false}
+{"t":"battle","tick":2974,"text":"Kes takes 28 damage!"}
+{"t":"shot","tick":2982,"file":"fight_b148.png"}
+{"t":"view","tick":2999,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/sad.png","maren/sad.png","ox/normal.png","tilly/normal.png"],"since":2987}
+{"t":"state","tick":3000,"facing":"south","gold":60,"location":"b2","party":[{"back":false,"hp":0,"id":"maren","lv":6,"mhp":70,"mmp":20,"mp":4,"name":"Maren","states":{}},{"back":false,"hp":61,"id":"ox","lv":6,"mhp":118,"mmp":11,"mp":1,"name":"Ox","states":{"blessed":3}},{"back":true,"hp":12,"id":"tilly","lv":6,"mhp":62,"mmp":28,"mp":5,"name":"Tilly","states":{"blessed":3}},{"back":true,"hp":0,"id":"kes","lv":6,"mhp":52,"mmp":28,"mp":9,"name":"Kes","states":{}}],"pos":[1,1],"summary":{"actors":{"kes":{"back":true,"equip":{"armor":"coat_work","weapon":"coil_basic"},"exp":360,"hp":52,"id":"kes","learnt":null,"level":6,"mp":28,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"overclock":2,"spare_parts":2,"storm_coil":3}},"maren":{"back":false,"equip":{"armor":"coat_cloth","weapon":"rod_basic"},"exp":360,"hp":70,"id":"maren","learnt":null,"level":6,"mp":20,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"chart":2,"ink_burst":2,"keen_eye":1,"sure_foot":2}},"ox":{"back":false,"equip":{"armor":"plate_scrap","weapon":"shield_pot"},"exp":360,"hp":118,"id":"ox","learnt":null,"level":6,"mp":11,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"bulwark":2,"hold_line":2,"iron_hide":2}},"tilly":{"back":true,"equip":{"armor":"robe_pilgrim","weapon":"staff_wood"},"exp":360,"hp":62,"id":"tilly","learnt":null,"level":6,"mp":28,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"blessing":2,"mend":2,"second_chance":1,"shared_cup":2}}},"done":{},"flags":{},"gold":60,"items":{"old_gear":3,"tonic":2},"location":"b2","mapped":{"b2":"AQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["maren","ox","tilly","kes"],"pos":{"X":1,"Y":1,"facing":2,"in":"b2"},"steps":0,"vars":{"explored":0}}}
+{"t":"shot","tick":3002,"file":"fight_b149.png"}
+{"t":"battle_step","tick":3009,"amount":0,"crit":false,"element":"","hp":0,"kind":7,"mp":9,"resisted":false,"skill":"","stat":"","state":"","target":{"enemy":false,"id":"kes","index":3},"user":null,"weak":false}
+{"t":"battle","tick":3009,"text":"Kes has fallen..."}
+{"t":"shot","tick":3022,"file":"fight_b150.png"}
+{"t":"shot","tick":3042,"file":"fight_b151.png"}
+{"t":"battle_step","tick":3050,"amount":0,"crit":false,"element":"","hp":0,"kind":10,"mp":0,"resisted":false,"skill":"","stat":"","state":"","target":null,"user":null,"weak":false}
+{"t":"stand","tick":3057,"hides":false,"location":"b2","set":0,"since":3052}
+{"t":"shot","tick":3062,"file":"fight_b152.png"}
+{"t":"shot","tick":3063,"file":"fight_001.png"}
+{"t":"input","tick":3065,"press":["ok"]}
+{"t":"ai_decision","tick":3067,"decision":{"troop":"warden","turn":7,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"ox","enemy":false,"index":1},"rules":[{"index":0,"skill":"hold_line","reason":"condition_false"},{"index":1,"skill":"shield_rush","reason":"mp_shortage"},{"index":2,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"}],"selected":2,"committed":false,"skill":"attack","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":3067,"decision":{"troop":"warden","turn":7,"phase":"act","timing":"turn_start","mode":"gambit","user":{"id":"tilly","enemy":false,"index":2},"rules":[{"index":0,"skill":"mend","reason":"applicable","target":{"id":"tilly","enemy":false,"index":2},"selection":"selected"},{"index":1,"skill":"blessing","reason":"applicable","selection":"later_rule"},{"index":2,"skill":"lucky_toss","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":0,"committed":false,"skill":"mend","target":{"id":"tilly","enemy":false,"index":2}}}
+{"t":"ai_decision","tick":3068,"decision":{"troop":"warden","turn":7,"phase":"act","timing":"action","mode":"gambit","user":{"id":"tilly","enemy":false,"index":2},"rules":[{"index":0,"skill":"mend","reason":"applicable","target":{"id":"tilly","enemy":false,"index":2},"selection":"selected"},{"index":1,"skill":"blessing","reason":"applicable","selection":"later_rule"},{"index":2,"skill":"lucky_toss","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"},{"index":3,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"later_rule"}],"selected":0,"committed":true,"skill":"mend","target":{"id":"tilly","enemy":false,"index":2}}}
+{"t":"battle_step","tick":3069,"amount":0,"crit":false,"element":"","hp":12,"kind":1,"mp":2,"resisted":false,"skill":"mend","stat":"","state":"","target":null,"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":3069,"text":"Tilly: Mend![Tilly row 1: A friend is hurt → Tilly, Mend]"}
+{"t":"stand","tick":3073,"idle":true,"since":3068}
+{"t":"shot","tick":3085,"file":"fight_b153.png"}
+{"t":"battle_step","tick":3100,"amount":50,"crit":false,"element":"","hp":62,"kind":3,"mp":2,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"tilly","index":2},"user":{"enemy":false,"id":"tilly","index":2},"weak":false}
+{"t":"battle","tick":3100,"text":"Tilly recovers 50 HP!"}
+{"t":"shot","tick":3105,"file":"fight_b154.png"}
+{"t":"shot","tick":3125,"file":"fight_b155.png"}
+{"t":"ai_decision","tick":3135,"decision":{"troop":"warden","turn":7,"phase":"act","timing":"action","mode":"gambit","user":{"id":"ox","enemy":false,"index":1},"rules":[{"index":0,"skill":"hold_line","reason":"condition_false"},{"index":1,"skill":"shield_rush","reason":"mp_shortage"},{"index":2,"skill":"attack","reason":"applicable","target":{"id":"brass_warden","enemy":true,"index":0},"selection":"selected"}],"selected":2,"committed":true,"skill":"attack","target":{"id":"brass_warden","enemy":true,"index":0}}}
+{"t":"battle_step","tick":3136,"amount":0,"crit":false,"element":"","hp":61,"kind":1,"mp":1,"resisted":false,"skill":"attack","stat":"","state":"","target":null,"user":{"enemy":false,"id":"ox","index":1},"weak":false}
+{"t":"battle","tick":3136,"text":"Ox: Strike![Ox row 3: Always → Brass Warden, Strike]"}
+{"t":"shot","tick":3145,"file":"fight_b156.png"}
+{"t":"shot","tick":3165,"file":"fight_b157.png"}
+{"t":"battle_step","tick":3167,"amount":34,"crit":false,"element":"","hp":0,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"brass_warden","index":0},"user":{"enemy":false,"id":"ox","index":1},"weak":false}
+{"t":"battle","tick":3167,"text":"Brass Warden takes 34 damage!"}
+{"t":"battle_fx","tick":3171,"boss":true,"slow":0,"stop":0,"what":"finish"}
+{"t":"shot","tick":3185,"file":"fight_b158.png"}
+{"t":"battle_step","tick":3202,"amount":0,"crit":false,"element":"","hp":0,"kind":7,"mp":0,"resisted":false,"skill":"","stat":"","state":"","target":{"enemy":true,"id":"brass_warden","index":0},"user":null,"weak":false}
+{"t":"battle","tick":3202,"text":"Brass Warden is defeated!"}
+{"t":"shot","tick":3205,"file":"fight_b159.png"}
+{"t":"shot","tick":3225,"file":"fight_b160.png"}
+{"t":"battle_music","tick":3243,"mood":"neutral","win_song":"victory"}
+{"t":"battle_music","tick":3243,"fanfare":false,"mood":""}
+{"t":"battle_end","tick":3243,"messages":["Victory!","Gained 120 EXP!","Received 90G.","Tin Tower Shield obtained!"],"result":"won"}
+{"t":"battle_result","tick":3243,"gains":{"LevelUps":null,"Exp":120,"Gold":90,"Items":["shield_tin"]},"rand":"cGNnOgu8C0CaejAW/sDAcaEUCEU=","result":"won","summary":{"actors":{"kes":{"back":true,"equip":{"armor":"coat_work","weapon":"coil_basic"},"exp":360,"hp":0,"id":"kes","learnt":null,"level":6,"mp":9,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"overclock":2,"spare_parts":2,"storm_coil":3}},"maren":{"back":false,"equip":{"armor":"coat_cloth","weapon":"rod_basic"},"exp":360,"hp":0,"id":"maren","learnt":null,"level":6,"mp":4,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"chart":2,"ink_burst":2,"keen_eye":1,"sure_foot":2}},"ox":{"back":false,"equip":{"armor":"plate_scrap","weapon":"shield_pot"},"exp":480,"hp":61,"id":"ox","learnt":null,"level":6,"mp":1,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"bulwark":2,"hold_line":2,"iron_hide":2}},"tilly":{"back":true,"equip":{"armor":"robe_pilgrim","weapon":"staff_wood"},"exp":480,"hp":62,"id":"tilly","learnt":null,"level":6,"mp":2,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"blessing":2,"mend":2,"second_chance":1,"shared_cup":2}}},"done":{},"flags":{},"gold":150,"items":{"old_gear":3,"shield_tin":1,"tonic":2},"location":"b2","mapped":{"b2":"AQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["maren","ox","tilly","kes"],"pos":{"X":1,"Y":1,"facing":2,"in":"b2"},"steps":0,"vars":{"battle_advice_actor":"Ox","battle_advice_reason":"mp_shortage","battle_advice_row":2,"explored":0,"kill_brass_warden":1,"last_kill_brass_warden":1}}}
+{"t":"music","tick":3243,"asked":"victory","asked_at":3243,"module":"","mood":"neutral","song":"boss","wanted":"victory"}
+{"t":"music","tick":3244,"asked":"victory","asked_at":3243,"module":"","mood":"neutral","song":"victory","started":3244,"wait":1,"wanted":"victory"}
+{"t":"shot","tick":3245,"file":"fight_b161.png"}
+{"t":"view","tick":3258,"pictures":["bg/battle_brick.jpg","enemies/brass_warden.png","kes/sad.png","maren/sad.png","ox/smile.png","tilly/laugh.png"],"since":3243}
+{"t":"shot","tick":3265,"file":"fight_b162.png"}
+{"t":"shot","tick":3268,"file":"fight_002.png"}
+{"t":"input","tick":3270,"press":["ok"]}
+{"t":"shot","tick":3273,"file":"fight_003.png"}
+{"t":"input","tick":3275,"press":["ok"]}
+{"t":"shot","tick":3278,"file":"fight_004.png"}
+{"t":"input","tick":3280,"press":["ok"]}
+{"t":"shot","tick":3294,"file":"fight_b163.png"}
+{"t":"shot","tick":3305,"file":"fight_005.png"}
+{"t":"input","tick":3307,"press":["ok"]}
+{"t":"shot","tick":3310,"file":"fight_006.png"}
+{"t":"input","tick":3312,"press":["ok"]}
+{"t":"shot","tick":3315,"file":"fight_007.png"}
+{"t":"input","tick":3317,"press":["ok"]}
+{"t":"shot","tick":3323,"file":"fight_b164.png"}
+{"t":"shot","tick":3342,"file":"fight_008.png"}
+{"t":"input","tick":3344,"press":["ok"]}
+{"t":"shot","tick":3347,"file":"fight_009.png"}
+{"t":"input","tick":3349,"press":["ok"]}
+{"t":"shot","tick":3352,"file":"fight_010.png"}
+{"t":"input","tick":3354,"press":["ok"]}
+{"t":"shot","tick":3372,"file":"fight_b165.png"}
+{"t":"shot","tick":3379,"file":"fight_011.png"}
+{"t":"input","tick":3381,"press":["ok"]}
+{"t":"battle_close","tick":3391,"auto":true,"ticks":3391}
+{"t":"scene","tick":3391,"location":"b2","stack":["dungeon"]}
+{"t":"state","tick":3391,"facing":"south","gold":150,"location":"b2","party":[{"back":false,"hp":0,"id":"maren","lv":6,"mhp":70,"mmp":20,"mp":4,"name":"Maren","states":{}},{"back":false,"hp":61,"id":"ox","lv":6,"mhp":118,"mmp":11,"mp":1,"name":"Ox","states":{}},{"back":true,"hp":62,"id":"tilly","lv":6,"mhp":62,"mmp":28,"mp":2,"name":"Tilly","states":{}},{"back":true,"hp":0,"id":"kes","lv":6,"mhp":52,"mmp":28,"mp":9,"name":"Kes","states":{}}],"pos":[1,1],"summary":{"actors":{"kes":{"back":true,"equip":{"armor":"coat_work","weapon":"coil_basic"},"exp":360,"hp":0,"id":"kes","learnt":null,"level":6,"mp":9,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"overclock":2,"spare_parts":2,"storm_coil":3}},"maren":{"back":false,"equip":{"armor":"coat_cloth","weapon":"rod_basic"},"exp":360,"hp":0,"id":"maren","learnt":null,"level":6,"mp":4,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"chart":2,"ink_burst":2,"keen_eye":1,"sure_foot":2}},"ox":{"back":false,"equip":{"armor":"plate_scrap","weapon":"shield_pot"},"exp":480,"hp":61,"id":"ox","learnt":null,"level":6,"mp":1,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"bulwark":2,"hold_line":2,"iron_hide":2}},"tilly":{"back":true,"equip":{"armor":"robe_pilgrim","weapon":"staff_wood"},"exp":480,"hp":62,"id":"tilly","learnt":null,"level":6,"mp":2,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"blessing":2,"mend":2,"second_chance":1,"shared_cup":2}}},"done":{},"flags":{},"gold":150,"items":{"old_gear":3,"shield_tin":1,"tonic":2},"location":"b2","mapped":{"b2":"AQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["maren","ox","tilly","kes"],"pos":{"X":1,"Y":1,"facing":2,"in":"b2"},"steps":0,"vars":{"battle_advice_actor":"Ox","battle_advice_reason":"mp_shortage","battle_advice_row":2,"explored":0,"kill_brass_warden":1,"last_kill_brass_warden":1}}}
+{"t":"state","tick":3393,"facing":"south","gold":150,"location":"b2","party":[{"back":false,"hp":0,"id":"maren","lv":6,"mhp":70,"mmp":20,"mp":4,"name":"Maren","states":{}},{"back":false,"hp":61,"id":"ox","lv":6,"mhp":118,"mmp":11,"mp":1,"name":"Ox","states":{}},{"back":true,"hp":62,"id":"tilly","lv":6,"mhp":62,"mmp":28,"mp":2,"name":"Tilly","states":{}},{"back":true,"hp":0,"id":"kes","lv":6,"mhp":52,"mmp":28,"mp":9,"name":"Kes","states":{}}],"pos":[1,1],"summary":{"actors":{"kes":{"back":true,"equip":{"armor":"coat_work","weapon":"coil_basic"},"exp":360,"hp":0,"id":"kes","learnt":null,"level":6,"mp":9,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"overclock":2,"spare_parts":2,"storm_coil":3}},"maren":{"back":false,"equip":{"armor":"coat_cloth","weapon":"rod_basic"},"exp":360,"hp":0,"id":"maren","learnt":null,"level":6,"mp":4,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"chart":2,"ink_burst":2,"keen_eye":1,"sure_foot":2}},"ox":{"back":false,"equip":{"armor":"plate_scrap","weapon":"shield_pot"},"exp":480,"hp":61,"id":"ox","learnt":null,"level":6,"mp":1,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"bulwark":2,"hold_line":2,"iron_hide":2}},"tilly":{"back":true,"equip":{"armor":"robe_pilgrim","weapon":"staff_wood"},"exp":480,"hp":62,"id":"tilly","learnt":null,"level":6,"mp":2,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"blessing":2,"mend":2,"second_chance":1,"shared_cup":2}}},"done":{},"flags":{},"gold":150,"items":{"old_gear":3,"shield_tin":1,"tonic":2},"location":"b2","mapped":{"b2":"AQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["maren","ox","tilly","kes"],"pos":{"X":1,"Y":1,"facing":2,"in":"b2"},"steps":0,"vars":{"battle_advice_actor":"Ox","battle_advice_reason":"mp_shortage","battle_advice_row":2,"explored":0,"kill_brass_warden":1,"last_kill_brass_warden":1}},"terminal":true}
+{"t":"end","tick":3393,"lines":471,"state":{"actors":{"kes":{"back":true,"equip":{"armor":"coat_work","weapon":"coil_basic"},"exp":360,"hp":0,"id":"kes","learnt":null,"level":6,"mp":9,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"overclock":2,"spare_parts":2,"storm_coil":3}},"maren":{"back":false,"equip":{"armor":"coat_cloth","weapon":"rod_basic"},"exp":360,"hp":0,"id":"maren","learnt":null,"level":6,"mp":4,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"chart":2,"ink_burst":2,"keen_eye":1,"sure_foot":2}},"ox":{"back":false,"equip":{"armor":"plate_scrap","weapon":"shield_pot"},"exp":480,"hp":61,"id":"ox","learnt":null,"level":6,"mp":1,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"bulwark":2,"hold_line":2,"iron_hide":2}},"tilly":{"back":true,"equip":{"armor":"robe_pilgrim","weapon":"staff_wood"},"exp":480,"hp":62,"id":"tilly","learnt":null,"level":6,"mp":2,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{"blessing":2,"mend":2,"second_chance":1,"shared_cup":2}}},"done":{},"flags":{},"gold":150,"items":{"old_gear":3,"shield_tin":1,"tonic":2},"location":"b2","mapped":{"b2":"AQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["maren","ox","tilly","kes"],"pos":{"X":1,"Y":1,"facing":2,"in":"b2"},"steps":0,"vars":{"battle_advice_actor":"Ox","battle_advice_reason":"mp_shortage","battle_advice_row":2,"explored":0,"kill_brass_warden":1,"last_kill_brass_warden":1}}}

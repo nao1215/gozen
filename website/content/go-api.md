@@ -26,7 +26,7 @@ Gozen is before v1, so the API may still change. It is changing in the direction
 
 Gozen is not a tool that can do anything. It is a framework with a fixed shape: the game is YAML, battles, dungeons and story flow follow Gozen's rules, and Go gets a few small hooks. Stay inside that shape and checking, simulation, tuning while you play, saving and the web build all work without decisions on your part (convention over configuration). When a feature or an API is in doubt, Gozen keeps things easy, even at the cost of a constraint.
 
-The Go API follows one rule: **read with an expression, change with a command.** Everything about a game is already named in YAML and in the expression language (`flag`, `var`, `gold`, `party`, `actor`, `location`, `pos`). Instead of Go types that mirror the YAML, the root package [gozen](https://pkg.go.dev/github.com/nao1215/gozen) has:
+The Go API follows one rule: read with an expression, change with a command. Everything about a game is already named in YAML and in the expression language (`flag`, `var`, `gold`, `party`, `actor`, `location`, `pos`). Instead of Go types that mirror the YAML, the root package [gozen](https://pkg.go.dev/github.com/nao1215/gozen) has:
 
 - `Load` a game, `New` a session, and `Do` YAML commands on it (`- join: scout`, `- battle: wolves`).
 - `Query` an expression to read the state (`gold`, `actor.hero.level`).
@@ -134,7 +134,7 @@ defer sc.Close()
 return ebiten.RunGame(sc)
 ```
 
-Only one `Screen` can be open at a time, and it must be used from the game thread. [examples/play](https://github.com/nao1215/gozen/tree/main/examples/play) runs Wayfinder with `play.Main` on the desktop and with `play.New` in a browser.
+Only one `Screen` can be open at a time, and it must be used from the game thread. [examples/go-zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) runs Go Zen with `play.Main` on the desktop and with `play.New` in a browser.
 
 ## Characters that react: react
 
@@ -171,8 +171,6 @@ cat [A kitten? I keep one at the lighthouse.] 60
 Rules can also read numbers (`value.amount` for a tip), remember what was said (`remember`), ask a question and read the `answer`, and wait between reactions (`cooldown`). Games add their own tags to a stimulus (`Stimulus.Tags`).
 
 ## Moving portraits: puppet
-
-![a streamer who blinks, talks, breathes, sways and changes her face](/images/puppet.gif)
 
 `puppet` moves one picture like a streaming avatar: it blinks, moves the mouth while speaking, breathes, sways and tilts the head, lets the hair and other swaying parts (ribbons, hems, sleeves, cords) trail behind on springs, plays one-shot reactions, and fades between faces. You give a base picture, small difference pictures (closed eyes, mouth shapes, other faces), and a few numbers in YAML; the head, hair and swaying parts move by deforming a mesh over the picture, so no layered artwork or rig is needed.
 

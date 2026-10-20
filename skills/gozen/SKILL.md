@@ -1,0 +1,62 @@
+---
+name: gozen
+description: Make or fix an RPG written for Gozen, the Go game framework whose games are game.yaml and data/*.yaml. Use it when you write or change a Gozen game's YAML; it runs gozen check until the game has no errors.
+---
+
+# Making a Gozen game
+
+A Gozen game is a directory: `game.yaml`, `data/*.yaml` and `assets/`. A small Go program embeds it and calls `play.Main`. You write YAML. The `gozen` command checks and measures it.
+
+## The loop
+
+1. Read the part of the schema you need: https://nao1215.github.io/gozen/schema/. Do not guess a field.
+2. Edit the YAML.
+3. Run `gozen check` on the game directory. Fix every error and run it again. Stop only when it prints `ok:` and exits 0.
+4. When a fight or a dungeon changed, measure it with `gozen sim` (references/measure.md).
+
+<!-- verify: run fixture=cave -->
+```shell
+gozen check game
+```
+
+<!-- verify: output -->
+```text
+ok: 2 locations, 0 events, 1 actors, 2 skills, 0 items, 2 enemies, 2 troops, 0 ai sets
+```
+
+If `gozen` is not installed: `go install github.com/nao1215/gozen/cmd/gozen@latest`.
+
+## What every game needs
+
+- `game.yaml` with `schema_version: 3`, an `id`, and `start` with a `location` and a `party`.
+- A class for each party member, with all eight stats (`mhp mmp atk def mat mdf agi luk`) and `exp_for`.
+- The two skills `attack` and `guard`, even in a game without battles.
+- Pictures under `assets/` for every `image` and `background` you name. Enemies need an `image`.
+- No `fonts` is needed: the built-in Go font has Latin letters only. For Japanese or other scripts, put a font under `assets/` and name it in `fonts.regular`.
+
+A complete small game is in references/minimal.md.
+
+## Reading the errors
+
+`gozen check` prints one line for each problem: file, line, column, the path in the data, the message and a code.
+
+```text
+data/world.yaml:30:10: locations.village.exits[0].to: unknown location "feild" [GZN1101]
+```
+
+- `gozen help GZN1101` explains a code. All codes: https://nao1215.github.io/gozen/errors/.
+- `gozen check --format json game` gives the same problems as JSON (`file`, `line`, `col`, `path`, `code`, `message`, `severity`).
+- Warnings do not fail the check. Read them anyway.
+
+YAML traps are in references/yaml.md.
+
+## Recipes
+
+Tested YAML for shops, inns, flags, companions, dungeons, chests, keys, cut-ins and moving portraits: https://nao1215.github.io/gozen/cookbook/. Start from a recipe and change the names.
+
+## Do not
+
+- Do not import `github.com/nao1215/gozen/internal/...`. Use `play`, `gozen` (Session, Query, Do) and the YAML.
+- Do not add pictures, music or fonts without the right to use them. Record where each came from.
+- Do not edit generated files (`data/schema/*.json` in Gozen itself).
+- Do not say the game is done while `gozen check` reports an error.

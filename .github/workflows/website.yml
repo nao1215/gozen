@@ -57,6 +57,11 @@ jobs:
           sudo mv "${RUNNER_TEMP}/hugo" /usr/local/bin/hugo
           hugo version
 
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # make website also builds Go Zen for the browser into public/play/go-zen.
       - name: Build website
         # The commit is stamped into every page so the deploy can be verified
         # afterwards. Hugo reads HUGO_PARAMS_* as config overrides. The build
@@ -66,10 +71,6 @@ jobs:
         run: make website
         env:
           HUGO_PARAMS_BUILDCOMMIT: ${{ github.sha }}
-
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
 
       # Every internal link and picture of the built pages leads to a file of
       # the site, every #fragment to an id, and every link to a file of this

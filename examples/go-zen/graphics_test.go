@@ -1,4 +1,4 @@
-//go:build graphics
+//go:build graphics && !js
 
 package main
 

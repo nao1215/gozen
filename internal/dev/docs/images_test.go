@@ -107,7 +107,13 @@ func makeImages(t *testing.T, m manifest, rootAbs, work, out string) []string {
 		if runtime.GOOS == "windows" {
 			bin += ".exe"
 		}
-		command(t, rootAbs, 5*time.Minute, "go", "build", "-trimpath", "-buildvcs=false", "-o", bin, m.Samples[name].Package)
+		pkg := m.Samples[name].Package
+		if _, err := os.Stat(filepath.Join(rootAbs, filepath.FromSlash(pkg), "go.mod")); err == nil {
+			// a sample that is a module of its own (examples/go-zen) is built in its directory
+			command(t, filepath.Join(rootAbs, filepath.FromSlash(pkg)), 5*time.Minute, "go", "build", "-trimpath", "-buildvcs=false", "-o", bin, ".")
+		} else {
+			command(t, rootAbs, 5*time.Minute, "go", "build", "-trimpath", "-buildvcs=false", "-o", bin, pkg)
+		}
 		bins[name] = bin
 	}
 	runs := map[string]*played{}

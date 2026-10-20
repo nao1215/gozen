@@ -42,7 +42,7 @@ The authority for the mechanical check is `.go-arch-lint.yml:1`. Each public pac
 
 ## Startup and extension
 
-The design is that the game provides its own `fs.FS`, data and assets and passes them to `play.Main` (for your own loop or a browser, pass a `gozen.Session` to `play.New`). For operation without rendering use `headless`. The run example of `headless` is `examples/headless`, that of `play.Main` and `play.New` is `examples/play`, and the minimal embedding example is `examples/minimal`. T6 added the sample's progress, save and restore, the Japanese and English README, and reproducible shooting. See [the sample guide](../examples/wayfinder.md). The shapes of loading, settings, errors and extension points follow [the API conventions](api-guidelines.md).
+The design is that the game provides its own `fs.FS`, data and assets and passes them to `play.Main` (for your own loop or a browser, pass a `gozen.Session` to `play.New`). For operation without rendering use `headless`. The run example of `headless` is `examples/headless`, that of `play.Main` and `play.New` is `examples/go-zen` (the sample game, a module of its own), and the minimal embedding example is `examples/minimal`. The shapes of loading, settings, errors and extension points follow [the API conventions](api-guidelines.md).
 
 Work-specific data and extensions are owned by the game side. That a game can be assembled from startup through save and restore with the public API alone is confirmed by the sample and the contract tests.
 

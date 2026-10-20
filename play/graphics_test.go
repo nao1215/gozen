@@ -23,12 +23,12 @@ func TestGraphicsScreens(t *testing.T) {
 		script string
 	}{
 		{name: "title", args: nil},
-		{name: "field", args: []string{"--start", "camp"}},
-		{name: "dialogue", args: []string{"--start", "camp", "--event", "greeting"}},
-		{name: "battle", args: []string{"--start", "camp", "--battle", "lesson"}},
-		{name: "dungeon", args: []string{"--start", "chamber"}},
+		{name: "field", args: []string{"--start", "inn"}},
+		{name: "dialogue", args: []string{"--start", "plaza", "--event", "kes_roof"}},
+		{name: "battle", args: []string{"--start", "b1", "--party", "maren,ox,tilly", "--battle", "drips"}},
+		{name: "dungeon", args: []string{"--start", "b1", "--party", "maren,ox,tilly"}},
 		// F7 balance display. Wait until measuring finishes, and check that the win-rate bar color appears in the upper-right panel.
-		{name: "balance", args: []string{"--start", "grotto"}, script: "wait 20\npress graphs\nwait 900\nshot frame\nquit\n"},
+		{name: "balance", args: []string{"--start", "b2", "--party", "maren,ox,tilly", "--level", "1"}, script: "wait 20\npress graphs\nwait 5200\nshot frame\nquit\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -40,9 +40,10 @@ func TestGraphicsScreens(t *testing.T) {
 			if err := os.WriteFile(script, []byte(body), 0600); err != nil {
 				t.Fatal(err)
 			}
-			args := []string{"run", "../examples/play", "--dev", "--mute", "--seed", "7", "--window", "0.5", "--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves")}
+			// the Go Zen sample (1920x1080) at half size in the window
+			args := []string{"run", "./testdata/host", "--dir", "../examples/go-zen/game", "--dev", "--mute", "--seed", "7", "--window", "0.5", "--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves")}
 			args = append(args, tc.args...)
-			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 			defer cancel()
 			cmd := exec.CommandContext(ctx, "go", args...) //nolint:gosec // Fixed Go executable; arguments refer to the test fixture and isolated output.
 			var stdout, stderr bytes.Buffer
@@ -59,12 +60,12 @@ func TestGraphicsScreens(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if img.Bounds().Dx() != 960 || img.Bounds().Dy() != 540 {
+			if img.Bounds().Dx() != 1920 || img.Bounds().Dy() != 1080 { // the screen of Go Zen, whatever the window
 				t.Fatalf("frame bounds %v", img.Bounds())
 			}
 			colors := map[[4]uint32]bool{}
-			for y := 0; y < 540; y += 3 {
-				for x := 0; x < 960; x += 3 {
+			for y := 0; y < 1080; y += 6 {
+				for x := 0; x < 1920; x += 6 {
 					r, g, b, a := img.At(x, y).RGBA()
 					colors[[4]uint32{r, g, b, a}] = true
 				}
@@ -81,8 +82,8 @@ func TestGraphicsScreens(t *testing.T) {
 
 // hasBar checks whether the upper-right balance display has the first troop's bar color (around #6cc4f0).
 func hasBar(img image.Image) bool {
-	for y := 12; y < 280; y++ {
-		for x := 500; x < 950; x++ {
+	for y := 24; y < 560; y++ {
+		for x := 1000; x < 1900; x++ {
 			r, g, b, _ := img.At(x, y).RGBA()
 			if near(r>>8, 0x6c) && near(g>>8, 0xc4) && near(b>>8, 0xf0) {
 				return true

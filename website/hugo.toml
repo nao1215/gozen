@@ -21,6 +21,11 @@ startLevel = 2
 endLevel = 3
 
 [[menus.main]]
+name = "Play Go Zen"
+pageRef = "/play"
+weight = 5
+
+[[menus.main]]
 name = "Install"
 pageRef = "/install"
 weight = 10

@@ -5,7 +5,7 @@ weight: 35
 toc: true
 ---
 
-Find what you want to make, copy the YAML into a file under `data/` (or into `game.yaml` where the recipe says so), and change the names. Every block on this page is loaded by the tests over a small game, so it works as written; each recipe links to the full reference on the [Schema](/schema/) page and, where it has the same feature, to the [Wayfinder sample](https://github.com/nao1215/gozen/blob/main/examples/play/game/data/world.yaml). The `gozen` commands the recipes use are collected at the end, in [Commands used by the recipes](#commands-used-by-the-recipes).
+Find what you want to make, copy the YAML into a file under `data/` (or into `game.yaml` where the recipe says so), and change the names. Every block on this page is loaded by the tests over a small game, so it works as written; each recipe links to the full reference on the [Schema](/schema/) page and, where it has the same feature, to the [Go Zen sample](https://github.com/nao1215/gozen/tree/main/examples/go-zen/game/data). The `gozen` commands the recipes use are collected at the end, in [Commands used by the recipes](#commands-used-by-the-recipes).
 
 The recipes refer to a few IDs they do not define: the actor and class `walker`, the class `mender`, the skills `attack` and `guard`, the item `key`, the enemy `mote`, the troop `wolves` and the locations `field`, `ridge`, `shop` and `gate`. Use your own in their place.
 
@@ -117,7 +117,7 @@ locations:
     exits: [{to: field, label: Leave}]
 ```
 
-Reference: [Location](/schema/#location), [Action](/schema/#action). Wayfinder's village has an inn and a save point.
+Reference: [Location](/schema/#location), [Action](/schema/#action). Go Zen's inn, The Dry Cup, has a rest and a save point.
 
 ## Write talk with choices and branches
 
@@ -190,7 +190,7 @@ state:
     flag.ferry_gone: {type: bool, initial: false}
 ```
 
-Reference: [Command](/schema/#command) (`set`, `if`), [Event](/schema/#event), [StateNames](/schema/#statenames), and the expressions on [Writing a game](/writing-a-game/#expressions). Wayfinder's camp opens the ridge with flags.
+Reference: [Command](/schema/#command) (`set`, `if`), [Event](/schema/#event), [StateNames](/schema/#statenames), and the expressions on [Writing a game](/writing-a-game/#expressions). Go Zen opens its dungeon gate with flags.
 
 ## Add a companion who joins
 
@@ -217,7 +217,7 @@ locations:
           - set: {flag.sela_joined: true}
 ```
 
-`join_exp` in `game.yaml` raises a newcomer's experience to the party's. Reference: [Actor](/schema/#actor), [Command](/schema/#command). Wayfinder's Bram and Sela join this way.
+`join_exp` in `game.yaml` raises a newcomer's experience to the party's. Reference: [Actor](/schema/#actor), [Command](/schema/#command). Go Zen's Ox, Tilly and Kes join this way.
 
 ## Grow by level and learn skills
 
@@ -361,7 +361,7 @@ battle:
           - {enabled: true, condition: always, action: strike}
 ```
 
-The rows are keyed by the AI they replace. In an event, `set: {actor.sela.tactics: careful}` picks a preset and `auto` or `manual` switches the mode. Reference: [Actor](/schema/#actor), [Rule](/schema/#rule), [TacticPreset](/schema/#tacticpreset), [TacticCondition](/schema/#tacticcondition), [BattleCfg](/schema/#battlecfg). Wayfinder's Bram and Sela have AI rules.
+The rows are keyed by the AI they replace. In an event, `set: {actor.sela.tactics: careful}` picks a preset and `auto` or `manual` switches the mode. Reference: [Actor](/schema/#actor), [Rule](/schema/#rule), [TacticPreset](/schema/#tacticpreset), [TacticCondition](/schema/#tacticcondition), [BattleCfg](/schema/#battlecfg). Go Zen's party has AI rules and three presets.
 
 ## Stage a boss fight
 
@@ -458,7 +458,7 @@ locations:
         U: {name: Stairs up, look: door, symbol: U, do: [{move: field}]}
 ```
 
-Lead into it with an exit like any place (`exits: [{to: crypt}]`). Reference: [Dungeon](/schema/#dungeon), [Tile](/schema/#tile). Wayfinder's observation halls are a hand-drawn maze.
+Lead into it with an exit like any place (`exits: [{to: crypt}]`). Reference: [Dungeon](/schema/#dungeon), [Tile](/schema/#tile). Go Zen's first two floors are hand-drawn mazes.
 
 ## Put a chest in a dungeon
 
@@ -487,7 +487,7 @@ locations:
         t: {name: Open chest, picture: chest_open.png, solid: "true"}
 ```
 
-Reference: [Tile](/schema/#tile). Wayfinder's halls have the same chest.
+Reference: [Tile](/schema/#tile). Go Zen's floors have the same chests.
 
 ## Lock a door with a key
 
@@ -517,7 +517,7 @@ locations:
         E: {name: Way out, look: door, do: [{move: gate}]}
 ```
 
-The key itself can come from a [chest](#put-a-chest-in-a-dungeon), a shop or a person. Reference: [Tile](/schema/#tile). Wayfinder opens its iron gate with a wheel instead of a key.
+The key itself can come from a [chest](#put-a-chest-in-a-dungeon), a shop or a person. Reference: [Tile](/schema/#tile). Go Zen's Cistern Hall has three brass gates and three brass keys.
 
 ## Make a one-way passage
 
@@ -714,7 +714,7 @@ hair:
   - rect: [130, 70, 50, 90]
 ```
 
-[Check where each piece lies](#moving-portraits) with `gozen art puppet`. Reference: [Actor](/schema/#actor), [Say](/schema/#say), [FaceRule](/schema/#facerule), and [the puppet format](https://github.com/nao1215/gozen/blob/main/docs/architecture/puppet.md). [Wayfinder's walker](https://github.com/nao1215/gozen/blob/main/examples/play/game/assets/walker/puppet.yaml) has a puppet.
+[Check where each piece lies](#moving-portraits) with `gozen art puppet`. Reference: [Actor](/schema/#actor), [Say](/schema/#say), [FaceRule](/schema/#facerule), and [the puppet format](https://github.com/nao1215/gozen/blob/main/docs/architecture/puppet.md). [Go Zen's Maren](https://github.com/nao1215/gozen/blob/main/examples/go-zen/game/assets/maren/puppet.yaml) has a puppet.
 
 ## Set the face icons
 
@@ -824,7 +824,7 @@ text:
   はじめから: New journey
 ```
 
-[The English catalog](https://github.com/nao1215/gozen/blob/main/internal/text/catalog/english.go) lists every key, and `gozen check` warns when the font lacks letters of the chosen words. Reference: [Game](/schema/#game), [Terms](/schema/#terms). [Wayfinder's game.yaml](https://github.com/nao1215/gozen/blob/main/examples/play/game/game.yaml) keeps its own wording in `text`.
+[The English catalog](https://github.com/nao1215/gozen/blob/main/internal/text/catalog/english.go) lists every key, and `gozen check` warns when the font lacks letters of the chosen words. Reference: [Game](/schema/#game), [Terms](/schema/#terms).
 
 ## Test-play with notes, reload and quick starts
 
