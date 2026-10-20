@@ -1,0 +1,8 @@
+# A tiny painted scene for the graphics test (pictures made by a script, no artwork). The test
+# copies it to a temporary directory and adds assets/regular.ttf (the Go font).
+schema_version: 3
+id: stage-test
+title: Stage test
+screen: {width: 640, height: 360}
+fonts: {regular: regular.ttf}
+start: {location: square, party: [hero]}

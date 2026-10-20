@@ -1,0 +1,5 @@
+# An empty Go module with a game, for the steps that add Gozen to your module.
+# The module file is go.mod.txt here: a go.mod would cut this directory out of the Gozen module.
+copy:
+  go.mod: internal/dev/docs/testdata/fixtures/module/go.mod.txt
+  game: e2e/atago/fixtures/game

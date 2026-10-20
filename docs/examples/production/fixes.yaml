@@ -1,0 +1,4 @@
+pattern.png:
+  skip: true
+  block: 4
+  add: [[1, 1, 7, 7], [14, 10, 8, 9]]

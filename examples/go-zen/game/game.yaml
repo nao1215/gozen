@@ -1,0 +1,134 @@
+schema_version: 3
+id: go-zen
+title: Go Zen
+subtitle: Every Line Walked
+language: en
+screen: {width: 1920, height: 1080}
+fonts: {regular: fonts/mplus-1p-regular.ttf}
+title_background: bg/title.jpg
+title_music: title
+title_figures:
+  - {file: maren/normal.png, x: 0.53, height: 0.82}
+  - {file: ox/normal.png, x: 0.67, height: 0.86}
+  - {file: tilly/normal.png, x: 0.8, height: 0.82}
+  - {file: kes/normal.png, x: 0.93, height: 0.84}
+start:
+  location: plaza
+  party: [maren]
+  gold: 60
+  items: {old_gear: 3, tonic: 2}
+  event: opening
+data_version: 1
+max_party: 4
+# A newcomer starts no weaker than the party's average.
+join_exp: party.avg_exp
+terms: {currency: G, level: Lv, hp: HP, mp: MP, exp: EXP}
+ui:
+  window: "#10303ce8"
+  border: "#6fb7c4"
+  text: "#f4f1e6"
+  accent: "#e7b66b"
+  cursor: "#9ee0d2"
+meters:
+  - {label: Debt, value: var.debt, max: 200, color: "#d98a6a", when: var.debt > 0}
+battle:
+  variance: 0.1
+  critical: 0.05
+  critical_rate: 1.5
+  escape: 0.6
+  retry: true
+  ai: gambit
+  simple_tactics: true
+  music: battle
+  boss_win_music: victory
+  auto_tactics:
+    maren_ai:
+      - {enabled: true, condition: boss_fight, action: forged_map}
+      - {enabled: true, condition: unmarked, action: chart}
+      - {enabled: true, condition: low_mp, action: guard}
+      - {enabled: true, condition: any, action: ink_burst}
+      - {enabled: true, condition: any, action: attack}
+    ox_ai:
+      - {enabled: true, condition: unwarded, action: hold_line}
+      - {enabled: true, condition: any, action: shield_rush}
+      - {enabled: true, condition: any, action: attack}
+    tilly_ai:
+      - {enabled: true, condition: ally_hurt, action: mend}
+      - {enabled: true, condition: any, action: blessing}
+      - {enabled: true, condition: any, action: lucky_toss}
+      - {enabled: true, condition: any, action: attack}
+    kes_ai:
+      - {enabled: true, condition: crowd, action: storm_coil}
+      - {enabled: true, condition: ally_hurt, action: overclock}
+      - {enabled: true, condition: any, action: arc_bolt}
+      - {enabled: true, condition: any, action: attack}
+  tactic_presets:
+    balanced:
+      name: Balanced
+      description: "Mark the weak one, mend the hurt, hit hard."
+      rows:
+        maren_ai:
+          - {enabled: true, condition: boss_fight, action: forged_map}
+          - {enabled: true, condition: unmarked, action: chart}
+          - {enabled: true, condition: any, action: ink_burst}
+          - {enabled: true, condition: any, action: attack}
+        ox_ai:
+          - {enabled: true, condition: unwarded, action: hold_line}
+          - {enabled: true, condition: any, action: shield_rush}
+          - {enabled: true, condition: any, action: attack}
+        tilly_ai:
+          - {enabled: true, condition: ally_hurt, action: mend}
+          - {enabled: true, condition: any, action: blessing}
+          - {enabled: true, condition: any, action: attack}
+        kes_ai:
+          - {enabled: true, condition: crowd, action: storm_coil}
+          - {enabled: true, condition: any, action: arc_bolt}
+          - {enabled: true, condition: any, action: attack}
+    cautious:
+      name: Cautious
+      description: "Mend early, brace when the ink runs low, and let Ox stand in front."
+      rows:
+        maren_ai:
+          - {enabled: true, condition: low_mp, action: guard}
+          - {enabled: true, condition: boss_fight, action: forged_map}
+          - {enabled: true, condition: unmarked, action: chart}
+          - {enabled: true, condition: any, action: attack}
+        ox_ai:
+          - {enabled: true, condition: unwarded, action: hold_line}
+          - {enabled: true, condition: any, action: attack}
+        tilly_ai:
+          - {enabled: true, condition: ally_hurt, action: mend}
+          - {enabled: true, condition: any, action: blessing}
+          - {enabled: true, condition: any, action: attack}
+        kes_ai:
+          - {enabled: true, condition: ally_hurt, action: overclock}
+          - {enabled: true, condition: any, action: arc_bolt}
+          - {enabled: true, condition: any, action: attack}
+    all_out:
+      name: All out
+      description: "Throw everything at it and get home for supper."
+      rows:
+        maren_ai:
+          - {enabled: true, condition: boss_fight, action: forged_map}
+          - {enabled: true, condition: any, action: ink_burst}
+          - {enabled: true, condition: any, action: attack}
+        ox_ai:
+          - {enabled: true, condition: any, action: shield_rush}
+          - {enabled: true, condition: any, action: attack}
+        tilly_ai:
+          - {enabled: true, condition: any, action: lucky_toss}
+          - {enabled: true, condition: any, action: attack}
+        kes_ai:
+          - {enabled: true, condition: crowd, action: storm_coil}
+          - {enabled: true, condition: any, action: arc_bolt}
+          - {enabled: true, condition: any, action: attack}
+gallery:
+  music: town
+  cgs:
+    - {file: cg/cg1_fountain.jpg, title: Map by the Fountain, flag: seen_cg1}
+  scenes:
+    - {title: Water Returns, event: memory_fountain, flag: seen_cg1, id: fountain, location: plaza}
+    - {title: Hobb's Desk (read aloud), event: memory_desk, flag: seen_cg2, id: desk_aloud, location: landing, set: {flag.read_aloud: true}}
+    - {title: Hobb's Desk (kept quiet), event: memory_desk, flag: seen_cg2, id: desk_quiet, location: landing, set: {flag.read_aloud: false}}
+    - {title: Four Backs, event: memory_backs, flag: seen_cg3, id: backs, location: hall}
+    - {title: The Sign, event: memory_sign, flag: seen_cg4, id: sign, location: plaza_end}

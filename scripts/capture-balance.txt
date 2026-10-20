@@ -1,0 +1,19 @@
+# Wayfinder balance panel (F7, --dev). Started in the grotto at Lv.1 with --seed 7.
+# Face the Cobble with Auto first: with this seed the Walker wins with about 10% HP left,
+# so the panel shows the healed win rate (upper bar) beside the current-HP one (lower bar).
+# The panel measures inside the game loop; 1500 ticks is enough under Xvfb.
+wait 30
+press graphs
+wait 20
+press down
+press ok
+wait 120
+# Battle menu: Attack, Skills, Guard, Items, Auto.
+press down 4
+press ok
+wait 700
+# Read the victory lines until the grotto menu is back.
+read 12
+wait 1500
+shot balance
+quit

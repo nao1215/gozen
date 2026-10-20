@@ -1,0 +1,114 @@
+base: base.png
+faces:
+  angry:
+    image: face-angry.png
+    at:
+    - 365.0
+    - 150.0
+    mouth:
+      "off": true
+  determined:
+    image: face-determined.png
+    at:
+    - 365.0
+    - 150.0
+    mouth:
+      frames:
+      - image: face
+      - image: mouth-normal-2.png
+        at:
+        - 424.0
+        - 216.0
+      - image: mouth-normal-3.png
+        at:
+        - 424.0
+        - 216.0
+      speed: 11.0
+  embarrassed:
+    image: face-embarrassed.png
+    at:
+    - 365.0
+    - 150.0
+    mouth:
+      "off": true
+  frown:
+    image: face-frown.png
+    at:
+    - 365.0
+    - 150.0
+    mouth:
+      frames:
+      - image: face
+      - image: mouth-normal-2.png
+        at:
+        - 424.0
+        - 216.0
+      - image: mouth-normal-3.png
+        at:
+        - 424.0
+        - 216.0
+      speed: 11.0
+  normal:
+    mouth:
+      frames:
+      - image: face
+      - image: mouth-normal-2.png
+        at:
+        - 424.0
+        - 216.0
+      - image: mouth-normal-3.png
+        at:
+        - 424.0
+        - 216.0
+      speed: 11.0
+  smile:
+    image: face-smile.png
+    at:
+    - 365.0
+    - 150.0
+    mouth:
+      "off": true
+  surprised:
+    image: face-surprised.png
+    at:
+    - 365.0
+    - 150.0
+    mouth:
+      "off": true
+  worried:
+    image: face-worried.png
+    at:
+    - 365.0
+    - 150.0
+    mouth:
+      frames:
+      - image: face
+      - image: mouth-normal-2.png
+        at:
+        - 424.0
+        - 216.0
+      - image: mouth-normal-3.png
+        at:
+        - 424.0
+        - 216.0
+      speed: 11.0
+face: normal
+fade: 0.25
+head:
+  center:
+  - 430.0
+  - 215.0
+  radius: 140.0
+  neck:
+  - 440.0
+  - 330.0
+springs:
+- rect:
+  - 420.0
+  - 850.0
+  - 150.0
+  - 330.0
+  root: top
+  follow: body
+  stiffness: 40.0
+  damping: 5.0

@@ -1,0 +1,450 @@
+{"t":"start","tick":0,"answers":null,"autopilot":false,"battle":"","calm":false,"event":"","fingerprint":"a05f0b39b2ff79fc75a0e7fade1732a0e1b69d32c9ed1c569fae986c980c8059","flags":null,"floor":0,"gallery_all":false,"game":"Wayfinder","gold":0,"items":null,"language":"en","level":0,"line":0,"location":"","party":null,"picture":"","scene":"","screen":[960,540],"seed":7,"setup":{"config":{"text_speed":2,"auto_wait":2,"window":9,"bgm":7,"se":7,"fullscreen":false,"battle_speed":0,"skip_all":false,"manual_sp":false},"read":{},"unlocked":{},"saves":{}},"speed":1,"version":2}
+{"t":"scene","tick":1,"stack":["title"]}
+{"t":"music","tick":1,"asked":"","module":"","mood":"","song":"","wanted":""}
+{"t":"menu","tick":5,"items":["New journey","Continue (x)","Gallery (x)","Settings","Quit"],"sel":0}
+{"t":"stand","tick":10,"idle":true,"since":5}
+{"t":"view","tick":20,"pictures":["courier.png","title.jpg","walker/normal.png"],"since":5}
+{"t":"shot","tick":52,"file":"s-title.png"}
+{"t":"shot","tick":54,"file":"f000.png"}
+{"t":"shot","tick":71,"file":"f001.png"}
+{"t":"shot","tick":88,"file":"f002.png"}
+{"t":"shot","tick":105,"file":"f003.png"}
+{"t":"input","tick":122,"press":["ok"]}
+{"t":"scene","tick":122,"location":"camp","stack":["field"]}
+{"t":"state","tick":122,"gold":0,"location":"camp","party":[{"back":false,"hp":30,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}}],"summary":{"actors":{"walker":{"back":false,"equip":{},"exp":0,"hp":30,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{},"flags":{},"gold":0,"items":{},"location":"camp","mapped":{},"party":["walker"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"steps":0,"vars":{}}}
+{"t":"menu","tick":122,"items":null}
+{"t":"menu","tick":126,"items":["Talk: Courier","Practice","Save journey","Rest","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":0}
+{"t":"autosave","tick":130,"at":"camp"}
+{"t":"view","tick":134,"pictures":["camp.jpg","courier.png","walker/normal.png"],"since":122}
+{"t":"shot","tick":162,"file":"f004.png"}
+{"t":"shot","tick":177,"file":"f005.png"}
+{"t":"shot","tick":192,"file":"f006.png"}
+{"t":"input","tick":207,"press":["ok"]}
+{"t":"menu","tick":207,"items":null}
+{"t":"say","tick":208,"face":"courier.png","text":"A little light can guide a long journey.","who":"Courier"}
+{"t":"stand","tick":212,"hides":false,"location":"camp","set":1,"since":208}
+{"t":"view","tick":217,"pictures":["camp.jpg","courier.png"],"since":208}
+{"t":"shot","tick":252,"file":"s-talk.png"}
+{"t":"shot","tick":254,"file":"f007.png"}
+{"t":"shot","tick":269,"file":"f008.png"}
+{"t":"input","tick":284,"press":["ok"]}
+{"t":"say","tick":284,"face":"courier.png","text":"Practice with Pebble, then light the marker. The ridge path will open.","who":"Courier"}
+{"t":"shot","tick":329,"file":"f009.png"}
+{"t":"shot","tick":344,"file":"f010.png"}
+{"t":"input","tick":359,"press":["ok"]}
+{"t":"menu","tick":359,"items":["Talk: Courier","Practice","Save journey","Rest","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":0}
+{"t":"stand","tick":363,"idle":true,"since":359}
+{"t":"view","tick":368,"pictures":["camp.jpg","courier.png","walker/normal.png"],"since":359}
+{"t":"input","tick":382,"press":["down"]}
+{"t":"menu","tick":382,"items":["Talk: Courier","Practice","Save journey","Rest","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":1}
+{"t":"input","tick":391,"press":["ok"]}
+{"t":"menu","tick":391,"items":null}
+{"t":"request","tick":392,"troop":"lesson","what":"battle"}
+{"t":"battle_capture","tick":392,"capture":{"version":1,"tick":392,"troop":"lesson","save":"ewogICJmb3JtYXRfdmVyc2lvbiI6IDEsCiAgImdhbWVfaWQiOiAid2F5ZmluZGVyLWRlbW8iLAogICJkYXRhX3ZlcnNpb24iOiAwLAogICJzdGF0ZSI6IHsKICAgICJhY3RvcnMiOiB7CiAgICAgICJ3YWxrZXIiOiB7CiAgICAgICAgImlkIjogIndhbGtlciIsCiAgICAgICAgImxldmVsIjogMSwKICAgICAgICAiZXhwIjogMCwKICAgICAgICAiaHAiOiAzMCwKICAgICAgICAibXAiOiA1LAogICAgICAgICJlcXVpcCI6IHt9LAogICAgICAgICJsZWFybnQiOiBudWxsLAogICAgICAgICJzdGF0ZXMiOiB7fSwKICAgICAgICAic3AiOiAwLAogICAgICAgICJ0cmVlIjoge30sCiAgICAgICAgImJhY2siOiBmYWxzZSwKICAgICAgICAidGFjdGljcyI6IHsKICAgICAgICAgICJ2ZXJzaW9uIjogMSwKICAgICAgICAgICJtb2RlIjogImF1dG8iLAogICAgICAgICAgInJvd3MiOiBudWxsCiAgICAgICAgfQogICAgICB9CiAgICB9LAogICAgInBhcnR5IjogWwogICAgICAid2Fsa2VyIgogICAgXSwKICAgICJpdGVtcyI6IHt9LAogICAgImdvbGQiOiAwLAogICAgImZsYWdzIjogewogICAgICAiYnJpZWZlZCI6IHRydWUKICAgIH0sCiAgICAidmFycyI6IHt9LAogICAgImxvY2F0aW9uIjogImNhbXAiLAogICAgInN0ZXBzIjogMCwKICAgICJmcmFtZXMiOiAyNzAsCiAgICAiZG9uZSI6IHt9LAogICAgInBvcyI6IHsKICAgICAgImluIjogIiIsCiAgICAgICJYIjogMCwKICAgICAgIlkiOiAwLAogICAgICAiZmFjaW5nIjogMAogICAgfSwKICAgICJtYXBwZWQiOiB7fQogIH0KfQ==","rand":"cGNnOgAAAAAAAAAHAAAAAAAAADI=","fighters":null,"calm":false,"auto":false,"auto_read":false,"setup":{"config":{"text_speed":2,"auto_wait":2,"window":9,"bgm":7,"se":7,"fullscreen":false,"battle_speed":0,"skip_all":false,"manual_sp":false},"read":{"11557784210628857530":true,"5381842281772817088":true},"unlocked":{},"saves":null},"fingerprint":"a05f0b39b2ff79fc75a0e7fade1732a0e1b69d32c9ed1c569fae986c980c8059","engine":"gozen-play-v1","fade":0},"number":1}
+{"t":"scene","tick":392,"location":"camp","stack":["field","battle"]}
+{"t":"state","tick":392,"gold":0,"location":"camp","party":[{"back":false,"hp":30,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}}],"summary":{"actors":{"walker":{"back":false,"equip":{},"exp":0,"hp":30,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{},"flags":{"briefed":true},"gold":0,"items":{},"location":"camp","mapped":{},"party":["walker"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"steps":0,"vars":{}}}
+{"t":"view","tick":404,"pictures":["grotto.jpg","pebble.png","walker/normal.png"],"since":392}
+{"t":"battle_step","tick":419,"amount":0,"crit":false,"element":"","hp":0,"kind":0,"mp":0,"resisted":false,"skill":"","stat":"","state":"","target":null,"user":null,"weak":false}
+{"t":"battle","tick":419,"text":"Pebble is ready to practice!"}
+{"t":"shot","tick":441,"file":"f011.png"}
+{"t":"menu","tick":454,"items":["Attack","Skills (x)","Guard","Items","Auto","Run"],"sel":0}
+{"t":"shot","tick":456,"file":"f012.png"}
+{"t":"act","tick":471,"name":"battle_auto"}
+{"t":"ai_decision","tick":471,"decision":{"troop":"lesson","turn":1,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"walker","enemy":false,"index":0},"rules":null,"selected":-1,"committed":false,"skill":"attack"}}
+{"t":"ai_decision","tick":471,"decision":{"troop":"lesson","turn":1,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"walker","enemy":false,"index":0},"rules":null,"selected":-1,"committed":true,"skill":"attack"}}
+{"t":"shot","tick":471,"file":"practice_b001.png"}
+{"t":"menu","tick":471,"items":null}
+{"t":"battle_step","tick":472,"amount":0,"crit":false,"element":"","hp":30,"kind":1,"mp":5,"resisted":false,"skill":"attack","stat":"","state":"","target":null,"user":{"enemy":false,"id":"walker","index":0},"weak":false}
+{"t":"battle","tick":472,"text":"Walker: Tap!"}
+{"t":"shot","tick":491,"file":"practice_b002.png"}
+{"t":"battle_step","tick":503,"amount":8,"crit":false,"element":"","hp":8,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"pebble","index":0},"user":{"enemy":false,"id":"walker","index":0},"weak":false}
+{"t":"battle","tick":503,"text":"Pebble takes 8 damage!"}
+{"t":"shot","tick":511,"file":"practice_b003.png"}
+{"t":"shot","tick":531,"file":"practice_b004.png"}
+{"t":"ai_decision","tick":538,"decision":{"troop":"lesson","turn":1,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"pebble","enemy":true,"index":0},"rules":[{"index":0,"skill":"nudge","reason":"applicable","target":{"id":"walker","enemy":false,"index":0},"selection":"selected"}],"selected":0,"committed":true,"skill":"nudge","target":{"id":"walker","enemy":false,"index":0}}}
+{"t":"battle_step","tick":539,"amount":0,"crit":false,"element":"","hp":8,"kind":1,"mp":0,"resisted":false,"skill":"nudge","stat":"","state":"","target":null,"user":{"enemy":true,"id":"pebble","index":0},"weak":false}
+{"t":"battle","tick":539,"text":"Pebble: Nudge!"}
+{"t":"shot","tick":551,"file":"practice_b005.png"}
+{"t":"battle_step","tick":570,"amount":1,"crit":false,"element":"","hp":29,"kind":2,"mp":5,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"walker","index":0},"user":{"enemy":true,"id":"pebble","index":0},"weak":false}
+{"t":"battle","tick":570,"text":"Walker takes 1 damage!"}
+{"t":"shot","tick":571,"file":"practice_b006.png"}
+{"t":"shot","tick":591,"file":"practice_b007.png"}
+{"t":"state","tick":600,"gold":0,"location":"camp","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}}],"summary":{"actors":{"walker":{"back":false,"equip":{},"exp":0,"hp":30,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{},"flags":{"briefed":true},"gold":0,"items":{},"location":"camp","mapped":{},"party":["walker"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"steps":0,"vars":{}}}
+{"t":"ai_decision","tick":606,"decision":{"troop":"lesson","turn":2,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"walker","enemy":false,"index":0},"rules":null,"selected":-1,"committed":false,"skill":"attack"}}
+{"t":"ai_decision","tick":607,"decision":{"troop":"lesson","turn":2,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"walker","enemy":false,"index":0},"rules":null,"selected":-1,"committed":true,"skill":"attack"}}
+{"t":"battle_step","tick":608,"amount":0,"crit":false,"element":"","hp":29,"kind":1,"mp":5,"resisted":false,"skill":"attack","stat":"","state":"","target":null,"user":{"enemy":false,"id":"walker","index":0},"weak":false}
+{"t":"battle","tick":608,"text":"Walker: Tap!"}
+{"t":"shot","tick":611,"file":"practice_b008.png"}
+{"t":"shot","tick":631,"file":"practice_b009.png"}
+{"t":"battle_step","tick":639,"amount":8,"crit":false,"element":"","hp":0,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"pebble","index":0},"user":{"enemy":false,"id":"walker","index":0},"weak":false}
+{"t":"battle","tick":639,"text":"Pebble takes 8 damage!"}
+{"t":"battle_fx","tick":643,"boss":false,"slow":0,"stop":0,"what":"finish"}
+{"t":"shot","tick":651,"file":"practice_b010.png"}
+{"t":"shot","tick":671,"file":"practice_b011.png"}
+{"t":"battle_step","tick":674,"amount":0,"crit":false,"element":"","hp":0,"kind":7,"mp":0,"resisted":false,"skill":"","stat":"","state":"","target":{"enemy":true,"id":"pebble","index":0},"user":null,"weak":false}
+{"t":"battle","tick":674,"text":"Pebble finishes practice."}
+{"t":"shot","tick":691,"file":"practice_b012.png"}
+{"t":"shot","tick":711,"file":"practice_b013.png"}
+{"t":"battle_music","tick":715,"fanfare":true,"mood":""}
+{"t":"battle_end","tick":715,"messages":["Practice complete!","Received 3G."],"result":"won"}
+{"t":"battle_result","tick":715,"gains":{"LevelUps":null,"Exp":0,"Gold":3,"Items":null},"rand":"cGNnOldLefaeAeXagfgHYSzlwWg=","result":"won","summary":{"actors":{"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{},"flags":{"briefed":true},"gold":3,"items":{},"location":"camp","mapped":{},"party":["walker"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"steps":0,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
+{"t":"shot","tick":731,"file":"practice_b014.png"}
+{"t":"shot","tick":740,"file":"practice_001.png"}
+{"t":"input","tick":742,"press":["ok"]}
+{"t":"shot","tick":754,"file":"practice_b015.png"}
+{"t":"shot","tick":767,"file":"practice_002.png"}
+{"t":"input","tick":769,"press":["ok"]}
+{"t":"shot","tick":777,"file":"practice_b016.png"}
+{"t":"battle_close","tick":779,"auto":true,"ticks":387}
+{"t":"scene","tick":779,"location":"camp","stack":["field"]}
+{"t":"state","tick":779,"gold":3,"location":"camp","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}}],"summary":{"actors":{"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{},"flags":{"briefed":true},"gold":3,"items":{},"location":"camp","mapped":{},"party":["walker"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"steps":0,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
+{"t":"say","tick":780,"text":"Well done! You are ready to light the marker."}
+{"t":"stand","tick":786,"hides":false,"location":"camp","set":2,"since":782}
+{"t":"view","tick":791,"pictures":["camp.jpg"],"since":782}
+{"t":"shot","tick":800,"file":"practice_003.png"}
+{"t":"input","tick":802,"press":["ok"]}
+{"t":"menu","tick":805,"items":["Talk: Courier","Practice","Light the marker","Save journey","Rest","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":1}
+{"t":"stand","tick":809,"idle":true,"since":805}
+{"t":"autosave","tick":810,"at":"camp"}
+{"t":"view","tick":814,"pictures":["camp.jpg","courier.png","walker/normal.png"],"since":805}
+{"t":"shot","tick":867,"file":"f013.png"}
+{"t":"shot","tick":882,"file":"f014.png"}
+{"t":"input","tick":897,"press":["down"]}
+{"t":"menu","tick":897,"items":["Talk: Courier","Practice","Light the marker","Save journey","Rest","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":2}
+{"t":"input","tick":906,"press":["ok"]}
+{"t":"menu","tick":906,"items":null}
+{"t":"say","tick":907,"face":"walker/normal.png","text":"There. The marker should take the light now.","who":"Walker"}
+{"t":"stand","tick":912,"hides":false,"location":"camp","set":2,"since":907}
+{"t":"view","tick":919,"pictures":["camp.jpg","walker/normal.png"],"since":906}
+{"t":"shot","tick":956,"file":"f015.png"}
+{"t":"shot","tick":971,"file":"f016.png"}
+{"t":"input","tick":986,"press":["ok"]}
+{"t":"say","tick":986,"text":"The marker glows. A path to Lantern ridge is now open."}
+{"t":"view","tick":995,"pictures":["camp.jpg"],"since":986}
+{"t":"input","tick":1017,"press":["ok"]}
+{"t":"menu","tick":1017,"items":["Talk: Courier","Practice","Light the marker","Save journey","Rest","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":2}
+{"t":"menu","tick":1018,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":2}
+{"t":"stand","tick":1021,"idle":true,"since":1017}
+{"t":"view","tick":1026,"pictures":["camp.jpg","courier.png","walker/normal.png"],"since":1017}
+{"t":"input","tick":1040,"press":["down"]}
+{"t":"menu","tick":1040,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":3}
+{"t":"input","tick":1049,"press":["down"]}
+{"t":"menu","tick":1049,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":4}
+{"t":"input","tick":1058,"press":["ok"]}
+{"t":"menu","tick":1058,"items":null}
+{"t":"say","tick":1060,"text":"The ridge lantern answers your light. The trail is connected again!"}
+{"t":"stand","tick":1065,"hides":false,"location":"ridge","set":4,"since":1061}
+{"t":"view","tick":1070,"pictures":["ridge.jpg"],"since":1061}
+{"t":"shot","tick":1128,"file":"f017.png"}
+{"t":"shot","tick":1143,"file":"f018.png"}
+{"t":"shot","tick":1158,"file":"f019.png"}
+{"t":"input","tick":1173,"press":["ok"]}
+{"t":"say","tick":1173,"face":"sela/normal.png","text":"I keep the lanterns up here. Whoever lit the marker below is a friend of mine.","who":"Sela"}
+{"t":"view","tick":1182,"pictures":["ridge.jpg","sela/normal.png"],"since":1173}
+{"t":"state","tick":1200,"gold":7,"location":"ridge","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}}],"summary":{"actors":{"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"ridge","mapped":{},"party":["walker"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":1,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
+{"t":"input","tick":1212,"press":["ok"]}
+{"t":"say","tick":1212,"face":"sela/normal.png","text":"Let me walk with you. I can mend a scrape or two.","who":"Sela"}
+{"t":"input","tick":1242,"press":["ok"]}
+{"t":"say","tick":1242,"text":"Sela joins the party!"}
+{"t":"view","tick":1251,"pictures":["ridge.jpg"],"since":1242}
+{"t":"input","tick":1262,"press":["ok"]}
+{"t":"say","tick":1262,"text":"Journey complete. Save here, or return to explore the observation room."}
+{"t":"input","tick":1299,"press":["ok"]}
+{"t":"menu","tick":1299,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":0}
+{"t":"autosave","tick":1300,"at":"ridge"}
+{"t":"menu","tick":1300,"items":["Save journey","→ Return to camp","Menu X"],"sel":0}
+{"t":"stand","tick":1303,"idle":true,"since":1299}
+{"t":"view","tick":1308,"pictures":["ridge.jpg","sela/normal.png","walker/normal.png"],"since":1299}
+{"t":"input","tick":1332,"press":["ok"]}
+{"t":"menu","tick":1332,"items":null}
+{"t":"request","tick":1333,"what":"save"}
+{"t":"scene","tick":1333,"location":"ridge","stack":["field","saveMenu"]}
+{"t":"state","tick":1333,"gold":7,"location":"ridge","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}}],"summary":{"actors":{"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"ridge","mapped":{},"party":["walker","sela"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":1,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
+{"t":"menu","tick":1333,"items":["1: ---- Empty ----","2: ---- Empty ----","3: ---- Empty ----"],"sel":0}
+{"t":"view","tick":1342,"pictures":["ridge.jpg"],"since":1333}
+{"t":"shot","tick":1362,"file":"f020.png"}
+{"t":"shot","tick":1377,"file":"f021.png"}
+{"t":"input","tick":1392,"press":["ok"]}
+{"t":"menu","tick":1392,"items":null}
+{"t":"shot","tick":1462,"file":"f022.png"}
+{"t":"scene","tick":1472,"location":"ridge","stack":["field"]}
+{"t":"state","tick":1472,"gold":7,"location":"ridge","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}}],"summary":{"actors":{"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"ridge","mapped":{},"party":["walker","sela"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":1,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
+{"t":"menu","tick":1473,"items":["Save journey","→ Return to camp","Menu X"],"sel":0}
+{"t":"shot","tick":1477,"file":"f023.png"}
+{"t":"view","tick":1485,"pictures":["ridge.jpg","sela/normal.png","walker/normal.png"],"since":1472}
+{"t":"input","tick":1492,"press":["menu"]}
+{"t":"scene","tick":1492,"location":"ridge","stack":["field","menu"]}
+{"t":"state","tick":1492,"gold":7,"location":"ridge","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}}],"summary":{"actors":{"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"ridge","mapped":{},"party":["walker","sela"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":1,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
+{"t":"menu","tick":1492,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":0}
+{"t":"input","tick":1522,"press":["down"]}
+{"t":"menu","tick":1522,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":1}
+{"t":"input","tick":1531,"press":["down"]}
+{"t":"menu","tick":1531,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":2}
+{"t":"input","tick":1540,"press":["down"]}
+{"t":"menu","tick":1540,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":3}
+{"t":"input","tick":1549,"press":["down"]}
+{"t":"menu","tick":1549,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":4}
+{"t":"input","tick":1558,"press":["down"]}
+{"t":"menu","tick":1558,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":5}
+{"t":"input","tick":1567,"press":["down"]}
+{"t":"menu","tick":1567,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":6}
+{"t":"input","tick":1576,"press":["down"]}
+{"t":"menu","tick":1576,"items":["Status","Items","Skills","Equip","Save","Load","Settings","Title","Close"],"sel":7}
+{"t":"input","tick":1585,"press":["ok"]}
+{"t":"scene","tick":1585,"location":"ridge","stack":["field","menu","confirm"]}
+{"t":"state","tick":1585,"gold":7,"location":"ridge","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}}],"summary":{"actors":{"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"ridge","mapped":{},"party":["walker","sela"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":1,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
+{"t":"view","tick":1595,"pictures":["ridge.jpg"],"since":1585}
+{"t":"input","tick":1615,"press":["ok"]}
+{"t":"scene","tick":1615,"stack":["title"]}
+{"t":"menu","tick":1615,"items":["New journey","Continue","Gallery (x)","Settings","Quit"],"sel":1}
+{"t":"view","tick":1624,"pictures":["courier.png","title.jpg","walker/normal.png"],"since":1615}
+{"t":"shot","tick":1685,"file":"f024.png"}
+{"t":"shot","tick":1700,"file":"f025.png"}
+{"t":"shot","tick":1715,"file":"f026.png"}
+{"t":"input","tick":1730,"press":["ok"]}
+{"t":"scene","tick":1730,"stack":["title","saveMenu"]}
+{"t":"menu","tick":1730,"items":["1: Walker  Lv.1  Lantern ridge  0:00:21  10/20 19:58","2: ---- Empty ---- (x)","3: ---- Empty ---- (x)","Auto: Walker  Lv.1  Lantern ridge  0:00:19  10/20 19:58"],"sel":0}
+{"t":"input","tick":1770,"press":["ok"]}
+{"t":"scene","tick":1770,"location":"ridge","stack":["field"]}
+{"t":"state","tick":1770,"gold":7,"location":"ridge","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}}],"summary":{"actors":{"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"ridge","mapped":{},"party":["walker","sela"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":1,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
+{"t":"menu","tick":1770,"items":null}
+{"t":"menu","tick":1771,"items":["Save journey","→ Return to camp","Menu X"],"sel":0}
+{"t":"view","tick":1779,"pictures":["ridge.jpg","sela/normal.png","walker/normal.png"],"since":1770}
+{"t":"state","tick":1800,"gold":7,"location":"ridge","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}}],"summary":{"actors":{"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"ridge","mapped":{},"party":["walker","sela"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":1,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
+{"t":"shot","tick":1860,"file":"f027.png"}
+{"t":"shot","tick":1875,"file":"f028.png"}
+{"t":"input","tick":1890,"press":["down"]}
+{"t":"menu","tick":1890,"items":["Save journey","→ Return to camp","Menu X"],"sel":1}
+{"t":"input","tick":1899,"press":["ok"]}
+{"t":"menu","tick":1899,"items":null}
+{"t":"autosave","tick":1900,"at":"camp"}
+{"t":"menu","tick":1900,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":0}
+{"t":"view","tick":1909,"pictures":["camp.jpg","courier.png","sela/normal.png","walker/normal.png"],"since":1900}
+{"t":"input","tick":1989,"press":["down"]}
+{"t":"menu","tick":1989,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":1}
+{"t":"input","tick":1998,"press":["down"]}
+{"t":"menu","tick":1998,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":2}
+{"t":"input","tick":2007,"press":["down"]}
+{"t":"menu","tick":2007,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":3}
+{"t":"input","tick":2016,"press":["down"]}
+{"t":"menu","tick":2016,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":4}
+{"t":"input","tick":2025,"press":["down"]}
+{"t":"menu","tick":2025,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":5}
+{"t":"input","tick":2034,"press":["down"]}
+{"t":"menu","tick":2034,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":6}
+{"t":"input","tick":2043,"press":["ok"]}
+{"t":"menu","tick":2043,"items":null}
+{"t":"menu","tick":2044,"items":["Talk: Innkeeper","Talk: Bram","Rest at the inn","Save journey","→ Return to camp","Menu X"],"sel":0}
+{"t":"autosave","tick":2050,"at":"town"}
+{"t":"view","tick":2054,"pictures":["bram/normal.png","innkeeper.png","sela/normal.png","town.jpg","walker/normal.png"],"since":2044}
+{"t":"shot","tick":2103,"file":"s-village.png"}
+{"t":"input","tick":2105,"press":["ok"]}
+{"t":"say","tick":2106,"face":"innkeeper.png","text":"Welcome to Lamplight. The beds are warm and the soup is hot.","who":"Innkeeper"}
+{"t":"menu","tick":2108,"items":null}
+{"t":"stand","tick":2112,"hides":false,"location":"town","set":8,"since":2108}
+{"t":"view","tick":2117,"pictures":["innkeeper.png","town.jpg"],"since":2108}
+{"t":"input","tick":2150,"press":["ok"]}
+{"t":"say","tick":2150,"face":"innkeeper.png","text":"Rest here whenever the trail wears you down.","who":"Innkeeper"}
+{"t":"input","tick":2178,"press":["ok"]}
+{"t":"menu","tick":2178,"items":["Talk: Innkeeper","Talk: Bram","Rest at the inn","Save journey","→ Return to camp","Menu X"],"sel":0}
+{"t":"stand","tick":2182,"idle":true,"since":2178}
+{"t":"view","tick":2187,"pictures":["bram/normal.png","innkeeper.png","sela/normal.png","town.jpg","walker/normal.png"],"since":2178}
+{"t":"input","tick":2201,"press":["down"]}
+{"t":"menu","tick":2201,"items":["Talk: Innkeeper","Talk: Bram","Rest at the inn","Save journey","→ Return to camp","Menu X"],"sel":1}
+{"t":"input","tick":2210,"press":["ok"]}
+{"t":"menu","tick":2210,"items":null}
+{"t":"say","tick":2211,"face":"bram/normal.png","text":"You walk the old trail? The halls past the camp have sentries in them.","who":"Bram"}
+{"t":"stand","tick":2215,"hides":false,"location":"town","set":10,"since":2211}
+{"t":"view","tick":2220,"pictures":["bram/normal.png","town.jpg"],"since":2211}
+{"t":"input","tick":2255,"press":["ok"]}
+{"t":"say","tick":2255,"face":"bram/normal.png","text":"My shield could use the exercise. I will come along.","who":"Bram"}
+{"t":"input","tick":2286,"press":["ok"]}
+{"t":"say","tick":2286,"text":"Bram joins the party!"}
+{"t":"view","tick":2295,"pictures":["town.jpg"],"since":2286}
+{"t":"input","tick":2306,"press":["ok"]}
+{"t":"menu","tick":2306,"items":["Talk: Innkeeper","Talk: Bram","Rest at the inn","Save journey","→ Return to camp","Menu X"],"sel":1}
+{"t":"menu","tick":2307,"items":["Talk: Innkeeper","Rest at the inn","Save journey","→ Return to camp","Menu X"],"sel":1}
+{"t":"stand","tick":2310,"idle":true,"since":2306}
+{"t":"view","tick":2315,"pictures":["bram/normal.png","innkeeper.png","sela/normal.png","town.jpg","walker/normal.png"],"since":2306}
+{"t":"input","tick":2329,"press":["down"]}
+{"t":"menu","tick":2329,"items":["Talk: Innkeeper","Rest at the inn","Save journey","→ Return to camp","Menu X"],"sel":2}
+{"t":"input","tick":2338,"press":["down"]}
+{"t":"menu","tick":2338,"items":["Talk: Innkeeper","Rest at the inn","Save journey","→ Return to camp","Menu X"],"sel":3}
+{"t":"input","tick":2347,"press":["ok"]}
+{"t":"menu","tick":2347,"items":null}
+{"t":"menu","tick":2348,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":0}
+{"t":"autosave","tick":2350,"at":"camp"}
+{"t":"view","tick":2357,"pictures":["bram/normal.png","camp.jpg","courier.png","sela/normal.png","walker/normal.png"],"since":2348}
+{"t":"state","tick":2400,"gold":7,"location":"camp","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}},{"back":false,"hp":40,"id":"bram","lv":1,"mhp":40,"mmp":4,"mp":4,"name":"Bram","states":{}}],"summary":{"actors":{"bram":{"back":false,"equip":{},"exp":0,"hp":40,"id":"bram","learnt":null,"level":1,"mp":4,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"bram_joined":true,"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"camp","mapped":{},"party":["walker","sela","bram"],"pos":{"X":0,"Y":0,"facing":0,"in":""},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":4,"vars":{"kill_pebble":1,"last_kill_pebble":1}}}
+{"t":"input","tick":2417,"press":["down"]}
+{"t":"menu","tick":2417,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":1}
+{"t":"input","tick":2426,"press":["down"]}
+{"t":"menu","tick":2426,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":2}
+{"t":"input","tick":2435,"press":["down"]}
+{"t":"menu","tick":2435,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":3}
+{"t":"input","tick":2444,"press":["down"]}
+{"t":"menu","tick":2444,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":4}
+{"t":"input","tick":2453,"press":["down"]}
+{"t":"menu","tick":2453,"items":["Talk: Courier","Practice","Save journey","Rest","→ Walk to the ridge","→ Explore chamber","→ Visit the village","→ Enter the grotto","Menu X"],"sel":5}
+{"t":"input","tick":2462,"press":["ok"]}
+{"t":"scene","tick":2463,"location":"chamber","stack":["dungeon"]}
+{"t":"state","tick":2463,"facing":"east","gold":7,"location":"chamber","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}},{"back":false,"hp":40,"id":"bram","lv":1,"mhp":40,"mmp":4,"mp":4,"name":"Bram","states":{}}],"pos":[2,1],"summary":{"actors":{"bram":{"back":false,"equip":{},"exp":0,"hp":40,"id":"bram","learnt":null,"level":1,"mp":4,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true},"flags":{"bram_joined":true,"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"chamber","mapped":{"chamber":"AAEBAQAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["walker","sela","bram"],"pos":{"X":2,"Y":1,"facing":1,"in":"chamber"},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":5,"vars":{"explored":1,"kill_pebble":1,"last_kill_pebble":1}}}
+{"t":"menu","tick":2463,"items":null}
+{"t":"autosave","tick":2470,"at":"chamber"}
+{"t":"view","tick":2474,"pictures":["bram/normal.png","door.jpg","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":2463}
+{"t":"shot","tick":2532,"file":"f029.png"}
+{"t":"shot","tick":2547,"file":"f030.png"}
+{"t":"input","tick":2562,"press":["up"]}
+{"t":"shot","tick":2586,"file":"f031.png"}
+{"t":"input","tick":2597,"held":["up"],"press":["up"]}
+{"t":"view","tick":2606,"pictures":["bram/normal.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":2597}
+{"t":"input","tick":2608,"held":["up"],"press":["up"]}
+{"t":"view","tick":2617,"pictures":["bram/normal.png","floor.jpg","pebble.png","sela/normal.png","walker/normal.png","wall.jpg"],"since":2608}
+{"t":"input","tick":2619,"held":["right"],"press":["right"]}
+{"t":"view","tick":2628,"pictures":["bram/normal.png","door.jpg","floor.jpg","pebble.png","sela/normal.png","walker/normal.png","wall.jpg"],"since":2619}
+{"t":"input","tick":2630,"held":["up"],"press":["up"]}
+{"t":"view","tick":2639,"pictures":["bram/normal.png","door.jpg","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":2630}
+{"t":"input","tick":2641,"held":["up"],"press":["up"]}
+{"t":"input","tick":2652,"held":["up"],"press":["up"]}
+{"t":"input","tick":2663,"held":["up"],"press":["up"]}
+{"t":"input","tick":2674,"held":["left"],"press":["left"]}
+{"t":"view","tick":2683,"pictures":["bram/normal.png","door.jpg","floor.jpg","pebble.png","sela/normal.png","walker/normal.png","wall.jpg"],"since":2674}
+{"t":"input","tick":2685,"held":["up"],"press":["up"]}
+{"t":"view","tick":2694,"pictures":["bram/normal.png","floor.jpg","pebble.png","sela/normal.png","walker/normal.png","wall.jpg"],"since":2685}
+{"t":"input","tick":2696,"held":["up"],"press":["up"]}
+{"t":"view","tick":2705,"pictures":["bram/normal.png","chest.png","floor.jpg","gate.jpg","lantern.png","pebble.png","sela/normal.png","walker/normal.png","wall.jpg"],"since":2696}
+{"t":"input","tick":2707,"held":["up"],"press":["up"]}
+{"t":"shot","tick":2740,"file":"s-dungeon.png"}
+{"t":"shot","tick":2742,"file":"f032.png"}
+{"t":"shot","tick":2757,"file":"f033.png"}
+{"t":"input","tick":2772,"press":["up"]}
+{"t":"request","tick":2773,"troop":"sentries","what":"battle"}
+{"t":"battle_capture","tick":2773,"capture":{"version":1,"tick":2773,"troop":"sentries","save":"ewogICJmb3JtYXRfdmVyc2lvbiI6IDEsCiAgImdhbWVfaWQiOiAid2F5ZmluZGVyLWRlbW8iLAogICJkYXRhX3ZlcnNpb24iOiAwLAogICJzdGF0ZSI6IHsKICAgICJhY3RvcnMiOiB7CiAgICAgICJicmFtIjogewogICAgICAgICJpZCI6ICJicmFtIiwKICAgICAgICAibGV2ZWwiOiAxLAogICAgICAgICJleHAiOiAwLAogICAgICAgICJocCI6IDQwLAogICAgICAgICJtcCI6IDQsCiAgICAgICAgImVxdWlwIjoge30sCiAgICAgICAgImxlYXJudCI6IG51bGwsCiAgICAgICAgInN0YXRlcyI6IHt9LAogICAgICAgICJzcCI6IDAsCiAgICAgICAgInRyZWUiOiB7fSwKICAgICAgICAiYmFjayI6IGZhbHNlLAogICAgICAgICJ0YWN0aWNzIjogewogICAgICAgICAgInZlcnNpb24iOiAxLAogICAgICAgICAgIm1vZGUiOiAiYXV0byIsCiAgICAgICAgICAicm93cyI6IG51bGwKICAgICAgICB9CiAgICAgIH0sCiAgICAgICJzZWxhIjogewogICAgICAgICJpZCI6ICJzZWxhIiwKICAgICAgICAibGV2ZWwiOiAxLAogICAgICAgICJleHAiOiAwLAogICAgICAgICJocCI6IDI2LAogICAgICAgICJtcCI6IDEyLAogICAgICAgICJlcXVpcCI6IHt9LAogICAgICAgICJsZWFybnQiOiBudWxsLAogICAgICAgICJzdGF0ZXMiOiB7fSwKICAgICAgICAic3AiOiAwLAogICAgICAgICJ0cmVlIjoge30sCiAgICAgICAgImJhY2siOiB0cnVlLAogICAgICAgICJ0YWN0aWNzIjogewogICAgICAgICAgInZlcnNpb24iOiAxLAogICAgICAgICAgIm1vZGUiOiAiYXV0byIsCiAgICAgICAgICAicm93cyI6IG51bGwKICAgICAgICB9CiAgICAgIH0sCiAgICAgICJ3YWxrZXIiOiB7CiAgICAgICAgImlkIjogIndhbGtlciIsCiAgICAgICAgImxldmVsIjogMSwKICAgICAgICAiZXhwIjogMCwKICAgICAgICAiaHAiOiAyOSwKICAgICAgICAibXAiOiA1LAogICAgICAgICJlcXVpcCI6IHt9LAogICAgICAgICJsZWFybnQiOiBudWxsLAogICAgICAgICJzdGF0ZXMiOiB7fSwKICAgICAgICAic3AiOiAwLAogICAgICAgICJ0cmVlIjoge30sCiAgICAgICAgImJhY2siOiBmYWxzZSwKICAgICAgICAidGFjdGljcyI6IHsKICAgICAgICAgICJ2ZXJzaW9uIjogMSwKICAgICAgICAgICJtb2RlIjogImF1dG8iLAogICAgICAgICAgInJvd3MiOiBudWxsCiAgICAgICAgfQogICAgICB9CiAgICB9LAogICAgInBhcnR5IjogWwogICAgICAid2Fsa2VyIiwKICAgICAgInNlbGEiLAogICAgICAiYnJhbSIKICAgIF0sCiAgICAiaXRlbXMiOiB7fSwKICAgICJnb2xkIjogNywKICAgICJmbGFncyI6IHsKICAgICAgImJyYW1fam9pbmVkIjogdHJ1ZSwKICAgICAgImJyaWVmZWQiOiB0cnVlLAogICAgICAiY29tcGxldGUiOiB0cnVlLAogICAgICAibWFya2VyX2xpdCI6IHRydWUsCiAgICAgICJ0cmFpbmVkIjogdHJ1ZQogICAgfSwKICAgICJ2YXJzIjogewogICAgICAiZXhwbG9yZWQiOiAxOCwKICAgICAgImtpbGxfcGViYmxlIjogMSwKICAgICAgImxhc3Rfa2lsbF9wZWJibGUiOiAxCiAgICB9LAogICAgImxvY2F0aW9uIjogImNoYW1iZXIiLAogICAgInN0ZXBzIjogMTYsCiAgICAiZnJhbWVzIjogMjI3MywKICAgICJkb25lIjogewogICAgICAiYXJyaXZhbCI6IHRydWUsCiAgICAgICJjaGFtYmVyQDEwLDUiOiB0cnVlCiAgICB9LAogICAgInJhbiI6IHsKICAgICAgImFycml2YWwiOiBbCiAgICAgICAgMSwKICAgICAgICAyCiAgICAgIF0sCiAgICAgICJncmVldGluZyI6IFsKICAgICAgICAxLAogICAgICAgIDEKICAgICAgXQogICAgfSwKICAgICJwb3MiOiB7CiAgICAgICJpbiI6ICJjaGFtYmVyIiwKICAgICAgIlgiOiA5LAogICAgICAiWSI6IDUsCiAgICAgICJmYWNpbmciOiAxCiAgICB9LAogICAgIm1hcHBlZCI6IHsKICAgICAgImNoYW1iZXIiOiAiQUFFQkFRRUJBUUFBQUFBQUFBQUFBQUFCQVFFQkFRQUFBQUFBQUFBQUFBRUJBUUVCQVFBQUFBQUFBQUFBQUFBQUFBQUJBUUFBQUFBQUFBQUFBQUFBQUFFQkFRRUJBQUVBQUFBQUFBQUFBQUVCQVFFQkFRRUFBQUFBQUFBQUFBRUFBUUVCQUFFQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSIKICAgIH0KICB9Cn0=","rand":"cGNnOgAAAAAAAAAHAAAAAAAAADI=","fighters":null,"calm":false,"auto":false,"auto_read":false,"setup":{"config":{"text_speed":2,"auto_wait":2,"window":9,"bgm":7,"se":7,"fullscreen":false,"battle_speed":0,"skip_all":false,"manual_sp":false},"read":{"10159392634904574088":true,"10700469337319404540":true,"11414008579811395249":true,"11557784210628857530":true,"13318217276270531740":true,"1331835760144682496":true,"17124106859312233389":true,"2691819585462509027":true,"4824974099444316624":true,"5073362913915894809":true,"5381842281772817088":true,"619487572792316442":true,"8749358213280194533":true,"8803364950620362473":true,"9632500898926737426":true},"unlocked":{},"saves":null},"fingerprint":"a05f0b39b2ff79fc75a0e7fade1732a0e1b69d32c9ed1c569fae986c980c8059","engine":"gozen-play-v1","fade":0},"number":2}
+{"t":"scene","tick":2773,"location":"chamber","stack":["dungeon","battle"]}
+{"t":"state","tick":2773,"facing":"east","gold":7,"location":"chamber","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}},{"back":false,"hp":40,"id":"bram","lv":1,"mhp":40,"mmp":4,"mp":4,"name":"Bram","states":{}}],"pos":[9,5],"summary":{"actors":{"bram":{"back":false,"equip":{},"exp":0,"hp":40,"id":"bram","learnt":null,"level":1,"mp":4,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true,"chamber@10,5":true},"flags":{"bram_joined":true,"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"chamber","mapped":{"chamber":"AAEBAQEBAQAAAAAAAAAAAAABAQEBAQAAAAAAAAAAAAEBAQEBAQAAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAAAAAEBAQEBAAEAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAEAAQEBAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["walker","sela","bram"],"pos":{"X":9,"Y":5,"facing":1,"in":"chamber"},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":16,"vars":{"explored":18,"kill_pebble":1,"last_kill_pebble":1}}}
+{"t":"view","tick":2782,"pictures":["bram/normal.png","grotto.jpg","pebble.png","sela/normal.png","walker/normal.png"],"since":2773}
+{"t":"battle_step","tick":2800,"amount":0,"crit":false,"element":"","hp":0,"kind":0,"mp":0,"resisted":false,"skill":"","stat":"","state":"","target":null,"user":null,"weak":false}
+{"t":"battle","tick":2800,"text":"Pebbles roll up, ready to practice!"}
+{"t":"shot","tick":2811,"file":"sentry_b001.png"}
+{"t":"shot","tick":2831,"file":"sentry_b002.png"}
+{"t":"act","tick":2836,"name":"battle_auto"}
+{"t":"ai_decision","tick":2836,"decision":{"troop":"sentries","turn":1,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"walker","enemy":false,"index":0},"rules":null,"selected":-1,"committed":false,"skill":"attack"}}
+{"t":"ai_decision","tick":2836,"decision":{"troop":"sentries","turn":1,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"sela","enemy":false,"index":1},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"attack","reason":"applicable","target":{"id":"pebble","enemy":true,"index":0},"selection":"selected"}],"selected":1,"committed":false,"skill":"attack","target":{"id":"pebble","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":2836,"decision":{"troop":"sentries","turn":1,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"bram","enemy":false,"index":2},"rules":[{"index":0,"skill":"shield_rush","reason":"applicable","selection":"selected"},{"index":1,"skill":"attack","reason":"applicable","target":{"id":"pebble","enemy":true,"index":1},"selection":"lower_priority"}],"selected":0,"committed":false,"skill":"shield_rush"}}
+{"t":"ai_decision","tick":2836,"decision":{"troop":"sentries","turn":1,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"walker","enemy":false,"index":0},"rules":null,"selected":-1,"committed":true,"skill":"attack"}}
+{"t":"shot","tick":2836,"file":"sentry_b003.png"}
+{"t":"battle_step","tick":2837,"amount":0,"crit":false,"element":"","hp":29,"kind":1,"mp":5,"resisted":false,"skill":"attack","stat":"","state":"","target":null,"user":{"enemy":false,"id":"walker","index":0},"weak":false}
+{"t":"battle","tick":2837,"text":"Walker: Tap!"}
+{"t":"shot","tick":2852,"file":"sentry_b004.png"}
+{"t":"battle_step","tick":2868,"amount":8,"crit":false,"element":"","hp":8,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"pebble","index":1},"user":{"enemy":false,"id":"walker","index":0},"weak":false}
+{"t":"battle","tick":2868,"text":"PebbleB takes 8 damage!"}
+{"t":"shot","tick":2872,"file":"sentry_b005.png"}
+{"t":"shot","tick":2892,"file":"sentry_b006.png"}
+{"t":"ai_decision","tick":2903,"decision":{"troop":"sentries","turn":1,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"sela","enemy":false,"index":1},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"attack","reason":"applicable","target":{"id":"pebble","enemy":true,"index":0},"selection":"selected"}],"selected":1,"committed":true,"skill":"attack","target":{"id":"pebble","enemy":true,"index":0}}}
+{"t":"battle_step","tick":2904,"amount":0,"crit":false,"element":"","hp":26,"kind":1,"mp":12,"resisted":false,"skill":"attack","stat":"","state":"","target":null,"user":{"enemy":false,"id":"sela","index":1},"weak":false}
+{"t":"battle","tick":2904,"text":"Sela: Tap!"}
+{"t":"shot","tick":2912,"file":"sentry_b007.png"}
+{"t":"shot","tick":2932,"file":"sentry_b008.png"}
+{"t":"battle_step","tick":2935,"amount":5,"crit":false,"element":"","hp":11,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"pebble","index":0},"user":{"enemy":false,"id":"sela","index":1},"weak":false}
+{"t":"battle","tick":2935,"text":"PebbleA takes 5 damage!"}
+{"t":"shot","tick":2952,"file":"sentry_b009.png"}
+{"t":"ai_decision","tick":2970,"decision":{"troop":"sentries","turn":1,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"bram","enemy":false,"index":2},"rules":[{"index":0,"skill":"shield_rush","reason":"applicable","selection":"selected"},{"index":1,"skill":"attack","reason":"applicable","target":{"id":"pebble","enemy":true,"index":1},"selection":"lower_priority"}],"selected":0,"committed":true,"skill":"shield_rush"}}
+{"t":"battle_step","tick":2971,"amount":0,"crit":false,"element":"","hp":40,"kind":1,"mp":2,"resisted":false,"skill":"shield_rush","stat":"","state":"","target":null,"user":{"enemy":false,"id":"bram","index":2},"weak":false}
+{"t":"battle","tick":2971,"text":"Bram: Shield Rush!"}
+{"t":"battle","tick":2971,"cutin":"Shield Rush"}
+{"t":"shot","tick":2972,"file":"sentry_b010.png"}
+{"t":"shot","tick":2992,"file":"sentry_b011.png"}
+{"t":"state","tick":3000,"facing":"east","gold":7,"location":"chamber","party":[{"back":false,"hp":29,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}},{"back":false,"hp":40,"id":"bram","lv":1,"mhp":40,"mmp":4,"mp":2,"name":"Bram","states":{}}],"pos":[9,5],"summary":{"actors":{"bram":{"back":false,"equip":{},"exp":0,"hp":40,"id":"bram","learnt":null,"level":1,"mp":4,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":29,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true,"chamber@10,5":true},"flags":{"bram_joined":true,"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":7,"items":{},"location":"chamber","mapped":{"chamber":"AAEBAQEBAQAAAAAAAAAAAAABAQEBAQAAAAAAAAAAAAEBAQEBAQAAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAAAAAEBAQEBAAEAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAEAAQEBAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["walker","sela","bram"],"pos":{"X":9,"Y":5,"facing":1,"in":"chamber"},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":16,"vars":{"explored":18,"kill_pebble":1,"last_kill_pebble":1}}}
+{"t":"shot","tick":3012,"file":"sentry_b012.png"}
+{"t":"shot","tick":3032,"file":"sentry_b013.png"}
+{"t":"shot","tick":3052,"file":"sentry_b014.png"}
+{"t":"battle_step","tick":3061,"amount":9,"crit":false,"element":"","hp":2,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"pebble","index":0},"user":{"enemy":false,"id":"bram","index":2},"weak":false}
+{"t":"battle","tick":3061,"text":"PebbleA takes 9 damage!"}
+{"t":"shot","tick":3072,"file":"sentry_b015.png"}
+{"t":"shot","tick":3092,"file":"sentry_b016.png"}
+{"t":"battle_step","tick":3096,"amount":9,"crit":false,"element":"","hp":0,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"pebble","index":1},"user":{"enemy":false,"id":"bram","index":2},"weak":false}
+{"t":"battle","tick":3096,"text":"PebbleB takes 9 damage!"}
+{"t":"shot","tick":3112,"file":"sentry_b017.png"}
+{"t":"battle_step","tick":3131,"amount":0,"crit":false,"element":"","hp":0,"kind":7,"mp":0,"resisted":false,"skill":"","stat":"","state":"","target":{"enemy":true,"id":"pebble","index":1},"user":null,"weak":false}
+{"t":"battle","tick":3131,"text":"PebbleB finishes practice."}
+{"t":"shot","tick":3132,"file":"sentry_b018.png"}
+{"t":"shot","tick":3152,"file":"sentry_b019.png"}
+{"t":"ai_decision","tick":3172,"decision":{"troop":"sentries","turn":1,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"pebble","enemy":true,"index":0},"rules":[{"index":0,"skill":"nudge","reason":"applicable","target":{"id":"walker","enemy":false,"index":0},"selection":"selected"}],"selected":0,"committed":true,"skill":"nudge","target":{"id":"walker","enemy":false,"index":0}}}
+{"t":"shot","tick":3172,"file":"sentry_b020.png"}
+{"t":"battle_step","tick":3173,"amount":0,"crit":false,"element":"","hp":2,"kind":1,"mp":0,"resisted":false,"skill":"nudge","stat":"","state":"","target":null,"user":{"enemy":true,"id":"pebble","index":0},"weak":false}
+{"t":"battle","tick":3173,"text":"PebbleA: Nudge!"}
+{"t":"shot","tick":3192,"file":"sentry_b021.png"}
+{"t":"battle_step","tick":3204,"amount":1,"crit":false,"element":"","hp":28,"kind":2,"mp":5,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":false,"id":"walker","index":0},"user":{"enemy":true,"id":"pebble","index":0},"weak":false}
+{"t":"battle","tick":3204,"text":"Walker takes 1 damage!"}
+{"t":"shot","tick":3212,"file":"sentry_b022.png"}
+{"t":"shot","tick":3232,"file":"sentry_b023.png"}
+{"t":"ai_decision","tick":3240,"decision":{"troop":"sentries","turn":2,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"walker","enemy":false,"index":0},"rules":null,"selected":-1,"committed":false,"skill":"attack"}}
+{"t":"ai_decision","tick":3240,"decision":{"troop":"sentries","turn":2,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"sela","enemy":false,"index":1},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"attack","reason":"applicable","target":{"id":"pebble","enemy":true,"index":0},"selection":"selected"}],"selected":1,"committed":false,"skill":"attack","target":{"id":"pebble","enemy":true,"index":0}}}
+{"t":"ai_decision","tick":3240,"decision":{"troop":"sentries","turn":2,"phase":"act","timing":"turn_start","mode":"priority_weight","user":{"id":"bram","enemy":false,"index":2},"rules":[{"index":0,"skill":"shield_rush","reason":"applicable","selection":"selected"},{"index":1,"skill":"attack","reason":"applicable","target":{"id":"pebble","enemy":true,"index":0},"selection":"lower_priority"}],"selected":0,"committed":false,"skill":"shield_rush"}}
+{"t":"ai_decision","tick":3241,"decision":{"troop":"sentries","turn":2,"phase":"act","timing":"action","mode":"priority_weight","user":{"id":"sela","enemy":false,"index":1},"rules":[{"index":0,"skill":"mend","reason":"condition_false"},{"index":1,"skill":"attack","reason":"applicable","target":{"id":"pebble","enemy":true,"index":0},"selection":"selected"}],"selected":1,"committed":true,"skill":"attack","target":{"id":"pebble","enemy":true,"index":0}}}
+{"t":"battle_step","tick":3242,"amount":0,"crit":false,"element":"","hp":26,"kind":1,"mp":12,"resisted":false,"skill":"attack","stat":"","state":"","target":null,"user":{"enemy":false,"id":"sela","index":1},"weak":false}
+{"t":"battle","tick":3242,"text":"Sela: Tap!"}
+{"t":"shot","tick":3252,"file":"sentry_b024.png"}
+{"t":"shot","tick":3272,"file":"sentry_b025.png"}
+{"t":"battle_step","tick":3273,"amount":5,"crit":false,"element":"","hp":0,"kind":2,"mp":0,"resisted":false,"skill":"","stat":"hp","state":"","target":{"enemy":true,"id":"pebble","index":0},"user":{"enemy":false,"id":"sela","index":1},"weak":false}
+{"t":"battle","tick":3273,"text":"PebbleA takes 5 damage!"}
+{"t":"battle_fx","tick":3277,"boss":false,"slow":0,"stop":0,"what":"finish"}
+{"t":"shot","tick":3292,"file":"sentry_b026.png"}
+{"t":"battle_step","tick":3308,"amount":0,"crit":false,"element":"","hp":0,"kind":7,"mp":0,"resisted":false,"skill":"","stat":"","state":"","target":{"enemy":true,"id":"pebble","index":0},"user":null,"weak":false}
+{"t":"battle","tick":3308,"text":"PebbleA finishes practice."}
+{"t":"shot","tick":3312,"file":"sentry_b027.png"}
+{"t":"shot","tick":3332,"file":"sentry_b028.png"}
+{"t":"battle_music","tick":3349,"fanfare":true,"mood":""}
+{"t":"battle_end","tick":3349,"messages":["Practice complete!","Received 6G."],"result":"won"}
+{"t":"battle_result","tick":3349,"gains":{"LevelUps":null,"Exp":0,"Gold":6,"Items":null},"rand":"cGNnOhqp1bR3n46wCSwNv9mXQoA=","result":"won","summary":{"actors":{"bram":{"back":false,"equip":{},"exp":0,"hp":40,"id":"bram","learnt":null,"level":1,"mp":2,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":28,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true,"chamber@10,5":true},"flags":{"bram_joined":true,"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":13,"items":{},"location":"chamber","mapped":{"chamber":"AAEBAQEBAQAAAAAAAAAAAAABAQEBAQAAAAAAAAAAAAEBAQEBAQAAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAAAAAEBAQEBAAEAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAEAAQEBAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["walker","sela","bram"],"pos":{"X":9,"Y":5,"facing":1,"in":"chamber"},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":16,"vars":{"explored":18,"kill_pebble":3,"last_kill_pebble":2}}}
+{"t":"shot","tick":3352,"file":"sentry_b029.png"}
+{"t":"shot","tick":3372,"file":"sentry_b030.png"}
+{"t":"shot","tick":3374,"file":"sentry_001.png"}
+{"t":"input","tick":3376,"press":["ok"]}
+{"t":"shot","tick":3395,"file":"sentry_b031.png"}
+{"t":"shot","tick":3401,"file":"sentry_002.png"}
+{"t":"input","tick":3403,"press":["ok"]}
+{"t":"battle_close","tick":3413,"auto":true,"ticks":640}
+{"t":"scene","tick":3413,"location":"chamber","stack":["dungeon"]}
+{"t":"state","tick":3413,"facing":"east","gold":13,"location":"chamber","party":[{"back":false,"hp":28,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}},{"back":false,"hp":40,"id":"bram","lv":1,"mhp":40,"mmp":4,"mp":2,"name":"Bram","states":{}}],"pos":[9,5],"summary":{"actors":{"bram":{"back":false,"equip":{},"exp":0,"hp":40,"id":"bram","learnt":null,"level":1,"mp":2,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":28,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true,"chamber@10,5":true},"flags":{"bram_joined":true,"briefed":true,"complete":true,"marker_lit":true,"trained":true},"gold":13,"items":{},"location":"chamber","mapped":{"chamber":"AAEBAQEBAQAAAAAAAAAAAAABAQEBAQAAAAAAAAAAAAEBAQEBAQAAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAAAAAEBAQEBAAEAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAEAAQEBAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["walker","sela","bram"],"pos":{"X":9,"Y":5,"facing":1,"in":"chamber"},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":16,"vars":{"explored":18,"kill_pebble":3,"last_kill_pebble":2}}}
+{"t":"say","tick":3414,"text":"The sentries roll aside and let you pass."}
+{"t":"stand","tick":3418,"hides":false,"location":"chamber","set":13,"since":3414}
+{"t":"view","tick":3423,"pictures":["chest.png","floor.jpg","gate.jpg","lantern.png","pebble.png","wall.jpg"],"since":3414}
+{"t":"shot","tick":3433,"file":"sentry_003.png"}
+{"t":"input","tick":3435,"press":["ok"]}
+{"t":"autosave","tick":3440,"at":"chamber"}
+{"t":"stand","tick":3442,"idle":true,"since":3438}
+{"t":"view","tick":3447,"pictures":["bram/normal.png","chest.png","floor.jpg","gate.jpg","lantern.png","sela/normal.png","walker/normal.png","wall.jpg"],"since":3438}
+{"t":"input","tick":3470,"held":["left"],"press":["left"]}
+{"t":"view","tick":3479,"pictures":["bram/normal.png","chest.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3470}
+{"t":"input","tick":3481,"held":["up"],"press":["up"]}
+{"t":"input","tick":3492,"held":["up"],"press":["up"]}
+{"t":"view","tick":3501,"pictures":["bram/normal.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3492}
+{"t":"input","tick":3503,"held":["left"],"press":["left"]}
+{"t":"view","tick":3512,"pictures":["bram/normal.png","door.jpg","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3503}
+{"t":"input","tick":3514,"held":["up"],"press":["up"]}
+{"t":"input","tick":3525,"held":["up"],"press":["up"]}
+{"t":"input","tick":3536,"held":["right"],"press":["right"]}
+{"t":"view","tick":3545,"pictures":["bram/normal.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3536}
+{"t":"input","tick":3547,"held":["up"],"press":["up"]}
+{"t":"input","tick":3558,"held":["up"],"press":["up"]}
+{"t":"input","tick":3569,"held":["right"],"press":["right"]}
+{"t":"input","tick":3580,"held":["up"],"press":["up"]}
+{"t":"view","tick":3589,"pictures":["bram/normal.png","chest.png","floor.jpg","gate.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3580}
+{"t":"input","tick":3591,"held":["up"],"press":["up"]}
+{"t":"state","tick":3600,"facing":"east","gold":13,"location":"chamber","party":[{"back":false,"hp":28,"id":"walker","lv":1,"mhp":30,"mmp":5,"mp":5,"name":"Walker","states":{}},{"back":true,"hp":26,"id":"sela","lv":1,"mhp":26,"mmp":12,"mp":12,"name":"Sela","states":{}},{"back":false,"hp":40,"id":"bram","lv":1,"mhp":40,"mmp":4,"mp":2,"name":"Bram","states":{}}],"pos":[9,1],"summary":{"actors":{"bram":{"back":false,"equip":{},"exp":0,"hp":40,"id":"bram","learnt":null,"level":1,"mp":2,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"sela":{"back":true,"equip":{},"exp":0,"hp":26,"id":"sela","learnt":null,"level":1,"mp":12,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}},"walker":{"back":false,"equip":{},"exp":0,"hp":28,"id":"walker","learnt":null,"level":1,"mp":5,"sp":0,"states":{},"tactics":{"mode":"auto","rows":null,"version":1},"tree":{}}},"done":{"arrival":true,"chamber@10,5":true},"flags":{"bram_joined":true,"briefed":true,"complete":true,"marker_lit":true,"sentries_passed":true,"trained":true},"gold":13,"items":{},"location":"chamber","mapped":{"chamber":"AAEBAQEBAQEBAQEAAAAAAAABAQEBAQEBAQAAAAAAAAEBAQEBAQEBAQEAAAAAAAAAAAABAQEBAQEAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAEAAQEBAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"party":["walker","sela","bram"],"pos":{"X":9,"Y":1,"facing":1,"in":"chamber"},"ran":{"arrival":[1,2],"greeting":[1,1]},"steps":24,"vars":{"explored":29,"kill_pebble":3,"last_kill_pebble":2}}}
+{"t":"view","tick":3600,"pictures":["bram/normal.png","chest.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3591}
+{"t":"input","tick":3602,"held":["up"],"press":["up"]}
+{"t":"input","tick":3613,"held":["up"],"press":["up"]}
+{"t":"input","tick":3624,"held":["right"],"press":["right"]}
+{"t":"view","tick":3633,"pictures":["bram/normal.png","door.jpg","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3624}
+{"t":"input","tick":3635,"held":["up"],"press":["up"]}
+{"t":"view","tick":3644,"pictures":["bram/normal.png","floor.jpg","gate.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3635}
+{"t":"input","tick":3646,"held":["up"],"press":["up"]}
+{"t":"input","tick":3657,"held":["left"],"press":["left"]}
+{"t":"view","tick":3666,"pictures":["bram/normal.png","chest.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3657}
+{"t":"input","tick":3668,"held":["up"],"press":["up"]}
+{"t":"input","tick":3679,"held":["up"],"press":["up"]}
+{"t":"view","tick":3688,"pictures":["bram/normal.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3679}
+{"t":"input","tick":3690,"held":["left"],"press":["left"]}
+{"t":"view","tick":3699,"pictures":["bram/normal.png","chest.png","floor.jpg","sela/normal.png","walker/normal.png","wall.jpg"],"since":3690}

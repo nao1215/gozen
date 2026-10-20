@@ -1,0 +1,48 @@
+//kage:unit pixels
+
+package main
+
+// The nearness (0 far .. 1 near) of the ground under the feet, and how much nearer the
+// background must be to hide the doll there.
+var FootDepth float
+var Bias float
+var FootY float // the feet's y in the background's pixels
+
+// The background's pixels for one pixel of the screen, and where the background starts.
+var DepthScale vec2
+var Offset vec2
+
+// The doll's picture in its sheet: x, y, w, h.
+var Frame vec4
+
+// Alpha fades the doll in and out.
+var Alpha float
+
+func sheet(p vec2) vec4 {
+	return imageSrc0UnsafeAt(imageSrc0Origin() + p)
+}
+
+func Fragment(dstPos vec4, srcPos vec2, color vec4) vec4 {
+	// the picture, bilinear within its frame
+	q := clamp(srcPos-imageSrc0Origin()-Frame.xy, vec2(0.5), Frame.zw-0.5) - 0.5
+	f := fract(q)
+	b := Frame.xy + floor(q) + 0.5
+	a := mix(sheet(b), sheet(b+vec2(1, 0)), f.x)
+	c := mix(sheet(b+vec2(0, 1)), sheet(b+vec2(1, 1)), f.x)
+	s := mix(a, c, f.y)
+	if s.a <= 0 {
+		return vec4(0)
+	}
+	// the background in front of the feet hides the doll (softly at the edge)
+	dp := (dstPos.xy - imageDstOrigin() - Offset) * DepthScale
+	d := imageSrc1UnsafeAtFromSrc0Pos(imageSrc0Origin() + dp + 0.5)
+	near := (d.r*255*256 + d.g*255) / 65535
+	k := 1 - smoothstep(Bias, Bias*2, near-FootDepth)
+	// a front standing on the ground in front of the feet hides the doll
+	fr := imageSrc2UnsafeAtFromSrc0Pos(imageSrc0Origin() + dp + 0.5)
+	base := (fr.r*255*256 + fr.g*255) / 16
+	if base > FootY {
+		k = 0
+	}
+	return s * k * color * Alpha
+}

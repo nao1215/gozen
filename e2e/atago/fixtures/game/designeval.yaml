@@ -1,0 +1,5 @@
+time: {chars_per_sec: 12, line: 1, menu: 1}
+game: {days: 1, town: [camp]}
+rewards: [{kind: progress, label: Progress, events: finish}]
+release: progress
+personas: [{id: walker, name: Walker, days: 1}]

@@ -1,0 +1,7 @@
+# The game the YAML examples of README.md and the website are loaded over
+# (verify: load). It defines only what the examples name without defining:
+# keep it neutral and small, and add an ID here when a new example needs one.
+schema_version: 3
+id: docs-examples
+title: Documentation examples
+start: {location: docs_start, party: [walker]}

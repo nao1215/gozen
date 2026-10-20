@@ -1,0 +1,64 @@
+classes:
+  walker:
+    stats: {mhp: "10", mmp: "0", atk: "1", def: "1", mat: "1", mdf: "1", agi: "1", luk: "1"}
+    exp_for: "level * 9"
+actors:
+  hero: {name: Hero, class: walker, faces: hero}
+skills: {attack: {scope: one_enemy, effects: [{damage: "5"}]}, guard: {}}
+enemies:
+  blob: {name: Blob, image: guide.png, stats: {mhp: 1, mmp: 0, atk: 1, def: 0, mat: 1, mdf: 1, agi: 1, luk: 1}}
+troops:
+  blobs: {members: [blob]}
+locations:
+  square:
+    name: Square
+    background: bg.png
+    stage:
+      depth: depth.png
+      depth_bias: 0.004
+      scale: [{at: [160, 170], height: 60}, {at: [160, 70], height: 30}]
+      walk: [[[10, 70], [310, 70], [310, 178], [10, 178]]]
+      blocks: [[[135, 95], [185, 95], [185, 105], [135, 105]]]
+      fronts: [{area: [[140, 10], [180, 10], [180, 100], [140, 100]], base: 100}]
+      spots:
+        open: {at: [80, 150], facing: south}
+        behind: {at: [160, 80], facing: south}
+        by_guide: {at: [215, 150], facing: east}
+      exits: [{to: room, area: [[300, 70], [310, 70], [310, 178], [300, 178]]}]
+      people: [{id: guide, at: [240, 150], facing: west, doll: {hair: bun, parts: [{kind: apron, color: "#20c040"}]}}]
+    people:
+      - {id: guide, name: Guide, image: guide.png, talk: [{say: Hello there.}], bubbles: [Over here!]}
+    exits: [{to: room, label: Room}, {to: town, label: Town}]
+  room:
+    name: Room
+    exits: [{to: square, label: Back, at: open}, {to: town, label: Town}]
+  town:
+    name: Town
+    map:
+      picture: bg.png
+      unknown: dim
+      points:
+        here: {at: [40, 150], to: square, start: true}
+        bend: {at: [160, 140]}
+        door: {at: [280, 120], to: room}
+        shut: {at: [200, 40], to: room, when: "flag.never", locked: "Shut."}
+        pass: {at: [60, 80], to: wild, at_point: gate, label: Wild}
+      roads:
+        - {between: [here, pass]}
+        - {between: [here, bend], steps: 2}
+        - {between: [bend, door], via: [[220, 150]]}
+        - {between: [bend, shut]}
+  wild:
+    name: Wild
+    map:
+      picture: bg.png
+      unknown: hidden
+      draw_roads: true
+      token: {picture: token.png, height: 0.1}
+      points:
+        gate: {at: [40, 160], to: town, at_point: pass, start: true}
+        ruin: {at: [280, 160], to: room, label: Ruin}
+        cave: {at: [160, 90], to: room, label: Cave}
+      roads:
+        - {between: [gate, ruin], encounters: {rate: "1", troops: [{troop: blobs}]}}
+        - {between: [gate, cave], when: "flag.never"}

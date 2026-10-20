@@ -1,0 +1,143 @@
+version: '1'
+suite:
+  name: gozen check --format json and the schema version 2 words
+scenarios:
+- name: check json on a sound game prints an empty list
+  steps:
+  - run:
+      command: gozen check --format json --only structure "${specdir}/fixtures/game"
+      deterministic:
+        runs: 2
+        compare:
+        - stdout
+        - stderr
+        - exit_code
+  - assert:
+      exit_code: 0
+      stdout:
+        equals: "[]\n"
+      stderr:
+        equals: ''
+- name: check json reports an error with file, line, column and path
+  steps:
+  - fixture:
+      file: broken/game.yaml
+      content: "schema_version: 2\nid: broken\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: broken/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\nevents:\n  bad:\n    do:\n    - battle: wolves\n"
+  - run:
+      command: gozen check --format json --only structure broken
+  - assert:
+      exit_code: 1
+      stdout:
+        contains:
+        - '"file": "data/world.yaml"'
+        - '"line": 8'
+        - '"path": "events.bad.do[0].battle"'
+        - '"severity": "error"'
+        - wolves
+      stderr:
+        contains: 'check: 1 errors'
+- name: check json warns of a stat set outside the development mode
+  steps:
+  - fixture:
+      file: dev/game.yaml
+      content: "schema_version: 2\nid: dev\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: dev/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {actions: [{label: Train, do: [{set: {actor.scout.level: 5, gold: 10}}, {pick: Train}]}]}}\n"
+  - run:
+      command: gozen check --format json --only structure dev
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - '"severity": "warning"'
+        - actor.scout.level
+        - development mode
+        not_contains: '"severity": "error"'
+- name: the schema version 2 words need schema_version 2
+  steps:
+  - fixture:
+      file: old/game.yaml
+      content: "schema_version: 1\nid: old\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: old/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {actions: [{label: Look, do: [{pick: Look}]}]}}\n"
+  - run:
+      command: gozen check --only structure old
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: 'pick needs schema_version: 2'
+- name: check rejects an unknown format
+  steps:
+  - run:
+      command: gozen check --format xml "${specdir}/fixtures/game"
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: '--format is text or json'
+- name: a mistyped command is an error with the nearest command
+  steps:
+  - fixture:
+      file: typo/game.yaml
+      content: "schema_version: 2\nid: typo\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: typo/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {actions: [{label: Talk, do: [{sya: hi}, {set: {location: camp, party: [scout]}}]}]}}\n"
+  - run:
+      command: gozen check --only structure typo
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: 'unknown field "sya" (did you mean "say"?)'
+        not_contains: unknown name
+- name: sim, curve and design print JSON for a test or an agent
+  steps:
+  - run:
+      command: gozen sim battle "${specdir}/fixtures/game" lesson -n 4 --seed 2 --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - '"troop": "lesson"'
+        - '"battles": 4'
+        - '"win_rate":'
+  - run:
+      command: gozen sim dive "${specdir}/fixtures/game" grotto --floors 2 --battles 1 --boss 2:lesson --arrival-saves arrivals --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - '"floors": ['
+        - '"boss": "lesson"'
+        - '"boss_rate":'
+      changes:
+        created:
+        - arrivals/floor-2.json
+  - run:
+      command: gozen sim battle "${specdir}/fixtures/game" lesson -n 2 --state arrivals/floor-2.json --state arrivals/floor-2.json --as-is --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: '"state": "arrivals/floor-2.json"'
+  - run:
+      command: gozen sim design "${specdir}/fixtures/game" --format json --seed 3
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - '"format_version": 1'
+        - '"segments":'
+      changes:
+        created: []
+  - run:
+      command: gozen sim dive "${specdir}/fixtures/game" grotto --format xml
+  - assert:
+      exit_code: 2
+      stderr:
+        contains: '--format is text or json'

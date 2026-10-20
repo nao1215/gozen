@@ -1,0 +1,68 @@
+name: Docs
+
+# README.md and the website must show what the code does now
+# (docs/development/docs.md):
+# - images: remake every picture of docs/images/manifest.yaml from the samples
+#   under Xvfb and fail when a committed one is stale (make docs-images-check);
+# - steps: run the shell steps of README.md and website/content against this
+#   checkout (make docs-steps).
+# The checks that need no display (the manifest against the references, the
+# verify marks, the YAML examples, README links) run in go test ./... (CI).
+#
+# Like the other full jobs, these run once the repository is public, or by hand
+# (docs/development/ci.md).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  images:
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a
+        with:
+          xvfb: true
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Remake the pictures and compare them with the committed ones
+        run: make docs-images-check
+      - name: Keep the fresh pictures of a failed check
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: docs-images
+          path: build/docs-images/out
+          retention-days: 7
+
+  steps:
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # One step runs the sample game under xvfb-run (website/content/install.md).
+      - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a
+        with:
+          xvfb: true
+      - name: Run the steps of README.md and the website
+        run: make docs-steps
+        env:
+          CGO_ENABLED: "1"

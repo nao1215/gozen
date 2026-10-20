@@ -1,0 +1,241 @@
+classes:
+  walker:
+    name: Walker
+    # Level 1 matches the original sample (30 HP, Tap 8); each level adds 8 HP and 2 attack.
+    stats: {mhp: "22 + level * 8", mmp: 5, atk: "6 + level * 2", def: 3, mat: 2, mdf: 2, agi: 8, luk: 1}
+    exp_for: level * 30
+  guard:
+    name: Guard
+    stats: {mhp: 40, mmp: 4, atk: 7, def: 6, mat: 1, mdf: 2, agi: 5, luk: 1}
+    exp_for: level * 30
+    skills: [{level: 1, skill: shield_rush}]
+  mender:
+    name: Mender
+    stats: {mhp: 26, mmp: 12, atk: 5, def: 2, mat: 6, mdf: 5, agi: 7, luk: 1}
+    exp_for: level * 30
+    skills: [{level: 1, skill: mend}]
+actors:
+  walker: {name: Walker, class: walker, faces: walker, puppet: walker/puppet.yaml}
+  bram:
+    name: Bram
+    class: guard
+    faces: bram
+    cutin_lines: [Stand behind me!]
+    ai:
+      - {use: shield_rush, when: "self.mp >= 2", priority: 1}
+      - {use: attack}
+  sela:
+    name: Sela
+    class: mender
+    faces: sela
+    back: true
+    ai:
+      - {use: mend, when: "allies.hp_rate < 0.8", target: ally_lowest_hp_rate, priority: 1}
+      - {use: attack}
+skills:
+  attack: {name: Tap, effects: [{damage: a.atk, variance: 0}]}
+  guard: {name: Wait, scope: self}
+  nudge: {name: Nudge, effects: [{damage: 1, variance: 0}]}
+  roll: {name: Roll, effects: [{damage: 6, variance: 0.6}]}
+  shield_rush: {name: Shield Rush, mp: 2, scope: all_enemies, cutin: true, effects: [{damage: 9, variance: 0}]}
+  mend: {name: Mend, mp: 3, scope: one_ally, anim: heal, effects: [{heal: 12, variance: 0}]}
+enemies:
+  pebble:
+    name: Pebble
+    image: pebble.png
+    stats: {mhp: 16, mmp: 0, atk: 1, def: 0, mat: 0, mdf: 0, agi: 1, luk: 1}
+    gold: 3
+    ai: [{use: nudge}]
+  cobble:
+    name: Cobble
+    image: pebble.png
+    stats: {mhp: 44, mmp: 0, atk: 1, def: 0, mat: 0, mdf: 0, agi: 1, luk: 1}
+    gold: 5
+    ai: [{use: roll}]
+troops:
+  lesson: {members: [pebble]}
+  cobble: {members: [cobble]}
+  rockfall: {members: [cobble, pebble, cobble]}
+  sentries: {members: [pebble, pebble], can_escape: false}
+locations:
+  camp:
+    name: Trail camp
+    background: camp.jpg
+    battle_background: grotto.jpg
+    safe: true
+    people:
+      - name: Courier
+        image: courier.png
+        talk:
+          - say: {who: Courier, face: courier.png, text: A little light can guide a long journey.}
+          - say: {who: Courier, face: courier.png, text: "Practice with Pebble, then light the marker. The ridge path will open."}
+          - set: {flag.briefed: true}
+    actions:
+      - label: Practice
+        do:
+          - battle: lesson
+            on_win:
+              - set: {flag.trained: true}
+              - say: Well done! You are ready to light the marker.
+      - label: Light the marker
+        when: flag.trained && !flag.marker_lit
+        do: [{call: greeting}]
+      - {label: Save journey, do: [{save: true}]}
+      - {label: Rest, do: [{heal: all}, {say: Ready for another walk.}]}
+    exits:
+      - {to: ridge, label: Walk to the ridge, when: flag.marker_lit}
+      - {to: chamber, label: Explore chamber}
+      - {to: town, label: Visit the village}
+      - {to: grotto, label: Enter the grotto}
+  ridge:
+    name: Lantern ridge
+    background: ridge.jpg
+    safe: true
+    actions:
+      - {label: Save journey, do: [{save: true}]}
+    exits: [{to: camp, label: Return to camp}]
+  town:
+    name: Lamplight village
+    background: town.jpg
+    safe: true
+    people:
+      - name: Innkeeper
+        image: innkeeper.png
+        talk:
+          - say: {who: Innkeeper, face: innkeeper.png, text: Welcome to Lamplight. The beds are warm and the soup is hot.}
+          - say: {who: Innkeeper, face: innkeeper.png, text: Rest here whenever the trail wears you down.}
+      - name: Bram
+        image: bram/normal.png
+        when: "!flag.bram_joined"
+        talk:
+          - say: {who: Bram, face: bram/normal.png, text: "You walk the old trail? The halls past the camp have sentries in them."}
+          - say: {who: Bram, face: bram/normal.png, text: My shield could use the exercise. I will come along.}
+          - join: bram
+          - set: {flag.bram_joined: true}
+    actions:
+      - {label: Rest at the inn, do: [{heal: all}, {say: You feel ready to walk again.}]}
+      - {label: Save journey, do: [{save: true}]}
+    exits: [{to: camp, label: Return to camp}]
+  grotto:
+    name: Echo grotto
+    background: grotto.jpg
+    safe: true
+    actions:
+      - label: Challenge a wild Pebble
+        do:
+          - battle: lesson
+            on_win: [{say: The Pebble rolls away happily.}]
+      - label: Face the Cobble
+        do:
+          - battle: cobble
+            on_win: [{say: The Cobble settles down.}]
+      - label: Brave the rockfall
+        do:
+          - battle: rockfall
+            on_win: [{say: The grotto is quiet again.}]
+    exits: [{to: camp, label: Return to camp}]
+  chamber:
+    name: Observation halls
+    safe: true
+    battle_background: grotto.jpg
+    dungeon:
+      wall: {file: wall.jpg, tint: "#c4d0d6"}
+      door: door.jpg
+      floor: "#b4c2c6"
+      floor_texture: floor.jpg
+      ceiling: "#2c4652"
+      darkness: 0.35
+      map: |
+        ###############
+        C.S...#.....#T#
+        #####.#.###.#.#
+        #.....#...#...#
+        #.###.###.#####
+        #...#.D...P...#
+        ###.#.###.#.#.#
+        #K..#...#...#G#
+        #####.#.#.###.#
+        #.....#.#...#L#
+        ###############
+      tiles:
+        S: {start: true, facing: east}
+        T:
+          name: Old chest
+          picture: chest.png
+          size: 0.45
+          solid: "true"
+          once: true
+          after: t
+          mark: "#edbe70"
+          do:
+            - say: Inside the chest, a pouch of 5G left by an earlier walker.
+            - gold: 5
+            - set: {flag.chest_opened: true}
+        t: {name: Open chest, picture: chest_open.png, size: 0.45, solid: "true"}
+        P:
+          name: Pebble sentry
+          picture: pebble.png
+          size: 0.42
+          solid: "true"
+          once: true
+          after: .
+          mark: "#d79a86"
+          symbol: "!"
+          do:
+            - battle: sentries
+              on_win:
+                - say: The sentries roll aside and let you pass.
+                - set: {flag.sentries_passed: true}
+        K:
+          name: Gate wheel
+          look: wall
+          picture: wheel.png
+          size: 0.5
+          trigger: bump
+          once: true
+          mark: "#97daca"
+          symbol: W
+          do:
+            - say: You turn the wheel. Far off, an iron gate rattles open.
+            - set: {flag.gate_open: true}
+        G:
+          name: Iron gate
+          look: door
+          picture: gate.jpg
+          when: "!flag.gate_open"
+          solid: "true"
+          do: [{say: The gate is shut tight. A wheel somewhere must open it.}]
+        L:
+          name: Window lantern
+          picture: lantern.png
+          size: 0.85
+          once: true
+          mark: "#edbe70"
+          symbol: L
+          do:
+            - say: From this window, the little trail looks like a ribbon.
+            - set: {flag.window_seen: true}
+        C:
+          name: Camp door
+          look: door
+          mark: "#97daca"
+          symbol: C
+          do: [{move: camp}]
+events:
+  greeting:
+    do:
+      - say: {who: walker, text: "There. The marker should take the light now."}
+      - say: The marker glows. A path to Lantern ridge is now open.
+      - set: {flag.marker_lit: true}
+  arrival:
+    trigger: enter
+    location: ridge
+    once: true
+    do:
+      - say: The ridge lantern answers your light. The trail is connected again!
+      - gold: 4
+      - set: {flag.complete: true}
+      - say: {who: Sela, face: sela/normal.png, text: "I keep the lanterns up here. Whoever lit the marker below is a friend of mine."}
+      - say: {who: Sela, face: sela/normal.png, text: Let me walk with you. I can mend a scrape or two.}
+      - join: sela
+      - say: Journey complete. Save here, or return to explore the observation room.

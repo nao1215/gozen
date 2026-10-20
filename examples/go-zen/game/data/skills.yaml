@@ -1,0 +1,120 @@
+skills:
+  attack: {name: Strike, effects: [{damage: "a.atk * 1.6 - b.def"}]}
+  guard: {name: Brace, scope: self, desc: "Keep your head down. Take less damage this turn."}
+  chart: {name: Chart, mp: 2, scope: one_enemy, anim: debuff, desc: "Mark where it is weakest. Marked foes take more damage.", effects: [{add_state: marked, turns: 4}]}
+  ink_burst: {name: Ink Burst, mp: 4, scope: one_enemy, anim: magic, desc: "Splash a foe with burning ink.", effects: [{damage: "a.mat * 2 - b.mdf * 0.5"}]}
+  forged_map: {name: Forged Map, mp: 8, scope: all_enemies, cutin: true, anim: debuff, desc: "Send every foe down the wrong passage. They lose their turns.", effects: [{add_state: misled, turns: 2}, {damage: "a.mat * 1.2"}]}
+  hold_line: {name: Hold the Line, mp: 2, scope: self, anim: buff, desc: "Step in front of hurt friends and take the hit, softened.", effects: [{add_state: warded, turns: 3}]}
+  shield_rush: {name: Shield Rush, mp: 4, scope: all_enemies, cutin: true, fx: strike, desc: "Charge through every foe.", effects: [{damage: "a.atk * 1.2 + a.def * 0.6 - b.def"}]}
+  mend: {name: Mend, mp: 3, scope: one_ally, anim: heal, desc: "A quick prayer. Heals one friend.", effects: [{heal: "12 + a.mat * 2"}]}
+  blessing: {name: Blessing, mp: 4, scope: all_allies, anim: buff, desc: "A blessing for everyone. Attack rises for a few turns.", effects: [{add_state: blessed, turns: 3}]}
+  shared_cup: {name: Shared Cup, mp: 7, scope: all_allies, anim: heal, desc: "Pass the cup around. Heals the whole party.", effects: [{heal: "8 + a.mat * 1.5"}]}
+  second_chance: {name: Second Chance, mp: 8, scope: dead_ally, anim: heal, desc: "Not your time yet. Brings a fallen friend back.", effects: [{revive: 0.5}]}
+  lucky_toss: {name: Lucky Toss, mp: 3, scope: one_enemy, desc: "A gamble. It might miss, but it hits hard.", effects: [{damage: "a.mat * 3 - b.mdf", chance: 0.65}]}
+  arc_bolt: {name: Arc Bolt, mp: 3, scope: one_enemy, fx: thunder, desc: "A bolt from the coil.", effects: [{damage: "a.mat * 2 - b.mdf * 0.4", element: thunder}]}
+  storm_coil: {name: Storm Coil, mp: 7, scope: all_enemies, fx: thunder, desc: "Arcs jump from foe to foe.", effects: [{damage: "a.mat * 1.4 - b.mdf * 0.4", element: thunder}]}
+  overclock: {name: Overclock, mp: 4, scope: one_ally, anim: buff, desc: "Wind a friend up like a spring. They act sooner for a few turns.", effects: [{add_state: hasted, turns: 3}]}
+  # Foes
+  drip: {name: Drip, effects: [{damage: "a.atk * 1.4 - b.def"}]}
+  gnaw: {name: Gnaw, effects: [{damage: "a.atk * 1.5 - b.def"}]}
+  pinch: {name: Pinch, effects: [{damage: "a.atk * 1.6 - b.def"}]}
+  bite: {name: Bite, effects: [{damage: "a.atk * 1.5 - b.def"}]}
+  lunge: {name: Lunge, scope: one_enemy, effects: [{damage: "a.atk * 1.9 - b.def"}]}
+  clang: {name: Clang, effects: [{damage: "a.atk * 1.5 - b.def"}]}
+  crush: {name: Crush, effects: [{damage: "a.atk * 2.0 - b.def"}]}
+  slam: {name: Slam, scope: all_enemies, effects: [{damage: "a.atk * 1.1 - b.def"}]}
+  toll_strike: {name: Toll Strike, effects: [{damage: "a.atk * 1.8 - b.def"}]}
+  toll_bell: {name: Toll Bell, scope: all_enemies, effects: [{damage: "a.atk * 1.0 - b.def"}]}
+  gilded_plating: {name: Gilded Plating, scope: self, anim: buff, effects: [{add_state: gilded}]}
+  coin_toss: {name: Coin Toss, effects: [{damage: "a.mat * 1.6 - b.mdf"}]}
+  auction: {name: Auction, scope: all_enemies, effects: [{damage: "a.mat * 1.0 - b.mdf"}]}
+  lien: {name: Lien, scope: one_enemy, effects: [{damage: "a.mat * 0.8 - b.mdf"}, {add_state: marked, turns: 3}]}
+states:
+  marked: {name: Marked, short: MK, bad: true, turns: 4, stats: {def: 0.7, mdf: 0.7}, desc: "Its weak spot is charted. Defense is lower."}
+  misled: {name: Misled, short: ML, bad: true, turns: 2, restrict: skip, desc: "Following a false map. Loses its turns.", messages: {add: "{target} follows the false map.", stay: "{target} is lost in the wrong passage."}}
+  warded: {name: Warded, short: WD, turns: 3, damage_rate: 0.5, cover: "b.hp_rate < 0.5", desc: "Takes half damage and covers hurt friends.", messages: {add: "{target} plants both feet.", cover: "{target} steps in front of {user}."}}
+  blessed: {name: Blessed, short: BL, turns: 3, stats: {atk: 1.25, mat: 1.25}, desc: "Attack and spell power are up."}
+  hasted: {name: Hasted, short: HS, turns: 3, stats: {agi: 1.6}, desc: "Acts sooner."}
+  gilded: {name: Gilded, short: GD, stats: {def: 1.4, atk: 1.25}, desc: "Wrapped in the Magistrate's gold plating."}
+items:
+  tonic: {name: Patch Tonic, kind: item, price: 12, desc: "Tastes like pennies. Restores 30 HP.", use: {scope: one_ally, effects: [{heal: 30, variance: 0}]}}
+  ink_vial: {name: Ink Vial, kind: item, price: 20, desc: "Ink thinned enough to drink. Restores 8 MP.", use: {scope: one_ally, effects: [{heal: 8, stat: mp, variance: 0}]}}
+  fizz_bomb: {name: Fizz Bomb, kind: item, price: 25, desc: "Kes's design. Fizzes loudly, hurts every foe.", use: {scope: all_enemies, where: [battle], effects: [{damage: 22, variance: 0.1}]}}
+  elixir: {name: Clear Water Elixir, kind: item, desc: "Hobb saved this for emergencies. Heals the whole party.", use: {scope: all_allies, effects: [{heal: 80, variance: 0}]}}
+  old_gear: {name: Old Gear, kind: item, price: 8, desc: "A brass gear with a bite out of it. Barnaby will pay for anything with teeth."}
+  hobb_key: {name: Hobb's Key, kind: key, desc: "A heavy iron key, worn smooth. It opens the Undercistern gate."}
+  brass_key: {name: Brass Key, kind: key, desc: "Opens one brass gate, then it is spent."}
+  hobb_note: {name: Hobb's Last Page, kind: key, desc: "Draw only what you have walked."}
+  forged_hall: {name: Forged Hall Map, kind: key, desc: "A perfect forgery of the valve hall. Every lever is wrong."}
+  rod_basic: {name: Surveyor's Rod, kind: rod, slot: weapon, price: 20, desc: "A brass rod with a pencil socket.", stats: {atk: 2, mat: 1}}
+  rod_steel: {name: Steel Chart Rod, kind: rod, slot: weapon, price: 70, desc: "Balanced for long marks.", stats: {atk: 4, mat: 3}}
+  shield_pot: {name: Pot-Lid Shield, kind: shield, slot: weapon, price: 25, desc: "A tower shield. The lid is welded on.", stats: {atk: 3, def: 2}}
+  shield_tin: {name: Tin Tower Shield, kind: shield, slot: weapon, price: 80, desc: "A proper shield. Heavy and flat.", stats: {atk: 4, def: 4}}
+  staff_wood: {name: Prayer Staff, kind: staff, slot: weapon, price: 20, desc: "Worn smooth by many hands.", stats: {mat: 2, mdf: 1}}
+  staff_bell: {name: Bell Staff, kind: staff, slot: weapon, price: 70, desc: "It rings when blessings land.", stats: {mat: 4, mdf: 3}}
+  coil_basic: {name: Spark Coil, kind: coil, slot: weapon, price: 25, desc: "Kes's own winding.", stats: {mat: 3}}
+  coil_brass: {name: Brass Coil, kind: coil, slot: weapon, price: 75, desc: "Heavier copper, harder sparks.", stats: {mat: 5, agi: 1}}
+  coat_cloth: {name: Surveyor's Coat, kind: light, slot: armor, price: 20, desc: "Teal wool with deep pockets.", stats: {def: 2}}
+  coat_leather: {name: Leather Coat, kind: light, slot: armor, price: 45, desc: "Stiff, waxed, warm.", stats: {def: 4, mdf: 1}}
+  coat_work: {name: Work Overalls, kind: light, slot: armor, price: 20, desc: "Navy canvas with a tool belt.", stats: {def: 2}}
+  robe_pilgrim: {name: Pilgrim Robe, kind: light, slot: armor, price: 20, desc: "White and gold, hemmed twice.", stats: {def: 1, mdf: 2}}
+  plate_scrap: {name: Scrap Plate, kind: heavy, slot: armor, price: 70, desc: "Iron plates over tanned leather.", stats: {def: 6}}
+  charm_wool: {name: Wool Scarf, kind: charm, slot: accessory, price: 25, desc: "Itchy, warm.", stats: {mdf: 2}}
+  charm_die: {name: Lucky Die, kind: charm, slot: accessory, price: 40, desc: "It always lands on six. Probably.", stats: {luk: 3}}
+  charm_goggles: {name: Spare Goggles, kind: charm, slot: accessory, price: 50, desc: "Sharper sight, quicker feet.", stats: {agi: 2}}
+shops:
+  fenn:
+    name: Fenn & Daughters
+    keeper: barnaby/normal.png
+    greeting: "That's the fair price. Probably."
+    spent: var.spent
+    goods: [tonic, ink_vial, fizz_bomb, rod_steel, shield_tin, staff_bell, coil_brass, coat_leather, charm_wool, charm_die, charm_goggles]
+ai:
+  maren_ai:
+    - {use: forged_map, when: "boss && self.mp >= 8", priority: 3}
+    - {use: chart, when: "foes.with_marked == 0 && self.mp >= 2", priority: 1}
+    - {use: ink_burst, when: "self.mp >= 4", priority: 1}
+    - {use: attack}
+  ox_ai:
+    - {use: hold_line, when: "self.states.warded == 0 && self.mp >= 2", priority: 2}
+    - {use: shield_rush, when: "foes.alive >= 2 && self.mp >= 4", priority: 1}
+    - {use: attack}
+  tilly_ai:
+    - {use: mend, when: "allies.min_hp_rate < 0.5 && self.mp >= 3", target: ally_lowest_hp_rate, priority: 2}
+    - {use: blessing, when: "turn == 1 && self.mp >= 4", priority: 1}
+    - {use: lucky_toss, when: "self.mp >= 3"}
+    - {use: attack}
+  kes_ai:
+    - {use: storm_coil, when: "foes.alive >= 2 && self.mp >= 7", priority: 2}
+    - {use: arc_bolt, when: "self.mp >= 3", priority: 1}
+    - {use: attack}
+tactic_conditions:
+  any: {name: Always, kind: always}
+  unmarked: {name: No foe is marked, kind: template, when: "foes.with_marked == 0 && self.mp >= 2"}
+  low_mp: {name: Low on energy, kind: template, when: "self.mp < 4"}
+  unwarded: {name: Not on guard, kind: template, when: "self.states.warded == 0 && self.mp >= 2"}
+  crowd: {name: Two or more foes, kind: template, when: "foes.alive >= 2"}
+  ally_hurt: {name: A friend is hurt, kind: template, when: "allies.min_hp_rate < 0.5"}
+  boss_fight: {name: Facing a boss, kind: template, when: "boss && self.mp >= 8"}
+  ally_down: {name: A friend has fallen, kind: template, when: "allies.dead > 0"}
+tactic_targets:
+  enemy: {name: Weakest foe, scope: one_enemy, selector: {pick: min, by: t.hp_rate}}
+  enemies: {name: All foes, scope: all_enemies}
+  ally: {name: Most hurt friend, scope: one_ally, selector: {pick: min, by: t.hp_rate}}
+  allies: {name: The party, scope: all_allies}
+  self: {name: Self, scope: self}
+  fallen: {name: Fallen friend, scope: dead_ally, selector: first}
+tactic_actions:
+  attack: {name: Strike, use: attack, target: enemy}
+  guard: {name: Brace, use: guard, target: self}
+  forged_map: {name: Forged Map, use: forged_map, target: enemies}
+  chart: {name: Chart, use: chart, target: enemy}
+  ink_burst: {name: Ink Burst, use: ink_burst, target: enemy}
+  hold_line: {name: Hold the Line, use: hold_line, target: self}
+  shield_rush: {name: Shield Rush, use: shield_rush, target: enemies}
+  mend: {name: Mend, use: mend, target: ally}
+  blessing: {name: Blessing, use: blessing, target: allies}
+  lucky_toss: {name: Lucky Toss, use: lucky_toss, target: enemy}
+  storm_coil: {name: Storm Coil, use: storm_coil, target: enemies}
+  overclock: {name: Overclock, use: overclock, target: ally}
+  arc_bolt: {name: Arc Bolt, use: arc_bolt, target: enemy}

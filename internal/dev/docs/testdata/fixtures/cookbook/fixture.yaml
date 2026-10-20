@@ -1,0 +1,9 @@
+# The CLI test game with the trial range of the cookbook (website/content/cookbook.md),
+# and the approvals its release command reads. game/trial.yaml is this fixture's own.
+copy:
+  game/game.yaml: e2e/atago/fixtures/game/game.yaml
+  game/data: e2e/atago/fixtures/game/data
+  game/assets: e2e/atago/fixtures/game/assets
+  game/asset-policy.yaml: internal/dev/docs/testdata/fixtures/cli/game/asset-policy.yaml
+  overlay: internal/dev/docs/testdata/fixtures/cli/overlay
+  inspect.jsonl: internal/dev/docs/testdata/fixtures/cli/inspect.jsonl

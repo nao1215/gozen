@@ -1,0 +1,108 @@
+package diag
+
+// GZN01xx: warnings of check. The game loads and the command exits 0, but
+// something is likely not what the author meant.
+var (
+	TextOverflow = register(101, "TextOverflow", Entry{
+		Summary: "a text does not fit the message window",
+		Detail:  "The layout check lays out every line of dialogue and every choice with the game's font and display rules. This one needs more lines than the window shows, so the player would see it cut or paged where the author did not plan it.",
+		Fix:     "Shorten the text, split it into two lines of dialogue, or change the window in game.yaml.",
+	})
+	FaceBox = register(102, "FaceBox", Entry{
+		Summary: "a balloon face has no face box, or the box is stale",
+		Detail:  "A painted scene cuts each person's balloon face around the face that gozen art faces found and wrote to assets/faces.json. The file is missing, has no box for a picture, has none found, or the picture changed since, so the face is guessed.",
+		Fix:     "Run gozen art faces <game-dir> again, or give the doll face_at.",
+	})
+	Unreachable = register(103, "Unreachable", Entry{
+		Summary: "a place of a map or a painted scene cannot be reached",
+		Detail:  "A point no road leads to, a point without a way back, an exit or a thing that does not touch the walkable area, or a spot without do (which is no entry) cannot be used by the player.",
+		Fix:     "Connect it (a road, an exit back, walk that touches it) or remove it; give a spot a do to make it an entry.",
+	})
+	DrawnDifferently = register(104, "DrawnDifferently", Entry{
+		Summary: "a picture or a shape will be drawn otherwise than written",
+		Detail:  "A polygon that crosses itself, a person without an image (its doll takes plain colors), or an icon that is not square (it is cut round from its middle) is drawn, but probably not as meant.",
+		Fix:     "Fix the polygon's points, give the person an image, or make the icon square.",
+	})
+	LanguageWords = register(105, "LanguageWords", Entry{
+		Summary: "the game's language and its words or font do not match",
+		Detail:  "language is not set while the game is written in Japanese, so the engine's own words are English; or the regular font lacks letters of the chosen words, which would show as blanks.",
+		Fix:     "Set language in game.yaml, or choose a font that has the letters.",
+	})
+	RuleTargetIgnored = register(106, "RuleTargetIgnored", Entry{
+		Summary: "a part of an AI rule's target is not used",
+		Detail:  "For some actions the target of a rule only decides whether the rule fires: a random enemy is drawn anew, a self skill always hits its user, and by is read only with pick min or max.",
+		Fix:     "Remove the part the message names, or use a skill whose target the rule chooses.",
+	})
+	SetOrder = register(107, "SetOrder", Entry{
+		Summary: "a set reads another target of the same set",
+		Detail:  "The targets of one set are assigned one after another in key order, so a right-hand side that reads another target of the same set depends on that order.",
+		Fix:     "Split it into two set commands in the order you mean.",
+	})
+	DevOnlySet = register(108, "DevOnlySet", Entry{
+		Summary: "a set changes an actor's stats or level outside the development mode",
+		Detail:  "Setting a party member's stats or level is for the development mode (--dev) and tests. The game skips it when played normally.",
+		Fix:     "Use a command the game keeps (an item, a class change, experience), or keep it in a development-only event.",
+	})
+)
+
+// GZN11xx: the definitions of the game. The game does not load, and check
+// exits 1. Each one points at a file, a line and the path of the definition.
+var (
+	UnknownReference = register(1101, "UnknownReference", Entry{
+		Summary: "a definition names something that is not defined",
+		Detail:  "A troop, item, actor, skill, location, event, song, picture set, state, stat, node or another named thing is referred to but not defined, or the thing has no part of that name (a point of a map, a mood of a song, a face of a puppet).",
+		Fix:     "Fix the spelling or define the thing. gozen book lists every ID of the game.",
+	})
+	Duplicate = register(1102, "Duplicate", Entry{
+		Summary: "something is defined twice",
+		Detail:  "The same ID or key appears twice, in one file or across the files of data/. The message names the previous definition.",
+		Fix:     "Rename or remove one of them.",
+	})
+	Expression = register(1103, "Expression", Entry{
+		Summary: "an expression cannot be read or uses a name unknown there",
+		Detail:  "An expression (when, a formula, a condition) has a syntax error, uses a name that does not exist where it is written (turn exists only in battle, a and b only in an effect), or mixes types.",
+		Fix:     "Fix the expression; the message lists the names known at that place.",
+	})
+	Shape = register(1104, "Shape", Entry{
+		Summary: "a definition is missing a part, or has parts that do not go together",
+		Detail:  "A key that is required is missing or empty, two keys exclude each other, a key is used where it means nothing, or a value has the wrong YAML type (a list where a map belongs, text where a number belongs).",
+		Fix:     "Write the definition in the shape the Schema page shows for it.",
+	})
+	MissingAsset = register(1105, "MissingAsset", Entry{
+		Summary: "an asset file does not exist",
+		Detail:  "A picture, a sound, a face, a font or another file named by the definitions is not under assets/. Names are relative to assets/ and case-sensitive.",
+		Fix:     "Add the file, or fix the name.",
+	})
+	OutOfRange = register(1106, "OutOfRange", Entry{
+		Summary: "a number is out of its range",
+		Detail:  "The value is a number, but outside what the key accepts: a rate between 0 and 1, a count of 1 or more, a size above 0, a level within the class's maximum.",
+		Fix:     "Use a number in the range the message states.",
+	})
+	NotAWord = register(1107, "NotAWord", Entry{
+		Summary: "a value is not one of the words the key accepts",
+		Detail:  "The key takes one word from a fixed list, such as a direction, a mode or a screen name. The message lists the words.",
+		Fix:     "Use one of the listed words.",
+	})
+	SchemaVersion = register(1108, "SchemaVersion", Entry{
+		Summary: "a word needs a newer schema_version",
+		Detail:  "The word was added in a later version of the YAML schema, and game.yaml declares an earlier schema_version, so an older engine would not read the game the same way.",
+		Fix:     "Raise schema_version in game.yaml to the version the message names.",
+	})
+	YAMLSyntax = register(1109, "YAMLSyntax", Entry{
+		Summary: "a YAML file cannot be parsed",
+		Detail:  "The file is not valid YAML: an indentation, a quote, a colon or a bracket is wrong. A value of a description containing a colon and a space must be quoted.",
+		Fix:     "Fix the YAML at the line and column the message names.",
+	})
+	GameUnreadable = register(1110, "GameUnreadable", Entry{
+		Summary: "the game directory or game.yaml cannot be read",
+		Detail:  "The directory given is not a game directory: it does not exist, cannot be read, or has no game.yaml.",
+		Fix:     "Pass the directory that holds game.yaml, data/ and assets/.",
+	})
+)
+
+// GZN12xx: fonts and text layout.
+var FontUnreadable = register(1201, "FontUnreadable", Entry{
+	Summary: "a font of the game cannot be read",
+	Detail:  "The layout check reads the game's fonts to lay out the dialogue, and one of them is missing or is not a TrueType or OpenType font.",
+	Fix:     "Fix the font files of game.yaml, or check the structure alone with gozen check --only structure.",
+})

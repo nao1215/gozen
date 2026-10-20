@@ -1,0 +1,123 @@
+version: '1'
+suite:
+  name: Gozen painted scenes (stage) in check and faces (ADR 0022)
+scenarios:
+- name: check json reports the mistakes of a stage with file, line and path
+  steps:
+  - fixture:
+      file: stage/game.yaml
+      content: "schema_version: 3\nid: stage\nstart: {location: square, party: [scout]}\n"
+  - fixture:
+      file: stage/assets/bg.png
+      content: "a file that exists (its size is not known)"
+  - fixture:
+      file: stage/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {scout: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations:
+          square:
+            background: bg.png
+            stage:
+              scale: [{at: [50, 90], height: 40}, {at: [50, 10], height: 10}]
+              walk: [[[0, 0], [100, 0], [100, 100], [0, 100]]]
+              spots:
+                gate: {at: [150, 50], facing: sideways}
+              exits: [{to: nowhere, area: [[0, 0], [10, 0], [10, 10]]}]
+              people: [{id: guard, at: [20, 20], doll: {parts: [{kind: wings, color: red}]}}]
+            people: [{id: guard, name: Guard}]
+  - run:
+      command: gozen check --format json --only structure stage
+  - assert:
+      exit_code: 1
+      stdout:
+        contains:
+        - '"path": "locations.square.stage.spots.gate.at"'
+        - '"path": "locations.square.stage.spots.gate.facing"'
+        - '"path": "locations.square.stage.exits[0].to"'
+        - '"path": "locations.square.stage.people[0].doll.parts[0].kind"'
+        - '"path": "locations.square.stage.people[0].doll.parts[0].color"'
+        - '"line": 11'
+        - not where one can walk
+      stderr:
+        contains: 'check: 5 errors'
+- name: the same words at schema_version 2 ask for version 3
+  steps:
+  - fixture:
+      file: old/game.yaml
+      content: "schema_version: 2\nid: old\nstart: {location: square, party: [scout]}\n"
+  - fixture:
+      file: old/assets/bg.png
+      content: "a file"
+  - fixture:
+      file: old/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {scout: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations:
+          square:
+            background: bg.png
+            stage:
+              scale: [{at: [50, 90], height: 40}, {at: [50, 10], height: 10}]
+              walk: [[[0, 0], [100, 0], [100, 100], [0, 100]]]
+              spots: {gate: {at: [50, 50]}}
+  - run:
+      command: gozen check --only structure old
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: 'stage needs schema_version: 3'
+- name: gozen art faces help names what it needs
+  steps:
+  - run:
+      command: gozen art faces --help
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['Requirements:', 'gozen art fetch face', 'assets/faces.json', 'cgo']
+      stderr:
+        equals: ''
+- name: gozen art faces without its model fails and writes nothing
+  steps:
+  - run:
+      command: gozen art faces "${specdir}/fixtures/game"
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: nothing to do
+  - fixture:
+      file: stage/game.yaml
+      content: "schema_version: 3\nid: stage\nstart: {location: square, party: [scout]}\n"
+  - fixture:
+      file: stage/assets/bg.png
+      content: "a file"
+  - fixture:
+      file: stage/assets/guard.png
+      content: "a file"
+  - fixture:
+      file: stage/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {scout: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations:
+          square:
+            background: bg.png
+            stage:
+              scale: [{at: [50, 90], height: 40}, {at: [50, 10], height: 10}]
+              walk: [[[0, 0], [100, 0], [100, 100], [0, 100]]]
+              spots: {gate: {at: [50, 50]}}
+              people: [{id: guard, at: [20, 20]}]
+            people: [{id: guard, name: Guard, image: guard.png}]
+  - run:
+      command: gozen art faces stage --model none.onnx
+  - assert:
+      exit_code: 1
+      stderr:
+        not_equals: ''
+  - assert:
+      file:
+        path: stage/assets/faces.json
+        exists: false

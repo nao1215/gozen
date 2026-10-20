@@ -1,0 +1,247 @@
+events:
+  # Beat 7. B Story. Kes in the dark alcove.
+  kes_meet:
+    do:
+      - music: ""
+      - say: "The cell is pitch dark. Someone inside is counting under their breath."
+      - say: {who: kes, face: scared, text: "...forty-one, forty-two. Don't come closer. I have a spanner. A small spanner."}
+      - say: {who: maren, face: surprised, text: "Hello? Is someone in there?"}
+      - say: {who: kes, face: scared, text: "It talks. Statistically— no. Never mind. Are you a monster?"}
+      - say: {who: maren, face: smile, text: "A mapmaker. Maren Quill."}
+      - say: {who: kes, face: surprised, text: "Quill? Maren Quill? I bought a map from you this morning. The north passage, every turn."}
+      - say: {who: kes, face: embarrassed, text: "It had a little bird in the corner. I walked in and the door locked behind me."}
+      - say: {who: maren, face: embarrassed, text: "The bird was... a service."}
+      - say: {who: ox, face: frown, text: "A service."}
+      - say: {who: kes, face: worried, text: "I can't do dark and tight places. I've been counting for four hours. Forty-two. Forty-three."}
+      - say: {who: maren, face: determined, text: "Then count out loud. I'll walk next to you. Here, take my hand."}
+      - say: "A hand finds hers in the dark. It is cold, and it holds on very hard."
+      - say: {who: kes, face: scared, text: "One. Two. Three."}
+      - say: {who: maren, face: smile, text: "Four. Five. Six."}
+      - say: "They walk out together, counting. The lamplight finds Kes's face. She is staring at the lever on the far wall."
+      - music: dungeon
+      - say: {who: kes, face: surprised, text: "Is that a counterweight door? Do you know how beautiful that is?"}
+      - say: {who: tilly, face: laugh, text: "She's fine. She's very fine."}
+      - say: {who: kes, face: smile, text: "I'm Kestrel Aldous. Kes. I tinker. Lightning, mostly. I'd rather not be alone down here."}
+      - say: {who: ox, face: normal, text: "We have room."}
+      - say: {who: maren, face: smile, text: "Then we're four."}
+      - join: kes
+      - set: {flag.kes_joined: true, actor.kes.tactics: balanced}
+      - say: "Kes joins the party."
+  landing_arrival:
+    trigger: enter
+    location: landing
+    once: true
+    do:
+      - say: "A wide landing of old crates and cold pipes. A crooked desk stands against the wall, thick with pencil stubs."
+      - say: {who: kes, face: normal, text: "A pump room. Dry, but well kept. Someone looked after this place."}
+      - say: {who: maren, face: sad, text: "Hobb's Landing. He talked about it, but I thought it was a joke."}
+      - say: "Inside the desk drawer, a corked bottle of Clear Water Elixir. A strip of paper is taped to it. FOR EMERGENCIES. NOT FOR SHOW."
+      - give: {item: elixir}
+      - say: {who: ox, face: normal, text: "Safe enough to rest. Safe enough to save. And the stairs home are right there."}
+  desk_talk:
+    do:
+      - if: flag.seen_cg2
+        then:
+          - say: "You run a thumb along the desk. The pencil marks say what they always said."
+          - call: memory_desk
+        else:
+          - say: "The desk is covered in pencil marks. Some are initials. Most are crossed-out corners, redrawn."
+  warden_meet:
+    do:
+      - say: "A brass colossus kneels before the great valve door. Steam curls from every seam."
+      - say: {who: kes, face: worried, text: "That's a Warden. They were built to keep the door shut against the wrong people."}
+      - say: {who: maren, face: grin, text: "Are we the wrong people?"}
+      - say: {who: ox, face: determined, text: "Behind me. Shield Rush will break its stride."}
+      - battle: warden
+        on_win:
+          - set: {flag.warden_down: true}
+          - say: "The Warden folds with a long, rusty sigh."
+          - say: {who: kes, face: grin, text: "It was only a lock with legs. Beautiful legs, though."}
+          - say: {who: ox, face: smile, text: "Fine work, everyone."}
+        on_lose: []
+  # Beat 9. Midpoint. False victory and the stakes rise.
+  valve_scene:
+    do:
+      - say: "Behind the Warden, a round brass door with a wheel the size of a table."
+      - say: {who: maren, face: determined, text: "Hobb's key opens the first lock. Ox, help me turn it."}
+      - say: {who: ox, face: determined, text: "Together. On three."}
+      - say: "The wheel groans, then gives. Somewhere deep in the walls, something heavy starts to move."
+      - say: {who: kes, face: surprised, text: "It's turning. It's actually turning. Do you hear that? That's water!"}
+      - say: {who: tilly, face: laugh, text: "I knew it. I bet three silver on you, Maren, and I never bet on anyone."}
+      - say: {who: ox, face: smile, text: "Behind me, everyone. It's only wet."}
+      - call: memory_fountain
+      - music: ""
+      - say: {who: vance, face: smile, text: "Lovely. A map that works at last. How very unlike you, Miss Quill."}
+      - say: "Heels ring on the stone. A woman in a deep crimson coat steps out of the dark, a scroll tucked under one arm like a closed fan."
+      - say: {who: maren, face: surprised, text: "Magistrate. How did you get down here?"}
+      - say: {who: vance, face: cold, text: "Your map. The one you sold my men for three hundred gold. They are still in the east wing, counting the same four walls."}
+      - say: {who: maren, face: embarrassed, text: "That was... a different map."}
+      - say: {who: vance, face: smile, text: "There are three locks, dear. You opened the first. The other two are on floors your map doesn't have."}
+      - say: {who: vance, face: normal, text: "Everything has a price. Even you. Do come and see what it is."}
+      - say: "She leaves as she came, one slow step at a time. The pipes shudder. Far above, a fountain coughs, stutters, and goes silent."
+      - set: {flag.midpoint: true, flag.valve_open: true}
+      - say: {who: kes, face: worried, text: "The cistern holds three days of water. That's all the town has left."}
+      - say: {who: tilly, face: worried, text: "So we find the other two locks. Today."}
+      - say: {who: maren, face: worried, text: "A hatch has opened behind the valve. Stairs, going down."}
+      - say: {who: ox, face: normal, text: "Behind me."}
+      - music: dungeon
+  # Beat 10. Bad Guys Close In.
+  b3_arrival:
+    trigger: enter
+    location: b3
+    once: true
+    do:
+      - say: "B3. The walls are old pipes, rusted orange. The corridors seem to rearrange themselves behind you."
+      - say: {who: maren, face: smug, text: "I drew this level ages ago. Left at the statue, right at the bell. Trust me, it's on the map."}
+      - say: {who: ox, face: frown, text: "There's no statue. And the corridor you called left is a wall."}
+      - say: {who: kes, face: worried, text: "Statistically, this hall has changed shape since we came in."}
+      - say: {who: ox, face: angry, text: "It's an old chart off a rumor, Kes. Stop quoting it."}
+      - say: {who: kes, face: scared, text: "I'm not quoting it. I'm saying it's wrong. And that I'm— never mind."}
+      - say: {who: tilly, face: worried, text: "Let's not fight in the dark."}
+      - say: {who: maren, face: embarrassed, text: "Then let's find the way the hard way. Step by step."}
+  tilly_wager:
+    do:
+      - say: "A nook in the pipe wall, cluttered with old tin cups and a hand-painted dice table."
+      - say: {who: tilly, face: smug, text: "Look at that. A house table. I'll wager on that."}
+      - say: {who: maren, face: worried, text: "Tilly, we don't have anything to wager."}
+      - say: {who: tilly, face: smug, text: "We have the Elixir. Double it or nothing."}
+      - say: "Tilly throws before anyone can stop her. One. Two. A pair of ones."
+      - say: {who: tilly, face: sad, text: "...Snake eyes."}
+      - if: item.elixir > 0
+        then:
+          - take: {item: elixir}
+          - say: "The house takes Hobb's Clear Water Elixir."
+        else:
+          - gold: -30
+          - say: "The house takes 30G from the party purse."
+      - say: {who: ox, face: angry, text: "That was Hobb's bottle."}
+      - say: {who: tilly, face: sad, text: "I know. I know."}
+  kes_falls:
+    do:
+      - say: {who: maren, face: smug, text: "My chart says this floor is solid. Trust me."}
+      - say: "The floor under Kes is not solid."
+      - say: {who: kes, face: scared, text: "Maren! It's dark— it's very dark— I'm falling in a controlled way!"}
+      - say: {who: maren, face: surprised, text: "Kes!"}
+      - say: {who: kes, face: scared, text: "I'm fine! I'm in a pipe! Do not follow! I'll count my way out!"}
+      - leave: kes
+      - set: {flag.kes_lost: true}
+      - say: {who: ox, face: angry, text: "Your chart said solid floor."}
+      - say: {who: maren, face: sad, text: "I know."}
+  # Beats 11 and 12. All Is Lost and Dark Night of the Soul.
+  hobb_camp:
+    do:
+      - if: "!flag.kes_lost"
+        then:
+          - say: "A rusted grate gives way under Kes as the party reaches the end of the tunnel."
+          - say: {who: kes, face: scared, text: "Maren! It's dark— I'm falling in a controlled way!"}
+          - say: {who: kes, face: scared, text: "I'm fine! I'm in a pipe! Do not follow! I'll count my way out!"}
+          - leave: kes
+          - set: {flag.kes_lost: true}
+      - music: ""
+      - say: "The tunnel dead-ends at an old camp. A bedroll. A satchel. A rusted compass with a cracked glass."
+      - say: {who: maren, face: sad, text: "Hobb's compass. And his satchel. He never retired."}
+      - say: "Under the satchel, a notebook. The last page is half a map. The lines simply stop."
+      - say: {who: maren, face: sad, text: "He went down looking for a way to turn the water back. He never finished the page."}
+      - say: {who: kes, face: sad, text: "(through the pipe) Maren? I can hear you. Is that the north passage you drew me?"}
+      - say: {who: maren, face: sad, text: "...I copied Hobb's unfinished page, and I inked in the rest myself."}
+      - say: {who: kes, face: sad, text: "(through the pipe) So I walked a made-up map into a locked cell."}
+      - if: flag.lied_to_ox
+        then:
+          - say: {who: ox, face: angry, text: "You told me you'd walked it twice. I believed you."}
+        else:
+          - say: {who: ox, face: worried, text: "You told me the truth at the gate. But you haven't drawn a single line since."}
+      - say: {who: tilly, face: sad, text: "I'd wager on a lot of things. I can't wager on this one."}
+      - say: {who: ox, face: normal, text: "Fine."}
+      - leave: ox
+      - leave: tilly
+      - say: "Their footsteps fade up the tunnel. Maren is alone with a cold compass and a half-drawn page."
+      - say: "Taped to the last page, a strip of paper in Hobb's hand."
+      - give: {item: hobb_note}
+      - choice:
+          - label: Read Hobb's note aloud
+            do:
+              - set: {flag.read_aloud: true}
+              - say: {who: maren, face: sad, text: "Draw only what you have walked."}
+              - say: {who: maren, face: sad, text: "I'm sorry, Hobb."}
+          - label: Fold it into the bag, unread
+            do:
+              - set: {flag.read_aloud: false}
+              - say: "Maren folds the strip into her bag without looking. She knows the words anyway."
+      - call: memory_desk
+      - say: {who: maren, face: determined, text: "Let me walk it first."}
+      - say: "She winds the compass spring with the tip of a pencil. The needle shivers, wobbles, and points."
+      - say: "In the corner of the page, the map shows white lines only where she has actually walked. Nothing else."
+      - set: {flag.hobb_found: true}
+      - music: dungeon
+      - move: b3_back
+        at: S
+        facing: east
+  memory_fountain:
+    do:
+      - set: {flag.seen_cg1: true}
+      - music: town
+      - say: "Down the old speaking tube comes a sound like surf. It is the whole town, cheering."
+      - say: "In the plaza, the fountain coughs once, then sings. Children run into the spray in their boots."
+      - say: {who: Ansel, text: "Water remembers."}
+      - say: "For the length of one deep breath, everything is exactly as it should be."
+  memory_desk:
+    do:
+      - set: {flag.seen_cg2: true}
+      - say: "Ten years ago. A crooked lamp, a crooked desk, and one very old pencil."
+      - say: {who: Hobb, text: "Again, girl. What was on that corner?"}
+      - say: {who: Young Maren, text: "A door? I think a door. It was dark."}
+      - say: {who: Hobb, text: "You think. Then it goes on the page as a thought. Not as a door."}
+      - if: flag.read_aloud
+        then:
+          - say: {who: Hobb, text: "Draw only what you have walked. Say it back."}
+          - say: {who: Young Maren, text: "Draw only what I have walked."}
+          - say: {who: Hobb, text: "Good. Now say it again when nobody is watching."}
+        else:
+          - say: {who: Hobb, text: "Draw only what you have walked. You needn't say it. Just do it."}
+          - say: {who: Young Maren, text: "...What if I forget?"}
+          - say: {who: Hobb, text: "Then somebody who loves you will remind you."}
+      - say: "The lamp flickers. Hobb's hand rests on her shoulder, and the memory lets go."
+  # Beat 13. Break into Three.
+  tilly_returns:
+    do:
+      - say: "A figure waits at the first turn, a cup in one hand and two dice in the other."
+      - say: {who: tilly, face: normal, text: "You're drawing as you go."}
+      - say: {who: maren, face: determined, text: "Let me walk it first."}
+      - say: {who: tilly, face: smile, text: "No dice this time. I'll bet on you. That's not a wager. That's just a fact."}
+      - join: tilly
+      - set: {actor.tilly.tactics: balanced}
+      - say: "Tilly rejoins the party."
+  ox_returns:
+    do:
+      - say: "A big shape stands in the narrow corridor, shield planted, like a gate."
+      - if: flag.lied_to_ox
+        then:
+          - say: {who: ox, face: frown, text: "You lied to me. And you're walking every line anyway."}
+        else:
+          - say: {who: ox, face: normal, text: "You told me the truth at the gate. That's why I'm still here."}
+      - say: {who: ox, face: worried, text: "The night the water first thinned, I left my post. I was afraid I'd fail it. So I never guarded anything again."}
+      - say: {who: maren, face: smile, text: "You're guarding me right now."}
+      - say: "Slowly, Ox lowers the shield."
+      - say: {who: ox, face: smile, text: "Behind me. ...Fine."}
+      - join: ox
+      - set: {actor.ox.tactics: balanced}
+      - say: "Ox rejoins the party."
+  kes_returns:
+    do:
+      - say: "A grate hangs open in the pipe wall. Somewhere beyond it, a very small voice is counting."
+      - say: {who: kes, face: scared, text: "...three hundred and nine, three hundred and ten. Maren?"}
+      - say: {who: maren, face: smile, text: "Three hundred and eleven. Hand."}
+      - say: "Together they count the rest of the way, step by step, through the narrowest part of the pipe."
+      - say: {who: kes, face: smile, text: "Three hundred and eleven steps. I didn't say 'statistically' once."}
+      - say: {who: maren, face: grin, text: "You said it twice."}
+      - say: {who: kes, face: embarrassed, text: "...Never mind. I'm sorry about the map. Not the bird. The bird was fine."}
+      - join: kes
+      - set: {flag.kes_back: true, actor.kes.tactics: balanced}
+      - say: "Kes rejoins the party."
+      - say: {who: maren, face: determined, text: "I need a table. A lamp. And a night."}
+      - say: "While Kes rewires the lamp, Maren draws. Every door, every lever, every shortcut in the valve hall. All of it wrong."
+      - learn: {actor: maren, skill: forged_map}
+      - give: {item: forged_hall}
+      - say: {who: maren, face: smug, text: "The finest forgery of my career. But only because I walked the real one first."}
+      - say: {who: kes, face: grin, text: "Statistically, that's the best lie I've ever seen."}
+      - say: "Ahead, a round door stands ajar. Beyond it, the hall of the Source Valve."

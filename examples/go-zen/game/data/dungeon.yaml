@@ -1,0 +1,511 @@
+locations:
+  b1:
+    name: B1 Drip Halls
+    area: The Undercistern
+    music: dungeon
+    battle_background: bg/battle_brick.jpg
+    encounters:
+      rate: 0.03
+      troops:
+        - {troop: drips, weight: 3}
+        - {troop: rats, weight: 3}
+        - {troop: drip_and_rat, weight: 4}
+        - {troop: rat_pack, weight: 1, when: flag.cell_open}
+    dungeon:
+      wall: dungeon/brick_wall.jpg
+      door: dungeon/brick_door.jpg
+      floor: "#6f8186"
+      floor_texture: dungeon/brick_floor.jpg
+      ceiling: "#1e2a30"
+      ceiling_texture: dungeon/brick_ceiling.jpg
+      darkness: 0.45
+      complete:
+        - say: "Every cell of this level is on the page, and every line was walked. The ink feels heavier."
+        - gold: 40
+      map: |
+        #<#############
+        #S#L........#.#
+        #.###.#####.#.#
+        #.#...#.....#.#
+        #.#.###.#####.#
+        #.#...#.......#
+        #.###.#######.#
+        #.....#.#.....#
+        #######.#.#####
+        #.....#...#T..#
+        #.###.#.#####.#
+        #...#a>.#.....#
+        #.#.###.###.#K#
+        #U#.........#Q#
+        ###############
+      tiles:
+        S: {start: true, facing: south}
+        a: {facing: north}
+        "<":
+          name: Stairs up
+          picture: dungeon/brick_stairs_up.jpg
+          look: door
+          solid: "true"
+          mark: "#97daca"
+          symbol: "<"
+          do: [{move: gate}]
+        ">":
+          name: Stairs down
+          picture: dungeon/brick_stairs_down.jpg
+          look: door
+          solid: "true"
+          mark: "#97daca"
+          symbol: ">"
+          do:
+            - if: flag.kes_joined
+              then: [{move: landing}]
+              else:
+                - say: {who: ox, face: worried, text: "Wait. Something is humming behind that cell door. I'd like to know what, before we leave it."}
+        L:
+          name: Rusty lever
+          picture: tiles/lever.png
+          size: 0.5
+          solid: "true"
+          once: true
+          after: l
+          mark: "#97daca"
+          symbol: L
+          do:
+            - say: "You haul the lever down. Somewhere ahead, an iron door groans."
+            - set: {flag.cell_open: true}
+        l: {name: Pulled lever, picture: tiles/lever.png, size: 0.5, solid: "true"}
+        K:
+          name: Iron cell door
+          look: door
+          when: "!flag.cell_open"
+          solid: "true"
+          mark: "#d79a86"
+          symbol: K
+          do: [{say: "A cell door, locked tight. Something behind it hums a tune very quietly, and very badly."}]
+        Q:
+          name: Dark alcove
+          once: true
+          mark: "#e7b66b"
+          symbol: "?"
+          do: [{call: kes_meet}]
+        T:
+          name: Old chest
+          picture: tiles/chest.png
+          size: 0.45
+          solid: "true"
+          once: true
+          after: t
+          mark: "#e7b66b"
+          symbol: T
+          do:
+            - say: "Inside the chest, a pouch of coins and a note. The note says, in a neat hand, NOT THIS WAY."
+            - gold: 25
+        U:
+          name: Old chest
+          picture: tiles/chest.png
+          size: 0.45
+          solid: "true"
+          once: true
+          after: t
+          mark: "#e7b66b"
+          symbol: T
+          do:
+            - say: "Two glass vials, still corked."
+            - give: {item: ink_vial, count: 2}
+        t: {name: Open chest, picture: tiles/chest_open.png, size: 0.45, solid: "true"}
+  landing:
+    name: Hobb's Landing
+    area: The Undercistern
+    background: bg/landing.jpg
+    music: dungeon
+    safe: true
+    people:
+      - name: Hobb's desk
+        image: props/desk.png
+        talk: [{call: desk_talk}]
+    actions:
+      - label: Rest
+        do:
+          - heal: all
+          - say: "You sit on the old crates and share the last of the bread. Everyone feels better."
+      - {label: Save, do: [{save: true}]}
+    exits:
+      - {to: b1, at: a, facing: north, label: Back up to the Drip Halls}
+      - {to: b2, at: S, facing: south, label: Down to the Cistern Hall}
+      - {to: gate, label: Climb home to Pellmere}
+  b2:
+    name: B2 Cistern Hall
+    area: The Undercistern
+    music: dungeon
+    battle_background: bg/battle_brick.jpg
+    encounters:
+      rate: 0.02
+      troops:
+        - {troop: drips, weight: 2}
+        - {troop: rat_pack, weight: 3}
+        - {troop: crab, weight: 3}
+        - {troop: crab_rats, weight: 3}
+        - {troop: crab_pair, weight: 1}
+    dungeon:
+      wall: dungeon/brick_wall.jpg
+      door: dungeon/gate_door.jpg
+      floor: "#5f757b"
+      floor_texture: dungeon/brick_floor.jpg
+      ceiling: "#18242a"
+      ceiling_texture: dungeon/brick_ceiling.jpg
+      darkness: 0.5
+      complete:
+        - say: "The whole hall is charted. Not one line on this page was borrowed."
+        - gold: 60
+      map: |
+        #<#########################
+        #S#k....#.................#
+        #.###.#.#########.#######.#
+        #.....#.#...#.....#.#.....#
+        #######.#.#.#.#####.#.#####
+        #...sU#...#.#...#...#.#...#
+        #.#########.###.#G#.#.#.#.#
+        #.........#.....#.#...~.#.#
+        #.#######.#######.#######.#
+        #.#.....#......k#...#.....#
+        #.#####.###.#######.#.###.#
+        #...#...#k#.......#.#...#.#
+        ###.#.#.#.#######.#.###.#.#
+        #...#.#.....#...#...#...#.#
+        #.###M#####.#.#.#####.###.#
+        #.#.......#.#.#.......#...#
+        #.###.###.#.#####.#####.###
+        #...#.#...#.......#.....#.#
+        ###.###.###########.#####.#
+        #Y#.....#.#.......#.......#
+        #.#######.#.#####.#######N#
+        #..Z#...#...#T..#.......#.#
+        #.###.#.#.#####.#.#######.#
+        #.....#...#.....#...#.....#
+        #.#########.#>#h###.#.#####
+        #...........#a.W.V#.......#
+        ###########################
+      tiles:
+        S: {start: true, facing: south}
+        a: {facing: east}
+        "<":
+          name: Stairs up
+          picture: dungeon/brick_stairs_up.jpg
+          look: door
+          solid: "true"
+          mark: "#97daca"
+          symbol: "<"
+          do: [{move: landing}]
+        ">":
+          name: Stairs down
+          picture: dungeon/brick_stairs_down.jpg
+          look: door
+          when: flag.valve_open
+          else: "#"
+          solid: "true"
+          mark: "#97daca"
+          symbol: ">"
+          do:
+            - choice:
+                - label: Go down
+                  do: [{dive: b3}]
+                - label: Not yet
+                  do: []
+              prompt: "The new stairs lead down. It is very dark down there."
+        G:
+          name: Brass gate
+          look: door
+          when: "!flag.gate1"
+          solid: "true"
+          mark: "#e7b66b"
+          symbol: G
+          do:
+            - if: item.brass_key > 0
+              then:
+                - take: {item: brass_key}
+                - set: {flag.gate1: true}
+                - say: "The brass key turns. The gate swings open."
+              else:
+                - say: "A brass gate. It wants a brass key."
+        M:
+          name: Brass gate
+          look: door
+          when: "!flag.gate2"
+          solid: "true"
+          mark: "#e7b66b"
+          symbol: G
+          do:
+            - if: item.brass_key > 0
+              then:
+                - take: {item: brass_key}
+                - set: {flag.gate2: true}
+                - say: "Another turn of the key. Another gate swings open."
+              else:
+                - say: "A second brass gate. It wants a brass key."
+        N:
+          name: Brass gate
+          look: door
+          when: "!flag.gate3"
+          solid: "true"
+          mark: "#e7b66b"
+          symbol: G
+          do:
+            - if: item.brass_key > 0
+              then:
+                - take: {item: brass_key}
+                - set: {flag.gate3: true}
+                - say: "The last gate opens with a long sigh."
+              else:
+                - say: "A third brass gate. It wants a brass key."
+        k:
+          name: Brass key
+          picture: tiles/key.png
+          size: 0.3
+          once: true
+          after: "."
+          mark: "#e7b66b"
+          symbol: k
+          do:
+            - give: {item: brass_key}
+            - say: "A brass key hangs from a hook. You take it."
+        s:
+          name: Loose brick
+          look: wall
+          picture: tiles/loose_brick.png
+          trigger: look
+          ask: Push it
+          question: "One brick sticks out from the wall."
+          once: true
+          after: "."
+          do: [{say: "The brick slides back. Behind it, a narrow gap in the wall."}]
+        "~":
+          name: Slick channel
+          slide: west
+          hint: "The water here only knows one direction."
+          mark: "#6fb7c4"
+          symbol: "~"
+        T:
+          name: Old chest
+          picture: tiles/chest.png
+          size: 0.45
+          solid: "true"
+          once: true
+          after: t
+          mark: "#e7b66b"
+          symbol: T
+          do:
+            - say: "A drawer of gears, a few coins, and a lot of dust."
+            - gold: 30
+            - give: {item: old_gear, count: 2}
+        Y:
+          name: Old chest
+          picture: tiles/chest.png
+          size: 0.45
+          solid: "true"
+          once: true
+          after: t
+          mark: "#e7b66b"
+          symbol: T
+          do:
+            - say: "Tonics, neatly wrapped. Somebody planned for company."
+            - give: {item: tonic, count: 3}
+        Z:
+          name: Old chest
+          picture: tiles/chest.png
+          size: 0.45
+          solid: "true"
+          once: true
+          after: t
+          mark: "#e7b66b"
+          symbol: T
+          do:
+            - say: "A stiff leather coat in a waxed bag. It fits somebody."
+            - give: {item: coat_leather}
+        U:
+          name: Hidden chest
+          picture: tiles/chest.png
+          size: 0.45
+          solid: "true"
+          once: true
+          after: t
+          mark: "#e7b66b"
+          symbol: T
+          do:
+            - say: "Tucked behind the wall, a pair of goggles with one cracked lens. They still work."
+            - give: {item: charm_goggles}
+        t: {name: Open chest, picture: tiles/chest_open.png, size: 0.45, solid: "true"}
+        W:
+          name: Brass Warden
+          picture: enemies/brass_warden.png
+          size: 0.85
+          solid: "true"
+          when: "!flag.warden_down"
+          mark: "#d79a86"
+          symbol: "!"
+          do:
+            - call: warden_meet
+        V:
+          name: Source valve door
+          look: door
+          picture: tiles/valve.png
+          solid: "true"
+          once: true
+          after: v
+          mark: "#97daca"
+          symbol: V
+          do: [{call: valve_scene}]
+        # a rest before the Warden: stepping here restores the party
+        h:
+          name: Warm corner
+          mark: "#9ee0d2"
+          do:
+            - say: "A dry corner with a warm pipe to lean on. Someone passes round the last of the bread."
+            - say: {who: ox, face: normal, text: "Five minutes. Then the door."}
+            - heal: all
+        v: {name: Turned valve, picture: tiles/valve.png, size: 0.6, solid: "true"}
+  b3:
+    name: B3 Shifting Reach
+    area: The Undercistern
+    music: dungeon
+    battle_background: bg/battle_pipes.jpg
+    encounters:
+      rate: 0.06
+      troops:
+        - {troop: crab, weight: 2}
+        - {troop: crab_pair, weight: 2}
+        - {troop: hound, weight: 3}
+        - {troop: hound_crab, weight: 3}
+    dungeon:
+      wall: dungeon/pipe_wall.jpg
+      door: dungeon/pipe_door.jpg
+      floor: "#665a50"
+      floor_texture: dungeon/pipe_floor.jpg
+      ceiling: "#1c1a18"
+      ceiling_texture: dungeon/pipe_ceiling.jpg
+      darkness: 0.6
+      generate:
+        width: 21
+        height: 21
+        rooms: 4
+        start: S
+        place:
+          - {char: U, wall: true, steps: 3}
+          - {char: Y, steps: 9}
+          - {char: P, steps: 16}
+          - {char: H, steps: 26}
+          - {char: E, far: true}
+          - {char: T, count: 3}
+          - {char: R, count: 4}
+      roamers:
+        - name: Brass Hound
+          picture: enemies/brass_hound.png
+          size: 0.7
+          mark: "#d98a6a"
+          move: chase
+          sight: 4
+          count: 2
+          troops: [{troop: hound}]
+      tiles:
+        S: {start: true, facing: north}
+        U:
+          name: Stairs up
+          picture: dungeon/pipe_stairs_up.jpg
+          look: door
+          solid: "true"
+          mark: "#97daca"
+          symbol: "<"
+          do: [{move: b2, at: a, facing: east}]
+        T:
+          name: Dusty crate
+          picture: tiles/crate.png
+          size: 0.45
+          solid: "true"
+          once: true
+          after: t
+          mark: "#e7b66b"
+          symbol: T
+          do:
+            - say: "Spare parts and loose coins. The crate was nailed shut once."
+            - gold: 20
+            - give: {item: old_gear}
+        t: {name: Open crate, picture: tiles/crate_open.png, size: 0.45, solid: "true"}
+        R:
+          name: Steam vent
+          flat: true
+          picture: tiles/vent.png
+          hint: "It hisses. Better to walk around."
+          mark: "#d98a6a"
+          symbol: "^"
+          do:
+            - say: "A blast of hot steam. Everyone flinches."
+            - hurt: {who: all, amount: 4}
+        Y:
+          name: Dice nook
+          once: true
+          mark: "#e7b66b"
+          symbol: "?"
+          do: [{call: tilly_wager}]
+        P:
+          name: Solid floor
+          once: true
+          mark: "#e7b66b"
+          symbol: "?"
+          when: "!flag.kes_lost"
+          else: "."
+          do: [{call: kes_falls}]
+        H:
+          name: Hobb's camp
+          when: "!flag.hobb_found"
+          else: "."
+          once: true
+          after: "."
+          mark: "#e7b66b"
+          symbol: H
+          do: [{call: hobb_camp}]
+        E:
+          name: Narrow tunnel
+          when: flag.hobb_found
+          else: "."
+          mark: "#97daca"
+          symbol: E
+          do: [{move: b3_back}]
+  b3_back:
+    name: The Long Way Back
+    area: The Undercistern
+    music: dungeon
+    dungeon:
+      wall: dungeon/pipe_wall.jpg
+      door: dungeon/pipe_door.jpg
+      floor: "#665a50"
+      floor_texture: dungeon/pipe_floor.jpg
+      ceiling: "#1c1a18"
+      ceiling_texture: dungeon/pipe_ceiling.jpg
+      darkness: 0.5
+      no_map: false
+      map: |
+        #########
+        #S..t..o#
+        #######.#
+        #E.k....#
+        #########
+      tiles:
+        S: {start: true, facing: east}
+        t: {name: A figure with a cup, once: true, after: ".", mark: "#e7b66b", symbol: T, do: [{call: tilly_returns}]}
+        o: {name: A figure with a shield, once: true, after: ".", mark: "#e7b66b", symbol: O, do: [{call: ox_returns}]}
+        k: {name: A voice in the pipe, once: true, after: ".", mark: "#e7b66b", symbol: K, do: [{call: kes_returns}]}
+        E:
+          name: The valve hall door
+          look: door
+          solid: "true"
+          when: flag.kes_back
+          mark: "#97daca"
+          symbol: E
+          do:
+            - say: {who: tilly, face: smile, text: "Hold still, all of you. One cup, passed round. Blessings don't count as wagers."}
+            - heal: all
+            - move: hall
+  hall:
+    name: Source Valve Hall
+    area: The Undercistern
+    background: bg/valve_hall.jpg
+    music: boss

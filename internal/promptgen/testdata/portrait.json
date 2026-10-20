@@ -1,0 +1,151 @@
+{
+  "positive": "quiet garden, soft light, (traveler:1.5), adult",
+  "negative": "blur, noise, child, underage",
+  "words": [
+    {
+      "word": "quiet garden",
+      "side": "positive",
+      "priority": 1,
+      "emphasis": "normal",
+      "strength": 1,
+      "sources": [
+        {
+          "layer": "setting",
+          "id": "garden",
+          "stage": "subject",
+          "priority": 1,
+          "emphasis": "normal",
+          "strength": 1
+        }
+      ]
+    },
+    {
+      "word": "soft light",
+      "side": "positive",
+      "priority": 0,
+      "emphasis": "normal",
+      "strength": 1,
+      "sources": [
+        {
+          "layer": "setting",
+          "id": "garden",
+          "stage": "detail",
+          "priority": 2,
+          "emphasis": "normal",
+          "strength": 1
+        },
+        {
+          "layer": "subject",
+          "id": "traveler",
+          "stage": "required",
+          "priority": 0,
+          "emphasis": "normal",
+          "strength": 1
+        }
+      ]
+    },
+    {
+      "word": "traveler",
+      "side": "positive",
+      "priority": 1,
+      "emphasis": "strongest",
+      "strength": 4,
+      "sources": [
+        {
+          "layer": "subject",
+          "id": "traveler",
+          "stage": "subject",
+          "priority": 1,
+          "emphasis": "strongest",
+          "strength": 4
+        }
+      ]
+    },
+    {
+      "word": "adult",
+      "side": "positive",
+      "priority": -1,
+      "emphasis": "",
+      "strength": 1,
+      "sources": [],
+      "fixed": true
+    },
+    {
+      "word": "blur",
+      "side": "negative",
+      "priority": 0,
+      "emphasis": "normal",
+      "strength": 1,
+      "sources": [
+        {
+          "layer": "subject",
+          "id": "traveler",
+          "stage": "required",
+          "priority": 0,
+          "emphasis": "normal",
+          "strength": 1
+        }
+      ]
+    },
+    {
+      "word": "noise",
+      "side": "negative",
+      "priority": 2,
+      "emphasis": "normal",
+      "strength": 1,
+      "sources": [
+        {
+          "layer": "setting",
+          "id": "garden",
+          "stage": "detail",
+          "priority": 2,
+          "emphasis": "normal",
+          "strength": 1
+        }
+      ]
+    },
+    {
+      "word": "child",
+      "side": "negative",
+      "priority": -1,
+      "emphasis": "",
+      "strength": 1,
+      "sources": [],
+      "fixed": true
+    },
+    {
+      "word": "underage",
+      "side": "negative",
+      "priority": -1,
+      "emphasis": "",
+      "strength": 1,
+      "sources": [],
+      "fixed": true
+    }
+  ],
+  "dropped": [
+    {
+      "word": "artifacts",
+      "side": "negative",
+      "priority": 2,
+      "emphasis": "normal",
+      "strength": 1,
+      "sources": [
+        {
+          "layer": "subject",
+          "id": "traveler",
+          "stage": "detail",
+          "priority": 2,
+          "emphasis": "normal",
+          "strength": 1
+        }
+      ],
+      "reason": "limit"
+    }
+  ],
+  "negative_limit": 2,
+  "negative_count": 2,
+  "fixed_negative_count": 2,
+  "diagnostics": null,
+  "dialect": "sdxl"
+}

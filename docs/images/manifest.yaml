@@ -1,0 +1,119 @@
+# The source of every picture that README.md, the website and docs/ show.
+#
+# Each image is made from a sample game: the sample is built, run with its
+# script under a display (Xvfb on Linux), and the frames it writes with `shot`
+# (or --frames) are encoded here. `make docs-images` remakes every image;
+# `make docs-images-check` remakes them in a temporary directory and fails when
+# a committed image is stale. A picture that is not listed here cannot be put
+# in docs/images or referred to from README.md or the website
+# (internal/dev/docs). The rules are in docs/development/docs.md.
+#
+# A picture that is not a capture (the logo) is listed under `static` with its
+# source and license instead; it is not remade.
+#
+# To show another sample, change `samples` (and the runs that use it): the
+# images, their references and the checks stay the same.
+
+samples:
+  wayfinder:
+    package: ./examples/play
+  puppet:
+    package: ./examples/puppet
+
+# One run of a sample. {script} is the script file and {out} a new, empty
+# directory for the run: the shots, saves and trace go under it. `check` is
+# run afterwards with the run directory as its last argument and fails the
+# run when the play did not go as planned.
+runs:
+  journey:
+    sample: wayfinder
+    script: scripts/capture-example.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
+    check: [python3, scripts/capture-example.py]
+  balance:
+    sample: wayfinder
+    script: scripts/capture-balance.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, grotto, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  puppet-tour:
+    sample: puppet
+    args: [--tour, --frames, "{out}/frames"]
+
+# Each image: the run, the shot (a `shot NAME` of the script, or a pick from
+# the frames) and how it is encoded.
+#   shot: NAME                the frame NAME.png
+#   pick: {shots: GLOB, ...}  frames whose names match GLOB, in the order the
+#                             game wrote them; `before: EVENT` takes the last
+#                             frame before the first trace line with EVENT,
+#                             `at: N` the frame closest to N ticks after it,
+#                             `middle: true` the middle frame
+#   frames: [pick, ...]       the frames of an animation; `every: N` keeps
+#                             every Nth, `from`/`to` keep the frames from..to
+#                             ticks after `near: EVENT`
+#   jpeg: {width, height, quality}             (quality is ffmpeg's -q:v)
+#   gif: {fps, width, height, colors, crop}    (crop is ffmpeg's w:h:x:y)
+#   tolerance: share of pixels that may differ in the stale check (default 0.02)
+images:
+  wayfinder.gif:
+    run: journey
+    frames:
+      - {shots: "f[0-9][0-9][0-9]"}
+      - {shots: "practice_b*"}
+      - {shots: "sentry_b*", every: 6}
+      - {shots: "sentry_b*", near: cutin, from: 15, to: 50}
+    gif: {fps: 5, width: 640, height: 360, colors: 112}
+  wayfinder-title.jpg:
+    run: journey
+    shot: s-title
+    jpeg: {width: 960, height: 540, quality: 3}
+  wayfinder-talk.jpg:
+    run: journey
+    shot: s-talk
+    jpeg: {width: 960, height: 540, quality: 3}
+  wayfinder-battle.jpg:
+    run: journey
+    pick: {shots: "practice_b*", middle: true}
+    jpeg: {width: 960, height: 540, quality: 3}
+  wayfinder-village.jpg:
+    run: journey
+    shot: s-village
+    jpeg: {width: 960, height: 540, quality: 3}
+  wayfinder-dungeon.jpg:
+    run: journey
+    shot: s-dungeon
+    jpeg: {width: 960, height: 540, quality: 3}
+  wayfinder-party.jpg:
+    run: journey
+    pick: {shots: "sentry_b*", before: cutin}
+    jpeg: {width: 960, height: 540, quality: 3}
+  wayfinder-cutin.jpg:
+    run: journey
+    pick: {shots: "sentry_b*", near: cutin, at: 30}
+    jpeg: {width: 960, height: 540, quality: 3}
+  wayfinder-balance.jpg:
+    run: balance
+    shot: balance
+    jpeg: {width: 960, height: 540, quality: 3}
+  puppet.gif:
+    run: puppet-tour
+    frames:
+      - {shots: "f*", every: 3}
+    gif: {fps: 10, width: 340, height: 281, colors: 128, crop: "654:540:153:0"}
+
+# Pictures that are not captures. They are drawn once from vector sources and
+# committed as they are; `make docs-images` does not remake them.
+static:
+  gozen-logo.svg:
+    source: the mark (a brush circle in Go's blue, #00ADD8, around a cross key) and the word Gozen as paths, from Quicksand Bold; for light backgrounds
+    license: MIT; the letter outlines come from Quicksand (SIL Open Font License 1.1), see ASSETS.md
+  gozen-logo-dark.svg:
+    source: the same logo for dark backgrounds
+    license: MIT; the letter outlines come from Quicksand (SIL Open Font License 1.1), see ASSETS.md
+  gozen-favicon.svg:
+    source: the mark alone, for the site's icon on light backgrounds
+    license: MIT
+  gozen-favicon-dark.svg:
+    source: the mark alone, for the site's icon on dark backgrounds
+    license: MIT
+  gozen-ogp.png:
+    source: the dark logo and a one-line description on a dark 1280x640 card (the social preview), rendered from SVG and HTML
+    license: MIT; the text is set in Quicksand and Noto Sans (SIL Open Font License 1.1), see ASSETS.md

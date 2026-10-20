@@ -1,0 +1,114 @@
+{{/* Build the Schema page from data/schema/types.schema.json, which a test in
+     internal/layer2/gamedata generates from the Go types (GOZEN_UPDATE_SCHEMA=1),
+     mounted under assets/. Each field carries its type label (x-type) and its
+     contract (x-contract). The committed file stays the single source of truth
+     for the types and fields; the page adds what an author needs to read them:
+     - data/schema_en.yaml: the English wording of the contract cells. A cell
+       with Japanese text and no entry there fails the build.
+     - data/schema_fields/*.yaml: the English description of every type (`_`)
+       and field. A type or field without one fails the build, so a field
+       added to the Go types cannot reach the page undescribed
+       (internal/dev/docs checks the same without Hugo).
+     - data/schema_sections.yaml: the topics the types are listed under, in
+       order. A type no topic names is appended under "Other types" by itself,
+       so every type a row links to has a section to land on. */}}
+
+{{ $tr := hugo.Data.schema_en }}
+{{ $desc := dict }}
+{{ range $file, $types := hugo.Data.schema_fields }}
+  {{ $desc = merge $desc $types }}
+{{ end }}
+{{ $intro := (resources.Get "schema-intro.md").Content }}
+
+{{ with resources.Get "schema/types.schema.json" }}
+  {{/* The fields of each type: its properties, or those of its map form when it
+       can also be written as a string. */}}
+  {{ $defs := index (. | transform.Unmarshal) "$defs" }}
+  {{ $order := slice }}
+  {{ $props := dict }}
+  {{ range $name, $node := $defs }}
+    {{ $order = $order | append $name }}
+    {{ $p := $node.properties }}
+    {{ range $node.anyOf }}{{ with .properties }}{{ $p = . }}{{ end }}{{ end }}
+    {{ $props = merge $props (dict $name (default dict $p)) }}
+  {{ end }}
+
+  {{/* The topics, then every type no topic names. */}}
+  {{ $sections := slice }}
+  {{ $listed := slice }}
+  {{ range hugo.Data.schema_sections.sections }}
+    {{ range .types }}
+      {{ if not (in $order .) }}
+        {{ errorf "website/data/schema_sections.yaml: %q is not a type of data/schema/types.schema.json" . }}
+      {{ end }}
+    {{ end }}
+    {{ $sections = $sections | append . }}
+    {{ $listed = $listed | append .types }}
+  {{ end }}
+  {{ $rest := slice }}
+  {{ range $order }}{{ if not (in $listed .) }}{{ $rest = $rest | append . }}{{ end }}{{ end }}
+  {{ with $rest }}
+    {{ $sections = $sections | append (dict "title" "Other types" "types" .) }}
+  {{ end }}
+
+  {{ $out := slice $intro "\n## Types by topic\n\n| Topic | Types |\n|:--|:--|" }}
+  {{ range $sections }}
+    {{ $links := slice }}
+    {{ range .types }}{{ $links = $links | append (printf "[%s](#%s)" . (lower .)) }}{{ end }}
+    {{ $out = $out | append (printf "| %s | %s |" .title (delimit $links ", ")) }}
+  {{ end }}
+
+  {{ range $sections }}
+    {{ range $t := .types }}
+      {{ $d := index $desc $t }}
+      {{ if not $d }}
+        {{ errorf "website/data/schema_fields: no descriptions for the type %s" $t }}
+      {{ end }}
+      {{ $about := index $d "_" }}
+      {{ if not $about }}
+        {{ errorf "website/data/schema_fields: no description `_` for the type %s" $t }}
+      {{ end }}
+      {{ $out = $out | append (printf "\n## %s\n\n%s\n\n| Field | Type | Description | Default | When 0 | Required | Refers to |\n|:--|:--|:--|:--|:--|:--|:--|" $t $about) }}
+      {{ range $field, $p := index $props $t }}
+        {{ $c := index $p "x-contract" }}
+        {{ $fd := index $d $field }}
+        {{ if not $fd }}
+          {{ errorf "website/data/schema_fields: no description for %s.%s" $t $field }}
+        {{ end }}
+        {{ $def := $c.default }}
+        {{ if ne $c.legacy_default $c.default }}{{ $def = printf "旧版 %s／新版 %s" $c.legacy_default $c.default }}{{ end }}
+        {{ $cells := slice (printf "`%s`" $field) (index $p "x-type") $def $c.zero $c.required $c.reference }}
+        {{ $type := index $cells 1 }}
+        {{ range $tr.types }}
+          {{ $type = replace $type .ja .en }}
+        {{ end }}
+        {{ if findRE `[^\x00-\x7F→]` $type }}
+          {{ errorf "data/schema/types.schema.json: no English for the type %q; add it to website/data/schema_en.yaml" $type }}
+        {{ end }}
+        {{ $row := slice (index $cells 0) $type (replace $fd "|" "\\|") }}
+        {{ range $i, $c := first 4 (after 2 $cells) }}
+          {{ if findRE `[^\x00-\x7F]` $c }}
+            {{ $en := index $tr.cells $c }}
+            {{ if not $en }}
+              {{ errorf "data/schema/types.schema.json: no English for %q; add it to website/data/schema_en.yaml" $c }}
+            {{ end }}
+            {{ $row = $row | append $en }}
+          {{ else }}
+            {{ $row = $row | append $c }}
+          {{ end }}
+        {{ end }}
+        {{ $out = $out | append (printf "| %s |" (delimit $row " | ")) }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  {{ $.AddPage (dict
+      "path" "schema"
+      "title" "Schema"
+      "params" (dict
+        "description" "Every YAML type and field of a Gozen game: what it is for, its type, default, what 0 means, when it is required, and what it refers to."
+        "toc" true
+        "filter" "Filter types…")
+      "content" (dict "mediaType" "text/markdown" "value" (delimit $out "\n"))) }}
+{{ else }}
+  {{ errorf "data/schema/types.schema.json is not mounted; see hugo.toml" }}
+{{ end }}

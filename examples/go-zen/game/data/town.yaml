@@ -1,0 +1,168 @@
+locations:
+  # The plaza is a painted scene to walk (bg/plaza.jpg with its depth bg/plaza_depth.png,
+  # Depth Anything V2 Small; the points are in the picture's pixels, 1920 x 1080): the cobbles
+  # between the market street's curb and the east sidewalk, up to the dry fountain. The people
+  # and things are the plaza's menu entries as well (the list key opens them).
+  plaza:
+    name: Pellmere Plaza
+    area: Pellmere
+    background: bg/plaza.jpg
+    music: town
+    safe: true
+    stage:
+      depth: bg/plaza_depth.png
+      camera: 30
+      depth_bias: 0.004
+      scale:
+        - {at: [1060, 1060], height: 210}
+        - {at: [1300, 520], height: 105}
+      walk:
+        - [[624, 1080], [768, 840], [960, 600], [1056, 510], [1490, 510], [1490, 1080]]
+      spots:
+        start: {at: [1060, 1000], facing: north}
+        fountain: {at: [1300, 530], facing: north}
+      exits:
+        - {to: town, area: [[624, 1060], [1490, 1060], [1490, 1080], [624, 1080]]}
+      people:
+        - {id: ox, at: [1200, 720], facing: west, doll: {icon: icons/ox.png, hair: bald, parts: [{kind: apron, color: "#2f6fb8"}, {kind: shield, color: "#8a5a30"}]}}
+        - {id: kes, path: [[1400, 580], [1120, 580], [1120, 640], [1400, 640]], speed: 0.9, doll: {icon: icons/kes.png, hair: short, parts: [{kind: goggles, color: "#9fd8ff"}, {kind: muffler, color: "#d0302c"}, {kind: ponytail, color: "#c8ccd2"}, {kind: lashes, color: "#000000"}]}}
+    people:
+      - id: ox
+        name: Ox
+        image: ox/normal.png
+        when: "!flag.ox_joined"
+        mark: flag.got_key
+        talk: [{call: ox_talk}]
+        bubbles:
+          - "Behind me."
+          - "Fine."
+          - "Keep moving. Carts coming."
+          - "Mind the queue."
+          - {text: "Gate's still locked.", when: flag.got_key}
+          - {text: "Not my watch anymore.", when: flag.got_key}
+      - id: kes
+        name: Kes
+        image: kes/normal.png
+        when: "!flag.kes_joined"
+        talk: [{call: kes_roof}]
+        bubbles:
+          - "Statistically— never mind."
+          - "Almost. Nearly. Almost."
+          - "Don't touch the red wire!"
+          - "Four turns left. Maybe five."
+          - {text: "Someone's heading underground...", when: flag.got_key}
+          - {text: "Is that a lot of dark?", when: flag.got_key}
+      - name: Water cart
+        image: props/cart.png
+        talk:
+          - say: "A brass-trimmed cart with a hand-painted sign. WATER, 5G THE BUCKET."
+          - say: "The line is long and quiet. Nobody haggles. There is nothing else to drink."
+    actions:
+      - {label: Save, do: [{save: true}]}
+    exits:
+      - {to: town}
+  shop:
+    name: Fenn & Daughters
+    area: Pellmere
+    background: bg/shop.jpg
+    music: town
+    safe: true
+    people:
+      - name: Barnaby
+        image: barnaby/normal.png
+        talk:
+          - say: {who: Barnaby, face: barnaby/normal.png, text: "Come in, come in. Browse, buy, sell. I take anything with teeth. Gears, mostly."}
+          - say: {who: Barnaby, face: barnaby/normal.png, text: "Not every coat fits every back. Sturdy sorts want plate. The rest of you, light cloth."}
+          - say: {who: Barnaby, face: barnaby/normal.png, text: "And yes, you may haggle. I enjoy it. It changes nothing, but I enjoy it."}
+          - call: barnaby_regular
+    actions:
+      - label: See what is on the shelves
+        do: [{shop: fenn}]
+    exits: [{to: town}]
+    on_enter:
+      - if: "!flag.shop_tour"
+        then: [{call: shop_tour}]
+  inn:
+    name: The Dry Cup
+    area: Pellmere
+    background: bg/inn.jpg
+    music: town
+    safe: true
+    people:
+      - name: Auntie Pomm
+        image: pomm/normal.png
+        talk: [{call: pomm_talk}]
+    actions:
+      - label: Rest
+        do:
+          - heal: all
+          - say: {who: Pomm, face: pomm/normal.png, text: "Soup, a bed, and a blanket that smells like bread. Sleep."}
+          - say: "Everyone wakes up warm, fed, and a little sorry to leave the bed."
+      - {label: Save, do: [{save: true}]}
+      - label: Ask Pomm how to fight smarter
+        when: flag.ox_joined
+        do: [{call: pomm_tactics}]
+    exits: [{to: town}]
+  well:
+    name: The Last Well
+    area: Pellmere
+    background: bg/well.jpg
+    music: town
+    safe: true
+    people:
+      - name: Old Ansel
+        image: ansel/normal.png
+        talk: [{call: ansel_talk}]
+      - name: Tilly
+        image: tilly/normal.png
+        when: "flag.got_key && !flag.tilly_joined"
+        mark: "!flag.tilly_joined"
+        talk: [{call: tilly_talk}]
+    exits: [{to: town}]
+  gate:
+    name: Undercistern Gate
+    area: Pellmere
+    background: bg/gate.jpg
+    music: town
+    safe: true
+    actions:
+      - label: Look the gate over
+        do:
+          - say: "A round iron door set into the old retaining wall. Green stains run down it like tear tracks."
+          - if: "!flag.got_key"
+            then: [{say: {who: maren, face: worried, text: "Locked. And I'm out of ways to talk my way past an iron door."}}]
+          - if: "flag.got_key && members < 3"
+            then: [{say: {who: maren, face: worried, text: "I have the key. I shouldn't go down alone, though. I need friends who know a gate from a gap."}}]
+      - label: Try Hobb's key in the lock
+        when: "flag.got_key && members >= 3 && !flag.entered"
+        do: [{call: break_into_two}]
+    exits:
+      - {to: town}
+      - {to: b1, at: S, facing: south, label: Down into the dark, when: flag.entered}
+  plaza_end:
+    name: Pellmere Plaza
+    area: Pellmere
+    background: bg/plaza_end.jpg
+    music: town
+    on_enter: [{call: final_image}]
+  # The town's map: the painted town (maps/town.jpg, 1920 x 1080) with its streets in the picture.
+  # The points and the roads' lines follow the stone streets (art/maps/town_points.md).
+  town:
+    name: Pellmere
+    area: Pellmere
+    music: town
+    safe: true
+    map:
+      picture: maps/town.jpg
+      unknown: named
+      points:
+        plaza: {at: [640, 370], to: plaza, start: true}
+        shop: {at: [745, 555], to: shop}
+        inn: {at: [820, 180], to: inn}
+        well: {at: [1640, 410], to: well}
+        gate: {at: [830, 720], to: gate}
+      roads:
+        - {between: [plaza, shop], via: [[700, 430]]}
+        - {between: [plaza, inn], via: [[760, 320]]}
+        - {between: [plaza, well], via: [[900, 250], [1040, 245], [1200, 285], [1500, 390]]}
+        - {between: [plaza, gate], via: [[620, 560], [760, 650]]}

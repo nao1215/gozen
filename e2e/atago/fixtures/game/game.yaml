@@ -1,0 +1,7 @@
+schema_version: 1
+id: cli-expedition
+title: CLI expedition
+screen: {width: 960, height: 540}
+fonts: {regular: regular.ttf}
+start: {location: camp, party: [scout]}
+battle: {variance: 0, critical: 0, escape: 1}

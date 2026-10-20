@@ -1,0 +1,71 @@
+# CLI developer notes
+
+The CLI is the single `gozen` binary ([ADR 0016](../decisions/0016-single-cli.md)). Installation, requirements, conventions (GNU options, exit status), and every command with its options are described for users on the site: [Commands](https://nao1215.github.io/gozen/commands/). The options follow [ADR 0018](../decisions/0018-gnu-options-and-help.md), and the command tree and the diagnostic codes [ADR 0024](../decisions/0024-command-tree-and-diagnostic-codes.md). The production-support commands are in [Production tools](production-tools.md).
+
+## Commands
+
+The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf runs. The help pages are `groups` and `pages` in `cmd/gozen/help.go`, keyed by the command path. `art prompt` and `art mosaic` hand their arguments to `internal/promptgen/command` and `internal/mosaic/command`, and `art fetch` to `mosaiccmd.Fetch`.
+
+| Group | Commands | What they share |
+| --- | --- | --- |
+| `check` | (a leaf) `--only structure\|layout`, `--format text\|json` | the game directory |
+| `sim` | `battle`, `dive`, `floors`, `design` | play by the rules without a window; `--seed`, `--turns`, `--format` |
+| `play` | `trace`, `notes`, `shots` | the record of a real play (`--trace`, F9 notes, screenshots) |
+| `book` | (a leaf) | |
+| `pack` | `release`, `trial` | a new output tree; `--overlay` and `--inspect` |
+| `art` | `prompt`, `mosaic`, `fetch`, `faces`, `puppet` | pictures; cgo, ONNX Runtime and models for mosaic inference and faces |
+| `version`, `help` | | `gozen help` takes the words of a path, or a code |
+
+An old name (`curve`, `memos`, `mosaic`, ...) is an unknown command that names the new one (`renamed` in `main.go`); remove that table at v0.1.0.
+
+## Diagnostic codes
+
+A diagnostic can end with a code, `[GZN1101]`; `gozen check --format json` and `gozen.Diagnostic` carry it as `code`. The first digit is the exit value, the next two the family:
+
+| Family | Exit | What to fix |
+| --- | --- | --- |
+| `GZN01xx`, `GZN02xx` | 0 | warnings of check; warnings of a measurement or a record |
+| `GZN11xx` to `GZN19xx` | 1 | the definitions, fonts, simulation, traces, output paths, capture, packaging, art tools, I/O |
+| `GZN21xx` to `GZN25xx` | 2 | the command shape, a value, a combination, a named path or ID, help |
+
+The registry is `internal/diag`: `register` is the only way to make a code and needs a summary, a detail and a fix. Rules:
+
+- One code per fix, not per call site. Reword a message freely; never renumber a code.
+- `cli.Invalid(code, …)` is an argument error (exit 2); `code.Errorf(…)` or `code.Wrap(err)` marks a failure (exit 1); a definitions check passes the code to `errorf` or `warnf`.
+- After adding or changing an entry, run `go run ./internal/dev/errgen` to rewrite `website/content/errors.md`. The tests of `internal/diag` fail when the page is stale, when a code is not raised from non-test code, when its first digit disagrees with its package, and when no scenario of `e2e/atago` asserts it with the matching `exit_code` (a code that needs cgo, a display or the network is listed in `untested` with the reason).
+- `gozen help GZN1101` prints the entry.
+
+When testing, run the built binary directly. The exit status of `go run` itself can differ from the CLI's exit status, so the E2E does not use it.
+
+Every `--help` has the same shape: the name, a one-line description and the version on line 1; `[Usage]` and a description; `[Commands]` (for the top level, the groups, `art mosaic` and `art mosaic manual`); `[Examples]` that really work; `[Options]` grouped by kind; notes, where `Requirements:` is written once on the top page, on a group page for what its commands share, and on a leaf only when it differs; and finally the links Documentation, Report an issue and GitHub Sponsors. The examples are written with `e2e/atago/fixtures/game` (troop `lesson`, dungeon `grotto`) as `game`. Help does not require any of the prerequisites. A neutral example of the configuration is `e2e/atago/fixtures/game/{trial,designeval}.yaml`.
+
+## E2E
+
+atago v0.25.2 is used.
+
+```sh
+go install github.com/nao1215/atago@v0.25.2
+make e2e
+# Only on Linux with a display environment prepared
+xvfb-run --auto-servernum --error-file=/dev/stderr make e2e-graphics
+```
+
+atago itself can need a newer Go toolchain than Gozen. When installing, enable Go's automatic toolchain selection or use stable. The lower bound of Gozen does not change.
+
+On Windows PowerShell, the normal E2E runs with the following steps. The cgo build that includes inference needs a [C compiler](https://nao1215.github.io/gozen/production-tools/). Checks without inference can run after setting `$env:CGO_ENABLED = '0'` first.
+
+```powershell
+New-Item -ItemType Directory -Force bin, build/atago | Out-Null
+go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/gozen.exe ./cmd/gozen
+if ($LASTEXITCODE -ne 0) { throw "gozen build failed" }
+$env:PATH = (Join-Path $PWD bin) + [IO.Path]::PathSeparator + $env:PATH
+Push-Location build/atago
+try {
+    atago run --ci --parallel 4 --skip-tag graphics ../../e2e/atago
+    if ($LASTEXITCODE -ne 0) { throw "CLI E2E failed" }
+} finally { Pop-Location }
+```
+
+The normal specs do not depend on a shell. For every `gozen` subcommand they check the form of help, GNU-style options, exit status, stdout/stderr, determinism, whether anything is written, generated files and protection against overwriting. The capture specs with the `graphics` tag run separately. The capture child process in unit tests is a mock that returns a PNG and a trace, and is not counted as verification of drawing in a real game.
+
+For macOS, the direct steps are the same build command without `.exe`, `bin` added to PATH, and the same atago command run from `build/atago`. The results on Windows and macOS and the remote CI are not confirmed locally. For the check before publication, follow the [release checklist](release-checklist.md).

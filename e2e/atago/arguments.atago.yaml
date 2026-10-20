@@ -1,0 +1,416 @@
+version: '1'
+suite:
+  name: Gozen CLI argument and stream contracts
+scenarios:
+- name: help for ${sub} through gozen help
+  matrix:
+  - sub: check
+  - sub: sim
+  - sub: sim battle
+  - sub: sim dive
+  - sub: sim floors
+  - sub: sim design
+  - sub: play
+  - sub: play trace
+  - sub: play notes
+  - sub: play shots
+  - sub: book
+  - sub: pack
+  - sub: pack release
+  - sub: pack trial
+  - sub: art
+  - sub: art prompt
+  - sub: art mosaic
+  - sub: art fetch
+  - sub: art faces
+  - sub: art puppet
+  - sub: version
+  steps:
+  - run:
+      command: gozen help ${sub}
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - "[Usage]\n"
+        - "[Examples]\n"
+        - "[Options]\n"
+        - "  -h, --help"
+        - "Documentation:   https://nao1215.github.io/gozen/\n"
+        - "Report an issue: https://github.com/nao1215/gozen/issues\n"
+        - "GitHub Sponsors: https://github.com/sponsors/nao1215\n"
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: Requirements are written on the page of ${sub}
+  matrix:
+  - sub: sim
+  - sub: play
+  - sub: pack
+  - sub: art
+  - sub: art prompt
+  - sub: art mosaic
+  - sub: art fetch
+  - sub: art puppet
+  steps:
+  - run:
+      command: gozen ${sub} --help
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['Requirements:', 'https://github.com/nao1215/gozen#gozen']
+      stderr:
+        equals: ''
+- name: the group ${group} needs a command
+  matrix:
+  - {group: sim, subs: 'battle, dive, floors, design'}
+  - {group: play, subs: 'trace, notes, shots'}
+  - {group: pack, subs: 'release, trial'}
+  - {group: art, subs: 'prompt, mosaic, fetch, faces, puppet'}
+  steps:
+  - run:
+      command: gozen ${group}
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: ['gozen ${group} needs a command: ${subs}', 'Run "gozen ${group} --help" for usage.']
+      changes: {created: [], modified: [], deleted: []}
+- name: a name that is not a command (${old}) exits 2 without suggesting another
+  matrix:
+  - {old: layout, said: 'unknown command "layout"; use --help'}
+  - {old: curve, said: 'unknown command "curve"; use --help'}
+  - {old: sim game lesson, said: 'unknown command "game" of gozen sim'}
+  - {old: art mosaic fetch, said: 'unknown command "fetch"'}
+  steps:
+  - run:
+      command: gozen ${old}
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: '${said}'
+        not_contains: 'is now'
+      changes: {created: [], modified: [], deleted: []}
+- name: gozen help takes the words of a command path
+  steps:
+  - run:
+      command: gozen help art mosaic manual
+  - assert:
+      exit_code: 0
+      stdout:
+        matches: '^gozen art mosaic manual - '
+      stderr:
+        equals: ''
+- name: gozen top-level help with ${opt}
+  matrix:
+  - opt: --help
+  - opt: -h
+  steps:
+  - run:
+      command: gozen ${opt}
+  - assert:
+      exit_code: 0
+      stdout:
+        matches: '^gozen - '
+        contains:
+        - "[Commands]\n"
+        - "  -v, --version"
+        - Run "gozen <command> --help" for a command's options and examples.
+        - 'Requirements:'
+        - https://github.com/nao1215/gozen#gozen
+        - "[Usage]\n"
+        - "[Examples]\n"
+        - "[Options]\n"
+        - "  -h, --help"
+        - "Documentation:   https://nao1215.github.io/gozen/\n"
+        - "Report an issue: https://github.com/nao1215/gozen/issues\n"
+        - "GitHub Sponsors: https://github.com/sponsors/nao1215\n"
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: help for ${sub}
+  matrix:
+  - sub: check
+  - sub: sim
+  - sub: sim battle
+  - sub: sim dive
+  - sub: sim floors
+  - sub: sim design
+  - sub: play
+  - sub: play trace
+  - sub: play notes
+  - sub: play shots
+  - sub: book
+  - sub: pack
+  - sub: pack release
+  - sub: pack trial
+  - sub: art
+  - sub: art prompt
+  - sub: art mosaic
+  - sub: art fetch
+  - sub: art faces
+  - sub: art puppet
+  - sub: version
+  steps:
+  - run:
+      command: gozen ${sub} --help
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - "[Usage]\n"
+        - "[Examples]\n"
+        - "[Options]\n"
+        - "  -h, --help"
+        - "Documentation:   https://nao1215.github.io/gozen/\n"
+        - "Report an issue: https://github.com/nao1215/gozen/issues\n"
+        - "GitHub Sponsors: https://github.com/sponsors/nao1215\n"
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: invalid arguments for ${sub}
+  matrix:
+  - sub: check
+  - sub: sim
+  - sub: sim battle
+  - sub: sim dive
+  - sub: sim floors
+  - sub: sim design
+  - sub: play
+  - sub: play trace
+  - sub: play notes
+  - sub: play shots
+  - sub: book
+  - sub: pack
+  - sub: pack release
+  - sub: pack trial
+  - sub: art
+  - sub: art fetch
+  - sub: art faces
+  - sub: art puppet
+  - sub: version
+  steps:
+  - run:
+      command: gozen ${sub} --unknown
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: unknown flag
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: gozen version prints one line
+  steps:
+  - run:
+      command: gozen version
+  - assert:
+      exit_code: 0
+      stdout:
+        matches: '^gozen \S+\n$'
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject help for an unknown command
+  steps:
+  - run:
+      command: gozen help absent
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: unknown command
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject gozen check --only structure without a game
+  steps:
+  - run:
+      command: gozen check --only structure
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: expects one directory
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject gozen check --only structure missing-game
+  steps:
+  - run:
+      command: gozen check --only structure missing-game
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: game.yaml
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject gozen sim battle -n 0 unused troop
+  steps:
+  - run:
+      command: gozen sim battle -n 0 unused troop
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: positive
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject gozen check unused extra
+  steps:
+  - run:
+      command: gozen check unused extra
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: expects one
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject gozen sim dive unused location --grind NaN
+  steps:
+  - run:
+      command: gozen sim dive unused location --grind NaN
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: finite
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject gozen pack trial unused output --config ../escape.yaml
+  steps:
+  - run:
+      command: gozen pack trial unused output --config ../escape.yaml
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: relative
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: reject gozen play shots --raw unused list.yaml
+  steps:
+  - run:
+      command: gozen play shots --raw unused list.yaml
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: requires
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: gozen ${sub} help starts with its title line
+  matrix:
+  - sub: sim battle
+  - sub: play shots
+  - sub: art prompt
+  - sub: art mosaic
+  steps:
+  - run:
+      command: gozen help ${sub}
+  - assert:
+      exit_code: 0
+      stdout:
+        matches: '^gozen ${sub} - .+ \(\S+\)\n\n\[Usage\]\n'
+      stderr:
+        equals: ''
+- name: gozen version with ${opt}
+  matrix:
+  - opt: -v
+  - opt: --version
+  steps:
+  - run:
+      command: gozen ${opt}
+  - assert:
+      exit_code: 0
+      stdout:
+        matches: '^gozen \S+\n$'
+      stderr:
+        equals: ''
+- name: reject the single-dash long option in ${args}
+  matrix:
+  - args: sim battle unused lesson -seed 9
+  - args: check -only structure unused
+  - args: play notes notes -out html
+  - args: -version
+  - args: art prompt -config catalog.yaml
+  - args: art mosaic auto -out processed game
+  - args: art mosaic manual add -rect 0,0,4,4 game pattern.png
+  steps:
+  - run:
+      command: gozen ${args}
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: single-dash long option
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: sim takes ${form}
+  matrix:
+  - form: --battles=3 --seed=9
+  - form: --battles 3 --seed 9
+  - form: -n3 --seed=9
+  steps:
+  - run:
+      command: gozen sim battle "${specdir}/fixtures/game" ${form} lesson
+  - assert:
+      exit_code: 0
+      stdout:
+        equals: "lesson: 3 battles  win 100%  lose 0%  fled 0%  draw 0%  avg turns 1.0  avg standing after a win 1.0\n"
+      stderr:
+        equals: ''
+- name: -- ends the options
+  steps:
+  - run:
+      command: gozen check --only structure -- --help
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: game.yaml

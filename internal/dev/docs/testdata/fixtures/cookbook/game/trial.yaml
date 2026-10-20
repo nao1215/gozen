@@ -1,0 +1,5 @@
+# game/trial.yaml
+dive_max: {grotto: 3}      # dives below the third floor run blocked instead
+cut: [finish]              # the ending; calls to it run blocked instead
+blocked:
+  - say: This is as far as the trial goes. Thank you for playing!

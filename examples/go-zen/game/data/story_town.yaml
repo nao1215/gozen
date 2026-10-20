@@ -1,0 +1,177 @@
+events:
+  # Beats 1 to 3. Opening image, theme stated, set-up.
+  opening:
+    do:
+      - music: town
+      - set: {var.debt: 200, actor.maren.tactics: balanced}
+      - say: "Pellmere. The fountain in the plaza has been dry for a week. The basin holds nothing but sand."
+      - say: "Across the square, a brass-trimmed cart sells water by the bucket. The line is long."
+      - image: {file: cg/cg1_fountain.jpg, fade: 0.8}
+      - say: {who: Traveler, text: "So the north passage is fully mapped? Every turn?"}
+      - say: {who: maren, face: smug, text: "Walked it twice. Left at the broken statue, right at the bell. Trust me, it's on the map."}
+      - say: {who: Traveler, text: "Forty gold, you said."}
+      - say: {who: maren, face: grin, text: "For forty, I'll even draw you a little bird."}
+      - say: "The traveler pays, takes the scroll, and hurries off. The ink is still wet."
+      - image: ""
+      - say: {who: Pomm, face: pomm/normal.png, text: "Maren Quill. That ink is still wet, and so is your conscience."}
+      - say: {who: maren, face: embarrassed, text: "Auntie, I'm working."}
+      - say: {who: Pomm, face: pomm/normal.png, text: "A map you haven't walked is a rumor with ink on it. Eat first, argue after."}
+      - say: {who: maren, face: worried, text: "It's a very good rumor."}
+      - say: {who: Pomm, face: pomm/normal.png, text: "Mm. Soup at the Dry Cup. And your rent is due Friday, rumor-seller."}
+      - say: {who: maren, face: sad, text: "Two hundred gold of debt. Sixty in my purse. A bag full of old gears."}
+      - say: {who: maren, face: smile, text: "First, a visit to Fenn & Daughters. Barnaby buys anything with teeth."}
+      - say: "Pellmere fits on a single sheet of paper. Wherever you want to go, it's a short walk."
+      - set: {flag.opening_seen: true}
+  shop_tour:
+    do:
+      - set: {flag.shop_tour: true}
+      - say: {who: Barnaby, face: barnaby/normal.png, text: "A customer! Maren Quill, my favorite and most suspicious customer."}
+      - say: {who: maren, face: smile, text: "Barnaby, I come in peace. And with gears."}
+      - say: {who: Barnaby, face: barnaby/normal.png, text: "Everything is a fair price. Probably. Here, try this on, free of charge."}
+      - give: {item: charm_wool}
+      - equip: {actor: maren, item: charm_wool}
+      - say: "Maren winds the Wool Scarf twice around her neck. Itchy, but it's free."
+      - say: {who: Barnaby, face: barnaby/normal.png, text: "Buy or sell, it's the same counter. Gears go over there. Teeth, as they say."}
+  barnaby_regular:
+    do:
+      - if: "var.spent >= 100 && !flag.barnaby_gift"
+        then:
+          - set: {flag.barnaby_gift: true}
+          - say: {who: Barnaby, face: barnaby/normal.png, text: "A hundred gold across my counter. You've earned a gift."}
+          - give: {item: fizz_bomb, count: 2}
+          - say: "Barnaby slides two Fizz Bombs across the counter, looking very pleased with himself."
+  pomm_talk:
+    do:
+      - if: "!flag.ox_joined"
+        then:
+          - say: {who: Pomm, face: pomm/normal.png, text: "Soup's hot. The well is dry. The magistrate's cart is not."}
+          - say: {who: Pomm, face: pomm/normal.png, text: "If you're going to do something clever, do it on a full stomach."}
+        else:
+          - say: {who: Pomm, face: pomm/normal.png, text: "You look better when somebody's behind you. Eat first, argue after."}
+      - if: flag.valve_open
+        then:
+          - say: {who: Pomm, face: pomm/normal.png, text: "Three days of water left in the town cistern. Three. I counted the buckets."}
+  pomm_tactics:
+    do:
+      - say: {who: Pomm, face: pomm/normal.png, text: "You fight like a committee. Let me explain Tactics."}
+      - say: {who: Pomm, face: pomm/normal.png, text: "Open the menu, pick Tactics. Each of you gets up to five rows, and the first one that fits is what you do. Simple."}
+      - say: {who: Pomm, face: pomm/normal.png, text: "Or take one of my ready-made sets. Well? Which one suits you?"}
+      - choice:
+          - label: Balanced
+            do:
+              - set: {actor.maren.tactics: balanced, actor.ox.tactics: balanced}
+              - if: flag.tilly_joined
+                then: [{set: {actor.tilly.tactics: balanced}}]
+              - if: "flag.kes_joined && !flag.kes_lost"
+                then: [{set: {actor.kes.tactics: balanced}}]
+          - label: Cautious
+            do:
+              - set: {actor.maren.tactics: cautious, actor.ox.tactics: cautious}
+              - if: flag.tilly_joined
+                then: [{set: {actor.tilly.tactics: cautious}}]
+              - if: "flag.kes_joined && !flag.kes_lost"
+                then: [{set: {actor.kes.tactics: cautious}}]
+          - label: All out
+            do:
+              - set: {actor.maren.tactics: all_out, actor.ox.tactics: all_out}
+              - if: flag.tilly_joined
+                then: [{set: {actor.tilly.tactics: all_out}}]
+              - if: "flag.kes_joined && !flag.kes_lost"
+                then: [{set: {actor.kes.tactics: all_out}}]
+      - say: {who: Pomm, face: pomm/normal.png, text: "Done. You can change any row later. Now eat."}
+  kes_roof:
+    do:
+      - say: {who: kes, face: grin, text: "Maren Quill! You're the one with the maps. Do you sell any for places with no light?"}
+      - say: {who: maren, face: smug, text: "I sell maps for everywhere. Light is extra."}
+      - say: {who: kes, face: worried, text: "Hm. Never mind. I have a lamp. A very good lamp. Two lamps, actually."}
+      - say: {who: kes, face: normal, text: "I'm calibrating a water coil. Statistically— never mind. If it sparks, duck."}
+  ox_talk:
+    do:
+      - if: "!flag.got_key"
+        then:
+          - say: {who: ox, face: frown, text: "The gate is shut by order. Nobody goes below."}
+          - say: {who: maren, face: smile, text: "Nobody? What about a very persuasive mapmaker?"}
+          - say: {who: ox, face: normal, text: "Fine. Nobody."}
+        else:
+          - say: {who: maren, face: determined, text: "Ox. I have Hobb's key. The main valve is under the old cistern."}
+          - say: {who: ox, face: worried, text: "Hobb's key. I haven't seen that in ten years."}
+          - say: {who: ox, face: normal, text: "You've been down there?"}
+          - choice:
+              - label: "Walked it twice. Trust me, it's on the map."
+                do:
+                  - set: {flag.lied_to_ox: true}
+                  - say: {who: maren, face: smug, text: "Walked it twice. Trust me, it's on the map."}
+                  - say: {who: ox, face: frown, text: "Hm. Fine."}
+              - label: "No. But I'll draw every step as we go."
+                do:
+                  - set: {flag.told_ox_truth: true}
+                  - say: {who: maren, face: embarrassed, text: "No. I've never been below the gate. But I'll draw every step as we go."}
+                  - say: {who: ox, face: smile, text: "That's the first honest answer anyone's given me in a year."}
+          - say: {who: ox, face: normal, text: "I used to hold that gate. If someone has to go below, I'd rather go first. Behind me."}
+          - join: ox
+          - set: {flag.ox_joined: true, actor.ox.tactics: balanced}
+          - say: "Ox joins the party."
+          - say: {who: maren, face: smile, text: "Pomm at the Dry Cup has opinions on how we fight. She'll explain Tactics whether we ask or not."}
+  # Beat 4. Catalyst at the well.
+  well_scene:
+    trigger: enter
+    location: well
+    once: true
+    do:
+      - music: ""
+      - say: "The Last Well. A stone ring, a rope, a bucket. And an old man with a fishing line, dangling it into the dark."
+      - say: {who: Ansel, face: ansel/normal.png, text: "Caught nothing again today."}
+      - say: {who: maren, face: smile, text: "Ansel, it's a well. There's no water."}
+      - say: {who: Ansel, face: ansel/normal.png, text: "Water remembers."}
+      - say: "A rope creaks. Ansel hauls the bucket up. It holds sand, a bent coin, and one drowned beetle."
+      - say: {who: Ansel, face: ansel/normal.png, text: "That's the last one, girl. Every other well in Pellmere went dry last month."}
+      - image: {file: props/notice.png, fade: 0.4}
+      - say: "A clerk nails a notice to the post. WATER BY CART, 5G THE BUCKET. SOURCE REPAIR RESERVED FOR THE MAGISTRATE. O. VANCE."
+      - say: "Under it, smaller. THE MAYOR OFFERS 1,000G FOR ANYONE WHO RETURNS THE WATER."
+      - image: ""
+      - say: {who: maren, face: surprised, text: "A thousand gold. That's the rent, the debt, and a shop with a real sign."}
+      - say: {who: Ansel, face: ansel/normal.png, text: "The main valve is under the old cistern. Your master Hobb left me this for the day the last well failed."}
+      - give: {item: hobb_key}
+      - say: "Ansel presses a heavy iron key into Maren's palm."
+      - say: {who: maren, face: worried, text: "Hobb retired. He moved away."}
+      - say: {who: Ansel, face: ansel/normal.png, text: "Is that what he told you?"}
+      - say: {who: maren, face: sad, text: "That's what he told everyone."}
+      - say: {who: Ansel, face: ansel/normal.png, text: "Go carefully. Take people who can carry a door."}
+      - music: town
+      - set: {flag.got_key: true}
+  ansel_talk:
+    do:
+      - if: flag.midpoint
+        then:
+          - say: {who: Ansel, face: ansel/normal.png, text: "I heard the fountain cough and stop. Was that you, girl?"}
+          - say: {who: Ansel, face: ansel/normal.png, text: "Water remembers. It will come back."}
+        else:
+          - say: {who: Ansel, face: ansel/normal.png, text: "Hobb used to say a good map is a promise. I never asked what kind."}
+          - say: {who: Ansel, face: ansel/normal.png, text: "Take your time. The line will wait. Fish do not, but I'm not catching any."}
+  tilly_talk:
+    do:
+      - say: "A woman in a white and gold robe kneels at the well, rolling two dice on the stone rim."
+      - say: {who: tilly, face: normal, text: "Don't talk. I'm asking the well for luck. It has never answered, but it has never said no."}
+      - say: {who: maren, face: smile, text: "I'm going down to the Undercistern to turn the water back on. I need someone who can heal."}
+      - say: {who: tilly, face: surprised, text: "Down there? The chapel roof is leaking and the roof fund is empty. I'm Tilly Vane."}
+      - say: {who: tilly, face: sad, text: "The chapel came down in the third drought. I've been trying to win it back, one wager at a time."}
+      - say: {who: tilly, face: smug, text: "Tell you what. Two dice. If I roll over seven, I come along."}
+      - say: "Tilly shakes the dice in her fist and lets them go. They bounce on the stone. Six and five."
+      - say: {who: tilly, face: laugh, text: "Eleven! I'll wager on that every time. Pack my cup. I'm yours."}
+      - say: {who: tilly, face: normal, text: "And Maren? If your map is a lie, I'll still tell you where it ends."}
+      - join: tilly
+      - set: {flag.tilly_joined: true, actor.tilly.tactics: balanced}
+      - say: "Tilly joins the party."
+  # Beat 6. Break into Two.
+  break_into_two:
+    do:
+      - say: "The key slides into the lock. It turns halfway, then sticks."
+      - say: {who: ox, face: embarrassed, text: "There's a trick. Kids used to know it. You say a password and lift while you push."}
+      - say: {who: tilly, face: smug, text: "I'll wager it's embarrassing."}
+      - say: {who: ox, face: embarrassed, text: "Bucket, bell, buttercup. We were seven. Nobody tell anyone."}
+      - say: "Ox lifts. Maren pushes. The iron door sighs open on a dark stair and a smell of cold stone."
+      - say: {who: maren, face: determined, text: "Once we're below, the map in the corner draws only the cells we walk. That's the one map I'll trust."}
+      - set: {flag.entered: true}
+      - move: b1
+        at: S
+        facing: south

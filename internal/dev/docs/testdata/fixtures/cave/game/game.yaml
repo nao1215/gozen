@@ -1,0 +1,8 @@
+# A small game with the names the agent recipes of README.md and the website use:
+# a generated dungeon `cave` and a boss troop `cave_boss`.
+schema_version: 2
+id: docs-cave
+title: Cave
+screen: {width: 960, height: 540}
+fonts: {regular: regular.ttf}
+start: {location: camp, party: [scout]}

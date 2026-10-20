@@ -1,0 +1,826 @@
+// Package event runs the commands of events (see data.Command): it changes the game state
+// itself and asks the screen for what needs one (a line to read, a choice, a battle, a
+// shop). The screen calls Next, shows the Request it gets, and calls Answer (for a choice
+// or a battle) before the next Next.
+package event
+
+import (
+	"errors"
+	"fmt"
+	"math"
+	"path"
+	"slices"
+	"strings"
+
+	lang "github.com/nao1215/gozen/internal/text"
+
+	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/layer1/safeint"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer3/atlas"
+	"github.com/nao1215/gozen/internal/layer3/dungeon"
+	"github.com/nao1215/gozen/internal/layer3/scope"
+	"github.com/nao1215/gozen/internal/rpg"
+)
+
+// Host applies immediate effects for a game frontend or a simulation.
+// Handle is called synchronously; the host owns any resources it uses.
+type Host interface{ Handle(Effect) }
+
+// HostFunc adapts a host callback without passing an upper-layer concrete type
+// into the event runtime. A nil callback discards immediate effects.
+type HostFunc func(Effect)
+
+// Handle delivers the effect synchronously.
+func (f HostFunc) Handle(e Effect) {
+	if f != nil {
+		f(e)
+	}
+}
+
+// Effect is an immediate presentation or movement effect. It does not pause Next.
+type Effect interface{ isEffect() }
+
+// MoveEffect asks the host to update the location after dungeon placement.
+type MoveEffect struct{ Location string }
+
+// MusicEffect selects a music cue without requiring an audio backend.
+type MusicEffect struct{ Cue data.MusicCue }
+
+// MoodEffect changes the music mood.
+type MoodEffect struct{ Name string }
+
+// ImageEffect sets the current picture; an empty file clears it.
+type ImageEffect struct{ Picture data.CG }
+
+// SoundEffect requests a named sound.
+type SoundEffect struct{ Name string }
+
+// VisualEffect requests a named visual effect.
+type VisualEffect struct{ Name string }
+
+func (MoveEffect) isEffect()   {}
+func (MusicEffect) isEffect()  {}
+func (MoodEffect) isEffect()   {}
+func (ImageEffect) isEffect()  {}
+func (SoundEffect) isEffect()  {}
+func (VisualEffect) isEffect() {}
+
+// Request is something the screen must show before the event goes on.
+type Request interface{ isRequest() }
+
+// Say is a line to read.
+type Say struct {
+	Name  string // "" for narration
+	Face  string // a picture under assets/ ("" for none)
+	Text  string
+	Right bool // the picture stands on the right
+	Actor string
+	// Instead is the replacement line used when the speaker is down during battle (instead of data.Say).
+	Instead []Say
+}
+
+// Choice is a question: the screen answers with the index of the option taken.
+type Choice struct {
+	IDs     []string // identifiers in the same order as the displayed choices (empty if unspecified)
+	Prompt  string
+	Options []string
+}
+
+// Battle is a battle to fight: the screen answers with its battle.Result.
+type Battle struct {
+	Troop   string
+	CanLose bool // losing does not end the game
+	// Fighters fight instead of the party (none: the party).
+	Fighters []string
+	// NoRetry: losing does not offer to fight again from just before (retry: false).
+	NoRetry bool
+}
+
+// Shop opens a shop.
+type Shop struct{ ID string }
+
+// Wait pauses.
+type Wait struct{ Seconds float64 }
+
+// Save opens the save screen.
+type Save struct{}
+
+// Open opens one of the screens of the game (formation, skills, fusion).
+type Open struct{ Screen string }
+
+// Notice is a short notice shown at the top of the screen without stopping (the notice command). The screen shows it and moves on at once (no answer needed).
+type Notice struct{ Text string }
+
+// Tap waits for a tap with nothing to read (between the pictures of an image's files).
+// If Auto is greater than 0, advance to the next after that many seconds without a button press (image auto; slideshow).
+type Tap struct{ Auto float64 }
+
+// Clear ends the game happily.
+type Clear struct{}
+
+// GameOver ends the game.
+type GameOver struct{}
+
+func (Say) isRequest()      {}
+func (Choice) isRequest()   {}
+func (Battle) isRequest()   {}
+func (Shop) isRequest()     {}
+func (Wait) isRequest()     {}
+func (Save) isRequest()     {}
+func (Open) isRequest()     {}
+func (Clear) isRequest()    {}
+func (Tap) isRequest()      {}
+func (Notice) isRequest()   {}
+func (GameOver) isRequest() {}
+
+// The answers of a battle.
+const (
+	BattleWon  = 1
+	BattleLost = 2
+	BattleFled = 3
+)
+
+type frame struct {
+	cmds         []data.Command
+	pc           int
+	prepared     bool
+	location     string
+	checkedAfter bool
+}
+
+// Runner runs events.
+type Runner struct {
+	db    *data.DB
+	st    *rpg.State
+	host  Host
+	stack []frame
+	notes []string
+	// ups are the notes that tell of a level gained: a sound goes with them when they are shown
+	ups map[string]bool
+	// waiting for an answer
+	options []data.ChoiceOption
+	// pick answers a choice made by the engine (stone_choose, stone_wearer) instead of options' do
+	pick   func(n int)
+	asked  *data.Command // the choice whose answer is waited for
+	battle *data.Command
+	// Extra is looked up before the state's names (a battle's scope, for troop events).
+	Extra        expr.Env
+	gameOver     bool
+	afterPending bool // after the win/lose branch is settled, run post-processing before the next choice or battle
+	// pages are the pictures of an image's files still to show, a tap before each
+	pages []data.CG
+	// later holds commands that run independently after the current event ends (after_win following a victory). They are not discarded by end.
+	later [][]data.Command
+	// shown is the last picture shown (restored after asides; not carried across pictures that hide the portrait. If the screen has AsideBlocked, that is used instead)
+	shown data.CG
+	// Log receives the errors of expressions (nil: they are ignored).
+	Log func(error)
+	// BlockAside lets a screen suppress inserted events during replay or overlays.
+	// When non-nil it takes precedence over Host's optional AsideBlocker.
+	// The runner calls it synchronously; it must not advance this runner.
+	BlockAside func() bool
+	// Dev allows set to change the stats and levels of actors (actor.<id>.hp, mp, exp,
+	// level, sp): the development mode and tests. Without it such a set is logged and skipped.
+	Dev bool
+	// UseItem uses an item from the menu (the use command) on the target actor ("" for the
+	// first member) and returns the lines to show. Nil logs the command as unsupported.
+	UseItem func(item, target string) ([]string, error)
+	// Act takes a battle move (the act command: the actor, its skill or item, the target)
+	// for the next battle fought on AUTO. Nil logs the command as unsupported.
+	Act func(actor, skill, item, target string)
+	// events are the events by the first command of their do (countRun).
+	events map[*data.Command]string
+	// walks are the step and walk commands still to go (see cont).
+	walks map[*data.Command]walking
+	// last is the last battle's answer and whether the game ended, for the expressions.
+	last scope.Last
+	// OnStart is told of an event started when nothing was running (before any of it runs):
+	// a test player's note keeps the state there, to begin the event again from it.
+	OnStart func(cmds []data.Command)
+}
+
+// New is a runner on the state.
+func New(db *data.DB, st *rpg.State, host Host) *Runner {
+	return &Runner{db: db, st: st, host: host}
+}
+
+// Start begins running cmds (after whatever is running).
+func (r *Runner) Start(cmds []data.Command) {
+	r.countRun(cmds)
+	if len(cmds) > 0 {
+		if r.OnStart != nil && !r.Running() {
+			r.OnStart(cmds)
+		}
+		r.stack = append([]frame{{cmds: cmds}}, r.stack...)
+	}
+}
+
+// Running reports whether there is anything left to run.
+func (r *Runner) Running() bool {
+	return r.gameOver || len(r.stack) > 0 || len(r.notes) > 0 || r.options != nil || r.battle != nil || len(r.later) > 0 || r.afterPending
+}
+
+// Asking is the command whose answer is waited for: the choice or the battle just asked
+// (nil when none). Its slices are the data's own (shared by copies of the command), so
+// they tell one place in the data from another that reads the same.
+func (r *Runner) Asking() *data.Command {
+	if r.options != nil {
+		return r.asked
+	}
+	return r.battle
+}
+
+// Stop drops everything left.
+func (r *Runner) Stop() {
+	r.afterPending = false
+	r.stack, r.notes, r.options, r.battle, r.later, r.pick, r.ups, r.walks = nil, nil, nil, nil, nil, nil, nil, nil
+}
+
+// runLater runs cmds separately from the current event (and its end), after the current event finishes.
+func (r *Runner) runLater(cmds []data.Command) {
+	if len(cmds) > 0 {
+		r.later = append(r.later, cmds)
+	}
+}
+
+// Won is called when a battle is won. It schedules the game.yaml battle.after_win event
+// as independent processing after the current event (shared by the screen and headless).
+func (r *Runner) Won() {
+	if ev := r.db.Events[r.db.Game.Battle.AfterWin]; ev != nil {
+		r.runLater(ev.Do)
+	}
+}
+
+func (r *Runner) env() expr.Env {
+	if r.Extra != nil {
+		return expr.Chain{r.Extra, scope.Env(r.db, r.st, &r.last), r.st.Env()}
+	}
+	return expr.Chain{scope.Env(r.db, r.st, &r.last), r.st.Env()}
+}
+
+func (r *Runner) logf(err error) {
+	if err != nil && r.Log != nil {
+		r.Log(err)
+	}
+}
+
+// Answer answers the last Choice (the option's index) or Battle (BattleWon ...).
+func (r *Runner) Answer(n int) {
+	switch {
+	case r.options != nil:
+		if n >= 0 && n < len(r.options) {
+			if r.pick != nil {
+				r.pick(n)
+			} else {
+				r.push(r.options[n].Do)
+			}
+		}
+		r.options, r.pick = nil, nil
+	case r.battle != nil:
+		c := r.battle
+		r.battle = nil
+		r.last.Result = scope.ResultName(n)
+		r.afterPending = r.db.Events[r.db.Game.Battle.After] != nil
+		switch n {
+		case BattleWon:
+			r.push(c.OnWin)
+		case BattleLost:
+			if c.OnLose == nil {
+				r.Stop()
+				r.gameOver = true
+				return
+			}
+			r.push(c.OnLose)
+		case BattleFled:
+			r.push(c.OnRun)
+		}
+	}
+}
+
+func (r *Runner) push(cmds []data.Command) {
+	r.countRun(cmds)
+	if len(cmds) > 0 {
+		r.stack = append(r.stack, frame{cmds: cmds})
+	}
+}
+
+// Frames are the command lists being run, the outermost first (a call adds one), and the
+// index of the next command of each (for a note of where the play is: which event).
+func (r *Runner) Frames() (cmds [][]data.Command, pc []int) {
+	for _, f := range r.stack {
+		cmds = append(cmds, f.cmds)
+		pc = append(pc, f.pc)
+	}
+	return cmds, pc
+}
+
+// Next runs commands until one needs the screen, and returns it (nil when the events are
+// over).
+func (r *Runner) Next() Request {
+	if r.gameOver {
+		r.gameOver = false
+		r.Stop()
+		r.last.Over = true
+		return GameOver{}
+	}
+	if len(r.pages) > 0 {
+		shown := r.pages[0]
+		r.show(shown)
+		r.pages = r.pages[1:]
+		if len(r.pages) > 0 {
+			return Tap{Auto: shown.Auto}
+		}
+	}
+	for {
+		if len(r.notes) > 0 {
+			n := r.notes[0]
+			r.notes = r.notes[1:]
+			if r.ups[n] {
+				delete(r.ups, n)
+				r.emit(SoundEffect{"levelup"})
+			}
+			return Say{Text: n}
+		}
+		if len(r.stack) == 0 {
+			if len(r.later) == 0 {
+				if r.afterPending {
+					r.afterPending = false
+					r.push(r.db.Events[r.db.Game.Battle.After].Do)
+					continue
+				}
+				return nil
+			}
+			r.stack = []frame{{cmds: r.later[0]}}
+			r.later = r.later[1:]
+			continue
+		}
+		if len(r.stack) > 64 {
+			r.logf(fmt.Errorf("events nested too deep (a call loop?)"))
+			r.Stop()
+			return nil
+		}
+		top := &r.stack[len(r.stack)-1]
+		if top.pc >= len(top.cmds) {
+			r.stack = r.stack[:len(r.stack)-1]
+			continue
+		}
+		c := &top.cmds[top.pc]
+		if r.afterPending && (c.Battle != "" || len(c.Choice) > 0) {
+			r.afterPending = false
+			top.checkedAfter, top.location = true, r.st.Location
+			r.push(r.db.Events[r.db.Game.Battle.After].Do)
+			continue
+		}
+		if (top.prepared || top.checkedAfter) && top.location != r.st.Location {
+			r.Stop()
+			return nil
+		}
+		if c.Battle != "" && !top.prepared {
+			if ev := r.db.Events[r.db.Game.Battle.Before]; ev != nil {
+				top.prepared, top.location = true, r.st.Location
+				r.push(ev.Do)
+				continue
+			}
+		}
+		top.prepared, top.checkedAfter = false, false
+		top.pc++
+		if req := r.run(c); req != nil {
+			return req
+		}
+	}
+}
+
+func (r *Runner) run(c *data.Command) Request {
+	verb, err := c.Verb()
+	if err != nil {
+		r.logf(err)
+		return nil
+	}
+	env := r.env()
+	switch verb {
+	case "say":
+		req := r.say(c.Say, env)
+		if line, ok := req.(Say); ok {
+			r.aside(line, env)
+		}
+		return req
+	case "choice":
+		var labels, ids []string
+		r.options = nil
+		for _, o := range c.Choice {
+			ok, err := o.When.Bool(env)
+			r.logf(err)
+			if ok {
+				r.options = append(r.options, o)
+				labels = append(labels, data.Render(o.Label, env))
+				ids = append(ids, o.ID)
+			}
+		}
+		if len(labels) == 0 {
+			r.options = nil
+			return nil
+		}
+		r.asked = c
+		return Choice{Prompt: data.Render(c.Prompt, env), Options: labels, IDs: ids}
+	case "ran":
+		r.st.MarkRan(c.Ran)
+	case "done":
+		r.st.Done[c.Done] = true
+	case "cross":
+		r.push(atlas.CrossRoad(r.db, r.st, c.Cross))
+	case "reach":
+		r.push(atlas.Reach(r.db, r.st, c.Reach))
+	case "if":
+		ok, err := c.If.Bool(env)
+		r.logf(err)
+		if ok {
+			r.push(c.Then)
+		} else {
+			r.push(c.Else)
+		}
+	case "set":
+		// Both the old/new version and the recollection assign in lexicographic order, one at a time. The right side is evaluated once, and earlier assignments are visible to later right sides.
+		keys := make([]string, 0, len(c.SetV))
+		for k := range c.SetV {
+			keys = append(keys, k)
+		}
+		slices.Sort(keys)
+		for _, k := range keys {
+			if !r.setAllowed(k) {
+				continue
+			}
+			v, err := c.SetV[k].Eval(env)
+			r.logf(err)
+			if err == nil {
+				err = r.st.SetPath(k, v)
+				r.logf(err)
+				if err == nil && k == "location" { // for a dungeon, stand at the entrance (arrival handling is not run)
+					if l := r.db.Locations[r.st.Location]; l.Dungeon != nil && l.Dungeon.Generate != nil {
+						floor, ok := expr.ToNumber(r.st.Vars[dungeon.VarFloor]) // a generated dungeon dives to the floor in var.floor (floor 1 if unset)
+						if !ok {
+							floor = 1
+						}
+						dungeon.DiveAt(r.db, r.st, r.st.Location, int(floor), "", "")
+					} else {
+						dungeon.Ensure(r.db, r.st)
+					}
+				}
+			}
+		}
+	case "give":
+		if n := c.Give.N(); n != 0 {
+			r.st.AddItem(c.Give.Item, n)
+		}
+	case "take":
+		if n := c.Take.N(); n != 0 {
+			r.st.Take(c.Take.Item, n)
+		}
+	case "gold":
+		n, err := c.Gold.Number(env)
+		r.logf(err)
+		r.st.Gold = max(0, r.st.Gold+safeint.From(n))
+	case "join":
+		// game.yaml join_exp: look up the lower bound from the party before joining, so late joiners catch up
+		floor := -1.0
+		if r.db.Game.JoinExp.Set() && !slices.Contains(r.st.Party, c.Join) {
+			n, err := r.db.Game.JoinExp.Number(env)
+			r.logf(err)
+			floor = n
+		}
+		if r.st.Join(c.Join) {
+			r.notes = append(r.notes, r.db.Actors[c.Join].Name+lang.T("が なかまに くわわった！"))
+			if a := r.st.Actors[c.Join]; floor > float64(a.Exp) {
+				a.GainExp(int(floor) - a.Exp)
+				a.Recover()
+			}
+		}
+	case "leave":
+		r.st.Leave(c.Leave)
+	case "heal":
+		for _, a := range r.st.Members() {
+			if c.Heal == "all" || a.ID == c.Heal {
+				a.Recover()
+			}
+		}
+	case "hurt":
+		for _, a := range r.st.Members() {
+			if (c.Hurt.Who == "all" || a.ID == c.Hurt.Who) && a.HP > 0 {
+				v, err := c.Hurt.Amount.Number(expr.Chain{expr.Map{"self": rpg.ActorView{A: a}}, env})
+				r.logf(err)
+				a.HP = max(1, a.HP-max(0, safeint.From(v)))
+			}
+		}
+	case "affect":
+		for _, a := range r.st.Members() {
+			if c.Affect.Who != "all" && a.ID != c.Affect.Who {
+				continue
+			}
+			if s := c.Affect.Add; s != "" && r.db.States[s] != nil && (!c.Affect.Resist || r.st.Rand.Float64() < a.StateResist(s)) {
+				turns := c.Affect.Turns
+				if turns <= 0 {
+					turns = r.db.States[s].Turns
+				}
+				if turns <= 0 { // same as the grant during battle, no expiry is held as StateForever
+					turns = rpg.StateForever
+				}
+				a.States[s] = turns
+			}
+			for s := range a.States {
+				if s == c.Affect.Remove || (c.Affect.Remove == "bad" && r.db.States[s] != nil && r.db.States[s].Bad) {
+					delete(a.States, s)
+				}
+			}
+		}
+	case "battle":
+		r.battle = c
+		return Battle{Troop: c.Battle, CanLose: c.OnLose != nil, Fighters: c.Fighters, NoRetry: c.Retry != nil && !*c.Retry}
+	case "move":
+		atlas.Place(r.db, r.st, r.st.Location, c.Move, c.At)
+		dungeon.Place(r.db, r.st, c.Move, c.At, c.Facing)
+		r.emit(MoveEffect{c.Move})
+	case "music":
+		r.emit(MusicEffect{*c.Music})
+	case "mood":
+		r.emit(MoodEffect{c.Mood})
+	case "image":
+		if len(c.Image.Files) == 0 {
+			r.show(*c.Image)
+			break
+		}
+		pages := c.Image.Pages(r.db.FS)
+		if len(pages) == 0 {
+			break
+		}
+		n := c.Image.Page
+		if c.Image.Pick.Set() { // pick by expression (the value modulo the number of images, plus 1 for the first image)
+			v, err := c.Image.Pick.Number(r.env())
+			if err != nil {
+				v = 0
+			}
+			k := int(math.Floor(v)) % len(pages)
+			if k < 0 {
+				k += len(pages)
+			}
+			n = k + 1
+		}
+		if n > 0 { // show just one stage (written per stage between passages of text)
+			cg := *c.Image
+			cg.File, cg.Files, cg.Page, cg.Pick = pages[min(n, len(pages))-1], nil, 0, data.Expr{}
+			r.show(cg)
+			break
+		}
+		r.pages = r.pages[:0]
+		for _, f := range pages {
+			cg := *c.Image
+			cg.File, cg.Files = f, nil
+			r.pages = append(r.pages, cg)
+		}
+		r.show(r.pages[0])
+		r.pages = r.pages[1:]
+		if len(r.pages) > 0 {
+			return Tap{Auto: c.Image.Auto}
+		}
+	case "shop":
+		return Shop{ID: c.Shop}
+	case "call":
+		r.push(r.db.Events[c.Call].Do)
+	case "wait":
+		return Wait{Seconds: c.Wait}
+	case "notice":
+		return Notice{Text: data.Render(c.Notice, env)}
+	case "sfx":
+		r.emit(SoundEffect{c.SFX})
+	case "effect":
+		r.emit(VisualEffect{c.Effect})
+	case "exp":
+		n, err := c.Exp.Number(env)
+		r.logf(err)
+		// group members who reached the same level into one line (five lines in a row after an action were being forced out)
+		var levels []int
+		names := map[int][]string{}
+		for _, a := range r.st.Members() {
+			if !a.Alive() {
+				continue
+			}
+			for _, up := range a.GainExp(safeint.From(n)) {
+				if names[up.Level] == nil {
+					levels = append(levels, up.Level)
+				}
+				names[up.Level] = append(names[up.Level], a.Name())
+			}
+		}
+		alive := 0
+		for _, a := range r.st.Members() {
+			if a.Alive() {
+				alive++
+			}
+		}
+		for _, lv := range levels {
+			line := rpg.LevelUpLine(names[lv], alive, r.db.Game.Terms.Level, lv)
+			r.notes = append(r.notes, line)
+			if r.ups == nil {
+				r.ups = map[string]bool{}
+			}
+			r.ups[line] = true
+		}
+	case "learn":
+		if a := r.st.Actors[c.Learn.Actor]; a != nil && !slices.Contains(a.Skills(), c.Learn.Skill) {
+			a.Learnt = append(a.Learnt, c.Learn.Skill)
+			r.notes = append(r.notes, fmt.Sprintf(lang.T("%sは %sを おぼえた！"), a.Name(), r.db.Skills[c.Learn.Skill].Name))
+		}
+	case "reset_tree":
+		for id, a := range r.st.Actors {
+			if c.ResetTree == "all" || c.ResetTree == id {
+				a.ResetTree()
+			}
+		}
+	case "end":
+		r.stack = nil
+	case "clear":
+		r.stack = nil
+		r.last.Cleared = true
+		return Clear{}
+	case "save":
+		return Save{}
+	case "open":
+		return Open{Screen: c.Open}
+	case "dive": // a made dungeon: a new dive from outside, the next floor from inside
+		floor := 1.0
+		if c.Floor.Set() {
+			n, err := c.Floor.Number(env)
+			r.logf(err)
+			floor = n
+		}
+		dungeon.DiveAt(r.db, r.st, c.Dive, int(floor), c.At, c.Facing)
+		r.emit(MoveEffect{c.Dive})
+	case "open_wall": // a wall by the party becomes the tile (stairs that appear)
+		dungeon.OpenWall(r.db, r.st, c.OpenWall)
+	case "stone_suggest", "stone_apply", "stone_choose", "stone_wearer", "stone_decline", "equip_stones":
+		return r.stones(verb, c, env)
+	case "sp_suggest", "sp_apply", "sp_decline":
+		r.sp(verb, c)
+	case "pick":
+		r.pickEntry(data.Render(c.Pick, env))
+	case "turn":
+		r.turn(c.Turn)
+	case "step":
+		r.step(c)
+	case "walk":
+		r.walk(c)
+	case "use":
+		r.use(c)
+	case "equip":
+		r.equip(c.Equip)
+	case "buy", "sell":
+		r.trade(verb, c)
+	case "act":
+		if r.Act == nil {
+			r.logf(errors.New("act: only a session's battles take a move (Act is nil)"))
+			break
+		}
+		r.Act(c.Act.Actor, c.Act.Skill, c.Act.Item, c.Act.Target)
+	default:
+		if name, _ := data.CustomVerb(c); name != "" {
+			r.logf(fmt.Errorf("command %q is declared in game.yaml verbs but has no Go implementation yet", name))
+		}
+	}
+	return nil
+}
+
+// say builds the line: the speaker's name and face come from the actor when who is one.
+func (r *Runner) say(s *data.Say, env expr.Env) Request {
+	out, ok := r.line(s, env)
+	if !ok {
+		return nil
+	}
+	for i := range s.Instead {
+		if alt, ok := r.line(&s.Instead[i], env); ok {
+			out.Instead = append(out.Instead, alt)
+		}
+	}
+	return out
+}
+
+// line builds one line (false when it has nothing to show).
+func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
+	out := Say{Text: data.Render(s.Text, env), Name: s.Who}
+	if a, ok := r.db.Actors[s.Who]; ok {
+		out.Name = a.Name
+		out.Actor = s.Who
+		face := s.Face
+		if face == "" {
+			face = a.Face
+		}
+		if a.Faces != "" && !a.NoStanding {
+			outfit := ""
+			if loc := r.db.Locations[r.st.Location]; loc != nil {
+				outfit = loc.Outfit
+			}
+			out.Face = r.db.FacePicture(a, face, outfit)
+		}
+		out.Right = s.Side == "right"
+	} else {
+		if s.Face != "" {
+			out.Face = s.Face
+		}
+		out.Right = s.Side != "left"
+	}
+	out.Name = data.Render(out.Name, env)
+	if strings.TrimSpace(out.Text) == "" && out.Face == "" {
+		return Say{}, false
+	}
+	return out, true
+}
+
+// asideBlocker answers whether the screen should not insert the event placed after a speaker (game.yaml asides) right now
+// (a picture that hides the portrait is showing, a recollection is playing, and so on). For a Host without it, the runner decides by the picture it showed.
+type asideBlocker interface {
+	AsideBlocked() bool
+}
+
+// aside pushes one matching entry of game.yaml asides after a speaker's line (it runs after the line and, once done, returns to where it was).
+func (r *Runner) aside(s Say, env expr.Env) {
+	if len(r.db.Game.Asides) == 0 || r.Extra != nil { // do not insert during battle
+		return
+	}
+	if r.BlockAside != nil {
+		if r.BlockAside() {
+			return
+		}
+	} else if b, ok := r.host.(asideBlocker); ok {
+		if b.AsideBlocked() {
+			return
+		}
+	} else if r.shown.File != "" && !r.shown.Faces && !r.db.StandIn(r.shown.File) {
+		return
+	}
+	for _, a := range r.db.Game.Asides {
+		if !asideSpeaker(a, s) || r.asideInside(a) {
+			continue
+		}
+		ok, err := a.When.Bool(env)
+		r.logf(err)
+		if !ok {
+			continue
+		}
+		if ev := r.db.Events[a.Call]; ev != nil && len(ev.Do) > 0 {
+			// after the inserted event, restore the picture from before the insertion (the location background or the faces background; clear it if none)
+			back := r.shown
+			r.push([]data.Command{{Image: &back}})
+			r.push(ev.Do)
+			return
+		}
+	}
+}
+
+func asideSpeaker(a data.Aside, s Say) bool {
+	switch {
+	case a.Actor != "":
+		return s.Actor == a.Actor
+	case a.Face != "":
+		ok, err := path.Match(a.Face, s.Face)
+		return err == nil && ok && s.Face != ""
+	default:
+		return s.Name == a.Name
+	}
+}
+
+// asideInside reports whether any currently running event is the inserted event itself or matches a skip pattern.
+func (r *Runner) asideInside(a data.Aside) bool {
+	for _, f := range r.stack {
+		if len(f.cmds) == 0 {
+			continue
+		}
+		for name, ev := range r.db.Events {
+			if len(ev.Do) == 0 || &ev.Do[0] != &f.cmds[0] {
+				continue
+			}
+			if name == a.Call {
+				return true
+			}
+			for _, p := range a.Skip {
+				if ok, err := path.Match(p, name); err == nil && ok {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// show shows a picture (and remembers the last picture shown).
+func (r *Runner) show(c data.CG) {
+	// notify both the screen and the screenless run of the portrait display over a provisional background, with the same value.
+	if r.db.StandIn(c.File) {
+		c.Faces = true
+	}
+	r.shown = c
+	r.emit(ImageEffect{c})
+}
+
+func (r *Runner) emit(effect Effect) {
+	if r.host != nil {
+		r.host.Handle(effect)
+	}
+}

@@ -1,0 +1,6 @@
+# Copied into the step's directory before it runs (internal/dev/docs).
+# copy: destination in the directory -> source in the repository.
+copy:
+  game: e2e/atago/fixtures/game
+  -draft: e2e/atago/fixtures/game
+  notes/2026-01-01/001.png: e2e/atago/fixtures/game/assets/mote.png

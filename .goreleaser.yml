@@ -1,0 +1,208 @@
+version: 2
+project_name: gozen
+
+# The release ships the gozen command. The library is consumed with go get and
+# needs no release artifact.
+before:
+  hooks:
+    # The license texts of the modules linked into each platform's binary,
+    # bundled under THIRD_PARTY_LICENSES/ (MIT, BSD and Apache ask for them in
+    # binary distributions). GOROOT is explicit so go-licenses recognizes the
+    # standard library after a toolchain switch. CGO_ENABLED matches the builds.
+    - sh -c 'GOROOT="$(go env GOROOT)" CGO_ENABLED=0 GOOS=linux go-licenses save ./cmd/gozen --save_path=third_party_licenses/linux --force'
+    - sh -c 'GOROOT="$(go env GOROOT)" CGO_ENABLED=0 GOOS=windows go-licenses save ./cmd/gozen --save_path=third_party_licenses/windows --force'
+    - sh -c 'GOROOT="$(go env GOROOT)" CGO_ENABLED=0 GOOS=darwin go-licenses save ./cmd/gozen --save_path=third_party_licenses/darwin --force'
+
+builds:
+  - id: gozen
+    main: ./cmd/gozen
+    binary: gozen
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/nao1215/gozen/internal/clihelp.version=v{{ .Version }}
+    # Release binaries have no ONNX inference: cgo would need a cross C
+    # toolchain for every target. `gozen mosaic` says how to reinstall with
+    # inference (CGO_ENABLED=1 go install ...) when a command needs it
+    # (docs/decisions/0016-single-cli.md).
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    # The supported architectures are stated rather than inherited, so no 386
+    # artifact appears that nothing has claimed or tested.
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+      - ASSETS.md
+      - src: "third_party_licenses/{{ .Os }}/**/*"
+        dst: THIRD_PARTY_LICENSES
+
+# Linux system packages for apt, dnf and apk users (the same set gup, sqly and
+# atago ship).
+nfpms:
+  - package_name: gozen
+    maintainer: Naohiro CHIKAMATSU <n.chika156@gmail.com>
+    description: "Checks, simulates, documents and packages games written in YAML for the Gozen 2D RPG framework"
+    homepage: https://github.com/nao1215/gozen
+    license: MIT License
+    formats:
+      - deb
+      - rpm
+      - apk
+    contents:
+      - src: ./third_party_licenses/linux
+        dst: /usr/share/doc/gozen/THIRD_PARTY_LICENSES
+        type: tree
+
+checksum:
+  name_template: "checksums.txt"
+
+# SPDX SBOM for every release archive.
+sboms:
+  - artifacts: archive
+
+# Keyless signing with cosign (GitHub OIDC). Signing the checksums file covers
+# every artifact listed in it.
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
+
+# Homebrew cask in the shared nao1215/homebrew-tap (the tap that ships gup and
+# atago). It needs the TAP_GITHUB_TOKEN secret; release.yml stops before
+# GoReleaser when the secret is missing. Skipped by --skip=publish (snapshots).
+homebrew_casks:
+  - name: gozen
+    repository:
+      owner: nao1215
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    directory: Casks
+    homepage: "https://github.com/nao1215/gozen"
+    description: "Checks, simulates, documents and packages games written in YAML for the Gozen 2D RPG framework"
+    # The binary is not signed or notarized, so strip the quarantine attribute
+    # on install; otherwise Gatekeeper blocks the cask-installed binary.
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gozen"]
+          end
+
+# winget for Windows. The Windows archives are zips, which winget installs as a
+# portable package. The manifests go to a branch on nao1215/winget-pkgs, a fork
+# of the community repository, and the pull request is opened against
+# microsoft/winget-pkgs. It needs the WINGET_GITHUB_TOKEN secret (a classic
+# token with public_repo); release.yml stops before GoReleaser when it is
+# missing.
+winget:
+  - name: gozen
+    package_identifier: nao1215.gozen
+    publisher: Chikamatsu Naohiro
+    publisher_url: "https://github.com/nao1215"
+    publisher_support_url: "https://github.com/nao1215/gozen/issues"
+    author: Chikamatsu Naohiro
+    homepage: "https://github.com/nao1215/gozen"
+    short_description: "Check, simulate and document games written in YAML for the Gozen RPG framework"
+    description: |
+      gozen is the command of Gozen, a 2D RPG framework for Go and Ebitengine.
+      It checks a game written in YAML for broken references, wrong expressions,
+      missing pictures and text that overflows its window; fights battles many
+      times to print win rates; simulates dungeon dives; writes the whole game as
+      Markdown; collects test players' notes; and packages demo versions.
+    license: MIT
+    license_url: "https://github.com/nao1215/gozen/blob/main/LICENSE"
+    copyright: "Copyright (c) Chikamatsu Naohiro"
+    copyright_url: "https://github.com/nao1215/gozen/blob/main/LICENSE"
+    release_notes_url: "https://github.com/nao1215/gozen/releases/tag/{{ .Tag }}"
+    tags:
+      - cli-app
+      - command-line-tool
+      - cross-platform
+      - game-development
+      - go
+      - golang
+      - rpg
+      - yaml
+    skip_upload: auto
+    repository:
+      owner: nao1215
+      name: winget-pkgs
+      branch: "gozen-{{ .Version }}"
+      token: "{{ .Env.WINGET_GITHUB_TOKEN }}"
+      pull_request:
+        enabled: true
+        draft: false
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+release:
+  # A rerun of the release job after a failed Homebrew or winget step must not
+  # stop at already_exists on the assets uploaded the first time.
+  replace_existing_artifacts: true
+  header: |
+    ## gozen {{ .Tag }}
+
+    Gozen is a 2D RPG framework for Go and Ebitengine. The library is used with
+    `go get github.com/nao1215/gozen@{{ .Tag }}`; the archives below contain the
+    `gozen` command (without ONNX inference; see the README).
+
+    Every archive is signed and ships with an SBOM and build provenance; see
+    [Verifying release integrity](https://github.com/nao1215/gozen#verifying-release-integrity).
+  footer: |
+    **Full changelog**: https://github.com/nao1215/gozen/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+changelog:
+  sort: asc
+  use: github
+  groups:
+    - title: "Breaking changes"
+      regexp: '^.*?[a-zA-Z]+(\(.+\))??!:.+$'
+      order: 0
+    - title: "Features"
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 1
+    - title: "Bug fixes"
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 2
+    - title: "Performance"
+      regexp: '^.*?perf(\(.+\))??!?:.+$'
+      order: 3
+    - title: "Documentation"
+      regexp: '^.*?docs(\(.+\))??!?:.+$'
+      order: 4
+    - title: "Others"
+      order: 999
+  filters:
+    exclude:
+      - "^tests?(\\(.+\\))?!?:"
+      - "^chore(\\(.+\\))?!?:"
+      - "^style(\\(.+\\))?!?:"
+      - "^ci(\\(.+\\))?!?:"
+      - "Merge pull request"
+      - "Merge branch"

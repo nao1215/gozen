@@ -1,0 +1,125 @@
+enemies:
+  drip_slime:
+    name: Drip Slime
+    image: enemies/drip_slime.png
+    stats: {mhp: 48, mmp: 0, atk: 11, def: 2, mat: 0, mdf: 1, agi: 4, luk: 1}
+    exp: 12
+    gold: 5
+    drops: [{item: tonic, chance: 0.1}]
+    ai: [{use: drip}]
+  pipe_rat:
+    name: Pipe Rat
+    image: enemies/pipe_rat.png
+    stats: {mhp: 38, mmp: 0, atk: 11, def: 1, mat: 0, mdf: 0, agi: 11, luk: 2}
+    exp: 12
+    gold: 6
+    drops: [{item: old_gear, chance: 0.3}]
+    ai: [{use: gnaw}]
+  rust_crab:
+    name: Rust Crab
+    image: enemies/rust_crab.png
+    stats: {mhp: 110, mmp: 0, atk: 16, def: 7, mat: 0, mdf: 2, agi: 5, luk: 1}
+    resist: {thunder: 1.5}
+    exp: 26
+    gold: 10
+    drops: [{item: old_gear, chance: 0.4}]
+    ai:
+      - {use: pinch, when: "turn % 2 == 0", priority: 2}
+      - {use: clang}
+  brass_hound:
+    name: Brass Hound
+    image: enemies/brass_hound.png
+    stats: {mhp: 120, mmp: 0, atk: 19, def: 7, mat: 0, mdf: 3, agi: 13, luk: 3}
+    exp: 30
+    gold: 12
+    ai:
+      - {use: lunge, when: "turn % 3 == 0", priority: 2}
+      - {use: bite}
+  brass_warden:
+    name: Brass Warden
+    title: Valve Door Guardian
+    image: enemies/brass_warden.png
+    stats: {mhp: 620, mmp: 0, atk: 30, def: 10, mat: 0, mdf: 4, agi: 6, luk: 1}
+    boss: true
+    exp: 120
+    gold: 90
+    drops: [{item: shield_tin, chance: 1}]
+    ai:
+      - {use: slam, when: "turn % 3 == 0", priority: 2}
+      - {use: crush}
+  tollkeeper:
+    name: Tollkeeper
+    title: The Magistrate's Golem
+    image: enemies/tollkeeper.png
+    scale: 1.2
+    stats: {mhp: 950, mmp: 0, atk: 39, def: 12, mat: 0, mdf: 5, agi: 7, luk: 1}
+    boss: true
+    exp: 170
+    gold: 100
+    ai:
+      - {use: gilded_plating, when: "self.hp_rate < 0.5 && self.states.gilded == 0", priority: 4}
+      - {use: toll_bell, when: "turn % 3 == 0", priority: 2}
+      - {use: toll_strike}
+  vance:
+    name: Odile Vance
+    title: Magistrate of Waters
+    image: enemies/vance.png
+    stats: {mhp: 950, mmp: 0, atk: 10, def: 8, mat: 54, mdf: 10, agi: 10, luk: 4}
+    boss: true
+    exp: 220
+    gold: 200
+    faces: {angry: enemies/vance_angry.png, hurt: enemies/vance_pained.png}
+    ai:
+      - {use: auction, when: "turn % 3 == 0", priority: 3}
+      - {use: lien, when: "foes.with_marked == 0", priority: 2}
+      - {use: coin_toss}
+troops:
+  drips: {members: [drip_slime, drip_slime]}
+  rats: {members: [pipe_rat, pipe_rat]}
+  drip_and_rat: {members: [drip_slime, pipe_rat]}
+  rat_pack: {members: [pipe_rat, pipe_rat, drip_slime]}
+  crab: {members: [rust_crab]}
+  crab_rats: {members: [rust_crab, pipe_rat]}
+  crab_pair: {members: [rust_crab, rust_crab]}
+  hound: {members: [brass_hound]}
+  hounds: {members: [brass_hound, brass_hound]}
+  hound_crab: {members: [brass_hound, rust_crab]}
+  warden:
+    members: [brass_warden]
+    can_escape: false
+    music: boss
+    intro: "The Brass Warden rises in a cloud of steam and bars the valve door."
+    level_scale: {level: 5, rate: 0.05, max: 0.2}
+    events:
+      - when: "foes.hp_rate < 0.5"
+        do:
+          - say: {who: kes, face: surprised, text: "Its seams are glowing. It's overheating!"}
+          - say: {who: ox, face: determined, text: "Then we keep it busy."}
+  tollkeeper:
+    members: [tollkeeper]
+    can_escape: false
+    music: boss
+    intro: "Vance's Tollkeeper stomps forward, counting its tolls in clangs."
+    level_scale: {level: 9, rate: 0.08, max: 0.4}
+    events:
+      - when: "foes.hp_rate < 0.5"
+        do:
+          - say: {who: vance, face: angry, text: "Plate it, Tollkeeper. Gold over brass!"}
+          - say: {who: kes, face: worried, text: "It's getting tougher. Hit it before the plating sets!"}
+      - when: "allies.min_hp_rate < 0.3"
+        do:
+          - say: {who: tilly, face: determined, text: "I'll bet on you. Hold on."}
+  vance_duel:
+    members: [vance]
+    can_escape: false
+    music: boss
+    intro: "Magistrate Vance sets down her scroll and steps in herself."
+    level_scale: {level: 10, rate: 0.08, max: 0.4}
+    events:
+      - when: "foes.hp_rate < 0.6"
+        do:
+          - say: {who: vance, face: angry, text: "Everything has a price. Everything!"}
+      - when: "foes.hp_rate < 0.3"
+        do:
+          - say: {who: maren, face: determined, text: "Now. She's out of tricks."}
+          - say: {who: ox, face: determined, text: "Behind me. Finish it."}

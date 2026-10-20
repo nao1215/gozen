@@ -1,0 +1,155 @@
+base: base.png
+faces:
+  determined:
+    image: face-determined.png
+    at:
+    - 285.0
+    - 215.0
+    mouth:
+      frames:
+      - image: face
+      - image: mouth-normal-2.png
+        at:
+        - 316.0
+        - 306.0
+      - image: mouth-normal-3.png
+        at:
+        - 316.0
+        - 306.0
+      speed: 11.0
+  embarrassed:
+    image: face-embarrassed.png
+    at:
+    - 285.0
+    - 215.0
+    mouth:
+      "off": true
+  grin:
+    image: face-grin.png
+    at:
+    - 285.0
+    - 215.0
+    mouth:
+      "off": true
+  normal:
+    mouth:
+      frames:
+      - image: face
+      - image: mouth-normal-2.png
+        at:
+        - 316.0
+        - 306.0
+      - image: mouth-normal-3.png
+        at:
+        - 316.0
+        - 306.0
+      speed: 11.0
+  sad:
+    image: face-sad.png
+    at:
+    - 285.0
+    - 215.0
+    mouth:
+      frames:
+      - image: face
+      - image: mouth-normal-2.png
+        at:
+        - 316.0
+        - 306.0
+      - image: mouth-normal-3.png
+        at:
+        - 316.0
+        - 306.0
+      speed: 11.0
+  scared:
+    image: face-scared.png
+    at:
+    - 285.0
+    - 215.0
+    mouth:
+      "off": true
+  smile:
+    image: face-smile.png
+    at:
+    - 285.0
+    - 215.0
+    mouth:
+      "off": true
+  surprised:
+    image: face-surprised.png
+    at:
+    - 285.0
+    - 215.0
+    mouth:
+      "off": true
+  worried:
+    image: face-worried.png
+    at:
+    - 285.0
+    - 215.0
+    mouth:
+      frames:
+      - image: face
+      - image: mouth-normal-2.png
+        at:
+        - 316.0
+        - 306.0
+      - image: mouth-normal-3.png
+        at:
+        - 316.0
+        - 306.0
+      speed: 11.0
+face: normal
+fade: 0.25
+head:
+  center:
+  - 360.0
+  - 290.0
+  radius: 150.0
+  neck:
+  - 370.0
+  - 410.0
+hair:
+- poly:
+  - - 262.0
+    - 258.0
+  - - 296.0
+    - 255.0
+  - - 306.0
+    - 290.0
+  - - 300.0
+    - 340.0
+  - - 302.0
+    - 400.0
+  - - 304.0
+    - 440.0
+  - - 282.0
+    - 442.0
+  - - 268.0
+    - 400.0
+  - - 260.0
+    - 300.0
+springs:
+- poly:
+  - - 452.0
+    - 150.0
+  - - 472.0
+    - 150.0
+  - - 497.0
+    - 210.0
+  - - 515.0
+    - 268.0
+  - - 522.0
+    - 322.0
+  - - 506.0
+    - 326.0
+  - - 490.0
+    - 290.0
+  - - 470.0
+    - 242.0
+  - - 454.0
+    - 190.0
+  root: top
+  follow: head
+  stiffness: 30.0
+  damping: 4.0

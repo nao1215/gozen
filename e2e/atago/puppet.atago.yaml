@@ -1,0 +1,111 @@
+version: '1'
+suite:
+  name: Gozen puppet check and cut
+scenarios:
+- name: puppet prints where the overlays lie
+  steps:
+  - run:
+      command: gozen art puppet "${specdir}/fixtures/puppet/puppet.yaml"
+      deterministic:
+        runs: 2
+        compare:
+        - stdout
+        - stderr
+        - exit_code
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - "base base.png 64x96\n"
+        - "face default: the base\n"
+        - "  eyes closed: at ["
+        - "  mouth 1: the face's own\n"
+        - "  mouth 2: at [26, 32] size 12x6\n"
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: puppet --out writes small pictures that load again
+  steps:
+  - run:
+      command: gozen art puppet "${specdir}/fixtures/puppet/puppet.yaml" --out packed
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: wrote packed/puppet.yaml
+      stderr:
+        equals: ''
+  - assert:
+      dir:
+        path: packed
+        contains:
+        - puppet.yaml
+        - base.png
+        - eyes-default.png
+        - mouth-default-2.png
+  - assert:
+      file:
+        path: packed/puppet.yaml
+        contains:
+        - 'image: eyes-default.png'
+        - 'at:'
+  - run:
+      command: gozen art puppet packed/puppet.yaml
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: "  mouth 2: at [26, 32] size 12x6\n"
+  - run:
+      command: gozen art puppet "${specdir}/fixtures/puppet/puppet.yaml" --out packed
+  - assert:
+      exit_code: 1
+      stdout:
+        contains: "base base.png 64x96\n"
+      stderr:
+        contains: output already exists
+- name: puppet reports a missing file
+  steps:
+  - run:
+      command: gozen art puppet missing.yaml
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: missing.yaml
+- name: puppet reports a picture outside the base
+  steps:
+  - fixture:
+      file: bad/base.png
+      from: fixtures/puppet/base.png
+  - fixture:
+      file: bad/mouth.png
+      from: fixtures/puppet/mouth.png
+  - fixture:
+      file: bad/puppet.yaml
+      content: |
+        base: base.png
+        mouth:
+          frames: [face, {image: mouth.png, at: [60, 32]}]
+  - run:
+      command: gozen art puppet bad/puppet.yaml
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains:
+        - mouth.frames[1]
+        - outside the base
+- name: puppet takes one file
+  steps:
+  - run:
+      command: gozen art puppet
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: puppet expects one puppet YAML file

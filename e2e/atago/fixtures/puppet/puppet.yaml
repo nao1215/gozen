@@ -1,0 +1,7 @@
+# A neutral test figure: a body, a head, and two eyes as one bar.
+base: base.png
+eyes:
+  closed: closed.png
+mouth:
+  frames: [face, {image: mouth.png, at: [26, 32]}]
+head: {center: [32, 26], radius: 20, neck: [32, 52]}

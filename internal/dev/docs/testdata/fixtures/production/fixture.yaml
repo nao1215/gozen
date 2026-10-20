@@ -1,0 +1,6 @@
+# The production examples of docs/examples/production, laid out as the site's commands use them.
+copy:
+  catalog.yaml: docs/examples/production/catalog.yaml
+  plan.yaml: docs/examples/production/plan.yaml
+  fixes.yaml: docs/examples/production/fixes.yaml
+  game/assets/pattern.png: docs/examples/production/pattern.png

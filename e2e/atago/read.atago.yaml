@@ -1,0 +1,191 @@
+version: '1'
+suite:
+  name: Gozen CLI checks and deterministic simulation
+scenarios:
+- name: '"${specdir}/fixtures/game" observable result'
+  steps:
+  - run:
+      command: gozen check --only structure "${specdir}/fixtures/game"
+      deterministic:
+        runs: 2
+        compare:
+        - stdout
+        - stderr
+        - exit_code
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: Structure checked
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: check observable result
+  steps:
+  - run:
+      command: gozen check "${specdir}/fixtures/game"
+      deterministic:
+        runs: 2
+        compare:
+        - stdout
+        - stderr
+        - exit_code
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: 'ok: 2 locations'
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: layout observable result
+  steps:
+  - run:
+      command: gozen check --only layout "${specdir}/fixtures/game"
+      deterministic:
+        runs: 2
+        compare:
+        - stdout
+        - stderr
+        - exit_code
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: Layout checked
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: book observable result
+  steps:
+  - run:
+      command: gozen book "${specdir}/fixtures/game"
+      deterministic:
+        runs: 2
+        compare:
+        - stdout
+        - stderr
+        - exit_code
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['# CLI expedition', 'start: camp, party scout, gold 0, items (none)', '## Locations', '## Enemies']
+        not_contains: ['map[', '## Action rules', '## Music', '## Gallery']
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: sim observable result
+  steps:
+  - run:
+      command: gozen sim battle "${specdir}/fixtures/game" lesson -n 3 --seed 9
+      deterministic:
+        runs: 2
+        compare:
+        - stdout
+        - stderr
+        - exit_code
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: win 100%
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: floors observable result
+  steps:
+  - run:
+      command: gozen sim floors "${specdir}/fixtures/game" grotto --floor 1 --try 2
+      deterministic:
+        runs: 2
+        compare:
+        - stdout
+        - stderr
+        - exit_code
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: seed   1
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: curve observable result
+  steps:
+  - run:
+      command: gozen sim dive "${specdir}/fixtures/game" grotto --floors 1 --battles 1 --tries 1
+      deterministic:
+        runs: 2
+        compare:
+        - stdout
+        - stderr
+        - exit_code
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: Tap 1
+      stderr:
+        equals: ''
+      changes:
+        created: []
+        modified: []
+        deleted: []
+- name: trace filters time and reports diagnostic failures
+  steps:
+  - fixture:
+      file: trace.jsonl
+      content: '{"t":"say","tick":60,"text":"The trail is clear."}
+
+        {"t":"music","tick":120,"wanted":"bell","song":""}
+
+        {"t":"end","tick":240}
+
+        '
+  - run:
+      command: gozen play trace trace.jsonl --only say --from 1 --to 1
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - '00:01.00'
+        - The trail is clear.
+        not_contains: music-late
+      stderr:
+        equals: ''
+  - run:
+      command: gozen play trace trace.jsonl --check
+  - assert:
+      exit_code: 1
+      stdout:
+        contains: music-late
+      stderr:
+        contains: issues
+- name: malformed trace structures fail without panic
+  steps:
+  - fixture:
+      file: trace.jsonl
+      content: '{"t":"state","party":[3]}
+
+        '
+  - run:
+      command: gozen play trace trace.jsonl
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: invalid party member
+        not_contains: panic

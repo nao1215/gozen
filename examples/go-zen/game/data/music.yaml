@@ -1,0 +1,9 @@
+music:
+  volume: 0.7
+  songs:
+    title: {name: Dry Fountain, file: bgm/title.ogg}
+    town: {name: Pellmere Mornings, file: bgm/town.ogg}
+    dungeon: {name: Under the Cistern, file: bgm/dungeon.ogg}
+    battle: {name: Rust and Brass, file: bgm/battle.ogg}
+    boss: {name: The Tollkeeper, file: bgm/boss.ogg}
+    victory: {name: Small Victory, file: bgm/victory.ogg}

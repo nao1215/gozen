@@ -1,0 +1,39 @@
+classes:
+  walker:
+    name: Walker
+    stats: {mhp: "30 + level * 8", mmp: 5, atk: "6 + level * 2", def: "2 + level", mat: 2, mdf: 2, agi: 8, luk: 1}
+    exp_for: level * 20
+actors: {scout: {name: Scout, class: walker}}
+skills:
+  attack: {name: Tap, effects: [{damage: a.atk - b.def}]}
+  guard: {name: Wait, scope: self}
+enemies:
+  mote:
+    name: Mote
+    image: mote.png
+    stats: {mhp: 12, mmp: 0, atk: 6, def: 1, mat: 0, mdf: 0, agi: 3, luk: 1}
+    gold: 3
+    exp: 10
+    ai: [{use: attack}]
+  warden:
+    name: Warden
+    image: mote.png
+    stats: {mhp: 120, mmp: 0, atk: 18, def: 6, mat: 0, mdf: 0, agi: 5, luk: 1}
+    gold: 30
+    exp: 60
+    ai: [{use: attack}]
+troops:
+  motes: {members: [mote, mote]}
+  cave_boss: {members: [warden]}
+locations:
+  camp:
+    name: Camp
+    exits: [{to: cave, label: Enter the cave}]
+  cave:
+    name: Cave
+    encounters: {rate: 0.1, troops: [{troop: motes}]}
+    dungeon:
+      generate: {width: 11, height: 11, rooms: 2, start: S, place: [{char: '>'}]}
+      tiles:
+        S: {start: true}
+        '>': {do: [{dive: cave, floor: floor + 1}]}

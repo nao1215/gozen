@@ -1,0 +1,113 @@
+elements:
+  thunder: Thunder
+classes:
+  cartographer:
+    name: Cartographer
+    exp_for: level * level * 10
+    stats: {mhp: "28 + level * 7", mmp: "8 + level * 2", atk: "5 + level * 2", def: "3 + level", mat: "5 + level * 2", mdf: "3 + level", agi: "8 + level", luk: 6}
+    equip: [rod, light, charm]
+    start_sp: 2
+    sp_pitch: "Chart first, then Ink Burst. A marked foe is easy to hit."
+    tree:
+      - {id: chart, skill: chart, max: 3, col: 0, row: 0}
+      - {id: ink_burst, skill: ink_burst, max: 3, col: 1, row: 0, requires: [{node: chart, level: 1}]}
+      - {id: sure_foot, name: Sure Foot, desc: "Quicker on your feet.", stats: {agi: 2}, max: 3, col: 0, row: 1}
+      - {id: keen_eye, name: Keen Eye, desc: "Sharper strikes and spells.", stats: {atk: 1, mat: 1}, max: 5, col: 1, row: 1, requires: [{node: sure_foot, level: 1}]}
+  shieldbearer:
+    name: Shieldbearer
+    exp_for: level * level * 10
+    stats: {mhp: "42 + level * 10", mmp: "5 + level", atk: "6 + level * 2", def: "6 + level * 2", mat: 2, mdf: "3 + level", agi: "5 + level", luk: 3}
+    equip: [shield, heavy, light, charm]
+    start_sp: 1
+    skills: [{level: 1, skill: shield_rush}]
+    tree:
+      - {id: hold_line, skill: hold_line, max: 3, col: 0, row: 0}
+      - {id: iron_hide, name: Iron Hide, desc: "Tougher armor.", stats: {def: 2}, max: 5, col: 1, row: 0}
+      - {id: bulwark, name: Bulwark, desc: "More health.", stats: {mhp: 8}, max: 5, col: 1, row: 1, requires: [{node: iron_hide, level: 1}]}
+  chaplain:
+    name: Chaplain
+    exp_for: level * level * 10
+    stats: {mhp: "26 + level * 6", mmp: "10 + level * 3", atk: "3 + level", def: "2 + level", mat: "5 + level * 2", mdf: "5 + level * 2", agi: "7 + level", luk: 9}
+    equip: [staff, light, charm]
+    start_sp: 2
+    skills: [{level: 1, skill: lucky_toss}]
+    tree:
+      - {id: mend, skill: mend, max: 3, col: 0, row: 0}
+      - {id: blessing, skill: blessing, max: 3, col: 1, row: 0}
+      - {id: shared_cup, skill: shared_cup, max: 3, col: 2, row: 0, requires: [{node: mend, level: 2}]}
+      - {id: second_chance, skill: second_chance, max: 2, col: 2, row: 1, requires: [{node: blessing, level: 1}, {node: mend, level: 1}]}
+  tinker:
+    name: Tinker
+    exp_for: level * level * 10
+    stats: {mhp: "22 + level * 5", mmp: "10 + level * 3", atk: "3 + level", def: "2 + level", mat: "6 + level * 2", mdf: "3 + level", agi: "9 + level", luk: 5}
+    equip: [coil, light, charm]
+    start_sp: 2
+    skills: [{level: 1, skill: arc_bolt}]
+    tree:
+      - {id: storm_coil, skill: storm_coil, max: 3, col: 0, row: 0}
+      - {id: overclock, skill: overclock, max: 3, col: 1, row: 0}
+      - {id: spare_parts, name: Spare Parts, desc: "Better tuned coils.", stats: {mat: 2}, max: 5, col: 1, row: 1}
+  magistrate:
+    name: Magistrate
+    exp_for: level * 30
+    stats: {mhp: 100, mmp: 30, atk: 10, def: 6, mat: 12, mdf: 8, agi: 8, luk: 5}
+actors:
+  maren:
+    name: Maren
+    class: cartographer
+    faces: maren
+    puppet: maren/puppet.yaml
+    doll: {icon: icons/maren.png, hair: long, parts: [{kind: bag, color: "#7a5030"}, {kind: lashes, color: "#000000"}]}
+    equip: {weapon: rod_basic, armor: coat_cloth}
+    tree: {chart: 1}
+    cutin: maren/cutin.png
+    cutin_lines: ["Every line, walked!", "Let me walk it first!"]
+    reactions: {hit: worried, win: grin, fall: sad}
+    ai: maren_ai
+  ox:
+    name: Ox
+    class: shieldbearer
+    level: 2
+    faces: ox
+    puppet: ox/puppet.yaml
+    doll: {icon: icons/ox.png, hair: bald, parts: [{kind: apron, color: "#2f6fb8"}, {kind: shield, color: "#8a5a30"}]}
+    equip: {weapon: shield_pot, armor: plate_scrap}
+    tree: {hold_line: 1}
+    cutin: ox/cutin.png
+    cutin_lines: ["Behind me!", "Shield Rush!"]
+    reactions: {hit: frown, win: smile, fall: worried}
+    ai: ox_ai
+  tilly:
+    name: Tilly
+    class: chaplain
+    level: 2
+    back: true
+    faces: tilly
+    puppet: tilly/puppet.yaml
+    doll: {icon: icons/tilly.png, hair: long, parts: [{kind: shawl, color: "#3f7fc0"}, {kind: dress, color: "#efe8dc"}, {kind: lashes, color: "#000000"}]}
+    equip: {weapon: staff_wood, armor: robe_pilgrim}
+    tree: {mend: 1, blessing: 1}
+    cutin: tilly/cutin.png
+    cutin_lines: ["I'll bet on you!"]
+    reactions: {hit: worried, win: laugh, fall: sad}
+    ai: tilly_ai
+  kes:
+    name: Kes
+    class: tinker
+    level: 2
+    back: true
+    faces: kes
+    puppet: kes/puppet.yaml
+    doll: {icon: icons/kes.png, hair: short, parts: [{kind: goggles, color: "#9fd8ff"}, {kind: muffler, color: "#d0302c"}, {kind: ponytail, color: "#c8ccd2"}, {kind: lashes, color: "#000000"}]}
+    equip: {weapon: coil_basic, armor: coat_work}
+    tree: {storm_coil: 1}
+    cutin: kes/cutin.png
+    cutin_lines: ["Statistically, this will hurt!"]
+    reactions: {hit: scared, win: grin, fall: sad}
+    ai: kes_ai
+  vance:
+    name: Vance
+    class: magistrate
+    faces: vance
+    puppet: vance/puppet.yaml
+    doll: {icon: icons/vance.png, hair: bun, parts: [{kind: dress, color: "#c8323a"}, {kind: lashes, color: "#000000"}]}

@@ -1,0 +1,139 @@
+version: '1'
+suite:
+  name: Gozen production CLI contracts with original neutral inputs
+scenarios:
+- name: gozen art prompt help does not read a missing catalog
+  steps:
+  - run:
+      command: gozen art prompt lint --config missing.yaml --help
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['Requirements:', 'gozen#gozen']
+      stderr:
+        equals: ''
+      changes: {created: [], modified: [], deleted: []}
+- name: gozen art mosaic help for ${sub}
+  matrix:
+  - sub: auto
+  - sub: inspect
+  - sub: manual
+  - sub: manual add
+  - sub: manual grow
+  steps:
+  - run:
+      command: gozen art mosaic ${sub} --help
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['Requirements:', 'gozen#gozen', 'CGO_ENABLED=1']
+      stderr:
+        equals: ''
+      changes: {created: [], modified: [], deleted: []}
+- name: gozen art prompt builds neutral catalog and lints it
+  steps:
+  - run:
+      command: gozen art prompt --config "${specdir}/../../docs/examples/production/catalog.yaml" --scene landscape --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['"positive": "quiet garden, soft light"', '"dialect": "sdxl"']
+      stderr:
+        equals: ''
+  - run:
+      command: gozen art prompt --config "${specdir}/../../docs/examples/production/catalog.yaml" --scene portrait --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['"positive": "quiet garden, soft light, (traveler:1.5), adult"']
+      stderr:
+        equals: ''
+  - run:
+      command: gozen art prompt lint --config "${specdir}/../../docs/examples/production/catalog.yaml" --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        equals: "[]\n"
+      stderr:
+        equals: ''
+      changes: {created: [], modified: [], deleted: []}
+- name: gozen art prompt missing prerequisite points to installation information
+  steps:
+  - run:
+      command: gozen art prompt --config missing.yaml
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: ['missing.yaml', 'Requirements:', 'gozen#gozen']
+      changes: {created: [], modified: [], deleted: []}
+- name: gozen art mosaic inference missing prerequisites writes no output
+  steps:
+  - fixture:
+      file: game/assets/pattern.png
+      from: ../../docs/examples/production/pattern.png
+  - run:
+      command: gozen art mosaic auto --fix '' --tags '' --shape box --passes default --manual '' --out processed game pattern.png
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: ['Requirements:', 'gozen#gozen']
+      changes: {created: [], modified: [], deleted: []}
+- name: gozen art mosaic manual workflow preserves input and read-only operations write nothing
+  steps:
+  - fixture:
+      file: game/assets/pattern.png
+      from: ../../docs/examples/production/pattern.png
+  - fixture:
+      file: original.png
+      from: ../../docs/examples/production/pattern.png
+  - fixture:
+      file: edits.yaml
+      content: 'pattern.png: {skip: true, block: 4, add: [[1, 1, 7, 7], [14, 10, 8, 9]]}'
+  - run:
+      command: gozen art mosaic auto --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed game pattern.png
+  - assert:
+      exit_code: 0
+  - assert:
+      file:
+        path: game/assets/pattern.png
+        equals_file: original.png
+  - assert:
+      dir:
+        path: processed
+        recursive: true
+        contains: [pattern.png, report.json, masks/pattern.png.png, review.md]
+  - run:
+      command: gozen art mosaic inspect --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed game pattern.png
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['"status":"done"', '"output_block":4']
+      changes: {created: [], modified: [], deleted: []}
+  - run:
+      command: gozen art mosaic auto --fix '' --tags '' --shape box --passes default --dry-run --manual edits.yaml --out dry-output game pattern.png
+  - assert:
+      exit_code: 0
+      changes: {created: [], modified: [], deleted: []}
+  - run:
+      command: gozen art mosaic manual grow --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed --size 48 --rect 0,0,8,8 --by 2 game pattern.png
+  - assert:
+      exit_code: 0
+  - run:
+      command: gozen art mosaic manual clear --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed game pattern.png
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: 'Requirements:'
+      changes: {created: [], modified: [], deleted: []}
+- name: gozen art mosaic rejects empty regions without changing the fix file
+  steps:
+  - fixture:
+      file: game/assets/pattern.png
+      from: ../../docs/examples/production/pattern.png
+  - run:
+      command: gozen art mosaic manual add --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed --rect 80,80,4,4 game pattern.png
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: 'rectangle does not intersect'
+      changes: {created: [], modified: [], deleted: []}

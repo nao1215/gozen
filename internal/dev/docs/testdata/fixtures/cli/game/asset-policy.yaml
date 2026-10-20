@@ -1,0 +1,6 @@
+# The approved replacements of the release and trial examples (website/content/commands.md).
+overlay: ../overlay
+report: approvals.json
+extensions: [.png]
+inspection: {file: file, source: source, required: required, approved: approved}
+records: {file: file, source: source, required: required, approved: approved, output: output}

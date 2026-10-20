@@ -1,0 +1,286 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quick:
+    # Cheap check for private pushes: vet and tests on Linux under Xvfb.
+    if: ${{ github.event.repository.private && github.event_name != 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a
+        with:
+          xvfb: true
+      - run: go vet ./...
+      - run: xvfb-run --auto-servernum go test -count=1 ./...
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - name: Install pinned development tools
+        run: |
+          go install github.com/fe3dback/go-arch-lint@v1.19.0
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+      - name: Check architecture, API, analysis, and formatting
+        run: make lint
+
+  unit:
+    # Full matrix while public, or on manual dispatch. Private repositories have a
+    # limited Actions budget, so pushes there run only the quick job below.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        go: ["1.26.9", stable]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ matrix.go }}
+      # One module: the gozen command and its internal implementations are tested.
+      - run: go test ./...
+        env:
+          CGO_ENABLED: "1"
+
+  build:
+    # Full matrix while public, or on manual dispatch. Private repositories have a
+    # limited Actions budget, so pushes there run only the quick job below.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+          - os: ubuntu-latest
+            goos: darwin
+            goarch: arm64
+          # The browser build (play.New with localStorage saves; ADR 0021).
+          - os: ubuntu-latest
+            goos: js
+            goarch: wasm
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      # Portable builds omit ONNX inference. Native cgo builds are checked below.
+      # arm64 rows are cross-builds, not runtime verification.
+      - run: go build -trimpath -buildvcs=false ./...
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+
+  graphics:
+    # Full matrix while public, or on manual dispatch. Private repositories have a
+    # limited Actions budget, so pushes there run only the quick job below.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a
+        with:
+          xvfb: true
+      - name: Install screenshot contract runner
+        run: go install github.com/nao1215/atago@v0.25.2
+      - name: Render on Linux with Xvfb
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum --error-file=/dev/stderr make graphics
+      # The Go Zen sample's screens take minutes; they run only when started by hand.
+      - name: Render the Go Zen sample on Linux with Xvfb
+        if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch'
+        run: xvfb-run --auto-servernum --error-file=/dev/stderr make go-zen-graphics
+      # Native desktop execution is required on Windows/macOS; failures remain fatal.
+      # Local Linux results do not establish these runners can render.
+      - name: Render on the native desktop
+        if: runner.os != 'Linux'
+        run: go test -tags=graphics ./play ./puppet -run TestGraphics -count=1
+      - name: Capture the CLI screenshot pipeline on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum --error-file=/dev/stderr make e2e-graphics
+      - name: Capture the CLI screenshot pipeline on the native desktop
+        if: runner.os != 'Linux'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force bin, build/atago | Out-Null
+          $suffix = if ($IsWindows) { '.exe' } else { '' }
+          go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/gozen$suffix" ./cmd/gozen
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/gozen-game$suffix" ./examples/play
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:PATH = (Join-Path $PWD bin) + [IO.Path]::PathSeparator + $env:PATH
+          $env:GOZEN_GAME_BIN = Join-Path $PWD "bin/gozen-game$suffix"
+          Push-Location build/atago
+          try {
+            atago run --ci --parallel 1 --tag graphics ../../e2e/atago
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally { Pop-Location }
+
+  cli-e2e:
+    # Full matrix while public, or on manual dispatch. Private repositories have a
+    # limited Actions budget, so pushes there run only the quick job below.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - name: Install pinned CLI contract runner
+        run: go install github.com/nao1215/atago@v0.25.2
+      - name: Build and exercise native CLI binaries
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force bin, build/atago | Out-Null
+          $suffix = if ($IsWindows) { '.exe' } else { '' }
+          go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/gozen$suffix" ./cmd/gozen
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:PATH = (Join-Path $PWD bin) + [IO.Path]::PathSeparator + $env:PATH
+          Push-Location build/atago
+          try {
+            atago run --ci --parallel 4 --skip-tag graphics ../../e2e/atago
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally { Pop-Location }
+
+  inference-build:
+    # Full matrix while public, or on manual dispatch. Private repositories have a
+    # limited Actions budget, so pushes there run only the quick job below.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - name: Compile the native ONNX adapters and run available inference tests
+        run: go test -v ./internal/mosaic/... -run TestONNX -count=1
+        env:
+          CGO_ENABLED: "1"
+      - name: Build the inference-capable CLI
+        run: go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/ ./cmd/gozen
+        env:
+          CGO_ENABLED: "1"
+
+  race:
+    # Full matrix while public, or on manual dispatch. Private repositories have a
+    # limited Actions budget, so pushes there run only the quick job below.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - name: Check non-graphics contracts for races
+        run: go test -race ./...
+        env:
+          CGO_ENABLED: "1"
+
+  examples:
+    # Full matrix while public, or on manual dispatch. Private repositories have a
+    # limited Actions budget, so pushes there run only the quick job below.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - name: Compile all examples, including the graphical host
+        run: go build -trimpath -buildvcs=false ./examples/...
+      - name: Run the minimal embedded game
+        run: go run ./examples/minimal
+      - name: Run the headless save and restore example
+        run: go run ./examples/headless
+
+  go-zen:
+    # examples/go-zen is a module of its own (it uses this checkout through a
+    # replace), so ./... and ./examples/... above do not reach it.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: examples/go-zen/go.mod
+      - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a
+      - name: Vet, check and test the Go Zen sample (its screens are in the graphics job)
+        run: make go-zen

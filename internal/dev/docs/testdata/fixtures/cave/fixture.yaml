@@ -1,0 +1,2 @@
+copy:
+  game/assets: e2e/atago/fixtures/game/assets

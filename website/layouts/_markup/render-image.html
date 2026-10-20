@@ -1,0 +1,22 @@
+{{- $u := .Destination -}}
+{{- /* Images under docs/images are mounted as processable assets too, so
+       resolve one to a resource and emit its intrinsic width/height: the
+       browser then reserves the box before the (large) GIF loads, so the page
+       does not shift as each image arrives. The resource is published as-is
+       (no re-encoding), so the animated GIF keeps animating. */ -}}
+{{- $img := "" -}}
+{{- if hasPrefix $u "/images/" -}}
+  {{- $img = resources.Get (printf "imgsrc/%s" (strings.TrimPrefix "/images/" $u)) -}}
+  {{- if not $img -}}
+    {{- errorf "%s: image %s is not in docs/images" .Page.File.Path $u -}}
+  {{- end -}}
+{{- end -}}
+{{- if $img -}}
+<img src="{{ $img.RelPermalink }}" alt="{{ .Text }}"{{ with .Title }} title="{{ . }}"{{ end }} width="{{ $img.Width }}" height="{{ $img.Height }}" loading="lazy">
+{{- else -}}
+  {{- if and (hasPrefix $u "/") (not (hasPrefix $u "//")) -}}
+    {{- $u = relURL (strings.TrimPrefix "/" $u) -}}
+  {{- end -}}
+<img src="{{ $u }}" alt="{{ .Text }}"{{ with .Title }} title="{{ . }}"{{ end }} loading="lazy">
+{{- end -}}
+{{- /* chomp trailing newline */ -}}

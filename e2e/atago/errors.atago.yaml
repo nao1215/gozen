@@ -1,0 +1,517 @@
+version: '1'
+suite:
+  name: Gozen diagnostic codes (ADR 0024), one scenario per code
+scenarios:
+- name: ${code} for an invalid command line, ${args}
+  matrix:
+  - {code: GZN2101, args: 'curve'}
+  - {code: GZN2101, args: 'sim absent'}
+  - {code: GZN2101, args: 'art mosaic absent'}
+  - {code: GZN2102, args: 'check one two'}
+  - {code: GZN2102, args: 'art mosaic auto'}
+  - {code: GZN2103, args: 'sim battle --absent game lesson'}
+  - {code: GZN2103, args: 'art mosaic auto --absent game'}
+  - {code: GZN2104, args: 'sim battle game lesson -seed 9'}
+  - {code: GZN2104, args: 'art prompt -config catalog.yaml'}
+  - {code: GZN2105, args: '--help sim'}
+  - {code: GZN2106, args: 'sim'}
+  - {code: GZN2106, args: 'art mosaic'}
+  - {code: GZN2201, args: 'sim battle game lesson -n 0'}
+  - {code: GZN2201, args: 'sim dive game grotto --grind NaN'}
+  - {code: GZN2201, args: 'sim battle game lesson --seed x'}
+  - {code: GZN2202, args: 'check --format yaml game'}
+  - {code: GZN2202, args: 'check --only fonts game'}
+  - {code: GZN2301, args: 'play shots --raw game list.yaml'}
+  - {code: GZN2302, args: 'pack trial game out --overlay overlay'}
+  - {code: GZN2303, args: 'art prompt --scene landscape'}
+  - {code: GZN2401, args: 'pack trial game out --config ../escape.yaml'}
+  - {code: GZN2501, args: 'help GZN9999'}
+  steps:
+  - run:
+      command: gozen ${args}
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: '[${code}]'
+      changes: {created: [], modified: [], deleted: []}
+- name: GZN2402 for a ${what} the game does not have
+  matrix:
+  - {what: troop, sub: sim battle, rest: lessn}
+  - {what: location, sub: sim dive, rest: grot}
+  - {what: dungeon, sub: sim floors, rest: grot}
+  - {what: persona, sub: sim design, rest: --only nobody -o report}
+  steps:
+  - run:
+      command: gozen ${sub} "${specdir}/fixtures/game" ${rest}
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: '[GZN2402]'
+      changes: {created: [], modified: [], deleted: []}
+- name: GZN2402 for a model art fetch does not know
+  steps:
+  - run:
+      command: gozen art fetch nothing
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains: '[GZN2402]'
+      changes: {created: [], modified: [], deleted: []}
+- name: gozen help explains a code
+  steps:
+  - run:
+      command: gozen help GZN2402
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['GZN2402 - the command line names something the game does not have', 'Fix: ', 'https://nao1215.github.io/gozen/errors/#gzn2402']
+      stderr:
+        equals: ''
+- name: GZN1101 for a reference to a troop that is not defined
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\nevents: {bad: {do: [{battle: wolves}]}}\n"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1101]'
+- name: GZN1102 for a location defined in two files
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\n"
+  - fixture:
+      file: g/data/more.yaml
+      content: "locations: {camp: {}}\n"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1102]'
+- name: GZN1103 for an expression with an unknown name
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {actions: [{label: Go, when: nope > 1, do: []}]}}\n"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1103]'
+- name: GZN1104 for an exit without to or do
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {exits: [{label: Out}]}}\n"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1104]'
+- name: GZN1105 for a picture that is not in assets
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\nevents: {e: {do: [{image: absent.png}]}}\n"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1105]'
+- name: GZN1106 for a balloon size out of its range
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 3\nid: g\nstart: {location: camp, party: [scout]}\nui: {balloon: 5}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\n"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1106]'
+- name: GZN1107 for a trigger that is not one of its words
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\nevents: {e: {trigger: sometimes, do: []}}\n"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1107]'
+- name: GZN1108 for a word of a newer schema_version
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 1\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {actions: [{label: Look, do: [{pick: Look}]}]}}\n"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1108]'
+- name: GZN1109 for a YAML file that does not parse
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: [\n"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1109]'
+- name: GZN1201 for a font that is not a font
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\nfonts: {regular: regular.ttf}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\n"
+  - fixture:
+      file: g/assets/regular.ttf
+      content: "not a font"
+  - run:
+      command: gozen check g
+  - assert:
+      exit_code: 1
+      stdout:
+        not_contains: 'ok:'
+      stderr:
+        contains: ['game.yaml:4:18: fonts.regular: assets/regular.ttf', '[GZN1201]']
+- name: a game without fonts is laid out with the built-in font and passes
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\n"
+  - run:
+      command: gozen check g
+  - assert:
+      exit_code: 0
+      stdout:
+        equals: "ok: 1 locations, 0 events, 1 actors, 2 skills, 0 items, 0 enemies, 0 troops, 0 ai sets\n"
+      stderr:
+        equals: ''
+  - run:
+      command: gozen check --format json g
+  - assert:
+      exit_code: 0
+      stdout:
+        equals: "[]\n"
+- name: a game without fonts warns about characters the built-in font cannot draw
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker, name: 旅人}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\n"
+  - run:
+      command: gozen check g
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: 'ok: 1 locations'
+      stderr:
+        contains: ['warning: game.yaml: fonts.regular is not set', 'no glyph for 2 characters of the text: 人 旅']
+- name: GZN0101 for a line too long for the message window
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\nfonts: {regular: regular.ttf}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\nevents: {e: {do: [{say: 'aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp qqqq rrrr ssss tttt uuuu vvvv wwww xxxx yyyy zzzz aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp qqqq rrrr ssss tttt uuuu vvvv wwww xxxx yyyy zzzz aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp qqqq rrrr ssss tttt uuuu vvvv wwww xxxx yyyy zzzz aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp qqqq rrrr ssss tttt uuuu vvvv wwww xxxx yyyy zzzz aaaa bbbb cccc dddd'}]}}\n"
+  - fixture:
+      file: g/assets/regular.ttf
+      from: fixtures/game/assets/regular.ttf
+  - run:
+      command: gozen check g
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: '[GZN0101]'
+- name: GZN0102 for a stage person without a face box
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 3\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations:\n  camp:\n    background: bg.png\n    stage:\n      scale: [{at: [50, 90], height: 40}, {at: [50, 10], height: 10}]\n      walk: [[[0, 0], [100, 0], [100, 100], [0, 100]]]\n      spots: {gate: {at: [50, 50]}}\n      people: [{id: guard, at: [20, 20]}]\n    people: [{id: guard, name: Guard, image: guard.png, bubbles: [Hello]}]\n"
+  - fixture:
+      file: g/assets/bg.png
+      content: "x"
+  - fixture:
+      file: g/assets/guard.png
+      content: "x"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: '[GZN0102]'
+- name: GZN0103 for a spot without do
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 3\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations:\n  camp:\n    background: bg.png\n    stage:\n      scale: [{at: [50, 90], height: 40}, {at: [50, 10], height: 10}]\n      walk: [[[0, 0], [100, 0], [100, 100], [0, 100]]]\n      spots: {gate: {at: [50, 50]}, corner: {at: [60, 60], name: Corner}}\n"
+  - fixture:
+      file: g/assets/bg.png
+      content: "x"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: '[GZN0103]'
+- name: GZN0104 for a walk polygon that crosses itself
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 3\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations:\n  camp:\n    background: bg.png\n    stage:\n      scale: [{at: [50, 90], height: 40}, {at: [50, 10], height: 10}]\n      walk: [[[0, 0], [100, 0], [0, 100], [100, 100]]]\n      spots: {gate: {at: [50, 20]}}\n"
+  - fixture:
+      file: g/assets/bg.png
+      content: "x"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: '[GZN0104]'
+- name: GZN0105 for Japanese text without language
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\ntitle: 旅の宿\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\n"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: '[GZN0105]'
+- name: GZN0106 for an AI target that a self skill ignores
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}, boost: {scope: self}}\nlocations: {camp: {}}\nenemies: {slime: {image: s.png, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, ai: [{use: boost, target: {pick: min, by: t.hp}}]}}\n"
+  - fixture:
+      file: g/assets/s.png
+      content: "x"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: '[GZN0106]'
+- name: GZN0107 for a set that reads its own target
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {actions: [{label: Go, do: [{set: {var.a: 1, var.b: var.a + 1}}]}]}}\n"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: '[GZN0107]'
+- name: GZN0108 for a set of a level outside the development mode
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {actions: [{label: Train, do: [{set: {actor.scout.level: 5}}]}]}}\n"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: '[GZN0108]'
+- name: GZN1110 for a directory without game.yaml
+  steps:
+  - run:
+      command: gozen check missing-game
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: ['missing-game', 'game.yaml', '[GZN1110]']
+- name: check json carries the code of a definition error
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\nevents: {bad: {do: [{battle: wolves}]}}\n"
+  - run:
+      command: gozen check --format json --only structure g
+  - assert:
+      exit_code: 1
+      stdout:
+        contains: ['"code": "GZN1101"', 'unknown troop', 'wolves']
+        not_contains: '[GZN'
+- name: GZN1401 for a broken line of a trace
+  steps:
+  - fixture:
+      file: run.jsonl
+      content: "{\n"
+  - run:
+      command: gozen play trace run.jsonl
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1401]'
+- name: GZN1402 and GZN1403 for the faults play trace --check finds
+  steps:
+  - fixture:
+      file: run.jsonl
+      content: "{\"t\":\"say\",\"tick\":0,\"who\":\"rin\",\"text\":\"Hello.\"}\n{\"t\":\"stand\",\"tick\":1,\"since\":0,\"speaker\":\"rin\",\"standing\":true,\"figures\":[]}\n{\"t\":\"music\",\"tick\":0,\"wanted\":\"bell\",\"song\":\"\"}\n{\"t\":\"end\",\"tick\":120}\n"
+  - run:
+      command: gozen play trace run.jsonl --check
+  - assert:
+      exit_code: 1
+      stdout:
+        contains: ['[GZN1402]', '[GZN1403]']
+- name: GZN1501 and GZN1502 for an output that exists or lies inside an input
+  steps:
+  - fixture:
+      file: taken/keep
+      content: "keep"
+  - run:
+      command: gozen pack trial "${specdir}/fixtures/game" taken
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1501]'
+  - run:
+      command: gozen pack trial "${specdir}/fixtures/game" "${specdir}/fixtures/game/trial-out"
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1502]'
+- name: GZN1701 for an asset that is not approved
+  steps:
+  - fixture:
+      file: overlay/approvals.json
+      content: '[{"file": "mote.png", "source": "dd6fc1bb744b21e9181f1c61ad9c68c613247523a23223c7ac3bdc69cd849f5f", "required": false, "approved": false}]'
+  - fixture:
+      file: inspect.jsonl
+      content: "{\"file\": \"mote.png\", \"source\": \"dd6fc1bb744b21e9181f1c61ad9c68c613247523a23223c7ac3bdc69cd849f5f\", \"required\": false, \"approved\": false}\n"
+  - run:
+      command: gozen pack release "${specdir}/fixtures/game" out --overlay overlay --inspect inspect.jsonl
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1701]'
+- name: GZN1702 for inspection records that cannot be read
+  steps:
+  - fixture:
+      file: overlay/approvals.json
+      content: '[]'
+  - run:
+      command: gozen pack release "${specdir}/fixtures/game" out --overlay overlay --inspect absent.jsonl
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1702]'
+- name: GZN1703 for a picture a release refers to that is not there
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {actions: [{label: Look, do: [{image: absent.png}]}]}}\n"
+  - fixture:
+      file: overlay/approvals.json
+      content: '[]'
+  - fixture:
+      file: inspect.jsonl
+      content: "{\"file\": \"other.png\", \"source\": \"00\", \"required\": false, \"approved\": true}\n"
+  - run:
+      command: gozen pack release g out --overlay overlay --inspect inspect.jsonl
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1703]'
+- name: GZN1704 for a trial.yaml that cannot be read
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\n"
+  - fixture:
+      file: g/trial.yaml
+      content: "assume: {gold: 1}\n"
+  - run:
+      command: gozen pack trial g out
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: '[GZN1704]'

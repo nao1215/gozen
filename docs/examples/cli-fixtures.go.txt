@@ -1,0 +1,3 @@
+package main
+import("os";"image";"image/color";"image/png";"golang.org/x/image/font/gofont/goregular")
+func main(){base:="e2e/atago/fixtures/game/assets/";if err:=os.WriteFile(base+"regular.ttf",goregular.TTF,0600);err!=nil{panic(err)};im:=image.NewNRGBA(image.Rect(0,0,8,8));for y:=range 8{for x:=range 8{im.Set(x,y,color.NRGBA{60,140,180,255})}};f,err:=os.Create(base+"mote.png");if err!=nil{panic(err)};if err:=png.Encode(f,im);err!=nil{panic(err)};if err:=f.Close();err!=nil{panic(err)}}

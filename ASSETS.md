@@ -1,0 +1,58 @@
+# Asset licenses
+
+| Material | License |
+| --- | --- |
+| Source code, YAML game data, dialogue and the `examples/` games | [MIT](LICENSE) |
+| Wayfinder sample pictures in `examples/play/game/assets/` | CC BY 4.0, see [examples/play/game/assets/LICENSE](examples/play/game/assets/LICENSE) |
+| Showcase GIF and screenshots in `docs/images/` | The pictures inside are CC BY 4.0; the rest MIT |
+| Go Regular font built into the engine (`golang.org/x/image/font/gofont/goregular`, Bigelow & Holmes). A game whose game.yaml has no `fonts.regular` (Wayfinder and the minimal example among them) sets its text in it. It has Latin letters only | BSD notice below |
+| CLI synthetic pattern images and catalog (`docs/examples/production/`) | MIT |
+| Procedural pictures of the painted-scene test (`play/testdata/stage/`, made by a script) | MIT |
+| The logo, its icons and the social card (`docs/images/gozen-logo*.svg`, `gozen-favicon*.svg`, `gozen-ogp.png`) | MIT; the letters are outlines from Quicksand Bold, the card text is set in Quicksand and Noto Sans (both SIL Open Font License 1.1, see below) |
+
+No music, recorded audio or ONNX models are bundled. Include the font notice when redistributing a game binary that uses the built-in font, the example binaries, or their captures. Other CLI/test font fixtures have their notices in [CLI assets](docs/examples/cli-assets.md).
+
+## Logo fonts
+
+The logo was drawn as vector paths; no font file is bundled. The letters "Gozen" are outlines taken from Quicksand Bold (Andrew Paglinawan and the Quicksand project authors, SIL Open Font License 1.1, https://github.com/andrew-paglinawan/QuicksandFamily). The text of the social card `gozen-ogp.png` is set in Quicksand and Noto Sans (Google, SIL Open Font License 1.1, https://fonts.google.com/noto). The OFL allows using outlines of a font in a logo; it covers redistributing the font itself, which Gozen does not do.
+
+## Go font notice
+
+```text
+These fonts were created by the Bigelow & Holmes foundry specifically for the
+Go project. See https://blog.golang.org/go-fonts for details.
+
+They are licensed under the same open source license as the rest of the Go
+project's software:
+
+Copyright (c) 2016 Bigelow & Holmes Inc.. All rights reserved.
+
+Distribution of this font is governed by the following license. If you do not
+agree to this license, including the disclaimer, do not distribute or modify
+this font.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+	* Redistributions of source code must retain the above copyright notice,
+	  this list of conditions and the following disclaimer.
+
+	* Redistributions in binary form must reproduce the above copyright notice,
+	  this list of conditions and the following disclaimer in the documentation
+	  and/or other materials provided with the distribution.
+
+	* Neither the name of Google Inc. nor the names of its contributors may be
+	  used to endorse or promote products derived from this software without
+	  specific prior written permission.
+
+DISCLAIMER: THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```

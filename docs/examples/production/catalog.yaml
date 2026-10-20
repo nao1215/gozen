@@ -1,0 +1,35 @@
+version: 1
+dialect: sdxl
+emphasis: [soft, normal, strong, stronger, strongest]
+default_emphasis: normal
+priorities: {required: 0, subject: 1, detail: 2}
+negative_limit: 2
+layers:
+  - id: setting
+    defaults: [garden]
+    items:
+      garden:
+        positive:
+          - {word: quiet garden, priority: subject}
+          - {word: soft light, priority: detail}
+        negative:
+          - {word: noise, priority: detail}
+      studio:
+        positive:
+          - {word: plain backdrop, priority: subject}
+        conflicts: [{layer: subject, id: traveler}]
+  - id: subject
+    person: true
+    max: 1
+    items:
+      traveler:
+        positive:
+          - {word: traveler, priority: subject, emphasis: strongest}
+          - {word: soft light, priority: required}
+        requires: [{layer: setting, id: garden}]
+        negative:
+          - {word: blur, priority: required}
+          - {word: artifacts, priority: detail}
+scenes:
+  landscape: {select: {setting: [garden]}}
+  portrait: {select: {setting: [garden], subject: [traveler]}}

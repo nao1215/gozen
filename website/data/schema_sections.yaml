@@ -1,0 +1,23 @@
+# The topics of the Schema page, in order, and the types listed under each.
+# A type of data/schema/types.schema.json that no topic names is appended under "Other types"
+# by itself (website/content/_content.gotmpl); a name here that is not a type
+# fails the build and go test (internal/dev/docs).
+sections:
+  - title: The game file and the data files
+    types: [Game, DataFile, Start, Fonts, Screen, Terms, UIStyle, TitleFigure, GameOver, Music, Song, MusicCue, SfxVary, MemoCfg, MemoKind, MemoVar]
+  - title: Places
+    types: [Location, Person, Action, Exit, Encounter, Shop, Trade, Roamer, Picture]
+  - title: Maps and painted scenes
+    types: [Atlas, MapPoint, Road, Token, Stage, Spot, StageExit, StagePerson, Thing, Front, ScaleMark, Doll, DollPart, Bubble, CardBubble]
+  - title: Dungeons
+    types: [Dungeon, DungeonLook, Tile, Generate, FloorPlan, Put]
+  - title: Events and commands
+    types: [Event, Command, Say, ChoiceOption, CG, Aside, Target, Require, Grant]
+  - title: Party, growth and equipment
+    types: [Actor, Class, Learn, Learning, LevelScale, TreeNode, FaceRule, Slot, EquipItem, EquipStones, StoneSet, Fusion, Meter, Passive]
+  - title: Items, skills and states
+    types: [Item, ItemCount, Skill, Effect, Usage, State, StateMsgs, StateName, StateNames, Affect, Hurt, Drop]
+  - title: Battles and tactics
+    types: [BattleCfg, BattleAct, BattleFx, BattleFxAuto, Enemy, Troop, TroopEvent, TroopPick, Rule, TacticAction, TacticCondition, TacticPreset, TacticRow, TacticTarget]
+  - title: Gallery and picture review
+    types: [Gallery, GalleryCG, GalleryPage, GalleryScene, CGReviewCfg, CGReviewGroup, CGReviewTag, SceneReviewCfg, MoodRule]

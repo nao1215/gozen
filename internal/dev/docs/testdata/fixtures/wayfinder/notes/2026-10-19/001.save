@@ -1,0 +1,45 @@
+{
+  "format_version": 1,
+  "game_id": "wayfinder-demo",
+  "data_version": 0,
+  "state": {
+    "actors": {
+      "walker": {
+        "id": "walker",
+        "level": 1,
+        "exp": 0,
+        "hp": 30,
+        "mp": 5,
+        "equip": {},
+        "learnt": null,
+        "states": {},
+        "sp": 0,
+        "tree": {},
+        "back": false,
+        "tactics": {
+          "version": 1,
+          "mode": "auto",
+          "rows": null
+        }
+      }
+    },
+    "party": [
+      "walker"
+    ],
+    "items": {},
+    "gold": 0,
+    "flags": {},
+    "vars": {},
+    "location": "camp",
+    "steps": 0,
+    "frames": 0,
+    "done": {},
+    "pos": {
+      "in": "",
+      "X": 0,
+      "Y": 0,
+      "facing": 0
+    },
+    "mapped": {}
+  }
+}

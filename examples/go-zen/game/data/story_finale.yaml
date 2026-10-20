@@ -1,0 +1,105 @@
+events:
+  # Beat 14. Finale. Five steps, two fights, one lie worth telling.
+  finale:
+    trigger: enter
+    location: hall
+    once: true
+    do:
+      - say: "A round chamber of brass pipes. At its center, the Source Valve, a wheel ringed by three great locks. One already stands open."
+      - say: {who: maren, face: determined, text: "Five steps. One, we're together. Two, we have a plan."}
+      - say: {who: kes, face: worried, text: "That's one and a half steps."}
+      - say: {who: maren, face: smile, text: "Three, Ox holds the line. Four, I walk the map I've walked, and I spend the map I've only drawn."}
+      - say: {who: tilly, face: smug, text: "And five?"}
+      - say: {who: maren, face: grin, text: "Five is a new plan."}
+      - say: {who: ox, face: smile, text: "Behind me. All of you."}
+      - say: "The doors at the far end of the hall swing open. Brass feet hit the floor in time."
+      - music: boss
+      - say: {who: vance, face: cold, text: "Everything has a price. Even you. You're late, Miss Quill."}
+      - say: {who: vance, face: smile, text: "My Tollkeeper has collected every toll in this town for ten years. It will collect yours."}
+      - battle: tollkeeper
+        on_win:
+          - say: "The Tollkeeper staggers, hisses, and drops to one knee. Vance's face does not change."
+          - say: {who: vance, face: cold, text: "Hand over the chart of the valve hall, and I'll let the fountain run until noon. Generous."}
+          - say: {who: maren, face: smug, text: "Of course. It's all there. Every door, every lever, every shortcut."}
+          - say: {who: kes, face: worried, text: "Maren, that's the one you drew last night. Isn't that..."}
+          - say: {who: maren, face: grin, text: "The finest forgery of my career. Shh."}
+          - say: {who: vance, face: smile, text: "A true map, finally. The east lever, you say? Tollkeeper, the east lever."}
+          - say: "The golem lumbers across the floor and throws the lever Maren named. The floor tile beneath it slides away."
+          - say: {who: maren, face: determined, text: "That one walks your golem into the drain. This one, in my other hand, is the real one. I walked it."}
+          - say: "The Tollkeeper drops into the dark. A long clang echoes back up."
+          - say: {who: vance, face: angry, text: "You lied to me!"}
+          - say: {who: maren, face: smile, text: "Only to you. Ox, now!"}
+          - say: {who: ox, face: determined, text: "Behind me. Shield Rush!"}
+          - call: memory_backs
+          - say: {who: tilly, face: smile, text: "Breathe. The cup is coming round, and no, I'm not betting on it."}
+          - heal: all
+          - battle: vance_duel
+            on_win:
+              - music: victory
+              - say: {who: vance, face: pained, text: "Everything has a price. Everything."}
+              - say: {who: maren, face: determined, text: "Then name the price of water, Magistrate."}
+              - say: {who: vance, face: pained, text: "...Nothing. It never had one. I'm told that's why it was precious."}
+              - say: "The Magistrate drops a brass seal on the stone and walks out of the hall without looking back."
+              - say: "The valve has two locks left. Maren takes Hobb's key out of her pocket and slots it into the second."
+              - take: {item: hobb_key}
+              - say: {who: maren, face: smile, text: "Thank you, Hobb. That's the one you left me."}
+              - say: "The last lock needs a hand on the wheel, and one more person willing to trust it."
+              - say: {who: maren, face: smile, text: "Who turns the last lock?"}
+              - choice:
+                  - label: Ox
+                    do:
+                      - set: {var.lock_by: 1}
+                      - say: {who: ox, face: determined, text: "Fine. Stand back. I'll turn it."}
+                      - say: {who: ox, face: smile, text: "I never thought I'd be the one to open something."}
+                  - label: Tilly
+                    do:
+                      - set: {var.lock_by: 2}
+                      - say: {who: tilly, face: surprised, text: "Me? I turn dice, not wheels."}
+                      - say: {who: tilly, face: laugh, text: "I'll bet on you, valve. Here we go."}
+                  - label: Kes
+                    do:
+                      - set: {var.lock_by: 3}
+                      - say: {who: kes, face: surprised, text: "Me? In the middle of the hall? With everyone looking?"}
+                      - say: {who: kes, face: smile, text: "Okay. One. Two. Three."}
+              - say: "The wheel turns. Gears wake. Water rushes through the old pipes like a long-held breath."
+              - set: {flag.finale_done: true}
+              - move: plaza_end
+  memory_backs:
+    do:
+      - set: {flag.seen_cg3: true}
+      - say: "The brass wall looms. Shoulder to shoulder, the four of them hold the line, and Maren grips a page in each hand."
+      - say: {who: ox, face: determined, text: "Behind me."}
+      - say: {who: tilly, face: determined, text: "I'll bet on you."}
+      - say: {who: kes, face: determined, text: "Statistically— we win."}
+      - say: {who: maren, face: determined, text: "Every line, walked."}
+  # Beat 15. Final Image.
+  final_image:
+    do:
+      - music: town
+      - say: "Pellmere Plaza. Noon. The fountain runs, and the whole square is wet and shouting."
+      - say: {who: Mayor, text: "Maren Quill! The town's thanks. And a thousand gold, as promised."}
+      - gold: 1000
+      - gold: -200
+      - set: {var.debt: 0}
+      - say: "Maren pays off her debt on the spot. The purse is still heavy, and she feels lighter than she has in years."
+      - say: {who: Pomm, face: pomm/normal.png, text: "A map you haven't walked is a rumor with ink on it. A map you have walked is a promise."}
+      - say: {who: maren, face: smile, text: "Auntie. You said that to me the first day."}
+      - say: {who: Pomm, face: pomm/normal.png, text: "And I'll say it again tomorrow. Eat."}
+      - if: "var.lock_by == 1"
+        then: [{say: {who: ox, face: smile, text: "The new gate watch pays by the hour. No one needs saving. Quiet work, finally."}}]
+      - if: "var.lock_by == 2"
+        then: [{say: {who: tilly, face: laugh, text: "The chapel fund is up to twelve silver. I'll bet it lasts a week. I'll be right."}}]
+      - if: "var.lock_by == 3"
+        then: [{say: {who: kes, face: smile, text: "I've got a workshop with a window. Statistically— okay, no statistic. Sunshine."}}]
+      - say: {who: Ansel, face: ansel/normal.png, text: "Water remembers, girl. So does everyone who walked."}
+      - say: {who: Ansel, face: ansel/normal.png, text: "I think I'll stop fishing."}
+      - call: memory_sign
+      - say: {who: maren, face: smile, text: "Maps. Every line walked."}
+      - clear: true
+  memory_sign:
+    do:
+      - set: {flag.seen_cg4: true}
+      - say: "Above the shop door, a new sign swings in the spray. MAPS. EVERY LINE WALKED."
+      - say: "Under it, a small drawing of a bird. Maren decided to keep it."
+      - say: {who: maren, face: smile, text: "A map you haven't walked is a rumor with ink on it. So I walk first."}
+      - image: ""
