@@ -14,10 +14,10 @@ import (
 // japaneseAllowed are the Japanese words a document may use on purpose, by file.
 // Everything else in a Markdown document must be English (AGENTS.md).
 var japaneseAllowed = map[string][]string{
-	"README.md":                          {"御膳"},    // the origin of the name
-	"website/content/_index.md":          {"御膳"},    // the origin of the name
-	"website/content/getting-started.md": {"はじめから"}, // a key of `text:`, the engine's own Japanese source text
-	"website/content/cookbook.md":        {"はじめから"}, // the same key, in the language recipe
+	"README.md":                          {"御膳", "海老天"}, // the origin of the name
+	"website/content/_index.md":          {"御膳", "海老天"}, // the origin of the name
+	"website/content/getting-started.md": {"はじめから"},     // a key of `text:`, the engine's own Japanese source text
+	"website/content/cookbook.md":        {"はじめから"},     // the same key, in the language recipe
 	// Engine words quoted as data: the keys of the engine's text catalog.
 	"docs/decisions/0015-reaction-and-chat.md":       {"ﾊﾞ"}, // half-width katakana, the case the text explains
 	"docs/decisions/0019-engine-languages.md":        {"はじめから", "最初から"},
