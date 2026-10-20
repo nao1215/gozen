@@ -17,7 +17,7 @@ Codes are assigned one family at a time. A diagnostic without a code still exits
 
 | Codes | Exit | Meaning | Assigned |
 |:--|:--|:--|:--|
-| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 11 codes |
+| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 13 codes |
 | `GZN02xx` | 0 | warnings of a measurement or a record | not yet |
 | `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 10 codes |
 | `GZN12xx` | 1 | fonts and text layout | 1 codes |
@@ -125,6 +125,22 @@ A text of the game is not translated yet.
 A language of game.yaml's languages has no translation of this text in lang/<code>.yaml, so the text is shown as written.
 
 Fix: Add the text as a key of lang/<code>.yaml with its translation; gozen check --format json lists every one with its path.
+
+### GZN0112
+
+A flag is set but nothing reads it.
+
+A set writes flag.<name>, and no condition, expression or line of the game reads it. It may be a typo of another flag, or left over.
+
+Fix: Read the flag where it should matter, fix its name, or remove the set.
+
+### GZN0113
+
+A flag is read but nothing sets it.
+
+A condition or expression reads flag.<name>, and no set, gallery scene or state.names declaration gives it a value, so it stays false (unless a test starts with --flags or the game's Go code sets it).
+
+Fix: Set the flag where it should become true, fix its name, or declare it in state.names.
 
 ## GZN11xx
 

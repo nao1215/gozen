@@ -105,6 +105,13 @@ func (c *command) traceCmd(args []string) (err error) {
 			if l["missing"] == true {
 				what += "  MISSING"
 			}
+		case "jump":
+			what = fmt.Sprintf("to %s line %v", str(l["event"]), l["line"])
+		case "dev_set", "dev_do":
+			what = str(l["do"])
+			if e := str(l["error"]); e != "" {
+				what += "  ERROR " + e
+			}
 		case "rollback":
 			what = fmt.Sprintf("back from line %v to line %v of %s", l["from"], l["to"], cmp.Or(str(l["event"]), "(an arrival)"))
 			if l["back_into"] == true {

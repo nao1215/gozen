@@ -52,4 +52,5 @@ Use `game.schema.json` for `game.yaml`. The JSON Schema checks shapes and types;
 - Ask for small rounds: one place, one troop, one event at a time, each ending with a passing check.
 - Ask the agent to quote the `gozen sim battle` output after a balance change, instead of describing it.
 - Keep the agent away from `assets/` unless you want it to manage files; a missing picture is an error `check` will report, which keeps the agent honest.
+- Treat the warnings of flags as part of the gate: a flag set but never read (GZN0112) or read but never set (GZN0113) is most often a typo. Declare a flag kept on purpose in `state.names`. `gozen book` has a Flow section of what each event sets, reads, calls and moves to, with a mermaid graph.
 - For dialogue, have the agent draft and you rewrite. `gozen check --only layout` makes sure the result still fits the window.

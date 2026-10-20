@@ -180,6 +180,8 @@ func (c *command) book(dir string) error {
 		p("\n")
 	}
 
+	flowBook(p, db)
+
 	p("%s", lang.T("## 曲\n\n"))
 	var songs []string
 	for k := range db.Music.Songs {
@@ -432,4 +434,98 @@ func stats(s gamedata.Stats) string {
 		out = append(out, fmt.Sprintf("%s%+d", k, s[k]))
 	}
 	return strings.Join(out, " ")
+}
+
+// flowBook writes the flow of the events (ADR 0029): what each event sets and reads, which
+// events it calls and where it moves, from the index shared with the checks and the
+// --dev panel (DB.StateUses), and a mermaid graph of the calls, the moves and the places
+// whose arrival starts an event.
+func flowBook(p func(string, ...any), db *data.DB) {
+	ids := db.Ordered("events")
+	if len(ids) == 0 {
+		return
+	}
+	uses := db.StateUses()
+	names := slices.Sorted(maps.Keys(uses))
+	in := func(paths []string, id string) bool {
+		return slices.ContainsFunc(paths, func(w string) bool { return strings.HasPrefix(w, "events."+id+".") })
+	}
+	p("%s", lang.T("## 流れ\n\n"))
+	var edges []string
+	for _, id := range ids {
+		ev := db.Events[id]
+		if ev == nil {
+			continue
+		}
+		var sets, reads []string
+		for _, n := range names {
+			if strings.HasPrefix(n, "ran.") {
+				continue
+			}
+			if in(uses[n].Sets, id) {
+				sets = append(sets, n)
+			}
+			if in(uses[n].Reads, id) {
+				reads = append(reads, n)
+			}
+		}
+		calls, moves := eventLinks(ev.Do)
+		var parts []string
+		for _, part := range []struct {
+			label string
+			list  []string
+		}{{"sets", sets}, {"reads", reads}, {"calls", calls}, {"moves", moves}} {
+			if len(part.list) > 0 {
+				parts = append(parts, part.label+" "+strings.Join(part.list, ", "))
+			}
+		}
+		if len(parts) == 0 {
+			parts = []string{"-"}
+		}
+		p("- %s: %s\n", id, strings.Join(parts, "; "))
+		for _, c := range calls {
+			edges = append(edges, fmt.Sprintf("  %s --> %s", id, c))
+		}
+		for _, m := range moves {
+			edges = append(edges, fmt.Sprintf("  %s -->|move| at_%s", id, m))
+		}
+		if ev.Trigger != "" && ev.Location != "" {
+			label := ev.Trigger
+			if ev.When.Set() {
+				label += " " + strings.ReplaceAll(ev.When.String(), `"`, "'")
+			}
+			edges = append(edges, fmt.Sprintf("  at_%s -->|%s| %s", ev.Location, label, id))
+		}
+	}
+	if len(edges) > 0 {
+		p("\n```mermaid\ngraph TD\n%s\n```\n", strings.Join(edges, "\n"))
+	}
+	p("\n")
+}
+
+// eventLinks are the events a command list calls and the places it moves to, into its
+// branches, in the order written.
+func eventLinks(cmds []data.Command) (calls, moves []string) {
+	var walk func(cs []data.Command)
+	walk = func(cs []data.Command) {
+		for i := range cs {
+			c := &cs[i]
+			if c.Call != "" && !slices.Contains(calls, c.Call) {
+				calls = append(calls, c.Call)
+			}
+			if c.Move != "" && !slices.Contains(moves, c.Move) {
+				moves = append(moves, c.Move)
+			}
+			walk(c.Then)
+			walk(c.Else)
+			walk(c.OnWin)
+			walk(c.OnLose)
+			walk(c.OnRun)
+			for _, o := range c.Choice {
+				walk(o.Do)
+			}
+		}
+	}
+	walk(cmds)
+	return calls, moves
 }

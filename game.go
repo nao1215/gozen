@@ -72,7 +72,8 @@ func Load(fsys fs.FS, dir string, extra ...fs.FS) (*Game, error) {
 }
 
 // Validate is Load that returns every problem, warnings included, instead of a game.
-// It is what gozen check reports, without the fonts and the text layout.
+// It is what gozen check reports, without the fonts, the text layout and the warnings of
+// flags set but never read or read but never set (the game's Go code may use them).
 func Validate(fsys fs.FS, dir string) Diagnostics {
 	if fsys == nil {
 		return Diagnostics{{Message: "nil filesystem", Severity: "error"}}

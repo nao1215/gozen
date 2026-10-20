@@ -322,6 +322,12 @@ type Game struct {
 	// Staging (ADR 0028, staging.go): the portraits stood by stand (castOn: the running
 	// event places them only as written), the shaken portraits, a long shake of the
 	// screen, and a fade through a color.
+	// panel is the development panel (F8 under --dev, devpanel.go); uses is the index of
+	// names it shows, made for usesDB.
+	panel  *devPanel
+	uses   map[string]*data.NameUse
+	usesDB *data.DB
+
 	cast      []castFigure
 	castOn    bool
 	figShake  map[string]int
@@ -486,6 +492,8 @@ func New(opts Options) (_ *Game, err error) {
 		s.battleAuto = func() { g.act("battle_auto", nil) }
 		s.inBattle = func() bool { return g.currentBattle() != nil }
 		s.typeText = g.typeMemo
+		s.jump = g.devJump
+		s.do = g.devDo
 		s.memoNote = func(kind, text string) { g.quickMemo(kind, text, memo.LLM) }
 		g.in.script = s
 	}
@@ -704,6 +712,14 @@ func (g *Game) Update() error {
 	}
 	g.memoToastT = max(0, g.memoToastT-1)
 	g.stepMemoFocus()
+	if g.opts.Development && g.in.pressed[btnPanel] && g.memo == nil {
+		g.togglePanel()
+	}
+	if g.panelModal() {
+		g.updatePanel()
+		g.traceInput()
+		return nil
+	}
 
 	if g.opts.MemoDir != "" && g.memo == nil && g.in.pressed[btnMemo] && g.rep == nil && g.auto == nil && g.db != nil && !g.memoKeyTaken() {
 		g.openMemo()
@@ -737,9 +753,6 @@ func (g *Game) Update() error {
 		log.Printf("tick %d pc %d wait %d stack %d busy %v", g.tick, g.in.script.pc, g.in.script.wait, len(g.stack), g.busy())
 	}
 	altEnter := inpututil.IsKeyJustPressed(ebiten.KeyEnter) && (ebiten.IsKeyPressed(ebiten.KeyAltLeft) || ebiten.IsKeyPressed(ebiten.KeyAltRight))
-	if g.opts.Development && inpututil.IsKeyJustPressed(ebiten.KeyF8) {
-		g.meter.toggle()
-	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF11) || altEnter {
 		g.toggleFullscreen()
 	}
@@ -892,6 +905,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.drawTag(screen)
 	g.drawMemoToast(screen)
 	g.drawGraphs(screen)
+	g.drawPanel(screen)
 	g.drawLiveNotice(screen)
 	g.drawLoadNotice(screen)
 	if len(g.quick) > 0 {

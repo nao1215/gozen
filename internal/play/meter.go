@@ -15,8 +15,8 @@ import (
 // longest and the average Update and Draw of the last second, in a band at the bottom
 // of the screen. It is for telling whether the game keeps up, on a phone above all.
 // A browser build shows it when the page is opened with ?fps (meterAsked) and puts its
-// numbers on the page as window.gozenStats too (publishMeter); with --dev, F8 shows or
-// hides it. Otherwise nothing of it runs.
+// numbers on the page as window.gozenStats too (publishMeter); with --dev, it is the Frames
+// tab of the F8 panel (ADR 0029). Otherwise nothing of it runs.
 
 // frameMeter is what the meter measures over a second, and the text it shows for the next.
 type frameMeter struct {

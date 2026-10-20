@@ -1,6 +1,6 @@
 # ADR 0029: The development panel (F8)
 
-Status: Accepted (2026-10-21). Stage 0 (the index of where names are written and read, `DB.StateUses`) is done; the panel is the stage "Panel" under "Plan". This continues [ADR 0017](0017-dev-balance-panel.md) (F7, the balance display). Home: `internal/layer2/gamedata` (the index), `internal/play` (the panel).
+Status: Accepted (2026-10-21). Done (stages 0 and 6). This continues [ADR 0017](0017-dev-balance-panel.md) (F7, the balance display). Home: `internal/layer2/gamedata` (the index), `internal/play` (the panel).
 
 ## Users and problem
 
@@ -28,6 +28,15 @@ Nothing in the panel changes the state except through `set` and `call`, so every
 
 `DB.StateUses` maps each name of the state (flag.x, var.y, item.z, ran.e, gold, ...) to the paths that write it and the paths that read it. The panel's rows, the flag table, `gozen book`'s flow of events and the checks that warn of a flag set but never read, or read but never set, use this one index, so they cannot disagree. `DB.Uses(verb)`, which tells whether a command is used anywhere, keeps its name and meaning.
 
+### As built
+
+- F8 is a button (`btnPanel`), so a script presses it (`press panel`). The panel holds the game while its body is shown (the game's update waits; the tick goes on, so a replay stays in step); the Frames tab hides the body, turns the meter on and lets the game go on until F8 closes the panel. The panel opens on the State tab every time.
+- State: the declared names, then the flags, vars, gold, items and choices set now, each with how many places write and read it. OK flips a flag or adds 1 to a number. Flags: events against the flags of the index, S and R, the values in the header, the running event lit; the columns that do not fit are counted. Scenes: every event with its trigger and place, once and done, its run count and read rate; OK jumps. Command: a line typed (or `type` in a script), Enter runs it. Gallery scenes are not in the list (they replay from the gallery).
+- A change made only of `set` runs at once in a runner of its own on the state (`dev_set`, in the development mode, so it may write stats); anything else starts like an event (`dev_do`) and runs when the panel closes. A jump stops the running events and starts the event like `--event`, then reads on to the line.
+- The index walks the events of troops in battle and the lines said instead of a fallen member too.
+- `gozen check` warns of a flag set but never read (GZN0112) and read but never set (GZN0113), by the sets of commands and gallery scenes and every expression the check reads; a flag declared in `state.names` is not warned of. These warnings are `DB.FlagWarnings`, apart from the scene warnings, and `gozen.Validate` does not include them (the game's Go code may read or set a flag). Go Zen declares its three record flags.
+- `gozen book` has a Flow section: per event, the names it sets and reads, the events it calls and the places it moves to, and a mermaid graph of calls, moves and the arrivals that start events.
+
 ## Alternatives
 
 1. Edit the state directly (`State.SetPath`). It would bypass the checks of `set` and leave the trace without a record. Not chosen.
@@ -43,4 +52,4 @@ Nothing in the panel changes the state except through `set` and `call`, so every
 | Stage | Content |
 | --- | --- |
 | 0 | The index `DB.StateUses` (done) |
-| 6 | The panel, the script's `jump` and `do`, `gozen book`'s flow, the warnings of unused and unset flags |
+| 6 | The panel, the script's `jump` and `do`, `gozen book`'s flow, the warnings of unused and unset flags (done) |

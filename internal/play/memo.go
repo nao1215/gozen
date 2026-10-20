@@ -343,6 +343,9 @@ func (g *Game) typeMemo(s string) {
 	if g.memo != nil && g.memo.typed {
 		g.memo.text += s
 	}
+	if p := g.panel; p != nil && p.tab == tabCommand {
+		p.text += s
+	}
 	if r := g.reviewOpen(); g.memo == nil && r != nil && r.box != nil {
 		r.box.text += s
 	}

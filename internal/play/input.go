@@ -36,6 +36,7 @@ const (
 	btnBack
 	btnSave
 	btnLoad
+	btnPanel
 	numButtons
 
 	btnNone button = -1
@@ -63,6 +64,8 @@ var keys = [numButtons][]ebiten.Key{
 	btnSceneSkip: {ebiten.KeyPageDown},
 	// Q rolls back a line (Backspace is cancel); saving and loading are buttons of the novel band.
 	btnBack: {ebiten.KeyQ},
+	// F8 opens the development panel under --dev (ADR 0029).
+	btnPanel: {ebiten.KeyF8},
 }
 
 var (
@@ -330,6 +333,9 @@ type script struct {
 
 	typeText func(string)
 	memoNote func(kind, text string)
+	// jump starts an event at a line and do runs a line of YAML (the panel's paths).
+	jump func(name string, line int)
+	do   func(src string)
 }
 
 type scriptCmd struct {
@@ -351,6 +357,14 @@ func parseScript(src string) (*script, error) {
 			continue
 		}
 		c := scriptCmd{verb: f[0], n: 1}
+		if c.verb == "do" {
+			c.arg = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(sc.Text()), "do"))
+			if c.arg == "" {
+				return nil, fmt.Errorf("script line %d: do YAML", line)
+			}
+			s.cmds = append(s.cmds, c)
+			continue
+		}
 		if c.verb == "type" {
 			c.arg = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(sc.Text()), "type"))
 			s.cmds = append(s.cmds, c)
@@ -411,6 +425,10 @@ func parseScript(src string) (*script, error) {
 			c.x, c.y = x, c.n
 			c.n = 1
 		case "press", "shot", "until", "quit", "walk", "face":
+		case "jump":
+			if c.arg == "" {
+				return nil, fmt.Errorf("script line %d: jump EVENT [LINE]", line)
+			}
 		case "lines", "play":
 			if len(f) < 3 {
 				c.n = 0
@@ -443,7 +461,7 @@ var scriptButtons = map[string]button{
 	"tab": btnNext, "up": btnUp, "down": btnDown, "left": btnLeft, "right": btnRight,
 	"log": btnLog, "auto": btnAuto, "hide": btnHide, "config": btnConfig, "memo": btnMemo,
 	"reload": btnReload, "tag": btnTag, "graphs": btnGraphs, "skip": btnSkip, "scene_skip": btnSceneSkip,
-	"back": btnBack, "save": btnSave, "load": btnLoad,
+	"back": btnBack, "save": btnSave, "load": btnLoad, "panel": btnPanel,
 }
 
 func (s *script) midEvent(in *input, name string) {
@@ -738,6 +756,20 @@ func (s *script) step(in *input) {
 		case "type":
 			if s.typeText != nil {
 				s.typeText(c.arg)
+			}
+			s.pc++
+			s.wait = 2
+			return
+		case "jump":
+			if s.jump != nil {
+				s.jump(c.arg, c.n)
+			}
+			s.pc++
+			s.wait = 2
+			return
+		case "do":
+			if s.do != nil {
+				s.do(c.arg)
 			}
 			s.pc++
 			s.wait = 2

@@ -130,3 +130,10 @@ gallery:
     - {title: Hobb's Desk (kept quiet), event: memory_desk, flag: seen_cg2, id: desk_quiet, location: landing, set: {flag.read_aloud: false}}
     - {title: Four Backs, event: memory_backs, flag: seen_cg3, id: backs, location: hall}
     - {title: The Sign, event: memory_sign, flag: seen_cg4, id: sign, location: plaza_end}
+# Flags kept as records of the story (nothing reads them yet): declared so that
+# gozen check does not take them for typos.
+state:
+  names:
+    flag.opening_seen: {type: bool, initial: false}
+    flag.told_ox_truth: {type: bool, initial: false}
+    flag.finale_done: {type: bool, initial: false}

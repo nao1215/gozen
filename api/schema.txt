@@ -542,6 +542,7 @@ github.com/nao1215/gozen/schema method DB.EngineWords
 github.com/nao1215/gozen/schema method DB.EventPlaces
 github.com/nao1215/gozen/schema method DB.Exists
 github.com/nao1215/gozen/schema method DB.FacePicture
+github.com/nao1215/gozen/schema method DB.FlagWarnings
 github.com/nao1215/gozen/schema method DB.NamedCommands
 github.com/nao1215/gozen/schema method DB.Ordered
 github.com/nao1215/gozen/schema method DB.RuleUsage

@@ -17,8 +17,9 @@ type NameUse struct {
 // StateUses indexes the names of the state that events and places write and read:
 // flag.<name>, var.<name>, item.<id>, ran.<event>, gold and the other names that set writes.
 // A name read with fields after it is indexed by its first two parts (flag.met, item.key).
-// It walks events (their when and commands, into the branches of if, choice and battle)
-// and the people, actions, exits and on-arrival commands of places.
+// It walks events (their when and commands, into the branches of if, choice and battle,
+// and the lines said instead of a fallen member), the events of troops in battle, and the
+// people, actions, exits and on-arrival commands of places.
 //
 // One index is shared by the checks that warn of a flag that is set but never read (or read
 // but never set), by gozen book's flow of events and by the --dev panel (ADR 0029).
@@ -29,6 +30,13 @@ func (db *DB) StateUses() map[string]*NameUse {
 		w := "events." + name
 		u.expr(w+".when", e.When)
 		u.commands(w+".do", e.Do)
+	}
+	for _, name := range slices.Sorted(maps.Keys(db.Troops)) {
+		for i, e := range db.Troops[name].Events {
+			w := fmt.Sprintf("troops.%s.events[%d]", name, i)
+			u.expr(w+".when", e.When)
+			u.commands(w+".do", e.Do)
+		}
 	}
 	for _, name := range slices.Sorted(maps.Keys(db.Locations)) {
 		l := db.Locations[name]
@@ -122,6 +130,9 @@ func (u *stateUses) commands(where string, cs []Command) {
 		w := fmt.Sprintf("%s[%d]", where, i)
 		if c.Say != nil {
 			u.text(w+".say", c.Say.Text)
+			for j, alt := range c.Say.Instead {
+				u.text(fmt.Sprintf("%s.say.instead[%d]", w, j), alt.Text)
+			}
 		}
 		u.expr(w+".if", c.If)
 		for _, k := range slices.Sorted(maps.Keys(c.SetV)) {

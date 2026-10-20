@@ -227,6 +227,9 @@ func (c *checker) assignments(w string, set map[string]Expr, names []string) {
 			c.errorf(diag.Shape, w+"."+k, "set %s changes an actor's stats or level, which a session does only with Config.Dev (development and tests)", k)
 		}
 		c.expr(w+"."+k, e, names)
+		if name, ok := strings.CutPrefix(k, "flag."); ok {
+			c.flagSet(name, w)
+		}
 		if !strings.HasPrefix(k, "flag.") && !strings.HasPrefix(k, "var.") {
 			continue // declarations (state.names) are only for flag and var. gold, actor and the like are handled by setKey
 		}

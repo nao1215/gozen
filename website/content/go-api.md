@@ -138,7 +138,7 @@ return ebiten.RunGame(sc)
 
 Only one `Screen` can be open at a time, and it must be used from the game thread. [examples/go-zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) runs Go Zen with `play.Main` on the desktop and with `play.New` in a browser.
 
-In a browser the title has no item to quit (a page cannot close its tab), the browser decodes the pictures after the first frame so the game goes on while they come in, and opening the page with `?fps` shows a frame meter (the same as F8 under `--dev`) and puts its numbers in `window.gozenStats`.
+In a browser the title has no item to quit (a page cannot close its tab), the browser decodes the pictures after the first frame so the game goes on while they come in, and opening the page with `?fps` shows a frame meter (the Frames tab of the F8 panel under `--dev`) and puts its numbers in `window.gozenStats`.
 
 ## Characters that react: react
 

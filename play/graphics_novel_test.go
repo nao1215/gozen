@@ -22,12 +22,13 @@ import (
 	"golang.org/x/image/font/gofont/goregular"
 )
 
-// TestGraphicsNovel plays testdata/novel five times with one save directory (ADR 0026).
+// TestGraphicsNovel plays testdata/novel six times with one save directory (ADR 0026).
 // The first run reads two lines. In the second, skip mode passes them and stops before the
 // third line, which was not read; the player reads it. In the third, skip mode passes the
 // three lines and stops before the choice. In the fourth, rolling back from the third line
 // shows the second, and going on shows the third again. The fifth stands a figure with stand
-// and lets it leave (ADR 0028). read.json carries the read lines between the runs.
+// and lets it leave (ADR 0028). The sixth opens the F8 panel and jumps from it (ADR 0029).
+// read.json carries the read lines between the runs.
 func TestGraphicsNovel(t *testing.T) {
 	root := t.TempDir()
 	game := filepath.Join(root, "game")
@@ -87,7 +88,7 @@ func TestGraphicsNovel(t *testing.T) {
 			if err := json.Unmarshal(sc.Bytes(), &l); err != nil {
 				t.Fatal(err)
 			}
-			if l["t"] == "say" || l["t"] == "skip" || l["t"] == "rollback" {
+			if l["t"] == "say" || l["t"] == "skip" || l["t"] == "rollback" || l["t"] == "jump" {
 				out = append(out, l)
 			}
 		}
@@ -98,6 +99,8 @@ func TestGraphicsNovel(t *testing.T) {
 		var b strings.Builder
 		for _, l := range lines {
 			switch {
+			case l["t"] == "jump":
+				fmt.Fprintf(&b, "jump %v\n", l["event"])
 			case l["t"] == "rollback":
 				fmt.Fprintf(&b, "back %v %v\n", l["from"], l["to"])
 			case l["t"] == "skip":
@@ -164,7 +167,16 @@ func TestGraphicsNovel(t *testing.T) {
 	if l, r := magenta("left"); l+r > 0 {
 		t.Fatalf("the figure that left is still drawn: %d pixels", l+r)
 	}
-	for _, name := range []string{"unread", "choice", "back"} {
+	// The development panel (ADR 0029): F8 opens it on the state, the flags tab draws its
+	// table, and the scenes tab jumps to the staged event, whose figure then stands.
+	sixth := run("sixth", "wait 30\npress panel\nwait 10\nshot panel\npress right\nwait 10\nshot flagtable\npress right\nwait 5\npress down\nwait 5\npress ok\nwait 40\nshot jumped\nquit\n")
+	if got := story(sixth); !strings.Contains(got, "jump staged\n") {
+		t.Fatalf("sixth run:\n%s", got)
+	}
+	if l, _ := magenta("jumped"); l < 200 {
+		t.Fatalf("the jump did not reach the staged figure: %d pixels", l)
+	}
+	for _, name := range []string{"unread", "choice", "back", "panel", "flagtable"} {
 		b, err := os.ReadFile(filepath.Join(root, name+".png")) //nolint:gosec // A fixed name in this test's temporary directory.
 		if err != nil {
 			t.Fatal(err)

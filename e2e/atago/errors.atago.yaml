@@ -521,6 +521,35 @@ scenarios:
       exit_code: 0
       stderr:
         contains: ['[GZN0110]', '"Gone line" is not a text of the game', '[GZN0111]', 'events.scene.do[1].choice[0].label: not translated to ja: "Stay"']
+- name: GZN0112 and GZN0113 for a flag set but never read and one read but never set
+  steps:
+  - fixture:
+      file: flags/game.yaml
+      content: "schema_version: 4\nid: flags\nstart: {location: room, party: [reader]}\n"
+  - fixture:
+      file: flags/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {name: Room}}
+        events:
+          talk:
+            do:
+              - set: {flag.met: true}
+              - if: flag.trusted
+                then: [{say: Welcome back.}]
+              - call: farewell
+          farewell:
+            trigger: enter
+            location: room
+            do: [{say: Goodbye.}, {move: room}]
+  - run:
+      command: gozen check --only structure flags
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: ['[GZN0112]', 'flag.met is set but nothing reads it', '[GZN0113]', 'flag.trusted is read but nothing sets it']
 - name: GZN1501 and GZN1502 for an output that exists or lies inside an input
   steps:
   - fixture:

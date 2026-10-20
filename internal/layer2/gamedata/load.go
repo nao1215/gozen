@@ -50,6 +50,8 @@ type DB struct {
 	// sceneWarns are the warnings of the maps and stages that Check found (SceneWarnings).
 	sceneWarns  []error
 	sceneWarned bool
+	// flagWarns are the warnings of flags that Check found (FlagWarnings).
+	flagWarns []error
 
 	// Words are the translations of lang/<code>.yaml by language, source to translation
 	// (ADR 0027). shown is the language shown, names the sources of the names Show translates.

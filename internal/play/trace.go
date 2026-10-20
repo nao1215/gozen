@@ -236,7 +236,7 @@ var buttonNames = [numButtons]string{
 	btnUp: "up", btnDown: "down", btnLeft: "left", btnRight: "right", btnOK: "ok", btnCancel: "cancel",
 	btnMenu: "menu", btnLog: "log", btnAuto: "auto", btnHide: "hide", btnConfig: "config", btnNext: "next",
 	btnMemo: "memo", btnReload: "reload", btnTag: "tag", btnGraphs: "graphs", btnSkip: "skip", btnSceneSkip: "scene_skip",
-	btnBack: "back", btnSave: "save", btnLoad: "load",
+	btnBack: "back", btnSave: "save", btnLoad: "load", btnPanel: "panel",
 }
 
 func (g *Game) traceInput() {

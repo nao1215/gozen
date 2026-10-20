@@ -75,7 +75,7 @@ scenarios:
   - assert:
       exit_code: 0
       stdout:
-        contains: ['# CLI expedition', 'start: camp, party scout, gold 0, items (none)', '## Locations', '## Enemies']
+        contains: ['# CLI expedition', 'start: camp, party scout, gold 0, items (none)', '## Locations', '## Enemies', '## Flow']
         not_contains: ['map[', '## Action rules', '## Music', '## Gallery']
       stderr:
         equals: ''

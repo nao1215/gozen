@@ -53,6 +53,16 @@ var (
 		Detail:  "A language of game.yaml's languages has no translation of this text in lang/<code>.yaml, so the text is shown as written.",
 		Fix:     "Add the text as a key of lang/<code>.yaml with its translation; gozen check --format json lists every one with its path.",
 	})
+	UnusedFlag = register(112, "UnusedFlag", Entry{
+		Summary: "a flag is set but nothing reads it",
+		Detail:  "A set writes flag.<name>, and no condition, expression or line of the game reads it. It may be a typo of another flag, or left over.",
+		Fix:     "Read the flag where it should matter, fix its name, or remove the set.",
+	})
+	UnsetFlag = register(113, "UnsetFlag", Entry{
+		Summary: "a flag is read but nothing sets it",
+		Detail:  "A condition or expression reads flag.<name>, and no set, gallery scene or state.names declaration gives it a value, so it stays false (unless a test starts with --flags or the game's Go code sets it).",
+		Fix:     "Set the flag where it should become true, fix its name, or declare it in state.names.",
+	})
 	DevOnlySet = register(108, "DevOnlySet", Entry{
 		Summary: "a set changes an actor's stats or level outside the development mode",
 		Detail:  "Setting a party member's stats or level is for the development mode (--dev) and tests. The game skips it when played normally.",

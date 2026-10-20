@@ -221,3 +221,53 @@ scenarios:
       exit_code: 1
       stderr:
         contains: 'languages needs schema_version: 4'
+- name: gozen book shows the flow of the events
+  steps:
+  - fixture:
+      file: flow/game.yaml
+      content: "schema_version: 4\nid: flow\nstart: {location: room, party: [reader]}\n"
+  - fixture:
+      file: flow/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {name: Room}}
+        events:
+          talk:
+            do:
+              - set: {flag.met: true}
+              - if: flag.trusted
+                then: [{say: Welcome back.}]
+              - call: farewell
+          farewell:
+            trigger: enter
+            location: room
+            do: [{say: Goodbye.}, {move: room}]
+  - run:
+      command: gozen book flow
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - '## Flow'
+        - '- talk: sets flag.met; reads flag.trusted; calls farewell'
+        - '- farewell: sets location; moves room'
+        - '```mermaid'
+        - 'talk --> farewell'
+        - 'at_room -->|enter| farewell'
+- name: play trace shows the jumps and edits of the development panel
+  steps:
+  - fixture:
+      file: run.jsonl
+      content: |
+        {"t":"start","tick":0,"language":"en","game":"Novel","seed":1}
+        {"t":"dev_set","tick":10,"do":"- set: {flag.met: true}"}
+        {"t":"jump","tick":20,"event":"talk","line":2}
+        {"t":"end","tick":30}
+  - run:
+      command: gozen play trace run.jsonl --only dev_set,jump
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['- set: {flag.met: true}', 'to talk line 2']

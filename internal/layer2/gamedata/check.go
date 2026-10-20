@@ -52,6 +52,8 @@ type checker struct {
 	reactions []string
 	// voiced counts the lines of each actor with voices, and those without a voice.
 	voiced map[string]*voiceCount
+	// flagSets and flagReads are where each flag is first set and read (flagWarnings).
+	flagSets, flagReads map[string]string
 }
 
 // errorf records a problem with its diagnostic code (ADR 0024). A few checks
@@ -85,6 +87,9 @@ func (c *checker) exprIn(where string, e Expr, names []string, over map[string]*
 	for _, r := range e.Refs() {
 		if r.Name == "chose" && len(r.Path) > 0 && r.Path[0].Name != "" {
 			c.choseReads = append(c.choseReads, [2]string{where, r.Path[0].Name})
+		}
+		if r.Name == "flag" && len(r.Path) > 0 && r.Path[0].Name != "" {
+			c.flagRead(r.Path[0].Name, where)
 		}
 	}
 	c.fields(where, e, names, over)
@@ -861,9 +866,58 @@ func (db *DB) Check() []error {
 	c.choseReferences()
 	c.voiceWarnings()
 	c.languages()
+	c.flagWarnings()
 	db.sceneWarns, db.sceneWarned = sortedDiagnostics(c.warns), true
 	return sortedDiagnostics(c.errs)
 }
+
+func (c *checker) flagSet(name, where string) {
+	if c.flagSets == nil {
+		c.flagSets = map[string]string{}
+	}
+	if _, ok := c.flagSets[name]; !ok {
+		c.flagSets[name] = where
+	}
+}
+
+func (c *checker) flagRead(name, where string) {
+	if c.flagReads == nil {
+		c.flagReads = map[string]string{}
+	}
+	if _, ok := c.flagReads[name]; !ok {
+		c.flagReads[name] = where
+	}
+}
+
+// flagWarnings warn of a flag set but never read, and of one read but never set (by set,
+// gallery.scenes.set; --flags is for tests). They are kept apart from the scene warnings.
+func (c *checker) flagWarnings() {
+	for i, s := range c.db.Game.Gallery.Scenes {
+		if s.Flag != "" {
+			c.flagRead(s.Flag, fmt.Sprintf("game.yaml gallery.scenes[%d].flag", i))
+		}
+	}
+	declared := func(name string) bool { _, ok := c.db.Game.State.Names["flag."+name]; return ok }
+	var out []error
+	warn := func(code diag.Code, where, format string, args ...any) {
+		out = append(out, coded(c.db.diagnostic(where, fmt.Sprintf(format, args...)), code))
+	}
+	for _, name := range slices.Sorted(maps.Keys(c.flagSets)) {
+		if _, ok := c.flagReads[name]; !ok && !declared(name) {
+			warn(diag.UnusedFlag, c.flagSets[name], "flag.%s is set but nothing reads it (declare it in state.names if it is kept on purpose)", name)
+		}
+	}
+	for _, name := range slices.Sorted(maps.Keys(c.flagReads)) {
+		if _, ok := c.flagSets[name]; !ok && !declared(name) {
+			warn(diag.UnsetFlag, c.flagReads[name], "flag.%s is read but nothing sets it", name)
+		}
+	}
+	c.db.flagWarns = sortedDiagnostics(out)
+}
+
+// FlagWarnings are the flags set but never read and read but never set, which Check found
+// (ADR 0029). A flag declared in state.names is not warned of.
+func (db *DB) FlagWarnings() []error { return slices.Clone(db.flagWarns) }
 
 // choseReferences checks that every chose.<id> read has a choice with that id.
 func (c *checker) choseReferences() {

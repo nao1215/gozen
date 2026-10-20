@@ -63,8 +63,8 @@ events:
 			t.Errorf("%s: sets %q reads %q, want %q and %q", c.name, u.Sets, u.Reads, c.sets, c.read)
 		}
 	}
-	if u := uses["flag.saw_two"]; u != nil {
-		t.Errorf("a troop's event is outside the index for now: %+v", u)
+	if u := uses["flag.saw_two"]; u == nil || !slices.Equal(u.Sets, []string{"troops.boss.events[0].do[1].set"}) {
+		t.Errorf("a troop's event: %+v", u)
 	}
 }
 

@@ -30,11 +30,15 @@ Runs with `--dev` that start somewhere other than the beginning (`--start`, `--s
 |:--|:--|
 | F5 | Reload the definitions. The game keeps your place: the location, the party, and the current line of an event. |
 | F7 | Show or hide the balance panel: win rates of the battles at this place. |
-| F8 | Show or hide the frame meter: ticks and frames a second, and the longest and average Update and Draw of the last second. |
+| F8 | Open or close the development panel: the state (flip a flag, step a number), a table of the flags each event sets and reads, the events to jump to with their read rates, a line of YAML to run, and the frame meter (ticks and frames a second, the longest and average Update and Draw). |
 | F9 | Write a note: a screenshot, the game state and your comment. |
 | F10 | Tag the picture on screen, when picture review is on. |
 
 The usual keys still work: O or F2 for settings, F11 for full screen, M to mute. In conversations, Q rolls back a line, Ctrl held passes the lines read, N turns skip mode on and off, and Page Down skips a scene whose lines were all read ([novel games](/writing-a-game/#novel-games)); a script presses them with `press back`, `press skip` and `press scene_skip`, and the novel band's save and load with `press save` and `press load`.
+
+## F8: the development panel
+
+The panel holds the game while it is open; left and right change its tab. Every change it makes goes through `set` or starts an event, the same as a headless test's `Do`, and the trace records it: `dev_set` for a change, `jump` for a jump, `dev_do` for a command. A script does the same with `jump EVENT [LINE]` (start an event from the state as it is, read on to the line) and `do YAML` (run a line of commands, such as `do - set: {flag.met: true}`). The Frames tab hides the panel and leaves the frame meter, and the game goes on until F8 closes it. The flags table and `gozen book`'s Flow section come from one index of where each name is written and read.
 
 ## F5: reload
 
