@@ -3,8 +3,9 @@
 # dist/). On Linux it checks every archive and Linux package for the binary, the
 # notices and the bundled dependency licenses, verifies checksums.txt, and runs
 # the Linux binary of this machine's architecture. On macOS it runs the macOS
-# binary of this machine's architecture. Windows is checked by release.yml with
-# PowerShell. Used by .github/workflows/release.yml; locally run it after
+# binary of this machine's architecture. Windows is checked with PowerShell in
+# .github/workflows/release-smoke.yml, which uses this script (on pull requests,
+# main and before a release); locally run it after
 # `goreleaser release --snapshot --clean --skip=publish,sign`.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -25,11 +26,18 @@ esac
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-# run_binary checks that an unpacked gozen prints a version and checks the
-# neutral fixture game.
+# run_binary checks that an unpacked gozen prints its version and its help and
+# checks the neutral fixture game.
 run_binary() {
     local bin=$1
     local version
+    version=$("$bin" --version)
+    case "$version" in
+        "gozen v"*) ;;
+        *) fail "$bin --version printed '$version'" ;;
+    esac
+    "$bin" help > "$work/help.txt" || fail "$bin help failed"
+    grep -q 'Usage' "$work/help.txt" || fail "$bin help printed no usage"
     version=$("$bin" version)
     case "$version" in
         "gozen v"*) ;;

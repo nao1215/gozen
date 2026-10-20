@@ -1,0 +1,115 @@
+name: Release Smoke
+
+# Builds the GoReleaser artifacts in snapshot mode (nothing is published) and
+# runs them, on every pull request and push to main, so a packaging mistake is
+# found before a tag: the contents and checksums of every archive and package on
+# Linux, and the binary (gozen --version, gozen help, gozen version, gozen check)
+# on Linux, macOS and Windows. Building is cross-compilation and happens once on
+# Ubuntu; the macOS and Windows binaries run on their own runners.
+#
+# The Release workflow calls the same jobs before it publishes a tag.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Smoke-test artifacts on Linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Published binaries are built with the newest Go, not go.mod's minimum,
+      # so users of a prebuilt artifact get the current runtime and its fixes.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          check-latest: true
+          # A release builds from a clean module cache, never one a pull request wrote.
+          cache: false
+
+      - name: Install rpm so the .rpm file list can be inspected
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm
+
+      - name: Install go-licenses
+        run: go install github.com/google/go-licenses/v2@v2.0.1
+
+      - name: Build artifacts (snapshot, no publish)
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          version: "~> v2"
+          args: release --snapshot --clean --skip=publish,sign,sbom
+
+      - name: Smoke-test artifacts
+        run: ./scripts/smoke_artifacts.sh dist
+
+      - name: Upload artifacts for the macOS and Windows smoke jobs
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist-snapshot
+          if-no-files-found: error
+          retention-days: 1
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+
+  smoke-cross:
+    name: Smoke-test artifacts on ${{ matrix.os }}
+    needs: smoke
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist-snapshot
+          path: dist
+
+      - name: Smoke-test the macOS artifacts
+        if: runner.os == 'macOS'
+        run: ./scripts/smoke_artifacts.sh dist
+
+      - name: Smoke-test the Windows artifacts
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
+          $zip = Get-ChildItem "dist/gozen_*_windows_$arch.zip" | Select-Object -First 1
+          if (-not $zip) { throw "no Windows $arch archive" }
+          $out = Join-Path $env:RUNNER_TEMP gozen
+          Expand-Archive -Path $zip.FullName -DestinationPath $out
+          foreach ($f in 'gozen.exe', 'LICENSE', 'THIRD_PARTY_LICENSES/github.com/hajimehoshi/ebiten/v2/LICENSE') {
+            if (-not (Test-Path (Join-Path $out $f))) { throw "$($zip.Name) has no $f" }
+          }
+          $exe = Join-Path $out gozen.exe
+          $version = & $exe --version
+          if ($LASTEXITCODE -ne 0 -or $version -notlike 'gozen v*') { throw "gozen --version printed '$version'" }
+          $help = & $exe help | Out-String
+          if ($LASTEXITCODE -ne 0 -or $help -notlike '*Usage*') { throw "gozen help failed" }
+          $version = & $exe version
+          if ($LASTEXITCODE -ne 0 -or $version -notlike 'gozen v*') { throw "gozen version printed '$version'" }
+          & $exe check e2e/atago/fixtures/game
+          if ($LASTEXITCODE -ne 0) { throw "gozen check failed" }

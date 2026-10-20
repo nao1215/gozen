@@ -15,6 +15,7 @@ import (
 	_ "golang.org/x/image/webp" // or WebP in a browser build (smaller to download)
 
 	"github.com/nao1215/gozen/internal/layer2/puppetdef"
+	"github.com/nao1215/gozen/internal/layer5/picdecode"
 )
 
 // MaxSide is the largest picture side accepted, to bound memory and textures.
@@ -236,7 +237,7 @@ func (l *loader) read(name string) (*image.NRGBA, error) {
 	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width > MaxSide || cfg.Height > MaxSide {
 		return nil, fmt.Errorf("%s: %dx%d is not within 1 to %d pixels", name, cfg.Width, cfg.Height, MaxSide)
 	}
-	img, _, err := image.Decode(bytes.NewReader(b))
+	img, err := picdecode.Decode(b)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", name, err)
 	}

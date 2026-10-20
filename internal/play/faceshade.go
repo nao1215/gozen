@@ -1,7 +1,6 @@
 package play
 
 import (
-	"bytes"
 	"image"
 	"image/draw"
 	"io/fs"
@@ -9,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
+
+	"github.com/nao1215/gozen/internal/layer5/picdecode"
 )
 
 func (p *pictures) shadedFace(path string, r image.Rectangle) *ebiten.Image {
@@ -32,7 +33,7 @@ func (p *pictures) shadedFace(path string, r image.Rectangle) *ebiten.Image {
 		log.Printf("picture %s: %v", path, err)
 		return nil
 	}
-	src, _, err := image.Decode(bytes.NewReader(b))
+	src, err := picdecode.Decode(b)
 	if err != nil {
 		log.Printf("picture %s: %v", path, err)
 		return nil

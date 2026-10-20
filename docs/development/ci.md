@@ -35,7 +35,8 @@ graphics is also enabled on Windows and macOS, with no setting that tolerates fa
 | [Scorecard](../../.github/workflows/scorecard.yml) | push to main, every Saturday and manually. Does not run while private | publishes the OpenSSF Scorecard score and shows it in the README badge |
 | [Benchmark](../../.github/workflows/bench.yml) | pull request and manual. Manual only while private | measures `bench/himorime.yaml` with himorime and, on pull requests, compares base and head ([bench/README.md](../../bench/README.md)) |
 | [Docs](../../.github/workflows/docs.yml) | push, pull request and manual. Manual only while private | images retakes every image of `docs/images/manifest.yaml` in Xvfb and compares them with the committed ones (`make docs-images-check`; if stale, the generated images are kept as an artifact). steps runs the steps of the README and site (`make docs-steps`). See [README and site pictures and steps](docs.md) |
-| [Release](../../.github/workflows/release.yml) | push of a tag `v*` | builds the artifacts, runs them on 3 OSes, then publishes ([How releases work](release-checklist.md#how-releases-work)) |
+| [Release Smoke](../../.github/workflows/release-smoke.yml) | pull request, push to main, manual, and called by Release | builds the release artifacts with GoReleaser in snapshot mode (nothing published), checks their contents and checksums on Linux, and runs `gozen --version`, `gozen help`, `gozen version` and `gozen check` on Linux, macOS and Windows |
+| [Release](../../.github/workflows/release.yml) | push of a tag `v*` | runs Release Smoke, then publishes ([How releases work](release-checklist.md#how-releases-work)) |
 
 ## ONNX
 

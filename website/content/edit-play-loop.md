@@ -30,6 +30,7 @@ Runs with `--dev` that start somewhere other than the beginning (`--start`, `--s
 |:--|:--|
 | F5 | Reload the definitions. The game keeps your place: the location, the party, and the current line of an event. |
 | F7 | Show or hide the balance panel: win rates of the battles at this place. |
+| F8 | Show or hide the frame meter: ticks and frames a second, and the longest and average Update and Draw of the last second. |
 | F9 | Write a note: a screenshot, the game state and your comment. |
 | F10 | Tag the picture on screen, when picture review is on. |
 

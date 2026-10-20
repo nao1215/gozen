@@ -3,7 +3,6 @@
 package play
 
 import (
-	"bytes"
 	"image"
 	"image/color"
 	_ "image/jpeg" // decoders for the pictures image.Decode reads
@@ -19,6 +18,7 @@ import (
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"github.com/nao1215/gozen/internal/layer5/picdecode"
 )
 
 type pictures struct {
@@ -192,7 +192,7 @@ func (p *pictures) decode(path string) image.Image {
 		log.Printf("picture %s: %v", path, err)
 		return nil
 	}
-	src, _, err := image.Decode(bytes.NewReader(b))
+	src, err := picdecode.Decode(b)
 	if err != nil {
 		log.Printf("picture %s: %v", path, err)
 		return nil

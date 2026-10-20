@@ -136,6 +136,8 @@ return ebiten.RunGame(sc)
 
 Only one `Screen` can be open at a time, and it must be used from the game thread. [examples/go-zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) runs Go Zen with `play.Main` on the desktop and with `play.New` in a browser.
 
+In a browser the title has no item to quit (a page cannot close its tab), the browser decodes the pictures after the first frame so the game goes on while they come in, and opening the page with `?fps` shows a frame meter (the same as F8 under `--dev`) and puts its numbers in `window.gozenStats`.
+
 ## Characters that react: react
 
 `react` makes a character answer what the player types, or an event, without a language model. Words in a lexicon give tags; the person's rules, written as expressions, choose a line; when nothing matches, the person dodges in character. Mood and memory are kept and can be saved.

@@ -24,7 +24,9 @@ vendors:
   width: { in: [golang.org/x/text/width] }
   pflag: { in: [github.com/spf13/pflag] }
   # The browser's localStorage for the saves of a web build (internal/play/store_js.go),
-  # and the page that the browser build of Go Zen reports its loading to.
+  # its pictures decoded by the browser (internal/layer5/picdecode), its frame meter
+  # (internal/play/platform_js.go), and the page that the browser build of Go Zen
+  # reports its loading to.
   js: { in: [syscall/js] }
 components:
   expr: { in: ["internal/expr", "internal/expr/**"] }
@@ -113,7 +115,7 @@ deps:
     canUse: [ebiten, image]
   private5:
     mayDependOn: [private5, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, private1, private2, private3, private4]
-    canUse: [ebiten, image]
+    canUse: [ebiten, image, js]
   private6:
     mayDependOn: [private6, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, play, puppet, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]

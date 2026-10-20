@@ -98,18 +98,26 @@ website:
 
 # Go Zen in the browser (GOOS=js) under website/public/play/go-zen/: the program, Go's
 # wasm_exec.js, the page, and the game's files, which the program fetches before it starts.
-# web/assets.py writes the pictures as WebP (needs Pillow with WebP, python3-pil).
+# web/assets.py writes the pictures as WebP (needs Pillow with WebP, python3-pil), only
+# those whose source changed since the last run, and the page with the download's size.
+# The converted files are kept in build/ (hugo --cleanDestinationDir empties public/).
 WEB_GO_ZEN = website/public/play/go-zen
+WEB_GO_ZEN_GAME = build/web/go-zen-game
 website-go-zen:
 	mkdir -p $(WEB_GO_ZEN)
 	cd examples/go-zen && GOOS=js GOARCH=wasm $(GO) build -trimpath -buildvcs=false -ldflags="-s -w" -o ../../$(WEB_GO_ZEN)/go-zen.wasm .
-	install -m 644 "$$($(GO) env GOROOT)/lib/wasm/wasm_exec.js" examples/go-zen/web/index.html $(WEB_GO_ZEN)/
-	python3 examples/go-zen/web/assets.py examples/go-zen/game $(WEB_GO_ZEN)/game
+	install -m 644 "$$($(GO) env GOROOT)/lib/wasm/wasm_exec.js" $(WEB_GO_ZEN)/
+	python3 examples/go-zen/web/assets.py examples/go-zen/game $(WEB_GO_ZEN_GAME) \
+		examples/go-zen/web/index.html $(WEB_GO_ZEN)/index.html $(WEB_GO_ZEN)/go-zen.wasm
+	rm -rf $(WEB_GO_ZEN)/game
+	cp -R $(WEB_GO_ZEN_GAME) $(WEB_GO_ZEN)/game
 
-# Opens the built Go Zen page in headless Chrome and fails when nothing is drawn
-# (after make website; needs google-chrome and node).
+# Opens the built Go Zen page in headless Chrome and fails when nothing is drawn, or when
+# an Update or a Draw of the game took longer than WEB_MAX_FRAME milliseconds (the page's
+# frame meter, ?fps) (after make website; needs google-chrome and node).
+WEB_MAX_FRAME ?= 250
 website-play-check:
-	node scripts/web_play_check.mjs -serve website/public /play/go-zen/ -enter 1 -shots build/web-play
+	node scripts/web_play_check.mjs -serve website/public /play/go-zen/ -enter 1 -shots build/web-play -max-frame $(WEB_MAX_FRAME)
 
 website-serve:
 	cd website && hugo server

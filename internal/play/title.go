@@ -45,7 +45,10 @@ func (g *Game) titleMenu() *list {
 			hasSave = true
 		}
 	}
-	items := []listItem{{label: lang.T("はじめから")}, {label: lang.T("つづきから"), disabled: !hasSave}, {label: lang.T("ギャラリー"), disabled: !g.hasGallery()}, {label: lang.T("せってい")}, {label: lang.T("おわる")}}
+	items := []listItem{{label: lang.T("はじめから")}, {label: lang.T("つづきから"), disabled: !hasSave}, {label: lang.T("ギャラリー"), disabled: !g.hasGallery()}, {label: lang.T("せってい")}}
+	if canQuit {
+		items = append(items, listItem{label: lang.T("おわる")})
+	}
 	m := newList(items, sw*0.08, sh*0.5, 340, 5)
 	if g.titleCentered() {
 		m.x = (sw - 340) / 2

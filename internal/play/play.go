@@ -32,6 +32,7 @@ import (
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
 	"github.com/nao1215/gozen/internal/layer4/itemuse"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"github.com/nao1215/gozen/internal/layer5/picdecode"
 	"github.com/nao1215/gozen/internal/layer5/sound"
 	"github.com/nao1215/gozen/internal/rpg"
 	lang "github.com/nao1215/gozen/internal/text"
@@ -323,6 +324,7 @@ type Game struct {
 	live liveState
 
 	graphs graphPanel
+	meter  frameMeter // the frame meter (meter.go)
 
 	// sceneCache keeps the painted scenes' dolls and textures; keptFeet where the leader
 	// stood in a scene across a reload (F5).
@@ -376,8 +378,12 @@ func New(opts Options) (_ *Game, err error) {
 	}
 	runctx, cancel := context.WithCancel(context.Background())
 	g := &Game{context: runctx, cancel: cancel, db: db, opts: opts, pics: newPictures(opts.FS), rep: rep, stageK: 1, started: time.Now(), drawn: make(chan struct{})}
+	if meterAsked() {
+		g.meter.toggle()
+	}
 	if pace.OneThread {
 		g.pics.after = g.drawn
+		picdecode.BrowserAfter(g.drawn)
 	}
 	defer func() {
 		if err != nil {
@@ -589,6 +595,9 @@ func (g *Game) rng() *rand.Rand {
 }
 
 func (g *Game) Update() error {
+	if g.meter.on {
+		defer g.meter.updated(time.Now())
+	}
 	if g.closed {
 		return errors.New("play: game is closed")
 	}
@@ -683,6 +692,9 @@ func (g *Game) Update() error {
 		log.Printf("tick %d pc %d wait %d stack %d busy %v", g.tick, g.in.script.pc, g.in.script.wait, len(g.stack), g.busy())
 	}
 	altEnter := inpututil.IsKeyJustPressed(ebiten.KeyEnter) && (ebiten.IsKeyPressed(ebiten.KeyAltLeft) || ebiten.IsKeyPressed(ebiten.KeyAltRight))
+	if g.opts.Development && inpututil.IsKeyJustPressed(ebiten.KeyF8) {
+		g.meter.toggle()
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF11) || altEnter {
 		g.toggleFullscreen()
 	}
@@ -724,6 +736,13 @@ func (g *Game) Update() error {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	g.rendering = true
+	if g.meter.on {
+		start := time.Now()
+		defer func() {
+			g.meter.drawn(start)
+			g.drawMeter(screen)
+		}()
+	}
 	if g.drawn != nil {
 		defer g.drawnOnce.Do(func() { close(g.drawn) })
 	}

@@ -39,7 +39,7 @@ Pushing a tag `v*` runs the [Release workflow](../../.github/workflows/release.y
 - Artifacts: `gozen` archives for Linux, macOS and Windows (amd64, arm64), Linux `.deb`, `.rpm` and `.apk` packages, an SBOM per archive, `checksums.txt` signed with cosign (keyless), GitHub attestation and SLSA provenance (`multiple.intoto.jsonl`). The license texts of dependencies are bundled in `THIRD_PARTY_LICENSES/`.
 - Destinations: the cask in `nao1215/homebrew-tap`.
 - Artifacts are built with `CGO_ENABLED=0` and contain no ONNX inference ([ADR 0016](../decisions/0016-single-cli.md)).
-- Before publication, the contents and checksums of all archives and packages are checked on Linux, and `gozen version` and `gozen check` are run on Linux, macOS and Windows (`scripts/smoke_artifacts.sh`).
+- Before publication, the contents and checksums of all archives and packages are checked on Linux, and `gozen --version`, `gozen help`, `gozen version` and `gozen check` are run on Linux, macOS and Windows (`scripts/smoke_artifacts.sh`). The same jobs ([Release Smoke](../../.github/workflows/release-smoke.yml)) run on every pull request and push to main, so a packaging mistake shows before a tag.
 
 Before the first tag, register a repository secret. Without it the release job stops before GoReleaser and publishes nothing.
 
