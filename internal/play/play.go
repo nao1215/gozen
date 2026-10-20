@@ -304,6 +304,21 @@ type Game struct {
 	sceneLines   map[string][]uint64
 	sceneLinesDB *data.DB
 
+	// Rolling back and the cursor of a save (ADR 0025, rollback.go): the commands of the
+	// running event, the backlog when it began, whether it passed a boundary, whether it is
+	// an arrival (and the state before the arrival), the answers given before each of its
+	// lines, and the earlier events.
+	evCmds      []data.Command
+	evLog       []logLine
+	evNoBack    bool
+	evArrival   bool
+	evHist      []int
+	arriving    bool
+	arriveSnap  []byte
+	arriveRand  []byte
+	backRing    []backEvent
+	rollingBack bool
+
 	walkGoal [3]int
 	lastView *ebiten.Image
 	freeze   *ebiten.Image
@@ -1071,6 +1086,10 @@ func (g *Game) loadGame(st *rpg.State) {
 func (g *Game) startState() {
 	g.st.Calm = g.opts.Calm
 	g.backlog, g.logView = nil, nil
+	g.evCmds, g.evNoBack, g.evHist = nil, false, nil
+	if !g.rollingBack {
+		g.backRing = nil
+	}
 	g.events = event.New(g.db, g.st, event.HostFunc(g.Handle))
 	g.events.BlockAside = g.AsideBlocked
 	g.events.OnStart = g.onEventStart
@@ -1456,6 +1475,10 @@ func (g *Game) begin(r event.Request) {
 	switch r.(type) {
 	case event.Say, event.Choice:
 		g.evLines++
+		g.evHist = append(g.evHist, len(g.evAnswers))
+	}
+	if isBoundary(r) {
+		g.boundary()
 	}
 	done := func() { g.req = nil }
 	switch r := r.(type) {
@@ -1634,7 +1657,9 @@ func (g *Game) load(i int) (*rpg.State, error) {
 	if err != nil {
 		return nil, err
 	}
-	resumeAt(g.db, st)
+	if st.Resume == nil { // a save in the middle of an event goes on where the event began
+		resumeAt(g.db, st)
+	}
 	return st, nil
 }
 
@@ -1695,6 +1720,7 @@ var (
 func (g *Game) Handle(e event.Effect) {
 	switch e := e.(type) {
 	case event.MoveEffect:
+		g.boundary()
 		g.Move(e.Location)
 	case event.MusicEffect:
 		g.Music(e.Cue)

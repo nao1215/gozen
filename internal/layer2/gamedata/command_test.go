@@ -45,6 +45,7 @@ func TestCommandFieldMatrix(t *testing.T) {
 		values       []string
 	}{
 		{"prompt", "choice,stone_choose,stone_wearer", []string{`"Pick"`, `""`}},
+		{"id", "choice", []string{`""`}}, // a named choice needs schema_version 4 (TestChoiceID)
 		{"then", "if", []string{`[{gold: 1}]`, `[]`, `null`}},
 		{"else", "if", []string{`[{gold: 1}]`, `[]`, `null`}},
 		{"on_win", "battle", []string{`[{gold: 1}]`, `[]`, `null`}},

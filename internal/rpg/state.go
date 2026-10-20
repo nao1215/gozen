@@ -39,6 +39,8 @@ type State struct {
 	Fighters []string `json:"-"`
 	// Roamers are the strong foes walking the floor the party is on (a made dungeon).
 	Roamers []Roamer `json:"roamers,omitempty"`
+	// Chose is the option last taken at each choice with an id (chose.<id>; ADR 0025).
+	Chose map[string]string `json:"chose,omitempty"`
 
 	DB   *data.DB   `json:"-"`
 	Rand *rand.Rand `json:"-"`
@@ -52,6 +54,8 @@ type State struct {
 	Bumped string `json:"-"`
 	// LoadReport lists the migrations and corrections made at load time. It is not part of the saved game state.
 	LoadReport LoadReport `json:"-"`
+	// Resume is the cursor of a save made in the middle of an event (nil: none). Set by Parse.
+	Resume *Resume `json:"-"`
 
 	stateNames map[string]data.StateName
 }
@@ -297,6 +301,8 @@ func (e fieldEnv) Lookup(name string) (any, bool) {
 		return s.repairsView(), true
 	case "ran":
 		return ranView{s}, true
+	case "chose":
+		return choseView{s}, true
 	}
 	return nil, false
 }

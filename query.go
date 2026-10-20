@@ -15,7 +15,7 @@ import (
 // number in *float64 or *int, a string, a bool, a list in a slice, a set of named
 // values (menu[0], cell(1, 2), pos) in a struct or a map, anything in *any. The names
 // are those of the YAML (flag, var, gold, item, actor, party, location, pos, menu, map,
-// cell, result, over, cleared, repairs). An invalid expression is ErrInvalid; a value
+// cell, result, over, cleared, repairs, chose). An invalid expression is ErrInvalid; a value
 // that does not fit out is an error. An object (party,
 // actor.ID, party.members[0]) becomes a map or a struct of its fields; the names that
 // cannot be listed (party.with_poison) are read one at a time.

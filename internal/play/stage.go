@@ -182,8 +182,7 @@ func (s *stageScene) update(g *Game) {
 		loc := g.enterAt
 		g.enterAt = ""
 		if g.st.Location == loc {
-			cmds := world.Arrive(g.db, g.st, true)
-			g.events.Start(cmds)
+			cmds := g.startArrival(true)
 			if len(cmds) > 0 {
 				return
 			}

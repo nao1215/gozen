@@ -79,8 +79,7 @@ func (s *dungeonScene) update(g *Game) {
 		loc := g.enterAt
 		g.enterAt = ""
 		if g.st.Location == loc {
-			cmds := world.Arrive(g.db, g.st, false)
-			g.events.Start(cmds)
+			cmds := g.startArrival(false)
 			if len(cmds) > 0 {
 				return
 			}

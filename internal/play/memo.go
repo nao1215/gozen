@@ -170,58 +170,14 @@ func (g *Game) currentEvent() string {
 	return ""
 }
 
-func (g *Game) knownCommands(f func(name string, cmds []data.Command) bool) {
-	for id, ev := range g.db.Events {
-		if f(id, ev.Do) {
-			return
-		}
-	}
-	for id, loc := range g.db.Locations {
-		for _, a := range loc.Actions {
-			if f(id+"."+a.Label, a.Do) {
-				return
-			}
-		}
-		for _, p := range loc.People {
-			if f(id+"."+p.Name, p.Talk) {
-				return
-			}
-		}
-		if loc.Dungeon != nil {
-			for c, t := range loc.Dungeon.Tiles {
-				if t != nil && f(id+".tile."+c, t.Do) {
-					return
-				}
-			}
-		}
-	}
-}
+func (g *Game) commandsName(cmds []data.Command) string { return g.db.CommandsName(cmds) }
 
-func (g *Game) commandsName(cmds []data.Command) string {
-	name := ""
-	g.knownCommands(func(n string, c []data.Command) bool {
-		if len(c) > 0 && len(cmds) > 0 && &c[0] == &cmds[0] {
-			name = n
-			return true
-		}
-		return false
-	})
-	return name
-}
-
-func (g *Game) commandsNamed(name string) []data.Command {
-	var out []data.Command
-	g.knownCommands(func(n string, c []data.Command) bool {
-		if n == name {
-			out = c
-			return true
-		}
-		return false
-	})
-	return out
-}
+func (g *Game) commandsNamed(name string) []data.Command { return g.db.NamedCommands(name) }
 
 func (g *Game) onEventStart(cmds []data.Command) {
+	g.keepEvent()
+	g.evCmds, g.evLog, g.evNoBack, g.evHist = cmds, slices.Clip(g.backlog), false, nil
+	g.evArrival = g.arriving
 	g.evLines, g.evAnswers = 0, nil
 	g.evName = g.commandsName(cmds)
 	g.evSnap, g.evRand = nil, nil

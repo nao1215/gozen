@@ -35,16 +35,19 @@ type Command struct {
 	Say    *Say           `yaml:"say" command:"verb"`
 	Choice []ChoiceOption `yaml:"choice" command:"verb"`
 	Prompt string         `yaml:"prompt" command:"choice,stone_choose,stone_wearer"` // a line shown with the choice
-	If     Expr           `yaml:"if" command:"verb"`
-	Then   []Command      `yaml:"then" command:"if"`
-	Else   []Command      `yaml:"else" command:"if"`
-	SetV   Assignments    `yaml:"set" command:"verb"`
-	Give   *ItemCount     `yaml:"give" command:"verb"`
-	Take   *ItemCount     `yaml:"take" command:"verb"`
-	Gold   Expr           `yaml:"gold" command:"verb"`
-	Join   string         `yaml:"join" command:"verb"`
-	Leave  string         `yaml:"leave" command:"verb"`
-	Heal   string         `yaml:"heal" command:"verb"`
+	// ID names the choice: the state remembers the option taken there as chose.<id>
+	// (schema_version 4, ADR 0025).
+	ID    string      `yaml:"id" command:"choice"`
+	If    Expr        `yaml:"if" command:"verb"`
+	Then  []Command   `yaml:"then" command:"if"`
+	Else  []Command   `yaml:"else" command:"if"`
+	SetV  Assignments `yaml:"set" command:"verb"`
+	Give  *ItemCount  `yaml:"give" command:"verb"`
+	Take  *ItemCount  `yaml:"take" command:"verb"`
+	Gold  Expr        `yaml:"gold" command:"verb"`
+	Join  string      `yaml:"join" command:"verb"`
+	Leave string      `yaml:"leave" command:"verb"`
+	Heal  string      `yaml:"heal" command:"verb"`
 	// Done marks st.Done[Done] (not written in YAML: the engine's own, a once dungeon tile
 	// spent only when its question is answered yes).
 	Done string `yaml:"-" command:"internal"`

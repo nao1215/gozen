@@ -221,9 +221,8 @@ func (f *field) enter(g *Game, loc string) bool {
 	if g.st.Location != loc {
 		return false
 	}
-	cmds := world.Arrive(g.db, g.st, !f.quiet)
+	cmds := g.startArrival(!f.quiet)
 	f.quiet = false
-	g.events.Start(cmds)
 	return len(cmds) > 0
 }
 

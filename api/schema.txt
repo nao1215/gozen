@@ -100,6 +100,7 @@ github.com/nao1215/gozen/schema field Command.Give
 github.com/nao1215/gozen/schema field Command.Gold
 github.com/nao1215/gozen/schema field Command.Heal
 github.com/nao1215/gozen/schema field Command.Hurt
+github.com/nao1215/gozen/schema field Command.ID
 github.com/nao1215/gozen/schema field Command.If
 github.com/nao1215/gozen/schema field Command.Image
 github.com/nao1215/gozen/schema field Command.Join
@@ -526,11 +527,13 @@ github.com/nao1215/gozen/schema method DB.AIWarnings
 github.com/nao1215/gozen/schema method DB.Check
 github.com/nao1215/gozen/schema method DB.CheckRules
 github.com/nao1215/gozen/schema method DB.CheckTacticCatalog
+github.com/nao1215/gozen/schema method DB.CommandsName
 github.com/nao1215/gozen/schema method DB.CompileTactic
 github.com/nao1215/gozen/schema method DB.EachCommand
 github.com/nao1215/gozen/schema method DB.EventPlaces
 github.com/nao1215/gozen/schema method DB.Exists
 github.com/nao1215/gozen/schema method DB.FacePicture
+github.com/nao1215/gozen/schema method DB.NamedCommands
 github.com/nao1215/gozen/schema method DB.Ordered
 github.com/nao1215/gozen/schema method DB.RuleUsage
 github.com/nao1215/gozen/schema method DB.RuleWarnings

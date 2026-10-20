@@ -1,6 +1,6 @@
 # ADR 0025: Replay to roll back, skip and resume
 
-Status: Accepted (2026-10-21). Stage 0 (`schema_version: 4`, `ui.rollback`) is done. Rolling back, the save in the middle of an event and save format version 2 come in later stages under "Plan". Home: `internal/play` (the history and the replay), `internal/rpg` (the save envelope), `internal/layer2/gamedata` (the YAML words).
+Status: Accepted (2026-10-21). Stages 0, 2 and 2b are done (`schema_version: 4`, `ui.rollback`, rolling back, the choice's `id` and `chose`, the save in the middle of an event, save format version 2). Home: `internal/play` (the history and the replay), `internal/rpg` (the save envelope), `internal/layer2/gamedata` (the YAML words).
 
 ## Users and problem
 
@@ -30,6 +30,14 @@ The save envelope gains a `cursor` (`{event, line, answers}`, the same shape as 
 
 The words of novel games ([ADR 0025](0025-replay-to-roll-back-skip-and-resume.md) to [ADR 0029](0029-dev-panel.md)) need `schema_version: 4`. Using one in an earlier version is the error `<word> needs schema_version: 4` from `gozen check` (the same wiring as `needsVersion` for versions 2 and 3), so an old game keeps loading unchanged and an old engine reports a version, not an unknown field.
 
+### As built
+
+- The history of a line is the number of answers given before it (`evHist`); the backlog when the event began is kept with it and put back before the replay, which shows the lines again. An earlier event keeps its commands themselves, so an arrival (made on the spot, with no name) is rolled back the same way.
+- A boundary is a battle, a shop, a save command, an `open` screen, `clear`, a game over, or a `move` effect. After one, the running event is neither rolled back nor saved with a cursor, and the earlier events are dropped.
+- The keys: Q (S and Backspace are taken), the "Back" button of the novel band, and the wheel up when there is a line to go back to (the backlog otherwise). The band also gained "Save" and "Load", since a save in the middle of a scene needs a way to save there. The trace writes `rollback` after the replayed lines, and `gozen play trace --check` reports a rollback that did not go back (GZN1405).
+- The cursor of an arrival is `{arrival: true}` with the state before the arrival was made: the loader arrives again, so the arrival's events, marked done when they were made, run again.
+- `Session.Save` writes a cursor in the middle of an event that began with its own commands or with `- call: NAME` (from `Do` or `Start`), and `Restore` reads on to the line without reporting the requests on the way; its first `Next` is the line. A restored `call` begins the event's commands, so a second save has the same state at the line but may count the run before the replay instead of during it.
+
 ## Alternatives
 
 1. A snapshot of the state for every line. It is simple, but memory grows with the length of a scene and the screen's pictures and music would still need replaying. Not chosen.
@@ -46,5 +54,5 @@ The words of novel games ([ADR 0025](0025-replay-to-roll-back-skip-and-resume.md
 | Stage | Content |
 | --- | --- |
 | 0 | This ADR, `schema_version: 4` and `ui.rollback` (done) |
-| 2 | Rolling back on the screen, the trace and the script; the headless contract test |
-| 2b | `chose`, the cursor and the random bytes in the save; save format version 2; `Restore` resumes the event |
+| 2 | Rolling back on the screen, the trace and the script; the headless contract test (done) |
+| 2b | `chose`, the cursor and the random bytes in the save; save format version 2; `Restore` resumes the event (done) |

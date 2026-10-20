@@ -21,7 +21,7 @@ import (
 // The names an expression may use, by where it is written.
 var (
 	// FieldNames are known to the conditions of events, locations and the field music.
-	FieldNames = []string{"flag", "var", "gold", "party", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot"}
+	FieldNames = []string{"flag", "var", "gold", "party", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose"}
 	// BattleNames are known in battle: the AI, the troop events, the battle music.
 	BattleNames = append(slices.Clone(FieldNames), "turn", "self", "allies", "foes", "enemies", "result", "phase", "boss")
 	// EffectNames are known to the formulas of skills and items: a is the user, b the target.
@@ -44,6 +44,10 @@ type checker struct {
 	warns []error
 	// puppetNames are the expression names of animated portraits (puppets), per speaker (nil if the portrait cannot be read).
 	puppetNames map[string][]string
+	// choiceIDs are the ids of choices (to where they are written), and choseReads the
+	// chose.<id> read by expressions, for checking each read has its choice.
+	choiceIDs  map[string]string
+	choseReads [][2]string
 }
 
 // errorf records a problem with its diagnostic code (ADR 0024). A few checks
@@ -70,6 +74,13 @@ func (c *checker) exprIn(where string, e Expr, names []string, over map[string]*
 			c.errorf(diag.Expression, where, "%q uses the unknown name %q (known here: %s)", e.String(), n, strings.Join(names, ", "))
 		} else if n == "spot" {
 			c.needsVersion(where, "the name spot", SchemaVersion3)
+		} else if n == "chose" {
+			c.needsVersion(where, "the name chose", SchemaVersion4)
+		}
+	}
+	for _, r := range e.Refs() {
+		if r.Name == "chose" && len(r.Path) > 0 && r.Path[0].Name != "" {
+			c.choseReads = append(c.choseReads, [2]string{where, r.Path[0].Name})
 		}
 	}
 	c.fields(where, e, names, over)
@@ -839,8 +850,18 @@ func (db *DB) Check() []error {
 	}
 	c.faceWarnings()
 	c.iconWarnings()
+	c.choseReferences()
 	db.sceneWarns, db.sceneWarned = sortedDiagnostics(c.warns), true
 	return sortedDiagnostics(c.errs)
+}
+
+// choseReferences checks that every chose.<id> read has a choice with that id.
+func (c *checker) choseReferences() {
+	for _, r := range c.choseReads {
+		if _, ok := c.choiceIDs[r[1]]; !ok {
+			c.errorf(diag.UnknownReference, r[0], "chose.%s: no choice has the id %q", r[1], r[1])
+		}
+	}
 }
 
 // galleryKeys rejects duplicate migration targets and mappings that leak unlock records into another recollection.
@@ -1092,6 +1113,19 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 				c.say(ww, alt, names)
 			}
 		case "choice":
+			if cmd.ID != "" && c.needsVersion(w+".id", "the id of a choice", SchemaVersion4) {
+				switch prev, dup := c.choiceIDs[cmd.ID]; {
+				case !declaredName.MatchString(cmd.ID):
+					c.errorf(diag.NotAWord, w+".id", "want a name of lowercase letters, digits and _, not %q", cmd.ID)
+				case dup && prev != w:
+					c.errorf(diag.Duplicate, w+".id", "choice id %q is also at %s", cmd.ID, prev)
+				default:
+					if c.choiceIDs == nil {
+						c.choiceIDs = map[string]string{}
+					}
+					c.choiceIDs[cmd.ID] = w
+				}
+			}
 			ids := map[string]bool{}
 			for j, o := range cmd.Choice {
 				ww := fmt.Sprintf("%s.choice[%d]", w, j)
@@ -1462,6 +1496,8 @@ func typeOf(n string, names []string) *vtype {
 		return &vtype{kind: vList, desc: "repairs", elem: tRepair}
 	case "ran":
 		return &vtype{kind: vDyn, desc: "ran", elem: objType("a run", map[string]*vtype{"count": tNum, "order": tNum}, nil), key: "event"}
+	case "chose":
+		return &vtype{kind: vDyn, desc: "chose", elem: tStr}
 	case "completed", "moved":
 		return tBool
 	case "roamers":

@@ -58,6 +58,23 @@ type Session struct {
 	acts    []act // moves decided by the act command for the next battle
 	errs    []error
 	fresh   bool // nothing has been fed since New (play.New starts on screen from the opening event)
+	at      cursor
+	held    *Request // the line a restored save goes on at, shown by the next Next
+}
+
+// cursor is where the running event is, for a save made in its middle (ADR 0025): the state
+// and random bytes when it began (or before the arrival that made it), its name, the lines
+// shown and the answers given, and whether it passed a boundary (a battle, a shop, a save,
+// a screen, a move, the end), after which it cannot be begun again.
+type cursor struct {
+	snap, rnd   []byte
+	name        string
+	arrival     bool
+	lines       int
+	answers     []int
+	noBack      bool
+	arriving    bool
+	before, rbf []byte
 }
 
 // New starts a session at the game's start (game.yaml start), running nothing yet;
@@ -74,7 +91,9 @@ func New(g *Game, cfg Config) (*Session, error) {
 }
 
 // Restore continues a saved game (Session.Save). A save of another game or of an
-// unknown format is ErrIncompatibleSave.
+// unknown format is ErrIncompatibleSave. A save made in the middle of an event begins the
+// event again from its start and reads on, with the answers given, to the line it was
+// made at, which the next Next returns (ADR 0025); the requests read on to are not reported.
 func Restore(g *Game, save []byte, cfg Config) (*Session, error) {
 	if g == nil {
 		return nil, fmt.Errorf("%w: nil game", ErrInvalid)
@@ -84,10 +103,60 @@ func Restore(g *Game, save []byte, cfg Config) (*Session, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrIncompatibleSave, err)
 	}
+	if r := st.Resume; r != nil && len(r.Rand) > 0 {
+		if err := s.pcg.UnmarshalBinary(r.Rand); err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrIncompatibleSave, err)
+		}
+	}
 	s.st = st
 	s.start()
 	dungeon.Remake(s.db, s.st)
+	if r := st.Resume; r != nil {
+		if err := s.resume(r.Cursor); err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrIncompatibleSave, err)
+		}
+	}
 	return s, nil
+}
+
+// resume begins the event of a cursor again and reads on to its line.
+func (s *Session) resume(c rpg.Cursor) error {
+	if c.Arrival {
+		s.arrived = true
+	} else {
+		cmds := s.db.NamedCommands(c.Event)
+		if cmds == nil {
+			return fmt.Errorf("no event %q to go on with", c.Event)
+		}
+		s.runner.Start(cmds)
+	}
+	onRequest, onEffect := s.cfg.OnRequest, s.cfg.OnEffect
+	s.cfg.OnRequest, s.cfg.OnEffect = nil, nil
+	defer func() { s.cfg.OnRequest, s.cfg.OnEffect = onRequest, onEffect }()
+	for range maxSteps {
+		q := s.Next()
+		switch q.Kind {
+		case "":
+			return fmt.Errorf("the event ended before line %d", c.Line)
+		case "battle", "shop", "save", "open", "clear", "game_over":
+			return fmt.Errorf("line %d is past a %s", c.Line, q.Kind)
+		case "say", "choice":
+			if s.at.lines >= c.Line {
+				if q.Kind == "say" {
+					s.held = &q
+				}
+				return nil
+			}
+			if q.Kind == "choice" {
+				k := len(s.at.answers)
+				if k >= len(c.Answers) {
+					return fmt.Errorf("no answer for the choice before line %d", c.Line)
+				}
+				s.Answer(c.Answers[k])
+			}
+		}
+	}
+	return fmt.Errorf("line %d was not reached", c.Line)
 }
 
 func newSession(g *Game, cfg Config) *Session {
@@ -115,6 +184,39 @@ func (s *Session) start() {
 	s.runner.Act = func(actor, skill, item, target string) {
 		s.acts = append(s.acts, act{actor, skill, item, target})
 	}
+	s.runner.OnStart = s.onStart
+}
+
+// onStart keeps the state when an event begins, for a save made in its middle.
+func (s *Session) onStart(cmds []gamedata.Command) {
+	name := s.db.CommandsName(cmds)
+	if name == "" && len(cmds) == 1 && cmds[0].Call != "" && s.db.Events[cmds[0].Call] != nil {
+		name = cmds[0].Call // - call: NAME from Do or Start
+	}
+	c := cursor{name: name, arrival: s.at.arriving && name == "", before: s.at.before, rbf: s.at.rbf}
+	var err error
+	if c.snap, err = s.st.Save(); err != nil {
+		c.noBack = true
+	}
+	if c.rnd, err = s.pcg.MarshalBinary(); err != nil {
+		c.noBack = true
+	}
+	s.at = c
+}
+
+// arrive starts the commands of arriving at the location, keeping the state before them.
+func (s *Session) arrive() {
+	before, err := s.st.Save()
+	if err != nil {
+		s.runner.Log(err)
+	}
+	rbf, err := s.pcg.MarshalBinary()
+	if err != nil {
+		s.runner.Log(err)
+	}
+	s.at.arriving, s.at.before, s.at.rbf = true, before, rbf
+	s.runner.Start(world.Arrive(s.db, s.st, !s.quiet))
+	s.at.arriving = false
 }
 
 // Begin starts a new game: the start event, then what happens on arriving at the start.
@@ -211,6 +313,11 @@ func (s *Session) Next() Request {
 	if s.pending != nil {
 		return *s.pending
 	}
+	if s.held != nil {
+		q := *s.held
+		s.held = nil
+		return q
+	}
 	for range maxSteps {
 		if s.runner.Running() {
 			r := s.runner.Next()
@@ -218,6 +325,12 @@ func (s *Session) Next() Request {
 				continue
 			}
 			q := s.request(r)
+			switch q.Kind {
+			case "say", "choice":
+				s.at.lines++
+			case "battle", "shop", "save", "open", "clear", "game_over":
+				s.at.noBack = true
+			}
 			if s.cfg.OnRequest != nil {
 				s.cfg.OnRequest(q)
 			}
@@ -231,7 +344,7 @@ func (s *Session) Next() Request {
 		}
 		if s.arrived {
 			s.arrived = false
-			s.runner.Start(world.Arrive(s.db, s.st, !s.quiet))
+			s.arrive()
 			s.quiet = false
 			continue
 		}
@@ -259,6 +372,7 @@ func (s *Session) Answer(n int) {
 	}
 	s.pending = nil
 	if q.Kind == "choice" {
+		s.at.answers = append(s.at.answers, n)
 		s.runner.Answer(n)
 		return
 	}
@@ -355,6 +469,7 @@ func (s *Session) effect(e event.Effect) {
 	var out Effect
 	switch e := e.(type) {
 	case event.MoveEffect:
+		s.at.noBack = true
 		s.st.Location = e.Location
 		s.st.Steps++
 		dungeon.Reveal(s.db, s.st)
@@ -378,8 +493,25 @@ func (s *Session) effect(e event.Effect) {
 	}
 }
 
-// Save is the state as JSON (Restore reads it). The events being run are not saved.
-func (s *Session) Save() ([]byte, error) { return s.st.Save() }
+// Save is the state as JSON (Restore reads it). In the middle of an event that can be begun
+// again (it passed no battle, shop, save, screen or move), it is the state when the event
+// began with a cursor to the line shown last (save format version 2, ADR 0025); otherwise
+// the events being run are not saved.
+func (s *Session) Save() ([]byte, error) {
+	c := s.at
+	if !s.runner.Running() || c.noBack || c.lines == 0 || c.snap == nil || c.name == "" && !c.arrival {
+		return s.st.Save()
+	}
+	cur := rpg.Cursor{Event: c.name, Line: c.lines, Answers: c.answers}
+	if c.arrival {
+		cur.Arrival = true
+		if c.before == nil {
+			return s.st.Save()
+		}
+		return rpg.WithCursor(c.before, cur, c.rbf)
+	}
+	return rpg.WithCursor(c.snap, cur, c.rnd)
+}
 
 // Clone copies the state and the random numbers between commands (for trying a branch).
 // The commands being run are not copied.

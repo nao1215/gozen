@@ -41,7 +41,7 @@ type novelButton struct {
 	b     button
 }
 
-var novelButtons = []novelButton{{"ログ", btnLog}, {"オート", btnAuto}, {"スキップ", btnSkip}, {"非表示", btnHide}, {"設定", btnConfig}}
+var novelButtons = []novelButton{{"もどる", btnBack}, {"ログ", btnLog}, {"オート", btnAuto}, {"スキップ", btnSkip}, {"セーブ", btnSave}, {"ロード", btnLoad}, {"非表示", btnHide}, {"設定", btnConfig}}
 
 // sceneSkipButton shows on the novel bar only while the running event can be skipped.
 var sceneSkipButton = novelButton{"シーン送り", btnSceneSkip}
@@ -88,7 +88,11 @@ func (g *Game) novelInput() bool {
 		}
 	}
 	if g.in.wheel > 0 && (!t.active || t.choice == nil) {
-		press[btnLog] = true
+		if g.canRollBack() {
+			press[btnBack] = true
+		} else {
+			press[btnLog] = true
+		}
 	}
 	switch {
 	case press[btnLog]:
@@ -105,6 +109,17 @@ func (g *Game) novelInput() bool {
 		return true
 	case press[btnSceneSkip] && t.active:
 		g.sceneSkip()
+		return true
+	case press[btnBack] && t.active:
+		g.rollBack()
+		return true
+	case press[btnSave] && t.active && !g.replaying:
+		g.push(newSaveMenu(g, true, func() {}))
+		return true
+	case press[btnLoad] && t.active && !g.replaying:
+		m := newSaveMenu(g, false, func() {})
+		m.inPlay = true
+		g.push(m)
 		return true
 	case (press[btnHide] || g.in.esc || g.in.rclick) && g.novel() && t.choice == nil:
 		t.hidden = true

@@ -17,13 +17,20 @@ import (
 )
 
 // saveFormatVersion is the save format version of the JSON wrapper and the state. It is managed separately from the YAML spec version.
-const saveFormatVersion = 1
+// Version 2 adds the cursor and the random bytes of a save made in the middle of an event and the state's chose (ADR 0025);
+// a reader takes 1 and 2.
+const saveFormatVersion = 2
+
+// oldestSaveFormat is the oldest save format version read.
+const oldestSaveFormat = 1
 
 type saveEnvelope struct {
 	FormatVersion int             `json:"format_version"`
 	GameID        string          `json:"game_id"`
 	DataVersion   int             `json:"data_version"`
 	State         json.RawMessage `json:"state"`
+	Cursor        *Cursor         `json:"cursor,omitempty"`
+	Rand          []byte          `json:"rand,omitempty"`
 }
 
 // Config is how a caller that knows the origin accepts the legacy format.
@@ -71,7 +78,7 @@ func (s *State) Save() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.MarshalIndent(saveEnvelope{saveFormatVersion, s.DB.Game.ID, s.DB.Game.DataVersion, b}, "", "  ")
+	return json.MarshalIndent(saveEnvelope{FormatVersion: saveFormatVersion, GameID: s.DB.Game.ID, DataVersion: s.DB.Game.DataVersion, State: b}, "", "  ")
 }
 
 // Parse reads new-format saves and temporary snapshots. It does not modify the original bytes or the DB.
@@ -91,6 +98,7 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 	}
 	report := LoadReport{GameID: db.Game.ID, DataVersion: db.Game.DataVersion}
 	payload := b
+	var resume *Resume
 	_, version := raw["format_version"]
 	_, game := raw["game_id"]
 	_, dataVersion := raw["data_version"]
@@ -101,8 +109,8 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 			return nil, err
 		}
 		// The body of a future version is not interpreted with the current types.
-		if v != saveFormatVersion {
-			return nil, fmt.Errorf(lang.T("保存形式版 %d には対応していない（対応版 %d）"), v, saveFormatVersion)
+		if v < oldestSaveFormat || v > saveFormatVersion {
+			return nil, fmt.Errorf(lang.T("保存形式版 %d には対応していない（対応版 %d〜%d）"), v, oldestSaveFormat, saveFormatVersion)
 		}
 		var envelope saveEnvelope
 		if err := decodeSave(b, &envelope); err != nil {
@@ -120,8 +128,14 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 		if envelope.DataVersion < 0 || envelope.DataVersion > db.Game.DataVersion {
 			return nil, fmt.Errorf(lang.T("セーブのデータ版 %d は読み込めない（現在 %d）"), envelope.DataVersion, db.Game.DataVersion)
 		}
+		if envelope.Cursor != nil && (v < 2 || envelope.Cursor.Line < 1 || (envelope.Cursor.Event == "") == !envelope.Cursor.Arrival) {
+			return nil, errors.New(lang.T("カーソルの行またはイベントが不正"))
+		}
 		report.SavedDataVersion = envelope.DataVersion
 		payload = envelope.State
+		if envelope.Cursor != nil {
+			resume = &Resume{Cursor: *envelope.Cursor, Rand: envelope.Rand}
+		}
 	} else {
 		if !opt.AllowLegacy {
 			return nil, errors.New(lang.T("版なしのセーブは作品を識別できない。同じ保存先から読むか、同じ作品と確認して旧形式の移行を指定する"))
@@ -141,7 +155,7 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 	if err := checkTacticsVersions(fields["actors"]); err != nil {
 		return nil, err
 	}
-	s := &State{DB: db, Rand: rng, LoadReport: report}
+	s := &State{DB: db, Rand: rng, LoadReport: report, Resume: resume}
 	if err := decodeSave(payload, s); err != nil {
 		return nil, err
 	}

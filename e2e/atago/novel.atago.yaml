@@ -69,3 +69,46 @@ scenarios:
       exit_code: 0
       stdout:
         contains: 'check: 0'
+- name: play trace shows rolling back and loading in the middle of an event
+  steps:
+  - fixture:
+      file: run.jsonl
+      content: |
+        {"t":"start","tick":0,"language":"en","game":"Novel","seed":1}
+        {"t":"rollback","tick":30,"from":4,"to":3,"event":"story"}
+        {"t":"rollback","tick":40,"from":1,"to":5,"event":"opening","back_into":true,"left":"story"}
+        {"t":"resume","tick":50,"event":"story","line":3,"at":3}
+        {"t":"end","tick":60}
+  - run:
+      command: gozen play trace run.jsonl --only rollback,resume
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - 'back from line 4 to line 3 of story'
+        - 'back from line 1 to line 5 of opening (the event before)'
+        - 'load at line 3 of story (reached 3)'
+  - run:
+      command: gozen play trace run.jsonl --check
+  - assert:
+      exit_code: 0
+- name: a save of a newer format is refused and one of version 1 is still read
+  steps:
+  - fixture:
+      file: v3.json
+      content: '{"format_version":3,"game_id":"cli-expedition","data_version":0,"state":{"actors":{"scout":{"id":"scout","level":1}},"party":["scout"],"location":"camp"}}'
+  - fixture:
+      file: v1.json
+      content: '{"format_version":1,"game_id":"cli-expedition","data_version":0,"state":{"actors":{"scout":{"id":"scout","level":1}},"party":["scout"],"location":"camp"}}'
+  - run:
+      command: gozen sim battle "${specdir}/fixtures/game" lesson -n 2 --state v3.json
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: 'save format 3 is not supported (supported: 1 to 2)'
+  - run:
+      command: gozen sim battle "${specdir}/fixtures/game" lesson -n 2 --state v1.json
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: 'lesson: 2 battles'

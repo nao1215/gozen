@@ -79,7 +79,7 @@ func (g *Game) writePreserving(name string, b []byte) (string, error) {
 
 // saveState writes the state. If the current contents are unreadable or in an old format needing correction, it keeps a backup.
 func (g *Game) saveState(name string) (string, error) {
-	b, err := g.st.Save()
+	b, err := g.saveBytes()
 	if err != nil {
 		return "", err
 	}

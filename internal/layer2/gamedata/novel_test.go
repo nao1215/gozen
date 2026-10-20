@@ -67,3 +67,22 @@ events:
 		t.Errorf("a troop's event is outside the index for now: %+v", u)
 	}
 }
+
+// TestChoiceID: a choice's id needs version 4, is a name, is one per game, and chose.<id>
+// needs a choice with that id.
+func TestChoiceID(t *testing.T) {
+	head := "schema_version: 4\nid: b\n"
+	for _, c := range []struct{ head, events, want string }{
+		{head, `{a: {do: [{choice: [{label: Yes}], id: dinner}, {if: "chose.dinner == \"0\"", then: [{gold: 1}]}]}}`, ""},
+		{"schema_version: 3\nid: b\n", `{a: {do: [{choice: [{label: Yes}], id: dinner}]}}`, "the id of a choice needs schema_version: 4"},
+		{"schema_version: 3\nid: b\n", `{a: {when: "chose.x == \"\"", do: [{gold: 1}]}}`, "the name chose needs schema_version: 4"},
+		{head, `{a: {do: [{choice: [{label: Yes}], id: Dinner}]}}`, "want a name of lowercase"},
+		{head, `{a: {do: [{choice: [{label: Yes}], id: d}]}, b: {do: [{choice: [{label: No}], id: d}]}}`, "choice id \"d\" is also at"},
+		{head, `{a: {when: "chose.missing == \"\"", do: [{gold: 1}]}}`, "chose.missing: no choice has the id"},
+	} {
+		_, err := testgame.TryLoad(map[string]string{"game.yaml": c.head + testgame.Game, "data/z.yaml": "events: " + c.events})
+		if c.want == "" && err != nil || c.want != "" && (err == nil || !strings.Contains(err.Error(), c.want)) {
+			t.Errorf("%s: %v", c.events, err)
+		}
+	}
+}

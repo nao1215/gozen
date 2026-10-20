@@ -97,6 +97,13 @@ func (c *command) traceCmd(args []string) (err error) {
 			}
 		case "skip":
 			what = skipText(l)
+		case "rollback":
+			what = fmt.Sprintf("back from line %v to line %v of %s", l["from"], l["to"], cmp.Or(str(l["event"]), "(an arrival)"))
+			if l["back_into"] == true {
+				what += " (the event before)"
+			}
+		case "resume":
+			what = fmt.Sprintf("load at line %v of %s (reached %v)", l["line"], cmp.Or(str(l["event"]), "(an arrival)"), l["at"])
 		case "notice":
 			what = "notice: " + str(l["text"])
 		case "answer":

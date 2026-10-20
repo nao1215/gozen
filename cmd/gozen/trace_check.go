@@ -117,6 +117,10 @@ func (c *traceChecker) line(l map[string]any, raw []byte) error {
 		}
 	case "skip":
 		c.skipping = l["on"] == true
+	case "rollback":
+		if from, to := num(l["from"]), num(l["to"]); l["back_into"] != true && to >= from {
+			c.add(tick, "rollback", lang.T("戻る操作で行が戻っていない（%v 行目から %v 行目）"), from, to)
+		}
 	case "stand":
 		var s standLine
 		if err := json.Unmarshal(raw, &s); err != nil {
@@ -281,6 +285,8 @@ func checkTrace(path string, musicLate float64, w io.Writer) (n int, err error) 
 			code = diag.MusicFault
 		case strings.HasPrefix(is.kind, "skip"):
 			code = diag.SkipFault
+		case is.kind == "rollback":
+			code = diag.RollbackFault
 		}
 		output.Println(code.Mark(fmt.Sprintf("%02d:%05.2f %-10s %s", int(sec)/60, sec-float64(int(sec)/60*60), is.kind, is.text)))
 	}

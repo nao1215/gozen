@@ -33,6 +33,9 @@ const (
 	btnGraphs
 	btnSkip
 	btnSceneSkip
+	btnBack
+	btnSave
+	btnLoad
 	numButtons
 
 	btnNone button = -1
@@ -58,6 +61,8 @@ var keys = [numButtons][]ebiten.Key{
 	// S is down (WASD), so skip mode is N, and scene skip Page Down (Page Up opens the log).
 	btnSkip:      {ebiten.KeyN},
 	btnSceneSkip: {ebiten.KeyPageDown},
+	// Q rolls back a line (Backspace is cancel); saving and loading are buttons of the novel band.
+	btnBack: {ebiten.KeyQ},
 }
 
 var (
@@ -438,6 +443,7 @@ var scriptButtons = map[string]button{
 	"tab": btnNext, "up": btnUp, "down": btnDown, "left": btnLeft, "right": btnRight,
 	"log": btnLog, "auto": btnAuto, "hide": btnHide, "config": btnConfig, "memo": btnMemo,
 	"reload": btnReload, "tag": btnTag, "graphs": btnGraphs, "skip": btnSkip, "scene_skip": btnSceneSkip,
+	"back": btnBack, "save": btnSave, "load": btnLoad,
 }
 
 func (s *script) midEvent(in *input, name string) {

@@ -3,6 +3,7 @@ package play
 import (
 	"fmt"
 	"log"
+	"math/rand/v2"
 	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -90,6 +91,15 @@ func (g *Game) writeSave(path string) error {
 }
 
 func (g *Game) loadSavedGame(st *rpg.State) {
+	r := st.Resume
 	st.Rand = g.stateRng()
+	if r != nil && len(r.Rand) > 0 {
+		if p := rand.NewPCG(1, 2); p.UnmarshalBinary(r.Rand) == nil {
+			g.pcg, st.Rand = p, rand.New(p) //nolint:gosec // Restores deterministic gameplay randomness, not secrets.
+		}
+	}
 	g.loadGame(st)
+	if r != nil {
+		g.resume(r)
+	}
 }

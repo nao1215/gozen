@@ -89,6 +89,8 @@ b, err = store.Read("slot1")
 restored, err := gozen.Restore(g, b, gozen.Config{}) // goes on without rerunning the start events
 ```
 
+A save made in the middle of an event (after `Next` returned one of its lines, before a battle, shop, save, screen or move in it) holds the state when the event began and where it was. `Restore` begins the event again and reads on, with the same answers and random numbers, to that line, which its first `Next` returns. A test can save at every line and check that each one goes on the same way.
+
 [examples/headless](https://github.com/nao1215/gozen/blob/main/examples/headless/main.go) is a complete program with a battle and a save round trip.
 
 ## Start the game: play.Main

@@ -18,6 +18,7 @@ The recipes refer to a few IDs they do not define: the actor and class `walker`,
 | [Run an inn and a place to save](#run-an-inn-and-a-place-to-save) | actions, `if` on `gold`, `heal: all`, `save: true` |
 | [Write talk with choices and branches](#write-talk-with-choices-and-branches) | `people`, `say`, `choice`, `if` |
 | [Remember things with flags and conditions](#remember-things-with-flags-and-conditions) | `set`, `flag.*` and `var.*`, `when`, `trigger: auto` |
+| [Let the player roll back and save in a scene](#let-the-player-roll-back-and-save-in-a-scene) | `ui.rollback`, a choice's `id`, `chose.*` |
 | [Add a companion who joins](#add-a-companion-who-joins) | `actors`, `join`, `leave` |
 | [Grow by level and learn skills](#grow-by-level-and-learn-skills) | class `stats` formulas, `exp_for`, `skills` by level |
 | [Make items and equipment](#make-items-and-equipment) | item `use`, `kind`, `slot`, `stats`, class `equip` |
@@ -191,6 +192,38 @@ state:
 ```
 
 Reference: [Command](/schema/#command) (`set`, `if`), [Event](/schema/#event), [StateNames](/schema/#statenames), and the expressions on [Writing a game](/writing-a-game/#expressions). Go Zen opens its dungeon gate with flags.
+
+## Let the player roll back and save in a scene
+
+In the novel window, the player can step back a line with the "Back" button, Q or the mouse wheel: the flags, variables, items and the answers given go back too, and a choice comes back to be answered again. Read lines, the gallery and the settings stay. Rolling back stops at a battle, a shop, a save command, a screen, a move or the end, and reaches up to 8 earlier events; `ui.rollback` changes that number, and 0 turns rolling back off. "Save" and "Load" on the band save in the middle of a scene: loading begins the event again from its start and reads on to the line, with the same answers and the same random numbers.
+
+<!-- verify: load group=rollback as=game.yaml -->
+```yaml
+# game.yaml
+schema_version: 4
+ui:
+  message: novel
+  rollback: 16
+```
+
+A choice with an `id` remembers the option taken, read as `chose.<id>`: the option's `id`, or its number from 0. It is part of the state, so it rolls back and is saved.
+
+<!-- verify: load group=rollback -->
+```yaml
+events:
+  dinner:
+    do:
+      - say: Soup or bread?
+      - choice:
+          - {id: soup, label: Soup}
+          - {id: bread, label: Bread}
+        id: dinner
+      - if: chose.dinner == "soup"
+        then: [{say: Warm.}]
+        else: [{say: Crisp.}]
+```
+
+`gozen.Restore` reads a save made in the middle of an event the same way, so a test can check that a save made at any line goes on at that line ([the Go API](/go-api/)). Reference: [UIStyle](/schema/#uistyle), [Command](/schema/#command) (`id`).
 
 ## Add a companion who joins
 

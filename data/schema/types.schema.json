@@ -2193,6 +2193,7 @@
           "additionalProperties": false,
           "properties": {
             "choice": {},
+            "id": {},
             "prompt": {}
           },
           "required": [
@@ -2968,6 +2969,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "[Hurt](#hurt)"
+        },
+        "id": {
+          "description": "The name of a choice: the state remembers the option taken there, read as `chose.\u003cid\u003e` (the option's `id`, or its number from 0). Lowercase letters, digits and `_`, one per game; needs schema version 4.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional; only with choice",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         },
         "if": {
           "description": "An expression. The `then` commands run when it holds, otherwise the `else` commands.",

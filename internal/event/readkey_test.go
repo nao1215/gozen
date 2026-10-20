@@ -43,3 +43,26 @@ func TestLineKeyIsTheSource(t *testing.T) {
 		t.Error("an option and a line share a key")
 	}
 }
+
+// TestChoseRecordsTheOption: a choice with an id remembers the option taken: its id, or its
+// number as written (not as shown, when an option before it is hidden by when).
+func TestChoseRecordsTheOption(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 4\nid: b\n" + testgame.Game, "data/z.yaml": `events: {dinner: {do: [
+{choice: [{id: soup, label: Soup}, {label: Bread}], id: first},
+{choice: [{label: Hidden, when: "false"}, {label: Tea}], id: second},
+{choice: [{label: Plain}]}
+]}}`})
+	st := testgame.State(db, 1)
+	r := event.New(db, st, &host{})
+	r.Log = func(err error) { t.Error(err) }
+	r.Start(db.Events["dinner"].Do)
+	for _, n := range []int{0, 0, 0} {
+		if _, ok := r.Next().(event.Choice); !ok {
+			t.Fatal("no choice")
+		}
+		r.Answer(n)
+	}
+	if st.Chose["first"] != "soup" || st.Chose["second"] != "1" || len(st.Chose) != 2 {
+		t.Fatalf("chose %v", st.Chose)
+	}
+}

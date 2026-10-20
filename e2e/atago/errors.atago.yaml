@@ -447,6 +447,17 @@ scenarios:
       exit_code: 1
       stdout:
         contains: ['[GZN1404]', 'skip-unread', 'Hello.']
+- name: GZN1405 for a rollback that did not go back
+  steps:
+  - fixture:
+      file: run.jsonl
+      content: "{\"t\":\"rollback\",\"tick\":5,\"from\":3,\"to\":3,\"event\":\"story\"}\n{\"t\":\"end\",\"tick\":10}\n"
+  - run:
+      command: gozen play trace run.jsonl --check
+  - assert:
+      exit_code: 1
+      stdout:
+        contains: ['[GZN1405]', 'rollback']
 - name: GZN1501 and GZN1502 for an output that exists or lies inside an input
   steps:
   - fixture:

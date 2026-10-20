@@ -19,10 +19,12 @@ import (
 	"golang.org/x/image/font/gofont/goregular"
 )
 
-// TestGraphicsNovel plays testdata/novel three times with one save directory (ADR 0026).
+// TestGraphicsNovel plays testdata/novel four times with one save directory (ADR 0026).
 // The first run reads two lines. In the second, skip mode passes them and stops before the
 // third line, which was not read; the player reads it. In the third, skip mode passes the
-// three lines and stops before the choice. read.json carries the read lines between the runs.
+// three lines and stops before the choice. In the fourth, rolling back from the third line
+// shows the second, and going on shows the third again. read.json carries the read lines
+// between the runs.
 func TestGraphicsNovel(t *testing.T) {
 	root := t.TempDir()
 	game := filepath.Join(root, "game")
@@ -72,7 +74,7 @@ func TestGraphicsNovel(t *testing.T) {
 			if err := json.Unmarshal(sc.Bytes(), &l); err != nil {
 				t.Fatal(err)
 			}
-			if l["t"] == "say" || l["t"] == "skip" {
+			if l["t"] == "say" || l["t"] == "skip" || l["t"] == "rollback" {
 				out = append(out, l)
 			}
 		}
@@ -83,6 +85,8 @@ func TestGraphicsNovel(t *testing.T) {
 		var b strings.Builder
 		for _, l := range lines {
 			switch {
+			case l["t"] == "rollback":
+				fmt.Fprintf(&b, "back %v %v\n", l["from"], l["to"])
 			case l["t"] == "skip":
 				fmt.Fprintf(&b, "skip %v %v\n", l["on"], l["why"])
 			case l["choices"] != nil:
@@ -107,7 +111,15 @@ func TestGraphicsNovel(t *testing.T) {
 	if got := story(third); got != want {
 		t.Fatalf("third run:\n%s\nwant:\n%s", got, want)
 	}
-	for _, name := range []string{"unread", "choice"} {
+	// Rolling back (ADR 0025): back from the third line to the second, which is replayed from
+	// the start of the event (the trace has the replayed lines, then the rollback line), then
+	// on to the third again.
+	fourth := run("fourth", "wait 30\npress ok\nwait 30\npress ok\nwait 30\npress back\nwait 30\nshot back\npress ok\nwait 30\nquit\n")
+	want = "say \"The lamps are lit.\" true\nsay \"The road is long.\" true\nsay \"A bell rings far off.\" true\nsay \"The lamps are lit.\" true\nsay \"The road is long.\" true\nback 3 2\nsay \"A bell rings far off.\" true\n"
+	if got := story(fourth); got != want {
+		t.Fatalf("fourth run:\n%s\nwant:\n%s", got, want)
+	}
+	for _, name := range []string{"unread", "choice", "back"} {
 		b, err := os.ReadFile(filepath.Join(root, name+".png")) //nolint:gosec // A fixed name in this test's temporary directory.
 		if err != nil {
 			t.Fatal(err)

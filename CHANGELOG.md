@@ -6,12 +6,16 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
-- Schema version 4 for novel games (ADR 0025 to 0029). Its first word is `ui.rollback` in game.yaml (0 to 64 earlier events to roll back into; read from the stage that rolls back). The words of version 4 in a game of version 3 or earlier are the error `<word> needs schema_version: 4`; YAML of version 3 is read as is.
+- Schema version 4 for novel games (ADR 0025 to 0029). Its first word is `ui.rollback` in game.yaml (0 to 64 earlier events to roll back into, 8 by default; 0 turns rolling back off). The words of version 4 in a game of version 3 or earlier are the error `<word> needs schema_version: 4`; YAML of version 3 is read as is.
 - Skip mode and scene skip for novel games (ADR 0026). N or the new "Skip" button of the novel band passes the lines read until a line not read, a choice, a battle or the end of the events; Page Down or "Skip scene", shown when every line of the running event was read, goes at once to the next choice or line not read. An option taken before is drawn in the accent color. A script presses them with `press skip` and `press scene_skip`, a trace's `say` lines carry `read` and its `skip` lines what skipping did, `gozen play trace` marks the lines not read, and `gozen play trace --check` fails with GZN1404 when skipping passed one.
+- Rolling back in novel games (ADR 0025): the "Back" button of the novel band, Q or the wheel up shows the line before with the state before it (flags, variables, items, answers), into up to `ui.rollback` earlier events; a battle, shop, save, screen or move stops it. The band also has "Save" and "Load". A script presses `back`, `save` and `load`; the trace writes `rollback` and `resume` lines, and `gozen play trace --check` fails with GZN1405 when a rollback did not go back.
+- A choice can have an `id` (schema version 4): the state remembers the option taken, read as `chose.<id>`.
+- A save made in the middle of an event goes on at its line: it holds the state when the event began, a cursor (the event, the line, the answers) and the random bytes, and the screen and `gozen.Restore` begin the event again and read on to the line.
 - `DB.StateUses` in the schema package indexes where each flag, var, item and other name of the state is written and read, for the coming checks of unused flags, `gozen book`'s flow and the `--dev` panel.
 
 ### Changed
 
+- Saves are written at format version 2 (the cursor, the random bytes and the state's `chose`); version 1 is still read. An engine before this one refuses a save of version 2, so a game that updates should update its players' engine at the same time.
 - A read line is known by its source, the speaker and the text as written before `{expressions}` and any translation, so a line with a variable is read once whatever the value (ADR 0026). `read.json` is now an envelope with a format version and the game id, like `gallery.json`; the bare list of earlier versions is read, its keys still count for one version, and it is kept as a backup on the next write. A record of another game or of a newer engine is left as it is.
 
 ## v0.1.0 - 2026-10-21

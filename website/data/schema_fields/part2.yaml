@@ -22,6 +22,7 @@ Command:
   gold: "An expression for gold to add. A negative value takes gold away."
   heal: "Fully restores a party member, an ID of actors, or everyone with `all`."
   hurt: "Takes HP from party members outside battle, for example on a poison floor. It never reduces anyone below 1."
+  id: "The name of a choice: the state remembers the option taken there, read as `chose.<id>` (the option's `id`, or its number from 0). Lowercase letters, digits and `_`, one per game; needs schema version 4."
   if: "An expression. The `then` commands run when it holds, otherwise the `else` commands."
   image: "Shows a full-screen picture. It can be a file path or a map with options."
   join: "Adds an actor to the party, an ID of actors."

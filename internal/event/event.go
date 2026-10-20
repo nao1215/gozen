@@ -11,6 +11,7 @@ import (
 	"math"
 	"path"
 	"slices"
+	"strconv"
 	"strings"
 
 	lang "github.com/nao1215/gozen/internal/text"
@@ -222,6 +223,9 @@ type Runner struct {
 	// OnStart is told of an event started when nothing was running (before any of it runs):
 	// a test player's note keeps the state there, to begin the event again from it.
 	OnStart func(cmds []data.Command)
+	// optionAt is the place of each option shown in its choice as written (chose.<id> of an
+	// option without an id is that number).
+	optionAt []int
 }
 
 // New is a runner on the state.
@@ -297,6 +301,7 @@ func (r *Runner) Answer(n int) {
 			if r.pick != nil {
 				r.pick(n)
 			} else {
+				r.chose(n)
 				r.push(r.options[n].Do)
 			}
 		}
@@ -320,6 +325,22 @@ func (r *Runner) Answer(n int) {
 			r.push(c.OnRun)
 		}
 	}
+}
+
+// chose remembers the option taken at a choice with an id (chose.<id>; ADR 0025): the
+// option's id, or its number as written.
+func (r *Runner) chose(n int) {
+	if r.asked == nil || r.asked.ID == "" || n >= len(r.optionAt) {
+		return
+	}
+	v := r.options[n].ID
+	if v == "" {
+		v = strconv.Itoa(r.optionAt[n])
+	}
+	if r.st.Chose == nil {
+		r.st.Chose = map[string]string{}
+	}
+	r.st.Chose[r.asked.ID] = v
 }
 
 func (r *Runner) push(cmds []data.Command) {
@@ -432,12 +453,13 @@ func (r *Runner) run(c *data.Command) Request {
 	case "choice":
 		var labels, ids []string
 		var keys []uint64
-		r.options = nil
-		for _, o := range c.Choice {
+		r.options, r.optionAt = nil, nil
+		for i, o := range c.Choice {
 			ok, err := o.When.Bool(env)
 			r.logf(err)
 			if ok {
 				r.options = append(r.options, o)
+				r.optionAt = append(r.optionAt, i)
 				labels = append(labels, data.Render(o.Label, env))
 				ids = append(ids, o.ID)
 				keys = append(keys, ChoiceKey(c.Prompt, o.Label))
