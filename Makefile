@@ -12,12 +12,17 @@ GOLANGCI_LINT ?= GOTOOLCHAIN=$(LINT_GO) $(GO) run github.com/golangci/golangci-l
 ATAGO ?= atago
 ACTIONLINT ?= actionlint
 
-.PHONY: go-zen go-zen-graphics test lint workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
+.PHONY: go-zen go-zen-graphics test coverage lint workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
 
 # One module: ./... includes the gozen command and its internal implementations.
 # Keep ONNX-dependent runtime tests separate; see docs/development/testing.md.
 test:
 	$(GO) test ./...
+
+# coverage.out is read by octocov (.octocov.yml). -coverpkg counts tests in one
+# package toward the packages they exercise.
+coverage:
+	$(GO) test -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
 
 lint: arch api workflows
 	$(GOLANGCI_LINT) run ./...
