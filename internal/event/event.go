@@ -58,8 +58,28 @@ type ImageEffect struct{ Picture data.CG }
 // SoundEffect requests a named sound.
 type SoundEffect struct{ Name string }
 
-// VisualEffect requests a named visual effect.
-type VisualEffect struct{ Name string }
+// VisualEffect requests a named visual effect: a word of the whole screen (shake, flash,
+// fade) or a reaction of a portrait; Cue holds the rest of a map form (ADR 0028).
+type VisualEffect struct {
+	Name string
+	Cue  data.EffectCue
+}
+
+// StandEffect brings a portrait onto the stage of the novel window or takes it off (ADR 0028).
+type StandEffect struct {
+	// Who is the actor (or the name), "" with None.
+	Who string
+	// Face is the picture under assets/ (the actor's face resolved), "" when leaving.
+	Face string
+	// At is where it stands, a fraction of the screen's width.
+	At float64
+	// Enter is fade or slide; Leave (fade or slide) takes it off; None takes everyone off.
+	Enter, Leave string
+	None         bool
+	// Default: no face was written (Face is the actor's own); a portrait already standing
+	// keeps its face.
+	Default bool
+}
 
 func (MoveEffect) isEffect()   {}
 func (MusicEffect) isEffect()  {}
@@ -67,6 +87,7 @@ func (MoodEffect) isEffect()   {}
 func (ImageEffect) isEffect()  {}
 func (SoundEffect) isEffect()  {}
 func (VisualEffect) isEffect() {}
+func (StandEffect) isEffect()  {}
 
 // Request is something the screen must show before the event goes on.
 type Request interface{ isRequest() }
@@ -126,7 +147,13 @@ type Battle struct {
 type Shop struct{ ID string }
 
 // Wait pauses.
-type Wait struct{ Seconds float64 }
+type Wait struct {
+	Seconds float64
+	// NoSkip holds even in skip mode (wait: {skip: false}).
+	NoSkip bool
+	// Sound waits for the end of that sound effect (sfx: {wait: true}) instead of Seconds.
+	Sound string
+}
 
 // Save opens the save screen.
 type Save struct{}
@@ -634,13 +661,18 @@ func (r *Runner) run(c *data.Command) Request {
 	case "call":
 		r.push(r.db.Events[c.Call].Do)
 	case "wait":
-		return Wait{Seconds: c.Wait}
+		return Wait{Seconds: c.Wait.Seconds, NoSkip: !c.Wait.Skippable()}
 	case "notice":
 		return Notice{Text: data.Render(c.Notice, env)}
 	case "sfx":
-		r.emit(SoundEffect{c.SFX})
+		r.emit(SoundEffect{c.SFX.Name})
+		if c.SFX.Wait {
+			return Wait{Sound: c.SFX.Name}
+		}
+	case "stand":
+		r.emit(r.stand(c.Stand))
 	case "effect":
-		r.emit(VisualEffect{c.Effect})
+		r.emit(VisualEffect{Name: c.Effect.Name, Cue: c.Effect})
 	case "exp":
 		n, err := c.Exp.Number(env)
 		r.logf(err)
@@ -779,6 +811,31 @@ func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
 		return Say{}, false
 	}
 	return out, true
+}
+
+// stand resolves a stand's face to its picture, as a line does.
+func (r *Runner) stand(s *data.Stand) StandEffect {
+	if s.None {
+		return StandEffect{None: true}
+	}
+	x, _ := s.At.X()
+	out := StandEffect{Who: s.Who, At: x, Enter: s.Enter, Leave: s.Leave, Default: s.Face == ""}
+	if s.Leave != "" {
+		return out
+	}
+	out.Face = s.Face
+	if a, ok := r.db.Actors[s.Who]; ok {
+		face := s.Face
+		if face == "" {
+			face = a.Face
+		}
+		outfit := ""
+		if loc := r.db.Locations[r.st.Location]; loc != nil {
+			outfit = loc.Outfit
+		}
+		out.Face = r.db.FacePicture(a, face, outfit)
+	}
+	return out
 }
 
 // asideBlocker answers whether the screen should not insert the event placed after a speaker (game.yaml asides) right now

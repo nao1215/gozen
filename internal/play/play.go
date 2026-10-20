@@ -319,6 +319,15 @@ type Game struct {
 	backRing    []backEvent
 	rollingBack bool
 
+	// Staging (ADR 0028, staging.go): the portraits stood by stand (castOn: the running
+	// event places them only as written), the shaken portraits, a long shake of the
+	// screen, and a fade through a color.
+	cast      []castFigure
+	castOn    bool
+	figShake  map[string]int
+	shakeFor  int
+	fadeColor *colorFade
+
 	walkGoal [3]int
 	lastView *ebiten.Image
 	freeze   *ebiten.Image
@@ -739,6 +748,7 @@ func (g *Game) Update() error {
 	}
 	g.shake = max(0, g.shake-1)
 	g.flash = max(0, g.flash-1)
+	g.stepStaging()
 	g.stepFanfare()
 	g.ageCG()
 	g.freezeT = max(0, g.freezeT-1)
@@ -862,6 +872,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		a := 1 - math.Abs(float64(g.fadeT)-30)/30
 		fill(screen, withAlpha(colorBlack, uint8(255*a)))
 	}
+	g.drawFadeColor(screen)
 	if g.opts.Video != nil {
 		if err := g.recordFrame(screen); err != nil {
 			g.failure = err
@@ -1087,6 +1098,7 @@ func (g *Game) startState() {
 	g.st.Calm = g.opts.Calm
 	g.backlog, g.logView = nil, nil
 	g.evCmds, g.evNoBack, g.evHist = nil, false, nil
+	g.clearCast()
 	if !g.rollingBack {
 		g.backRing = nil
 	}
@@ -1197,6 +1209,11 @@ func (g *Game) newPlace() scene {
 }
 
 func (g *Game) Music(c data.MusicCue) {
+	sound.PlaySong(c.Song, g.setMusic(c))
+}
+
+// setMusic makes a song the one asked for and returns its mood.
+func (g *Game) setMusic(c data.MusicCue) string {
 	g.songOverride = c.Song
 	mood := c.Mood
 	if mood == "" {
@@ -1204,7 +1221,7 @@ func (g *Game) Music(c data.MusicCue) {
 	}
 	g.moodOverride = ""
 	g.baseSong, g.baseMood = c.Song, mood
-	sound.PlaySong(c.Song, mood)
+	return mood
 }
 
 func (g *Game) Mood(m string) {
@@ -1391,6 +1408,7 @@ func (g *Game) pump() bool {
 	if g.req == nil {
 		if !g.events.Running() {
 			g.stopSkip("end")
+			g.clearCast()
 			if g.sides != nil || g.stage != [2]stageActor{} {
 				g.stageGen++
 			}
@@ -1409,7 +1427,7 @@ func (g *Game) pump() bool {
 		g.begin(g.req)
 		return true
 	}
-	switch g.req.(type) {
+	switch r := g.req.(type) {
 	case event.Say, event.Choice:
 		if done, answer := g.talk.update(g); done {
 			if answer >= 0 {
@@ -1427,7 +1445,7 @@ func (g *Game) pump() bool {
 		}
 	case event.Wait:
 		g.waitT--
-		if g.skipping {
+		if g.skipping && !r.NoSkip {
 			g.waitT = 0
 		}
 		if g.waitT <= 0 {
@@ -1488,6 +1506,9 @@ func (g *Game) begin(r event.Request) {
 		g.talk.ask(g, r)
 	case event.Wait:
 		g.waitT = int(r.Seconds * 60)
+		if r.Sound != "" {
+			g.waitT = soundTicks(r.Sound)
+		}
 	case event.Notice:
 		g.notices.add(r.Text)
 		done()
@@ -1723,7 +1744,9 @@ func (g *Game) Handle(e event.Effect) {
 		g.boundary()
 		g.Move(e.Location)
 	case event.MusicEffect:
-		g.Music(e.Cue)
+		g.music(e.Cue)
+	case event.StandEffect:
+		g.stand(e)
 	case event.MoodEffect:
 		g.Mood(e.Name)
 	case event.ImageEffect:
@@ -1731,7 +1754,7 @@ func (g *Game) Handle(e event.Effect) {
 	case event.SoundEffect:
 		g.SFX(e.Name)
 	case event.VisualEffect:
-		g.Effect(e.Name)
+		g.visual(e)
 	}
 }
 

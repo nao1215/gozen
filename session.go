@@ -485,6 +485,8 @@ func (s *Session) effect(e event.Effect) {
 		out = Effect{Kind: "sound", Name: e.Name}
 	case event.VisualEffect:
 		out = Effect{Kind: "visual", Name: e.Name}
+	case event.StandEffect:
+		out = Effect{Kind: "stand", Name: e.Who}
 	default:
 		return
 	}

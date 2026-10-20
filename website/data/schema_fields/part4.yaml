@@ -132,6 +132,8 @@ MusicCue:
   _: "A song and the mood it starts in, written as `song`, `song/mood`, or a map."
   song: "An ID of `songs` to play. Written alone as `song` or `song/mood`."
   mood: "The mood of a modular song to play, one of the song's `moods`."
+  fade: "In the `music` command, the seconds the song fades in, or out with `stop`. Needs schema version 4."
+  stop: "In the `music` command, stops the music (with no song or mood). Needs schema version 4."
 Passive:
   _: "A state that is put on an actor at the start of a battle while a condition holds."
   actor: "The ID of the actor (an ID of actors) who gets the state."

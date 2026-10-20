@@ -152,3 +152,18 @@ Start:
   items: "The starting items, as a map from item ID to count."
   location: "An ID of locations where the party starts."
   party: "The IDs of actors who start in the party."
+SFXCue:
+  _: "A sound effect, written as its name or a map (the map needs schema version 4)."
+  name: "The name of the sound effect."
+  wait: "Holds the event until the sound ends."
+Stand:
+  _: "A portrait brought onto the stage of the novel window or taken off; `none` takes everyone off. Needs schema version 4."
+  who: "The actor, or the name of a speaker whose picture is `face`."
+  face: "A face of the actor, or a picture path for anyone else. The default is the actor's face."
+  at: "Where it stands: `left`, `center`, `right` or a fraction of the screen's width. The default is the center."
+  enter: "How it comes in: `fade` (the default) or `slide`."
+  leave: "Takes it off: `fade` or `slide`."
+WaitCue:
+  _: "A pause, written as seconds or a map (the map needs schema version 4)."
+  seconds: "How many seconds to wait."
+  skip: "Whether skip mode passes the wait. The default is true."

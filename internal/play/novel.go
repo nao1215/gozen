@@ -226,7 +226,19 @@ func (t *talk) drawNovelStage(g *Game, dst *ebiten.Image) {
 		cs.Scale(v, v, v*1.1, 1)
 		return cs
 	}
-	figs := g.stageFigures(s.Face != "", big)
+	var figs []stageFigure
+	if g.castOn {
+		speaker := ""
+		if s.Face != "" {
+			speaker = speakerKey(s)
+		}
+		figs = g.castFigures(speaker)
+	} else {
+		figs = g.stageFigures(s.Face != "", big)
+		for i := range figs {
+			figs[i].x += g.figShakeX(figs[i].id)
+		}
+	}
 	g.traceStandFigures(figs)
 	for _, f := range figs {
 		g.drawStage(dst, f.face, f.x, f.alpha, f.flip, dim(f.dim))

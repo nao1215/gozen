@@ -49,7 +49,7 @@ var numericContracts = map[reflect.Type]map[string]numericContract{
 	reflect.TypeFor[Usage]():        {"hits": positive(1)},
 	reflect.TypeFor[ItemCount]():    {"count": nonnegative(1)},
 	reflect.TypeFor[Affect]():       {"turns": nonnegative(0)},
-	reflect.TypeFor[Command]():      {"wait": nonnegative(0)},
+	reflect.TypeFor[WaitCue]():      {"seconds": nonnegative(0)},
 	reflect.TypeFor[State]():        {"turns": nonnegative(0), "damage_rate": nonnegative(1), "restrict_chance": fraction(0)},
 	reflect.TypeFor[Effect]():       {"summon_max": positive(5)},
 	reflect.TypeFor[BattleCfg]():    {"tempo": positive(1), "auto_tempo": {fallback: 1, lower: 1, upper: math.Inf(1)}},
@@ -91,6 +91,9 @@ func walkNumberDefinitions(v reflect.Value, raw any, where string, visit func(re
 	switch v.Kind() { //nolint:exhaustive // Only schema container/scalar kinds need handling; other reflection kinds are intentionally ignored.
 	case reflect.Struct:
 		m := optional.Value[yaml.MapSlice](raw) // nil when the YAML is not a mapping
+		if m == nil && v.Type() == reflect.TypeFor[WaitCue]() {
+			return // the seconds written as a number (the map form has its own contract)
+		}
 		visit(v, m, where)
 		for _, field := range yamlFields(v.Type()) {
 			if field.inline {

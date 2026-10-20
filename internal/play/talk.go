@@ -56,7 +56,11 @@ func (t *talk) open(g *Game, s event.Say) {
 	t.setPage(0)
 	if s.Face != "" {
 		g.pics.get(s.Face)
-		g.onStage(s)
+		if g.castOn {
+			g.castSays(s)
+		} else {
+			g.onStage(s)
+		}
 		g.openPuppet(s, still)
 	}
 }

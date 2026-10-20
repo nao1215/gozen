@@ -48,6 +48,8 @@ type checker struct {
 	// chose.<id> read by expressions, for checking each read has its choice.
 	choiceIDs  map[string]string
 	choseReads [][2]string
+	// reactions are the words of the reactions of moving portraits (reactionNames).
+	reactions []string
 }
 
 // errorf records a problem with its diagnostic code (ADR 0024). A few checks
@@ -899,6 +901,9 @@ func (c *checker) galleryKeys(g Gallery) {
 }
 
 func (c *checker) music(where string, m MusicCue) {
+	if m.Fade != 0 || m.Stop {
+		c.errorf(diag.Shape, where, "fade and stop go only in the music command")
+	}
 	if m.Song == "" {
 		return
 	}
@@ -1209,7 +1214,13 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			c.ref(w+".move", "location", cmd.Move, ok)
 			c.arrival(w, cmd.Move, cmd.At, cmd.Facing)
 		case "music":
-			c.music(w+".music", *cmd.Music)
+			c.musicCommand(w+".music", *cmd.Music)
+		case "stand":
+			c.stand(w+".stand", cmd.Stand)
+		case "wait":
+			c.waitCue(w+".wait", cmd.Wait)
+		case "sfx":
+			c.sfxCue(w+".sfx", cmd.SFX)
 		case "image":
 			c.picture(w+".image", cmd.Image.Picture())
 			if cmd.Image.Over.File != "" {
@@ -1302,10 +1313,8 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 				c.errorf(diag.UnknownReference, w+".open_wall", "%q is not a tile of any dungeon (one character in tiles)", cmd.OpenWall)
 			}
 		case "effect":
-			if cmd.Effect != "shake" && cmd.Effect != "flash" && cmd.Effect != "fade" {
-				c.errorf(diag.NotAWord, w+".effect", "want shake, flash or fade, not %q", cmd.Effect)
-			}
-		case "mood", "wait", "sfx", "end", "clear", "save", "done", "ran", "cross", "reach":
+			c.effectCue(w+".effect", cmd.Effect)
+		case "mood", "end", "clear", "save", "done", "ran", "cross", "reach":
 			// Commands without extra reference or expression checks are listed explicitly too, so missed registrations are detected.
 		default:
 			c.errorf(diag.Shape, w, "command %q has no semantic checker", verb)

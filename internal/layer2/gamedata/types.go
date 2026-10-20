@@ -701,6 +701,11 @@ func (c CG) FadeTicks() int {
 type MusicCue struct {
 	Song string `yaml:"song"`
 	Mood string `yaml:"mood"`
+	// Fade is the seconds the music command fades in a song, or out with Stop
+	// (schema_version 4, ADR 0028).
+	Fade float64 `yaml:"fade"`
+	// Stop stops the music (the music command only).
+	Stop bool `yaml:"stop"`
 }
 
 // UnmarshalYAML reads "song", "song/mood" or a map.

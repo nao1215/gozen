@@ -258,6 +258,8 @@ ui:
 
 The band has buttons to roll back a line, for the backlog, auto, skip, saving and loading, hiding the window and the settings. Rolling back (Q, or the wheel) takes the state back with the line, and a save made in the middle of a scene goes on at its line ([the recipe](/cookbook/#let-the-player-roll-back-and-save-in-a-scene)). The player can also hold Ctrl to pass the lines already read, press N to turn skip mode on (it stays on until a line not read, a choice, a battle or the end of the events), and press Page Down, or the "Skip scene" button that shows when every line of the running event was read, to go at once to the next choice or line not read. The setting "Text to skip" makes skipping pass lines not read too.
 
+Portraits come and go with the speakers unless an event places them with `stand` ([the recipe](/cookbook/#stage-portraits-and-effects)).
+
 A line counts as read by its source: the speaker and the text as written, before `{expressions}` are filled in. The read lines are kept in `read.json` beside the saves, so they last across saves and new games. Runs for testing (`--script`, `--start`, autoplay) do not touch them unless you pass `--save-dir`. In a trace, every `say` line says whether it was read, and `gozen play trace --check` fails when skipping passed a line that was not.
 
 ## Saves

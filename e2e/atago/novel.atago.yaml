@@ -112,3 +112,56 @@ scenarios:
       exit_code: 0
       stdout:
         contains: 'lesson: 2 battles'
+- name: check reports the words of staging with their codes
+  steps:
+  - fixture:
+      file: staged/game.yaml
+      content: "schema_version: 4\nid: staged\nstart: {location: room, party: [reader]}\nui: {message: novel}\n"
+  - fixture:
+      file: staged/assets/fig.png
+      content: "a file"
+  - fixture:
+      file: staged/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {}}
+        events:
+          scene:
+            do:
+              - stand: {who: Lamplighter, face: fig.png, at: up}
+              - effect: wobble
+              - wait: {seconds: -1}
+              - music: {stop: true, fade: 1}
+  - run:
+      command: gozen check --format json --only structure staged
+  - assert:
+      exit_code: 1
+      stdout:
+        contains:
+        - '"path": "events.scene.do[0].stand.at"'
+        - '"path": "events.scene.do[1].effect"'
+        - '"path": "events.scene.do[2].wait"'
+        - '"code": "GZN1107"'
+        - '"code": "GZN1106"'
+        - 'or a reaction'
+- name: the words of staging at schema_version 3 ask for version 4
+  steps:
+  - fixture:
+      file: old3/game.yaml
+      content: "schema_version: 3\nid: old3\nstart: {location: room, party: [reader]}\n"
+  - fixture:
+      file: old3/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {}}
+        events: {scene: {do: [{stand: none}, {wait: {seconds: 1, skip: false}}]}}
+  - run:
+      command: gozen check --only structure old3
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: ['stand needs schema_version: 4', 'wait as a map needs schema_version: 4']

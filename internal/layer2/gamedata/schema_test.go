@@ -185,8 +185,11 @@ func (b *schemaBuilder) node(t reflect.Type) schemaNode {
 			n := schemaNode{"type": "object", "properties": props, "additionalProperties": false}
 			b.constraints(t, n, props)
 			switch t {
-			case reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble]():
+			case reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
+				reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue]():
 				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "string"}, n}}
+			case reflect.TypeFor[WaitCue]():
+				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "number"}, n}}
 			case reflect.TypeFor[Token](): // a map piece can also be written as the single word doll
 				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "string", "enum": []string{"doll"}}, n}}
 			default:
@@ -555,8 +558,11 @@ func schemaTypeLabel(t reflect.Type) string {
 	case reflect.Struct:
 		result := "[" + schemaName(t) + "](#" + strings.ToLower(schemaName(t)) + ")"
 		switch t {
-		case reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble]():
+		case reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
+			reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue]():
 			result += " または文字列"
+		case reflect.TypeFor[WaitCue]():
+			result += " または数値"
 		case reflect.TypeFor[Token]():
 			result += " または doll"
 		}

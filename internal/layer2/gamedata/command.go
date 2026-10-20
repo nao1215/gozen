@@ -78,23 +78,26 @@ type Command struct {
 	Image   *CG       `yaml:"image" command:"verb"`
 	Shop    string    `yaml:"shop" command:"verb"`
 	Call    string    `yaml:"call" command:"verb"`
-	Wait    float64   `yaml:"wait" command:"verb"`
+	Wait    WaitCue   `yaml:"wait" command:"verb"`
 	waitSet bool      // waitSet bool // in spec version 1, a wait time of 0 also counts as a command.
 	// Notice is a short message shown at the top of the screen (no dialogue window, and play continues without stopping; narration-only notices such as the pain of a floor trap).
 	Notice string `yaml:"notice" command:"verb"`
-	SFX    string `yaml:"sfx" command:"verb"`
+	SFX    SFXCue `yaml:"sfx" command:"verb"`
 	Exp    Expr   `yaml:"exp" command:"verb"`
 	Learn  *Learn `yaml:"learn" command:"verb"`
 	// ResetTree gives back the skill points put into the skill tree of an actor (an id, or
 	// "all" for everyone who has joined): to raise it again another way.
-	ResetTree string `yaml:"reset_tree" command:"verb"`
-	Effect    string `yaml:"effect" command:"verb"`
-	End       bool   `yaml:"end" command:"verb"`
-	Clear     bool   `yaml:"clear" command:"verb"`
-	Save      bool   `yaml:"save" command:"verb"`
-	Open      string `yaml:"open" command:"verb"`
-	Dive      string `yaml:"dive" command:"verb"`
-	Floor     Expr   `yaml:"floor" command:"dive"`
+	ResetTree string    `yaml:"reset_tree" command:"verb"`
+	Effect    EffectCue `yaml:"effect" command:"verb"`
+	// Stand brings a portrait onto the stage of the novel window or takes it off
+	// (schema_version 4, ADR 0028).
+	Stand *Stand `yaml:"stand" command:"verb"`
+	End   bool   `yaml:"end" command:"verb"`
+	Clear bool   `yaml:"clear" command:"verb"`
+	Save  bool   `yaml:"save" command:"verb"`
+	Open  string `yaml:"open" command:"verb"`
+	Dive  string `yaml:"dive" command:"verb"`
+	Floor Expr   `yaml:"floor" command:"dive"`
 	// OpenWall turns the wall next to the cell the player is standing on in the dungeon (the facing one first, otherwise the nearest wall facing a floor)
 	// into the tile of that character and faces it. It persists per floor and in saves (e.g. stairs that appear at 100% exploration).
 	OpenWall string `yaml:"open_wall" command:"verb"`
@@ -320,7 +323,7 @@ func (c *Command) Verb() (string, error) {
 	for _, field := range commandFields {
 		set := !value.Field(field.index).IsZero()
 		if field.name == "wait" {
-			set = c.Wait > 0 || c.waitSet
+			set = c.Wait.Seconds > 0 || c.waitSet || c.Wait.mapped
 		}
 		if !set && !slices.Contains(c.given, field.name) {
 			continue

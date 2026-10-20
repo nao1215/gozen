@@ -38,7 +38,8 @@ const (
 )
 
 // Effect is an immediate effect: Kind move (Name the location), music (the song), mood,
-// image (the picture's file; "" hides it), sound or visual (the name).
+// image (the picture's file; "" hides it), sound or visual (the name), or stand (the actor
+// brought onto or taken off the stage of the novel window; "" for everyone off).
 type Effect struct {
 	Kind, Name string
 	// Faces: the image keeps the speakers' portraits shown (image's faces).

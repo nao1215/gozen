@@ -12,7 +12,7 @@ sections:
   - title: Dungeons
     types: [Dungeon, DungeonLook, Tile, Generate, FloorPlan, Put]
   - title: Events and commands
-    types: [Event, Command, Say, ChoiceOption, CG, Aside, Target, Require, Grant]
+    types: [Event, Command, Say, ChoiceOption, CG, Stand, EffectCue, WaitCue, SFXCue, Aside, Target, Require, Grant]
   - title: Party, growth and equipment
     types: [Actor, Class, Learn, Learning, LevelScale, TreeNode, FaceRule, Slot, EquipItem, EquipStones, StoneSet, Fusion, Meter, Passive]
   - title: Items, skills and states

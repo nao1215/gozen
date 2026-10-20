@@ -19,6 +19,7 @@ The recipes refer to a few IDs they do not define: the actor and class `walker`,
 | [Write talk with choices and branches](#write-talk-with-choices-and-branches) | `people`, `say`, `choice`, `if` |
 | [Remember things with flags and conditions](#remember-things-with-flags-and-conditions) | `set`, `flag.*` and `var.*`, `when`, `trigger: auto` |
 | [Let the player roll back and save in a scene](#let-the-player-roll-back-and-save-in-a-scene) | `ui.rollback`, a choice's `id`, `chose.*` |
+| [Stage portraits and effects](#stage-portraits-and-effects) | `stand`, `effect`, `music` fades, `wait` and `sfx` that hold |
 | [Add a companion who joins](#add-a-companion-who-joins) | `actors`, `join`, `leave` |
 | [Grow by level and learn skills](#grow-by-level-and-learn-skills) | class `stats` formulas, `exp_for`, `skills` by level |
 | [Make items and equipment](#make-items-and-equipment) | item `use`, `kind`, `slot`, `stats`, class `equip` |
@@ -224,6 +225,42 @@ events:
 ```
 
 `gozen.Restore` reads a save made in the middle of an event the same way, so a test can check that a save made at any line goes on at that line ([the Go API](/go-api/)). Reference: [UIStyle](/schema/#uistyle), [Command](/schema/#command) (`id`).
+
+## Stage portraits and effects
+
+In the novel window, portraits come and go with the speakers by themselves. An event that uses `stand` places them as written instead: who stands where, how they come in (`fade` or `slide`) and when they leave. A line's `face` still changes the expression of a portrait standing. `effect` shakes one portrait or the screen, plays a reaction of a moving portrait, or fades the screen through a color; `music` fades in and out; a `wait` with `skip: false` holds even in skip mode, and a `sfx` with `wait: true` holds until the sound ends.
+
+<!-- verify: load group=staging as=game.yaml -->
+```yaml
+# game.yaml
+schema_version: 4
+ui:
+  message: novel
+```
+
+<!-- verify: load group=staging -->
+```yaml
+music:
+  songs:
+    rain: {file: rain.ogg}
+events:
+  meeting:
+    do:
+      - stand: {who: Keeper, face: keeper.png, at: left}
+      - say: {who: Keeper, face: keeper.png, text: You came back.}
+      - stand: {who: Guard, face: guard.png, at: right, enter: slide}
+      - effect: {name: shake, who: Guard, seconds: 0.4}
+      - say: {who: Guard, face: guard.png, text: Stand where you are.}
+      - music: {song: rain, fade: 2}
+      - wait: {seconds: 0.8, skip: false}
+      - sfx: {name: door, wait: true}
+      - stand: {who: Guard, leave: fade}
+      - effect: {name: fade, color: "#000000", seconds: 1, hold: 0.5}
+      - stand: none
+      - music: {stop: true, fade: 3}
+```
+
+`at` is `left`, `center`, `right` or a fraction of the screen's width. A name that is not an actor needs `face`, a picture under `assets/`; an actor's `face` is one of its faces. The headless session sees `stand` as an effect (`Effect.Kind` `stand`, with the actor), so a test can check who stands in a scene. Every map form needs `schema_version: 4`; the old string forms work as before. Reference: [Stand](/schema/#stand), [EffectCue](/schema/#effectcue), [WaitCue](/schema/#waitcue), [SFXCue](/schema/#sfxcue), [MusicCue](/schema/#musiccue).
 
 ## Add a companion who joins
 

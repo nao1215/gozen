@@ -246,6 +246,28 @@ func Stop() {
 	}
 }
 
+// PlaySongFade plays a song that fades in over seconds while the one playing fades out
+// over the same time (the music command's fade; ADR 0028).
+func PlaySongFade(song, mood string, seconds float64) {
+	if m := current(); m != nil {
+		m.PlaySongFade(song, mood, seconds)
+	}
+}
+
+// StopFade stops the music, fading out over seconds.
+func StopFade(seconds float64) {
+	if m := current(); m != nil {
+		m.StopFade(seconds)
+	}
+}
+
+// EffectSeconds is how long a sound effect lasts (0 when there is none of that name).
+func EffectSeconds(name string) float64 {
+	mu.Lock()
+	defer mu.Unlock()
+	return float64(len(effects[name])/8) / SampleRate
+}
+
 func Jump(mood string) {
 	if m := current(); m != nil {
 		m.Jump(mood)
@@ -386,6 +408,10 @@ type Modular struct {
 	onceSong string
 	pos      int
 	tails    []tail
+	// outFrames is the fade of the next song that ends (0: songFade); fadeIn and inLeft
+	// fade the next song in (inPending until it starts).
+	outFrames, fadeIn, inLeft int
+	inPending                 bool
 }
 
 func NewModular(first string, oneShot []string) *Modular {
@@ -577,6 +603,25 @@ func (m *Modular) PlaySong(song, mood string) {
 	m.fetch(song, mood)
 }
 
+// PlaySongFade plays a song that fades in over seconds, fading the one playing out.
+func (m *Modular) PlaySongFade(song, mood string, seconds float64) {
+	n := max(0, int(seconds*SampleRate))
+	m.mu.Lock()
+	if song != m.song && n > 0 {
+		m.outFrames, m.fadeIn, m.inPending = n, n, true
+	}
+	m.mu.Unlock()
+	m.PlaySong(song, mood)
+}
+
+// StopFade stops the music, fading out over seconds.
+func (m *Modular) StopFade(seconds float64) {
+	m.mu.Lock()
+	m.outFrames = max(0, int(seconds*SampleRate))
+	m.mu.Unlock()
+	m.Stop()
+}
+
 func (m *Modular) PlayOnce(song, mood string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -673,6 +718,11 @@ func (m *Modular) Read(p []byte) (int, error) {
 			if pcm := s.mods[m.mood(s, m.cur)]; pcm != nil {
 				if i := 2 * m.pos; i+1 < pcm.ready() {
 					l, r = float32(pcm.data[i])/32768, float32(pcm.data[i+1])/32768
+					if m.inLeft > 0 {
+						g := 1 - float32(m.inLeft)/float32(m.fadeIn)
+						l, r = l*g, r*g
+						m.inLeft--
+					}
 				} else if !pcm.done.Load() {
 					next = false
 				}
@@ -712,18 +762,27 @@ func (m *Modular) changeSong() {
 	m.cur = m.mood(m.songs[m.song], m.want)
 	m.pos = 0
 	m.jump = false
+	if m.inPending {
+		m.inLeft, m.inPending = m.fadeIn, false
+	} else {
+		m.inLeft = 0
+	}
 	m.trim()
 }
 
 func (m *Modular) fadeOut() {
+	n := songFade
+	if m.outFrames > 0 {
+		n, m.outFrames = m.outFrames, 0
+	}
 	if s := m.songs[m.song]; s != nil {
 		if pcm := s.mods[m.mood(s, m.cur)]; pcm != nil && 2*m.pos < pcm.size() {
-			m.tails = append(m.tails, tail{pcm: pcm, pos: 2 * m.pos, fade: songFade, left: songFade})
+			m.tails = append(m.tails, tail{pcm: pcm, pos: 2 * m.pos, fade: n, left: n})
 		}
 	}
 	for i := range m.tails {
 		if m.tails[i].fade == 0 {
-			m.tails[i].fade, m.tails[i].left = songFade, songFade
+			m.tails[i].fade, m.tails[i].left = n, n
 		}
 	}
 }

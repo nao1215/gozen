@@ -69,7 +69,7 @@ type Path struct {
 // Step is one occurrence on a path (Kind is say, image, music, move, choice, notice or sfx).
 type Step struct {
 	Kind  string
-	Who   string // say: speaker name (empty for narration)
+	Who   string // say: speaker name (empty for narration). stand: the actor ("" for everyone off)
 	Actor string // say: the speaker's actor ID (empty if not a party member)
 	Face  string // say: face image
 	Text  string // say, notice, choice: the text (for choice, the chosen item). sfx: the sound effect name
@@ -383,5 +383,7 @@ func (e *explorer) handle(eff event.Effect) {
 		e.sFX(eff.Name)
 	case event.VisualEffect:
 		e.effect(eff.Name)
+	case event.StandEffect:
+		e.p.Steps = append(e.p.Steps, Step{Kind: "stand", Who: eff.Who, Face: eff.Face})
 	}
 }

@@ -24,7 +24,7 @@ var commandExamples = map[string]string{
 	"move": `move: deep`, "music": `music: ""`, "mood": `mood: calm`, "image": `image: ""`,
 	"shop": `shop: store`, "call": `call: sub`, "wait": `wait: 1`, "notice": `notice: hi`,
 	"sfx": `sfx: decide`, "exp": `exp: 0`, "learn": `learn: {actor: scout, skill: fire}`,
-	"reset_tree": `reset_tree: all`, "effect": `effect: fade`, "end": `end: true`,
+	"reset_tree": `reset_tree: all`, "effect": `effect: fade`, "stand": `stand: none`, "end": `end: true`,
 	"clear": `clear: true`, "save": `save: true`, "open": `open: skills`,
 	"dive": `dive: deep`, "open_wall": `open_wall: S`,
 	"stone_suggest": `stone_suggest: offer`, "stone_apply": `stone_apply: offer`,
@@ -79,10 +79,10 @@ func TestCommandFieldMatrix(t *testing.T) {
 		verb, err := cmd.Verb()
 		db.Events["matrix"] = &data.Event{Do: []data.Command{cmd}}
 		errs := db.Check()
-		if slices.Contains(data.NewVerbs, wantVerb) { // a spec version 2 command yields only a version error under version 1 and earlier
+		if slices.Contains(data.NewVerbs, wantVerb) || wantVerb == "stand" { // a spec version 2 (stand: 4) command yields only a version error in older versions
 			var rest []error
 			for _, e := range errs {
-				if !strings.Contains(e.Error(), "needs schema_version: 2") {
+				if !strings.Contains(e.Error(), "needs schema_version: 2") && !strings.Contains(e.Error(), "stand needs schema_version: 4") {
 					rest = append(rest, e)
 				}
 			}

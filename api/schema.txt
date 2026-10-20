@@ -130,6 +130,7 @@ github.com/nao1215/gozen/schema field Command.Say
 github.com/nao1215/gozen/schema field Command.Sell
 github.com/nao1215/gozen/schema field Command.SetV
 github.com/nao1215/gozen/schema field Command.Shop
+github.com/nao1215/gozen/schema field Command.Stand
 github.com/nao1215/gozen/schema field Command.Step
 github.com/nao1215/gozen/schema field Command.StoneApply
 github.com/nao1215/gozen/schema field Command.StoneChoose
@@ -371,8 +372,10 @@ github.com/nao1215/gozen/schema field Music.OneShot
 github.com/nao1215/gozen/schema field Music.Rules
 github.com/nao1215/gozen/schema field Music.Songs
 github.com/nao1215/gozen/schema field Music.Volume
+github.com/nao1215/gozen/schema field MusicCue.Fade
 github.com/nao1215/gozen/schema field MusicCue.Mood
 github.com/nao1215/gozen/schema field MusicCue.Song
+github.com/nao1215/gozen/schema field MusicCue.Stop
 github.com/nao1215/gozen/schema field Person.Bubbles
 github.com/nao1215/gozen/schema field Person.ID
 github.com/nao1215/gozen/schema field Person.Image

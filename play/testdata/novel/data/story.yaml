@@ -13,3 +13,9 @@ events:
           - {label: Wait, do: [{say: "You wait."}]}
           - {label: Go, do: [{say: "You go."}]}
       - say: "The night goes on."
+  staged:
+    do:
+      - stand: {who: Lamplighter, face: fig.png, at: left}
+      - say: {who: Lamplighter, face: fig.png, text: "Evening."}
+      - stand: {who: Lamplighter, leave: fade}
+      - say: "Gone."

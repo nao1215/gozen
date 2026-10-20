@@ -52,8 +52,14 @@ func (doc *sourceDocument) definitionShape(raw any, typ reflect.Type, where stri
 		return doc.definitionShape(raw, reflect.TypeFor[[]Rule](), where)
 	}
 	switch typ {
-	case reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](), reflect.TypeFor[Token]():
+	case reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](), reflect.TypeFor[Token](),
+		reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue]():
 		if _, ok := raw.(string); ok {
+			return nil
+		}
+	case reflect.TypeFor[WaitCue](): // seconds, or a map (schema_version 4)
+		switch raw.(type) {
+		case uint64, int64, int, float64:
 			return nil
 		}
 	}

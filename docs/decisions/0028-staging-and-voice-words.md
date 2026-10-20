@@ -1,6 +1,6 @@
 # ADR 0028: The words of staging and voice
 
-Status: Accepted (2026-10-21). The implementation is the stages "Staging" and "Voice" under "Plan". Home: `internal/layer2/gamedata` (the words and the checks), `internal/event` (the effects), `internal/play` and `internal/layer5/sound` (the screen and the sound).
+Status: Accepted (2026-10-21). Staging (stage 3) is done; voice is the stage "Voice" under "Plan". Home: `internal/layer2/gamedata` (the words and the checks), `internal/event` (the effects), `internal/play` and `internal/layer5/sound` (the screen and the sound).
 
 ## Users and problem
 
@@ -34,6 +34,17 @@ Lines get no inline tags (`{w=0.5}` and the like): `{}` is already the expressio
 
 `gozen check` checks that `stand.who` is an actor (and its face exists), the words of `at` and `effect`, `music.fade >= 0`, that every `say.voice` file and `voices` folder exists with a known extension, and warns of the lines of a voiced actor that have no voice (`--format json` lists them with their paths). `gozen play trace --check` checks that a voice in the trace exists and that none played in skip mode.
 
+### As built (staging)
+
+- `stand` is drawn in the novel window only (the `box` window shows the speaker's portrait by each line, as before). The first `stand` of an event lets the portraits placed by the speakers leave, and the event's portraits are cleared when its events end. A stand that moves a portrait without `face` keeps its expression.
+- `stand.at` is a word or a fraction; a name that is not an actor needs `face` the first time it stands (not checked, since a later stand may only move it).
+- `effect` words: `shake`, `flash` and `fade` stay the screen's, and their string forms look as before. A reaction is one of the puppet kinds (`hop`, `shrink`, `nod`, `tilt`, `freeze`) or a reaction a moving portrait's file names; `shake` of one portrait is `{name: shake, who}`. A reaction on a portrait that does not move does nothing.
+- A fade with a map goes to its color over `seconds`, stays `hold`, and comes back over `seconds`; it does not stop the event (a `wait` does).
+- `music` `fade` crossfades the song asked for with the one playing, and `stop` fades out; both are words of the music command only (`gozen check` refuses them in a place's music).
+- `sfx` `wait: true` is the request `wait` for the sound's length; `wait` keeps `skip: false` in the request, and skip mode holds there.
+- None of these is a boundary of rolling back ([ADR 0025](0025-replay-to-roll-back-skip-and-resume.md)): the replay plays them again quietly.
+- Not done: the warning of `stand` and `say.side` in one event.
+
 ## Alternatives
 
 1. Several verbs (`show`, `hide`, `move`). More to learn for the same work. Not chosen.
@@ -43,5 +54,5 @@ Lines get no inline tags (`{w=0.5}` and the like): `{}` is already the expressio
 
 | Stage | Content |
 | --- | --- |
-| 3 | `stand`, the map forms of `effect`, `music`, `wait` and `sfx` |
+| 3 | `stand`, the map forms of `effect`, `music`, `wait` and `sfx` (done) |
 | 4 | `say.voice`, `actors.<id>.voices`, `ui.voice`, the volumes, the checks and the trace |

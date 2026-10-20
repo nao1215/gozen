@@ -2428,6 +2428,15 @@
         {
           "additionalProperties": false,
           "properties": {
+            "stand": {}
+          },
+          "required": [
+            "stand"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "end": {}
           },
           "required": [
@@ -2774,17 +2783,17 @@
           "x-type": "string"
         },
         "effect": {
-          "description": "Plays a visual effect on screen: `shake`, `flash` or `fade`.",
-          "type": "string",
+          "$ref": "#/$defs/EffectCue",
+          "description": "Plays a visual effect: `shake`, `flash` or `fade` of the screen, or a reaction of a moving portrait (`hop`, `shrink`, `nod`, `tilt`, `freeze` or one its file names; version 4). A map (version 4) adds `who`, `seconds`, `color` and `hold`.",
           "x-contract": {
-            "default": "empty string",
-            "legacy_default": "empty string",
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
             "zero": "-",
             "required": "exactly one verb per command",
             "reference": "-",
             "version": "0, 1, 2"
           },
-          "x-type": "string"
+          "x-type": "[EffectCue](#effectcue) or string"
         },
         "else": {
           "description": "With `if`, the commands that run when the condition does not hold.",
@@ -3335,17 +3344,17 @@
           "x-type": "string → expression"
         },
         "sfx": {
-          "description": "Plays a sound effect by name.",
-          "type": "string",
+          "$ref": "#/$defs/SFXCue",
+          "description": "Plays a sound effect by name. A map (version 4) with `wait: true` holds the event until the sound ends.",
           "x-contract": {
-            "default": "empty string",
-            "legacy_default": "empty string",
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
             "zero": "-",
             "required": "exactly one verb per command",
             "reference": "-",
             "version": "0, 1, 2"
           },
-          "x-type": "string"
+          "x-type": "[SFXCue](#sfxcue) or string"
         },
         "shop": {
           "description": "Opens a shop, an ID of shops.",
@@ -3398,6 +3407,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "stand": {
+          "$ref": "#/$defs/Stand",
+          "description": "Brings a portrait onto the stage of the novel window or takes it off: `none`, or a map with `who`, `face`, `at`, `enter` or `leave`. An event that uses it places its portraits only as written; needs schema version 4.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Stand](#stand) or string"
         },
         "step": {
           "description": "Walks the given number of steps forward in a dungeon. Floor traps and battles happen on every step.",
@@ -3549,17 +3571,17 @@
           "x-type": "string"
         },
         "wait": {
-          "description": "Pauses for the given number of seconds.",
-          "type": "number",
+          "$ref": "#/$defs/WaitCue",
+          "description": "Pauses for the given number of seconds. A map (version 4) with `skip: false` holds even in skip mode.",
           "x-contract": {
-            "default": "0",
-            "legacy_default": "0",
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
             "zero": "v0 rejects it as no verb; v1 goes on without waiting",
             "required": "exactly one verb per command",
             "reference": "-",
-            "version": "0, 1, 2 (omitting it and writing 0 differ in v0)"
+            "version": "0, 1, 2"
           },
-          "x-type": "number"
+          "x-type": "[WaitCue](#waitcue) or number"
         },
         "walk": {
           "description": "Walks the shortest path in a dungeon to the tile of the given map character.",
@@ -4832,6 +4854,86 @@
         }
       },
       "type": "object"
+    },
+    "EffectCue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "color": {
+              "description": "With `fade`, the color the screen goes to. The default is black.",
+              "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+              "type": "string",
+              "x-contract": {
+                "default": "no color (the default of where it is drawn)",
+                "legacy_default": "no color (the default of where it is drawn)",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "color string"
+            },
+            "hold": {
+              "description": "With `fade`, how many seconds the screen stays on the color.",
+              "type": "number",
+              "x-contract": {
+                "default": "0",
+                "legacy_default": "0",
+                "zero": "0 is kept",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "number"
+            },
+            "name": {
+              "description": "The effect: `shake`, `flash`, `fade`, or a reaction of a moving portrait.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            },
+            "seconds": {
+              "description": "How long the effect takes. The default is the effect's own.",
+              "type": "number",
+              "x-contract": {
+                "default": "0",
+                "legacy_default": "0",
+                "zero": "0 is kept",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "number"
+            },
+            "who": {
+              "description": "With `shake`, the actor (or the name of a speaker stood with a picture) whose portrait shakes instead of the screen; with a reaction, the actor who plays it. The default is the last speaker.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            }
+          },
+          "type": "object"
+        }
+      ],
+      "description": "A visual effect, written as a word or a map (the map needs schema version 4)."
     },
     "Encounter": {
       "additionalProperties": false,
@@ -8387,6 +8489,19 @@
         {
           "additionalProperties": false,
           "properties": {
+            "fade": {
+              "description": "In the `music` command, the seconds the song fades in, or out with `stop`. Needs schema version 4.",
+              "type": "number",
+              "x-contract": {
+                "default": "0",
+                "legacy_default": "0",
+                "zero": "0 is kept",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "number"
+            },
             "mood": {
               "description": "The mood of a modular song to play, one of the song's `moods`.",
               "type": "string",
@@ -8412,6 +8527,19 @@
                 "version": "0, 1, 2"
               },
               "x-type": "string"
+            },
+            "stop": {
+              "description": "In the `music` command, stops the music (with no song or mood). Needs schema version 4.",
+              "type": "boolean",
+              "x-contract": {
+                "default": "false",
+                "legacy_default": "false",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "boolean"
             }
           },
           "type": "object"
@@ -9352,6 +9480,46 @@
         }
       },
       "type": "object"
+    },
+    "SFXCue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "description": "The name of the sound effect.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            },
+            "wait": {
+              "description": "Holds the event until the sound ends.",
+              "type": "boolean",
+              "x-contract": {
+                "default": "false",
+                "legacy_default": "false",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "boolean"
+            }
+          },
+          "type": "object"
+        }
+      ],
+      "description": "A sound effect, written as its name or a map (the map needs schema version 4)."
     },
     "Say": {
       "anyOf": [
@@ -10568,6 +10736,85 @@
         }
       },
       "type": "object"
+    },
+    "Stand": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "at": {
+              "description": "Where it stands: `left`, `center`, `right` or a fraction of the screen's width. The default is the center.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            },
+            "enter": {
+              "description": "How it comes in: `fade` (the default) or `slide`.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            },
+            "face": {
+              "description": "A face of the actor, or a picture path for anyone else. The default is the actor's face.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            },
+            "leave": {
+              "description": "Takes it off: `fade` or `slide`.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            },
+            "who": {
+              "description": "The actor, or the name of a speaker whose picture is `face`.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            }
+          },
+          "type": "object"
+        }
+      ],
+      "description": "A portrait brought onto the stage of the novel window or taken off; `none` takes everyone off. Needs schema version 4."
     },
     "Start": {
       "additionalProperties": false,
@@ -13522,6 +13769,49 @@
         }
       },
       "type": "object"
+    },
+    "WaitCue": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "seconds": {
+              "description": "How many seconds to wait.",
+              "type": "number",
+              "x-contract": {
+                "default": "0",
+                "legacy_default": "0",
+                "zero": "v1 keeps 0; v0 has per-field rules",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2 (omitting it and writing 0 differ in v0)"
+              },
+              "x-type": "number"
+            },
+            "skip": {
+              "description": "Whether skip mode passes the wait. The default is true.",
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "x-contract": {
+                "default": "nil; nothing is defined",
+                "legacy_default": "nil; nothing is defined",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "boolean"
+            }
+          },
+          "type": "object"
+        }
+      ],
+      "description": "A pause, written as seconds or a map (the map needs schema version 4)."
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
