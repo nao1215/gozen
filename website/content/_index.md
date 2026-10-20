@@ -6,7 +6,9 @@ Gozen is a 2D RPG framework for Go and [Ebitengine](https://ebitengine.org/). Yo
 
 The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan, an ebiten gozen (御膳) is a set meal on one tray: shrimp tempura with soba, small side dishes, and a sweet such as dango. Gozen is that tray for Ebitengine: the engine served with everything an RPG needs. The name also starts with Go.
 
-![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](/images/go-zen.gif)
+| RPG: [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) | Novel: [After the Pass](https://github.com/nao1215/gozen/tree/main/examples/novel) |
+|:--|:--|
+| ![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](/images/go-zen.gif) | ![After the Pass, the novel sample: a line, a choice, Back over the choice, and Skip to the first line not read](/images/novel.gif) |
 
 ## Try it in 30 seconds
 
@@ -30,7 +32,7 @@ cd gozen/examples/go-zen
 go run . --mute
 ```
 
-Or [play Go Zen in the browser](/play/).
+Or [play Go Zen and After the Pass in the browser](/play/).
 
 On Linux the window needs X11 and OpenGL; see [Install](/install/).
 
@@ -71,6 +73,18 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 | Skill tree | |
 | ![Maren's skill tree with Ink Burst chosen](/images/go-zen-tree.jpg) | |
 
+### Novel games
+
+`ui.message: novel` makes a visual novel. All from [After the Pass](https://github.com/nao1215/gozen/tree/main/examples/novel), the novel sample, at 1920x1080 ([Novel games](/writing-a-game/#novel-games)).
+
+| Roll back (Q, wheel) | Skip to the line not read (N) |
+|:--|:--|
+| ![Back goes over two lines and a choice, with the state](/images/novel-back.gif) | ![the option taken again, then Skip stops at the first line not read](/images/novel-skip.gif) |
+| Choices and flags (F8) | State (F8) |
+| ![the flags each event sets and reads](/images/novel-flags.jpg) | ![flag.thanked_hedda and chose.toast in the development panel](/images/novel-panel.jpg) |
+| Two languages | Staging (`stand`, `effect`) |
+| ![the settings switch to Japanese and the next line is in Japanese](/images/novel-language.gif) | ![Brenna slides in and her portrait shakes](/images/novel-stage.gif) |
+
 ## Where to go
 
 - [Install](/install/): the gozen command, the library, and what each OS needs for the window.
@@ -90,7 +104,8 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 - First-person grid dungeons, fixed or generated floors
 - Moving portraits from one picture and a few difference pictures: blinking, talking, breathing, head, hair and swaying parts, reactions and face changes
 - Characters that react to typed words and events, and a chat log
-- Engine words in English and Japanese, chosen by `language` in game.yaml
+- Visual novels: roll back with the state, skip what was read, save in the middle of a scene, choices read as `chose`, staging with `stand`, and a development panel (F8) for the flags
+- Engine words in English and Japanese, chosen by `language` in game.yaml, and the game's own text in two languages
 - A headless driver that shares the rules with the window
 
 ## Limitations

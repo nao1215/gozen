@@ -25,10 +25,10 @@ Windows is assumed to have neither Make nor Bash. At the repository root, run th
 | `make test` | `go test ./...` | contract tests of the core, `gozen` and internal, samples, API and development tools |
 | `make arch` | `go-arch-lint check` | runtime imports and vendor, deep dependency check |
 | `make api` | `go test ./api -count=1` | comparing the golden with the current public identifiers |
-| `make tidy` | `go mod tidy -diff`, also in `examples/go-zen` | go.mod and go.sum hold what the imports need, no more |
+| `make tidy` | `go mod tidy -diff`, also in `examples/go-zen` and `examples/novel` | go.mod and go.sum hold what the imports need, no more |
 | `make workflows` | `actionlint`, `zizmor --offline .github/workflows` | syntax, expressions and shell of GitHub Actions workflows; their pins, credentials, injection and caches |
 | `make api-update` | `go run ./internal/dev/apigen` | updating the list to review |
-| `make lint` | `go-arch-lint check`, `go test ./api -count=1`, `make tidy`, `make workflows`, `golangci-lint run ./...`, `golangci-lint fmt --diff`, then the same two in `examples/go-zen`, in order | dependencies, API, modules, workflows, static analysis, formatting |
+| `make lint` | `go-arch-lint check`, `go test ./api -count=1`, `make tidy`, `make workflows`, `golangci-lint run ./...`, `golangci-lint fmt --diff`, then the same two in `examples/go-zen` and `examples/novel`, in order | dependencies, API, modules, workflows, static analysis, formatting |
 | `make build` | `go build -trimpath -buildvcs=false ./...` | compiling the core, `gozen` and internal, samples and development tools |
 | `make graphics` | `go test -tags=graphics ./play -run TestGraphicsScreens -count=1` and `go test -tags=graphics ./puppet -run TestGraphics -count=1` | real loop and PNG checks of 6 screens, and pixel checks of the moving standing pictures (drawn and read inside one loop). Wrapped in Xvfb on Linux |
 | `make e2e` | [direct steps for the CLI](cli.md#e2e) | contract checks of every `gozen` subcommand with atago v0.25.2 |

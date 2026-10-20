@@ -19,6 +19,8 @@ samples:
     package: ./examples/go-zen
   puppet:
     package: ./examples/puppet
+  novel:
+    package: ./examples/novel
 
 # One run of a sample. {script} is the script file and {out} a new, empty
 # directory for the run: the shots, saves and trace go under it. `check` is
@@ -61,6 +63,22 @@ runs:
     sample: go-zen
     script: scripts/capture-go-zen-balance.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --start, b2, --party, "maren,ox,tilly", --level, "1", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  novel:
+    sample: novel
+    script: scripts/capture-novel.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
+  novel-language:
+    sample: novel
+    script: scripts/capture-novel-language.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  novel-stage:
+    sample: novel
+    script: scripts/capture-novel-stage.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, opening, --line, "9", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  novel-panel:
+    sample: novel
+    script: scripts/capture-novel-panel.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   puppet-tour:
     sample: puppet
     args: [--tour, --frames, "{out}/frames"]
@@ -149,6 +167,49 @@ images:
   go-zen-balance.jpg:
     run: balance
     shot: s-balance
+    jpeg: {width: 960, height: 540, quality: 3}
+  # The README's novel picture, beside the first one: a line, a choice, Back over the
+  # choice, the same option again and Skip to the first line not read, about 10 seconds.
+  novel.gif:
+    run: novel
+    frames:
+      - {shots: "na*"}
+      - {shots: "nb*"}
+      - {shots: "nc*"}
+    gif: {fps: 12, width: 960, height: 540, colors: 128}
+  novel-back.gif:
+    run: novel
+    frames:
+      - {shots: "na04[4-9]"}
+      - {shots: "na05[0-9]"}
+      - {shots: "nb*"}
+    gif: {fps: 12, width: 960, height: 540, colors: 128}
+  novel-skip.gif:
+    run: novel
+    frames:
+      - {shots: "nb01[6-9]"}
+      - {shots: "nb02*"}
+      - {shots: "nc*"}
+    gif: {fps: 12, width: 960, height: 540, colors: 128}
+  novel-language.gif:
+    run: novel-language
+    frames:
+      - {shots: "la*"}
+      - {shots: "lb*"}
+      - {shots: "lc*"}
+    gif: {fps: 12, width: 960, height: 540, colors: 128}
+  novel-stage.gif:
+    run: novel-stage
+    frames:
+      - {shots: "st*"}
+    gif: {fps: 12, width: 960, height: 540, colors: 128}
+  novel-panel.jpg:
+    run: novel-panel
+    shot: s-panel-state
+    jpeg: {width: 960, height: 540, quality: 3}
+  novel-flags.jpg:
+    run: novel-panel
+    shot: s-panel-flags
     jpeg: {width: 960, height: 540, quality: 3}
   puppet.gif:
     run: puppet-tour

@@ -1,0 +1,27 @@
+schema_version: 4
+id: gozen-novel
+title: After the Pass
+subtitle: A quiet night at the tavern, after a long winter's work.
+language: en
+written_in: en
+languages: [en, ja]
+screen: {width: 1920, height: 1080}
+fonts: {regular: fonts/mplus-1p-regular.ttf}
+title_background: bg/hill.jpg
+title_text: {size: 120, subtitle_size: 34, subtitle_tracking: 0, color: "#fff4e0", edge: "#3a2414"}
+title_music: evening
+start:
+  location: kettle
+  party: [you]
+  event: opening
+data_version: 1
+ui:
+  message: novel
+  rollback: 16
+  window: "#2a1a12e0"
+  border: "#c9955a"
+  text: "#f6eee2"
+  accent: "#f0b860"
+  cursor: "#ffd9a0"
+  # Three stand at once: a little smaller than the default, so they do not crowd.
+  stage_scale: {brenna/normal.png: 0.8, wren/normal.png: 0.8, hedda/normal.png: 0.8}

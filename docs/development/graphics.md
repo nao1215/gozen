@@ -6,6 +6,8 @@ Use Go 1.26.9 or later. The normal tests of T3 start no display or audio device.
 
 Go Zen (`examples/go-zen`) is the original sample: a module of its own, so its pictures and music do not come with the gozen module. A normal run saves under the OS config directory in `gozen/go-zen`; a trial run with a start position uses a temporary save when the save destination is omitted. The sources of its assets are in `examples/go-zen/ASSETS.md`. `make go-zen` checks and plays it headless; `make go-zen-graphics` takes its screens.
 
+The novel sample, After the Pass (`examples/novel`), is a module of its own in the same way: a short story in the novel window (`ui.message: novel`, schema version 4) with two choices, staging, and a Japanese translation in `lang/ja.yaml`. The README's novel pictures are taken from it. `make novel` checks it and reads every way through it headless; `make novel-graphics` takes its screens. Its assets are listed in `examples/novel/ASSETS.md`.
+
 The startup options that `play.Main` accepts use the same GNU style as `gozen` ([ADR 0018](../decisions/0018-gnu-options-and-help.md)). `--seed 7` and `--seed=7` both work, and a single-dash long name such as `-dev` is an error. `--help` has the shape `[Usage]`, `[Examples]`, `[Options]` grouped by kind (game, trial runs, automatic play, scripts and records, notes and review), `Requirements:` and links; an option that needs `--dev` has `(--dev)` in the name of its group.
 
 For how to make the embedded FS and handle exit codes, see `examples/go-zen/main.go`; for the API contract, see the [presentation API](../architecture/presentation-api.md). The library never exits the process.

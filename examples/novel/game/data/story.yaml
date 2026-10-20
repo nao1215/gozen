@@ -1,0 +1,208 @@
+classes:
+  guest: {stats: {mhp: 1, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}
+skills: {attack: {}, guard: {}}
+actors:
+  you: {name: You, class: guest}
+  brenna: {name: Brenna, class: guest, faces: brenna}
+  wren: {name: Wren, class: guest, faces: wren}
+  hedda: {name: Hedda, class: guest, faces: hedda}
+music:
+  songs:
+    evening: {name: Evening, file: bgm/evening.ogg}
+locations:
+  kettle: {name: The Copper Kettle, background: bg/tavern.jpg}
+events:
+  opening:
+    do:
+      - image: {file: bg/hill.jpg, fade: 1.5}
+      - music: {song: evening, fade: 3}
+      - say: "You climb the last stretch of the hill with the wind at your back. Snow squeaks under every step."
+      - say: "Below you the village is dark, all but one window. Its light is copper-colored and steady, like a lantern left out for someone."
+      - say: "Eleven days on the pass. That window is the first thing in all that time that has looked like home."
+      - image: {file: "", fade: 1}
+      - say: "You stamp the snow off your boots and push the door open. Warmth rolls over you, woodsmoke and baked apples and something with onions in it."
+      - say: "The fire is roaring. Every chair in the room stands upside down on its table, except the ones pulled up around the hearth."
+      - stand: {who: hedda, at: 0.5}
+      - say: {who: hedda, text: "Door. Shut it. You're letting the winter in."}
+      - say: {who: hedda, text: "There. Sit. I closed at nine, so anyone knocking now is ours."}
+      - say: {who: hedda, text: "Ale's on the counter. Cider's warming. The stew has been waiting since sundown, and so have I."}
+      - say: "The door bangs open again behind you, hard enough to rattle the shutters."
+      - stand: {who: hedda, at: 0.82}
+      - stand: {who: brenna, at: 0.18, enter: slide}
+      - effect: {name: shake, who: brenna, seconds: 0.4}
+      - say: {who: brenna, text: "HEDDA! Tell me that's cheese. Tell me that is an actual wheel of actual cheese!"}
+      - say: {who: brenna, text: "I have dreamed about it since the second night. Everyone else can have the stew. I'm moving in next to that rind."}
+      - say: {who: hedda, text: "Armor off at the table, Brenna. Last time you dented my bench."}
+      - say: {who: brenna, text: "This is my party armor! It's polished! Look at it, it's practically a tablecloth!"}
+      - say: "She clanks into a chair. The chair holds, bravely."
+      - say: "The door opens a third time, much more politely. Snow has frosted a pair of round glasses, and a purple braid swings in after them."
+      - stand: {who: wren, at: 0.5}
+      - say: {who: wren, text: "I checked the roofline on the way in. Snow load is acceptable. Nobody will need to dig this tavern out tonight."}
+      - say: {who: wren, text: "I am here under protest, for the record. I had plans involving a book and a blanket."}
+      - say: {who: hedda, text: "Your book's by the fire. I put it there before you thought of it."}
+      - say: {who: wren, text: "...That is irritatingly accurate. Thank you."}
+      - call: toast
+  toast:
+    do:
+      # Everyone already stands here when the opening calls this; a run that starts at
+      # this event (--event toast) stands them too.
+      - stand: {who: brenna, at: 0.18}
+      - stand: {who: wren, at: 0.5}
+      - stand: {who: hedda, at: 0.82}
+      - say: "Hedda pours without asking. Ale for Brenna, a deep red wine for Wren, hot cider for you, with a cinnamon stick standing in it."
+      - say: "Three mugs and one glass rise off the counter, and then everyone looks at you."
+      - say: {who: hedda, text: "Somebody gets the first toast. Make it a good one."}
+      - say: {who: hedda, text: "Well? What do we drink to first?"}
+      - choice:
+          - id: shield
+            label: "To Brenna's shield"
+            do:
+              - say: "You turn your cup toward the big dented shield propped beside the hearth."
+              - say: {who: brenna, text: "My shield? Oh, you've gone and made me soft. Look, I'm tearing up. That's the cider steam."}
+              - say: {who: brenna, text: "Eleven days, every drift, every slide, and it never once complained. Best shield in the north. I'll hear no arguments."}
+              - say: {who: wren, text: "The shield did not complain. You complained. Constantly."}
+              - say: {who: brenna, text: "Quietly! I complained quietly!"}
+              - say: "Everyone drinks, Brenna loudest."
+          - id: maps
+            label: "To Wren's maps"
+            do:
+              - say: "You lift your cup toward Wren, and the roll of maps sticking out of her satchel."
+              - say: {who: wren, text: "My maps? You are toasting paper."}
+              - say: {who: wren, text: "Paper with strong opinions about ridgelines, admittedly. Very well. I accept."}
+              - say: {who: brenna, text: "She accepts! Look at her ears, they've gone pink!"}
+              - say: {who: wren, text: "My ears are pink because of the cold."}
+              - say: {who: hedda, text: "It's warm in here, Wren."}
+              - say: "Wren takes a long, dignified sip of wine and says nothing more."
+          - id: hedda
+            label: "To Hedda, for keeping the door open"
+            do:
+              - set: {flag.thanked_hedda: true}
+              - say: "You lift your cup toward the counter, and the woman behind it."
+              - say: {who: hedda, text: "Me? Don't."}
+              - say: {who: hedda, text: "I lit a fire and I unlocked a door. That is the entire trick."}
+              - say: {who: brenna, text: "Best trick in the world!"}
+              - say: {who: hedda, text: "Drink your ale before I change my mind about the cheese."}
+              - say: "She turns away to the stove, but not before you see her smile."
+        id: toast
+      - say: "Hedda sets the cheese board down with a thump, then goes back to the counter and lines up a few bottles along its edge."
+      - image: {file: cg/table.jpg, fade: 1}
+      - say: "You look down at the edge of the wooden counter. A few dark bottles with red caps stand around one stemmed glass of pale golden ale, a little foam on top."
+      - say: "The light is warm and brown. For a while nobody says anything. There is only the fire, and the wind giving up against the shutters."
+      - image: {file: "", fade: 1}
+      - call: stories
+  stories:
+    do:
+      - say: {who: brenna, text: "Nine wagons. Do you remember? Nine! And old Corrin swore the pass would be open by noon."}
+      - say: {who: wren, text: "It was open by noon. Noon of the following Thursday."}
+      - say: "Brenna laughs so hard she has to put her mug down."
+      - say: {who: hedda, text: "And the village at the far end? They got their grain?"}
+      - say: {who: brenna, text: "Grain, lamp oil, and every crate of winter medicine. Every sack, Hedda. Not one dropped."}
+      - say: {who: hedda, text: "Good. Then it was worth the cold."}
+      - say: {who: brenna, text: "Worth it. Sure. Though..."}
+      - say: "She picks at the cheese rind and, for once, takes her time."
+      - say: {who: brenna, text: "Fourth day. The lead wagon started to slide on the ice, toward the drop. I got my shield down against the wheel and I just held on."}
+      - say: {who: brenna, text: "Everyone says, great, Brenna's a wall. Nobody asks what the wall is thinking."}
+      - say: {who: wren, text: "What was the wall thinking?"}
+      - say: {who: brenna, text: "Mostly 'please don't let go,' over and over. My knees shook inside the armor the whole way down. I never told you."}
+      - if: chose.toast == "shield"
+        then:
+          - say: {who: brenna, text: "So when you drank to my shield first tonight, I almost couldn't take it. A shield only looks steady because someone is scared behind it."}
+          - say: {who: brenna, text: "But I'll take it. For both of us. Me and the shield."}
+      - say: {who: hedda, text: "Scared, and stayed. That's what brave is."}
+      - say: {who: brenna, text: "...Ha. Okay. Okay! Somebody pass the cheese before I get soppy."}
+      - say: {who: wren, text: "Since we are confessing, I will say one thing, and deny it by morning."}
+      - say: {who: wren, text: "Sixth night. The whiteout. Every landmark was buried, and the map was useless. I told you all to turn back."}
+      - say: {who: wren, text: "I put the map down. I stopped. I was prepared to sit in the snow until someone else decided for me."}
+      - say: {who: brenna, text: "And I held the lantern."}
+      - say: {who: wren, text: "You held the lantern and sang off-key. It helped. Do not tell anyone it helped."}
+      - say: {who: wren, text: "Someone put the map back in my hands. They said, 'Read it again. We'll wait.'"}
+      - say: "Her eyes rest on you for a moment, and that is all she says about it."
+      - say: {who: wren, text: "Forty minutes later the wind dropped and the old cairn showed through the white. Anyway. This wine is acceptable."}
+      - say: {who: brenna, text: "She said acceptable! That's a hug, in Wren!"}
+      - say: {who: wren, text: "It is a statement about the vintage."}
+      - say: {who: hedda, text: "Thirty winters I've kept this door. People come back from the cold different. Better, mostly."}
+      - say: {who: hedda, text: "Three of you went up that mountain. Three of you came down. I count that as a good map."}
+      - call: late
+  late:
+    do:
+      - effect: {name: fade, color: "#000000", seconds: 1, hold: 0.5}
+      - image: {file: bg/tavern_late.jpg, faces: true, fade: 0}
+      - say: "Time slips by the way it does beside a good fire. The stew is gone. The cheese is gone, mostly thanks to Brenna."
+      - say: "Snow has piled against the windows. The fire has sunk to a bed of orange coals, and the room is quiet in the way a room is after it has been loud."
+      - say: "Brenna is propped in her chair, yawning without admitting it. Wren has wandered off to study the barrels, glass in hand."
+      - say: {who: hedda, text: "Past midnight. Door's locked. Nobody has to be anywhere."}
+      - say: {who: hedda, text: "The last hour's the best one. Spend it however you like."}
+      - choice:
+          - {id: brenna, label: "One more round with Brenna at the bar"}
+          - {id: wren, label: "Share the barrels with Wren"}
+          - {id: hedda, label: "Help Hedda close up"}
+        id: night
+      - if: chose.night == "brenna"
+        then: [{call: with_brenna}]
+      - if: chose.night == "wren"
+        then: [{call: with_wren}]
+      - if: chose.night == "hedda"
+        then: [{call: with_hedda}]
+  with_brenna:
+    do:
+      - stand: {who: wren, leave: fade}
+      - stand: {who: hedda, leave: fade}
+      - say: "Wren drifts off to the barrels with her glass. Hedda vanishes into the back with a lantern, humming something. You and Brenna are left at the bar."
+      - say: {who: brenna, text: "One more round. Just one. For the road. The road is two hundred yards of snow, but it's still a road."}
+      - say: {who: brenna, text: "Hey. Hey, you. Thanks for the ice. On the fourth day, I mean. I didn't say it then, so I'm saying it now."}
+      - say: {who: brenna, text: "You never made a fuss when my hands shook. You just stood where I could see you. Do you know how much that is?"}
+      - say: "She fills two mugs too full and slaps hers down on the bar. Foam runs down the sides, and she does not even look."
+      - say: {who: brenna, text: "Here's to the next job. I'll be terrified of that one too, and I'll go anyway. Shh, don't tell the shield."}
+      - stand: none
+      - image: {file: cg/toast.jpg, fade: 1.5}
+      - say: "Brenna sits at the bar in her armor, eyes shut, mouth wide open in a laugh, both fists raised high in a cheer."
+      - say: "Her mug stands forgotten beside her, ale foaming over the rim and splashing across the wood. The fire glows behind her, and a plate of cheese cubes waits on the counter."
+      - say: {who: brenna, text: "To the Kettle! To the cheese! To eleven days, and every last one of them behind us!"}
+      - say: "You raise your own mug. Ale spills. Neither of you cares."
+      - call: goodnight
+  with_wren:
+    do:
+      - stand: {who: brenna, leave: fade}
+      - stand: {who: hedda, leave: fade}
+      - say: "Brenna wanders off to rattle the bar stools and beg Hedda for the last of the cheese. The barrels by the wall are suddenly very quiet."
+      - say: {who: wren, text: "Barrels. The only sensible seats in the room. They are taller than the chairs, so you can see everything."}
+      - say: {who: wren, text: "Sit. I saved you the good one. It does not wobble. I tested it."}
+      - say: "You sit. It does not wobble. Wren pours a second glass of red with great care and pushes it across to you."
+      - say: {who: wren, text: "Do not tell the others I enjoyed myself. I will say it was a field assessment."}
+      - say: {who: wren, text: "Findings. The company is competent. The cheese is exceptional. The room is warm. I rank it above most mountains."}
+      - stand: none
+      - image: {file: cg/wine.jpg, fade: 1.5}
+      - say: "She sits among the barrels, holding her glass of red up in one hand. On the barrel top beside her waits a plate with a wedge of yellow cheese full of holes."
+      - say: "She smiles softly, and for once the smile stays where it is, plain and unhidden."
+      - say: {who: wren, text: "I used to think a map was how you knew where you were. Tonight I do not need one for this part. Noted."}
+      - say: {who: wren, text: "Thank you. For the sixth night. For waiting. Please do not make a speech."}
+      - say: "You don't. You lift your glass. She lifts hers and gives a small nod, as if signing a document."
+      - call: goodnight
+  with_hedda:
+    do:
+      - stand: {who: brenna, leave: fade}
+      - stand: {who: wren, leave: fade}
+      - say: "Brenna has fallen asleep sitting up, armor and all. Wren steers her toward the stairs, one patient hand on her pauldron, and gives you a small nod over her shoulder."
+      - say: {who: hedda, text: "You stayed. Most of them go straight up to bed. Fine. Take a cloth."}
+      - say: {who: hedda, text: "Chairs go up on the tables. Mugs go in the basin. Wipe the rings off the wood."}
+      - say: "You stack mugs and wipe rings while Hedda moves along the room, lowering the lamps one at a time."
+      - say: {who: hedda, text: "Thirty winters, and I still count the mugs at the end. Habit. Nobody's ever stolen one."}
+      - say: {who: hedda, text: "They think I run a tavern. I run a door. Somebody has to hold it open."}
+      - stand: none
+      - image: {file: cg/table.jpg, fade: 1.5}
+      - say: "When the last mug is dry, Hedda pours a little pale ale into one clean glass and sets it on the counter among a few bottles. The lamp turns them all to gold."
+      - say: {who: hedda, text: "Look at that. Glass, bottle, light. Ordinary things."}
+      - say: {who: hedda, text: "That's what I keep from a night like this. Not the coin. This."}
+      - say: {who: hedda, text: "Last cider's on the house. Don't tell the others. I'll deny it."}
+      - call: goodnight
+  goodnight:
+    do:
+      - say: "The fire is down to one orange eye. Hedda unbolts the door, and the cold slips in, clean and quiet."
+      - if: flag.thanked_hedda
+        then: [{say: {who: hedda, text: "You drank to me first tonight. Nobody does that. Mind the ice on the step."}}]
+      - say: {who: hedda, text: "Go on, now. Sleep. The door will be open again after the thaw. You know that."}
+      - say: "You step out under a sky scrubbed clean of clouds. Snow squeaks under your boots, and the warmth goes with you."
+      - say: "Behind you, one lamp at a time, the copper window goes dark. The night is cold, and you are not."
+      - music: {stop: true, fade: 3}
+      - wait: {seconds: 1.5, skip: false}
+      - clear: true

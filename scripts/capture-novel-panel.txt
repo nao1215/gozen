@@ -1,0 +1,31 @@
+# Novel sample capture (run novel-panel): the toast to Hedda is taken, then F8 opens the
+# development panel on its State tab (s-panel-state, flag.thanked_hedda and chose.toast set),
+# its Flags tab (s-panel-flags) and its Scenes tab (s-panel-events).
+gap 1
+wait 120
+press ok
+wait 150
+press ok
+wait 150
+press ok
+wait 150
+press ok
+wait 60
+press down 2
+press ok
+wait 120
+press ok
+wait 120
+press panel
+wait 40
+shot s-panel-state
+wait 2
+press right
+wait 30
+shot s-panel-flags
+wait 2
+press right
+wait 30
+shot s-panel-events
+wait 2
+quit

@@ -29,7 +29,9 @@ The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan
 
 Documentation: https://nao1215.github.io/gozen/
 
-![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](docs/images/go-zen.gif)
+| RPG: [Go Zen](examples/go-zen) | Novel: [After the Pass](examples/novel) |
+|:--|:--|
+| ![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](docs/images/go-zen.gif) | ![After the Pass, the novel sample: a line, a choice, Back over the choice, and Skip to the first line not read](docs/images/novel.gif) |
 
 ## Try it
 
@@ -53,7 +55,7 @@ cd gozen/examples/go-zen
 go run . --mute
 ```
 
-Play Go Zen in the browser: https://nao1215.github.io/gozen/play/
+Play Go Zen and After the Pass in the browser: https://nao1215.github.io/gozen/play/
 
 ## The loop
 
@@ -85,6 +87,18 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 | ![win rates by troop](docs/images/go-zen-balance.jpg) | ![the title screen](docs/images/go-zen-title.jpg) |
 | Skill tree | |
 | ![Maren's skill tree with Ink Burst chosen](docs/images/go-zen-tree.jpg) | |
+
+### Novel games
+
+`ui.message: novel` makes a visual novel. All from [After the Pass](examples/novel), the novel sample, at 1920x1080.
+
+| Roll back (Q, wheel) | Skip to the line not read (N) |
+|:--|:--|
+| ![Back goes over two lines and a choice, with the state](docs/images/novel-back.gif) | ![the option taken again, then Skip stops at the first line not read](docs/images/novel-skip.gif) |
+| Choices and flags (F8) | State (F8) |
+| ![the flags each event sets and reads](docs/images/novel-flags.jpg) | ![flag.thanked_hedda and chose.toast in the development panel](docs/images/novel-panel.jpg) |
+| Two languages | Staging (`stand`, `effect`) |
+| ![the settings switch to Japanese and the next line is in Japanese](docs/images/novel-language.gif) | ![Brenna slides in and her portrait shakes](docs/images/novel-stage.gif) |
 
 ## Install
 
@@ -190,7 +204,8 @@ location=trail battles=1 wins=1 gold=3
 - First-person grid dungeons, fixed or generated
 - Moving portraits from one picture ([puppet](https://pkg.go.dev/github.com/nao1215/gozen/puppet))
 - Characters that react to typed words, and a chat log ([react](https://pkg.go.dev/github.com/nao1215/gozen/react), [chat](https://pkg.go.dev/github.com/nao1215/gozen/chat))
-- Engine words in English and Japanese (`language` in game.yaml)
+- Visual novels: roll back, skip what was read, save in a scene, choices read as `chose`, staging with `stand` ([recipes](https://nao1215.github.io/gozen/cookbook/#let-the-player-roll-back-and-save-in-a-scene))
+- Engine words in English and Japanese (`language` in game.yaml), and the game's text in two languages (`lang/`)
 
 ## Limitations
 
@@ -208,7 +223,7 @@ A star or a [GitHub Sponsors](https://github.com/sponsors/nao1215) sponsorship h
 
 ## License
 
-The code is [MIT](LICENSE). The Go Zen pictures and music are [CC BY 4.0](examples/go-zen/game/assets/LICENSE). Font notices are in [ASSETS.md](ASSETS.md).
+The code is [MIT](LICENSE). The Go Zen and After the Pass pictures and music are CC BY 4.0 ([Go Zen](examples/go-zen/game/assets/LICENSE), [After the Pass](examples/novel/game/assets/LICENSE)). Font notices are in [ASSETS.md](ASSETS.md).
 
 ## Contributors ✨
 

@@ -7,9 +7,10 @@ name: Website
 # docs/development/ci.md), so every job runs only once the repository is public,
 # or when started by hand with workflow_dispatch.
 #
-# The site carries Go Zen built from this checkout's engine (/play/go-zen/), so
-# the build runs on every push and pull request: a change anywhere can stop the
-# game in the browser, and the build opens it in headless Chrome.
+# The site carries Go Zen and the novel sample built from this checkout's engine
+# (/play/go-zen/, /play/novel/), so the build runs on every push and pull request:
+# a change anywhere can stop a game in the browser, and the build opens both in
+# headless Chrome.
 on:
   push:
     branches: [main]
@@ -53,11 +54,12 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # web/assets.py writes Go Zen's pictures as WebP with Pillow.
+      # Go Zen's web/assets.py writes the samples' pictures as WebP with Pillow.
       - name: Install Pillow
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends python3-pil
 
-      # make website also builds Go Zen for the browser into public/play/go-zen.
+      # make website also builds Go Zen and the novel sample for the browser into
+      # public/play/go-zen and public/play/novel.
       - name: Build website
         # The commit is stamped into every page so the deploy can be verified
         # afterwards. Hugo reads HUGO_PARAMS_* as config overrides. The build
@@ -74,10 +76,10 @@ jobs:
       - name: Check the links of the built site
         run: make website-check
 
-      # Opens /play/go-zen/ in headless Chrome (preinstalled on the runner) and
-      # fails when the game draws nothing, or the page logs an exception or a
-      # failed request; it presses Enter once and keeps both screenshots.
-      - name: Check that Go Zen runs in the browser
+      # Opens /play/go-zen/ and /play/novel/ in headless Chrome (preinstalled on
+      # the runner) and fails when a game draws nothing, or the page logs an
+      # exception or a failed request; it presses Enter and keeps the screenshots.
+      - name: Check that Go Zen and the novel sample run in the browser
         run: make website-play-check
 
       - name: Keep the screenshots of the browser check

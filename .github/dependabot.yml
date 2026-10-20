@@ -1,10 +1,12 @@
 version: 2
 updates:
-  # examples/go-zen is a module of its own; its go.sum is checked in CI (make go-zen).
+  # examples/go-zen and examples/novel are modules of their own; their go.sum is checked
+  # in CI (make go-zen, make novel).
   - package-ecosystem: gomod
     directories:
       - /
       - /examples/go-zen
+      - /examples/novel
     schedule:
       interval: weekly
   - package-ecosystem: github-actions

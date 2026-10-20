@@ -1,6 +1,6 @@
 ---
 name: gozen
-description: Make or fix an RPG written for Gozen, the Go game framework whose games are game.yaml and data/*.yaml. Use it when you write or change a Gozen game's YAML; it runs gozen check until the game has no errors.
+description: Make or fix an RPG or a visual novel written for Gozen, the Go game framework whose games are game.yaml and data/*.yaml. Use it when you write or change a Gozen game's YAML; it runs gozen check until the game has no errors.
 ---
 
 # Making a Gozen game
@@ -53,6 +53,17 @@ YAML traps are in references/yaml.md.
 ## Recipes
 
 Tested YAML for shops, inns, flags, companions, dungeons, chests, keys, cut-ins and moving portraits: https://nao1215.github.io/gozen/cookbook/. Start from a recipe and change the names.
+
+## Novel games
+
+A novel game (ADV) sets `schema_version: 4` and `ui.message: novel` in game.yaml; its places mostly run events. The player can roll back, skip read lines, save in a scene and change the language without any YAML of yours.
+
+- Give a `choice` an `id` to read the option taken as `chose.<id>`. Keep other facts in flags with `set`. `gozen check` warns of a flag set but never read (GZN0112) and read but never set (GZN0113).
+- Stage a scene with `stand` (who stands where, how they come and go), `effect` (shake one portrait, fade through a color), `music` with `fade` and `wait` with `skip: false`.
+- For a second language, set `written_in` and `languages` and translate every text in `lang/<code>.yaml`. `gozen check --format json` lists each text not translated yet (GZN0111); fill them until the check is quiet.
+- Test every branch in Go with `gozen.Explore` and read `chose.<id>` and the flags at the end of each path.
+
+The recipes are under "Let the player roll back", "Stage portraits and effects" and "Offer the game in two languages" in the cookbook. A complete short one is [examples/novel](https://github.com/nao1215/gozen/tree/main/examples/novel).
 
 ## Do not
 

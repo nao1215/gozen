@@ -6,13 +6,15 @@
 | Go Zen sample pictures and music in `examples/go-zen/game/assets/` (a module of its own, not in the gozen module) | CC BY 4.0, see [examples/go-zen/game/assets/LICENSE](examples/go-zen/game/assets/LICENSE) and [examples/go-zen/ASSETS.md](examples/go-zen/ASSETS.md) |
 | M+ 1p font of the Go Zen sample (`examples/go-zen/game/assets/fonts/`) | M+ FONTS LICENSE, see [examples/go-zen/ASSETS.md](examples/go-zen/ASSETS.md) |
 | Uncial Antiqua and Cinzel, the title fonts of the Go Zen sample (`examples/go-zen/game/assets/fonts/`) | SIL Open Font License 1.1, the texts are next to the fonts; see [examples/go-zen/ASSETS.md](examples/go-zen/ASSETS.md) |
+| Novel sample pictures and music in `examples/novel/game/assets/` (a module of its own, not in the gozen module) | CC BY 4.0, see [examples/novel/game/assets/LICENSE](examples/novel/game/assets/LICENSE) and [examples/novel/ASSETS.md](examples/novel/ASSETS.md) |
+| M+ 1p font of the novel sample (`examples/novel/game/assets/fonts/`) | M+ FONTS LICENSE, see [examples/novel/ASSETS.md](examples/novel/ASSETS.md) |
 | Showcase GIF and screenshots in `docs/images/` | The pictures inside are CC BY 4.0; the rest MIT |
 | Go Regular font built into the engine (`golang.org/x/image/font/gofont/goregular`, Bigelow & Holmes). A game whose game.yaml has no `fonts.regular` (the minimal example among them) sets its text in it. It has Latin letters only | BSD notice below |
 | CLI synthetic pattern images and catalog (`docs/examples/production/`) | MIT |
 | Procedural pictures of the painted-scene test (`play/testdata/stage/`, made by a script) | MIT |
 | The logo, its icons and the social card (`docs/images/gozen-logo*.svg`, `gozen-favicon*.svg`, `gozen-ogp.png`) | MIT; the letters are outlines from Quicksand Bold, the card text is set in Quicksand and Noto Sans (both SIL Open Font License 1.1, see below) |
 
-No ONNX models are bundled. The only music is the Go Zen soundtrack, outside the gozen module. Include the font notice when redistributing a game binary that uses the built-in font, the example binaries, or their captures. Other CLI/test font fixtures have their notices in [CLI assets](docs/examples/cli-assets.md).
+No ONNX models are bundled. The only music is the Go Zen soundtrack (the novel sample plays one of its songs), outside the gozen module. Include the font notice when redistributing a game binary that uses the built-in font, the example binaries, or their captures. Other CLI/test font fixtures have their notices in [CLI assets](docs/examples/cli-assets.md).
 
 ## Logo fonts
 

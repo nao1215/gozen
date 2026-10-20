@@ -13,7 +13,7 @@ ATAGO ?= atago
 ACTIONLINT ?= actionlint
 ZIZMOR ?= zizmor
 
-.PHONY: website-go-zen website-play-check go-zen go-zen-graphics test coverage lint tidy workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
+.PHONY: website-go-zen website-novel website-play-check go-zen go-zen-graphics novel novel-graphics test coverage lint tidy workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
 
 # One module: ./... includes the gozen command and its internal implementations.
 # Keep ONNX-dependent runtime tests separate; see docs/development/testing.md.
@@ -29,11 +29,13 @@ lint: arch api tidy workflows
 	$(GOLANGCI_LINT) run ./...
 	$(GOLANGCI_LINT) fmt --diff
 	cd examples/go-zen && $(GOLANGCI_LINT) run ./... && $(GOLANGCI_LINT) fmt --diff
+	cd examples/novel && $(GOLANGCI_LINT) run ./... && $(GOLANGCI_LINT) fmt --diff
 
-# go.mod and go.sum of both modules match what the imports need.
+# go.mod and go.sum of every module match what the imports need.
 tidy:
 	$(GO) mod tidy -diff
 	cd examples/go-zen && $(GO) mod tidy -diff
+	cd examples/novel && $(GO) mod tidy -diff
 
 # actionlint checks the syntax, expressions and shell of the workflows; zizmor
 # checks their security (pins, credentials, injection, cache poisoning) with
@@ -61,6 +63,16 @@ go-zen:
 
 go-zen-graphics:
 	cd examples/go-zen && $(GO) test -tags=graphics -count=1 ./...
+
+# examples/novel, the novel sample, is a nested module too: novel checks and reads it
+# headless, novel-graphics takes its screens (needs a display).
+novel:
+	cd examples/novel && $(GO) vet ./...
+	$(GO) run ./cmd/gozen check examples/novel/game
+	cd examples/novel && $(GO) test -count=1 ./...
+
+novel-graphics:
+	cd examples/novel && $(GO) test -tags=graphics -count=1 ./...
 
 # Requires a display; Linux CI wraps this target with xvfb-run.
 graphics:
@@ -95,6 +107,7 @@ bench-compare:
 website:
 	cd website && hugo --gc --minify --cleanDestinationDir
 	$(MAKE) website-go-zen
+	$(MAKE) website-novel
 
 # Go Zen in the browser (GOOS=js) under website/public/play/go-zen/: the program, Go's
 # wasm_exec.js, the page, and the game's files, which the program fetches before it starts.
@@ -112,12 +125,27 @@ website-go-zen:
 	rm -rf $(WEB_GO_ZEN)/game
 	cp -R $(WEB_GO_ZEN_GAME) $(WEB_GO_ZEN)/game
 
-# Opens the built Go Zen page in headless Chrome and fails when nothing is drawn, or when
-# an Update or a Draw of the game took longer than WEB_MAX_FRAME milliseconds (the page's
-# frame meter, ?fps) (after make website; needs google-chrome and node).
+# The novel sample in the browser under website/public/play/novel/, built the same way
+# (Go Zen's web/assets.py writes its pictures as WebP).
+WEB_NOVEL = website/public/play/novel
+WEB_NOVEL_GAME = build/web/novel-game
+website-novel:
+	mkdir -p $(WEB_NOVEL)
+	cd examples/novel && GOOS=js GOARCH=wasm $(GO) build -trimpath -buildvcs=false -ldflags="-s -w" -o ../../$(WEB_NOVEL)/novel.wasm .
+	install -m 644 "$$($(GO) env GOROOT)/lib/wasm/wasm_exec.js" $(WEB_NOVEL)/
+	python3 examples/go-zen/web/assets.py examples/novel/game $(WEB_NOVEL_GAME) \
+		examples/novel/web/index.html $(WEB_NOVEL)/index.html $(WEB_NOVEL)/novel.wasm
+	rm -rf $(WEB_NOVEL)/game
+	cp -R $(WEB_NOVEL_GAME) $(WEB_NOVEL)/game
+
+# Opens the built Go Zen and novel pages in headless Chrome and fails when nothing is
+# drawn, or when an Update or a Draw of the game took longer than WEB_MAX_FRAME
+# milliseconds (the page's frame meter, ?fps) (after make website; needs google-chrome and
+# node).
 WEB_MAX_FRAME ?= 250
 website-play-check:
 	node scripts/web_play_check.mjs -serve website/public /play/go-zen/ -enter 1 -shots build/web-play -max-frame $(WEB_MAX_FRAME)
+	node scripts/web_play_check.mjs -serve website/public /play/novel/ -enter 2 -shots build/web-play/novel -max-frame $(WEB_MAX_FRAME)
 
 website-serve:
 	cd website && hugo server

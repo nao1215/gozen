@@ -222,7 +222,11 @@ async function timings() {
     console.log(`longest stand-still after the first frame: ${s(worst[1])}s (from ${s(worst[0])}s)`);
   }
   // The meter's first second can hold the first frame, so it counts from a second after.
-  const after = frames.filter(([at]) => t.ready !== undefined && at >= t.ready + 1000).map(([, f]) => f);
+  // When the page stands still just after the first frame, the second that holds it is
+  // posted late, more than a second after it (After the Pass: 1.8s), so the first numbers
+  // posted after the first frame are left out too.
+  const after = frames.filter(([at]) => t.ready !== undefined && at >= t.ready).slice(1)
+    .filter(([at]) => at >= t.ready + 1000).map(([, f]) => f);
   if (after.length === 0) {
     console.log("no frame meter numbers after the first frame (window.gozenStats)");
     return maxFrame <= 0;
