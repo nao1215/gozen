@@ -1,6 +1,6 @@
 # ADR 0027: The languages of a game's text
 
-Status: Accepted (2026-10-21). The implementation is the stage "Languages" under "Plan". This extends [ADR 0019](0019-engine-languages.md) from the engine's words to the game's own text. Home: `internal/layer2/gamedata` (the files and the checks), `internal/text` (the active language).
+Status: Accepted (2026-10-21). Done (stage 5). This extends [ADR 0019](0019-engine-languages.md) from the engine's words to the game's own text. Home: `internal/layer2/gamedata` (the files and the checks), `internal/text` (the active language).
 
 ## Users and problem
 
@@ -23,6 +23,15 @@ An author writes a game in one language and wants to offer it in another. ADR 00
 
 Headless checks of a translated game load it with an overlay that sets `language` (`gozen.Load` with an overlay), so `Request.Text` is the translation and `DefaultPolicy.Prefer` names translated labels.
 
+### As built
+
+- The translations belong to the loaded game (`DB.Words`, `DB.Show`, `DB.Tr`), not to the process: the engine's words stay process-wide (`text.Use`) as before, and a game loaded with `language: ja` is a Japanese game for its sessions. This keeps a test that loads the game twice, once in each language, simple.
+- The names and descriptions of the definitions (places, people, actions, exits, items, skills, states, enemies, classes, shops, the title, the subtitle and the gallery's scenes) are translated in place by `Show`, which keeps their sources to translate again when the player changes the language. The lines, speakers who are not actors, choices, prompts and notices are translated by the runner as they are shown, so the key of a read line is its source.
+- The languages are those of the engine's catalog, `en` and `ja`. `languages` must hold the language shown.
+- `lang/<code>.yaml` has one field, `text`; a key that is a word of the engine is not a stray key. A language offered without its file has every text untranslated.
+- `gozen check`: a translation with other `{expressions}` than its source is an error; a key that is no text of the game is GZN0110, each text not translated GZN0111 (with its path; `--format json` lists them all). The layout check lays out the lines in each language offered (the files tagged `[ja]`), and the glyph check reads `lang/` too. `gozen book` stays in the language written (the author decided against `--language`).
+- The settings have a "Language" row when two or more are offered; `config.json` keeps `language`, which wins over `game.yaml` at start.
+
 ## Alternatives
 
 1. A map per string (`text: {en: ..., ja: ...}`). Every file grows with every language and a translator edits the author's files. Not chosen.
@@ -39,4 +48,4 @@ Headless checks of a translated game load it with an overlay that sets `language
 
 | Stage | Content |
 | --- | --- |
-| 5 | `lang/`, `written_in`, `languages`, the translation before showing, the settings row, the checks |
+| 5 | `lang/`, `written_in`, `languages`, the translation before showing, the settings row, the checks (done) |

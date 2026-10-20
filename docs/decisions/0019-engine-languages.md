@@ -1,6 +1,6 @@
 # ADR 0019: Hold engine text in English and Japanese, selected by language in game.yaml
 
-Status: Accepted. Date: 2026-10-19. Applies to the `text` package (layer 1), `data.Game`, and the `gozen` subcommands that produce documents.
+Status: Accepted. Date: 2026-10-19. The game's own text in several languages (`written_in`, `languages`, `lang/<code>.yaml`) is [ADR 0027](0027-text-languages.md); its files may also replace the engine's words of their language. Applies to the `text` package (layer 1), `data.Game`, and the `gozen` subcommands that produce documents.
 
 ## Users and problem
 

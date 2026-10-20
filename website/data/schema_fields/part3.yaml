@@ -119,7 +119,8 @@ Game:
   game_over: "What happens when the party falls."
   id: "The game's ID, which names its save directory."
   join_exp: "An expression giving the minimum experience of a member who joins the party, evaluated against the party before joining. Lower experience is raised to this, never lowered."
-  language: "The built-in language of the engine's screens, `en` (the default) or `ja`."
+  language: "The language shown: the engine's built-in words, `en` (the default) or `ja`, and the game's own text, translated by `lang/<language>.yaml` when it is not the language written."
+  languages: "The languages the player may choose in the settings, from `en` and `ja`; the language shown must be one of them. The default is `language` alone. Needs schema version 4."
   max_party: "The largest number of characters in the active party."
   memo: "Settings for the test player's notes (kinds of notes and numbers kept with each)."
   meters: "Gauges of the player's numbers shown on the field, in the dungeon and in the status menu."
@@ -141,6 +142,7 @@ Game:
   title_music: "The song and mood played on the title screen."
   ui: "The look of the game's menus and windows."
   verbs: "Names of custom commands implemented in Go. A declared name may be used as a command."
+  written_in: "The language the files under `data/` are written in. Each other language is translated by `lang/<code>.yaml`, a map `text` from the text as written to its translation. The default is `language`. Needs schema version 4."
 GameOver:
   _: "What is shown when the party falls."
   background: "The picture shown behind the game over screen."

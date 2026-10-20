@@ -1,11 +1,14 @@
 package gamedata
 
 import (
+	"cmp"
 	"fmt"
 	"io/fs"
 	"path"
 	"sort"
 	"strings"
+
+	lang "github.com/nao1215/gozen/internal/text"
 
 	"github.com/nao1215/gozen/internal/text/catalog"
 
@@ -47,6 +50,12 @@ type DB struct {
 	// sceneWarns are the warnings of the maps and stages that Check found (SceneWarnings).
 	sceneWarns  []error
 	sceneWarned bool
+
+	// Words are the translations of lang/<code>.yaml by language, source to translation
+	// (ADR 0027). shown is the language shown, names the sources of the names Show translates.
+	Words map[string]map[string]string
+	shown string
+	names map[*string]string
 }
 
 // file is one data file: any of the sections.
@@ -147,9 +156,13 @@ func Load(fsys fs.FS) (*DB, error) {
 	if err := db.loadStandIns(); err != nil {
 		return nil, err
 	}
+	if err := db.loadLanguages(); err != nil {
+		return nil, err
+	}
 	if errs := db.Check(); len(errs) > 0 {
 		return db, joinDiagnostics(errs)
 	}
+	db.Show(cmp.Or(db.Game.Language, lang.English))
 	return db, nil
 }
 

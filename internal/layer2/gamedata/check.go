@@ -860,6 +860,7 @@ func (db *DB) Check() []error {
 	c.iconWarnings()
 	c.choseReferences()
 	c.voiceWarnings()
+	c.languages()
 	db.sceneWarns, db.sceneWarned = sortedDiagnostics(c.warns), true
 	return sortedDiagnostics(c.errs)
 }

@@ -1,0 +1,331 @@
+package gamedata
+
+import (
+	"bytes"
+	"cmp"
+	"fmt"
+	"io/fs"
+	"maps"
+	"slices"
+	"strings"
+
+	"github.com/goccy/go-yaml"
+
+	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/layer1/decodeguard"
+	lang "github.com/nao1215/gozen/internal/text"
+	"github.com/nao1215/gozen/internal/text/catalog"
+)
+
+// The languages of a game's text (ADR 0027): the files under data/ are written in one
+// language (written_in), and lang/<code>.yaml maps each source text to its translation
+// for another (gettext). The names of the definitions are translated in place when a
+// language is shown (Show); the lines, choices and notices are translated as they are
+// shown (Tr), so the key of a read line stays its source.
+
+// LangDir holds the translations, lang/<code>.yaml.
+const LangDir = "lang"
+
+// langFile is lang/<code>.yaml.
+type langFile struct {
+	Text map[string]string `yaml:"text"`
+}
+
+// Written is the language the files under data/ are written in (written_in; language
+// when it is left out).
+func (g *Game) Written() string { return cmp.Or(g.WrittenIn, g.Language, lang.English) }
+
+// Offered are the languages the player may choose (languages; language when left out).
+func (g *Game) Offered() []string {
+	if len(g.Languages) > 0 {
+		return g.Languages
+	}
+	return []string{cmp.Or(g.Language, lang.English)}
+}
+
+// loadLanguages reads lang/<code>.yaml of each language offered other than the one written.
+// A language without its file has every text untranslated (check warns).
+func (db *DB) loadLanguages() error {
+	db.Words = map[string]map[string]string{}
+	var errs []error
+	for _, code := range append(slices.Clone(db.Game.Offered()), db.Game.Language) {
+		if code == "" || code == db.Game.Written() || db.Words[code] != nil {
+			continue
+		}
+		name := LangDir + "/" + code + ".yaml"
+		b, err := fs.ReadFile(db.FS, name)
+		if err != nil {
+			db.Words[code] = map[string]string{}
+			continue
+		}
+		var f langFile
+		if err := decodeguard.Run(func() error {
+			return yaml.NewDecoder(bytes.NewReader(b), yaml.Strict()).Decode(&f)
+		}); err != nil {
+			errs = append(errs, fmt.Errorf("%s: %s", name, yaml.FormatError(err, false, true)))
+			continue
+		}
+		db.Words[code] = f.Text
+		if f.Text == nil {
+			db.Words[code] = map[string]string{}
+		}
+	}
+	return joinDiagnostics(errs)
+}
+
+// Tr is the translation of a source text in the language shown (the source itself when
+// it is the language written, or when the text has no translation yet).
+func (db *DB) Tr(s string) string { return db.TrIn(db.shown, s) }
+
+// TrIn is the translation of a source text in a language (the source when there is none).
+func (db *DB) TrIn(code, s string) string {
+	if s == "" || code == "" || code == db.Game.Written() {
+		return s
+	}
+	if t, ok := db.Words[code][s]; ok && t != "" {
+		return t
+	}
+	return s
+}
+
+// Shown is the language the game's text is shown in.
+func (db *DB) Shown() string { return cmp.Or(db.shown, db.Game.Written()) }
+
+// Show shows the game's text in a language: the names of the definitions are translated
+// in place (from their sources), and Tr translates the lines into it.
+func (db *DB) Show(code string) {
+	if db.names == nil {
+		db.names = map[*string]string{}
+		for _, p := range db.nameFields() {
+			db.names[p] = *p
+		}
+	}
+	db.shown = code
+	for p, src := range db.names {
+		*p = db.Tr(src)
+	}
+}
+
+// EngineWords are the words game.yaml's text and lang/<code>.yaml give the engine's own
+// keys in a language (ADR 0019: one key space), for text.Use.
+func (db *DB) EngineWords(code string) map[string]string {
+	out := map[string]string{}
+	if code == db.Game.Language {
+		maps.Copy(out, db.Game.Text)
+	}
+	maps.Copy(out, db.Words[code])
+	return out
+}
+
+// nameFields are the names and descriptions of the definitions shown as text.
+func (db *DB) nameFields() []*string {
+	g := &db.Game
+	out := []*string{&g.Title, &g.Subtitle}
+	for i := range g.Gallery.Scenes {
+		out = append(out, &g.Gallery.Scenes[i].Title)
+	}
+	for _, c := range db.Classes {
+		out = append(out, &c.Name)
+	}
+	for _, a := range db.Actors {
+		out = append(out, &a.Name, &a.Profile)
+	}
+	for _, it := range db.Items {
+		out = append(out, &it.Name, &it.Desc)
+	}
+	for _, s := range db.Skills {
+		out = append(out, &s.Name, &s.Desc)
+	}
+	for _, s := range db.States {
+		out = append(out, &s.Name)
+	}
+	for _, e := range db.Enemies {
+		out = append(out, &e.Name)
+	}
+	for _, s := range db.Shops {
+		out = append(out, &s.Name, &s.Greeting)
+	}
+	for _, l := range db.Locations {
+		out = append(out, &l.Name, &l.Desc)
+		for i := range l.People {
+			out = append(out, &l.People[i].Name)
+		}
+		for i := range l.Actions {
+			out = append(out, &l.Actions[i].Label)
+		}
+		for i := range l.Exits {
+			out = append(out, &l.Exits[i].Label)
+		}
+	}
+	return out
+}
+
+// SourceText is a text of the game shown on the screens, and where it is written.
+type SourceText struct {
+	Path, Text string
+}
+
+// SourceTexts are the texts of the game a translation covers: the names and descriptions
+// of the definitions, and the lines, speakers, choices, prompts and notices of the
+// commands of events and places, in a stable order.
+func (db *DB) SourceTexts() []SourceText {
+	var out []SourceText
+	add := func(p, s string) {
+		if strings.TrimSpace(s) != "" {
+			out = append(out, SourceText{p, s})
+		}
+	}
+	src := func(p *string) string {
+		if s, ok := db.names[p]; ok {
+			return s
+		}
+		return *p
+	}
+	g := &db.Game
+	add("game.yaml title", src(&g.Title))
+	add("game.yaml subtitle", src(&g.Subtitle))
+	for i := range g.Gallery.Scenes {
+		add(fmt.Sprintf("game.yaml gallery.scenes[%d].title", i), src(&g.Gallery.Scenes[i].Title))
+	}
+	sorted := func(m []string) []string { return slices.Sorted(slices.Values(m)) }
+	for _, id := range sorted(slices.Collect(maps.Keys(db.Classes))) {
+		add("classes."+id+".name", src(&db.Classes[id].Name))
+	}
+	for _, id := range sorted(slices.Collect(maps.Keys(db.Actors))) {
+		a := db.Actors[id]
+		add("actors."+id+".name", src(&a.Name))
+		add("actors."+id+".profile", src(&a.Profile))
+	}
+	for _, id := range sorted(slices.Collect(maps.Keys(db.Items))) {
+		it := db.Items[id]
+		add("items."+id+".name", src(&it.Name))
+		add("items."+id+".desc", src(&it.Desc))
+	}
+	for _, id := range sorted(slices.Collect(maps.Keys(db.Skills))) {
+		s := db.Skills[id]
+		add("skills."+id+".name", src(&s.Name))
+		add("skills."+id+".desc", src(&s.Desc))
+	}
+	for _, id := range sorted(slices.Collect(maps.Keys(db.States))) {
+		add("states."+id+".name", src(&db.States[id].Name))
+	}
+	for _, id := range sorted(slices.Collect(maps.Keys(db.Enemies))) {
+		add("enemies."+id+".name", src(&db.Enemies[id].Name))
+	}
+	for _, id := range sorted(slices.Collect(maps.Keys(db.Shops))) {
+		s := db.Shops[id]
+		add("shops."+id+".name", src(&s.Name))
+		add("shops."+id+".greeting", src(&s.Greeting))
+	}
+	var cmds func(w string, cs []Command)
+	cmds = func(w string, cs []Command) {
+		for i := range cs {
+			c := &cs[i]
+			cw := fmt.Sprintf("%s[%d]", w, i)
+			if c.Say != nil {
+				if _, actor := db.Actors[c.Say.Who]; !actor {
+					add(cw+".say.who", c.Say.Who)
+				}
+				add(cw+".say", c.Say.Text)
+				for j, alt := range c.Say.Instead {
+					add(fmt.Sprintf("%s.say.instead[%d]", cw, j), alt.Text)
+				}
+			}
+			add(cw+".prompt", c.Prompt)
+			add(cw+".notice", c.Notice)
+			for j, o := range c.Choice {
+				add(fmt.Sprintf("%s.choice[%d].label", cw, j), o.Label)
+				cmds(fmt.Sprintf("%s.choice[%d].do", cw, j), o.Do)
+			}
+			cmds(cw+".then", c.Then)
+			cmds(cw+".else", c.Else)
+			cmds(cw+".on_win", c.OnWin)
+			cmds(cw+".on_lose", c.OnLose)
+			cmds(cw+".on_escape", c.OnRun)
+		}
+	}
+	for _, id := range sorted(slices.Collect(maps.Keys(db.Locations))) {
+		l := db.Locations[id]
+		w := "locations." + id
+		add(w+".name", src(&l.Name))
+		add(w+".desc", src(&l.Desc))
+		cmds(w+".on_enter", l.OnEnter)
+		for i := range l.People {
+			add(fmt.Sprintf("%s.people[%d].name", w, i), src(&l.People[i].Name))
+			cmds(fmt.Sprintf("%s.people[%d].talk", w, i), l.People[i].Talk)
+		}
+		for i := range l.Actions {
+			add(fmt.Sprintf("%s.actions[%d].label", w, i), src(&l.Actions[i].Label))
+			cmds(fmt.Sprintf("%s.actions[%d].do", w, i), l.Actions[i].Do)
+		}
+		for i := range l.Exits {
+			add(fmt.Sprintf("%s.exits[%d].label", w, i), src(&l.Exits[i].Label))
+			cmds(fmt.Sprintf("%s.exits[%d].do", w, i), l.Exits[i].Do)
+		}
+	}
+	for _, id := range sorted(slices.Collect(maps.Keys(db.Events))) {
+		cmds("events."+id+".do", db.Events[id].Do)
+	}
+	return out
+}
+
+// languages checks written_in, languages and the translations.
+func (c *checker) languages() {
+	g := &c.db.Game
+	if g.WrittenIn != "" {
+		c.needsVersion("game.yaml written_in", "written_in", SchemaVersion4)
+		if _, err := catalog.Words(g.WrittenIn); err != nil {
+			c.errorf(diag.UnknownReference, "game.yaml written_in", "%q is not a built-in language (use %s or %s)", g.WrittenIn, catalog.English, catalog.Japanese)
+		}
+	}
+	if len(g.Languages) > 0 {
+		c.needsVersion("game.yaml languages", "languages", SchemaVersion4)
+		seen := map[string]bool{}
+		for i, code := range g.Languages {
+			w := fmt.Sprintf("game.yaml languages[%d]", i)
+			if _, err := catalog.Words(code); err != nil {
+				c.errorf(diag.UnknownReference, w, "%q is not a built-in language (use %s or %s)", code, catalog.English, catalog.Japanese)
+			}
+			if seen[code] {
+				c.errorf(diag.Duplicate, w, "%q is written twice", code)
+			}
+			seen[code] = true
+		}
+		if !seen[cmp.Or(g.Language, lang.English)] {
+			c.errorf(diag.UnknownReference, "game.yaml languages", "the language shown (%s) is not one of languages", cmp.Or(g.Language, lang.English))
+		}
+	}
+	if len(c.db.Words) == 0 {
+		return
+	}
+	texts := c.db.SourceTexts()
+	sources := map[string]bool{}
+	for _, t := range texts {
+		sources[t.Text] = true
+	}
+	engine, err := catalog.Words(lang.Japanese) // the keys of the engine's words
+	if err != nil {
+		engine = map[string]string{}
+	}
+	for _, code := range slices.Sorted(maps.Keys(c.db.Words)) {
+		words := c.db.Words[code]
+		file := LangDir + "/" + code + ".yaml"
+		for _, src := range slices.Sorted(maps.Keys(words)) {
+			if _, ok := engine[src]; !sources[src] && !ok {
+				c.warnf(diag.UnknownSource, file, "%q is not a text of the game (nor a word of the engine)", src)
+			}
+			if a, b := sortedInterpolations(src), sortedInterpolations(words[src]); !slices.Equal(a, b) {
+				c.errorf(diag.Shape, file, "the translation of %q has the expressions {%s}, not {%s}", src, strings.Join(b, "}, {"), strings.Join(a, "}, {"))
+			}
+		}
+		for _, t := range texts {
+			if w, ok := words[t.Text]; !ok || w == "" {
+				c.warnf(diag.Untranslated, t.Path, "not translated to %s: %q", code, t.Text)
+			}
+		}
+	}
+}
+
+func sortedInterpolations(s string) []string {
+	return slices.Sorted(slices.Values(Interpolations(s)))
+}

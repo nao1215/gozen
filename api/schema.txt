@@ -166,6 +166,7 @@ github.com/nao1215/gozen/schema field DB.TacticActions
 github.com/nao1215/gozen/schema field DB.TacticConditions
 github.com/nao1215/gozen/schema field DB.TacticTargets
 github.com/nao1215/gozen/schema field DB.Troops
+github.com/nao1215/gozen/schema field DB.Words
 github.com/nao1215/gozen/schema field Diagnostic.Code
 github.com/nao1215/gozen/schema field Diagnostic.Col
 github.com/nao1215/gozen/schema field Diagnostic.File
@@ -284,6 +285,7 @@ github.com/nao1215/gozen/schema field Game.GameOver
 github.com/nao1215/gozen/schema field Game.ID
 github.com/nao1215/gozen/schema field Game.JoinExp
 github.com/nao1215/gozen/schema field Game.Language
+github.com/nao1215/gozen/schema field Game.Languages
 github.com/nao1215/gozen/schema field Game.MaxParty
 github.com/nao1215/gozen/schema field Game.Memo
 github.com/nao1215/gozen/schema field Game.Meters
@@ -306,6 +308,7 @@ github.com/nao1215/gozen/schema field Game.TitleFigures
 github.com/nao1215/gozen/schema field Game.TitleText
 github.com/nao1215/gozen/schema field Game.UI
 github.com/nao1215/gozen/schema field Game.Verbs
+github.com/nao1215/gozen/schema field Game.WrittenIn
 github.com/nao1215/gozen/schema field GameOver.Background
 github.com/nao1215/gozen/schema field GameOver.Event
 github.com/nao1215/gozen/schema field GameOver.Music
@@ -535,6 +538,7 @@ github.com/nao1215/gozen/schema method DB.CheckTacticCatalog
 github.com/nao1215/gozen/schema method DB.CommandsName
 github.com/nao1215/gozen/schema method DB.CompileTactic
 github.com/nao1215/gozen/schema method DB.EachCommand
+github.com/nao1215/gozen/schema method DB.EngineWords
 github.com/nao1215/gozen/schema method DB.EventPlaces
 github.com/nao1215/gozen/schema method DB.Exists
 github.com/nao1215/gozen/schema method DB.FacePicture
@@ -546,9 +550,14 @@ github.com/nao1215/gozen/schema method DB.Rules
 github.com/nao1215/gozen/schema method DB.ScenePictures
 github.com/nao1215/gozen/schema method DB.SceneWarnings
 github.com/nao1215/gozen/schema method DB.SetWarnings
+github.com/nao1215/gozen/schema method DB.Show
+github.com/nao1215/gozen/schema method DB.Shown
+github.com/nao1215/gozen/schema method DB.SourceTexts
 github.com/nao1215/gozen/schema method DB.StandIn
 github.com/nao1215/gozen/schema method DB.StateRegistry
 github.com/nao1215/gozen/schema method DB.StateUses
+github.com/nao1215/gozen/schema method DB.Tr
+github.com/nao1215/gozen/schema method DB.TrIn
 github.com/nao1215/gozen/schema method DB.Uses
 github.com/nao1215/gozen/schema method DB.VoicePath
 github.com/nao1215/gozen/schema method Diagnostics.Error
@@ -568,6 +577,8 @@ github.com/nao1215/gozen/schema method GalleryCG.Has
 github.com/nao1215/gozen/schema method GalleryCG.Key
 github.com/nao1215/gozen/schema method GalleryCG.Pages
 github.com/nao1215/gozen/schema method GalleryScene.Key
+github.com/nao1215/gozen/schema method Game.Offered
+github.com/nao1215/gozen/schema method Game.Written
 github.com/nao1215/gozen/schema method Generate.Drawn
 github.com/nao1215/gozen/schema method Generate.LoopRate
 github.com/nao1215/gozen/schema method Generate.SeedFor

@@ -496,7 +496,7 @@ func (r *Runner) run(c *data.Command) Request {
 			if ok {
 				r.options = append(r.options, o)
 				r.optionAt = append(r.optionAt, i)
-				labels = append(labels, data.Render(o.Label, env))
+				labels = append(labels, data.Render(r.db.Tr(o.Label), env))
 				ids = append(ids, o.ID)
 				keys = append(keys, ChoiceKey(c.Prompt, o.Label))
 			}
@@ -506,7 +506,7 @@ func (r *Runner) run(c *data.Command) Request {
 			return nil
 		}
 		r.asked = c
-		return Choice{Prompt: data.Render(c.Prompt, env), Options: labels, IDs: ids, Keys: keys}
+		return Choice{Prompt: data.Render(r.db.Tr(c.Prompt), env), Options: labels, IDs: ids, Keys: keys}
 	case "ran":
 		r.st.MarkRan(c.Ran)
 	case "done":
@@ -672,7 +672,7 @@ func (r *Runner) run(c *data.Command) Request {
 	case "wait":
 		return Wait{Seconds: c.Wait.Seconds, NoSkip: !c.Wait.Skippable()}
 	case "notice":
-		return Notice{Text: data.Render(c.Notice, env)}
+		return Notice{Text: data.Render(r.db.Tr(c.Notice), env)}
 	case "sfx":
 		r.emit(SoundEffect{c.SFX.Name})
 		if c.SFX.Wait {
@@ -793,7 +793,7 @@ func (r *Runner) say(s *data.Say, env expr.Env) Request {
 
 // line builds one line (false when it has nothing to show).
 func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
-	out := Say{Text: data.Render(s.Text, env), Name: s.Who, Key: SourceKey(s.Who, s.Text)}
+	out := Say{Text: data.Render(r.db.Tr(s.Text), env), Name: s.Who, Key: SourceKey(s.Who, s.Text)}
 	if s.Voice != "" {
 		out.Voice, _ = r.db.VoicePath(s.Who, s.Voice)
 	}
@@ -818,7 +818,7 @@ func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
 		}
 		out.Right = s.Side != "left"
 	}
-	out.Name = data.Render(out.Name, env)
+	out.Name = data.Render(r.db.Tr(out.Name), env)
 	if strings.TrimSpace(out.Text) == "" && out.Face == "" {
 		return Say{}, false
 	}

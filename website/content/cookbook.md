@@ -43,6 +43,7 @@ The recipes refer to a few IDs they do not define: the actor and class `walker`,
 | [Show event pictures and fill the gallery](#show-event-pictures-and-fill-the-gallery) | `image`, `gallery.cgs`, `gallery.scenes` |
 | [Play music for places, battles and moods](#play-music-for-places-battles-and-moods) | `music.songs`, `music`, `battle_music`, `mood` rules |
 | [Change the language and the engine's wording](#change-the-language-and-the-engines-wording) | `language`, `text`, `terms` |
+| [Offer the game in two languages](#offer-the-game-in-two-languages) | `written_in`, `languages`, `lang/<code>.yaml` |
 | [Test-play with notes, reload and quick starts](#test-play-with-notes-reload-and-quick-starts) | `memo`, `--dev`, F5, F9, `--start` |
 | [Measure battles with sim battle and sim dive](#measure-battles-with-sim-battle-and-sim-dive) | `gozen sim battle`, `gozen sim dive` |
 | [Cut a release and a trial](#cut-a-release-and-a-trial) | `trial.yaml`, `gozen pack release`, `gozen pack trial` |
@@ -925,6 +926,42 @@ text:
 ```
 
 [The English catalog](https://github.com/nao1215/gozen/blob/main/internal/text/catalog/english.go) lists every key, and `gozen check` warns when the font lacks letters of the chosen words. Reference: [Game](/schema/#game), [Terms](/schema/#terms).
+
+## Offer the game in two languages
+
+Write `data/` in one language and translate it in `lang/<code>.yaml`: a map `text` from each text as written to its translation, with the `{expressions}` kept. `languages` lets the player choose in the settings; the choice is kept with the settings.
+
+<!-- verify: load group=languages as=game.yaml -->
+```yaml
+# game.yaml
+schema_version: 4
+language: en          # shown at first
+written_in: en        # the language of data/
+languages: [en, ja]   # the settings offer both
+```
+
+<!-- verify: load group=languages -->
+```yaml
+events:
+  dinner:
+    do:
+      - say: {who: Keeper, text: "Soup or bread? You have {gold} gold."}
+      - choice: [{label: Soup}, {label: Bread}]
+```
+
+<!-- verify: parse a file of lang/, which the load examples do not place; the translations are written in romaji here, and in Japanese letters in a game -->
+```yaml
+# lang/ja.yaml
+text:
+  "Soup or bread? You have {gold} gold.": "Supu to pan, dochira ni? Shojikin wa {gold} G."
+  "Keeper": "Yado no shujin"
+  "Soup": "Supu"
+  "Bread": "Pan"
+```
+
+Lines, speakers, choices, prompts and notices are translated as they are shown, and the names and descriptions of places, people, actions, exits, items, skills, states, enemies, classes, shops, the title and the gallery's scenes when the language changes. Read lines are kept by the text as written, so they stay read in every language. One text has one translation: when the same words must be translated differently in two places, write them differently. The same map may also replace the engine's own words in that language, as `text` in `game.yaml` does.
+
+`gozen check` reports a translation that drops or changes an `{expression}`, warns of a key that is no text of the game (GZN0110) and of every text not translated yet (GZN0111, each with its path; `--format json` lists them for a script or an agent to fill the file), and lays out the lines in each language. A test of the Japanese game loads the same files with `game.yaml` changed to `language: ja` (`gozen.Load` with an overlay); its requests are in Japanese. Reference: [Game](/schema/#game) (`written_in`, `languages`).
 
 ## Test-play with notes, reload and quick starts
 

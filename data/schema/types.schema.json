@@ -6499,7 +6499,7 @@
           "x-type": "expression"
         },
         "language": {
-          "description": "The built-in language of the engine's screens, `en` (the default) or `ja`.",
+          "description": "The language shown: the engine's built-in words, `en` (the default) or `ja`, and the game's own text, translated by `lang/\u003clanguage\u003e.yaml` when it is not the language written.",
           "enum": [
             "",
             "en",
@@ -6515,6 +6515,25 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "languages": {
+          "description": "The languages the player may choose in the settings, from `en` and `ja`; the language shown must be one of them. The default is `language` alone. Needs schema version 4.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
         },
         "max_party": {
           "description": "The largest number of characters in the active party.",
@@ -6823,6 +6842,19 @@
             "version": "2"
           },
           "x-type": "string[]"
+        },
+        "written_in": {
+          "description": "The language the files under `data/` are written in. Each other language is translated by `lang/\u003ccode\u003e.yaml`, a map `text` from the text as written to its translation. The default is `language`. Needs schema version 4.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         }
       },
       "required": [

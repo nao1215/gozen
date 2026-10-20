@@ -165,3 +165,59 @@ scenarios:
       exit_code: 1
       stderr:
         contains: ['stand needs schema_version: 4', 'wait as a map needs schema_version: 4']
+- name: check lists every text not translated in json and lays out each language
+  steps:
+  - fixture:
+      file: tongues/game.yaml
+      content: "schema_version: 4\nid: tongues\nstart: {location: room, party: [reader]}\nwritten_in: en\nlanguages: [en, ja]\n"
+  - fixture:
+      file: tongues/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {name: Room}}
+        events:
+          scene:
+            do:
+              - say: Hi.
+              - choice: [{label: Stay}]
+  - fixture:
+      file: tongues/lang/ja.yaml
+      content: "text:\n  Hi.: and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on and the long road goes on\n  Room: Room\n"
+  - run:
+      command: gozen check --format json --only structure tongues
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['"path": "events.scene.do[1].choice[0].label"', '"code": "GZN0111"', '"severity": "warning"']
+  - run:
+      command: gozen check --only layout tongues
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: ['data/world.yaml [ja]']
+        not_contains: ['data/world.yaml:']
+- name: the language words at schema_version 3 ask for version 4
+  steps:
+  - fixture:
+      file: old5/game.yaml
+      content: "schema_version: 3\nid: old5\nstart: {location: room, party: [reader]}\nlanguages: [en, ja]\n"
+  - fixture:
+      file: old5/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {name: Room}}
+        events:
+          scene:
+            do:
+              - say: Hi.
+              - choice: [{label: Stay}]
+  - run:
+      command: gozen check --only structure old5
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: 'languages needs schema_version: 4'

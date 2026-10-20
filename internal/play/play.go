@@ -399,7 +399,7 @@ func New(opts Options) (_ *Game, err error) {
 	if db.Game.Screen.Width <= 0 || db.Game.Screen.Height <= 0 {
 		return nil, errors.New("play: screen dimensions must be positive")
 	}
-	if err := lang.Use(db.Game.Language, db.Game.Text); err != nil {
+	if err := lang.Use(db.Game.Language, db.EngineWords(db.Game.Language)); err != nil {
 		return nil, err
 	}
 	var rep *replay
@@ -536,6 +536,9 @@ func New(opts Options) (_ *Game, err error) {
 	}
 
 	g.loadConfig()
+	if err := g.useLanguage(); err != nil {
+		return nil, err
+	}
 	if rep != nil && rep.version == traceVersion {
 		g.cfg, g.read, g.unlocked = rep.setup.Config, rep.setup.Read, rep.setup.Unlocked
 		g.applyConfig()

@@ -246,6 +246,10 @@ Every file name is relative to `assets/`. A character's `faces` is a directory o
 
 The engine's own words (menus, battle messages, settings, saves) come in English and Japanese. `language:` in `game.yaml` picks one: `en` (the default) or `ja`. `text:` lays the game's own wording over that language; a key is the engine's Japanese source text, a format with its `%d` and `%s` too, and the value may reorder them (`%[2]d`). [The English catalog](https://github.com/nao1215/gozen/blob/main/internal/text/catalog/english.go) lists every key. `terms:` names the currency and stats. `gozen check` warns when `language` is unset but the game is written in Japanese, and when the regular font lacks letters of the chosen words.
 
+## Languages
+
+A game is written in one language, `written_in` (by default `language`), and can be offered in another: `lang/<code>.yaml` maps each text as written to its translation, and `languages` lets the player choose. The engine's own words come in English and Japanese, so the languages are `en` and `ja` ([the recipe](/cookbook/#offer-the-game-in-two-languages)).
+
 ## Novel games
 
 A novel game is a game whose places mostly run events. `ui.message: novel` in `game.yaml` shows the lines in a band across the bottom of the screen, with the speakers' standing pictures above it:

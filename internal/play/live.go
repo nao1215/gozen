@@ -266,7 +266,7 @@ func (g *Game) reload() {
 	g.db = db
 	g.unlockNeedsBackup = db.Game.Gallery.MigrateUnlocks(g.unlocked) || g.unlockNeedsBackup
 	g.spUsed = nil
-	if err := lang.Use(db.Game.Language, db.Game.Text); err != nil {
+	if err := g.useLanguage(); err != nil {
 		log.Printf("live reload: %v", err)
 	}
 	g.setFaceBoxes()

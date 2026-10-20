@@ -1,6 +1,7 @@
 package play
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"io/fs"
 	"log"
 	"math"
+	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -33,6 +35,8 @@ type config struct {
 	// Voice is the volume of voices (0 to 10), VoiceBy that of each voiced actor (ADR 0028).
 	Voice   int            `json:"voice"`
 	VoiceBy map[string]int `json:"voice_by,omitempty"`
+	// Language is the language the player chose, one of game.yaml's languages (ADR 0027).
+	Language string `json:"language,omitempty"`
 }
 
 func defaultConfig() config {
@@ -105,6 +109,8 @@ type configScreen struct {
 	// row for each of voiced.
 	voiceRow int
 	voiced   []string
+	// langRow is the row of the language (-1: the game offers one).
+	langRow int
 }
 
 func newConfigScreen(g *Game) *configScreen {
@@ -154,6 +160,11 @@ func (s *configScreen) refresh(g *Game) {
 			}
 			s.list.items = append(s.list.items, listItem{label: fmt.Sprintf(lang.T("　%s の声"), g.db.Actors[id].Name), right: "◀ " + bar(v) + " ▶"})
 		}
+	}
+	s.langRow = -1
+	if offered := g.db.Game.Offered(); len(offered) > 1 {
+		s.langRow = len(s.list.items)
+		s.list.items = append(s.list.items, listItem{label: lang.T("言語"), right: "◀ " + languageName(g.language()) + " ▶"})
 	}
 	s.list.items = append(s.list.items, listItem{label: lang.T("もどる")})
 }
@@ -229,6 +240,14 @@ func (s *configScreen) change(g *Game, d int, wrap bool) {
 			return lo
 		}
 		return clampInt(v, lo, hi)
+	}
+	if s.langRow >= 0 && s.list.sel == s.langRow {
+		offered := g.db.Game.Offered()
+		i := slices.Index(offered, g.language())
+		c.Language = offered[(i+d+len(offered))%len(offered)]
+		if err := g.useLanguage(); err != nil {
+			log.Printf("language: %v", err)
+		}
 	}
 	switch i := s.list.sel - s.voiceRow; {
 	case s.voiceRow >= 0 && i == 0:
@@ -312,4 +331,31 @@ func (s *configScreen) draw(g *Game, dst *ebiten.Image) {
 		g.text(dst, ln, l.x+24, y+20+float64(i)*gfx.LineHeight(sz)-float64(len(ls)-1)*gfx.LineHeight(sz)/2, sz, g.th.text)
 	}
 	_ = sh
+}
+
+// language is the language shown: the one chosen in the settings when the game offers it,
+// otherwise game.yaml's language.
+func (g *Game) language() string {
+	if l := g.cfg.Language; l != "" && slices.Contains(g.db.Game.Offered(), l) {
+		return l
+	}
+	return cmp.Or(g.db.Game.Language, lang.English)
+}
+
+// useLanguage shows the game's text and the engine's words in the language (ADR 0027).
+func (g *Game) useLanguage() error {
+	code := g.language()
+	g.db.Show(code)
+	return lang.Use(code, g.db.EngineWords(code))
+}
+
+// languageName is a language as the settings show it, in that language.
+func languageName(code string) string {
+	switch code {
+	case lang.English:
+		return "English"
+	case lang.Japanese:
+		return "日本語"
+	}
+	return code
 }

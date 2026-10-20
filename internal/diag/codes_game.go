@@ -43,6 +43,16 @@ var (
 		Detail:  "An actor with a voices folder has lines without say.voice. They are shown without a voice; the warning counts them so the recording can be finished.",
 		Fix:     "Record the lines it names and add voice to each, or leave them silent on purpose.",
 	})
+	UnknownSource = register(110, "UnknownSource", Entry{
+		Summary: "a translation is of a text the game does not have",
+		Detail:  "A key of lang/<code>.yaml is neither a text of the game (a line, a choice, a name) nor a word of the engine. The text was changed or removed after it was translated.",
+		Fix:     "Change the key to the text as it is written now, or remove the entry.",
+	})
+	Untranslated = register(111, "Untranslated", Entry{
+		Summary: "a text of the game is not translated yet",
+		Detail:  "A language of game.yaml's languages has no translation of this text in lang/<code>.yaml, so the text is shown as written.",
+		Fix:     "Add the text as a key of lang/<code>.yaml with its translation; gozen check --format json lists every one with its path.",
+	})
 	DevOnlySet = register(108, "DevOnlySet", Entry{
 		Summary: "a set changes an actor's stats or level outside the development mode",
 		Detail:  "Setting a party member's stats or level is for the development mode (--dev) and tests. The game skips it when played normally.",

@@ -17,7 +17,7 @@ Codes are assigned one family at a time. A diagnostic without a code still exits
 
 | Codes | Exit | Meaning | Assigned |
 |:--|:--|:--|:--|
-| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 9 codes |
+| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 11 codes |
 | `GZN02xx` | 0 | warnings of a measurement or a record | not yet |
 | `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 10 codes |
 | `GZN12xx` | 1 | fonts and text layout | 1 codes |
@@ -109,6 +109,22 @@ Lines of a voiced actor have no voice.
 An actor with a voices folder has lines without say.voice. They are shown without a voice; the warning counts them so the recording can be finished.
 
 Fix: Record the lines it names and add voice to each, or leave them silent on purpose.
+
+### GZN0110
+
+A translation is of a text the game does not have.
+
+A key of lang/<code>.yaml is neither a text of the game (a line, a choice, a name) nor a word of the engine. The text was changed or removed after it was translated.
+
+Fix: Change the key to the text as it is written now, or remove the entry.
+
+### GZN0111
+
+A text of the game is not translated yet.
+
+A language of game.yaml's languages has no translation of this text in lang/<code>.yaml, so the text is shown as written.
+
+Fix: Add the text as a key of lang/<code>.yaml with its translation; gozen check --format json lists every one with its path.
 
 ## GZN11xx
 

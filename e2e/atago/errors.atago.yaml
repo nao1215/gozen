@@ -495,6 +495,32 @@ scenarios:
       exit_code: 0
       stderr:
         contains: ['[GZN0109]', '1 of 2 lines of reader have no voice', 'events.scene.do[1].say']
+- name: GZN0110 and GZN0111 for a stray translation and a text not translated
+  steps:
+  - fixture:
+      file: twolang/game.yaml
+      content: "schema_version: 4\nid: twolang\nstart: {location: room, party: [reader]}\nwritten_in: en\nlanguages: [en, ja]\n"
+  - fixture:
+      file: twolang/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {name: Room}}
+        events:
+          scene:
+            do:
+              - say: Hi.
+              - choice: [{label: Stay}]
+  - fixture:
+      file: twolang/lang/ja.yaml
+      content: "text:\n  Hi.: こんにちは。\n  Room: 部屋\n  Gone line: 消えた台詞\n"
+  - run:
+      command: gozen check --only structure twolang
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: ['[GZN0110]', '"Gone line" is not a text of the game', '[GZN0111]', 'events.scene.do[1].choice[0].label: not translated to ja: "Stay"']
 - name: GZN1501 and GZN1502 for an output that exists or lies inside an input
   steps:
   - fixture:

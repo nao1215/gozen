@@ -127,14 +127,20 @@ type Game struct {
 	Language string `yaml:"language"`
 	// Text changes the engine's own words on the screens (text), on top of Language: the
 	// engine's key, its Japanese source text (a format with its verbs too) -> the game's.
-	Text     map[string]string `yaml:"text"`
-	ID       string            `yaml:"id"` // names the save directory
-	Title    string            `yaml:"title"`
-	Subtitle string            `yaml:"subtitle"`
-	Screen   Screen            `yaml:"screen"`
-	Fonts    Fonts             `yaml:"fonts"`
-	TitleBG  Picture           `yaml:"title_background"`
-	TitleArt Picture           `yaml:"title_art"`
+	Text map[string]string `yaml:"text"`
+	// WrittenIn is the language the files under data/ are written in (default: Language);
+	// lang/<code>.yaml translates them into the others (schema_version 4, ADR 0027).
+	WrittenIn string `yaml:"written_in"`
+	// Languages are the languages the player may choose in the settings (default:
+	// Language alone; schema_version 4).
+	Languages []string `yaml:"languages"`
+	ID        string   `yaml:"id"` // names the save directory
+	Title     string   `yaml:"title"`
+	Subtitle  string   `yaml:"subtitle"`
+	Screen    Screen   `yaml:"screen"`
+	Fonts     Fonts    `yaml:"fonts"`
+	TitleBG   Picture  `yaml:"title_background"`
+	TitleArt  Picture  `yaml:"title_art"`
 	// TitleFigures stand on the title screen in their order (the later ones in front); with
 	// them, title_art is not drawn.
 	TitleFigures []TitleFigure `yaml:"title_figures"`

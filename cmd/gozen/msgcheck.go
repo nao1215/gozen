@@ -120,14 +120,16 @@ func missingGlyphs(fsys fs.FS) ([]rune, error) {
 		}
 	})
 	files := []string{"game.yaml"}
-	err = fs.WalkDir(fsys, "data", func(p string, d fs.DirEntry, err error) error {
-		if err == nil && !d.IsDir() && path.Ext(p) == ".yaml" {
-			files = append(files, p)
+	for _, dir := range []string{"data", gamedata.LangDir} { // the translations are drawn too (ADR 0027)
+		err = fs.WalkDir(fsys, dir, func(p string, d fs.DirEntry, err error) error {
+			if err == nil && !d.IsDir() && path.Ext(p) == ".yaml" {
+				files = append(files, p)
+			}
+			return err
+		})
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return nil, err
 		}
-		return err
-	})
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return nil, err
 	}
 	for _, name := range files {
 		b, err := fs.ReadFile(fsys, name)
@@ -223,7 +225,56 @@ func checkMessages(db *data.DB, fsys fs.FS) ([]msgIssue, error) {
 	if err := play.LoadFonts(db, fsys); err != nil {
 		return nil, fontProblemOf(fsys, err)
 	}
-	// Use the game-local translator through loaded data.
+	// Use the game-local translator through loaded data. The lines are laid out in the
+	// language written and in each other language offered, translated (ADR 0027).
+	var out []msgIssue
+	var err error
+	codes := []string{db.Game.Written()}
+	for _, code := range db.Game.Offered() {
+		if !slices.Contains(codes, code) {
+			codes = append(codes, code)
+		}
+	}
+	for _, code := range codes {
+		var more []msgIssue
+		if more, err = languageMessages(db, fsys, code); err != nil {
+			break
+		}
+		out = append(out, more...)
+	}
+	if err == nil {
+		out = append(out, stoneOfferIssues(db)...)
+		out = append(out, spOfferIssues(db)...)
+	}
+	seen := map[string]bool{}
+
+	uniq := out[:0]
+	for _, m := range out {
+		k := fmt.Sprintf("%s:%d:%s", m.file, m.line, m.text)
+		if !seen[k] {
+			seen[k] = true
+			uniq = append(uniq, m)
+		}
+	}
+	out = uniq
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].file != out[j].file {
+			return out[i].file < out[j].file
+		}
+		return out[i].line < out[j].line
+	})
+	return out, err
+}
+
+// languageMessages lays out the lines of the data files in a language: the language
+// written as it is, another translated by lang/<code>.yaml (its file is tagged with it).
+func languageMessages(db *data.DB, fsys fs.FS, code string) ([]msgIssue, error) {
+	tr := func(s string) string { return s }
+	tag := ""
+	if code != db.Game.Written() {
+		tr = func(s string) string { return db.TrIn(code, s) }
+		tag = " [" + code + "]"
+	}
 	var out []msgIssue
 	err := fs.WalkDir(fsys, "data", func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || path.Ext(p) != ".yaml" {
@@ -239,31 +290,10 @@ func checkMessages(db *data.DB, fsys fs.FS) ([]msgIssue, error) {
 		}
 		for _, doc := range f.Docs {
 			ast.Walk(msgVisitor(func(n ast.Node) {
-				out = append(out, inspectMapping(&db.Game, p, n)...)
+				out = append(out, inspectMapping(&db.Game, p+tag, n, tr)...)
 			}), doc)
 		}
 		return nil
-	})
-	if err == nil {
-		out = append(out, stoneOfferIssues(db)...)
-		out = append(out, spOfferIssues(db)...)
-	}
-
-	seen := map[string]bool{}
-	uniq := out[:0]
-	for _, m := range out {
-		k := fmt.Sprintf("%s:%d:%s", m.file, m.line, m.text)
-		if !seen[k] {
-			seen[k] = true
-			uniq = append(uniq, m)
-		}
-	}
-	out = uniq
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].file != out[j].file {
-			return out[i].file < out[j].file
-		}
-		return out[i].line < out[j].line
 	})
 	return out, err
 }
@@ -298,7 +328,7 @@ func scalar(n ast.Node) (string, int, bool) {
 	return "", 0, false
 }
 
-func inspectMapping(gm *data.Game, file string, n ast.Node) []msgIssue {
+func inspectMapping(gm *data.Game, file string, n ast.Node, tr func(string) string) []msgIssue {
 	var out []msgIssue
 	var prompt ast.Node
 	var options []string
@@ -315,7 +345,7 @@ func inspectMapping(gm *data.Game, file string, n ast.Node) []msgIssue {
 				}
 			}
 			if ok {
-				out = append(out, sayIssue(gm, file, line, text)...)
+				out = append(out, sayIssue(gm, file, line, tr(text))...)
 			}
 		case "prompt":
 			prompt = kv.Value
@@ -325,7 +355,7 @@ func inspectMapping(gm *data.Game, file string, n ast.Node) []msgIssue {
 					for _, w := range pairs(it) {
 						if w.Key.String() == "label" {
 							if s, _, ok := scalar(w.Value); ok {
-								options = append(options, embedRe.ReplaceAllString(s, "〇〇〇"))
+								options = append(options, embedRe.ReplaceAllString(tr(s), "〇〇〇"))
 							}
 						}
 					}
@@ -335,7 +365,7 @@ func inspectMapping(gm *data.Game, file string, n ast.Node) []msgIssue {
 	}
 	if prompt != nil {
 		if text, line, ok := scalar(prompt); ok {
-			text = embedRe.ReplaceAllString(text, "〇〇〇")
+			text = embedRe.ReplaceAllString(tr(text), "〇〇〇")
 			n := len(play.MessageWrap(gm, text))
 			if _, _, cut := play.PromptLines(gm, text, options); cut {
 				out = append(out, msgIssue{file, line, n, "cut", text})

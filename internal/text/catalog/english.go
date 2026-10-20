@@ -467,6 +467,7 @@ var english = map[string]string{
 	"ログ":     "Log",
 	"非表示":    "Hide",
 	"ボイスの音量": "Voice volume",
+	"言語":     "Language",
 	"　%s の声": "  %s's voice",
 	"スキップ":   "Skip",
 	"シーン送り":  "Skip scene",
