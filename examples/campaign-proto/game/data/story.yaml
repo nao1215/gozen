@@ -1,0 +1,46 @@
+# The talk that breaks into the turns. Placeholder English, to be rewritten.
+events:
+  opening:
+    do:
+      - say: {who: maren, text: Five regions and three banners. Ours flies over Ashvale only.}
+      - say: {who: ox, text: Ten winters to take them all. Pick the marches with care.}
+
+  tilly_arrives:
+    trigger: auto
+    once: true
+    when: var.turn == 3
+    do:
+      - say: {who: tilly, text: I have three hundred spears and nowhere to stand. Will the Crown have us?}
+      - choice:
+          - label: Take her in
+            do:
+              - join: tilly
+              - set: {flag.has_tilly: true, var.gt_tilly: 300}
+              - say: {who: tilly, text: Then point us at someone.}
+          - label: Send her away
+            do:
+              - set: {gold: "gold + 60"}
+              - say: {who: tilly, text: "Then take this for the road, and good luck."}
+        id: tilly
+
+  kes_arrives:
+    trigger: auto
+    once: true
+    when: var.own_cross == 'Crown'
+    do:
+      - say: {who: kes, text: You took the crossing. I fight for whoever holds it.}
+      - join: kes
+      - set: {flag.has_kes: true, var.gt_kes: 300}
+
+  envoy:
+    trigger: auto
+    once: true
+    when: var.turn == 6 && var.own_well == 'Raven'
+    do:
+      - say: {who: Raven envoy, text: The Raven offers two winters of peace. Will you take it?}
+      - choice:
+          - label: Accept the truce
+            do: [{set: {var.truce: "var.turn + 1"}}]
+          - label: Refuse
+            do: [{say: {who: Raven envoy, text: "Then we will meet in the field."}}]
+        id: truce

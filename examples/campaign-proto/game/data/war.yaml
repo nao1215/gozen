@@ -1,0 +1,78 @@
+# The war table: the town map of Go Zen stands in for a land of five regions. A point is a
+# region (its plate shows the owner and the garrison); a road is a border. Two more points
+# are only plates: the turn and the generals, as the map screen draws no meters.
+locations:
+  war:
+    name: The Five Banners
+    map:
+      picture: maps/town.jpg
+      unknown: named
+      draw_roads: true
+      label_size: 0.026
+      points:
+        vale: {at: [830, 720], start: true, label: "{var.nm_vale}  {var.own_vale} {var.tr_vale}"}
+        ford: {at: [745, 555], label: "{var.nm_ford}  {var.own_ford} {var.tr_ford}"}
+        cross: {at: [640, 370], label: "{var.nm_cross}  {var.own_cross} {var.tr_cross}"}
+        hill: {at: [820, 180], label: "{var.nm_hill}  {var.own_hill} {var.tr_hill}"}
+        well: {at: [1640, 410], label: "{var.nm_well}  {var.own_well} {var.tr_well}"}
+        hq: {at: [1480, 860], label: "Turn {var.turn}/10  Orders {var.ap}  Gold {gold}  {var.news}"}
+        camp: {at: [1480, 960], label: "Maren {var.gt_maren}  Ox {var.gt_ox}{flag.has_tilly ? '  Tilly ' + str(var.gt_tilly) : ''}{flag.has_kes ? '  Kes ' + str(var.gt_kes) : ''}"}
+      roads:
+        - {between: [cross, ford], via: [[700, 430]]}
+        - {between: [cross, hill], via: [[760, 320]]}
+        - {between: [cross, well], via: [[900, 250], [1040, 245], [1200, 285], [1500, 390]]}
+        - {between: [cross, vale], via: [[620, 560], [760, 650]]}
+        - {between: [ford, vale]}
+        - {between: [hill, well], via: [[1200, 190]]}
+        # The plates must be on a road (check), so they get roads that never open.
+        - {between: [well, hq], when: "false"}
+        - {between: [hq, camp], when: "false"}
+    actions:
+      - label: "Attack ({var.ap} orders left)"
+        when: var.ap > 0
+        do:
+          - set: {var.g: "''", var.t: "''"}
+          - choice:
+              - {label: "Maren ({var.gt_maren} troops)", when: "!flag.acted_maren && var.gt_maren >= 100", do: [{set: {var.g: "'maren'"}}]}
+              - {label: "Ox ({var.gt_ox} troops)", when: "!flag.acted_ox && var.gt_ox >= 100", do: [{set: {var.g: "'ox'"}}]}
+              - {label: "Tilly ({var.gt_tilly} troops)", when: "flag.has_tilly && !flag.acted_tilly && var.gt_tilly >= 100", do: [{set: {var.g: "'tilly'"}}]}
+              - {label: "Kes ({var.gt_kes} troops)", when: "flag.has_kes && !flag.acted_kes && var.gt_kes >= 100", do: [{set: {var.g: "'kes'"}}]}
+              - {label: Cancel}
+            prompt: Who leads the march?
+          - if: var.g != ''
+            then:
+              # A region can be attacked when the Crown holds a region next to it: the
+              # borders are written again here, one condition per region.
+              - choice:
+                  - {label: "{var.nm_vale} ({var.own_vale}, {var.tr_vale})", when: "var.own_vale != 'Crown' && (var.own_cross == 'Crown' || var.own_ford == 'Crown')", do: [{set: {var.t: "'vale'"}}]}
+                  - {label: "{var.nm_ford} ({var.own_ford}, {var.tr_ford})", when: "var.own_ford != 'Crown' && (var.own_cross == 'Crown' || var.own_vale == 'Crown')", do: [{set: {var.t: "'ford'"}}]}
+                  - {label: "{var.nm_cross} ({var.own_cross}, {var.tr_cross})", when: "var.own_cross != 'Crown' && (var.own_ford == 'Crown' || var.own_hill == 'Crown' || var.own_well == 'Crown' || var.own_vale == 'Crown')", do: [{set: {var.t: "'cross'"}}]}
+                  - {label: "{var.nm_hill} ({var.own_hill}, {var.tr_hill})", when: "var.own_hill != 'Crown' && (var.own_cross == 'Crown' || var.own_well == 'Crown')", do: [{set: {var.t: "'hill'"}}]}
+                  - {label: "{var.nm_well} ({var.own_well}, {var.tr_well})", when: "var.own_well != 'Crown' && (var.own_cross == 'Crown' || var.own_hill == 'Crown')", do: [{set: {var.t: "'well'"}}]}
+                  - {label: Cancel}
+                prompt: Where to?
+              - if: var.t != ''
+                then: [{call: player_clash}]
+      - label: "Develop ({var.ap} orders left)"
+        when: var.ap > 0
+        do:
+          - choice:
+              - {label: "{var.nm_vale} (wealth {var.wl_vale})", when: "var.own_vale == 'Crown'", do: [{set: {var.wl_vale: "var.wl_vale + 15"}}, {set: {var.ap: "var.ap - 1"}}]}
+              - {label: "{var.nm_ford} (wealth {var.wl_ford})", when: "var.own_ford == 'Crown'", do: [{set: {var.wl_ford: "var.wl_ford + 15"}}, {set: {var.ap: "var.ap - 1"}}]}
+              - {label: "{var.nm_cross} (wealth {var.wl_cross})", when: "var.own_cross == 'Crown'", do: [{set: {var.wl_cross: "var.wl_cross + 15"}}, {set: {var.ap: "var.ap - 1"}}]}
+              - {label: "{var.nm_hill} (wealth {var.wl_hill})", when: "var.own_hill == 'Crown'", do: [{set: {var.wl_hill: "var.wl_hill + 15"}}, {set: {var.ap: "var.ap - 1"}}]}
+              - {label: "{var.nm_well} (wealth {var.wl_well})", when: "var.own_well == 'Crown'", do: [{set: {var.wl_well: "var.wl_well + 15"}}, {set: {var.ap: "var.ap - 1"}}]}
+              - {label: Cancel}
+            prompt: Which region?
+      - label: "Draft 150 for 50 gold ({var.ap} orders left)"
+        when: var.ap > 0 && gold >= 50
+        do:
+          - choice:
+              - {label: "Maren ({var.gt_maren} troops)", do: [{set: {var.gt_maren: "var.gt_maren + 150"}}, {gold: -50}, {set: {var.ap: "var.ap - 1"}}]}
+              - {label: "Ox ({var.gt_ox} troops)", do: [{set: {var.gt_ox: "var.gt_ox + 150"}}, {gold: -50}, {set: {var.ap: "var.ap - 1"}}]}
+              - {label: "Tilly ({var.gt_tilly} troops)", when: flag.has_tilly, do: [{set: {var.gt_tilly: "var.gt_tilly + 150"}}, {gold: -50}, {set: {var.ap: "var.ap - 1"}}]}
+              - {label: "Kes ({var.gt_kes} troops)", when: flag.has_kes, do: [{set: {var.gt_kes: "var.gt_kes + 150"}}, {gold: -50}, {set: {var.ap: "var.ap - 1"}}]}
+              - {label: Cancel}
+            prompt: Who takes the new troops?
+      - label: End turn
+        do: [{call: end_turn}]
