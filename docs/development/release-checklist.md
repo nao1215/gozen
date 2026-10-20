@@ -37,16 +37,15 @@ Run ONNX inference separately, with a user-supplied model and shared library. Do
 Pushing a tag `v*` runs the [Release workflow](../../.github/workflows/release.yml). Its configuration is [.goreleaser.yml](../../.goreleaser.yml).
 
 - Artifacts: `gozen` archives for Linux, macOS and Windows (amd64, arm64), Linux `.deb`, `.rpm` and `.apk` packages, an SBOM per archive, `checksums.txt` signed with cosign (keyless), GitHub attestation and SLSA provenance (`multiple.intoto.jsonl`). The license texts of dependencies are bundled in `THIRD_PARTY_LICENSES/`.
-- Destinations: the cask in `nao1215/homebrew-tap` and a pull request to `microsoft/winget-pkgs`.
+- Destinations: the cask in `nao1215/homebrew-tap`.
 - Artifacts are built with `CGO_ENABLED=0` and contain no ONNX inference ([ADR 0016](../decisions/0016-single-cli.md)).
 - Before publication, the contents and checksums of all archives and packages are checked on Linux, and `gozen version` and `gozen check` are run on Linux, macOS and Windows (`scripts/smoke_artifacts.sh`).
 
-Before the first tag, register two repository secrets. Without them the release job stops before GoReleaser and publishes nothing.
+Before the first tag, register a repository secret. Without it the release job stops before GoReleaser and publishes nothing.
 
 | secret | writes to | kind and permission |
 | --- | --- | --- |
 | `TAP_GITHUB_TOKEN` | `nao1215/homebrew-tap` | fine-grained, Contents: Read and write |
-| `WINGET_GITHUB_TOKEN` | push to `nao1215/winget-pkgs` and pull request to `microsoft/winget-pkgs` | classic, `public_repo` |
 
 Locally, check the configuration and artifacts as follows (go-licenses v2 and syft are required). `dist/` and `third_party_licenses/` are ignored by git.
 
@@ -56,6 +55,6 @@ goreleaser release --snapshot --clean --skip=publish,sign
 ./scripts/smoke_artifacts.sh dist
 ```
 
-The procedure: merge a pull request that turns Unreleased in the CHANGELOG into a version section, then put an annotated tag on the latest commit of main and push it. Confirm that all jobs of the Release workflow (smoke, release, provenance, verification) succeed and that the Homebrew cask and the winget pull request were created.
+The procedure: merge a pull request that turns Unreleased in the CHANGELOG into a version section, then put an annotated tag on the latest commit of main and push it. Confirm that all jobs of the Release workflow (smoke, release, provenance, verification) succeed and that the Homebrew cask was created.
 
 The repository social preview cannot be set through the API: upload `docs/images/gozen-ogp.png` in the repository Settings (Social preview) by hand.

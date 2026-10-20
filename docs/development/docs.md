@@ -70,7 +70,7 @@ The current exclusions (shown in the log of `docs-steps`):
 
 | Snippet | Reason |
 | --- | --- |
-| Installing with Homebrew and winget | Published with the first release |
+| Installing with Homebrew | Published with the first release |
 | cosign, `gh attestation`, slsa-verifier | Need the files of a published release (and a GitHub login) |
 | `go run .` of your own game and starting with `--dev` (the README's "Play with the test tools", the edit–play loop page) | Opens a window in your own game's module and waits for input. `go run . --dev --dir game` in getting-started is a build, which checks that the game you made builds |
 | `gozen play shots` | Needs a game built by the runner and a display. `e2e/atago/graphics.atago.yaml` runs it |

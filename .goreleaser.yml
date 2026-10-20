@@ -109,60 +109,11 @@ homebrew_casks:
             system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gozen"]
           end
 
-# winget for Windows. The Windows archives are zips, which winget installs as a
-# portable package. The manifests go to a branch on nao1215/winget-pkgs, a fork
-# of the community repository, and the pull request is opened against
-# microsoft/winget-pkgs. It needs the WINGET_GITHUB_TOKEN secret (a classic
-# token with public_repo); release.yml stops before GoReleaser when it is
-# missing.
-winget:
-  - name: gozen
-    package_identifier: nao1215.gozen
-    publisher: Chikamatsu Naohiro
-    publisher_url: "https://github.com/nao1215"
-    publisher_support_url: "https://github.com/nao1215/gozen/issues"
-    author: Chikamatsu Naohiro
-    homepage: "https://github.com/nao1215/gozen"
-    short_description: "Check, simulate and document games written in YAML for the Gozen RPG framework"
-    description: |
-      gozen is the command of Gozen, a 2D RPG framework for Go and Ebitengine.
-      It checks a game written in YAML for broken references, wrong expressions,
-      missing pictures and text that overflows its window; fights battles many
-      times to print win rates; simulates dungeon dives; writes the whole game as
-      Markdown; collects test players' notes; and packages demo versions.
-    license: MIT
-    license_url: "https://github.com/nao1215/gozen/blob/main/LICENSE"
-    copyright: "Copyright (c) Chikamatsu Naohiro"
-    copyright_url: "https://github.com/nao1215/gozen/blob/main/LICENSE"
-    release_notes_url: "https://github.com/nao1215/gozen/releases/tag/{{ .Tag }}"
-    tags:
-      - cli-app
-      - command-line-tool
-      - cross-platform
-      - game-development
-      - go
-      - golang
-      - rpg
-      - yaml
-    skip_upload: auto
-    repository:
-      owner: nao1215
-      name: winget-pkgs
-      branch: "gozen-{{ .Version }}"
-      token: "{{ .Env.WINGET_GITHUB_TOKEN }}"
-      pull_request:
-        enabled: true
-        draft: false
-        base:
-          owner: microsoft
-          name: winget-pkgs
-          branch: master
-
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
 release:
-  # A rerun of the release job after a failed Homebrew or winget step must not
+  # A rerun of the release job after a failed Homebrew step must not
   # stop at already_exists on the assets uploaded the first time.
   replace_existing_artifacts: true
   header: |

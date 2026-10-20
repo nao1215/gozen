@@ -61,6 +61,6 @@ func (c *command) puppetCmd(args []string) error {
 	if err != nil {
 		return err
 	}
-	c.out.Printf("wrote %s (%d pictures)\n", filepath.Join(*out, name), len(files))
+	c.out.Printf("wrote %s (%d pictures)\n", filepath.ToSlash(filepath.Join(*out, name)), len(files))
 	return nil
 }

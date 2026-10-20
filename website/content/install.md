@@ -17,10 +17,9 @@ gozen version
 
 From the first release on, `gozen` is also published as prebuilt binaries. Gozen has no release yet, so these channels start with it:
 
-<!-- verify: skip Homebrew and winget are published with the first release -->
+<!-- verify: skip the Homebrew cask is published with the first release -->
 ```shell
 brew install --cask nao1215/tap/gozen   # macOS and Linux with Homebrew
-winget install --id nao1215.gozen       # Windows
 ```
 
 [The release page](https://github.com/nao1215/gozen/releases) has `.tar.gz` and `.zip` archives for Linux, macOS and Windows (amd64 and arm64) and `.deb`, `.rpm` and `.apk` packages for Linux. The prebuilt binaries are built without cgo, so they have no ONNX inference for `gozen art mosaic`. Each release signs `checksums.txt` with cosign and attaches SBOMs and SLSA provenance; the README's [Verifying release integrity](https://github.com/nao1215/gozen#verifying-release-integrity) shows the commands.

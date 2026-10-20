@@ -2,14 +2,14 @@ name: Release
 
 # Publishes a tagged release of the gozen command: archives for Linux, macOS and
 # Windows (amd64, arm64), Linux packages, an SBOM per archive, a cosign-signed
-# checksums.txt, a Homebrew cask, a winget pull request, a GitHub attestation and
+# checksums.txt, a Homebrew cask, a GitHub attestation and
 # SLSA provenance as a release asset. The publish job runs only after the
 # artifacts are built and executed on all three operating systems, because a
 # broken artifact cannot be taken back once the tag is published.
 #
-# Before the first tag, add the TAP_GITHUB_TOKEN and WINGET_GITHUB_TOKEN
-# secrets (docs/development/release-checklist.md). The release job stops before
-# GoReleaser when either is missing, so nothing is published half way.
+# Before the first tag, add the TAP_GITHUB_TOKEN secret
+# (docs/development/release-checklist.md). The release job stops before
+# GoReleaser when it is missing, so nothing is published half way.
 
 on:
   push:
@@ -124,16 +124,14 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      # Homebrew and winget publish with tokens the built-in GITHUB_TOKEN cannot
-      # replace. Stop here, before anything is published, when one is missing.
+      # Homebrew publishes with a token the built-in GITHUB_TOKEN cannot
+      # replace. Stop here, before anything is published, when it is missing.
       - name: Check the publishing secrets
         env:
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
-          WINGET_GITHUB_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
         run: |
           missing=""
           [ -n "$TAP_GITHUB_TOKEN" ] || missing="$missing TAP_GITHUB_TOKEN"
-          [ -n "$WINGET_GITHUB_TOKEN" ] || missing="$missing WINGET_GITHUB_TOKEN"
           if [ -n "$missing" ]; then
             echo "::error::missing repository secrets:$missing (see docs/development/release-checklist.md)"
             exit 1
@@ -167,7 +165,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
-          WINGET_GITHUB_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2

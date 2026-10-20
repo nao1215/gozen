@@ -100,11 +100,6 @@ After the first release:
 brew install --cask nao1215/tap/gozen
 ```
 
-<!-- verify: skip winget is Windows-only and is published with the first release -->
-```sh
-winget install --id nao1215.gozen
-```
-
 [The release page](https://github.com/nao1215/gozen/releases) will have archives for Linux, macOS and Windows (amd64, arm64) and `.deb`, `.rpm` and `.apk` packages. They have no ONNX inference.
 
 As a library:
