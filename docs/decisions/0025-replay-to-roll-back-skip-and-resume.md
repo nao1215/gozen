@@ -4,7 +4,7 @@ Status: Accepted (2026-10-21). Stages 0, 2 and 2b are done (`schema_version: 4`,
 
 ## Users and problem
 
-Gozen already shows novel games (`ui.message: novel`, with a backlog, auto and a read-line fast forward), and their authors ask for what a reader of a visual novel expects: stepping back a line with everything it changed, skipping what was read, and a save in the middle of a scene. The authors write YAML, and their checks run headless (`gozen.Session`, `Explore`, `gozen check`, `gozen play trace`). Each new feature must be checkable there, and none may add a new kind of game: a novel game is a game whose places show only events (the same stance as [ADR 0022](0022-maps-and-painted-scenes.md), where maps and painted scenes are ways to show a place).
+Gozen already shows novel games (`ui.message: novel`, with a backlog, auto and a read-line fast forward), and their authors ask for what a reader of a visual novel expects: stepping back a line with everything it changed, skipping what was read, and a save in the middle of a scene. The authors write YAML, and their checks run headless (`gozen.Session`, `Explore`, `gozen check`, `gozen play trace`). Each new feature must be checkable there. A novel game here is a game whose places show only events, so these features build on the existing events rather than on a separate engine. This is a design choice for novel games, not a limit on the kinds of games Gozen supports: other genres may add their own YAML vocabulary.
 
 ## Decision
 
