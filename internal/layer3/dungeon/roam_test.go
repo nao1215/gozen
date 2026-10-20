@@ -35,7 +35,7 @@ func TestRoamersComeAndFight(t *testing.T) {
 	st := testgame.State(db, 3)
 	st.Location = "deep"
 	st.Calm = true
-	dungeon.Dive(db, st, "deep", 1, true)
+	dungeon.Dive(db, st, "deep", 1)
 	if len(st.Roamers) != 2 {
 		t.Fatalf("placed %d roamers, want 2", len(st.Roamers))
 	}
@@ -98,14 +98,14 @@ func TestFloorsKeepTheirMaps(t *testing.T) {
 	st := testgame.State(db, 3)
 	st.Location = "deep"
 	st.Calm = true
-	dungeon.Dive(db, st, "deep", 1, true)
+	dungeon.Dive(db, st, "deep", 1)
 	start := st.Pos
 	grid := dungeon.Of(db, st).Map
-	dungeon.Dive(db, st, "deep", 2, false)
+	dungeon.Dive(db, st, "deep", 2)
 	if !dungeon.Seen(db, st, "deep", st.Pos.X, st.Pos.Y) {
 		t.Fatal("the start of floor 2 is not on its map")
 	}
-	dungeon.Dive(db, st, "deep", 1, true) // a new dive from camp
+	dungeon.Dive(db, st, "deep", 1) // a new dive from camp
 	if dungeon.Of(db, st).Map != grid || st.Pos != start {
 		t.Fatal("floor 1 is another floor on the next dive")
 	}
@@ -120,7 +120,7 @@ func TestFledRoamerLetsThePartyGo(t *testing.T) {
 	st := testgame.State(db, 3)
 	st.Location = "deep"
 	st.Calm = true
-	dungeon.Dive(db, st, "deep", 1, true)
+	dungeon.Dive(db, st, "deep", 1)
 	st.Vars[dungeon.VarRoamCalm] = 0.0
 	var met []data.Command
 	for range 400 {
@@ -177,7 +177,7 @@ func TestRoamersStayOnTheirFloor(t *testing.T) {
 	st := testgame.State(db, 3)
 	st.Location = "deep"
 	st.Calm = true
-	dungeon.Dive(db, st, "deep", 1, true)
+	dungeon.Dive(db, st, "deep", 1)
 	if len(st.Roamers) == 0 {
 		t.Fatal("no roamers on the dive")
 	}

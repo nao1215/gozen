@@ -66,7 +66,7 @@ func huntState(t *testing.T) (*data.DB, *rpg.State) {
 	st := testgame.State(db, 3)
 	st.Location = "deep"
 	st.Calm = true
-	dungeon.Dive(db, st, "deep", 1, true)
+	dungeon.Dive(db, st, "deep", 1)
 	return db, st
 }
 
@@ -204,7 +204,7 @@ func TestHunterLeaves(t *testing.T) {
 	st.Vars["pent"] = 1.0
 	st.Steps += 10
 	dungeon.Hunters(db, st)
-	dungeon.Dive(db, st, "deep", 2, false)
+	dungeon.Dive(db, st, "deep", 2)
 	if len(st.Roamers) != 0 {
 		t.Fatalf("the hunter came along to the next floor: %+v", st.Roamers)
 	}
@@ -222,7 +222,7 @@ func TestHunterFasterThanOneCellAStep(t *testing.T) {
 	st := testgame.State(db, 3)
 	st.Location = "deep"
 	st.Calm = true
-	dungeon.Dive(db, st, "deep", 1, true)
+	dungeon.Dive(db, st, "deep", 1)
 	st.Vars["pent"] = 1.0
 	st.Steps += 4
 	dungeon.Hunters(db, st)

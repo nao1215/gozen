@@ -35,7 +35,7 @@ func TestOpenWallPutsTheTileInAWallBesideTheParty(t *testing.T) {
 		st := testgame.State(db, uint64(seed))
 		st.Vars[dungeon.VarSeed] = float64(seed*31 + 5)
 		st.Location = "deep"
-		dungeon.Dive(db, st, "deep", 2, true)
+		dungeon.Dive(db, st, "deep", 2)
 		d := dungeon.Of(db, st)
 		if !dungeon.OpenWall(db, st, "}") {
 			t.Fatalf("seed %d: no wall opened", seed)
@@ -48,7 +48,7 @@ func TestOpenWallPutsTheTileInAWallBesideTheParty(t *testing.T) {
 			t.Errorf("seed %d: opened a cell that was not a wall of the map", seed)
 		}
 		// It stays after leaving the floor and coming back, and in saves too. dive's at arrives before that.
-		dungeon.Dive(db, st, "deep", 3, true)
+		dungeon.Dive(db, st, "deep", 3)
 		if c := dungeon.CellAt(dungeon.Of(db, st), st, front.X, front.Y); c.Char == '}' && dungeon.Of(db, st).At(front.X, front.Y) == data.CellWall {
 			// it must not appear at the same coordinates on a different floor
 			t.Errorf("seed %d: the opened wall shows on another floor", seed)
@@ -108,12 +108,12 @@ func TestCompleteComesLaterWhenLeftBeforeIt(t *testing.T) {
 	st := testgame.State(db, 3)
 	st.Vars[dungeon.VarSeed] = 41.0
 	st.Location = "deep"
-	dungeon.Dive(db, st, "deep", 2, true)
+	dungeon.Dive(db, st, "deep", 2)
 	walkWhole(db, st) // only seen (not a single step walked)
 	if dungeon.Completed(st, "deep") {
 		t.Fatal("completed without a step")
 	}
-	dungeon.Dive(db, st, "deep", 2, true) // dive again
+	dungeon.Dive(db, st, "deep", 2) // dive again
 	if dungeon.Completed(st, "deep") {
 		t.Fatal("arriving marked the floor completed without its complete")
 	}

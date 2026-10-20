@@ -38,8 +38,10 @@ func TestGraphicsStage(t *testing.T) {
 		t.Fatal(err)
 	}
 	trace := filepath.Join(root, "run.jsonl")
-	args := []string{"run", "./testdata/host", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "square",
-		"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", trace}
+	args := []string{
+		"run", "./testdata/host", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "square",
+		"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", trace,
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "go", args...) //nolint:gosec // Fixed Go executable; arguments refer to the test fixture and isolated output.
@@ -135,8 +137,10 @@ func TestGraphicsMap(t *testing.T) {
 		t.Fatal(err)
 	}
 	trace := filepath.Join(root, "run.jsonl")
-	args := []string{"run", "./testdata/host", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "town",
-		"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", trace}
+	args := []string{
+		"run", "./testdata/host", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "town",
+		"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", trace,
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "go", args...) //nolint:gosec // Fixed Go executable; arguments refer to the test fixture and isolated output.
@@ -203,8 +207,10 @@ func TestGraphicsWild(t *testing.T) {
 	if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	args := []string{"run", "./testdata/host", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "town",
-		"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", filepath.Join(root, "run.jsonl")}
+	args := []string{
+		"run", "./testdata/host", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "town",
+		"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", filepath.Join(root, "run.jsonl"),
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "go", args...) //nolint:gosec // Fixed Go executable; arguments refer to the test fixture and isolated output.

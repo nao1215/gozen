@@ -57,7 +57,7 @@ func TestFixedSeedMakesOneMap(t *testing.T) {
 		st.Vars[dungeon.VarSeed] = float64(seed*31 + 5) // the previous save's seed
 		st.Location = "deep"
 		for floor := 1; floor <= 2; floor++ {
-			dungeon.Dive(db, st, "deep", floor, true)
+			dungeon.Dive(db, st, "deep", floor)
 			if maps[floor] == nil {
 				maps[floor] = map[string]bool{}
 			}
@@ -80,7 +80,7 @@ func TestDrawnFloor(t *testing.T) {
 	db := testgame.Load(t, map[string]string{"data/deep.yaml": fixedGame})
 	st := testgame.State(db, 1)
 	st.Location = "deep"
-	dungeon.Dive(db, st, "deep", 3, true)
+	dungeon.Dive(db, st, "deep", 3)
 	d := db.Locations["deep"].Dungeon
 	m := d.Map
 	if got := strings.Count(m, ">"); got != 1 {
@@ -114,7 +114,7 @@ func TestOldRecordsForgottenOnANewMap(t *testing.T) {
 	st.Done["deep/1@3,3"] = true // a chest opened on the previous map
 	st.Done["deep/1#complete"] = true
 	st.Done["deep/10@3,3"] = true // another floor
-	dungeon.Dive(db, st, "deep", 1, true)
+	dungeon.Dive(db, st, "deep", 1)
 	if st.Done["deep/1@3,3"] {
 		t.Error("a chest opened on the old map is kept on the new one")
 	}
@@ -122,8 +122,8 @@ func TestOldRecordsForgottenOnANewMap(t *testing.T) {
 		t.Error("the complete of the floor or another floor's records were forgotten")
 	}
 	st.Done["deep/1@5,5"] = true
-	dungeon.Dive(db, st, "deep", 2, true)
-	dungeon.Dive(db, st, "deep", 1, true)
+	dungeon.Dive(db, st, "deep", 2)
+	dungeon.Dive(db, st, "deep", 1)
 	if !st.Done["deep/1@5,5"] {
 		t.Error("a record of the same map was forgotten")
 	}
@@ -137,7 +137,7 @@ func TestIndependentGamesInParallel(t *testing.T) {
 			db := testgame.Load(t, map[string]string{"data/deep.yaml": fixedGame})
 			st := testgame.State(db, seed)
 			st.Location = "deep"
-			dungeon.Dive(db, st, "deep", 2, true)
+			dungeon.Dive(db, st, "deep", 2)
 			want := db.Locations["deep"].Dungeon.Map
 			for range 3 {
 				dungeon.Remake(db, st)

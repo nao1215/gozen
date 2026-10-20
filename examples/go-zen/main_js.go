@@ -1,5 +1,7 @@
 //go:build js
 
+// Command go-zen runs Go Zen in the browser: the game files are fetched next to
+// the page and the saves go into localStorage.
 package main
 
 import (

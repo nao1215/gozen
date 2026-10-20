@@ -95,7 +95,7 @@ func floorState(db *data.DB, loc string, floor int) *rpg.State {
 	st := rpg.New(db, rand.New(rand.NewPCG(1, 2))) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
 	st.Calm = true
 	st.Location = loc
-	dungeon.Dive(db, st, loc, floor, true)
+	dungeon.Dive(db, st, loc, floor)
 	return st
 }
 

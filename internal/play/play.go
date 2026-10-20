@@ -995,7 +995,7 @@ func (g *Game) testStart() error {
 		g.st.AddItem(id, n)
 	}
 	if o.Floor > 0 && o.Location != "" && g.db.Locations[o.Location].Dungeon != nil && g.db.Locations[o.Location].Dungeon.Generate != nil {
-		dungeon.Dive(g.db, g.st, o.Location, o.Floor, true)
+		dungeon.Dive(g.db, g.st, o.Location, o.Floor)
 	}
 	g.startState()
 	return nil

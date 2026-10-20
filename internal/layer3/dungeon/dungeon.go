@@ -214,7 +214,7 @@ func Place(db *data.DB, st *rpg.State, loc, at, facing string) {
 // not in it (a new game or a test play starting there).
 func Ensure(db *data.DB, st *rpg.State) {
 	if l := db.Locations[st.Location]; l != nil && l.Dungeon != nil && l.Dungeon.Generate != nil && st.Vars[VarSeed] == nil {
-		Dive(db, st, st.Location, 1, true) // a made dungeon started in (a test play): its first floor
+		Dive(db, st, st.Location, 1) // a made dungeon started in (a test play): its first floor
 		return
 	}
 	Remake(db, st)

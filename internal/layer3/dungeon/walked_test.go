@@ -91,7 +91,7 @@ func TestAWalkedFloorShowsEveryCell(t *testing.T) {
 			st := testgame.State(db, uint64(seed))
 			st.Vars[dungeon.VarSeed] = float64(seed*7919 + 13)
 			st.Location = "deep"
-			dungeon.Dive(db, st, "deep", floor, true)
+			dungeon.Dive(db, st, "deep", floor)
 			d := dungeon.Of(db, st)
 			name := fmt.Sprintf("B%dF seed %d", floor, seed)
 			before := dungeon.Shown(db, st)
@@ -124,12 +124,12 @@ func TestWalkedOnArrivingAtTheStart(t *testing.T) {
 	st := testgame.State(db, 1)
 	st.Vars[dungeon.VarSeed] = 77.0
 	st.Location = "deep"
-	dungeon.Dive(db, st, "deep", 3, true)
+	dungeon.Dive(db, st, "deep", 3)
 	if cmds := world.Arrive(db, st, false); len(cmds) != 0 {
 		t.Fatalf("walked on a floor not walked yet: %+v", cmds)
 	}
 	walkWhole(db, st)
-	dungeon.Dive(db, st, "deep", 3, true) // dive again and return to the start of the same floor
+	dungeon.Dive(db, st, "deep", 3) // dive again and return to the start of the same floor
 	cmds := world.Arrive(db, st, false)
 	if len(cmds) != 1 || cmds[0].Prompt == "" {
 		t.Fatalf("no walked prompt on arriving at a floor walked whole: %+v", cmds)

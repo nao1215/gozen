@@ -68,7 +68,7 @@ func TestNumericPresenceRoamerDistance(t *testing.T) {
 			})
 			st := testgame.State(db, 1)
 			st.Location = "maze"
-			Dive(db, st, "maze", 1, true)
+			Dive(db, st, "maze", 1)
 			d := db.Locations["maze"].Dungeon
 			dist := walkDistances(d, st, st.Pos.X, st.Pos.Y)
 			w, _ := d.Size()
@@ -98,7 +98,7 @@ func TestNumericPresenceScaledMapRooms(t *testing.T) {
 	for seed := range uint64(24) {
 		st := testgame.State(db, seed)
 		st.Location = "maze"
-		Dive(db, st, "maze", 1, true)
+		Dive(db, st, "maze", 1)
 		d := db.Locations["maze"].Dungeon
 		w, h := d.Size()
 		if w != 9 || h != 9 {

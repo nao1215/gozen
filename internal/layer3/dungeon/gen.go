@@ -24,9 +24,9 @@ const (
 	VarDeep  = "deepest"   // the deepest floor reached
 )
 
-// Dive makes floor floor of the dungeon loc (a new dive when the seed is to change) and
-// puts the party at its start.
-func Dive(db *data.DB, st *rpg.State, loc string, floor int, _ bool) {
+// Dive makes floor floor of the dungeon loc and puts the party at its start. The
+// seed comes from VarSeed, drawn on the first dive when it is unset.
+func Dive(db *data.DB, st *rpg.State, loc string, floor int) {
 	DiveAt(db, st, loc, floor, "", "")
 }
 
