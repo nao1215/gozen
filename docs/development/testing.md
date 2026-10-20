@@ -8,15 +8,16 @@ lint uses golangci-lint v2.14.0, the dependency direction uses go-arch-lint v1.1
 
 ```sh
 go install github.com/fe3dback/go-arch-lint@v1.19.0
-go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
 go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
 ```
+
+golangci-lint is not installed: `make lint` builds and runs it with `go run` under `GOTOOLCHAIN=go1.27.2` (`LINT_GO` in the Makefile), the same Go as the CI lint job. gofmt's output changes between Go releases (Go 1.27 aligns map literals with wide characters differently from 1.26), so a golangci-lint built with another Go reports formatting that CI does not, or misses what CI reports. The first run downloads that toolchain. Without Make, run `GOTOOLCHAIN=go1.27.2 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run ./...` and the same with `fmt --diff` (in PowerShell, set `$env:GOTOOLCHAIN` first).
 
 The declared dependency versions are at `go.mod:5`. T3 actually uses go-yaml, Ebitengine and x/image. In an environment that needs to fetch dependencies, run `go mod download`.
 
 ## Make and direct commands
 
-Windows is assumed to have neither Make nor Bash. At the repository root, run the direct commands below from PowerShell or the command prompt. Put the external tools `go-arch-lint`, `golangci-lint` and `actionlint` on PATH.
+Windows is assumed to have neither Make nor Bash. At the repository root, run the direct commands below from PowerShell or the command prompt. Put the external tools `go-arch-lint` and `actionlint` on PATH; golangci-lint runs through `go run` as above.
 
 | Make | Same thing run directly | Current target |
 | --- | --- | --- |

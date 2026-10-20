@@ -1,6 +1,14 @@
 GO ?= go
 ARCH_LINT ?= go-arch-lint
-GOLANGCI_LINT ?= golangci-lint
+# gofmt's output changes between Go releases (Go 1.27 aligns map literals with
+# wide characters differently from 1.26), and golangci-lint formats with the Go
+# it was built with. So the linter is built and run with one pinned Go here and
+# in the CI lint job (.github/workflows/ci.yml, which runs make lint), whatever
+# Go is installed. go.mod's go line stays the minimum; tests keep running on the
+# minimum and on stable. Bump LINT_GO together with the lint job's go-version.
+LINT_GO ?= go1.27.2
+GOLANGCI_LINT_VERSION ?= v2.14.0
+GOLANGCI_LINT ?= GOTOOLCHAIN=$(LINT_GO) $(GO) run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 ATAGO ?= atago
 ACTIONLINT ?= actionlint
 

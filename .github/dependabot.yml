@@ -1,7 +1,10 @@
 version: 2
 updates:
+  # examples/go-zen is a module of its own; its go.sum is checked in CI (make go-zen).
   - package-ecosystem: gomod
-    directory: /
+    directories:
+      - /
+      - /examples/go-zen
     schedule:
       interval: weekly
   - package-ecosystem: github-actions

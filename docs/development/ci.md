@@ -10,7 +10,7 @@ A private repository has a limit on Actions time. While it is private, only `qui
 
 | Job | Environment and check | What counts as a result |
 | --- | --- | --- |
-| lint | Linux, stable. golangci-lint v2.14.0, go-arch-lint v1.19.0, actionlint v1.7.12. `make lint` | import direction, API list, static analysis, formatting, workflow syntax |
+| lint | Linux, Go 1.27.2 (`LINT_GO` of the Makefile, not stable: gofmt's output changes between Go releases). golangci-lint v2.14.0 (built by `make lint` with that Go), go-arch-lint v1.19.0, actionlint v1.7.12. `make lint` | import direction, API list, static analysis, formatting, workflow syntax |
 | unit | Ubuntu, Windows and macOS × Go 1.26.9 / stable. `go test ./...` with cgo enabled | non-graphics contracts, including `gozen` and internal |
 | race | Linux, stable, `go test -race ./...` with cgo enabled | race check of the non-graphics contracts |
 | build | amd64 on 3 OSes, arm64 on Linux and macOS. cgo disabled | compiling all packages. arm64 is a cross-build. No ONNX inference |
@@ -21,7 +21,7 @@ A private repository has a limit on Actions time. While it is private, only `qui
 | govulncheck | Linux, Go 1.26.9 (the lower bound in `go.mod`) and stable, cgo enabled, govulncheck v1.9.0 | known vulnerabilities reachable from `./...`. Judged from JSON; fails on anything not in `ACCEPTED` (empty now). The ONNX binding is analyzed too |
 | codeql | Linux, stable, cgo enabled | builds `./...` explicitly and runs Go static analysis |
 
-The lower bound of Go is `go.mod:3`. Keep it in step with the lower bounds of unit and govulncheck when updating. lint and security use stable, which can run the analysis tools. Normal tests do not initialize a screen. graphics keeps Ebitengine's limit of one loop per process and runs scenarios one after another in separate processes (`play/graphics_test.go:18`).
+The lower bound of Go is `go.mod:3`. Keep it in step with the lower bounds of unit and govulncheck when updating. security uses stable, which can run the analysis tools. lint uses one pinned Go, the same one `make lint` uses locally, so formatting is judged by the same gofmt everywhere; bump `LINT_GO` and the lint job's `go-version` together. Normal tests do not initialize a screen. graphics keeps Ebitengine's limit of one loop per process and runs scenarios one after another in separate processes (`play/graphics_test.go:18`).
 
 graphics is also enabled on Windows and macOS, with no setting that tolerates failure and no skip. setup-ebitengine prepares Xvfb only on Linux. This working environment has not confirmed whether the Windows and macOS hosted runners have the desktop that is needed. Check it in the first remote run; if it cannot run, record the concrete error and reason and reconsider. A successful cross-build is not accepted in its place.
 
@@ -53,7 +53,7 @@ Every workflow defaults to `contents: read` (Scorecard uses `read-all`), and che
 
 External actions are pinned by 40-character SHA. checkout, setup-go and setup-ebitengine keep the pins of the existing CI, and CodeQL uses a pin adopted from existing OSS. The tag comments noted here are only for reference; what runs is the SHA. Reachability of the remotes was not confirmed by the local checks of this stage.
 
-[Dependabot](../../.github/dependabot.yml) watches the root gomod and github-actions weekly. Nothing merges its proposals automatically. When updating, review the change in the action, the compatibility of tools with Go, and the behavior in an environment without a model, and pass the required checks.
+[Dependabot](../../.github/dependabot.yml) watches the gomod of the root and of `examples/go-zen`, and github-actions, weekly. It does not update `LINT_GO` or the lint job's Go. Nothing merges its proposals automatically. When updating, review the change in the action, the compatibility of tools with Go, and the behavior in an environment without a model, and pass the required checks.
 
 ## Local checks
 
