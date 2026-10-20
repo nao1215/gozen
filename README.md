@@ -24,7 +24,7 @@
 
 Gozen is a 2D RPG framework for Go and Ebitengine. You write the game in YAML. `gozen check` finds broken references. `gozen sim battle` measures balance. While you play, F9 saves a note, F7 shows win rates, and F5 reloads the YAML.
 
-The name: a gozen (御膳) is a Japanese meal on a tray. Ebitengine is named after ebiten, shrimp tempura. The name starts with Go.
+The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan, an ebiten gozen (御膳) is a set meal on one tray: shrimp tempura with soba, small side dishes, and a sweet such as dango. Gozen is that tray for Ebitengine: the engine served with everything an RPG needs. The name also starts with Go.
 
 Documentation: https://nao1215.github.io/gozen/
 
