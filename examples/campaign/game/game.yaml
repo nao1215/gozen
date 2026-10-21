@@ -42,7 +42,6 @@ campaign:
       women: [armies/women_1.png, armies/women_2.png, armies/women_3.png, armies/women_4.png]
       monsters: [armies/monsters_1.png, armies/monsters_2.png, armies/monsters_3.png, armies/monsters_4.png]
     units: 4
-    per_soldier: 15
     skills:
       volley: {label: Volley, charge: 3, all: true, power: "a.troops * 0.12", cutin: true}
       rally: {label: Rally, charge: 3, heal: "a.max * 0.15"}

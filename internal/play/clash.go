@@ -60,6 +60,7 @@ type clashUnit struct {
 	soldiers    int     // the soldiers standing in the ranks
 	kind        string  // with armies, the kind of army
 	idx         int     // the place in its side's units
+	per         float64 // the troops one soldier stands for
 }
 
 type clashPop struct {
@@ -108,6 +109,8 @@ type clashScene struct {
 	armies map[string][]string
 	red    float32 // how red the soldiers being drawn are (a unit struck)
 	layout string  // front or below
+	// maxSoldiers is the most soldiers of an army (0: the default).
+	maxSoldiers int
 }
 
 // clashCut is a skill's cut-in: the user's picture across the screen with its name.
@@ -130,7 +133,7 @@ type skillBand struct {
 
 func newClashScene(g *Game, cl *campaign.Clash, done func()) *clashScene {
 	c := g.db.Game.Campaign.Clash
-	s := &clashScene{cl: cl, done: done, wait: 50, round: 1, per: 50, pics: [2]string{c.Soldiers["player"], c.Soldiers["foe"]}}
+	s := &clashScene{cl: cl, maxSoldiers: c.MaxSoldiers, done: done, wait: 50, round: 1, per: 50, pics: [2]string{c.Soldiers["player"], c.Soldiers["foe"]}}
 	if c.PerSoldier > 0 {
 		s.per = float64(c.PerSoldier)
 	}
@@ -141,13 +144,16 @@ func newClashScene(g *Game, cl *campaign.Clash, done func()) *clashScene {
 	for side := range 2 {
 		for _, u := range cl.Sides[side] {
 			cu := &clashUnit{idx: len(s.units[side]), u: u, side: side, shown: u.Max, lag: u.Max, hp: float64(u.HP)}
-			cu.soldiers = s.count(u.Max)
+			cu.per = s.per
+			if s.army && c.PerSoldier <= 0 { // by default the sortie is shared by the most soldiers
+				cu.per = math.Max(1, math.Ceil(u.Max/float64(s.cap())))
+			}
+			cu.soldiers = s.count(cu)
 			if s.army {
 				cu.kind = u.Army
 				if _, ok := c.Armies[cu.kind]; !ok {
 					cu.kind = c.FirstArmy()
 				}
-				cu.soldiers = s.count(u.Max)
 			}
 			s.units[side] = append(s.units[side], cu)
 		}
@@ -161,8 +167,8 @@ func newClashScene(g *Game, cl *campaign.Clash, done func()) *clashScene {
 }
 
 // count is how many soldiers stand for troops.
-func (s *clashScene) count(troops float64) int {
-	return min(s.cap(), int(math.Ceil(troops/s.per)))
+func (s *clashScene) count(u *clashUnit) int {
+	return min(s.cap(), int(math.Ceil(u.shown/u.per)))
 }
 
 func (s *clashScene) overlay() bool { return false }
@@ -350,7 +356,7 @@ func (s *clashScene) useSkill(g *Game, h campaign.Hit) {
 		u := s.units[h.Side][h.At]
 		u.shown = math.Min(u.u.Max, u.shown+float64(h.Heal))
 		u.lag = math.Max(u.lag, u.shown)
-		u.soldiers = s.count(u.shown)
+		u.soldiers = s.count(u)
 		x, y := s.beside(g, u)
 		s.pops = append(s.pops, clashPop{text: fmt.Sprintf("+%d", h.Heal), x: x, y: y + 6, tx: x, ty: y - 10, life: 70, c: color.NRGBA{0x70, 0xe8, 0x90, 0xff}, size: sizeL * 1.5})
 	}
@@ -389,7 +395,7 @@ func (s *clashScene) strike(g *Game, h campaign.Hit) {
 	from, to := s.units[h.Side][h.At], s.units[h.Of][h.To]
 	to.shown = math.Max(0, to.shown-float64(h.Loss))
 	to.shake, to.glow, from.lunge = 18, 12, 14
-	if n := s.count(to.shown); n < to.soldiers { // the soldiers lost fall from the back
+	if n := s.count(to); n < to.soldiers { // the soldiers lost fall from the back
 		for k := n; k < to.soldiers; k++ {
 			x, y, sz := s.soldierAt(g, to, k)
 			s.falls = append(s.falls, fallen{x: x, y: y, h: sz, flip: to.side == 1, pic: s.soldierPic(to, k), side: to.side})
@@ -571,8 +577,8 @@ func (s *clashScene) drawRanks(g *Game, dst *ebiten.Image, u *clashUnit) {
 	alpha := float32(1 - u.gone*0.6)
 	part := float32(1) // the last soldier shows the troops short of a whole one, fainter
 	if u.soldiers > 0 && u.soldiers < maxSoldiers {
-		if rem := u.shown - float64(u.soldiers-1)*s.per; rem < s.per {
-			part = float32(0.3 + 0.7*rem/s.per)
+		if rem := u.shown - float64(u.soldiers-1)*u.per; rem < u.per {
+			part = float32(0.3 + 0.7*rem/u.per)
 		}
 	}
 	for k := u.soldiers - 1; k >= 0; k-- {

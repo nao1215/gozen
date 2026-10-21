@@ -191,8 +191,13 @@ type Clash struct {
 	// and of the foes' (foe, facing left) that a clash shown as units lines up behind each
 	// leader, one for PerSoldier troops; a foe without one shows its leader's picture small.
 	Soldiers map[string]string `yaml:"soldiers"`
-	// PerSoldier is the troops one soldier of the lines stands for (50 when 0).
+	// PerSoldier is the troops one soldier of the lines stands for (50 when 0). With armies
+	// it is by default the troops a unit marches with divided by MaxSoldiers, and when set
+	// it wins.
 	PerSoldier int `yaml:"per_soldier"`
+	// MaxSoldiers is the most soldiers one unit of an army shows (4 when 0, up to 12): they
+	// fall from the back as the troops fall. Only with armies.
+	MaxSoldiers int `yaml:"max_soldiers"`
 	// Armies are the pictures of the soldiers of an army by kind (generals.<id>.army,
 	// enemies.<id>.army): each kind lists poses of one soldier, facing right (the engine
 	// turns the foe side to face left), which a clash shown as units lines up in staggered
@@ -647,6 +652,9 @@ func (c *checker) campaign() {
 	}
 	if cp.Clash.PerSoldier < 0 {
 		c.errorf(diag.OutOfRange, w+".clash.per_soldier", "per_soldier is troops, 0 (50) or more")
+	}
+	if cp.Clash.MaxSoldiers < 0 || cp.Clash.MaxSoldiers > 12 {
+		c.errorf(diag.OutOfRange, w+".clash.max_soldiers", "max_soldiers is 0 (4) to 12")
 	}
 	c.armies(w, cp)
 	if cp.Clash.Units < 0 || cp.Clash.Units > 4 {

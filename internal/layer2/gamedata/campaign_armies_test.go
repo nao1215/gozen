@@ -36,6 +36,7 @@ func TestClashArmyErrors(t *testing.T) {
 		{"an unknown kind", "generals: {scout: {troops: 400, might: 2, army: elves}}\n  clash: {armies: {men: [x.png, x.png]}}", `army "elves" is not in clash.armies`},
 		{"a missing picture", "generals: {scout: {troops: 400, might: 2, army: men}}\n  clash: {armies: {men: [x.png, gone.png]}}", "no picture assets/gone.png"},
 		{"no pose", "generals: {scout: {troops: 400, might: 2, army: men}}\n  clash: {armies: {men: []}}", "at least one picture"},
+		{"too many soldiers", "generals: {scout: {troops: 400, might: 2, army: men}}\n  clash: {max_soldiers: 13, armies: {men: [x.png, x.png]}}", "max_soldiers is 0 (4) to 12"},
 		{"a layout", "generals: {scout: {troops: 400, might: 2, army: men}}\n  clash: {layout: over, armies: {men: [x.png, x.png]}}", `layout is front or below, not "over"`},
 		{"a kind with no armies", "generals: {scout: {troops: 400, might: 2, army: men}}", `army "men" is not in clash.armies (none are written)`},
 	} {

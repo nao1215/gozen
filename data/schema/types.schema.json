@@ -2407,8 +2407,21 @@
           },
           "x-type": "expression"
         },
+        "max_soldiers": {
+          "description": "The most soldiers one unit of an army shows in a clash shown with armies, from 1 to 12. Default 4. They fall from the back as the troops fall.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
         "per_soldier": {
-          "description": "The troops one soldier of the ranks stands for in a clash shown as units. Default 50.",
+          "description": "The troops one soldier stands for in a clash shown as units. Default 50 for the ranks; with armies, the troops a unit marches with divided by max_soldiers, and a value here wins.",
           "type": "integer",
           "x-contract": {
             "default": "0",

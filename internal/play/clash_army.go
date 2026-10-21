@@ -21,10 +21,10 @@ import (
 // the foe side is turned to face left.
 
 const (
-	armyCols = 10
-	armyRows = 5
-	armyBarH = 18.0
-	armyNumW = 84.0 // the troops written beside the gauge
+	defaultArmySoldiers = 4
+	armyBarH            = 18.0
+	armyNumW            = 84.0 // the troops written beside the gauge
+	armyFaceW           = 50.0 // the leader's small face at the end of the gauge (layout below)
 )
 
 type box struct{ x, y, w, h float64 }
@@ -89,14 +89,25 @@ func (s *clashScene) armyParts(g *Game, u *clashUnit) (army, gauge, card box) {
 	if u.side == 1 {
 		barOff = armyNumW
 	}
+	if s.layout == "below" { // a small face at the outer end of the gauge tells whose army it is
+		barW -= armyFaceW
+		if u.side == 0 {
+			barOff = armyFaceW
+		}
+	}
 	gauge = box{army.x + barOff, u.y + m.ah + 6, barW, armyBarH}
 	card = box{mirror(cardOff, m.cw), cardY, m.cw, m.ch}
-	if s.layout == "below" { // the cards in a row at the bottom, the first unit's nearest the middle
-		sw, sh := g.screen()
-		x := sw*0.5 - 170 - float64(u.idx+1)*m.cw - float64(u.idx)*6
-		if u.side == 1 {
-			x = sw - x - m.cw
+	if s.layout == "below" { // each card stands under its army, the units of a column side by side
+		_, sh := g.screen()
+		lane := (u.y - m.lane0) / m.laneΔ // 0 and 1 for two in front, 0.5 for one
+		sw, _ := g.screen()
+		cx := u.x + m.bw/2 // the column's middle, kept clear of the round plate
+		if u.side == 0 {
+			cx = math.Min(cx, sw*0.5-170-m.cw-3)
+		} else {
+			cx = math.Max(cx, sw*0.5+170+m.cw+3)
 		}
+		x := cx - m.cw/2 + (lane-0.5)*(m.cw+6)
 		card = box{x, sh * 0.745, m.cw, m.ch}
 	}
 	return army, gauge, card
@@ -126,7 +137,10 @@ func (s *clashScene) midY(g *Game, u *clashUnit) float64 {
 // cap is the most soldiers in a unit's crowd.
 func (s *clashScene) cap() int {
 	if s.army {
-		return armyCols * armyRows
+		if s.maxSoldiers > 0 {
+			return min(s.maxSoldiers, 12)
+		}
+		return defaultArmySoldiers
 	}
 	return maxSoldiers
 }
@@ -137,19 +151,28 @@ func (s *clashScene) poses(u *clashUnit) []string {
 }
 
 // armySoldierAt is where soldier k of a unit's crowd stands (the middle of its feet) and
-// its height: the rows start at the front and go back, each smaller and higher.
+// its height. The rows start at the front and go back: every row after the first is a
+// little smaller and higher and half a step aside, and each soldier is a little off its
+// place (the same each time), so the crowd does not stand in a grid.
 func (s *clashScene) armySoldierAt(g *Game, u *clashUnit, k int) (float64, float64, float64) {
 	b, _, _ := s.armyParts(g, u)
-	row := k / armyCols
-	col := (k % armyCols * 3) % armyCols // the places filled in a scattered order
-	hf := b.h * 0.85
-	w := hf * 0.45
-	dx := (b.w - w) / (armyCols - 0.5)
-	x := w/2 + dx*float64(col) + float64(row%2)*dx*0.5
+	n := s.cap()
+	cols := max(2, (n+2)/3)
+	row, col := k/cols, k%cols
+	hf := b.h * 0.9
+	if n > 4 {
+		hf = b.h * 0.8
+	}
+	w := hf * 0.8
+	dx := math.Min(w*1.75, (b.w-w)/(float64(cols)-0.5))
+	span := dx*(float64(cols)-1) + dx*0.5
+	jx := math.Sin(float64(k)*2.3+1) * dx * 0.12
+	jy := math.Sin(float64(k)*4.1+2) * b.h * 0.025
+	x := b.w/2 - span/2 + dx*float64(col) + float64(row%2)*dx*0.5 + jx
 	if u.side == 1 {
 		x = b.w - x
 	}
-	return b.x + x, b.y + b.h - float64(row)*b.h*0.085, hf * math.Pow(0.92, float64(row))
+	return b.x + x, b.y + b.h - float64(row)*b.h*0.14 + jy, hf * math.Pow(0.92, float64(row))
 }
 
 // drawArmyUnit draws a unit: its soldiers, the gauge and number, the card.
@@ -170,8 +193,8 @@ func (s *clashScene) drawArmyUnit(g *Game, dst *ebiten.Image, cu *clashUnit) {
 	alpha := float32(1 - cu.gone*0.6)
 	part := float32(1) // the last soldier shows the troops short of a whole one, fainter
 	if cu.soldiers > 0 && cu.soldiers < s.cap() {
-		if rem := cu.shown - float64(cu.soldiers-1)*s.per; rem < s.per {
-			part = float32(0.3 + 0.7*rem/s.per)
+		if rem := cu.shown - float64(cu.soldiers-1)*cu.per; rem < cu.per {
+			part = float32(0.3 + 0.7*rem/cu.per)
 		}
 	}
 	if cu.glow > 0 { // struck: red
@@ -190,6 +213,13 @@ func (s *clashScene) drawArmyUnit(g *Game, dst *ebiten.Image, cu *clashUnit) {
 		drawStamp(dst, cu.stamp, army.x+army.w/2, army.y+army.h*0.45)
 	}
 	s.drawGauge(g, dst, cu, gauge)
+	if s.layout == "below" {
+		fx := gauge.x - armyFaceW
+		if cu.side == 1 {
+			fx = gauge.x + gauge.w
+		}
+		s.drawFace(g, dst, cu, fx, gauge.y-14, armyFaceW-4, armyBarH+28, alpha)
+	}
 	if s.layout == "below" { // the card at the bottom only shakes
 		card.x += shake
 	} else {
