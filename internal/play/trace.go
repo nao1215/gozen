@@ -662,7 +662,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			if !ok {
 				return nil, errors.New("replay: action name must be a string")
 			}
-			if !slices.Contains([]string{"battle_auto", "run", "use_item", "raise", "equip_best", "buy"}, name) {
+			if !slices.Contains([]string{"battle_auto", "run", "use_item", "raise", "equip_best", "buy", "walk"}, name) {
 				return nil, fmt.Errorf(lang.T("replay の未知の直接操作 %q"), name)
 			}
 			r.acts[tick] = append(r.acts[tick], l)
@@ -955,12 +955,17 @@ func (g *Game) traceEnd() {
 	g.emit("end", l)
 }
 
-func (g *Game) act(name string, args traceLine) bool {
+// traceAct writes a direct action to the trace, for a replay to do it again (replay.doActs).
+func (g *Game) traceAct(name string, args traceLine) {
 	l := traceLine{"name": name}
 	if len(args) > 0 {
 		l["args"] = args
 	}
 	g.emit("act", l)
+}
+
+func (g *Game) act(name string, args traceLine) bool {
+	g.traceAct(name, args)
 	s := func(k string) string {
 		v, ok := args[k].(string)
 		if !ok {
@@ -971,6 +976,11 @@ func (g *Game) act(name string, args traceLine) bool {
 	n := func(k string) int { return int(num(args[k])) }
 	st := g.st
 	switch name {
+	case "walk":
+		// A script's walk on a map or in a painted scene (sceneWalk); in a dungeon the walk
+		// presses keys, which the trace has as input.
+		_, _, ok := g.sceneWalk(s("to"), args["face"] == true)
+		return ok
 	case "battle_auto":
 		if b := g.currentBattle(); b != nil && b.phase == bpInput {
 			b.auto = true

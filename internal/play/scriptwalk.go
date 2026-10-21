@@ -12,11 +12,10 @@ func (g *Game) walkStep(char string) (button, bool) {
 	if g.busy() {
 		return 0, true
 	}
-	if ss, ok := g.stack[0].(*stageScene); ok && len(g.stack) == 1 {
-		return ss.scriptWalk(g, char, face)
-	}
-	if as, ok := g.stack[0].(*atlasScene); ok && len(g.stack) == 1 && !face {
-		return as.scriptWalk(g, char)
+	if b, done, ok := g.sceneWalk(char, face, func() {
+		g.traceAct("walk", traceLine{"to": char, "face": face})
+	}); ok {
+		return b, done
 	}
 	ds, ok := g.stack[0].(*dungeonScene)
 	if !ok || len(g.stack) != 1 {
@@ -107,6 +106,37 @@ func (g *Game) walkStep(char string) (button, bool) {
 		}
 	}
 	return 0, true
+}
+
+// sceneWalk takes a script's walk on a map or in a painted scene, which moves the party
+// without a key; ok is false on another screen. record, when given, is called first if the
+// call changes something, so that the trace has it as a walk act and a replay walks the same
+// way (act). A call while the party is already walking there changes nothing and is not
+// recorded.
+func (g *Game) sceneWalk(char string, face bool, record ...func()) (b button, done, ok bool) {
+	rec := func() {
+		for _, f := range record {
+			f()
+		}
+	}
+	if len(g.stack) != 1 {
+		return 0, false, false
+	}
+	if ss, isStage := g.stack[0].(*stageScene); isStage {
+		if face || ss.goal == nil {
+			rec()
+		}
+		b, done = ss.scriptWalk(g, char, face)
+		return b, done, true
+	}
+	if as, isAtlas := g.stack[0].(*atlasScene); isAtlas && !face {
+		if !as.walking() {
+			rec()
+		}
+		b, done = as.scriptWalk(g, char)
+		return b, done, true
+	}
+	return 0, false, false
 }
 
 func (g *Game) walkArrived() bool {
