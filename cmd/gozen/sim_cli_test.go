@@ -170,7 +170,7 @@ func TestSimDiveRejectsInvalidOptions(t *testing.T) {
 func TestSimFloorsShowsMadeSeededAndDrawnFloors(t *testing.T) {
 	dir := designGame(t)
 	out, _ := invoke(t, 0, "sim", "floors", dir, "cave", "--to", "4")
-	for _, want := range []string{"B1F (seed 7)  11x11 open ", "B2F (seed 7)", "B3F (drawn)  7x3 open 5 deadends 3  down -1", "B4F (seed 7)", "#######\n#S..BT#\n#######"} {
+	for _, want := range []string{"B1F (seed 7)  11x11 open ", "B2F (seed 7)", "B3F (drawn)  9x3 open 7 deadends 4  down -1", "B4F (seed 7)", "#########\n#S.G.B.T#\n#########"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output lacks %q:\n%s", want, out)
 		}
