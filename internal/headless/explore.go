@@ -295,6 +295,7 @@ func explorePath(db *data.DB, base []byte, cmds []data.Command, prefix []int, op
 				p.Taken = append(p.Taken, "game over")
 				ev := db.Events[db.Game.GameOver.Event]
 				if ev == nil || overRun {
+					check()
 					return p, branches
 				}
 				overRun = true
