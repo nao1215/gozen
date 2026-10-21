@@ -98,7 +98,6 @@ type battleScene struct {
 	results []string
 	fanfare []bool
 	age     int
-	ended   bool
 	endT    int
 
 	dr drama
@@ -347,10 +346,6 @@ func (s *battleScene) play(g *Game) {
 	s.actor = nil
 	s.flushHits()
 	s.sync()
-	if s.ended {
-		s.finish(g)
-		return
-	}
 	b := s.b
 	if b.Result != battle.Ongoing {
 		s.finish(g)
