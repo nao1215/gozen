@@ -199,9 +199,10 @@ type Clash struct {
 	// rows, one soldier for PerSoldier troops, the soldiers lost falling from the back rows.
 	// With armies, soldiers is not read.
 	Armies map[string][]string `yaml:"armies"`
-	// Layout places a unit's leader against its army: "front" (the default) stands the
-	// leader's card in front of the army, at the edge facing the foe; "below" puts a smaller
-	// card under the army.
+	// Layout places the leaders against their armies: "below" (the default) puts the armies
+	// above and a row of large cards, a bust of each leader, along the bottom of the screen
+	// (the rope of the troops is then not drawn unless rope: true); "front" stands a small
+	// card in front of each army, at the edge facing the foe.
 	Layout string `yaml:"layout"`
 	// Rope draws the rope of the two sides' troops over a clash shown as units (true when
 	// unset); false leaves the soldiers alone to tell them.

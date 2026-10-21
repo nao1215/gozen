@@ -59,6 +59,7 @@ type clashUnit struct {
 	stamp       string  // routed or caught, drawn on the card
 	soldiers    int     // the soldiers standing in the ranks
 	kind        string  // with armies, the kind of army
+	idx         int     // the place in its side's units
 }
 
 type clashPop struct {
@@ -134,9 +135,12 @@ func newClashScene(g *Game, cl *campaign.Clash, done func()) *clashScene {
 		s.per = float64(c.PerSoldier)
 	}
 	s.army, s.layout, s.armies = len(c.Armies) > 0, c.Layout, c.Armies
+	if s.layout == "" {
+		s.layout = "below"
+	}
 	for side := range 2 {
 		for _, u := range cl.Sides[side] {
-			cu := &clashUnit{u: u, side: side, shown: u.Max, lag: u.Max, hp: float64(u.HP)}
+			cu := &clashUnit{idx: len(s.units[side]), u: u, side: side, shown: u.Max, lag: u.Max, hp: float64(u.HP)}
 			cu.soldiers = s.count(u.Max)
 			if s.army {
 				cu.kind = u.Army
@@ -676,7 +680,9 @@ func (s *clashScene) drawSoldier(g *Game, dst *ebiten.Image, pic string, side in
 // where their troops stand against each other; a small flag and the troops outside each
 // end, the region's name on a plate over the middle. clash.rope: false leaves it out.
 func (s *clashScene) drawBands(g *Game, dst *ebiten.Image) {
-	if r := g.db.Game.Campaign.Clash.Rope; r != nil && !*r {
+	r := g.db.Game.Campaign.Clash.Rope
+	if (r != nil && !*r) || (r == nil && s.army && s.layout == "below") { // the gauges under the armies tell the troops
+		s.drawRegionName(g, dst)
 		return
 	}
 	sw, _ := g.screen()
@@ -739,6 +745,12 @@ func (s *clashScene) drawBands(g *Game, dst *ebiten.Image) {
 		}
 		outlined(dst, n, tx, y+h/2-sizeL*0.7, sizeL, plateInk, 255)
 	}
+	s.drawRegionName(g, dst)
+}
+
+// drawRegionName draws the region's name on a plate over the middle.
+func (s *clashScene) drawRegionName(g *Game, dst *ebiten.Image) {
+	sw, _ := g.screen()
 	name := data.RegionName(g.db, s.cl.Region)
 	nw := gfx.TextWidth(name, sizeM) + 56
 	g.window(dst, sw/2-nw/2, 12, nw, sizeM*1.5)
@@ -804,18 +816,20 @@ func (s *clashScene) drawCardIn(g *Game, dst *ebiten.Image, cu *clashUnit, r box
 	x, y, cw, ch := r.x, r.y, r.w, r.h
 	alpha := float32(1 - cu.gone*0.5)
 	g.window(dst, x, y, cw, ch)
-	if compact {
-		fs := ch - 14
-		s.drawFace(g, dst, cu, x+7, y+7, fs, fs, alpha)
-		if cu.glow > 0 {
-			gfx.FillRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 16, color.NRGBA{0xff, 0x30, 0x20, uint8(min(255, 10*cu.glow))})
-		}
-		tx := x + fs + 20
-		g.text(dst, gfx.Ellipsis(cu.u.Name, sizeS, cw-fs-34), tx, y+ch*0.14, sizeS, withAlpha(g.th.text, uint8(255*alpha)))
+	ink := withAlpha(g.th.text, uint8(255*alpha))
+	hp := func(cy float64, size float64) { // the leader's HP, a small number
 		if cu.u.MHP > 0 {
-			hr := cu.hp / float64(cu.u.MHP)
-			bar(dst, tx, y+ch-24, cw-fs-40, 8, hr, withAlpha(hpColor(hr), uint8(255*alpha)))
+			gfx.DrawText(dst, fmt.Sprintf("HP %d", int(cu.hp)), x+cw/2, cy, size, withAlpha(g.th.text, uint8(190*alpha)))
 		}
+	}
+	if compact { // a bust of the leader, large, with the name under it
+		ph := ch - 70
+		s.drawFace(g, dst, cu, x+8, y+8, cw-16, ph, alpha)
+		if cu.glow > 0 {
+			gfx.FillRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 16, color.NRGBA{0xff, 0x30, 0x30, uint8(min(255, 10*cu.glow))})
+		}
+		gfx.DrawText(dst, gfx.Ellipsis(cu.u.Name, sizeM*1.1, cw-16), x+cw/2, y+ph+12, sizeM*1.1, ink)
+		hp(y+ch-26, sizeS*0.7)
 		return
 	}
 	ph := ch - 52
@@ -823,11 +837,8 @@ func (s *clashScene) drawCardIn(g *Game, dst *ebiten.Image, cu *clashUnit, r box
 	if cu.glow > 0 {
 		gfx.FillRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 16, color.NRGBA{0xff, 0x30, 0x20, uint8(min(255, 10*cu.glow))})
 	}
-	gfx.DrawText(dst, gfx.Ellipsis(cu.u.Name, sizeS*0.85, cw-12), x+cw/2, y+ph+6, sizeS*0.85, withAlpha(g.th.text, uint8(255*alpha)))
-	if cu.u.MHP > 0 { // the leader's HP, a thin line
-		r := cu.hp / float64(cu.u.MHP)
-		bar(dst, x+12, y+ch-14, cw-24, 7, r, withAlpha(hpColor(r), uint8(255*alpha)))
-	}
+	gfx.DrawText(dst, gfx.Ellipsis(cu.u.Name, sizeS*0.85, cw-12), x+cw/2, y+ph+4, sizeS*0.85, ink)
+	hp(y+ch-22, sizeS*0.6)
 	if cu.stamp != "" && !s.army {
 		sw := gfx.TextWidth(cu.stamp, sizeL*1.1) + 20
 		bx, by := x+(cw-sw)/2, y+ph*0.4

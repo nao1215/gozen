@@ -2377,7 +2377,7 @@
           "x-type": "expression"
         },
         "layout": {
-          "description": "Where a unit's leader stands against its army in a clash shown with armies. front (the default): the card in front of the army, at the edge facing the foe. below: a smaller card under the army.",
+          "description": "Where a unit's leader stands against its army in a clash shown with armies. below (the default): the armies above and a row of large cards, a bust of each leader, along the bottom; the rope of the troops is left out unless rope is true. front: a small card in front of each army, at the edge facing the foe.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -2439,7 +2439,7 @@
           "x-type": "expression"
         },
         "rope": {
-          "description": "false leaves out the rope of the two sides' troops over a clash shown as units, so the soldiers alone tell them. Default true.",
+          "description": "false leaves out the rope of the two sides' troops over a clash shown as units, so the soldiers alone tell them. Default true, but false with armies laid out below.",
           "type": [
             "boolean",
             "null"

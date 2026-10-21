@@ -15,13 +15,14 @@ import (
 // smaller and higher, every other row half a step aside, the front row drawn last, the
 // poses scattered. Under it a gauge of the troops (the side's colour, a red band that
 // shrinks after a loss) and their number, and the leader's card. The soldiers lost fall
-// from the back rows. clash.layout "front" stands the card in front of the army, at the
-// edge facing the foe; "below" puts a smaller card under the army. The pictures face right;
+// from the back rows. clash.layout "below" (the default) puts the armies above and a row of
+// large cards, a bust of each leader, along the bottom; "front" stands a small card in
+// front of each army, at the edge facing the foe. The pictures face right;
 // the foe side is turned to face left.
 
 const (
-	armyCols = 8
-	armyRows = 4
+	armyCols = 10
+	armyRows = 5
 	armyBarH = 18.0
 	armyNumW = 84.0 // the troops written beside the gauge
 )
@@ -41,9 +42,10 @@ func (s *clashScene) geo(g *Game) armyGeo {
 	sw, sh := g.screen()
 	bw := (sw*0.445 - sw*0.02) / 2
 	if s.layout == "below" {
-		ah := sh * 0.215
-		ch := sh * 0.085
-		return armyGeo{bw: bw, aw: bw, ah: ah, cw: bw, ch: ch, height: ah + 6 + armyBarH + 8 + ch, lane0: sh * 0.17, laneΔ: sh * 0.34}
+		// the armies above, one card for each unit in a row along the bottom
+		cw := math.Min(sh*0.185, (sw*0.5-190)/4)
+		ah := sh * 0.2
+		return armyGeo{bw: bw, aw: bw, ah: ah, cw: cw, ch: sh * 0.235, height: ah + 6 + armyBarH, lane0: sh * 0.15, laneΔ: sh * 0.29}
 	}
 	cw, ch := sh*0.105, sh*0.17
 	return armyGeo{bw: bw, aw: bw - cw - 10, ah: ch, cw: cw, ch: ch, height: ch + 8 + armyBarH, lane0: sh * 0.27, laneΔ: sh * 0.3}
@@ -81,9 +83,6 @@ func (s *clashScene) armyParts(g *Game, u *clashUnit) (army, gauge, card box) {
 		return u.x + off
 	}
 	cardOff, cardY := m.bw-m.cw, u.y
-	if s.layout == "below" {
-		cardOff, cardY = 0, u.y+m.ah+6+armyBarH+8
-	}
 	army = box{mirror(0, m.aw), u.y, m.aw, m.ah}
 	barW := m.aw - armyNumW
 	barOff := 0.0
@@ -92,6 +91,14 @@ func (s *clashScene) armyParts(g *Game, u *clashUnit) (army, gauge, card box) {
 	}
 	gauge = box{army.x + barOff, u.y + m.ah + 6, barW, armyBarH}
 	card = box{mirror(cardOff, m.cw), cardY, m.cw, m.ch}
+	if s.layout == "below" { // the cards in a row at the bottom, the first unit's nearest the middle
+		sw, sh := g.screen()
+		x := sw*0.5 - 170 - float64(u.idx+1)*m.cw - float64(u.idx)*6
+		if u.side == 1 {
+			x = sw - x - m.cw
+		}
+		card = box{x, sh * 0.745, m.cw, m.ch}
+	}
 	return army, gauge, card
 }
 
@@ -135,22 +142,23 @@ func (s *clashScene) armySoldierAt(g *Game, u *clashUnit, k int) (float64, float
 	b, _, _ := s.armyParts(g, u)
 	row := k / armyCols
 	col := (k % armyCols * 3) % armyCols // the places filled in a scattered order
-	hf := b.h * 0.6
+	hf := b.h * 0.85
 	w := hf * 0.45
 	dx := (b.w - w) / (armyCols - 0.5)
 	x := w/2 + dx*float64(col) + float64(row%2)*dx*0.5
 	if u.side == 1 {
 		x = b.w - x
 	}
-	return b.x + x, b.y + b.h - float64(row)*b.h*0.11, hf * math.Pow(0.9, float64(row))
+	return b.x + x, b.y + b.h - float64(row)*b.h*0.085, hf * math.Pow(0.92, float64(row))
 }
 
 // drawArmyUnit draws a unit: its soldiers, the gauge and number, the card.
 func (s *clashScene) drawArmyUnit(g *Game, dst *ebiten.Image, cu *clashUnit) {
 	army, gauge, card := s.armyParts(g, cu)
-	dx := 0.0
+	dx, shake := 0.0, 0.0
 	if cu.shake > 0 {
-		dx += math.Sin(float64(cu.shake)*1.7) * 9 * float64(cu.shake) / 18
+		shake = math.Sin(float64(cu.shake)*1.7) * 9 * float64(cu.shake) / 18
+		dx += shake
 	}
 	if cu.lunge > 0 { // a step toward the middle and back
 		d := math.Sin(float64(14-cu.lunge)/14*math.Pi) * 36
@@ -182,7 +190,11 @@ func (s *clashScene) drawArmyUnit(g *Game, dst *ebiten.Image, cu *clashUnit) {
 		drawStamp(dst, cu.stamp, army.x+army.w/2, army.y+army.h*0.45)
 	}
 	s.drawGauge(g, dst, cu, gauge)
-	card.x += dx
+	if s.layout == "below" { // the card at the bottom only shakes
+		card.x += shake
+	} else {
+		card.x += dx
+	}
 	s.drawCardIn(g, dst, cu, card, s.layout == "below")
 }
 

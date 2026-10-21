@@ -8,7 +8,7 @@ Campaigns join RPGs and novels: schema version 5 adds a war of regions over turn
 
 ### Added
 
-- A clash can show each unit as an army of the leader's kind: `clash.armies.<kind>` lists poses of one soldier (facing right; the foe side is turned), which the engine lines up in staggered rows, smaller and higher toward the back, the poses scattered, with the soldiers lost falling from the back rows, a gauge of the troops and their number under it. The kind follows the leader (`generals.<id>.army`, `enemies.<id>.army`: men, women, monsters), and `clash.layout` (`front`, `below`) places the leader's card in front of the army or under it. `gozen check` reports missing pictures and unknown kinds. Without armies the soldiers in ranks (`clash.soldiers`) remain.
+- A clash can show each unit as an army of the leader's kind: `clash.armies.<kind>` lists poses of one soldier (facing right; the foe side is turned), which the engine lines up in staggered rows, smaller and higher toward the back, the poses scattered, with the soldiers lost falling from the back rows, a gauge of the troops and their number under it. The kind follows the leader (`generals.<id>.army`, `enemies.<id>.army`: men, women, monsters), and `clash.layout` places the leaders: `below` (the default) puts the armies above and a large bust card of each leader along the bottom, with no rope and no HP bar; `front` stands a small card in front of each army. `gozen check` reports missing pictures and unknown kinds. Without armies the soldiers in ranks (`clash.soldiers`) remain.
 
 - A clash shows a strike as a short burst of dust and sparks where the armies meet (no white line), and a soldier picture is drawn facing right, the engine turning the foe side to face left.
 
