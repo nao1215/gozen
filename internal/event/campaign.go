@@ -30,6 +30,9 @@ func (r *Runner) order(c *data.Command) Request {
 		next.General, next.Target = general, target
 		r.push([]data.Command{{Order: &next}})
 	}
+	if r.Sortie && o.General != "" && oc.General == "" && (o.Generals > 1 || o.Fight == "clash_view") {
+		return r.sortie(c, o, oc, again)
+	}
 	if o.General != "" && oc.General == "" {
 		ids := campaign.Generals(r.db, r.st, o)
 		if len(ids) == 0 {
@@ -79,7 +82,7 @@ func (r *Runner) order(c *data.Command) Request {
 			}
 		})
 	}
-	if cl := campaign.FightView(r.db, r.st, oc.ID, oc.General, oc.With, oc.Target); cl != nil {
+	if cl := campaign.FightView(r.db, r.st, oc.ID, oc.General, oc.With, oc.Target, oc.Tactics); cl != nil {
 		r.push(o.Do)
 		r.push(outcome(o, cl.Result))
 		r.emit(CampaignEffect{Kind: "order", Order: oc.ID, General: oc.General, Target: oc.Target, Result: cl.Result, Turn: data.Turn(r.db, r.st.Campaign())})
@@ -113,6 +116,35 @@ func (r *Runner) ask(c *data.Command, prompt string, labels []string, pick func(
 	}
 	r.pick, r.asked = pick, c
 	return Choice{Prompt: prompt, Options: labels}
+}
+
+// sortie asks for the target first, then who marches with SortieScene.
+func (r *Runner) sortie(c *data.Command, o *data.Order, oc *data.OrderCmd, again func(general, target string)) Request {
+	if o.Target != "" && oc.Target == "" {
+		ids := campaign.Targets(r.db, r.st, o)
+		if len(ids) == 0 {
+			r.notes = append(r.notes, lang.T("向かえる地域がない"))
+			return nil
+		}
+		return r.ask(c, lang.T("どこへ？"), campaign.Choices(ids, func(id string) string { return campaign.TargetLabel(r.db, r.st, id) }), func(n int) {
+			if n < len(ids) {
+				again(oc.General, ids[n])
+			}
+		})
+	}
+	ready := campaign.Generals(r.db, r.st, o)
+	if len(ready) == 0 {
+		r.notes = append(r.notes, lang.T("率いる将がいない"))
+		return nil
+	}
+	return SortieScene{Order: oc.ID, Target: oc.Target, Ready: ready, Cap: campaign.Cap(r.db, o), March: func(generals []string, tactics map[string]string) {
+		if len(generals) == 0 {
+			return
+		}
+		next := *oc
+		next.General, next.With, next.Tactics = generals[0], generals[1:], tactics
+		r.push([]data.Command{{Order: next.MarchNow()}})
+	}}
 }
 
 // endTurn ends the campaign's turn: what the other factions did, then the on_turn event.

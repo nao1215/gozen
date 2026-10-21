@@ -170,3 +170,5 @@ General:
   _: "An actor's place in a campaign."
   might: "A number read as a.might in the clash."
   troops: "The troops the general leads at the start."
+  skills: "The skills they use in a clash shown as units, IDs of campaign.clash.skills."
+  tactic: "The tactic the sortie screen picks for them first, an ID of campaign.clash.tactics (or of the engine's)."

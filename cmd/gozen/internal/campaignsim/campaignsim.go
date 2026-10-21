@@ -4,6 +4,7 @@
 package campaignsim
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -30,6 +31,10 @@ type Config struct {
 	Seed     uint64
 	As       string
 	MaxOrder int // orders a campaign may give before it is cut (0: 2000)
+	// Tactic is the tactic every general marches with in a clash shown as units ("": each
+	// general's own); a march then takes the most generals it can, the strongest first,
+	// and is counted as order:tactic.
+	Tactic string
 }
 
 // Result is what the campaigns came to.
@@ -38,6 +43,7 @@ type Result struct {
 	Runs    int     `json:"runs"`
 	Seed    uint64  `json:"seed"`
 	As      string  `json:"as"`
+	Tactic  string  `json:"tactic,omitempty"`
 	Won     int     `json:"won"`
 	Lost    int     `json:"lost"`
 	Cut     int     `json:"cut"`
@@ -84,7 +90,7 @@ func Run(ctx context.Context, db *data.DB, cfg Config) (*Result, error) {
 	if cfg.MaxOrder <= 0 {
 		cfg.MaxOrder = 2000
 	}
-	r := &Result{Game: db.Game.ID, Runs: cfg.Runs, Seed: cfg.Seed, As: cfg.As, Orders: map[string]int{}, Marches: map[string]int{}}
+	r := &Result{Game: db.Game.ID, Runs: cfg.Runs, Seed: cfg.Seed, As: cfg.As, Orders: map[string]int{}, Marches: map[string]int{}, Tactic: cfg.Tactic}
 	r.Turns.Won, r.Turns.Lost = map[int]int{}, map[int]int{}
 	sums := map[int]map[string]float64{}
 	reached := map[int]int{}
@@ -189,6 +195,12 @@ func play(ctx context.Context, db *data.DB, cfg Config, seed uint64, r *Result) 
 			break
 		}
 		cmd, id := next(db, st, cfg.As, rng)
+		if cmd.Order != nil && cfg.Tactic != "" {
+			if o := db.Game.Campaign.Orders[cmd.Order.ID]; o != nil && o.March && cmd.Order.General != "" {
+				cmd.Order = withAll(db, st, o, cmd.Order, cfg.Tactic)
+				id += ":" + cfg.Tactic
+			}
+		}
 		r.Orders[id]++
 		if err := d.Run(ctx, []data.Command{cmd}); err != nil {
 			return nil, err
@@ -202,6 +214,27 @@ func play(ctx context.Context, db *data.DB, cfg Config, seed uint64, r *Result) 
 	}
 	o.won, o.lost, o.turn = d.Cleared, d.Over, data.Turn(db, st.Campaign())
 	return o, nil
+}
+
+// withAll is a march with the most generals it can take, the strongest first after its
+// leader, all with the tactic.
+func withAll(db *data.DB, st *rpg.State, o *data.Order, oc *data.OrderCmd, tactic string) *data.OrderCmd {
+	next := *oc
+	var others []string
+	for _, g := range campaign.Generals(db, st, o) {
+		if g != oc.General {
+			others = append(others, g)
+		}
+	}
+	slices.SortStableFunc(others, func(a, b string) int {
+		return cmp.Compare(data.GeneralTroops(db, st.Campaign(), b), data.GeneralTroops(db, st.Campaign(), a))
+	})
+	next.With = others[:min(len(others), campaign.Cap(db, o)-1)]
+	next.Tactics = map[string]string{oc.General: tactic}
+	for _, g := range next.With {
+		next.Tactics[g] = tactic
+	}
+	return next.MarchNow()
 }
 
 // next is the strategy's next command and the name it is counted under.

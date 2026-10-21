@@ -18,11 +18,11 @@ factions:
       - {draft: "180"}
       - {march: true, keep: 1000, where: "s.troops * 0.6 > t.troops * 1.25", pick: min, by: t.troops}
 regions:
-  vale: {name: Ashvale, next: [cross, ford], owner: crown, troops: 600, terrain: castle, defend: vale_guard, values: {wealth: 40}}
-  ford: {name: Brookford, next: [cross, vale], troops: 350, terrain: field, defend: ford_guard, values: {wealth: 30}}
-  cross: {name: Crossway, next: [ford, hill, well, vale], troops: 600, terrain: town, defend: cross_guard, values: {wealth: 40}}
-  hill: {name: Highhill, next: [cross, well], owner: stag, troops: 1300, terrain: castle, defend: hill_guard, values: {wealth: 30}}
-  well: {name: Deepwell, next: [cross, hill], owner: raven, troops: 1500, terrain: castle, defend: well_guard, values: {wealth: 30}}
+  vale: {name: Ashvale, next: [cross, ford], owner: crown, troops: 600, terrain: castle, defend: vale_guard, values: {wealth: 40}, area: [[1401, 1000], [380, 1000], [380, 847], [1164, 444], [1188, 443]]}
+  ford: {name: Brookford, next: [cross, vale], troops: 350, terrain: field, defend: ford_guard, values: {wealth: 30}, area: [[1164, 444], [380, 847], [380, 640], [840, 379]]}
+  cross: {name: Crossway, next: [ford, hill, well, vale], troops: 600, terrain: town, defend: cross_guard, values: {wealth: 40}, area: [[380, 60], [503, 60], [840, 379], [380, 640]]}
+  hill: {name: Highhill, next: [cross, well], owner: stag, troops: 1300, terrain: castle, defend: hill_guard, values: {wealth: 30}, area: [[503, 60], [1296, 60], [1188, 443], [1164, 444], [840, 379]]}
+  well: {name: Deepwell, next: [cross, hill], owner: raven, troops: 1500, terrain: castle, defend: well_guard, values: {wealth: 30}, area: [[1296, 60], [1880, 60], [1880, 1000], [1401, 1000], [1188, 443]]}
 locations:
   war:
     name: The Five Banners

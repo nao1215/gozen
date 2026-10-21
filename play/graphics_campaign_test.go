@@ -32,7 +32,7 @@ func TestGraphicsCampaign(t *testing.T) {
 		t.Fatal(err)
 	}
 	script := filepath.Join(root, "script.txt")
-	body := "wait 40\nshot map\npress ok\nwait 20\nshot orders\npress ok\nwait 20\npress ok\nwait 30\npress ok\nwait 30\nshot taken\nend_turn\nwait 90\nshot turn\norder storm hero keep\nwait 80\nshot clash\nwait 900\nquit\n"
+	body := "wait 40\nshot map\npress ok\nwait 20\nshot orders\npress ok\nwait 20\npress ok\nwait 30\npress ok\nwait 30\nshot taken\nend_turn\nwait 90\nshot turn\norder storm - keep\nwait 30\nshot sortie\npress cancel\nwait 20\nshot back\norder storm hero keep\nwait 80\nshot clash\nwait 900\nquit\n"
 	if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -73,6 +73,9 @@ func TestGraphicsCampaign(t *testing.T) {
 		t.Error("the free field has a blue flag before the march")
 	case !blue("taken", 320, 180):
 		t.Error("the field has no blue flag after the march")
+	}
+	if shotPixelSum(t, root, "turn") == shotPixelSum(t, root, "sortie") || shotPixelSum(t, root, "sortie") == shotPixelSum(t, root, "back") {
+		t.Error("the sortie screen did not show, or did not close on cancel")
 	}
 	if shotPixelSum(t, root, "turn") == shotPixelSum(t, root, "clash") {
 		t.Error("the clash screen did not show")

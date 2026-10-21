@@ -463,6 +463,9 @@ func (v ordersView) Keys() []string {
 
 var tOrder = objType("an order", map[string]*vtype{"open": tBool, "used": tNum}, nil)
 
+// tacticOver are the types of a and t in a tactic (the unit striking and a foe).
+var tacticOver = map[string]*vtype{"a": hitOver["a"], "t": hitOver["a"], "round": tNum}
+
 // hitOver are the types of a and b in a clash shown as units (two units).
 var hitOver = func() map[string]*vtype {
 	unit := objType("a unit", statsFields(map[string]*vtype{"troops": tNum, "max": tNum, "might": tNum, "hp": tNum, "mhp": tNum, "player": tBool, "level": tNum}), nil)

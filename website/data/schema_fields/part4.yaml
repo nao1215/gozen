@@ -200,3 +200,4 @@ OrderCmd:
   id: "The ID of the order in campaign.orders."
   target: "The target region, an ID of regions."
   with: "The generals who march with general, IDs of campaign.generals (an order whose generals is above 1)."
+  tactics: "The tactics of the generals marching, by general (IDs of campaign.clash.tactics); each general's own when missing."

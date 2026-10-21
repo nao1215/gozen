@@ -370,7 +370,7 @@ func parseScript(src string) (*script, error) {
 			continue
 		}
 		// A campaign's order and the end of its turn, as the commands they are (ADR 0030):
-		// order ID [GENERAL|-] [TARGET].
+		// order ID [GENERAL[:TACTIC][,GENERAL[:TACTIC]...]|-] [TARGET] (the first leads).
 		if c.verb == "order" || c.verb == "end_turn" {
 			c.verb, c.arg = "do", "- end_turn: true"
 			if f[0] == "order" {
@@ -378,13 +378,24 @@ func parseScript(src string) (*script, error) {
 					return nil, fmt.Errorf("script line %d: order ID [GENERAL|-] [TARGET]", line)
 				}
 				general, target := "", ""
+				var with, tactics []string
 				if len(f) > 2 && f[2] != "-" {
-					general = f[2]
+					for i, g := range strings.Split(f[2], ",") {
+						id, tactic, ok := strings.Cut(g, ":")
+						if ok {
+							tactics = append(tactics, fmt.Sprintf("%q: %q", id, tactic))
+						}
+						if i == 0 {
+							general = id
+						} else {
+							with = append(with, fmt.Sprintf("%q", id))
+						}
+					}
 				}
 				if len(f) > 3 {
 					target = f[3]
 				}
-				c.arg = fmt.Sprintf("- order: {id: %s, general: %q, target: %q}", f[1], general, target)
+				c.arg = fmt.Sprintf("- order: {id: %s, general: %q, with: [%s], tactics: {%s}, target: %q}", f[1], general, strings.Join(with, ", "), strings.Join(tactics, ", "), target)
 			}
 			s.cmds = append(s.cmds, c)
 			continue

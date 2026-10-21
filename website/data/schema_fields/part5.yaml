@@ -178,3 +178,4 @@ Region:
   owner: "The faction holding it at the start, an ID of factions. Omitted for a free region."
   troops: "The garrison at the start."
   values: "The region's own numbers at the start (such as wealth), read and set as region.<id>.<name>."
+  area: "The region's shape on the campaign map's picture, its pixels as [[x, y], ...] (three points or more): the map fills it in the owner's colour and draws its border, and a click inside chooses it. Areas may share borders but not overlap. Without it the region shows as its point's flag."

@@ -36,6 +36,7 @@ const (
 	clashFastTicks = 10
 	maxSoldiers    = 24 // the most soldiers in a unit's ranks
 	soldierCols    = 6
+	soldierRows    = 4
 )
 
 type fallen struct {
@@ -88,6 +89,15 @@ type clashScene struct {
 	age     int
 	per     float64
 	pics    [2]string // the soldiers' pictures
+	bands   []skillBand
+}
+
+// skillBand is a skill's name shown across its unit's card.
+type skillBand struct {
+	text string
+	side int
+	at   int
+	age  int
 }
 
 func newClashScene(g *Game, cl *campaign.Clash, done func()) *clashScene {
@@ -141,13 +151,13 @@ func (s *clashScene) isRouted(side, i int) bool {
 // cardSize is a leader's card (UI units).
 func cardSize(g *Game) (float64, float64) {
 	_, sh := g.screen()
-	return sh * 0.17, sh * 0.255
+	return sh * 0.13, sh * 0.175
 }
 
 // blockWidth is a unit's block: its card and its ranks.
 func blockWidth(g *Game) float64 {
 	sw, _ := g.screen()
-	return sw * 0.215
+	return sw * 0.27
 }
 
 // slot is where unit i of a side has its card: the front units nearer the middle, the
@@ -160,16 +170,17 @@ func (s *clashScene) slot(g *Game, side, i int) (float64, float64) {
 	}
 	cw, _ := cardSize(g)
 	bw := blockWidth(g)
-	back := k >= campaign.Front
-	lane := float64(k % campaign.Front)
-	x := sw*0.5 - sw*0.055 - cw // the card stands at the block's inner edge
+	front := max(1, s.cl.Front)
+	back := k >= front
+	lane := float64(k%front) + float64(campaign.Front-front)*0.5 // a duel stands in the middle
+	x := sw*0.5 - sw*0.055 - cw                                  // the card stands at the block's inner edge
 	if back {
 		x -= bw
 	}
 	if side == 1 {
 		x = sw - x - cw
 	}
-	return x, sh*0.29 + lane*sh*0.3
+	return x, sh*0.3 + lane*sh*0.32
 }
 
 func (s *clashScene) update(g *Game) {
@@ -216,6 +227,14 @@ func (s *clashScene) update(g *Game) {
 		}
 	}
 	s.falls = fl
+	bs := s.bands[:0]
+	for _, b := range s.bands {
+		b.age++
+		if b.age < 80 {
+			bs = append(bs, b)
+		}
+	}
+	s.bands = bs
 	if s.over {
 		if in.ok() || in.click || (s.auto && s.wait <= 0) || g.replaying || g.skipping {
 			g.pop()
@@ -239,11 +258,64 @@ func (s *clashScene) update(g *Game) {
 	}
 	h := s.cl.Hits[s.next]
 	s.round = h.Round
+	first := h.Skill != "" && (s.next == 0 || s.cl.Hits[s.next-1].Skill != h.Skill || s.cl.Hits[s.next-1].At != h.At || s.cl.Hits[s.next-1].Side != h.Side || s.cl.Hits[s.next-1].Round != h.Round)
+	if first {
+		s.useSkill(g, h)
+	}
 	s.strike(g, h)
 	s.next++
 	s.wait = clashHitTicks
+	if first {
+		s.wait += 30
+	}
 	if s.fast || g.skipping {
 		s.wait = clashFastTicks
+	}
+}
+
+// useSkill shows a skill's name across its unit's card and the troops it gave back.
+func (s *clashScene) useSkill(g *Game, h campaign.Hit) {
+	label := h.Skill
+	if sk := g.db.Game.Campaign.Clash.Skills[h.Skill]; sk != nil {
+		label = sk.Label
+	}
+	s.bands = append(s.bands, skillBand{text: label, side: h.Side, at: h.At})
+	if h.Heal > 0 {
+		u := s.units[h.Side][h.At]
+		u.shown = math.Min(u.u.Max, u.shown+float64(h.Heal))
+		u.lag = math.Max(u.lag, u.shown)
+		u.soldiers = s.count(u.shown)
+		_, ch := cardSize(g)
+		cw, _ := cardSize(g)
+		x := u.x + cw + 60
+		if u.side == 1 {
+			x = u.x - 60
+		}
+		s.pops = append(s.pops, clashPop{text: fmt.Sprintf("+%d", h.Heal), x: x, y: u.y + ch*0.5, tx: x, ty: u.y + ch*0.35, life: 70, c: color.NRGBA{0x70, 0xe8, 0x90, 0xff}, size: sizeL * 1.5})
+	}
+	g.sfx("decide")
+	g.emit("clash_skill", traceLine{"round": h.Round, "side": h.Side, "at": h.At, "skill": h.Skill, "heal": h.Heal})
+}
+
+// drawBands draws the skills' names across the cards: a band that slides in and fades.
+func (s *clashScene) drawSkillBands(g *Game, dst *ebiten.Image) {
+	cw, ch := cardSize(g)
+	for _, b := range s.bands {
+		u := s.units[b.side][b.at]
+		a := 1.0
+		if b.age > 60 {
+			a = float64(80-b.age) / 20
+		}
+		in := math.Min(1, float64(b.age)/8)
+		w := (cw + 80) * in
+		x := u.x + cw/2 - w/2
+		y := u.y + ch*0.42
+		gfx.FillRect(dst, float32(x), float32(y), float32(w), float32(sizeL*1.4), color.NRGBA{0x18, 0x10, 0x08, uint8(220 * a)}, false)
+		gfx.FillRect(dst, float32(x), float32(y), float32(w), 3, color.NRGBA{0xff, 0xd0, 0x60, uint8(255 * a)}, false)
+		gfx.FillRect(dst, float32(x), float32(y+sizeL*1.4-3), float32(w), 3, color.NRGBA{0xff, 0xd0, 0x60, uint8(255 * a)}, false)
+		if in >= 1 {
+			gfx.DrawTextOutlineColor(dst, b.text, u.x+cw/2, y+sizeL*0.15, sizeL, color.NRGBA{0xff, 0xf0, 0xc0, 0xff}, color.NRGBA{0x40, 0x20, 0x00, 0xff}, float32(a))
+		}
 	}
 }
 
@@ -273,9 +345,15 @@ func (s *clashScene) strike(g *Game, h campaign.Hit) {
 		}
 		return u.x - 60
 	}
+	lift := 0.0 // a loss shown while another still shows over the same card goes above it
+	for _, p := range s.pops {
+		if p.x == beside(to) && p.text != "" && p.text[0] == '-' && p.age < p.life/2 {
+			lift += sizeL * 1.8
+		}
+	}
 	s.pops = append(s.pops,
-		clashPop{text: fmt.Sprintf("-%d", h.Loss), x: beside(to), y: to.y + ch*0.3, tx: beside(to), ty: to.y + ch*0.12, life: 70, c: color.NRGBA{0xff, 0x48, 0x38, 0xff}, size: sizeL * 1.8},
-		clashPop{text: fmt.Sprintf(lang.T("%d人"), h.Attackers), x: beside(from), y: from.y + ch*0.7, tx: beside(from) + (beside(to)-beside(from))*0.3, ty: from.y + ch*0.62, life: 40, c: color.NRGBA{0xff, 0xf0, 0xb0, 0xff}, size: sizeM * 1.2},
+		clashPop{text: fmt.Sprintf("-%d", h.Loss), x: beside(to), y: to.y + ch*0.3 - lift, tx: beside(to), ty: to.y + ch*0.12 - lift, life: 70, c: color.NRGBA{0xff, 0x48, 0x38, 0xff}, size: sizeL * 1.8},
+		clashPop{text: fmt.Sprintf(lang.T("%d人"), h.Attackers), x: from.x + cw/2, y: from.y - sizeM*1.2, tx: from.x + cw/2, ty: from.y - sizeM*2, life: 40, c: color.NRGBA{0xff, 0xf0, 0xb0, 0xff}, size: sizeM * 1.2},
 	)
 	if h.Routed {
 		to.stamp = lang.T("壊滅")
@@ -299,19 +377,34 @@ func (s *clashScene) soldierPic(u *clashUnit) string {
 }
 
 // soldierAt is where soldier k of a unit's ranks stands (its feet) and its height: the
-// ranks fill the block behind the card, front rank first.
+// ranks fill the block behind the card, the front rank (nearest the viewer, lowest) first,
+// each rank from the card outward; the last ones stand at the back, top.
 func (s *clashScene) soldierAt(g *Game, u *clashUnit, k int) (float64, float64, float64) {
-	cw, ch := cardSize(g)
-	room := blockWidth(g) - cw - 10
+	_, sh := g.screen()
+	cw, _ := cardSize(g)
+	room := blockWidth(g) - cw - 16
 	col, row := k%soldierCols, k/soldierCols
 	dx := room / soldierCols
-	h := ch * 0.36
-	x := u.x - 10 - dx*(float64(col)+0.5) - float64(row%2)*dx*0.4
+	h := sh * 0.1
+	x := u.x - 16 - dx*(float64(col)+0.5) - float64(row%2)*dx*0.35
 	if u.side == 1 {
-		x = u.x + cw + 10 + dx*(float64(col)+0.5) + float64(row%2)*dx*0.4
+		x = u.x + cw + 16 + dx*(float64(col)+0.5) + float64(row%2)*dx*0.35
 	}
-	y := u.y + ch*0.32 + float64(row)*ch*0.19
-	return x, y + h, h
+	feet := u.y + float64(soldierRows-1-row)*sh*0.042
+	return x, feet + h*0.6, h
+}
+
+// troopsAbove is where a unit's troops are written: over the middle of its ranks.
+func (s *clashScene) troopsAbove(g *Game, u *clashUnit) (float64, float64) {
+	cw, _ := cardSize(g)
+	room := blockWidth(g) - cw - 16
+	x := u.x - 16 - room/2
+	if u.side == 1 {
+		x = u.x + cw + 16 + room/2
+	}
+	rows := max(1, (u.soldiers+soldierCols-1)/soldierCols)
+	_, top, h := s.soldierAt(g, u, soldierCols*(rows-1))
+	return x, top - h - sizeM*1.3
 }
 
 func (s *clashScene) draw(g *Game, dst *ebiten.Image) {
@@ -351,6 +444,7 @@ func (s *clashScene) draw(g *Game, dst *ebiten.Image) {
 			gfx.FillCircle(dst, float32(x.x1+math.Cos(ang)*float64(x.age)*3), float32(x.y1+40+math.Sin(ang)*float64(x.age)*1.5), r*0.6, withAlpha(color.NRGBA{0xd8, 0xc8, 0xa8, 0xff}, a/2), true)
 		}
 	}
+	s.drawSkillBands(g, dst)
 	for _, p := range s.pops {
 		t := math.Min(1, float64(p.age)/float64(min(p.life, 30)))
 		x, y := p.x+(p.tx-p.x)*t, p.y+(p.ty-p.y)*t
@@ -391,14 +485,28 @@ func (s *clashScene) hint() string {
 func (s *clashScene) drawRanks(g *Game, dst *ebiten.Image, u *clashUnit) {
 	pic := s.soldierPic(u)
 	alpha := float32(1 - u.gone*0.6)
+	part := float32(1) // the last soldier shows the troops short of a whole one, fainter
+	if u.soldiers > 0 && u.soldiers < maxSoldiers {
+		if rem := u.shown - float64(u.soldiers-1)*s.per; rem < s.per {
+			part = float32(0.3 + 0.7*rem/s.per)
+		}
+	}
 	for k := u.soldiers - 1; k >= 0; k-- {
 		x, y, h := s.soldierAt(g, u, k)
-		s.drawSoldier(g, dst, pic, u.side, x, y, h, 0, alpha)
+		a := alpha
+		if k == u.soldiers-1 {
+			a *= part
+		}
+		s.drawSoldier(g, dst, pic, u.side, x, y, h, 0, a)
+	}
+	if u.gone < 1 {
+		tx, ty := s.troopsAbove(g, u)
+		outlined(dst, strconv.Itoa(int(u.shown)), tx, ty, sizeM, plateInk, uint8(255*alpha))
 	}
 	if u.soldiers == 0 {
 		return
 	}
-	x, y, h := s.soldierAt(g, u, min(2, u.soldiers-1)) // the flag, in the front rank
+	x, y, h := s.soldierAt(g, u, soldierCols-1) // the flag, at the outer end of the front rank
 	col := factionColor(g, g.db.Game.Campaign.Player)
 	if u.side == 1 {
 		col = factionColor(g, s.cl.Owner)
@@ -450,10 +558,14 @@ func (s *clashScene) drawSoldier(g *Game, dst *ebiten.Image, pic string, side in
 	gfx.StrokeLine(dst, float32(x+dx), float32(y-h*0.2), float32(x+dx)+sx, float32(y-h*1.0), 2, withAlpha(color.NRGBA{0x60, 0x50, 0x40, 0xff}, a), true)
 }
 
-// drawBands draws the two sides' troops as one rope: the player's colour from the left,
-// the foe's from the right, meeting where their troops stand against each other, with the
-// numbers over each end.
+// drawBands draws the two sides' troops as one rope in a frame: the player's colour from
+// the left, the foe's from the right, each lit from above, meeting at a small diamond
+// where their troops stand against each other; a small flag and the troops outside each
+// end, the region's name on a plate over the middle. clash.rope: false leaves it out.
 func (s *clashScene) drawBands(g *Game, dst *ebiten.Image) {
+	if r := g.db.Game.Campaign.Clash.Rope; r != nil && !*r {
+		return
+	}
 	sw, _ := g.screen()
 	var total [2]float64
 	for side := range 2 {
@@ -465,19 +577,61 @@ func (s *clashScene) drawBands(g *Game, dst *ebiten.Image) {
 	if s.cl.Owner == "" {
 		cols[1] = color.NRGBA{0xc8, 0x50, 0x40, 0xff}
 	}
-	x, w, y, h := 60.0, sw-120, 46.0, 26.0
+	x, w, y, h := sw*0.16, sw*0.68, 70.0, 14.0
 	share := 0.5
 	if t := total[0] + total[1]; t > 0 {
 		share = total[0] / t
 	}
-	gfx.FillRoundRect(dst, float32(x-3), float32(y-3), float32(w+6), float32(h+6), 8, color.NRGBA{0x10, 0x10, 0x14, 0xd0})
-	gfx.FillRoundRect(dst, float32(x), float32(y), float32(w), float32(h), 6, cols[1])
-	gfx.FillRoundRect(dst, float32(x), float32(y), float32(w*share), float32(h), 6, cols[0])
-	gfx.FillRect(dst, float32(x+w*share-2), float32(y-4), 4, float32(h+8), plateInk, false)
-	left, right := strconv.Itoa(int(total[0])), strconv.Itoa(int(total[1]))
-	outlined(dst, left, x+gfx.TextWidth(left, sizeL)/2, 6, sizeL, plateInk, 255)
-	outlined(dst, right, x+w-gfx.TextWidth(right, sizeL)/2, 6, sizeL, plateInk, 255)
-	outlined(dst, data.RegionName(g.db, s.cl.Region), sw/2, 6, sizeL, g.th.accent, 255)
+	// the frame: dark wood with a lighter rim, the groove shadowed inside
+	gfx.FillRoundRect(dst, float32(x-7), float32(y-7), float32(w+14), float32(h+14), 5, color.NRGBA{0x3a, 0x2a, 0x1c, 0xf0})
+	gfx.StrokeRoundRect(dst, float32(x-7), float32(y-7), float32(w+14), float32(h+14), 5, 2, color.NRGBA{0xb8, 0x96, 0x60, 0xff})
+	gfx.FillRect(dst, float32(x), float32(y), float32(w), float32(h), color.NRGBA{0x10, 0x0c, 0x0a, 0xff}, false)
+	shade := func(c color.NRGBA, k float64) color.NRGBA {
+		return color.NRGBA{uint8(float64(c.R) * k), uint8(float64(c.G) * k), uint8(float64(c.B) * k), 0xff}
+	}
+	light := func(c color.NRGBA) color.NRGBA {
+		return color.NRGBA{uint8(min(255, int(c.R)+60)), uint8(min(255, int(c.G)+60)), uint8(min(255, int(c.B)+60)), 0xff}
+	}
+	part := func(c color.NRGBA, px, pw float64) {
+		gfx.FillRect(dst, float32(px), float32(y), float32(pw), float32(h*0.5), c, false)
+		gfx.FillRect(dst, float32(px), float32(y+h*0.5), float32(pw), float32(h*0.5), shade(c, 0.68), false)
+		gfx.FillRect(dst, float32(px), float32(y+2), float32(pw), 1.5, light(c), false)
+	}
+	part(cols[0], x, w*share)
+	part(cols[1], x+w*share, w*(1-share))
+	gfx.FillRect(dst, float32(x), float32(y), float32(w), 2, color.NRGBA{0, 0, 0, 0x80}, false) // the groove's shadow
+	mx, my := x+w*share, y+h/2
+	for i := range 9 { // the diamond where they meet
+		d := 10 - math.Abs(float64(i-4))*2.5
+		gfx.FillRect(dst, float32(mx-d), float32(my-10+float64(i)*2.5), float32(2*d), 2.5, color.NRGBA{0xff, 0xec, 0xb0, 0xff}, false)
+	}
+	gfx.StrokeCircle(dst, float32(mx), float32(my), 12, 1.5, color.NRGBA{0x3a, 0x2a, 0x1c, 0xff}, true)
+	// the ends: a small flag and the troops
+	for side := range 2 {
+		fx := x - 30
+		if side == 1 {
+			fx = x + w + 30
+		}
+		gfx.StrokeLine(dst, float32(fx), float32(y-14), float32(fx), float32(y+h+8), 2, color.NRGBA{0x3a, 0x2a, 0x1c, 0xff}, true)
+		fw := float32(20.0)
+		px := float32(fx)
+		if side == 1 {
+			px -= fw
+		}
+		gfx.FillRect(dst, px, float32(y-14), fw, 13, cols[side], false)
+		n := strconv.Itoa(int(total[side]))
+		tx := fx - 16 - gfx.TextWidth(n, sizeL)/2
+		if side == 1 {
+			tx = fx + 16 + gfx.TextWidth(n, sizeL)/2
+		}
+		outlined(dst, n, tx, y+h/2-sizeL*0.7, sizeL, plateInk, 255)
+	}
+	name := data.RegionName(g.db, s.cl.Region)
+	nw := gfx.TextWidth(name, sizeM) + 56
+	g.window(dst, sw/2-nw/2, 12, nw, sizeM*1.5)
+	gfx.DrawText(dst, "◆", sw/2-nw/2+16, 12+sizeM*0.22, sizeS*0.7, color.NRGBA{0xd8, 0xb8, 0x78, 0xff})
+	gfx.DrawText(dst, "◆", sw/2+nw/2-16, 12+sizeM*0.22, sizeS*0.7, color.NRGBA{0xd8, 0xb8, 0x78, 0xff})
+	gfx.DrawText(dst, name, sw/2, 12+sizeM*0.12, sizeM, g.th.text)
 }
 
 // drawCard draws a leader's card: the face, the name, the gauge of troops and the HP.
@@ -496,7 +650,7 @@ func (s *clashScene) drawCard(g *Game, dst *ebiten.Image, cu *clashUnit) {
 	}
 	alpha := float32(1 - cu.gone*0.5)
 	g.window(dst, x, y, cw, ch)
-	ph := ch * 0.56
+	ph := ch - 52
 	if cu.u.Picture != "" {
 		if img := g.pics.get(cu.u.Picture); img != nil && !img.Bounds().Empty() {
 			iw, ih := float64(img.Bounds().Dx()), float64(img.Bounds().Dy())
@@ -526,22 +680,10 @@ func (s *clashScene) drawCard(g *Game, dst *ebiten.Image, cu *clashUnit) {
 	if cu.glow > 0 {
 		gfx.FillRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 16, color.NRGBA{0xff, 0x30, 0x20, uint8(min(255, 10*cu.glow))})
 	}
-	gfx.DrawText(dst, cu.u.Name, x+cw/2, y+ph+8, sizeS*0.9, withAlpha(g.th.text, uint8(255*alpha)))
-	gx, gy, gw, gh := x+10, y+ph+36, cw-20, 14.0
-	gfx.FillRoundRect(dst, float32(gx), float32(gy), float32(gw), float32(gh), 4, color.NRGBA{0x10, 0x10, 0x14, 0xe0})
-	if cu.u.Max > 0 {
-		gfx.FillRoundRect(dst, float32(gx), float32(gy), float32(gw*cu.lag/cu.u.Max), float32(gh), 4, color.NRGBA{0xd8, 0x30, 0x30, 0xff})
-		c := color.NRGBA{0x50, 0xc8, 0x70, 0xff}
-		if cu.side == 1 {
-			c = color.NRGBA{0xe8, 0xb0, 0x40, 0xff}
-		}
-		gfx.FillRoundRect(dst, float32(gx), float32(gy), float32(gw*cu.shown/cu.u.Max), float32(gh), 4, c)
-	}
-	gfx.DrawText(dst, fmt.Sprintf("%d / %d", int(cu.shown), int(cu.u.Max)), x+cw/2, gy+gh+3, sizeS*0.8, withAlpha(g.th.text, uint8(255*alpha)))
-	if cu.u.MHP > 0 {
-		hy := gy + gh + 26
-		gfx.FillRect(dst, float32(gx), float32(hy), float32(gw), 5, color.NRGBA{0x10, 0x10, 0x14, 0xe0}, false)
-		gfx.FillRect(dst, float32(gx), float32(hy), float32(gw*cu.hp/float64(cu.u.MHP)), 5, color.NRGBA{0x70, 0xa8, 0xe8, 0xff}, false)
+	gfx.DrawText(dst, gfx.Ellipsis(cu.u.Name, sizeS*0.85, cw-12), x+cw/2, y+ph+6, sizeS*0.85, withAlpha(g.th.text, uint8(255*alpha)))
+	if cu.u.MHP > 0 { // the leader's HP, a thin line
+		r := cu.hp / float64(cu.u.MHP)
+		bar(dst, x+12, y+ch-14, cw-24, 7, r, withAlpha(hpColor(r), uint8(255*alpha)))
 	}
 	if cu.stamp != "" {
 		sw := gfx.TextWidth(cu.stamp, sizeL*1.1) + 20

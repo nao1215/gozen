@@ -34,6 +34,8 @@ func TestCampaignErrors(t *testing.T) {
 	for _, c := range []struct{ name, old, replacement, want string }{
 		{"a border written on one side", "field: {name: Field, next: [home, hill, keep]", "field: {name: Field, next: [hill, keep]", "home borders field, but field's next does not name home"},
 		{"an unknown neighbour", "keep: {name: Keep, next: [field, hill]", "keep: {name: Keep, next: [field, hill, nowhere]", `unknown region "nowhere"`},
+		{"overlapping areas", "troops: 150}\n  keep: {name: Keep, next: [field, hill], owner: red, troops: 500, values: {wealth: 15}}", "troops: 150, area: [[0, 0], [10, 0], [10, 10], [0, 10]]}\n  keep: {name: Keep, next: [field, hill], owner: red, troops: 500, values: {wealth: 15}, area: [[5, 5], [15, 5], [15, 15]]}", "the area overlaps hill's"},
+		{"an area of two points", "hill: {name: Hill, next: [field, keep], troops: 150}", "hill: {name: Hill, next: [field, keep], troops: 150, area: [[0, 0], [10, 0]]}", "a polygon needs three points"},
 		{"a region bordering itself", "hill: {name: Hill, next: [field, keep]", "hill: {name: Hill, next: [field, keep, hill]", "does not border itself"},
 		{"an unknown owner", "owner: red, troops: 500", "owner: rde, troops: 500", `unknown faction "rde"`},
 		{"a capital held by another", "capital: keep", "capital: hill", "capital hill is held by"},
@@ -73,6 +75,11 @@ func TestCampaignGameErrors(t *testing.T) {
 		{"a set of an unknown faction", `target.wealth: "target.wealth + 10"`, `target.owner: "'bleu'"`, `unknown faction "bleu"`},
 		{"a set of an unknown field", `target.wealth: "target.wealth + 10"`, `target.gold: "1"`, `set can change a region's owner, troops and values`},
 		{"actions reading the party", `actions: "1 + floor(faction.blue.regions / 2)"`, `actions: "members"`, `unknown name "members"`},
+		{"units above four", "generals: {scout: {troops: 400, might: 2}}", "generals: {scout: {troops: 400, might: 2}}\n  clash: {units: 5}", "units are 1 to 4"},
+		{"an unknown tactic of a general", "might: 2}}", "might: 2, tactic: rush}}", `unknown tactic "rush"`},
+		{"an unknown skill of a general", "might: 2}}", "might: 2, skills: [blow]}}", `unknown skill "blow"`},
+		{"a tactic's unknown pick", "generals: {scout: {troops: 400, might: 2}}", "generals: {scout: {troops: 400, might: 2}}\n  clash: {tactics: {rush: {label: Rush, pick: first}}}", `pick is least, most or random, not "first"`},
+		{"a tactic reading an unknown name", "generals: {scout: {troops: 400, might: 2}}", "generals: {scout: {troops: 400, might: 2}}\n  clash: {tactics: {rush: {label: Rush, pick: least, by: b.troops}}}", `unknown name "b"`},
 		{"the campaign at version 4", "schema_version: 5", "schema_version: 4", "campaign needs schema_version: 5"},
 	} {
 		t.Run(c.name, func(t *testing.T) {

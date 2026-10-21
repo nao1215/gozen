@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"image/color"
 
+	"github.com/hajimehoshi/ebiten/v2/vector"
+
+	"github.com/nao1215/gozen/internal/layer1/geom"
+
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/nao1215/gozen/internal/expr"
@@ -114,6 +118,49 @@ func (s *atlasScene) drawRegionMarker(g *Game, dst *ebiten.Image, p mapPoint, x,
 	gfx.StrokeRoundRect(dst, fx+2, fy-pole, w, fh, 3, 2.5, plateInk) // a light edge: no colour sinks into the map
 	if f := g.db.Factions[owner]; f != nil && f.Capital == p.id {
 		gfx.StrokeCircle(dst, fx, fy, pole*0.24, 3, withAlpha(c, 255), true)
+	}
+}
+
+// drawAreas fills each region's area (regions.<id>.area) in its owner's colour, faint
+// for a free one, and draws its border; the region chosen is brighter, its border lit.
+func (s *atlasScene) drawAreas(g *Game, dst *ebiten.Image, toScreen func(geom.Pt) (float32, float32), sel string) {
+	u := float32(g.ui)
+	cs := g.st.Campaign()
+	for _, id := range data.RegionIDs(g.db) {
+		r := g.db.Regions[id]
+		if len(r.Area) < 3 {
+			continue
+		}
+		var path vector.Path
+		for i, p := range r.Area.Poly() {
+			x, y := toScreen(p)
+			if i == 0 {
+				path.MoveTo(x*u, y*u)
+			} else {
+				path.LineTo(x*u, y*u)
+			}
+		}
+		path.Close()
+		owner := data.RegionOwner(g.db, cs, id)
+		fill := withAlpha(flagFill(factionColor(g, owner)), 0x80)
+		if owner == "" {
+			fill = color.NRGBA{0xe8, 0xe4, 0xd8, 0x30}
+		}
+		if id == sel {
+			fill.A += 0x30
+		}
+		op := &vector.DrawPathOptions{AntiAlias: true}
+		op.ColorScale.ScaleWithColor(fill)
+		vector.FillPath(dst, &path, nil, op)
+		line := &vector.DrawPathOptions{AntiAlias: true}
+		width := float32(3)
+		if id == sel {
+			line.ColorScale.ScaleWithColor(g.th.cursor)
+			width = 5
+		} else {
+			line.ColorScale.ScaleWithColor(withAlpha(plateInk, 210))
+		}
+		vector.StrokePath(dst, &path, &vector.StrokeOptions{Width: width * u, LineJoin: vector.LineJoinRound}, line)
 	}
 }
 

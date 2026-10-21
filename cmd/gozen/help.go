@@ -218,9 +218,10 @@ var pages = map[string]clihelp.Page{
 		Examples: []clihelp.Example{
 			{"measure 200 campaigns", "gozen sim campaign game"},
 			{"compare random play, as JSON", "gozen sim campaign game --as random -n 500 --format json"},
+			{"march every general with one tactic", "gozen sim campaign game --tactic guard"},
 		},
 		Groups: []clihelp.Group{
-			{Title: "Campaign", Flags: []string{"campaigns", "seed", "as", "orders"}},
+			{Title: "Campaign", Flags: []string{"campaigns", "seed", "as", "tactic", "orders"}},
 			{Title: "Output", Flags: []string{"format"}},
 			general,
 		},

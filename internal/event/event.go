@@ -255,6 +255,19 @@ type ClashScene struct{ Clash *campaign.Clash }
 
 func (ClashScene) isRequest() {}
 
+// SortieScene asks who marches on a march with a clash shown as units or more than one
+// general (Runner.Sortie, ADR 0030): the generals who can (Ready, in the written order),
+// the most who go (Cap), and the region. March gives the order with them (the leader
+// first, the rest with, each one's tactic); the scene closes without it to cancel.
+type SortieScene struct {
+	Order, Target string
+	Ready         []string
+	Cap           int
+	March         func(generals []string, tactics map[string]string)
+}
+
+func (SortieScene) isRequest() {}
+
 // The answers of a battle.
 const (
 	BattleWon  = 1
@@ -301,6 +314,10 @@ type Runner struct {
 	// When non-nil it takes precedence over Host's optional AsideBlocker.
 	// The runner calls it synchronously; it must not advance this runner.
 	BlockAside func() bool
+	// Sortie asks who marches on a march (more than one general, or a clash shown as
+	// units) with one SortieScene after the target instead of a choice per general, when
+	// the order does not name its general: the play screen sets it.
+	Sortie bool
 	// Dev allows set to change the stats and levels of actors (actor.<id>.hp, mp, exp,
 	// level, sp): the development mode and tests. Without it such a set is logged and skipped.
 	Dev bool

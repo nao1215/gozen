@@ -114,6 +114,14 @@ The author chose the manner of Kichikuou Rance for the sample (2026-10-21): the 
 
 The screen shows two armies on the terrain's picture (`terrain` of the region, `clash.backgrounds`): each leader's card (the face, a gauge of troops with a red band that shrinks after the loss, the HP) at the front of its ranks of soldiers (one for `clash.per_soldier` troops, `clash.soldiers` the pictures), a rope of the two sides' troops over the field, the rounds under it. A strike lunges the card, slashes and raises dust, shakes the one struck red, shows the troops lost and the soldiers who went; the soldiers lost fall from the back of the ranks; a routed unit turns gray under a stamp. A table ends it: troops sent and left, the loss and its rate, the foes caught, the region. OK plays faster; A plays on by itself. A session sees the request kind `clash` (it needs no answer); the trace writes `clash` and `clash_hit`.
 
+A side has at most `clash.units` units (1 to 4; 1 makes it a duel, with one in front), which also caps the generals of an order. Each unit fights by a tactic, `clash.tactics.<id>`: among the foes in front (every foe with `all`) for whom `where` holds (`t` the foe, `a` the unit), the one with the least or most `by` (`pick`; random by default), dealing `deal` and taking `take` of the troops (1 by default). Without tactics the engine has `front` (one in front at random), `weakest` and `strongest` (the fewest or most troops; the first deals less, the second more), `leader` (the leader with the least HP, among all) and `guard` (deals and takes 0.6). A general's tactic is the order's (`tactics: {id: tactic}`), else their own (`generals.<id>.tactic`), else the first; a foe fights by the first. A unit's skills (`generals.<id>.skills`, or the enemies in a skill's `foes`) charge each round; one charged (`charge` rounds, 2 by default) is used instead of a strike: it takes `power` troops (twice the hit by default) from the foe the tactic picks, or from every foe in front with `all`, and gives `heal` back. The screen shows its name across the card, and a skill's healing puts soldiers back.
+
+The soldiers tell the troops: each rank holds one soldier for `clash.per_soldier` troops (the last one fainter for a part of one, at most 24), the troops written over it; the card is the leader's face, name and HP; `clash.rope: false` leaves out the rope.
+
+The player's march with more than one general or a clash shown as units, when the order names no general, asks for the target and then shows the sortie screen (Runner.Sortie, set by the play screen; a session and a script keep the choices): the generals who have joined on the left (face, troops, might and attack; those who marched or are away grayed), the slots of the front and the back on the right, each with the general's tactic, the troops marching against the garrison at the bottom, March and Cancel. OK puts a general in or takes them out, left and right change the tactic, a click on a slot and another swaps them; the first slot leads. `gozen sim campaign --tactic` marches every general with one tactic, to compare them.
+
+A region's `area` is its shape on the map's picture: the map fills it in the owner's colour, draws its border (lit when chosen), and a click inside it chooses the region; the flag is left out. `gozen check` reports an area of fewer than three points, out of the picture, or overlapping another (a shared border is fine), and warns of one crossing itself.
+
 `on_win`, `on_lose` and `on_draw` on a march run after it by how it went (any `fight`), before `do`: a general's word, with the language, the backlog, the read lines and the trace of any line.
 
 ### Measuring
@@ -135,7 +143,7 @@ The screen shows two armies on the terrain's picture (`terrain` of the region, `
 | 5 | The bridge to battles: `fight: battle`, `defend`, `self.troops`, the troops written back | Done |
 | 7 | Rules in the manner of Kichikuou Rance, chosen in YAML: a calendar of weeks, orders counted per kind (`count: orders`, `per_turn`), a march open until a region is taken (`until_taken`), generals marching together (`generals`), a beaten general away for some turns (`defeat.out`) | Done |
 | 8 | The clash screen (`fight: clash_view`), `on_win`, `on_lose`, `on_draw` | Done |
-| 8b | The sortie screen, `clash.units`, tactics and skills | |
+| 8b | The sortie screen, `clash.units`, tactics and skills, `area` | Done |
 | 6 | The remaining checks, the sample, the documents | |
 
 ## Alternatives

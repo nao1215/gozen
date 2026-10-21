@@ -23,6 +23,7 @@ func (c *command) campaignCmd(args []string) error {
 	n := fs.IntP("campaigns", "n", 200, "campaigns to play")
 	seed := fs.Uint64("seed", 1, "the random seed of the first campaign (the next ones count up from it); the same seed gives the same result")
 	as := fs.String("as", "greedy", "the player's strategy: greedy, random, or ai (the player's faction's own ai rules)")
+	tactic := fs.String("tactic", "", "the tactic every general marches with in a clash shown as units (a march then takes the most generals it can); empty: each general's own")
 	maxOrders := fs.Int("orders", 2000, "orders a campaign may give before it is cut")
 	format := fs.String("format", "text", "the output: text, or json")
 	if err := c.parse(fs, args); err != nil {
@@ -54,7 +55,10 @@ func (c *command) campaignCmd(args []string) error {
 	if db.Game.Campaign == nil {
 		return cli.Invalid(diag.UnknownName, "the game has no campaign (game.yaml campaign)")
 	}
-	r, err := campaignsim.Run(context.Background(), db, campaignsim.Config{Runs: *n, Seed: *seed, As: *as, MaxOrder: *maxOrders})
+	if _, ok := db.Game.Campaign.Clash.DeclaredTactics()[*tactic]; *tactic != "" && !ok {
+		return cli.Invalid(diag.NotAChoice, "--tactic is %s, not %q", strings.Join(db.Game.Campaign.Clash.TacticIDs(), ", "), *tactic)
+	}
+	r, err := campaignsim.Run(context.Background(), db, campaignsim.Config{Runs: *n, Seed: *seed, As: *as, MaxOrder: *maxOrders, Tactic: *tactic})
 	if err != nil {
 		return err
 	}

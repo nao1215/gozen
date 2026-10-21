@@ -333,6 +333,23 @@ func (s *atlasScene) pointAt(g *Game, x, y float64) (atlas.Choice, bool) {
 			best, bd = p.choice, d
 		}
 	}
+	if best < 0 && s.campaignMap(g) { // inside a region's area
+		for _, p := range s.points {
+			r := g.db.Regions[p.id]
+			if p.choice < 0 || r == nil || len(r.Area) < 3 {
+				continue
+			}
+			var q geom.Poly
+			for _, a := range r.Area.Poly() {
+				ax, ay := s.screen(g, a)
+				q = append(q, geom.Pt{X: ax, Y: ay})
+			}
+			if q.Inside(geom.Pt{X: x, Y: y}) {
+				best = p.choice
+				break
+			}
+		}
+	}
 	if best < 0 {
 		return atlas.Choice{}, false
 	}
@@ -476,6 +493,13 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	toScreen := func(p geom.Pt) (float32, float32) {
 		return float32((ox + p.X*k) / u), float32((oy + p.Y*k) / u)
 	}
+	if s.campaignMap(g) {
+		sel := ""
+		if !s.walking() && s.sel < len(s.choices) && !g.busy() {
+			sel = s.choices[s.sel].Point
+		}
+		s.drawAreas(g, dst, toScreen, sel)
+	}
 	if a.DrawRoads { // only when asked: the roads are painted in the picture
 		for _, r := range s.roads {
 			if !r.shown {
@@ -526,6 +550,9 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 		h := mh
 		if p.id == sel {
 			h *= 1.3
+		}
+		if war && g.db.Regions[p.id] != nil && len(g.db.Regions[p.id].Area) >= 3 { // the area tells the owner: only the plate
+			continue
 		}
 		if war && g.db.Regions[p.id] != nil {
 			s.drawRegionMarker(g, dst, p, float64(x), float64(y), h)

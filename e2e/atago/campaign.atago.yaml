@@ -59,6 +59,18 @@ scenarios:
       stdout:
         contains: ['5 campaigns from seed 1 as random', 'regions held at the start of each turn']
   - run:
+      command: gozen sim campaign war -n 5 --tactic guard --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['"tactic": "guard"', '"attack:guard":']
+  - run:
+      command: gozen sim campaign war -n 5 --tactic rush
+  - assert:
+      exit_code: 2
+      stderr:
+        contains: ['--tactic is front, weakest, strongest, leader, guard, not "rush"']
+  - run:
       command: gozen sim campaign war --as lazy
   - assert:
       exit_code: 2

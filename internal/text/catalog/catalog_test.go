@@ -29,6 +29,8 @@ var indirect = map[string]struct {
 	"internal/play/devpanel.go":                   {[]string{"n"}, []string{"状態", "フラグ", "シーン", "コマンド", "フレーム"}},
 	"internal/layer2/gamedata/load.go":            {nil, []string{"武器", "防具", "装飾品"}},
 	"internal/layer2/gamedata/campaign_orders.go": {nil, []string{"ターンを終える"}},
+	"internal/layer2/gamedata/campaign.go":        {nil, []string{"近くの敵", "兵の少ない敵", "兵の多い敵", "弱った将", "守り"}},
+	"internal/play/sortie.go":                     {[]string{"t.Label"}, nil},
 	"internal/layer2/gamedata/types.go":           {nil, []string{"最大HP", "最大MP", "攻撃力", "防御力", "魔法力", "魔法防御", "素早さ", "運"}},
 }
 

@@ -2374,6 +2374,22 @@
           },
           "x-type": "expression"
         },
+        "rope": {
+          "description": "false leaves out the rope of the two sides' troops over a clash shown as units, so the soldiers alone tell them. Default true.",
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
         "rounds": {
           "description": "The most rounds of a clash shown as units; when they run out, the region holds (a draw). Default 5.",
           "type": "integer",
@@ -2386,6 +2402,25 @@
             "version": "0, 1, 2"
           },
           "x-type": "integer"
+        },
+        "skills": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ClashSkill"
+          },
+          "description": "The skills of a clash shown as units, by ID: a unit uses one when it is charged (campaign.generals.\u003cid\u003e.skills, and foes for enemies).",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → [ClashSkill](#clashskill)"
         },
         "soldiers": {
           "additionalProperties": {
@@ -2406,8 +2441,249 @@
           },
           "x-type": "string → string"
         },
+        "tactics": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ClashTactic"
+          },
+          "description": "The tactics of a clash shown as units, by ID: how a unit picks the foe it strikes, chosen for each general on the sortie screen. Without them the engine's front, weakest, strongest, leader and guard.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → [ClashTactic](#clashtactic)"
+        },
+        "units": {
+          "description": "The most units a side has in a clash shown as units, 1 to 4 (4 when omitted); 1 makes it a duel. It also caps the generals of an order.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
         "won": {
           "description": "The troops of a left after taking b. Default `a.troops * (1 - 0.5 * defense / power)`.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        }
+      },
+      "type": "object"
+    },
+    "ClashSkill": {
+      "additionalProperties": false,
+      "description": "A skill of a clash shown as units: charged after charge rounds, it is used instead of the next strike.",
+      "properties": {
+        "all": {
+          "description": "If true, it strikes every foe in front instead of the one the tactic picks.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "charge": {
+          "description": "The rounds it takes to charge. Default 2.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "foes": {
+          "description": "The enemies who use it, IDs of enemies (generals list theirs in campaign.generals.\u003cid\u003e.skills).",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
+        "heal": {
+          "description": "The troops it gives back to the unit (a the unit), at most what it lost.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "label": {
+          "description": "The name shown across the unit's card when it is used.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "power": {
+          "description": "The troops it takes from each foe struck: a strikes, b is struck. Default twice clash.hit.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        }
+      },
+      "type": "object"
+    },
+    "ClashTactic": {
+      "additionalProperties": false,
+      "description": "A tactic of a clash shown as units: how a unit picks the foe it strikes and how much it deals and takes.",
+      "properties": {
+        "all": {
+          "description": "If true, it looks at every foe standing, not only those in front.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "by": {
+          "description": "The number pick compares (t the foe, a the unit striking), such as t.troops or t.hp.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "deal": {
+          "description": "The share of the troops it takes that the unit deals, 1 when omitted (0.6 deals less).",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "label": {
+          "description": "The name shown on the sortie screen.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "pick": {
+          "description": "least or most by by, or random (the default).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "take": {
+          "description": "The share of the troops struck that the unit loses, 1 when omitted (0.6 loses less).",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "where": {
+          "description": "Which foes it may strike (t the foe, a the unit striking); all of them when none holds.",
           "type": [
             "string",
             "number",
@@ -7749,6 +8025,38 @@
           },
           "x-type": "number"
         },
+        "skills": {
+          "description": "The skills they use in a clash shown as units, IDs of campaign.clash.skills.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
+        "tactic": {
+          "description": "The tactic the sortie screen picks for them first, an ID of campaign.clash.tactics (or of the engine's).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "troops": {
           "description": "The troops the general leads at the start.",
           "type": "integer",
@@ -9695,6 +10003,25 @@
               },
               "x-type": "string"
             },
+            "tactics": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "The tactics of the generals marching, by general (IDs of campaign.clash.tactics); each general's own when missing.",
+              "type": [
+                "object",
+                "null"
+              ],
+              "x-contract": {
+                "default": "empty map",
+                "legacy_default": "empty map",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string → string"
+            },
             "target": {
               "description": "The target region, an ID of regions.",
               "type": "string",
@@ -10364,6 +10691,33 @@
       "additionalProperties": false,
       "description": "A region of a campaign: its neighbours, its first owner and garrison, and its own numbers.",
       "properties": {
+        "area": {
+          "description": "The region's shape on the campaign map's picture, its pixels as [[x, y], ...] (three points or more): the map fills it in the owner's colour and draws its border, and a click inside chooses it. Areas may share borders but not overlap. Without it the region shows as its point's flag.",
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number[2][]"
+        },
         "defend": {
           "description": "The troop a general fights on marching here with an order of fight: battle, and whose members hold it, sharing its garrison, in a clash shown as units. An ID of troops.",
           "type": "string",

@@ -2,6 +2,8 @@ package gamedata
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/nao1215/gozen/internal/diag"
@@ -15,6 +17,9 @@ type OrderCmd struct {
 	// With are the generals who march with General (an order with generals above 1).
 	With   []string `yaml:"with"`
 	Target string   `yaml:"target"`
+	// Tactics are the tactics of the generals marching, by general (clash.tactics; each
+	// general's own when missing).
+	Tactics map[string]string `yaml:"tactics"`
 	// asked: the order has asked who else marches and the answer was to march now.
 	asked bool
 }
@@ -26,6 +31,7 @@ func (o *OrderCmd) Asked() bool { return o.asked }
 func (o OrderCmd) MarchNow() *OrderCmd {
 	o.asked = true
 	o.With = append([]string(nil), o.With...)
+	o.Tactics = maps.Clone(o.Tactics)
 	return &o
 }
 
@@ -103,6 +109,14 @@ func (c *checker) campaignCommand(w, verb string, cmd *Command) {
 	for _, g := range o.With {
 		if _, ok := cp.Generals[g]; !ok {
 			c.errorf(diag.UnknownReference, w+".order.with", "%q is not a general of campaign.generals", g)
+		}
+	}
+	for _, g := range slices.Sorted(maps.Keys(o.Tactics)) {
+		if g != o.General && !slices.Contains(o.With, g) {
+			c.errorf(diag.UnknownReference, w+".order.tactics."+g, "%q is not marching (general or with)", g)
+		}
+		if _, ok := cp.Clash.DeclaredTactics()[o.Tactics[g]]; !ok {
+			c.errorf(diag.UnknownReference, w+".order.tactics."+g, "unknown tactic %q (clash.tactics has %s)", o.Tactics[g], strings.Join(cp.Clash.TacticIDs(), ", "))
 		}
 	}
 	if o.Target != "" {

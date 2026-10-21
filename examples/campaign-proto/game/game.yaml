@@ -26,16 +26,23 @@ campaign:
   lost: fallen
   on_turn: turn_start
   generals:
-    corin: {troops: 500, might: 3}
-    hilde: {troops: 600, might: 2}
-    sable: {troops: 0, might: 1}
-    vessa: {troops: 0, might: 4}
+    corin: {troops: 500, might: 3, skills: [volley]}
+    hilde: {troops: 600, might: 2, tactic: guard, skills: [rally]}
+    sable: {troops: 0, might: 1, tactic: weakest, skills: [rally]}
+    vessa: {troops: 0, might: 4, tactic: strongest, skills: [charge]}
   clash:
     power: "a.troops * (1 + a.might / 10) * (0.8 + rand() * 0.4)"
     hit: "a.troops * (0.14 + a.might / 100) * (0.8 + rand() * 0.4)"
     rounds: 5
     backgrounds: {field: bg/field.jpg, town: bg/town.jpg, castle: bg/castle.jpg}
     soldiers: {player: soldiers/player.png, foe: soldiers/foe.png}
+    units: 4
+    per_soldier: 30
+    skills:
+      volley: {label: Volley, charge: 3, all: true, power: "a.troops * 0.12"}
+      rally: {label: Rally, charge: 3, heal: "a.max * 0.15"}
+      charge: {label: Charge, charge: 2, power: "a.troops * 0.3"}
+      dark_lance: {label: Dark Lance, charge: 3, power: "a.troops * 0.3", foes: [raven_knight]}
   orders:
     attack:
       label: Attack
@@ -44,7 +51,7 @@ campaign:
       march: true
       fight: clash_view
       until_taken: true
-      generals: 2
+      generals: 4
       on_win: [{say: {who: corin, text: "The region is ours. Hold it well, and don't let it go to your heads."}}]
       on_lose: [{say: {who: hilde, text: "We fell back. Next time I go in front of you, Corin, no argument."}}]
       on_draw: [{say: {who: corin, text: "Time ran out and they still hold it. Fine, they'll see us again soon."}}]

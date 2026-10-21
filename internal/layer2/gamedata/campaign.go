@@ -2,9 +2,12 @@ package gamedata
 
 import (
 	"fmt"
+	"image"
 	"maps"
 	"slices"
 	"strings"
+
+	"github.com/nao1215/gozen/internal/layer1/geom"
 
 	"github.com/goccy/go-yaml"
 
@@ -42,6 +45,10 @@ type Region struct {
 	// Terrain is the kind of ground (field, town, castle or any word): the background of a
 	// clash shown as units (clash.backgrounds).
 	Terrain string `yaml:"terrain"`
+	// Area is the region's shape on the campaign's map picture (its pixels, three points
+	// or more): the map fills it in the owner's colour and draws its border. Without it the
+	// region shows as its point's flag.
+	Area Polygon `yaml:"area"`
 }
 
 // Faction is a side of a campaign: one is the player's (campaign.player), the others move
@@ -129,6 +136,11 @@ type Defeat struct {
 type General struct {
 	Troops int     `yaml:"troops"`
 	Might  float64 `yaml:"might"`
+	// Tactic is the tactic the sortie picks for them first (clash.tactics; the first one
+	// when empty).
+	Tactic string `yaml:"tactic"`
+	// Skills are the skills they use in a clash shown as units when charged (clash.skills).
+	Skills []string `yaml:"skills"`
 }
 
 // Clash decides a march of a (the side marching: troops, might, faction, general) on the
@@ -163,6 +175,70 @@ type Clash struct {
 	Soldiers map[string]string `yaml:"soldiers"`
 	// PerSoldier is the troops one soldier of the lines stands for (50 when 0).
 	PerSoldier int `yaml:"per_soldier"`
+	// Rope draws the rope of the two sides' troops over a clash shown as units (true when
+	// unset); false leaves the soldiers alone to tell them.
+	Rope *bool `yaml:"rope"`
+	// Units is the most units a side has in a clash shown as units, 1 to 4 (4 when 0): 1
+	// makes it a duel; the first two of a side stand in front.
+	Units int `yaml:"units"`
+	// Tactics are the ways a unit picks the foe it strikes, chosen for each general on the
+	// sortie (the engine's front, weakest, strongest, leader and guard when empty).
+	Tactics map[string]*ClashTactic `yaml:"tactics"`
+	// Skills are the skills a unit uses when charged (generals.<id>.skills, foes).
+	Skills map[string]*ClashSkill `yaml:"skills"`
+}
+
+// ClashTactic is a way of picking the foe to strike in a clash shown as units: among the
+// foes in front (every foe standing with all) for whom where holds (t the foe, a the
+// unit striking), the one with the least or most by (pick; random when empty). Deal and
+// take scale the troops the unit takes and loses (1 when 0).
+type ClashTactic struct {
+	Label string  `yaml:"label"`
+	All   bool    `yaml:"all"`
+	Where Expr    `yaml:"where"`
+	Pick  string  `yaml:"pick"`
+	By    Expr    `yaml:"by"`
+	Deal  float64 `yaml:"deal"`
+	Take  float64 `yaml:"take"`
+}
+
+// ClashSkill is a skill of a clash shown as units: charged after Charge rounds (2 when
+// 0), it is used instead of the next strike, takes Power troops (a strikes, b is struck;
+// twice the hit when empty) from the foe the tactic picks, or from every foe in front
+// with all, and gives Heal troops back to the unit. Foes are the enemies who use it.
+type ClashSkill struct {
+	Label  string   `yaml:"label"`
+	Charge int      `yaml:"charge"`
+	Power  Expr     `yaml:"power"`
+	All    bool     `yaml:"all"`
+	Heal   Expr     `yaml:"heal"`
+	Foes   []string `yaml:"foes"`
+}
+
+// DeclaredTactics are the tactics of a clash: clash.tactics, or the engine's when empty.
+func (c *Clash) DeclaredTactics() map[string]*ClashTactic {
+	if len(c.Tactics) > 0 {
+		return c.Tactics
+	}
+	return builtinTactics
+}
+
+// TacticIDs are the tactics in a fixed order: the engine's in theirs, clash.tactics by ID.
+func (c *Clash) TacticIDs() []string {
+	if len(c.Tactics) > 0 {
+		return slices.Sorted(maps.Keys(c.Tactics))
+	}
+	return []string{"front", "weakest", "strongest", "leader", "guard"}
+}
+
+// builtinTactics are the tactics when a campaign declares none; their labels are words
+// of the engine (lang.T in the screens).
+var builtinTactics = map[string]*ClashTactic{
+	"front":     {Label: "近くの敵"},
+	"weakest":   {Label: "兵の少ない敵", Pick: "least", By: MustExpr("t.troops"), Deal: 0.75},
+	"strongest": {Label: "兵の多い敵", Pick: "most", By: MustExpr("t.troops"), Deal: 1.2},
+	"leader":    {Label: "弱った将", All: true, Pick: "least", By: MustExpr("t.hp"), Deal: 0.8},
+	"guard":     {Label: "守り", Deal: 0.6, Take: 0.6},
 }
 
 // Order is one of the player's orders: it costs actions, may need a general and a target
@@ -326,6 +402,60 @@ func (db *DB) keepCampaignOrder(raw yaml.MapSlice) {
 }
 
 // campaign checks the regions, the factions and game.yaml's campaign.
+// regionAreas checks the regions' areas: polygons in the campaign map's picture that do
+// not cross themselves nor overlap each other (a shared border is fine).
+func (c *checker) regionAreas() {
+	db := c.db
+	var size image.Point
+	known := false
+	if cp := db.Game.Campaign; cp != nil {
+		if l := db.Locations[cp.Location]; l != nil && l.Map != nil {
+			size, known = c.pictureSize(l.Map.Picture)
+		}
+	}
+	var with []string
+	for _, id := range RegionIDs(db) {
+		r := db.Regions[id]
+		if len(r.Area) == 0 {
+			continue
+		}
+		if c.polygon("regions."+id+".area", r.Area, size, known) {
+			with = append(with, id)
+		}
+	}
+	for i, a := range with {
+		for _, b := range with[i+1:] {
+			if areasOverlap(db.Regions[a].Area.Poly(), db.Regions[b].Area.Poly()) {
+				c.errorf(diag.Shape, "regions."+b+".area", "the area overlaps %s's", a)
+			}
+		}
+	}
+}
+
+// areasOverlap reports whether two areas share more than a border: an edge of one
+// crosses an edge of the other, or a point of one lies inside the other off its border.
+func areasOverlap(q, r geom.Poly) bool {
+	in := func(p geom.Pt, poly geom.Poly) bool { return poly.Inside(p) && poly.Distance(p) > 0.5 }
+	for _, p := range append(slices.Clone(q), q.Center()) {
+		if in(p, r) {
+			return true
+		}
+	}
+	for _, p := range append(slices.Clone(r), r.Center()) {
+		if in(p, q) {
+			return true
+		}
+	}
+	for i := range q {
+		for j := range r {
+			if geom.SegmentsCross(q[i], q[(i+1)%len(q)], r[j], r[(j+1)%len(r)]) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (c *checker) campaign() {
 	db := c.db
 	if len(db.Regions) == 0 && len(db.Factions) == 0 && db.Game.Campaign == nil {
@@ -337,6 +467,7 @@ func (c *checker) campaign() {
 	if len(db.Factions) > 0 {
 		c.needsVersion("factions", "factions", SchemaVersion5)
 	}
+	c.regionAreas()
 	names := append(slices.Clone(FieldNames), "t")
 	for _, id := range RegionIDs(db) {
 		r := db.Regions[id]
@@ -467,6 +598,63 @@ func (c *checker) campaign() {
 	}
 	if cp.Clash.PerSoldier < 0 {
 		c.errorf(diag.OutOfRange, w+".clash.per_soldier", "per_soldier is troops, 0 (50) or more")
+	}
+	if cp.Clash.Units < 0 || cp.Clash.Units > 4 {
+		c.errorf(diag.OutOfRange, w+".clash.units", "units are 1 to 4 (0 for 4), not %d", cp.Clash.Units)
+	}
+	unit := append(slices.Clone(FieldNames), "a", "t", "round")
+	for _, id := range slices.Sorted(maps.Keys(cp.Clash.Tactics)) {
+		t, at := cp.Clash.Tactics[id], w+".clash.tactics."+id
+		if t == nil {
+			c.errorf(diag.Shape, at, "a tactic needs a label")
+			continue
+		}
+		if t.Label == "" {
+			c.errorf(diag.Shape, at+".label", "a tactic needs a label")
+		}
+		if t.Pick != "" && t.Pick != "least" && t.Pick != "most" && t.Pick != "random" {
+			c.errorf(diag.NotAWord, at+".pick", "pick is least, most or random, not %q", t.Pick)
+		}
+		if (t.Pick == "least" || t.Pick == "most") && !t.By.Set() {
+			c.errorf(diag.Shape, at+".by", "pick %s needs by", t.Pick)
+		}
+		if t.Deal < 0 || t.Take < 0 {
+			c.errorf(diag.OutOfRange, at, "deal and take are 0 (1) or more")
+		}
+		c.exprIn(at+".where", t.Where, unit, tacticOver)
+		c.exprIn(at+".by", t.By, unit, tacticOver)
+	}
+	for _, id := range slices.Sorted(maps.Keys(cp.Clash.Skills)) {
+		s, at := cp.Clash.Skills[id], w+".clash.skills."+id
+		if s == nil {
+			c.errorf(diag.Shape, at, "a skill needs a label")
+			continue
+		}
+		if s.Label == "" {
+			c.errorf(diag.Shape, at+".label", "a skill needs a label")
+		}
+		if s.Charge < 0 {
+			c.errorf(diag.OutOfRange, at+".charge", "charge is rounds, 0 (2) or more")
+		}
+		c.exprIn(at+".power", s.Power, append(slices.Clone(FieldNames), "a", "b", "round"), hitOver)
+		c.exprIn(at+".heal", s.Heal, append(slices.Clone(FieldNames), "a", "b", "round"), hitOver)
+		for _, f := range s.Foes {
+			_, ok := c.db.Enemies[f]
+			c.ref(at+".foes", "enemy", f, ok)
+		}
+	}
+	for _, id := range slices.Sorted(maps.Keys(cp.Generals)) {
+		g := cp.Generals[id]
+		if g.Tactic != "" {
+			if _, ok := cp.Clash.DeclaredTactics()[g.Tactic]; !ok {
+				c.errorf(diag.UnknownReference, w+".generals."+id+".tactic", "unknown tactic %q (clash.tactics has %s)", g.Tactic, strings.Join(cp.Clash.TacticIDs(), ", "))
+			}
+		}
+		for _, s := range g.Skills {
+			if _, ok := cp.Clash.Skills[s]; !ok {
+				c.errorf(diag.UnknownReference, w+".generals."+id+".skills", "unknown skill %q of clash.skills", s)
+			}
+		}
 	}
 	for _, k := range slices.Sorted(maps.Keys(cp.Clash.Backgrounds)) {
 		c.picture(w+".clash.backgrounds."+k, Picture{File: cp.Clash.Backgrounds[k]})
