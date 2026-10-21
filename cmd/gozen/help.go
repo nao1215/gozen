@@ -60,7 +60,7 @@ var groups = map[string]clihelp.Page{
 	"sim": {
 		Summary: "measure play without a window",
 		Usage:   []string{"gozen sim <command> [OPTIONS] <game-dir> ..."},
-		About: "Plays the game by its rules alone, with no window or sound, and prints numbers: the win " +
+		About: "Plays the game by its rules alone, with no window or sound, and prints numbers: route exploration, the win " +
 			"rate against a troop, a dive floor by floor, the generated floors, and a report of personas " +
 			"playing the whole game.",
 		Commands: [][2]string{
@@ -69,6 +69,7 @@ var groups = map[string]clihelp.Page{
 			{"floors", "Show generated dungeon floors: maps, steps, and encounters"},
 			{"design", "Play the game with personas and write a design report"},
 			{"campaign", "Play a campaign many times with a strategy and print what it came to"},
+			{"routes", "Explore event choices and report reachable endings and options"},
 		},
 		Examples: []clihelp.Example{
 			{"fight 100 battles", "gozen sim battle game lesson -n 100"},
@@ -267,6 +268,19 @@ var pages = map[string]clihelp.Page{
 			{Title: "Output", Flags: []string{"format"}},
 			general,
 		},
+	},
+	"sim routes": {
+		Summary: "find unreachable endings and choice options",
+		Usage:   []string{"gozen sim routes [OPTIONS] <game-dir>"},
+		About: "Explores event choices without a screen, counting paths to clear and game-over endings, " +
+			"and listing authored choice options that were never offered. Limits bound paths, event requests " +
+			"per path, and elapsed time. Findings do not fail unless --fail-unreachable is set.",
+		Examples: []clihelp.Example{
+			{"explore a visual novel", "gozen sim routes examples/novel/game"},
+			{"write JSON and fail CI on unreachable content", "gozen sim routes game --format json --fail-unreachable"},
+		},
+		Groups: []clihelp.Group{{Title: "Exploration", Flags: []string{"paths", "depth", "timeout"}}, {Title: "Output", Flags: []string{"format", "fail-unreachable"}}, general},
+		Notes:  []string{noRequirements},
 	},
 	"sim floors": {
 		Summary: "show generated floors: maps, steps, and encounters",

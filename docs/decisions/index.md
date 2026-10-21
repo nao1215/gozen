@@ -40,6 +40,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0031](0031-character-book.md) | The character book: `profiles` in data/ and the Characters screen | Accepted (done) | |
 | [0030](0030-campaigns.md) | Campaigns: regions held by factions over turns (`schema_version: 5`) | Accepted (stage 1 done) | |
 | [0032](0032-dungeon-themes.md) | Dungeon themes: `theme` in `dungeon` and `looks`, pictures added by `gozen theme add` | Accepted (done) | |
+| [0033](0033-route-exploration-command.md) | Headless route exploration | Accepted | |
 
 The source of truth for the current public packages is `api/public.txt` and [Boundaries](../architecture/boundaries.md), not this list of ADRs.
 

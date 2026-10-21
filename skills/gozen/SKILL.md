@@ -13,6 +13,7 @@ A Gozen game is a directory: `game.yaml`, `data/*.yaml` and `assets/`. A small G
 2. Edit the YAML.
 3. Run `gozen check` on the game directory. Fix every error and run it again. Stop only when it prints `ok:` and exits 0.
 4. When a fight or a dungeon changed, measure it with `gozen sim` (references/measure.md).
+5. For a novel or event-driven game, run `gozen sim routes <game-dir>` to explore choices and check reachable endings and offered options; use `--format json --fail-unreachable` in CI.
 
 <!-- verify: run fixture=cave -->
 ```shell
