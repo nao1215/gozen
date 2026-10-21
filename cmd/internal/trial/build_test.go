@@ -352,6 +352,8 @@ func TestConfigParseRejectsBadSettings(t *testing.T) {
 		{"bad pattern", "cut: ['[']\n", "trial pattern"},
 		{"bad unknown pattern", "unknown: ['[']\n", "trial pattern"},
 		{"bad keep pattern", "keep: ['[']\n", "trial pattern"},
+		{"blocked entry is no command", "blocked: [0]\n", "blocked: each entry is a command"},
+		{"blocked entry is a list", "blocked: [[say]]\n", "blocked: each entry is a command"},
 	} {
 		_, err := Parse([]byte(tc.in))
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
