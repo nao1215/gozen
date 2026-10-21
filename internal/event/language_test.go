@@ -96,3 +96,27 @@ func TestRewordOfAnActorSpeaker(t *testing.T) {
 		t.Errorf("%+v", got)
 	}
 }
+
+// TestInsteadLinesAreRewordedToo: the line said in place of a fallen speaker is shown again in the new language with the line.
+func TestInsteadLinesAreRewordedToo(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml":      "schema_version: 4\nid: tongues\nwritten_in: en\nlanguages: [en, ja]\n" + testgame.Game,
+		"data/talk.yaml": "events: {hi: {do: [{say: {who: scout, text: Hello, instead: [{who: guide, text: Hello again}]}}]}}\n",
+		"lang/ja.yaml":   "text:\n  \"Hello\": \"こんにちは\"\n  \"Hello again\": \"またこんにちは\"\n",
+	})
+	st := testgame.State(db, 1)
+	r := event.New(db, st, &host{})
+	r.Start(db.Events["hi"].Do)
+	say := testgame.As[event.Say](t, r.Next())
+	if len(say.Instead) != 1 || say.Instead[0].Text != "Hello again" {
+		t.Fatalf("the substitute line is carried: %+v", say.Instead)
+	}
+	db.Show("ja")
+	got := say.Reword(db)
+	if got.Text != "こんにちは" || len(got.Instead) != 1 || got.Instead[0].Text != "またこんにちは" {
+		t.Errorf("%+v", got)
+	}
+	if say.Instead[0].Text != "Hello again" {
+		t.Error("Reword changed the line it was given")
+	}
+}
