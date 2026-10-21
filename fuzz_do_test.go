@@ -161,3 +161,56 @@ func FuzzCheckAndExplore(f *testing.F) {
 		}
 	})
 }
+
+// FuzzDoWithADungeonAndAShop: the same promise as FuzzDo on a game with a dungeon, a shop and menus to pick from.
+func FuzzDoWithADungeonAndAShop(f *testing.F) {
+	g, err := gozen.Load(trail, ".", more)
+	if err != nil {
+		f.Fatal(err)
+	}
+	for _, s := range []string{
+		"- set: {location: cave}\n- step: 2\n- turn: left\n- step: 1\n",
+		"- set: {location: cave}\n- walk: G\n",
+		"- set: {location: cave, pos.x: 3, pos.y: 1, pos.facing: south, steps: 99}\n- step: 5\n",
+		"- gold: 99\n- buy: {shop: stall, item: herb, count: 3}\n- sell: {shop: stall, item: herb}\n- use: herb\n",
+		"- pick: Climb\n- pick: Back\n- pick: Nowhere\n",
+		"- act: {actor: walker, skill: guard}\n- battle: motes\n",
+		"- equip: {actor: walker, item: herb}\n",
+		"- join: sela\n- set: {party: [sela, walker]}\n- leave: sela\n",
+		"- call: show\n- call: found\n",
+		"- set: {actor.walker.tactics: {mode: manual, rows: []}}\n",
+		"- set: {actor.walker.level: 99, actor.walker.hp: -1}\n",
+	} {
+		f.Add(s)
+	}
+	f.Fuzz(func(t *testing.T, script string) {
+		if len(script) > 4096 {
+			return
+		}
+		s, err := gozen.New(g, gozen.Config{Seed: 2, Dev: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+		defer cancel()
+		if err := s.Begin(ctx); err != nil {
+			t.Fatalf("begin: %v", err)
+		}
+		if err := s.Do(ctx, script); err != nil && ctx.Err() != nil {
+			return
+		}
+		b, err := s.Save()
+		if err != nil {
+			t.Fatalf("a session cannot be saved after Do: %v", err)
+		}
+		if _, err := gozen.Restore(g, b, gozen.Config{Seed: 2}); err != nil {
+			t.Fatalf("what Do left cannot be restored: %v\n%s", err, b)
+		}
+		for _, q := range []string{"location", "gold", "party", "menu", "map", "pos", "roamers"} {
+			var v any
+			if err := s.Query(q, &v); err != nil {
+				t.Fatalf("Query(%q) after Do: %v", q, err)
+			}
+		}
+	})
+}
