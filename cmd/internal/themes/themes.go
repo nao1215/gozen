@@ -25,6 +25,10 @@ var summaries = map[string]string{
 	"ruins":   "stone walls grown with moss and vines, a bare stone floor",
 	"castle":  "stone walls, a wooden floor, a brick ceiling",
 	"crystal": "purple rock set with crystals",
+	"temple":  "white stone with teal tiles",
+	"sewer":   "wet stone, grates and pipes",
+	"forest":  "walls of roots, an earth floor",
+	"tomb":    "sandstone blocks with carved signs",
 }
 
 // licenseName is the file the license of the pictures is copied as, beside each theme.

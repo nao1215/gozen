@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Added
+
+- Four more dungeon themes in the `gozen` binary: `temple` (white stone with teal tiles), `sewer` (wet stone, grates and pipes), `forest` (walls of roots) and `tomb` (sandstone with carved signs). `gozen theme list` shows nine.
+
 ### Changed
 
 - Browser samples no longer include the games' embedded files in their WebAssembly builds. They read a small manifest and fetch assets only when opened, while desktop builds keep embedding the game directory. The pages load precompressed `.wasm.gz` files and decompress them before instantiation; browser saves remain in `localStorage`.
