@@ -37,7 +37,7 @@ func TestLanguageChangedMidwayRewordsWhatIsOnScreen(t *testing.T) {
 	r.Log = func(err error) { t.Error(err) }
 	r.Start(db.Events["talk"].Do)
 
-	say := r.Next().(event.Say)
+	say := testgame.As[event.Say](t, r.Next())
 	if say.Text != "Gold 100." || say.Name != "Courier" {
 		t.Fatalf("shown in the source language: %+v", say)
 	}
@@ -57,7 +57,7 @@ func TestLanguageChangedMidwayRewordsWhatIsOnScreen(t *testing.T) {
 	}
 
 	db.Show("en")
-	q := r.Next().(event.Choice)
+	q := testgame.As[event.Choice](t, r.Next())
 	db.Show("ja")
 	if q.Prompt != "Where now? (5)" {
 		t.Fatalf("the question was made in the source language: %q", q.Prompt)
@@ -89,7 +89,7 @@ func TestRewordOfAnActorSpeaker(t *testing.T) {
 	st := testgame.State(db, 1)
 	r := event.New(db, st, &host{})
 	r.Start(db.Events["hi"].Do)
-	say := r.Next().(event.Say)
+	say := testgame.As[event.Say](t, r.Next())
 	db.Show("ja")
 	got := say.Reword(db)
 	if got.Text != "こんにちは" || got.Name == "" {

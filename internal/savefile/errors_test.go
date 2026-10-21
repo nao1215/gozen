@@ -51,7 +51,10 @@ func TestPrepareRejectsUnportableIDs(t *testing.T) {
 			t.Errorf("id %q: %v", id, err)
 		}
 	}
-	entries, _ := os.ReadDir(root)
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(entries) != 0 {
 		t.Errorf("a refused id made %d entries", len(entries))
 	}
@@ -130,11 +133,15 @@ func TestWriteFailsWhereItCannotWrite(t *testing.T) {
 	if err := os.Chmod(ro, 0o500); err != nil { //nolint:gosec // A test directory.
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(ro, 0o700) }) //nolint:gosec // A test directory.
+	t.Cleanup(func() {
+		if err := os.Chmod(ro, 0o700); err != nil { //nolint:gosec // A test directory.
+			t.Error(err)
+		}
+	})
 	if err := savefile.Write(target, []byte("new")); err == nil {
 		t.Error("a write into a read-only directory succeeded")
 	}
-	if b, _ := os.ReadFile(target); string(b) != "old" { //nolint:gosec // Path is isolated in t.TempDir.
+	if b, err := os.ReadFile(target); err != nil || string(b) != "old" { //nolint:gosec // Path is isolated in t.TempDir.
 		t.Errorf("a failed write changed the old file: %q", b)
 	}
 	// replacing a directory fails at the rename and cleans its temporary file
@@ -145,7 +152,10 @@ func TestWriteFailsWhereItCannotWrite(t *testing.T) {
 	if err := savefile.Write(occupied, []byte("s")); err == nil {
 		t.Error("a write over a directory succeeded")
 	}
-	entries, _ := os.ReadDir(dir)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, e := range entries {
 		if strings.HasPrefix(e.Name(), ".save-") {
 			t.Errorf("a temporary file was left: %s", e.Name())
@@ -159,7 +169,7 @@ func TestWritePreservingOfAMissingFileJustWrites(t *testing.T) {
 	if err != nil || backup != "" {
 		t.Fatalf("backup %q err %v: there is nothing to preserve", backup, err)
 	}
-	if b, _ := os.ReadFile(path); string(b) != "first" { //nolint:gosec // Path is isolated in t.TempDir.
+	if b, err := os.ReadFile(path); err != nil || string(b) != "first" { //nolint:gosec // Path is isolated in t.TempDir.
 		t.Errorf("%q", b)
 	}
 }
@@ -187,7 +197,7 @@ func TestWritePreservingFailures(t *testing.T) {
 	if _, err := savefile.WritePreserving(path, []byte("new")); err == nil {
 		t.Error("an unreadable backup was accepted")
 	}
-	if b, _ := os.ReadFile(path); string(b) != string(old) { //nolint:gosec // Path is isolated in t.TempDir.
+	if b, err := os.ReadFile(path); err != nil || string(b) != string(old) { //nolint:gosec // Path is isolated in t.TempDir.
 		t.Errorf("the original changed: %q", b)
 	}
 	// the final write fails: the backup is reported and kept
@@ -198,11 +208,15 @@ func TestWritePreservingFailures(t *testing.T) {
 	if err := os.Chmod(dir, 0o500); err != nil { //nolint:gosec // A test directory.
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) }) //nolint:gosec // A test directory.
+	t.Cleanup(func() {
+		if err := os.Chmod(dir, 0o700); err != nil { //nolint:gosec // A test directory.
+			t.Error(err)
+		}
+	})
 	if _, err := savefile.WritePreserving(path, []byte("new")); err == nil {
 		t.Error("a write into a read-only directory succeeded")
 	}
-	if b, _ := os.ReadFile(path); string(b) != string(old) { //nolint:gosec // Path is isolated in t.TempDir.
+	if b, err := os.ReadFile(path); err != nil || string(b) != string(old) { //nolint:gosec // Path is isolated in t.TempDir.
 		t.Errorf("a failed write changed the original: %q", b)
 	}
 }

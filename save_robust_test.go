@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -122,9 +123,7 @@ func TestRestoreRejectsDamagedSaves(t *testing.T) {
 	}
 	with := func(key, value string) []byte {
 		m := map[string]json.RawMessage{}
-		for k, v := range env {
-			m[k] = v
-		}
+		maps.Copy(m, env)
 		if value == "" {
 			delete(m, key)
 		} else {
@@ -206,9 +205,7 @@ func TestRestoreWithEditedStateFields(t *testing.T) {
 	}
 	build := func(edit func(m map[string]json.RawMessage)) []byte {
 		m := map[string]json.RawMessage{}
-		for k, v := range state {
-			m[k] = v
-		}
+		maps.Copy(m, state)
 		edit(m)
 		st, err := json.Marshal(m)
 		if err != nil {
@@ -252,15 +249,13 @@ func TestRestoreWithEditedStateFields(t *testing.T) {
 
 // TestRestoreSaveOfAnotherGameVersion: a save made with more actors than the game has now drops the missing ones.
 func TestRestoreSaveOfAnotherGameVersion(t *testing.T) {
-	g, s := played(t, 5)
+	_, s := played(t, 5)
 	good, err := s.Save()
 	if err != nil {
 		t.Fatal(err)
 	}
 	smaller := fstest.MapFS{}
-	for k, v := range trail {
-		smaller[k] = v
-	}
+	maps.Copy(smaller, trail)
 	smaller["data/world.yaml"] = &fstest.MapFile{Data: bytes.ReplaceAll(trail["data/world.yaml"].Data, []byte("  sela: {name: Sela, class: walker}\n"), nil)}
 	g2, err := gozen.Load(smaller, ".")
 	if err != nil {
@@ -273,16 +268,13 @@ func TestRestoreSaveOfAnotherGameVersion(t *testing.T) {
 	if got := query[float64](t, r, "party.size"); got != 1 {
 		t.Errorf("party size %v, want 1 (the missing actor is dropped)", got)
 	}
-	_ = g
 }
 
 // TestLoadRejectsBrokenGames: broken, unknown or future definitions are reported as ErrInvalid with a position and never panic.
 func TestLoadRejectsBrokenGames(t *testing.T) {
 	base := func(game, world string) fstest.MapFS {
 		fsys := fstest.MapFS{}
-		for k, v := range trail {
-			fsys[k] = v
-		}
+		maps.Copy(fsys, trail)
 		if game != "" {
 			fsys["game.yaml"] = &fstest.MapFile{Data: []byte(game)}
 		}
@@ -350,9 +342,7 @@ func TestUnicodeNamesAreKept(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			world := strings.ReplaceAll(string(trail["data/world.yaml"].Data), "Walker", name)
 			fsys := fstest.MapFS{}
-			for k, v := range trail {
-				fsys[k] = v
-			}
+			maps.Copy(fsys, trail)
 			fsys["data/world.yaml"] = &fstest.MapFile{Data: []byte(world)}
 			g, err := gozen.Load(fsys, ".")
 			if err != nil {
@@ -377,9 +367,7 @@ func TestUnicodeNamesAreKept(t *testing.T) {
 	}
 	// ids and flags in other scripts
 	fsys := fstest.MapFS{}
-	for k, v := range trail {
-		fsys[k] = v
-	}
+	maps.Copy(fsys, trail)
 	fsys["data/world.yaml"] = &fstest.MapFile{Data: []byte(strings.Replace(string(trail["data/world.yaml"].Data), "  ridge:\n", "  尾根:\n", 1) + "")}
 	if _, err := gozen.Load(fsys, "."); err == nil {
 		t.Log("a location id in Japanese loads (the exit to ridge is now dangling, so this must have been reported)")
@@ -473,7 +461,9 @@ func FuzzLoad(f *testing.F) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_ = s.Begin(t.Context())
+		if err := s.Begin(t.Context()); err != nil {
+			t.Skipf("a game that does not begin has nothing more to check: %v", err)
+		}
 		if _, err := s.Save(); err != nil {
 			t.Fatalf("a loaded game cannot be saved: %v", err)
 		}

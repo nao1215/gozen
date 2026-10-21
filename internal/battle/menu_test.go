@@ -36,10 +36,10 @@ func TestMenuUseRefusals(t *testing.T) {
 	}
 	scout.HP, guide.HP = 5, 5
 	mp := scout.MP
-	check := func(label string, skill, item string, target int) {
+	check := func(label, skill, item string, target int) {
 		t.Helper()
 		before := maps.Clone(st.Items)
-		var to = scout
+		to := scout
 		if target == 1 {
 			to = guide
 		}

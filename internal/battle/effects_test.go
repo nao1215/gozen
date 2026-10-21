@@ -48,11 +48,11 @@ troops:
   pair: {members: [mote, mote]}
 `
 
-func effectSetup(t *testing.T, troop string) (*battle.Battle, int) {
+func effectSetup(t *testing.T, troop string) *battle.Battle {
 	t.Helper()
 	db := testgame.Load(t, map[string]string{"data/effects.yaml": effectData})
 	st := testgame.State(db, 1)
-	return battle.New(db, st, troop), 0
+	return battle.New(db, st, troop)
 }
 
 // effectDuo is the same battle with the guide also in the party; the guide holds still (guards) every turn.
@@ -84,7 +84,7 @@ func steps(kind battle.StepKind, all []battle.Step) []battle.Step {
 
 // TestManaDamageAndHealingStayInRange: a skill with stat: mp takes at most the target's MP, and charging never passes the maximum.
 func TestManaDamageAndHealingStayInRange(t *testing.T) {
-	b, _ := effectSetup(t, "caster")
+	b := effectSetup(t, "caster")
 	scout, caster := b.Party[0], b.Foes[0]
 	got := run(b, battle.Action{User: scout, Skill: "siphon", Target: caster})
 	dmg := steps(battle.Damage, got)
@@ -113,7 +113,7 @@ func TestManaDamageAndHealingStayInRange(t *testing.T) {
 }
 
 func TestRecoilNeverKills(t *testing.T) {
-	b, _ := effectSetup(t, "caster")
+	b := effectSetup(t, "caster")
 	scout, caster := b.Party[0], b.Foes[0]
 	scout.HP = 30
 	run(b, battle.Action{User: scout, Skill: "ram", Target: caster})
@@ -176,12 +176,12 @@ func TestRemoveStateAndRevive(t *testing.T) {
 }
 
 func TestEscapeSkill(t *testing.T) {
-	b, _ := effectSetup(t, "one")
+	b := effectSetup(t, "one")
 	run(b, battle.Action{User: b.Party[0], Skill: "flee"})
 	if b.Result != battle.Fled {
 		t.Errorf("result %v, want escape", b.Result)
 	}
-	bb, _ := effectSetup(t, "boss")
+	bb := effectSetup(t, "boss")
 	got := run(bb, battle.Action{User: bb.Party[0], Skill: "flee"})
 	if bb.Result == battle.Fled || len(steps(battle.Escape, got)) != 0 {
 		t.Error("a battle that cannot be escaped is not escaped")
@@ -189,7 +189,7 @@ func TestEscapeSkill(t *testing.T) {
 }
 
 func TestMissesAndShortages(t *testing.T) {
-	b, _ := effectSetup(t, "one")
+	b := effectSetup(t, "one")
 	scout, mote := b.Party[0], b.Foes[0]
 	got := run(b, battle.Action{User: scout, Skill: "sure_miss", Target: mote})
 	if len(steps(battle.Miss, got)) != 1 || mote.HP != mote.MHP() {
@@ -253,7 +253,7 @@ func TestEveryoneAndDeadScopes(t *testing.T) {
 }
 
 func TestBrokenFormulasReportInsteadOfCrashing(t *testing.T) {
-	b, _ := effectSetup(t, "one")
+	b := effectSetup(t, "one")
 	scout, mote := b.Party[0], b.Foes[0]
 	for _, skill := range []string{"broken_formula", "broken_heal"} {
 		got := run(b, battle.Action{User: scout, Skill: skill, Target: scout})
@@ -275,7 +275,7 @@ func TestBrokenFormulasReportInsteadOfCrashing(t *testing.T) {
 }
 
 func TestEffectWhenConditionAndStatusFromWeapon(t *testing.T) {
-	b, _ := effectSetup(t, "one")
+	b := effectSetup(t, "one")
 	scout, mote := b.Party[0], b.Foes[0]
 	run(b, battle.Action{User: scout, Skill: "conditional", Target: mote})
 	if mote.HP != mote.MHP() {
@@ -287,7 +287,7 @@ func TestEffectWhenConditionAndStatusFromWeapon(t *testing.T) {
 		t.Error("the effect works once the condition holds")
 	}
 	// a weapon that puts a state on what the wearer hits
-	b2, _ := effectSetup(t, "one")
+	b2 := effectSetup(t, "one")
 	b2.St.AddItem("sleepy_blade", 1)
 	if err := b2.St.Equip(b2.St.Actors["scout"], "weapon", "sleepy_blade"); err != nil {
 		t.Fatal(err)
@@ -300,7 +300,7 @@ func TestEffectWhenConditionAndStatusFromWeapon(t *testing.T) {
 }
 
 func TestPartyWipeAndLoss(t *testing.T) {
-	b, _ := effectSetup(t, "one")
+	b := effectSetup(t, "one")
 	scout := b.Party[0]
 	run(b, battle.Action{User: scout, Skill: "hurt_all"})
 	if b.Result != battle.Lost {

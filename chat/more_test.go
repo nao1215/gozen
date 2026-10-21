@@ -92,7 +92,7 @@ func TestLogBoundsAndOrder(t *testing.T) {
 
 type fixedSource []Message
 
-func (s fixedSource) Poll(now time.Duration) []Message { return s }
+func (s fixedSource) Poll(time.Duration) []Message { return s }
 
 func TestPullSetsTheTimeAndAppliesFilters(t *testing.T) {
 	l := New(Config{Filters: []Filter{drop{}, NewMask([]string{"bad"})}})
@@ -130,8 +130,8 @@ func TestYAMLPaths(t *testing.T) {
 			t.Errorf("%q: %v", p, err)
 		}
 	}
-	whole, _ := s.YAML("")
-	if string(whole) != script {
+	whole, err := s.YAML("")
+	if err != nil || string(whole) != script {
 		t.Error("the whole script is returned as written")
 	}
 	for _, p := range []string{"nothing", "lines.none", "names[9]", "names[x]", "names[-1]", "names[0", "rate.x", "lines.idle[0][0]", "names[0]x"} {
@@ -168,7 +168,10 @@ func TestLoadErrors(t *testing.T) {
 }
 
 func TestCrowdIsDeterministicAndBurstsOnce(t *testing.T) {
-	s, _ := Parse([]byte(script))
+	s, err := Parse([]byte(script))
+	if err != nil {
+		t.Fatal(err)
+	}
 	a, b := NewCrowd(s, CrowdConfig{}), NewCrowd(s, CrowdConfig{})
 	for sec := 1; sec <= 30; sec++ {
 		x, y := a.Poll(time.Duration(sec)*time.Second), b.Poll(time.Duration(sec)*time.Second)

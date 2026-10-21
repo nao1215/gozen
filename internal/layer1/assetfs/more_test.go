@@ -112,7 +112,10 @@ func TestOverlayRejectsBadNamesAndListsReplacements(t *testing.T) {
 	}
 	for _, e := range es {
 		if e.Name() == "a.png" {
-			info, _ := e.Info()
+			info, err := e.Info()
+			if err != nil {
+				t.Fatal(err)
+			}
 			if info.Size() != int64(len("replaced, longer")) {
 				t.Errorf("a listed replacement carries the replacement's size, got %d", info.Size())
 			}
@@ -159,7 +162,7 @@ func TestManifestWithBrokenContentCountsAsAbsent(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if b, _ := o.ReadFile("a.png"); string(b) != "new" {
+		if b, err := o.ReadFile("a.png"); err != nil || string(b) != "new" {
 			t.Errorf("%s: an unreadable manifest means everything is overlaid, got %q", name, b)
 		}
 		if s, err := o.Stale(); s != nil || err != nil {
@@ -168,8 +171,11 @@ func TestManifestWithBrokenContentCountsAsAbsent(t *testing.T) {
 	}
 	// a manifest entry without a sum never matches
 	top := fstest.MapFS{"a.png": {Data: []byte("new")}, "report.json": {Data: []byte(`[{"file":"a.png"}]`)}}
-	o, _ := New(base, top, Config{Manifest: defaultManifest})
-	if b, _ := o.ReadFile("a.png"); string(b) != "orig" {
+	o, err := New(base, top, Config{Manifest: defaultManifest})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b, err := o.ReadFile("a.png"); err != nil || string(b) != "orig" {
 		t.Errorf("an entry without a sum does not vouch for the replacement, got %q", b)
 	}
 }
@@ -182,14 +188,20 @@ func TestStaleSkipsDirectoriesAndFilesNotInTheOriginal(t *testing.T) {
 		"extra.png":   {Data: []byte("not in the original")},
 		"report.json": {Data: []byte(`[{"file":"a.png","source":"wrong"}]`)},
 	}
-	o, _ := New(base, top, Config{Prefix: "assets", Manifest: defaultManifest})
+	o, err := New(base, top, Config{Prefix: "assets", Manifest: defaultManifest})
+	if err != nil {
+		t.Fatal(err)
+	}
 	stale, err := o.Stale()
 	if err != nil || !slices.Equal(stale, []string{"a.png"}) {
 		t.Errorf("stale %v %v", stale, err)
 	}
 	// a path of top that is a directory in the original
 	top2 := fstest.MapFS{"dir": {Data: []byte("a file where the original has a directory")}, "report.json": {Data: []byte(`[]`)}}
-	o2, _ := New(base, top2, Config{Prefix: "assets", Manifest: defaultManifest})
+	o2, err := New(base, top2, Config{Prefix: "assets", Manifest: defaultManifest})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if s, err := o2.Stale(); err != nil || len(s) != 0 {
 		t.Errorf("a file over a directory is not an image: %v %v", s, err)
 	}

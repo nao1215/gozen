@@ -1,6 +1,7 @@
 package event_test
 
 import (
+	"maps"
 	"slices"
 	"strings"
 	"testing"
@@ -43,9 +44,7 @@ events:
 
 func moreFiles(extra map[string]string) map[string]string {
 	files := map[string]string{"game.yaml": "schema_version: 4\nid: m\n" + testgame.Game, "data/m.yaml": moreEvents}
-	for k, v := range extra {
-		files[k] = v
-	}
+	maps.Copy(files, extra)
 	return files
 }
 
@@ -115,7 +114,7 @@ func TestActWithoutASessionIsReported(t *testing.T) {
 	}
 	var got []string
 	r2 := event.New(db, st, &host{})
-	r2.Act = func(actor, skill, item, target string) { got = append(got, actor+"/"+skill) }
+	r2.Act = func(actor, skill, _, _ string) { got = append(got, actor+"/"+skill) }
 	r2.Start(db.Events["acting"].Do)
 	for i := 0; r2.Running() && i < 10; i++ {
 		r2.Next()

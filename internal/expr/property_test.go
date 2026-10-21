@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/rand"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -23,7 +24,7 @@ func genExpr(r *rand.Rand, depth int) string {
 		case 3:
 			return "s"
 		case 4:
-			return fmt.Sprint(r.Intn(9) - 3)
+			return strconv.Itoa(r.Intn(9) - 3)
 		case 5:
 			return fmt.Sprintf("%d.5", r.Intn(4))
 		case 6:
@@ -62,7 +63,7 @@ func genExpr(r *rand.Rand, depth int) string {
 // TestAbstractSoundRandom: for random expressions, every concrete evaluation whose names lie in the given
 // ranges falls in the computed range (the contract of Abstract: a condition is called impossible only when it truly is).
 func TestAbstractSoundRandom(t *testing.T) {
-	r := rand.New(rand.NewSource(1))
+	r := rand.New(rand.NewSource(1)) //nolint:gosec // A fixed seed for a reproducible test.
 	look := func(ref Ref) Range {
 		switch ref.Name {
 		case "a":
@@ -115,7 +116,7 @@ func TestAbstractSoundRandom(t *testing.T) {
 // TestParseRoundTripRandom: the source of any accepted expression parses again to the same source,
 // and evaluation is deterministic (the same environment gives the same value or the same error).
 func TestParseRoundTripRandom(t *testing.T) {
-	r := rand.New(rand.NewSource(2))
+	r := rand.New(rand.NewSource(2)) //nolint:gosec // A fixed seed for a reproducible test.
 	for range 1000 {
 		src := genExpr(r, 4)
 		e := mustParse(src)
@@ -160,7 +161,8 @@ func TestRangeEqualAndString(t *testing.T) {
 		if got := c.r.String(); got != c.want {
 			t.Errorf("String() = %q, want %q", got, c.want)
 		}
-		if !c.r.Equal(c.r) {
+		same := c.r
+		if !c.r.Equal(same) {
 			t.Errorf("%s is not equal to itself", c.want)
 		}
 	}

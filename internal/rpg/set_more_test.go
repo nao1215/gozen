@@ -66,7 +66,10 @@ func TestSetPathRefusals(t *testing.T) {
 	}
 	// the refused ones changed nothing (compare after undoing the one accepted case)
 	st.Pos = rpg.Pos{}
-	after, _ := st.Save()
+	after, err := st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(before) != string(after) {
 		t.Error("a refused set changed the state")
 	}
@@ -297,42 +300,52 @@ func TestExpressionNames(t *testing.T) {
 			t.Errorf("%s%v: %v", c.fn, c.args, err)
 		}
 	}
-	if v, _ := call("pages", "cg/none"); v != 0.0 {
+	if v := callOK(t, call, "pages", "cg/none"); v != 0.0 {
 		t.Errorf("pages of nothing %v", v)
 	}
-	if v, _ := call("chance", 1.0); v != true {
+	if v := callOK(t, call, "chance", 1.0); v != true {
 		t.Error("chance(1) always holds")
 	}
-	if v, _ := call("chance", 0.0); v != false {
+	if v := callOK(t, call, "chance", 0.0); v != false {
 		t.Error("chance(0) never holds")
 	}
 	for range 200 {
 		v, err := call("rand", 3.0)
-		if f := v.(float64); err != nil || f < 0 || f > 2 || f != math.Trunc(f) {
+		if f := testgame.As[float64](t, v); err != nil || f < 0 || f > 2 || f != math.Trunc(f) {
 			t.Fatalf("rand(3) = %v %v", v, err)
 		}
-		v, _ = call("rand", 5.0, 7.0)
-		if f := v.(float64); f < 5 || f > 7 || f != math.Trunc(f) {
+		v = callOK(t, call, "rand", 5.0, 7.0)
+		if f := testgame.As[float64](t, v); f < 5 || f > 7 || f != math.Trunc(f) {
 			t.Fatalf("rand(5, 7) = %v", v)
 		}
-		v, _ = call("rand")
-		if f := v.(float64); f < 0 || f >= 1 {
+		v = callOK(t, call, "rand")
+		if f := testgame.As[float64](t, v); f < 0 || f >= 1 {
 			t.Fatalf("rand() = %v", v)
 		}
 	}
-	if v, _ := call("rand", 0.0); v != 0.0 {
+	if v := callOK(t, call, "rand", 0.0); v != 0.0 {
 		t.Errorf("rand(0) = %v", v)
 	}
-	if v, _ := call("rand", -4.0); v != 0.0 {
+	if v := callOK(t, call, "rand", -4.0); v != 0.0 {
 		t.Errorf("rand(-4) = %v", v)
 	}
-	if v, _ := call("rand", 9.0, 2.0); v != 9.0 {
+	if v := callOK(t, call, "rand", 9.0, 2.0); v != 9.0 {
 		t.Errorf("rand(9, 2) = %v (a reversed range gives the first)", v)
 	}
-	if v, err := call("rand", math.Inf(1)); err != nil || v.(float64) < 0 {
+	if v, err := call("rand", math.Inf(1)); err != nil || testgame.As[float64](t, v) < 0 {
 		t.Errorf("rand(inf) = %v %v", v, err)
 	}
-	if v, err := call("rand", -1e300, 1e300); err != nil || math.IsNaN(v.(float64)) {
+	if v, err := call("rand", -1e300, 1e300); err != nil || math.IsNaN(testgame.As[float64](t, v)) {
 		t.Errorf("rand over an enormous range = %v %v", v, err)
 	}
+}
+
+// callOK is the value of a call that has to succeed.
+func callOK(t *testing.T, call func(string, ...any) (any, error), name string, args ...any) any {
+	t.Helper()
+	v, err := call(name, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return v
 }

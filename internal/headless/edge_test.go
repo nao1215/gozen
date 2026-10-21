@@ -165,7 +165,7 @@ func TestDriverResultAndChooseHooks(t *testing.T) {
 	st := testgame.State(db, 1)
 	d := headless.New(db, st)
 	d.Choose = func(_ *rpg.State, q event.Choice) int { return len(q.Options) + 5 } // out of range clamps
-	d.Result = func(_ *rpg.State, troop string) (int, bool) { return event.BattleLost, true }
+	d.Result = func(*rpg.State, string) (int, bool) { return event.BattleLost, true }
 	cmds := []data.Command{{Battle: "one", OnLose: []data.Command{{Heal: "all"}}}}
 	if err := d.Run(context.Background(), cmds); err != nil {
 		t.Fatal(err)

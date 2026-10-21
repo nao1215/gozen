@@ -1,7 +1,7 @@
 package gozen_test
 
 import (
-	"errors"
+	"context"
 	"slices"
 	"strings"
 	"testing"
@@ -43,6 +43,15 @@ events:
 music:
   songs: {theme: {file: x.png}}
 `
+
+func mustNew(t *testing.T, g *gozen.Game, cfg gozen.Config) *gozen.Session {
+	t.Helper()
+	s, err := gozen.New(g, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
+}
 
 func flowGame(t *testing.T) *gozen.Game {
 	t.Helper()
@@ -110,7 +119,7 @@ func TestEveryRequestKind(t *testing.T) {
 // TestBattleRequestFlags: a battle that may be lost says so, and one that cannot be retried says so.
 func TestBattleRequestFlags(t *testing.T) {
 	g := flowGame(t)
-	s, _ := gozen.New(g, gozen.Config{Seed: 1})
+	s := mustNew(t, g, gozen.Config{Seed: 1})
 	if err := s.Start("- call: fight_can_lose"); err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +149,7 @@ func TestBattleRequestFlags(t *testing.T) {
 	// Answer with nothing pending changes nothing
 	s.Answer(3)
 
-	s2, _ := gozen.New(g, gozen.Config{Seed: 1})
+	s2 := mustNew(t, g, gozen.Config{Seed: 1})
 	if err := s2.Start("- call: fight_must_win"); err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +158,9 @@ func TestBattleRequestFlags(t *testing.T) {
 	}
 	s2.Answer(gozen.Fled)
 	var res string
-	_ = s2.Query("result", &res)
+	if err := s2.Query("result", &res); err != nil {
+		t.Fatal(err)
+	}
 	if res != "escape" {
 		t.Errorf("fled result %q", res)
 	}
@@ -157,7 +168,7 @@ func TestBattleRequestFlags(t *testing.T) {
 
 func TestClearEndsTheRun(t *testing.T) {
 	g := flowGame(t)
-	s, _ := gozen.New(g, gozen.Config{Seed: 1})
+	s := mustNew(t, g, gozen.Config{Seed: 1})
 	if err := s.Start("- call: ending"); err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +197,7 @@ func TestClearEndsTheRun(t *testing.T) {
 // TestLosingWithoutOnLoseIsGameOver: a battle lost where losing is not allowed ends the game.
 func TestLosingWithoutOnLoseIsGameOver(t *testing.T) {
 	g := flowGame(t)
-	s, _ := gozen.New(g, gozen.Config{Seed: 1})
+	s := mustNew(t, g, gozen.Config{Seed: 1})
 	if err := s.Start("- call: fight_must_win\n"); err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +220,7 @@ func TestLosingWithoutOnLoseIsGameOver(t *testing.T) {
 // TestEventsThatNeverEnd: a call loop is cut off with an error, not a hang.
 func TestEventsThatNeverEnd(t *testing.T) {
 	g := flowGame(t)
-	s, _ := gozen.New(g, gozen.Config{Seed: 1})
+	s := mustNew(t, g, gozen.Config{Seed: 1})
 	err := s.Do(t.Context(), "- call: loop\n")
 	if err == nil {
 		t.Fatal("a call loop must be reported")
@@ -217,7 +228,7 @@ func TestEventsThatNeverEnd(t *testing.T) {
 	if !strings.Contains(err.Error(), "deep") && !strings.Contains(err.Error(), "do not end") {
 		t.Logf("loop reported as: %v", err)
 	}
-	s2, _ := gozen.New(g, gozen.Config{Seed: 1})
+	s2 := mustNew(t, g, gozen.Config{Seed: 1})
 	if err := s2.Start("- call: loop"); err != nil {
 		t.Fatal(err)
 	}
@@ -241,7 +252,7 @@ func TestBeginRunsTheStartEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 	var seen []string
-	s, _ := gozen.New(g, gozen.Config{Seed: 1, OnRequest: func(q gozen.Request) { seen = append(seen, q.Kind+":"+q.Text) }})
+	s := mustNew(t, g, gozen.Config{Seed: 1, OnRequest: func(q gozen.Request) { seen = append(seen, q.Kind+":"+q.Text) }})
 	if err := s.Begin(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -252,14 +263,14 @@ func TestBeginRunsTheStartEvent(t *testing.T) {
 	if err := s.Query("flag.opened", &opened); err != nil || !opened {
 		t.Errorf("opened %v %v", opened, err)
 	}
-	if err := s.Begin(nil); err == nil || errors.Is(err, gozen.ErrInvalid) {
-		t.Logf("Begin(nil): %v", err)
+	if err := s.Begin(context.TODO()); err != nil {
+		t.Fatal(err)
 	}
 }
 
 func TestNilContextIsAnError(t *testing.T) {
 	g := load(t)
-	s, _ := gozen.New(g, gozen.Config{Seed: 1})
+	s := mustNew(t, g, gozen.Config{Seed: 1})
 	if err := s.Do(nil, "- gold: 1\n"); err == nil { //nolint:staticcheck // A nil context is the case under test.
 		t.Error("a nil context must be refused")
 	}

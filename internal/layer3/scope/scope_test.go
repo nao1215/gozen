@@ -50,12 +50,12 @@ func TestEnvNamesInTheField(t *testing.T) {
 	st := testgame.State(db, 1)
 	last := &scope.Last{}
 	env := expr.Chain{scope.Env(db, st, last), st.Env()}
-	menu, ok := eval(t, env, "menu").([]any)
-	if !ok || len(menu) != len(field.Entries(db, st)) {
+	menu := testgame.As[[]any](t, eval(t, env, "menu"))
+	if len(menu) != len(field.Entries(db, st)) {
 		t.Fatalf("menu %#v", menu)
 	}
-	first := menu[0].(expr.Map)
-	if first["kind"] != "talk" || !strings.Contains(first["label"].(string), "Courier") || first["new"] != false {
+	first := testgame.As[expr.Map](t, menu[0])
+	if first["kind"] != "talk" || !strings.Contains(testgame.As[string](t, first["label"]), "Courier") || first["new"] != false {
 		t.Errorf("first entry %v", first)
 	}
 	if got := eval(t, env, "menu[len(menu) - 1].kind"); got != "menu" {
@@ -76,10 +76,10 @@ func TestEnvNamesInTheField(t *testing.T) {
 	if eval(t, env, "completed") != false {
 		t.Error("a place without a dungeon is never completed")
 	}
-	if got := eval(t, env, "map").([]any); len(got) != 0 {
+	if got := testgame.As[[]any](t, eval(t, env, "map")); len(got) != 0 {
 		t.Errorf("a place without a dungeon has an empty map, got %v", got)
 	}
-	if got := eval(t, env, "roamers").([]any); len(got) != 0 {
+	if got := testgame.As[[]any](t, eval(t, env, "roamers")); len(got) != 0 {
 		t.Errorf("roamers %v", got)
 	}
 	if got := eval(t, env, "cell(0, 0)"); got != nil {
@@ -97,28 +97,28 @@ func TestEnvNamesInADungeon(t *testing.T) {
 	dungeon.DiveAt(db, st, "vault2", 1, "", "")
 	last := &scope.Last{}
 	env := expr.Chain{scope.Env(db, st, last), st.Env()}
-	rows := eval(t, env, "map").([]any)
-	if len(rows) != 11 || len([]rune(rows[0].(string))) != 11 {
+	rows := testgame.As[[]any](t, eval(t, env, "map"))
+	if len(rows) != 11 || len([]rune(testgame.As[string](t, rows[0]))) != 11 {
 		t.Fatalf("map %v", rows)
 	}
 	sx, sy := -1, -1
 	for y, r := range rows {
-		if x := strings.IndexRune(r.(string), '>'); x >= 0 {
+		if x := strings.IndexRune(testgame.As[string](t, r), '>'); x >= 0 {
 			sx, sy = x, y
 		}
 	}
 	if sx < 0 {
 		t.Fatalf("the stairs are on the map: %v", rows)
 	}
-	c := eval(t, env, fmt.Sprintf("cell(%d, %d)", sx, sy)).(expr.Map)
+	c := testgame.As[expr.Map](t, eval(t, env, fmt.Sprintf("cell(%d, %d)", sx, sy)))
 	if c["char"] != ">" || c["solid"] != true || c["passable"] != false || c["raw"] != ">" {
 		t.Errorf("stairs cell %v", c)
 	}
-	wall := eval(t, env, "cell(0, 0)").(expr.Map)
+	wall := testgame.As[expr.Map](t, eval(t, env, "cell(0, 0)"))
 	if wall["char"] != "#" || wall["passable"] != false {
 		t.Errorf("wall %v", wall)
 	}
-	outside := eval(t, env, "cell(-5, 99)").(expr.Map)
+	outside := testgame.As[expr.Map](t, eval(t, env, "cell(-5, 99)"))
 	if outside["shown"] != false || outside["passable"] != false {
 		t.Errorf("outside the map: %v", outside)
 	}
@@ -128,7 +128,10 @@ func TestEnvNamesInADungeon(t *testing.T) {
 	// a cell function needs two numbers
 	for _, src := range []string{"cell(1)", "cell('a', 1)", "cell(1, nil)"} {
 		e := expr.Chain{scope.Env(db, st, last)}
-		p, _ := expr.Parse(src)
+		p, perr := expr.Parse(src)
+		if perr != nil {
+			t.Fatal(perr)
+		}
 		v, err := p.Eval(e)
 		if src == "cell(1, nil)" {
 			// nil converts to 0
@@ -143,11 +146,11 @@ func TestEnvNamesInADungeon(t *testing.T) {
 	}
 	// roamers carry their kind, name, troop and place
 	st.Roamers = []rpg.Roamer{{Kind: 0, Troop: "one", X: 2, Y: 1}, {Kind: 9, Troop: "one", X: 1, Y: 1}, {Kind: -1}}
-	rs := eval(t, env, "roamers").([]any)
+	rs := testgame.As[[]any](t, eval(t, env, "roamers"))
 	if len(rs) != 3 {
 		t.Fatalf("roamers %v", rs)
 	}
-	r0, r1 := rs[0].(expr.Map), rs[1].(expr.Map)
+	r0, r1 := testgame.As[expr.Map](t, rs[0]), testgame.As[expr.Map](t, rs[1])
 	if r0["name"] != "Brute" || r0["troop"] != "one" || r0["x"] != 2.0 || r0["y"] != 1.0 {
 		t.Errorf("roamer 0 %v", r0)
 	}
@@ -184,7 +187,7 @@ profiles:
 `})
 	st := testgame.State(db, 1)
 	env := scope.Env(db, st, &scope.Last{})
-	p := eval(t, env, "profile").(expr.Map)
+	p := testgame.As[expr.Map](t, eval(t, env, "profile"))
 	page, ok := p["keeper"].(expr.Map)
 	if !ok || page["unlocked"] != false || page["name"] != "Keeper page" {
 		t.Fatalf("profile %v", p)

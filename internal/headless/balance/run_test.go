@@ -224,7 +224,10 @@ func TestRatesNow(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		b, _ := f()
+		b, err := f()
+		if err != nil {
+			t.Fatal(err)
+		}
 		if a != b || a < 0 || a > 1 {
 			t.Errorf("rates %v %v", a, b)
 		}
@@ -242,7 +245,7 @@ func TestRatesNow(t *testing.T) {
 	for _, a := range strong.Members() {
 		a.GainExp(1_000_000)
 	}
-	if r, _ := WinRateNow(db, strong, "one", 5, 30); r != 1 {
+	if r, err := WinRateNow(db, strong, "one", 5, 30); err != nil || r != 1 {
 		t.Errorf("a maxed party loses to a mote: %v", r)
 	}
 	// the state measured is not changed
@@ -253,7 +256,10 @@ func TestRatesNow(t *testing.T) {
 	if _, err := WinRateNow(db, st, "boss", 3, 5); err != nil {
 		t.Fatal(err)
 	}
-	after, _ := st.Save()
+	after, err := st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(before) != string(after) {
 		t.Error("measuring a win rate changed the state it measured")
 	}

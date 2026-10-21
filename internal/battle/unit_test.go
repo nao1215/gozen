@@ -127,7 +127,7 @@ func TestStatesChangeStatsAndAreListedInDataOrder(t *testing.T) {
 	if len(list) != 2 || list[0] != "fury" && list[0] != "bleed" {
 		t.Fatalf("list %v", list)
 	}
-	view := field(t, scout, "states").(expr.Object)
+	view := testgame.As[expr.Object](t, field(t, scout, "states"))
 	if v, _ := view.Field("fury"); v != 1.0 {
 		t.Errorf("states.fury = %v", v)
 	}
@@ -148,7 +148,7 @@ func TestWeaponElementAndWornGear(t *testing.T) {
 	if got := field(t, scout, "element"); got != "wind" {
 		t.Errorf("element %v", got)
 	}
-	wears := field(t, scout, "wears").(expr.Object)
+	wears := testgame.As[expr.Object](t, field(t, scout, "wears"))
 	if v, _ := wears.Field("gale_blade"); v != true && v != 1.0 {
 		t.Errorf("wears.gale_blade = %v", v)
 	}

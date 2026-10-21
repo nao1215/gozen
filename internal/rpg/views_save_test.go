@@ -52,23 +52,23 @@ func TestViewsListTheirKeys(t *testing.T) {
 	if !slices.Contains(party.Keys(), "size") || !slices.Contains(party.Keys(), "members") {
 		t.Errorf("party keys %v", party.Keys())
 	}
-	actor, _ := look("actor").(expr.Object).Field("scout")
-	ak := actor.(keyed).Keys()
+	actor := field(t, testgame.As[expr.Object](t, look("actor")), "scout")
+	ak := testgame.As[keyed](t, actor).Keys()
 	for _, want := range []string{"id", "name", "hp", "in_party", "atk", "equip", "wears"} {
 		if !slices.Contains(ak, want) {
 			t.Errorf("an actor lists %q: %v", want, ak)
 		}
 	}
-	equip, _ := actor.(expr.Object).Field("equip")
-	if got := equip.(keyed).Keys(); !slices.Equal(got, []string{"weapon"}) {
+	equip := field(t, testgame.As[expr.Object](t, actor), "equip")
+	if got := testgame.As[keyed](t, equip).Keys(); !slices.Equal(got, []string{"weapon"}) {
 		t.Errorf("equip keys %v", got)
 	}
-	wears, _ := actor.(expr.Object).Field("wears")
-	if got := wears.(keyed).Keys(); !slices.Equal(got, []string{"stick"}) {
+	wears := field(t, testgame.As[expr.Object](t, actor), "wears")
+	if got := testgame.As[keyed](t, wears).Keys(); !slices.Equal(got, []string{"stick"}) {
 		t.Errorf("wears keys %v", got)
 	}
-	states, _ := actor.(expr.Object).Field("states")
-	if got := states.(keyed).Keys(); len(got) != 0 {
+	states := field(t, testgame.As[expr.Object](t, actor), "states")
+	if got := testgame.As[keyed](t, states).Keys(); len(got) != 0 {
 		t.Errorf("states keys %v", got)
 	}
 	if got := (rpg.WearsView{}).Keys(); got != nil {
@@ -112,11 +112,14 @@ func TestLegacySavesNeedPermissionAndFillMissingTables(t *testing.T) {
 	for _, k := range []string{"flags", "done", "vars", "items", "mapped"} {
 		delete(env.State, k)
 	}
-	legacy, _ := json.Marshal(env.State)
+	legacy, err := json.Marshal(env.State)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := rpg.Parse(db, legacy, nil); err == nil || !strings.Contains(err.Error(), "識別") && !strings.Contains(err.Error(), "identif") {
 		t.Fatalf("a save with no version needs permission: %v", err)
 	}
-	got, err := rpg.ParseWithConfig(db, legacy, rand.New(rand.NewPCG(1, 2)), rpg.Config{AllowLegacy: true})
+	got, err := rpg.ParseWithConfig(db, legacy, rand.New(rand.NewPCG(1, 2)), rpg.Config{AllowLegacy: true}) //nolint:gosec // A fixed seed for a reproducible test.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,10 +154,10 @@ func TestSaveFileKeepsWhatItReplaces(t *testing.T) {
 	if err != nil || backup == "" {
 		t.Fatalf("garbage is backed up: %q %v", backup, err)
 	}
-	if b, _ := os.ReadFile(backup); string(b) != "garbage" { //nolint:gosec // Path is isolated in t.TempDir.
+	if b, err := os.ReadFile(backup); err != nil || string(b) != "garbage" { //nolint:gosec // Path is isolated in t.TempDir.
 		t.Errorf("backup holds %q", b)
 	}
-	if b, _ := os.ReadFile(path); !strings.Contains(string(b), `"format_version"`) { //nolint:gosec // Path is isolated in t.TempDir.
+	if b, err := os.ReadFile(path); err != nil || !strings.Contains(string(b), `"format_version"`) { //nolint:gosec // Path is isolated in t.TempDir.
 		t.Errorf("the slot was not replaced: %q", b)
 	}
 	// a directory where the slot should be
@@ -168,4 +171,14 @@ func TestSaveFileKeepsWhatItReplaces(t *testing.T) {
 	if _, err := (*rpg.State)(nil).SaveFile(path); err == nil {
 		t.Error("a nil state cannot be saved to a file")
 	}
+}
+
+// field is the value of a field of an expression object.
+func field(t *testing.T, o expr.Object, name string) any {
+	t.Helper()
+	v, ok := o.Field(name)
+	if !ok {
+		t.Fatalf("no field %q", name)
+	}
+	return v
 }

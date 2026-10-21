@@ -41,7 +41,7 @@ func TestStoresRefuseUnsafeNames(t *testing.T) {
 	if _, err := os.Stat(filepath.Dir(dir)); err != nil {
 		t.Fatal(err)
 	}
-	if entries, _ := os.ReadDir(filepath.Dir(dir)); len(entries) != 0 {
+	if entries, err := os.ReadDir(filepath.Dir(dir)); err != nil || len(entries) != 0 {
 		t.Errorf("a refused name created %v", entries)
 	}
 }
@@ -126,12 +126,18 @@ func TestMemStoreCopiesWhatItKeeps(t *testing.T) {
 		t.Fatal(err)
 	}
 	in[0] = 'X'
-	got, _ := st.Read("s")
+	got, err := st.Read("s")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(got) != "abc" {
 		t.Errorf("the store shares the caller's bytes: %q", got)
 	}
 	got[1] = 'Y'
-	again, _ := st.Read("s")
+	again, err := st.Read("s")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(again) != "abc" {
 		t.Errorf("the store shares the returned bytes: %q", again)
 	}

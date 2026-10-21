@@ -52,7 +52,7 @@ func clerkMind(t *testing.T, seed uint64) *Mind {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, err := New(b, "clerk", Config{Rand: rand.New(rand.NewPCG(seed, seed))})
+	m, err := New(b, "clerk", Config{Rand: rand.New(rand.NewPCG(seed, seed))}) //nolint:gosec // A fixed seed for a reproducible test.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestMoodIsClampedAndMemoriesAreWritten(t *testing.T) {
 	if m.Mood() != 10 {
 		t.Errorf("mood %v, want the lower bound 10", m.Mood())
 	}
-	if v, ok := m.Recall("count"); !ok || v.(float64) < 40 {
+	if v, ok := m.Recall("count"); !ok || !atLeast(v, 40) {
 		t.Errorf("an add keeps adding: %v %v", v, ok)
 	}
 	if v, ok := m.Recall("seen"); ok && v != "hello" {
@@ -113,7 +113,10 @@ func TestRepeatsArePerSender(t *testing.T) {
 }
 
 func TestHistoryIsBounded(t *testing.T) {
-	b, _ := Parse([]byte(clerk))
+	b, err := Parse([]byte(clerk))
+	if err != nil {
+		t.Fatal(err)
+	}
 	m, err := New(b, "clerk", Config{History: 2})
 	if err != nil {
 		t.Fatal(err)
@@ -187,7 +190,10 @@ func TestRestoreReproducesTheFollowingReactions(t *testing.T) {
 
 func TestRestoreRefusesDamagedState(t *testing.T) {
 	m := clerkMind(t, 1)
-	good, _ := m.Save()
+	good, err := m.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
 	for name, b := range map[string]string{
 		"not json":         "{",
 		"empty":            "",
@@ -201,14 +207,20 @@ func TestRestoreRefusesDamagedState(t *testing.T) {
 		}
 	}
 	// a refusal leaves the state as it was
-	after, _ := m.Save()
+	after, err := m.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(after) != string(good) {
 		t.Errorf("a refused restore changed the state: %s", after)
 	}
 }
 
 func TestNewAndAskErrors(t *testing.T) {
-	b, _ := Parse([]byte(clerk))
+	b, err := Parse([]byte(clerk))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := New(b, "nobody", Config{}); err == nil || !strings.Contains(err.Error(), `no person "nobody"`) {
 		t.Errorf("%v", err)
 	}
@@ -270,4 +282,10 @@ func TestBookYAMLPaths(t *testing.T) {
 			t.Errorf("%q: want not-exist, got %v", p, err)
 		}
 	}
+}
+
+// atLeast reports whether v is a number of at least n.
+func atLeast(v any, n float64) bool {
+	f, ok := v.(float64)
+	return ok && f >= n
 }

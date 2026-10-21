@@ -49,7 +49,9 @@ func TestColorParsesTheTwoWrittenForms(t *testing.T) {
 		t.Error("an unset color is the default")
 	}
 	var set data.Color
-	_ = set.UnmarshalText([]byte("#102030"))
+	if err := set.UnmarshalText([]byte("#102030")); err != nil {
+		t.Fatal(err)
+	}
 	if set.Or(def) != (color.NRGBA{16, 32, 48, 255}) {
 		t.Error("a set color is itself")
 	}

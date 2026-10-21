@@ -143,7 +143,7 @@ func TestExploreOptions(t *testing.T) {
 	narrowed := headless.Explore(db, st, []data.Command{{Battle: "one"}}, headless.Config{
 		Outcomes:   func(*rpg.State, event.Battle) []int { return []int{event.BattleLost} },
 		Prepare:    func(st *rpg.State) { st.Gold = 777 },
-		Check:      func(st *rpg.State) error { checks++; return nil },
+		Check:      func(*rpg.State) error { checks++; return nil },
 		CheckEvery: true,
 	})
 	if len(narrowed) != 1 || !slices.Contains(narrowed[0].Battles, "one:lost") || narrowed[0].St.Gold != 777 || checks < 2 {
@@ -185,7 +185,7 @@ func TestExploreChecksAPathThatEndsInGameOver(t *testing.T) {
 	calls := 0
 	paths := headless.Explore(db, testgame.State(db, 1), []data.Command{{Battle: "boss"}}, headless.Config{
 		Outcomes: func(*rpg.State, event.Battle) []int { return []int{event.BattleLost} },
-		Check:    func(st *rpg.State) error { calls++; return errors.New("invariant broken") },
+		Check:    func(*rpg.State) error { calls++; return errors.New("invariant broken") },
 	})
 	if len(paths) != 1 || !paths[0].Over {
 		t.Fatalf("%+v", paths)

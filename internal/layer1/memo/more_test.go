@@ -77,7 +77,7 @@ func TestWriteAtCleansUpWhenAnArtifactCannotBeCreated(t *testing.T) {
 	if _, err := os.Stat(base + ".json"); !errors.Is(err, fs.ErrNotExist) {
 		t.Error("the failed reservation was left behind")
 	}
-	if b, _ := os.ReadFile(base + ".png"); string(b) != "taken" { //nolint:gosec // Path is isolated in t.TempDir.
+	if b, err := os.ReadFile(base + ".png"); err != nil || string(b) != "taken" { //nolint:gosec // Path is isolated in t.TempDir.
 		t.Error("a file that was not ours was changed")
 	}
 }

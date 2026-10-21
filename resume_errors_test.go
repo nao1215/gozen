@@ -3,6 +3,7 @@ package gozen_test
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 	"testing"
 
 	"github.com/nao1215/gozen"
@@ -43,9 +44,7 @@ func midSave(t *testing.T, line int) (*gozen.Game, map[string]json.RawMessage) {
 func withCursor(t *testing.T, env map[string]json.RawMessage, cursor string) []byte {
 	t.Helper()
 	m := map[string]json.RawMessage{}
-	for k, v := range env {
-		m[k] = v
-	}
+	maps.Copy(m, env)
 	m["cursor"] = json.RawMessage(cursor)
 	b, err := json.Marshal(m)
 	if err != nil {
@@ -82,11 +81,12 @@ func TestRestoreRefusesCursorsThatCannotBeReplayed(t *testing.T) {
 	}
 	// damaged random bytes
 	bad := map[string]json.RawMessage{}
-	for k, v := range env {
-		bad[k] = v
-	}
+	maps.Copy(bad, env)
 	bad["rand"] = json.RawMessage(`"AAAA"`)
-	b, _ := json.Marshal(bad)
+	b, err := json.Marshal(bad)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := gozen.Restore(g, b, gozen.Config{}); !errors.Is(err, gozen.ErrIncompatibleSave) {
 		t.Errorf("damaged random bytes: %v", err)
 	}
