@@ -220,8 +220,8 @@ The run is bounded by path count, event requests per path, and elapsed time. Fin
 unless `--fail-unreachable` is set. JSON includes whether the path limit cut exploration short.
 
 ```sh
-gozen sim routes examples/novel/game
-gozen sim routes game --format json --fail-unreachable
+gozen sim routes game
+gozen sim routes game --format json
 ```
 
 | Option | Meaning |

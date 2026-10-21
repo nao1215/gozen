@@ -25,12 +25,12 @@ func TestSimRoutesExploresNovelChoices(t *testing.T) {
 func TestSimRoutesReportsUnreachableClear(t *testing.T) {
 	dir := designGame(t)
 	path := filepath.Join(dir, "data", "world.yaml")
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(path) //nolint:gosec // Test-owned path under t.TempDir.
 	if err != nil {
 		t.Fatal(err)
 	}
 	definition := strings.Replace(string(b), "events:\n", "events:\n  unreachable-ending: {do: [{clear: true}]}\n  unreachable-choice: {do: [{choice: [{label: Never offered, do: [{clear: true}]}]}]}\n  unused-flag: {do: [{set: {flag.never_read: true}}]}\n", 1)
-	if err := os.WriteFile(path, []byte(definition), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte(definition), 0o600); err != nil { //nolint:gosec // Test-owned path under t.TempDir.
 		t.Fatal(err)
 	}
 	out, _ := invoke(t, 0, "sim", "routes", dir, "--format", "json")

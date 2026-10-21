@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"math/rand/v2"
 	"sort"
 	"strings"
@@ -70,7 +70,7 @@ func (c *command) routes(args []string) error {
 	if err != nil {
 		return err
 	}
-	st := rpg.New(db, rand.New(rand.NewPCG(1, 2)))
+	st := rpg.New(db, rand.New(rand.NewPCG(1, 2))) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
 	var initial []data.Command
@@ -142,7 +142,7 @@ func (c *command) routes(args []string) error {
 		message := warning.Error()
 		const prefix, suffix = "flag.", " is set but nothing reads it"
 		if i := strings.LastIndex(message, prefix); i >= 0 && strings.Contains(message, suffix) {
-			name := strings.SplitN(message[i+len(prefix):], " ", 2)[0]
+			name, _, _ := strings.Cut(message[i+len(prefix):], " ")
 			if name != "" {
 				report.FlagsSetNeverRead = append(report.FlagsSetNeverRead, name)
 			}
@@ -161,7 +161,7 @@ func (c *command) routes(args []string) error {
 		printRoutes(c, report)
 	}
 	if *failUnreachable && (len(report.UnreachableEndings) > 0 || len(report.UnofferedOptions) > 0 || len(report.FlagsSetNeverRead) > 0) {
-		return fmt.Errorf("unreachable endings, choice options, or flags found")
+		return errors.New("unreachable endings, choice options, or flags found")
 	}
 	return nil
 }
@@ -201,6 +201,7 @@ func hasClear(db *data.DB) bool {
 	}
 	return false
 }
+
 func commandsHaveClear(cs []data.Command) bool {
 	for _, c := range cs {
 		if c.Clear || commandsHaveClear(c.Then) || commandsHaveClear(c.Else) || commandsHaveClear(c.OnWin) || commandsHaveClear(c.OnLose) || commandsHaveClear(c.OnRun) {
@@ -209,6 +210,7 @@ func commandsHaveClear(cs []data.Command) bool {
 	}
 	return false
 }
+
 func collectOptions(cs []data.Command, offered map[string]bool, out *[]routeOption) {
 	for _, c := range cs {
 		for _, o := range c.Choice {
@@ -224,6 +226,7 @@ func collectOptions(cs []data.Command, offered map[string]bool, out *[]routeOpti
 		collectOptions(c.OnRun, offered, out)
 	}
 }
+
 func printRoutes(c *command, r routesReport) {
 	c.out.Printf("Explored %d paths", r.Paths)
 	if r.Truncated {
