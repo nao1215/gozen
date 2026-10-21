@@ -1,6 +1,7 @@
 package gozen_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"testing"
@@ -68,6 +69,9 @@ func FuzzDo(f *testing.F) {
 		r, err := gozen.Restore(g, b, gozen.Config{Seed: 1})
 		if err != nil {
 			t.Fatalf("what Do left cannot be restored: %v\n%s", err, b)
+		}
+		if again, err := r.Save(); err != nil || !bytes.Equal(again, b) {
+			t.Fatalf("save -> restore -> save changed the bytes (%v):\n%s\n%s", err, b, again)
 		}
 		var loc string
 		if err := r.Query("location", &loc); err != nil {
@@ -203,8 +207,26 @@ func FuzzDoWithADungeonAndAShop(f *testing.F) {
 		if err != nil {
 			t.Fatalf("a session cannot be saved after Do: %v", err)
 		}
-		if _, err := gozen.Restore(g, b, gozen.Config{Seed: 2}); err != nil {
+		// the same seed and the same commands give the same state
+		twin, err := gozen.New(g, gozen.Config{Seed: 2, Dev: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := twin.Begin(ctx); err != nil {
+			t.Fatalf("begin: %v", err)
+		}
+		if err := twin.Do(ctx, script); err != nil && ctx.Err() != nil {
+			return
+		}
+		if tb, err := twin.Save(); err != nil || !bytes.Equal(tb, b) {
+			t.Fatalf("the same seed and commands gave different states (%v):\n%s\n%s", err, b, tb)
+		}
+		r, err := gozen.Restore(g, b, gozen.Config{Seed: 2})
+		if err != nil {
 			t.Fatalf("what Do left cannot be restored: %v\n%s", err, b)
+		}
+		if again, err := r.Save(); err != nil || !bytes.Equal(again, b) {
+			t.Fatalf("save -> restore -> save changed the bytes (%v):\n%s\n%s", err, b, again)
 		}
 		for _, q := range []string{"location", "gold", "party", "menu", "map", "pos", "roamers"} {
 			var v any
