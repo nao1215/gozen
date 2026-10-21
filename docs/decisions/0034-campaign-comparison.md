@@ -1,4 +1,4 @@
-# ADR 0033: Compare campaign strategies and tactics
+# ADR 0034: Compare campaign strategies and tactics
 
 Status: Accepted (2026-10-22).
 

@@ -6,6 +6,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
+- `gozen sim routes` explores event choices without a screen and reports reached clear/game-over outcomes, never-offered choice options, flags reported by GZN0112, and bounded exploration status; `--fail-unreachable` opts into a failing exit status.
 - `gozen sim campaign --compare strategies|tactics` plays every strategy or declared tactic on the same seed range and reports win rate, mean ending turns, mean player regions held, and per-region ownership changes, mean turn of the first ownership change, end holders and player win rate by held turn. `--format json` writes the same comparison report as JSON.
 
 ### Changed
