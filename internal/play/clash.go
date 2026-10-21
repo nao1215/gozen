@@ -90,7 +90,20 @@ type clashScene struct {
 	per     float64
 	pics    [2]string // the soldiers' pictures
 	bands   []skillBand
+	cut     *clashCut
+	// skillShown is the strike (counted from 1) whose skill was last shown.
+	skillShown int
 }
+
+// clashCut is a skill's cut-in: the user's picture across the screen with its name.
+type clashCut struct {
+	u    *clashUnit
+	name string
+	pic  string
+	t    int
+}
+
+const clashCutTicks = 56
 
 // skillBand is a skill's name shown across its unit's card.
 type skillBand struct {
@@ -235,6 +248,13 @@ func (s *clashScene) update(g *Game) {
 		}
 	}
 	s.bands = bs
+	if s.cut != nil {
+		s.cut.t++
+		if s.cut.t >= clashCutTicks || ((in.ok() || in.click) && s.cut.t > 10) || g.skipping {
+			s.cut = nil
+		}
+		return
+	}
 	if s.over {
 		if in.ok() || in.click || (s.auto && s.wait <= 0) || g.replaying || g.skipping {
 			g.pop()
@@ -244,7 +264,7 @@ func (s *clashScene) update(g *Game) {
 		s.wait--
 		return
 	}
-	if in.ok() || in.click {
+	if (in.ok() || in.click) && s.age > 10 { // not the press that began the march
 		s.fast = true
 	}
 	s.wait--
@@ -259,8 +279,12 @@ func (s *clashScene) update(g *Game) {
 	h := s.cl.Hits[s.next]
 	s.round = h.Round
 	first := h.Skill != "" && (s.next == 0 || s.cl.Hits[s.next-1].Skill != h.Skill || s.cl.Hits[s.next-1].At != h.At || s.cl.Hits[s.next-1].Side != h.Side || s.cl.Hits[s.next-1].Round != h.Round)
-	if first {
+	if first && s.skillShown != s.next+1 {
+		s.skillShown = s.next + 1
 		s.useSkill(g, h)
+		if s.cut != nil { // the strike comes after the cut-in
+			return
+		}
 	}
 	s.strike(g, h)
 	s.next++
@@ -280,6 +304,19 @@ func (s *clashScene) useSkill(g *Game, h campaign.Hit) {
 		label = sk.Label
 	}
 	s.bands = append(s.bands, skillBand{text: label, side: h.Side, at: h.At})
+	if sk := g.db.Game.Campaign.Clash.Skills[h.Skill]; sk != nil && sk.Cutin && !s.fast && !g.skipping {
+		u := s.units[h.Side][h.At]
+		pic := u.u.Picture
+		if a := g.db.Actors[u.u.Actor]; a != nil {
+			if a.Cutin != "" {
+				pic = a.Cutin
+			} else {
+				pic = g.db.FacePicture(a, a.Face, "")
+			}
+		}
+		s.cut = &clashCut{u: u, name: label, pic: pic}
+		g.sfx("cutin")
+	}
 	if h.Heal > 0 {
 		u := s.units[h.Side][h.At]
 		u.shown = math.Min(u.u.Max, u.shown+float64(h.Heal))
@@ -458,6 +495,9 @@ func (s *clashScene) draw(g *Game, dst *ebiten.Image) {
 	g.window(dst, sw/2-150, sh-86, 300, 58)
 	gfx.DrawText(dst, r, sw/2, sh-74, sizeM, g.th.text)
 	g.text(dst, s.hint(), 36, sh-40, sizeS*0.8, withAlpha(g.th.text, 200))
+	if s.cut != nil {
+		s.drawCut(g, dst)
+	}
 	if s.over {
 		gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), color.NRGBA{0, 0, 0, 150}, false)
 		s.drawResult(g, dst)
@@ -750,4 +790,66 @@ func joinNames(names []string) string {
 		out += n
 	}
 	return out
+}
+
+// drawCut draws a skill's cut-in: the screen darkens, a slanted band slides open across
+// it in the side's colour with the user's picture sliding in from its side and the
+// skill's name, and closes.
+func (s *clashScene) drawCut(g *Game, dst *ebiten.Image) {
+	c := s.cut
+	sw, sh := g.screen()
+	open := math.Min(1, float64(c.t)/8)
+	if c.t > clashCutTicks-10 {
+		open = math.Max(0, float64(clashCutTicks-c.t)/10)
+	}
+	open = 1 - (1-open)*(1-open)
+	gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), color.NRGBA{0, 0, 0, uint8(110 * open)}, false)
+	bandH := 260 * open
+	if bandH < 2 {
+		return
+	}
+	cy := sh * 0.46
+	col := factionColor(g, g.db.Game.Campaign.Player)
+	if c.u.side == 1 {
+		col = color.NRGBA{0xc8, 0x50, 0x40, 0xff}
+		if s.cl.Owner != "" {
+			col = factionColor(g, s.cl.Owner)
+		}
+	}
+	gfx.FillRect(dst, 0, float32(cy-bandH/2-6), float32(sw), float32(bandH+12), withAlpha(flagFill(col), 0xe0), false)
+	gfx.FillRect(dst, 0, float32(cy-bandH/2), float32(sw), float32(bandH), withAlpha(g.th.window, 0xf4), false)
+	for i := range 12 { // speed lines
+		y := cy - bandH/2 + math.Mod(float64(i)*37.3, bandH)
+		x := math.Mod(float64(i)*211.7+float64(c.t)*42, sw+300) - 150
+		if c.u.side == 1 {
+			x = sw - x
+		}
+		gfx.StrokeLine(dst, float32(x), float32(y), float32(x+160), float32(y), 2, withAlpha(flagFill(col), 0x70), true)
+	}
+	slide := math.Min(1, float64(c.t)/12)
+	if c.pic != "" {
+		if img := g.pics.get(c.pic); img != nil && !img.Bounds().Empty() {
+			b := img.Bounds()
+			cut := min(b.Dy(), int(float64(b.Dx())*0.9)) // the head and shoulders
+			sub, ok := img.SubImage(image.Rect(b.Min.X, b.Min.Y, b.Max.X, b.Min.Y+cut)).(*ebiten.Image)
+			if ok {
+				k := bandH / float64(cut)
+				w := float64(b.Dx()) * k
+				x := sw*0.18 - w/2 - (1-slide)*sw*0.3
+				if c.u.side == 1 {
+					x = sw*0.82 - w/2 + (1-slide)*sw*0.3
+				}
+				op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+				op.GeoM.Scale(k, k)
+				op.GeoM.Translate(x, cy-bandH/2)
+				gfx.DrawImage(dst, sub, op)
+			}
+		}
+	}
+	tx := sw * 0.58
+	if c.u.side == 1 {
+		tx = sw * 0.42
+	}
+	gfx.DrawTextOutlineColor(dst, c.u.u.Name, tx, cy-sizeL*1.6, sizeM, g.th.text, g.th.window, float32(open))
+	gfx.DrawTextOutlineColor(dst, c.name, tx, cy-sizeL*0.5, sizeL*1.8, color.NRGBA{0xff, 0xf0, 0xc0, 0xff}, color.NRGBA{0x40, 0x20, 0x00, 0xff}, float32(open))
 }

@@ -2524,6 +2524,19 @@
           },
           "x-type": "integer"
         },
+        "cutin": {
+          "description": "If true, the user's picture crosses the screen with the skill's name before it strikes (a general's cut-in picture, else the face).",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
         "foes": {
           "description": "The enemies who use it, IDs of enemies (generals list theirs in campaign.generals.\u003cid\u003e.skills).",
           "items": {
@@ -6550,6 +6563,25 @@
             "version": "0, 1, 2"
           },
           "x-type": "color string"
+        },
+        "generals": {
+          "description": "The enemies who lead the faction's marches when the campaign shows marches as clashes of units: a march takes the strongest (by atk), up to clash.units, and is fought as a clash. IDs of enemies.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
         },
         "name": {
           "description": "The name shown. The ID when omitted.",

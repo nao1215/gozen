@@ -229,25 +229,88 @@ func foeUnits(db *data.DB, st *rpg.State, target string) []Unit {
 	var out []Unit
 	given := 0.0
 	for i, id := range ids {
-		e := db.Enemies[id]
 		n := math.Floor(garrison / float64(len(ids)))
 		if i == len(ids)-1 {
 			n = garrison - given
 		}
 		given += n
-		u := Unit{Name: id, Enemy: id, Troops: n, Max: n, stats: map[string]float64{}, Tactic: db.Game.Campaign.Clash.TacticIDs()[0], Skills: foeSkills(db, id)}
-		if e != nil {
-			u.Name, u.Picture = e.Name, e.Image.File
-			u.MHP = e.Stats["mhp"]
-			u.HP = u.MHP
-			for _, s := range data.StatNames {
-				u.stats[s] = float64(e.Stats[s])
-			}
-			u.stats["level"] = float64(e.Level)
-		}
-		out = append(out, u)
+		out = append(out, enemyUnit(db, id, n))
 	}
 	return out
+}
+
+// enemyUnit is a unit led by an enemy with troops.
+func enemyUnit(db *data.DB, id string, n float64) Unit {
+	u := Unit{Name: id, Enemy: id, Troops: n, Max: n, stats: map[string]float64{}, Tactic: db.Game.Campaign.Clash.TacticIDs()[0], Skills: foeSkills(db, id)}
+	if e := db.Enemies[id]; e != nil {
+		u.Name, u.Picture = e.Name, e.Image.File
+		u.MHP = e.Stats["mhp"]
+		u.HP = u.MHP
+		for _, s := range data.StatNames {
+			u.stats[s] = float64(e.Stats[s])
+		}
+		u.stats["level"] = float64(e.Level)
+	}
+	return u
+}
+
+// UsesClashes reports whether the campaign shows marches as clashes of units (an order
+// with fight: clash_view).
+func UsesClashes(db *data.DB) bool {
+	for _, o := range db.Game.Campaign.Orders {
+		if o != nil && o.Fight == "clash_view" {
+			return true
+		}
+	}
+	return false
+}
+
+// FactionGenerals are the generals a faction marches with: its strongest (by atk, in
+// the written order on a tie), up to clash.units.
+func FactionGenerals(db *data.DB, f string) []string {
+	fa := db.Factions[f]
+	if fa == nil {
+		return nil
+	}
+	ids := slices.Clone(fa.Generals)
+	atk := func(id string) int {
+		if e := db.Enemies[id]; e != nil {
+			return e.Stats["atk"]
+		}
+		return 0
+	}
+	slices.SortStableFunc(ids, func(a, b string) int { return atk(b) - atk(a) })
+	return ids[:min(len(ids), Units(db))]
+}
+
+// factionClash fights a faction's march as a clash of units: its generals sharing the
+// troops sent against the target's defenders. It returns whether the march took the
+// region, the troops left of the march and of the region.
+func factionClash(db *data.DB, st *rpg.State, f string, sent float64, target string) (bool, float64, float64) {
+	gs := FactionGenerals(db, f)
+	cl := &Clash{Region: target, MaxRounds: defaultRounds, Front: Fronts(db)}
+	if db.Game.Campaign.Clash.Rounds > 0 {
+		cl.MaxRounds = db.Game.Campaign.Clash.Rounds
+	}
+	given := 0.0
+	for i, g := range gs {
+		n := math.Floor(sent / float64(len(gs)))
+		if i == len(gs)-1 {
+			n = sent - given
+		}
+		given += n
+		cl.Sides[0] = append(cl.Sides[0], enemyUnit(db, g, n))
+	}
+	cl.Sides[1] = foeUnits(db, st, target)
+	play(db, st, cl)
+	left, held := 0.0, 0.0
+	for _, u := range cl.Sides[0] {
+		left += u.Troops
+	}
+	for _, u := range cl.Sides[1] {
+		held += u.Troops
+	}
+	return cl.Result == "won", math.Floor(left), math.Floor(held)
 }
 
 // play fights the rounds: each round every unit standing gains a charge; a unit whose

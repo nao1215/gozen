@@ -1,6 +1,6 @@
 module github.com/nao1215/gozen/examples/campaign
 
-go 1.26.9
+go 1.26.10
 
 require (
 	github.com/hajimehoshi/ebiten/v2 v2.10.5

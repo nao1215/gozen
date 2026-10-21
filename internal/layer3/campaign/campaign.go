@@ -372,7 +372,13 @@ func march(db *data.DB, st *rpg.State, f string, r *data.FactionRule) string {
 	for _, n := range data.StatNames {
 		a[n] = 0.0
 	}
-	won, left, held, _, _ := clash(db, st, a, best.t)
+	var won bool
+	var left, held float64
+	if len(FactionGenerals(db, f)) > 0 && UsesClashes(db) {
+		won, left, held = factionClash(db, st, f, sent, best.t)
+	} else {
+		won, left, held, _, _ = clash(db, st, a, best.t)
+	}
 	if won {
 		take(st, best.t, f, left)
 		return fmt.Sprintf(lang.T("%sが%sを落とした"), FactionName(db, f), data.RegionName(db, best.t))

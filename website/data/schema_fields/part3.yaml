@@ -156,6 +156,7 @@ Faction:
   capital: "A region the faction holds at the start. Losing it is the player's default defeat."
   color: "The faction's colour, for the marks of its regions."
   name: "The name shown. The ID when omitted."
+  generals: "The enemies who lead the faction's marches when the campaign shows marches as clashes of units: a march takes the strongest (by atk), up to clash.units, and is fought as a clash. IDs of enemies."
 FactionRule:
   _: "One rule of a faction's turn: draft troops into every region it holds, or march once along a border."
   by: "An expression over s (the region marching) and t (the region marched on) that pick: min or max compares."

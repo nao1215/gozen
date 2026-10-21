@@ -106,3 +106,36 @@ func lost(cl *campaign.Clash, side int) float64 {
 	}
 	return n
 }
+
+// TestFactionClash: a faction with generals marches as a clash of units when the
+// campaign shows marches so, the strongest of its generals up to clash.units leading.
+func TestFactionClash(t *testing.T) {
+	game := strings.NewReplacer(
+		"attack: {label: Attack, general: ready, target: border, march: true}",
+		"attack: {label: Attack, general: ready, target: border, march: true, fight: clash_view}",
+		"generals: {scout: {troops: 400, might: 2}}",
+		"generals: {scout: {troops: 400, might: 2}}\n  clash: {units: 1}",
+	).Replace(testgame.CampaignGame)
+	fields := strings.NewReplacer(
+		"capital: keep\n", "capital: keep\n    generals: [mote, mote]\n",
+		"field: {name: Field, next: [home, hill, keep], troops: 100,", "field: {name: Field, next: [home, hill, keep], troops: 100, defend: two,",
+	).Replace(testgame.CampaignData)
+	db := testgame.LoadCampaign(t, map[string]string{"game.yaml": game, "data/campaign.yaml": fields})
+	if gs := campaign.FactionGenerals(db, "red"); len(gs) != 1 || gs[0] != "mote" {
+		t.Fatalf("red marches with %v, want one mote (clash.units 1)", gs)
+	}
+	if !campaign.UsesClashes(db) {
+		t.Fatal("the campaign shows its marches as clashes")
+	}
+	moved := false
+	for seed := uint64(1); seed <= 5; seed++ {
+		st := testgame.State(db, seed)
+		lines := campaign.FactionTurn(db, st, "red")
+		if len(lines) > 0 {
+			moved = true
+		}
+	}
+	if !moved {
+		t.Fatal("red never marched")
+	}
+}

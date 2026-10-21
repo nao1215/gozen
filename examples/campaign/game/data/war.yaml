@@ -7,15 +7,17 @@ factions:
     name: Raven
     color: "#303040"
     capital: well
+    generals: [raven_knight, pale_guard]
     ai:
-      - {draft: "180"}
+      - {draft: "280"}
       - {march: true, when: "var.truce < campaign.turn", keep: 1000, where: "s.troops * 0.6 > t.troops * 1.25", pick: min, by: t.troops}
   stag:
     name: Stag
     color: "#806020"
     capital: hill
+    generals: [stag_brute, hill_wolf]
     ai:
-      - {draft: "180"}
+      - {draft: "280"}
       - {march: true, keep: 1000, where: "s.troops * 0.6 > t.troops * 1.25", pick: min, by: t.troops}
 regions:
   vale: {name: Ashvale, next: [cross, ford], owner: crown, troops: 600, terrain: castle, defend: vale_guard, values: {wealth: 40}, area: [[1401, 1000], [380, 1000], [380, 847], [1164, 444], [1188, 443]]}

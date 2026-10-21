@@ -62,6 +62,10 @@ type Faction struct {
 	Capital string `yaml:"capital"`
 	// AI are the rules the faction follows at the end of each turn, each in its order.
 	AI []FactionRule `yaml:"ai"`
+	// Generals are the enemies who lead the faction's marches: when the campaign shows
+	// marches as clashes of units (an order with fight: clash_view), a march takes the
+	// strongest of them (by atk), up to clash.units, and is fought as a clash.
+	Generals []string `yaml:"generals"`
 }
 
 // FactionRule is one rule of a faction's turn: it drafts troops into every region it
@@ -213,6 +217,9 @@ type ClashSkill struct {
 	All    bool     `yaml:"all"`
 	Heal   Expr     `yaml:"heal"`
 	Foes   []string `yaml:"foes"`
+	// Cutin shows the user's picture across the screen with the skill's name before it
+	// strikes (a general's cut-in picture, else the face; a foe's picture).
+	Cutin bool `yaml:"cutin"`
 }
 
 // DeclaredTactics are the tactics of a clash: clash.tactics, or the engine's when empty.
@@ -513,6 +520,10 @@ func (c *checker) campaign() {
 	}
 	for _, id := range FactionIDs(db) {
 		f := db.Factions[id]
+		for i, e := range f.Generals {
+			_, ok := db.Enemies[e]
+			c.ref(fmt.Sprintf("factions.%s.generals[%d]", id, i), "enemy", e, ok)
+		}
 		w := "factions." + id
 		if !declaredName.MatchString(id) {
 			c.errorf(diag.NotAWord, w, "a faction's id is lowercase letters, digits and _, not %q", id)

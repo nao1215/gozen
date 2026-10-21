@@ -41,10 +41,10 @@ campaign:
     units: 4
     per_soldier: 30
     skills:
-      volley: {label: Volley, charge: 3, all: true, power: "a.troops * 0.12"}
+      volley: {label: Volley, charge: 3, all: true, power: "a.troops * 0.12", cutin: true}
       rally: {label: Rally, charge: 3, heal: "a.max * 0.15"}
-      charge: {label: Charge, charge: 2, power: "a.troops * 0.3"}
-      dark_lance: {label: Dark Lance, charge: 3, power: "a.troops * 0.3", foes: [raven_knight]}
+      charge: {label: Charge, charge: 2, power: "a.troops * 0.3", cutin: true}
+      dark_lance: {label: Dark Lance, charge: 3, power: "a.troops * 0.3", foes: [raven_knight], cutin: true}
   orders:
     attack:
       label: Attack

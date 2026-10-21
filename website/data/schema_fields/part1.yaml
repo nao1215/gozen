@@ -213,6 +213,7 @@ ClashSkill:
   heal: "The troops it gives back to the unit (a the unit), at most what it lost."
   label: "The name shown across the unit's card when it is used."
   power: "The troops it takes from each foe struck: a strikes, b is struck. Default twice clash.hit."
+  cutin: "If true, the user's picture crosses the screen with the skill's name before it strikes (a general's cut-in picture, else the face)."
 ClashTactic:
   _: "A tactic of a clash shown as units: how a unit picks the foe it strikes and how much it deals and takes."
   all: "If true, it looks at every foe standing, not only those in front."
