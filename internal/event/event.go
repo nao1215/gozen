@@ -314,11 +314,14 @@ func New(db *data.DB, st *rpg.State, host Host) *Runner {
 
 // Start begins running cmds (after whatever is running).
 func (r *Runner) Start(cmds []data.Command) {
+	// OnStart keeps the state the event begins from, so it comes before the run is counted:
+	// begun again from that state (a save made in the middle of the event, ADR 0025), the event
+	// is counted once, not once more for every save and load.
+	if len(cmds) > 0 && r.OnStart != nil && !r.Running() {
+		r.OnStart(cmds)
+	}
 	r.countRun(cmds)
 	if len(cmds) > 0 {
-		if r.OnStart != nil && !r.Running() {
-			r.OnStart(cmds)
-		}
 		r.stack = append([]frame{{cmds: cmds}}, r.stack...)
 	}
 }
