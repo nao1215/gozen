@@ -55,6 +55,9 @@ skills:
   dispel: {name: Dispel, scope: one_enemy, effects: [{remove_state: ward}]}
   hallow: {name: Hallow, scope: one_ally, anim: heal, fx: holy, effects: [{heal: "20"}]}
   mend_quiet: {name: Soothe, scope: one_ally, effects: [{heal: "5", quiet: true}]}
+  freeze: {name: Freeze, scope: one_enemy, anim: magic, fx: ice, effects: [{add_state: ward}]}
+  sting: {name: Sting, scope: one_enemy, anim: slash, effects: [{damage: "3", variance: 0}, {add_state: poison}]}
+  quiet_hit: {name: Tap, scope: one_enemy, anim: none, effects: [{damage: "4", variance: 0}]}
   finisher: {name: Finisher, scope: one_enemy, cutin: true, effects: [{damage: "99", variance: 0}]}
 states:
   ward: {name: Warded, turns: 3}
@@ -120,7 +123,19 @@ enemies:
     image: x.png
     stats: {mhp: 9000, mmp: 0, atk: 400, def: 0, mat: 1, mdf: 1, agi: 20, luk: 1}
     ai: [{use: hit_one}]
+shops:
+  kiosk: {name: Kiosk, goods: [potion]}
 troops:
+  pictured:
+    members: [mote]
+    can_escape: false
+    events:
+      - when: "turn == 1"
+        do:
+          - {image: {files: [x.png, x.png]}}
+          - {shop: kiosk}
+          - {set: {flag.shown: true}}
+  titans: {members: [giant, giant, giant, giant, giant, giant]}
   guardian: {members: [warden]}
   pack: {members: [hulk, mote, hulk]}
   doom: {members: [brute], can_escape: false}
