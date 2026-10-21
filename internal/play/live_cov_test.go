@@ -14,8 +14,9 @@ import (
 // F5 reload (the site's "Edit and play loop"): with --dir the game reads the YAML and pictures
 // from disk; F5 loads the definitions, checks them and swaps them in, keeping the place (the
 // location, the party and the current line of an event). A mistake keeps the old definitions and
-// shows the file and line; the game id and a lower data_version cannot be reloaded; a battle or
-// a menu waits until the field is back; pictures and sounds reload on their own.
+// shows the file and line; the game id and a lower data_version cannot be reloaded; the field
+// menu is rebuilt at once and stays open, while a battle or another screen waits until it is
+// over; pictures and sounds reload on their own.
 
 // wldDisk writes the world fixture to a directory and returns it.
 func wldDisk(t *testing.T, gameYAML string, extra map[string]string) string {
