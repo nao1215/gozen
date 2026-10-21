@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"log"
+	"maps"
 	"math"
 	"os"
 	"slices"
@@ -67,6 +68,21 @@ func freshSession(t *testing.T) {
 	}
 	end()
 	t.Cleanup(end)
+}
+
+var (
+	quickOnce    sync.Once
+	quickEffects map[string][]byte
+)
+
+// recordQuickly is InitRecord with the built-in effects made once for the whole test run
+// (making them takes a second or more): for tests that are about something else.
+func recordQuickly(w io.Writer, tps int) {
+	quickOnce.Do(func() { quickEffects = synthEffects() })
+	rec = &recorder{w: w, tps: tps}
+	mu.Lock()
+	maps.Copy(effects, quickEffects)
+	mu.Unlock()
 }
 
 func waitFor(t *testing.T, what string, cond func() bool) {
@@ -411,10 +427,8 @@ func TestLazyStreamsMoodsAndKeepsQueued(t *testing.T) {
 	}
 	m.PlaySong("s", "fight")
 	var peak float32
-	for range 3 {
-		for _, v := range lefts(t, m, 4000) {
-			peak = max(peak, v)
-		}
+	for _, v := range lefts(t, m, 4000) {
+		peak = max(peak, v)
 	}
 	if peak < 0.01 {
 		t.Fatal("a streamed song is silent")
@@ -622,7 +636,7 @@ func TestRecordingMixesMusicAndEffects(t *testing.T) {
 func TestRecordingLoadsAllSongsAtOnce(t *testing.T) {
 	freshSession(t)
 	var out bytes.Buffer
-	InitRecord(&out, 30)
+	recordQuickly(&out, 30)
 	fsys := fstest.MapFS{"bgm/a.ogg": {Data: readTone(t)}}
 	LoadBGM(fsys, []Song{{Name: "a", File: "bgm/a.ogg"}}, "a", nil, 1)
 	if got := current().Loaded(); !slices.Equal(got, []string{"a"}) {
@@ -640,7 +654,7 @@ func (f failWriter) Write([]byte) (int, error) { return 0, f.err }
 func TestRecordingWriteErrorSticks(t *testing.T) {
 	freshSession(t)
 	want := errors.New("disk full")
-	InitRecord(failWriter{want}, 60)
+	recordQuickly(failWriter{want}, 60)
 	if err := Tick(); !errors.Is(err, want) {
 		t.Fatal(err)
 	}
@@ -651,7 +665,7 @@ func TestRecordingWriteErrorSticks(t *testing.T) {
 
 func TestPlayVoiceWhileRecording(t *testing.T) {
 	freshSession(t)
-	InitRecord(io.Discard, 60)
+	recordQuickly(io.Discard, 60)
 	PlayVoice(make([]byte, 64), 1)
 	PlayVoice(nil, 1)
 	if len(rec.voices) != 1 {
