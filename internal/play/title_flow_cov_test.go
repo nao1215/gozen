@@ -65,7 +65,13 @@ func TestClearEventLeadsToTheEndingThenTheTitle(t *testing.T) {
 func sysFramesWithKey(t *testing.T, g *Game, b button) {
 	t.Helper()
 	prev := g.in.script
-	sc, err := parseScript("press ok\nquit")
+	name := "ok"
+	for n, bb := range scriptButtons {
+		if bb == b && n != "ok" && b != btnOK {
+			name = n
+		}
+	}
+	sc, err := parseScript("press " + name + "\nquit")
 	if err != nil {
 		t.Fatal(err)
 	}

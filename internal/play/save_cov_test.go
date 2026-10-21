@@ -21,12 +21,19 @@ const sysInnData = `locations:
     no_menu: true
 `
 
-func sysInn(t *testing.T, opts Options) *Game {
+func sysInn(t *testing.T, opts Options) *Game { return sysInnWith(t, opts, nil) }
+
+// sysInnWith is sysInn with more files.
+func sysInnWith(t *testing.T, opts Options, extra map[string]string) *Game {
 	t.Helper()
 	if opts.Location == "" {
 		opts.Location = "inn"
 	}
-	return sysOpen(t, opts, map[string]string{"data/inn.yaml": sysInnData})
+	files := map[string]string{"data/inn.yaml": sysInnData}
+	for n, s := range extra {
+		files[n] = s
+	}
+	return sysOpen4(t, opts, files)
 }
 
 // sysKey clears the input and presses the buttons for the next direct update call.
