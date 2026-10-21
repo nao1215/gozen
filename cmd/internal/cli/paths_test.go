@@ -115,6 +115,50 @@ func TestPublishFailsCleanlyWhenTheParentIsNotADirectory(t *testing.T) {
 	}
 }
 
+// Directories that cannot be entered or written are reported as they are, and nothing is left behind.
+func TestPublishAndDestinationReportUnwritableDirectories(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("directory permissions do not stop this user")
+	}
+	root := t.TempDir()
+	readOnly := filepath.Join(root, "readonly")
+	if err := os.Mkdir(readOnly, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	sealed := filepath.Join(root, "sealed")
+	if err := os.Mkdir(sealed, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chmod(sealed, 0o700); err != nil {
+			t.Error(err)
+		}
+		if err := os.Chmod(readOnly, 0o700); err != nil {
+			t.Error(err)
+		}
+	})
+	built := false
+	build := func(string) error { built = true; return nil }
+	// The parent exists but takes no new entry: the staging directory cannot be made.
+	if err := Publish(filepath.Join(readOnly, "out"), nil, build); err == nil || built {
+		t.Errorf("a read-only parent: err %v, built %v", err, built)
+	}
+	// The parent itself would have to be made.
+	if err := Publish(filepath.Join(readOnly, "sub", "out"), nil, build); err == nil || built {
+		t.Errorf("a parent that cannot be made: err %v, built %v", err, built)
+	}
+	// A protected path that cannot be resolved is an error, not "no overlap".
+	if err := Destination(filepath.Join(root, "fresh"), filepath.Join(sealed, "inside")); err == nil || diag.Of(err) == diag.OutputOverlaps {
+		t.Errorf("an unreadable protected path: %v", err)
+	}
+	if err := Destination(filepath.Join(sealed, "inside", "out")); err == nil {
+		t.Error("an output below a directory that cannot be entered was accepted")
+	}
+	if _, err := os.Lstat(filepath.Join(root, "fresh")); err == nil {
+		t.Error("a refused destination was created")
+	}
+}
+
 func TestWriteNewCreatesParentsAndRefusesBadPlaces(t *testing.T) {
 	root := t.TempDir()
 	p := filepath.Join(root, "a", "b", "c.txt")
