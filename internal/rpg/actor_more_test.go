@@ -27,18 +27,18 @@ actors:
   veteran: {name: Veteran, class: adept, level: 3, tree: {toughness: 1}}
 `
 
-func treeState(t *testing.T) (*rpg.State, *rpg.Actor) {
+func treeState(t *testing.T) *rpg.Actor {
 	t.Helper()
 	db := testgame.Load(t, map[string]string{"data/tree.yaml": treeData})
 	st := testgame.State(db, 1)
 	st.Join("monk")
-	return st, st.Actors["monk"]
+	return st.Actors["monk"]
 }
 
 // TestRaisingTheSkillTree: a point is spent on an open node, a node that needs others stays shut until they are raised,
 // a full node and an empty purse refuse, and giving the points back empties the tree.
 func TestRaisingTheSkillTree(t *testing.T) {
-	_, monk := treeState(t)
+	monk := treeState(t)
 	if monk.SP != 3 {
 		t.Fatalf("starting SP %d", monk.SP)
 	}
@@ -53,8 +53,10 @@ func TestRaisingTheSkillTree(t *testing.T) {
 	if !monk.Raise("toughness") || monk.SP != 2 || monk.Stat("mhp") != hp+10 || monk.HP != hp+10 {
 		t.Errorf("toughness: sp %d mhp %d hp %d", monk.SP, monk.Stat("mhp"), monk.HP)
 	}
-	if !monk.Raise("spark") || !monk.Raise("spark") {
-		t.Fatal("spark twice")
+	for range 2 {
+		if !monk.Raise("spark") {
+			t.Fatal("spark has two levels")
+		}
 	}
 	if monk.Raise("spark") {
 		t.Error("spark is at its top")
@@ -96,7 +98,7 @@ func TestStartingTreeFitsTheLevel(t *testing.T) {
 }
 
 func TestExperienceStopsAtTheClassMaximum(t *testing.T) {
-	_, monk := treeState(t)
+	monk := treeState(t)
 	monk.GainExp(1_000_000)
 	if monk.Level != 5 {
 		t.Errorf("level %d, want the class maximum 5", monk.Level)
