@@ -103,3 +103,61 @@ func FuzzQuery(f *testing.F) {
 		}
 	})
 }
+
+// FuzzCheckAndExplore: checking a script never panics, and a script that passes the check can be explored on every branch
+// without a panic, leaving the session it was given as it was.
+func FuzzCheckAndExplore(f *testing.F) {
+	g, err := gozen.Load(trail, ".")
+	if err != nil {
+		f.Fatal(err)
+	}
+	for _, s := range []string{
+		"- gold: 5\n",
+		"- choice: [{label: A, do: [{gold: 1}]}, {label: B, do: []}]\n",
+		"- battle: motes\n  on_win: [{gold: 1}]\n  on_lose: [{gold: -1}]\n",
+		"- call: lantern\n",
+		"- move: ridge\n- move: camp\n",
+		"gold + 1",
+		"gld",
+		"- if: 'gold > 1'\n  then: [{gold: 1}]\n",
+		"",
+		"- [",
+		"- {gold: [1]}\n",
+	} {
+		f.Add(s)
+	}
+	f.Fuzz(func(t *testing.T, script string) {
+		if len(script) > 4096 {
+			return
+		}
+		ds := g.Check(script)
+		for _, d := range ds {
+			if d.Message == "" {
+				t.Fatalf("a diagnostic with no message: %+v", d)
+			}
+		}
+		if len(ds) > 0 {
+			return
+		}
+		s, err := gozen.New(g, gozen.Config{Seed: 1})
+		if err != nil {
+			t.Fatal(err)
+		}
+		before, err := s.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+		defer cancel()
+		if _, err := gozen.Explore(ctx, s, script, gozen.ExploreOptions{MaxPaths: 20, MaxSteps: 500}); err != nil {
+			t.Logf("explore: %v", err)
+		}
+		after, err := s.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(before) != string(after) {
+			t.Fatalf("Explore changed the session it was given:\n%s\n%s", before, after)
+		}
+	})
+}

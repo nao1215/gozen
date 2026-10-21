@@ -229,3 +229,45 @@ func TestExploreTheEffectsOfAPath(t *testing.T) {
 		t.Errorf("a cancelled context: %v", err)
 	}
 }
+
+// cancelAtChoice cancels the context the moment a choice is put to it.
+type cancelAtChoice struct {
+	gozen.DefaultPolicy
+	cancel context.CancelFunc
+}
+
+func (p cancelAtChoice) Decide(ctx context.Context, s *gozen.Session, q gozen.Request) int {
+	if q.Kind == "choice" {
+		p.cancel()
+	}
+	return p.DefaultPolicy.Decide(ctx, s, q)
+}
+
+// TestCancelledMidwayLeavesAUsableSession: a context cancelled while commands run ends Do with the context's error;
+// the session can be saved, restored and used again with a fresh context.
+func TestCancelledMidwayLeavesAUsableSession(t *testing.T) {
+	g := moreSessionGame(t, nil)
+	ctx, cancel := context.WithCancel(t.Context())
+	s := mustNew(t, g, gozen.Config{Seed: 1, Policy: cancelAtChoice{cancel: cancel}})
+	err := s.Do(ctx, "- call: pick\n- gold: 50\n")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("want context.Canceled, got %v", err)
+	}
+	if got := query[int](t, s, "gold"); got != 100 {
+		t.Errorf("commands after the cancel ran: gold %d", got)
+	}
+	b, err := s.Save()
+	if err != nil {
+		t.Fatalf("a session cancelled midway cannot be saved: %v", err)
+	}
+	r, err := gozen.Restore(g, b, gozen.Config{Seed: 1})
+	if err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	if err := r.Do(t.Context(), "- gold: 50\n"); err != nil {
+		t.Fatal(err)
+	}
+	if got := query[int](t, r, "gold"); got != 150 {
+		t.Errorf("gold %d", got)
+	}
+}
