@@ -20,8 +20,27 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    # Tells the jobs below whether a pull request changes more than documentation
+    # (scripts/ci_changes.sh, docs/development/ci.md). Jobs are skipped with `if`, not
+    # with on.paths: a workflow that never starts leaves its required checks pending.
+    # Fail-open: only an answer of false skips; a failure of this job runs everything.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.scope.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # A pull request's merge commit and its first parent, the base it merges into.
+          fetch-depth: 2
+      - id: scope
+        run: ./scripts/ci_changes.sh
+
   govulncheck:
-    if: ${{ github.event_name != 'schedule' || !github.event.repository.private }}
+    needs: changes
+    if: ${{ !cancelled() && (github.event_name != 'schedule' || !github.event.repository.private) }}
     name: govulncheck (Go ${{ matrix.go }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -39,10 +58,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.code != 'false'
         with:
           persist-credentials: false
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: needs.changes.outputs.code != 'false'
         with:
           go-version: ${{ matrix.go }}
           check-latest: true
@@ -51,6 +72,7 @@ jobs:
       # advisory database is intentionally not pinned. The install step alone may
       # switch toolchains to build the scanner; the scan runs with the matrix Go.
       - name: Install govulncheck
+        if: needs.changes.outputs.code != 'false'
         env:
           GOTOOLCHAIN: auto
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
@@ -61,6 +83,7 @@ jobs:
       # other reachable advisory fails the job and prints the text report. cgo is
       # on so the ONNX bindings of the mosaic command are scanned too.
       - name: Scan the module
+        if: needs.changes.outputs.code != 'false'
         env:
           ACCEPTED: ""
           CGO_ENABLED: "1"
@@ -80,7 +103,8 @@ jobs:
   codeql:
     # Code scanning uploads require GitHub Code Security on private repositories,
     # so the job runs only once the repository is public. govulncheck runs either way.
-    if: ${{ !github.event.repository.private }}
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && (!github.event.repository.private) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # The only write permission: publish code-scanning results for this job.

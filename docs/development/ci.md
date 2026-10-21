@@ -25,6 +25,14 @@ The lower bound of Go is `go.mod:3`. Keep it in step with the lower bounds of un
 
 graphics is also enabled on Windows and macOS, with no setting that tolerates failure and no skip. setup-ebitengine prepares Xvfb only on Linux. This working environment has not confirmed whether the Windows and macOS hosted runners have the desktop that is needed. Check it in the first remote run; if it cannot run, record the concrete error and reason and reconsider. A successful cross-build is not accepted in its place.
 
+## Pull requests that change only documentation
+
+The heavy jobs of the CI, Coverage, Benchmark, licenses, Release Smoke and Security workflows are skipped on a pull request that changes only documentation. Each of these workflows starts with a `changes` job that runs [scripts/ci_changes.sh](../../scripts/ci_changes.sh), which compares the merge commit of the pull request with its base. Documentation only means every changed file is a Markdown file, under `website/` or `docs/` (but not `docs/examples/`, which tests read), a `LICENSE` file or a GitHub issue template. Any other file, including `.github/workflows/` and the script itself, gives `code=true` and runs everything. Pushes, tags, schedules and manual runs are not judged and always run everything.
+
+`on.paths` is not used: a workflow that never starts leaves its required status checks pending, and the pull request cannot be merged. Instead the jobs wait for `changes` and are skipped with `if`; GitHub counts a skipped job as passed for a required check. A skipped job with a matrix would be reported under the name without its matrix values and would not match a required check such as `unit (ubuntu-latest, stable)`. So the matrix jobs that are required (unit, cli-e2e, govulncheck) still start and skip their steps, and the other jobs are skipped as a whole. Only the answer `false` skips; if `changes` fails, everything runs.
+
+The `docs-checks` job of the CI workflow runs on these pull requests only, with the tests that read the documentation (`internal/dev/docs`, `internal/diag`, `internal/layer2/gamedata`). The Docs and Website workflows are not skipped.
+
 ## Time
 
 The longest jobs are the pictures of the Docs workflow and graphics; most of their time is the samples playing in real time and writing 1920x1080 frames. The game writes a screenshot off its loop (PNG at BestSpeed, by background workers), the docs pictures' runs play side by side, and graphics runs its scenarios side by side.
