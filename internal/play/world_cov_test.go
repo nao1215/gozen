@@ -67,6 +67,7 @@ func wldStep(t *testing.T, g *Game, screen *ebiten.Image) bool {
 	if s := g.in.script; s != nil {
 		s.shot = ""
 	}
+	g.autoShot = "" // the screenshot of --until would read pixels
 	if err != nil {
 		if errors.Is(err, ebiten.Termination) || errors.Is(err, errQuit) {
 			return false
