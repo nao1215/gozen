@@ -130,10 +130,10 @@ func TestPublishAndDestinationReportUnwritableDirectories(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := os.Chmod(sealed, 0o700); err != nil {
+		if err := os.Chmod(sealed, 0o700); err != nil { //nolint:gosec // The test directory is made usable again so it can be removed.
 			t.Error(err)
 		}
-		if err := os.Chmod(readOnly, 0o700); err != nil {
+		if err := os.Chmod(readOnly, 0o700); err != nil { //nolint:gosec // The test directory is made usable again so it can be removed.
 			t.Error(err)
 		}
 	})
