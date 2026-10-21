@@ -36,6 +36,28 @@ func TestMaskCatchesTheDisguises(t *testing.T) {
 	}
 }
 
+// Half-width kana and a voiced mark written as its own character spell the same word
+// as the composed kana; the original characters that formed it are hidden.
+func TestMaskNormalizesBeforeMatching(t *testing.T) {
+	m := NewMask([]string{"ばか", "ガキ", "bad"})
+	cases := map[string]string{
+		"ﾊﾞｶ":             "***",
+		"は\u3099か":        "***",
+		"ﾊﾞｶ!":            "***!",
+		"x\u30ab\u3099ｷy": "x***y",
+		"ｶﾞｷ":             "***",
+		"ﾊﾟｶ":             "ﾊﾟｶ",
+		"ｂａｄ":             "***",
+		"か\u3099き":        "***",
+	}
+	for in, want := range cases {
+		got, _ := m.Filter(Message{Text: in})
+		if got.Text != want {
+			t.Errorf("%q -> %q, want %q", in, got.Text, want)
+		}
+	}
+}
+
 func TestMaskKeepsTheRestOfTheMessage(t *testing.T) {
 	m := NewMask([]string{"bad"})
 	in := Message{ID: 7, From: "x", Text: "so bad", At: time.Second, Values: map[string]float64{"tip": 3}}

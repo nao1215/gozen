@@ -42,7 +42,7 @@ func TestFilters(t *testing.T) {
 		"お前ばかだな":  "お前**だな",
 		"バーカ":     "***",
 		"ば か":     "* *",
-		"ﾊﾞｶ以外":   "ﾊﾞｶ以外", // half-width voiced marks are not folded together
+		"ﾊﾞｶ以外":   "***以外", // half-width voiced marks are normalized
 		"ＢＡＤ end": "*** end",
 		"so bad.": "so ***.",
 		"ばかばか":    "****",
