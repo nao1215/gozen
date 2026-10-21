@@ -139,6 +139,18 @@ go get github.com/nao1215/gozen@latest
 
 The window needs the platform graphics libraries: [OS setup](https://nao1215.github.io/gozen/install/#what-the-window-needs).
 
+In GitHub Actions, [setup-gozen](https://github.com/nao1215/setup-gozen) installs the release binary of the version in your `go.mod`, checked against the release checksums:
+
+<!-- verify: skip runs in GitHub Actions -->
+```yaml
+- uses: actions/checkout@v6
+- uses: nao1215/setup-gozen@b8c63e495b0aa9013d2308664a904f03009785a9 # v0.1.0
+- run: gozen check game
+- run: gozen sim battle game boss --format json  # boss: a troop id of your game
+```
+
+`version` also takes `latest` or a release such as `v0.2.0`, and `go-mod-path` points at a `go.mod` below the root. Without the action, `go run github.com/nao1215/gozen/cmd/gozen check game` builds the same version from `go.mod`.
+
 ## Recipes
 
 Tested YAML recipes are in the [cookbook](https://nao1215.github.io/gozen/cookbook/).
