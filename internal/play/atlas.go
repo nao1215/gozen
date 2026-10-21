@@ -501,7 +501,14 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 		}
 		s.drawAreas(g, dst, toScreen, sel)
 	}
-	if a.DrawRoads { // only when asked: the roads are painted in the picture
+	sel0 := ""
+	if !s.walking() && s.sel < len(s.choices) && !g.busy() {
+		sel0 = s.choices[s.sel].Point
+	}
+	if s.campaignMap(g) && a.RegionRoads != "always" {
+		s.drawReach(g, dst, toScreen, sel0)
+	}
+	if s.campaignMap(g) && a.RegionRoads == "always" || !s.campaignMap(g) && a.DrawRoads { // only when asked: the roads are painted in the picture
 		for _, r := range s.roads {
 			if !r.shown {
 				continue

@@ -714,6 +714,32 @@
           },
           "x-type": "string → [MapPoint](#mappoint)"
         },
+        "region_borders": {
+          "description": "On a campaign's map, when the outline of each region's area is drawn: `selected` (the default, only the region chosen) or `always` (every region, the old look).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "string"
+        },
+        "region_roads": {
+          "description": "On a campaign's map, when the roads are shown: `selected` (the default, a thin arrow to each neighbour the region chosen can march on) or `always` (the lines of all the roads, as draw_roads does on other maps). draw_roads is not read on a campaign's map.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "string"
+        },
         "roads": {
           "description": "The roads that connect points. The token walks along them.",
           "items": {

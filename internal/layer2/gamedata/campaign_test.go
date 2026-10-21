@@ -172,6 +172,21 @@ locations:
 	}
 }
 
+// TestCampaignMapViews: region_roads and region_borders take selected or always.
+func TestCampaignMapViews(t *testing.T) {
+	game := strings.Replace(testgame.CampaignGame, "  location: camp\n", "  location: war\n", 1)
+	for _, c := range []struct{ view, want string }{{"region_roads: always\n      region_borders: selected", ""}, {"region_borders: sometimes", "want selected or always"}} {
+		war := "\nlocations:\n  war:\n    name: War\n    map:\n      picture: x.png\n      " + c.view + "\n      points:\n        home: {at: [1, 1]}\n"
+		_, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"game.yaml": game, "data/war.yaml": war}))
+		if c.want == "" && err != nil && strings.Contains(err.Error(), "region_") {
+			t.Errorf("%s: %v", c.view, err)
+		}
+		if c.want != "" && (err == nil || !strings.Contains(err.Error(), c.want)) {
+			t.Errorf("%s: want %q, got %v", c.view, c.want, err)
+		}
+	}
+}
+
 // TestFactionWordsAndCallLoops: a misspelt faction compared with an owner or given to
 // next_to is an error, and so is an event that calls itself on every run; a call under an
 // if is not.

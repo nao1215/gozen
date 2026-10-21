@@ -144,16 +144,26 @@ func (s *atlasScene) drawAreas(g *Game, dst *ebiten.Image, toScreen func(geom.Pt
 		}
 		path.Close()
 		owner := data.RegionOwner(g.db, cs, id)
-		fill := withAlpha(flagFill(factionColor(g, owner)), 0x80)
+		// a faint wash of the owner's colour so the picture shows through; no wash for a free region
+		fill := withAlpha(flagFill(factionColor(g, owner)), 0x38)
 		if owner == "" {
-			fill = color.NRGBA{0xe8, 0xe4, 0xd8, 0x30}
+			fill.A = 0
 		}
 		if id == sel {
-			fill.A += 0x30
+			fill.A += 0x28
+			if owner == "" {
+				fill = color.NRGBA{0xf4, 0xf0, 0xe4, 0x28}
+			}
 		}
-		op := &vector.DrawPathOptions{AntiAlias: true}
-		op.ColorScale.ScaleWithColor(fill)
-		vector.FillPath(dst, &path, nil, op)
+		if fill.A > 0 {
+			op := &vector.DrawPathOptions{AntiAlias: true}
+			op.ColorScale.ScaleWithColor(fill)
+			vector.FillPath(dst, &path, nil, op)
+		}
+		always := s.location(g).Map.RegionBorders == "always"
+		if !always && id != sel {
+			continue
+		}
 		line := &vector.DrawPathOptions{AntiAlias: true}
 		width := float32(3)
 		if id == sel {
@@ -440,4 +450,73 @@ func (s *atlasScene) settled(g *Game, id, file string, img *ebiten.Image, x, y, 
 
 func clampByte(v float64) byte {
 	return byte(math.Max(0, math.Min(1, v)) * 255)
+}
+
+// drawReach shows, for the region chosen, the neighbours it can march on (those held by
+// another side): a thin, translucent arrow to each point, and a faint outline round each
+// area. Nothing is drawn while no region is chosen.
+func (s *atlasScene) drawReach(g *Game, dst *ebiten.Image, toScreen func(geom.Pt) (float32, float32), sel string) {
+	r := g.db.Regions[sel]
+	if r == nil {
+		return
+	}
+	cs := g.st.Campaign()
+	at := func(id string) (geom.Pt, bool) {
+		if i := s.pointIndex(id); i >= 0 {
+			return s.points[i].at, true
+		}
+		return geom.Pt{}, false
+	}
+	from, ok := at(sel)
+	if !ok {
+		return
+	}
+	u := float32(g.ui)
+	owner := data.RegionOwner(g.db, cs, sel)
+	for _, n := range r.Next {
+		nr := g.db.Regions[n]
+		if nr == nil || data.RegionOwner(g.db, cs, n) == owner {
+			continue
+		}
+		to, ok := at(n)
+		if !ok {
+			continue
+		}
+		if len(nr.Area) >= 3 {
+			var path vector.Path
+			for i, p := range nr.Area.Poly() {
+				x, y := toScreen(p)
+				if i == 0 {
+					path.MoveTo(x*u, y*u)
+				} else {
+					path.LineTo(x*u, y*u)
+				}
+			}
+			path.Close()
+			line := &vector.DrawPathOptions{AntiAlias: true}
+			line.ColorScale.ScaleWithColor(withAlpha(plateInk, 120))
+			vector.StrokePath(dst, &path, &vector.StrokeOptions{Width: 2 * u, LineJoin: vector.LineJoinRound}, line)
+		}
+		x0, y0 := toScreen(from)
+		x1, y1 := toScreen(to)
+		dx, dy := float64(x1-x0), float64(y1-y0)
+		d := math.Hypot(dx, dy)
+		if d < 1 {
+			continue
+		}
+		dx, dy = dx/d, dy/d
+		// stop short of both points, so the arrow does not sit on the landmarks
+		gap := math.Min(d*0.2, 40)
+		ax, ay := float32(float64(x0)+dx*gap), float32(float64(y0)+dy*gap)
+		bx, by := float32(float64(x1)-dx*gap), float32(float64(y1)-dy*gap)
+		c := withAlpha(plateInk, 150)
+		gfx.StrokeLine(dst, ax, ay, bx, by, 2, c, true)
+		head := float64(14)
+		for _, side := range []float64{0.45, -0.45} {
+			c0, s0 := math.Cos(side), math.Sin(side)
+			hx := -(dx*c0 - dy*s0) * head
+			hy := -(dx*s0 + dy*c0) * head
+			gfx.StrokeLine(dst, bx, by, bx+float32(hx), by+float32(hy), 2, c, true)
+		}
+	}
 }

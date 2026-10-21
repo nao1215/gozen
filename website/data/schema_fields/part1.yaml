@@ -53,6 +53,8 @@ Atlas:
   marker: "A map with a `picture` and an optional `height` for the piece standing on each point, such as a pin or flag. It cannot be `doll`. A small pin is drawn when omitted."
   picture: "The map picture, a file under assets/."
   points: "The places on the map, keyed by point ID."
+  region_borders: "On a campaign's map, when the outline of each region's area is drawn: `selected` (the default, only the region chosen) or `always` (every region, the old look)."
+  region_roads: "On a campaign's map, when the roads are shown: `selected` (the default, a thin arrow to each neighbour the region chosen can march on) or `always` (the lines of all the roads, as draw_roads does on other maps). draw_roads is not read on a campaign's map."
   roads: "The roads that connect points. The token walks along them."
   token: "The piece that stands for the party on the map: a picture, the leader's face, or `doll` for the leader's doll."
   unknown: "How a point not yet visited is shown: `hidden`, `dim`, `mark` (a question-mark plate, the default) or `named`."
