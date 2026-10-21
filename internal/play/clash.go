@@ -23,8 +23,8 @@ import (
 // now and at the start, the leader's HP) and its soldiers in ranks behind, one for every
 // per_soldier troops, under a flag of the side's colour. The first two units of a side
 // stand in front, nearer the middle; the rest behind, nearer the edge, and step up as the
-// front is routed. A strike lunges the striker's card toward the middle, draws a slash and
-// dust on the card struck, shakes it red, shows the troops lost beside it and the
+// front is routed. A strike lunges the striker's card toward the middle, bursts dust and sparks
+// where the armies meet, shakes the card struck red, shows the troops lost beside it and the
 // soldiers who went setting off from the striker; the soldiers lost fall from the back of
 // the ranks. A routed unit turns gray under a stamp (routed or caught). A rope of the two
 // sides' troops runs over the field, the rounds under it. At the end the field darkens and
@@ -68,10 +68,17 @@ type clashPop struct {
 	size         float64
 }
 
-type slash struct {
-	x0, y0, x1, y1 float64
-	age            int
+// impact is a burst of dust and sparks where the armies meet. It waits (age below 0) for
+// the step forward to land and is gone in 0.3 s.
+type impact struct {
+	x, y float64
+	age  int
 }
+
+const (
+	impactTicks = 18
+	impactDelay = 7
+)
 
 type clashScene struct {
 	cl      *campaign.Clash
@@ -83,7 +90,7 @@ type clashScene struct {
 	fast    bool
 	auto    bool
 	pops    []clashPop
-	slashes []slash
+	impacts []impact
 	falls   []fallen
 	over    bool
 	age     int
@@ -224,14 +231,14 @@ func (s *clashScene) update(g *Game) {
 		}
 	}
 	s.pops = live
-	sl := s.slashes[:0]
-	for _, x := range s.slashes {
+	im := s.impacts[:0]
+	for _, x := range s.impacts {
 		x.age++
-		if x.age < 18 {
-			sl = append(sl, x)
+		if x.age < impactTicks {
+			im = append(im, x)
 		}
 	}
-	s.slashes = sl
+	s.impacts = im
 	fl := s.falls[:0]
 	for _, f := range s.falls {
 		f.age++
@@ -369,13 +376,9 @@ func (s *clashScene) strike(g *Game, h campaign.Hit) {
 		}
 		to.soldiers = n
 	}
-	inner := func(u *clashUnit) float64 {
-		if u.side == 0 {
-			return u.x + cw
-		}
-		return u.x
-	}
-	s.slashes = append(s.slashes, slash{x0: inner(from), y0: from.y + ch*0.4, x1: to.x + cw/2, y1: to.y + ch*0.35})
+	// the burst stands on the line where the armies meet, at the unit struck
+	mid, _ := g.screen()
+	s.impacts = append(s.impacts, impact{x: mid / 2, y: to.y + ch*0.6, age: -impactDelay})
 	beside := func(u *clashUnit) float64 {
 		if u.side == 0 {
 			return u.x + cw + 60
@@ -470,16 +473,8 @@ func (s *clashScene) draw(g *Game, dst *ebiten.Image) {
 			s.drawCard(g, dst, u)
 		}
 	}
-	for _, x := range s.slashes {
-		a := uint8(255 * (1 - float64(x.age)/18))
-		t := math.Min(1, float64(x.age)/6)
-		mx, my := x.x0+(x.x1-x.x0)*t, x.y0+(x.y1-x.y0)*t
-		gfx.StrokeLine(dst, float32(x.x0), float32(x.y0), float32(mx), float32(my), 5, withAlpha(color.NRGBA{0xff, 0xf8, 0xe0, 0xff}, a), true)
-		for k := range 5 { // dust at the card struck
-			ang := float64(k)*1.3 + float64(x.age)*0.1
-			r := float32(10 + x.age*2)
-			gfx.FillCircle(dst, float32(x.x1+math.Cos(ang)*float64(x.age)*3), float32(x.y1+40+math.Sin(ang)*float64(x.age)*1.5), r*0.6, withAlpha(color.NRGBA{0xd8, 0xc8, 0xa8, 0xff}, a/2), true)
-		}
+	for _, x := range s.impacts {
+		drawImpact(dst, x)
 	}
 	s.drawSkillBands(g, dst)
 	for _, p := range s.pops {
@@ -566,6 +561,33 @@ func (s *clashScene) drawRanks(g *Game, dst *ebiten.Image, u *clashUnit) {
 	gfx.StrokeRoundRect(dst, fx, float32(top), fw, float32(h*0.42), 2, 2, withAlpha(plateInk, a))
 }
 
+// drawImpact draws the burst where a strike lands: a puff of dust opening out and a few
+// sparks, restrained and gone in 0.3 s.
+func drawImpact(dst *ebiten.Image, im impact) {
+	if im.age < 0 {
+		return
+	}
+	t := float64(im.age) / impactTicks
+	e := 1 - (1-t)*(1-t)
+	for k := range 9 {
+		ang := float64(k)*0.7 + 0.4
+		d := 6 + e*64
+		x := im.x + math.Cos(ang)*d
+		y := im.y + math.Sin(ang)*d*0.55 - t*22
+		gfx.FillCircle(dst, float32(x), float32(y), float32(12+e*16), color.NRGBA{0xd2, 0xc0, 0x9c, uint8(170 * (1 - t))}, true)
+	}
+	if t < 0.55 {
+		for k := range 8 {
+			ang := float64(k)*0.785 + 0.3
+			r0, r1 := 8+e*58, 18+e*70
+			gfx.StrokeLine(dst, float32(im.x+math.Cos(ang)*r0), float32(im.y+math.Sin(ang)*r0*0.8), float32(im.x+math.Cos(ang)*r1), float32(im.y+math.Sin(ang)*r1*0.8), float32(3*(1-t)), color.NRGBA{0xff, 0xe8, 0xb4, uint8(230 * (1 - t/0.55))}, true)
+		}
+	}
+	if t < 0.3 {
+		gfx.FillCircle(dst, float32(im.x), float32(im.y), float32(10+e*30), color.NRGBA{0xff, 0xf4, 0xd8, uint8(150 * (1 - t/0.3))}, true)
+	}
+}
+
 // drawSoldier draws one soldier standing on (x, y), h tall, tilted by tilt radians: the
 // picture, or a plain figure in the side's colour.
 func (s *clashScene) drawSoldier(g *Game, dst *ebiten.Image, pic string, side int, x, y, h, tilt float64, alpha float32) {
@@ -576,6 +598,9 @@ func (s *clashScene) drawSoldier(g *Game, dst *ebiten.Image, pic string, side in
 			op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
 			op.GeoM.Translate(-float64(b.Dx())/2, -float64(b.Dy()))
 			op.GeoM.Scale(k, k)
+			if side == 1 { // the pictures face right; the foe is turned to face left
+				op.GeoM.Scale(-1, 1)
+			}
 			op.GeoM.Rotate(tilt)
 			op.GeoM.Translate(x, y)
 			op.ColorScale.ScaleAlpha(alpha)
