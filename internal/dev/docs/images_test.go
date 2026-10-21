@@ -693,6 +693,9 @@ func encodeGIF(t *testing.T, work string, frames []string, e gifEncoding, dst st
 		"-fps_mode", "cfr", "-filter_complex", filter, "-loop", "0", dst); err != nil {
 		return err
 	}
+	if err := slimGIF(dst, slimTolerance); err != nil {
+		return err
+	}
 	got, err := decodeFrames(t.Context(), dst)
 	if err != nil {
 		return err

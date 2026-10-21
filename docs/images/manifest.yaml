@@ -135,8 +135,11 @@ runs:
 #   tolerance: share of pixels that may differ in the stale check (default 0.02)
 #
 # The captures take a frame every 5 ticks (12 a second), and the GIFs play
-# them at the game's speed (fps 12), 960 wide. The README's first one, at
-# fps 10, walks the map at a little under twice the speed.
+# them at the game's speed (fps 12), 720 wide (the README shows them about
+# 400 wide in two columns, so 960 only cost bytes). The README's first one, at
+# fps 10, walks the map at a little under twice the speed. After ffmpeg writes a
+# GIF, slimGIF (internal/dev/docs/gifslim_test.go) keeps only the pixels that
+# changed by more than a small tolerance, which halves the size again.
 images:
   # The README's first picture: the town map, the dungeon, a battle with its
   # cut-in, and a talk, about 12 seconds.
@@ -151,37 +154,37 @@ images:
       - {run: battle, shots: "fight_b*", near: cutin, from: -5, to: 110}
       - {run: face, shots: "fa01[4-9]"}
       - {run: face, shots: "fb0[01][0-9]"}
-    gif: {fps: 10, width: 960, height: 540, colors: 96}
+    gif: {fps: 10, width: 720, height: 405, colors: 96}
   go-zen-face.gif:
     run: face
     frames:
       - {shots: "f*"}
-    gif: {fps: 12, width: 960, height: 540, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 128}
   go-zen-plaza.gif:
     run: plaza
     frames:
       - {shots: "p*"}
-    gif: {fps: 12, width: 960, height: 540, colors: 96}
+    gif: {fps: 12, width: 720, height: 405, colors: 96}
   go-zen-map.gif:
     run: map
     frames:
       - {shots: "m*"}
-    gif: {fps: 12, width: 960, height: 540, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 128}
   go-zen-dungeon.gif:
     run: dungeon
     frames:
       - {shots: "d*"}
-    gif: {fps: 12, width: 960, height: 540, colors: 96}
+    gif: {fps: 12, width: 720, height: 405, colors: 96}
   go-zen-battle.gif:
     run: battle
     frames:
       - {shots: "fight_b*", near: cutin, from: -290, to: -110}
-    gif: {fps: 12, width: 960, height: 540, colors: 96}
+    gif: {fps: 12, width: 720, height: 405, colors: 96}
   go-zen-cutin.gif:
     run: battle
     frames:
       - {shots: "fight_b*", near: cutin, from: -10, to: 120}
-    gif: {fps: 12, width: 960, height: 540, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 128}
   go-zen-tree.jpg:
     run: tree
     shot: s-tree
@@ -206,7 +209,7 @@ images:
       - {shots: "ca*"}
       - {shots: "cb*"}
       - {shots: "cc*"}
-    gif: {fps: 12, width: 960, height: 540, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 128}
   campaign-map.jpg:
     run: campaign
     shot: s-map
@@ -223,33 +226,33 @@ images:
       - {shots: "na*"}
       - {shots: "nb*"}
       - {shots: "nc*"}
-    gif: {fps: 12, width: 960, height: 540, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 128}
   novel-back.gif:
     run: novel
     frames:
       - {shots: "na04[4-9]"}
       - {shots: "na05[0-9]"}
       - {shots: "nb*"}
-    gif: {fps: 12, width: 960, height: 540, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 128}
   novel-skip.gif:
     run: novel
     frames:
       - {shots: "nb01[6-9]"}
       - {shots: "nb02*"}
       - {shots: "nc*"}
-    gif: {fps: 12, width: 960, height: 540, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 128}
   novel-language.gif:
     run: novel-language
     frames:
       - {shots: "la*"}
       - {shots: "lb*"}
       - {shots: "lc*"}
-    gif: {fps: 12, width: 960, height: 540, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 128}
   novel-stage.gif:
     run: novel-stage
     frames:
       - {shots: "st*"}
-    gif: {fps: 12, width: 960, height: 540, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 128}
   novel-panel.jpg:
     run: novel-panel
     shot: s-panel-state
@@ -268,22 +271,22 @@ images:
     run: playtest-reload
     frames:
       - {shots: "rl*"}
-    gif: {fps: 12, width: 960, height: 540, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 128}
   playtest-memo.gif:
     run: playtest-memo
     frames:
       - {shots: "me*"}
-    gif: {fps: 12, width: 960, height: 540, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 128}
   playtest-command.gif:
     run: playtest-panel
     frames:
       - {shots: "pc*"}
-    gif: {fps: 12, width: 960, height: 540, colors: 96}
+    gif: {fps: 12, width: 720, height: 405, colors: 96}
   playtest-jump.gif:
     run: playtest-panel
     frames:
       - {shots: "pj*"}
-    gif: {fps: 12, width: 960, height: 540, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 128}
   # The meter's numbers change from run to run; they are a small part of the picture.
   playtest-frames.jpg:
     run: playtest-panel
