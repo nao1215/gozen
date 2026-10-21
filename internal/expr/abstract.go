@@ -37,11 +37,19 @@ type Range struct {
 // Top is the value that can be anything.
 func Top() Range { return Range{Any: true} }
 
-// Number is exactly the number v.
-func Number(v float64) Range { return Range{Num: true, Lo: v, Hi: v, Set: []float64{v}} }
+// Number is exactly the number v. NaN has no place in an interval (every comparison with it is false), so it is any number.
+func Number(v float64) Range {
+	if math.IsNaN(v) {
+		return anyNumber()
+	}
+	return Range{Num: true, Lo: v, Hi: v, Set: []float64{v}}
+}
 
 // Between is the number interval lo to hi.
 func Between(lo, hi float64) Range {
+	if math.IsNaN(lo) || math.IsNaN(hi) {
+		return anyNumber()
+	}
 	if lo > hi {
 		lo, hi = hi, lo
 	}

@@ -116,8 +116,11 @@ func (f *formation) update(g *Game) {
 	case g.in.ok():
 		id := f.ids[f.sel]
 		if slices.Contains(g.st.Party, id) {
-			g.st.Leave(id)
-			g.sfx("cancel")
+			if g.st.Leave(id) {
+				g.sfx("cancel")
+			} else {
+				g.sfx("buzzer") // the last member stays
+			}
 		} else if g.st.Join(id) {
 			g.sfx("decide")
 		} else {
