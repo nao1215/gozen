@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
 )
 
 // designGame copies the design sample (a camp, an inn and a three-floor cave with a
@@ -24,19 +23,19 @@ func designGame(t *testing.T) string {
 }
 
 type designPersona struct {
-	ID       string  `json:"id"`
-	Cleared  bool    `json:"cleared"`
-	Days     int     `json:"days"`
-	Deepest  int     `json:"deepest"`
-	Level    int     `json:"level"`
-	Battles  int     `json:"battles"`
-	Lost     int     `json:"lost"`
-	Wipes    int     `json:"wipes"`
-	Retries  int     `json:"retries"`
-	Seed     uint64  `json:"seed"`
-	EndMin   float64 `json:"end_min"`
-	ClearT   float64 `json:"clear_t"`
-	Problems []string `json:"problem_list"`
+	ID       string         `json:"id"`
+	Cleared  bool           `json:"cleared"`
+	Days     int            `json:"days"`
+	Deepest  int            `json:"deepest"`
+	Level    int            `json:"level"`
+	Battles  int            `json:"battles"`
+	Lost     int            `json:"lost"`
+	Wipes    int            `json:"wipes"`
+	Retries  int            `json:"retries"`
+	Seed     uint64         `json:"seed"`
+	EndMin   float64        `json:"end_min"`
+	ClearT   float64        `json:"clear_t"`
+	Problems []string       `json:"problem_list"`
 	Rewards  map[string]int `json:"rewards"`
 	Events   []struct {
 		Kind   string  `json:"kind"`
