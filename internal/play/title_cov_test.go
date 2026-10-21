@@ -2,6 +2,7 @@ package play
 
 import (
 	"errors"
+	"image"
 	"os"
 	"path/filepath"
 	"slices"
@@ -58,9 +59,25 @@ func sysFrames(t *testing.T, g *Game, n int) (quit bool) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		g.Draw(ebiten.NewImage(1280, 720))
+		sysSafeDraw(g)
 	}
 	return false
+}
+
+// sysSafeDraw draws one frame without the paths that read pixels back (they need a running
+// game loop): the memo box gets a blank screenshot and quick memos are written directly.
+func sysSafeDraw(g *Game) {
+	if g.memo != nil && g.memo.shot == nil {
+		g.memo.shot = image.NewNRGBA(image.Rect(0, 0, 1280, 720))
+	}
+	for _, m := range g.quick {
+		m.shot = image.NewNRGBA(image.Rect(0, 0, 1280, 720))
+		if _, err := g.writeMemo(g.opts.MemoDir, m); err != nil {
+			g.failure = err
+		}
+	}
+	g.quick = nil
+	g.Draw(ebiten.NewImage(1280, 720))
 }
 
 // TestTitleNewGameThenQuit: choosing the first item of the title starts a new playthrough
