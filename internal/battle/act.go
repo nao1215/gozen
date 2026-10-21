@@ -461,7 +461,7 @@ func (b *Battle) effect(u, t *Unit, e *data.Effect, use *data.Usage, skill strin
 		}
 		v, err := e.Revive.Number(env)
 		if err != nil {
-			return nil
+			return []Step{{Kind: Message, Text: lang.T("(式のエラー: ") + err.Error() + ")"}}
 		}
 		t.HP = max(1, min(t.MHP(), int(math.Round(v))))
 		text := e.Message
