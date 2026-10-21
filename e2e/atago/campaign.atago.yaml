@@ -1,0 +1,95 @@
+version: '1'
+suite:
+  name: Gozen campaigns in check and sim campaign (ADR 0030)
+scenarios:
+- name: sim campaign measures a campaign, the same for the same seed
+  steps:
+  - fixture:
+      file: war/game.yaml
+      content: |
+        schema_version: 5
+        id: war
+        start: {location: hall, party: [scout]}
+        campaign:
+          location: hall
+          player: blue
+          turns: 6
+          actions: "2"
+          generals: {scout: {troops: 500}}
+          orders:
+            attack: {label: Attack, general: ready, target: border, march: true}
+            draft: {label: Draft, general: any, do: [{set: {general.troops: "general.troops + 100"}}]}
+  - fixture:
+      file: war/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {scout: {name: Scout, class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {hall: {name: Hall}}
+        factions:
+          blue: {name: Blue, capital: home}
+          red: {name: Red, capital: keep, ai: [{draft: "120"}, {march: true, keep: 600, where: "s.troops * 0.6 > t.troops", pick: min, by: t.troops}]}
+        regions:
+          home: {next: [field], owner: blue, troops: 300}
+          field: {next: [home, keep], troops: 200}
+          keep: {next: [field], owner: red, troops: 900}
+  - run:
+      command: gozen sim campaign war -n 20 --seed 3 --format json
+      deterministic:
+        runs: 2
+        compare:
+        - stdout
+        - stderr
+        - exit_code
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - '"runs": 20'
+        - '"win_rate":'
+        - '"regions_by_turn":'
+        - '"attack":'
+        - '"end_turn":'
+      stderr:
+        equals: ''
+  - run:
+      command: gozen sim campaign war -n 5 --as random
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['5 campaigns from seed 1 as random', 'regions held at the start of each turn']
+  - run:
+      command: gozen sim campaign war --as lazy
+  - assert:
+      exit_code: 2
+      stderr:
+        contains: '--as is greedy, random, ai, not "lazy"'
+- name: check reports a border written on one side and an unknown owner
+  steps:
+  - fixture:
+      file: bad/game.yaml
+      content: |
+        schema_version: 5
+        id: bad
+        start: {location: hall, party: [scout]}
+        campaign: {location: hall, player: blue, orders: {wait: {label: Wait}}}
+  - fixture:
+      file: bad/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {scout: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {hall: {name: Hall}}
+        factions: {blue: {capital: home}}
+        regions:
+          home: {next: [field], owner: blue}
+          field: {next: [], owner: green}
+  - run:
+      command: gozen check --format json bad
+  - assert:
+      exit_code: 1
+      stdout:
+        contains:
+        - "home borders field, but field's next does not name home"
+        - 'unknown faction \"green\"'
+        - '"path": "regions.field.owner"'

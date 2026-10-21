@@ -152,7 +152,7 @@ GameOver:
   text: "The text shown on the game over screen."
 Faction:
   _: "A side of a campaign. One is the player's; the others move by their ai rules at the end of each turn."
-  ai: "The rules the faction follows at the end of each turn, each in its order."
+  ai: "The rules the faction follows at the end of each turn, each in its order. The player's faction's rules are used only by gozen sim campaign --as ai."
   capital: "A region the faction holds at the start. Losing it is the player's default defeat."
   color: "The faction's colour, for the marks of its regions."
   name: "The name shown. The ID when omitted."

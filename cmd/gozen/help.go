@@ -24,7 +24,7 @@ var topPage = clihelp.Page{
 		"diagnostics to stderr.",
 	Commands: [][2]string{
 		{"check", "Check a game directory: definitions, references, expressions, assets, text layout"},
-		{"sim", "Measure play without a window: battle, dive, floors, design"},
+		{"sim", "Measure play without a window: battle, dive, floors, design, campaign"},
 		{"play", "Read and shoot real plays: trace, notes, shots"},
 		{"book", "Write the definitions and events as Markdown"},
 		{"pack", "Build what you ship: release, trial"},
@@ -67,6 +67,7 @@ var groups = map[string]clihelp.Page{
 			{"dive", "Simulate a dive floor by floor: growth, battles, and bosses"},
 			{"floors", "Show generated dungeon floors: maps, steps, and encounters"},
 			{"design", "Play the game with personas and write a design report"},
+			{"campaign", "Play a campaign many times with a strategy and print what it came to"},
 		},
 		Examples: []clihelp.Example{
 			{"fight 100 battles", "gozen sim battle game lesson -n 100"},
@@ -202,6 +203,25 @@ var pages = map[string]clihelp.Page{
 			{Title: "Town", Flags: []string{"shops", "rest", "supplies", "rest-cost", "rest-event", "back-item", "worn-hp", "worn-mp", "no-town"}},
 			{Title: "Events", Flags: []string{"events", "scene-event", "scene-when", "floor-event"}},
 			{Title: "Output", Flags: []string{"format", "arrival-saves"}},
+			general,
+		},
+	},
+	"sim campaign": {
+		Summary: "play a campaign many times and measure it",
+		Usage:   []string{"gozen sim campaign [OPTIONS] <game-dir>"},
+		About: "Plays the game's campaign (game.yaml campaign, ADR 0030) --campaigns times, headless, " +
+			"the player giving orders by --as: greedy marches when the clash's odds are good (its " +
+			"formulas with rand() at its middle), else gives another order; random gives any order " +
+			"it can; ai plays the player's faction by its own ai rules. Prints the win rate, the turns " +
+			"the campaigns ended in, the regions each faction held turn by turn, the factions that " +
+			"fell and when, and the orders given. Campaign i uses the seed --seed + i.",
+		Examples: []clihelp.Example{
+			{"measure 200 campaigns", "gozen sim campaign game"},
+			{"compare random play, as JSON", "gozen sim campaign game --as random -n 500 --format json"},
+		},
+		Groups: []clihelp.Group{
+			{Title: "Campaign", Flags: []string{"campaigns", "seed", "as", "orders"}},
+			{Title: "Output", Flags: []string{"format"}},
 			general,
 		},
 	},

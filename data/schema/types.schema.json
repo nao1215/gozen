@@ -6076,7 +6076,7 @@
       "description": "A side of a campaign. One is the player's; the others move by their ai rules at the end of each turn.",
       "properties": {
         "ai": {
-          "description": "The rules the faction follows at the end of each turn, each in its order.",
+          "description": "The rules the faction follows at the end of each turn, each in its order. The player's faction's rules are used only by gozen sim campaign --as ai.",
           "items": {
             "$ref": "#/$defs/FactionRule"
           },

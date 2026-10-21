@@ -220,7 +220,7 @@ func EndTurn(db *data.DB, st *rpg.State) ([]string, []data.Command) {
 		if f == c.Player || len(data.RegionsOf(db, st.Campaign(), f)) == 0 {
 			continue
 		}
-		lines = append(lines, factionTurn(db, st, f)...)
+		lines = append(lines, FactionTurn(db, st, f)...)
 	}
 	st.Vars[data.VarTurn] = float64(data.Turn(db, st.Campaign()) + 1)
 	for id := range c.Generals {
@@ -234,8 +234,9 @@ func EndTurn(db *data.DB, st *rpg.State) ([]string, []data.Command) {
 	return lines, nil
 }
 
-// factionTurn runs a faction's rules in their order.
-func factionTurn(db *data.DB, st *rpg.State, f string) []string {
+// FactionTurn runs a faction's rules in their order (the other factions at the end of
+// the player's turn; the player's own rules only in gozen sim campaign --as ai).
+func FactionTurn(db *data.DB, st *rpg.State, f string) []string {
 	var lines []string
 	for i := range db.Factions[f].AI {
 		r := &db.Factions[f].AI[i]
@@ -359,4 +360,45 @@ func Choices(ids []string, label func(string) string) []string {
 		out = append(out, label(id))
 	}
 	return append(out, lang.T("やめる"))
+}
+
+// Estimate is how a general's march on a region would likely go, without drawing any
+// random number: rand() is its middle (0.5) in the clash's formulas.
+func Estimate(db *data.DB, st *rpg.State, general, target string) (float64, float64) {
+	c := db.Game.Campaign
+	a := expr.Map{"troops": data.GeneralTroops(db, st.Campaign(), general), "might": c.Generals[general].Might, "faction": c.Player, "general": general, "from": "", "level": 0.0}
+	for _, n := range data.StatNames {
+		a[n] = 0.0
+	}
+	if act := st.Actors[general]; act != nil {
+		a["level"] = float64(act.Level)
+		for _, n := range data.StatNames {
+			a[n] = float64(act.Stat(n))
+		}
+	}
+	middle := expr.Func(func(args []any) (any, error) {
+		switch len(args) {
+		case 0:
+			return 0.5, nil
+		case 1:
+			n, _ := expr.ToNumber(args[0])
+			return math.Floor(n / 2), nil
+		}
+		x, _ := expr.ToNumber(args[0])
+		y, _ := expr.ToNumber(args[1])
+		return math.Floor((x + y) / 2), nil
+	})
+	env := expr.Chain{expr.Map{"a": a, "b": region(db, st, target), "rand": middle}, st.Env()}
+	or := func(e, def data.Expr) data.Expr {
+		if e.Set() {
+			return e
+		}
+		return def
+	}
+	power, perr := or(c.Clash.Power, defaultPower).Number(env)
+	defense, derr := or(c.Clash.Defense, defaultDefense).Number(env)
+	if perr != nil || derr != nil {
+		return 0, 1 // a formula that fails: no march looks good
+	}
+	return power, defense
 }

@@ -347,8 +347,6 @@ func (c *checker) campaign() {
 	c.ref(w+".player", "faction", cp.Player, ok)
 	if cp.Player == "" {
 		c.errorf(diag.Shape, w, "campaign.player is the player's faction")
-	} else if f := db.Factions[cp.Player]; f != nil && len(f.AI) > 0 {
-		c.errorf(diag.Shape, "factions."+cp.Player+".ai", "%s is the player's faction: its turn is the player's, not ai rules", cp.Player)
 	}
 	if cp.Turns < 0 {
 		c.errorf(diag.OutOfRange, w+".turns", "turns are 0 (no limit) or more, not %d", cp.Turns)
