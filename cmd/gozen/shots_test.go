@@ -150,6 +150,14 @@ func TestShotsReportFailuresPerShot(t *testing.T) {
 			t.Errorf("%+v", row)
 		}
 	}
+	// ADR 0012: the logs of the game's stdout and stderr stay in separate files for a failure.
+	for _, name := range []string{"01_reach", "02_field"} {
+		for _, logName := range []string{"game.stdout.log", "game.stderr.log"} {
+			if _, err := os.Stat(filepath.Join(r.out, "_work", name, logName)); err != nil {
+				t.Errorf("the failed shot %s keeps %s: %v", name, logName, err)
+			}
+		}
+	}
 	t.Setenv("GOZEN_SHOT_EXIT", "")
 	r = newShotRun(t, list)
 	t.Setenv("GOZEN_SHOT_NOPNG", "1")
