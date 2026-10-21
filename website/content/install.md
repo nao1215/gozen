@@ -15,9 +15,9 @@ gozen version
 
 `gozen` checks, simulates, documents and packages a game directory. It needs nothing else at run time: no cgo, no display, no sound device. The one exception is `gozen art mosaic` with a detection model, which needs a cgo build; see [Production tools](/production-tools/).
 
-From the first release on, `gozen` is also published as prebuilt binaries. Gozen has no release yet, so these channels start with it:
+`gozen` is also published as prebuilt binaries:
 
-<!-- verify: skip the Homebrew cask is published with the first release -->
+<!-- verify: skip installs from the Homebrew tap, outside the repository -->
 ```shell
 brew install --cask nao1215/tap/gozen   # macOS and Linux with Homebrew
 ```

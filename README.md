@@ -1,7 +1,6 @@
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
-<!-- Coverage shows its value once the central repository collects the first report. CI, Security, reviewdog, Go Reference, license and OpenSSF Scorecard show their values once the repository is public (Scorecard after its first run on main). -->
 ![Coverage](https://raw.githubusercontent.com/nao1215/octocovs-central-repo/main/badges/nao1215/gozen/coverage.svg)
 [![CI](https://github.com/nao1215/gozen/actions/workflows/ci.yml/badge.svg)](https://github.com/nao1215/gozen/actions/workflows/ci.yml)
 [![reviewdog](https://github.com/nao1215/gozen/actions/workflows/reviewdog.yml/badge.svg)](https://github.com/nao1215/gozen/actions/workflows/reviewdog.yml)
@@ -122,14 +121,14 @@ go install github.com/nao1215/gozen/cmd/gozen@latest
 
 With a C compiler, `CGO_ENABLED=1` adds the ONNX inference of `gozen art mosaic`.
 
-After the first release:
+With Homebrew:
 
-<!-- verify: skip the Homebrew cask is published with the first release -->
+<!-- verify: skip installs from the Homebrew tap, outside the repository -->
 ```sh
 brew install --cask nao1215/tap/gozen
 ```
 
-[The release page](https://github.com/nao1215/gozen/releases) will have archives for Linux, macOS and Windows (amd64, arm64) and `.deb`, `.rpm` and `.apk` packages. They have no ONNX inference.
+[The release page](https://github.com/nao1215/gozen/releases) has archives for Linux, macOS and Windows (amd64, arm64) and `.deb`, `.rpm` and `.apk` packages. They have no ONNX inference.
 
 As a library:
 
