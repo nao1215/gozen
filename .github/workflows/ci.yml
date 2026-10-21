@@ -264,8 +264,9 @@ jobs:
             ~/.cache/go-build
           key: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
           restore-keys: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-
+      # -short skips the heavy tests (covSlow); the full run without -race is in the test job.
       - name: Check non-graphics contracts for races
-        run: go test -race ./...
+        run: go test -race -short ./...
         env:
           CGO_ENABLED: "1"
       - name: Save the Go caches of this job
