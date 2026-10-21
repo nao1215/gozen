@@ -24,7 +24,7 @@ A theme name is lowercase letters, digits, `-` and `_`, starting with a letter. 
 
 ### Where the pictures come from: the `gozen` command
 
-The five themes (`cave`, `ice`, `ruins`, `castle`, `crystal`) are embedded (`go:embed`) in `cmd/internal/themes`, a package only the `gozen` command imports. The runtime (`play`, `gfx`, `schema` and the root package) never does, so a game binary and `go get github.com/nao1215/gozen` stay as small as before, and a game that uses no theme carries no picture. `go-arch-lint` forbids `play` to depend on the commands, and a test lists the dependencies of the runtime packages to say it again.
+The themes (`cave`, `ice`, `ruins`, `castle`, `crystal`, `temple`, `sewer`, `forest`, `tomb`) are embedded (`go:embed`) in `cmd/internal/themes`, a package only the `gozen` command imports. The runtime (`play`, `gfx`, `schema` and the root package) never does, so a game binary and `go get github.com/nao1215/gozen` stay as small as before, and a game that uses no theme carries no picture. `go-arch-lint` forbids `play` to depend on the commands, and a test lists the dependencies of the runtime packages to say it again.
 
 - `gozen theme list` prints the names with a line on each.
 - `gozen theme add <name> <game-dir>` copies the five files, with the license of the pictures as `LICENSE.txt`, to `assets/dungeon/themes/<name>/`. It needs no network. A file the game already has is kept (the command says `kept`); `--force` replaces it. An unknown name exits 2 with GZN2402; a directory without `game.yaml` exits 1 with GZN1110.

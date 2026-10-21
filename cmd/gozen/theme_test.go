@@ -9,7 +9,7 @@ import (
 
 func TestThemeCommands(t *testing.T) {
 	out, _ := invoke(t, 0, "theme", "list")
-	for _, n := range []string{"castle", "cave", "crystal", "ice", "ruins"} {
+	for _, n := range []string{"castle", "cave", "crystal", "forest", "ice", "ruins", "sewer", "temple", "tomb"} {
 		if !strings.Contains(out, n+" ") {
 			t.Errorf("theme list lacks %s: %q", n, out)
 		}

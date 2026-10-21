@@ -14,7 +14,7 @@ import (
 )
 
 func TestEveryThemeIsComplete(t *testing.T) {
-	want := []string{"castle", "cave", "crystal", "ice", "ruins"}
+	want := []string{"castle", "cave", "crystal", "forest", "ice", "ruins", "sewer", "temple", "tomb"}
 	var got []string
 	for _, th := range List() {
 		got = append(got, th.Name)

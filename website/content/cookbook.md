@@ -725,7 +725,7 @@ A look can also set `battle_background`, `music`, `battle_music` and `no_map`. R
 
 ## Use a dungeon theme
 
-A theme is a wall, a floor, a ceiling and a door picture with matching colors. `gozen theme list` names the five that come with the `gozen` binary (`cave`, `ice`, `ruins`, `castle`, `crystal`); `gozen theme add` copies one into the game, with no network.
+A theme is a wall, a floor, a ceiling and a door picture with matching colors. `gozen theme list` names the nine that come with the `gozen` binary (`cave`, `ice`, `ruins`, `castle`, `crystal`, `temple`, `sewer`, `forest`, `tomb`); `gozen theme add` copies one into the game, with no network.
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -752,7 +752,7 @@ locations:
 
 The five themes in the same corridor, `cave`, `ice`, `ruins`, `castle` and `crystal`:
 
-![The five dungeon themes seen in one corridor](/images/dungeon-themes.jpg)
+![The nine dungeon themes seen in one corridor](/images/dungeon-themes.jpg)
 
 `gozen check` fails with `GZN1111` when a named theme is not in the game. Reference: [Dungeon](/schema/#dungeon), [DungeonLook](/schema/#dungeonlook).
 
