@@ -15,6 +15,19 @@ import (
 	"github.com/goccy/go-yaml/parser"
 )
 
+// guardYAML runs a YAML decode and turns a panic of the decoder into an error. Fix files and
+// the YAML files that name pictures are untrusted input (SECURITY.md), and the decoder panics
+// on some shapes, such as a list of five numbers where a rectangle of four is wanted. This
+// is the guard of internal/layer1/decodeguard; the mosaic component may not import layer 1.
+func guardYAML(decode func() error) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("yaml: the decoder rejected the input: %v", r)
+		}
+	}()
+	return decode()
+}
+
 type Fix struct {
 	Add   [][4]int `yaml:"add,omitempty" json:"add,omitempty"`
 	Poly  [][]int  `yaml:"poly,omitempty" json:"poly,omitempty"`
@@ -60,15 +73,20 @@ func LoadFixes(path string) (Fixes, error) {
 	if err != nil {
 		return nil, err
 	}
-	file, err := parser.ParseBytes(b, 0)
-	if err != nil {
+	if err := guardYAML(func() error {
+		file, err := parser.ParseBytes(b, 0)
+		if err != nil {
+			return err
+		}
+		if len(file.Docs) != 1 || file.Docs[0].Body == nil {
+			return errors.New("fix YAML requires one nonempty document")
+		}
+		if err := yaml.NodeToValue(file.Docs[0].Body, &fx, yaml.Strict()); err != nil {
+			return fmt.Errorf("%s: %w", path, err)
+		}
+		return nil
+	}); err != nil {
 		return nil, err
-	}
-	if len(file.Docs) != 1 || file.Docs[0].Body == nil {
-		return nil, errors.New("fix YAML requires one nonempty document")
-	}
-	if err := yaml.NodeToValue(file.Docs[0].Body, &fx, yaml.Strict()); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	if fx == nil {
 		fx = Fixes{}

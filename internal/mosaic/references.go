@@ -45,7 +45,7 @@ func references(base fs.FS, prefix string, extensions []string) (pics, missing [
 			return err
 		}
 		var v any
-		if err := yaml.Unmarshal(b, &v); err != nil {
+		if err := guardYAML(func() error { return yaml.Unmarshal(b, &v) }); err != nil {
 			return err
 		}
 		walkStrings(v, func(s string) {
