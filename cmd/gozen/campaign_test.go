@@ -54,3 +54,40 @@ func TestSimCampaign(t *testing.T) {
 	write(t, filepath.Join(plain, "assets", "x.png"), "x")
 	invoke(t, 2, "sim", "campaign", plain)
 }
+
+func TestSimCampaignCompare(t *testing.T) {
+	dir := campaignDir(t)
+	for _, mode := range []string{"strategies", "tactics"} {
+		out, _ := invoke(t, 0, "sim", "campaign", dir, "-n", "3", "--compare", mode, "--format", "json")
+		again, _ := invoke(t, 0, "sim", "campaign", dir, "-n", "3", "--compare", mode, "--format", "json")
+		if out != again {
+			t.Fatalf("--compare %s: same seeds gave different JSON", mode)
+		}
+		var got campaignsim.Comparison
+		if err := json.Unmarshal([]byte(out), &got); err != nil {
+			t.Fatal(err)
+		}
+		if got.Mode != mode || len(got.Rows) == 0 {
+			t.Fatalf("--compare %s: %+v", mode, got)
+		}
+		for _, row := range got.Rows {
+			if row.WinRate < 0 || row.WinRate > 1 || row.MeanTurns <= 0 || len(row.Regions) == 0 {
+				t.Fatalf("--compare %s row: %+v", mode, row)
+			}
+			for _, region := range row.Regions {
+				if region.EndHolders == nil || region.MeanChanges < 0 || region.PlayerWinRateByTurn == nil {
+					t.Fatalf("--compare %s region: %+v", mode, region)
+				}
+			}
+		}
+	}
+	out, _ := invoke(t, 0, "sim", "campaign", dir, "-n", "2", "--compare", "strategies")
+	if !strings.Contains(out, "mean regions held") || !strings.Contains(out, "mean first taken turn") {
+		t.Fatalf("comparison table is incomplete:\n%s", out)
+	}
+	invoke(t, 2, "sim", "campaign", dir, "--compare", "factions")
+	ordinary, _ := invoke(t, 0, "sim", "campaign", dir, "-n", "2", "--format", "json")
+	if strings.Contains(ordinary, "region_metrics") {
+		t.Fatalf("ordinary JSON unexpectedly changed: %s", ordinary)
+	}
+}

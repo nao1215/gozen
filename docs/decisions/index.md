@@ -41,6 +41,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0030](0030-campaigns.md) | Campaigns: regions held by factions over turns (`schema_version: 5`) | Accepted (stage 1 done) | |
 | [0032](0032-dungeon-themes.md) | Dungeon themes: `theme` in `dungeon` and `looks`, pictures added by `gozen theme add` | Accepted (done) | |
 | [0033](0033-route-exploration-command.md) | Headless route exploration | Accepted | |
+| [0034](0034-campaign-comparison.md) | Campaign strategy and tactic comparison | Accepted (2026-10-22) | |
 
 The source of truth for the current public packages is `api/public.txt` and [Boundaries](../architecture/boundaries.md), not this list of ADRs.
 

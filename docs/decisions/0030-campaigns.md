@@ -132,6 +132,8 @@ A region's `landmark` is a cut-out picture the map stands on its point (`landmar
 
 `gozen sim campaign` plays a campaign many times with the internal rules (as `sim battle` and `sim dive` do), campaign *i* from the seed `--seed` + *i*, and prints, or writes as JSON, the win rate, the turns the campaigns ended in, the mean of the regions each faction held at the start of each turn, the factions that fell and their mean turn, the orders given and how the marches went ([ADR 0021](0021-query-and-commands.md) decision 4: the numbers come from the CLI's JSON). The player's strategy is `greedy` (march when the clash's odds, its formulas with `rand()` at its middle, are 1.15 or better; else an order with a general, the strongest first; else another order), `random`, or `ai`: the player's faction follows its own `ai` rules, which a game may therefore write for its player's faction too (they are used only here).
 
+For same-seed strategy and tactic comparisons with per-region ownership measures, see [ADR 0034](0034-campaign-comparison.md).
+
 ### No new public API
 
 `api/public.txt` does not change. `api/schema.txt` gains `Game.Campaign`, `DB.Regions`, `DB.Factions` and the commands `Command.Order`, `Command.EndTurn` and `Command.GameOver`. It also gains the fields `Clash.Armies`, `Clash.Layout`, `General.Army` and `Enemy.Army`. The new types have no alias in `schema`; the helpers that read a campaign's state are functions of `internal/layer2/gamedata`, not methods of `DB`.
