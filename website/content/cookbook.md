@@ -720,6 +720,39 @@ locations:
 
 A look can also set `battle_background`, `music`, `battle_music` and `no_map`. Reference: [DungeonLook](/schema/#dungeonlook), [Dungeon](/schema/#dungeon).
 
+## Use a dungeon theme
+
+A theme is a wall, a floor, a ceiling and a door picture with matching colors. `gozen theme list` names the five that come with the `gozen` binary (`cave`, `ice`, `ruins`, `castle`, `crystal`); `gozen theme add` copies one into the game, with no network.
+
+<!-- verify: each fixture=cli -->
+```shell
+gozen theme add cave game
+gozen theme add ice game
+```
+
+Then name it in the dungeon, and in a look for the deeper floors. What the YAML writes itself (`wall`, `door`, `floor`, `ceiling`, `floor_texture`, `ceiling_texture`) wins over the theme, and a look with a theme replaces the dungeon's theme for what the look does not write.
+
+<!-- verify: parse the theme folders come from gozen theme add, which the snippet above runs on its own copy -->
+```yaml
+locations:
+  tower:
+    name: Tower
+    dungeon:
+      theme: cave
+      generate: {width: 11, height: 11, start: S, place: [{char: ">", far: true}]}
+      tiles:
+        S: {start: true}
+        ">": {name: Stairs up, do: [{dive: tower, floor: floor + 1}]}
+      looks:
+        - {when: "var.floor >= 3", area: Deeper floors, theme: ice, door: gate.jpg}
+```
+
+The five themes in the same corridor, `cave`, `ice`, `ruins`, `castle` and `crystal`:
+
+![The five dungeon themes seen in one corridor](/images/dungeon-themes.jpg)
+
+`gozen check` fails with `GZN1111` when a named theme is not in the game. Reference: [Dungeon](/schema/#dungeon), [DungeonLook](/schema/#dungeonlook).
+
 ## Show a map with points and roads
 
 A location with `map` is a picture with points on it (`schema_version: 3`). The party walks the open roads from point to point; a point with `to` leads into that location, and one with only `do` runs its commands there.

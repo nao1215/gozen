@@ -17,6 +17,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - A line run from the F8 panel's Command tab (or a script's `do`) at the title, where no game runs, says so and is traced as a `dev_do` line with that error; it left an empty message and no trace line. A line whose YAML cannot be read is traced with its error too.
 - The Edit and play loop page said F5 waits in a menu until the field is back; the field menu, the settings, the gallery and the character book are rebuilt at once and stay open, and only a battle or another screen makes the reload wait.
 
+### Added
+
+- Dungeon themes (ADR 0032). `theme: cave` in a dungeon or in one of its `looks` fills the walls, door, floor and ceiling pictures and the floor and ceiling colors from `assets/dungeon/themes/cave/`; anything the YAML writes itself wins. `gozen theme list` names the five themes (`cave`, `ice`, `ruins`, `castle`, `crystal`) and `gozen theme add <name> <game-dir>` copies one into a game (it keeps files the game already has; `--force` replaces them). The pictures are embedded in the `gozen` command only, so game binaries do not carry them, and no network is used. `gozen check` fails with the new GZN1111 when a named theme is not in the game and says to run `gozen theme add`. The pictures are CC BY 4.0. The schema gains `Dungeon.theme` and `DungeonLook.theme`; the schema version does not change.
+
 ## v0.2.0 - 2026-10-21
 
 Visual novels join RPGs: schema version 4 adds the novel window's roll back, skip, staging, voices and a second language, and `--dev` gains the F8 development panel. A game of schema version 3 or earlier needs no change.

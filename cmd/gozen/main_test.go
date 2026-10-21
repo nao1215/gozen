@@ -90,7 +90,7 @@ func TestHelpAndArgumentContract(t *testing.T) {
 		}
 		if sub != "" {
 			invoke(t, 2, append(strings.Fields(sub), "--unknown")...)
-			if sub != "version" && sub != "art fetch" {
+			if sub != "version" && sub != "art fetch" && sub != "theme list" {
 				invoke(t, 2, strings.Fields(sub)...)
 			}
 		}

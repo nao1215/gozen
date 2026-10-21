@@ -1,0 +1,78 @@
+version: '1'
+suite:
+  name: Gozen dungeon themes (ADR 0032)
+scenarios:
+- name: theme list names every theme
+  steps:
+  - run:
+      command: gozen theme list
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['castle ', 'cave ', 'crystal ', 'ice ', 'ruins ']
+      stderr:
+        equals: ''
+      changes: {created: [], modified: [], deleted: []}
+- name: theme add copies a theme and the game then checks clean
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: cave, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {cave: {name: Cave, dungeon: {theme: cave, map: \"#####\\n#S..#\\n#####\", tiles: {S: {start: true}}}}}\n"
+  - run:
+      command: gozen theme add cave g
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['wrote assets/dungeon/themes/cave/wall.jpg', 'wrote assets/dungeon/themes/cave/theme.yaml']
+      stderr:
+        equals: ''
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+- name: theme add keeps what the game has unless --force
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: cave, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {cave: {name: Cave, dungeon: {theme: cave, map: \"#####\\n#S..#\\n#####\", tiles: {S: {start: true}}}}}\n"
+  - fixture:
+      file: g/assets/dungeon/themes/cave/wall.jpg
+      content: mine
+  - run:
+      command: gozen theme add cave g
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['kept assets/dungeon/themes/cave/wall.jpg', 'wrote assets/dungeon/themes/cave/floor.jpg']
+  - assert:
+      file:
+        path: g/assets/dungeon/themes/cave/wall.jpg
+        equals: mine
+  - run:
+      command: gozen theme add cave g --force
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: 'wrote assets/dungeon/themes/cave/wall.jpg'
+- name: theme add refuses an unknown theme
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: cave, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {cave: {name: Cave, dungeon: {theme: cave, map: \"#####\\n#S..#\\n#####\", tiles: {S: {start: true}}}}}\n"
+  - run:
+      command: gozen theme add lava g
+  - assert:
+      exit_code: 2
+      stderr:
+        contains: ['unknown theme', '[GZN2402]']

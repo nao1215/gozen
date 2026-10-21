@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design), play (trace, notes, shots), book, pack (release, trial), art (prompt, mosaic, fetch, faces, puppet), version and help.
+description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design), play (trace, notes, shots), book, pack (release, trial), art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
 weight: 60
 toc: true
 ---
@@ -22,6 +22,7 @@ gozen help GZN1101                     # explain a diagnostic code
 | [book](#book) | Write the definitions and events as Markdown |
 | [pack](#pack) | Build what you ship: [release](#pack-release), [trial](#pack-trial) |
 | [art](#art) | Picture and asset tools: [prompt](/production-tools/#gozen-art-prompt), [mosaic](/production-tools/#gozen-art-mosaic), [fetch](#art-fetch), [faces](#art-faces), [puppet](#art-puppet) |
+| [theme](#theme) | Dungeon themes: [add](#theme-add) the pictures of a theme to a game, [list](#theme-list) the themes |
 | [version and help](#version-and-help) | Print the version; show a command's help or explain a diagnostic code |
 
 A group alone (`gozen sim`) exits 2 and lists its commands. `gozen sim --help` shows the group's page.
@@ -360,6 +361,35 @@ gozen art puppet streamer/puppet.yaml --out streamer-packed  # write it with sma
 | `-o, --out DIR` | Write the puppet YAML and the cut pictures (each with `at`) to this new directory. The written YAML has no comments. |
 
 It needs nothing beyond the gozen binary: no cgo, display or sound device.
+
+## theme
+
+A dungeon theme is a wall, a floor, a ceiling and a door picture with colors that go together. The `gozen` binary carries five themes (`cave`, `ice`, `ruins`, `castle`, `crystal`); `gozen theme add` copies one into a game, and `theme: cave` in a [dungeon](/schema/#dungeon) or one of its [looks](/schema/#dungeonlook) then fills the walls, floor, ceiling, door and colors that the YAML does not write. The pictures are not part of the game runtime, so a game that uses no theme does not carry them.
+
+### theme list
+
+Prints the name of each theme with a line on how it looks.
+
+<!-- verify: each fixture=cli -->
+```shell
+gozen theme list
+```
+
+### theme add
+
+Copies `wall.jpg`, `floor.jpg`, `ceiling.jpg`, `door.jpg` (1024x1024) and `theme.yaml` (the far fog and map colors), with `LICENSE.txt` for the pictures, to `assets/dungeon/themes/<name>/` of the game. No network is used. A file the game already has is kept, so your own edits stay.
+
+<!-- verify: each fixture=cli -->
+```shell
+gozen theme add cave game          # the files of the cave theme go to game/assets/dungeon/themes/cave/
+gozen theme add cave game --force  # replace the files that are already there
+```
+
+| Option | Meaning |
+|:--|:--|
+| `--force` | Replace the files the game already has. |
+
+An unknown theme name exits 2 (`GZN2402`), and a directory without `game.yaml` exits 1 (`GZN1110`). A game that says `theme: cave` without the folder fails `gozen check` with `GZN1111` and the line `run gozen theme add cave <game-dir>`. The pictures are CC BY 4.0, see [ASSETS.md](https://github.com/nao1215/gozen/blob/main/ASSETS.md).
 
 ## version and help
 
