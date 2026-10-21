@@ -481,6 +481,7 @@ var english = map[string]string{
 	"← →: タブ　↑↓: 選ぶ　Z: 実行　X / F8: 閉じる": "Left/Right: tab   Up/Down: choose   Z: act   X / F8: close",
 	"変えた": "Changed",
 	"始めた（パネルを閉じると進む）":                                 "Started (it goes on when the panel closes)",
+	"ゲームが始まっていない（始めるか読み込んでから）":                        "No game is running (start or load one first)",
 	"イベント %s がない":                                     "no event %s",
 	"YAML の命令を一行（例: set: {flag.met: true}）。Enter で実行": "One line of YAML commands (e.g. set: {flag.met: true}); Enter runs it",
 	"　%s の声": "  %s's voice",

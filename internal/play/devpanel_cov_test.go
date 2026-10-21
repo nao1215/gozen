@@ -118,6 +118,27 @@ func TestDevPanelStateTabEditsValues(t *testing.T) {
 	}
 }
 
+// TestDevPanelCommandAtTheTitle: at the title no game runs, so a line typed into the Command
+// tab is refused with a message that says so, and traced with it, not with an empty one.
+func TestDevPanelCommandAtTheTitle(t *testing.T) {
+	g, _ := btlOpen(t, Options{Location: "-", Development: true}, "", "")
+	if g.st != nil {
+		t.Fatal("not at the title")
+	}
+	var out strings.Builder
+	g.tr = newTracer(&out)
+	g.togglePanel()
+	g.panel.tab = tabCommand
+	g.devDo("set: {flag.typed: true}")
+	if strings.Trim(g.panel.msg, "[] ") == "" {
+		t.Fatalf("message %q", g.panel.msg)
+	}
+	ls := btlLinesFrom(t, &out, "dev_do")
+	if len(ls) != 1 || ls[0]["error"] != g.panel.msg {
+		t.Fatalf("trace: %s", out.String())
+	}
+}
+
 func btlLinesFrom(t *testing.T, out *strings.Builder, kinds ...string) []traceLine {
 	t.Helper()
 	return traceLines(t, []byte(out.String()), kinds...)

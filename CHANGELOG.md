@@ -13,6 +13,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - `gozen check` checks `set: {actor.<id>.tactics: {...}}` written as a mapping: an unknown `mode`, a `preset` that `battle.tactic_presets` does not have (the member had no rows in battle) and `mode: preset` without `preset` are errors.
 - A point of a map or a spot of a painted scene written without `at` (`fork: {}`) is the error "needs at", as one written empty (`fork:`) was; it loaded and stood at the corner of the picture.
 - A key written beside a YAML merge (`<<: *base`) in `data/` or `game.yaml` overrides the merged one, as YAML means, wherever it is written. It was the error "duplicate key" when written after the merge and lost to the merge when written before it. A merge of a sequence of mappings is still not read.
+- A line run from the F8 panel's Command tab (or a script's `do`) at the title, where no game runs, says so and is traced as a `dev_do` line with that error; it left an empty message and no trace line. A line whose YAML cannot be read is traced with its error too.
 - The Edit and play loop page said F5 waits in a menu until the field is back; the field menu, the settings, the gallery and the character book are rebuilt at once and stay open, and only a battle or another screen makes the reload wait.
 
 ## v0.2.0 - 2026-10-21
