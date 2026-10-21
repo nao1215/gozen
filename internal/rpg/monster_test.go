@@ -48,7 +48,7 @@ func TestMonsterReserveBreedAndSave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := rpg.Parse(db, saved, rand.New(rand.NewPCG(4, 4)))
+	got, err := rpg.Parse(db, saved, rand.New(rand.NewPCG(4, 4))) //nolint:gosec // Fixed seed keeps the save round-trip reproducible.
 	if err != nil {
 		t.Fatal(err)
 	}

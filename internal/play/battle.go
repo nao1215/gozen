@@ -32,12 +32,12 @@ const (
 )
 
 type battleScene struct {
-	b            *battle.Battle
-	onEnd        func(res int)
-	troop        string
-	retry        []byte
-	phase        bphase
-	bg           data.Picture
+	b     *battle.Battle
+	onEnd func(res int)
+	troop string
+	retry []byte
+	phase bphase
+	bg    data.Picture
 
 	queue []battle.Step
 	stepT int
@@ -171,7 +171,7 @@ func (g *Game) startBattle(troop string, done func(int)) *battleScene {
 	g.Image(data.CG{})
 	s := &battleScene{
 		b: b, onEnd: done,
-		hp:           map[*battle.Unit]float64{}, mp: map[*battle.Unit]float64{},
+		hp: map[*battle.Unit]float64{}, mp: map[*battle.Unit]float64{},
 		flashU: map[*battle.Unit]int{}, shakeU: map[*battle.Unit]int{},
 		react: map[*battle.Unit]reaction{}, gone: map[*battle.Unit]int{},
 	}

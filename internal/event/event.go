@@ -458,8 +458,7 @@ func (r *Runner) offerCaptures(troopID string) {
 	if troop == nil {
 		return
 	}
-	for i := len(troop.Members) - 1; i >= 0; i-- {
-		id := troop.Members[i]
+	for _, id := range slices.Backward(troop.Members) {
 		e := r.db.Enemies[id]
 		if e == nil || e.Recruit == nil || e.Boss {
 			continue

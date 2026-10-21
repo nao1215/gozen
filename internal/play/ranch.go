@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
+
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 )
@@ -227,5 +228,7 @@ func (r *ranch) draw(g *Game, dst *ebiten.Image) {
 	gfx.DrawText(dst, strings.ToUpper(strings.ReplaceAll(r.step, "_", " "))+"    Z: choose    X: back", 48, sh-52, sizeS, g.th.dim)
 }
 
-var _ scene = (*ranch)(nil)
-var _ modal = (*ranch)(nil)
+var (
+	_ scene = (*ranch)(nil)
+	_ modal = (*ranch)(nil)
+)

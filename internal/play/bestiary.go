@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
+
 	"github.com/nao1215/gozen/internal/expr"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 )
@@ -28,6 +29,7 @@ func (g *Game) bestiaryKey() {
 func (g *Game) bestiarySeen(id string) bool {
 	return g.opts.Development || g.st != nil && expr.Truthy(g.st.Vars["bestiary."+id+".seen"])
 }
+
 func (g *Game) bestiaryDefeated(id string) float64 {
 	if g.st == nil {
 		if g.opts.Development {
@@ -41,6 +43,7 @@ func (g *Game) bestiaryDefeated(id string) float64 {
 	}
 	return n
 }
+
 func (g *Game) bestiaryCaught(id string) float64 {
 	if g.st == nil {
 		return 0
@@ -80,6 +83,7 @@ func (s *bestiaryScreen) update(g *Game) {
 		g.sfx("cursor")
 	}
 }
+
 func (s *bestiaryScreen) draw(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
 	g.drawPicture(dst, g.db.Game.TitleBG, 0, 0, sw, sh, 1)
@@ -106,10 +110,11 @@ func (s *bestiaryScreen) draw(g *Game, dst *ebiten.Image) {
 		}
 	}
 	if len(s.ids) > 0 {
-		s.drawPage(g, dst, s.ids[s.sel], left, sh)
+		s.drawPage(g, dst, s.ids[s.sel], left)
 	}
 	gfx.DrawTextOutlineColor(dst, "Up / Down: choose    X / F4: close", sw/2, sh-38, sizeS*0.85, g.th.text, g.th.window, 1)
 }
+
 func drawBestiaryImage(g *Game, dst *ebiten.Image, path string, x, y, w, h float64) {
 	if path == "" {
 		return
@@ -125,7 +130,8 @@ func drawBestiaryImage(g *Game, dst *ebiten.Image, path string, x, y, w, h float
 	op.GeoM.Translate(x+(w-iw*scale)/2, y+(h-ih*scale)/2)
 	gfx.DrawImage(dst, img, op)
 }
-func (s *bestiaryScreen) drawPage(g *Game, dst *ebiten.Image, id string, left, sh float64) {
+
+func (s *bestiaryScreen) drawPage(g *Game, dst *ebiten.Image, id string, left float64) {
 	e := g.db.Enemies[id]
 	x := left + 28
 	w := g.screenWidth() - x - 32
@@ -207,5 +213,7 @@ func (s *bestiaryScreen) drawPage(g *Game, dst *ebiten.Image, id string, left, s
 }
 func (g *Game) screenWidth() float64 { w, _ := g.screen(); return w }
 
-var _ scene = (*bestiaryScreen)(nil)
-var _ modal = (*bestiaryScreen)(nil)
+var (
+	_ scene = (*bestiaryScreen)(nil)
+	_ modal = (*bestiaryScreen)(nil)
+)

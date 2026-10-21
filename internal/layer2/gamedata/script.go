@@ -2,6 +2,7 @@ package gamedata
 
 import (
 	"errors"
+	"maps"
 	"strconv"
 	"strings"
 
@@ -109,9 +110,7 @@ func itemLines(src string) []int {
 func Fork(db *DB) *DB {
 	out := *db
 	out.Actors = make(map[string]*Actor, len(db.Actors))
-	for id, actor := range db.Actors {
-		out.Actors[id] = actor
-	}
+	maps.Copy(out.Actors, db.Actors)
 	out.Locations = make(map[string]*Location, len(db.Locations))
 	for id, l := range db.Locations {
 		if l != nil && l.Dungeon != nil {

@@ -110,7 +110,10 @@ func (s *State) Recruit(species string, level, plus int, skills []string) (strin
 	if e == nil || s.DB.Classes[s.DB.MonsterClass(species)] == nil {
 		return "", false
 	}
-	seq, _ := s.Vars["monster.next"].(float64)
+	seq, ok := s.Vars["monster.next"].(float64)
+	if !ok {
+		seq = 0
+	}
 	id := fmt.Sprintf("monster_%d", int(seq)+1)
 	for s.Actors[id] != nil || s.DB.Actors[id] != nil {
 		seq++
@@ -181,10 +184,10 @@ func (s *State) ReleaseMonster(id string) bool {
 func (s *State) Breed(first, second string, skills []string) (string, error) {
 	a, b := s.Actors[first], s.Actors[second]
 	if first == second || a == nil || b == nil || a.Monster == "" || b.Monster == "" {
-		return "", fmt.Errorf("breed needs two distinct owned monsters")
+		return "", errors.New("breed needs two distinct owned monsters")
 	}
 	if s.DB.Breeding == nil {
-		return "", fmt.Errorf("breeding is not defined")
+		return "", errors.New("breeding is not defined")
 	}
 	child := s.DB.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus)
 	if child == "" {

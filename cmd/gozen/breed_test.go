@@ -14,7 +14,7 @@ func TestSimBreedJSON(t *testing.T) {
 	for path, body := range testgame.MonsterFiles() {
 		write(t, filepath.Join(dir, path), body)
 	}
-	write(t, filepath.Join(dir, "assets/x.png"), "fixture")
+	write(t, filepath.Join(dir, "assets", "x.png"), "fixture")
 	out, _ := invoke(t, 0, "sim", "breed", dir, "--format", "json")
 	var result struct {
 		Reachable   []breedRow `json:"reachable"`

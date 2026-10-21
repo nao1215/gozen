@@ -337,7 +337,9 @@ func commandEditing(ctx context.Context, dir string, limit time.Duration, out, g
 		}
 		if err != nil {
 			cancel()
-			<-done
+			if waitErr := <-done; waitErr != nil {
+				return fmt.Errorf("wait for sample game: %w", waitErr)
+			}
 			return err
 		}
 		edited = true

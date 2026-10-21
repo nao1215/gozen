@@ -184,7 +184,9 @@ func (s *State) bind() (*State, error) {
 			continue
 		}
 		if e := db.Enemies[a.Monster]; e != nil && db.Classes[db.MonsterClass(a.Monster)] != nil {
-			if db.Actors[id] != nil { continue }
+			if db.Actors[id] != nil {
+				continue
+			}
 			if !forked {
 				db = data.Fork(db)
 				s.DB = db
