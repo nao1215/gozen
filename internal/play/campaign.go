@@ -128,7 +128,15 @@ func (s *atlasScene) drawCampaign(g *Game, dst *ebiten.Image, sel string) {
 	c := g.db.Game.Campaign
 	cs := g.st.Campaign()
 	// the band: the turn, the player's faction, the actions
-	band := fmt.Sprintf(lang.T("第%dターン　%s　行動 %d/%d"), data.Turn(g.db, cs), campaign.FactionName(g.db, c.Player), int(data.ActionsLeft(g.db, cs)), int(data.TurnActions(g.db, cs)))
+	turn := data.Turn(g.db, cs)
+	when := fmt.Sprintf(lang.T("第%dターン"), turn)
+	if c.Calendar == "week" {
+		when = fmt.Sprintf(lang.T("%d年目 第%d週"), (turn-1)/52+1, (turn-1)%52+1)
+	}
+	band := when + "　" + campaign.FactionName(g.db, c.Player)
+	if c.Count != "orders" {
+		band += fmt.Sprintf(lang.T("　行動 %d/%d"), int(data.ActionsLeft(g.db, cs)), int(data.TurnActions(g.db, cs)))
+	}
 	if c.Turns > 0 {
 		band = fmt.Sprintf(lang.T("%s　（全 %d ターン）"), band, c.Turns)
 	}
@@ -189,7 +197,7 @@ func (s *atlasScene) drawGenerals(g *Game, dst *ebiten.Image, sw, sh float64) {
 		a := g.db.Actors[id]
 		cx := x + 12 + cell*float64(i) + cell/2
 		alpha := uint8(255)
-		if data.Acted(g.db, cs, id) {
+		if data.Acted(g.db, cs, id) || data.Out(cs, id) > 0 {
 			alpha = 120
 		}
 		gfx.FillCircle(dst, float32(cx), float32(y+16+face/2), float32(face/2+3), withAlpha(g.th.accent, alpha), true)
@@ -203,6 +211,9 @@ func (s *atlasScene) drawGenerals(g *Game, dst *ebiten.Image, sw, sh float64) {
 			dst.DrawImage(img, op)
 		}
 		troops := fmt.Sprintf(lang.T("兵 %d"), int(data.GeneralTroops(g.db, cs, id)))
+		if out := data.Out(cs, id); out > 0 {
+			troops = fmt.Sprintf(lang.T("離脱 あと%d"), out)
+		}
 		gfx.DrawText(dst, troops, cx, y+24+face, sizeS*0.85, withAlpha(g.th.text, alpha))
 	}
 }

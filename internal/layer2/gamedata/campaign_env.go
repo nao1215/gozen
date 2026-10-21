@@ -58,6 +58,8 @@ func (e campaignEnv) Lookup(name string) (any, bool) {
 		return nil, true
 	case "next_to":
 		return expr.Func(e.nextTo), true
+	case "orders":
+		return ordersView(e), true
 	}
 	return nil, false
 }
@@ -121,9 +123,31 @@ func Acted(_ *DB, st CampaignState, id string) bool {
 	return expr.Truthy(v)
 }
 
-// Ready reports whether the general can march: joined, not marched this turn, with troops.
+// Out is the turns a beaten general is still away for (0: here).
+func Out(st CampaignState, id string) int {
+	v, _ := st.Var(GeneralVar(id, "out"))
+	f, _ := expr.ToNumber(v)
+	return int(f)
+}
+
+// Ready reports whether the general can march: joined, here, not marched this turn, with
+// troops.
 func Ready(db *DB, st CampaignState, id string) bool {
-	return st.Joined(id) && !Acted(db, st, id) && GeneralTroops(db, st, id) > 0
+	return st.Joined(id) && Out(st, id) == 0 && !Acted(db, st, id) && GeneralTroops(db, st, id) > 0
+}
+
+// Used is how many times the order was given this turn.
+func Used(st CampaignState, id string) int {
+	v, _ := st.Var(OrderVar(id, "used"))
+	f, _ := expr.ToNumber(v)
+	return int(f)
+}
+
+// Taken is how many regions the player took this turn.
+func Taken(st CampaignState) int {
+	v, _ := st.Var(VarTaken)
+	f, _ := expr.ToNumber(v)
+	return int(f)
 }
 
 // Turn is the campaign's turn (1 at the start).
@@ -297,6 +321,11 @@ func (e campaignEnv) campaign() expr.Map {
 	m := expr.Map{
 		"turn": float64(Turn(e.db, e.st)), "actions": TurnActions(e.db, e.st), "actions_left": ActionsLeft(e.db, e.st),
 		"target": e.str(VarTarget), "general": e.str(VarGeneral), "result": e.str(VarResult), "turns": 0.0, "player": "",
+		"taken": float64(Taken(e.st)), "week": 0.0, "year": 0.0,
+	}
+	if c != nil && c.Calendar == "week" {
+		t := Turn(e.db, e.st) - 1
+		m["week"], m["year"] = float64(t%52+1), float64(t/52+1)
 	}
 	if c != nil {
 		m["turns"], m["player"] = float64(c.Turns), c.Player
@@ -337,7 +366,7 @@ func (e campaignEnv) general(id string) expr.Map {
 	}
 	return expr.Map{
 		"id": id, "name": name, "troops": GeneralTroops(db, st, id), "might": might,
-		"acted": Acted(db, st, id), "joined": st.Joined(id), "ready": Ready(db, st, id),
+		"acted": Acted(db, st, id), "joined": st.Joined(id), "ready": Ready(db, st, id), "out": float64(Out(st, id)),
 	}
 }
 
@@ -377,10 +406,11 @@ var (
 		return nil, ""
 	})
 	tGeneral = objType("a general", map[string]*vtype{
-		"id": tStr, "name": tStr, "troops": tNum, "might": tNum, "acted": tBool, "joined": tBool, "ready": tBool,
+		"id": tStr, "name": tStr, "troops": tNum, "might": tNum, "acted": tBool, "joined": tBool, "ready": tBool, "out": tNum,
 	}, nil)
 	tCampaign = objType("campaign", map[string]*vtype{
 		"turn": tNum, "turns": tNum, "actions": tNum, "actions_left": tNum, "player": tStr, "target": tStr, "general": tStr, "result": tStr,
+		"taken": tNum, "week": tNum, "year": tNum,
 	}, nil)
 )
 
@@ -393,3 +423,42 @@ var (
 		"b": tRegion, "power": tNum, "defense": tNum,
 	}
 )
+
+// OrderOpen reports whether the turn's count lets the order be given now: in count:
+// orders, given fewer than per_turn times (or an until_taken march before a region is
+// taken); in count: actions, the actions it costs are left (and an until_taken march has
+// taken no region yet). Its when is the caller's.
+func OrderOpen(db *DB, st CampaignState, id string) bool {
+	c := db.Game.Campaign
+	if c == nil || c.Orders[id] == nil {
+		return false
+	}
+	o := c.Orders[id]
+	if o.UntilTaken && Taken(st) > 0 {
+		return false
+	}
+	if c.Count == "orders" {
+		return o.UntilTaken || Used(st, id) < max(1, o.PerTurn)
+	}
+	return ActionsLeft(db, st) >= float64(o.CostOf())
+}
+
+// ordersView is orders.<id>: open (the count lets it be given now) and used.
+type ordersView campaignEnv
+
+func (v ordersView) Field(id string) (any, bool) {
+	c := v.db.Game.Campaign
+	if c == nil || c.Orders[id] == nil {
+		return nil, true
+	}
+	return expr.Map{"open": OrderOpen(v.db, v.st, id), "used": float64(Used(v.st, id))}, true
+}
+
+func (v ordersView) Keys() []string {
+	if c := v.db.Game.Campaign; c != nil {
+		return c.OrderIDs()
+	}
+	return nil
+}
+
+var tOrder = objType("an order", map[string]*vtype{"open": tBool, "used": tNum}, nil)

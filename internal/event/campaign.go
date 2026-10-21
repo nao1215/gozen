@@ -2,6 +2,7 @@ package event
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
@@ -40,6 +41,31 @@ func (r *Runner) order(c *data.Command) Request {
 			}
 		})
 	}
+	if o.Generals > 1 && oc.General != "" && !oc.Asked() && len(oc.With) < o.Generals-1 {
+		var ids []string
+		for _, g := range campaign.Generals(r.db, r.st, o) {
+			if g != oc.General && !slices.Contains(oc.With, g) {
+				ids = append(ids, g)
+			}
+		}
+		if len(ids) > 0 {
+			labels := make([]string, 0, len(ids)+2)
+			for _, id := range ids {
+				labels = append(labels, campaign.GeneralLabel(r.db, r.st, id))
+			}
+			labels = append(labels, lang.T("このまま出陣する"), lang.T("やめる"))
+			return r.ask(c, lang.T("ほかに誰が行く？"), labels, func(n int) {
+				switch {
+				case n < len(ids):
+					next := *oc
+					next.With = append(slices.Clone(oc.With), ids[n])
+					r.push([]data.Command{{Order: &next}})
+				case n == len(ids):
+					r.push([]data.Command{{Order: oc.MarchNow()}})
+				}
+			})
+		}
+	}
 	if o.Target != "" && oc.Target == "" {
 		ids := campaign.Targets(r.db, r.st, o)
 		if len(ids) == 0 {
@@ -52,14 +78,14 @@ func (r *Runner) order(c *data.Command) Request {
 			}
 		})
 	}
-	if battle := campaign.Fight(r.db, r.st, o, oc.General, oc.Target); battle != nil {
+	if battle := campaign.Fight(r.db, r.st, oc.ID, oc.General, oc.Target); battle != nil {
 		// The battle comes first, its end writes the troops back (clash), then the do.
 		r.push(o.Do)
 		r.push(battle)
 		r.emit(CampaignEffect{Kind: "order", Order: oc.ID, General: oc.General, Target: oc.Target, Result: "battle", Turn: data.Turn(r.db, r.st.Campaign())})
 		return nil
 	}
-	r.notes = append(r.notes, campaign.Give(r.db, r.st, o, oc.General, oc.Target)...)
+	r.notes = append(r.notes, campaign.Give(r.db, r.st, oc.ID, oc.General, oc.With, oc.Target)...)
 	result := optional.Value[string](r.st.Vars[data.VarResult])
 	r.emit(CampaignEffect{Kind: "order", Order: oc.ID, General: oc.General, Target: oc.Target, Result: result, Turn: data.Turn(r.db, r.st.Campaign())})
 	r.push(o.Do)

@@ -1,6 +1,6 @@
 # ADR 0030: Campaigns — regions held by factions over turns
 
-Status: Accepted (2026-10-21). Stages 1 (the YAML words, their checks, the expression names and the generated state names), 2 (the rules, the random numbers in a save, the prototype rewritten) 3 (the screen), 4 (`gozen sim campaign`) and 5 (battles) are done; the rest is under "Plan" below. Home: `internal/layer2/gamedata` (YAML types, checks and the expression names), `internal/rpg` (the names on a play, `set`), `internal/layer3/campaign` (the rules).
+Status: Accepted (2026-10-21). Stages 1 (the YAML words, their checks, the expression names and the generated state names), 2 (the rules, the random numbers in a save, the prototype rewritten) 3 (the screen), 4 (`gozen sim campaign`) and 5 (battles) and 7 (the rules in the manner of Kichikuou Rance) are done; the rest is under "Plan" below. Home: `internal/layer2/gamedata` (YAML types, checks and the expression names), `internal/rpg` (the names on a play, `set`), `internal/layer3/campaign` (the rules).
 
 ## Users and problem
 
@@ -93,6 +93,21 @@ The campaign's place is shown as a map (`map:`) whose points are named like the 
 
 An order with `fight: battle` decides its march by the game's own battle, the one its dungeons and fields fight: the general alone (`fighters`) against the target region's `defend` troop, with the general's level, stats, equipment, skills and HP. A region without `defend` is decided by the numbers. In the battle `self.troops` is a general's troops and a foe's the garrison of the region marched on, so a skill's formula may read them. When it ends, the troops are written back: a win takes the region, the general keeping the share of the troops of the HP left (a fifth at least) and leaving the garrison share there; a loss or a flight leaves the clash's `lost` and the region holds. A lost battle is no game over and asks no retry. The other factions' marches stay numeric. The battle is an ordinary request, so a `Policy`, `Explore` and `gozen sim campaign` answer it as any battle.
 
+### Two ways to count a turn
+
+The author chose the manner of Kichikuou Rance for the sample (2026-10-21): the base (regions, factions, turns, generals and troops, the map) is shared, and what differs is chosen in YAML. The manner of Sengoku Rance stays as the default.
+
+| | `count: actions` (default) | `count: orders` |
+| --- | --- | --- |
+| A turn has | `actions`, which each order spends by its `cost` | each order `per_turn` times (1 by default) |
+| A march | once per general | with `until_taken`, again and again until a region is taken; each general still marches once |
+
+- `calendar: week` makes a turn a week: `campaign.week` and `campaign.year` (52 weeks), and the band says "Year 1, week 3".
+- `generals: N` on an order lets N generals march together: after the first the order asks "Who else marches?" (or takes `with:` written); their troops add up in the clash (the leader's might and stats), and what is left is shared in proportion.
+- `defeat: {out: N}`: a general whose troops a march brings to 0 is away for N turns (`generals.<id>.out`), then serves again with no troops until drafted. No general is lost for good (the author's rule: no heavy penalties).
+- A region's own numbers (economy, defense) are its `values`, and orders change them (`set: {target.defense: "target.defense - 10"}` for sabotage); the clash's `defense` may read `b.defense`.
+- `orders.<id>.open` and `orders.<id>.used` tell what the count allows now; the menu lists an order while it is open and its `when` holds.
+
 ### Measuring
 
 `gozen sim campaign` plays a campaign many times with the internal rules (as `sim battle` and `sim dive` do), campaign *i* from the seed `--seed` + *i*, and prints, or writes as JSON, the win rate, the turns the campaigns ended in, the mean of the regions each faction held at the start of each turn, the factions that fell and their mean turn, the orders given and how the marches went ([ADR 0021](0021-query-and-commands.md) decision 4: the numbers come from the CLI's JSON). The player's strategy is `greedy` (march when the clash's odds, its formulas with `rand()` at its middle, are 1.15 or better; else an order with a general, the strongest first; else another order), `random`, or `ai`: the player's faction follows its own `ai` rules, which a game may therefore write for its player's faction too (they are used only here).
@@ -110,7 +125,9 @@ An order with `fight: battle` decides its march by the game's own battle, the on
 | 3 | The screen: the flags in the owners' colours, the band, the meters, the region's window, the generals, orders from a region, the script and the trace | Done |
 | 4 | `gozen sim campaign` (`-n`, `--seed`, `--as greedy|random|ai`, `--format json`): the win rate, the turns, the regions by turn, the factions' falls, the orders; the CLI's E2E | Done |
 | 5 | The bridge to battles: `fight: battle`, `defend`, `self.troops`, the troops written back | Done |
-| Later | The remaining checks, the sample, the documents | |
+| 7 | Rules in the manner of Kichikuou Rance, chosen in YAML: a calendar of weeks, orders counted per kind (`count: orders`, `per_turn`), a march open until a region is taken (`until_taken`), generals marching together (`generals`), a beaten general away for some turns (`defeat.out`) | Done |
+| 8 | The clash screen (a march's numbers shown as a battle of units) | |
+| 6 | The remaining checks, the sample, the documents | |
 
 ## Alternatives
 

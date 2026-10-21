@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/nao1215/gozen/internal/expr"
 	"github.com/nao1215/gozen/internal/layer1/optional"
@@ -39,7 +40,7 @@ func Order(db *data.DB, id string) *data.Order {
 // Open reports why the order cannot be given now ("" when it can): its when, or the
 // actions left.
 func Open(db *data.DB, st *rpg.State, o *data.Order) string {
-	if data.ActionsLeft(db, st.Campaign()) < float64(o.CostOf()) {
+	if !data.OrderOpen(db, st.Campaign(), OrderID(db, o)) {
 		return lang.T("このターンの行動が残っていない")
 	}
 	ok, err := o.When.Bool(st.Env())
@@ -118,42 +119,95 @@ func FactionName(db *data.DB, id string) string {
 	return id
 }
 
-// Give gives the order with its general and target (each "" when it needs none): it binds
-// them as general and target, spends the actions, and marches; the lines tell how the
-// march went. The order's do is run by the caller next.
-func Give(db *data.DB, st *rpg.State, o *data.Order, general, target string) []string {
+// Spend binds the order's general (with those marching with it) and target, and counts
+// it: the actions it costs (count: actions) and the times it was given this turn.
+func Spend(db *data.DB, st *rpg.State, id string, general string, with []string, target string) {
+	o := db.Game.Campaign.Orders[id]
 	st.Vars[data.VarGeneral], st.Vars[data.VarTarget], st.Vars[data.VarResult] = general, target, ""
-	st.Vars[data.VarActions] = data.ActionsLeft(db, st.Campaign()) - float64(o.CostOf())
+	st.Vars[data.VarMarching] = strings.Join(append([]string{general}, with...), ",")
+	if db.Game.Campaign.Count != "orders" {
+		st.Vars[data.VarActions] = data.ActionsLeft(db, st.Campaign()) - float64(o.CostOf())
+	}
+	st.Vars[data.OrderVar(id, "used")] = float64(data.Used(st.Campaign(), id) + 1)
+}
+
+// Give gives the order with its general (and those marching with it) and target (each ""
+// when it needs none): it spends it (Spend) and marches; the lines tell how the march
+// went. The order's do is run by the caller next.
+func Give(db *data.DB, st *rpg.State, id string, general string, with []string, target string) []string {
+	o := db.Game.Campaign.Orders[id]
+	Spend(db, st, id, general, with, target)
 	if !o.March {
 		return nil
 	}
 	c := db.Game.Campaign
-	troops := data.GeneralTroops(db, st.Campaign(), general)
-	a := expr.Map{"troops": troops, "might": c.Generals[general].Might, "faction": c.Player, "general": general, "from": "", "level": 0.0}
-	// The general is the actor of the dungeon and the battles: the same level and stats.
+	generals := append([]string{general}, with...)
+	a := Side(db, st, generals)
+	won, left, held, power, defense := clash(db, st, a, target)
+	name := GeneralLabelName(db, general)
+	if won {
+		garrison := math.Floor(left * c.Clash.GarrisonShare())
+		share(db, st, generals, left-garrison)
+		take(st, target, c.Player, garrison)
+		st.Vars[data.VarResult] = "won"
+		st.Vars[data.VarTaken] = float64(data.Taken(st.Campaign()) + 1)
+		return []string{fmt.Sprintf(lang.T("%sが%sを落とした（%d 対 %d）"), name, data.RegionName(db, target), int(power), int(defense))}
+	}
+	share(db, st, generals, left)
+	st.Vars[data.RegionVar(target, "troops")] = held
+	st.Vars[data.VarResult] = "held"
+	return []string{fmt.Sprintf(lang.T("%sは持ちこたえた（%d 対 %d）"), data.RegionName(db, target), int(power), int(defense))}
+}
+
+// Side is the player's side of a march, as the clash's formulas read it (a): the troops of
+// all its generals, and the leader's (the first's) might, level and stats; the generals
+// are the game's actors, so these are the dungeons' and battles' numbers.
+func Side(db *data.DB, st *rpg.State, generals []string) expr.Map {
+	c := db.Game.Campaign
+	troops := 0.0
+	for _, g := range generals {
+		troops += data.GeneralTroops(db, st.Campaign(), g)
+	}
+	lead := generals[0]
+	a := expr.Map{"troops": troops, "might": c.Generals[lead].Might, "faction": c.Player, "general": lead, "from": "", "level": 0.0}
 	for _, n := range data.StatNames {
 		a[n] = 0.0
 	}
-	if act := st.Actors[general]; act != nil {
+	if act := st.Actors[lead]; act != nil {
 		a["level"] = float64(act.Level)
 		for _, n := range data.StatNames {
 			a[n] = float64(act.Stat(n))
 		}
 	}
-	won, left, held, power, defense := clash(db, st, a, target)
-	st.Vars[data.GeneralVar(general, "acted")] = 1.0
-	name := GeneralLabelName(db, general)
-	if won {
-		garrison := math.Floor(left * c.Clash.GarrisonShare())
-		st.Vars[data.GeneralVar(general, "troops")] = left - garrison
-		take(st, target, c.Player, garrison)
-		st.Vars[data.VarResult] = "won"
-		return []string{fmt.Sprintf(lang.T("%sが%sを落とした（%d 対 %d）"), name, data.RegionName(db, target), int(power), int(defense))}
+	return a
+}
+
+// share gives the troops left back to the generals who marched, each in proportion to the
+// troops it led, marks them as marched, and sends one left with none away (defeat.out).
+func share(db *data.DB, st *rpg.State, generals []string, left float64) {
+	cs := st.Campaign()
+	before := make([]float64, len(generals))
+	total := 0.0
+	for i, g := range generals {
+		before[i] = data.GeneralTroops(db, cs, g)
+		total += before[i]
 	}
-	st.Vars[data.GeneralVar(general, "troops")] = left
-	st.Vars[data.RegionVar(target, "troops")] = held
-	st.Vars[data.VarResult] = "held"
-	return []string{fmt.Sprintf(lang.T("%sは持ちこたえた（%d 対 %d）"), data.RegionName(db, target), int(power), int(defense))}
+	given := 0.0
+	for i, g := range generals {
+		n := 0.0
+		switch {
+		case i == len(generals)-1:
+			n = left - given
+		case total > 0:
+			n = math.Floor(left * before[i] / total)
+		}
+		given += n
+		st.Vars[data.GeneralVar(g, "troops")] = max(0, n)
+		st.Vars[data.GeneralVar(g, "acted")] = 1.0
+		if n <= 0 && db.Game.Campaign.Defeat.Out > 0 {
+			st.Vars[data.GeneralVar(g, "out")] = float64(db.Game.Campaign.Defeat.Out)
+		}
+	}
 }
 
 // GeneralLabelName is the name of a general's actor.
@@ -226,7 +280,15 @@ func EndTurn(db *data.DB, st *rpg.State) ([]string, []data.Command) {
 	st.Vars[data.VarTurn] = float64(data.Turn(db, st.Campaign()) + 1)
 	for id := range c.Generals {
 		delete(st.Vars, data.GeneralVar(id, "acted"))
+		if out := data.Out(st.Campaign(), id); out > 0 {
+			st.Vars[data.GeneralVar(id, "out")] = float64(out - 1)
+		}
 	}
+	for id := range c.Orders {
+		delete(st.Vars, data.OrderVar(id, "used"))
+	}
+	delete(st.Vars, data.VarTaken)
+	st.Vars[data.VarMarching] = ""
 	st.Vars[data.VarGeneral], st.Vars[data.VarTarget], st.Vars[data.VarResult] = "", "", ""
 	st.Vars[data.VarActions] = data.TurnActions(db, st.Campaign())
 	if ev := db.Events[c.OnTurn]; ev != nil {
@@ -409,13 +471,13 @@ func Estimate(db *data.DB, st *rpg.State, general, target string) (float64, floa
 // marched, and returns the battle, the general alone against the region's troop, each end
 // followed by the internal clash command that writes the troops back. Nil when the target
 // has no troop to fight (the march is then decided by the numbers, Give).
-func Fight(db *data.DB, st *rpg.State, o *data.Order, general, target string) []data.Command {
+func Fight(db *data.DB, st *rpg.State, id string, general, target string) []data.Command {
+	o := db.Game.Campaign.Orders[id]
 	r := db.Regions[target]
 	if o.Fight != "battle" || r == nil || r.Defend == "" || db.Troops[r.Defend] == nil {
 		return nil
 	}
-	st.Vars[data.VarGeneral], st.Vars[data.VarTarget], st.Vars[data.VarResult] = general, target, ""
-	st.Vars[data.VarActions] = data.ActionsLeft(db, st.Campaign()) - float64(o.CostOf())
+	Spend(db, st, id, general, nil, target)
 	st.Vars[data.GeneralVar(general, "acted")] = 1.0
 	no := false
 	return []data.Command{{
@@ -444,9 +506,10 @@ func AfterBattle(db *data.DB, st *rpg.State, won bool) []string {
 		}
 		left := math.Floor(troops * max(0.2, rate))
 		garrison := math.Floor(left * c.Clash.GarrisonShare())
-		st.Vars[data.GeneralVar(general, "troops")] = left - garrison
+		share(db, st, []string{general}, left-garrison)
 		take(st, target, c.Player, garrison)
 		st.Vars[data.VarResult] = "won"
+		st.Vars[data.VarTaken] = float64(data.Taken(st.Campaign()) + 1)
 		return []string{fmt.Sprintf(lang.T("%sが%sを落とした"), name, data.RegionName(db, target))}
 	}
 	a := expr.Map{"troops": troops, "might": c.Generals[general].Might, "faction": c.Player, "general": general, "from": "", "level": 0.0}
@@ -462,7 +525,17 @@ func AfterBattle(db *data.DB, st *rpg.State, won bool) []string {
 	if err != nil {
 		n = troops / 2
 	}
-	st.Vars[data.GeneralVar(general, "troops")] = max(0, math.Floor(n))
+	share(db, st, []string{general}, max(0, math.Floor(n)))
 	st.Vars[data.VarResult] = "held"
 	return []string{fmt.Sprintf(lang.T("%sは%sの攻めを持ちこたえた"), data.RegionName(db, target), name)}
+}
+
+// OrderID is the id of an order of the campaign.
+func OrderID(db *data.DB, o *data.Order) string {
+	for id, x := range db.Game.Campaign.Orders {
+		if x == o {
+			return id
+		}
+	}
+	return ""
 }

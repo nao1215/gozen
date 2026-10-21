@@ -182,10 +182,13 @@ Order:
   cost: "The actions it takes. Default 1."
   do: "The commands run after the march (if any), with general and target bound."
   fight: "battle to decide the march by the game's battle: the general alone against the target's defend troop. A win takes the region with the share of the troops of the HP left; a loss leaves the clash's lost. Omitted: by the numbers of clash."
+  generals: "How many generals may march together (1 when omitted). After the first, the order asks who else goes, until March now is chosen or all are taken."
   general: "Who leads it: ready (joined, has not marched this turn, has troops), any (joined), or omitted for none."
   label: "The text shown in the menu."
   march: "If true, the general's troops march on the target before do (see clash)."
+  per_turn: "How many times a turn the order may be given when campaign.count is orders (1 when omitted)."
   target: "The region it is given: border (not the player's, next to one of the player's), own, any, or omitted for none."
+  until_taken: "If true, the march may be given again and again in a turn until a region is taken (each general still marches once)."
   when: "An expression that must hold for the order to be listed."
   where: "An expression over t (a region) that narrows the target."
 OrderCmd:
@@ -193,3 +196,4 @@ OrderCmd:
   general: "The general who leads it, an ID of campaign.generals."
   id: "The ID of the order in campaign.orders."
   target: "The target region, an ID of regions."
+  with: "The generals who march with general, IDs of campaign.generals (an order whose generals is above 1)."

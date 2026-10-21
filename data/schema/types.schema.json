@@ -1815,6 +1815,19 @@
           },
           "x-type": "expression"
         },
+        "calendar": {
+          "description": "How the turns are named: omitted (turn N) or week (a turn is a week of a 52-week year; campaign.week and campaign.year).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "clash": {
           "$ref": "#/$defs/Clash",
           "description": "How a march is decided.",
@@ -1827,6 +1840,32 @@
             "version": "0, 1, 2"
           },
           "x-type": "[Clash](#clash)"
+        },
+        "count": {
+          "description": "How a turn's orders are counted: actions (the turn's actions, each order spending its cost; the default) or orders (each order may be given per_turn times a turn).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "defeat": {
+          "$ref": "#/$defs/Defeat",
+          "description": "What becomes of a general whose troops a march brings to 0. A general is never lost for good.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Defeat](#defeat)"
         },
         "end_turn": {
           "description": "The label of the menu entry that ends the turn. The engine's words when omitted.",
@@ -4393,6 +4432,26 @@
             "version": "0, 1, 2"
           },
           "x-type": "string → [Troop](#troop)"
+        }
+      },
+      "type": "object"
+    },
+    "Defeat": {
+      "additionalProperties": false,
+      "description": "What becomes of a general beaten to no troops.",
+      "properties": {
+        "out": {
+          "description": "The turns the general is away for (0: stays, and only needs troops again).",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
         }
       },
       "type": "object"
@@ -9333,6 +9392,19 @@
           },
           "x-type": "string"
         },
+        "generals": {
+          "description": "How many generals may march together (1 when omitted). After the first, the order asks who else goes, until March now is chosen or all are taken.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
         "label": {
           "description": "The text shown in the menu.",
           "type": "string",
@@ -9359,6 +9431,19 @@
           },
           "x-type": "boolean"
         },
+        "per_turn": {
+          "description": "How many times a turn the order may be given when campaign.count is orders (1 when omitted).",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
         "target": {
           "description": "The region it is given: border (not the player's, next to one of the player's), own, any, or omitted for none.",
           "type": "string",
@@ -9371,6 +9456,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "until_taken": {
+          "description": "If true, the march may be given again and again in a turn until a region is taken (each general still marches once).",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
         },
         "when": {
           "description": "An expression that must hold for the order to be listed.",
@@ -9457,6 +9555,25 @@
                 "version": "0, 1, 2"
               },
               "x-type": "string"
+            },
+            "with": {
+              "description": "The generals who march with general, IDs of campaign.generals (an order whose generals is above 1).",
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ],
+              "x-contract": {
+                "default": "empty list",
+                "legacy_default": "empty list",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string[]"
             }
           },
           "type": "object"

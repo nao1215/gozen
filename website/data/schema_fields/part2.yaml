@@ -168,3 +168,6 @@ EffectCue:
   seconds: "How long the effect takes. The default is the effect's own."
   color: "With `fade`, the color the screen goes to. The default is black."
   hold: "With `fade`, how many seconds the screen stays on the color."
+Defeat:
+  _: "What becomes of a general beaten to no troops."
+  out: "The turns the general is away for (0: stays, and only needs troops again)."

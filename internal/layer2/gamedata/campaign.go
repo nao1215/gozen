@@ -93,6 +93,14 @@ type Campaign struct {
 	Lost string `yaml:"lost"`
 	// OnTurn is the event run at the start of each turn after the first.
 	OnTurn string `yaml:"on_turn"`
+	// Calendar names the turns: "" (turn N) or week (a turn is a week of a 52-week
+	// year: campaign.week and campaign.year).
+	Calendar string `yaml:"calendar"`
+	// Count is how a turn's orders are counted: actions (the turn's actions, each order
+	// spending its cost; the default) or orders (each order may be given per_turn times).
+	Count string `yaml:"count"`
+	// Defeat is what becomes of a general whose troops a march brings to 0.
+	Defeat Defeat `yaml:"defeat"`
 	// EndTurn is the label of the entry that ends the turn (the engine's words when empty).
 	EndTurn string `yaml:"end_turn"`
 	// Generals are the actors who lead the player's marches, with their first troops.
@@ -104,6 +112,12 @@ type Campaign struct {
 	Orders map[string]*Order `yaml:"orders"`
 
 	orderIDs []string
+}
+
+// Defeat is what becomes of a general beaten to no troops: away for Out turns (0: stays,
+// and only needs troops again). A general is never lost for good.
+type Defeat struct {
+	Out int `yaml:"out"`
 }
 
 // General is an actor's place in a campaign: the troops they lead at the start and their
@@ -151,8 +165,17 @@ type Order struct {
 	March bool `yaml:"march"`
 	// Fight decides the march by a battle (battle): the general fights the target's defend
 	// troop, the battle of the game's dungeons and fields. Empty: by the numbers of Clash.
-	Fight string    `yaml:"fight"`
-	Do    []Command `yaml:"do"`
+	Fight string `yaml:"fight"`
+	// PerTurn is how many times a turn the order may be given when campaign.count is
+	// orders (1 when 0).
+	PerTurn int `yaml:"per_turn"`
+	// UntilTaken lets a march be given again and again in a turn until a region is taken
+	// (each general still marches once).
+	UntilTaken bool `yaml:"until_taken"`
+	// Generals is how many generals may march together (1 when 0): after the first, the
+	// order asks who else goes, until March is chosen or all are taken.
+	Generals int       `yaml:"generals"`
+	Do       []Command `yaml:"do"`
 }
 
 // CostOf is the actions the order takes.
@@ -184,7 +207,7 @@ var (
 // CampaignNames are the expression names of a campaign: the regions, the factions, the
 // campaign's turn and actions, the generals, the order's general and target, and
 // next_to(region, faction).
-var CampaignNames = []string{"region", "faction", "campaign", "generals", "general", "target", "next_to"}
+var CampaignNames = []string{"region", "faction", "campaign", "generals", "general", "target", "next_to", "orders"}
 
 // The generated names of a campaign's state (var.<name>).
 const (
@@ -193,12 +216,19 @@ const (
 	VarTarget  = "campaign_target"
 	VarGeneral = "campaign_general"
 	VarResult  = "campaign_result"
+	// VarTaken is how many regions the player took this turn; VarMarching the generals of
+	// the running march, joined by commas.
+	VarTaken    = "campaign_taken"
+	VarMarching = "campaign_marching"
 )
 
 // RegionVar is the generated name of a region's field (owner, troops or a value).
 func RegionVar(id, field string) string { return "region_" + id + "_" + field }
 
-// GeneralVar is the generated name of a general's field (troops, acted).
+// OrderVar is the generated name of an order's field (used: times given this turn).
+func OrderVar(id, field string) string { return "order_" + id + "_" + field }
+
+// GeneralVar is the generated name of a general's field (troops, acted, out).
 func GeneralVar(id, field string) string { return "general_" + id + "_" + field }
 
 // RegionIDs are the regions in the order they were written.
@@ -233,7 +263,8 @@ func (db *DB) campaignStateNames(add func(name, typ string)) {
 	}
 	add(VarTurn, "number")
 	add(VarActions, "number")
-	for _, n := range []string{VarTarget, VarGeneral, VarResult} {
+	add(VarTaken, "number")
+	for _, n := range []string{VarTarget, VarGeneral, VarResult, VarMarching} {
 		add(n, "string")
 	}
 	values := ValueNames(db)
@@ -248,6 +279,10 @@ func (db *DB) campaignStateNames(add func(name, typ string)) {
 		for id := range c.Generals {
 			add(GeneralVar(id, "troops"), "number")
 			add(GeneralVar(id, "acted"), "number")
+			add(GeneralVar(id, "out"), "number")
+		}
+		for id := range c.Orders {
+			add(OrderVar(id, "used"), "number")
 		}
 	}
 }
@@ -357,6 +392,15 @@ func (c *checker) campaign() {
 	if cp.Player == "" {
 		c.errorf(diag.Shape, w, "campaign.player is the player's faction")
 	}
+	if cp.Calendar != "" && cp.Calendar != "week" {
+		c.errorf(diag.NotAWord, w+".calendar", "calendar is week, not %q", cp.Calendar)
+	}
+	if cp.Count != "" && cp.Count != "actions" && cp.Count != "orders" {
+		c.errorf(diag.NotAWord, w+".count", "count is actions or orders, not %q", cp.Count)
+	}
+	if cp.Defeat.Out < 0 {
+		c.errorf(diag.OutOfRange, w+".defeat.out", "out is turns, 0 or more")
+	}
 	if cp.Turns < 0 {
 		c.errorf(diag.OutOfRange, w+".turns", "turns are 0 (no limit) or more, not %d", cp.Turns)
 	}
@@ -408,6 +452,15 @@ func (c *checker) campaign() {
 		}
 		if o.Where.Set() && o.Target == "" {
 			c.errorf(diag.Shape, ow+".where", "where narrows the target: write target too")
+		}
+		if o.PerTurn < 0 || o.Generals < 0 {
+			c.errorf(diag.OutOfRange, ow, "per_turn and generals are 0 or more")
+		}
+		if o.PerTurn > 0 && cp.Count != "orders" {
+			c.errorf(diag.Shape, ow+".per_turn", "per_turn counts the orders of a turn: write count: orders in campaign")
+		}
+		if (o.UntilTaken || o.Generals > 1) && !o.March {
+			c.errorf(diag.Shape, ow, "until_taken and generals are for a march: write march: true")
 		}
 		if o.Fight != "" && o.Fight != "battle" {
 			c.errorf(diag.NotAWord, ow+".fight", "fight is battle, not %q", o.Fight)

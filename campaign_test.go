@@ -282,3 +282,60 @@ func (lose) Decide(_ context.Context, _ *gozen.Session, q gozen.Request) int {
 	}
 	return 0
 }
+
+// TestCampaignKichikuStyle: a campaign counted by orders (each order per_turn times a
+// turn), a march that may be given until a region is taken, generals marching together,
+// a beaten general away for some turns, and a calendar of weeks.
+func TestCampaignKichikuStyle(t *testing.T) {
+	game := strings.NewReplacer(
+		"  turns: 6\n", "  turns: 60\n  calendar: week\n  count: orders\n  defeat: {out: 2}\n",
+		"  generals: {scout: {troops: 400, might: 2}}", "  generals: {scout: {troops: 400, might: 2}, guide: {troops: 300}}",
+		"attack: {label: Attack, general: ready, target: border, march: true}", "attack: {label: Attack, general: ready, target: border, march: true, until_taken: true, generals: 2}",
+		"  location: camp\n  player: blue", "  location: camp\n  player: blue\n  clash: {lost: \"0\"}",
+	).Replace(testgame.CampaignGame)
+	g := campaignGame(t, map[string]string{"game.yaml": game})
+	// From the menu: the leader, then who else (Guide), then the target.
+	var prompts []string
+	m := session(t, g, gozen.Config{Seed: 5, OnRequest: func(q gozen.Request) {
+		if q.Kind == "choice" {
+			prompts = append(prompts, q.Text)
+		}
+	}})
+	do(t, m, "- join: guide\n- pick: Attack\n")
+	if strings.Join(prompts, "|") != "Who leads?|Who else marches?|Where to?" || !query[bool](t, m, "generals.guide.acted") {
+		t.Fatalf("asked %v", prompts)
+	}
+	s := session(t, g, gozen.Config{Seed: 5, Dev: true})
+	do(t, s, "- join: guide\n")
+	// Two generals march on the field together: their troops add up and are shared after.
+	do(t, s, "- order: {id: attack, general: scout, with: [guide], target: field}\n")
+	if query[string](t, s, "region.field.owner") != "blue" || !query[bool](t, s, "generals.guide.acted") || query[float64](t, s, "campaign.taken") != 1 {
+		t.Fatalf("the joint march: field %q, guide acted %v", query[string](t, s, "region.field.owner"), query[bool](t, s, "generals.guide.acted"))
+	}
+	// A region was taken: the attack closes for the turn; develop is open once.
+	if query[bool](t, s, "orders.attack.open") || !query[bool](t, s, "orders.develop.open") {
+		t.Fatal("after a region was taken, the attack is still open (or develop is closed)")
+	}
+	do(t, s, "- order: {id: develop, target: home}\n")
+	if query[bool](t, s, "orders.develop.open") {
+		t.Fatal("develop is open twice in a turn")
+	}
+	do(t, s, "- end_turn: true\n")
+	// Until a region is taken, the attack stays open after a march that fails; a general
+	// whose troops it brings to 0 is away for two turns.
+	do(t, s, "- set: {region.hill.troops: 99999, region.home.troops: 99999, region.keep.troops: 0}\n- order: {id: attack, general: scout, target: hill}\n")
+	if !query[bool](t, s, "orders.attack.open") || query[float64](t, s, "generals.scout.out") != 2 || query[bool](t, s, "generals.scout.ready") {
+		t.Fatalf("after a lost march: attack open %v, scout out %v", query[bool](t, s, "orders.attack.open"), query[float64](t, s, "generals.scout.out"))
+	}
+	do(t, s, "- end_turn: true\n- set: {generals.scout.troops: 100}\n- end_turn: true\n")
+	if !query[bool](t, s, "generals.scout.ready") {
+		t.Fatal("the scout did not come back after two turns")
+	}
+	do(t, s, "- set: {region.home.troops: 99999, region.field.troops: 99999}\n")
+	for range 50 {
+		do(t, s, "- end_turn: true\n")
+	}
+	if w, y := query[float64](t, s, "campaign.week"), query[float64](t, s, "campaign.year"); w != 2 || y != 2 {
+		t.Fatalf("turn %v is week %v of year %v", query[float64](t, s, "campaign.turn"), w, y)
+	}
+}

@@ -1593,6 +1593,8 @@ func typeOf(n string, names []string) *vtype {
 		return &vtype{kind: vDyn, desc: "faction", elem: tFaction, key: "faction"}
 	case "generals":
 		return &vtype{kind: vDyn, desc: "generals", elem: tGeneral, key: "general"}
+	case "orders":
+		return &vtype{kind: vDyn, desc: "orders", elem: tOrder, key: "order"}
 	case "general":
 		return tGeneral
 	case "campaign":
@@ -1675,6 +1677,9 @@ func (c *checker) known(kind, id string) bool {
 	case "general":
 		cp := c.db.Game.Campaign
 		return cp != nil && hasGeneral(cp, id)
+	case "order":
+		cp := c.db.Game.Campaign
+		return cp != nil && cp.Orders[id] != nil
 	}
 	return true
 }

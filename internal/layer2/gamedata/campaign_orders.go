@@ -12,7 +12,21 @@ import (
 type OrderCmd struct {
 	ID      string `yaml:"id"`
 	General string `yaml:"general"`
-	Target  string `yaml:"target"`
+	// With are the generals who march with General (an order with generals above 1).
+	With   []string `yaml:"with"`
+	Target string   `yaml:"target"`
+	// asked: the order has asked who else marches and the answer was to march now.
+	asked bool
+}
+
+// Asked reports whether the order asked who else marches and was told to march now.
+func (o *OrderCmd) Asked() bool { return o.asked }
+
+// MarchNow is the order with who else marches settled.
+func (o OrderCmd) MarchNow() *OrderCmd {
+	o.asked = true
+	o.With = append([]string(nil), o.With...)
+	return &o
 }
 
 // UnmarshalYAML reads the id alone, or the map.
@@ -48,7 +62,7 @@ func campaignActions(db *DB) {
 		if label == "" {
 			label = id
 		}
-		when := fmt.Sprintf("campaign.actions_left >= %d", o.CostOf())
+		when := fmt.Sprintf("orders.%s.open", id)
 		if o.When.Set() {
 			when += " && (" + o.When.String() + ")"
 		}
@@ -84,6 +98,11 @@ func (c *checker) campaignCommand(w, verb string, cmd *Command) {
 	if o.General != "" {
 		if _, ok := cp.Generals[o.General]; !ok {
 			c.errorf(diag.UnknownReference, w+".order.general", "%q is not a general of campaign.generals", o.General)
+		}
+	}
+	for _, g := range o.With {
+		if _, ok := cp.Generals[g]; !ok {
+			c.errorf(diag.UnknownReference, w+".order.with", "%q is not a general of campaign.generals", g)
 		}
 	}
 	if o.Target != "" {

@@ -172,7 +172,10 @@ Class:
 Campaign:
   _: "game.yaml's campaign: a game of regions held by factions over turns (ADR 0030). Its state is in variables with generated names."
   actions: "An expression for how many orders a turn has, worked out at the start of each turn. It may read only region, faction, campaign and generals. Default 1."
+  calendar: "How the turns are named: omitted (turn N) or week (a turn is a week of a 52-week year; campaign.week and campaign.year)."
   clash: "How a march is decided."
+  count: "How a turn's orders are counted: actions (the turn's actions, each order spending its cost; the default) or orders (each order may be given per_turn times a turn)."
+  defeat: "What becomes of a general whose troops a march brings to 0. A general is never lost for good."
   end_turn: "The label of the menu entry that ends the turn. The engine's words when omitted."
   generals: "The actors who lead the player's marches, keyed by actor ID. A general serves once they have joined."
   location: "The place whose menu lists the orders and the end of the turn. Required."
