@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.2.0 - 2026-10-21
+
 Visual novels join RPGs: schema version 4 adds the novel window's roll back, skip, staging, voices and a second language, and `--dev` gains the F8 development panel. A game of schema version 3 or earlier needs no change.
 
 ### Added
