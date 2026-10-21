@@ -25,6 +25,7 @@ ok: 2 locations, 0 events, 1 actors, 2 skills, 0 items, 2 enemies, 2 troops, 0 a
 ```
 
 If `gozen` is not installed: `go install github.com/nao1215/gozen/cmd/gozen@latest`.
+In GitHub Actions, `nao1215/setup-gozen` installs the version in the game's `go.mod`; or run `go run github.com/nao1215/gozen/cmd/gozen check game`.
 
 ## What every game needs
 
@@ -53,6 +54,8 @@ YAML traps are in references/yaml.md.
 ## Recipes
 
 Tested YAML for shops, inns, flags, companions, dungeons, chests, keys, cut-ins and moving portraits: https://nao1215.github.io/gozen/cookbook/. Start from a recipe and change the names.
+
+A first-person dungeon can take a ready look: `gozen theme list` shows the themes (cave, ice, ruins, castle, crystal), `gozen theme add cave game` copies one into the game's assets, and `theme: cave` on `dungeon:` or a look fills the wall, door, floor and ceiling. A value written beside it wins. `gozen check` reports a theme named but not added (GZN1111).
 
 ## Novel games
 
