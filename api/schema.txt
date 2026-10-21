@@ -84,6 +84,7 @@ github.com/nao1215/gozen/schema field Command.Battle
 github.com/nao1215/gozen/schema field Command.Buy
 github.com/nao1215/gozen/schema field Command.Call
 github.com/nao1215/gozen/schema field Command.Choice
+github.com/nao1215/gozen/schema field Command.Clash
 github.com/nao1215/gozen/schema field Command.Clear
 github.com/nao1215/gozen/schema field Command.Cross
 github.com/nao1215/gozen/schema field Command.Dive

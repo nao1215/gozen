@@ -52,6 +52,13 @@ func (r *Runner) order(c *data.Command) Request {
 			}
 		})
 	}
+	if battle := campaign.Fight(r.db, r.st, o, oc.General, oc.Target); battle != nil {
+		// The battle comes first, its end writes the troops back (clash), then the do.
+		r.push(o.Do)
+		r.push(battle)
+		r.emit(CampaignEffect{Kind: "order", Order: oc.ID, General: oc.General, Target: oc.Target, Result: "battle", Turn: data.Turn(r.db, r.st.Campaign())})
+		return nil
+	}
 	r.notes = append(r.notes, campaign.Give(r.db, r.st, o, oc.General, oc.Target)...)
 	result := optional.Value[string](r.st.Vars[data.VarResult])
 	r.emit(CampaignEffect{Kind: "order", Order: oc.ID, General: oc.General, Target: oc.Target, Result: result, Turn: data.Turn(r.db, r.st.Campaign())})
@@ -79,4 +86,9 @@ func (r *Runner) endTurn() {
 	r.emit(CampaignEffect{Kind: "end_turn", Turn: data.Turn(r.db, r.st.Campaign())})
 	r.notes = append(r.notes, lines...)
 	r.push(cmds)
+}
+
+// clash ends a march decided by a battle: the troops written back and how it went.
+func (r *Runner) clash(c *data.Command) {
+	r.notes = append(r.notes, campaign.AfterBattle(r.db, r.st, c.Clash == "won")...)
 }

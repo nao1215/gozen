@@ -9307,6 +9307,19 @@
           },
           "x-type": "[Command](#command)[]"
         },
+        "fight": {
+          "description": "battle to decide the march by the game's battle: the general alone against the target's defend troop. A win takes the region with the share of the troops of the HP left; a loss leaves the clash's lost. Omitted: by the numbers of clash.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "general": {
           "description": "Who leads it: ready (joined, has not marched this turn, has troops), any (joined), or omitted for none.",
           "type": "string",
@@ -10082,6 +10095,19 @@
       "additionalProperties": false,
       "description": "A region of a campaign: its neighbours, its first owner and garrison, and its own numbers.",
       "properties": {
+        "defend": {
+          "description": "The troop a general fights on marching here with an order of fight: battle, an ID of troops.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "name": {
           "description": "The name shown. The ID when omitted.",
           "type": "string",

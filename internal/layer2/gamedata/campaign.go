@@ -36,6 +36,8 @@ type Region struct {
 	Troops int `yaml:"troops"`
 	// Values are the region's own numbers at the start, read and set as region.<id>.<name>.
 	Values map[string]float64 `yaml:"values"`
+	// Defend is the troop a general fights on marching here with an order of fight: battle.
+	Defend string `yaml:"defend"`
 }
 
 // Faction is a side of a campaign: one is the player's (campaign.player), the others move
@@ -146,7 +148,10 @@ type Order struct {
 	Target string `yaml:"target"`
 	Where  Expr   `yaml:"where"`
 	// March marches the general's troops on the target (Clash) before do.
-	March bool      `yaml:"march"`
+	March bool `yaml:"march"`
+	// Fight decides the march by a battle (battle): the general fights the target's defend
+	// troop, the battle of the game's dungeons and fields. Empty: by the numbers of Clash.
+	Fight string    `yaml:"fight"`
 	Do    []Command `yaml:"do"`
 }
 
@@ -300,6 +305,10 @@ func (c *checker) campaign() {
 			_, ok := db.Factions[r.Owner]
 			c.ref(w+".owner", "faction", r.Owner, ok)
 		}
+		if r.Defend != "" {
+			_, ok := db.Troops[r.Defend]
+			c.ref(w+".defend", "troop", r.Defend, ok)
+		}
 		if r.Troops < 0 {
 			c.errorf(diag.OutOfRange, w+".troops", "troops are 0 or more, not %d", r.Troops)
 		}
@@ -399,6 +408,12 @@ func (c *checker) campaign() {
 		}
 		if o.Where.Set() && o.Target == "" {
 			c.errorf(diag.Shape, ow+".where", "where narrows the target: write target too")
+		}
+		if o.Fight != "" && o.Fight != "battle" {
+			c.errorf(diag.NotAWord, ow+".fight", "fight is battle, not %q", o.Fight)
+		}
+		if o.Fight != "" && !o.March {
+			c.errorf(diag.Shape, ow+".fight", "fight: battle decides a march: write march: true")
 		}
 		if o.March && (o.General == "" || o.Target == "") {
 			c.errorf(diag.Shape, ow+".march", "a march needs a general and a target")

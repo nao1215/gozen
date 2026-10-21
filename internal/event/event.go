@@ -825,6 +825,8 @@ func (r *Runner) run(c *data.Command) Request {
 		return r.order(c)
 	case "end_turn":
 		r.endTurn()
+	case "clash":
+		r.clash(c)
 	case "game_over":
 		r.Stop()
 		r.last.Over = true

@@ -1,6 +1,6 @@
 # ADR 0030: Campaigns — regions held by factions over turns
 
-Status: Accepted (2026-10-21). Stages 1 (the YAML words, their checks, the expression names and the generated state names), 2 (the rules, the random numbers in a save, the prototype rewritten) 3 (the screen) and 4 (`gozen sim campaign`) are done; the rest is under "Plan" below. Home: `internal/layer2/gamedata` (YAML types, checks and the expression names), `internal/rpg` (the names on a play, `set`), `internal/layer3/campaign` (the rules).
+Status: Accepted (2026-10-21). Stages 1 (the YAML words, their checks, the expression names and the generated state names), 2 (the rules, the random numbers in a save, the prototype rewritten) 3 (the screen), 4 (`gozen sim campaign`) and 5 (battles) are done; the rest is under "Plan" below. Home: `internal/layer2/gamedata` (YAML types, checks and the expression names), `internal/rpg` (the names on a play, `set`), `internal/layer3/campaign` (the rules).
 
 ## Users and problem
 
@@ -89,6 +89,10 @@ The campaign's place is shown as a map (`map:`) whose points are named like the 
 - Between commands (where auto events are tried) the campaign ends once: `lose` (or the end of the last turn) runs `lost` and then the new command `game_over`, a defeat without a battle; `win` runs `won` and then `clear`.
 - A save made between commands now holds the random generator's bytes too (the envelope's `rand`, as a save in the middle of an event already did), so a restored game draws the numbers the saved one would have. The format version stays 2; an older save without them draws from the session's seed as before.
 
+### Battles
+
+An order with `fight: battle` decides its march by the game's own battle, the one its dungeons and fields fight: the general alone (`fighters`) against the target region's `defend` troop, with the general's level, stats, equipment, skills and HP. A region without `defend` is decided by the numbers. In the battle `self.troops` is a general's troops and a foe's the garrison of the region marched on, so a skill's formula may read them. When it ends, the troops are written back: a win takes the region, the general keeping the share of the troops of the HP left (a fifth at least) and leaving the garrison share there; a loss or a flight leaves the clash's `lost` and the region holds. A lost battle is no game over and asks no retry. The other factions' marches stay numeric. The battle is an ordinary request, so a `Policy`, `Explore` and `gozen sim campaign` answer it as any battle.
+
 ### Measuring
 
 `gozen sim campaign` plays a campaign many times with the internal rules (as `sim battle` and `sim dive` do), campaign *i* from the seed `--seed` + *i*, and prints, or writes as JSON, the win rate, the turns the campaigns ended in, the mean of the regions each faction held at the start of each turn, the factions that fell and their mean turn, the orders given and how the marches went ([ADR 0021](0021-query-and-commands.md) decision 4: the numbers come from the CLI's JSON). The player's strategy is `greedy` (march when the clash's odds, its formulas with `rand()` at its middle, are 1.15 or better; else an order with a general, the strongest first; else another order), `random`, or `ai`: the player's faction follows its own `ai` rules, which a game may therefore write for its player's faction too (they are used only here).
@@ -105,7 +109,8 @@ The campaign's place is shown as a map (`map:`) whose points are named like the 
 | 2 | The rules (`internal/layer3/campaign`): the commands `order`, `end_turn` and `game_over`, the actions of a turn, the numeric clash, the factions' rules, winning and losing, the random numbers in a save; the prototype rewritten | Done |
 | 3 | The screen: the flags in the owners' colours, the band, the meters, the region's window, the generals, orders from a region, the script and the trace | Done |
 | 4 | `gozen sim campaign` (`-n`, `--seed`, `--as greedy|random|ai`, `--format json`): the win rate, the turns, the regions by turn, the factions' falls, the orders; the CLI's E2E | Done |
-| Later | The bridge to battles, the remaining checks, the sample, the documents | |
+| 5 | The bridge to battles: `fight: battle`, `defend`, `self.troops`, the troops written back | Done |
+| Later | The remaining checks, the sample, the documents | |
 
 ## Alternatives
 

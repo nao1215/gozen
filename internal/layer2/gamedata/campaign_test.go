@@ -42,6 +42,7 @@ func TestCampaignErrors(t *testing.T) {
 		{"a rule that drafts and marches", `{draft: "50"}`, `{draft: "50", march: true}`, "one of them"},
 		{"an unknown pick", "pick: min, by: t.troops", "pick: least, by: t.troops", `pick is first, min, max or random, not "least"`},
 		{"a value named like a field", "values: {wealth: 15}", "values: {owner: 15}", "a value's name"},
+		{"an unknown defending troop", "hill: {name: Hill, next: [field, keep], troops: 150}", "hill: {name: Hill, next: [field, keep], troops: 150, defend: ghosts}", `unknown troop "ghosts"`},
 		{"an unknown name in a rule", `"s.troops * 0.6 > t.troops * 1.25"`, `"s.troops * 0.6 > u.troops"`, `unknown name "u"`},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -63,6 +64,8 @@ func TestCampaignGameErrors(t *testing.T) {
 		{"an unknown place", "location: camp", "location: tent", `unknown location "tent"`},
 		{"an unknown general", "generals: {scout: ", "generals: {ghost: ", `unknown actor "ghost"`},
 		{"an unknown target word", "target: own", "target: mine", `target is border, own or any, not "mine"`},
+		{"an unknown fight", "general: ready, target: border, march: true}", "general: ready, target: border, march: true, fight: duel}", `fight is battle, not "duel"`},
+		{"a fight without a march", "general: ready, target: border, march: true}", "general: ready, target: border, fight: battle}", "fight: battle decides a march"},
 		{"a march without a target", "general: ready, target: border, march: true", "general: ready, march: true", "a march needs a general and a target"},
 		{"an unknown region in an expression", `when: "gold >= 20"`, `when: "region.moat.troops > 0"`, `unknown region "moat"`},
 		{"an unknown field of a region", `when: "gold >= 20"`, `when: "region.home.gold > 0"`, `a region has no field "gold"`},

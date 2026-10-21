@@ -10,6 +10,7 @@ import (
 	"math"
 
 	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
 	lang "github.com/nao1215/gozen/internal/text"
@@ -401,4 +402,67 @@ func Estimate(db *data.DB, st *rpg.State, general, target string) (float64, floa
 		return 0, 1 // a formula that fails: no march looks good
 	}
 	return power, defense
+}
+
+// Fight begins a march decided by a battle (an order with fight: battle on a region with
+// defend): it binds the general and the target, spends the actions, marks the general as
+// marched, and returns the battle, the general alone against the region's troop, each end
+// followed by the internal clash command that writes the troops back. Nil when the target
+// has no troop to fight (the march is then decided by the numbers, Give).
+func Fight(db *data.DB, st *rpg.State, o *data.Order, general, target string) []data.Command {
+	r := db.Regions[target]
+	if o.Fight != "battle" || r == nil || r.Defend == "" || db.Troops[r.Defend] == nil {
+		return nil
+	}
+	st.Vars[data.VarGeneral], st.Vars[data.VarTarget], st.Vars[data.VarResult] = general, target, ""
+	st.Vars[data.VarActions] = data.ActionsLeft(db, st.Campaign()) - float64(o.CostOf())
+	st.Vars[data.GeneralVar(general, "acted")] = 1.0
+	no := false
+	return []data.Command{{
+		Battle: r.Defend, Fighters: []string{general}, Retry: &no,
+		OnWin: []data.Command{{Clash: "won"}}, OnLose: []data.Command{{Clash: "lost"}}, OnRun: []data.Command{{Clash: "lost"}},
+	}}
+}
+
+// AfterBattle writes back a march decided by a battle: won, the general keeps the share of
+// the troops of the HP left (a fifth at least) and takes the region, leaving the garrison
+// share there; lost (or fled), the troops left are the clash's lost and the region holds.
+func AfterBattle(db *data.DB, st *rpg.State, won bool) []string {
+	c := db.Game.Campaign
+	cs := st.Campaign()
+	general := optional.Value[string](cs.Vars[data.VarGeneral])
+	target := optional.Value[string](cs.Vars[data.VarTarget])
+	if c == nil || db.Regions[target] == nil {
+		return nil
+	}
+	troops := data.GeneralTroops(db, cs, general)
+	name := GeneralLabelName(db, general)
+	if won {
+		rate := 1.0
+		if a := st.Actors[general]; a != nil && a.Stat("mhp") > 0 {
+			rate = float64(a.HP) / float64(a.Stat("mhp"))
+		}
+		left := math.Floor(troops * max(0.2, rate))
+		garrison := math.Floor(left * c.Clash.GarrisonShare())
+		st.Vars[data.GeneralVar(general, "troops")] = left - garrison
+		take(st, target, c.Player, garrison)
+		st.Vars[data.VarResult] = "won"
+		return []string{fmt.Sprintf(lang.T("%sが%sを落とした"), name, data.RegionName(db, target))}
+	}
+	a := expr.Map{"troops": troops, "might": c.Generals[general].Might, "faction": c.Player, "general": general, "from": "", "level": 0.0}
+	for _, n := range data.StatNames {
+		a[n] = 0.0
+	}
+	env := expr.Chain{expr.Map{"a": a, "b": region(db, st, target), "power": 0.0, "defense": 0.0}, st.Env()}
+	lost := c.Clash.Lost
+	if !lost.Set() {
+		lost = defaultLost
+	}
+	n, err := lost.Number(env)
+	if err != nil {
+		n = troops / 2
+	}
+	st.Vars[data.GeneralVar(general, "troops")] = max(0, math.Floor(n))
+	st.Vars[data.VarResult] = "held"
+	return []string{fmt.Sprintf(lang.T("%sは%sの攻めを持ちこたえた"), data.RegionName(db, target), name)}
 }

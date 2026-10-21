@@ -238,3 +238,47 @@ func TestCampaignWithDungeon(t *testing.T) {
 		t.Fatalf("the march did not read the general's attack %v", atk)
 	}
 }
+
+// TestCampaignBattle: an order with fight: battle on a region with defend fights the
+// game's battle, the general alone against the region's troop; a win takes the region
+// with the share of the troops of the HP left, a loss halves the general's troops and the
+// region holds. The battle is a request a Policy answers.
+func TestCampaignBattle(t *testing.T) {
+	game := strings.Replace(testgame.CampaignGame, "attack: {label: Attack, general: ready, target: border, march: true}", "attack: {label: Attack, general: ready, target: border, march: true, fight: battle}", 1)
+	data := strings.Replace(testgame.CampaignData, "field: {name: Field, next: [home, hill, keep], troops: 100,", "field: {name: Field, next: [home, hill, keep], troops: 100, defend: two,", 1)
+	g := campaignGame(t, map[string]string{"game.yaml": game, "data/campaign.yaml": data})
+	var battles []gozen.Request
+	s := session(t, g, gozen.Config{Seed: 4, OnRequest: func(q gozen.Request) {
+		if q.Kind == "battle" {
+			battles = append(battles, q)
+		}
+	}})
+	do(t, s, "- order: {id: attack, general: scout, target: field}\n")
+	if len(battles) != 1 {
+		t.Fatalf("battles: %+v", battles)
+	}
+	won := query[string](t, s, "campaign.result") == "won"
+	if won != (query[string](t, s, "region.field.owner") == "blue") || query[bool](t, s, "over") {
+		t.Fatalf("result %v, field %q, over %v", won, query[string](t, s, "region.field.owner"), query[bool](t, s, "over"))
+	}
+	left := query[float64](t, s, "generals.scout.troops + (region.field.owner == 'blue' ? region.field.troops : 0)")
+	if left <= 0 || left > 400 {
+		t.Fatalf("troops after the battle: %v", left)
+	}
+	// A lost battle (answered Lost) is no game over: the general's troops halve.
+	s = session(t, g, gozen.Config{Seed: 4, Policy: lose{}})
+	do(t, s, "- order: {id: attack, general: scout, target: field}\n")
+	if query[bool](t, s, "over") || query[string](t, s, "region.field.owner") != "" || query[float64](t, s, "generals.scout.troops") != 200 {
+		t.Fatalf("after a lost battle: over %v, field %q, troops %v", query[bool](t, s, "over"), query[string](t, s, "region.field.owner"), query[float64](t, s, "generals.scout.troops"))
+	}
+}
+
+// lose answers every battle Lost.
+type lose struct{ gozen.DefaultPolicy }
+
+func (lose) Decide(_ context.Context, _ *gozen.Session, q gozen.Request) int {
+	if q.Kind == "battle" {
+		return gozen.Lost
+	}
+	return 0
+}

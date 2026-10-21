@@ -1386,7 +1386,7 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			c.effectCue(w+".effect", cmd.Effect)
 		case "order", "end_turn", "game_over":
 			c.campaignCommand(w, verb, cmd)
-		case "mood", "end", "clear", "save", "done", "ran", "cross", "reach":
+		case "mood", "end", "clear", "save", "done", "ran", "cross", "reach", "clash":
 			// Commands without extra reference or expression checks are listed explicitly too, so missed registrations are detected.
 		default:
 			c.errorf(diag.Shape, w, "command %q has no semantic checker", verb)
@@ -1481,7 +1481,7 @@ var (
 		"name": tStr, "id": tStr, "hp": tNum, "mp": tNum, "hp_rate": tNum, "mp_rate": tNum,
 		"alive": tBool, "dead": tBool, "level": tNum, "is_enemy": tBool, "guarding": tBool,
 		"index": tNum, "boss": tBool, "states": tStates, "fell_with": tStates, "state_count": tNum,
-		"element": tStr, "class": tStr, "back": tBool, "lv": tNum, "wears": tWears,
+		"element": tStr, "class": tStr, "back": tBool, "lv": tNum, "wears": tWears, "troops": tNum,
 	}), resistPrefix)
 	// tSelfFace is self in expression rules (ActorView in the field, Unit in battle).
 	tSelfFace = objType("a battler", func() map[string]*vtype {
