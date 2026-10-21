@@ -422,13 +422,20 @@ func parseScript(src string) (*script, error) {
 			}
 			c.n = n
 		case "click":
+			if len(f) < 3 {
+				return nil, fmt.Errorf("script line %d: click X Y", line)
+			}
 			x, err := strconv.Atoi(c.arg)
 			if err != nil {
 				return nil, fmt.Errorf("script line %d: %w", line, err)
 			}
 			c.x, c.y = x, c.n
 			c.n = 1
-		case "press", "shot", "until", "quit", "walk", "face":
+		case "press", "shot", "until", "quit":
+		case "walk", "face":
+			if c.arg == "" {
+				return nil, fmt.Errorf("script line %d: %s TARGET", line, c.verb)
+			}
 		case "jump":
 			if c.arg == "" {
 				return nil, fmt.Errorf("script line %d: jump EVENT [LINE]", line)
