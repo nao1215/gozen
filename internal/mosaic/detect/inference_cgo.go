@@ -7,10 +7,8 @@ import (
 	"fmt"
 	"image"
 	"os"
-	"strings"
 
 	ort "github.com/yalue/onnxruntime_go"
-	"golang.org/x/image/draw"
 )
 
 type Detector struct {
@@ -112,34 +110,7 @@ func (d *Detector) Detect(img image.Image, passes []Pass, minScore float32) ([]B
 }
 
 func (d *Detector) run(img image.Image, region image.Rectangle, size int, flip bool, minScore float32) (result []Box, err error) {
-	rw, rh := region.Dx(), region.Dy()
-	if size <= 0 {
-		size = max(rw, rh)
-	}
-	scale := float64(size) / float64(max(rw, rh))
-	nw, nh := max(1, int(float64(rw)*scale+0.5)), max(1, int(float64(rh)*scale+0.5))
-	pw, ph := (nw+31)/32*32, (nh+31)/32*32
-	small := image.NewRGBA(image.Rect(0, 0, nw, nh))
-	draw.CatmullRom.Scale(small, small.Bounds(), img, region, draw.Src, nil)
-
-	data := make([]float32, 3*pw*ph)
-	plane := pw * ph
-	for i := range data {
-		data[i] = 114.0 / 255
-	}
-	for y := range nh {
-		for x := range nw {
-			sx := x
-			if flip {
-				sx = nw - 1 - x
-			}
-			o := small.PixOffset(sx, y)
-			k := y*pw + x
-			data[k] = float32(small.Pix[o]) / 255
-			data[plane+k] = float32(small.Pix[o+1]) / 255
-			data[2*plane+k] = float32(small.Pix[o+2]) / 255
-		}
-	}
+	data, nw, _, pw, ph, scale := prepare(img, region, size, flip)
 	in, err := ort.NewTensor(ort.NewShape(1, 3, int64(ph), int64(pw)), data)
 	if err != nil {
 		return nil, err
@@ -155,31 +126,8 @@ func (d *Detector) run(img image.Image, region image.Rectangle, size int, flip b
 		return nil, errors.New("the model output is not float32")
 	}
 	shape := t.GetShape()
-	if len(shape) != 3 || shape[0] != 1 || shape[2] < 0 || shape[1] != int64(4+len(d.labels)) {
-		return nil, fmt.Errorf("the model output shape %v is not [1,%d,N]: the model must emit %d classes to match --classes (%s)", shape, 4+len(d.labels), len(d.labels), strings.Join(d.labels, ","))
+	if err := checkShape(shape, d.labels); err != nil {
+		return nil, err
 	}
-	n := int(shape[2])
-	v := t.GetData()
-	var boxes []Box
-	for a := range n {
-		for c := range d.labels {
-			s := v[(4+c)*n+a]
-			if s < minScore {
-				continue
-			}
-			cx, cy, w, h := float64(v[a]), float64(v[n+a]), float64(v[2*n+a]), float64(v[3*n+a])
-			if flip {
-				cx = float64(nw) - cx
-			}
-			x0 := float64(region.Min.X) + (cx-w/2)/scale
-			y0 := float64(region.Min.Y) + (cy-h/2)/scale
-			x1 := float64(region.Min.X) + (cx+w/2)/scale
-			y1 := float64(region.Min.Y) + (cy+h/2)/scale
-			r := image.Rect(int(x0), int(y0), int(x1+0.999), int(y1+0.999)).Intersect(region)
-			if !r.Empty() {
-				boxes = append(boxes, Box{Rect: r, Label: d.labels[c], Score: s})
-			}
-		}
-	}
-	return boxes, nil
+	return boxesFrom(t.GetData(), int(shape[2]), d.labels, region, nw, scale, flip, minScore), nil
 }

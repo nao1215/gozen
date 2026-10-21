@@ -467,7 +467,7 @@ func (c *checker) generate(w string, d *Dungeon, used map[rune]bool) {
 	if g.Rooms < 0 {
 		c.errorf(diag.OutOfRange, w+".generate.rooms", "want 0 or more")
 	}
-	c.expr(w+".generate.size", g.Size, FieldNames)
+	c.expr(w+".generate.size", g.Size, FloorNames)
 	if g.Loops < 0 || g.Loops > 1 {
 		c.errorf(diag.OutOfRange, w+".generate.loops", "want 0 to 1")
 	}
@@ -483,7 +483,7 @@ func (c *checker) generate(w string, d *Dungeon, used map[rune]bool) {
 	for i, p := range g.Place {
 		ww := fmt.Sprintf("%s.generate.place[%d]", w, i)
 		placeChar(ww+".char", p.Char)
-		c.expr(ww+".count", p.Count, FieldNames) // floor (the floor number) is usable too (same as a built-in name, so the check passes)
+		c.expr(ww+".count", p.Count, FloorNames)
 		if p.At != nil && (p.At[0] < 0 || p.At[0] >= g.Width || p.At[1] < 0 || p.At[1] >= g.Height) {
 			c.errorf(diag.OutOfRange, ww+".at", "%v is outside the map (%dx%d)", *p.At, g.Width, g.Height)
 		}
@@ -734,10 +734,10 @@ func (c *checker) roamers(w string, d *Dungeon) {
 		if r.Icon.File != "" {
 			c.picture(ww+".icon", r.Icon)
 		}
-		c.expr(ww+".count", r.Count, FieldNames)
-		c.expr(ww+".appear", r.Appear, FieldNames)
-		c.expr(ww+".wait", r.Wait, FieldNames)
-		c.expr(ww+".every", r.Every, FieldNames)
+		c.expr(ww+".count", r.Count, FloorNames)
+		c.expr(ww+".appear", r.Appear, FloorNames)
+		c.expr(ww+".wait", r.Wait, FloorNames)
+		c.expr(ww+".every", r.Every, FloorNames)
 		if r.Appear.Set() && r.Count.Set() {
 			c.errorf(diag.Shape, ww+".count", "a roamer with appear comes one at a time (no count)")
 		}

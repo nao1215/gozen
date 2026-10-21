@@ -24,7 +24,9 @@ import (
 	lang "github.com/nao1215/gozen/internal/text"
 )
 
-const liveEvery = 2 * time.Second
+// liveEvery is how often the watcher of --dir looks at the files (a variable so that a test
+// need not wait seconds).
+var liveEvery = 2 * time.Second
 
 type liveState struct {
 	mu      sync.Mutex
@@ -132,6 +134,17 @@ func (g *Game) updateLive() {
 	if g.in.pressed[btnReload] {
 		g.askReload()
 		return
+	}
+	if g.live.changed.Load() && g.opts.LiveDir != "" {
+		// the watcher saw a file change: pictures and sounds are read again on their own, the
+		// definitions wait for F5
+		g.live.changed.Store(false)
+		if now := liveFingerprint(g.opts.LiveDir); liveDataPart(now) == liveDataPart(g.live.baseNow()) && now != g.live.baseNow() {
+			g.reloadAssets()
+			g.live.setBase(now)
+			g.liveSay(lang.T("絵と音を読み直した"), 150)
+			g.emit("live_reload", traceLine{"ok": true, "kind": "assets", "auto": true})
+		}
 	}
 	if g.live.pending && g.reloadWait() == "" && !g.busy() {
 		g.live.pending = false

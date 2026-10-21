@@ -17,7 +17,7 @@ Codes are assigned one family at a time. A diagnostic without a code still exits
 
 | Codes | Exit | Meaning | Assigned |
 |:--|:--|:--|:--|
-| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 13 codes |
+| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 14 codes |
 | `GZN02xx` | 0 | warnings of a measurement or a record | not yet |
 | `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 11 codes |
 | `GZN12xx` | 1 | fonts and text layout | 1 codes |
@@ -141,6 +141,14 @@ A flag is read but nothing sets it.
 A condition or expression reads flag.<name>, and no set, gallery scene or state.names declaration gives it a value, so it stays false (unless a test starts with --flags or the game's Go code sets it).
 
 Fix: Set the flag where it should become true, fix its name, or declare it in state.names.
+
+### GZN0114
+
+An expression uses a function's name as a value.
+
+A built-in function (floor, max, len and the others) or a function of the game (rand, chance, pages) is written alone, not called, as in floor + 1. The expression fails when it is evaluated. floor is the floor's number only in generate's size, the count of generate.place and a roamer's count, appear, wait and every; elsewhere it is the function and the floor's number is var.floor.
+
+Fix: Call the function (floor(x)), or use the value you meant (var.floor).
 
 ## GZN11xx
 

@@ -7,8 +7,35 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"golang.org/x/image/font/gofont/goregular"
 )
+
+// TestFontDrawCopiesOptions: Draw copies the options (the caller's value is not changed by
+// the default line spacing) and accepts nil and invalid sizes without drawing.
+func TestFontDrawCopiesOptions(t *testing.T) {
+	f, err := Load(fstest.MapFS{"font.ttf": {Data: goregular.TTF}}, "font.ttf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dst := ebiten.NewImage(64, 64)
+	op := &text.DrawOptions{}
+	f.Draw(dst, "Trail", 16, op)
+	if op.LineSpacing != 0 {
+		t.Fatalf("Draw changed the caller's options: line spacing %v", op.LineSpacing)
+	}
+	f.Draw(dst, "Trail", 16, nil)
+	spaced := &text.DrawOptions{}
+	spaced.LineSpacing = 30
+	f.Draw(dst, "a\nb", 16, spaced)
+	if spaced.LineSpacing != 30 {
+		t.Fatal("a given line spacing was replaced")
+	}
+	for _, size := range []float64{0, -3, math.NaN(), math.Inf(-1)} {
+		f.Draw(dst, "Trail", size, op)
+	}
+}
 
 func TestFontContracts(t *testing.T) {
 	fsys := fstest.MapFS{"font.ttf": {Data: goregular.TTF}, "broken.ttf": {Data: []byte("broken")}}

@@ -4,6 +4,19 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Fixed
+
+- `chat.Mask` catches a word written in half-width kana or with a voiced mark as its own character (a half-width katakana followed by a half-width voiced mark, or a kana followed by U+3099). It now normalizes the text with NFKC before matching and hides the original characters of the match.
+- The lines, choices and notices of a troop's events in a battle reach the trace (`say` and `notice` lines marked `in_battle`), so `gozen play trace` shows them, a replay compares them and `gozen play trace --check` checks them (GZN1404). Skip mode now stops before a battle line not read, as it does outside a battle. A replay of a trace written before this change, which has no battle lines, still matches.
+- `gozen check` warns of an expression that uses a function's name as a value, such as `floor + 1` in a tile's commands where `floor` is the function and the floor's number is `var.floor` (GZN0114). Such an expression failed only when it was evaluated. `floor` stays the floor's number in `generate.size`, `generate.place`'s `count` and a roamer's `count`, `appear`, `wait` and `every`.
+- A script's `walk` (and `face`) on a map or in a painted scene moves the party without a key, so the trace had no input for it and a replay of the trace stayed where it was and diverged. The trace now writes it as an `act` line (`walk`), and the replay walks the same way. A walk in a dungeon presses keys and was already in the trace.
+- `DirStore` and `MemStore` refuse a save name that starts with a dot (`ErrInvalid`). `DirStore` wrote such a save but its `List` left it out as a hidden file, and it could take the name of a write's temporary file.
+- `gozen check` checks `set: {actor.<id>.tactics: {...}}` written as a mapping: an unknown `mode`, a `preset` that `battle.tactic_presets` does not have (the member had no rows in battle) and `mode: preset` without `preset` are errors.
+- A point of a map or a spot of a painted scene written without `at` (`fork: {}`) is the error "needs at", as one written empty (`fork:`) was; it loaded and stood at the corner of the picture.
+- A key written beside a YAML merge (`<<: *base`) in `data/` or `game.yaml` overrides the merged one, as YAML means, wherever it is written. It was the error "duplicate key" when written after the merge and lost to the merge when written before it. A merge of a sequence of mappings is still not read.
+- A line run from the F8 panel's Command tab (or a script's `do`) at the title, where no game runs, says so and is traced as a `dev_do` line with that error; it left an empty message and no trace line. A line whose YAML cannot be read is traced with its error too.
+- The Edit and play loop page said F5 waits in a menu until the field is back; the field menu, the settings, the gallery and the character book are rebuilt at once and stay open, and only a battle or another screen makes the reload wait.
+
 ### Added
 
 - Dungeon themes (ADR 0032). `theme: cave` in a dungeon or in one of its `looks` fills the walls, door, floor and ceiling pictures and the floor and ceiling colors from `assets/dungeon/themes/cave/`; anything the YAML writes itself wins. `gozen theme list` names the five themes (`cave`, `ice`, `ruins`, `castle`, `crystal`) and `gozen theme add <name> <game-dir>` copies one into a game (it keeps files the game already has; `--force` replaces them). The pictures are embedded in the `gozen` command only, so game binaries do not carry them, and no network is used. `gozen check` fails with the new GZN1111 when a named theme is not in the game and says to run `gozen theme add`. The pictures are CC BY 4.0. The schema gains `Dungeon.theme` and `DungeonLook.theme`; the schema version does not change.

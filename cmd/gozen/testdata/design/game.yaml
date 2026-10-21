@@ -1,0 +1,11 @@
+schema_version: 1
+id: design-sample
+title: Design sample
+screen: {width: 960, height: 540}
+fonts: {regular: regular.ttf}
+start: {location: camp, party: [scout, aide], gold: 300, items: {shard: 1}}
+battle: {variance: 0, critical: 0, escape: 1, retry: true}
+game_over: {event: carried}
+memo:
+  kinds: [{id: dry, label: Dry}, {id: gap, label: Gap}, {id: boss, label: Boss}, {id: stuck, label: Stuck}]
+  vars: [{name: depth, value: var.floor}]

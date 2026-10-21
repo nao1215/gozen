@@ -80,7 +80,12 @@ func TestSemanticDiagnosticLocations(t *testing.T) {
 		wantDiagnostics(t, map[string]string{"data/z.yaml": "events:\n  original: &base\n    when: self.hp\n  copied:\n    <<: *base\n"}, "data/z.yaml:3:5: events.original.when:", "data/z.yaml:3:5: events.copied.when:")
 	})
 	t.Run("アンカーの不正な組合せの既存診断", func(t *testing.T) {
-		wantDiagnostics(t, map[string]string{"data/z.yaml": "events:\n  original: &base\n    when: true\n  copied:\n    when: self.hp\n    <<: *base\n"}, "data/z.yaml:3:11: events.copied.when: duplicate key")
+		// A key written beside a merge overrides the merged one (YAML's merge), so the
+		// explicit when is the one checked, at its own line, and it is no duplicate key.
+		_, got := wantDiagnostics(t, map[string]string{"data/z.yaml": "events:\n  original: &base\n    when: true\n  copied:\n    when: self.hp\n    <<: *base\n"}, "data/z.yaml:5:5: events.copied.when:")
+		if strings.Contains(got, "duplicate key") {
+			t.Errorf("an override of a merged key is a duplicate key:\n%s", got)
+		}
 		wantDiagnostics(t, map[string]string{"data/z.yaml": "events:\n  original: &base\n    when: true\n  copied:\n    <<: [*base]\n"}, "data/z.yaml:5:9: events.copied.<<: sequence was used where mapping is expected")
 	})
 	t.Run("マップ内の診断順序", func(t *testing.T) {

@@ -64,12 +64,12 @@ T7 collected the configuration, OSes, permissions, pinned tools and dependency u
 ## Additional checks of T2
 
 ```sh
-go test -race ./...
+go test -race -short ./...
 go test ./internal/expr -run '^$' -fuzz '^FuzzParse$' -fuzztime=10s -parallel=2
 go run ./examples/headless
 ```
 
-The race check needs cgo and a C compiler. The sample uses original in-memory definitions and generated images, and runs moving, talking, battle, saving and restoring. On success it prints `location=trail battles=1 wins=1 gold=3`. OS file operations of the save destination are isolated by the tests of `savefile` and `rpg` with `t.TempDir()`.
+The race check needs cgo and a C compiler. It runs with `-short`, which skips the heavy tests (`covSlow`) that would take about 2.5 minutes and 4.3 GB under the race detector; they still run in the normal `go test ./...`. The sample uses original in-memory definitions and generated images, and runs moving, talking, battle, saving and restoring. On success it prints `location=trail battles=1 wins=1 gold=3`. OS file operations of the save destination are isolated by the tests of `savefile` and `rpg` with `t.TempDir()`.
 
 After changing the schema, run `GOZEN_UPDATE_SCHEMA=1 go test ./internal/layer2/gamedata -run '^TestSchemaCoverage$'`. It regenerates `data/schema/` (the [Schema page](https://nao1215.github.io/gozen/schema/) of the site is built from it); confirm with a normal `go test` that they match. This is a separate check from the API update.
 

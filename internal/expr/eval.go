@@ -428,3 +428,7 @@ func errEmpty(n int) error {
 
 // builtin reports whether name is a built-in function.
 func builtin(name string) bool { _, ok := builtins[name]; return ok }
+
+// IsBuiltin reports whether name is a built-in function (floor, max, len, ...), which a
+// name of the environment hides.
+func IsBuiltin(name string) bool { return builtin(name) }

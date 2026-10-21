@@ -116,8 +116,11 @@ func (f *formation) update(g *Game) {
 	case g.in.ok():
 		id := f.ids[f.sel]
 		if slices.Contains(g.st.Party, id) {
-			g.st.Leave(id)
-			g.sfx("cancel")
+			if g.st.Leave(id) {
+				g.sfx("cancel")
+			} else {
+				g.sfx("buzzer") // the last member stays
+			}
 		} else if g.st.Join(id) {
 			g.sfx("decide")
 		} else {
@@ -302,12 +305,12 @@ func (t *treeView) raise(g *Game, a *rpg.Actor, cur gamedata.TreeNode) {
 	} else {
 		g.sfx("buzzer")
 		switch {
-		case a.SP <= 0:
-			t.msg = lang.T("SPが たりない。")
+		case a.Tree[cur.ID] >= cur.Max:
+			t.msg = lang.T("これいじょう あげられない。")
 		case !a.NodeReached(cur.ID):
 			t.msg = lang.T("まだ とれない。（さきに ひつような スキルを あげよう）")
 		default:
-			t.msg = lang.T("これいじょう あげられない。")
+			t.msg = lang.T("SPが たりない。")
 		}
 		t.msgT = 90
 	}
@@ -573,11 +576,9 @@ func (f *fusion) update(g *Game) {
 		return
 	}
 	if !chose {
-		return
-	}
-	if f.list.items[f.list.sel].disabled {
-		g.sfx("buzzer")
-		f.msg, f.msgT = lang.T("ざいりょうか おかねが たりない。"), 90
+		if g.in.ok() && f.list.sel < len(f.idx) && f.list.items[f.list.sel].disabled {
+			f.msg, f.msgT = lang.T("ざいりょうか おかねが たりない。"), 90
+		}
 		return
 	}
 	fu := g.db.Fusions[f.idx[f.list.sel]]

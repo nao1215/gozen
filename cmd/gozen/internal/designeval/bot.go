@@ -161,7 +161,7 @@ func (b *bot) snap(note string) Snap {
 		s.Pos, s.Facing = []int{b.st.Pos.X, b.st.Pos.Y}, b.st.Pos.Facing
 	}
 	for _, v := range b.db.Game.Memo.Vars {
-		if x, err := v.Value.Eval(b.st.Env()); err == nil {
+		if x, err := v.Value.Eval(b.st.Env()); err == nil && plainValue(x) {
 			s.Vars[v.Name] = x
 		}
 	}
@@ -175,6 +175,16 @@ func (b *bot) snap(note string) Snap {
 		b.note(err)
 	}
 	return s
+}
+
+// plainValue reports whether x can be written in a note: a number, a string or a boolean.
+// The value of a bare function name such as floor cannot, and would stop the notes being written.
+func plainValue(x any) bool {
+	switch x.(type) {
+	case float64, string, bool, nil:
+		return true
+	}
+	return false
 }
 
 func (b *bot) stuck(note string) {
