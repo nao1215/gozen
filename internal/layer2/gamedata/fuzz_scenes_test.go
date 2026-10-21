@@ -2,6 +2,7 @@ package gamedata_test
 
 import (
 	"testing"
+	"time"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
@@ -18,7 +19,22 @@ func FuzzLoadScenes(f *testing.F) {
 		if len(town) > 32*1024 {
 			return
 		}
-		db, err := data.Load(testgame.ScenesFS(map[string]string{"data/town.yaml": town}))
+		type loaded struct {
+			db  *data.DB
+			err error
+		}
+		done := make(chan loaded, 1)
+		go func() {
+			db, err := data.Load(testgame.ScenesFS(map[string]string{"data/town.yaml": town}))
+			done <- loaded{db, err}
+		}()
+		var res loaded
+		select {
+		case res = <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatalf("loading took more than 5 seconds (%d bytes)", len(town))
+		}
+		db, err := res.db, res.err
 		if err != nil {
 			return
 		}
