@@ -102,19 +102,24 @@ troops:
 `
 
 // btlFiles is the shared test game with the battle content above and extra game.yaml text.
-func btlFiles(t *testing.T, gameExtra, dataExtra string) fstest.MapFS {
+func btlFiles(t *testing.T, gameExtra, dataExtra string, extra ...map[string]string) fstest.MapFS {
 	t.Helper()
 	fsys := gameFiles(t)
 	fsys["game.yaml"] = &fstest.MapFile{Data: []byte(testgame.Game + "\nid: screen-test\nfonts: {regular: test.ttf}\n" + gameExtra)}
 	fsys["data/btl.yaml"] = &fstest.MapFile{Data: []byte(btlData + dataExtra)}
+	for _, files := range extra {
+		for name, src := range files {
+			fsys[name] = &fstest.MapFile{Data: []byte(src)}
+		}
+	}
 	return fsys
 }
 
 // btlOpen opens the game with the extra content and returns it with its trace buffer.
-func btlOpen(t *testing.T, opts Options, gameExtra, dataExtra string) (*Game, *bytes.Buffer) {
+func btlOpen(t *testing.T, opts Options, gameExtra, dataExtra string, extra ...map[string]string) (*Game, *bytes.Buffer) {
 	t.Helper()
 	var out bytes.Buffer
-	opts.FS = btlFiles(t, gameExtra, dataExtra)
+	opts.FS = btlFiles(t, gameExtra, dataExtra, extra...)
 	opts.NoSound = true
 	if opts.SaveDir == "" {
 		opts.SaveDir = t.TempDir()
@@ -125,11 +130,16 @@ func btlOpen(t *testing.T, opts Options, gameExtra, dataExtra string) (*Game, *b
 	if opts.Seed == 0 {
 		opts.Seed = 5
 	}
-	if opts.Location == "" {
+	switch {
+	case opts.Location == "-": // start at the title
+		opts.Location = ""
+	case opts.Location == "":
 		opts.Location = "field"
-	}
-	if len(opts.Party) == 0 {
-		opts.Party = []string{"scout", "guide"}
+		fallthrough
+	default:
+		if len(opts.Party) == 0 {
+			opts.Party = []string{"scout", "guide"}
+		}
 	}
 	g, err := New(opts)
 	if err != nil {
