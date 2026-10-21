@@ -144,7 +144,7 @@ In GitHub Actions, [setup-gozen](https://github.com/nao1215/setup-gozen) install
 <!-- verify: skip runs in GitHub Actions -->
 ```yaml
 - uses: actions/checkout@v6
-- uses: nao1215/setup-gozen@b8c63e495b0aa9013d2308664a904f03009785a9 # v0.1.0
+- uses: nao1215/setup-gozen@1c378fc446f62ecb29a7bcd40aea6dff8565d698 # v0.1.1
 - run: gozen check game
 - run: gozen sim battle game boss --format json  # boss: a troop id of your game
 ```
