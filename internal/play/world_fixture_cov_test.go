@@ -173,6 +173,23 @@ const wldWorldData = `locations:
         bubbles: ["Hm."]
     actions: [{label: Rest, do: [{heal: all}]}]
     exits: [{to: camp}]
+  fx_town:
+    name: Little Town
+    area: North
+    desc: "A small town with a long description that wraps over several lines in the heading box so that the box needs to grow taller than its usual height."
+    background: pics/bg.png
+    safe: true
+    people:
+      - {name: Guard, image: pics/tall2.png, talk: [{set: {flag.talked_guard: true}}]}
+      - {name: Baker, image: pics/tall1.png, when: "flag.baker_open", talk: [{set: {flag.talked_baker: true}}]}
+      - {name: Dog, image: x.png, talk: [{set: {flag.talked_dog: true}}]}
+    actions: [{label: Rest, do: [{heal: all}]}]
+    exits: [{to: camp}, {to: fx_nomenu}]
+  fx_nomenu:
+    name: Closed Room
+    no_menu: true
+    background: pics/bg.png
+    exits: [{to: fx_town}]
 `
 
 // wldWorldFiles is a neutral game with a dungeon, a map and a painted scene made of generated
@@ -228,7 +245,8 @@ func wldWorldFiles(t *testing.T, gameYAML string, extra map[string]string) fstes
 }
 
 // wldMeters is a meter every location shows.
-const wldMeters = "meters:\n  - {label: Debt, value: var.debt, max: 10, color: \"#d98a6a\", when: var.debt > 0}\n"
+const wldMeters = "meters:\n  - {label: Debt, value: var.debt, max: 10, color: \"#d98a6a\", when: var.debt > 0}\n" +
+	"card_bubbles:\n  - {actor: scout, state: poison, count: 6, color: \"#88ee88\"}\n  - {when: \"gold > 0\", size: 2}\n"
 
 // wldWorld opens the neutral world game at the location.
 func wldWorld(t *testing.T, loc string, opts Options) *Game {

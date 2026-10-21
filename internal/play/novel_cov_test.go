@@ -21,6 +21,15 @@ const wldNovelData = `events:
       - say: {who: Courier, face: pics/tall1.png, text: "Three."}
       - say: {who: Stranger, face: pics/tall3.png, text: "Four."}
       - say: "Five."
+  ev_notice:
+    do:
+      - notice: "Found a coin."
+      - notice: "The lamp flickers."
+      - say: "After the notices."
+  ev_dream:
+    do:
+      - image: {file: pics/bg.png, look: dream, haze: "#aabbcc"}
+      - say: "A dream."
   ev_box:
     do:
       - say: {who: Courier, face: pics/tall1.png, side: left, text: "Left one."}
