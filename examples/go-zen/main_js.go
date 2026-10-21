@@ -6,12 +6,13 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"net/url"
+	"path"
 	"sync"
 	"syscall/js"
 	"testing/fstest"
@@ -24,7 +25,7 @@ import (
 
 // In a browser the game's files are not in the program: the page serves them next to it
 // (game/files.json lists them, written by web/assets.py with the pictures as WebP), and
-// they are fetched once before the game starts, while the page shows how much is left.
+// files are fetched when opened so unused pictures do not delay the first screen.
 // The game runs as a gozen.Session on a play.Screen; the saves go to the page's
 // localStorage.
 func main() {
@@ -92,8 +93,9 @@ type file struct {
 	Size int64  `json:"size"`
 }
 
-// fetchGame reads the list base+"files.json" and every file in it, a few at a time.
-func fetchGame(base string) (fstest.MapFS, error) {
+// fetchGame reads the small manifest and returns a filesystem that fetches each file
+// only when Gozen opens it. Directory entries come from the manifest.
+func fetchGame(base string) (fs.FS, error) {
 	var files []file
 	b, err := get(base + "files.json")
 	if err != nil {
@@ -102,45 +104,54 @@ func fetchGame(base string) (fstest.MapFS, error) {
 	if err := json.Unmarshal(b, &files); err != nil {
 		return nil, fmt.Errorf("files.json: %w", err)
 	}
-	var total int64
+	entries := fstest.MapFS{}
+	served := make(map[string]string, len(files))
 	for _, f := range files {
-		total += f.Size
+		if !fs.ValidPath(f.Name) || !fs.ValidPath(f.File) || f.Size < 0 {
+			return nil, fmt.Errorf("files.json: invalid entry %q", f.Name)
+		}
+		if _, exists := served[f.Name]; exists {
+			return nil, fmt.Errorf("files.json: duplicate entry %q", f.Name)
+		}
+		served[f.Name] = f.File
+		entries[f.Name] = &fstest.MapFile{Data: nil}
 	}
-	const workers = 6
-	var (
-		mu   sync.Mutex
-		done int64
-		errs []error
-		wg   sync.WaitGroup
-	)
-	next := make(chan file)
-	fsys := fstest.MapFS{}
-	page("goZenProgress", 0, float64(total))
-	for range workers {
-		wg.Go(func() {
-			for f := range next {
-				b, err := get(base + (&url.URL{Path: f.File}).EscapedPath())
-				mu.Lock()
-				if err != nil {
-					errs = append(errs, err)
-				} else {
-					fsys[f.Name] = &fstest.MapFile{Data: b}
-					done += int64(len(b))
-					page("goZenProgress", float64(done), float64(total))
-				}
-				mu.Unlock()
+	return &httpFS{base: base, entries: entries, served: served, cache: map[string][]byte{}}, nil
+}
+
+type httpFS struct {
+	base    string
+	entries fstest.MapFS
+	served  map[string]string
+	mu      sync.Mutex
+	cache   map[string][]byte
+}
+
+func (f *httpFS) Open(name string) (fs.File, error) {
+	if !fs.ValidPath(name) {
+		return nil, fs.ErrInvalid
+	}
+	if served, ok := f.served[name]; ok {
+		f.mu.Lock()
+		data, cached := f.cache[name]
+		f.mu.Unlock()
+		if !cached {
+			var err error
+			data, err = get(f.base + (&url.URL{Path: path.Clean(served)}).EscapedPath())
+			if err != nil {
+				return nil, err
 			}
-		})
+			f.mu.Lock()
+			if prior, ok := f.cache[name]; ok {
+				data = prior
+			} else {
+				f.cache[name] = data
+			}
+			f.mu.Unlock()
+		}
+		return fstest.MapFS{name: &fstest.MapFile{Data: data}}.Open(name)
 	}
-	for _, f := range files {
-		next <- f
-	}
-	close(next)
-	wg.Wait()
-	if len(errs) > 0 {
-		return nil, errors.Join(errs...)
-	}
-	return fsys, nil
+	return f.entries.Open(name)
 }
 
 func get(u string) (b []byte, err error) {

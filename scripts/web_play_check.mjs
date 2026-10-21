@@ -203,15 +203,22 @@ async function key(type) {
 async function timings() {
   const r = await send("Runtime.evaluate", {
     returnByValue: true,
-    expression: `({ t: window.goZenTimes || {}, gaps: window.goZenGaps || [], frames: window.goZenFrames || [] })`,
+    expression: `({ t: window.goZenTimes || {}, gaps: window.goZenGaps || [], frames: window.goZenFrames || [],
+      navigationBytes: performance.getEntriesByType("navigation").reduce((n, e) => n + e.transferSize, 0),
+      resourcesBeforeReady: performance.getEntriesByType("resource").filter((e) => e.responseEnd <= (window.goZenTimes || {}).ready)
+        .map((e) => e.transferSize || e.encodedBodySize) })`,
   });
-  const { t, gaps, frames } = r.result.value;
+  const { t, gaps, frames, navigationBytes, resourcesBeforeReady } = r.result.value;
   const s = (ms) => (ms / 1000).toFixed(2);
   if (t.fetched !== undefined && t.ready !== undefined) {
     console.log(`files fetched at ${s(t.fetched)}s; the first frame ${s(t.ready - t.fetched)}s after them` +
       (t.starting !== undefined ? ` (the game started ${s(t.starting - t.fetched)}s after them)` : ""));
   }
   if (t.ready !== undefined) {
+    const resourceBytes = resourcesBeforeReady.reduce((n, bytes) => n + bytes, 0);
+    console.log(`downloaded before the first frame: ${(navigationBytes + resourceBytes).toLocaleString()} bytes ` +
+      `(document ${navigationBytes.toLocaleString()}, resources ${resourceBytes.toLocaleString()}; ` +
+      `${resourcesBeforeReady.length} requests)`);
     // A gap that began before the first frame counts from it: the page can stand still
     // from just before the first frame is shown to long after.
     let worst = [0, 0];

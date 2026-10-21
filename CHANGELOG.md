@@ -8,6 +8,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 - `gozen sim campaign --compare strategies|tactics` plays every strategy or declared tactic on the same seed range and reports win rate, mean ending turns, mean player regions held, and per-region ownership changes, mean turn of the first ownership change, end holders and player win rate by held turn. `--format json` writes the same comparison report as JSON.
 
+### Changed
+
+- Browser samples no longer include the games' embedded files in their WebAssembly builds. They read a small manifest and fetch assets only when opened, while desktop builds keep embedding the game directory. The pages load precompressed `.wasm.gz` files and decompress them before instantiation; browser saves remain in `localStorage`.
+
 ## v0.3.0 - 2026-10-21
 
 Campaigns join RPGs and novels: schema version 5 adds a war of regions over turns (ADR 0030), with a sortie screen and clashes of armies, beside the dungeons and towns of the same game. Dungeons gain themes: `theme: cave` and a few more fill a dungeon's pictures, and `gozen theme add` copies them into a game.
