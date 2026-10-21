@@ -46,8 +46,10 @@ func lineKey(s event.Say) uint64 {
 // readKeys reads read.json. A bare list of keys is the record before the envelope (legacy).
 func readKeys(b []byte, gameID string) (keys []uint64, legacy bool, err error) {
 	if t := bytes.TrimSpace(b); len(t) > 0 && t[0] == '[' {
-		err := json.Unmarshal(b, &keys)
-		return keys, true, err
+		if err := json.Unmarshal(b, &keys); err != nil {
+			return nil, true, err // no half-read list beside an error
+		}
+		return keys, true, nil
 	}
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(b, &raw); err != nil {
