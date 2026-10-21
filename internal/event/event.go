@@ -629,7 +629,9 @@ func (r *Runner) run(c *data.Command) Request {
 			}
 		}
 	case "leave":
-		r.st.Leave(c.Leave)
+		if !r.st.Leave(c.Leave) {
+			r.logf(fmt.Errorf("leave: %s is the last member of the party, who stays (a party is never empty)", c.Leave))
+		}
 	case "heal":
 		for _, a := range r.st.Members() {
 			if c.Heal == "all" || a.ID == c.Heal {
