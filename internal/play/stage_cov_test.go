@@ -11,15 +11,17 @@ import (
 // the arrow keys at 1.6 m/s, kept inside the walk area and out of the blocks; OK takes what is
 // within reach; walking into an exit's area leaves; a spot with do runs when stepped on.
 
-func wldStage(t *testing.T) (*Game, *stageScene) {
+// wldStage opens the yard from a directory, the way --dir does (the reload is one of the cases).
+func wldStage(t *testing.T) (*Game, *stageScene, string) {
 	t.Helper()
-	g := wldWorld(t, "fx_yard", Options{Calm: true})
+	dir := wldDisk(t, "", nil)
+	g := wldLive(t, dir, "fx_yard")
 	s, ok := g.stack[0].(*stageScene)
 	if !ok {
 		t.Fatalf("scene %T", g.stack[0])
 	}
 	wldFrames(t, g, 20)
-	return g, s
+	return g, s, dir
 }
 
 func wldStageArrivesOnStartSpotFacingIt(t *testing.T, g *Game, s *stageScene) {
@@ -47,7 +49,7 @@ func wldStageArrowKeysWalkAndStayInsideWalkArea(t *testing.T, g *Game, s *stageS
 		t.Fatalf("facing %v after walking east", s.player.facing)
 	}
 	// up goes away from the camera; far past the back edge of the walk area the leader stops there
-	wldHold(t, g, 700, "up")
+	wldHold(t, g, 250, "up")
 	if !s.sc.Free(s.player.at) {
 		t.Fatalf("the leader stands outside the walk area or in a block: %v", s.player.at)
 	}
@@ -58,7 +60,7 @@ func wldStageArrowKeysWalkAndStayInsideWalkArea(t *testing.T, g *Game, s *stageS
 
 func wldStageBlocksAreSolid(t *testing.T, g *Game, s *stageScene) {
 	s.player.at = geom.Pt{X: 100, Y: 130}
-	wldHold(t, g, 300, "right")
+	wldHold(t, g, 80, "right")
 	if s.player.at.X >= 140 {
 		t.Fatalf("walked into the block at x 140..180: %v", s.player.at)
 	}
@@ -99,7 +101,7 @@ func wldStageStepTriggerThingRunsOnEntering(t *testing.T, g *Game, s *stageScene
 }
 
 func wldStageWalkToSpotRunsItsDoOnce(t *testing.T, g *Game, s *stageScene) {
-	wldPlay(t, g, "walk well\nwait 400\n", 3000)
+	wldPlay(t, g, "walk well\nwait 60\n", 3000)
 	if g.st.Spot != "well" || !g.st.Flags["at_well"] {
 		t.Fatalf("spot %q, at_well %v", g.st.Spot, g.st.Flags["at_well"])
 	}
@@ -112,13 +114,14 @@ func wldStageClickWalksAndTalks(t *testing.T, g *Game, s *stageScene) {
 	sx, sy, _ := s.r.ScreenOf(w.at, pw, ph)
 	// a click on the doll's body (above its feet) walks there and talks
 	x, y := int(sx/g.ui), int(sy/g.ui)-40
-	wldPlay(t, g, "click "+strconv.Itoa(x)+" "+strconv.Itoa(y)+"\nwait 600\n", 2000)
+	wldPlay(t, g, "click "+strconv.Itoa(x)+" "+strconv.Itoa(y)+"\nwait 2\n", 100)
+	wldUntil(t, g, 400, func() bool { return g.st.Flags["met_elder"] })
 	if !g.st.Flags["met_elder"] {
 		t.Fatalf("clicking Elder did not talk (feet %v, goal %v)", s.player.at, s.goal)
 	}
 	// a click on bare floor only walks
 	g.st.Flags["met_elder"] = false
-	wldPlay(t, g, "click 300 600\nwait 300\n", 1000)
+	wldPlay(t, g, "click 300 600\nwait 60\n", 1000)
 	if g.st.Flags["met_elder"] {
 		t.Fatal("clicking the floor talked to someone")
 	}
@@ -143,8 +146,9 @@ func wldStageListWalksToChosenEntry(t *testing.T, g *Game, s *stageScene) {
 	for range at {
 		script += "press down\nwait 4\n"
 	}
-	script += "press ok\nwait 600\n"
+	script += "press ok\nwait 2\n"
 	wldPlay(t, g, script, 2000)
+	wldUntil(t, g, 400, func() bool { return g.st.Flags["met_elder"] })
 	if !g.st.Flags["met_elder"] {
 		t.Fatalf("choosing Elder in the list did not walk there and talk (feet %v)", s.player.at)
 	}
@@ -188,9 +192,26 @@ func wldStageScriptWalkToMissingSpotFails(t *testing.T, g *Game, s *stageScene) 
 	}
 }
 
+// F5 makes the scene again from the new data and puts the leader back where the feet were.
+func wldStageReloadKeepsTheFeet(t *testing.T, g *Game, s *stageScene, dir string) {
+	s.player.at = geom.Pt{X: 120, Y: 150}
+	wldEdit(t, dir, "data/world.yaml", "name: Test Yard", "name: Test Yard Two")
+	wldPlay(t, g, "press reload\nwait 20\n", 100)
+	s2, ok := g.stack[0].(*stageScene)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	if g.db.Locations["fx_yard"].Name != "Test Yard Two" {
+		t.Fatal("not reloaded")
+	}
+	if s2.player.at != (geom.Pt{X: 120, Y: 150}) {
+		t.Fatalf("the leader stands at %v after the reload, want where it stood", s2.player.at)
+	}
+}
+
 // The scenes bake dolls (a fraction of a second each), so one game serves the cases of a group.
 func TestWldStageWalking(t *testing.T) {
-	g, s := wldStage(t)
+	g, _, dir := wldStage(t)
 	steps := []struct {
 		name string
 		fn   func(*testing.T, *Game, *stageScene)
@@ -199,15 +220,22 @@ func TestWldStageWalking(t *testing.T) {
 		{"arrow keys", wldStageArrowKeysWalkAndStayInsideWalkArea},
 		{"blocks", wldStageBlocksAreSolid},
 		{"script", wldStageScriptWalkToMissingSpotFails},
+		{"reload", func(t *testing.T, g *Game, s *stageScene) { wldStageReloadKeepsTheFeet(t, g, s, dir) }},
 		{"exit", wldStageExitAreaLeaves}, // leaves the yard: last
 	}
 	for _, c := range steps {
-		t.Run(c.name, func(t *testing.T) { c.fn(t, g, s) })
+		t.Run(c.name, func(t *testing.T) {
+			cur, ok := g.stack[0].(*stageScene) // a reload makes the scene again
+			if !ok {
+				t.Fatalf("scene %T", g.stack[0])
+			}
+			c.fn(t, g, cur)
+		})
 	}
 }
 
 func TestWldStageInteractions(t *testing.T) {
-	g, s := wldStage(t)
+	g, s, _ := wldStage(t)
 	steps := []struct {
 		name string
 		fn   func(*testing.T, *Game, *stageScene)

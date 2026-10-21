@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	lang "github.com/nao1215/gozen/internal/text"
 )
 
 // More of the novel window: the backlog (kept to ui.backlog lines, scrolled with the arrows), the
@@ -30,7 +32,7 @@ func wldNovelWith(t *testing.T, ui, event string) *Game {
 
 func TestWldNovelBacklogKeepsTheNewestLinesAndScrolls(t *testing.T) {
 	g := wldNovelWith(t, "{message: novel, backlog: 5}", "ev_many")
-	for i := 0; i < 11; i++ {
+	for range 11 {
 		wldAdvance(t, g)
 	}
 	if wldTalkText(g) != "Line 12." {
@@ -102,7 +104,7 @@ func TestWldNovelSaveAndLoadButtonsOpenTheSlots(t *testing.T) {
 
 func TestWldNovelSceneSkipPassesAnEventThatWasRead(t *testing.T) {
 	g := wldNovelWith(t, "{message: novel}", "ev_auto")
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		wldAdvance(t, g)
 	}
 	if g.talk.active || g.events.Running() {
@@ -130,7 +132,7 @@ func TestWldNovelSceneSkipPassesAnEventThatWasRead(t *testing.T) {
 
 func TestWldNovelSkipPassesLinesReadAndStopsAtNewOnes(t *testing.T) {
 	g := wldNovelWith(t, "{message: novel}", "ev_many")
-	for i := 0; i < 3; i++ { // read lines 1 to 3
+	for range 3 { // read lines 1 to 3
 		wldAdvance(t, g)
 	}
 	if wldTalkText(g) != "Line 4." {
@@ -155,7 +157,7 @@ func TestWldNovelSkipPassesLinesReadAndStopsAtNewOnes(t *testing.T) {
 
 func TestWldNovelSpeakerWhoLeavesFadesOut(t *testing.T) {
 	g := wldNovelWith(t, "{message: novel}", "ev_auto")
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		wldAdvance(t, g)
 	}
 	// the fourth speaker pushes the first off the stage: the one who left is drawn fading
@@ -170,4 +172,41 @@ func TestWldNovelSpeakerWhoLeavesFadesOut(t *testing.T) {
 		t.Fatal("no figures on the stage")
 	}
 	wldFrames(t, g, 30)
+}
+
+// A speaker who stands on the stage keeps standing, on the same side, when the language changes
+// and their name is written another way (ADR 0027): the next line does not bring them on again.
+func TestWldLanguageChangeKeepsTheSpeakerOnTheirSide(t *testing.T) {
+	extra := map[string]string{
+		"data/novel_cov.yaml": wldNovelData,
+		"lang/ja.yaml":        "text:\n  \"Courier\": \"配達人\"\n  \"Guard\": \"衛兵\"\n  \"One.\": \"一。\"\n  \"Two.\": \"二。\"\n",
+	}
+	opts := Options{Location: "camp", FS: wldWorldFiles(t, "written_in: en\nlanguages: [en, ja]\nui: {message: novel}\n", extra)}
+	g := wldOpenWith(t, opts)
+	t.Cleanup(func() {
+		if err := lang.Use(lang.English, nil); err != nil {
+			t.Error(err)
+		}
+	})
+	wldFrames(t, g, 10)
+	wldStartEvent(t, g, "ev_auto")
+	wldFrames(t, g, 5)
+	wldAdvance(t, g)
+	if wldTalkText(g) != "Two." || g.stage[1].id != "name:Guard" {
+		t.Fatalf("at %q with %q standing", wldTalkText(g), g.stage[1].id)
+	}
+	side := g.sides["name:Guard"]
+	if side == 0 {
+		t.Fatal("the guard has no side")
+	}
+	switchLanguage(t, g)
+	if got := wldTalkText(g); got != "二。" {
+		t.Fatalf("the line after: %q", got)
+	}
+	if g.stage[1].id != "name:衛兵" || g.sides["name:衛兵"] != side {
+		t.Fatalf("stage %q sides %v: the guard should stand on the same side under the new name", g.stage[1].id, g.sides)
+	}
+	if _, old := g.sides["name:Guard"]; old {
+		t.Fatal("the old name still holds a side")
+	}
 }

@@ -159,6 +159,29 @@ func TestWldDungeonDoorsBlockAndViewsDraw(t *testing.T) {
 	}
 }
 
+// Stairs into another dungeon: the party arrives at that map's start, facing as it says, and the
+// screen fades in again.
+func TestWldDungeonStairsLeadToAnotherDungeon(t *testing.T) {
+	g := wldMaze(t, "fx_maze", 8, 1, 1)
+	ds, ok := g.stack[0].(*dungeonScene)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	wldPlay(t, g, "press up\nwait 60\n", 200)
+	if g.st.Location != "fx_nomap" {
+		t.Fatalf("at %q %+v", g.st.Location, g.st.Pos)
+	}
+	if p := g.st.Pos; p.In != "fx_nomap" || p.X != 1 || p.Y != 1 || p.Facing != 1 {
+		t.Fatalf("arrived at %+v, want the start of the other map", p)
+	}
+	if _, ok := g.stack[0].(*dungeonScene); !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	if ds.trans != "fade" {
+		t.Fatalf("transition %q", ds.trans)
+	}
+}
+
 func TestWldDungeonGaugeAndMeters(t *testing.T) {
 	g := wldMaze(t, "fx_maze", 1, 1, 1, false)
 	g.st.Vars["debt"] = 5.0
@@ -204,8 +227,8 @@ func TestWldDungeonMadeFloorBannerAndHunters(t *testing.T) {
 	if !ok {
 		t.Fatalf("scene %T", h.stack[0])
 	}
-	f, _ := h.st.Vars[dungeon.VarFloor].(float64)
-	if f != 2 || ds.shownFloor != f {
+	f, isNumber := h.st.Vars[dungeon.VarFloor].(float64)
+	if !isNumber || f != 2 || ds.shownFloor != f {
 		t.Fatalf("banner floor %v, state floor %v", ds.shownFloor, f)
 	}
 	if len(dungeon.HuntersOn(h.db, h.st)) == 0 {

@@ -69,9 +69,16 @@ func wldStep(t *testing.T, g *Game, screen *ebiten.Image) bool {
 		}
 		t.Fatal(err)
 	}
-	g.Draw(screen)
+	if g.tick%wldDrawEvery == 0 {
+		g.Draw(screen)
+	}
 	return true
 }
+
+// wldDrawEvery is how many frames pass between two draws: drawing is most of what a frame costs
+// (and several times that under the race detector), and the rules do not wait for it. A test that
+// reads what a draw leaves behind runs a few frames first.
+const wldDrawEvery = 3
 
 // wldFrames runs n frames.
 func wldFrames(t *testing.T, g *Game, n int) {
@@ -85,8 +92,8 @@ func wldFrames(t *testing.T, g *Game, n int) {
 }
 
 // wldPlay feeds a script to the running game and runs frames until it has been played out (at
-// most max frames), so the state can be read after the keys. The script must not shoot.
-func wldPlay(t *testing.T, g *Game, src string, max int) {
+// most limit frames), so the state can be read after the keys. The script must not shoot.
+func wldPlay(t *testing.T, g *Game, src string, limit int) {
 	t.Helper()
 	sc, err := parseScript(src)
 	if err != nil {
@@ -100,9 +107,23 @@ func wldPlay(t *testing.T, g *Game, src string, max int) {
 	s.cmds = append(sc.cmds, scriptCmd{verb: "wait", arg: "1000000000", n: 1000000000})
 	s.pc, s.wait, s.quit, s.limit = 0, 0, false, 0
 	screen := wldScreen(g)
-	for i := 0; (s.pc < len(s.cmds)-1 || s.wait > 0) && i < max; i++ {
+	for i := 0; (s.pc < len(s.cmds)-1 || s.wait > 0) && i < limit; i++ {
 		if !wldStep(t, g, screen) {
 			t.Fatal("the game quit while the script was played")
+		}
+	}
+}
+
+// wldUntil runs frames until cond holds (at most limit of them).
+func wldUntil(t *testing.T, g *Game, limit int, cond func() bool) {
+	t.Helper()
+	screen := wldScreen(g)
+	for range limit {
+		if cond() {
+			return
+		}
+		if !wldStep(t, g, screen) {
+			t.Fatal("the game quit")
 		}
 	}
 }

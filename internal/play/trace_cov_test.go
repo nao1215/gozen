@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -66,7 +67,7 @@ func wldReplayGame(t *testing.T, trace []byte, mod func(*Options)) (*Game, error
 func wldReplay(t *testing.T, g *Game) string {
 	t.Helper()
 	screen := wldScreen(g)
-	for i := 0; i < 20000; i++ {
+	for range 20000 {
 		if !wldStep(t, g, screen) {
 			return ReplayReport
 		}
@@ -199,6 +200,16 @@ func TestWldReplayRefusesABrokenOrChangedRecord(t *testing.T) {
 		{"old version without until", []byte(strings.Replace(tr, `"version":2`, `"version":1`, 1)), nil, "old record cannot verify its preconditions"},
 		{"until past the end", []byte(tr), func(o *Options) { o.Until = 1 << 30 }, "--until is past the end of the record"},
 		{"negative until", []byte(tr), func(o *Options) { o.Until = -1 }, "--until needs a positive tick"},
+		{"not JSON", join(append([]string{lines[0], "garbage"}, lines[1:]...)...), nil, "run.jsonl"},
+		{"no tick", join(append([]string{lines[0], `{"t":"input","press":["ok"]}`}, lines[1:]...)...), nil, "invalid order, end or tick"},
+		{"no kind", join(append([]string{lines[0], `{"tick":1}`}, lines[1:]...)...), nil, "invalid order, end or tick"},
+		{"no start settings", []byte(strings.Replace(tr, `"setup":`, `"xsetup":`, 1)), nil, "lacks its start settings"},
+		{"location not a word", []byte(strings.Replace(tr, `"location":"camp"`, `"location":5`, 1)), nil, "invalid location"},
+		{"calm not a flag", []byte(strings.Replace(tr, `"calm":false`, `"calm":"yes"`, 1)), nil, "invalid calm"},
+		{"battle not a word", []byte(strings.Replace(tr, `"battle":""`, `"battle":5`, 1)), nil, "invalid battle"},
+		{"action without a name", join(append(append([]string{}, lines[:firstInput]...), `{"t":"act","tick":2,"name":5}`)...), nil, "action name must be a string"},
+		{"reload partway", wldJoinTrace(append(append(append([]string{}, lines[:firstInput]...), `{"t":"live_reload","tick":2,"ok":true}`), lines[firstInput:]...)), nil, "asset or data reload partway"},
+		{"end without state", join(append(append([]string{}, lines[:len(lines)-1]...), `{"t":"end","tick":186,"lines":`+strconv.Itoa(len(lines))+`}`)...), nil, "lacks its end state"},
 		{"seed zero", []byte(strings.Replace(tr, `"seed":7`, `"seed":0`, 1)), nil, "seed"},
 		{"other saves", []byte(strings.Replace(tr, `"saves":{}`, `"saves":{"a.json":"00"}`, 1)), nil, "save slots the replay needs do not match"},
 		{"data changed", []byte(tr), func(o *Options) {

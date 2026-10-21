@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/nao1215/gozen/internal/event"
 )
 
 // Maps (docs/architecture/scenes.md, ADR 0022): a map location shows one picture with points
@@ -22,12 +24,12 @@ func wldAtlas(t *testing.T, loc string) (*Game, *atlasScene) {
 }
 
 // wldSettle plays frames, pressing OK now and then (to pass lines), until the token has
-// stopped and no event is running (at most max frames).
-func wldSettle(t *testing.T, g *Game, as *atlasScene, max int) {
+// stopped and no event is running (at most limit frames).
+func wldSettle(t *testing.T, g *Game, as *atlasScene, limit int) {
 	t.Helper()
 	screen := wldScreen(g)
 	quiet := 0
-	for i := 0; i < max && quiet < 20; i++ {
+	for i := 0; i < limit && quiet < 20; i++ {
 		wldStep(t, g, screen)
 		if as.walking() || g.busy() {
 			quiet = 0
@@ -75,15 +77,22 @@ func TestWldAtlasUnknownModes(t *testing.T) {
 		// speaks its locked line, and the cave lies beyond the shut gate
 		{"fx_hidden", map[string]int{"inn": 1, "shrine": 1, "gate": 1, "cave": 0}},
 	}
-	for _, c := range cases {
-		t.Run(c.loc, func(t *testing.T) {
-			_, as := wldAtlas(t, c.loc)
-			for id, want := range c.want {
-				if got := wldShown(as, id); got != want {
-					t.Errorf("point %s shows as %d, want %d", id, got, want)
-				}
+	// one game walks through the four maps
+	g, as := wldAtlas(t, cases[0].loc)
+	for i, c := range cases {
+		if i > 0 {
+			g.Handle(event.MoveEffect{Location: c.loc})
+			wldFrames(t, g, 10)
+			var ok bool
+			if as, ok = g.stack[0].(*atlasScene); !ok {
+				t.Fatalf("scene %T", g.stack[0])
 			}
-		})
+		}
+		for id, want := range c.want {
+			if got := wldShown(as, id); got != want {
+				t.Errorf("%s: point %s shows as %d, want %d", c.loc, id, got, want)
+			}
+		}
 	}
 }
 
@@ -133,7 +142,7 @@ func TestWldAtlasClosedPointSaysLockedThenOpens(t *testing.T) {
 }
 
 func TestWldAtlasKeysSelectAndConfirm(t *testing.T) {
-	g, as := wldAtlas(t, "fx_dim")
+	g, as := wldAtlas(t, "fx_named")
 	first := as.sel
 	wldPlay(t, g, "press right\nwait 6\npress down\nwait 6\npress left\nwait 6\npress up\nwait 6\n", 200)
 	if as.sel < 0 || as.sel >= len(as.choices) {

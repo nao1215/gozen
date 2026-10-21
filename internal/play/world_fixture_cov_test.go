@@ -6,7 +6,9 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"maps"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 )
@@ -15,10 +17,16 @@ import (
 // cropping show up as different pixels, and nothing is a single flat color).
 func wldPNG(t testing.TB, w, h int, base color.NRGBA) []byte {
 	t.Helper()
+	key := fmt.Sprint("png", w, h, base)
+	if v, ok := wldPictures.Load(key); ok {
+		if b, ok := v.([]byte); ok {
+			return b
+		}
+	}
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
 	for y := range h {
 		for x := range w {
-			k := uint8((x + y) * 60 / (w + h))
+			k := uint8((x + y) * 60 / (w + h)) //nolint:gosec // At most 60: a small shade added to a color.
 			img.SetNRGBA(x, y, color.NRGBA{R: base.R + k, G: base.G + k, B: base.B + k, A: 255})
 		}
 	}
@@ -26,8 +34,13 @@ func wldPNG(t testing.TB, w, h int, base color.NRGBA) []byte {
 	if err := png.Encode(&b, img); err != nil {
 		t.Fatal(err)
 	}
+	wldPictures.Store(key, b.Bytes())
 	return b.Bytes()
 }
+
+// wldPictures keeps the pictures made, so that opening many games does not draw them again
+// (the pictures are only read).
+var wldPictures sync.Map
 
 // wldDepthPNG is a 16-bit gray depth map: far at the top, near at the bottom.
 func wldDepthPNG(t testing.TB, w, h int) []byte {
@@ -35,7 +48,7 @@ func wldDepthPNG(t testing.TB, w, h int) []byte {
 	img := image.NewGray16(image.Rect(0, 0, w, h))
 	for y := range h {
 		for x := range w {
-			img.SetGray16(x, y, color.Gray16{Y: uint16(y * 65535 / (h - 1))})
+			img.SetGray16(x, y, color.Gray16{Y: uint16(y * 65535 / (h - 1))}) //nolint:gosec // At most 65535 by the division.
 		}
 	}
 	var b bytes.Buffer
@@ -57,12 +70,12 @@ func wldMapYAML(id, unknown, extra string) string {
 %[3]s
       points:
         home: {at: [40, 40], start: true, label: Home, do: [{set: {flag.home_seen: true}}]}
-        inn: {at: [160, 40], to: camp, label: Inn}
-        shrine: {at: [160, 100], do: [{set: {flag.prayed: true}}], once: true, label: Shrine}
-        gate: {at: [280, 100], when: "flag.gate_open", locked: "The gate is shut.", do: [{set: {flag.passed: true}}], label: Gate}
-        cave: {at: [280, 160], label: Cave}
+        inn: {at: [90, 40], to: camp, label: Inn}
+        shrine: {at: [60, 70], do: [{set: {flag.prayed: true}}], once: true, label: Shrine}
+        gate: {at: [110, 70], when: "flag.gate_open", locked: "The gate is shut.", do: [{set: {flag.passed: true}}], label: Gate}
+        cave: {at: [110, 110], label: Cave}
       roads:
-        - {between: [home, inn], via: [[100, 60]]}
+        - {between: [home, inn], via: [[65, 50]]}
         - {between: [home, shrine], steps: 3}
         - {between: [shrine, gate]}
         - {between: [gate, cave]}
@@ -87,7 +100,7 @@ const wldWorldData = `locations:
         - {when: "flag.deep", area: Deep end, wall: pics/wall2.png, floor: "#665544", darkness: 0.8}
       map: |
         ###########
-        #S..f..a..#
+        #S..f..a.N#
         #.#########
         #.>..s..pE#
         #.#########
@@ -110,6 +123,7 @@ const wldWorldData = `locations:
         W: {look: wall, picture: pics/decal.png, size: 0.5, name: Sign}
         K: {look: door, name: Plain door, solid: "true"}
         E: {name: Way out, mark: "#00cc00", symbol: "<", do: [{move: camp}]}
+        N: {name: Dark stairs, mark: "#cccc00", symbol: ">", do: [{move: fx_nomap}]}
   fx_hunt:
     name: Hunt Hall
     encounters: {gauge: 0.2, rate: "0.1", troops: [{troop: one}]}
@@ -164,7 +178,7 @@ const wldWorldData = `locations:
     people:
       - id: elder
         name: Elder
-        image: pics/person.png
+        image: pics/tall1.png
         talk: [{set: {flag.met_elder: true}}]
         bubbles: ["Nice day.", {text: "The gate is open.", when: flag.gate_open}]
       - id: walker
@@ -173,6 +187,18 @@ const wldWorldData = `locations:
         talk: [{set: {flag.met_walker: true}}]
         bubbles: ["Hm."]
     actions: [{label: Rest, do: [{heal: all}]}]
+    exits: [{to: camp}]
+  fx_yard2:
+    name: Empty Yard
+    background: pics/bg.png
+    safe: true
+    stage:
+      camera: 30
+      scale: [{at: [160, 170], height: 80}, {at: [160, 90], height: 40}]
+      walk: [[[20, 175], [300, 175], [300, 90], [20, 90]]]
+      spots:
+        start: {at: [60, 160], facing: east}
+        well: {at: [250, 160], facing: north, do: [{set: {flag.at_well: true}}], once: true}
     exits: [{to: camp}]
   fx_town:
     name: Little Town
@@ -199,15 +225,13 @@ func wldWorldFiles(t *testing.T, gameYAML string, extra map[string]string) fstes
 	t.Helper()
 	fsys := fstest.MapFS{}
 	base := gameFiles(t)
-	for k, v := range base {
-		fsys[k] = v
-	}
+	maps.Copy(fsys, base)
 	g := string(base["game.yaml"].Data)
 	fsys["game.yaml"] = &fstest.MapFile{Data: []byte("schema_version: 4\n" + gameYAML + g)}
 	maps := wldMapYAML("fx_mark", "mark", "      draw_roads: true\n      token: {picture: pics/token.png, height: 0.12}\n      marker: {picture: pics/marker.png, height: 0.08}") +
 		wldMapYAML("fx_hidden", "hidden", "      token: doll") +
 		wldMapYAML("fx_dim", "dim", "") +
-		wldMapYAML("fx_named", "named", "")
+		wldMapYAML("fx_named", "named", "      token: {picture: pics/token.png}")
 	fsys["data/world.yaml"] = &fstest.MapFile{Data: []byte(wldWorldData + maps)}
 	pics := map[string][]byte{
 		"wall.png":     wldPNG(t, 32, 32, color.NRGBA{R: 100, G: 80, B: 90}),

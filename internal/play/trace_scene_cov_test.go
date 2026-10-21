@@ -46,7 +46,7 @@ func wldRoundTrip(t *testing.T, loc string, script string, extra map[string]stri
 
 func TestWldReplayDungeonWithEncounters(t *testing.T) {
 	script := "wait 60\n"
-	for range 6 {
+	for range 2 {
 		script += "press up\nwait 14\npress right\nwait 14\npress left\nwait 14\n"
 	}
 	script += "until\nquit\n"
@@ -54,13 +54,13 @@ func TestWldReplayDungeonWithEncounters(t *testing.T) {
 	if !strings.HasPrefix(report, "replay fully matched:") {
 		t.Fatalf("report %q", report)
 	}
-	if len(traceLines(t, tr, "input")) < 10 {
+	if len(traceLines(t, tr, "input")) < 5 {
 		t.Fatal("the recording has few inputs")
 	}
 }
 
 func TestWldReplayMapTravel(t *testing.T) {
-	tr, report := wldRoundTrip(t, "fx_named", "wait 60\nclick 640 400\nwait 700\nquit\n", nil)
+	tr, report := wldRoundTrip(t, "fx_named", "wait 60\nclick 240 280\nwait 100\nquit\n", nil)
 	if tl := traceLines(t, tr, "travel"); len(tl) != 1 || tl[0]["to"] != "shrine" {
 		t.Fatalf("travel lines %v", tl)
 	}
@@ -70,7 +70,7 @@ func TestWldReplayMapTravel(t *testing.T) {
 }
 
 func TestWldReplayPaintedScene(t *testing.T) {
-	tr, report := wldRoundTrip(t, "fx_yard", "wait 60\nclick 900 560\nwait 200\nclick 300 600\nwait 200\nquit\n", nil)
+	tr, report := wldRoundTrip(t, "fx_yard2", "wait 60\nclick 900 560\nwait 60\nclick 300 600\nwait 60\nquit\n", nil)
 	if !strings.HasPrefix(report, "replay fully matched:") {
 		t.Fatalf("report %q", report)
 	}

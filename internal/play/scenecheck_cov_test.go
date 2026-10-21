@@ -176,7 +176,7 @@ func TestWldSceneCheckPlaysTheSceneThenAsksTheVerdict(t *testing.T) {
 		t.Fatalf("OK on a scene opened %T", g.stack[len(g.stack)-1])
 	}
 	// read it to the end
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		if _, ok := g.stack[len(g.stack)-1].(*sceneReplay); !ok {
 			break
 		}

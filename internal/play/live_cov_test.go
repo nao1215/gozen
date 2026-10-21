@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/layer1/geom"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 
@@ -64,7 +63,7 @@ func wldEdit(t *testing.T, dir, rel, from, to string) {
 	if !strings.Contains(string(b), from) {
 		t.Fatalf("%s has no %q", rel, from)
 	}
-	if err := os.WriteFile(p, []byte(strings.Replace(string(b), from, to, 1)), 0o600); err != nil {
+	if err := os.WriteFile(p, []byte(strings.Replace(string(b), from, to, 1)), 0o600); err != nil { //nolint:gosec // The test's own file in its temporary directory.
 		t.Fatal(err)
 	}
 }
@@ -301,25 +300,6 @@ func TestWldLiveReloadOfARecollectionThatIsGone(t *testing.T) {
 	}
 	if g.live.msg != lang.T("読み直した（回想が無いのでギャラリーへ）") {
 		t.Fatalf("notice %q", g.live.msg)
-	}
-}
-
-func TestWldLiveReloadKeepsWhereTheLeaderStands(t *testing.T) {
-	dir := wldDisk(t, "", nil)
-	g := wldLive(t, dir, "fx_yard")
-	s := g.stack[0].(*stageScene)
-	s.player.at = geom.Pt{X: 120, Y: 150}
-	wldEdit(t, dir, "data/world.yaml", "name: Test Yard", "name: Test Yard Two")
-	wldPlay(t, g, "press reload\nwait 20\n", 100)
-	s2, ok := g.stack[0].(*stageScene)
-	if !ok {
-		t.Fatalf("scene %T", g.stack[0])
-	}
-	if g.db.Locations["fx_yard"].Name != "Test Yard Two" {
-		t.Fatal("not reloaded")
-	}
-	if s2.player.at != (geom.Pt{X: 120, Y: 150}) {
-		t.Fatalf("the leader stands at %v after the reload, want where it stood", s2.player.at)
 	}
 }
 
