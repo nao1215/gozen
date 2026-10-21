@@ -9,6 +9,8 @@ Enemy:
   family: "The monster family ID used by breeding. Needs schema version 6."
   rank: "A positive rank used to select offspring from a family rule. Needs schema version 6."
   monster_class: "The class used for a recruited or bred actor instance. Needs schema version 6."
+  sex: "Allowed sexes for monster instances: any (default), male or female. Needs schema version 6."
+  sex_ratio: "Chance of a male instance when sex is any, from zero to one; default 0.5. Needs schema version 6."
   recruit: "The chance, level and optional bonus for joining after a victory. Bosses cannot be recruited. Needs schema version 6."
   lore: "A short description shown in the monster book after the enemy has been encountered."
   actions: "How many actions the enemy takes per turn. The default is 1."

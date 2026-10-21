@@ -6644,6 +6644,32 @@
           },
           "x-type": "number"
         },
+        "sex": {
+          "description": "Allowed sexes for monster instances: any (default), male or female. Needs schema version 6.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "sex_ratio": {
+          "description": "Chance of a male instance when sex is any, from zero to one; default 0.5. Needs schema version 6.",
+          "type": "number",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
         "state_resist": {
           "additionalProperties": {
             "type": "number"

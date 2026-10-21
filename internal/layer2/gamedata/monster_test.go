@@ -59,3 +59,39 @@ func TestMonsterCommandsParseInSchemaSix(t *testing.T) {
 		}
 	}
 }
+
+func TestMonsterSexRulesAndReachability(t *testing.T) {
+	db := testgame.Load(t, testgame.MonsterFiles())
+	db.Enemies["mote"].Sex = "female"
+	if _, ok := db.BreedReach()["boss"]; ok {
+		t.Fatal("female-only parents yielded a child")
+	}
+	files := testgame.MonsterFiles()
+	files["data/main.yaml"] = strings.Replace(files["data/main.yaml"], "  mote:\n    family: slime", "  mote:\n    family: slime\n    sex: female", 1)
+	files["data/main.yaml"] = strings.Replace(files["data/main.yaml"], "  boss:\n    family: slime", "  boss:\n    family: slime\n    sex: female", 1)
+	if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "pair cannot breed") {
+		t.Fatalf("female-only pair = %v", err)
+	}
+	files = testgame.MonsterFiles()
+	files["data/monsters.yaml"] = strings.Replace(files["data/monsters.yaml"], "  pairs: [{parents: [mote, mote], child: boss}]\n", "  pairs: []\n", 1)
+	files["data/main.yaml"] = strings.Replace(files["data/main.yaml"], "  mote:\n    family: slime", "  mote:\n    family: slime\n    sex: female", 1)
+	files["data/main.yaml"] = strings.Replace(files["data/main.yaml"], "  boss:\n    family: slime", "  boss:\n    family: slime\n    sex: female", 1)
+	if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "family rule cannot breed") {
+		t.Fatalf("female-only family = %v", err)
+	}
+	files = testgame.MonsterFiles()
+	files["data/main.yaml"] = strings.Replace(files["data/main.yaml"], "family: slime", "family: slime\n    sex: any\n    sex_ratio: 0", 1)
+	if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "pair cannot breed") {
+		t.Fatalf("zero male ratio = %v", err)
+	}
+	files = testgame.MonsterFiles()
+	files["data/main.yaml"] = strings.Replace(files["data/main.yaml"], "family: slime", "family: slime\n    sex: other", 1)
+	if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "sex must be") {
+		t.Fatalf("invalid sex = %v", err)
+	}
+	files = testgame.MonsterFiles()
+	files["data/main.yaml"] = strings.Replace(files["data/main.yaml"], "family: slime", "family: slime\n    sex: any\n    sex_ratio: 1.5", 1)
+	if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "sex_ratio") {
+		t.Fatalf("invalid ratio = %v", err)
+	}
+}

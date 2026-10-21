@@ -22,6 +22,8 @@ type Actor struct {
 	ID string `json:"id"`
 	// Monster is the enemy species of a recruited or bred instance. Empty for authored actors.
 	Monster string `json:"monster,omitempty"`
+	// Sex is male or female for a monster instance; authored actors have no sex.
+	Sex string `json:"sex,omitempty"`
 	// Nickname is the instance's chosen name; empty uses the species name.
 	Nickname string `json:"nickname,omitempty"`
 	// Plus is the inherited breeding strength.
@@ -504,6 +506,8 @@ func (v ActorView) Field(name string) (any, bool) {
 		return "", true
 	case "monster":
 		return a.Monster, true
+	case "sex":
+		return a.Sex, true
 	case "plus":
 		return float64(a.Plus), true
 	case "equip":

@@ -5,6 +5,32 @@ import (
 	"slices"
 )
 
+// AllowsMonsterSex reports whether a species can have the given sex.
+func AllowsMonsterSex(db *DB, species, sex string) bool {
+	e := db.Enemies[species]
+	return e != nil && (e.Sex == "" || e.Sex == "any" || e.Sex == sex) && (sex == "male" || sex == "female") &&
+		(e.SexRatio == nil || e.Sex != "" && e.Sex != "any" || (sex == "male" && *e.SexRatio > 0 || sex == "female" && *e.SexRatio < 1))
+}
+
+// MonsterSex chooses a permitted sex using a session random draw in [0,1).
+func MonsterSex(db *DB, species string, draw float64) string {
+	e := db.Enemies[species]
+	if e != nil && e.Sex == "female" {
+		return "female"
+	}
+	if e != nil && e.Sex == "male" {
+		return "male"
+	}
+	ratio := 0.5
+	if e != nil && e.SexRatio != nil {
+		ratio = *e.SexRatio
+	}
+	if draw < ratio {
+		return "male"
+	}
+	return "female"
+}
+
 // MonsterClass is the actor growth class of a monster species.
 func (db *DB) MonsterClass(species string) string {
 	e := db.Enemies[species]
@@ -58,6 +84,24 @@ func samePair(pair []string, a, b string) bool {
 	return len(pair) == 2 && (pair[0] == a && pair[1] == b || pair[0] == b && pair[1] == a)
 }
 
+func (db *DB) sexCompatible(a, b string) bool {
+	return AllowsMonsterSex(db, a, "male") && AllowsMonsterSex(db, b, "female") || AllowsMonsterSex(db, a, "female") && AllowsMonsterSex(db, b, "male")
+}
+
+func (db *DB) familySexCompatible(a, b string) bool {
+	for idA, eA := range db.Enemies {
+		if eA.Family != a || eA.Boss {
+			continue
+		}
+		for idB, eB := range db.Enemies {
+			if eB.Family == b && !eB.Boss && db.sexCompatible(idA, idB) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // BreedReach gives the fewest generations known from repeatable captures and one
 // recipe for each species. A missing species is unreachable with these rules.
 func (db *DB) BreedReach() map[string]BreedPath {
@@ -65,7 +109,12 @@ func (db *DB) BreedReach() map[string]BreedPath {
 	if db.Breeding == nil {
 		for id, e := range db.Enemies {
 			if e.Recruit != nil && e.Recruit.Chance > 0 {
-				paths[id] = BreedPath{}
+				for _, sex := range []string{"male", "female"} {
+					if AllowsMonsterSex(db, id, sex) {
+						paths[id] = BreedPath{Sex: sex}
+						break
+					}
+				}
 			}
 		}
 		return paths
@@ -77,12 +126,17 @@ func (db *DB) BreedReach() map[string]BreedPath {
 	}
 	type key struct {
 		species string
+		sex     string
 		plus    int
 	}
 	states := map[key]BreedPath{}
 	for id, e := range db.Enemies {
 		if e.Recruit != nil && e.Recruit.Chance > 0 {
-			states[key{id, 0}] = BreedPath{}
+			for _, sex := range []string{"male", "female"} {
+				if AllowsMonsterSex(db, id, sex) {
+					states[key{id, sex, 0}] = BreedPath{Sex: sex}
+				}
+			}
 		}
 	}
 	ids := db.Ordered("enemies")
@@ -107,12 +161,12 @@ func (db *DB) BreedReach() map[string]BreedPath {
 					continue
 				}
 				for plusA := 0; plusA <= maxPlus; plusA++ {
-					pa, ok := states[key{a, plusA}]
+					pa, ok := states[key{a, "male", plusA}]
 					if !ok {
 						continue
 					}
 					for plusB := 0; plusB <= maxPlus; plusB++ {
-						pb, ok := states[key{b, plusB}]
+						pb, ok := states[key{b, "female", plusB}]
 						if !ok {
 							continue
 						}
@@ -121,11 +175,16 @@ func (db *DB) BreedReach() map[string]BreedPath {
 							continue
 						}
 						plus := min(maxPlus, plusA+plusB+max(1, (levelA+levelB)/20))
-						k := key{child, plus}
 						steps := max(pa.Steps, pb.Steps) + 1
-						if old, ok := states[k]; !ok || steps < old.Steps || steps == old.Steps && (a < old.Parents[0] || a == old.Parents[0] && b < old.Parents[1]) {
-							states[k] = BreedPath{Steps: steps, Parents: [2]string{a, b}}
-							changed = true
+						for _, sex := range []string{"male", "female"} {
+							if !AllowsMonsterSex(db, child, sex) {
+								continue
+							}
+							k := key{child, sex, plus}
+							if old, ok := states[k]; !ok || steps < old.Steps || steps == old.Steps && (a < old.Parents[0] || a == old.Parents[0] && b < old.Parents[1]) {
+								states[k] = BreedPath{Steps: steps, Sex: sex, Parents: [2]string{a, b}, ParentSexes: [2]string{"male", "female"}}
+								changed = true
+							}
 						}
 					}
 				}
@@ -133,7 +192,8 @@ func (db *DB) BreedReach() map[string]BreedPath {
 		}
 	}
 	for k, path := range states {
-		if old, ok := paths[k.species]; !ok || path.Steps < old.Steps || path.Steps == old.Steps && (path.Parents[0] < old.Parents[0] || path.Parents[0] == old.Parents[0] && path.Parents[1] < old.Parents[1]) {
+		if old, ok := paths[k.species]; !ok || path.Steps < old.Steps || path.Steps == old.Steps &&
+			cmp.Or(cmp.Compare(path.Parents[0], old.Parents[0]), cmp.Compare(path.Parents[1], old.Parents[1]), cmp.Compare(path.Sex, old.Sex)) < 0 {
 			paths[k.species] = path
 		}
 	}
@@ -143,6 +203,8 @@ func (db *DB) BreedReach() map[string]BreedPath {
 // BreedPath is a species' shortest number of breeding generations and a recipe.
 // A zero-step path is directly capturable and has empty Parents.
 type BreedPath struct {
-	Steps   int       `json:"steps"`
-	Parents [2]string `json:"parents,omitempty"`
+	Steps       int       `json:"steps"`
+	Sex         string    `json:"sex"`
+	Parents     [2]string `json:"parents,omitempty"`
+	ParentSexes [2]string `json:"parent_sexes,omitempty"`
 }

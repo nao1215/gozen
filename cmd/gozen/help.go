@@ -173,7 +173,7 @@ var pages = map[string]clihelp.Page{
 	"sim breed": {
 		Summary:  "explore the monster breeding graph",
 		Usage:    []string{"gozen sim breed [OPTIONS] <game-dir>"},
-		About:    "Starts with every capturable monster and finds each species reachable by breeding, its fewest generations and one recipe. Also reports unreachable species.",
+		About:    "Starts with every capturable monster and finds each species reachable by sex-compatible breeding, its fewest generations and one recipe with parent sexes. Also reports unreachable species.",
 		Examples: []clihelp.Example{{"explore recipes", "gozen sim breed game"}, {"read the graph as JSON", "gozen sim breed game --format json"}},
 		Groups:   []clihelp.Group{{Title: "Output", Flags: []string{"format"}}, general},
 		Notes:    []string{noRequirements},

@@ -173,6 +173,18 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 // part of ParseWithConfig after the JSON is decoded.
 func (s *State) bind() (*State, error) {
 	db := s.DB
+	// Older saves predate instance sexes. Give each existing monster a stable sex
+	// without advancing the restored gameplay random stream.
+	for id, a := range s.Actors {
+		if a != nil && a.Monster != "" && a.Sex == "" && db.Enemies[a.Monster] != nil {
+			var hash uint64 = 14695981039346656037
+			for i := 0; i < len(id); i++ {
+				hash = (hash ^ uint64(id[i])) * 1099511628211
+			}
+			a.Sex = data.MonsterSex(db, a.Monster, float64(hash>>11)/float64(uint64(1)<<53))
+			s.changed("actors/"+id+"/sex", "", "assigned a stable sex to an older monster instance")
+		}
+	}
 	if err := s.checkSavedState(); err != nil {
 		return nil, err
 	}
@@ -230,6 +242,9 @@ func (s *State) checkSavedState() error {
 		}
 		if a.Monster != "" && (s.DB.Enemies[a.Monster] == nil || a.Plus < 0) {
 			return bad("actors/" + id + "/monster")
+		}
+		if a.Monster != "" && (a.Sex != "male" && a.Sex != "female" || !data.AllowsMonsterSex(s.DB, a.Monster, a.Sex)) {
+			return bad("actors/" + id + "/sex")
 		}
 		if a.Tactics != nil {
 			if err := a.Tactics.check(); err != nil {

@@ -11,11 +11,13 @@ import (
 )
 
 type breedRow struct {
-	ID      string   `json:"id"`
-	Family  string   `json:"family"`
-	Rank    int      `json:"rank"`
-	Steps   int      `json:"steps"`
-	Parents []string `json:"parents,omitempty"`
+	ID          string   `json:"id"`
+	Family      string   `json:"family"`
+	Rank        int      `json:"rank"`
+	Steps       int      `json:"steps"`
+	Parents     []string `json:"parents,omitempty"`
+	Sex         string   `json:"sex"`
+	ParentSexes []string `json:"parent_sexes,omitempty"`
 }
 
 func (c *command) breedCmd(args []string) error {
@@ -43,9 +45,10 @@ func (c *command) breedCmd(args []string) error {
 	var missing []string
 	for id, e := range db.Enemies {
 		if p, ok := paths[id]; ok {
-			row := breedRow{ID: id, Family: e.Family, Rank: e.Rank, Steps: p.Steps}
+			row := breedRow{ID: id, Family: e.Family, Rank: e.Rank, Steps: p.Steps, Sex: p.Sex}
 			if p.Steps > 0 {
 				row.Parents = p.Parents[:]
+				row.ParentSexes = p.ParentSexes[:]
 			}
 			reached = append(reached, row)
 		} else {
@@ -72,9 +75,9 @@ func (c *command) breedCmd(args []string) error {
 	}
 	for _, row := range reached {
 		if row.Steps == 0 {
-			c.out.Printf("%s: capture (%s, rank %d)\n", row.ID, row.Family, row.Rank)
+			c.out.Printf("%s: capture (%s, %s, rank %d)\n", row.ID, row.Sex, row.Family, row.Rank)
 		} else {
-			c.out.Printf("%s: %d generations, %s x %s (%s, rank %d)\n", row.ID, row.Steps, row.Parents[0], row.Parents[1], row.Family, row.Rank)
+			c.out.Printf("%s: %d generations, %s (%s) x %s (%s) => %s (%s, rank %d)\n", row.ID, row.Steps, row.Parents[0], row.ParentSexes[0], row.Parents[1], row.ParentSexes[1], row.Sex, row.Family, row.Rank)
 		}
 	}
 	for _, id := range missing {

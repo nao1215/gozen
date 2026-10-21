@@ -31,6 +31,7 @@ func TestRanchPreviewAndFusionCommand(t *testing.T) {
 	g := ranchGame(t)
 	a, _ := g.st.Recruit("mote", 2, 0, nil)
 	b, _ := g.st.Recruit("mote", 2, 0, nil)
+	g.st.Actors[a].Sex, g.st.Actors[b].Sex = "male", "female"
 	r := newRanch(g, nil)
 	g.push(r)
 	r.show(g, "breed_first")

@@ -54,7 +54,7 @@ func (r *ranch) show(g *Game, step string) {
 	case "breed_first", "breed_second", "release_id":
 		var ids []string
 		for id, a := range g.st.Actors {
-			if a.Monster != "" && (step != "breed_second" || id != r.first) {
+			if a.Monster != "" && (step != "breed_second" || r.validSecond(g, id)) {
 				ids = append(ids, id)
 			}
 		}
@@ -87,6 +87,24 @@ func (r *ranch) show(g *Game, step string) {
 	r.list.size = sizeS
 }
 
+func (r *ranch) validSecond(g *Game, id string) bool {
+	a, b := g.st.Actors[r.first], g.st.Actors[id]
+	return id != r.first && a != nil && b != nil &&
+		(a.Sex == "male" && b.Sex == "female" || a.Sex == "female" && b.Sex == "male") &&
+		g.db.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus) != ""
+}
+
+func sexSign(sex string) string {
+	switch sex {
+	case "male":
+		return " ♂"
+	case "female":
+		return " ♀"
+	default:
+		return ""
+	}
+}
+
 func (r *ranch) label(g *Game, id string) string {
 	a := g.st.Actors[id]
 	if a == nil {
@@ -96,7 +114,7 @@ func (r *ranch) label(g *Game, id string) string {
 	if slices.Contains(g.st.Party, id) {
 		place = "party"
 	}
-	return fmt.Sprintf("%s  Lv %d  +%d  (%s, %s)", a.Name(), a.Level, a.Plus, id, place)
+	return fmt.Sprintf("%s%s  Lv %d  +%d  (%s, %s)", a.Name(), sexSign(a.Sex), a.Level, a.Plus, id, place)
 }
 
 func (r *ranch) close(g *Game) {
@@ -207,6 +225,9 @@ func (r *ranch) draw(g *Game, dst *ebiten.Image) {
 			name = g.db.Enemies[child].Name
 		}
 		lines = append(lines, "Child: "+name, fmt.Sprintf("Inherited skills: %d / %d", len(r.skills), g.db.Breeding.SkillSlots))
+	}
+	if r.step == "breed_second" && len(r.options) == 0 {
+		lines = append(lines, "No eligible partner: need the opposite sex, required levels and a recipe.")
 	}
 	if len(r.options) > 0 && r.list.sel < len(r.options) {
 		if a := g.st.Actors[r.options[r.list.sel]]; a != nil {

@@ -248,6 +248,8 @@ github.com/nao1215/gozen/schema field Enemy.Recruit
 github.com/nao1215/gozen/schema field Enemy.Resist
 github.com/nao1215/gozen/schema field Enemy.SResist
 github.com/nao1215/gozen/schema field Enemy.Scale
+github.com/nao1215/gozen/schema field Enemy.Sex
+github.com/nao1215/gozen/schema field Enemy.SexRatio
 github.com/nao1215/gozen/schema field Enemy.Stats
 github.com/nao1215/gozen/schema field Enemy.Title
 github.com/nao1215/gozen/schema field Event.Do

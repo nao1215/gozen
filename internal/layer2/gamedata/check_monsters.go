@@ -2,6 +2,7 @@ package gamedata
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/nao1215/gozen/internal/diag"
@@ -9,9 +10,10 @@ import (
 
 func (c *checker) monsters() {
 	db := c.db
+	startErrors, sexErrors := len(c.errs), 0
 	used := db.Breeding != nil || len(db.MonsterFamilies) != 0
 	for _, e := range db.Enemies {
-		used = used || e.Family != "" || e.Rank != 0 || e.Recruit != nil
+		used = used || e.Family != "" || e.Rank != 0 || e.Recruit != nil || e.Sex != "" || e.SexRatio != nil
 	}
 	if !used {
 		return
@@ -25,6 +27,14 @@ func (c *checker) monsters() {
 	}
 	for id, e := range db.Enemies {
 		w := "enemies." + id
+		if e.Sex != "" && e.Sex != "any" && e.Sex != "male" && e.Sex != "female" {
+			c.errorf(diag.MonsterRules, w+".sex", "sex must be any, male or female")
+			sexErrors++
+		}
+		if e.SexRatio != nil && (math.IsNaN(*e.SexRatio) || *e.SexRatio < 0 || *e.SexRatio > 1 || e.Sex != "" && e.Sex != "any") {
+			c.errorf(diag.MonsterRules, w+".sex_ratio", "sex_ratio must be between zero and one and is only valid for sex: any")
+			sexErrors++
+		}
 		if e.Boss && e.Family == "" && e.Rank == 0 {
 			continue
 		}
@@ -62,7 +72,7 @@ func (c *checker) monsters() {
 		}
 	}
 	if db.Breeding == nil {
-		if len(c.errs) == 0 {
+		if len(c.errs) == startErrors+sexErrors {
 			c.monsterReachability()
 		}
 		return
@@ -93,6 +103,10 @@ func (c *checker) monsters() {
 				c.errorf(diag.MonsterRules, w, "boss %q cannot breed", id)
 			}
 		}
+		if db.Enemies[p.Parents[0]] != nil && db.Enemies[p.Parents[1]] != nil && !db.sexCompatible(p.Parents[0], p.Parents[1]) {
+			c.errorf(diag.MonsterRules, w+".parents", "pair cannot breed: no male and female combination")
+			sexErrors++
+		}
 		if p.Child == p.Parents[0] || p.Child == p.Parents[1] {
 			c.errorf(diag.MonsterRules, w, "a direct parent-to-self recipe does not advance the collection")
 		}
@@ -120,6 +134,10 @@ func (c *checker) monsters() {
 				c.errorf(diag.MonsterRules, w, "unknown family %q", id)
 			}
 		}
+		if db.MonsterFamilies[f.Parents[0]] != "" && db.MonsterFamilies[f.Parents[1]] != "" && !db.familySexCompatible(f.Parents[0], f.Parents[1]) {
+			c.errorf(diag.MonsterRules, w+".parents", "family rule cannot breed: no male and female combination")
+			sexErrors++
+		}
 		if len(f.Children) == 0 {
 			c.errorf(diag.MonsterRules, w+".children", "children cannot be empty")
 		}
@@ -131,7 +149,7 @@ func (c *checker) monsters() {
 			}
 		}
 	}
-	if len(c.errs) != 0 {
+	if len(c.errs) != startErrors+sexErrors {
 		return
 	}
 	c.monsterReachability()

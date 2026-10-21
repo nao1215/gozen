@@ -674,7 +674,7 @@ func (m *menu) drawStatus(g *Game, dst *ebiten.Image, a *rpg.Actor) {
 	x, y, w := 300.0, 36.0, 680.0
 	g.window(dst, x, y, w, sh-72)
 	t := g.db.Game.Terms
-	g.text(dst, a.Name(), x+30, y+20, sizeXL*0.8, d.Color.Or(g.th.text))
+	g.text(dst, a.Name()+sexSign(a.Sex), x+30, y+20, sizeXL*0.8, d.Color.Or(g.th.text))
 	g.text(dst, fmt.Sprintf("%s  %s %d", a.Class().Name, t.Level, a.Level), x+30, y+74, sizeM, g.th.border)
 	g.text(dst, fmt.Sprintf("%s %d / %d", t.HP, a.HP, a.Stat("mhp")), x+30, y+114, sizeM, g.th.text)
 	g.text(dst, fmt.Sprintf("%s %d / %d", t.MP, a.MP, a.Stat("mmp")), x+30, y+150, sizeM, g.th.text)

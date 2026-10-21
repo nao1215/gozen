@@ -327,10 +327,11 @@ func (g *Game) drawActorCard(dst *ebiten.Image, a *rpg.Actor, x, y, w, h float64
 	t := g.db.Game.Terms
 	lv := fmt.Sprintf("%s%d", t.Level, a.Level)
 	ns := sizeM * 0.9
-	if room := tw - gfx.TextWidth(lv, sizeS*0.8) - 8; gfx.TextWidth(a.Name(), ns) > room {
-		ns *= room / gfx.TextWidth(a.Name(), ns)
+	name := a.Name() + sexSign(a.Sex)
+	if room := tw - gfx.TextWidth(lv, sizeS*0.8) - 8; gfx.TextWidth(name, ns) > room {
+		ns *= room / gfx.TextWidth(name, ns)
 	}
-	g.text(dst, a.Name(), tx, y+10+(sizeM*0.9-ns)/2, ns, g.th.text)
+	g.text(dst, name, tx, y+10+(sizeM*0.9-ns)/2, ns, g.th.text)
 	gfx.DrawTextRight(dst, lv, x+w-14, y+14, sizeS*0.8, g.th.border)
 	mhp, mmp := a.Stat("mhp"), a.Stat("mmp")
 	hr := float64(a.HP) / float64(max(1, mhp))

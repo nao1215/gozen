@@ -26,6 +26,10 @@ The active party remains at most four. All joined actors outside it are in the r
 4. Choose family offspring randomly. A rank rule is reproducible, previewable and inspectable with `gozen sim breed`.
 5. Treat every cycle as an error. Family breeding can intentionally return an existing species with a higher plus value; only a direct specific pair yielding one of its parents is rejected as a likely typo.
 
+## Sexes and breeding reachability
+
+Each monster species may set `sex: any|male|female` (default `any`). `sex_ratio`, between zero and one, is the probability of a male when `sex` is `any`; the default is one half. Captures and births draw from the session random stream and save the resulting instance sex. An older saved instance with no sex receives a stable ID-derived sex at load time without advancing that stream. Breeding needs one male and one female. The ranch filters unavailable partners and shows why none is available. `gozen check` reports sex-impossible specific and family rules; `gozen sim breed` tracks sex and plus in its graph and prints the sexes in each recipe.
+
 ## Consequences and limits
 
 - Instance IDs are stable within a save and the loaded game definition is copied for each session. Restoring a save reconstructs instance templates from current enemy and class definitions.

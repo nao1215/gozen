@@ -26,9 +26,31 @@ func TestSimBreedJSON(t *testing.T) {
 	if len(result.Reachable) != 2 || result.Reachable[0].ID != "mote" || result.Reachable[1].ID != "boss" || result.Reachable[1].Steps != 1 || len(result.Unreachable) != 0 {
 		t.Fatalf("graph = %+v", result)
 	}
+	if result.Reachable[1].ParentSexes[0] != "male" || result.Reachable[1].ParentSexes[1] != "female" || result.Reachable[1].Sex == "" {
+		t.Fatalf("recipe sexes = %+v", result.Reachable[1])
+	}
 	invoke(t, 2, "sim", "breed", dir, "--format", "bad")
 	book, _ := invoke(t, 0, "book", dir)
 	if !strings.Contains(book, "Recruit: 100% after victory; class: ranger") || !strings.Contains(book, "## Monster breeding") {
 		t.Fatalf("book omitted monster rules: %s", book)
+	}
+}
+
+func TestGoZenBreedGraphReachesEveryOrdinarySpecies(t *testing.T) {
+	out, _ := invoke(t, 0, "sim", "breed", "../../examples/go-zen/game", "--format", "json")
+	var result struct {
+		Reachable   []breedRow `json:"reachable"`
+		Unreachable []string   `json:"unreachable"`
+	}
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Reachable) != 39 || len(result.Unreachable) != 3 {
+		t.Fatalf("Go Zen graph: %d reached, unreachable %v", len(result.Reachable), result.Unreachable)
+	}
+	for _, id := range result.Unreachable {
+		if id != "brass_warden" && id != "tollkeeper" && id != "vance" {
+			t.Fatalf("ordinary species %q is unreachable", id)
+		}
 	}
 }

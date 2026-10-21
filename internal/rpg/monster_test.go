@@ -1,6 +1,7 @@
 package rpg_test
 
 import (
+	"encoding/json"
 	"math/rand/v2"
 	"testing"
 
@@ -20,6 +21,15 @@ func TestMonsterReserveBreedAndSave(t *testing.T) {
 	if !ok || len(st.ReserveIDs()) != 1 || st.ReserveIDs()[0] != b {
 		t.Fatalf("reserve: %q %v %v", b, ok, st.ReserveIDs())
 	}
+	st.Actors[a].Sex, st.Actors[b].Sex = "male", "female"
+	if value, err := testgame.Expr("monster." + a + ".sex").Eval(st.Env()); err != nil || value != "male" {
+		t.Fatalf("monster sex query = %v, %v", value, err)
+	}
+	st.Actors[b].Sex = "male"
+	if _, err := st.Breed(a, b, nil); err == nil {
+		t.Fatal("same-sex breeding accepted")
+	}
+	st.Actors[b].Sex = "female"
 	if !st.SwapMonster(b, a) || st.Party[1] != b || st.ReserveIDs()[0] != a {
 		t.Fatalf("swap: party=%v reserve=%v", st.Party, st.ReserveIDs())
 	}
@@ -52,10 +62,37 @@ func TestMonsterReserveBreedAndSave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Actors[child] == nil || got.Actors[child].Monster != "boss" || got.Actors[child].Plus != st.Actors[child].Plus || got.Actors[child].Name() != "Sentinel" {
+	if got.Actors[child] == nil || got.Actors[child].Monster != "boss" || got.Actors[child].Plus != st.Actors[child].Plus || got.Actors[child].Sex != st.Actors[child].Sex || got.Actors[child].Name() != "Sentinel" {
 		t.Fatalf("restored child = %+v", got.Actors[child])
+	}
+	var envelope map[string]any
+	if err := json.Unmarshal(saved, &envelope); err != nil {
+		t.Fatal(err)
+	}
+	state := envelope["state"].(map[string]any)
+	actor := state["actors"].(map[string]any)[child].(map[string]any)
+	delete(actor, "sex")
+	legacy, err := json.Marshal(envelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old, err := rpg.Parse(db, legacy, rand.New(rand.NewPCG(4, 4))) //nolint:gosec // Fixed seed tests migration.
+	if err != nil || old.Actors[child].Sex == "" || !old.LoadReport.Changed() {
+		t.Fatalf("legacy sex migration = %v %+v", err, old)
 	}
 	if !got.ReleaseMonster(child) || got.Actors[child] != nil {
 		t.Fatal("release did not remove the child")
+	}
+}
+
+func TestMonsterSexUsesSessionRandomStream(t *testing.T) {
+	db := testgame.Load(t, testgame.MonsterFiles())
+	first, second := testgame.State(db, 87), testgame.State(db, 87)
+	for i := 0; i < 8; i++ {
+		a, _ := first.Recruit("mote", 1, 0, nil)
+		b, _ := second.Recruit("mote", 1, 0, nil)
+		if first.Actors[a].Sex != second.Actors[b].Sex {
+			t.Fatalf("capture %d differs: %s vs %s", i, first.Actors[a].Sex, second.Actors[b].Sex)
+		}
 	}
 }

@@ -123,6 +123,7 @@ func (s *State) Recruit(species string, level, plus int, skills []string) (strin
 	s.DB.Actors[id] = &data.Actor{Name: e.Name, Class: s.DB.MonsterClass(species), Level: max(1, level)}
 	a := NewActor(s.DB, id)
 	a.Monster, a.Plus = species, plus
+	a.Sex = data.MonsterSex(s.DB, species, s.Rand.Float64())
 	a.HP, a.MP = a.Stat("mhp"), a.Stat("mmp")
 	for _, skill := range skills {
 		if s.DB.Skills[skill] != nil && !slices.Contains(a.Learnt, skill) {
@@ -188,6 +189,9 @@ func (s *State) Breed(first, second string, skills []string) (string, error) {
 	}
 	if s.DB.Breeding == nil {
 		return "", errors.New("breeding is not defined")
+	}
+	if a.Sex == b.Sex || a.Sex != "male" && a.Sex != "female" || b.Sex != "male" && b.Sex != "female" {
+		return "", errors.New("breed needs one male and one female parent")
 	}
 	child := s.DB.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus)
 	if child == "" {

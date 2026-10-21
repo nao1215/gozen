@@ -162,7 +162,7 @@ Fix: Add a short lore description to the enemy, or turn off ui.bestiary.
 
 A monster cannot be captured or bred from capturable monsters.
 
-The breeding graph has no path from a monster with a positive recruit chance to this species.
+The breeding graph has no path from a monster with a positive recruit chance to this species, including the male and female sexes needed at each step.
 
 Fix: Make it recruitable or add a breeding recipe reachable from capturable parents.
 
@@ -262,9 +262,9 @@ Fix: Run gozen theme add <name> <game-dir> (gozen theme list shows the names), o
 
 A monster collection or breeding rule is invalid.
 
-A recruit setting, monster family, rank, pair or breeding requirement is invalid or ambiguous.
+A recruit setting, monster family, rank, sex, sex ratio, pair or breeding requirement is invalid or ambiguous. A pair or family rule also fails when its species cannot supply one male and one female parent.
 
-Fix: Define known classes, families and species; use positive ranks and valid probabilities; give each unordered pair one result.
+Fix: Define known classes, families and species; use positive ranks and valid probabilities; give each unordered pair one result and ensure its parents can have opposite sexes.
 
 ## GZN12xx
 

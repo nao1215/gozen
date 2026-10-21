@@ -718,7 +718,12 @@ func (r *Runner) run(c *data.Command) Request {
 		if e := r.db.Enemies[c.Capture]; e != nil && e.Recruit != nil {
 			id, ok := r.st.Recruit(c.Capture, max(1, e.Recruit.Level), 0, nil)
 			if ok {
-				r.notes = append(r.notes, fmt.Sprintf("%s joined as %s!", e.Name, id))
+				sign := "♀"
+				if r.st.Actors[id].Sex == "male" {
+					sign = "♂"
+				}
+				r.notes = append(r.notes, fmt.Sprintf("%s %s joined as %s!", e.Name, sign, id))
+				r.push([]data.Command{{Say: &data.Say{Who: e.Name + " " + sign, Face: e.Image.File, Text: e.Name + " " + sign + " joined your party!"}}})
 			}
 		}
 	case "reserve":
@@ -734,6 +739,16 @@ func (r *Runner) run(c *data.Command) Request {
 		var nameA, nameB, faceA, faceB string
 		if first != nil && second != nil {
 			nameA, nameB = first.Name(), second.Name()
+			if first.Sex == "male" {
+				nameA += " ♂"
+			} else {
+				nameA += " ♀"
+			}
+			if second.Sex == "male" {
+				nameB += " ♂"
+			} else {
+				nameB += " ♀"
+			}
 			faceA, faceB = r.db.Enemies[first.Monster].Image.File, r.db.Enemies[second.Monster].Image.File
 		}
 		id, err := r.st.Breed(c.Breed.Parents[0], c.Breed.Parents[1], c.Breed.Skills)
@@ -742,6 +757,10 @@ func (r *Runner) run(c *data.Command) Request {
 			break
 		}
 		child := r.st.Actors[id]
+		childName := child.Name() + " ♀"
+		if child.Sex == "male" {
+			childName = child.Name() + " ♂"
+		}
 		r.push([]data.Command{
 			{Stand: &data.Stand{Who: nameA, Face: faceA, At: data.StandAt("left"), Enter: "fade"}},
 			{Stand: &data.Stand{Who: nameB, Face: faceB, At: data.StandAt("right"), Enter: "fade"}},
@@ -749,8 +768,8 @@ func (r *Runner) run(c *data.Command) Request {
 			{Stand: &data.Stand{Who: nameA, Leave: "fade"}},
 			{Stand: &data.Stand{Who: nameB, Leave: "fade"}},
 			{Effect: data.EffectCue{Name: "flash"}},
-			{Stand: &data.Stand{Who: child.Name(), Face: r.db.Enemies[child.Monster].Image.File, At: data.StandAt("center"), Enter: "fade"}},
-			{Say: &data.Say{Who: child.Name(), Face: r.db.Enemies[child.Monster].Image.File, Text: "A new monster appeared: " + child.Name() + "!"}},
+			{Stand: &data.Stand{Who: childName, Face: r.db.Enemies[child.Monster].Image.File, At: data.StandAt("center"), Enter: "fade"}},
+			{Say: &data.Say{Who: childName, Face: r.db.Enemies[child.Monster].Image.File, Text: "A new monster appeared: " + childName + "!"}},
 			{Stand: &data.Stand{None: true}},
 		})
 	case "heal":

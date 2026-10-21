@@ -1052,6 +1052,10 @@ type Enemy struct {
 	Family       string `yaml:"family"`
 	Rank         int    `yaml:"rank"`
 	MonsterClass string `yaml:"monster_class"`
+	// Sex limits monster instances to male or female; empty means any. SexRatio is
+	// the chance of male when Sex is any (nil means an even chance).
+	Sex      string   `yaml:"sex"`
+	SexRatio *float64 `yaml:"sex_ratio"`
 	// Recruit makes a defeated non-boss enemy eligible to join after a won battle.
 	Recruit *Recruit `yaml:"recruit"`
 	// Lore is the short field description shown after the enemy has been seen.

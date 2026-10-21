@@ -1,6 +1,8 @@
 enemies:
   drip_slime:
     family: slime
+    sex: any
+    sex_ratio: 0.6
     rank: 1
     monster_class: monster_slime
     recruit: {chance: 0.22, level: 1}
@@ -144,6 +146,7 @@ enemies:
     drops: [{item: old_gear, chance: 0.15}]
     ai: [{use: bite}]
   crystal_dragon:
+    sex: any
     family: dragon
     rank: 1
     monster_class: monster_dragon
@@ -215,6 +218,7 @@ enemies:
     drops: [{item: tonic, chance: 0.15}]
     ai: [{use: arc_bolt}]
   frost_bat:
+    sex: male
     family: bird
     rank: 1
     monster_class: monster_bird
@@ -283,6 +287,7 @@ enemies:
     drops: [{item: old_gear, chance: 0.3}]
     ai: [{use: bite}]
   ghost_soldier:
+    sex: male
     family: undead
     rank: 1
     monster_class: monster_undead
@@ -513,6 +518,7 @@ enemies:
     drops: [{item: tonic, chance: 0.15}]
     ai: [{use: bite}]
   snow_witch:
+    sex: female
     family: magic
     rank: 3
     monster_class: monster_magic
@@ -555,6 +561,7 @@ enemies:
     drops: [{item: old_gear, chance: 0.15}]
     ai: [{use: bite}]
   succubus:
+    sex: female
     family: demon
     rank: 4
     monster_class: monster_demon
@@ -568,6 +575,7 @@ enemies:
     drops: [{item: tonic, chance: 0.3}]
     ai: [{use: arc_bolt}]
   whisper_imp:
+    sex: female
     family: demon
     rank: 1
     monster_class: monster_demon
