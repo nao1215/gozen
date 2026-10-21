@@ -10,6 +10,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - `gozen check` warns of an expression that uses a function's name as a value, such as `floor + 1` in a tile's commands where `floor` is the function and the floor's number is `var.floor` (GZN0114). Such an expression failed only when it was evaluated. `floor` stays the floor's number in `generate.size`, `generate.place`'s `count` and a roamer's `count`, `appear`, `wait` and `every`.
 - A script's `walk` (and `face`) on a map or in a painted scene moves the party without a key, so the trace had no input for it and a replay of the trace stayed where it was and diverged. The trace now writes it as an `act` line (`walk`), and the replay walks the same way. A walk in a dungeon presses keys and was already in the trace.
 - `DirStore` and `MemStore` refuse a save name that starts with a dot (`ErrInvalid`). `DirStore` wrote such a save but its `List` left it out as a hidden file, and it could take the name of a write's temporary file.
+- `gozen check` checks `set: {actor.<id>.tactics: {...}}` written as a mapping: an unknown `mode`, a `preset` that `battle.tactic_presets` does not have (the member had no rows in battle) and `mode: preset` without `preset` are errors.
 - The Edit and play loop page said F5 waits in a menu until the field is back; the field menu, the settings, the gallery and the character book are rebuilt at once and stay open, and only a battle or another screen makes the reload wait.
 
 ## v0.2.0 - 2026-10-21
