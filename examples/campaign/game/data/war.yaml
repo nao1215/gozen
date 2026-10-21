@@ -20,29 +20,29 @@ factions:
       - {draft: "280"}
       - {march: true, keep: 1000, where: "s.troops * 0.6 > t.troops * 1.25", pick: min, by: t.troops}
 regions:
-  vale: {name: Ashvale, next: [cross, ford], owner: crown, troops: 600, terrain: castle, defend: vale_guard, values: {wealth: 40}, area: [[1401, 1000], [380, 1000], [380, 847], [1164, 444], [1188, 443]]}
-  ford: {name: Brookford, next: [cross, vale], troops: 350, terrain: field, defend: ford_guard, values: {wealth: 30}, area: [[1164, 444], [380, 847], [380, 640], [840, 379]]}
-  cross: {name: Crossway, next: [ford, hill, well, vale], troops: 600, terrain: town, defend: cross_guard, values: {wealth: 40}, area: [[380, 60], [503, 60], [840, 379], [380, 640]]}
-  hill: {name: Highhill, next: [cross, well], owner: stag, troops: 1300, terrain: castle, defend: hill_guard, values: {wealth: 30}, area: [[503, 60], [1296, 60], [1188, 443], [1164, 444], [840, 379]]}
-  well: {name: Deepwell, next: [cross, hill], owner: raven, troops: 1500, terrain: castle, defend: well_guard, values: {wealth: 30}, area: [[1296, 60], [1880, 60], [1880, 1000], [1401, 1000], [1188, 443]]}
+  vale: {name: Ashvale, next: [cross, ford], owner: crown, troops: 600, terrain: castle, defend: vale_guard, values: {wealth: 40}, area: [[110, 430], [300, 430], [560, 500], [640, 640], [900, 690], [780, 780], [520, 880], [330, 800], [200, 700], [100, 520]]}
+  ford: {name: Brookford, next: [cross, vale], troops: 350, terrain: field, defend: ford_guard, values: {wealth: 30}, area: [[520, 880], [780, 780], [900, 690], [1180, 700], [1300, 830], [1200, 900], [1000, 1000], [800, 990], [620, 930]]}
+  cross: {name: Crossway, next: [ford, hill, well, vale], troops: 600, terrain: town, defend: cross_guard, values: {wealth: 40}, area: [[300, 250], [650, 200], [800, 260], [1000, 330], [1180, 480], [1180, 560], [1180, 700], [900, 690], [640, 640], [560, 500], [330, 400]]}
+  hill: {name: Highhill, next: [cross, well], owner: stag, troops: 1300, terrain: castle, defend: hill_guard, values: {wealth: 30}, area: [[640, 60], [900, 70], [1200, 60], [1430, 170], [1450, 330], [1300, 420], [1180, 480], [1000, 330], [800, 260], [650, 200]]}
+  well: {name: Deepwell, next: [cross, hill], owner: raven, troops: 1500, terrain: castle, defend: well_guard, values: {wealth: 30}, area: [[1180, 480], [1300, 420], [1450, 330], [1620, 420], [1760, 640], [1700, 830], [1500, 840], [1300, 830], [1180, 700], [1180, 560]]}
 locations:
   war:
     name: The Five Banners
     map:
-      picture: maps/town.jpg
+      picture: maps/continent.jpg
       unknown: named
       draw_roads: true
       label_size: 0.026
       points:
-        vale: {at: [830, 720], start: true}
-        ford: {at: [745, 555]}
-        cross: {at: [640, 370]}
-        hill: {at: [820, 180]}
-        well: {at: [1640, 410]}
+        vale: {at: [470, 650], start: true}
+        ford: {at: [900, 830]}
+        cross: {at: [800, 430]}
+        hill: {at: [1110, 200]}
+        well: {at: [1440, 600]}
       roads:
-        - {between: [cross, ford], via: [[700, 430]]}
-        - {between: [cross, hill], via: [[760, 320]]}
-        - {between: [cross, well], via: [[900, 250], [1040, 245], [1200, 285], [1500, 390]]}
-        - {between: [cross, vale], via: [[620, 560], [760, 650]]}
+        - {between: [cross, ford]}
+        - {between: [cross, hill]}
+        - {between: [cross, well]}
+        - {between: [cross, vale]}
         - {between: [ford, vale]}
-        - {between: [hill, well], via: [[1200, 190]]}
+        - {between: [hill, well]}
