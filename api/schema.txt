@@ -152,6 +152,7 @@ github.com/nao1215/gozen/schema field DB.Elements
 github.com/nao1215/gozen/schema field DB.Enemies
 github.com/nao1215/gozen/schema field DB.Events
 github.com/nao1215/gozen/schema field DB.FS
+github.com/nao1215/gozen/schema field DB.Factions
 github.com/nao1215/gozen/schema field DB.Fusions
 github.com/nao1215/gozen/schema field DB.Game
 github.com/nao1215/gozen/schema field DB.Items
@@ -159,6 +160,7 @@ github.com/nao1215/gozen/schema field DB.Locations
 github.com/nao1215/gozen/schema field DB.Music
 github.com/nao1215/gozen/schema field DB.Order
 github.com/nao1215/gozen/schema field DB.Profiles
+github.com/nao1215/gozen/schema field DB.Regions
 github.com/nao1215/gozen/schema field DB.Shops
 github.com/nao1215/gozen/schema field DB.Skills
 github.com/nao1215/gozen/schema field DB.States
@@ -278,6 +280,7 @@ github.com/nao1215/gozen/schema field GalleryScene.When
 github.com/nao1215/gozen/schema field Game.Asides
 github.com/nao1215/gozen/schema field Game.Battle
 github.com/nao1215/gozen/schema field Game.CGReview
+github.com/nao1215/gozen/schema field Game.Campaign
 github.com/nao1215/gozen/schema field Game.CardBubbles
 github.com/nao1215/gozen/schema field Game.DataVersion
 github.com/nao1215/gozen/schema field Game.Fonts

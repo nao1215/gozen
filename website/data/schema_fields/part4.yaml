@@ -177,3 +177,13 @@ ProfileRelation:
   who: "The other character: a profile ID, an actor ID, or `you`."
   calls: "What the character calls them."
   text: "A note on how the character sees them."
+Order:
+  _: "One of the player's orders in a campaign. It costs actions, may need a general and a target region, and runs its do with them bound as general and target."
+  cost: "The actions it takes. Default 1."
+  do: "The commands run after the march (if any), with general and target bound."
+  general: "Who leads it: ready (joined, has not marched this turn, has troops), any (joined), or omitted for none."
+  label: "The text shown in the menu."
+  march: "If true, the general's troops march on the target before do (see clash)."
+  target: "The region it is given: border (not the player's, next to one of the player's), own, any, or omitted for none."
+  when: "An expression that must hold for the order to be listed."
+  where: "An expression over t (a region) that narrows the target."

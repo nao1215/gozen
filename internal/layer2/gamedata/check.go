@@ -21,7 +21,7 @@ import (
 // The names an expression may use, by where it is written.
 var (
 	// FieldNames are known to the conditions of events, locations and the field music.
-	FieldNames = []string{"flag", "var", "gold", "party", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose"}
+	FieldNames = append([]string{"flag", "var", "gold", "party", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose"}, CampaignNames...)
 	// BattleNames are known in battle: the AI, the troop events, the battle music.
 	BattleNames = append(slices.Clone(FieldNames), "turn", "self", "allies", "foes", "enemies", "result", "phase", "boss")
 	// EffectNames are known to the formulas of skills and items: a is the user, b the target.
@@ -82,6 +82,8 @@ func (c *checker) exprIn(where string, e Expr, names []string, over map[string]*
 			c.needsVersion(where, "the name spot", SchemaVersion3)
 		} else if n == "chose" {
 			c.needsVersion(where, "the name chose", SchemaVersion4)
+		} else if slices.Contains(CampaignNames, n) {
+			c.needsVersion(where, "the name "+n, SchemaVersion5)
 		}
 	}
 	for _, r := range e.Refs() {
@@ -210,6 +212,7 @@ func (db *DB) Check() []error {
 	c.requiredDefinitions()
 	c.declarations()
 	c.stateDeclarations()
+	c.campaign()
 	c.tacticCatalog()
 	c.profiles()
 	c.numericValues(&db.Game, "game.yaml")
@@ -864,6 +867,7 @@ func (db *DB) Check() []error {
 	}
 	c.faceWarnings()
 	c.iconWarnings()
+	c.campaignWarnings()
 	c.choseReferences()
 	c.voiceWarnings()
 	c.languages()
@@ -1577,8 +1581,20 @@ func typeOf(n string, names []string) *vtype {
 		return tBool
 	case "roamers":
 		return &vtype{kind: vList, desc: "roamers", elem: objType("a roamer", map[string]*vtype{"kind": tNum, "name": tStr, "troop": tStr, "x": tNum, "y": tNum}, nil)}
-	case "rand", "chance", "pages":
+	case "rand", "chance", "pages", "next_to":
 		return tFunc
+	case "region":
+		return &vtype{kind: vDyn, desc: "region", elem: tRegion, key: "region"}
+	case "target":
+		return tRegion
+	case "faction":
+		return &vtype{kind: vDyn, desc: "faction", elem: tFaction, key: "faction"}
+	case "generals":
+		return &vtype{kind: vDyn, desc: "generals", elem: tGeneral, key: "general"}
+	case "general":
+		return tGeneral
+	case "campaign":
+		return tCampaign
 	case "pos":
 		return tPos
 	case "party":
@@ -1650,6 +1666,13 @@ func (c *checker) known(kind, id string) bool {
 		return c.db.States[id] != nil
 	case "event":
 		return c.db.Events[id] != nil
+	case "region":
+		return c.db.Regions[id] != nil
+	case "faction":
+		return c.db.Factions[id] != nil
+	case "general":
+		cp := c.db.Game.Campaign
+		return cp != nil && hasGeneral(cp, id)
 	}
 	return true
 }

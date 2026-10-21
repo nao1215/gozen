@@ -234,6 +234,9 @@ func (s *State) SetPath(path string, v any) error {
 	if done, err := s.setOther(path, v); done {
 		return err
 	}
+	if done, err := s.setCampaign(path, v); done {
+		return err
+	}
 	kind, name, ok := strings.Cut(path, ".")
 	if !ok || name == "" {
 		return fmt.Errorf("cannot set %q", path)
@@ -268,6 +271,9 @@ type fieldEnv struct{ s *State }
 
 func (e fieldEnv) Lookup(name string) (any, bool) {
 	s := e.s
+	if campaignName(name) {
+		return data.CampaignEnv(s.DB, s.Campaign()).Lookup(name)
+	}
 	switch name {
 	case "flag":
 		return flagView{s}, true

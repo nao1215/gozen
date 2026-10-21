@@ -1793,6 +1793,209 @@
       },
       "type": "object"
     },
+    "Campaign": {
+      "additionalProperties": false,
+      "description": "game.yaml's campaign: a game of regions held by factions over turns (ADR 0030). Its state is in variables with generated names.",
+      "properties": {
+        "actions": {
+          "description": "An expression for how many orders a turn has, worked out at the start of each turn. It may read only region, faction, campaign and generals. Default 1.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "clash": {
+          "$ref": "#/$defs/Clash",
+          "description": "How a march is decided.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Clash](#clash)"
+        },
+        "end_turn": {
+          "description": "The label of the menu entry that ends the turn. The engine's words when omitted.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "generals": {
+          "additionalProperties": {
+            "$ref": "#/$defs/General"
+          },
+          "description": "The actors who lead the player's marches, keyed by actor ID. A general serves once they have joined.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → [General](#general)"
+        },
+        "location": {
+          "description": "The place whose menu lists the orders and the end of the turn. Required.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "lose": {
+          "description": "An expression that ends the campaign lost. Default: the player's faction does not hold its capital.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "lost": {
+          "description": "The event run when the campaign is lost (or the last turn ends), before the game is over.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "on_turn": {
+          "description": "The event run at the start of each turn after the first.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "orders": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Order"
+          },
+          "description": "What the player can do in a turn, keyed by order ID, listed in the written order.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → [Order](#order)"
+        },
+        "player": {
+          "description": "The player's faction, an ID of factions. Required.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "turns": {
+          "description": "The last turn. Ending it without winning loses. 0 means no limit.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "win": {
+          "description": "An expression that ends the campaign won. Default: the player holds every region.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "won": {
+          "description": "The event run when the campaign is won, before the game is cleared.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
     "CardBubble": {
       "additionalProperties": false,
       "description": "Small particles that rise from an actor's card in battle while a condition holds, such as bubbles for a poisoned member.",
@@ -1961,6 +2164,116 @@
         },
         "when": {
           "description": "An expression that decides whether the answer is offered.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        }
+      },
+      "type": "object"
+    },
+    "Clash": {
+      "additionalProperties": false,
+      "description": "How a march of a (the side marching, with troops, might, faction and general) on the region b is decided. The march takes b when power is more than defense.",
+      "properties": {
+        "defense": {
+          "description": "The strength of the region. Default `b.troops * 1.25`.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "garrison": {
+          "description": "The share of a general's troops left in a region taken, from 0 to 1. Default 0.4. A faction's march leaves all of them.",
+          "type": "number",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "held": {
+          "description": "The garrison of b left after holding. Default `b.troops - power * 0.4`.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "lost": {
+          "description": "The troops of a left after failing. Default `a.troops * 0.5`.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "power": {
+          "description": "The strength of the march. Default `a.troops * (0.8 + rand() * 0.4)`.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "won": {
+          "description": "The troops of a left after taking b. Default `a.troops * (1 - 0.5 * defense / power)`.",
           "type": [
             "string",
             "number",
@@ -3736,6 +4049,25 @@
           },
           "x-type": "string → [Event](#event)"
         },
+        "factions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Faction"
+          },
+          "description": "The sides of a campaign, keyed by faction ID. Needs schema version 5.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → [Faction](#faction)"
+        },
         "fusions": {
           "description": "Recipes that combine items into another item.",
           "items": {
@@ -3824,6 +4156,25 @@
             "version": "0, 1, 2"
           },
           "x-type": "string → [Profile](#profile)"
+        },
+        "regions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Region"
+          },
+          "description": "The regions of a campaign, keyed by region ID. Needs schema version 5.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → [Region](#region)"
         },
         "shops": {
           "additionalProperties": {
@@ -5654,6 +6005,203 @@
       },
       "type": "object"
     },
+    "Faction": {
+      "additionalProperties": false,
+      "description": "A side of a campaign. One is the player's; the others move by their ai rules at the end of each turn.",
+      "properties": {
+        "ai": {
+          "description": "The rules the faction follows at the end of each turn, each in its order.",
+          "items": {
+            "$ref": "#/$defs/FactionRule"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[FactionRule](#factionrule)[]"
+        },
+        "capital": {
+          "description": "A region the faction holds at the start. Losing it is the player's default defeat.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "color": {
+          "description": "The faction's colour, for the marks of its regions.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "color string"
+        },
+        "name": {
+          "description": "The name shown. The ID when omitted.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "FactionRule": {
+      "additionalProperties": false,
+      "description": "One rule of a faction's turn: draft troops into every region it holds, or march once along a border.",
+      "properties": {
+        "by": {
+          "description": "An expression over s (the region marching) and t (the region marched on) that pick: min or max compares.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "draft": {
+          "description": "An expression for the troops each region of the faction gains, with t the region.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "keep": {
+          "description": "The least garrison a region must have to march from it.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "march": {
+          "description": "If true, the rule marches once along a border where `where` holds.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "pick": {
+          "description": "Which march to take: first (in the written order of the regions, the default), min, max or random.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "send": {
+          "description": "The share of the garrison that marches, from 0 to 1. Default 0.6.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "when": {
+          "description": "An expression that must hold for the rule to run.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "where": {
+          "description": "An expression over s (a region of the faction) and t (a region it borders, not its own) that must hold for the march.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        }
+      },
+      "type": "object"
+    },
     "FloorPlan": {
       "additionalProperties": false,
       "description": "How one floor of a generated dungeon is made.",
@@ -6382,6 +6930,19 @@
           },
           "x-type": "[BattleCfg](#battlecfg)"
         },
+        "campaign": {
+          "$ref": "#/$defs/Campaign",
+          "description": "Makes the game a campaign of regions held by factions over turns: the place of the orders, the player's faction, the turns, the orders, the generals and how a march is decided. Needs schema version 5.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Campaign](#campaign)"
+        },
         "card_bubbles": {
           "description": "Small particles (such as poison bubbles) that rise from a party member's status card.",
           "items": {
@@ -6947,6 +7508,39 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "General": {
+      "additionalProperties": false,
+      "description": "An actor's place in a campaign.",
+      "properties": {
+        "might": {
+          "description": "A number read as a.might in the clash.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "troops": {
+          "description": "The troops the general leads at the start.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
         }
       },
       "type": "object"
@@ -8611,6 +9205,133 @@
       ],
       "description": "A song and the mood it starts in, written as `song`, `song/mood`, or a map."
     },
+    "Order": {
+      "additionalProperties": false,
+      "description": "One of the player's orders in a campaign. It costs actions, may need a general and a target region, and runs its do with them bound as general and target.",
+      "properties": {
+        "cost": {
+          "description": "The actions it takes. Default 1.",
+          "type": "integer",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "do": {
+          "description": "The commands run after the march (if any), with general and target bound.",
+          "items": {
+            "$ref": "#/$defs/Command"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Command](#command)[]"
+        },
+        "general": {
+          "description": "Who leads it: ready (joined, has not marched this turn, has troops), any (joined), or omitted for none.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "label": {
+          "description": "The text shown in the menu.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "march": {
+          "description": "If true, the general's troops march on the target before do (see clash).",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "target": {
+          "description": "The region it is given: border (not the player's, next to one of the player's), own, any, or omitted for none.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "when": {
+          "description": "An expression that must hold for the order to be listed.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "where": {
+          "description": "An expression over t (a region) that narrows the target.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        }
+      },
+      "type": "object"
+    },
     "Passive": {
       "additionalProperties": false,
       "description": "A state that is put on an actor at the start of a battle while a condition holds.",
@@ -9236,6 +9957,103 @@
       "required": [
         "char"
       ],
+      "type": "object"
+    },
+    "Region": {
+      "additionalProperties": false,
+      "description": "A region of a campaign: its neighbours, its first owner and garrison, and its own numbers.",
+      "properties": {
+        "name": {
+          "description": "The name shown. The ID when omitted.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "next": {
+          "description": "The regions it borders. A border is written on both regions unless one_way.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
+        "one_way": {
+          "description": "If true, next may name regions that do not name this one back.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "owner": {
+          "description": "The faction holding it at the start, an ID of factions. Omitted for a free region.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "troops": {
+          "description": "The garrison at the start.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "values": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "The region's own numbers at the start (such as wealth), read and set as region.\u003cid\u003e.\u003cname\u003e.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → number"
+        }
+      },
       "type": "object"
     },
     "Require": {

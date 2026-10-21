@@ -199,6 +199,9 @@ type Game struct {
 	Verbs []string `yaml:"verbs"`
 	// Screens are the names of custom screens made in Go (spec version 2). A declared name can be opened with open.
 	Screens []string `yaml:"screens"`
+	// Campaign makes the game a campaign of regions held by factions over turns
+	// (schema_version 5, ADR 0030).
+	Campaign *Campaign `yaml:"campaign"`
 }
 
 // Aside inserts the Call event right after a line by a speaker (any of actor, face and name; face may be a pattern) is shown, if When holds

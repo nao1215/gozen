@@ -68,6 +68,8 @@ DataFile:
   _: "A file under data/. It can hold any of these sections, and the sections from all files are merged."
   actors: "Characters, keyed by actor ID."
   ai: "Named sets of battle AI rules, keyed by AI ID."
+  factions: "The sides of a campaign, keyed by faction ID. Needs schema version 5."
+  regions: "The regions of a campaign, keyed by region ID. Needs schema version 5."
   classes: "Character classes, keyed by class ID."
   elements: "Damage elements, mapping each element ID to its display name."
   enemies: "Enemy definitions, keyed by enemy ID."

@@ -93,6 +93,7 @@ func (db *DB) generatedStateNames() (map[string]StateName, []string) {
 			add("known_"+id+"_"+el, "number")
 		}
 	}
+	db.campaignStateNames(add)
 	for id, l := range db.Locations {
 		if l.TalkOnEnter {
 			add("talk_turn_"+id, "number")

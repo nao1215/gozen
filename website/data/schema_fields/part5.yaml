@@ -168,3 +168,11 @@ WaitCue:
   _: "A pause, written as seconds or a map (the map needs schema version 4)."
   seconds: "How many seconds to wait."
   skip: "Whether skip mode passes the wait. The default is true."
+Region:
+  _: "A region of a campaign: its neighbours, its first owner and garrison, and its own numbers."
+  name: "The name shown. The ID when omitted."
+  next: "The regions it borders. A border is written on both regions unless one_way."
+  one_way: "If true, next may name regions that do not name this one back."
+  owner: "The faction holding it at the start, an ID of factions. Omitted for a free region."
+  troops: "The garrison at the start."
+  values: "The region's own numbers at the start (such as wealth), read and set as region.<id>.<name>."
