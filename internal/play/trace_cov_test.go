@@ -3,6 +3,7 @@ package play
 import (
 	"bytes"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -220,7 +221,7 @@ func TestWldReplayRefusesABrokenOrChangedRecord(t *testing.T) {
 		{"data changed", []byte(tr), func(o *Options) {
 			o.FS = wldWorldFiles(t, "ui: {message: novel}\n", map[string]string{"data/novel_cov.yaml": wldNovelData + "  ev_extra:\n    do:\n      - say: \"More.\"\n"})
 		}, "data fingerprint does not match"},
-		{"missing file", []byte(tr), func(o *Options) { o.Replay += ".none" }, "no such file"},
+		{"missing file", []byte(tr), func(o *Options) { o.Replay += ".none" }, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -232,6 +233,12 @@ func TestWldReplayRefusesABrokenOrChangedRecord(t *testing.T) {
 					}
 					return wldReplay(t, g)
 				}())
+			}
+			if c.name == "missing file" {
+				if !errors.Is(err, fs.ErrNotExist) {
+					t.Fatalf("error %q, want a missing file", err)
+				}
+				return
 			}
 			if !strings.Contains(err.Error(), c.want) {
 				t.Fatalf("error %q, want it to say %q", err, c.want)

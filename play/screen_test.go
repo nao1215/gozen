@@ -6,6 +6,7 @@ import (
 	"errors"
 	"image"
 	"image/png"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -54,12 +55,15 @@ func TestMainChecksOptionsBeforeRunning(t *testing.T) {
 		{"another dev option", []string{"--trace", "t.jsonl"}, "--trace requires --dev"},
 		{"extra operands", []string{"stray"}, "unexpected positional arguments"},
 		{"answers are numbers", []string{"--dev", "--answers", "0,x"}, `--answers "0,x"`},
-		{"missing script", []string{"--dev", "--script", filepath.Join(t.TempDir(), "none.txt"), "--shots", t.TempDir()}, "no such file"},
+		{"missing script", []string{"--dev", "--script", filepath.Join(t.TempDir(), "none.txt"), "--shots", t.TempDir()}, "none.txt"},
 	}
 	for _, c := range cases {
 		err := Main(ctx, fstest.MapFS{"g/game.yaml": {Data: []byte("x")}}, "g", c.args, Config{})
 		if err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%s: %v, want %q", c.name, err, c.want)
+		}
+		if c.name == "missing script" && !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("%s: %v, want a missing file", c.name, err)
 		}
 	}
 	// The unusable game directory comes first, before the options are read further.

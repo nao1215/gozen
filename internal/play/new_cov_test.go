@@ -226,6 +226,12 @@ func TestDefaultStoreIsTheUserConfigDirectory(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", root)
 	t.Setenv("HOME", root)
+	t.Setenv("AppData", root)
+	// os.UserConfigDir decides where the config directory is on this OS.
+	cfg, err := os.UserConfigDir()
+	if err != nil {
+		t.Skipf("no user config directory: %v", err)
+	}
 	g, err := New(Options{FS: gameFiles(t), NoSound: true})
 	if err != nil {
 		t.Fatal(err)
@@ -237,7 +243,7 @@ func TestDefaultStoreIsTheUserConfigDirectory(t *testing.T) {
 	g.newGame()
 	if err := g.save(0); err == nil {
 		// a real play keeps its saves
-		if _, err := os.Stat(filepath.Join(root, "gozen", "screen-test", "save1.json")); err != nil {
+		if _, err := os.Stat(filepath.Join(cfg, "gozen", "screen-test", "save1.json")); err != nil {
 			t.Fatalf("no save in the config directory: %v", err)
 		}
 	} else {

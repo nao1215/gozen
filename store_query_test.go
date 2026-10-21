@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -113,7 +114,8 @@ func TestDirStoreListSkipsTemporaryAndDirectories(t *testing.T) {
 	if err := os.WriteFile(file, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := gozen.DirStore(file).List(); err == nil {
+	// Windows reports a file used as a directory as a missing path, so it lists as empty there.
+	if _, err := gozen.DirStore(file).List(); err == nil && runtime.GOOS != "windows" {
 		t.Error("listing a file")
 	}
 	if err := gozen.DirStore(file).Write("x", []byte("a")); err == nil {
