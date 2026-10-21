@@ -2,6 +2,7 @@ package docs
 
 import (
 	"bytes"
+	"fmt"
 	goimage "image"
 	"image/color"
 	"image/draw"
@@ -43,14 +44,16 @@ func slimGIF(file string, tolerance int) error {
 	trans := -1
 	index := map[color.RGBA]uint8{}
 	for i, c := range pal {
-		r, g, b, a := c.RGBA()
-		if a == 0 {
+		if _, _, _, a := c.RGBA(); a == 0 {
 			if trans < 0 {
 				trans = i
 			}
 			continue
 		}
-		k := color.RGBA{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8), uint8(a >> 8)}
+		k, isRGBA := color.RGBAModel.Convert(c).(color.RGBA)
+		if !isRGBA {
+			return fmt.Errorf("palette entry %d is not RGBA", i)
+		}
 		if _, ok := index[k]; !ok {
 			index[k] = uint8(i)
 		}
@@ -69,7 +72,10 @@ func slimGIF(file string, tolerance int) error {
 	out := &gif.GIF{LoopCount: g.LoopCount, Config: g.Config}
 	limit := tolerance * tolerance
 	for n, f := range frames {
-		full := f.(*goimage.RGBA)
+		full, ok := f.(*goimage.RGBA)
+		if !ok {
+			return fmt.Errorf("frame %d is a %T", n, f)
+		}
 		if n == 0 {
 			p := goimage.NewPaletted(bounds, newPal)
 			for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
@@ -132,7 +138,7 @@ func slimGIF(file string, tolerance int) error {
 	if buf.Len() >= len(b) {
 		return nil
 	}
-	return os.WriteFile(file, buf.Bytes(), 0o600) //nolint:gosec // A GIF in the test's work directory.
+	return os.WriteFile(file, buf.Bytes(), 0o600)
 }
 
 func rgbDist(a, b color.RGBA) int {
@@ -189,7 +195,11 @@ func TestSlimGIF(t *testing.T) {
 		t.Fatalf("%d frames, want %d", len(after), len(before))
 	}
 	for n := range before {
-		a, b := before[n].(*goimage.RGBA), after[n].(*goimage.RGBA)
+		a, aok := before[n].(*goimage.RGBA)
+		b, bok := after[n].(*goimage.RGBA)
+		if !aok || !bok {
+			t.Fatalf("frame %d: %T, %T", n, before[n], after[n])
+		}
 		for y := range 64 {
 			for x := range 64 {
 				if rgbDist(a.RGBAAt(x, y), b.RGBAAt(x, y)) > slimTolerance*slimTolerance {
