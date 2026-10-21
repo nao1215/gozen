@@ -37,14 +37,13 @@ type sysSample struct {
 	fade           int
 	mood           string
 	loc            string
-	top            string
 }
 
 // sysPlayLines reads every line of a script-driven game, sampling the screen at each line.
-func sysPlayLines(t *testing.T, g *Game, max int) map[string]sysSample {
+func sysPlayLines(t *testing.T, g *Game, limit int) map[string]sysSample {
 	t.Helper()
 	out := map[string]sysSample{}
-	for range max {
+	for range limit {
 		err := g.Update()
 		if err != nil {
 			if !sysQuit(err) {
@@ -54,8 +53,10 @@ func sysPlayLines(t *testing.T, g *Game, max int) map[string]sysSample {
 		}
 		sysSafeDraw(g)
 		if what, age := g.waiting(); what == "text" && age == 0 && g.talk.active {
-			s := sysSample{cg: g.cg.File, old: g.cgOld.File, under: g.cgUnder.File, oldT: g.cgOldT,
-				shake: g.shake, flash: g.flash, fade: g.fadeT, mood: g.moodOverride, loc: g.st.Location}
+			s := sysSample{
+				cg: g.cg.File, old: g.cgOld.File, under: g.cgUnder.File, oldT: g.cgOldT,
+				shake: g.shake, flash: g.flash, fade: g.fadeT, mood: g.moodOverride, loc: g.st.Location,
+			}
 			out[g.talk.say.Text] = s
 		}
 	}
@@ -66,8 +67,10 @@ func sysPlayLines(t *testing.T, g *Game, max int) map[string]sysSample {
 // TestCinemaEventDrivesTheScreen: an event's image, effect, mood and move commands reach the
 // screen state, and the lines come after them.
 func TestCinemaEventDrivesTheScreen(t *testing.T) {
-	g := sysOpen4(t, Options{Seed: 1, Location: "camp", Event: "cinema", Line: 1,
-		Script: "read 3\nread 3\nread 3\nread 3\nread 3\nquit"}, map[string]string{"data/cinema.yaml": sysCinema})
+	g := sysOpen4(t, Options{
+		Seed: 1, Location: "camp", Event: "cinema", Line: 1,
+		Script: "read 3\nread 3\nread 3\nread 3\nread 3\nquit",
+	}, map[string]string{"data/cinema.yaml": sysCinema})
 	got := sysPlayLines(t, g, 2000)
 	if got["A"].cg != "x.png" {
 		t.Errorf("line A: picture %q", got["A"].cg)

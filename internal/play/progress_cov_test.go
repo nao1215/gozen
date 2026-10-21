@@ -163,7 +163,7 @@ func TestReadRecordIsNeverOverwrittenWhenItCannotBeUnderstood(t *testing.T) {
 		}
 		g.markRead(event.Say{Text: "a new line"})
 		g.flushRead()
-		if b, _ := os.ReadFile(path); string(b) != content {
+		if b := sysRead(t, path); string(b) != content {
 			t.Errorf("%s: the record was overwritten with %q", name, b)
 		}
 		if g.isRead(event.Say{Text: "a new line"}) != true {
@@ -193,7 +193,7 @@ func TestLegacyReadRecordIsKeptAsABackup(t *testing.T) {
 	if err := g.Close(); err != nil {
 		t.Fatal(err)
 	}
-	entries, _ := os.ReadDir(dir)
+	entries := sysReadDir(t, dir)
 	var backups int
 	for _, e := range entries {
 		if strings.HasPrefix(e.Name(), "read.json.before-") {
@@ -203,7 +203,7 @@ func TestLegacyReadRecordIsKeptAsABackup(t *testing.T) {
 	if backups != 1 {
 		t.Fatalf("%d backups in %v", backups, entries)
 	}
-	b, _ := os.ReadFile(filepath.Join(dir, "read.json"))
+	b := sysRead(t, filepath.Join(dir, "read.json"))
 	if !strings.Contains(string(b), `"format_version":1`) {
 		t.Fatalf("the record was not written in the new format: %s", b)
 	}

@@ -132,10 +132,7 @@ func TestEventSaveCommandOpensTheSaveScreen(t *testing.T) {
 			break
 		}
 	}
-	sm, ok := g.stack[len(g.stack)-1].(*saveMenu)
-	if !ok {
-		t.Fatalf("top is %T", g.stack[len(g.stack)-1])
-	}
+	sm := sysAs[*saveMenu](t, g.stack[len(g.stack)-1])
 	sysKey(g, btnOK)
 	sm.update(g)
 	for sm.msgT > 0 {

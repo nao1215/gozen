@@ -85,7 +85,8 @@ func TestFieldNoticesCanBeDropped(t *testing.T) {
 	}
 }
 
-// TestFieldNoticesStayByDefault.
+// TestFieldNoticesStayByDefault: notices stay on the field unless the game drops them, the same
+// notice is not listed twice and the queue is bounded.
 func TestFieldNoticesStayByDefault(t *testing.T) {
 	g := sysOpen(t, Options{Location: "camp"}, nil)
 	g.notices.add("Found a coin")
@@ -114,7 +115,7 @@ func TestToggleFullscreenKeepsTheChoice(t *testing.T) {
 	if g.cfg.Fullscreen == before {
 		t.Fatal("not toggled")
 	}
-	b, err := os.ReadFile(filepath.Join(dir, "config.json"))
+	b, err := os.ReadFile(filepath.Join(dir, "config.json")) //nolint:gosec // reads a file this test wrote
 	if err != nil || !strings.Contains(string(b), `"fullscreen": true`) {
 		t.Fatalf("config %s %v", b, err)
 	}

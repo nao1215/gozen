@@ -52,7 +52,7 @@ func TestNewRefusesBrokenGames(t *testing.T) {
 		}
 		g, err := New(Options{FS: fsys, NoSound: true, SaveDir: t.TempDir()})
 		if err == nil {
-			_ = g.Close()
+			sysClose(t, g)
 			t.Errorf("%s: accepted", name)
 			continue
 		}
@@ -191,7 +191,7 @@ func TestSessionFontsAreReadByNew(t *testing.T) {
 		c.set(&o)
 		g, err := New(o)
 		if err == nil {
-			_ = g.Close()
+			sysClose(t, g)
 			t.Fatalf("%s: accepted", c.want)
 		}
 		if !strings.Contains(err.Error(), c.want) {
@@ -210,7 +210,7 @@ func TestSessionFreshRunsTheOpeningEvent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = g.Close() }()
+	defer sysClose(t, g)
 	if !g.events.Running() {
 		t.Fatal("the opening event did not start")
 	}
@@ -230,7 +230,7 @@ func TestDefaultStoreIsTheUserConfigDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = g.Close() }()
+	defer sysClose(t, g)
 	if g.storeGiven {
 		t.Fatal("the default location is not an explicit one")
 	}
@@ -256,7 +256,7 @@ func TestStoreForIsAskedForTheGameID(t *testing.T) {
 	if asked != "screen-test" || g.store != mem {
 		t.Fatalf("asked %q", asked)
 	}
-	_ = g.Close()
+	sysClose(t, g)
 	_, err = New(Options{FS: gameFiles(t), NoSound: true, StoreFor: func(string) (Store, error) { return nil, errors.New("no storage") }})
 	if err == nil || !strings.Contains(err.Error(), "no storage") {
 		t.Fatalf("err = %v", err)

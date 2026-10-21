@@ -213,7 +213,8 @@ func TestHeadOfAPicture(t *testing.T) {
 	}
 }
 
-// TestBlurredPictureIsSmallerAndCached.
+// TestBlurredPictureIsSmallerAndCached: the blurred copy used behind a picture is smaller than
+// the picture and made once.
 func TestBlurredPictureIsSmallerAndCached(t *testing.T) {
 	p := sysPics(t, map[string][]byte{"a.png": sysPNG(t, 640, 360, sysBlue)})
 	b := p.blurred("a.png")

@@ -25,13 +25,13 @@ func TestLanguageChoiceIsKeptForTheNextRun(t *testing.T) {
 		t.Fatalf("starts in %s with %q", g.language(), g.db.Locations["camp"].Name)
 	}
 	g.push(newConfigScreen(g))
-	s := g.stack[len(g.stack)-1].(*configScreen)
+	s := sysAs[*configScreen](t, g.stack[len(g.stack)-1])
 	s.list.sel = s.langRow
 	s.change(g, 1, false)
 	s.list.sel = len(s.list.items) - 1
 	sysKey(g, btnOK)
 	s.update(g)
-	b, err := os.ReadFile(filepath.Join(dir, "config.json"))
+	b, err := os.ReadFile(filepath.Join(dir, "config.json")) //nolint:gosec // reads a file this test wrote
 	if err != nil || !strings.Contains(string(b), `"language": "ja"`) {
 		t.Fatalf("config %s (%v)", b, err)
 	}

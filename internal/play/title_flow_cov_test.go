@@ -18,9 +18,9 @@ const sysEndings = `events:
       - say: "A picture."
 `
 
-func sysUntilStack(t *testing.T, g *Game, max int, ok func() bool) {
+func sysUntilStack(t *testing.T, g *Game, limit int, ok func() bool) {
 	t.Helper()
-	for range max {
+	for range limit {
 		if ok() {
 			return
 		}
@@ -41,10 +41,7 @@ func TestClearEventLeadsToTheEndingThenTheTitle(t *testing.T) {
 		}
 		sysFramesWithKey(t, g, btnOK)
 	}
-	e, ok := g.stack[0].(*ending)
-	if !ok {
-		t.Fatalf("scene %T, want the ending", g.stack[0])
-	}
+	e := sysAs[*ending](t, g.stack[0])
 	// pressing early does nothing.
 	sysKey(g, btnOK)
 	e.update(g)
@@ -84,7 +81,7 @@ func sysFramesWithKey(t *testing.T, g *Game, b button) {
 func TestGameOverReturnsToTheTitle(t *testing.T) {
 	g := sysOpen(t, Options{Seed: 1, Location: "camp"}, nil)
 	g.replace(newGameOver(g))
-	s := g.stack[0].(*gameOver)
+	s := sysAs[*gameOver](t, g.stack[0])
 	sysFrames(t, g, 3)
 	sysKey(g, btnOK)
 	s.update(g)
@@ -109,7 +106,7 @@ func TestGameOverEventHealsAndRuns(t *testing.T) {
 	a := g2.st.Members()[0]
 	a.HP = 1
 	g2.replace(newGameOver(g2))
-	s2 := g2.stack[0].(*gameOver)
+	s2 := sysAs[*gameOver](t, g2.stack[0])
 	sysFrames(t, g2, 3)
 	s2.age = 100
 	sysKey(g2, btnCancel)

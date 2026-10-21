@@ -223,27 +223,28 @@ func TestMemoReadInputPrefersTheComposer(t *testing.T) {
 	if handled || err != nil {
 		t.Fatalf("nothing typed: %v %v", handled, err)
 	}
-	handled, _ = m.readInput(func() (bool, error) { return false, nil }, func([]rune) []rune { return []rune("ab") })
+	handled = sysReadInput(t, m, func() (bool, error) { return false, nil }, func([]rune) []rune { return []rune("ab") })
 	if !handled || m.text != "ab" {
 		t.Fatalf("plain characters: %v %q", handled, m.text)
 	}
-	handled, _ = m.readInput(func() (bool, error) { m.committed = true; return false, nil }, func([]rune) []rune { return []rune("zz") })
+	handled = sysReadInput(t, m, func() (bool, error) { m.committed = true; return false, nil }, func([]rune) []rune { return []rune("zz") })
 	if !handled || m.text != "ab" {
 		t.Fatalf("committed frame: %v %q", handled, m.text)
 	}
 	m.comp = "kana"
-	handled, _ = m.readInput(func() (bool, error) { return false, nil }, func([]rune) []rune { return []rune("zz") })
+	handled = sysReadInput(t, m, func() (bool, error) { return false, nil }, func([]rune) []rune { return []rune("zz") })
 	if !handled || m.text != "ab" {
 		t.Fatalf("composing frame: %v %q", handled, m.text)
 	}
 	m.comp = ""
-	handled, _ = m.readInput(func() (bool, error) { return true, nil }, func([]rune) []rune { return nil })
+	handled = sysReadInput(t, m, func() (bool, error) { return true, nil }, func([]rune) []rune { return nil })
 	if !handled {
 		t.Fatal("the composer's own handling is lost")
 	}
 }
 
-// TestMemoUnfocusedRunsUntilTheNoteIsDone.
+// TestMemoUnfocusedRunsUntilTheNoteIsDone: the game runs while its window is not focused until the
+// note is written and its toast has gone.
 func TestMemoUnfocusedRunsUntilTheNoteIsDone(t *testing.T) {
 	g := sysOpen4(t, Options{Location: "camp"}, nil)
 	was := g.memoUnfocused

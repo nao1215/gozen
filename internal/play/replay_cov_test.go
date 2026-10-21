@@ -13,7 +13,7 @@ import (
 func sysRecord(t *testing.T, script string, opts Options) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "run.jsonl")
-	f, err := os.Create(path)
+	f, err := os.Create(path) //nolint:gosec // a file in the test directory
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestReplayRefusesDifferentData(t *testing.T) {
 	fsys["data/novel.yaml"] = &fstest.MapFile{Data: []byte(changed)}
 	g, err := New(Options{FS: fsys, NoSound: true, SaveDir: t.TempDir(), Replay: path})
 	if err == nil {
-		_ = g.Close()
+		sysClose(t, g)
 		t.Fatal("replayed a trace against other data")
 	}
 	if !strings.Contains(err.Error(), "fingerprint") {
@@ -85,7 +85,7 @@ func TestReplayRefusesDifferentData(t *testing.T) {
 // JSON, runs backwards in ticks or goes on after its end is refused with the line number.
 func TestReplayRefusesDamagedTraces(t *testing.T) {
 	good := sysRecord(t, "wait 5\nread 3\nquit", Options{Seed: 7, Location: "camp", Event: "story"})
-	b, err := os.ReadFile(good)
+	b, err := os.ReadFile(good) //nolint:gosec // reads a file this test wrote
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestReplayRefusesDamagedTraces(t *testing.T) {
 		fsys := gameFiles(t)
 		g, err := New(Options{FS: fsys, NoSound: true, SaveDir: t.TempDir(), Replay: p})
 		if err == nil {
-			_ = g.Close()
+			sysClose(t, g)
 			t.Errorf("%s: accepted", name)
 		}
 	}

@@ -197,7 +197,7 @@ func TestNewGameRunsTheStartEvent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = g.Close() }()
+	defer sysClose(t, g)
 	g.newGame()
 	if !g.events.Running() {
 		t.Fatal("the start event did not start")

@@ -147,7 +147,7 @@ func TestHPColorFollowsTheRate(t *testing.T) {
 func TestConfigClicksAdjustRows(t *testing.T) {
 	g := sysOpen(t, Options{}, nil)
 	g.push(newConfigScreen(g))
-	s := g.stack[len(g.stack)-1].(*configScreen)
+	s := sysAs[*configScreen](t, g.stack[len(g.stack)-1])
 	row := slicesIndexRow(t, s, rowText)
 	r := s.list.rowRect(row)
 	g.cfg.TextSpeed = 1
@@ -246,7 +246,7 @@ func TestTitleMenuChoices(t *testing.T) {
 	}
 	g.st = nil
 	g.replace(newTitle(g))
-	ti := g.stack[0].(*title)
+	ti := sysAs[*title](t, g.stack[0])
 	choose := func(i int) {
 		t.Helper()
 		ti.menu.sel = i
@@ -297,7 +297,7 @@ func TestTitleMenuTracesWhatIsDrawn(t *testing.T) {
 	if len(menus) == 0 {
 		t.Fatal("no menu in the trace")
 	}
-	items, _ := menus[0]["items"].([]any)
+	items := sysAs[[]any](t, menus[0]["items"])
 	if len(items) < 4 || items[0] != "New Game" || items[1] != "Continue (x)" {
 		t.Fatalf("menu %v", menus[0])
 	}
@@ -310,7 +310,7 @@ func TestEndingAndGameOverDraw(t *testing.T) {
 	g.db.Game.GameOver.Music.Song = "fight"
 	g.cg.File = "x.png"
 	g.replace(newEnding(g))
-	e := g.stack[0].(*ending)
+	e := sysAs[*ending](t, g.stack[0])
 	if e.pic != "x.png" {
 		t.Fatalf("ending picture %q", e.pic)
 	}

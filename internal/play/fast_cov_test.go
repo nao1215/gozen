@@ -47,7 +47,8 @@ func TestFastStopsForTheReasonItHas(t *testing.T) {
 	}
 }
 
-// TestFastPageSeekStopsAtAChoiceWithoutAnAnswer.
+// TestFastPageSeekStopsAtAChoiceWithoutAnAnswer: a page seek that reaches a choice it has no
+// answer for stops there and leaves the choice open.
 func TestFastPageSeekStopsAtAChoiceWithoutAnAnswer(t *testing.T) {
 	g2 := sysNovel(t, Options{Seed: 1, Location: "camp", Event: "story", Line: 4})
 	g2.fast.page = true
@@ -63,7 +64,8 @@ func TestFastPageSeekStopsAtAChoiceWithoutAnAnswer(t *testing.T) {
 	}
 }
 
-// TestFastSceneSkipEndsByItsOwnReport.
+// TestFastSceneSkipEndsByItsOwnReport: scene skip ends with a skip line in the trace that says
+// it was a scene skip.
 func TestFastSceneSkipEndsByItsOwnReport(t *testing.T) {
 	var trace3 bytes.Buffer
 	g3 := sysNovel(t, Options{Seed: 1, Location: "camp", Event: "story", Line: 2, Trace: &trace3})

@@ -29,8 +29,10 @@ func sysNovel(t *testing.T, opts Options) *Game {
 // resume from (ADR 0025's resume by replaying the event).
 func TestMemoKeyWritesANoteInTheMiddleOfAnEvent(t *testing.T) {
 	dir := t.TempDir()
-	g := sysNovel(t, Options{Seed: 5, MemoDir: dir, Location: "camp", Event: "story", Line: 2,
-		Script: "wait 5\npress memo\nwait 10\npress z\nwait 3\ntype  needs a lamp \npress z\nwait 5\nquit"})
+	g := sysNovel(t, Options{
+		Seed: 5, MemoDir: dir, Location: "camp", Event: "story", Line: 2,
+		Script: "wait 5\npress memo\nwait 10\npress z\nwait 3\ntype  needs a lamp \npress z\nwait 5\nquit",
+	})
 	if !sysFrames(t, g, 600) {
 		t.Fatal("the script did not end")
 	}
@@ -63,8 +65,10 @@ func TestMemoKeyWritesANoteInTheMiddleOfAnEvent(t *testing.T) {
 // and writes no file.
 func TestMemoCancelWritesNothing(t *testing.T) {
 	dir := t.TempDir()
-	g := sysNovel(t, Options{MemoDir: dir, Location: "camp", Event: "story", Line: 1,
-		Script: "wait 5\npress memo\nwait 10\npress x\nwait 5\npress memo\nwait 10\npress z\nwait 4\ntype nope\npress x\nwait 5\nquit"})
+	g := sysNovel(t, Options{
+		MemoDir: dir, Location: "camp", Event: "story", Line: 1,
+		Script: "wait 5\npress memo\nwait 10\npress x\nwait 5\npress memo\nwait 10\npress z\nwait 4\ntype nope\npress x\nwait 5\nquit",
+	})
 	if !sysFrames(t, g, 600) {
 		t.Fatal("the script did not end")
 	}
@@ -94,8 +98,10 @@ func TestMemoWriteFailureShowsAToast(t *testing.T) {
 	if err := os.WriteFile(blocked, []byte("occupied"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	g := sysNovel(t, Options{MemoDir: filepath.Join(blocked, "notes"), Location: "camp", Event: "story", Line: 1,
-		Script: "wait 5\npress memo\nwait 10\npress z\nwait 4\ntype x\npress z\nwait 3\nquit"})
+	g := sysNovel(t, Options{
+		MemoDir: filepath.Join(blocked, "notes"), Location: "camp", Event: "story", Line: 1,
+		Script: "wait 5\npress memo\nwait 10\npress z\nwait 4\ntype x\npress z\nwait 3\nquit",
+	})
 	if !sysFrames(t, g, 400) {
 		t.Fatal("the script did not end")
 	}
@@ -108,8 +114,10 @@ func TestMemoWriteFailureShowsAToast(t *testing.T) {
 // note; the bug kind is labelled; at most 40 are kept in one run.
 func TestQuickMemoFromAScriptAndTheLimit(t *testing.T) {
 	dir := t.TempDir()
-	g := sysNovel(t, Options{MemoDir: dir, Location: "camp", Event: "story", Line: 1,
-		Script: "wait 3\nmemo bug the lamp is wrong\nwait 3\nquit"})
+	g := sysNovel(t, Options{
+		MemoDir: dir, Location: "camp", Event: "story", Line: 1,
+		Script: "wait 3\nmemo bug the lamp is wrong\nwait 3\nquit",
+	})
 	if !sysFrames(t, g, 200) {
 		t.Fatal("the script did not end")
 	}
@@ -142,8 +150,10 @@ func TestQuickMemoFromAScriptAndTheLimit(t *testing.T) {
 // event on to the same line; one taken outside an event restores the state as it was.
 func TestFromMemoReturnsToTheNote(t *testing.T) {
 	dir := t.TempDir()
-	g := sysNovel(t, Options{Seed: 9, MemoDir: dir, Location: "camp", Event: "story", Line: 3,
-		Script: "wait 5\npress memo\nwait 10\npress z\nwait 3\ntype third line\npress z\nwait 5\nquit"})
+	g := sysNovel(t, Options{
+		Seed: 9, MemoDir: dir, Location: "camp", Event: "story", Line: 3,
+		Script: "wait 5\npress memo\nwait 10\npress z\nwait 3\ntype third line\npress z\nwait 5\nquit",
+	})
 	if !sysFrames(t, g, 600) {
 		t.Fatal("the script did not end")
 	}
@@ -154,7 +164,10 @@ func TestFromMemoReturnsToTheNote(t *testing.T) {
 	if err := g.Close(); err != nil {
 		t.Fatal(err)
 	}
-	m, _, _ := memo.Read(files[0])
+	m, _, err := memo.Read(files[0])
+	if err != nil {
+		t.Fatal(err)
+	}
 	if m.Resume == nil || m.Resume.Line != 3 || m.Line != "A bell rings far off." {
 		t.Fatalf("note: %+v line %q", m.Resume, m.Line)
 	}

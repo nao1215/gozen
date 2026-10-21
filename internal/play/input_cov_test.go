@@ -2,17 +2,18 @@ package play
 
 import (
 	"image"
+	"strconv"
 	"strings"
 	"testing"
 )
 
 // sysStepAll runs a parsed script until it quits (or max ticks) and returns the inputs it
 // produced tick by tick.
-func sysStepAll(t *testing.T, s *script, max int) []input {
+func sysStepAll(t *testing.T, s *script, limit int) []input {
 	t.Helper()
 	var out []input
 	in := &input{}
-	for range max {
+	for range limit {
 		in.pressed = [numButtons]bool{}
 		in.click, in.digit = false, 0
 		s.step(in)
@@ -21,7 +22,7 @@ func sysStepAll(t *testing.T, s *script, max int) []input {
 			return out
 		}
 	}
-	t.Fatalf("the script did not quit within %d ticks", max)
+	t.Fatalf("the script did not quit within %d ticks", limit)
 	return nil
 }
 
@@ -332,18 +333,18 @@ func TestScriptReadPressesWhenTheLineIsOld(t *testing.T) {
 
 // TestScriptReadFinishesWhenIdle and the safety limit.
 func TestScriptReadFinishesWhenIdle(t *testing.T) {
-	s, _ := parseScript("read 3\nquit")
+	s := sysScript(t, "read 3\nquit")
 	s.waiting = func() (string, int) { return "", 0 }
 	s.idle = func() bool { return true }
 	sysStepAll(t, s, 5)
-	s2, _ := parseScript("read 3\nquit")
+	s2 := sysScript(t, "read 3\nquit")
 	sysStepAll(t, s2, 7000) // no events at all: the limit ends it
 }
 
 // TestScriptUntilPressesOKUntilIdle: `until` keeps pressing ok every sixth tick until the
 // game is idle.
 func TestScriptUntilPressesOKUntilIdle(t *testing.T) {
-	s, _ := parseScript("until\nquit")
+	s := sysScript(t, "until\nquit")
 	busy := 20
 	s.idle = func() bool { busy--; return busy <= 0 }
 	presses := 0
@@ -355,7 +356,7 @@ func TestScriptUntilPressesOKUntilIdle(t *testing.T) {
 	if presses < 2 || presses > 4 {
 		t.Fatalf("pressed ok %d times", presses)
 	}
-	s2, _ := parseScript("until\nquit")
+	s2 := sysScript(t, "until\nquit")
 	s2.idle = func() bool { return false }
 	sysStepAll(t, s2, 4000) // gives up after 3000 ticks
 }
@@ -363,10 +364,10 @@ func TestScriptUntilPressesOKUntilIdle(t *testing.T) {
 // TestScriptWalkWithoutWalker: walk and face are skipped when nothing can walk; with a walker
 // the script presses the button it asks for until it is done.
 func TestScriptWalkWithoutWalker(t *testing.T) {
-	s, _ := parseScript("walk gate\nface north\nquit")
+	s := sysScript(t, "walk gate\nface north\nquit")
 	sysStepAll(t, s, 5)
 
-	s, _ = parseScript("walk gate\nquit")
+	s = sysScript(t, "walk gate\nquit")
 	calls := 0
 	var asked []string
 	s.walk = func(arg string) (button, bool) {
@@ -386,7 +387,7 @@ func TestScriptWalkWithoutWalker(t *testing.T) {
 	if pressed != 3 || asked[0] != "gate" {
 		t.Fatalf("pressed %d asked %v", pressed, asked)
 	}
-	s, _ = parseScript("face north\nquit")
+	s = sysScript(t, "face north\nquit")
 	s.walk = func(arg string) (button, bool) { asked = []string{arg}; return btnNone, true }
 	sysStepAll(t, s, 10)
 	if asked[0] != "face:north" {
@@ -397,7 +398,7 @@ func TestScriptWalkWithoutWalker(t *testing.T) {
 // TestScriptWalkFollowsAnEventOnTheWay: a walk that starts an event (the game is busy) waits
 // for it to end, reading it with shots named after the walk.
 func TestScriptWalkFollowsAnEventOnTheWay(t *testing.T) {
-	s, _ := parseScript("walk door lamp\nquit")
+	s := sysScript(t, "walk door lamp\nquit")
 	busy := true
 	n := 0
 	s.walk = func(string) (button, bool) { return btnNone, !busy }
@@ -431,7 +432,7 @@ func TestScriptWalkFollowsAnEventOnTheWay(t *testing.T) {
 // TestScriptLinesFilmsEachLine: `lines NAME N` films each line of text it passes up to N and
 // presses ok to read on.
 func TestScriptLinesFilmsEachLine(t *testing.T) {
-	s, _ := parseScript("lines scene 2\nquit")
+	s := sysScript(t, "lines scene 2\nquit")
 	s.waiting = func() (string, int) { return "text", 10 }
 	s.idle = func() bool { return false }
 	var shots []string
@@ -451,7 +452,7 @@ func TestScriptLinesFilmsEachLine(t *testing.T) {
 		t.Fatalf("shots %v", shots)
 	}
 	// a choice ends it after one shot.
-	s, _ = parseScript("lines pick\nquit")
+	s = sysScript(t, "lines pick\nquit")
 	s.waiting = func() (string, int) { return "choice", 0 }
 	shots = nil
 	for range 20 {
@@ -465,7 +466,7 @@ func TestScriptLinesFilmsEachLine(t *testing.T) {
 		t.Fatalf("choice: shots %v quit %v", shots, s.quit)
 	}
 	// the game going quiet ends it.
-	s, _ = parseScript("lines idle\nquit")
+	s = sysScript(t, "lines idle\nquit")
 	s.waiting = func() (string, int) { return "", 0 }
 	s.idle = func() bool { return true }
 	sysStepAll(t, s, 100)
@@ -473,7 +474,7 @@ func TestScriptLinesFilmsEachLine(t *testing.T) {
 
 // TestScriptPlayFilmsTextChoicesAndBattles covers the `play` verb.
 func TestScriptPlayFilmsTextChoicesAndBattles(t *testing.T) {
-	s, _ := parseScript("play p\nquit")
+	s := sysScript(t, "play p\nquit")
 	state, age := "text", 10
 	s.waiting = func() (string, int) { return state, age }
 	s.idle = func() bool { return false }
@@ -497,7 +498,7 @@ func TestScriptPlayFilmsTextChoicesAndBattles(t *testing.T) {
 	if !s.quit || len(shots) < 3 || shots[0] != "p_001" || shots[1] != "p_002" || !strings.HasPrefix(shots[2], "p_b") {
 		t.Fatalf("shots %v quit %v", shots, s.quit)
 	}
-	s, _ = parseScript("play p\nquit")
+	s = sysScript(t, "play p\nquit")
 	s.waiting = func() (string, int) { return "", 0 }
 	s.idle = func() bool { return true }
 	sysStepAll(t, s, 200)
@@ -506,18 +507,18 @@ func TestScriptPlayFilmsTextChoicesAndBattles(t *testing.T) {
 // TestScriptHooks: type, memo, jump and do call their hooks with the written text; without a
 // hook they only pass.
 func TestScriptHooks(t *testing.T) {
-	s, _ := parseScript("type  hi there\nmemo bug  it broke\njump intro 7\ndo {say: x}\nquit")
+	s := sysScript(t, "type  hi there\nmemo bug  it broke\njump intro 7\ndo {say: x}\nquit")
 	var got []string
 	s.typeText = func(x string) { got = append(got, "type:"+x) }
 	s.memoNote = func(k, x string) { got = append(got, "memo:"+k+":"+x) }
-	s.jump = func(name string, line int) { got = append(got, "jump:"+name+":"+string(rune('0'+line))) }
+	s.jump = func(name string, line int) { got = append(got, "jump:"+name+":"+strconv.Itoa(line)) }
 	s.do = func(src string) { got = append(got, "do:"+src) }
 	sysStepAll(t, s, 50)
 	want := "type:hi there,memo:bug:it broke,jump:intro:7,do:{say: x}"
 	if strings.Join(got, ",") != want {
 		t.Fatalf("hooks %v, want %s", got, want)
 	}
-	s, _ = parseScript("type a\nmemo n b\njump x\ndo {}\nquit")
+	s = sysScript(t, "type a\nmemo n b\njump x\ndo {}\nquit")
 	sysStepAll(t, s, 50)
 }
 

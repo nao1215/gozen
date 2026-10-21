@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"errors"
 	"image"
 	"image/color"
 	"image/png"
@@ -27,7 +28,7 @@ func TestShotWriterWritesEveryQueuedShot(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "deep", "shots")
 	for i := range 12 {
 		img := w.pixels(image.Rect(0, 0, 8, 6))
-		c := color.NRGBA{R: uint8(i * 20), G: 7, B: 9, A: 255} //nolint:gosec // small values
+		c := color.NRGBA{R: uint8(i * 20), G: 7, B: 9, A: 255}
 		copy(img.Pix, sysSolid(8, 6, c).Pix)
 		w.write(filepath.Join(dir, "s"+string(rune('a'+i))+".png"), img)
 	}
@@ -35,17 +36,19 @@ func TestShotWriterWritesEveryQueuedShot(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := range 12 {
-		f, err := os.Open(filepath.Join(dir, "s"+string(rune('a'+i))+".png"))
+		f, err := os.Open(filepath.Join(dir, "s"+string(rune('a'+i))+".png")) //nolint:gosec // reads a file this test wrote
 		if err != nil {
 			t.Fatal(err)
 		}
 		img, err := png.Decode(f)
-		_ = f.Close()
+		if err := f.Close(); err != nil {
+			t.Fatal(err)
+		}
 		if err != nil {
 			t.Fatal(err)
 		}
 		r, g, b, _ := img.At(3, 3).RGBA()
-		if r>>8 != uint32(i*20) || g>>8 != 7 || b>>8 != 9 { //nolint:gosec // small values
+		if r>>8 != uint32(i*20) || g>>8 != 7 || b>>8 != 9 {
 			t.Fatalf("shot %d has the wrong pixels: %d %d %d", i, r>>8, g>>8, b>>8)
 		}
 	}
@@ -145,7 +148,7 @@ func TestRecordRefusesBrokenData(t *testing.T) {
 func TestRunRefusesACancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if err := Run(ctx, Options{FS: gameFiles(t)}); err != context.Canceled {
+	if err := Run(ctx, Options{FS: gameFiles(t)}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("err = %v", err)
 	}
 	if err := Run(context.Background(), Options{}); err == nil {

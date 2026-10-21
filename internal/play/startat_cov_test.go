@@ -8,9 +8,9 @@ import (
 
 const sysGallery = "gallery: {scenes: [{title: Intro, event: story, flag: seen_story}]}\n"
 
-func sysRunFast(t *testing.T, g *Game, max int) {
+func sysRunFast(t *testing.T, g *Game, limit int) {
 	t.Helper()
-	for range max {
+	for range limit {
 		if g.fast == nil {
 			return
 		}
@@ -73,7 +73,7 @@ func TestStartAtUnknownThings(t *testing.T) {
 		c.o.FS, c.o.NoSound, c.o.SaveDir = fsys, true, t.TempDir()
 		g, err := New(c.o)
 		if err == nil {
-			_ = g.Close()
+			sysClose(t, g)
 			t.Errorf("%+v accepted", c.o)
 			continue
 		}

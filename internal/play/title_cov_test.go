@@ -187,7 +187,7 @@ func TestTitleSettingsKeyOpensSettings(t *testing.T) {
 	if !sysFrames(t, g, 300) {
 		t.Fatal("the script did not end")
 	}
-	b, err := os.ReadFile(filepath.Join(dir, "config.json"))
+	b, err := os.ReadFile(filepath.Join(dir, "config.json")) //nolint:gosec // reads a file this test wrote
 	if err != nil {
 		t.Fatalf("settings not written: %v", err)
 	}
@@ -208,7 +208,7 @@ func TestTitleSettingsKeyOpensSettings(t *testing.T) {
 func TestSettingsMenuItemAndAdjust(t *testing.T) {
 	g := sysOpen(t, Options{}, nil)
 	g.push(newConfigScreen(g))
-	s := g.stack[len(g.stack)-1].(*configScreen)
+	s := sysAs[*configScreen](t, g.stack[len(g.stack)-1])
 	s.list.sel = int(rowText)
 	for range 10 {
 		s.change(g, -1, false)
@@ -310,7 +310,7 @@ func TestSettingsSaveFailureShownThenClosed(t *testing.T) {
 	g := sysOpen(t, Options{Script: "wait 2\nquit"}, nil)
 	g.store = gozen.DirStore(blocked)
 	g.push(newConfigScreen(g))
-	s := g.stack[len(g.stack)-1].(*configScreen)
+	s := sysAs[*configScreen](t, g.stack[len(g.stack)-1])
 	s.list.sel = len(s.list.items) - 1
 	g.in.pressed[btnOK] = true
 	s.update(g)
@@ -352,7 +352,7 @@ func TestInvalidOptions(t *testing.T) {
 		}
 		g, err := New(o)
 		if err == nil {
-			_ = g.Close()
+			sysClose(t, g)
 			t.Errorf("%s: accepted", name)
 			continue
 		}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,9 +31,7 @@ func sysInnWith(t *testing.T, opts Options, extra map[string]string) *Game {
 		opts.Location = "inn"
 	}
 	files := map[string]string{"data/inn.yaml": sysInnData}
-	for n, s := range extra {
-		files[n] = s
-	}
+	maps.Copy(files, extra)
 	return sysOpen4(t, opts, files)
 }
 
@@ -48,10 +47,7 @@ func sysKey(g *Game, btns ...button) {
 // sysConfirm answers the confirmation on top of the stack.
 func sysConfirm(t *testing.T, g *Game, yes bool) {
 	t.Helper()
-	c, ok := g.stack[len(g.stack)-1].(*confirm)
-	if !ok {
-		t.Fatalf("top of the stack is %T, want a confirmation", g.stack[len(g.stack)-1])
-	}
+	c := sysAs[*confirm](t, g.stack[len(g.stack)-1])
 	c.age = 10
 	if yes {
 		sysKey(g, btnOK)
@@ -68,8 +64,8 @@ func TestSaveMenuWritesAndAsksBeforeOverwriting(t *testing.T) {
 	g := sysInn(t, Options{SaveDir: dir, Seed: 2})
 	g.st.Gold = 11
 	g.openScreen("save", func() {})
-	sm, ok := g.stack[len(g.stack)-1].(*saveMenu)
-	if !ok || !sm.saving {
+	sm := sysAs[*saveMenu](t, g.stack[len(g.stack)-1])
+	if !sm.saving {
 		t.Fatalf("top is %T", g.stack[len(g.stack)-1])
 	}
 	sysKey(g, btnOK)
@@ -85,7 +81,7 @@ func TestSaveMenuWritesAndAsksBeforeOverwriting(t *testing.T) {
 		sm.update(g)
 	}
 	g.openScreen("save", func() {})
-	sm = g.stack[len(g.stack)-1].(*saveMenu)
+	sm = sysAs[*saveMenu](t, g.stack[len(g.stack)-1])
 	g.st.Gold = 22
 	sysKey(g, btnOK)
 	sm.update(g)
@@ -168,8 +164,8 @@ func TestLoadInPlayAsksFirst(t *testing.T) {
 	}
 	g.st.Gold = 71
 	g.openScreen("load", func() {})
-	sm, ok := g.stack[len(g.stack)-1].(*saveMenu)
-	if !ok || !sm.inPlay || sm.saving {
+	sm := sysAs[*saveMenu](t, g.stack[len(g.stack)-1])
+	if !sm.inPlay || sm.saving {
 		t.Fatalf("top is %T", g.stack[len(g.stack)-1])
 	}
 	sysKey(g, btnOK)
@@ -216,10 +212,7 @@ func TestLoadWithoutASaveDoesNothing(t *testing.T) {
 func TestSystemMenuOfAPlaceWithoutTheMenu(t *testing.T) {
 	g := sysInn(t, Options{Script: "wait 5\npress menu\nwait 10\nquit"})
 	sysFrames(t, g, 20)
-	m, ok := g.stack[len(g.stack)-1].(*sysMenu)
-	if !ok {
-		t.Fatalf("top is %T", g.stack[len(g.stack)-1])
-	}
+	m := sysAs[*sysMenu](t, g.stack[len(g.stack)-1])
 	if m.l.items[0].disabled {
 		t.Fatal("saving is not allowed at a safe place")
 	}
@@ -262,7 +255,7 @@ type sysFailingStore struct {
 	readErr error
 }
 
-func (s sysFailingStore) Read(name string) ([]byte, error) { return nil, s.readErr }
+func (s sysFailingStore) Read(string) ([]byte, error) { return nil, s.readErr }
 
 // TestSaveOverUnreadableKeepsABackup: saving over a slot that cannot be understood keeps the
 // old bytes in a file named after their hash, and a backup that disagrees stops the save.
@@ -277,7 +270,7 @@ func TestSaveOverUnreadableKeepsABackup(t *testing.T) {
 		t.Fatal(err)
 	}
 	backup := fmt.Sprintf("save1.json.before-%x.bak", sha256.Sum256(old))
-	got, err := os.ReadFile(filepath.Join(dir, backup))
+	got, err := os.ReadFile(filepath.Join(dir, backup)) //nolint:gosec // reads a file this test wrote
 	if err != nil || string(got) != string(old) {
 		t.Fatalf("backup %s: %q %v", backup, got, err)
 	}
@@ -302,10 +295,10 @@ func TestSaveOverUnreadableKeepsABackup(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "mismatch") {
 		t.Fatalf("err = %v", err)
 	}
-	if b, _ := os.ReadFile(filepath.Join(dir, backup)); string(b) != "different" {
+	if b := sysRead(t, filepath.Join(dir, backup)); string(b) != "different" {
 		t.Fatal("the backup was overwritten")
 	}
-	if b, _ := os.ReadFile(filepath.Join(dir, "save1.json")); string(b) != string(old) {
+	if b := sysRead(t, filepath.Join(dir, "save1.json")); string(b) != string(old) {
 		t.Fatal("the slot was written although the backup failed")
 	}
 	// a read error other than "missing" stops the save.
@@ -362,7 +355,7 @@ func TestSaveOfAnOlderDataVersionTellsThePlayer(t *testing.T) {
 	if err := g3.save(0); err != nil {
 		t.Fatal(err)
 	}
-	entries, _ := os.ReadDir(dir)
+	entries := sysReadDir(t, dir)
 	var baks int
 	for _, e := range entries {
 		if strings.HasSuffix(e.Name(), ".bak") {
@@ -392,10 +385,10 @@ func TestAutoSaveWritesOncePerPlace(t *testing.T) {
 	if g.autoKey != "camp" {
 		t.Fatalf("autoKey %q", g.autoKey)
 	}
-	info, _ := os.Stat(filepath.Join(dir, "auto.json"))
+	info := sysStat(t, filepath.Join(dir, "auto.json"))
 	time.Sleep(10 * time.Millisecond)
 	sysFrames(t, g, 12)
-	info2, _ := os.Stat(filepath.Join(dir, "auto.json"))
+	info2 := sysStat(t, filepath.Join(dir, "auto.json"))
 	if !info2.ModTime().Equal(info.ModTime()) {
 		t.Fatal("autosave rewritten for the same place")
 	}
@@ -411,10 +404,7 @@ func TestAutoSaveWritesOncePerPlace(t *testing.T) {
 func TestOfferGearAsksToEquipTheBest(t *testing.T) {
 	g := sysOpen(t, Options{Location: "camp", Items: []string{"blade"}, SaveDir: t.TempDir()}, nil)
 	sysFrames(t, g, 12)
-	c, ok := g.stack[len(g.stack)-1].(*confirm)
-	if !ok {
-		t.Fatalf("top is %T, want the offer", g.stack[len(g.stack)-1])
-	}
+	c := sysAs[*confirm](t, g.stack[len(g.stack)-1])
 	_ = c
 	sysConfirm(t, g, true)
 	if got := g.st.Members()[0].Equip["weapon"]; got != "blade" {
