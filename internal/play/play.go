@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"image"
 	"image/color"
-	"image/png"
 	"io"
 	"io/fs"
 	"log"
@@ -176,6 +174,7 @@ func Run(ctx context.Context, opts Options) (err error) {
 	g.startLive()
 	err = ebiten.RunGameWithOptions(g, &ebiten.RunGameOptions{InitUnfocused: unwatched})
 	g.stopLive()
+	g.failure = errors.Join(g.failure, g.shots.wait())
 	if errors.Is(err, errQuit) {
 		err = nil
 	}
@@ -215,6 +214,7 @@ type Game struct {
 	windowA  uint8
 	auto     *autopilot
 	autoShot string
+	shots    shotWriter
 	db       *data.DB
 	spUsed   *bool
 	opts     Options
@@ -654,6 +654,9 @@ func (g *Game) Update() error {
 	if g.closed {
 		return errors.New("play: game is closed")
 	}
+	if err := g.shots.failed(); err != nil {
+		g.failure = errors.Join(g.failure, err)
+	}
 	if g.failure != nil {
 		return g.failure
 	}
@@ -936,22 +939,9 @@ func (g *Game) saveShotQuiet(screen *ebiten.Image, name string) {
 		return
 	}
 
-	dir := g.shotDir()
-	b := screen.Bounds()
-	img := image.NewNRGBA(b)
+	img := g.shots.pixels(screen.Bounds())
 	screen.ReadPixels(img.Pix)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		g.failure = errors.Join(g.failure, err)
-		return
-	}
-	f, err := os.Create(filepath.Join(dir, name+".png")) //nolint:gosec // The output directory is explicit and the basename is validated above.
-	if err != nil {
-		g.failure = errors.Join(g.failure, err)
-		return
-	}
-	if err := errors.Join(png.Encode(f, img), f.Close()); err != nil {
-		g.failure = errors.Join(g.failure, err)
-	}
+	g.shots.write(filepath.Join(g.shotDir(), name+".png"), img)
 }
 
 func (g *Game) drawCG(dst *ebiten.Image, c data.CG, a float32) {

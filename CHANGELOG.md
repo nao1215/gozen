@@ -31,6 +31,8 @@ Visual novels join RPGs: schema version 4 adds the novel window's roll back, ski
 - F8 under `--dev` opens the development panel instead of toggling the frame meter; the meter is the panel's Frames tab, which leaves the game running. `?fps` in a browser shows the meter as before.
 - The settings show only the rows a game uses: a game without troops has no battle rows, one without voices no voice rows, one with a single language no language row.
 - The README's and site's screens: the F7 and F8 pictures moved to Playtesting, and Go Zen's event picture gave way to the novel sample's ending picture with its line.
+- Screenshots (a script's `shot`, `--shots`, `--until`, `gozen play shots`) are written off the game loop by background workers, as PNG at the fastest compression: a filmed run no longer waits about a second for each 1920x1080 frame (the Go Zen battle capture of 183 frames took 249 s and now takes 17 s). The pixels are the same; the files are about 15% larger. All of them are written before the game exits.
+- `gozen check` loads the puppets of a game side by side.
 
 ## v0.1.0 - 2026-10-21
 

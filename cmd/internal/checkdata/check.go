@@ -9,6 +9,7 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/nao1215/gozen/internal/diag"
 
@@ -29,9 +30,10 @@ func Load(fsys fs.FS, out, diagnostics io.Writer) (*data.DB, error) {
 	}
 	// data.Load checks a puppet's YAML and files; the picture sizes and positions
 	// are checked by loading it as the game does (without the GPU).
+	puppets := loadPuppets(fsys, db)
 	for _, id := range slices.Sorted(maps.Keys(db.Actors)) {
 		if p := db.Actors[id].Puppet; p != "" {
-			if _, err := puppet.Load(fsys, "assets/"+p); err != nil {
+			if err := puppets[p]; err != nil {
 				return nil, diag.Shape.Errorf("actors.%s.puppet: %w", id, err)
 			}
 		}
@@ -65,9 +67,10 @@ func Diagnose(fsys fs.FS) (*data.DB, gamedata.Diagnostics) {
 		return nil, gamedata.Diagnose(unreadable(err), "error")
 	}
 	var out gamedata.Diagnostics
+	puppets := loadPuppets(fsys, db)
 	for _, id := range slices.Sorted(maps.Keys(db.Actors)) {
 		if p := db.Actors[id].Puppet; p != "" {
-			if _, err := puppet.Load(fsys, "assets/"+p); err != nil {
+			if err := puppets[p]; err != nil {
 				out = append(out, gamedata.Diagnostic{Path: "actors." + id + ".puppet", Message: err.Error(), Severity: "error", Code: diag.Shape.String()})
 			}
 		}
@@ -82,6 +85,32 @@ func Diagnose(fsys fs.FS) (*data.DB, gamedata.Diagnostics) {
 		out = append(out, gamedata.Diagnose(errors.Join(warnings...), "warning")...)
 	}
 	return db, out
+}
+
+// loadPuppets loads every puppet of the actors once, side by side (each decodes its
+// pictures), and returns the error of each by its file; nil when it loaded.
+func loadPuppets(fsys fs.FS, db *data.DB) map[string]error {
+	files := map[string]bool{}
+	for _, a := range db.Actors {
+		if a.Puppet != "" {
+			files[a.Puppet] = true
+		}
+	}
+	errs := make(map[string]error, len(files))
+	var (
+		mu sync.Mutex
+		wg sync.WaitGroup
+	)
+	for p := range files {
+		wg.Go(func() {
+			_, err := puppet.Load(fsys, "assets/"+p)
+			mu.Lock()
+			errs[p] = err
+			mu.Unlock()
+		})
+	}
+	wg.Wait()
+	return errs
 }
 
 // unreadable gives the code of an unreadable game to an error that is not a
