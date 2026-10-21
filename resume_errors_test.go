@@ -1,6 +1,7 @@
 package gozen_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"maps"
@@ -117,6 +118,122 @@ func TestRestoreInTheMiddleOfArrival(t *testing.T) {
 	if q.Kind == "say" {
 		if got := r.Next(); got.Kind != "say" || got.Text != q.Text {
 			t.Errorf("restored at %+v, want the line %q", got, q.Text)
+		}
+	}
+}
+
+// FuzzSaveInTheMiddle (ADR 0025): wherever in an event a save is made, restoring it goes on with the same requests,
+// the same answers' effects and the same random numbers as the play it was made in.
+func FuzzSaveInTheMiddle(f *testing.F) {
+	f.Add(uint64(3), []byte{0, 0, 0})
+	f.Add(uint64(3), []byte{0, 0, 0, 1, 0, 0})
+	f.Add(uint64(9), []byte{0, 0, 0, 2, 0, 0, 0, 0})
+	f.Add(uint64(1), []byte{})
+	f.Fuzz(func(t *testing.T, seed uint64, ops []byte) {
+		if len(ops) > 24 {
+			return
+		}
+		g := storyGame(t)
+		s, err := gozen.New(g, gozen.Config{Seed: seed})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.Start("- call: story"); err != nil {
+			t.Fatal(err)
+		}
+		var q gozen.Request
+		for _, op := range ops {
+			if q.Kind == "choice" {
+				s.Answer(int(op) % 2)
+			}
+			q = s.Next()
+			if q.Kind == "" {
+				break
+			}
+		}
+		save, err := s.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		r, err := gozen.Restore(g, save, gozen.Config{Seed: seed + 1})
+		if err != nil {
+			t.Fatalf("a save made by a session cannot be restored: %v\n%s", err, save)
+		}
+		if !bytes.Contains(save, []byte(`"cursor"`)) {
+			return // a save between events holds the state only: nothing is shown after loading it
+		}
+		again, err := r.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(stateOf(t, save), stateOf(t, again)) {
+			t.Fatalf("restoring changed the state:\n%s\n%s", save, again)
+		}
+		// a restored session shows the line the save was made at first
+		if q.Kind != "" {
+			if got := r.Next(); got.Kind != q.Kind || got.Text != q.Text {
+				t.Fatalf("restored at %+v, want %+v", got, q)
+			}
+		}
+		for range 12 {
+			if q.Kind == "choice" {
+				s.Answer(0)
+				r.Answer(0)
+			}
+			a, b := s.Next(), r.Next()
+			if a.Kind != b.Kind || a.Text != b.Text {
+				t.Fatalf("went on to %+v and %+v", a, b)
+			}
+			q = a
+			if a.Kind == "" {
+				break
+			}
+		}
+		for _, name := range []string{"var.roll", "var.way", "var.after", "chose.way"} {
+			var x, y any
+			if errX, errY := s.Query(name, &x), r.Query(name, &y); (errX == nil) != (errY == nil) || x != y {
+				t.Fatalf("%s is %v (%v) and %v (%v)", name, x, errX, y, errY)
+			}
+		}
+	})
+}
+
+// stateOf is the state part of a save (the cursor and random bytes of a save in the middle of an event differ in form
+// from those of the save made after restoring it, but the state they hold is the same).
+func stateOf(t *testing.T, save []byte) []byte {
+	t.Helper()
+	var env struct {
+		State json.RawMessage `json:"state"`
+	}
+	if err := json.Unmarshal(save, &env); err != nil {
+		t.Fatal(err)
+	}
+	return env.State
+}
+
+// TestRunCountsSurviveRepeatedSaveAndLoad: loading a save made in the middle of an event, saving again and loading again
+// does not count the event more often (ran.<event>.count is the number of times the event was run).
+func TestRunCountsSurviveRepeatedSaveAndLoad(t *testing.T) {
+	g := storyGame(t)
+	s := mustNew(t, g, gozen.Config{Seed: 3})
+	if err := s.Start("- call: story"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Kind != "say" {
+		t.Fatalf("%+v", q)
+	}
+	cur := s
+	for generation := range 4 {
+		var count int
+		if err := cur.Query("ran.story.count", &count); err != nil || count != 1 {
+			t.Fatalf("generation %d: the story ran %d times (%v), want 1", generation, count, err)
+		}
+		b, err := cur.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cur, err = gozen.Restore(g, b, gozen.Config{Seed: 3}); err != nil {
+			t.Fatal(err)
 		}
 	}
 }
