@@ -108,6 +108,14 @@ The author chose the manner of Kichikuou Rance for the sample (2026-10-21): the 
 - A region's own numbers (economy, defense) are its `values`, and orders change them (`set: {target.defense: "target.defense - 10"}` for sabotage); the clash's `defense` may read `b.defense`.
 - `orders.<id>.open` and `orders.<id>.used` tell what the count allows now; the menu lists an order while it is open and its `when` holds.
 
+### A clash shown as units
+
+`fight: clash_view` decides a march by a clash of units that the rules play and the screen plays back. The generals marching stand on the left and the members of the target's `defend` troop on the right, sharing its garrison; at most four a side, the first two in front. For `clash.rounds` rounds (5) every unit still standing acts, the one with the fewest troops first (as in Kichikuou Rance), and strikes a unit of the other side's front, taking `clash.hit` troops; a unit with none is routed (a foe is caught by `clash.capture`), and the one behind steps up. The march takes the region when the other side is routed; when the rounds run out, the region holds (a draw). The troops are written back as by the numbers, and `campaign.clash` tells how it ended.
+
+The screen shows two armies on the terrain's picture (`terrain` of the region, `clash.backgrounds`): each leader's card (the face, a gauge of troops with a red band that shrinks after the loss, the HP) at the front of its ranks of soldiers (one for `clash.per_soldier` troops, `clash.soldiers` the pictures), a rope of the two sides' troops over the field, the rounds under it. A strike lunges the card, slashes and raises dust, shakes the one struck red, shows the troops lost and the soldiers who went; the soldiers lost fall from the back of the ranks; a routed unit turns gray under a stamp. A table ends it: troops sent and left, the loss and its rate, the foes caught, the region. OK plays faster; A plays on by itself. A session sees the request kind `clash` (it needs no answer); the trace writes `clash` and `clash_hit`.
+
+`on_win`, `on_lose` and `on_draw` on a march run after it by how it went (any `fight`), before `do`: a general's word, with the language, the backlog, the read lines and the trace of any line.
+
 ### Measuring
 
 `gozen sim campaign` plays a campaign many times with the internal rules (as `sim battle` and `sim dive` do), campaign *i* from the seed `--seed` + *i*, and prints, or writes as JSON, the win rate, the turns the campaigns ended in, the mean of the regions each faction held at the start of each turn, the factions that fell and their mean turn, the orders given and how the marches went ([ADR 0021](0021-query-and-commands.md) decision 4: the numbers come from the CLI's JSON). The player's strategy is `greedy` (march when the clash's odds, its formulas with `rand()` at its middle, are 1.15 or better; else an order with a general, the strongest first; else another order), `random`, or `ai`: the player's faction follows its own `ai` rules, which a game may therefore write for its player's faction too (they are used only here).
@@ -126,7 +134,8 @@ The author chose the manner of Kichikuou Rance for the sample (2026-10-21): the 
 | 4 | `gozen sim campaign` (`-n`, `--seed`, `--as greedy|random|ai`, `--format json`): the win rate, the turns, the regions by turn, the factions' falls, the orders; the CLI's E2E | Done |
 | 5 | The bridge to battles: `fight: battle`, `defend`, `self.troops`, the troops written back | Done |
 | 7 | Rules in the manner of Kichikuou Rance, chosen in YAML: a calendar of weeks, orders counted per kind (`count: orders`, `per_turn`), a march open until a region is taken (`until_taken`), generals marching together (`generals`), a beaten general away for some turns (`defeat.out`) | Done |
-| 8 | The clash screen (a march's numbers shown as a battle of units) | |
+| 8 | The clash screen (`fight: clash_view`), `on_win`, `on_lose`, `on_draw` | Done |
+| 8b | The sortie screen, `clash.units`, tactics and skills | |
 | 6 | The remaining checks, the sample, the documents | |
 
 ## Alternatives

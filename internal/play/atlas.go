@@ -504,6 +504,11 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	// the markers, then the name plates laid out so they keep off each other and the markers
 	s.boxes = s.boxes[:0]
 	war := s.campaignMap(g)
+	for i := range s.points { // a region's plate follows its garrison at once
+		if war && g.db.Regions[s.points[i].id] != nil && s.location(g).Map.Points[s.points[i].id].Label == "" {
+			s.points[i].label = regionLabel(g, s.points[i].id)
+		}
+	}
 	for _, p := range s.points {
 		x, y := toScreen(p.at)
 		if p.id == s.here && s.path == nil && !war { // the token stands on its own point: keep plates off it
@@ -527,7 +532,11 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 		} else {
 			s.drawMarker(g, dst, p, float64(x), float64(y), h, pointAlpha(p))
 		}
-		s.boxes = append(s.boxes, plateBox{x: float64(x) - h*0.3, y: float64(y) - h, w: h * 0.6, h: h})
+		if war && g.db.Regions[p.id] != nil { // a flag reaches to the right of its pole
+			s.boxes = append(s.boxes, plateBox{x: float64(x) - h*0.2, y: float64(y) - h - 4, w: h * 0.95, h: h + 4})
+		} else {
+			s.boxes = append(s.boxes, plateBox{x: float64(x) - h*0.3, y: float64(y) - h, w: h * 0.6, h: h})
+		}
 	}
 	if i := s.pointIndex(sel); i >= 0 { // the chosen plate first: it keeps its place
 		s.drawPlate(g, dst, s.points[i], sel, mh)

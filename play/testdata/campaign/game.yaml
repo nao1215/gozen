@@ -15,3 +15,4 @@ campaign:
   clash: {power: "a.troops"}
   orders:
     attack: {label: Attack, general: ready, target: border, march: true}
+    storm: {label: Storm, general: ready, target: border, march: true, fight: clash_view}

@@ -8,8 +8,9 @@ import (
 // Request is something a screen shows: the same words as the trace and the YAML
 // (Kind "say" is the say command). Only the fields of its kind are set.
 type Request struct {
-	// Kind is say, choice, battle, shop, wait, open, notice, tap, save, clear or
-	// game_over; and, only seen by Config.OnRequest, step (a line of a battle fought on
+	// Kind is say, choice, battle, shop, wait, open, notice, tap, save, clear,
+	// game_over or clash (a campaign's march shown as units: ID the region, Text won,
+	// lost or draw; it needs no answer); and, only seen by Config.OnRequest, step (a line of a battle fought on
 	// AUTO) and decision (an AI's choice: Who the actor, Text the skill or item).
 	Kind string
 	// Text is the line of say, notice and step, and the prompt of choice.

@@ -58,8 +58,8 @@ type Command struct {
 	// a point of a map taken from the menu puts them, one road at a time; ADR 0022).
 	Cross string `yaml:"-" command:"internal"`
 	Reach string `yaml:"-" command:"internal"`
-	// Clash ends a campaign's march decided by a battle (not written in YAML: won or lost,
-	// put after the battle by the order; ADR 0030).
+	// Clash ends a campaign's march decided by a battle (not written in YAML: won or lost
+	// and the order's id, as "won:attack", put after the battle by the order; ADR 0030).
 	Clash string `yaml:"-" command:"internal"`
 	// Hurt takes HP from members outside battle (a poison floor, a trap); never below 1.
 	Hurt *Hurt `yaml:"hurt" command:"verb"`

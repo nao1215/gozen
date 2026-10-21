@@ -463,6 +463,8 @@ func (s *Session) request(r event.Request) Request {
 	case event.Clear:
 		s.last.Cleared = true
 		return Request{Kind: "clear"}
+	case event.ClashScene:
+		return Request{Kind: "clash", ID: r.Clash.Region, Text: r.Clash.Result}
 	case event.GameOver:
 		s.last.Over = true
 		return Request{Kind: "game_over"}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math/rand/v2"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -337,5 +339,42 @@ func TestCampaignKichikuStyle(t *testing.T) {
 	}
 	if w, y := query[float64](t, s, "campaign.week"), query[float64](t, s, "campaign.year"); w != 2 || y != 2 {
 		t.Fatalf("turn %v is week %v of year %v", query[float64](t, s, "campaign.turn"), w, y)
+	}
+}
+
+// TestCampaignClashView: an order with fight: clash_view plays a clash of units by the
+// rules (the region's defend troop holding it), writes the troops back, shows itself as a
+// request of kind clash and runs on_win, on_lose or on_draw by how it went.
+func TestCampaignClashView(t *testing.T) {
+	game := strings.NewReplacer(
+		"attack: {label: Attack, general: ready, target: border, march: true}",
+		`attack: {label: Attack, general: ready, target: border, march: true, fight: clash_view, on_win: [{say: "Won."}], on_lose: [{say: "Lost."}], on_draw: [{say: "Drawn."}]}`,
+	).Replace(testgame.CampaignGame)
+	data := strings.Replace(testgame.CampaignData, "field: {name: Field, next: [home, hill, keep], troops: 100,", "field: {name: Field, next: [home, hill, keep], troops: 100, defend: two,", 1)
+	g := campaignGame(t, map[string]string{"game.yaml": game, "data/campaign.yaml": data})
+	results := map[string]int{}
+	for seed := uint64(1); seed <= 12; seed++ {
+		var kinds []string
+		var said string
+		s := session(t, g, gozen.Config{Seed: seed, OnRequest: func(q gozen.Request) {
+			kinds = append(kinds, q.Kind+":"+q.Text)
+			if q.Kind == "say" {
+				said = q.Text
+			}
+		}})
+		do(t, s, "- set: {region.field.troops: "+strconv.FormatUint(100*seed, 10)+"}\n- order: {id: attack, general: scout, target: field}\n")
+		result := query[string](t, s, "campaign.clash")
+		results[result]++
+		want := map[string]string{"won": "Won.", "lost": "Lost.", "draw": "Drawn."}[result]
+		if !slices.Contains(kinds, "clash:"+result) || said != want {
+			t.Fatalf("seed %d: requests %v, said %q, want %q", seed, kinds, said, want)
+		}
+		owner := query[string](t, s, "region.field.owner")
+		if (result == "won") != (owner == "blue") || query[float64](t, s, "generals.scout.troops") < 0 || query[float64](t, s, "region.field.troops") < 0 {
+			t.Fatalf("seed %d: %s but field is %q", seed, result, owner)
+		}
+	}
+	if results["won"] == 0 || results["won"] == 12 {
+		t.Fatalf("results %v: the garrisons from 100 to 1200 should not all end alike", results)
 	}
 }

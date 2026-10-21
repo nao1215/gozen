@@ -482,7 +482,7 @@ func Fight(db *data.DB, st *rpg.State, id string, general, target string) []data
 	no := false
 	return []data.Command{{
 		Battle: r.Defend, Fighters: []string{general}, Retry: &no,
-		OnWin: []data.Command{{Clash: "won"}}, OnLose: []data.Command{{Clash: "lost"}}, OnRun: []data.Command{{Clash: "lost"}},
+		OnWin: []data.Command{{Clash: "won:" + id}}, OnLose: []data.Command{{Clash: "lost:" + id}}, OnRun: []data.Command{{Clash: "lost:" + id}},
 	}}
 }
 

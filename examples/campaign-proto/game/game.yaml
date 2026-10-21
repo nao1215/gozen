@@ -19,7 +19,9 @@ campaign:
   location: war
   player: crown
   turns: 10
-  actions: "2 + floor(faction.crown.regions / 2)"
+  calendar: week
+  count: orders
+  defeat: {out: 2}
   won: victory
   lost: fallen
   on_turn: turn_start
@@ -30,14 +32,29 @@ campaign:
     vessa: {troops: 0, might: 4}
   clash:
     power: "a.troops * (1 + a.might / 10) * (0.8 + rand() * 0.4)"
+    hit: "a.troops * (0.14 + a.might / 100) * (0.8 + rand() * 0.4)"
+    rounds: 5
+    backgrounds: {field: bg/field.jpg, town: bg/town.jpg, castle: bg/castle.jpg}
+    soldiers: {player: soldiers/player.png, foe: soldiers/foe.png}
   orders:
-    attack: {label: "Attack ({campaign.actions_left} orders left)", general: ready, target: border, march: true}
+    attack:
+      label: Attack
+      general: ready
+      target: border
+      march: true
+      fight: clash_view
+      until_taken: true
+      generals: 2
+      on_win: [{say: {who: corin, text: "The region is ours. Hold it well, and don't let it go to your heads."}}]
+      on_lose: [{say: {who: hilde, text: "We fell back. Next time I go in front of you, Corin, no argument."}}]
+      on_draw: [{say: {who: corin, text: "Time ran out and they still hold it. Fine, they'll see us again soon."}}]
     develop:
-      label: "Develop ({campaign.actions_left} orders left)"
+      label: Develop
       target: own
       do: [{set: {target.wealth: "target.wealth + 15"}}]
     draft:
-      label: "Draft 150 for 50 gold ({campaign.actions_left} orders left)"
+      label: Draft 150 for 50 gold
+      per_turn: 2
       when: gold >= 50
       general: any
       do: [{gold: -50}, {set: {general.troops: "general.troops + 150"}}]

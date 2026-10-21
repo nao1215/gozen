@@ -1567,6 +1567,12 @@ func (g *Game) begin(r event.Request) {
 		g.req = nil
 		g.events.Stop()
 		g.replace(newGameOver(g))
+	case event.ClashScene:
+		if g.replaying {
+			done()
+			return
+		}
+		g.push(newClashScene(g, r.Clash, done))
 	}
 }
 

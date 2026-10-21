@@ -3,6 +3,7 @@ package event
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
@@ -78,6 +79,12 @@ func (r *Runner) order(c *data.Command) Request {
 			}
 		})
 	}
+	if cl := campaign.FightView(r.db, r.st, oc.ID, oc.General, oc.With, oc.Target); cl != nil {
+		r.push(o.Do)
+		r.push(outcome(o, cl.Result))
+		r.emit(CampaignEffect{Kind: "order", Order: oc.ID, General: oc.General, Target: oc.Target, Result: cl.Result, Turn: data.Turn(r.db, r.st.Campaign())})
+		return ClashScene{Clash: cl}
+	}
 	if battle := campaign.Fight(r.db, r.st, oc.ID, oc.General, oc.Target); battle != nil {
 		// The battle comes first, its end writes the troops back (clash), then the do.
 		r.push(o.Do)
@@ -87,6 +94,12 @@ func (r *Runner) order(c *data.Command) Request {
 	}
 	r.notes = append(r.notes, campaign.Give(r.db, r.st, oc.ID, oc.General, oc.With, oc.Target)...)
 	result := optional.Value[string](r.st.Vars[data.VarResult])
+	if o.March {
+		r.push(o.Do)
+		r.push(outcome(o, map[string]string{"won": "won", "held": "lost"}[result]))
+		r.emit(CampaignEffect{Kind: "order", Order: oc.ID, General: oc.General, Target: oc.Target, Result: result, Turn: data.Turn(r.db, r.st.Campaign())})
+		return nil
+	}
 	r.emit(CampaignEffect{Kind: "order", Order: oc.ID, General: oc.General, Target: oc.Target, Result: result, Turn: data.Turn(r.db, r.st.Campaign())})
 	r.push(o.Do)
 	return nil
@@ -116,5 +129,20 @@ func (r *Runner) endTurn() {
 
 // clash ends a march decided by a battle: the troops written back and how it went.
 func (r *Runner) clash(c *data.Command) {
-	r.notes = append(r.notes, campaign.AfterBattle(r.db, r.st, c.Clash == "won")...)
+	result, id, _ := strings.Cut(c.Clash, ":")
+	r.notes = append(r.notes, campaign.AfterBattle(r.db, r.st, result == "won")...)
+	if o := campaign.Order(r.db, id); o != nil {
+		r.push(outcome(o, result))
+	}
+}
+
+// outcome is what an order runs after a march by how it went: on_win, on_lose or on_draw.
+func outcome(o *data.Order, result string) []data.Command {
+	switch result {
+	case "won":
+		return o.OnWin
+	case "draw":
+		return o.OnDraw
+	}
+	return o.OnLose
 }

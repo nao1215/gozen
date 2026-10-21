@@ -56,7 +56,10 @@ type view struct {
 		Turn        float64 `json:"turn"`
 		ActionsLeft float64 `json:"actions_left"`
 	}
-	Gold float64
+	Gold   float64
+	Orders map[string]struct {
+		Open bool `json:"open"`
+	}
 }
 
 type region struct {
@@ -84,6 +87,9 @@ func read(t testing.TB, s *gozen.Session) view {
 			ActionsLeft float64 `json:"actions_left"`
 		}](t, s, "campaign"),
 		Gold: query[float64](t, s, "gold"),
+		Orders: query[map[string]struct {
+			Open bool `json:"open"`
+		}](t, s, "orders"),
 	}
 }
 
@@ -102,9 +108,6 @@ type strategy func(v view, rng *rand.Rand) string
 // greedy marches when the odds look good (the strongest ready general on the weakest
 // target), else drafts into the strongest general, else develops, else ends the turn.
 func greedy(v view, _ *rand.Rand) string {
-	if v.Campaign.ActionsLeft <= 0 {
-		return "- end_turn: true\n"
-	}
 	best, bestG, bestR := 1.15, "", ""
 	for _, g := range sorted(v.Generals) {
 		gen := v.Generals[g]
@@ -120,10 +123,10 @@ func greedy(v view, _ *rand.Rand) string {
 			}
 		}
 	}
-	if bestG != "" {
+	if bestG != "" && v.Orders["attack"].Open {
 		return fmt.Sprintf("- order: {id: attack, general: %s, target: %s}\n", bestG, bestR)
 	}
-	if v.Gold >= 50 {
+	if v.Gold >= 50 && v.Orders["draft"].Open {
 		strongest := ""
 		for _, g := range sorted(v.Generals) {
 			if v.Generals[g].Joined && (strongest == "" || v.Generals[g].Troops > v.Generals[strongest].Troops) {
@@ -132,12 +135,15 @@ func greedy(v view, _ *rand.Rand) string {
 		}
 		return fmt.Sprintf("- order: {id: draft, general: %s}\n", strongest)
 	}
-	return "- order: {id: develop, target: vale}\n"
+	if v.Orders["develop"].Open {
+		return "- order: {id: develop, target: vale}\n"
+	}
+	return "- end_turn: true\n"
 }
 
 // random gives any order the turn allows, with any general and target.
 func random(v view, rng *rand.Rand) string {
-	if v.Campaign.ActionsLeft <= 0 || rng.IntN(8) == 0 {
+	if rng.IntN(8) == 0 {
 		return "- end_turn: true\n"
 	}
 	var ready, joined, targets, own []string
@@ -158,13 +164,14 @@ func random(v view, rng *rand.Rand) string {
 		}
 	}
 	switch n := rng.IntN(3); {
-	case n == 0 && len(ready) > 0 && len(targets) > 0:
+	case n == 0 && len(ready) > 0 && len(targets) > 0 && v.Orders["attack"].Open:
 		return fmt.Sprintf("- order: {id: attack, general: %s, target: %s}\n", ready[rng.IntN(len(ready))], targets[rng.IntN(len(targets))])
-	case n == 1 && v.Gold >= 50:
+	case n == 1 && v.Gold >= 50 && v.Orders["draft"].Open:
 		return fmt.Sprintf("- order: {id: draft, general: %s}\n", joined[rng.IntN(len(joined))])
-	default:
+	case v.Orders["develop"].Open:
 		return fmt.Sprintf("- order: {id: develop, target: %s}\n", own[rng.IntN(len(own))])
 	}
+	return "- end_turn: true\n"
 }
 
 // outcome is how a campaign ended.
@@ -288,8 +295,8 @@ func TestSaveRestore(t *testing.T) {
 	}
 }
 
-// TestOrderChoices picks Attack from the menu as a player would: it asks for the general
-// and then the target, and the Policy answers.
+// TestOrderChoices picks Attack from the menu as a player would: it asks for the general,
+// who else marches, and the target, and the Policy answers.
 func TestOrderChoices(t *testing.T) {
 	g := loadGame(t)
 	var asked [][]string
@@ -307,7 +314,7 @@ func TestOrderChoices(t *testing.T) {
 	if err := s.Do(context.Background(), "- pick: Attack\n"); err != nil {
 		t.Fatal(err)
 	}
-	if fmt.Sprint(asked) != "[[Corin (500 troops) Hilde (600 troops) Cancel] [Brookford (free, 350 troops) Crossway (free, 600 troops) Cancel]]" {
+	if fmt.Sprint(asked) != "[[Corin (500 troops) Hilde (600 troops) Cancel] [Corin (500 troops) March now Cancel] [Brookford (free, 350 troops) Crossway (free, 600 troops) Cancel]]" {
 		t.Fatalf("asked %v", asked)
 	}
 	if got := query[string](t, s, "region.ford.owner"); got != "crown" {

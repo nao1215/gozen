@@ -109,11 +109,24 @@ func (s *atlasScene) drawRegionMarker(g *Game, dst *ebiten.Image, p mapPoint, x,
 	gfx.FillCircle(dst, fx, fy, pole*0.12, withAlpha(colorShadowNRGBA, 110), true)
 	gfx.StrokeLine(dst, fx, fy, fx, fy-pole, 3, withAlpha(colorShadowNRGBA, 230), true)
 	w, fh := pole*0.62, pole*0.42
-	gfx.FillRoundRect(dst, fx+1, fy-pole-1, w+2, fh+2, 4, withAlpha(colorShadowNRGBA, 220))
-	gfx.FillRoundRect(dst, fx+2, fy-pole, w, fh, 3, c)
+	gfx.FillRoundRect(dst, fx+1, fy-pole+2, w+3, fh+3, 4, withAlpha(colorShadowNRGBA, 160))
+	gfx.FillRoundRect(dst, fx+2, fy-pole, w, fh, 3, flagFill(c))
+	gfx.StrokeRoundRect(dst, fx+2, fy-pole, w, fh, 3, 2.5, plateInk) // a light edge: no colour sinks into the map
 	if f := g.db.Factions[owner]; f != nil && f.Capital == p.id {
 		gfx.StrokeCircle(dst, fx, fy, pole*0.24, 3, withAlpha(c, 255), true)
 	}
+}
+
+// flagFill is a flag's colour, lightened when it is dark (a navy or a gray would sink into
+// a painted map).
+func flagFill(c color.NRGBA) color.NRGBA {
+	lum := (0.299*float64(c.R) + 0.587*float64(c.G) + 0.114*float64(c.B)) / 255
+	if lum >= 0.45 {
+		return c
+	}
+	k := (0.45 - lum) / 0.45 * 0.6 // toward white, more for darker
+	mix := func(v uint8) uint8 { return uint8(float64(v) + (255-float64(v))*k) }
+	return color.NRGBA{mix(c.R), mix(c.G), mix(c.B), c.A}
 }
 
 // regionLabel is a region's plate when the map gives none: its name and garrison.

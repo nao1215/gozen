@@ -1,0 +1,15 @@
+# The regions' defenders: the members of a region's defend troop hold it in a clash,
+# sharing its garrison (their pictures are the cards on the right).
+enemies:
+  raven_knight: {name: Raven Knight, image: foes/raven_knight.png, stats: {mhp: 120, mmp: 0, atk: 14, def: 10, mat: 0, mdf: 0, agi: 6, luk: 1}}
+  pale_guard: {name: Pale Guard, image: foes/pale_guard.png, stats: {mhp: 80, mmp: 0, atk: 10, def: 8, mat: 0, mdf: 0, agi: 5, luk: 1}}
+  stag_brute: {name: Stag Brute, image: foes/stag_brute.png, stats: {mhp: 140, mmp: 0, atk: 15, def: 9, mat: 0, mdf: 0, agi: 4, luk: 1}}
+  hill_wolf: {name: Hill Wolf, image: foes/hill_wolf.png, stats: {mhp: 60, mmp: 0, atk: 9, def: 5, mat: 0, mdf: 0, agi: 9, luk: 1}}
+  bandit: {name: Bandit, image: foes/bandit.png, stats: {mhp: 60, mmp: 0, atk: 8, def: 5, mat: 0, mdf: 0, agi: 7, luk: 1}}
+  ford_rat: {name: Ford Rat, image: foes/ford_rat.png, stats: {mhp: 40, mmp: 0, atk: 6, def: 3, mat: 0, mdf: 0, agi: 8, luk: 1}}
+troops:
+  well_guard: {members: [raven_knight, pale_guard, pale_guard]}
+  hill_guard: {members: [stag_brute, hill_wolf, hill_wolf]}
+  ford_guard: {members: [bandit, ford_rat]}
+  cross_guard: {members: [bandit, bandit, ford_rat]}
+  vale_guard: {members: [bandit]}

@@ -37,6 +37,9 @@ func (db *DB) EachCommand(fn func(*Command)) {
 		for _, id := range cp.OrderIDs() {
 			if o := cp.Orders[id]; o != nil {
 				in(o.Do)
+				in(o.OnWin)
+				in(o.OnLose)
+				in(o.OnDraw)
 			}
 		}
 	}

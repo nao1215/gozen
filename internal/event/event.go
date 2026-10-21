@@ -20,6 +20,7 @@ import (
 	"github.com/nao1215/gozen/internal/layer1/safeint"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/atlas"
+	"github.com/nao1215/gozen/internal/layer3/campaign"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
 	"github.com/nao1215/gozen/internal/layer3/scope"
 	"github.com/nao1215/gozen/internal/rpg"
@@ -246,6 +247,13 @@ func (Clear) isRequest()    {}
 func (Tap) isRequest()      {}
 func (Notice) isRequest()   {}
 func (GameOver) isRequest() {}
+
+// ClashScene is a march decided by a clash shown as units (fight: clash_view, ADR 0030):
+// the rules have played it and written it back; the screen plays it back (it needs no
+// answer).
+type ClashScene struct{ Clash *campaign.Clash }
+
+func (ClashScene) isRequest() {}
 
 // The answers of a battle.
 const (

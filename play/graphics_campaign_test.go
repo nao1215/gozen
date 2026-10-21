@@ -32,7 +32,7 @@ func TestGraphicsCampaign(t *testing.T) {
 		t.Fatal(err)
 	}
 	script := filepath.Join(root, "script.txt")
-	body := "wait 40\nshot map\npress ok\nwait 20\nshot orders\npress ok\nwait 20\npress ok\nwait 30\npress ok\nwait 30\nshot taken\nend_turn\nwait 90\nshot turn\nquit\n"
+	body := "wait 40\nshot map\npress ok\nwait 20\nshot orders\npress ok\nwait 20\npress ok\nwait 30\npress ok\nwait 30\nshot taken\nend_turn\nwait 90\nshot turn\norder storm hero keep\nwait 80\nshot clash\nwait 900\nquit\n"
 	if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -53,16 +53,16 @@ func TestGraphicsCampaign(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`"t":"region"`, `"t":"order"`, `"target":"field"`, `"result":"won"`, `"t":"end_turn"`, `"turn":2`} {
+	for _, want := range []string{`"t":"region"`, `"t":"order"`, `"target":"field"`, `"result":"won"`, `"t":"end_turn"`, `"turn":2`, `"t":"clash"`, `"t":"clash_hit"`} {
 		if !strings.Contains(string(tr), want) {
 			t.Errorf("the trace has no %s", want)
 		}
 	}
 	blue := func(name string, x, y float64) bool {
-		return flagNear(t, root, name, x, y, func(r, g, b uint32) bool { return b > 0xd000 && r < 0x5000 && g < 0x6000 })
+		return flagNear(t, root, name, x, y, func(r, g, b uint32) bool { return b > 0xd000 && b > r+0x6000 && b > g+0x5000 })
 	}
 	red := func(name string, x, y float64) bool {
-		return flagNear(t, root, name, x, y, func(r, g, b uint32) bool { return r > 0xd000 && g < 0x4000 && b < 0x4000 })
+		return flagNear(t, root, name, x, y, func(r, g, b uint32) bool { return r > 0xd000 && r > g+0x8000 && r > b+0x8000 })
 	}
 	switch {
 	case !blue("map", 120, 260):
@@ -73,6 +73,9 @@ func TestGraphicsCampaign(t *testing.T) {
 		t.Error("the free field has a blue flag before the march")
 	case !blue("taken", 320, 180):
 		t.Error("the field has no blue flag after the march")
+	}
+	if shotPixelSum(t, root, "turn") == shotPixelSum(t, root, "clash") {
+		t.Error("the clash screen did not show")
 	}
 	if shotPixelSum(t, root, "map") == shotPixelSum(t, root, "orders") {
 		t.Error("OK on a region showed no orders")

@@ -64,7 +64,7 @@ func TestCampaignGameErrors(t *testing.T) {
 		{"an unknown place", "location: camp", "location: tent", `unknown location "tent"`},
 		{"an unknown general", "generals: {scout: ", "generals: {ghost: ", `unknown actor "ghost"`},
 		{"an unknown target word", "target: own", "target: mine", `target is border, own or any, not "mine"`},
-		{"an unknown fight", "general: ready, target: border, march: true}", "general: ready, target: border, march: true, fight: duel}", `fight is battle, not "duel"`},
+		{"an unknown fight", "general: ready, target: border, march: true}", "general: ready, target: border, march: true, fight: duel}", `fight is battle or clash_view, not "duel"`},
 		{"a fight without a march", "general: ready, target: border, march: true}", "general: ready, target: border, fight: battle}", "fight: battle decides a march"},
 		{"a march without a target", "general: ready, target: border, march: true", "general: ready, march: true", "a march needs a general and a target"},
 		{"an unknown region in an expression", `when: "gold >= 20"`, `when: "region.moat.troops > 0"`, `unknown region "moat"`},

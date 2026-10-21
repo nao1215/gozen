@@ -2226,6 +2226,38 @@
       "additionalProperties": false,
       "description": "How a march of a (the side marching, with troops, might, faction, general, and the general's level and stats such as atk) on the region b is decided. The march takes b when power is more than defense.",
       "properties": {
+        "backgrounds": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "The pictures behind a clash shown as units, by the region's terrain (field, town, castle or any word), files under assets/.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → string"
+        },
+        "capture": {
+          "description": "The chance that a routed foe is caught in a clash shown as units, from 0 to 1. Default 0.2.",
+          "type": "number",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
         "defense": {
           "description": "The strength of the region. Default `b.troops * 1.25`.",
           "type": [
@@ -2275,6 +2307,24 @@
           },
           "x-type": "expression"
         },
+        "hit": {
+          "description": "The troops a unit's strike takes in a clash shown as units: a strikes, b is struck (troops, max, might, hp, mhp, player, level and the stats). Default `a.troops * 0.15 * (0.8 + rand() * 0.4)`.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
         "lost": {
           "description": "The troops of a left after failing. Default `a.troops * 0.5`.",
           "type": [
@@ -2293,6 +2343,19 @@
           },
           "x-type": "expression"
         },
+        "per_soldier": {
+          "description": "The troops one soldier of the ranks stands for in a clash shown as units. Default 50.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
         "power": {
           "description": "The strength of the march. Default `a.troops * (0.8 + rand() * 0.4)`.",
           "type": [
@@ -2310,6 +2373,38 @@
             "version": "0, 1, 2"
           },
           "x-type": "expression"
+        },
+        "rounds": {
+          "description": "The most rounds of a clash shown as units; when they run out, the region holds (a draw). Default 5.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "soldiers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "The pictures of one soldier of the player's side (player, facing right) and of the foes' (foe, facing left), lined up behind each leader in a clash shown as units.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → string"
         },
         "won": {
           "description": "The troops of a left after taking b. Default `a.troops * (1 - 0.5 * defense / power)`.",
@@ -9367,7 +9462,7 @@
           "x-type": "[Command](#command)[]"
         },
         "fight": {
-          "description": "battle to decide the march by the game's battle: the general alone against the target's defend troop. A win takes the region with the share of the troops of the HP left; a loss leaves the clash's lost. Omitted: by the numbers of clash.",
+          "description": "clash_view to decide the march by a clash of units shown on its own screen (the generals against the members of the target's defend troop, at most four a side), or battle to decide it by the game's battle: the general alone against the target's defend troop. A win takes the region with the share of the troops of the HP left; a loss leaves the clash's lost. Omitted: by the numbers of clash.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -9430,6 +9525,63 @@
             "version": "0, 1, 2"
           },
           "x-type": "boolean"
+        },
+        "on_draw": {
+          "description": "Commands run after a march whose rounds ran out (a clash shown as units), before do: a general's word on it.",
+          "items": {
+            "$ref": "#/$defs/Command"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Command](#command)[]"
+        },
+        "on_lose": {
+          "description": "Commands run after a march that failed, before do.",
+          "items": {
+            "$ref": "#/$defs/Command"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Command](#command)[]"
+        },
+        "on_win": {
+          "description": "Commands run after a march that took the region, before do.",
+          "items": {
+            "$ref": "#/$defs/Command"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Command](#command)[]"
         },
         "per_turn": {
           "description": "How many times a turn the order may be given when campaign.count is orders (1 when omitted).",
@@ -10213,7 +10365,7 @@
       "description": "A region of a campaign: its neighbours, its first owner and garrison, and its own numbers.",
       "properties": {
         "defend": {
-          "description": "The troop a general fights on marching here with an order of fight: battle, an ID of troops.",
+          "description": "The troop a general fights on marching here with an order of fight: battle, and whose members hold it, sharing its garrison, in a clash shown as units. An ID of troops.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -10272,6 +10424,19 @@
         },
         "owner": {
           "description": "The faction holding it at the start, an ID of factions. Omitted for a free region.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "terrain": {
+          "description": "The kind of ground (field, town, castle or any word): the background of a clash shown as units (clash.backgrounds).",
           "type": "string",
           "x-contract": {
             "default": "empty string",

@@ -36,8 +36,12 @@ type Region struct {
 	Troops int `yaml:"troops"`
 	// Values are the region's own numbers at the start, read and set as region.<id>.<name>.
 	Values map[string]float64 `yaml:"values"`
-	// Defend is the troop a general fights on marching here with an order of fight: battle.
+	// Defend is the troop a general fights on marching here with an order of fight: battle,
+	// and whose members hold it, sharing its garrison, in a clash shown as units.
 	Defend string `yaml:"defend"`
+	// Terrain is the kind of ground (field, town, castle or any word): the background of a
+	// clash shown as units (clash.backgrounds).
+	Terrain string `yaml:"terrain"`
 }
 
 // Faction is a side of a campaign: one is the player's (campaign.player), the others move
@@ -143,6 +147,22 @@ type Clash struct {
 	// Garrison is the share of a general's troops left in a region taken (0.4 when
 	// unset); a faction's march leaves all of them.
 	Garrison *float64 `yaml:"garrison"`
+	// Hit is the troops a unit's strike takes in a clash shown as units (a strikes, b is
+	// struck; a.troops * 0.15 * (0.8 + rand() * 0.4)).
+	Hit Expr `yaml:"hit"`
+	// Rounds is the most rounds of a clash shown as units (5 when 0); when they run out,
+	// the region holds.
+	Rounds int `yaml:"rounds"`
+	// Capture is the chance that a routed foe is caught (0.2 when unset).
+	Capture *float64 `yaml:"capture"`
+	// Backgrounds are the pictures behind a clash shown as units, by the region's terrain.
+	Backgrounds map[string]string `yaml:"backgrounds"`
+	// Soldiers are the pictures of one soldier of the player's side (player, facing right)
+	// and of the foes' (foe, facing left) that a clash shown as units lines up behind each
+	// leader, one for PerSoldier troops; a foe without one shows its leader's picture small.
+	Soldiers map[string]string `yaml:"soldiers"`
+	// PerSoldier is the troops one soldier of the lines stands for (50 when 0).
+	PerSoldier int `yaml:"per_soldier"`
 }
 
 // Order is one of the player's orders: it costs actions, may need a general and a target
@@ -174,8 +194,13 @@ type Order struct {
 	UntilTaken bool `yaml:"until_taken"`
 	// Generals is how many generals may march together (1 when 0): after the first, the
 	// order asks who else goes, until March is chosen or all are taken.
-	Generals int       `yaml:"generals"`
-	Do       []Command `yaml:"do"`
+	Generals int `yaml:"generals"`
+	// OnWin, OnLose and OnDraw run after a march by how it went (won, lost: the generals
+	// were routed or held, draw: the rounds ran out), before do: a general's word on it.
+	OnWin  []Command `yaml:"on_win"`
+	OnLose []Command `yaml:"on_lose"`
+	OnDraw []Command `yaml:"on_draw"`
+	Do     []Command `yaml:"do"`
 }
 
 // CostOf is the actions the order takes.
@@ -220,6 +245,8 @@ const (
 	// the running march, joined by commas.
 	VarTaken    = "campaign_taken"
 	VarMarching = "campaign_marching"
+	// VarClash is how the last clash shown as units ended: won, lost or draw.
+	VarClash = "campaign_clash"
 )
 
 // RegionVar is the generated name of a region's field (owner, troops or a value).
@@ -264,7 +291,7 @@ func (db *DB) campaignStateNames(add func(name, typ string)) {
 	add(VarTurn, "number")
 	add(VarActions, "number")
 	add(VarTaken, "number")
-	for _, n := range []string{VarTarget, VarGeneral, VarResult, VarMarching} {
+	for _, n := range []string{VarTarget, VarGeneral, VarResult, VarMarching, VarClash} {
 		add(n, "string")
 	}
 	values := ValueNames(db)
@@ -425,6 +452,25 @@ func (c *checker) campaign() {
 	}{{"power", cp.Clash.Power}, {"defense", cp.Clash.Defense}, {"won", cp.Clash.Won}, {"lost", cp.Clash.Lost}, {"held", cp.Clash.Held}} {
 		c.exprIn(w+".clash."+f.name, f.e, clash, clashOver)
 	}
+	if cp.Clash.Rounds < 0 {
+		c.errorf(diag.OutOfRange, w+".clash.rounds", "rounds are 0 (5) or more")
+	}
+	if p := cp.Clash.Capture; p != nil && (*p < 0 || *p > 1) {
+		c.errorf(diag.OutOfRange, w+".clash.capture", "capture is a chance from 0 to 1, not %g", *p)
+	}
+	c.exprIn(w+".clash.hit", cp.Clash.Hit, append(slices.Clone(FieldNames), "a", "b", "round"), hitOver)
+	for _, k := range slices.Sorted(maps.Keys(cp.Clash.Soldiers)) {
+		if k != "player" && k != "foe" {
+			c.errorf(diag.NotAWord, w+".clash.soldiers."+k, "soldiers are player and foe, not %q", k)
+		}
+		c.picture(w+".clash.soldiers."+k, Picture{File: cp.Clash.Soldiers[k]})
+	}
+	if cp.Clash.PerSoldier < 0 {
+		c.errorf(diag.OutOfRange, w+".clash.per_soldier", "per_soldier is troops, 0 (50) or more")
+	}
+	for _, k := range slices.Sorted(maps.Keys(cp.Clash.Backgrounds)) {
+		c.picture(w+".clash.backgrounds."+k, Picture{File: cp.Clash.Backgrounds[k]})
+	}
 	if g := cp.Clash.Garrison; g != nil && (*g < 0 || *g > 1) {
 		c.errorf(diag.OutOfRange, w+".clash.garrison", "garrison is a share from 0 to 1, not %g", *g)
 	}
@@ -462,9 +508,15 @@ func (c *checker) campaign() {
 		if (o.UntilTaken || o.Generals > 1) && !o.March {
 			c.errorf(diag.Shape, ow, "until_taken and generals are for a march: write march: true")
 		}
-		if o.Fight != "" && o.Fight != "battle" {
-			c.errorf(diag.NotAWord, ow+".fight", "fight is battle, not %q", o.Fight)
+		if o.Fight != "" && o.Fight != "battle" && o.Fight != "clash_view" {
+			c.errorf(diag.NotAWord, ow+".fight", "fight is battle or clash_view, not %q", o.Fight)
 		}
+		if (len(o.OnWin) > 0 || len(o.OnLose) > 0 || len(o.OnDraw) > 0) && !o.March {
+			c.errorf(diag.Shape, ow, "on_win, on_lose and on_draw follow a march: write march: true")
+		}
+		c.commands(ow+".on_win", o.OnWin, FieldNames)
+		c.commands(ow+".on_lose", o.OnLose, FieldNames)
+		c.commands(ow+".on_draw", o.OnDraw, FieldNames)
 		if o.Fight != "" && !o.March {
 			c.errorf(diag.Shape, ow+".fight", "fight: battle decides a march: write march: true")
 		}

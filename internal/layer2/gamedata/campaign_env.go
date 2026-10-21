@@ -321,7 +321,7 @@ func (e campaignEnv) campaign() expr.Map {
 	m := expr.Map{
 		"turn": float64(Turn(e.db, e.st)), "actions": TurnActions(e.db, e.st), "actions_left": ActionsLeft(e.db, e.st),
 		"target": e.str(VarTarget), "general": e.str(VarGeneral), "result": e.str(VarResult), "turns": 0.0, "player": "",
-		"taken": float64(Taken(e.st)), "week": 0.0, "year": 0.0,
+		"taken": float64(Taken(e.st)), "week": 0.0, "year": 0.0, "clash": e.str(VarClash),
 	}
 	if c != nil && c.Calendar == "week" {
 		t := Turn(e.db, e.st) - 1
@@ -410,7 +410,7 @@ var (
 	}, nil)
 	tCampaign = objType("campaign", map[string]*vtype{
 		"turn": tNum, "turns": tNum, "actions": tNum, "actions_left": tNum, "player": tStr, "target": tStr, "general": tStr, "result": tStr,
-		"taken": tNum, "week": tNum, "year": tNum,
+		"taken": tNum, "week": tNum, "year": tNum, "clash": tStr,
 	}, nil)
 )
 
@@ -462,3 +462,9 @@ func (v ordersView) Keys() []string {
 }
 
 var tOrder = objType("an order", map[string]*vtype{"open": tBool, "used": tNum}, nil)
+
+// hitOver are the types of a and b in a clash shown as units (two units).
+var hitOver = func() map[string]*vtype {
+	unit := objType("a unit", statsFields(map[string]*vtype{"troops": tNum, "max": tNum, "might": tNum, "hp": tNum, "mhp": tNum, "player": tBool, "level": tNum}), nil)
+	return map[string]*vtype{"a": unit, "b": unit, "round": tNum}
+}()
