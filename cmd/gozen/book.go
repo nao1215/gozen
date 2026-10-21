@@ -398,7 +398,11 @@ func commands(p func(string, ...any), db *data.DB, cmds []data.Command, ind stri
 				p(lang.T("%s- [絵 %s]\n"), ind, c.Image.File)
 			}
 		case "move", "dive":
-			p(lang.T("%s- （%s %s%s）\n"), ind, verb, c.Move+c.Dive, c.Floor.String())
+			floor := ""
+			if c.Floor.Set() {
+				floor = " " + c.Floor.String()
+			}
+			p(lang.T("%s- （%s %s%s）\n"), ind, verb, c.Move+c.Dive, floor)
 		}
 	}
 }

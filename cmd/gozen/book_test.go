@@ -118,6 +118,19 @@ func TestBookShowsWhatTheDesignSampleDefines(t *testing.T) {
 	}
 }
 
+// A dive names its floor apart from the place: "dive cave 1", not "dive cave1".
+func TestBookSeparatesTheFloorOfADiveFromThePlace(t *testing.T) {
+	out, _ := invoke(t, 0, "book", designGame(t))
+	for _, want := range []string{"(dive cave 1)", "(dive cave var.floor + 1)", "(move camp)"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the book lacks %q", want)
+		}
+	}
+	if strings.Contains(out, "cave1") || strings.Contains(out, "cavevar") {
+		t.Error("the floor is glued to the place name")
+	}
+}
+
 func TestBookFailures(t *testing.T) {
 	_, stderr := invoke(t, 1, "book", filepath.Join(t.TempDir(), "absent"))
 	if !strings.Contains(stderr, diag.GameUnreadable.String()) {
