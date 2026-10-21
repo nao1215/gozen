@@ -7,6 +7,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 ### Fixed
 
 - The lines, choices and notices of a troop's events in a battle reach the trace (`say` and `notice` lines marked `in_battle`), so `gozen play trace` shows them, a replay compares them and `gozen play trace --check` checks them (GZN1404). Skip mode now stops before a battle line not read, as it does outside a battle. A replay of a trace written before this change, which has no battle lines, still matches.
+- `gozen check` warns of an expression that uses a function's name as a value, such as `floor + 1` in a tile's commands where `floor` is the function and the floor's number is `var.floor` (GZN0114). Such an expression failed only when it was evaluated. `floor` stays the floor's number in `generate.size`, `generate.place`'s `count` and a roamer's `count`, `appear`, `wait` and `every`.
 
 ## v0.2.0 - 2026-10-21
 

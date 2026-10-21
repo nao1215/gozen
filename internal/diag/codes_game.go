@@ -63,6 +63,11 @@ var (
 		Detail:  "A condition or expression reads flag.<name>, and no set, gallery scene or state.names declaration gives it a value, so it stays false (unless a test starts with --flags or the game's Go code sets it).",
 		Fix:     "Set the flag where it should become true, fix its name, or declare it in state.names.",
 	})
+	FunctionValue = register(114, "FunctionValue", Entry{
+		Summary: "an expression uses a function's name as a value",
+		Detail:  "A built-in function (floor, max, len and the others) or a function of the game (rand, chance, pages) is written alone, not called, as in floor + 1. The expression fails when it is evaluated. floor is the floor's number only in generate's size, the count of generate.place and a roamer's count, appear, wait and every; elsewhere it is the function and the floor's number is var.floor.",
+		Fix:     "Call the function (floor(x)), or use the value you meant (var.floor).",
+	})
 	DevOnlySet = register(108, "DevOnlySet", Entry{
 		Summary: "a set changes an actor's stats or level outside the development mode",
 		Detail:  "Setting a party member's stats or level is for the development mode (--dev) and tests. The game skips it when played normally.",

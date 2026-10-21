@@ -28,6 +28,10 @@ var (
 	EffectNames = append(slices.Clone(BattleNames), "a", "b")
 	// TargetNames are known to a target's where and by: t is the candidate.
 	TargetNames = append(slices.Clone(BattleNames), "t")
+	// FloorNames are known where floor is the number of a generated floor (it hides the
+	// built-in function floor): generate's size, generate.place's count and a roamer's
+	// count, appear, wait and every.
+	FloorNames = append(slices.Clone(FieldNames), "floor")
 	// LevelNames are known to a class's growth: the level.
 	LevelNames = []string{"level"}
 )
@@ -93,6 +97,25 @@ func (c *checker) exprIn(where string, e Expr, names []string, over map[string]*
 		}
 	}
 	c.fields(where, e, names, over)
+	c.functionValues(where, e, names, over)
+}
+
+// functionValues warns of a function's name used as a value (floor + 1): a built-in
+// function no name of the location hides, or a name of the location that is a function.
+func (c *checker) functionValues(where string, e Expr, names []string, over map[string]*vtype) {
+	for _, n := range e.Bare() {
+		fn := expr.IsBuiltin(n) && !slices.Contains(names, n)
+		if slices.Contains(names, n) {
+			t := over[n]
+			if t == nil {
+				t = typeOf(n, names)
+			}
+			fn = t.kind == vFunc
+		}
+		if fn {
+			c.warnf(diag.FunctionValue, where, "%q uses the function %s as a value (call it, as %s(...))", e.String(), n, n)
+		}
+	}
 }
 
 func (c *checker) ref(where, kind, id string, ok bool) {
@@ -1555,7 +1578,7 @@ func typeOf(n string, names []string) *vtype {
 		return &vtype{kind: vDyn, desc: "item", elem: tNum, key: "item"}
 	case "actor":
 		return &vtype{kind: vDyn, desc: "actor", elem: tActorIn, key: "actor"}
-	case "gold", "members", "steps", "turn", "level":
+	case "gold", "members", "steps", "turn", "level", "floor":
 		return tNum
 	case "location", "result", "phase", "spot":
 		return tStr

@@ -550,6 +550,29 @@ scenarios:
       exit_code: 0
       stderr:
         contains: ['[GZN0112]', 'flag.met is set but nothing reads it', '[GZN0113]', 'flag.trusted is read but nothing sets it']
+- name: GZN0114 for a function's name used as a value
+  steps:
+  - fixture:
+      file: fnvalue/game.yaml
+      content: "schema_version: 4\nid: fnvalue\nstart: {location: room, party: [reader]}\n"
+  - fixture:
+      file: fnvalue/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {name: Room}}
+        events:
+          pay:
+            trigger: enter
+            location: room
+            do: [{gold: floor + 1}]
+  - run:
+      command: gozen check --only structure fnvalue
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: ['[GZN0114]', 'events.pay.do[0].gold: "floor + 1" uses the function floor as a value']
 - name: GZN1501 and GZN1502 for an output that exists or lies inside an input
   steps:
   - fixture:
