@@ -6,6 +6,7 @@ package headless
 // branched only once, so the number of paths is about the sum of the question items (not every combination).
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/rand/v2"
@@ -23,6 +24,8 @@ import (
 
 // Config holds the rules for Explore.
 type Config struct {
+	// Context cancels exploration between event requests; nil means no deadline.
+	Context context.Context
 	// MaxPaths is the upper bound of paths tried from one root (300 if 0).
 	MaxPaths int
 	// MaxSteps is the upper bound of requests received on one path (lines, choices, etc.) plus arrival handling
@@ -68,15 +71,17 @@ type Path struct {
 
 // Step is one occurrence on a path (Kind is say, image, music, move, choice, notice or sfx).
 type Step struct {
-	Kind  string
-	Who   string // say: speaker name (empty for narration). stand: the actor ("" for everyone off)
-	Actor string // say: the speaker's actor ID (empty if not a party member)
-	Face  string // say: face image
-	Text  string // say, notice, choice: the text (for choice, the chosen item). sfx: the sound effect name
-	File  string // image: the image shown (empty when cleared). voice: the voice's file
-	Faces bool   // image: do not hide the portraits
-	Song  string // music: the song
-	Loc   string // move: the destination
+	Kind    string
+	Prompt  string
+	Options []string
+	Who     string // say: speaker name (empty for narration). stand: the actor ("" for everyone off)
+	Actor   string // say: the speaker's actor ID (empty if not a party member)
+	Face    string // say: face image
+	Text    string // say, notice, choice: the text (for choice, the chosen item). sfx: the sound effect name
+	File    string // image: the image shown (empty when cleared). voice: the voice's file
+	Faces   bool   // image: do not hide the portraits
+	Song    string // music: the song
+	Loc     string // move: the destination
 }
 
 // Log is the path's lines, choices and battles, for an error message.
@@ -107,6 +112,9 @@ func Explore(db *data.DB, st *rpg.State, cmds []data.Command, opt Config) []*Pat
 		queue = queue[1:]
 		p, branches := explorePath(db, base, cmds, prefix, opt, expanded)
 		out = append(out, p)
+		if opt.Context != nil && opt.Context.Err() != nil {
+			break
+		}
 		queue = append(queue, branches...)
 	}
 	if len(out) > 0 {
@@ -204,6 +212,10 @@ func explorePath(db *data.DB, base []byte, cmds []data.Command, prefix []int, op
 	steps := 0
 	autos := 0
 	for {
+		if opt.Context != nil && opt.Context.Err() != nil {
+			p.Errs = append(p.Errs, opt.Context.Err())
+			break
+		}
 		steps++
 		if steps > opt.MaxSteps {
 			p.Errs = append(p.Errs, fmt.Errorf("the events do not end (%d steps; after %s)", steps, p.Log()))
@@ -238,7 +250,7 @@ func explorePath(db *data.DB, base []byte, cmds []data.Command, prefix []int, op
 					n = decide(key, len(q.Options), func(a int) string { return "> " + q.Options[a] })
 				}
 				p.Lines = append(p.Lines, "> "+q.Options[n])
-				p.Steps = append(p.Steps, Step{Kind: "choice", Text: q.Options[n]})
+				p.Steps = append(p.Steps, Step{Kind: "choice", Prompt: q.Prompt, Options: append([]string(nil), q.Options...), Text: q.Options[n]})
 				p.Picks = append(p.Picks, n)
 				r.Answer(n)
 			case event.Battle:

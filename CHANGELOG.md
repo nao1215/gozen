@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Added
+
+- `gozen sim routes` explores event choices without a screen and reports reached clear/game-over outcomes, never-offered choice options, flags reported by GZN0112, and bounded exploration status; `--fail-unreachable` opts into a failing exit status.
+
 ### Changed
 
 - Browser samples no longer include the games' embedded files in their WebAssembly builds. They read a small manifest and fetch assets only when opened, while desktop builds keep embedding the game directory. The pages load precompressed `.wasm.gz` files and decompress them before instantiation; browser saves remain in `localStorage`.
