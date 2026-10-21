@@ -236,6 +236,9 @@ func moveRoamers(d *data.Dungeon, st *rpg.State, from [2]int) {
 	dist := walkDistances(d, st, st.Pos.X, st.Pos.Y)
 	for i := range st.Roamers {
 		r := &st.Roamers[i]
+		if r.Kind < 0 || r.Kind >= len(d.Roamers) { // a kind the dungeon no longer has (data reloaded under a running game)
+			continue
+		}
 		k := d.Roamers[r.Kind]
 		if k.Move == "guard" {
 			continue
@@ -324,7 +327,7 @@ func roamable(d *data.Dungeon, st *rpg.State, x, y, i int) bool {
 	}
 	if c := d.At(x, y); c != data.CellFloor {
 		// A chaser (hunt) also passes doors and walkable floor traps (it does not stop at a room's door or a trapped corridor). Others use plain floor only
-		if i < 0 || i >= len(st.Roamers) || st.Roamers[i].Kind >= len(d.Roamers) || d.Roamers[st.Roamers[i].Kind].Move != "hunt" {
+		if i < 0 || i >= len(st.Roamers) || st.Roamers[i].Kind < 0 || st.Roamers[i].Kind >= len(d.Roamers) || d.Roamers[st.Roamers[i].Kind].Move != "hunt" {
 			return false
 		}
 		if CellAt(d, st, x, y).Solid {
