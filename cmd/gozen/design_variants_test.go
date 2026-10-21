@@ -159,3 +159,32 @@ func TestDesignOutputPlacementAndVerboseLog(t *testing.T) {
 		t.Error("debug.log without -v")
 	}
 }
+
+// A note variable that is not a plain value (the name of a function, not a number) is left out of
+// the notes; it does not stop the play from being written down.
+func TestDesignLeavesOutNoteVariablesThatAreNotValues(t *testing.T) {
+	dir := designGame(t)
+	edit(t, filepath.Join(dir, "game.yaml"), "vars: [{name: depth, value: var.floor}]", "vars: [{name: depth, value: var.floor}, {name: oops, value: floor}]")
+	notes := filepath.Join(t.TempDir(), "notes")
+	out := filepath.Join(t.TempDir(), "run")
+	invoke(t, 0, "sim", "design", dir, "--only", "eager", "-o", out, "--memos", notes)
+	found := 0
+	if err := filepath.WalkDir(notes, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || filepath.Ext(p) != ".json" {
+			return err
+		}
+		b := string(read(t, p))
+		if strings.Contains(b, `"oops"`) {
+			t.Errorf("%s keeps a variable that is no value", p)
+		}
+		if strings.Contains(b, `"depth"`) {
+			found++
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if found == 0 {
+		t.Error("the variable that is a number is still kept")
+	}
+}
