@@ -156,6 +156,9 @@ type General struct {
 	Tactic string `yaml:"tactic"`
 	// Skills are the skills they use in a clash shown as units when charged (clash.skills).
 	Skills []string `yaml:"skills"`
+	// Army is the kind of army their unit shows in a clash shown as units (a key of
+	// clash.armies; a man's army of men, a woman's of women).
+	Army string `yaml:"army"`
 }
 
 // Clash decides a march of a (the side marching: troops, might, faction, general) on the
@@ -190,6 +193,16 @@ type Clash struct {
 	Soldiers map[string]string `yaml:"soldiers"`
 	// PerSoldier is the troops one soldier of the lines stands for (50 when 0).
 	PerSoldier int `yaml:"per_soldier"`
+	// Armies are the pictures of the soldiers of an army by kind (generals.<id>.army,
+	// enemies.<id>.army): each kind lists poses of one soldier, facing right (the engine
+	// turns the foe side to face left), which a clash shown as units lines up in staggered
+	// rows, one soldier for PerSoldier troops, the soldiers lost falling from the back rows.
+	// With armies, soldiers is not read.
+	Armies map[string][]string `yaml:"armies"`
+	// Layout places a unit's leader against its army: "front" (the default) stands the
+	// leader's card in front of the army, at the edge facing the foe; "below" puts a smaller
+	// card under the army.
+	Layout string `yaml:"layout"`
 	// Rope draws the rope of the two sides' troops over a clash shown as units (true when
 	// unset); false leaves the soldiers alone to tell them.
 	Rope *bool `yaml:"rope"`
@@ -634,6 +647,7 @@ func (c *checker) campaign() {
 	if cp.Clash.PerSoldier < 0 {
 		c.errorf(diag.OutOfRange, w+".clash.per_soldier", "per_soldier is troops, 0 (50) or more")
 	}
+	c.armies(w, cp)
 	if cp.Clash.Units < 0 || cp.Clash.Units > 4 {
 		c.errorf(diag.OutOfRange, w+".clash.units", "units are 1 to 4 (0 for 4), not %d", cp.Clash.Units)
 	}
@@ -1047,4 +1061,87 @@ func (c *checker) callLoops() {
 		}
 		c.errorf(diag.Shape, "events."+start+".do", "event %s calls itself on every run (%s -> %s): it never ends; put the call under an if that stops it", start, start, strings.Join(path, " -> "))
 	}
+}
+
+// FirstArmy is the army kind a unit without one shows: the first of clash.armies by name.
+func (c *Clash) FirstArmy() string {
+	k := slices.Sorted(maps.Keys(c.Armies))
+	if len(k) == 0 {
+		return ""
+	}
+	return k[0]
+}
+
+// armies checks the soldier pictures of the armies of a clash shown as units, the layout,
+// and the kinds the generals and the enemies name.
+func (c *checker) armies(w string, cp *Campaign) {
+	cl := &cp.Clash
+	switch cl.Layout {
+	case "", "front", "below":
+	default:
+		c.errorf(diag.NotAWord, w+".clash.layout", "layout is front or below, not %q", cl.Layout)
+	}
+	if len(cl.Armies) == 0 {
+		for _, id := range slices.Sorted(maps.Keys(cp.Generals)) {
+			if cp.Generals[id].Army != "" {
+				c.errorf(diag.NotAWord, w+".generals."+id+".army", "army %q is not in clash.armies (none are written)", cp.Generals[id].Army)
+			}
+		}
+		for _, id := range slices.Sorted(maps.Keys(c.db.Enemies)) {
+			if e := c.db.Enemies[id]; e != nil && e.Army != "" {
+				c.errorf(diag.NotAWord, "enemies."+id+".army", "army %q is not in clash.armies (none are written)", e.Army)
+			}
+		}
+		return
+	}
+	for _, k := range slices.Sorted(maps.Keys(cl.Armies)) {
+		at := w + ".clash.armies." + k
+		if len(cl.Armies[k]) < 1 {
+			c.errorf(diag.Shape, at, "an army needs at least one picture of a soldier (three or four poses look best)")
+		}
+		for i, p := range cl.Armies[k] {
+			c.picture(fmt.Sprintf("%s[%d]", at, i), Picture{File: p})
+		}
+	}
+	for _, id := range slices.Sorted(maps.Keys(cp.Generals)) {
+		g := cp.Generals[id]
+		if g.Army == "" {
+			c.errorf(diag.Shape, w+".generals."+id+".army", "clash.armies are written, so general %s needs an army (%s)", id, joinKinds(cl))
+		} else if _, ok := cl.Armies[g.Army]; !ok {
+			c.errorf(diag.NotAWord, w+".generals."+id+".army", "army %q is not in clash.armies (%s)", g.Army, joinKinds(cl))
+		}
+	}
+	for _, id := range slices.Sorted(maps.Keys(c.db.Enemies)) {
+		e := c.db.Enemies[id]
+		if e == nil {
+			continue
+		}
+		if e.Army != "" {
+			if _, ok := cl.Armies[e.Army]; !ok {
+				c.errorf(diag.NotAWord, "enemies."+id+".army", "army %q is not in clash.armies (%s)", e.Army, joinKinds(cl))
+			}
+		} else if c.leadsUnit(id) {
+			c.errorf(diag.Shape, "enemies."+id+".army", "clash.armies are written, so enemy %s, who leads a region's defence, needs an army (%s)", id, joinKinds(cl))
+		}
+	}
+}
+
+func joinKinds(cl *Clash) string {
+	return strings.Join(slices.Sorted(maps.Keys(cl.Armies)), ", ")
+}
+
+// leadsUnit reports whether an enemy is a member of a region's defend troop or a faction's
+// general: one that a clash shown as units draws as an army.
+func (c *checker) leadsUnit(id string) bool {
+	for _, r := range c.db.Regions {
+		if t := c.db.Troops[r.Defend]; r != nil && t != nil && slices.Contains(t.Members, id) {
+			return true
+		}
+	}
+	for _, f := range c.db.Factions {
+		if f != nil && slices.Contains(f.Generals, id) {
+			return true
+		}
+	}
+	return false
 }

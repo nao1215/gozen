@@ -2252,6 +2252,31 @@
       "additionalProperties": false,
       "description": "How a march of a (the side marching, with troops, might, faction, general, and the general's level and stats such as atk) on the region b is decided. The march takes b when power is more than defense.",
       "properties": {
+        "armies": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "description": "The soldiers of an army by kind (generals.\u003cid\u003e.army, enemies.\u003cid\u003e.army): each kind lists poses of one soldier, facing right (the foe side is turned to face left), which a clash shown as units lines up in staggered rows behind the front, one soldier for per_soldier troops. The soldiers lost fall from the back rows. With armies, soldiers is not read.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → string[]"
+        },
         "backgrounds": {
           "additionalProperties": {
             "type": "string"
@@ -2350,6 +2375,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "expression"
+        },
+        "layout": {
+          "description": "Where a unit's leader stands against its army in a clash shown with armies. front (the default): the card in front of the army, at the edge facing the foe. below: a smaller card under the army.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         },
         "lost": {
           "description": "The troops of a left after failing. Default `a.troops * 0.5`.",
@@ -5966,6 +6004,19 @@
           },
           "x-type": "AI ID or Rule[]"
         },
+        "army": {
+          "description": "The kind of army (a key of campaign.clash.armies) its unit is shown as in a clash shown as units, when it leads a region's defence or a faction's march: monsters for monsters.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "boss": {
           "description": "Set to `true` to make this enemy a boss, which gets the guardian banner and boss treatment in battle.",
           "type": "boolean",
@@ -8070,6 +8121,19 @@
       "additionalProperties": false,
       "description": "An actor's place in a campaign.",
       "properties": {
+        "army": {
+          "description": "The kind of army (a key of campaign.clash.armies) their unit is shown as in a clash shown as units: men for a man, women for a woman.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "might": {
           "description": "A number read as a.might in the clash.",
           "type": "number",

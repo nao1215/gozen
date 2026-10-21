@@ -765,6 +765,10 @@ campaign:
   clash:
     units: 2                      # at most two units a side (1: a duel)
     per_soldier: 30               # one soldier in the ranks for 30 troops
+    # or, instead of the ranks, an army by kind: poses of one soldier, lined up by the engine
+    # (the kind follows the leader: generals.<id>.army, enemies.<id>.army)
+    # armies: {men: [soldiers/men_1.png, soldiers/men_2.png], monsters: [soldiers/orc_1.png]}
+    # layout: front               # or below: the leader's card under the army
     backgrounds: {field: bg/field.jpg, castle: bg/castle.jpg}
     skills:
       volley: {label: Volley, charge: 3, all: true, power: "a.troops * 0.12"}

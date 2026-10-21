@@ -221,6 +221,7 @@ github.com/nao1215/gozen/schema field Effect.Variance
 github.com/nao1215/gozen/schema field Effect.When
 github.com/nao1215/gozen/schema field Enemy.AI
 github.com/nao1215/gozen/schema field Enemy.Actions
+github.com/nao1215/gozen/schema field Enemy.Army
 github.com/nao1215/gozen/schema field Enemy.Boss
 github.com/nao1215/gozen/schema field Enemy.Drops
 github.com/nao1215/gozen/schema field Enemy.Exp

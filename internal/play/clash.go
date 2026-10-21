@@ -58,6 +58,7 @@ type clashUnit struct {
 	gone        float64 // 0 standing, to 1 grayed
 	stamp       string  // routed or caught, drawn on the card
 	soldiers    int     // the soldiers standing in the ranks
+	kind        string  // with armies, the kind of army
 }
 
 type clashPop struct {
@@ -100,6 +101,12 @@ type clashScene struct {
 	cut     *clashCut
 	// skillShown is the strike (counted from 1) whose skill was last shown.
 	skillShown int
+	// army is set when clash.armies are written: each unit is shown as a picture of an
+	// army that thins as its troops fall, not as soldiers one by one.
+	army   bool
+	armies map[string][]string
+	red    float32 // how red the soldiers being drawn are (a unit struck)
+	layout string  // front or below
 }
 
 // clashCut is a skill's cut-in: the user's picture across the screen with its name.
@@ -126,10 +133,18 @@ func newClashScene(g *Game, cl *campaign.Clash, done func()) *clashScene {
 	if c.PerSoldier > 0 {
 		s.per = float64(c.PerSoldier)
 	}
+	s.army, s.layout, s.armies = len(c.Armies) > 0, c.Layout, c.Armies
 	for side := range 2 {
 		for _, u := range cl.Sides[side] {
 			cu := &clashUnit{u: u, side: side, shown: u.Max, lag: u.Max, hp: float64(u.HP)}
 			cu.soldiers = s.count(u.Max)
+			if s.army {
+				cu.kind = u.Army
+				if _, ok := c.Armies[cu.kind]; !ok {
+					cu.kind = c.FirstArmy()
+				}
+				cu.soldiers = s.count(u.Max)
+			}
 			s.units[side] = append(s.units[side], cu)
 		}
 	}
@@ -143,7 +158,7 @@ func newClashScene(g *Game, cl *campaign.Clash, done func()) *clashScene {
 
 // count is how many soldiers stand for troops.
 func (s *clashScene) count(troops float64) int {
-	return min(maxSoldiers, int(math.Ceil(troops/s.per)))
+	return min(s.cap(), int(math.Ceil(troops/s.per)))
 }
 
 func (s *clashScene) overlay() bool { return false }
@@ -183,6 +198,9 @@ func blockWidth(g *Game) float64 {
 // slot is where unit i of a side has its card: the front units nearer the middle, the
 // back ones nearer the edge, each in a lane; the player's on the left.
 func (s *clashScene) slot(g *Game, side, i int) (float64, float64) {
+	if s.army {
+		return s.armySlot(g, side, i)
+	}
 	sw, sh := g.screen()
 	k := s.standing(side, i)
 	if s.isRouted(side, i) {
@@ -329,13 +347,8 @@ func (s *clashScene) useSkill(g *Game, h campaign.Hit) {
 		u.shown = math.Min(u.u.Max, u.shown+float64(h.Heal))
 		u.lag = math.Max(u.lag, u.shown)
 		u.soldiers = s.count(u.shown)
-		_, ch := cardSize(g)
-		cw, _ := cardSize(g)
-		x := u.x + cw + 60
-		if u.side == 1 {
-			x = u.x - 60
-		}
-		s.pops = append(s.pops, clashPop{text: fmt.Sprintf("+%d", h.Heal), x: x, y: u.y + ch*0.5, tx: x, ty: u.y + ch*0.35, life: 70, c: color.NRGBA{0x70, 0xe8, 0x90, 0xff}, size: sizeL * 1.5})
+		x, y := s.beside(g, u)
+		s.pops = append(s.pops, clashPop{text: fmt.Sprintf("+%d", h.Heal), x: x, y: y + 6, tx: x, ty: y - 10, life: 70, c: color.NRGBA{0x70, 0xe8, 0x90, 0xff}, size: sizeL * 1.5})
 	}
 	g.sfx("decide")
 	g.emit("clash_skill", traceLine{"round": h.Round, "side": h.Side, "at": h.At, "skill": h.Skill, "heal": h.Heal})
@@ -343,22 +356,26 @@ func (s *clashScene) useSkill(g *Game, h campaign.Hit) {
 
 // drawBands draws the skills' names across the cards: a band that slides in and fades.
 func (s *clashScene) drawSkillBands(g *Game, dst *ebiten.Image) {
-	cw, ch := cardSize(g)
 	for _, b := range s.bands {
 		u := s.units[b.side][b.at]
+		cx, top, cw := s.focus(g, u)
+		_, ch := cardSize(g)
+		if s.army {
+			ch = s.geo(g).ah
+		}
 		a := 1.0
 		if b.age > 60 {
 			a = float64(80-b.age) / 20
 		}
 		in := math.Min(1, float64(b.age)/8)
 		w := (cw + 80) * in
-		x := u.x + cw/2 - w/2
-		y := u.y + ch*0.42
+		x := cx - w/2
+		y := top + ch*0.42
 		gfx.FillRect(dst, float32(x), float32(y), float32(w), float32(sizeL*1.4), color.NRGBA{0x18, 0x10, 0x08, uint8(220 * a)}, false)
 		gfx.FillRect(dst, float32(x), float32(y), float32(w), 3, color.NRGBA{0xff, 0xd0, 0x60, uint8(255 * a)}, false)
 		gfx.FillRect(dst, float32(x), float32(y+sizeL*1.4-3), float32(w), 3, color.NRGBA{0xff, 0xd0, 0x60, uint8(255 * a)}, false)
 		if in >= 1 {
-			gfx.DrawTextOutlineColor(dst, b.text, u.x+cw/2, y+sizeL*0.15, sizeL, color.NRGBA{0xff, 0xf0, 0xc0, 0xff}, color.NRGBA{0x40, 0x20, 0x00, 0xff}, float32(a))
+			gfx.DrawTextOutlineColor(dst, b.text, cx, y+sizeL*0.15, sizeL, color.NRGBA{0xff, 0xf0, 0xc0, 0xff}, color.NRGBA{0x40, 0x20, 0x00, 0xff}, float32(a))
 		}
 	}
 }
@@ -368,32 +385,27 @@ func (s *clashScene) strike(g *Game, h campaign.Hit) {
 	from, to := s.units[h.Side][h.At], s.units[h.Of][h.To]
 	to.shown = math.Max(0, to.shown-float64(h.Loss))
 	to.shake, to.glow, from.lunge = 18, 12, 14
-	cw, ch := cardSize(g)
 	if n := s.count(to.shown); n < to.soldiers { // the soldiers lost fall from the back
 		for k := n; k < to.soldiers; k++ {
 			x, y, sz := s.soldierAt(g, to, k)
-			s.falls = append(s.falls, fallen{x: x, y: y, h: sz, flip: to.side == 1, pic: s.soldierPic(to), side: to.side})
+			s.falls = append(s.falls, fallen{x: x, y: y, h: sz, flip: to.side == 1, pic: s.soldierPic(to, k), side: to.side})
 		}
 		to.soldiers = n
 	}
 	// the burst stands on the line where the armies meet, at the unit struck
 	mid, _ := g.screen()
-	s.impacts = append(s.impacts, impact{x: mid / 2, y: to.y + ch*0.6, age: -impactDelay})
-	beside := func(u *clashUnit) float64 {
-		if u.side == 0 {
-			return u.x + cw + 60
-		}
-		return u.x - 60
-	}
+	s.impacts = append(s.impacts, impact{x: mid / 2, y: s.midY(g, to), age: -impactDelay})
+	tx, ty := s.beside(g, to)
 	lift := 0.0 // a loss shown while another still shows over the same card goes above it
 	for _, p := range s.pops {
-		if p.x == beside(to) && p.text != "" && p.text[0] == '-' && p.age < p.life/2 {
+		if p.x == tx && p.text != "" && p.text[0] == '-' && p.age < p.life/2 {
 			lift += sizeL * 1.8
 		}
 	}
+	fx, ftop, _ := s.focus(g, from)
 	s.pops = append(s.pops,
-		clashPop{text: fmt.Sprintf("-%d", h.Loss), x: beside(to), y: to.y + ch*0.3 - lift, tx: beside(to), ty: to.y + ch*0.12 - lift, life: 70, c: color.NRGBA{0xff, 0x48, 0x38, 0xff}, size: sizeL * 1.8},
-		clashPop{text: fmt.Sprintf(lang.T("%d人"), h.Attackers), x: from.x + cw/2, y: from.y - sizeM*1.2, tx: from.x + cw/2, ty: from.y - sizeM*2, life: 40, c: color.NRGBA{0xff, 0xf0, 0xb0, 0xff}, size: sizeM * 1.2},
+		clashPop{text: fmt.Sprintf("-%d", h.Loss), x: tx, y: ty - lift, tx: tx, ty: ty - sizeL*0.8 - lift, life: 70, c: color.NRGBA{0xff, 0x48, 0x38, 0xff}, size: sizeL * 1.8},
+		clashPop{text: fmt.Sprintf(lang.T("%d人"), h.Attackers), x: fx, y: ftop + sizeM*0.2, tx: fx, ty: ftop, life: 40, c: color.NRGBA{0xff, 0xf0, 0xb0, 0xff}, size: sizeM * 1.2},
 	)
 	if h.Routed {
 		to.stamp = lang.T("壊滅")
@@ -405,8 +417,26 @@ func (s *clashScene) strike(g *Game, h campaign.Hit) {
 	g.emit("clash_hit", traceLine{"round": h.Round, "side": h.Side, "to": h.To, "loss": h.Loss, "routed": h.Routed})
 }
 
+// beside is where a number about a unit appears: beside its card, or over its army.
+func (s *clashScene) beside(g *Game, u *clashUnit) (float64, float64) {
+	if s.army {
+		cx, top, _ := s.focus(g, u)
+		return cx, top + s.geo(g).ah*0.3
+	}
+	cw, ch := cardSize(g)
+	if u.side == 0 {
+		return u.x + cw + 60, u.y + ch*0.3
+	}
+	return u.x - 60, u.y + ch*0.3
+}
+
 // soldierPic is the picture of a unit's soldiers ("" draws a plain figure).
-func (s *clashScene) soldierPic(u *clashUnit) string {
+func (s *clashScene) soldierPic(u *clashUnit, k int) string {
+	if s.army {
+		if poses := s.poses(u); len(poses) > 0 {
+			return poses[(k*5+k/3)%len(poses)] // the poses scattered, the same for a soldier each time
+		}
+	}
 	if p := s.pics[u.side]; p != "" {
 		return p
 	}
@@ -420,6 +450,9 @@ func (s *clashScene) soldierPic(u *clashUnit) string {
 // ranks fill the block behind the card, the front rank (nearest the viewer, lowest) first,
 // each rank from the card outward; the last ones stand at the back, top.
 func (s *clashScene) soldierAt(g *Game, u *clashUnit, k int) (float64, float64, float64) {
+	if s.army {
+		return s.armySoldierAt(g, u, k)
+	}
 	_, sh := g.screen()
 	cw, _ := cardSize(g)
 	room := blockWidth(g) - cw - 16
@@ -455,7 +488,17 @@ func (s *clashScene) draw(g *Game, dst *ebiten.Image) {
 	}
 	gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), color.NRGBA{0, 0, 0, 40}, false)
 	s.drawBands(g, dst)
+	if s.army {
+		for side := range 2 {
+			for _, u := range slices.Backward(s.units[side]) {
+				s.drawArmyUnit(g, dst, u)
+			}
+		}
+	}
 	for side := range 2 { // the ranks (back units first), then the cards over them
+		if s.army {
+			break
+		}
 		for _, u := range slices.Backward(s.units[side]) {
 			s.drawRanks(g, dst, u)
 		}
@@ -469,6 +512,9 @@ func (s *clashScene) draw(g *Game, dst *ebiten.Image) {
 		s.drawSoldier(g, dst, f.pic, f.side, f.x, f.y, f.h, tilt, float32(1-t))
 	}
 	for side := range 2 {
+		if s.army {
+			break
+		}
 		for _, u := range slices.Backward(s.units[side]) {
 			s.drawCard(g, dst, u)
 		}
@@ -518,7 +564,6 @@ func (s *clashScene) hint() string {
 
 // drawRanks draws a unit's soldiers behind its card, its flag among them.
 func (s *clashScene) drawRanks(g *Game, dst *ebiten.Image, u *clashUnit) {
-	pic := s.soldierPic(u)
 	alpha := float32(1 - u.gone*0.6)
 	part := float32(1) // the last soldier shows the troops short of a whole one, fainter
 	if u.soldiers > 0 && u.soldiers < maxSoldiers {
@@ -532,7 +577,7 @@ func (s *clashScene) drawRanks(g *Game, dst *ebiten.Image, u *clashUnit) {
 		if k == u.soldiers-1 {
 			a *= part
 		}
-		s.drawSoldier(g, dst, pic, u.side, x, y, h, 0, a)
+		s.drawSoldier(g, dst, s.soldierPic(u, k), u.side, x, y, h, 0, a)
 	}
 	if u.gone < 1 {
 		tx, ty := s.troopsAbove(g, u)
@@ -603,6 +648,9 @@ func (s *clashScene) drawSoldier(g *Game, dst *ebiten.Image, pic string, side in
 			}
 			op.GeoM.Rotate(tilt)
 			op.GeoM.Translate(x, y)
+			if s.red > 0 {
+				op.ColorScale.Scale(1, 1-s.red, 1-s.red, 1)
+			}
 			op.ColorScale.ScaleAlpha(alpha)
 			gfx.DrawImage(dst, img, op)
 			return
@@ -713,35 +761,65 @@ func (s *clashScene) drawCard(g *Game, dst *ebiten.Image, cu *clashUnit) {
 		}
 		x += d
 	}
+	s.drawCardIn(g, dst, cu, box{x, y, cw, ch}, false)
+}
+
+// drawFace draws a leader's picture in a box: a standing picture is cut to the face and
+// the shoulders.
+func (s *clashScene) drawFace(g *Game, dst *ebiten.Image, cu *clashUnit, x, y, w, h float64, alpha float32) {
+	if cu.u.Picture == "" {
+		return
+	}
+	img := g.pics.get(cu.u.Picture)
+	if img == nil || img.Bounds().Empty() {
+		return
+	}
+	iw, ih := float64(img.Bounds().Dx()), float64(img.Bounds().Dy())
+	sub := img
+	if cu.u.Actor != "" {
+		cut := int(math.Min(ih, iw*h/w))
+		if c, ok := img.SubImage(image.Rect(0, 0, int(iw), cut)).(*ebiten.Image); ok {
+			sub = c
+		}
+		ih = float64(sub.Bounds().Dy())
+	}
+	k := math.Min(w/iw, h/ih)
+	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+	op.GeoM.Scale(k, k)
+	op.GeoM.Translate(x+(w-iw*k)/2, y+(h-ih*k)/2)
+	if cu.gone > 0 {
+		op.ColorScale.Scale(0.45, 0.45, 0.45, 1)
+	}
+	if cu.glow > 0 { // struck: red
+		f := 1 - float32(cu.glow)/20
+		op.ColorScale.Scale(1, f, f, 1)
+	}
+	op.ColorScale.ScaleAlpha(alpha)
+	gfx.DrawImage(dst, sub, op)
+}
+
+// drawCardIn draws a leader's card in a box. A compact card is a row: the face at the
+// left, the name and the HP beside it.
+func (s *clashScene) drawCardIn(g *Game, dst *ebiten.Image, cu *clashUnit, r box, compact bool) {
+	x, y, cw, ch := r.x, r.y, r.w, r.h
 	alpha := float32(1 - cu.gone*0.5)
 	g.window(dst, x, y, cw, ch)
-	ph := ch - 52
-	if cu.u.Picture != "" {
-		if img := g.pics.get(cu.u.Picture); img != nil && !img.Bounds().Empty() {
-			iw, ih := float64(img.Bounds().Dx()), float64(img.Bounds().Dy())
-			sub := img
-			if cu.u.Actor != "" { // a standing picture: the face and the shoulders
-				cut := int(math.Min(ih, iw*ph/(cw-16)))
-				if c, ok := img.SubImage(image.Rect(0, 0, int(iw), cut)).(*ebiten.Image); ok {
-					sub = c
-				}
-				ih = float64(sub.Bounds().Dy())
-			}
-			k := math.Min((cw-16)/iw, ph/ih)
-			op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
-			op.GeoM.Scale(k, k)
-			op.GeoM.Translate(x+(cw-iw*k)/2, y+8+(ph-ih*k)/2)
-			if cu.gone > 0 {
-				op.ColorScale.Scale(0.45, 0.45, 0.45, 1)
-			}
-			if cu.glow > 0 { // struck: red
-				f := 1 - float32(cu.glow)/20
-				op.ColorScale.Scale(1, f, f, 1)
-			}
-			op.ColorScale.ScaleAlpha(alpha)
-			gfx.DrawImage(dst, sub, op)
+	if compact {
+		fs := ch - 14
+		s.drawFace(g, dst, cu, x+7, y+7, fs, fs, alpha)
+		if cu.glow > 0 {
+			gfx.FillRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 16, color.NRGBA{0xff, 0x30, 0x20, uint8(min(255, 10*cu.glow))})
 		}
+		tx := x + fs + 20
+		g.text(dst, gfx.Ellipsis(cu.u.Name, sizeS, cw-fs-34), tx, y+ch*0.14, sizeS, withAlpha(g.th.text, uint8(255*alpha)))
+		if cu.u.MHP > 0 {
+			hr := cu.hp / float64(cu.u.MHP)
+			bar(dst, tx, y+ch-24, cw-fs-40, 8, hr, withAlpha(hpColor(hr), uint8(255*alpha)))
+		}
+		return
 	}
+	ph := ch - 52
+	s.drawFace(g, dst, cu, x+8, y+8, cw-16, ph, alpha)
 	if cu.glow > 0 {
 		gfx.FillRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 16, color.NRGBA{0xff, 0x30, 0x20, uint8(min(255, 10*cu.glow))})
 	}
@@ -750,7 +828,7 @@ func (s *clashScene) drawCard(g *Game, dst *ebiten.Image, cu *clashUnit) {
 		r := cu.hp / float64(cu.u.MHP)
 		bar(dst, x+12, y+ch-14, cw-24, 7, r, withAlpha(hpColor(r), uint8(255*alpha)))
 	}
-	if cu.stamp != "" {
+	if cu.stamp != "" && !s.army {
 		sw := gfx.TextWidth(cu.stamp, sizeL*1.1) + 20
 		bx, by := x+(cw-sw)/2, y+ph*0.4
 		gfx.FillRoundRect(dst, float32(bx), float32(by), float32(sw), float32(sizeL*1.1+14), 6, color.NRGBA{0xff, 0xf6, 0xe8, 0xe8})

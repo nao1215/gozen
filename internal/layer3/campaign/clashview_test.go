@@ -20,7 +20,11 @@ func clashGame(t *testing.T, clash, general string) *data.DB {
 		"generals: {scout: {troops: 400, might: 2"+general+"}}\n  clash: {"+clash+"}",
 	).Replace(testgame.CampaignGame)
 	fields := strings.Replace(testgame.CampaignData, "field: {name: Field, next: [home, hill, keep], troops: 100,", "field: {name: Field, next: [home, hill, keep], troops: 101, defend: two,", 1)
-	return testgame.LoadCampaign(t, map[string]string{"game.yaml": game, "data/campaign.yaml": fields})
+	files := map[string]string{"game.yaml": game, "data/campaign.yaml": fields}
+	if strings.Contains(clash, "armies") { // the foes of the field need a kind of army too
+		files["data/main.yaml"] = strings.Replace(testgame.Data, "    name: Mote\n", "    name: Mote\n    army: monsters\n", 1)
+	}
+	return testgame.LoadCampaign(t, files)
 }
 
 func fight(t *testing.T, db *data.DB, seed uint64, tactics map[string]string) *campaign.Clash {
@@ -137,5 +141,19 @@ func TestFactionClash(t *testing.T) {
 	}
 	if !moved {
 		t.Fatal("red never marched")
+	}
+}
+
+// TestFightViewArmies: a unit carries the army kind of its general or its enemy.
+func TestFightViewArmies(t *testing.T) {
+	db := clashGame(t, `armies: {men: [x.png], monsters: [x.png]}`, ", army: men")
+	cl := fight(t, db, 1, nil)
+	if got := cl.Sides[0][0].Army; got != "men" {
+		t.Errorf("the general's army is %q, want men", got)
+	}
+	for _, u := range cl.Sides[1] {
+		if u.Army != "monsters" {
+			t.Errorf("the foe %s has army %q, want monsters", u.Name, u.Army)
+		}
 	}
 }

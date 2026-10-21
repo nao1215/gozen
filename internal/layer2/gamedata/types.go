@@ -1045,9 +1045,12 @@ type StateMsgs struct {
 
 // Enemy is a kind of foe.
 type Enemy struct {
-	Name    string             `yaml:"name"`
-	Image   Picture            `yaml:"image"`
-	Scale   float64            `yaml:"scale"`
+	Name  string  `yaml:"name"`
+	Image Picture `yaml:"image"`
+	Scale float64 `yaml:"scale"`
+	// Army is the kind of army (campaign.clash.armies) its unit shows in a clash shown as
+	// units when it leads a troop (monsters for monsters).
+	Army    string             `yaml:"army"`
 	Stats   Stats              `yaml:"stats"`
 	Level   int                `yaml:"level"`
 	Exp     int                `yaml:"exp"`

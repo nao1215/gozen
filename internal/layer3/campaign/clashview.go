@@ -75,6 +75,9 @@ type Unit struct {
 	Actor   string // the general's actor ("" for a foe)
 	Enemy   string // the foe's enemy id ("" for a general)
 	Picture string
+	// Army is the kind of army the unit is shown as (a key of clash.armies; "" when the
+	// leader has none).
+	Army    string
 	Troops  float64
 	Max     float64
 	HP, MHP int
@@ -197,6 +200,7 @@ func shareUnits(db *data.DB, st *rpg.State, units []Unit, garrison float64) {
 func generalUnit(db *data.DB, st *rpg.State, id string) Unit {
 	c := db.Game.Campaign
 	u := Unit{Name: GeneralLabelName(db, id), Actor: id, might: c.Generals[id].Might, stats: map[string]float64{}, Skills: c.Generals[id].Skills}
+	u.Army = c.Generals[id].Army
 	u.Troops = data.GeneralTroops(db, st.Campaign(), id)
 	u.Max = u.Troops
 	if a := db.Actors[id]; a != nil {
@@ -244,7 +248,7 @@ func foeUnits(db *data.DB, st *rpg.State, target string) []Unit {
 func enemyUnit(db *data.DB, id string, n float64) Unit {
 	u := Unit{Name: id, Enemy: id, Troops: n, Max: n, stats: map[string]float64{}, Tactic: db.Game.Campaign.Clash.TacticIDs()[0], Skills: foeSkills(db, id)}
 	if e := db.Enemies[id]; e != nil {
-		u.Name, u.Picture = e.Name, e.Image.File
+		u.Name, u.Picture, u.Army = e.Name, e.Image.File, e.Army
 		u.MHP = e.Stats["mhp"]
 		u.HP = u.MHP
 		for _, s := range data.StatNames {
