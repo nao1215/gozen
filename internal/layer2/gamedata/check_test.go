@@ -95,7 +95,7 @@ func TestCheckMore(t *testing.T) {
 		{"made dungeon: flat with no picture", map[string]string{"data/z.yaml": strings.Replace(madeDungeon, `S: {name: Up}`, `S: {name: Up, flat: true}`, 1)}, `tiles.S.flat: a picture laid on the floor`},
 		{"made dungeon: darkness", map[string]string{"data/z.yaml": strings.Replace(madeDungeon, "      generate:", "      darkness: 1.5\n      generate:", 1)}, `want 0 to 1`},
 		// 4. open and dive
-		{"open: unknown screen", map[string]string{"data/z.yaml": `events: {e: {do: [{open: inventory}]}}`}, `want one of formation, skills, fusion, status, item, skill, equip, save, load, config, title, tactics, profiles (or a screen declared in game.yaml screens), not "inventory"`},
+		{"open: unknown screen", map[string]string{"data/z.yaml": `events: {e: {do: [{open: inventory}]}}`}, `want one of formation, skills, fusion, status, item, skill, equip, save, load, config, title, tactics, profiles, bestiary (or a screen declared in game.yaml screens), not "inventory"`},
 		{"dive: not a made dungeon", map[string]string{"data/z.yaml": `events: {e: {do: [{dive: vault}]}}`}, `vault is not a made dungeon`},
 		{"dive: unknown location", map[string]string{"data/z.yaml": `events: {e: {do: [{dive: nope}]}}`}, `unknown location "nope"`},
 		{"dive: bad floor", map[string]string{"data/z.yaml": strings.Replace(madeDungeon, `floor: "var.floor + 1"`, `floor: "vr.floor + 1"`, 1)}, `.floor: "vr.floor + 1" uses the unknown name "vr"`},

@@ -17,7 +17,7 @@ Codes are assigned one family at a time. A diagnostic without a code still exits
 
 | Codes | Exit | Meaning | Assigned |
 |:--|:--|:--|:--|
-| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 14 codes |
+| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 15 codes |
 | `GZN02xx` | 0 | warnings of a measurement or a record | not yet |
 | `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 11 codes |
 | `GZN12xx` | 1 | fonts and text layout | 1 codes |
@@ -149,6 +149,14 @@ An expression uses a function's name as a value.
 A built-in function (floor, max, len and the others) or a function of the game (rand, chance, pages) is written alone, not called, as in floor + 1. The expression fails when it is evaluated. floor is the floor's number only in generate's size, the count of generate.place and a roamer's count, appear, wait and every; elsewhere it is the function and the floor's number is var.floor.
 
 Fix: Call the function (floor(x)), or use the value you meant (var.floor).
+
+### GZN0115
+
+An encountered enemy has no bestiary lore.
+
+The monster book is enabled and a troop can include this enemy, but its lore field is empty.
+
+Fix: Add a short lore description to the enemy, or turn off ui.bestiary.
 
 ## GZN11xx
 

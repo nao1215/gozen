@@ -1,5 +1,6 @@
 enemies:
   drip_slime:
+    lore: "Drip Slimes collect beneath leaking pipes. They follow the steady rhythm of water through the halls."
     name: Drip Slime
     image: enemies/drip_slime.png
     stats: {mhp: 48, mmp: 0, atk: 11, def: 2, mat: 0, mdf: 1, agi: 4, luk: 1}
@@ -8,6 +9,7 @@ enemies:
     drops: [{item: tonic, chance: 0.1}]
     ai: [{use: drip}]
   pipe_rat:
+    lore: "Pipe Rats nest in warm drain tunnels. They search the old channels for scraps and lost gears."
     name: Pipe Rat
     image: enemies/pipe_rat.png
     stats: {mhp: 38, mmp: 0, atk: 11, def: 1, mat: 0, mdf: 0, agi: 11, luk: 2}
@@ -16,6 +18,7 @@ enemies:
     drops: [{item: old_gear, chance: 0.3}]
     ai: [{use: gnaw}]
   rust_crab:
+    lore: "Rust Crabs shelter near corroded gates. Their thick shells are stained by minerals in the water."
     name: Rust Crab
     image: enemies/rust_crab.png
     stats: {mhp: 110, mmp: 0, atk: 16, def: 7, mat: 0, mdf: 2, agi: 5, luk: 1}
@@ -27,6 +30,7 @@ enemies:
       - {use: pinch, when: "turn % 2 == 0", priority: 2}
       - {use: clang}
   brass_hound:
+    lore: "Brass Hounds patrol the machinery rooms. Their metal frames still respond to signals from the old works."
     name: Brass Hound
     image: enemies/brass_hound.png
     stats: {mhp: 120, mmp: 0, atk: 19, def: 7, mat: 0, mdf: 3, agi: 13, luk: 3}
@@ -36,6 +40,7 @@ enemies:
       - {use: lunge, when: "turn % 3 == 0", priority: 2}
       - {use: bite}
   brass_warden:
+    lore: "The Brass Warden protects the valve door. Its makers built it to keep the waterworks running safely."
     name: Brass Warden
     title: Valve Door Guardian
     image: enemies/brass_warden.png
@@ -48,6 +53,7 @@ enemies:
       - {use: slam, when: "turn % 3 == 0", priority: 2}
       - {use: crush}
   tollkeeper:
+    lore: "The Tollkeeper stands at the lower gate. Its records show every traveler who once passed through."
     name: Tollkeeper
     title: The Magistrate's Golem
     image: enemies/tollkeeper.png
@@ -61,6 +67,7 @@ enemies:
       - {use: toll_bell, when: "turn % 3 == 0", priority: 2}
       - {use: toll_strike}
   vance:
+    lore: "Odile Vance once managed the waterworks from the lower gate. She still keeps careful records of every passage."
     name: Odile Vance
     title: Magistrate of Waters
     image: enemies/vance.png
@@ -73,7 +80,399 @@ enemies:
       - {use: auction, when: "turn % 3 == 0", priority: 3}
       - {use: lien, when: "foes.with_marked == 0", priority: 2}
       - {use: coin_toss}
+  abyss_lord:
+    name: Abyss Lord
+    image: enemies/abyss_lord.png
+    lore: "Abyss Lords gather where old tunnels meet deep underground rivers. They guard the quiet pools and strike with dark currents."
+    stats: {mhp: 215, mmp: 0, atk: 33, def: 13, mat: 25, mdf: 12, agi: 16, luk: 5}
+
+    exp: 80
+    gold: 30
+    drops: [{item: old_gear, chance: 0.3}]
+    ai: [{use: bite}]
+  blast_beetle:
+    name: Blast Beetle
+    image: enemies/blast_beetle.png
+    lore: "Blast Beetles nest in warm cracks beneath the lower floors. Their hard shells store heat from the stones around them."
+    stats: {mhp: 227, mmp: 0, atk: 36, def: 15, mat: 27, mdf: 13, agi: 17, luk: 5}
+
+    resist: {ice: 1.5}
+    exp: 83
+    gold: 34
+    drops: [{item: tonic, chance: 0.15}]
+    ai: [{use: bite}]
+  crown_thief:
+    name: Crown Thief
+    image: enemies/crown_thief.png
+    lore: "Crown Thieves slip through forgotten halls and collect bright metal. They flee when their stolen treasures are at risk."
+    stats: {mhp: 239, mmp: 0, atk: 39, def: 17, mat: 29, mdf: 14, agi: 18, luk: 5}
+
+    exp: 86
+    gold: 38
+    drops: [{item: old_gear, chance: 0.15}]
+    ai: [{use: bite}]
+  crystal_dragon:
+    name: Crystal Dragon
+    image: enemies/crystal_dragon.png
+    lore: "Crystal Dragons circle the caverns where clear mineral spires grow. Their scales ring like glass when they move."
+    stats: {mhp: 251, mmp: 0, atk: 33, def: 13, mat: 31, mdf: 12, agi: 19, luk: 5}
+
+    resist: {thunder: 1.5}
+    exp: 89
+    gold: 42
+    drops: [{item: tonic, chance: 0.3}]
+    ai: [{use: bite}]
+  crystal_golem:
+    name: Crystal Golem
+    image: enemies/crystal_golem.png
+    lore: "Crystal Golems form around a single bright shard. They stand still until footsteps cross their cavern floor."
+    stats: {mhp: 215, mmp: 0, atk: 36, def: 15, mat: 25, mdf: 13, agi: 20, luk: 5}
+
+    resist: {thunder: 1.5}
+    exp: 92
+    gold: 46
+    drops: [{item: old_gear, chance: 0.15}]
+    ai: [{use: bite}]
+  cursed_doll:
+    name: Cursed Doll
+    image: enemies/cursed_doll.png
+    lore: "Cursed Dolls are found in sealed rooms left behind by earlier travelers. A faint light stirs inside their painted eyes."
+    stats: {mhp: 227, mmp: 0, atk: 39, def: 17, mat: 27, mdf: 14, agi: 16, luk: 5}
+
+    exp: 95
+    gold: 50
+    drops: [{item: tonic, chance: 0.15}]
+    ai: [{use: bite}]
+  dream_eater:
+    name: Dream Eater
+    image: enemies/dream_eater.png
+    lore: "Dream Eaters wander near the deepest resting places. They feed on drifting thoughts and leave a cool mist behind."
+    stats: {mhp: 239, mmp: 0, atk: 33, def: 13, mat: 29, mdf: 12, agi: 17, luk: 5}
+
+    exp: 98
+    gold: 54
+    drops: [{item: old_gear, chance: 0.3}]
+    ai: [{use: arc_bolt}]
+  dream_wisp:
+    name: Dream Wisp
+    image: enemies/dream_wisp.png
+    lore: "Dream Wisps appear above still water late at night. They lead travelers in circles unless approached with care."
+    stats: {mhp: 251, mmp: 0, atk: 36, def: 15, mat: 31, mdf: 13, agi: 18, luk: 5}
+
+    resist: {thunder: 1.5}
+    exp: 101
+    gold: 30
+    drops: [{item: tonic, chance: 0.15}]
+    ai: [{use: arc_bolt}]
+  frost_bat:
+    name: Frost Bat
+    image: enemies/frost_bat.png
+    lore: "Frost Bats roost in cold ceiling cracks. Their wings scatter tiny flakes of ice as they fly."
+    stats: {mhp: 215, mmp: 0, atk: 39, def: 17, mat: 25, mdf: 14, agi: 19, luk: 5}
+    resist: {thunder: 1.5}
+    exp: 104
+    gold: 34
+    drops: [{item: old_gear, chance: 0.15}]
+    ai: [{use: bite}]
+  frost_giant:
+    name: Frost Giant
+    image: enemies/frost_giant.png
+    lore: "Frost Giants keep watch on the oldest frozen passages. Their slow steps shake loose snow from the stone."
+    stats: {mhp: 227, mmp: 0, atk: 33, def: 13, mat: 27, mdf: 12, agi: 20, luk: 5}
+    resist: {ice: 0.5}
+    exp: 107
+    gold: 38
+    drops: [{item: tonic, chance: 0.3}]
+    ai: [{use: bite}]
+  frost_slime:
+    name: Frost Slime
+    image: enemies/frost_slime.png
+    lore: "Frost Slimes gather around frozen springs. Their clear bodies hold the chill of the water they came from."
+    stats: {mhp: 264, mmp: 0, atk: 41, def: 18, mat: 34, mdf: 15, agi: 18, luk: 5}
+    resist: {ice: 0.5}
+    exp: 140
+    gold: 52
+    drops: [{item: old_gear, chance: 0.15}]
+    ai: [{use: bite}]
+  frozen_king:
+    name: Frozen King
+    image: enemies/frozen_king.png
+    lore: "The Frozen King waits in a hall sealed by ice. Old banners nearby suggest this was once a place of ceremony."
+    stats: {mhp: 276, mmp: 0, atk: 44, def: 20, mat: 36, mdf: 16, agi: 19, luk: 5}
+    resist: {thunder: 1.5}
+    exp: 110
+    gold: 56
+    drops: [{item: tonic, chance: 0.15}]
+    ai: [{use: bite}]
+  frozen_knight:
+    name: Frozen Knight
+    image: enemies/frozen_knight.png
+    lore: "Frozen Knights patrol the halls around the icebound keep. Their armor is held together by frost and old vows."
+    stats: {mhp: 240, mmp: 0, atk: 38, def: 16, mat: 30, mdf: 14, agi: 20, luk: 5}
+    resist: {ice: 0.5}
+    exp: 113
+    gold: 60
+    drops: [{item: old_gear, chance: 0.3}]
+    ai: [{use: bite}]
+  ghost_soldier:
+    name: Ghost Soldier
+    image: enemies/ghost_soldier.png
+    lore: "Ghost Soldiers repeat a quiet patrol through abandoned corridors. They fade when the last echo of their march is gone."
+    stats: {mhp: 252, mmp: 0, atk: 41, def: 18, mat: 32, mdf: 15, agi: 21, luk: 5}
+
+    exp: 116
+    gold: 64
+    drops: [{item: tonic, chance: 0.15}]
+    ai: [{use: bite}]
+  gold_bat:
+    name: Gold Bat
+    image: enemies/gold_bat.png
+    lore: "Gold Bats hide in high mineral caves. Their bright wings reflect light and make them hard to follow."
+    stats: {mhp: 264, mmp: 0, atk: 44, def: 20, mat: 34, mdf: 16, agi: 22, luk: 5}
+
+    resist: {thunder: 1.5}
+    exp: 119
+    gold: 40
+    drops: [{item: old_gear, chance: 0.15}]
+    ai: [{use: bite}]
+  grave_reaper:
+    name: Grave Reaper
+    image: enemies/grave_reaper.png
+    lore: "Grave Reapers linger beside ancient stone markers. They keep the paths clear and seldom leave their post."
+    stats: {mhp: 276, mmp: 0, atk: 38, def: 16, mat: 36, mdf: 14, agi: 18, luk: 5}
+
+    exp: 122
+    gold: 44
+    drops: [{item: tonic, chance: 0.3}]
+    ai: [{use: bite}]
+  ice_lich:
+    name: Ice Lich
+    image: enemies/ice_lich.png
+    lore: "Ice Liches study the frozen runes in deep chambers. Their spells draw strength from the cold around them."
+    stats: {mhp: 240, mmp: 0, atk: 41, def: 18, mat: 30, mdf: 15, agi: 19, luk: 5}
+    resist: {thunder: 1.5}
+    exp: 125
+    gold: 48
+    drops: [{item: old_gear, chance: 0.15}]
+    ai: [{use: arc_bolt}]
+  ice_spider:
+    name: Ice Spider
+    image: enemies/ice_spider.png
+    lore: "Ice Spiders weave pale webs across narrow frozen routes. Their nests are often marked by a dusting of frost."
+    stats: {mhp: 252, mmp: 0, atk: 44, def: 20, mat: 32, mdf: 16, agi: 20, luk: 5}
+    resist: {ice: 0.5}
+    exp: 128
+    gold: 52
+    drops: [{item: tonic, chance: 0.15}]
+    ai: [{use: bite}]
+  ice_wolf:
+    name: Ice Wolf
+    image: enemies/ice_wolf.png
+    lore: "Ice Wolves travel in small packs along the snowbound passages. They follow scent trails left by warm travelers."
+    stats: {mhp: 264, mmp: 0, atk: 38, def: 16, mat: 34, mdf: 14, agi: 21, luk: 5}
+    resist: {ice: 0.5}
+    exp: 131
+    gold: 56
+    drops: [{item: old_gear, chance: 0.3}]
+    ai: [{use: bite}]
+  maneater:
+    name: Maneater
+    image: enemies/maneater.png
+    lore: "Maneaters grow in damp caverns where light rarely reaches. Their roots shift when nearby stones are disturbed."
+    stats: {mhp: 276, mmp: 0, atk: 41, def: 18, mat: 36, mdf: 15, agi: 22, luk: 5}
+
+    exp: 134
+    gold: 60
+    drops: [{item: tonic, chance: 0.15}]
+    ai: [{use: bite}]
+  mimic1:
+    name: Chest Mimic 1
+    image: enemies/mimic1.png
+    lore: "This small mimic waits in a forgotten chest. It copies the shape of old storage boxes to surprise passing explorers."
+    stats: {mhp: 240, mmp: 0, atk: 44, def: 20, mat: 30, mdf: 16, agi: 18, luk: 5}
+
+    exp: 137
+    gold: 64
+    drops: [{item: old_gear, chance: 0.15}]
+    ai: [{use: bite}]
+  mimic2:
+    name: Chest Mimic 2
+    image: enemies/mimic2.png
+    lore: "A mimic can remain still for days in a quiet room. Scratches around its lid reveal where it has moved."
+    stats: {mhp: 252, mmp: 0, atk: 38, def: 16, mat: 32, mdf: 14, agi: 19, luk: 5}
+
+    exp: 140
+    gold: 40
+    drops: [{item: tonic, chance: 0.3}]
+    ai: [{use: bite}]
+  mimic3:
+    name: Chest Mimic 3
+    image: enemies/mimic3.png
+    lore: "This mimic favors chests near old mine routes. It waits for the sound of footsteps before opening its jaws."
+    stats: {mhp: 264, mmp: 0, atk: 41, def: 18, mat: 34, mdf: 15, agi: 20, luk: 5}
+
+    exp: 110
+    gold: 44
+    drops: [{item: old_gear, chance: 0.15}]
+    ai: [{use: bite}]
+  mimic4:
+    name: Chest Mimic 4
+    image: enemies/mimic4.png
+    lore: "A mimic hides among supplies left in the lower halls. Dust on its surface helps it blend into the room."
+    stats: {mhp: 301, mmp: 0, atk: 49, def: 23, mat: 41, mdf: 18, agi: 23, luk: 5}
+
+    exp: 143
+    gold: 58
+    drops: [{item: tonic, chance: 0.15}]
+    ai: [{use: bite}]
+  mimic5:
+    name: Chest Mimic 5
+    image: enemies/mimic5.png
+    lore: "This large mimic has stayed near the deepest treasure rooms. Its heavy shell is covered in marks from many encounters."
+    stats: {mhp: 265, mmp: 0, atk: 43, def: 19, mat: 35, mdf: 16, agi: 24, luk: 5}
+
+    exp: 146
+    gold: 62
+    drops: [{item: old_gear, chance: 0.3}]
+    ai: [{use: bite}]
+  mine_rat:
+    name: Mine Rat
+    image: enemies/mine_rat.png
+    lore: "Mine Rats live in groups among abandoned rails and stone piles. They carry scraps back to their hidden nests."
+    stats: {mhp: 277, mmp: 0, atk: 46, def: 21, mat: 37, mdf: 17, agi: 20, luk: 5}
+
+    exp: 149
+    gold: 66
+    drops: [{item: tonic, chance: 0.15}]
+    ai: [{use: bite}]
+  mirror_shade:
+    name: Mirror Shade
+    image: enemies/mirror_shade.png
+    lore: "Mirror Shades gather in rooms with polished walls. They copy a traveler’s movements before stepping into view."
+    stats: {mhp: 289, mmp: 0, atk: 49, def: 23, mat: 39, mdf: 18, agi: 21, luk: 5}
+
+    resist: {thunder: 1.5}
+    exp: 152
+    gold: 70
+    drops: [{item: old_gear, chance: 0.15}]
+    ai: [{use: arc_bolt}]
+  nectar_moth:
+    name: Nectar Moth
+    image: enemies/nectar_moth.png
+    lore: "Nectar Moths drift toward the glowing fungi of the lower caverns. Their wings carry a faint golden dust."
+    stats: {mhp: 301, mmp: 0, atk: 43, def: 19, mat: 41, mdf: 16, agi: 22, luk: 5}
+
+    exp: 155
+    gold: 74
+    drops: [{item: tonic, chance: 0.3}]
+    ai: [{use: bite}]
+  nightmare_hound:
+    name: Nightmare Hound
+    image: enemies/nightmare_hound.png
+    lore: "Nightmare Hounds roam the dark paths beyond the old gates. Their keen hearing makes quiet travel difficult."
+    stats: {mhp: 265, mmp: 0, atk: 46, def: 21, mat: 35, mdf: 17, agi: 23, luk: 5}
+
+    exp: 158
+    gold: 50
+    drops: [{item: old_gear, chance: 0.15}]
+    ai: [{use: bite}]
+  snow_ape:
+    name: Snow Ape
+    image: enemies/snow_ape.png
+    lore: "Snow Apes make nests in sheltered icy ledges. They toss loose stones to warn others away from their territory."
+    stats: {mhp: 277, mmp: 0, atk: 49, def: 23, mat: 37, mdf: 18, agi: 24, luk: 5}
+    resist: {ice: 0.5}
+    exp: 161
+    gold: 54
+    drops: [{item: tonic, chance: 0.15}]
+    ai: [{use: bite}]
+  snow_witch:
+    name: Snow Witch
+    image: enemies/snow_witch.png
+    lore: "Snow Witches live in high, frozen chambers. They shape the falling snow into patterns that conceal their tracks."
+    stats: {mhp: 289, mmp: 0, atk: 43, def: 19, mat: 39, mdf: 16, agi: 20, luk: 5}
+    resist: {ice: 0.5}
+    exp: 164
+    gold: 58
+    drops: [{item: old_gear, chance: 0.3}]
+    ai: [{use: arc_bolt}]
+  spore_shroom:
+    name: Spore Shroom
+    image: enemies/spore_shroom.png
+    lore: "Spore Shrooms grow in clusters on damp stone. Their clouds of spores mark the air where they have spread."
+    stats: {mhp: 301, mmp: 0, atk: 46, def: 21, mat: 41, mdf: 17, agi: 21, luk: 5}
+
+    exp: 167
+    gold: 62
+    drops: [{item: tonic, chance: 0.15}]
+    ai: [{use: bite}]
+  steam_slime:
+    name: Steam Slime
+    image: enemies/steam_slime.png
+    lore: "Steam Slimes form around warm vents below the cold floors. Their bodies puff when the pressure changes."
+    stats: {mhp: 265, mmp: 0, atk: 49, def: 23, mat: 35, mdf: 18, agi: 22, luk: 5}
+
+    resist: {ice: 1.5}
+    exp: 170
+    gold: 66
+    drops: [{item: old_gear, chance: 0.15}]
+    ai: [{use: bite}]
+  succubus:
+    name: Succubus
+    image: enemies/succubus.png
+    lore: "The Succubus is a night-dwelling spirit of the old ruins. It watches over quiet halls and uses swift magic to keep intruders away."
+    stats: {mhp: 277, mmp: 0, atk: 43, def: 19, mat: 37, mdf: 16, agi: 23, luk: 5}
+
+    exp: 140
+    gold: 70
+    drops: [{item: tonic, chance: 0.3}]
+    ai: [{use: arc_bolt}]
+  whisper_imp:
+    name: Whisper Imp
+    image: enemies/whisper_imp.png
+    lore: "Whisper Imps nest behind cracked walls. They trade rumors in soft voices and vanish when a lantern turns their way."
+    stats: {mhp: 289, mmp: 0, atk: 46, def: 21, mat: 39, mdf: 17, agi: 24, luk: 5}
+
+    exp: 143
+    gold: 74
+    drops: [{item: old_gear, chance: 0.15}]
+    ai: [{use: bite}]
 troops:
+  abyss_lord_group: {members: [abyss_lord]}
+  blast_beetle_group: {members: [blast_beetle]}
+  crown_thief_group: {members: [crown_thief]}
+  crystal_dragon_group: {members: [crystal_dragon]}
+  crystal_golem_group: {members: [crystal_golem]}
+  cursed_doll_group: {members: [cursed_doll]}
+  dream_eater_group: {members: [dream_eater]}
+  dream_wisp_group: {members: [dream_wisp]}
+  frost_bat_group: {members: [frost_bat]}
+  frost_giant_group: {members: [frost_giant]}
+  frost_slime_group: {members: [frost_slime]}
+  frozen_king_group: {members: [frozen_king]}
+  frozen_knight_group: {members: [frozen_knight]}
+  ghost_soldier_group: {members: [ghost_soldier]}
+  gold_bat_group: {members: [gold_bat]}
+  grave_reaper_group: {members: [grave_reaper]}
+  ice_lich_group: {members: [ice_lich]}
+  ice_spider_group: {members: [ice_spider]}
+  ice_wolf_group: {members: [ice_wolf]}
+  maneater_group: {members: [maneater]}
+  mimic1_group: {members: [mimic1]}
+  mimic2_group: {members: [mimic2]}
+  mimic3_group: {members: [mimic3]}
+  mimic4_group: {members: [mimic4]}
+  mimic5_group: {members: [mimic5]}
+  mine_rat_group: {members: [mine_rat]}
+  mirror_shade_group: {members: [mirror_shade]}
+  nectar_moth_group: {members: [nectar_moth]}
+  nightmare_hound_group: {members: [nightmare_hound]}
+  snow_ape_group: {members: [snow_ape]}
+  snow_witch_group: {members: [snow_witch]}
+  spore_shroom_group: {members: [spore_shroom]}
+  steam_slime_group: {members: [steam_slime]}
+  succubus_group: {members: [succubus]}
+  whisper_imp_group: {members: [whisper_imp]}
   drips: {members: [drip_slime, drip_slime]}
   rats: {members: [pipe_rat, pipe_rat]}
   drip_and_rat: {members: [drip_slime, pipe_rat]}

@@ -6191,6 +6191,19 @@
           },
           "x-type": "integer"
         },
+        "lore": {
+          "description": "A short description shown in the monster book after the enemy has been encountered.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "name": {
           "description": "The enemy's name shown in battle.",
           "type": "string",
@@ -15474,6 +15487,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "[BattleFx](#battlefx)"
+        },
+        "bestiary": {
+          "description": "Show Monsters, the monster book, in the title and field menu. Off by default; under `--dev` the menus show it anyway. Needs schema version 4.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
         },
         "border": {
           "description": "The window border color.",

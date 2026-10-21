@@ -21,7 +21,7 @@ import (
 // The names an expression may use, by where it is written.
 var (
 	// FieldNames are known to the conditions of events, locations and the field music.
-	FieldNames = append([]string{"flag", "var", "gold", "party", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose"}, CampaignNames...)
+	FieldNames = append([]string{"flag", "var", "gold", "party", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose", "bestiary"}, CampaignNames...)
 	// BattleNames are known in battle: the AI, the troop events, the battle music.
 	BattleNames = append(slices.Clone(FieldNames), "turn", "self", "allies", "foes", "enemies", "result", "phase", "boss")
 	// EffectNames are known to the formulas of skills and items: a is the user, b the target.
@@ -290,6 +290,9 @@ func (db *DB) Check() []error {
 	}
 	if v := g.UI.Voice; v.Cut != nil || v.AutoWait != nil {
 		c.needsVersion("game.yaml ui.voice", "ui.voice", SchemaVersion4)
+	}
+	if g.UI.Bestiary {
+		c.needsVersion("game.yaml ui.bestiary", "ui.bestiary", SchemaVersion4)
 	}
 	if tp := g.UI.TalkPortrait; tp != (TalkPortrait{}) {
 		c.needsVersion("game.yaml ui.talk_portrait", "ui.talk_portrait", SchemaVersion3)
@@ -897,8 +900,27 @@ func (db *DB) Check() []error {
 	c.voiceWarnings()
 	c.languages()
 	c.flagWarnings()
+	c.bestiaryWarnings()
 	db.sceneWarns, db.sceneWarned = sortedDiagnostics(c.warns), true
 	return sortedDiagnostics(c.errs)
+}
+
+// bestiaryWarnings checks every enemy named by a troop when the game enables the book.
+func (c *checker) bestiaryWarnings() {
+	if !c.db.Game.UI.Bestiary {
+		return
+	}
+	seen := map[string]bool{}
+	for _, troop := range c.db.Troops {
+		for _, id := range troop.Members {
+			seen[id] = true
+		}
+	}
+	for id := range seen {
+		if e := c.db.Enemies[id]; e != nil && strings.TrimSpace(e.Lore) == "" {
+			c.warnf(diag.MissingBestiaryLore, "enemies."+id+".lore", "enemy %q appears in a troop but has no lore", id)
+		}
+	}
 }
 
 func (c *checker) flagSet(name, where string) {
@@ -1390,6 +1412,8 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 		case "open":
 			if cmd.Open == "profiles" && len(db.Profiles) == 0 {
 				c.errorf(diag.UnknownReference, w+".open", "open: profiles needs profiles in data/ (the character book is empty)")
+			} else if cmd.Open == "bestiary" && len(db.Enemies) == 0 {
+				c.errorf(diag.UnknownReference, w+".open", "open: bestiary needs enemies in data/ (the monster book is empty)")
 			} else if slices.Contains(db.Game.Screens, cmd.Open) {
 				c.needsVersion2(w+".open", "a declared screen")
 			} else if !slices.Contains(OpenScreens, cmd.Open) {
@@ -1604,6 +1628,8 @@ func typeOf(n string, names []string) *vtype {
 		return &vtype{kind: vDyn, desc: "ran", elem: objType("a run", map[string]*vtype{"count": tNum, "order": tNum}, nil), key: "event"}
 	case "chose":
 		return &vtype{kind: vDyn, desc: "chose", elem: tStr}
+	case "bestiary":
+		return &vtype{kind: vDyn, desc: "bestiary", elem: objType("a monster record", map[string]*vtype{"seen": tBool, "defeated": tNum}, nil), key: "enemy"}
 	case "completed", "moved":
 		return tBool
 	case "roamers":
@@ -1695,6 +1721,8 @@ func (c *checker) known(kind, id string) bool {
 		return c.db.States[id] != nil
 	case "event":
 		return c.db.Events[id] != nil
+	case "enemy":
+		return c.db.Enemies[id] != nil
 	case "region":
 		return c.db.Regions[id] != nil
 	case "faction":
@@ -1746,7 +1774,7 @@ func (c *checker) fields(where string, e Expr, names []string, over map[string]*
 // OpenScreens are the screens the open command can open: formation, the skill tree (skills),
 // stone fusion (fusion), out-of-battle tactics editing (tactics), and the character book (profiles).
 // status, item, skill, equip, save, load, config and title are single menu screens (not scattered across shops and inns).
-var OpenScreens = []string{"formation", "skills", "fusion", "status", "item", "skill", "equip", "save", "load", "config", "title", "tactics", "profiles"}
+var OpenScreens = []string{"formation", "skills", "fusion", "status", "item", "skill", "equip", "save", "load", "config", "title", "tactics", "profiles", "bestiary"}
 
 // tree checks a class's skill tree: node IDs (or skill IDs when absent) must not collide,
 // skill, stat and prerequisite nodes must exist, and prerequisites must not form a cycle.

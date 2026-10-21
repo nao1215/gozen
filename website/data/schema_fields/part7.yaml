@@ -21,6 +21,7 @@ TroopPick:
   when: "A condition for the troop to be eligible."
 UIStyle:
   _: "The colors and layout of the windows and message display."
+  bestiary: "Show Monsters, the monster book, in the title and field menu. Off by default; under `--dev` the menus show it anyway. Needs schema version 4."
   accent: "The accent color."
   backlog: "How many lines the backlog keeps. The default is 300."
   balloon: "The text height of speech balloons over people in a painted scene, as a fraction of the screen height, from 0.01 to 0.2. The default is 0.037; needs schema version 3."

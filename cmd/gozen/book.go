@@ -105,6 +105,30 @@ func (c *command) book(dir string) error {
 		p("| %s | %s | %d | %d | %d | %d | %d | %d | %d | %d | %s | %s | %s |\n", id, e.Name, s["mhp"], s["atk"], s["def"], s["mat"], s["mdf"], s["agi"],
 			e.Exp, e.Gold, rates(e.Resist), rates(e.SResist), boss)
 	}
+	p("\n## Monster book pages\n\n")
+	for _, id := range db.Ordered("enemies") {
+		e := db.Enemies[id]
+		if e == nil {
+			continue
+		}
+		p("### %s (%s)\n\n", e.Name, id)
+		if e.Lore != "" {
+			p("%s\n\n", e.Lore)
+		}
+		p("- Picture: `%s`\n- Stats: %s\n- Weaknesses and resistances: %s\n", e.Image.File, stats(e.Stats), rates(e.Resist))
+		var skills []string
+		for _, r := range e.AI.Rules {
+			if r.Use != "" {
+				skills = append(skills, r.Use)
+			}
+		}
+		p("- Skills: %s\n", listOrNone(skills))
+		var drops []string
+		for _, d := range e.Drops {
+			drops = append(drops, fmt.Sprintf("%s (%.0f%%)", d.Item, d.Chance*100))
+		}
+		p("- Drops: %s\n\n", listOrNone(drops))
+	}
 	p("%s", lang.T("\n## 敵の群れ\n\n"))
 	for _, id := range db.Ordered("troops") {
 		t := db.Troops[id]

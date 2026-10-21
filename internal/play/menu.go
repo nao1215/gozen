@@ -78,6 +78,13 @@ func newMenu(g *Game) *menu {
 	if g.profilesInMenus() {
 		items = slices.Insert(items, 6, listItem{label: lang.T("キャラクター"), id: "profiles"})
 	}
+	if g.bestiaryInMenus() {
+		at := 6
+		if g.profilesInMenus() {
+			at = 7
+		}
+		items = slices.Insert(items, at, listItem{label: "Monsters", id: "bestiary"})
+	}
 	items = append(head, items...)
 	m := &menu{tabs: newList(items, 36, 36, 250, len(items)), cmds: cmds}
 	return m
@@ -181,6 +188,13 @@ func (m *menu) update(g *Game) {
 		if m.tabs.items[m.tabs.sel].id == "profiles" {
 			g.push(newProfiles(g, nil))
 			return
+		}
+		if m.tabs.items[m.tabs.sel].id == "bestiary" {
+			g.push(newBestiary(g, nil))
+			return
+		}
+		if g.bestiaryInMenus() && sel > 6 {
+			sel--
 		}
 		if g.profilesInMenus() && sel > 6 {
 			sel--

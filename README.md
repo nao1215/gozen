@@ -124,6 +124,22 @@ Start the game with `--dev` and these keys work while you play.
 | F6: the character book, every page open: each character's profile, faces and relations | |
 | ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](docs/images/novel-characters.jpg) | |
 
+### Monster book
+
+Set `ui.bestiary: true` to offer the monster book. Each page opens as the party encounters that enemy; defeating it reveals its battle record.
+
+<!-- verify: parse the short enemy example lists the fields used by the monster book -->
+```yaml
+enemies:
+  succubus:
+    name: Succubus
+    image: enemies/succubus.png
+    lore: "A night-dwelling spirit of the old ruins, known for swift magic."
+    stats: {mhp: 420, mmp: 20, atk: 56, def: 24, mat: 45, mdf: 23, agi: 24, luk: 5}
+```
+
+F4 opens the monster book during `--dev` play.
+
 ## Install
 
 Go 1.26.10 or later:

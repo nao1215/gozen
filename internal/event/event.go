@@ -429,6 +429,13 @@ func (r *Runner) Answer(n int) {
 		r.afterPending = r.db.Events[r.db.Game.Battle.After] != nil
 		switch n {
 		case BattleWon:
+			if troop := r.db.Troops[c.Battle]; troop != nil {
+				for _, id := range troop.Members {
+					key := "bestiary." + id + ".defeated"
+					old, _ := expr.ToNumber(r.st.Vars[key])
+					r.st.Vars[key] = old + 1
+				}
+			}
 			r.push(c.OnWin)
 		case BattleLost:
 			if c.OnLose == nil {
@@ -706,6 +713,11 @@ func (r *Runner) run(c *data.Command) Request {
 		}
 	case "battle":
 		r.battle = c
+		if troop := r.db.Troops[c.Battle]; troop != nil {
+			for _, id := range troop.Members {
+				r.st.Vars["bestiary."+id+".seen"] = true
+			}
+		}
 		return Battle{Troop: c.Battle, CanLose: c.OnLose != nil, Fighters: c.Fighters, NoRetry: c.Retry != nil && !*c.Retry}
 	case "move":
 		atlas.Place(r.db, r.st, r.st.Location, c.Move, c.At)

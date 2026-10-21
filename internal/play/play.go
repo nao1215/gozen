@@ -721,6 +721,7 @@ func (g *Game) Update() error {
 		g.togglePanel()
 	}
 	g.bookKey()
+	g.bestiaryKey()
 	if g.panelModal() {
 		g.updatePanel()
 		g.traceInput()

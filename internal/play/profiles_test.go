@@ -90,8 +90,14 @@ func TestProfilesInMenus(t *testing.T) {
 			if got := slices.Contains(field, book); got != tt.want {
 				t.Errorf("field menu %v", field)
 			}
-			if tt.want && (title[3] != book || title[4] != settings || field[6] != book || field[7] != settings) {
-				t.Errorf("places: title %v, menu %v", title, field)
+			if tt.want {
+				if tt.dev {
+					if title[3] != book || title[4] != lang.T("Monsters") || title[5] != settings || field[6] != book || field[7] != lang.T("Monsters") || field[8] != settings {
+						t.Errorf("places: title %v, menu %v", title, field)
+					}
+				} else if title[3] != book || title[4] != settings || field[6] != book || field[7] != settings {
+					t.Errorf("places: title %v, menu %v", title, field)
+				}
 			}
 			buttons := g.novelButtons()
 			if got := slices.ContainsFunc(buttons, func(b novelButton) bool { return b.b == btnBook }); got != (tt.head != "") {

@@ -60,6 +60,9 @@ func TestBookListsEveryDefinitionOfTheGame(t *testing.T) {
 					t.Errorf("enemy %s is not in the book", id)
 				}
 			}
+			if len(db.Enemies) > 0 && (!strings.Contains(out, "## Monster book pages") || !strings.Contains(out, "- Picture: `")) {
+				t.Error("the enabled monster book has no pages in the book output")
+			}
 			for _, id := range db.Ordered("skills") {
 				if !strings.Contains(out, "| "+id+" | ") {
 					t.Errorf("skill %s is not in the book", id)

@@ -73,6 +73,11 @@ var (
 		Detail:  "Setting a party member's stats or level is for the development mode (--dev) and tests. The game skips it when played normally.",
 		Fix:     "Use a command the game keeps (an item, a class change, experience), or keep it in a development-only event.",
 	})
+	MissingBestiaryLore = register(115, "MissingBestiaryLore", Entry{
+		Summary: "an encountered enemy has no bestiary lore",
+		Detail:  "The monster book is enabled and a troop can include this enemy, but its lore field is empty.",
+		Fix:     "Add a short lore description to the enemy, or turn off ui.bestiary.",
+	})
 )
 
 // GZN11xx: the definitions of the game. The game does not load, and check

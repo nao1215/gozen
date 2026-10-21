@@ -482,6 +482,8 @@ type UIStyle struct {
 	// Profiles puts Characters, the character book, in the title, the field menu and the
 	// novel bar (ADR 0031). Under --dev the menus offer it anyway.
 	Profiles bool `yaml:"profiles"`
+	// Bestiary puts Monsters in the title and field menu. Under --dev it is offered automatically.
+	Bestiary bool `yaml:"bestiary"`
 	// Voice shapes how voices play: cut at the next line, auto waits for them
 	// (schema_version 4, ADR 0028).
 	Voice   VoiceStyle `yaml:"voice"`
@@ -1045,7 +1047,9 @@ type StateMsgs struct {
 
 // Enemy is a kind of foe.
 type Enemy struct {
-	Name  string  `yaml:"name"`
+	Name string `yaml:"name"`
+	// Lore is the short field description shown after the enemy has been seen.
+	Lore  string  `yaml:"lore"`
 	Image Picture `yaml:"image"`
 	Scale float64 `yaml:"scale"`
 	// Army is the kind of army (campaign.clash.armies) its unit shows in a clash shown as

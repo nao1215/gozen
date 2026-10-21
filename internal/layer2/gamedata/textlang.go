@@ -140,7 +140,7 @@ func (db *DB) nameFields() []*string {
 		out = append(out, &s.Name)
 	}
 	for _, e := range db.Enemies {
-		out = append(out, &e.Name)
+		out = append(out, &e.Name, &e.Lore)
 	}
 	for _, s := range db.Shops {
 		out = append(out, &s.Name, &s.Greeting)
@@ -232,6 +232,7 @@ func (db *DB) SourceTexts() []SourceText {
 	}
 	for _, id := range sorted(slices.Collect(maps.Keys(db.Enemies))) {
 		add("enemies."+id+".name", src(&db.Enemies[id].Name))
+		add("enemies."+id+".lore", src(&db.Enemies[id].Lore))
 	}
 	for _, id := range sorted(slices.Collect(maps.Keys(db.Shops))) {
 		s := db.Shops[id]

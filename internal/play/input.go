@@ -38,6 +38,7 @@ const (
 	btnLoad
 	btnPanel
 	btnBook
+	btnBestiary
 	numButtons
 
 	btnNone button = -1
@@ -69,7 +70,8 @@ var keys = [numButtons][]ebiten.Key{
 	btnPanel: {ebiten.KeyF8},
 	// F6 opens and closes the character book under --dev (ADR 0031), and for players
 	// when game.yaml sets ui.profiles.
-	btnBook: {ebiten.KeyF6},
+	btnBook:     {ebiten.KeyF6},
+	btnBestiary: {ebiten.KeyF4},
 }
 
 var (

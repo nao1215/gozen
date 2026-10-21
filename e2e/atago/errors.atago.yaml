@@ -591,6 +591,29 @@ scenarios:
       exit_code: 0
       stderr:
         contains: ['[GZN0114]', 'events.pay.do[0].gold: "floor + 1" uses the function floor as a value']
+- name: GZN0115 for an encounter enemy with no monster book lore
+  steps:
+  - fixture:
+      file: bestiary/game.yaml
+      content: "schema_version: 4\nid: bestiary\nstart: {location: room, party: [reader]}\nui: {bestiary: true}\n"
+  - fixture:
+      file: bestiary/assets/mote.png
+      content: "asset sentinel"
+  - fixture:
+      file: bestiary/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        enemies: {mote: {name: Mote, image: mote.png, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}}
+        troops: {lesson: {members: [mote]}}
+        locations: {room: {name: Room, encounters: {troops: [{troop: lesson}]}}}
+  - run:
+      command: gozen check --only structure bestiary
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: ['[GZN0115]', 'enemies.mote.lore: enemy "mote" appears in a troop but has no lore']
 - name: GZN1501 and GZN1502 for an output that exists or lies inside an input
   steps:
   - fixture:

@@ -232,6 +232,7 @@ github.com/nao1215/gozen/schema field Enemy.Gold
 github.com/nao1215/gozen/schema field Enemy.Hard
 github.com/nao1215/gozen/schema field Enemy.Image
 github.com/nao1215/gozen/schema field Enemy.Level
+github.com/nao1215/gozen/schema field Enemy.Lore
 github.com/nao1215/gozen/schema field Enemy.Name
 github.com/nao1215/gozen/schema field Enemy.Reactions
 github.com/nao1215/gozen/schema field Enemy.Resist

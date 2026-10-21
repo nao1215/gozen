@@ -1,4 +1,4 @@
-schema_version: 3
+schema_version: 4
 id: go-zen
 title: Go Zen
 subtitle: Every Line Walked
@@ -20,6 +20,7 @@ max_party: 4
 join_exp: party.avg_exp
 terms: {currency: G, level: Lv, hp: HP, mp: MP, exp: EXP}
 ui:
+  bestiary: true
   window: "#10303ce8"
   border: "#6fb7c4"
   text: "#f4f1e6"

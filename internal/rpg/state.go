@@ -321,8 +321,35 @@ func (e fieldEnv) Lookup(name string) (any, bool) {
 		return s.repairsView(), true
 	case "ran":
 		return ranView{s}, true
+	case "bestiary":
+		return bestiaryView{s}, true
 	case "chose":
 		return choseView{s}, true
+	}
+	return nil, false
+}
+
+type bestiaryView struct{ s *State }
+
+func (v bestiaryView) Field(id string) (any, bool) {
+	if v.s.DB.Enemies[id] == nil {
+		return nil, false
+	}
+	return bestiaryEnemyView{s: v.s, id: id}, true
+}
+
+type bestiaryEnemyView struct {
+	s  *State
+	id string
+}
+
+func (v bestiaryEnemyView) Field(name string) (any, bool) {
+	switch name {
+	case "seen":
+		return expr.Truthy(v.s.Vars["bestiary."+v.id+".seen"]), true
+	case "defeated":
+		n, _ := expr.ToNumber(v.s.Vars["bestiary."+v.id+".defeated"])
+		return n, true
 	}
 	return nil, false
 }

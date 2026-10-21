@@ -44,6 +44,7 @@ The recipes refer to a few IDs they do not define: the actor and class `walker`,
 | [Set the face icons](#set-the-face-icons) | `face_box`, `face_shade`, a doll's `icon` |
 | [Show event pictures and fill the gallery](#show-event-pictures-and-fill-the-gallery) | `image`, `gallery.cgs`, `gallery.scenes` |
 | [Keep a character book](#keep-a-character-book) | `profiles`, `ui.profiles`, `open: profiles` |
+| [Keep a monster book](#keep-a-monster-book) | `enemies.<id>.lore`, `ui.bestiary`, `bestiary.<id>.seen` |
 | [Play music for places, battles and moods](#play-music-for-places-battles-and-moods) | `music.songs`, `music`, `battle_music`, `mood` rules |
 | [Change the language and the engine's wording](#change-the-language-and-the-engines-wording) | `language`, `text`, `terms` |
 | [Offer the game in two languages](#offer-the-game-in-two-languages) | `written_in`, `languages`, `lang/<code>.yaml` |
@@ -1071,6 +1072,31 @@ events:
 ```
 
 `open: profiles` opens the book from an event, and a test reads `profile.mira.unlocked`. Reference: [Profile](/schema/#profile), [ProfileField](/schema/#profilefield), [ProfileRelation](/schema/#profilerelation), [UIStyle](/schema/#uistyle).
+
+## Keep a monster book
+
+Add `lore` to each enemy that can appear in an encounter and set `ui.bestiary: true`. Seeing an enemy in battle reveals its name, picture and lore; defeating it reveals its record and increments `bestiary.<id>.defeated`. Expressions can read `bestiary.<id>.seen` and `bestiary.<id>.defeated`. Under `--dev`, F4 opens every page.
+
+<!-- verify: parse the game setting shown by the following enemy example -->
+```yaml
+# game.yaml
+schema_version: 4
+ui:
+  bestiary: true
+```
+
+<!-- verify: parse the compact enemy definition focuses on the fields used by the book -->
+```yaml
+# data/enemies.yaml
+enemies:
+  mote:
+    name: Mote
+    image: enemies/mote.png
+    lore: "Motes drift through the old stone tunnels and gather near quiet water."
+    stats: {mhp: 42, mmp: 0, atk: 9, def: 2, mat: 0, mdf: 1, agi: 5, luk: 1}
+```
+
+Use `open: bestiary` to open the book from an event. `gozen check` warns with GZN0115 when an enemy named by a troop has no lore, and `gozen book` prints the enemy pages. Reference: [Enemy](/schema/#enemy), [UIStyle](/schema/#uistyle).
 
 ## Play music for places, battles and moods
 
