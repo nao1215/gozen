@@ -117,9 +117,12 @@ Start the game with `--dev` and these keys work while you play.
 
 `regions`, `factions` and `campaign` (schema version 5) make a war of regions over turns. A campaign can share a game with dungeons and towns: generals are the same actors, and `move` goes between them. From [Five Banners](examples/campaign), the campaign sample.
 
-| The war map | Measure it |
+| The war map | A clash of armies |
 |:--|:--|
-| ![the band with the week, the regions in the owners' colours, the window of a region and the generals](docs/images/campaign-map.jpg) | `gozen sim campaign game` plays 200 campaigns and prints the win rate, the turns, the regions each side held turn by turn, and the orders given. |
+| ![the picture map of the land with the regions in the owners' colours, the band with the week, the window of a region and the generals](docs/images/campaign-map.jpg) | ![two armies of soldiers lined up on the terrain, with the leaders' cards in a row below](docs/images/campaign-clash.jpg) |
+| A region's `area` and a point's `at` lay the regions on one picture of the land. | `clash.armies` gives each army kind its soldiers; each unit is a crowd that shrinks as it loses troops. |
+
+`gozen sim campaign game` plays 200 campaigns and prints the win rate, the turns, the regions each side held turn by turn, and the orders given.
 
 ## Install
 

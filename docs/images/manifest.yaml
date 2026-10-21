@@ -211,6 +211,10 @@ images:
     run: campaign
     shot: s-map
     jpeg: {width: 960, height: 540, quality: 3}
+  campaign-clash.jpg:
+    run: campaign
+    shot: s-clash
+    jpeg: {width: 960, height: 540, quality: 3}
   # The README's novel picture, beside the first one: a line, a choice, Back over the
   # choice, the same option again and Skip to the first line not read, about 10 seconds.
   novel.gif:

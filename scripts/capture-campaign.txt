@@ -2,7 +2,8 @@
 # Banners with no talk open (s-map, the still picture); then OK on Brookford lists its
 # orders, Attack opens the sortie screen, Hilde joins Corin and they march (ca####); the
 # clash of the two armies plays, then faster, and its table (cb####); the general's word
-# and Brookford in the Crown's colour (cc####).
+# and Brookford in the Crown's colour (cc####). s-clash is one frame of the clash, the
+# still picture of the armies.
 wait 90
 shot s-map
 wait 5
@@ -163,6 +164,7 @@ wait 6
 shot cb0029
 wait 6
 shot cb0030
+shot s-clash
 wait 6
 shot cb0031
 wait 6
