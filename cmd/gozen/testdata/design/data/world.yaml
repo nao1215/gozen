@@ -90,13 +90,14 @@ locations:
         floors:
           3:
             map: |
-              #######
-              #S..B.#
-              #######
+              #########
+              #S.G.B..#
+              #########
       tiles:
         S: {start: true}
         '>': {name: Stairs, do: [{dive: cave, floor: var.floor + 1}]}
         T: {name: Chest, once: true, after: '.', do: [{gold: 20}]}
+        G: {name: Gate, do: [{say: The gate creaks open.}]}
         B: {name: Warden, solid: "true", trigger: look, do: [{battle: warden}, {set: {flag.won: true}}, {clear: true}]}
 events:
   gift: {do: [{say: A small gift.}, {image: mote.png}, {gold: 10}]}

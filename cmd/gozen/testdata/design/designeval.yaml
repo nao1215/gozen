@@ -36,7 +36,8 @@ game:
   stairs_words: [Take]
   bosses: {3: warden}
   boss_done: flag.won
-  gate_tile: B
+  gate_tile: G
+  guard_tile: B
   gate_words: [Take]
   home_words: [Take]
   floor: var.floor
