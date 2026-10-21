@@ -256,14 +256,18 @@ var pages = map[string]clihelp.Page{
 			"formulas with rand() at its middle), else gives another order; random gives any order " +
 			"it can; ai plays the player's faction by its own ai rules. Prints the win rate, the turns " +
 			"the campaigns ended in, the regions each faction held turn by turn, the factions that " +
-			"fell and when, and the orders given. Campaign i uses the seed --seed + i.",
+			"fell and when, and the orders given. Campaign i uses the seed --seed + i. With " +
+			"--compare strategies|tactics, it plays every strategy or declared tactic on the same " +
+			"seeds and reports summary and per-region balance numbers; --format json writes the same report as JSON.",
 		Examples: []clihelp.Example{
 			{"measure 200 campaigns", "gozen sim campaign game"},
 			{"compare random play, as JSON", "gozen sim campaign game --as random -n 500 --format json"},
 			{"march every general with one tactic", "gozen sim campaign game --tactic guard"},
+			{"compare player strategies", "gozen sim campaign game --compare strategies"},
+			{"compare declared tactics as JSON", "gozen sim campaign game --compare tactics --format json"},
 		},
 		Groups: []clihelp.Group{
-			{Title: "Campaign", Flags: []string{"campaigns", "seed", "as", "tactic", "orders"}},
+			{Title: "Campaign", Flags: []string{"campaigns", "seed", "as", "tactic", "orders", "compare"}},
 			{Title: "Output", Flags: []string{"format"}},
 			general,
 		},

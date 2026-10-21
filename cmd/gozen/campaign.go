@@ -26,6 +26,7 @@ func (c *command) campaignCmd(args []string) error {
 	tactic := fs.String("tactic", "", "the tactic every general marches with in a clash shown as units (a march then takes the most generals it can); empty: each general's own")
 	maxOrders := fs.Int("orders", 2000, "orders a campaign may give before it is cut")
 	format := fs.String("format", "text", "the output: text, or json")
+	compare := fs.String("compare", "", "compare strategies or declared tactics on the same seeds")
 	if err := c.parse(fs, args); err != nil {
 		return err
 	}
@@ -40,6 +41,9 @@ func (c *command) campaignCmd(args []string) error {
 	}
 	if *format != "text" && *format != "json" {
 		return cli.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
+	}
+	if *compare != "" && *compare != "strategies" && *compare != "tactics" {
+		return cli.Invalid(diag.NotAChoice, "--compare is strategies or tactics, not %q", *compare)
 	}
 	fsys, err := gameFS(fs.Arg(0))
 	if err != nil {
@@ -58,7 +62,38 @@ func (c *command) campaignCmd(args []string) error {
 	if _, ok := db.Game.Campaign.Clash.DeclaredTactics()[*tactic]; *tactic != "" && !ok {
 		return cli.Invalid(diag.NotAChoice, "--tactic is %s, not %q", strings.Join(db.Game.Campaign.Clash.TacticIDs(), ", "), *tactic)
 	}
-	r, err := campaignsim.Run(context.Background(), db, campaignsim.Config{Runs: *n, Seed: *seed, As: *as, MaxOrder: *maxOrders, Tactic: *tactic})
+	cfg := campaignsim.Config{Runs: *n, Seed: *seed, As: *as, MaxOrder: *maxOrders, Tactic: *tactic}
+	if *compare != "" {
+		r, err := campaignsim.Compare(context.Background(), db, cfg, *compare)
+		if err != nil {
+			return err
+		}
+		if *format == "json" {
+			b, err := json.MarshalIndent(r, "", "  ")
+			if err != nil {
+				return err
+			}
+			c.out.Println(string(b))
+			return nil
+		}
+		c.out.Printf("%s: compare %s, %d campaigns per entry from seed %d\n", r.Game, r.Mode, r.Runs, r.Seed)
+		c.out.Println("entry     win rate   mean turns   mean regions held")
+		for _, row := range r.Rows {
+			c.out.Printf("%-9s %6.1f%% %11.1f %19.2f\n", row.Name, 100*row.WinRate, row.MeanTurns, row.MeanRegionsHeld)
+		}
+		c.out.Println("regions: mean changes | mean first taken turn | end holders | player win rate when held by turn")
+		for _, row := range r.Rows {
+			for _, reg := range row.Regions {
+				first := "-"
+				if reg.MeanFirstTakenTurn > 0 {
+					first = fmt.Sprintf("%.2f", reg.MeanFirstTakenTurn)
+				}
+				c.out.Printf("  %s/%s: %.2f | %s | %s | %s\n", row.Name, reg.Region, reg.MeanChanges, first, factionCounts(reg.EndHolders), turnRates(reg.PlayerWinRateByTurn))
+			}
+		}
+		return nil
+	}
+	r, err := campaignsim.Run(context.Background(), db, cfg)
 	if err != nil {
 		return err
 	}
@@ -97,6 +132,35 @@ func (c *command) campaignCmd(args []string) error {
 	c.out.Printf("orders: %s\n", strings.Join(orders, ", "))
 	c.out.Printf("marches: won %d, held %d\n", r.Marches["won"], r.Marches["held"])
 	return nil
+}
+
+func factionCounts(counts map[string]int) string {
+	ids := make([]string, 0, len(counts))
+	for id := range counts {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	parts := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id == "" {
+			id = "none"
+		}
+		parts = append(parts, fmt.Sprintf("%s=%d", id, counts[id]))
+	}
+	return strings.Join(parts, ",")
+}
+
+func turnRates(rates map[int]float64) string {
+	turns := make([]int, 0, len(rates))
+	for turn := range rates {
+		turns = append(turns, turn)
+	}
+	sort.Ints(turns)
+	parts := make([]string, 0, len(turns))
+	for _, turn := range turns {
+		parts = append(parts, fmt.Sprintf("%d=%.0f%%", turn, rates[turn]*100))
+	}
+	return strings.Join(parts, ",")
 }
 
 // histogram is "turn:count" pairs in the order of the turns.

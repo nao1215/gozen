@@ -34,7 +34,8 @@ type Config struct {
 	// Tactic is the tactic every general marches with in a clash shown as units ("": each
 	// general's own); a march then takes the most generals it can, the strongest first,
 	// and is counted as order:tactic.
-	Tactic string
+	Tactic         string
+	IncludeRegions bool
 }
 
 // Result is what the campaigns came to.
@@ -62,7 +63,37 @@ type Result struct {
 	// Orders is how many times each order was given, and end_turn how many turns ended.
 	Orders map[string]int `json:"orders"`
 	// Marches is how the player's marches went: won or held.
-	Marches map[string]int `json:"marches"`
+	Marches       map[string]int  `json:"marches"`
+	RegionMetrics []RegionBalance `json:"region_metrics,omitempty"`
+	meanTurns     float64
+}
+
+// Comparison is a set of measurements made with the same seed range for each variant.
+type Comparison struct {
+	Game string          `json:"game"`
+	Mode string          `json:"mode"`
+	Runs int             `json:"runs_per_variant"`
+	Seed uint64          `json:"seed"`
+	Rows []ComparisonRow `json:"results"`
+}
+
+// ComparisonRow is the summary for one strategy or tactic.
+type ComparisonRow struct {
+	Name            string          `json:"name"`
+	Won             int             `json:"won"`
+	WinRate         float64         `json:"win_rate"`
+	MeanTurns       float64         `json:"mean_turns"`
+	MeanRegionsHeld float64         `json:"mean_regions_held"`
+	Regions         []RegionBalance `json:"regions"`
+}
+
+// RegionBalance reports ownership changes and the player's outcomes for one region.
+type RegionBalance struct {
+	Region              string          `json:"region"`
+	MeanChanges         float64         `json:"mean_changes"`
+	MeanFirstTakenTurn  float64         `json:"mean_first_taken_turn,omitempty"`
+	EndHolders          map[string]int  `json:"end_holders"`
+	PlayerWinRateByTurn map[int]float64 `json:"player_win_rate_by_turn"`
 }
 
 // TurnRegions is the mean of regions held at the start of a turn.
@@ -93,6 +124,13 @@ func Run(ctx context.Context, db *data.DB, cfg Config) (*Result, error) {
 	r := &Result{Game: db.Game.ID, Runs: cfg.Runs, Seed: cfg.Seed, As: cfg.As, Orders: map[string]int{}, Marches: map[string]int{}, Tactic: cfg.Tactic}
 	r.Turns.Won, r.Turns.Lost = map[int]int{}, map[int]int{}
 	sums := map[int]map[string]float64{}
+	regionChanges := map[string]int{}
+	regionFirst := map[string]int{}
+	regionFirstRuns := map[string]int{}
+	regionEnds := map[string]map[string]int{}
+	regionHeldWins := map[string]map[int]int{}
+	regionHeldRuns := map[string]map[int]int{}
+	totalTurns := 0
 	reached := map[int]int{}
 	falls := map[string][]int{}
 	for i := range cfg.Runs {
@@ -116,6 +154,36 @@ func Run(ctx context.Context, db *data.DB, cfg Config) (*Result, error) {
 		for f, turn := range one.fell {
 			falls[f] = append(falls[f], turn)
 		}
+		totalTurns += one.turn
+		if cfg.IncludeRegions {
+			for region, changes := range one.regionChanges {
+				regionChanges[region] += changes
+			}
+			for region, turn := range one.regionFirst {
+				regionFirst[region] += turn
+				regionFirstRuns[region]++
+			}
+			for region, faction := range one.regionEnds {
+				if regionEnds[region] == nil {
+					regionEnds[region] = map[string]int{}
+				}
+				regionEnds[region][faction]++
+			}
+			for turn, owners := range one.regionHeld {
+				for region, owner := range owners {
+					if owner == db.Game.Campaign.Player {
+						if regionHeldRuns[region] == nil {
+							regionHeldRuns[region] = map[int]int{}
+							regionHeldWins[region] = map[int]int{}
+						}
+						regionHeldRuns[region][turn]++
+						if one.won {
+							regionHeldWins[region][turn]++
+						}
+					}
+				}
+			}
+		}
 		switch {
 		case one.won:
 			r.Won++
@@ -127,8 +195,21 @@ func Run(ctx context.Context, db *data.DB, cfg Config) (*Result, error) {
 			r.Cut++
 		}
 	}
+	if cfg.IncludeRegions {
+		for _, region := range data.RegionIDs(db) {
+			metric := RegionBalance{Region: region, MeanChanges: float64(regionChanges[region]) / float64(max(1, cfg.Runs)), EndHolders: regionEnds[region], PlayerWinRateByTurn: map[int]float64{}}
+			if regionFirstRuns[region] > 0 {
+				metric.MeanFirstTakenTurn = float64(regionFirst[region]) / float64(regionFirstRuns[region])
+			}
+			for turn, count := range regionHeldRuns[region] {
+				metric.PlayerWinRateByTurn[turn] = float64(regionHeldWins[region][turn]) / float64(count)
+			}
+			r.RegionMetrics = append(r.RegionMetrics, metric)
+		}
+	}
 	if cfg.Runs > 0 {
 		r.WinRate = float64(r.Won) / float64(cfg.Runs)
+		r.meanTurns = float64(totalTurns) / float64(cfg.Runs)
 	}
 	turns := make([]int, 0, len(sums))
 	for t := range sums {
@@ -158,12 +239,50 @@ func Run(ctx context.Context, db *data.DB, cfg Config) (*Result, error) {
 	return r, nil
 }
 
+// Compare measures every declared strategy or tactic on the same sequence of seeds.
+func Compare(ctx context.Context, db *data.DB, cfg Config, mode string) (*Comparison, error) {
+	if mode != "strategies" && mode != "tactics" {
+		return nil, fmt.Errorf("comparison mode is strategies or tactics, not %q", mode)
+	}
+	names := Strategies
+	if mode == "tactics" {
+		names = db.Game.Campaign.Clash.TacticIDs()
+	}
+	out := &Comparison{Game: db.Game.ID, Mode: mode, Runs: cfg.Runs, Seed: cfg.Seed}
+	for _, name := range names {
+		variant := cfg
+		variant.IncludeRegions = true
+		if mode == "strategies" {
+			variant.As = name
+		} else {
+			variant.Tactic = name
+		}
+		r, err := Run(ctx, db, variant)
+		if err != nil {
+			return nil, err
+		}
+		held := 0.0
+		for _, tr := range r.Regions {
+			held += tr.Mean[cfgPlayer(db)]
+		}
+		out.Rows = append(out.Rows, ComparisonRow{Name: name, Won: r.Won, WinRate: r.WinRate,
+			MeanTurns: r.meanTurns, MeanRegionsHeld: held / float64(max(1, len(r.Regions))), Regions: r.RegionMetrics})
+	}
+	return out, nil
+}
+
+func cfgPlayer(db *data.DB) string { return db.Game.Campaign.Player }
+
 // one is how one campaign went.
 type one struct {
-	won, lost bool
-	turn      int
-	held      map[int]map[string]int
-	fell      map[string]int
+	won, lost     bool
+	turn          int
+	held          map[int]map[string]int
+	fell          map[string]int
+	regionChanges map[string]int
+	regionFirst   map[string]int
+	regionEnds    map[string]string
+	regionHeld    map[int]map[string]string
 }
 
 func play(ctx context.Context, db *data.DB, cfg Config, seed uint64, r *Result) (*one, error) {
@@ -174,6 +293,10 @@ func play(ctx context.Context, db *data.DB, cfg Config, seed uint64, r *Result) 
 		return nil, err
 	}
 	o := &one{held: map[int]map[string]int{}, fell: map[string]int{}}
+	if cfg.IncludeRegions {
+		o.regionChanges, o.regionFirst = map[string]int{}, map[string]int{}
+		o.regionEnds, o.regionHeld = map[string]string{}, map[int]map[string]string{}
+	}
 	note := func() {
 		turn := data.Turn(db, st.Campaign())
 		if _, ok := o.held[turn]; ok {
@@ -188,6 +311,13 @@ func play(ctx context.Context, db *data.DB, cfg Config, seed uint64, r *Result) 
 			}
 		}
 		o.held[turn] = held
+		if cfg.IncludeRegions {
+			owners := map[string]string{}
+			for _, id := range data.RegionIDs(db) {
+				owners[id] = data.RegionOwner(db, st.Campaign(), id)
+			}
+			o.regionHeld[turn] = owners
+		}
 	}
 	note()
 	for range cfg.MaxOrder {
@@ -202,6 +332,14 @@ func play(ctx context.Context, db *data.DB, cfg Config, seed uint64, r *Result) 
 			}
 		}
 		r.Orders[id]++
+		turnBefore := data.Turn(db, st.Campaign())
+		var before map[string]string
+		if cfg.IncludeRegions {
+			before = map[string]string{}
+			for _, id := range data.RegionIDs(db) {
+				before[id] = data.RegionOwner(db, st.Campaign(), id)
+			}
+		}
 		if err := d.Run(ctx, []data.Command{cmd}); err != nil {
 			return nil, err
 		}
@@ -210,9 +348,27 @@ func play(ctx context.Context, db *data.DB, cfg Config, seed uint64, r *Result) 
 				r.Marches[res]++
 			}
 		}
+		if cfg.IncludeRegions {
+			for _, id := range data.RegionIDs(db) {
+				after := data.RegionOwner(db, st.Campaign(), id)
+				if after != before[id] {
+					o.regionChanges[id]++
+					if after != "" {
+						if _, seen := o.regionFirst[id]; !seen {
+						o.regionFirst[id] = turnBefore
+						}
+					}
+				}
+			}
+		}
 		note()
 	}
 	o.won, o.lost, o.turn = d.Cleared, d.Over, data.Turn(db, st.Campaign())
+	if cfg.IncludeRegions {
+		for _, id := range data.RegionIDs(db) {
+			o.regionEnds[id] = data.RegionOwner(db, st.Campaign(), id)
+		}
+	}
 	return o, nil
 }
 

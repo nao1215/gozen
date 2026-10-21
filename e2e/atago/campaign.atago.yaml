@@ -59,6 +59,18 @@ scenarios:
       stdout:
         contains: ['5 campaigns from seed 1 as random', 'regions held at the start of each turn']
   - run:
+      command: gozen sim campaign war -n 3 --compare strategies --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['"mode": "strategies"', '"mean_turns":', '"mean_regions_held":', '"mean_changes":', '"end_holders":', '"player_win_rate_by_turn":']
+  - run:
+      command: gozen sim campaign war -n 3 --compare tactics
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['compare tactics', 'mean regions held', 'mean first taken turn']
+  - run:
       command: gozen sim campaign war -n 5 --tactic guard --format json
   - assert:
       exit_code: 0
