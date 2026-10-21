@@ -10776,6 +10776,19 @@
           },
           "x-type": "string"
         },
+        "landmark_ground": {
+          "description": "How much the map settles the landmark onto the terrain (foot shadow, faded bottom edge, colours eased toward the ground), 0 to 1. Default 1.",
+          "type": "number",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
         "landmark_scale": {
           "description": "The landmark's width as a share of the map picture's, 0 to 1. Default 0.12.",
           "type": "number",

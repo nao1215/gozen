@@ -36,6 +36,7 @@ func TestCampaignErrors(t *testing.T) {
 		{"an unknown neighbour", "keep: {name: Keep, next: [field, hill]", "keep: {name: Keep, next: [field, hill, nowhere]", `unknown region "nowhere"`},
 		{"overlapping areas", "troops: 150}\n  keep: {name: Keep, next: [field, hill], owner: red, troops: 500, values: {wealth: 15}}", "troops: 150, area: [[0, 0], [10, 0], [10, 10], [0, 10]]}\n  keep: {name: Keep, next: [field, hill], owner: red, troops: 500, values: {wealth: 15}, area: [[5, 5], [15, 5], [15, 15]]}", "the area overlaps hill's"},
 		{"a landmark too wide", "hill: {name: Hill, next: [field, keep], troops: 150}", "hill: {name: Hill, next: [field, keep], troops: 150, landmark_scale: 2}", "landmark_scale is a share"},
+		{"a landmark grounded past 1", "hill: {name: Hill, next: [field, keep], troops: 150}", "hill: {name: Hill, next: [field, keep], troops: 150, landmark_ground: 1.5}", "landmark_ground is 0 to 1"},
 		{"an area of two points", "hill: {name: Hill, next: [field, keep], troops: 150}", "hill: {name: Hill, next: [field, keep], troops: 150, area: [[0, 0], [10, 0]]}", "a polygon needs three points"},
 		{"a region bordering itself", "hill: {name: Hill, next: [field, keep]", "hill: {name: Hill, next: [field, keep, hill]", "does not border itself"},
 		{"an unknown owner", "owner: red, troops: 500", "owner: rde, troops: 500", `unknown faction "rde"`},

@@ -181,3 +181,4 @@ Region:
   area: "The region's shape on the campaign map's picture, its pixels as [[x, y], ...] (three points or more): the map fills it in the owner's colour and draws its border, and a click inside chooses it. Areas may share borders but not overlap. Without it the region shows as its point's flag."
   landmark: "A picture under assets/ (cut out) the campaign map stands on the region's point: its city, fortress or village, with the owner's flag beside it; darkened with smoke while the region was fought over this turn or the last."
   landmark_scale: "The landmark's width as a share of the map picture's, 0 to 1. Default 0.12."
+  landmark_ground: "How much the map settles the landmark onto the terrain (foot shadow, faded bottom edge, colours eased toward the ground), 0 to 1. Default 1."

@@ -2,6 +2,7 @@ package play
 
 import (
 	"fmt"
+	"image"
 	"image/color"
 	"math"
 
@@ -186,6 +187,14 @@ func (s *atlasScene) drawLandmark(g *Game, dst *ebiten.Image, p mapPoint, x, y, 
 	turn := float64(data.Turn(g.db, cs))
 	f := data.Fought(cs, p.id)
 	ravaged := f > 0 && f >= turn-1
+	ground := 1.0
+	if r.LandmarkGround != nil {
+		ground = *r.LandmarkGround
+	}
+	if ground > 0 {
+		img = s.settled(g, p.id, r.Landmark, img, x, y, mapW, ground)
+		drawFootShadow(dst, x+w*0.04, y+h*0.15-w*0.02, w, ground)
+	}
 	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
 	op.GeoM.Scale(w/float64(b.Dx()), h/float64(b.Dy()))
 	op.GeoM.Translate(x-w/2, y-h*0.85)
@@ -202,7 +211,7 @@ func (s *atlasScene) drawLandmark(g *Game, dst *ebiten.Image, p mapPoint, x, y, 
 			gfx.FillCircle(dst, float32(sx), float32(sy), float32(8+ph*14), color.NRGBA{0x50, 0x48, 0x44, uint8(150 * (1 - ph))}, true)
 		}
 	}
-	s.drawRegionMarker(g, dst, p, x+w*0.42, y-h*0.05, math.Max(36, h*0.45))
+	s.drawRegionMarker(g, dst, p, x+w*0.36, y+h*0.08, math.Max(36, h*0.45))
 	return plateBox{x: x - w/2, y: y - h*0.85, w: w*0.92 + h*0.3, h: h}, true
 }
 
@@ -318,4 +327,117 @@ func (s *atlasScene) drawGenerals(g *Game, dst *ebiten.Image, sw, sh float64) {
 		}
 		gfx.DrawText(dst, troops, cx, y+24+face, sizeS*0.85, withAlpha(g.th.text, alpha))
 	}
+}
+
+// shadowBlob is a soft round shadow (opaque at the centre, clear at the rim), stretched
+// into an ellipse under a landmark's foot.
+var shadowBlob = func() *ebiten.Image {
+	const n = 64
+	pix := make([]byte, n*n*4)
+	for yy := range n {
+		for xx := range n {
+			dx, dy := (float64(xx)+0.5-n/2)/(n/2), (float64(yy)+0.5-n/2)/(n/2)
+			d := math.Sqrt(dx*dx + dy*dy)
+			a := 1 - d
+			if a < 0 {
+				a = 0
+			}
+			a = a * a * (3 - 2*a) // smoothstep
+			i := (yy*n + xx) * 4
+			pix[i], pix[i+1], pix[i+2], pix[i+3] = 0, 0, 0, byte(a*255)
+		}
+	}
+	img := ebiten.NewImage(n, n)
+	img.WritePixels(pix)
+	return img
+}()
+
+// drawFootShadow lays a soft ellipse shadow of a landmark w wide centred on (cx, cy), the
+// map's light coming from the upper left so it leans a little to the lower right.
+func drawFootShadow(dst *ebiten.Image, cx, cy, w, ground float64) {
+	sw, sh := w*1.05, w*0.26
+	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+	op.GeoM.Scale(sw/64, sh/64)
+	op.GeoM.Translate(cx-sw/2, cy-sh/2)
+	op.ColorScale.ScaleAlpha(float32(0.55 * ground))
+	gfx.DrawImage(dst, shadowBlob, op)
+}
+
+// settled returns the landmark's picture drawn into its place: its bottom edge faded out,
+// its colours drawn toward the average colour of the terrain around (x, y), and its
+// saturation eased by ground (0 to 1). It reads the map's pixels once and keeps the result.
+func (s *atlasScene) settled(g *Game, id, file string, img *ebiten.Image, x, y, mapW, ground float64) *ebiten.Image {
+	key := id + "|" + file + fmt.Sprintf("|%g", ground)
+	if e, ok := s.ground[key]; ok {
+		return e
+	}
+	if s.ground == nil {
+		s.ground = map[string]*ebiten.Image{}
+	}
+	b := img.Bounds()
+	pix := make([]byte, 4*b.Dx()*b.Dy())
+	img.ReadPixels(pix)
+	tr, tg, tb := 0.5, 0.5, 0.5
+	if m := g.pics.get(s.pic); m != nil && m.Bounds().Dx() > 0 {
+		// the map's pixels under the landmark: sample the ring of ground around its point
+		scale := float64(m.Bounds().Dx()) / mapW
+		cx, cy, rad := int(x*scale), int(y*scale), int(mapW*0.05*scale)
+		r := image.Rect(cx-rad, cy-rad, cx+rad, cy+rad).Intersect(m.Bounds())
+		if !r.Empty() {
+			mp := make([]byte, 4*r.Dx()*r.Dy())
+			m.SubImage(r).(*ebiten.Image).ReadPixels(mp)
+			var sr, sg, sb float64
+			for i := 0; i+3 < len(mp); i += 4 {
+				sr += float64(mp[i])
+				sg += float64(mp[i+1])
+				sb += float64(mp[i+2])
+			}
+			n := float64(len(mp) / 4)
+			tr, tg, tb = sr/n/255, sg/n/255, sb/n/255
+		}
+	}
+	tl := 0.299*tr + 0.587*tg + 0.114*tb
+	if tl < 0.05 {
+		tl = 0.05
+	}
+	k := 0.4 * ground
+	// the tint keeps the ground's hue; the brightness eases toward it, never below 0.8
+	bright := math.Max(0.8, 1+(tl/0.5-1)*k)
+	fade := int(float64(b.Dy()) * 0.07)
+	for yy := 0; yy < b.Dy(); yy++ {
+		fa := 1.0
+		if d := b.Dy() - 1 - yy; d < fade {
+			fa = float64(d) / float64(fade)
+			fa = fa * fa * (3 - 2*fa)
+			fa = 0.15 + 0.85*fa
+		}
+		for xx := 0; xx < b.Dx(); xx++ {
+			i := (yy*b.Dx() + xx) * 4
+			a := float64(pix[i+3]) / 255
+			if a == 0 {
+				continue
+			}
+			// the picture is premultiplied: work on straight colour
+			r, gg, bb := float64(pix[i])/255/a, float64(pix[i+1])/255/a, float64(pix[i+2])/255/a
+			l := 0.299*r + 0.587*gg + 0.114*bb
+			sat := 1 - 0.35*ground // eased saturation
+			r, gg, bb = l+(r-l)*sat, l+(gg-l)*sat, l+(bb-l)*sat
+			r = r*(1-k) + r*(tr/tl)*k
+			gg = gg*(1-k) + gg*(tg/tl)*k
+			bb = bb*(1-k) + bb*(tb/tl)*k
+			a *= fa
+			pix[i] = clampByte(r * bright * a)
+			pix[i+1] = clampByte(gg * bright * a)
+			pix[i+2] = clampByte(bb * bright * a)
+			pix[i+3] = clampByte(a)
+		}
+	}
+	out := ebiten.NewImage(b.Dx(), b.Dy())
+	out.WritePixels(pix)
+	s.ground[key] = out
+	return out
+}
+
+func clampByte(v float64) byte {
+	return byte(math.Max(0, math.Min(1, v)) * 255)
 }

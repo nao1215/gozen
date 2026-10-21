@@ -55,6 +55,11 @@ type Region struct {
 	// of the map picture's (0.12 when 0).
 	Landmark      string  `yaml:"landmark"`
 	LandmarkScale float64 `yaml:"landmark_scale"`
+	// LandmarkGround (0 to 1, 1 when absent) is how much the map settles the landmark
+	// onto the terrain: a soft shadow at its foot leaning away from the light, a faded
+	// bottom edge, and its colours drawn toward the ground it stands on. 0 draws the
+	// picture as it is.
+	LandmarkGround *float64 `yaml:"landmark_ground"`
 }
 
 // Faction is a side of a campaign: one is the player's (campaign.player), the others move
@@ -486,6 +491,9 @@ func (c *checker) campaign() {
 		r := db.Regions[id]
 		if r.Landmark != "" {
 			c.picture("regions."+id+".landmark", Picture{File: r.Landmark})
+		}
+		if r.LandmarkGround != nil && (*r.LandmarkGround < 0 || *r.LandmarkGround > 1) {
+			c.errorf(diag.OutOfRange, "regions."+id+".landmark_ground", "landmark_ground is 0 to 1 (1 when absent), not %g", *r.LandmarkGround)
 		}
 		if r.LandmarkScale < 0 || r.LandmarkScale > 1 {
 			c.errorf(diag.OutOfRange, "regions."+id+".landmark_scale", "landmark_scale is a share of the map's width, 0 (0.12) to 1, not %g", r.LandmarkScale)

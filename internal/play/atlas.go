@@ -70,6 +70,7 @@ type atlasScene struct {
 	leader  dollSpec // the token's doll when the map has no token picture
 	spot    string   // the spot last written to the trace
 	boxes   []plateBox
+	ground  map[string]*ebiten.Image // landmarks settled onto their terrain, by region
 	// warChosen: a campaign's map has chosen its first region
 	warChosen bool
 
