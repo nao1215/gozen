@@ -123,6 +123,11 @@ var (
 		Detail:  "The directory given is not a game directory: it does not exist, cannot be read, or has no game.yaml.",
 		Fix:     "Pass the directory that holds game.yaml, data/ and assets/.",
 	})
+	ThemeMissing = register(1111, "ThemeMissing", Entry{
+		Summary: "a dungeon theme is named but its pictures are not in the game",
+		Detail:  "A dungeon or one of its looks says theme: <name>, but assets/dungeon/themes/<name>/ lacks wall.jpg, floor.jpg, ceiling.jpg, door.jpg or theme.yaml. The theme's pictures are not part of the game until they are copied in.",
+		Fix:     "Run gozen theme add <name> <game-dir> (gozen theme list shows the names), or put your own folder of that name there.",
+	})
 )
 
 // GZN12xx: fonts and text layout.

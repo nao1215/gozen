@@ -116,6 +116,7 @@ Dungeon:
   no_map: "If true, the corner map is not shown."
   pictures: "Replacements for tile pictures, mapping an original file to a substitute."
   roamers: "Strong foes that walk the generated floor. Meeting one starts its battle, and once beaten it is gone."
+  theme: "A theme of pictures and colors from assets/dungeon/themes/, such as `cave`. It fills the walls, door, floor, ceiling and their colors that are not written here. Add one to the game with `gozen theme add`."
   tiles: "The meaning of each map character, keyed by that character."
   walked: "Commands that run on arriving at the start of a fully explored floor, for example offering to jump to the down stairs."
   wall: "The picture used for walls."
@@ -133,6 +134,7 @@ DungeonLook:
   music: "The song while this look applies. The location's song is used when omitted."
   no_map: "If true, the corner map is hidden while this look applies, for example on a dark floor."
   pictures: "Tile picture replacements while this look applies, layered on the dungeon's own."
+  theme: "A theme for this look. It fills the walls, door, floor, ceiling and colors that the look does not write itself, in place of the dungeon's theme."
   wall: "The wall picture for this look."
   when: "An expression that decides when this look applies."
 Effect:

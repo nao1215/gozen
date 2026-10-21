@@ -296,3 +296,6 @@ static:
   gozen-ogp.png:
     source: the dark logo and a one-line description on a dark 1280x640 card (the social preview), rendered from SVG and HTML
     license: MIT; the text is set in Quicksand and Noto Sans (SIL Open Font License 1.1), see ASSETS.md
+  dungeon-themes.jpg:
+    source: one corridor of the Go Zen sample (floor B1) shown in each of the five dungeon themes, taken one by one with the game binary under Xvfb after gozen theme add and a theme key in the dungeon, joined into one sheet of 640x360 cells
+    license: CC BY 4.0 (the theme pictures, see ASSETS.md); the interface drawn in it is the Go Zen sample (CC BY 4.0 too)

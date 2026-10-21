@@ -205,6 +205,7 @@ location=trail battles=1 wins=1 gold=3
 | `book` | the whole game as Markdown |
 | `pack release`, `pack trial` | approved pictures only; a demo |
 | `art prompt`, `art mosaic`, `art fetch`, `art faces`, `art puppet` | image prompts; pixelation; models; balloon faces; moving portraits |
+| `theme add`, `theme list` | copy a dungeon theme (walls, floor, ceiling, door) into a game; list the themes |
 | `version`, `help` | the version; a command's help, or a diagnostic code |
 
 `gozen help <command>` shows options and examples. `gozen help GZN1101` explains a code. [atago](https://github.com/nao1215/atago) tests every command end to end.
