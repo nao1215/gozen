@@ -21,7 +21,9 @@ type modTimer interface {
 func TestStoresRefuseUnsafeNames(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "saves")
 	for kind, st := range map[string]gozen.Store{"dir": gozen.DirStore(dir), "mem": gozen.MemStore()} {
-		for _, bad := range []string{"", ".", "..", "../x", "a/b", `a\b`, "/abs", "a//b", "セーブ/1"} {
+		// A name that starts with a dot is a hidden file, which DirStore.List leaves out (and the
+		// temporary files of a write are such files): neither store takes one.
+		for _, bad := range []string{"", ".", "..", "../x", "a/b", `a\b`, "/abs", "a//b", "セーブ/1", ".hidden", ".save-1.tmp"} {
 			if _, err := st.Read(bad); !errors.Is(err, gozen.ErrInvalid) {
 				t.Errorf("%s Read(%q): %v", kind, bad, err)
 			}

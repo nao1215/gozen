@@ -17,6 +17,9 @@ import (
 // Store keeps saves by name. A session's saves are written one at a time; a Store does
 // not guard one place shared by several processes.
 type Store interface {
+	// A save's name is one plain file name that does not start with a dot; another is an
+	// error that is ErrInvalid.
+	//
 	// Read returns the save; a missing one is an error that is fs.ErrNotExist.
 	Read(name string) ([]byte, error)
 	// Write replaces the save whole: a failed write keeps the old one.
@@ -27,8 +30,10 @@ type Store interface {
 	Remove(name string) error
 }
 
+// validName accepts one plain file name. A name that starts with a dot is refused: it would
+// be a hidden file, which DirStore.List leaves out, as it does the temporary files of a write.
 func validName(name string) error {
-	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, `/\`) || !fs.ValidPath(name) {
+	if name == "" || strings.HasPrefix(name, ".") || strings.ContainsAny(name, `/\`) || !fs.ValidPath(name) {
 		return fmt.Errorf("%w: save name %q", ErrInvalid, name)
 	}
 	return nil
