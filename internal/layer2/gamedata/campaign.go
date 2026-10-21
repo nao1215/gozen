@@ -488,6 +488,9 @@ func (c *checker) campaignWarnings() {
 			c.warnf(diag.Shape, "factions."+f, "%s borders no region of another side: it can neither march nor be marched on", f)
 		}
 	}
+	if l := db.Locations[cp.Location]; l != nil && l.Map != nil {
+		c.campaignMapWarnings(l.Map)
+	}
 	env := CampaignEnv(db, CampaignState{JoinedIDs: db.Game.Start.Party})
 	for _, end := range []struct {
 		name string
@@ -592,4 +595,35 @@ func MustExpr(src string) Expr {
 		panic(fmt.Sprintf("gamedata: %q: %v", src, err))
 	}
 	return Expr{p}
+}
+
+// campaignMapWarnings warns when the campaign's map and the regions disagree: a region
+// without a point named like it (the screen cannot show it), or a road between two regions
+// that do not border each other, or two neighbours without a road.
+func (c *checker) campaignMapWarnings(a *Atlas) {
+	db := c.db
+	w := "locations." + db.Game.Campaign.Location + ".map"
+	for _, id := range RegionIDs(db) {
+		if a.Points[id] == nil {
+			c.warnf(diag.Shape, w+".points", "region %s has no point on the campaign's map (name a point %s)", id, id)
+		}
+	}
+	road := map[[2]string]bool{}
+	for i, r := range a.Roads {
+		if len(r.Between) != 2 || db.Regions[r.Between[0]] == nil || db.Regions[r.Between[1]] == nil {
+			continue
+		}
+		x, y := r.Between[0], r.Between[1]
+		road[[2]string{x, y}], road[[2]string{y, x}] = true, true
+		if !slices.Contains(db.Regions[x].Next, y) && !slices.Contains(db.Regions[y].Next, x) {
+			c.warnf(diag.Shape, fmt.Sprintf("%s.roads[%d]", w, i), "a road joins %s and %s, which do not border each other (next)", x, y)
+		}
+	}
+	for _, id := range RegionIDs(db) {
+		for _, n := range db.Regions[id].Next {
+			if id < n && a.Points[id] != nil && a.Points[n] != nil && !road[[2]string{id, n}] {
+				c.warnf(diag.Shape, "regions."+id+".next", "%s borders %s, but the campaign's map has no road between them", id, n)
+			}
+		}
+	}
 }

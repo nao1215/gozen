@@ -128,7 +128,17 @@ func Give(db *data.DB, st *rpg.State, o *data.Order, general, target string) []s
 	}
 	c := db.Game.Campaign
 	troops := data.GeneralTroops(db, st.Campaign(), general)
-	a := expr.Map{"troops": troops, "might": c.Generals[general].Might, "faction": c.Player, "general": general, "from": ""}
+	a := expr.Map{"troops": troops, "might": c.Generals[general].Might, "faction": c.Player, "general": general, "from": "", "level": 0.0}
+	// The general is the actor of the dungeon and the battles: the same level and stats.
+	for _, n := range data.StatNames {
+		a[n] = 0.0
+	}
+	if act := st.Actors[general]; act != nil {
+		a["level"] = float64(act.Level)
+		for _, n := range data.StatNames {
+			a[n] = float64(act.Stat(n))
+		}
+	}
 	won, left, held, power, defense := clash(db, st, a, target)
 	st.Vars[data.GeneralVar(general, "acted")] = 1.0
 	name := GeneralLabelName(db, general)
@@ -294,7 +304,10 @@ func march(db *data.DB, st *rpg.State, f string, r *data.FactionRule) string {
 	}
 	sent := math.Floor(data.Garrison(db, st.Campaign(), best.s) * send)
 	st.Vars[data.RegionVar(best.s, "troops")] = data.Garrison(db, st.Campaign(), best.s) - sent
-	a := expr.Map{"troops": sent, "might": 0.0, "faction": f, "general": "", "from": best.s}
+	a := expr.Map{"troops": sent, "might": 0.0, "faction": f, "general": "", "from": best.s, "level": 0.0}
+	for _, n := range data.StatNames {
+		a[n] = 0.0
+	}
 	won, left, held, _, _ := clash(db, st, a, best.t)
 	if won {
 		take(st, best.t, f, left)

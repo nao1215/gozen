@@ -90,6 +90,15 @@ func (VisualEffect) isEffect() {}
 func (StandEffect) isEffect()  {}
 func (VoiceEffect) isEffect()  {}
 
+// CampaignEffect tells that a campaign's order was given (Kind order: its id, general,
+// target and result) or that a turn ended (Kind end_turn: the turn that begins).
+type CampaignEffect struct {
+	Kind, Order, General, Target, Result string
+	Turn                                 int
+}
+
+func (CampaignEffect) isEffect() {}
+
 // VoiceEffect is the voice of the line that comes next: File under assets/, Who the speaker.
 type VoiceEffect struct{ File, Who string }
 

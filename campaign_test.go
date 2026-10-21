@@ -192,3 +192,49 @@ func TestCampaignSaveRestore(t *testing.T) {
 		}
 	}
 }
+
+// cave is a small dungeon beside the campaign: the game is an RPG and a campaign at once.
+const cave = `
+locations:
+  cave:
+    name: Cave
+    dungeon:
+      wall: x.png
+      floor: "#b4c2c6"
+      map: |
+        #####
+        #S..#
+        #####
+      tiles:
+        S: {start: true, facing: east}
+`
+
+// TestCampaignWithDungeon: a game with a dungeon and a campaign goes between them with
+// move, and they share the state: the gold and the experience won in a battle, the flags,
+// and the general's stats, which a march reads as a.atk.
+func TestCampaignWithDungeon(t *testing.T) {
+	game := testgame.CampaignGame + "  \n"
+	game = strings.Replace(game, "  generals: {scout:", "  clash: {power: \"a.troops + a.atk * 100\"}\n  generals: {scout:", 1)
+	g := campaignGame(t, map[string]string{"game.yaml": game, "data/cave.yaml": cave})
+	s := session(t, g, gozen.Config{Seed: 2, Dev: true})
+	before := query[float64](t, s, "actor.scout.atk")
+	do(t, s, "- battle: one\n- set: {flag.ghost: true}\n- move: cave\n")
+	if query[string](t, s, "location") != "cave" || query[string](t, s, "region.home.owner") != "blue" {
+		t.Fatal("the campaign's state is not there in the dungeon")
+	}
+	gold, exp := query[float64](t, s, "gold"), query[float64](t, s, "actor.scout.exp")
+	if gold <= 100 || exp <= 0 {
+		t.Fatalf("the battle gave gold %v, exp %v", gold, exp)
+	}
+	do(t, s, "- set: {actor.scout.level: 5}\n- move: camp\n")
+	atk := query[float64](t, s, "actor.scout.atk")
+	if atk <= before || !query[bool](t, s, "flag.ghost") || query[float64](t, s, "gold") != gold {
+		t.Fatalf("back in the campaign: atk %v (was %v), flag %v, gold %v", atk, before, query[bool](t, s, "flag.ghost"), query[float64](t, s, "gold"))
+	}
+	// Without the general's attack the march (400) could not take a garrison of 1000
+	// (defense 1250); with it (400 + atk * 100) it does.
+	do(t, s, "- set: {region.field.troops: 1000}\n- order: {id: attack, general: scout, target: field}\n")
+	if query[string](t, s, "region.field.owner") != "blue" {
+		t.Fatalf("the march did not read the general's attack %v", atk)
+	}
+}

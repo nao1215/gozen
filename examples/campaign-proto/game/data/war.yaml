@@ -1,6 +1,6 @@
-# The land: five regions on Go Zen's town map, three factions. The map's points are the
-# regions (their plates show the owner and the garrison); two more points are only plates,
-# for the turn and the generals, as the map screen draws no meters yet.
+# The land: five regions on Go Zen's town map, three factions. The map's points are named
+# like the regions, so the screen draws each in its owner's colour with its garrison, and
+# OK on one lists the orders it can be given.
 factions:
   crown: {name: Crown, color: "#3060c0", capital: vale}
   raven:
@@ -32,13 +32,11 @@ locations:
       draw_roads: true
       label_size: 0.026
       points:
-        vale: {at: [830, 720], start: true, label: "{region.vale.name}  {region.vale.owner} {region.vale.troops}"}
-        ford: {at: [745, 555], label: "{region.ford.name}  {region.ford.owner} {region.ford.troops}"}
-        cross: {at: [640, 370], label: "{region.cross.name}  {region.cross.owner} {region.cross.troops}"}
-        hill: {at: [820, 180], label: "{region.hill.name}  {region.hill.owner} {region.hill.troops}"}
-        well: {at: [1640, 410], label: "{region.well.name}  {region.well.owner} {region.well.troops}"}
-        hq: {at: [1480, 860], label: "Turn {campaign.turn}/{campaign.turns}  Orders {campaign.actions_left}  Gold {gold}"}
-        camp: {at: [1480, 960], label: "Corin {generals.corin.troops}  Hilde {generals.hilde.troops}{generals.sable.joined ? '  Sable ' + str(generals.sable.troops) : ''}{generals.vessa.joined ? '  Vessa ' + str(generals.vessa.troops) : ''}"}
+        vale: {at: [830, 720], start: true}
+        ford: {at: [745, 555]}
+        cross: {at: [640, 370]}
+        hill: {at: [820, 180]}
+        well: {at: [1640, 410]}
       roads:
         - {between: [cross, ford], via: [[700, 430]]}
         - {between: [cross, hill], via: [[760, 320]]}
@@ -46,6 +44,3 @@ locations:
         - {between: [cross, vale], via: [[620, 560], [760, 650]]}
         - {between: [ford, vale]}
         - {between: [hill, well], via: [[1200, 190]]}
-        # The plates must be on a road (check), so they get roads that never open.
-        - {between: [well, hq], when: "false"}
-        - {between: [hq, camp], when: "false"}

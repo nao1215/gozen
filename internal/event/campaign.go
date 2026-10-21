@@ -3,6 +3,7 @@ package event
 import (
 	"fmt"
 
+	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/campaign"
 	lang "github.com/nao1215/gozen/internal/text"
@@ -52,6 +53,8 @@ func (r *Runner) order(c *data.Command) Request {
 		})
 	}
 	r.notes = append(r.notes, campaign.Give(r.db, r.st, o, oc.General, oc.Target)...)
+	result := optional.Value[string](r.st.Vars[data.VarResult])
+	r.emit(CampaignEffect{Kind: "order", Order: oc.ID, General: oc.General, Target: oc.Target, Result: result, Turn: data.Turn(r.db, r.st.Campaign())})
 	r.push(o.Do)
 	return nil
 }
@@ -73,6 +76,7 @@ func (r *Runner) endTurn() {
 		return
 	}
 	lines, cmds := campaign.EndTurn(r.db, r.st)
+	r.emit(CampaignEffect{Kind: "end_turn", Turn: data.Turn(r.db, r.st.Campaign())})
 	r.notes = append(r.notes, lines...)
 	r.push(cmds)
 }

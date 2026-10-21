@@ -132,3 +132,30 @@ func TestCampaignCommands(t *testing.T) {
 		t.Fatalf("the menu: %s", got)
 	}
 }
+
+// TestCampaignMapWarnings: the campaign's map and the regions are compared: a region
+// without its point, a road between regions that do not border, a border without a road.
+func TestCampaignMapWarnings(t *testing.T) {
+	game := strings.Replace(testgame.CampaignGame, "  location: camp\n", "  location: war\n", 1)
+	war := `
+locations:
+  war:
+    name: War
+    map:
+      picture: x.png
+      points:
+        home: {at: [1, 1]}
+        field: {at: [2, 2]}
+        keep: {at: [3, 3]}
+      roads:
+        - {between: [home, field]}
+        - {between: [home, keep]}
+`
+	db := testgame.LoadCampaign(t, map[string]string{"game.yaml": game, "data/war.yaml": war})
+	w := fmt.Sprint(db.SceneWarnings())
+	for _, want := range []string{"region hill has no point", "a road joins home and keep", "field borders keep, but the campaign's map has no road"} {
+		if !strings.Contains(w, want) {
+			t.Errorf("no warning %q in %s", want, w)
+		}
+	}
+}

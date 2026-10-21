@@ -2185,7 +2185,7 @@
     },
     "Clash": {
       "additionalProperties": false,
-      "description": "How a march of a (the side marching, with troops, might, faction and general) on the region b is decided. The march takes b when power is more than defense.",
+      "description": "How a march of a (the side marching, with troops, might, faction, general, and the general's level and stats such as atk) on the region b is decided. The march takes b when power is more than defense.",
       "properties": {
         "defense": {
           "description": "The strength of the region. Default `b.troops * 1.25`.",

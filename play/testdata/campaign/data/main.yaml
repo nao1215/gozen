@@ -1,0 +1,27 @@
+classes:
+  walker:
+    stats: {mhp: "10", mmp: "0", atk: "1", def: "1", mat: "1", mdf: "1", agi: "1", luk: "1"}
+    exp_for: "level * 9"
+actors:
+  hero: {name: Hero, class: walker, faces: hero}
+skills: {attack: {scope: one_enemy, effects: [{damage: "5"}]}, guard: {}}
+factions:
+  blue: {name: Blue, color: "#2040ff", capital: home}
+  red: {name: Red, color: "#ff2020", capital: keep, ai: [{draft: "10"}]}
+regions:
+  home: {name: Home, next: [field], owner: blue, troops: 300}
+  field: {name: Field, next: [home, keep], troops: 100}
+  keep: {name: Keep, next: [field], owner: red, troops: 2000}
+locations:
+  war:
+    name: War
+    map:
+      picture: land.png
+      unknown: named
+      points:
+        home: {at: [120, 260], start: true}
+        field: {at: [320, 180]}
+        keep: {at: [520, 100]}
+      roads:
+        - {between: [home, field]}
+        - {between: [field, keep]}

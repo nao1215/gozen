@@ -1764,6 +1764,12 @@ func (g *Game) Handle(e event.Effect) {
 		g.SFX(e.Name)
 	case event.VisualEffect:
 		g.visual(e)
+	case event.CampaignEffect:
+		if e.Kind == "order" {
+			g.emit("order", traceLine{"order": e.Order, "general": e.General, "target": e.Target, "result": e.Result, "turn": e.Turn})
+		} else {
+			g.emit("end_turn", traceLine{"turn": e.Turn})
+		}
 	}
 }
 

@@ -369,6 +369,26 @@ func parseScript(src string) (*script, error) {
 			s.cmds = append(s.cmds, c)
 			continue
 		}
+		// A campaign's order and the end of its turn, as the commands they are (ADR 0030):
+		// order ID [GENERAL|-] [TARGET].
+		if c.verb == "order" || c.verb == "end_turn" {
+			c.verb, c.arg = "do", "- end_turn: true"
+			if f[0] == "order" {
+				if len(f) < 2 || len(f) > 4 {
+					return nil, fmt.Errorf("script line %d: order ID [GENERAL|-] [TARGET]", line)
+				}
+				general, target := "", ""
+				if len(f) > 2 && f[2] != "-" {
+					general = f[2]
+				}
+				if len(f) > 3 {
+					target = f[3]
+				}
+				c.arg = fmt.Sprintf("- order: {id: %s, general: %q, target: %q}", f[1], general, target)
+			}
+			s.cmds = append(s.cmds, c)
+			continue
+		}
 		if c.verb == "type" {
 			c.arg = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(sc.Text()), "type"))
 			s.cmds = append(s.cmds, c)

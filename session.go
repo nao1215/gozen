@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"strconv"
 	"strings"
 
 	"github.com/nao1215/gozen/internal/battle"
@@ -494,6 +495,11 @@ func (s *Session) effect(e event.Effect) {
 		out = Effect{Kind: "stand", Name: e.Who}
 	case event.VoiceEffect:
 		out = Effect{Kind: "voice", Name: e.File}
+	case event.CampaignEffect:
+		out = Effect{Kind: e.Kind, Name: e.Order}
+		if e.Kind == "end_turn" {
+			out.Name = strconv.Itoa(e.Turn)
+		}
 	default:
 		return
 	}

@@ -76,7 +76,7 @@ novel-graphics:
 
 # Requires a display; Linux CI wraps this target with xvfb-run.
 graphics:
-	$(GO) test -tags=graphics ./play -run 'TestGraphicsScreens|TestGraphicsStage|TestGraphicsMap|TestGraphicsWild|TestGraphicsNovel' -count=1
+	$(GO) test -tags=graphics ./play -run 'TestGraphicsScreens|TestGraphicsStage|TestGraphicsMap|TestGraphicsWild|TestGraphicsNovel|TestGraphicsCampaign' -count=1
 	$(GO) test -tags=graphics ./puppet -run TestGraphics -count=1
 
 cli-build:

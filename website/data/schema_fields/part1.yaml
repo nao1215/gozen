@@ -185,7 +185,7 @@ Campaign:
   win: "An expression that ends the campaign won. Default: the player holds every region."
   won: "The event run when the campaign is won, before the game is cleared."
 Clash:
-  _: "How a march of a (the side marching, with troops, might, faction and general) on the region b is decided. The march takes b when power is more than defense."
+  _: "How a march of a (the side marching, with troops, might, faction, general, and the general's level and stats such as atk) on the region b is decided. The march takes b when power is more than defense."
   defense: "The strength of the region. Default `b.troops * 1.25`."
   garrison: "The share of a general's troops left in a region taken, from 0 to 1. Default 0.4. A faction's march leaves all of them."
   held: "The garrison of b left after holding. Default `b.troops - power * 0.4`."

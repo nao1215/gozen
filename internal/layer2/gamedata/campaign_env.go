@@ -389,7 +389,7 @@ var (
 var (
 	regionOver = map[string]*vtype{"s": tRegion, "t": tRegion}
 	clashOver  = map[string]*vtype{
-		"a": objType("the side marching", map[string]*vtype{"troops": tNum, "might": tNum, "faction": tStr, "general": tStr, "from": tStr}, nil),
+		"a": objType("the side marching", statsFields(map[string]*vtype{"troops": tNum, "might": tNum, "faction": tStr, "general": tStr, "from": tStr, "level": tNum}), nil),
 		"b": tRegion, "power": tNum, "defense": tNum,
 	}
 )

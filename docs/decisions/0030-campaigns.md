@@ -1,6 +1,6 @@
 # ADR 0030: Campaigns — regions held by factions over turns
 
-Status: Accepted (2026-10-21). Stage 1 (the YAML words, their checks, the expression names and the generated state names) and stage 2 (the rules, the random numbers in a save, the prototype rewritten) are done. The screen and a `sim` command are under "Plan" below. Home: `internal/layer2/gamedata` (YAML types, checks and the expression names), `internal/rpg` (the names on a play, `set`), `internal/layer3/campaign` (the rules).
+Status: Accepted (2026-10-21). Stages 1 (the YAML words, their checks, the expression names and the generated state names), 2 (the rules, the random numbers in a save, the prototype rewritten) and 3 (the screen) are done; the rest is under "Plan" below. Home: `internal/layer2/gamedata` (YAML types, checks and the expression names), `internal/rpg` (the names on a play, `set`), `internal/layer3/campaign` (the rules).
 
 ## Users and problem
 
@@ -73,6 +73,14 @@ The names below are known wherever field names are (conditions, labels, events),
 
 `gozen check` reports with file and line: a neighbour that does not exist, is the region itself, is written twice, or does not name the region back; an owner or a capital that is not a faction or a region; a capital not held by its faction at the start; the player's faction with `ai` rules; a rule that both drafts and marches, or has march words without `march`; `pick: min|max` without `by`; an unknown `player`, `location`, event or general; an order's unknown `general` or `target` word, a `where` without a target, a march without a general and a target; a value named like a region's field; an unknown region, faction, general, field or `sum_` value in an expression; a `set` of an unknown field or of an owner that is not a faction; `actions` reading names other than the campaign's; and the words at a version below 5. Warnings: regions in more than one part, a faction bordering no other side, a `win` or `lose` that holds at the start, and a first turn without actions.
 
+### One game, a campaign and an RPG
+
+A game may hold a campaign beside its dungeons, maps and towns, each its own place, and the party goes between them with `move`. They share one state: the generals are the game's actors (`campaign.generals` names actors; there is no other kind of character), with the same level, stats, equipment and skills in a battle and in a march (the clash reads them as `a.atk`, `a.level` and the rest), and the gold, the items, the flags and the variables are the same everywhere. What a campaign adds to an actor (troops, whether it marched) is in variables with generated names, not in the actor. A test (`TestCampaignWithDungeon`) wins a battle, goes into a dungeon and back, raises the general's level, and checks that the gold, the experience, the flags and the march's strength follow.
+
+### The screen
+
+The campaign's place is shown as a map (`map:`) whose points are named like the regions. On it each region stands a flag in its owner's colour (a ring on a capital) and a plate with its name and garrison; a band over the map tells the turn, the player's faction and the actions; the meters show at the top right; a window tells the region chosen (owner, garrison, values); and the generals who have joined stand in a row with their troops, dim once they have marched. Choosing a region (arrows and OK, a click) lists the orders it can be given and Cancel; an order taken asks for the general. The token is not drawn. The menu's list keeps every order and "End turn". `gozen check` warns of a region without its point and of roads that do not match the borders. A script writes `order ID [GENERAL|-] [TARGET]` and `end_turn`; the trace has `region`, `order` and `end_turn` lines, and a session's `OnEffect` sees the kinds `order` and `end_turn`.
+
 ### The rules
 
 - The orders are entries of the campaign's place, before its own actions, each listed while its `when` holds and the turn has the actions it costs, and "End turn" after them. An entry runs the command `order: ID`. The command asks "Who leads?" (the generals that `general: ready|any` allows) and "Where to?" (the regions that `target: border|own|any` and `where` allow) as engine choices ending with Cancel, unless it names them (`order: {id, general, target}`, for scripts and tests). It then binds them (`campaign.general`, `campaign.target`), spends the actions, marches when `march: true`, shows how the march went, and runs the order's `do`. A choice is an ordinary request, so a `Policy`, `Explore` and a save in the middle of an order work as for any choice.
@@ -91,7 +99,8 @@ The names below are known wherever field names are (conditions, labels, events),
 | --- | --- | --- |
 | 1 | The words, `schema_version: 5`, the checks, the names, the generated state names, `set` | Done |
 | 2 | The rules (`internal/layer3/campaign`): the commands `order`, `end_turn` and `game_over`, the actions of a turn, the numeric clash, the factions' rules, winning and losing, the random numbers in a save; the prototype rewritten | Done |
-| Later | The screen (the factions' colours on the map, a band with the turn), `gozen sim campaign`, the bridge to battles | |
+| 3 | The screen: the flags in the owners' colours, the band, the meters, the region's window, the generals, orders from a region, the script and the trace | Done |
+| Later | `gozen sim campaign`, the bridge to battles, the remaining checks, the sample, the documents | |
 
 ## Alternatives
 
