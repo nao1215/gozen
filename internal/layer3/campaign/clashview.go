@@ -166,6 +166,7 @@ func FightView(db *data.DB, st *rpg.State, id, general string, with []string, ta
 	default:
 		shareUnits(db, st, cl.Sides[0], 0)
 		st.Vars[data.RegionVar(target, "troops")] = math.Floor(held)
+		fought(st, target)
 	}
 	st.Vars[data.VarResult] = map[string]string{"won": "won", "lost": "held", "draw": "held"}[cl.Result]
 	st.Vars[data.VarClash] = cl.Result

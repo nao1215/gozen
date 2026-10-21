@@ -13,7 +13,7 @@ factions:
   blue: {name: Blue, color: "#2040ff", capital: home}
   red: {name: Red, color: "#ff2020", capital: keep, ai: [{draft: "10"}]}
 regions:
-  home: {name: Home, next: [field], owner: blue, troops: 300}
+  home: {name: Home, next: [field], owner: blue, troops: 300, landmark: keep.png}
   field: {name: Field, next: [home, keep], troops: 100}
   keep: {name: Keep, next: [field], owner: red, troops: 2000, defend: keep_guard}
 locations:

@@ -155,6 +155,7 @@ func Give(db *data.DB, st *rpg.State, id string, general string, with []string, 
 	}
 	share(db, st, generals, left)
 	st.Vars[data.RegionVar(target, "troops")] = held
+	fought(st, target)
 	st.Vars[data.VarResult] = "held"
 	return []string{fmt.Sprintf(lang.T("%sは持ちこたえた（%d 対 %d）"), data.RegionName(db, target), int(power), int(defense))}
 }
@@ -221,6 +222,13 @@ func GeneralLabelName(db *data.DB, id string) string {
 func take(st *rpg.State, id, faction string, troops float64) {
 	st.Vars[data.RegionVar(id, "owner")] = faction
 	st.Vars[data.RegionVar(id, "troops")] = troops
+	fought(st, id)
+}
+
+// fought marks the region as marched on this turn (region.<id>.fought).
+func fought(st *rpg.State, id string) {
+	turn := optional.Value[float64](st.Vars[data.VarTurn])
+	st.Vars[data.RegionVar(id, "fought")] = max(1, turn)
 }
 
 // clash decides a march of a on the region b: whether it takes b, the troops of a left
@@ -384,6 +392,7 @@ func march(db *data.DB, st *rpg.State, f string, r *data.FactionRule) string {
 		return fmt.Sprintf(lang.T("%sが%sを落とした"), FactionName(db, f), data.RegionName(db, best.t))
 	}
 	st.Vars[data.RegionVar(best.t, "troops")] = held
+	fought(st, best.t)
 	return fmt.Sprintf(lang.T("%sは%sの攻めを持ちこたえた"), data.RegionName(db, best.t), FactionName(db, f))
 }
 

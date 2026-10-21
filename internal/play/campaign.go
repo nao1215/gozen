@@ -3,6 +3,7 @@ package play
 import (
 	"fmt"
 	"image/color"
+	"math"
 
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
@@ -162,6 +163,47 @@ func (s *atlasScene) drawAreas(g *Game, dst *ebiten.Image, toScreen func(geom.Pt
 		}
 		vector.StrokePath(dst, &path, &vector.StrokeOptions{Width: width * u, LineJoin: vector.LineJoinRound}, line)
 	}
+}
+
+// drawLandmark stands a region's landmark (regions.<id>.landmark) on its point (x, y),
+// mapW the map picture's width on the screen: the picture with its foot on the point, the
+// owner's flag at its right, darker and reddened with a little smoke while the region was
+// fought over this turn or the last. It returns the box it covers (for the plates).
+func (s *atlasScene) drawLandmark(g *Game, dst *ebiten.Image, p mapPoint, x, y, mapW float64) (plateBox, bool) {
+	r := g.db.Regions[p.id]
+	img := g.pics.get(r.Landmark)
+	if img == nil || img.Bounds().Empty() {
+		return plateBox{}, false
+	}
+	scale := r.LandmarkScale
+	if scale <= 0 {
+		scale = 0.12
+	}
+	b := img.Bounds()
+	w := mapW * scale
+	h := w * float64(b.Dy()) / float64(b.Dx())
+	cs := g.st.Campaign()
+	turn := float64(data.Turn(g.db, cs))
+	f := data.Fought(cs, p.id)
+	ravaged := f > 0 && f >= turn-1
+	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+	op.GeoM.Scale(w/float64(b.Dx()), h/float64(b.Dy()))
+	op.GeoM.Translate(x-w/2, y-h*0.85)
+	if ravaged {
+		op.ColorScale.Scale(0.78, 0.6, 0.55, 1)
+	}
+	gfx.DrawImage(dst, img, op)
+	if ravaged { // smoke rising from the roofs
+		for i := range 3 {
+			t := float64(g.tick+i*40) / 120
+			ph := t - math.Floor(t)
+			sx := x - w*0.2 + float64(i)*w*0.2 + math.Sin(t*3)*6
+			sy := y - h*0.6 - ph*h*0.5
+			gfx.FillCircle(dst, float32(sx), float32(sy), float32(8+ph*14), color.NRGBA{0x50, 0x48, 0x44, uint8(150 * (1 - ph))}, true)
+		}
+	}
+	s.drawRegionMarker(g, dst, p, x+w*0.42, y-h*0.05, math.Max(36, h*0.45))
+	return plateBox{x: x - w/2, y: y - h*0.85, w: w*0.92 + h*0.3, h: h}, true
 }
 
 // flagFill is a flag's colour, lightened when it is dark (a navy or a gray would sink into

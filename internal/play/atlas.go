@@ -551,6 +551,13 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 		if p.id == sel {
 			h *= 1.3
 		}
+		if war && g.db.Regions[p.id] != nil && g.db.Regions[p.id].Landmark != "" {
+			mw := float64(g.pics.get(s.pic).Bounds().Dx()) * k / u
+			if box, ok := s.drawLandmark(g, dst, p, float64(x), float64(y), mw); ok {
+				s.boxes = append(s.boxes, box)
+				continue
+			}
+		}
 		if war && g.db.Regions[p.id] != nil && len(g.db.Regions[p.id].Area) >= 3 { // the area tells the owner: only the plate
 			continue
 		}

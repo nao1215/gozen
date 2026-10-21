@@ -87,6 +87,16 @@ func Garrison(db *DB, st CampaignState, id string) float64 {
 	return RegionValue(db, st, id, "troops")
 }
 
+// Fought is the turn a march last came on the region (0: never).
+func Fought(st CampaignState, id string) float64 {
+	if v, ok := st.Var(RegionVar(id, "fought")); ok {
+		if f, ok := expr.ToNumber(v); ok {
+			return f
+		}
+	}
+	return 0
+}
+
 // Value is the region's troops or one of its values now.
 func RegionValue(db *DB, st CampaignState, id, name string) float64 {
 	if v, ok := st.Var(RegionVar(id, name)); ok {
@@ -227,6 +237,7 @@ func (e campaignEnv) region(id string) expr.Map {
 	m := expr.Map{
 		"id": id, "name": RegionName(db, id), "owner": owner, "troops": Garrison(db, st, id),
 		"next": next, "capital": capital, "border": owner != player && Borders(db, st, id, player),
+		"fought": Fought(st, id),
 	}
 	for _, v := range ValueNames(db) {
 		m[v] = RegionValue(db, st, id, v)
@@ -386,7 +397,7 @@ func (e campaignEnv) nextTo(args []any) (any, error) {
 // The types of the campaign's names for the checks.
 var (
 	tRegion = objType("a region", map[string]*vtype{
-		"id": tStr, "name": tStr, "owner": tStr, "troops": tNum, "capital": tBool, "border": tBool,
+		"id": tStr, "name": tStr, "owner": tStr, "troops": tNum, "capital": tBool, "border": tBool, "fought": tNum,
 		"next": {kind: vList, desc: "next", elem: tStr},
 	}, func(c *checker, name string) (*vtype, string) {
 		if slices.Contains(ValueNames(c.db), name) {

@@ -65,8 +65,10 @@ func TestGraphicsCampaign(t *testing.T) {
 		return flagNear(t, root, name, x, y, func(r, g, b uint32) bool { return r > 0xd000 && r > g+0x8000 && r > b+0x8000 })
 	}
 	switch {
-	case !blue("map", 120, 260):
-		t.Error("home has no blue flag")
+	case !blue("map", 150, 260):
+		t.Error("home has no blue flag beside its landmark")
+	case !flagNear(t, root, "map", 100, 255, func(r, g, b uint32) bool { return r>>8 == 150 && g>>8 == 150 && b>>8 == 160 }):
+		t.Error("home's landmark is not on its point")
 	case !red("map", 520, 100):
 		t.Error("keep has no red flag")
 	case blue("map", 320, 180):

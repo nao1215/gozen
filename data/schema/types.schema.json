@@ -10763,6 +10763,32 @@
           },
           "x-type": "string"
         },
+        "landmark": {
+          "description": "A picture under assets/ (cut out) the campaign map stands on the region's point: its city, fortress or village, with the owner's flag beside it; darkened with smoke while the region was fought over this turn or the last.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "landmark_scale": {
+          "description": "The landmark's width as a share of the map picture's, 0 to 1. Default 0.12.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
         "name": {
           "description": "The name shown. The ID when omitted.",
           "type": "string",

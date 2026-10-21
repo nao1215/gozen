@@ -49,6 +49,12 @@ type Region struct {
 	// or more): the map fills it in the owner's colour and draws its border. Without it the
 	// region shows as its point's flag.
 	Area Polygon `yaml:"area"`
+	// Landmark is a picture (cut out, under assets/) the map stands on the region's point:
+	// its city, fortress or village, the owner's flag beside it, darkened while the
+	// region was fought over this turn or the last. LandmarkScale is its width as a share
+	// of the map picture's (0.12 when 0).
+	Landmark      string  `yaml:"landmark"`
+	LandmarkScale float64 `yaml:"landmark_scale"`
 }
 
 // Faction is a side of a campaign: one is the player's (campaign.player), the others move
@@ -381,6 +387,7 @@ func (db *DB) campaignStateNames(add func(name, typ string)) {
 	for id := range db.Regions {
 		add(RegionVar(id, "owner"), "string")
 		add(RegionVar(id, "troops"), "number")
+		add(RegionVar(id, "fought"), "number")
 		for _, v := range values {
 			add(RegionVar(id, v), "number")
 		}
@@ -475,6 +482,15 @@ func (c *checker) campaign() {
 		c.needsVersion("factions", "factions", SchemaVersion5)
 	}
 	c.regionAreas()
+	for _, id := range RegionIDs(db) {
+		r := db.Regions[id]
+		if r.Landmark != "" {
+			c.picture("regions."+id+".landmark", Picture{File: r.Landmark})
+		}
+		if r.LandmarkScale < 0 || r.LandmarkScale > 1 {
+			c.errorf(diag.OutOfRange, "regions."+id+".landmark_scale", "landmark_scale is a share of the map's width, 0 (0.12) to 1, not %g", r.LandmarkScale)
+		}
+	}
 	names := append(slices.Clone(FieldNames), "t")
 	for _, id := range RegionIDs(db) {
 		r := db.Regions[id]

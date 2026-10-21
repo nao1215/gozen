@@ -2,7 +2,7 @@
 events:
   opening:
     do:
-      - say: "Ten turns. Five regions. Three banners, and ours flies over Ashvale alone."
+      - say: "Ten turns to take a land of walled cities, farm plains, elf woods, dwarf mines and black moors. Our banner flies over Ashvale alone."
       - say: {who: corin, text: "Five regions and three banners. Ours is the smallest."}
       - say: {who: hilde, text: "Then we stop being small. Pick the marches with care, Corin."}
       - say: {who: corin, text: "Always. Hilde, you hold the line. I will draw the map."}
@@ -39,9 +39,9 @@ events:
     once: true
     when: region.cross.owner == 'crown'
     do:
-      - say: "Word of the Crossway reaches a tower full of maps, and a woman in glasses walks out of it."
-      - say: {who: vessa, text: "You took the crossing. I fight for whoever holds it."}
-      - say: {who: vessa, text: "Your supply lines are a mess, by the way. I will fix them."}
+      - say: "Word of the Crossway reaches the treetop houses, and an elf of the forest climbs down to meet us."
+      - say: {who: vessa, text: "You hold the crossing now. My forest answers to whoever keeps the roads open."}
+      - say: {who: vessa, text: "Your supply lines are a mess, by the way. I know every path under these trees. I will fix them."}
       - join: vessa
       - set: {generals.vessa.troops: 300}
       - say: {who: corin, text: "Welcome, Vessa. We needed someone to say that out loud."}
@@ -51,7 +51,7 @@ events:
     once: true
     when: campaign.turn == 6 && region.well.owner == 'raven'
     do:
-      - say: "A knight in black armor rides under a white flag and bows exactly as deep as protocol requires."
+      - say: "A knight in black armor rides in from the moors under a white flag and bows exactly as deep as protocol requires."
       - say: {who: Raven envoy, face: envoy/normal.png, text: "I bring word from Deepwell. The Raven offers two winters of peace."}
       - say: {who: Raven envoy, face: envoy/normal.png, text: "Will the Crown take it?"}
       - choice:
