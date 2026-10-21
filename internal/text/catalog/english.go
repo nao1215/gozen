@@ -737,7 +737,7 @@ var english = map[string]string{
 	"  - 戦闘中 %s\n":                         "  - During battle %s\n",
 	"  - 置く物 %s: %s\n":                     "  - Places %s: %s\n",
 	"  - 見た目 %s: 壁 %s、戦闘背景 %s\n":           "  - Look %s: wall %s, battle background %s\n",
-	"  - 追ってくる者 %s（%s、出る %s、%s 歩に 1 マス）\n": "  - Chaser %s (%s, appears %s, 1 step per %s steps)\n",
+	"  - 追ってくる者 %s（%s、出る %s、%s 歩に 1 マス）\n": "  - Chaser %s (%s, appears %s, 1 cell per %s steps)\n",
 	" 戦闘 %s":            " battle %s",
 	"![帯](band.png)":    "![Bands](band.png)",
 	"# 流れの通信簿（%s）":      "# Flow report (%s)",
