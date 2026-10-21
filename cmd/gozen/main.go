@@ -36,8 +36,9 @@ type node struct {
 var tree = map[string]node{
 	"":             {subs: []string{"check", "sim", "play", "book", "pack", "art", "theme", "version", "help"}},
 	"check":        {run: (*command).checkCmd},
-	"sim":          {subs: []string{"battle", "dive", "floors", "design", "campaign"}},
+	"sim":          {subs: []string{"battle", "dive", "floors", "design", "campaign", "routes"}},
 	"sim campaign": {run: (*command).campaignCmd},
+	"sim routes":   {run: (*command).routes},
 	"sim battle":   {run: (*command).sim},
 	"sim dive":     {run: (*command).curve},
 	"sim floors":   {run: (*command).floorsCmd},

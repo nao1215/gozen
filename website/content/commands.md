@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design), play (trace, notes, shots), book, pack (release, trial), art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
+description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes), play (trace, notes, shots), book, pack (release, trial), art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
 weight: 60
 toc: true
 ---
@@ -17,7 +17,7 @@ gozen help GZN1101                     # explain a diagnostic code
 | Command | What it does |
 |:--|:--|
 | [check](#check) | Check definitions, references, expressions, assets and text layout |
-| [sim](#sim) | Measure play without a window: [battle](#sim-battle), [dive](#sim-dive), [floors](#sim-floors), [design](#sim-design) |
+| [sim](#sim) | Measure play without a window: [battle](#sim-battle), [dive](#sim-dive), [floors](#sim-floors), [design](#sim-design), [campaign](#sim-campaign), [routes](#sim-routes) |
 | [play](#play) | Read and shoot real plays: [trace](#play-trace), [notes](#play-notes), [shots](#play-shots) |
 | [book](#book) | Write the definitions and events as Markdown |
 | [pack](#pack) | Build what you ship: [release](#pack-release), [trial](#pack-trial) |
@@ -210,6 +210,27 @@ gozen sim campaign game --tactic guard
 | `--as STRATEGY` | `greedy` marches when the odds of the clash (its formulas with `rand()` at its middle) are good, else gives another order, one with a general first; `random` gives any order it can; `ai` plays the player's faction by its own `ai` rules (default: greedy) |
 | `--tactic ID` | Every general marches with this tactic in a clash shown as units (`campaign.clash.tactics`, or the engine's `front`, `weakest`, `strongest`, `leader`, `guard`), and a march takes the most generals it can; the orders are counted as `order:tactic`. Compare the win rates of the tactics this way (default: each general's own) |
 | `--orders N` | Orders a campaign may give before it is cut (default: 2000) |
+
+### sim routes
+
+Explores the game's starting event and automatic arrivals without a display. It reports paths that
+reach clear and game-over outcomes, authored options that were never offered on explored paths, and
+flags already reported as set but never read by `gozen check` (GZN0112).
+The run is bounded by path count, event requests per path, and elapsed time. Findings are informational
+unless `--fail-unreachable` is set. JSON includes whether the path limit cut exploration short.
+
+```sh
+gozen sim routes game
+gozen sim routes game --format json
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--paths N` | Maximum paths to explore (default: 300) |
+| `--depth N` | Maximum event requests per path (default: 20000) |
+| `--timeout DURATION` | Maximum run time (default: 30s; for example `10s` or `2m`) |
+| `--format text\|json` | Output form (default: text) |
+| `--fail-unreachable` | Exit 1 if an unreachable ending or never-offered choice option, or a GZN0112 flag, is found |
 
 ## play
 
