@@ -150,7 +150,7 @@ images:
     run: face
     frames:
       - {shots: "f*"}
-    gif: {fps: 12, width: 960, height: 540, colors: 128, crop: "1280:720:0:0"}
+    gif: {fps: 12, width: 960, height: 540, colors: 128}
   go-zen-plaza.gif:
     run: plaza
     frames:
@@ -276,7 +276,7 @@ images:
     run: puppet-tour
     frames:
       - {shots: "f*", every: 3}
-    gif: {fps: 10, width: 340, height: 281, colors: 128, crop: "654:540:153:0"}
+    gif: {fps: 10, width: 500, height: 281, colors: 128, crop: "960:540:0:0"}
 
 # Pictures that are not captures. They are drawn once from vector sources and
 # committed as they are; `make docs-images` does not remake them.
