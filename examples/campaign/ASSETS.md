@@ -6,13 +6,14 @@ under `game/assets/` are copies of earlier work by the same author, and pictures
 
 | Files | What | Source | License |
 |:--|:--|:--|:--|
-| `maps/town.jpg` | The town map of Pellmere, used as the land of five regions | Go Zen (`examples/go-zen/game/assets/`, see [its ASSETS.md](../go-zen/ASSETS.md)) | CC BY 4.0 |
+| `maps/continent.jpg` | The picture map of the land, on which the five regions are laid out with `area` and `at` | Generated for this sample (Illustrious XL, takostyle LoRA 0.25) | CC BY 4.0 |
+| `maps/town.jpg` | The town map of Pellmere, kept as a second picture of the land | Go Zen (`examples/go-zen/game/assets/`, see [its ASSETS.md](../go-zen/ASSETS.md)) | CC BY 4.0 |
 | `corin/`, `hilde/`, `sable/`, `vessa/` (`normal.png`) | The generals' standing pictures | The author's earlier game, renamed for this sample | CC BY 4.0 |
 | `envoy/normal.png` | The Raven envoy | The author's earlier game, renamed for this sample | CC BY 4.0 |
 | `icons/` | The generals' round faces for the map's token, cut from their standing pictures at the boxes `gozen art faces` found | Made from the pictures above | CC BY 4.0 |
 | `foes/` | The foes who hold the regions in a clash | The author's earlier game, renamed for this sample | CC BY 4.0 |
-| `bg/field.jpg`, `bg/town.jpg`, `bg/castle.jpg` | The grounds behind a clash, by a region's terrain | Generated for this sample (Illustrious XL, no LoRA) | CC BY 4.0 |
-| `soldiers/player.png`, `soldiers/foe.png` | One soldier of each side, lined up in a clash | Generated for this sample and cut out (BiRefNet) | CC BY 4.0 |
+| `bg/field.jpg`, `bg/town.jpg`, `bg/castle.jpg` | The grounds behind a clash, by a region's terrain | Generated for this sample (Illustrious XL, takostyle LoRA 0.25) | CC BY 4.0 |
+| `armies/{men,women,monsters}_{1..4}.png` | The soldiers of each army kind, lined up in a clash, drawn facing right (the foe side is flipped by the engine). Placeholder pictures for now | Generated for this sample and cut out (BiRefNet) | CC BY 4.0 |
 | `fonts/mplus-1p-regular.ttf` | M+ 1p regular 1.060, M+ FONTS PROJECT | Go Zen | M+ FONTS LICENSE (in Go Zen's ASSETS.md) |
 
 The pictures are Copyright (c) 2026 CHIKAMATSU Naohiro and licensed under the Creative
