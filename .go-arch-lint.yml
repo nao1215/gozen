@@ -65,6 +65,8 @@ components:
   mosaic: { in: "internal/mosaic/**" }
   experiments: { in: "x/**" }
   examples: { in: "examples/**" }
+  # The file system the browser builds of the samples read their game from (fetched files).
+  webfs: { in: "internal/webfs/**" }
   dev: { in: "internal/dev/**" }
   testgame: { in: "internal/testgame/**" }
 deps:
@@ -138,7 +140,7 @@ deps:
     mayDependOn: [expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, play, puppet]
     canUse: [yaml, ebiten, image]
   examples:
-    mayDependOn: [gozen, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, play, puppet]
+    mayDependOn: [gozen, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, play, puppet, webfs]
     canUse: [ebiten, image, js]
   dev:
     mayDependOn: [dev, diag]
