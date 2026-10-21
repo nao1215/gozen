@@ -395,7 +395,11 @@ func (s *atlasScene) settled(g *Game, id, file string, img *ebiten.Image, x, y, 
 		r := image.Rect(cx-rad, cy-rad, cx+rad, cy+rad).Intersect(m.Bounds())
 		if !r.Empty() {
 			mp := make([]byte, 4*r.Dx()*r.Dy())
-			m.SubImage(r).(*ebiten.Image).ReadPixels(mp)
+			if sub, ok := m.SubImage(r).(*ebiten.Image); ok {
+				sub.ReadPixels(mp)
+			} else {
+				mp = nil
+			}
 			var sr, sg, sb float64
 			for i := 0; i+3 < len(mp); i += 4 {
 				sr += float64(mp[i])
@@ -414,14 +418,14 @@ func (s *atlasScene) settled(g *Game, id, file string, img *ebiten.Image, x, y, 
 	// the tint keeps the ground's hue; the brightness eases toward it, never below 0.8
 	bright := math.Max(0.8, 1+(tl/0.5-1)*k)
 	fade := int(float64(b.Dy()) * 0.07)
-	for yy := 0; yy < b.Dy(); yy++ {
+	for yy := range b.Dy() {
 		fa := 1.0
 		if d := b.Dy() - 1 - yy; d < fade {
 			fa = float64(d) / float64(fade)
 			fa = fa * fa * (3 - 2*fa)
 			fa = 0.15 + 0.85*fa
 		}
-		for xx := 0; xx < b.Dx(); xx++ {
+		for xx := range b.Dx() {
 			i := (yy*b.Dx() + xx) * 4
 			a := float64(pix[i+3]) / 255
 			if a == 0 {
