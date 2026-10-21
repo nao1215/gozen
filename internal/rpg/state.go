@@ -245,6 +245,11 @@ func (s *State) SetPath(path string, v any) error {
 	case "flag":
 		s.Flags[name] = expr.Truthy(v)
 	case "var":
+		// A variable keeps a number, text, true/false or nothing: a function (set: {var.x: rand}) or an object
+		// would make the state impossible to save.
+		if expr.TypeOfValue(v) == expr.UnknownType {
+			return fmt.Errorf("set %s: a value of type %T cannot be kept in a variable (want a number, text or true/false)", path, v)
+		}
 		_, declared := s.DB.Game.State.Names[path]
 		if expr.TypeOfValue(v) != expr.BoolType || (!declared && !s.DB.Game.State.Strict) {
 			if f, ok := expr.ToNumber(v); ok {
