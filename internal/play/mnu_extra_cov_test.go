@@ -182,7 +182,7 @@ func TestFusionScreen(t *testing.T) {
 	g.st.AddItem("shard", 3)
 	done := 0
 	g.openScreen("fusion", func() { done++ })
-	f := mnuTop(g).(*fusion)
+	f := mnuAs[*fusion](t, g)
 	mnuDrawAll(g)
 	if f.list.items[0].disabled || f.list.items[1].disabled == false {
 		t.Fatalf("rows %+v", f.list.items)

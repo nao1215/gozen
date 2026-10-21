@@ -13,7 +13,7 @@ func TestFusionDisabledRecipeExplains(t *testing.T) {
 	g.st.Gold = 100
 	g.st.AddItem("shard", 3)
 	g.openScreen("fusion", func() {})
-	f := mnuTop(g).(*fusion)
+	f := mnuAs[*fusion](t, g)
 	mnuPress(g, btnDown) // gem + shard: no gem yet
 	mnuPress(g, btnOK)
 	if f.msgT == 0 || f.msg != lang.T("ざいりょうか おかねが たりない。") {

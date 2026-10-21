@@ -9,10 +9,10 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	lang "github.com/nao1215/gozen/internal/text"
-	"testing/fstest"
 )
 
 const mnuReviewYAML = `
@@ -49,7 +49,7 @@ func mnuReviewGame(t *testing.T, all bool) (*Game, string) {
 
 func mnuReadLog(t *testing.T, path string) []reviewLine {
 	t.Helper()
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // a test file in a temporary directory
 	if err != nil {
 		t.Fatal(err)
 	}

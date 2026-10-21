@@ -45,7 +45,7 @@ func TestMenuCommandItem(t *testing.T) {
 	}
 	g.st.Flags["dark"] = true
 	g.push(newMenu(g))
-	m = mnuTop(g).(*menu)
+	m = mnuAs[*menu](t, g)
 	if len(m.cmds) != 1 || m.tabs.items[0].label != "Lamp" {
 		t.Fatalf("commands %v tabs %v", m.cmds, labels(m.tabs.items))
 	}
@@ -58,7 +58,9 @@ func TestMenuCommandItem(t *testing.T) {
 		t.Fatal("the lamp's event did not start")
 	}
 	for range 5 {
-		_ = g.Update()
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if !g.st.Flags["lit"] {
 		t.Fatalf("event did not run: flags %v", g.st.Flags)
@@ -68,7 +70,6 @@ func TestMenuCommandItem(t *testing.T) {
 	}
 	// the condition turned false while the menu was open: the entry buzzes and nothing starts
 	g.push(newMenu(g))
-	m = mnuTop(g).(*menu)
 	g.st.Flags["dark"] = false
 	mnuPress(g, btnOK)
 	if len(g.stack) != 2 || g.st.Items["lamp"] != 1 {
@@ -81,7 +82,7 @@ func TestMenuEventItemsInTheItemList(t *testing.T) {
 	g.st.AddItem("charm", 1)
 	g.st.AddItem("spare", 1)
 	g.push(newMenu(g))
-	m := mnuTop(g).(*menu)
+	m := mnuAs[*menu](t, g)
 	mnuTab(t, g, lang.T("どうぐ"))
 	rows := map[string]listItem{}
 	for i, id := range m.ids {
@@ -106,7 +107,9 @@ func TestMenuEventItemsInTheItemList(t *testing.T) {
 		t.Fatalf("spare %d stack %d", g.st.Items["spare"], len(g.stack))
 	}
 	for range 5 {
-		_ = g.Update()
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if !g.st.Flags["blessed"] {
 		t.Fatal("the item event did not run")
@@ -126,7 +129,7 @@ func TestMenuEquipAndBest(t *testing.T) {
 	g := mnuEventGame(t)
 	g.st.AddItem("blade", 1)
 	g.push(newMenu(g))
-	m := mnuTop(g).(*menu)
+	m := mnuAs[*menu](t, g)
 	scout := g.st.Members()[0]
 	mnuTab(t, g, lang.T("そうび"))
 	if !m.picker || m.mode != "equip" {
@@ -142,7 +145,7 @@ func TestMenuEquipAndBest(t *testing.T) {
 	if m.cands == nil || m.cands.items[0].label != lang.T("（はずす）") {
 		t.Fatalf("candidates %+v", m.cands)
 	}
-	var bladeAt = -1
+	bladeAt := -1
 	for i, it := range m.cands.items {
 		if it.id == "blade" {
 			bladeAt = i
@@ -252,7 +255,7 @@ func TestMenuStatusScreen(t *testing.T) {
 	// liveKeep rebuilds the menu around the same selection and member
 	m.mode, m.member = "status", 1
 	m.tabs.sel = 0
-	n := m.liveKeep(g).(*menu)
+	n := mnuKeep[*menu](t, m.liveKeep(g))
 	if n.mode != "status" || n.member != 1 || n.tabs.sel != 0 {
 		t.Fatalf("liveKeep mode %q member %d sel %d", n.mode, n.member, n.tabs.sel)
 	}
@@ -333,7 +336,7 @@ func TestMenuSaveAndLoadSlots(t *testing.T) {
 	g := openGame(t, Options{Location: "camp", Seed: 3})
 	g.db.Locations["camp"].Safe = true
 	g.push(newMenu(g))
-	m := mnuTop(g).(*menu)
+	m := mnuAs[*menu](t, g)
 	if m.tabs.items[4].disabled {
 		t.Fatal("saving is off at a safe place")
 	}
@@ -355,7 +358,7 @@ func TestMenuSaveAndLoadSlots(t *testing.T) {
 	}
 	// saving over a used slot asks first
 	mnuTab(t, g, lang.T("セーブ"))
-	sm = mnuTop(g).(*saveMenu)
+	sm = mnuAs[*saveMenu](t, g)
 	sm.slots.sel = 1
 	mnuPress(g, btnOK)
 	c, ok := mnuTop(g).(*confirm)
@@ -377,7 +380,7 @@ func TestMenuSaveAndLoadSlots(t *testing.T) {
 	// load: a slot that is empty is greyed out; the used one asks first (in play)
 	g.st.Gold = 777
 	mnuTab(t, g, lang.T("ロード"))
-	lm := mnuTop(g).(*saveMenu)
+	lm := mnuAs[*saveMenu](t, g)
 	if !lm.inPlay || lm.slots.sel != 1 {
 		t.Fatalf("inPlay %v, newest slot %d", lm.inPlay, lm.slots.sel)
 	}
@@ -417,7 +420,7 @@ func TestSaveMenuReportsBrokenSlots(t *testing.T) {
 	sm.slots.items[0].disabled = false
 	sm.slots.sel = 0
 	mnuPress(g, btnOK)
-	if sm.msgT == 0 || len(sm.msg) == 0 {
+	if sm.msgT == 0 || sm.msg == "" {
 		t.Fatal("no message about the broken save")
 	}
 	mnuDrawAll(g)

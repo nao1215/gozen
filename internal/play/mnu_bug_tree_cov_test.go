@@ -13,7 +13,7 @@ func TestSkillTreeMaxedNodeMessage(t *testing.T) {
 	g.st.Join("sage")
 	sage := g.st.Actors["sage"]
 	g.openScreen("skills", func() {})
-	tv := mnuTop(g).(*treeView)
+	tv := mnuAs[*treeView](t, g)
 	mnuPress(g, btnOK)
 	mnuPress(g, btnOK) // spark is at 2 of 2 and the points are gone
 	if sage.Tree["spark"] != 2 || sage.SP != 0 {

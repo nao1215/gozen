@@ -85,7 +85,7 @@ func TestGalleryCGTab(t *testing.T) {
 	// a flag opens a picture while the gallery is open and liveKeep keeps the place
 	g.st.Flags["gamma_seen"] = true
 	g.checkUnlocks()
-	n := s.liveKeep(g).(*galleryScreen)
+	n := mnuKeep[*galleryScreen](t, s.liveKeep(g))
 	if n != s || s.menu.items[2].label != "Gamma" || s.menu.sel != 2 {
 		t.Fatalf("after the unlock: %v sel %d", labels(s.menu.items), s.menu.sel)
 	}

@@ -21,6 +21,10 @@ gallery:
     - {id: s1, title: First, event: recall1, flag: met_one}
     - {id: s2, title: Second, event: recall2, seen: cg/a.png, pages: [{title: Middle, line: 2}]}
     - {id: s3, title: Third, event: recall1, when: "gold > 500", legacy_keys: ["scene:old third"]}
+    - {id: s4, title: Fourth, event: recall1, when: "true", location: field, set: {gold: "777", flag.extra: "true"}, music: plain}
+    - {id: s5, title: Fifth, event: recall_field, when: "true"}
+    - {id: s6, title: Sixth, event: recall_room, when: "true"}
+  music: theme
   music_pictures: {theme: [cg/a.png, cg/b.001.png]}
 `
 
@@ -31,6 +35,8 @@ events:
       - say: "First line."
       - say: "Second line."
       - set: {flag.met_one: true}
+  recall_field: {location: field, do: [{say: "Outside."}]}
+  recall_room: {location: room, do: [{say: "Inside."}]}
   recall2:
     do:
       - say: "One."
@@ -176,9 +182,15 @@ func TestGalleryUnlockRecordSafety(t *testing.T) {
 	if g.unlockReadErr == nil {
 		t.Fatal("a record of a newer format was accepted")
 	}
-	before, _ := os.ReadFile(filepath.Join(dir, "gallery.json"))
+	before, err := os.ReadFile(filepath.Join(dir, "gallery.json")) //nolint:gosec // a test file in a temporary directory
+	if err != nil {
+		t.Fatal(err)
+	}
 	g.unlock("cg:cg/c.png")
-	after, _ := os.ReadFile(filepath.Join(dir, "gallery.json"))
+	after, err := os.ReadFile(filepath.Join(dir, "gallery.json")) //nolint:gosec // a test file in a temporary directory
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(before) != string(after) {
 		t.Fatalf("the unreadable record was overwritten: %s", after)
 	}
@@ -216,12 +228,15 @@ func TestGalleryUnlockRecordSafety(t *testing.T) {
 	if backup == "" {
 		t.Fatalf("no backup of the old record: %v", entries)
 	}
-	got, err := os.ReadFile(filepath.Join(dir, backup))
+	got, err := os.ReadFile(filepath.Join(dir, backup)) //nolint:gosec // a test file in a temporary directory
 	if err != nil || string(got) != legacy {
 		t.Fatalf("backup %q err %v", got, err)
 	}
 	var rec galleryRecord
-	b, _ := os.ReadFile(filepath.Join(dir, "gallery.json"))
+	b, err := os.ReadFile(filepath.Join(dir, "gallery.json")) //nolint:gosec // a test file in a temporary directory
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := json.Unmarshal(b, &rec); err != nil || rec.FormatVersion != 1 || !rec.Unlocks["cg:cg/c.png"] {
 		t.Fatalf("new record %s err %v", b, err)
 	}

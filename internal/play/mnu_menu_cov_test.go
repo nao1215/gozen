@@ -11,6 +11,26 @@ import (
 // mnuTop is the scene on top of the stack.
 func mnuTop(g *Game) scene { return g.stack[len(g.stack)-1] }
 
+// mnuAs is the scene on top of the stack as type T; the test stops when it is another one.
+func mnuAs[T scene](t *testing.T, g *Game) T {
+	t.Helper()
+	v, ok := mnuTop(g).(T)
+	if !ok {
+		t.Fatalf("top scene is %T", mnuTop(g))
+	}
+	return v
+}
+
+// mnuKeep is the scene a live reload keeps, as type T.
+func mnuKeep[T scene](t *testing.T, s scene) T {
+	t.Helper()
+	v, ok := s.(T)
+	if !ok {
+		t.Fatalf("kept scene is %T", s)
+	}
+	return v
+}
+
 // mnuPress feeds one tick of input (the given buttons pressed) to the top scene.
 func mnuPress(g *Game, btns ...button) {
 	g.in.pressed = [numButtons]bool{}
@@ -37,13 +57,13 @@ func mnuMenu(t *testing.T) (*Game, *menu) {
 	g := openGame(t, Options{Location: "camp", Seed: 3})
 	g.st.Join("guide")
 	g.push(newMenu(g))
-	return g, mnuTop(g).(*menu)
+	return g, mnuAs[*menu](t, g)
 }
 
 // mnuTab picks the tab with the label and presses OK.
 func mnuTab(t *testing.T, g *Game, label string) {
 	t.Helper()
-	m := mnuTop(g).(*menu)
+	m := mnuAs[*menu](t, g)
 	for i, it := range m.tabs.items {
 		if it.label == label {
 			m.tabs.sel = i
