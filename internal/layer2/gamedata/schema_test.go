@@ -186,7 +186,7 @@ func (b *schemaBuilder) node(t reflect.Type) schemaNode {
 			b.constraints(t, n, props)
 			switch t {
 			case reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
-				reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue]():
+				reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd]():
 				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "string"}, n}}
 			case reflect.TypeFor[WaitCue]():
 				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "number"}, n}}
@@ -559,7 +559,7 @@ func schemaTypeLabel(t reflect.Type) string {
 		result := "[" + schemaName(t) + "](#" + strings.ToLower(schemaName(t)) + ")"
 		switch t {
 		case reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
-			reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue]():
+			reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd]():
 			result += " または文字列"
 		case reflect.TypeFor[WaitCue]():
 			result += " または数値"

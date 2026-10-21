@@ -27,8 +27,9 @@ const (
 	// and the languages of the text. YAML of version 3 is read as is.
 	SchemaVersion4 = 4
 	// CurrentSchemaVersion is the latest YAML spec version that can be loaded. 3 adds to 2 the place presentation map and stage,
-	// the doll, speech bubbles, and the spot of expressions and set (ADR 0022); 4 adds the novel game vocabulary.
-	CurrentSchemaVersion = SchemaVersion4
+	// the doll, speech bubbles, and the spot of expressions and set (ADR 0022); 4 adds the novel game vocabulary; 5 adds
+	// campaigns (ADR 0030).
+	CurrentSchemaVersion = SchemaVersion5
 )
 
 // MaxRollback is the most earlier events ui.rollback may keep (the history is a copy of the

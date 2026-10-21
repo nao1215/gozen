@@ -84,6 +84,7 @@ github.com/nao1215/gozen/schema field Command.Battle
 github.com/nao1215/gozen/schema field Command.Buy
 github.com/nao1215/gozen/schema field Command.Call
 github.com/nao1215/gozen/schema field Command.Choice
+github.com/nao1215/gozen/schema field Command.Clash
 github.com/nao1215/gozen/schema field Command.Clear
 github.com/nao1215/gozen/schema field Command.Cross
 github.com/nao1215/gozen/schema field Command.Dive
@@ -91,12 +92,14 @@ github.com/nao1215/gozen/schema field Command.Done
 github.com/nao1215/gozen/schema field Command.Effect
 github.com/nao1215/gozen/schema field Command.Else
 github.com/nao1215/gozen/schema field Command.End
+github.com/nao1215/gozen/schema field Command.EndTurn
 github.com/nao1215/gozen/schema field Command.Equip
 github.com/nao1215/gozen/schema field Command.EquipStones
 github.com/nao1215/gozen/schema field Command.Exp
 github.com/nao1215/gozen/schema field Command.Facing
 github.com/nao1215/gozen/schema field Command.Fighters
 github.com/nao1215/gozen/schema field Command.Floor
+github.com/nao1215/gozen/schema field Command.GameOver
 github.com/nao1215/gozen/schema field Command.Give
 github.com/nao1215/gozen/schema field Command.Gold
 github.com/nao1215/gozen/schema field Command.Heal
@@ -116,6 +119,7 @@ github.com/nao1215/gozen/schema field Command.OnRun
 github.com/nao1215/gozen/schema field Command.OnWin
 github.com/nao1215/gozen/schema field Command.Open
 github.com/nao1215/gozen/schema field Command.OpenWall
+github.com/nao1215/gozen/schema field Command.Order
 github.com/nao1215/gozen/schema field Command.Pick
 github.com/nao1215/gozen/schema field Command.Prompt
 github.com/nao1215/gozen/schema field Command.Ran
@@ -152,6 +156,7 @@ github.com/nao1215/gozen/schema field DB.Elements
 github.com/nao1215/gozen/schema field DB.Enemies
 github.com/nao1215/gozen/schema field DB.Events
 github.com/nao1215/gozen/schema field DB.FS
+github.com/nao1215/gozen/schema field DB.Factions
 github.com/nao1215/gozen/schema field DB.Fusions
 github.com/nao1215/gozen/schema field DB.Game
 github.com/nao1215/gozen/schema field DB.Items
@@ -159,6 +164,7 @@ github.com/nao1215/gozen/schema field DB.Locations
 github.com/nao1215/gozen/schema field DB.Music
 github.com/nao1215/gozen/schema field DB.Order
 github.com/nao1215/gozen/schema field DB.Profiles
+github.com/nao1215/gozen/schema field DB.Regions
 github.com/nao1215/gozen/schema field DB.Shops
 github.com/nao1215/gozen/schema field DB.Skills
 github.com/nao1215/gozen/schema field DB.States
@@ -216,6 +222,7 @@ github.com/nao1215/gozen/schema field Effect.Variance
 github.com/nao1215/gozen/schema field Effect.When
 github.com/nao1215/gozen/schema field Enemy.AI
 github.com/nao1215/gozen/schema field Enemy.Actions
+github.com/nao1215/gozen/schema field Enemy.Army
 github.com/nao1215/gozen/schema field Enemy.Boss
 github.com/nao1215/gozen/schema field Enemy.Drops
 github.com/nao1215/gozen/schema field Enemy.Exp
@@ -279,6 +286,7 @@ github.com/nao1215/gozen/schema field GalleryScene.When
 github.com/nao1215/gozen/schema field Game.Asides
 github.com/nao1215/gozen/schema field Game.Battle
 github.com/nao1215/gozen/schema field Game.CGReview
+github.com/nao1215/gozen/schema field Game.Campaign
 github.com/nao1215/gozen/schema field Game.CardBubbles
 github.com/nao1215/gozen/schema field Game.DataVersion
 github.com/nao1215/gozen/schema field Game.Fonts

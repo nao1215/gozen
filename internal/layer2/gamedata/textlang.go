@@ -148,6 +148,24 @@ func (db *DB) nameFields() []*string {
 	for _, p := range db.Profiles {
 		out = append(out, p.texts()...)
 	}
+	for _, r := range db.Regions {
+		out = append(out, &r.Name)
+	}
+	for _, f := range db.Factions {
+		out = append(out, &f.Name)
+	}
+	if c := g.Campaign; c != nil {
+		for _, t := range c.Clash.Tactics {
+			if t != nil {
+				out = append(out, &t.Label)
+			}
+		}
+		for _, sk := range c.Clash.Skills {
+			if sk != nil {
+				out = append(out, &sk.Label)
+			}
+		}
+	}
 	for _, l := range db.Locations {
 		out = append(out, &l.Name, &l.Desc)
 		for i := range l.People {
@@ -234,6 +252,12 @@ func (db *DB) SourceTexts() []SourceText {
 			add(fmt.Sprintf("profiles.%s.relations[%d].text", id, i), src(&p.Relations[i].Text))
 		}
 	}
+	for _, id := range RegionIDs(db) {
+		add("regions."+id+".name", src(&db.Regions[id].Name))
+	}
+	for _, id := range FactionIDs(db) {
+		add("factions."+id+".name", src(&db.Factions[id].Name))
+	}
 	var cmds func(w string, cs []Command)
 	cmds = func(w string, cs []Command) {
 		for i := range cs {
@@ -282,6 +306,29 @@ func (db *DB) SourceTexts() []SourceText {
 	}
 	for _, id := range sorted(slices.Collect(maps.Keys(db.Events))) {
 		cmds("events."+id+".do", db.Events[id].Do)
+	}
+	if c := db.Game.Campaign; c != nil {
+		for _, id := range sorted(slices.Collect(maps.Keys(c.Clash.Tactics))) {
+			if t := c.Clash.Tactics[id]; t != nil {
+				add("campaign.clash.tactics."+id+".label", src(&t.Label))
+			}
+		}
+		for _, id := range sorted(slices.Collect(maps.Keys(c.Clash.Skills))) {
+			if sk := c.Clash.Skills[id]; sk != nil {
+				add("campaign.clash.skills."+id+".label", src(&sk.Label))
+			}
+		}
+		for _, id := range c.OrderIDs() {
+			o := c.Orders[id]
+			if o == nil {
+				continue
+			}
+			w := "campaign.orders." + id
+			cmds(w+".do", o.Do)
+			cmds(w+".on_win", o.OnWin)
+			cmds(w+".on_lose", o.OnLose)
+			cmds(w+".on_draw", o.OnDraw)
+		}
 	}
 	return out
 }

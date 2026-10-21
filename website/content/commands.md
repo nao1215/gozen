@@ -193,6 +193,24 @@ gozen sim design game -o report --only walker -v
 | `--memos DIR` | Write notes on marked places to this directory |
 | `-v, --verbose` | Write each persona's dives, choices and stumbles to `debug.log` |
 
+### sim campaign
+
+Plays the game's campaign ([Campaigns](/writing-a-game/#campaigns)) many times, headless, with a strategy for the player, and prints the win rate, the turns the campaigns ended in, the mean of the regions each faction held at the start of each turn, the factions that fell and when, the orders given, and how the marches went. Campaign *i* uses the seed `--seed` + *i*, so the same `--seed` gives the same result.
+
+<!-- verify: skip the CLI fixture has no campaign; e2e/atago/campaign.atago.yaml runs these -->
+```shell
+gozen sim campaign game
+gozen sim campaign game --as random -n 500 --format json
+gozen sim campaign game --tactic guard
+```
+
+| Option | Meaning |
+|:--|:--|
+| `-n, --campaigns N` | Campaigns to play (default: 200) |
+| `--as STRATEGY` | `greedy` marches when the odds of the clash (its formulas with `rand()` at its middle) are good, else gives another order, one with a general first; `random` gives any order it can; `ai` plays the player's faction by its own `ai` rules (default: greedy) |
+| `--tactic ID` | Every general marches with this tactic in a clash shown as units (`campaign.clash.tactics`, or the engine's `front`, `weakest`, `strongest`, `leader`, `guard`), and a march takes the most generals it can; the orders are counted as `order:tactic`. Compare the win rates of the tactics this way (default: each general's own) |
+| `--orders N` | Orders a campaign may give before it is cut (default: 2000) |
+
 ## play
 
 Reads and takes pictures of real plays. The game binary itself is run by its own `--dev`.

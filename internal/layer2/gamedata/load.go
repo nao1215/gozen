@@ -36,6 +36,9 @@ type DB struct {
 	Music     Music
 	// Profiles are the pages of the character book (ADR 0031).
 	Profiles map[string]*Profile
+	// Regions and Factions are a campaign's (schema_version 5, ADR 0030).
+	Regions  map[string]*Region
+	Factions map[string]*Faction
 
 	TacticConditions map[string]*TacticCondition
 	TacticTargets    map[string]*TacticTarget
@@ -80,6 +83,8 @@ type file struct {
 	Fusions   []Fusion             `yaml:"fusions"`
 	Music     *Music               `yaml:"music"`
 	Profiles  map[string]*Profile  `yaml:"profiles"`
+	Regions   map[string]*Region   `yaml:"regions"`
+	Factions  map[string]*Faction  `yaml:"factions"`
 
 	TacticConditions map[string]*TacticCondition `yaml:"tactic_conditions"`
 	TacticTargets    map[string]*TacticTarget    `yaml:"tactic_targets"`
@@ -98,7 +103,8 @@ func Load(fsys fs.FS) (*DB, error) {
 		Shops: map[string]*Shop{}, AI: map[string][]Rule{}, Elements: map[string]string{}, StoneSets: map[string]*StoneSet{},
 		Profiles: map[string]*Profile{},
 		Order:    map[string][]string{}, sources: map[string]sourcePosition{}, sourceFiles: map[string]*sourceDocument{},
-		Music: Music{Volume: 0.7},
+		Music:   Music{Volume: 0.7},
+		Regions: map[string]*Region{}, Factions: map[string]*Faction{},
 	}
 	b, err := fs.ReadFile(fsys, "game.yaml")
 	if err != nil {
@@ -122,6 +128,7 @@ func Load(fsys fs.FS) (*DB, error) {
 	if err := db.resolveNumbers(rawGame, &db.Game, "game.yaml"); err != nil {
 		return nil, err
 	}
+	db.keepCampaignOrder(rawGame)
 	bc := &db.Game.Battle
 	for _, field := range []struct {
 		name     string
@@ -229,6 +236,8 @@ func (db *DB) loadFile(p string) error {
 	merge("elements", putter(db.Elements, f.Elements))
 	merge("stone_sets", putter(db.StoneSets, f.StoneSets))
 	merge("profiles", putter(db.Profiles, f.Profiles))
+	merge("regions", putter(db.Regions, f.Regions))
+	merge("factions", putter(db.Factions, f.Factions))
 	for i := range f.Fusions {
 		db.keepSources(doc, fmt.Sprintf("fusions[%d]", i), fmt.Sprintf("fusions[%d]", len(db.Fusions)+i))
 	}
@@ -359,6 +368,8 @@ func (db *DB) defaults() {
 			db.applyThemes(l.Dungeon)
 		}
 	}
+	campaignActions(db)
+
 	for _, e := range db.Enemies {
 		if e.Scale == 0 {
 			e.Scale = 1

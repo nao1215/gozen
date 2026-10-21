@@ -1,0 +1,73 @@
+# The talk around the turns.
+events:
+  opening:
+    do:
+      - say: "Ten turns to take a land of walled cities, farm plains, elf woods, dwarf mines and black moors. Our banner flies over Ashvale alone."
+      - say: {who: corin, text: "Five regions and three banners. Ours is the smallest."}
+      - say: {who: hilde, text: "Then we stop being small. Pick the marches with care, Corin."}
+      - say: {who: corin, text: "Always. Hilde, you hold the line. I will draw the map."}
+      - say: {who: hilde, text: "Draw it kindly. My feet have to walk it."}
+
+  # The land pays its wealth at the start of each turn.
+  turn_start:
+    do:
+      - gold: faction.crown.sum_wealth
+
+  sable_arrives:
+    trigger: auto
+    once: true
+    when: campaign.turn == 3
+    do:
+      - say: "A rider reins in at the gate, a woman with a battered hat and a long line of spears behind her."
+      - say: {who: sable, text: "Sable, captain of the Gray Company. Three hundred spears and nowhere to stand."}
+      - say: {who: sable, text: "Will the Crown have us? We are cheaper than a siege, I promise."}
+      - choice:
+          - label: "Take her in"
+            do:
+              - join: sable
+              - set: {generals.sable.troops: 300}
+              - say: {who: sable, text: "Wise. Now point us at someone."}
+              - say: {who: hilde, text: "Keep your spears pointed outward, mercenary."}
+          - label: "Send her away"
+            do:
+              - gold: 60
+              - say: {who: sable, text: "Then take this for the road, and good luck."}
+        id: sable
+
+  vessa_arrives:
+    trigger: auto
+    once: true
+    when: region.cross.owner == 'crown'
+    do:
+      - say: "Word of the Crossway reaches the treetop houses, and an elf of the forest climbs down to meet us."
+      - say: {who: vessa, text: "You hold the crossing now. My forest answers to whoever keeps the roads open."}
+      - say: {who: vessa, text: "Your supply lines are a mess, by the way. I know every path under these trees. I will fix them."}
+      - join: vessa
+      - set: {generals.vessa.troops: 300}
+      - say: {who: corin, text: "Welcome, Vessa. We needed someone to say that out loud."}
+
+  envoy:
+    trigger: auto
+    once: true
+    when: campaign.turn == 6 && region.well.owner == 'raven'
+    do:
+      - say: "A knight in black armor rides in from the moors under a white flag and bows exactly as deep as protocol requires."
+      - say: {who: Raven envoy, face: envoy/normal.png, text: "I bring word from Deepwell. The Raven offers two winters of peace."}
+      - say: {who: Raven envoy, face: envoy/normal.png, text: "Will the Crown take it?"}
+      - choice:
+          - label: "Accept the truce"
+            do: [{set: {var.truce: "campaign.turn + 1"}}]
+          - label: "Refuse"
+            do: [{say: {who: Raven envoy, face: envoy/normal.png, text: "Then we will meet in the field."}}]
+        id: truce
+
+  victory:
+    do:
+      - say: {who: corin, text: "Five banners, one colour. It is over."}
+      - say: {who: hilde, text: "And my feet are finally done walking."}
+      - say: "The Crown's flag rises over every region, and for once the land is quiet."
+
+  fallen:
+    do:
+      - say: "Ashvale has fallen. The Crown is no more."
+      - say: {who: corin, text: "We ran out of time, not courage. Remember that."}

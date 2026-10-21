@@ -130,6 +130,10 @@ func (q Poly) Touches(r Poly) bool {
 
 func cross(o, a, b Pt) float64 { return (a.X-o.X)*(b.Y-o.Y) - (a.Y-o.Y)*(b.X-o.X) }
 
+// SegmentsCross reports whether the segments ab and cd cross at a point inside both (a
+// touch at an end or a shared stretch is not a crossing).
+func SegmentsCross(a, b, c, d Pt) bool { return segmentsCross(a, b, c, d) }
+
 // segmentsCross reports whether the segments ab and cd cross at a point inside both.
 func segmentsCross(a, b, c, d Pt) bool {
 	d1, d2 := cross(c, d, a), cross(c, d, b)

@@ -412,6 +412,14 @@ func (g *Game) traceRequestIn(r event.Request, inBattle bool) {
 		g.emit("request", traceLine{"what": "clear"})
 	case event.GameOver:
 		g.emit("request", traceLine{"what": "game_over"})
+	case event.ClashScene:
+		var lost [2]int
+		for side := range 2 {
+			for _, u := range r.Clash.Sides[side] {
+				lost[side] += int(u.Max - u.Troops)
+			}
+		}
+		g.emit("clash", traceLine{"region": r.Clash.Region, "result": r.Clash.Result, "rounds": r.Clash.Rounds, "lost": lost[0], "foe_lost": lost[1]})
 	}
 }
 

@@ -70,6 +70,9 @@ type atlasScene struct {
 	leader  dollSpec // the token's doll when the map has no token picture
 	spot    string   // the spot last written to the trace
 	boxes   []plateBox
+	ground  map[string]*ebiten.Image // landmarks settled onto their terrain, by region
+	// warChosen: a campaign's map has chosen its first region
+	warChosen bool
 
 	// the walk along the roads: the commands still to run, and the road being walked
 	queue  []data.Command
@@ -99,8 +102,11 @@ func (s *atlasScene) arrive(g *Game) {
 	s.leader = newDollSpec(s.leader.picture, s.leader.doll, 30)
 	s.dir = geom.Pt{Y: 1}
 	atlas.Visit(g.db, g.st, s.loc, atlas.Here(g.db, g.st)) // standing there is having been there
+	s.warChosen = false
 	s.refresh(g)
-	s.sel = s.firstChoice()
+	if !s.campaignMap(g) {
+		s.sel = s.firstChoice()
+	}
 	if p := l.Map.Points[s.here]; p != nil {
 		s.at = p.At.Pt()
 	}
@@ -150,7 +156,11 @@ func (s *atlasScene) refresh(g *Game) {
 		s.points[index[c.Point]].choice = len(s.choices)
 		s.choices = append(s.choices, c)
 	}
-	s.sel = min(s.sel, max(0, len(s.choices)-1))
+	if s.campaignMap(g) {
+		s.campaignChoices(g)
+	} else {
+		s.sel = min(s.sel, max(0, len(s.choices)-1))
+	}
 	s.roads = s.roads[:0]
 	for i := range a.Roads {
 		r := &a.Roads[i]
@@ -228,7 +238,7 @@ func (s *atlasScene) update(g *Game) {
 	}
 	if s.dirty || s.age%60 == 0 { // the state changed (or a while passed): look again
 		s.refresh(g)
-		if s.sel < len(s.choices) && s.choices[s.sel].Point == s.here {
+		if s.sel < len(s.choices) && s.choices[s.sel].Point == s.here && !s.campaignMap(g) {
 			s.sel = s.firstChoice()
 		}
 	}
@@ -324,6 +334,23 @@ func (s *atlasScene) pointAt(g *Game, x, y float64) (atlas.Choice, bool) {
 			best, bd = p.choice, d
 		}
 	}
+	if best < 0 && s.campaignMap(g) { // inside a region's area
+		for _, p := range s.points {
+			r := g.db.Regions[p.id]
+			if p.choice < 0 || r == nil || len(r.Area) < 3 {
+				continue
+			}
+			var q geom.Poly
+			for _, a := range r.Area.Poly() {
+				ax, ay := s.screen(g, a)
+				q = append(q, geom.Pt{X: ax, Y: ay})
+			}
+			if q.Inside(geom.Pt{X: x, Y: y}) {
+				best = p.choice
+				break
+			}
+		}
+	}
 	if best < 0 {
 		return atlas.Choice{}, false
 	}
@@ -347,6 +374,10 @@ func (s *atlasScene) take(g *Game, e world.Entry) {
 // go_ sets off to a choice: its commands run one at a time, a road's after the token has
 // walked it.
 func (s *atlasScene) goTo(g *Game, c atlas.Choice) {
+	if s.regionPoint(g, c.Point) {
+		s.regionOrders(g, c.Point)
+		return
+	}
 	g.sfx("decide")
 	e := world.Entry{Kind: world.Exit, Choice: &c, Spot: c.Point}
 	s.queue = e.Commands(g.db, g.st)
@@ -435,6 +466,8 @@ func (s *atlasScene) labelOf(g *Game, id string) string {
 		return data.Render(p.Label, g.st.Env())
 	case p.To != "" && g.db.Locations[p.To] != nil:
 		return data.Render(g.db.Locations[p.To].Name, g.st.Env())
+	case s.regionPoint(g, id):
+		return regionLabel(g, id)
 	}
 	return ""
 }
@@ -461,7 +494,21 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	toScreen := func(p geom.Pt) (float32, float32) {
 		return float32((ox + p.X*k) / u), float32((oy + p.Y*k) / u)
 	}
-	if a.DrawRoads { // only when asked: the roads are painted in the picture
+	if s.campaignMap(g) {
+		sel := ""
+		if !s.walking() && s.sel < len(s.choices) && !g.busy() {
+			sel = s.choices[s.sel].Point
+		}
+		s.drawAreas(g, dst, toScreen, sel)
+	}
+	sel0 := ""
+	if !s.walking() && s.sel < len(s.choices) && !g.busy() {
+		sel0 = s.choices[s.sel].Point
+	}
+	if s.campaignMap(g) && a.RegionRoads != "always" {
+		s.drawReach(g, dst, toScreen, sel0)
+	}
+	if s.campaignMap(g) && a.RegionRoads == "always" || !s.campaignMap(g) && a.DrawRoads { // only when asked: the roads are painted in the picture
 		for _, r := range s.roads {
 			if !r.shown {
 				continue
@@ -488,9 +535,15 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	}
 	// the markers, then the name plates laid out so they keep off each other and the markers
 	s.boxes = s.boxes[:0]
+	war := s.campaignMap(g)
+	for i := range s.points { // a region's plate follows its garrison at once
+		if war && g.db.Regions[s.points[i].id] != nil && s.location(g).Map.Points[s.points[i].id].Label == "" {
+			s.points[i].label = regionLabel(g, s.points[i].id)
+		}
+	}
 	for _, p := range s.points {
 		x, y := toScreen(p.at)
-		if p.id == s.here && s.path == nil { // the token stands on its own point: keep plates off it
+		if p.id == s.here && s.path == nil && !war { // the token stands on its own point: keep plates off it
 			th := tokenSize(a) * sh
 			if a.Token == nil || a.Token.Picture == "" && !a.Token.Doll { // the round face, its ring too
 				s.boxes = append(s.boxes, plateBox{x: float64(x) - th*0.55, y: float64(y) - th*1.2, w: th * 1.1, h: th * 1.36})
@@ -506,8 +559,26 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 		if p.id == sel {
 			h *= 1.3
 		}
-		s.drawMarker(g, dst, p, float64(x), float64(y), h, pointAlpha(p))
-		s.boxes = append(s.boxes, plateBox{x: float64(x) - h*0.3, y: float64(y) - h, w: h * 0.6, h: h})
+		if war && g.db.Regions[p.id] != nil && g.db.Regions[p.id].Landmark != "" {
+			mw := float64(g.pics.get(s.pic).Bounds().Dx()) * k / u
+			if box, ok := s.drawLandmark(g, dst, p, float64(x), float64(y), mw); ok {
+				s.boxes = append(s.boxes, box)
+				continue
+			}
+		}
+		if war && g.db.Regions[p.id] != nil && len(g.db.Regions[p.id].Area) >= 3 { // the area tells the owner: only the plate
+			continue
+		}
+		if war && g.db.Regions[p.id] != nil {
+			s.drawRegionMarker(g, dst, p, float64(x), float64(y), h)
+		} else {
+			s.drawMarker(g, dst, p, float64(x), float64(y), h, pointAlpha(p))
+		}
+		if war && g.db.Regions[p.id] != nil { // a flag reaches to the right of its pole
+			s.boxes = append(s.boxes, plateBox{x: float64(x) - h*0.2, y: float64(y) - h - 4, w: h * 0.95, h: h + 4})
+		} else {
+			s.boxes = append(s.boxes, plateBox{x: float64(x) - h*0.3, y: float64(y) - h, w: h * 0.6, h: h})
+		}
 	}
 	if i := s.pointIndex(sel); i >= 0 { // the chosen plate first: it keeps its place
 		s.drawPlate(g, dst, s.points[i], sel, mh)
@@ -517,8 +588,15 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 			s.drawPlate(g, dst, p, sel, mh)
 		}
 	}
-	s.drawToken(g, dst, k, ox, oy)
+	if !war {
+		s.drawToken(g, dst, k, ox, oy)
+	}
 	if g.talk.active || len(g.stack) > 1 {
+		return
+	}
+	if war {
+		s.drawCampaign(g, dst, sel)
+		g.text(dst, lang.T("方向：選ぶ　決定：命令　メニュー：一覧"), 36, sh-40, sizeS*0.8, withAlpha(g.th.text, 200))
 		return
 	}
 	if s.banner > 0 {

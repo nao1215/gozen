@@ -21,7 +21,7 @@ import (
 // The names an expression may use, by where it is written.
 var (
 	// FieldNames are known to the conditions of events, locations and the field music.
-	FieldNames = []string{"flag", "var", "gold", "party", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose"}
+	FieldNames = append([]string{"flag", "var", "gold", "party", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose"}, CampaignNames...)
 	// BattleNames are known in battle: the AI, the troop events, the battle music.
 	BattleNames = append(slices.Clone(FieldNames), "turn", "self", "allies", "foes", "enemies", "result", "phase", "boss")
 	// EffectNames are known to the formulas of skills and items: a is the user, b the target.
@@ -86,8 +86,11 @@ func (c *checker) exprIn(where string, e Expr, names []string, over map[string]*
 			c.needsVersion(where, "the name spot", SchemaVersion3)
 		} else if n == "chose" {
 			c.needsVersion(where, "the name chose", SchemaVersion4)
+		} else if slices.Contains(CampaignNames, n) {
+			c.needsVersion(where, "the name "+n, SchemaVersion5)
 		}
 	}
+	c.factionWords(where, e)
 	for _, r := range e.Refs() {
 		if r.Name == "chose" && len(r.Path) > 0 && r.Path[0].Name != "" {
 			c.choseReads = append(c.choseReads, [2]string{where, r.Path[0].Name})
@@ -233,6 +236,8 @@ func (db *DB) Check() []error {
 	c.requiredDefinitions()
 	c.declarations()
 	c.stateDeclarations()
+	c.campaign()
+	c.callLoops()
 	c.tacticCatalog()
 	c.profiles()
 	c.numericValues(&db.Game, "game.yaml")
@@ -887,6 +892,7 @@ func (db *DB) Check() []error {
 	}
 	c.faceWarnings()
 	c.iconWarnings()
+	c.campaignWarnings()
 	c.choseReferences()
 	c.voiceWarnings()
 	c.languages()
@@ -1403,7 +1409,9 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			}
 		case "effect":
 			c.effectCue(w+".effect", cmd.Effect)
-		case "mood", "end", "clear", "save", "done", "ran", "cross", "reach":
+		case "order", "end_turn", "game_over":
+			c.campaignCommand(w, verb, cmd)
+		case "mood", "end", "clear", "save", "done", "ran", "cross", "reach", "clash":
 			// Commands without extra reference or expression checks are listed explicitly too, so missed registrations are detected.
 		default:
 			c.errorf(diag.Shape, w, "command %q has no semantic checker", verb)
@@ -1498,7 +1506,7 @@ var (
 		"name": tStr, "id": tStr, "hp": tNum, "mp": tNum, "hp_rate": tNum, "mp_rate": tNum,
 		"alive": tBool, "dead": tBool, "level": tNum, "is_enemy": tBool, "guarding": tBool,
 		"index": tNum, "boss": tBool, "states": tStates, "fell_with": tStates, "state_count": tNum,
-		"element": tStr, "class": tStr, "back": tBool, "lv": tNum, "wears": tWears,
+		"element": tStr, "class": tStr, "back": tBool, "lv": tNum, "wears": tWears, "troops": tNum,
 	}), resistPrefix)
 	// tSelfFace is self in expression rules (ActorView in the field, Unit in battle).
 	tSelfFace = objType("a battler", func() map[string]*vtype {
@@ -1600,8 +1608,22 @@ func typeOf(n string, names []string) *vtype {
 		return tBool
 	case "roamers":
 		return &vtype{kind: vList, desc: "roamers", elem: objType("a roamer", map[string]*vtype{"kind": tNum, "name": tStr, "troop": tStr, "x": tNum, "y": tNum}, nil)}
-	case "rand", "chance", "pages":
+	case "rand", "chance", "pages", "next_to":
 		return tFunc
+	case "region":
+		return &vtype{kind: vDyn, desc: "region", elem: tRegion, key: "region"}
+	case "target":
+		return tRegion
+	case "faction":
+		return &vtype{kind: vDyn, desc: "faction", elem: tFaction, key: "faction"}
+	case "generals":
+		return &vtype{kind: vDyn, desc: "generals", elem: tGeneral, key: "general"}
+	case "orders":
+		return &vtype{kind: vDyn, desc: "orders", elem: tOrder, key: "order"}
+	case "general":
+		return tGeneral
+	case "campaign":
+		return tCampaign
 	case "pos":
 		return tPos
 	case "party":
@@ -1673,6 +1695,16 @@ func (c *checker) known(kind, id string) bool {
 		return c.db.States[id] != nil
 	case "event":
 		return c.db.Events[id] != nil
+	case "region":
+		return c.db.Regions[id] != nil
+	case "faction":
+		return c.db.Factions[id] != nil
+	case "general":
+		cp := c.db.Game.Campaign
+		return cp != nil && hasGeneral(cp, id)
+	case "order":
+		cp := c.db.Game.Campaign
+		return cp != nil && cp.Orders[id] != nil
 	}
 	return true
 }

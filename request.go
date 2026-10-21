@@ -8,8 +8,9 @@ import (
 // Request is something a screen shows: the same words as the trace and the YAML
 // (Kind "say" is the say command). Only the fields of its kind are set.
 type Request struct {
-	// Kind is say, choice, battle, shop, wait, open, notice, tap, save, clear or
-	// game_over; and, only seen by Config.OnRequest, step (a line of a battle fought on
+	// Kind is say, choice, battle, shop, wait, open, notice, tap, save, clear,
+	// game_over or clash (a campaign's march shown as units: ID the region, Text won,
+	// lost or draw; it needs no answer); and, only seen by Config.OnRequest, step (a line of a battle fought on
 	// AUTO) and decision (an AI's choice: Who the actor, Text the skill or item).
 	Kind string
 	// Text is the line of say, notice and step, and the prompt of choice.
@@ -39,8 +40,9 @@ const (
 
 // Effect is an immediate effect: Kind move (Name the location), music (the song), mood,
 // image (the picture's file; "" hides it), sound or visual (the name), stand (the actor
-// brought onto or taken off the stage of the novel window; "" for everyone off), or voice
-// (the file under assets/ of the voice of the line that comes next).
+// brought onto or taken off the stage of the novel window; "" for everyone off), voice
+// (the file under assets/ of the voice of the line that comes next), order (the id of a
+// campaign's order given) or end_turn (the turn that begins, as a number).
 type Effect struct {
 	Kind, Name string
 	// Faces: the image keeps the speakers' portraits shown (image's faces).

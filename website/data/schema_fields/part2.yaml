@@ -1,6 +1,8 @@
 Command:
   _: "One step of an event. Each command has a single main key (the verb) and may carry extra keys that only that verb understands."
+  end_turn: "Ends the campaign's turn: the other factions follow their rules and the next turn begins. Needs schema version 5."
   act: "Queues one move for the next auto battle: who acts, the skill or item, and the target."
+  game_over: "Ends the game lost, as a lost battle does. Needs schema version 5."
   affect: "Puts a state on party members or removes one outside battle."
   at: "With `move` or `dive`, where to arrive: a map character of a dungeon, a point of a map or a spot of a stage."
   battle: "Starts a battle against a troop, an ID of troops."
@@ -36,6 +38,7 @@ Command:
   on_lose: "With `battle`, the commands that run when the party loses."
   on_win: "With `battle`, the commands that run when the party wins."
   open: "Opens a game screen by name."
+  order: "Gives an order of the campaign: its ID, or a map of the ID, the general and the target region. The general and the target it needs are asked when not given. Needs schema version 5."
   open_wall: "Turns the wall next to the party's cell in a dungeon into the tile of the given map character, such as a hidden stair."
   pick: "Picks an item of the current location's menu (a person, action or exit) by its label."
   prompt: "A line of text shown above the answers of a choice or stone selection."
@@ -68,6 +71,8 @@ DataFile:
   _: "A file under data/. It can hold any of these sections, and the sections from all files are merged."
   actors: "Characters, keyed by actor ID."
   ai: "Named sets of battle AI rules, keyed by AI ID."
+  factions: "The sides of a campaign, keyed by faction ID. Needs schema version 5."
+  regions: "The regions of a campaign, keyed by region ID. Needs schema version 5."
   classes: "Character classes, keyed by class ID."
   elements: "Damage elements, mapping each element ID to its display name."
   enemies: "Enemy definitions, keyed by enemy ID."
@@ -165,3 +170,6 @@ EffectCue:
   seconds: "How long the effect takes. The default is the effect's own."
   color: "With `fade`, the color the screen goes to. The default is black."
   hold: "With `fade`, how many seconds the screen stays on the color."
+Defeat:
+  _: "What becomes of a general beaten to no troops."
+  out: "The turns the general is away for (0: stays, and only needs troops again)."

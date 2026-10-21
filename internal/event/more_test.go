@@ -32,7 +32,7 @@ locations:
         S: {name: Up}
         ">": {name: Down, solid: "true", do: [{dive: deep, floor: "var.floor + 1"}]}
 events:
-  looping: {do: [{call: looping}]}
+  looping: {do: [{if: "true", then: [{call: looping}]}]}
   learn_it: {do: [{learn: {actor: scout, skill: heal}}, {learn: {actor: scout, skill: heal}}]}
   forget_it: {do: [{reset_tree: all}]}
   forget_one: {do: [{reset_tree: monk}]}

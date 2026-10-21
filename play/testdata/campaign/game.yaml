@@ -1,0 +1,18 @@
+# A tiny campaign for the graphics test (the picture is made by a script, no artwork). The
+# test copies it to a temporary directory and adds assets/regular.ttf (the Go font).
+schema_version: 5
+id: campaign-test
+title: Campaign test
+screen: {width: 640, height: 360}
+fonts: {regular: regular.ttf}
+start: {location: war, party: [hero]}
+campaign:
+  location: war
+  player: blue
+  turns: 5
+  actions: "2"
+  generals: {hero: {troops: 900, might: 1}}
+  clash: {power: "a.troops"}
+  orders:
+    attack: {label: Attack, general: ready, target: border, march: true}
+    storm: {label: Storm, general: ready, target: border, march: true, fight: clash_view}

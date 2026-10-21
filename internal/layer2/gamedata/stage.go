@@ -340,6 +340,7 @@ func (db *DB) SceneWarnings() []error {
 	}
 	c.faceWarnings()
 	c.iconWarnings()
+	c.campaignWarnings()
 	return sortedDiagnostics(c.warns)
 }
 

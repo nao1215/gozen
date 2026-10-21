@@ -56,6 +56,9 @@ type State struct {
 	LoadReport LoadReport `json:"-"`
 	// Resume is the cursor of a save made in the middle of an event (nil: none). Set by Parse.
 	Resume *Resume `json:"-"`
+	// SavedRand is the random generator's bytes of a save made between events (nil: none
+	// were saved); a loader goes on with them, so a restored game draws the same numbers.
+	SavedRand []byte `json:"-"`
 
 	stateNames map[string]data.StateName
 }
@@ -240,6 +243,9 @@ func (s *State) SetPath(path string, v any) error {
 	if done, err := s.setOther(path, v); done {
 		return err
 	}
+	if done, err := s.setCampaign(path, v); done {
+		return err
+	}
 	kind, name, ok := strings.Cut(path, ".")
 	if !ok || name == "" {
 		return fmt.Errorf("cannot set %q", path)
@@ -279,6 +285,9 @@ type fieldEnv struct{ s *State }
 
 func (e fieldEnv) Lookup(name string) (any, bool) {
 	s := e.s
+	if campaignName(name) {
+		return data.CampaignEnv(s.DB, s.Campaign()).Lookup(name)
+	}
 	switch name {
 	case "flag":
 		return flagView{s}, true

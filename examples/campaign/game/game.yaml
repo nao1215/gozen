@@ -1,0 +1,76 @@
+# Five Banners: a small region-conquest campaign (schema_version 5, ADR 0030). Stage 0 wrote
+# it with variables and dispatch events; it now uses the campaign words. See NOTES.md.
+schema_version: 5
+id: five-banners
+title: Five Banners
+subtitle: Take the land in ten turns
+language: en
+written_in: en
+languages: [en, ja]
+screen: {width: 1920, height: 1080}
+fonts: {regular: fonts/mplus-1p-regular.ttf}
+title_background: maps/town.jpg
+start:
+  location: war
+  party: [corin, hilde]
+  gold: 60
+  event: opening
+max_party: 4
+battle: {variance: 0, critical: 0, escape: 1}
+campaign:
+  location: war
+  player: crown
+  turns: 10
+  calendar: week
+  count: orders
+  defeat: {out: 2}
+  won: victory
+  lost: fallen
+  on_turn: turn_start
+  generals:
+    corin: {troops: 500, might: 3, army: men, skills: [volley]}
+    hilde: {troops: 600, might: 2, army: women, tactic: guard, skills: [rally]}
+    sable: {troops: 0, might: 1, army: women, tactic: weakest, skills: [rally]}
+    vessa: {troops: 0, might: 4, army: women, tactic: strongest, skills: [charge]}
+  clash:
+    power: "a.troops * (1 + a.might / 10) * (0.8 + rand() * 0.4)"
+    hit: "a.troops * (0.14 + a.might / 100) * (0.8 + rand() * 0.4)"
+    rounds: 5
+    backgrounds: {field: bg/field.jpg, town: bg/town.jpg, castle: bg/castle.jpg}
+    armies:
+      men: [armies/men_1.png, armies/men_2.png, armies/men_3.png, armies/men_4.png]
+      women: [armies/women_1.png, armies/women_2.png, armies/women_3.png, armies/women_4.png]
+      monsters: [armies/monsters_1.png, armies/monsters_2.png, armies/monsters_3.png, armies/monsters_4.png]
+    units: 4
+    skills:
+      volley: {label: Volley, charge: 3, all: true, power: "a.troops * 0.12", cutin: true}
+      rally: {label: Rally, charge: 3, heal: "a.max * 0.15"}
+      charge: {label: Charge, charge: 2, power: "a.troops * 0.3", cutin: true}
+      dark_lance: {label: Dark Lance, charge: 3, power: "a.troops * 0.3", foes: [raven_knight], cutin: true}
+  orders:
+    attack:
+      label: Attack
+      general: ready
+      target: border
+      march: true
+      fight: clash_view
+      until_taken: true
+      generals: 4
+      on_win: [{say: {who: corin, text: "The region is ours. Hold it well, and don't let it go to your heads."}}]
+      on_lose: [{say: {who: hilde, text: "We fell back. Next time I go in front of you, Corin, no argument."}}]
+      on_draw: [{say: {who: corin, text: "Time ran out and they still hold it. Fine, they'll see us again soon."}}]
+    develop:
+      label: Develop
+      target: own
+      do: [{set: {target.wealth: "target.wealth + 15"}}]
+    draft:
+      label: Draft 150 for 50 gold
+      per_turn: 2
+      when: gold >= 50
+      general: any
+      do: [{gold: -50}, {set: {general.troops: "general.troops + 150"}}]
+state:
+  strict: true
+  names:
+    # The last turn of the Raven's truce (0: none).
+    var.truce: {type: number, initial: 0}

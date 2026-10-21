@@ -33,6 +33,16 @@ func (db *DB) EachCommand(fn func(*Command)) {
 	for _, e := range db.Events {
 		in(e.Do)
 	}
+	if cp := db.Game.Campaign; cp != nil {
+		for _, id := range cp.OrderIDs() {
+			if o := cp.Orders[id]; o != nil {
+				in(o.Do)
+				in(o.OnWin)
+				in(o.OnLose)
+				in(o.OnDraw)
+			}
+		}
+	}
 	for _, l := range db.Locations {
 		in(l.OnEnter)
 		for _, p := range l.People {

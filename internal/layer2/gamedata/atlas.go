@@ -19,6 +19,13 @@ type Atlas struct {
 	// DrawRoads draws the roads over the picture. The roads are meant to be painted in the
 	// picture; their lines are what the token walks along, not drawn unless this is true.
 	DrawRoads bool `yaml:"draw_roads"`
+	// RegionRoads and RegionBorders are for a campaign's map (a map whose points are
+	// regions). RegionRoads is when the arrows to the regions the one chosen can march on
+	// are drawn, and RegionBorders when the outlines of the regions are: selected (the
+	// default) only around the chosen region, always for every region (the old look; for
+	// roads, the lines of all the roads). draw_roads is not read on a campaign's map.
+	RegionRoads   string `yaml:"region_roads"`
+	RegionBorders string `yaml:"region_borders"`
 	// LabelSize is the text height of the points' name plates, a fraction of the screen's
 	// height (0.03 when 0).
 	LabelSize float64 `yaml:"label_size"`
@@ -156,6 +163,13 @@ func (c *checker) atlas(w, id string, l *Location) {
 	case "", "hidden", "dim", "mark", "named":
 	default:
 		c.errorf(diag.NotAWord, w+".unknown", "want hidden, dim, mark or named, not %q", a.Unknown)
+	}
+	for name, v := range map[string]string{"region_roads": a.RegionRoads, "region_borders": a.RegionBorders} {
+		switch v {
+		case "", "selected", "always":
+		default:
+			c.errorf(diag.NotAWord, w+"."+name, "want selected or always, not %q", v)
+		}
 	}
 	if len(a.Points) == 0 {
 		c.errorf(diag.Shape, w+".points", "a map needs points")

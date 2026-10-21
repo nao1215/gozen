@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
 )
@@ -228,6 +229,8 @@ func (u *Unit) Field(name string) (any, bool) {
 		return u.back(), true
 	case "wears": // the items a party member has on (a foe wears nothing)
 		return rpg.WearsView{A: u.Actor}, true
+	case "troops": // in a campaign's battle: a general's troops, a foe's the garrison of the region marched on (ADR 0030)
+		return u.troops(), true
 	case "lv": // the level of the skill being used (its node in the skill tree; 1 otherwise)
 		if u.Actor != nil && u.b.using != "" {
 			return float64(max(1, u.Actor.SkillLevel(u.b.using))), true
@@ -385,4 +388,24 @@ func (b *Battle) frontFirst(pool []*Unit) *Unit {
 		}
 	}
 	return pool[len(pool)-1]
+}
+
+// troops is the unit's troops in a campaign's battle: the general's (a party member who is
+// one) or the garrison of the order's target (a foe); 0 outside a campaign.
+func (u *Unit) troops() float64 {
+	b := u.b
+	if b == nil || b.DB == nil || b.DB.Game.Campaign == nil || b.St == nil {
+		return 0
+	}
+	cs := b.St.Campaign()
+	if u.Actor != nil {
+		if _, ok := b.DB.Game.Campaign.Generals[u.Actor.ID]; ok {
+			return data.GeneralTroops(b.DB, cs, u.Actor.ID)
+		}
+		return 0
+	}
+	if t := optional.Value[string](cs.Vars[data.VarTarget]); t != "" && b.DB.Regions[t] != nil {
+		return data.Garrison(b.DB, cs, t)
+	}
+	return 0
 }

@@ -83,6 +83,14 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 | Event picture with its line | |
 | ![Brenna's ending: a picture of her cheering at the bar, with the line under it](/images/novel-picture.jpg) | |
 
+### Campaigns
+
+`regions`, `factions` and `campaign` (schema version 5) make a war of regions over turns, with generals, orders and clashes of armies. From [Five Banners](https://github.com/nao1215/gozen/tree/main/examples/campaign), the campaign sample.
+
+| The war map | A clash of armies |
+|:--|:--|
+| ![the picture map of the land with the regions in the owners' colours, the band with the week, the window of a region and the generals](/images/campaign-map.jpg) | ![two armies of soldiers lined up on the terrain, with the leaders' cards in a row below](/images/campaign-clash.jpg) |
+
 ## Playtesting
 
 Start the game with `--dev` and these keys work while you play.

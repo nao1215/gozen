@@ -175,7 +175,7 @@ quit
 go run . --dev --mute --seed 7 --start camp --script script.txt --shots captures
 ```
 
-`wait N` waits N ticks (60 a second), `press BUTTON` presses `ok`, `cancel`, `up`, `down`, `left`, `right` and the other buttons, `shot NAME` writes `NAME.png`, and `quit` ends the run. `--record out.mp4` writes a video of a scripted, automatic or replayed run (needs ffmpeg). On Linux, wrap any of these in `xvfb-run -a` to run without a screen.
+`wait N` waits N ticks (60 a second), `press BUTTON` presses `ok`, `cancel`, `up`, `down`, `left`, `right` and the other buttons, `shot NAME` writes `NAME.png`, and `quit` ends the run. In a campaign, `order ID [GENERAL|-] [TARGET]` gives an order and `end_turn` ends the turn; GENERAL may be several, the first leading, each with its tactic (`corin:guard,hilde`), and then the sortie screen is not shown; the trace writes `order`, `sortie`, `clash` and `end_turn` lines. `--record out.mp4` writes a video of a scripted, automatic or replayed run (needs ffmpeg). On Linux, wrap any of these in `xvfb-run -a` to run without a screen.
 
 To take a list of screenshots in one go, each from a fresh start, use [`gozen play shots`](/commands/#play-shots).
 

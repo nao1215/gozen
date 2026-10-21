@@ -1,6 +1,6 @@
 ---
 title: Play the samples in the browser
-description: Play Go Zen, the Gozen sample RPG, and After the Pass, the novel sample, in the browser - the same games as the desktop builds, compiled to WebAssembly.
+description: Play Go Zen, the Gozen sample RPG, After the Pass, the novel sample, and Five Banners, the campaign sample, in the browser - the same games as the desktop builds, compiled to WebAssembly.
 weight: 15
 ---
 
@@ -8,7 +8,9 @@ weight: 15
 
 [Play After the Pass in the browser](/play/novel/), the novel sample: a short story at a tavern with two choices and three endings, in English or Japanese (Settings, Language). The page downloads about 42 MB (the program, 38 MB, and the game's pictures as WebP, music and font, 4 MB).
 
-The browser builds are the same games as `examples/go-zen` and `examples/novel`: a `gozen.Session` on `play.New`, compiled with `GOOS=js GOARCH=wasm`. `make website` builds them into the site (it needs Python with Pillow built with WebP, `python3-pil`), and `make website-play-check` opens the built pages in headless Chrome and fails when a game draws nothing.
+[Play Five Banners in the browser](/play/campaign/), the campaign sample: three factions, five regions and ten weeks; choose a region, send your generals with their tactics, and watch the clash, in English or Japanese.
+
+The browser builds are the same games as `examples/go-zen`, `examples/novel` and `examples/campaign`: a `gozen.Session` on `play.New`, compiled with `GOOS=js GOARCH=wasm`. `make website` builds them into the site (it needs Python with Pillow built with WebP, `python3-pil`), and `make website-play-check` opens the built pages in headless Chrome and fails when a game draws nothing.
 
 | Input | Meaning |
 |:--|:--|

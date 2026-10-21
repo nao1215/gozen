@@ -244,6 +244,9 @@ func (c *checker) setKey(w, k string, e Expr) {
 	if strings.HasPrefix(k, "flag.") || strings.HasPrefix(k, "var.") {
 		return
 	}
+	if c.campaignSetKey(w, k, e) {
+		return
+	}
 	db := c.db
 	kind, rest, _ := strings.Cut(k, ".")
 	text := ""

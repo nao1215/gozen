@@ -39,7 +39,7 @@ events:
   ending:
     do: [{say: bye}, {clear: true}, {say: never shown}]
   loop:
-    do: [{call: loop}]
+    do: [{if: "true", then: [{call: loop}]}]
 music:
   songs: {theme: {file: x.png}}
 `

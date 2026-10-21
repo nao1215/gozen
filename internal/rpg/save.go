@@ -102,6 +102,7 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 	report := LoadReport{GameID: db.Game.ID, DataVersion: db.Game.DataVersion}
 	payload := b
 	var resume *Resume
+	var savedRand []byte
 	_, version := raw["format_version"]
 	_, game := raw["game_id"]
 	_, dataVersion := raw["data_version"]
@@ -138,6 +139,8 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 		payload = envelope.State
 		if envelope.Cursor != nil {
 			resume = &Resume{Cursor: *envelope.Cursor, Rand: envelope.Rand}
+		} else {
+			savedRand = envelope.Rand
 		}
 	} else {
 		if !opt.AllowLegacy {
@@ -158,7 +161,7 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 	if err := checkTacticsVersions(fields["actors"]); err != nil {
 		return nil, err
 	}
-	s := &State{DB: db, Rand: rng, LoadReport: report, Resume: resume}
+	s := &State{DB: db, Rand: rng, LoadReport: report, Resume: resume, SavedRand: savedRand}
 	if err := decodeSave(payload, s); err != nil {
 		return nil, err
 	}

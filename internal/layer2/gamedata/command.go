@@ -58,6 +58,9 @@ type Command struct {
 	// a point of a map taken from the menu puts them, one road at a time; ADR 0022).
 	Cross string `yaml:"-" command:"internal"`
 	Reach string `yaml:"-" command:"internal"`
+	// Clash ends a campaign's march decided by a battle (not written in YAML: won or lost
+	// and the order's id, as "won:attack", put after the battle by the order; ADR 0030).
+	Clash string `yaml:"-" command:"internal"`
 	// Hurt takes HP from members outside battle (a poison floor, a trap); never below 1.
 	Hurt *Hurt `yaml:"hurt" command:"verb"`
 	// Affect puts members in a state, or takes one away, outside battle.
@@ -137,6 +140,13 @@ type Command struct {
 	Sell *Trade `yaml:"sell" command:"verb"`
 	// Act is one move of the next AUTO battle (user, skill or item, target). Moves are used in written order on the turn when that user's turn comes (spec version 2).
 	Act *BattleAct `yaml:"act" command:"verb"`
+	// Order gives an order of the campaign (schema_version 5, ADR 0030): the general and
+	// the target region it needs are asked when not given.
+	Order *OrderCmd `yaml:"order" command:"verb"`
+	// EndTurn ends the campaign's turn: the other factions move and the next turn begins.
+	EndTurn bool `yaml:"end_turn" command:"verb"`
+	// GameOver ends the game lost, as a lost battle does (schema_version 5).
+	GameOver bool `yaml:"game_over" command:"verb"`
 	// custom is the name of a custom command declared in game.yaml's verbs (an unknown YAML field), and customArg is its value.
 	custom    []string
 	customArg any

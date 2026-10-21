@@ -34,7 +34,8 @@ var commandExamples = map[string]string{
 	"pick": `pick: Rest`, "turn": `turn: left`, "step": `step: 2`, "walk": `walk: S`,
 	"use": `use: potion`, "equip": `equip: {actor: scout, slot: weapon}`,
 	"buy": `buy: {shop: store, item: potion, count: 2}`, "sell": `sell: {shop: store, item: potion}`,
-	"act": `act: {actor: scout, skill: attack}`,
+	"act":   `act: {actor: scout, skill: attack}`,
+	"order": `order: attack`, "end_turn": `end_turn: true`, "game_over": `game_over: true`,
 }
 
 func TestCommandFieldMatrix(t *testing.T) {
@@ -79,10 +80,11 @@ func TestCommandFieldMatrix(t *testing.T) {
 		verb, err := cmd.Verb()
 		db.Events["matrix"] = &data.Event{Do: []data.Command{cmd}}
 		errs := db.Check()
-		if slices.Contains(data.NewVerbs, wantVerb) || wantVerb == "stand" { // a spec version 2 (stand: 4) command yields only a version error in older versions
+		campaign := wantVerb == "order" || wantVerb == "end_turn" || wantVerb == "game_over"
+		if slices.Contains(data.NewVerbs, wantVerb) || wantVerb == "stand" || campaign { // a spec version 2 (stand: 4, a campaign's: 5) command yields only a version error in older versions
 			var rest []error
 			for _, e := range errs {
-				if !strings.Contains(e.Error(), "needs schema_version: 2") && !strings.Contains(e.Error(), "stand needs schema_version: 4") {
+				if !strings.Contains(e.Error(), "needs schema_version: 2") && !strings.Contains(e.Error(), "stand needs schema_version: 4") && !strings.Contains(e.Error(), "needs schema_version: 5") {
 					rest = append(rest, e)
 				}
 			}

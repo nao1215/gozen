@@ -93,8 +93,12 @@ func (g *Game) writeSave(path string) error {
 func (g *Game) loadSavedGame(st *rpg.State) {
 	r := st.Resume
 	st.Rand = g.stateRng()
-	if r != nil && len(r.Rand) > 0 {
-		if p := rand.NewPCG(1, 2); p.UnmarshalBinary(r.Rand) == nil {
+	saved := st.SavedRand
+	if r != nil {
+		saved = r.Rand
+	}
+	if len(saved) > 0 {
+		if p := rand.NewPCG(1, 2); p.UnmarshalBinary(saved) == nil {
 			g.pcg, st.Rand = p, rand.New(p) //nolint:gosec // Restores deterministic gameplay randomness, not secrets.
 		}
 	}

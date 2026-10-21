@@ -284,11 +284,13 @@ type Game struct {
 	sides      map[string]float64
 	unlocked   map[string]bool
 	replaying  bool
-	autoBattle bool
-	read       map[uint64]bool
-	readDirty  bool
-	autoKey    string
-	offered    string
+	// sortieTactics are the tactics last chosen on the sortie screen, by general.
+	sortieTactics map[string]string
+	autoBattle    bool
+	read          map[uint64]bool
+	readDirty     bool
+	autoKey       string
+	offered       string
 
 	unlockReadErr     error
 	unlockNeedsBackup bool
@@ -1112,6 +1114,10 @@ func (g *Game) startState() {
 		g.backRing = nil
 	}
 	g.events = event.New(g.db, g.st, event.HostFunc(g.Handle))
+	g.events.Sortie = true
+	if g.sortieTactics == nil {
+		g.sortieTactics = map[string]string{}
+	}
 	g.events.BlockAside = g.AsideBlocked
 	g.events.OnStart = g.onEventStart
 	// Writing stats and levels with set is allowed only in authoring mode (--dev) (ADR 0021, author's decision 5).
@@ -1567,6 +1573,18 @@ func (g *Game) begin(r event.Request) {
 		g.req = nil
 		g.events.Stop()
 		g.replace(newGameOver(g))
+	case event.ClashScene:
+		if g.replaying {
+			done()
+			return
+		}
+		g.push(newClashScene(g, r.Clash, done))
+	case event.SortieScene:
+		if g.replaying {
+			done()
+			return
+		}
+		g.push(newSortie(g, r, done))
 	}
 }
 
@@ -1764,6 +1782,12 @@ func (g *Game) Handle(e event.Effect) {
 		g.SFX(e.Name)
 	case event.VisualEffect:
 		g.visual(e)
+	case event.CampaignEffect:
+		if e.Kind == "order" {
+			g.emit("order", traceLine{"order": e.Order, "general": e.General, "target": e.Target, "result": e.Result, "turn": e.Turn})
+		} else {
+			g.emit("end_turn", traceLine{"turn": e.Turn})
+		}
 	}
 }
 
