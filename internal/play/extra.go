@@ -30,6 +30,8 @@ func (g *Game) openScreen(name string, done func()) {
 		g.push(newTreeView(g, done))
 	case "fusion":
 		g.push(newFusion(g, done))
+	case "profiles":
+		g.push(newProfiles(g, done))
 
 	case "status", "item", "skill", "equip":
 		g.push(newDirectMenu(g, name, done))

@@ -1,0 +1,103 @@
+version: '1'
+suite:
+  name: Gozen character book in check and on the screen (ADR 0031)
+scenarios:
+- name: check reports what a profile points at and does not find
+  steps:
+  - fixture:
+      file: book/game.yaml
+      content: "schema_version: 4\nid: book\nstart: {location: room, party: [reader]}\n"
+  - fixture:
+      file: book/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker, faces: reader}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {}}
+  - fixture:
+      file: book/data/profiles.yaml
+      content: |
+        profiles:
+          reader: {faces: [calm], when: "flg.met", relations: [{who: nobody}]}
+  - run:
+      command: gozen check --only structure book
+  - assert:
+      exit_code: 1
+      stderr:
+        contains:
+        - 'profiles.reader.faces[0]: no file assets/reader/calm.png'
+        - 'profiles.reader.when: "flg.met" uses the unknown name "flg"'
+        - 'profiles.reader.relations[0].who: unknown character "nobody"'
+- name: a book that points at what exists passes check
+  steps:
+  - fixture:
+      file: book/game.yaml
+      content: "schema_version: 4\nid: book\nstart: {location: room, party: [reader]}\n"
+  - fixture:
+      file: book/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {}}
+        events: {book: {do: [{open: profiles}]}}
+  - fixture:
+      file: book/data/profiles.yaml
+      content: |
+        profiles:
+          keeper: {name: Keeper, picture: keeper.png, when: "ran.book.count > 0", relations: [{who: you, calls: Guest}]}
+  - fixture:
+      file: book/assets/keeper.png
+      from: fixtures/game/assets/mote.png
+  - run:
+      command: gozen check --only structure book
+  - assert:
+      exit_code: 0
+- name: the book opens from an event and shows the character
+  tags:
+  - graphics
+  steps:
+  - fixture:
+      file: book/game.yaml
+      content: "schema_version: 4\nid: book\nscreen: {width: 960, height: 540}\nfonts: {regular: regular.ttf}\nstart: {location: room, party: [reader]}\n"
+  - fixture:
+      file: book/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {name: Reader, class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {name: Room}}
+        events: {book: {do: [{say: The book is on the shelf.}, {open: profiles}, {say: The book is closed.}]}}
+  - fixture:
+      file: book/data/profiles.yaml
+      content: |
+        profiles:
+          keeper: {name: Keeper, title: Of the door, picture: keeper.png, fields: [{label: Role, value: Keeps the door}], text: Keeps the door open.}
+  - fixture:
+      file: book/assets/keeper.png
+      from: fixtures/game/assets/mote.png
+  - fixture:
+      file: book/assets/regular.ttf
+      from: fixtures/game/assets/regular.ttf
+  - fixture:
+      file: s.txt
+      content: "wait 30\npress ok\nwait 30\nshot book\npress cancel\nwait 30\nquit\n"
+  - run:
+      command: '"${env:GOZEN_GAME_BIN}" --dir book --dev --mute --seed 1 --start room --event book --script s.txt --shots out --save-dir out/saves --trace out/trace.jsonl'
+      timeout: 60s
+  - assert:
+      exit_code: 0
+  - assert:
+      image:
+        path: out/book.png
+        format: png
+        width: 960
+        height: 540
+  - assert:
+      file:
+        path: out/trace.jsonl
+        contains:
+        - '"t":"profiles"'
+        - '"profile":"keeper"'
+        - '"unlocked":true'
+        - 'The book is closed.'

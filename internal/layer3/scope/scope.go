@@ -72,6 +72,8 @@ func (e env) Lookup(name string) (any, bool) {
 		return dungeon.Of(e.db, e.st) != nil && dungeon.Completed(e.st, e.st.Location), true
 	case "moved": // the last step moved (false if it bumped into something)
 		return e.st.Moved, true
+	case "profile": // the character book (ADR 0031): profile.<id>.unlocked by the state now
+		return e.profiles(), true
 	}
 	return nil, false
 }
@@ -129,4 +131,15 @@ func ResultName(n int) string {
 		return "escape"
 	}
 	return ""
+}
+
+// profiles are the pages of the character book as the state now opens them: whether
+// each is unlocked (its when holds), and its name.
+func (e env) profiles() expr.Map {
+	out := expr.Map{}
+	env := e.st.Env()
+	for id := range e.db.Profiles {
+		out[id] = expr.Map{"unlocked": e.db.ProfileHolds(id, env), "name": e.db.ProfileName(id)}
+	}
+	return out
 }

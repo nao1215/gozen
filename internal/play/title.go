@@ -2,6 +2,7 @@ package play
 
 import (
 	"math"
+	"slices"
 
 	lang "github.com/nao1215/gozen/internal/text"
 
@@ -46,10 +47,13 @@ func (g *Game) titleMenu() *list {
 		}
 	}
 	items := []listItem{{label: lang.T("はじめから")}, {label: lang.T("つづきから"), disabled: !hasSave}, {label: lang.T("ギャラリー"), disabled: !g.hasGallery()}, {label: lang.T("せってい")}}
+	if g.profilesInMenus() {
+		items = slices.Insert(items, 3, listItem{label: lang.T("キャラクター"), id: "profiles"})
+	}
 	if canQuit {
 		items = append(items, listItem{label: lang.T("おわる")})
 	}
-	m := newList(items, sw*0.08, sh*0.5, 340, 5)
+	m := newList(items, sw*0.08, sh*0.5, 340, max(5, len(items)))
 	if g.titleCentered() {
 		m.x = (sw - 340) / 2
 	}
@@ -70,7 +74,16 @@ func (t *title) update(g *Game) {
 	if !chose {
 		return
 	}
-	switch t.menu.sel {
+	sel := t.menu.sel
+	if t.menu.items[sel].id == "profiles" {
+		g.sfx("decide")
+		g.push(newProfiles(g, nil))
+		return
+	}
+	if g.profilesInMenus() && sel > 3 {
+		sel--
+	}
+	switch sel {
 	case 0:
 		g.newGame()
 	case 1:

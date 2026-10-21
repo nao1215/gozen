@@ -76,6 +76,7 @@ DataFile:
   items: "Items, equipment and key items, keyed by item ID."
   locations: "Places the party can be, keyed by location ID."
   music: "The songs and the rules that choose the mood."
+  profiles: "Pages of the character book (the Characters screen), keyed by profile ID; a profile whose ID is an actor's shows that actor."
   shops: "Shops, keyed by shop ID."
   skills: "Skills, keyed by skill ID."
   states: "Status conditions such as poison or buffs, keyed by state ID."

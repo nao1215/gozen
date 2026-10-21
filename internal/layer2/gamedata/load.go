@@ -34,6 +34,8 @@ type DB struct {
 	StoneSets map[string]*StoneSet
 	Fusions   []Fusion
 	Music     Music
+	// Profiles are the pages of the character book (ADR 0031).
+	Profiles map[string]*Profile
 
 	TacticConditions map[string]*TacticCondition
 	TacticTargets    map[string]*TacticTarget
@@ -77,6 +79,7 @@ type file struct {
 	StoneSets map[string]*StoneSet `yaml:"stone_sets"`
 	Fusions   []Fusion             `yaml:"fusions"`
 	Music     *Music               `yaml:"music"`
+	Profiles  map[string]*Profile  `yaml:"profiles"`
 
 	TacticConditions map[string]*TacticCondition `yaml:"tactic_conditions"`
 	TacticTargets    map[string]*TacticTarget    `yaml:"tactic_targets"`
@@ -93,7 +96,8 @@ func Load(fsys fs.FS) (*DB, error) {
 		Skills: map[string]*Skill{}, States: map[string]*State{}, Enemies: map[string]*Enemy{},
 		Troops: map[string]*Troop{}, Locations: map[string]*Location{}, Events: map[string]*Event{},
 		Shops: map[string]*Shop{}, AI: map[string][]Rule{}, Elements: map[string]string{}, StoneSets: map[string]*StoneSet{},
-		Order: map[string][]string{}, sources: map[string]sourcePosition{}, sourceFiles: map[string]*sourceDocument{},
+		Profiles: map[string]*Profile{},
+		Order:    map[string][]string{}, sources: map[string]sourcePosition{}, sourceFiles: map[string]*sourceDocument{},
 		Music: Music{Volume: 0.7},
 	}
 	b, err := fs.ReadFile(fsys, "game.yaml")
@@ -224,6 +228,7 @@ func (db *DB) loadFile(p string) error {
 	merge("ai", putter(db.AI, f.AI))
 	merge("elements", putter(db.Elements, f.Elements))
 	merge("stone_sets", putter(db.StoneSets, f.StoneSets))
+	merge("profiles", putter(db.Profiles, f.Profiles))
 	for i := range f.Fusions {
 		db.keepSources(doc, fmt.Sprintf("fusions[%d]", i), fmt.Sprintf("fusions[%d]", len(db.Fusions)+i))
 	}

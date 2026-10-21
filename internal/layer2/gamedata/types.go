@@ -476,6 +476,9 @@ type UIStyle struct {
 	// Rollback is how many earlier events the player can roll back into, besides the one
 	// running (default 8; 0 turns rolling back off). Needs schema version 4 (ADR 0025).
 	Rollback *int `yaml:"rollback"`
+	// Profiles puts Characters, the character book, in the title, the field menu and the
+	// novel bar (ADR 0031). Under --dev the menus offer it anyway.
+	Profiles bool `yaml:"profiles"`
 	// Voice shapes how voices play: cut at the next line, auto waits for them
 	// (schema_version 4, ADR 0028).
 	Voice   VoiceStyle `yaml:"voice"`

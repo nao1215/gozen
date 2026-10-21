@@ -37,6 +37,7 @@ const (
 	btnSave
 	btnLoad
 	btnPanel
+	btnBook
 	numButtons
 
 	btnNone button = -1
@@ -66,6 +67,8 @@ var keys = [numButtons][]ebiten.Key{
 	btnBack: {ebiten.KeyQ},
 	// F8 opens the development panel under --dev (ADR 0029).
 	btnPanel: {ebiten.KeyF8},
+	// P opens the character book (ADR 0031) while a line is shown.
+	btnBook: {ebiten.KeyP},
 }
 
 var (
@@ -461,7 +464,7 @@ var scriptButtons = map[string]button{
 	"tab": btnNext, "up": btnUp, "down": btnDown, "left": btnLeft, "right": btnRight,
 	"log": btnLog, "auto": btnAuto, "hide": btnHide, "config": btnConfig, "memo": btnMemo,
 	"reload": btnReload, "tag": btnTag, "graphs": btnGraphs, "skip": btnSkip, "scene_skip": btnSceneSkip,
-	"back": btnBack, "save": btnSave, "load": btnLoad, "panel": btnPanel,
+	"back": btnBack, "save": btnSave, "load": btnLoad, "panel": btnPanel, "characters": btnBook,
 }
 
 func (s *script) midEvent(in *input, name string) {

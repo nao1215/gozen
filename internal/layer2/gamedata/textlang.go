@@ -145,6 +145,9 @@ func (db *DB) nameFields() []*string {
 	for _, s := range db.Shops {
 		out = append(out, &s.Name, &s.Greeting)
 	}
+	for _, p := range db.Profiles {
+		out = append(out, p.texts()...)
+	}
 	for _, l := range db.Locations {
 		out = append(out, &l.Name, &l.Desc)
 		for i := range l.People {
@@ -216,6 +219,20 @@ func (db *DB) SourceTexts() []SourceText {
 		s := db.Shops[id]
 		add("shops."+id+".name", src(&s.Name))
 		add("shops."+id+".greeting", src(&s.Greeting))
+	}
+	for _, id := range sorted(slices.Collect(maps.Keys(db.Profiles))) {
+		p := db.Profiles[id]
+		add("profiles."+id+".name", src(&p.Name))
+		add("profiles."+id+".title", src(&p.Title))
+		add("profiles."+id+".text", src(&p.Text))
+		for i := range p.Fields {
+			add(fmt.Sprintf("profiles.%s.fields[%d].label", id, i), src(&p.Fields[i].Label))
+			add(fmt.Sprintf("profiles.%s.fields[%d].value", id, i), src(&p.Fields[i].Value))
+		}
+		for i := range p.Relations {
+			add(fmt.Sprintf("profiles.%s.relations[%d].calls", id, i), src(&p.Relations[i].Calls))
+			add(fmt.Sprintf("profiles.%s.relations[%d].text", id, i), src(&p.Relations[i].Text))
+		}
 	}
 	var cmds func(w string, cs []Command)
 	cmds = func(w string, cs []Command) {
