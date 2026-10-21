@@ -63,6 +63,8 @@ func TestSceneErrors(t *testing.T) {
 		{`parts: [{kind: apron, color: "#2f6fb8"}]`, `parts: [{kind: wings, color: "blue"}]`, "parts: [{kind: wings", "stage.people[0].doll.parts[0].color", "want #rrggbb"},
 		{"- {action: rest, area:", "- {action: nap, area:", "- {action: nap", "stage.things[1].action", `"nap" is not the id of one of the location's actions`},
 		{"depth: bg/plaza_depth.png", "depth: bg/missing.png", "depth: bg/missing", "stage.depth", "no file assets/bg/missing.png"},
+		{"fork: {at: [32, 15]}", "fork: {}", "fork: {}", "map.points.fork", "a point needs at"},
+		{"north: {at: [48, 12], facing: south}", "north: {facing: south}", "north: {facing", "stage.spots.north", "a spot needs at"},
 		{"to: plaza}", "to: piazza}", "square: {at", "map.points.square.to", `unknown location "piazza"`},
 		{"square: {at: [32, 30]", "square: {at: [320, 30]", "square: {at", "map.points.square.at", "outside the picture (64x36)"},
 		{`gate: {at: [60, 10], to: gate, when: "item.key > 0", locked: "The gate is shut."}`, `gate: {at: [60, 10], to: gate, locked: "The gate is shut."}`, "gate: {at: [60, 10]", "map.points.gate.locked", "it needs when"},

@@ -72,6 +72,18 @@ type MapPoint struct {
 	AtPoint string `yaml:"at_point"`
 	// Marker is the point's own marker picture (instead of the map's).
 	Marker string `yaml:"marker"`
+
+	hasAt bool // at was written (a point without it would stand at the corner)
+}
+
+// UnmarshalYAML reads the point and notes whether it has at, which check requires.
+func (p *MapPoint) UnmarshalYAML(unmarshal func(any) error) error {
+	type plain MapPoint
+	if err := unmarshal((*plain)(p)); err != nil {
+		return err
+	}
+	p.hasAt = hasKey(unmarshal, "at")
+	return nil
 }
 
 // Road joins two points of a map (both ways).
@@ -152,7 +164,7 @@ func (c *checker) atlas(w, id string, l *Location) {
 	for _, pid := range a.PointIDs() {
 		p := a.Points[pid]
 		ww := w + ".points." + pid
-		if p == nil {
+		if p == nil || !p.hasAt {
 			c.errorf(diag.Shape, ww, "a point needs at")
 			continue
 		}
