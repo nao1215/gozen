@@ -183,11 +183,15 @@ func inspect(c *config, arg string, report map[string]entry) (inspection, error)
 	}
 
 	e, inReport := report[rel]
-	if rel != "" && inReport && !c.redetect && e.FixSum == fixSum(fx) {
-		if sum, err := fileSum(origPath); err == nil && sum == e.Source {
-			fromReport(c, &in, e, fx, tags, std)
-			return in, nil
-		}
+	// The report describes this picture and these fixes when it was made for them.
+	matches := rel != "" && inReport && e.FixSum == fixSum(fx)
+	if matches {
+		sum, err := fileSum(origPath)
+		matches = err == nil && sum == e.Source
+	}
+	if matches && !c.redetect {
+		fromReport(c, &in, e, fx, tags, std)
+		return in, nil
 	}
 
 	var boxes []detect.Box
@@ -313,7 +317,9 @@ func inspect(c *config, arg string, report map[string]entry) (inspection, error)
 	} else if in.NeedsMosaic && rel != "" {
 		in.Mosaicked.Note = "出力が無い（auto を動かす）"
 	}
-	stale := rel != "" && in.NeedsMosaic
+	// A report that does not match this picture and these fixes is out of date; with
+	// --redetect a matching one is only checked against a fresh detection.
+	stale := rel != "" && in.NeedsMosaic && !matches
 	if stale {
 		in.Mosaicked.OutputCovers = false
 		in.Mosaicked.Note = "report.json が今の元の絵か手直しと合わない（auto を動かし直す）"
