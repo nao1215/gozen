@@ -11,8 +11,28 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    # Tells the jobs below whether a pull request changes more than documentation
+    # (scripts/ci_changes.sh, docs/development/ci.md). Jobs are skipped with `if`, not
+    # with on.paths: a workflow that never starts leaves its required checks pending.
+    # Fail-open: only an answer of false skips; a failure of this job runs everything.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.scope.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # A pull request's merge commit and its first parent, the base it merges into.
+          fetch-depth: 2
+      - id: scope
+        run: ./scripts/ci_changes.sh
+
   coverage:
     name: Coverage
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
