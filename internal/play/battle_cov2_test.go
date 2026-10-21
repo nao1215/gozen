@@ -112,6 +112,7 @@ func TestBattleLineForTheSpeaker(t *testing.T) {
 // TestBattleSummonAndFall: a foe that calls a helper puts a new foe on the field with its
 // own box; foes that fall fade out and the battle is won when all are gone.
 func TestBattleSummonAndFall(t *testing.T) {
+	covSlow(t)
 	g, _ := btlOpen(t, Options{Battle: "caller"}, "", "")
 	s := btlBattle(t, g)
 	if len(s.b.Foes) != 1 {

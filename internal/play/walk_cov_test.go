@@ -23,6 +23,7 @@ const sysCorridor = `locations:
 // TestScriptWalkReachesATileInADungeon: `walk X` in a script finds the tile in the dungeon,
 // turns toward it and walks; the tile's event runs on arrival.
 func TestScriptWalkReachesATileInADungeon(t *testing.T) {
+	covSlow(t)
 	g := sysOpen(t, Options{Seed: 1, Location: "hall", Script: "wait 5\nwalk F\nlines done\nquit"},
 		map[string]string{"data/hall.yaml": sysCorridor})
 	if !sysFrames(t, g, 3000) {
@@ -38,6 +39,7 @@ func TestScriptWalkReachesATileInADungeon(t *testing.T) {
 
 // TestScriptWalkTurnsAroundToTheOtherSide: a tile behind the player is reached by turning.
 func TestScriptWalkTurnsAroundToTheOtherSide(t *testing.T) {
+	covSlow(t)
 	g := sysOpen(t, Options{Seed: 1, Location: "hall", Script: "wait 5\nwalk E\nlines done\nquit"},
 		map[string]string{"data/hall.yaml": sysCorridor})
 	if !sysFrames(t, g, 3000) {
@@ -50,6 +52,7 @@ func TestScriptWalkTurnsAroundToTheOtherSide(t *testing.T) {
 
 // TestScriptFaceTurnsWithoutWalkingOntoTheTile: `face X` stops in front of the tile.
 func TestScriptFaceTurnsWithoutWalkingOntoTheTile(t *testing.T) {
+	covSlow(t)
 	g := sysOpen(t, Options{Seed: 1, Location: "hall", Script: "wait 5\nface E\nwait 5\nquit"},
 		map[string]string{"data/hall.yaml": sysCorridor})
 	if !sysFrames(t, g, 3000) {

@@ -38,6 +38,7 @@ func btlCheckBatch(b *fxBatch) string {
 // life, builds sound geometry; each kind draws something at some moment, and none draws
 // anything for an unknown kind.
 func TestEffectGeometryIsSound(t *testing.T) {
+	covSlow(t)
 	kinds := append(append([]string{}, data.Fxs...), "cast")
 	rects := []effectAnim{
 		{x: 400, y: 150, w: 240, h: 240},

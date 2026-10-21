@@ -216,6 +216,7 @@ func TestBattleAutoStartsAndWins(t *testing.T) {
 // TestBattleGuardianFight: a guardian opens with a banner, charges its big move with a
 // cut-in, and its defeat is stamped on the screen.
 func TestBattleGuardianFight(t *testing.T) {
+	covSlow(t)
 	g, out := btlOpen(t, Options{Battle: "guardian"}, "", "")
 	s := btlBattle(t, g)
 	if s.boss != "Warden" || s.bossTitle != "Gate keeper" {
@@ -263,6 +264,7 @@ func TestBattleFastSkipsCharge(t *testing.T) {
 // TestBattleLossAndRetry: a lost battle asks to retry from before it when the game allows,
 // and answering yes starts the same battle again from the saved state.
 func TestBattleLossAndRetry(t *testing.T) {
+	covSlow(t)
 	g, out := btlOpen(t, Options{Battle: "doom", Level: 1}, "", "")
 	g.db.Game.Battle.Retry = true
 	s := btlAsk(t, g)
@@ -313,6 +315,7 @@ func TestBattleLossAndRetry(t *testing.T) {
 // TestBattleLossWithoutRetryEnds: without the retry setting a loss ends the battle screen
 // and reports a loss to the event.
 func TestBattleLossWithoutRetryEnds(t *testing.T) {
+	covSlow(t)
 	g, out := btlOpen(t, Options{Battle: "doom"}, "", "")
 	s := btlBattle(t, g)
 	for range 6000 {

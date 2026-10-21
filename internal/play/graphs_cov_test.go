@@ -67,6 +67,7 @@ func TestGraphShade(t *testing.T) {
 // TestGraphsDrawStates: the panel draws in each state it can be in (nothing to measure,
 // measuring, an error, hurt and healed, in a fight) without changing the game or its results.
 func TestGraphsDrawStates(t *testing.T) {
+	covSlow(t)
 	g := btlGraphs(t)
 	scr := btlImage()
 	g.drawGraphs(scr) // closed: nothing

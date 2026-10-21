@@ -114,6 +114,7 @@ func TestWldTraceRecordsTheStructureOfAPlay(t *testing.T) {
 }
 
 func TestWldTraceSameSeedSameTrace(t *testing.T) {
+	covSlow(t)
 	a := wldRecord(t, wldRecordScript)
 	b := wldRecord(t, wldRecordScript)
 	if !bytes.Equal(a, b) {
@@ -122,6 +123,7 @@ func TestWldTraceSameSeedSameTrace(t *testing.T) {
 }
 
 func TestWldReplayMatchesItsRecording(t *testing.T) {
+	covSlow(t)
 	tr := wldRecord(t, wldRecordScript)
 	g, err := wldReplayGame(t, tr, nil)
 	if err != nil {
@@ -137,6 +139,7 @@ func TestWldReplayMatchesItsRecording(t *testing.T) {
 }
 
 func TestWldReplayReportsTheFirstDifference(t *testing.T) {
+	covSlow(t)
 	tr := wldRecord(t, wldRecordScript)
 	changed := bytes.Replace(tr, []byte(`"text":"Two."`), []byte(`"text":"Zwei."`), 1)
 	if bytes.Equal(changed, tr) {
@@ -153,6 +156,7 @@ func TestWldReplayReportsTheFirstDifference(t *testing.T) {
 }
 
 func TestWldReplayRangeStopsAtUntil(t *testing.T) {
+	covSlow(t)
 	tr := wldRecord(t, wldRecordScript)
 	g, err := wldReplayGame(t, tr, func(o *Options) { o.Until = 60 })
 	if err != nil {
@@ -165,6 +169,7 @@ func TestWldReplayRangeStopsAtUntil(t *testing.T) {
 }
 
 func TestWldReplayRefusesABrokenOrChangedRecord(t *testing.T) {
+	covSlow(t)
 	tr := string(wldRecord(t, wldRecordScript))
 	lines := strings.Split(strings.TrimSpace(tr), "\n")
 	join := func(ls ...string) []byte { return []byte(strings.Join(ls, "\n") + "\n") }

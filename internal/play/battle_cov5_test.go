@@ -24,6 +24,7 @@ func TestScreenEffectsShorterWhenFast(t *testing.T) {
 // TestEffectBatchFlushesWhenFull: a scene of very many effects is drawn in several batches and ends
 // with nothing left over.
 func TestEffectBatchFlushesWhenFull(t *testing.T) {
+	covSlow(t)
 	g, _ := btlOpen(t, Options{Battle: "one"}, "", "")
 	s := btlBattle(t, g)
 	s.fx = nil

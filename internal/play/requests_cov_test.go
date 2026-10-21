@@ -48,6 +48,7 @@ events:
 // TestEventBattleWinContinuesTheEvent: a battle started by an event, won, runs on_win and
 // the lines after it; the script films the battle.
 func TestEventBattleWinContinuesTheEvent(t *testing.T) {
+	covSlow(t)
 	g := sysOpen4(t, Options{Seed: 1, Location: "camp", Event: "fight", Line: 1, Script: "play fight 10\nquit"},
 		map[string]string{"data/req.yaml": sysRequests})
 	if !sysFrames(t, g, 20000) {
@@ -151,6 +152,7 @@ func TestEventSaveCommandOpensTheSaveScreen(t *testing.T) {
 // TestWaitCommandCountsTicksAndSkipRespectsNoSkip: wait holds the event for its seconds; in skip
 // mode a skippable wait is cut short and one marked skip: false is not.
 func TestWaitCommandCountsTicksAndSkipRespectsNoSkip(t *testing.T) {
+	covSlow(t)
 	g := sysOpen4(t, Options{Seed: 1, Location: "camp"}, map[string]string{"data/req.yaml": sysRequests})
 	g.events.Start(g.db.Events["pause"].Do)
 	n := 0

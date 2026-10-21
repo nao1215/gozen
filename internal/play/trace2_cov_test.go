@@ -129,7 +129,12 @@ func TestWldTraceSceneLineNamesTheStack(t *testing.T) {
 func TestWldTraceViewLinesNameThePicturesDrawn(t *testing.T) {
 	g, buf := wldTracedGame(t, "wait 1000000\n")
 	wldStartEvent(t, g, "ev_auto")
-	wldFrames(t, g, 40)
+	for range 40 { // every frame drawn: the view line is written by a draw
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+		g.Draw(wldScreen(g))
+	}
 	views := traceLines(t, buf.Bytes(), "view")
 	if len(views) == 0 {
 		t.Fatal("no view line after the picture stood still")
@@ -262,9 +267,9 @@ func TestWldTraceWriteFailureStopsTheGame(t *testing.T) {
 func TestWldTraceStandLinesNameThePictureOverThePortraits(t *testing.T) {
 	g, buf := wldTracedGame(t, "wait 1000000\n")
 	wldStartEvent(t, g, "ev_cgstand")
-	wldFrames(t, g, 60)
+	wldFramesDrawn(t, g, 60)
 	wldPlay(t, g, "press ok\nwait 90\n", 200)
-	wldFrames(t, g, 60)
+	wldFramesDrawn(t, g, 60)
 	var over traceLine
 	for _, l := range traceLines(t, buf.Bytes(), "stand") {
 		if l["cg"] == "pics/bg.png" {
@@ -278,7 +283,7 @@ func TestWldTraceStandLinesNameThePictureOverThePortraits(t *testing.T) {
 		t.Fatalf("stand line %v: the picture hides the portraits and is a place's background", over)
 	}
 	wldPlay(t, g, "press ok\nwait 90\n", 200)
-	wldFrames(t, g, 60)
+	wldFramesDrawn(t, g, 60)
 	last := traceLines(t, buf.Bytes(), "stand")
 	if l := last[len(last)-1]; l["cg"] != nil || l["hides"] != false {
 		t.Fatalf("after the picture went: %v", l)

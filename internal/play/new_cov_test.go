@@ -266,6 +266,7 @@ func TestStoreForIsAskedForTheGameID(t *testing.T) {
 // TestAudioRecordingWritesOneBlockPerTick: with an audio writer the game records PCM as it
 // runs: the same amount every tick, and it goes silent-free once a song plays.
 func TestAudioRecordingWritesOneBlockPerTick(t *testing.T) {
+	covSlow(t)
 	tone, err := os.ReadFile("testdata/tone.ogg")
 	if err != nil {
 		t.Fatal(err)

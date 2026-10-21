@@ -30,6 +30,7 @@ func wldMaze(t *testing.T, loc string, x, y, facing int, calm ...bool) *Game {
 }
 
 func TestWldDungeonControls(t *testing.T) {
+	covSlow(t)
 	g := wldMaze(t, "fx_maze", -1, 0, 0)
 	if p := g.st.Pos; p.X != 1 || p.Y != 1 || p.Facing != 1 {
 		t.Fatalf("arrived at %+v, want S facing east", p)
@@ -129,6 +130,7 @@ func TestWldDungeonControls(t *testing.T) {
 // A slide tile carries the party on cell by cell until the way is shut or it comes to another
 // tile; a spin tile turns it when it stops there (the Tile documentation of the schema).
 func TestWldDungeonSlideStopsAtOtherTileAndSpins(t *testing.T) {
+	covSlow(t)
 	g := wldMaze(t, "fx_maze", 4, 3, 1)
 	wldPlay(t, g, "press up\nwait 60\n", 200)
 	if p := g.st.Pos; p.X != 8 || p.Y != 3 {

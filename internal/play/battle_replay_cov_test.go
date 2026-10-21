@@ -55,6 +55,7 @@ func btlReplay(t *testing.T, path string, n int) string {
 // TestBattleReplayReproducesABattle: a battle recorded with a player's inputs is replayed from
 // its capture alone, and the replay matches every step, decision and reward and says so.
 func TestBattleReplayReproducesABattle(t *testing.T) {
+	covSlow(t)
 	trace := btlRecord(t, "two", "press ok 160\nquit\n")
 	lines := traceLines(t, trace, "battle_capture", "battle_result")
 	if len(lines) != 2 {
@@ -72,6 +73,7 @@ func TestBattleReplayReproducesABattle(t *testing.T) {
 // TestBattleReplayDetectsADifference: a recorded step that no longer matches is reported as a
 // divergence, not accepted.
 func TestBattleReplayDetectsADifference(t *testing.T) {
+	covSlow(t)
 	trace := btlRecord(t, "two", "press ok 160\nquit\n")
 	var edited [][]byte
 	changed := false
@@ -94,6 +96,7 @@ func TestBattleReplayDetectsADifference(t *testing.T) {
 // TestBattleReplayRefusals: traces that cannot be replayed as a battle are refused with a
 // message at load, before any frame is played.
 func TestBattleReplayRefusals(t *testing.T) {
+	covSlow(t)
 	good := btlRecord(t, "one", "press ok 160\nquit\n")
 	goodLines := bytes.Split(bytes.TrimSpace(good), []byte("\n"))
 	join := func(ls ...[]byte) []byte { return append(bytes.Join(ls, []byte("\n")), '\n') }

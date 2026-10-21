@@ -16,6 +16,7 @@ import (
 // point of a map is always a point of that map.
 
 func TestWldStageFeetStayOnWalkableGroundWhateverIsPressed(t *testing.T) {
+	covSlow(t)
 	dir := wldDisk(t, "", nil)
 	g := wldLive(t, dir, "fx_yard")
 	s, ok := g.stack[0].(*stageScene)
@@ -43,6 +44,7 @@ func TestWldStageFeetStayOnWalkableGroundWhateverIsPressed(t *testing.T) {
 }
 
 func TestWldDungeonPartyStaysOnOpenCellsWhateverIsPressed(t *testing.T) {
+	covSlow(t)
 	g := wldMaze(t, "fx_maze", -1, 0, 0)
 	d := dungeon.Of(g.db, g.st)
 	w, h := d.Size()
@@ -71,6 +73,7 @@ func TestWldDungeonPartyStaysOnOpenCellsWhateverIsPressed(t *testing.T) {
 }
 
 func TestWldMapSpotIsAlwaysAPointOfTheMap(t *testing.T) {
+	covSlow(t)
 	g, as := wldAtlas(t, "fx_named")
 	rng := rand.New(rand.NewPCG(7, 8)) //nolint:gosec // A seeded test input.
 	for i := range 12 {
@@ -89,6 +92,7 @@ func TestWldMapSpotIsAlwaysAPointOfTheMap(t *testing.T) {
 // A save keeps where the party stood in a scene, and a spot that is not in the place is emptied
 // when it is loaded and shown in the load report (docs/architecture/scenes.md).
 func TestWldSaveKeepsTheSpotOfAScene(t *testing.T) {
+	covSlow(t)
 	g := wldWorld(t, "fx_yard2", Options{Calm: true})
 	wldFrames(t, g, 20)
 	wldPlay(t, g, "walk well\nwait 5\n", 3000)

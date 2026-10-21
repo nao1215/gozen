@@ -185,6 +185,7 @@ func TestBattlePopupsKeepApart(t *testing.T) {
 // a friend (a buff), poison ticks at the end of the turn for the damage of the state with no
 // attacker, a good state on a foe can be dispelled, and a quiet heal says nothing.
 func TestBattleStatesAndTheirEffects(t *testing.T) {
+	covSlow(t)
 	g, out := btlOpen(t, Options{Battle: "two"}, "", "")
 	s := btlAsk(t, g)
 	foe0, foe1 := s.b.Foes[0], s.b.Foes[1]
@@ -233,6 +234,7 @@ func TestBattleStatesAndTheirEffects(t *testing.T) {
 // remembered, thunder flashes the screen, an element on a physical move adds its burst, and a
 // magic hit on a weak foe booms.
 func TestBattleElementsAndTags(t *testing.T) {
+	covSlow(t)
 	g, _ := btlOpen(t, Options{Battle: "tall"}, "", "")
 	s := btlAsk(t, g)
 	// idol (boss), giant (resists ice), hulk

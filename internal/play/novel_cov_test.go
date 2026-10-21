@@ -211,6 +211,7 @@ func TestWldNovelClickOnBandButtons(t *testing.T) {
 }
 
 func TestWldNovelLongLineIsPaged(t *testing.T) {
+	covSlow(t)
 	g := wldNovel(t, "ev_long")
 	if len(g.talk.pages) < 2 {
 		t.Fatalf("a very long line fits one page: %d", len(g.talk.pages))

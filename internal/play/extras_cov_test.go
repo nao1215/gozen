@@ -171,6 +171,7 @@ func wldPuppetGame(t *testing.T) *Game {
 }
 
 func TestWldPuppetStartsOnFirstTalkAndFallsBack(t *testing.T) {
+	covSlow(t)
 	g := wldPuppetGame(t)
 	p := g.puppets.live["streamer"]
 	if p == nil {
@@ -226,6 +227,7 @@ func TestWldPuppetStartsOnFirstTalkAndFallsBack(t *testing.T) {
 // race with them, and the next game starts clean
 
 func TestWldClosingWhileDollsBakeIsSafe(t *testing.T) {
+	covSlow(t)
 	opts := Options{FS: wldWorldFiles(t, "", nil), Location: "fx_yard", NoSound: true, SaveDir: t.TempDir(), Calm: true}
 	g, err := New(opts) // no script: the dolls bake while the frames go on
 	if err != nil {

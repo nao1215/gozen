@@ -68,6 +68,7 @@ func TestBattleHooksOnAWin(t *testing.T) {
 // TestBattleHooksOnAnOrdinaryDefeat: a defeat with no defeat branch ends in the game-over screen and the
 // post-processing does not run; the pre-processing ran once.
 func TestBattleHooksOnAnOrdinaryDefeat(t *testing.T) {
+	covSlow(t)
 	g := btlHooks(t, "pre", "post")
 	g.events.Start(g.db.Events["fight_doom"].Do)
 	for range 20000 {

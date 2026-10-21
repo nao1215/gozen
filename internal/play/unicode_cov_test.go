@@ -89,6 +89,7 @@ func wldOddRun(t *testing.T, g *Game) {
 }
 
 func TestWldOddTextInTheNovelWindow(t *testing.T) {
+	covSlow(t)
 	var trace bytes.Buffer
 	g := wldOddGame(t, "ui: {message: novel}\n", &trace)
 	wldOddRun(t, g)

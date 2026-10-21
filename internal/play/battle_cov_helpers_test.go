@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"image/png"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 
@@ -14,16 +15,9 @@ import (
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
-// btlScreen is the target every test frame is drawn to. Draw only queues commands, so no
+// btlImage is the target every test frame is drawn to. Draw only queues commands, so no
 // pixel is ever read back.
-var btlScreen *ebiten.Image
-
-func btlImage() *ebiten.Image {
-	if btlScreen == nil {
-		btlScreen = ebiten.NewImage(1280, 720)
-	}
-	return btlScreen
-}
+func btlImage() *ebiten.Image { return covScreen() }
 
 // btlData is extra battle content laid beside the shared test game: a guardian with a
 // title, big moves with a cut-in, elements, states and a second party member that heals.
@@ -214,13 +208,16 @@ func btlOpen(t *testing.T, opts Options, gameExtra, dataExtra string, extra ...m
 	return g, &out
 }
 
-// btlFrame runs one frame: an update and a draw.
+// btlFrame runs one frame: an update, and a draw on the frames covDraws picks (a battle runs
+// thousands of frames, and every draw stays in memory without a game loop).
 func btlFrame(t *testing.T, g *Game) {
 	t.Helper()
 	if err := g.Update(); err != nil {
 		t.Fatal(err)
 	}
-	g.Draw(btlImage())
+	if covDraws(g.tick) {
+		g.Draw(btlImage())
+	}
 }
 
 // btlKey presses a button for one frame of the top screen (what a player's key does) and
@@ -300,6 +297,12 @@ func btlLines(t *testing.T, out *bytes.Buffer, kinds ...string) []traceLine {
 
 // btlPNG is a flat picture of the given size.
 func btlPNG(w, h int) []byte {
+	key := [2]int{w, h}
+	if v, ok := btlPictures.Load(key); ok {
+		if b, ok := v.([]byte); ok {
+			return b
+		}
+	}
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
 	for y := range h {
 		for x := range w {
@@ -310,8 +313,13 @@ func btlPNG(w, h int) []byte {
 	if err := png.Encode(&b, img); err != nil {
 		panic(err)
 	}
+	btlPictures.Store(key, b.Bytes())
 	return b.Bytes()
 }
+
+// btlPictures keeps the pictures btlPNG made: encoding them again for every test took a
+// good part of the package's test time. The bytes are only read.
+var btlPictures sync.Map
 
 var _ = strings.Contains
 

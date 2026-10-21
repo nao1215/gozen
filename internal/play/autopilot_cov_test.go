@@ -84,6 +84,7 @@ func btlRunToEnd(t *testing.T, g *Game, limit int) int {
 // TestAutopilotPlaysAndReports: with --autoplay the game starts itself from the title, dives,
 // fights, takes the chests and writes a report with what it did when the time is up.
 func TestAutopilotPlaysAndReports(t *testing.T) {
+	covSlow(t)
 	var report bytes.Buffer
 	file := filepath.Join(t.TempDir(), "report.txt")
 	g, out := btlOpen(t, Options{Seed: 3, Location: "-", Autopilot: &Autopilot{Seconds: 25, Report: file, Floors: 2}, Report: &report}, "", "", btlDiveFiles())

@@ -110,6 +110,7 @@ func TestEffectsSetTheirTimers(t *testing.T) {
 
 // TestAudioWriterFailureEndsTheRun: audio that cannot be recorded is an error of the next update.
 func TestAudioWriterFailureEndsTheRun(t *testing.T) {
+	covSlow(t)
 	want := errors.New("audio sink gone")
 	g := sysOpen(t, Options{Location: "camp", Audio: failingTrace{err: want}}, nil)
 	var err error

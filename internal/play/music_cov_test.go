@@ -71,6 +71,7 @@ func sysPlaying(t *testing.T, g *Game, song string) {
 // TestLocationMusicPlaysAndRulesChangeIt: the place's song plays; a rule that holds changes
 // to its song and the place's own song comes back when it stops holding.
 func TestLocationMusicPlaysAndRulesChangeIt(t *testing.T) {
+	covSlow(t)
 	g := sysMusicOpen(t, Options{Seed: 1, Location: "hall"})
 	sysPlaying(t, g, "town")
 	if g.baseSong != "town" {

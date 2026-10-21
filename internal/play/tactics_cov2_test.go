@@ -98,6 +98,7 @@ func TestTacticsSimpleClicksAndLimits(t *testing.T) {
 // TestTacticsSimpleCancelAndPresetsWithoutMembers: cancel closes the preset screen, "cancel" in the list
 // too, and with nobody to choose for, choosing a style does nothing.
 func TestTacticsSimpleCancelAndPresetsWithoutMembers(t *testing.T) {
+	covSlow(t)
 	g, s, done := btlTactics(t, true, Options{})
 	btlKey(g, btnCancel)
 	if !*done || g.stack[len(g.stack)-1] == s {

@@ -247,6 +247,7 @@ func wldStageReloadKeepsTheFeet(t *testing.T, g *Game, s *stageScene, dir string
 
 // The scenes bake dolls (a fraction of a second each), so one game serves the cases of a group.
 func TestWldStageWalking(t *testing.T) {
+	covSlow(t)
 	g, _, dir := wldStage(t)
 	steps := []struct {
 		name string
@@ -271,6 +272,7 @@ func TestWldStageWalking(t *testing.T) {
 }
 
 func TestWldStageInteractions(t *testing.T) {
+	covSlow(t)
 	g, s, _ := wldStage(t)
 	steps := []struct {
 		name string
@@ -294,6 +296,7 @@ func TestWldStageInteractions(t *testing.T) {
 // When the party arrives with its feet in an exit's area, it does not leave at once; it leaves when
 // the feet go in again (docs/architecture/scenes.md: the exit's item is taken when the feet enter).
 func TestWldStageArrivingInsideAnExitDoesNotLeaveAtOnce(t *testing.T) {
+	covSlow(t)
 	g := wldWorld(t, "camp", Options{Calm: true})
 	wldFrames(t, g, 5)
 	wldStartEvent(t, g, "ev_enter_door")

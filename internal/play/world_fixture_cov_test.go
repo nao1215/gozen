@@ -45,6 +45,12 @@ var wldPictures sync.Map
 // wldDepthPNG is a 16-bit gray depth map: far at the top, near at the bottom.
 func wldDepthPNG(t testing.TB, w, h int) []byte {
 	t.Helper()
+	key := fmt.Sprint("depth", w, h)
+	if v, ok := wldPictures.Load(key); ok {
+		if b, ok := v.([]byte); ok {
+			return b
+		}
+	}
 	img := image.NewGray16(image.Rect(0, 0, w, h))
 	for y := range h {
 		for x := range w {
@@ -55,6 +61,7 @@ func wldDepthPNG(t testing.TB, w, h int) []byte {
 	if err := png.Encode(&b, img); err != nil {
 		t.Fatal(err)
 	}
+	wldPictures.Store(key, b.Bytes())
 	return b.Bytes()
 }
 

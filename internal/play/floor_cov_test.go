@@ -57,7 +57,9 @@ func TestDebugLogsWhenAsked(t *testing.T) {
 	log.SetOutput(&out)
 	t.Cleanup(func() { log.SetOutput(sysLogOriginal) })
 	g := sysOpen(t, Options{Location: "camp", CollectBuildInfo: true, Script: "wait 80\nquit"}, nil)
-	sysFrames(t, g, 70)
+	for range 70 { // every frame drawn: the drawing logs its cost on some frames only
+		sysFrames(t, g, 1)
+	}
 	if !strings.Contains(out.String(), "tick 30 pc ") || !strings.Contains(out.String(), "draw ") {
 		t.Fatalf("log: %q", out.String())
 	}

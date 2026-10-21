@@ -34,6 +34,7 @@ func TestBattleEventShowsPicturesAndSkipsOtherRequests(t *testing.T) {
 // light, a blow that also poisons, a move with no animation, healing with a holy light, and a blow on
 // the foe's MP.
 func TestBattleSkillShowsWhatItDoes(t *testing.T) {
+	covSlow(t)
 	for _, tc := range []struct {
 		name, troop, skill string
 		target             int

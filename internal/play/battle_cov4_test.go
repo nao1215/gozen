@@ -26,6 +26,7 @@ func btlSongs(g *Game, rule bool) {
 // for it; with none, a fanfare plays; a guardian's defeat plays the game's boss song once and
 // the field music waits for that song to finish.
 func TestBattleMusicAtTheEnd(t *testing.T) {
+	covSlow(t)
 	g, out := btlOpen(t, Options{}, "", "")
 	btlSongs(g, true)
 	s := g.startBattle("one", func(int) {})

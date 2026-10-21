@@ -31,6 +31,7 @@ func wldNovelWith(t *testing.T, ui, event string) *Game {
 }
 
 func TestWldNovelBacklogKeepsTheNewestLinesAndScrolls(t *testing.T) {
+	covSlow(t)
 	g := wldNovelWith(t, "{message: novel, backlog: 5}", "ev_many")
 	for range 11 {
 		wldAdvance(t, g)
@@ -103,6 +104,7 @@ func TestWldNovelSaveAndLoadButtonsOpenTheSlots(t *testing.T) {
 }
 
 func TestWldNovelSceneSkipPassesAnEventThatWasRead(t *testing.T) {
+	covSlow(t)
 	g := wldNovelWith(t, "{message: novel}", "ev_auto")
 	for range 5 {
 		wldAdvance(t, g)

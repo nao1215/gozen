@@ -31,6 +31,7 @@ func wldJoinTrace(ls []string) []byte {
 }
 
 func TestWldReplayDoesTheDirectActionsOfTheRecord(t *testing.T) {
+	covSlow(t)
 	tr := wldRecord(t, wldRecordScript)
 	lines := wldSplitTrace(tr)
 	var out []string
@@ -68,6 +69,7 @@ func TestWldReplayDoesTheDirectActionsOfTheRecord(t *testing.T) {
 }
 
 func TestWldReplayReportsAnExtraLineAndALineNotReached(t *testing.T) {
+	covSlow(t)
 	tr := wldRecord(t, wldRecordScript)
 	lines := wldSplitTrace(tr)
 	last := -1
@@ -103,6 +105,7 @@ func TestWldReplayReportsAnExtraLineAndALineNotReached(t *testing.T) {
 }
 
 func TestWldReplayStoppedEarlySaysItDidNotReachTheEnd(t *testing.T) {
+	covSlow(t)
 	tr := wldRecord(t, wldRecordScript)
 	g, err := wldReplayGame(t, tr, nil)
 	if err != nil {

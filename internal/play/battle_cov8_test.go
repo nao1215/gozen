@@ -56,6 +56,7 @@ func TestBattleTempo(t *testing.T) {
 
 // TestBattleEndsAtAnyTempo: whatever the tempo, a fought battle ends.
 func TestBattleEndsAtAnyTempo(t *testing.T) {
+	covSlow(t)
 	for _, tempo := range []float64{-1, 0.5, 50} {
 		g, _ := btlOpen(t, Options{Battle: "one"}, "", "")
 		g.db.Game.Battle.Tempo = tempo
@@ -129,6 +130,7 @@ func TestTacticsScreenIsNotOpenedInABattle(t *testing.T) {
 // TestBattleKeepsTheDataItWasGiven: a battle only reads the game's definitions; after a full fight
 // the skills, enemies and troops are as they were.
 func TestBattleKeepsTheDataItWasGiven(t *testing.T) {
+	covSlow(t)
 	g, _ := btlOpen(t, Options{Battle: "pack"}, "", "")
 	before := map[string]data.Enemy{}
 	for id, e := range g.db.Enemies {

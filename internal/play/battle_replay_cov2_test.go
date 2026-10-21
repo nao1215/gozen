@@ -65,6 +65,7 @@ func btlCloneMap(t *testing.T, m map[string]any) map[string]any {
 // TestBattleReplayRefusesDamagedCaptures: a capture whose random state or saved state cannot be
 // restored, or whose own tick is not where it is written, is refused when the game is created.
 func TestBattleReplayRefusesDamagedCaptures(t *testing.T) {
+	covSlow(t)
 	trace := btlRecord(t, "one", "press ok 160\nquit\n")
 	start, capture, result := btlCaptureLine(t, trace)
 	for name, mutate := range map[string]func(c map[string]any, inner map[string]any){
@@ -89,6 +90,7 @@ func TestBattleReplayRefusesDamagedCaptures(t *testing.T) {
 // inputs at or before it are left out, the auto command is kept as an action, and kinds a battle
 // replay does not check are left out.
 func TestBattleReplayReadsInputsAndActions(t *testing.T) {
+	covSlow(t)
 	trace := btlRecord(t, "one", "press ok 160\nquit\n")
 	start, capture, result := btlCaptureLine(t, trace)
 	tick := int(btlNumber(t, capture["tick"]))

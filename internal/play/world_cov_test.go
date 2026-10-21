@@ -52,7 +52,13 @@ func wldStartEvent(t *testing.T, g *Game, name string) {
 }
 
 // wldScreen is the image the game draws on.
-func wldScreen(g *Game) *ebiten.Image { return ebiten.NewImage(g.Layout(0, 0)) }
+func wldScreen(g *Game) *ebiten.Image {
+	w, h := g.Layout(0, 0)
+	if s := covScreen(); s.Bounds().Dx() == w && s.Bounds().Dy() == h {
+		return s
+	}
+	return ebiten.NewImage(w, h)
+}
 
 // wldStep runs one frame: Update, then Draw. Screenshots are never taken (they read pixels, which
 // needs a running game loop). It reports false when the script has quit.
@@ -69,16 +75,14 @@ func wldStep(t *testing.T, g *Game, screen *ebiten.Image) bool {
 		}
 		t.Fatal(err)
 	}
-	if g.tick%wldDrawEvery == 0 {
+	// Only some frames are drawn (covDraws): drawing is most of what a frame costs (and several
+	// times that under the race detector), and the rules do not wait for it. A test that reads
+	// what a draw leaves behind runs a few frames first.
+	if covDraws(g.tick) {
 		g.Draw(screen)
 	}
 	return true
 }
-
-// wldDrawEvery is how many frames pass between two draws: drawing is most of what a frame costs
-// (and several times that under the race detector), and the rules do not wait for it. A test that
-// reads what a draw leaves behind runs a few frames first.
-const wldDrawEvery = 3
 
 // wldFrames runs n frames.
 func wldFrames(t *testing.T, g *Game, n int) {
@@ -87,6 +91,21 @@ func wldFrames(t *testing.T, g *Game, n int) {
 	for range n {
 		if !wldStep(t, g, screen) {
 			return
+		}
+	}
+}
+
+// wldFramesDrawn runs n frames and draws every one of them, for a test that reads what the
+// drawing writes (the view and stand lines of the trace).
+func wldFramesDrawn(t *testing.T, g *Game, n int) {
+	t.Helper()
+	screen := wldScreen(g)
+	for range n {
+		if !wldStep(t, g, screen) {
+			return
+		}
+		if !covDraws(g.tick) {
+			g.Draw(screen)
 		}
 	}
 }

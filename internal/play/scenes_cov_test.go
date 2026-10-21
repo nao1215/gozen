@@ -105,6 +105,7 @@ func TestSaveAndLoadBringBackTheScreenOfThePlace(t *testing.T) {
 // TestScriptWalkOnAMapAndInAPaintedScene: `walk NAME` takes the token to a point of a map and the
 // leader to a spot of a painted scene.
 func TestScriptWalkOnAMapAndInAPaintedScene(t *testing.T) {
+	covSlow(t)
 	g := sysScenesGame(t, Options{Seed: 1, Location: "town", Script: "wait 5\nwalk square\nwait 30\nquit"})
 	if !sysFrames(t, g, 4000) {
 		t.Fatal("the script did not end")
@@ -117,6 +118,7 @@ func TestScriptWalkOnAMapAndInAPaintedScene(t *testing.T) {
 // TestScriptWalkToASpotRunsItsEvent: in a painted scene `walk SPOT` takes the leader to the spot and
 // its event shows its line.
 func TestScriptWalkToASpotRunsItsEvent(t *testing.T) {
+	covSlow(t)
 	g := sysScenesGame(t, Options{Seed: 1, Location: "plaza", Script: "wait 5\nwalk bench\nwait 20\nquit"})
 	if !sysFrames(t, g, 6000) {
 		t.Fatal("the script did not end")

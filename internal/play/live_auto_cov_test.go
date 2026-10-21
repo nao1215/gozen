@@ -39,6 +39,7 @@ func TestWldLiveReloadsPicturesOnItsOwn(t *testing.T) {
 
 // A change to the definitions is not taken without F5.
 func TestWldLiveLeavesDefinitionsToF5(t *testing.T) {
+	covSlow(t)
 	old := liveEvery
 	liveEvery = 5 * time.Millisecond
 	t.Cleanup(func() { liveEvery = old })

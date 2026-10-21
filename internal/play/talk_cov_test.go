@@ -93,6 +93,7 @@ func TestWldBoxChoiceAndPages(t *testing.T) {
 }
 
 func TestWldBoxLongLineIsPaged(t *testing.T) {
+	covSlow(t)
 	g := wldBox(t, "ev_long")
 	if len(g.talk.pages) < 2 {
 		t.Fatalf("pages %d", len(g.talk.pages))
@@ -110,6 +111,7 @@ func TestWldBoxLongLineIsPaged(t *testing.T) {
 
 // A question longer than the window is fitted to it, and the options stand above the window.
 func TestWldLongQuestionIsFittedToTheWindow(t *testing.T) {
+	covSlow(t)
 	for _, ui := range []string{"", "ui: {message: novel}\n"} {
 		opts := Options{Location: "camp", FS: wldWorldFiles(t, ui, map[string]string{"data/novel_cov.yaml": wldNovelData})}
 		g := wldOpenWith(t, opts)

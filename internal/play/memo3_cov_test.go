@@ -17,6 +17,7 @@ func sysOpenMemoBox(t *testing.T) *Game {
 // TestMemoBoxDrawsEveryStateOfTheInput: the box is drawn while choosing the kind, while typing, with
 // text in composition, with long text, and while the note is typed in another window.
 func TestMemoBoxDrawsEveryStateOfTheInput(t *testing.T) {
+	covSlow(t)
 	g := sysOpenMemoBox(t)
 	sysSafeDraw(g)
 	g.memo.typed = true

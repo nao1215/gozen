@@ -49,6 +49,7 @@ func wldShown(as *atlasScene, id string) int {
 }
 
 func TestWldAtlasArrivesAtStartPoint(t *testing.T) {
+	covSlow(t)
 	g, as := wldAtlas(t, "fx_mark")
 	if g.st.Spot != "" && g.st.Spot != "home" {
 		t.Fatalf("the party stands on %q, want the start point home", g.st.Spot)
@@ -66,6 +67,7 @@ func TestWldAtlasArrivesAtStartPoint(t *testing.T) {
 
 // How an unvisited point shows follows unknown (ADR 0022).
 func TestWldAtlasUnknownModes(t *testing.T) {
+	covSlow(t)
 	cases := []struct {
 		loc  string
 		want map[string]int
@@ -97,6 +99,7 @@ func TestWldAtlasUnknownModes(t *testing.T) {
 }
 
 func TestWldAtlasWalkRunsStepsAndPointDoOnce(t *testing.T) {
+	covSlow(t)
 	g, as := wldAtlas(t, "fx_mark")
 	steps := g.st.Steps
 	wldPlay(t, g, "walk shrine\nwait 5\n", 100)
@@ -124,6 +127,7 @@ func TestWldAtlasWalkRunsStepsAndPointDoOnce(t *testing.T) {
 }
 
 func TestWldAtlasClosedPointSaysLockedThenOpens(t *testing.T) {
+	covSlow(t)
 	g, as := wldAtlas(t, "fx_named")
 	wldPlay(t, g, "walk shrine\nwait 5\n", 100)
 	wldSettle(t, g, as, 1500)
@@ -149,6 +153,7 @@ func TestWldAtlasClosedPointSaysLockedThenOpens(t *testing.T) {
 }
 
 func TestWldAtlasKeysSelectAndConfirm(t *testing.T) {
+	covSlow(t)
 	g, as := wldAtlas(t, "fx_named")
 	first := as.sel
 	wldPlay(t, g, "press right\nwait 6\npress down\nwait 6\npress left\nwait 6\npress up\nwait 6\n", 200)
@@ -226,6 +231,7 @@ func TestWldAtlasRoadBattleComesBeforeArrival(t *testing.T) {
 // A map inside a map (docs/architecture/scenes.md): a point whose to is a map can name the point
 // over there (at_point), and the party arrives standing on it.
 func TestWldAtlasPointIntoAnotherMapStandsOnTheNamedPoint(t *testing.T) {
+	covSlow(t)
 	g, as := wldAtlas(t, "fx_mark")
 	wldPlay(t, g, "walk portal\nwait 5\n", 200)
 	wldSettle(t, g, as, 600)

@@ -119,6 +119,7 @@ func TestWldLiveErrTextShowsFileLineAndHint(t *testing.T) {
 }
 
 func TestWldLiveReloadKeepsTheLineOfTheEvent(t *testing.T) {
+	covSlow(t)
 	dir := wldDisk(t, "ui: {message: novel}\n", map[string]string{"data/novel_cov.yaml": wldNovelData})
 	g := wldLive(t, dir, "camp")
 	g.st.Flags["marker"] = true
@@ -142,6 +143,7 @@ func TestWldLiveReloadKeepsTheLineOfTheEvent(t *testing.T) {
 }
 
 func TestWldLiveReloadRefusesMistakesAndKeepsTheOldData(t *testing.T) {
+	covSlow(t)
 	dir := wldDisk(t, "", nil)
 	g := wldLive(t, dir, "camp")
 	name := g.db.Locations["camp"].Name
@@ -163,6 +165,7 @@ func TestWldLiveReloadRefusesMistakesAndKeepsTheOldData(t *testing.T) {
 }
 
 func TestWldLiveReloadCannotChangeIDOrLowerDataVersion(t *testing.T) {
+	covSlow(t)
 	dir := wldDisk(t, "data_version: 3\n", nil)
 	g := wldLive(t, dir, "camp")
 	wldEdit(t, dir, "game.yaml", "id: screen-test", "id: other-game")
@@ -257,6 +260,7 @@ func wldLiveReplay(t *testing.T) (*Game, string) {
 }
 
 func TestWldLiveReloadKeepsALineOfARecollection(t *testing.T) {
+	covSlow(t)
 	g, dir := wldLiveReplay(t)
 	wldEdit(t, dir, "data/novel_cov.yaml", `text: "Two."`, `text: "Zwei."`)
 	wldPlay(t, g, "press reload\nwait 30\n", 200)
@@ -269,6 +273,7 @@ func TestWldLiveReloadKeepsALineOfARecollection(t *testing.T) {
 }
 
 func TestWldLiveReloadOfARecollectionThatLostItsLines(t *testing.T) {
+	covSlow(t)
 	g, dir := wldLiveReplay(t)
 	wldPlay(t, g, "wait 60\npress ok\nwait 60\n", 200)
 	if wldTalkText(g) != "Three." {
@@ -289,6 +294,7 @@ func TestWldLiveReloadOfARecollectionThatLostItsLines(t *testing.T) {
 }
 
 func TestWldLiveReloadOfARecollectionThatIsGone(t *testing.T) {
+	covSlow(t)
 	g, dir := wldLiveReplay(t)
 	wldEdit(t, dir, "game.yaml", "{title: Meeting, event: ev_auto, flag: met_a,", "{title: Elsewhere, event: ev_box, flag: met_z,")
 	wldPlay(t, g, "press reload\nwait 30\n", 200)
@@ -304,6 +310,7 @@ func TestWldLiveReloadOfARecollectionThatIsGone(t *testing.T) {
 }
 
 func TestWldLiveReloadKeepsTheDungeonPosition(t *testing.T) {
+	covSlow(t)
 	dir := wldDisk(t, "", nil)
 	g := wldLive(t, dir, "fx_maze")
 	g.st.Pos.X, g.st.Pos.Y, g.st.Pos.Facing = 5, 3, 1
@@ -319,6 +326,7 @@ func TestWldLiveReloadKeepsTheDungeonPosition(t *testing.T) {
 
 // The event that was running is gone from the new data: the game goes on from now, and says so.
 func TestWldLiveReloadWhenTheRunningEventIsGone(t *testing.T) {
+	covSlow(t)
 	dir := wldDisk(t, "ui: {message: novel}\n", map[string]string{"data/novel_cov.yaml": wldNovelData})
 	g := wldLive(t, dir, "camp")
 	wldStartEvent(t, g, "ev_auto")

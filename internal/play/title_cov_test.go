@@ -75,7 +75,7 @@ func sysOpen4(t *testing.T, opts Options, extra map[string]string) *Game {
 // Any other error fails the test.
 func sysFrames(t *testing.T, g *Game, n int) (quit bool) {
 	t.Helper()
-	for range n {
+	for i := range n {
 		err := g.Update()
 		if errors.Is(err, ebiten.Termination) {
 			return true
@@ -83,14 +83,17 @@ func sysFrames(t *testing.T, g *Game, n int) (quit bool) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		sysSafeDraw(g)
+		sysFrameAfter(g, covDraws(i) || i == n-1)
 	}
 	return false
 }
 
 // sysSafeDraw draws one frame without the paths that read pixels back (they need a running
 // game loop): the memo box gets a blank screenshot and quick memos are written directly.
-func sysSafeDraw(g *Game) {
+func sysSafeDraw(g *Game) { sysFrameAfter(g, true) }
+
+// sysFrameAfter does what the end of a frame does without a game loop, and draws when asked.
+func sysFrameAfter(g *Game, draw bool) {
 	if g.memo != nil && g.memo.shot == nil {
 		g.memo.shot = image.NewNRGBA(image.Rect(0, 0, 1280, 720))
 	}
@@ -105,7 +108,9 @@ func sysSafeDraw(g *Game) {
 		sysShotNames = append(sysShotNames, sc.shot)
 		sc.shot = ""
 	}
-	g.Draw(ebiten.NewImage(1280, 720))
+	if draw {
+		g.Draw(covScreen())
+	}
 }
 
 // sysShotNames are the screenshots scripts asked for (never taken: reading pixels needs a
@@ -329,6 +334,7 @@ func TestSettingsSaveFailureShownThenClosed(t *testing.T) {
 
 // TestInvalidOptions: New refuses nonsense options before it starts anything.
 func TestInvalidOptions(t *testing.T) {
+	covSlow(t)
 	cases := map[string]Options{
 		"nil fs":             {},
 		"window too big":     {FS: gameFiles(t), Window: 9},

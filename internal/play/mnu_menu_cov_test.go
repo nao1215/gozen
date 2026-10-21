@@ -3,8 +3,6 @@ package play
 import (
 	"testing"
 
-	"github.com/hajimehoshi/ebiten/v2"
-
 	lang "github.com/nao1215/gozen/internal/text"
 )
 
@@ -49,7 +47,7 @@ func mnuShiftTab(g *Game) {
 }
 
 // mnuDrawAll draws the whole game once (only queues GPU commands, no pixel reads).
-func mnuDrawAll(g *Game) { g.Draw(ebiten.NewImage(1280, 720)) }
+func mnuDrawAll(g *Game) { g.Draw(covScreen()) }
 
 // mnuMenu opens the field menu of a new camp game with the guide in the party.
 func mnuMenu(t *testing.T) (*Game, *menu) {
