@@ -28,6 +28,6 @@ locations:
       generate: {width: 11, height: 11, rooms: 2, start: S, place: [{char: '>'}]}
       tiles:
         S: {start: true}
-        '>': {do: [{dive: grotto, floor: floor + 1}]}
+        '>': {do: [{dive: grotto, floor: var.floor + 1}]}
 events:
   finish: {do: [{say: The markers are all in place.}, {clear: true}]}

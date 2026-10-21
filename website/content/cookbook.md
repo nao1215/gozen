@@ -644,7 +644,7 @@ locations:
 
 ## Generate dungeon floors
 
-With `generate` instead of `map`, every floor is built anew: a maze of rooms and corridors with the characters of `place` put in it. `dive` goes down; `floor` in expressions is the floor number.
+With `generate` instead of `map`, every floor is built anew: a maze of rooms and corridors with the characters of `place` put in it. `dive` goes down; `var.floor` is the floor number. Inside `generate` and `roamers` (such as a `count`), plain `floor` is that number too; in the commands of a tile it is the `floor()` function, so write `var.floor` there.
 
 <!-- verify: load group=generate -->
 ```yaml
@@ -664,8 +664,8 @@ locations:
           - {char: T, count: "floor < 5 ? 2 : 1"}
       tiles:
         S: {start: true}
-        ">": {name: Stairs down, symbol: v, do: [{dive: depths, floor: floor + 1}]}
-        T: {name: Chest, picture: chest.png, solid: "true", once: true, after: ".", do: [{gold: floor * 5}]}
+        ">": {name: Stairs down, symbol: v, do: [{dive: depths, floor: var.floor + 1}]}
+        T: {name: Chest, picture: chest.png, solid: "true", once: true, after: ".", do: [{gold: var.floor * 5}]}
 ```
 
 Enter it with a `dive: depths` command. `seed` gives every save the same maps, and `floors` sets a seed or a hand-drawn map for one floor, such as a boss floor. Reference: [Generate](/schema/#generate), [Put](/schema/#put), [FloorPlan](/schema/#floorplan). [Look at the floors and play a dive](#check-and-measure) before you tune them.
@@ -683,7 +683,7 @@ locations:
       generate: {width: 13, height: 13, rooms: 2, start: S, place: [{char: ">", far: true}]}
       tiles:
         S: {start: true}
-        ">": {name: Stairs down, do: [{dive: catacombs, floor: floor + 1}]}
+        ">": {name: Stairs down, do: [{dive: catacombs, floor: var.floor + 1}]}
       roamers:
         - name: Ghoul
           picture: ghoul.png
@@ -712,7 +712,7 @@ locations:
       generate: {width: 11, height: 11, start: S, place: [{char: ">", far: true}]}
       tiles:
         S: {start: true}
-        ">": {name: Stairs up, do: [{dive: tower, floor: floor + 1}]}
+        ">": {name: Stairs up, do: [{dive: tower, floor: var.floor + 1}]}
       looks:
         - {when: "var.floor >= 6", area: Upper floors, wall: marble.jpg, floor: "#c8c8d0", darkness: 0.2}
         - {when: "var.floor >= 3", area: Middle floors, wall: mossy.jpg, ceiling_texture: vines.jpg}

@@ -36,4 +36,4 @@ locations:
       generate: {width: 11, height: 11, rooms: 2, start: S, place: [{char: '>'}]}
       tiles:
         S: {start: true}
-        '>': {do: [{dive: cave, floor: floor + 1}]}
+        '>': {do: [{dive: cave, floor: var.floor + 1}]}
