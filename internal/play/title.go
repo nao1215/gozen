@@ -225,10 +225,11 @@ func (s *ending) draw(g *Game, dst *ebiten.Image) {
 	fill(dst, colorBlack)
 	a := float32(math.Min(1, float64(s.age)/90))
 	g.drawPicture(dst, data.Picture{File: s.pic, Blur: true, Bright: 0.6}, 0, 0, sw, sh, a)
-	img := g.pics.get(s.pic)
-	iw, ih := float64(img.Bounds().Dx()), float64(img.Bounds().Dy())
-	k := math.Min(sw/iw, sh/ih)
-	gfx.DrawImageScaled(dst, img, (sw-iw*k)/2, (sh-ih*k)/2, k, a*0.85)
+	if img := g.pics.get(s.pic); img != nil { // a game with no picture shown and no title background ends on the text alone
+		iw, ih := float64(img.Bounds().Dx()), float64(img.Bounds().Dy())
+		k := math.Min(sw/iw, sh/ih)
+		gfx.DrawImageScaled(dst, img, (sw-iw*k)/2, (sh-ih*k)/2, k, a*0.85)
+	}
 	gfx.DrawTextOutlineColor(dst, "THE END", sw/2, sh*0.4, 96, g.th.text, g.th.nameTag, a)
 	gfx.DrawTextOutlineColor(dst, g.db.Game.Title, sw/2, sh*0.4+130, sizeL, g.th.text, g.th.window, a)
 	if s.age > 150 {

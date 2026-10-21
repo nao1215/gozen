@@ -22,6 +22,10 @@ func sysOpen(t *testing.T, opts Options, extra map[string]string) *Game {
 	t.Helper()
 	fsys := gameFiles(t)
 	for name, src := range extra {
+		if name == "game.yaml+" { // appended to the game's own game.yaml
+			fsys["game.yaml"] = &fstest.MapFile{Data: append(fsys["game.yaml"].Data, src...)}
+			continue
+		}
 		fsys[name] = &fstest.MapFile{Data: []byte(src)}
 	}
 	opts.FS = fsys
@@ -54,6 +58,10 @@ func sysOpen4(t *testing.T, opts Options, extra map[string]string) *Game {
 	game := "schema_version: 4\n" + string(gameFiles(t)["game.yaml"].Data)
 	if extra == nil {
 		extra = map[string]string{}
+	}
+	if more, ok := extra["game.yaml+"]; ok {
+		game += more
+		delete(extra, "game.yaml+")
 	}
 	if extra["game.yaml"] == "" {
 		extra["game.yaml"] = game
