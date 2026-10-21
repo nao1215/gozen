@@ -12,10 +12,11 @@ map of a painted scene) or that WebP would not make smaller is copied as it is, 
 is everything else (YAML, music, the font).
 
 DST/files.json lists the files for the program (main_js.go): for each one the name the
-game reads ("assets/bg/plaza.jpg"), the file the page serves ("assets/bg/plaza.webp")
-and its size in bytes, so the page can show how much is left. The game reads a picture
-by its content, not by its name, so a WebP under the name of a PNG is read as WebP.
-The PC build and the files under SRC do not change.
+game reads ("assets/bg/plaza.jpg"), the file the page serves ("assets/bg/plaza.webp") and
+its size in bytes. The browser uses it for directory listings and fetches a file when the
+game opens it; the sizes also give the page's estimate for downloading the complete game.
+The game reads a picture by its content, not by its name, so a WebP under the name of a
+PNG is read as WebP. The PC build and the files under SRC do not change.
 
 A second run converts only what changed: a file written from a source that is not newer
 than it is kept (files.json remembers whether the source became a WebP), and files whose
@@ -23,7 +24,7 @@ source is gone are removed. Remove DST to convert everything again after changin
 settings below.
 
 With PAGE, OUT and WASM it also writes the page PAGE to OUT with @WASM_SIZE@ (the bytes of
-the program WASM) and @DOWNLOAD_MB@ (the program and the game's files) filled in.
+the uncompressed program) and @DOWNLOAD_MB@ (the compressed program and game's files) filled in.
 
 It needs Pillow built with WebP support (python3-pil on Debian and Ubuntu).
 """
@@ -32,7 +33,7 @@ import json
 import os
 import shutil
 import sys
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 
 from PIL import Image, features
 
@@ -77,10 +78,12 @@ def previous(dst):
 
 def write_page(page, out, wasm, files_total):
     wasm_size = os.path.getsize(wasm)
+    compressed = os.path.join(os.path.dirname(out), os.path.basename(wasm) + ".gz")
+    download_size = os.path.getsize(compressed) if os.path.exists(compressed) else wasm_size
     with open(page, encoding="utf-8") as f:
         html = f.read()
     html = html.replace("@WASM_SIZE@", str(wasm_size))
-    html = html.replace("@DOWNLOAD_MB@", f"{(wasm_size + files_total) / 1e6:.0f}")
+    html = html.replace("@DOWNLOAD_MB@", f"{(download_size + files_total) / 1e6:.0f}")
     with open(out, "w", encoding="utf-8") as f:
         f.write(html)
 
@@ -99,7 +102,7 @@ def main():
         for name in sorted(names):
             rel = os.path.relpath(os.path.join(root, name), src).replace(os.sep, "/")
             jobs.append((os.path.join(root, name), dst, rel, before.get(rel)))
-    with ProcessPoolExecutor() as pool:
+    with ThreadPoolExecutor() as pool:
         served = list(pool.map(convert, jobs, chunksize=4))
     files, seen = [], {}
     for name, out, _ in sorted(served):

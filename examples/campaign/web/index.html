@@ -37,18 +37,12 @@
 <script src="wasm_exec.js"></script>
 <script>
   "use strict";
-  // The program calls these: how much of the game's files it has, that the game starts,
-  // that its first frame is drawn, or why it could not start. goZenTimes keeps when the
-  // files were all fetched, the game started and its first frame was drawn (for checks).
+  // The program calls these when the game starts, draws its first frame, or cannot start.
+  // goZenTimes keeps the startup times for scripts/web_play_check.mjs.
   const note = document.getElementById("note");
   const bar = document.querySelector("#bar div");
   const mb = (n) => (n / 1e6).toFixed(1);
   window.goZenTimes = {};
-  window.goZenProgress = (done, total) => {
-    note.textContent = `Loading the game's files: ${mb(done)} MB / ${mb(total)} MB`;
-    bar.style.width = `${total ? (100 * done) / total : 0}%`;
-    if (done >= total) goZenTimes.fetched = performance.now();
-  };
   window.goZenStarting = () => {
     goZenTimes.starting = performance.now();
     note.textContent = "Starting the game...";
@@ -89,7 +83,14 @@
     note.textContent = "Could not start: this browser cannot run WebAssembly.";
   } else {
     const go = new Go();
-    WebAssembly.instantiateStreaming(fetch("campaign.wasm").then(counted), go.importObject).then((r) => {
+    // Fetch a plain .gz file so static hosts need not configure Content-Encoding.
+    // DecompressStream restores the wasm response for instantiateStreaming.
+    const wasm = fetch("campaign.wasm.gz").then((res) => {
+      if (!res.ok) throw new Error(`campaign.wasm.gz: ${res.status} ${res.statusText}`);
+      if (!res.body || typeof DecompressionStream !== "function") throw new Error("This browser cannot decompress the WebAssembly download.");
+      return new Response(res.body.pipeThrough(new DecompressionStream("gzip")), { headers: { "Content-Type": "application/wasm" } });
+    });
+    WebAssembly.instantiateStreaming(wasm.then(counted), go.importObject).then((r) => {
       go.run(r.instance);
     }).catch((e) => {
       note.textContent = "Could not start: " + e;

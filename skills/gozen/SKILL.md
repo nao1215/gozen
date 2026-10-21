@@ -82,6 +82,10 @@ A campaign (SLG, a war of regions) sets `schema_version: 5`, `regions` and `fact
 
 The recipe is "Make a campaign" in the cookbook. A complete one is [examples/campaign](https://github.com/nao1215/gozen/tree/main/examples/campaign).
 
+## Browser builds
+
+The sample browser builds keep game files outside WebAssembly. Their generated `game/files.json` manifest maps game paths to served files; the browser fetches each file when it is opened, so pictures used later do not delay the first screen. `make website` writes a precompressed `.wasm.gz` file for each sample, and the page decompresses it with the browser's `DecompressionStream`. Browser saves remain in `localStorage`.
+
 ## Do not
 
 - Do not import `github.com/nao1215/gozen/internal/...`. Use `play`, `gozen` (Session, Query, Do) and the YAML.
