@@ -65,7 +65,7 @@ func TestBattleSkillShowsWhatItDoes(t *testing.T) {
 				t.Error("not healed")
 			}
 		}},
-		{name: "mp blow", troop: "guardian", skill: "drain", check: func(t *testing.T, s *battleScene, steps []traceLine) {
+		{name: "mp blow", troop: "guardian", skill: "drain", check: func(t *testing.T, _ *battleScene, steps []traceLine) {
 			found := false
 			for _, l := range steps {
 				found = found || l["stat"] == "mp"
@@ -112,7 +112,7 @@ func TestBattleRegenerationHealsQuietly(t *testing.T) {
 	if !quiet {
 		t.Fatal("no heal step for the state")
 	}
-	for _, text := range battleTexts(t, out) {
+	for _, text := range btlTexts(t, out) {
 		if strings.Contains(text, "restores 3") || strings.Contains(text, "recovers 3") {
 			t.Fatalf("a quiet heal said %q", text)
 		}

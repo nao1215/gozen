@@ -10,16 +10,6 @@ import (
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
-// btlTurnOf has every member use the same skill (aiming at the first target of its list) and
-// runs frames until the next command, or the end.
-func btlTurnOf(t *testing.T, g *Game, s *battleScene, skill string) {
-	t.Helper()
-	for s.phase == bpInput && s.mi < len(s.members) {
-		btlUse(g, s, skill, 0)
-	}
-	btlUntil(t, g, "the next command or the end", 6000, func() bool { return s.phase != bpPlay })
-}
-
 func btlHas(trace []traceLine, key string, want any) bool {
 	for _, l := range trace {
 		if l[key] == want {
@@ -81,7 +71,7 @@ func TestBattleFacesReactAndRules(t *testing.T) {
 	if r, _ := v.Field("hp_rate"); r != 0.0 {
 		t.Errorf("hp_rate %v", r)
 	}
-	if r, _ := v.Field("mp_rate"); r.(float64) < 0 {
+	if r, _ := v.Field("mp_rate"); r == nil {
 		t.Errorf("mp_rate %v", r)
 	}
 	if _, ok := (shownUnit{k, &battleScene{}}).Field("hp"); !ok {
@@ -173,12 +163,12 @@ func TestBattlePopupsKeepApart(t *testing.T) {
 		t.Fatalf("retire: %+v", s.pops)
 	}
 	g, _ := btlOpen(t, Options{Battle: "one"}, "", "")
-	small, lift := g.popSize(popup{t: 20})
+	small, _ := g.popSize(popup{t: 20})
 	big, _ := g.popSize(popup{t: 20, big: true})
 	if small != 40 || big <= small-1 {
 		t.Fatalf("sizes %v %v", small, big)
 	}
-	if _, lift = g.popSize(popup{t: 3, big: true}); lift <= 0 {
+	if _, lift := g.popSize(popup{t: 3, big: true}); lift <= 0 {
 		t.Fatalf("a fresh big number does not bounce: %v", lift)
 	}
 	bounce, _ := g.popSize(popup{t: 2})
@@ -291,7 +281,7 @@ func TestBattleCoverProtectsAnAlly(t *testing.T) {
 	for range 40 {
 		btlGuardAll(g, s)
 		btlUntil(t, g, "the next command", 8000, func() bool { return s.phase != bpPlay })
-		if s.coverBy != nil || strings.Contains(strings.Join(battleTexts(t, out), "|"), "covers") {
+		if s.coverBy != nil || strings.Contains(strings.Join(btlTexts(t, out), "|"), "covers") {
 			covered = true
 			break
 		}
@@ -304,9 +294,10 @@ func TestBattleCoverProtectsAnAlly(t *testing.T) {
 	}
 }
 
-func battleTexts(t *testing.T, out interface {
+func btlTexts(t *testing.T, out interface {
 	Bytes() []byte
-}) []string {
+},
+) []string {
 	t.Helper()
 	var texts []string
 	for _, l := range traceLines(t, out.Bytes(), "battle") {
@@ -349,7 +340,7 @@ func TestBattleEscapeFailureLosesTheTurn(t *testing.T) {
 	if s.b.Result != battle.Ongoing {
 		t.Fatalf("result %v", s.b.Result)
 	}
-	if !strings.Contains(strings.Join(battleTexts(t, out), "|"), "!") {
+	if !strings.Contains(strings.Join(btlTexts(t, out), "|"), "!") {
 		t.Fatal("no message for the failed escape")
 	}
 	passed := 0

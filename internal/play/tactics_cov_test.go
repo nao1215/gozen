@@ -49,8 +49,10 @@ func btlTactics(t *testing.T, simple bool, opts Options) (*Game, *tacticsScreen,
 			"big":    {Name: "Sweep", Use: "big", Target: "enemies"},
 		}
 		rows := []data.TacticRow{
-			{Enabled: true, Condition: "any", Action: "potion"}, {Enabled: true, Condition: "any", Action: "heal"},
-			{Enabled: true, Condition: "poisoned", Action: "fire"}, {Enabled: true, Condition: "any", Action: "attack"},
+			{Enabled: true, Condition: "any", Action: "potion"},
+			{Enabled: true, Condition: "any", Action: "heal"},
+			{Enabled: true, Condition: "poisoned", Action: "fire"},
+			{Enabled: true, Condition: "any", Action: "attack"},
 		}
 		b.AutoTactics = map[string][]data.TacticRow{"capability": rows[1:]}
 		b.TacticPresets = map[string]data.TacticPreset{
@@ -357,7 +359,7 @@ func TestTacticEditorAddCancelAndDetail(t *testing.T) {
 		t.Fatal("cancel changed the draft")
 	}
 	btlTacticsAct(g, s, 1, tacticAdd)
-	e = g.stack[len(g.stack)-1].(*tacticEditor)
+	e = btlEditor(t, g)
 	e.fields.sel = tacticRowAccept
 	e.refresh(g)
 	btlKey(g, btnOK)
@@ -366,7 +368,7 @@ func TestTacticEditorAddCancelAndDetail(t *testing.T) {
 	}
 	// Cancel key in the choices only closes the choices, then the editor.
 	btlTacticsAct(g, s, 0, tacticEdit)
-	e = g.stack[len(g.stack)-1].(*tacticEditor)
+	e = btlEditor(t, g)
 	btlKey(g, btnRight)
 	if !e.choosing {
 		t.Fatal("right did not open the choices")
@@ -469,7 +471,7 @@ func TestTacticsSimpleBuildOwn(t *testing.T) {
 	// Fill the list to the limit through the editor, then see a sixth refused.
 	for len(s.drafts["scout"].Rows) < data.TacticRowLimit {
 		btlTacticsAct(g, s, 0, tacticAdd)
-		e := g.stack[len(g.stack)-1].(*tacticEditor)
+		e := btlEditor(t, g)
 		e.fields.sel = 2 // confirm in the simple editor
 		e.refresh(g)
 		btlKey(g, btnOK)
@@ -479,7 +481,7 @@ func TestTacticsSimpleBuildOwn(t *testing.T) {
 	}
 	// Edit the first row to the poisoned condition.
 	btlTacticsAct(g, s, 0, tacticEdit)
-	e := g.stack[len(g.stack)-1].(*tacticEditor)
+	e := btlEditor(t, g)
 	e.fields.sel = 0
 	e.refresh(g)
 	btlKey(g, btnOK)
@@ -654,10 +656,14 @@ func TestTacticReasonDescriptions(t *testing.T) {
 	tgt := &battle.DecisionUnit{ID: "mote", Enemy: true, Index: 0}
 	ds := []battle.Decision{
 		{Turn: 1, Timing: battle.DecisionTurnStart, User: battle.DecisionUnit{ID: "scout"}, Selected: -1},
-		{Turn: 2, Timing: battle.DecisionDirect, User: battle.DecisionUnit{ID: "guide"}, Committed: true, Skill: "fire", Target: tgt, Selected: 0,
-			Rules: []battle.RuleEvaluation{{Index: 0, Skill: "fire", Reason: battle.RuleApplicable, Target: tgt, Detail: "hp 3 of 9", Selection: "selected"}}},
-		{Turn: 3, Timing: battle.DecisionAction, User: battle.DecisionUnit{ID: "mote", Enemy: true}, Item: "potion", Selected: 0,
-			Rules: []battle.RuleEvaluation{{Index: 0, Item: "potion", Reason: battle.RuleItemShortage}}},
+		{
+			Turn: 2, Timing: battle.DecisionDirect, User: battle.DecisionUnit{ID: "guide"}, Committed: true, Skill: "fire", Target: tgt, Selected: 0,
+			Rules: []battle.RuleEvaluation{{Index: 0, Skill: "fire", Reason: battle.RuleApplicable, Target: tgt, Detail: "hp 3 of 9", Selection: "selected"}},
+		},
+		{
+			Turn: 3, Timing: battle.DecisionAction, User: battle.DecisionUnit{ID: "mote", Enemy: true}, Item: "potion", Selected: 0,
+			Rules: []battle.RuleEvaluation{{Index: 0, Item: "potion", Reason: battle.RuleItemShortage}},
+		},
 	}
 	r := newTacticReasons(g, ds)
 	if len(r.history.items) != 3 {

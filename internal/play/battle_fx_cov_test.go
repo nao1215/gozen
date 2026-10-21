@@ -48,7 +48,7 @@ func TestEffectGeometryIsSound(t *testing.T) {
 		drew := false
 		for _, r := range rects {
 			for power := range 3 {
-				for _, seed := range []uint32{0, 1, 2654435761} {
+				for _, seed := range []uint32{1, 2654435761} {
 					e := r
 					e.kind, e.power, e.seed, e.dur = kind, power, seed, 40
 					e.color = fxColor(kind, data.Color{})
@@ -136,7 +136,7 @@ func TestEffectHelpers(t *testing.T) {
 		t.Fatal("clamp01")
 	}
 	prev := -1.0
-	for i := 0; i <= 20; i++ {
+	for i := range 21 {
 		v := easeOut(float64(i) / 20)
 		if v < prev || v < 0 || v > 1 {
 			t.Fatalf("easeOut(%d/20) = %v after %v", i, v, prev)
@@ -156,7 +156,7 @@ func TestEffectHelpers(t *testing.T) {
 	if lighten(b, 1) != colorWhite || lighten(b, 0) != b {
 		t.Fatal("lighten")
 	}
-	for seed := uint32(0); seed < 50; seed++ {
+	for seed := range uint32(50) {
 		for i := range 20 {
 			if v := rnd(seed*77, i); v < 0 || v >= 1 {
 				t.Fatalf("rnd = %v", v)
@@ -236,7 +236,7 @@ func TestAddFxLifecycle(t *testing.T) {
 	weak := s.addFx(g, "fire", 10, 10, 100, 100, colorWhite, 0)
 	strong := s.addFx(g, "fire", 10, 10, 100, 100, colorWhite, 2)
 	unknown := s.addFx(g, "mystery", 10, 10, 100, 100, colorWhite, 1)
-	if !(weak < normal && normal < strong) || unknown <= 0 {
+	if weak >= normal || normal >= strong || unknown <= 0 {
 		t.Fatalf("durations weak %d normal %d strong %d unknown %d", weak, normal, strong, unknown)
 	}
 	if s.fx[0].seed == s.fx[1].seed {

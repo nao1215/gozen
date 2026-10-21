@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -19,6 +20,9 @@ func btlRecord(t *testing.T, troop, script string) []byte {
 	btlRunToEnd(t, g, 8000)
 	if err := g.Close(); err != nil {
 		t.Fatal(err)
+	}
+	if len(traceLines(t, out.Bytes(), "battle_result")) == 0 {
+		t.Fatal("the scripted battle did not reach its end")
 	}
 	return out.Bytes()
 }
@@ -51,7 +55,7 @@ func btlReplay(t *testing.T, path string, n int) string {
 // TestBattleReplayReproducesABattle: a battle recorded with a player's inputs is replayed from
 // its capture alone, and the replay matches every step, decision and reward and says so.
 func TestBattleReplayReproducesABattle(t *testing.T) {
-	trace := btlRecord(t, "two", "press ok 400\nquit\n")
+	trace := btlRecord(t, "two", "press ok 160\nquit\n")
 	lines := traceLines(t, trace, "battle_capture", "battle_result")
 	if len(lines) != 2 {
 		t.Fatalf("capture/result lines %d", len(lines))
@@ -68,10 +72,10 @@ func TestBattleReplayReproducesABattle(t *testing.T) {
 // TestBattleReplayDetectsADifference: a recorded step that no longer matches is reported as a
 // divergence, not accepted.
 func TestBattleReplayDetectsADifference(t *testing.T) {
-	trace := btlRecord(t, "two", "press ok 400\nquit\n")
+	trace := btlRecord(t, "two", "press ok 160\nquit\n")
 	var edited [][]byte
 	changed := false
-	for _, ln := range bytes.Split(bytes.TrimSpace(trace), []byte("\n")) {
+	for ln := range bytes.SplitSeq(bytes.TrimSpace(trace), []byte("\n")) {
 		if !changed && bytes.Contains(ln, []byte(`"t":"battle_step"`)) && bytes.Contains(ln, []byte(`"amount":`)) && !bytes.Contains(ln, []byte(`"amount":0`)) {
 			ln = bytes.Replace(ln, []byte(`"amount":`), []byte(`"amount":9`), 1)
 			changed = true
@@ -90,7 +94,7 @@ func TestBattleReplayDetectsADifference(t *testing.T) {
 // TestBattleReplayRefusals: traces that cannot be replayed as a battle are refused with a
 // message at load, before any frame is played.
 func TestBattleReplayRefusals(t *testing.T) {
-	good := btlRecord(t, "one", "press ok 400\nquit\n")
+	good := btlRecord(t, "one", "press ok 160\nquit\n")
 	goodLines := bytes.Split(bytes.TrimSpace(good), []byte("\n"))
 	join := func(ls ...[]byte) []byte { return append(bytes.Join(ls, []byte("\n")), '\n') }
 	find := func(kind string) []byte {
@@ -103,7 +107,7 @@ func TestBattleReplayRefusals(t *testing.T) {
 		return nil
 	}
 	start, capture := find("start"), find("battle_capture")
-	tick := func(n int) string { return `"tick":` + string(rune('0'+n)) }
+	tick := func(n int) string { return `"tick":` + strconv.Itoa(n) }
 	for name, tc := range map[string]struct {
 		trace []byte
 		n     int
@@ -126,12 +130,12 @@ func TestBattleReplayRefusals(t *testing.T) {
 		g, err := New(Options{FS: btlFiles(t, "", ""), NoSound: true, SaveDir: t.TempDir(), Replay: path, ReplayBattle: tc.n, Seed: 1})
 		if err == nil {
 			t.Errorf("%s: accepted", name)
-			_ = g.Close()
+			btlClose(t, g)
 		}
 	}
 	if g, err := New(Options{FS: btlFiles(t, "", ""), NoSound: true, SaveDir: t.TempDir(), Replay: filepath.Join(t.TempDir(), "missing.jsonl"), ReplayBattle: 1, Seed: 1}); err == nil {
 		t.Error("a missing trace file was accepted")
-		_ = g.Close()
+		btlClose(t, g)
 	}
 	for name, o := range map[string]Options{
 		"battle number without replay": {ReplayBattle: 1},
@@ -141,7 +145,7 @@ func TestBattleReplayRefusals(t *testing.T) {
 		o.FS, o.NoSound, o.SaveDir = btlFiles(t, "", ""), true, t.TempDir()
 		if g, err := New(o); err == nil {
 			t.Errorf("%s: accepted", name)
-			_ = g.Close()
+			btlClose(t, g)
 		}
 	}
 }
@@ -194,8 +198,7 @@ func TestBattleTraceStepsAndComparable(t *testing.T) {
 	g.traceBattleStep(battle.Step{Kind: battle.Damage, User: s.b.Party[0], Target: s.b.Foes[0], Amount: 12, Crit: true, Skill: "attack"})
 	l := btlLines(t, out, "battle_step")
 	last := l[len(l)-1]
-	user, _ := last["user"].(map[string]any)
-	target, _ := last["target"].(map[string]any)
+	user, target := btlDoc(t, last["user"]), btlDoc(t, last["target"])
 	if user["id"] != "scout" || user["enemy"] != false || target["id"] != "mote" || target["enemy"] != true || last["amount"] != 12.0 || last["crit"] != true {
 		t.Fatalf("step %v", last)
 	}

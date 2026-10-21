@@ -11,7 +11,6 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
-	"github.com/nao1215/gozen/internal/battle"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
@@ -192,10 +191,10 @@ func btlOpen(t *testing.T, opts Options, gameExtra, dataExtra string, extra ...m
 	if opts.Seed == 0 {
 		opts.Seed = 5
 	}
-	switch {
-	case opts.Location == "-": // start at the title
+	switch opts.Location {
+	case "-": // start at the title
 		opts.Location = ""
-	case opts.Location == "":
+	case "":
 		opts.Location = "field"
 		fallthrough
 	default:
@@ -299,22 +298,12 @@ func btlLines(t *testing.T, out *bytes.Buffer, kinds ...string) []traceLine {
 	return traceLines(t, out.Bytes(), kinds...)
 }
 
-func btlAlive(us []*battle.Unit) int {
-	n := 0
-	for _, u := range us {
-		if u.Alive() {
-			n++
-		}
-	}
-	return n
-}
-
 // btlPNG is a flat picture of the given size.
 func btlPNG(w, h int) []byte {
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
 	for y := range h {
 		for x := range w {
-			img.SetNRGBA(x, y, color.NRGBA{R: uint8(60 + x%90), G: uint8(90 + y%120), B: 150, A: 255}) //nolint:gosec // in 0..255
+			img.SetNRGBA(x, y, color.NRGBA{R: uint8(60 + x%90), G: uint8(90 + y%120), B: 150, A: 255})
 		}
 	}
 	var b bytes.Buffer
@@ -325,3 +314,41 @@ func btlPNG(w, h int) []byte {
 }
 
 var _ = strings.Contains
+
+// btlClose closes a game a test opened by hand and reports a failure.
+func btlClose(t *testing.T, g *Game) {
+	t.Helper()
+	if err := g.Close(); err != nil {
+		t.Error(err)
+	}
+}
+
+// btlDoc is a JSON object read into an any.
+func btlDoc(t *testing.T, v any) map[string]any {
+	t.Helper()
+	m, ok := v.(map[string]any)
+	if !ok {
+		t.Fatalf("%v is not an object", v)
+	}
+	return m
+}
+
+// btlNumber is a JSON number read into an any.
+func btlNumber(t *testing.T, v any) float64 {
+	t.Helper()
+	n, ok := v.(float64)
+	if !ok {
+		t.Fatalf("%v is not a number", v)
+	}
+	return n
+}
+
+// btlEditor is the row editor on top of the stack.
+func btlEditor(t *testing.T, g *Game) *tacticEditor {
+	t.Helper()
+	e, ok := g.stack[len(g.stack)-1].(*tacticEditor)
+	if !ok {
+		t.Fatalf("top is %T, not the row editor", g.stack[len(g.stack)-1])
+	}
+	return e
+}

@@ -12,7 +12,7 @@ import (
 // result line of a trace.
 func btlCaptureLine(t *testing.T, trace []byte) (start []byte, capture map[string]any, result []byte) {
 	t.Helper()
-	for _, ln := range bytes.Split(bytes.TrimSpace(trace), []byte("\n")) {
+	for ln := range bytes.SplitSeq(bytes.TrimSpace(trace), []byte("\n")) {
 		switch {
 		case bytes.Contains(ln, []byte(`"t":"start"`)):
 			start = ln
@@ -65,7 +65,7 @@ func btlCloneMap(t *testing.T, m map[string]any) map[string]any {
 // TestBattleReplayRefusesDamagedCaptures: a capture whose random state or saved state cannot be
 // restored, or whose own tick is not where it is written, is refused when the game is created.
 func TestBattleReplayRefusesDamagedCaptures(t *testing.T) {
-	trace := btlRecord(t, "one", "press ok 400\nquit\n")
+	trace := btlRecord(t, "one", "press ok 160\nquit\n")
 	start, capture, result := btlCaptureLine(t, trace)
 	for name, mutate := range map[string]func(c map[string]any, inner map[string]any){
 		"random state": func(_, inner map[string]any) { inner["rand"] = "eA==" },
@@ -74,13 +74,13 @@ func TestBattleReplayRefusesDamagedCaptures(t *testing.T) {
 		"other tick":   func(_, inner map[string]any) { inner["tick"] = 5 },
 	} {
 		c := btlCloneMap(t, capture)
-		inner, _ := c["capture"].(map[string]any)
+		inner := btlDoc(t, c["capture"])
 		mutate(c, inner)
 		path := btlWriteTrace(t, btlJoinLines(t, start, c, result))
 		g, err := New(Options{FS: btlFiles(t, "", ""), NoSound: true, SaveDir: t.TempDir(), Replay: path, ReplayBattle: 1, Seed: 1})
 		if err == nil {
 			t.Errorf("%s: accepted", name)
-			_ = g.Close()
+			btlClose(t, g)
 		}
 	}
 }
@@ -89,9 +89,9 @@ func TestBattleReplayRefusesDamagedCaptures(t *testing.T) {
 // inputs at or before it are left out, the auto command is kept as an action, and kinds a battle
 // replay does not check are left out.
 func TestBattleReplayReadsInputsAndActions(t *testing.T) {
-	trace := btlRecord(t, "one", "press ok 400\nquit\n")
+	trace := btlRecord(t, "one", "press ok 160\nquit\n")
 	start, capture, result := btlCaptureLine(t, trace)
-	tick := int(capture["tick"].(float64))
+	tick := int(btlNumber(t, capture["tick"]))
 	lines := btlJoinLines(t, start, capture,
 		map[string]any{"t": "input", "tick": tick, "press": []string{"ok"}},
 		map[string]any{"t": "input", "tick": tick + 2, "press": []string{"ok"}, "held": []string{"ok"}},
@@ -102,7 +102,7 @@ func TestBattleReplayReadsInputsAndActions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = g.Close() }()
+	defer btlClose(t, g)
 	r := g.rep
 	if len(r.inputs) != 1 || r.inputs[tick+2] == nil || len(r.acts[tick+3]) != 1 {
 		t.Fatalf("inputs %v acts %v", r.inputs, r.acts)

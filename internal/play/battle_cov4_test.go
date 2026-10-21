@@ -135,8 +135,9 @@ func TestBattleDramaTimings(t *testing.T) {
 	g, _ := btlOpen(t, Options{Battle: "guardian"}, "", "")
 	s := btlBattle(t, g)
 	s.dr.freeze = 2
-	if !s.stepDrama(g) || !s.stepDrama(g) || s.stepDrama(g) {
-		t.Fatal("a freeze of two ticks")
+	first, second, third := s.stepDrama(g), s.stepDrama(g), s.stepDrama(g)
+	if !first || !second || third {
+		t.Fatalf("a freeze of two ticks held %v %v %v", first, second, third)
 	}
 	s.dr.slow = 4
 	var got []bool

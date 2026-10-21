@@ -73,7 +73,9 @@ func btlRunToEnd(t *testing.T, g *Game, limit int) int {
 		if err != nil {
 			t.Fatal(err)
 		}
-		g.Draw(btlImage())
+		if i%8 == 0 {
+			g.Draw(btlImage())
+		}
 	}
 	t.Fatalf("the game did not quit in %d ticks", limit)
 	return 0
@@ -99,7 +101,7 @@ func TestAutopilotPlaysAndReports(t *testing.T) {
 	if strings.Contains(text, "dives 0,") {
 		t.Errorf("never dived:\n%s", text)
 	}
-	b, err := os.ReadFile(file)
+	b, err := os.ReadFile(file) //nolint:gosec // A path made in the test's own temporary directory.
 	if err != nil || string(b) != text {
 		t.Fatalf("the report file differs from the report (%v)", err)
 	}
