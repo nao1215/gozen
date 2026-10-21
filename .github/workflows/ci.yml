@@ -10,9 +10,28 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    # Tells the jobs below whether a pull request changes more than documentation
+    # (scripts/ci_changes.sh, docs/development/ci.md). Jobs are skipped with `if`, not
+    # with on.paths: a workflow that never starts leaves its required checks pending.
+    # Fail-open: only an answer of false skips; a failure of this job runs everything.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.scope.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # A pull request's merge commit and its first parent, the base it merges into.
+          fetch-depth: 2
+      - id: scope
+        run: ./scripts/ci_changes.sh
+
   quick:
     # Cheap check for private pushes: vet and tests on Linux under Xvfb.
-    if: ${{ github.event.repository.private && github.event_name != 'workflow_dispatch' }}
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && (github.event.repository.private && github.event_name != 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -27,7 +46,27 @@ jobs:
           xvfb: true
       - run: go vet ./...
       - run: xvfb-run --auto-servernum go test -count=1 ./...
+  docs-checks:
+    # A pull request that changes only documentation skips the jobs above. The checks
+    # that read the documentation run here instead: the README, links, code blocks and
+    # pictures list (internal/dev/docs), the generated errors page (internal/diag) and
+    # the pages that the schema tests read (internal/layer2/gamedata).
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'false' && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go test -count=1 ./internal/dev/docs/... ./internal/diag/... ./internal/layer2/gamedata/...
+
   lint:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -52,7 +91,8 @@ jobs:
   unit:
     # Full matrix while public, or on manual dispatch. Private repositories have a
     # limited Actions budget, so pushes there run only the quick job below.
-    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    needs: changes
+    if: ${{ !cancelled() && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
     strategy:
       fail-fast: false
       matrix:
@@ -62,20 +102,24 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.code != 'false'
         with:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: needs.changes.outputs.code != 'false'
         with:
           go-version: ${{ matrix.go }}
       # One module: the gozen command and its internal implementations are tested.
       - run: go test ./...
+        if: needs.changes.outputs.code != 'false'
         env:
           CGO_ENABLED: "1"
 
   build:
     # Full matrix while public, or on manual dispatch. Private repositories have a
     # limited Actions budget, so pushes there run only the quick job below.
-    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
     strategy:
       fail-fast: false
       matrix:
@@ -119,7 +163,8 @@ jobs:
   graphics:
     # Full matrix while public, or on manual dispatch. Private repositories have a
     # limited Actions budget, so pushes there run only the quick job below.
-    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
     strategy:
       fail-fast: false
       matrix:
@@ -182,7 +227,8 @@ jobs:
   cli-e2e:
     # Full matrix while public, or on manual dispatch. Private repositories have a
     # limited Actions budget, so pushes there run only the quick job below.
-    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    needs: changes
+    if: ${{ !cancelled() && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
     strategy:
       fail-fast: false
       matrix:
@@ -191,16 +237,20 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.code != 'false'
         with:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: needs.changes.outputs.code != 'false'
         with:
           go-version: stable
       # The release binary (checksum checked) instead of go install: no build in each job.
       - uses: nao1215/setup-atago@5c563dcd9d85e114f8abe8bbdcd058e51de09efb # v0.1.3
+        if: needs.changes.outputs.code != 'false'
         with:
           version: v0.25.2
       - name: Build and exercise native CLI binaries
+        if: needs.changes.outputs.code != 'false'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force bin, build/atago | Out-Null
@@ -217,7 +267,8 @@ jobs:
   inference-build:
     # Full matrix while public, or on manual dispatch. Private repositories have a
     # limited Actions budget, so pushes there run only the quick job below.
-    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
     strategy:
       fail-fast: false
       matrix:
@@ -243,7 +294,8 @@ jobs:
   race:
     # Full matrix while public, or on manual dispatch. Private repositories have a
     # limited Actions budget, so pushes there run only the quick job below.
-    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -284,7 +336,8 @@ jobs:
   examples:
     # Full matrix while public, or on manual dispatch. Private repositories have a
     # limited Actions budget, so pushes there run only the quick job below.
-    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
     strategy:
       fail-fast: false
       matrix:
@@ -308,7 +361,8 @@ jobs:
   go-zen:
     # examples/go-zen, examples/novel and examples/campaign are modules of their own (they use this
     # checkout through a replace), so ./... and ./examples/... above do not reach them.
-    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
