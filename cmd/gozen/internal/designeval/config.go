@@ -239,6 +239,11 @@ func (c *Config) check(db *data.DB) error {
 			return fmt.Errorf("persona %s: explore %q (want stairs, events or all)", p.ID, p.Explore)
 		}
 	}
+	for i, d := range c.Duels.List {
+		if d.Troop == "" {
+			return fmt.Errorf("duels.list[%d]: an opponent needs a troop", i)
+		}
+	}
 	for _, id := range []string{c.Targets.Persona, c.Targets.CloseTo, c.Targets.MustClear} {
 		if id != "" && !seen[id] {
 			return fmt.Errorf("targets: unknown persona %q", id)

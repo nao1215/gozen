@@ -251,6 +251,7 @@ func TestDesignListAndInvalidInput(t *testing.T) {
 		{"boss", "game: {bosses: {2: ghost}}\npersonas: [{id: a}]\n", "unknown troop"},
 		{"duel numbers", "duels: {first: [0.1]}\npersonas: [{id: a}]\n", "low and the high"},
 		{"duel persona", "duels: {personas: [z]}\npersonas: [{id: a}]\n", "unknown persona"},
+		{"duel without a troop", "duels: {list: [{open: 'true'}]}\npersonas: [{id: a}]\n", "needs a troop"},
 		{"duel troop", "duels: {list: [{troop: ghost}]}\npersonas: [{id: a}]\n", "unknown troop"},
 		{"duel fighter", "duels: {fighters: [ghost]}\npersonas: [{id: a}]\n", "unknown actor"},
 		{"back event", "game: {back_event: ghost}\npersonas: [{id: a}]\n", "unknown event"},
