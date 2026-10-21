@@ -56,7 +56,7 @@ YAML traps are in references/yaml.md.
 
 Tested YAML for shops, inns, flags, companions, dungeons, chests, keys, cut-ins and moving portraits: https://nao1215.github.io/gozen/cookbook/. Start from a recipe and change the names.
 
-A first-person dungeon can take a ready look: `gozen theme list` shows the themes (cave, ice, ruins, castle, crystal, temple, sewer, forest, tomb), `gozen theme add cave game` copies one into the game's assets, and `theme: cave` on `dungeon:` or a look fills the wall, door, floor and ceiling. A value written beside it wins. `gozen check` reports a theme named but not added (GZN1111).
+A first-person dungeon can take a ready look: `gozen theme list` shows the themes (cave, ice, ruins, castle, crystal, temple, sewer, forest, tomb, keep, dream, mine, vine), `gozen theme add cave game` copies one into the game's assets, and `theme: cave` on `dungeon:` or a look fills the wall, door, floor and ceiling. A value written beside it wins. `gozen check` reports a theme named but not added (GZN1111).
 
 ## Novel games
 
