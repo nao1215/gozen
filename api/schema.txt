@@ -564,6 +564,7 @@ github.com/nao1215/gozen/schema method DB.Ordered
 github.com/nao1215/gozen/schema method DB.ProfileActor
 github.com/nao1215/gozen/schema method DB.ProfileFaces
 github.com/nao1215/gozen/schema method DB.ProfileHolds
+github.com/nao1215/gozen/schema method DB.ProfileIcon
 github.com/nao1215/gozen/schema method DB.ProfileName
 github.com/nao1215/gozen/schema method DB.RuleUsage
 github.com/nao1215/gozen/schema method DB.RuleWarnings

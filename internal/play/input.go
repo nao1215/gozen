@@ -67,8 +67,9 @@ var keys = [numButtons][]ebiten.Key{
 	btnBack: {ebiten.KeyQ},
 	// F8 opens the development panel under --dev (ADR 0029).
 	btnPanel: {ebiten.KeyF8},
-	// P opens the character book (ADR 0031) while a line is shown.
-	btnBook: {ebiten.KeyP},
+	// F6 opens and closes the character book under --dev (ADR 0031), and for players
+	// when game.yaml sets ui.profiles.
+	btnBook: {ebiten.KeyF6},
 }
 
 var (

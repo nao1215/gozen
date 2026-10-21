@@ -334,10 +334,11 @@ var pages = map[string]clihelp.Page{
 		Notes:  []string{"The output directory must not exist yet.", noRequirements},
 	},
 	"art faces": {
-		Summary: "find the faces of the pictures for the balloons",
+		Summary: "find the faces for the balloons and icons",
 		Usage:   []string{"gozen art faces [OPTIONS] <game-dir>"},
 		About: "Finds the face in each standing picture a painted scene (stage:) cuts a balloon face from: " +
-			"the pictures of the people placed in a stage and the actors' face pictures. Uses the anime face " +
+			"the pictures of the people placed in a stage and the actors' face pictures, and, in a game with a " +
+			"character book (profiles), the actors' and the profiles' pictures its face icons are cut from. Uses the anime face " +
 			"detector that gozen art fetch face downloads, and writes the boxes, the pictures' sizes and " +
 			"SHA-256 to assets/faces.json (replacing it). The game reads that file and runs no model, so a web " +
 			"build uses it too. A doll's icon (a face drawn for the balloons) is not searched; it and face_at come first; without a box the face is guessed. gozen check " +

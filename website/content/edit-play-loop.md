@@ -1,6 +1,6 @@
 ---
 title: The edit–play loop
-description: Tune a Gozen game while you play it. --dev, F5 reload, F7 win rates, F9 notes, test-play starts, autoplay, traces, replays and gozen play notes.
+description: Tune a Gozen game while you play it. --dev, F5 reload, F6 character book, F7 win rates, F9 notes, test-play starts, autoplay, traces, replays and gozen play notes.
 weight: 50
 toc: true
 ---
@@ -29,6 +29,7 @@ Runs with `--dev` that start somewhere other than the beginning (`--start`, `--s
 | Key | With `--dev` |
 |:--|:--|
 | F5 | Reload the definitions. The game keeps your place: the location, the party, and the current line of an event. |
+| F6 | Open or close the character book, with every page open: each character's profile, faces and relations ([profiles](/cookbook/#keep-a-character-book)). |
 | F7 | Show or hide the balance panel: win rates of the battles at this place. |
 | F8 | Open or close the development panel: the state (flip a flag, step a number), a table of the flags each event sets and reads, the events to jump to with their read rates, a line of YAML to run, and the frame meter (ticks and frames a second, the longest and average Update and Draw). |
 | F9 | Write a note: a screenshot, the game state and your comment. |
@@ -47,6 +48,12 @@ The usual keys still work: O or F2 for settings, F11 for full screen, M to mute.
 | ![the frame meter over the tavern](/images/playtest-frames.jpg) | |
 
 The panel holds the game while it is open; left and right change its tab. Every change it makes goes through `set` or starts an event, the same as a headless test's `Do`, and the trace records it: `dev_set` for a change, `jump` for a jump, `dev_do` for a command. A script does the same with `jump EVENT [LINE]` (start an event from the state as it is, read on to the line) and `do YAML` (run a line of commands, such as `do - set: {flag.met: true}`). The Frames tab hides the panel and leaves the frame meter, and the game goes on until F8 closes it. The flags table and `gozen book`'s Flow section come from one index of where each name is written and read.
+
+## F6: the character book
+
+The book shows each character of `profiles` with the standing picture, the faces to switch between (Z), the fields, the introduction and how they see the others. Under `--dev` every page is open, so you can check a line you write against the character. Left and right, L and R of a pad, the arrows on the band and a swipe go to the next character; X or F6 closes it.
+
+![Wren's page in the character book of After the Pass](/images/novel-characters.jpg)
 
 ## F5: reload
 

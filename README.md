@@ -110,6 +110,8 @@ Start the game with `--dev` and these keys work while you play.
 | ![the flags each event sets and reads](docs/images/novel-flags.jpg) | ![the Scenes tab jumps to the late night](docs/images/playtest-jump.gif) |
 | F8 Command: run a line of YAML | F8 Frames: ticks and frames a second, the slowest Update and Draw |
 | ![a set typed into the Command tab, then the State tab shows the flag](docs/images/playtest-command.gif) | ![the frame meter over the tavern](docs/images/playtest-frames.jpg) |
+| F6: the character book, every page open: each character's profile, faces and relations | |
+| ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](docs/images/novel-characters.jpg) | |
 
 ## Install
 

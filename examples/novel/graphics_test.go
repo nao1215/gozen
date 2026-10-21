@@ -16,7 +16,7 @@ import (
 
 // TestGraphicsScreens runs the novel sample in a window (under Xvfb in CI) and takes the
 // title, a line of the opening with two portraits on the stage, and the character book
-// opened with P (ADR 0031), at 1920x1080.
+// opened with F6 (ADR 0031), at 1920x1080.
 func TestGraphicsScreens(t *testing.T) {
 	for _, tc := range []struct {
 		name   string

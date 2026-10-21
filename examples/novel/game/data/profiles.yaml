@@ -1,5 +1,5 @@
-# The character book (ADR 0031). Under --dev the title offers Characters and P opens it
-# while a line is shown; ui.profiles: true in game.yaml shows it to players too. Each
+# The character book (ADR 0031). Under --dev the title and the menu offer Characters and
+# F6 opens it; ui.profiles: true in game.yaml shows it to players too. Each
 # profile belongs to the actor of the same id and shows its standing picture. Hedda is in the book from the start; Brenna and Wren once the first
 # toast has been poured.
 profiles:

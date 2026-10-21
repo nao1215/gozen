@@ -61,9 +61,10 @@ func FileSHA256(fsys fs.FS, name string) (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
-// ScenePictures are the standing pictures the painted scenes cut faces from (under
-// assets/): the pictures of the people placed in a stage, and the default face picture
-// of each actor (the leader's doll) when the game has a stage.
+// ScenePictures are the standing pictures face icons are cut from (under assets/): the
+// pictures of the people placed in a stage, the default face picture of each actor (the
+// leader's doll, the icons) when the game has a stage or a character book, and the
+// pictures of the book's profiles (ADR 0031).
 func (db *DB) ScenePictures() []string {
 	var out []string
 	add := func(p string) {
@@ -89,12 +90,15 @@ func (db *DB) ScenePictures() []string {
 			}
 		}
 	}
-	if staged {
+	if staged || len(db.Profiles) > 0 {
 		for _, id := range db.Ordered("actors") {
 			if a := db.Actors[id]; a != nil && a.Faces != "" && (a.Doll == nil || a.Doll.Icon == "") {
 				add(db.FacePicture(a, a.Face, ""))
 			}
 		}
+	}
+	for _, id := range db.Ordered("profiles") {
+		add(db.ProfileIcon(id))
 	}
 	return out
 }
@@ -136,7 +140,7 @@ func (c *checker) faceWarnings() {
 		c.warnf(diag.FaceBox, FacesFile, "%v", err)
 		return
 	case !ok:
-		c.warnf(diag.FaceBox, FacesFile, "no such file: the balloons' faces are guessed (run gozen art faces to find them)")
+		c.warnf(diag.FaceBox, FacesFile, "no such file: the faces of the balloons and the icons are guessed (run gozen art faces to find them)")
 		return
 	}
 	for _, p := range pics {
@@ -149,7 +153,7 @@ func (c *checker) faceWarnings() {
 		case f.SHA256 != sum:
 			c.warnf(diag.FaceBox, "assets/"+p, "the picture changed since gozen art faces found its face (run it again)")
 		case f.Box == nil:
-			c.warnf(diag.FaceBox, "assets/"+p, "no face was found: its balloon face is guessed (or give the doll face_at)")
+			c.warnf(diag.FaceBox, "assets/"+p, "no face was found: its balloon face and icon are guessed (or give the doll face_at)")
 		}
 	}
 }

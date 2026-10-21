@@ -49,7 +49,7 @@ func (c *command) faces(args []string) (err error) {
 	}
 	pics := db.ScenePictures()
 	if len(pics) == 0 {
-		c.out.Println("no standing pictures in a painted scene (stage.people, the actors' faces): nothing to do")
+		c.out.Println("no standing pictures to find faces in (a painted scene's people, the actors' faces, the profiles): nothing to do")
 		return nil
 	}
 	if *model == "" {

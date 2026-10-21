@@ -267,7 +267,7 @@ images:
     shot: s-frames
     jpeg: {width: 960, height: 540, quality: 3}
     tolerance: 0.03
-  # The character book (ADR 0031): P opens it at a line, and right goes to Wren.
+  # The character book (ADR 0031): F6 opens it at a line, and right goes to Wren.
   novel-characters.jpg:
     run: novel-characters
     shot: s-characters

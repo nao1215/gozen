@@ -389,7 +389,7 @@ var english = map[string]string{
 	"とまっています":                            "Stopped",
 	// screens: the character book (ADR 0031)
 	"キャラクター": "Characters",
-	"←→ / LR: キャラ   ↑↓: 一覧   Z: 表情   X: もどる": "Left/Right / LR: character   Up/Down: list   Z: face   X: back",
+	"←→ / LR: キャラ   ↑↓: 一覧   Z: 表情   X / F6: もどる": "Left/Right / LR: character   Up/Down: list   Z: face   X / F6: back",
 	"あなた": "You",
 	"「":   "“",
 	"」":   "”",

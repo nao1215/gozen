@@ -718,6 +718,7 @@ func (g *Game) Update() error {
 	if g.opts.Development && g.in.pressed[btnPanel] && g.memo == nil {
 		g.togglePanel()
 	}
+	g.bookKey()
 	if g.panelModal() {
 		g.updatePanel()
 		g.traceInput()

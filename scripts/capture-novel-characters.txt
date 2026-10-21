@@ -1,4 +1,4 @@
-# Novel sample capture (run novel-characters): at the first line of the toast, P opens
+# Novel sample capture (run novel-characters): at the first line of the toast, F6 opens
 # the character book; right goes to Wren (s-characters).
 gap 1
 wait 120

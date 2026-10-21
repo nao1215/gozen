@@ -2,6 +2,7 @@ package gamedata_test
 
 import (
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -137,5 +138,34 @@ func TestProfilesTranslate(t *testing.T) {
 		if !strings.Contains(w, want) {
 			t.Errorf("no warning %q in\n%s", want, w)
 		}
+	}
+}
+
+// TestProfilesFaceBoxes: the pictures of a book are face pictures for gozen art faces,
+// with the actors' faces; check warns of one without a box in assets/faces.json.
+func TestProfilesFaceBoxes(t *testing.T) {
+	files := profileFiles(`profiles:
+  scout: {faces: [smile, normal]}
+  keeper: {picture: x.png}
+`)
+	db := testgame.Load(t, files)
+	pics := db.ScenePictures()
+	for _, want := range []string{"chars/scout/normal.png", "chars/scout/smile.png", "x.png"} {
+		if !slices.Contains(pics, want) {
+			t.Errorf("no %s in %v", want, pics)
+		}
+	}
+	if db.ProfileIcon("scout") != "chars/scout/smile.png" || db.ProfileIcon("keeper") != "x.png" {
+		t.Errorf("icons %q %q", db.ProfileIcon("scout"), db.ProfileIcon("keeper"))
+	}
+	w := errors.Join(db.SceneWarnings()...).Error()
+	if !strings.Contains(w, "assets/faces.json: no such file") {
+		t.Errorf("no warning of the missing faces file in\n%s", w)
+	}
+	files["assets/faces.json"] = `{"version": 1, "pictures": {}}`
+	db = testgame.Load(t, files)
+	w = errors.Join(db.SceneWarnings()...).Error()
+	if !strings.Contains(w, "assets/x.png: no face box in assets/faces.json") {
+		t.Errorf("no warning of the picture without a box in\n%s", w)
 	}
 }

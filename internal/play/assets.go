@@ -17,6 +17,7 @@ import (
 	_ "golang.org/x/image/webp" // a browser build may ship its pictures as WebP
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer5/doll"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 	"github.com/nao1215/gozen/internal/layer5/picdecode"
 )
@@ -37,6 +38,9 @@ type pictures struct {
 	blurs        map[string]*ebiten.Image
 	shades       map[string][2]float64
 	shaded       map[string]*ebiten.Image
+	// found are the face boxes gozen art faces wrote (assets/faces.json), read once.
+	found     map[string]data.FaceBox
+	foundRead bool
 
 	seen func(path string, ok bool)
 
@@ -144,6 +148,7 @@ func (p *pictures) reset() {
 	p.heads = map[string]image.Rectangle{}
 	p.blurs = map[string]*ebiten.Image{}
 	p.shaded = map[string]*ebiten.Image{}
+	p.found, p.foundRead = nil, false
 	p.bytes = 0
 	clear(p.decoded)
 	p.decodedBytes = 0
@@ -242,12 +247,39 @@ func (p *pictures) head(path string) image.Rectangle {
 			return image.Rect(int(b[0]*w-s/2), int(b[1]*h-s/2), int(b[0]*w+s/2), int(b[1]*h+s/2))
 		}
 	}
+	if r, ok := p.foundFace(path, img.Bounds().Size()); ok {
+		return r
+	}
 	if r, ok := p.heads[path]; ok && !r.Empty() {
 		return r
 	}
 	w, h := img.Bounds().Dx(), img.Bounds().Dy()
 	s := min(w, h) / 2
 	return image.Rect(w/2-s/2, 0, w/2+s/2, s)
+}
+
+// foundFace is the square a face icon is cut from around the face gozen art faces found
+// in the picture (assets/faces.json), scaled to the picture as loaded; false when it found
+// none. The caller holds p.mu.
+func (p *pictures) foundFace(path string, size image.Point) (image.Rectangle, bool) {
+	if !p.foundRead {
+		p.foundRead = true
+		if p.fsys != nil {
+			f, _, err := data.ReadFaceBoxes(p.fsys)
+			if err != nil {
+				log.Print(err)
+			}
+			p.found = f.Pictures
+		}
+	}
+	f, ok := p.found[path]
+	if !ok || f.Box == nil || f.Size[0] <= 0 || f.Size[1] <= 0 {
+		return image.Rectangle{}, false
+	}
+	sx, sy := float64(size.X)/float64(f.Size[0]), float64(size.Y)/float64(f.Size[1])
+	cx, cy := float64(f.Box[0]+f.Box[2])/2*sx, float64(f.Box[1]+f.Box[3])/2*sy
+	half := math.Max(float64(f.Box[2]-f.Box[0])*sx, float64(f.Box[3]-f.Box[1])*sy) * doll.FaceMargin / 2
+	return image.Rect(int(cx-half), int(cy-half), int(cx+half), int(cy+half)), true
 }
 
 func (p *pictures) foundHead(path string) image.Rectangle {
