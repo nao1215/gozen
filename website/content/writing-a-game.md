@@ -252,6 +252,8 @@ The engine's own words (menus, battle messages, settings, saves) come in English
 
 `enemies.<id>.lore` adds a short habitat description to an enemy. Set `ui.bestiary: true` to add Monsters to the title and field menu. A battle encounter reveals its name, picture and lore; a victory reveals its stats, resistances, skills and drops, with a defeat count. Under `--dev`, F4 opens every page ([the recipe](/cookbook/#keep-a-monster-book)).
 
+For collection, use schema version 6 and give each non-boss species a `family`, `rank` and `monster_class`. `recruit` lets it ask to join after a won battle; the Yes/No request also works in Session scripts and traces. Extra members go to the reserve. An inn or another safe place can run `open: ranch` to swap, release and breed monster instances. `breeding` defines specific species pairs and ranked family rules. `gozen check` validates the graph, `gozen sim breed game --format json` reports reachable and unreachable species, and `gozen book` prints the rules ([the collection recipe](/cookbook/#collect-raise-and-breed-monsters)).
+
 ## Languages
 
 A game is written in one language, `written_in` (by default `language`), and can be offered in another: `lang/<code>.yaml` maps each text as written to its translation, and `languages` lets the player choose. The engine's own words come in English and Japanese, so the languages are `en` and `ja` ([the recipe](/cookbook/#offer-the-game-in-two-languages)).

@@ -140,6 +140,8 @@ enemies:
 
 F4 opens the monster book during `--dev` play.
 
+To collect and raise monsters, add families, ranks and a monster class to enemies, then add `recruit` chances and `breeding` rules (schema version 6). A monster may ask to join after victory; a full party sends it to the ranch reserve. The ranch swaps members and breeds two raised monsters into one child. Check recipes with `gozen check game` and `gozen sim breed game --format json`. See [Collect, raise and breed monsters](https://nao1215.github.io/gozen/cookbook/#collect-raise-and-breed-monsters).
+
 ## Install
 
 Go 1.26.10 or later:

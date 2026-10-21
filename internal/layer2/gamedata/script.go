@@ -108,6 +108,10 @@ func itemLines(src string) []int {
 // is held separately. Make one per play when playing from one Game many times.
 func Fork(db *DB) *DB {
 	out := *db
+	out.Actors = make(map[string]*Actor, len(db.Actors))
+	for id, actor := range db.Actors {
+		out.Actors[id] = actor
+	}
 	out.Locations = make(map[string]*Location, len(db.Locations))
 	for id, l := range db.Locations {
 		if l != nil && l.Dungeon != nil {

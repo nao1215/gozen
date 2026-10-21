@@ -1101,6 +1101,7 @@ func (g *Game) restoreState(b []byte) bool {
 
 func (g *Game) loadGame(st *rpg.State) {
 	g.st = st
+	g.db = st.DB
 	g.bannerFloor = 0
 	g.startState()
 	g.reportLoad(st.LoadReport)
@@ -1707,7 +1708,7 @@ func (g *Game) load(i int) (*rpg.State, error) {
 		return nil, err
 	}
 	if st.Resume == nil { // a save in the middle of an event goes on where the event began
-		resumeAt(g.db, st)
+		resumeAt(st.DB, st)
 	}
 	return st, nil
 }

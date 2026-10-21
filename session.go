@@ -115,6 +115,7 @@ func Restore(g *Game, save []byte, cfg Config) (*Session, error) {
 		}
 	}
 	s.st = st
+	s.db = st.DB
 	s.start()
 	dungeon.Remake(s.db, s.st)
 	if r := st.Resume; r != nil {

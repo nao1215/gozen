@@ -34,6 +34,8 @@ func (g *Game) openScreen(name string, done func()) {
 		g.push(newProfiles(g, done))
 	case "bestiary":
 		g.push(newBestiary(g, done))
+	case "ranch":
+		g.push(newRanch(g, done))
 
 	case "status", "item", "skill", "equip":
 		g.push(newDirectMenu(g, name, done))

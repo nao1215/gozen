@@ -21,7 +21,7 @@ import (
 // The names an expression may use, by where it is written.
 var (
 	// FieldNames are known to the conditions of events, locations and the field music.
-	FieldNames = append([]string{"flag", "var", "gold", "party", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose", "bestiary"}, CampaignNames...)
+	FieldNames = append([]string{"flag", "var", "gold", "party", "reserve", "monster", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose", "bestiary"}, CampaignNames...)
 	// BattleNames are known in battle: the AI, the troop events, the battle music.
 	BattleNames = append(slices.Clone(FieldNames), "turn", "self", "allies", "foes", "enemies", "result", "phase", "boss")
 	// EffectNames are known to the formulas of skills and items: a is the user, b the target.
@@ -86,6 +86,8 @@ func (c *checker) exprIn(where string, e Expr, names []string, over map[string]*
 			c.needsVersion(where, "the name spot", SchemaVersion3)
 		} else if n == "chose" {
 			c.needsVersion(where, "the name chose", SchemaVersion4)
+		} else if n == "reserve" || n == "monster" {
+			c.needsVersion(where, "the name "+n, SchemaVersion6)
 		} else if slices.Contains(CampaignNames, n) {
 			c.needsVersion(where, "the name "+n, SchemaVersion5)
 		}
@@ -901,6 +903,7 @@ func (db *DB) Check() []error {
 	c.languages()
 	c.flagWarnings()
 	c.bestiaryWarnings()
+	c.monsters()
 	db.sceneWarns, db.sceneWarned = sortedDiagnostics(c.warns), true
 	return sortedDiagnostics(c.errs)
 }
@@ -1282,6 +1285,26 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			id := cmd.Join + cmd.Leave
 			_, ok := db.Actors[id]
 			c.ref(w+"."+verb, "actor", id, ok)
+		case "reserve":
+			c.needsVersion(w+".reserve", "reserve", SchemaVersion6)
+			if cmd.Reserve.In == "" || cmd.Reserve.Out == "" {
+				c.errorf(diag.MonsterRules, w, "reserve needs in and out monster instance IDs")
+			}
+		case "release":
+			c.needsVersion(w+".release", "release", SchemaVersion6)
+			if cmd.Release == "" {
+				c.errorf(diag.MonsterRules, w, "release needs a monster instance ID")
+			}
+		case "breed":
+			c.needsVersion(w+".breed", "breed", SchemaVersion6)
+			if len(cmd.Breed.Parents) != 2 || cmd.Breed.Parents[0] == cmd.Breed.Parents[1] {
+				c.errorf(diag.MonsterRules, w, "breed needs two distinct monster instance IDs")
+			}
+			for _, skill := range cmd.Breed.Skills {
+				if db.Skills[skill] == nil {
+					c.errorf(diag.MonsterRules, w, "unknown inherited skill %q", skill)
+				}
+			}
 		case "hurt", "affect":
 			var who string
 			if cmd.Hurt != nil {
@@ -1414,6 +1437,10 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 				c.errorf(diag.UnknownReference, w+".open", "open: profiles needs profiles in data/ (the character book is empty)")
 			} else if cmd.Open == "bestiary" && len(db.Enemies) == 0 {
 				c.errorf(diag.UnknownReference, w+".open", "open: bestiary needs enemies in data/ (the monster book is empty)")
+			} else if cmd.Open == "ranch" && db.Breeding == nil {
+				c.errorf(diag.MonsterRules, w+".open", "open: ranch needs breeding in data/")
+			} else if cmd.Open == "ranch" {
+				c.needsVersion(w+".open", "open: ranch", SchemaVersion6)
 			} else if slices.Contains(db.Game.Screens, cmd.Open) {
 				c.needsVersion2(w+".open", "a declared screen")
 			} else if !slices.Contains(OpenScreens, cmd.Open) {
@@ -1435,7 +1462,7 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			c.effectCue(w+".effect", cmd.Effect)
 		case "order", "end_turn", "game_over":
 			c.campaignCommand(w, verb, cmd)
-		case "mood", "end", "clear", "save", "done", "ran", "cross", "reach", "clash":
+		case "mood", "end", "clear", "save", "done", "ran", "cross", "reach", "clash", "capture":
 			// Commands without extra reference or expression checks are listed explicitly too, so missed registrations are detected.
 		default:
 			c.errorf(diag.Shape, w, "command %q has no semantic checker", verb)
@@ -1515,6 +1542,7 @@ var (
 	tActor = objType("a party member", statsFields(map[string]*vtype{
 		"id": tStr, "name": tStr, "level": tNum, "exp": tNum, "hp": tNum, "mp": tNum,
 		"hp_rate": tNum, "mp_rate": tNum, "alive": tBool, "dead": tBool, "class": tStr,
+		"family": tStr, "monster": tStr, "plus": tNum,
 		"equip": {kind: vDyn, desc: "equip", elem: tStr}, "states": tStates, "back": tBool, "sp": tNum,
 		"wears": tWears, "tactics": objType("tactics", map[string]*vtype{"mode": tStr, "preset": tStr, "rows": {kind: vList, desc: "rows", elem: objType("a tactics row", map[string]*vtype{"enabled": tBool, "condition": tStr, "percent": tNum, "target": tStr, "action": tStr}, nil)}}, nil),
 		"skills": {kind: vList, desc: "skills", elem: tStr}, "sets": {kind: vList, desc: "sets", elem: tStr},
@@ -1610,6 +1638,10 @@ func typeOf(n string, names []string) *vtype {
 		return &vtype{kind: vDyn, desc: "item", elem: tNum, key: "item"}
 	case "actor":
 		return &vtype{kind: vDyn, desc: "actor", elem: tActorIn, key: "actor"}
+	case "monster":
+		return &vtype{kind: vDyn, desc: "monster instance", elem: tActorIn}
+	case "reserve":
+		return tFieldParty
 	case "gold", "members", "steps", "turn", "level", "floor":
 		return tNum
 	case "location", "result", "phase", "spot":
@@ -1629,7 +1661,7 @@ func typeOf(n string, names []string) *vtype {
 	case "chose":
 		return &vtype{kind: vDyn, desc: "chose", elem: tStr}
 	case "bestiary":
-		return &vtype{kind: vDyn, desc: "bestiary", elem: objType("a monster record", map[string]*vtype{"seen": tBool, "defeated": tNum}, nil), key: "enemy"}
+		return &vtype{kind: vDyn, desc: "bestiary", elem: objType("a monster record", map[string]*vtype{"seen": tBool, "defeated": tNum, "caught": tNum}, nil), key: "enemy"}
 	case "completed", "moved":
 		return tBool
 	case "roamers":
@@ -1774,7 +1806,7 @@ func (c *checker) fields(where string, e Expr, names []string, over map[string]*
 // OpenScreens are the screens the open command can open: formation, the skill tree (skills),
 // stone fusion (fusion), out-of-battle tactics editing (tactics), and the character book (profiles).
 // status, item, skill, equip, save, load, config and title are single menu screens (not scattered across shops and inns).
-var OpenScreens = []string{"formation", "skills", "fusion", "status", "item", "skill", "equip", "save", "load", "config", "title", "tactics", "profiles", "bestiary"}
+var OpenScreens = []string{"formation", "skills", "fusion", "status", "item", "skill", "equip", "save", "load", "config", "title", "tactics", "profiles", "bestiary", "ranch"}
 
 // tree checks a class's skill tree: node IDs (or skill IDs when absent) must not collide,
 // skill, stat and prerequisite nodes must exist, and prerequisites must not form a cycle.

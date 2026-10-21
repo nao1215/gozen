@@ -20,6 +20,8 @@ var commandExamples = map[string]string{
 	"if": `if: true`, "set": `set: {flag.ok: true}`, "give": `give: {item: key}`,
 	"take": `take: {item: key}`, "gold": `gold: 0`, "join": `join: guide`,
 	"leave": `leave: guide`, "heal": `heal: all`, "hurt": `hurt: {who: all, amount: 1}`,
+	"reserve": `reserve: {in: monster_2, out: monster_1}`, "release": `release: monster_2`,
+	"breed":  `breed: {parents: [monster_1, monster_2], skills: [fire]}`,
 	"affect": `affect: {who: all, remove: bad}`, "battle": `battle: one`,
 	"move": `move: deep`, "music": `music: ""`, "mood": `mood: calm`, "image": `image: ""`,
 	"shop": `shop: store`, "call": `call: sub`, "wait": `wait: 1`, "notice": `notice: hi`,
@@ -102,6 +104,9 @@ func TestCommandFieldMatrix(t *testing.T) {
 		}
 	}
 	for verb, src := range commandExamples {
+		if verb == "reserve" || verb == "release" || verb == "breed" {
+			continue
+		} // covered with schema version 6 in monster_test.go
 		t.Run(verb, func(t *testing.T) {
 			check(t, src, verb, "")
 			for _, field := range fields {

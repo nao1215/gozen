@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes), play (trace, notes, shots), book, pack (release, trial), art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
+description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes, breed), play (trace, notes, shots), book, pack (release, trial), art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
 weight: 60
 toc: true
 ---
@@ -17,7 +17,7 @@ gozen help GZN1101                     # explain a diagnostic code
 | Command | What it does |
 |:--|:--|
 | [check](#check) | Check definitions, references, expressions, assets and text layout |
-| [sim](#sim) | Measure play without a window: [battle](#sim-battle), [dive](#sim-dive), [floors](#sim-floors), [design](#sim-design), [campaign](#sim-campaign), [routes](#sim-routes) |
+| [sim](#sim) | Measure play without a window: [battle](#sim-battle), [dive](#sim-dive), [floors](#sim-floors), [design](#sim-design), [campaign](#sim-campaign), [routes](#sim-routes), [breed](#sim-breed) |
 | [play](#play) | Read and shoot real plays: [trace](#play-trace), [notes](#play-notes), [shots](#play-shots) |
 | [book](#book) | Write the definitions and events as Markdown |
 | [pack](#pack) | Build what you ship: [release](#pack-release), [trial](#pack-trial) |
@@ -234,6 +234,12 @@ gozen sim routes game --format json
 | `--timeout DURATION` | Maximum run time (default: 30s; for example `10s` or `2m`) |
 | `--format text\|json` | Output form (default: text) |
 | `--fail-unreachable` | Exit 1 if an unreachable ending or never-offered choice option, or a GZN0112 flag, is found |
+
+### sim breed
+
+`gozen sim breed <game-dir>` starts from species with a positive recruit chance and follows the breeding rules. It prints each reachable species, the fewest generations and one recipe, then the unreachable species. `--format json` returns `reachable` rows (`id`, `family`, `rank`, `steps`, `parents`) and an `unreachable` ID list. Parent levels are assumed raisable for this graph; test `min_plus` recipes in a Session playthrough as well. See [the collection recipe](/cookbook/#collect-raise-and-breed-monsters).
+
+For example, run `gozen sim breed examples/go-zen/game --format json` after `gozen check examples/go-zen/game` to inspect the sample's 39 non-boss species. `gozen book examples/go-zen/game` also prints their recruit settings and rules.
 
 ## play
 

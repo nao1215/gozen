@@ -103,6 +103,128 @@ func (s *State) Join(id string) bool {
 	return true
 }
 
+// Recruit creates a distinct monster actor and places it in the active party if there
+// is room. Otherwise it remains in the reserve. The returned ID is save-stable.
+func (s *State) Recruit(species string, level, plus int, skills []string) (string, bool) {
+	e := s.DB.Enemies[species]
+	if e == nil || s.DB.Classes[s.DB.MonsterClass(species)] == nil {
+		return "", false
+	}
+	seq, _ := s.Vars["monster.next"].(float64)
+	id := fmt.Sprintf("monster_%d", int(seq)+1)
+	for s.Actors[id] != nil || s.DB.Actors[id] != nil {
+		seq++
+		id = fmt.Sprintf("monster_%d", int(seq)+1)
+	}
+	s.Vars["monster.next"] = float64(int(seq) + 1)
+	s.DB.Actors[id] = &data.Actor{Name: e.Name, Class: s.DB.MonsterClass(species), Level: max(1, level)}
+	a := NewActor(s.DB, id)
+	a.Monster, a.Plus = species, plus
+	a.HP, a.MP = a.Stat("mhp"), a.Stat("mmp")
+	for _, skill := range skills {
+		if s.DB.Skills[skill] != nil && !slices.Contains(a.Learnt, skill) {
+			a.Learnt = append(a.Learnt, skill)
+		}
+	}
+	s.Actors[id] = a
+	if len(s.Party) < s.DB.Game.MaxParty {
+		s.Party = append(s.Party, id)
+	}
+	key := "bestiary." + species + ".caught"
+	n, _ := expr.ToNumber(s.Vars[key])
+	s.Vars[key] = n + 1
+	s.Vars["bestiary."+species+".seen"] = true
+	return id, true
+}
+
+// ReserveIDs lists all joined actors currently outside the active party.
+func (s *State) ReserveIDs() []string {
+	var ids []string
+	for id := range s.Actors {
+		if !slices.Contains(s.Party, id) {
+			ids = append(ids, id)
+		}
+	}
+	slices.Sort(ids)
+	return ids
+}
+
+// SwapMonster places a reserve actor in an active slot, preserving the party limit.
+func (s *State) SwapMonster(in, out string) bool {
+	a := s.Actors[in]
+	if a == nil || slices.Contains(s.Party, in) {
+		return false
+	}
+	for i, id := range s.Party {
+		if id == out {
+			s.Party[i] = in
+			return true
+		}
+	}
+	return false
+}
+
+// ReleaseMonster permanently removes a monster instance from the party or reserve.
+func (s *State) ReleaseMonster(id string) bool {
+	a := s.Actors[id]
+	if a == nil || a.Monster == "" || len(s.Party) == 1 && s.Party[0] == id {
+		return false
+	}
+	s.Party = slices.DeleteFunc(s.Party, func(p string) bool { return p == id })
+	delete(s.Actors, id)
+	delete(s.DB.Actors, id)
+	return true
+}
+
+// Breed consumes two owned monsters and creates their child. It checks the full
+// recipe and skill selection before changing state.
+func (s *State) Breed(first, second string, skills []string) (string, error) {
+	a, b := s.Actors[first], s.Actors[second]
+	if first == second || a == nil || b == nil || a.Monster == "" || b.Monster == "" {
+		return "", fmt.Errorf("breed needs two distinct owned monsters")
+	}
+	if s.DB.Breeding == nil {
+		return "", fmt.Errorf("breeding is not defined")
+	}
+	child := s.DB.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus)
+	if child == "" {
+		return "", fmt.Errorf("no eligible breeding result for %s and %s", a.Monster, b.Monster)
+	}
+	if len(skills) > s.DB.Breeding.SkillSlots {
+		return "", fmt.Errorf("breed allows at most %d inherited skills", s.DB.Breeding.SkillSlots)
+	}
+	known := append(a.Skills(), b.Skills()...)
+	selected := map[string]bool{}
+	for _, skill := range skills {
+		if !slices.Contains(known, skill) || selected[skill] {
+			return "", fmt.Errorf("skill %q is not a distinct parental skill", skill)
+		}
+		selected[skill] = true
+	}
+	plus := a.Plus + b.Plus + max(1, (a.Level+b.Level)/20)
+	firstSlot := slices.Index(s.Party, first)
+	secondSlot := slices.Index(s.Party, second)
+	preferredSlot := firstSlot
+	if preferredSlot < 0 || secondSlot >= 0 && secondSlot < preferredSlot {
+		preferredSlot = secondSlot
+	}
+	id, ok := s.Recruit(child, 1, plus, skills)
+	if !ok {
+		return "", fmt.Errorf("child %q has no monster class", child)
+	}
+	for _, parent := range []string{first, second} {
+		s.Party = slices.DeleteFunc(s.Party, func(p string) bool { return p == parent })
+		delete(s.Actors, parent)
+		delete(s.DB.Actors, parent)
+	}
+	if preferredSlot >= 0 {
+		s.Party = slices.DeleteFunc(s.Party, func(p string) bool { return p == id })
+		preferredSlot = min(preferredSlot, len(s.Party))
+		s.Party = slices.Insert(s.Party, preferredSlot, id)
+	}
+	return id, nil
+}
+
 // Leave takes the actor out of the party; they keep their progress. The last member never
 // leaves (a party is never empty: such a state could not be saved and loaded again), so it
 // reports false then. Leaving when the actor is not in the party changes nothing and says true.
@@ -297,6 +419,14 @@ func (e fieldEnv) Lookup(name string) (any, bool) {
 		return float64(s.Gold), true
 	case "party":
 		return s.partyGroup(), true
+	case "reserve":
+		var ms []expr.Object
+		for _, id := range s.ReserveIDs() {
+			ms = append(ms, ActorView{s.Actors[id]})
+		}
+		return NewGroup(ms), true
+	case "monster":
+		return monsterView{s}, true
 	case "members":
 		return float64(len(s.Party)), true
 	case "item":
@@ -331,6 +461,18 @@ func (e fieldEnv) Lookup(name string) (any, bool) {
 
 type bestiaryView struct{ s *State }
 
+type monsterView struct{ s *State }
+
+func (v monsterView) Field(id string) (any, bool) {
+	if a := v.s.Actors[id]; a != nil && a.Monster != "" {
+		return ActorView{a}, true
+	}
+	if a := v.s.Actors["monster_"+id]; a != nil && a.Monster != "" {
+		return ActorView{a}, true
+	}
+	return nil, false
+}
+
 func (v bestiaryView) Field(id string) (any, bool) {
 	if v.s.DB.Enemies[id] == nil {
 		return nil, false
@@ -349,6 +491,9 @@ func (v bestiaryEnemyView) Field(name string) (any, bool) {
 		return expr.Truthy(v.s.Vars["bestiary."+v.id+".seen"]), true
 	case "defeated":
 		n, _ := expr.ToNumber(v.s.Vars["bestiary."+v.id+".defeated"])
+		return n, true
+	case "caught":
+		n, _ := expr.ToNumber(v.s.Vars["bestiary."+v.id+".caught"])
 		return n, true
 	}
 	return nil, false

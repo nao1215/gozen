@@ -17,9 +17,9 @@ Codes are assigned one family at a time. A diagnostic without a code still exits
 
 | Codes | Exit | Meaning | Assigned |
 |:--|:--|:--|:--|
-| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 15 codes |
+| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 16 codes |
 | `GZN02xx` | 0 | warnings of a measurement or a record | not yet |
-| `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 11 codes |
+| `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 12 codes |
 | `GZN12xx` | 1 | fonts and text layout | 1 codes |
 | `GZN13xx` | 1 | a simulation could not run or reported a problem | not yet |
 | `GZN14xx` | 1 | a trace of a play is broken or shows faults | 6 codes |
@@ -158,6 +158,14 @@ The monster book is enabled and a troop can include this enemy, but its lore fie
 
 Fix: Add a short lore description to the enemy, or turn off ui.bestiary.
 
+### GZN0116
+
+A monster cannot be captured or bred from capturable monsters.
+
+The breeding graph has no path from a monster with a positive recruit chance to this species.
+
+Fix: Make it recruitable or add a breeding recipe reachable from capturable parents.
+
 ## GZN11xx
 
 The definitions of the game: YAML, references, expressions, assets. Exits 1.
@@ -249,6 +257,14 @@ A dungeon theme is named but its pictures are not in the game.
 A dungeon or one of its looks says theme: <name>, but assets/dungeon/themes/<name>/ lacks wall.jpg, floor.jpg, ceiling.jpg, door.jpg or theme.yaml. The theme's pictures are not part of the game until they are copied in.
 
 Fix: Run gozen theme add <name> <game-dir> (gozen theme list shows the names), or put your own folder of that name there.
+
+### GZN1112
+
+A monster collection or breeding rule is invalid.
+
+A recruit setting, monster family, rank, pair or breeding requirement is invalid or ambiguous.
+
+Fix: Define known classes, families and species; use positive ranks and valid probabilities; give each unordered pair one result.
 
 ## GZN12xx
 

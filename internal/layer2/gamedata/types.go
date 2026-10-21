@@ -1048,6 +1048,12 @@ type StateMsgs struct {
 // Enemy is a kind of foe.
 type Enemy struct {
 	Name string `yaml:"name"`
+	// Family and Rank describe a monster species for the monster book and breeding.
+	Family       string `yaml:"family"`
+	Rank         int    `yaml:"rank"`
+	MonsterClass string `yaml:"monster_class"`
+	// Recruit makes a defeated non-boss enemy eligible to join after a won battle.
+	Recruit *Recruit `yaml:"recruit"`
 	// Lore is the short field description shown after the enemy has been seen.
 	Lore  string  `yaml:"lore"`
 	Image Picture `yaml:"image"`
@@ -1075,6 +1081,38 @@ type Enemy struct {
 	FaceRule []FaceRule        `yaml:"face_rules"`
 	// Reactions are faces (keys of faces) shown for a moment: on hit, act, fall.
 	Reactions map[string]string `yaml:"reactions"`
+}
+
+// Recruit describes the chance and actor growth of a capturable enemy.
+type Recruit struct {
+	Chance     float64 `yaml:"chance"`
+	Class      string  `yaml:"class"`
+	Level      int     `yaml:"level"` // starting level; defaults to one
+	BonusItem  string  `yaml:"bonus_item"`
+	BonusSkill string  `yaml:"bonus_skill"`
+	Bonus      float64 `yaml:"bonus"`
+}
+
+// Breeding defines the requirements and ordered rules for monster offspring.
+type Breeding struct {
+	MinLevel   int           `yaml:"min_level"`
+	SkillSlots int           `yaml:"skill_slots"`
+	Pairs      []BreedPair   `yaml:"pairs"`
+	Families   []BreedFamily `yaml:"families"`
+}
+
+// BreedPair is a symmetric species recipe. Specific recipes win over family rules.
+type BreedPair struct {
+	Parents  []string `yaml:"parents"`
+	Child    string   `yaml:"child"`
+	MinLevel int      `yaml:"min_level"`
+	MinPlus  int      `yaml:"min_plus"`
+}
+
+// BreedFamily chooses the highest ranked child at or below the parents' mean rank.
+type BreedFamily struct {
+	Parents  []string `yaml:"parents"`
+	Children []string `yaml:"children"`
 }
 
 // Drop is an item an enemy may leave.

@@ -81,8 +81,10 @@ github.com/nao1215/gozen/schema field Command.Act
 github.com/nao1215/gozen/schema field Command.Affect
 github.com/nao1215/gozen/schema field Command.At
 github.com/nao1215/gozen/schema field Command.Battle
+github.com/nao1215/gozen/schema field Command.Breed
 github.com/nao1215/gozen/schema field Command.Buy
 github.com/nao1215/gozen/schema field Command.Call
+github.com/nao1215/gozen/schema field Command.Capture
 github.com/nao1215/gozen/schema field Command.Choice
 github.com/nao1215/gozen/schema field Command.Clash
 github.com/nao1215/gozen/schema field Command.Clear
@@ -124,6 +126,8 @@ github.com/nao1215/gozen/schema field Command.Pick
 github.com/nao1215/gozen/schema field Command.Prompt
 github.com/nao1215/gozen/schema field Command.Ran
 github.com/nao1215/gozen/schema field Command.Reach
+github.com/nao1215/gozen/schema field Command.Release
+github.com/nao1215/gozen/schema field Command.Reserve
 github.com/nao1215/gozen/schema field Command.ResetTree
 github.com/nao1215/gozen/schema field Command.Retry
 github.com/nao1215/gozen/schema field Command.SFX
@@ -151,6 +155,7 @@ github.com/nao1215/gozen/schema field Command.Wait
 github.com/nao1215/gozen/schema field Command.Walk
 github.com/nao1215/gozen/schema field DB.AI
 github.com/nao1215/gozen/schema field DB.Actors
+github.com/nao1215/gozen/schema field DB.Breeding
 github.com/nao1215/gozen/schema field DB.Classes
 github.com/nao1215/gozen/schema field DB.Elements
 github.com/nao1215/gozen/schema field DB.Enemies
@@ -161,6 +166,7 @@ github.com/nao1215/gozen/schema field DB.Fusions
 github.com/nao1215/gozen/schema field DB.Game
 github.com/nao1215/gozen/schema field DB.Items
 github.com/nao1215/gozen/schema field DB.Locations
+github.com/nao1215/gozen/schema field DB.MonsterFamilies
 github.com/nao1215/gozen/schema field DB.Music
 github.com/nao1215/gozen/schema field DB.Order
 github.com/nao1215/gozen/schema field DB.Profiles
@@ -228,13 +234,17 @@ github.com/nao1215/gozen/schema field Enemy.Drops
 github.com/nao1215/gozen/schema field Enemy.Exp
 github.com/nao1215/gozen/schema field Enemy.FaceRule
 github.com/nao1215/gozen/schema field Enemy.Faces
+github.com/nao1215/gozen/schema field Enemy.Family
 github.com/nao1215/gozen/schema field Enemy.Gold
 github.com/nao1215/gozen/schema field Enemy.Hard
 github.com/nao1215/gozen/schema field Enemy.Image
 github.com/nao1215/gozen/schema field Enemy.Level
 github.com/nao1215/gozen/schema field Enemy.Lore
+github.com/nao1215/gozen/schema field Enemy.MonsterClass
 github.com/nao1215/gozen/schema field Enemy.Name
+github.com/nao1215/gozen/schema field Enemy.Rank
 github.com/nao1215/gozen/schema field Enemy.Reactions
+github.com/nao1215/gozen/schema field Enemy.Recruit
 github.com/nao1215/gozen/schema field Enemy.Resist
 github.com/nao1215/gozen/schema field Enemy.SResist
 github.com/nao1215/gozen/schema field Enemy.Scale
@@ -558,6 +568,8 @@ github.com/nao1215/gozen/schema method CGReviewCfg.Configured
 github.com/nao1215/gozen/schema method Command.UnmarshalYAML
 github.com/nao1215/gozen/schema method Command.Verb
 github.com/nao1215/gozen/schema method DB.AIWarnings
+github.com/nao1215/gozen/schema method DB.BreedReach
+github.com/nao1215/gozen/schema method DB.BreedResult
 github.com/nao1215/gozen/schema method DB.Check
 github.com/nao1215/gozen/schema method DB.CheckRules
 github.com/nao1215/gozen/schema method DB.CheckTacticCatalog
@@ -569,6 +581,7 @@ github.com/nao1215/gozen/schema method DB.EventPlaces
 github.com/nao1215/gozen/schema method DB.Exists
 github.com/nao1215/gozen/schema method DB.FacePicture
 github.com/nao1215/gozen/schema method DB.FlagWarnings
+github.com/nao1215/gozen/schema method DB.MonsterClass
 github.com/nao1215/gozen/schema method DB.NamedCommands
 github.com/nao1215/gozen/schema method DB.Ordered
 github.com/nao1215/gozen/schema method DB.ProfileActor

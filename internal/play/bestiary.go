@@ -41,6 +41,13 @@ func (g *Game) bestiaryDefeated(id string) float64 {
 	}
 	return n
 }
+func (g *Game) bestiaryCaught(id string) float64 {
+	if g.st == nil {
+		return 0
+	}
+	n, _ := expr.ToNumber(g.st.Vars["bestiary."+id+".caught"])
+	return n
+}
 
 type bestiaryScreen struct {
 	ids  []string
@@ -138,11 +145,17 @@ func (s *bestiaryScreen) drawPage(g *Game, dst *ebiten.Image, id string, left, s
 		gfx.DrawText(dst, line, x+220, 128+float64(i)*22, sizeS*0.9, g.th.text)
 	}
 	if defeated < 1 {
+		if e.Recruit != nil {
+			gfx.DrawText(dst, "Recruitable after victory", x+20, 250, sizeS, g.th.accent)
+		}
 		gfx.DrawText(dst, "Defeat this enemy to reveal its records.", x+20, 280, sizeS, g.th.text)
 		return
 	}
 	y := 285.0
 	gfx.DrawTextOutlineColor(dst, fmt.Sprintf("Defeated: %d", int(defeated)), x+20, y, sizeS, g.th.cursor, g.th.window, 1)
+	if e.Family != "" {
+		gfx.DrawText(dst, fmt.Sprintf("Family: %s    Rank: %d    Caught: %d", e.Family, e.Rank, int(g.bestiaryCaught(id))), x+260, y, sizeS*0.82, g.th.text)
+	}
 	y += 32
 	stats := e.Stats
 	gfx.DrawText(dst, fmt.Sprintf("HP %d   MP %d   ATK %d   DEF %d   MAT %d   MDF %d   AGI %d   LUK %d", stats["mhp"], stats["mmp"], stats["atk"], stats["def"], stats["mat"], stats["mdf"], stats["agi"], stats["luk"]), x+20, y, sizeS*0.82, g.th.text)

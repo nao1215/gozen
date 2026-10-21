@@ -437,6 +437,7 @@ func (r *Runner) Answer(n int) {
 				}
 			}
 			r.push(c.OnWin)
+			r.offerCaptures(c.Battle)
 		case BattleLost:
 			if c.OnLose == nil {
 				r.Stop()
@@ -447,6 +448,44 @@ func (r *Runner) Answer(n int) {
 		case BattleFled:
 			r.push(c.OnRun)
 		}
+	}
+}
+
+// offerCaptures rolls once per defeated recruitable enemy. Each successful roll
+// becomes a normal choice, so policies, traces, scripts and the screen agree.
+func (r *Runner) offerCaptures(troopID string) {
+	troop := r.db.Troops[troopID]
+	if troop == nil {
+		return
+	}
+	for i := len(troop.Members) - 1; i >= 0; i-- {
+		id := troop.Members[i]
+		e := r.db.Enemies[id]
+		if e == nil || e.Recruit == nil || e.Boss {
+			continue
+		}
+		chance := e.Recruit.Chance
+		if e.Recruit.BonusItem != "" && r.st.ItemCount(e.Recruit.BonusItem, true) > 0 {
+			chance += e.Recruit.Bonus
+		}
+		if e.Recruit.BonusSkill != "" {
+			for _, a := range r.st.Members() {
+				if slices.Contains(a.Skills(), e.Recruit.BonusSkill) {
+					chance += e.Recruit.Bonus
+					break
+				}
+			}
+		}
+		if r.st.Rand.Float64() >= min(1, chance) {
+			continue
+		}
+		r.push([]data.Command{
+			{Stand: &data.Stand{Who: e.Name, Face: e.Image.File, At: data.StandAt("center"), Enter: "slide"}},
+			{Effect: data.EffectCue{Name: "flash"}},
+			{Say: &data.Say{Who: e.Name, Face: e.Image.File, Text: e.Name + " rises and looks toward your party."}},
+			{Choice: []data.ChoiceOption{{ID: "yes", Label: "Yes", Do: []data.Command{{Capture: id}}}, {ID: "no", Label: "No"}}, Prompt: "Let " + e.Name + " join?"},
+			{Stand: &data.Stand{None: true}},
+		})
 	}
 }
 
@@ -676,6 +715,45 @@ func (r *Runner) run(c *data.Command) Request {
 		if !r.st.Leave(c.Leave) {
 			r.logf(fmt.Errorf("leave: %s is the last member of the party, who stays (a party is never empty)", c.Leave))
 		}
+	case "capture":
+		if e := r.db.Enemies[c.Capture]; e != nil && e.Recruit != nil {
+			id, ok := r.st.Recruit(c.Capture, max(1, e.Recruit.Level), 0, nil)
+			if ok {
+				r.notes = append(r.notes, fmt.Sprintf("%s joined as %s!", e.Name, id))
+			}
+		}
+	case "reserve":
+		if !r.st.SwapMonster(c.Reserve.In, c.Reserve.Out) {
+			r.logf(fmt.Errorf("reserve: cannot swap %s for %s", c.Reserve.In, c.Reserve.Out))
+		}
+	case "release":
+		if !r.st.ReleaseMonster(c.Release) {
+			r.logf(fmt.Errorf("release: %s is not a releasable monster", c.Release))
+		}
+	case "breed":
+		first, second := r.st.Actors[c.Breed.Parents[0]], r.st.Actors[c.Breed.Parents[1]]
+		var nameA, nameB, faceA, faceB string
+		if first != nil && second != nil {
+			nameA, nameB = first.Name(), second.Name()
+			faceA, faceB = r.db.Enemies[first.Monster].Image.File, r.db.Enemies[second.Monster].Image.File
+		}
+		id, err := r.st.Breed(c.Breed.Parents[0], c.Breed.Parents[1], c.Breed.Skills)
+		if err != nil {
+			r.logf(err)
+			break
+		}
+		child := r.st.Actors[id]
+		r.push([]data.Command{
+			{Stand: &data.Stand{Who: nameA, Face: faceA, At: data.StandAt("left"), Enter: "fade"}},
+			{Stand: &data.Stand{Who: nameB, Face: faceB, At: data.StandAt("right"), Enter: "fade"}},
+			{Effect: data.EffectCue{Name: "fade", Seconds: 0.6}},
+			{Stand: &data.Stand{Who: nameA, Leave: "fade"}},
+			{Stand: &data.Stand{Who: nameB, Leave: "fade"}},
+			{Effect: data.EffectCue{Name: "flash"}},
+			{Stand: &data.Stand{Who: child.Name(), Face: r.db.Enemies[child.Monster].Image.File, At: data.StandAt("center"), Enter: "fade"}},
+			{Say: &data.Say{Who: child.Name(), Face: r.db.Enemies[child.Monster].Image.File, Text: "A new monster appeared: " + child.Name() + "!"}},
+			{Stand: &data.Stand{None: true}},
+		})
 	case "heal":
 		for _, a := range r.st.Members() {
 			if c.Heal == "all" || a.ID == c.Heal {

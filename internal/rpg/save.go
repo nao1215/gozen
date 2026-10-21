@@ -176,6 +176,23 @@ func (s *State) bind() (*State, error) {
 	if err := s.checkSavedState(); err != nil {
 		return nil, err
 	}
+	// Rebuild instance definitions before reconciliation. A monster's template is the
+	// enemy and class in the current game; the save keeps only its identity and progress.
+	forked := false
+	for id, a := range s.Actors {
+		if a.Monster == "" {
+			continue
+		}
+		if e := db.Enemies[a.Monster]; e != nil && db.Classes[db.MonsterClass(a.Monster)] != nil {
+			if db.Actors[id] != nil { continue }
+			if !forked {
+				db = data.Fork(db)
+				s.DB = db
+				forked = true
+			}
+			db.Actors[id] = &data.Actor{Name: e.Name, Class: db.MonsterClass(a.Monster), Level: 1}
+		}
+	}
 	if s.Rand == nil {
 		s.Rand = rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())) //nolint:gosec // Gameplay randomness; no security-sensitive values.
 	}
@@ -208,6 +225,9 @@ func (s *State) checkSavedState() error {
 	for id, a := range s.Actors {
 		if a == nil || id == "" || a.ID != id || a.Level < 1 {
 			return bad("actors/" + id)
+		}
+		if a.Monster != "" && (s.DB.Enemies[a.Monster] == nil || a.Plus < 0) {
+			return bad("actors/" + id + "/monster")
 		}
 		if a.Tactics != nil {
 			if err := a.Tactics.check(); err != nil {

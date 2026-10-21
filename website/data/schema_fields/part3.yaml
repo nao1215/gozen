@@ -6,6 +6,10 @@ Encounter:
   troops: "The enemy groups that can appear, each a troop with its own weight and conditions."
 Enemy:
   _: "A kind of foe that can appear in battle."
+  family: "The monster family ID used by breeding. Needs schema version 6."
+  rank: "A positive rank used to select offspring from a family rule. Needs schema version 6."
+  monster_class: "The class used for a recruited or bred actor instance. Needs schema version 6."
+  recruit: "The chance, level and optional bonus for joining after a victory. Bosses cannot be recruited. Needs schema version 6."
   lore: "A short description shown in the monster book after the enemy has been encountered."
   actions: "How many actions the enemy takes per turn. The default is 1."
   army: "The kind of army (a key of campaign.clash.armies) its unit is shown as in a clash shown as units, when it leads a region's defence or a faction's march: monsters for monsters."

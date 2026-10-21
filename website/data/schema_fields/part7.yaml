@@ -41,6 +41,38 @@ UIStyle:
   text: "The text color."
   voice: "How voices play: `cut` and `auto_wait`. Needs schema version 4."
   window: "The window background color."
+BreedCmd:
+  _: "Two owned monster instances and a selection of their skills to pass on."
+  parents: "Two distinct owned monster instance IDs."
+  skills: "Distinct skills known by either parent, up to breeding.skill_slots."
+BreedFamily:
+  _: "A symmetric family combination whose child depends on the parents' ranks."
+  parents: "Two IDs from monster_families, in either order."
+  children: "Candidate enemy IDs; the highest rank no greater than the mean parent rank wins."
+BreedPair:
+  _: "A symmetric specific-species recipe, tried before family rules."
+  parents: "Two enemy species IDs, in either order."
+  child: "The resulting enemy species ID."
+  min_level: "An optional higher minimum level for both parents."
+  min_plus: "An optional minimum of the parents' combined plus values."
+Breeding:
+  _: "The monster breeding requirements and recipes."
+  min_level: "The minimum level of each parent; at least one."
+  skill_slots: "The maximum number of distinct parental skills the child may inherit."
+  pairs: "Specific species recipes; these win over family rules."
+  families: "Family recipes, used when no specific pair matches."
+Recruit:
+  _: "The chance and starting level for an enemy to join after victory."
+  chance: "A probability greater than zero and at most one."
+  class: "An optional class override; otherwise enemy.monster_class is used."
+  level: "The recruited actor's starting level; one if omitted."
+  bonus_item: "An item whose possession adds bonus to the chance."
+  bonus_skill: "A skill known by an active member that adds bonus to the chance."
+  bonus: "The additive chance granted by the item or skill."
+ReserveSwap:
+  _: "One reserve-to-party exchange."
+  in: "The reserve actor instance ID to activate."
+  out: "The active actor instance ID to put in reserve."
 Usage:
   _: "What using an item or skill does: its targets, effects and presentation."
   anim: "The animation style: `slash`, `magic`, `heal`, `buff`, `debuff` or `none`."

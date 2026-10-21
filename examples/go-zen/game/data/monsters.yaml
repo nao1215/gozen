@@ -1,0 +1,30 @@
+# Original neutral collection rules for the Go Zen sample.
+monster_families:
+  slime: Slime
+  beast: Beast
+  bird: Bird
+  plant: Plant
+  material: Material
+  magic: Magic
+  undead: Undead
+  dragon: Dragon
+  demon: Demon
+breeding:
+  min_level: 5
+  skill_slots: 2
+  pairs:
+    - {parents: [drip_slime, pipe_rat], child: steam_slime}
+    - {parents: [frost_bat, ice_wolf], child: frost_giant}
+    - {parents: [crystal_golem, dream_wisp], child: mirror_shade}
+    - {parents: [spore_shroom, cursed_doll], child: maneater}
+    - {parents: [whisper_imp, ghost_soldier], child: succubus}
+  families:
+    - {parents: [slime, slime], children: [drip_slime, steam_slime, frost_slime]}
+    - {parents: [beast, beast], children: [pipe_rat, mine_rat, brass_hound, ice_wolf, nightmare_hound, snow_ape, frost_giant, rust_crab, blast_beetle, ice_spider]}
+    - {parents: [bird, bird], children: [frost_bat, gold_bat, nectar_moth]}
+    - {parents: [plant, plant], children: [spore_shroom, maneater]}
+    - {parents: [material, material], children: [mimic1, mimic2, mimic3, mimic4, mimic5, cursed_doll, crystal_golem]}
+    - {parents: [magic, magic], children: [dream_wisp, mirror_shade, snow_witch, frozen_king]}
+    - {parents: [undead, undead], children: [ghost_soldier, frozen_knight, grave_reaper, ice_lich]}
+    - {parents: [dragon, dragon], children: [crystal_dragon]}
+    - {parents: [demon, demon], children: [whisper_imp, crown_thief, dream_eater, succubus, abyss_lord]}

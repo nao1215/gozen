@@ -1,5 +1,9 @@
 enemies:
   drip_slime:
+    family: slime
+    rank: 1
+    monster_class: monster_slime
+    recruit: {chance: 0.22, level: 1}
     lore: "Drip Slimes collect beneath leaking pipes. They follow the steady rhythm of water through the halls."
     name: Drip Slime
     image: enemies/drip_slime.png
@@ -9,6 +13,10 @@ enemies:
     drops: [{item: tonic, chance: 0.1}]
     ai: [{use: drip}]
   pipe_rat:
+    family: beast
+    rank: 1
+    monster_class: monster_beast
+    recruit: {chance: 0.22, level: 1}
     lore: "Pipe Rats nest in warm drain tunnels. They search the old channels for scraps and lost gears."
     name: Pipe Rat
     image: enemies/pipe_rat.png
@@ -18,6 +26,10 @@ enemies:
     drops: [{item: old_gear, chance: 0.3}]
     ai: [{use: gnaw}]
   rust_crab:
+    family: beast
+    rank: 8
+    monster_class: monster_beast
+    recruit: {chance: 0.05, level: 5}
     lore: "Rust Crabs shelter near corroded gates. Their thick shells are stained by minerals in the water."
     name: Rust Crab
     image: enemies/rust_crab.png
@@ -30,6 +42,10 @@ enemies:
       - {use: pinch, when: "turn % 2 == 0", priority: 2}
       - {use: clang}
   brass_hound:
+    family: beast
+    rank: 3
+    monster_class: monster_beast
+    recruit: {chance: 0.1, level: 3}
     lore: "Brass Hounds patrol the machinery rooms. Their metal frames still respond to signals from the old works."
     name: Brass Hound
     image: enemies/brass_hound.png
@@ -40,6 +56,8 @@ enemies:
       - {use: lunge, when: "turn % 3 == 0", priority: 2}
       - {use: bite}
   brass_warden:
+    family: material
+    rank: 8
     lore: "The Brass Warden protects the valve door. Its makers built it to keep the waterworks running safely."
     name: Brass Warden
     title: Valve Door Guardian
@@ -53,6 +71,8 @@ enemies:
       - {use: slam, when: "turn % 3 == 0", priority: 2}
       - {use: crush}
   tollkeeper:
+    family: material
+    rank: 9
     lore: "The Tollkeeper stands at the lower gate. Its records show every traveler who once passed through."
     name: Tollkeeper
     title: The Magistrate's Golem
@@ -67,6 +87,8 @@ enemies:
       - {use: toll_bell, when: "turn % 3 == 0", priority: 2}
       - {use: toll_strike}
   vance:
+    family: demon
+    rank: 6
     lore: "Odile Vance once managed the waterworks from the lower gate. She still keeps careful records of every passage."
     name: Odile Vance
     title: Magistrate of Waters
@@ -81,6 +103,10 @@ enemies:
       - {use: lien, when: "foes.with_marked == 0", priority: 2}
       - {use: coin_toss}
   abyss_lord:
+    family: demon
+    rank: 5
+    monster_class: monster_demon
+    recruit: {chance: 0.05, level: 5}
     name: Abyss Lord
     image: enemies/abyss_lord.png
     lore: "Abyss Lords gather where old tunnels meet deep underground rivers. They guard the quiet pools and strike with dark currents."
@@ -91,6 +117,9 @@ enemies:
     drops: [{item: old_gear, chance: 0.3}]
     ai: [{use: bite}]
   blast_beetle:
+    family: beast
+    rank: 9
+    monster_class: monster_beast
     name: Blast Beetle
     image: enemies/blast_beetle.png
     lore: "Blast Beetles nest in warm cracks beneath the lower floors. Their hard shells store heat from the stones around them."
@@ -102,6 +131,9 @@ enemies:
     drops: [{item: tonic, chance: 0.15}]
     ai: [{use: bite}]
   crown_thief:
+    family: demon
+    rank: 2
+    monster_class: monster_demon
     name: Crown Thief
     image: enemies/crown_thief.png
     lore: "Crown Thieves slip through forgotten halls and collect bright metal. They flee when their stolen treasures are at risk."
@@ -112,6 +144,10 @@ enemies:
     drops: [{item: old_gear, chance: 0.15}]
     ai: [{use: bite}]
   crystal_dragon:
+    family: dragon
+    rank: 1
+    monster_class: monster_dragon
+    recruit: {chance: 0.22, level: 1}
     name: Crystal Dragon
     image: enemies/crystal_dragon.png
     lore: "Crystal Dragons circle the caverns where clear mineral spires grow. Their scales ring like glass when they move."
@@ -123,6 +159,10 @@ enemies:
     drops: [{item: tonic, chance: 0.3}]
     ai: [{use: bite}]
   crystal_golem:
+    family: material
+    rank: 7
+    monster_class: monster_material
+    recruit: {chance: 0.05, level: 5}
     name: Crystal Golem
     image: enemies/crystal_golem.png
     lore: "Crystal Golems form around a single bright shard. They stand still until footsteps cross their cavern floor."
@@ -134,6 +174,9 @@ enemies:
     drops: [{item: old_gear, chance: 0.15}]
     ai: [{use: bite}]
   cursed_doll:
+    family: material
+    rank: 6
+    monster_class: monster_material
     name: Cursed Doll
     image: enemies/cursed_doll.png
     lore: "Cursed Dolls are found in sealed rooms left behind by earlier travelers. A faint light stirs inside their painted eyes."
@@ -144,6 +187,9 @@ enemies:
     drops: [{item: tonic, chance: 0.15}]
     ai: [{use: bite}]
   dream_eater:
+    family: demon
+    rank: 3
+    monster_class: monster_demon
     name: Dream Eater
     image: enemies/dream_eater.png
     lore: "Dream Eaters wander near the deepest resting places. They feed on drifting thoughts and leave a cool mist behind."
@@ -154,6 +200,10 @@ enemies:
     drops: [{item: old_gear, chance: 0.3}]
     ai: [{use: arc_bolt}]
   dream_wisp:
+    family: magic
+    rank: 1
+    monster_class: monster_magic
+    recruit: {chance: 0.22, level: 1}
     name: Dream Wisp
     image: enemies/dream_wisp.png
     lore: "Dream Wisps appear above still water late at night. They lead travelers in circles unless approached with care."
@@ -165,6 +215,10 @@ enemies:
     drops: [{item: tonic, chance: 0.15}]
     ai: [{use: arc_bolt}]
   frost_bat:
+    family: bird
+    rank: 1
+    monster_class: monster_bird
+    recruit: {chance: 0.22, level: 1}
     name: Frost Bat
     image: enemies/frost_bat.png
     lore: "Frost Bats roost in cold ceiling cracks. Their wings scatter tiny flakes of ice as they fly."
@@ -175,6 +229,9 @@ enemies:
     drops: [{item: old_gear, chance: 0.15}]
     ai: [{use: bite}]
   frost_giant:
+    family: beast
+    rank: 7
+    monster_class: monster_beast
     name: Frost Giant
     image: enemies/frost_giant.png
     lore: "Frost Giants keep watch on the oldest frozen passages. Their slow steps shake loose snow from the stone."
@@ -185,6 +242,10 @@ enemies:
     drops: [{item: tonic, chance: 0.3}]
     ai: [{use: bite}]
   frost_slime:
+    family: slime
+    rank: 3
+    monster_class: monster_slime
+    recruit: {chance: 0.1, level: 3}
     name: Frost Slime
     image: enemies/frost_slime.png
     lore: "Frost Slimes gather around frozen springs. Their clear bodies hold the chill of the water they came from."
@@ -195,6 +256,10 @@ enemies:
     drops: [{item: old_gear, chance: 0.15}]
     ai: [{use: bite}]
   frozen_king:
+    family: magic
+    rank: 4
+    monster_class: monster_magic
+    recruit: {chance: 0.1, level: 4}
     name: Frozen King
     image: enemies/frozen_king.png
     lore: "The Frozen King waits in a hall sealed by ice. Old banners nearby suggest this was once a place of ceremony."
@@ -205,6 +270,9 @@ enemies:
     drops: [{item: tonic, chance: 0.15}]
     ai: [{use: bite}]
   frozen_knight:
+    family: undead
+    rank: 2
+    monster_class: monster_undead
     name: Frozen Knight
     image: enemies/frozen_knight.png
     lore: "Frozen Knights patrol the halls around the icebound keep. Their armor is held together by frost and old vows."
@@ -215,6 +283,10 @@ enemies:
     drops: [{item: old_gear, chance: 0.3}]
     ai: [{use: bite}]
   ghost_soldier:
+    family: undead
+    rank: 1
+    monster_class: monster_undead
+    recruit: {chance: 0.22, level: 1}
     name: Ghost Soldier
     image: enemies/ghost_soldier.png
     lore: "Ghost Soldiers repeat a quiet patrol through abandoned corridors. They fade when the last echo of their march is gone."
@@ -225,6 +297,9 @@ enemies:
     drops: [{item: tonic, chance: 0.15}]
     ai: [{use: bite}]
   gold_bat:
+    family: bird
+    rank: 2
+    monster_class: monster_bird
     name: Gold Bat
     image: enemies/gold_bat.png
     lore: "Gold Bats hide in high mineral caves. Their bright wings reflect light and make them hard to follow."
@@ -236,6 +311,9 @@ enemies:
     drops: [{item: old_gear, chance: 0.15}]
     ai: [{use: bite}]
   grave_reaper:
+    family: undead
+    rank: 3
+    monster_class: monster_undead
     name: Grave Reaper
     image: enemies/grave_reaper.png
     lore: "Grave Reapers linger beside ancient stone markers. They keep the paths clear and seldom leave their post."
@@ -246,6 +324,10 @@ enemies:
     drops: [{item: tonic, chance: 0.3}]
     ai: [{use: bite}]
   ice_lich:
+    family: undead
+    rank: 4
+    monster_class: monster_undead
+    recruit: {chance: 0.1, level: 4}
     name: Ice Lich
     image: enemies/ice_lich.png
     lore: "Ice Liches study the frozen runes in deep chambers. Their spells draw strength from the cold around them."
@@ -256,6 +338,10 @@ enemies:
     drops: [{item: old_gear, chance: 0.15}]
     ai: [{use: arc_bolt}]
   ice_spider:
+    family: beast
+    rank: 10
+    monster_class: monster_beast
+    recruit: {chance: 0.05, level: 5}
     name: Ice Spider
     image: enemies/ice_spider.png
     lore: "Ice Spiders weave pale webs across narrow frozen routes. Their nests are often marked by a dusting of frost."
@@ -266,6 +352,10 @@ enemies:
     drops: [{item: tonic, chance: 0.15}]
     ai: [{use: bite}]
   ice_wolf:
+    family: beast
+    rank: 4
+    monster_class: monster_beast
+    recruit: {chance: 0.1, level: 4}
     name: Ice Wolf
     image: enemies/ice_wolf.png
     lore: "Ice Wolves travel in small packs along the snowbound passages. They follow scent trails left by warm travelers."
@@ -276,6 +366,10 @@ enemies:
     drops: [{item: old_gear, chance: 0.3}]
     ai: [{use: bite}]
   maneater:
+    family: plant
+    rank: 2
+    monster_class: monster_plant
+    recruit: {chance: 0.22, level: 2}
     name: Maneater
     image: enemies/maneater.png
     lore: "Maneaters grow in damp caverns where light rarely reaches. Their roots shift when nearby stones are disturbed."
@@ -286,6 +380,10 @@ enemies:
     drops: [{item: tonic, chance: 0.15}]
     ai: [{use: bite}]
   mimic1:
+    family: material
+    rank: 1
+    monster_class: monster_material
+    recruit: {chance: 0.22, level: 1}
     name: Chest Mimic 1
     image: enemies/mimic1.png
     lore: "This small mimic waits in a forgotten chest. It copies the shape of old storage boxes to surprise passing explorers."
@@ -296,6 +394,9 @@ enemies:
     drops: [{item: old_gear, chance: 0.15}]
     ai: [{use: bite}]
   mimic2:
+    family: material
+    rank: 2
+    monster_class: monster_material
     name: Chest Mimic 2
     image: enemies/mimic2.png
     lore: "A mimic can remain still for days in a quiet room. Scratches around its lid reveal where it has moved."
@@ -306,6 +407,9 @@ enemies:
     drops: [{item: tonic, chance: 0.3}]
     ai: [{use: bite}]
   mimic3:
+    family: material
+    rank: 3
+    monster_class: monster_material
     name: Chest Mimic 3
     image: enemies/mimic3.png
     lore: "This mimic favors chests near old mine routes. It waits for the sound of footsteps before opening its jaws."
@@ -316,6 +420,9 @@ enemies:
     drops: [{item: old_gear, chance: 0.15}]
     ai: [{use: bite}]
   mimic4:
+    family: material
+    rank: 4
+    monster_class: monster_material
     name: Chest Mimic 4
     image: enemies/mimic4.png
     lore: "A mimic hides among supplies left in the lower halls. Dust on its surface helps it blend into the room."
@@ -326,6 +433,9 @@ enemies:
     drops: [{item: tonic, chance: 0.15}]
     ai: [{use: bite}]
   mimic5:
+    family: material
+    rank: 5
+    monster_class: monster_material
     name: Chest Mimic 5
     image: enemies/mimic5.png
     lore: "This large mimic has stayed near the deepest treasure rooms. Its heavy shell is covered in marks from many encounters."
@@ -336,6 +446,9 @@ enemies:
     drops: [{item: old_gear, chance: 0.3}]
     ai: [{use: bite}]
   mine_rat:
+    family: beast
+    rank: 2
+    monster_class: monster_beast
     name: Mine Rat
     image: enemies/mine_rat.png
     lore: "Mine Rats live in groups among abandoned rails and stone piles. They carry scraps back to their hidden nests."
@@ -346,6 +459,9 @@ enemies:
     drops: [{item: tonic, chance: 0.15}]
     ai: [{use: bite}]
   mirror_shade:
+    family: magic
+    rank: 2
+    monster_class: monster_magic
     name: Mirror Shade
     image: enemies/mirror_shade.png
     lore: "Mirror Shades gather in rooms with polished walls. They copy a traveler’s movements before stepping into view."
@@ -357,6 +473,10 @@ enemies:
     drops: [{item: old_gear, chance: 0.15}]
     ai: [{use: arc_bolt}]
   nectar_moth:
+    family: bird
+    rank: 3
+    monster_class: monster_bird
+    recruit: {chance: 0.1, level: 3}
     name: Nectar Moth
     image: enemies/nectar_moth.png
     lore: "Nectar Moths drift toward the glowing fungi of the lower caverns. Their wings carry a faint golden dust."
@@ -367,6 +487,9 @@ enemies:
     drops: [{item: tonic, chance: 0.3}]
     ai: [{use: bite}]
   nightmare_hound:
+    family: beast
+    rank: 5
+    monster_class: monster_beast
     name: Nightmare Hound
     image: enemies/nightmare_hound.png
     lore: "Nightmare Hounds roam the dark paths beyond the old gates. Their keen hearing makes quiet travel difficult."
@@ -377,6 +500,9 @@ enemies:
     drops: [{item: old_gear, chance: 0.15}]
     ai: [{use: bite}]
   snow_ape:
+    family: beast
+    rank: 6
+    monster_class: monster_beast
     name: Snow Ape
     image: enemies/snow_ape.png
     lore: "Snow Apes make nests in sheltered icy ledges. They toss loose stones to warn others away from their territory."
@@ -387,6 +513,9 @@ enemies:
     drops: [{item: tonic, chance: 0.15}]
     ai: [{use: bite}]
   snow_witch:
+    family: magic
+    rank: 3
+    monster_class: monster_magic
     name: Snow Witch
     image: enemies/snow_witch.png
     lore: "Snow Witches live in high, frozen chambers. They shape the falling snow into patterns that conceal their tracks."
@@ -397,6 +526,10 @@ enemies:
     drops: [{item: old_gear, chance: 0.3}]
     ai: [{use: arc_bolt}]
   spore_shroom:
+    family: plant
+    rank: 1
+    monster_class: monster_plant
+    recruit: {chance: 0.22, level: 1}
     name: Spore Shroom
     image: enemies/spore_shroom.png
     lore: "Spore Shrooms grow in clusters on damp stone. Their clouds of spores mark the air where they have spread."
@@ -407,6 +540,10 @@ enemies:
     drops: [{item: tonic, chance: 0.15}]
     ai: [{use: bite}]
   steam_slime:
+    family: slime
+    rank: 2
+    monster_class: monster_slime
+    recruit: {chance: 0.22, level: 2}
     name: Steam Slime
     image: enemies/steam_slime.png
     lore: "Steam Slimes form around warm vents below the cold floors. Their bodies puff when the pressure changes."
@@ -418,6 +555,9 @@ enemies:
     drops: [{item: old_gear, chance: 0.15}]
     ai: [{use: bite}]
   succubus:
+    family: demon
+    rank: 4
+    monster_class: monster_demon
     name: Succubus
     image: enemies/succubus.png
     lore: "The Succubus is a night-dwelling spirit of the old ruins. It watches over quiet halls and uses swift magic to keep intruders away."
@@ -428,6 +568,10 @@ enemies:
     drops: [{item: tonic, chance: 0.3}]
     ai: [{use: arc_bolt}]
   whisper_imp:
+    family: demon
+    rank: 1
+    monster_class: monster_demon
+    recruit: {chance: 0.22, level: 1}
     name: Whisper Imp
     image: enemies/whisper_imp.png
     lore: "Whisper Imps nest behind cracked walls. They trade rumors in soft voices and vanish when a lantern turns their way."

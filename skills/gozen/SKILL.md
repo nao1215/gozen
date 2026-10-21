@@ -30,7 +30,7 @@ In GitHub Actions, `nao1215/setup-gozen` installs the version in the game's `go.
 
 ## What every game needs
 
-- `game.yaml` with `schema_version: 3` (4 for a novel, 5 for a campaign), an `id`, and `start` with a `location` and a `party`.
+- `game.yaml` with `schema_version: 3` (4 for a novel, 5 for a campaign, 6 for monster collection), an `id`, and `start` with a `location` and a `party`.
 - A class for each party member, with all eight stats (`mhp mmp atk def mat mdf agi luk`) and `exp_for`.
 - The two skills `attack` and `guard`, even in a game without battles.
 - Pictures under `assets/` for every `image` and `background` you name. Enemies need an `image`.
@@ -83,6 +83,10 @@ A campaign (SLG, a war of regions) sets `schema_version: 5`, `regions` and `fact
 - Measure with `gozen sim campaign game` (and `--tactic`) before tuning numbers. Use `--compare strategies` or `--compare tactics` to run every variant on the same seeds; `--format json` includes win rate, mean ending turn, mean player regions held and region ownership details. Test with `gozen.Session`: `Do("- order: {id: attack, general: corin, target: ford}")` and `Query("region.ford.owner")`.
 
 The recipe is "Make a campaign" in the cookbook. A complete one is [examples/campaign](https://github.com/nao1215/gozen/tree/main/examples/campaign).
+
+## Monster collection
+
+Use schema version 6. Define `monster_families`, then give each non-boss enemy a `family`, `rank` and `monster_class`; use `recruit: {chance, level}` for species that may ask to join after a won battle. The class supplies growth, experience and skills learned by level. Put `breeding: {min_level, skill_slots, pairs, families}` in data. Specific species pairs win over family rules. The child starts at level one, inherits selected skills and a plus value; the parents leave. Add `open: ranch` to a safe town action for reserve swaps, release and breeding. Check with `gozen check game` and `gozen sim breed game --format json`; review every unreachable species and tune the party with `gozen sim battle` and `gozen sim dive`. `gozen book game` prints recruit and breeding details. Expressions read `reserve.size`, `monster.<instance>.family`, `.plus` and `bestiary.<species>.caught`; mutations use `reserve`, `release` and `breed` commands. The [collection recipe](https://nao1215.github.io/gozen/cookbook/#collect-raise-and-breed-monsters) has a compact YAML example.
 
 ## Browser builds
 
