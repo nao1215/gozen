@@ -124,7 +124,7 @@ locations:
     name: Undercistern Gate
     area: Pellmere
     background: bg/gate.jpg
-    music: town
+    music: gate
     safe: true
     actions:
       - label: Look the gate over

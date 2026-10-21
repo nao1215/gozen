@@ -28,6 +28,7 @@ regions:
 locations:
   war:
     name: The Five Banners
+    music: clash
     map:
       picture: maps/continent.jpg
       unknown: named

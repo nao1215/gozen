@@ -4,6 +4,7 @@ schema_version: 5
 id: five-banners
 title: Five Banners
 subtitle: Take the land in ten turns
+title_music: title
 language: en
 written_in: en
 languages: [en, ja]
@@ -56,8 +57,15 @@ campaign:
       fight: clash_view
       until_taken: true
       generals: 4
-      on_win: [{say: {who: corin, text: "The region is ours. Hold it well, and don't let it go to your heads."}}]
-      on_lose: [{say: {who: hilde, text: "We fell back. Next time I go in front of you, Corin, no argument."}}]
+      on_win:
+        - sfx: win
+        - music: win
+        - say: {who: corin, text: "The region is ours. Hold it well, and don't let it go to your heads."}
+        - music: clash
+      on_lose:
+        - music: lose
+        - say: {who: hilde, text: "We fell back. Next time I go in front of you, Corin, no argument."}
+        - music: clash
       on_draw: [{say: {who: corin, text: "Time ran out and they still hold it. Fine, they'll see us again soon."}}]
     develop:
       label: Develop

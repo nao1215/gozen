@@ -1,0 +1,8 @@
+music:
+  songs:
+    title: {name: The Deep Gate, file: bgm/title.ogg}
+    clash: {name: The Frost March, file: bgm/clash.ogg}
+    win: {name: A Small Victory, file: bgm/win.ogg}
+    lose: {name: A Quiet Defeat, file: bgm/lose.ogg}
+    fanfare: {name: Keeper's Fanfare, file: bgm/fanfare.ogg}
+  one_shot: [fanfare]

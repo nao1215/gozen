@@ -11,18 +11,18 @@ the repository. The files under `game/assets/` are listed here.
 | `bg/tavern_late.jpg` | The empty tavern late at night | CC BY 4.0 |
 | `cg/toast.jpg`, `cg/wine.jpg`, `cg/table.jpg` | The event pictures: Brenna raising her mug, Wren with a glass of wine, and the counter with a glass and bottles | CC BY 4.0 |
 | `brenna/`, `wren/`, `hedda/` | The standing picture of each character (`normal.png`) | CC BY 4.0 |
-| `bgm/evening.ogg` | The song of the evening, "Pellmere Mornings" from the Go Zen soundtrack | CC BY 4.0 |
+| `bgm/evening.ogg`, `bgm/town.ogg`, `bgm/gate.ogg`, `bgm/finale.ogg` | Music by the author from the author's own RPG, for the tavern, town, gate and reflective scenes | CC BY 4.0 |
 | `faces.json` | The face box of each standing picture, written by `gozen art faces` (the face icons of the character book) | MIT |
 | `fonts/mplus-1p-regular.ttf` | M+ 1p regular 1.060, M+ FONTS PROJECT (Latin and Japanese letters) | M+ FONTS LICENSE (below) |
 
-The pictures and the music are Copyright (c) 2026 CHIKAMATSU Naohiro and licensed under the
+The pictures and music are Copyright (c) 2026 CHIKAMATSU Naohiro and licensed under the
 Creative Commons Attribution 4.0 International license
 (https://creativecommons.org/licenses/by/4.0/; the text is in `game/assets/LICENSE`). Credit
 "Gozen novel sample art and music, CHIKAMATSU Naohiro" when you reuse them. The pictures are
 generated images by the same author, first made for another of the author's projects and
 reused here; the standing pictures were cut to the figure and the backgrounds made 1920x1080.
-The song is the same file as Go Zen's `bgm/town.ogg` (see `examples/go-zen/ASSETS.md`),
-rendered with FluidSynth and the GeneralUser GS v2.0.3 SoundFont by S. Christian Collins
+The music comes from the author's own RPG and was rendered with FluidSynth and the GeneralUser
+GS v2.0.3 SoundFont by S. Christian Collins
 (http://www.schristiancollins.com), whose license lets the music made with it be used without
 restriction; the SoundFont itself is not included.
 

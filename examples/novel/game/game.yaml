@@ -9,7 +9,7 @@ screen: {width: 1920, height: 1080}
 fonts: {regular: fonts/mplus-1p-regular.ttf}
 title_background: bg/hill.jpg
 title_text: {size: 120, subtitle_size: 34, subtitle_tracking: 0, color: "#fff4e0", edge: "#3a2414"}
-title_music: evening
+title_music: town
 start:
   location: kettle
   party: [you]

@@ -14,12 +14,13 @@ Go Zen is the sample game of Gozen. Its Go code and YAML (`main.go`, `files.go`,
 | `bg/` | The plaza as a painted scene with its depth (`plaza_depth.png`), the plaza with the water back, the shop, the inn, the well, the gate, Hobb's Landing, the valve hall, and the battle backgrounds | CC BY 4.0 |
 | `dungeon/`, `tiles/`, `props/` | The dungeon's walls, floors, ceilings, doors and stairs, chests, crates, levers, the key, the valve and the vent, and the townsfolk's things (the water cart, Hobb's desk, the notice) | CC BY 4.0 |
 | `enemies/`, `<id>/cutin.png` | Enemies and the cut-in pictures | CC BY 4.0 |
-| `bgm/*.ogg` | The Go Zen soundtrack (title, town, dungeon, battle, boss, victory) | CC BY 4.0 |
+| `bgm/title.ogg`, `town.ogg`, `dungeon.ogg`, `garden.ogg`, `castle.ogg`, `dream.ogg`, `gate.ogg`, `battle.ogg`, `boss.ogg`, `victory.ogg`, `fanfare.ogg`, `finale.ogg` | Music written by the author for the author's own RPG | CC BY 4.0 |
+| `sfx/boss.ogg`, `break.ogg`, `buff.ogg`, `crit.ogg`, `cutin.ogg`, `debuff.ogg`, `encounter.ogg`, `escape.ogg`, `fall.ogg`, `heal.ogg`, `hit.ogg`, `levelup.ogg`, `magic.ogg`, `miss.ogg`, `punch.ogg`, `tink.ogg`, `treasure.ogg`, `win.ogg` | Sound effects by the author for the author's own RPG, used by battle, healing, treasure and encounter cues | CC BY 4.0 |
 | `fonts/mplus-1p-regular.ttf` | M+ 1p regular 1.060, M+ FONTS PROJECT | M+ FONTS LICENSE (below) |
 | `fonts/uncial-antiqua-regular.ttf` | Uncial Antiqua, the title's letters; Brian J. Bonislawsky (Astigmatic), from Google Fonts | SIL Open Font License 1.1 (`fonts/OFL-uncial-antiqua.txt`) |
 | `fonts/cinzel.ttf` | Cinzel (variable), the subtitle's letters; the Cinzel Project Authors, from Google Fonts | SIL Open Font License 1.1 (`fonts/OFL-cinzel.txt`) |
 
-The pictures and the music are Copyright (c) 2026 CHIKAMATSU Naohiro and licensed under the
+The pictures, music and sound effects are Copyright (c) 2026 CHIKAMATSU Naohiro and licensed under the
 Creative Commons Attribution 4.0 International license
 (https://creativecommons.org/licenses/by/4.0/; the text is in `game/assets/LICENSE`). Credit
 "Go Zen sample art and music, CHIKAMATSU Naohiro" when you reuse them. The pictures are

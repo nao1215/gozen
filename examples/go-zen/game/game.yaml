@@ -38,7 +38,7 @@ battle:
   ai: gambit
   simple_tactics: true
   music: battle
-  boss_win_music: victory
+  boss_win_music: fanfare
   auto_tactics:
     maren_ai:
       - {enabled: true, condition: boss_fight, action: forged_map}

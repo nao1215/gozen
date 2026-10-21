@@ -9,17 +9,21 @@ actors:
 music:
   songs:
     evening: {name: Evening, file: bgm/evening.ogg}
+    town: {name: Frost Town, file: bgm/town.ogg}
+    gate: {name: The Deep Gate, file: bgm/gate.ogg}
+    finale: {name: The Last Dream, file: bgm/finale.ogg}
 locations:
   kettle: {name: The Copper Kettle, background: bg/tavern.jpg}
 events:
   opening:
     do:
       - image: {file: bg/hill.jpg, fade: 1.5}
-      - music: {song: evening, fade: 3}
+      - music: {song: gate, fade: 3}
       - say: "You climb the last stretch of the hill with the wind at your back. Snow squeaks under every step."
       - say: "Below you the village is dark, all but one window. Its light is copper-colored and steady, like a lantern left out for someone."
       - say: "Eleven days on the pass. That window is the first thing in all that time that has looked like home."
       - image: {file: "", fade: 1}
+      - music: {song: evening, fade: 2}
       - say: "You stamp the snow off your boots and push the door open. Warmth rolls over you, woodsmoke and baked apples and something with onions in it."
       - say: "The fire is roaring. Every chair in the room stands upside down on its table, except the ones pulled up around the hearth."
       - stand: {who: hedda, at: 0.5}
@@ -92,6 +96,7 @@ events:
       - call: stories
   stories:
     do:
+      - music: {song: finale, fade: 2}
       - say: {who: brenna, text: "Nine wagons. Do you remember? Nine! And old Corrin swore the pass would be open by noon."}
       - say: {who: wren, text: "It was open by noon. Noon of the following Thursday."}
       - say: "Brenna laughs so hard she has to put her mug down."
@@ -125,6 +130,7 @@ events:
       - call: late
   late:
     do:
+      - music: {song: evening, fade: 2}
       - effect: {name: fade, color: "#000000", seconds: 1, hold: 0.5}
       - image: {file: bg/tavern_late.jpg, faces: true, fade: 0}
       - say: "Time slips by the way it does beside a good fire. The stew is gone. The cheese is gone, mostly thanks to Brenna."

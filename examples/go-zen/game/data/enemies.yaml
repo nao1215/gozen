@@ -112,7 +112,7 @@ troops:
   vance_duel:
     members: [vance]
     can_escape: false
-    music: boss
+    music: finale
     intro: "Magistrate Vance sets down her scroll and steps in herself."
     level_scale: {level: 10, rate: 0.08, max: 0.4}
     events:
