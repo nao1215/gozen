@@ -2,6 +2,9 @@ package play
 
 import (
 	"bytes"
+	"image"
+	"image/color"
+	"image/png"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -37,19 +40,55 @@ skills:
   drain: {name: Drain, scope: one_enemy, effects: [{damage: "10", stat: mp, variance: 0}]}
   hurt_all: {name: Quake, scope: all_enemies, effects: [{damage: "10", variance: 0}]}
   hit_party: {name: Roar, scope: all_allies, effects: [{damage: "6", variance: 0}]}
-  hit_one: {name: Claw, scope: one_enemy, effects: [{damage: "12", variance: 0}]}
+  hit_one: {name: Claw, scope: one_enemy, anim: slash, effects: [{damage: "12", variance: 0}]}
   raise_all: {name: Dawn, scope: dead_ally, effects: [{revive: 0.5}]}
   whiff: {name: Whiff, scope: one_enemy, hit: "0", effects: [{damage: "5"}]}
   call_mote: {name: Call, scope: self, effects: [{summon: mote}]}
-  lunge: {name: Lunge, scope: one_enemy, effects: [{damage: "6", variance: 0}]}
+  lunge: {name: Lunge, scope: one_enemy, anim: slash, effects: [{damage: "6", variance: 0}]}
   holy_light: {name: Light, scope: one_enemy, fx: holy, effects: [{damage: "5", variance: 0}]}
   shadow: {name: Shadow, scope: one_enemy, fx: dark, effects: [{damage: "5", variance: 0}]}
   pierce_all: {name: Pierce, scope: one_enemy, fx: pierce, effects: [{damage: "5", variance: 0}]}
   thump: {name: Thump, scope: one_enemy, fx: strike, effects: [{damage: "5", variance: 0}]}
+  ember: {name: Ember, mp: 0, scope: one_enemy, anim: magic, fx: fire, desc: "A small flame that burns what it touches and then some more words to make the line long enough to wrap in the description box.", effects: [{damage: "9", element: fire, variance: 0}]}
+  slash_fire: {name: Fire edge, scope: one_enemy, anim: slash, fx: slash, effects: [{damage: "9", element: fire, variance: 0}]}
+  chill: {name: Chill, scope: one_enemy, anim: magic, fx: ice, effects: [{damage: "9", element: ice, variance: 0}]}
+  dispel: {name: Dispel, scope: one_enemy, effects: [{remove_state: ward}]}
+  hallow: {name: Hallow, scope: one_ally, anim: heal, fx: holy, effects: [{heal: "20"}]}
+  mend_quiet: {name: Soothe, scope: one_ally, effects: [{heal: "5", quiet: true}]}
+  finisher: {name: Finisher, scope: one_enemy, cutin: true, effects: [{damage: "99", variance: 0}]}
 states:
   ward: {name: Warded, turns: 3}
+  regen: {name: Regen, turns: 3, on_turn_end: [{heal: "3", quiet: true}]}
   shield: {name: Shield, turns: 5, cover: "b.hp_rate < 2", messages: {cover: "{target} covers {user}"}}
+actors:
+  knight:
+    name: Knight
+    class: ranger
+    faces: f
+    face: normal
+    cutin: x.png
+    cutin_box: [0.5, 0.3, 0.4]
+    cutin_lines: ["Hya!", "Take this!"]
+    reactions: {act: grin, hit: hurt, heal: grin, win: grin, fall: hurt}
+    face_rules: [{when: "self.hp_rate < 0.5", face: hurt}]
+  weaver: {name: Weaver, class: hatter}
 enemies:
+  idol:
+    name: Idol
+    title: Painted one
+    boss: true
+    image: tall.png
+    faces: {hurt: x.png, angry: x.png}
+    face_rules: [{when: "self.hp_rate < 0.5", face: hurt}]
+    reactions: {hit: angry}
+    stats: {mhp: 80, mmp: 0, atk: 8, def: 0, mat: 1, mdf: 1, agi: 1, luk: 1}
+    ai: [{use: slap}]
+  giant:
+    name: Giant
+    image: big.png
+    resist: {ice: 0.5}
+    stats: {mhp: 60, mmp: 0, atk: 8, def: 0, mat: 1, mdf: 1, agi: 1, luk: 1}
+    ai: [{use: slap}]
   warden:
     name: Warden
     title: Gate keeper
@@ -86,6 +125,8 @@ troops:
   pack: {members: [hulk, mote, hulk]}
   doom: {members: [brute], can_escape: false}
   caller: {members: [caller]}
+  tall: {members: [idol, giant, hulk]}
+  crowd: {members: [hulk, hulk, hulk, hulk, hulk]}
   chatty:
     members: [mote]
     can_escape: false
@@ -105,6 +146,12 @@ troops:
 func btlFiles(t *testing.T, gameExtra, dataExtra string, extra ...map[string]string) fstest.MapFS {
 	t.Helper()
 	fsys := gameFiles(t)
+	for name, size := range map[string][2]int{"assets/tall.png": {100, 700}, "assets/big.png": {300, 620}} {
+		fsys[name] = &fstest.MapFile{Data: btlPNG(size[0], size[1])}
+	}
+	for _, face := range []string{"normal", "hurt", "grin"} {
+		fsys["assets/f/"+face+".png"] = &fstest.MapFile{Data: btlPNG(32, 32)}
+	}
 	fsys["game.yaml"] = &fstest.MapFile{Data: []byte(testgame.Game + "\nid: screen-test\nfonts: {regular: test.ttf}\n" + gameExtra)}
 	fsys["data/btl.yaml"] = &fstest.MapFile{Data: []byte(btlData + dataExtra)}
 	for _, files := range extra {
@@ -245,6 +292,21 @@ func btlAlive(us []*battle.Unit) int {
 		}
 	}
 	return n
+}
+
+// btlPNG is a flat picture of the given size.
+func btlPNG(w, h int) []byte {
+	img := image.NewNRGBA(image.Rect(0, 0, w, h))
+	for y := range h {
+		for x := range w {
+			img.SetNRGBA(x, y, color.NRGBA{R: uint8(60 + x%90), G: uint8(90 + y%120), B: 150, A: 255}) //nolint:gosec // in 0..255
+		}
+	}
+	var b bytes.Buffer
+	if err := png.Encode(&b, img); err != nil {
+		panic(err)
+	}
+	return b.Bytes()
 }
 
 var _ = strings.Contains
