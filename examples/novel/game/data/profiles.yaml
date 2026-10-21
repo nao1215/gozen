@@ -1,0 +1,46 @@
+# The character book (ADR 0031). Under --dev the title offers Characters and P opens it
+# while a line is shown; ui.profiles: true in game.yaml shows it to players too. Each
+# profile belongs to the actor of the same id and shows its standing picture. Hedda is in the book from the start; Brenna and Wren once the first
+# toast has been poured.
+profiles:
+  brenna:
+    when: ran.toast.count > 0
+    title: "The Wall with a Laugh"
+    fields:
+      - {label: Role, value: "Shield-bearer"}
+      - {label: Hails from, value: "The north, loudly"}
+      - {label: Drinks, value: "Ale, poured to the brim"}
+      - {label: Likes, value: "Cheese, a polished shield, a good story"}
+      - {label: Dislikes, value: "Ice underfoot, being called a wall"}
+    text: "Brenna carries the big dented shield and the loudest laugh on the pass. She turns every hardship into a story and every meal into a contest with the cheese. Under the armor she is as nervous as anyone, and braver for it."
+    relations:
+      - {who: wren, calls: "Wren", text: "Translates her stiff remarks into hugs, whether Wren likes it or not."}
+      - {who: hedda, calls: "Hedda", text: "Begs her for cheese and gets scolded about the bench."}
+      - {who: you, calls: "Hey, you", text: "Someone who stood where she could see them, and never made a fuss."}
+  wren:
+    when: ran.toast.count > 0
+    title: "The Careful Cartographer"
+    fields:
+      - {label: Role, value: "Navigator and mapmaker"}
+      - {label: Hails from, value: "Wherever the map points"}
+      - {label: Drinks, value: "Deep red wine"}
+      - {label: Likes, value: "Maps, books, blankets, sturdy roofs"}
+      - {label: Dislikes, value: "Whiteouts, wobbly seats, speeches"}
+    text: "Wren reads the ridgelines, checks the roof, and files her feelings under field assessment. She is polite and precise, and her ears give away what her face does not. She would rather be home with a book, and is quietly glad she is not."
+    relations:
+      - {who: brenna, calls: "Brenna", text: "Complains loudly, sings off-key, and holds the lantern. Wren is grateful, in writing."}
+      - {who: hedda, calls: "Hedda", text: "Always one step ahead of her, which is irritating and accurate."}
+      - {who: you, calls: "You", text: "Waited for her once. She will not be making a speech about it."}
+  hedda:
+    title: "Keeper of the Open Door"
+    fields:
+      - {label: Role, value: "Tavern keeper"}
+      - {label: Hails from, value: "This village, thirty winters now"}
+      - {label: Drinks, value: "Pale golden ale"}
+      - {label: Likes, value: "A good fire, clean glasses, counted mugs"}
+      - {label: Dislikes, value: "Drafts, dented benches, thank-yous"}
+    text: "Hedda has kept the Copper Kettle's door for thirty winters. She is gruff, quick, and always a step ahead, and she denies every kindness by morning. The fire stays lit and the cider stays warm all the same."
+    relations:
+      - {who: brenna, calls: "Brenna", text: "Makes her take the armor off at the table. Feeds her anyway."}
+      - {who: wren, calls: "Wren", text: "Puts her book by the fire before Wren has thought of it."}
+      - {who: you, calls: "Late guest", text: "Gets a seat, a cloth if they stay, and a free cider."}

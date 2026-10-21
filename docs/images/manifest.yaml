@@ -103,6 +103,10 @@ runs:
     sample: novel
     script: scripts/capture-playtest-panel.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --line, "3", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  novel-characters:
+    sample: novel
+    script: scripts/capture-novel-characters.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   puppet-tour:
     sample: puppet
     args: [--tour, --frames, "{out}/frames"]
@@ -263,6 +267,11 @@ images:
     shot: s-frames
     jpeg: {width: 960, height: 540, quality: 3}
     tolerance: 0.03
+  # The character book (ADR 0031): P opens it at a line, and right goes to Wren.
+  novel-characters.jpg:
+    run: novel-characters
+    shot: s-characters
+    jpeg: {width: 960, height: 540, quality: 3}
   puppet.gif:
     run: puppet-tour
     frames:

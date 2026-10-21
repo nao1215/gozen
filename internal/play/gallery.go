@@ -166,6 +166,7 @@ func (g *Game) checkUnlocks() {
 			g.unlock(sc.Key())
 		}
 	}
+	g.checkProfiles()
 }
 
 func (g *Game) hasGallery() bool {

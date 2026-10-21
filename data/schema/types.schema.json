@@ -3806,6 +3806,25 @@
           },
           "x-type": "[Music](#music)"
         },
+        "profiles": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Profile"
+          },
+          "description": "Pages of the character book (the Characters screen), keyed by profile ID; a profile whose ID is an actor's shows that actor.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → [Profile](#profile)"
+        },
         "shops": {
           "additionalProperties": {
             "$ref": "#/$defs/Shop"
@@ -8866,6 +8885,245 @@
       ],
       "description": "A picture under assets/, optionally tinted and darkened. Written as a path or as a map."
     },
+    "Profile": {
+      "additionalProperties": false,
+      "description": "A page of the character book: who a character is, shown on the Characters screen once its when holds (ADR 0031).",
+      "properties": {
+        "actor": {
+          "description": "The actor the profile shows; by default the actor of the same ID.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "enemy": {
+          "description": "The enemy the profile shows, for a foe in the book.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "faces": {
+          "description": "The faces the screen can switch between: names of the actor's faces or of its puppet's faces. By default the actor's face.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
+        "fields": {
+          "description": "Lines of label and value, such as Role or Likes; the labels are the game's own.",
+          "items": {
+            "$ref": "#/$defs/ProfileField"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[ProfileField](#profilefield)[]"
+        },
+        "name": {
+          "description": "The name shown; by default the actor's or the enemy's name.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "picture": {
+          "description": "A standing picture under `assets/` for a character who is neither an actor nor an enemy.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "relations": {
+          "description": "How the character sees the others: whom, what they call them, and a note.",
+          "items": {
+            "$ref": "#/$defs/ProfileRelation"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[ProfileRelation](#profilerelation)[]"
+        },
+        "text": {
+          "description": "The introduction. It may hold `{expressions}`.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "title": {
+          "description": "A short epithet shown under the name. It may hold `{expressions}`.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "when": {
+          "description": "The condition that unlocks the profile. Without it the profile is always unlocked; a locked profile is a shadow named ???. Under `--dev` every profile is unlocked.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        }
+      },
+      "type": "object"
+    },
+    "ProfileField": {
+      "additionalProperties": false,
+      "description": "A line of a profile: a label and its value.",
+      "properties": {
+        "label": {
+          "description": "The label, such as Role or Likes.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "value": {
+          "description": "The value. It may hold `{expressions}`.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "ProfileRelation": {
+      "additionalProperties": false,
+      "description": "How a profile's character sees another character.",
+      "properties": {
+        "calls": {
+          "description": "What the character calls them.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "text": {
+          "description": "A note on how the character sees them.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "who": {
+          "description": "The other character: a profile ID, an actor ID, or `you`.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
     "Put": {
       "additionalProperties": false,
       "description": "A character placed on a generated floor, such as stairs, a chest or an event tile.",
@@ -13488,6 +13746,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "color string"
+        },
+        "profiles": {
+          "description": "Show Characters, the character book, in the title, the field menu and the novel bar. Off by default; under `--dev` the menus show it anyway.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
         },
         "rollback": {
           "description": "How many earlier events the player can roll back into, besides the one running, from 0 to 64. The default is 8, and 0 turns rolling back off; needs schema version 4.",

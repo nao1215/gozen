@@ -34,6 +34,7 @@ Start every `game.yaml` with `schema_version: 2`. From version 1 on, a number yo
 | `locations` | places: people, actions, exits, encounters, dungeons | see below |
 | `events` | named command lists, called or triggered | `trigger: enter` |
 | `shops`, `music` | goods; songs and moods | |
+| `profiles` | the character book: a page per character | `mira: {title: Courier, text: ...}` |
 
 Two skills are required in every game: `attack` and `guard`, the battle commands. `game.yaml`'s `battle:` can point them elsewhere.
 
@@ -245,6 +246,8 @@ Tiles are characters with their own pictures, conditions and commands; `trigger:
 Every file name is relative to `assets/`. A character's `faces` is a directory of expressions (`normal.png`, `smile.png`, ...), and `say` lines pick one with `face`. `gozen check` reports every picture that does not exist, and lays out every line with the game's font to catch text that overflows its window.
 
 The engine's own words (menus, battle messages, settings, saves) come in English and Japanese. `language:` in `game.yaml` picks one: `en` (the default) or `ja`. `text:` lays the game's own wording over that language; a key is the engine's Japanese source text, a format with its `%d` and `%s` too, and the value may reorder them (`%[2]d`). [The English catalog](https://github.com/nao1215/gozen/blob/main/internal/text/catalog/english.go) lists every key. `terms:` names the currency and stats. `gozen check` warns when `language` is unset but the game is written in Japanese, and when the regular font lacks letters of the chosen words.
+
+`profiles` keeps who each character is in the game itself: a page with the standing picture and its faces, your own fields (role, likes, anything), an introduction and how the character sees the others. Under `--dev` the title and the menu open it as Characters, so you can check a line against the character while you write; `ui.profiles: true` shows it to players, each page opening when its `when` holds ([the recipe](/cookbook/#keep-a-character-book)).
 
 ## Languages
 

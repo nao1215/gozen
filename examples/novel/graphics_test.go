@@ -15,15 +15,18 @@ import (
 )
 
 // TestGraphicsScreens runs the novel sample in a window (under Xvfb in CI) and takes the
-// title and a line of the opening with two portraits on the stage, at 1920x1080.
+// title, a line of the opening with two portraits on the stage, and the character book
+// opened with P (ADR 0031), at 1920x1080.
 func TestGraphicsScreens(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		args   []string
 		script string
+		book   bool
 	}{
 		{name: "title", script: "wait 60\nshot frame\nquit\n"},
 		{name: "stage", args: []string{"--event", "opening", "--line", "12"}, script: "wait 60\nshot frame\nquit\n"},
+		{name: "characters", args: []string{"--event", "toast"}, script: "wait 60\npress characters\nwait 40\nshot frame\nquit\n", book: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -60,6 +63,27 @@ func TestGraphicsScreens(t *testing.T) {
 			}
 			if len(colors) < 64 {
 				t.Fatalf("the screen shows little: %d colors", len(colors))
+			}
+			if tc.book {
+				// The book's band across the top is the window color (#2a1a12), over the
+				// line's text box that the scene would show at the bottom otherwise.
+				for _, x := range []int{900, 960, 1000} {
+					r, g, b, _ := img.At(x, 40).RGBA()
+					if r>>8 > 0x50 || g>>8 > 0x40 || b>>8 > 0x38 {
+						t.Fatalf("the band at (%d, 40) is %02x%02x%02x, want near 2a1a12", x, r>>8, g>>8, b>>8)
+					}
+				}
+				// Brenna's face shows in the first row of the list.
+				face := map[[4]uint32]bool{}
+				for y := 180; y < 280; y += 4 {
+					for x := 70; x < 160; x += 4 {
+						r, g, b, a := img.At(x, y).RGBA()
+						face[[4]uint32{r, g, b, a}] = true
+					}
+				}
+				if len(face) < 40 {
+					t.Fatalf("no face in the list: %d colors", len(face))
+				}
 			}
 		})
 	}

@@ -157,14 +157,15 @@ website-check:
 # README and site pictures and steps (docs/development/docs.md). The pictures
 # come from the samples listed in docs/images/manifest.yaml and need a display:
 # on Linux they run inside xvfb-run, so no window opens on your screen.
+# ONLY=a.jpg,b.gif (GOZEN_DOCS_IMAGES_ONLY) limits docs-images and docs-images-check to those pictures.
 XVFB ?= $(shell command -v xvfb-run >/dev/null && echo 'xvfb-run -a -s "-screen 0 1920x1080x24"')
 DOCS_TEST = $(GO) test ./internal/dev/docs -count=1 -timeout 40m
 
 docs-images:
-	GOZEN_DOCS_IMAGES=update $(XVFB) $(DOCS_TEST) -run '^TestDocImages$$' -v
+	GOZEN_DOCS_IMAGES=update $(if $(ONLY),GOZEN_DOCS_IMAGES_ONLY=$(ONLY)) $(XVFB) $(DOCS_TEST) -run '^TestDocImages$$' -v
 
 docs-images-check:
-	GOZEN_DOCS_IMAGES=check $(XVFB) $(DOCS_TEST) -run '^TestDocImages$$'
+	GOZEN_DOCS_IMAGES=check $(if $(ONLY),GOZEN_DOCS_IMAGES_ONLY=$(ONLY)) $(XVFB) $(DOCS_TEST) -run '^TestDocImages$$'
 
 # Runs the shell steps of README.md and website/content against this checkout.
 docs-steps:

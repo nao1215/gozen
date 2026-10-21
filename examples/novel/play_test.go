@@ -142,3 +142,26 @@ func TestJapanese(t *testing.T) {
 		}
 	}
 }
+
+// TestCharacterBook: the book (data/profiles.yaml) has Hedda from the start and Brenna
+// and Wren once the toast has been poured, on every way through the story (ADR 0031).
+func TestCharacterBook(t *testing.T) {
+	s := load(t)
+	var open bool
+	for id, want := range map[string]bool{"hedda": true, "brenna": false, "wren": false} {
+		if err := s.Query("profile."+id+".unlocked", &open); err != nil || open != want {
+			t.Fatalf("%s at the start: unlocked %v (%v), want %v", id, open, err, want)
+		}
+	}
+	paths, err := gozen.Explore(context.Background(), s, "- call: opening\n", gozen.ExploreOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range paths {
+		for _, id := range []string{"brenna", "wren", "hedda"} {
+			if err := p.End.Query("profile."+id+".unlocked", &open); err != nil || !open {
+				t.Fatalf("answers %v: %s is not in the book at the end (%v)", p.Answers, id, err)
+			}
+		}
+	}
+}

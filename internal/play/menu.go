@@ -3,6 +3,7 @@ package play
 import (
 	"fmt"
 	"image"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -73,6 +74,9 @@ func newMenu(g *Game) *menu {
 	}
 	if !g.anySave() {
 		items[5].disabled = true
+	}
+	if g.profilesInMenus() {
+		items = slices.Insert(items, 6, listItem{label: lang.T("キャラクター"), id: "profiles"})
 	}
 	items = append(head, items...)
 	m := &menu{tabs: newList(items, 36, 36, 250, len(items)), cmds: cmds}
@@ -173,7 +177,15 @@ func (m *menu) update(g *Game) {
 			g.events.Start(g.db.Events[it.Event].Do)
 			return
 		}
-		switch m.tabs.sel - len(m.cmds) {
+		sel := m.tabs.sel - len(m.cmds)
+		if m.tabs.items[m.tabs.sel].id == "profiles" {
+			g.push(newProfiles(g, nil))
+			return
+		}
+		if g.profilesInMenus() && sel > 6 {
+			sel--
+		}
+		switch sel {
 		case 0:
 			m.mode, m.member = "status", 0
 		case 1:

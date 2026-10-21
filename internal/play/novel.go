@@ -64,11 +64,19 @@ var novelButtons = []novelButton{{"もどる", btnBack}, {"ログ", btnLog}, {"�
 // sceneSkipButton shows on the novel bar only while the running event can be skipped.
 var sceneSkipButton = novelButton{"シーン送り", btnSceneSkip}
 
+// bookButton opens the character book from the novel bar when game.yaml asks for it
+// (ui.profiles); under --dev the P key opens the book without the button.
+var bookButton = novelButton{"キャラクター", btnBook}
+
 func (g *Game) novelButtons() []novelButton {
-	if g.sceneSkippable() {
-		return append([]novelButton{sceneSkipButton}, novelButtons...)
+	out := novelButtons
+	if g.hasProfiles() && g.db.Game.UI.Profiles {
+		out = slices.Insert(slices.Clone(out), len(out)-1, bookButton)
 	}
-	return novelButtons
+	if g.sceneSkippable() {
+		return append([]novelButton{sceneSkipButton}, out...)
+	}
+	return out
 }
 
 func (g *Game) novelButtonRects() []image.Rectangle {
@@ -144,6 +152,9 @@ func (g *Game) novelInput() bool {
 		return true
 	case press[btnConfig]:
 		g.push(newConfigScreen(g))
+		return true
+	case press[btnBook] && g.profilesInMenus() && !g.replaying:
+		g.push(newProfiles(g, nil))
 		return true
 	}
 	return false

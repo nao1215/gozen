@@ -41,6 +41,7 @@ The recipes refer to a few IDs they do not define: the actor and class `walker`,
 | [Give a character faces and a moving portrait](#give-a-character-faces-and-a-moving-portrait) | `faces`, `say.face`, `puppet` |
 | [Set the face icons](#set-the-face-icons) | `face_box`, `face_shade`, a doll's `icon` |
 | [Show event pictures and fill the gallery](#show-event-pictures-and-fill-the-gallery) | `image`, `gallery.cgs`, `gallery.scenes` |
+| [Keep a character book](#keep-a-character-book) | `profiles`, `ui.profiles`, `open: profiles` |
 | [Play music for places, battles and moods](#play-music-for-places-battles-and-moods) | `music.songs`, `music`, `battle_music`, `mood` rules |
 | [Change the language and the engine's wording](#change-the-language-and-the-engines-wording) | `language`, `text`, `terms` |
 | [Offer the game in two languages](#offer-the-game-in-two-languages) | `written_in`, `languages`, `lang/<code>.yaml` |
@@ -872,6 +873,49 @@ gallery:
 ```
 
 `files` shows several pictures in turn, and `look: dream` blurs the edges for a memory. Reference: [CG](/schema/#cg), [Gallery](/schema/#gallery), [GalleryCG](/schema/#gallerycg), [GalleryScene](/schema/#galleryscene).
+
+## Keep a character book
+
+`profiles` gives each character a page on the Characters screen: the standing picture with its faces, a few lines of your own labels, an introduction and how they see the others. A profile whose ID is an actor's shows that actor; `picture` shows anyone else. Under `--dev` the title and the menu offer Characters, P opens it at a line and every page is open, so you can check your characters while you write. Every text is translated through `lang/` like the lines.
+
+<!-- verify: load group=profiles as=game.yaml -->
+```yaml
+# game.yaml
+schema_version: 4
+ui:
+  profiles: true    # Characters in the title, the menu and the novel bar for players too
+```
+
+<!-- verify: load group=profiles -->
+```yaml
+actors:
+  mira:
+    name: Mira
+    class: walker
+    faces: mira             # assets/mira/normal.png, assets/mira/smile.png
+profiles:
+  mira:
+    title: The courier of the pass
+    faces: [normal, smile]  # the faces the screen switches between (Z)
+    when: flag.met_mira     # a shadow named ??? until then; once open, it stays open
+    fields:
+      - {label: Role, value: Courier}
+      - {label: Likes, value: Hot cider}
+    text: Mira has carried letters over the pass for {var.mira_years} winters.
+    relations:
+      - {who: walker, calls: Boss, text: Trusts them with the map.}
+      - {who: you, calls: Stranger}
+  keeper:
+    name: The keeper
+    picture: people/keeper.png
+events:
+  meet_mira:
+    do:
+      - set: {flag.met_mira: true}
+      - open: profiles
+```
+
+`open: profiles` opens the book from an event, and a test reads `profile.mira.unlocked`. Reference: [Profile](/schema/#profile), [ProfileField](/schema/#profilefield), [ProfileRelation](/schema/#profilerelation), [UIStyle](/schema/#uistyle).
 
 ## Play music for places, battles and moods
 

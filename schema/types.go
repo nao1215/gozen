@@ -195,6 +195,15 @@ type Skill = gamedata.Skill
 // This definition is exposed for game authors and hosts; see the Schema page (https://nao1215.github.io/gozen/schema/).
 type Start = gamedata.Start
 
+// Profile is a page of the character book (ADR 0031): data/ profiles.<id>.
+type Profile = gamedata.Profile
+
+// ProfileField is a line of label and value of a profile.
+type ProfileField = gamedata.ProfileField
+
+// ProfileRelation is how a profile's character sees another.
+type ProfileRelation = gamedata.ProfileRelation
+
 // StoneSet is a combination of magic stones worn together by one person: it grants a skill
 // and stats while all its stones are worn.
 // This definition is exposed for game authors and hosts; see the Schema page (https://nao1215.github.io/gozen/schema/).

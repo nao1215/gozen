@@ -387,6 +387,12 @@ var english = map[string]string{
 	"どこから見る？":                            "Where to start?",
 	"Z: みる   X: もどる":                     "Z: view   X: back",
 	"とまっています":                            "Stopped",
+	// screens: the character book (ADR 0031)
+	"キャラクター": "Characters",
+	"←→ / LR: キャラ   ↑↓: 一覧   Z: 表情   X: もどる": "Left/Right / LR: character   Up/Down: list   Z: face   X: back",
+	"あなた": "You",
+	"「":   "“",
+	"」":   "”",
 	// screens: the balance panel (development)
 	"バランス": "Balance",
 	"%d戦・seed %d（gozen sim battle --state と同じ。今の HP は --as-is）": "%d battles, seed %d (as gozen sim battle --state; current HP as --as-is)",

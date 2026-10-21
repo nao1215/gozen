@@ -211,6 +211,7 @@ func (db *DB) Check() []error {
 	c.declarations()
 	c.stateDeclarations()
 	c.tacticCatalog()
+	c.profiles()
 	c.numericValues(&db.Game, "game.yaml")
 	c.numericValues(&file{
 		Classes: db.Classes, Actors: db.Actors, Items: db.Items, Skills: db.Skills,
@@ -1358,7 +1359,9 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			_, ok = db.Skills[cmd.Learn.Skill]
 			c.ref(w+".learn.skill", "skill", cmd.Learn.Skill, ok)
 		case "open":
-			if slices.Contains(db.Game.Screens, cmd.Open) {
+			if cmd.Open == "profiles" && len(db.Profiles) == 0 {
+				c.errorf(diag.UnknownReference, w+".open", "open: profiles needs profiles in data/ (the character book is empty)")
+			} else if slices.Contains(db.Game.Screens, cmd.Open) {
 				c.needsVersion2(w+".open", "a declared screen")
 			} else if !slices.Contains(OpenScreens, cmd.Open) {
 				c.errorf(diag.NotAWord, w+".open", "want one of %s (or a screen declared in game.yaml screens), not %q", strings.Join(OpenScreens, ", "), cmd.Open)
@@ -1686,9 +1689,9 @@ func (c *checker) fields(where string, e Expr, names []string, over map[string]*
 }
 
 // OpenScreens are the screens the open command can open: formation, the skill tree (skills),
-// stone fusion (fusion), and out-of-battle tactics editing (tactics).
+// stone fusion (fusion), out-of-battle tactics editing (tactics), and the character book (profiles).
 // status, item, skill, equip, save, load, config and title are single menu screens (not scattered across shops and inns).
-var OpenScreens = []string{"formation", "skills", "fusion", "status", "item", "skill", "equip", "save", "load", "config", "title", "tactics"}
+var OpenScreens = []string{"formation", "skills", "fusion", "status", "item", "skill", "equip", "save", "load", "config", "title", "tactics", "profiles"}
 
 // tree checks a class's skill tree: node IDs (or skill IDs when absent) must not collide,
 // skill, stat and prerequisite nodes must exist, and prerequisites must not form a cycle.
