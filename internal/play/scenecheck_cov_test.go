@@ -16,9 +16,9 @@ import (
 
 const wldReviewYAML = `gallery:
   scenes:
-    - {title: Meeting, event: ev_auto, flag: met, group: Act 1, picture: pics/bg.png}
-    - {title: Parting, event: ev_box, flag: met, group: Act 1}
-    - {title: Dawn, event: ev_long, flag: met}
+    - {title: Meeting, event: ev_auto, flag: met_a, group: Act 1, picture: pics/bg.png}
+    - {title: Parting, event: ev_box, flag: met_b, group: Act 1}
+    - {title: Dawn, event: ev_long, flag: met_c}
 scene_review:
   title: Scene check
   groups: [Act 2, Act 1]

@@ -2,19 +2,14 @@ package play
 
 import (
 	"errors"
-	"os"
 	"testing"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-// wldSample opens the sample game shipped in examples/go-zen (a neutral original game with a map,
-// a painted scene and dungeons) with the given options. The sample is read, never written.
-func wldSample(t *testing.T, opts Options) *Game {
-	t.Helper()
-	opts.FS = os.DirFS("../../examples/go-zen/game")
-	return wldOpenWith(t, opts)
-}
+// The helpers of the tests of the screens that show a place (dungeon, map, painted scene, menu
+// place, novel window): a neutral game made in world_fixture_cov_test.go is opened in process
+// and driven frame by frame with Update and Draw, the keys coming from a script.
 
 // wldOpenWith opens a game from opts without sound, in a temporary save directory. A script is
 // always present (so that the game answers to wldPlay), and shots are never taken.
@@ -134,12 +129,4 @@ func wldHold(t *testing.T, g *Game, n int, names ...string) {
 		}
 	}
 	g.in.script, g.in.replay = script, nil
-}
-
-func TestWldSampleBoots(t *testing.T) {
-	g := wldSample(t, Options{Location: "plaza"})
-	wldFrames(t, g, 130)
-	if g.st.Location != "plaza" {
-		t.Fatalf("at %q", g.st.Location)
-	}
 }

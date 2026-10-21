@@ -89,7 +89,7 @@ const wldWorldData = `locations:
         ###########
         #S..f..a..#
         #.#########
-        #.>..s..p.#
+        #.>..s..pE#
         #.#########
         #.P..W..K.#
         ###########
@@ -109,6 +109,7 @@ const wldWorldData = `locations:
         P: {look: door, picture: pics/portrait.png, name: Painted door, solid: "true"}
         W: {look: wall, picture: pics/decal.png, size: 0.5, name: Sign}
         K: {look: door, name: Plain door, solid: "true"}
+        E: {name: Way out, mark: "#00cc00", symbol: "<", do: [{move: camp}]}
   fx_hunt:
     name: Hunt Hall
     encounters: {gauge: 0.2, rate: "0.1", troops: [{troop: one}]}

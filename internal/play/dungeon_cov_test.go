@@ -6,127 +6,11 @@ import (
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
 )
 
-// The first floor of the sample dungeon: the party arrives at S (1,1) facing south, in a
-// corridor running down the west side (docs/architecture/scenes.md is about maps and scenes;
-// the dungeon's controls are in the guide for game authors: up goes ahead, left and right turn
-// by a quarter, down turns round).
-
-func wldDungeon(t *testing.T, loc string) *Game {
-	t.Helper()
-	g := wldSample(t, Options{Location: loc, Calm: true})
-	ds, ok := g.stack[0].(*dungeonScene)
-	if !ok {
-		t.Fatalf("scene %T", g.stack[0])
-	}
-	screen := wldScreen(g)
-	for i := 0; i < 600 && (i < 5 || ds.transT > 0 || g.busy()); i++ {
-		wldStep(t, g, screen)
-	}
-	return g
-}
-
-func TestWldDungeonWalkAndTurn(t *testing.T) {
-	g := wldDungeon(t, "b1")
-	if p := g.st.Pos; p.X != 1 || p.Y != 1 || p.Facing != 2 {
-		t.Fatalf("arrived at %+v", p)
-	}
-	wldPlay(t, g, "press up\nwait 14\npress up\nwait 14\n", 200)
-	if p := g.st.Pos; p.X != 1 || p.Y != 3 {
-		t.Fatalf("two steps south: %+v", p)
-	}
-	// down turns round; two quarter turns to the right come back
-	wldPlay(t, g, "press down\nwait 14\n", 100)
-	if g.st.Pos.Facing != 0 {
-		t.Fatalf("turn round: facing %d", g.st.Pos.Facing)
-	}
-	wldPlay(t, g, "press right\nwait 14\n", 100)
-	if g.st.Pos.Facing != 1 {
-		t.Fatalf("right of north is east: facing %d", g.st.Pos.Facing)
-	}
-	wldPlay(t, g, "press left\nwait 14\npress left\nwait 14\n", 100)
-	if g.st.Pos.Facing != 3 {
-		t.Fatalf("two lefts from east is west: facing %d", g.st.Pos.Facing)
-	}
-	// walking into the wall does not move the party
-	before := g.st.Pos
-	wldPlay(t, g, "press up\nwait 14\n", 100)
-	if g.st.Pos != before || g.st.Moved {
-		t.Fatalf("bumped but moved: %+v -> %+v", before, g.st.Pos)
-	}
-}
-
-func TestWldDungeonClickTurnsAndAdvances(t *testing.T) {
-	g := wldDungeon(t, "b1")
-	// the left third of the screen turns left, the right third turns right, the middle goes ahead
-	wldPlay(t, g, "click 100 400\nwait 14\n", 100)
-	if g.st.Pos.Facing != 1 {
-		t.Fatalf("left click: facing %d", g.st.Pos.Facing)
-	}
-	wldPlay(t, g, "click 1100 400\nwait 14\n", 100)
-	if g.st.Pos.Facing != 2 {
-		t.Fatalf("right click: facing %d", g.st.Pos.Facing)
-	}
-	wldPlay(t, g, "click 640 400\nwait 14\n", 100)
-	if g.st.Pos.Y != 2 {
-		t.Fatalf("middle click goes ahead: %+v", g.st.Pos)
-	}
-}
-
-func TestWldDungeonMenuAndBack(t *testing.T) {
-	g := wldDungeon(t, "b1")
-	wldPlay(t, g, "press menu\nwait 10\n", 100)
-	if len(g.stack) != 2 {
-		t.Fatalf("menu not open: %d scenes", len(g.stack))
-	}
-	if _, ok := g.stack[1].(*menu); !ok {
-		t.Fatalf("scene %T", g.stack[1])
-	}
-	wldPlay(t, g, "press cancel\nwait 10\n", 100)
-	if len(g.stack) != 1 {
-		t.Fatalf("menu not closed: %d scenes", len(g.stack))
-	}
-}
-
-func TestWldDungeonLeverRunsOnceAndChangesTile(t *testing.T) {
-	g := wldDungeon(t, "b1")
-	wldPlay(t, g, "walk L\nuntil\nwait 30\n", 3000)
-	if !g.st.Flags["cell_open"] {
-		t.Fatalf("the lever did not open the cell (pos %+v)", g.st.Pos)
-	}
-	if !g.st.Done["b1/3,1"] && len(g.st.Done) == 0 {
-		t.Fatalf("a once tile left no mark: %v", g.st.Done)
-	}
-}
-
-func TestWldDungeonMapMarksAndLeavingByStairs(t *testing.T) {
-	g := wldDungeon(t, "b1")
-	shown := 0
-	for _, c := range g.st.Mapped[g.st.Location] {
-		if c == 1 {
-			shown++
-		}
-	}
-	if shown == 0 {
-		t.Fatal("standing in a dungeon marks nothing as seen")
-	}
-	wldPlay(t, g, "walk <\nuntil\nwait 60\n", 3000)
-	if g.st.Location == "b1" {
-		t.Fatalf("the up stairs did not leave the floor: %+v", g.st.Pos)
-	}
-}
-
-func TestWldDungeonBannerOfMadeFloor(t *testing.T) {
-	g := wldSample(t, Options{Location: "b3", Floor: 2, Calm: true})
-	wldFrames(t, g, 60)
-	ds, ok := g.stack[0].(*dungeonScene)
-	if !ok {
-		t.Fatalf("scene %T", g.stack[0])
-	}
-	f, _ := g.st.Vars["floor"].(float64)
-	if ds.shownFloor != f || ds.shownFloor < 1 {
-		t.Fatalf("banner floor %v, state floor %v", ds.shownFloor, f)
-	}
-}
+// The dungeon screen (the guide for game authors): up goes ahead, left and right turn by a
+// quarter, down turns round, the left and right thirds of a click turn and the middle goes
+// ahead; the menu key opens the menu; a tile with do runs when stepped on or walked into; a
+// once tile runs once; a solid door stops the party. The fixture's first room is a corridor
+// east of S (1,1) with a column of cells going south at x=1.
 
 func wldMaze(t *testing.T, loc string, x, y, facing int, calm ...bool) *Game {
 	t.Helper()
@@ -139,8 +23,107 @@ func wldMaze(t *testing.T, loc string, x, y, facing int, calm ...bool) *Game {
 	for i := 0; i < 600 && (i < 5 || ds.transT > 0 || g.busy()); i++ {
 		wldStep(t, g, screen)
 	}
-	g.st.Pos.X, g.st.Pos.Y, g.st.Pos.Facing = x, y, facing
+	if x >= 0 {
+		g.st.Pos.X, g.st.Pos.Y, g.st.Pos.Facing = x, y, facing
+	}
 	return g
+}
+
+func TestWldDungeonControls(t *testing.T) {
+	g := wldMaze(t, "fx_maze", -1, 0, 0)
+	if p := g.st.Pos; p.X != 1 || p.Y != 1 || p.Facing != 1 {
+		t.Fatalf("arrived at %+v, want S facing east", p)
+	}
+	set := func(x, y, f int) { g.st.Pos.X, g.st.Pos.Y, g.st.Pos.Facing = x, y, f }
+	t.Run("turn right and walk", func(t *testing.T) {
+		wldPlay(t, g, "press right\nwait 14\n", 100)
+		if g.st.Pos.Facing != 2 {
+			t.Fatalf("right of east is south: facing %d", g.st.Pos.Facing)
+		}
+		wldPlay(t, g, "press up\nwait 14\npress up\nwait 14\n", 200)
+		if p := g.st.Pos; p.X != 1 || p.Y != 3 {
+			t.Fatalf("two steps south: %+v", p)
+		}
+	})
+	t.Run("down turns round, left turns by a quarter", func(t *testing.T) {
+		wldPlay(t, g, "press down\nwait 14\n", 100)
+		if g.st.Pos.Facing != 0 {
+			t.Fatalf("turn round: facing %d", g.st.Pos.Facing)
+		}
+		wldPlay(t, g, "press left\nwait 14\n", 100)
+		if g.st.Pos.Facing != 3 {
+			t.Fatalf("left of north is west: facing %d", g.st.Pos.Facing)
+		}
+	})
+	t.Run("a wall stops the party", func(t *testing.T) {
+		before := g.st.Pos
+		wldPlay(t, g, "press up\nwait 14\n", 100)
+		if g.st.Pos != before || g.st.Moved {
+			t.Fatalf("bumped but moved: %+v -> %+v", before, g.st.Pos)
+		}
+	})
+	t.Run("clicks", func(t *testing.T) {
+		set(1, 1, 1)
+		// the left third of the screen turns left, the right third turns right, the middle goes ahead
+		wldPlay(t, g, "click 100 400\nwait 14\n", 100)
+		if g.st.Pos.Facing != 0 {
+			t.Fatalf("left click: facing %d", g.st.Pos.Facing)
+		}
+		wldPlay(t, g, "click 1100 400\nwait 14\n", 100)
+		if g.st.Pos.Facing != 1 {
+			t.Fatalf("right click: facing %d", g.st.Pos.Facing)
+		}
+		wldPlay(t, g, "click 640 400\nwait 14\n", 100)
+		if g.st.Pos.X != 2 {
+			t.Fatalf("middle click goes ahead: %+v", g.st.Pos)
+		}
+	})
+	t.Run("the menu opens and closes", func(t *testing.T) {
+		wldPlay(t, g, "press menu\nwait 10\n", 100)
+		if len(g.stack) != 2 {
+			t.Fatalf("menu not open: %d scenes", len(g.stack))
+		}
+		if _, ok := g.stack[1].(*menu); !ok {
+			t.Fatalf("scene %T", g.stack[1])
+		}
+		wldPlay(t, g, "press cancel\nwait 10\n", 100)
+		if len(g.stack) != 1 {
+			t.Fatalf("menu not closed: %d scenes", len(g.stack))
+		}
+	})
+	t.Run("a once tile runs once and the map marks the cells seen", func(t *testing.T) {
+		shown := 0
+		for _, c := range g.st.Mapped[g.st.Location] {
+			if c == 1 {
+				shown++
+			}
+		}
+		if shown == 0 {
+			t.Fatal("standing in a dungeon marks nothing as seen")
+		}
+		set(1, 3, 1)
+		wldPlay(t, g, "press up\nwait 40\n", 200)
+		if !g.st.Flags["deep"] || len(g.st.Done) == 0 {
+			t.Fatalf("the switch did not run (pos %+v, done %v)", g.st.Pos, g.st.Done)
+		}
+		if a := lookArea(g); a != "Deep end" {
+			t.Fatalf("look area after the switch: %q", a)
+		}
+		g.st.Flags["deep"] = false
+		set(3, 3, 3)
+		wldPlay(t, g, "press up\nwait 40\n", 200)
+		if g.st.Flags["deep"] {
+			t.Fatal("a once tile ran a second time")
+		}
+	})
+	t.Run("a script walks to a tile", func(t *testing.T) {
+		set(8, 3, 3)
+		g.st.Flags["deep"] = false
+		wldPlay(t, g, "walk E\nuntil\nwait 60\n", 3000)
+		if g.st.Location != "camp" {
+			t.Fatalf("the exit tile did not leave the floor: %q at %+v", g.st.Location, g.st.Pos)
+		}
+	})
 }
 
 // A slide tile carries the party on cell by cell until the way is shut or it comes to another
@@ -156,32 +139,14 @@ func TestWldDungeonSlideStopsAtOtherTileAndSpins(t *testing.T) {
 	}
 }
 
-func TestWldDungeonOnceTileAndLooks(t *testing.T) {
-	g := wldMaze(t, "fx_maze", 1, 3, 1)
-	if a := lookArea(g); a != "" {
-		t.Fatalf("area before the switch: %q", a)
-	}
-	wldPlay(t, g, "press up\nwait 40\n", 200)
-	if !g.st.Flags["deep"] {
-		t.Fatalf("the switch did not run (pos %+v)", g.st.Pos)
-	}
-	if a := lookArea(g); a != "Deep end" {
-		t.Fatalf("look area after the switch: %q", a)
-	}
-	// the same tile does not run twice
-	g.st.Flags["deep"] = false
-	g.st.Pos.X, g.st.Pos.Facing = 3, 3
-	wldPlay(t, g, "press up\nwait 40\npress right\nwait 20\npress right\nwait 20\npress up\nwait 40\n", 400)
-	if g.st.Flags["deep"] {
-		t.Fatal("a once tile ran a second time")
-	}
-}
-
 func TestWldDungeonDoorsBlockAndViewsDraw(t *testing.T) {
 	g := wldMaze(t, "fx_maze", 7, 5, 1)
 	wldPlay(t, g, "press up\nwait 20\n", 100)
 	if p := g.st.Pos; p.X != 7 {
 		t.Fatalf("walked through a solid door: %+v", p)
+	}
+	if a := lookArea(g); a != "" {
+		t.Fatalf("area before the switch: %q", a)
 	}
 	// look at the tiles from where they can be seen: a flat picture and a standing one, a painted
 	// door and a decal on a wall
@@ -230,9 +195,19 @@ func TestWldDungeonNoMap(t *testing.T) {
 	wldFrames(t, g, 5)
 }
 
-func TestWldDungeonHunters(t *testing.T) {
-	h := wldWorld(t, "fx_hunt", Options{Calm: true})
+// A made floor shows its number as a banner when it is entered, and a foe that hunts is always
+// on the map.
+func TestWldDungeonMadeFloorBannerAndHunters(t *testing.T) {
+	h := wldWorld(t, "fx_hunt", Options{Calm: true, Floor: 2})
 	wldFrames(t, h, 80)
+	ds, ok := h.stack[0].(*dungeonScene)
+	if !ok {
+		t.Fatalf("scene %T", h.stack[0])
+	}
+	f, _ := h.st.Vars[dungeon.VarFloor].(float64)
+	if f != 2 || ds.shownFloor != f {
+		t.Fatalf("banner floor %v, state floor %v", ds.shownFloor, f)
+	}
 	if len(dungeon.HuntersOn(h.db, h.st)) == 0 {
 		t.Fatal("the hunting foe never appeared on its floor")
 	}

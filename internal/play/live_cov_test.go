@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/layer1/geom"
+	lang "github.com/nao1215/gozen/internal/text"
 )
 
 // F5 reload (the site's "Edit and play loop"): with --dir the game reads the YAML and pictures
@@ -233,6 +234,73 @@ func TestWldLiveReloadOfPicturesAloneAndWithoutADirectory(t *testing.T) {
 	}
 	if b := g.pics.get("pics/flat.png").Bounds(); b.Dx() != 24 {
 		t.Fatalf("the picture was not read again: %v", b)
+	}
+}
+
+// wldLiveReplay opens the gallery of the review fixture from disk and plays the first scene
+// (four lines) up to the second.
+func wldLiveReplay(t *testing.T) (*Game, string) {
+	t.Helper()
+	dir := wldDisk(t, wldReviewYAML, map[string]string{"data/novel_cov.yaml": wldNovelData})
+	g := wldLive(t, dir, "") // from the title: no state yet, so a reload may go on under a recollection
+	g.opts.GalleryAll = true
+	g.push(newGallery(g))
+	wldFrames(t, g, 3)
+	wldPlay(t, g, "press right\nwait 6\npress ok\nwait 30\n", 100)
+	if _, ok := g.stack[len(g.stack)-1].(*sceneReplay); !ok {
+		t.Fatalf("the scene did not open: %T", g.stack[len(g.stack)-1])
+	}
+	wldPlay(t, g, "wait 60\npress ok\nwait 40\n", 200)
+	if wldTalkText(g) != "Two." {
+		t.Fatalf("at %q", wldTalkText(g))
+	}
+	return g, dir
+}
+
+func TestWldLiveReloadKeepsALineOfARecollection(t *testing.T) {
+	g, dir := wldLiveReplay(t)
+	wldEdit(t, dir, "data/novel_cov.yaml", `text: "Two."`, `text: "Zwei."`)
+	wldPlay(t, g, "press reload\nwait 30\n", 200)
+	if _, ok := g.stack[len(g.stack)-1].(*sceneReplay); !ok || !g.replaying {
+		t.Fatalf("the recollection did not go on: %T replaying %v", g.stack[len(g.stack)-1], g.replaying)
+	}
+	if got := wldTalkText(g); got != "Zwei." {
+		t.Fatalf("the line after the reload is %q, want the edited one at the same place", got)
+	}
+}
+
+func TestWldLiveReloadOfARecollectionThatLostItsLines(t *testing.T) {
+	g, dir := wldLiveReplay(t)
+	wldPlay(t, g, "wait 60\npress ok\nwait 60\n", 200)
+	if wldTalkText(g) != "Three." {
+		t.Fatalf("at %q", wldTalkText(g))
+	}
+	// the recollection read three lines; the event now has two
+	wldEdit(t, dir, "data/novel_cov.yaml", `      - say: {who: Courier, face: pics/tall1.png, text: "Three."}
+      - say: {who: Stranger, face: pics/tall3.png, text: "Four."}
+      - say: "Five."
+`, "")
+	wldPlay(t, g, "press reload\nwait 30\n", 200)
+	if got := wldTalkText(g); got != "Two." {
+		t.Fatalf("after the lines got fewer the recollection shows %q, want the last line", got)
+	}
+	if g.live.msg != lang.T("読み直した（行が減ったので最後の行）") {
+		t.Fatalf("notice %q", g.live.msg)
+	}
+}
+
+func TestWldLiveReloadOfARecollectionThatIsGone(t *testing.T) {
+	g, dir := wldLiveReplay(t)
+	wldEdit(t, dir, "game.yaml", "{title: Meeting, event: ev_auto, flag: met_a,", "{title: Elsewhere, event: ev_box, flag: met_z,")
+	wldPlay(t, g, "press reload\nwait 30\n", 200)
+	if g.replaying {
+		t.Fatal("the recollection went on though it is no longer in the gallery")
+	}
+	if _, ok := g.stack[len(g.stack)-1].(*galleryScreen); !ok {
+		t.Fatalf("top scene %T, want the gallery", g.stack[len(g.stack)-1])
+	}
+	if g.live.msg != lang.T("読み直した（回想が無いのでギャラリーへ）") {
+		t.Fatalf("notice %q", g.live.msg)
 	}
 }
 
