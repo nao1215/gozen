@@ -51,6 +51,19 @@ const wldNovelData = `events:
         prompt: "Which way?"
         id: way
       - say: "After the choice."
+  ev_cgstand:
+    do:
+      - say: {who: Courier, face: pics/tall1.png, text: "Before the picture."}
+      - image: {file: pics/bg.png}
+      - say: "Over the picture."
+      - image: ""
+      - say: "After the picture."
+  ev_longchoice:
+    do:
+      - choice:
+          - {label: Left, do: [{set: {flag.went_left: true}}]}
+          - {label: Right, do: []}
+        prompt: "A very long question that goes on and on and on, line after line after line, far past what three lines of the window can hold, so that it must be fitted or cut to the window before the options are shown below it."
   ev_bare:
     do:
       - choice:

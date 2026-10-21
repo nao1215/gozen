@@ -107,3 +107,29 @@ func TestWldBoxLongLineIsPaged(t *testing.T) {
 		t.Fatalf("paging led to %q", g.talk.say.Text)
 	}
 }
+
+// A question longer than the window is fitted to it, and the options stand above the window.
+func TestWldLongQuestionIsFittedToTheWindow(t *testing.T) {
+	for _, ui := range []string{"", "ui: {message: novel}\n"} {
+		opts := Options{Location: "camp", FS: wldWorldFiles(t, ui, map[string]string{"data/novel_cov.yaml": wldNovelData})}
+		g := wldOpenWith(t, opts)
+		wldFrames(t, g, 5)
+		wldStartEvent(t, g, "ev_longchoice")
+		wldFrames(t, g, 5)
+		c := g.talk.choice
+		if c == nil || len(g.talk.pages) != 1 || len(g.talk.pages[0]) > talkLines {
+			t.Fatalf("ui %q: choice %v pages %v", ui, c != nil, g.talk.pages)
+		}
+		_, by, _, _ := g.talkBox()
+		if c.y+c.height() > by {
+			t.Fatalf("ui %q: the options (down to %v) reach into the window at %v", ui, c.y+c.height(), by)
+		}
+		wldPlay(t, g, "press ok\nwait 20\n", 100)
+		if !g.st.Flags["went_left"] {
+			t.Fatalf("ui %q: the first option was not taken", ui)
+		}
+		if err := g.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+}

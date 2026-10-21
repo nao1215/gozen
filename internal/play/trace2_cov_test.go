@@ -256,3 +256,31 @@ func TestWldTraceWriteFailureStopsTheGame(t *testing.T) {
 		})
 	}
 }
+
+// The stand lines say what hides the portraits: a picture over the stage, and whether that picture
+// is the background of a place.
+func TestWldTraceStandLinesNameThePictureOverThePortraits(t *testing.T) {
+	g, buf := wldTracedGame(t, "wait 1000000\n")
+	wldStartEvent(t, g, "ev_cgstand")
+	wldFrames(t, g, 60)
+	wldPlay(t, g, "press ok\nwait 90\n", 200)
+	wldFrames(t, g, 60)
+	var over traceLine
+	for _, l := range traceLines(t, buf.Bytes(), "stand") {
+		if l["cg"] == "pics/bg.png" {
+			over = l
+		}
+	}
+	if over == nil {
+		t.Fatalf("no stand line with the picture over the stage: %v", traceLines(t, buf.Bytes(), "stand"))
+	}
+	if over["hides"] != true || over["cg_bg"] != true || over["cg_page"] == nil {
+		t.Fatalf("stand line %v: the picture hides the portraits and is a place's background", over)
+	}
+	wldPlay(t, g, "press ok\nwait 90\n", 200)
+	wldFrames(t, g, 60)
+	last := traceLines(t, buf.Bytes(), "stand")
+	if l := last[len(last)-1]; l["cg"] != nil || l["hides"] != false {
+		t.Fatalf("after the picture went: %v", l)
+	}
+}
