@@ -16,6 +16,8 @@ scenarios:
   - {code: GZN2105, args: '--help sim'}
   - {code: GZN2106, args: 'sim'}
   - {code: GZN2106, args: 'art mosaic'}
+  - {code: GZN2102, args: 'theme add cave'}
+  - {code: GZN2106, args: 'theme'}
   - {code: GZN2201, args: 'sim battle game lesson -n 0'}
   - {code: GZN2201, args: 'sim dive game grotto --grind NaN'}
   - {code: GZN2201, args: 'sim battle game lesson --seed x'}
@@ -399,6 +401,22 @@ scenarios:
         equals: ''
       stderr:
         contains: ['missing-game', 'game.yaml', '[GZN1110]']
+- name: GZN1111 for a theme whose pictures are not in the game
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 2\nid: g\nstart: {location: cave, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {cave: {name: Cave, dungeon: {theme: cave, map: \"#####\\n#S..#\\n#####\", tiles: {S: {start: true}}}}}\n"
+  - run:
+      command: gozen check --only structure g
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: ['assets/dungeon/themes/cave/wall.jpg', 'gozen theme add cave', '[GZN1111]']
 - name: check json carries the code of a definition error
   steps:
   - fixture:

@@ -7,7 +7,7 @@ package diag
 var (
 	UnknownCommand = register(2101, "UnknownCommand", Entry{
 		Summary: "there is no such command",
-		Detail:  "The word is not a command of gozen or of the group it follows. The commands are grouped (ADR 0024): check, sim, play, book, pack, art, version, and help. An old name such as curve or memos is answered with its new place, for example gozen sim dive.",
+		Detail:  "The word is not a command of gozen or of the group it follows. The commands are grouped (ADR 0024): check, sim, play, book, pack, art, theme, version, and help. An old name such as curve or memos is answered with its new place, for example gozen sim dive.",
 		Fix:     "Use the command the message names, or run gozen --help (or the group with --help) for the list.",
 	})
 	Operands = register(2102, "Operands", Entry{

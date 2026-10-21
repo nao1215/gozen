@@ -10,7 +10,11 @@ import (
 )
 
 type Dungeon struct {
-	Map     string           `yaml:"map"`
+	Map string `yaml:"map"`
+	// Theme names a folder of assets/dungeon/themes/ (see ThemeDir) that fills wall, door,
+	// floor_texture, ceiling_texture, floor and ceiling where they are not written. Written
+	// values win. Loading fills them; gozen check reports a theme that is not in the game.
+	Theme   string           `yaml:"theme"`
 	Tiles   map[string]*Tile `yaml:"tiles"`
 	Wall    Picture          `yaml:"wall"`    // the walls' texture
 	Door    Picture          `yaml:"door"`    // the doors' texture
@@ -56,6 +60,8 @@ type Dungeon struct {
 // as the dungeon says.
 type DungeonLook struct {
 	When Expr `yaml:"when"`
+	// Theme is the dungeon's Theme for this look: it fills what the look does not write.
+	Theme string `yaml:"theme"`
 	// Area is the name (the section's name) shown in place of the place's area (the small top-left
 	// line and the floor band) during this look.
 	Area       string  `yaml:"area"`
@@ -376,6 +382,7 @@ func (c *checker) dungeon(w string, l *Location) {
 	if len(l.People) > 0 || len(l.Actions) > 0 || len(l.Exits) > 0 || l.Encounters.Search != "" {
 		c.errorf(diag.Shape, w, "a dungeon has no people, actions, exits or search: put them on tiles")
 	}
+	c.theme(w+".theme", d.Theme)
 	c.picture(w+".wall", d.Wall)
 	c.picture(w+".door", d.Door)
 	c.pictures(w+".pictures", d.Pictures)
@@ -694,6 +701,7 @@ func (c *checker) looks(w string, d *Dungeon) {
 			c.music(ww+".music", lk.Music)
 		}
 		c.music(ww+".battle_music", lk.BattleMusic)
+		c.theme(ww+".theme", lk.Theme)
 		c.picture(ww+".wall", lk.Wall)
 		c.picture(ww+".door", lk.Door)
 		c.pictures(ww+".pictures", lk.Pictures)

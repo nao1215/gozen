@@ -191,6 +191,7 @@ github.com/nao1215/gozen/schema field Dungeon.Map
 github.com/nao1215/gozen/schema field Dungeon.NoMap
 github.com/nao1215/gozen/schema field Dungeon.Pictures
 github.com/nao1215/gozen/schema field Dungeon.Roamers
+github.com/nao1215/gozen/schema field Dungeon.Theme
 github.com/nao1215/gozen/schema field Dungeon.Tiles
 github.com/nao1215/gozen/schema field Dungeon.Walked
 github.com/nao1215/gozen/schema field Dungeon.Wall
