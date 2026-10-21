@@ -47,7 +47,7 @@ The module is a single one at the root. `cmd/gozen`, `internal/promptgen` and `i
 
 ## Graphics tests
 
-Tests that draw are separated with the `graphics` build tag. On Linux run `xvfb-run --auto-servernum --error-file=/dev/stderr make graphics`; on Windows and macOS run the direct commands of the table from a desktop. The 6 scenarios run in separate processes, read pixels inside the game loop, and check the image content and normal exit. Audio is muted.
+Tests that draw are separated with the `graphics` build tag. On Linux run `xvfb-run --auto-servernum --error-file=/dev/stderr make graphics`; on Windows and macOS run the direct commands of the table from a desktop. The scenarios run side by side in separate processes (the host is built once), read pixels inside the game loop, and check the image content and normal exit. Audio is muted.
 
 Per-OS setup, the sample and input scripts are in [Graphics development](graphics.md). Normal tests, cross-builds and merely preparing Xvfb do not count as a graphics success. In T3 the real-drawing acceptance remained undone because of environment limits. During the sample implementation (T6), the Linux screen tests and the sample captures were run. What the screen tests cover now is in the `make graphics` row of the table above. Real drawing and real audio on Windows and macOS are not confirmed.
 

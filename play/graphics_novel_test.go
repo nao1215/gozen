@@ -30,6 +30,7 @@ import (
 // and lets it leave (ADR 0028). The sixth opens the F8 panel and jumps from it (ADR 0029).
 // read.json carries the read lines between the runs.
 func TestGraphicsNovel(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	game := filepath.Join(root, "game")
 	if err := os.CopyFS(game, os.DirFS("testdata/novel")); err != nil {
@@ -60,12 +61,12 @@ func TestGraphicsNovel(t *testing.T) {
 		}
 		trace := filepath.Join(root, name+".jsonl")
 		args := []string{
-			"run", "./testdata/host", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "room", "--event", append(event, "story")[0],
+			"--dir", game, "--dev", "--mute", "--seed", "7", "--start", "room", "--event", append(event, "story")[0],
 			"--script", script, "--shots", root, "--save-dir", saves, "--trace", trace,
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
-		cmd := exec.CommandContext(ctx, "go", args...) //nolint:gosec // Fixed Go executable; arguments refer to the test fixture and isolated output.
+		cmd := exec.CommandContext(ctx, hostBin, args...) //nolint:gosec // The host built by TestMain; arguments refer to the test fixture and isolated output.
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &stdout, &stderr
 		if err := cmd.Run(); err != nil {

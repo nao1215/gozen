@@ -136,8 +136,10 @@ jobs:
       - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
         with:
           xvfb: true
-      - name: Install screenshot contract runner
-        run: go install github.com/nao1215/atago@v0.25.2
+      # The release binary (checksum checked) instead of go install: no build in each job.
+      - uses: nao1215/setup-atago@5c563dcd9d85e114f8abe8bbdcd058e51de09efb # v0.1.3
+        with:
+          version: v0.25.2
       - name: Render on Linux with Xvfb
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum --error-file=/dev/stderr make graphics
@@ -191,8 +193,10 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: stable
-      - name: Install pinned CLI contract runner
-        run: go install github.com/nao1215/atago@v0.25.2
+      # The release binary (checksum checked) instead of go install: no build in each job.
+      - uses: nao1215/setup-atago@5c563dcd9d85e114f8abe8bbdcd058e51de09efb # v0.1.3
+        with:
+          version: v0.25.2
       - name: Build and exercise native CLI binaries
         shell: pwsh
         run: |
@@ -243,13 +247,35 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - id: go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: stable
+          cache: false
+      # This job's own Go caches. setup-go keeps one cache per Go version and go.sum for
+      # every job, saved by whichever job ends first (often a short cross-build), so the
+      # builds of this job would not be in it. Saved from main once per Go and go.sum.
+      - name: Restore the Go caches of this job
+        id: go-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-
       - name: Check non-graphics contracts for races
         run: go test -race ./...
         env:
           CGO_ENABLED: "1"
+      - name: Save the Go caches of this job
+        if: ${{ github.ref == 'refs/heads/main' && steps.go-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ steps.go-cache.outputs.cache-primary-key }}
 
   examples:
     # Full matrix while public, or on manual dispatch. Private repositories have a
@@ -285,11 +311,33 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - id: go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: examples/go-zen/go.mod
+          cache: false
+      # This job's own Go caches. setup-go keeps one cache per Go version and go.sum for
+      # every job, saved by whichever job ends first (often a short cross-build), so the
+      # builds of this job would not be in it. Saved from main once per Go and go.sum.
+      - name: Restore the Go caches of this job
+        id: go-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-
       - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
       - name: Vet, check and test the Go Zen sample (its screens are in the graphics job)
         run: make go-zen
       - name: Vet, check and test the novel sample (its screens are in the graphics job)
         run: make novel
+      - name: Save the Go caches of this job
+        if: ${{ github.ref == 'refs/heads/main' && steps.go-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ steps.go-cache.outputs.cache-primary-key }}

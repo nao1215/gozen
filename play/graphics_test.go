@@ -5,18 +5,58 @@ package play
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"image"
 	"image/png"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
 
+// hostBin is testdata/host, built once by TestMain for every scenario.
+var hostBin string
+
+// TestMain builds testdata/host once: every scenario runs it as a process of its own,
+// so the scenarios run side by side (t.Parallel) instead of each waiting for go run.
+func TestMain(m *testing.M) {
+	code, err := buildHostAndRun(m)
+	if err != nil {
+		if _, werr := fmt.Fprintln(os.Stderr, err); werr != nil {
+			os.Exit(2)
+		}
+		if code == 0 {
+			code = 1
+		}
+	}
+	os.Exit(code)
+}
+
+func buildHostAndRun(m *testing.M) (code int, err error) {
+	dir, err := os.MkdirTemp("", "gozen-graphics-")
+	if err != nil {
+		return 1, err
+	}
+	defer func() { err = errors.Join(err, os.RemoveAll(dir)) }()
+	hostBin = filepath.Join(dir, "host")
+	if runtime.GOOS == "windows" {
+		hostBin += ".exe"
+	}
+	build := exec.CommandContext(context.Background(), "go", "build", "-o", hostBin, "./testdata/host") //nolint:gosec // Fixed Go executable building the test host.
+	build.Stdout, build.Stderr = os.Stdout, os.Stderr
+	if err := build.Run(); err != nil {
+		return 1, fmt.Errorf("build testdata/host: %w", err)
+	}
+	return m.Run(), nil
+}
+
 // Each scenario gets a fresh process because Ebitengine supports one loop per
 // process. PNGs are produced by ReadPixels inside Draw, never outside the loop.
 func TestGraphicsScreens(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		args   []string
@@ -31,6 +71,7 @@ func TestGraphicsScreens(t *testing.T) {
 		{name: "balance", args: []string{"--start", "b2", "--party", "maren,ox,tilly", "--level", "1"}, script: "wait 20\npress graphs\nwait 5200\nshot frame\nquit\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			script := filepath.Join(root, "script.txt")
 			body := tc.script
@@ -41,11 +82,11 @@ func TestGraphicsScreens(t *testing.T) {
 				t.Fatal(err)
 			}
 			// the Go Zen sample (1920x1080) at half size in the window
-			args := []string{"run", "./testdata/host", "--dir", "../examples/go-zen/game", "--dev", "--mute", "--seed", "7", "--window", "0.5", "--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves")}
+			args := []string{"--dir", "../examples/go-zen/game", "--dev", "--mute", "--seed", "7", "--window", "0.5", "--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves")}
 			args = append(args, tc.args...)
 			ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 			defer cancel()
-			cmd := exec.CommandContext(ctx, "go", args...) //nolint:gosec // Fixed Go executable; arguments refer to the test fixture and isolated output.
+			cmd := exec.CommandContext(ctx, hostBin, args...) //nolint:gosec // The host built by TestMain; arguments refer to the test fixture and isolated output.
 			var stdout, stderr bytes.Buffer
 			cmd.Stdout = &stdout
 			cmd.Stderr = &stderr

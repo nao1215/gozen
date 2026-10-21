@@ -33,7 +33,7 @@ To change the sample, change `samples` and `runs`; the names, references and che
 
 ## Remaking and the staleness check
 
-`make docs-images` builds the samples, runs the runs in order, encodes with ffmpeg and writes to `build/docs-images/out/`. Images that cannot be told apart from the current ones (within the range allowed by the comparison below) are not rewritten, so images that do not change when remade leave no diff. Look at the changed images before committing.
+`make docs-images` builds the samples, plays the runs, encodes with ffmpeg and writes to `build/docs-images/out/`. The runs play side by side, as many at once as there are CPUs (`GOZEN_DOCS_JOBS=N` sets another number): each is a process of its own with a fixed seed and script, so the frames do not depend on the order. `GOZEN_DOCS_IMAGES_ONLY=go-zen-battle.gif,novel*.gif` makes only the pictures it names (comma-separated names or patterns) and plays only the runs they take frames from, for trying one picture; `update` then writes only those. Images that cannot be told apart from the current ones (within the range allowed by the comparison below) are not rewritten, so images that do not change when remade leave no diff. Look at the changed images before committing.
 
 `make docs-images-check` (the images job of the Docs workflow in CI) builds the same way and compares with the committed images.
 

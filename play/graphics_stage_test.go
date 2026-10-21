@@ -24,6 +24,7 @@ import (
 // exit's area leaves for the next location. The click is in the game's logical units
 // (720 high): the screen here is 360 high.
 func TestGraphicsStage(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	game := filepath.Join(root, "game")
 	if err := os.CopyFS(game, os.DirFS("testdata/stage")); err != nil {
@@ -39,12 +40,12 @@ func TestGraphicsStage(t *testing.T) {
 	}
 	trace := filepath.Join(root, "run.jsonl")
 	args := []string{
-		"run", "./testdata/host", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "square",
+		"--dir", game, "--dev", "--mute", "--seed", "7", "--start", "square",
 		"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", trace,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "go", args...) //nolint:gosec // Fixed Go executable; arguments refer to the test fixture and isolated output.
+	cmd := exec.CommandContext(ctx, hostBin, args...) //nolint:gosec // The host built by TestMain; arguments refer to the test fixture and isolated output.
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
@@ -123,6 +124,7 @@ func countMagenta(img image.Image) int {
 // roads to the door (a travel in the trace), the closed point only says why, and the door
 // leads into the room.
 func TestGraphicsMap(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	game := filepath.Join(root, "game")
 	if err := os.CopyFS(game, os.DirFS("testdata/stage")); err != nil {
@@ -138,12 +140,12 @@ func TestGraphicsMap(t *testing.T) {
 	}
 	trace := filepath.Join(root, "run.jsonl")
 	args := []string{
-		"run", "./testdata/host", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "town",
+		"--dir", game, "--dev", "--mute", "--seed", "7", "--start", "town",
 		"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", trace,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "go", args...) //nolint:gosec // Fixed Go executable; arguments refer to the test fixture and isolated output.
+	cmd := exec.CommandContext(ctx, hostBin, args...) //nolint:gosec // The host built by TestMain; arguments refer to the test fixture and isolated output.
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
@@ -194,6 +196,7 @@ func shotPixelSum(t *testing.T, root, name string) uint64 {
 // light, the hidden point is not in the list, and the road's battle comes before the token
 // reaches the ruin.
 func TestGraphicsWild(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	game := filepath.Join(root, "game")
 	if err := os.CopyFS(game, os.DirFS("testdata/stage")); err != nil {
@@ -208,12 +211,12 @@ func TestGraphicsWild(t *testing.T) {
 		t.Fatal(err)
 	}
 	args := []string{
-		"run", "./testdata/host", "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "town",
+		"--dir", game, "--dev", "--mute", "--seed", "7", "--start", "town",
 		"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", filepath.Join(root, "run.jsonl"),
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "go", args...) //nolint:gosec // Fixed Go executable; arguments refer to the test fixture and isolated output.
+	cmd := exec.CommandContext(ctx, hostBin, args...) //nolint:gosec // The host built by TestMain; arguments refer to the test fixture and isolated output.
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
