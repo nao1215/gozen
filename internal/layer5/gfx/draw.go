@@ -45,8 +45,14 @@ func StrokeRoundRect(dst *ebiten.Image, x, y, w, h, r, width float32, clr color.
 
 func DrawImageFit(dst, img *ebiten.Image, x, y, w, h float64, alpha float32) {
 	iw, ih := float64(img.Bounds().Dx()), float64(img.Bounds().Dy())
-	s := math.Min(w/iw, h/ih)
-	DrawImageScaled(dst, img, x+(w-iw*s)/2, y+(h-ih*s)/2, s, alpha)
+	px, py, s := fitPlacement(iw, ih, x, y, w, h)
+	DrawImageScaled(dst, img, px, py, s, alpha)
+}
+
+// fitPlacement is where and how large an iw x ih image goes to fit, centered, in the box.
+func fitPlacement(iw, ih, x, y, w, h float64) (px, py, s float64) {
+	s = math.Min(w/iw, h/ih)
+	return x + (w-iw*s)/2, y + (h-ih*s)/2, s
 }
 
 func DrawImageScaled(dst, img *ebiten.Image, x, y, s float64, alpha float32) {
@@ -68,17 +74,24 @@ func DrawImageCoverTop(dst, img *ebiten.Image, x, y, w, h float64, alpha float32
 
 func drawImageCropped(dst, img *ebiten.Image, x, y, w, h float64, alpha float32, top bool) {
 	iw, ih := float64(img.Bounds().Dx()), float64(img.Bounds().Dy())
+	crop, s := coverCrop(iw, ih, w, h, top)
+	sub, ok := img.SubImage(crop).(*ebiten.Image)
+	if !ok {
+		return
+	}
+	DrawImageScaled(dst, sub, x, y, s, alpha)
+}
+
+// coverCrop is the part of an iw x ih image that fills a w x h box, and the scale to draw it
+// at: centered, or from the top edge when top is set.
+func coverCrop(iw, ih, w, h float64, top bool) (image.Rectangle, float64) {
 	s := math.Max(w/iw, h/ih)
 	sw, sh := w/s, h/s
 	sx, sy := (iw-sw)/2, (ih-sh)/2
 	if top {
 		sy = 0
 	}
-	sub, ok := img.SubImage(image.Rect(int(sx), int(sy), int(sx+sw), int(sy+sh))).(*ebiten.Image)
-	if !ok {
-		return
-	}
-	DrawImageScaled(dst, sub, x, y, s, alpha)
+	return image.Rect(int(sx), int(sy), int(sx+sw), int(sy+sh)), s
 }
 
 var maskCache = map[[3]int]*ebiten.Image{}
