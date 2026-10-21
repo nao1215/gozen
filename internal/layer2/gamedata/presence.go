@@ -198,7 +198,11 @@ func numberPath(where, name string) string {
 
 func numberEntry(m yaml.MapSlice, name string) (any, bool) {
 	for _, it := range m {
-		if fmt.Sprint(it.Key) == name {
+		key, ok := it.Key.(string) // the usual key, without formatting it
+		if !ok {
+			key = fmt.Sprint(it.Key)
+		}
+		if key == name {
 			return it.Value, true
 		}
 	}

@@ -69,6 +69,21 @@ type Color struct {
 	Valid bool
 }
 
+// UnmarshalYAML reads a color written as a string straight from its node. The YAML
+// library hands a TextUnmarshaler the node written back out as YAML and read again, which
+// was a tenth of loading a game with many colors; any other node still goes that way.
+func (c *Color) UnmarshalYAML(n ast.Node) error {
+	if x, ok := n.(*ast.StringNode); ok {
+		return c.UnmarshalText([]byte(x.Value))
+	}
+	return yaml.NodeToValue(n, (*textColor)(c), yaml.Strict())
+}
+
+// textColor is a Color read only through UnmarshalText (the library's own way).
+type textColor Color
+
+func (c *textColor) UnmarshalText(b []byte) error { return (*Color)(c).UnmarshalText(b) }
+
 // UnmarshalText parses the color.
 func (c *Color) UnmarshalText(b []byte) error {
 	s := strings.TrimPrefix(string(b), "#")

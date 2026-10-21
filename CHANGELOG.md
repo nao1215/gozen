@@ -33,6 +33,9 @@ Visual novels join RPGs: schema version 4 adds the novel window's roll back, ski
 - The README's and site's screens: the F7 and F8 pictures moved to Playtesting, and Go Zen's event picture gave way to the novel sample's ending picture with its line.
 - Screenshots (a script's `shot`, `--shots`, `--until`, `gozen play shots`) are written off the game loop by background workers, as PNG at the fastest compression: a filmed run no longer waits about a second for each 1920x1080 frame (the Go Zen battle capture of 183 frames took 249 s and now takes 17 s). The pixels are the same; the files are about 15% larger. All of them are written before the game exits.
 - `gozen check` loads the puppets of a game side by side.
+- The dungeon view reuses its vertex buffers instead of allocating them for every wall and floor each frame: a 10-second walk in Go Zen's dungeon allocated 1.45 GB and ran 80 garbage collections, now 0.18 GB and 24.
+- Loading a game decodes colors from their nodes and keeps the fields of each definition type, about a fifth faster with a fifth less memory (Go Zen 149 ms and 71 MB, now 118 ms and 55 MB).
+- A save read again (each trial of the F7 measurement and of `gozen sim battle --state`, a rollback) skips the checks it already passed and only decodes the state; `gozen sim battle --state` takes about half the time.
 
 ## v0.1.0 - 2026-10-21
 
