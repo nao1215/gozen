@@ -26,6 +26,7 @@ func sysOpen(t *testing.T, opts Options, extra map[string]string) *Game {
 	}
 	opts.FS = fsys
 	opts.NoSound = true
+	sysShotNames = nil
 	if opts.SaveDir == "" && opts.Store == nil {
 		opts.SaveDir = t.TempDir()
 	}
@@ -45,6 +46,21 @@ func sysOpen(t *testing.T, opts Options, extra map[string]string) *Game {
 		}
 	})
 	return g
+}
+
+// sysOpen4 is sysOpen for a game at schema_version 4 (map forms of wait, stand and so on).
+func sysOpen4(t *testing.T, opts Options, extra map[string]string) *Game {
+	t.Helper()
+	game := "schema_version: 4\n" + string(gameFiles(t)["game.yaml"].Data)
+	if extra == nil {
+		extra = map[string]string{}
+	}
+	if extra["game.yaml"] == "" {
+		extra["game.yaml"] = game
+	} else {
+		extra["game.yaml"] = "schema_version: 4\n" + extra["game.yaml"]
+	}
+	return sysOpen(t, opts, extra)
 }
 
 // sysFrames drives n frames (an update and a draw each) and reports whether the game quit.
@@ -77,8 +93,16 @@ func sysSafeDraw(g *Game) {
 		}
 	}
 	g.quick = nil
+	if sc := g.in.script; sc != nil && sc.shot != "" {
+		sysShotNames = append(sysShotNames, sc.shot)
+		sc.shot = ""
+	}
 	g.Draw(ebiten.NewImage(1280, 720))
 }
+
+// sysShotNames are the screenshots scripts asked for (never taken: reading pixels needs a
+// running game loop).
+var sysShotNames []string
 
 // TestTitleNewGameThenQuit: choosing the first item of the title starts a new playthrough
 // at the game's start place with the start party and gold.
