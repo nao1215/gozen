@@ -573,11 +573,9 @@ func (f *fusion) update(g *Game) {
 		return
 	}
 	if !chose {
-		return
-	}
-	if f.list.items[f.list.sel].disabled {
-		g.sfx("buzzer")
-		f.msg, f.msgT = lang.T("ざいりょうか おかねが たりない。"), 90
+		if g.in.ok() && f.list.sel < len(f.idx) && f.list.items[f.list.sel].disabled {
+			f.msg, f.msgT = lang.T("ざいりょうか おかねが たりない。"), 90
+		}
 		return
 	}
 	fu := g.db.Fusions[f.idx[f.list.sel]]
