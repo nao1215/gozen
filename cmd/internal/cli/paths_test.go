@@ -58,16 +58,19 @@ func TestCanonicalResolvesTheExistingPrefix(t *testing.T) {
 		t.Errorf("a path that does not exist keeps its tail: %q %v", got, err)
 	}
 	if runtime.GOOS != "windows" {
-		real := filepath.Join(root, "real")
-		if err := os.Mkdir(real, 0o750); err != nil {
+		target := filepath.Join(root, "target")
+		if err := os.Mkdir(target, 0o750); err != nil {
 			t.Fatal(err)
 		}
 		link := filepath.Join(root, "link")
-		if err := os.Symlink(real, link); err != nil {
+		if err := os.Symlink(target, link); err != nil {
 			t.Fatal(err)
 		}
-		a, _ := Canonical(filepath.Join(link, "new"))
-		b, _ := Canonical(filepath.Join(real, "new"))
+		a, errA := Canonical(filepath.Join(link, "new"))
+		b, errB := Canonical(filepath.Join(target, "new"))
+		if errA != nil || errB != nil {
+			t.Fatal(errA, errB)
+		}
 		if a != b {
 			t.Errorf("a symlink and its target differ: %q vs %q", a, b)
 		}
@@ -133,7 +136,8 @@ func TestWriteNewCreatesParentsAndRefusesBadPlaces(t *testing.T) {
 type failingWriter struct{ n int }
 
 func (w *failingWriter) Write(b []byte) (int, error) {
-	if w.n--; w.n < 0 {
+	w.n--
+	if w.n < 0 {
 		return 0, io.ErrClosedPipe
 	}
 	return len(b), nil
@@ -154,10 +158,10 @@ func TestOutputKeepsTheFirstFailureAndStopsWriting(t *testing.T) {
 	out.Println("x")
 	out.Print("y")
 	out.Printf("z")
-	if out.Err != first || w.n != -1 {
+	if !errors.Is(out.Err, first) || w.n != -1 {
 		t.Errorf("after a failure nothing more is written: err %v, calls left %d", out.Err, w.n)
 	}
-	if n, err := out.Write([]byte("w")); n != 0 || err != first {
+	if n, err := out.Write([]byte("w")); n != 0 || !errors.Is(err, first) {
 		t.Errorf("Write after a failure: %d %v", n, err)
 	}
 }

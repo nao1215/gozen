@@ -57,6 +57,23 @@ type designPersona struct {
 	} `json:"duels"`
 }
 
+func jsonString(t *testing.T, v any) string {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+// tail is the text from the first occurrence of marker on (all of it when marker is absent).
+func tail(s, marker string) string {
+	if i := strings.Index(s, marker); i >= 0 {
+		return s[i:]
+	}
+	return s
+}
+
 func designJSON(t *testing.T, args ...string) []designPersona {
 	t.Helper()
 	out, _ := invoke(t, 0, append([]string{"sim", "design"}, append(args, "--format", "json")...)...)
@@ -82,9 +99,7 @@ func TestDesignPlaysThePersonasDeterministically(t *testing.T) {
 		t.Fatalf("personas: %+v", first)
 	}
 	again := designJSON(t, dir)
-	a, _ := json.Marshal(first)
-	b, _ := json.Marshal(again)
-	if string(a) != string(b) {
+	if jsonString(t, first) != jsonString(t, again) {
 		t.Fatal("the same configuration played differently twice")
 	}
 	steady, eager := first[0], first[1]
@@ -104,14 +119,14 @@ func TestDesignPlaysThePersonasDeterministically(t *testing.T) {
 		if len(p.Bosses) != 1 || p.Bosses[0].Floor != 3 || p.Bosses[0].Tries < 1 {
 			t.Fatalf("%s: the guardian of floor 3 was not met: %+v", p.ID, p.Bosses)
 		}
-		clear := 0
+		clears := 0
 		for _, e := range p.Events {
 			if e.Kind == "clear" {
-				clear++
+				clears++
 			}
 		}
-		if clear != 1 {
-			t.Errorf("%s: %d clear events", p.ID, clear)
+		if clears != 1 {
+			t.Errorf("%s: %d clear events", p.ID, clears)
 		}
 	}
 	if !first[0].Bosses[0].Measured {
@@ -175,7 +190,7 @@ func TestDesignReportsOnDisk(t *testing.T) {
 			t.Errorf("%s: %v", p, err)
 		}
 	}
-	line := strings.SplitN(string(read(t, filepath.Join(first, "timeline", "eager.jsonl"))), "\n", 2)[0]
+	line, _, _ := strings.Cut(string(read(t, filepath.Join(first, "timeline", "eager.jsonl"))), "\n")
 	if !strings.Contains(line, `"kind":"persona"`) || !strings.Contains(line, `"id":"eager"`) {
 		t.Errorf("timeline header: %s", line)
 	}
@@ -191,7 +206,7 @@ func TestDesignReportsOnDisk(t *testing.T) {
 	second, _ := invoke(t, 0, "sim", "design", dir, "--root", root, "-o", filepath.Join(root, "20200102-000000"))
 	cmp := string(read(t, strings.TrimSpace(second)))
 	if !strings.Contains(cmp, "Previous run: 20200101-000000") || strings.Contains(cmp, "No previous run") {
-		t.Errorf("no comparison with the previous run:\n%s", cmp[strings.Index(cmp, "## Change"):])
+		t.Errorf("no comparison with the previous run:\n%s", tail(cmp, "## Change"))
 	}
 }
 

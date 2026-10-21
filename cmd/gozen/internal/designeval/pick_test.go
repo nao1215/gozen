@@ -39,10 +39,10 @@ func TestPickIDsSelectsByWordsIDsAndRotation(t *testing.T) {
 		{"the accepted mark narrows the candidates", func(b *bot) { b.accept = "Ask" }, nil, nil, 2},
 		{"an accepted mark nobody has changes nothing", func(b *bot) { b.accept = "zzz" }, nil, nil, 0},
 		{"rotation takes the least used", func(b *bot) { b.used["Leave"] = 3; b.used["Decline"] = 1 }, nil, []string{"Leave", "Decline"}, 1},
-		{"rotation takes the earliest option among the equally used", func(b *bot) {}, nil, []string{"Leave", "Decline"}, 1},
+		{"rotation takes the earliest option among the equally used", func(*bot) {}, nil, []string{"Leave", "Decline"}, 1},
 		{"rotation by id", func(b *bot) { b.used["@yes"] = 5 }, nil, []string{"@yes", "@no"}, 1},
-		{"context words narrow before rotation", func(b *bot) {}, []string{"Ask"}, []string{"Leave", "question"}, 2},
-		{"rotation that matches nothing falls back to the words", func(b *bot) {}, []string{"Leave"}, []string{"zzz"}, 3},
+		{"context words narrow before rotation", func(*bot) {}, []string{"Ask"}, []string{"Leave", "question"}, 2},
+		{"rotation that matches nothing falls back to the words", func(*bot) {}, []string{"Leave"}, []string{"zzz"}, 3},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			b := pickBot()
@@ -70,8 +70,10 @@ func TestChooseBreaksLoopsAndHandlesNoOptions(t *testing.T) {
 		t.Fatal("a choice without options must answer 0")
 	}
 	q := event.Choice{Prompt: "Door", Options: []string{"Open", "Decline", "Back"}}
-	if b.choose(nil, q) != 1 || b.choose(nil, q) != 1 {
-		t.Fatal("the first two asks follow the words")
+	for range 2 {
+		if got := b.choose(nil, q); got != 1 {
+			t.Fatalf("the first two asks follow the words, got %d", got)
+		}
 	}
 	if got := b.choose(nil, q); got != 2 {
 		t.Fatalf("the third ask of the same question must take the last option to leave the loop, got %d", got)

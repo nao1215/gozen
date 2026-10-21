@@ -96,7 +96,8 @@ func TestHelpForACodeNamesItsFamilyWhenTheCodeIsNotRegistered(t *testing.T) {
 type failAfter struct{ ok int }
 
 func (w *failAfter) Write(b []byte) (int, error) {
-	if w.ok--; w.ok < 0 {
+	w.ok--
+	if w.ok < 0 {
 		return 0, errWrite
 	}
 	return len(b), nil

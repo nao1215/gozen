@@ -37,13 +37,17 @@ func TestPlayNotesRendersEveryKindOfNote(t *testing.T) {
 		}
 	})
 	root := filepath.Join(t.TempDir(), "notes")
-	writeMemo(t, root, memo.Memo{Source: memo.Human, Kind: "good", Label: "Good", Text: "Nice <view>", Time: "2026-01-02T03:04:05Z", Seconds: 125, Language: "en",
-		Location: "camp", Place: "Camp", Scenes: []string{"field", "dialog"}, Event: "intro", Who: "Mira", Line: "Hello & welcome", Version: "v1", Image: "shot.png"}, true)
-	writeMemo(t, root, memo.Memo{Source: memo.Bot, Bot: "Walker", Kind: "dull", Label: "Dull", Time: "2026-01-02T04:00:00Z",
+	writeMemo(t, root, memo.Memo{
+		Source: memo.Human, Kind: "good", Label: "Good", Text: "Nice <view>", Time: "2026-01-02T03:04:05Z", Seconds: 125, Language: "en",
+		Location: "camp", Place: "Camp", Scenes: []string{"field", "dialog"}, Event: "intro", Who: "Mira", Line: "Hello & welcome", Version: "v1", Image: "shot.png",
+	}, true)
+	writeMemo(t, root, memo.Memo{
+		Source: memo.Bot, Bot: "Walker", Kind: "dull", Label: "Dull", Time: "2026-01-02T04:00:00Z",
 		Location: "cave", Place: "Cave", Floor: 2, Pos: []int{1, 1}, Facing: "north",
 		Map: []string{"#####", "#...#", "#.D.#", "#####"}, Seen: []string{"00000", "01110", "01100", "00000"},
 		Vars: map[string]any{"depth": 2.0, "key": "x"}, Data: map[string]any{"persona": "walker", "run": "r1"},
-		Resume: &memo.Resume{From: "here", Event: "intro"}}, false)
+		Resume: &memo.Resume{From: "here", Event: "intro"},
+	}, false)
 	writeMemo(t, root, memo.Memo{Source: memo.LLM, Kind: "cold", Label: "Cold", Text: "", Time: "2026-01-02T04:30:00Z", Location: "cave", Place: "Cave", Floor: 2, Pos: []int{1, 1}}, false)
 	writeMemo(t, root, memo.Memo{Source: memo.Human, Kind: "good", Label: "Good", Text: "g", Time: "2026-01-02T05:00:00Z", Location: "cave", Place: "Cave", Floor: 2, Pos: []int{2, 2}}, false)
 	writeMemo(t, root, memo.Memo{Source: memo.Autoplay, Kind: "hot", Label: "Hot", Text: "h", Time: "2026-01-03T00:00:00Z", Location: "cave", Place: "Cave", Floor: 3, Pos: []int{0, 0}, Map: []string{"..."}}, false)

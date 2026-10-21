@@ -19,14 +19,14 @@ func edit(t *testing.T, path, old, repl string) {
 	write(t, path, strings.Replace(s, old, repl, 1))
 }
 
-func designReportOf(t *testing.T, want int, args ...string) (report, stderr string) {
+func designReportOf(t *testing.T, args ...string) string {
 	t.Helper()
 	out := filepath.Join(t.TempDir(), "run")
-	stdout, stderr := invoke(t, want, append([]string{"sim", "design", "-o", out}, args...)...)
-	if want == 0 && strings.TrimSpace(stdout) != filepath.Join(out, "report.md") {
+	stdout, _ := invoke(t, 0, append([]string{"sim", "design", "-o", out}, args...)...)
+	if strings.TrimSpace(stdout) != filepath.Join(out, "report.md") {
 		t.Fatalf("stdout %q", stdout)
 	}
-	return string(read(t, filepath.Join(out, "report.md"))), stderr
+	return string(read(t, filepath.Join(out, "report.md")))
 }
 
 // A guardian nobody can beat: nobody reaches the end, the targets are marked, and the table
@@ -34,7 +34,7 @@ func designReportOf(t *testing.T, want int, args ...string) (report, stderr stri
 func TestDesignReportsPersonasThatDoNotReachTheEnd(t *testing.T) {
 	dir := designGame(t)
 	edit(t, filepath.Join(dir, "data", "world.yaml"), "stats: {mhp: 400, mmp: 0, atk: 30,", "stats: {mhp: 90000, mmp: 0, atk: 400,")
-	report, _ := designReportOf(t, 0, dir)
+	report := designReportOf(t, dir)
 	for _, want := range []string{
 		"did not reach",
 		"- Steady: did not reach the end (down to B3F, 8 days) ×",
@@ -52,7 +52,7 @@ func TestDesignMarksTargetsThatAreMissed(t *testing.T) {
 	dir := designGame(t)
 	// A tolerance of a hair: two personas that clear in different times are off target.
 	edit(t, filepath.Join(dir, "designeval.yaml"), "within: 0.5", "within: 0.0001")
-	report, _ := designReportOf(t, 0, dir)
+	report := designReportOf(t, dir)
 	if !strings.Contains(report, "Eager vs Steady to the end") || !strings.Contains(report, "×") {
 		t.Errorf("report:\n%s", report)
 	}
@@ -67,7 +67,7 @@ func TestDesignShowsHoursAndWhoGetsTheReward(t *testing.T) {
 	edit(t, cfg, "battle: 5", "battle: 500")
 	edit(t, cfg, "who: Anyone}", "who: Anyone}\n  - {kind: friend, label: Friend, events: \"^(gift)$\", names: {gift: The giver}, flow: gift}")
 	edit(t, cfg, "release: gift", "release: friend")
-	report, _ := designReportOf(t, 0, dir, "--only", "steady")
+	report := designReportOf(t, dir, "--only", "steady")
 	if !regexp.MustCompile(`\d+h\d\dm`).MatchString(report) {
 		t.Errorf("a run of more than an hour is shown in hours:\n%s", report)
 	}
@@ -117,18 +117,18 @@ func TestDesignComparesWithAPreviousRunThatLacksAPersona(t *testing.T) {
 	out, _ := invoke(t, 0, "sim", "design", dir, "--root", root, "-o", filepath.Join(root, "20200102-000000"))
 	report := string(read(t, strings.TrimSpace(out)))
 	if !strings.Contains(report, "Previous run: 20200101-000000") {
-		t.Errorf("the newest usable run before this one is the one compared:\n%s", report[strings.Index(report, "## Change"):])
+		t.Errorf("the newest usable run before this one is the one compared:\n%s", tail(report, "## Change"))
 	}
 	if !strings.Contains(report, "| Eager | (not in the previous run) | | | |") {
-		t.Errorf("a persona the previous run lacks is said so:\n%s", report[strings.Index(report, "## Change"):])
+		t.Errorf("a persona the previous run lacks is said so:\n%s", tail(report, "## Change"))
 	}
 	if !strings.Contains(report, "| Steady | To the end (min) |") {
-		t.Errorf("rows of the persona present in both:\n%s", report[strings.Index(report, "## Change"):])
+		t.Errorf("rows of the persona present in both:\n%s", tail(report, "## Change"))
 	}
 	// A run is only compared with runs made before it.
 	later, _ := invoke(t, 0, "sim", "design", dir, "--root", root, "-o", filepath.Join(root, "20190101-000000"))
 	if r := string(read(t, strings.TrimSpace(later))); !strings.Contains(r, "No previous run") {
-		t.Errorf("an older name has nothing before it:\n%s", r[strings.Index(r, "## Change"):])
+		t.Errorf("an older name has nothing before it:\n%s", tail(r, "## Change"))
 	}
 }
 

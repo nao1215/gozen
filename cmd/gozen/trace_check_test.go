@@ -132,7 +132,7 @@ func TestTraceCheckSkipVoiceAndRollbackFaults(t *testing.T) {
 		{"skip-voice", diag.SkipFault.String(), "v/loud.ogg"},
 	} {
 		var hit string
-		for _, l := range strings.Split(out, "\n") {
+		for l := range strings.SplitSeq(out, "\n") {
 			if f := strings.Fields(l); len(f) > 1 && f[1] == want.kind {
 				hit = l
 			}

@@ -17,11 +17,19 @@ func TestCommandsRefuseOddInputWithoutPanicking(t *testing.T) {
 	weird := []string{"", " ", "-", "--", "\x00", "../..", "日本語/😀", "a\nb", strings.Repeat("x", 4096), file, empty, filepath.Join(file, "child")}
 	for _, bad := range weird {
 		for _, cmd := range [][]string{
-			{"check", "--"}, {"check", "--only", "structure", "--"}, {"check", "--format", "json", "--"},
+			{"check", "--"},
+			{"check", "--only", "structure", "--"},
+			{"check", "--format", "json", "--"},
 			{"book", "--"},
-			{"sim", "battle", "--", "TROOP"}, {"sim", "dive", "--", "cave"}, {"sim", "floors", "--", "cave"}, {"sim", "design", "--list", "--"},
-			{"play", "trace", "--"}, {"play", "notes", "--"},
-			{"pack", "trial", "-n", "--"}, {"art", "puppet", "--"}, {"art", "faces", "--"},
+			{"sim", "battle", "--", "TROOP"},
+			{"sim", "dive", "--", "cave"},
+			{"sim", "floors", "--", "cave"},
+			{"sim", "design", "--list", "--"},
+			{"play", "trace", "--"},
+			{"play", "notes", "--"},
+			{"pack", "trial", "-n", "--"},
+			{"art", "puppet", "--"},
+			{"art", "faces", "--"},
 		} {
 			// The operand is placed after "--" so a value starting with a dash is an operand.
 			args := append(append([]string{}, cmd...), bad)

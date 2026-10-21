@@ -25,7 +25,7 @@ func game(t *testing.T, extra map[string]string) fstest.MapFS {
 	// The scout wears a moving portrait.
 	fsys["data/main.yaml"] = &fstest.MapFile{Data: []byte(strings.Replace(testgame.Data, "scout: {name: Scout, class: ranger, equip: {weapon: stick}}", "scout: {name: Scout, class: ranger, equip: {weapon: stick}, puppet: puppet.yaml, face: default}", 1))}
 	for _, name := range []string{"puppet.yaml", "base.png", "closed.png", "mouth.png"} {
-		b, err := os.ReadFile("../../../e2e/atago/fixtures/puppet/" + name)
+		b, err := os.ReadFile("../../../e2e/atago/fixtures/puppet/" + name) //nolint:gosec // A fixed fixture of the repository.
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -125,7 +125,8 @@ func TestLoadWarnsOfLanguageProblems(t *testing.T) {
 type limitedWriter struct{ after int }
 
 func (w *limitedWriter) Write(b []byte) (int, error) {
-	if w.after--; w.after < 0 {
+	w.after--
+	if w.after < 0 {
 		return 0, errors.New("disk full")
 	}
 	return len(b), nil

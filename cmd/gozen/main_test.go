@@ -486,7 +486,7 @@ func TestMain(m *testing.M) {
 	}
 	// The arguments the capture was started with, one run per line, for tests that check them.
 	if p := os.Getenv("GOZEN_SHOT_ARGS"); p != "" {
-		f, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+		f, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) //nolint:gosec // A path the test chose.
 		if err != nil {
 			panic(err)
 		}
@@ -515,7 +515,7 @@ func TestMain(m *testing.M) {
 	if t := os.Getenv("GOZEN_SHOT_TRACE"); t != "" {
 		trace = t + "\n"
 	}
-	if err := os.WriteFile(arg("--trace"), []byte(trace), 0o600); err != nil {
+	if err := os.WriteFile(arg("--trace"), []byte(trace), 0o600); err != nil { //nolint:gosec // The path the capture was told to use.
 		panic(err)
 	}
 	if _, err := fmt.Fprintln(os.Stdout, "capture helper"); err != nil {

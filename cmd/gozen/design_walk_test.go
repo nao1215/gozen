@@ -10,7 +10,7 @@ import (
 func floorOne(t *testing.T, dir, floor string) {
 	t.Helper()
 	var b strings.Builder
-	for _, row := range strings.Split(strings.TrimSpace(floor), "\n") {
+	for row := range strings.SplitSeq(strings.TrimSpace(floor), "\n") {
 		b.WriteString("              " + row + "\n")
 	}
 	edit(t, filepath.Join(dir, "data", "world.yaml"), "        floors:\n          3:", "        floors:\n          1:\n            map: |\n"+b.String()+"          3:")
@@ -84,7 +84,7 @@ func designReportBoss(t *testing.T, dir, id string) []int {
 	invoke(t, 0, "sim", "design", dir, "--only", id, "-o", out)
 	report := string(read(t, filepath.Join(out, "report.md")))
 	var got []int
-	for _, l := range strings.Split(report, "\n") {
+	for l := range strings.SplitSeq(report, "\n") {
 		if !strings.HasPrefix(l, "| B3F |") {
 			continue
 		}

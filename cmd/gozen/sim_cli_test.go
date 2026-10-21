@@ -63,13 +63,11 @@ func TestSimDiveReportsEachFloorByTheOptionsGiven(t *testing.T) {
 		t.Errorf("the boss of floor 3 has a win rate: %+v", r.Floors[2])
 	}
 	again := diveJSON(t, dir, "cave", "--floors", "4", "--battles", "3", "--tries", "5", "--boss", "3:warden")
-	a, _ := json.Marshal(r)
-	b, _ := json.Marshal(again)
-	if string(a) != string(b) {
+	if jsonString(t, r) != jsonString(t, again) {
 		t.Error("the same seed gave a different dive")
 	}
 	other := diveJSON(t, dir, "cave", "--floors", "4", "--battles", "3", "--tries", "5", "--boss", "3:warden", "--seed", "99")
-	if o, _ := json.Marshal(other); string(o) == string(a) {
+	if jsonString(t, other) == jsonString(t, r) {
 		t.Error("another seed gave the same dive")
 	}
 	if len(r.Order) == 0 {

@@ -383,7 +383,10 @@ func TestLoadReadsConfigFromTheFS(t *testing.T) {
 }
 
 func TestBuildFailsWithoutAGameOrWithBrokenYAML(t *testing.T) {
-	cfg, _ := Parse([]byte("{}"))
+	cfg, err := Parse([]byte("{}"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := Build(fstest.MapFS{}, cfg); err == nil {
 		t.Error("a directory without game.yaml must fail")
 	}

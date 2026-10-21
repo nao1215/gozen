@@ -2,6 +2,7 @@ package diag
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -20,8 +21,7 @@ func TestRegisterRefusesMissingTextAndDuplicates(t *testing.T) {
 		func() {
 			defer func() {
 				r := recover()
-				msg, _ := r.(string)
-				if r == nil || !strings.Contains(msg, tc.want) {
+				if r == nil || !strings.Contains(fmt.Sprint(r), tc.want) {
 					t.Errorf("%s: panic %v, want %q", name, r, tc.want)
 				}
 			}()
