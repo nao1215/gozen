@@ -1,6 +1,7 @@
 package hygiene_test
 
 import (
+	"bytes"
 	"io/fs"
 	"os"
 	"regexp"
@@ -13,6 +14,42 @@ func locationPatterns() []*regexp.Regexp {
 		regexp.MustCompile(`/(?:home|Users)/[A-Za-z0-9][A-Za-z0-9._-]*/`),
 		regexp.MustCompile(`[A-Za-z]:[\\/]Users[\\/][A-Za-z0-9][A-Za-z0-9._-]*[\\/]`),
 		regexp.MustCompile(`\b[A-Za-z0-9][A-Za-z0-9-]*\.(?:local|lan|internal|corp)\b`),
+	}
+}
+
+// locationHints are the literal parts every match of locationPatterns contains (the home
+// directory, the Users directory, the private domain). A file without any of them cannot
+// match, so the walk below skips the regular expressions for most of the repository (the
+// pictures and sounds among it) without changing what it finds.
+var locationHints = [][]byte{[]byte("/home/"), []byte("Users"), []byte(".local"), []byte(".lan"), []byte(".internal"), []byte(".corp")}
+
+func mayHaveLocation(contents []byte) bool {
+	for _, h := range locationHints {
+		if bytes.Contains(contents, h) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestLocationHints(t *testing.T) {
+	t.Parallel()
+	for _, sample := range []string{
+		"/" + "home" + "/demo/project",
+		"/" + "Users" + "/demo/project",
+		"C:" + `\` + "Users" + `\demo\project`,
+		"build-host" + "." + "internal",
+		"printer" + "." + "local",
+		"nas" + "." + "lan",
+		"git" + "." + "corp",
+	} {
+		matched := false
+		for _, p := range locationPatterns() {
+			matched = matched || p.MatchString(sample)
+		}
+		if !matched || !mayHaveLocation([]byte(sample)) {
+			t.Errorf("%q: pattern match %v, hint %v; want both", sample, matched, mayHaveLocation([]byte(sample)))
+		}
 	}
 }
 
@@ -53,6 +90,9 @@ func TestRepositoryLocations(t *testing.T) {
 		contents, err := fs.ReadFile(fsy, name)
 		if err != nil {
 			return err
+		}
+		if !mayHaveLocation(contents) {
+			return nil
 		}
 		for _, pattern := range patterns {
 			if loc := pattern.FindIndex(contents); loc != nil {

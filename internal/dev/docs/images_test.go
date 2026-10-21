@@ -12,7 +12,7 @@ import (
 	"image/draw"
 	"image/gif"
 	_ "image/jpeg" // decode the committed JPEG pictures
-	_ "image/png"  // decode the frames the samples write
+	"image/png"
 	"os"
 	"os/exec"
 	"path"
@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -99,26 +100,37 @@ func TestDocImages(t *testing.T) {
 }
 
 // makeImages builds the samples, plays every run and encodes every picture to out.
-// It returns the names of the pictures it wrote.
+// It returns the names of the pictures it wrote. The samples build, the runs play and
+// the pictures encode side by side, docsJobs at a time: every run is a process of its
+// own with its own seed and script, so the frames do not depend on the order.
 func makeImages(t *testing.T, m manifest, rootAbs, work, out string) []string {
 	t.Helper()
+	jobs := docsJobs()
+	images, runNames := m.selected(t)
 	bins := map[string]string{}
+	var builds []func() error
 	for _, name := range sortedKeys(m.Samples) {
 		bin := filepath.Join(work, "bin", name)
 		if runtime.GOOS == "windows" {
 			bin += ".exe"
 		}
-		pkg := m.Samples[name].Package
-		if _, err := os.Stat(filepath.Join(rootAbs, filepath.FromSlash(pkg), "go.mod")); err == nil {
-			// a sample that is a module of its own (examples/go-zen) is built in its directory
-			command(t, filepath.Join(rootAbs, filepath.FromSlash(pkg)), 5*time.Minute, "go", "build", "-trimpath", "-buildvcs=false", "-o", bin, ".")
-		} else {
-			command(t, rootAbs, 5*time.Minute, "go", "build", "-trimpath", "-buildvcs=false", "-o", bin, pkg)
-		}
 		bins[name] = bin
+		pkg := m.Samples[name].Package
+		builds = append(builds, func() error {
+			if _, err := os.Stat(filepath.Join(rootAbs, filepath.FromSlash(pkg), "go.mod")); err == nil {
+				// a sample that is a module of its own (examples/go-zen) is built in its directory
+				return runCommand(t.Context(), filepath.Join(rootAbs, filepath.FromSlash(pkg)), 5*time.Minute, "go", "build", "-trimpath", "-buildvcs=false", "-o", bin, ".")
+			}
+			return runCommand(t.Context(), rootAbs, 5*time.Minute, "go", "build", "-trimpath", "-buildvcs=false", "-o", bin, pkg)
+		})
+	}
+	if err := parallel(jobs, builds); err != nil {
+		t.Fatal(err)
 	}
 	runs := map[string]*played{}
-	for _, name := range sortedKeys(m.Runs) {
+	var mu sync.Mutex
+	var plays []func() error
+	for _, name := range runNames {
 		r := m.Runs[name]
 		dir := filepath.Join(work, "runs", name)
 		if err := os.MkdirAll(dir, 0o750); err != nil {
@@ -131,82 +143,170 @@ func makeImages(t *testing.T, m manifest, rootAbs, work, out string) []string {
 			a = strings.ReplaceAll(a, "{game}", game)
 			args[i] = strings.ReplaceAll(a, "{out}", dir)
 		}
-		t.Logf("run %s: %s %s", name, m.Samples[r.Sample].Package, strings.Join(r.Args, " "))
-		// A filmed run writes a 1920x1080 PNG every few ticks; on a busy machine that is slow.
-		if r.Edit != nil {
-			if err := os.CopyFS(game, os.DirFS(filepath.Join(rootAbs, filepath.FromSlash(r.Edit.Copy)))); err != nil {
-				t.Fatalf("run %s: %v", name, err)
+		plays = append(plays, func() error {
+			began := time.Now()
+			// A filmed run writes a 1920x1080 PNG every few ticks; on a busy machine that is slow.
+			if r.Edit != nil {
+				if err := os.CopyFS(game, os.DirFS(filepath.Join(rootAbs, filepath.FromSlash(r.Edit.Copy)))); err != nil {
+					return fmt.Errorf("run %s: %w", name, err)
+				}
+				if err := commandEditing(t.Context(), rootAbs, 15*time.Minute, dir, game, *r.Edit, bins[r.Sample], args...); err != nil {
+					return fmt.Errorf("run %s: %w", name, err)
+				}
+			} else if err := runCommand(t.Context(), rootAbs, 15*time.Minute, bins[r.Sample], args...); err != nil {
+				return fmt.Errorf("run %s: %w", name, err)
 			}
-			commandEditing(t, rootAbs, 15*time.Minute, dir, game, *r.Edit, bins[r.Sample], args...)
-		} else {
-			command(t, rootAbs, 15*time.Minute, bins[r.Sample], args...)
-		}
-		if len(r.Check) > 0 {
-			command(t, rootAbs, time.Minute, r.Check[0], append(slices.Clone(r.Check[1:]), dir)...)
-		}
-		p, err := readPlayed(dir)
-		if err != nil {
-			t.Fatalf("run %s: %v", name, err)
-		}
-		runs[name] = p
+			if len(r.Check) > 0 {
+				if err := runCommand(t.Context(), rootAbs, time.Minute, r.Check[0], append(slices.Clone(r.Check[1:]), dir)...); err != nil {
+					return fmt.Errorf("run %s: %w", name, err)
+				}
+			}
+			p, err := readPlayed(dir)
+			if err != nil {
+				return fmt.Errorf("run %s: %w", name, err)
+			}
+			t.Logf("run %s: %s %s (%s)", name, m.Samples[r.Sample].Package, strings.Join(r.Args, " "), time.Since(began).Round(time.Second))
+			mu.Lock()
+			runs[name] = p
+			mu.Unlock()
+			return nil
+		})
 	}
-	var made []string
-	for _, name := range sortedKeys(m.Images) {
+	if err := parallel(jobs, plays); err != nil {
+		t.Fatal(err)
+	}
+	var encodes []func() error
+	for _, name := range images {
 		im := m.Images[name]
 		p := runs[im.Run]
 		dst := filepath.Join(out, name)
-		var err error
-		switch {
-		case im.GIF != nil:
-			var frames []string
-			frames, err = montage(runs, im)
-			if err == nil {
-				err = encodeGIF(t, work, frames, *im.GIF, dst)
+		encodes = append(encodes, func() error {
+			var err error
+			switch {
+			case im.GIF != nil:
+				var frames []string
+				frames, err = montage(runs, im)
+				if err == nil {
+					err = encodeGIF(t, work, frames, *im.GIF, dst)
+				}
+			default:
+				sel := pick{Shots: im.Shot}
+				if im.Pick != nil {
+					sel = *im.Pick
+				}
+				var frame string
+				frame, err = p.one(sel)
+				if err == nil {
+					err = encodeJPEG(t, frame, *im.JPEG, dst)
+				}
 			}
-		default:
-			sel := pick{Shots: im.Shot}
-			if im.Pick != nil {
-				sel = *im.Pick
+			if err != nil {
+				return fmt.Errorf("docs/images/%s: %w", name, err)
 			}
-			var frame string
-			frame, err = p.one(sel)
-			if err == nil {
-				err = encodeJPEG(t, frame, *im.JPEG, dst)
-			}
-		}
-		if err != nil {
-			t.Fatalf("docs/images/%s: %v", name, err)
-		}
-		made = append(made, name)
+			return nil
+		})
 	}
-	return made
+	if err := parallel(jobs, encodes); err != nil {
+		t.Fatal(err)
+	}
+	return images
+}
+
+// docsJobs is how many samples build, runs play or pictures encode at once:
+// GOZEN_DOCS_JOBS, or the number of CPUs.
+func docsJobs() int {
+	if n, err := strconv.Atoi(os.Getenv("GOZEN_DOCS_JOBS")); err == nil && n > 0 {
+		return n
+	}
+	return max(1, runtime.NumCPU())
+}
+
+// selected returns the pictures to make, sorted, and the runs they take frames from.
+// GOZEN_DOCS_IMAGES_ONLY narrows the pictures to the names (or path.Match patterns)
+// it lists, separated by commas; empty, it is every picture.
+func (m manifest) selected(t *testing.T) (images, runs []string) {
+	t.Helper()
+	var only []string
+	for f := range strings.SplitSeq(os.Getenv("GOZEN_DOCS_IMAGES_ONLY"), ",") {
+		if f = strings.TrimSpace(f); f != "" {
+			only = append(only, f)
+		}
+	}
+	need := map[string]bool{}
+	for _, name := range sortedKeys(m.Images) {
+		if len(only) > 0 && !slices.ContainsFunc(only, func(p string) bool { ok, err := path.Match(p, name); return err == nil && ok }) {
+			continue
+		}
+		images = append(images, name)
+		im := m.Images[name]
+		need[im.Run] = true
+		for _, f := range im.Frames {
+			if f.Run != "" {
+				need[f.Run] = true
+			}
+		}
+	}
+	if len(images) == 0 {
+		t.Fatalf("GOZEN_DOCS_IMAGES_ONLY=%q matches no picture of %s", os.Getenv("GOZEN_DOCS_IMAGES_ONLY"), manifestPath)
+	}
+	return images, sortedKeys(need)
+}
+
+// parallel runs the functions, n at a time, and returns their errors.
+func parallel(n int, fns []func() error) error {
+	var (
+		wg   sync.WaitGroup
+		mu   sync.Mutex
+		errs []error
+		sem  = make(chan struct{}, max(1, n))
+	)
+	for _, fn := range fns {
+		sem <- struct{}{}
+		wg.Go(func() {
+			defer func() { <-sem }()
+			if err := fn(); err != nil {
+				mu.Lock()
+				errs = append(errs, err)
+				mu.Unlock()
+			}
+		})
+	}
+	wg.Wait()
+	return errors.Join(errs...)
 }
 
 func command(t *testing.T, dir string, limit time.Duration, name string, args ...string) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), limit)
+	if err := runCommand(t.Context(), dir, limit, name, args...); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// runCommand runs a command in dir and returns its error with the tails of its output.
+func runCommand(ctx context.Context, dir string, limit time.Duration, name string, args ...string) error {
+	ctx, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // The commands of the manifest and of the test itself.
 	cmd.Dir = dir
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("%s %s: %v\nstdout:\n%s\nstderr:\n%s", name, strings.Join(args, " "), err, tail(stdout.String()), tail(stderr.String()))
+		return fmt.Errorf("%s %s: %w\nstdout:\n%s\nstderr:\n%s", name, strings.Join(args, " "), err, tail(stdout.String()), tail(stderr.String()))
 	}
+	return nil
 }
 
-// commandEditing runs a command like command, and once it has written the shot e.After
+// commandEditing runs a command like runCommand, and once it has written the shot e.After
 // under dir, changes e.File in the game's copy as e says (the hot reload's pictures).
-func commandEditing(t *testing.T, dir string, limit time.Duration, out, game string, e edit, name string, args ...string) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), limit)
+func commandEditing(ctx context.Context, dir string, limit time.Duration, out, game string, e edit, name string, args ...string) error {
+	ctx, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // The commands of the manifest.
 	cmd.Dir = dir
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
+		return err
 	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
@@ -219,9 +319,9 @@ func commandEditing(t *testing.T, dir string, limit time.Duration, out, game str
 				err = fmt.Errorf("it ended before the shot %s", e.After)
 			}
 			if err != nil {
-				t.Fatalf("%s %s: %v\nstdout:\n%s\nstderr:\n%s", name, strings.Join(args, " "), err, tail(stdout.String()), tail(stderr.String()))
+				return fmt.Errorf("%s %s: %w\nstdout:\n%s\nstderr:\n%s", name, strings.Join(args, " "), err, tail(stdout.String()), tail(stderr.String()))
 			}
-			return
+			return nil
 		case <-time.After(20 * time.Millisecond):
 		}
 		if edited {
@@ -236,7 +336,9 @@ func commandEditing(t *testing.T, dir string, limit time.Duration, out, game str
 			err = os.WriteFile(file, []byte(strings.Replace(string(b), e.Old, e.New, 1)), 0o600) //nolint:gosec // The copy of a sample's file this test made, named by the manifest.
 		}
 		if err != nil {
-			t.Fatal(err)
+			cancel()
+			<-done
+			return err
 		}
 		edited = true
 	}
@@ -492,6 +594,49 @@ func ffmpeg(t *testing.T, args ...string) error {
 	return nil
 }
 
+// frameSlots bounds the frames converted at once over every picture: a frame takes
+// 8 MB or more while it is converted.
+var frameSlots = make(chan struct{}, docsJobs())
+
+// opaqueFrame writes the frame src as an RGB PNG at dst: the colors kept, the alpha
+// dropped, as ffmpeg's -pix_fmt rgb24 does. An opaque frame (what the samples write) is
+// copied and an 8-bit RGBA one converted here; any other kind goes through ffmpeg.
+func opaqueFrame(t *testing.T, src, dst string) error {
+	frameSlots <- struct{}{}
+	defer func() { <-frameSlots }()
+	b, err := os.ReadFile(src) //nolint:gosec // A frame the sample wrote.
+	if err != nil {
+		return err
+	}
+	img, err := png.Decode(bytes.NewReader(b))
+	if err != nil {
+		return fmt.Errorf("%s: %w", src, err)
+	}
+	var pix []byte
+	switch m := img.(type) {
+	case *goimage.NRGBA:
+		pix = m.Pix
+	case *goimage.RGBA:
+		if !m.Opaque() { // premultiplied: the colors under a partial alpha are not the stored ones
+			return ffmpeg(t, "-i", src, "-pix_fmt", "rgb24", dst)
+		}
+		// Already RGB (what the samples write): the file as it is.
+		return os.WriteFile(dst, b, 0o600) //nolint:gosec // A file in the test's work directory.
+	default:
+		return ffmpeg(t, "-i", src, "-pix_fmt", "rgb24", dst)
+	}
+	for i := 3; i < len(pix); i += 4 {
+		pix[i] = 0xff
+	}
+	f, err := os.Create(dst) //nolint:gosec // A file in the test's work directory.
+	if err != nil {
+		return err
+	}
+	// Opaque, it is written as RGB; BestSpeed, as it is read once by ffmpeg.
+	enc := png.Encoder{CompressionLevel: png.BestSpeed}
+	return errors.Join(enc.Encode(f, img), f.Close())
+}
+
 func encodeJPEG(t *testing.T, frame string, e jpegEncoding, dst string) error {
 	args := []string{"-i", frame}
 	if cfg, err := decodeConfig(frame); err != nil {
@@ -531,10 +676,12 @@ func encodeGIF(t *testing.T, work string, frames []string, e gifEncoding, dst st
 	}
 	// Some frames have an alpha channel. A mixed sequence breaks ffmpeg's single
 	// palette (every GIF frame alike, or false colors), so every frame becomes RGB first.
+	conversions := make([]func() error, len(frames))
 	for i, f := range frames {
-		if err := ffmpeg(t, "-i", f, "-pix_fmt", "rgb24", filepath.Join(dir, fmt.Sprintf("frame-%04d.png", i))); err != nil {
-			return err
-		}
+		conversions[i] = func() error { return opaqueFrame(t, f, filepath.Join(dir, fmt.Sprintf("frame-%04d.png", i))) }
+	}
+	if err := parallel(docsJobs(), conversions); err != nil {
+		return err
 	}
 	filter := "format=rgb24,"
 	if e.Crop != "" {

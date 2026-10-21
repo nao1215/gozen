@@ -121,6 +121,7 @@ func numericValue(db *data.DB, path string) any {
 }
 
 func TestNumericPresenceContract(t *testing.T) {
+	t.Parallel()
 	// Run the omitted, zero, sign and type checks over every item whose zero is easily lost by consumers.
 	fields := []struct {
 		yaml, goPath        string
@@ -221,6 +222,7 @@ func TestNumericPresenceContract(t *testing.T) {
 	}
 	for _, f := range fields {
 		t.Run(f.yaml, func(t *testing.T) {
+			t.Parallel() // each field loads its own fixtures
 			for _, value := range []string{"", "0", fmt.Sprint(f.positive), "-1", "null", "'2'", ".nan", ".inf", "-.inf"} {
 				t.Run("新版/"+value, func(t *testing.T) {
 					db, err := numericFixture(t, 1, f.yaml, value)

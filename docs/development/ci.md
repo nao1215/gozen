@@ -21,9 +21,17 @@ A private repository has a limit on Actions time. While it is private, only `qui
 | govulncheck | Linux, Go 1.26.10 (the lower bound in `go.mod`) and stable, cgo enabled, govulncheck v1.9.0 | known vulnerabilities reachable from `./...`. Judged from JSON; fails on anything not in `ACCEPTED` (empty now). The ONNX binding is analyzed too |
 | codeql | Linux, stable, cgo enabled | builds `./...` explicitly and runs Go static analysis |
 
-The lower bound of Go is `go.mod:3`. Keep it in step with the lower bounds of unit and govulncheck when updating. security uses stable, which can run the analysis tools. lint uses one pinned Go, the same one `make lint` uses locally, so formatting is judged by the same gofmt everywhere; bump `LINT_GO` and the lint job's `go-version` together. Normal tests do not initialize a screen. graphics keeps Ebitengine's limit of one loop per process and runs scenarios one after another in separate processes (`play/graphics_test.go:18`).
+The lower bound of Go is `go.mod:3`. Keep it in step with the lower bounds of unit and govulncheck when updating. security uses stable, which can run the analysis tools. lint uses one pinned Go, the same one `make lint` uses locally, so formatting is judged by the same gofmt everywhere; bump `LINT_GO` and the lint job's `go-version` together. Normal tests do not initialize a screen. graphics keeps Ebitengine's limit of one loop per process: `TestMain` of `play/graphics_test.go` builds `play/testdata/host` once, and the scenarios run side by side, each in a process of its own.
 
 graphics is also enabled on Windows and macOS, with no setting that tolerates failure and no skip. setup-ebitengine prepares Xvfb only on Linux. This working environment has not confirmed whether the Windows and macOS hosted runners have the desktop that is needed. Check it in the first remote run; if it cannot run, record the concrete error and reason and reconsider. A successful cross-build is not accepted in its place.
+
+## Time
+
+The longest jobs are the pictures of the Docs workflow and graphics; most of their time is the samples playing in real time and writing 1920x1080 frames. The game writes a screenshot off its loop (PNG at BestSpeed, by background workers), the docs pictures' runs play side by side, and graphics runs its scenarios side by side.
+
+- graphics and cli-e2e install atago from its release binary with setup-atago (the checksum is checked) instead of building it with `go install`.
+- race, go-zen, the Docs jobs and Coverage keep Go caches of their own (`actions/cache`, keyed by the job, the Go version and the `go.sum` files, saved from main). setup-go's cache is one per Go version and `go.sum`, shared by every job and saved by whichever job ends first, often a short cross-build, so it held little of what these jobs build. The Website workflow, which deploys the site, is left with setup-go's cache.
+- On a pull request, the images job of the Docs workflow remakes the pictures only when the pull request changes a file that can change them. It skips them when every changed file is a Markdown file, under `website/`, `.github/` (other than `docs.yml`), `e2e/`, `bench/` or `skills/`, `LICENSE`, or a `_test.go` file outside `internal/dev/docs`. Any other file, `docs/images/` and `internal/dev/docs/` run them, and so does every push to main and manual run.
 
 ## Other workflows
 

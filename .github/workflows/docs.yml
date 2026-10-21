@@ -29,15 +29,61 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+          # A pull request's merge commit and its first parent, the base it merges into.
+          fetch-depth: 2
+      # A pull request that changes only words, the website, workflows or tests outside
+      # internal/dev/docs cannot change a picture, so it skips the remake. Any other
+      # file (code, samples, scripts, the manifest, docs/images, unknown files) runs it,
+      # and so does every push and manual run.
+      - name: Decide whether the pictures can change
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "${EVENT}" != pull_request ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          run=false
+          while IFS= read -r f; do
+            case "${f}" in
+              "") ;;
+              docs/images/* | internal/dev/docs/* | .github/workflows/docs.yml) run=true ;;
+              *.md | website/* | .github/* | e2e/* | bench/* | skills/* | LICENSE | *_test.go) ;;
+              *) run=true ;;
+            esac
+          done <<< "$(git diff --name-only HEAD^1 HEAD)"
+          echo "run=${run}" >> "$GITHUB_OUTPUT"
+          echo "remake the pictures: ${run}"
+      - id: go
+        if: steps.scope.outputs.run == 'true'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+          cache: false
+      # This job's own Go caches. setup-go keeps one cache per Go version and go.sum for
+      # every job, saved by whichever job ends first (often a short cross-build), so the
+      # builds of this job would not be in it. Saved from main once per Go and go.sum.
+      - name: Restore the Go caches of this job
+        if: steps.scope.outputs.run == 'true'
+        id: go-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-
       - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
+        if: steps.scope.outputs.run == 'true'
         with:
           xvfb: true
       - name: Install ffmpeg
+        if: steps.scope.outputs.run == 'true'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      # The runs play side by side, one per CPU (GOZEN_DOCS_JOBS sets another number).
       - name: Remake the pictures and compare them with the committed ones
+        if: steps.scope.outputs.run == 'true'
         run: make docs-images-check
       - name: Keep the fresh pictures of a failed check
         if: failure()
@@ -46,6 +92,14 @@ jobs:
           name: docs-images
           path: build/docs-images/out
           retention-days: 7
+      - name: Save the Go caches of this job
+        if: ${{ steps.scope.outputs.run == 'true' && github.ref == 'refs/heads/main' && steps.go-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ steps.go-cache.outputs.cache-primary-key }}
 
   steps:
     if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
@@ -55,9 +109,23 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - id: go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+          cache: false
+      # This job's own Go caches. setup-go keeps one cache per Go version and go.sum for
+      # every job, saved by whichever job ends first (often a short cross-build), so the
+      # builds of this job would not be in it. Saved from main once per Go and go.sum.
+      - name: Restore the Go caches of this job
+        id: go-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-
       # One step runs the sample game under xvfb-run (website/content/install.md).
       - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
         with:
@@ -66,3 +134,11 @@ jobs:
         run: make docs-steps
         env:
           CGO_ENABLED: "1"
+      - name: Save the Go caches of this job
+        if: ${{ github.ref == 'refs/heads/main' && steps.go-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ steps.go-cache.outputs.cache-primary-key }}
