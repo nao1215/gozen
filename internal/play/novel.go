@@ -65,7 +65,7 @@ var novelButtons = []novelButton{{"もどる", btnBack}, {"ログ", btnLog}, {"�
 var sceneSkipButton = novelButton{"シーン送り", btnSceneSkip}
 
 // bookButton opens the character book from the novel bar when game.yaml asks for it
-// (ui.profiles); under --dev the P key opens the book without the button.
+// (ui.profiles); under --dev F6 opens the book without the button.
 var bookButton = novelButton{"キャラクター", btnBook}
 
 func (g *Game) novelButtons() []novelButton {
@@ -154,6 +154,7 @@ func (g *Game) novelInput() bool {
 		g.push(newConfigScreen(g))
 		return true
 	case press[btnBook] && g.profilesInMenus() && !g.replaying:
+		// the band's button (F6 itself is taken in Update)
 		g.push(newProfiles(g, nil))
 		return true
 	}

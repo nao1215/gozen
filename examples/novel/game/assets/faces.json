@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "model": "face/model.onnx",
+  "pictures": {
+    "brenna/normal.png": {
+      "box": [
+        266,
+        102,
+        390,
+        226
+      ],
+      "size": [
+        553,
+        1361
+      ],
+      "sha256": "4db135fa9dfdaf956ec0ed15eb4fb190219a743a09ff0c0dd5dd0b870ade5180",
+      "score": 0.86042845
+    },
+    "hedda/normal.png": {
+      "box": [
+        235,
+        96,
+        359,
+        220
+      ],
+      "size": [
+        514,
+        1557
+      ],
+      "sha256": "719a6b1ab2d11f3a397429604b09c92fe7000ec8cb251bf993783dfbb70d4e64",
+      "score": 0.8242526
+    },
+    "wren/normal.png": {
+      "box": [
+        146,
+        84,
+        274,
+        214
+      ],
+      "size": [
+        390,
+        1504
+      ],
+      "sha256": "3e3babe53314b8852e0102ec38ed1b25c574973d4343e4219736e8a64d4a11fa",
+      "score": 0.8364608
+    }
+  }
+}

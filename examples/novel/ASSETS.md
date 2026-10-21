@@ -12,6 +12,7 @@ the repository. The files under `game/assets/` are listed here.
 | `cg/toast.jpg`, `cg/wine.jpg`, `cg/table.jpg` | The event pictures: Brenna raising her mug, Wren with a glass of wine, and the counter with a glass and bottles | CC BY 4.0 |
 | `brenna/`, `wren/`, `hedda/` | The standing picture of each character (`normal.png`) | CC BY 4.0 |
 | `bgm/evening.ogg` | The song of the evening, "Pellmere Mornings" from the Go Zen soundtrack | CC BY 4.0 |
+| `faces.json` | The face box of each standing picture, written by `gozen art faces` (the face icons of the character book) | MIT |
 | `fonts/mplus-1p-regular.ttf` | M+ 1p regular 1.060, M+ FONTS PROJECT (Latin and Japanese letters) | M+ FONTS LICENSE (below) |
 
 The pictures and the music are Copyright (c) 2026 CHIKAMATSU Naohiro and licensed under the

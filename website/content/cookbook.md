@@ -876,7 +876,7 @@ gallery:
 
 ## Keep a character book
 
-`profiles` gives each character a page on the Characters screen: the standing picture with its faces, a few lines of your own labels, an introduction and how they see the others. A profile whose ID is an actor's shows that actor; `picture` shows anyone else. Under `--dev` the title and the menu offer Characters, P opens it at a line and every page is open, so you can check your characters while you write. Every text is translated through `lang/` like the lines.
+`profiles` gives each character a page on the Characters screen: the standing picture with its faces, a few lines of your own labels, an introduction and how they see the others. A profile whose ID is an actor's shows that actor; `picture` shows anyone else. Under `--dev` the title and the menu offer Characters, F6 opens it anywhere and every page is open, so you can check your characters while you write. Run `gozen art faces` once to center the list's face icons on the faces. Every text is translated through `lang/` like the lines.
 
 <!-- verify: load group=profiles as=game.yaml -->
 ```yaml

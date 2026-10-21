@@ -3,7 +3,9 @@ package play
 import (
 	"bytes"
 	"fmt"
+	"image"
 	"slices"
+	"strconv"
 	"testing"
 	"testing/fstest"
 
@@ -146,5 +148,50 @@ func TestProfilesDevOpensAll(t *testing.T) {
 	s := newProfiles(g, nil)
 	if !s.opened(g, "stranger") || g.unlocked[profileKey("stranger")] {
 		t.Fatal("--dev: the stranger is not shown, or was recorded as met")
+	}
+}
+
+// TestFaceIconFromFaceBoxes: a face icon is cut around the box gozen art faces wrote
+// (assets/faces.json), scaled to the picture as loaded; without one, as before.
+func TestFaceIconFromFaceBoxes(t *testing.T) {
+	p := newPictures(fstest.MapFS{"assets/faces.json": {Data: []byte(`{"version": 1, "pictures": {
+  "a/normal.png": {"box": [100, 40, 140, 80], "size": [400, 1000]},
+  "b/normal.png": {"size": [400, 1000]}}}`)}})
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	r, ok := p.foundFace("a/normal.png", image.Pt(200, 500))
+	if !ok || r.Min.X+r.Max.X != 2*60 || r.Min.Y+r.Max.Y != 2*30 || r.Dx() <= 20 {
+		t.Fatalf("a: %v %v, want a square around (60, 30) wider than the face", r, ok)
+	}
+	if _, ok := p.foundFace("b/normal.png", image.Pt(400, 1000)); ok {
+		t.Fatal("b: a box where none was found")
+	}
+	if _, ok := p.foundFace("c/normal.png", image.Pt(400, 1000)); ok {
+		t.Fatal("c: a box for a picture not in the file")
+	}
+}
+
+// TestProfilesF6: under --dev F6 opens the book on the field and F6 closes it; without
+// --dev and ui.profiles it does nothing.
+func TestProfilesF6(t *testing.T) {
+	for _, dev := range []bool{true, false} {
+		t.Run(strconv.FormatBool(dev), func(t *testing.T) { profilesF6(t, dev) })
+	}
+}
+
+func profilesF6(t *testing.T, dev bool) {
+	t.Helper()
+	g := bookGame(t, Options{Location: "camp", Development: dev, Script: "wait 10\npress characters\nwait 5\nquit\n"}, "")
+	runToEnd(t, g)
+	_, open := g.stack[len(g.stack)-1].(*profileScreen)
+	if open != dev {
+		t.Fatalf("dev %v: the book is open %v after F6", dev, open)
+	}
+	if dev {
+		g.in.pressed[btnBook] = true
+		g.stack[len(g.stack)-1].update(g)
+		if _, still := g.stack[len(g.stack)-1].(*profileScreen); still {
+			t.Fatal("F6 did not close the book")
+		}
 	}
 }

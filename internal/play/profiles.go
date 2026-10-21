@@ -29,6 +29,20 @@ func (g *Game) profilesInMenus() bool {
 
 func profileKey(id string) string { return "profile:" + id }
 
+// bookKey opens the book with F6 over whatever is on the screen (the book itself closes
+// with F6 in its update), when the menus offer it.
+func (g *Game) bookKey() {
+	if !g.in.pressed[btnBook] || !g.profilesInMenus() || g.memo != nil || g.replaying || g.panelModal() || len(g.stack) == 0 {
+		return
+	}
+	if _, open := g.stack[len(g.stack)-1].(*profileScreen); open {
+		return
+	}
+	g.in.pressed[btnBook] = false
+	g.sfx("decide")
+	g.push(newProfiles(g, nil))
+}
+
 // checkProfiles records the profiles the state now opens.
 func (g *Game) checkProfiles() {
 	env := g.st.Env()
@@ -175,7 +189,7 @@ func (s *profileScreen) pick(g *Game, i int) {
 
 func (s *profileScreen) update(g *Game) {
 	n := len(s.ids)
-	if g.in.cancel() {
+	if g.in.cancel() || g.in.pressed[btnBook] {
 		g.sfx("cancel")
 		g.pop()
 		if s.done != nil {
@@ -312,7 +326,7 @@ func (s *profileScreen) draw(g *Game, dst *ebiten.Image) {
 		s.drawFigure(g, dst, id)
 		s.drawInfo(g, dst, id)
 	}
-	gfx.DrawTextOutlineColor(dst, lang.T("←→ / LR: キャラ   ↑↓: 一覧   Z: 表情   X: もどる"), sw/2, sh-44, sizeS*0.9, g.th.text, g.th.window, 1)
+	gfx.DrawTextOutlineColor(dst, lang.T("←→ / LR: キャラ   ↑↓: 一覧   Z: 表情   X / F6: もどる"), sw/2, sh-44, sizeS*0.9, g.th.text, g.th.window, 1)
 }
 
 // drawBand draws the switch between characters on the top band: ◀ name n / N ▶.

@@ -18,7 +18,7 @@ Unlocking is per character only. A condition for each field was considered; it c
 
 "Characters": a band on top with the title and the switch to the previous and next character (◀ name n / N ▶), the list on the left (a face for an unlocked profile, a shadow and ??? for a locked one), the standing picture in the middle with a button per face under it (Z steps through them; a puppet moves), and the profile on the right: name, title, the fields, the introduction and the relations. Left and right, L and R of a pad, the arrows, a swipe and the list change the character.
 
-It opens with `open: profiles`, from the title and the field menu ("Characters" after Gallery and after Load), from the novel bar, and with P while a line is shown. The menus and the bar offer it only when game.yaml asks for it with `ui.profiles: true`; under `--dev` the title and the menu offer it, P opens it, and every profile is unlocked, because the book is first the author's tool for checking the characters.
+It opens with `open: profiles`, from the title and the field menu ("Characters" after Gallery and after Load), from the novel bar, and with F6, beside the other keys of the author tools (F5 reload, F7 balance, F8 panel, F9 notes); F6 closes it too. The menus, the bar and F6 offer it only when game.yaml asks for it with `ui.profiles: true`; under `--dev` the title, the menu and F6 offer it and every profile is unlocked, because the book is first the author's tool for checking the characters. P was tried first and dropped: the author tools are on the function keys.
 
 A profile unlocked once stays unlocked, in the record of the gallery (`gallery.json`, the key `profile:<id>`), checked with the gallery's unlocks.
 
@@ -35,5 +35,6 @@ A session reads `profile.<id>.unlocked` (the profile's `when` on the state now) 
 
 ## Consequences
 
-- `api/public.txt` does not grow. `api/schema.txt` gains `DB.Profiles`, `Profile`, `ProfileField`, `ProfileRelation` and `UIStyle.Profiles`.
+- `api/public.txt` does not grow. `api/schema.txt` gains `DB.Profiles`, `Profile`, `ProfileField`, `ProfileRelation`, `UIStyle.Profiles` and the methods that read a profile (`DB.ProfileActor`, `ProfileName`, `ProfileFaces`, `ProfileHolds`, `ProfileIcon`), which the screen, the query and `gozen art faces` share.
+- The face icons (the book's list and the others cut from a standing picture) use the face boxes of `assets/faces.json` when the picture has one; `gozen art faces` and its warnings now take the actors' and the profiles' pictures of a game with a character book, not only of a game with a painted scene.
 - `make docs-images ONLY=a.jpg` remakes one picture of the ledger.

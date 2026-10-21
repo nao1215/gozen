@@ -225,3 +225,23 @@ func (db *DB) ProfileHolds(id string, env expr.Env) bool {
 // profileNames are the names a profile's when and {expressions} may use: the state's,
 // and ran (how often an event has run).
 var profileNames = append(slices.Clone(FieldNames), "ran")
+
+// ProfileIcon is the picture under assets/ a profile's face icon is cut from: its first
+// face, its enemy's picture or its picture ("" for none).
+func (db *DB) ProfileIcon(id string) string {
+	p := db.Profiles[id]
+	if p == nil {
+		return ""
+	}
+	if p.Picture != "" {
+		return p.Picture
+	}
+	if e := db.Enemies[p.Enemy]; e != nil {
+		return e.Image.File
+	}
+	a := db.Actors[db.ProfileActor(id)]
+	if a == nil || a.Faces == "" {
+		return ""
+	}
+	return a.Faces + "/" + db.ProfileFaces(id)[0] + ".png"
+}
