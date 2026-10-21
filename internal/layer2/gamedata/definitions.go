@@ -6,6 +6,7 @@ import (
 	"maps"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/nao1215/gozen/internal/diag"
 
@@ -148,8 +149,24 @@ func (doc *sourceDocument) definitionShape(raw any, typ reflect.Type, where stri
 	return errs
 }
 
-// definitionFields maps YAML fields, including inline ones, to types.
+// definitionFieldsOf keeps definitionFields of each type: the shape check asks for the
+// fields of every definition it visits, thousands of times in a game.
+var definitionFieldsOf sync.Map // reflect.Type -> map[string]reflect.Type
+
+// definitionFields maps YAML fields, including inline ones, to types. The map is shared:
+// the callers only read it.
 func definitionFields(typ reflect.Type) map[string]reflect.Type {
+	if v, ok := definitionFieldsOf.Load(typ); ok {
+		if fields, ok := v.(map[string]reflect.Type); ok {
+			return fields
+		}
+	}
+	fields := collectDefinitionFields(typ)
+	definitionFieldsOf.Store(typ, fields)
+	return fields
+}
+
+func collectDefinitionFields(typ reflect.Type) map[string]reflect.Type {
 	fields := map[string]reflect.Type{}
 	for field := range typ.Fields() {
 		tag, ok := field.Tag.Lookup("yaml")
@@ -158,7 +175,7 @@ func definitionFields(typ reflect.Type) map[string]reflect.Type {
 		}
 		name, options, _ := strings.Cut(tag, ",")
 		if options == "inline" {
-			maps.Copy(fields, definitionFields(field.Type))
+			maps.Copy(fields, collectDefinitionFields(field.Type))
 		} else {
 			fields[name] = field.Type
 		}

@@ -92,6 +92,9 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 	if db == nil {
 		return nil, errors.New(lang.T("読み込み先のゲームデータがない"))
 	}
+	if c := checkedSaveOf(db, b, opt); c != nil {
+		return c.state(rng)
+	}
 	raw, err := saveObject(b)
 	if err != nil {
 		return nil, err
@@ -159,6 +162,14 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 	if err := decodeSave(payload, s); err != nil {
 		return nil, err
 	}
+	remember(&checkedSave{db: db, opt: opt, b: slices.Clone(b), payload: payload, report: report, resume: resume.clone()})
+	return s.bind()
+}
+
+// bind checks the decoded state against the data and moves it to the current data: the
+// part of ParseWithConfig after the JSON is decoded.
+func (s *State) bind() (*State, error) {
+	db := s.DB
 	if err := s.checkSavedState(); err != nil {
 		return nil, err
 	}

@@ -30,6 +30,10 @@ type dungeonScene struct {
 	busy       bool
 	shownFloor float64
 	bannerT    int
+	// vs and is are the vertex and index buffers the view reuses frame after frame
+	// (DrawTriangles copies them), so drawing the walls allocates nothing.
+	vs []ebiten.Vertex
+	is []uint16
 }
 
 const transTicks = 10
@@ -179,7 +183,9 @@ func (s *dungeonScene) draw(g *Game, dst *ebiten.Image) {
 	} else {
 		s.keep = nil
 	}
-	(&viewer{g: g, d: d, st: vst, dst: s.view, w: pw, h: ph}).draw()
+	v := &viewer{g: g, d: d, st: vst, dst: s.view, w: pw, h: ph, vs: s.vs, is: s.is}
+	v.draw()
+	s.vs, s.is = v.vs, v.is
 	s.drawWithTransition(dst, pw, ph, pw/sw)
 	if d.Generate != nil {
 		if f, ok := g.st.Vars[dungeon.VarFloor].(float64); ok && f != g.bannerFloor {
@@ -406,6 +412,9 @@ type viewer struct {
 	w, h  float64
 	focal float64
 	cells map[[2]int]dungeon.Cell
+	// vs and is are reused by every draw of the view (the scene keeps them between frames).
+	vs []ebiten.Vertex
+	is []uint16
 }
 
 const (
@@ -613,8 +622,7 @@ func (v *viewer) strips(pic data.Picture, base color.NRGBA, n int, tAt func(int)
 	if n > 1 {
 		rows = 16
 	}
-	var vs []ebiten.Vertex
-	var is []uint16
+	vs, is := v.vs[:0], v.is[:0]
 	for i := 0; i <= n; i++ {
 		t := tAt(i)
 		x, z := ax+(bx-ax)*t, az+(bz-az)*t
@@ -646,6 +654,7 @@ func (v *viewer) strips(pic data.Picture, base color.NRGBA, n int, tAt func(int)
 		src = whiteImage
 	}
 	v.dst.DrawTriangles(vs, is, src, &ebiten.DrawTrianglesOptions{Filter: ebiten.FilterLinear})
+	v.vs, v.is = vs, is
 }
 
 func (v *viewer) standing(pic data.Picture, x, z float64) {
@@ -731,8 +740,7 @@ func (v *viewer) flat(x, z, y float64, col color.NRGBA, pic data.Picture) {
 	mx, my := dungeon.Rel(v.st.Pos, int(z), int(x))
 	const n = 8
 	t0 := (z0 - z)
-	var vs []ebiten.Vertex
-	var is []uint16
+	vs, is := v.vs[:0], v.is[:0]
 	for j := 0; j <= n; j++ {
 		fz := t0 + (1-t0)*float64(j)/n
 		zz := z + fz
@@ -761,6 +769,7 @@ func (v *viewer) flat(x, z, y float64, col color.NRGBA, pic data.Picture) {
 		}
 	}
 	v.dst.DrawTriangles(vs, is, img, &ebiten.DrawTrianglesOptions{Filter: ebiten.FilterLinear})
+	v.vs, v.is = vs, is
 }
 
 func (v *viewer) floorSign(t *data.Tile, floor color.NRGBA, x, z float64) {
@@ -844,8 +853,7 @@ func (v *viewer) floorDecal(pic data.Picture, x, z, size float64, rot int) {
 	fwx, fwy := float64(fx0-v.st.Pos.X), float64(fy0-v.st.Pos.Y)
 	rtx, rty := float64(rx0-v.st.Pos.X), float64(ry0-v.st.Pos.Y)
 	const n = 8
-	var vs []ebiten.Vertex
-	var is []uint16
+	vs, is := v.vs[:0], v.is[:0]
 	for j := 0; j <= n; j++ {
 		zz := z0 + (zb-z0)*float64(j)/n
 		c := shadeOf(base, v.fog(zz))
@@ -873,11 +881,14 @@ func (v *viewer) floorDecal(pic data.Picture, x, z, size float64, rot int) {
 		}
 	}
 	v.dst.DrawTriangles(vs, is, img, &ebiten.DrawTrianglesOptions{Filter: ebiten.FilterLinear})
+	v.vs, v.is = vs, is
 }
 
 func (v *viewer) quad(x0, y0, x1, y1, x2, y2, x3, y3 float32, c0, c1, c2, c3 color.NRGBA) {
-	vs := []ebiten.Vertex{vert(x0, y0, c0), vert(x1, y1, c1), vert(x2, y2, c2), vert(x3, y3, c3)}
-	v.dst.DrawTriangles(vs, []uint16{0, 1, 2, 0, 2, 3}, whiteImage, nil)
+	vs := append(v.vs[:0], vert(x0, y0, c0), vert(x1, y1, c1), vert(x2, y2, c2), vert(x3, y3, c3))
+	is := append(v.is[:0], 0, 1, 2, 0, 2, 3)
+	v.dst.DrawTriangles(vs, is, whiteImage, nil)
+	v.vs, v.is = vs, is
 }
 
 func vert(x, y float32, c color.NRGBA) ebiten.Vertex {

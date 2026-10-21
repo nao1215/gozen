@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"maps"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -87,8 +88,8 @@ func Diagnose(fsys fs.FS) (*data.DB, gamedata.Diagnostics) {
 	return db, out
 }
 
-// loadPuppets loads every puppet of the actors once, side by side (each decodes its
-// pictures), and returns the error of each by its file; nil when it loaded.
+// loadPuppets loads every puppet of the actors once, a few side by side (each decodes
+// its pictures), and returns the error of each by its file; nil when it loaded.
 func loadPuppets(fsys fs.FS, db *data.DB) map[string]error {
 	files := map[string]bool{}
 	for _, a := range db.Actors {
@@ -100,9 +101,13 @@ func loadPuppets(fsys fs.FS, db *data.DB) map[string]error {
 	var (
 		mu sync.Mutex
 		wg sync.WaitGroup
+		// a puppet holds its decoded pictures while it loads: a few at a time
+		slots = make(chan struct{}, min(4, max(1, runtime.GOMAXPROCS(0))))
 	)
 	for p := range files {
 		wg.Go(func() {
+			slots <- struct{}{}
+			defer func() { <-slots }()
 			_, err := puppet.Load(fsys, "assets/"+p)
 			mu.Lock()
 			errs[p] = err
