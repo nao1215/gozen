@@ -207,6 +207,9 @@ func wldWorldFiles(t *testing.T, gameYAML string, extra map[string]string) fstes
 		"marker.png":   wldPNG(t, 16, 16, color.NRGBA{R: 220, G: 40, B: 40}),
 		"person.png":   wldPNG(t, 32, 64, color.NRGBA{R: 80, G: 60, B: 50}),
 		"depth.png":    wldDepthPNG(t, 320, 180),
+		"tall1.png":    wldPNG(t, 300, 640, color.NRGBA{R: 150, G: 60, B: 60}),
+		"tall2.png":    wldPNG(t, 300, 640, color.NRGBA{R: 60, G: 150, B: 60}),
+		"tall3.png":    wldPNG(t, 300, 640, color.NRGBA{R: 60, G: 60, B: 150}),
 	}
 	for n, b := range pics {
 		fsys["assets/pics/"+n] = &fstest.MapFile{Data: b}

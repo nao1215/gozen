@@ -45,6 +45,17 @@ func wldOpenWith(t *testing.T, opts Options) *Game {
 	return g
 }
 
+// wldStartEvent runs a named event now, the way a place's arrival would (without Options.Event,
+// which reads ahead to the first line on its own).
+func wldStartEvent(t *testing.T, g *Game, name string) {
+	t.Helper()
+	ev, ok := g.db.Events[name]
+	if !ok {
+		t.Fatalf("no event %q", name)
+	}
+	g.events.Start(ev.Do)
+}
+
 // wldScreen is the image the game draws on.
 func wldScreen(g *Game) *ebiten.Image { return ebiten.NewImage(g.Layout(0, 0)) }
 
