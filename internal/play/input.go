@@ -393,7 +393,7 @@ func parseScript(src string) (*script, error) {
 			continue
 		}
 		if c.verb == "memo" {
-			if len(f) < 2 {
+			if len(f) < 3 {
 				return nil, fmt.Errorf("script line %d: memo KIND TEXT", line)
 			}
 			c.arg = f[1]
@@ -449,7 +449,7 @@ func parseScript(src string) (*script, error) {
 				return nil, fmt.Errorf("script line %d: unknown button %q", line, c.arg)
 			}
 		}
-		if c.verb == "shot" && (c.arg == "" || filepath.Base(c.arg) != c.arg || strings.ContainsAny(c.arg, "/\\")) {
+		if c.verb == "shot" && (c.arg == "" || c.arg == "." || c.arg == ".." || filepath.Base(c.arg) != c.arg || strings.ContainsAny(c.arg, "/\\")) {
 			return nil, fmt.Errorf("script line %d: invalid screenshot name", line)
 		}
 		s.cmds = append(s.cmds, c)
