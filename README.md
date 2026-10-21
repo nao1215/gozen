@@ -22,14 +22,14 @@
 
 # Gozen
 
-Gozen is a framework for 2D RPGs and visual novels in Go and Ebitengine. You write the game in YAML: places, battles and skills for an RPG; lines, choices and staging for a novel, with roll back, skip and a second language. `gozen check` finds broken references. `gozen sim battle` measures balance. While you play, F5 reloads the YAML, F9 saves a note, and F7 and F8 show win rates and flags.
+Gozen is a YAML-first framework for 2D RPGs, visual novels and strategy games in Go and Ebitengine. You write the game in YAML: places, battles and skills for an RPG; lines, choices and staging for a novel, with roll back, skip and a second language; regions, generals and orders for a campaign. `gozen check` finds broken references. `gozen sim battle` measures balance. While you play, F5 reloads the YAML, F9 saves a note, and F7 and F8 show win rates and flags.
 
 Documentation: https://nao1215.github.io/gozen/
 
 | RPG: [Go Zen](https://nao1215.github.io/gozen/play/go-zen/) (play in browser) | Novel: [After the Pass](https://nao1215.github.io/gozen/play/novel/) (play in browser) |
 |:--|:--|
 | ![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](docs/images/go-zen.gif) | ![After the Pass, the novel sample: a line, a choice, Back over the choice, and Skip to the first line not read](docs/images/novel.gif) |
-| Campaign: [Five Banners](examples/campaign) | |
+| Campaign: [Five Banners](https://nao1215.github.io/gozen/play/campaign/) (play in browser) | |
 | ![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](docs/images/campaign.gif) | |
 
 ## Try it
@@ -54,7 +54,7 @@ cd gozen/examples/go-zen
 go run . --mute
 ```
 
-Play Go Zen and After the Pass in the browser: https://nao1215.github.io/gozen/play/
+Play Go Zen, After the Pass and Five Banners in the browser: https://nao1215.github.io/gozen/play/
 
 ## The loop
 
@@ -238,7 +238,7 @@ location=trail battles=1 wins=1 gold=3
 - YAML definitions with expressions, events and versioned saves
 - Turn-based battles with a party, auto battle and enemy tactics
 - Skill trees, shops, a field menu and a picture gallery
-- First-person grid dungeons, fixed or generated
+- First-person grid dungeons, fixed or generated, with themes (`theme: cave`, `gozen theme add`)
 - Moving portraits from one picture ([puppet](https://pkg.go.dev/github.com/nao1215/gozen/puppet))
 - Characters that react to typed words, and a chat log ([react](https://pkg.go.dev/github.com/nao1215/gozen/react), [chat](https://pkg.go.dev/github.com/nao1215/gozen/chat))
 - Campaigns: regions held by factions over turns, orders with generals, a sortie screen with tactics, marches shown as clashes of armies (or decided by numbers or a battle), the other factions' rules, and `gozen sim campaign` ([recipes](https://nao1215.github.io/gozen/cookbook/#make-a-campaign))

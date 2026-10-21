@@ -1,6 +1,6 @@
 ---
 name: gozen
-description: Make or fix an RPG or a visual novel written for Gozen, the Go game framework whose games are game.yaml and data/*.yaml. Use it when you write or change a Gozen game's YAML; it runs gozen check until the game has no errors.
+description: Make or fix an RPG, a visual novel or a strategy game (a campaign) written for Gozen, the Go game framework whose games are game.yaml and data/*.yaml. Use it when you write or change a Gozen game's YAML; it runs gozen check until the game has no errors.
 ---
 
 # Making a Gozen game
@@ -29,7 +29,7 @@ In GitHub Actions, `nao1215/setup-gozen` installs the version in the game's `go.
 
 ## What every game needs
 
-- `game.yaml` with `schema_version: 3`, an `id`, and `start` with a `location` and a `party`.
+- `game.yaml` with `schema_version: 3` (4 for a novel, 5 for a campaign), an `id`, and `start` with a `location` and a `party`.
 - A class for each party member, with all eight stats (`mhp mmp atk def mat mdf agi luk`) and `exp_for`.
 - The two skills `attack` and `guard`, even in a game without battles.
 - Pictures under `assets/` for every `image` and `background` you name. Enemies need an `image`.
@@ -77,6 +77,7 @@ A campaign (SLG, a war of regions) sets `schema_version: 5`, `regions` and `fact
 - `fight: clash_view` shows a march as a clash of units with a sortie screen. Set `clash.units` (1 to 4), `clash.tactics` and `clash.skills`, and `defend` troops and `terrain` on the regions.
 - Give each general (`generals.<id>.army`) and enemy (`enemies.<id>.army`) an army kind: `men`, `women` or `monsters`. `clash.armies.<kind>` lists the pictures of one soldier of that kind, drawn facing right (the engine flips the foe side). `clash.layout` is `below` (the default, cards in a row under the armies) or `front`.
 - The map can be one picture of the whole land. Give each region an `area` (a polygon in picture pixels) and each point an `at`; `landmark` is optional. A region's roads and borders show only for the region chosen (`region_roads` and `region_borders` in the map take `selected` or `always`). `gozen check` reports areas that overlap or leave the picture.
+- With armies, `clash.max_soldiers` (4 by default) sets how many soldiers one unit shows, and `clash.rope: false` leaves out the rope of the two sides' troops. `regions.<id>.landmark` (a cut-out picture of a city or fort, optional) stands on the map at the region's point.
 - Measure with `gozen sim campaign game` (and `--tactic`) before tuning numbers. Test with `gozen.Session`: `Do("- order: {id: attack, general: corin, target: ford}")` and `Query("region.ford.owner")`.
 
 The recipe is "Make a campaign" in the cookbook. A complete one is [examples/campaign](https://github.com/nao1215/gozen/tree/main/examples/campaign).

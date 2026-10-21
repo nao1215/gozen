@@ -1,6 +1,6 @@
 ---
 title: Cookbook
-description: Short YAML recipes for common tasks - shops, inns, companions, talk and choices, battles, bosses, dungeons, maps, painted scenes, portraits, pictures, music, language, test play, measuring and releases.
+description: Short YAML recipes for common tasks - shops, inns, companions, talk and choices, battles, bosses, dungeons and their themes, maps, campaigns, painted scenes, portraits, pictures, music, language, test play, measuring and releases.
 weight: 35
 toc: true
 ---
@@ -49,6 +49,7 @@ The recipes refer to a few IDs they do not define: the actor and class `walker`,
 | [Offer the game in two languages](#offer-the-game-in-two-languages) | `written_in`, `languages`, `lang/<code>.yaml` |
 | [Test-play with notes, reload and quick starts](#test-play-with-notes-reload-and-quick-starts) | `memo`, `--dev`, F5, F9, `--start` |
 | [Measure battles with sim battle and sim dive](#measure-battles-with-sim-battle-and-sim-dive) | `gozen sim battle`, `gozen sim dive` |
+| [Check and measure in CI](#check-and-measure-in-ci) | `setup-gozen`, `gozen check`, `gozen sim` in GitHub Actions |
 | [Cut a release and a trial](#cut-a-release-and-a-trial) | `trial.yaml`, `gozen pack release`, `gozen pack trial` |
 
 ## Start a new game
@@ -797,11 +798,12 @@ campaign:
     walker: {troops: 500, might: 3, tactic: guard, skills: [volley]}
   clash:
     units: 2                      # at most two units a side (1: a duel)
-    per_soldier: 30               # one soldier in the ranks for 30 troops
+    per_soldier: 30               # one soldier in the ranks for 30 troops (the default is 50)
     # or, instead of the ranks, an army by kind: poses of one soldier, lined up by the engine
     # (the kind follows the leader: generals.<id>.army, enemies.<id>.army)
     # armies: {men: [soldiers/men_1.png, soldiers/men_2.png], monsters: [soldiers/orc_1.png]}
-    # layout: front               # or below: the leader's card under the army
+    # max_soldiers: 4            # most soldiers one unit of an army shows
+    # layout: front               # or below (the default): large cards of the leaders along the bottom
     backgrounds: {field: bg/field.jpg, castle: bg/castle.jpg}
     skills:
       volley: {label: Volley, charge: 3, all: true, power: "a.troops * 0.12"}
@@ -840,7 +842,7 @@ locations:
         - {between: [ford, well]}
 ```
 
-OK on a region lists the orders it can be given. Attack asks for the target and opens the sortie screen: the generals go in the front and back slots, each with a tactic (the engine's `front`, `weakest`, `strongest`, `leader` and `guard`, or your `clash.tactics`). `fight: clash_view` plays the march as two armies on the terrain's picture: the soldiers in the ranks are the troops, a skill fires when charged, and a table tells the losses. Leave out `fight` and the march is decided by the numbers of `clash` (`power` against `defense`); `fight: battle` fights the region's `defend` troop as a battle of the game. An `area` fills a region in its owner's colour; without one the region shows as a flag.
+OK on a region lists the orders it can be given. Attack asks for the target and opens the sortie screen: the generals go in the front and back slots, each with a tactic (the engine's `front`, `weakest`, `strongest`, `leader` and `guard`, or your `clash.tactics`). `fight: clash_view` plays the march as two armies on the terrain's picture: the soldiers in the ranks are the troops, a skill fires when charged, and a table tells the losses. Leave out `fight` and the march is decided by the numbers of `clash` (`power` against `defense`); `fight: battle` fights the region's `defend` troop as a battle of the game. An `area` fills a region in its owner's colour; without one the region shows as a flag. On a map of one picture only the region chosen gets its roads and outline; `region_roads: always` and `region_borders: always` on the map draw them all. A region may also stand a cut-out `landmark` (its city or fort) on its point; it is optional.
 
 Measure it before you tune it: `gozen sim campaign game` plays 200 campaigns and prints the win rate, the turns and the regions each side held turn by turn; `--tactic guard` marches every general with one tactic to compare them. Reference: [Campaign](/schema/#campaign), [Region](/schema/#region), [Faction](/schema/#faction), [Clash](/schema/#clash), [Order](/schema/#order), and [Campaigns](/writing-a-game/#campaigns). [Five Banners](https://github.com/nao1215/gozen/tree/main/examples/campaign) is a complete one ([play it in the browser](/play/campaign/)).
 
@@ -1184,6 +1186,27 @@ The commands are in [Test play](#test-play). Reference: [MemoCfg](/schema/#memoc
 `gozen sim battle` fights a troop many times on AUTO and prints the win rate; `gozen sim dive` takes the party down a generated dungeon floor by floor, with its levels, gold and boss win rates. Change a stat, an AI rule or a troop, and measure again. The F7 panel shows the same numbers while you play.
 
 The commands are in [Check and measure](#check-and-measure). Reference: [Commands](/commands/#sim).
+
+## Check and measure in CI
+
+Let every push run the check and the numbers. In GitHub Actions, [setup-gozen](https://github.com/nao1215/setup-gozen) installs the release binary of the version in your `go.mod`, checked against the release checksums:
+
+<!-- verify: skip runs in GitHub Actions -->
+```yaml
+# .github/workflows/game.yml
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: nao1215/setup-gozen@1c378fc446f62ecb29a7bcd40aea6dff8565d698 # v0.1.1
+      - run: gozen check game
+      - run: gozen sim battle game boss --format json   # boss: a troop id of your game
+      - run: gozen sim campaign game --format json      # for a campaign
+```
+
+`gozen check` exits 1 on any error, so the job fails on a broken reference. Without the action, `go run github.com/nao1215/gozen/cmd/gozen check game` builds the version in `go.mod`. Reference: [Install](/install/#in-github-actions), [Commands](/commands/#check).
 
 ## Cut a release and a trial
 

@@ -1,6 +1,6 @@
 # Development rules
 
-Gozen is a public Go and Ebitengine 2D RPG framework and toolkit. Read [the architecture](docs/architecture/overview.md), [the API rules](docs/architecture/api-guidelines.md), and the relevant [ADRs](docs/decisions/index.md) before changing package boundaries.
+Gozen is a public Go and Ebitengine framework and toolkit for 2D RPGs, visual novels and strategy games. Read [the architecture](docs/architecture/overview.md), [the API rules](docs/architecture/api-guidelines.md), and the relevant [ADRs](docs/decisions/index.md) before changing package boundaries.
 
 ## Scope and public content
 

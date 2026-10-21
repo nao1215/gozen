@@ -10,8 +10,8 @@ enableRobotsTXT = true
 timeZone = "UTC"
 
 [params]
-tagline = "A 2D RPG framework for Go with a fast edit–play loop"
-description = "Gozen is a 2D RPG framework for Go and Ebitengine. Write the game as YAML, check it with gozen check and gozen sim battle, and tune it while you play with notes, live win rates, and reload."
+tagline = "A YAML-first 2D RPG, visual novel and strategy game framework for Go with a fast edit–play loop"
+description = "Gozen is a YAML-first 2D RPG, visual novel and strategy game framework for Go and Ebitengine. Write the game as YAML, check it with gozen check, gozen sim battle and gozen sim campaign, and tune it while you play with notes, live win rates, and reload."
 
 [markup.highlight]
 noClasses = false

@@ -5,7 +5,7 @@ weight: 50
 toc: true
 ---
 
-Most of making an RPG is the second draft: a line that reads wrong, a fight that is too hard. Gozen keeps the game running while you fix it, and keeps a record of what you saw so you can come back to it.
+Most of making a game is the second draft: a line that reads wrong, a fight that is too hard. Gozen keeps the game running while you fix it, and keeps a record of what you saw so you can come back to it.
 
 Every option on this page belongs to the game binary, not to `gozen`. Any game started with `play.Main` has them, including your own; the examples use `go run .` in your game's module.
 

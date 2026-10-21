@@ -32,6 +32,19 @@ go get -tool github.com/nao1215/gozen/cmd/gozen@latest
 go tool gozen check game
 ```
 
+## In GitHub Actions
+
+[setup-gozen](https://github.com/nao1215/setup-gozen) installs the release binary of the version in your `go.mod`, checked against the release checksums:
+
+<!-- verify: skip runs in GitHub Actions -->
+```yaml
+- uses: actions/checkout@v6
+- uses: nao1215/setup-gozen@1c378fc446f62ecb29a7bcd40aea6dff8565d698 # v0.1.1
+- run: gozen check game
+```
+
+`version` also takes `latest` or a release such as `v0.2.0`, and `go-mod-path` points at a `go.mod` below the root. Without the action, `go run github.com/nao1215/gozen/cmd/gozen check game` builds the same version from `go.mod`. See [the CI recipe](/cookbook/#check-and-measure-in-ci).
+
 ## Verifying a release
 
 Each release has a cosign-signed `checksums.txt`, an SPDX SBOM per archive, SLSA provenance (`multiple.intoto.jsonl`), and the dependency licenses under `THIRD_PARTY_LICENSES/`.

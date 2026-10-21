@@ -2,13 +2,15 @@
 title: Gozen
 ---
 
-Gozen is a framework for 2D RPGs and visual novels in Go and [Ebitengine](https://ebitengine.org/). You, or your coding agent, write the game as YAML: places, battles and skills for an RPG; lines, choices and staging for a novel, with roll back, skip and a second language. `gozen check` and `gozen sim battle` catch broken references and bad balance before anyone plays. While you play, you leave a note on the exact moment, watch live win rates, and reload the YAML without restarting.
+Gozen is a YAML-first framework for 2D RPGs, visual novels and strategy games in Go and [Ebitengine](https://ebitengine.org/). You, or your coding agent, write the game as YAML: places, battles and skills for an RPG; lines, choices and staging for a novel, with roll back, skip and a second language; regions, generals and orders for a campaign. `gozen check`, `gozen sim battle` and `gozen sim campaign` catch broken references and bad balance before anyone plays. While you play, you leave a note on the exact moment, watch live win rates, and reload the YAML without restarting.
 
-The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan, an ebiten gozen (御膳) is a set meal on one tray: shrimp tempura with soba, small side dishes, and a sweet such as dango. Gozen is that tray for Ebitengine: the engine served with everything an RPG needs. The name also starts with Go.
+The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan, an ebiten gozen (御膳) is a set meal on one tray: shrimp tempura with soba, small side dishes, and a sweet such as dango. Gozen is that tray for Ebitengine: the engine served with everything a game needs. The name also starts with Go.
 
 | RPG: [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) | Novel: [After the Pass](https://github.com/nao1215/gozen/tree/main/examples/novel) |
 |:--|:--|
 | ![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](/images/go-zen.gif) | ![After the Pass, the novel sample: a line, a choice, Back over the choice, and Skip to the first line not read](/images/novel.gif) |
+| Campaign: [Five Banners](https://github.com/nao1215/gozen/tree/main/examples/campaign) ([play in browser](/play/campaign/)) | |
+| ![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](/images/campaign.gif) | |
 
 ## Try it in 30 seconds
 
@@ -38,7 +40,7 @@ On Linux the window needs X11 and OpenGL; see [Install](/install/).
 
 ## The loop
 
-Making an RPG is mostly tuning: a line that reads wrong, a boss that is too hard, a dungeon that is too long. Gozen shortens each round.
+Making a game is mostly tuning: a line that reads wrong, a boss that is too hard, a dungeon that is too long, a war that one side always wins. Gozen shortens each round.
 
 | Step | What you do |
 |:--|:--|
@@ -128,6 +130,8 @@ More on each key in [the edit–play loop](/edit-play-loop/).
 - First-person grid dungeons, fixed or generated floors
 - Moving portraits from one picture and a few difference pictures: blinking, talking, breathing, head, hair and swaying parts, reactions and face changes
 - Characters that react to typed words and events, and a chat log
+- Campaigns: regions held by factions over turns, orders with generals, a sortie screen with tactics, clashes of armies, and `gozen sim campaign` for the win rate
+- Dungeon themes: `theme: cave` fills a dungeon's pictures, and `gozen theme add` copies them into the game
 - Visual novels: roll back with the state, skip what was read, save in the middle of a scene, choices read as `chose`, staging with `stand`, and a development panel (F8) for the flags
 - Engine words in English and Japanese, chosen by `language` in game.yaml, and the game's own text in two languages
 - A headless driver that shares the rules with the window

@@ -10,7 +10,7 @@ A Gozen game is plain text with a checker that answers in file and line. That su
 
 1. Give the agent the contract: the [Schema](/schema/) page, or the JSON Schema in [data/schema/](https://github.com/nao1215/gozen/tree/main/data/schema), and a working example such as [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen/game).
 2. Give it one rule: `gozen check game` must pass before it says it is done.
-3. Ask for numbers, not opinions: `gozen sim battle` and `gozen sim dive` say whether a fight or a dive is too hard.
+3. Ask for numbers, not opinions: `gozen sim battle` and `gozen sim dive` say whether a fight or a dive is too hard, and `gozen sim campaign` whether a war is too easy.
 4. Review the result as one document with `gozen book game > book.md`, then play it with `--dev` and leave F9 notes.
 5. Hand the notes back: `gozen play notes notes` gives a page of screenshots and comments, and each note's `.json` names the place and line.
 
@@ -22,7 +22,7 @@ gozen sim dive game cave --floors 5 --boss 5:cave_boss    # a whole dive: levels
 gozen book game > book.md                              # everything, as one Markdown file
 ```
 
-`check` exits 1 on any error, so it works as a gate in a script, a git hook, or CI. `gozen check --format json game` prints the same errors and warnings as a JSON array (`file`, `line`, `col`, `path`, `code`, `message`, `severity`) for a tool that reads them.
+`check` exits 1 on any error, so it works as a gate in a script, a git hook, or CI ([setup-gozen](/cookbook/#check-and-measure-in-ci) installs it in GitHub Actions). `gozen check --format json game` prints the same errors and warnings as a JSON array (`file`, `line`, `col`, `path`, `code`, `message`, `severity`) for a tool that reads them.
 
 ## The gozen skill
 
