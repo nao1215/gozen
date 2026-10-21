@@ -4,20 +4,13 @@
 package tagger
 
 import (
-	"encoding/csv"
 	"errors"
 	"fmt"
 	"image"
-	"image/color"
-	"image/draw"
-	"os"
 	"path/filepath"
 
 	ort "github.com/yalue/onnxruntime_go"
-	xdraw "golang.org/x/image/draw"
 )
-
-const Keep = 0.05
 
 type Tagger struct {
 	sess  *ort.DynamicAdvancedSession
@@ -68,44 +61,10 @@ func New(dir, lib string, threads int) (result *Tagger, err error) {
 	return &Tagger{sess: s, names: names, size: size}, nil
 }
 
-func readNames(path string) (result []string, err error) {
-	f, err := os.Open(path) //nolint:gosec // The caller explicitly selects this input file.
-	if err != nil {
-		return nil, err
-	}
-	defer func() { err = errors.Join(err, f.Close()) }()
-	rows, err := csv.NewReader(f).ReadAll()
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
-	}
-	if len(rows) < 2 || len(rows[0]) < 2 || rows[0][1] != "name" {
-		return nil, fmt.Errorf("%s: the second column must be name", path)
-	}
-	names := make([]string, 0, len(rows)-1)
-	for _, r := range rows[1:] {
-		names = append(names, r[1])
-	}
-	return names, nil
-}
-
 func (t *Tagger) Close() error { return t.sess.Destroy() }
 
 func (t *Tagger) Tags(img image.Image) (result map[string]float32, err error) {
-	b := img.Bounds()
-	s := max(b.Dx(), b.Dy())
-	sq := image.NewRGBA(image.Rect(0, 0, s, s))
-	draw.Draw(sq, sq.Bounds(), image.NewUniform(color.White), image.Point{}, draw.Src)
-	at := image.Pt((s-b.Dx())/2, (s-b.Dy())/2)
-	draw.Draw(sq, image.Rectangle{Min: at, Max: at.Add(b.Size())}, img, b.Min, draw.Over)
-	small := image.NewRGBA(image.Rect(0, 0, t.size, t.size))
-	xdraw.CatmullRom.Scale(small, small.Bounds(), sq, sq.Bounds(), draw.Src, nil)
-
-	data := make([]float32, t.size*t.size*3)
-	for i := range t.size * t.size {
-		p := small.Pix[i*4 : i*4+3]
-		data[i*3], data[i*3+1], data[i*3+2] = float32(p[2]), float32(p[1]), float32(p[0])
-	}
-	in, err := ort.NewTensor(ort.NewShape(1, int64(t.size), int64(t.size), 3), data)
+	in, err := ort.NewTensor(ort.NewShape(1, int64(t.size), int64(t.size), 3), prepare(img, t.size))
 	if err != nil {
 		return nil, err
 	}
@@ -119,15 +78,5 @@ func (t *Tagger) Tags(img image.Image) (result map[string]float32, err error) {
 	if !ok {
 		return nil, errors.New("the tagger output is not float32")
 	}
-	v := o.GetData()
-	if len(v) != len(t.names) {
-		return nil, fmt.Errorf("the tagger gives %d values for %d tags", len(v), len(t.names))
-	}
-	tags := map[string]float32{}
-	for i, p := range v {
-		if p >= Keep {
-			tags[t.names[i]] = float32(int(p*1000+0.5)) / 1000
-		}
-	}
-	return tags, nil
+	return tagsFrom(o.GetData(), t.names)
 }

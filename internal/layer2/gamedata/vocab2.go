@@ -295,11 +295,41 @@ func (c *checker) setKey(w, k string, e Expr) {
 		if _, preset := db.Game.Battle.TacticPresets[text]; field == "tactics" && text != "auto" && text != "manual" && !preset && !strings.HasPrefix(text, "{") {
 			c.errorf(diag.NotAWord, w+"."+k, "tactics is auto, manual or a preset of battle.tactic_presets, not %q", text)
 		}
+		if field == "tactics" && strings.HasPrefix(text, "{") {
+			c.tacticsMapping(w+"."+k, text)
+		}
 	default:
 		c.errorf(diag.Shape, w, "%q: set changes flag.<name>, var.<name>, gold, item.<id>, actor.<id>.<%s>, party, location, spot, calm, pos.x, pos.y, pos.facing, steps and roamers", k, strings.Join(SetFields, "|"))
 		return
 	}
 	c.needsVersion2(w+"."+k, "set "+k)
+}
+
+// tacticsMapping checks set actor.<id>.tactics written as a mapping (the shape of saved
+// tactics, kept as JSON by literalText): its mode, and the preset it names, which the game
+// would otherwise take and give the member no rows in battle.
+func (c *checker) tacticsMapping(where, text string) {
+	var t struct {
+		Mode   string      `json:"mode"`
+		Preset string      `json:"preset"`
+		Rows   []TacticRow `json:"rows"`
+	}
+	if err := json.Unmarshal([]byte(text), &t); err != nil {
+		c.errorf(diag.Shape, where, "tactics: %v", err)
+		return
+	}
+	switch t.Mode {
+	case "auto", "manual", "preset":
+	default:
+		c.errorf(diag.NotAWord, where, "tactics: mode is auto, manual or preset, not %q", t.Mode)
+		return
+	}
+	if t.Mode == "preset" && t.Preset == "" {
+		c.errorf(diag.Shape, where, "tactics: mode preset needs preset (a name of battle.tactic_presets)")
+	}
+	if _, ok := c.db.Game.Battle.TacticPresets[t.Preset]; t.Preset != "" && !ok {
+		c.errorf(diag.UnknownReference, where, "tactics: no preset %q in battle.tactic_presets", t.Preset)
+	}
 }
 
 // DevSet reports whether the left-hand side of set is a value overwritten only under --dev (member stats and level, position, steps, strong enemies).

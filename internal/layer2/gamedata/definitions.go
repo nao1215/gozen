@@ -183,6 +183,83 @@ func collectDefinitionFields(typ reflect.Type) map[string]reflect.Type {
 	return fields
 }
 
+// resolveMerges writes out each YAML merge of one mapping (<<: *base, or <<: {...}) beside
+// the keys of its own mapping, so a key written there overrides the merged one wherever it
+// is written, as YAML means. The decoder would take the override for a key written twice
+// (or let the merge win when it comes after). A merge of a sequence of mappings is left to
+// the decoder. anchors holds the mappings of the anchors seen so far, in the order of the
+// document, already resolved.
+func resolveMerges(n ast.Node, anchors map[string]ast.Node) {
+	switch x := n.(type) {
+	case *ast.AnchorNode:
+		resolveMerges(x.Value, anchors)
+		anchors[x.Name.GetToken().Value] = x.Value
+	case *ast.TagNode:
+		resolveMerges(x.Value, anchors)
+	case *ast.SequenceNode:
+		for _, v := range x.Values {
+			resolveMerges(v, anchors)
+		}
+	case *ast.MappingValueNode:
+		resolveMerges(x.Value, anchors)
+	case *ast.MappingNode:
+		for _, e := range x.Values {
+			resolveMerges(e.Value, anchors)
+		}
+		mergeInto(x, anchors)
+	}
+}
+
+// mergeInto replaces the merges of one mapping by the entries they bring that the mapping
+// does not write itself.
+func mergeInto(m *ast.MappingNode, anchors map[string]ast.Node) {
+	source := func(v ast.Node) *ast.MappingNode {
+		for {
+			switch x := v.(type) {
+			case *ast.AliasNode:
+				v = anchors[x.Value.GetToken().Value]
+			case *ast.AnchorNode:
+				v = x.Value
+			case *ast.TagNode:
+				v = x.Value
+			case *ast.MappingNode:
+				return x
+			case *ast.MappingValueNode:
+				return &ast.MappingNode{Values: []*ast.MappingValueNode{x}}
+			default:
+				return nil
+			}
+		}
+	}
+	written := map[string]bool{}
+	merges := false
+	for _, e := range m.Values {
+		if k := sourceKey(e.Key); k != "<<" {
+			written[k] = true
+		} else if source(e.Value) != nil {
+			merges = true
+		}
+	}
+	if !merges {
+		return
+	}
+	out := make([]*ast.MappingValueNode, 0, len(m.Values))
+	for _, e := range m.Values {
+		src := source(e.Value)
+		if sourceKey(e.Key) != "<<" || src == nil {
+			out = append(out, e)
+			continue
+		}
+		for _, me := range src.Values {
+			if k := sourceKey(me.Key); !written[k] {
+				written[k] = true
+				out = append(out, me)
+			}
+		}
+	}
+	m.Values = out
+}
+
 // decodeDefinitions checks shape and types on the parsed node and ties diagnostics to the same source.
 func (doc *sourceDocument) decodeDefinitions(into any) (yaml.MapSlice, error) {
 	typ := reflect.TypeOf(into).Elem()
@@ -191,8 +268,11 @@ func (doc *sourceDocument) decodeDefinitions(into any) (yaml.MapSlice, error) {
 		if typ == reflect.TypeFor[file]() {
 			return nil, nil
 		}
-	} else if err := decodeguard.Run(func() error { return yaml.NodeToValue(doc.root, &raw, yaml.UseOrderedMap()) }); err != nil {
-		return nil, doc.yamlError(err)
+	} else {
+		resolveMerges(doc.root, map[string]ast.Node{})
+		if err := decodeguard.Run(func() error { return yaml.NodeToValue(doc.root, &raw, yaml.UseOrderedMap()) }); err != nil {
+			return nil, doc.yamlError(err)
+		}
 	}
 	where := ""
 	if doc.name == "game.yaml" {

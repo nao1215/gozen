@@ -98,6 +98,59 @@ func (e *Expr) Names() []string {
 	return out
 }
 
+// Bare are the names written as a whole value: not called, and not followed by a field or an
+// index (built-in functions included), in the order they first appear. The data checker
+// uses them to find a function's name used as a value, such as floor + 1.
+func (e *Expr) Bare() []string {
+	if e == nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	var out []string
+	var visit func(n node)
+	visit = func(n node) {
+		switch x := n.(type) {
+		case *ident:
+			if !seen[x.name] {
+				seen[x.name] = true
+				out = append(out, x.name)
+			}
+		case *field:
+			if _, ok := x.x.(*ident); !ok {
+				visit(x.x)
+			}
+		case *index:
+			if _, ok := x.x.(*ident); !ok {
+				visit(x.x)
+			}
+			visit(x.i)
+		case *call:
+			if _, ok := x.fn.(*ident); !ok {
+				visit(x.fn)
+			}
+			for _, a := range x.args {
+				visit(a)
+			}
+		case *not:
+			visit(x.x)
+		case *neg:
+			visit(x.x)
+		case *logic:
+			visit(x.l)
+			visit(x.r)
+		case *binop:
+			visit(x.l)
+			visit(x.r)
+		case *cond:
+			visit(x.c)
+			visit(x.a)
+			visit(x.b)
+		}
+	}
+	visit(e.root)
+	return out
+}
+
 // Step is one step of traversal after a name: a field (a.b, or a string index a["b"]) or an
 // expression index
 // (a[i]; Name is empty).

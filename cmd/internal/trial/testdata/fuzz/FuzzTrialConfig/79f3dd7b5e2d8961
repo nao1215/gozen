@@ -1,0 +1,2 @@
+go test fuzz v1
+string("dive_max: {tower }\nblocked: [0]")

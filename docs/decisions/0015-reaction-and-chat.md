@@ -128,7 +128,8 @@ Online communication is not implemented. Only the `Source` hook is provided; Web
 
 - `react/react_test.go`: a table of conversation sequences with the expected rules, lines and mood (random seed fixed). Asks and bringing up memory, cooldowns, memory expiry (by count and by time), save and restore, normalization, and 13 kinds of validation errors. `FuzzReact` checks that mood and confidence stay in range for long or broken input.
 - `chat/chat_test.go`: limits and IDs, truncation, dropping Filters and spelling variants of masking, bot frequency, mood, bursts, the cap after a pause, and script validation. `FuzzMask` checks that masking does not change the character count.
-- Not handled: the dakuten of half-width katakana (ﾊﾞ) is not merged into one character in mask matching. A CLI for authors to talk with a character and check the rules taken (`gozen talk`) is left for later consideration.
+- Mask matching normalizes the text with NFKC first, so the dakuten of half-width katakana (ﾊﾞ) and a voiced mark written as its own character are merged; the original characters of a match are hidden.
+- Not handled: a CLI for authors to talk with a character and check the rules taken (`gozen talk`) is left for later consideration.
 
 ## Decided (the author's answers, 2026-10-19)
 

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("duels: {fighters: [scout], first: [0,00], list: [{open: 'true'}]}\npersonas: [ id: 00] ")

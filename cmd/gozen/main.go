@@ -34,7 +34,7 @@ type node struct {
 
 // tree maps a command path to its node.
 var tree = map[string]node{
-	"":             {subs: []string{"check", "sim", "play", "book", "pack", "art", "version", "help"}},
+	"":             {subs: []string{"check", "sim", "play", "book", "pack", "art", "theme", "version", "help"}},
 	"check":        {run: (*command).checkCmd},
 	"sim":          {subs: []string{"battle", "dive", "floors", "design", "campaign"}},
 	"sim campaign": {run: (*command).campaignCmd},
@@ -56,6 +56,9 @@ var tree = map[string]node{
 	"art fetch":    {delegate: mosaiccmd.Fetch},
 	"art faces":    {run: (*command).faces},
 	"art puppet":   {run: (*command).puppetCmd},
+	"theme":        {subs: []string{"add", "list"}},
+	"theme add":    {run: (*command).themeAdd},
+	"theme list":   {run: (*command).themeList},
 	"version":      {run: (*command).versionCmd},
 }
 

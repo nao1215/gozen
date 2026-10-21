@@ -17,9 +17,9 @@ Codes are assigned one family at a time. A diagnostic without a code still exits
 
 | Codes | Exit | Meaning | Assigned |
 |:--|:--|:--|:--|
-| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 13 codes |
+| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 14 codes |
 | `GZN02xx` | 0 | warnings of a measurement or a record | not yet |
-| `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 10 codes |
+| `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 11 codes |
 | `GZN12xx` | 1 | fonts and text layout | 1 codes |
 | `GZN13xx` | 1 | a simulation could not run or reported a problem | not yet |
 | `GZN14xx` | 1 | a trace of a play is broken or shows faults | 6 codes |
@@ -142,6 +142,14 @@ A condition or expression reads flag.<name>, and no set, gallery scene or state.
 
 Fix: Set the flag where it should become true, fix its name, or declare it in state.names.
 
+### GZN0114
+
+An expression uses a function's name as a value.
+
+A built-in function (floor, max, len and the others) or a function of the game (rand, chance, pages) is written alone, not called, as in floor + 1. The expression fails when it is evaluated. floor is the floor's number only in generate's size, the count of generate.place and a roamer's count, appear, wait and every; elsewhere it is the function and the floor's number is var.floor.
+
+Fix: Call the function (floor(x)), or use the value you meant (var.floor).
+
 ## GZN11xx
 
 The definitions of the game: YAML, references, expressions, assets. Exits 1.
@@ -225,6 +233,14 @@ The game directory or game.yaml cannot be read.
 The directory given is not a game directory: it does not exist, cannot be read, or has no game.yaml.
 
 Fix: Pass the directory that holds game.yaml, data/ and assets/.
+
+### GZN1111
+
+A dungeon theme is named but its pictures are not in the game.
+
+A dungeon or one of its looks says theme: <name>, but assets/dungeon/themes/<name>/ lacks wall.jpg, floor.jpg, ceiling.jpg, door.jpg or theme.yaml. The theme's pictures are not part of the game until they are copied in.
+
+Fix: Run gozen theme add <name> <game-dir> (gozen theme list shows the names), or put your own folder of that name there.
 
 ## GZN12xx
 
@@ -354,7 +370,7 @@ The shape of the command line: commands, operands, options. Exits 2.
 
 There is no such command.
 
-The word is not a command of gozen or of the group it follows. The commands are grouped (ADR 0024): check, sim, play, book, pack, art, version, and help. An old name such as curve or memos is answered with its new place, for example gozen sim dive.
+The word is not a command of gozen or of the group it follows. The commands are grouped (ADR 0024): check, sim, play, book, pack, art, theme, version, and help. An old name such as curve or memos is answered with its new place, for example gozen sim dive.
 
 Fix: Use the command the message names, or run gozen --help (or the group with --help) for the list.
 

@@ -29,6 +29,7 @@ var topPage = clihelp.Page{
 		{"book", "Write the definitions and events as Markdown"},
 		{"pack", "Build what you ship: release, trial"},
 		{"art", "Picture and asset tools: prompt, mosaic, fetch, faces, puppet"},
+		{"theme", "Dungeon themes: add the pictures of a theme to a game, list the themes"},
 		{"version", "Print the gozen version"},
 		{"help", "Show the help of a command, or explain a diagnostic code"},
 	},
@@ -122,6 +123,23 @@ var groups = map[string]clihelp.Page{
 		Notes:  []string{"The output directory must not exist yet and must not be inside an input.", noRequirements},
 		Hint:   `Run "gozen pack <command> --help" for a command's options and examples.`,
 	},
+	"theme": {
+		Summary: "dungeon themes",
+		Usage:   []string{"gozen theme <command> [OPTIONS] ..."},
+		About: "A theme is a set of wall, floor, ceiling and door pictures with colors that go together. " +
+			"add copies one into a game, list shows the names.",
+		Commands: [][2]string{
+			{"add", "Copy a theme's pictures into a game"},
+			{"list", "List the themes"},
+		},
+		Examples: []clihelp.Example{
+			{"list the themes", "gozen theme list"},
+			{"add the ice theme to a game", "gozen theme add ice game"},
+		},
+		Groups: []clihelp.Group{general},
+		Notes:  []string{noRequirements},
+		Hint:   `Run "gozen theme <command> --help" for a command's options and examples.`,
+	},
 	"art": {
 		Summary: "picture and asset tools",
 		Usage:   []string{"gozen art <command> [OPTIONS] ..."},
@@ -150,6 +168,30 @@ var groups = map[string]clihelp.Page{
 }
 
 var pages = map[string]clihelp.Page{
+	"theme add": {
+		Summary: "copy a dungeon theme into a game",
+		Usage:   []string{"gozen theme add [OPTIONS] <name> <game-dir>"},
+		About: "Copies the wall, floor, ceiling and door pictures and the colors of the theme to " +
+			"assets/dungeon/themes/<name>/ of the game, so that theme: <name> in a dungeon or one of its " +
+			"looks fills the walls, floor, ceiling, door and colors. A file the game already has is kept; " +
+			"--force replaces it. The pictures come with the gozen binary: no network is used.",
+		Examples: []clihelp.Example{
+			{"add the cave theme", "gozen theme add cave game"},
+			{"restore the pictures of the cave theme", "gozen theme add cave game --force"},
+		},
+		Groups: []clihelp.Group{{Title: "Files", Flags: []string{"force"}}, general},
+		Notes:  []string{"The theme's pictures are CC BY 4.0; see ASSETS.md of the gozen repository.", noRequirements},
+	},
+	"theme list": {
+		Summary: "list the dungeon themes",
+		Usage:   []string{"gozen theme list"},
+		About:   "Prints the name of each theme the gozen binary carries, with a line on how it looks.",
+		Examples: []clihelp.Example{
+			{"list the themes", "gozen theme list"},
+		},
+		Groups: []clihelp.Group{general},
+		Notes:  []string{noRequirements},
+	},
 	"check": {
 		Summary: "check the definitions, assets, and text layout of a game",
 		Usage:   []string{"gozen check [OPTIONS] <game-dir>"},

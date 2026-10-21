@@ -2,16 +2,23 @@
 coverage:
   paths:
     - coverage.out
-  # Measured with -coverpkg=./... across the whole module (about 51.7% when this
-  # file was written), so cross-package tests count toward the package they
-  # exercise. Keep this below the measured value and raise it as coverage grows.
-  acceptable: 50%
-  # Not part of the library or the gozen command: sample games, the generators
-  # and checkers under internal/dev, and the test fixture game.
+  # Measured with -coverpkg=./... across the whole module, so cross-package tests
+  # count toward the package they exercise. Keep this a little below the measured
+  # value and raise it as coverage grows.
+  acceptable: 92%
   exclude:
+    # Not part of the library or the gozen command: sample games, the generators
+    # and checkers under internal/dev, and the test fixture game.
     - "**/examples/**"
     - "**/internal/dev/**"
     - "**/internal/testgame/**"
+    # ONNX Runtime sessions of art mosaic. They run only with the ONNX shared
+    # library and a user-supplied model, which CI does not have (no model is
+    # bundled). Their pure pre- and post-processing lives in process.go beside
+    # them and is measured.
+    - "**/internal/mosaic/detect/inference_cgo.go"
+    - "**/internal/mosaic/segment/yoloseg.go"
+    - "**/internal/mosaic/tagger/tagger.go"
 diff:
   datastores:
     - artifact://${GITHUB_REPOSITORY}

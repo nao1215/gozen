@@ -5271,6 +5271,19 @@
           },
           "x-type": "[Roamer](#roamer)[]"
         },
+        "theme": {
+          "description": "A theme of pictures and colors from assets/dungeon/themes/, such as `cave`. It fills the walls, door, floor, ceiling and their colors that are not written here. Add one to the game with `gozen theme add`.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "tiles": {
           "additionalProperties": {
             "$ref": "#/$defs/Tile"
@@ -5492,6 +5505,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string → string"
+        },
+        "theme": {
+          "description": "A theme for this look. It fills the walls, door, floor, ceiling and colors that the look does not write itself, in place of the dungeon's theme.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         },
         "wall": {
           "$ref": "#/$defs/Picture",

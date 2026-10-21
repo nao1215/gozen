@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/nao1215/gozen/internal/mosaic"
-	"github.com/nao1215/gozen/internal/mosaic/tagger"
 )
 
 type tagCache struct {
@@ -18,7 +17,7 @@ type tagCache struct {
 	path    string
 	entries map[string]tagEntry
 	dirty   bool
-	t       *tagger.Tagger
+	t       tagModel
 	dir     string
 	lib     string
 	threads int
@@ -86,9 +85,11 @@ func (tc *tagCache) get(rel, file string) (map[string]float32, error) {
 			tc.noModel = true
 			return nil, nil
 		}
-		if tc.t, err = tagger.New(tc.dir, tc.lib, tc.threads); err != nil {
+		t, err := newTagger(tc.dir, tc.lib, tc.threads)
+		if err != nil {
 			return nil, err
 		}
+		tc.t = t
 	}
 	img, err := decode(file)
 	if err != nil {

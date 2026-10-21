@@ -63,6 +63,11 @@ var (
 		Detail:  "A condition or expression reads flag.<name>, and no set, gallery scene or state.names declaration gives it a value, so it stays false (unless a test starts with --flags or the game's Go code sets it).",
 		Fix:     "Set the flag where it should become true, fix its name, or declare it in state.names.",
 	})
+	FunctionValue = register(114, "FunctionValue", Entry{
+		Summary: "an expression uses a function's name as a value",
+		Detail:  "A built-in function (floor, max, len and the others) or a function of the game (rand, chance, pages) is written alone, not called, as in floor + 1. The expression fails when it is evaluated. floor is the floor's number only in generate's size, the count of generate.place and a roamer's count, appear, wait and every; elsewhere it is the function and the floor's number is var.floor.",
+		Fix:     "Call the function (floor(x)), or use the value you meant (var.floor).",
+	})
 	DevOnlySet = register(108, "DevOnlySet", Entry{
 		Summary: "a set changes an actor's stats or level outside the development mode",
 		Detail:  "Setting a party member's stats or level is for the development mode (--dev) and tests. The game skips it when played normally.",
@@ -122,6 +127,11 @@ var (
 		Summary: "the game directory or game.yaml cannot be read",
 		Detail:  "The directory given is not a game directory: it does not exist, cannot be read, or has no game.yaml.",
 		Fix:     "Pass the directory that holds game.yaml, data/ and assets/.",
+	})
+	ThemeMissing = register(1111, "ThemeMissing", Entry{
+		Summary: "a dungeon theme is named but its pictures are not in the game",
+		Detail:  "A dungeon or one of its looks says theme: <name>, but assets/dungeon/themes/<name>/ lacks wall.jpg, floor.jpg, ceiling.jpg, door.jpg or theme.yaml. The theme's pictures are not part of the game until they are copied in.",
+		Fix:     "Run gozen theme add <name> <game-dir> (gozen theme list shows the names), or put your own folder of that name there.",
 	})
 )
 

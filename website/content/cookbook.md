@@ -646,7 +646,7 @@ locations:
 
 ## Generate dungeon floors
 
-With `generate` instead of `map`, every floor is built anew: a maze of rooms and corridors with the characters of `place` put in it. `dive` goes down; `floor` in expressions is the floor number.
+With `generate` instead of `map`, every floor is built anew: a maze of rooms and corridors with the characters of `place` put in it. `dive` goes down; `var.floor` is the floor number. Inside `generate` and `roamers` (such as a `count`), plain `floor` is that number too; in the commands of a tile it is the `floor()` function, so write `var.floor` there.
 
 <!-- verify: load group=generate -->
 ```yaml
@@ -666,8 +666,8 @@ locations:
           - {char: T, count: "floor < 5 ? 2 : 1"}
       tiles:
         S: {start: true}
-        ">": {name: Stairs down, symbol: v, do: [{dive: depths, floor: floor + 1}]}
-        T: {name: Chest, picture: chest.png, solid: "true", once: true, after: ".", do: [{gold: floor * 5}]}
+        ">": {name: Stairs down, symbol: v, do: [{dive: depths, floor: var.floor + 1}]}
+        T: {name: Chest, picture: chest.png, solid: "true", once: true, after: ".", do: [{gold: var.floor * 5}]}
 ```
 
 Enter it with a `dive: depths` command. `seed` gives every save the same maps, and `floors` sets a seed or a hand-drawn map for one floor, such as a boss floor. Reference: [Generate](/schema/#generate), [Put](/schema/#put), [FloorPlan](/schema/#floorplan). [Look at the floors and play a dive](#check-and-measure) before you tune them.
@@ -685,7 +685,7 @@ locations:
       generate: {width: 13, height: 13, rooms: 2, start: S, place: [{char: ">", far: true}]}
       tiles:
         S: {start: true}
-        ">": {name: Stairs down, do: [{dive: catacombs, floor: floor + 1}]}
+        ">": {name: Stairs down, do: [{dive: catacombs, floor: var.floor + 1}]}
       roamers:
         - name: Ghoul
           picture: ghoul.png
@@ -714,13 +714,46 @@ locations:
       generate: {width: 11, height: 11, start: S, place: [{char: ">", far: true}]}
       tiles:
         S: {start: true}
-        ">": {name: Stairs up, do: [{dive: tower, floor: floor + 1}]}
+        ">": {name: Stairs up, do: [{dive: tower, floor: var.floor + 1}]}
       looks:
         - {when: "var.floor >= 6", area: Upper floors, wall: marble.jpg, floor: "#c8c8d0", darkness: 0.2}
         - {when: "var.floor >= 3", area: Middle floors, wall: mossy.jpg, ceiling_texture: vines.jpg}
 ```
 
 A look can also set `battle_background`, `music`, `battle_music` and `no_map`. Reference: [DungeonLook](/schema/#dungeonlook), [Dungeon](/schema/#dungeon).
+
+## Use a dungeon theme
+
+A theme is a wall, a floor, a ceiling and a door picture with matching colors. `gozen theme list` names the five that come with the `gozen` binary (`cave`, `ice`, `ruins`, `castle`, `crystal`); `gozen theme add` copies one into the game, with no network.
+
+<!-- verify: each fixture=cli -->
+```shell
+gozen theme add cave game
+gozen theme add ice game
+```
+
+Then name it in the dungeon, and in a look for the deeper floors. What the YAML writes itself (`wall`, `door`, `floor`, `ceiling`, `floor_texture`, `ceiling_texture`) wins over the theme, and a look with a theme replaces the dungeon's theme for what the look does not write.
+
+<!-- verify: parse the theme folders come from gozen theme add, which the snippet above runs on its own copy -->
+```yaml
+locations:
+  tower:
+    name: Tower
+    dungeon:
+      theme: cave
+      generate: {width: 11, height: 11, start: S, place: [{char: ">", far: true}]}
+      tiles:
+        S: {start: true}
+        ">": {name: Stairs up, do: [{dive: tower, floor: floor + 1}]}
+      looks:
+        - {when: "var.floor >= 3", area: Deeper floors, theme: ice, door: gate.jpg}
+```
+
+The five themes in the same corridor, `cave`, `ice`, `ruins`, `castle` and `crystal`:
+
+![The five dungeon themes seen in one corridor](/images/dungeon-themes.jpg)
+
+`gozen check` fails with `GZN1111` when a named theme is not in the game. Reference: [Dungeon](/schema/#dungeon), [DungeonLook](/schema/#dungeonlook).
 
 ## Show a map with points and roads
 

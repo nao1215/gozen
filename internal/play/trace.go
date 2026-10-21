@@ -372,7 +372,20 @@ func (g *Game) traceState(terminal ...bool) {
 	g.emit("state", l)
 }
 
-func (g *Game) traceRequest(r event.Request) {
+func (g *Game) traceRequest(r event.Request) { g.traceRequestIn(r, false) }
+
+// traceBattleRequest traces a line, choice or notice of a troop event. Its say lines carry
+// in_battle, so a replay of a trace written before battle lines were traced can tell them
+// apart (replay.check).
+func (g *Game) traceBattleRequest(r event.Request) { g.traceRequestIn(r, true) }
+
+func (g *Game) traceRequestIn(r event.Request, inBattle bool) {
+	mark := func(l traceLine) traceLine {
+		if inBattle {
+			l["in_battle"] = true
+		}
+		return l
+	}
 	switch r := r.(type) {
 	case event.Say:
 		l := traceLine{"text": r.Text, "read": g.isRead(r)}
@@ -382,11 +395,11 @@ func (g *Game) traceRequest(r event.Request) {
 		if r.Face != "" {
 			l["face"] = r.Face
 		}
-		g.emit("say", l)
+		g.emit("say", mark(l))
 	case event.Choice:
-		g.emit("say", traceLine{"text": r.Prompt, "choices": r.Options})
+		g.emit("say", mark(traceLine{"text": r.Prompt, "choices": r.Options}))
 	case event.Notice:
-		g.emit("notice", traceLine{"text": r.Text})
+		g.emit("notice", mark(traceLine{"text": r.Text}))
 	case event.Battle:
 		g.emit("request", traceLine{"what": "battle", "troop": r.Troop})
 	case event.Shop:
@@ -517,6 +530,15 @@ type replay struct {
 	autopilot   bool
 	finished    bool
 	capture     *battleCapture
+	battleSays  bool // the trace has say lines marked in_battle
+}
+
+// expectLine keeps a checked line of the trace to compare with the replay.
+func (r *replay) expectLine(k string, l traceLine) {
+	if k == "say" && l["in_battle"] == true {
+		r.battleSays = true
+	}
+	r.expect[k] = append(r.expect[k], l)
 }
 
 var replayChecked = []string{"say", "scene", "battle"}
@@ -648,7 +670,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			if !ok {
 				return nil, errors.New("replay: action name must be a string")
 			}
-			if !slices.Contains([]string{"battle_auto", "run", "use_item", "raise", "equip_best", "buy"}, name) {
+			if !slices.Contains([]string{"battle_auto", "run", "use_item", "raise", "equip_best", "buy", "walk"}, name) {
 				return nil, fmt.Errorf(lang.T("replay の未知の直接操作 %q"), name)
 			}
 			r.acts[tick] = append(r.acts[tick], l)
@@ -656,7 +678,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			reloads = append(reloads, tick)
 		default:
 			if r.checked(k) {
-				r.expect[k] = append(r.expect[k], l)
+				r.expectLine(k, l)
 			}
 		}
 	}
@@ -792,6 +814,10 @@ func (r *replay) check(g *Game, line traceLine) {
 		return
 	}
 	if r.diverge != "" || !r.checked(k) || (r.partial && k == "state" && line["terminal"] == true) {
+		return
+	}
+	if k == "say" && line["in_battle"] == true && !r.battleSays {
+		// The trace was written before battle lines were traced and has none to compare.
 		return
 	}
 	i := r.at[k]
@@ -937,12 +963,17 @@ func (g *Game) traceEnd() {
 	g.emit("end", l)
 }
 
-func (g *Game) act(name string, args traceLine) bool {
+// traceAct writes a direct action to the trace, for a replay to do it again (replay.doActs).
+func (g *Game) traceAct(name string, args traceLine) {
 	l := traceLine{"name": name}
 	if len(args) > 0 {
 		l["args"] = args
 	}
 	g.emit("act", l)
+}
+
+func (g *Game) act(name string, args traceLine) bool {
+	g.traceAct(name, args)
 	s := func(k string) string {
 		v, ok := args[k].(string)
 		if !ok {
@@ -953,6 +984,11 @@ func (g *Game) act(name string, args traceLine) bool {
 	n := func(k string) int { return int(num(args[k])) }
 	st := g.st
 	switch name {
+	case "walk":
+		// A script's walk on a map or in a painted scene (sceneWalk); in a dungeon the walk
+		// presses keys, which the trace has as input.
+		_, _, ok := g.sceneWalk(s("to"), args["face"] == true)
+		return ok
 	case "battle_auto":
 		if b := g.currentBattle(); b != nil && b.phase == bpInput {
 			b.auto = true

@@ -159,7 +159,7 @@ func (c *config) open() error {
 		}
 		c.opts.model = p
 	}
-	d, err := detect.NewWithLabels(c.opts.model, c.opts.lib, c.opts.threads, c.classes)
+	d, err := newDetector(c.opts.model, c.opts.lib, c.opts.threads, c.classes)
 	if err != nil {
 		return err
 	}
@@ -172,17 +172,21 @@ func (c *config) open() error {
 		if c.showClasses {
 			c.diag.printf("face classes: %s (%s)\n", strings.Join(fc, ","), src)
 		}
-		if c.face, err = detect.NewWithLabels(c.opts.faceModel, c.opts.lib, c.opts.threads, fc); err != nil {
+		fd, err := newDetector(c.opts.faceModel, c.opts.lib, c.opts.threads, fc)
+		if err != nil {
 			return err
 		}
+		c.face = fd
 	}
 	if c.opts.shape == "mask" {
 		if c.opts.segModel == "" {
 			return errors.New("--shape mask requires a user-supplied --seg model")
 		}
-		if c.seg, err = segment.NewYoloSeg(c.opts.segModel, c.opts.lib, c.opts.threads, 1280, segment.SegLabels); err != nil {
+		sg, err := newSegmenter(c.opts.segModel, c.opts.lib, c.opts.threads, 1280, segment.SegLabels)
+		if err != nil {
 			return err
 		}
+		c.seg = sg
 	}
 
 	return nil
@@ -276,9 +280,9 @@ type config struct {
 	opts         *options
 	passes       []detect.Pass
 	tags         *tagCache
-	det          *detect.Detector
-	face         *detect.Detector
-	seg          *segment.YoloSeg
+	det          boxDetector
+	face         boxDetector
+	seg          segmenter
 }
 
 type entry struct {

@@ -365,6 +365,7 @@ func (db *DB) defaults() {
 	for _, l := range db.Locations {
 		if l.Dungeon != nil {
 			l.Dungeon.parse()
+			db.applyThemes(l.Dungeon)
 		}
 	}
 	campaignActions(db)

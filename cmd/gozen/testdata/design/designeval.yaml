@@ -1,0 +1,105 @@
+time:
+  chars_per_sec: 12
+  line: 1
+  notice: 1
+  choice: 2
+  step: 1
+  turn: 0.5
+  move: 3
+  menu: 1
+  battle: 5
+  battle_turn: 2
+  retry: 4
+  shop: 8
+  stranded: 30
+  images: [{match: "mote", sec: 3}]
+game:
+  days: 8
+  tries: 4
+  dungeon: cave
+  gate: camp
+  dive: [Descend]
+  dive_words: [Take]
+  inn: inn
+  sleep: Sleep
+  talk: Host
+  sleep_words: [Take]
+  evening: [inn]
+  town: [camp]
+  not_by_day: [Finish]
+  shops: [smith]
+  supply_shop: smith
+  supplies: {tonic: 2}
+  back_event: home
+  back_item: shard
+  stairs: ">"
+  stairs_words: [Take]
+  bosses: {3: warden}
+  boss_done: flag.won
+  gate_tile: G
+  guard_tile: B
+  gate_words: [Take]
+  home_words: [Take]
+  floor: var.floor
+  deepest: var.deepest
+  cleared: flag.won
+  place: "Cave B{var.floor}F"
+  worn_hp: 0.3
+  worn_mp: 0.1
+  retry: 1
+  max_turns: 30
+  never: [Decline]
+  opt_in: [Take]
+  prefer: [offer]
+  repeat_tiles: T
+  stones: false
+rewards:
+  - {kind: progress, label: Progress, events: finish}
+  - {kind: chest, label: Chest, value: gold}
+  - {kind: skill, label: Skill, skills: true}
+  - {kind: picture, label: Picture, images: "^(mote)\\.png$", first: true, names: {mote: Mote}, who: Anyone}
+  - {kind: gift, label: Gift, events: "^gift$", when: "gold > 0", flow: gift}
+  - {kind: quiet, label: Quiet, events: "^gift$", unless: gift}
+expects:
+  - {kind: hint, label: Hint, events: "^home$"}
+release: gift
+targets: {persona: steady, close_to: eager, within: 0.5, must_clear: steady}
+memos: {dry: dry, gap: gap, boss: boss, boss_below: 1.0, stuck: stuck}
+duels:
+  tries: 4
+  fighters: [scout]
+  first: [0.0, 1.0]
+  later: 0.5
+  personas: [steady]
+  list:
+    - {troop: rival, rematch: rematch, open: "true", later: "gold > 100"}
+personas:
+  - id: steady
+    name: Steady
+    desc: Takes time.
+    seed: 3
+    days: 8
+    explore: all
+    floors: 3
+    grind: 0.9
+    town:
+      - {at: camp, do: "@courier", words: ["@yes"], rotate: ["@yes", "@no"]}
+    night: [Take]
+    night_always: true
+    policies:
+      - {id: chest, phase: step, reward: chest, try: [{tile: T}]}
+      - {id: gift, phase: town, reward: gift, try: [{entry: gift, at: camp}]}
+      - {id: drink, phase: night, try: [{item: tonic}]}
+      - {id: look, phase: step, try: [{explore: events}]}
+  - id: eager
+    name: Eager
+    days: 8
+    explore: stairs
+    floors: 3
+    avoid: [Elder]
+  - id: wanderer
+    name: Wanderer
+    days: 8
+    explore: events
+    prefer: [Take]
+    rotate: [Take]

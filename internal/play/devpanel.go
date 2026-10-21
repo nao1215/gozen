@@ -234,8 +234,15 @@ func (g *Game) devDo(src string) {
 		return
 	}
 	cmds, ds := data.ParseScript(src)
-	if len(ds) > 0 || g.st == nil {
-		g.devMessage(fmt.Sprint(ds))
+	if len(ds) > 0 {
+		g.devMessage(ds.Error())
+		g.emit("dev_do", traceLine{"do": src, "error": ds.Error()})
+		return
+	}
+	if g.st == nil { // the title: no game to run the commands in
+		msg := lang.T("ゲームが始まっていない（始めるか読み込んでから）")
+		g.devMessage(msg)
+		g.emit("dev_do", traceLine{"do": src, "error": msg})
 		return
 	}
 	setOnly := !slices.ContainsFunc(cmds, func(c data.Command) bool { v, err := c.Verb(); return err != nil || v != "set" })

@@ -22,6 +22,7 @@ vendors:
   image: { in: [golang.org/x/image, "golang.org/x/image/**"] }
   ebiten: { in: [github.com/hajimehoshi/ebiten/v2, "github.com/hajimehoshi/ebiten/v2/**"] }
   width: { in: [golang.org/x/text/width] }
+  norm: { in: [golang.org/x/text/unicode/norm] }
   pflag: { in: [github.com/spf13/pflag] }
   # The browser's localStorage for the saves of a web build (internal/play/store_js.go),
   # its pictures decoded by the browser (internal/layer5/picdecode), its frame meter
@@ -75,7 +76,7 @@ deps:
     mayDependOn: [savefile, private1]
   chat:
     mayDependOn: [chat, private1]
-    canUse: [yaml, width]
+    canUse: [yaml, norm]
   data:
     mayDependOn: [data, expr, text, savefile, private1, private2]
     canUse: [yaml]

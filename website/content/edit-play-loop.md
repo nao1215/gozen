@@ -59,7 +59,7 @@ The book shows each character of `profiles` with the standing picture, the faces
 
 ![Hedda's line is edited in the YAML and F5 shows the new text at the same place](/images/playtest-reload.gif)
 
-With `--dir`, the game watches `game.yaml`, `data/` and `assets/`. Pictures and sounds are reloaded on their own. For definitions, press F5: the game loads them, checks them, and swaps them in. If you are in a battle or a menu, it waits until you are back on the field.
+With `--dir`, the game watches `game.yaml`, `data/` and `assets/`. Pictures and sounds are reloaded on their own. For definitions, press F5: the game loads them, checks them, and swaps them in. The field menu, the settings, the gallery and the character book are rebuilt with the new definitions at once and stay open. In a battle the reload waits until the battle ends, and on another screen, such as a shop or the save screen, until you close it.
 
 If the edit has an error, the game keeps the old definitions and shows the error with its file and line, so a typo never ends the session. Changing the game `id` or lowering `data_version` cannot be reloaded; restart the game for those.
 

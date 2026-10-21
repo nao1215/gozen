@@ -91,6 +91,28 @@ type Spot struct {
 	// entry of the location's menu too.
 	Do   []Command `yaml:"do"`
 	Once bool      `yaml:"once"`
+
+	hasAt bool // at was written (a spot without it would stand at the corner)
+}
+
+// UnmarshalYAML reads the spot and notes whether it has at, which check requires.
+func (s *Spot) UnmarshalYAML(unmarshal func(any) error) error {
+	type plain Spot
+	if err := unmarshal((*plain)(s)); err != nil {
+		return err
+	}
+	s.hasAt = hasKey(unmarshal, "at")
+	return nil
+}
+
+// hasKey reports whether the mapping being read has the key.
+func hasKey(unmarshal func(any) error, key string) bool {
+	var m map[string]any
+	if err := unmarshal(&m); err != nil {
+		return false
+	}
+	_, ok := m[key]
+	return ok
 }
 
 // StageExit gives an exit of the location (exits[].to) an area: walking into it leaves.
@@ -510,7 +532,7 @@ func (c *checker) stage(w, _ string, l *Location) {
 	for _, sid := range s.SpotIDs() {
 		sp := s.Spots[sid]
 		ww := w + ".spots." + sid
-		if sp == nil {
+		if sp == nil || !sp.hasAt {
 			c.errorf(diag.Shape, ww, "a spot needs at")
 			continue
 		}

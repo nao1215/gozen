@@ -24,11 +24,9 @@
 
 Gozen is a framework for 2D RPGs and visual novels in Go and Ebitengine. You write the game in YAML: places, battles and skills for an RPG; lines, choices and staging for a novel, with roll back, skip and a second language. `gozen check` finds broken references. `gozen sim battle` measures balance. While you play, F5 reloads the YAML, F9 saves a note, and F7 and F8 show win rates and flags.
 
-The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan, an ebiten gozen (御膳) is a set meal on one tray: shrimp tempura with soba, small side dishes, and a sweet such as dango. Gozen is that tray for Ebitengine: the engine served with everything an RPG needs. The name also starts with Go.
-
 Documentation: https://nao1215.github.io/gozen/
 
-| RPG: [Go Zen](examples/go-zen) | Novel: [After the Pass](examples/novel) |
+| RPG: [Go Zen](https://nao1215.github.io/gozen/play/go-zen/) (play in browser) | Novel: [After the Pass](https://nao1215.github.io/gozen/play/novel/) (play in browser) |
 |:--|:--|
 | ![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](docs/images/go-zen.gif) | ![After the Pass, the novel sample: a line, a choice, Back over the choice, and Skip to the first line not read](docs/images/novel.gif) |
 | Campaign: [Five Banners](examples/campaign) | |
@@ -151,6 +149,18 @@ go get github.com/nao1215/gozen@latest
 
 The window needs the platform graphics libraries: [OS setup](https://nao1215.github.io/gozen/install/#what-the-window-needs).
 
+In GitHub Actions, [setup-gozen](https://github.com/nao1215/setup-gozen) installs the release binary of the version in your `go.mod`, checked against the release checksums:
+
+<!-- verify: skip runs in GitHub Actions -->
+```yaml
+- uses: actions/checkout@v6
+- uses: nao1215/setup-gozen@1c378fc446f62ecb29a7bcd40aea6dff8565d698 # v0.1.1
+- run: gozen check game
+- run: gozen sim battle game boss --format json  # boss: a troop id of your game
+```
+
+`version` also takes `latest` or a release such as `v0.2.0`, and `go-mod-path` points at a `go.mod` below the root. Without the action, `go run github.com/nao1215/gozen/cmd/gozen check game` builds the same version from `go.mod`.
+
 ## Recipes
 
 Tested YAML recipes are in the [cookbook](https://nao1215.github.io/gozen/cookbook/).
@@ -215,6 +225,7 @@ location=trail battles=1 wins=1 gold=3
 | `book` | the whole game as Markdown |
 | `pack release`, `pack trial` | approved pictures only; a demo |
 | `art prompt`, `art mosaic`, `art fetch`, `art faces`, `art puppet` | image prompts; pixelation; models; balloon faces; moving portraits |
+| `theme add`, `theme list` | copy a dungeon theme (walls, floor, ceiling, door) into a game; list the themes |
 | `version`, `help` | the version; a command's help, or a diagnostic code |
 
 `gozen help <command>` shows options and examples. `gozen help GZN1101` explains a code. [atago](https://github.com/nao1215/atago) tests every command end to end.
@@ -248,6 +259,10 @@ A star or a [GitHub Sponsors](https://github.com/sponsors/nao1215) sponsorship h
 ## License
 
 The code is [MIT](LICENSE). The Go Zen, After the Pass and Five Banners pictures and music are CC BY 4.0 ([Go Zen](examples/go-zen/game/assets/LICENSE), [After the Pass](examples/novel/game/assets/LICENSE), [Five Banners](examples/campaign/game/assets/LICENSE)). Font notices are in [ASSETS.md](ASSETS.md).
+
+## The name
+
+Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan, an ebiten gozen (御膳) is a set meal on one tray: shrimp tempura with soba, small side dishes, and a sweet such as dango. Gozen is that tray for Ebitengine: the engine served with everything an RPG needs. The name also starts with Go.
 
 ## Contributors ✨
 

@@ -144,7 +144,7 @@ func (g *Game) memoInfo() memo.Memo {
 		}
 	}
 	for _, v := range g.db.Game.Memo.Vars {
-		if val, err := v.Value.Eval(st.Env()); err == nil {
+		if val, err := v.Value.Eval(st.Env()); err == nil && memoValue(val) {
 			if m.Vars == nil {
 				m.Vars = map[string]any{}
 			}
@@ -155,6 +155,16 @@ func (g *Game) memoInfo() memo.Memo {
 		m.Party = append(m.Party, fmt.Sprintf("%s Lv%d HP%d/%d", a.Name(), a.Level, a.HP, a.Stat("mhp")))
 	}
 	return m
+}
+
+// memoValue reports whether x can be written in a note: a number, a string or a boolean.
+// The value of a bare function name such as floor cannot, and would stop the note being written.
+func memoValue(x any) bool {
+	switch x.(type) {
+	case float64, string, bool, nil:
+		return true
+	}
+	return false
 }
 
 func (g *Game) currentEvent() string {
