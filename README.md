@@ -34,7 +34,7 @@ Documentation: https://nao1215.github.io/gozen/
 
 ## Try it
 
-Go 1.26.9 or later. No display or assets needed:
+Go 1.26.10 or later. No display or assets needed:
 
 ```sh
 go run github.com/nao1215/gozen/examples/minimal@latest
@@ -113,7 +113,7 @@ Start the game with `--dev` and these keys work while you play.
 
 ## Install
 
-Go 1.26.9 or later:
+Go 1.26.10 or later:
 
 ```sh
 go install github.com/nao1215/gozen/cmd/gozen@latest

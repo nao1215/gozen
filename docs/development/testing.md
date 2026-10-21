@@ -2,7 +2,7 @@
 
 ## Environment for normal tests
 
-The lower bound of Go is 1.26.9, at `go.mod:3`. Normal tests check the contracts of layers 1 to 6, shared internals, the neutral test game and loading of the samples. They do not initialize a screen, audio or inference. Normal tests and builds need no Xvfb, ONNX shared library, model or game assets. The cgo build of mosaic uses a C compiler. A test also runs that detects the form of paths of common personal environments and private host names. It does not replace checks for content specific to a work.
+The lower bound of Go is 1.26.10, at `go.mod:3`. Normal tests check the contracts of layers 1 to 6, shared internals, the neutral test game and loading of the samples. They do not initialize a screen, audio or inference. Normal tests and builds need no Xvfb, ONNX shared library, model or game assets. The cgo build of mosaic uses a C compiler. A test also runs that detects the form of paths of common personal environments and private host names. It does not replace checks for content specific to a work.
 
 lint uses golangci-lint v2.14.0 (the linters and formatters are in `.golangci.yml`), the dependency direction uses go-arch-lint v1.19.0 (config version 3), workflow syntax uses actionlint v1.7.12, and workflow security uses zizmor v1.31.1 (its policy is in `.github/zizmor.yml`). Go's work cache and temporary directory need write permission. In a restricted environment, point `GOCACHE`, `GOTMPDIR` and `GOLANGCI_LINT_CACHE` to writable places, and create the directories first.
 

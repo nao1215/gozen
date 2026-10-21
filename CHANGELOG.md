@@ -24,6 +24,7 @@ Visual novels join RPGs: schema version 4 adds the novel window's roll back, ski
 
 ### Changed
 
+- The minimum Go version is raised from 1.26.9 to 1.26.10: govulncheck at 1.26.9 reaches GO-2026-6809 in crypto/x509, fixed in 1.26.10.
 - schema_version 4 is opt-in. The words of version 4 in a game of version 3 or earlier are the error `<word> needs schema_version: 4`; a game that stays at version 3 needs no change to its YAML.
 - Saves are written at format version 2 (the cursor of an event, the random bytes and the state's `chose`). A save of version 1 is still read and is written back at version 2 on the next save. An engine before this one refuses a save of version 2, so a game that updates should update its players' engine at the same time.
 - A read line is known by its source, the speaker and the text as written before `{expressions}` and any translation, so a line with a variable is read once whatever the value (ADR 0026). `read.json` is now an envelope with a format version and the game id, like `gallery.json`; the bare list of earlier versions is read, its keys still count for one version, and it is kept as a backup on the next write. A record of another game or of a newer engine is left as it is.

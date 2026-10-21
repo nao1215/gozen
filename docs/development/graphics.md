@@ -1,6 +1,6 @@
 # Graphics development and verification
 
-Use Go 1.26.9 or later. The normal tests of T3 start no display or audio device. Real drawing is checked by separate tests with the `graphics` tag. For the items to check before publication, see the [release checklist](release-checklist.md).
+Use Go 1.26.10 or later. The normal tests of T3 start no display or audio device. Real drawing is checked by separate tests with the `graphics` tag. For the items to check before publication, see the [release checklist](release-checklist.md).
 
 ## Original sample
 

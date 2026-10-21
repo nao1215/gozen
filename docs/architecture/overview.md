@@ -4,7 +4,7 @@ The meaning of the symbols of the initial implementation stages (T1 to T7, SW1 a
 
 Gozen separates a game's definitions, state, rules and progress from the screen, so that the same core can be used from a library, a run without rendering, a game screen and a checking CLI. T2 implemented the non-rendering core. For the available contracts and ownership see [the core API](core-api.md). T3 implemented display, sound and startup; the contracts are in [the presentation API](presentation-api.md).
 
-The module is the single `github.com/nao1215/gozen`. The lower bound of Go is 1.26.9. The declaration of the direct dependencies in use is at `go.mod:1`. The CLI is the single `cmd/gozen`, and the authoring-support implementations are in `internal/promptgen/` and `internal/mosaic/` ([ADR 0016](../decisions/0016-single-cli.md)). `go.work` and a `replace` for local references are not used. The layout is in [ADR 0001](../decisions/0001-modules-and-layout.md), and the reason for moving to a single module is recorded in [ADR 0009](../decisions/0009-single-module.md).
+The module is the single `github.com/nao1215/gozen`. The lower bound of Go is 1.26.10. The declaration of the direct dependencies in use is at `go.mod:1`. The CLI is the single `cmd/gozen`, and the authoring-support implementations are in `internal/promptgen/` and `internal/mosaic/` ([ADR 0016](../decisions/0016-single-cli.md)). `go.work` and a `replace` for local references are not used. The layout is in [ADR 0001](../decisions/0001-modules-and-layout.md), and the reason for moving to a single module is recorded in [ADR 0009](../decisions/0009-single-module.md).
 
 ## Layers and dependencies
 

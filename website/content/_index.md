@@ -12,7 +12,7 @@ The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan
 
 ## Try it in 30 seconds
 
-With Go 1.26.9 or later, paste this. It needs no display and no assets:
+With Go 1.26.10 or later, paste this. It needs no display and no assets:
 
 ```shell
 go run github.com/nao1215/gozen/examples/minimal@latest

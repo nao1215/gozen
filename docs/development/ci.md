@@ -11,14 +11,14 @@ A private repository has a limit on Actions time. While it is private, only `qui
 | Job | Environment and check | What counts as a result |
 | --- | --- | --- |
 | lint | Linux, Go 1.27.2 (`LINT_GO` of the Makefile, not stable: gofmt's output changes between Go releases). golangci-lint v2.14.0 (built by `make lint` with that Go), go-arch-lint v1.19.0, actionlint v1.7.12, zizmor v1.31.1. `make lint` | import direction, API list, tidy modules, static analysis, formatting, workflow syntax and security |
-| unit | Ubuntu, Windows and macOS × Go 1.26.9 / stable. `go test ./...` with cgo enabled | non-graphics contracts, including `gozen` and internal |
+| unit | Ubuntu, Windows and macOS × Go 1.26.10 / stable. `go test ./...` with cgo enabled | non-graphics contracts, including `gozen` and internal |
 | race | Linux, stable, `go test -race ./...` with cgo enabled | race check of the non-graphics contracts |
 | build | amd64 on 3 OSes, arm64 on Linux and macOS. cgo disabled | compiling all packages. arm64 is a cross-build. No ONNX inference |
 | graphics | 3 OSes, stable. Linux uses setup-ebitengine and Xvfb; Windows and macOS use the native desktop | real loop of 6 screens with PNG checks, pixel checks of the moving standing pictures, and the capture E2E that starts a real game as a child process. Audio is muted |
 | cli-e2e | 3 OSes, stable, atago v0.25.2 | exit status, stdout and diagnostics, file changes and generated files of every subcommand of the real `gozen`. The graphics tag is a separate job |
 | inference-build | 3 OSes, stable, cgo enabled | building `gozen` with the ONNX adapter and inference. Inference tests without a model skip with a reason |
 | examples | 3 OSes, stable | building `./examples/...` and running minimal and headless. Running the screen is left to graphics |
-| govulncheck | Linux, Go 1.26.9 (the lower bound in `go.mod`) and stable, cgo enabled, govulncheck v1.9.0 | known vulnerabilities reachable from `./...`. Judged from JSON; fails on anything not in `ACCEPTED` (empty now). The ONNX binding is analyzed too |
+| govulncheck | Linux, Go 1.26.10 (the lower bound in `go.mod`) and stable, cgo enabled, govulncheck v1.9.0 | known vulnerabilities reachable from `./...`. Judged from JSON; fails on anything not in `ACCEPTED` (empty now). The ONNX binding is analyzed too |
 | codeql | Linux, stable, cgo enabled | builds `./...` explicitly and runs Go static analysis |
 
 The lower bound of Go is `go.mod:3`. Keep it in step with the lower bounds of unit and govulncheck when updating. security uses stable, which can run the analysis tools. lint uses one pinned Go, the same one `make lint` uses locally, so formatting is judged by the same gofmt everywhere; bump `LINT_GO` and the lint job's `go-version` together. Normal tests do not initialize a screen. graphics keeps Ebitengine's limit of one loop per process and runs scenarios one after another in separate processes (`play/graphics_test.go:18`).
@@ -62,8 +62,8 @@ External actions are pinned by 40-character SHA. checkout, setup-go and setup-eb
 
 ```sh
 go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
-govulncheck ./...                              # with the Go of go.mod (1.26.9 or later)
-GOTOOLCHAIN=go1.26.9 govulncheck ./...         # with the standard library of the lower bound
+govulncheck ./...                              # with the Go of go.mod (1.26.10 or later)
+GOTOOLCHAIN=go1.26.10 govulncheck ./...         # with the standard library of the lower bound
 gitleaks git                                   # secret strings in commits
 ```
 

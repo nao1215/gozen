@@ -4,7 +4,7 @@ description: Install the gozen command and the Gozen library, and prepare Linux,
 weight: 10
 ---
 
-Gozen needs Go 1.26.9 or later. The `gozen` command and the library are one Go module.
+Gozen needs Go 1.26.10 or later. The `gozen` command and the library are one Go module.
 
 ## The gozen command
 
