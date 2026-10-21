@@ -265,8 +265,10 @@ func Compare(ctx context.Context, db *data.DB, cfg Config, mode string) (*Compar
 		for _, tr := range r.Regions {
 			held += tr.Mean[cfgPlayer(db)]
 		}
-		out.Rows = append(out.Rows, ComparisonRow{Name: name, Won: r.Won, WinRate: r.WinRate,
-			MeanTurns: r.meanTurns, MeanRegionsHeld: held / float64(max(1, len(r.Regions))), Regions: r.RegionMetrics})
+		out.Rows = append(out.Rows, ComparisonRow{
+			Name: name, Won: r.Won, WinRate: r.WinRate,
+			MeanTurns: r.meanTurns, MeanRegionsHeld: held / float64(max(1, len(r.Regions))), Regions: r.RegionMetrics,
+		})
 	}
 	return out, nil
 }
@@ -355,7 +357,7 @@ func play(ctx context.Context, db *data.DB, cfg Config, seed uint64, r *Result) 
 					o.regionChanges[id]++
 					if after != "" {
 						if _, seen := o.regionFirst[id]; !seen {
-						o.regionFirst[id] = turnBefore
+							o.regionFirst[id] = turnBefore
 						}
 					}
 				}
