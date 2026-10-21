@@ -150,6 +150,9 @@ jobs:
       - name: Render the novel sample on Linux with Xvfb
         if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch'
         run: xvfb-run --auto-servernum --error-file=/dev/stderr make novel-graphics
+      - name: Render the campaign sample on Linux with Xvfb
+        if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch'
+        run: xvfb-run --auto-servernum --error-file=/dev/stderr make campaign-graphics
       # Native desktop execution is required on Windows/macOS; failures remain fatal.
       # Local Linux results do not establish these runners can render.
       - name: Render on the native desktop
@@ -302,7 +305,7 @@ jobs:
         run: go run ./examples/headless
 
   go-zen:
-    # examples/go-zen and examples/novel are modules of their own (they use this
+    # examples/go-zen, examples/novel and examples/campaign are modules of their own (they use this
     # checkout through a replace), so ./... and ./examples/... above do not reach them.
     if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
@@ -341,3 +344,5 @@ jobs:
             ~/go/pkg/mod
             ~/.cache/go-build
           key: ${{ steps.go-cache.outputs.cache-primary-key }}
+      - name: Vet, check and test the campaign sample (its screens are in the graphics job)
+        run: make campaign

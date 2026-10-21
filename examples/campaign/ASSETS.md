@@ -1,6 +1,6 @@
 # Five Banners assets
 
-Five Banners is a prototype of a region-conquest campaign. Its Go code and YAML (`main.go`,
+Five Banners is the campaign sample, a small region-conquest war. Its Go code and YAML (`main.go`,
 the tests, `game/game.yaml`, `game/data/`) are MIT like the rest of the repository. The files
 under `game/assets/` are copies of earlier work by the same author, and pictures made for it.
 

@@ -31,6 +31,8 @@ Documentation: https://nao1215.github.io/gozen/
 | RPG: [Go Zen](examples/go-zen) | Novel: [After the Pass](examples/novel) |
 |:--|:--|
 | ![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](docs/images/go-zen.gif) | ![After the Pass, the novel sample: a line, a choice, Back over the choice, and Skip to the first line not read](docs/images/novel.gif) |
+| Campaign: [Five Banners](examples/campaign) | |
+| ![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](docs/images/campaign.gif) | |
 
 ## Try it
 
@@ -112,6 +114,14 @@ Start the game with `--dev` and these keys work while you play.
 | ![a set typed into the Command tab, then the State tab shows the flag](docs/images/playtest-command.gif) | ![the frame meter over the tavern](docs/images/playtest-frames.jpg) |
 | F6: the character book, every page open: each character's profile, faces and relations | |
 | ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](docs/images/novel-characters.jpg) | |
+
+### Campaigns
+
+`regions`, `factions` and `campaign` (schema version 5) make a war of regions over turns. A campaign can share a game with dungeons and towns: generals are the same actors, and `move` goes between them. From [Five Banners](examples/campaign), the campaign sample.
+
+| The war map | Measure it |
+|:--|:--|
+| ![the band with the week, the regions in the owners' colours, the window of a region and the generals](docs/images/campaign-map.jpg) | `gozen sim campaign game` plays 200 campaigns and prints the win rate, the turns, the regions each side held turn by turn, and the orders given. |
 
 ## Install
 
@@ -217,6 +227,7 @@ location=trail battles=1 wins=1 gold=3
 - First-person grid dungeons, fixed or generated
 - Moving portraits from one picture ([puppet](https://pkg.go.dev/github.com/nao1215/gozen/puppet))
 - Characters that react to typed words, and a chat log ([react](https://pkg.go.dev/github.com/nao1215/gozen/react), [chat](https://pkg.go.dev/github.com/nao1215/gozen/chat))
+- Campaigns: regions held by factions over turns, orders with generals, a sortie screen with tactics, marches shown as clashes of armies (or decided by numbers or a battle), the other factions' rules, and `gozen sim campaign` ([recipes](https://nao1215.github.io/gozen/cookbook/#make-a-campaign))
 - Visual novels: roll back, skip what was read, save in a scene, choices read as `chose`, staging with `stand` ([recipes](https://nao1215.github.io/gozen/cookbook/#let-the-player-roll-back-and-save-in-a-scene))
 - Engine words in English and Japanese (`language` in game.yaml), and the game's text in two languages (`lang/`)
 
@@ -236,7 +247,7 @@ A star or a [GitHub Sponsors](https://github.com/sponsors/nao1215) sponsorship h
 
 ## License
 
-The code is [MIT](LICENSE). The Go Zen and After the Pass pictures and music are CC BY 4.0 ([Go Zen](examples/go-zen/game/assets/LICENSE), [After the Pass](examples/novel/game/assets/LICENSE)). Font notices are in [ASSETS.md](ASSETS.md).
+The code is [MIT](LICENSE). The Go Zen, After the Pass and Five Banners pictures and music are CC BY 4.0 ([Go Zen](examples/go-zen/game/assets/LICENSE), [After the Pass](examples/novel/game/assets/LICENSE), [Five Banners](examples/campaign/game/assets/LICENSE)). Font notices are in [ASSETS.md](ASSETS.md).
 
 ## Contributors ✨
 

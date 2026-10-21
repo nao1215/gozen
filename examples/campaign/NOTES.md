@@ -2,8 +2,10 @@
 
 Five Banners is a small region-conquest campaign. Stage 0 wrote it with the YAML Gozen had
 (schema version 4) to find where such a game is hard to write; stage 2 rewrote it with the
-campaign words of [ADR 0030](../../docs/decisions/0030-campaigns.md) (schema version 5). The
-text is placeholder English.
+campaign words of [ADR 0030](../../docs/decisions/0030-campaigns.md) (schema version 5); stages
+7, 8 and 8b made it Kichikuou-leaning (weeks, an order once a turn, generals away after a
+rout, a sortie screen, clashes of units with tactics and skills, region areas). The text is
+English with a Japanese translation (`lang/ja.yaml`).
 
 ## Stage 2: the campaign words
 

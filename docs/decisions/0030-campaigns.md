@@ -4,7 +4,7 @@ Status: Accepted (2026-10-21). Stages 1 (the YAML words, their checks, the expre
 
 ## Users and problem
 
-An author wants a game of conquest in the manner of region-conquest strategy games: a land of regions, sides that hold them, a few orders a turn, and the other sides moving between the player's turns. The prototype `examples/campaign-proto` wrote such a game (five regions, three sides, ten turns) with the words Gozen had, and its notes list what that cost:
+An author wants a game of conquest in the manner of region-conquest strategy games: a land of regions, sides that hold them, a few orders a turn, and the other sides moving between the player's turns. The prototype `examples/campaign-proto` (now `examples/campaign`) wrote such a game (five regions, three sides, ten turns) with the words Gozen had, and its notes list what that cost:
 
 - There are no regions, sides or turns, so every number is a declared variable (61 names for five regions), and the borders are written three times (the map's roads, the conditions of the orders, the lines of the other sides' rules). `gozen check` compares none of them.
 - `set` names its target as written, so "the region chosen" is a dispatch event with one `if` per region, for reading too under `state.strict` (52 lines of 199).

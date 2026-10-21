@@ -1,8 +1,11 @@
-module github.com/nao1215/gozen/examples/campaign-proto
+module github.com/nao1215/gozen/examples/campaign
 
 go 1.26.9
 
-require github.com/nao1215/gozen v0.0.0
+require (
+	github.com/hajimehoshi/ebiten/v2 v2.10.5
+	github.com/nao1215/gozen v0.0.0
+)
 
 require (
 	github.com/ebitengine/gomobile v0.0.0-20260820040257-d11f821a26a6 // indirect
@@ -11,7 +14,6 @@ require (
 	github.com/ebitengine/purego v0.11.0 // indirect
 	github.com/go-text/typesetting v0.3.5 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
-	github.com/hajimehoshi/ebiten/v2 v2.10.5 // indirect
 	github.com/jfreymuth/oggvorbis v1.0.5 // indirect
 	github.com/jfreymuth/pulse v0.1.3 // indirect
 	github.com/jfreymuth/vorbis v1.0.2 // indirect

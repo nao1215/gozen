@@ -66,6 +66,17 @@ A novel game (ADV) sets `schema_version: 4` and `ui.message: novel` in game.yaml
 
 The recipes are under "Let the player roll back", "Stage portraits and effects" and "Offer the game in two languages" in the cookbook. A complete short one is [examples/novel](https://github.com/nao1215/gozen/tree/main/examples/novel).
 
+## Campaigns
+
+A campaign (SLG, a war of regions) sets `schema_version: 5`, `regions` and `factions` in data, and `campaign` in game.yaml; its place is a map whose points are named like the regions.
+
+- Generals are actors: list them in `campaign.generals` with their troops. Give each order a `label`, and `general`, `target` and `march: true` for an attack.
+- `fight: clash_view` shows a march as a clash of units with a sortie screen. Set `clash.units` (1 to 4), `clash.tactics` and `clash.skills`, and `defend` troops and `terrain` on the regions.
+- Draw a region's `area` on the map picture for colored provinces. `gozen check` reports overlaps.
+- Measure with `gozen sim campaign game` (and `--tactic`) before tuning numbers. Test with `gozen.Session`: `Do("- order: {id: attack, general: corin, target: ford}")` and `Query("region.ford.owner")`.
+
+The recipe is "Make a campaign" in the cookbook. A complete one is [examples/campaign](https://github.com/nao1215/gozen/tree/main/examples/campaign).
+
 ## Do not
 
 - Do not import `github.com/nao1215/gozen/internal/...`. Use `play`, `gozen` (Session, Query, Do) and the YAML.

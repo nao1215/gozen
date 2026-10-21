@@ -1,10 +1,12 @@
 # Five Banners: a small region-conquest campaign (schema_version 5, ADR 0030). Stage 0 wrote
 # it with variables and dispatch events; it now uses the campaign words. See NOTES.md.
 schema_version: 5
-id: campaign-proto
+id: five-banners
 title: Five Banners
-subtitle: A campaign prototype
+subtitle: Take the land in ten turns
 language: en
+written_in: en
+languages: [en, ja]
 screen: {width: 1920, height: 1080}
 fonts: {regular: fonts/mplus-1p-regular.ttf}
 title_background: maps/town.jpg

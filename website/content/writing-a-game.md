@@ -269,6 +269,49 @@ Portraits come and go with the speakers unless an event places them with `stand`
 
 A line counts as read by its source: the speaker and the text as written, before `{expressions}` are filled in. The read lines are kept in `read.json` beside the saves, so they last across saves and new games. Runs for testing (`--script`, `--start`, autoplay) do not touch them unless you pass `--save-dir`. In a trace, every `say` line says whether it was read, and `gozen play trace --check` fails when skipping passed a line that was not.
 
+## Campaigns
+
+A campaign (`schema_version: 5`) is a war of regions over turns in the same game as its towns and dungeons. `regions` are the land (who borders whom, the owner, the garrison, the values such as wealth, the terrain, the troop that defends it), `factions` the sides with their colours, capitals and `ai` rules, and `campaign` in `game.yaml` the player's side, the turns, the generals (actors, with their troops), the orders and how a march is decided ([the recipe](/cookbook/#make-a-campaign)).
+
+The campaign's place is a map whose points are named like the regions. Each region shows its owner's flag, or its `area` filled in the owner's colour; OK on it lists the orders. An order costs actions (or, with `count: orders`, can be given once a turn), may need a general and a target, and runs its `do` with `general` and `target` bound. A march (`march: true`) is decided by the numbers of `campaign.clash`, by a battle of the game (`fight: battle`), or by a clash of units shown on its own screen (`fight: clash_view`): the generals the sortie screen sends, each with a tactic and its skills, against the members of the region's `defend` troop, up to `clash.units` a side. `on_win`, `on_lose` and `on_draw` run a general's word after it.
+
+When the player ends the turn, each other faction follows its first `ai` rule that holds (draft troops, march on a neighbour), the turn's `on_turn` event runs, and the campaign ends with `won` or `lost` when `win` or `lose` holds or the turns run out. Expressions read `region.<id>.owner`, `faction.<id>.regions`, `campaign.turn`, `generals.<id>.troops` and more ([Expressions](#expressions)); `set` changes a region's owner, troops and values. A generals' troops and HP are the same state as the rest of the game, so a dungeon can feed the war. `gozen sim campaign` measures the win rate before you tune the numbers.
+
+A campaign can share a game with dungeons and towns. The generals are the same actors as the party, so their level, stats and HP carry over, and a clash's formulas read them (`a.atk`, `a.level`); `move` goes between the campaign's place and any other, both ways ([the recipe](/cookbook/#mix-a-campaign-with-a-dungeon)):
+
+<!-- verify: load as=game.yaml group=mixed -->
+```yaml
+schema_version: 5
+campaign:
+  location: war
+  player: crown
+  generals: {walker: {troops: 400}}
+  clash: {power: "a.troops * (1 + a.atk / 20)"}
+  orders:
+    attack: {label: Attack, general: ready, target: border, march: true}
+    rest: {label: Rest at the inn, cost: 0, do: [{move: inn}]}
+```
+
+<!-- verify: load group=mixed -->
+```yaml
+factions:
+  crown: {name: Crown, capital: home}
+  raven: {name: Raven, capital: keep}
+regions:
+  home: {next: [keep], owner: crown, troops: 300}
+  keep: {next: [home], owner: raven, troops: 600}
+locations:
+  war:
+    name: The war
+    map:
+      picture: maps/land.jpg
+      points: {home: {at: [400, 540], start: true}, keep: {at: [1500, 540]}}
+      roads: [{between: [home, keep]}]
+  inn:
+    name: Inn
+    exits: [{label: Back to the war, do: [{move: war}]}]
+```
+
 ## Saves
 
 Saves are JSON files in the OS config directory, under the game `id`. They record the schema and data versions; raise `data_version` in `game.yaml` when you change definitions in a way old saves should notice, and the loader reports what it repaired.

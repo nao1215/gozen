@@ -933,3 +933,83 @@ func (c *checker) campaignMapWarnings(a *Atlas) {
 		}
 	}
 }
+
+// factionWords reports a faction written in an expression that is none: compared with an
+// owner (region.<id>.owner, target.owner, s, t or b's owner, a.faction, campaign.player) or
+// given to next_to. Only a game with factions is checked.
+func (c *checker) factionWords(where string, e Expr) {
+	if !e.Set() || len(c.db.Factions) == 0 {
+		return
+	}
+	known := func(f string) bool { return f == "" || c.db.Factions[f] != nil }
+	for _, cmp := range e.Comparisons() {
+		r := cmp.Ref
+		last := ""
+		if n := len(r.Path); n > 0 {
+			last = r.Path[n-1].Name
+		}
+		owner := last == "owner" && slices.Contains([]string{"region", "target", "s", "t", "b"}, r.Name) ||
+			r.Name == "a" && last == "faction" || r.Name == "campaign" && last == "player"
+		if owner && !known(cmp.Text) {
+			c.errorf(diag.UnknownReference, where, "%q: unknown faction %q (factions: %s)", e.String(), cmp.Text, strings.Join(FactionIDs(c.db), ", "))
+		}
+	}
+	for _, args := range e.StringArgs("next_to") {
+		if len(args) == 2 {
+			if args[0] != "" && c.db.Regions[args[0]] == nil {
+				c.errorf(diag.UnknownReference, where, "%q: unknown region %q", e.String(), args[0])
+			}
+			if args[1] != "" && !known(args[1]) {
+				c.errorf(diag.UnknownReference, where, "%q: unknown faction %q (factions: %s)", e.String(), args[1], strings.Join(FactionIDs(c.db), ", "))
+			}
+		}
+	}
+}
+
+// callLoops reports the events that call themselves on every run: a cycle of calls each
+// written at the top of an event's do (not inside if, a choice or a battle's ends). Such
+// an event never ends; the runner stops it at its step limit. A call in a branch may end
+// and is not reported.
+func (c *checker) callLoops() {
+	db := c.db
+	calls := map[string][]string{}
+	for id, ev := range db.Events {
+		for _, cmd := range ev.Do {
+			if cmd.Call != "" && db.Events[cmd.Call] != nil {
+				calls[id] = append(calls[id], cmd.Call)
+			}
+		}
+	}
+	reported := map[string]bool{}
+	for _, start := range slices.Sorted(maps.Keys(calls)) {
+		// a walk from start along the calls that comes back to start
+		seen := map[string]bool{}
+		var path []string
+		var visit func(id string) bool
+		visit = func(id string) bool {
+			for _, n := range calls[id] {
+				if n == start {
+					path = append(path, n)
+					return true
+				}
+				if seen[n] {
+					continue
+				}
+				seen[n] = true
+				path = append(path, n)
+				if visit(n) {
+					return true
+				}
+				path = path[:len(path)-1]
+			}
+			return false
+		}
+		if !visit(start) || reported[start] {
+			continue
+		}
+		for _, id := range path {
+			reported[id] = true
+		}
+		c.errorf(diag.Shape, "events."+start+".do", "event %s calls itself on every run (%s -> %s): it never ends; put the call under an if that stops it", start, start, strings.Join(path, " -> "))
+	}
+}

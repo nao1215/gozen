@@ -86,6 +86,7 @@ func (c *checker) exprIn(where string, e Expr, names []string, over map[string]*
 			c.needsVersion(where, "the name "+n, SchemaVersion5)
 		}
 	}
+	c.factionWords(where, e)
 	for _, r := range e.Refs() {
 		if r.Name == "chose" && len(r.Path) > 0 && r.Path[0].Name != "" {
 			c.choseReads = append(c.choseReads, [2]string{where, r.Path[0].Name})
@@ -213,6 +214,7 @@ func (db *DB) Check() []error {
 	c.declarations()
 	c.stateDeclarations()
 	c.campaign()
+	c.callLoops()
 	c.tacticCatalog()
 	c.profiles()
 	c.numericValues(&db.Game, "game.yaml")

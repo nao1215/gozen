@@ -169,3 +169,29 @@ locations:
 		}
 	}
 }
+
+// TestFactionWordsAndCallLoops: a misspelt faction compared with an owner or given to
+// next_to is an error, and so is an event that calls itself on every run; a call under an
+// if is not.
+func TestFactionWordsAndCallLoops(t *testing.T) {
+	for _, c := range []struct{ events, want string }{
+		{`{x: {trigger: auto, when: "region.home.owner == 'bleu'", do: [{gold: 1}]}}`, `unknown faction "bleu"`},
+		{`{x: {do: [{if: "target.owner != 'rde'", then: [{gold: 1}]}]}}`, `unknown faction "rde"`},
+		{`{x: {do: [{if: "next_to('field', 'grn')", then: [{gold: 1}]}]}}`, `unknown faction "grn"`},
+		{`{x: {do: [{if: "next_to('moat', 'red')", then: [{gold: 1}]}]}}`, `unknown region "moat"`},
+		{`{x: {do: [{gold: 1}, {call: y}]}, y: {do: [{call: x}]}}`, "calls itself on every run"},
+	} {
+		_, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"data/x.yaml": "events: " + c.events}))
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%s: want %q, got %v", c.events, c.want, err)
+		}
+	}
+	for _, ok := range []string{
+		`{x: {trigger: auto, when: "region.home.owner == 'red' || region.field.owner == ''", do: [{gold: 1}]}}`,
+		`{x: {do: [{if: "gold < 9", then: [{gold: 1}, {call: x}]}]}}`,
+	} {
+		if _, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"data/x.yaml": "events: " + ok})); err != nil {
+			t.Errorf("%s: %v", ok, err)
+		}
+	}
+}

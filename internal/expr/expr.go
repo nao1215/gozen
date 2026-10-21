@@ -621,3 +621,68 @@ func (p *parser) primary() (node, error) {
 	}
 	return nil, fmt.Errorf("unexpected %q at %d", t.text, t.pos)
 }
+
+// Comparison is a name compared with a string written in the expression (a == 'x', 'x' !=
+// a.b): the name with its path, the operator, and the string.
+type Comparison struct {
+	Ref  Ref
+	Op   string
+	Text string
+}
+
+// Comparisons are the comparisons (== and !=) of a name with a string written in the
+// expression, in order: checks use them to find a word that is not one (a misspelt id).
+func (e *Expr) Comparisons() []Comparison {
+	if e == nil {
+		return nil
+	}
+	var out []Comparison
+	walk(e.root, func(n node) {
+		b, ok := n.(*binop)
+		if !ok || (b.op != "==" && b.op != "!=") {
+			return
+		}
+		for _, side := range [][2]node{{b.l, b.r}, {b.r, b.l}} {
+			l, ok := side[1].(*lit)
+			if !ok {
+				continue
+			}
+			s, ok := l.v.(string)
+			if !ok {
+				continue
+			}
+			if r, _, ok := chain(side[0]); ok {
+				out = append(out, Comparison{Ref: r, Op: b.op, Text: s})
+			}
+		}
+	})
+	return out
+}
+
+// StringArgs are, for each call of the function fn, its arguments written as strings (""
+// for an argument that is not one).
+func (e *Expr) StringArgs(fn string) [][]string {
+	if e == nil {
+		return nil
+	}
+	var out [][]string
+	walk(e.root, func(n node) {
+		c, ok := n.(*call)
+		if !ok {
+			return
+		}
+		if id, ok := c.fn.(*ident); !ok || id.name != fn {
+			return
+		}
+		args := make([]string, len(c.args))
+		for i, a := range c.args {
+			if l, ok := a.(*lit); ok {
+				if v, ok := l.v.(string); ok {
+					args[i] = v
+				}
+			}
+		}
+		out = append(out, args)
+	})
+	return out
+}

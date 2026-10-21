@@ -37,6 +37,8 @@ The recipes refer to a few IDs they do not define: the actor and class `walker`,
 | [Let strong foes roam a floor](#let-strong-foes-roam-a-floor) | `roamers` |
 | [Change a dungeon's look](#change-a-dungeons-look) | `looks` by floor, textures, `darkness` |
 | [Show a map with points and roads](#show-a-map-with-points-and-roads) | `map`, `points`, `roads` |
+| [Make a campaign](#make-a-campaign) | `regions`, `factions`, `campaign`, `orders`, `clash`, `gozen sim campaign` |
+| [Mix a campaign with a dungeon](#mix-a-campaign-with-a-dungeon) | an order with `move`, a dungeon's way out, `a.atk` in `clash` |
 | [Paint a scene with people and balloons](#paint-a-scene-with-people-and-balloons) | `stage`, `spots`, dolls, `bubbles` |
 | [Give a character faces and a moving portrait](#give-a-character-faces-and-a-moving-portrait) | `faces`, `say.face`, `puppet` |
 | [Set the face icons](#set-the-face-icons) | `face_box`, `face_shade`, a doll's `icon` |
@@ -744,6 +746,120 @@ locations:
 ```
 
 Paint the roads in the picture: the lines in the YAML are what the token walks, drawn only with `draw_roads: true`. Reference: [Atlas](/schema/#atlas), [MapPoint](/schema/#mappoint), [Road](/schema/#road), and [Maps and painted scenes](/writing-a-game/#maps-and-painted-scenes).
+
+## Make a campaign
+
+A campaign is a war of regions over turns (`schema_version: 5`): factions hold regions, the player gives a few orders a turn with the generals (actors of the game), and the other factions move by their `ai` rules when the turn ends. Its place is a map whose points are named like the regions.
+
+<!-- verify: load as=game.yaml group=campaign -->
+```yaml
+schema_version: 5
+campaign:
+  location: war
+  player: crown
+  turns: 10
+  calendar: week                  # the band says "Year 1, week 1"
+  count: orders                   # each order once a turn, then End turn
+  generals:
+    walker: {troops: 500, might: 3, tactic: guard, skills: [volley]}
+  clash:
+    units: 2                      # at most two units a side (1: a duel)
+    per_soldier: 30               # one soldier in the ranks for 30 troops
+    backgrounds: {field: bg/field.jpg, castle: bg/castle.jpg}
+    skills:
+      volley: {label: Volley, charge: 3, all: true, power: "a.troops * 0.12"}
+  orders:
+    attack: {label: Attack, general: ready, target: border, march: true, fight: clash_view, generals: 2,
+             on_win: [{say: {who: walker, text: The ford is ours.}}]}
+    draft: {label: Draft, per_turn: 1, when: "gold >= 50", general: any, do: [{gold: -50}, {set: {general.troops: "general.troops + 150"}}]}
+```
+
+<!-- verify: load group=campaign -->
+```yaml
+factions:
+  crown: {name: Crown, color: "#3060c0", capital: vale}
+  raven:
+    name: Raven
+    color: "#c03030"
+    capital: well
+    ai:
+      - {draft: "150"}
+      - {march: true, keep: 800, where: "s.troops * 0.6 > t.troops * 1.25", pick: min, by: t.troops}
+regions:
+  vale: {name: Ashvale, next: [ford], owner: crown, troops: 600, terrain: castle, area: [[0, 0], [600, 0], [600, 1080], [0, 1080]]}
+  ford: {name: Brookford, next: [vale, well], troops: 350, terrain: field, defend: wolves, area: [[600, 0], [1300, 0], [1300, 1080], [600, 1080]]}
+  well: {name: Deepwell, next: [ford], owner: raven, troops: 1500, terrain: castle, defend: wolves, area: [[1300, 0], [1920, 0], [1920, 1080], [1300, 1080]]}
+locations:
+  war:
+    name: The war
+    map:
+      picture: maps/land.jpg          # the areas are in this picture's pixels
+      points:
+        vale: {at: [300, 540], start: true}
+        ford: {at: [950, 540]}
+        well: {at: [1600, 540]}
+      roads:
+        - {between: [vale, ford]}
+        - {between: [ford, well]}
+```
+
+OK on a region lists the orders it can be given. Attack asks for the target and opens the sortie screen: the generals go in the front and back slots, each with a tactic (the engine's `front`, `weakest`, `strongest`, `leader` and `guard`, or your `clash.tactics`). `fight: clash_view` plays the march as two armies on the terrain's picture: the soldiers in the ranks are the troops, a skill fires when charged, and a table tells the losses. Leave out `fight` and the march is decided by the numbers of `clash` (`power` against `defense`); `fight: battle` fights the region's `defend` troop as a battle of the game. An `area` fills a region in its owner's colour; without one the region shows as a flag.
+
+Measure it before you tune it: `gozen sim campaign game` plays 200 campaigns and prints the win rate, the turns and the regions each side held turn by turn; `--tactic guard` marches every general with one tactic to compare them. Reference: [Campaign](/schema/#campaign), [Region](/schema/#region), [Faction](/schema/#faction), [Clash](/schema/#clash), [Order](/schema/#order), and [Campaigns](/writing-a-game/#campaigns). [Five Banners](https://github.com/nao1215/gozen/tree/main/examples/campaign) is a complete one ([play it in the browser](/play/campaign/)).
+
+## Mix a campaign with a dungeon
+
+A campaign shares its game with the towns and dungeons: the generals are the party's actors, and `move` goes between the war map and any other place. Here an order sends the party into a mine whose way out leads back to the war, and the clash reads the general's attack, so levels won in the mine make the marches stronger.
+
+<!-- verify: load as=game.yaml group=mixed -->
+```yaml
+schema_version: 5
+campaign:
+  location: war
+  player: crown
+  turns: 8
+  generals:
+    walker: {troops: 400}
+  clash:
+    power: "a.troops * (1 + a.atk / 20) * (0.8 + rand() * 0.4)"   # the actor's attack counts
+  orders:
+    attack: {label: Attack, general: ready, target: border, march: true}
+    delve: {label: Delve into the mine, cost: 0, do: [{move: mine}]}
+```
+
+<!-- verify: load group=mixed -->
+```yaml
+factions:
+  crown: {name: Crown, capital: home}
+  raven: {name: Raven, capital: keep}
+regions:
+  home: {name: Home, next: [keep], owner: crown, troops: 300}
+  keep: {name: Keep, next: [home], owner: raven, troops: 600}
+locations:
+  war:
+    name: The war
+    map:
+      picture: maps/land.jpg
+      points:
+        home: {at: [400, 540], start: true}
+        keep: {at: [1500, 540]}
+      roads: [{between: [home, keep]}]
+  mine:
+    name: Old mine
+    dungeon:
+      wall: walls/rock.png
+      floor: "#6a6258"
+      map: |
+        #####
+        #S.E#
+        #####
+      tiles:
+        S: {start: true, facing: east}
+        E: {name: Way out, look: door, do: [{move: war}]}
+    encounters: {rate: "0.2", troops: [{troop: wolves}]}
+```
+
+Gold, items, flags, experience and HP are one state: what the party finds in the mine is there on the map, and `generals.walker.troops` is there in the mine. Reference: [Campaigns](/writing-a-game/#campaigns) and [Make a campaign](#make-a-campaign).
 
 ## Paint a scene with people and balloons
 

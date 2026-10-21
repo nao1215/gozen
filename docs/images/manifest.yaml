@@ -21,6 +21,8 @@ samples:
     package: ./examples/puppet
   novel:
     package: ./examples/novel
+  campaign:
+    package: ./examples/campaign
 
 # One run of a sample. {script} is the script file and {out} a new, empty
 # directory for the run: the shots, saves and trace go under it. `check` is
@@ -107,6 +109,10 @@ runs:
     sample: novel
     script: scripts/capture-novel-characters.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  campaign:
+    sample: campaign
+    script: scripts/capture-campaign.txt
+    args: [--dev, --mute, --seed, "3", --window, "1", --start, war, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
   puppet-tour:
     sample: puppet
     args: [--tour, --frames, "{out}/frames"]
@@ -191,6 +197,19 @@ images:
   go-zen-balance.jpg:
     run: balance
     shot: s-balance
+    jpeg: {width: 960, height: 540, quality: 3}
+  # The README's campaign picture: the war map, the orders of a region, the sortie, the clash of
+  # the two armies and the region in the Crown's colour; and the map with everything it shows.
+  campaign.gif:
+    run: campaign
+    frames:
+      - {shots: "ca*"}
+      - {shots: "cb*"}
+      - {shots: "cc*"}
+    gif: {fps: 12, width: 960, height: 540, colors: 128}
+  campaign-map.jpg:
+    run: campaign
+    shot: s-map
     jpeg: {width: 960, height: 540, quality: 3}
   # The README's novel picture, beside the first one: a line, a choice, Back over the
   # choice, the same option again and Skip to the first line not read, about 10 seconds.

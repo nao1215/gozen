@@ -1,26 +1,18 @@
-// Command campaign-proto runs Five Banners, a prototype of a region-conquest campaign
-// written with the campaign words of schema version 5 (ADR 0030). NOTES.md lists what was
-// hard to write before them and what is left. It is a module of its own, so that its
-// pictures do not come with the gozen module.
+//go:build !js
+
+// Command campaign runs Five Banners, the campaign sample of Gozen: a war of five regions
+// over ten turns (schema_version 5, ADR 0030), in English and Japanese. It is a module of
+// its own, so that its pictures do not come with the gozen module.
 package main
 
 import (
 	"context"
-	"embed"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/signal"
 
 	"github.com/nao1215/gozen/play"
 )
-
-// The game's YAML (game.yaml, data/) and its pictures and font (assets/).
-//
-//go:embed game
-var files embed.FS
-
-func gameFS() (fs.FS, error) { return fs.Sub(files, "game") }
 
 func main() {
 	if err := run(); err != nil {
