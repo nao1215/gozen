@@ -133,7 +133,7 @@ func TestCheckRejectsMistakes(t *testing.T) {
 		{"image page without files", data("events: {e: {do: [{image: {file: x.png, page: 2}}]}}"), "page is 1 or more, with files"},
 		{"image pick without files", data("events: {e: {do: [{image: {file: x.png, pick: '1'}}]}}"), "pick is with files"},
 		{"image look unknown", data("events: {e: {do: [{image: {file: x.png, look: blur}}]}}"), "look is dream"},
-		{"image haze without a look", data("events: {e: {do: [{image: {file: x.png, haze: '#aabbcc'}}]}}"),"haze is with look: dream"},
+		{"image haze without a look", data("events: {e: {do: [{image: {file: x.png, haze: '#aabbcc'}}]}}"), "haze is with look: dream"},
 		{"image over missing", data("events: {e: {do: [{image: {file: x.png, over: {file: gone.png}}}]}}"), "no picture assets/gone.png"},
 		{"battle unknown troop and fighter", data("events: {e: {do: [{battle: nope, fighters: [nobody]}]}}"), `unknown troop "nope"`},
 		{"call unknown event", data("events: {e: {do: [{call: nope}]}}"), `unknown event "nope"`},
