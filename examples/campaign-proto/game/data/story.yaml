@@ -1,46 +1,58 @@
-# The talk that breaks into the turns. Placeholder English, to be rewritten.
+# The talk around the turns. Placeholder English, to be rewritten.
 events:
   opening:
     do:
-      - say: {who: maren, text: Five regions and three banners. Ours flies over Ashvale only.}
-      - say: {who: ox, text: Ten winters to take them all. Pick the marches with care.}
+      - say: {who: corin, text: Five regions and three banners. Ours flies over Ashvale only.}
+      - say: {who: hilde, text: Ten winters to take them all. Pick the marches with care.}
 
-  tilly_arrives:
+  # The land pays its wealth at the start of each turn.
+  turn_start:
+    do:
+      - gold: faction.crown.sum_wealth
+
+  sable_arrives:
     trigger: auto
     once: true
-    when: var.turn == 3
+    when: campaign.turn == 3
     do:
-      - say: {who: tilly, text: I have three hundred spears and nowhere to stand. Will the Crown have us?}
+      - say: {who: sable, text: I have three hundred spears and nowhere to stand. Will the Crown have us?}
       - choice:
           - label: Take her in
             do:
-              - join: tilly
-              - set: {flag.has_tilly: true, var.gt_tilly: 300}
-              - say: {who: tilly, text: Then point us at someone.}
+              - join: sable
+              - set: {generals.sable.troops: 300}
+              - say: {who: sable, text: Then point us at someone.}
           - label: Send her away
             do:
-              - set: {gold: "gold + 60"}
-              - say: {who: tilly, text: "Then take this for the road, and good luck."}
-        id: tilly
+              - gold: 60
+              - say: {who: sable, text: "Then take this for the road, and good luck."}
+        id: sable
 
-  kes_arrives:
+  vessa_arrives:
     trigger: auto
     once: true
-    when: var.own_cross == 'Crown'
+    when: region.cross.owner == 'crown'
     do:
-      - say: {who: kes, text: You took the crossing. I fight for whoever holds it.}
-      - join: kes
-      - set: {flag.has_kes: true, var.gt_kes: 300}
+      - say: {who: vessa, text: You took the crossing. I fight for whoever holds it.}
+      - join: vessa
+      - set: {generals.vessa.troops: 300}
 
   envoy:
     trigger: auto
     once: true
-    when: var.turn == 6 && var.own_well == 'Raven'
+    when: campaign.turn == 6 && region.well.owner == 'raven'
     do:
-      - say: {who: Raven envoy, text: The Raven offers two winters of peace. Will you take it?}
+      - say: {who: Raven envoy, face: envoy/normal.png, text: The Raven offers two winters of peace. Will you take it?}
       - choice:
           - label: Accept the truce
-            do: [{set: {var.truce: "var.turn + 1"}}]
+            do: [{set: {var.truce: "campaign.turn + 1"}}]
           - label: Refuse
-            do: [{say: {who: Raven envoy, text: "Then we will meet in the field."}}]
+            do: [{say: {who: Raven envoy, face: envoy/normal.png, text: "Then we will meet in the field."}}]
         id: truce
+
+  victory:
+    do:
+      - say: {who: corin, text: "Five banners, one colour. It is over."}
+  fallen:
+    do:
+      - say: Ashvale has fallen. The Crown is no more.

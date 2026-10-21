@@ -1,6 +1,6 @@
 # ADR 0030: Campaigns — regions held by factions over turns
 
-Status: Accepted (2026-10-21). Stage 1 (the YAML words, their checks, the expression names and the generated state names) is done. Stage 2 (the rules) is under "Plan" below. Home: `internal/layer2/gamedata` (YAML types, checks and the expression names), `internal/rpg` (the names on a play, `set`), `internal/layer3/campaign` (the rules).
+Status: Accepted (2026-10-21). Stage 1 (the YAML words, their checks, the expression names and the generated state names) and stage 2 (the rules, the random numbers in a save, the prototype rewritten) are done. The screen and a `sim` command are under "Plan" below. Home: `internal/layer2/gamedata` (YAML types, checks and the expression names), `internal/rpg` (the names on a play, `set`), `internal/layer3/campaign` (the rules).
 
 ## Users and problem
 
@@ -73,16 +73,24 @@ The names below are known wherever field names are (conditions, labels, events),
 
 `gozen check` reports with file and line: a neighbour that does not exist, is the region itself, is written twice, or does not name the region back; an owner or a capital that is not a faction or a region; a capital not held by its faction at the start; the player's faction with `ai` rules; a rule that both drafts and marches, or has march words without `march`; `pick: min|max` without `by`; an unknown `player`, `location`, event or general; an order's unknown `general` or `target` word, a `where` without a target, a march without a general and a target; a value named like a region's field; an unknown region, faction, general, field or `sum_` value in an expression; a `set` of an unknown field or of an owner that is not a faction; `actions` reading names other than the campaign's; and the words at a version below 5. Warnings: regions in more than one part, a faction bordering no other side, a `win` or `lose` that holds at the start, and a first turn without actions.
 
+### The rules
+
+- The orders are entries of the campaign's place, before its own actions, each listed while its `when` holds and the turn has the actions it costs, and "End turn" after them. An entry runs the command `order: ID`. The command asks "Who leads?" (the generals that `general: ready|any` allows) and "Where to?" (the regions that `target: border|own|any` and `where` allow) as engine choices ending with Cancel, unless it names them (`order: {id, general, target}`, for scripts and tests). It then binds them (`campaign.general`, `campaign.target`), spends the actions, marches when `march: true`, shows how the march went, and runs the order's `do`. A choice is an ordinary request, so a `Policy`, `Explore` and a save in the middle of an order work as for any choice.
+- A march is decided by numbers (`clash`): `power` against `defense`, then the troops left on each side. Its random numbers are the state's, so a seed decides a campaign. A general's march leaves `garrison` of the troops left in the region taken; a faction's leaves all of them.
+- `end_turn` lets each other faction that holds a region follow its rules in order: `draft` adds troops to each of its regions, `march` marches once from a region of at least `keep` troops, sending `send` of them, on a border where `where` holds, picked by `pick` and `by`. Then the turn advances, the generals may march again, the actions are worked out, and `on_turn` runs.
+- Between commands (where auto events are tried) the campaign ends once: `lose` (or the end of the last turn) runs `lost` and then the new command `game_over`, a defeat without a battle; `win` runs `won` and then `clear`.
+- A save made between commands now holds the random generator's bytes too (the envelope's `rand`, as a save in the middle of an event already did), so a restored game draws the numbers the saved one would have. The format version stays 2; an older save without them draws from the session's seed as before.
+
 ### No new public API
 
-`api/public.txt` does not change. `api/schema.txt` gains `Game.Campaign`, `DB.Regions` and `DB.Factions`. The new types have no alias in `schema`; the helpers that read a campaign's state are functions of `internal/layer2/gamedata`, not methods of `DB`.
+`api/public.txt` does not change. `api/schema.txt` gains `Game.Campaign`, `DB.Regions`, `DB.Factions` and the commands `Command.Order`, `Command.EndTurn` and `Command.GameOver`. The new types have no alias in `schema`; the helpers that read a campaign's state are functions of `internal/layer2/gamedata`, not methods of `DB`.
 
 ## Plan
 
 | Stage | Content | Status |
 | --- | --- | --- |
 | 1 | The words, `schema_version: 5`, the checks, the names, the generated state names, `set` | Done |
-| 2 | The rules (`internal/layer3/campaign`): the commands `order`, `end_turn` and `game_over`, the actions of a turn, the numeric clash, the factions' rules, winning and losing, the random numbers in a save; the prototype rewritten | |
+| 2 | The rules (`internal/layer3/campaign`): the commands `order`, `end_turn` and `game_over`, the actions of a turn, the numeric clash, the factions' rules, winning and losing, the random numbers in a save; the prototype rewritten | Done |
 | Later | The screen (the factions' colours on the map, a band with the turn), `gozen sim campaign`, the bridge to battles | |
 
 ## Alternatives

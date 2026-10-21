@@ -1,7 +1,7 @@
-// Command campaign-proto runs Five Banners, a stage 0 prototype of a region-conquest
-// strategy game written only with the YAML words Gozen has today. NOTES.md lists what was
-// hard to write. It is a module of its own, so that its pictures do not come with the
-// gozen module.
+// Command campaign-proto runs Five Banners, a prototype of a region-conquest campaign
+// written with the campaign words of schema version 5 (ADR 0030). NOTES.md lists what was
+// hard to write before them and what is left. It is a module of its own, so that its
+// pictures do not come with the gozen module.
 package main
 
 import (

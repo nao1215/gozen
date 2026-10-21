@@ -187,3 +187,8 @@ Order:
   target: "The region it is given: border (not the player's, next to one of the player's), own, any, or omitted for none."
   when: "An expression that must hold for the order to be listed."
   where: "An expression over t (a region) that narrows the target."
+OrderCmd:
+  _: "The order command: the ID of an order of the campaign, and the general and the target region when they are not to be asked."
+  general: "The general who leads it, an ID of campaign.generals."
+  id: "The ID of the order in campaign.orders."
+  target: "The target region, an ID of regions."

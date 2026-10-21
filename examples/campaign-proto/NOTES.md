@@ -1,11 +1,73 @@
-# Five Banners: stage 0 notes
+# Five Banners: notes
 
-Five Banners is a region-conquest strategy game written with the YAML Gozen has today
-(schema version 4), without changing the engine. It exists to find where such a game is
-hard to write, as the ground for the YAML words of stage 1 (`regions`, `factions`,
-`campaign`). The text is placeholder English.
+Five Banners is a small region-conquest campaign. Stage 0 wrote it with the YAML Gozen had
+(schema version 4) to find where such a game is hard to write; stage 2 rewrote it with the
+campaign words of [ADR 0030](../../docs/decisions/0030-campaigns.md) (schema version 5). The
+text is placeholder English.
 
-## What it is
+## Stage 2: the campaign words
+
+The game is the same: five regions, the Crown against the Raven and the Stag, ten turns,
+three orders, four generals (Corin, Hilde, Sable who joins by a talk at turn 3, Vessa who
+joins when the Crown takes Crossway), a truce offered at turn 6. The generals' pictures are
+now the author's own (see ASSETS.md). What changed:
+
+- `data/war.yaml` defines `regions` (names, borders, owners, garrisons, wealth) and
+  `factions` (colour, capital, and the Raven's and the Stag's rules: draft 190 into every
+  region, then march once from a region of at least 1000 along the border whose `where`
+  holds, the weakest first). `game.yaml`'s `campaign` names the place, the player, the
+  turns, the actions, the generals, the orders and the clash.
+- `rules.yaml` is gone: no variables to declare (the state has generated names), no dispatch
+  events (`target` and `general` are bound by the order), no tally (`faction.crown.regions`),
+  no hand-written AI, no `clear` for a defeat (losing the capital is a game over), and the
+  income is one line (`gold: faction.crown.sum_wealth`).
+- The harness gives orders as `- order: {id: attack, general: hilde, target: ford}` and reads
+  `region`, `generals` and `campaign` as whole objects with `Query`, instead of building
+  `var.tr_<id>` names and matching option labels.
+
+| Part | Stage 0 lines | Stage 2 lines |
+|:--|:--|:--|
+| `game.yaml` | 92 | 48 |
+| `data/rules.yaml` | 199 | (gone) |
+| `data/war.yaml` | 78 | 51 |
+| `data/story.yaml` | 46 | 58 (the won and lost events moved here, and the income) |
+| `data/people.yaml` | 14 | 14 |
+| YAML in all | 429 | 171 (-60%) |
+| `campaign_test.go` | 475 | 344 |
+
+Measured with `go test -v` (Seed 1 to 200 for each strategy):
+
+| Strategy | Wins | Median turn of a win | Regions held at the end |
+|:--|:--|:--|:--|
+| greedy | 124 (62%) | 10 | 1:1 2:1 3:57 4:17 5:124 |
+| random | 0 (0%) | - | 0:81 1:86 2:32 3:1 |
+
+- The same seed gives the same end. A save at the start of turn 5, restored with another
+  seed, now ends exactly as the campaign saved (20 of 20): a save between commands keeps the
+  random numbers.
+- Picking Attack from the menu asks "Who leads?" and "Where to?" with Cancel last; the
+  Policy answers them. Explore still finds both answers to Sable.
+- Of the stage 0 mistakes `gozen check` missed, these are now errors: an owner that is not a
+  faction (in `regions`, `capital`, and a `set` of a literal owner), a border written on one
+  side. The border of an order and of a faction's march is no longer written by hand. Still
+  not caught: a misspelt faction compared in an expression (`region.vale.owner == 'crwon'`),
+  an event that calls itself.
+- The balance is steep: the AIs' draft moved greedy play from 89% (180) to 62% (190), and
+  `keep` from 92% (1500) to 0% (1600). The numbers of a faction's rules need a sweep in a
+  `sim campaign`, not by hand.
+
+Still for a later stage: the map draws no faction colours, no turn band and no meters (the
+two plates on roads that never open are still there); the orders are in the Menu list, not on
+the map; there is no `gozen sim campaign` (the harness is still Go); a battle cannot decide a
+march.
+
+## Stage 0: today's words
+
+Stage 0 wrote the game without changing the engine, to find where such a game is hard to
+write, as the ground for the YAML words of stage 1 (`regions`, `factions`, `campaign`). Its
+generals were Go Zen's (Maren, Ox, Tilly, Kes).
+
+### What it was
 
 - Five regions (Ashvale, Brookford, Crossway, Highhill, Deepwell) on Go Zen's town map,
   joined by six borders. Three factions: the Crown (the player, capital Ashvale), the Raven
@@ -21,7 +83,7 @@ hard to write, as the ground for the YAML words of stage 1 (`regions`, `factions
   extra plates show the turn, orders, gold and news, and the generals' troops. The orders are
   the location's actions, in the list (Menu).
 
-## Measured
+### Measured
 
 `go test -v` in this directory (`campaign_test.go`, a harness of `gozen.New`,
 `Config{Seed, Policy}`, `Session.Do("- pick: ...")` and `Session.Query`):
@@ -45,7 +107,7 @@ beat. The AIs emptied their capitals fighting each other over Crossway, and gree
 200 of 200 by turn 4. A rule "march only from a region of at least `var.keep` (1000)
 troops", AI drafts of 170 a region, and dearer drafts for the Crown brought it to 48%.
 
-## Size
+### Size
 
 | Part | Lines | Notes |
 |:--|:--|:--|
@@ -61,9 +123,9 @@ its variables (`get_region`, `put_region`, `get_general`, `put_general`) are 52 
 the AI (`ai_turn`, `ai_clash`, `ai_draft`) 68 lines, and counting regions (`tally`) and the
 income are 3 expressions of 5 terms each, one per faction.
 
-## Where it was hard
+### Where it was hard
 
-### Writing the rules
+#### Writing the rules
 
 1. No parameters and no tables. A shared event takes its arguments in variables (`var.g`,
    `var.t`, `var.r`, `var.f`), and every write to "the region in `var.r`" is a dispatch, one
@@ -92,7 +154,7 @@ income are 3 expressions of 5 terms each, one per faction.
    colour.}`) became an unknown field. `gozen check` caught it, with the message `unknown
    field "one colour. It is over."` (GZN1104), which does not point at the comma.
 
-### Writing the AI
+#### Writing the AI
 
 - The AI is an event per turn with one `if` per directed border (12 here, 2 per border),
   taken in the order written: the order of the lines is the AI's preference. There is no
@@ -101,7 +163,7 @@ income are 3 expressions of 5 terms each, one per faction.
 - Because the AI is ordinary events, a bad rule shows only in the numbers (greedy 100%
   above). Nothing reports "the AI never attacks the Crown" or "the AI empties its capital".
 
-### Mistakes that `gozen check` does not catch
+#### Mistakes that `gozen check` did not catch
 
 Each was planted in a copy of the game; only the last was reported:
 
@@ -118,7 +180,7 @@ Each was planted in a copy of the game; only the last was reported:
 The list of known names in that last message also holds the dungeon's generated names
 (`deepest`, `dive_seed`, `floor_left`, `roam_calm` ...), though this game has no dungeon.
 
-### The screen
+#### The screen
 
 - The map screen draws no meters and no `desc`. The turn, orders, gold and news, and the
   generals' troops, are shown as the plates of two extra points (`hq`, `camp`).
@@ -130,7 +192,7 @@ The list of known names in that last message also holds the dungeon's generated 
   walks the token there. The point the token stands on cannot be chosen.
 - A choice's window covers the lower plates (the turn and the generals) while it is open.
 
-### Measuring
+#### Measuring
 
 - There is no `gozen sim` for a campaign, so the numbers above come from a Go test: about 470
   lines that repeat the borders and the odds of a march, read the state name by name, and
@@ -144,7 +206,7 @@ The list of known names in that last message also holds the dungeon's generated 
   turn 5. Saving and loading to roll a march again is possible, and a trace that crosses a
   restore cannot be replayed exactly.
 
-## What this says about the stage 1 words
+### What this said about the stage 1 words
 
 - `regions.<id>: {name, at, next, owner, troops, values}` — confirmed. It removes the four
   state names per region, the name constants, the dispatches, and the three copies of the

@@ -1,14 +1,14 @@
-# The generals are party members only so that their faces show; their troops are variables.
+# The generals are actors so that their faces show; their troops are the campaign's.
 classes:
   general:
     name: General
     exp_for: level * 10
     stats: {mhp: 30, mmp: 0, atk: 5, def: 3, mat: 0, mdf: 0, agi: 5, luk: 1}
 actors:
-  maren: {name: Maren, class: general, faces: maren, doll: {icon: icons/maren.png}}
-  ox: {name: Ox, class: general, faces: ox, doll: {icon: icons/ox.png}}
-  tilly: {name: Tilly, class: general, faces: tilly, doll: {icon: icons/tilly.png}}
-  kes: {name: Kes, class: general, faces: kes, doll: {icon: icons/kes.png}}
+  corin: {name: Corin, class: general, faces: corin, doll: {icon: icons/corin.png}}
+  hilde: {name: Hilde, class: general, faces: hilde, doll: {icon: icons/hilde.png}}
+  sable: {name: Sable, class: general, faces: sable, doll: {icon: icons/sable.png}}
+  vessa: {name: Vessa, class: general, faces: vessa, doll: {icon: icons/vessa.png}}
 skills:
   attack: {name: Attack, effects: [{damage: a.atk}]}
   guard: {name: Guard, scope: self}

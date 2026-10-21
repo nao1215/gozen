@@ -21,14 +21,15 @@ var indirect = map[string]struct {
 	args []string
 	keys []string
 }{
-	"internal/event/stones.go":          {[]string{"data.StatLabels[st]"}, nil},
-	"internal/play/menu.go":             {[]string{"data.StatLabels[st]"}, nil},
-	"internal/play/shop.go":             {[]string{"data.StatLabels[d.stat]"}, nil},
-	"cmd/gozen/memos.go":                {[]string{"n"}, []string{"人", "LLM", "自動の遊び", "ボット"}},
-	"internal/play/novel.go":            {[]string{"btn.label", "buttons[i].label"}, []string{"もどる", "ログ", "オート", "スキップ", "セーブ", "ロード", "非表示", "設定", "シーン送り"}},
-	"internal/play/devpanel.go":         {[]string{"n"}, []string{"状態", "フラグ", "シーン", "コマンド", "フレーム"}},
-	"internal/layer2/gamedata/load.go":  {nil, []string{"武器", "防具", "装飾品"}},
-	"internal/layer2/gamedata/types.go": {nil, []string{"最大HP", "最大MP", "攻撃力", "防御力", "魔法力", "魔法防御", "素早さ", "運"}},
+	"internal/event/stones.go":                    {[]string{"data.StatLabels[st]"}, nil},
+	"internal/play/menu.go":                       {[]string{"data.StatLabels[st]"}, nil},
+	"internal/play/shop.go":                       {[]string{"data.StatLabels[d.stat]"}, nil},
+	"cmd/gozen/memos.go":                          {[]string{"n"}, []string{"人", "LLM", "自動の遊び", "ボット"}},
+	"internal/play/novel.go":                      {[]string{"btn.label", "buttons[i].label"}, []string{"もどる", "ログ", "オート", "スキップ", "セーブ", "ロード", "非表示", "設定", "シーン送り"}},
+	"internal/play/devpanel.go":                   {[]string{"n"}, []string{"状態", "フラグ", "シーン", "コマンド", "フレーム"}},
+	"internal/layer2/gamedata/load.go":            {nil, []string{"武器", "防具", "装飾品"}},
+	"internal/layer2/gamedata/campaign_orders.go": {nil, []string{"ターンを終える"}},
+	"internal/layer2/gamedata/types.go":           {nil, []string{"最大HP", "最大MP", "攻撃力", "防御力", "魔法力", "魔法防御", "素早さ", "運"}},
 }
 
 // sourceKeys reads every key the module's code passes to T.

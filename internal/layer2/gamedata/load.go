@@ -367,6 +367,7 @@ func (db *DB) defaults() {
 			l.Dungeon.parse()
 		}
 	}
+	campaignActions(db)
 
 	for _, e := range db.Enemies {
 		if e.Scale == 0 {

@@ -91,12 +91,14 @@ github.com/nao1215/gozen/schema field Command.Done
 github.com/nao1215/gozen/schema field Command.Effect
 github.com/nao1215/gozen/schema field Command.Else
 github.com/nao1215/gozen/schema field Command.End
+github.com/nao1215/gozen/schema field Command.EndTurn
 github.com/nao1215/gozen/schema field Command.Equip
 github.com/nao1215/gozen/schema field Command.EquipStones
 github.com/nao1215/gozen/schema field Command.Exp
 github.com/nao1215/gozen/schema field Command.Facing
 github.com/nao1215/gozen/schema field Command.Fighters
 github.com/nao1215/gozen/schema field Command.Floor
+github.com/nao1215/gozen/schema field Command.GameOver
 github.com/nao1215/gozen/schema field Command.Give
 github.com/nao1215/gozen/schema field Command.Gold
 github.com/nao1215/gozen/schema field Command.Heal
@@ -116,6 +118,7 @@ github.com/nao1215/gozen/schema field Command.OnRun
 github.com/nao1215/gozen/schema field Command.OnWin
 github.com/nao1215/gozen/schema field Command.Open
 github.com/nao1215/gozen/schema field Command.OpenWall
+github.com/nao1215/gozen/schema field Command.Order
 github.com/nao1215/gozen/schema field Command.Pick
 github.com/nao1215/gozen/schema field Command.Prompt
 github.com/nao1215/gozen/schema field Command.Ran

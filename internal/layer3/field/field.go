@@ -8,6 +8,7 @@ import (
 	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/atlas"
+	"github.com/nao1215/gozen/internal/layer3/campaign"
 	"github.com/nao1215/gozen/internal/rpg"
 	lang "github.com/nao1215/gozen/internal/text"
 )
@@ -243,6 +244,9 @@ func Arrive(db *data.DB, st *rpg.State, battles bool) []data.Command {
 
 // Auto is the first auto event that holds now (marked done when it has once), or nil.
 func Auto(db *data.DB, st *rpg.State) []data.Command {
+	if cmds := campaign.Ending(db, st); cmds != nil {
+		return cmds
+	}
 	for _, id := range db.Ordered("events") {
 		ev := db.Events[id]
 		if ev.Trigger != "auto" || (ev.Location != "" && ev.Location != st.Location) || (ev.Once && st.Done[id]) {

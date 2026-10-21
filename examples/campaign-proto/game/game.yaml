@@ -1,92 +1,48 @@
-# Five Banners: a stage 0 prototype of a region-conquest strategy game, written only with
-# the YAML words Gozen has today (no regions, factions or turns in the engine). See NOTES.md.
-schema_version: 4
+# Five Banners: a small region-conquest campaign (schema_version 5, ADR 0030). Stage 0 wrote
+# it with variables and dispatch events; it now uses the campaign words. See NOTES.md.
+schema_version: 5
 id: campaign-proto
 title: Five Banners
-subtitle: A stage 0 prototype
+subtitle: A campaign prototype
 language: en
 screen: {width: 1920, height: 1080}
 fonts: {regular: fonts/mplus-1p-regular.ttf}
 title_background: maps/town.jpg
 start:
   location: war
-  party: [maren, ox]
+  party: [corin, hilde]
   gold: 60
   event: opening
 max_party: 4
 battle: {variance: 0, critical: 0, escape: 1}
-# Every number of the campaign is a variable: the engine has no regions, factions or turns,
-# so their state is spelled out here by hand, one name per region and per general.
+campaign:
+  location: war
+  player: crown
+  turns: 10
+  actions: "2 + floor(faction.crown.regions / 2)"
+  won: victory
+  lost: fallen
+  on_turn: turn_start
+  generals:
+    corin: {troops: 500, might: 3}
+    hilde: {troops: 600, might: 2}
+    sable: {troops: 0, might: 1}
+    vessa: {troops: 0, might: 4}
+  clash:
+    power: "a.troops * (1 + a.might / 10) * (0.8 + rand() * 0.4)"
+  orders:
+    attack: {label: "Attack ({campaign.actions_left} orders left)", general: ready, target: border, march: true}
+    develop:
+      label: "Develop ({campaign.actions_left} orders left)"
+      target: own
+      do: [{set: {target.wealth: "target.wealth + 15"}}]
+    draft:
+      label: "Draft 150 for 50 gold ({campaign.actions_left} orders left)"
+      when: gold >= 50
+      general: any
+      do: [{gold: -50}, {set: {general.troops: "general.troops + 150"}}]
 state:
   strict: true
   names:
-    # The turn, the orders left in it, and the last thing that happened.
-    var.turn: {type: number, initial: 1}
-    var.ap: {type: number, initial: 2}
-    var.news: {type: string, initial: "The banners are raised."}
+    # The last turn of the Raven's truce (0: none).
     var.truce: {type: number, initial: 0}
-    # The AI marches only from a region with at least this many troops.
-    var.keep: {type: number, initial: 1000}
-    # The arguments of the shared events (there are no parameters, so they go through vars).
-    var.g: {type: string, initial: ""}
-    var.t: {type: string, initial: ""}
-    var.f: {type: string, initial: ""}
-    var.src: {type: string, initial: ""}
-    var.dst: {type: string, initial: ""}
-    var.r: {type: string, initial: ""}
-    var.r_own: {type: string, initial: ""}
-    var.r_tr: {type: number, initial: 0}
-    var.atk: {type: number, initial: 0}
-    var.def: {type: number, initial: 0}
-    var.sent: {type: number, initial: 0}
-    var.left: {type: number, initial: 0}
-    # What get_general and get_region read.
-    var.cur_gt: {type: number, initial: 0}
-    var.cur_mt: {type: number, initial: 0}
-    var.cur_nm: {type: string, initial: ""}
-    var.cur_own: {type: string, initial: ""}
-    var.cur_tr: {type: number, initial: 0}
-    # How many regions each faction holds (recounted by the event tally).
-    var.n_crown: {type: number, initial: 1}
-    var.n_raven: {type: number, initial: 1}
-    var.n_stag: {type: number, initial: 1}
-    # Regions: the name (a constant kept as a variable: there is no table to read it from),
-    # the owner, the garrison and the wealth.
-    var.nm_vale: {type: string, initial: Ashvale}
-    var.own_vale: {type: string, initial: Crown}
-    var.tr_vale: {type: number, initial: 600}
-    var.wl_vale: {type: number, initial: 40}
-    var.nm_ford: {type: string, initial: Brookford}
-    var.own_ford: {type: string, initial: Free}
-    var.tr_ford: {type: number, initial: 350}
-    var.wl_ford: {type: number, initial: 30}
-    var.nm_cross: {type: string, initial: Crossway}
-    var.own_cross: {type: string, initial: Free}
-    var.tr_cross: {type: number, initial: 600}
-    var.wl_cross: {type: number, initial: 40}
-    var.nm_hill: {type: string, initial: Highhill}
-    var.own_hill: {type: string, initial: Stag}
-    var.tr_hill: {type: number, initial: 1300}
-    var.wl_hill: {type: number, initial: 30}
-    var.nm_well: {type: string, initial: Deepwell}
-    var.own_well: {type: string, initial: Raven}
-    var.tr_well: {type: number, initial: 1500}
-    var.wl_well: {type: number, initial: 30}
-    # Generals of the Crown: troops and might (a constant), and whether they marched this turn.
-    var.gt_maren: {type: number, initial: 500}
-    var.mt_maren: {type: number, initial: 3}
-    flag.acted_maren: {type: bool, initial: false}
-    var.gt_ox: {type: number, initial: 600}
-    var.mt_ox: {type: number, initial: 2}
-    flag.acted_ox: {type: bool, initial: false}
-    var.gt_tilly: {type: number, initial: 0}
-    var.mt_tilly: {type: number, initial: 1}
-    flag.acted_tilly: {type: bool, initial: false}
-    flag.has_tilly: {type: bool, initial: false}
-    var.gt_kes: {type: number, initial: 0}
-    var.mt_kes: {type: number, initial: 4}
-    flag.acted_kes: {type: bool, initial: false}
-    flag.has_kes: {type: bool, initial: false}
-    # How the campaign ended.
-    flag.won: {type: bool, initial: false}
-    flag.lost: {type: bool, initial: false}

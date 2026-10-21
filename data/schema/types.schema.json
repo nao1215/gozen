@@ -2981,6 +2981,33 @@
           "required": [
             "act"
           ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "order": {}
+          },
+          "required": [
+            "order"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "end_turn": {}
+          },
+          "required": [
+            "end_turn"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "game_over": {}
+          },
+          "required": [
+            "game_over"
+          ]
         }
       ],
       "properties": {
@@ -3154,6 +3181,19 @@
           },
           "x-type": "boolean"
         },
+        "end_turn": {
+          "description": "Ends the campaign's turn: the other factions follow their rules and the next turn begins. Needs schema version 5.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
         "equip": {
           "$ref": "#/$defs/EquipItem",
           "description": "Equips an item from the bag on a party member. Leaving out `item` empties the slot, and leaving out both equips the best gear.",
@@ -3247,6 +3287,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "expression"
+        },
+        "game_over": {
+          "description": "Ends the game lost, as a lost battle does. Needs schema version 5.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
         },
         "give": {
           "$ref": "#/$defs/ItemCount",
@@ -3522,6 +3575,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "order": {
+          "$ref": "#/$defs/OrderCmd",
+          "description": "Gives an order of the campaign: its ID, or a map of the ID, the general and the target region. The general and the target it needs are asked when not given. Needs schema version 5.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[OrderCmd](#ordercmd) or string"
         },
         "pick": {
           "description": "Picks an item of the current location's menu (a person, action or exit) by its label.",
@@ -9331,6 +9397,59 @@
         }
       },
       "type": "object"
+    },
+    "OrderCmd": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "general": {
+              "description": "The general who leads it, an ID of campaign.generals.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            },
+            "id": {
+              "description": "The ID of the order in campaign.orders.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            },
+            "target": {
+              "description": "The target region, an ID of regions.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            }
+          },
+          "type": "object"
+        }
+      ],
+      "description": "The order command: the ID of an order of the campaign, and the general and the target region when they are not to be asked."
     },
     "Passive": {
       "additionalProperties": false,

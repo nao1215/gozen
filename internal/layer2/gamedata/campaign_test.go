@@ -105,3 +105,30 @@ func TestCampaignWarnings(t *testing.T) {
 		})
 	}
 }
+
+// TestCampaignCommands: order names an order, a general and a region the campaign has;
+// end_turn needs a campaign; the orders and the end of the turn are in the place's menu.
+func TestCampaignCommands(t *testing.T) {
+	for _, c := range []struct{ do, want string }{
+		{"[{order: siege}]", `unknown order "siege"`},
+		{"[{order: {id: attack, general: ghost}}]", `"ghost" is not a general`},
+		{"[{order: {id: attack, target: moat}}]", `unknown region "moat"`},
+	} {
+		_, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"data/x.yaml": "events: {x: {do: " + c.do + "}}"}))
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%s: want %q, got %v", c.do, c.want, err)
+		}
+	}
+	_, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: 5\nid: plain\n" + testgame.Game, "data/x.yaml": "events: {x: {do: [{end_turn: true}]}}"})
+	if err == nil || !strings.Contains(err.Error(), "end_turn needs game.yaml's campaign") {
+		t.Errorf("end_turn without a campaign: %v", err)
+	}
+	db := testgame.LoadCampaign(t, nil)
+	var labels []string
+	for _, a := range db.Locations["camp"].Actions {
+		labels = append(labels, a.Label)
+	}
+	if got := strings.Join(labels, ","); !strings.HasPrefix(got, "Attack,Develop,Draft,") || !strings.HasSuffix(got, ",End turn") {
+		t.Fatalf("the menu: %s", got)
+	}
+}

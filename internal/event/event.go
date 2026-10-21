@@ -812,6 +812,14 @@ func (r *Runner) run(c *data.Command) Request {
 		r.equip(c.Equip)
 	case "buy", "sell":
 		r.trade(verb, c)
+	case "order":
+		return r.order(c)
+	case "end_turn":
+		r.endTurn()
+	case "game_over":
+		r.Stop()
+		r.last.Over = true
+		return GameOver{}
 	case "act":
 		if r.Act == nil {
 			r.logf(errors.New("act: only a session's battles take a move (Act is nil)"))

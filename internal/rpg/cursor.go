@@ -50,6 +50,23 @@ func WithCursor(save []byte, c Cursor, rnd []byte) ([]byte, error) {
 	return json.MarshalIndent(e, "", "  ")
 }
 
+// WithRand adds the random generator's bytes to a save made by Save between events, so
+// that a loader draws the same numbers as the game saved would have.
+func WithRand(save, rnd []byte) ([]byte, error) {
+	if len(rnd) == 0 {
+		return save, nil
+	}
+	var e saveEnvelope
+	if err := json.Unmarshal(save, &e); err != nil {
+		return nil, err
+	}
+	if e.FormatVersion != saveFormatVersion || e.Cursor != nil {
+		return nil, errors.New(lang.T("乱数はカーソルのない現在の保存形式のセーブにだけ足せる"))
+	}
+	e.Rand = slices.Clone(rnd)
+	return json.MarshalIndent(e, "", "  ")
+}
+
 // choseView is chose.<choice id>: the id of the option last taken at that choice (its number
 // from 0 when the option has no id), "" before it was answered.
 type choseView struct{ s *State }

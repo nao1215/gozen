@@ -54,7 +54,7 @@ func (doc *sourceDocument) definitionShape(raw any, typ reflect.Type, where stri
 	}
 	switch typ {
 	case reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](), reflect.TypeFor[Token](),
-		reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue]():
+		reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd]():
 		if _, ok := raw.(string); ok {
 			return nil
 		}

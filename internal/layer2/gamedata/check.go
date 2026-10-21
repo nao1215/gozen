@@ -1384,6 +1384,8 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			}
 		case "effect":
 			c.effectCue(w+".effect", cmd.Effect)
+		case "order", "end_turn", "game_over":
+			c.campaignCommand(w, verb, cmd)
 		case "mood", "end", "clear", "save", "done", "ran", "cross", "reach":
 			// Commands without extra reference or expression checks are listed explicitly too, so missed registrations are detected.
 		default:

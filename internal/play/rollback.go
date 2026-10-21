@@ -170,7 +170,14 @@ func (g *Game) cursor() (rpg.Cursor, []byte, []byte, bool) {
 func (g *Game) saveBytes() ([]byte, error) {
 	c, snap, rnd, ok := g.cursor()
 	if !ok {
-		return g.st.Save()
+		b, err := g.st.Save()
+		if err != nil || g.pcg == nil {
+			return b, err
+		}
+		if rnd, err = g.pcg.MarshalBinary(); err != nil {
+			return nil, err
+		}
+		return rpg.WithRand(b, rnd)
 	}
 	return rpg.WithCursor(snap, c, rnd)
 }

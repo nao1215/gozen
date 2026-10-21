@@ -108,6 +108,11 @@ func Restore(g *Game, save []byte, cfg Config) (*Session, error) {
 			return nil, fmt.Errorf("%w: %w", ErrIncompatibleSave, err)
 		}
 	}
+	if st.Resume == nil && len(st.SavedRand) > 0 {
+		if err := s.pcg.UnmarshalBinary(st.SavedRand); err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrIncompatibleSave, err)
+		}
+	}
 	s.st = st
 	s.start()
 	dungeon.Remake(s.db, s.st)
@@ -504,17 +509,31 @@ func (s *Session) effect(e event.Effect) {
 func (s *Session) Save() ([]byte, error) {
 	c := s.at
 	if !s.runner.Running() || c.noBack || c.lines == 0 || c.snap == nil || c.name == "" && !c.arrival {
-		return s.st.Save()
+		return s.saveBetween()
 	}
 	cur := rpg.Cursor{Event: c.name, Line: c.lines, Answers: c.answers}
 	if c.arrival {
 		cur.Arrival = true
 		if c.before == nil {
-			return s.st.Save()
+			return s.saveBetween()
 		}
 		return rpg.WithCursor(c.before, cur, c.rbf)
 	}
 	return rpg.WithCursor(c.snap, cur, c.rnd)
+}
+
+// saveBetween is the state as it is with the random generator's bytes, so that Restore
+// draws the numbers this session would have (ADR 0030).
+func (s *Session) saveBetween() ([]byte, error) {
+	b, err := s.st.Save()
+	if err != nil {
+		return nil, err
+	}
+	rnd, err := s.pcg.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	return rpg.WithRand(b, rnd)
 }
 
 // Clone copies the state and the random numbers between commands (for trying a branch).

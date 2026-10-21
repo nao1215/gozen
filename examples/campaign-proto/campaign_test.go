@@ -4,211 +4,14 @@ import (
 	"context"
 	"fmt"
 	"math/rand/v2"
-	"os"
-	"slices"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/nao1215/gozen"
 )
 
-// The campaign as the Go side has to know it: the engine has no regions, so the harness
-// repeats the borders, the names and the generals that the YAML spells out.
-var (
-	regions = []string{"vale", "ford", "cross", "hill", "well"}
-	borders = map[string][]string{
-		"vale":  {"cross", "ford"},
-		"ford":  {"cross", "vale"},
-		"cross": {"ford", "hill", "well", "vale"},
-		"hill":  {"cross", "well"},
-		"well":  {"cross", "hill"},
-	}
-	generals = []string{"maren", "ox", "tilly", "kes"}
-)
-
-// planner answers the choices of the orders with the labels the strategy wants, and the
-// choices of the talk that breaks into the turns with its own answers.
-type planner struct {
-	prefer []string
-	talk   map[string]string // a word of the talk's options to the option to take
-}
-
-func (p *planner) Decide(_ context.Context, _ *gozen.Session, q gozen.Request) int {
-	if q.Kind != "choice" {
-		return gozen.Auto
-	}
-	for _, want := range p.prefer {
-		for i, o := range q.Options {
-			if strings.HasPrefix(o, want) {
-				return i
-			}
-		}
-	}
-	for _, o := range q.Options {
-		if want, ok := p.talk[o]; ok {
-			for i, o2 := range q.Options {
-				if o2 == want {
-					return i
-				}
-			}
-		}
-	}
-	// Nothing wanted (an order whose target is gone): take Cancel, the last option.
-	return len(q.Options) - 1
-}
-
-// view is what a strategy reads of the state, through Query.
-type view struct {
-	turn, ap, gold float64
-	own            map[string]string
-	troops         map[string]float64
-	name           map[string]string
-	gt, mt         map[string]float64
-	ready          map[string]bool // has joined and has not marched this turn
-	has            map[string]bool
-}
-
-func read(t testing.TB, s *gozen.Session) view {
-	t.Helper()
-	v := view{
-		own: map[string]string{}, troops: map[string]float64{}, name: map[string]string{},
-		gt: map[string]float64{}, mt: map[string]float64{}, ready: map[string]bool{}, has: map[string]bool{},
-	}
-	q := func(src string, out any) {
-		if err := s.Query(src, out); err != nil {
-			t.Fatalf("%s: %v", src, err)
-		}
-	}
-	q("var.turn", &v.turn)
-	q("var.ap", &v.ap)
-	q("gold", &v.gold)
-	for _, r := range regions {
-		var own, name string
-		var tr float64
-		q("var.own_"+r, &own)
-		q("var.nm_"+r, &name)
-		q("var.tr_"+r, &tr)
-		v.own[r], v.name[r], v.troops[r] = own, name, tr
-	}
-	for _, g := range generals {
-		var gt, mt float64
-		var acted bool
-		q("var.gt_"+g, &gt)
-		q("var.mt_"+g, &mt)
-		q("flag.acted_"+g, &acted)
-		has := g == "maren" || g == "ox"
-		if !has {
-			q("flag.has_"+g, &has)
-		}
-		v.gt[g], v.mt[g], v.has[g] = gt, mt, has
-		v.ready[g] = has && !acted && gt >= 100
-	}
-	return v
-}
-
-func title(id string) string { return strings.ToUpper(id[:1]) + id[1:] }
-
-// targets are the regions the Crown can attack: not its own, next to one of its own.
-func (v view) targets() []string {
-	var out []string
-	for _, r := range regions {
-		if v.own[r] == "Crown" {
-			continue
-		}
-		for _, n := range borders[r] {
-			if v.own[n] == "Crown" {
-				out = append(out, r)
-				break
-			}
-		}
-	}
-	return out
-}
-
-// order is one order: the menu entry to pick and the options to take in its choices.
-type order struct {
-	pick   string
-	prefer []string
-}
-
-type strategy func(v view, rng *rand.Rand) order
-
-// greedy marches when the odds look good (the strongest ready general on the weakest
-// target), else drafts into the strongest general, else develops, else ends the turn.
-func greedy(v view, _ *rand.Rand) order {
-	if v.ap <= 0 {
-		return order{pick: "End turn"}
-	}
-	best, bestG, bestR := 1.15, "", ""
-	for _, g := range generals {
-		if !v.ready[g] {
-			continue
-		}
-		for _, r := range v.targets() {
-			odds := v.gt[g] * (1 + v.mt[g]/10) / (v.troops[r]*1.25 + 1)
-			if odds > best {
-				best, bestG, bestR = odds, g, r
-			}
-		}
-	}
-	if bestG != "" {
-		return order{pick: "Attack", prefer: []string{title(bestG) + " (", v.name[bestR] + " ("}}
-	}
-	if v.gold >= 50 {
-		strongest := ""
-		for _, g := range generals {
-			if v.has[g] && (strongest == "" || v.gt[g] > v.gt[strongest]) {
-				strongest = g
-			}
-		}
-		return order{pick: "Draft", prefer: []string{title(strongest) + " ("}}
-	}
-	return order{pick: "Develop", prefer: []string{v.name["vale"] + " ("}}
-}
-
-// random takes any order the menu offers, with any general and target.
-func random(v view, rng *rand.Rand) order {
-	if v.ap <= 0 || rng.IntN(8) == 0 {
-		return order{pick: "End turn"}
-	}
-	var ready []string
-	for _, g := range generals {
-		if v.ready[g] {
-			ready = append(ready, g)
-		}
-	}
-	targets := v.targets()
-	switch n := rng.IntN(3); {
-	case n == 0 && len(ready) > 0 && len(targets) > 0:
-		g, r := ready[rng.IntN(len(ready))], targets[rng.IntN(len(targets))]
-		return order{pick: "Attack", prefer: []string{title(g) + " (", v.name[r] + " ("}}
-	case n == 1 && v.gold >= 50:
-		var has []string
-		for _, g := range generals {
-			if v.has[g] {
-				has = append(has, g)
-			}
-		}
-		return order{pick: "Draft", prefer: []string{title(has[rng.IntN(len(has))]) + " ("}}
-	default:
-		var own []string
-		for _, r := range regions {
-			if v.own[r] == "Crown" {
-				own = append(own, r)
-			}
-		}
-		return order{pick: "Develop", prefer: []string{v.name[own[rng.IntN(len(own))]] + " ("}}
-	}
-}
-
-// outcome is how a campaign ended.
-type outcome struct {
-	won, lost bool
-	turn      float64
-	regions   float64
-	orders    int
-}
+// talk answers the choices of the talk between the turns.
+var talk = gozen.DefaultPolicy{Prefer: []string{"Take her in", "Accept the truce"}}
 
 func loadGame(t testing.TB) *gozen.Game {
 	t.Helper()
@@ -223,72 +26,179 @@ func loadGame(t testing.TB) *gozen.Game {
 	return g
 }
 
-var answers = map[string]string{"Take her in": "Take her in", "Accept the truce": "Accept the truce"}
-
-func newCampaign(t testing.TB, g *gozen.Game, seed uint64) (*gozen.Session, *planner) {
+func newCampaign(t testing.TB, g *gozen.Game, seed uint64) *gozen.Session {
 	t.Helper()
-	p := &planner{talk: answers}
-	s, err := gozen.New(g, gozen.Config{Seed: seed, Policy: p})
+	s, err := gozen.New(g, gozen.Config{Seed: seed, Policy: talk})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Begin(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	return s, p
+	return s
 }
 
-func ended(t testing.TB, s *gozen.Session) bool {
+func query[T any](t testing.TB, s *gozen.Session, src string) T {
 	t.Helper()
-	var cleared bool
-	if err := s.Query("cleared", &cleared); err != nil {
-		t.Fatal(err)
+	var v T
+	if err := s.Query(src, &v); err != nil {
+		t.Fatalf("%s: %v", src, err)
 	}
-	return cleared
+	return v
 }
 
-// march gives orders until the campaign ends (or the turn untilTurn begins, when not 0).
-func march(t testing.TB, s *gozen.Session, p *planner, plan strategy, rng *rand.Rand, untilTurn float64) outcome {
+// view is what a strategy reads: the regions, the generals and the campaign, each as
+// the expressions give them (region, generals, campaign).
+type view struct {
+	Regions  map[string]region
+	Generals map[string]general
+	Campaign struct {
+		Turn        float64 `json:"turn"`
+		ActionsLeft float64 `json:"actions_left"`
+	}
+	Gold float64
+}
+
+type region struct {
+	Name   string   `json:"name"`
+	Owner  string   `json:"owner"`
+	Troops float64  `json:"troops"`
+	Border bool     `json:"border"`
+	Next   []string `json:"next"`
+}
+
+type general struct {
+	Troops float64 `json:"troops"`
+	Might  float64 `json:"might"`
+	Ready  bool    `json:"ready"`
+	Joined bool    `json:"joined"`
+}
+
+func read(t testing.TB, s *gozen.Session) view {
 	t.Helper()
-	var o outcome
+	return view{
+		Regions:  query[map[string]region](t, s, "region"),
+		Generals: query[map[string]general](t, s, "generals"),
+		Campaign: query[struct {
+			Turn        float64 `json:"turn"`
+			ActionsLeft float64 `json:"actions_left"`
+		}](t, s, "campaign"),
+		Gold: query[float64](t, s, "gold"),
+	}
+}
+
+func sorted[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// strategy is the next command: an order with its general and target, or the end of the turn.
+type strategy func(v view, rng *rand.Rand) string
+
+// greedy marches when the odds look good (the strongest ready general on the weakest
+// target), else drafts into the strongest general, else develops, else ends the turn.
+func greedy(v view, _ *rand.Rand) string {
+	if v.Campaign.ActionsLeft <= 0 {
+		return "- end_turn: true\n"
+	}
+	best, bestG, bestR := 1.15, "", ""
+	for _, g := range sorted(v.Generals) {
+		gen := v.Generals[g]
+		if !gen.Ready || gen.Troops < 100 {
+			continue
+		}
+		for _, r := range sorted(v.Regions) {
+			if !v.Regions[r].Border {
+				continue
+			}
+			if odds := gen.Troops * (1 + gen.Might/10) / (v.Regions[r].Troops*1.25 + 1); odds > best {
+				best, bestG, bestR = odds, g, r
+			}
+		}
+	}
+	if bestG != "" {
+		return fmt.Sprintf("- order: {id: attack, general: %s, target: %s}\n", bestG, bestR)
+	}
+	if v.Gold >= 50 {
+		strongest := ""
+		for _, g := range sorted(v.Generals) {
+			if v.Generals[g].Joined && (strongest == "" || v.Generals[g].Troops > v.Generals[strongest].Troops) {
+				strongest = g
+			}
+		}
+		return fmt.Sprintf("- order: {id: draft, general: %s}\n", strongest)
+	}
+	return "- order: {id: develop, target: vale}\n"
+}
+
+// random gives any order the turn allows, with any general and target.
+func random(v view, rng *rand.Rand) string {
+	if v.Campaign.ActionsLeft <= 0 || rng.IntN(8) == 0 {
+		return "- end_turn: true\n"
+	}
+	var ready, joined, targets, own []string
+	for _, g := range sorted(v.Generals) {
+		if v.Generals[g].Ready {
+			ready = append(ready, g)
+		}
+		if v.Generals[g].Joined {
+			joined = append(joined, g)
+		}
+	}
+	for _, r := range sorted(v.Regions) {
+		if v.Regions[r].Border {
+			targets = append(targets, r)
+		}
+		if v.Regions[r].Owner == "crown" {
+			own = append(own, r)
+		}
+	}
+	switch n := rng.IntN(3); {
+	case n == 0 && len(ready) > 0 && len(targets) > 0:
+		return fmt.Sprintf("- order: {id: attack, general: %s, target: %s}\n", ready[rng.IntN(len(ready))], targets[rng.IntN(len(targets))])
+	case n == 1 && v.Gold >= 50:
+		return fmt.Sprintf("- order: {id: draft, general: %s}\n", joined[rng.IntN(len(joined))])
+	default:
+		return fmt.Sprintf("- order: {id: develop, target: %s}\n", own[rng.IntN(len(own))])
+	}
+}
+
+// outcome is how a campaign ended.
+type outcome struct {
+	won, lost bool
+	turn      float64
+	regions   float64
+}
+
+// march gives commands until the campaign ends (or the turn untilTurn begins, when not 0).
+func march(t testing.TB, s *gozen.Session, plan strategy, rng *rand.Rand, untilTurn float64) outcome {
+	t.Helper()
 	for range 500 {
-		if ended(t, s) {
+		if query[bool](t, s, "over") || query[bool](t, s, "cleared") {
 			break
 		}
 		v := read(t, s)
-		if untilTurn > 0 && v.turn >= untilTurn {
-			return o
+		if untilTurn > 0 && v.Campaign.Turn >= untilTurn {
+			return outcome{}
 		}
-		next := plan(v, rng)
-		p.prefer = next.prefer
-		if err := s.Do(context.Background(), "- pick: "+next.pick+"\n"); err != nil {
-			t.Fatalf("turn %v, %s %v: %v", v.turn, next.pick, next.prefer, err)
+		if err := s.Do(context.Background(), plan(v, rng)); err != nil {
+			t.Fatalf("turn %v: %v", v.Campaign.Turn, err)
 		}
-		o.orders++
 	}
-	if !ended(t, s) {
-		t.Fatal("the campaign did not end in 500 orders")
-	}
-	v := read(t, s)
-	if err := s.Query("flag.won", &o.won); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Query("flag.lost", &o.lost); err != nil {
-		t.Fatal(err)
-	}
-	o.turn = v.turn
-	for _, r := range regions {
-		if v.own[r] == "Crown" {
-			o.regions++
-		}
+	o := outcome{won: query[bool](t, s, "cleared"), lost: query[bool](t, s, "over"), turn: query[float64](t, s, "campaign.turn"), regions: query[float64](t, s, "faction.crown.regions")}
+	if o.won == o.lost {
+		t.Fatalf("the campaign did not end once: won %v, lost %v", o.won, o.lost)
 	}
 	return o
 }
 
 func campaign(t testing.TB, g *gozen.Game, seed uint64, plan strategy) outcome {
 	t.Helper()
-	s, p := newCampaign(t, g, seed)
-	return march(t, s, p, plan, rand.New(rand.NewPCG(seed, 7)), 0) //nolint:gosec // Test play, not security.
+	return march(t, newCampaign(t, g, seed), plan, rand.New(rand.NewPCG(seed, 7)), 0) //nolint:gosec // Test play, not security.
 }
 
 // TestWinRate plays 200 campaigns with each strategy and reports the win rate and the
@@ -301,19 +211,14 @@ func TestWinRate(t *testing.T) {
 		name string
 		plan strategy
 	}{{"greedy", greedy}, {"random", random}} {
-		wins, losses := 0, 0
+		wins := 0
 		var winTurns []float64
 		held := map[float64]int{}
 		for seed := uint64(1); seed <= runs; seed++ {
 			o := campaign(t, g, seed, c.plan)
-			if o.won == o.lost {
-				t.Fatalf("%s seed %d: won %v and lost %v", c.name, seed, o.won, o.lost)
-			}
 			if o.won {
 				wins++
 				winTurns = append(winTurns, o.turn)
-			} else {
-				losses++
 			}
 			held[o.regions]++
 		}
@@ -338,65 +243,26 @@ func TestWinRate(t *testing.T) {
 func TestSameSeed(t *testing.T) {
 	g := loadGame(t)
 	for seed := uint64(1); seed <= 20; seed++ {
-		a, b := campaign(t, g, seed, greedy), campaign(t, g, seed, greedy)
-		if a != b {
+		if a, b := campaign(t, g, seed, greedy), campaign(t, g, seed, greedy); a != b {
 			t.Fatalf("seed %d: %+v then %+v", seed, a, b)
 		}
 	}
 }
 
-// snapshot is every declared name of the state, read with Query.
-func snapshot(t *testing.T, s *gozen.Session) map[string]any {
+func state(t testing.TB, s *gozen.Session) string {
 	t.Helper()
-	b, err := os.ReadFile("game/game.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	out := map[string]any{}
-	for line := range strings.SplitSeq(string(b), "\n") {
-		name, _, ok := strings.Cut(strings.TrimSpace(line), ": {type:")
-		if !ok {
-			continue
-		}
-		var v any
-		if err := s.Query(name, &v); err != nil {
-			t.Fatal(err)
-		}
-		out[name] = v
-	}
-	for _, n := range []string{"gold", "party", "location"} {
-		var v any
-		if err := s.Query(n, &v); err != nil {
-			t.Fatal(err)
-		}
-		out[n] = v
-	}
-	return out
+	return fmt.Sprint(query[any](t, s, "var"), query[any](t, s, "gold"), query[any](t, s, "party"), query[any](t, s, "over"), query[any](t, s, "cleared"))
 }
 
-func diff(a, b map[string]any) []string {
-	var out []string
-	for k, v := range a {
-		if fmt.Sprint(v) != fmt.Sprint(b[k]) {
-			out = append(out, fmt.Sprintf("%s: %v != %v", k, v, b[k]))
-		}
-	}
-	slices.Sort(out)
-	return out
-}
-
-// TestSaveRestore saves at the start of turn 5 and restores: the state is the same, and
-// the restored campaign plays on to an end. A save made between commands does not keep
-// the random numbers (a restored session draws from Config.Seed again), so the ends of
-// the original and of the restored campaign are only counted; a Clone, which copies the
-// random numbers, must end the same every time (see NOTES.md).
+// TestSaveRestore saves at the start of turn 5 and restores with another seed: the save
+// keeps the random numbers, so the restored campaign ends exactly as the saved one.
 func TestSaveRestore(t *testing.T) {
 	g := loadGame(t)
-	saved, restoredSame := 0, 0
+	saved := 0
 	for seed := uint64(1); seed <= 20; seed++ {
-		s, p := newCampaign(t, g, seed)
-		march(t, s, p, greedy, nil, 5)
-		if ended(t, s) {
+		s := newCampaign(t, g, seed)
+		march(t, s, greedy, nil, 5)
+		if query[bool](t, s, "over") || query[bool](t, s, "cleared") {
 			continue
 		}
 		saved++
@@ -404,50 +270,60 @@ func TestSaveRestore(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		pr := &planner{talk: answers}
-		r, err := gozen.Restore(g, save, gozen.Config{Seed: seed, Policy: pr})
+		r, err := gozen.Restore(g, save, gozen.Config{Seed: seed + 1000, Policy: talk})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if d := diff(snapshot(t, s), snapshot(t, r)); len(d) > 0 {
-			t.Fatalf("seed %d: the restored state differs: %v", seed, d)
+		if a, b := state(t, s), state(t, r); a != b {
+			t.Fatalf("seed %d: the restored state differs:\n%s\n%s", seed, a, b)
 		}
-		c, err := s.Clone()
-		if err != nil {
-			t.Fatal(err)
-		}
-		// The clone keeps the session's Config, so its Policy is the same planner.
-		cloned := march(t, c, p, greedy, nil, 0)
-		a := march(t, s, p, greedy, nil, 0)
-		b := march(t, r, pr, greedy, nil, 0)
-		if a != cloned {
-			t.Errorf("seed %d: the clone ended %+v, the original %+v", seed, cloned, a)
-		}
-		if a == b {
-			restoredSame++
+		march(t, s, greedy, nil, 0)
+		march(t, r, greedy, nil, 0)
+		if a, b := state(t, s), state(t, r); a != b {
+			t.Fatalf("seed %d: the saved and the restored campaign end apart:\n%s\n%s", seed, a, b)
 		}
 	}
 	if saved == 0 {
 		t.Fatal("every campaign ended before turn 5")
 	}
-	t.Logf("of %d campaigns saved at turn 5, %d ended the same after Restore", saved, restoredSame)
 }
 
-// TestTalkBranches explores the end of turn 2: the talk of turn 3 is the only choice, so
-// Explore finds both answers to Tilly, and only taking her in makes her a general.
-func TestTalkBranches(t *testing.T) {
+// TestOrderChoices picks Attack from the menu as a player would: it asks for the general
+// and then the target, and the Policy answers.
+func TestOrderChoices(t *testing.T) {
 	g := loadGame(t)
-	s, err := gozen.New(g, gozen.Config{Seed: 1})
+	var asked [][]string
+	s, err := gozen.New(g, gozen.Config{Seed: 1, Policy: gozen.DefaultPolicy{Prefer: []string{"Hilde", "Brookford"}}, OnRequest: func(q gozen.Request) {
+		if q.Kind == "choice" {
+			asked = append(asked, q.Options)
+		}
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Begin(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Do(context.Background(), "- pick: End turn\n"); err != nil {
+	if err := s.Do(context.Background(), "- pick: Attack\n"); err != nil {
 		t.Fatal(err)
 	}
-	paths, err := gozen.Explore(context.Background(), s, "- pick: End turn\n", gozen.ExploreOptions{Seed: 1})
+	if fmt.Sprint(asked) != "[[Corin (500 troops) Hilde (600 troops) Cancel] [Brookford (free, 350 troops) Crossway (free, 600 troops) Cancel]]" {
+		t.Fatalf("asked %v", asked)
+	}
+	if got := query[string](t, s, "region.ford.owner"); got != "crown" {
+		t.Fatalf("Brookford is %q", got)
+	}
+}
+
+// TestTalkBranches explores the end of turn 2: the talk of turn 3 is the only choice, so
+// Explore finds both answers to Sable, and only taking her in makes her a general.
+func TestTalkBranches(t *testing.T) {
+	g := loadGame(t)
+	s := newCampaign(t, g, 1)
+	if err := s.Do(context.Background(), "- end_turn: true\n"); err != nil {
+		t.Fatal(err)
+	}
+	paths, err := gozen.Explore(context.Background(), s, "- end_turn: true\n", gozen.ExploreOptions{Seed: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -456,18 +332,11 @@ func TestTalkBranches(t *testing.T) {
 		if len(path.Errs) > 0 {
 			t.Fatalf("answers %v: %v", path.Answers, path.Errs)
 		}
-		var tilly string
-		var has bool
-		if err := path.End.Query("chose.tilly", &tilly); err != nil {
-			t.Fatal(err)
+		answer := query[string](t, path.End, "chose.sable")
+		if joined := query[bool](t, path.End, "generals.sable.joined"); joined != (answer == "0") {
+			t.Errorf("answers %v: chose %q but joined %v", path.Answers, answer, joined)
 		}
-		if err := path.End.Query("flag.has_tilly", &has); err != nil {
-			t.Fatal(err)
-		}
-		if has != (tilly == "0") {
-			t.Errorf("answers %v: chose %q but has_tilly %v", path.Answers, tilly, has)
-		}
-		seen[tilly] = true
+		seen[answer] = true
 	}
 	if !seen["0"] || !seen["1"] {
 		t.Fatalf("Explore reached the answers %v, want both", seen)
