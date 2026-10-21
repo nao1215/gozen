@@ -314,6 +314,21 @@ func unusedTiles(d yaml.MapSlice) yaml.MapSlice {
 			v, _ := str(s)
 			used[v] = true
 		}
+		// A floor drawn by hand uses the tiles written in its map.
+		if fl, ok := get(gm, "floors"); ok {
+			if floors, ok := fl.(yaml.MapSlice); ok {
+				for _, f := range floors {
+					if plan, ok := f.Value.(yaml.MapSlice); ok {
+						if m, ok := get(plan, "map"); ok {
+							text, _ := str(m)
+							for _, r := range text {
+								used[string(r)] = true
+							}
+						}
+					}
+				}
+			}
+		}
 		if pl, ok := get(gm, "place"); ok {
 			l := sequence(pl)
 			for _, e := range l {

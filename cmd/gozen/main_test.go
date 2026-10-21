@@ -484,16 +484,38 @@ func TestMain(m *testing.M) {
 	if !slices.Contains(os.Args, "--dev") {
 		panic("capture must opt into development")
 	}
+	// The arguments the capture was started with, one run per line, for tests that check them.
+	if p := os.Getenv("GOZEN_SHOT_ARGS"); p != "" {
+		f, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) //nolint:gosec // A path the test chose.
+		if err != nil {
+			panic(err)
+		}
+		if _, err := fmt.Fprintln(f, strings.Join(os.Args[1:], " ")); err != nil {
+			panic(err)
+		}
+		if err := f.Close(); err != nil {
+			panic(err)
+		}
+	}
+	if code := os.Getenv("GOZEN_SHOT_EXIT"); code != "" {
+		os.Exit(3)
+	}
 	im := image.NewNRGBA(image.Rect(0, 0, 8, 8))
 	im.Set(1, 1, color.NRGBA{0, 160, 255, 255})
-	f, err := os.Create(filepath.Join(arg("--shots"), "shot.png"))
-	if err != nil {
-		panic(err)
+	if os.Getenv("GOZEN_SHOT_NOPNG") == "" {
+		f, err := os.Create(filepath.Join(arg("--shots"), "shot.png"))
+		if err != nil {
+			panic(err)
+		}
+		if err := errors.Join(png.Encode(f, im), f.Close()); err != nil {
+			panic(err)
+		}
 	}
-	if err := errors.Join(png.Encode(f, im), f.Close()); err != nil {
-		panic(err)
+	trace := "{\"t\":\"say\",\"text\":\"Captured marker.\"}\n"
+	if t := os.Getenv("GOZEN_SHOT_TRACE"); t != "" {
+		trace = t + "\n"
 	}
-	if err := os.WriteFile(arg("--trace"), []byte("{\"t\":\"say\",\"text\":\"Captured marker.\"}\n"), 0o600); err != nil {
+	if err := os.WriteFile(arg("--trace"), []byte(trace), 0o600); err != nil { //nolint:gosec // The path the capture was told to use.
 		panic(err)
 	}
 	if _, err := fmt.Fprintln(os.Stdout, "capture helper"); err != nil {

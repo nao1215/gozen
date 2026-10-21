@@ -55,6 +55,11 @@ func Parse(b []byte) (*Config, error) {
 	if len(c.DiveMax) > 0 && len(c.Blocked) == 0 {
 		return nil, errors.New(lang.T("trial: dive_max には blocked（範囲の外へ出ようとしたときのコマンド）が要る"))
 	}
+	for i, b := range c.Blocked {
+		if _, ok := b.(yaml.MapSlice); !ok {
+			return nil, fmt.Errorf("trial: blocked: each entry is a command (a mapping such as {say: ...}); entry %d is %v", i, b)
+		}
+	}
 	for _, patterns := range [][]string{c.Cut, c.Unknown, c.Keep} {
 		for _, p := range patterns {
 			if _, err := pathMatch(p, ""); err != nil {

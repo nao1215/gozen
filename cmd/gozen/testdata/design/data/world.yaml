@@ -1,0 +1,107 @@
+classes:
+  walker:
+    name: Walker
+    stats: {mhp: "50 + level * 15", mmp: "10 + level", atk: "8 + level * 3", def: 3, mat: 2, mdf: 2, agi: 8, luk: 1}
+    exp_for: level * 20
+    equip: [sword]
+    skills: [{level: 2, skill: spark}]
+actors:
+  scout: {name: Scout, class: walker}
+  aide: {name: Aide, class: walker}
+skills:
+  attack: {name: Tap, effects: [{damage: "a.atk * 2 - b.def", variance: 0}]}
+  guard: {name: Wait, scope: self}
+  spark: {name: Spark, mp: 2, scope: one_enemy, effects: [{damage: 20, variance: 0}]}
+items:
+  shard: {name: Shard, kind: key, price: 5}
+  tonic: {name: Tonic, price: 5, use: {scope: one_ally, effects: [{heal: 30}]}, event: drink}
+  blade: {name: Blade, kind: sword, slot: weapon, stats: {atk: 6}, price: 40}
+shops:
+  smith: {name: Smith, goods: [blade, tonic, shard]}
+enemies:
+  mote:
+    name: Mote
+    image: mote.png
+    stats: {mhp: 14, mmp: 0, atk: 4, def: 0, mat: 0, mdf: 0, agi: 1, luk: 1}
+    exp: 12
+    gold: 4
+    ai: [{use: attack}]
+  warden:
+    name: Warden
+    image: mote.png
+    stats: {mhp: 400, mmp: 0, atk: 30, def: 2, mat: 0, mdf: 0, agi: 1, luk: 1}
+    exp: 60
+    gold: 30
+    ai: [{use: attack}]
+  rival:
+    name: Rival
+    image: mote.png
+    stats: {mhp: 40, mmp: 0, atk: 9, def: 1, mat: 0, mdf: 0, agi: 1, luk: 1}
+    exp: 10
+    ai: [{use: attack}]
+troops:
+  lesson: {members: [mote]}
+  pair: {members: [mote, mote]}
+  warden: {name: The Warden, members: [warden]}
+  rival: {name: Rival, members: [rival]}
+  rematch: {members: [rival]}
+locations:
+  camp:
+    name: Camp
+    people:
+      - id: courier
+        name: Courier
+        talk:
+          - say: The trail is long and the lamps are few, so mind the steps.
+          - choice:
+              - {id: yes, label: Take the offer, do: [{set: {var.offer: 1}}, {say: Taken.}]}
+              - {id: no, label: Decline, do: [{say: Declined.}]}
+      - id: elder
+        name: Elder
+        talk: [{say: Rest well tonight.}]
+    actions:
+      - {id: gift, label: Open gift, do: [{call: gift}]}
+      - {id: dive, label: Descend, do: [{dive: cave, floor: 1}]}
+      - {id: shop, label: Browse the smith, do: [{shop: smith}]}
+      - {id: finish, label: Finish, when: "flag.won", do: [{call: finish}]}
+    exits: [{to: inn, label: Inn}]
+  inn:
+    name: Inn
+    people:
+      - id: host
+        name: Host
+        talk: [{say: A quiet room is ready.}]
+    actions:
+      - {id: sleep, label: Sleep, do: [{heal: all}, {say: Morning comes.}]}
+    exits: [{to: camp, label: Camp}]
+  cave:
+    name: Cave
+    encounters: {rate: 0.2, troops: [{troop: lesson}, {troop: pair}]}
+    dungeon:
+      generate:
+        width: 11
+        height: 11
+        rooms: 2
+        seed: 7
+        start: S
+        place:
+          - {char: '>', far: true}
+          - {char: T, count: 1}
+        floors:
+          3:
+            map: |
+              #########
+              #S.G.B..#
+              #########
+      tiles:
+        S: {start: true}
+        '>': {name: Stairs, do: [{dive: cave, floor: var.floor + 1}]}
+        T: {name: Chest, once: true, after: '.', do: [{gold: 20}]}
+        G: {name: Gate, do: [{say: The gate creaks open.}]}
+        B: {name: Warden, solid: "true", trigger: look, do: [{battle: warden}, {set: {flag.won: true}}, {clear: true}]}
+events:
+  gift: {do: [{say: A small gift.}, {image: mote.png}, {gold: 10}]}
+  home: {do: [{move: camp}]}
+  carried: {do: [{heal: all}, {move: camp}]}
+  drink: {do: [{heal: all}]}
+  finish: {do: [{say: Done.}, {clear: true}]}
