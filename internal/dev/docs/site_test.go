@@ -202,6 +202,17 @@ func TestReadmeLinks(t *testing.T) {
 			if page == "" || page == "schema" {
 				continue // the home page and the page built from data/schema/types.schema.json
 			}
+			if strings.HasPrefix(page, "play/") {
+				// A browser build of a sample: the Makefile writes it under website/public.
+				mk, err := os.ReadFile(filepath.Join(root, "Makefile"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !strings.Contains(string(mk), "website/public/"+page+"\n") {
+					t.Errorf("README.md: %s: the Makefile builds no website/public/%s", target, page)
+				}
+				continue
+			}
 			if _, err := os.Stat(filepath.Join(root, "website", "content", page+".md")); err != nil { //nolint:gosec // A page named by README.md, looked up in this repository.
 				t.Errorf("README.md: %s: no page website/content/%s.md", target, page)
 			}

@@ -26,7 +26,7 @@ Gozen is a framework for 2D RPGs and visual novels in Go and Ebitengine. You wri
 
 Documentation: https://nao1215.github.io/gozen/
 
-| RPG: [Go Zen](examples/go-zen) | Novel: [After the Pass](examples/novel) |
+| RPG: [Go Zen](https://nao1215.github.io/gozen/play/go-zen/) (play in browser) | Novel: [After the Pass](https://nao1215.github.io/gozen/play/novel/) (play in browser) |
 |:--|:--|
 | ![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](docs/images/go-zen.gif) | ![After the Pass, the novel sample: a line, a choice, Back over the choice, and Skip to the first line not read](docs/images/novel.gif) |
 
