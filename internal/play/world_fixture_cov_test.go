@@ -76,7 +76,7 @@ func wldMapYAML(id, unknown, extra string) string {
         cave: {at: [110, 110], label: Cave}
       roads:
         - {between: [home, inn], via: [[65, 50]]}
-        - {between: [home, shrine], steps: 3}
+        - {between: [home, shrine], steps: 3, encounters: {rate: "1", troops: [{troop: one}]}}
         - {between: [shrine, gate]}
         - {between: [gate, cave]}
 `, id, unknown, extra)
@@ -199,6 +199,9 @@ const wldWorldData = `locations:
       spots:
         start: {at: [60, 160], facing: east}
         well: {at: [250, 160], facing: north, do: [{set: {flag.at_well: true}}], once: true}
+        door: {at: [40, 173], facing: north}
+      exits:
+        - {to: camp, area: [[20, 170], [60, 170], [60, 176], [20, 176]]}
     exits: [{to: camp}]
   fx_town:
     name: Little Town
@@ -228,10 +231,15 @@ func wldWorldFiles(t *testing.T, gameYAML string, extra map[string]string) fstes
 	maps.Copy(fsys, base)
 	g := string(base["game.yaml"].Data)
 	fsys["game.yaml"] = &fstest.MapFile{Data: []byte("schema_version: 4\n" + gameYAML + g)}
-	maps := wldMapYAML("fx_mark", "mark", "      draw_roads: true\n      token: {picture: pics/token.png, height: 0.12}\n      marker: {picture: pics/marker.png, height: 0.08}") +
+	// the first map has a point into another map, standing on one of its points
+	mark := wldMapYAML("fx_mark", "mark", "      draw_roads: true\n      token: {picture: pics/token.png, height: 0.12}\n      marker: {picture: pics/marker.png, height: 0.08}")
+	mark = strings.Replace(mark, "        cave: {at: [110, 110], label: Cave}\n", "        cave: {at: [110, 110], label: Cave}\n        portal: {at: [20, 100], to: fx_dim, at_point: cave, label: Portal}\n", 1)
+	mark = strings.Replace(mark, "        - {between: [gate, cave]}\n", "        - {between: [gate, cave]}\n        - {between: [home, portal]}\n", 1)
+	maps := mark +
 		wldMapYAML("fx_hidden", "hidden", "      token: doll") +
 		wldMapYAML("fx_dim", "dim", "") +
 		wldMapYAML("fx_named", "named", "      token: {picture: pics/token.png}")
+	fsys["data/world_events.yaml"] = &fstest.MapFile{Data: []byte("events:\n  ev_enter_door:\n    do:\n      - move: fx_yard2\n        at: door\n")}
 	fsys["data/world.yaml"] = &fstest.MapFile{Data: []byte(wldWorldData + maps)}
 	pics := map[string][]byte{
 		"wall.png":     wldPNG(t, 32, 32, color.NRGBA{R: 100, G: 80, B: 90}),

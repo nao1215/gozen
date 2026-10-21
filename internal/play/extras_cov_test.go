@@ -222,6 +222,33 @@ func TestWldPuppetStartsOnFirstTalkAndFallsBack(t *testing.T) {
 	}
 }
 
+// ---- the dolls of a scene bake in the background; closing the game must not wait for them or
+// race with them, and the next game starts clean
+
+func TestWldClosingWhileDollsBakeIsSafe(t *testing.T) {
+	opts := Options{FS: wldWorldFiles(t, "", nil), Location: "fx_yard", NoSound: true, SaveDir: t.TempDir(), Calm: true}
+	g, err := New(opts) // no script: the dolls bake while the frames go on
+	if err != nil {
+		t.Fatal(err)
+	}
+	screen := wldScreen(g)
+	for range 3 {
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+		g.Draw(screen)
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	// the cache was dropped with the game; another game opens at once and shows its scene
+	h := wldWorld(t, "fx_yard2", Options{Calm: true})
+	wldFrames(t, h, 5)
+	if _, ok := h.stack[0].(*stageScene); !ok {
+		t.Fatalf("scene %T", h.stack[0])
+	}
+}
+
 // ---- face icons shaded (actor face_shade, face_shade_top)
 
 func TestWldShadeFaceDarkensFromTopToBottom(t *testing.T) {

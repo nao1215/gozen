@@ -316,3 +316,46 @@ func TestWldLiveReloadKeepsTheDungeonPosition(t *testing.T) {
 		t.Fatalf("position %+v after the reload", p)
 	}
 }
+
+// The event that was running is gone from the new data: the game goes on from now, and says so.
+func TestWldLiveReloadWhenTheRunningEventIsGone(t *testing.T) {
+	dir := wldDisk(t, "ui: {message: novel}\n", map[string]string{"data/novel_cov.yaml": wldNovelData})
+	g := wldLive(t, dir, "camp")
+	wldStartEvent(t, g, "ev_auto")
+	wldFrames(t, g, 5)
+	wldPlay(t, g, "wait 40\npress ok\nwait 40\n", 200)
+	if wldTalkText(g) != "Two." {
+		t.Fatalf("at %q", wldTalkText(g))
+	}
+	wldEdit(t, dir, "data/novel_cov.yaml", "  ev_auto:\n", "  ev_gone:\n")
+	wldPlay(t, g, "press reload\nwait 20\n", 200)
+	if g.db.Events["ev_auto"] != nil || g.db.Events["ev_gone"] == nil {
+		t.Fatal("the data was not reloaded")
+	}
+	if g.live.msg != lang.T("読み直した（イベントが無いので今の所から）") {
+		t.Fatalf("notice %q", g.live.msg)
+	}
+	if g.st.Location != "camp" {
+		t.Fatalf("location %q", g.st.Location)
+	}
+}
+
+// From the title there is no state to keep: the screens are kept and the data is new.
+func TestWldLiveReloadAtTheTitle(t *testing.T) {
+	dir := wldDisk(t, "", nil)
+	g := wldLive(t, dir, "")
+	if g.st != nil {
+		t.Fatal("the title has a state")
+	}
+	wldEdit(t, dir, "game.yaml", "title: Camp expedition", "title: Camp expedition two")
+	wldPlay(t, g, "press reload\nwait 20\n", 100)
+	if g.db.Game.Title != "Camp expedition two" {
+		t.Fatalf("title %q", g.db.Game.Title)
+	}
+	if len(g.stack) != 1 {
+		t.Fatalf("scenes %d", len(g.stack))
+	}
+	if g.live.msg != lang.T("読み直した") {
+		t.Fatalf("notice %q", g.live.msg)
+	}
+}

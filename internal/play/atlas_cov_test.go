@@ -12,9 +12,9 @@ import (
 // joined by roads; the token stands on the current point (the rules' Spot) and walks along
 // the roads, running each road's steps and do on reaching its end.
 
-func wldAtlas(t *testing.T, loc string) (*Game, *atlasScene) {
+func wldAtlas(t *testing.T, loc string, fight ...bool) (*Game, *atlasScene) {
 	t.Helper()
-	g := wldWorld(t, loc, Options{Calm: true})
+	g := wldWorld(t, loc, Options{Calm: len(fight) == 0 || !fight[0]})
 	as, ok := g.stack[0].(*atlasScene)
 	if !ok {
 		t.Fatalf("scene %T", g.stack[0])
@@ -132,6 +132,13 @@ func TestWldAtlasClosedPointSaysLockedThenOpens(t *testing.T) {
 	if g.st.Spot != "shrine" || g.st.Flags["passed"] {
 		t.Fatalf("walked into a closed point: spot %q", g.st.Spot)
 	}
+	said := false
+	for _, l := range g.backlog {
+		said = said || l.text == "The gate is shut."
+	}
+	if !said {
+		t.Fatalf("a closed point says its locked line: backlog %+v", g.backlog)
+	}
 	g.st.Flags["gate_open"] = true
 	as.dirty = true
 	wldPlay(t, g, "walk gate\nwait 5\n", 100)
@@ -192,6 +199,50 @@ func TestWldAtlasListOpensAndChooses(t *testing.T) {
 		t.Fatalf("cancel left %d scenes", len(g.stack))
 	}
 	_ = as
+}
+
+// The encounters of a road are rolled for each of its steps when the token has walked it, before
+// the party arrives at the point (docs/architecture/scenes.md); a calm test play rolls none.
+func TestWldAtlasRoadBattleComesBeforeArrival(t *testing.T) {
+	g, as := wldAtlas(t, "fx_mark", true)
+	wldPlay(t, g, "walk shrine\nwait 5\n", 200)
+	for range 600 {
+		wldFrames(t, g, 1)
+		if g.currentBattle() != nil {
+			break
+		}
+	}
+	if g.currentBattle() == nil {
+		t.Fatalf("no battle on the road (spot %q, walking %v)", g.st.Spot, as.walking())
+	}
+	if g.st.Spot == "shrine" || g.st.Flags["prayed"] {
+		t.Fatalf("the party had arrived (spot %q) when the battle on the road began", g.st.Spot)
+	}
+	if g.st.Steps < 3 {
+		t.Fatalf("the road's 3 steps were not counted: %d", g.st.Steps)
+	}
+}
+
+// A map inside a map (docs/architecture/scenes.md): a point whose to is a map can name the point
+// over there (at_point), and the party arrives standing on it.
+func TestWldAtlasPointIntoAnotherMapStandsOnTheNamedPoint(t *testing.T) {
+	g, as := wldAtlas(t, "fx_mark")
+	wldPlay(t, g, "walk portal\nwait 5\n", 200)
+	wldSettle(t, g, as, 600)
+	if g.st.Location != "fx_dim" {
+		t.Fatalf("at %q", g.st.Location)
+	}
+	if g.st.Spot != "cave" {
+		t.Fatalf("the party stands on %q, want the point cave that at_point names", g.st.Spot)
+	}
+	wldFrames(t, g, 10)
+	next, ok := g.stack[0].(*atlasScene)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	if next.here != "cave" || next.at.X != 110 || next.at.Y != 110 {
+		t.Fatalf("the token is on %q at %v", next.here, next.at)
+	}
 }
 
 func TestWldAtlasScriptWalkToUnknownPointFails(t *testing.T) {

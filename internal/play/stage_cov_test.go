@@ -192,6 +192,42 @@ func wldStageScriptWalkToMissingSpotFails(t *testing.T, g *Game, s *stageScene) 
 	}
 }
 
+func wldStageClickExaminesAThing(t *testing.T, g *Game, s *stageScene) {
+	g.st.Flags["read_sign"] = false
+	s.player.at = geom.Pt{X: 60, Y: 160}
+	st := s.location(g).Stage
+	var area geom.Pt
+	for _, th := range st.Things {
+		if th.ID == "sign" {
+			area = th.Area.Poly().Center()
+		}
+	}
+	pw, ph := g.pixels()
+	sx, sy, _ := s.r.ScreenOf(area, pw, ph)
+	wldPlay(t, g, "click "+strconv.Itoa(int(sx/g.ui))+" "+strconv.Itoa(int(sy/g.ui))+"\nwait 2\n", 100)
+	wldUntil(t, g, 400, func() bool { return g.st.Flags["read_sign"] })
+	if !g.st.Flags["read_sign"] {
+		t.Fatalf("clicking the sign did not examine it (feet %v)", s.player.at)
+	}
+}
+
+// Balloons are all one size, and only people farther than 8 m from the leader are one step smaller.
+func wldStageBalloonSizeFollowsDistance(t *testing.T, _ *Game, s *stageScene) {
+	for _, at := range []geom.Pt{{X: 190, Y: 150}, {X: 60, Y: 160}, {X: 20, Y: 175}, {X: 290, Y: 100}} {
+		s.player.at = at
+		for _, p := range s.people {
+			far := s.sc.Meters(p.w.at, at) > balloonFarAt
+			want := 1.0
+			if far {
+				want = balloonFar
+			}
+			if got := s.balloonScale(p); got != want {
+				t.Errorf("leader at %v, %s %.1f m away: scale %v, want %v", at, p.person.ID, s.sc.Meters(p.w.at, at), got, want)
+			}
+		}
+	}
+}
+
 // F5 makes the scene again from the new data and puts the leader back where the feet were.
 func wldStageReloadKeepsTheFeet(t *testing.T, g *Game, s *stageScene, dir string) {
 	s.player.at = geom.Pt{X: 120, Y: 150}
@@ -245,10 +281,41 @@ func TestWldStageInteractions(t *testing.T) {
 		{"step trigger", wldStageStepTriggerThingRunsOnEntering},
 		{"spot", wldStageWalkToSpotRunsItsDoOnce},
 		{"click", wldStageClickWalksAndTalks},
+		{"click a thing", wldStageClickExaminesAThing},
+		{"balloon size", wldStageBalloonSizeFollowsDistance},
 		{"list", wldStageListWalksToChosenEntry},
 	}
 	for _, c := range steps {
 		g.st.Flags["met_elder"] = false
 		t.Run(c.name, func(t *testing.T) { c.fn(t, g, s) })
+	}
+}
+
+// When the party arrives with its feet in an exit's area, it does not leave at once; it leaves when
+// the feet go in again (docs/architecture/scenes.md: the exit's item is taken when the feet enter).
+func TestWldStageArrivingInsideAnExitDoesNotLeaveAtOnce(t *testing.T) {
+	g := wldWorld(t, "camp", Options{Calm: true})
+	wldFrames(t, g, 5)
+	wldStartEvent(t, g, "ev_enter_door")
+	wldFrames(t, g, 30)
+	s, ok := g.stack[0].(*stageScene)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	if g.st.Location != "fx_yard2" || g.st.Spot != "door" || s.player.at != (geom.Pt{X: 40, Y: 173}) {
+		t.Fatalf("at %q spot %q feet %v", g.st.Location, g.st.Spot, s.player.at)
+	}
+	wldFrames(t, g, 60)
+	if g.st.Location != "fx_yard2" {
+		t.Fatal("the party left through the exit it arrived in")
+	}
+	wldHold(t, g, 30, "up")
+	if s.sc.ExitAt(s.player.at) != "" {
+		t.Fatalf("the feet are still in the exit's area: %v", s.player.at)
+	}
+	wldHold(t, g, 80, "down")
+	wldFrames(t, g, 20)
+	if g.st.Location != "camp" {
+		t.Fatalf("walking into the exit's area again did not leave: at %q, feet %v", g.st.Location, s.player.at)
 	}
 }
