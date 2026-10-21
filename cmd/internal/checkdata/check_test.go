@@ -19,8 +19,8 @@ import (
 func game(t *testing.T, extra map[string]string) fstest.MapFS {
 	t.Helper()
 	fsys := fstest.MapFS{
-		"game.yaml":      {Data: []byte(testgame.Game)},
-		"assets/x.png":   {Data: []byte("synthetic file sentinel")},
+		"game.yaml":    {Data: []byte(testgame.Game)},
+		"assets/x.png": {Data: []byte("synthetic file sentinel")},
 	}
 	// The scout wears a moving portrait.
 	fsys["data/main.yaml"] = &fstest.MapFile{Data: []byte(strings.Replace(testgame.Data, "scout: {name: Scout, class: ranger, equip: {weapon: stick}}", "scout: {name: Scout, class: ranger, equip: {weapon: stick}, puppet: puppet.yaml, face: default}", 1))}
