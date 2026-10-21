@@ -58,7 +58,9 @@ func Explore(ctx context.Context, s *Session, script string, opt ExploreOptions)
 	}
 	seed := opt.Seed
 	if seed == 0 {
-		seed = s.pcg.Uint64()
+		// the seed is read from a copy, so exploring leaves the session's random numbers alone
+		cp := *s.pcg
+		seed = cp.Uint64()
 	}
 	db := gamedata.Fork(s.db)
 	cfg := headless.Config{MaxPaths: opt.MaxPaths, MaxSteps: opt.MaxSteps, Seed: seed, NoArrive: opt.NoArrive}

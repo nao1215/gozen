@@ -35,7 +35,7 @@ events:
   retried:
     do: [{say: Back on your feet}]
   forever:
-    do: [{call: forever}]
+    do: [{if: "true", then: [{call: forever}]}]
   scripted:
     do:
       - choice: [{label: A, do: []}, {label: B, do: []}]
