@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Fixed
+
+- The lines, choices and notices of a troop's events in a battle reach the trace (`say` and `notice` lines marked `in_battle`), so `gozen play trace` shows them, a replay compares them and `gozen play trace --check` checks them (GZN1404). Skip mode now stops before a battle line not read, as it does outside a battle. A replay of a trace written before this change, which has no battle lines, still matches.
+
 ## v0.2.0 - 2026-10-21
 
 Visual novels join RPGs: schema version 4 adds the novel window's roll back, skip, staging, voices and a second language, and `--dev` gains the F8 development panel. A game of schema version 3 or earlier needs no change.

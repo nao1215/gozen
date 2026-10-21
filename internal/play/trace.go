@@ -372,7 +372,20 @@ func (g *Game) traceState(terminal ...bool) {
 	g.emit("state", l)
 }
 
-func (g *Game) traceRequest(r event.Request) {
+func (g *Game) traceRequest(r event.Request) { g.traceRequestIn(r, false) }
+
+// traceBattleRequest traces a line, choice or notice of a troop event. Its say lines carry
+// in_battle, so a replay of a trace written before battle lines were traced can tell them
+// apart (replay.check).
+func (g *Game) traceBattleRequest(r event.Request) { g.traceRequestIn(r, true) }
+
+func (g *Game) traceRequestIn(r event.Request, inBattle bool) {
+	mark := func(l traceLine) traceLine {
+		if inBattle {
+			l["in_battle"] = true
+		}
+		return l
+	}
 	switch r := r.(type) {
 	case event.Say:
 		l := traceLine{"text": r.Text, "read": g.isRead(r)}
@@ -382,11 +395,11 @@ func (g *Game) traceRequest(r event.Request) {
 		if r.Face != "" {
 			l["face"] = r.Face
 		}
-		g.emit("say", l)
+		g.emit("say", mark(l))
 	case event.Choice:
-		g.emit("say", traceLine{"text": r.Prompt, "choices": r.Options})
+		g.emit("say", mark(traceLine{"text": r.Prompt, "choices": r.Options}))
 	case event.Notice:
-		g.emit("notice", traceLine{"text": r.Text})
+		g.emit("notice", mark(traceLine{"text": r.Text}))
 	case event.Battle:
 		g.emit("request", traceLine{"what": "battle", "troop": r.Troop})
 	case event.Shop:
@@ -509,6 +522,15 @@ type replay struct {
 	autopilot   bool
 	finished    bool
 	capture     *battleCapture
+	battleSays  bool // the trace has say lines marked in_battle
+}
+
+// expectLine keeps a checked line of the trace to compare with the replay.
+func (r *replay) expectLine(k string, l traceLine) {
+	if k == "say" && l["in_battle"] == true {
+		r.battleSays = true
+	}
+	r.expect[k] = append(r.expect[k], l)
 }
 
 var replayChecked = []string{"say", "scene", "battle"}
@@ -648,7 +670,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			reloads = append(reloads, tick)
 		default:
 			if r.checked(k) {
-				r.expect[k] = append(r.expect[k], l)
+				r.expectLine(k, l)
 			}
 		}
 	}
@@ -784,6 +806,10 @@ func (r *replay) check(g *Game, line traceLine) {
 		return
 	}
 	if r.diverge != "" || !r.checked(k) || (r.partial && k == "state" && line["terminal"] == true) {
+		return
+	}
+	if k == "say" && line["in_battle"] == true && !r.battleSays {
+		// The trace was written before battle lines were traced and has none to compare.
 		return
 	}
 	i := r.at[k]

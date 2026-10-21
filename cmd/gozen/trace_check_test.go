@@ -152,6 +152,17 @@ func TestTraceCheckSkipVoiceAndRollbackFaults(t *testing.T) {
 	}
 }
 
+// TestTraceCheckBattleLines: a line said in a battle counts and is checked like any other.
+func TestTraceCheckBattleLines(t *testing.T) {
+	out := checkTraceOut(t, 1,
+		`{"t":"skip","tick":20,"on":true}`,
+		`{"t":"say","tick":21,"text":"Battle cry","read":false,"in_battle":true}`,
+	)
+	if !strings.Contains(out, diag.SkipFault.String()) || !strings.Contains(out, "Battle cry") || !strings.Contains(out, "check: 1") {
+		t.Errorf("a battle line passed while skipping is a fault:\n%s", out)
+	}
+}
+
 func TestTraceCheckMusicArrivesLateOrNever(t *testing.T) {
 	// The default is half a second; the game speed divides the delay.
 	out := checkTraceOut(t, 1,

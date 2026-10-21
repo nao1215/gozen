@@ -191,7 +191,7 @@ func loadBattleReplay(path string, o *Options) (_ *replay, err error) {
 			r.acts[*h.Tick] = append(r.acts[*h.Tick], l)
 		default:
 			if r.checked(h.Kind) {
-				r.expect[h.Kind] = append(r.expect[h.Kind], l)
+				r.expectLine(h.Kind, l)
 			}
 			if h.Kind == "battle_result" {
 				r.limit = *h.Tick

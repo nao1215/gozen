@@ -1008,7 +1008,6 @@ func (s *battleScene) event(g *Game) {
 		case nil:
 			s.phase = bpPlay
 		case event.Say:
-
 			line, ok := battleLine(s.b.Party, r)
 			if !ok {
 				s.req = nil
@@ -1016,14 +1015,21 @@ func (s *battleScene) event(g *Game) {
 				return
 			}
 			s.req = line
+			// Like a line outside a battle (begin), it stops skipping when not read and
+			// goes to the trace, so replay and trace check see it.
+			g.skipBefore(line)
+			g.traceBattleRequest(line)
 			g.talk.open(g, line)
 		case event.Choice:
+			g.skipBefore(r)
+			g.traceBattleRequest(r)
 			g.talk.ask(g, r)
 		case event.Wait:
 			s.stepT = int(r.Seconds * 60)
 		case event.Tap:
 			g.beginTap(r)
 		case event.Notice:
+			g.traceBattleRequest(r)
 			g.notices.add(r.Text)
 			s.req = nil
 		default:
