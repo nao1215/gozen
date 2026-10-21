@@ -302,12 +302,12 @@ func (t *treeView) raise(g *Game, a *rpg.Actor, cur gamedata.TreeNode) {
 	} else {
 		g.sfx("buzzer")
 		switch {
-		case a.SP <= 0:
-			t.msg = lang.T("SPが たりない。")
+		case a.Tree[cur.ID] >= cur.Max:
+			t.msg = lang.T("これいじょう あげられない。")
 		case !a.NodeReached(cur.ID):
 			t.msg = lang.T("まだ とれない。（さきに ひつような スキルを あげよう）")
 		default:
-			t.msg = lang.T("これいじょう あげられない。")
+			t.msg = lang.T("SPが たりない。")
 		}
 		t.msgT = 90
 	}
