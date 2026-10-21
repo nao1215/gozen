@@ -448,13 +448,23 @@ func FuzzLoad(f *testing.F) {
 			"assets/mote.png": {Data: []byte("sentinel")},
 		}
 		g, err := gozen.Load(fsys, ".")
+		ds := gozen.Validate(fsys, ".")
+		errorsFound := 0
+		for _, d := range ds {
+			if d.Severity == "error" {
+				errorsFound++
+			}
+		}
+		if (err == nil) != (errorsFound == 0) {
+			t.Fatalf("Load says %v but Validate found %d errors: %v", err, errorsFound, ds)
+		}
 		if err != nil {
 			if g != nil {
 				t.Fatal("an error with a game")
 			}
 			return
 		}
-		if ds := gozen.Validate(fsys, "."); len(ds) != 0 {
+		if len(ds) != 0 {
 			t.Fatalf("a game that loads has diagnostics: %v", ds)
 		}
 		s, err := gozen.New(g, gozen.Config{Seed: 1})
