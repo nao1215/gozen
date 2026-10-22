@@ -72,7 +72,7 @@ func chartOpacity(related bool, frame int) uint8 {
 	if related {
 		return 255
 	}
-	return uint8(255 - 243*frame/chartFocusFrames)
+	return uint8(max(0, min(255, 255-243*frame/chartFocusFrames))) //nolint:gosec // Clamped to 0..255 first.
 }
 
 func (s *profileScreen) chartDisplay(g *Game, base []image.Point) ([]image.Point, []bool) {
@@ -147,7 +147,7 @@ func chartLayout(ids []string, profiles map[string]*data.Profile) []image.Point 
 	if len(ids) > 10 {
 		return points
 	}
-	for pass := 0; pass < min(2, len(ids)); pass++ {
+	for range min(2, len(ids)) {
 		changed := false
 		for i := range ids {
 			if profiles[ids[i]] == nil {
