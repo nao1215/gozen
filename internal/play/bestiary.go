@@ -534,7 +534,6 @@ func (s *bestiaryScreen) drawLineageTile(g *Game, dst *ebiten.Image, tile lineag
 		g.text(dst, gfx.Ellipsis(example, sizeS*0.46, tile.w-12), tile.x+6, tile.y+tile.h-10, sizeS*0.46, g.th.dim)
 	}
 }
-func (g *Game) screenWidth() float64 { w, _ := g.screen(); return w }
 
 var (
 	_ scene = (*bestiaryScreen)(nil)

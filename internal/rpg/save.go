@@ -178,7 +178,7 @@ func (s *State) bind() (*State, error) {
 	for id, a := range s.Actors {
 		if a != nil && a.Monster != "" && a.Sex == "" && db.Enemies[a.Monster] != nil {
 			var hash uint64 = 14695981039346656037
-			for i := 0; i < len(id); i++ {
+			for i := range len(id) {
 				hash = (hash ^ uint64(id[i])) * 1099511628211
 			}
 			a.Sex = data.MonsterSex(db, a.Monster, float64(hash>>11)/float64(uint64(1)<<53))

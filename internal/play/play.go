@@ -500,7 +500,7 @@ func New(opts Options) (_ *Game, err error) {
 		s.do = g.devDo
 		s.recruit = func(species string, level int) {
 			if !g.opts.Development || g.st == nil {
-				g.failure = fmt.Errorf("script: recruit needs a development session")
+				g.failure = errors.New("script: recruit needs a development session")
 				return
 			}
 			if _, ok := g.st.Recruit(species, level, 0, nil); !ok {
@@ -509,7 +509,7 @@ func New(opts Options) (_ *Game, err error) {
 		}
 		s.guaranteeRecruit = func(species string) {
 			if !g.opts.Development {
-				g.failure = fmt.Errorf("script: guarantee-recruit needs a development session")
+				g.failure = errors.New("script: guarantee-recruit needs a development session")
 				return
 			}
 			e := g.db.Enemies[species]

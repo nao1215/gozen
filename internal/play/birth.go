@@ -126,7 +126,7 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 			break
 		}
 		if phase == birthParents {
-			glow := uint8(45 + age*2)
+			glow := uint8(min(255, 45+age*2)) //nolint:gosec // Clamped to 255 first.
 			gfx.FillCircle(dst, float32(p.x), float32(p.y-sh*0.24), float32(sh*0.16), withAlpha(light, glow), true)
 			g.drawStanding(dst, b.effect.ParentFaces[i], p.x, p.y+sh*0.2, sh*0.62, 1, false, nil)
 			g.window(dst, p.x-sw*0.115, p.y+8, sw*0.23, 44)
@@ -149,7 +149,7 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		strength := 1 - math.Abs(float64(age-(b.flashStart()+b.childStart())/2))/float64(b.childStart()-b.flashStart())*2
 		if strength > 0 {
 			rays := 12 + b.effect.Tier*12
-			for i := 0; i < rays; i++ {
+			for i := range rays {
 				a := float64(i) * math.Pi * 2 / float64(rays)
 				length := strength * sh * 0.54
 				gfx.StrokeLine(dst, float32(crystal.x), float32(crystal.y), float32(crystal.x+math.Cos(a)*length), float32(crystal.y+math.Sin(a)*length), 3, withAlpha(light, 0xc0), true)
@@ -177,7 +177,7 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), withAlpha(white, uint8(200*flare*flare)), false)
 	}
 	g.drawStanding(dst, b.effect.ChildFace, sw*0.5, sh*birthBottom, sh*birthHeight, 1, false, nil)
-	for i := 0; i < 24+b.effect.Tier*12; i++ {
+	for i := range 24 + b.effect.Tier*12 {
 		a := float64(i)*math.Pi/12 + float64(age-200)*0.02
 		r := sh * (0.15 + 0.07*math.Sin(float64(i)*3+float64(age)*0.08))
 		x, y := sw*0.5+math.Cos(a)*r, sh*0.47+math.Sin(a)*r

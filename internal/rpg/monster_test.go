@@ -69,8 +69,18 @@ func TestMonsterReserveBreedAndSave(t *testing.T) {
 	if err := json.Unmarshal(saved, &envelope); err != nil {
 		t.Fatal(err)
 	}
-	state := envelope["state"].(map[string]any)
-	actor := state["actors"].(map[string]any)[child].(map[string]any)
+	state, ok := envelope["state"].(map[string]any)
+	if !ok {
+		t.Fatalf("save has no state: %v", envelope)
+	}
+	actors, ok := state["actors"].(map[string]any)
+	if !ok {
+		t.Fatalf("save has no actors: %v", state)
+	}
+	actor, ok := actors[child].(map[string]any)
+	if !ok {
+		t.Fatalf("save has no %s: %v", child, actors)
+	}
 	delete(actor, "sex")
 	legacy, err := json.Marshal(envelope)
 	if err != nil {
@@ -88,7 +98,7 @@ func TestMonsterReserveBreedAndSave(t *testing.T) {
 func TestMonsterSexUsesSessionRandomStream(t *testing.T) {
 	db := testgame.Load(t, testgame.MonsterFiles())
 	first, second := testgame.State(db, 87), testgame.State(db, 87)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		a, _ := first.Recruit("mote", 1, 0, nil)
 		b, _ := second.Recruit("mote", 1, 0, nil)
 		if first.Actors[a].Sex != second.Actors[b].Sex {

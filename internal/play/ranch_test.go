@@ -184,8 +184,12 @@ func TestScriptedEventBattleReachesRecruitChoice(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = g.Close() }()
-	for i := 0; i < 10000; i++ {
+	defer func() {
+		if err := g.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	for range 10000 {
 		if err := g.Update(); err != nil {
 			t.Fatal(err)
 		}

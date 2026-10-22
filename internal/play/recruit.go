@@ -60,10 +60,12 @@ func (g *Game) drawRecruit(dst *ebiten.Image) {
 		return
 	}
 	sw, sh := g.screen()
-	alpha, x, bottom, h := float32(1), sw*0.5, sh*0.67, sh*0.47
+	var alpha float32
+	x, bottom, h := sw*0.5, sh*0.67, sh*0.47
 	if v.leave == 0 {
 		p := math.Min(1, float64(g.tick-v.start)/24)
-		rise := 1 - math.Pow(1-p, 3)
+		q := 1 - p
+		rise := 1 - q*q*q
 		alpha = float32(p)
 		bottom += (1-rise)*sh*0.14 - math.Sin(p*math.Pi)*sh*0.018
 		h *= 0.62 + 0.38*rise

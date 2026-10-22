@@ -73,7 +73,7 @@ func TestGoZenBreedGraphReachesEveryOrdinarySpecies(t *testing.T) {
 		paths[row.ID] = row
 	}
 	if p := paths["succubus"]; p.Steps != 2 || len(p.Parents) != 2 ||
-		!((p.Parents[0] == "vampire" && p.Parents[1] == "whisper_imp") || (p.Parents[1] == "vampire" && p.Parents[0] == "whisper_imp")) {
+		(p.Parents[0] != "vampire" || p.Parents[1] != "whisper_imp") && (p.Parents[1] != "vampire" || p.Parents[0] != "whisper_imp") {
 		t.Fatalf("succubus has no two-generation path: %+v", p)
 	}
 	for _, id := range []string{"vampire", "whisper_imp"} {
