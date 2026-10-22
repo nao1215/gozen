@@ -474,9 +474,14 @@ func (s *profileScreen) drawInfo(g *Game, dst *ebiten.Image, id string) {
 		y += s.lines(g, dst, data.Render(p.Title, s.env), x, y, w, sizeS, bottom, g.th.accent)
 	}
 	y += 8
+	heading := func(label string) {
+		g.text(dst, label, x, y, sizeS*0.85, g.th.accent)
+		y += gfx.LineHeight(sizeS*0.85) + 2
+		s.rule(g, dst, x, y-3, w)
+		y += 6
+	}
 	if len(p.Fields) > 0 {
-		s.rule(g, dst, x, y, w)
-		y += 10
+		heading(lang.T("プロフィール"))
 		labelW := 0.0
 		for _, f := range p.Fields {
 			labelW = max(labelW, gfx.TextWidth(f.Label, sizeS*0.9))
@@ -492,15 +497,13 @@ func (s *profileScreen) drawInfo(g *Game, dst *ebiten.Image, id string) {
 		y += 8
 	}
 	if p.Text != "" {
-		s.rule(g, dst, x, y, w)
-		y += 10
+		heading(lang.T("紹介"))
 		y += s.lines(g, dst, strings.TrimSpace(data.Render(p.Text, s.env)), x, y, w, sizeS*0.9, bottom, g.th.text) + 8
 	}
 	if len(p.Relations) == 0 {
 		return
 	}
-	s.rule(g, dst, x, y, w)
-	y += 10
+	heading(lang.T("関係"))
 	for _, r := range p.Relations {
 		if y+gfx.LineHeight(sizeS*0.9) > bottom {
 			return

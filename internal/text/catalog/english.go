@@ -431,9 +431,12 @@ var english = map[string]string{
 	// screens: the character book (ADR 0031)
 	"キャラクター": "Characters",
 	"←→ / LR: キャラ   ↑↓: 一覧   Z: 表情   X / F6: もどる": "Left/Right / LR: character   Up/Down: list   Z: face   X / F6: back",
-	"あなた": "You",
-	"「":   "“",
-	"」":   "”",
+	"あなた":    "You",
+	"プロフィール": "Profile",
+	"紹介":     "About",
+	"関係":     "Relations",
+	"「":      "“",
+	"」":      "”",
 	// screens: the balance panel (development)
 	"バランス": "Balance",
 	"%d戦・seed %d（gozen sim battle --state と同じ。今の HP は --as-is）": "%d battles, seed %d (as gozen sim battle --state; current HP as --as-is)",
