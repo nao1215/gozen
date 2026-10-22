@@ -5,6 +5,8 @@ wait 15
 press up
 press up
 press up
+wait 15
+shot s-page
 press right
 wait 20
 shot s-lineage

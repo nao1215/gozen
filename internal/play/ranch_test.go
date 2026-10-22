@@ -108,8 +108,9 @@ func TestRanchLayoutLeavesAltarVisible(t *testing.T) {
 		if actions.panelX+actions.panelW+100 >= actions.figureX {
 			t.Fatalf("no visible altar between menu and Yorn at %.0fx%.0f: %+v", sw, sh, actions)
 		}
-		if actions.figureH < sh*0.9 || actions.figureBottom > sh || actions.figureBottom-actions.figureH < 0 {
-			t.Fatalf("Yorn does not fit near full height at %.0fx%.0f: %+v", sw, sh, actions)
+		// Yorn is shown from the waist up: his feet fall below the screen, his head stays on it.
+		if actions.figureH < sh || actions.figureBottom <= sh || actions.figureBottom-actions.figureH < 0 {
+			t.Fatalf("Yorn is not shown waist-up at %.0fx%.0f: %+v", sw, sh, actions)
 		}
 		if selection.panelX+selection.panelW+100 >= selection.figureX || selection.panelY+selection.panelH > sh {
 			t.Fatalf("selection obscures Yorn or leaves screen at %.0fx%.0f: %+v", sw, sh, selection)

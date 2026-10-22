@@ -203,13 +203,13 @@ images:
     run: tree
     shot: s-tree
     jpeg: {width: 960, height: 540, quality: 3}
+  go-zen-bestiary.jpg:
+    run: lineage
+    shot: s-page
+    jpeg: {width: 960, height: 540, quality: 3}
   go-zen-lineage.jpg:
     run: lineage
     shot: s-lineage
-    jpeg: {width: 960, height: 540, quality: 3}
-  go-zen-altar.jpg:
-    run: breeding
-    shot: s-altar
     jpeg: {width: 960, height: 540, quality: 3}
   go-zen-breeding.gif:
     run: breeding

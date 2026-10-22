@@ -3,11 +3,6 @@ wait 40
 recruit whisper_imp 5
 recruit vampire 5
 do open: ranch
-wait 25
-shot s-altar
-press x
-wait 10
-do breed: {parents: [monster_1, monster_2], skills: []}
 wait 5
 shot b001
 wait 5
@@ -32,6 +27,9 @@ wait 5
 shot b011
 wait 5
 shot b012
+press x
+wait 10
+do breed: {parents: [monster_1, monster_2], skills: []}
 wait 5
 shot b013
 wait 5
@@ -136,4 +134,28 @@ wait 5
 shot b063
 wait 5
 shot b064
+wait 5
+shot b065
+wait 5
+shot b066
+wait 5
+shot b067
+wait 5
+shot b068
+wait 5
+shot b069
+wait 5
+shot b070
+wait 5
+shot b071
+wait 5
+shot b072
+wait 5
+shot b073
+wait 5
+shot b074
+wait 5
+shot b075
+wait 5
+shot b076
 quit
