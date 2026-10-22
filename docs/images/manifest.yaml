@@ -143,10 +143,10 @@ runs:
     sample: novel
     script: scripts/capture-novel-characters.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
-  novel-relations:
-    sample: novel
-    script: scripts/capture-novel-relations.txt
-    args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  go-zen-relations:
+    sample: go-zen
+    script: scripts/capture-go-zen-relations.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, plaza, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   campaign:
     sample: campaign
     script: scripts/capture-campaign.txt
@@ -375,8 +375,8 @@ images:
     run: novel-characters
     shot: s-characters
     jpeg: {width: 960, height: 540, quality: 3}
-  novel-relations.jpg:
-    run: novel-relations
+  go-zen-relations.jpg:
+    run: go-zen-relations
     shot: s-relations
     jpeg: {width: 960, height: 540, quality: 3}
   puppet.gif:

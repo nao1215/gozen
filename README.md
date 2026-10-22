@@ -158,7 +158,7 @@ Start the game with `--dev` and these keys work while you play.
 | F6: the character book, every page open: each character's profile, faces and relations | |
 | ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](docs/images/novel-characters.jpg) | |
 | Tab: relationship chart; arrows choose a face, Z opens its page, and the wheel zooms | |
-| ![The novel sample's relationship chart with face icons and coloured connections](docs/images/novel-relations.jpg) | |
+| ![Go Zen's relationship chart with face icons and coloured connections](docs/images/go-zen-relations.jpg) | |
 
 ## Install
 

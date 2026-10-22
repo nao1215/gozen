@@ -21,6 +21,7 @@ join_exp: party.avg_exp
 terms: {currency: G, level: Lv, hp: HP, mp: MP, exp: EXP}
 ui:
   bestiary: true
+  profiles: true
   window: "#10303ce8"
   border: "#6fb7c4"
   text: "#f4f1e6"

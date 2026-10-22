@@ -4,7 +4,6 @@ import (
 	"image"
 	"image/color"
 	"math"
-	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -13,30 +12,98 @@ import (
 	lang "github.com/nao1215/gozen/internal/text"
 )
 
-// chartLayout assigns stable, separated slots, keeping each affiliation together.
+// chartLayout assigns compact, stable rows. Profile order keeps affiliations together.
 func chartLayout(ids []string, profiles map[string]*data.Profile) []image.Point {
-	groups := []string{}
-	for _, id := range ids {
-		group := profiles[id].Affiliation
-		if !slices.Contains(groups, group) {
-			groups = append(groups, group)
-		}
-	}
 	points := make([]image.Point, len(ids))
-	row := 0
-	for _, group := range groups {
-		members := []int{}
-		for i, id := range ids {
-			if profiles[id].Affiliation == group {
-				members = append(members, i)
+	cols := min(4, max(2, int(math.Ceil(math.Sqrt(float64(len(ids)))))))
+	rows := (len(ids) + cols - 1) / cols
+	for i := range ids {
+		row, col := i/cols, i%cols
+		count := min(cols, len(ids)-row*cols)
+		points[i] = image.Pt((2*col-count+1)*105, (2*row-rows+1)*88)
+	}
+	// Swaps within an affiliation preserve its cluster while reducing crossings.
+	// The screen computes its layout each frame, so bound the search on large books.
+	if len(ids) > 10 {
+		return points
+	}
+	for pass := 0; pass < min(2, len(ids)); pass++ {
+		changed := false
+		for i := range ids {
+			if profiles[ids[i]] == nil {
+				continue
+			}
+			for j := i + 1; j < len(ids); j++ {
+				if profiles[ids[j]] == nil || profiles[ids[i]].Affiliation != profiles[ids[j]].Affiliation {
+					continue
+				}
+				before := chartCrossings(ids, profiles, points)
+				points[i], points[j] = points[j], points[i]
+				if chartCrossings(ids, profiles, points) < before {
+					changed = true
+				} else {
+					points[i], points[j] = points[j], points[i]
+				}
 			}
 		}
-		for j, i := range members {
-			points[i] = image.Pt(360+(j%2)*480, 180+(row+j/2)*210)
+		if !changed {
+			break
 		}
-		row += (len(members)+1)/2 + 1
 	}
 	return points
+}
+
+func chartCrossings(ids []string, profiles map[string]*data.Profile, points []image.Point) int {
+	index := make(map[string]int, len(ids))
+	for i, id := range ids {
+		index[id] = i
+	}
+	type edge struct{ a, b int }
+	edges := []edge{}
+	for i, id := range ids {
+		if profiles[id] == nil {
+			continue
+		}
+		for _, r := range profiles[id].Relations {
+			if j, ok := index[r.Who]; ok && i != j {
+				edges = append(edges, edge{i, j})
+			}
+		}
+	}
+	cross := func(a, b, c image.Point) int {
+		return (b.X-a.X)*(c.Y-a.Y) - (b.Y-a.Y)*(c.X-a.X)
+	}
+	count := 0
+	for i, e := range edges {
+		for _, f := range edges[i+1:] {
+			if e.a == f.a || e.a == f.b || e.b == f.a || e.b == f.b {
+				continue
+			}
+			a, b, c, d := points[e.a], points[e.b], points[f.a], points[f.b]
+			if cross(a, b, c)*cross(a, b, d) < 0 && cross(c, d, a)*cross(c, d, b) < 0 {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func chartHasPlayer(ids []string, profiles map[string]*data.Profile) bool {
+	for _, id := range ids {
+		for _, r := range profiles[id].Relations {
+			if r.Who == "you" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func chartPoints(ids []string, profiles map[string]*data.Profile) []image.Point {
+	if chartHasPlayer(ids, profiles) {
+		return chartLayout(append(append([]string{}, ids...), "you"), profiles)
+	}
+	return chartLayout(ids, profiles)
 }
 
 func (s *profileScreen) chartView(g *Game, points []image.Point) (float64, float64) {
@@ -77,6 +144,9 @@ func (s *profileScreen) chartMove(points []image.Point, dx, dy int) {
 	from := points[s.sel]
 	best, pick := math.MaxFloat64, s.sel
 	for i, p := range points {
+		if i >= len(s.ids) { // The player node has no detail page to select.
+			break
+		}
 		if i == s.sel {
 			continue
 		}
@@ -106,7 +176,7 @@ func (s *profileScreen) updateChart(g *Game) {
 	if len(s.ids) == 0 {
 		return
 	}
-	points := chartLayout(s.ids, g.db.Profiles)
+	points := chartPoints(s.ids, g.db.Profiles)
 	old := s.sel
 	switch {
 	case g.in.left():
@@ -170,19 +240,23 @@ func (s *profileScreen) chartEdgeVisible(g *Game, from, to string) bool {
 func (s *profileScreen) drawChart(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
 	g.drawPicture(dst, g.db.Game.TitleBG, 0, 0, sw, sh, 1)
-	fill(dst, withAlpha(colorBlack, 0xc0))
+	fill(dst, withAlpha(colorBlack, 0xe8))
+	gfx.FillRoundRect(dst, 16, profileBand+12, float32(sw-32), float32(sh-profileBand-72), 14, color.NRGBA{0x0d, 0x1b, 0x25, 0xec})
 	gfx.FillRect(dst, 0, 0, float32(sw), profileBand, withAlpha(g.th.window, 0xe0), false)
 	g.text(dst, lang.T("相関図"), 30, 12, sizeL, g.th.text)
-	points := chartLayout(s.ids, g.db.Profiles)
+	points := chartPoints(s.ids, g.db.Profiles)
 	s.camX, s.camY = s.chartView(g, points)
 	index := map[string]int{}
 	for i, id := range s.ids {
 		index[id] = i
 	}
+	if len(points) > len(s.ids) {
+		index["you"] = len(s.ids)
+	}
 	for i, id := range s.ids {
 		for _, r := range g.db.Profiles[id].Relations {
 			j, ok := index[r.Who]
-			if !ok || i == j || !s.chartEdgeVisible(g, id, r.Who) {
+			if !ok || i == j || (r.Who != "you" && !s.chartEdgeVisible(g, id, r.Who)) || !s.opened(g, id) {
 				continue
 			}
 			x1, y1 := s.chartPoint(g, points[i])
@@ -193,21 +267,23 @@ func (s *profileScreen) drawChart(g *Game, dst *ebiten.Image) {
 				continue
 			}
 			ux, uy := dx/length, dy/length
-			// Offset each directed edge so two different calls can be read separately.
+			// Separate opposing directions so their colours remain visible.
 			off := 7 * s.zoom
 			x1, y1 = x1-uy*off+ux*39*s.zoom, y1+ux*off+uy*39*s.zoom
 			x2, y2 = x2-uy*off-ux*39*s.zoom, y2+ux*off-uy*39*s.zoom
 			c := chartColor(r.Kind)
 			if i != s.sel && j != s.sel {
-				c.A = 65
+				c.A = 140
 			}
 			gfx.StrokeLine(dst, float32(x1), float32(y1), float32(x2), float32(y2), float32(2.5*s.zoom), c, true)
 			// A relation with no return edge is directed.
 			reverse := false
-			for _, back := range g.db.Profiles[r.Who].Relations {
-				if back.Who == id {
-					reverse = true
-					break
+			if target := g.db.Profiles[r.Who]; target != nil {
+				for _, back := range target.Relations {
+					if back.Who == id {
+						reverse = true
+						break
+					}
 				}
 			}
 			if !reverse {
@@ -215,11 +291,17 @@ func (s *profileScreen) drawChart(g *Game, dst *ebiten.Image) {
 				gfx.StrokeLine(dst, float32(x2), float32(y2), float32(ax-uy*7*s.zoom), float32(ay+ux*7*s.zoom), 2, c, true)
 				gfx.StrokeLine(dst, float32(x2), float32(y2), float32(ax+uy*7*s.zoom), float32(ay-ux*7*s.zoom), 2, c, true)
 			}
-			if r.Calls != "" {
-				label := data.Render(r.Calls, s.env)
-				g.text(dst, label, x1+(x2-x1)*0.42-gfx.TextWidth(label, sizeS*0.7)/2, y1+(y2-y1)*0.42-18, sizeS*0.7, c)
-			}
 		}
+	}
+	if len(points) > len(s.ids) {
+		x, y := s.chartPoint(g, points[len(s.ids)])
+		size := 78 * s.zoom
+		gfx.FillRoundRect(dst, float32(x-size/2-3), float32(y-size/2-3), float32(size+6), float32(size+6), 12, g.th.border)
+		gfx.FillRoundRect(dst, float32(x-size/2), float32(y-size/2), float32(size), float32(size), 10, g.th.window)
+		// A head and shoulders silhouette makes the player distinct from authored faces.
+		gfx.FillRoundRect(dst, float32(x-12*s.zoom), float32(y-24*s.zoom), float32(24*s.zoom), float32(24*s.zoom), 12, g.th.dim)
+		gfx.FillRoundRect(dst, float32(x-24*s.zoom), float32(y+3*s.zoom), float32(48*s.zoom), float32(27*s.zoom), 13, g.th.dim)
+		g.text(dst, "You", x-gfx.TextWidth("You", sizeS*0.9)/2, y+size/2+7, sizeS*0.9, g.th.text)
 	}
 	for i, id := range s.ids {
 		x, y := s.chartPoint(g, points[i])
@@ -252,11 +334,34 @@ func (s *profileScreen) drawChart(g *Game, dst *ebiten.Image) {
 			name = g.db.ProfileName(id)
 		}
 		g.text(dst, name, x-gfx.TextWidth(name, sizeS*0.9)/2, y+size/2+7, sizeS*0.9, g.th.text)
+	}
+	groups := map[string]image.Point{}
+	for i, id := range s.ids {
 		group := g.db.Profiles[id].Affiliation
-		if group != "" && (i == 0 || g.db.Profiles[s.ids[i-1]].Affiliation != group) {
-			g.text(dst, group, x-size/2, y-size/2-28, sizeS*0.8, g.th.accent)
+		if group == "" {
+			continue
+		}
+		p, ok := groups[group]
+		if !ok || points[i].Y < p.Y || (points[i].Y == p.Y && points[i].X < p.X) {
+			groups[group] = points[i]
 		}
 	}
+	for _, id := range s.ids {
+		group := g.db.Profiles[id].Affiliation
+		if p, ok := groups[group]; ok {
+			x, y := s.chartPoint(g, p)
+			g.text(dst, group, x-39*s.zoom, y-68*s.zoom, sizeS*0.8, g.th.accent)
+			delete(groups, group)
+		}
+	}
+	legend := []struct{ label, kind string }{{"Family", "family"}, {"Friend", "friend"}, {"Like", "like"}, {"Love", "love"}, {"Rival / enemy", "enemy"}, {"Other", "other"}}
+	lx, ly := float64(30), float64(profileBand+28)
+	for _, item := range legend {
+		gfx.StrokeLine(dst, float32(lx), float32(ly+7), float32(lx+23), float32(ly+7), 3, chartColor(item.kind), true)
+		g.text(dst, item.label, lx+30, ly, sizeS*0.7, g.th.text)
+		lx += 30 + gfx.TextWidth(item.label, sizeS*0.7) + 22
+	}
+	g.text(dst, "Arrow: one-way", lx, ly, sizeS*0.7, g.th.text)
 	gfx.FillRect(dst, 0, float32(sh-47), float32(sw), 47, withAlpha(g.th.window, 0xe0), false)
 	g.text(dst, lang.T("Tab: 詳細/相関図   矢印: 選択   Z: 詳細   ホイール: 拡大縮小   X / F6: もどる"), 24, sh-36, sizeS*0.85, g.th.text)
 }
