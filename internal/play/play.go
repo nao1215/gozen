@@ -505,6 +505,18 @@ func New(opts Options) (_ *Game, err error) {
 				g.failure = fmt.Errorf("script: cannot recruit %s", species)
 			}
 		}
+		s.guaranteeRecruit = func(species string) {
+			if !g.opts.Development {
+				g.failure = fmt.Errorf("script: guarantee-recruit needs a development session")
+				return
+			}
+			e := g.db.Enemies[species]
+			if e == nil || e.Recruit == nil || e.Boss {
+				g.failure = fmt.Errorf("script: %s is not recruitable", species)
+				return
+			}
+			e.Recruit.Chance = 1
+		}
 		s.memoNote = func(kind, text string) { g.quickMemo(kind, text, memo.LLM) }
 		g.in.script = s
 	}

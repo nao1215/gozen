@@ -262,10 +262,22 @@ func (r *ranch) drawParents(g *Game, dst *ebiten.Image) {
 
 func (r *ranch) draw(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
+	if g.st != nil {
+		if loc := g.db.Locations[g.st.Location]; loc != nil {
+			g.drawPicture(dst, loc.Background, 0, 0, sw, sh, 1)
+			for _, person := range loc.People {
+				if person.Image != "" {
+					g.drawStanding(dst, person.Image, sw*0.82, sh-30, sh*0.75, 1, false, nil)
+					break
+				}
+			}
+		}
+	}
 	fill(dst, color.NRGBA{0, 0, 0, 0x50})
-	g.window(dst, 20, 20, min(sw-40, 820), sh-40)
+	panelW := min(sw-40, 850.0)
+	g.window(dst, 20, 20, panelW, sh-40)
 	r.drawParents(g, dst)
-	gfx.DrawTextOutlineColor(dst, "Monster Ranch", 48, 42, sizeL, g.th.accent, g.th.window, 1)
+	g.text(dst, "Monster Ranch", 48, 42, sizeL, g.th.accent)
 	r.list.draw(g, dst, true)
 	x := 420.0
 	y := 118.0
@@ -313,10 +325,17 @@ func (r *ranch) draw(g *Game, dst *ebiten.Image) {
 		}
 	}
 	for _, line := range lines {
-		gfx.DrawText(dst, line, x, y, sizeS, g.th.text)
-		y += 35
+		fit, sz := gfx.FitLines(line, sizeS*0.85, panelW-x-28, 2)
+		for _, part := range fit {
+			if y+gfx.LineHeight(sz) > sh-80 {
+				break
+			}
+			g.text(dst, part, x, y, sz, g.th.text)
+			y += gfx.LineHeight(sz)
+		}
+		y += 5
 	}
-	gfx.DrawText(dst, strings.ToUpper(strings.ReplaceAll(r.step, "_", " "))+"    Z: choose    X: back", 48, sh-52, sizeS, g.th.dim)
+	g.text(dst, strings.ToUpper(strings.ReplaceAll(r.step, "_", " "))+"    Z: choose    X: back", 48, sh-52, sizeS, g.th.dim)
 }
 
 var (

@@ -1,4 +1,6 @@
-# A short battle and a successful recruitment are captured under a fixed seed.
+# Win the Drip Slime battle; the development script makes its normal post-win
+# recruitment roll certain, then stops at the Yes / No request.
+guarantee-recruit drip_slime
 wait 40
 play join 5
 shot s-rise

@@ -199,16 +199,9 @@ func (s *bestiaryScreen) keepInView(g *Game) {
 
 const lineageRowH = 28.0
 
-func (s *bestiaryScreen) lineageTop(g *Game) float64 {
-	if len(s.ids) > 0 && g.bestiaryDefeated(s.ids[s.sel]) >= 1 {
-		return 505
-	}
-	return 320
-}
-
 func (s *bestiaryScreen) lineageCapacity(g *Game) int {
 	_, sh := g.screen()
-	return max(3, int((sh-60-s.lineageTop(g)-30)/lineageRowH))
+	return max(1, int((sh-260)/lineageRowH))
 }
 
 func (s *bestiaryScreen) update(g *Game) {
@@ -249,36 +242,45 @@ func (s *bestiaryScreen) update(g *Game) {
 func (s *bestiaryScreen) draw(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
 	g.drawPicture(dst, g.db.Game.TitleBG, 0, 0, sw, sh, 1)
-	fill(dst, withAlpha(colorBlack, 0xa8))
-	gfx.FillRect(dst, 0, 0, float32(sw), 64, withAlpha(g.th.window, 0xe0), false)
-	gfx.DrawTextOutlineColor(dst, "Monsters", 28, 12, sizeL, g.th.text, g.th.window, 1)
-	left := sw * 0.34
-	rowH := 44.0
-	top := 78.0
-	for i, id := range s.ids {
-		y := top + float64(i-s.sel)*rowH
-		if y < 65 || y+rowH > sh-55 {
-			continue
-		}
+	fill(dst, withAlpha(colorBlack, 0xb8))
+	bestiaryPanel(g, dst, 20, 20, sw-40, sh-40)
+	g.text(dst, "Monsters", 48, 40, sizeL, g.th.text)
+	listX, listW, top, rowH := 42.0, 252.0, 100.0, 48.0
+	rows := max(1, int((sh-top-88)/rowH))
+	first := max(0, s.sel-rows/2)
+	first = min(first, max(0, len(s.ids)-rows))
+	bestiaryPanel(g, dst, listX, top-8, listW, float64(rows)*rowH+16)
+	for i := first; i < min(len(s.ids), first+rows); i++ {
+		id := s.ids[i]
+		y := top + float64(i-first)*rowH
 		if i == s.sel {
-			gfx.FillRoundRect(dst, 12, float32(y), float32(left-20), float32(rowH-2), 8, withAlpha(g.th.accent, 0x55))
+			gfx.FillRoundRect(dst, float32(listX+6), float32(y), float32(listW-12), float32(rowH-2), 8, withAlpha(g.th.accent, 0x70))
 		}
 		e := g.db.Enemies[id]
+		name := "???"
 		if g.bestiarySeen(id) {
-			drawBestiaryImage(g, dst, e.Image.File, 18, y+3, 36, 36)
-			gfx.DrawText(dst, e.Name, left*0.13, y+10, sizeS, g.th.text)
-		} else {
-			gfx.DrawText(dst, "???", left*0.13, y+10, sizeS, g.th.text)
+			name = e.Name
+			drawBestiaryImage(g, dst, e.Image.File, listX+10, y+4, 38, 38)
 		}
+		g.text(dst, gfx.Ellipsis(name, sizeS*0.9, listW-68), listX+56, y+11, sizeS*0.9, g.th.text)
 	}
 	if len(s.ids) > 0 {
-		s.drawPage(g, dst, s.ids[s.sel], left)
+		if s.inTree {
+			s.drawLineage(g, dst, 322, 104, sw-350, sh-185)
+		} else {
+			s.drawPage(g, dst, s.ids[s.sel], 322, 100, sw-350, sh-175)
+		}
 	}
 	hint := "Up / Down: choose    Z: lineage    X / F4: close"
 	if s.inTree {
 		hint = "Up / Down: choose    Left / Right: fold    Z: open page    Tab: other recipe    X: back"
 	}
-	gfx.DrawTextOutlineColor(dst, hint, sw/2, sh-38, sizeS*0.85, g.th.text, g.th.window, 1)
+	g.text(dst, gfx.Ellipsis(hint, sizeS*0.8, sw-100), 48, sh-48, sizeS*0.8, g.th.dim)
+}
+
+func bestiaryPanel(g *Game, dst *ebiten.Image, x, y, w, h float64) {
+	gfx.FillRoundRect(dst, float32(x), float32(y), float32(w), float32(h), 16, withAlpha(g.th.window, 0xff))
+	g.window(dst, x, y, w, h)
 }
 
 func drawBestiaryImage(g *Game, dst *ebiten.Image, path string, x, y, w, h float64) {
@@ -297,44 +299,50 @@ func drawBestiaryImage(g *Game, dst *ebiten.Image, path string, x, y, w, h float
 	gfx.DrawImage(dst, img, op)
 }
 
-func (s *bestiaryScreen) drawPage(g *Game, dst *ebiten.Image, id string, left float64) {
+func (s *bestiaryScreen) drawPage(g *Game, dst *ebiten.Image, id string, x, top, w, h float64) {
 	e := g.db.Enemies[id]
-	x := left + 28
-	w := g.screenWidth() - x - 32
-	if w < 200 {
-		return
-	}
+	bestiaryPanel(g, dst, x, top, w, h)
+	figureX, figureW := x+16, min(300, w*0.36)
+	textX, textW := figureX+figureW+24, w-figureW-72
 	seen := g.bestiarySeen(id)
 	defeated := g.bestiaryDefeated(id)
 	if !seen {
-		gfx.DrawTextOutlineColor(dst, "Not yet encountered", x+20, 100, sizeM, g.th.text, g.th.window, 1)
+		g.text(dst, "Not yet encountered", textX, top+24, sizeM, g.th.text)
 		return
 	}
-	drawBestiaryImage(g, dst, e.Image.File, x+16, 78, 180, 170)
-	gfx.DrawTextOutlineColor(dst, e.Name+sexSign(e.Sex), x+220, 82, sizeL, g.th.text, g.th.window, 1)
-	lines, _ := gfx.FitLines(e.Lore, sizeS*0.9, w-220, 4)
-	for i, line := range lines {
-		gfx.DrawText(dst, line, x+220, 128+float64(i)*22, sizeS*0.9, g.th.text)
+	drawBestiaryImage(g, dst, e.Image.File, figureX, top+36, figureW, h-65)
+	y := top + 22
+	write := func(label string, size float64, limit int) {
+		lines, fitted := gfx.FitLines(label, size, textW, limit)
+		for _, line := range lines {
+			if y+gfx.LineHeight(fitted) > top+h-12 {
+				return
+			}
+			g.text(dst, line, textX, y, fitted, g.th.text)
+			y += gfx.LineHeight(fitted)
+		}
 	}
+	write(e.Name+sexSign(e.Sex), sizeL, 1)
+	y += 8
+	write(e.Lore, sizeS*0.85, 4)
+	y += 14
 	if defeated < 1 {
 		if e.Recruit != nil {
-			gfx.DrawText(dst, "Recruitable after victory", x+20, 250, sizeS, g.th.accent)
+			write("Recruitable after victory", sizeS*0.9, 1)
 		}
-		gfx.DrawText(dst, "Defeat this enemy to reveal its records.", x+20, 280, sizeS, g.th.text)
-		s.drawLineage(g, dst, x+20, w-20)
+		write("Defeat this enemy to reveal its records.", sizeS*0.9, 2)
 		return
 	}
-	y := 285.0
-	gfx.DrawTextOutlineColor(dst, fmt.Sprintf("Defeated: %d", int(defeated)), x+20, y, sizeS, g.th.cursor, g.th.window, 1)
+	write(fmt.Sprintf("Defeated: %d    Caught: %d", int(defeated), int(g.bestiaryCaught(id))), sizeS*0.9, 1)
 	if e.Family != "" {
-		gfx.DrawText(dst, fmt.Sprintf("Family: %s    Rank: %d    Sex: %s    Caught: %d", e.Family, e.Rank, speciesSexText(e.Sex), int(g.bestiaryCaught(id))), x+260, y, sizeS*0.82, g.th.text)
+		write(fmt.Sprintf("Family: %s    Rank: %d", e.Family, e.Rank), sizeS*0.85, 1)
 	}
-	y += 32
+	write("Sex: "+speciesSexText(e.Sex), sizeS*0.85, 1)
+	y += 5
 	stats := e.Stats
-	gfx.DrawText(dst, fmt.Sprintf("HP %d   MP %d   ATK %d   DEF %d   MAT %d   MDF %d   AGI %d   LUK %d", stats["mhp"], stats["mmp"], stats["atk"], stats["def"], stats["mat"], stats["mdf"], stats["agi"], stats["luk"]), x+20, y, sizeS*0.82, g.th.text)
-	y += 30
-	gfx.DrawTextOutlineColor(dst, "Resistances and weaknesses", x+20, y, sizeS*0.9, g.th.accent, g.th.window, 1)
-	y += 23
+	write(fmt.Sprintf("HP %d   MP %d   ATK %d   DEF %d", stats["mhp"], stats["mmp"], stats["atk"], stats["def"]), sizeS*0.85, 1)
+	write(fmt.Sprintf("MAT %d   MDF %d   AGI %d   LUK %d", stats["mat"], stats["mdf"], stats["agi"], stats["luk"]), sizeS*0.85, 1)
+	y += 5
 	var res []string
 	for k, v := range e.Resist {
 		label := k
@@ -348,10 +356,8 @@ func (s *bestiaryScreen) drawPage(g *Game, dst *ebiten.Image, id string, left fl
 	if len(res) == 0 {
 		res = []string{"None recorded"}
 	}
-	gfx.DrawText(dst, strings.Join(res, ", "), x+20, y, sizeS*0.8, g.th.text)
-	y += 28
-	gfx.DrawTextOutlineColor(dst, "Skills", x+20, y, sizeS*0.9, g.th.accent, g.th.window, 1)
-	y += 23
+	slices.Sort(res)
+	write("Resistances: "+strings.Join(res, ", "), sizeS*0.8, 2)
 	var skills []string
 	for _, r := range e.AI.Rules {
 		if skill := g.db.Skills[r.Use]; skill != nil {
@@ -363,10 +369,7 @@ func (s *bestiaryScreen) drawPage(g *Game, dst *ebiten.Image, id string, left fl
 	if len(skills) == 0 {
 		skills = []string{"Strike"}
 	}
-	gfx.DrawText(dst, strings.Join(skills, ", "), x+20, y, sizeS*0.8, g.th.text)
-	y += 28
-	gfx.DrawTextOutlineColor(dst, "Drops", x+20, y, sizeS*0.9, g.th.accent, g.th.window, 1)
-	y += 23
+	write("Skills: "+strings.Join(skills, ", "), sizeS*0.8, 2)
 	var drops []string
 	for _, d := range e.Drops {
 		if it := g.db.Items[d.Item]; it != nil {
@@ -376,8 +379,9 @@ func (s *bestiaryScreen) drawPage(g *Game, dst *ebiten.Image, id string, left fl
 	if len(drops) == 0 {
 		drops = []string{"None"}
 	}
-	gfx.DrawText(dst, strings.Join(drops, ", "), x+20, y, sizeS*0.8, g.th.text)
-	s.drawLineage(g, dst, x+20, w-20)
+	write("Drops: "+strings.Join(drops, ", "), sizeS*0.8, 2)
+	y += 8
+	write("Z: view lineage", sizeS*0.8, 1)
 }
 
 func speciesSexText(sex string) string {
@@ -391,19 +395,22 @@ func speciesSexText(sex string) string {
 	}
 }
 
-// drawLineage shows the family tree of the page's species in the space under its records.
-func (s *bestiaryScreen) drawLineage(g *Game, dst *ebiten.Image, x, w float64) {
+// drawLineage shows the family tree on its own framed page.
+func (s *bestiaryScreen) drawLineage(g *Game, dst *ebiten.Image, x, top, w, h float64) {
+	bestiaryPanel(g, dst, x, top, w, h)
 	rows := s.lineageRows(g)
 	if len(rows) == 0 {
 		return
 	}
-	top := s.lineageTop(g)
+	x += 24
+	w -= 48
+	top += 20
 	head := "Lineage"
 	if s.tree.Choices > 1 {
 		head += fmt.Sprintf("   (recipe %d of %d)", s.tree.Choice+1, s.tree.Choices)
 	}
-	gfx.DrawTextOutlineColor(dst, head, x, top, sizeS*0.9, g.th.accent, g.th.window, 1)
-	n := s.lineageCapacity(g)
+	g.text(dst, head, x, top, sizeS, g.th.accent)
+	n := min(s.lineageCapacity(g), max(1, int((h-76)/lineageRowH)))
 	start := min(s.scroll, max(0, len(rows)-n))
 	y := top + 30
 	for i := start; i < len(rows) && i < start+n; i++ {
@@ -413,13 +420,14 @@ func (s *bestiaryScreen) drawLineage(g *Game, dst *ebiten.Image, x, w float64) {
 			gfx.FillRoundRect(dst, float32(x+indent-6), float32(y-3), float32(w-indent), float32(lineageRowH-2), 6, withAlpha(g.th.accent, 0x55))
 		}
 		if row.node.Depth > 0 {
+			gfx.FillRect(dst, float32(x+indent-22), float32(y-12), 2, 24, withAlpha(g.th.dim, 0xa0), false)
 			gfx.FillRect(dst, float32(x+indent-22), float32(y+11), 14, 2, withAlpha(g.th.dim, 0xff), false)
 		}
 		label := s.lineageLabel(g, row)
 		if fitted, _ := gfx.FitLines(label, sizeS*0.85, w-indent-24, 1); len(fitted) > 0 {
 			label = fitted[0]
 		}
-		gfx.DrawText(dst, label, x+indent+2, y, sizeS*0.85, g.th.text)
+		g.text(dst, label, x+indent+2, y, sizeS*0.85, g.th.text)
 		y += lineageRowH
 	}
 	if len(rows) > n {

@@ -340,9 +340,10 @@ type script struct {
 	typeText func(string)
 	memoNote func(kind, text string)
 	// jump starts an event at a line and do runs a line of YAML (the panel's paths).
-	jump    func(name string, line int)
-	do      func(src string)
-	recruit func(species string, level int)
+	jump             func(name string, line int)
+	do               func(src string)
+	recruit          func(species string, level int)
+	guaranteeRecruit func(species string)
 }
 
 type scriptCmd struct {
@@ -472,6 +473,10 @@ func parseScript(src string) (*script, error) {
 			}
 			if c.n < 1 {
 				return nil, fmt.Errorf("script line %d: recruit level must be positive", line)
+			}
+		case "guarantee-recruit":
+			if c.arg == "" || len(f) != 2 {
+				return nil, fmt.Errorf("script line %d: guarantee-recruit SPECIES", line)
 			}
 		case "walk", "face":
 			if c.arg == "" {
@@ -830,6 +835,13 @@ func (s *script) step(in *input) {
 		case "recruit":
 			if s.recruit != nil {
 				s.recruit(c.arg, c.n)
+			}
+			s.pc++
+			s.wait = 2
+			return
+		case "guarantee-recruit":
+			if s.guaranteeRecruit != nil {
+				s.guaranteeRecruit(c.arg)
 			}
 			s.pc++
 			s.wait = 2

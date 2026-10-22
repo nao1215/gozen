@@ -59,6 +59,7 @@ runs:
     args: [--dev, --mute, --seed, "7", --window, "1", --start, altar, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   recruit:
     sample: go-zen
+    # The script guarantees the Drip Slime roll after this real battle and stops at Yes / No.
     script: scripts/capture-go-zen-recruit.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --start, b1, --party, "maren,ox,tilly,kes", --level, "6", --battle, drips, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
   shop:
