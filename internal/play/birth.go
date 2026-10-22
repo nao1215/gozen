@@ -197,21 +197,12 @@ func (g *Game) drawBirthCutIn(dst *ebiten.Image) {
 	if t < 0 {
 		return
 	}
-	var black ebiten.ColorScale
-	black.Scale(0, 0, 0, 1)
-	if t >= birthCutInFrames/2 {
-		// Then the silhouette stands where the child will appear, the same size.
-		gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), color.NRGBA{0, 0, 0, 90}, false)
-		if b.effect.ChildFace != "" {
-			g.drawStanding(dst, b.effect.ChildFace, sw*0.5, sh*birthBottom, sh*birthHeight, 1, false, &black)
-		}
-		return
-	}
-	// First a cut-in: the child's picture, still in shadow, sweeps along a band
-	// and may spill over its edges.
+	// A cut-in band with speed lines behind the child, who already stands at
+	// the place and size it is born at, as a silhouette; in the second half the
+	// shadow lifts little by little and the band closes.
 	open := min(1, float64(t)/6)
-	if t > birthCutInFrames/2-6 {
-		open = max(0, float64(birthCutInFrames/2-t)/6)
+	if t > birthCutInFrames-10 {
+		open = max(0, float64(birthCutInFrames-t)/10)
 	}
 	accent := rainbowColor(b.age)
 	if b.effect.Tier < 2 {
@@ -226,8 +217,13 @@ func (g *Game) drawBirthCutIn(dst *ebiten.Image) {
 		x := math.Mod(float64(i)*311.3-float64(t)*38, sw+400) - 200
 		gfx.StrokeLine(dst, float32(x), float32(y), float32(x+180), float32(y), 2, withAlpha(accent, 0x90), true)
 	}
-	if b.effect.ChildFace != "" {
-		slide := 1 - math.Pow(1-min(1, float64(t)/12), 3)
-		g.drawStanding(dst, b.effect.ChildFace, sw*0.5+(1-slide)*sw*0.6, cy+sh*0.32, sh*0.8, float32(open), false, &black)
+	if b.effect.ChildFace == "" {
+		return
+	}
+	var black ebiten.ColorScale
+	black.Scale(0, 0, 0, 1)
+	g.drawStanding(dst, b.effect.ChildFace, sw*0.5, sh*birthBottom, sh*birthHeight, 1, false, &black)
+	if lift := float64(t-birthCutInFrames/2) / float64(birthCutInFrames/2); lift > 0 {
+		g.drawStanding(dst, b.effect.ChildFace, sw*0.5, sh*birthBottom, sh*birthHeight, float32(min(1, lift)), false, nil)
 	}
 }
