@@ -799,12 +799,34 @@ func (g *Game) Update() error {
 	if g.st != nil {
 		g.st.Frames++
 	}
+	if g.recruit != nil && g.recruit.leave == 0 && g.tick-g.recruit.start == 12 {
+		g.sfx("lift")
+	}
 	g.shake = max(0, g.shake-1)
 	g.flash = max(0, g.flash-1)
 	if g.birth != nil && g.birth.age < g.birth.duration() {
-		g.birth.age++
-		if g.birth.effect.Tier == 2 && g.birth.age >= g.birth.flashStart() && g.birth.age < g.birth.childStart()+22 {
-			g.shake = 4
+		if g.birth.skipT > 0 {
+			g.birth.skipT++
+			if g.birth.skipT >= 12 {
+				g.birth.skipT = 0
+				g.birth.age = g.birth.duration()
+			}
+		} else {
+			previous := g.birth.age
+			g.birth.age++
+			if previous < 90 && g.birth.age == 90 {
+				g.sfx("magic")
+			}
+			if previous < g.birth.silhouetteEnd() && g.birth.age == g.birth.silhouetteEnd() {
+				switch g.birth.effect.Tier {
+				case 1:
+					g.sfx("treasure")
+				case 2:
+					g.sfx("fanfare")
+				default:
+					g.sfx("heal")
+				}
+			}
 		}
 	}
 	g.stepStaging()
@@ -1506,16 +1528,31 @@ func (g *Game) pump() bool {
 			}
 		}
 	case event.Wait:
-		g.waitT--
-		if g.birth != nil && g.in.ok() {
-			g.birth.age = g.birth.duration()
-			g.waitT = 0
-		}
-		if g.skipping && !r.NoSkip {
-			g.waitT = 0
-		}
-		if g.waitT <= 0 {
-			g.req = nil
+		if g.birth != nil && g.birth.waiting {
+			b := g.birth
+			if !g.in.held[btnOK] && !g.in.ok() {
+				b.ready = true
+			}
+			if b.age < b.duration() && b.skipT == 0 && b.ready && g.in.ok() {
+				b.skipT = 1
+				b.age = max(b.age, 120)
+				b.ready = false
+			}
+			g.waitT = max(1, b.duration()-b.age)
+			if b.age >= b.duration() && b.ready && g.in.ok() {
+				g.waitT = 0
+				g.req = nil
+				b.ready = false
+				b.waiting = false
+			}
+		} else {
+			g.waitT--
+			if g.skipping && !r.NoSkip {
+				g.waitT = 0
+			}
+			if g.waitT <= 0 {
+				g.req = nil
+			}
 		}
 	case event.Tap:
 		if g.updateTap() {
@@ -1836,7 +1873,11 @@ func (g *Game) Handle(e event.Effect) {
 	case event.VisualEffect:
 		g.visual(e)
 	case event.BreedEffect:
-		g.birth = &birthAnimation{effect: e}
+		if g.opts.Development {
+			e.FirstDiscovery = false
+		}
+		g.flash, g.shake = 0, 0
+		g.birth = &birthAnimation{effect: e, waiting: true}
 	case event.CampaignEffect:
 		if e.Kind == "order" {
 			g.emit("order", traceLine{"order": e.Order, "general": e.General, "target": e.Target, "result": e.Result, "turn": e.Turn})

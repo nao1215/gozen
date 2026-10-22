@@ -250,6 +250,15 @@ func novelTextReaches(lines []string, size, right float64) bool {
 func (t *talk) update(g *Game) (done bool, answer int) {
 	t.age++
 	g.stepPuppet(t)
+	if g.recruit != nil && g.recruit.leave == 0 {
+		minAge := 24
+		if t.choice != nil {
+			minAge = 54
+		}
+		if g.tick-g.recruit.start < minAge {
+			return false, -1
+		}
+	}
 	if g.novelInput() {
 		return false, -1
 	}
@@ -300,6 +309,15 @@ func (t *talk) update(g *Game) (done bool, answer int) {
 func (t *talk) draw(g *Game, dst *ebiten.Image) {
 	if !t.active {
 		return
+	}
+	if g.recruit != nil && g.recruit.leave == 0 {
+		minAge := 24
+		if t.choice != nil {
+			minAge = 54
+		}
+		if g.tick-g.recruit.start < minAge {
+			return
+		}
 	}
 	if g.novel() {
 		t.drawNovel(g, dst)

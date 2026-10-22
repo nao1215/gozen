@@ -84,7 +84,7 @@ func TestRanchPreviewAndFusionCommand(t *testing.T) {
 	for i := 0; g.events.Running() && i < 20; i++ {
 		switch req := g.events.Next().(type) {
 		case event.Wait:
-			birthWait = math.Abs(req.Seconds-float64(birthDuration+birthCutInFrames)/60) < 1e-9
+			birthWait = math.Abs(req.Seconds-float64(birthDuration)/60) < 1e-9
 		case event.Say:
 			birthLines = append(birthLines, req.Text)
 		}
@@ -94,6 +94,9 @@ func TestRanchPreviewAndFusionCommand(t *testing.T) {
 	}
 	if !birthWait || g.birth == nil || g.birth.effect.ChildName == "" || len(birthLines) != 2 || !strings.Contains(birthLines[0], "Inherited skills: Spark") || !strings.Contains(birthLines[1], "Breeding strength: +") {
 		t.Fatalf("birth presentation: wait=%v effect=%+v lines=%v", birthWait, g.birth, birthLines)
+	}
+	if !g.birth.effect.FirstDiscovery || !strings.Contains(g.birth.effect.Result, "Skills: Spark") || !strings.Contains(g.birth.effect.Result, "Lv 1") {
+		t.Fatalf("first discovery and result were not combined: %+v", g.birth.effect)
 	}
 }
 
@@ -135,35 +138,94 @@ func TestRanchActionsUseTalkWindow(t *testing.T) {
 
 func TestBirthTimelineSkipAndPositions(t *testing.T) {
 	g := ranchGame(t)
-	g.Handle(event.BreedEffect{ParentNames: [2]string{"Mote ♂", "Mote ♀"}, ChildName: "Boss ♀"})
-	for _, tc := range []struct {
-		age   int
-		phase birthPhase
-	}{{0, birthParents}, {64, birthParents}, {65, birthSpiral}, {167, birthSpiral}, {168, birthFlash}, {199, birthFlash}, {200 + birthCutInFrames, birthChild}, {birthDuration + birthCutInFrames, birthChild}} {
-		g.birth.age = tc.age
-		if got := g.birth.phase(); got != tc.phase {
-			t.Fatalf("age %d: phase %d, want %d", tc.age, got, tc.phase)
+	for tier, duration := range []int{288, 324, 360} {
+		g.Handle(event.BreedEffect{ParentNames: [2]string{"Mote ♂", "Mote ♀"}, ChildName: "Boss ♀", Tier: tier})
+		b := g.birth
+		if b.duration() != duration {
+			t.Fatalf("tier %d duration %d", tier, b.duration())
 		}
-	}
-	for _, size := range [][2]float64{{1280, 720}, {1920, 1080}} {
-		parents, crystal := birthPositions(size[0], size[1])
-		if !(parents[0].x < crystal.x && crystal.x < parents[1].x) || parents[0].y != parents[1].y || crystal.y >= parents[0].y {
-			t.Fatalf("birth positions at %v: %+v %+v", size, parents, crystal)
-		}
-		for i, p := range parents {
-			start := birthOrbPosition(size[0], size[1], i, 65, 168)
-			end := birthOrbPosition(size[0], size[1], i, 168, 168)
-			if math.Abs(start.x-p.x) > 0.01 || math.Abs(start.y-(p.y-size[1]*0.1)) > 0.01 || math.Abs(end.x-crystal.x) > 0.01 || math.Abs(end.y-crystal.y) > 0.01 {
-				t.Fatalf("orb %d does not travel from parent to crystal at %v: start=%+v end=%+v", i, size, start, end)
+		for _, tc := range []struct {
+			age   int
+			phase birthPhase
+		}{
+			{0, birthParents},
+			{29, birthParents},
+			{30, birthYornExit},
+			{53, birthYornExit},
+			{54, birthFade},
+			{89, birthFade},
+			{90, birthMerge},
+			{119, birthMerge},
+			{120, birthSilhouette},
+			{b.silhouetteEnd() - 1, birthSilhouette},
+			{b.silhouetteEnd(), birthReveal},
+			{b.revealEnd() - 1, birthReveal},
+			{b.revealEnd(), birthView},
+			{b.viewEnd() - 1, birthView},
+			{b.viewEnd(), birthResult},
+			{b.duration(), birthResult},
+		} {
+			b.age = tc.age
+			if got := b.phase(); got != tc.phase {
+				t.Fatalf("tier %d age %d: %d != %d", tier, tc.age, got, tc.phase)
 			}
 		}
 	}
-	g.req = event.Wait{Seconds: float64(birthDuration+birthCutInFrames) / 60}
-	g.waitT = birthDuration + birthCutInFrames
+	for _, size := range [][2]float64{{1280, 720}, {1920, 1080}} {
+		sw, sh := size[0], size[1]
+		parents, crystal := birthPositions(sw, sh)
+		if parents[0] != (birthPoint{sw * 0.22, sh * 0.78}) || parents[1] != (birthPoint{sw * 0.78, sh * 0.78}) || crystal != (birthPoint{sw * 0.5, sh * 0.52}) {
+			t.Fatalf("positions at %v: %v %v", size, parents, crystal)
+		}
+		x, feet, h, w := birthChildFrame(sw, sh)
+		if x != sw*0.5 || feet != sh*0.82 || h != sh*0.62 || w != sw*0.58 {
+			t.Fatalf("child frame at %v: %v %v %v %v", size, x, feet, h, w)
+		}
+		for i, p := range parents {
+			start := birthOrbPosition(sw, sh, i, 90, 120)
+			end := birthOrbPosition(sw, sh, i, 120, 120)
+			if math.Abs(start.x-p.x) > 0.01 || math.Abs(start.y-(p.y-sh*0.23)) > 0.01 || math.Abs(end.x-crystal.x) > 0.01 || math.Abs(end.y-crystal.y) > 0.01 {
+				t.Fatalf("orb %d at %v: %v %v", i, size, start, end)
+			}
+		}
+	}
+	g.Handle(event.BreedEffect{})
+	g.req = event.Wait{Seconds: float64(birthDuration) / 60}
+	g.waitT = birthDuration
+	g.in.held[btnOK] = true
 	g.in.pressed[btnOK] = true
 	g.pump()
-	if g.waitT != 0 || g.req != nil || g.birth.age != birthDuration+birthCutInFrames {
-		t.Fatalf("skip left birth pending: wait=%d req=%T age=%d", g.waitT, g.req, g.birth.age)
+	if g.birth.skipT != 0 || g.req == nil {
+		t.Fatal("confirming breed must not skip or dismiss")
+	}
+	g.in.held[btnOK] = false
+	g.in.pressed[btnOK] = false
+	g.pump()
+	g.in.held[btnOK] = true
+	g.in.pressed[btnOK] = true
+	g.pump()
+	if g.birth.skipT != 1 || g.req == nil {
+		t.Fatal("fresh confirm did not start skip")
+	}
+	g.in.pressed[btnOK] = false
+	for range 12 {
+		g.birth.skipT++
+		if g.birth.skipT >= 12 {
+			g.birth.skipT = 0
+			g.birth.age = g.birth.duration()
+		}
+		g.pump()
+	}
+	if g.req == nil || g.waitT != 1 {
+		t.Fatalf("result was not held: wait=%d req=%T", g.waitT, g.req)
+	}
+	g.in.held[btnOK] = false
+	g.pump()
+	g.in.held[btnOK] = true
+	g.in.pressed[btnOK] = true
+	g.pump()
+	if g.req != nil {
+		t.Fatal("fresh result confirm did not continue")
 	}
 }
 

@@ -61,11 +61,13 @@ type SoundEffect struct{ Name string }
 
 // BreedEffect presents the two consumed parents and their child during a birth scene.
 type BreedEffect struct {
-	ParentNames [2]string
-	ParentFaces [2]string
-	ChildName   string
-	ChildFace   string
-	Tier        int
+	ParentNames    [2]string
+	ParentFaces    [2]string
+	ChildName      string
+	ChildFace      string
+	Tier           int
+	FirstDiscovery bool
+	Result         string
 }
 
 // VisualEffect requests a named visual effect: a word of the whole screen (shake, flash,
@@ -514,7 +516,7 @@ func (r *Runner) offerCaptures(troopID string) {
 		commands := []data.Command{
 			{Say: &data.Say{Who: name, Text: e.Name + " rises and looks toward your party."}},
 			{Choice: []data.ChoiceOption{{ID: "yes", Label: "Yes", Do: []data.Command{{Capture: id}}}, {ID: "no", Label: "No"}}, Prompt: "Let " + name + " join?"},
-			{Wait: data.WaitCue{Seconds: 28.0 / 60}},
+			{Wait: data.WaitCue{Seconds: 36.0 / 60}},
 		}
 		if r.offers == nil {
 			r.offers = make(map[*data.Command]RecruitOffer)
@@ -765,6 +767,7 @@ func (r *Runner) run(c *data.Command) Request {
 		}
 	case "capture":
 		if e := r.db.Enemies[c.Capture]; e != nil && e.Recruit != nil {
+			firstCompanion := !expr.Truthy(r.st.Vars["bestiary."+c.Capture+".caught"])
 			sex := ""
 			if offer := r.recruitOffer(c); offer != nil {
 				sex = offer.Sex
@@ -776,7 +779,15 @@ func (r *Runner) run(c *data.Command) Request {
 					sign = "♂"
 				}
 				r.notes = append(r.notes, fmt.Sprintf("%s %s joined as %s!", e.Name, sign, id))
-				r.push([]data.Command{{Say: &data.Say{Who: e.Name + " " + sign, Face: e.Image.File, Text: e.Name + " " + sign + " joined your party!"}}})
+				place := "party"
+				if !slices.Contains(r.st.Party, id) {
+					place = "reserve"
+				}
+				message := e.Name + " " + sign + " joined your " + place + "!"
+				if firstCompanion {
+					message += " First companion of this species."
+				}
+				r.push([]data.Command{{Say: &data.Say{Who: e.Name + " " + sign, Face: e.Image.File, Text: message}}})
 			}
 		}
 	case "reserve":
@@ -789,6 +800,11 @@ func (r *Runner) run(c *data.Command) Request {
 		}
 	case "breed":
 		first, second := r.st.Actors[c.Breed.Parents[0]], r.st.Actors[c.Breed.Parents[1]]
+		firstDiscovery := false
+		if first != nil && second != nil {
+			resultSpecies := r.db.BreedResult(first.Monster, second.Monster, first.Level, second.Level, first.Plus, second.Plus)
+			firstDiscovery = resultSpecies != "" && !expr.Truthy(r.st.Vars["bestiary."+resultSpecies+".seen"])
+		}
 		var nameA, nameB, faceA, faceB string
 		if first != nil && second != nil {
 			nameA, nameB = first.Name(), second.Name()
@@ -822,7 +838,6 @@ func (r *Runner) run(c *data.Command) Request {
 		if r.db.Breeding != nil {
 			tier = r.db.Breeding.Staging.Tier(r.db.Enemies[child.Monster].Rank)
 		}
-		r.emit(BreedEffect{ParentNames: [2]string{nameA, nameB}, ParentFaces: [2]string{faceA, faceB}, ChildName: childName, ChildFace: r.db.Enemies[child.Monster].Image.File, Tier: tier})
 		inherited := "none"
 		if len(c.Breed.Skills) > 0 {
 			names := make([]string, 0, len(c.Breed.Skills))
@@ -838,8 +853,14 @@ func (r *Runner) run(c *data.Command) Request {
 		if inherited == "" {
 			inherited = "none"
 		}
+		place := "reserve"
+		if slices.Contains(r.st.Party, id) {
+			place = "party"
+		}
+		result := fmt.Sprintf("Lv 1  %s  +%d\nSkills: %s\nIn your %s", child.Sex, child.Plus, inherited, place)
+		r.emit(BreedEffect{ParentNames: [2]string{nameA, nameB}, ParentFaces: [2]string{faceA, faceB}, ChildName: childName, ChildFace: r.db.Enemies[child.Monster].Image.File, Tier: tier, FirstDiscovery: firstDiscovery, Result: result})
 		r.push([]data.Command{
-			{Wait: data.WaitCue{Seconds: float64(330+30*tier) / 60}}, // 60 frames of the silhouette cut-in (play.birthCutInFrames)
+			{Wait: data.WaitCue{Seconds: float64(288+36*tier) / 60}},
 			{Say: &data.Say{Who: childName, Text: "Inherited skills: " + inherited + "."}},
 			{Say: &data.Say{Who: childName, Text: fmt.Sprintf("Breeding strength: +%d.", child.Plus)}},
 		})

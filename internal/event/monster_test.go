@@ -69,13 +69,34 @@ func TestRecruitOfferDoesNotShiftBattleRandomStream(t *testing.T) {
 		}
 		r.Answer(event.BattleWon)
 		for r.Running() {
-			switch r.Next().(type) {
-			case event.Choice:
+			if _, ok := r.Next().(event.Choice); ok {
 				r.Answer(1) // Decline the optional recruit.
 			}
 		}
 	}
 	if got, want := withOffer.Rand.Uint64(), plain.Rand.Uint64(); got != want {
 		t.Fatalf("adding a recruit offer shifted the next unrelated draw: %d != %d", got, want)
+	}
+}
+
+func TestCaptureResultNamesReserveAndFirstCompanion(t *testing.T) {
+	db := testgame.Load(t, testgame.MonsterFiles())
+	st := testgame.State(db, 1)
+	db.Game.MaxParty = len(st.Party)
+	r := event.New(db, st, &host{})
+	r.Start([]data.Command{{Capture: "mote"}})
+	r.Next() // The saved-instance note precedes the staged result line.
+	line, ok := r.Next().(event.Say)
+	if !ok || !strings.Contains(line.Text, "joined your reserve") || !strings.Contains(line.Text, "First companion of this species") {
+		t.Fatalf("reserve result = %+v", line)
+	}
+	if len(st.ReserveIDs()) != 1 {
+		t.Fatalf("reserve = %v", st.ReserveIDs())
+	}
+	r.Start([]data.Command{{Capture: "mote"}})
+	r.Next()
+	line, ok = r.Next().(event.Say)
+	if !ok || strings.Contains(line.Text, "First companion of this species") {
+		t.Fatalf("repeat result = %+v", line)
 	}
 }

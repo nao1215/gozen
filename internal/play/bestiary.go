@@ -102,8 +102,8 @@ func (s *bestiaryScreen) lineageTiles(x, top, w, h float64) []lineageTile {
 	cardW := (w - 2*margin - 3*gap) / 4
 	cardH := min(150, (h-100-2*52)/3)
 	left := x + (w-4*cardW-3*gap)/2
-	rowStep := (h - 44 - margin - cardH) / 2
-	rowY := func(row int) float64 { return top + 44 + float64(2-row)*rowStep }
+	rowStep := (h - 62 - margin - cardH) / 2
+	rowY := func(row int) float64 { return top + 62 + float64(2-row)*rowStep }
 	place := func(n *data.LineageNode, row int, center float64) lineageTile {
 		return lineageTile{node: n, x: center - cardW/2, y: rowY(row), w: cardW, h: cardH, parent: -1}
 	}
@@ -335,13 +335,6 @@ func (s *bestiaryScreen) drawPage(g *Game, dst *ebiten.Image, id string, x, top,
 	y += 8
 	write(e.Lore, sizeS*0.85, 4)
 	y += 14
-	if defeated < 1 {
-		if e.Recruit != nil {
-			write("Recruitable after victory", sizeS*0.9, 1)
-		}
-		write("Defeat this enemy to reveal its records.", sizeS*0.9, 2)
-		return
-	}
 	// The record as a small form: headings, dim labels and aligned values.
 	labelW := min(150, textW*0.3)
 	heading := func(label string) {
@@ -368,7 +361,7 @@ func (s *bestiaryScreen) drawPage(g *Game, dst *ebiten.Image, id string, x, top,
 		row("Family", fmt.Sprintf("%s  (rank %d)", e.Family, e.Rank))
 	}
 	row("Sex", speciesSexText(e.Sex))
-	heading("Stats")
+	heading("Species base stats")
 	stats := e.Stats
 	cellW := textW / 4
 	for r, keys := range [2][4]string{{"mhp", "mmp", "atk", "def"}, {"mat", "mdf", "agi", "luk"}} {
@@ -384,6 +377,11 @@ func (s *bestiaryScreen) drawPage(g *Game, dst *ebiten.Image, id string, x, top,
 		}
 	}
 	y += 2 * gfx.LineHeight(sizeS*0.9)
+	if defeated < 1 {
+		heading("Battle")
+		row("Records", "Defeat this enemy to reveal battle records")
+		return
+	}
 	var res []string
 	for k, v := range e.Resist {
 		label := k
@@ -440,6 +438,7 @@ func speciesSexText(sex string) string {
 // drawLineage shows seven pictures at most: grandparents, parents and child.
 func (s *bestiaryScreen) drawLineage(g *Game, dst *ebiten.Image, x, top, w, h float64) {
 	bestiaryPanel(g, dst, x, top, w, h)
+	g.text(dst, "Breeding routes", x+24, top+6, sizeS*0.85, g.th.accent)
 	tiles := s.lineageTiles(x, top, w, h)
 	if len(tiles) == 0 {
 		return
@@ -450,7 +449,7 @@ func (s *bestiaryScreen) drawLineage(g *Game, dst *ebiten.Image, x, top, w, h fl
 	}
 	path = append(path, s.speciesName(g, s.root, !g.bestiarySeen(s.root)))
 	crumb := gfx.Ellipsis(strings.Join(path, " > "), sizeS*0.7, w-48)
-	g.text(dst, crumb, x+24, top+18, sizeS*0.7, g.th.dim)
+	g.text(dst, crumb, x+24, top+29, sizeS*0.7, g.th.dim)
 	// Draw connectors first, so the picture cards remain legible over them.
 	connect := func(a, b lineageTile) {
 		cx, cy := a.x+a.w/2, a.y+a.h
