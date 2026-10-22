@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"math"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -341,31 +342,62 @@ func (s *bestiaryScreen) drawPage(g *Game, dst *ebiten.Image, id string, x, top,
 		write("Defeat this enemy to reveal its records.", sizeS*0.9, 2)
 		return
 	}
-	write(fmt.Sprintf("Defeated: %d    Caught: %d", int(defeated), int(g.bestiaryCaught(id))), sizeS*0.9, 1)
-	if e.Family != "" {
-		write(fmt.Sprintf("Family: %s    Rank: %d", e.Family, e.Rank), sizeS*0.85, 1)
+	// The record as a small form: headings, dim labels and aligned values.
+	labelW := min(150, textW*0.3)
+	heading := func(label string) {
+		y += 6
+		g.text(dst, label, textX, y, sizeS*0.85, g.th.accent)
+		y += gfx.LineHeight(sizeS*0.85) + 2
+		gfx.FillRect(dst, float32(textX), float32(y-3), float32(textW), 1, withAlpha(g.th.dim, 0x80), false)
 	}
-	write("Sex: "+speciesSexText(e.Sex), sizeS*0.85, 1)
-	y += 5
+	row := func(label, value string) {
+		if y+gfx.LineHeight(sizeS*0.85) > top+h-12 {
+			return
+		}
+		g.text(dst, label, textX, y, sizeS*0.8, g.th.dim)
+		lines, fitted := gfx.FitLines(value, sizeS*0.85, textW-labelW, 2)
+		for _, line := range lines {
+			g.text(dst, line, textX+labelW, y, fitted, g.th.text)
+			y += gfx.LineHeight(fitted)
+		}
+	}
+	heading("Record")
+	row("Defeated", strconv.Itoa(int(defeated)))
+	row("Caught", strconv.Itoa(int(g.bestiaryCaught(id))))
+	if e.Family != "" {
+		row("Family", fmt.Sprintf("%s  (rank %d)", e.Family, e.Rank))
+	}
+	row("Sex", speciesSexText(e.Sex))
+	heading("Stats")
 	stats := e.Stats
-	write(fmt.Sprintf("HP %d   MP %d   ATK %d   DEF %d", stats["mhp"], stats["mmp"], stats["atk"], stats["def"]), sizeS*0.85, 1)
-	write(fmt.Sprintf("MAT %d   MDF %d   AGI %d   LUK %d", stats["mat"], stats["mdf"], stats["agi"], stats["luk"]), sizeS*0.85, 1)
-	y += 5
+	cellW := textW / 4
+	for r, keys := range [2][4]string{{"mhp", "mmp", "atk", "def"}, {"mat", "mdf", "agi", "luk"}} {
+		for c, k := range keys {
+			label := strings.ToUpper(strings.TrimPrefix(k, "m"))
+			switch k {
+			case "mat", "mdf":
+				label = strings.ToUpper(k)
+			}
+			cx := textX + float64(c)*cellW
+			g.text(dst, label, cx, y+float64(r)*gfx.LineHeight(sizeS*0.9), sizeS*0.75, g.th.dim)
+			g.text(dst, strconv.Itoa(stats[k]), cx+cellW*0.42, y+float64(r)*gfx.LineHeight(sizeS*0.9), sizeS*0.9, g.th.text)
+		}
+	}
+	y += 2 * gfx.LineHeight(sizeS*0.9)
 	var res []string
 	for k, v := range e.Resist {
 		label := k
 		if v > 1 {
-			label += " weak"
+			label += " (weak)"
 		} else if v < 1 {
-			label += " resist"
+			label += " (resists)"
 		}
 		res = append(res, label)
 	}
 	if len(res) == 0 {
-		res = []string{"None recorded"}
+		res = []string{"none recorded"}
 	}
 	slices.Sort(res)
-	write("Resistances: "+strings.Join(res, ", "), sizeS*0.8, 2)
 	var skills []string
 	for _, r := range e.AI.Rules {
 		if skill := g.db.Skills[r.Use]; skill != nil {
@@ -377,7 +409,6 @@ func (s *bestiaryScreen) drawPage(g *Game, dst *ebiten.Image, id string, x, top,
 	if len(skills) == 0 {
 		skills = []string{"Strike"}
 	}
-	write("Skills: "+strings.Join(skills, ", "), sizeS*0.8, 2)
 	var drops []string
 	for _, d := range e.Drops {
 		if it := g.db.Items[d.Item]; it != nil {
@@ -385,11 +416,14 @@ func (s *bestiaryScreen) drawPage(g *Game, dst *ebiten.Image, id string, x, top,
 		}
 	}
 	if len(drops) == 0 {
-		drops = []string{"None"}
+		drops = []string{"none"}
 	}
-	write("Drops: "+strings.Join(drops, ", "), sizeS*0.8, 2)
-	y += 8
-	write("Z: view lineage", sizeS*0.8, 1)
+	heading("Battle")
+	row("Elements", strings.Join(res, ", "))
+	row("Skills", strings.Join(skills, ", "))
+	row("Drops", strings.Join(drops, ", "))
+	y += 10
+	g.text(dst, "Z: view lineage", textX, min(y, top+h-12-gfx.LineHeight(sizeS*0.8)), sizeS*0.8, g.th.dim)
 }
 
 func speciesSexText(sex string) string {
