@@ -94,6 +94,10 @@ For a player facing family tree, set `ui.bestiary: true` and give capturable lea
 
 The sample browser builds keep game files outside WebAssembly. Their generated `game/files.json` manifest maps game paths to served files; the browser fetches each file when it is opened, so pictures used later do not delay the first screen. `make website` writes a precompressed `.wasm.gz` file for each sample, and the page decompresses it with the browser's `DecompressionStream`. Browser saves remain in `localStorage`.
 
+## Ship a demo
+
+`gozen pack trial game demo` writes a demo with only what `trial.yaml` reaches; the rest is not in the build, so the demo cannot leak later content. Check it with `--list` before shipping.
+
 ## Do not
 
 - Do not import `github.com/nao1215/gozen/internal/...`. Use `play`, `gozen` (Session, Query, Do) and the YAML.

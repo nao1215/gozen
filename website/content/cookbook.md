@@ -1286,7 +1286,7 @@ jobs:
 
 ## Cut a release and a trial
 
-`gozen pack release` copies the game with only approved pictures; `gozen pack trial` keeps the part of the game within the range of `trial.yaml`, a demo. Here the demo stops at the third floor of the grotto and leaves out the ending event:
+`gozen pack release` copies the game with only approved pictures; `gozen pack trial` keeps the part of the game within the range of `trial.yaml`, a demo. What lies outside the range is not hidden behind a flag but left out of the copy, so the demo build carries none of the later events, endings or pictures: unpacking the demo cannot leak the full game. `-n` counts what would be kept, and `--list` writes what was kept and what was dropped, to check before you ship. Here the demo stops at the third floor of the grotto and leaves out the ending event:
 
 <!-- verify: same internal/dev/docs/testdata/fixtures/cookbook/game/trial.yaml -->
 ```yaml
