@@ -13,6 +13,7 @@ type spring struct {
 	side      string     // top, bottom, left or right; empty when root is a point
 	root      [2]float64 // the point the part hangs from (the middle of the side for an edge)
 	head      bool       // follows the head (else the body)
+	soft      bool       // receives a region-only hit response
 	mask      [2]float64 // 1 for an axis that sways, 0 for one that does not
 	k, c      float64    // stiffness and damping
 	gain      float64    // lag multiplier
@@ -72,9 +73,9 @@ func resolveSprings(s *puppetdef.Spec, h int) []spring {
 		}
 		add(sp)
 	}
-	for _, p := range append(append([]puppetdef.Part(nil), s.Springs...), s.SoftSway...) {
+	for i, p := range append(append([]puppetdef.Part(nil), s.Springs...), s.SoftSway...) {
 		sp := spring{
-			shapes: []puppetdef.Shape{{Rect: p.Rect, Ellipse: p.Ellipse, Poly: p.Poly}}, side: p.Root.Side, head: p.Follow != "body",
+			shapes: []puppetdef.Shape{{Rect: p.Rect, Ellipse: p.Ellipse, Poly: p.Poly}}, side: p.Root.Side, head: p.Follow != "body", soft: i >= len(s.Springs),
 			mask: [2]float64{1, 1}, k: 60, c: 7, gain: 1, limit: 0.15 * unit,
 		}
 		if p.Root.At != nil {

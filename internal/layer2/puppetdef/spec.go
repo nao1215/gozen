@@ -189,6 +189,9 @@ func (r Root) IsZero() bool { return r.Side == "" && r.At == nil }
 // Motion holds the strengths. An omitted block uses the default. In a block, a
 // zero strength turns that motion off and a zero period uses the default.
 type Motion struct {
+	// Hit chooses the hit response: empty uses whole-body motion, soft_only
+	// confines damage-driven motion to soft_sway regions.
+	Hit    string  `yaml:"hit,omitempty"`
 	Breath *Breath `yaml:"breath,omitempty"`
 	Sway   *Sway   `yaml:"sway,omitempty"`
 	Tilt   *Tilt   `yaml:"tilt,omitempty"`
@@ -400,6 +403,9 @@ func (s *Spec) Validate() error {
 			return fmt.Errorf("soft_sway[%d]: %w", i, err)
 		}
 	}
+	if s.Motion.Hit == "soft_only" && len(s.SoftSway) == 0 {
+		return errors.New("motion.hit: soft_only needs soft_sway")
+	}
 	if err := s.Motion.check(); err != nil {
 		return fmt.Errorf("motion.%w", err)
 	}
@@ -422,6 +428,9 @@ func (s *Spec) Validate() error {
 }
 
 func (m Motion) check() error {
+	if m.Hit != "" && m.Hit != "soft_only" {
+		return fmt.Errorf("hit: unknown response %q", m.Hit)
+	}
 	if b := m.Breath; b != nil {
 		if err := nonNeg("breath", b.Depth, b.Period); err != nil {
 			return err

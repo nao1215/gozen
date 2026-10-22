@@ -30,6 +30,7 @@ type params struct {
 	swayAngle, swayShift      float64
 	swayPeriod                float64
 	damageBoost               float64
+	softOnlyHit               bool
 	tiltAngle                 float64
 	tiltEvery                 [2]float64
 	talkNod                   float64
@@ -50,6 +51,7 @@ func resolveParams(s *puppetdef.Spec, _, h int) params {
 	p.swayShift = 0.025 * p.unit
 	p.talkNod = 0.02 * p.unit
 	m := s.Motion
+	p.softOnlyHit = m.Hit == "soft_only"
 	if b := m.Breath; b != nil {
 		p.breathDepth = b.Depth
 		if b.Period > 0 {
@@ -202,6 +204,9 @@ func (m *Motion) Hit() {
 		return
 	}
 	m.hitSurge = math.Max(m.hitSurge, boost)
+	if m.p.softOnlyHit {
+		return
+	}
 	m.React(puppetdef.Reaction{Kind: "hop", Amount: 1 + boost, Time: 0.8})
 }
 
@@ -381,6 +386,9 @@ func (m *Motion) pose(withSprings bool) Pose {
 	tau := 2 * math.Pi
 	damage := m.p.damageBoost*(1-m.health) + m.hitSurge
 	strength, speed := 1+damage, 1+0.5*damage
+	if m.p.softOnlyHit {
+		strength, speed = 1, 1
+	}
 	if m.p.breathPeriod > 0 {
 		// Breathing keeps its depth: damage speeds it up but never stretches the body.
 		p.Breath = m.p.breathDepth * 0.5 * (1 - math.Cos(tau*t*speed/m.p.breathPeriod+m.phase[0]))
@@ -403,6 +411,19 @@ func (m *Motion) pose(withSprings bool) Pose {
 		}
 		for i := range m.springs {
 			p.Lag[i] = m.lag(&m.springs[i], m.state[i], p)
+		}
+		if m.p.softOnlyHit {
+			// Keep the whole picture still while damage drives only the named soft regions.
+			for i := range m.springs {
+				sp := &m.springs[i]
+				if !sp.soft {
+					continue
+				}
+				wave := math.Sin(tau*t*(2+damage) + m.phase[i%len(m.phase)])
+				for axis := range 2 {
+					p.Lag[i][axis] = clamp(p.Lag[i][axis]+wave*sp.limit*math.Min(1, damage*0.35)*sp.mask[axis], -sp.limit, sp.limit)
+				}
+			}
 		}
 	}
 	return p

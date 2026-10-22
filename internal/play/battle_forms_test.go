@@ -3,6 +3,7 @@ package play
 import (
 	"testing"
 
+	"github.com/nao1215/gozen/internal/battle"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
@@ -53,6 +54,29 @@ func TestEnemyPuppetUsesActorRigFormat(t *testing.T) {
 	}
 	if p.Motion.Pose() == before {
 		t.Fatal("hit did not move the enemy puppet")
+	}
+}
+
+func TestEnemySoftOnlyHitSkipsBattleShake(t *testing.T) {
+	g, _ := btlOpen(t, Options{Battle: "caller"}, "", "", map[string]string{
+		"assets/p/rig.yaml": "base: base.png\nsoft_sway:\n  - {ellipse: [4, 4, 20, 20], follow: body}\nmotion: {hit: soft_only, sway: {damage_boost: 4}}\n",
+		"assets/p/base.png": string(btlPNG(32, 32)),
+	})
+	s := btlBattle(t, g)
+	u := s.b.Foes[0]
+	u.Def.Puppet = "p/rig.yaml"
+	p := g.enemyPuppet(u, "normal.png", u.HP)
+	if p == nil || !s.softOnlyHit(g, u) {
+		t.Fatal("soft-only enemy puppet was not loaded")
+	}
+	before := p.Motion.Pose()
+	s.reactTo(g, u, "hit", 40)
+	if p.Motion.Pose().Body != before.Body {
+		t.Fatal("hit moved the enemy puppet")
+	}
+	s.hitDrama(g, battle.Step{Target: u, Crit: true})
+	if g.shake != 0 {
+		t.Fatalf("battle shake on soft-only hit: %d", g.shake)
 	}
 }
 

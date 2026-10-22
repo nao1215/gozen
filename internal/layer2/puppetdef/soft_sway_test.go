@@ -30,3 +30,18 @@ func TestSwayDamageBoost(t *testing.T) {
 		t.Fatal("negative damage boost accepted")
 	}
 }
+
+func TestSoftOnlyHitValidation(t *testing.T) {
+	valid := "base: base.png\nsoft_sway:\n  - {ellipse: [10, 20, 30, 40], follow: body}\nmotion: {hit: soft_only}\n"
+	if s, err := Parse([]byte(valid)); err != nil || s.Motion.Hit != "soft_only" {
+		t.Fatalf("soft_only: spec=%+v error=%v", s, err)
+	}
+	for _, y := range []string{
+		"base: base.png\nmotion: {hit: soft_only}\n",
+		"base: base.png\nmotion: {hit: unknown}\n",
+	} {
+		if _, err := Parse([]byte(y)); err == nil {
+			t.Fatalf("accepted invalid hit motion: %q", y)
+		}
+	}
+}

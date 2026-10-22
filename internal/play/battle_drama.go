@@ -78,13 +78,18 @@ func (s *battleScene) stepDrama(g *Game) bool {
 
 func (s *battleScene) hitDrama(g *Game, st battle.Step) {
 	fx := g.db.Game.UI.BattleFx
+	softOnly := s.softOnlyHit(g, st.Target)
 	switch {
 	case st.Crit:
 		s.dr.freeze = max(s.dr.freeze, g.holdTicks(hitstopCrit, s.dramaK(g, fx.Hitstop, fx.Auto.Hitstop, 0)))
-		g.shake = max(g.shake, int(18*g.fxk(fx.Shake)))
+		if !softOnly {
+			g.shake = max(g.shake, int(18*g.fxk(fx.Shake)))
+		}
 	case st.Weak:
 		s.dr.freeze = max(s.dr.freeze, g.holdTicks(hitstopWeak, s.dramaK(g, fx.Hitstop, fx.Auto.Hitstop, 0)))
-		g.shake = max(g.shake, int(13*g.fxk(fx.Shake)))
+		if !softOnly {
+			g.shake = max(g.shake, int(13*g.fxk(fx.Shake)))
+		}
 	}
 }
 

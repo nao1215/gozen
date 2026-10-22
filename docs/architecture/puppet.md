@@ -86,6 +86,7 @@ springs:                 # swaying parts. Ribbons, hems, sleeves, cords and so o
 soft_sway:               # gentle regions for an actor or enemy; the same spring settings as above
   - {ellipse: [490, 760, 240, 160], root: top, follow: body, axis: y, amount: 1.2, limit: 8}
 motion:                  # omitted groups take the defaults. A strength of 0 inside a group stops that motion
+  hit: soft_only         # optional: a hit moves only soft_sway regions; the default uses a whole-body reaction
   breath: {depth: 0.006, period: 3.8}   # vertical stretch (ratio of height) and period in seconds
   sway: {angle: 2.5, shift: 10, period: 6.5, damage_boost: 0}  # head sway; damage_boost increases strength and speed at low HP
   tilt: {angle: 7, every: [5, 11]}      # an occasional head tilt
@@ -107,6 +108,7 @@ reactions:               # named variants of strength. The built-in names can be
 | `springs` | none | the area is the same as for `hair`. `follow: head` (default) needs `head`. `root`, `follow` and `axis` are the words above or a point. `stiffness` up to 10000, `damping` up to 1000, numbers 0 or more. Up to 16 together with `hair` |
 | `motion.sway.shift`, `talk.nod` | 2.5% and 2% of the head radius | 0 or more. The angle up to 45 degrees, `breath.depth` up to 0.2 |
 | `motion.sway.damage_boost` | 0 (off) | Nonnegative. Lower HP increases sway size and speed; a hit adds a brief bounce and lingering sway. |
+| `motion.hit` | whole-body response | `soft_only` requires `soft_sway`; damage drives only those regions, without a hit hop or shake of the picture. |
 | `reactions` | the built-in hop, shrink, shake, nod, tilt, freeze (temporarily stops breathing, sway, blinking and mouth) | `kind` is one of the built-ins. `amount` (multiplier, default 1) and `time` (seconds) are 0 or more |
 
 Picture errors (missing, not a PNG or WebP, larger than 8192 pixels, sticking out of the base, a whole picture whose size differs from the base, no differing part) are returned by `Load` with a location.
@@ -121,4 +123,5 @@ A part follows the motion of what it follows (head or body) with a lag through a
 - Where they overlap, the later part in the list decides (it replaces the earlier part's motion by the extent of the later part's area). `hair` is at the head of the list.
 - `hair` moves the same as a part with the defaults of `springs` (`root: top`, `follow: head`) (unless the shapes overlap. The several shapes of `hair` share one spring, and the larger weight is used where they overlap). `motion.hair` affects only the spring of `hair`.
 - `soft_sway` accepts the same settings as `springs` and is drawn after them. It is suitable for a gently moving area of an actor or enemy puppet. Use `rect: [x, y, width, height]` or `ellipse: [x, y, width, height]` with `follow: body` to trail breathing and whole-body reactions. The coordinates are pixels in the base image.
+- With `motion.hit: soft_only`, damage gives the `soft_sway` regions a stronger, lingering oscillation as HP falls. Other regions keep their idle motion, and the battle screen omits its hit shake for that enemy.
 - The same random seed and the same sequence of calls give the same sway. With a stiff spring or a small TPS, one Update is computed in finer sub-steps.
