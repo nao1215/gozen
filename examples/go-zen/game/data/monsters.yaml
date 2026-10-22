@@ -12,13 +12,14 @@ monster_families:
 breeding:
   min_level: 5
   skill_slots: 2
+  staging: {rare_rank: 4, legend_rank: 7}
   pairs:
     - {parents: [drip_slime, pipe_rat], child: steam_slime}
     - {parents: [frost_bat, ice_wolf], child: frost_giant}
     - {parents: [crystal_golem, dream_wisp], child: mirror_shade}
     - {parents: [spore_shroom, cursed_doll], child: maneater}
-    - {parents: [frost_bat, dream_wisp], child: whisper_imp}
-    - {parents: [ghost_soldier, nectar_moth], child: vampire}
+    - {parents: [incense_bloom, pale_sylph], child: whisper_imp}
+    - {parents: [night_bat, ghoul], child: vampire}
     - {parents: [whisper_imp, vampire], child: succubus}
   families:
     - {parents: [slime, slime], children: [drip_slime, steam_slime, frost_slime]}

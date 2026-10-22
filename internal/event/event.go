@@ -65,6 +65,7 @@ type BreedEffect struct {
 	ParentFaces [2]string
 	ChildName   string
 	ChildFace   string
+	Tier        int
 }
 
 // VisualEffect requests a named visual effect: a word of the whole screen (shake, flash,
@@ -802,6 +803,10 @@ func (r *Runner) run(c *data.Command) Request {
 				nameB += " ♀"
 			}
 			faceA, faceB = r.db.Enemies[first.Monster].Image.File, r.db.Enemies[second.Monster].Image.File
+			if first.Sex == "female" {
+				nameA, nameB = nameB, nameA
+				faceA, faceB = faceB, faceA
+			}
 		}
 		id, err := r.st.Breed(c.Breed.Parents[0], c.Breed.Parents[1], c.Breed.Skills)
 		if err != nil {
@@ -813,7 +818,11 @@ func (r *Runner) run(c *data.Command) Request {
 		if child.Sex == "male" {
 			childName = child.Name() + " ♂"
 		}
-		r.emit(BreedEffect{ParentNames: [2]string{nameA, nameB}, ParentFaces: [2]string{faceA, faceB}, ChildName: childName, ChildFace: r.db.Enemies[child.Monster].Image.File})
+		tier := 0
+		if r.db.Breeding != nil {
+			tier = r.db.Breeding.Staging.Tier(r.db.Enemies[child.Monster].Rank)
+		}
+		r.emit(BreedEffect{ParentNames: [2]string{nameA, nameB}, ParentFaces: [2]string{faceA, faceB}, ChildName: childName, ChildFace: r.db.Enemies[child.Monster].Image.File, Tier: tier})
 		inherited := "none"
 		if len(c.Breed.Skills) > 0 {
 			names := make([]string, 0, len(c.Breed.Skills))
@@ -826,8 +835,11 @@ func (r *Runner) run(c *data.Command) Request {
 			}
 			inherited = strings.Join(names, ", ")
 		}
+		if inherited == "" {
+			inherited = "none"
+		}
 		r.push([]data.Command{
-			{Wait: data.WaitCue{Seconds: 4.5}},
+			{Wait: data.WaitCue{Seconds: float64(320+30*tier) / 60}}, // 50 frames of the silhouette cut-in (play.birthCutInFrames)
 			{Say: &data.Say{Who: childName, Text: "Inherited skills: " + inherited + "."}},
 			{Say: &data.Say{Who: childName, Text: fmt.Sprintf("Breeding strength: +%d.", child.Plus)}},
 		})

@@ -1554,6 +1554,39 @@
       },
       "type": "object"
     },
+    "BreedStaging": {
+      "additionalProperties": false,
+      "description": "Rank thresholds for birth presentation; omitted values default to rare rank 4 and legendary rank 7.",
+      "properties": {
+        "legend_rank": {
+          "description": "The first child rank with rainbow light, shake and a picture cut-in.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "rare_rank": {
+          "description": "The first child rank with gold light and a longer flash.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        }
+      },
+      "type": "object"
+    },
     "Breeding": {
       "additionalProperties": false,
       "description": "The monster breeding requirements and recipes.",
@@ -1621,6 +1654,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "integer"
+        },
+        "staging": {
+          "$ref": "#/$defs/BreedStaging",
+          "description": "Rank thresholds for the rare and legendary birth effects.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[BreedStaging](#breedstaging)"
         }
       },
       "type": "object"

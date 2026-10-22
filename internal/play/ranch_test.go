@@ -84,7 +84,7 @@ func TestRanchPreviewAndFusionCommand(t *testing.T) {
 	for i := 0; g.events.Running() && i < 20; i++ {
 		switch req := g.events.Next().(type) {
 		case event.Wait:
-			birthWait = req.Seconds == 4.5
+			birthWait = math.Abs(req.Seconds-float64(birthDuration+birthCutInFrames)/60) < 1e-9
 		case event.Say:
 			birthLines = append(birthLines, req.Text)
 		}
@@ -138,7 +138,7 @@ func TestBirthTimelineSkipAndPositions(t *testing.T) {
 	for _, tc := range []struct {
 		age   int
 		phase birthPhase
-	}{{0, birthParents}, {64, birthParents}, {65, birthSpiral}, {167, birthSpiral}, {168, birthFlash}, {199, birthFlash}, {200, birthChild}, {birthDuration, birthChild}} {
+	}{{0, birthParents}, {64, birthParents}, {65, birthSpiral}, {167, birthSpiral}, {168, birthFlash}, {199, birthFlash}, {200 + birthCutInFrames, birthChild}, {birthDuration + birthCutInFrames, birthChild}} {
 		g.birth.age = tc.age
 		if got := g.birth.phase(); got != tc.phase {
 			t.Fatalf("age %d: phase %d, want %d", tc.age, got, tc.phase)
@@ -150,18 +150,18 @@ func TestBirthTimelineSkipAndPositions(t *testing.T) {
 			t.Fatalf("birth positions at %v: %+v %+v", size, parents, crystal)
 		}
 		for i, p := range parents {
-			start := birthOrbPosition(size[0], size[1], i, 65)
-			end := birthOrbPosition(size[0], size[1], i, 168)
+			start := birthOrbPosition(size[0], size[1], i, 65, 168)
+			end := birthOrbPosition(size[0], size[1], i, 168, 168)
 			if math.Abs(start.x-p.x) > 0.01 || math.Abs(start.y-(p.y-size[1]*0.1)) > 0.01 || math.Abs(end.x-crystal.x) > 0.01 || math.Abs(end.y-crystal.y) > 0.01 {
 				t.Fatalf("orb %d does not travel from parent to crystal at %v: start=%+v end=%+v", i, size, start, end)
 			}
 		}
 	}
-	g.req = event.Wait{Seconds: 4.5}
-	g.waitT = birthDuration
+	g.req = event.Wait{Seconds: float64(birthDuration+birthCutInFrames) / 60}
+	g.waitT = birthDuration + birthCutInFrames
 	g.in.pressed[btnOK] = true
 	g.pump()
-	if g.waitT != 0 || g.req != nil || g.birth.age != birthDuration {
+	if g.waitT != 0 || g.req != nil || g.birth.age != birthDuration+birthCutInFrames {
 		t.Fatalf("skip left birth pending: wait=%d req=%T age=%d", g.waitT, g.req, g.birth.age)
 	}
 }

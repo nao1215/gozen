@@ -55,10 +55,15 @@ BreedPair:
   child: "The resulting enemy species ID."
   min_level: "An optional higher minimum level for both parents."
   min_plus: "An optional minimum of the parents' combined plus values."
+BreedStaging:
+  _: "Rank thresholds for birth presentation; omitted values default to rare rank 4 and legendary rank 7."
+  rare_rank: "The first child rank with gold light and a longer flash."
+  legend_rank: "The first child rank with rainbow light, shake and a picture cut-in."
 Breeding:
   _: "The monster breeding requirements and recipes."
   min_level: "The minimum level of each parent; at least one."
   skill_slots: "The maximum number of distinct parental skills the child may inherit."
+  staging: "Rank thresholds for the rare and legendary birth effects."
   pairs: "Specific species recipes; these win over family rules."
   families: "Family recipes, used when no specific pair matches."
 Recruit:

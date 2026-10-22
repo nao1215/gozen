@@ -794,8 +794,11 @@ func (g *Game) Update() error {
 	}
 	g.shake = max(0, g.shake-1)
 	g.flash = max(0, g.flash-1)
-	if g.birth != nil && g.birth.age < birthDuration {
+	if g.birth != nil && g.birth.age < g.birth.duration() {
 		g.birth.age++
+		if g.birth.effect.Tier == 2 && g.birth.age >= g.birth.flashStart() && g.birth.age < g.birth.childStart()+22 {
+			g.shake = 4
+		}
 	}
 	g.stepStaging()
 	g.stepFanfare()
@@ -1496,7 +1499,7 @@ func (g *Game) pump() bool {
 	case event.Wait:
 		g.waitT--
 		if g.birth != nil && g.in.ok() {
-			g.birth.age = birthDuration
+			g.birth.age = g.birth.duration()
 			g.waitT = 0
 		}
 		if g.skipping && !r.NoSkip {

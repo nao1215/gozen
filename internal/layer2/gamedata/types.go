@@ -1101,8 +1101,34 @@ type Recruit struct {
 type Breeding struct {
 	MinLevel   int           `yaml:"min_level"`
 	SkillSlots int           `yaml:"skill_slots"`
+	Staging    BreedStaging  `yaml:"staging"`
 	Pairs      []BreedPair   `yaml:"pairs"`
 	Families   []BreedFamily `yaml:"families"`
+}
+
+// BreedStaging maps child ranks to the rare and legendary birth effects.
+// Zero thresholds use ranks 4 and 7 respectively.
+type BreedStaging struct {
+	RareRank   int `yaml:"rare_rank"`
+	LegendRank int `yaml:"legend_rank"`
+}
+
+// Tier returns the birth effect for a child rank: 0 normal, 1 rare, 2 legendary.
+func (s BreedStaging) Tier(rank int) int {
+	rare, legend := s.RareRank, s.LegendRank
+	if rare == 0 {
+		rare = 4
+	}
+	if legend == 0 {
+		legend = 7
+	}
+	if rank >= legend {
+		return 2
+	}
+	if rank >= rare {
+		return 1
+	}
+	return 0
 }
 
 // BreedPair is a symmetric species recipe. Specific recipes win over family rules.

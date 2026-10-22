@@ -79,6 +79,9 @@ func (c *checker) monsters() {
 		return
 	}
 	r := db.Breeding
+	if r.Staging.RareRank < 0 || r.Staging.LegendRank < 0 || (r.Staging.LegendRank > 0 && r.Staging.RareRank > 0 && r.Staging.LegendRank <= r.Staging.RareRank) || (r.Staging.RareRank > 0 && r.Staging.LegendRank == 0 && r.Staging.RareRank >= 7) || (r.Staging.LegendRank > 0 && r.Staging.RareRank == 0 && r.Staging.LegendRank <= 4) {
+		c.errorf(diag.MonsterRules, "breeding.staging", "rare_rank and legend_rank must be positive and legend_rank must exceed rare_rank")
+	}
 	if r.MinLevel < 1 || r.SkillSlots < 0 {
 		c.errorf(diag.MonsterRules, "breeding", "min_level must be positive and skill_slots cannot be negative")
 	}

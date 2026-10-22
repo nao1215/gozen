@@ -65,7 +65,7 @@ func TestGoZenBreedGraphReachesEveryOrdinarySpecies(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Reachable) != 40 || len(result.Unreachable) != 3 {
+	if len(result.Reachable) != 44 || len(result.Unreachable) != 3 {
 		t.Fatalf("Go Zen graph: %d reached, unreachable %v", len(result.Reachable), result.Unreachable)
 	}
 	paths := map[string]breedRow{}

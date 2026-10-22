@@ -211,10 +211,11 @@ images:
     run: breeding
     shot: s-altar
     jpeg: {width: 960, height: 540, quality: 3}
-  go-zen-breeding.jpg:
+  go-zen-breeding.gif:
     run: breeding
-    shot: s-breed
-    jpeg: {width: 960, height: 540, quality: 3}
+    frames:
+      - {shots: "b0*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 128}
   go-zen-recruit.jpg:
     run: recruit
     shot: s-rise

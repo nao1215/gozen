@@ -195,7 +195,7 @@ func TestBestiaryFitsBothScreenSizes(t *testing.T) {
 			t.Fatalf("want seven pictures, got %d", len(tiles))
 		}
 		for _, tile := range tiles {
-			if tile.x < 322+20 || tile.y < 104+50 || tile.x+tile.w > sw-28 || tile.y+tile.h > sh-90 {
+			if tile.x < 322+20 || tile.y < 104+40 || tile.x+tile.w > sw-28 || tile.y+tile.h > sh-90 {
 				t.Fatalf("picture escapes panel at %dx%d: %+v", w, h, tile)
 			}
 		}

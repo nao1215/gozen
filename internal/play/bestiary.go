@@ -101,8 +101,8 @@ func (s *bestiaryScreen) lineageTiles(x, top, w, h float64) []lineageTile {
 	cardW := (w - 2*margin - 3*gap) / 4
 	cardH := min(150, (h-100-2*52)/3)
 	left := x + (w-4*cardW-3*gap)/2
-	rowStep := (h - 82 - margin - cardH) / 2
-	rowY := func(row int) float64 { return top + 82 + float64(2-row)*rowStep }
+	rowStep := (h - 44 - margin - cardH) / 2
+	rowY := func(row int) float64 { return top + 44 + float64(2-row)*rowStep }
 	place := func(n *data.LineageNode, row int, center float64) lineageTile {
 		return lineageTile{node: n, x: center - cardW/2, y: rowY(row), w: cardW, h: cardH, parent: -1}
 	}
@@ -417,12 +417,6 @@ func (s *bestiaryScreen) drawLineage(g *Game, dst *ebiten.Image, x, top, w, h fl
 	path = append(path, s.speciesName(g, s.root, !g.bestiarySeen(s.root)))
 	crumb := gfx.Ellipsis(strings.Join(path, " > "), sizeS*0.7, w-48)
 	g.text(dst, crumb, x+24, top+18, sizeS*0.7, g.th.dim)
-	head := "Lineage"
-	root := tiles[0].node
-	if root.Choices > 1 {
-		head += fmt.Sprintf("   recipe %d/%d", root.Choice+1, root.Choices)
-	}
-	g.text(dst, head, x+24, top+40, sizeS*0.8, g.th.accent)
 	// Draw connectors first, so the picture cards remain legible over them.
 	connect := func(a, b lineageTile) {
 		cx, cy := a.x+a.w/2, a.y+a.h

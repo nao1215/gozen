@@ -148,7 +148,7 @@ enemies:
   crystal_dragon:
     sex: any
     family: dragon
-    rank: 1
+    rank: 7
     monster_class: monster_dragon
     recruit: {chance: 0.22, level: 1}
     name: Crystal Dragon
@@ -560,6 +560,62 @@ enemies:
     gold: 66
     drops: [{item: old_gear, chance: 0.15}]
     ai: [{use: bite}]
+  night_bat:
+    sex: female
+    family: beast
+    rank: 2
+    monster_class: monster_beast
+    recruit: {chance: 0.18, level: 2}
+    name: Night Bat
+    image: enemies/night_bat.png
+    lore: "Night Bats rest among the old rafters and follow insects through the dim corridors."
+    stats: {mhp: 83, mmp: 0, atk: 19, def: 5, mat: 7, mdf: 5, agi: 18, luk: 3}
+    exp: 32
+    gold: 12
+    drops: [{item: tonic, chance: 0.12}]
+    ai: [{use: bite}]
+  ghoul:
+    sex: male
+    family: undead
+    rank: 1
+    monster_class: monster_undead
+    recruit: {chance: 0.2, level: 2}
+    name: Ghoul
+    image: enemies/ghoul.png
+    lore: "Ghouls are frail wandering corpses that move toward echoes in the lower tunnels."
+    stats: {mhp: 72, mmp: 0, atk: 15, def: 3, mat: 1, mdf: 2, agi: 5, luk: 1}
+    exp: 24
+    gold: 8
+    drops: [{item: old_gear, chance: 0.1}]
+    ai: [{use: bite}]
+  incense_bloom:
+    sex: any
+    family: plant
+    rank: 2
+    monster_class: monster_plant
+    recruit: {chance: 0.18, level: 2}
+    name: Incense Bloom
+    image: enemies/incense_bloom.png
+    lore: "Incense Blooms release a sweet fragrance when warm air moves through their petals."
+    stats: {mhp: 91, mmp: 0, atk: 14, def: 6, mat: 13, mdf: 8, agi: 8, luk: 4}
+    exp: 35
+    gold: 15
+    drops: [{item: tonic, chance: 0.18}]
+    ai: [{use: arc_bolt}]
+  pale_sylph:
+    sex: female
+    family: magic
+    rank: 2
+    monster_class: monster_magic
+    recruit: {chance: 0.15, level: 3}
+    name: Pale Sylph
+    image: enemies/pale_sylph.png
+    lore: "Pale Sylphs drift through quiet chambers and stir the cool air around old stonework."
+    stats: {mhp: 78, mmp: 0, atk: 12, def: 4, mat: 18, mdf: 10, agi: 17, luk: 5}
+    exp: 42
+    gold: 19
+    drops: [{item: tonic, chance: 0.14}]
+    ai: [{use: arc_bolt}]
   succubus:
     sex: female
     family: demon
@@ -636,6 +692,10 @@ troops:
   snow_witch_group: {members: [snow_witch]}
   spore_shroom_group: {members: [spore_shroom]}
   steam_slime_group: {members: [steam_slime]}
+  night_bat_group: {members: [night_bat]}
+  ghoul_group: {members: [ghoul]}
+  incense_bloom_group: {members: [incense_bloom]}
+  pale_sylph_group: {members: [pale_sylph]}
   succubus_group: {members: [succubus]}
   vampire_group: {members: [vampire]}
   whisper_imp_group: {members: [whisper_imp]}
