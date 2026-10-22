@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.4.0 - 2026-10-22
+
+Monster collection and livelier battles: schema version 6 adds a monster book, capture after battle, a ranch and breeding in the manner of Dragon Quest Monsters (sexes, family trees, a staged birth at Yorn's altar), and battles gain transforming and merging foes, pictures by HP and moving monsters. `gozen sim routes`, `gozen sim breed` and `gozen sim campaign --compare` measure the new parts, and the browser samples load their files on demand.
+
 ### Added
 
 - Battle puppets now support a shared `soft_sway` YAML list with rectangle or ellipse regions for actors and enemies. Go Zen's Succubus blinks, moves its mouth while acting, and sways softly; Drip Slimes merge into the author-generated King Slime. Four battle feature captures are registered for the README, site, and cookbook.
