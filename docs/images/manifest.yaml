@@ -147,6 +147,10 @@ runs:
     sample: go-zen
     script: scripts/capture-go-zen-relations.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --start, plaza, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  go-zen-relations-focus:
+    sample: go-zen
+    script: scripts/capture-go-zen-relations-focus.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, plaza, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   campaign:
     sample: campaign
     script: scripts/capture-campaign.txt
@@ -378,6 +382,10 @@ images:
   go-zen-relations.jpg:
     run: go-zen-relations
     shot: s-relations
+    jpeg: {width: 960, height: 540, quality: 3}
+  go-zen-relations-focus.jpg:
+    run: go-zen-relations-focus
+    shot: s-relations-focus
     jpeg: {width: 960, height: 540, quality: 3}
   puppet.gif:
     run: puppet-tour

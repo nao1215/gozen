@@ -106,3 +106,127 @@ func TestChartNavigationAndHidden(t *testing.T) {
 		t.Fatal("--dev did not reveal relationship")
 	}
 }
+
+func TestChartFocusSetAndPositions(t *testing.T) {
+	ids := []string{"ox", "outgoing", "incoming", "other", "you"}
+	profiles := map[string]*data.Profile{
+		"ox":       {Relations: []data.ProfileRelation{{Who: "outgoing"}, {Who: "you"}}},
+		"outgoing": {},
+		"incoming": {Relations: []data.ProfileRelation{{Who: "ox"}}},
+		"other":    {},
+	}
+	set := chartFocusSet(ids, profiles, 0)
+	if !reflect.DeepEqual(set, []bool{true, true, true, false, true}) {
+		t.Fatalf("focus set = %v", set)
+	}
+	base := chartLayout(ids, profiles)
+	if !reflect.DeepEqual(chartFocusPoints(base, set, 0, 0), base) {
+		t.Fatal("animation does not start at full chart")
+	}
+	end := chartFocusPoints(base, set, 0, chartFocusFrames)
+	if end[0] != (image.Point{}) || end[3] != base[3] {
+		t.Fatalf("end positions = %v", end)
+	}
+	if chartOpacity(false, chartFocusFrames) > 16 || chartOpacity(true, chartFocusFrames) != 255 {
+		t.Fatal("unrelated faces did not fade")
+	}
+	for _, size := range []image.Point{{1280, 720}, {1920, 1080}} {
+		for i, p := range end {
+			if !set[i] {
+				continue
+			}
+			x, y := size.X/2+p.X, (size.Y+int(profileBand)-50)/2+p.Y
+			if x < 65 || x > size.X-65 || y < int(profileBand)+65 || y > size.Y-100 {
+				t.Fatalf("focused %s at %v outside %v", ids[i], p, size)
+			}
+		}
+	}
+}
+
+func TestChartNineNodesFitPanel(t *testing.T) {
+	ids := []string{"ox", "a", "b", "c", "d", "e", "f", "g", "you"}
+	profiles := map[string]*data.Profile{}
+	for _, id := range ids[:8] {
+		profiles[id] = &data.Profile{}
+		if id != "ox" {
+			profiles[id].Relations = []data.ProfileRelation{{Who: "ox"}}
+		}
+	}
+	profiles["ox"].Relations = []data.ProfileRelation{{Who: "you"}}
+	base := chartLayout(ids, profiles)
+	set := chartFocusSet(ids, profiles, 0)
+	for _, points := range [][]image.Point{base, chartFocusPoints(base, set, 0, chartFocusFrames)} {
+		for _, size := range []image.Point{{1280, 720}, {1920, 1080}} {
+			for i, p := range points {
+				x, y := size.X/2+p.X, (size.Y+int(profileBand)-50)/2+p.Y
+				if x < 65 || x > size.X-65 || y < int(profileBand)+65 || y > size.Y-100 {
+					t.Fatalf("%s at %v outside %v", ids[i], p, size)
+				}
+			}
+		}
+	}
+}
+
+func TestChartFocusAndBack(t *testing.T) {
+	g := bookGame(t, Options{Location: "camp", Development: true}, "")
+	s := newProfiles(g, nil)
+	s.chart = true
+	g.in.pressed[btnOK] = true
+	s.updateChart(g)
+	if s.focus != s.sel || !s.chart {
+		t.Fatalf("first confirm: focus=%d chart=%t", s.focus, s.chart)
+	}
+	g.in.pressed[btnOK] = false
+	for range chartFocusFrames {
+		s.updateChart(g)
+	}
+	if s.focusFrame != chartFocusFrames {
+		t.Fatalf("focus stopped at %d", s.focusFrame)
+	}
+	g.in.pressed[btnCancel] = true
+	s.updateChart(g)
+	g.in.pressed[btnCancel] = false
+	for range chartFocusFrames {
+		s.updateChart(g)
+	}
+	if s.focus != -1 || s.focusFrame != 0 || !s.chart {
+		t.Fatalf("return: focus=%d frame=%d chart=%t", s.focus, s.focusFrame, s.chart)
+	}
+	g.in.pressed[btnOK] = true
+	s.updateChart(g)
+	g.in.pressed[btnOK] = false
+	for range chartFocusFrames {
+		s.updateChart(g)
+	}
+	g.in.pressed[btnOK] = true
+	s.updateChart(g)
+	if s.chart || !s.chartPage {
+		t.Fatal("second confirm did not open detail")
+	}
+	g.in.pressed[btnOK] = false
+	g.in.pressed[btnCancel] = true
+	s.update(g)
+	if !s.chart || !s.focusBack {
+		t.Fatal("back from detail did not start chart return")
+	}
+	g.in.pressed[btnCancel] = false
+	for range chartFocusFrames {
+		s.updateChart(g)
+	}
+	if s.focus != -1 || s.focusFrame != 0 {
+		t.Fatalf("detail return: focus=%d frame=%d", s.focus, s.focusFrame)
+	}
+}
+
+func TestChartRouteAvoidsUnrelatedFace(t *testing.T) {
+	points := []image.Point{{-210, 0}, {210, 0}, {0, 0}}
+	route := chartRoute(points, 0, 1)
+	if len(route) != 3 || !reflect.DeepEqual(route, chartRoute(points, 0, 1)) {
+		t.Fatalf("route is straight or unstable: %v", route)
+	}
+	for i := 0; i+1 < len(route); i++ {
+		if d := chartSegmentDistance(route[i], route[i+1], points[2]); d < 54 {
+			t.Fatalf("line crosses unrelated face: %v (distance %v)", route, d)
+		}
+	}
+}

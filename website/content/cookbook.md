@@ -1075,7 +1075,7 @@ events:
 
 `open: profiles` opens the book from an event, and a test reads `profile.mira.unlocked`. Reference: [Profile](/schema/#profile), [ProfileField](/schema/#profilefield), [ProfileRelation](/schema/#profilerelation), [UIStyle](/schema/#uistyle).
 
-Press Tab in the book for the chart, use arrows to select a face, Z to read its page, and the wheel to zoom. The `kind` colour is chosen by the author; `love` has no engine rule. A line to a locked profile is hidden until it opens. Run `gozen art faces <game-dir>` to generate face boxes, then `gozen check <game-dir>` to catch unknown targets and kinds.
+Press Tab in the book for the chart, use arrows to select a face, then Z to focus it. Its incoming and outgoing neighbours gather around it; other faces and lines fade. Press Z again to read its page, X to animate back to the full chart, or use the wheel to zoom. The `kind` colour is chosen by the author; `love` has no engine rule. A line to a locked profile is hidden until it opens. Run `gozen art faces <game-dir>` to generate face boxes, then `gozen check <game-dir>` to catch unknown targets and kinds.
 
 ## Keep a monster book
 

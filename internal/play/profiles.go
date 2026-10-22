@@ -75,6 +75,10 @@ type profileScreen struct {
 	zoom       float64
 	camX, camY float64
 	chartTick  int
+	focus      int // selected profile during a chart transition; -1 means the full chart
+	focusFrame int // 0..chartFocusFrames, also counts down when returning
+	focusBack  bool
+	chartPage  bool // the detail page was opened from a focused chart
 	// press is where a press began and last where it is now, for a swipe.
 	press, last image.Point
 	pressed     bool
@@ -84,7 +88,7 @@ func newProfiles(g *Game, done func()) *profileScreen {
 	if g.st != nil && !g.replaying {
 		g.checkProfiles()
 	}
-	s := &profileScreen{ids: g.db.Order["profiles"], env: g.profileEnv(), done: done}
+	s := &profileScreen{ids: g.db.Order["profiles"], env: g.profileEnv(), done: done, focus: -1}
 	s.zoom = 1
 	s.trace(g)
 	return s
@@ -98,6 +102,9 @@ func (s *profileScreen) liveKeep(g *Game) scene {
 	n.sel = min(s.sel, max(0, len(n.ids)-1))
 	n.top = min(s.top, n.sel)
 	n.chart, n.zoom, n.camX, n.camY = s.chart, s.zoom, s.camX, s.camY
+	n.focus, n.focusFrame = s.focus, s.focusFrame
+	n.focusBack = s.focusBack
+	n.chartPage = s.chartPage
 	return n
 }
 
@@ -205,6 +212,11 @@ func (s *profileScreen) update(g *Game) {
 	}
 	n := len(s.ids)
 	if g.in.cancel() || g.in.pressed[btnBook] {
+		if s.chartPage && !g.in.pressed[btnBook] {
+			s.chart, s.focusBack, s.chartPage = true, true, false
+			g.sfx("cancel")
+			return
+		}
 		g.sfx("cancel")
 		g.pop()
 		if s.done != nil {
