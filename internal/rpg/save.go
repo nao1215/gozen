@@ -173,8 +173,39 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 // part of ParseWithConfig after the JSON is decoded.
 func (s *State) bind() (*State, error) {
 	db := s.DB
+	// Older saves predate instance sexes. Give each existing monster a stable sex
+	// without advancing the restored gameplay random stream.
+	for id, a := range s.Actors {
+		if a != nil && a.Monster != "" && a.Sex == "" && db.Enemies[a.Monster] != nil {
+			var hash uint64 = 14695981039346656037
+			for i := range len(id) {
+				hash = (hash ^ uint64(id[i])) * 1099511628211
+			}
+			a.Sex = data.MonsterSex(db, a.Monster, float64(hash>>11)/float64(uint64(1)<<53))
+			s.changed("actors/"+id+"/sex", "", "assigned a stable sex to an older monster instance")
+		}
+	}
 	if err := s.checkSavedState(); err != nil {
 		return nil, err
+	}
+	// Rebuild instance definitions before reconciliation. A monster's template is the
+	// enemy and class in the current game; the save keeps only its identity and progress.
+	forked := false
+	for id, a := range s.Actors {
+		if a.Monster == "" {
+			continue
+		}
+		if e := db.Enemies[a.Monster]; e != nil && db.Classes[db.MonsterClass(a.Monster)] != nil {
+			if db.Actors[id] != nil {
+				continue
+			}
+			if !forked {
+				db = data.Fork(db)
+				s.DB = db
+				forked = true
+			}
+			db.Actors[id] = &data.Actor{Name: e.Name, Class: db.MonsterClass(a.Monster), Level: 1}
+		}
 	}
 	if s.Rand == nil {
 		s.Rand = rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())) //nolint:gosec // Gameplay randomness; no security-sensitive values.
@@ -208,6 +239,12 @@ func (s *State) checkSavedState() error {
 	for id, a := range s.Actors {
 		if a == nil || id == "" || a.ID != id || a.Level < 1 {
 			return bad("actors/" + id)
+		}
+		if a.Monster != "" && (s.DB.Enemies[a.Monster] == nil || a.Plus < 0) {
+			return bad("actors/" + id + "/monster")
+		}
+		if a.Monster != "" && (a.Sex != "male" && a.Sex != "female" || !data.AllowsMonsterSex(s.DB, a.Monster, a.Sex)) {
+			return bad("actors/" + id + "/sex")
 		}
 		if a.Tactics != nil {
 			if err := a.Tactics.check(); err != nil {

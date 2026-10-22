@@ -44,6 +44,8 @@ The recipes refer to a few IDs they do not define: the actor and class `walker`,
 | [Set the face icons](#set-the-face-icons) | `face_box`, `face_shade`, a doll's `icon` |
 | [Show event pictures and fill the gallery](#show-event-pictures-and-fill-the-gallery) | `image`, `gallery.cgs`, `gallery.scenes` |
 | [Keep a character book](#keep-a-character-book) | `profiles`, `ui.profiles`, `open: profiles` |
+| [Keep a monster book](#keep-a-monster-book) | `enemies.<id>.lore`, `ui.bestiary`, `bestiary.<id>.seen` |
+| [Collect, raise and breed monsters](#collect-raise-and-breed-monsters) | `recruit`, `monster_families`, `breeding`, `open: ranch` |
 | [Play music for places, battles and moods](#play-music-for-places-battles-and-moods) | `music.songs`, `music`, `battle_music`, `mood` rules |
 | [Change the language and the engine's wording](#change-the-language-and-the-engines-wording) | `language`, `text`, `terms` |
 | [Offer the game in two languages](#offer-the-game-in-two-languages) | `written_in`, `languages`, `lang/<code>.yaml` |
@@ -1071,6 +1073,80 @@ events:
 ```
 
 `open: profiles` opens the book from an event, and a test reads `profile.mira.unlocked`. Reference: [Profile](/schema/#profile), [ProfileField](/schema/#profilefield), [ProfileRelation](/schema/#profilerelation), [UIStyle](/schema/#uistyle).
+
+## Keep a monster book
+
+Add `lore` to each enemy that can appear in an encounter and set `ui.bestiary: true`. Seeing an enemy in battle reveals its name, picture and lore; defeating it reveals its record and increments `bestiary.<id>.defeated`. Expressions can read `bestiary.<id>.seen` and `bestiary.<id>.defeated`. Under `--dev`, F4 opens every page.
+
+<!-- verify: parse the game setting shown by the following enemy example -->
+```yaml
+# game.yaml
+schema_version: 4
+ui:
+  bestiary: true
+```
+
+<!-- verify: parse the compact enemy definition focuses on the fields used by the book -->
+```yaml
+# data/enemies.yaml
+enemies:
+  mote:
+    name: Mote
+    image: enemies/mote.png
+    lore: "Motes drift through the old stone tunnels and gather near quiet water."
+    stats: {mhp: 42, mmp: 0, atk: 9, def: 2, mat: 0, mdf: 1, agi: 5, luk: 1}
+```
+
+Use `open: bestiary` to open the book from an event. `gozen check` warns with GZN0115 when an enemy named by a troop has no lore, and `gozen book` prints the enemy pages. Reference: [Enemy](/schema/#enemy), [UIStyle](/schema/#uistyle).
+
+## Collect, raise and breed monsters
+
+Use schema version 6. Give each species a family, a positive rank and a class that defines its growth and level skills. Add `recruit` only to species that may ask to join after a won battle. This short data file assumes `attack` and `guard` are already defined, and that the two pictures exist under `assets/`.
+
+<!-- verify: parse a complete data fragment for a game with the pictured assets -->
+```yaml
+monster_families: {slime: Slime}
+classes:
+  slime:
+    name: Slime
+    exp_for: level * level * 10
+    stats: {mhp: "30 + level * 6", mmp: "4 + level", atk: "5 + level * 2", def: "2 + level", mat: "3 + level", mdf: "2 + level", agi: "5 + level", luk: 4}
+    skills: [{level: 1, skill: attack}, {level: 5, skill: guard}]
+enemies:
+  dewdrop:
+    name: Dewdrop
+    image: enemies/dewdrop.png
+    family: slime
+    rank: 1
+    monster_class: slime
+    sex: any
+    sex_ratio: 0.5
+    recruit: {chance: 0.2, level: 1}
+    stats: {mhp: 30, mmp: 0, atk: 6, def: 2, mat: 1, mdf: 2, agi: 5, luk: 4}
+  silverdrop:
+    name: Silverdrop
+    image: enemies/silverdrop.png
+    family: slime
+    rank: 2
+    monster_class: slime
+    stats: {mhp: 60, mmp: 5, atk: 12, def: 5, mat: 6, mdf: 5, agi: 7, luk: 4}
+breeding:
+  min_level: 5
+  skill_slots: 2
+  staging: {rare_rank: 4, legend_rank: 7}
+  pairs: [{parents: [dewdrop, dewdrop], child: silverdrop}]
+  families: [{parents: [slime, slime], children: [dewdrop, silverdrop]}]
+```
+
+At a safe location, add an action such as `- {label: Monster ranch, do: [{open: ranch}]}`. Each monster instance has a saved male or female sex (♂ or ♀); only opposite-sex parents can breed. A species can specify `sex: male` or `sex: female`, or use `any` with an optional male `sex_ratio`. The ranch shows active and reserve members, swaps them, asks before release, previews a child (`?` until seen), lets the player choose inherited skills and stages the fusion. A full party sends a new recruit to the reserve. `reserve: {in: monster_2, out: monster_1}`, `release: monster_2` and `breed: {parents: [monster_1, monster_2], skills: [attack]}` are commands usable by scripts and Session.Do; the IDs refer to saved instances, not species. Expressions read `reserve.size`, `monster.monster_1.family`, `monster.monster_1.plus`, `monster.monster_1.sex` and `bestiary.dewdrop.caught`.
+
+Run `gozen check game`, `gozen sim breed game --format json`, `gozen book game` and battle and dive simulations while tuning. GZN1112 identifies invalid rules; GZN0116 warns of non-boss species unreachable from capturable monsters. A specific pair wins over a family rule, and family offspring are chosen by the mean parent rank. See [ADR 0036](https://github.com/nao1215/gozen/blob/main/docs/decisions/0036-monster-collection.md).
+
+The monster book shows the shortest recipe first as a picture tree of up to seven monsters: the current species, its parents and its grandparents. Captured leaves show their locations; family rules name the families and example parents. Arrows move between pictures, Z places the chosen species at the top, X returns along the breadcrumb, Tab changes the top species' recipe, and Q opens the chosen known species' page. A parent with a deeper recipe has a `more` mark. An unseen species is shown as `?`; `--dev` reveals all species. `gozen book game --format json` supplies the same tree as structured data. In Go Zen, Yorn at the Breeding Altar opens the ranch. Whisper Imp comes from a male Incense Bloom and Pale Sylph, Vampire from Night Bat and Ghoul, and those two children can produce Succubus. `gozen sim breed examples/go-zen/game` reports that two-generation path.
+
+![Go Zen's two-generation family tree](/images/go-zen-lineage.jpg)
+![Breeding at the altar: Yorn in the center, the parents, a silhouette reveal and the child](/images/go-zen-breeding.gif)
+![The author's breeding illustration](/images/breeding.jpg)
 
 ## Play music for places, battles and moods
 

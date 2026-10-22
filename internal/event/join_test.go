@@ -44,3 +44,20 @@ func TestJoinCatchesUpToJoinExp(t *testing.T) {
 		t.Errorf("経験値が 下がった: %d", f.Exp)
 	}
 }
+
+func TestScriptedJoinWithFullHumanPartyAndReserveSet(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml":       testgame.Game + "max_party: 2\n",
+		"data/extra.yaml": "actors:\n  third: {name: Third, class: ranger}\n",
+	})
+	st := testgame.State(db, 1)
+	st.Join("guide")
+	cmds, errs := data.ParseScript("- join: third\n- set: {actor.guide.tactics: auto, actor.third.tactics: auto}\n")
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	runAll(t, db, st, &host{}, cmds)
+	if len(st.Party) != 2 || st.Party[1] != "third" || st.Actors["guide"] == nil || len(st.ReserveIDs()) != 1 || st.ReserveIDs()[0] != "guide" {
+		t.Fatalf("scripted join or reserve set failed: party=%v reserve=%v", st.Party, st.ReserveIDs())
+	}
+}

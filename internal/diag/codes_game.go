@@ -73,6 +73,21 @@ var (
 		Detail:  "Setting a party member's stats or level is for the development mode (--dev) and tests. The game skips it when played normally.",
 		Fix:     "Use a command the game keeps (an item, a class change, experience), or keep it in a development-only event.",
 	})
+	MissingBestiaryLore = register(115, "MissingBestiaryLore", Entry{
+		Summary: "an encountered enemy has no bestiary lore",
+		Detail:  "The monster book is enabled and a troop can include this enemy, but its lore field is empty.",
+		Fix:     "Add a short lore description to the enemy, or turn off ui.bestiary.",
+	})
+	UnobtainableMonster = register(116, "UnobtainableMonster", Entry{
+		Summary: "a monster cannot be captured or bred from capturable monsters",
+		Detail:  "The breeding graph has no path from a monster with a positive recruit chance to this species, including the male and female sexes needed at each step. A species whose only recipes loop back through species that cannot be obtained has no lineage and is reported too.",
+		Fix:     "Make it recruitable or add a breeding recipe reachable from capturable parents.",
+	})
+	NoCaptureEncounter = register(117, "NoCaptureEncounter", Entry{
+		Summary: "a recruitable monster has no encounter in a location",
+		Detail:  "A positive recruit chance only matters after winning a battle with that species. No location encounter names a troop containing it. A scripted battle may still offer it, so this is a warning.",
+		Fix:     "Add the species to a troop in a reachable location encounter, or confirm that a scripted battle is intentional.",
+	})
 )
 
 // GZN11xx: the definitions of the game. The game does not load, and check
@@ -132,6 +147,16 @@ var (
 		Summary: "a dungeon theme is named but its pictures are not in the game",
 		Detail:  "A dungeon or one of its looks says theme: <name>, but assets/dungeon/themes/<name>/ lacks wall.jpg, floor.jpg, ceiling.jpg, door.jpg or theme.yaml. The theme's pictures are not part of the game until they are copied in.",
 		Fix:     "Run gozen theme add <name> <game-dir> (gozen theme list shows the names), or put your own folder of that name there.",
+	})
+	MonsterRules = register(1112, "MonsterRules", Entry{
+		Summary: "a monster collection or breeding rule is invalid",
+		Detail:  "A recruit setting, monster family, rank, sex, sex ratio, pair or breeding requirement is invalid or ambiguous. A pair or family rule also fails when its species cannot supply one male and one female parent.",
+		Fix:     "Define known classes, families and species; use positive ranks and valid probabilities; give each unordered pair one result and ensure its parents can have opposite sexes.",
+	})
+	MonsterGrowth = register(1113, "MonsterGrowth", Entry{
+		Summary: "a monster cannot use its configured growth",
+		Detail:  "The recruit level or a learned skill exceeds the monster class maximum, or its experience requirement fails to rise with the level. Such a monster cannot progress as authored.",
+		Fix:     "Keep recruit and skill levels within the class maximum and make exp_for increase from level two through that maximum.",
 	})
 )
 

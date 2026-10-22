@@ -59,6 +59,18 @@ type ImageEffect struct{ Picture data.CG }
 // SoundEffect requests a named sound.
 type SoundEffect struct{ Name string }
 
+// BreedEffect presents the two consumed parents and their child during a birth scene.
+type BreedEffect struct {
+	ParentNames    [2]string
+	ParentFaces    [2]string
+	ChildName      string
+	ChildFace      string
+	Tier           int
+	FirstDiscovery bool
+	Summary        string
+	Result         string
+}
+
 // VisualEffect requests a named visual effect: a word of the whole screen (shake, flash,
 // fade) or a reaction of a portrait; Cue holds the rest of a map form (ADR 0028).
 type VisualEffect struct {
@@ -87,6 +99,7 @@ func (MusicEffect) isEffect()  {}
 func (MoodEffect) isEffect()   {}
 func (ImageEffect) isEffect()  {}
 func (SoundEffect) isEffect()  {}
+func (BreedEffect) isEffect()  {}
 func (VisualEffect) isEffect() {}
 func (StandEffect) isEffect()  {}
 func (VoiceEffect) isEffect()  {}
@@ -106,13 +119,20 @@ type VoiceEffect struct{ File, Who string }
 // Request is something the screen must show before the event goes on.
 type Request interface{ isRequest() }
 
+// RecruitOffer identifies the defeated monster whose invitation is on screen.
+// Sex is chosen when the offer appears and is retained if the player accepts.
+type RecruitOffer struct {
+	Species, Name, Image, Sex string
+}
+
 // Say is a line to read.
 type Say struct {
-	Name  string // "" for narration
-	Face  string // a picture under assets/ ("" for none)
-	Text  string
-	Right bool // the picture stands on the right
-	Actor string
+	Name    string // "" for narration
+	Face    string // a picture under assets/ ("" for none)
+	Text    string
+	Right   bool // the picture stands on the right
+	Actor   string
+	Recruit *RecruitOffer // present only for a defeated monster's invitation
 	// Voice is the line's voice, a file under assets/ ("" for none; ADR 0028).
 	Voice string
 	// Key is the key of the line's source (SourceKey of who and text as written, before
@@ -151,6 +171,7 @@ type Choice struct {
 	IDs     []string // identifiers in the same order as the displayed choices (empty if unspecified)
 	Prompt  string
 	Options []string
+	Recruit *RecruitOffer // present only for a defeated monster's invitation
 	// Keys are the keys of the options' sources (ChoiceKey of the prompt and the label as
 	// written), in the same order: the screen marks an option taken before (ADR 0026).
 	Keys []uint64
@@ -294,6 +315,7 @@ type Runner struct {
 	ups map[string]bool
 	// waiting for an answer
 	options []data.ChoiceOption
+	offers  map[*data.Command]RecruitOffer // metadata for commands created after a won battle
 	// pick answers a choice made by the engine (stone_choose, stone_wearer) instead of options' do
 	pick   func(n int)
 	asked  *data.Command // the choice whose answer is waited for
@@ -378,6 +400,7 @@ func (r *Runner) Asking() *data.Command {
 // Stop drops everything left.
 func (r *Runner) Stop() {
 	r.afterPending = false
+	r.offers = nil
 	r.stack, r.notes, r.options, r.battle, r.later, r.pick, r.ups, r.walks = nil, nil, nil, nil, nil, nil, nil, nil
 }
 
@@ -414,6 +437,13 @@ func (r *Runner) Answer(n int) {
 	switch {
 	case r.options != nil:
 		if n >= 0 && n < len(r.options) {
+			for i, option := range r.options {
+				if i != n {
+					for j := range option.Do {
+						delete(r.offers, &option.Do[j])
+					}
+				}
+			}
 			if r.pick != nil {
 				r.pick(n)
 			} else {
@@ -429,7 +459,15 @@ func (r *Runner) Answer(n int) {
 		r.afterPending = r.db.Events[r.db.Game.Battle.After] != nil
 		switch n {
 		case BattleWon:
+			if troop := r.db.Troops[c.Battle]; troop != nil {
+				for _, id := range troop.Members {
+					key := "bestiary." + id + ".defeated"
+					old, _ := expr.ToNumber(r.st.Vars[key])
+					r.st.Vars[key] = old + 1
+				}
+			}
 			r.push(c.OnWin)
+			r.offerCaptures(c.Battle)
 		case BattleLost:
 			if c.OnLose == nil {
 				r.Stop()
@@ -441,6 +479,63 @@ func (r *Runner) Answer(n int) {
 			r.push(c.OnRun)
 		}
 	}
+}
+
+// offerCaptures rolls once per defeated recruitable enemy. Each successful roll
+// becomes a normal choice, so policies, traces, scripts and the screen agree.
+func (r *Runner) offerCaptures(troopID string) {
+	troop := r.db.Troops[troopID]
+	if troop == nil {
+		return
+	}
+	for _, id := range slices.Backward(troop.Members) {
+		e := r.db.Enemies[id]
+		if e == nil || e.Recruit == nil || e.Boss {
+			continue
+		}
+		chance := e.Recruit.Chance
+		if e.Recruit.BonusItem != "" && r.st.ItemCount(e.Recruit.BonusItem, true) > 0 {
+			chance += e.Recruit.Bonus
+		}
+		if e.Recruit.BonusSkill != "" {
+			for _, a := range r.st.Members() {
+				if slices.Contains(a.Skills(), e.Recruit.BonusSkill) {
+					chance += e.Recruit.Bonus
+					break
+				}
+			}
+		}
+		if r.st.RecruitFloat64() >= min(1, chance) {
+			continue
+		}
+		sex := data.MonsterSex(r.db, id, r.st.RecruitFloat64())
+		sign := "♀"
+		if sex == "male" {
+			sign = "♂"
+		}
+		name := e.Name + " " + sign
+		commands := []data.Command{
+			{Say: &data.Say{Who: name, Text: e.Name + " rises and looks toward your party."}},
+			{Choice: []data.ChoiceOption{{ID: "yes", Label: "Yes", Do: []data.Command{{Capture: id}}}, {ID: "no", Label: "No"}}, Prompt: "Let " + name + " join?"},
+			{Wait: data.WaitCue{Seconds: 36.0 / 60}},
+		}
+		if r.offers == nil {
+			r.offers = make(map[*data.Command]RecruitOffer)
+		}
+		offer := RecruitOffer{Species: id, Name: e.Name, Image: e.Image.File, Sex: sex}
+		r.offers[&commands[0]] = offer
+		r.offers[&commands[1]] = offer
+		r.offers[&commands[1].Choice[0].Do[0]] = offer
+		r.push(commands)
+	}
+}
+
+func (r *Runner) recruitOffer(c *data.Command) *RecruitOffer {
+	if o, ok := r.offers[c]; ok {
+		delete(r.offers, c)
+		return &o
+	}
+	return nil
 }
 
 // chose remembers the option taken at a choice with an id (chose.<id>; ADR 0025): the
@@ -563,10 +658,12 @@ func (r *Runner) run(c *data.Command) Request {
 	case "say":
 		req := r.say(c.Say, env)
 		if line, ok := req.(Say); ok {
+			line.Recruit = r.recruitOffer(c)
 			if line.Voice != "" {
 				r.emit(VoiceEffect{File: line.Voice, Who: c.Say.Who})
 			}
 			r.aside(line, env)
+			req = line
 		}
 		return req
 	case "choice":
@@ -592,7 +689,7 @@ func (r *Runner) run(c *data.Command) Request {
 		}
 		r.asked = c
 		prompt, p := data.Fill(r.db, c.Prompt, env)
-		return Choice{Prompt: prompt, Options: labels, IDs: ids, Keys: keys, prompt: p, labels: words}
+		return Choice{Prompt: prompt, Options: labels, IDs: ids, Keys: keys, Recruit: r.recruitOffer(c), prompt: p, labels: words}
 	case "ran":
 		r.st.MarkRan(c.Ran)
 	case "done":
@@ -658,7 +755,7 @@ func (r *Runner) run(c *data.Command) Request {
 			r.logf(err)
 			floor = n
 		}
-		if r.st.Join(c.Join) {
+		if r.st.JoinStory(c.Join) {
 			r.notes = append(r.notes, r.db.Actors[c.Join].Name+lang.T("が なかまに くわわった！"))
 			if a := r.st.Actors[c.Join]; floor > float64(a.Exp) {
 				a.GainExp(int(floor) - a.Exp)
@@ -669,6 +766,106 @@ func (r *Runner) run(c *data.Command) Request {
 		if !r.st.Leave(c.Leave) {
 			r.logf(fmt.Errorf("leave: %s is the last member of the party, who stays (a party is never empty)", c.Leave))
 		}
+	case "capture":
+		if e := r.db.Enemies[c.Capture]; e != nil && e.Recruit != nil {
+			firstCompanion := !expr.Truthy(r.st.Vars["bestiary."+c.Capture+".caught"])
+			sex := ""
+			if offer := r.recruitOffer(c); offer != nil {
+				sex = offer.Sex
+			}
+			id, ok := r.st.RecruitWithSex(c.Capture, max(1, e.Recruit.Level), 0, nil, sex)
+			if ok {
+				sign := "♀"
+				if r.st.Actors[id].Sex == "male" {
+					sign = "♂"
+				}
+				r.notes = append(r.notes, fmt.Sprintf("%s %s joined as %s!", e.Name, sign, id))
+				place := "party"
+				if !slices.Contains(r.st.Party, id) {
+					place = "reserve"
+				}
+				message := e.Name + " " + sign + " joined your " + place + "!"
+				if firstCompanion {
+					message += " First companion of this species."
+				}
+				r.push([]data.Command{{Say: &data.Say{Who: e.Name + " " + sign, Face: e.Image.File, Text: message}}})
+			}
+		}
+	case "reserve":
+		if !r.st.SwapMonster(c.Reserve.In, c.Reserve.Out) {
+			r.logf(fmt.Errorf("reserve: cannot swap %s for %s", c.Reserve.In, c.Reserve.Out))
+		}
+	case "release":
+		if !r.st.ReleaseMonster(c.Release) {
+			r.logf(fmt.Errorf("release: %s is not a releasable monster", c.Release))
+		}
+	case "breed":
+		first, second := r.st.Actors[c.Breed.Parents[0]], r.st.Actors[c.Breed.Parents[1]]
+		firstDiscovery := false
+		if first != nil && second != nil {
+			resultSpecies := r.db.BreedResult(first.Monster, second.Monster, first.Level, second.Level, first.Plus, second.Plus)
+			firstDiscovery = resultSpecies != "" && !expr.Truthy(r.st.Vars["bestiary."+resultSpecies+".seen"])
+		}
+		var nameA, nameB, faceA, faceB string
+		if first != nil && second != nil {
+			nameA, nameB = first.Name(), second.Name()
+			if first.Sex == "male" {
+				nameA += " ♂"
+			} else {
+				nameA += " ♀"
+			}
+			if second.Sex == "male" {
+				nameB += " ♂"
+			} else {
+				nameB += " ♀"
+			}
+			faceA, faceB = r.db.Enemies[first.Monster].Image.File, r.db.Enemies[second.Monster].Image.File
+			if first.Sex == "female" {
+				nameA, nameB = nameB, nameA
+				faceA, faceB = faceB, faceA
+			}
+		}
+		id, err := r.st.Breed(c.Breed.Parents[0], c.Breed.Parents[1], c.Breed.Skills)
+		if err != nil {
+			r.logf(err)
+			break
+		}
+		child := r.st.Actors[id]
+		childName := child.Name() + " ♀"
+		if child.Sex == "male" {
+			childName = child.Name() + " ♂"
+		}
+		tier := 0
+		if r.db.Breeding != nil {
+			tier = r.db.Breeding.Staging.Tier(r.db.Enemies[child.Monster].Rank)
+		}
+		inherited := "none"
+		if len(c.Breed.Skills) > 0 {
+			names := make([]string, 0, len(c.Breed.Skills))
+			for _, skill := range c.Breed.Skills {
+				if def := r.db.Skills[skill]; def != nil {
+					names = append(names, def.Name)
+				} else {
+					names = append(names, skill)
+				}
+			}
+			inherited = strings.Join(names, ", ")
+		}
+		if inherited == "" {
+			inherited = "none"
+		}
+		place := "reserve"
+		if slices.Contains(r.st.Party, id) {
+			place = "party"
+		}
+		result := fmt.Sprintf("Lv 1  %s  +%d\nSkills: %s\nIn your %s", child.Sex, child.Plus, inherited, place)
+		summary := "Lv 1"
+		if inherited != "none" {
+			summary += "  ·  Inherited skills: " + inherited
+		}
+		r.emit(BreedEffect{ParentNames: [2]string{nameA, nameB}, ParentFaces: [2]string{faceA, faceB}, ChildName: childName, ChildFace: r.db.Enemies[child.Monster].Image.File, Tier: tier, FirstDiscovery: firstDiscovery, Summary: summary, Result: result})
+		duration := 288 + 36*tier
+		r.push([]data.Command{{Wait: data.WaitCue{Seconds: float64(duration) / 60}}})
 	case "heal":
 		for _, a := range r.st.Members() {
 			if c.Heal == "all" || a.ID == c.Heal {
@@ -706,6 +903,11 @@ func (r *Runner) run(c *data.Command) Request {
 		}
 	case "battle":
 		r.battle = c
+		if troop := r.db.Troops[c.Battle]; troop != nil {
+			for _, id := range troop.Members {
+				r.st.Vars["bestiary."+id+".seen"] = true
+			}
+		}
 		return Battle{Troop: c.Battle, CanLose: c.OnLose != nil, Fighters: c.Fighters, NoRetry: c.Retry != nil && !*c.Retry}
 	case "move":
 		atlas.Place(r.db, r.st, r.st.Location, c.Move, c.At)

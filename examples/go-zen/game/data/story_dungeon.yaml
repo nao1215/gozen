@@ -58,7 +58,9 @@ events:
           - say: "The Warden folds with a long, rusty sigh."
           - say: {who: kes, face: grin, text: "It was only a lock with legs. Beautiful legs, though."}
           - say: {who: ox, face: smile, text: "Fine work, everyone."}
-        on_lose: []
+        on_lose:
+          - say: "The party falls back from the valve door and rests beside a warm pipe before another attempt."
+          - heal: all
   # Beat 9. Midpoint. False victory and the stakes rise.
   valve_scene:
     do:

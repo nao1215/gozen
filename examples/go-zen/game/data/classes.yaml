@@ -1,5 +1,6 @@
 elements:
   thunder: Thunder
+  ice: Ice
 classes:
   cartographer:
     name: Cartographer

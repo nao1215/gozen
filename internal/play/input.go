@@ -38,6 +38,7 @@ const (
 	btnLoad
 	btnPanel
 	btnBook
+	btnBestiary
 	numButtons
 
 	btnNone button = -1
@@ -69,7 +70,8 @@ var keys = [numButtons][]ebiten.Key{
 	btnPanel: {ebiten.KeyF8},
 	// F6 opens and closes the character book under --dev (ADR 0031), and for players
 	// when game.yaml sets ui.profiles.
-	btnBook: {ebiten.KeyF6},
+	btnBook:     {ebiten.KeyF6},
+	btnBestiary: {ebiten.KeyF4},
 }
 
 var (
@@ -338,8 +340,10 @@ type script struct {
 	typeText func(string)
 	memoNote func(kind, text string)
 	// jump starts an event at a line and do runs a line of YAML (the panel's paths).
-	jump func(name string, line int)
-	do   func(src string)
+	jump             func(name string, line int)
+	do               func(src string)
+	recruit          func(species string, level int)
+	guaranteeRecruit func(species string)
 }
 
 type scriptCmd struct {
@@ -463,6 +467,17 @@ func parseScript(src string) (*script, error) {
 			c.x, c.y = x, c.n
 			c.n = 1
 		case "press", "shot", "until", "quit":
+		case "recruit":
+			if c.arg == "" || len(f) != 3 {
+				return nil, fmt.Errorf("script line %d: recruit SPECIES LEVEL", line)
+			}
+			if c.n < 1 {
+				return nil, fmt.Errorf("script line %d: recruit level must be positive", line)
+			}
+		case "guarantee-recruit":
+			if c.arg == "" || len(f) != 2 {
+				return nil, fmt.Errorf("script line %d: guarantee-recruit SPECIES", line)
+			}
 		case "walk", "face":
 			if c.arg == "" {
 				return nil, fmt.Errorf("script line %d: %s TARGET", line, c.verb)
@@ -503,7 +518,8 @@ var scriptButtons = map[string]button{
 	"tab": btnNext, "up": btnUp, "down": btnDown, "left": btnLeft, "right": btnRight,
 	"log": btnLog, "auto": btnAuto, "hide": btnHide, "config": btnConfig, "memo": btnMemo,
 	"reload": btnReload, "tag": btnTag, "graphs": btnGraphs, "skip": btnSkip, "scene_skip": btnSceneSkip,
-	"back": btnBack, "save": btnSave, "load": btnLoad, "panel": btnPanel, "characters": btnBook,
+	"bestiary": btnBestiary,
+	"back":     btnBack, "save": btnSave, "load": btnLoad, "panel": btnPanel, "characters": btnBook,
 }
 
 func (s *script) midEvent(in *input, name string) {
@@ -812,6 +828,20 @@ func (s *script) step(in *input) {
 		case "do":
 			if s.do != nil {
 				s.do(c.arg)
+			}
+			s.pc++
+			s.wait = 2
+			return
+		case "recruit":
+			if s.recruit != nil {
+				s.recruit(c.arg, c.n)
+			}
+			s.pc++
+			s.wait = 2
+			return
+		case "guarantee-recruit":
+			if s.guaranteeRecruit != nil {
+				s.guaranteeRecruit(c.arg)
 			}
 			s.pc++
 			s.wait = 2

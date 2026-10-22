@@ -19,7 +19,15 @@ const StateForever = 999
 
 // Actor is a character who has joined (or may join) the party, with their progress.
 type Actor struct {
-	ID     string            `json:"id"`
+	ID string `json:"id"`
+	// Monster is the enemy species of a recruited or bred instance. Empty for authored actors.
+	Monster string `json:"monster,omitempty"`
+	// Sex is male or female for a monster instance; authored actors have no sex.
+	Sex string `json:"sex,omitempty"`
+	// Nickname is the instance's chosen name; empty uses the species name.
+	Nickname string `json:"nickname,omitempty"`
+	// Plus is the inherited breeding strength.
+	Plus   int               `json:"plus,omitempty"`
 	Level  int               `json:"level"`
 	Exp    int               `json:"exp"`
 	HP     int               `json:"hp"`
@@ -111,7 +119,12 @@ func (a *Actor) Def() *data.Actor { return a.db.Actors[a.ID] }
 func (a *Actor) Class() *data.Class { return a.db.Classes[a.Def().Class] }
 
 // Name is the actor's name.
-func (a *Actor) Name() string { return a.Def().Name }
+func (a *Actor) Name() string {
+	if a.Nickname != "" {
+		return a.Nickname
+	}
+	return a.Def().Name
+}
 
 // levelEnv is the scope of a class's formulas.
 func levelEnv(level int) expr.Env { return expr.Map{"level": float64(level)} }
@@ -133,6 +146,9 @@ func baseAt(c *data.Class, stat string, level int) int {
 // Stat is the stat with the equipment's bonuses.
 func (a *Actor) Stat(stat string) int {
 	v := a.base(stat)
+	if a.Monster != "" {
+		v += a.Plus * max(1, a.Level/10)
+	}
 	for _, it := range a.Equip {
 		if item := a.db.Items[it]; item != nil {
 			v += item.Stats[stat]
@@ -483,6 +499,17 @@ func (v ActorView) Field(name string) (any, bool) {
 		return !a.Alive(), true
 	case "class":
 		return a.Def().Class, true
+	case "family":
+		if e := a.db.Enemies[a.Monster]; e != nil {
+			return e.Family, true
+		}
+		return "", true
+	case "monster":
+		return a.Monster, true
+	case "sex":
+		return a.Sex, true
+	case "plus":
+		return float64(a.Plus), true
 	case "equip":
 		m := expr.Map{}
 		for s, it := range a.Equip {

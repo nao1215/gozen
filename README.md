@@ -29,8 +29,8 @@ Documentation: https://nao1215.github.io/gozen/
 | RPG: [Go Zen](https://nao1215.github.io/gozen/play/go-zen/) (play in browser) | Novel: [After the Pass](https://nao1215.github.io/gozen/play/novel/) (play in browser) |
 |:--|:--|
 | ![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](docs/images/go-zen.gif) | ![After the Pass, the novel sample: a line, a choice, Back over the choice, and Skip to the first line not read](docs/images/novel.gif) |
-| Campaign: [Five Banners](https://nao1215.github.io/gozen/play/campaign/) (play in browser) | |
-| ![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](docs/images/campaign.gif) | |
+| Campaign: [Five Banners](https://nao1215.github.io/gozen/play/campaign/) (play in browser) | Monster collection: [Go Zen](https://nao1215.github.io/gozen/play/go-zen/) (play in browser) |
+| ![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](docs/images/campaign.gif) | ![Breeding monsters in Go Zen: Yorn, the two parents, a silhouette reveal and the newborn Succubus](docs/images/go-zen-breeding.gif) |
 
 ## Try it
 
@@ -107,6 +107,28 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 | A region's `area` and a point's `at` lay the regions on one picture of the land. | `clash.armies` gives each army kind its soldiers; each unit is a crowd that shrinks as it loses troops. |
 
 `gozen sim campaign game` plays 200 campaigns and prints the win rate, the turns, the regions each side held turn by turn, and the orders given.
+
+### Monster collection
+
+Monsters ask to join after a battle, wait at the ranch, and two raised monsters, one male and one female, are bred into a new one at Yorn's altar, in the manner of Dragon Quest Monsters (schema version 6). The monster book (`ui.bestiary: true`) opens a page as the party meets each monster and shows how to breed it, two generations up.
+
+| A monster asks to join | Breeding at Yorn's altar |
+|:--|:--|
+| ![a Drip Slime rises after the battle and asks to join, with Yes and No](docs/images/go-zen-recruit.jpg) | ![Yorn talks in the center, the father on the left and the mother on the right turn into light, then the Succubus is born](docs/images/go-zen-breeding.gif) |
+| The monster book | The family tree, two generations up |
+| ![the Succubus page of the monster book with its picture, lore and record](docs/images/go-zen-bestiary.jpg) | ![Ghoul and Night Bat make the Vampire, Incense Bloom and Pale Sylph make the Whisper Imp, and the two make the Succubus](docs/images/go-zen-lineage.jpg) |
+
+<!-- verify: parse the short enemy example lists the fields used by the monster book -->
+```yaml
+enemies:
+  succubus:
+    name: Succubus
+    image: enemies/succubus.png
+    lore: "A night-dwelling spirit of the old ruins, known for swift magic."
+    stats: {mhp: 420, mmp: 20, atk: 56, def: 24, mat: 45, mdf: 23, agi: 24, luk: 5}
+```
+
+`gozen check game` finds breeding rules that can never work, and `gozen sim breed game` lists every monster reachable from the ones that can be caught, with the shortest recipe. See [Collect, raise and breed monsters](https://nao1215.github.io/gozen/cookbook/#collect-raise-and-breed-monsters).
 
 ## Playtesting
 

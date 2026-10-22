@@ -6,6 +6,12 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
+- Monster instances now have saved male/female sexes, species sex restrictions and optional male ratios. Breeding requires opposite-sex parents; ranch and party screens show signs, while `gozen check` and `gozen sim breed` account for sex-impossible rules and reachability.
+- The monster book now offers a navigable, foldable family tree, and `gozen book` exports the same buildable routes as text or JSON. Go Zen adds Yorn's Breeding Altar and a two-generation route to Succubus through Whisper Imp and Vampire.
+
+- Monster collecting (ADR 0036, schema version 6): post-victory recruitment with staged Yes/No, saved monster instances and a reserve, a ranch screen for swaps, release and breeding, inherited skills and plus growth, `bestiary.<id>.caught`, `gozen sim breed` (text and JSON), GZN0116 and GZN1112, and recruitment and recipes in `gozen book`. Go Zen now has 40 non-boss monster species assigned to nine families, 20 capturable species, seven specific recipes and nine family rules, with deeper species gated to later generated floors.
+- Monster book: `enemies.<id>.lore`, `ui.bestiary`, staged discovery in saved state (`bestiary.<id>.seen` and `.defeated`), F4 in `--dev`, GZN0115 for troop enemies without lore, and pages in `gozen book` (ADR 0035).
+- Go Zen adds 35 author-owned enemy pictures and definitions to B3 encounters, including rare mimic encounters; the sample enables the monster book.
 - `gozen sim routes` explores event choices without a screen and reports reached clear/game-over outcomes, never-offered choice options, flags reported by GZN0112, and bounded exploration status; `--fail-unreachable` opts into a failing exit status.
 - Four more dungeon themes in the `gozen` binary: `temple` (white stone with teal tiles), `sewer` (wet stone, grates and pipes), `forest` (walls of roots) and `tomb` (sandstone with carved signs). `gozen theme list` shows nine.
 - Four dungeon themes from the author's own game: `keep` (gray stone with pillars), `dream` (purple walls of eyes), `mine` (timbered shafts) and `vine` (bricks hung with ivy). `gozen theme list` shows thirteen.

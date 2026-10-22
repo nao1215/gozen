@@ -35,6 +35,7 @@ Start every `game.yaml` with `schema_version: 2`. From version 1 on, a number yo
 | `events` | named command lists, called or triggered | `trigger: enter` |
 | `shops`, `music` | goods; songs and moods | |
 | `profiles` | the character book: a page per character | `mira: {title: Courier, text: ...}` |
+| `enemies` with `ui.bestiary` | the monster book: a page per enemy | `mote: {lore: "Lives near the river stones."}` |
 
 Two skills are required in every game: `attack` and `guard`, the battle commands. `game.yaml`'s `battle:` can point them elsewhere.
 
@@ -248,6 +249,12 @@ Every file name is relative to `assets/`. A character's `faces` is a directory o
 The engine's own words (menus, battle messages, settings, saves) come in English and Japanese. `language:` in `game.yaml` picks one: `en` (the default) or `ja`. `text:` lays the game's own wording over that language; a key is the engine's Japanese source text, a format with its `%d` and `%s` too, and the value may reorder them (`%[2]d`). [The English catalog](https://github.com/nao1215/gozen/blob/main/internal/text/catalog/english.go) lists every key. `terms:` names the currency and stats. `gozen check` warns when `language` is unset but the game is written in Japanese, and when the regular font lacks letters of the chosen words.
 
 `profiles` keeps who each character is in the game itself: a page with the standing picture and its faces, your own fields (role, likes, anything), an introduction and how the character sees the others. Under `--dev` the title and the menu open it as Characters, so you can check a line against the character while you write; `ui.profiles: true` shows it to players, each page opening when its `when` holds ([the recipe](/cookbook/#keep-a-character-book)).
+
+`enemies.<id>.lore` adds a short habitat description to an enemy. Set `ui.bestiary: true` to add Monsters to the title and field menu. A battle encounter reveals its name, picture and lore; a victory reveals its stats, resistances, skills and drops, with a defeat count. Under `--dev`, F4 opens every page ([the recipe](/cookbook/#keep-a-monster-book)).
+
+For collection, use schema version 6 and give each non-boss species a `family`, `rank` and `monster_class`. `recruit` lets it ask to join after a won battle; the Yes/No request also works in Session scripts and traces. Extra members go to the reserve. An inn or another safe place can run `open: ranch` to swap, release and breed monster instances. `enemies.<id>.sex` permits `any` (default), `male` or `female`, and optional `sex_ratio` gives the male probability for `any`. Each captured or born monster has a saved sex; breeding requires a male and a female. `breeding` defines specific species pairs and ranked family rules. `gozen check` validates the graph, `gozen sim breed game --format json` reports reachable and unreachable species, and `gozen book` prints the rules ([the collection recipe](/cookbook/#collect-raise-and-breed-monsters)).
+
+The monster book also presents a buildable family tree: caught leaves give their encounter locations, specific recipes show both species, and family rules show both families and one concrete pair. The shortest recipe opens first. The screen shows up to seven monster pictures: the current species, two parents and four grandparents. Arrows select a picture, Z makes it the top of a two-generation view, X returns along a breadcrumb history, Tab switches the top species' recipe, and Q opens the selected known species' page. Parent cards with deeper recipes have a `more` mark; captures show their location and family recipes name the families and example parents. Unseen pictures appear as `?`; development play reveals every node. `gozen book --format json` exports the same structure.
 
 ## Languages
 

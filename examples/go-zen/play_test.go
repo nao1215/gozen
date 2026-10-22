@@ -11,11 +11,14 @@ import (
 	"image/png"
 	"io/fs"
 	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
 
 	"github.com/nao1215/gozen"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 // missingArt matches the check's report of a picture that is not drawn yet.
@@ -93,6 +96,95 @@ func TestTheGameLoads(t *testing.T) {
 	_, missing := standIns(t)
 	if len(missing) > 0 {
 		t.Skipf("%d pictures are not drawn yet: %s", len(missing), strings.Join(missing, ", "))
+	}
+}
+
+func TestHighRankDragonAppearsOnlyOnDeepFloor(t *testing.T) {
+	fsys, _ := standIns(t)
+	db, err := data.Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, pick := range db.Locations["b3"].Encounters.Troops {
+		if pick.Troop == "crystal_dragon_group" {
+			if got := pick.When.String(); got != "var.floor >= 5" {
+				t.Fatalf("dragon floor gate = %q", got)
+			}
+			return
+		}
+	}
+	t.Fatal("dragon encounter missing")
+}
+
+func TestBreedSimulationCaptureRootsAppearOnPlayableFloors(t *testing.T) {
+	fsys, _ := standIns(t)
+	db, err := data.Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	floorGate := regexp.MustCompile(`^var\.floor >= (\d+)$`)
+	for species, path := range db.BreedReach() {
+		if path.Steps != 0 {
+			continue
+		}
+		found := false
+		for _, location := range []string{"b1", "b2", "b3"} {
+			for _, pick := range db.Locations[location].Encounters.Troops {
+				if troop := db.Troops[pick.Troop]; troop == nil || !slices.Contains(troop.Members, species) {
+					continue
+				}
+				if location != "b3" || !pick.When.Set() {
+					found = true
+					continue
+				}
+				parts := floorGate.FindStringSubmatch(pick.When.String())
+				if len(parts) != 2 {
+					t.Fatalf("%s has an unreviewed floor gate %q", species, pick.When.String())
+				}
+				floor, err := strconv.Atoi(parts[1])
+				if err != nil {
+					t.Fatal(err)
+				}
+				if floor <= 5 { // The B3 tunnel permits floors one through five.
+					found = true
+				}
+			}
+		}
+		if !found {
+			t.Errorf("sim breed calls %s capturable, but it has no encounter on a playable floor", species)
+		}
+	}
+}
+
+func TestBreedingStagingUsesGoZenRanks(t *testing.T) {
+	fsys, _ := standIns(t)
+	db, err := data.Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		species string
+		tier    int
+	}{
+		{"steam_slime", 0}, {"succubus", 1}, {"crystal_dragon", 2},
+	} {
+		if got := db.Breeding.Staging.Tier(db.Enemies[tc.species].Rank); got != tc.tier {
+			t.Errorf("%s birth tier = %d, want %d", tc.species, got, tc.tier)
+		}
+	}
+}
+
+func TestNamedBatSpeciesShareFamilyAndGrowth(t *testing.T) {
+	fsys, _ := standIns(t)
+	db, err := data.Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"frost_bat", "gold_bat", "night_bat"} {
+		e := db.Enemies[id]
+		if e.Family != "bird" || db.MonsterClass(id) != "monster_bird" {
+			t.Errorf("%s is a bat but has family %q and growth class %q", id, e.Family, db.MonsterClass(id))
+		}
 	}
 }
 

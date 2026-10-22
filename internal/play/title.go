@@ -50,6 +50,13 @@ func (g *Game) titleMenu() *list {
 	if g.profilesInMenus() {
 		items = slices.Insert(items, 3, listItem{label: lang.T("キャラクター"), id: "profiles"})
 	}
+	if g.bestiaryInMenus() {
+		at := 3
+		if g.profilesInMenus() {
+			at = 4
+		}
+		items = slices.Insert(items, at, listItem{label: "Monsters", id: "bestiary"})
+	}
 	if canQuit {
 		items = append(items, listItem{label: lang.T("おわる")})
 	}
@@ -80,7 +87,15 @@ func (t *title) update(g *Game) {
 		g.push(newProfiles(g, nil))
 		return
 	}
-	if g.profilesInMenus() && sel > 3 {
+	if t.menu.items[sel].id == "bestiary" {
+		g.sfx("decide")
+		g.push(newBestiary(g, nil))
+		return
+	}
+	if g.profilesInMenus() && sel >= 3 {
+		sel--
+	}
+	if g.bestiaryInMenus() && sel >= 3 {
 		sel--
 	}
 	switch sel {

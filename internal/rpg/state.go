@@ -41,6 +41,10 @@ type State struct {
 	Roamers []Roamer `json:"roamers,omitempty"`
 	// Chose is the option last taken at each choice with an id (chose.<id>; ADR 0025).
 	Chose map[string]string `json:"chose,omitempty"`
+	// RecruitSeed and RecruitDraws keep capture and birth draws separate from
+	// battle, encounter and story randomness. Both are saved for replay.
+	RecruitSeed  uint64 `json:"recruit_seed,omitempty"`
+	RecruitDraws uint64 `json:"recruit_draws,omitempty"`
 
 	DB   *data.DB   `json:"-"`
 	Rand *rand.Rand `json:"-"`
@@ -79,6 +83,7 @@ func New(db *data.DB, rng *rand.Rand) *State {
 	s := &State{
 		Actors: map[string]*Actor{}, Items: map[string]int{}, Flags: map[string]bool{},
 		Vars: map[string]any{}, Done: map[string]bool{}, Mapped: map[string][]byte{}, DB: db, Rand: rng,
+		RecruitSeed: collectionSeed(db.Game.ID),
 	}
 	s.initStateNames()
 	st := db.Game.Start
@@ -91,16 +96,207 @@ func New(db *data.DB, rng *rand.Rand) *State {
 	return s
 }
 
-// Join adds the actor to the party (creating them the first time), if there is room.
+func collectionSeed(id string) uint64 {
+	var hash uint64 = 14695981039346656037
+	for i := range len(id) {
+		hash = (hash ^ uint64(id[i])) * 1099511628211
+	}
+	return hash&((1<<53)-1) | 1
+}
+
+// SetRecruitSeed chooses a collection stream without advancing gameplay RNG.
+// It is used at session creation, before any capture or birth draw.
+func (s *State) SetRecruitSeed(seed uint64) {
+	s.RecruitSeed = seed&((1<<53)-1) | 1
+	s.RecruitDraws = 0
+}
+
+// RecruitFloat64 draws from the saved monster collection stream. It never
+// advances the stream used by encounters, battle or authored expressions.
+func (s *State) RecruitFloat64() float64 {
+	// Older saves have no collection seed. A stable game-specific default keeps
+	// their unrelated random stream unchanged when the first offer appears.
+	if s.RecruitSeed == 0 {
+		s.RecruitSeed = collectionSeed(s.DB.Game.ID)
+	}
+	rng := rand.New(rand.NewPCG(s.RecruitSeed, s.RecruitDraws)) //nolint:gosec // Deterministic gameplay randomness.
+	s.RecruitDraws++
+	return rng.Float64()
+}
+
+// Join adds an actor to the party, moving an active monster to the reserve if full.
 func (s *State) Join(id string) bool {
-	if slices.Contains(s.Party, id) || len(s.Party) >= s.DB.Game.MaxParty {
+	if slices.Contains(s.Party, id) {
 		return false
+	}
+	if len(s.Party) >= s.DB.Game.MaxParty {
+		at := -1
+		for i, member := range s.Party {
+			if a := s.Actors[member]; a != nil && a.Monster != "" {
+				at = i
+			}
+		}
+		if at < 0 {
+			return false
+		}
+		s.Party = slices.Delete(s.Party, at, at+1)
 	}
 	if s.Actors[id] == nil {
 		s.Actors[id] = NewActor(s.DB, id)
 	}
 	s.Party = append(s.Party, id)
 	return true
+}
+
+// JoinStory ensures an authored event can add its required member. If a full
+// party has no active monster, the last active actor moves to the reserve.
+func (s *State) JoinStory(id string) bool {
+	if s.Join(id) {
+		return true
+	}
+	if slices.Contains(s.Party, id) || len(s.Party) < s.DB.Game.MaxParty || len(s.Party) == 0 {
+		return false
+	}
+	s.Party = s.Party[:len(s.Party)-1]
+	return s.Join(id)
+}
+
+// Recruit creates a distinct monster actor and places it in the active party if there
+// is room. Otherwise it remains in the reserve. The returned ID is save-stable.
+func (s *State) Recruit(species string, level, plus int, skills []string) (string, bool) {
+	return s.RecruitWithSex(species, level, plus, skills, "")
+}
+
+// RecruitWithSex creates a monster with the sex the event runner drew for its
+// visible offer. An empty sex draws one here, as Recruit does.
+func (s *State) RecruitWithSex(species string, level, plus int, skills []string, sex string) (string, bool) {
+	e := s.DB.Enemies[species]
+	if e == nil || s.DB.Classes[s.DB.MonsterClass(species)] == nil || sex != "" && !data.AllowsMonsterSex(s.DB, species, sex) {
+		return "", false
+	}
+	seq, ok := s.Vars["monster.next"].(float64)
+	if !ok {
+		seq = 0
+	}
+	id := fmt.Sprintf("monster_%d", int(seq)+1)
+	for s.Actors[id] != nil || s.DB.Actors[id] != nil {
+		seq++
+		id = fmt.Sprintf("monster_%d", int(seq)+1)
+	}
+	s.Vars["monster.next"] = float64(int(seq) + 1)
+	s.DB.Actors[id] = &data.Actor{Name: e.Name, Class: s.DB.MonsterClass(species), Level: max(1, level)}
+	a := NewActor(s.DB, id)
+	a.Monster, a.Plus = species, plus
+	if sex == "" {
+		sex = data.MonsterSex(s.DB, species, s.RecruitFloat64())
+	}
+	a.Sex = sex
+	a.HP, a.MP = a.Stat("mhp"), a.Stat("mmp")
+	for _, skill := range skills {
+		if s.DB.Skills[skill] != nil && !slices.Contains(a.Learnt, skill) {
+			a.Learnt = append(a.Learnt, skill)
+		}
+	}
+	s.Actors[id] = a
+	if len(s.Party) < s.DB.Game.MaxParty {
+		s.Party = append(s.Party, id)
+	}
+	key := "bestiary." + species + ".caught"
+	n, _ := expr.ToNumber(s.Vars[key])
+	s.Vars[key] = n + 1
+	s.Vars["bestiary."+species+".seen"] = true
+	return id, true
+}
+
+// ReserveIDs lists all joined actors currently outside the active party.
+func (s *State) ReserveIDs() []string {
+	var ids []string
+	for id := range s.Actors {
+		if !slices.Contains(s.Party, id) {
+			ids = append(ids, id)
+		}
+	}
+	slices.Sort(ids)
+	return ids
+}
+
+// SwapMonster places a reserve actor in an active slot, preserving the party limit.
+func (s *State) SwapMonster(in, out string) bool {
+	a := s.Actors[in]
+	if a == nil || slices.Contains(s.Party, in) {
+		return false
+	}
+	for i, id := range s.Party {
+		if id == out {
+			s.Party[i] = in
+			return true
+		}
+	}
+	return false
+}
+
+// ReleaseMonster permanently removes a monster instance from the party or reserve.
+func (s *State) ReleaseMonster(id string) bool {
+	a := s.Actors[id]
+	if a == nil || a.Monster == "" || len(s.Party) == 1 && s.Party[0] == id {
+		return false
+	}
+	s.Party = slices.DeleteFunc(s.Party, func(p string) bool { return p == id })
+	delete(s.Actors, id)
+	delete(s.DB.Actors, id)
+	return true
+}
+
+// Breed consumes two owned monsters and creates their child. It checks the full
+// recipe and skill selection before changing state.
+func (s *State) Breed(first, second string, skills []string) (string, error) {
+	a, b := s.Actors[first], s.Actors[second]
+	if first == second || a == nil || b == nil || a.Monster == "" || b.Monster == "" {
+		return "", errors.New("breed needs two distinct owned monsters")
+	}
+	if s.DB.Breeding == nil {
+		return "", errors.New("breeding is not defined")
+	}
+	if a.Sex == b.Sex || a.Sex != "male" && a.Sex != "female" || b.Sex != "male" && b.Sex != "female" {
+		return "", errors.New("breed needs one male and one female parent")
+	}
+	child := s.DB.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus)
+	if child == "" {
+		return "", fmt.Errorf("no eligible breeding result for %s and %s", a.Monster, b.Monster)
+	}
+	if len(skills) > s.DB.Breeding.SkillSlots {
+		return "", fmt.Errorf("breed allows at most %d inherited skills", s.DB.Breeding.SkillSlots)
+	}
+	known := append(a.Skills(), b.Skills()...)
+	selected := map[string]bool{}
+	for _, skill := range skills {
+		if !slices.Contains(known, skill) || selected[skill] {
+			return "", fmt.Errorf("skill %q is not a distinct parental skill", skill)
+		}
+		selected[skill] = true
+	}
+	plus := a.Plus + b.Plus + max(1, (a.Level+b.Level)/20)
+	firstSlot := slices.Index(s.Party, first)
+	secondSlot := slices.Index(s.Party, second)
+	preferredSlot := firstSlot
+	if preferredSlot < 0 || secondSlot >= 0 && secondSlot < preferredSlot {
+		preferredSlot = secondSlot
+	}
+	id, ok := s.Recruit(child, 1, plus, skills)
+	if !ok {
+		return "", fmt.Errorf("child %q has no monster class", child)
+	}
+	for _, parent := range []string{first, second} {
+		s.Party = slices.DeleteFunc(s.Party, func(p string) bool { return p == parent })
+		delete(s.Actors, parent)
+		delete(s.DB.Actors, parent)
+	}
+	if preferredSlot >= 0 {
+		s.Party = slices.DeleteFunc(s.Party, func(p string) bool { return p == id })
+		preferredSlot = min(preferredSlot, len(s.Party))
+		s.Party = slices.Insert(s.Party, preferredSlot, id)
+	}
+	return id, nil
 }
 
 // Leave takes the actor out of the party; they keep their progress. The last member never
@@ -297,6 +493,14 @@ func (e fieldEnv) Lookup(name string) (any, bool) {
 		return float64(s.Gold), true
 	case "party":
 		return s.partyGroup(), true
+	case "reserve":
+		var ms []expr.Object
+		for _, id := range s.ReserveIDs() {
+			ms = append(ms, ActorView{s.Actors[id]})
+		}
+		return NewGroup(ms), true
+	case "monster":
+		return monsterView{s}, true
 	case "members":
 		return float64(len(s.Party)), true
 	case "item":
@@ -321,8 +525,50 @@ func (e fieldEnv) Lookup(name string) (any, bool) {
 		return s.repairsView(), true
 	case "ran":
 		return ranView{s}, true
+	case "bestiary":
+		return bestiaryView{s}, true
 	case "chose":
 		return choseView{s}, true
+	}
+	return nil, false
+}
+
+type bestiaryView struct{ s *State }
+
+type monsterView struct{ s *State }
+
+func (v monsterView) Field(id string) (any, bool) {
+	if a := v.s.Actors[id]; a != nil && a.Monster != "" {
+		return ActorView{a}, true
+	}
+	if a := v.s.Actors["monster_"+id]; a != nil && a.Monster != "" {
+		return ActorView{a}, true
+	}
+	return nil, false
+}
+
+func (v bestiaryView) Field(id string) (any, bool) {
+	if v.s.DB.Enemies[id] == nil {
+		return nil, false
+	}
+	return bestiaryEnemyView{s: v.s, id: id}, true
+}
+
+type bestiaryEnemyView struct {
+	s  *State
+	id string
+}
+
+func (v bestiaryEnemyView) Field(name string) (any, bool) {
+	switch name {
+	case "seen":
+		return expr.Truthy(v.s.Vars["bestiary."+v.id+".seen"]), true
+	case "defeated":
+		n, _ := expr.ToNumber(v.s.Vars["bestiary."+v.id+".defeated"])
+		return n, true
+	case "caught":
+		n, _ := expr.ToNumber(v.s.Vars["bestiary."+v.id+".caught"])
+		return n, true
 	}
 	return nil, false
 }

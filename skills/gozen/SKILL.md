@@ -30,7 +30,7 @@ In GitHub Actions, `nao1215/setup-gozen` installs the version in the game's `go.
 
 ## What every game needs
 
-- `game.yaml` with `schema_version: 3` (4 for a novel, 5 for a campaign), an `id`, and `start` with a `location` and a `party`.
+- `game.yaml` with `schema_version: 3` (4 for a novel, 5 for a campaign, 6 for monster collection), an `id`, and `start` with a `location` and a `party`.
 - A class for each party member, with all eight stats (`mhp mmp atk def mat mdf agi luk`) and `exp_for`.
 - The two skills `attack` and `guard`, even in a game without battles.
 - Pictures under `assets/` for every `image` and `background` you name. Enemies need an `image`.
@@ -67,6 +67,7 @@ A novel game (ADV) sets `schema_version: 4` and `ui.message: novel` in game.yaml
 - For a second language, set `written_in` and `languages` and translate every text in `lang/<code>.yaml`. `gozen check --format json` lists each text not translated yet (GZN0111); fill them until the check is quiet.
 - Test every branch in Go with `gozen.Explore` and read `chose.<id>` and the flags at the end of each path.
 - Keep who each character is in `profiles` (data/): a title, fields with your own labels, an introduction and how they see the others. Check new lines against it; `--dev` opens it as Characters (F6), and `profile.<id>.unlocked` reads whether its `when` holds.
+- Add `enemies.<id>.lore` for creatures that appear in encounters and set `ui.bestiary: true` to offer the monster book. Encounters reveal name, picture and lore; victories reveal stats, resistances, skills and drops. `bestiary.<id>.seen` and `.defeated` are query expressions; F4 opens every page under `--dev`.
 
 The recipes are under "Let the player roll back", "Stage portraits and effects" and "Offer the game in two languages" in the cookbook. A complete short one is [examples/novel](https://github.com/nao1215/gozen/tree/main/examples/novel).
 
@@ -82,6 +83,14 @@ A campaign (SLG, a war of regions) sets `schema_version: 5`, `regions` and `fact
 - Measure with `gozen sim campaign game` (and `--tactic`) before tuning numbers. Use `--compare strategies` or `--compare tactics` to run every variant on the same seeds; `--format json` includes win rate, mean ending turn, mean player regions held and region ownership details. Test with `gozen.Session`: `Do("- order: {id: attack, general: corin, target: ford}")` and `Query("region.ford.owner")`.
 
 The recipe is "Make a campaign" in the cookbook. A complete one is [examples/campaign](https://github.com/nao1215/gozen/tree/main/examples/campaign).
+
+## Monster collection
+
+Use schema version 6. Define `monster_families`, then give each non-boss enemy a `family`, `rank` and `monster_class`; use `recruit: {chance, level}` for species that may ask to join after a won battle. The class supplies growth, experience and skills learned by level. Put `breeding: {min_level, skill_slots, pairs, families}` in data. Set `enemies.<id>.sex` to `any` (default), `male` or `female`; optional `sex_ratio` is the male probability for `any`. Captured and born instances keep their randomly assigned sex. Breeding requires one male and one female, so check that every pair and family rule can produce both roles. Specific species pairs win over family rules. The child starts at level one, inherits selected skills and a plus value; the parents leave. Add `open: ranch` to a safe town action for reserve swaps, release and breeding. Check with `gozen check game` and `gozen sim breed game --format json`; review every unreachable species and tune the party with `gozen sim battle` and `gozen sim dive`. `gozen book game` prints recruit and breeding details. Expressions read `reserve.size`, `monster.<instance>.family`, `.plus`, `.sex` and `bestiary.<species>.caught`; mutations use `reserve`, `release` and `breed` commands. The [collection recipe](https://nao1215.github.io/gozen/cookbook/#collect-raise-and-breed-monsters) has a compact YAML example.
+
+For a player facing family tree, set `ui.bestiary: true` and give capturable leaves encounter troops in locations. The screen defaults to the shortest buildable recipe and shows up to seven pictures (species, parents and grandparents). Arrows choose a picture; Z makes it the top of a new two-generation view, X returns along the breadcrumb history, Tab switches the top species' recipe, and Q opens a chosen known species page. Capture cards show locations, family cards show families and an example pair, deeper parents have a `more` mark, and unseen species show `?` unless `--dev` is on. `gozen book game --format json` exports the nested tree for author tools. Place `open: ranch` at a safe location with a background if the breeding scene should use that location's picture.
+
+The birth screen keeps the ranch keeper centered until they fade in place. Normal, Rare and Legendary births use progressively longer pauses before the child appears; white, gold, and gold plus blue-grey rings convey the tier without rarity text. The result shows `<Name> <sex> was born!` and one line in the message window; X opens the details.
 
 ## Browser builds
 

@@ -47,7 +47,15 @@ type Command struct {
 	Gold  Expr        `yaml:"gold" command:"verb"`
 	Join  string      `yaml:"join" command:"verb"`
 	Leave string      `yaml:"leave" command:"verb"`
-	Heal  string      `yaml:"heal" command:"verb"`
+	// Reserve swaps a reserve monster into one active slot.
+	Reserve *ReserveSwap `yaml:"reserve" command:"verb"`
+	// Release permanently removes one monster instance.
+	Release string `yaml:"release" command:"verb"`
+	// Breed consumes two monsters and creates a level-one child.
+	Breed *BreedCmd `yaml:"breed" command:"verb"`
+	// Capture is made only by the battle result after the player accepts a join request.
+	Capture string `yaml:"-" command:"internal"`
+	Heal    string `yaml:"heal" command:"verb"`
 	// Done marks st.Done[Done] (not written in YAML: the engine's own, a once dungeon tile
 	// spent only when its question is answered yes).
 	Done string `yaml:"-" command:"internal"`
@@ -152,6 +160,18 @@ type Command struct {
 	customArg any
 	// given is a field explicitly written in YAML. false, 0, an empty string, and null are distinguished from omitted.
 	given []string
+}
+
+// ReserveSwap exchanges an active monster with one in the reserve.
+type ReserveSwap struct {
+	In  string `yaml:"in"`
+	Out string `yaml:"out"`
+}
+
+// BreedCmd names two owned instances and the skills to pass to the child.
+type BreedCmd struct {
+	Parents []string `yaml:"parents"`
+	Skills  []string `yaml:"skills"`
 }
 
 // EquipStones puts the stones of a stone set on an actor (both are expressions giving ids).

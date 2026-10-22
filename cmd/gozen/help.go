@@ -70,6 +70,7 @@ var groups = map[string]clihelp.Page{
 			{"design", "Play the game with personas and write a design report"},
 			{"campaign", "Play a campaign many times with a strategy and print what it came to"},
 			{"routes", "Explore event choices and report reachable endings and options"},
+			{"breed", "Show monsters reachable from captures and their shortest recipes"},
 		},
 		Examples: []clihelp.Example{
 			{"fight 100 battles", "gozen sim battle game lesson -n 100"},
@@ -169,6 +170,14 @@ var groups = map[string]clihelp.Page{
 }
 
 var pages = map[string]clihelp.Page{
+	"sim breed": {
+		Summary:  "explore the monster breeding graph",
+		Usage:    []string{"gozen sim breed [OPTIONS] <game-dir>"},
+		About:    "Starts with every capturable monster and finds each species reachable by sex-compatible breeding, its fewest generations and one recipe with parent sexes. Also reports unreachable species.",
+		Examples: []clihelp.Example{{"explore recipes", "gozen sim breed game"}, {"read the graph as JSON", "gozen sim breed game --format json"}},
+		Groups:   []clihelp.Group{{Title: "Output", Flags: []string{"format"}}, general},
+		Notes:    []string{noRequirements},
+	},
 	"theme add": {
 		Summary: "copy a dungeon theme into a game",
 		Usage:   []string{"gozen theme add [OPTIONS] <name> <game-dir>"},
@@ -364,12 +373,13 @@ var pages = map[string]clihelp.Page{
 	"book": {
 		Summary: "write the definitions and events as Markdown",
 		Usage:   []string{"gozen book [OPTIONS] <game-dir>"},
-		About:   "Writes the locations, events, scenes, troops, and items of the game to stdout as one Markdown document.",
+		About:   "Writes the locations, events, scenes, troops, and items of the game to stdout as one Markdown document. Each monster page includes its lineage (how it is captured or bred). --format json writes only the monsters' lineage data.",
 		Examples: []clihelp.Example{
 			{"write the book to a file", "gozen book game > book.md"},
 			{"read it in a pager", "gozen book game | less"},
+			{"read each monster's family tree as JSON", "gozen book game --format json"},
 		},
-		Groups: []clihelp.Group{general},
+		Groups: []clihelp.Group{{Title: "Output", Flags: []string{"format"}}, general},
 	},
 	"pack release": {
 		Summary: "build a release tree with approved assets only",

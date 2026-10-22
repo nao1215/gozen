@@ -105,6 +105,60 @@ func (c *command) book(dir string) error {
 		p("| %s | %s | %d | %d | %d | %d | %d | %d | %d | %d | %s | %s | %s |\n", id, e.Name, s["mhp"], s["atk"], s["def"], s["mat"], s["mdf"], s["agi"],
 			e.Exp, e.Gold, rates(e.Resist), rates(e.SResist), boss)
 	}
+	p("\n## Monster book pages\n\n")
+	lin := gamedata.BuildLineage(db)
+	for _, id := range db.Ordered("enemies") {
+		e := db.Enemies[id]
+		if e == nil {
+			continue
+		}
+		p("### %s (%s)\n\n", e.Name, id)
+		if e.Lore != "" {
+			p("%s\n\n", e.Lore)
+		}
+		p("- Picture: `%s`\n- Stats: %s\n- Weaknesses and resistances: %s\n", e.Image.File, stats(e.Stats), rates(e.Resist))
+		if e.Family != "" {
+			p("- Family: %s; rank: %d\n", e.Family, e.Rank)
+		}
+		if e.Recruit != nil {
+			p("- Recruit: %.0f%% after victory; class: %s; level: %d\n", e.Recruit.Chance*100, db.MonsterClass(id), max(1, e.Recruit.Level))
+			if e.Recruit.BonusItem != "" || e.Recruit.BonusSkill != "" {
+				p("- Recruit bonus: +%.0f%% per matching item or party skill (item: %s; skill: %s)\n", e.Recruit.Bonus*100, e.Recruit.BonusItem, e.Recruit.BonusSkill)
+			}
+		}
+		var skills []string
+		for _, r := range e.AI.Rules {
+			if r.Use != "" {
+				skills = append(skills, r.Use)
+			}
+		}
+		if e.Sex != "" {
+			p("- Sex: %s\n", e.Sex)
+		}
+		p("- Skills: %s\n", listOrNone(skills))
+		var drops []string
+		for _, d := range e.Drops {
+			drops = append(drops, fmt.Sprintf("%s (%.0f%%)", d.Item, d.Chance*100))
+		}
+		p("- Drops: %s\n", listOrNone(drops))
+		if lines := lineageLines(db, lin, id); len(lines) > 0 {
+			p("- Lineage:\n")
+			for _, line := range lines {
+				p("%s\n", line)
+			}
+		}
+		p("\n")
+	}
+	if db.Breeding != nil {
+		p("## Monster breeding\n\nMinimum level: %d; inherited skill slots: %d.\n\n", db.Breeding.MinLevel, db.Breeding.SkillSlots)
+		for _, rule := range db.Breeding.Pairs {
+			p("- %s x %s -> %s (min level %d, min plus %d)\n", rule.Parents[0], rule.Parents[1], rule.Child, rule.MinLevel, rule.MinPlus)
+		}
+		for _, rule := range db.Breeding.Families {
+			p("- %s x %s -> ranked choice of %s\n", rule.Parents[0], rule.Parents[1], strings.Join(rule.Children, ", "))
+		}
+		p("\n")
+	}
 	p("%s", lang.T("\n## 敵の群れ\n\n"))
 	for _, id := range db.Ordered("troops") {
 		t := db.Troops[id]

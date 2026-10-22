@@ -1,0 +1,47 @@
+# Original neutral monster growth classes for the Go Zen sample.
+classes:
+  monster_slime:
+    name: Slime Monster
+    exp_for: level * level * 10
+    stats: {mhp: "30 + level * 6", mmp: "5 + level * 2", atk: "5 + level * 2", def: "2 + level", mat: "4 + level * 2", mdf: "2 + level", agi: "5 + level", luk: 4}
+    skills: [{level: 1, skill: drip}, {level: 5, skill: mend}]
+  monster_beast:
+    name: Beast Monster
+    exp_for: level * level * 10
+    stats: {mhp: "36 + level * 7", mmp: "3 + level * 2", atk: "7 + level * 2", def: "3 + level", mat: "2 + level * 2", mdf: "2 + level", agi: "7 + level", luk: 4}
+    skills: [{level: 1, skill: bite}, {level: 5, skill: lunge}]
+  monster_bird:
+    name: Bird Monster
+    exp_for: level * level * 10
+    stats: {mhp: "25 + level * 5", mmp: "4 + level * 2", atk: "5 + level * 2", def: "2 + level", mat: "4 + level * 2", mdf: "3 + level", agi: "10 + level", luk: 4}
+    skills: [{level: 1, skill: bite}, {level: 5, skill: arc_bolt}]
+  monster_plant:
+    name: Plant Monster
+    exp_for: level * level * 10
+    stats: {mhp: "34 + level * 6", mmp: "6 + level * 2", atk: "5 + level * 2", def: "4 + level", mat: "5 + level * 2", mdf: "3 + level", agi: "4 + level", luk: 4}
+    skills: [{level: 1, skill: pinch}, {level: 5, skill: mend}]
+  monster_material:
+    name: Material Monster
+    exp_for: level * level * 10
+    stats: {mhp: "42 + level * 8", mmp: "2 + level * 2", atk: "7 + level * 2", def: "6 + level", mat: "2 + level * 2", mdf: "5 + level", agi: "3 + level", luk: 4}
+    skills: [{level: 1, skill: clang}, {level: 5, skill: shield_rush}]
+  monster_magic:
+    name: Magic Monster
+    exp_for: level * level * 10
+    stats: {mhp: "25 + level * 5", mmp: "9 + level * 2", atk: "3 + level * 2", def: "2 + level", mat: "8 + level * 2", mdf: "6 + level", agi: "7 + level", luk: 4}
+    skills: [{level: 1, skill: arc_bolt}, {level: 5, skill: storm_coil}]
+  monster_undead:
+    name: Undead Monster
+    exp_for: level * level * 10
+    stats: {mhp: "32 + level * 6", mmp: "6 + level * 2", atk: "6 + level * 2", def: "3 + level", mat: "6 + level * 2", mdf: "4 + level", agi: "6 + level", luk: 4}
+    skills: [{level: 1, skill: bite}, {level: 5, skill: lien}]
+  monster_dragon:
+    name: Dragon Monster
+    exp_for: level * level * 10
+    stats: {mhp: "45 + level * 9", mmp: "7 + level * 2", atk: "8 + level * 2", def: "5 + level", mat: "6 + level * 2", mdf: "4 + level", agi: "6 + level", luk: 4}
+    skills: [{level: 1, skill: bite}, {level: 5, skill: slam}]
+  monster_demon:
+    name: Demon Monster
+    exp_for: level * level * 10
+    stats: {mhp: "35 + level * 7", mmp: "7 + level * 2", atk: "6 + level * 2", def: "3 + level", mat: "7 + level * 2", mdf: "4 + level", agi: "7 + level", luk: 4}
+    skills: [{level: 1, skill: bite}, {level: 5, skill: arc_bolt}]

@@ -1399,6 +1399,278 @@
       },
       "type": "object"
     },
+    "BreedCmd": {
+      "additionalProperties": false,
+      "description": "Two owned monster instances and a selection of their skills to pass on.",
+      "properties": {
+        "parents": {
+          "description": "Two distinct owned monster instance IDs.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
+        "skills": {
+          "description": "Distinct skills known by either parent, up to breeding.skill_slots.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        }
+      },
+      "type": "object"
+    },
+    "BreedFamily": {
+      "additionalProperties": false,
+      "description": "A symmetric family combination whose child depends on the parents' ranks.",
+      "properties": {
+        "children": {
+          "description": "Candidate enemy IDs; the highest rank no greater than the mean parent rank wins.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
+        "parents": {
+          "description": "Two IDs from monster_families, in either order.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        }
+      },
+      "type": "object"
+    },
+    "BreedPair": {
+      "additionalProperties": false,
+      "description": "A symmetric specific-species recipe, tried before family rules.",
+      "properties": {
+        "child": {
+          "description": "The resulting enemy species ID.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "min_level": {
+          "description": "An optional higher minimum level for both parents.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "min_plus": {
+          "description": "An optional minimum of the parents' combined plus values.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "parents": {
+          "description": "Two enemy species IDs, in either order.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        }
+      },
+      "type": "object"
+    },
+    "BreedStaging": {
+      "additionalProperties": false,
+      "description": "Rank thresholds for birth presentation; omitted values default to rare rank 4 and legendary rank 7.",
+      "properties": {
+        "legend_rank": {
+          "description": "The first child rank with the longest pause, gold and blue-grey rings and a low sound.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "rare_rank": {
+          "description": "The first child rank with a longer pause before reveal, a gold ring and a slower afterglow.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "Breeding": {
+      "additionalProperties": false,
+      "description": "The monster breeding requirements and recipes.",
+      "properties": {
+        "families": {
+          "description": "Family recipes, used when no specific pair matches.",
+          "items": {
+            "$ref": "#/$defs/BreedFamily"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[BreedFamily](#breedfamily)[]"
+        },
+        "min_level": {
+          "description": "The minimum level of each parent; at least one.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "pairs": {
+          "description": "Specific species recipes; these win over family rules.",
+          "items": {
+            "$ref": "#/$defs/BreedPair"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[BreedPair](#breedpair)[]"
+        },
+        "skill_slots": {
+          "description": "The maximum number of distinct parental skills the child may inherit.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "staging": {
+          "$ref": "#/$defs/BreedStaging",
+          "description": "Rank thresholds for the rare and legendary birth effects.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[BreedStaging](#breedstaging)"
+        }
+      },
+      "type": "object"
+    },
     "Bubble": {
       "anyOf": [
         {
@@ -3094,6 +3366,33 @@
         {
           "additionalProperties": false,
           "properties": {
+            "reserve": {}
+          },
+          "required": [
+            "reserve"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "release": {}
+          },
+          "required": [
+            "release"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "breed": {}
+          },
+          "required": [
+            "breed"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "heal": {}
           },
           "required": [
@@ -3562,6 +3861,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "breed": {
+          "$ref": "#/$defs/BreedCmd",
+          "description": "Breeds two owned monster instances and chooses inherited skills. Needs schema version 6.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[BreedCmd](#breedcmd)"
         },
         "buy": {
           "$ref": "#/$defs/Trade",
@@ -4115,6 +4427,32 @@
           },
           "x-type": "string"
         },
+        "release": {
+          "description": "Permanently releases one owned monster instance. Needs schema version 6.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "reserve": {
+          "$ref": "#/$defs/ReserveSwap",
+          "description": "Swaps one joined reserve actor into an active party slot. Needs schema version 6.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[ReserveSwap](#reserveswap)"
+        },
         "reset_tree": {
           "description": "Gives back the SP spent in the skill tree of an actor, an ID of actors, or of everyone with `all`.",
           "type": "string",
@@ -4539,6 +4877,19 @@
           },
           "x-type": "string → [Rule](#rule)[]"
         },
+        "breeding": {
+          "$ref": "#/$defs/Breeding",
+          "description": "Monster breeding requirements, species pairs and family rules. Needs schema version 6.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Breeding](#breeding)"
+        },
         "classes": {
           "additionalProperties": {
             "$ref": "#/$defs/Class"
@@ -4690,6 +5041,25 @@
             "version": "0, 1, 2"
           },
           "x-type": "string → [Location](#location)"
+        },
+        "monster_families": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Monster family IDs and their display names. Needs schema version 6.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → string"
         },
         "music": {
           "$ref": "#/$defs/Music",
@@ -6139,6 +6509,19 @@
           },
           "x-type": "string → string"
         },
+        "family": {
+          "description": "The monster family ID used by breeding. Needs schema version 6.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "gold": {
           "description": "The gold the party earns for defeating this enemy.",
           "type": "integer",
@@ -6191,6 +6574,32 @@
           },
           "x-type": "integer"
         },
+        "lore": {
+          "description": "A short description shown in the monster book after the enemy has been encountered.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "monster_class": {
+          "description": "The class used for a recruited or bred actor instance. Needs schema version 6.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "name": {
           "description": "The enemy's name shown in battle.",
           "type": "string",
@@ -6203,6 +6612,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "rank": {
+          "description": "A positive rank used to select offspring from a family rule. Needs schema version 6.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
         },
         "reactions": {
           "additionalProperties": {
@@ -6222,6 +6644,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string → string"
+        },
+        "recruit": {
+          "$ref": "#/$defs/Recruit",
+          "description": "The chance, level and optional bonus for joining after a victory. Bosses cannot be recruited. Needs schema version 6.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Recruit](#recruit)"
         },
         "resist": {
           "additionalProperties": {
@@ -6252,6 +6687,32 @@
             "required": "optional",
             "reference": "-",
             "version": "0, 1, 2 (omitting it and writing 0 differ in v0)"
+          },
+          "x-type": "number"
+        },
+        "sex": {
+          "description": "Allowed sexes for monster instances: any (default), male or female. Needs schema version 6.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "sex_ratio": {
+          "description": "Chance of a male instance when sex is any, from zero to one; default 0.5. Needs schema version 6.",
+          "type": "number",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
           },
           "x-type": "number"
         },
@@ -10848,6 +11309,91 @@
       ],
       "type": "object"
     },
+    "Recruit": {
+      "additionalProperties": false,
+      "description": "The chance and starting level for an enemy to join after victory.",
+      "properties": {
+        "bonus": {
+          "description": "The additive chance granted by the item or skill.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "bonus_item": {
+          "description": "An item whose possession adds bonus to the chance.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "bonus_skill": {
+          "description": "A skill known by an active member that adds bonus to the chance.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "chance": {
+          "description": "A probability greater than zero and at most one.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "class": {
+          "description": "An optional class override; otherwise enemy.monster_class is used.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "level": {
+          "description": "The recruited actor's starting level; one if omitted.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        }
+      },
+      "type": "object"
+    },
     "Region": {
       "additionalProperties": false,
       "description": "A region of a campaign: its neighbours, its first owner and garrison, and its own numbers.",
@@ -11071,6 +11617,39 @@
       "required": [
         "node"
       ],
+      "type": "object"
+    },
+    "ReserveSwap": {
+      "additionalProperties": false,
+      "description": "One reserve-to-party exchange.",
+      "properties": {
+        "in": {
+          "description": "The reserve actor instance ID to activate.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "out": {
+          "description": "The active actor instance ID to put in reserve.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
       "type": "object"
     },
     "Road": {
@@ -15474,6 +16053,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "[BattleFx](#battlefx)"
+        },
+        "bestiary": {
+          "description": "Show Monsters, the monster book, in the title and field menu. Off by default; under `--dev` the menus show it anyway. Needs schema version 4.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
         },
         "border": {
           "description": "The window border color.",

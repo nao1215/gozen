@@ -231,10 +231,12 @@ type Game struct {
 
 	bannerFloor float64
 
-	events *event.Runner
-	req    event.Request
-	talk   talk
-	waitT  int
+	events  *event.Runner
+	req     event.Request
+	talk    talk
+	recruit *recruitView
+	birth   *birthAnimation
+	waitT   int
 
 	notices noticeBoard
 	tapT    int
@@ -496,6 +498,27 @@ func New(opts Options) (_ *Game, err error) {
 		s.typeText = g.typeMemo
 		s.jump = g.devJump
 		s.do = g.devDo
+		s.recruit = func(species string, level int) {
+			if !g.opts.Development || g.st == nil {
+				g.failure = errors.New("script: recruit needs a development session")
+				return
+			}
+			if _, ok := g.st.Recruit(species, level, 0, nil); !ok {
+				g.failure = fmt.Errorf("script: cannot recruit %s", species)
+			}
+		}
+		s.guaranteeRecruit = func(species string) {
+			if !g.opts.Development {
+				g.failure = errors.New("script: guarantee-recruit needs a development session")
+				return
+			}
+			e := g.db.Enemies[species]
+			if e == nil || e.Recruit == nil || e.Boss {
+				g.failure = fmt.Errorf("script: %s is not recruitable", species)
+				return
+			}
+			e.Recruit.Chance = 1
+		}
 		s.memoNote = func(kind, text string) { g.quickMemo(kind, text, memo.LLM) }
 		g.in.script = s
 	}
@@ -635,6 +658,13 @@ func (g *Game) stateRng() *rand.Rand {
 	return rand.New(g.pcg) //nolint:gosec // Gameplay randomness is not used for security.
 }
 
+func (g *Game) collectionSeed() uint64 {
+	if g.opts.Seed != 0 {
+		return g.opts.Seed
+	}
+	return rand.Uint64() //nolint:gosec // Gameplay randomness is not used for security.
+}
+
 func (g *Game) newPCG() *rand.PCG {
 	if g.opts.Seed != 0 {
 		return rand.NewPCG(g.opts.Seed, g.opts.Seed*7+1)
@@ -721,6 +751,7 @@ func (g *Game) Update() error {
 		g.togglePanel()
 	}
 	g.bookKey()
+	g.bestiaryKey()
 	if g.panelModal() {
 		g.updatePanel()
 		g.traceInput()
@@ -768,8 +799,36 @@ func (g *Game) Update() error {
 	if g.st != nil {
 		g.st.Frames++
 	}
+	if g.recruit != nil && g.recruit.leave == 0 && g.tick-g.recruit.start == 12 {
+		g.sfx("lift")
+	}
 	g.shake = max(0, g.shake-1)
 	g.flash = max(0, g.flash-1)
+	if g.birth != nil && g.birth.age < g.birth.duration() {
+		if g.birth.skipT > 0 {
+			g.birth.skipT++
+			if g.birth.skipT >= 12 {
+				g.birth.skipT = 0
+				g.birth.age = g.birth.duration()
+			}
+		} else {
+			previous := g.birth.age
+			g.birth.age++
+			if previous < 90 && g.birth.age == 90 {
+				g.sfx("magic")
+			}
+			if previous < g.birth.silhouetteEnd() && g.birth.age == g.birth.silhouetteEnd() {
+				switch g.birth.effect.Tier {
+				case 1:
+					g.sfx("treasure")
+				case 2:
+					g.sfx("boss")
+				default:
+					g.sfx("heal")
+				}
+			}
+		}
+	}
 	g.stepStaging()
 	g.stepFanfare()
 	g.ageCG()
@@ -868,6 +927,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.lastView.Clear()
 		g.lastView.DrawImage(dst, nil)
 	}
+	g.drawRecruit(dst)
+	g.drawBirth(dst)
 	g.talk.draw(g, dst)
 	if g.noticesShown() {
 		g.notices.draw(g, dst)
@@ -1009,6 +1070,7 @@ func (g *Game) pop() {
 func (g *Game) replace(s scene) {
 	g.stack = []scene{s}
 	g.talk = talk{}
+	g.recruit = nil
 	g.cg, g.cgOldT, g.cgUnder = data.CG{}, 0, data.CG{}
 }
 
@@ -1020,6 +1082,7 @@ func (g *Game) sfx(name string) {
 
 func (g *Game) newGame() {
 	g.st = rpg.New(g.db, g.stateRng())
+	g.st.SetRecruitSeed(g.collectionSeed())
 	g.bannerFloor = 0
 	g.startState()
 	if ev := g.db.Game.Start.Event; ev != "" {
@@ -1030,6 +1093,7 @@ func (g *Game) newGame() {
 func (g *Game) testStart() error {
 	o := g.opts
 	g.st = rpg.New(g.db, g.stateRng())
+	g.st.SetRecruitSeed(g.collectionSeed())
 	g.bannerFloor = 0
 	if o.Location != "" {
 		if g.db.Locations[o.Location] == nil {
@@ -1100,6 +1164,7 @@ func (g *Game) restoreState(b []byte) bool {
 
 func (g *Game) loadGame(st *rpg.State) {
 	g.st = st
+	g.db = st.DB
 	g.bannerFloor = 0
 	g.startState()
 	g.reportLoad(st.LoadReport)
@@ -1422,6 +1487,7 @@ func (g *Game) pump() bool {
 	}
 	if g.req == nil {
 		if !g.events.Running() {
+			g.birth = nil
 			g.stopSkip("end")
 			g.clearCast()
 			if g.sides != nil || g.stage != [2]stageActor{} {
@@ -1446,6 +1512,9 @@ func (g *Game) pump() bool {
 	case event.Say, event.Choice:
 		if done, answer := g.talk.update(g); done {
 			if answer >= 0 {
+				if c, ok := r.(event.Choice); ok && c.Recruit != nil {
+					g.endRecruit(answer == 0)
+				}
 				g.emit("answer", traceLine{"index": answer})
 				g.evAnswers = append(g.evAnswers, answer)
 				g.events.Answer(answer)
@@ -1459,12 +1528,36 @@ func (g *Game) pump() bool {
 			}
 		}
 	case event.Wait:
-		g.waitT--
-		if g.skipping && !r.NoSkip {
-			g.waitT = 0
-		}
-		if g.waitT <= 0 {
-			g.req = nil
+		if g.birth != nil && g.birth.waiting {
+			b := g.birth
+			if b.age >= b.viewEnd() && g.in.cancel() {
+				b.details = !b.details
+				g.in.pressed[btnCancel] = false
+				g.in.pressed[btnMenu] = false
+			}
+			if !g.in.held[btnOK] && !g.in.ok() {
+				b.ready = true
+			}
+			if b.age < b.duration() && b.skipT == 0 && b.ready && g.in.ok() {
+				b.skipT = 1
+				b.age = max(b.age, 120)
+				b.ready = false
+			}
+			g.waitT = max(1, b.duration()-b.age)
+			if b.age >= b.duration() && b.ready && g.in.ok() && !b.details {
+				g.waitT = 0
+				g.req = nil
+				b.ready = false
+				b.waiting = false
+			}
+		} else {
+			g.waitT--
+			if g.skipping && !r.NoSkip {
+				g.waitT = 0
+			}
+			if g.waitT <= 0 {
+				g.req = nil
+			}
 		}
 	case event.Tap:
 		if g.updateTap() {
@@ -1516,8 +1609,10 @@ func (g *Game) begin(r event.Request) {
 	done := func() { g.req = nil }
 	switch r := r.(type) {
 	case event.Say:
+		g.beginRecruit(r.Recruit)
 		g.talk.open(g, r)
 	case event.Choice:
+		g.beginRecruit(r.Recruit)
 		g.talk.ask(g, r)
 	case event.Wait:
 		g.waitT = int(r.Seconds * 60)
@@ -1706,7 +1801,7 @@ func (g *Game) load(i int) (*rpg.State, error) {
 		return nil, err
 	}
 	if st.Resume == nil { // a save in the middle of an event goes on where the event began
-		resumeAt(g.db, st)
+		resumeAt(st.DB, st)
 	}
 	return st, nil
 }
@@ -1782,6 +1877,12 @@ func (g *Game) Handle(e event.Effect) {
 		g.SFX(e.Name)
 	case event.VisualEffect:
 		g.visual(e)
+	case event.BreedEffect:
+		if g.opts.Development {
+			e.FirstDiscovery = false
+		}
+		g.flash, g.shake = 0, 0
+		g.birth = &birthAnimation{effect: e, waiting: true}
 	case event.CampaignEffect:
 		if e.Kind == "order" {
 			g.emit("order", traceLine{"order": e.Order, "general": e.General, "target": e.Target, "result": e.Result, "turn": e.Turn})

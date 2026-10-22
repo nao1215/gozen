@@ -26,8 +26,8 @@ var japaneseAllowed = map[string][]string{
 }
 
 // adultWords may appear only in the mosaic tool (ADR 0004): its code and the mosaic
-// sections of the production-tools pages.
-var adultWords = regexp.MustCompile(`(?i)\b(penis|pussy|nipples?|nipple_f|vagina|anus|nsfw|hentai|porn\w*|sexual\w*|erotic\w*|nude|naked|genitals?|genitalia|sex)\b|性器|乳首|陰茎|陰部|膣|肛門|エロ|ヌード|セックス|性的|卑猥|裸`)
+// sections of the production-tools pages. Biological sex is a neutral monster rule.
+var adultWords = regexp.MustCompile(`(?i)\b(penis|pussy|nipples?|nipple_f|vagina|anus|nsfw|hentai|porn\w*|sexual\w*|erotic\w*|nude|naked|genitals?|genitalia)\b|性器|乳首|陰茎|陰部|膣|肛門|エロ|ヌード|セックス|性的|卑猥|裸`)
 
 // adultAllowed reports the part of a file where the words may appear: the whole
 // file, a Markdown section that starts at the heading given, or nothing.

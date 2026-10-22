@@ -142,6 +142,9 @@ func (t *talk) question(g *Game, c event.Choice, again bool) {
 	default:
 		*t = talk{active: true, bare: true, pages: [][]string{{""}}}
 	}
+	if c.Recruit != nil {
+		t.say.Name = recruitName(c.Recruit)
+	}
 	t.shown = t.total
 	t.keys = c.Keys
 	t.asked = c
@@ -247,6 +250,15 @@ func novelTextReaches(lines []string, size, right float64) bool {
 func (t *talk) update(g *Game) (done bool, answer int) {
 	t.age++
 	g.stepPuppet(t)
+	if g.recruit != nil && g.recruit.leave == 0 {
+		minAge := 24
+		if t.choice != nil {
+			minAge = 54
+		}
+		if g.tick-g.recruit.start < minAge {
+			return false, -1
+		}
+	}
 	if g.novelInput() {
 		return false, -1
 	}
@@ -298,6 +310,15 @@ func (t *talk) draw(g *Game, dst *ebiten.Image) {
 	if !t.active {
 		return
 	}
+	if g.recruit != nil && g.recruit.leave == 0 {
+		minAge := 24
+		if t.choice != nil {
+			minAge = 54
+		}
+		if g.tick-g.recruit.start < minAge {
+			return
+		}
+	}
 	if g.novel() {
 		t.drawNovel(g, dst)
 		return
@@ -311,7 +332,7 @@ func (t *talk) draw(g *Game, dst *ebiten.Image) {
 	x, y, w, h := g.talkBox()
 	sw, sh := g.screen()
 	s := t.say
-	if s.Face != "" && (g.cg.File == "" || g.cg.Faces) {
+	if s.Face != "" && (g.cg.File == "" || g.cg.Faces) && g.recruit == nil {
 		img := g.pics.get(s.Face)
 		ih := float64(img.Bounds().Dy())
 		cx := x + 230

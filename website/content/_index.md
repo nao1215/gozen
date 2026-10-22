@@ -9,8 +9,8 @@ The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan
 | RPG: [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) | Novel: [After the Pass](https://github.com/nao1215/gozen/tree/main/examples/novel) |
 |:--|:--|
 | ![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](/images/go-zen.gif) | ![After the Pass, the novel sample: a line, a choice, Back over the choice, and Skip to the first line not read](/images/novel.gif) |
-| Campaign: [Five Banners](https://github.com/nao1215/gozen/tree/main/examples/campaign) ([play in browser](/play/campaign/)) | |
-| ![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](/images/campaign.gif) | |
+| Campaign: [Five Banners](https://github.com/nao1215/gozen/tree/main/examples/campaign) ([play in browser](/play/campaign/)) | Monster collection: [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) ([play in browser](/play/go-zen/)) |
+| ![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](/images/campaign.gif) | ![Breeding monsters in Go Zen: Yorn, the two parents, a silhouette reveal and the newborn Succubus](/images/go-zen-breeding.gif) |
 
 ## Try it in 30 seconds
 
@@ -92,6 +92,16 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 | The war map | A clash of armies |
 |:--|:--|
 | ![the picture map of the land with the regions in the owners' colours, the band with the week, the window of a region and the generals](/images/campaign-map.jpg) | ![two armies of soldiers lined up on the terrain, with the leaders' cards in a row below](/images/campaign-clash.jpg) |
+
+### Monster collection
+
+Monsters ask to join after a battle, wait at the ranch, and two raised monsters, one male and one female, are bred into a new one at Yorn's altar, in the manner of Dragon Quest Monsters (schema version 6). The monster book opens a page as the party meets each monster and shows how to breed it, two generations up. The recipe is [Collect, raise and breed monsters](/cookbook/#collect-raise-and-breed-monsters).
+
+| A monster asks to join | Breeding at Yorn's altar |
+|:--|:--|
+| ![a Drip Slime rises after the battle and asks to join, with Yes and No](/images/go-zen-recruit.jpg) | ![Yorn talks in the center, the parents turn into light, then the Succubus is born](/images/go-zen-breeding.gif) |
+| The monster book | The family tree, two generations up |
+| ![the Succubus page of the monster book](/images/go-zen-bestiary.jpg) | ![the Succubus family tree with its parents and grandparents](/images/go-zen-lineage.jpg) |
 
 ## Playtesting
 

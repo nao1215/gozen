@@ -2,6 +2,7 @@ package gozen_test
 
 import (
 	"context"
+	"encoding/base64"
 	"testing"
 	"testing/fstest"
 
@@ -48,5 +49,48 @@ func TestProfileQuery(t *testing.T) {
 	}
 	if ask("profile.stranger.unlocked") != true {
 		t.Error("stranger is not unlocked after flag.met")
+	}
+}
+
+func TestBestiaryProgressQueryAndSave(t *testing.T) {
+	png, err := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/z6sAAAAASUVORK5CYII=")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fsys := fstest.MapFS{
+		"game.yaml":      {Data: []byte("schema_version: 4\nid: bestiary\n" + testgame.Game)},
+		"data/main.yaml": {Data: []byte(testgame.Data)},
+		"assets/x.png":   {Data: png},
+	}
+	g, err := gozen.Load(fsys, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := mustNew(t, g, gozen.Config{Seed: 1})
+	if err := s.Start("- battle: one"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Kind != "battle" {
+		t.Fatalf("request = %+v", q)
+	}
+	var seen bool
+	if err := s.Query("bestiary.mote.seen", &seen); err != nil || !seen {
+		t.Fatalf("seen = %v, %v", seen, err)
+	}
+	s.Answer(gozen.Won)
+	var defeated float64
+	if err := s.Query("bestiary.mote.defeated", &defeated); err != nil || defeated != 1 {
+		t.Fatalf("defeated = %v, %v", defeated, err)
+	}
+	b, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := gozen.Restore(g, b, gozen.Config{Seed: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Query("bestiary.mote.defeated", &defeated); err != nil || defeated != 1 {
+		t.Fatalf("restored defeated = %v, %v", defeated, err)
 	}
 }

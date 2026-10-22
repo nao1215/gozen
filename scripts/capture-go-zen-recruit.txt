@@ -1,0 +1,8 @@
+# Start the troop through the event runner so its post-win recruitment runs.
+# The development command makes the Drip Slime roll certain before battle starts.
+guarantee-recruit drip_slime
+do battle: drips
+play join 5
+wait 30
+shot s-rise
+quit

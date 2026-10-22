@@ -17,23 +17,25 @@ import (
 
 // DB is a loaded game: game.yaml and every section of the data files.
 type DB struct {
-	FS        fs.FS // the game's directory
-	Game      Game
-	Classes   map[string]*Class
-	Actors    map[string]*Actor
-	Items     map[string]*Item
-	Skills    map[string]*Skill
-	States    map[string]*State
-	Enemies   map[string]*Enemy
-	Troops    map[string]*Troop
-	Locations map[string]*Location
-	Events    map[string]*Event
-	Shops     map[string]*Shop
-	AI        map[string][]Rule
-	Elements  map[string]string // element id -> name
-	StoneSets map[string]*StoneSet
-	Fusions   []Fusion
-	Music     Music
+	FS              fs.FS // the game's directory
+	Game            Game
+	Classes         map[string]*Class
+	Actors          map[string]*Actor
+	Items           map[string]*Item
+	Skills          map[string]*Skill
+	States          map[string]*State
+	Enemies         map[string]*Enemy
+	Troops          map[string]*Troop
+	Locations       map[string]*Location
+	Events          map[string]*Event
+	Shops           map[string]*Shop
+	AI              map[string][]Rule
+	Elements        map[string]string // element id -> name
+	StoneSets       map[string]*StoneSet
+	Fusions         []Fusion
+	Breeding        *Breeding
+	MonsterFamilies map[string]string
+	Music           Music
 	// Profiles are the pages of the character book (ADR 0031).
 	Profiles map[string]*Profile
 	// Regions and Factions are a campaign's (schema_version 5, ADR 0030).
@@ -67,24 +69,26 @@ type DB struct {
 
 // file is one data file: any of the sections.
 type file struct {
-	Classes   map[string]*Class    `yaml:"classes"`
-	Actors    map[string]*Actor    `yaml:"actors"`
-	Items     map[string]*Item     `yaml:"items"`
-	Skills    map[string]*Skill    `yaml:"skills"`
-	States    map[string]*State    `yaml:"states"`
-	Enemies   map[string]*Enemy    `yaml:"enemies"`
-	Troops    map[string]*Troop    `yaml:"troops"`
-	Locations map[string]*Location `yaml:"locations"`
-	Events    map[string]*Event    `yaml:"events"`
-	Shops     map[string]*Shop     `yaml:"shops"`
-	AI        map[string][]Rule    `yaml:"ai"`
-	Elements  map[string]string    `yaml:"elements"`
-	StoneSets map[string]*StoneSet `yaml:"stone_sets"`
-	Fusions   []Fusion             `yaml:"fusions"`
-	Music     *Music               `yaml:"music"`
-	Profiles  map[string]*Profile  `yaml:"profiles"`
-	Regions   map[string]*Region   `yaml:"regions"`
-	Factions  map[string]*Faction  `yaml:"factions"`
+	Classes         map[string]*Class    `yaml:"classes"`
+	Actors          map[string]*Actor    `yaml:"actors"`
+	Items           map[string]*Item     `yaml:"items"`
+	Skills          map[string]*Skill    `yaml:"skills"`
+	States          map[string]*State    `yaml:"states"`
+	Enemies         map[string]*Enemy    `yaml:"enemies"`
+	Troops          map[string]*Troop    `yaml:"troops"`
+	Locations       map[string]*Location `yaml:"locations"`
+	Events          map[string]*Event    `yaml:"events"`
+	Shops           map[string]*Shop     `yaml:"shops"`
+	AI              map[string][]Rule    `yaml:"ai"`
+	Elements        map[string]string    `yaml:"elements"`
+	StoneSets       map[string]*StoneSet `yaml:"stone_sets"`
+	Fusions         []Fusion             `yaml:"fusions"`
+	Breeding        *Breeding            `yaml:"breeding"`
+	MonsterFamilies map[string]string    `yaml:"monster_families"`
+	Music           *Music               `yaml:"music"`
+	Profiles        map[string]*Profile  `yaml:"profiles"`
+	Regions         map[string]*Region   `yaml:"regions"`
+	Factions        map[string]*Faction  `yaml:"factions"`
 
 	TacticConditions map[string]*TacticCondition `yaml:"tactic_conditions"`
 	TacticTargets    map[string]*TacticTarget    `yaml:"tactic_targets"`
@@ -101,8 +105,9 @@ func Load(fsys fs.FS) (*DB, error) {
 		Skills: map[string]*Skill{}, States: map[string]*State{}, Enemies: map[string]*Enemy{},
 		Troops: map[string]*Troop{}, Locations: map[string]*Location{}, Events: map[string]*Event{},
 		Shops: map[string]*Shop{}, AI: map[string][]Rule{}, Elements: map[string]string{}, StoneSets: map[string]*StoneSet{},
-		Profiles: map[string]*Profile{},
-		Order:    map[string][]string{}, sources: map[string]sourcePosition{}, sourceFiles: map[string]*sourceDocument{},
+		Profiles:        map[string]*Profile{},
+		MonsterFamilies: map[string]string{},
+		Order:           map[string][]string{}, sources: map[string]sourcePosition{}, sourceFiles: map[string]*sourceDocument{},
 		Music:   Music{Volume: 0.7},
 		Regions: map[string]*Region{}, Factions: map[string]*Faction{},
 	}
@@ -236,12 +241,21 @@ func (db *DB) loadFile(p string) error {
 	merge("elements", putter(db.Elements, f.Elements))
 	merge("stone_sets", putter(db.StoneSets, f.StoneSets))
 	merge("profiles", putter(db.Profiles, f.Profiles))
+	merge("monster_families", putter(db.MonsterFamilies, f.MonsterFamilies))
 	merge("regions", putter(db.Regions, f.Regions))
 	merge("factions", putter(db.Factions, f.Factions))
 	for i := range f.Fusions {
 		db.keepSources(doc, fmt.Sprintf("fusions[%d]", i), fmt.Sprintf("fusions[%d]", len(db.Fusions)+i))
 	}
 	db.Fusions = append(db.Fusions, f.Fusions...)
+	if f.Breeding != nil {
+		if db.Breeding != nil {
+			errs = append(errs, duplicateDiagnostic(doc.position("breeding"), "breeding", db.sources["breeding"]))
+		} else {
+			db.Breeding = f.Breeding
+			db.keepSources(doc, "breeding", "breeding")
+		}
+	}
 	if f.Music != nil {
 		if _, exists := db.sources["music"]; exists {
 			errs = append(errs, duplicateDiagnostic(doc.position("music"), "music", db.sources["music"]))

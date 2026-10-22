@@ -381,6 +381,46 @@ locations:
         - {troop: crab_pair, weight: 2}
         - {troop: hound, weight: 3}
         - {troop: hound_crab, weight: 3}
+        - {troop: abyss_lord_group, weight: 1, when: "var.floor >= 5"}
+        - {troop: blast_beetle_group, weight: 2, when: "var.floor >= 5"}
+        - {troop: crown_thief_group, weight: 2, when: "var.floor >= 2"}
+        - {troop: crystal_dragon_group, weight: 1, when: "var.floor >= 5"}
+        - {troop: crystal_golem_group, weight: 2, when: "var.floor >= 5"}
+        - {troop: cursed_doll_group, weight: 2, when: "var.floor >= 5"}
+        - {troop: dream_eater_group, weight: 2, when: "var.floor >= 3"}
+        - {troop: dream_wisp_group, weight: 2, when: "var.floor >= 2"}
+        - {troop: frost_bat_group, weight: 2, when: "var.floor >= 2"}
+        - {troop: frost_giant_group, weight: 2, when: "var.floor >= 5"}
+        - {troop: frost_slime_group, weight: 2, when: "var.floor >= 3"}
+        - {troop: frozen_king_group, weight: 1, when: "var.floor >= 4"}
+        - {troop: frozen_knight_group, weight: 2, when: "var.floor >= 2"}
+        - {troop: ghost_soldier_group, weight: 2, when: "var.floor >= 2"}
+        - {troop: gold_bat_group, weight: 2, when: "var.floor >= 2"}
+        - {troop: grave_reaper_group, weight: 2, when: "var.floor >= 3"}
+        - {troop: ice_lich_group, weight: 2, when: "var.floor >= 4"}
+        - {troop: ice_spider_group, weight: 2, when: "var.floor >= 5"}
+        - {troop: ice_wolf_group, weight: 2, when: "var.floor >= 4"}
+        - {troop: maneater_group, weight: 2, when: "var.floor >= 2"}
+        - {troop: mimic1_group, weight: 1, when: "var.floor >= 2"}
+        - {troop: mimic2_group, weight: 1, when: "var.floor >= 2"}
+        - {troop: mimic3_group, weight: 1, when: "var.floor >= 3"}
+        - {troop: mimic4_group, weight: 1, when: "var.floor >= 4"}
+        - {troop: mimic5_group, weight: 1, when: "var.floor >= 5"}
+        - {troop: mine_rat_group, weight: 2, when: "var.floor >= 2"}
+        - {troop: mirror_shade_group, weight: 2, when: "var.floor >= 2"}
+        - {troop: nectar_moth_group, weight: 2, when: "var.floor >= 3"}
+        - {troop: nightmare_hound_group, weight: 2, when: "var.floor >= 5"}
+        - {troop: snow_ape_group, weight: 2, when: "var.floor >= 5"}
+        - {troop: snow_witch_group, weight: 2, when: "var.floor >= 3"}
+        - {troop: spore_shroom_group, weight: 2, when: "var.floor >= 2"}
+        - {troop: steam_slime_group, weight: 2, when: "var.floor >= 2"}
+        - {troop: night_bat_group, weight: 3, when: "var.floor >= 2"}
+        - {troop: ghoul_group, weight: 3, when: "var.floor >= 2"}
+        - {troop: incense_bloom_group, weight: 3, when: "var.floor >= 2"}
+        - {troop: pale_sylph_group, weight: 3, when: "var.floor >= 3"}
+        - {troop: succubus_group, weight: 2, when: "var.floor >= 4"}
+        - {troop: vampire_group, weight: 2, when: "var.floor >= 3"}
+        - {troop: whisper_imp_group, weight: 2, when: "var.floor >= 2"}
     dungeon:
       wall: dungeon/pipe_wall.jpg
       door: dungeon/pipe_door.jpg
@@ -420,7 +460,10 @@ locations:
           solid: "true"
           mark: "#97daca"
           symbol: "<"
-          do: [{move: b2, at: a, facing: east}]
+          do:
+            - if: var.floor > 1
+              then: [{dive: b3, floor: "var.floor - 1"}]
+              else: [{move: b2, at: a, facing: east}]
         T:
           name: Dusty crate
           picture: tiles/crate.png
@@ -474,7 +517,16 @@ locations:
           else: "."
           mark: "#97daca"
           symbol: E
-          do: [{move: b3_back}]
+          do:
+            - if: var.floor < 5
+              then:
+                - choice:
+                    - label: Follow Hobb's route
+                      do: [{move: b3_back}]
+                    - label: Explore the deeper reaches
+                      do: [{dive: b3, floor: "var.floor + 1"}]
+                  prompt: "The tunnel leads toward Hobb's camp. Another stair descends into unexplored ground."
+              else: [{move: b3_back}]
   b3_back:
     name: The Long Way Back
     area: The Undercistern

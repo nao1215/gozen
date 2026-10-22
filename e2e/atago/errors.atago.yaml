@@ -2,6 +2,45 @@ version: '1'
 suite:
   name: Gozen diagnostic codes (ADR 0024), one scenario per code
 scenarios:
+- name: GZN1112 for an unknown monster family
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 6\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "monster_families: {slime: Slime}\nclasses: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\nenemies: {mote: {name: Mote, image: x.png, family: missing, rank: 1, monster_class: walker, recruit: {chance: 1}, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}}\n"
+  - fixture: {file: g/assets/x.png, content: x}
+  - run: {command: "gozen check --only structure g"}
+  - assert:
+      exit_code: 1
+      stderr: {contains: '[GZN1112]'}
+- name: GZN0116 for an unobtainable monster
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 6\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "monster_families: {slime: Slime}\nclasses: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\nenemies: {mote: {name: Mote, image: x.png, family: slime, rank: 1, monster_class: walker, recruit: {chance: 1}, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}, wisp: {name: Wisp, image: x.png, family: slime, rank: 2, monster_class: walker, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}}\n"
+  - fixture: {file: g/assets/x.png, content: x}
+  - run: {command: "gozen check --only structure g"}
+  - assert:
+      exit_code: 0
+      stderr: {contains: ['[GZN0116]', '[GZN0117]']}
+- name: GZN1113 for a recruit level above the monster class maximum
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 6\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "monster_families: {slime: Slime}\nclasses: {walker: {max_level: 2, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\nenemies: {mote: {name: Mote, image: x.png, family: slime, rank: 1, monster_class: walker, recruit: {chance: 1, level: 3}, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}}\n"
+  - fixture: {file: g/assets/x.png, content: x}
+  - run: {command: "gozen check --only structure g"}
+  - assert:
+      exit_code: 1
+      stderr: {contains: '[GZN1113]'}
 - name: ${code} for an invalid command line, ${args}
   matrix:
   - {code: GZN2101, args: 'curve'}
@@ -591,6 +630,29 @@ scenarios:
       exit_code: 0
       stderr:
         contains: ['[GZN0114]', 'events.pay.do[0].gold: "floor + 1" uses the function floor as a value']
+- name: GZN0115 for an encounter enemy with no monster book lore
+  steps:
+  - fixture:
+      file: bestiary/game.yaml
+      content: "schema_version: 4\nid: bestiary\nstart: {location: room, party: [reader]}\nui: {bestiary: true}\n"
+  - fixture:
+      file: bestiary/assets/mote.png
+      content: "asset sentinel"
+  - fixture:
+      file: bestiary/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        enemies: {mote: {name: Mote, image: mote.png, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}}
+        troops: {lesson: {members: [mote]}}
+        locations: {room: {name: Room, encounters: {troops: [{troop: lesson}]}}}
+  - run:
+      command: gozen check --only structure bestiary
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: ['[GZN0115]', 'enemies.mote.lore: enemy "mote" appears in a troop but has no lore']
 - name: GZN1501 and GZN1502 for an output that exists or lies inside an input
   steps:
   - fixture:
