@@ -80,7 +80,7 @@ enemies:
     title: The Magistrate's Golem
     image: enemies/tollkeeper.png
     scale: 1.2
-    stats: {mhp: 950, mmp: 0, atk: 39, def: 12, mat: 0, mdf: 5, agi: 7, luk: 1}
+    stats: {mhp: 950, mmp: 0, atk: 33, def: 12, mat: 0, mdf: 5, agi: 7, luk: 1}
     boss: true
     exp: 170
     gold: 100

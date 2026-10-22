@@ -519,7 +519,13 @@ locations:
           symbol: E
           do:
             - if: var.floor < 5
-              then: [{dive: b3, floor: "var.floor + 1"}]
+              then:
+                - choice:
+                    - label: Follow Hobb's route
+                      do: [{move: b3_back}]
+                    - label: Explore the deeper reaches
+                      do: [{dive: b3, floor: "var.floor + 1"}]
+                  prompt: "The tunnel leads toward Hobb's camp. Another stair descends into unexplored ground."
               else: [{move: b3_back}]
   b3_back:
     name: The Long Way Back
