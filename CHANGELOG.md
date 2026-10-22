@@ -4,7 +4,24 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
-- The character book has a Tab relationship chart with face icons, coloured directed relationships, call names, unlock hiding, affiliation grouping, selection emphasis, camera follow and wheel zoom. Profiles accept `affiliation` and relations accept `kind`; `gozen check` validates kinds and targets.
+## v0.5.0 - 2026-10-22
+
+A relationship chart in the character book, a calmer breeding lead-in and softer battle motion, one size for screen captures, and safer handling of sizes taken from YAML.
+
+### Added
+
+- The character book has a Tab relationship chart with face icons, lines coloured by kind (family, friend, like, love, rival or enemy, other), one-way arrows, a legend, the player as a node, affiliation grouping, lines routed around unrelated faces, camera follow and wheel zoom. Choosing a character focuses the chart on it and the people related to it, arranged in a circle around it. Profiles accept `affiliation` and relations accept `kind`; `gozen check` validates kinds and targets (ADR 0038). Go Zen has eight profiles.
+- Puppets accept `motion.hit: soft_only`: a hit leaves the head and body still and only the `soft_sway` regions answer to damage. Go Zen's Succubus uses it.
+
+### Changed
+
+- The birth's lead-in, before the parents' lights meet, is about 1.5 times longer.
+- Every screen capture in the README and on the site is 720x405, so captures shown side by side line up.
+- Go Zen's Succubus sways more gently.
+
+### Fixed
+
+- Sizes read from YAML or computed from it (dungeon generation, paths, pages, campaigns, plans and events) are bounded before allocation, multiplications are guarded against overflow, and values written into messages are quoted with `strconv.Quote` (CodeQL alerts).
 
 ## v0.4.0 - 2026-10-22
 
