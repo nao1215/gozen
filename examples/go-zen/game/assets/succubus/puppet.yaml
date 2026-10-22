@@ -1,11 +1,4 @@
 base: base.png
-faces:
-  succubus:
-    mouth:
-      frames:
-        - image: face
-        - {image: mouth-open.png, at: [232, 55]}
-      speed: 8
 head: {center: [240, 48], radius: 35, neck: [240, 86]}
 hair:
   - {rect: [200, 14, 80, 155]}
