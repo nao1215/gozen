@@ -2,6 +2,8 @@ package play
 
 import (
 	"fmt"
+	"image/color"
+	"math"
 	"slices"
 	"strings"
 
@@ -61,147 +63,153 @@ type bestiaryScreen struct {
 
 	// The lineage panel (ADR 0036): the family tree of the selected species.
 	lineage *data.Lineage
-	choice  map[string]int  // species to the recipe shown for it
-	folds   map[string]bool // node path to an explicit open (true) or folded (false)
-	tree    *data.LineageNode
-	treeFor string
+	choice  map[string]int
+	root    string
+	history []lineageView
 	inTree  bool
 	cur     int
-	scroll  int
+}
+
+type lineageView struct {
+	species string
+	cursor  int
 }
 
 func newBestiary(g *Game, done func()) *bestiaryScreen {
-	return &bestiaryScreen{ids: g.db.Order["enemies"], done: done, lineage: data.BuildLineage(g.db), choice: map[string]int{}, folds: map[string]bool{}}
+	return &bestiaryScreen{ids: g.db.Order["enemies"], done: done, lineage: data.BuildLineage(g.db), choice: map[string]int{}}
 }
 func (s *bestiaryScreen) modal() bool { return true }
 
-// lineageRow is a visible line of the lineage tree.
-type lineageRow struct {
+// lineageTile is one picture in the two-generation view, in reading order.
+type lineageTile struct {
 	node       *data.LineageNode
-	hidden     bool // the species is not yet in the book, so it is drawn as "?"
-	expandable bool
-	expanded   bool
+	x, y, w, h float64
+	parent     int // index of the tile below which this parent is shown
 }
 
-func (s *bestiaryScreen) lineageRows(g *Game) []lineageRow {
-	if len(s.ids) == 0 {
+func (s *bestiaryScreen) lineageTiles(x, top, w, h float64) []lineageTile {
+	if s.root == "" {
 		return nil
 	}
-	id := s.ids[s.sel]
-	if s.tree == nil || s.treeFor != id {
-		s.tree, s.treeFor = s.lineage.Tree(id, s.choice), id
-	}
-	if s.tree == nil {
+	root := s.lineage.Tree(s.root, s.choice)
+	if root == nil {
 		return nil
 	}
-	var rows []lineageRow
-	var walk func(n *data.LineageNode)
-	walk = func(n *data.LineageNode) {
-		hidden := !g.bestiarySeen(n.Species)
-		row := lineageRow{node: n, hidden: hidden, expandable: len(n.Parents) > 0 && !hidden}
-		if row.expandable {
-			open, set := s.folds[n.Path]
-			row.expanded = open
-			if !set {
-				row.expanded = n.Depth < data.DefaultOpenDepth
-			}
+	// Four equal slots leave room for the four grandparents without horizontal scrolling.
+	gap := 12.0
+	cardW := min(172, (w-48-3*gap)/4)
+	cardH := min(132, (h-98)/3-12)
+	left := x + (w-4*cardW-3*gap)/2
+	rowY := func(row int) float64 { return top + 62 + float64(row)*(h-98)/3 }
+	place := func(n *data.LineageNode, row int, center float64) lineageTile {
+		return lineageTile{node: n, x: center - cardW/2, y: rowY(row), w: cardW, h: cardH, parent: -1}
+	}
+	centers := [4]float64{}
+	for i := range centers {
+		centers[i] = left + cardW/2 + float64(i)*(cardW+gap)
+	}
+	tiles := []lineageTile{place(root, 0, (centers[1]+centers[2])/2)}
+	if root.Recipe.Kind == data.RecipeCapture {
+		return tiles
+	}
+	for i, id := range root.Recipe.Parents {
+		parent := s.lineage.Tree(id, s.choice)
+		if parent == nil {
+			continue
 		}
-		rows = append(rows, row)
-		if row.expanded {
-			for _, p := range n.Parents {
-				walk(p)
+		tile := place(parent, 1, (centers[2*i]+centers[2*i+1])/2)
+		tile.parent = 0
+		tiles = append(tiles, tile)
+	}
+	for i := 1; i < min(3, len(tiles)); i++ {
+		parent := tiles[i].node
+		if parent.Recipe.Kind == data.RecipeCapture {
+			continue
+		}
+		for j, id := range parent.Recipe.Parents {
+			if grand := s.lineage.Tree(id, s.choice); grand != nil {
+				tile := place(grand, 2, centers[2*(i-1)+j])
+				tile.parent = i
+				tiles = append(tiles, tile)
 			}
 		}
 	}
-	walk(s.tree)
-	return rows
-}
-
-func (s *bestiaryScreen) resetTree() {
-	s.tree, s.cur, s.scroll = nil, 0, 0
-	s.folds = map[string]bool{}
+	return tiles
 }
 
 func (s *bestiaryScreen) updateTree(g *Game) {
-	rows := s.lineageRows(g)
-	if len(rows) == 0 {
+	sw, sh := g.screen()
+	tiles := s.lineageTiles(322, 104, sw-350, sh-185)
+	if len(tiles) == 0 {
 		s.inTree = false
 		return
 	}
-	s.cur = min(s.cur, len(rows)-1)
-	row := rows[s.cur]
+	s.cur = min(s.cur, len(tiles)-1)
 	switch {
 	case g.in.cancel():
 		g.sfx("cancel")
-		s.inTree = false
-	case g.in.down():
-		s.cur = (s.cur + 1) % len(rows)
-		g.sfx("cursor")
-	case g.in.up():
-		s.cur = (s.cur + len(rows) - 1) % len(rows)
-		g.sfx("cursor")
-	case g.in.right():
-		if row.expandable && !row.expanded {
-			s.folds[row.node.Path] = true
-			g.sfx("cursor")
-		}
-	case g.in.left():
-		if row.expandable && row.expanded {
-			s.folds[row.node.Path] = false
-			g.sfx("cursor")
-		} else {
+		if len(s.history) == 0 {
 			s.inTree = false
+		} else {
+			last := s.history[len(s.history)-1]
+			s.history = s.history[:len(s.history)-1]
+			s.root, s.cur = last.species, last.cursor
+		}
+	case g.in.up() || g.in.down() || g.in.left() || g.in.right():
+		if next := lineageNeighbor(tiles, s.cur, g.in.left(), g.in.right(), g.in.up(), g.in.down()); next != s.cur {
+			s.cur = next
+			g.sfx("cursor")
 		}
 	case g.in.ok():
-		if i := slices.Index(s.ids, row.node.Species); i >= 0 && !row.hidden && i != s.sel {
+		s.history = append(s.history, lineageView{s.root, s.cur})
+		s.root, s.cur = tiles[s.cur].node.Species, 0
+		g.sfx("decide")
+	case g.in.pressed[btnBack]:
+		if i := slices.Index(s.ids, tiles[s.cur].node.Species); i >= 0 && g.bestiarySeen(tiles[s.cur].node.Species) {
+			s.sel, s.inTree = i, false
+			s.history = nil
 			g.sfx("decide")
-			s.sel = i
-			s.resetTree()
-			s.inTree = false
-			return
+		} else {
+			g.sfx("buzzer")
 		}
-		g.sfx("buzzer")
+	case g.in.tab() != 0:
+		s.nextRecipe(g)
 	}
-	if g.in.tab() != 0 {
-		s.nextRecipe(g, row.node)
-	}
-	s.keepInView(g)
 }
 
-// nextRecipe switches the cursor's species to its next way of being obtained.
-func (s *bestiaryScreen) nextRecipe(g *Game, n *data.LineageNode) {
-	if n.Choices < 2 || !g.bestiarySeen(n.Species) {
+// nextRecipe switches only the species at the top of the view.
+func (s *bestiaryScreen) nextRecipe(g *Game) {
+	n := s.lineage.Tree(s.root, s.choice)
+	if n == nil || n.Choices < 2 {
 		g.sfx("buzzer")
 		return
 	}
-	path := n.Path
 	s.choice[n.Species] = (n.Choice + 1) % n.Choices
-	s.tree = nil
-	g.sfx("cursor")
-	rows := s.lineageRows(g)
 	s.cur = 0
-	for i, r := range rows {
-		if r.node.Path == path {
-			s.cur = i
+	g.sfx("cursor")
+}
+
+func lineageNeighbor(tiles []lineageTile, current int, left, right, up, down bool) int {
+	a := tiles[current]
+	best, score := current, 1e12
+	for i, b := range tiles {
+		dx, dy := b.x+b.w/2-a.x-a.w/2, b.y+b.h/2-a.y-a.h/2
+		if i == current || left && dx >= -1 || right && dx <= 1 || up && dy >= -1 || down && dy <= 1 {
+			continue
+		}
+		if left || right {
+			scoreCandidate := dx*dx + 5*dy*dy
+			if scoreCandidate < score {
+				best, score = i, scoreCandidate
+			}
+		} else {
+			scoreCandidate := 5*dx*dx + dy*dy
+			if scoreCandidate < score {
+				best, score = i, scoreCandidate
+			}
 		}
 	}
-}
-
-func (s *bestiaryScreen) keepInView(g *Game) {
-	n := s.lineageCapacity(g)
-	if s.cur < s.scroll {
-		s.scroll = s.cur
-	}
-	if s.cur >= s.scroll+n {
-		s.scroll = s.cur - n + 1
-	}
-}
-
-const lineageRowH = 28.0
-
-func (s *bestiaryScreen) lineageCapacity(g *Game) int {
-	_, sh := g.screen()
-	return max(1, int((sh-260)/lineageRowH))
+	return best
 }
 
 func (s *bestiaryScreen) update(g *Game) {
@@ -229,13 +237,11 @@ func (s *bestiaryScreen) update(g *Game) {
 		g.sfx("cursor")
 	}
 	if g.in.right() || g.in.ok() {
-		if rows := s.lineageRows(g); len(rows) > 0 && g.bestiarySeen(s.ids[s.sel]) {
-			s.inTree, s.cur, s.scroll = true, 0, 0
+		if g.bestiarySeen(s.ids[s.sel]) && s.lineage.Tree(s.ids[s.sel], s.choice) != nil {
+			s.inTree, s.cur, s.root = true, 0, s.ids[s.sel]
+			s.history = nil
 			g.sfx("decide")
 		}
-	}
-	if g.in.tab() != 0 && s.tree != nil {
-		s.nextRecipe(g, s.tree)
 	}
 }
 
@@ -273,7 +279,7 @@ func (s *bestiaryScreen) draw(g *Game, dst *ebiten.Image) {
 	}
 	hint := "Up / Down: choose    Z: lineage    X / F4: close"
 	if s.inTree {
-		hint = "Up / Down: choose    Left / Right: fold    Z: open page    Tab: other recipe    X: back"
+		hint = "Arrows: choose picture    Z: view ancestry    Q: open page    Tab: other recipe    X: back"
 	}
 	g.text(dst, gfx.Ellipsis(hint, sizeS*0.8, sw-100), 48, sh-48, sizeS*0.8, g.th.dim)
 }
@@ -395,45 +401,53 @@ func speciesSexText(sex string) string {
 	}
 }
 
-// drawLineage shows the family tree on its own framed page.
+// drawLineage shows seven pictures at most: child, parents and grandparents.
 func (s *bestiaryScreen) drawLineage(g *Game, dst *ebiten.Image, x, top, w, h float64) {
 	bestiaryPanel(g, dst, x, top, w, h)
-	rows := s.lineageRows(g)
-	if len(rows) == 0 {
+	tiles := s.lineageTiles(x, top, w, h)
+	if len(tiles) == 0 {
 		return
 	}
-	x += 24
-	w -= 48
-	top += 20
+	path := make([]string, 0, len(s.history)+1)
+	for _, view := range s.history {
+		path = append(path, s.speciesName(g, view.species, !g.bestiarySeen(view.species)))
+	}
+	path = append(path, s.speciesName(g, s.root, !g.bestiarySeen(s.root)))
+	crumb := gfx.Ellipsis(strings.Join(path, " > "), sizeS*0.7, w-48)
+	g.text(dst, crumb, x+24, top+18, sizeS*0.7, g.th.dim)
 	head := "Lineage"
-	if s.tree.Choices > 1 {
-		head += fmt.Sprintf("   (recipe %d of %d)", s.tree.Choice+1, s.tree.Choices)
+	root := tiles[0].node
+	if root.Choices > 1 {
+		head += fmt.Sprintf("   recipe %d/%d", root.Choice+1, root.Choices)
 	}
-	g.text(dst, head, x, top, sizeS, g.th.accent)
-	n := min(s.lineageCapacity(g), max(1, int((h-76)/lineageRowH)))
-	start := min(s.scroll, max(0, len(rows)-n))
-	y := top + 30
-	for i := start; i < len(rows) && i < start+n; i++ {
-		row := rows[i]
-		indent := min(float64(row.node.Depth)*30, max(0, w-180))
-		if i == s.cur && s.inTree {
-			gfx.FillRoundRect(dst, float32(x+indent-6), float32(y-3), float32(w-indent), float32(lineageRowH-2), 6, withAlpha(g.th.accent, 0x55))
-		}
-		if row.node.Depth > 0 {
-			gfx.FillRect(dst, float32(x+indent-22), float32(y-12), 2, 24, withAlpha(g.th.dim, 0xa0), false)
-			gfx.FillRect(dst, float32(x+indent-22), float32(y+11), 14, 2, withAlpha(g.th.dim, 0xff), false)
-		}
-		label := s.lineageLabel(g, row)
-		if fitted, _ := gfx.FitLines(label, sizeS*0.85, w-indent-24, 1); len(fitted) > 0 {
-			label = fitted[0]
-		}
-		g.text(dst, label, x+indent+2, y, sizeS*0.85, g.th.text)
-		y += lineageRowH
+	g.text(dst, head, x+24, top+40, sizeS*0.8, g.th.accent)
+	// Draw connectors first, so the picture cards remain legible over them.
+	connect := func(a, b lineageTile) {
+		cx, cy := a.x+a.w/2, a.y+a.h
+		px, py := b.x+b.w/2, b.y
+		mid := (cy + py) / 2
+		lineageLine(dst, cx, cy, cx, mid, g.th.dim)
+		lineageLine(dst, cx, mid, px, mid, g.th.dim)
+		lineageLine(dst, px, mid, px, py, g.th.dim)
 	}
-	if len(rows) > n {
-		track := float32(n)*lineageRowH - 4
-		gfx.FillRect(dst, float32(x+w-6), float32(top+30), 3, track, withAlpha(g.th.dim, 0x80), false)
-		gfx.FillRect(dst, float32(x+w-6), float32(top+30)+track*float32(start)/float32(len(rows)), 3, track*float32(n)/float32(len(rows)), g.th.accent, false)
+	if len(tiles) > 1 {
+		for i := 1; i < min(3, len(tiles)); i++ {
+			connect(tiles[0], tiles[i])
+		}
+	}
+	for i := 3; i < len(tiles); i++ {
+		connect(tiles[tiles[i].parent], tiles[i])
+	}
+	for i, tile := range tiles {
+		s.drawLineageTile(g, dst, tile, s.inTree && i == s.cur)
+	}
+}
+
+func lineageLine(dst *ebiten.Image, x1, y1, x2, y2 float64, c color.Color) {
+	if x1 == x2 {
+		gfx.FillRect(dst, float32(x1-1), float32(min(y1, y2)), 2, float32(math.Abs(y2-y1)), c, false)
+	} else {
+		gfx.FillRect(dst, float32(min(x1, x2)), float32(y1-1), float32(math.Abs(x2-x1)), 2, c, false)
 	}
 }
 
@@ -441,50 +455,54 @@ func (s *bestiaryScreen) speciesName(g *Game, id string, hidden bool) string {
 	if hidden {
 		return "?"
 	}
-	e := g.db.Enemies[id]
-	if e == nil {
-		return id
+	if e := g.db.Enemies[id]; e != nil {
+		if e.Sex == "" || e.Sex == "any" {
+			return e.Name + " ♂/♀"
+		}
+		return e.Name + sexSign(e.Sex)
 	}
-	return e.Name + sexSign(e.Sex)
+	return id
 }
 
-func (s *bestiaryScreen) lineageLabel(g *Game, row lineageRow) string {
-	n := row.node
-	label := s.speciesName(g, n.Species, row.hidden)
-	if row.hidden {
-		return label
+func (s *bestiaryScreen) drawLineageTile(g *Game, dst *ebiten.Image, tile lineageTile, selected bool) {
+	n := tile.node
+	hidden := !g.bestiarySeen(n.Species)
+	c := g.th.dim
+	if selected {
+		c = g.th.accent
 	}
-	switch {
-	case n.Ref == "seen":
-		return label + "   (shown above)"
-	case n.Ref == "cycle":
-		return label + "   (loop, see above)"
+	gfx.FillRoundRect(dst, float32(tile.x-3), float32(tile.y-3), float32(tile.w+6), float32(tile.h+6), 9, c)
+	gfx.FillRoundRect(dst, float32(tile.x), float32(tile.y), float32(tile.w), float32(tile.h), 7, g.th.window)
+	if hidden {
+		g.text(dst, "?", tile.x+tile.w/2-8, tile.y+22, sizeL, g.th.dim)
+	} else if e := g.db.Enemies[n.Species]; e != nil {
+		drawBestiaryImage(g, dst, e.Image.File, tile.x+8, tile.y+4, tile.w-16, tile.h-49)
 	}
+	if !hidden && tile.parent == 0 && n.Recipe.Kind != data.RecipeCapture {
+		g.text(dst, "more +", tile.x+tile.w-56, tile.y+4, sizeS*0.5, g.th.accent)
+	}
+	g.text(dst, gfx.Ellipsis(s.speciesName(g, n.Species, hidden), sizeS*0.68, tile.w-12), tile.x+6, tile.y+tile.h-43, sizeS*0.68, g.th.text)
+	if hidden {
+		return
+	}
+	caption := ""
 	switch n.Recipe.Kind {
 	case data.RecipeCapture:
-		where := "unknown"
+		place := "unknown"
 		if len(n.Sites) > 0 {
-			where = strings.Join(n.Sites[:min(2, len(n.Sites))], ", ")
-			if len(n.Sites) > 2 {
-				where += fmt.Sprintf(" +%d", len(n.Sites)-2)
-			}
+			place = n.Sites[0]
 		}
-		label += "   Capture: " + where
+		caption = "Capture: " + place
 	case data.RecipeFamily:
-		label += "   <- " + g.db.MonsterFamilies[n.Recipe.Families[0]] + " x " + g.db.MonsterFamilies[n.Recipe.Families[1]]
-		if row.expandable && !row.expanded {
-			label += "   ..."
-		}
+		caption = g.db.MonsterFamilies[n.Recipe.Families[0]] + " x " + g.db.MonsterFamilies[n.Recipe.Families[1]]
 	case data.RecipePair:
-		label += "   <- " + s.speciesName(g, n.Recipe.Parents[0], !g.bestiarySeen(n.Recipe.Parents[0])) + " x " + s.speciesName(g, n.Recipe.Parents[1], !g.bestiarySeen(n.Recipe.Parents[1]))
-		if row.expandable && !row.expanded {
-			label += "   ..."
-		}
+		caption = "Parents pictured below"
 	}
-	if n.Choices > 1 {
-		label += fmt.Sprintf("   [%d/%d]", n.Choice+1, n.Choices)
+	g.text(dst, gfx.Ellipsis(caption, sizeS*0.53, tile.w-12), tile.x+6, tile.y+tile.h-21, sizeS*0.53, g.th.dim)
+	if n.Recipe.Kind == data.RecipeFamily {
+		example := "e.g. " + s.speciesName(g, n.Recipe.Parents[0], !g.bestiarySeen(n.Recipe.Parents[0])) + " + " + s.speciesName(g, n.Recipe.Parents[1], !g.bestiarySeen(n.Recipe.Parents[1]))
+		g.text(dst, gfx.Ellipsis(example, sizeS*0.46, tile.w-12), tile.x+6, tile.y+tile.h-10, sizeS*0.46, g.th.dim)
 	}
-	return label
 }
 func (g *Game) screenWidth() float64 { w, _ := g.screen(); return w }
 

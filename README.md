@@ -140,7 +140,7 @@ enemies:
 
 F4 opens the monster book during `--dev` play.
 
-The Go Zen book shows a family tree for each known monster. The shortest recipe opens first; choose another recipe with Tab, fold branches with Left and Right, and choose a known node to open its page. The route to Succubus is two generations: capture Frost Bat and Dream Wisp for Whisper Imp, capture Ghost Soldier and Nectar Moth for Vampire, then breed Whisper Imp with Vampire. Go Zen keeps the reserve at Yorn's Breeding Altar.
+The Go Zen book shows a family tree for each known monster. The shortest recipe opens first in a picture tree with the species, its parents and grandparents. Use arrows to select a picture, Z to see that species as the new top, X to return along the breadcrumb, Tab to change the top recipe, and Q to open a selected known species page. The route to Succubus is two generations: capture Frost Bat and Dream Wisp for Whisper Imp, capture Ghost Soldier and Nectar Moth for Vampire, then breed Whisper Imp with Vampire. Go Zen keeps the reserve at Yorn's Breeding Altar.
 
 ![A two-generation monster family tree in the Go Zen book](docs/images/go-zen-lineage.jpg)
 ![Yorn's altar and the ranch](docs/images/go-zen-altar.jpg)
