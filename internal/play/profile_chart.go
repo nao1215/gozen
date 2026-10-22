@@ -72,7 +72,7 @@ func chartOpacity(related bool, frame int) uint8 {
 	if related {
 		return 255
 	}
-	return uint8(max(0, min(255, 255-243*frame/chartFocusFrames))) //nolint:gosec // Clamped to 0..255 first.
+	return uint8(max(0, min(255, 255-243*frame/chartFocusFrames))) // Clamped to 0..255 first.
 }
 
 func (s *profileScreen) chartDisplay(g *Game, base []image.Point) ([]image.Point, []bool) {
