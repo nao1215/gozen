@@ -26,6 +26,8 @@ if feature in ("transform", "merge"):
                line["target"].get("id") == result_id for line in steps):
         sys.exit(f"capture did not show {feature}")
 elif feature == "motion":
+    if len(list(run.glob("full_*.png"))) < 4:
+        sys.exit("capture has too few full-HP Succubus frames")
     if not any(line.get("target", {}).get("id") == "succubus" and line.get("amount", 0) > 0 and 0 < line.get("hp", 0) < 139 for line in steps if isinstance(line.get("target"), dict)):
         sys.exit("capture did not hit the living low-HP Succubus")
 elif feature == "hp":

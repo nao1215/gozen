@@ -231,8 +231,9 @@ images:
   go-zen-motion.gif:
     run: battle-motion
     frames:
+      - {shots: "full_*"}
       - {shots: "feature_*", every: 2}
-    gif: {fps: 12, width: 720, height: 405, colors: 96}
+    gif: {fps: 12, width: 720, height: 405, colors: 96, split_at: 24}
   go-zen-cutin.gif:
     run: battle
     frames:

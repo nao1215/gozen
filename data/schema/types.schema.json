@@ -6656,6 +6656,19 @@
           },
           "x-type": "[Picture](#picture) or string"
         },
+        "image_height": {
+          "description": "Battle picture height as a fraction of screen height (0 to 1). Omission keeps the legacy pixel-based layout; crowded troops shrink together.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "v1 keeps 0; v0 has per-field rules",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2 (omitting it and writing 0 differ in v0)"
+          },
+          "x-type": "number"
+        },
         "images": {
           "description": "Alternate files selected as HP falls below descending ratio thresholds. Needs schema version 7.",
           "items": {
@@ -6818,7 +6831,7 @@
           "x-type": "string → number"
         },
         "scale": {
-          "description": "The size multiplier of the enemy's picture. The default is 1.",
+          "description": "The legacy size multiplier of the enemy picture. The default is 1.",
           "type": "number",
           "x-contract": {
             "default": "1",

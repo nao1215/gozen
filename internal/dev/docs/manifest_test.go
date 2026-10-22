@@ -88,11 +88,12 @@ type jpegEncoding struct {
 }
 
 type gifEncoding struct {
-	FPS    int    `yaml:"fps"`
-	Width  int    `yaml:"width"`
-	Height int    `yaml:"height"`
-	Colors int    `yaml:"colors"`
-	Crop   string `yaml:"crop"`
+	FPS     int    `yaml:"fps"`
+	Width   int    `yaml:"width"`
+	Height  int    `yaml:"height"`
+	Colors  int    `yaml:"colors"`
+	SplitAt int    `yaml:"split_at"` // keep two visually distinct phases in order
+	Crop    string `yaml:"crop"`
 }
 
 type image struct {

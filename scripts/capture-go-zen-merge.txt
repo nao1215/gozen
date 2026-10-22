@@ -1,3 +1,4 @@
+battle-log off
 # Keep both Drip Slimes alive until their first Pool Together turn.
 wait 40
 battle-hp enemy 0 48

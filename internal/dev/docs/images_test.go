@@ -672,28 +672,47 @@ func encodeGIF(t *testing.T, work string, frames []string, e gifEncoding, dst st
 	if len(frames) < 2 {
 		return fmt.Errorf("only %d frames", len(frames))
 	}
-	dir := filepath.Join(work, "gif-"+strings.TrimSuffix(filepath.Base(dst), ".gif"))
-	if err := os.MkdirAll(dir, 0o750); err != nil {
-		return err
-	}
-	// Some frames have an alpha channel. A mixed sequence breaks ffmpeg's single
-	// palette (every GIF frame alike, or false colors), so every frame becomes RGB first.
-	conversions := make([]func() error, len(frames))
-	for i, f := range frames {
-		conversions[i] = func() error { return opaqueFrame(t, f, filepath.Join(dir, fmt.Sprintf("frame-%04d.png", i))) }
-	}
-	if err := parallel(docsJobs(), conversions); err != nil {
-		return err
-	}
-	filter := "format=rgb24,"
-	if e.Crop != "" {
-		filter += "crop=" + e.Crop + ","
-	}
-	filter += fmt.Sprintf("scale=%d:%d:flags=lanczos,split[a][b];[a]palettegen=max_colors=%d:stats_mode=diff[p];"+
-		"[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle", e.Width, e.Height, max(e.Colors, 2))
-	if err := ffmpeg(t, "-framerate", strconv.Itoa(e.FPS), "-i", filepath.Join(dir, "frame-%04d.png"),
-		"-fps_mode", "cfr", "-filter_complex", filter, "-loop", "0", dst); err != nil {
-		return err
+	if e.SplitAt != 0 {
+		if e.SplitAt < 2 || e.SplitAt > len(frames)-2 {
+			return fmt.Errorf("split_at %d outside %d frames", e.SplitAt, len(frames))
+		}
+		part := e
+		part.SplitAt = 0
+		stem := strings.TrimSuffix(filepath.Base(dst), ".gif")
+		first, second := filepath.Join(work, stem+"-first.gif"), filepath.Join(work, stem+"-second.gif")
+		if err := encodeGIF(t, work, frames[:e.SplitAt], part, first); err != nil {
+			return err
+		}
+		if err := encodeGIF(t, work, frames[e.SplitAt:], part, second); err != nil {
+			return err
+		}
+		if err := joinGIF(first, second, dst); err != nil {
+			return err
+		}
+	} else {
+		dir := filepath.Join(work, "gif-"+strings.TrimSuffix(filepath.Base(dst), ".gif"))
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			return err
+		}
+		// Some frames have an alpha channel. A mixed sequence breaks ffmpeg's single
+		// palette (every GIF frame alike, or false colors), so every frame becomes RGB first.
+		conversions := make([]func() error, len(frames))
+		for i, f := range frames {
+			conversions[i] = func() error { return opaqueFrame(t, f, filepath.Join(dir, fmt.Sprintf("frame-%04d.png", i))) }
+		}
+		if err := parallel(docsJobs(), conversions); err != nil {
+			return err
+		}
+		filter := "format=rgb24,"
+		if e.Crop != "" {
+			filter += "crop=" + e.Crop + ","
+		}
+		filter += fmt.Sprintf("scale=%d:%d:flags=lanczos,split[a][b];[a]palettegen=max_colors=%d:stats_mode=diff[p];"+
+			"[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle", e.Width, e.Height, max(e.Colors, 2))
+		if err := ffmpeg(t, "-framerate", strconv.Itoa(e.FPS), "-i", filepath.Join(dir, "frame-%04d.png"),
+			"-fps_mode", "cfr", "-filter_complex", filter, "-loop", "0", dst); err != nil {
+			return err
+		}
 	}
 	if err := slimGIF(dst, slimTolerance); err != nil {
 		return err
@@ -726,6 +745,37 @@ func encodeGIF(t *testing.T, work string, frames []string, e gifEncoding, dst st
 }
 
 // decodeFrames reads a picture, a GIF or a video as full frames.
+// joinGIF appends two independently paletted phases without discarding their early frames.
+func joinGIF(first, second, dst string) error {
+	a, err := os.ReadFile(first)
+	if err != nil {
+		return err
+	}
+	b, err := os.ReadFile(second)
+	if err != nil {
+		return err
+	}
+	ga, err := gif.DecodeAll(bytes.NewReader(a))
+	if err != nil {
+		return err
+	}
+	gb, err := gif.DecodeAll(bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	if ga.Config.Width != gb.Config.Width || ga.Config.Height != gb.Config.Height {
+		return fmt.Errorf("GIF phases have different sizes")
+	}
+	ga.Image = append(ga.Image, gb.Image...)
+	ga.Delay = append(ga.Delay, gb.Delay...)
+	ga.Disposal = append(ga.Disposal, gb.Disposal...)
+	f, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	return errors.Join(gif.EncodeAll(f, ga), f.Close())
+}
+
 func decodeFrames(ctx context.Context, file string) ([]goimage.Image, error) {
 	switch strings.ToLower(filepath.Ext(file)) {
 	case ".gif":

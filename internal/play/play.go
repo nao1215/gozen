@@ -495,6 +495,13 @@ func New(opts Options) (_ *Game, err error) {
 		s.arrived = func() bool { a := g.walkArrived(); g.walkGoal = [3]int{}; return a }
 		s.battleAuto = func() { g.act("battle_auto", nil) }
 		s.inBattle = func() bool { return g.currentBattle() != nil }
+		s.battleLog = func(enabled bool) {
+			if !g.opts.Development || g.currentBattle() == nil {
+				g.failure = errors.New("script: battle-log needs an active development battle")
+				return
+			}
+			g.currentBattle().hideTacticLog = !enabled
+		}
 		s.battleHP = func(team string, index, hp int) {
 			if !g.opts.Development {
 				g.failure = errors.New("script: battle-hp needs a development session")

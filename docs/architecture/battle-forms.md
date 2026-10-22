@@ -66,6 +66,8 @@ actors:
     images: [{below: 0.3, face: tired}]
 ```
 
+Set `image_height` on an enemy to size its battle picture as a fraction of screen height, independent of the source picture pixels. For example, use `0.65` for a person, `0.28` for a small monster, and `0.55` for a large foe. The troop layout shrinks all pictures together if their combined widths exceed the available space. When omitted, the earlier pixel-based sizing and `scale` still apply.
+
 Enemy `motion` is `none` by default. `breathe`, `sway`, and `bob` are subtle idle movements; all foes lunge when acting and shake when hit. An optional enemy `puppet` points to the same puppet YAML format used by actors. Both can define `soft_sway` regions in that file: a rectangle or ellipse of the base picture moves gently with breathing and trails action and hit reactions. The battle screen crossfades picture changes and flashes on form changes.
 
 The Go Zen sample uses an author-generated King Slime picture for the merge result, the existing Tollkeeper file for both forms, a Drip Slime alternate picture below half HP, and Maren's worried face below 35% HP. The Succubus uses a puppet for blinking and motion. The existing Tollkeeper and Drip Slime alternate pictures can be replaced with distinct art when available.

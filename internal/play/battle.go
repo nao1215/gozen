@@ -8,6 +8,7 @@ import (
 	"math"
 	"slices"
 	"strconv"
+	"strings"
 
 	lang "github.com/nao1215/gozen/internal/text"
 
@@ -59,16 +60,17 @@ type battleScene struct {
 	openTick int
 	msg      []string
 
-	members   []*battle.Unit
-	mi        int
-	actions   []battle.Action
-	cmd       *list
-	sub       *list
-	subKind   string
-	subIDs    []string
-	target    *targeting
-	auto      bool
-	decisions []battle.Decision
+	members       []*battle.Unit
+	mi            int
+	actions       []battle.Action
+	cmd           *list
+	sub           *list
+	subKind       string
+	subIDs        []string
+	target        *targeting
+	auto          bool
+	decisions     []battle.Decision
+	hideTacticLog bool
 
 	hp, mp map[*battle.Unit]float64
 
@@ -455,6 +457,16 @@ func (s *battleScene) catchUp(st battle.Step) {
 	}
 }
 
+// battleText hides the appended tactic explanation only when a scripted capture asks for it.
+func (s *battleScene) battleText(st battle.Step) string {
+	if s.hideTacticLog && st.Kind == battle.Act {
+		if i := strings.IndexAny(st.Text, "[［"); i >= 0 {
+			return st.Text[:i]
+		}
+	}
+	return st.Text
+}
+
 func (s *battleScene) show(g *Game, st battle.Step) {
 	if st.Kind == -1 {
 		s.beginInput(g)
@@ -470,7 +482,7 @@ func (s *battleScene) show(g *Game, st battle.Step) {
 	}
 	if st.Text != "" && !replay {
 		g.emit("battle", traceLine{"text": st.Text})
-		s.msg = append(s.msg, st.Text)
+		s.msg = append(s.msg, s.battleText(st))
 		if len(s.msg) > 3 {
 			s.msg = s.msg[len(s.msg)-3:]
 		}
@@ -502,7 +514,7 @@ func (s *battleScene) show(g *Game, st battle.Step) {
 		if !s.cutDone && s.startCutIn(g, st) {
 			s.cutDone = true
 			s.queue = append([]battle.Step{st}, s.queue...)
-			s.msg = []string{st.Text}
+			s.msg = []string{s.battleText(st)}
 			s.stepT = cutInTicks - 6
 			return
 		}
@@ -512,7 +524,7 @@ func (s *battleScene) show(g *Game, st battle.Step) {
 		if u := st.User; u != nil {
 			s.shownMP[u] = u.MP
 		}
-		s.msg = []string{st.Text}
+		s.msg = []string{s.battleText(st)}
 		s.reactTo(g, st.User, "act", 30)
 		sfx := ""
 		if use := s.usage(st.Skill); use != nil {
@@ -1297,6 +1309,16 @@ func (s *battleScene) foeBoxes(g *Game) map[*battle.Unit]foeBox {
 		}
 		var sl slot
 		switch {
+		case f.Def.ImageHeight > 0:
+			sl.h = sh * f.Def.ImageHeight
+			sl.bottom = sh * 0.76
+			if f.Def.ImageHeight >= 0.6 {
+				sl.bottom = sh * 0.87
+			} else if f.Def.ImageHeight >= 0.45 {
+				sl.bottom = sh * 0.8
+			}
+			sl.h = math.Min(sl.h, sl.bottom-foeTop)
+			sl.w = iw * sl.h / ih
 		case ih >= 600 && ih >= 1.6*iw:
 			sl.h = sh * 1.05 * scale
 			sl.w = iw * sl.h / ih * 0.6
@@ -1410,7 +1432,7 @@ func (s *battleScene) draw(g *Game, dst *ebiten.Image) {
 	if s.auto {
 		gfx.DrawTextOutlineColor(dst, lang.T("AUTO  (X でかいじょ)"), sw-150, 164, sizeS, g.th.accent, g.th.window, 1)
 	}
-	if !talking {
+	if !talking && !s.hideTacticLog {
 		r := s.reasonButton(g)
 		g.window(dst, float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()))
 		g.text(dst, lang.T("判断理由 B / L1"), float64(r.Min.X)+16, float64(r.Min.Y)+10, sizeS, g.th.text)

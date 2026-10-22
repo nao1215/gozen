@@ -7,6 +7,24 @@ import (
 	"testing"
 )
 
+func TestScriptBattleLog(t *testing.T) {
+	for _, src := range []string{"battle-log", "battle-log hidden", "battle-log off extra"} {
+		if _, err := parseScript(src); err == nil {
+			t.Errorf("accepted %q", src)
+		}
+	}
+	s, err := parseScript("battle-log off\nbattle-log on\nquit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []bool
+	s.battleLog = func(enabled bool) { got = append(got, enabled) }
+	sysStepAll(t, s, 12)
+	if len(got) != 2 || got[0] || !got[1] {
+		t.Fatalf("log states %v", got)
+	}
+}
+
 func TestScriptBattleHP(t *testing.T) {
 	for _, src := range []string{"battle-hp enemy", "battle-hp foe 0 5", "battle-hp enemy -1 5", "battle-hp enemy 0 0"} {
 		if _, err := parseScript(src); err == nil {

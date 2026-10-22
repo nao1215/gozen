@@ -680,6 +680,9 @@ func (db *DB) Check() []error {
 		e := db.Enemies[id]
 		w := "enemies." + id
 		c.picture(w+".image", e.Image)
+		if e.ImageHeight != 0 {
+			c.needsVersion(w+".image_height", "enemy picture height", SchemaVersion7)
+		}
 		c.hpImages(w+".images", e.Images, "", false)
 		if len(e.HPTriggers) > 0 {
 			c.needsVersion(w+".hp_triggers", "HP triggers", SchemaVersion7)

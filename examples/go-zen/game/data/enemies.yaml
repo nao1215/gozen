@@ -9,6 +9,7 @@ enemies:
     lore: "Drip Slimes collect beneath leaking pipes. They follow the steady rhythm of water through the halls."
     name: Drip Slime
     image: enemies/drip_slime.png
+    image_height: 0.28
     images: [{below: 0.5, file: enemies/frost_slime.png}]
     motion: breathe
     stats: {mhp: 48, mmp: 0, atk: 11, def: 2, mat: 0, mdf: 1, agi: 4, luk: 1}
@@ -25,7 +26,7 @@ enemies:
     lore: "Drip Slimes gather into a King Slime. Its broad body carries their shared rhythm through the old channels."
     name: King Slime
     image: enemies/king_slime.png
-    scale: 1.4
+    image_height: 0.55
     motion: bob
     stats: {mhp: 96, mmp: 0, atk: 17, def: 3, mat: 0, mdf: 2, agi: 3, luk: 1}
     exp: 24
@@ -39,6 +40,7 @@ enemies:
     lore: "Pipe Rats nest in warm drain tunnels. They search the old channels for scraps and lost gears."
     name: Pipe Rat
     image: enemies/pipe_rat.png
+    image_height: 0.28
     stats: {mhp: 38, mmp: 0, atk: 11, def: 1, mat: 0, mdf: 0, agi: 11, luk: 2}
     exp: 12
     gold: 6
@@ -52,6 +54,7 @@ enemies:
     lore: "Rust Crabs shelter near corroded gates. Their thick shells are stained by minerals in the water."
     name: Rust Crab
     image: enemies/rust_crab.png
+    image_height: 0.30
     stats: {mhp: 110, mmp: 0, atk: 16, def: 7, mat: 0, mdf: 2, agi: 5, luk: 1}
     resist: {thunder: 1.5}
     exp: 26
@@ -68,6 +71,7 @@ enemies:
     lore: "Brass Hounds patrol the machinery rooms. Their metal frames still respond to signals from the old works."
     name: Brass Hound
     image: enemies/brass_hound.png
+    image_height: 0.38
     stats: {mhp: 120, mmp: 0, atk: 19, def: 7, mat: 0, mdf: 3, agi: 13, luk: 3}
     exp: 30
     gold: 12
@@ -81,6 +85,7 @@ enemies:
     name: Brass Warden
     title: Valve Door Guardian
     image: enemies/brass_warden.png
+    image_height: 0.55
     stats: {mhp: 620, mmp: 0, atk: 30, def: 10, mat: 0, mdf: 4, agi: 6, luk: 1}
     boss: true
     exp: 120
@@ -96,9 +101,9 @@ enemies:
     name: Tollkeeper
     title: The Magistrate's Golem
     image: enemies/tollkeeper.png
+    image_height: 0.60
     hp_triggers: [{below: 0.5, transform: tollkeeper_unsealed, hp: ratio, clear: true}]
     motion: sway
-    scale: 1.2
     stats: {mhp: 950, mmp: 0, atk: 33, def: 12, mat: 0, mdf: 5, agi: 7, luk: 1}
     boss: true
     exp: 170
@@ -114,7 +119,7 @@ enemies:
     name: Unsealed Tollkeeper
     title: The Magistrate's Golem
     image: {file: enemies/tollkeeper.png, tint: "#ffbd8c"}
-    scale: 1.2
+    image_height: 0.60
     motion: breathe
     stats: {mhp: 950, mmp: 0, atk: 37, def: 9, mat: 0, mdf: 4, agi: 9, luk: 1}
     boss: true
@@ -130,6 +135,7 @@ enemies:
     name: Odile Vance
     title: Magistrate of Waters
     image: enemies/vance.png
+    image_height: 0.65
     stats: {mhp: 950, mmp: 0, atk: 10, def: 8, mat: 54, mdf: 10, agi: 10, luk: 4}
     boss: true
     exp: 220
@@ -146,6 +152,7 @@ enemies:
     recruit: {chance: 0.05, level: 5}
     name: Abyss Lord
     image: enemies/abyss_lord.png
+    image_height: 0.58
     lore: "Abyss Lords gather where old tunnels meet deep underground rivers. They guard the quiet pools and strike with dark currents."
     stats: {mhp: 215, mmp: 0, atk: 33, def: 13, mat: 25, mdf: 12, agi: 16, luk: 5}
 
@@ -159,6 +166,7 @@ enemies:
     monster_class: monster_beast
     name: Blast Beetle
     image: enemies/blast_beetle.png
+    image_height: 0.28
     lore: "Blast Beetles nest in warm cracks beneath the lower floors. Their hard shells store heat from the stones around them."
     stats: {mhp: 227, mmp: 0, atk: 36, def: 15, mat: 27, mdf: 13, agi: 17, luk: 5}
 
@@ -173,6 +181,7 @@ enemies:
     monster_class: monster_demon
     name: Crown Thief
     image: enemies/crown_thief.png
+    image_height: 0.65
     lore: "Crown Thieves slip through forgotten halls and collect bright metal. They flee when their stolen treasures are at risk."
     stats: {mhp: 239, mmp: 0, atk: 39, def: 17, mat: 29, mdf: 14, agi: 18, luk: 5}
 
@@ -188,6 +197,7 @@ enemies:
     recruit: {chance: 0.22, level: 1}
     name: Crystal Dragon
     image: enemies/crystal_dragon.png
+    image_height: 0.55
     lore: "Crystal Dragons circle the caverns where clear mineral spires grow. Their scales ring like glass when they move."
     stats: {mhp: 251, mmp: 0, atk: 33, def: 13, mat: 31, mdf: 12, agi: 19, luk: 5}
 
@@ -203,6 +213,7 @@ enemies:
     recruit: {chance: 0.05, level: 5}
     name: Crystal Golem
     image: enemies/crystal_golem.png
+    image_height: 0.55
     lore: "Crystal Golems form around a single bright shard. They stand still until footsteps cross their cavern floor."
     stats: {mhp: 215, mmp: 0, atk: 36, def: 15, mat: 25, mdf: 13, agi: 20, luk: 5}
 
@@ -217,6 +228,7 @@ enemies:
     monster_class: monster_material
     name: Cursed Doll
     image: enemies/cursed_doll.png
+    image_height: 0.28
     lore: "Cursed Dolls are found in sealed rooms left behind by earlier travelers. A faint light stirs inside their painted eyes."
     stats: {mhp: 227, mmp: 0, atk: 39, def: 17, mat: 27, mdf: 14, agi: 16, luk: 5}
 
@@ -230,6 +242,7 @@ enemies:
     monster_class: monster_demon
     name: Dream Eater
     image: enemies/dream_eater.png
+    image_height: 0.45
     lore: "Dream Eaters wander near the deepest resting places. They feed on drifting thoughts and leave a cool mist behind."
     stats: {mhp: 239, mmp: 0, atk: 33, def: 13, mat: 29, mdf: 12, agi: 17, luk: 5}
 
@@ -244,6 +257,7 @@ enemies:
     recruit: {chance: 0.22, level: 1}
     name: Dream Wisp
     image: enemies/dream_wisp.png
+    image_height: 0.28
     lore: "Dream Wisps appear above still water late at night. They lead travelers in circles unless approached with care."
     stats: {mhp: 251, mmp: 0, atk: 36, def: 15, mat: 31, mdf: 13, agi: 18, luk: 5}
 
@@ -260,6 +274,7 @@ enemies:
     recruit: {chance: 0.22, level: 1}
     name: Frost Bat
     image: enemies/frost_bat.png
+    image_height: 0.28
     lore: "Frost Bats roost in cold ceiling cracks. Their wings scatter tiny flakes of ice as they fly."
     stats: {mhp: 215, mmp: 0, atk: 39, def: 17, mat: 25, mdf: 14, agi: 19, luk: 5}
     resist: {thunder: 1.5}
@@ -273,6 +288,7 @@ enemies:
     monster_class: monster_beast
     name: Frost Giant
     image: enemies/frost_giant.png
+    image_height: 0.55
     lore: "Frost Giants keep watch on the oldest frozen passages. Their slow steps shake loose snow from the stone."
     stats: {mhp: 227, mmp: 0, atk: 33, def: 13, mat: 27, mdf: 12, agi: 20, luk: 5}
     resist: {ice: 0.5}
@@ -287,6 +303,7 @@ enemies:
     recruit: {chance: 0.1, level: 3}
     name: Frost Slime
     image: enemies/frost_slime.png
+    image_height: 0.28
     lore: "Frost Slimes gather around frozen springs. Their clear bodies hold the chill of the water they came from."
     stats: {mhp: 264, mmp: 0, atk: 41, def: 18, mat: 34, mdf: 15, agi: 18, luk: 5}
     resist: {ice: 0.5}
@@ -301,6 +318,7 @@ enemies:
     recruit: {chance: 0.1, level: 4}
     name: Frozen King
     image: enemies/frozen_king.png
+    image_height: 0.55
     lore: "The Frozen King waits in a hall sealed by ice. Old banners nearby suggest this was once a place of ceremony."
     stats: {mhp: 276, mmp: 0, atk: 44, def: 20, mat: 36, mdf: 16, agi: 19, luk: 5}
     resist: {thunder: 1.5}
@@ -314,6 +332,7 @@ enemies:
     monster_class: monster_undead
     name: Frozen Knight
     image: enemies/frozen_knight.png
+    image_height: 0.65
     lore: "Frozen Knights patrol the halls around the icebound keep. Their armor is held together by frost and old vows."
     stats: {mhp: 240, mmp: 0, atk: 38, def: 16, mat: 30, mdf: 14, agi: 20, luk: 5}
     resist: {ice: 0.5}
@@ -329,6 +348,7 @@ enemies:
     recruit: {chance: 0.22, level: 1}
     name: Ghost Soldier
     image: enemies/ghost_soldier.png
+    image_height: 0.65
     lore: "Ghost Soldiers repeat a quiet patrol through abandoned corridors. They fade when the last echo of their march is gone."
     stats: {mhp: 252, mmp: 0, atk: 41, def: 18, mat: 32, mdf: 15, agi: 21, luk: 5}
 
@@ -342,6 +362,7 @@ enemies:
     monster_class: monster_bird
     name: Gold Bat
     image: enemies/gold_bat.png
+    image_height: 0.28
     lore: "Gold Bats hide in high mineral caves. Their bright wings reflect light and make them hard to follow."
     stats: {mhp: 264, mmp: 0, atk: 44, def: 20, mat: 34, mdf: 16, agi: 22, luk: 5}
 
@@ -356,6 +377,7 @@ enemies:
     monster_class: monster_undead
     name: Grave Reaper
     image: enemies/grave_reaper.png
+    image_height: 0.65
     lore: "Grave Reapers linger beside ancient stone markers. They keep the paths clear and seldom leave their post."
     stats: {mhp: 276, mmp: 0, atk: 38, def: 16, mat: 36, mdf: 14, agi: 18, luk: 5}
 
@@ -370,6 +392,7 @@ enemies:
     recruit: {chance: 0.1, level: 4}
     name: Ice Lich
     image: enemies/ice_lich.png
+    image_height: 0.65
     lore: "Ice Liches study the frozen runes in deep chambers. Their spells draw strength from the cold around them."
     stats: {mhp: 240, mmp: 0, atk: 41, def: 18, mat: 30, mdf: 15, agi: 19, luk: 5}
     resist: {thunder: 1.5}
@@ -384,6 +407,7 @@ enemies:
     recruit: {chance: 0.05, level: 5}
     name: Ice Spider
     image: enemies/ice_spider.png
+    image_height: 0.30
     lore: "Ice Spiders weave pale webs across narrow frozen routes. Their nests are often marked by a dusting of frost."
     stats: {mhp: 252, mmp: 0, atk: 44, def: 20, mat: 32, mdf: 16, agi: 20, luk: 5}
     resist: {ice: 0.5}
@@ -398,6 +422,7 @@ enemies:
     recruit: {chance: 0.1, level: 4}
     name: Ice Wolf
     image: enemies/ice_wolf.png
+    image_height: 0.38
     lore: "Ice Wolves travel in small packs along the snowbound passages. They follow scent trails left by warm travelers."
     stats: {mhp: 264, mmp: 0, atk: 38, def: 16, mat: 34, mdf: 14, agi: 21, luk: 5}
     resist: {ice: 0.5}
@@ -412,6 +437,7 @@ enemies:
     recruit: {chance: 0.22, level: 2}
     name: Maneater
     image: enemies/maneater.png
+    image_height: 0.45
     lore: "Maneaters grow in damp caverns where light rarely reaches. Their roots shift when nearby stones are disturbed."
     stats: {mhp: 276, mmp: 0, atk: 41, def: 18, mat: 36, mdf: 15, agi: 22, luk: 5}
 
@@ -426,6 +452,7 @@ enemies:
     recruit: {chance: 0.22, level: 1}
     name: Chest Mimic 1
     image: enemies/mimic1.png
+    image_height: 0.30
     lore: "This small mimic waits in a forgotten chest. It copies the shape of old storage boxes to surprise passing explorers."
     stats: {mhp: 240, mmp: 0, atk: 44, def: 20, mat: 30, mdf: 16, agi: 18, luk: 5}
 
@@ -439,6 +466,7 @@ enemies:
     monster_class: monster_material
     name: Chest Mimic 2
     image: enemies/mimic2.png
+    image_height: 0.30
     lore: "A mimic can remain still for days in a quiet room. Scratches around its lid reveal where it has moved."
     stats: {mhp: 252, mmp: 0, atk: 38, def: 16, mat: 32, mdf: 14, agi: 19, luk: 5}
 
@@ -452,6 +480,7 @@ enemies:
     monster_class: monster_material
     name: Chest Mimic 3
     image: enemies/mimic3.png
+    image_height: 0.30
     lore: "This mimic favors chests near old mine routes. It waits for the sound of footsteps before opening its jaws."
     stats: {mhp: 264, mmp: 0, atk: 41, def: 18, mat: 34, mdf: 15, agi: 20, luk: 5}
 
@@ -465,6 +494,7 @@ enemies:
     monster_class: monster_material
     name: Chest Mimic 4
     image: enemies/mimic4.png
+    image_height: 0.30
     lore: "A mimic hides among supplies left in the lower halls. Dust on its surface helps it blend into the room."
     stats: {mhp: 301, mmp: 0, atk: 49, def: 23, mat: 41, mdf: 18, agi: 23, luk: 5}
 
@@ -478,6 +508,7 @@ enemies:
     monster_class: monster_material
     name: Chest Mimic 5
     image: enemies/mimic5.png
+    image_height: 0.30
     lore: "This large mimic has stayed near the deepest treasure rooms. Its heavy shell is covered in marks from many encounters."
     stats: {mhp: 265, mmp: 0, atk: 43, def: 19, mat: 35, mdf: 16, agi: 24, luk: 5}
 
@@ -491,6 +522,7 @@ enemies:
     monster_class: monster_beast
     name: Mine Rat
     image: enemies/mine_rat.png
+    image_height: 0.28
     lore: "Mine Rats live in groups among abandoned rails and stone piles. They carry scraps back to their hidden nests."
     stats: {mhp: 277, mmp: 0, atk: 46, def: 21, mat: 37, mdf: 17, agi: 20, luk: 5}
 
@@ -504,6 +536,7 @@ enemies:
     monster_class: monster_magic
     name: Mirror Shade
     image: enemies/mirror_shade.png
+    image_height: 0.65
     lore: "Mirror Shades gather in rooms with polished walls. They copy a traveler’s movements before stepping into view."
     stats: {mhp: 289, mmp: 0, atk: 49, def: 23, mat: 39, mdf: 18, agi: 21, luk: 5}
 
@@ -519,6 +552,7 @@ enemies:
     recruit: {chance: 0.1, level: 3}
     name: Nectar Moth
     image: enemies/nectar_moth.png
+    image_height: 0.28
     lore: "Nectar Moths drift toward the glowing fungi of the lower caverns. Their wings carry a faint golden dust."
     stats: {mhp: 301, mmp: 0, atk: 43, def: 19, mat: 41, mdf: 16, agi: 22, luk: 5}
 
@@ -532,6 +566,7 @@ enemies:
     monster_class: monster_beast
     name: Nightmare Hound
     image: enemies/nightmare_hound.png
+    image_height: 0.38
     lore: "Nightmare Hounds roam the dark paths beyond the old gates. Their keen hearing makes quiet travel difficult."
     stats: {mhp: 265, mmp: 0, atk: 46, def: 21, mat: 35, mdf: 17, agi: 23, luk: 5}
 
@@ -545,6 +580,7 @@ enemies:
     monster_class: monster_beast
     name: Snow Ape
     image: enemies/snow_ape.png
+    image_height: 0.45
     lore: "Snow Apes make nests in sheltered icy ledges. They toss loose stones to warn others away from their territory."
     stats: {mhp: 277, mmp: 0, atk: 49, def: 23, mat: 37, mdf: 18, agi: 24, luk: 5}
     resist: {ice: 0.5}
@@ -559,6 +595,7 @@ enemies:
     monster_class: monster_magic
     name: Snow Witch
     image: enemies/snow_witch.png
+    image_height: 0.65
     lore: "Snow Witches live in high, frozen chambers. They shape the falling snow into patterns that conceal their tracks."
     stats: {mhp: 289, mmp: 0, atk: 43, def: 19, mat: 39, mdf: 16, agi: 20, luk: 5}
     resist: {ice: 0.5}
@@ -573,6 +610,7 @@ enemies:
     recruit: {chance: 0.22, level: 1}
     name: Spore Shroom
     image: enemies/spore_shroom.png
+    image_height: 0.30
     lore: "Spore Shrooms grow in clusters on damp stone. Their clouds of spores mark the air where they have spread."
     stats: {mhp: 301, mmp: 0, atk: 46, def: 21, mat: 41, mdf: 17, agi: 21, luk: 5}
 
@@ -587,6 +625,7 @@ enemies:
     recruit: {chance: 0.22, level: 2}
     name: Steam Slime
     image: enemies/steam_slime.png
+    image_height: 0.28
     lore: "Steam Slimes form around warm vents below the cold floors. Their bodies puff when the pressure changes."
     stats: {mhp: 265, mmp: 0, atk: 49, def: 23, mat: 35, mdf: 18, agi: 22, luk: 5}
 
@@ -603,6 +642,7 @@ enemies:
     recruit: {chance: 0.18, level: 2}
     name: Night Bat
     image: enemies/night_bat.png
+    image_height: 0.28
     lore: "Night Bats rest among the old rafters and follow insects through the dim corridors."
     stats: {mhp: 83, mmp: 0, atk: 19, def: 5, mat: 7, mdf: 5, agi: 18, luk: 3}
     exp: 32
@@ -617,6 +657,7 @@ enemies:
     recruit: {chance: 0.2, level: 2}
     name: Ghoul
     image: enemies/ghoul.png
+    image_height: 0.65
     lore: "Ghouls are frail wandering corpses that move toward echoes in the lower tunnels."
     stats: {mhp: 72, mmp: 0, atk: 15, def: 3, mat: 1, mdf: 2, agi: 5, luk: 1}
     exp: 24
@@ -631,6 +672,7 @@ enemies:
     recruit: {chance: 0.18, level: 2}
     name: Incense Bloom
     image: enemies/incense_bloom.png
+    image_height: 0.45
     lore: "Incense Blooms release a sweet fragrance when warm air moves through their petals."
     stats: {mhp: 91, mmp: 0, atk: 14, def: 6, mat: 13, mdf: 8, agi: 8, luk: 4}
     exp: 35
@@ -645,6 +687,7 @@ enemies:
     recruit: {chance: 0.15, level: 3}
     name: Pale Sylph
     image: enemies/pale_sylph.png
+    image_height: 0.60
     lore: "Pale Sylphs drift through quiet chambers and stir the cool air around old stonework."
     stats: {mhp: 78, mmp: 0, atk: 12, def: 4, mat: 18, mdf: 10, agi: 17, luk: 5}
     exp: 42
@@ -658,6 +701,7 @@ enemies:
     monster_class: monster_demon
     name: Succubus
     image: enemies/succubus.png
+    image_height: 0.85
     puppet: succubus/puppet.yaml
     lore: "The Succubus is a night-dwelling spirit of the old ruins. It watches over quiet halls and uses swift magic to keep intruders away."
     stats: {mhp: 277, mmp: 0, atk: 43, def: 19, mat: 37, mdf: 16, agi: 23, luk: 5}
@@ -673,6 +717,7 @@ enemies:
     monster_class: monster_demon
     name: Vampire
     image: enemies/vampire.png
+    image_height: 0.65
     lore: "Vampires keep to the cold chambers beneath the old streets. They are patient hunters that rest through the day and strike with quick magic."
     stats: {mhp: 270, mmp: 0, atk: 42, def: 18, mat: 36, mdf: 15, agi: 22, luk: 5}
 
@@ -687,6 +732,7 @@ enemies:
     monster_class: monster_demon
     name: Whisper Imp
     image: enemies/whisper_imp.png
+    image_height: 0.28
     lore: "Whisper Imps nest behind cracked walls. They trade rumors in soft voices and vanish when a lantern turns their way."
     stats: {mhp: 289, mmp: 0, atk: 46, def: 21, mat: 39, mdf: 17, agi: 24, luk: 5}
 

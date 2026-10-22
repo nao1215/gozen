@@ -1,5 +1,54 @@
-# The first hit lands while the puppet is already below half health.
+battle-log off
+# Film the full-health sway, then lower HP before the first hit.
 wait 40
+shot full_01
+wait 5
+shot full_02
+wait 5
+shot full_03
+wait 5
+shot full_04
+wait 5
+shot full_05
+wait 5
+shot full_06
+wait 5
+shot full_07
+wait 5
+shot full_08
+wait 5
+shot full_09
+wait 5
+shot full_10
+wait 5
+shot full_11
+wait 5
+shot full_12
+wait 5
+shot full_13
+wait 5
+shot full_14
+wait 5
+shot full_15
+wait 5
+shot full_16
+wait 5
+shot full_17
+wait 5
+shot full_18
+wait 5
+shot full_19
+wait 5
+shot full_20
+wait 5
+shot full_21
+wait 5
+shot full_22
+wait 5
+shot full_23
+wait 5
+shot full_24
+wait 5
 battle-hp enemy 0 125
 play motion 5
 quit

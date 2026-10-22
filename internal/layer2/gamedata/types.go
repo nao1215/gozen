@@ -1085,6 +1085,9 @@ type Enemy struct {
 	Motion string  `yaml:"motion"`
 	Puppet string  `yaml:"puppet"`
 	Scale  float64 `yaml:"scale"`
+	// ImageHeight is the battle picture height as a fraction of screen height. Zero
+	// keeps the legacy pixel-based layout; crowded troops shrink together.
+	ImageHeight float64 `yaml:"image_height"`
 	// Army is the kind of army (campaign.clash.armies) its unit shows in a clash shown as
 	// units when it leads a troop (monsters for monsters).
 	Army    string             `yaml:"army"`

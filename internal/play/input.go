@@ -337,6 +337,7 @@ type script struct {
 	battleAuto func()
 	inBattle   func() bool
 	battleHP   func(team string, index, hp int)
+	battleLog  func(enabled bool)
 
 	typeText func(string)
 	memoNote func(kind, text string)
@@ -366,6 +367,14 @@ func parseScript(src string) (*script, error) {
 			continue
 		}
 		c := scriptCmd{verb: f[0], n: 1}
+		if c.verb == "battle-log" {
+			if len(f) != 2 || (f[1] != "off" && f[1] != "on") {
+				return nil, fmt.Errorf("script line %d: battle-log off|on", line)
+			}
+			c.arg = f[1]
+			s.cmds = append(s.cmds, c)
+			continue
+		}
 		if c.verb == "battle-hp" {
 			if len(f) != 4 || (f[1] != "enemy" && f[1] != "party") {
 				return nil, fmt.Errorf("script line %d: battle-hp enemy|party INDEX HP", line)
@@ -845,6 +854,13 @@ func (s *script) step(in *input) {
 		case "do":
 			if s.do != nil {
 				s.do(c.arg)
+			}
+			s.pc++
+			s.wait = 2
+			return
+		case "battle-log":
+			if s.battleLog != nil {
+				s.battleLog(c.arg == "on")
 			}
 			s.pc++
 			s.wait = 2
