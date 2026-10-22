@@ -93,8 +93,22 @@ func New(db *data.DB, rng *rand.Rand) *State {
 
 // Join adds the actor to the party (creating them the first time), if there is room.
 func (s *State) Join(id string) bool {
-	if slices.Contains(s.Party, id) || len(s.Party) >= s.DB.Game.MaxParty {
+	if slices.Contains(s.Party, id) {
 		return false
+	}
+	if len(s.Party) >= s.DB.Game.MaxParty {
+		// A story member makes room by sending the last raised monster in the
+		// party to the reserve; a party of people only stays full.
+		at := -1
+		for i, member := range s.Party {
+			if a := s.Actors[member]; a != nil && a.Monster != "" {
+				at = i
+			}
+		}
+		if at < 0 {
+			return false
+		}
+		s.Party = slices.Delete(s.Party, at, at+1)
 	}
 	if s.Actors[id] == nil {
 		s.Actors[id] = NewActor(s.DB, id)
