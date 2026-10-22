@@ -98,6 +98,7 @@ locations:
           mark: "#e7b66b"
           symbol: T
           do:
+            - sfx: treasure
             - say: "Inside the chest, a pouch of coins and a note. The note says, in a neat hand, NOT THIS WAY."
             - gold: 25
         U:
@@ -110,6 +111,7 @@ locations:
           mark: "#e7b66b"
           symbol: T
           do:
+            - sfx: treasure
             - say: "Two glass vials, still corked."
             - give: {item: ink_vial, count: 2}
         t: {name: Open chest, picture: tiles/chest_open.png, size: 0.45, solid: "true"}
@@ -136,7 +138,7 @@ locations:
   b2:
     name: B2 Cistern Hall
     area: The Undercistern
-    music: dungeon
+    music: garden
     battle_background: bg/battle_brick.jpg
     encounters:
       rate: 0.02
@@ -294,6 +296,7 @@ locations:
           mark: "#e7b66b"
           symbol: T
           do:
+            - sfx: treasure
             - say: "A drawer of gears, a few coins, and a lot of dust."
             - gold: 30
             - give: {item: old_gear, count: 2}
@@ -307,6 +310,7 @@ locations:
           mark: "#e7b66b"
           symbol: T
           do:
+            - sfx: treasure
             - say: "Tonics, neatly wrapped. Somebody planned for company."
             - give: {item: tonic, count: 3}
         Z:
@@ -319,6 +323,7 @@ locations:
           mark: "#e7b66b"
           symbol: T
           do:
+            - sfx: treasure
             - say: "A stiff leather coat in a waxed bag. It fits somebody."
             - give: {item: coat_leather}
         U:
@@ -331,6 +336,7 @@ locations:
           mark: "#e7b66b"
           symbol: T
           do:
+            - sfx: treasure
             - say: "Tucked behind the wall, a pair of goggles with one cracked lens. They still work."
             - give: {item: charm_goggles}
         t: {name: Open chest, picture: tiles/chest_open.png, size: 0.45, solid: "true"}
@@ -366,7 +372,7 @@ locations:
   b3:
     name: B3 Shifting Reach
     area: The Undercistern
-    music: dungeon
+    music: castle
     battle_background: bg/battle_pipes.jpg
     encounters:
       rate: 0.06
@@ -472,7 +478,7 @@ locations:
   b3_back:
     name: The Long Way Back
     area: The Undercistern
-    music: dungeon
+    music: castle
     dungeon:
       wall: dungeon/pipe_wall.jpg
       door: dungeon/pipe_door.jpg
@@ -508,4 +514,4 @@ locations:
     name: Source Valve Hall
     area: The Undercistern
     background: bg/valve_hall.jpg
-    music: boss
+    music: dream

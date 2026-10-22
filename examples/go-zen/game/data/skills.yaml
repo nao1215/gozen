@@ -2,17 +2,17 @@ skills:
   attack: {name: Strike, effects: [{damage: "a.atk * 1.6 - b.def"}]}
   guard: {name: Brace, scope: self, desc: "Keep your head down. Take less damage this turn."}
   chart: {name: Chart, mp: 2, scope: one_enemy, anim: debuff, desc: "Mark where it is weakest. Marked foes take more damage.", effects: [{add_state: marked, turns: 4}]}
-  ink_burst: {name: Ink Burst, mp: 4, scope: one_enemy, anim: magic, desc: "Splash a foe with burning ink.", effects: [{damage: "a.mat * 2 - b.mdf * 0.5"}]}
-  forged_map: {name: Forged Map, mp: 8, scope: all_enemies, cutin: true, anim: debuff, desc: "Send every foe down the wrong passage. They lose their turns.", effects: [{add_state: misled, turns: 2}, {damage: "a.mat * 1.2"}]}
+  ink_burst: {name: Ink Burst, mp: 4, scope: one_enemy, anim: magic, sfx: magic, desc: "Splash a foe with burning ink.", effects: [{damage: "a.mat * 2 - b.mdf * 0.5"}]}
+  forged_map: {name: Forged Map, mp: 8, scope: all_enemies, cutin: true, anim: debuff, sfx: magic, desc: "Send every foe down the wrong passage. They lose their turns.", effects: [{add_state: misled, turns: 2}, {damage: "a.mat * 1.2"}]}
   hold_line: {name: Hold the Line, mp: 2, scope: self, anim: buff, desc: "Step in front of hurt friends and take the hit, softened.", effects: [{add_state: warded, turns: 3}]}
   shield_rush: {name: Shield Rush, mp: 4, scope: all_enemies, cutin: true, fx: strike, desc: "Charge through every foe.", effects: [{damage: "a.atk * 1.2 + a.def * 0.6 - b.def"}]}
-  mend: {name: Mend, mp: 3, scope: one_ally, anim: heal, desc: "A quick prayer. Heals one friend.", effects: [{heal: "12 + a.mat * 2"}]}
-  blessing: {name: Blessing, mp: 4, scope: all_allies, anim: buff, desc: "A blessing for everyone. Attack rises for a few turns.", effects: [{add_state: blessed, turns: 3}]}
-  shared_cup: {name: Shared Cup, mp: 7, scope: all_allies, anim: heal, desc: "Pass the cup around. Heals the whole party.", effects: [{heal: "8 + a.mat * 1.5"}]}
-  second_chance: {name: Second Chance, mp: 8, scope: dead_ally, anim: heal, desc: "Not your time yet. Brings a fallen friend back.", effects: [{revive: 0.5}]}
+  mend: {name: Mend, mp: 3, scope: one_ally, anim: heal, sfx: heal, desc: "A quick prayer. Heals one friend.", effects: [{heal: "12 + a.mat * 2"}]}
+  blessing: {name: Blessing, mp: 4, scope: all_allies, anim: buff, sfx: buff, desc: "A blessing for everyone. Attack rises for a few turns.", effects: [{add_state: blessed, turns: 3}]}
+  shared_cup: {name: Shared Cup, mp: 7, scope: all_allies, anim: heal, sfx: heal, desc: "Pass the cup around. Heals the whole party.", effects: [{heal: "8 + a.mat * 1.5"}]}
+  second_chance: {name: Second Chance, mp: 8, scope: dead_ally, anim: heal, sfx: heal, desc: "Not your time yet. Brings a fallen friend back.", effects: [{revive: 0.5}]}
   lucky_toss: {name: Lucky Toss, mp: 3, scope: one_enemy, desc: "A gamble. It might miss, but it hits hard.", effects: [{damage: "a.mat * 3 - b.mdf", chance: 0.65}]}
-  arc_bolt: {name: Arc Bolt, mp: 3, scope: one_enemy, fx: thunder, desc: "A bolt from the coil.", effects: [{damage: "a.mat * 2 - b.mdf * 0.4", element: thunder}]}
-  storm_coil: {name: Storm Coil, mp: 7, scope: all_enemies, fx: thunder, desc: "Arcs jump from foe to foe.", effects: [{damage: "a.mat * 1.4 - b.mdf * 0.4", element: thunder}]}
+  arc_bolt: {name: Arc Bolt, mp: 3, scope: one_enemy, fx: thunder, sfx: magic, desc: "A bolt from the coil.", effects: [{damage: "a.mat * 2 - b.mdf * 0.4", element: thunder}]}
+  storm_coil: {name: Storm Coil, mp: 7, scope: all_enemies, fx: thunder, sfx: magic, desc: "Arcs jump from foe to foe.", effects: [{damage: "a.mat * 1.4 - b.mdf * 0.4", element: thunder}]}
   overclock: {name: Overclock, mp: 4, scope: one_ally, anim: buff, desc: "Wind a friend up like a spring. They act sooner for a few turns.", effects: [{add_state: hasted, turns: 3}]}
   # Foes
   drip: {name: Drip, effects: [{damage: "a.atk * 1.4 - b.def"}]}

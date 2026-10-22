@@ -1,13 +1,14 @@
-The pictures and the music in this directory are made for the Go Zen sample of the
-Gozen repository: the characters with the difference pictures of their moving
+The pictures in this directory are made for the Go Zen sample of the Gozen
+repository: the characters with the difference pictures of their moving
 portraits, the face icons, the town map, the painted plaza, the dungeon textures and
-props, the enemies, and the soundtrack in bgm/. ASSETS.md next to this game lists them.
+props and the enemies. The music in bgm/ and the sound effects in sfx/ were written
+by the author for the author's own RPG and are reused here. ASSETS.md next to this game lists them.
 
 Copyright (c) 2026 CHIKAMATSU Naohiro
 
 They are licensed under the Creative Commons Attribution 4.0 International
 license (CC BY 4.0), https://creativecommons.org/licenses/by/4.0/ . Credit
-"Go Zen sample art and music, CHIKAMATSU Naohiro" when you reuse them. The Gozen
+"Go Zen sample art, music and sounds, CHIKAMATSU Naohiro" when you reuse them. The Gozen
 source code is separate and is licensed under the MIT license in the repository
 root. CC BY 4.0 grants only the rights the author holds in these works.
 

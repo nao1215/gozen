@@ -33,6 +33,7 @@ events:
           - call: memory_backs
           - say: {who: tilly, face: smile, text: "Breathe. The cup is coming round, and no, I'm not betting on it."}
           - heal: all
+          - music: finale
           - battle: vance_duel
             on_win:
               - music: victory

@@ -7,3 +7,10 @@ music:
     battle: {name: Rust and Brass, file: bgm/battle.ogg}
     boss: {name: The Tollkeeper, file: bgm/boss.ogg}
     victory: {name: Small Victory, file: bgm/victory.ogg}
+    gate: {name: The Deep Gate, file: bgm/gate.ogg}
+    garden: {name: Poison Garden, file: bgm/garden.ogg}
+    castle: {name: Frozen Keep, file: bgm/castle.ogg}
+    dream: {name: Dreaming Deep, file: bgm/dream.ogg}
+    finale: {name: The Last Dream, file: bgm/finale.ogg}
+    fanfare: {name: Keeper's Fanfare, file: bgm/fanfare.ogg}
+  one_shot: [fanfare]

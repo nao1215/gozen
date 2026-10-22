@@ -63,11 +63,13 @@ events:
 
   victory:
     do:
+      - music: {song: fanfare}
       - say: {who: corin, text: "Five banners, one colour. It is over."}
       - say: {who: hilde, text: "And my feet are finally done walking."}
       - say: "The Crown's flag rises over every region, and for once the land is quiet."
 
   fallen:
     do:
+      - music: lose
       - say: "Ashvale has fallen. The Crown is no more."
       - say: {who: corin, text: "We ran out of time, not courage. Remember that."}

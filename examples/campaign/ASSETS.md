@@ -15,8 +15,10 @@ under `game/assets/` are copies of earlier work by the same author, and pictures
 | `bg/field.jpg`, `bg/town.jpg`, `bg/castle.jpg` | The grounds behind a clash, by a region's terrain | Generated for this sample (Illustrious XL, takostyle LoRA 0.25) | CC BY 4.0 |
 | `armies/{men,women,monsters}_{1..4}.png` | The soldiers of each army kind, lined up in a clash, drawn facing right (the foe side is flipped by the engine). | Generated for this sample and cut out (BiRefNet) | CC BY 4.0 |
 | `fonts/mplus-1p-regular.ttf` | M+ 1p regular 1.060, M+ FONTS PROJECT | Go Zen | M+ FONTS LICENSE (in Go Zen's ASSETS.md) |
+| `bgm/title.ogg`, `clash.ogg`, `win.ogg`, `lose.ogg`, `fanfare.ogg` | Music by the author from the author's own RPG | The author's own RPG | CC BY 4.0 |
+| `sfx/hit.ogg`, `cutin.ogg`, `win.ogg` | Sound effects by the author from the author's own RPG, used for clash hits, skill cut-ins and victory | The author's own RPG | CC BY 4.0 |
 
-The pictures are Copyright (c) 2026 CHIKAMATSU Naohiro and licensed under the Creative
+The pictures, music and sound effects are Copyright (c) 2026 CHIKAMATSU Naohiro and licensed under the Creative
 Commons Attribution 4.0 International license (https://creativecommons.org/licenses/by/4.0/;
 the text is in `game/assets/LICENSE`). They are generated images. Credit "Gozen sample art,
 CHIKAMATSU Naohiro" when you reuse them.
