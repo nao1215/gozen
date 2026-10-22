@@ -40,8 +40,9 @@ func TestDamageBoostSwayAndHit(t *testing.T) {
 		m.SetHealth(0.25)
 		lowBreath = math.Max(lowBreath, m.Pose().Breath)
 	}
-	if lowBreath < fullBreath*3 {
-		t.Fatalf("low health did not strengthen body motion: full=%f low=%f", fullBreath, lowBreath)
+	// Damage must not stretch the body: breathing keeps its depth at any health.
+	if math.Abs(lowBreath-fullBreath) > 0.001 {
+		t.Fatalf("low health changed the breathing depth: full=%f low=%f", fullBreath, lowBreath)
 	}
 	m.Hit()
 	if m.hitSurge <= 0 || len(m.reactions) == 0 || m.reactions[0].kind != "hop" {

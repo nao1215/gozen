@@ -1,10 +1,6 @@
 base: base.png
 faces:
   succubus:
-    eyes:
-      closed: eyes-closed.png
-      every: [2, 4]
-      double: 0.2
     mouth:
       frames:
         - image: face

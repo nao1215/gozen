@@ -382,7 +382,8 @@ func (m *Motion) pose(withSprings bool) Pose {
 	damage := m.p.damageBoost*(1-m.health) + m.hitSurge
 	strength, speed := 1+damage, 1+0.5*damage
 	if m.p.breathPeriod > 0 {
-		p.Breath = strength * m.p.breathDepth * 0.5 * (1 - math.Cos(tau*t*speed/m.p.breathPeriod+m.phase[0]))
+		// Breathing keeps its depth: damage speeds it up but never stretches the body.
+		p.Breath = m.p.breathDepth * 0.5 * (1 - math.Cos(tau*t*speed/m.p.breathPeriod+m.phase[0]))
 	}
 	sp := m.p.swayPeriod / speed
 	p.HeadAngle = strength*m.p.swayAngle*(0.65*math.Sin(tau*t/sp+m.phase[1])+0.35*math.Sin(tau*t/(sp*0.61)+m.phase[2])) + m.tilt()
