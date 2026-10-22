@@ -230,6 +230,8 @@ images:
     jpeg: {width: 960, height: 540, quality: 3}
   go-zen-motion.gif:
     run: battle-motion
+    # The sway is a spring that runs on its own clock, so frames shift a little between runs.
+    tolerance: 0.08
     frames:
       - {shots: "full_*"}
       - {shots: "feature_*", every: 2}
