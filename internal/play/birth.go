@@ -163,19 +163,25 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		}
 		return
 	}
+	// The newborn stands in a column of light with a soft halo behind it; both
+	// flare at the reveal and settle into a gentle glow.
+	flare := max(0, 1-float64(age-b.childStart())/40)
+	pulse := 0.5 + 0.5*math.Sin(float64(age)*0.08)
+	beamW := sw * (0.18 + 0.12*flare)
+	gfx.FillRect(dst, float32(sw/2-beamW/2), 0, float32(beamW), float32(sh), withAlpha(light, uint8(40+90*flare)), false)
+	for k := 5; k >= 1; k-- {
+		r := sh * (0.12 + 0.07*float64(k)) * (1 + 0.25*flare)
+		gfx.FillCircle(dst, float32(sw/2), float32(sh*0.42), float32(r), withAlpha(light, uint8(float64(18+10*pulse)+70*flare/float64(k))), true)
+	}
+	if flare > 0 {
+		gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), withAlpha(white, uint8(200*flare*flare)), false)
+	}
 	g.drawStanding(dst, b.effect.ChildFace, sw*0.5, sh*birthBottom, sh*birthHeight, 1, false, nil)
 	for i := 0; i < 24+b.effect.Tier*12; i++ {
 		a := float64(i)*math.Pi/12 + float64(age-200)*0.02
 		r := sh * (0.15 + 0.07*math.Sin(float64(i)*3+float64(age)*0.08))
 		x, y := sw*0.5+math.Cos(a)*r, sh*0.47+math.Sin(a)*r
 		gfx.FillCircle(dst, float32(x), float32(y), 2+float32(i%3), light, true)
-	}
-	if age < b.childStart()+25 {
-		strength := 1 - float64(age-b.childStart())/25
-		for i := 0; i < 12+b.effect.Tier*12; i++ {
-			a := float64(i) * math.Pi * 2 / float64(12+b.effect.Tier*12)
-			gfx.StrokeLine(dst, float32(crystal.x), float32(crystal.y), float32(crystal.x+math.Cos(a)*sh*0.45*strength), float32(crystal.y+math.Sin(a)*sh*0.45*strength), 3, withAlpha(light, 0xe0), true)
-		}
 	}
 	bannerW := min(sw*0.6, 600.0)
 	g.window(dst, (sw-bannerW)/2, sh*0.07, bannerW, 56)
