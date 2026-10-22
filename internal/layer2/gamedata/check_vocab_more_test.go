@@ -35,7 +35,7 @@ func TestVocabularyMistakes(t *testing.T) {
 		{"screen with a space", game("screens: ['my screen']\n"), "want a name of lowercase letters"},
 		{"screen that is built in", game("screens: [formation]\n"), "is a built-in screen"},
 		{"screen twice", game("screens: [bag, bag]\n"), `"bag" is written twice`},
-		{"set of a text that needs no quotes", data("events: {e: {do: [{set: {location: \"o'k\"}}]}}"), "a name without quotes"},
+		{"set of a quoted unknown location", data("events: {e: {do: [{set: {location: \"o'k\"}}]}}"), `unknown location "o'k"`},
 		{"set that is a number", data("events: {e: {do: [{set: 3}]}}"), "expected a map"},
 		{"set facing that is not a direction", data("events: {e: {do: [{set: {pos.facing: sideways}}]}}"), "facing is north, east, south or west"},
 		{"set roamers to something", data("events: {e: {do: [{set: {roamers: all}}]}}"), "roamers can be set only to none"},

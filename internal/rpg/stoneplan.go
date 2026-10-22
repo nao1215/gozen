@@ -254,7 +254,7 @@ func (s *State) BestStones() (best StoneLoadout, score, now int) {
 		top += max(0, vals[i])
 	}
 	cores := make([][]stoneCore, len(members))
-	rest := make([]int, len(members)+1) // upper bound of the combination worth for later members
+	rest := append(make([]int, len(members)), 0) // upper bound of the combination worth for later members
 	for i, a := range members {
 		cores[i] = s.cores(a, pool, slots[i])
 	}

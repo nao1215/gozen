@@ -69,6 +69,17 @@ func TestCheckJSONReportsEveryProblemWithItsCode(t *testing.T) {
 	}
 }
 
+func TestCheckReportsOversizedDungeon(t *testing.T) {
+	dir := fixture(t)
+	addWorld(t, dir, "large.yaml", "locations:\n  maze:\n    dungeon:\n      generate: {width: 9223372036854775807, height: 11, rooms: 2, start: S}\n      tiles: {S: {start: true}}\n")
+	for _, p := range checkJSONOut(t, 1, "--only", "structure", dir) {
+		if p.Code == diag.OutOfRange.String() && strings.Contains(p.Path, "generate") && strings.Contains(p.Message, "at most 255 cells") {
+			return
+		}
+	}
+	t.Fatal("gozen check did not report the dungeon size limit")
+}
+
 func TestCheckLayoutWarnsOfTextThatOverflowsTheWindow(t *testing.T) {
 	dir := fixture(t)
 	var b strings.Builder

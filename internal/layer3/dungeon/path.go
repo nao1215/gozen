@@ -36,6 +36,9 @@ func next(d *data.Dungeon, st *rpg.State, goal rune, through bool) (string, bool
 		return MoveHere, true
 	}
 	w, h := d.Size()
+	if !validSize(w, h) || p.X < 0 || p.Y < 0 || p.X >= w || p.Y >= h {
+		return "", false
+	}
 	type node struct{ x, y, first int } // first: the facing of the first step (-1: none)
 	seen := make([]bool, w*h)
 	seen[p.Y*w+p.X] = true

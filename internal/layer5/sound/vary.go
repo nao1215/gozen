@@ -41,11 +41,17 @@ func vary(name string, b []byte) ([]byte, float64) {
 
 func resample(b []byte, r float64) []byte {
 	n := len(b) / 8
-	if n < 2 || r <= 0 || math.Abs(r-1) < 1e-4 {
+	if n < 2 || r <= 0 || math.IsNaN(r) || math.IsInf(r, 0) || math.Abs(r-1) < 1e-4 {
 		return b
 	}
 
-	m := int(math.Ceil(float64(n) / r))
+	// A user-controlled pitch must not turn a short effect into an unbounded buffer.
+	const maxResampledFrames = 1 << 20
+	frames := math.Ceil(float64(n) / r)
+	if frames < 1 || frames > maxResampledFrames {
+		return b
+	}
+	m := int(frames)
 	out := make([]byte, m*8)
 	sample := func(i, ch int) float64 {
 		return float64(math.Float32frombits(binary.LittleEndian.Uint32(b[i*8+ch*4:])))
