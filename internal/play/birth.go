@@ -25,6 +25,13 @@ func (b *birthAnimation) childStart() int { return 200 + birthCutInFrames + 20*b
 // birthCutInFrames is how long the child's silhouette sweeps across before it appears.
 const birthCutInFrames = 50
 
+// Figures at the altar are shown from the waist up: tall pictures whose feet
+// fall below the screen.
+const (
+	birthHeight = 1.25
+	birthBottom = 1.32
+)
+
 type birthPhase uint8
 
 const (
@@ -50,7 +57,7 @@ func (b *birthAnimation) phase() birthPhase {
 type birthPoint struct{ x, y float64 }
 
 func birthPositions(sw, sh float64) (parents [2]birthPoint, crystal birthPoint) {
-	parents = [2]birthPoint{{sw * 0.29, sh * 0.76}, {sw * 0.71, sh * 0.76}}
+	parents = [2]birthPoint{{sw * 0.2, sh * 0.76}, {sw * 0.8, sh * 0.76}}
 	crystal = birthPoint{sw * 0.5, sh * 0.53}
 	return
 }
@@ -93,7 +100,7 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		if loc := g.db.Locations[g.st.Location]; loc != nil {
 			for _, person := range loc.People {
 				if person.Image != "" {
-					g.drawStanding(dst, person.Image, sw*0.5, sh*0.95, sh*0.72, 1, false, nil)
+					g.drawStanding(dst, person.Image, sw*0.5, sh*birthBottom, sh*birthHeight, 1, false, nil)
 					break
 				}
 			}
@@ -121,7 +128,7 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		if phase == birthParents {
 			glow := uint8(45 + age*2)
 			gfx.FillCircle(dst, float32(p.x), float32(p.y-sh*0.24), float32(sh*0.16), withAlpha(light, glow), true)
-			g.drawStanding(dst, b.effect.ParentFaces[i], p.x, p.y, sh*0.45, 1, false, nil)
+			g.drawStanding(dst, b.effect.ParentFaces[i], p.x, sh*birthBottom, sh*birthHeight*0.85, 1, false, nil)
 			g.window(dst, p.x-sw*0.115, p.y+8, sw*0.23, 44)
 			g.text(dst, b.effect.ParentNames[i], p.x-sw*0.105, p.y+13, sizeS, g.th.text)
 			continue
@@ -129,8 +136,8 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		// Each picture contracts into its light before the two lights orbit.
 		if age < 110 {
 			shrink := float64(age-65) / 45
-			h := sh * 0.45 * (1 - shrink)
-			g.drawStanding(dst, b.effect.ParentFaces[i], p.x, p.y-sh*0.1*shrink, h, float32(1-shrink), false, nil)
+			h := sh * birthHeight * 0.85 * (1 - shrink)
+			g.drawStanding(dst, b.effect.ParentFaces[i], p.x, sh*birthBottom-(sh*birthBottom-p.y)*shrink, h, float32(1-shrink), false, nil)
 		}
 		progress := min(1, float64(age-65)/float64(b.flashStart()-65))
 		orb := birthOrbPosition(sw, sh, i, age, b.flashStart())
@@ -156,7 +163,7 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		}
 		return
 	}
-	g.drawStanding(dst, b.effect.ChildFace, sw*0.5, sh*0.79, sh*0.59, 1, false, nil)
+	g.drawStanding(dst, b.effect.ChildFace, sw*0.5, sh*birthBottom, sh*birthHeight, 1, false, nil)
 	for i := 0; i < 24+b.effect.Tier*12; i++ {
 		a := float64(i)*math.Pi/12 + float64(age-200)*0.02
 		r := sh * (0.15 + 0.07*math.Sin(float64(i)*3+float64(age)*0.08))
@@ -196,20 +203,15 @@ func (g *Game) drawBirthCutIn(dst *ebiten.Image) {
 	}
 	accent := rainbowColor(b.age)
 	gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), withAlpha(color.NRGBA{0, 0, 0, 255}, uint8(100*open)), false)
-	bandH := 250 * open
-	cy := sh * 0.45
-	gfx.FillRect(dst, 0, float32(cy-bandH/2), float32(sw), float32(bandH), withAlpha(g.th.window, 0xe8), false)
 	for i := range 14 {
-		y := cy - bandH/2 + math.Mod(float64(i)*53.7, bandH)
+		y := math.Mod(float64(i)*83.7, sh)
 		x := math.Mod(float64(i)*311.3-float64(t)*38, sw+400) - 200
 		gfx.StrokeLine(dst, float32(x), float32(y), float32(x+180), float32(y), 2, withAlpha(accent, 0x80), true)
 	}
 	if b.effect.ChildFace != "" {
-		slide := 1 - math.Pow(1-min(1, float64(t)/16), 3)
-		// A silhouette: who is born stays a secret until the child steps out.
+		// A silhouette at the very place and size the child then appears in.
 		var black ebiten.ColorScale
 		black.Scale(0, 0, 0, 1)
-		g.drawStanding(dst, b.effect.ChildFace, sw*0.28-(1-slide)*sw*0.5, cy+bandH*0.48, bandH*1.15, float32(open), false, &black)
+		g.drawStanding(dst, b.effect.ChildFace, sw*0.5, sh*birthBottom, sh*birthHeight, float32(open), false, &black)
 	}
-	gfx.DrawTextOutlineColor(dst, "???", sw*0.58, cy-25, sizeL*1.5, color.NRGBA{255, 255, 255, 255}, accent, float32(open))
 }
