@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/expr"
@@ -63,13 +64,21 @@ func (g *Game) profileEnv() expr.Env {
 }
 
 type profileScreen struct {
-	ids   []string
-	sel   int
-	top   int
-	face  int
-	env   expr.Env
-	done  func()
-	shown string
+	ids        []string
+	sel        int
+	top        int
+	face       int
+	env        expr.Env
+	done       func()
+	shown      string
+	chart      bool
+	zoom       float64
+	camX, camY float64
+	chartTick  int
+	focus      int // selected profile during a chart transition; -1 means the full chart
+	focusFrame int // 0..chartFocusFrames, also counts down when returning
+	focusBack  bool
+	chartPage  bool // the detail page was opened from a focused chart
 	// press is where a press began and last where it is now, for a swipe.
 	press, last image.Point
 	pressed     bool
@@ -79,7 +88,8 @@ func newProfiles(g *Game, done func()) *profileScreen {
 	if g.st != nil && !g.replaying {
 		g.checkProfiles()
 	}
-	s := &profileScreen{ids: g.db.Order["profiles"], env: g.profileEnv(), done: done}
+	s := &profileScreen{ids: g.db.Order["profiles"], env: g.profileEnv(), done: done, focus: -1}
+	s.zoom = 1
 	s.trace(g)
 	return s
 }
@@ -91,6 +101,10 @@ func (s *profileScreen) liveKeep(g *Game) scene {
 	n := newProfiles(g, s.done)
 	n.sel = min(s.sel, max(0, len(n.ids)-1))
 	n.top = min(s.top, n.sel)
+	n.chart, n.zoom, n.camX, n.camY = s.chart, s.zoom, s.camX, s.camY
+	n.focus, n.focusFrame = s.focus, s.focusFrame
+	n.focusBack = s.focusBack
+	n.chartPage = s.chartPage
 	return n
 }
 
@@ -188,8 +202,21 @@ func (s *profileScreen) pick(g *Game, i int) {
 }
 
 func (s *profileScreen) update(g *Game) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyTab) || g.in.pressed[btnNext] {
+		s.chart = !s.chart
+		g.sfx("cursor")
+	}
+	if s.chart {
+		s.updateChart(g)
+		return
+	}
 	n := len(s.ids)
 	if g.in.cancel() || g.in.pressed[btnBook] {
+		if s.chartPage && !g.in.pressed[btnBook] {
+			s.chart, s.focusBack, s.chartPage = true, true, false
+			g.sfx("cancel")
+			return
+		}
 		g.sfx("cancel")
 		g.pop()
 		if s.done != nil {
@@ -306,6 +333,10 @@ func (s *profileScreen) puppet(g *Game) *puppet.Puppet {
 }
 
 func (s *profileScreen) draw(g *Game, dst *ebiten.Image) {
+	if s.chart {
+		s.drawChart(g, dst)
+		return
+	}
 	sw, sh := g.screen()
 	g.drawPicture(dst, g.db.Game.TitleBG, 0, 0, sw, sh, 1)
 	fill(dst, withAlpha(colorBlack, 0xa8))
@@ -326,7 +357,7 @@ func (s *profileScreen) draw(g *Game, dst *ebiten.Image) {
 		s.drawFigure(g, dst, id)
 		s.drawInfo(g, dst, id)
 	}
-	gfx.DrawTextOutlineColor(dst, lang.T("←→ / LR: キャラ   ↑↓: 一覧   Z: 表情   X / F6: もどる"), sw/2, sh-44, sizeS*0.9, g.th.text, g.th.window, 1)
+	gfx.DrawTextOutlineColor(dst, lang.T("←→ / LR: キャラ   ↑↓: 一覧   Z: 表情   Tab: 相関図   X / F6: もどる"), sw/2, sh-44, sizeS*0.9, g.th.text, g.th.window, 1)
 }
 
 // drawBand draws the switch between characters on the top band: ◀ name n / N ▶.

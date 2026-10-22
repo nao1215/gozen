@@ -21,6 +21,8 @@ type Profile struct {
 	Name string `yaml:"name"`
 	// Title is a short epithet under the name.
 	Title string `yaml:"title"`
+	// Affiliation groups this character with others in the relationship chart.
+	Affiliation string `yaml:"affiliation"`
 	// Picture is a standing picture under assets/ for one who is neither an actor nor an
 	// enemy (an NPC or a speaker).
 	Picture string `yaml:"picture"`
@@ -48,7 +50,9 @@ type ProfileField struct {
 // ProfileRelation is how a character sees another: who (a profile, an actor, or
 // "you"), what they call them and a note.
 type ProfileRelation struct {
-	Who   string `yaml:"who"`
+	Who string `yaml:"who"`
+	// Kind controls the chart line colour; love has no engine-defined meaning.
+	Kind  string `yaml:"kind"`
 	Calls string `yaml:"calls"`
 	Text  string `yaml:"text"`
 }
@@ -134,6 +138,7 @@ func (c *checker) profiles() {
 		c.profileFaces(w, id, p)
 		c.expr(w+".when", p.When, profileNames)
 		c.text(w+".title", p.Title, profileNames)
+		c.text(w+".affiliation", p.Affiliation, profileNames)
 		c.text(w+".text", p.Text, profileNames)
 		for i, f := range p.Fields {
 			fw := fmt.Sprintf("%s.fields[%d]", w, i)
@@ -144,6 +149,9 @@ func (c *checker) profiles() {
 		}
 		for i, r := range p.Relations {
 			rw := fmt.Sprintf("%s.relations[%d]", w, i)
+			if r.Kind != "" && !slices.Contains([]string{"like", "love", "rival", "enemy", "family", "friend", "other"}, r.Kind) {
+				c.errorf(diag.Shape, rw+".kind", "unknown relationship kind %q", r.Kind)
+			}
 			_, isProfile := db.Profiles[r.Who]
 			_, isActor := db.Actors[r.Who]
 			if r.Who != "you" && !isProfile && !isActor {
@@ -196,7 +204,7 @@ func btoi(b bool) int {
 
 // texts are the texts of the profile a translation covers.
 func (p *Profile) texts() []*string {
-	out := []*string{&p.Name, &p.Title, &p.Text}
+	out := []*string{&p.Name, &p.Title, &p.Affiliation, &p.Text}
 	for i := range p.Fields {
 		out = append(out, &p.Fields[i].Label, &p.Fields[i].Value)
 	}

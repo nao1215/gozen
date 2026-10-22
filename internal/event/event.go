@@ -864,7 +864,7 @@ func (r *Runner) run(c *data.Command) Request {
 			summary += "  ·  Inherited skills: " + inherited
 		}
 		r.emit(BreedEffect{ParentNames: [2]string{nameA, nameB}, ParentFaces: [2]string{faceA, faceB}, ChildName: childName, ChildFace: r.db.Enemies[child.Monster].Image.File, Tier: tier, FirstDiscovery: firstDiscovery, Summary: summary, Result: result})
-		duration := 288 + 36*tier
+		duration := 348 + 36*tier
 		r.push([]data.Command{{Wait: data.WaitCue{Seconds: float64(duration) / 60}}})
 	case "heal":
 		for _, a := range r.st.Members() {

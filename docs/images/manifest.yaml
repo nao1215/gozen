@@ -143,6 +143,14 @@ runs:
     sample: novel
     script: scripts/capture-novel-characters.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  go-zen-relations:
+    sample: go-zen
+    script: scripts/capture-go-zen-relations.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, plaza, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  go-zen-relations-focus:
+    sample: go-zen
+    script: scripts/capture-go-zen-relations-focus.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, plaza, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   campaign:
     sample: campaign
     script: scripts/capture-campaign.txt
@@ -170,7 +178,7 @@ runs:
 #
 # The captures take a frame every 5 ticks (12 a second), and the GIFs play
 # them at the game's speed (fps 12), 720 wide (the README shows them about
-# 400 wide in two columns, so 960 only cost bytes). The README's first one, at
+# 400 wide in two columns, so a larger size only adds bytes). The README's first one, at
 # fps 10, walks the map at a little under twice the speed. After ffmpeg writes a
 # GIF, slimGIF (internal/dev/docs/gifslim_test.go) keeps only the pixels that
 # changed by more than a small tolerance, which halves the size again.
@@ -227,7 +235,7 @@ images:
   go-zen-hp-pictures.jpg:
     run: battle-hp-pictures
     pick: {shots: "s-hurt"}
-    jpeg: {width: 960, height: 540, quality: 3}
+    jpeg: {width: 720, height: 405, quality: 3}
   go-zen-motion.gif:
     run: battle-motion
     # The sway is a spring that runs on its own clock, so frames shift a little between runs.
@@ -244,15 +252,15 @@ images:
   go-zen-tree.jpg:
     run: tree
     shot: s-tree
-    jpeg: {width: 960, height: 540, quality: 3}
+    jpeg: {width: 720, height: 405, quality: 3}
   go-zen-bestiary.jpg:
     run: lineage
     shot: s-page
-    jpeg: {width: 960, height: 540, quality: 3}
+    jpeg: {width: 720, height: 405, quality: 3}
   go-zen-lineage.jpg:
     run: lineage
     shot: s-lineage
-    jpeg: {width: 960, height: 540, quality: 3}
+    jpeg: {width: 720, height: 405, quality: 3}
   go-zen-breeding.gif:
     run: breeding
     frames:
@@ -261,19 +269,19 @@ images:
   go-zen-recruit.jpg:
     run: recruit
     shot: s-rise
-    jpeg: {width: 960, height: 540, quality: 3}
+    jpeg: {width: 720, height: 405, quality: 3}
   go-zen-title.jpg:
     run: opening
     shot: s-title
-    jpeg: {width: 960, height: 540, quality: 3}
+    jpeg: {width: 720, height: 405, quality: 3}
   go-zen-shop.jpg:
     run: shop
     shot: s-shop
-    jpeg: {width: 960, height: 540, quality: 3}
+    jpeg: {width: 720, height: 405, quality: 3}
   go-zen-balance.jpg:
     run: balance
     shot: s-balance
-    jpeg: {width: 960, height: 540, quality: 3}
+    jpeg: {width: 720, height: 405, quality: 3}
   # The README's campaign picture: the war map, the orders of a region, the sortie, the clash of
   # the two armies and the region in the Crown's colour; and the map with everything it shows.
   campaign.gif:
@@ -286,11 +294,11 @@ images:
   campaign-map.jpg:
     run: campaign
     shot: s-map
-    jpeg: {width: 960, height: 540, quality: 3}
+    jpeg: {width: 720, height: 405, quality: 3}
   campaign-clash.jpg:
     run: campaign
     shot: s-clash
-    jpeg: {width: 960, height: 540, quality: 3}
+    jpeg: {width: 720, height: 405, quality: 3}
   # The README's novel picture, beside the first one: a line, a choice, Back over the
   # choice, the same option again and Skip to the first line not read, about 10 seconds.
   novel.gif:
@@ -329,15 +337,15 @@ images:
   novel-panel.jpg:
     run: novel-panel
     shot: s-panel-state
-    jpeg: {width: 960, height: 540, quality: 3}
+    jpeg: {width: 720, height: 405, quality: 3}
   novel-flags.jpg:
     run: novel-panel
     shot: s-panel-flags
-    jpeg: {width: 960, height: 540, quality: 3}
+    jpeg: {width: 720, height: 405, quality: 3}
   novel-picture.jpg:
     run: novel-ending
     shot: s-ending
-    jpeg: {width: 960, height: 540, quality: 3}
+    jpeg: {width: 720, height: 405, quality: 3}
   # The README's Playtesting section, beside the balance panel (F7) and the panel's State
   # and Flags tabs (novel-panel.jpg, novel-flags.jpg).
   playtest-reload.gif:
@@ -364,13 +372,21 @@ images:
   playtest-frames.jpg:
     run: playtest-panel
     shot: s-frames
-    jpeg: {width: 960, height: 540, quality: 3}
+    jpeg: {width: 720, height: 405, quality: 3}
     tolerance: 0.03
   # The character book (ADR 0031): F6 opens it at a line, and right goes to Wren.
   novel-characters.jpg:
     run: novel-characters
     shot: s-characters
-    jpeg: {width: 960, height: 540, quality: 3}
+    jpeg: {width: 720, height: 405, quality: 3}
+  go-zen-relations.jpg:
+    run: go-zen-relations
+    shot: s-relations
+    jpeg: {width: 720, height: 405, quality: 3}
+  go-zen-relations-focus.jpg:
+    run: go-zen-relations-focus
+    shot: s-relations-focus
+    jpeg: {width: 720, height: 405, quality: 3}
   puppet.gif:
     run: puppet-tour
     frames:

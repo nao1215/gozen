@@ -749,13 +749,17 @@ func (s *battleScene) damageHit(g *Game, st battle.Step, r image.Rectangle, kind
 			}
 		}
 		s.flashU[st.Target] = 14
-		s.shakeU[st.Target] = 16
+		if !s.softOnlyHit(g, st.Target) {
+			s.shakeU[st.Target] = 16
+		}
 		s.reactTo(g, st.Target, "hit", 40)
 		physical := anim == "slash" || anim == "hit"
 		switch {
 		case st.Crit:
 			g.sfx("crit")
-			g.shake = 14
+			if !s.softOnlyHit(g, st.Target) {
+				g.shake = 14
+			}
 		case physical && st.Target.Guard:
 			g.sfx("tink")
 		case physical && st.Weak:
@@ -769,16 +773,18 @@ func (s *battleScene) damageHit(g *Game, st battle.Step, r image.Rectangle, kind
 		default:
 			g.sfx("blast")
 		}
-		if physicalFx(kind) {
-			g.shake = max(g.shake, 3)
-		} else {
-			g.shake = max(g.shake, 5)
-		}
-		if !st.Target.Enemy {
-			g.shake = max(g.shake, 8)
-		}
-		if st.Weak {
-			g.shake = max(g.shake, 10)
+		if !s.softOnlyHit(g, st.Target) {
+			if physicalFx(kind) {
+				g.shake = max(g.shake, 3)
+			} else {
+				g.shake = max(g.shake, 5)
+			}
+			if !st.Target.Enemy {
+				g.shake = max(g.shake, 8)
+			}
+			if st.Weak {
+				g.shake = max(g.shake, 10)
+			}
 		}
 		s.hitDrama(g, st)
 		if st.Target.Enemy && st.Stat != "mp" && st.HP <= 0 && s.lastFoe(st.Target) {
@@ -824,8 +830,10 @@ func (s *battleScene) reactTo(g *Game, u *battle.Unit, kind string, t int) {
 	}
 	if u.Def != nil {
 		if p := g.puppets.live["enemy."+u.EID]; p != nil {
-			if r, ok := p.Rig().Spec.ReactionOf(map[string]string{"act": "hop", "hit": "shake"}[kind]); ok {
-				p.Motion.React(r)
+			if kind != "hit" || p.Rig().Spec.Motion.Hit != "soft_only" {
+				if r, ok := p.Rig().Spec.ReactionOf(map[string]string{"act": "hop", "hit": "shake"}[kind]); ok {
+					p.Motion.React(r)
+				}
 			}
 		}
 	}
@@ -838,6 +846,14 @@ func (s *battleScene) reactTo(g *Game, u *battle.Unit, kind string, t int) {
 	if face != "" {
 		s.react[u] = reaction{face: face, t: t}
 	}
+}
+
+func (s *battleScene) softOnlyHit(g *Game, u *battle.Unit) bool {
+	if u == nil || !u.Enemy {
+		return false
+	}
+	p := g.puppets.live["enemy."+u.EID]
+	return p != nil && p.Rig().Spec.Motion.Hit == "soft_only"
 }
 
 func (s *battleScene) beginInput(g *Game) {
@@ -1497,7 +1513,7 @@ func (s *battleScene) drawFoes(g *Game, dst *ebiten.Image) {
 			}
 		}
 		x := box.cx
-		if n := s.shakeU[u]; n > 0 {
+		if n := s.shakeU[u]; n > 0 && !s.softOnlyHit(g, u) {
 			x += math.Sin(float64(n)*2.1) * float64(n) * 0.9
 		}
 		bob := 0.0

@@ -12,7 +12,7 @@ import (
 )
 
 // A birth uses update frames. The result remains until a fresh confirm press.
-const birthDuration = 288
+const birthDuration = 348
 
 // Portrait framing places Yorn's lower half outside the screen.
 const (
@@ -29,7 +29,7 @@ type birthAnimation struct {
 	details bool
 }
 
-func (b *birthAnimation) silhouetteEnd() int { return 144 + 24*b.effect.Tier }
+func (b *birthAnimation) silhouetteEnd() int { return 204 + 24*b.effect.Tier }
 func (b *birthAnimation) revealEnd() int {
 	return b.silhouetteEnd() + 48 + 12*b.effect.Tier - 12*min(1, b.effect.Tier)
 }
@@ -51,13 +51,13 @@ const (
 
 func (b *birthAnimation) phase() birthPhase {
 	switch {
-	case b.age < 30:
+	case b.age < 45:
 		return birthParents
-	case b.age < 54:
+	case b.age < 81:
 		return birthYornFade
-	case b.age < 90:
+	case b.age < 135:
 		return birthFade
-	case b.age < 120:
+	case b.age < 180:
 		return birthMerge
 	case b.age < b.silhouetteEnd():
 		return birthSilhouette
@@ -78,7 +78,7 @@ func birthPositions(sw, sh float64) (parents [2]birthPoint, crystal birthPoint) 
 
 func birthOrbPosition(sw, sh float64, parent, age, end int) birthPoint {
 	parents, crystal := birthPositions(sw, sh)
-	p := min(1, max(0, float64(age-90)/float64(end-90)))
+	p := min(1, max(0, float64(age-135)/float64(end-135)))
 	start := birthPoint{parents[parent].x, parents[parent].y - sh*0.23}
 	return birthPoint{start.x + (crystal.x-start.x)*p, start.y + (crystal.y-start.y)*p}
 }
@@ -127,8 +127,8 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 	sw, sh := g.screen()
 	if loc := g.db.Locations[g.st.Location]; loc != nil {
 		zoom := 1.0
-		if b.age >= 90 {
-			zoom += 0.025 * min(1, float64(b.age-90)/30)
+		if b.age >= 135 {
+			zoom += 0.025 * min(1, float64(b.age-135)/30)
 		}
 		g.drawPicture(dst, loc.Background, (1-zoom)*sw/2, (1-zoom)*sh/2, sw*zoom, sh*zoom, 1)
 	}
@@ -136,7 +136,7 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 	phase, age := b.phase(), b.age
 	light := birthLight(b.effect.Tier)
 	if phase >= birthSilhouette {
-		dim := uint8(61 * min(1, float64(age-120)/12))
+		dim := uint8(61 * min(1, float64(age-180)/12))
 		fill(dst, withAlpha(colorBlack, dim))
 		// The rings stay behind the child. Their count and fixed color convey rarity.
 		rings := 1 + min(1, b.effect.Tier)
@@ -147,7 +147,7 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 			}
 			r := float32(sh * (0.27 + float64(i)*0.045))
 			if b.effect.Tier == 2 && i == 1 {
-				r *= float32(0.85 + 0.15*min(1, float64(age-120)/36))
+				r *= float32(0.85 + 0.15*min(1, float64(age-180)/36))
 			}
 			for j := range 64 {
 				a, z := float64(j)*math.Pi/32, float64(j+1)*math.Pi/32
@@ -156,10 +156,10 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		}
 	}
 	// Yorn fades in place at the center before the parents appear.
-	if age < 54 {
+	if age < 81 {
 		alpha := float32(1)
-		if age >= 30 {
-			p := float64(age-30) / 24
+		if age >= 45 {
+			p := float64(age-45) / 36
 			alpha = float32(1 - p)
 		}
 		if loc := g.db.Locations[g.st.Location]; loc != nil {
@@ -171,29 +171,29 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 			}
 		}
 	}
-	if age >= 54 && age < 120 {
+	if age >= 81 && age < 180 {
 		for i, pt := range parents {
-			alpha := float32(min(1, float64(age-54)/18))
-			if age >= 72 {
-				alpha = float32(max(0, 1-float64(age-72)/18))
+			alpha := float32(min(1, float64(age-81)/27))
+			if age >= 108 {
+				alpha = float32(max(0, 1-float64(age-108)/27))
 			}
 			from := -sw * 0.08
 			if i == 1 {
 				from = sw * 0.08
 			}
-			pt.x += from * (1 - min(1, float64(age-54)/18))
+			pt.x += from * (1 - min(1, float64(age-81)/27))
 			if alpha > 0 {
 				g.drawBirthMonster(dst, b.effect.ParentFaces[i], pt.x, pt.y, sh*0.46, sw*0.27, alpha, false)
 			}
-			if age < 72 && alpha > 0 {
+			if age < 108 && alpha > 0 {
 				g.text(dst, b.effect.ParentNames[i], pt.x-sw*0.11, pt.y+10, sizeS, withAlpha(g.th.text, uint8(255*alpha)))
 			}
-			if age >= 72 {
+			if age >= 108 {
 				orb := birthPoint{pt.x, pt.y - sh*0.23}
-				if age >= 90 {
-					orb = birthOrbPosition(sw, sh, i, age, 120)
+				if age >= 135 {
+					orb = birthOrbPosition(sw, sh, i, age, 180)
 					for tail := 1; tail <= 4; tail++ {
-						past := birthOrbPosition(sw, sh, i, max(90, age-tail*3), 120)
+						past := birthOrbPosition(sw, sh, i, max(135, age-tail*4), 180)
 						gfx.FillCircle(dst, float32(past.x), float32(past.y), float32(4-tail/2), withAlpha(light, uint8(70-tail*12)), true)
 					}
 				}
@@ -203,7 +203,7 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		}
 		return
 	}
-	if age < 54 {
+	if age < 81 {
 		return
 	}
 	x, feet, h, w := birthChildFrame(sw, sh)

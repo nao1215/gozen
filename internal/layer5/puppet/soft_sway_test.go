@@ -61,3 +61,25 @@ func TestDamageBoostSwayAndHit(t *testing.T) {
 		t.Fatalf("sway did not settle: %f", m.hitSurge)
 	}
 }
+
+func TestSoftOnlyHitMovesRegionWithoutBodyReaction(t *testing.T) {
+	r := loadYAML(t, "base: base.png\nhead: {center: [60, 50], radius: 30, neck: [60, 100]}\nsoft_sway:\n  - {ellipse: [30, 70, 60, 50], follow: body, axis: y, limit: 20}\nmotion: {hit: soft_only, sway: {angle: 3, shift: 2, damage_boost: 4}}\n")
+	m := NewMotion(r, seeded(1, 1), 60)
+	m.SetHealth(0.25)
+	m.t = 0.25
+	before := m.Pose()
+	m.Hit()
+	after := m.Pose()
+	if len(m.reactions) != 0 || after.Body != before.Body || after.BodyScale != before.BodyScale || after.HeadAngle != before.HeadAngle || after.HeadShift != before.HeadShift {
+		t.Fatalf("hit moved body or head: before=%+v after=%+v reactions=%+v", before, after, m.reactions)
+	}
+	if after.Lag[0] == before.Lag[0] {
+		t.Fatalf("hit did not bounce soft region: before=%+v after=%+v", before.Lag[0], after.Lag[0])
+	}
+	for range 60 {
+		m.Step()
+	}
+	if m.hitSurge <= 0 || m.Pose().Lag[0] == [2]float64{} {
+		t.Fatal("soft sway did not continue after hit")
+	}
+}

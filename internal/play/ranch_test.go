@@ -139,13 +139,13 @@ func TestRanchActionsUseTalkWindow(t *testing.T) {
 
 func TestBirthTimelineSkipAndPositions(t *testing.T) {
 	g := ranchGame(t)
-	for tier, duration := range []int{288, 324, 360} {
+	for tier, duration := range []int{348, 384, 420} {
 		g.Handle(event.BreedEffect{ParentNames: [2]string{"Mote ♂", "Mote ♀"}, ChildName: "Boss ♀", Tier: tier})
 		b := g.birth
 		if b.duration() != duration {
 			t.Fatalf("tier %d duration %d", tier, b.duration())
 		}
-		if b.silhouetteEnd() != 144+24*tier || b.viewEnd()-b.revealEnd() != 36+12*min(1, tier) {
+		if b.silhouetteEnd() != 204+24*tier || b.viewEnd()-b.revealEnd() != 36+12*min(1, tier) {
 			t.Fatalf("tier %d pause and afterglow: silhouette=%d afterglow=%d", tier, b.silhouetteEnd(), b.viewEnd()-b.revealEnd())
 		}
 		for _, tc := range []struct {
@@ -153,14 +153,14 @@ func TestBirthTimelineSkipAndPositions(t *testing.T) {
 			phase birthPhase
 		}{
 			{0, birthParents},
-			{29, birthParents},
-			{30, birthYornFade},
-			{53, birthYornFade},
-			{54, birthFade},
-			{89, birthFade},
-			{90, birthMerge},
-			{119, birthMerge},
-			{120, birthSilhouette},
+			{44, birthParents},
+			{45, birthYornFade},
+			{80, birthYornFade},
+			{81, birthFade},
+			{134, birthFade},
+			{135, birthMerge},
+			{179, birthMerge},
+			{180, birthSilhouette},
 			{b.silhouetteEnd() - 1, birthSilhouette},
 			{b.silhouetteEnd(), birthReveal},
 			{b.revealEnd() - 1, birthReveal},
@@ -186,8 +186,8 @@ func TestBirthTimelineSkipAndPositions(t *testing.T) {
 			t.Fatalf("child frame at %v: %v %v %v %v", size, x, feet, h, w)
 		}
 		for i, p := range parents {
-			start := birthOrbPosition(sw, sh, i, 90, 120)
-			end := birthOrbPosition(sw, sh, i, 120, 120)
+			start := birthOrbPosition(sw, sh, i, 135, 180)
+			end := birthOrbPosition(sw, sh, i, 180, 180)
 			if math.Abs(start.x-p.x) > 0.01 || math.Abs(start.y-(p.y-sh*0.23)) > 0.01 || math.Abs(end.x-crystal.x) > 0.01 || math.Abs(end.y-crystal.y) > 0.01 {
 				t.Fatalf("orb %d at %v: %v %v", i, size, start, end)
 			}

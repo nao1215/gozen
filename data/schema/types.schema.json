@@ -11301,6 +11301,19 @@
           },
           "x-type": "string"
         },
+        "affiliation": {
+          "description": "An optional group used to keep characters together in the relationship chart.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "enemy": {
           "description": "The enemy the profile shows, for a foe in the book.",
           "type": "string",
@@ -11483,6 +11496,19 @@
       "properties": {
         "calls": {
           "description": "What the character calls them.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "kind": {
+          "description": "The chart line colour: like, love, rival, enemy, family, friend, or other. Love is assigned by the author; an omitted kind uses other.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
