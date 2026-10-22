@@ -53,7 +53,7 @@ func (r *Runner) order(c *data.Command) Request {
 			}
 		}
 		if len(ids) > 0 {
-			labels := make([]string, 0, len(ids)+2)
+			labels := make([]string, 0, len(ids))
 			for _, id := range ids {
 				labels = append(labels, campaign.GeneralLabel(r.db, r.st, id))
 			}

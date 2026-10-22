@@ -54,6 +54,9 @@ func placeRoamers(db *data.DB, st *rpg.State, d *data.Dungeon) {
 	env := expr.Chain{expr.Map{"floor": floor}, st.Env()}
 	w, h := d.Size()
 	dist := walkDistances(d, st, st.Pos.X, st.Pos.Y)
+	if dist == nil {
+		return
+	}
 	st.Vars[VarRoamCalm] = float64(st.Steps + roamCalmSteps)
 	st.Vars[VarHuntFrom] = float64(st.Steps)
 	most := 0 // the farthest walk on the floor: roamers go to its far half
@@ -234,6 +237,9 @@ func moveRoamers(d *data.Dungeon, st *rpg.State, from [2]int) {
 		return
 	}
 	dist := walkDistances(d, st, st.Pos.X, st.Pos.Y)
+	if dist == nil {
+		return
+	}
 	for i := range st.Roamers {
 		r := &st.Roamers[i]
 		if r.Kind < 0 || r.Kind >= len(d.Roamers) { // a kind the dungeon no longer has (data reloaded under a running game)
@@ -420,6 +426,9 @@ func Hunters(db *data.DB, st *rpg.State) []data.Command {
 func huntIn(d *data.Dungeon, st *rpg.State, kind int) bool {
 	w, h := d.Size()
 	dist := walkDistances(d, st, st.Pos.X, st.Pos.Y)
+	if dist == nil {
+		return false
+	}
 	var fromStart []int
 	if far := d.Roamers[kind].Far; far > 0 && d.Generate != nil && d.Generate.Start != "" {
 		start := []rune(d.Generate.Start)[0]
@@ -508,6 +517,9 @@ func huntNear(d *data.Dungeon, st *rpg.State) int {
 // walkDistances are the steps from x, y to every cell over open cells (-1: not reached).
 func walkDistances(d *data.Dungeon, st *rpg.State, x0, y0 int) []int {
 	w, h := d.Size()
+	if !validSize(w, h) || x0 < 0 || y0 < 0 || x0 >= w || y0 >= h {
+		return nil
+	}
 	dist := make([]int, w*h)
 	for i := range dist {
 		dist[i] = -1

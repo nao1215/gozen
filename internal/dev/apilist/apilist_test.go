@@ -33,6 +33,7 @@ func hiddenFunc() {}
 		"cmd/sample/main.go":       "not Go source",
 		"examples/sample/main.go":  "not Go source",
 		"testdata/broken.go":       "not Go source",
+		"build/tmp/generated.go":   "not Go source",
 		"vendor/dependency/lib.go": "not Go source",
 		".cache/temp.go":           "not Go source",
 		"_scratch/temp.go":         "not Go source",
