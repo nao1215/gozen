@@ -69,6 +69,7 @@ A novel game (ADV) sets `schema_version: 4` and `ui.message: novel` in game.yaml
 - For a second language, set `written_in` and `languages` and translate every text in `lang/<code>.yaml`. `gozen check --format json` lists each text not translated yet (GZN0111); fill them until the check is quiet.
 - Test every branch in Go with `gozen.Explore` and read `chose.<id>` and the flags at the end of each path.
 - Keep who each character is in `profiles` (data/): a title, fields with your own labels, an introduction and how they see the others. Check new lines against it; `--dev` opens it as Characters (F6), and `profile.<id>.unlocked` reads whether its `when` holds.
+- Press Tab in Characters for the relationship chart. Set optional `affiliation` on profiles and `kind` (`like`, `love`, `rival`, `enemy`, `family`, `friend`, `other`) on relations. The author decides what `love` means. Run `gozen art faces` for centred icons and `gozen check` for unknown kinds or targets.
 - Add `enemies.<id>.lore` for creatures that appear in encounters and set `ui.bestiary: true` to offer the monster book. Encounters reveal name, picture and lore; victories reveal stats, resistances, skills and drops. `bestiary.<id>.seen` and `.defeated` are query expressions; F4 opens every page under `--dev`.
 
 The recipes are under "Let the player roll back", "Stage portraits and effects" and "Offer the game in two languages" in the cookbook. A complete short one is [examples/novel](https://github.com/nao1215/gozen/tree/main/examples/novel).

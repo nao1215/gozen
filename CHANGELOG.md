@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- The character book has a Tab relationship chart with face icons, coloured directed relationships, call names, unlock hiding, affiliation grouping, selection emphasis, camera follow and wheel zoom. Profiles accept `affiliation` and relations accept `kind`; `gozen check` validates kinds and targets.
+
 ## v0.4.0 - 2026-10-22
 
 Monster collection and livelier battles: schema version 6 adds a monster book, capture after battle, a ranch and breeding in the manner of Dragon Quest Monsters (sexes, family trees, a staged birth at Yorn's altar), and battles gain transforming and merging foes, pictures by HP and moving monsters. `gozen sim routes`, `gozen sim breed` and `gozen sim campaign --compare` measure the new parts, and the browser samples load their files on demand.

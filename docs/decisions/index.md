@@ -45,6 +45,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0035](0035-monster-book.md) | The monster book: staged enemy records and discovery state | Accepted (2026-10-22) | |
 | [0036](0036-monster-collection.md) | Collect, raise and breed monsters | Accepted (picture lineage revised 2026-10-22) | Picture lineage view revised in this ADR |
 | [0037](0037-battle-forms-and-motion.md) | Battle forms, merging, HP pictures and enemy motion | Accepted (2026-10-22) | |
+| [0038](0038-character-relationship-chart.md) | Relationship chart in the character book | Accepted | |
 
 The source of truth for the current public packages is `api/public.txt` and [Boundaries](../architecture/boundaries.md), not this list of ADRs.
 

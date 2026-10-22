@@ -1,0 +1,16 @@
+# Focus Ox in the Go Zen relationship chart from the title screen.
+wait 90
+press characters
+wait 30
+press tab
+wait 50
+press up
+wait 3
+press right
+wait 3
+press right
+wait 3
+press ok
+wait 30
+shot s-relations-focus
+quit

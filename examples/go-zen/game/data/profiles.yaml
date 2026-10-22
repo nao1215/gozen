@@ -1,0 +1,76 @@
+# Original Go Zen story profiles. Face icons use the existing character portraits.
+profiles:
+  maren:
+    affiliation: The party
+    title: Cartographer of Pellmere
+    text: Maren draws routes she means to walk, even when a map puts her in debt.
+    relations:
+      - {who: ox, kind: friend, calls: Ox, text: Trusts him to hold the line.}
+      - {who: tilly, kind: family, calls: Tilly, text: Tilly feels like the family she chose.}
+      - {who: kes, kind: friend, calls: Kes, text: Relies on her quick inventions.}
+      - {who: vance, kind: rival, calls: Vance, text: Will not let her sell the town's water.}
+      - {who: you, kind: other, calls: You, text: Follows the route you choose.}
+  ox:
+    affiliation: The party
+    title: The shield at the front
+    text: Ox holds a line while the others find a way through, and somehow keeps three hearts close at once.
+    relations:
+      - {who: maren, kind: friend, calls: Maren, text: Watches her back.}
+      - {who: tilly, kind: love, calls: Tilly, text: Saves a place for her beside the fire.}
+      - {who: kes, kind: love, calls: Kes, text: Meets her in the workshop long after the lamps go out.}
+      - {who: vance, kind: love, calls: Odile, text: A secret kept from the whole town.}
+      - {who: you, kind: friend, calls: Captain, text: Trusts your signal.}
+  tilly:
+    affiliation: The party
+    title: A steady hand
+    text: Tilly heals the party and keeps its spirits up.
+    relations:
+      - {who: maren, kind: family, calls: Maren, text: Scolds her like a sister.}
+      - {who: ox, kind: love, calls: Ox, text: Knows he worries more than he says.}
+      - {who: pomm, kind: like, calls: Pomm, text: Learned to help before being asked.}
+  kes:
+    affiliation: The party
+    title: Workshop spark
+    text: Kes turns spare gears into answers nobody expected.
+    relations:
+      - {who: maren, kind: friend, calls: Maren, text: Her maps make the impossible look testable.}
+      - {who: barnaby, kind: other, calls: Barnaby, text: Always checks his prices twice.}
+      - {who: ox, kind: love, calls: Ox, text: Knows about Tilly and does not ask.}
+      - {who: ansel, kind: like, calls: Ansel, text: Listens when he talks about the old wells.}
+  barnaby:
+    affiliation: Pellmere
+    name: Barnaby
+    picture: barnaby/normal.png
+    title: Merchant of gears and odds
+    text: Barnaby buys anything with teeth, especially gears.
+    relations:
+      - {who: maren, kind: friend, calls: Maren, text: Saves his best bargains for a familiar customer.}
+      - {who: pomm, kind: other, calls: Pomm, text: Never argues about the price of soup.}
+  ansel:
+    affiliation: Pellmere
+    name: Ansel
+    picture: ansel/normal.png
+    title: Keeper of the old well
+    text: Ansel remembers when every well in town ran clear.
+    relations:
+      - {who: pomm, kind: friend, calls: Pomm, text: Shares news of the water with her.}
+      - {who: maren, kind: like, calls: Maren, text: Hopes she will walk the map she drew.}
+  pomm:
+    affiliation: Pellmere
+    name: Pomm
+    picture: pomm/normal.png
+    title: The Dry Cup's host
+    text: Pomm serves hot soup and advice in equal measure.
+    relations:
+      - {who: maren, kind: family, calls: Maren, text: Makes sure she eats before setting out.}
+      - {who: tilly, kind: like, calls: Tilly, text: Knows she will look after the others.}
+      - {who: ansel, kind: friend, calls: Ansel, text: Keeps a seat ready for him.}
+  vance:
+    affiliation: The magistrate
+    enemy: vance
+    title: Magistrate of Waters
+    text: Odile Vance keeps careful records of every passage through the waterworks.
+    relations:
+      - {who: maren, kind: enemy, calls: Maren, text: Her maps threaten the magistrate's control.}
+      - {who: you, kind: rival, calls: Intruder, text: Will stand against your party.}
+      - {who: ox, kind: love, calls: Ox, text: The one weakness she lets no one see.}

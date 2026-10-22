@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "model": "face/model.onnx",
+  "pictures": {
+    "ansel/normal.png": {
+      "box": [
+        174,
+        135,
+        254,
+        228
+      ],
+      "size": [
+        458,
+        1144
+      ],
+      "sha256": "9cf07d7f6a099a1de27a8fbaeafdb6faea6197849c2690820fe0c81364d6a2b7",
+      "score": 0.72090834
+    },
+    "barnaby/normal.png": {
+      "box": [
+        180,
+        86,
+        274,
+        179
+      ],
+      "size": [
+        458,
+        1144
+      ],
+      "sha256": "78ce2cb0bcfd64b23656c6c889ec1a51938fa4a02012de73c05ab06bca81cdde",
+      "score": 0.82994413
+    },
+    "enemies/vance.png": {
+      "box": [
+        188,
+        117,
+        261,
+        192
+      ],
+      "size": [
+        458,
+        1144
+      ],
+      "sha256": "d19d9d2733ebe9a529f33befc1763318d023a2f389525ceebfe3be1983550143",
+      "score": 0.8021765
+    },
+    "kes/normal.png": {
+      "box": [
+        160,
+        125,
+        234,
+        203
+      ],
+      "size": [
+        458,
+        1144
+      ],
+      "sha256": "9d90008631d79e701250002e3824139a3500c11b08f7bba8775ef99c1febfbd6",
+      "score": 0.7745919
+    },
+    "maren/normal.png": {
+      "box": [
+        186,
+        129,
+        268,
+        205
+      ],
+      "size": [
+        458,
+        1144
+      ],
+      "sha256": "97c388ede3b74924ef399e5b299c0751780318fab71bfd328165b641819d7afa",
+      "score": 0.8147441
+    },
+    "ox/normal.png": {
+      "box": [
+        215,
+        88,
+        275,
+        163
+      ],
+      "size": [
+        458,
+        1144
+      ],
+      "sha256": "15b835e91c9d78d7b6dc5fa3f6c7095a543b25538907fc9f7afa3e16b10e4b13",
+      "score": 0.7399888
+    },
+    "pomm/normal.png": {
+      "box": [
+        197,
+        92,
+        291,
+        189
+      ],
+      "size": [
+        458,
+        1144
+      ],
+      "sha256": "60983a40696fd2d758ac3a249eb03dd17a1e84b3608cb5f397c7bbd32e8a5f0b",
+      "score": 0.8360181
+    },
+    "tilly/normal.png": {
+      "box": [
+        199,
+        187,
+        285,
+        273
+      ],
+      "size": [
+        458,
+        1144
+      ],
+      "sha256": "70ce322bde006b276fb6d11f876fb6d49d5c7314aa45aaff46ce43d0a4410b88",
+      "score": 0.8226441
+    }
+  }
+}
