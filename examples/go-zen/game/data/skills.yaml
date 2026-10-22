@@ -16,6 +16,7 @@ skills:
   overclock: {name: Overclock, mp: 4, scope: one_ally, anim: buff, desc: "Wind a friend up like a spring. They act sooner for a few turns.", effects: [{add_state: hasted, turns: 3}]}
   # Foes
   drip: {name: Drip, effects: [{damage: "a.atk * 1.4 - b.def"}]}
+  slime_merge: {name: Pool Together, scope: self, anim: magic, effects: [{merge: {into: pooled_slime, from: [drip_slime], count: 2, hp: sum}}]}
   gnaw: {name: Gnaw, effects: [{damage: "a.atk * 1.5 - b.def"}]}
   pinch: {name: Pinch, effects: [{damage: "a.atk * 1.6 - b.def"}]}
   bite: {name: Bite, effects: [{damage: "a.atk * 1.5 - b.def"}]}

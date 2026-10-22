@@ -39,18 +39,20 @@ type StepKind int
 
 // The kinds of steps.
 const (
-	Message  StepKind = iota // Text
-	Act                      // User starts an action (Skill); Text is its message
-	Damage                   // Target loses Amount of Stat
-	Heal                     // Target gains Amount of Stat
-	Miss                     // the action missed Target
-	StateOn                  // State was put on Target
-	StateOff                 // State left Target (User: the one whose action removed it; nil when it wore off)
-	Fall                     // Target fell
-	Revive                   // Target got up
-	Escape                   // the party ran
-	Event                    // a troop event: run Commands, then go on
-	Summon                   // Target was called into the battle (a new foe)
+	Message   StepKind = iota // Text
+	Act                       // User starts an action (Skill); Text is its message
+	Damage                    // Target loses Amount of Stat
+	Heal                      // Target gains Amount of Stat
+	Miss                      // the action missed Target
+	StateOn                   // State was put on Target
+	StateOff                  // State left Target (User: the one whose action removed it; nil when it wore off)
+	Fall                      // Target fell
+	Revive                    // Target got up
+	Escape                    // the party ran
+	Event                     // a troop event: run Commands, then go on
+	Summon                    // Target was called into the battle (a new foe)
+	Transform                 // Target changed enemy form in its place
+	Merge                     // Members combined into Target
 )
 
 // Step is one thing that happened, for the screen to show.
@@ -71,6 +73,8 @@ type Step struct {
 	Color    data.Color
 	HP, MP   int // the target's after the step
 	Commands []data.Command
+	Before   string  // previous picture for a form transition
+	Members  []*Unit // consumed units in a merge
 }
 
 // Action is what a battler does on its turn.

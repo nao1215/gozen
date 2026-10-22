@@ -24,6 +24,18 @@ import (
 
 type bphase int
 
+type pictureFade struct {
+	from  string
+	ticks int
+	form  bool
+}
+
+type mergeGhost struct {
+	path                       string
+	fromX, toX, bottom, height float64
+	remaining                  int
+}
+
 const (
 	bpPlay bphase = iota
 	bpInput
@@ -65,6 +77,11 @@ type battleScene struct {
 	pops             []popup
 	flashU           map[*battle.Unit]int
 	shakeU           map[*battle.Unit]int
+	foeImages        map[*battle.Unit]string
+	foeFade          map[*battle.Unit]pictureFade
+	mergeGhosts      []mergeGhost
+	mergeTarget      *battle.Unit
+	mergeTicks       int
 	react            map[*battle.Unit]reaction
 	gone             map[*battle.Unit]int
 	fx               []effectAnim
@@ -280,6 +297,21 @@ func (s *battleScene) tick(g *Game) {
 			s.shakeU[u] = n - 1
 		}
 	}
+	for u, f := range s.foeFade {
+		if f.ticks <= 1 {
+			delete(s.foeFade, u)
+		} else {
+			f.ticks--
+			s.foeFade[u] = f
+		}
+	}
+	if s.mergeTicks > 0 {
+		s.mergeTicks--
+	}
+	for i := range s.mergeGhosts {
+		s.mergeGhosts[i].remaining--
+	}
+	s.mergeGhosts = slices.DeleteFunc(s.mergeGhosts, func(m mergeGhost) bool { return m.remaining <= 0 })
 	for u, r := range s.react {
 		if r.t > 0 {
 			r.t--
@@ -402,9 +434,9 @@ func (s *battleScene) catchUp(st battle.Step) {
 	}
 	switch st.Kind {
 	case battle.Message, battle.Act, battle.Miss, battle.Escape, battle.Event:
-	case battle.Damage, battle.Heal, battle.Revive, battle.Summon:
+	case battle.Damage, battle.Heal, battle.Revive, battle.Summon, battle.Transform, battle.Merge:
 		s.shownHP[t], s.shownMP[t] = st.HP, st.MP
-		if st.Kind == battle.Summon {
+		if st.Kind == battle.Summon || st.Kind == battle.Transform || st.Kind == battle.Merge {
 			s.shownSt[t] = maps.Clone(t.States)
 		}
 	case battle.Fall:
@@ -609,6 +641,32 @@ func (s *battleScene) show(g *Game, st battle.Step) {
 		g.pics.preload(u.Def.Image.File)
 		r := s.unitRect(g, u)
 		s.addFx(g, "cast", float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()), g.th.accent, 1)
+		g.sfx("magic")
+	case battle.Transform, battle.Merge:
+		u := st.Target
+		s.hp[u], s.mp[u] = float64(u.HP), float64(u.MP)
+		s.shownHP[u], s.shownMP[u] = u.HP, u.MP
+		s.flashU[u] = 24
+		g.pics.preload(u.Picture())
+		r := s.unitRect(g, u)
+		s.addFx(g, "cast", float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()), g.th.accent, 2)
+		s.addScreen(g, "flash", 0, 0, g.th.accent, 0.4, 12)
+		if st.Kind == battle.Transform && st.Before != "" {
+			if s.foeFade == nil {
+				s.foeFade = map[*battle.Unit]pictureFade{}
+			}
+			s.foeFade[u] = pictureFade{from: st.Before, ticks: 24, form: true}
+		}
+		if st.Kind == battle.Merge {
+			s.mergeTarget, s.mergeTicks = u, 24
+			cx := float64(r.Min.X+r.Max.X) / 2
+			sw, sh := g.screen()
+			oldCount := len(s.b.Foes) + len(st.Members) - 1
+			for _, member := range st.Members {
+				x := sw/2 + (float64(member.Index)-float64(oldCount-1)/2)*min(180, (sw-foeLeft)/float64(oldCount))
+				s.mergeGhosts = append(s.mergeGhosts, mergeGhost{path: member.Picture(), fromX: x, toX: cx, bottom: sh * 0.66, height: min(180, float64(r.Dy())), remaining: 18})
+			}
+		}
 		g.sfx("magic")
 	case battle.Escape:
 		g.sfx("escape")
@@ -1359,16 +1417,41 @@ func (s *battleScene) drawFoes(g *Game, dst *ebiten.Image) {
 		}
 		box := boxes[u]
 		r := box.rect
-		path := u.Def.Image.File
+		path := u.PictureAt(s.shownHP[u])
 		if f := u.Face(); f != "" {
 			path = u.Def.Faces[f]
 		}
 		if rc := s.react[u]; rc.t > 0 && u.Def.Faces[rc.face] != "" && !isGone {
 			path = u.Def.Faces[rc.face]
 		}
+		for _, pending := range s.queue {
+			if pending.Kind == battle.Transform && pending.Target == u {
+				path = pending.Before
+				break
+			}
+		}
+		if s.foeImages == nil {
+			s.foeImages = map[*battle.Unit]string{}
+		}
+		if old := s.foeImages[u]; old != "" && old != path && s.foeFade[u].ticks == 0 {
+			if s.foeFade == nil {
+				s.foeFade = map[*battle.Unit]pictureFade{}
+			}
+			s.foeFade[u] = pictureFade{from: old, ticks: 18}
+		}
+		s.foeImages[u] = path
 		cs := &ebiten.ColorScale{}
 		tint(cs, u.Def.Image)
 		a := float32(1)
+		for _, pending := range s.queue {
+			if pending.Kind == battle.Merge && pending.Target == u {
+				a = 0
+				break
+			}
+		}
+		if s.mergeTarget == u && s.mergeTicks > 12 {
+			a = float32(24-s.mergeTicks) / 12
+		}
 		if isGone {
 			a = 1 - float32(gone)/40
 			if !u.Fled {
@@ -1380,11 +1463,43 @@ func (s *battleScene) drawFoes(g *Game, dst *ebiten.Image) {
 			x += math.Sin(float64(n)*2.1) * float64(n) * 0.9
 		}
 		bob := 0.0
+		phase := float64(g.tick+u.Index*19) / 25
+		switch u.Def.Motion {
+		case "bob":
+			bob -= math.Sin(phase) * 3
+		case "sway":
+			x += math.Sin(phase) * 3
+		}
 		if s.actor == u {
-			bob -= 10
+			bob += 10 // a short step toward the party
 		}
 		fh := box.h * s.chargeScale(u)
-		g.drawStanding(dst, path, x, box.bottom+bob, fh, a, false, cs)
+		if u.Def.Motion == "breathe" {
+			fh *= 1 + 0.012*math.Sin(phase)
+		}
+		fade := s.foeFade[u]
+		if fade.form && fade.ticks > 16 {
+			shadow := &ebiten.ColorScale{}
+			shadow.Scale(0.08, 0.08, 0.12, 1)
+			g.drawStanding(dst, fade.from, x, box.bottom+bob, fh, a, false, shadow)
+		} else {
+			newAlpha := a
+			if fade.form && fade.ticks > 0 {
+				newAlpha *= float32(16-fade.ticks) / 16
+			}
+			if p := g.enemyPuppet(u, path); p != nil {
+				g.drawPuppet(dst, p, x, box.bottom+bob, fh, newAlpha, false)
+			} else {
+				g.drawStanding(dst, path, x, box.bottom+bob, fh, newAlpha, false, cs)
+			}
+			if fade.ticks > 0 && fade.from != "" && fade.from != path {
+				divisor := float32(18)
+				if fade.form {
+					divisor = 16
+				}
+				g.drawStanding(dst, fade.from, x, box.bottom+bob, fh, a*float32(fade.ticks)/divisor, false, cs)
+			}
+		}
 		if n := s.flashU[u]; n > 0 && n%4 < 2 {
 			g.drawStandingAdd(dst, path, x, box.bottom+bob, fh)
 		}
@@ -1394,6 +1509,22 @@ func (s *battleScene) drawFoes(g *Game, dst *ebiten.Image) {
 			st := s.shownStates(u)
 			bw := g.stateTagsWidth(st)
 			g.drawStateBadges(dst, st, box.cx-bw/2, math.Max(foeTop+4, float64(r.Min.Y)-30))
+		}
+	}
+	for _, m := range s.mergeGhosts {
+		progress := float64(18-m.remaining) / 18
+		x := m.fromX + (m.toX-m.fromX)*progress
+		g.drawStanding(dst, m.path, x, m.bottom, m.height*(1-0.3*progress), float32(1-progress), false, nil)
+	}
+	for _, pending := range s.queue {
+		if pending.Kind != battle.Merge {
+			continue
+		}
+		sw, sh := g.screen()
+		oldCount := len(s.b.Foes) + len(pending.Members) - 1
+		for _, member := range pending.Members {
+			x := sw/2 + (float64(member.Index)-float64(oldCount-1)/2)*min(180, (sw-foeLeft)/float64(oldCount))
+			g.drawStanding(dst, member.Picture(), x, sh*0.66, 160, 1, false, nil)
 		}
 	}
 }
@@ -1510,7 +1641,21 @@ func (s *battleScene) drawParty(g *Game, dst *ebiten.Image) {
 			gfx.DrawTextOutlineColor(dst, "▼", x+w/2, y-40+math.Sin(float64(g.tick)/5)*5, sizeL, g.th.accent, colorWhite, 1)
 		}
 		face := s.faceOf(u)
-		g.drawFace(dst, g.faceOf(u.Actor.ID, face), x+12, y+12, h-24, 1, s.shownHP[u] <= 0)
+		facePath := g.faceOf(u.Actor.ID, face)
+		if s.foeImages == nil {
+			s.foeImages = map[*battle.Unit]string{}
+		}
+		if old := s.foeImages[u]; old != "" && old != facePath && s.foeFade[u].ticks == 0 {
+			if s.foeFade == nil {
+				s.foeFade = map[*battle.Unit]pictureFade{}
+			}
+			s.foeFade[u] = pictureFade{from: old, ticks: 18}
+		}
+		s.foeImages[u] = facePath
+		g.drawFace(dst, facePath, x+12, y+12, h-24, 1, s.shownHP[u] <= 0)
+		if f := s.foeFade[u]; f.ticks > 0 && f.from != facePath {
+			g.drawFace(dst, f.from, x+12, y+12, h-24, float32(f.ticks)/18, s.shownHP[u] <= 0)
+		}
 		tx, tw := x+h, w-h-14
 		g.text(dst, u.Name, tx, y+10, sizeM*0.9, g.th.text)
 		hr := s.hp[u] / float64(u.MHP())
@@ -1545,7 +1690,13 @@ func (s *battleScene) faceOf(u *battle.Unit) string {
 			return r.Face
 		}
 	}
-	return d.Face
+	face := d.Face
+	for _, img := range d.Images {
+		if float64(s.shownHP[u])/float64(u.MHP()) < img.Below {
+			face = img.Face
+		}
+	}
+	return face
 }
 
 type shownUnit struct {

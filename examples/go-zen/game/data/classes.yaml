@@ -57,6 +57,7 @@ actors:
     name: Maren
     class: cartographer
     faces: maren
+    images: [{below: 0.35, face: worried}]
     puppet: maren/puppet.yaml
     doll: {icon: icons/maren.png, hair: long, parts: [{kind: bag, color: "#7a5030"}, {kind: lashes, color: "#000000"}]}
     equip: {weapon: rod_basic, armor: coat_cloth}

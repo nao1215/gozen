@@ -9,10 +9,27 @@ enemies:
     lore: "Drip Slimes collect beneath leaking pipes. They follow the steady rhythm of water through the halls."
     name: Drip Slime
     image: enemies/drip_slime.png
+    images: [{below: 0.5, file: enemies/frost_slime.png}]
+    motion: breathe
     stats: {mhp: 48, mmp: 0, atk: 11, def: 2, mat: 0, mdf: 1, agi: 4, luk: 1}
     exp: 12
     gold: 5
     drops: [{item: tonic, chance: 0.1}]
+    ai:
+      - {use: slime_merge, when: "allies.kind_drip_slime >= 2", once: true, priority: 2}
+      - {use: drip}
+  pooled_slime:
+    family: slime
+    rank: 2
+    monster_class: monster_slime
+    lore: "Two Drip Slimes have pooled into a larger body."
+    name: Pooled Slime
+    image: {file: enemies/drip_slime.png, tint: "#9cdce8"}
+    scale: 1.55
+    motion: bob
+    stats: {mhp: 96, mmp: 0, atk: 17, def: 3, mat: 0, mdf: 2, agi: 3, luk: 1}
+    exp: 24
+    gold: 10
     ai: [{use: drip}]
   pipe_rat:
     family: beast
@@ -79,6 +96,8 @@ enemies:
     name: Tollkeeper
     title: The Magistrate's Golem
     image: enemies/tollkeeper.png
+    hp_triggers: [{below: 0.5, transform: tollkeeper_unsealed, hp: ratio, clear: true}]
+    motion: sway
     scale: 1.2
     stats: {mhp: 950, mmp: 0, atk: 33, def: 12, mat: 0, mdf: 5, agi: 7, luk: 1}
     boss: true
@@ -86,6 +105,22 @@ enemies:
     gold: 100
     ai:
       - {use: gilded_plating, when: "self.hp_rate < 0.5 && self.states.gilded == 0", priority: 4}
+      - {use: toll_bell, when: "turn % 3 == 0", priority: 2}
+      - {use: toll_strike}
+  tollkeeper_unsealed:
+    family: material
+    rank: 9
+    lore: "The Tollkeeper's outer shell has opened, exposing its driving mechanism."
+    name: Unsealed Tollkeeper
+    title: The Magistrate's Golem
+    image: {file: enemies/tollkeeper.png, tint: "#ffbd8c"}
+    scale: 1.2
+    motion: breathe
+    stats: {mhp: 950, mmp: 0, atk: 37, def: 9, mat: 0, mdf: 4, agi: 9, luk: 1}
+    boss: true
+    exp: 170
+    gold: 100
+    ai:
       - {use: toll_bell, when: "turn % 3 == 0", priority: 2}
       - {use: toll_strike}
   vance:

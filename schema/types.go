@@ -53,6 +53,18 @@ type Dungeon = gamedata.Dungeon
 // This definition is exposed for game authors and hosts; see the Schema page (https://nao1215.github.io/gozen/schema/).
 type Effect = gamedata.Effect
 
+// Merge is the YAML shape of a battle skill that combines living enemies.
+// Game authors use it when constructing or inspecting an Effect.Merge definition.
+type Merge = gamedata.Merge
+
+// HPImage is a picture or actor face selected below an HP ratio in battle.
+// Game authors use it in Actor.Images and Enemy.Images definitions.
+type HPImage = gamedata.HPImage
+
+// HPTrigger is a damage threshold that changes an enemy form immediately.
+// Game authors use it in Enemy.HPTriggers definitions.
+type HPTrigger = gamedata.HPTrigger
+
 // Enemy is a kind of foe.
 // This definition is exposed for game authors and hosts; see the Schema page (https://nao1215.github.io/gozen/schema/).
 type Enemy = gamedata.Enemy

@@ -36,6 +36,7 @@ type Unit struct {
 	fellWith map[string]int // the states it had when it fell (see Drop.When)
 
 	fired   map[int]bool // the rules with once that have been used
+	firedHP map[int]bool // HP thresholds fired in this form
 	b       *Battle
 	tactics *tacticRules // tactics and learned skills at battle start. nil means the legacy AI.
 
@@ -62,7 +63,7 @@ func newActorUnit(b *Battle, a *rpg.Actor, i int) *Unit {
 
 func newEnemyUnit(b *Battle, id string, i int) *Unit {
 	d := b.DB.Enemies[id]
-	u := &Unit{Name: d.Name, Enemy: true, Index: i, EID: id, Def: d, base: map[string]int{}, States: map[string]int{}, fired: map[int]bool{}, b: b}
+	u := &Unit{Name: d.Name, Enemy: true, Index: i, EID: id, Def: d, base: map[string]int{}, States: map[string]int{}, fired: map[int]bool{}, firedHP: map[int]bool{}, b: b}
 	for _, s := range data.StatNames {
 		u.base[s] = d.Stats[s]
 		if r, ok := b.DB.Game.Battle.FoeScale[s]; ok && !d.Boss && b.common { // the common foes' tension
@@ -166,6 +167,26 @@ func (u *Unit) Face() string {
 		}
 	}
 	return ""
+}
+
+// Picture is the enemy's image at its current HP, before temporary reactions.
+func (u *Unit) Picture() string {
+	return u.PictureAt(u.HP)
+}
+
+// PictureAt returns the enemy picture for a displayed HP value.
+func (u *Unit) PictureAt(hp int) string {
+	if u.Def == nil {
+		return ""
+	}
+	file := u.Def.Image.File
+	rate := float64(hp) / float64(u.MHP())
+	for _, img := range u.Def.Images {
+		if rate < img.Below {
+			file = img.File
+		}
+	}
+	return file
 }
 
 // allies are the unit's side; foes the other.

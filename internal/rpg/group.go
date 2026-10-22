@@ -75,6 +75,15 @@ func (g *Group) Field(name string) (any, bool) {
 		}
 		return float64(n), true
 	}
+	if id, ok := strings.CutPrefix(name, "kind_"); ok {
+		n := 0
+		for _, m := range standing {
+			if v, valid := m.Field("id"); valid && v == id {
+				n++
+			}
+		}
+		return float64(n), true
+	}
 	if it, ok := strings.CutPrefix(name, "wearing_"); ok {
 		n := 0
 		for _, m := range standing {
