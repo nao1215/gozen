@@ -128,8 +128,11 @@ func TestScriptedEventBattleReachesRecruitChoice(t *testing.T) {
 			t.Fatal(err)
 		}
 		if g.in.script.pc >= 3 {
-			if !g.talk.active || g.talk.choice == nil || !strings.Contains(g.talk.asked.Prompt, "Mote") {
+			if !g.talk.active || g.talk.choice == nil || !strings.Contains(g.talk.asked.Prompt, "Mote") || g.recruit == nil || g.recruit.offer.Image == "" || g.recruit.leave != 0 {
 				t.Fatalf("script stopped before recruit choice: pc=%d, waiting=%v", g.in.script.pc, g.talk.choice)
+			}
+			if !strings.Contains(g.talk.say.Name, "♂") && !strings.Contains(g.talk.say.Name, "♀") {
+				t.Fatalf("recruit name lacks sex sign: %q", g.talk.say.Name)
 			}
 			return
 		}

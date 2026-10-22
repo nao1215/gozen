@@ -67,6 +67,7 @@ func TestGraphicsScreens(t *testing.T) {
 		{name: "dialogue", args: []string{"--start", "plaza", "--event", "kes_roof"}},
 		{name: "battle", args: []string{"--start", "b1", "--party", "maren,ox,tilly", "--battle", "drips"}},
 		{name: "dungeon", args: []string{"--start", "b1", "--party", "maren,ox,tilly"}},
+		{name: "recruit", args: []string{"--start", "b1", "--party", "maren,ox,tilly,kes", "--level", "6"}, script: "guarantee-recruit drip_slime\ndo battle: drips\nplay join 5\nwait 30\nshot frame\nquit\n"},
 		// F7 balance display. Wait until measuring finishes, and check that the win-rate bar color appears in the upper-right panel.
 		{name: "balance", args: []string{"--start", "b2", "--party", "maren,ox,tilly", "--level", "1"}, script: "wait 20\npress graphs\nwait 5200\nshot frame\nquit\n"},
 	} {
@@ -117,6 +118,9 @@ func TestGraphicsScreens(t *testing.T) {
 			if tc.name == "balance" && !hasBar(img) {
 				t.Fatal("the balance panel shows no win-rate bar")
 			}
+			if tc.name == "recruit" && !hasRecruitMonster(img) {
+				t.Fatal("recruit question has no large blue monster in the center")
+			}
 		})
 	}
 }
@@ -135,3 +139,16 @@ func hasBar(img image.Image) bool {
 }
 
 func near(v, want uint32) bool { return v+8 >= want && v <= want+8 }
+
+func hasRecruitMonster(img image.Image) bool {
+	blue := 0
+	for y := 280; y < 680; y += 4 {
+		for x := 700; x < 1220; x += 4 {
+			r, g, b, _ := img.At(x, y).RGBA()
+			if b > r*3/2 && g > r*5/4 && b > 0x5000 {
+				blue++
+			}
+		}
+	}
+	return blue > 250
+}

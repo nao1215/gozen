@@ -3,6 +3,6 @@
 guarantee-recruit drip_slime
 do battle: drips
 play join 5
-wait 4
+wait 30
 shot s-rise
 quit

@@ -106,13 +106,20 @@ type VoiceEffect struct{ File, Who string }
 // Request is something the screen must show before the event goes on.
 type Request interface{ isRequest() }
 
+// RecruitOffer identifies the defeated monster whose invitation is on screen.
+// Sex is chosen when the offer appears and is retained if the player accepts.
+type RecruitOffer struct {
+	Species, Name, Image, Sex string
+}
+
 // Say is a line to read.
 type Say struct {
-	Name  string // "" for narration
-	Face  string // a picture under assets/ ("" for none)
-	Text  string
-	Right bool // the picture stands on the right
-	Actor string
+	Name    string // "" for narration
+	Face    string // a picture under assets/ ("" for none)
+	Text    string
+	Right   bool // the picture stands on the right
+	Actor   string
+	Recruit *RecruitOffer // present only for a defeated monster's invitation
 	// Voice is the line's voice, a file under assets/ ("" for none; ADR 0028).
 	Voice string
 	// Key is the key of the line's source (SourceKey of who and text as written, before
@@ -151,6 +158,7 @@ type Choice struct {
 	IDs     []string // identifiers in the same order as the displayed choices (empty if unspecified)
 	Prompt  string
 	Options []string
+	Recruit *RecruitOffer // present only for a defeated monster's invitation
 	// Keys are the keys of the options' sources (ChoiceKey of the prompt and the label as
 	// written), in the same order: the screen marks an option taken before (ADR 0026).
 	Keys []uint64
@@ -294,6 +302,7 @@ type Runner struct {
 	ups map[string]bool
 	// waiting for an answer
 	options []data.ChoiceOption
+	offers  map[*data.Command]RecruitOffer // metadata for commands created after a won battle
 	// pick answers a choice made by the engine (stone_choose, stone_wearer) instead of options' do
 	pick   func(n int)
 	asked  *data.Command // the choice whose answer is waited for
@@ -378,6 +387,7 @@ func (r *Runner) Asking() *data.Command {
 // Stop drops everything left.
 func (r *Runner) Stop() {
 	r.afterPending = false
+	r.offers = nil
 	r.stack, r.notes, r.options, r.battle, r.later, r.pick, r.ups, r.walks = nil, nil, nil, nil, nil, nil, nil, nil
 }
 
@@ -414,6 +424,13 @@ func (r *Runner) Answer(n int) {
 	switch {
 	case r.options != nil:
 		if n >= 0 && n < len(r.options) {
+			for i, option := range r.options {
+				if i != n {
+					for j := range option.Do {
+						delete(r.offers, &option.Do[j])
+					}
+				}
+			}
 			if r.pick != nil {
 				r.pick(n)
 			} else {
@@ -478,14 +495,34 @@ func (r *Runner) offerCaptures(troopID string) {
 		if r.st.Rand.Float64() >= min(1, chance) {
 			continue
 		}
-		r.push([]data.Command{
-			{Stand: &data.Stand{Who: e.Name, Face: e.Image.File, At: data.StandAt("center"), Enter: "slide"}},
-			{Effect: data.EffectCue{Name: "flash"}},
-			{Say: &data.Say{Who: e.Name, Face: e.Image.File, Text: e.Name + " rises and looks toward your party."}},
-			{Choice: []data.ChoiceOption{{ID: "yes", Label: "Yes", Do: []data.Command{{Capture: id}}}, {ID: "no", Label: "No"}}, Prompt: "Let " + e.Name + " join?"},
-			{Stand: &data.Stand{None: true}},
-		})
+		sex := data.MonsterSex(r.db, id, r.st.Rand.Float64())
+		sign := "♀"
+		if sex == "male" {
+			sign = "♂"
+		}
+		name := e.Name + " " + sign
+		commands := []data.Command{
+			{Say: &data.Say{Who: name, Text: e.Name + " rises and looks toward your party."}},
+			{Choice: []data.ChoiceOption{{ID: "yes", Label: "Yes", Do: []data.Command{{Capture: id}}}, {ID: "no", Label: "No"}}, Prompt: "Let " + name + " join?"},
+			{Wait: data.WaitCue{Seconds: 28.0 / 60}},
+		}
+		if r.offers == nil {
+			r.offers = make(map[*data.Command]RecruitOffer)
+		}
+		offer := RecruitOffer{Species: id, Name: e.Name, Image: e.Image.File, Sex: sex}
+		r.offers[&commands[0]] = offer
+		r.offers[&commands[1]] = offer
+		r.offers[&commands[1].Choice[0].Do[0]] = offer
+		r.push(commands)
 	}
+}
+
+func (r *Runner) recruitOffer(c *data.Command) *RecruitOffer {
+	if o, ok := r.offers[c]; ok {
+		delete(r.offers, c)
+		return &o
+	}
+	return nil
 }
 
 // chose remembers the option taken at a choice with an id (chose.<id>; ADR 0025): the
@@ -608,10 +645,12 @@ func (r *Runner) run(c *data.Command) Request {
 	case "say":
 		req := r.say(c.Say, env)
 		if line, ok := req.(Say); ok {
+			line.Recruit = r.recruitOffer(c)
 			if line.Voice != "" {
 				r.emit(VoiceEffect{File: line.Voice, Who: c.Say.Who})
 			}
 			r.aside(line, env)
+			req = line
 		}
 		return req
 	case "choice":
@@ -637,7 +676,7 @@ func (r *Runner) run(c *data.Command) Request {
 		}
 		r.asked = c
 		prompt, p := data.Fill(r.db, c.Prompt, env)
-		return Choice{Prompt: prompt, Options: labels, IDs: ids, Keys: keys, prompt: p, labels: words}
+		return Choice{Prompt: prompt, Options: labels, IDs: ids, Keys: keys, Recruit: r.recruitOffer(c), prompt: p, labels: words}
 	case "ran":
 		r.st.MarkRan(c.Ran)
 	case "done":
@@ -716,7 +755,11 @@ func (r *Runner) run(c *data.Command) Request {
 		}
 	case "capture":
 		if e := r.db.Enemies[c.Capture]; e != nil && e.Recruit != nil {
-			id, ok := r.st.Recruit(c.Capture, max(1, e.Recruit.Level), 0, nil)
+			sex := ""
+			if offer := r.recruitOffer(c); offer != nil {
+				sex = offer.Sex
+			}
+			id, ok := r.st.RecruitWithSex(c.Capture, max(1, e.Recruit.Level), 0, nil, sex)
 			if ok {
 				sign := "♀"
 				if r.st.Actors[id].Sex == "male" {

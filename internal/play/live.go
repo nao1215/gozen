@@ -443,6 +443,7 @@ func (g *Game) dropReplay(r *sceneReplay, at int) {
 	g.replaying = false
 	g.autoRead = r.autoRead
 	g.talk = talk{}
+	g.recruit = nil
 	g.cg, g.cgOldT, g.cgUnder = data.CG{}, 0, data.CG{}
 	g.stage, g.stageOut, g.sides = [2]stageActor{}, stageActor{}, nil
 }

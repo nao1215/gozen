@@ -21,12 +21,15 @@ func TestCaptureAfterVictoryIsAChoice(t *testing.T) {
 		}
 		r.Answer(event.BattleWon)
 		line, ok := r.Next().(event.Say)
-		if !ok || !strings.Contains(line.Text, "rises") {
+		if !ok || !strings.Contains(line.Text, "rises") || line.Recruit == nil || line.Recruit.Image == "" {
 			t.Fatalf("no staged rising line: %+v", line)
 		}
 		choice, ok := r.Next().(event.Choice)
-		if !ok || len(choice.Options) != 2 || choice.Options[0] != "Yes" {
+		if !ok || len(choice.Options) != 2 || choice.Options[0] != "Yes" || choice.Recruit == nil || choice.Recruit.Sex != line.Recruit.Sex {
 			t.Fatalf("join request = %+v", choice)
+		}
+		if !strings.Contains(choice.Prompt, "♂") && !strings.Contains(choice.Prompt, "♀") {
+			t.Fatalf("the offer has no sex sign: %q", choice.Prompt)
 		}
 		r.Answer(answer)
 		for r.Running() {
@@ -38,6 +41,11 @@ func TestCaptureAfterVictoryIsAChoice(t *testing.T) {
 		}
 		if st.Vars["bestiary.mote.defeated"] != float64(1) {
 			t.Fatalf("defeated = %v", st.Vars)
+		}
+		if answer == 0 {
+			if got := st.Actors["monster_1"]; got == nil || got.Sex != choice.Recruit.Sex {
+				t.Fatalf("joined monster sex differs from invitation: %+v", got)
+			}
 		}
 	}
 }

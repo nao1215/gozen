@@ -106,8 +106,14 @@ func (s *State) Join(id string) bool {
 // Recruit creates a distinct monster actor and places it in the active party if there
 // is room. Otherwise it remains in the reserve. The returned ID is save-stable.
 func (s *State) Recruit(species string, level, plus int, skills []string) (string, bool) {
+	return s.RecruitWithSex(species, level, plus, skills, "")
+}
+
+// RecruitWithSex creates a monster with the sex the event runner drew for its
+// visible offer. An empty sex draws one here, as Recruit does.
+func (s *State) RecruitWithSex(species string, level, plus int, skills []string, sex string) (string, bool) {
 	e := s.DB.Enemies[species]
-	if e == nil || s.DB.Classes[s.DB.MonsterClass(species)] == nil {
+	if e == nil || s.DB.Classes[s.DB.MonsterClass(species)] == nil || sex != "" && !data.AllowsMonsterSex(s.DB, species, sex) {
 		return "", false
 	}
 	seq, ok := s.Vars["monster.next"].(float64)
@@ -123,7 +129,10 @@ func (s *State) Recruit(species string, level, plus int, skills []string) (strin
 	s.DB.Actors[id] = &data.Actor{Name: e.Name, Class: s.DB.MonsterClass(species), Level: max(1, level)}
 	a := NewActor(s.DB, id)
 	a.Monster, a.Plus = species, plus
-	a.Sex = data.MonsterSex(s.DB, species, s.Rand.Float64())
+	if sex == "" {
+		sex = data.MonsterSex(s.DB, species, s.Rand.Float64())
+	}
+	a.Sex = sex
 	a.HP, a.MP = a.Stat("mhp"), a.Stat("mmp")
 	for _, skill := range skills {
 		if s.DB.Skills[skill] != nil && !slices.Contains(a.Learnt, skill) {

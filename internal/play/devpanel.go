@@ -281,6 +281,7 @@ func (g *Game) devJump(name string, line int) {
 	g.stopSkip("jump")
 	g.events.Stop()
 	g.req, g.talk = nil, talk{}
+	g.recruit = nil
 	g.enterAt = ""
 	g.events.Start(cmds)
 	g.fast = &fastTo{lines: max(1, line)}

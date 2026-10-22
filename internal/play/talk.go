@@ -142,6 +142,9 @@ func (t *talk) question(g *Game, c event.Choice, again bool) {
 	default:
 		*t = talk{active: true, bare: true, pages: [][]string{{""}}}
 	}
+	if c.Recruit != nil {
+		t.say.Name = recruitName(c.Recruit)
+	}
 	t.shown = t.total
 	t.keys = c.Keys
 	t.asked = c
@@ -311,7 +314,7 @@ func (t *talk) draw(g *Game, dst *ebiten.Image) {
 	x, y, w, h := g.talkBox()
 	sw, sh := g.screen()
 	s := t.say
-	if s.Face != "" && (g.cg.File == "" || g.cg.Faces) {
+	if s.Face != "" && (g.cg.File == "" || g.cg.Faces) && g.recruit == nil {
 		img := g.pics.get(s.Face)
 		ih := float64(img.Bounds().Dy())
 		cx := x + 230

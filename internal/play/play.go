@@ -231,10 +231,11 @@ type Game struct {
 
 	bannerFloor float64
 
-	events *event.Runner
-	req    event.Request
-	talk   talk
-	waitT  int
+	events  *event.Runner
+	req     event.Request
+	talk    talk
+	recruit *recruitView
+	waitT   int
 
 	notices noticeBoard
 	tapT    int
@@ -890,6 +891,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.lastView.Clear()
 		g.lastView.DrawImage(dst, nil)
 	}
+	g.drawRecruit(dst)
 	g.talk.draw(g, dst)
 	if g.noticesShown() {
 		g.notices.draw(g, dst)
@@ -1031,6 +1033,7 @@ func (g *Game) pop() {
 func (g *Game) replace(s scene) {
 	g.stack = []scene{s}
 	g.talk = talk{}
+	g.recruit = nil
 	g.cg, g.cgOldT, g.cgUnder = data.CG{}, 0, data.CG{}
 }
 
@@ -1469,6 +1472,9 @@ func (g *Game) pump() bool {
 	case event.Say, event.Choice:
 		if done, answer := g.talk.update(g); done {
 			if answer >= 0 {
+				if c, ok := r.(event.Choice); ok && c.Recruit != nil {
+					g.endRecruit(answer == 0)
+				}
 				g.emit("answer", traceLine{"index": answer})
 				g.evAnswers = append(g.evAnswers, answer)
 				g.events.Answer(answer)
@@ -1539,8 +1545,10 @@ func (g *Game) begin(r event.Request) {
 	done := func() { g.req = nil }
 	switch r := r.(type) {
 	case event.Say:
+		g.beginRecruit(r.Recruit)
 		g.talk.open(g, r)
 	case event.Choice:
+		g.beginRecruit(r.Recruit)
 		g.talk.ask(g, r)
 	case event.Wait:
 		g.waitT = int(r.Seconds * 60)
