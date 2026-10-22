@@ -29,6 +29,10 @@ var summaries = map[string]string{
 	"sewer":   "wet stone, grates and pipes",
 	"forest":  "walls of roots, an earth floor",
 	"tomb":    "sandstone blocks with carved signs",
+	"keep":    "gray stone with pillars and cracked flags",
+	"dream":   "purple walls of eyes, a sleeping face above",
+	"mine":    "timbered shafts, a cobbled floor",
+	"vine":    "dark bricks hung with ivy, a mossy floor",
 }
 
 // licenseName is the file the license of the pictures is copied as, beside each theme.

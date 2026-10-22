@@ -414,7 +414,7 @@ It needs nothing beyond the gozen binary: no cgo, display or sound device.
 
 ## theme
 
-A dungeon theme is a wall, a floor, a ceiling and a door picture with colors that go together. The `gozen` binary carries nine themes (`cave`, `ice`, `ruins`, `castle`, `crystal`, `temple`, `sewer`, `forest`, `tomb`); `gozen theme add` copies one into a game, and `theme: cave` in a [dungeon](/schema/#dungeon) or one of its [looks](/schema/#dungeonlook) then fills the walls, floor, ceiling, door and colors that the YAML does not write. The pictures are not part of the game runtime, so a game that uses no theme does not carry them.
+A dungeon theme is a wall, a floor, a ceiling and a door picture with colors that go together. The `gozen` binary carries thirteen themes (`cave`, `ice`, `ruins`, `castle`, `crystal`, `temple`, `sewer`, `forest`, `tomb`, `keep`, `dream`, `mine`, `vine`); `gozen theme add` copies one into a game, and `theme: cave` in a [dungeon](/schema/#dungeon) or one of its [looks](/schema/#dungeonlook) then fills the walls, floor, ceiling, door and colors that the YAML does not write. The pictures are not part of the game runtime, so a game that uses no theme does not carry them.
 
 ### theme list
 
