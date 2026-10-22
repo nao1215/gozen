@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/expr"
 )
 
 func (c *checker) monsters() {
@@ -26,6 +27,7 @@ func (c *checker) monsters() {
 	if db.Game.MaxParty > 4 {
 		c.errorf(diag.MonsterRules, "game.yaml max_party", "monster collection supports at most four active party members")
 	}
+	checkedClasses := map[string]bool{}
 	for id, e := range db.Enemies {
 		w := "enemies." + id
 		if e.Sex != "" && e.Sex != "any" && e.Sex != "male" && e.Sex != "female" {
@@ -48,7 +50,33 @@ func (c *checker) monsters() {
 		if !e.Boss && db.Classes[db.MonsterClass(id)] == nil {
 			c.errorf(diag.MonsterRules, w+".monster_class", "unknown or missing monster class %q", db.MonsterClass(id))
 		}
+		if !e.Boss {
+			classID := db.MonsterClass(id)
+			if cl := db.Classes[classID]; cl != nil && !checkedClasses[classID] {
+				checkedClasses[classID] = true
+				prev := float64(0)
+				for level := 2; level <= cl.Max; level++ {
+					n, err := cl.ExpFor.Number(expr.Map{"level": float64(level)})
+					if err == nil && (math.IsNaN(n) || math.IsInf(n, 0) || n <= prev) {
+						c.errorf(diag.MonsterGrowth, "classes."+classID+".exp_for", "experience must increase at level %d", level)
+						break
+					}
+					if err != nil {
+						break // The ordinary expression check reports the invalid formula.
+					}
+					prev = n
+				}
+				for _, skill := range cl.Skills {
+					if skill.Level > cl.Max {
+						c.errorf(diag.MonsterGrowth, "classes."+classID+".skills", "skill %q is learned at level %d outside class maximum %d", skill.Skill, skill.Level, cl.Max)
+					}
+				}
+			}
+		}
 		if r := e.Recruit; r != nil {
+			if len(db.captureSites(id)) == 0 {
+				c.warnf(diag.NoCaptureEncounter, w+".recruit", "recruitable monster %q has no location encounter", id)
+			}
 			if e.Boss {
 				c.errorf(diag.MonsterRules, w+".recruit", "a boss cannot be recruited")
 			}
@@ -60,6 +88,9 @@ func (c *checker) monsters() {
 			}
 			if r.Level < 0 {
 				c.errorf(diag.MonsterRules, w+".recruit.level", "level cannot be negative")
+			}
+			if cl := db.Classes[db.MonsterClass(id)]; cl != nil && r.Level > cl.Max {
+				c.errorf(diag.MonsterGrowth, w+".recruit.level", "recruit level %d exceeds class maximum %d", r.Level, cl.Max)
 			}
 			if r.Bonus < 0 {
 				c.errorf(diag.MonsterRules, w+".recruit.bonus", "bonus cannot be negative")

@@ -384,7 +384,7 @@ locations:
         - {troop: abyss_lord_group, weight: 1, when: "var.floor >= 5"}
         - {troop: blast_beetle_group, weight: 2, when: "var.floor >= 5"}
         - {troop: crown_thief_group, weight: 2, when: "var.floor >= 2"}
-        - {troop: crystal_dragon_group, weight: 1, when: "var.floor >= 2"}
+        - {troop: crystal_dragon_group, weight: 1, when: "var.floor >= 5"}
         - {troop: crystal_golem_group, weight: 2, when: "var.floor >= 5"}
         - {troop: cursed_doll_group, weight: 2, when: "var.floor >= 5"}
         - {troop: dream_eater_group, weight: 2, when: "var.floor >= 3"}

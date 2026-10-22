@@ -6,6 +6,7 @@ import (
 
 	"github.com/nao1215/gozen/internal/event"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
@@ -47,5 +48,34 @@ func TestCaptureAfterVictoryIsAChoice(t *testing.T) {
 				t.Fatalf("joined monster sex differs from invitation: %+v", got)
 			}
 		}
+	}
+}
+
+func TestRecruitOfferDoesNotShiftBattleRandomStream(t *testing.T) {
+	db := testgame.Load(t, testgame.MonsterFiles())
+	plainDB := data.Fork(db)
+	plainDB.Enemies["mote"].Recruit = nil
+	withOffer, plain := testgame.State(db, 8), testgame.State(plainDB, 8)
+	for _, tc := range []struct {
+		game *data.DB
+		st   *rpg.State
+	}{
+		{db, withOffer}, {plainDB, plain},
+	} {
+		r := event.New(tc.game, tc.st, &host{})
+		r.Start([]data.Command{{Battle: "one"}})
+		if _, ok := r.Next().(event.Battle); !ok {
+			t.Fatal("no battle")
+		}
+		r.Answer(event.BattleWon)
+		for r.Running() {
+			switch r.Next().(type) {
+			case event.Choice:
+				r.Answer(1) // Decline the optional recruit.
+			}
+		}
+	}
+	if got, want := withOffer.Rand.Uint64(), plain.Rand.Uint64(); got != want {
+		t.Fatalf("adding a recruit offer shifted the next unrelated draw: %d != %d", got, want)
 	}
 }

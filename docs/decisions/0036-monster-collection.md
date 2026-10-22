@@ -28,7 +28,7 @@ The active party remains at most four. All joined actors outside it are in the r
 
 ## Sexes and breeding reachability
 
-Each monster species may set `sex: any|male|female` (default `any`). `sex_ratio`, between zero and one, is the probability of a male when `sex` is `any`; the default is one half. Captures and births draw from the session random stream and save the resulting instance sex. An older saved instance with no sex receives a stable ID-derived sex at load time without advancing that stream. Breeding needs one male and one female. The ranch filters unavailable partners and shows why none is available. `gozen check` reports sex-impossible specific and family rules; `gozen sim breed` tracks sex and plus in its graph and prints the sexes in each recipe.
+Each monster species may set `sex: any|male|female` (default `any`). `sex_ratio`, between zero and one, is the probability of a male when `sex` is `any`; the default is one half. A session seeds a saved collection random stream once at creation. Capture offers and birth sexes draw from that stream, leaving later battle and story random results unchanged when an extra offer is added. An older saved instance with no sex receives a stable ID-derived sex at load time without advancing that stream. Breeding needs one male and one female. The ranch filters unavailable partners and shows why none is available. `gozen check` reports sex-impossible specific and family rules; `gozen sim breed` tracks sex and plus in its graph and prints the sexes in each recipe.
 
 ## Family trees and the altar
 

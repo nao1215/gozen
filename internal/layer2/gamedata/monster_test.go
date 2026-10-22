@@ -95,3 +95,27 @@ func TestMonsterSexRulesAndReachability(t *testing.T) {
 		t.Fatalf("invalid ratio = %v", err)
 	}
 }
+
+func TestMonsterGrowthAndCaptureSourceDiagnostics(t *testing.T) {
+	files := testgame.MonsterFiles()
+	files["data/main.yaml"] = strings.Replace(files["data/main.yaml"], "recruit: {chance: 1, level: 1", "recruit: {chance: 1, level: 100", 1)
+	if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "GZN1113") {
+		t.Fatalf("recruit above class cap: %v", err)
+	}
+	files = testgame.MonsterFiles()
+	files["data/main.yaml"] = strings.Replace(files["data/main.yaml"], "exp_for: \"level * level * 10\"", "exp_for: \"10\"", 1)
+	if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "GZN1113") {
+		t.Fatalf("flat monster experience curve: %v", err)
+	}
+	files = testgame.MonsterFiles()
+	files["data/main.yaml"] = strings.Replace(files["data/main.yaml"], "  ranger:\n", "  ranger:\n    max_level: 2\n", 1)
+	if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "skill \"heal\" is learned at level 3") {
+		t.Fatalf("skill above class cap: %v", err)
+	}
+	files = testgame.MonsterFiles()
+	files["data/main.yaml"] = strings.Replace(files["data/main.yaml"], "troops: [{troop: one}]", "troops: [{troop: boss}]", 1)
+	db := testgame.Load(t, files)
+	if warnings := db.SceneWarnings(); !slices.ContainsFunc(warnings, func(w error) bool { return strings.Contains(w.Error(), "GZN0117") }) {
+		t.Fatalf("recruit without an encounter: %v", warnings)
+	}
+}

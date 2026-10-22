@@ -49,6 +49,7 @@ type Session struct {
 	db      *data.DB
 	st      *rpg.State
 	pcg     *rand.PCG
+	seed    uint64
 	cfg     Config
 	runner  *event.Runner
 	last    scope.Last
@@ -86,6 +87,7 @@ func New(g *Game, cfg Config) (*Session, error) {
 	}
 	s := newSession(g, cfg)
 	s.st = rpg.New(s.db, rand.New(s.pcg)) //nolint:gosec // Gameplay randomness, not security.
+	s.st.SetRecruitSeed(s.seed)
 	s.start()
 	s.fresh = true
 	return s, nil
@@ -174,7 +176,7 @@ func newSession(g *Game, cfg Config) *Session {
 	if cfg.Policy == nil {
 		cfg.Policy = DefaultPolicy{}
 	}
-	return &Session{g: g, db: gamedata.Fork(g.db), pcg: rand.NewPCG(seed, seed^0x9e3779b97f4a7c15), cfg: cfg}
+	return &Session{g: g, db: gamedata.Fork(g.db), pcg: rand.NewPCG(seed, seed^0x9e3779b97f4a7c15), seed: seed, cfg: cfg}
 }
 
 // start makes the event runner of the state.

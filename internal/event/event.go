@@ -502,10 +502,10 @@ func (r *Runner) offerCaptures(troopID string) {
 				}
 			}
 		}
-		if r.st.Rand.Float64() >= min(1, chance) {
+		if r.st.RecruitFloat64() >= min(1, chance) {
 			continue
 		}
-		sex := data.MonsterSex(r.db, id, r.st.Rand.Float64())
+		sex := data.MonsterSex(r.db, id, r.st.RecruitFloat64())
 		sign := "♀"
 		if sex == "male" {
 			sign = "♂"
@@ -752,7 +752,7 @@ func (r *Runner) run(c *data.Command) Request {
 			r.logf(err)
 			floor = n
 		}
-		if r.st.Join(c.Join) {
+		if r.st.JoinStory(c.Join) {
 			r.notes = append(r.notes, r.db.Actors[c.Join].Name+lang.T("が なかまに くわわった！"))
 			if a := r.st.Actors[c.Join]; floor > float64(a.Exp) {
 				a.GainExp(int(floor) - a.Exp)

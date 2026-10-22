@@ -83,6 +83,11 @@ var (
 		Detail:  "The breeding graph has no path from a monster with a positive recruit chance to this species, including the male and female sexes needed at each step. A species whose only recipes loop back through species that cannot be obtained has no lineage and is reported too.",
 		Fix:     "Make it recruitable or add a breeding recipe reachable from capturable parents.",
 	})
+	NoCaptureEncounter = register(117, "NoCaptureEncounter", Entry{
+		Summary: "a recruitable monster has no encounter in a location",
+		Detail:  "A positive recruit chance only matters after winning a battle with that species. No location encounter names a troop containing it. A scripted battle may still offer it, so this is a warning.",
+		Fix:     "Add the species to a troop in a reachable location encounter, or confirm that a scripted battle is intentional.",
+	})
 )
 
 // GZN11xx: the definitions of the game. The game does not load, and check
@@ -147,6 +152,11 @@ var (
 		Summary: "a monster collection or breeding rule is invalid",
 		Detail:  "A recruit setting, monster family, rank, sex, sex ratio, pair or breeding requirement is invalid or ambiguous. A pair or family rule also fails when its species cannot supply one male and one female parent.",
 		Fix:     "Define known classes, families and species; use positive ranks and valid probabilities; give each unordered pair one result and ensure its parents can have opposite sexes.",
+	})
+	MonsterGrowth = register(1113, "MonsterGrowth", Entry{
+		Summary: "a monster cannot use its configured growth",
+		Detail:  "The recruit level or a learned skill exceeds the monster class maximum, or its experience requirement fails to rise with the level. Such a monster cannot progress as authored.",
+		Fix:     "Keep recruit and skill levels within the class maximum and make exp_for increase from level two through that maximum.",
 	})
 )
 

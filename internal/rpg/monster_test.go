@@ -95,7 +95,7 @@ func TestMonsterReserveBreedAndSave(t *testing.T) {
 	}
 }
 
-func TestMonsterSexUsesSessionRandomStream(t *testing.T) {
+func TestMonsterSexUsesSavedCollectionStream(t *testing.T) {
 	db := testgame.Load(t, testgame.MonsterFiles())
 	first, second := testgame.State(db, 87), testgame.State(db, 87)
 	for i := range 8 {
@@ -104,5 +104,46 @@ func TestMonsterSexUsesSessionRandomStream(t *testing.T) {
 		if first.Actors[a].Sex != second.Actors[b].Sex {
 			t.Fatalf("capture %d differs: %s vs %s", i, first.Actors[a].Sex, second.Actors[b].Sex)
 		}
+	}
+	if got, want := first.Rand.Uint64(), second.Rand.Uint64(); got != want {
+		t.Fatalf("identical collection draws changed gameplay random stream: %d != %d", got, want)
+	}
+}
+
+func TestCollectionDrawsDoNotShiftGameplayRandomness(t *testing.T) {
+	db := testgame.Load(t, testgame.MonsterFiles())
+	withCapture, withoutCapture := testgame.State(db, 19), testgame.State(db, 19)
+	if _, ok := withCapture.Recruit("mote", 1, 0, nil); !ok {
+		t.Fatal("recruit failed")
+	}
+	if got, want := withCapture.Rand.Uint64(), withoutCapture.Rand.Uint64(); got != want {
+		t.Fatalf("capture shifted unrelated random result: %d != %d", got, want)
+	}
+	saved, err := withCapture.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := rpg.Parse(db, saved, rand.New(rand.NewPCG(19, 19))) //nolint:gosec // Fixed seed verifies saved collection draws.
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := restored.RecruitFloat64(), withCapture.RecruitFloat64(); got != want {
+		t.Fatalf("saved collection stream diverged: %g != %g", got, want)
+	}
+}
+
+func TestStoryJoinMovesFullPartyMemberToReserve(t *testing.T) {
+	db := testgame.Load(t, nil)
+	st := testgame.State(db, 1)
+	db.Game.MaxParty = 2
+	db.Actors["healer"] = db.Actors["guide"]
+	if !st.Join("guide") {
+		t.Fatal("guide did not join")
+	}
+	if !st.JoinStory("healer") {
+		t.Fatal("scripted join failed with an all-human party")
+	}
+	if len(st.Party) != 2 || st.Party[1] != "healer" || st.Actors["guide"] == nil || len(st.ReserveIDs()) != 1 || st.ReserveIDs()[0] != "guide" {
+		t.Fatalf("join lost an actor: party=%v reserve=%v", st.Party, st.ReserveIDs())
 	}
 }

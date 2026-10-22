@@ -27,7 +27,20 @@ scenarios:
   - run: {command: "gozen check --only structure g"}
   - assert:
       exit_code: 0
-      stderr: {contains: '[GZN0116]'}
+      stderr: {contains: ['[GZN0116]', '[GZN0117]']}
+- name: GZN1113 for a recruit level above the monster class maximum
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 6\nid: g\nstart: {location: camp, party: [scout]}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "monster_families: {slime: Slime}\nclasses: {walker: {max_level: 2, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {camp: {}}\nenemies: {mote: {name: Mote, image: x.png, family: slime, rank: 1, monster_class: walker, recruit: {chance: 1, level: 3}, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}}\n"
+  - fixture: {file: g/assets/x.png, content: x}
+  - run: {command: "gozen check --only structure g"}
+  - assert:
+      exit_code: 1
+      stderr: {contains: '[GZN1113]'}
 - name: ${code} for an invalid command line, ${args}
   matrix:
   - {code: GZN2101, args: 'curve'}

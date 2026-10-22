@@ -658,6 +658,13 @@ func (g *Game) stateRng() *rand.Rand {
 	return rand.New(g.pcg) //nolint:gosec // Gameplay randomness is not used for security.
 }
 
+func (g *Game) collectionSeed() uint64 {
+	if g.opts.Seed != 0 {
+		return g.opts.Seed
+	}
+	return rand.Uint64() //nolint:gosec // Gameplay randomness is not used for security.
+}
+
 func (g *Game) newPCG() *rand.PCG {
 	if g.opts.Seed != 0 {
 		return rand.NewPCG(g.opts.Seed, g.opts.Seed*7+1)
@@ -1053,6 +1060,7 @@ func (g *Game) sfx(name string) {
 
 func (g *Game) newGame() {
 	g.st = rpg.New(g.db, g.stateRng())
+	g.st.SetRecruitSeed(g.collectionSeed())
 	g.bannerFloor = 0
 	g.startState()
 	if ev := g.db.Game.Start.Event; ev != "" {
@@ -1063,6 +1071,7 @@ func (g *Game) newGame() {
 func (g *Game) testStart() error {
 	o := g.opts
 	g.st = rpg.New(g.db, g.stateRng())
+	g.st.SetRecruitSeed(g.collectionSeed())
 	g.bannerFloor = 0
 	if o.Location != "" {
 		if g.db.Locations[o.Location] == nil {

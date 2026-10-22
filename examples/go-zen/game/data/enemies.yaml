@@ -562,9 +562,9 @@ enemies:
     ai: [{use: bite}]
   night_bat:
     sex: female
-    family: beast
+    family: bird
     rank: 2
-    monster_class: monster_beast
+    monster_class: monster_bird
     recruit: {chance: 0.18, level: 2}
     name: Night Bat
     image: enemies/night_bat.png

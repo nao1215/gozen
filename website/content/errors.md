@@ -17,9 +17,9 @@ Codes are assigned one family at a time. A diagnostic without a code still exits
 
 | Codes | Exit | Meaning | Assigned |
 |:--|:--|:--|:--|
-| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 16 codes |
+| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 17 codes |
 | `GZN02xx` | 0 | warnings of a measurement or a record | not yet |
-| `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 12 codes |
+| `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 13 codes |
 | `GZN12xx` | 1 | fonts and text layout | 1 codes |
 | `GZN13xx` | 1 | a simulation could not run or reported a problem | not yet |
 | `GZN14xx` | 1 | a trace of a play is broken or shows faults | 6 codes |
@@ -166,6 +166,14 @@ The breeding graph has no path from a monster with a positive recruit chance to 
 
 Fix: Make it recruitable or add a breeding recipe reachable from capturable parents.
 
+### GZN0117
+
+A recruitable monster has no encounter in a location.
+
+A positive recruit chance only matters after winning a battle with that species. No location encounter names a troop containing it. A scripted battle may still offer it, so this is a warning.
+
+Fix: Add the species to a troop in a reachable location encounter, or confirm that a scripted battle is intentional.
+
 ## GZN11xx
 
 The definitions of the game: YAML, references, expressions, assets. Exits 1.
@@ -265,6 +273,14 @@ A monster collection or breeding rule is invalid.
 A recruit setting, monster family, rank, sex, sex ratio, pair or breeding requirement is invalid or ambiguous. A pair or family rule also fails when its species cannot supply one male and one female parent.
 
 Fix: Define known classes, families and species; use positive ranks and valid probabilities; give each unordered pair one result and ensure its parents can have opposite sexes.
+
+### GZN1113
+
+A monster cannot use its configured growth.
+
+The recruit level or a learned skill exceeds the monster class maximum, or its experience requirement fails to rise with the level. Such a monster cannot progress as authored.
+
+Fix: Keep recruit and skill levels within the class maximum and make exp_for increase from level two through that maximum.
 
 ## GZN12xx
 

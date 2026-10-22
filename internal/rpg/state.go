@@ -41,6 +41,10 @@ type State struct {
 	Roamers []Roamer `json:"roamers,omitempty"`
 	// Chose is the option last taken at each choice with an id (chose.<id>; ADR 0025).
 	Chose map[string]string `json:"chose,omitempty"`
+	// RecruitSeed and RecruitDraws keep capture and birth draws separate from
+	// battle, encounter and story randomness. Both are saved for replay.
+	RecruitSeed  uint64 `json:"recruit_seed,omitempty"`
+	RecruitDraws uint64 `json:"recruit_draws,omitempty"`
 
 	DB   *data.DB   `json:"-"`
 	Rand *rand.Rand `json:"-"`
@@ -79,6 +83,7 @@ func New(db *data.DB, rng *rand.Rand) *State {
 	s := &State{
 		Actors: map[string]*Actor{}, Items: map[string]int{}, Flags: map[string]bool{},
 		Vars: map[string]any{}, Done: map[string]bool{}, Mapped: map[string][]byte{}, DB: db, Rand: rng,
+		RecruitSeed: collectionSeed(db.Game.ID),
 	}
 	s.initStateNames()
 	st := db.Game.Start
@@ -91,14 +96,40 @@ func New(db *data.DB, rng *rand.Rand) *State {
 	return s
 }
 
-// Join adds the actor to the party (creating them the first time), if there is room.
+func collectionSeed(id string) uint64 {
+	var hash uint64 = 14695981039346656037
+	for i := range len(id) {
+		hash = (hash ^ uint64(id[i])) * 1099511628211
+	}
+	return hash&((1<<53)-1) | 1
+}
+
+// SetRecruitSeed chooses a collection stream without advancing gameplay RNG.
+// It is used at session creation, before any capture or birth draw.
+func (s *State) SetRecruitSeed(seed uint64) {
+	s.RecruitSeed = seed&((1<<53)-1) | 1
+	s.RecruitDraws = 0
+}
+
+// RecruitFloat64 draws from the saved monster collection stream. It never
+// advances the stream used by encounters, battle or authored expressions.
+func (s *State) RecruitFloat64() float64 {
+	// Older saves have no collection seed. A stable game-specific default keeps
+	// their unrelated random stream unchanged when the first offer appears.
+	if s.RecruitSeed == 0 {
+		s.RecruitSeed = collectionSeed(s.DB.Game.ID)
+	}
+	rng := rand.New(rand.NewPCG(s.RecruitSeed, s.RecruitDraws)) //nolint:gosec // Deterministic gameplay randomness.
+	s.RecruitDraws++
+	return rng.Float64()
+}
+
+// Join adds an actor to the party, moving an active monster to the reserve if full.
 func (s *State) Join(id string) bool {
 	if slices.Contains(s.Party, id) {
 		return false
 	}
 	if len(s.Party) >= s.DB.Game.MaxParty {
-		// A story member makes room by sending the last raised monster in the
-		// party to the reserve; a party of people only stays full.
 		at := -1
 		for i, member := range s.Party {
 			if a := s.Actors[member]; a != nil && a.Monster != "" {
@@ -115,6 +146,19 @@ func (s *State) Join(id string) bool {
 	}
 	s.Party = append(s.Party, id)
 	return true
+}
+
+// JoinStory ensures an authored event can add its required member. If a full
+// party has no active monster, the last active actor moves to the reserve.
+func (s *State) JoinStory(id string) bool {
+	if s.Join(id) {
+		return true
+	}
+	if slices.Contains(s.Party, id) || len(s.Party) < s.DB.Game.MaxParty || len(s.Party) == 0 {
+		return false
+	}
+	s.Party = s.Party[:len(s.Party)-1]
+	return s.Join(id)
 }
 
 // Recruit creates a distinct monster actor and places it in the active party if there
@@ -144,7 +188,7 @@ func (s *State) RecruitWithSex(species string, level, plus int, skills []string,
 	a := NewActor(s.DB, id)
 	a.Monster, a.Plus = species, plus
 	if sex == "" {
-		sex = data.MonsterSex(s.DB, species, s.Rand.Float64())
+		sex = data.MonsterSex(s.DB, species, s.RecruitFloat64())
 	}
 	a.Sex = sex
 	a.HP, a.MP = a.Stat("mhp"), a.Stat("mmp")
