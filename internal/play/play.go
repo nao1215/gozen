@@ -1530,6 +1530,11 @@ func (g *Game) pump() bool {
 	case event.Wait:
 		if g.birth != nil && g.birth.waiting {
 			b := g.birth
+			if b.age >= b.viewEnd() && g.in.cancel() {
+				b.details = !b.details
+				g.in.pressed[btnCancel] = false
+				g.in.pressed[btnMenu] = false
+			}
 			if !g.in.held[btnOK] && !g.in.ok() {
 				b.ready = true
 			}
@@ -1539,7 +1544,7 @@ func (g *Game) pump() bool {
 				b.ready = false
 			}
 			g.waitT = max(1, b.duration()-b.age)
-			if b.age >= b.duration() && b.ready && g.in.ok() {
+			if b.age >= b.duration() && b.ready && g.in.ok() && !b.details {
 				g.waitT = 0
 				g.req = nil
 				b.ready = false
