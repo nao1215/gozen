@@ -49,6 +49,18 @@ runs:
     sample: go-zen
     script: scripts/capture-go-zen-tree.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --start, inn, --party, "maren,ox,tilly,kes", --level, "6", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  lineage:
+    sample: go-zen
+    script: scripts/capture-go-zen-lineage.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, altar, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  breeding:
+    sample: go-zen
+    script: scripts/capture-go-zen-breeding.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, altar, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  recruit:
+    sample: go-zen
+    script: scripts/capture-go-zen-recruit.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, b1, --party, "maren,ox,tilly,kes", --level, "6", --battle, drips, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
   shop:
     sample: go-zen
     script: scripts/capture-go-zen-shop.txt
@@ -189,6 +201,22 @@ images:
     run: tree
     shot: s-tree
     jpeg: {width: 960, height: 540, quality: 3}
+  go-zen-lineage.jpg:
+    run: lineage
+    shot: s-lineage
+    jpeg: {width: 960, height: 540, quality: 3}
+  go-zen-altar.jpg:
+    run: breeding
+    shot: s-altar
+    jpeg: {width: 960, height: 540, quality: 3}
+  go-zen-breeding.jpg:
+    run: breeding
+    shot: s-breed
+    jpeg: {width: 960, height: 540, quality: 3}
+  go-zen-recruit.jpg:
+    run: recruit
+    shot: s-rise
+    jpeg: {width: 960, height: 540, quality: 3}
   go-zen-title.jpg:
     run: opening
     shot: s-title
@@ -307,6 +335,9 @@ images:
 # Pictures that are not captures. They are drawn once from vector sources and
 # committed as they are; `make docs-images` does not remake them.
 static:
+  breeding.jpg:
+    source: the author's original breeding illustration (`vampire_breed.jpg`)
+    license: CC BY 4.0
   gozen-logo.svg:
     source: the mark (a brush circle in Go's blue, #00ADD8, around a cross key) and the word Gozen as paths, from Quicksand Bold; for light backgrounds
     license: MIT; the letter outlines come from Quicksand (SIL Open Font License 1.1), see ASSETS.md

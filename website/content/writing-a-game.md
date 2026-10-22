@@ -254,6 +254,8 @@ The engine's own words (menus, battle messages, settings, saves) come in English
 
 For collection, use schema version 6 and give each non-boss species a `family`, `rank` and `monster_class`. `recruit` lets it ask to join after a won battle; the Yes/No request also works in Session scripts and traces. Extra members go to the reserve. An inn or another safe place can run `open: ranch` to swap, release and breed monster instances. `enemies.<id>.sex` permits `any` (default), `male` or `female`, and optional `sex_ratio` gives the male probability for `any`. Each captured or born monster has a saved sex; breeding requires a male and a female. `breeding` defines specific species pairs and ranked family rules. `gozen check` validates the graph, `gozen sim breed game --format json` reports reachable and unreachable species, and `gozen book` prints the rules ([the collection recipe](/cookbook/#collect-raise-and-breed-monsters)).
 
+The monster book also presents a buildable family tree: caught leaves give their encounter locations, specific recipes show both species, and family rules show both families and one concrete pair. The shortest tree opens first. Players may switch recipes, fold deeper branches, scroll, and jump to a known species' page. Unseen nodes appear as `?`; development play reveals every node. `gozen book --format json` exports the same structure.
+
 ## Languages
 
 A game is written in one language, `written_in` (by default `language`), and can be offered in another: `lang/<code>.yaml` maps each text as written to its translation, and `languages` lets the player choose. The engine's own words come in English and Japanese, so the languages are `en` and `ja` ([the recipe](/cookbook/#offer-the-game-in-two-languages)).

@@ -220,11 +220,18 @@ func (c *command) versionCmd(args []string) error {
 
 func (c *command) bookCmd(args []string) error {
 	f := clihelp.NewFlagSet("gozen book")
+	format := f.String("format", "markdown", "output format: markdown, or json for the monsters' lineage")
 	if err := c.parse(f, args); err != nil {
 		return err
 	}
 	if f.NArg() != 1 {
 		return cli.Invalid(diag.Operands, "book expects one directory")
+	}
+	if *format != "markdown" && *format != "json" {
+		return cli.Invalid(diag.NotAChoice, "--format is markdown or json, not %q", *format)
+	}
+	if *format == "json" {
+		return c.bookLineageJSON(f.Arg(0))
 	}
 	return c.book(f.Arg(0))
 }

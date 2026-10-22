@@ -140,6 +140,15 @@ enemies:
 
 F4 opens the monster book during `--dev` play.
 
+The Go Zen book shows a family tree for each known monster. The shortest recipe opens first; choose another recipe with Tab, fold branches with Left and Right, and choose a known node to open its page. The route to Succubus is two generations: capture Frost Bat and Dream Wisp for Whisper Imp, capture Ghost Soldier and Nectar Moth for Vampire, then breed Whisper Imp with Vampire. Go Zen keeps the reserve at Yorn's Breeding Altar.
+
+![A two-generation monster family tree in the Go Zen book](docs/images/go-zen-lineage.jpg)
+![Yorn's altar and the ranch](docs/images/go-zen-altar.jpg)
+![Breeding at Yorn's altar](docs/images/go-zen-breeding.jpg)
+![A monster rising to join after battle](docs/images/go-zen-recruit.jpg)
+
+![The author's breeding illustration](docs/images/breeding.jpg)
+
 To collect and raise monsters, add families, ranks and a monster class to enemies, then add `recruit` chances and `breeding` rules (schema version 6). A monster may ask to join after victory; a full party sends it to the ranch reserve. The ranch swaps members and breeds one male and one female raised monster into one child; species may allow either sex or only one, and instance sex is saved. Check recipes with `gozen check game` and `gozen sim breed game --format json`. See [Collect, raise and breed monsters](https://nao1215.github.io/gozen/cookbook/#collect-raise-and-breed-monsters).
 
 ## Install

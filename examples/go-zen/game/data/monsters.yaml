@@ -17,7 +17,9 @@ breeding:
     - {parents: [frost_bat, ice_wolf], child: frost_giant}
     - {parents: [crystal_golem, dream_wisp], child: mirror_shade}
     - {parents: [spore_shroom, cursed_doll], child: maneater}
-    - {parents: [whisper_imp, ghost_soldier], child: succubus}
+    - {parents: [frost_bat, dream_wisp], child: whisper_imp}
+    - {parents: [ghost_soldier, nectar_moth], child: vampire}
+    - {parents: [whisper_imp, vampire], child: succubus}
   families:
     - {parents: [slime, slime], children: [drip_slime, steam_slime, frost_slime]}
     - {parents: [beast, beast], children: [pipe_rat, mine_rat, brass_hound, ice_wolf, nightmare_hound, snow_ape, frost_giant, rust_crab, blast_beetle, ice_spider]}

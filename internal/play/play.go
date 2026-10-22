@@ -496,6 +496,15 @@ func New(opts Options) (_ *Game, err error) {
 		s.typeText = g.typeMemo
 		s.jump = g.devJump
 		s.do = g.devDo
+		s.recruit = func(species string, level int) {
+			if !g.opts.Development || g.st == nil {
+				g.failure = fmt.Errorf("script: recruit needs a development session")
+				return
+			}
+			if _, ok := g.st.Recruit(species, level, 0, nil); !ok {
+				g.failure = fmt.Errorf("script: cannot recruit %s", species)
+			}
+		}
 		s.memoNote = func(kind, text string) { g.quickMemo(kind, text, memo.LLM) }
 		g.in.script = s
 	}

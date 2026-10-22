@@ -574,12 +574,25 @@ enemies:
     gold: 70
     drops: [{item: tonic, chance: 0.3}]
     ai: [{use: arc_bolt}]
+  vampire:
+    sex: male
+    family: demon
+    rank: 2
+    monster_class: monster_demon
+    name: Vampire
+    image: enemies/vampire.png
+    lore: "Vampires keep to the cold chambers beneath the old streets. They are patient hunters that rest through the day and strike with quick magic."
+    stats: {mhp: 270, mmp: 0, atk: 42, def: 18, mat: 36, mdf: 15, agi: 22, luk: 5}
+
+    exp: 130
+    gold: 68
+    drops: [{item: tonic, chance: 0.2}]
+    ai: [{use: arc_bolt}]
   whisper_imp:
     sex: female
     family: demon
     rank: 1
     monster_class: monster_demon
-    recruit: {chance: 0.22, level: 1}
     name: Whisper Imp
     image: enemies/whisper_imp.png
     lore: "Whisper Imps nest behind cracked walls. They trade rumors in soft voices and vanish when a lantern turns their way."
@@ -624,6 +637,7 @@ troops:
   spore_shroom_group: {members: [spore_shroom]}
   steam_slime_group: {members: [steam_slime]}
   succubus_group: {members: [succubus]}
+  vampire_group: {members: [vampire]}
   whisper_imp_group: {members: [whisper_imp]}
   drips: {members: [drip_slime, drip_slime]}
   rats: {members: [pipe_rat, pipe_rat]}

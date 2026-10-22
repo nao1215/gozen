@@ -1,0 +1,11 @@
+# Development book: the last three pages precede the root of the list.
+wait 40
+press bestiary
+wait 15
+press up
+press up
+press up
+press right
+wait 20
+shot s-lineage
+quit

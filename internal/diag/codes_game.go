@@ -80,7 +80,7 @@ var (
 	})
 	UnobtainableMonster = register(116, "UnobtainableMonster", Entry{
 		Summary: "a monster cannot be captured or bred from capturable monsters",
-		Detail:  "The breeding graph has no path from a monster with a positive recruit chance to this species, including the male and female sexes needed at each step.",
+		Detail:  "The breeding graph has no path from a monster with a positive recruit chance to this species, including the male and female sexes needed at each step. A species whose only recipes loop back through species that cannot be obtained has no lineage and is reported too.",
 		Fix:     "Make it recruitable or add a breeding recipe reachable from capturable parents.",
 	})
 )

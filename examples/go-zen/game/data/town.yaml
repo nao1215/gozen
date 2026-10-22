@@ -99,11 +99,28 @@ locations:
           - say: {who: Pomm, face: pomm/normal.png, text: "Soup, a bed, and a blanket that smells like bread. Sleep."}
           - say: "Everyone wakes up warm, fed, and a little sorry to leave the bed."
       - {label: Skill tree, do: [{open: skills}]}
-      - {label: Monster ranch, do: [{open: ranch}]}
       - {label: Save, do: [{save: true}]}
       - label: Ask Pomm how to fight smarter
         when: flag.ox_joined
         do: [{call: pomm_tactics}]
+    exits: [{to: town}]
+  # The altar is where captured monsters are kept and bred. Yorn opens the ranch (the reserve
+  # and the fusion), whose screen and staging stand on this picture.
+  altar:
+    name: Breeding Altar
+    area: Pellmere
+    background: bg/altar.jpg
+    music: town
+    safe: true
+    people:
+      - name: Yorn
+        image: yorn/normal.png
+        talk:
+          - say: {who: Yorn, face: yorn/normal.png, text: "Welcome to the altar. Bring me two monsters, one male and one female, and the crystals will do the rest."}
+          - say: {who: Yorn, face: yorn/normal.png, text: "The parents are spent, mind. What you get back is a new little one, and it remembers what you teach it."}
+          - open: ranch
+    actions:
+      - {label: Open the ranch, do: [{open: ranch}]}
     exits: [{to: town}]
   well:
     name: The Last Well
@@ -163,8 +180,10 @@ locations:
         inn: {at: [820, 180], to: inn}
         well: {at: [1640, 410], to: well}
         gate: {at: [830, 720], to: gate}
+        altar: {at: [1440, 300], to: altar}
       roads:
         - {between: [plaza, shop], via: [[700, 430]]}
         - {between: [plaza, inn], via: [[760, 320]]}
         - {between: [plaza, well], via: [[900, 250], [1040, 245], [1200, 285], [1500, 390]]}
+        - {between: [well, altar], via: [[1560, 340]]}
         - {between: [plaza, gate], via: [[620, 560], [760, 650]]}

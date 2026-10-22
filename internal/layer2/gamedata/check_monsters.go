@@ -3,6 +3,7 @@ package gamedata
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/nao1215/gozen/internal/diag"
@@ -163,7 +164,29 @@ func (c *checker) monsterReachability() {
 			continue
 		}
 		if _, ok := paths[id]; !ok {
-			c.warnf(diag.UnobtainableMonster, "enemies."+id, "monster %q has no path from capturable species", id)
+			if db.hasRecipe(id) {
+				c.warnf(diag.UnobtainableMonster, "enemies."+id, "monster %q has no lineage: its recipes only loop back through species that cannot be obtained from capturable species", id)
+			} else {
+				c.warnf(diag.UnobtainableMonster, "enemies."+id, "monster %q has no path from capturable species", id)
+			}
 		}
 	}
+}
+
+// hasRecipe reports whether a pair or a family rule names the species as a child.
+func (db *DB) hasRecipe(id string) bool {
+	if db.Breeding == nil {
+		return false
+	}
+	for _, p := range db.Breeding.Pairs {
+		if p.Child == id {
+			return true
+		}
+	}
+	for _, f := range db.Breeding.Families {
+		if slices.Contains(f.Children, id) {
+			return true
+		}
+	}
+	return false
 }

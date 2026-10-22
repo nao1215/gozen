@@ -1,6 +1,7 @@
 package play
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -36,5 +37,45 @@ func TestBestiaryStagesAndDevelopmentKey(t *testing.T) {
 		if !g.bestiarySeen(enemy) {
 			t.Errorf("development page %s is locked", enemy)
 		}
+	}
+}
+
+func TestBestiaryLineageNavigationAndFolding(t *testing.T) {
+	g := ranchGame(t)
+	g.opts.Development = true
+	s := newBestiary(g, nil)
+	s.sel = slices.Index(s.ids, "boss")
+	if s.sel < 0 {
+		t.Fatal("fixture has no child species")
+	}
+	rows := s.lineageRows(g)
+	if len(rows) != 3 || rows[2].node.Ref != "seen" {
+		t.Fatalf("initial tree rows = %+v", rows)
+	}
+	s.inTree = true
+	s.folds[s.tree.Path] = false
+	if rows := s.lineageRows(g); len(rows) != 1 || rows[0].expanded {
+		t.Fatalf("folded rows = %+v", rows)
+	}
+	g.in.pressed[btnRight] = true
+	s.update(g)
+	g.in.pressed[btnRight] = false
+	if rows := s.lineageRows(g); len(rows) != 3 {
+		t.Fatalf("opened rows = %+v", rows)
+	}
+	s.cur = 1
+	g.in.pressed[btnOK] = true
+	s.update(g)
+	g.in.pressed[btnOK] = false
+	if s.ids[s.sel] != "mote" || s.inTree || s.tree != nil {
+		t.Fatalf("choosing parent did not open page: %s", s.ids[s.sel])
+	}
+	g.opts.Development = false
+	g.st.Vars["bestiary.boss.seen"] = true
+	s.sel = slices.Index(s.ids, "boss")
+	s.resetTree()
+	rows = s.lineageRows(g)
+	if len(rows) != 3 || !rows[1].hidden || !rows[2].hidden || s.lineageLabel(g, rows[1]) != "?" {
+		t.Fatalf("unseen parent was revealed: %+v", rows)
 	}
 }

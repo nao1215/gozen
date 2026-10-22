@@ -16,7 +16,7 @@ The active party remains at most four. All joined actors outside it are in the r
 
 `breeding: {min_level, skill_slots, pairs, families}` holds the recipes. `breed: {parents: [INSTANCE, INSTANCE], skills: [SKILL]}` requires two distinct owned monsters at or above the minimum level. A specific species pair is symmetric and wins over a family pair; it may require a higher `min_level` or combined `min_plus`. A family rule is symmetric and picks the highest ranked listed child whose rank is no greater than the mean parent rank, breaking ties by species ID. No eligible child means the pair cannot breed. Selected skills must be distinct, known by a parent and within `skill_slots`. The two parents leave; the level-one child keeps the selected skills. Its `plus` is the sum of parental plus values plus at least one point from their levels; each plus point adds a small amount to each stat as the child grows. The ranch previews the child, showing `?` until the book has seen it, and confirms before a fade, flash and child appearance. All mutation goes through the event command, including when the screen initiated it.
 
-`gozen check` checks probabilities, classes, family IDs, ranks, unknown species and skills, duplicate unordered pairs, direct parent-to-self recipes, and invalid requirements. It warns when a non-boss species has no path from a capturable species. `gozen sim breed <game-dir> [--format json]` prints capturable species, the fewest generations and one recipe for reached species, and unreachable species. `gozen book` includes recruitment and breeding definitions. GZN1112 reports invalid rules and GZN0116 reports unreachable species.
+`gozen check` checks probabilities, classes, family IDs, ranks, unknown species and skills, duplicate unordered pairs, direct parent-to-self recipes, and invalid requirements. It warns when a non-boss species has no path from a capturable species, including a species whose recipes only loop back and so has no lineage. `gozen sim breed <game-dir> [--format json]` prints capturable species, the fewest generations and one recipe for reached species, and unreachable species. `gozen book` includes recruitment and breeding definitions. GZN1112 reports invalid rules and GZN0116 reports unreachable species.
 
 ## Alternatives
 
@@ -29,6 +29,12 @@ The active party remains at most four. All joined actors outside it are in the r
 ## Sexes and breeding reachability
 
 Each monster species may set `sex: any|male|female` (default `any`). `sex_ratio`, between zero and one, is the probability of a male when `sex` is `any`; the default is one half. Captures and births draw from the session random stream and save the resulting instance sex. An older saved instance with no sex receives a stable ID-derived sex at load time without advancing that stream. Breeding needs one male and one female. The ranch filters unavailable partners and shows why none is available. `gozen check` reports sex-impossible specific and family rules; `gozen sim breed` tracks sex and plus in its graph and prints the sexes in each recipe.
+
+## Family trees and the altar
+
+The monster book shows a buildable lineage for each obtainable species. A captured leaf names encounter locations; a specific pair names both parent species; a family rule names both families and the concrete parent species selected for that route. The shortest route is the default. A player may switch recipes, fold branches below the first two generations, scroll, and open a known species page from a node. Unknown species appear as `?`, while development play reveals all nodes. A repeated species appears once and later nodes carry a reference marker; ancestor cycles stop. `gozen book` prints the tree and `--format json` exports it with recipe choices and references. A species with only cycling recipes has no buildable tree and is included in GZN0116 reachability warnings.
+
+Go Zen places Yorn and the ranch in a safe Breeding Altar location. Its background remains visible behind the ranch, and the shared breeding command stages the two parents fading, a flash, and the child's appearance at that location. The scene uses the same state transition when invoked by a script or the screen.
 
 ## Consequences and limits
 

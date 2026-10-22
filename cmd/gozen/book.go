@@ -106,6 +106,7 @@ func (c *command) book(dir string) error {
 			e.Exp, e.Gold, rates(e.Resist), rates(e.SResist), boss)
 	}
 	p("\n## Monster book pages\n\n")
+	lin := gamedata.BuildLineage(db)
 	for _, id := range db.Ordered("enemies") {
 		e := db.Enemies[id]
 		if e == nil {
@@ -131,12 +132,22 @@ func (c *command) book(dir string) error {
 				skills = append(skills, r.Use)
 			}
 		}
+		if e.Sex != "" {
+			p("- Sex: %s\n", e.Sex)
+		}
 		p("- Skills: %s\n", listOrNone(skills))
 		var drops []string
 		for _, d := range e.Drops {
 			drops = append(drops, fmt.Sprintf("%s (%.0f%%)", d.Item, d.Chance*100))
 		}
-		p("- Drops: %s\n\n", listOrNone(drops))
+		p("- Drops: %s\n", listOrNone(drops))
+		if lines := lineageLines(db, lin, id); len(lines) > 0 {
+			p("- Lineage:\n")
+			for _, line := range lines {
+				p("%s\n", line)
+			}
+		}
+		p("\n")
 	}
 	if db.Breeding != nil {
 		p("## Monster breeding\n\nMinimum level: %d; inherited skill slots: %d.\n\n", db.Breeding.MinLevel, db.Breeding.SkillSlots)

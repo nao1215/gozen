@@ -1141,6 +1141,12 @@ At a safe location, add an action such as `- {label: Monster ranch, do: [{open: 
 
 Run `gozen check game`, `gozen sim breed game --format json`, `gozen book game` and battle and dive simulations while tuning. GZN1112 identifies invalid rules; GZN0116 warns of non-boss species unreachable from capturable monsters. A specific pair wins over a family rule, and family offspring are chosen by the mean parent rank. See [ADR 0036](https://github.com/nao1215/gozen/blob/main/docs/decisions/0036-monster-collection.md).
 
+The monster book shows the shortest family tree first, with captured leaves and their locations. Tab switches available recipes, Left and Right fold branches, and choosing a visible species opens its page. An unseen species is shown as `?`; `--dev` reveals all species. `gozen book game --format json` supplies the same tree as structured data. In Go Zen, Yorn at the Breeding Altar opens the ranch. Whisper Imp comes from Frost Bat and Dream Wisp, Vampire from Ghost Soldier and Nectar Moth, and those two children can produce Succubus. `gozen sim breed examples/go-zen/game` reports that two-generation path.
+
+![Go Zen's two-generation family tree](/images/go-zen-lineage.jpg)
+![The breeding altar](/images/go-zen-breeding.jpg)
+![The author's breeding illustration](/images/breeding.jpg)
+
 ## Play music for places, battles and moods
 
 A song is a file, or a modular song with one module per mood. A location plays its `music`, ordinary battles there play `battle_music`, and a troop's `music` comes first. Mood rules switch the mood of a modular song by the moment.

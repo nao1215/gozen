@@ -162,7 +162,7 @@ Fix: Add a short lore description to the enemy, or turn off ui.bestiary.
 
 A monster cannot be captured or bred from capturable monsters.
 
-The breeding graph has no path from a monster with a positive recruit chance to this species, including the male and female sexes needed at each step.
+The breeding graph has no path from a monster with a positive recruit chance to this species, including the male and female sexes needed at each step. A species whose only recipes loop back through species that cannot be obtained has no lineage and is reported too.
 
 Fix: Make it recruitable or add a breeding recipe reachable from capturable parents.
 

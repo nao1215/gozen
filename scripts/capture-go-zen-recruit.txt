@@ -1,0 +1,5 @@
+# A short battle and a successful recruitment are captured under a fixed seed.
+wait 40
+play join 5
+shot s-rise
+quit

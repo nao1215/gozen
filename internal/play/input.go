@@ -340,8 +340,9 @@ type script struct {
 	typeText func(string)
 	memoNote func(kind, text string)
 	// jump starts an event at a line and do runs a line of YAML (the panel's paths).
-	jump func(name string, line int)
-	do   func(src string)
+	jump    func(name string, line int)
+	do      func(src string)
+	recruit func(species string, level int)
 }
 
 type scriptCmd struct {
@@ -465,6 +466,13 @@ func parseScript(src string) (*script, error) {
 			c.x, c.y = x, c.n
 			c.n = 1
 		case "press", "shot", "until", "quit":
+		case "recruit":
+			if c.arg == "" || len(f) != 3 {
+				return nil, fmt.Errorf("script line %d: recruit SPECIES LEVEL", line)
+			}
+			if c.n < 1 {
+				return nil, fmt.Errorf("script line %d: recruit level must be positive", line)
+			}
 		case "walk", "face":
 			if c.arg == "" {
 				return nil, fmt.Errorf("script line %d: %s TARGET", line, c.verb)
@@ -505,7 +513,8 @@ var scriptButtons = map[string]button{
 	"tab": btnNext, "up": btnUp, "down": btnDown, "left": btnLeft, "right": btnRight,
 	"log": btnLog, "auto": btnAuto, "hide": btnHide, "config": btnConfig, "memo": btnMemo,
 	"reload": btnReload, "tag": btnTag, "graphs": btnGraphs, "skip": btnSkip, "scene_skip": btnSceneSkip,
-	"back": btnBack, "save": btnSave, "load": btnLoad, "panel": btnPanel, "characters": btnBook,
+	"bestiary": btnBestiary,
+	"back":     btnBack, "save": btnSave, "load": btnLoad, "panel": btnPanel, "characters": btnBook,
 }
 
 func (s *script) midEvent(in *input, name string) {
@@ -814,6 +823,13 @@ func (s *script) step(in *input) {
 		case "do":
 			if s.do != nil {
 				s.do(c.arg)
+			}
+			s.pc++
+			s.wait = 2
+			return
+		case "recruit":
+			if s.recruit != nil {
+				s.recruit(c.arg, c.n)
 			}
 			s.pc++
 			s.wait = 2

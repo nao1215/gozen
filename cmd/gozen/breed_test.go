@@ -34,6 +34,26 @@ func TestSimBreedJSON(t *testing.T) {
 	if !strings.Contains(book, "Recruit: 100% after victory; class: ranger") || !strings.Contains(book, "## Monster breeding") {
 		t.Fatalf("book omitted monster rules: %s", book)
 	}
+	jsonBook, _ := invoke(t, 0, "book", dir, "--format", "json")
+	var catalog struct {
+		Monsters []struct {
+			ID      string `json:"id"`
+			Lineage struct {
+				Recipe struct {
+					Kind string `json:"kind"`
+				} `json:"recipe"`
+				Parents []struct {
+					Ref string `json:"ref"`
+				} `json:"parents"`
+			} `json:"lineage"`
+		} `json:"monsters"`
+	}
+	if err := json.Unmarshal([]byte(jsonBook), &catalog); err != nil {
+		t.Fatal(err)
+	}
+	if len(catalog.Monsters) != 2 || catalog.Monsters[1].Lineage.Recipe.Kind != "pair" || len(catalog.Monsters[1].Lineage.Parents) != 2 || catalog.Monsters[1].Lineage.Parents[1].Ref != "seen" {
+		t.Fatalf("book lineage = %+v", catalog)
+	}
 }
 
 func TestGoZenBreedGraphReachesEveryOrdinarySpecies(t *testing.T) {
@@ -45,8 +65,21 @@ func TestGoZenBreedGraphReachesEveryOrdinarySpecies(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Reachable) != 39 || len(result.Unreachable) != 3 {
+	if len(result.Reachable) != 40 || len(result.Unreachable) != 3 {
 		t.Fatalf("Go Zen graph: %d reached, unreachable %v", len(result.Reachable), result.Unreachable)
+	}
+	paths := map[string]breedRow{}
+	for _, row := range result.Reachable {
+		paths[row.ID] = row
+	}
+	if p := paths["succubus"]; p.Steps != 2 || len(p.Parents) != 2 ||
+		!((p.Parents[0] == "vampire" && p.Parents[1] == "whisper_imp") || (p.Parents[1] == "vampire" && p.Parents[0] == "whisper_imp")) {
+		t.Fatalf("succubus has no two-generation path: %+v", p)
+	}
+	for _, id := range []string{"vampire", "whisper_imp"} {
+		if p := paths[id]; p.Steps != 1 || len(p.Parents) != 2 || paths[p.Parents[0]].Steps != 0 || paths[p.Parents[1]].Steps != 0 {
+			t.Fatalf("%s is not traceable to captures: %+v", id, p)
+		}
 	}
 	for _, id := range result.Unreachable {
 		if id != "brass_warden" && id != "tollkeeper" && id != "vance" {

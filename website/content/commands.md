@@ -239,7 +239,9 @@ gozen sim routes game --format json
 
 `gozen sim breed <game-dir>` starts from species with a positive recruit chance and follows the breeding rules. It prints each reachable species, the fewest generations and one recipe, then the unreachable species. `--format json` returns `reachable` rows (`id`, `family`, `rank`, `steps`, `parents`) and an `unreachable` ID list. The recipe gives the male and female parent sexes and the obtainable child sex (`sex` and `parent_sexes` in JSON). The graph tracks obtainable sexes and plus values. Parent levels are assumed raisable for this graph; test `min_plus` recipes in a Session playthrough as well. See [the collection recipe](/cookbook/#collect-raise-and-breed-monsters).
 
-For example, run `gozen sim breed examples/go-zen/game --format json` after `gozen check examples/go-zen/game` to inspect the sample's 39 non-boss species. `gozen book examples/go-zen/game` also prints their recruit settings and rules.
+For example, run `gozen sim breed examples/go-zen/game --format json` after `gozen check examples/go-zen/game` to inspect the sample's 40 non-boss species. `gozen book examples/go-zen/game` also prints their recruit settings and rules.
+
+`gozen book <game-dir>` prints each species' shortest buildable family tree with capture locations and other recipes. `gozen book <game-dir> --format json` emits a `monsters` array; each entry has its recipes and a nested `lineage` tree. Family recipes carry concrete `parents` and the two `families`. Repeated species use a `ref` marker, and a species with no buildable route has a null lineage.
 
 ## play
 

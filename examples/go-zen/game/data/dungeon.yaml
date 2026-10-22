@@ -415,6 +415,7 @@ locations:
         - {troop: spore_shroom_group, weight: 2, when: "var.floor >= 2"}
         - {troop: steam_slime_group, weight: 2, when: "var.floor >= 2"}
         - {troop: succubus_group, weight: 2, when: "var.floor >= 4"}
+        - {troop: vampire_group, weight: 2, when: "var.floor >= 3"}
         - {troop: whisper_imp_group, weight: 2, when: "var.floor >= 2"}
     dungeon:
       wall: dungeon/pipe_wall.jpg

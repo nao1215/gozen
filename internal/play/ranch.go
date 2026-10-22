@@ -54,7 +54,10 @@ func (r *ranch) show(g *Game, step string) {
 	case "breed_first", "breed_second", "release_id":
 		var ids []string
 		for id, a := range g.st.Actors {
-			if a.Monster != "" && (step != "breed_second" || r.validSecond(g, id)) {
+			if a.Monster == "" {
+				continue
+			}
+			if step == "breed_second" && r.validSecond(g, id) || step == "breed_first" && r.hasPartner(g, id) || step == "release_id" {
 				ids = append(ids, id)
 			}
 		}
@@ -85,6 +88,23 @@ func (r *ranch) show(g *Game, step string) {
 	}
 	r.list = newList(items, 38, 108, 360, 10)
 	r.list.size = sizeS
+}
+
+// hasPartner reports whether the monster can breed with any other owned monster.
+func (r *ranch) hasPartner(g *Game, id string) bool {
+	for other, a := range g.st.Actors {
+		if a.Monster != "" && r.canPair(g, id, other) {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *ranch) canPair(g *Game, first, second string) bool {
+	a, b := g.st.Actors[first], g.st.Actors[second]
+	return first != second && a != nil && b != nil &&
+		(a.Sex == "male" && b.Sex == "female" || a.Sex == "female" && b.Sex == "male") &&
+		g.db.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus) != ""
 }
 
 func (r *ranch) validSecond(g *Game, id string) bool {
@@ -179,10 +199,7 @@ func (r *ranch) update(g *Game) {
 		if id == "confirm" {
 			a, b := g.st.Actors[r.first], g.st.Actors[r.second]
 			child := g.db.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus)
-			preview := "?"
-			if g.bestiarySeen(child) {
-				preview = g.db.Enemies[child].Name
-			}
+			preview := g.childName(child)
 			parents, skills := []string{r.first, r.second}, slices.Clone(r.skills)
 			g.push(newConfirm("Fuse the parents into "+preview+"? They will leave the ranch.", func() { r.queue(g, data.Command{Breed: &data.BreedCmd{Parents: parents, Skills: skills}}) }))
 			return
@@ -202,10 +219,52 @@ func (r *ranch) update(g *Game) {
 	}
 }
 
+// childName is the species name, or "?" until the monster book has seen it.
+func (g *Game) childName(species string) string {
+	if species == "" || !g.bestiarySeen(species) {
+		return "?"
+	}
+	return g.db.Enemies[species].Name
+}
+
+// drawParents stands the chosen (or highlighted) parents on the right, where the location's
+// picture shows through. The child is only a dark shape until the book has seen it.
+func (r *ranch) drawParents(g *Game, dst *ebiten.Image) {
+	sw, sh := g.screen()
+	if sw < 1100 || r.step == "actions" {
+		return
+	}
+	hovered := ""
+	if len(r.options) > 0 && r.list.sel < len(r.options) {
+		hovered = r.options[r.list.sel]
+	}
+	a, b := r.first, r.second
+	switch r.step {
+	case "breed_first", "release_id", "swap_in", "swap_out":
+		a, b = hovered, ""
+	case "breed_second":
+		b = hovered
+	}
+	x0 := 880.0
+	area := sw - x0 - 40
+	for i, id := range []string{a, b} {
+		inst := g.st.Actors[id]
+		if inst == nil || inst.Monster == "" {
+			continue
+		}
+		e := g.db.Enemies[inst.Monster]
+		if e == nil {
+			continue
+		}
+		drawBestiaryImage(g, dst, e.Image.File, x0+float64(i)*area/2+20, sh-640, area/2-40, 560)
+	}
+}
+
 func (r *ranch) draw(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
-	fill(dst, color.NRGBA{0, 0, 0, 0xc0})
-	g.window(dst, 20, 20, sw-40, sh-40)
+	fill(dst, color.NRGBA{0, 0, 0, 0x50})
+	g.window(dst, 20, 20, min(sw-40, 820), sh-40)
+	r.drawParents(g, dst)
 	gfx.DrawTextOutlineColor(dst, "Monster Ranch", 48, 42, sizeL, g.th.accent, g.th.window, 1)
 	r.list.draw(g, dst, true)
 	x := 420.0
@@ -220,14 +279,25 @@ func (r *ranch) draw(g *Game, dst *ebiten.Image) {
 	if r.step == "skills" {
 		a, b := g.st.Actors[r.first], g.st.Actors[r.second]
 		child := g.db.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus)
-		name := "?"
-		if g.bestiarySeen(child) {
-			name = g.db.Enemies[child].Name
-		}
-		lines = append(lines, "Child: "+name, fmt.Sprintf("Inherited skills: %d / %d", len(r.skills), g.db.Breeding.SkillSlots))
+		lines = append(lines, "Child: "+g.childName(child), fmt.Sprintf("Inherited skills: %d / %d", len(r.skills), g.db.Breeding.SkillSlots))
 	}
-	if r.step == "breed_second" && len(r.options) == 0 {
-		lines = append(lines, "No eligible partner: need the opposite sex, required levels and a recipe.")
+	if (r.step == "breed_first" || r.step == "breed_second") && len(r.options) == 0 {
+		lines = append(lines, "No pair can breed. A pair needs one male and one female,", "the minimum level and a recipe for their species.")
+	} else if r.step == "breed_first" || r.step == "breed_second" {
+		hidden := 0
+		for id, a := range g.st.Actors {
+			if a.Monster != "" && !slices.Contains(r.options, id) && id != r.first {
+				hidden++
+			}
+		}
+		if hidden > 0 {
+			lines = append(lines, fmt.Sprintf("%d hidden: no partner of the opposite sex with a recipe.", hidden))
+		}
+		if r.step == "breed_second" && r.list.sel < len(r.options) {
+			if a, b := g.st.Actors[r.first], g.st.Actors[r.options[r.list.sel]]; a != nil && b != nil {
+				lines = append(lines, "Child: "+g.childName(g.db.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus)))
+			}
+		}
 	}
 	if len(r.options) > 0 && r.list.sel < len(r.options) {
 		if a := g.st.Actors[r.options[r.list.sel]]; a != nil {
