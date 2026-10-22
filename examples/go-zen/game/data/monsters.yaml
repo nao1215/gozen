@@ -14,6 +14,7 @@ breeding:
   skill_slots: 2
   staging: {rare_rank: 4, legend_rank: 7}
   pairs:
+    - {parents: [drip_slime, drip_slime], child: king_slime}
     - {parents: [drip_slime, pipe_rat], child: steam_slime}
     - {parents: [frost_bat, ice_wolf], child: frost_giant}
     - {parents: [crystal_golem, dream_wisp], child: mirror_shade}
@@ -22,7 +23,7 @@ breeding:
     - {parents: [night_bat, ghoul], child: vampire}
     - {parents: [whisper_imp, vampire], child: succubus}
   families:
-    - {parents: [slime, slime], children: [drip_slime, steam_slime, frost_slime]}
+    - {parents: [slime, slime], children: [drip_slime, king_slime, steam_slime, frost_slime]}
     - {parents: [beast, beast], children: [pipe_rat, mine_rat, brass_hound, ice_wolf, nightmare_hound, snow_ape, frost_giant, rust_crab, blast_beetle, ice_spider]}
     - {parents: [bird, bird], children: [frost_bat, gold_bat, nectar_moth]}
     - {parents: [plant, plant], children: [spore_shroom, maneater]}

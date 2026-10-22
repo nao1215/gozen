@@ -23,6 +23,8 @@ All pictures of the README, the site and `docs/` are in `docs/images/`, and each
 | `runs` | The arguments for one run of a sample. `{script}` is the script file and `{out}` is the new directory of that run (where shots, saves and traces go). `check` runs after the run with that run's directory as its last argument, and confirms that play went as planned. `edit` films the hot reload: `copy` (a game directory) is copied to `{game}` before the run, and once the run writes the shot `after`, `old` in `file` of the copy becomes `new` (the script then presses `reload`) |
 | `images` | For each image, its run, the source frames (`shot: NAME` is `shot NAME` of the script, `pick` takes one frame by a glob of names and an event of the trace, `frames` is the sequence of frames of a moving image) and the encoding (`jpeg`, `gif`). `tolerance` is the share of pixels allowed to differ in the staleness check (default 2%) |
 
+For a GIF with two distinct phases, `gif.split_at` counts the selected frames in the first phase. Each phase gets its own palette before the frames are joined, preserving the start of both sequences.
+
 To change the sample, change `samples` and `runs`; the names, references and checks of the images stay as they are. To add an image, add a `shot` to the sample's script, write one line in the ledger, run `make docs-images`, and reference it from a document. Hand-made images cannot be placed, with one exception: a picture that is not a capture, such as the logo (`gozen-logo*.svg`, `gozen-favicon*.svg`, `gozen-ogp.png`), is listed under `static` with its source and license and is not remade. `go test` fails on each of these:
 
 - the README or the site references a file outside `docs/images` as an image

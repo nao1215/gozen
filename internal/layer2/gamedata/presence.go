@@ -45,7 +45,7 @@ var numericContracts = map[reflect.Type]map[string]numericContract{
 	reflect.TypeFor[Require]():      {"level": positive(1)},
 	reflect.TypeFor[Learning]():     {"level": positive(1)},
 	reflect.TypeFor[Actor]():        {"level": positive(1), "face_shade": fraction(0), "face_shade_top": fraction(0)},
-	reflect.TypeFor[Enemy]():        {"level": positive(1), "scale": positive(1), "actions": nonnegative(1)},
+	reflect.TypeFor[Enemy]():        {"level": positive(1), "scale": positive(1), "image_height": fraction(0), "actions": nonnegative(1)},
 	reflect.TypeFor[Usage]():        {"hits": positive(1)},
 	reflect.TypeFor[ItemCount]():    {"count": nonnegative(1)},
 	reflect.TypeFor[Affect]():       {"turns": nonnegative(0)},

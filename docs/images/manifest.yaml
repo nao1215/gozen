@@ -75,6 +75,26 @@ runs:
     sample: go-zen
     script: scripts/capture-go-zen-battle.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --start, b2, --party, "maren,ox,tilly,kes", --level, "6", --battle, warden, --until, "950", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
+  battle-transform:
+    sample: go-zen
+    script: scripts/capture-go-zen-transform.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, b2, --party, "maren,ox,tilly,kes", --level, "14", --battle, tollkeeper, --until, "1600", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
+    check: [python3, scripts/check-go-zen-battle-feature.py, transform]
+  battle-merge:
+    sample: go-zen
+    script: scripts/capture-go-zen-merge.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, b1, --party, "maren,ox", --level, "1", --battle, drips, --until, "900", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
+    check: [python3, scripts/check-go-zen-battle-feature.py, merge]
+  battle-hp-pictures:
+    sample: go-zen
+    script: scripts/capture-go-zen-hp-pictures.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, b1, --party, "maren,ox", --level, "1", --battle, drip_and_rat, --until, "900", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
+    check: [python3, scripts/check-go-zen-battle-feature.py, hp]
+  battle-motion:
+    sample: go-zen
+    script: scripts/capture-go-zen-motion.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, b2, --party, "maren,ox,tilly,kes", --level, "6", --battle, succubus_group, --until, "1100", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
+    check: [python3, scripts/check-go-zen-battle-feature.py, motion]
   balance:
     sample: go-zen
     script: scripts/capture-go-zen-balance.txt
@@ -194,6 +214,28 @@ images:
     frames:
       - {shots: "fight_b*", near: cutin, from: -290, to: -110}
     gif: {fps: 12, width: 720, height: 405, colors: 96}
+  go-zen-transform.gif:
+    run: battle-transform
+    frames:
+      - {shots: "feature_*", every: 2}
+    gif: {fps: 12, width: 720, height: 405, colors: 96}
+  go-zen-merge.gif:
+    run: battle-merge
+    frames:
+      - {shots: "feature_*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 96}
+  go-zen-hp-pictures.jpg:
+    run: battle-hp-pictures
+    pick: {shots: "s-hurt"}
+    jpeg: {width: 960, height: 540, quality: 3}
+  go-zen-motion.gif:
+    run: battle-motion
+    # The sway is a spring that runs on its own clock, so frames shift a little between runs.
+    tolerance: 0.08
+    frames:
+      - {shots: "full_*"}
+      - {shots: "feature_*", every: 2}
+    gif: {fps: 12, width: 720, height: 405, colors: 96, split_at: 24}
   go-zen-cutin.gif:
     run: battle
     frames:

@@ -588,6 +588,7 @@ func (db *DB) Check() []error {
 		}
 		c.ai(w+".ai", a.AI)
 		c.faces(w, a.Faces, a.FaceRule)
+		c.hpImages(w+".images", a.Images, a.Faces, true)
 		for when, f := range a.Reactions { // whether the battle reaction face image exists (without it a pink square used to appear)
 			if a.Faces != "" && f != "" && !db.Exists("assets/"+a.Faces+"/"+f+".png") {
 				c.errorf(diag.MissingAsset, w+".reactions."+when, "no face assets/%s/%s.png", a.Faces, f)
@@ -679,6 +680,37 @@ func (db *DB) Check() []error {
 		e := db.Enemies[id]
 		w := "enemies." + id
 		c.picture(w+".image", e.Image)
+		if e.ImageHeight != 0 {
+			c.needsVersion(w+".image_height", "enemy picture height", SchemaVersion7)
+		}
+		c.hpImages(w+".images", e.Images, "", false)
+		if len(e.HPTriggers) > 0 {
+			c.needsVersion(w+".hp_triggers", "HP triggers", SchemaVersion7)
+		}
+		previous := 1.0
+		for i, tr := range e.HPTriggers {
+			at := fmt.Sprintf("%s.hp_triggers[%d]", w, i)
+			if math.IsNaN(tr.Below) || tr.Below <= 0 || tr.Below >= previous {
+				c.errorf(diag.OutOfRange, at+".below", "HP trigger thresholds must descend strictly between zero and one")
+			}
+			previous = tr.Below
+			c.ref(at+".transform", "enemy", tr.Transform, db.Enemies[tr.Transform] != nil)
+			if tr.Transform == "" {
+				c.errorf(diag.Shape, at+".transform", "HP trigger needs transform")
+			}
+			if tr.HP.Set() && tr.HP.String() != "ratio" && tr.HP.String() != "full" {
+				c.expr(at+".hp", tr.HP, EffectNames)
+			}
+		}
+		if e.Motion != "" || e.Puppet != "" {
+			c.needsVersion(w, "enemy motion or puppet", SchemaVersion7)
+		}
+		if !slices.Contains([]string{"", "none", "breathe", "sway", "bob"}, e.Motion) {
+			c.errorf(diag.NotAWord, w+".motion", "want none, breathe, sway, or bob")
+		}
+		if e.Puppet != "" {
+			c.puppet(w+".puppet", &Actor{Puppet: e.Puppet})
+		}
 		for _, d := range e.Drops {
 			_, ok := db.Items[d.Item]
 			c.ref(w+".drops", "item", d.Item, ok)
@@ -904,8 +936,54 @@ func (db *DB) Check() []error {
 	c.flagWarnings()
 	c.bestiaryWarnings()
 	c.monsters()
+	c.mergeReachability()
 	db.sceneWarns, db.sceneWarned = sortedDiagnostics(c.warns), true
 	return sortedDiagnostics(c.errs)
+}
+
+func (c *checker) mergeReachability() {
+	for skillID, skill := range c.db.Skills {
+		for i, effect := range skill.Effects {
+			m := effect.Merge
+			if m == nil || m.Count < 2 || len(m.From) == 0 {
+				continue
+			}
+			used, possible := false, false
+			for ownerID, enemy := range c.db.Enemies {
+				if !slices.Contains(m.From, ownerID) {
+					continue
+				}
+				ownerUses := false
+				for _, rule := range c.db.Rules(enemy.AI) {
+					if rule.Use == skillID {
+						used, ownerUses = true, true
+						break
+					}
+				}
+				if !ownerUses {
+					continue
+				}
+				for _, troop := range c.db.Troops {
+					if !slices.Contains(troop.Members, ownerID) {
+						continue
+					}
+					count := 0
+					for _, id := range troop.Members {
+						if slices.Contains(m.From, id) {
+							count++
+						}
+					}
+					if count >= m.Count {
+						possible = true
+						break
+					}
+				}
+			}
+			if used && !possible {
+				c.errorf(diag.OutOfRange, fmt.Sprintf("skills.%s.effects[%d].merge.count", skillID, i), "no troop with this skill user has %d eligible members", m.Count)
+			}
+		}
+	}
 }
 
 // bestiaryWarnings checks every enemy named by a troop when the game enables the book.
@@ -1052,6 +1130,32 @@ func (c *checker) faces(where, dir string, rules []FaceRule) {
 	}
 }
 
+func (c *checker) hpImages(where string, images []HPImage, faces string, actor bool) {
+	if len(images) > 0 {
+		c.needsVersion(where, "HP pictures", SchemaVersion7)
+	}
+	previous := 1.0
+	for i, img := range images {
+		w := fmt.Sprintf("%s[%d]", where, i)
+		if math.IsNaN(img.Below) || img.Below <= 0 || img.Below >= previous {
+			c.errorf(diag.OutOfRange, w+".below", "HP thresholds must descend strictly between zero and one")
+		}
+		previous = img.Below
+		if !actor {
+			if img.File == "" || img.Face != "" {
+				c.errorf(diag.Shape, w, "enemy HP picture needs file and no face")
+			}
+			c.file(w+".file", img.File)
+		} else {
+			if img.Face == "" || img.File != "" {
+				c.errorf(diag.Shape, w, "actor HP picture needs face and no file")
+			} else {
+				c.file(w+".face", faces+"/"+img.Face+".png")
+			}
+		}
+	}
+}
+
 func (c *checker) usage(where string, u *Usage) {
 	if !slices.Contains(Scopes, u.Scope) {
 		c.errorf(diag.NotAWord, where+".scope", "unknown scope %q (want one of %s)", u.Scope, strings.Join(Scopes, ", "))
@@ -1101,17 +1205,39 @@ func (c *checker) effect(where string, e *Effect) {
 		_, ok := c.db.Enemies[e.Summon]
 		c.ref(where+".summon", "enemy", e.Summon, ok)
 	}
+	if e.Transform != "" {
+		c.needsVersion(where+".transform", "transform", SchemaVersion7)
+		c.ref(where+".transform", "enemy", e.Transform, c.db.Enemies[e.Transform] != nil)
+		if e.TransformHP.Set() && e.TransformHP.String() != "ratio" && e.TransformHP.String() != "full" {
+			c.expr(where+".transform_hp", e.TransformHP, EffectNames)
+		}
+	} else if e.TransformHP.Set() || e.TransformClear {
+		c.errorf(diag.Shape, where, "transform_hp and transform_clear require transform")
+	}
+	if m := e.Merge; m != nil {
+		c.needsVersion(where+".merge", "merge", SchemaVersion7)
+		c.ref(where+".merge.into", "enemy", m.Into, c.db.Enemies[m.Into] != nil)
+		if m.Count < 2 || len(m.From) == 0 {
+			c.errorf(diag.OutOfRange, where+".merge.count", "merge needs at least two members and one from ID")
+		}
+		for _, id := range m.From {
+			c.ref(where+".merge.from", "enemy", id, c.db.Enemies[id] != nil)
+		}
+		if m.HP != "" && m.HP != "sum" && m.HP != "ratio" && m.HP != "full" {
+			c.errorf(diag.NotAWord, where+".merge.hp", "want sum, ratio, or full")
+		}
+	}
 	n := 0
 	if e.Recoil < 0 || e.Recoil > 1 {
 		c.errorf(diag.OutOfRange, where+".recoil", "recoil is a part of the damage (0 to 1)")
 	}
-	for _, set := range []bool{e.Damage.Set(), e.Heal.Set(), e.AddState != "", e.Remove != "", e.Revive.Set(), e.Escape, e.Summon != ""} {
+	for _, set := range []bool{e.Damage.Set(), e.Heal.Set(), e.AddState != "", e.Remove != "", e.Revive.Set(), e.Escape, e.Summon != "", e.Transform != "", e.Merge != nil} {
 		if set {
 			n++
 		}
 	}
 	if n != 1 {
-		c.errorf(diag.Shape, where, "an effect needs exactly one of damage, heal, add_state, remove_state, revive, escape, summon")
+		c.errorf(diag.Shape, where, "an effect needs exactly one of damage, heal, add_state, remove_state, revive, escape, summon, transform, merge")
 	}
 }
 
@@ -1591,6 +1717,13 @@ func groupOf(member *vtype) *vtype {
 		"size": tNum, "alive": tNum, "dead": tNum, "hp_rate": tNum,
 		"members": {kind: vList, desc: "members", elem: member},
 	}, func(c *checker, name string) (*vtype, string) {
+		if id, ok := strings.CutPrefix(name, "kind_"); ok {
+			c.needsVersion("battle expression", "kind_", SchemaVersion7)
+			if c.db.Enemies[id] == nil {
+				return nil, fmt.Sprintf("unknown enemy %q", id)
+			}
+			return tNum, ""
+		}
 		if st, ok := strings.CutPrefix(name, "with_"); ok {
 			if _, ok := c.db.States[st]; !ok {
 				return nil, fmt.Sprintf("unknown state %q", st)

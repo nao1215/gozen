@@ -16,7 +16,7 @@ func TestRollbackSetting(t *testing.T) {
 		{"schema_version: 4\nid: b\nui: {rollback: -1}\n", "ui.rollback: want 0 to 64"},
 		{"schema_version: 4\nid: b\nui: {rollback: 65}\n", "ui.rollback: want 0 to 64"},
 		{"schema_version: 3\nid: b\nui: {rollback: 8}\n", "ui.rollback needs schema_version: 4"},
-		{"schema_version: 7\nid: b\n", "0〜6"},
+		{"schema_version: 8\nid: b\n", "0〜7"},
 	} {
 		_, err := testgame.TryLoad(map[string]string{"game.yaml": c.head + testgame.Game})
 		if c.want == "" && err != nil || c.want != "" && (err == nil || !strings.Contains(err.Error(), c.want)) {

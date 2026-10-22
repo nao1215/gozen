@@ -1148,6 +1148,90 @@ The monster book shows the shortest recipe first as a picture tree of up to seve
 ![Breeding at the altar: Yorn in the center, the parents, a silhouette reveal and the child](/images/go-zen-breeding.gif)
 ![The author's breeding illustration](/images/breeding.jpg)
 
+## Transform an enemy
+
+Use an HP trigger for a change that happens immediately after damage. The resulting enemy keeps the slot and its share of HP.
+
+![The Tollkeeper changes into its second form](/images/go-zen-transform.gif)
+
+<!-- verify: parse The fragment uses example enemy IDs and is completed by the game's other definitions. -->
+```yaml
+enemies:
+  guardian:
+    image: enemies/guardian.png
+    hp_triggers: [{below: 0.5, transform: guardian_open, hp: ratio, clear: true}]
+  guardian_open:
+    image: enemies/guardian_open.png
+```
+
+Use `schema_version: 7`. The Tollkeeper in Go Zen uses this form change.
+
+## Merge enemies
+
+Give a self-scoped skill a merge effect. Its `from` list names the eligible sources; `count` includes the user. The new enemy occupies their middle slot.
+
+![Drip Slimes gather into King Slime](/images/go-zen-merge.gif)
+
+<!-- verify: parse The fragment uses example enemy IDs and is completed by the game's other definitions. -->
+```yaml
+skills:
+  gather: {name: Gather, scope: self, effects: [{merge: {into: king_slime, from: [drip_slime], count: 2, hp: sum}}]}
+enemies:
+  drip_slime:
+    ai: [{use: gather, when: "allies.kind_drip_slime >= 2"}]
+  king_slime:
+    name: King Slime
+    image: enemies/king_slime.png
+```
+
+## Change pictures by HP
+
+List picture thresholds from high to low. An enemy names image files; an actor names faces in its face directory. Temporary hit reactions still take priority.
+
+![A damaged monster shows its low HP picture](/images/go-zen-hp-pictures.jpg)
+
+<!-- verify: parse The fragment names pictures supplied by the game. -->
+```yaml
+enemies:
+  mote:
+    image: enemies/mote.png
+    images: [{below: 0.5, file: enemies/mote_hurt.png}]
+actors:
+  scout:
+    faces: scout
+    images: [{below: 0.35, face: worried}]
+```
+
+## Move a portrait with soft sway
+
+Set `puppet` on an enemy or actor and define its motion in the puppet YAML. The same `soft_sway` region accepts `rect: [x, y, width, height]` or `ellipse: [x, y, width, height]`. `follow: body` makes it trail breathing and action or hit reactions. Coordinates are pixels of the base picture.
+
+![The Succubus blinks, sways and reacts to a hit](/images/go-zen-motion.gif)
+
+<!-- verify: parse The fragment names pictures supplied by the game. -->
+```yaml
+enemies:
+  sprite:
+    image: enemies/sprite.png
+    puppet: sprite/puppet.yaml
+```
+
+In `assets/sprite/puppet.yaml`:
+
+<!-- verify: parse The puppet file is checked by gozen art puppet when used in a game. -->
+```yaml
+base: base.png
+eyes:
+  closed: {image: eyes-closed.png, at: [40, 30]}
+head: {center: [55, 40], radius: 25, neck: [55, 70]}
+soft_sway:
+  - {ellipse: [20, 75, 70, 60], root: top, follow: body, axis: y, amount: 1.2, limit: 6}
+motion:
+  breath: {depth: 0.012, period: 4}
+```
+
+Run `gozen art puppet assets/sprite/puppet.yaml` to inspect the picture parts.
+
 ## Play music for places, battles and moods
 
 A song is a file, or a modular song with one module per mood. A location plays its `music`, ordinary battles there play `battle_music`, and a troop's `music` comes first. Mood rules switch the mood of a modular song by the moment.

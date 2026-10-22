@@ -20,6 +20,7 @@ Actor:
   face: "The face shown by default. It must be one of the face names in the faces directory. Default `normal`."
   face_box: "Where the face is on the standing pictures: the center as fractions of width and height, then the size as a fraction of width."
   face_rules: "Rules that pick this actor's face from their state. The first rule whose `when` holds wins."
+  images: "Faces selected by descending HP thresholds during battle. Each row names `below` and a `face` in the actor's faces directory. Needs schema version 7."
   face_shade: "How much the face icons cut from standing pictures are darkened, from 0 (as drawn) to 1 (black). Default 0."
   face_shade_top: "The darkness at the top of the face icon, fading evenly to `face_shade` at the bottom. Defaults to `face_shade`."
   faces: "A directory under assets/ that holds one picture per face, named `<face>.png`."

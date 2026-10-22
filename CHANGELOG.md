@@ -6,6 +6,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
+- Battle puppets now support a shared `soft_sway` YAML list with rectangle or ellipse regions for actors and enemies. Go Zen's Succubus blinks, moves its mouth while acting, and sways softly; Drip Slimes merge into the author-generated King Slime. Four battle feature captures are registered for the README, site, and cookbook.
 - Monster instances now have saved male/female sexes, species sex restrictions and optional male ratios. Breeding requires opposite-sex parents; ranch and party screens show signs, while `gozen check` and `gozen sim breed` account for sex-impossible rules and reachability.
 - The monster book now offers a navigable, foldable family tree, and `gozen book` exports the same buildable routes as text or JSON. Go Zen adds Yorn's Breeding Altar and a two-generation route to Succubus through Whisper Imp and Vampire.
 

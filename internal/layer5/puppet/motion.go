@@ -29,6 +29,7 @@ type params struct {
 	breathDepth, breathPeriod float64
 	swayAngle, swayShift      float64
 	swayPeriod                float64
+	damageBoost               float64
 	tiltAngle                 float64
 	tiltEvery                 [2]float64
 	talkNod                   float64
@@ -58,6 +59,7 @@ func resolveParams(s *puppetdef.Spec, _, h int) params {
 	if w := m.Sway; w != nil {
 		p.swayAngle = w.Angle * math.Pi / 180
 		p.swayShift = w.Shift
+		p.damageBoost = w.DamageBoost
 		if w.Period > 0 {
 			p.swayPeriod = w.Period
 		}
@@ -108,7 +110,8 @@ type Motion struct {
 	tiltT, tiltLen, tiltDir float64
 	nextTilt                float64
 
-	reactions []active
+	reactions        []active
+	health, hitSurge float64
 
 	springs []spring
 	state   []springState
@@ -122,7 +125,7 @@ type Motion struct {
 func NewMotion(rig *Rig, rng *rand.Rand, tps int) *Motion {
 	w, h := rig.Size()
 	m := &Motion{
-		rig: rig, p: resolveParams(rig.Spec, w, h), rng: rng, dt: 1 / float64(tps), mouth: -1, fade: 1,
+		rig: rig, p: resolveParams(rig.Spec, w, h), rng: rng, dt: 1 / float64(tps), mouth: -1, fade: 1, health: 1,
 		springs: resolveSprings(rig.Spec, h), w: float64(w), h: float64(h),
 	}
 	for i := range m.phase {
@@ -189,6 +192,19 @@ func (m *Motion) React(r puppetdef.Reaction) {
 	m.reactions = append(m.reactions, a)
 }
 
+// SetHealth updates the current health ratio used by optional damage-aware sway.
+func (m *Motion) SetHealth(ratio float64) { m.health = clamp(ratio, 0, 1) }
+
+// Hit adds a short bounce and a lingering sway when damage-aware sway is enabled.
+func (m *Motion) Hit() {
+	boost := m.p.damageBoost * (1 - m.health)
+	if boost <= 0 {
+		return
+	}
+	m.hitSurge = math.Max(m.hitSurge, boost)
+	m.React(puppetdef.Reaction{Kind: "hop", Amount: 1 + boost, Time: 0.8})
+}
+
 // Step advances one update.
 func (m *Motion) Step() {
 	dt := m.dt
@@ -219,6 +235,7 @@ func (m *Motion) Step() {
 		}
 	}
 	m.reactions = kept
+	m.hitSurge = math.Max(0, m.hitSurge-dt*m.p.damageBoost/2.5)
 	if !frozen {
 		m.stepSprings(dt)
 	}
@@ -362,13 +379,16 @@ func (m *Motion) pose(withSprings bool) Pose {
 	p := Pose{BodyScale: [2]float64{1, 1}, Mouth: m.mouthFrame(), Face: m.face, PrevFace: m.prev, Fade: m.fade, Blink: m.blink()}
 	t := m.t
 	tau := 2 * math.Pi
+	damage := m.p.damageBoost*(1-m.health) + m.hitSurge
+	strength, speed := 1+damage, 1+0.5*damage
 	if m.p.breathPeriod > 0 {
-		p.Breath = m.p.breathDepth * 0.5 * (1 - math.Cos(tau*t/m.p.breathPeriod+m.phase[0]))
+		// Breathing keeps its depth: damage speeds it up but never stretches the body.
+		p.Breath = m.p.breathDepth * 0.5 * (1 - math.Cos(tau*t*speed/m.p.breathPeriod+m.phase[0]))
 	}
-	sp := m.p.swayPeriod
-	p.HeadAngle = m.p.swayAngle*(0.65*math.Sin(tau*t/sp+m.phase[1])+0.35*math.Sin(tau*t/(sp*0.61)+m.phase[2])) + m.tilt()
-	p.HeadShift[0] = m.p.swayShift * math.Sin(tau*t/(sp*1.3)+m.phase[3])
-	p.HeadShift[1] = 0.5 * m.p.swayShift * math.Sin(tau*t/(sp*0.77)+m.phase[4])
+	sp := m.p.swayPeriod / speed
+	p.HeadAngle = strength*m.p.swayAngle*(0.65*math.Sin(tau*t/sp+m.phase[1])+0.35*math.Sin(tau*t/(sp*0.61)+m.phase[2])) + m.tilt()
+	p.HeadShift[0] = strength * m.p.swayShift * math.Sin(tau*t/(sp*1.3)+m.phase[3])
+	p.HeadShift[1] = 0.5 * strength * m.p.swayShift * math.Sin(tau*t/(sp*0.77)+m.phase[4])
 	if m.talk > 0 {
 		p.HeadShift[1] += m.talk * m.p.talkNod * (0.5 + 0.5*math.Sin(tau*t*1.9+m.phase[5]))
 		p.HeadAngle += m.talk * m.p.swayAngle * 0.4 * math.Sin(tau*t*0.9)

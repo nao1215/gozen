@@ -205,6 +205,28 @@ skills:
 
 Enemies, and party members on Auto, follow their `ai`: rules tried in priority order, each with an optional condition and target.
 
+Battle forms, HP pictures and enemy motion use `schema_version: 7`. A trigger changes a foe when a hit crosses its threshold; a merge skill gathers eligible allies into a named form:
+
+<!-- verify: parse These examples name forms and pictures supplied by the game. -->
+```yaml
+skills:
+  gather: {name: Gather, scope: self, effects: [{merge: {into: king_slime, from: [drip_slime], count: 2, hp: sum}}]}
+enemies:
+  drip_slime:
+    image: enemies/drip_slime.png
+    images: [{below: 0.5, file: enemies/drip_slime_hurt.png}]
+    ai: [{use: gather, when: "allies.kind_drip_slime >= 2"}]
+  king_slime: {name: King Slime, image: enemies/king_slime.png}
+  guardian:
+    image: enemies/guardian.png
+    hp_triggers: [{below: 0.5, transform: guardian_open, hp: ratio}]
+  sprite:
+    image: enemies/sprite.png
+    puppet: sprite/puppet.yaml
+```
+
+An actor's `images` list uses `face` in place of `file`. A puppet file can add `soft_sway` with a `rect` or `ellipse` region, `follow: body`, and spring strength to move a part softly with breathing and battle reactions. Enemy and actor puppets share this YAML format. See [the battle recipes](/cookbook/#transform-an-enemy).
+
 <!-- verify: load -->
 ```yaml
 actors:

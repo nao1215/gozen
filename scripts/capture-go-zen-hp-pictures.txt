@@ -1,0 +1,7 @@
+battle-log off
+# Capture the damaged Drip Slime and Maren's low-HP face together.
+wait 40
+battle-hp enemy 0 35
+battle-hp party 0 15
+play hp 5
+quit

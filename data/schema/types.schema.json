@@ -349,6 +349,25 @@
           },
           "x-type": "string"
         },
+        "images": {
+          "description": "Faces selected by descending HP thresholds during battle. Each row names `below` and a `face` in the actor's faces directory. Needs schema version 7.",
+          "items": {
+            "$ref": "#/$defs/HPImage"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[HPImage](#hpimage)[]"
+        },
         "level": {
           "description": "The starting level. Default 1.",
           "type": "integer",
@@ -6046,6 +6065,19 @@
           },
           "x-type": "expression"
         },
+        "merge": {
+          "$ref": "#/$defs/Merge",
+          "description": "Combine living enemy allies into one form, with `into`, `from`, `count` and `hp`. Needs schema version 7.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Merge](#merge)"
+        },
         "message": {
           "description": "The line shown in the battle log when the effect happens.",
           "type": "string",
@@ -6167,6 +6199,50 @@
             "version": "0, 1, 2 (omitting it and writing 0 differ in v0)"
           },
           "x-type": "integer"
+        },
+        "transform": {
+          "description": "The enemy ID that replaces a living enemy target in its existing battle slot. Needs schema version 7.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "transform_clear": {
+          "description": "Clear states and guard on transformation. By default they remain.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "transform_hp": {
+          "description": "New HP: `ratio` (default), `full`, or an expression evaluated before the form changes.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
         },
         "turns": {
           "description": "An expression for how many turns an added state lasts. The state's own `turns` is used when omitted.",
@@ -6548,6 +6624,25 @@
           },
           "x-type": "integer"
         },
+        "hp_triggers": {
+          "description": "Immediate form changes when damage crosses descending HP ratios. Each row names `below` and `transform`. Needs schema version 7.",
+          "items": {
+            "$ref": "#/$defs/HPTrigger"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[HPTrigger](#hptrigger)[]"
+        },
         "image": {
           "$ref": "#/$defs/Picture",
           "description": "The picture of the enemy shown in battle, written as a path or as a picture map with a `file`.",
@@ -6560,6 +6655,38 @@
             "version": "0, 1, 2"
           },
           "x-type": "[Picture](#picture) or string"
+        },
+        "image_height": {
+          "description": "Battle picture height as a fraction of screen height (0 to 1). Omission keeps the legacy pixel-based layout; crowded troops shrink together.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "v1 keeps 0; v0 has per-field rules",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2 (omitting it and writing 0 differ in v0)"
+          },
+          "x-type": "number"
+        },
+        "images": {
+          "description": "Alternate files selected as HP falls below descending ratio thresholds. Needs schema version 7.",
+          "items": {
+            "$ref": "#/$defs/HPImage"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[HPImage](#hpimage)[]"
         },
         "level": {
           "description": "The enemy's level as read by battle expressions (`level`) and the average level of a side. It does not change `stats`. The default is 1.",
@@ -6600,8 +6727,34 @@
           },
           "x-type": "string"
         },
+        "motion": {
+          "description": "Idle movement: none (default), breathe, sway, or bob. Needs schema version 7.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "name": {
           "description": "The enemy's name shown in battle.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "puppet": {
+          "description": "An optional moving portrait definition under assets/ for this enemy. Needs schema version 7.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -6678,7 +6831,7 @@
           "x-type": "string → number"
         },
         "scale": {
-          "description": "The size multiplier of the enemy's picture. The default is 1.",
+          "description": "The legacy size multiplier of the enemy picture. The default is 1.",
           "type": "number",
           "x-contract": {
             "default": "1",
@@ -8879,6 +9032,116 @@
       },
       "type": "object"
     },
+    "HPImage": {
+      "additionalProperties": false,
+      "description": "A battle picture selected when the unit's HP ratio falls below a threshold.",
+      "properties": {
+        "below": {
+          "description": "Exclusive HP ratio threshold between zero and one. Write rows in descending order.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "face": {
+          "description": "The actor face name in its faces directory; use this only for actors.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "file": {
+          "description": "The enemy picture under assets/; use this only for enemies.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "HPTrigger": {
+      "additionalProperties": false,
+      "description": "An enemy form change triggered immediately after damage crosses an HP ratio.",
+      "properties": {
+        "below": {
+          "description": "Exclusive HP ratio threshold between zero and one, in descending order.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "clear": {
+          "description": "Clear states and guard on transformation when true.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "hp": {
+          "description": "New HP: ratio (default), full, or an expression evaluated before the form changes.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen.Load",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "transform": {
+          "description": "The enemy ID of the new form.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
     "Hurt": {
       "additionalProperties": false,
       "description": "A command that reduces a party member's HP outside battle.",
@@ -9919,6 +10182,71 @@
         "name",
         "value"
       ],
+      "type": "object"
+    },
+    "Merge": {
+      "additionalProperties": false,
+      "description": "A skill effect that combines living enemies into one form.",
+      "properties": {
+        "count": {
+          "description": "How many living members must join, including the user. At least two.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "from": {
+          "description": "Enemy IDs allowed to join the merge.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
+        "hp": {
+          "description": "Merged HP: sum (default), average ratio, or full.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "into": {
+          "description": "The enemy ID of the merged form.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
       "type": "object"
     },
     "Meter": {

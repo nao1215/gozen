@@ -107,6 +107,27 @@ func (b *Battle) ruleApplicability(u *Unit, i int, r *data.Rule, env expr.Env) (
 	if use == nil {
 		return c, RuleInvalidAction, ""
 	}
+	for _, e := range use.Effects {
+		if e.Merge == nil {
+			continue
+		}
+		if e.When.Set() {
+			ok, err := e.When.Bool(b.effEnv(u, u))
+			if err != nil || !ok {
+				continue
+			}
+		}
+		available, hasUser := 0, false
+		for _, f := range b.Foes {
+			if f.Alive() && slices.Contains(e.Merge.From, f.EID) {
+				available++
+				hasUser = hasUser || f == u
+			}
+		}
+		if !hasUser || available < e.Merge.Count {
+			return c, RuleConditionFalse, "not enough members to merge"
+		}
+	}
 	if r.Use != "" {
 		if u.MP < b.DB.Skills[r.Use].MP {
 			return c, RuleMPShortage, ""

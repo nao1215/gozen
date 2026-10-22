@@ -829,9 +829,10 @@ type Actor struct {
 	Name    string            `yaml:"name"`
 	Class   string            `yaml:"class"`
 	Level   int               `yaml:"level"`
-	Faces   string            `yaml:"faces"` // a directory under assets/ holding <face>.png
-	Face    string            `yaml:"face"`  // the face shown by default
-	Equip   map[string]string `yaml:"equip"` // slot -> item
+	Faces   string            `yaml:"faces"`  // a directory under assets/ holding <face>.png
+	Face    string            `yaml:"face"`   // the face shown by default
+	Images  []HPImage         `yaml:"images"` // HP-based face names in descending threshold order
+	Equip   map[string]string `yaml:"equip"`  // slot -> item
 	Profile string            `yaml:"profile"`
 	Back    bool              `yaml:"back"` // starts in the back row
 	Color   Color             `yaml:"color"`
@@ -982,12 +983,28 @@ type Effect struct {
 	// place of a fallen foe, or in a new place while fewer than SummonMax (default 5) stand.
 	Summon    string `yaml:"summon"`
 	SummonMax int    `yaml:"summon_max"`
-	Message   string `yaml:"message"`
+	// Transform replaces the target (or user with on_user) with an enemy in the same slot.
+	Transform string `yaml:"transform"`
+	// TransformHP is ratio (default), full, or an HP expression evaluated before changing form.
+	TransformHP Expr `yaml:"transform_hp"`
+	// TransformClear removes states and guard when changing form.
+	TransformClear bool `yaml:"transform_clear"`
+	// Merge combines Count living allies whose IDs are in From into Into.
+	Merge   *Merge `yaml:"merge"`
+	Message string `yaml:"message"`
 	// OnUser makes the effect land on the user instead of the target (b is still the
 	// target in the expressions): what is taken from the target goes to the user.
 	OnUser bool `yaml:"on_user"`
 	// Quiet shows no text (only the heal light and numbers; for per-turn auto heal and the like). If the heal is 0, nothing is shown.
 	Quiet bool `yaml:"quiet"`
+}
+
+// Merge describes one deterministic battle fusion. HP is sum, ratio, or full.
+type Merge struct {
+	Into  string   `yaml:"into"`
+	From  []string `yaml:"from"`
+	Count int      `yaml:"count"`
+	HP    string   `yaml:"hp"`
 }
 
 // State is a condition a battler is in: poison, sleep, a buff.
@@ -1059,9 +1076,18 @@ type Enemy struct {
 	// Recruit makes a defeated non-boss enemy eligible to join after a won battle.
 	Recruit *Recruit `yaml:"recruit"`
 	// Lore is the short field description shown after the enemy has been seen.
-	Lore  string  `yaml:"lore"`
-	Image Picture `yaml:"image"`
-	Scale float64 `yaml:"scale"`
+	Lore   string    `yaml:"lore"`
+	Image  Picture   `yaml:"image"`
+	Images []HPImage `yaml:"images"`
+	// HPTriggers change form immediately when damage crosses a ratio threshold.
+	HPTriggers []HPTrigger `yaml:"hp_triggers"`
+	// Motion is none (default), breathe, sway, or bob.
+	Motion string  `yaml:"motion"`
+	Puppet string  `yaml:"puppet"`
+	Scale  float64 `yaml:"scale"`
+	// ImageHeight is the battle picture height as a fraction of screen height. Zero
+	// keeps the legacy pixel-based layout; crowded troops shrink together.
+	ImageHeight float64 `yaml:"image_height"`
 	// Army is the kind of army (campaign.clash.armies) its unit shows in a clash shown as
 	// units when it leads a troop (monsters for monsters).
 	Army    string             `yaml:"army"`
@@ -1085,6 +1111,21 @@ type Enemy struct {
 	FaceRule []FaceRule        `yaml:"face_rules"`
 	// Reactions are faces (keys of faces) shown for a moment: on hit, act, fall.
 	Reactions map[string]string `yaml:"reactions"`
+}
+
+// HPImage selects an alternate picture below an HP ratio, in descending threshold order.
+type HPImage struct {
+	Below float64 `yaml:"below"`
+	File  string  `yaml:"file"`
+	Face  string  `yaml:"face"`
+}
+
+// HPTrigger changes a foe's form as soon as damage crosses Below.
+type HPTrigger struct {
+	Below     float64 `yaml:"below"`
+	Transform string  `yaml:"transform"`
+	HP        Expr    `yaml:"hp"` // ratio (default), full, or an expression
+	Clear     bool    `yaml:"clear"`
 }
 
 // Recruit describes the chance and actor growth of a capturable enemy.

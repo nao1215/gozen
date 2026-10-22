@@ -72,9 +72,9 @@ func resolveSprings(s *puppetdef.Spec, h int) []spring {
 		}
 		add(sp)
 	}
-	for _, p := range s.Springs {
+	for _, p := range append(append([]puppetdef.Part(nil), s.Springs...), s.SoftSway...) {
 		sp := spring{
-			shapes: []puppetdef.Shape{{Rect: p.Rect, Poly: p.Poly}}, side: p.Root.Side, head: p.Follow != "body",
+			shapes: []puppetdef.Shape{{Rect: p.Rect, Ellipse: p.Ellipse, Poly: p.Poly}}, side: p.Root.Side, head: p.Follow != "body",
 			mask: [2]float64{1, 1}, k: 60, c: 7, gain: 1, limit: 0.15 * unit,
 		}
 		if p.Root.At != nil {
@@ -107,8 +107,12 @@ func resolveSprings(s *puppetdef.Spec, h int) []spring {
 }
 
 func corners(sh puppetdef.Shape) [][2]float64 {
-	if sh.Rect != nil {
-		x, y, w, h := sh.Rect[0], sh.Rect[1], sh.Rect[2], sh.Rect[3]
+	if sh.Rect != nil || sh.Ellipse != nil {
+		v := sh.Rect
+		if v == nil {
+			v = sh.Ellipse
+		}
+		x, y, w, h := v[0], v[1], v[2], v[3]
 		return [][2]float64{{x, y}, {x + w, y}, {x, y + h}, {x + w, y + h}}
 	}
 	out := make([][2]float64, len(sh.Poly))
@@ -143,6 +147,12 @@ func (sp *spring) weight(x, y float64) (w, cover float64) {
 			dy := math.Max(ry-y, y-(ry+rh))
 			inside = 1 - smooth(math.Max(dx, dy)/sp.feather+1)
 			top, bottom, left, right = ry, ry+rh, rx, rx+rw
+		} else if s.Ellipse != nil {
+			ex, ey, ew, eh := s.Ellipse[0], s.Ellipse[1], s.Ellipse[2], s.Ellipse[3]
+			rx, ry := ew/2, eh/2
+			q := math.Hypot((x-ex-rx)/rx, (y-ey-ry)/ry)
+			inside = 1 - smooth((q-1)*math.Min(rx, ry)/sp.feather+1)
+			top, bottom, left, right = ey, ey+eh, ex, ex+ew
 		} else {
 			d := polyDist(x, y, s.Poly)
 			inside = 1 - smooth(d/sp.feather+1)

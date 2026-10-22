@@ -315,6 +315,7 @@ func (b *Battle) effect(u, t *Unit, e *data.Effect, use *data.Usage, skill strin
 		if !t.Alive() {
 			return nil
 		}
+		beforeHP := t.HP
 		v, err := e.Damage.Number(env)
 		if err != nil {
 			return []Step{{Kind: Message, Text: lang.T("(式のエラー: ") + err.Error() + ")"}}
@@ -403,6 +404,9 @@ func (b *Battle) effect(u, t *Unit, e *data.Effect, use *data.Usage, skill strin
 			u.HP -= r
 			steps = append(steps, Step{Kind: Damage, User: u, Target: u, Amount: r, Text: b.text(lang.T("{user}は 反動で {amount}の ダメージを うけた！"), u, u, skill, r), HP: u.HP, MP: u.MP})
 		}
+		if stat != "mp" && t.Enemy {
+			steps = append(steps, b.hpTriggers(t, beforeHP)...)
+		}
 		if t.HP == 0 {
 			steps = append(steps, b.fall(t))
 		} else if n > 0 {
@@ -471,6 +475,10 @@ func (b *Battle) effect(u, t *Unit, e *data.Effect, use *data.Usage, skill strin
 		steps = append(steps, Step{Kind: Revive, User: u, Target: t, Amount: t.HP, Text: b.text(text, u, t, skill, t.HP), HP: t.HP, MP: t.MP})
 	case e.Summon != "":
 		return b.summon(u, e)
+	case e.Transform != "":
+		return b.transform(u, t, e)
+	case e.Merge != nil:
+		return b.merge(u, e)
 	case e.Escape:
 		if u.Enemy {
 			u.Fled = true

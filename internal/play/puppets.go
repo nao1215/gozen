@@ -8,6 +8,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	"github.com/nao1215/gozen/internal/battle"
 	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 	"github.com/nao1215/gozen/internal/layer5/puppet"
@@ -54,6 +55,40 @@ func (g *Game) talkPuppet(s event.Say) (*puppet.Puppet, int) {
 		return nil, 0
 	}
 	return p, i
+}
+
+func (g *Game) enemyPuppet(u *battle.Unit, picture string, hp int) *puppet.Puppet {
+	if u == nil || u.Def == nil || u.Def.Puppet == "" {
+		return nil
+	}
+	key := "enemy." + u.EID
+	if g.puppets.failed[key] {
+		return nil
+	}
+	p := g.puppets.live[key]
+	if p == nil {
+		rig, err := puppet.Load(g.opts.FS, "assets/"+u.Def.Puppet)
+		if err != nil {
+			if g.puppets.failed == nil {
+				g.puppets.failed = map[string]bool{}
+			}
+			g.puppets.failed[key] = true
+			return nil
+		}
+		h := fnv.New64a()
+		h.Write([]byte(key))
+		p = puppet.New(rig, rand.New(rand.NewPCG(h.Sum64(), 1)), ebiten.DefaultTPS) //nolint:gosec // Animation timing.
+		if g.puppets.live == nil {
+			g.puppets.live = map[string]*puppet.Puppet{}
+		}
+		g.puppets.live[key] = p
+	}
+	if i, ok := p.Rig().Face(strings.TrimSuffix(path.Base(picture), path.Ext(picture))); ok {
+		p.Motion.SetFace(i)
+	}
+	p.Motion.SetHealth(float64(hp) / float64(max(1, u.MHP())))
+	p.Motion.Step()
+	return p
 }
 
 // openPuppet shows the line's face: a new speaker starts on it, the same one fades to it.

@@ -28,10 +28,12 @@ const (
 	SchemaVersion4 = 4
 	// SchemaVersion6 adds monster recruitment and breeding (ADR 0036).
 	SchemaVersion6 = 6
+	// SchemaVersion7 adds battle forms, HP pictures, and enemy motion (ADR 0037).
+	SchemaVersion7 = 7
 	// CurrentSchemaVersion is the latest YAML spec version that can be loaded. 3 adds to 2 the place presentation map and stage,
 	// the doll, speech bubbles, and the spot of expressions and set (ADR 0022); 4 adds the novel game vocabulary; 5 adds
-	// campaigns (ADR 0030).
-	CurrentSchemaVersion = SchemaVersion6
+	// campaigns (ADR 0030); 6 adds monster collection; 7 adds battle forms and pictures.
+	CurrentSchemaVersion = SchemaVersion7
 )
 
 // MaxRollback is the most earlier events ui.rollback may keep (the history is a copy of the

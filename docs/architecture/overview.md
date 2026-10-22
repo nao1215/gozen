@@ -56,6 +56,8 @@ The authoring-support `gozen art prompt` and `gozen art mosaic` are implemented 
 
 SW1 added common events before and after a battle and a variable meter limit. The order of execution and the CLI handling are in [battle events and meters](battle-hooks.md), and the purpose of the three public fields is in [ADR 0013](../decisions/0013-battle-hooks-and-meter-limits.md).
 
+Enemy transformations, merging, HP pictures and battle motion are described in [battle forms](battle-forms.md) and [ADR 0037](../decisions/0037-battle-forms-and-motion.md).
+
 Character reactions (`react`) and chat (`chat`) were added. They are a mechanism that reacts to words and happenings without an LLM, and a record of flowing messages. Their purpose and API are recorded in [ADR 0015](../decisions/0015-reaction-and-chat.md).
 
 `puppet` (layer 5), which moves a one-picture character, was added. The implementation of compositing difference pictures and mesh deformation is in `internal/layer5/puppet`, and the YAML types and validation in `internal/layer2/puppetdef`. See [moving portraits](puppet.md) and [ADR 0020](../decisions/0020-moving-portraits.md).
