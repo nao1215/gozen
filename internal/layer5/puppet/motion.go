@@ -387,6 +387,10 @@ func (m *Motion) pose(withSprings bool) Pose {
 	damage := m.p.damageBoost*(1-m.health) + m.hitSurge
 	strength, speed := 1+damage, 1+0.5*damage
 	if m.p.softOnlyHit {
+		// Only the soft regions answer to damage: the head and body keep their calm sway.
+		strength, speed = 1, 1
+	}
+	if m.p.softOnlyHit {
 		strength, speed = 1, 1
 	}
 	if m.p.breathPeriod > 0 {
