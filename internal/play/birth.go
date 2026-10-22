@@ -23,7 +23,7 @@ func (b *birthAnimation) flashStart() int { return 168 + 10*b.effect.Tier }
 func (b *birthAnimation) childStart() int { return 200 + birthCutInFrames + 20*b.effect.Tier }
 
 // birthCutInFrames is how long the child's silhouette sweeps across before it appears.
-const birthCutInFrames = 50
+const birthCutInFrames = 60
 
 // Figures at the altar are shown from the waist up: tall pictures whose feet
 // fall below the screen.
@@ -57,7 +57,7 @@ func (b *birthAnimation) phase() birthPhase {
 type birthPoint struct{ x, y float64 }
 
 func birthPositions(sw, sh float64) (parents [2]birthPoint, crystal birthPoint) {
-	parents = [2]birthPoint{{sw * 0.2, sh * 0.76}, {sw * 0.8, sh * 0.76}}
+	parents = [2]birthPoint{{sw * 0.16, sh * 0.76}, {sw * 0.84, sh * 0.76}}
 	crystal = birthPoint{sw * 0.5, sh * 0.53}
 	return
 }
@@ -95,12 +95,12 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 	if b.effect.Tier == 2 {
 		light = rainbowColor(age)
 	}
-	// Yorn stands at the center and steps into the glow as the child appears.
-	if phase != birthChild {
+	// Yorn stands at the center and fades away just before the light gathers.
+	if yorn := 1 - max(0, float64(age-(b.flashStart()-20)))/20; yorn > 0 {
 		if loc := g.db.Locations[g.st.Location]; loc != nil {
 			for _, person := range loc.People {
 				if person.Image != "" {
-					g.drawStanding(dst, person.Image, sw*0.5, sh*birthBottom, sh*birthHeight, 1, false, nil)
+					g.drawStanding(dst, person.Image, sw*0.5, sh*birthBottom, sh*birthHeight, float32(yorn), false, nil)
 					break
 				}
 			}
@@ -128,7 +128,7 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		if phase == birthParents {
 			glow := uint8(45 + age*2)
 			gfx.FillCircle(dst, float32(p.x), float32(p.y-sh*0.24), float32(sh*0.16), withAlpha(light, glow), true)
-			g.drawStanding(dst, b.effect.ParentFaces[i], p.x, sh*birthBottom, sh*birthHeight*0.85, 1, false, nil)
+			g.drawStanding(dst, b.effect.ParentFaces[i], p.x, p.y+sh*0.2, sh*0.62, 1, false, nil)
 			g.window(dst, p.x-sw*0.115, p.y+8, sw*0.23, 44)
 			g.text(dst, b.effect.ParentNames[i], p.x-sw*0.105, p.y+13, sizeS, g.th.text)
 			continue
@@ -136,8 +136,8 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		// Each picture contracts into its light before the two lights orbit.
 		if age < 110 {
 			shrink := float64(age-65) / 45
-			h := sh * birthHeight * 0.85 * (1 - shrink)
-			g.drawStanding(dst, b.effect.ParentFaces[i], p.x, sh*birthBottom-(sh*birthBottom-p.y)*shrink, h, float32(1-shrink), false, nil)
+			h := sh * 0.62 * (1 - shrink)
+			g.drawStanding(dst, b.effect.ParentFaces[i], p.x, p.y+sh*0.2*(1-shrink), h, float32(1-shrink), false, nil)
 		}
 		progress := min(1, float64(age-65)/float64(b.flashStart()-65))
 		orb := birthOrbPosition(sw, sh, i, age, b.flashStart())
@@ -194,24 +194,40 @@ func (g *Game) drawBirthCutIn(dst *ebiten.Image) {
 	b := g.birth
 	sw, sh := g.screen()
 	t := b.age - (b.childStart() - birthCutInFrames)
-	open := min(1, float64(t)/8)
-	if t > 40 {
-		open = max(0, float64(50-t)/10)
-	}
-	if open <= 0 {
+	if t < 0 {
 		return
 	}
+	var black ebiten.ColorScale
+	black.Scale(0, 0, 0, 1)
+	if t >= birthCutInFrames/2 {
+		// Then the silhouette stands where the child will appear, the same size.
+		gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), color.NRGBA{0, 0, 0, 90}, false)
+		if b.effect.ChildFace != "" {
+			g.drawStanding(dst, b.effect.ChildFace, sw*0.5, sh*birthBottom, sh*birthHeight, 1, false, &black)
+		}
+		return
+	}
+	// First a cut-in: the child's picture, still in shadow, sweeps along a band
+	// and may spill over its edges.
+	open := min(1, float64(t)/6)
+	if t > birthCutInFrames/2-6 {
+		open = max(0, float64(birthCutInFrames/2-t)/6)
+	}
 	accent := rainbowColor(b.age)
-	gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), withAlpha(color.NRGBA{0, 0, 0, 255}, uint8(100*open)), false)
+	if b.effect.Tier < 2 {
+		accent = g.th.accent
+	}
+	bandH := sh * 0.34 * open
+	cy := sh * 0.45
+	gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), withAlpha(color.NRGBA{0, 0, 0, 255}, uint8(110*open)), false)
+	gfx.FillRect(dst, 0, float32(cy-bandH/2), float32(sw), float32(bandH), withAlpha(g.th.window, 0xe8), false)
 	for i := range 14 {
-		y := math.Mod(float64(i)*83.7, sh)
+		y := cy - bandH/2 + math.Mod(float64(i)*53.7, max(bandH, 1))
 		x := math.Mod(float64(i)*311.3-float64(t)*38, sw+400) - 200
-		gfx.StrokeLine(dst, float32(x), float32(y), float32(x+180), float32(y), 2, withAlpha(accent, 0x80), true)
+		gfx.StrokeLine(dst, float32(x), float32(y), float32(x+180), float32(y), 2, withAlpha(accent, 0x90), true)
 	}
 	if b.effect.ChildFace != "" {
-		// A silhouette at the very place and size the child then appears in.
-		var black ebiten.ColorScale
-		black.Scale(0, 0, 0, 1)
-		g.drawStanding(dst, b.effect.ChildFace, sw*0.5, sh*birthBottom, sh*birthHeight, float32(open), false, &black)
+		slide := 1 - math.Pow(1-min(1, float64(t)/12), 3)
+		g.drawStanding(dst, b.effect.ChildFace, sw*0.5+(1-slide)*sw*0.6, cy+sh*0.32, sh*0.8, float32(open), false, &black)
 	}
 }

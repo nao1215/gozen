@@ -839,7 +839,7 @@ func (r *Runner) run(c *data.Command) Request {
 			inherited = "none"
 		}
 		r.push([]data.Command{
-			{Wait: data.WaitCue{Seconds: float64(320+30*tier) / 60}}, // 50 frames of the silhouette cut-in (play.birthCutInFrames)
+			{Wait: data.WaitCue{Seconds: float64(330+30*tier) / 60}}, // 60 frames of the silhouette cut-in (play.birthCutInFrames)
 			{Say: &data.Say{Who: childName, Text: "Inherited skills: " + inherited + "."}},
 			{Say: &data.Say{Who: childName, Text: fmt.Sprintf("Breeding strength: +%d.", child.Plus)}},
 		})
