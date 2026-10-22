@@ -209,7 +209,7 @@ func (g *Game) drawBirthCutIn(dst *ebiten.Image) {
 		accent = g.th.accent
 	}
 	bandH := sh * 0.34 * open
-	cy := sh * 0.45
+	cy := sh * 0.5
 	gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), withAlpha(color.NRGBA{0, 0, 0, 255}, uint8(110*open)), false)
 	gfx.FillRect(dst, 0, float32(cy-bandH/2), float32(sw), float32(bandH), withAlpha(g.th.window, 0xe8), false)
 	for i := range 14 {
