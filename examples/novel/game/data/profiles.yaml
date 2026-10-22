@@ -4,6 +4,7 @@
 # toast has been poured.
 profiles:
   brenna:
+    affiliation: Pass companions
     when: ran.toast.count > 0
     title: "The Wall with a Laugh"
     fields:
@@ -14,10 +15,11 @@ profiles:
       - {label: Dislikes, value: "Ice underfoot, being called a wall"}
     text: "Brenna carries the big dented shield and the loudest laugh on the pass. She turns every hardship into a story and every meal into a contest with the cheese. Under the armor she is as nervous as anyone, and braver for it."
     relations:
-      - {who: wren, calls: "Wren", text: "Translates her stiff remarks into hugs, whether Wren likes it or not."}
-      - {who: hedda, calls: "Hedda", text: "Begs her for cheese and gets scolded about the bench."}
-      - {who: you, calls: "Hey, you", text: "Someone who stood where she could see them, and never made a fuss."}
+      - {who: wren, kind: friend, calls: "Wren", text: "Translates her stiff remarks into hugs, whether Wren likes it or not."}
+      - {who: hedda, kind: friend, calls: "Hedda", text: "Begs her for cheese and gets scolded about the bench."}
+      - {who: you, kind: like, calls: "Hey, you", text: "Someone who stood where she could see them, and never made a fuss."}
   wren:
+    affiliation: Pass companions
     when: ran.toast.count > 0
     title: "The Careful Cartographer"
     fields:
@@ -28,10 +30,11 @@ profiles:
       - {label: Dislikes, value: "Whiteouts, wobbly seats, speeches"}
     text: "Wren reads the ridgelines, checks the roof, and files her feelings under field assessment. She is polite and precise, and her ears give away what her face does not. She would rather be home with a book, and is quietly glad she is not."
     relations:
-      - {who: brenna, calls: "Brenna", text: "Complains loudly, sings off-key, and holds the lantern. Wren is grateful, in writing."}
-      - {who: hedda, calls: "Hedda", text: "Always one step ahead of her, which is irritating and accurate."}
-      - {who: you, calls: "You", text: "Waited for her once. She will not be making a speech about it."}
+      - {who: brenna, kind: friend, calls: "Brenna", text: "Complains loudly, sings off-key, and holds the lantern. Wren is grateful, in writing."}
+      - {who: hedda, kind: friend, calls: "Hedda", text: "Always one step ahead of her, which is irritating and accurate."}
+      - {who: you, kind: like, calls: "You", text: "Waited for her once. She will not be making a speech about it."}
   hedda:
+    affiliation: Copper Kettle
     title: "Keeper of the Open Door"
     fields:
       - {label: Role, value: "Tavern keeper"}
@@ -41,6 +44,6 @@ profiles:
       - {label: Dislikes, value: "Drafts, dented benches, thank-yous"}
     text: "Hedda has kept the Copper Kettle's door for thirty winters. She is gruff, quick, and always a step ahead, and she denies every kindness by morning. The fire stays lit and the cider stays warm all the same."
     relations:
-      - {who: brenna, calls: "Brenna", text: "Makes her take the armor off at the table. Feeds her anyway."}
-      - {who: wren, calls: "Wren", text: "Puts her book by the fire before Wren has thought of it."}
-      - {who: you, calls: "Late guest", text: "Gets a seat, a cloth if they stay, and a free cider."}
+      - {who: brenna, kind: friend, calls: "Brenna", text: "Makes her take the armor off at the table. Feeds her anyway."}
+      - {who: wren, kind: friend, calls: "Wren", text: "Puts her book by the fire before Wren has thought of it."}
+      - {who: you, kind: other, calls: "Late guest", text: "Gets a seat, a cloth if they stay, and a free cider."}

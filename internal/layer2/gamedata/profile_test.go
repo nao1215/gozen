@@ -77,6 +77,7 @@ func TestProfilesCheck(t *testing.T) {
 		{"bad value", `profiles: {scout: {fields: [{label: A, value: "{gld}"}]}}`, `profiles.scout.fields[0].value`},
 		{"no label", `profiles: {scout: {fields: [{value: B}]}}`, `profiles.scout.fields[0]: label is missing`},
 		{"unknown who", `profiles: {scout: {relations: [{who: stranger, calls: S}]}}`, `profiles.scout.relations[0].who: unknown character "stranger"`},
+		{"unknown kind", `profiles: {scout: {relations: [{who: you, kind: devotion}]}}`, `profiles.scout.relations[0].kind: unknown relationship kind "devotion"`},
 		{"unknown field", `profiles: {scout: {age: 3}}`, `age`},
 	}
 	for _, tt := range tests {

@@ -162,6 +162,7 @@ Profile:
   enemy: "The enemy the profile shows, for a foe in the book."
   name: "The name shown; by default the actor's or the enemy's name."
   title: "A short epithet shown under the name. It may hold `{expressions}`."
+  affiliation: "An optional group used to keep characters together in the relationship chart."
   picture: "A standing picture under `assets/` for a character who is neither an actor nor an enemy."
   faces: "The faces the screen can switch between: names of the actor's faces or of its puppet's faces. By default the actor's face."
   when: "The condition that unlocks the profile. Without it the profile is always unlocked; a locked profile is a shadow named ???. Under `--dev` every profile is unlocked."
@@ -175,6 +176,7 @@ ProfileField:
 ProfileRelation:
   _: "How a profile's character sees another character."
   who: "The other character: a profile ID, an actor ID, or `you`."
+  kind: "The chart line colour: like, love, rival, enemy, family, friend, or other. Love is assigned by the author; an omitted kind uses other."
   calls: "What the character calls them."
   text: "A note on how the character sees them."
 Order:

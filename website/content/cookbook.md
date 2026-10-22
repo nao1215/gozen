@@ -1053,6 +1053,7 @@ actors:
 profiles:
   mira:
     title: The courier of the pass
+    affiliation: Pass couriers
     faces: [normal, smile]  # the faces the screen switches between (Z)
     when: flag.met_mira     # a shadow named ??? until then; once open, it stays open
     fields:
@@ -1060,8 +1061,8 @@ profiles:
       - {label: Likes, value: Hot cider}
     text: Mira has carried letters over the pass for {var.mira_years} winters.
     relations:
-      - {who: walker, calls: Boss, text: Trusts them with the map.}
-      - {who: you, calls: Stranger}
+      - {who: walker, kind: friend, calls: Boss, text: Trusts them with the map.}
+      - {who: you, kind: other, calls: Stranger}
   keeper:
     name: The keeper
     picture: people/keeper.png
@@ -1073,6 +1074,8 @@ events:
 ```
 
 `open: profiles` opens the book from an event, and a test reads `profile.mira.unlocked`. Reference: [Profile](/schema/#profile), [ProfileField](/schema/#profilefield), [ProfileRelation](/schema/#profilerelation), [UIStyle](/schema/#uistyle).
+
+Press Tab in the book for the chart, use arrows to select a face, Z to read its page, and the wheel to zoom. The `kind` colour is chosen by the author; `love` has no engine rule. A line to a locked profile is hidden until it opens. Run `gozen art faces <game-dir>` to generate face boxes, then `gozen check <game-dir>` to catch unknown targets and kinds.
 
 ## Keep a monster book
 

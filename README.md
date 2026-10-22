@@ -157,6 +157,8 @@ Start the game with `--dev` and these keys work while you play.
 | ![a set typed into the Command tab, then the State tab shows the flag](docs/images/playtest-command.gif) | ![the frame meter over the tavern](docs/images/playtest-frames.jpg) |
 | F6: the character book, every page open: each character's profile, faces and relations | |
 | ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](docs/images/novel-characters.jpg) | |
+| Tab: relationship chart; arrows choose a face, Z opens its page, and the wheel zooms | |
+| ![The novel sample's relationship chart with face icons and coloured connections](docs/images/novel-relations.jpg) | |
 
 ## Install
 

@@ -437,6 +437,7 @@ github.com/nao1215/gozen/schema field Picture.Bright
 github.com/nao1215/gozen/schema field Picture.File
 github.com/nao1215/gozen/schema field Picture.Tint
 github.com/nao1215/gozen/schema field Profile.Actor
+github.com/nao1215/gozen/schema field Profile.Affiliation
 github.com/nao1215/gozen/schema field Profile.Enemy
 github.com/nao1215/gozen/schema field Profile.Faces
 github.com/nao1215/gozen/schema field Profile.Fields
@@ -449,6 +450,7 @@ github.com/nao1215/gozen/schema field Profile.When
 github.com/nao1215/gozen/schema field ProfileField.Label
 github.com/nao1215/gozen/schema field ProfileField.Value
 github.com/nao1215/gozen/schema field ProfileRelation.Calls
+github.com/nao1215/gozen/schema field ProfileRelation.Kind
 github.com/nao1215/gozen/schema field ProfileRelation.Text
 github.com/nao1215/gozen/schema field ProfileRelation.Who
 github.com/nao1215/gozen/schema field Put.At

@@ -428,7 +428,9 @@ var english = map[string]string{
 	"とまっています":                            "Stopped",
 	// screens: the character book (ADR 0031)
 	"キャラクター": "Characters",
-	"←→ / LR: キャラ   ↑↓: 一覧   Z: 表情   X / F6: もどる": "Left/Right / LR: character   Up/Down: list   Z: face   X / F6: back",
+	"相関図":    "Relationships",
+	"Tab: 詳細/相関図   矢印: 選択   Z: 詳細   ホイール: 拡大縮小   X / F6: もどる": "Tab: page/chart   arrows: choose   Z: page   wheel: zoom   X / F6: back",
+	"←→ / LR: キャラ   ↑↓: 一覧   Z: 表情   Tab: 相関図   X / F6: もどる": "Left/Right / LR: character   Up/Down: list   Z: face   Tab: chart   X / F6: back",
 	"あなた":    "You",
 	"プロフィール": "Profile",
 	"紹介":     "About",
