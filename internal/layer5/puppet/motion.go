@@ -425,7 +425,7 @@ func (m *Motion) pose(withSprings bool) Pose {
 				}
 				wave := math.Sin(tau*t*(2+damage) + m.phase[i%len(m.phase)])
 				for axis := range 2 {
-					p.Lag[i][axis] = clamp(p.Lag[i][axis]+wave*sp.limit*math.Min(1, damage*0.35)*sp.mask[axis], -sp.limit, sp.limit)
+					p.Lag[i][axis] = clamp(p.Lag[i][axis]+wave*sp.limit*math.Min(1, damage*0.15)*sp.mask[axis], -sp.limit, sp.limit)
 				}
 			}
 		}
