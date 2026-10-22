@@ -23,6 +23,29 @@ type ranch struct {
 	done          func()
 }
 
+type ranchLayout struct {
+	panelX, panelY, panelW, panelH float64
+	figureX, figureBottom, figureH float64
+	detailY                        float64
+	rows                           int
+}
+
+func ranchScreenLayout(sw, sh float64, step string, items int) ranchLayout {
+	l := ranchLayout{
+		panelX: 24, panelY: 20, panelW: min(510, sw*0.55),
+		figureX: sw * 0.83, figureBottom: sh - 10, figureH: sh * 0.92,
+	}
+	if step == "actions" {
+		l.rows = 3
+		l.panelH = 306
+	} else {
+		l.rows = min(6, max(3, int((sh-300)/44)))
+		l.panelH = sh - 40
+	}
+	l.detailY = 120 + float64(min(l.rows, max(1, items)))*44 + 16
+	return l
+}
+
 func newRanch(g *Game, done func()) *ranch {
 	r := &ranch{done: done}
 	r.show(g, "actions")
@@ -86,7 +109,9 @@ func (r *ranch) show(g *Game, step string) {
 		}
 		add("confirm", "Confirm fusion")
 	}
-	r.list = newList(items, 38, 108, 360, 10)
+	sw, sh := g.screen()
+	l := ranchScreenLayout(sw, sh, step, len(items))
+	r.list = newList(items, l.panelX+12, 108, l.panelW-24, l.rows)
 	r.list.size = sizeS
 }
 
@@ -227,11 +252,10 @@ func (g *Game) childName(species string) string {
 	return g.db.Enemies[species].Name
 }
 
-// drawParents stands the chosen (or highlighted) parents on the right, where the location's
-// picture shows through. The child is only a dark shape until the book has seen it.
+// drawParents previews the chosen monsters in the gap beside the ranch panel.
 func (r *ranch) drawParents(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
-	if sw < 1100 || r.step == "actions" {
+	if r.step == "actions" {
 		return
 	}
 	hovered := ""
@@ -245,8 +269,12 @@ func (r *ranch) drawParents(g *Game, dst *ebiten.Image) {
 	case "breed_second":
 		b = hovered
 	}
-	x0 := 880.0
-	area := sw - x0 - 40
+	l := ranchScreenLayout(sw, sh, r.step, len(r.options))
+	x0 := l.panelX + l.panelW + 14
+	area := max(0, min(180, l.figureX-sh*0.16-x0-10))
+	if area < 70 {
+		return
+	}
 	for i, id := range []string{a, b} {
 		inst := g.st.Actors[id]
 		if inst == nil || inst.Monster == "" {
@@ -256,32 +284,35 @@ func (r *ranch) drawParents(g *Game, dst *ebiten.Image) {
 		if e == nil {
 			continue
 		}
-		drawBestiaryImage(g, dst, e.Image.File, x0+float64(i)*area/2+20, sh-640, area/2-40, 560)
+		previewH := min(190, sh*0.35)
+		drawBestiaryImage(g, dst, e.Image.File, x0+float64(i)*area/2, sh-previewH-40, area/2-4, previewH)
 	}
 }
 
 func (r *ranch) draw(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
+	l := ranchScreenLayout(sw, sh, r.step, len(r.options))
 	if g.st != nil {
 		if loc := g.db.Locations[g.st.Location]; loc != nil {
 			g.drawPicture(dst, loc.Background, 0, 0, sw, sh, 1)
 			for _, person := range loc.People {
 				if person.Image != "" {
-					g.drawStanding(dst, person.Image, sw*0.82, sh-30, sh*0.75, 1, false, nil)
+					g.drawStanding(dst, person.Image, l.figureX, l.figureBottom, l.figureH, 1, false, nil)
 					break
 				}
 			}
 		}
 	}
 	fill(dst, color.NRGBA{0, 0, 0, 0x50})
-	panelW := min(sw-40, 850.0)
-	g.window(dst, 20, 20, panelW, sh-40)
+	g.window(dst, l.panelX, l.panelY, l.panelW, l.panelH)
 	r.drawParents(g, dst)
-	g.text(dst, "Monster Ranch", 48, 42, sizeL, g.th.accent)
-	r.list.draw(g, dst, true)
-	x := 420.0
-	y := 118.0
-	lines := []string{fmt.Sprintf("Party: %d / %d", len(g.st.Party), g.db.Game.MaxParty), fmt.Sprintf("Reserve: %d", len(g.st.ReserveIDs()))}
+	g.text(dst, "Monster Ranch", l.panelX+20, l.panelY+18, sizeL, g.th.accent)
+	g.text(dst, fmt.Sprintf("Party %d/%d   Reserve %d", len(g.st.Party), g.db.Game.MaxParty, len(g.st.ReserveIDs())), l.panelX+20, l.panelY+60, sizeS*0.8, g.th.dim)
+	g.traceList(r.list)
+	r.list.drawRows(g, dst, true)
+	x := l.panelX + 20
+	y := l.detailY
+	lines := []string{}
 	if a := g.st.Actors[r.first]; a != nil {
 		lines = append(lines, "First: "+r.label(g, r.first))
 	}
@@ -325,9 +356,9 @@ func (r *ranch) draw(g *Game, dst *ebiten.Image) {
 		}
 	}
 	for _, line := range lines {
-		fit, sz := gfx.FitLines(line, sizeS*0.85, panelW-x-28, 2)
+		fit, sz := gfx.FitLines(line, sizeS*0.8, l.panelW-40, 2)
 		for _, part := range fit {
-			if y+gfx.LineHeight(sz) > sh-80 {
+			if y+gfx.LineHeight(sz) > l.panelY+l.panelH-42 {
 				break
 			}
 			g.text(dst, part, x, y, sz, g.th.text)
@@ -335,7 +366,7 @@ func (r *ranch) draw(g *Game, dst *ebiten.Image) {
 		}
 		y += 5
 	}
-	g.text(dst, strings.ToUpper(strings.ReplaceAll(r.step, "_", " "))+"    Z: choose    X: back", 48, sh-52, sizeS, g.th.dim)
+	g.text(dst, strings.ToUpper(strings.ReplaceAll(r.step, "_", " "))+"   Z: choose   X: back", x, l.panelY+l.panelH-28, sizeS*0.8, g.th.dim)
 }
 
 var (

@@ -61,9 +61,9 @@ func TestBestiaryPictureLineageNavigationAndHistory(t *testing.T) {
 	if len(tiles) != 3 || tiles[1].node.Species != "mote" || tiles[2].node.Species != "mote" {
 		t.Fatalf("picture nodes = %+v", tiles)
 	}
-	pressBestiary(g, s, btnDown)
+	pressBestiary(g, s, btnUp)
 	if s.cur != 1 {
-		t.Fatalf("down cursor = %d", s.cur)
+		t.Fatalf("up cursor = %d", s.cur)
 	}
 	pressBestiary(g, s, btnRight)
 	if s.cur != 2 {
@@ -73,11 +73,11 @@ func TestBestiaryPictureLineageNavigationAndHistory(t *testing.T) {
 	if s.cur != 1 {
 		t.Fatalf("left cursor = %d", s.cur)
 	}
-	pressBestiary(g, s, btnUp)
-	if s.cur != 0 {
-		t.Fatalf("up cursor = %d", s.cur)
-	}
 	pressBestiary(g, s, btnDown)
+	if s.cur != 0 {
+		t.Fatalf("down cursor = %d", s.cur)
+	}
+	pressBestiary(g, s, btnUp)
 	pressBestiary(g, s, btnRight)
 	pressBestiary(g, s, btnOK)
 	if s.root != "mote" || s.cur != 0 || len(s.history) != 1 || len(s.lineageTiles(322, 104, 930, 535)) != 1 {
@@ -118,7 +118,7 @@ func TestBestiaryPictureLineageRecipeAndUnseen(t *testing.T) {
 	if s.speciesName(g, "mote", !g.bestiarySeen("mote")) != "?" {
 		t.Fatal("unseen name revealed")
 	}
-	pressBestiary(g, s, btnDown)
+	pressBestiary(g, s, btnUp)
 	pressBestiary(g, s, btnBack)
 	if !s.inTree {
 		t.Fatal("unseen page opened")
@@ -198,6 +198,15 @@ func TestBestiaryFitsBothScreenSizes(t *testing.T) {
 			if tile.x < 322+20 || tile.y < 104+50 || tile.x+tile.w > sw-28 || tile.y+tile.h > sh-90 {
 				t.Fatalf("picture escapes panel at %dx%d: %+v", w, h, tile)
 			}
+		}
+		if !(tiles[3].y < tiles[1].y && tiles[1].y < tiles[0].y) {
+			t.Fatalf("generation order at %dx%d: child %.1f parent %.1f grandparent %.1f", w, h, tiles[0].y, tiles[1].y, tiles[3].y)
+		}
+		if tiles[1].y-(tiles[3].y+tiles[3].h) < 30 || tiles[0].y-(tiles[1].y+tiles[1].h) < 30 {
+			t.Fatalf("generation gaps are too narrow at %dx%d", w, h)
+		}
+		if tiles[0].w < 180 || tiles[0].h < 120 {
+			t.Fatalf("child picture is too small at %dx%d: %+v", w, h, tiles[0])
 		}
 	}
 }

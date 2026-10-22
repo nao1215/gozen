@@ -84,7 +84,7 @@ func (s *bestiaryScreen) modal() bool { return true }
 type lineageTile struct {
 	node       *data.LineageNode
 	x, y, w, h float64
-	parent     int // index of the tile below which this parent is shown
+	parent     int // index of this tile's descendant in the next row
 }
 
 func (s *bestiaryScreen) lineageTiles(x, top, w, h float64) []lineageTile {
@@ -96,11 +96,13 @@ func (s *bestiaryScreen) lineageTiles(x, top, w, h float64) []lineageTile {
 		return nil
 	}
 	// Four equal slots leave room for the four grandparents without horizontal scrolling.
-	gap := 12.0
-	cardW := min(172, (w-48-3*gap)/4)
-	cardH := min(132, (h-98)/3-12)
+	gap := 14.0
+	cardW := min(184, (w-48-3*gap)/4)
+	cardH := min(126, (h-90)/3)
 	left := x + (w-4*cardW-3*gap)/2
-	rowY := func(row int) float64 { return top + 62 + float64(row)*(h-98)/3 }
+	// Reserve the header and a bottom margin, then spread the three generations.
+	rowStep := (h - 70 - 20 - cardH) / 2
+	rowY := func(row int) float64 { return top + 70 + float64(2-row)*rowStep }
 	place := func(n *data.LineageNode, row int, center float64) lineageTile {
 		return lineageTile{node: n, x: center - cardW/2, y: rowY(row), w: cardW, h: cardH, parent: -1}
 	}
@@ -177,7 +179,7 @@ func (s *bestiaryScreen) updateTree(g *Game) {
 	}
 }
 
-// nextRecipe switches only the species at the top of the view.
+// nextRecipe switches only the species at the bottom of the view.
 func (s *bestiaryScreen) nextRecipe(g *Game) {
 	n := s.lineage.Tree(s.root, s.choice)
 	if n == nil || n.Choices < 2 {
@@ -401,7 +403,7 @@ func speciesSexText(sex string) string {
 	}
 }
 
-// drawLineage shows seven pictures at most: child, parents and grandparents.
+// drawLineage shows seven pictures at most: grandparents, parents and child.
 func (s *bestiaryScreen) drawLineage(g *Game, dst *ebiten.Image, x, top, w, h float64) {
 	bestiaryPanel(g, dst, x, top, w, h)
 	tiles := s.lineageTiles(x, top, w, h)
@@ -432,11 +434,11 @@ func (s *bestiaryScreen) drawLineage(g *Game, dst *ebiten.Image, x, top, w, h fl
 	}
 	if len(tiles) > 1 {
 		for i := 1; i < min(3, len(tiles)); i++ {
-			connect(tiles[0], tiles[i])
+			connect(tiles[i], tiles[0])
 		}
 	}
 	for i := 3; i < len(tiles); i++ {
-		connect(tiles[tiles[i].parent], tiles[i])
+		connect(tiles[i], tiles[tiles[i].parent])
 	}
 	for i, tile := range tiles {
 		s.drawLineageTile(g, dst, tile, s.inTree && i == s.cur)
@@ -496,7 +498,7 @@ func (s *bestiaryScreen) drawLineageTile(g *Game, dst *ebiten.Image, tile lineag
 	case data.RecipeFamily:
 		caption = g.db.MonsterFamilies[n.Recipe.Families[0]] + " x " + g.db.MonsterFamilies[n.Recipe.Families[1]]
 	case data.RecipePair:
-		caption = "Parents pictured below"
+		caption = "Parents pictured above"
 	}
 	g.text(dst, gfx.Ellipsis(caption, sizeS*0.53, tile.w-12), tile.x+6, tile.y+tile.h-21, sizeS*0.53, g.th.dim)
 	if n.Recipe.Kind == data.RecipeFamily {
