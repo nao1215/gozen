@@ -184,7 +184,7 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		alpha, offset := float32(1), 0.0
 		if age >= 30 {
 			p := float64(age-30) / 24
-			alpha, offset = float32(1-p), p*sw*0.08
+			alpha = float32(1 - p)
 		}
 		if loc := g.db.Locations[g.st.Location]; loc != nil {
 			for _, person := range loc.People {
@@ -245,9 +245,6 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 			gfx.FillCircle(dst, float32(px), float32(py), 2, withAlpha(light, uint8(120*(1-p))), true)
 		}
 	}
-	if b.effect.Tier > 0 && age >= b.cutInStart() && age < b.cutInEnd() && b.skipT == 0 {
-		g.drawBirthCutIn(dst, b, sw, sh)
-	}
 	if phase == birthResult || b.skipT > 0 {
 		bannerW := min(sw*0.6, 600.0)
 		g.window(dst, (sw-bannerW)/2, sh*0.045, bannerW, 62)
@@ -276,32 +273,3 @@ func birthCutInOffset(age, start, end int, sw float64) float64 {
 	return 0
 }
 
-func (g *Game) drawBirthCutIn(dst *ebiten.Image, b *birthAnimation, sw, sh float64) {
-	img := g.pics.get(b.effect.ChildFace)
-	if img == nil { return }
-	size := img.Bounds().Size()
-	var found image.Rectangle
-	var ok bool
-	if len(b.effect.ChildFaceAt) == 0 {
-		g.pics.mu.Lock()
-		found, ok = g.pics.foundFace(b.effect.ChildFace, size)
-		g.pics.mu.Unlock()
-	}
-	crop := birthFaceCrop(size, b.effect.ChildFaceAt, found, ok)
-	if crop.Empty() { return }
-	offset := birthCutInOffset(b.age, b.cutInStart(), b.cutInEnd(), sw)
-	x, y, w, h := sw*0.10+offset, sh*0.30, sw*0.80, sh*0.30
-	gfx.FillRect(dst, float32(x), float32(y), float32(w), float32(h), withAlpha(colorBlack, 220), false)
-	for i := range 13 {
-		ly := y+float64(i)*h/12
-		gfx.StrokeLine(dst, float32(x-18), float32(ly), float32(x+w+18), float32(ly-6), 1.5, withAlpha(birthLight(b.effect.Tier), uint8(28+i%3*16)), true)
-	}
-	face := img.SubImage(crop).(*ebiten.Image)
-	scale := h*1.15/float64(crop.Dy())
-	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
-	op.GeoM.Scale(scale, scale)
-	op.GeoM.Translate(x+w*0.54-float64(crop.Dx())*scale/2, y-(float64(crop.Dy())*scale-h)/2)
-	gfx.DrawImage(dst, face, op)
-	gfx.StrokeLine(dst, float32(x-18), float32(y), float32(x+w+18), float32(y), 3, birthLight(b.effect.Tier), true)
-	gfx.StrokeLine(dst, float32(x-18), float32(y+h), float32(x+w+18), float32(y+h), 3, birthLight(b.effect.Tier), true)
-}

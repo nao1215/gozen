@@ -35,7 +35,7 @@ type ranchLayout struct {
 func ranchScreenLayout(sw, sh float64, step string, items int) ranchLayout {
 	l := ranchLayout{
 		panelX: 24, panelY: 20, panelW: min(510, sw*0.55),
-		figureX: sw * 0.78, figureBottom: sh * birthBottom, figureH: sh * birthHeight,
+		figureX: sw * 0.5, figureBottom: sh * birthBottom, figureH: sh * birthHeight,
 	}
 	if step == "actions" {
 		l.rows = 4
