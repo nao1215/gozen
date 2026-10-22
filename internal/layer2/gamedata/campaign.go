@@ -900,7 +900,7 @@ func CampaignLose(db *DB) Expr {
 	if f == nil || f.Capital == "" {
 		return Expr{}
 	}
-	return MustExpr(fmt.Sprintf("region.%s.owner != '%s'", f.Capital, cp.Player))
+	return MustExpr(fmt.Sprintf("region.%s.owner != %s", f.Capital, quoteExprString(cp.Player)))
 }
 
 // campaignSetKey checks a left-hand side of set that names the campaign's state:

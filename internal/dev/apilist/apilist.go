@@ -27,7 +27,7 @@ func Snapshot(fsys fs.FS, module string) (string, error) {
 		if d.IsDir() {
 			if name != "." {
 				switch d.Name() {
-				case "internal", "cmd", "testdata", "vendor", "examples", "api":
+				case "internal", "cmd", "testdata", "vendor", "examples", "api", "build":
 					return fs.SkipDir
 				}
 				if strings.HasPrefix(d.Name(), ".") || strings.HasPrefix(d.Name(), "_") {

@@ -1180,7 +1180,7 @@ func (s *battleScene) finish(g *Game) {
 		if fanfare {
 			g.sfx("win")
 		}
-		s.fanfare = make([]bool, len(s.results)+1)
+		s.fanfare = append(make([]bool, len(s.results)), false)
 		for _, i := range b.Gains.LevelUps {
 			s.fanfare[i+1] = true
 		}

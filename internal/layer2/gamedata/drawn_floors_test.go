@@ -42,6 +42,7 @@ func TestDrawnFloors(t *testing.T) {
 		{"no start", []string{"#######", "#....>#", "#######"}, "", "the start"},
 		{"two starts", []string{"#######", "#S..S>#", "#######"}, "", "drawn once"},
 		{"a seed with a map", good, "            seed: 5\n", "needs no seed"},
+		{"a floor over the map limit", []string{strings.Repeat("#", 256)}, "", "map width and height must be at most 255 cells"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

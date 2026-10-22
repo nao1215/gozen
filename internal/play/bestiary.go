@@ -443,7 +443,7 @@ func (s *bestiaryScreen) drawLineage(g *Game, dst *ebiten.Image, x, top, w, h fl
 	if len(tiles) == 0 {
 		return
 	}
-	path := make([]string, 0, len(s.history)+1)
+	path := make([]string, 0, len(s.history))
 	for _, view := range s.history {
 		path = append(path, s.speciesName(g, view.species, !g.bestiarySeen(view.species)))
 	}

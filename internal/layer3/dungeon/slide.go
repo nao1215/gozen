@@ -21,6 +21,9 @@ func SlideEnd(d *data.Dungeon, st *rpg.State, x, y, moving int) (ex, ey, facing 
 		return x, y, moving & 3, nil
 	}
 	w, h := d.Size()
+	if !validSize(w, h) {
+		return x, y, moving & 3, nil
+	}
 	seen := map[[3]int]bool{}
 	for range w*h*4 + 1 {
 		k := [3]int{x, y, dir}
