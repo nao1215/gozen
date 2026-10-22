@@ -747,11 +747,11 @@ func encodeGIF(t *testing.T, work string, frames []string, e gifEncoding, dst st
 // decodeFrames reads a picture, a GIF or a video as full frames.
 // joinGIF appends two independently paletted phases without discarding their early frames.
 func joinGIF(first, second, dst string) error {
-	a, err := os.ReadFile(first)
+	a, err := os.ReadFile(first) //nolint:gosec // A picture this test wrote.
 	if err != nil {
 		return err
 	}
-	b, err := os.ReadFile(second)
+	b, err := os.ReadFile(second) //nolint:gosec // A picture this test wrote.
 	if err != nil {
 		return err
 	}
@@ -764,12 +764,12 @@ func joinGIF(first, second, dst string) error {
 		return err
 	}
 	if ga.Config.Width != gb.Config.Width || ga.Config.Height != gb.Config.Height {
-		return fmt.Errorf("GIF phases have different sizes")
+		return errors.New("GIF phases have different sizes")
 	}
 	ga.Image = append(ga.Image, gb.Image...)
 	ga.Delay = append(ga.Delay, gb.Delay...)
 	ga.Disposal = append(ga.Disposal, gb.Disposal...)
-	f, err := os.Create(dst)
+	f, err := os.Create(dst) //nolint:gosec // The joined picture this test writes.
 	if err != nil {
 		return err
 	}

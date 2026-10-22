@@ -23,7 +23,7 @@ func TestJoinGIFKeepsBothPhases(t *testing.T) {
 				frame.SetColorIndex(x, y, 0)
 			}
 		}
-		f, err := os.Create(file)
+		f, err := os.Create(file) //nolint:gosec // A test picture in a temporary directory.
 		if err != nil {
 			t.Fatal(err)
 		}
