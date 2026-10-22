@@ -59,6 +59,14 @@ type ImageEffect struct{ Picture data.CG }
 // SoundEffect requests a named sound.
 type SoundEffect struct{ Name string }
 
+// BreedEffect presents the two consumed parents and their child during a birth scene.
+type BreedEffect struct {
+	ParentNames [2]string
+	ParentFaces [2]string
+	ChildName   string
+	ChildFace   string
+}
+
 // VisualEffect requests a named visual effect: a word of the whole screen (shake, flash,
 // fade) or a reaction of a portrait; Cue holds the rest of a map form (ADR 0028).
 type VisualEffect struct {
@@ -87,6 +95,7 @@ func (MusicEffect) isEffect()  {}
 func (MoodEffect) isEffect()   {}
 func (ImageEffect) isEffect()  {}
 func (SoundEffect) isEffect()  {}
+func (BreedEffect) isEffect()  {}
 func (VisualEffect) isEffect() {}
 func (StandEffect) isEffect()  {}
 func (VoiceEffect) isEffect()  {}
@@ -804,16 +813,23 @@ func (r *Runner) run(c *data.Command) Request {
 		if child.Sex == "male" {
 			childName = child.Name() + " ♂"
 		}
+		r.emit(BreedEffect{ParentNames: [2]string{nameA, nameB}, ParentFaces: [2]string{faceA, faceB}, ChildName: childName, ChildFace: r.db.Enemies[child.Monster].Image.File})
+		inherited := "none"
+		if len(c.Breed.Skills) > 0 {
+			names := make([]string, 0, len(c.Breed.Skills))
+			for _, skill := range c.Breed.Skills {
+				if def := r.db.Skills[skill]; def != nil {
+					names = append(names, def.Name)
+				} else {
+					names = append(names, skill)
+				}
+			}
+			inherited = strings.Join(names, ", ")
+		}
 		r.push([]data.Command{
-			{Stand: &data.Stand{Who: nameA, Face: faceA, At: data.StandAt("left"), Enter: "fade"}},
-			{Stand: &data.Stand{Who: nameB, Face: faceB, At: data.StandAt("right"), Enter: "fade"}},
-			{Effect: data.EffectCue{Name: "fade", Seconds: 0.6}},
-			{Stand: &data.Stand{Who: nameA, Leave: "fade"}},
-			{Stand: &data.Stand{Who: nameB, Leave: "fade"}},
-			{Effect: data.EffectCue{Name: "flash"}},
-			{Stand: &data.Stand{Who: childName, Face: r.db.Enemies[child.Monster].Image.File, At: data.StandAt("center"), Enter: "fade"}},
-			{Say: &data.Say{Who: childName, Face: r.db.Enemies[child.Monster].Image.File, Text: "A new monster appeared: " + childName + "!"}},
-			{Stand: &data.Stand{None: true}},
+			{Wait: data.WaitCue{Seconds: 4.5}},
+			{Say: &data.Say{Who: childName, Text: "Inherited skills: " + inherited + "."}},
+			{Say: &data.Say{Who: childName, Text: fmt.Sprintf("Breeding strength: +%d.", child.Plus)}},
 		})
 	case "heal":
 		for _, a := range r.st.Members() {

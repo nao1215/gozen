@@ -1,10 +1,12 @@
 package play
 
 import (
+	"math"
 	"strings"
 	"testing"
 	"testing/fstest"
 
+	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
@@ -77,11 +79,21 @@ func TestRanchPreviewAndFusionCommand(t *testing.T) {
 	}
 	g.pop()
 	c.yes()
+	var birthWait bool
+	var birthLines []string
 	for i := 0; g.events.Running() && i < 20; i++ {
-		g.events.Next()
+		switch req := g.events.Next().(type) {
+		case event.Wait:
+			birthWait = req.Seconds == 4.5
+		case event.Say:
+			birthLines = append(birthLines, req.Text)
+		}
 	}
 	if g.st.Actors[a] != nil || g.st.Actors[b] != nil || g.st.Vars["bestiary.boss.caught"] != float64(1) {
 		t.Fatalf("fusion state = %+v", g.st.Actors)
+	}
+	if !birthWait || g.birth == nil || g.birth.effect.ChildName == "" || len(birthLines) != 2 || !strings.Contains(birthLines[0], "Inherited skills: Spark") || !strings.Contains(birthLines[1], "Breeding strength: +") {
+		t.Fatalf("birth presentation: wait=%v effect=%+v lines=%v", birthWait, g.birth, birthLines)
 	}
 }
 
@@ -102,6 +114,55 @@ func TestRanchLayoutLeavesAltarVisible(t *testing.T) {
 		if selection.panelX+selection.panelW+100 >= selection.figureX || selection.panelY+selection.panelH > sh {
 			t.Fatalf("selection obscures Yorn or leaves screen at %.0fx%.0f: %+v", sw, sh, selection)
 		}
+	}
+}
+
+func TestRanchActionsUseTalkWindow(t *testing.T) {
+	g := ranchGame(t)
+	r := newRanch(g, nil)
+	if len(r.options) != 4 || r.options[3] != "leave" {
+		t.Fatalf("actions = %v", r.options)
+	}
+	if r.talk.say.Name != "Yorn" || !strings.Contains(r.talk.say.Text, "two monsters") {
+		t.Fatalf("ranch speaker = %+v", r.talk.say)
+	}
+	_, by, _, _ := g.talkBox()
+	if r.list.y+r.list.height() >= by || r.list.x+r.list.w >= ranchScreenLayout(1280, 720, "actions", 4).figureX {
+		t.Fatalf("choice box hides the talk or Yorn: %+v", r.list)
+	}
+}
+
+func TestBirthTimelineSkipAndPositions(t *testing.T) {
+	g := ranchGame(t)
+	g.Handle(event.BreedEffect{ParentNames: [2]string{"Mote ♂", "Mote ♀"}, ChildName: "Boss ♀"})
+	for _, tc := range []struct {
+		age   int
+		phase birthPhase
+	}{{0, birthParents}, {64, birthParents}, {65, birthSpiral}, {167, birthSpiral}, {168, birthFlash}, {199, birthFlash}, {200, birthChild}, {birthDuration, birthChild}} {
+		g.birth.age = tc.age
+		if got := g.birth.phase(); got != tc.phase {
+			t.Fatalf("age %d: phase %d, want %d", tc.age, got, tc.phase)
+		}
+	}
+	for _, size := range [][2]float64{{1280, 720}, {1920, 1080}} {
+		parents, crystal := birthPositions(size[0], size[1])
+		if !(parents[0].x < crystal.x && crystal.x < parents[1].x) || parents[0].y != parents[1].y || crystal.y >= parents[0].y {
+			t.Fatalf("birth positions at %v: %+v %+v", size, parents, crystal)
+		}
+		for i, p := range parents {
+			start := birthOrbPosition(size[0], size[1], i, 65)
+			end := birthOrbPosition(size[0], size[1], i, 168)
+			if math.Abs(start.x-p.x) > 0.01 || math.Abs(start.y-(p.y-size[1]*0.1)) > 0.01 || math.Abs(end.x-crystal.x) > 0.01 || math.Abs(end.y-crystal.y) > 0.01 {
+				t.Fatalf("orb %d does not travel from parent to crystal at %v: start=%+v end=%+v", i, size, start, end)
+			}
+		}
+	}
+	g.req = event.Wait{Seconds: 4.5}
+	g.waitT = birthDuration
+	g.in.pressed[btnOK] = true
+	g.pump()
+	if g.waitT != 0 || g.req != nil || g.birth.age != birthDuration {
+		t.Fatalf("skip left birth pending: wait=%d req=%T age=%d", g.waitT, g.req, g.birth.age)
 	}
 }
 

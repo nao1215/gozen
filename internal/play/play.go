@@ -235,6 +235,7 @@ type Game struct {
 	req     event.Request
 	talk    talk
 	recruit *recruitView
+	birth   *birthAnimation
 	waitT   int
 
 	notices noticeBoard
@@ -793,6 +794,9 @@ func (g *Game) Update() error {
 	}
 	g.shake = max(0, g.shake-1)
 	g.flash = max(0, g.flash-1)
+	if g.birth != nil && g.birth.age < birthDuration {
+		g.birth.age++
+	}
 	g.stepStaging()
 	g.stepFanfare()
 	g.ageCG()
@@ -892,6 +896,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.lastView.DrawImage(dst, nil)
 	}
 	g.drawRecruit(dst)
+	g.drawBirth(dst)
 	g.talk.draw(g, dst)
 	if g.noticesShown() {
 		g.notices.draw(g, dst)
@@ -1448,6 +1453,7 @@ func (g *Game) pump() bool {
 	}
 	if g.req == nil {
 		if !g.events.Running() {
+			g.birth = nil
 			g.stopSkip("end")
 			g.clearCast()
 			if g.sides != nil || g.stage != [2]stageActor{} {
@@ -1489,6 +1495,10 @@ func (g *Game) pump() bool {
 		}
 	case event.Wait:
 		g.waitT--
+		if g.birth != nil && g.in.ok() {
+			g.birth.age = birthDuration
+			g.waitT = 0
+		}
 		if g.skipping && !r.NoSkip {
 			g.waitT = 0
 		}
@@ -1813,6 +1823,8 @@ func (g *Game) Handle(e event.Effect) {
 		g.SFX(e.Name)
 	case event.VisualEffect:
 		g.visual(e)
+	case event.BreedEffect:
+		g.birth = &birthAnimation{effect: e}
 	case event.CampaignEffect:
 		if e.Kind == "order" {
 			g.emit("order", traceLine{"order": e.Order, "general": e.General, "target": e.Target, "result": e.Result, "turn": e.Turn})

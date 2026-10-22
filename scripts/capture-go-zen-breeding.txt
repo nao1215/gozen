@@ -8,8 +8,8 @@ shot s-altar
 press x
 wait 10
 do breed: {parents: [monster_1, monster_2], skills: []}
-wait 20
+wait 225
 shot s-breed
-wait 30
+wait 65
 shot s-child
 quit

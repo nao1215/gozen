@@ -95,14 +95,14 @@ func (s *bestiaryScreen) lineageTiles(x, top, w, h float64) []lineageTile {
 	if root == nil {
 		return nil
 	}
-	// Four equal slots leave room for the four grandparents without horizontal scrolling.
-	gap := 14.0
-	cardW := min(184, (w-48-3*gap)/4)
-	cardH := min(126, (h-90)/3)
+	// Fill the panel's usable area while preserving clear branches at both sizes.
+	margin := 24.0
+	gap := max(28, w*0.035)
+	cardW := (w - 2*margin - 3*gap) / 4
+	cardH := min(150, (h-100-2*52)/3)
 	left := x + (w-4*cardW-3*gap)/2
-	// Reserve the header and a bottom margin, then spread the three generations.
-	rowStep := (h - 70 - 20 - cardH) / 2
-	rowY := func(row int) float64 { return top + 70 + float64(2-row)*rowStep }
+	rowStep := (h - 82 - margin - cardH) / 2
+	rowY := func(row int) float64 { return top + 82 + float64(2-row)*rowStep }
 	place := func(n *data.LineageNode, row int, center float64) lineageTile {
 		return lineageTile{node: n, x: center - cardW/2, y: rowY(row), w: cardW, h: cardH, parent: -1}
 	}
@@ -200,7 +200,7 @@ func lineageNeighbor(tiles []lineageTile, current int, left, right, up, down boo
 			continue
 		}
 		if left || right {
-			scoreCandidate := dx*dx + 5*dy*dy
+			scoreCandidate := dx*dx + 7*dy*dy
 			if scoreCandidate < score {
 				best, score = i, scoreCandidate
 			}

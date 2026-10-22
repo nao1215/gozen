@@ -202,10 +202,16 @@ func TestBestiaryFitsBothScreenSizes(t *testing.T) {
 		if !(tiles[3].y < tiles[1].y && tiles[1].y < tiles[0].y) {
 			t.Fatalf("generation order at %dx%d: child %.1f parent %.1f grandparent %.1f", w, h, tiles[0].y, tiles[1].y, tiles[3].y)
 		}
-		if tiles[1].y-(tiles[3].y+tiles[3].h) < 30 || tiles[0].y-(tiles[1].y+tiles[1].h) < 30 {
+		if tiles[1].y-(tiles[3].y+tiles[3].h) < 48 || tiles[0].y-(tiles[1].y+tiles[1].h) < 48 {
 			t.Fatalf("generation gaps are too narrow at %dx%d", w, h)
 		}
-		if tiles[0].w < 180 || tiles[0].h < 120 {
+		if gap := tiles[4].x - (tiles[3].x + tiles[3].w); gap < 28 {
+			t.Fatalf("grandparent pictures are cramped at %dx%d: %.1f", w, h, gap)
+		}
+		if tiles[3].x > 322+50 || tiles[6].x+tiles[6].w < sw-75 {
+			t.Fatalf("lineage does not use panel width at %dx%d", w, h)
+		}
+		if tiles[0].w < 180 || tiles[0].h < 108 {
 			t.Fatalf("child picture is too small at %dx%d: %+v", w, h, tiles[0])
 		}
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	"github.com/nao1215/gozen/internal/event"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 )
@@ -21,6 +22,7 @@ type ranch struct {
 	options       []string
 	list          *list
 	done          func()
+	talk          talk
 }
 
 type ranchLayout struct {
@@ -36,8 +38,8 @@ func ranchScreenLayout(sw, sh float64, step string, items int) ranchLayout {
 		figureX: sw * 0.83, figureBottom: sh - 10, figureH: sh * 0.92,
 	}
 	if step == "actions" {
-		l.rows = 3
-		l.panelH = 306
+		l.rows = 4
+		l.panelH = 0
 	} else {
 		l.rows = min(6, max(3, int((sh-300)/44)))
 		l.panelH = sh - 40
@@ -48,6 +50,9 @@ func ranchScreenLayout(sw, sh float64, step string, items int) ranchLayout {
 
 func newRanch(g *Game, done func()) *ranch {
 	r := &ranch{done: done}
+	r.talk = talk{say: event.Say{Name: "Yorn", Text: "Bring me two monsters and I will join them."}, active: true}
+	r.talk.layout(g)
+	r.talk.shown = r.talk.total
 	r.show(g, "actions")
 	return r
 }
@@ -66,6 +71,7 @@ func (r *ranch) show(g *Game, step string) {
 		add("swap", "Swap party / reserve")
 		add("breed", "Breed monsters")
 		add("release", "Release monster")
+		add("leave", "Leave")
 	case "swap_in":
 		for _, id := range g.st.ReserveIDs() {
 			add(id, r.label(g, id))
@@ -113,6 +119,12 @@ func (r *ranch) show(g *Game, step string) {
 	l := ranchScreenLayout(sw, sh, step, len(items))
 	r.list = newList(items, l.panelX+12, 108, l.panelW-24, l.rows)
 	r.list.size = sizeS
+	if step == "actions" {
+		bx, by, _, _ := g.talkBox()
+		r.list.x, r.list.w = bx+24, min(450, sw*0.42)
+		r.list.y = by - r.list.height() - 16
+		r.list.size = sizeM
+	}
 }
 
 // hasPartner reports whether the monster can breed with any other owned monster.
@@ -200,6 +212,8 @@ func (r *ranch) update(g *Game) {
 			r.show(g, "breed_first")
 		case "release":
 			r.show(g, "release_id")
+		case "leave":
+			r.close(g)
 		}
 	case "swap_in":
 		r.first = id
@@ -303,7 +317,12 @@ func (r *ranch) draw(g *Game, dst *ebiten.Image) {
 			}
 		}
 	}
-	fill(dst, color.NRGBA{0, 0, 0, 0x50})
+	if r.step == "actions" {
+		r.talk.draw(g, dst)
+		r.list.draw(g, dst, true)
+		return
+	}
+	fill(dst, color.NRGBA{0, 0, 0, 0x30})
 	g.window(dst, l.panelX, l.panelY, l.panelW, l.panelH)
 	r.drawParents(g, dst)
 	g.text(dst, "Monster Ranch", l.panelX+20, l.panelY+18, sizeL, g.th.accent)
