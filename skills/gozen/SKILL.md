@@ -38,6 +38,8 @@ In GitHub Actions, `nao1215/setup-gozen` installs the version in the game's `go.
 
 A complete small game is in references/minimal.md.
 
+For battle forms, HP pictures and enemy motion use schema version 7. `hp_triggers` transforms a foe below an HP threshold; a self-scoped skill's `merge` combines eligible foes. Enemy `images` lists picture files and actor `images` lists face names at descending HP thresholds. Set `puppet` on an enemy or actor for moving portraits; its YAML can use `soft_sway` with `rect` or `ellipse` and `follow: body` for gentle motion. Check it with `gozen art puppet` and see the [battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-enemy).
+
 ## Reading the errors
 
 `gozen check` prints one line for each problem: file, line, column, the path in the data, the message and a code.

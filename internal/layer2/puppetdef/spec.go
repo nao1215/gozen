@@ -34,12 +34,14 @@ type Spec struct {
 	// unless faces has one entry).
 	Face string `yaml:"face,omitempty"`
 	// Fade is the face change in seconds (0 means 0.25).
-	Fade      float64             `yaml:"fade,omitempty"`
-	Eyes      *Eyes               `yaml:"eyes,omitempty"`
-	Mouth     *Mouth              `yaml:"mouth,omitempty"`
-	Head      *Head               `yaml:"head,omitempty"`
-	Hair      []Shape             `yaml:"hair,omitempty"`
-	Springs   []Part              `yaml:"springs,omitempty"`
+	Fade    float64 `yaml:"fade,omitempty"`
+	Eyes    *Eyes   `yaml:"eyes,omitempty"`
+	Mouth   *Mouth  `yaml:"mouth,omitempty"`
+	Head    *Head   `yaml:"head,omitempty"`
+	Hair    []Shape `yaml:"hair,omitempty"`
+	Springs []Part  `yaml:"springs,omitempty"`
+	// SoftSway is a set of gently moving regions shared by actor and enemy puppets.
+	SoftSway  []Part              `yaml:"soft_sway,omitempty"`
 	Motion    Motion              `yaml:"motion,omitempty"`
 	Reactions map[string]Reaction `yaml:"reactions,omitempty"`
 }
@@ -110,8 +112,9 @@ type Head struct {
 // Shape is a rectangle [x, y, w, h] or a polygon [[x, y], ...]. Hair shapes sway
 // behind the head; the bottom of a shape moves the most.
 type Shape struct {
-	Rect []float64   `yaml:"rect,omitempty"`
-	Poly [][]float64 `yaml:"poly,omitempty"`
+	Rect    []float64   `yaml:"rect,omitempty"`
+	Ellipse []float64   `yaml:"ellipse,omitempty"`
+	Poly    [][]float64 `yaml:"poly,omitempty"`
 }
 
 // MaxSprings bounds the swaying parts: the hair (when given) counts as one.
@@ -123,8 +126,9 @@ const MaxSprings = 16
 // Later parts are laid over earlier ones (and over the hair) where they overlap.
 // Zero numbers use the defaults, which equal the hair's.
 type Part struct {
-	Rect []float64   `yaml:"rect,omitempty"`
-	Poly [][]float64 `yaml:"poly,omitempty"`
+	Rect    []float64   `yaml:"rect,omitempty"`
+	Ellipse []float64   `yaml:"ellipse,omitempty"`
+	Poly    [][]float64 `yaml:"poly,omitempty"`
 	// Root is where the part hangs from: an edge (top, bottom, left, right) or a
 	// point [x, y]. The default is top.
 	Root Root `yaml:"root,omitempty"`
@@ -199,10 +203,12 @@ type Breath struct {
 }
 
 // Sway turns the head by up to Angle degrees and shifts it by up to Shift pixels.
+// DamageBoost increases sway strength and speed as health falls; zero disables it.
 type Sway struct {
-	Angle  float64 `yaml:"angle,omitempty"`
-	Shift  float64 `yaml:"shift,omitempty"`
-	Period float64 `yaml:"period,omitempty"`
+	Angle       float64 `yaml:"angle,omitempty"`
+	Shift       float64 `yaml:"shift,omitempty"`
+	Period      float64 `yaml:"period,omitempty"`
+	DamageBoost float64 `yaml:"damage_boost,omitempty"`
 }
 
 // Tilt is the occasional head tilt: Angle degrees, once in Every seconds.
@@ -377,7 +383,7 @@ func (s *Spec) Validate() error {
 			return fmt.Errorf("hair[%d]: %w", i, err)
 		}
 	}
-	n := len(s.Springs)
+	n := len(s.Springs) + len(s.SoftSway)
 	if len(s.Hair) > 0 {
 		n++
 	}
@@ -387,6 +393,11 @@ func (s *Spec) Validate() error {
 	for i, p := range s.Springs {
 		if err := p.check(s.Head != nil); err != nil {
 			return fmt.Errorf("springs[%d]: %w", i, err)
+		}
+	}
+	for i, p := range s.SoftSway {
+		if err := p.check(s.Head != nil); err != nil {
+			return fmt.Errorf("soft_sway[%d]: %w", i, err)
 		}
 	}
 	if err := s.Motion.check(); err != nil {
@@ -420,7 +431,7 @@ func (m Motion) check() error {
 		}
 	}
 	if w := m.Sway; w != nil {
-		if err := nonNeg("sway", w.Angle, w.Shift, w.Period); err != nil {
+		if err := nonNeg("sway", w.Angle, w.Shift, w.Period, w.DamageBoost); err != nil {
 			return err
 		}
 		if w.Angle > 45 {
@@ -455,7 +466,7 @@ func (m Motion) check() error {
 }
 
 func (p Part) check(hasHead bool) error {
-	if err := checkShape(Shape{Rect: p.Rect, Poly: p.Poly}); err != nil {
+	if err := checkShape(Shape{Rect: p.Rect, Ellipse: p.Ellipse, Poly: p.Poly}); err != nil {
 		return err
 	}
 	switch {
@@ -549,12 +560,26 @@ func checkPic(p Pic) error {
 }
 
 func checkShape(s Shape) error {
+	count := 0
+	for _, set := range []bool{s.Rect != nil, s.Ellipse != nil, s.Poly != nil} {
+		if set {
+			count++
+		}
+	}
+	if count == 0 {
+		return errors.New("give rect or poly or ellipse")
+	}
+	if count > 1 {
+		return errors.New("give rect, poly, or ellipse, not both")
+	}
 	switch {
-	case s.Rect != nil && s.Poly != nil:
-		return errors.New("give rect or poly, not both")
 	case s.Rect != nil:
 		if len(s.Rect) != 4 || !finite(s.Rect...) || s.Rect[2] <= 0 || s.Rect[3] <= 0 {
 			return errors.New("rect needs [x, y, w, h] with a positive size")
+		}
+	case s.Ellipse != nil:
+		if len(s.Ellipse) != 4 || !finite(s.Ellipse...) || s.Ellipse[2] <= 0 || s.Ellipse[3] <= 0 {
+			return errors.New("ellipse needs [x, y, w, h] with a positive size")
 		}
 	case s.Poly != nil:
 		if len(s.Poly) < 3 {
@@ -565,8 +590,6 @@ func checkShape(s Shape) error {
 				return errors.New("poly points need [x, y]")
 			}
 		}
-	default:
-		return errors.New("give rect or poly")
 	}
 	return nil
 }

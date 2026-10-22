@@ -1,0 +1,5 @@
+# The first hit lands while the puppet is already below half health.
+wait 40
+battle-hp enemy 0 125
+play motion 5
+quit

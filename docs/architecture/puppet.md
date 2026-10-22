@@ -83,9 +83,11 @@ springs:                 # swaying parts. Ribbons, hems, sleeves, cords and so o
     amount: 1            # multiplier of the lag (default 1)
     limit: 30            # upper bound of the lag (pixels. Default 15% of the head radius)
   - {poly: [[300, 40], [360, 40], [330, 160]], root: [330, 160]}  # the root as a point (e.g. hair tips attached below)
+soft_sway:               # gentle regions for an actor or enemy; the same spring settings as above
+  - {ellipse: [490, 760, 240, 160], root: top, follow: body, axis: y, amount: 1.2, limit: 8}
 motion:                  # omitted groups take the defaults. A strength of 0 inside a group stops that motion
   breath: {depth: 0.006, period: 3.8}   # vertical stretch (ratio of height) and period in seconds
-  sway: {angle: 2.5, shift: 10, period: 6.5}  # head sway angle (degrees) and offset (pixels)
+  sway: {angle: 2.5, shift: 10, period: 6.5, damage_boost: 0}  # head sway; damage_boost increases strength and speed at low HP
   tilt: {angle: 7, every: [5, 11]}      # an occasional head tilt
   hair: {gain: 1, stiffness: 60, damping: 7}  # the spring of the hair
   talk: {nod: 8}                        # up and down of the head while talking (pixels)
@@ -104,6 +106,7 @@ reactions:               # named variants of strength. The built-in names can be
 | `hair` | none | needs `head`. A rectangle has a positive size, a polygon 3 or more points |
 | `springs` | none | the area is the same as for `hair`. `follow: head` (default) needs `head`. `root`, `follow` and `axis` are the words above or a point. `stiffness` up to 10000, `damping` up to 1000, numbers 0 or more. Up to 16 together with `hair` |
 | `motion.sway.shift`, `talk.nod` | 2.5% and 2% of the head radius | 0 or more. The angle up to 45 degrees, `breath.depth` up to 0.2 |
+| `motion.sway.damage_boost` | 0 (off) | Nonnegative. Lower HP increases sway size and speed; a hit adds a brief bounce and lingering sway. |
 | `reactions` | the built-in hop, shrink, shake, nod, tilt, freeze (temporarily stops breathing, sway, blinking and mouth) | `kind` is one of the built-ins. `amount` (multiplier, default 1) and `time` (seconds) are 0 or more |
 
 Picture errors (missing, not a PNG or WebP, larger than 8192 pixels, sticking out of the base, a whole picture whose size differs from the base, no differing part) are returned by `Load` with a location.
@@ -117,4 +120,5 @@ A part follows the motion of what it follows (head or body) with a lag through a
 - The edge of the area is blurred inward (8% of the head radius). Since it is joined by mesh triangles, it blends out of the area on the picture by up to one mesh cell (1/48 of the long side, at least 8 pixels). Take the area of a thin part a little wider.
 - Where they overlap, the later part in the list decides (it replaces the earlier part's motion by the extent of the later part's area). `hair` is at the head of the list.
 - `hair` moves the same as a part with the defaults of `springs` (`root: top`, `follow: head`) (unless the shapes overlap. The several shapes of `hair` share one spring, and the larger weight is used where they overlap). `motion.hair` affects only the spring of `hair`.
+- `soft_sway` accepts the same settings as `springs` and is drawn after them. It is suitable for a gently moving area of an actor or enemy puppet. Use `rect: [x, y, width, height]` or `ellipse: [x, y, width, height]` with `follow: body` to trail breathing and whole-body reactions. The coordinates are pixels in the base image.
 - The same random seed and the same sequence of calls give the same sway. With a stiff spring or a small TPS, one Update is computed in finer sub-steps.

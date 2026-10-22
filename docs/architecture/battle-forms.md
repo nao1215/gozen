@@ -66,6 +66,6 @@ actors:
     images: [{below: 0.3, face: tired}]
 ```
 
-Enemy `motion` is `none` by default. `breathe`, `sway`, and `bob` are subtle idle movements; all foes lunge when acting and shake when hit. An optional enemy `puppet` points to the same puppet YAML format used by actors. The battle screen crossfades picture changes and flashes on form changes.
+Enemy `motion` is `none` by default. `breathe`, `sway`, and `bob` are subtle idle movements; all foes lunge when acting and shake when hit. An optional enemy `puppet` points to the same puppet YAML format used by actors. Both can define `soft_sway` regions in that file: a rectangle or ellipse of the base picture moves gently with breathing and trails action and hit reactions. The battle screen crossfades picture changes and flashes on form changes.
 
-The Go Zen sample uses the existing slime and Tollkeeper files for its new forms, and Maren's existing worried face below 35% HP. The author should paint a larger pooled slime, a damaged Drip Slime for its below-half picture, and an opened Tollkeeper shell. Replace the sample's reused files with those pictures when available. The existing images are project assets; no third-party art was added.
+The Go Zen sample uses an author-generated King Slime picture for the merge result, the existing Tollkeeper file for both forms, a Drip Slime alternate picture below half HP, and Maren's worried face below 35% HP. The Succubus uses a puppet for blinking and motion. The existing Tollkeeper and Drip Slime alternate pictures can be replaced with distinct art when available.

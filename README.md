@@ -130,6 +130,18 @@ enemies:
 
 `gozen check game` finds breeding rules that can never work, and `gozen sim breed game` lists every monster reachable from the ones that can be caught, with the shortest recipe. See [Collect, raise and breed monsters](https://nao1215.github.io/gozen/cookbook/#collect-raise-and-breed-monsters).
 
+### Battles
+
+Enemies can change form at an HP threshold, combine with allies, change pictures as HP falls, and move with a puppet portrait. Go Zen shows the Tollkeeper's second form, Drip Slimes gathering into King Slime, and a moving Succubus face with a soft sway region (schema version 7).
+
+| Transform | Merge |
+|:--|:--|
+| ![The Tollkeeper changes into its second form](docs/images/go-zen-transform.gif) | ![Drip Slimes gather into King Slime](docs/images/go-zen-merge.gif) |
+| Pictures by HP | Motion and sway |
+| ![A damaged monster shows its low HP picture](docs/images/go-zen-hp-pictures.jpg) | ![The Succubus blinks, sways and reacts to a hit](docs/images/go-zen-motion.gif) |
+
+See [the battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-enemy).
+
 ## Playtesting
 
 Start the game with `--dev` and these keys work while you play.

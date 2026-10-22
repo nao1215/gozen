@@ -47,6 +47,7 @@ Running the game with `--script`, `--trace`, `--replay` and `--record` is descri
 
 - The canonical list of button names is `scriptButtons` in `internal/play/input.go`.
 - A picture name that contains a path separator is rejected. A script needs an explicit `--shots`.
+- In a development capture, `battle-hp enemy|party INDEX HP` sets a living battle unit's HP by zero-based troop or party index. HP must be from 1 through that unit's maximum. The trace records each setup as `battle_setup`; it does not count as a damage event.
 - Recording needs a script, automatic play or a replay. A long replay and the integrated run with ffmpeg are not confirmed in the local T3 environment.
 - Notes are made with F9 under `--dev --memos notes`. They record the screen, the state and an annotation, and finalize the JSON last. Adding the build revision is enabled separately with `--build-info`, and external input on Linux with `--external-input`. No source search or Git execution is done.
 

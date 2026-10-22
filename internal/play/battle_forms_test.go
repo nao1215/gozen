@@ -39,11 +39,20 @@ func TestEnemyPuppetUsesActorRigFormat(t *testing.T) {
 	s := btlBattle(t, g)
 	u := s.b.Foes[0]
 	u.Def.Puppet = "p/rig.yaml"
-	if p := g.enemyPuppet(u, "normal.png"); p == nil {
+	p := g.enemyPuppet(u, "normal.png", u.HP)
+	if p == nil {
 		t.Fatal("enemy puppet was not loaded")
 	}
 	if g.puppets.live["enemy."+u.EID] == nil {
 		t.Fatal("enemy puppet was not retained")
+	}
+	before := p.Motion.Pose()
+	s.reactTo(g, u, "hit", 40)
+	for range 5 {
+		p.Motion.Step()
+	}
+	if p.Motion.Pose() == before {
+		t.Fatal("hit did not move the enemy puppet")
 	}
 }
 

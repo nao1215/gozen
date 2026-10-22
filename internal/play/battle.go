@@ -730,6 +730,12 @@ func (s *battleScene) damageHit(g *Game, st battle.Step, r image.Rectangle, kind
 		s.addScreen(g, "flash", 0, 0, colorWhite, 0.22, 8)
 	}
 	if st.Amount > 0 {
+		if st.Target.Enemy && st.Stat != "mp" {
+			if p := g.puppets.live["enemy."+st.Target.EID]; p != nil {
+				p.Motion.SetHealth(float64(st.HP) / float64(max(1, st.Target.MHP())))
+				p.Motion.Hit()
+			}
+		}
 		s.flashU[st.Target] = 14
 		s.shakeU[st.Target] = 16
 		s.reactTo(g, st.Target, "hit", 40)
@@ -800,7 +806,17 @@ func (s *battleScene) usage(id string) *data.Usage {
 	return nil
 }
 
-func (s *battleScene) reactTo(_ *Game, u *battle.Unit, kind string, t int) {
+func (s *battleScene) reactTo(g *Game, u *battle.Unit, kind string, t int) {
+	if u == nil {
+		return
+	}
+	if u.Def != nil {
+		if p := g.puppets.live["enemy."+u.EID]; p != nil {
+			if r, ok := p.Rig().Spec.ReactionOf(map[string]string{"act": "hop", "hit": "shake"}[kind]); ok {
+				p.Motion.React(r)
+			}
+		}
+	}
 	var face string
 	if u.Actor != nil {
 		face = u.Actor.Def().Reactions[kind]
@@ -1487,7 +1503,8 @@ func (s *battleScene) drawFoes(g *Game, dst *ebiten.Image) {
 			if fade.form && fade.ticks > 0 {
 				newAlpha *= float32(16-fade.ticks) / 16
 			}
-			if p := g.enemyPuppet(u, path); p != nil {
+			if p := g.enemyPuppet(u, path, s.shownHP[u]); p != nil {
+				p.Motion.Speak(s.actor == u)
 				g.drawPuppet(dst, p, x, box.bottom+bob, fh, newAlpha, false)
 			} else {
 				g.drawStanding(dst, path, x, box.bottom+bob, fh, newAlpha, false, cs)

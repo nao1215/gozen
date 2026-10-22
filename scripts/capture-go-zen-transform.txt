@@ -1,0 +1,5 @@
+# Put the Tollkeeper just above its scaled half-HP threshold before auto battle.
+wait 40
+battle-hp enemy 0 680
+play transform 5
+quit

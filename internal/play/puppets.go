@@ -57,7 +57,7 @@ func (g *Game) talkPuppet(s event.Say) (*puppet.Puppet, int) {
 	return p, i
 }
 
-func (g *Game) enemyPuppet(u *battle.Unit, picture string) *puppet.Puppet {
+func (g *Game) enemyPuppet(u *battle.Unit, picture string, hp int) *puppet.Puppet {
 	if u == nil || u.Def == nil || u.Def.Puppet == "" {
 		return nil
 	}
@@ -86,6 +86,7 @@ func (g *Game) enemyPuppet(u *battle.Unit, picture string) *puppet.Puppet {
 	if i, ok := p.Rig().Face(strings.TrimSuffix(path.Base(picture), path.Ext(picture))); ok {
 		p.Motion.SetFace(i)
 	}
+	p.Motion.SetHealth(float64(hp) / float64(max(1, u.MHP())))
 	p.Motion.Step()
 	return p
 }

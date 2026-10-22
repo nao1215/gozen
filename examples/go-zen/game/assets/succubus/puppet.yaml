@@ -1,0 +1,20 @@
+base: base.png
+faces:
+  succubus:
+    eyes:
+      closed: eyes-closed.png
+      every: [2, 4]
+      double: 0.2
+    mouth:
+      frames:
+        - image: face
+        - {image: mouth-open.png, at: [232, 55]}
+      speed: 8
+head: {center: [240, 48], radius: 35, neck: [240, 86]}
+hair:
+  - {rect: [200, 14, 80, 155]}
+soft_sway:
+  - {ellipse: [185, 76, 103, 82], root: top, follow: body, axis: y, stiffness: 38, damping: 5, amount: 1.4, limit: 7}
+motion:
+  breath: {depth: 0.012, period: 3.8}
+  sway: {angle: 2.5, shift: 2, period: 5.5, damage_boost: 4}

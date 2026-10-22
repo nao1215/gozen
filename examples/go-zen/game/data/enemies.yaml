@@ -18,14 +18,14 @@ enemies:
     ai:
       - {use: slime_merge, when: "allies.kind_drip_slime >= 2", once: true, priority: 2}
       - {use: drip}
-  pooled_slime:
+  king_slime:
     family: slime
     rank: 2
     monster_class: monster_slime
-    lore: "Two Drip Slimes have pooled into a larger body."
-    name: Pooled Slime
-    image: {file: enemies/drip_slime.png, tint: "#9cdce8"}
-    scale: 1.55
+    lore: "Drip Slimes gather into a King Slime. Its broad body carries their shared rhythm through the old channels."
+    name: King Slime
+    image: enemies/king_slime.png
+    scale: 1.4
     motion: bob
     stats: {mhp: 96, mmp: 0, atk: 17, def: 3, mat: 0, mdf: 2, agi: 3, luk: 1}
     exp: 24
@@ -658,6 +658,7 @@ enemies:
     monster_class: monster_demon
     name: Succubus
     image: enemies/succubus.png
+    puppet: succubus/puppet.yaml
     lore: "The Succubus is a night-dwelling spirit of the old ruins. It watches over quiet halls and uses swift magic to keep intruders away."
     stats: {mhp: 277, mmp: 0, atk: 43, def: 19, mat: 37, mdf: 16, agi: 23, luk: 5}
 

@@ -1,0 +1,6 @@
+# Keep both Drip Slimes alive until their first Pool Together turn.
+wait 40
+battle-hp enemy 0 48
+battle-hp enemy 1 48
+play merge 5
+quit
