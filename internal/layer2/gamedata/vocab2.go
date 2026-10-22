@@ -139,10 +139,15 @@ func (c *checker) nearest(name string) string {
 
 // editDistance is an edit distance that counts swapping two adjacent characters as 1.
 func editDistance(a, b string) int {
+	// Suggestions only use distances below three. Large names cannot be suggestions;
+	// avoid a quadratic allocation for hostile author input.
+	if len(a) > 256 || len(b) > 256 {
+		return 3
+	}
 	x, y := []rune(a), []rune(b)
-	d := make([][]int, len(x)+1)
+	d := append(make([][]int, len(x)), nil)
 	for i := range d {
-		d[i] = make([]int, len(y)+1)
+		d[i] = append(make([]int, len(y)), 0)
 		d[i][0] = i
 	}
 	for j := range d[0] {
@@ -401,10 +406,7 @@ func (a *Assignments) UnmarshalYAML(n ast.Node) error {
 			if err != nil {
 				return err
 			}
-			if strings.Contains(text, "'") || (!strings.HasPrefix(text, "{") && strings.Contains(text, `"`)) {
-				return &yaml.SyntaxError{Message: fmt.Sprintf("set %s: a name without quotes", key), Token: entry.Value.GetToken()}
-			}
-			if e, err = parseExpr("'" + text + "'"); err != nil {
+			if e, err = parseExpr(quoteExprString(text)); err != nil {
 				return err
 			}
 		} else if err := e.UnmarshalYAML(entry.Value); err != nil {

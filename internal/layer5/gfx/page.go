@@ -7,6 +7,10 @@ import (
 
 const PageShrink = 0.8
 
+// maxPageParts bounds the quadratic page balancing pass. Longer text uses the
+// linear fallback in paginateWith, preserving all lines.
+const maxPageParts = 1024
+
 func Paginate(s string, size, width float64, lines int) ([][]string, float64) {
 	return paginateWith(s, size, lines, func(t string, sz float64) []string { return Wrap(t, sz, width) })
 }
@@ -26,7 +30,7 @@ func paginateWith(s string, size float64, lines int, wrap func(string, float64) 
 		return ls
 	}
 	sizes := []float64{size}
-	for sz := size * 0.94; sz >= size*PageShrink; sz *= 0.94 {
+	for sz := size * 0.94; sz > 0 && sz < size && sz >= size*PageShrink; sz *= 0.94 {
 		sizes = append(sizes, sz)
 	}
 	for _, sz := range sizes {
@@ -45,8 +49,10 @@ func paginateWith(s string, size float64, lines int, wrap func(string, float64) 
 	if best == nil {
 		ls := wr(s, size)
 		var out [][]string
-		for i := 0; i < len(ls); i += lines {
-			out = append(out, ls[i:min(len(ls), i+lines)])
+		for i := 0; i < len(ls); {
+			end := i + min(lines, len(ls)-i)
+			out = append(out, ls[i:end])
+			i = end
 		}
 		return out, size
 	}
@@ -64,20 +70,29 @@ func splitPages(s string, size float64, lines int, wr func(string, float64) []st
 		ls := wr(body, size)
 		if len(ls) <= lines {
 			parts = append(parts, u)
+			if len(parts) > maxPageParts {
+				return nil
+			}
 			continue
 		}
-		n := (len(ls) + lines - 1) / lines
-		per := (len(ls) + n - 1) / n
+		n := 1 + (len(ls)-1)/lines
+		if n > maxPageParts-len(parts) {
+			return nil
+		}
+		per := 1 + (len(ls)-1)/n
 		for i := 0; i < len(ls); i += per {
 			parts = append(parts, strings.Join(ls[i:min(len(ls), i+per)], ""))
 		}
 		parts[len(parts)-1] += u[len(body):]
+		if len(parts) > maxPageParts {
+			return nil
+		}
 	}
 	type cell struct {
 		pages, longest, from int
 		ok                   bool
 	}
-	dp := make([]cell, len(parts)+1)
+	dp := append(make([]cell, len(parts)), cell{})
 	dp[0].ok = true
 	for i := 1; i <= len(parts); i++ {
 		for j := i - 1; j >= 0; j-- {

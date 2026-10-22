@@ -204,6 +204,14 @@ func TestResample(t *testing.T) {
 	if got := resample(src, 0); &got[0] != &src[0] {
 		t.Fatal("non-positive rate must return the input")
 	}
+	for _, rate := range []float64{math.NaN(), math.Inf(1), math.SmallestNonzeroFloat64} {
+		if got := resample(src, rate); &got[0] != &src[0] {
+			t.Fatalf("invalid or excessive rate %v must return the input", rate)
+		}
+	}
+	if got := resample(src, math.MaxFloat64); len(got) != 8 {
+		t.Fatalf("very fast rate produced %d bytes, want one frame", len(got))
+	}
 	one := stereo(1)
 	if got := resample(one, 2); &got[0] != &one[0] {
 		t.Fatal("a single frame cannot be resampled")

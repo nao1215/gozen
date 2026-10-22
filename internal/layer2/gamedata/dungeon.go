@@ -5,6 +5,7 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/nao1215/gozen/internal/diag"
 )
@@ -55,6 +56,13 @@ type Dungeon struct {
 
 	Grid [][]rune `yaml:"-"` // the map, rows of the same width
 }
+
+// MaxDungeonSide bounds each map dimension. Path finding and generation allocate
+// per-cell buffers; a 255 by 255 map keeps those buffers bounded.
+const MaxDungeonSide = 255
+
+// MaxDungeonRooms bounds generation attempts and room placement work.
+const MaxDungeonRooms = 1024
 
 // DungeonLook is another look of a dungeon (see Dungeon.Looks). What it leaves empty stays
 // as the dungeon says.
@@ -296,11 +304,17 @@ func (d *Dungeon) parse() {
 	lines := strings.Split(strings.TrimRight(d.Map, "\n "), "\n")
 	w := 0
 	for _, ln := range lines {
-		w = max(w, len([]rune(ln)))
+		w = max(w, min(utf8.RuneCountInString(ln), MaxDungeonSide))
 	}
 	d.Grid = nil
-	for _, ln := range lines {
-		row := []rune(ln)
+	for _, ln := range lines[:min(len(lines), MaxDungeonSide)] {
+		row := make([]rune, 0, w)
+		for _, r := range ln {
+			if len(row) == w {
+				break
+			}
+			row = append(row, r)
+		}
 		for len(row) < w {
 			row = append(row, CellNone)
 		}
@@ -408,6 +422,11 @@ func (c *checker) dungeon(w string, l *Location) {
 			c.errorf(diag.Shape, w+".map", "the map is empty")
 			return
 		}
+		width, height := mapDimensions(d.Map)
+		if width > MaxDungeonSide || height > MaxDungeonSide {
+			c.errorf(diag.OutOfRange, w+".map", "map width and height must be at most %d cells", MaxDungeonSide)
+			return
+		}
 		for y, row := range d.Grid {
 			for x, r := range row {
 				if !builtin(r) && d.Tile(r) == nil {
@@ -450,6 +469,16 @@ func (c *checker) dungeon(w string, l *Location) {
 	}
 }
 
+// mapDimensions reads the author's full dimensions even though parse keeps only
+// a bounded grid until Check can report the invalid map.
+func mapDimensions(m string) (width, height int) {
+	for row := range strings.SplitSeq(strings.TrimRight(m, "\n "), "\n") {
+		width = max(width, utf8.RuneCountInString(row))
+		height++
+	}
+	return width, height
+}
+
 // generate checks how a generated dungeon is made (size, arrival cell, the objects to place and
 // their count expressions) and
 // records the characters that will be placed in used.
@@ -460,6 +489,12 @@ func (c *checker) generate(w string, d *Dungeon, used map[rune]bool) {
 	}
 	if g.Width < 9 || g.Height < 9 {
 		c.errorf(diag.OutOfRange, w+".generate", "width and height are 9 or more")
+	}
+	if g.Width > MaxDungeonSide || g.Height > MaxDungeonSide {
+		c.errorf(diag.OutOfRange, w+".generate", "width and height must be at most %d cells", MaxDungeonSide)
+	}
+	if g.Rooms > MaxDungeonRooms {
+		c.errorf(diag.OutOfRange, w+".generate.rooms", "want at most %d rooms", MaxDungeonRooms)
 	}
 	if g.Width%2 == 0 || g.Height%2 == 0 {
 		c.errorf(diag.OutOfRange, w+".generate", "width and height are odd numbers")
@@ -534,6 +569,10 @@ func (c *checker) generate(w string, d *Dungeon, used map[rune]bool) {
 			c.errorf(diag.Shape, ww+".seed", "a drawn floor needs no seed (the map is the floor)")
 		}
 		rows := strings.Split(m, "\n")
+		if width, height := mapDimensions(m); width > MaxDungeonSide || height > MaxDungeonSide {
+			c.errorf(diag.OutOfRange, ww+".map", "map width and height must be at most %d cells", MaxDungeonSide)
+			continue
+		}
 		width := len([]rune(rows[0]))
 		starts := 0
 		for y, row := range rows {

@@ -30,7 +30,7 @@ func TestGoCommentsAreEnglish(t *testing.T) {
 		}
 		if d.IsDir() {
 			switch d.Name() {
-			case ".git", "node_modules", "vendor":
+			case ".git", "build", "node_modules", "vendor":
 				return fs.SkipDir
 			}
 			return nil

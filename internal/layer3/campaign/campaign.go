@@ -433,7 +433,7 @@ var ErrNoCampaign = errors.New("the game has no campaign")
 
 // Choices lists ids as options, with a last option to cancel.
 func Choices(ids []string, label func(string) string) []string {
-	out := make([]string, 0, len(ids)+1)
+	out := make([]string, 0, len(ids))
 	for _, id := range ids {
 		out = append(out, label(id))
 	}

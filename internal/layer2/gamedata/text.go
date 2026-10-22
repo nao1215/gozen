@@ -45,6 +45,12 @@ func parseExpr(src string) (Expr, error) {
 	return Expr{e}, nil
 }
 
+// quoteExprString protects a value interpolated into an expression. The lexer
+// accepts literal newlines, and uses backslash to escape its delimiter or itself.
+func quoteExprString(s string) string {
+	return `"` + strings.ReplaceAll(strings.ReplaceAll(s, `\`, `\\`), `"`, `\"`) + `"`
+}
+
 // Render replaces each {expression} of s by its value in env. An expression that fails
 // is left as written, so a mistake shows on the screen instead of stopping the game.
 func Render(s string, env expr.Env) string {

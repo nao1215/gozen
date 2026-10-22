@@ -2,10 +2,12 @@ package dungeon
 
 import (
 	"hash/fnv"
+	"math"
 	"math/rand/v2"
 	"slices"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/nao1215/gozen/internal/expr"
 	"github.com/nao1215/gozen/internal/layer1/optional"
@@ -65,6 +67,12 @@ func DiveAt(db *data.DB, st *rpg.State, loc string, floor int, at, facing string
 func Make(db *data.DB, st *rpg.State, loc string) {
 	d := db.Locations[loc].Dungeon
 	g := d.Generate
+	// Loaded games are checked, but direct callers may supply an unchecked definition.
+	bounded := *g
+	bounded.Width = min(max(g.Width, 9), data.MaxDungeonSide)
+	bounded.Height = min(max(g.Height, 9), data.MaxDungeonSide)
+	bounded.Rooms = min(max(g.Rooms, 0), data.MaxDungeonRooms)
+	g = &bounded
 	seed := optional.Value[float64](st.Vars[VarSeed])
 	floor := optional.Value[float64](st.Vars[VarFloor])
 	s := uint64(seed)
@@ -102,7 +110,10 @@ func Make(db *data.DB, st *rpg.State, loc string) {
 	}
 	if g.Size.Set() { // the floor's own size: small floors first
 		if n, err := g.Size.Number(env); err == nil {
-			side := int(n) | 1
+			if math.IsNaN(n) || math.IsInf(n, 0) {
+				n = 9
+			}
+			side := int(max(9, min(n, float64(data.MaxDungeonSide)))) | 1
 			gg := *g
 			gg.Width, gg.Height = max(9, min(g.Width, side)), max(9, min(g.Height, side))
 			gg.Rooms = max(1, g.Rooms*gg.Width*gg.Height/(g.Width*g.Height))
@@ -207,8 +218,7 @@ type room struct{ x, y, w, h int }
 
 // mazeGrid is a maze of rooms and corridors (walls #, floor ., doors D) and its rooms.
 func mazeGrid(g *data.Generate, rng *rand.Rand) ([][]rune, []room) {
-	w, h := g.Width|1, g.Height|1
-	w, h = max(w, 9), max(h, 9)
+	w, h := min(max(g.Width, 9), data.MaxDungeonSide)|1, min(max(g.Height, 9), data.MaxDungeonSide)|1
 	grid := make([][]rune, h)
 	for y := range grid {
 		grid[y] = []rune(strings.Repeat("#", w))
@@ -217,8 +227,9 @@ func mazeGrid(g *data.Generate, rng *rand.Rand) ([][]rune, []room) {
 	isWall := func(x, y int) bool { return x > 0 && y > 0 && x < w-1 && y < h-1 && grid[y][x] == '#' }
 	// rooms
 	var rooms []room
-	for range g.Rooms * 6 {
-		if len(rooms) >= g.Rooms {
+	roomsWanted := min(max(g.Rooms, 0), data.MaxDungeonRooms)
+	for range roomsWanted * 6 {
+		if len(rooms) >= roomsWanted {
 			break
 		}
 		rw, rh := 3+2*rng.IntN(2), 3+2*rng.IntN(2)
@@ -349,11 +360,21 @@ func mazeGrid(g *data.Generate, rng *rand.Rand) ([][]rune, []room) {
 
 // Drawn is a hand-drawn floor (m: rows of # . D and tile characters, the start drawn once)
 // with what place asks for placed on it as on a made floor: a character drawn counts
-// toward its count, and only the rest are placed.
+// toward its count, and only the rest are placed. An unchecked map with uneven
+// rows or a side longer than MaxDungeonSide yields an empty string.
 func Drawn(g *data.Generate, m string, rng *rand.Rand, kind func(rune) Kind, count func(data.Expr) int) string {
 	var grid [][]rune
+	width := -1
 	for ln := range strings.SplitSeq(strings.Trim(m, "\n"), "\n") {
+		rowWidth := utf8.RuneCountInString(ln)
+		if len(grid) >= data.MaxDungeonSide || rowWidth > data.MaxDungeonSide || width >= 0 && rowWidth != width {
+			return ""
+		}
+		width = rowWidth
 		grid = append(grid, []rune(ln))
+	}
+	if len(grid) == 0 || len(grid[0]) == 0 {
+		return ""
 	}
 	return placeOn(g, grid, nil, rng, kind, count, true)
 }
@@ -377,7 +398,7 @@ func placeOn(g *data.Generate, grid [][]rune, rooms []room, rng *rand.Rand, kind
 		n := count(p.Count)
 		used := min(max(0, n), have[ch])
 		have[ch] -= used
-		need[i] = n - used
+		need[i] = min(max(0, n-used), w*h)
 	}
 	// the cells asked for by place (at): opened and joined to the nearest open cell
 	for i, p := range g.Place {
@@ -871,7 +892,18 @@ func abs(n int) int {
 // it cannot come back). Slides carry the party as SlideEnd does (stopping before a wall, a
 // door or a solid thing, and on any other tile).
 func walkable(grid [][]rune, start [2]int, kind func(rune) Kind) bool {
+	if len(grid) == 0 {
+		return false
+	}
 	h, w := len(grid), len(grid[0])
+	if !validSize(w, h) || start[0] < 0 || start[1] < 0 || start[0] >= w || start[1] >= h {
+		return false
+	}
+	for _, row := range grid {
+		if len(row) != w {
+			return false
+		}
+	}
 	at := func(x, y int) rune {
 		if x < 0 || y < 0 || x >= w || y >= h {
 			return '#'
