@@ -57,8 +57,8 @@ BreedPair:
   min_plus: "An optional minimum of the parents' combined plus values."
 BreedStaging:
   _: "Rank thresholds for birth presentation; omitted values default to rare rank 4 and legendary rank 7."
-  rare_rank: "The first child rank with gold light and a longer flash."
-  legend_rank: "The first child rank with rainbow light, shake and a picture cut-in."
+  rare_rank: "The first child rank with a longer pause before reveal, a gold ring and a slower afterglow."
+  legend_rank: "The first child rank with the longest pause, gold and blue-grey rings and a low sound."
 Breeding:
   _: "The monster breeding requirements and recipes."
   min_level: "The minimum level of each parent; at least one."

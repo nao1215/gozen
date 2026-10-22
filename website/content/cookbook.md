@@ -1145,7 +1145,7 @@ Run `gozen check game`, `gozen sim breed game --format json`, `gozen book game` 
 The monster book shows the shortest recipe first as a picture tree of up to seven monsters: the current species, its parents and its grandparents. Captured leaves show their locations; family rules name the families and example parents. Arrows move between pictures, Z places the chosen species at the top, X returns along the breadcrumb, Tab changes the top species' recipe, and Q opens the chosen known species' page. A parent with a deeper recipe has a `more` mark. An unseen species is shown as `?`; `--dev` reveals all species. `gozen book game --format json` supplies the same tree as structured data. In Go Zen, Yorn at the Breeding Altar opens the ranch. Whisper Imp comes from a male Incense Bloom and Pale Sylph, Vampire from Night Bat and Ghoul, and those two children can produce Succubus. `gozen sim breed examples/go-zen/game` reports that two-generation path.
 
 ![Go Zen's two-generation family tree](/images/go-zen-lineage.jpg)
-![Breeding at the altar: the parents, a silhouette cut-in and the child](/images/go-zen-breeding.gif)
+![Breeding at the altar: Yorn in the center, the parents, a silhouette reveal and the child](/images/go-zen-breeding.gif)
 ![The author's breeding illustration](/images/breeding.jpg)
 
 ## Play music for places, battles and moods

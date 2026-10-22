@@ -90,6 +90,8 @@ Use schema version 6. Define `monster_families`, then give each non-boss enemy a
 
 For a player facing family tree, set `ui.bestiary: true` and give capturable leaves encounter troops in locations. The screen defaults to the shortest buildable recipe and shows up to seven pictures (species, parents and grandparents). Arrows choose a picture; Z makes it the top of a new two-generation view, X returns along the breadcrumb history, Tab switches the top species' recipe, and Q opens a chosen known species page. Capture cards show locations, family cards show families and an example pair, deeper parents have a `more` mark, and unseen species show `?` unless `--dev` is on. `gozen book game --format json` exports the nested tree for author tools. Place `open: ranch` at a safe location with a background if the breeding scene should use that location's picture.
 
+The birth screen keeps the ranch keeper centered until they fade in place. Normal, Rare and Legendary births use progressively longer pauses before the child appears; white, gold, and gold plus blue-grey rings convey the tier without rarity text. The result shows `<Name> <sex> was born!` and one line in the message window; X opens the details.
+
 ## Browser builds
 
 The sample browser builds keep game files outside WebAssembly. Their generated `game/files.json` manifest maps game paths to served files; the browser fetches each file when it is opened, so pictures used later do not delay the first screen. `make website` writes a precompressed `.wasm.gz` file for each sample, and the page decompresses it with the browser's `DecompressionStream`. Browser saves remain in `localStorage`.

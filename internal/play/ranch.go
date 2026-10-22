@@ -34,7 +34,7 @@ type ranchLayout struct {
 
 func ranchScreenLayout(sw, sh float64, step string, items int) ranchLayout {
 	l := ranchLayout{
-		panelX: 24, panelY: 20, panelW: min(510, sw*0.55),
+		panelX: 24, panelY: 20, panelW: min(510, sw*0.42),
 		figureX: sw * 0.5, figureBottom: sh * birthBottom, figureH: sh * birthHeight,
 	}
 	if step == "actions" {
@@ -121,7 +121,7 @@ func (r *ranch) show(g *Game, step string) {
 	r.list.size = sizeS
 	if step == "actions" {
 		bx, by, _, _ := g.talkBox()
-		r.list.x, r.list.w = bx+24, min(450, sw*0.42)
+		r.list.x, r.list.w = bx+24, min(370, sw*0.38)
 		r.list.y = by - r.list.height() - 16
 		r.list.size = sizeM
 	}

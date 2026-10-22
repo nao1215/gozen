@@ -1,7 +1,6 @@
 package play
 
 import (
-	"image"
 	"image/color"
 	"math"
 	"strings"
@@ -31,20 +30,17 @@ type birthAnimation struct {
 }
 
 func (b *birthAnimation) silhouetteEnd() int { return 144 + 24*b.effect.Tier }
-func (b *birthAnimation) revealEnd() int     { return b.silhouetteEnd() + 48 + 12*b.effect.Tier }
-func (b *birthAnimation) cutInStart() int    { return b.revealEnd() + 8 }
-func (b *birthAnimation) cutInEnd() int      { return b.cutInStart() + 48 + 6*(b.effect.Tier-1) }
-func (b *birthAnimation) viewEnd() int {
-	if b.effect.Tier > 0 { return b.cutInEnd() + 12 }
-	return b.revealEnd() + 36
+func (b *birthAnimation) revealEnd() int {
+	return b.silhouetteEnd() + 48 + 12*b.effect.Tier - 12*min(1, b.effect.Tier)
 }
-func (b *birthAnimation) duration() int      { return b.viewEnd() + 60 }
+func (b *birthAnimation) viewEnd() int  { return b.revealEnd() + 36 + 12*min(1, b.effect.Tier) }
+func (b *birthAnimation) duration() int { return b.viewEnd() + 60 }
 
 type birthPhase uint8
 
 const (
 	birthParents birthPhase = iota
-	birthYornExit
+	birthYornFade
 	birthFade
 	birthMerge
 	birthSilhouette
@@ -58,7 +54,7 @@ func (b *birthAnimation) phase() birthPhase {
 	case b.age < 30:
 		return birthParents
 	case b.age < 54:
-		return birthYornExit
+		return birthYornFade
 	case b.age < 90:
 		return birthFade
 	case b.age < 120:
@@ -91,26 +87,6 @@ func birthChildFrame(sw, sh float64) (x, feet, maxH, maxW float64) {
 	return sw * 0.5, sh * 0.82, sh * 0.62, sw * 0.58
 }
 
-// birthFaceCrop uses an authored point first, then the generated face box, then
-// a centered crop of the upper picture. The rectangle is clamped to image bounds.
-func birthFaceCrop(size image.Point, authored []float64, found image.Rectangle, hasFound bool) image.Rectangle {
-	w, h := size.X, size.Y
-	if w <= 0 || h <= 0 { return image.Rectangle{} }
-	side := min(w, h)
-	cx, cy := w/2, h/4
-	if hasFound && !found.Empty() {
-		cx, cy = (found.Min.X+found.Max.X)/2, (found.Min.Y+found.Max.Y)/2
-		side = min(w, h, max(found.Dx(), found.Dy()))
-	}
-	if len(authored) == 3 && authored[2] > 0 {
-		cx, cy = int(authored[0]*float64(w)), int(authored[1]*float64(h))
-		side = max(1, min(w, h, int(authored[2]*float64(w))))
-	}
-	x := max(0, min(w-side, cx-side/2))
-	y := max(0, min(h-side, cy-side/2))
-	return image.Rect(x, y, x+side, y+side)
-}
-
 // drawBirthMonster fits the complete image inside both limits without changing its aspect ratio.
 func (g *Game) drawBirthMonster(dst *ebiten.Image, path string, cx, feet, maxH, maxW float64, alpha float32, black bool) {
 	img := g.pics.get(path)
@@ -139,7 +115,7 @@ func birthLight(tier int) color.NRGBA {
 	case 2:
 		return color.NRGBA{157, 183, 203, 255}
 	default:
-		return color.NRGBA{255, 244, 218, 255}
+		return color.NRGBA{245, 248, 255, 255}
 	}
 }
 
@@ -179,9 +155,9 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 			}
 		}
 	}
-	// Yorn has the opening moment, then leaves completely before the parents fade.
+	// Yorn fades in place at the center before the parents appear.
 	if age < 54 {
-		alpha, offset := float32(1), 0.0
+		alpha := float32(1)
 		if age >= 30 {
 			p := float64(age-30) / 24
 			alpha = float32(1 - p)
@@ -189,7 +165,7 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		if loc := g.db.Locations[g.st.Location]; loc != nil {
 			for _, person := range loc.People {
 				if person.Image != "" {
-					g.drawStanding(dst, person.Image, sw*0.5+offset, sh*1.32, sh*1.25, alpha, false, nil)
+					g.drawStanding(dst, person.Image, sw*0.5, sh*birthBottom, sh*birthHeight, alpha, false, nil)
 					break
 				}
 			}
@@ -198,10 +174,14 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 	if age >= 54 && age < 120 {
 		for i, pt := range parents {
 			alpha := float32(min(1, float64(age-54)/18))
-			if age >= 72 { alpha = float32(max(0, 1-float64(age-72)/18)) }
-			from := -sw*0.08
-			if i == 1 { from = sw*0.08 }
-			pt.x += from*(1-min(1, float64(age-54)/18))
+			if age >= 72 {
+				alpha = float32(max(0, 1-float64(age-72)/18))
+			}
+			from := -sw * 0.08
+			if i == 1 {
+				from = sw * 0.08
+			}
+			pt.x += from * (1 - min(1, float64(age-54)/18))
 			if alpha > 0 {
 				g.drawBirthMonster(dst, b.effect.ParentFaces[i], pt.x, pt.y, sh*0.46, sw*0.27, alpha, false)
 			}
@@ -223,7 +203,9 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		}
 		return
 	}
-	if age < 54 { return }
+	if age < 54 {
+		return
+	}
 	x, feet, h, w := birthChildFrame(sw, sh)
 	reveal := float32(0)
 	if phase >= birthReveal {
@@ -239,7 +221,7 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 	if phase >= birthView && phase < birthResult && b.skipT == 0 {
 		count := 6 + 4*b.effect.Tier
 		for i := range count {
-			p := float64(age-b.revealEnd()) / 36
+			p := min(1, float64(age-b.revealEnd())/float64(b.viewEnd()-b.revealEnd()))
 			px := x + (float64(i%5)-2)*sw*0.055
 			py := feet - p*sh*0.17 - float64(i/5)*sh*0.055
 			gfx.FillCircle(dst, float32(px), float32(py), 2, withAlpha(light, uint8(120*(1-p))), true)
@@ -253,23 +235,21 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		if b.details {
 			g.window(dst, sw*0.18, sh*0.66, sw*0.64, sh*0.31)
 			lines := []string{b.effect.Result}
-			if b.effect.FirstDiscovery { lines = append(lines, "New species discovered") }
-			for i, line := range strings.Split(strings.Join(lines, "\n"), "\n") { g.text(dst, line, sw*0.21, sh*0.69+float64(i)*gfx.LineHeight(sizeM), sizeM, g.th.text) }
+			if b.effect.FirstDiscovery {
+				lines = append(lines, "New species discovered")
+			}
+			for i, line := range strings.Split(strings.Join(lines, "\n"), "\n") {
+				g.text(dst, line, sw*0.21, sh*0.69+float64(i)*gfx.LineHeight(sizeM), sizeM, g.th.text)
+			}
 			g.text(dst, "Back", sw*0.71, sh*0.91, sizeS, g.th.dim)
-		} else if age >= b.viewEnd()+12 || b.skipT > 0 {
+		} else {
 			x, y, w, h := g.talkBox()
 			g.window(dst, x, y, w, h)
 			fit, _ := gfx.FitLines(b.effect.Summary, sizeM, w-100, 1)
-			for _, line := range fit { g.text(dst, line, x+50, y+40, sizeM, g.th.text) }
+			for _, line := range fit {
+				g.text(dst, line, x+50, y+40, sizeM, g.th.text)
+			}
 			g.text(dst, "Continue  ·  X Details", x+w-280, y+h-45, sizeS, g.th.dim)
 		}
 	}
 }
-
-func birthCutInOffset(age, start, end int, sw float64) float64 {
-	step := age-start
-	if step < 8 { return (1-float64(step)/8)*sw }
-	if age >= end-8 { return float64(age-(end-8))/8*sw }
-	return 0
-}
-

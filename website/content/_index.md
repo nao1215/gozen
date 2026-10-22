@@ -10,7 +10,7 @@ The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan
 |:--|:--|
 | ![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](/images/go-zen.gif) | ![After the Pass, the novel sample: a line, a choice, Back over the choice, and Skip to the first line not read](/images/novel.gif) |
 | Campaign: [Five Banners](https://github.com/nao1215/gozen/tree/main/examples/campaign) ([play in browser](/play/campaign/)) | Monster collection: [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) ([play in browser](/play/go-zen/)) |
-| ![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](/images/campaign.gif) | ![Breeding monsters in Go Zen: Yorn, the two parents, a silhouette cut-in and the newborn Succubus](/images/go-zen-breeding.gif) |
+| ![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](/images/campaign.gif) | ![Breeding monsters in Go Zen: Yorn, the two parents, a silhouette reveal and the newborn Succubus](/images/go-zen-breeding.gif) |
 
 ## Try it in 30 seconds
 
@@ -99,7 +99,7 @@ Monsters ask to join after a battle, wait at the ranch, and two raised monsters,
 
 | A monster asks to join | Breeding at Yorn's altar |
 |:--|:--|
-| ![a Drip Slime rises after the battle and asks to join, with Yes and No](/images/go-zen-recruit.jpg) | ![Yorn talks, the parents turn into light, a silhouette cut-in, then the Succubus is born](/images/go-zen-breeding.gif) |
+| ![a Drip Slime rises after the battle and asks to join, with Yes and No](/images/go-zen-recruit.jpg) | ![Yorn talks in the center, the parents turn into light, then the Succubus is born](/images/go-zen-breeding.gif) |
 | The monster book | The family tree, two generations up |
 | ![the Succubus page of the monster book](/images/go-zen-bestiary.jpg) | ![the Succubus family tree with its parents and grandparents](/images/go-zen-lineage.jpg) |
 

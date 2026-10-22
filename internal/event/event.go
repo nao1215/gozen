@@ -65,7 +65,6 @@ type BreedEffect struct {
 	ParentFaces    [2]string
 	ChildName      string
 	ChildFace      string
-	ChildFaceAt    []float64
 	Tier           int
 	FirstDiscovery bool
 	Summary        string
@@ -864,9 +863,8 @@ func (r *Runner) run(c *data.Command) Request {
 		if inherited != "none" {
 			summary += "  ·  Inherited skills: " + inherited
 		}
-		r.emit(BreedEffect{ParentNames: [2]string{nameA, nameB}, ParentFaces: [2]string{faceA, faceB}, ChildName: childName, ChildFace: r.db.Enemies[child.Monster].Image.File, ChildFaceAt: r.db.Enemies[child.Monster].FaceAt, Tier: tier, FirstDiscovery: firstDiscovery, Summary: summary, Result: result})
-		duration := 288
-		if tier > 0 { duration = 288 + 68*tier + 6*(tier-1) }
+		r.emit(BreedEffect{ParentNames: [2]string{nameA, nameB}, ParentFaces: [2]string{faceA, faceB}, ChildName: childName, ChildFace: r.db.Enemies[child.Monster].Image.File, Tier: tier, FirstDiscovery: firstDiscovery, Summary: summary, Result: result})
+		duration := 288 + 36*tier
 		r.push([]data.Command{{Wait: data.WaitCue{Seconds: float64(duration) / 60}}})
 	case "heal":
 		for _, a := range r.st.Members() {

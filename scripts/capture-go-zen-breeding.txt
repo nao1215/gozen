@@ -161,17 +161,6 @@ shot b076
 wait 5
 shot b077
 wait 5
+# The Rare result line appears near b066; stop about one second later.
 shot b078
-wait 5
-shot b079
-wait 5
-shot b080
-wait 5
-shot b081
-wait 5
-shot b082
-wait 5
-shot b083
-wait 5
-shot b084
 quit

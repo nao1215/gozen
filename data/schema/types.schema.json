@@ -1559,7 +1559,7 @@
       "description": "Rank thresholds for birth presentation; omitted values default to rare rank 4 and legendary rank 7.",
       "properties": {
         "legend_rank": {
-          "description": "The first child rank with rainbow light, shake and a picture cut-in.",
+          "description": "The first child rank with the longest pause, gold and blue-grey rings and a low sound.",
           "type": "integer",
           "x-contract": {
             "default": "0",
@@ -1572,7 +1572,7 @@
           "x-type": "integer"
         },
         "rare_rank": {
-          "description": "The first child rank with gold light and a longer flash.",
+          "description": "The first child rank with a longer pause before reveal, a gold ring and a slower afterglow.",
           "type": "integer",
           "x-contract": {
             "default": "0",

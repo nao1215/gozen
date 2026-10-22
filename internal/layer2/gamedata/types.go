@@ -1061,9 +1061,6 @@ type Enemy struct {
 	// Lore is the short field description shown after the enemy has been seen.
 	Lore  string  `yaml:"lore"`
 	Image Picture `yaml:"image"`
-	// FaceAt is the birth cut-in face center and square width as fractions of the
-	// picture: [middle, top, width]. It overrides assets/faces.json when set.
-	FaceAt []float64 `yaml:"face_at"`
 	Scale float64 `yaml:"scale"`
 	// Army is the kind of army (campaign.clash.armies) its unit shows in a clash shown as
 	// units when it leads a troop (monsters for monsters).

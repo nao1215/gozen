@@ -822,7 +822,7 @@ func (g *Game) Update() error {
 				case 1:
 					g.sfx("treasure")
 				case 2:
-					g.sfx("fanfare")
+					g.sfx("boss")
 				default:
 					g.sfx("heal")
 				}

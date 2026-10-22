@@ -92,7 +92,7 @@ func TestRanchPreviewAndFusionCommand(t *testing.T) {
 	if g.st.Actors[a] != nil || g.st.Actors[b] != nil || g.st.Vars["bestiary.boss.caught"] != float64(1) {
 		t.Fatalf("fusion state = %+v", g.st.Actors)
 	}
-	if !birthWait || g.birth == nil || g.birth.effect.ChildName == "" || len(birthLines) != 2 || !strings.Contains(birthLines[0], "Inherited skills: Spark") || !strings.Contains(birthLines[1], "Breeding strength: +") {
+	if !birthWait || g.birth == nil || g.birth.effect.ChildName == "" || len(birthLines) != 0 || !strings.Contains(g.birth.effect.Summary, "Inherited skills: Spark") {
 		t.Fatalf("birth presentation: wait=%v effect=%+v lines=%v", birthWait, g.birth, birthLines)
 	}
 	if !g.birth.effect.FirstDiscovery || !strings.Contains(g.birth.effect.Result, "Skills: Spark") || !strings.Contains(g.birth.effect.Result, "Lv 1") {
@@ -108,15 +108,16 @@ func TestRanchLayoutLeavesAltarVisible(t *testing.T) {
 		if actions.panelW > 510 || actions.panelH >= sh*0.65 {
 			t.Fatalf("actions panel is too large at %.0fx%.0f: %+v", sw, sh, actions)
 		}
-		if actions.panelX+actions.panelW+100 >= actions.figureX {
-			t.Fatalf("no visible altar between menu and Yorn at %.0fx%.0f: %+v", sw, sh, actions)
+		faceLeft := actions.figureX - sh*0.05
+		if actions.panelX+actions.panelW >= faceLeft || selection.panelX+selection.panelW >= faceLeft {
+			t.Fatalf("ranch panel hides Yorn's face at %.0fx%.0f: actions=%+v selection=%+v", sw, sh, actions, selection)
 		}
 		// Yorn is shown from the waist up: his feet fall below the screen, his head stays on it.
 		if actions.figureH < sh || actions.figureBottom <= sh || actions.figureBottom-actions.figureH < 0 {
 			t.Fatalf("Yorn is not shown waist-up at %.0fx%.0f: %+v", sw, sh, actions)
 		}
-		if selection.panelX+selection.panelW+100 >= selection.figureX || selection.panelY+selection.panelH > sh {
-			t.Fatalf("selection obscures Yorn or leaves screen at %.0fx%.0f: %+v", sw, sh, selection)
+		if selection.panelY+selection.panelH > sh {
+			t.Fatalf("selection leaves screen at %.0fx%.0f: %+v", sw, sh, selection)
 		}
 	}
 }
@@ -131,7 +132,7 @@ func TestRanchActionsUseTalkWindow(t *testing.T) {
 		t.Fatalf("ranch speaker = %+v", r.talk.say)
 	}
 	_, by, _, _ := g.talkBox()
-	if r.list.y+r.list.height() >= by || r.list.x+r.list.w >= ranchScreenLayout(1280, 720, "actions", 4).figureX {
+	if r.list.y+r.list.height() >= by || r.list.x+r.list.w >= ranchScreenLayout(1280, 720, "actions", 4).figureX-720*0.05 || by <= 720*0.3 {
 		t.Fatalf("choice box hides the talk or Yorn: %+v", r.list)
 	}
 }
@@ -144,14 +145,17 @@ func TestBirthTimelineSkipAndPositions(t *testing.T) {
 		if b.duration() != duration {
 			t.Fatalf("tier %d duration %d", tier, b.duration())
 		}
+		if b.silhouetteEnd() != 144+24*tier || b.viewEnd()-b.revealEnd() != 36+12*min(1, tier) {
+			t.Fatalf("tier %d pause and afterglow: silhouette=%d afterglow=%d", tier, b.silhouetteEnd(), b.viewEnd()-b.revealEnd())
+		}
 		for _, tc := range []struct {
 			age   int
 			phase birthPhase
 		}{
 			{0, birthParents},
 			{29, birthParents},
-			{30, birthYornExit},
-			{53, birthYornExit},
+			{30, birthYornFade},
+			{53, birthYornFade},
 			{54, birthFade},
 			{89, birthFade},
 			{90, birthMerge},

@@ -207,14 +207,6 @@ func (c *checker) requiredDefinitions() {
 		if e.Image.File == "" {
 			c.errorf(diag.Shape, w, "image is missing")
 		}
-		if len(e.FaceAt) != 0 && len(e.FaceAt) != 3 {
-			c.errorf(diag.Shape, w+".face_at", "face_at is [middle, top, width]")
-		}
-		for i, v := range e.FaceAt {
-			if v < 0 || v > 1 {
-				c.errorf(diag.OutOfRange, fmt.Sprintf("%s.face_at[%d]", w, i), "want a fraction in [0, 1], got %g", v)
-			}
-		}
 		for _, st := range StatNames {
 			if _, ok := e.Stats[st]; !ok {
 				c.errorf(diag.Shape, w, "stats.%s is missing", st)
