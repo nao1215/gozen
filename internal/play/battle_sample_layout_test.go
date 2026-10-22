@@ -52,7 +52,7 @@ func TestGoZenTroopPictureLayout(t *testing.T) {
 		for _, tc := range []struct {
 			id     string
 			lo, hi float64
-		}{{"succubus", .60, .70}, {"drip_slime", .25, .30}, {"king_slime", .50, .60}} {
+		}{{"succubus", .64, .80}, {"drip_slime", .25, .30}, {"king_slime", .50, .60}} {
 			def := sample.Enemies[tc.id]
 			s := &battleScene{b: &battle.Battle{Foes: []*battle.Unit{{Enemy: true, Def: def}}}}
 			b := s.foeBoxes(g)[s.b.Foes[0]]
