@@ -62,4 +62,4 @@ The picture `docs/images/go-zen-balance.jpg` is remade by `make docs-images` ([R
 
 The `balance` scene of `make graphics` takes the same display and checks that the color of the win-rate bar appears at the top right.
 
-The input command `wait-graphs` takes no arguments and requires an open development balance panel. It waits for all measurements rather than a fixed frame count, and a closed panel or measurement error fails the run. The capture runner's process timeout bounds this wait.
+The input command `wait-graphs` takes no arguments and requires an open development balance panel. It waits for all measurements rather than a fixed frame count, and a closed panel or measurement error fails the run. While this command waits, measurement uses a 12 ms budget per update instead of the normal interactive 3 ms budget; the trials, seeds and results remain the same. The capture runner's process timeout bounds this wait.

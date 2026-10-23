@@ -177,6 +177,7 @@ func TestScriptWaitGraphs(t *testing.T) {
 	g := graphGame(t)
 	g.graphs.on = true
 	s.graphsReady = g.scriptGraphsReady
+	g.in.script = s
 	in := &input{}
 	s.step(in)
 	if s.pc != 0 || s.shot != "" {
@@ -184,10 +185,7 @@ func TestScriptWaitGraphs(t *testing.T) {
 	}
 	g.updateGraphs()
 	// Use an incomplete result even if a fast machine already finished this fixture.
-	for _, result := range g.graphs.res {
-		result.odds.Battles = 0
-		result.wins = nil
-	}
+	g.graphs.res = map[graphJob]*graphResult{}
 	s.step(in)
 	if s.pc != 0 || s.shot != "" {
 		t.Fatal("advanced during measurement")
@@ -197,6 +195,12 @@ func TestScriptWaitGraphs(t *testing.T) {
 	s.step(in)
 	if s.shot != "complete" || g.failure != nil {
 		t.Fatalf("completion: shot %q, error %v", s.shot, g.failure)
+	}
+	normal := graphGame(t)
+	normal.graphs.on = true
+	runGraphs(t, normal)
+	if !reflect.DeepEqual(g.graphs.res, normal.graphs.res) {
+		t.Fatal("scripted measurement differs from interactive measurement")
 	}
 	for _, tc := range []struct {
 		name    string

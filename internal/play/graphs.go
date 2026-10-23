@@ -21,7 +21,8 @@ import (
 // the win rate for a fully healed party row and for the party row as-is (--as-is), the band of remaining HP
 // after a win, how many fights in a row can be won from the current HP without healing (--as-is --streak 9),
 // and the win rate per level (fully healed). The computation is split inside Update to at most graphBudget per
-// frame, and game state, randomness and the DB are not shared with other goroutines.
+// interactive frame (12 ms during an explicit script wait), and game state, randomness and the DB
+// are not shared with other goroutines.
 const (
 	graphTries  = 200
 	graphSeed   = 1
@@ -147,8 +148,14 @@ func (g *Game) updateGraphs() {
 	if p.err != "" {
 		return
 	}
+	budget := graphBudget
+	// An explicit script wait has no interaction to keep responsive. Spend more
+	// of each frame measuring, while keeping normal play's small time slice.
+	if s := g.in.script; s != nil && s.pc < len(s.cmds) && s.cmds[s.pc].verb == "wait-graphs" {
+		budget = 12 * time.Millisecond
+	}
 	t0 := time.Now()
-	for time.Since(t0) < graphBudget {
+	for time.Since(t0) < budget {
 		j, ok := p.next()
 		if !ok {
 			return
