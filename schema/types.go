@@ -49,6 +49,14 @@ type DB = gamedata.DB
 // Its fields and methods follow the YAML contract in the Schema page (https://nao1215.github.io/gozen/schema/).
 type Dungeon = gamedata.Dungeon
 
+// Space lets game authors define bounded, aligned level maps for streets and interiors.
+// Its optional Dungeon.Space field preserves legacy maps when absent.
+type Space = gamedata.Space
+
+// SpaceStair defines a reversible stair run between adjacent levels of a Space.
+// Authors supply a one-based lower level and horizontal endpoint and direction.
+type SpaceStair = gamedata.SpaceStair
+
 // Effect is one thing a skill or an item does to each target.
 // This definition is exposed for game authors and hosts; see the Schema page (https://nao1215.github.io/gozen/schema/).
 type Effect = gamedata.Effect

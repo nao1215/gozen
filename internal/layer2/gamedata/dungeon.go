@@ -11,7 +11,9 @@ import (
 )
 
 type Dungeon struct {
-	Map string `yaml:"map"`
+	// Space opts into aligned levels for streets, interiors and atriums.
+	Space *Space `yaml:"space"`
+	Map   string `yaml:"map"`
 	// Theme names a folder of assets/dungeon/themes/ (see ThemeDir) that fills wall, door,
 	// floor_texture, ceiling_texture, floor and ceiling where they are not written. Written
 	// values win. Loading fills them; gozen check reports a theme that is not in the game.
@@ -320,6 +322,12 @@ func (d *Dungeon) parse() {
 		}
 		d.Grid = append(d.Grid, row)
 	}
+	if d.Space != nil {
+		d.Space.parse()
+		if len(d.Space.grids) > 0 {
+			d.Grid = d.Space.grids[0]
+		}
+	}
 	if d.Depth == 0 {
 		d.Depth = 5
 	}
@@ -414,7 +422,9 @@ func (c *checker) dungeon(w string, l *Location) {
 	// hand-written (map). Tile checks are shared.
 	used := map[rune]bool{}
 	notUsed := "neither on the map nor any tile's else"
-	if g := d.Generate; g != nil {
+	if d.Space != nil {
+		c.space(w, d, used)
+	} else if g := d.Generate; g != nil {
 		notUsed = "not placed by generate (nor any tile's else or after)"
 		c.generate(w, d, used)
 	} else {

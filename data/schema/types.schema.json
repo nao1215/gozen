@@ -5673,6 +5673,19 @@
           },
           "x-type": "[Roamer](#roamer)[]"
         },
+        "space": {
+          "$ref": "#/$defs/Space",
+          "description": "Optional aligned levels and stairs for bounded streets, interiors and atriums; excludes map, generate and roamers.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Space](#space)"
+        },
         "theme": {
           "description": "A theme of pictures and colors from assets/dungeon/themes/, such as `cave`. It fills the walls, door, floor, ceiling and their colors that are not written here. Add one to the game with `gozen theme add`.",
           "type": "string",
@@ -13302,6 +13315,123 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Space": {
+      "additionalProperties": false,
+      "description": "A bounded stack of equal-sized maps. Blank cells are open air; levels are ordered bottom to top.",
+      "properties": {
+        "levels": {
+          "description": "One to eight equal rectangular maps, each 3 to 64 cells wide and high.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
+        "stairs": {
+          "description": "Up to 128 non-overlapping bidirectional straight runs joining adjacent levels.",
+          "items": {
+            "$ref": "#/$defs/SpaceStair"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[SpaceStair](#spacestair)[]"
+        }
+      },
+      "type": "object"
+    },
+    "SpaceStair": {
+      "additionalProperties": false,
+      "description": "A staircase from a lower cell to a landing on the next level.",
+      "properties": {
+        "facing": {
+          "description": "Ascending direction: north, east, south or west.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "length": {
+          "description": "Horizontal distance to the upper endpoint, from 3 to 8 cells. Keep the space above the run empty.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "level": {
+          "description": "One-based lower level; an upper level must exist.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "x": {
+          "description": "Zero-based lower endpoint column.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "y": {
+          "description": "Zero-based lower endpoint row.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
         }
       },
       "type": "object"

@@ -1026,6 +1026,11 @@ func (g *Game) shotDir() string {
 func (g *Game) saveShot(screen *ebiten.Image, name string) {
 	g.saveShotQuiet(screen, name)
 	g.emit("shot", traceLine{"file": filepath.Join(g.shotDir(), name+".png")})
+	if g.st != nil {
+		if d := dungeon.Of(g.db, g.st); d != nil && d.Space != nil {
+			g.traceState()
+		}
+	}
 }
 
 func (g *Game) saveShotQuiet(screen *ebiten.Image, name string) {

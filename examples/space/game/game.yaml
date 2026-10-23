@@ -1,0 +1,7 @@
+schema_version: 5
+id: stacked-space-demo
+title: Courtyard House
+language: en
+written_in: en
+screen: {width: 960, height: 540}
+start: {location: courtyard, party: [walker]}

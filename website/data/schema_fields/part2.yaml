@@ -111,6 +111,7 @@ Drop:
   item: "The item dropped, an ID of items."
   when: "An expression that must hold for the drop, for example depending on how the enemy was beaten."
 Dungeon:
+  space: "Optional aligned levels and stairs for bounded streets, interiors and atriums; excludes map, generate and roamers."
   _: "A maze walked in first person, drawn from a text map or generated on each dive."
   ceiling: "The ceiling color."
   ceiling_texture: "A picture tiled on the ceiling, one per cell, multiplied by the ceiling color."

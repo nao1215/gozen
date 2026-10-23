@@ -70,7 +70,8 @@ type State struct {
 // Pos is a place in a dungeon's map and the way the party faces (0 north, 1 east, 2
 // south, 3 west).
 type Pos struct {
-	In     string `json:"in"` // the dungeon (location) it is in
+	Level  int    `json:"level,omitempty"` // zero-based stacked-space level; old saves start at zero
+	In     string `json:"in"`              // the dungeon (location) it is in
 	X, Y   int
 	Facing int `json:"facing"`
 }
@@ -514,7 +515,7 @@ func (e fieldEnv) Lookup(name string) (any, bool) {
 	case "steps":
 		return float64(s.Steps), true
 	case "pos":
-		return expr.Map{"x": float64(s.Pos.X), "y": float64(s.Pos.Y), "facing": data.Facings[s.Pos.Facing&3]}, true
+		return expr.Map{"x": float64(s.Pos.X), "y": float64(s.Pos.Y), "level": float64(s.Pos.Level), "facing": data.Facings[s.Pos.Facing&3]}, true
 	case "rand":
 		return randFunc(s.Rand), true
 	case "chance":

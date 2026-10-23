@@ -362,6 +362,9 @@ func (g *Game) traceState(terminal ...bool) {
 	if loc := g.db.Locations[st.Location]; loc != nil && loc.Dungeon != nil {
 		l["pos"] = []int{st.Pos.X, st.Pos.Y}
 		l["facing"] = data.Facings[st.Pos.Facing&3]
+		if loc.Dungeon.Space != nil {
+			l["level"] = st.Pos.Level
+		}
 		if f, ok := st.Vars[dungeon.VarFloor]; ok {
 			l["floor"] = f
 		}
