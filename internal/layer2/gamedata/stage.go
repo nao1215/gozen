@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"image"
-	_ "image/jpeg" // backgrounds and maps may be JPEG
-	_ "image/png"  // depth maps are 16-bit PNG
-	"io/fs"
 	"math"
 	"regexp"
 	"slices"
+
+	_ "image/jpeg" // backgrounds and maps may be JPEG
+	_ "image/png"  // depth maps are 16-bit PNG
+
+	"github.com/nao1215/gozen/internal/layer1/picturelimit"
 
 	"github.com/nao1215/gozen/internal/diag"
 
@@ -371,7 +373,7 @@ func (c *checker) pictureSize(p string) (image.Point, bool) {
 	if p == "" || c.db.FS == nil {
 		return image.Point{}, false
 	}
-	b, err := fs.ReadFile(c.db.FS, "assets/"+p)
+	b, err := picturelimit.Read(c.db.FS, "assets/"+p)
 	if err != nil {
 		return image.Point{}, false
 	}

@@ -3,9 +3,10 @@ package play
 import (
 	"image"
 	"image/draw"
-	"io/fs"
 	"log"
 	"strings"
+
+	"github.com/nao1215/gozen/internal/layer1/picturelimit"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -28,7 +29,7 @@ func (p *pictures) shadedFace(path string, r image.Rectangle) *ebiten.Image {
 	if img != nil && img.Bounds().Size() == r.Size() {
 		return img
 	}
-	b, err := fs.ReadFile(p.fsys, "assets/"+path)
+	b, err := picturelimit.Read(p.fsys, "assets/"+path)
 	if err != nil {
 		log.Printf("picture %s: %v", path, err)
 		return nil

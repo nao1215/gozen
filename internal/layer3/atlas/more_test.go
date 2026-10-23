@@ -64,10 +64,10 @@ func TestRoadsOpenAndOther(t *testing.T) {
 	if atlas.Other(road, "fork") != "gate" || atlas.Other(road, "gate") != "fork" || atlas.Other(road, "stranger") != "fork" {
 		t.Error("Other")
 	}
-	if atlas.Routes(st, town, "nowhere") != nil {
+	if allRoutes(st, town, "nowhere") != nil {
 		t.Error("no routes from a point that does not exist")
 	}
-	if got := atlas.Routes(st, town, "fork"); len(got["fork"]) != 0 {
+	if got := allRoutes(st, town, "fork"); len(got["fork"]) != 0 {
 		t.Errorf("the way to where one stands is empty: %v", got["fork"])
 	}
 }

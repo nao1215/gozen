@@ -5,13 +5,16 @@ package play
 import (
 	"image"
 	"image/color"
-	_ "image/jpeg" // decoders for the pictures image.Decode reads
-	_ "image/png"
+	_ "image/png" // game pictures include PNG
 	"io/fs"
 	"log"
 	"math"
 	"strings"
 	"sync"
+
+	_ "image/jpeg" // decoders for the pictures image.Decode reads
+
+	"github.com/nao1215/gozen/internal/layer1/picturelimit"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	_ "golang.org/x/image/webp" // a browser build may ship its pictures as WebP
@@ -192,7 +195,7 @@ func (p *pictures) load(path string) (*ebiten.Image, image.Rectangle) {
 
 // decode returns only an image in CPU memory. It can finish reading safely even after the screen loop ends.
 func (p *pictures) decode(path string) image.Image {
-	b, err := fs.ReadFile(p.fsys, "assets/"+path)
+	b, err := picturelimit.Read(p.fsys, "assets/"+path)
 	if err != nil {
 		log.Printf("picture %s: %v", path, err)
 		return nil

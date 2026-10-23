@@ -6,14 +6,20 @@ package picdecode
 import (
 	"bytes"
 	"image"
+	_ "image/png" // game pictures include PNG
+
 	_ "image/jpeg" // the decoders image.Decode uses
-	_ "image/png"
+
+	"github.com/nao1215/gozen/internal/layer1/picturelimit"
 
 	_ "golang.org/x/image/webp" // a browser build ships its pictures as WebP
 )
 
 // goDecode decodes b with Go's decoders.
 func goDecode(b []byte) (image.Image, error) {
+	if err := picturelimit.Header(b); err != nil {
+		return nil, err
+	}
 	img, _, err := image.Decode(bytes.NewReader(b))
 	return img, err
 }

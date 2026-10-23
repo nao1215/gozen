@@ -8,6 +8,8 @@ import (
 	"image"
 	"sync/atomic"
 	"syscall/js"
+
+	"github.com/nao1215/gozen/internal/layer1/picturelimit"
 )
 
 // In a browser the game and everything it runs share one thread: a picture decoded in Go
@@ -22,6 +24,9 @@ import (
 // browser: a PNG left as PNG by the web build is one WebP did not suit, such as a 16-bit
 // depth map, which a canvas would cut to 8 bits and Go reads as an *image.Gray16.
 func Decode(b []byte) (image.Image, error) {
+	if err := picturelimit.Header(b); err != nil {
+		return nil, err
+	}
 	if browserKind(b) && browserNow() {
 		if img, err := browserDecode(b); err == nil {
 			return img, nil

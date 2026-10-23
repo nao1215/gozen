@@ -92,7 +92,7 @@ func TestMapMistakes(t *testing.T) {
 		{"        square: {at: [32, 30], to: plaza}", "        square: {at: [32, 30], to: plaza, start: true}\n        far: {at: [1, 1], start: true}", "have start"},
 		{"        - {between: [square, fork]}", "        - {between: [square]}", "a road is between two points"},
 		{"        - {between: [square, fork]}", "        - {between: [square, square]}", "two different points"},
-		{"        - {between: [square, fork]}", "        - {between: [square, fork], steps: -1}", "steps of 1 or more"},
+		{"        - {between: [square, fork]}", "        - {between: [square, fork], steps: -1}", "want steps in [0, 10000]"},
 	} {
 		src, files := scenesWith(c.old, c.new)
 		if src == testgame.ScenesData {
