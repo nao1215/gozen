@@ -35,6 +35,8 @@ The `docs-checks` job of the CI workflow runs on these pull requests only, with 
 
 ## Time
 
+CI, Docs and Coverage cancel superseded runs for the same pull request. Pushes to main and manual runs keep distinct groups and finish independently. The sample job saves its build cache after all three sample modules, including campaign, have passed.
+
 The longest jobs are the pictures of the Docs workflow and graphics; most of their time is the samples playing in real time and writing 1920x1080 frames. The game writes a screenshot off its loop (PNG at BestSpeed, by background workers), the docs pictures' runs play side by side, and graphics runs its scenarios side by side.
 
 - graphics and cli-e2e install atago from its release binary with setup-atago (the checksum is checked) instead of building it with `go install`.

@@ -12,12 +12,12 @@ Arrows are the allowed directions of dependency. A higher layer may reference an
 
 ```mermaid
 flowchart TB
-  L6["6 entry: runner (removed in stage 6)"] --> L5["5 display: gfx / play (Main, New) / puppet"]
+  L5["5 display: gfx / play (Main, New) / puppet"]
   L5 --> R["gozen (root): Load, Session, Do, Query (ADR 0021)"]
   R --> L4["4 progress: headless"]
-  L4 --> L3["3 rules: battle / event / world / dungeon / react"]
-  L3 --> L2["2 model: data / rpg"]
-  L2 --> L1["1 base: expr / text / savefile / chat"]
+  L4 --> L3["3 rules: internal battle / event / world, react; shared dungeon"]
+  L3 --> L2["2 model: schema / internal rpg"]
+  L2 --> L1["1 base: internal expr / text / savefile, chat; shared YAML paths"]
   CLI["cmd/gozen"] --> L5
   CLI --> Private["internal/promptgen, internal/mosaic"]
   Private --> L4
@@ -26,13 +26,12 @@ flowchart TB
   CLI --> Diag["internal/diag: diagnostic codes"]
   Private --> Diag
   L2 --> Diag
-  L6 --> Help
-  Example["examples: the game's assembly"] --> L6
+  Example["examples: the game's assembly"] --> L5
 ```
 
-The names in the figure correspond to the components of `.go-arch-lint.yml` as follows. Each public package is a component of the same name. `internal/layerN/` is `privateN` (the shared implementation of layer N), `cmd/gozen/**` and `cmd/internal/**` are `commands`, `internal/promptgen/**` and `internal/mosaic/**` are `promptgen` and `mosaic`, `internal/clihelp/**` is `clihelp`, `internal/diag/**` (the diagnostic codes) is `diag`, the root `gozen` is `gozen` (above layer 4, below display), and `x/**` is `experiments` (there are no experiments now, and no directory either). Swapping assets (`internal/layer1/assetfs`) and loading sound effects (`internal/layer5/sound`) are not published and live in the shared implementation of their layers ([ADR 0021](../decisions/0021-query-and-commands.md)). `internal/dev/**` (`dev`) uses only the standard library and `diag`, and `internal/testgame/**` (`testgame`) uses only layers 1 and 2. If the figure and the configuration disagree, the configuration is right and the figure is fixed. When you add a component, fix this figure and the paragraph of correspondence in the same change.
+The names in the figure correspond to the components of `.go-arch-lint.yml` as follows. Each public package is a component of the same name. `internal/layerN/` is `privateN` (the shared implementation of layer N), `cmd/gozen/**` and `cmd/internal/**` are `commands`, `internal/promptgen/**` and `internal/mosaic/**` are `promptgen` and `mosaic`, `internal/clihelp/**` is `clihelp`, `internal/diag/**` (the diagnostic codes) is `diag`, the root `gozen` is `gozen` (above layer 4, below display), and `x/**` is `experiments` (there are no experiments now, and no directory either). Selecting ordered YAML fragments (`internal/layer1/yamlpath`, using the existing YAML dependency for `chat` and `react`), swapping assets (`internal/layer1/assetfs`) and loading sound effects (`internal/layer5/sound`) are not published and live in the shared implementation of their layers ([ADR 0021](../decisions/0021-query-and-commands.md)). `internal/dev/**` (`dev`) uses only the standard library and `diag`, and `internal/testgame/**` (`testgame`) uses only layers 1 and 2. If the figure and the configuration disagree, the configuration is right and the figure is fixed. When you add a component, fix this figure and the paragraph of correspondence in the same change.
 
-`savefile` is in layer 1 as a base of save locations and bytes that knows nothing of state or definitions. The implementation of `dungeon` is in `internal/layer3/dungeon`. SW2 added the public entry needed for custom exploration operations. For its purpose and scope see [ADR 0014](../decisions/0014-dungeon-host-adoption.md).
+`savefile` is in layer 1 as a base of save locations and bytes that knows nothing of state or definitions. The implementation of `dungeon` is in `internal/layer3/dungeon`. The former public entry from [ADR 0014](../decisions/0014-dungeon-host-adoption.md) was folded into commands and expressions by [ADR 0021](../decisions/0021-query-and-commands.md). Its unused internal relay is removed; callers and contract tests use the shared implementation directly. YAML path selection belongs to layer 1 because it knows only YAML and logical paths, not game definitions or rules; the shared base layer may use the existing YAML vendor for this purpose.
 
 Calls between display packages also count as lateral dependencies. For example, `play` importing `gfx` directly is not the structure we take. Shared implementation moves to `internal/` with an owning layer, and assembly goes higher. The same policy holds for `rpg` and `data`, and between rules. Shared types and processing also get an owner following the direction of dependency.
 
@@ -42,7 +41,7 @@ The authority for the mechanical check is `.go-arch-lint.yml:1`. Each public pac
 
 ## Startup and extension
 
-The design is that the game provides its own `fs.FS`, data and assets and passes them to `play.Main` (for your own loop or a browser, pass a `gozen.Session` to `play.New`). For operation without rendering use `headless`. The run example of `headless` is `examples/headless`, that of `play.Main` and `play.New` is `examples/go-zen` (the sample game, a module of its own), and the minimal embedding example is `examples/minimal`. The shapes of loading, settings, errors and extension points follow [the API conventions](api-guidelines.md).
+The design is that the game provides its own `fs.FS`, data and assets and passes them to `play.Main` (for your own loop or a browser, pass a `gozen.Session` to `play.New`). For operation without rendering use `gozen.Session`. The run example is `examples/headless`, that of `play.Main` and `play.New` is `examples/go-zen` (the sample game, a module of its own), and the minimal embedding example is `examples/minimal`. The shapes of loading, settings, errors and extension points follow [the API conventions](api-guidelines.md).
 
 Work-specific data and extensions are owned by the game side. That a game can be assembled from startup through save and restore with the public API alone is confirmed by the sample and the contract tests.
 

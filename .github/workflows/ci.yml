@@ -6,6 +6,12 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Only superseded runs of the same pull request are canceled. Main and manual
+# runs get separate groups so their verification always completes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -391,6 +397,8 @@ jobs:
         run: make go-zen
       - name: Vet, check and test the novel sample (its screens are in the graphics job)
         run: make novel
+      - name: Vet, check and test the campaign sample (its screens are in the graphics job)
+        run: make campaign
       - name: Save the Go caches of this job
         if: ${{ github.ref == 'refs/heads/main' && steps.go-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -399,5 +407,3 @@ jobs:
             ~/go/pkg/mod
             ~/.cache/go-build
           key: ${{ steps.go-cache.outputs.cache-primary-key }}
-      - name: Vet, check and test the campaign sample (its screens are in the graphics job)
-        run: make campaign

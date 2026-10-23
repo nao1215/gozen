@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/dungeon"
 	"github.com/nao1215/gozen/internal/headless"
+	"github.com/nao1215/gozen/internal/layer3/dungeon"
 	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/testgame"
 )

@@ -35,8 +35,8 @@ func TestStoresRefuseUnsafeNames(t *testing.T) {
 				t.Errorf("%s Remove(%q): %v", kind, bad, err)
 			}
 			if mt, ok := st.(modTimer); ok {
-				if _, err := mt.ModTime(bad); err == nil && kind == "dir" {
-					t.Errorf("%s ModTime(%q) succeeded", kind, bad)
+				if _, err := mt.ModTime(bad); !errors.Is(err, gozen.ErrInvalid) {
+					t.Errorf("%s ModTime(%q): %v", kind, bad, err)
 				}
 			}
 		}

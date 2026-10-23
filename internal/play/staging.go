@@ -22,7 +22,7 @@ type castFigure struct {
 	enter     string
 	entered   int
 	leave     string
-	left      int // the tick it began to leave (0: it stays)
+	left      int // the tick it began to leave; leave != "" marks a departure, including tick 0
 }
 
 // colorFade is a fade of the screen through a color: out, hold, then back in.
@@ -51,7 +51,7 @@ func (g *Game) stand(e event.StandEffect) {
 	}
 	if e.None {
 		for i := range g.cast {
-			if g.cast[i].left == 0 {
+			if g.cast[i].leave == "" {
 				g.cast[i].leave, g.cast[i].left = "fade", g.tick
 			}
 		}
@@ -60,7 +60,7 @@ func (g *Game) stand(e event.StandEffect) {
 	key := castKey(g.db, e.Who)
 	for i := range g.cast {
 		f := &g.cast[i]
-		if f.key != key || f.left != 0 {
+		if f.key != key || f.leave != "" {
 			continue
 		}
 		if e.Leave != "" {
@@ -90,7 +90,7 @@ func (g *Game) castSays(s event.Say) {
 	}
 	k := speakerKey(s)
 	for i := range g.cast {
-		if g.cast[i].key == k && g.cast[i].left == 0 {
+		if g.cast[i].key == k && g.cast[i].leave == "" {
 			g.cast[i].face = s.Face
 		}
 	}
@@ -107,7 +107,7 @@ func (g *Game) castFigures(speaker string) []stageFigure {
 	var out []stageFigure
 	kept := g.cast[:0]
 	for _, f := range g.cast {
-		if f.left != 0 && g.tick-f.left >= castOut {
+		if f.leave != "" && g.tick-f.left >= castOut {
 			continue
 		}
 		kept = append(kept, f)
@@ -119,7 +119,7 @@ func (g *Game) castFigures(speaker string) []stageFigure {
 				alpha = float32(k)
 			}
 		}
-		if f.left != 0 {
+		if f.leave != "" {
 			k := float64(g.tick-f.left) / castOut
 			if f.leave == "slide" {
 				x = f.x + (edge(f.x)-f.x)*k*k
@@ -131,7 +131,7 @@ func (g *Game) castFigures(speaker string) []stageFigure {
 		if f.key == speaker {
 			dim = 0
 		}
-		out = append(out, stageFigure{f.key, f.face, sw*x + g.figShakeX(f.key), alpha, false, dim, f.left != 0})
+		out = append(out, stageFigure{f.key, f.face, sw*x + g.figShakeX(f.key), alpha, false, dim, f.leave != ""})
 	}
 	g.cast = kept
 	return out

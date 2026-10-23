@@ -26,6 +26,7 @@ func (g *Game) toggleSkip() {
 		return // a choice is waiting for the player; skipping would stop here at once
 	}
 	g.skipping = true
+	g.finishCGTransition()
 	g.emit("skip", traceLine{"on": true})
 }
 

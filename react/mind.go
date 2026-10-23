@@ -36,24 +36,15 @@ type Tag struct {
 	Slot  string
 }
 
-// analyzer is a game's own analysis. It reads the stimulus and the person (Recall,
-// Mood) and returns tags, which must be declared in Book.Tags or the lexicon. The
-// stimulus Text is already cut to Config.MaxRunes.
-type analyzer interface {
-	Analyze(s Stimulus, m *Mind) []Tag
-}
-
 // Config holds a Mind's collaborators. The zero value works: a fixed random seed, no
-// game clock, no extra analyzers, 400 runes and 8 remembered texts per sender.
+// game clock, 400 runes and 8 remembered texts per sender.
 type Config struct {
 	// Rand chooses lines. Nil uses a fixed seed, so reactions are reproducible.
 	Rand *rand.Rand
 	// Clock is the game time, for memories with a Time limit. Nil is allowed only when
 	// no rule of the person uses Time.
 	Clock func() time.Duration
-	// Analyzers run after the built-in analyzers.
-	analyzers []analyzer
-	// MaxRunes cuts longer text before any analysis, the Analyzers included (0 means 400).
+	// MaxRunes cuts longer text before analysis (0 means 400).
 	MaxRunes int
 	// History is how many recent texts per sender are kept to find repeats (0 means 8).
 	History int
@@ -256,11 +247,6 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 				add(found, Tag{Name: TagRecall, Score: 1, Slot: v})
 				break
 			}
-		}
-	}
-	for _, a := range m.cfg.analyzers {
-		for _, t := range a.Analyze(s, m) {
-			add(found, t)
 		}
 	}
 	answer := ""

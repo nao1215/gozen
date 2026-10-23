@@ -7,6 +7,8 @@ import (
 	"testing"
 	"testing/fstest"
 	"time"
+
+	"github.com/nao1215/gozen/internal/layer1/yamlpath"
 )
 
 func TestMaskCatchesTheDisguises(t *testing.T) {
@@ -162,14 +164,14 @@ func TestYAMLPaths(t *testing.T) {
 		}
 	}
 	// within a sequence of objects, select by id
-	got, err := yamlAt([]byte("people:\n  - id: a\n    n: 1\n  - id: b\n    n: 2\n  - 5\n"), "people.b.n")
+	got, err := yamlpath.At([]byte("people:\n  - id: a\n    n: 1\n  - id: b\n    n: 2\n  - 5\n"), "people.b.n")
 	if err != nil || strings.TrimSpace(string(got)) != "2" {
 		t.Errorf("by id: %q %v", got, err)
 	}
-	if _, err := yamlAt([]byte("people:\n  - id: a\n"), "people.zzz"); !errors.Is(err, fs.ErrNotExist) {
+	if _, err := yamlpath.At([]byte("people:\n  - id: a\n"), "people.zzz"); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("no such id: %v", err)
 	}
-	if _, err := yamlAt([]byte("a: [\n"), "a"); err == nil {
+	if _, err := yamlpath.At([]byte("a: [\n"), "a"); err == nil {
 		t.Error("broken YAML")
 	}
 }

@@ -108,6 +108,9 @@ type memStore struct {
 
 // ModTime is when the save was last written.
 func (m *memStore) ModTime(name string) (time.Time, error) {
+	if err := validName(name); err != nil {
+		return time.Time{}, err
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	t, ok := m.times[name]

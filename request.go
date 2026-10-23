@@ -2,6 +2,7 @@ package gozen
 
 import (
 	"context"
+	"slices"
 	"strings"
 )
 
@@ -17,7 +18,7 @@ type Request struct {
 	Text string
 	// Who is the speaker of say ("" for narration); Face its picture under assets/.
 	Who, Face string
-	// Options are the options of choice.
+	// Options are the options of choice, copied for each returned request and callback.
 	Options []string
 	// ID is the troop of battle, the shop of shop, the screen of open, and the speaker's
 	// actor of say ("" when the speaker is not an actor).
@@ -26,6 +27,11 @@ type Request struct {
 	Seconds float64
 	// Flags are the battle's can_lose and no_retry, comma-separated.
 	Flags string
+}
+
+func cloneRequest(q Request) Request {
+	q.Options = slices.Clone(q.Options)
+	return q
 }
 
 // The answers to a battle (Answer, Policy.Decide).

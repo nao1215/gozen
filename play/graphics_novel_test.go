@@ -197,4 +197,43 @@ func TestGraphicsNovel(t *testing.T) {
 			t.Fatalf("%s: the novel window shows nothing (%d colors)", name, len(colors))
 		}
 	}
+	// A long fade must not leave the first picture visible while read lines skip.
+	for name, c := range map[string]color.NRGBA{
+		"red": {R: 255, A: 255}, "blue": {B: 255, A: 255},
+	} {
+		img := image.NewNRGBA(image.Rect(0, 0, 64, 64))
+		draw.Draw(img, img.Bounds(), &image.Uniform{c}, image.Point{}, draw.Src)
+		var buf bytes.Buffer
+		if err := png.Encode(&buf, img); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(game, "assets", name+".png"), buf.Bytes(), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const pictures = `events:
+  picture_skip:
+    do:
+      - image: {file: red.png, fit: cover, fade: 0}
+      - say: "Red."
+      - image: {file: blue.png, fit: cover, fade: 5}
+      - say: "Blue."
+`
+	if err := os.WriteFile(filepath.Join(game, "data", "picture_skip.yaml"), []byte(pictures), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	run("pictures-read", "wait 30\npress ok\nwait 30\npress ok\nwait 5\nquit\n", "picture_skip")
+	run("pictures-skip", "wait 30\npress skip\nwait 8\nshot skipped-picture\nquit\n", "picture_skip")
+	raw, err := os.ReadFile(filepath.Join(root, "skipped-picture.png")) //nolint:gosec // A fixed screenshot name in the isolated test directory.
+	if err != nil {
+		t.Fatal(err)
+	}
+	img, err := png.Decode(bytes.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, _, blue, _ := img.At(img.Bounds().Dx()/2, 30).RGBA()
+	if blue>>8 < 240 || r>>8 > 15 {
+		t.Fatalf("skipping retained the red picture: red=%d blue=%d", r>>8, blue>>8)
+	}
 }

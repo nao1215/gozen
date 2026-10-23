@@ -1205,6 +1205,7 @@ func (g *Game) startState() {
 	g.backlog, g.logView = nil, nil
 	g.evCmds, g.evNoBack, g.evHist = nil, false, nil
 	g.clearCast()
+	g.clearStage()
 	if !g.rollingBack {
 		g.backRing = nil
 	}
@@ -1253,13 +1254,10 @@ func (g *Game) Move(loc string) {
 	g.st.Location = loc
 	g.st.Steps++
 	g.enterAt = loc
-	g.stage = [2]stageActor{}
-	g.stageOut = stageActor{}
+	g.clearStage()
 	if g.fadeT == 0 {
 		g.freezeView(moveFade)
 	}
-	g.sides = nil
-	g.stageGen++
 	g.songOverride = ""
 	g.playLocationMusic()
 	l := g.db.Locations[loc]
@@ -1344,6 +1342,9 @@ func (g *Game) Image(c data.CG) {
 		c.Faces = true
 	}
 	if c.Same(g.cg) {
+		if g.skipPictures() {
+			g.finishCGTransition()
+		}
 		if c.Faces {
 			g.leaveStage()
 		}
@@ -1379,13 +1380,35 @@ func (g *Game) Image(c data.CG) {
 	}
 	g.cg, g.cgAge = c, 0
 	g.dreamShown(c)
+	if g.skipPictures() {
+		g.finishCGTransition()
+	}
 	if c.File != "" {
-		g.pics.get(c.File)
+		if !g.live.quiet {
+			g.pics.get(c.File)
+		}
 		g.seenPicture(c.File)
 	}
 }
 
+// skipPictures completes transitions while advancing text, so a sequence of short
+// lines cannot keep an earlier picture underneath every later one.
+func (g *Game) skipPictures() bool {
+	return g.skipping || g.live.quiet || g.in.fast && g.skipPasses(g.talk.say)
+}
+
+func (g *Game) finishCGTransition() {
+	if g.cg.File != "" {
+		g.cgAge = max(g.cgAge, g.cg.FadeTicks())
+	}
+	g.cgOld, g.cgUnder = data.CG{}, data.CG{}
+	g.cgOldT, g.cgOut, g.cgUnderA = 0, 0, 0
+}
+
 func (g *Game) ageCG() {
+	if g.skipPictures() {
+		g.finishCGTransition()
+	}
 	if g.cg.File != "" {
 		g.cgAge++
 	}
@@ -1399,6 +1422,15 @@ type leftActor struct {
 	stageActor
 	x   float64
 	dim bool
+}
+
+// clearStage drops both current speakers and portraits still leaving the old scene.
+func (g *Game) clearStage() {
+	if g.sides != nil || g.stage != [2]stageActor{} || g.stageOut.id != "" || len(g.stageLeft) > 0 {
+		g.stageGen++
+	}
+	g.stage, g.stageOut, g.sides = [2]stageActor{}, stageActor{}, nil
+	g.stageLeft = nil
 }
 
 func (g *Game) leaveStage() {
@@ -1428,8 +1460,7 @@ func (g *Game) Effect(name string) {
 		g.fadeT = 60
 		g.freezeView(0)
 
-		g.stage, g.stageOut, g.sides = [2]stageActor{}, stageActor{}, nil
-		g.stageGen++
+		g.clearStage()
 	}
 }
 
@@ -1520,12 +1551,7 @@ func (g *Game) pump() bool {
 			g.birth = nil
 			g.stopSkip("end")
 			g.clearCast()
-			if g.sides != nil || g.stage != [2]stageActor{} {
-				g.stageGen++
-			}
-			g.stage = [2]stageActor{}
-			g.stageOut = stageActor{}
-			g.sides = nil
+			g.clearStage()
 			if g.moodOverride != "" {
 				g.moodOverride = ""
 			}

@@ -32,15 +32,16 @@ func Next(db *data.DB, st *rpg.State, goal rune) (string, bool) {
 
 func next(d *data.Dungeon, st *rpg.State, goal rune, through bool) (string, bool) {
 	p := st.Pos
+	w, h := d.Size()
+	cells := cellCount(w, h)
+	if cells == 0 || p.X < 0 || p.Y < 0 || p.X >= w || p.Y >= h {
+		return "", false
+	}
 	if CellAt(d, st, p.X, p.Y).Char == goal {
 		return MoveHere, true
 	}
-	w, h := d.Size()
-	if !validSize(w, h) || p.X < 0 || p.Y < 0 || p.X >= w || p.Y >= h {
-		return "", false
-	}
 	type node struct{ x, y, first int } // first: the facing of the first step (-1: none)
-	seen := make([]bool, w*h)
+	seen := make([]bool, cells)
 	seen[p.Y*w+p.X] = true
 	queue := []node{{p.X, p.Y, -1}}
 	for len(queue) > 0 {

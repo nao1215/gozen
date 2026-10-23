@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/layer1/yamlpath"
+
 	"github.com/goccy/go-yaml"
 
 	"github.com/nao1215/gozen/internal/expr"
@@ -52,7 +54,7 @@ type bookDoc struct {
 // YAML is the part of the book at a logical path, as written: "people", "people.host.rules"
 // (an entry of a list by its id, or [0]), "lexicon", "" for the whole book. Read your
 // own small structs from it. An unknown path is an error that is fs.ErrNotExist.
-func (b *Book) YAML(path string) ([]byte, error) { return yamlAt(b.src, path) }
+func (b *Book) YAML(path string) ([]byte, error) { return yamlpath.At(b.src, path) }
 
 // lexEntry is a lexicon entry. In YAML it is a plain string (weight 1) or a one-entry
 // map {word: weight}. The weight in 0..1 is the confidence the word gives its tag.

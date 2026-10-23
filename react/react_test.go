@@ -307,29 +307,21 @@ func TestReset(t *testing.T) {
 	}
 }
 
-// lengthAnalyzer records the text length it was given.
-type lengthAnalyzer struct{ got []int }
-
-func (a *lengthAnalyzer) Analyze(s Stimulus, _ *Mind) []Tag {
-	a.got = append(a.got, len([]rune(s.Text)))
-	return nil
-}
-
-// Config.MaxRunes also bounds what a game's own Analyzer reads.
-func TestMaxRunesReachesAnalyzers(t *testing.T) {
+// MaxRunes bounds the text used by built-in analysis and repeat detection.
+func TestMaxRunesBoundsAnalysis(t *testing.T) {
 	b, err := Parse([]byte(host))
 	if err != nil {
 		t.Fatal(err)
 	}
-	a := &lengthAnalyzer{}
-	m, err := New(b, "host", Config{MaxRunes: 10, analyzers: []analyzer{a}})
+	m, err := New(b, "host", Config{MaxRunes: 10})
 	if err != nil {
 		t.Fatal(err)
 	}
-	do(t, m, say(strings.Repeat("あ", 50)))
-	do(t, m, say("短い"))
-	if len(a.got) != 2 || a.got[0] != 10 || a.got[1] != 2 {
-		t.Fatalf("analyzer saw lengths %v, want [10 2]", a.got)
+	prefix := strings.Repeat("あ", 10)
+	do(t, m, say(prefix+"first"))
+	r := do(t, m, say(prefix+"different suffix"))
+	if r.Rule != "dodge.repeat" {
+		t.Fatalf("truncated repeat: %+v", r)
 	}
 }
 
