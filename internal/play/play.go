@@ -491,6 +491,7 @@ func New(opts Options) (_ *Game, err error) {
 		}
 		s.idle = func() bool { return !g.busy() }
 		s.waiting = g.waiting
+		s.graphsReady = g.scriptGraphsReady
 		s.walk = g.walkStep
 		s.arrived = func() bool { a := g.walkArrived(); g.walkGoal = [3]int{}; return a }
 		s.battleAuto = func() { g.act("battle_auto", nil) }

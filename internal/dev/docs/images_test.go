@@ -69,6 +69,8 @@ func TestDocImages(t *testing.T) {
 		t.Fatal(err)
 	}
 	made := makeImages(t, m, rootAbs, work, out)
+	compared := time.Now()
+	defer func() { t.Logf("compare: %s (%d pictures)", time.Since(compared).Round(time.Millisecond), len(made)) }()
 	committed := filepath.Join(rootAbs, "docs", "images")
 	if mode == "update" {
 		// A picture that still matches is kept, so a remake does not churn the binary files.
@@ -108,8 +110,10 @@ func makeImages(t *testing.T, m manifest, rootAbs, work, out string) []string {
 	jobs := docsJobs()
 	images, runNames := m.selected(t)
 	bins := map[string]string{}
+	t.Logf("selection: %d pictures, %d runs, %d samples, shard %q", len(images), len(runNames), len(m.samplesFor(runNames)), os.Getenv("GOZEN_DOCS_SHARD"))
+	began := time.Now()
 	var builds []func() error
-	for _, name := range sortedKeys(m.Samples) {
+	for _, name := range m.samplesFor(runNames) {
 		bin := filepath.Join(work, "bin", name)
 		if runtime.GOOS == "windows" {
 			bin += ".exe"
@@ -127,6 +131,8 @@ func makeImages(t *testing.T, m manifest, rootAbs, work, out string) []string {
 	if err := parallel(jobs, builds); err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("build: %s", time.Since(began).Round(time.Millisecond))
+	began = time.Now()
 	runs := map[string]*played{}
 	var mu sync.Mutex
 	var plays []func() error
@@ -175,6 +181,8 @@ func makeImages(t *testing.T, m manifest, rootAbs, work, out string) []string {
 	if err := parallel(jobs, plays); err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("play: %s", time.Since(began).Round(time.Millisecond))
+	began = time.Now()
 	var encodes []func() error
 	for _, name := range images {
 		im := m.Images[name]
@@ -209,6 +217,7 @@ func makeImages(t *testing.T, m manifest, rootAbs, work, out string) []string {
 	if err := parallel(jobs, encodes); err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("encode: %s", time.Since(began).Round(time.Millisecond))
 	return images
 }
 
@@ -221,35 +230,14 @@ func docsJobs() int {
 	return max(1, runtime.NumCPU())
 }
 
-// selected returns the pictures to make, sorted, and the runs they take frames from.
-// GOZEN_DOCS_IMAGES_ONLY narrows the pictures to the names (or path.Match patterns)
-// it lists, separated by commas; empty, it is every picture.
+// selected applies the optional local filter and CI shard without changing image recipes.
 func (m manifest) selected(t *testing.T) (images, runs []string) {
 	t.Helper()
-	var only []string
-	for f := range strings.SplitSeq(os.Getenv("GOZEN_DOCS_IMAGES_ONLY"), ",") {
-		if f = strings.TrimSpace(f); f != "" {
-			only = append(only, f)
-		}
+	images, runs, err := m.selectImages(os.Getenv("GOZEN_DOCS_IMAGES_ONLY"), os.Getenv("GOZEN_DOCS_SHARD"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	need := map[string]bool{}
-	for _, name := range sortedKeys(m.Images) {
-		if len(only) > 0 && !slices.ContainsFunc(only, func(p string) bool { ok, err := path.Match(p, name); return err == nil && ok }) {
-			continue
-		}
-		images = append(images, name)
-		im := m.Images[name]
-		need[im.Run] = true
-		for _, f := range im.Frames {
-			if f.Run != "" {
-				need[f.Run] = true
-			}
-		}
-	}
-	if len(images) == 0 {
-		t.Fatalf("GOZEN_DOCS_IMAGES_ONLY=%q matches no picture of %s", os.Getenv("GOZEN_DOCS_IMAGES_ONLY"), manifestPath)
-	}
-	return images, sortedKeys(need)
+	return images, runs
 }
 
 // parallel runs the functions, n at a time, and returns their errors.

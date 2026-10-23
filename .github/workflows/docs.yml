@@ -27,7 +27,13 @@ permissions:
   contents: read
 
 jobs:
-  images:
+  image-shards:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      GOZEN_DOCS_SHARD: ${{ matrix.shard }}/4
     if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -50,6 +56,10 @@ jobs:
             echo "run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          if ! files="$(git diff --name-only HEAD^1 HEAD)"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           run=false
           while IFS= read -r f; do
             case "${f}" in
@@ -58,7 +68,7 @@ jobs:
               *.md | website/* | .github/* | e2e/* | bench/* | skills/* | LICENSE | *_test.go) ;;
               *) run=true ;;
             esac
-          done <<< "$(git diff --name-only HEAD^1 HEAD)"
+          done <<< "$files"
           echo "run=${run}" >> "$GITHUB_OUTPUT"
           echo "remake the pictures: ${run}"
       - id: go
@@ -78,16 +88,33 @@ jobs:
           path: |
             ~/go/pkg/mod
             ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-${{ github.sha }}
-          restore-keys: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-
+          key: go-${{ runner.os }}-images-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-part${{ matrix.shard }}-${{ github.sha }}
+          restore-keys: |
+            go-${{ runner.os }}-images-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-part${{ matrix.shard }}-
+            go-${{ runner.os }}-images-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-
+      # The Azure mirror can keep transferring at very low speed without timing out.
+      # Prefer the official Ubuntu HTTPS archive, retaining the runner's fallbacks.
+      - name: Prefer the Ubuntu archive mirror
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i \
+              -e '\|^http://azure\.archive\.ubuntu\.com/ubuntu/|s/priority:1/priority:2/' \
+              -e '\|^https://archive\.ubuntu\.com/ubuntu/|s/priority:2/priority:1/' \
+              /etc/apt/apt-mirrors.txt
+          fi
       - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
         if: steps.scope.outputs.run == 'true'
         with:
           xvfb: true
       - name: Install ffmpeg
         if: steps.scope.outputs.run == 'true'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
-      # The runs play side by side, one per CPU (GOZEN_DOCS_JOBS sets another number).
+        run: |
+          apt_options=(-o Acquire::Retries=2 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
+          sudo apt-get "${apt_options[@]}" update
+          sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg
+      # Shared captures stay together; all four shards cover the complete ledger.
+      # Each runner also plays independent captures in parallel, one per CPU.
       - name: Remake the pictures and compare them with the committed ones
         if: steps.scope.outputs.run == 'true'
         run: make docs-images-check
@@ -95,7 +122,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: docs-images
+          name: docs-images-${{ matrix.shard }}
           path: build/docs-images/out
           retention-days: 7
       - name: Save the Go caches of this job
@@ -106,6 +133,18 @@ jobs:
             ~/go/pkg/mod
             ~/.cache/go-build
           key: ${{ steps.go-cache.outputs.cache-primary-key }}
+
+  # Keep the existing required check name while testing every shard independently.
+  images:
+    needs: image-shards
+    if: ${{ always() && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every image shard to pass
+        env:
+          RESULT: ${{ needs.image-shards.result }}
+        run: test "$RESULT" = success
 
   steps:
     if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}

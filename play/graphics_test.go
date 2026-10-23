@@ -69,7 +69,7 @@ func TestGraphicsScreens(t *testing.T) {
 		{name: "dungeon", args: []string{"--start", "b1", "--party", "maren,ox,tilly"}},
 		{name: "recruit", args: []string{"--start", "b1", "--party", "maren,ox,tilly,kes", "--level", "6"}, script: "guarantee-recruit drip_slime\ndo battle: drips\nplay join 5\nwait 30\nshot frame\nquit\n"},
 		// F7 balance display. Wait until measuring finishes, and check that the win-rate bar color appears in the upper-right panel.
-		{name: "balance", args: []string{"--start", "b2", "--party", "maren,ox,tilly", "--level", "1"}, script: "wait 20\npress graphs\nwait 5200\nshot frame\nquit\n"},
+		{name: "balance", args: []string{"--start", "b2", "--party", "maren,ox,tilly", "--level", "1"}, script: "wait 20\npress graphs\nwait-graphs\nshot frame\nquit\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

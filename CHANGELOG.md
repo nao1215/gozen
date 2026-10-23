@@ -12,6 +12,9 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Changed
 
+- Wait for balance measurements to finish in capture scripts and graphics E2E checks instead of sleeping for 5,200 frames; invalid panels and measurement errors fail the capture.
+- Split documentation image verification across four capture-aware CI shards, build only the selected samples, and log phase durations while preserving complete image comparison coverage.
+
 - Cancel superseded pull-request benchmarks and refresh job-specific CI caches per revision while restoring compatible dependency caches.
 
 ### Added

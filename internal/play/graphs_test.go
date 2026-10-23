@@ -165,3 +165,58 @@ func TestGraphsAddTheBattleTroop(t *testing.T) {
 		t.Fatal(troopLabel(g.db, "two"))
 	}
 }
+
+func TestScriptWaitGraphs(t *testing.T) {
+	if _, err := parseScript("wait-graphs extra"); err == nil {
+		t.Fatal("accepted arguments")
+	}
+	s, err := parseScript("wait-graphs\nshot complete\nquit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := graphGame(t)
+	g.graphs.on = true
+	s.graphsReady = g.scriptGraphsReady
+	g.in.script = s
+	in := &input{}
+	s.step(in)
+	if s.pc != 0 || s.shot != "" {
+		t.Fatal("advanced before initialization")
+	}
+	g.updateGraphs()
+	// Use an incomplete result even if a fast machine already finished this fixture.
+	g.graphs.res = map[graphJob]*graphResult{}
+	s.step(in)
+	if s.pc != 0 || s.shot != "" {
+		t.Fatal("advanced during measurement")
+	}
+	runGraphs(t, g)
+	s.step(in)
+	s.step(in)
+	if s.shot != "complete" || g.failure != nil {
+		t.Fatalf("completion: shot %q, error %v", s.shot, g.failure)
+	}
+	normal := graphGame(t)
+	normal.graphs.on = true
+	runGraphs(t, normal)
+	if !reflect.DeepEqual(g.graphs.res, normal.graphs.res) {
+		t.Fatal("scripted measurement differs from interactive measurement")
+	}
+	for _, tc := range []struct {
+		name    string
+		dev, on bool
+		err     string
+	}{
+		{"not development", false, true, ""},
+		{"closed", true, false, ""},
+		{"measurement error", true, true, "broken save"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g.opts.Development, g.graphs.on, g.graphs.err = tc.dev, tc.on, tc.err
+			g.failure = nil
+			if g.scriptGraphsReady() || g.failure == nil {
+				t.Fatal("invalid panel accepted")
+			}
+		})
+	}
+}
