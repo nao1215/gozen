@@ -92,6 +92,17 @@ jobs:
           restore-keys: |
             go-${{ runner.os }}-images-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-part${{ matrix.shard }}-
             go-${{ runner.os }}-images-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-
+      # The Azure mirror can keep transferring at very low speed without timing out.
+      # Prefer the official Ubuntu HTTPS archive, retaining the runner's fallbacks.
+      - name: Prefer the Ubuntu archive mirror
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i \
+              -e '\|^http://azure\.archive\.ubuntu\.com/ubuntu/|s/priority:1/priority:2/' \
+              -e '\|^https://archive\.ubuntu\.com/ubuntu/|s/priority:2/priority:1/' \
+              /etc/apt/apt-mirrors.txt
+          fi
       - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
         if: steps.scope.outputs.run == 'true'
         with:
