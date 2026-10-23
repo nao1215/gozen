@@ -25,16 +25,16 @@ Windows is assumed to have neither Make nor Bash. At the repository root, run th
 | `make test` | `go test ./...` | contract tests of the core, `gozen` and internal, samples, API and development tools |
 | `make arch` | `go-arch-lint check` | runtime imports and vendor, deep dependency check |
 | `make api` | `go test ./api -count=1` | comparing the golden with the current public identifiers |
-| `make tidy` | `go mod tidy -diff`, also in `examples/go-zen` and `examples/novel` | go.mod and go.sum hold what the imports need, no more |
+| `make tidy` | `go mod tidy -diff`, also in `examples/go-zen`, `examples/novel` and `examples/campaign` | go.mod and go.sum hold what the imports need, no more |
 | `make workflows` | `actionlint`, `zizmor --offline .github/workflows` | syntax, expressions and shell of GitHub Actions workflows; their pins, credentials, injection and caches |
 | `make api-update` | `go run ./internal/dev/apigen` | updating the list to review |
-| `make lint` | `go-arch-lint check`, `go test ./api -count=1`, `make tidy`, `make workflows`, `golangci-lint run ./...`, `golangci-lint fmt --diff`, then the same two in `examples/go-zen` and `examples/novel`, in order | dependencies, API, modules, workflows, static analysis, formatting |
+| `make lint` | `go-arch-lint check`, `go test ./api -count=1`, `make tidy`, `make workflows`, `golangci-lint run ./...`, `golangci-lint fmt --diff`, then the same two in `examples/go-zen`, `examples/novel` and `examples/campaign`, in order | dependencies, API, modules, workflows, static analysis, formatting |
 | `make build` | `go build -trimpath -buildvcs=false ./...` | compiling the core, `gozen` and internal, samples and development tools |
-| `make graphics` | `go test -tags=graphics ./play -run TestGraphicsScreens -count=1` and `go test -tags=graphics ./puppet -run TestGraphics -count=1` | real loop and PNG checks of 6 screens, and pixel checks of the moving standing pictures (drawn and read inside one loop). Wrapped in Xvfb on Linux |
+| `make graphics` | `go test -tags=graphics ./play -run 'TestGraphicsScreens|TestGraphicsStage|TestGraphicsMap|TestGraphicsWild|TestGraphicsNovel|TestGraphicsCampaign' -count=1` and `go test -tags=graphics ./puppet -run TestGraphics -count=1` | real loop and PNG checks of 6 screens, and pixel checks of the moving standing pictures (drawn and read inside one loop). Wrapped in Xvfb on Linux |
 | `make e2e` | [direct steps for the CLI](cli.md#e2e) | contract checks of every `gozen` subcommand with atago v0.25.2 |
 | `make docs-images` / `make docs-images-check` | `go test ./internal/dev/docs -run '^TestDocImages$' -count=1` with `GOZEN_DOCS_IMAGES=update` (or `check`); inside xvfb-run on Linux | remake the README and site pictures from the ledger / fail if stale ([README and site pictures and steps](docs.md)) |
 | `make docs-steps` | `GOZEN_DOCS_STEPS=1 go test ./internal/dev/docs -run '^TestDocSteps$' -count=1` | running the steps of the README and site |
-| `make website-check` | `GOZEN_SITE_DIR=website/public go test ./internal/dev/docs -run '^TestSiteLinks$' -count=1` | link and image references of the built site |
+| `make website-check` | `GOZEN_SITE_DIR=website/public go test ./internal/dev/docs -run '^TestSite(Links|Schema)$' -count=1` | link and image references of the built site |
 | `make e2e-graphics` | `atago run --ci --parallel 1 --tag graphics e2e/atago` (see the CLI steps for the build and PATH setup) | capture E2E with a game child process. Wrapped in Xvfb on Linux |
 
 `e2e` was replaced in T4 with checks of the real binary using atago. `graphics` is the screen test of T3, and `e2e-graphics` is the CLI capture pipeline of T4. A failure caused by a missing prerequisite is not counted as a success or a skip.

@@ -1,0 +1,101 @@
+version: '1'
+suite:
+  name: Extreme input boundaries
+scenarios:
+- name: road steps ${steps} return a bounded diagnostic
+  matrix:
+  - {steps: '10001'}
+  - {steps: '9223372036854775807'}
+  steps:
+  - fixture: {file: g/game.yaml, content: "schema_version: 3\nid: limits\nstart: {location: map, party: [scout]}\n"}
+  - fixture: {file: g/assets/x.png, from: fixtures/limits/width-8192.png}
+  - fixture:
+      file: g/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {scout: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations:
+          map:
+            map:
+              picture: x.png
+              points: {a: {at: [0, 0]}, b: {at: [1, 0]}}
+              roads: [{between: [a, b], steps: ${steps}}]
+  - run: {command: 'gozen check --only structure --format json g'}
+  - assert:
+      exit_code: 1
+      stdout:
+        contains: ['"path": "locations.map.map.roads[0].steps"', '"code": "GZN1106"', 'want steps in [0, 10000]']
+      stderr: {contains: 'check: 1 errors'}
+      changes: {created: [], modified: [], deleted: []}
+  - fixture:
+      file: g/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {scout: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations:
+          map:
+            map:
+              picture: x.png
+              points: {a: {at: [0, 0]}, b: {at: [1, 0]}}
+              roads: [{between: [a, b], steps: 10000}]
+  - run: {command: 'gozen check --only structure --format json g'}
+  - assert:
+      exit_code: 0
+      stdout: {equals: "[]\n"}
+      stderr: {equals: ''}
+- name: enemy count is rejected above the display limit and accepts its boundary
+  steps:
+  - fixture: {file: g/game.yaml, content: "id: limits\nstart: {location: camp, party: [scout]}\n"}
+  - fixture: {file: g/assets/x.png, from: fixtures/limits/width-8192.png}
+  - fixture:
+      file: g/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {scout: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {camp: {}}
+        enemies: {mote: {image: x.png, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}}
+        troops: {crowd: {members: [mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote]}}
+  - run: {command: 'gozen check --only structure --format json g'}
+  - assert:
+      exit_code: 1
+      stdout: {contains: ['"path": "troops.crowd.members"', '"code": "GZN1106"', 'at most 32']}
+      stderr: {contains: 'check: 1 errors'}
+  - fixture:
+      file: g/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {scout: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {camp: {}}
+        enemies: {mote: {image: x.png, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}}
+        troops: {crowd: {members: [mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote]}}
+  - run: {command: 'gozen check --only structure --format json g'}
+  - assert:
+      exit_code: 0
+      stdout: {equals: "[]\n"}
+      stderr: {equals: ''}
+- name: oversized image is rejected and replacing it with the boundary image repairs the game
+  steps:
+  - fixture: {file: g/game.yaml, content: "id: limits\nstart: {location: camp, party: [scout]}\n"}
+  - fixture:
+      file: g/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {scout: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {camp: {background: x.png}}
+  - fixture: {file: g/assets/x.png, from: fixtures/limits/width-8193.png}
+  - run: {command: 'gozen check --only structure --format json g'}
+  - assert:
+      exit_code: 1
+      stdout: {contains: ['"path": "locations.camp.background"', '"code": "GZN1106"', 'picture dimensions 8193x1']}
+      stderr: {contains: 'check: 1 errors'}
+  - fixture: {file: g/assets/x.png, from: fixtures/limits/width-8192.png}
+  - run: {command: 'gozen check --only structure --format json g'}
+  - assert:
+      exit_code: 0
+      stdout: {equals: "[]\n"}
+      stderr: {equals: ''}

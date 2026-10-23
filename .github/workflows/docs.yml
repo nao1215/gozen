@@ -69,7 +69,7 @@ jobs:
           cache: false
       # This job's own Go caches. setup-go keeps one cache per Go version and go.sum for
       # every job, saved by whichever job ends first (often a short cross-build), so the
-      # builds of this job would not be in it. Saved from main once per Go and go.sum.
+      # builds of this job would not be in it. Saved from main per revision, restoring the latest matching dependency cache.
       - name: Restore the Go caches of this job
         if: steps.scope.outputs.run == 'true'
         id: go-cache
@@ -78,8 +78,8 @@ jobs:
           path: |
             ~/go/pkg/mod
             ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
-          restore-keys: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-
+          key: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-${{ github.sha }}
+          restore-keys: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-
       - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
         if: steps.scope.outputs.run == 'true'
         with:
@@ -122,7 +122,7 @@ jobs:
           cache: false
       # This job's own Go caches. setup-go keeps one cache per Go version and go.sum for
       # every job, saved by whichever job ends first (often a short cross-build), so the
-      # builds of this job would not be in it. Saved from main once per Go and go.sum.
+      # builds of this job would not be in it. Saved from main per revision, restoring the latest matching dependency cache.
       - name: Restore the Go caches of this job
         id: go-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -130,8 +130,8 @@ jobs:
           path: |
             ~/go/pkg/mod
             ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
-          restore-keys: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-
+          key: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-${{ github.sha }}
+          restore-keys: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-
       # One step runs the sample game under xvfb-run (website/content/install.md).
       - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
         with:

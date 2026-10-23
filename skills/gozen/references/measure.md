@@ -14,4 +14,4 @@ For a campaign, `gozen sim campaign game` (below).
 - `sim dive GAME LOCATION` walks a generated dungeon floor by floor and prints levels, HP and boss win rates.
 - `sim campaign GAME` plays the campaign 200 times with a strategy for the player (`--as greedy|random|ai`) and prints the win rate, the turns, the regions each side held turn by turn and the orders given. `--tactic ID` marches every general with one tactic, to compare tactics.
 - `--format json` prints the same numbers for a script.
-- A boss near 70 to 85 percent at the level a player reaches feels fair. A normal fight should leave most of the HP.
+- As an initial design heuristic, try a boss AUTO win rate near 70 to 85 percent and normal fights that leave most HP. These numbers do not establish fairness for human players; confirm difficulty through playtesting.

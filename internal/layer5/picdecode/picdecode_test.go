@@ -46,3 +46,14 @@ func TestBrowserKind(t *testing.T) {
 		}
 	}
 }
+
+// A very wide, short picture reproduces the dimension failure without a large allocation.
+func TestDecodeRejectsOversize(t *testing.T) {
+	var b bytes.Buffer
+	if err := png.Encode(&b, image.NewNRGBA(image.Rect(0, 0, 8193, 1))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Decode(b.Bytes()); err == nil {
+		t.Fatal("oversized image accepted")
+	}
+}

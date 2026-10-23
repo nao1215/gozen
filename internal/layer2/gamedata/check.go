@@ -1,7 +1,9 @@
 package gamedata
 
 import (
+	"bytes"
 	"fmt"
+	"image"
 	"io/fs"
 	"maps"
 	"math"
@@ -9,6 +11,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/nao1215/gozen/internal/layer1/picturelimit"
 
 	"github.com/nao1215/gozen/internal/diag"
 
@@ -37,9 +41,10 @@ var (
 )
 
 type checker struct {
-	stateNames map[string]StateName
-	db         *DB
-	errs       []error
+	stateNames    map[string]StateName
+	pictureErrors map[string]error
+	db            *DB
+	errs          []error
 	// script checks the command list fed from Go (gozen's Session.Do). The spec version is a data contract, so it is not checked.
 	script bool
 	// noDev makes setting a party member's stats or level an error in script (a non-dev Session; author decision 5).
@@ -132,12 +137,45 @@ func (c *checker) ref(where, kind, id string, ok bool) {
 func (c *checker) picture(where string, p Picture) {
 	if p.File != "" && !c.db.Exists("assets/"+p.File) {
 		c.errorf(diag.MissingAsset, where, "no picture assets/%s", p.File)
+		return
 	}
+	c.pictureLimit(where, p.File)
 }
 
 func (c *checker) file(where, p string) {
 	if p != "" && !c.db.Exists("assets/"+p) {
 		c.errorf(diag.MissingAsset, where, "no file assets/%s", p)
+		return
+	}
+	c.pictureLimit(where, p)
+}
+
+func (c *checker) pictureLimit(where, p string) {
+	switch strings.ToLower(path.Ext(p)) {
+	case ".png", ".jpg", ".jpeg", ".webp":
+	default:
+		return
+	}
+	if c.db.FS == nil {
+		return
+	}
+	if c.pictureErrors == nil {
+		c.pictureErrors = map[string]error{}
+	}
+	err, seen := c.pictureErrors[p]
+	if !seen {
+		var b []byte
+		b, err = picturelimit.Read(c.db.FS, "assets/"+p)
+		if err == nil {
+			// Unknown image headers remain unchecked here; the runtime decoder reports them.
+			if cfg, _, decodeErr := image.DecodeConfig(bytes.NewReader(b)); decodeErr == nil {
+				err = picturelimit.Dimensions(cfg.Width, cfg.Height)
+			}
+		}
+		c.pictureErrors[p] = err
+	}
+	if err != nil {
+		c.errorf(diag.OutOfRange, where, "%s: %v", p, err)
 	}
 }
 
@@ -214,6 +252,9 @@ func (c *checker) requiredDefinitions() {
 		}
 	}
 	for _, id := range c.db.Ordered("troops") {
+		if len(c.db.Troops[id].Members) > 32 {
+			c.errorf(diag.OutOfRange, "troops."+id+".members", "at most 32 enemies can be displayed in one battle")
+		}
 		if len(c.db.Troops[id].Members) == 0 {
 			c.errorf(diag.Shape, "troops."+id, "no members")
 		}

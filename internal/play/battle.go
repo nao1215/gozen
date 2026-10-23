@@ -1065,8 +1065,18 @@ func (s *battleScene) updateTarget(g *Game) {
 		t.sel = (t.sel + 1) % n
 	}
 	hit := -1
+	var boxes map[*battle.Unit]foeBox
+	if t.enemies {
+		boxes = s.foeBoxes(g)
+	}
 	for i, u := range t.pool {
-		if g.in.mouse.In(s.unitRect(g, u)) {
+		var rect image.Rectangle
+		if u.Enemy {
+			rect = boxes[u].rect
+		} else {
+			rect = s.unitRect(g, u)
+		}
+		if g.in.mouse.In(rect) {
 			hit = i
 		}
 	}

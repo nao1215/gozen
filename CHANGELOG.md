@@ -4,6 +4,20 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Fixed
+
+- Prevent map route distance overflow and avoid building paths for destinations that are not offered as choices. Map refresh and battle mouse targeting also reuse existing layout information.
+- Bound picture reads and decoded dimensions before allocation, sharing checks between ordinary pictures and puppets. Reject roads above 10,000 steps and troops above 32 enemies; pictures are limited to 8,192 pixels per side, 16,777,216 pixels and 64 MiB of encoded data.
+- Correct documentation command lists and verification steps, and clarify the limits of trial pruning and automated balance advice.
+
+### Changed
+
+- Cancel superseded pull-request benchmarks and refresh job-specific CI caches per revision while restoring compatible dependency caches.
+
+### Added
+
+- CLI E2E scenarios for excessive road steps, enemy counts and image dimensions, including successful checks after repairing each input, plus regression tests and large-map benchmarks.
+
 ## v0.5.0 - 2026-10-22
 
 A relationship chart in the character book, a calmer breeding lead-in and softer battle motion, one size for screen captures, and safer handling of sizes taken from YAML.

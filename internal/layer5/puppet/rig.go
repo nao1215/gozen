@@ -4,22 +4,21 @@
 package puppet
 
 import (
-	"bytes"
 	"fmt"
 	"image"
 	"image/draw"
-	_ "image/png" // the pictures of a puppet are PNG,
 	"io/fs"
 	"path"
+
+	_ "image/png" // the pictures of a puppet are PNG,
+
+	"github.com/nao1215/gozen/internal/layer1/picturelimit"
 
 	_ "golang.org/x/image/webp" // or WebP in a browser build (smaller to download)
 
 	"github.com/nao1215/gozen/internal/layer2/puppetdef"
 	"github.com/nao1215/gozen/internal/layer5/picdecode"
 )
-
-// MaxSide is the largest picture side accepted, to bound memory and textures.
-const MaxSide = 8192
 
 // Rig is a loaded puppet: the spec and its pictures decoded on the CPU.
 type Rig struct {
@@ -226,16 +225,9 @@ func (l *loader) read(name string) (*image.NRGBA, error) {
 	if !fs.ValidPath(p) {
 		return nil, fmt.Errorf("picture %q leaves the puppet's file system", name)
 	}
-	b, err := fs.ReadFile(l.fsys, p)
+	b, err := picturelimit.Read(l.fsys, p)
 	if err != nil {
 		return nil, err
-	}
-	cfg, _, err := image.DecodeConfig(bytes.NewReader(b))
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", name, err)
-	}
-	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width > MaxSide || cfg.Height > MaxSide {
-		return nil, fmt.Errorf("%s: %dx%d is not within 1 to %d pixels", name, cfg.Width, cfg.Height, MaxSide)
 	}
 	img, err := picdecode.Decode(b)
 	if err != nil {

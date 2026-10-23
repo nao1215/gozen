@@ -7,6 +7,7 @@ package atlas
 import (
 	"container/heap"
 	"fmt"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -82,45 +83,64 @@ func (q *queue) Pop() any {
 	return it
 }
 
-// Routes are the shortest ways (in steps) from the point from over the open roads: for each
-// point reached, the indexes of the roads in a.Roads to go along, in order (from itself: none).
-func Routes(st *rpg.State, a *data.Atlas, from string) map[string][]int {
+// routes keeps a shortest-path tree; complete paths are built only for offered choices.
+type routes struct {
+	from  string
+	atlas *data.Atlas
+	dist  map[string]int
+	prev  map[string]int
+}
+
+func findRoutes(st *rpg.State, a *data.Atlas, from string) *routes {
+	out := &routes{from: from, atlas: a, dist: map[string]int{}, prev: map[string]int{}}
 	if a.Points[from] == nil {
-		return nil
+		return out
 	}
-	dist := map[string]int{from: 0}
-	prev := map[string]int{} // the road into a point
+	adjacent := make(map[string][]int, len(a.Points))
+	for i := range a.Roads {
+		r := &a.Roads[i]
+		if !Usable(st, a, r) {
+			continue
+		}
+		for _, id := range r.Between {
+			adjacent[id] = append(adjacent[id], i)
+		}
+	}
+	out.dist[from] = 0
 	q := &queue{{from, 0}}
 	for q.Len() > 0 {
 		it, ok := heap.Pop(q).(item)
-		if !ok || it.steps > dist[it.id] {
+		if !ok || it.steps > out.dist[it.id] {
 			continue
 		}
-		for i := range a.Roads {
+		for _, i := range adjacent[it.id] {
 			r := &a.Roads[i]
-			if !slices.Contains(r.Between, it.id) || !Usable(st, a, r) {
+			steps := r.StepsOrOne()
+			if steps > math.MaxInt-it.steps {
 				continue
 			}
-			to := Other(r, it.id)
-			n := it.steps + r.StepsOrOne()
-			if d, seen := dist[to]; !seen || n < d {
-				dist[to], prev[to] = n, i
+			to, n := Other(r, it.id), it.steps+steps
+			if d, seen := out.dist[to]; !seen || n < d {
+				out.dist[to], out.prev[to] = n, i
 				heap.Push(q, item{to, n})
 			}
 		}
 	}
-	out := map[string][]int{}
-	for id := range dist {
-		var way []int
-		for at := id; at != from; {
-			i := prev[at]
-			way = append(way, i)
-			at = Other(&a.Roads[i], at)
-		}
-		slices.Reverse(way)
-		out[id] = way
-	}
 	return out
+}
+
+func (r *routes) path(id string) ([]int, bool) {
+	if _, ok := r.dist[id]; !ok {
+		return nil, false
+	}
+	var way []int
+	for at := id; at != r.from; {
+		i := r.prev[at]
+		way = append(way, i)
+		at = Other(&r.atlas.Roads[i], at)
+	}
+	slices.Reverse(way)
+	return way, true
 }
 
 // Choice is a point of the map the party can go to from where it stands.
@@ -140,19 +160,20 @@ func Choices(db *data.DB, st *rpg.State) []Choice {
 	}
 	a := l.Map
 	here := Here(db, st)
-	routes := Routes(st, a, here)
+	routes := findRoutes(st, a, here)
 	var out []Choice
 	for _, id := range a.PointIDs() {
 		p := a.Points[id]
 		if p == nil {
 			continue
 		}
-		way, ok := routes[id]
+		_, ok := routes.dist[id]
 		switch {
 		case ok && (p.To != "" || pending(st, st.Location, id, p)):
 			if id == here && p.To == "" {
 				continue // standing on it: its do has run
 			}
+			way, _ := routes.path(id)
 			out = append(out, Choice{Point: id, Roads: way})
 		case !ok && p.Locked != "" && !Open(st, p):
 			// closed: offered when an open road from a reached point leads to it
@@ -161,7 +182,7 @@ func Choices(db *data.DB, st *rpg.State) []Choice {
 				if !slices.Contains(r.Between, id) || !holds(st, r.When) {
 					continue
 				}
-				if w, reached := routes[Other(r, id)]; reached {
+				if w, reached := routes.path(Other(r, id)); reached {
 					out = append(out, Choice{Point: id, Roads: append(slices.Clone(w), i), Locked: true})
 					break
 				}
@@ -253,8 +274,12 @@ func Reach(db *data.DB, st *rpg.State, arg string) []data.Command {
 // Cross is going along a road: its steps are added to the party's steps, each step may
 // meet a battle of its encounters (not when calm), and its do follows.
 func Cross(_ *data.DB, st *rpg.State, r *data.Road) []data.Command {
-	n := r.StepsOrOne()
-	st.Steps += n
+	n := min(r.StepsOrOne(), data.MaxRoadSteps)
+	if st.Steps <= math.MaxInt-n {
+		st.Steps += n
+	} else {
+		st.Steps = math.MaxInt
+	}
 	var cmds []data.Command
 	if e := r.Encounters; e.Rate.Set() && !st.Calm && len(e.Troops) > 0 {
 		for range n {

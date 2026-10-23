@@ -139,9 +139,9 @@ func (s *atlasScene) refresh(g *Game) {
 	}
 	s.points = s.points[:0]
 	index := map[string]int{}
-	for _, id := range ids {
+	for pointIndex, id := range ids {
 		p := a.Points[id]
-		mp := mapPoint{id: id, at: p.At.Pt(), shown: s.shownOf(g, id), open: atlas.Open(g.st, p), label: s.labelOf(g, id), marker: p.Marker, choice: -1}
+		mp := mapPoint{id: id, at: p.At.Pt(), shown: s.shownOf(g, id, pointIndex), open: atlas.Open(g.st, p), label: s.labelOf(g, id), marker: p.Marker, choice: -1}
 		if mp.shown == 0 && reach[id] { // hidden until the roads reach it
 			mp.shown = 1
 		}
@@ -443,8 +443,9 @@ func roadLine(a *data.Atlas, r *data.Road, from string) geom.Polyline {
 
 // shownOf is how a point shows: 0 hidden, 1 a mark only, 2 dim, 3 visited (or the token's).
 // A hidden point shows as a mark once the open roads reach it (refresh).
-func (s *atlasScene) shownOf(g *Game, id string) int {
-	if id == atlas.Here(g.db, g.st) || atlas.Visited(g.db, g.st, s.loc, id) {
+func (s *atlasScene) shownOf(g *Game, id string, pointIndex int) int {
+	mapped := g.st.Mapped[s.loc]
+	if id == s.here || pointIndex >= 0 && pointIndex < len(mapped) && mapped[pointIndex] != 0 {
 		return 3
 	}
 	switch s.location(g).Map.Unknown {

@@ -101,7 +101,7 @@ The sample browser builds keep game files outside WebAssembly. Their generated `
 
 ## Ship a demo
 
-`gozen pack trial game demo` writes a demo with only what `trial.yaml` reaches; the rest is not in the build, so the demo cannot leak later content. Check it with `--list` before shipping.
+`gozen pack trial game demo` prunes definitions and assets using the range in `trial.yaml`. Analysis is conservative: branches it cannot prove unreachable may remain, and retained files can contain later content. Use `--list FILE` and inspect the resulting definitions and assets before shipping.
 
 ## Do not
 

@@ -54,3 +54,11 @@ The reason for one file as the place is not to scatter the products written by a
 data/town.yaml:42:16: locations.plaza.stage.spots.gate.at: [48, 22] is not where one can walk (outside walk or in blocks)
 data/town.yaml:33:14: locations.town.map.points.gate.locked: locked is said when the point is closed: it needs when
 ```
+
+## Resource limits
+
+A map road accepts `steps` from 0 to 10,000; 0 means one step. Higher counts are rejected because crossing a road can perform encounter work once per step. Route search checks cumulative distance overflow and only materializes paths offered as choices. A map with many actionable destinations can still require substantial path storage.
+
+Normal pictures and moving portraits accept at most 8,192 pixels per side, 16,777,216 pixels in total and 64 MiB of encoded input. Decoders enforce these limits before allocating pixels. The definition checker checks dimensions when its registered decoders recognize the header; unknown or corrupt headers are still diagnosed by the runtime decoder. These are per-image CPU limits, not guarantees of GPU support or a total game memory budget. Several simultaneously visible large pictures can exceed the image cache budget and cause repeated loading. Use pictures sized for their display area.
+
+A battle troop accepts at most 32 enemies. This protects the single-row enemy display from collapsing large groups into zero-width mouse targets. Use separate encounters for larger crowds. This is separate from the campaign's `clash.max_soldiers` setting.

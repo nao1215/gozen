@@ -93,6 +93,9 @@ func (p *MapPoint) UnmarshalYAML(unmarshal func(any) error) error {
 	return nil
 }
 
+// MaxRoadSteps bounds encounter work performed by crossing one road.
+const MaxRoadSteps = 10000
+
 // Road joins two points of a map (both ways).
 type Road struct {
 	Between    []string  `yaml:"between"`
@@ -246,8 +249,8 @@ func (c *checker) atlas(w, id string, l *Location) {
 		for j, v := range r.Via {
 			c.inPicture(fmt.Sprintf("%s.via[%d]", ww, j), v, size, known)
 		}
-		if r.Steps < 0 {
-			c.errorf(diag.OutOfRange, ww+".steps", "want steps of 1 or more, got %d", r.Steps)
+		if r.Steps < 0 || r.Steps > MaxRoadSteps {
+			c.errorf(diag.OutOfRange, ww+".steps", "want steps in [0, %d] (0 means 1), got %d", MaxRoadSteps, r.Steps)
 		}
 		c.expr(ww+".when", r.When, FieldNames)
 		c.commands(ww+".do", r.Do, FieldNames)

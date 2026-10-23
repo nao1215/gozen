@@ -4,6 +4,9 @@ import (
 	"slices"
 	"testing"
 
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/rpg"
+
 	"github.com/nao1215/gozen/internal/layer3/atlas"
 	"github.com/nao1215/gozen/internal/testgame"
 )
@@ -12,7 +15,7 @@ func TestRoutesAndPlace(t *testing.T) {
 	db := testgame.LoadScenes(t, nil)
 	st := testgame.State(db, 1)
 	town := db.Locations["town"].Map
-	routes := atlas.Routes(st, town, "out")
+	routes := allRoutes(st, town, "out")
 	// out -> square (road 4) -> shop (road 0); the gate is closed without the key
 	if got := routes["shop"]; !slices.Equal(got, []int{4, 0}) {
 		t.Fatalf("the way to the shop: %v", got)
@@ -21,7 +24,7 @@ func TestRoutesAndPlace(t *testing.T) {
 		t.Fatal("a closed point is reached")
 	}
 	st.Items["key"] = 1
-	if got := atlas.Routes(st, town, "out")["gate"]; !slices.Equal(got, []int{4, 1, 3}) {
+	if got := allRoutes(st, town, "out")["gate"]; !slices.Equal(got, []int{4, 1, 3}) {
 		t.Fatalf("the way to the gate: %v", got)
 	}
 	// arriving: the named point, else the point back to where one came from, else the start
@@ -49,4 +52,27 @@ func TestRoutesAndPlace(t *testing.T) {
 	if st.Spot != "" {
 		t.Fatalf("a location without spots: %q", st.Spot)
 	}
+}
+
+// allRoutes makes every point a destination to exercise the routes offered to consumers.
+func allRoutes(st *rpg.State, a *data.Atlas, from string) map[string][]int {
+	if a.Points[from] == nil {
+		return nil
+	}
+	copyAtlas := *a
+	copyAtlas.Points = make(map[string]*data.MapPoint, len(a.Points))
+	for id, p := range a.Points {
+		cp := *p
+		cp.To = "destination"
+		cp.Locked = ""
+		copyAtlas.Points[id] = &cp
+	}
+	copyState := *st
+	copyState.Location, copyState.Spot = "map", from
+	db := &data.DB{Locations: map[string]*data.Location{"map": {Map: &copyAtlas}}}
+	out := map[string][]int{}
+	for _, c := range atlas.Choices(db, &copyState) {
+		out[c.Point] = c.Roads
+	}
+	return out
 }
