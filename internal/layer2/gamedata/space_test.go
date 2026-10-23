@@ -34,8 +34,8 @@ func TestSpaceValidation(t *testing.T) {
 		{"too long stair", "length: 4", "length: 9"},
 		{"missing level", "level: 1", "level: 8"},
 		{"bad direction", "facing: north, length", "facing: nowhere, length"},
-		{"blocked headroom", "#._..___", "#....___"},
-		{"off-map stairs", "x: 7, y: 10", "x: 100, y: 10"},
+		{"blocked headroom", "#________.", "#._______."},
+		{"off-map stairs", "x: 6, y: 10", "x: 100, y: 10"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			src := strings.Replace(string(world), tc.old, tc.new, 1)

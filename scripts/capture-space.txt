@@ -1,10 +1,10 @@
-# Walk from the street into the house, climb twice, look across the atrium, return.
+# Cross the plaza, inspect both wall-mounted flights, cross the bridge, and reach the roof.
 gap 24
 wait 30
 shot street
-press up 2
-press left
 press up 3
+press left
+press up 4
 press right
 press up 2
 wait 25
@@ -19,12 +19,12 @@ wait 25
 shot stair-side
 # Walk on the ground floor directly beneath the upper staircase.
 press right 2
-press up 6
+press up 7
 press right
 wait 25
 shot under-stairs
 press right
-press up 6
+press up 7
 press left
 press up 2
 press right
@@ -37,7 +37,7 @@ press up
 wait 25
 shot second
 press right
-press up 7
+press up 8
 press right
 wait 25
 shot upper-stairs
@@ -51,7 +51,7 @@ shot atrium
 press right
 press up 4
 press left
-press up 7
+press up 8
 press left
 press up 4
 wait 25

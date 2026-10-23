@@ -9,8 +9,8 @@ go run ./examples/space --dev --mute
 ```
 
 Use Up to walk, Left and Right to turn, and Down to turn around. The demonstration
-has two ascending stair runs, an atrium and ground-floor space beneath the upper
-staircase. [Preview video](../media/stacked-space-preview.mp4) and
+has an open plaza, two wall-mounted exterior stair runs, an elevated bridge,
+a roof terrace, and ground-floor space beneath the upper staircase. [Preview video](../media/stacked-space-preview.mp4) and
 [mobile GIF](../media/stacked-space-preview.gif) are captured from the actual game.
 The visual design is still under review; these are not README showcase images.
 
@@ -37,7 +37,8 @@ headroom and a walkable upper landing. Overlapping runs are rejected.
 
 Wall, floor and ceiling textures use `wall`, `floor_texture` and
 `ceiling_texture`, including their tint and brightness. Stair treads, risers and
-closed sides reuse the floor material. A flight occupies the volume between its
+closed sides reuse the floor material. Floors extend 0.15 cell units below their
+walking surface (one tenth of a story), exposing solid edges and undersides. A flight occupies the volume between its
 base story and its treads: the lower story beneath an upper flight remains
 available, but this is not a thin suspended staircase within the same story.
 See [material provenance](stacked-space-assets.md).
@@ -52,12 +53,13 @@ to the lowest level's start.
 Validation rejects mixing a space with `map`, `generate`, roaming enemies,
 themes, door pictures, conditional dungeon looks, tile pictures, slide or spin
 effects. These combinations are not partially rendered. Full-height walls and
-floor planes are the available building geometry; this does not yet provide
+solid floor slabs are the available building geometry; this does not yet provide
 windows, furniture sprites, railings, arbitrary meshes or free vertical looking.
 
 The [E2E route](../../scripts/capture-space.txt) walks under the upper flight,
-inspects the lower flight from the side, ascends twice, looks into the atrium and
+inspects the lower flight from the side, ascends twice, crosses the bridge, looks over the plaza from the roof and
 returns. The native graphics test checks positions, levels and visible geometry,
-and rejects sky-colored holes in the lower interior view. Save/restore and
+and rejects sky-colored holes in ground-level views. A separate colored platform
+checks that the renderer distinguishes its solid edge, underside, and open sky. Save/restore and
 blocked sideways movement also have non-graphics tests. Video review is required
 before merging this feature.

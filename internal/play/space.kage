@@ -49,6 +49,14 @@ func horizontal(eye,ray vec3, h, lo,hi float) float {
  return 10000
 }
 
+// Match distant clipping to the horizon instead of drawing a dark wall
+// across an outdoor view. Downward rays fade into ground, never sky.
+func backdrop(ray vec3) vec3 {
+ sky:=mix(vec3(.66,.78,.84),vec3(.28,.48,.66),clamp(ray.y,0,1))
+ if ray.y<0 {return mix(sky,vec3(.57,.59,.56),clamp(-ray.y*12,0,1))}
+ return sky
+}
+
 func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
  pixel:=dst.xy-imageDstOrigin()
  sx:=(pixel.x-ViewSize.x*.5)/(ViewSize.y*.9)
@@ -69,7 +77,7 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
   // Clip by horizontal grid depth. Looking down from an upper story must
   // still reach the floor below instead of exposing sky at the distance limit.
   limit:=Far/max(length(ray.xz),.001)
-  if lo>limit {return vec4(.19,.25,.31,1)}
+  if lo>limit {return vec4(backdrop(ray),1)}
   c:=cell(p)
   hit:=float(10000)
   face:=normal
@@ -77,7 +85,7 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
   if c.x==1 {hit=horizontal(Eye,ray,p.y*1.5,lo,hi);face=vec3(0,1,0)}
   if c.x==3 {
    // Measure the rise from the first cell edge to the landing edge.
-   // Cell-center offsets alone leave the last tread half a cell too low.
+   // Cell-center offsets alone omit half a cell of the run's rise.
    length:=mod(c.y,16)
    direction:=floor(c.y/16)
    axis:=vec3(0,0,-1)
@@ -111,6 +119,17 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
     }
    }
   }
+  // Upper floors extend below their walking surface, so atrium edges and
+  // overhangs expose a closed slab rather than a zero-thickness plane.
+  above:=cell(p+vec3(0,1,0))
+  if above.x>0 {
+   underside:=(p.y+1)*1.5-.15
+   entry:=Eye+ray*lo
+   slabHit:=horizontal(Eye,ray,underside,lo,hi)
+   slabFace:=vec3(0,-1,0)
+   if entry.y>=underside {slabHit=lo;slabFace=normal}
+   if slabHit<hit {hit=slabHit;face=slabFace;c=vec3(4,0,0)}
+  }
   if hit<=hi+.0001 && hit<=limit {
    point:=Eye+ray*hit
    if dot(face,ray)>0 {face=-face}
@@ -121,7 +140,7 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
     tex=fract(vec2(point.x+point.z, -point.y/1.5))
     if Textured.x>0 {col=imageSrc1UnsafeAt(imageSrc0Origin()+tex*imageSrc1Size()).rgb*WallTint}
    } else {
-    if c.x==3 && abs(face.y)<.5 {tex=fract(vec2(point.x+point.z,-point.y))}
+    if abs(face.y)<.5 {tex=fract(vec2(point.x+point.z,-point.y))}
     if Textured.y>0 {col=imageSrc2UnsafeAt(imageSrc0Origin()+tex*imageSrc2Size()).rgb*FloorTint}
     if face.y < -.5 {
      col=CeilingColor
@@ -138,10 +157,9 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
    light:=vec3(.68,.70,.75)+vec3(.36,.30,.20)*sun
    light*=.82+.18*abs(face.y)
    fog:=exp(-hit*Darkness*.11)
-   return vec4(mix(vec3(.19,.25,.31),col*light,fog),1)
+   return vec4(mix(backdrop(ray),col*light,fog),1)
   }
   if next.x<=next.y && next.x<=next.z {lo=next.x;next.x+=delta.x;p.x+=step.x;normal=vec3(-step.x,0,0)} else if next.y<=next.z {lo=next.y;next.y+=delta.y;p.y+=step.y;normal=vec3(0,-step.y,0)} else {lo=next.z;next.z+=delta.z;p.z+=step.z;normal=vec3(0,0,-step.z)}
  }
- sky:=mix(vec3(.54,.70,.81),vec3(.22,.39,.57),clamp(ray.y,0,1))
- return vec4(sky,1)
+ return vec4(backdrop(ray),1)
 }

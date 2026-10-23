@@ -17,7 +17,7 @@ func TestSpaceStairsAndRestore(t *testing.T) {
 	}
 	st := testgame.State(db, 7)
 	dungeon.Ensure(db, st)
-	st.Pos = rpg.Pos{In: "courtyard", X: 7, Y: 10, Facing: 0}
+	st.Pos = rpg.Pos{In: "courtyard", X: 6, Y: 10, Facing: 0}
 	for n := 1; n <= 4; n++ {
 		moved, cmds := dungeon.Forward(db, st)
 		if !moved || len(cmds) > 0 || st.Pos.Y != 10-n {
@@ -58,9 +58,9 @@ func TestSpaceStairsAndRestore(t *testing.T) {
 	}
 	// A stair's side is not an entrance, and the atrium cannot be walked across.
 	for _, p := range []rpg.Pos{
-		{In: "courtyard", X: 8, Y: 8, Facing: 3},
-		{In: "courtyard", X: 7, Y: 8, Facing: 1},
-		{In: "courtyard", Level: 1, X: 9, Y: 8, Facing: 1},
+		{In: "courtyard", X: 7, Y: 8, Facing: 3},
+		{In: "courtyard", X: 6, Y: 8, Facing: 1},
+		{In: "courtyard", Level: 1, X: 9, Y: 6, Facing: 2},
 	} {
 		st.Pos = p
 		if moved, _ := dungeon.Forward(db, st); moved || st.Pos != p {
