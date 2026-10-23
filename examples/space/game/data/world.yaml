@@ -15,12 +15,13 @@ locations:
     dungeon:
       depth: 16
       darkness: 0.2
-      wall: dungeon/brick_wall.jpg
-      floor_texture: dungeon/brick_floor.jpg
-      ceiling_texture: dungeon/brick_ceiling.jpg
+      wall: dungeon/limestone.png
+      floor_texture: dungeon/paving.png
+      ceiling_texture: dungeon/limestone.png
       tiles:
         S: {start: true, facing: north}
       space:
+        sky: dungeon/sky.png
         levels:
           - |
               ..######....................

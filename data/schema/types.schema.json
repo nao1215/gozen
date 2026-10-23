@@ -13342,6 +13342,19 @@
           },
           "x-type": "string[]"
         },
+        "sky": {
+          "$ref": "#/$defs/Picture",
+          "description": "Optional sky panorama: horizontal wrapping, zenith at the top and horizon at the bottom. Supports picture tint and brightness.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Picture](#picture) or string"
+        },
         "stairs": {
           "description": "Up to 128 non-overlapping bidirectional straight runs joining adjacent levels.",
           "items": {

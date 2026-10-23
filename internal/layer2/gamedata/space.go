@@ -10,6 +10,9 @@ import (
 // Space is an opt-in bounded stack of maps. Blank cells are open air; ordinary
 // floors and tiles provide surfaces. Levels are ordered from lowest to highest.
 type Space struct {
+	// Sky is an optional horizontally wrapping upper-hemisphere panorama.
+	// Its top is the zenith and its bottom is the horizon; tint and brightness apply.
+	Sky    Picture      `yaml:"sky"`
 	Levels []string     `yaml:"levels"`
 	Stairs []SpaceStair `yaml:"stairs"`
 	grids  [][][]rune   `yaml:"-"`
@@ -113,6 +116,7 @@ func DungeonLevel(d *Dungeon, level int) *Dungeon {
 func (c *checker) space(w string, d *Dungeon, used map[rune]bool) {
 	s := d.Space
 	w += ".space"
+	c.picture(w+".sky", s.Sky)
 	if d.Map != "" || d.Generate != nil || len(d.Roamers) > 0 {
 		c.errorf(diag.Shape, w, "space cannot combine with map, generate or roamers")
 	}

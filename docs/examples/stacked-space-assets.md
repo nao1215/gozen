@@ -1,14 +1,18 @@
 # Stacked-space preview materials
 
-The standalone `examples/space` demo reuses `brick_wall.jpg`, `brick_floor.jpg`
-and `brick_ceiling.jpg` from the Go Zen sample. These copies let the embedded
-standalone example and the filesystem runner use the same files without reaching
-outside the game directory. No new wall or floor artwork is required.
+The `examples/space/game/assets/dungeon/` images are original generated material
+textures for this repository, distributed under its [MIT license](../../LICENSE).
+They were created with the built-in image generation tool; no shared ComfyUI
+queue was used. The earlier prototype's copies of Go Zen textures were removed
+when these materials replaced them.
 
-Source: [Go Zen assets](../../examples/go-zen/ASSETS.md).
-Credit: Go Zen sample art and music, CHIKAMATSU Naohiro.
-License: CC BY 4.0; the license text accompanies the demo assets.
+| File | Generation brief | Use |
+| --- | --- | --- |
+| `limestone.png` | Seamless warm ivory limestone ashlar, subtle chisel marks, worn beveled edges, thin mortar, evenly lit, no perspective or objects | Walls and ceilings |
+| `paving.png` | Seamless blue-gray slate flagstones, fine grout, gently worn bevels, restrained mineral variation, orthographic and evenly lit | Floors, stair treads and risers |
+| `sky.png` | Horizontally wrapping 2:1 blue-sky panorama, sunlit cumulus clouds, pale horizon, no land, buildings, sun disc or lettering | Upper-hemisphere background |
 
-The stair renderer maps the floor material onto the actual treads and risers.
-The existing `brick_stairs_up.jpg` is a perspective illustration of an entire
-staircase, so it is not used as a surface texture for the traversable geometry.
+The final generated PNGs are stored in the game directory. The ceiling and sky
+share a bounded GPU texture; it is rebuilt when their loaded images change.
+The stair renderer maps materials onto actual geometry rather than painting a
+perspective staircase illustration onto a wall.

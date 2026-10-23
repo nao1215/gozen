@@ -10,8 +10,10 @@ go run ./examples/space --dev --mute
 
 Use Up to walk, Left and Right to turn, and Down to turn around. The demonstration
 has an open plaza, two wall-mounted exterior stair runs, an elevated bridge,
-a roof terrace, and ground-floor space beneath the upper staircase. [Preview video](../media/stacked-space-preview.mp4) and
-[mobile GIF](../media/stacked-space-preview.gif) are captured from the actual game.
+a roof terrace, and ground-floor space beneath the upper staircase. [Short video](../media/stacked-space-short.mp4) and
+[mobile GIF](../media/stacked-space-short.gif) show an 11.5-second continuous
+excerpt (18.5–30 seconds) of the [full recorded route](../media/stacked-space-preview.mp4).
+Playback speed is unchanged.
 The visual design is still under review; these are not README showcase images.
 
 ## Authoring
@@ -41,6 +43,9 @@ closed sides reuse the floor material. Floors extend 0.15 cell units below their
 walking surface (one tenth of a story), exposing solid edges and undersides. A flight occupies the volume between its
 base story and its treads: the lower story beneath an upper flight remains
 available, but this is not a thin suspended staircase within the same story.
+An optional `space.sky` picture provides a horizontally wrapping panorama.
+Its top is the zenith and its bottom is the horizon; tint and brightness apply.
+Without a sky picture, the renderer uses its gradient background.
 See [material provenance](stacked-space-assets.md).
 
 ## Compatibility and current limits

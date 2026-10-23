@@ -498,6 +498,7 @@ github.com/nao1215/gozen/schema field Skill.Desc
 github.com/nao1215/gozen/schema field Skill.MP
 github.com/nao1215/gozen/schema field Skill.Name
 github.com/nao1215/gozen/schema field Space.Levels
+github.com/nao1215/gozen/schema field Space.Sky
 github.com/nao1215/gozen/schema field Space.Stairs
 github.com/nao1215/gozen/schema field SpaceStair.Facing
 github.com/nao1215/gozen/schema field SpaceStair.Length

@@ -20,6 +20,8 @@ type spaceView struct {
 	shader              *ebiten.Shader
 	atlas               *ebiten.Image
 	frame               *ebiten.Image
+	ceilingSky          *ebiten.Image
+	materialSources     [2]*ebiten.Image
 	pixels              []byte
 	from                rpg.Pos
 	remaining, duration int
@@ -121,10 +123,22 @@ func (s *dungeonScene) drawSpace(g *Game, dst *ebiten.Image, d *data.Dungeon) {
 		if material.File == "" {
 			continue
 		}
-		op.Images[i+1] = g.pics.get(material.File)
+		if i < 2 {
+			op.Images[i+1] = g.pics.get(material.File)
+		}
 		enabled[i] = 1
 	}
 	op.Uniforms["Textured"] = enabled[:]
+	op.Images[3] = v.ceilingAndSky(g, d.CeilingTex, d.Space.Sky)
+	skyTint := rgb(d.Space.Sky.Tint.Or(color.NRGBA{R: 255, G: 255, B: 255, A: 255}))
+	for i := range skyTint {
+		skyTint[i] *= float32(d.Space.Sky.Brightness())
+	}
+	op.Uniforms["SkyTint"] = skyTint
+	op.Uniforms["HasSky"] = float32(0)
+	if d.Space.Sky.File != "" {
+		op.Uniforms["HasSky"] = float32(1)
+	}
 	for i, name := range []string{"WallTint", "FloorTint", "CeilingTint"} {
 		c := materials[i].Tint.Or(color.NRGBA{R: 255, G: 255, B: 255, A: 255})
 		tint := rgb(c)
@@ -145,4 +159,32 @@ func (s *dungeonScene) drawSpace(g *Game, dst *ebiten.Image, d *data.Dungeon) {
 	imageOp := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
 	imageOp.GeoM.Scale(float64(dst.Bounds().Dx())/float64(w), float64(dst.Bounds().Dy())/float64(h))
 	dst.DrawImage(v.frame, imageOp)
+}
+
+// Share one sampler between the ceiling tile and the sky panorama. Rebuild only
+// when their cached images change, including after an asset hot reload.
+func (v *spaceView) ceilingAndSky(g *Game, ceiling, sky data.Picture) *ebiten.Image {
+	sources := [2]*ebiten.Image{g.pics.get(ceiling.File), g.pics.get(sky.File)}
+	if v.ceilingSky != nil && v.materialSources == sources {
+		return v.ceilingSky
+	}
+	if v.ceilingSky == nil {
+		v.ceilingSky = ebiten.NewImage(1024, 1024)
+	}
+	v.ceilingSky.Clear()
+	for i, img := range sources {
+		if img == nil {
+			continue
+		}
+		width := 512
+		if i == 1 {
+			width = 1024
+		}
+		op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+		op.GeoM.Scale(float64(width)/float64(img.Bounds().Dx()), 512/float64(img.Bounds().Dy()))
+		op.GeoM.Translate(0, float64(i*512))
+		v.ceilingSky.DrawImage(img, op)
+	}
+	v.materialSources = sources
+	return v.ceilingSky
 }

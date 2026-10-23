@@ -14,6 +14,8 @@ var Textured vec3
 var WallTint vec3
 var FloorTint vec3
 var CeilingTint vec3
+var SkyTint vec3
+var HasSky float
 
 // Trace sunlight through the same bounded occupancy used for visible geometry.
 // Horizontal slabs occlude the sky even where there is no full-height wall.
@@ -53,6 +55,11 @@ func horizontal(eye,ray vec3, h, lo,hi float) float {
 // across an outdoor view. Downward rays fade into ground, never sky.
 func backdrop(ray vec3) vec3 {
  sky:=mix(vec3(.66,.78,.84),vec3(.28,.48,.66),clamp(ray.y,0,1))
+ if HasSky>0 {
+  u:=fract(atan2(ray.x,-ray.z)/6.2831853+.5)
+  v:=clamp(1-asin(max(ray.y,0))*2/3.14159265,0,.999)
+  sky=imageSrc3UnsafeAt(imageSrc0Origin()+vec2(u*1024,512+v*512)).rgb*SkyTint
+ }
  if ray.y<0 {return mix(sky,vec3(.57,.59,.56),clamp(-ray.y*12,0,1))}
  return sky
 }
@@ -144,7 +151,7 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
     if Textured.y>0 {col=imageSrc2UnsafeAt(imageSrc0Origin()+tex*imageSrc2Size()).rgb*FloorTint}
     if face.y < -.5 {
      col=CeilingColor
-     if Textured.z>0 {col=imageSrc3UnsafeAt(imageSrc0Origin()+tex*imageSrc3Size()).rgb*CeilingTint}
+     if Textured.z>0 {col=imageSrc3UnsafeAt(imageSrc0Origin()+tex*512).rgb*CeilingTint}
     }
     if c.x==3 {
      // Reuse the floor stone on the treads, with darker risers.

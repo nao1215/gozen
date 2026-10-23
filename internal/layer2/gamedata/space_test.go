@@ -19,7 +19,7 @@ func TestSpaceValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixture := fstest.MapFS{"game.yaml": {Data: game}, "data/world.yaml": {Data: world}}
-	for _, name := range []string{"brick_wall.jpg", "brick_floor.jpg", "brick_ceiling.jpg"} {
+	for _, name := range []string{"limestone.png", "paving.png", "sky.png"} {
 		b, readErr := os.ReadFile("../../../examples/space/game/assets/dungeon/" + name) //nolint:gosec // Fixed sample asset names.
 		if readErr != nil {
 			t.Fatal(readErr)
@@ -30,6 +30,7 @@ func TestSpaceValidation(t *testing.T) {
 		t.Fatalf("valid fixture: %v", err)
 	}
 	for _, tc := range []struct{ name, old, new string }{
+		{"missing sky", "sky: dungeon/sky.png", "sky: dungeon/missing.png"},
 		{"legacy map conflict", "      depth: 16", "      map: S\n      depth: 16"},
 		{"too long stair", "length: 4", "length: 9"},
 		{"missing level", "level: 1", "level: 8"},

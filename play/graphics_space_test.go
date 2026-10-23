@@ -124,7 +124,7 @@ func checkSpaceSlab(t *testing.T) {
 		t.Fatal(err)
 	}
 	prefix, _, _ := strings.Cut(string(world), "      space:")
-	for _, line := range []string{"      wall: dungeon/brick_wall.jpg\n", "      floor_texture: dungeon/brick_floor.jpg\n", "      ceiling_texture: dungeon/brick_ceiling.jpg\n"} {
+	for _, line := range []string{"      wall: dungeon/limestone.png\n", "      floor_texture: dungeon/paving.png\n", "      ceiling_texture: dungeon/limestone.png\n"} {
 		prefix = strings.ReplaceAll(prefix, line, "")
 	}
 	world = []byte(prefix + `      floor: "#d03020"
