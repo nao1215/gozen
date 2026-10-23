@@ -76,6 +76,8 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
   if c.x==2 {hit=lo}
   if c.x==1 {hit=horizontal(Eye,ray,p.y*1.5,lo,hi);face=vec3(0,1,0)}
   if c.x==3 {
+   // Measure the rise from the first cell edge to the landing edge.
+   // Cell-center offsets alone leave the last tread half a cell too low.
    length:=mod(c.y,16)
    direction:=floor(c.y/16)
    axis:=vec3(0,0,-1)
@@ -88,7 +90,7 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
    entry:=Eye+ray*lo
    alongEntry:=clamp(dot(entry-center,axis),-.49999,.49999)
    tread:=floor((alongEntry+.5)*4)
-   top:=p.y*1.5+max(0,c.z+(tread+1)*.25-.5)/length*1.5
+   top:=p.y*1.5+max(0,c.z+(tread+1)*.25)/length*1.5
    if entry.y>=p.y*1.5 && entry.y<=top {hit=lo;face=normal}
    if ray.y>0 {
     t:=horizontal(Eye,ray,p.y*1.5,lo,hi)
@@ -97,14 +99,14 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
    for j:=0;j<4;j++ {
     a:=-.5+float(j)*.25
     b:=a+.25
-    height:=p.y*1.5+max(0,c.z+b)/length*1.5
+    height:=p.y*1.5+max(0,c.z+b+.5)/length*1.5
     t:=horizontal(Eye,ray,height,lo,hi)
     along:=origin+t*velocity
     if along>=a-.0001 && along<=b+.0001 && t<hit {hit=t;face=vec3(0,1,0)}
     if abs(velocity)>.00001 {
      t=(a-origin)/velocity
      y:=Eye.y+t*ray.y
-     low:=p.y*1.5+max(0,c.z+a)/length*1.5
+     low:=p.y*1.5+max(0,c.z+a+.5)/length*1.5
      if t>=lo-.0001 && t<=hi+.0001 && y>=low && y<=height && t<hit {hit=max(t,lo);face=axis}
     }
    }
@@ -126,7 +128,7 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
      if Textured.z>0 {col=imageSrc3UnsafeAt(imageSrc0Origin()+tex*imageSrc3Size()).rgb*CeilingTint}
     }
     if c.x==3 {
-     // Reuse the floor stone on the treads, with darker risers and a pale nosing.
+     // Reuse the floor stone on the treads, with darker risers.
      col*=vec3(.92,.94,.98)
      if abs(face.y)<.5 {col*=.62}
     }

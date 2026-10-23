@@ -31,7 +31,7 @@ func TestGraphicsSpace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]struct{ level, x, y int }{"street": {0, 10, 15}, "stairs": {0, 7, 10}, "stair-side": {0, 8, 8}, "under-stairs": {0, 13, 8}, "second": {1, 7, 6}, "upper-stairs": {1, 13, 6}, "atrium": {2, 13, 10}, "returned": {0, 7, 10}}
+	want := map[string]struct{ level, x, y int }{"street": {0, 10, 15}, "stairs": {0, 7, 10}, "stair-side": {0, 8, 8}, "under-stairs": {0, 14, 8}, "lower-join": {0, 7, 7}, "second": {1, 7, 6}, "upper-stairs": {1, 14, 6}, "upper-join": {1, 14, 9}, "atrium": {2, 14, 10}, "returned": {0, 7, 10}}
 	shot := ""
 	for line := range bytes.SplitSeq(b, []byte("\n")) {
 		if len(line) == 0 {

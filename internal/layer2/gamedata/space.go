@@ -84,14 +84,14 @@ func StairOffset(s SpaceStair, x, y int) (int, bool) {
 	return n, n >= 0 && n <= s.Length && x == s.X+n*dx && y == s.Y+n*dy
 }
 
-// SpaceHeight is the surface height at a walkable cell center, in horizontal cell units.
+// SpaceHeight is the smoothed standing height at a walkable cell center, in horizontal cell units.
 func SpaceHeight(s *Space, level, x, y int) float64 {
 	for _, stair := range s.Stairs {
 		if stair.Level-1 != level {
 			continue
 		}
 		if n, ok := StairOffset(stair, x, y); ok && stair.Length > 0 && n < stair.Length {
-			return (float64(level) + float64(n)/float64(stair.Length)) * SpaceStoryHeight
+			return (float64(level) + (float64(n)+0.5)/float64(stair.Length)) * SpaceStoryHeight
 		}
 	}
 	return float64(level) * SpaceStoryHeight

@@ -19,33 +19,39 @@ wait 25
 shot stair-side
 # Walk on the ground floor directly beneath the upper staircase.
 press right 2
-press up 5
+press up 6
 press right
 wait 25
 shot under-stairs
 press right
-press up 5
+press up 6
 press left
 press up 2
 press right
 press up
 press right
-press up 4
+press up 3
+wait 25
+shot lower-join
+press up
 wait 25
 shot second
 press right
-press up 6
+press up 7
 press right
 wait 25
 shot upper-stairs
-press up 4
+press up 3
+wait 25
+shot upper-join
+press up
 press right
 wait 25
 shot atrium
 press right
 press up 4
 press left
-press up 6
+press up 7
 press left
 press up 4
 wait 25

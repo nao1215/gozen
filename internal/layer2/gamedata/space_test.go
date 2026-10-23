@@ -50,3 +50,27 @@ func TestSpaceValidation(t *testing.T) {
 		})
 	}
 }
+
+// The stair run occupies whole cells, from its entrance edge to the landing
+// edge. Standing centers are half a step from either end, not on the cell edge.
+func TestSpaceStandingHeights(t *testing.T) {
+	s := &data.Space{Stairs: []data.SpaceStair{{Level: 2, X: 3, Y: 5, Facing: "north", Length: 4}}}
+	for _, tc := range []struct {
+		name        string
+		level, x, y int
+		want        float64
+	}{
+		{"floor before flight", 1, 3, 6, 1.5},
+		{"first tread center", 1, 3, 5, 1.6875},
+		{"last tread center", 1, 3, 2, 2.8125},
+		{"upper landing", 2, 3, 1, 3},
+		{"floor beside flight", 1, 4, 3, 1.5},
+		{"floor below flight", 0, 3, 3, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := data.SpaceHeight(s, tc.level, tc.x, tc.y); got != tc.want {
+				t.Fatalf("standing height = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
