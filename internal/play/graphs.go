@@ -1,6 +1,7 @@
 package play
 
 import (
+	"errors"
 	"fmt"
 	"image/color"
 	"strconv"
@@ -446,4 +447,19 @@ func (g *Game) drawGraphs(screen *ebiten.Image) {
 func shade(c color.NRGBA) color.NRGBA {
 	dark := func(v uint8) uint8 { return v - v/5*2 }
 	return color.NRGBA{dark(c.R), dark(c.G), dark(c.B), c.A}
+}
+
+// scriptGraphsReady waits for actual completion, never accepting a partial/error panel.
+// The caller's process timeout bounds a computation that cannot finish.
+func (g *Game) scriptGraphsReady() bool {
+	p := &g.graphs
+	switch {
+	case !g.opts.Development || !p.on:
+		g.failure = errors.New("script: wait-graphs needs an open development balance panel")
+	case p.err != "":
+		g.failure = fmt.Errorf("script: balance measurement: %s", p.err)
+	default:
+		return p.key != "" && p.done()
+	}
+	return false
 }

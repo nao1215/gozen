@@ -314,15 +314,16 @@ func (in *input) right() bool { return in.pressed[btnRight] }
 func (in *input) advance() bool { return in.ok() || in.click || in.wheel < 0 }
 
 type script struct {
-	cmds  []scriptCmd
-	pc    int
-	wait  int
-	shot  string
-	quit  bool
-	idle  func() bool
-	limit int
-	gap   int
-	tps   int
+	cmds        []scriptCmd
+	pc          int
+	wait        int
+	shot        string
+	quit        bool
+	idle        func() bool
+	graphsReady func() bool
+	limit       int
+	gap         int
+	tps         int
 
 	waiting func() (what string, ticks int)
 
@@ -492,6 +493,10 @@ func parseScript(src string) (*script, error) {
 			}
 			c.x, c.y = x, c.n
 			c.n = 1
+		case "wait-graphs":
+			if len(f) != 1 {
+				return nil, fmt.Errorf("script line %d: wait-graphs takes no arguments", line)
+			}
 		case "press", "shot", "until", "quit":
 		case "recruit":
 			if c.arg == "" || len(f) != 3 {
@@ -669,6 +674,11 @@ func (s *script) step(in *input) {
 					ebiten.SetTPS(s.tps)
 				}
 				s.limit = 0
+				s.pc++
+			}
+			return
+		case "wait-graphs":
+			if s.graphsReady != nil && s.graphsReady() {
 				s.pc++
 			}
 			return
