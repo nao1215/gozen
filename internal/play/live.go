@@ -445,7 +445,8 @@ func (g *Game) dropReplay(r *sceneReplay, at int) {
 	g.talk = talk{}
 	g.recruit = nil
 	g.cg, g.cgOldT, g.cgUnder = data.CG{}, 0, data.CG{}
-	g.stage, g.stageOut, g.sides = [2]stageActor{}, stageActor{}, nil
+	g.clearStage()
+	g.clearCast()
 }
 
 func (g *Game) liveReplayTo(begin func() bool, lines int, answers []int, alive func() bool) (short bool) {
@@ -473,10 +474,7 @@ func (g *Game) liveCatchUp(f *fastTo, name string, alive func() bool) (seen int)
 		g.shake, g.flash, g.freezeT = 0, 0, 0
 		g.in.pressed, g.in.held = [numButtons]bool{}, [numButtons]bool{}
 
-		if g.cg.File != "" {
-			g.cgAge = max(g.cgAge, g.cg.FadeTicks())
-		}
-		g.cgUnder, g.cgOldT = data.CG{}, 0
+		g.finishCGTransition()
 		g.stageLeftT, g.stageOutT = min(g.stageLeftT, g.tick-12), min(g.stageOutT, g.tick-10)
 		g.landedVoice() // only the line it lands on speaks
 	}()

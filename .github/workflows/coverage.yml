@@ -7,6 +7,12 @@ on:
   pull_request:
     branches: [main]
 
+# Only superseded runs of the same pull request are cancelled. Main and manual
+# runs get separate groups so their verification always completes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 

@@ -320,7 +320,7 @@ func (s *Session) settle(ctx context.Context) error {
 // waiting. A choice or a battle waits for Answer (Next returns it again until then).
 func (s *Session) Next() Request {
 	if s.pending != nil {
-		return *s.pending
+		return cloneRequest(*s.pending)
 	}
 	if s.held != nil {
 		q := *s.held
@@ -341,12 +341,12 @@ func (s *Session) Next() Request {
 				s.at.noBack = true
 			}
 			if s.cfg.OnRequest != nil {
-				s.cfg.OnRequest(q)
+				s.cfg.OnRequest(cloneRequest(q))
 			}
 			if q.Kind == "choice" || q.Kind == "battle" {
 				s.pending = &q
 			}
-			return q
+			return cloneRequest(q)
 		}
 		if s.last.Over || s.last.Cleared {
 			return Request{}

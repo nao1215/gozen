@@ -896,7 +896,8 @@ func walkable(grid [][]rune, start [2]int, kind func(rune) Kind) bool {
 		return false
 	}
 	h, w := len(grid), len(grid[0])
-	if !validSize(w, h) || start[0] < 0 || start[1] < 0 || start[0] >= w || start[1] >= h {
+	cells := cellCount(w, h)
+	if cells == 0 || start[0] < 0 || start[1] < 0 || start[0] >= w || start[1] >= h {
 		return false
 	}
 	for _, row := range grid {
@@ -955,8 +956,8 @@ func walkable(grid [][]rune, start [2]int, kind func(rune) Kind) bool {
 		return nx, ny, true
 	}
 	idx := func(x, y int) int { return y*w + x }
-	seen := make([]bool, w*h)
-	back := make([][]int, w*h) // back[n]: the cells with a step to n
+	seen := make([]bool, cells)
+	back := make([][]int, cells) // back[n]: the cells with a step to n
 	seen[idx(start[0], start[1])] = true
 	q := []int{idx(start[0], start[1])}
 	for len(q) > 0 {
@@ -1000,7 +1001,7 @@ func walkable(grid [][]rune, start [2]int, kind func(rune) Kind) bool {
 		}
 	}
 	// and back: every cell walked to has a way to the start
-	home := make([]bool, w*h)
+	home := make([]bool, cells)
 	home[idx(start[0], start[1])] = true
 	q = []int{idx(start[0], start[1])}
 	for len(q) > 0 {

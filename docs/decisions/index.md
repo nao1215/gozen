@@ -46,6 +46,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0036](0036-monster-collection.md) | Collect, raise and breed monsters | Accepted (picture lineage revised 2026-10-22) | Picture lineage view revised in this ADR |
 | [0037](0037-battle-forms-and-motion.md) | Battle forms, merging, HP pictures and enemy motion | Accepted (2026-10-22) | |
 | [0038](0038-character-relationship-chart.md) | Relationship chart in the character book | Accepted | |
+| [0039](0039-shared-yaml-paths.md) | Shared YAML path selection and removal of the unused dungeon relay | Accepted | |
 
 The source of truth for the current public packages is `api/public.txt` and [Boundaries](../architecture/boundaries.md), not this list of ADRs.
 

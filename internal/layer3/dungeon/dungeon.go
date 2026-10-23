@@ -576,10 +576,14 @@ func floorKey(st *rpg.State, loc string) string {
 	return loc
 }
 
-// validSize also protects callers using a Dungeon built without YAML validation.
-// Check performs the author-facing diagnosis for the same bound.
-func validSize(w, h int) bool {
-	return w > 0 && h > 0 && w <= data.MaxDungeonSide && h <= data.MaxDungeonSide
+// cellCount validates both dimensions before multiplying them. Keeping the bound
+// and arithmetic together gives every map allocation the same checked size,
+// including callers that construct a Dungeon without YAML validation.
+func cellCount(w, h int) int {
+	if w <= 0 || h <= 0 || w > data.MaxDungeonSide || h > data.MaxDungeonSide {
+		return 0
+	}
+	return w * h
 }
 
 func Reveal(db *data.DB, st *rpg.State) {
@@ -588,13 +592,14 @@ func Reveal(db *data.DB, st *rpg.State) {
 		return
 	}
 	w, h := d.Size()
-	if !validSize(w, h) {
+	cells := cellCount(w, h)
+	if cells == 0 {
 		return
 	}
 	key := floorKey(st, st.Location)
 	m := st.Mapped[key]
-	if len(m) != w*h {
-		m = make([]byte, w*h)
+	if len(m) != cells {
+		m = make([]byte, cells)
 		st.Mapped[key] = m
 	}
 	for oy := -1; oy <= 1; oy++ {
@@ -648,11 +653,12 @@ func Seen(db *data.DB, st *rpg.State, loc string, x, y int) bool {
 		return false
 	}
 	w, h := l.Dungeon.Size()
-	if !validSize(w, h) {
+	cells := cellCount(w, h)
+	if cells == 0 {
 		return false
 	}
 	m := st.Mapped[floorKey(st, loc)]
-	return x >= 0 && y >= 0 && x < w && y < h && len(m) == w*h && m[y*w+x] != 0
+	return x >= 0 && y >= 0 && x < w && y < h && len(m) == cells && m[y*w+x] != 0
 }
 
 func Shown(db *data.DB, st *rpg.State) []bool {
@@ -661,12 +667,13 @@ func Shown(db *data.DB, st *rpg.State) []bool {
 		return nil
 	}
 	w, h := d.Size()
-	if !validSize(w, h) {
+	cells := cellCount(w, h)
+	if cells == 0 {
 		return nil
 	}
 	m := st.Mapped[floorKey(st, st.Location)]
-	out := make([]bool, w*h)
-	if len(m) != w*h {
+	out := make([]bool, cells)
+	if len(m) != cells {
 		return out
 	}
 	open := func(x, y int) bool { r := d.At(x, y); return r != data.CellWall && r != data.CellNone }
@@ -729,11 +736,12 @@ func Walked(db *data.DB, st *rpg.State) []data.Command {
 		return nil
 	}
 	w, h := d.Size()
-	if !validSize(w, h) {
+	cells := cellCount(w, h)
+	if cells == 0 {
 		return nil
 	}
 	m := st.Mapped[floorKey(st, st.Location)]
-	if len(m) != w*h || Explored(d, m) < 100 {
+	if len(m) != cells || Explored(d, m) < 100 {
 		return nil
 	}
 	left := 0

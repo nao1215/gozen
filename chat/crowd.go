@@ -9,6 +9,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/nao1215/gozen/internal/layer1/yamlpath"
+
 	"github.com/goccy/go-yaml"
 
 	"github.com/nao1215/gozen/internal/layer1/decodeguard"
@@ -34,7 +36,7 @@ type scriptDoc struct {
 
 // YAML is the part of the script at a logical path, as written: "names", "lines.idle",
 // "" for the whole script. An unknown path is an error that is fs.ErrNotExist.
-func (s *Script) YAML(path string) ([]byte, error) { return yamlAt(s.src, path) }
+func (s *Script) YAML(path string) ([]byte, error) { return yamlpath.At(s.src, path) }
 
 // Load reads and validates a crowd script from fsys.
 func Load(fsys fs.FS, path string) (*Script, error) {

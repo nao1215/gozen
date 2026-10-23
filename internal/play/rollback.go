@@ -119,7 +119,6 @@ func (g *Game) replayEvent(e backEvent) bool {
 	g.loadGame(st)
 	g.enterAt = ""
 	g.backlog = slices.Clip(e.log)
-	g.stage, g.stageOut, g.sides = [2]stageActor{}, stageActor{}, nil
 	g.events.Start(e.cmds)
 	g.rollingBack = false
 	g.backRing = ring

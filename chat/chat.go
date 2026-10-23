@@ -78,7 +78,7 @@ func (l *Log) Post(m Message) (Message, bool) {
 	}
 	m.ID = l.next
 	l.next++
-	l.msgs = append(l.msgs, m)
+	l.msgs = append(l.msgs, cloneMessage(m))
 	if over := len(l.msgs) - l.cfg.Max; over > 0 {
 		l.msgs = append(l.msgs[:0], l.msgs[over:]...)
 	}

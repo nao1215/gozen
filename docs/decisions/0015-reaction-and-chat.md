@@ -1,6 +1,6 @@
 # ADR 0015: Character reactions and chat
 
-Status: Partly changed (2026-10-19). Home: `react` (layer 3, rules) and `chat` (layer 1, foundation). The public surface of the book (characters, rules, asks, memory) and of the script types is superseded by [ADR 0021](0021-query-and-commands.md), which makes them opaque types with `YAML(path)`.
+Status: Partly changed (2026-10-19). Home: `react` (layer 3, rules) and `chat` (layer 1, foundation). The public surface of the book (characters, rules, asks, memory) and of the script types is superseded by [ADR 0021](0021-query-and-commands.md), which makes them opaque types with `YAML(path)` and removes the custom `Analyzer` interface until a consumer needs it. Custom findings can be supplied with `Stimulus.Tags`.
 
 ## Users and problem
 

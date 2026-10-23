@@ -8,7 +8,6 @@ Gozen is a public Go and Ebitengine framework and toolkit for 2D RPGs, visual no
 - Do not include private game data, production notes, private generation text, private defaults, or machine-specific paths. Review meaning and context, including comments, fixtures, metadata, generated output, and binary strings.
 - Keep the library and general-purpose commands suitable for general audiences. Only `internal/promptgen` and `internal/mosaic` (including their `command` packages, which `gozen art prompt` and `gozen art mosaic` dispatch to) may provide the production-specific capabilities permitted by [the content boundary](docs/decisions/0004-content-boundary.md). Models are user-supplied, never bundled.
 - Create original neutral fixtures and examples. Record the source and license of any third-party asset. Keep project-specific inspection lists outside this repository.
-- Do not modify `.git` or commit or push changes. The task coordinator handles version control.
 - In Bash, do not merge stderr into stdout or discard stderr. Do not use `pkill` or `pgrep -f`.
 
 ## Design and implementation

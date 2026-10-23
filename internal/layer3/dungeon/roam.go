@@ -517,10 +517,11 @@ func huntNear(d *data.Dungeon, st *rpg.State) int {
 // walkDistances are the steps from x, y to every cell over open cells (-1: not reached).
 func walkDistances(d *data.Dungeon, st *rpg.State, x0, y0 int) []int {
 	w, h := d.Size()
-	if !validSize(w, h) || x0 < 0 || y0 < 0 || x0 >= w || y0 >= h {
+	cells := cellCount(w, h)
+	if cells == 0 || x0 < 0 || y0 < 0 || x0 >= w || y0 >= h {
 		return nil
 	}
-	dist := make([]int, w*h)
+	dist := make([]int, cells)
 	for i := range dist {
 		dist[i] = -1
 	}

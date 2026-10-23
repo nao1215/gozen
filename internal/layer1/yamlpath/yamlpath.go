@@ -1,4 +1,5 @@
-package chat
+// Package yamlpath selects ordered YAML fragments for opaque definitions.
+package yamlpath
 
 import (
 	"errors"
@@ -10,9 +11,9 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
-// yamlAt returns, as YAML, the part of src at the YAML logical path ("people.host.rules", "people[0]"; "" is the whole).
+// At returns, as YAML, the part of src at the YAML logical path ("people.host.rules", "people[0]"; "" is the whole).
 // Within a sequence, select by index ([0]) or by the id value. A missing path wraps fs.ErrNotExist.
-func yamlAt(src []byte, path string) ([]byte, error) {
+func At(src []byte, path string) ([]byte, error) {
 	if path == "" {
 		return append([]byte(nil), src...), nil
 	}
@@ -22,7 +23,10 @@ func yamlAt(src []byte, path string) ([]byte, error) {
 	}
 	missing := func() error { return fmt.Errorf("%s: %w", path, fs.ErrNotExist) }
 	for part := range strings.SplitSeq(path, ".") {
-		name, rest, _ := strings.Cut(part, "[")
+		name, rest, indexed := strings.Cut(part, "[")
+		if part == "" || indexed && rest == "" {
+			return nil, missing()
+		}
 		if name != "" {
 			switch x := v.(type) {
 			case yaml.MapSlice:
@@ -61,7 +65,15 @@ func yamlAt(src []byte, path string) ([]byte, error) {
 			if !ok || err != nil || !isList || n < 0 || n >= len(list) {
 				return nil, errors.Join(missing(), err)
 			}
-			v, rest = list[n], strings.TrimPrefix(after, "[")
+			v = list[n]
+			if after == "" {
+				break
+			}
+			var next bool
+			rest, next = strings.CutPrefix(after, "[")
+			if !next || rest == "" {
+				return nil, missing()
+			}
 		}
 	}
 	return yaml.Marshal(v)

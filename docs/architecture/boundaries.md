@@ -4,13 +4,10 @@ What is published is the contract that a game author or a sample really needs. C
 
 | Location | Users and responsibility | Compatibility |
 | --- | --- | --- |
-| `expr`, `text`, `savefile`, `chat` | Authors who handle expressions, translation, the save location and the record of flowing messages | Under the v0 contract |
-| `data`, `rpg` | Authors who load and validate definitions and handle state and saves | Under the v0 contract |
-| `battle`, `event`, `world`, `dungeon`, `react` | Authors who use or extend the rules, and authors who make characters that react to words and happenings | Under the v0 contract |
-| `headless` | Authors and the CLI who check progress without a screen | Under the v0 contract |
-| `gozen` (root) | Authors who load a game, read one play with expressions and change it with commands (the minimal entry of ADR 0021) | Under the v0 contract. The older packages above move to internal in stage 6 |
+| `gozen` (root) | Authors who load and validate a game, read state with expressions, run commands and save or restore a session | Under the v0 contract |
+| `chat`, `react` | Authors who keep flowing messages and make characters react to words and happenings | Under the v0 contract |
+| `schema` | Authors who need the YAML definition types | Managed by `schema_version`; inventoried separately in `api/schema.txt` |
 | `gfx`, `play`, `puppet` | Authors who embed display, the screen (`play.Main`, `play.New`) and moving portraits | Under the v0 contract |
-| `runner` | The old entry that only calls `play.Main` | Removed in stage 6 (ADR 0021) |
 | `internal/<package>/`, `<package>/internal/` | The implementation of the owning package | Not public |
 | `internal/layerN/` | Small implementations shared by layer N | Usable only from the same layer or above |
 | `internal/testgame/` | Assembly of newly made neutral test data | Test only; a neutral game is newly made in T2 |
@@ -26,4 +23,4 @@ The dedicated internals for authoring support are not part of the shared impleme
 
 A shared internal is not a loophole around the layers. `internal/layerN/` itself may reference only the public packages below it and the shared internals further below. No reverse dependency on a public package of the same layer is made. An internal under an owning package is bound by the same constraints as the owner. Creating an unclassified general-purpose place directly under `internal/` is rejected by the check.
 
-Test assembly is not embedded in the main code. An unpublished feature is internal by default, and if publishing is needed, show the user, purpose and contract and change the ADR and the API list. `dungeon` is published only within the scope of [ADR 0014](../decisions/0014-dungeon-host-adoption.md). The public API is reduced to the minimal form (`gozen`, `play`, `gfx`, `react`, `chat`, `puppet`) by the steps of [ADR 0021](../decisions/0021-query-and-commands.md). The table above is today's public packages. When dealing with the collection of development information or a limited-distribution mechanism, consider only the parts that can be explained generically, and do not include private aggregation machinery.
+Test assembly is not embedded in the main code. An unpublished feature is internal by default, and if publishing is needed, show the user, purpose and contract and change the ADR and the API list. [ADR 0021](../decisions/0021-query-and-commands.md) reduced the public API to `gozen`, `play`, `gfx`, `react`, `chat` and `puppet`. Expressions, state, events, battles and headless progress are internal implementations. Dungeon rules live directly in `internal/layer3/dungeon`; the unused relay package is removed and its contract tests exercise that implementation. When dealing with the collection of development information or a limited-distribution mechanism, consider only the parts that can be explained generically, and do not include private aggregation machinery.

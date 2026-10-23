@@ -40,7 +40,6 @@ components:
   battle: { in: ["internal/battle", "internal/battle/**"] }
   event: { in: ["internal/event", "internal/event/**"] }
   world: { in: ["internal/world", "internal/world/**"] }
-  dungeon: { in: ["internal/dungeon", "internal/dungeon/**"] }
   react: { in: [react, "react/internal/**", "internal/react/**"] }
   headless: { in: ["internal/headless", "internal/headless/**"] }
   gfx: { in: [gfx, "gfx/internal/**", "internal/gfx/**"] }
@@ -70,6 +69,8 @@ components:
   dev: { in: "internal/dev/**" }
   testgame: { in: "internal/testgame/**" }
 deps:
+  private1:
+    canUse: [yaml]
   expr:
     mayDependOn: [expr, private1]
   text:
@@ -93,37 +94,35 @@ deps:
     mayDependOn: [event, expr, text, savefile, chat, data, rpg, private1, private2, private3]
   world:
     mayDependOn: [world, expr, text, savefile, chat, data, rpg, private1, private2, private3]
-  dungeon:
-    mayDependOn: [dungeon, expr, text, savefile, chat, data, rpg, private1, private2, private3]
   react:
     mayDependOn: [react, expr, private1]
     canUse: [yaml, width]
   private3:
     mayDependOn: [private3, expr, text, savefile, chat, data, rpg, private1, private2]
   headless:
-    mayDependOn: [headless, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, private1, private2, private3, private4, diag]
+    mayDependOn: [headless, expr, text, savefile, chat, data, rpg, battle, event, world, react, private1, private2, private3, private4, diag]
   private4:
-    mayDependOn: [private4, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, private1, private2, private3]
+    mayDependOn: [private4, expr, text, savefile, chat, data, rpg, battle, event, world, react, private1, private2, private3]
   gozen:
-    mayDependOn: [gozen, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, private1, private2, private3, private4]
+    mayDependOn: [gozen, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, private1, private2, private3, private4]
     canUse: [yaml]
   gfx:
-    mayDependOn: [gfx, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, private1, private2, private3, private4, private5]
+    mayDependOn: [gfx, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]
   play:
-    mayDependOn: [play, gozen, clihelp, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, private1, private2, private3, private4, private5]
+    mayDependOn: [play, gozen, clihelp, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, private1, private2, private3, private4, private5]
     canUse: [ebiten, image, pflag, js]
   puppet:
-    mayDependOn: [puppet, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, private1, private2, private3, private4, private5]
+    mayDependOn: [puppet, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]
   private5:
-    mayDependOn: [private5, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, private1, private2, private3, private4]
+    mayDependOn: [private5, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, private1, private2, private3, private4]
     canUse: [ebiten, image, js]
   private6:
-    mayDependOn: [private6, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, play, puppet, private1, private2, private3, private4, private5]
+    mayDependOn: [private6, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]
   commands:
-    mayDependOn: [commands, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, play, puppet, private1, private2, private3, private4, private5, promptgen, mosaic, clihelp, diag]
+    mayDependOn: [commands, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet, private1, private2, private3, private4, private5, promptgen, mosaic, clihelp, diag]
     canUse: [yaml, ebiten, image, pflag]
   clihelp:
     mayDependOn: [clihelp, diag]
@@ -131,16 +130,16 @@ deps:
   diag:
     mayDependOn: [diag]
   promptgen:
-    mayDependOn: [promptgen, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, clihelp, diag]
+    mayDependOn: [promptgen, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, clihelp, diag]
     canUse: [yaml, image, pflag]
   mosaic:
-    mayDependOn: [mosaic, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, clihelp, diag]
+    mayDependOn: [mosaic, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, clihelp, diag]
     canUse: [yaml, image, onnx, pflag]
   experiments:
-    mayDependOn: [expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, play, puppet]
+    mayDependOn: [expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet]
     canUse: [yaml, ebiten, image]
   examples:
-    mayDependOn: [gozen, expr, text, savefile, chat, data, rpg, battle, event, world, dungeon, react, headless, gfx, play, puppet, webfs]
+    mayDependOn: [gozen, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet, webfs]
     canUse: [ebiten, image, js]
   dev:
     mayDependOn: [dev, diag]
