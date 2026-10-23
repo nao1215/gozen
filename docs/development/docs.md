@@ -82,6 +82,14 @@ The current exclusions (shown in the log of `docs-steps`):
 | The YAML of the verb `roll_dice` and the screen `album`, and the 3 expression examples | Need registration in Go code / separate expressions, not one file |
 | The shots list and the excerpt of the catalog YAML | parse only (shots for the same reason as above; the catalog is the full `docs/examples/production/catalog.yaml`, which the steps run) |
 
+## Parallel image checks in CI
+
+The Docs workflow partitions the full image ledger into four shards. Images connected by a shared capture (including transitive montage dependencies) stay together, so each image is compared exactly once and each capture runs on one shard. Groups are assigned deterministically, balancing capture counts first and image counts second. This is a workload estimate, not measured-duration scheduling. The existing `images` check succeeds only when every shard succeeds.
+
+`GOZEN_DOCS_SHARD=1/4 make docs-images-check` runs the first shard locally. `INDEX/COUNT` uses one-based indexes; malformed values or more shards than independent capture groups fail. An unset value runs everything. `ONLY` filtering is applied before sharding. Run shards in separate checkouts or sequentially: each invocation owns and recreates `build/docs-images`. The tests verify complete, non-overlapping image and capture coverage for the actual ledger.
+
+Each shard builds only the samples its captures need. Verbose output reports selection counts and build, play, encode and comparison durations, plus individual capture durations. Each runner retains CPU-limited local parallelism. Cache writes remain restricted to main; shard-specific keys restore compatible older image caches as a fallback. Splitting across runners targets elapsed time and may increase total runner minutes due to repeated setup and builds.
+
 ## The Schema page
 
 The Schema page lists every type and field of the YAML. It is built from `data/schema/types.schema.json`, which a test generates from the Go types (`GOZEN_UPDATE_SCHEMA=1 go test ./internal/layer2/gamedata -run '^TestSchemaCoverage$'`): each field carries its type label (`x-type`), its contract (`x-contract`: default, what 0 means, required, what it refers to) and its description. The contracts are written in Japanese in the generating test; it writes them in English with `website/data/schema_en.yaml` and takes every type and field description from `website/data/schema_fields/*.yaml`, so the JSON is English and fails to generate when one has no English. After changing a description or a wording there, run the same command again: `go test ./internal/layer2/gamedata` fails while the JSON differs. The page adds:

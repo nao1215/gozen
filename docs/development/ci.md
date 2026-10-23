@@ -86,3 +86,5 @@ gitleaks git                                   # secret strings in commits
 ```
 
 govulncheck needs network access to the vulnerability DB. Do not read a connection error as "no vulnerabilities". CodeQL extraction, analysis and upload are checked separately on GitHub Actions. For the check before publication, follow the [release checklist](release-checklist.md).
+
+The Docs image check uses four independent shards with an aggregate `images` status. Shared capture dependencies stay on one shard, and all image comparisons remain mandatory. See [parallel image checks](docs.md#parallel-image-checks-in-ci) for selection, timing and cache behavior.

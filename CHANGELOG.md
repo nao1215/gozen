@@ -12,6 +12,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Changed
 
+- Split documentation image verification across four capture-aware CI shards, build only the selected samples, and log phase durations while preserving complete image comparison coverage.
+
 - Cancel superseded pull-request benchmarks and refresh job-specific CI caches per revision while restoring compatible dependency caches.
 
 ### Added
