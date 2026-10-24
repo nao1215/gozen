@@ -10,7 +10,7 @@ sections:
   - title: Maps and painted scenes
     types: [Atlas, MapPoint, Road, Token, Stage, Spot, StageExit, StagePerson, Thing, Front, ScaleMark, Doll, DollPart, Bubble, CardBubble]
   - title: Dungeons
-    types: [Dungeon, DungeonLook, Tile, Generate, FloorPlan, Put]
+    types: [Dungeon, DungeonLook, Tile, Generate, FloorPlan, Put, Space, SpaceStair]
   - title: Events and commands
     types: [Event, Command, Say, ChoiceOption, CG, Stand, EffectCue, WaitCue, SFXCue, Aside, Target, Require, Grant]
   - title: Party, growth and equipment

@@ -1,0 +1,12 @@
+Space:
+  _: "A bounded stack of equal-sized maps (schema version 8). Blank cells are open air; levels are ordered bottom to top."
+  sky: "Optional sky panorama: horizontal wrapping, zenith at the top and horizon at the bottom. Supports picture tint and brightness."
+  levels: "One to eight equal rectangular maps, each 3 to 64 cells wide and high."
+  stairs: "Up to 128 non-overlapping bidirectional straight runs joining adjacent levels."
+SpaceStair:
+  _: "A staircase from a lower cell to a landing on the next level."
+  level: "One-based lower level; an upper level must exist."
+  x: "Zero-based lower endpoint column."
+  y: "Zero-based lower endpoint row."
+  facing: "Ascending direction: north, east, south or west."
+  length: "Horizontal distance to the upper endpoint, from 3 to 8 cells. Keep the space above the run empty."

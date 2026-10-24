@@ -204,6 +204,7 @@ github.com/nao1215/gozen/schema field Dungeon.Map
 github.com/nao1215/gozen/schema field Dungeon.NoMap
 github.com/nao1215/gozen/schema field Dungeon.Pictures
 github.com/nao1215/gozen/schema field Dungeon.Roamers
+github.com/nao1215/gozen/schema field Dungeon.Space
 github.com/nao1215/gozen/schema field Dungeon.Theme
 github.com/nao1215/gozen/schema field Dungeon.Tiles
 github.com/nao1215/gozen/schema field Dungeon.Walked
@@ -496,6 +497,14 @@ github.com/nao1215/gozen/schema field Shop.Spent
 github.com/nao1215/gozen/schema field Skill.Desc
 github.com/nao1215/gozen/schema field Skill.MP
 github.com/nao1215/gozen/schema field Skill.Name
+github.com/nao1215/gozen/schema field Space.Levels
+github.com/nao1215/gozen/schema field Space.Sky
+github.com/nao1215/gozen/schema field Space.Stairs
+github.com/nao1215/gozen/schema field SpaceStair.Facing
+github.com/nao1215/gozen/schema field SpaceStair.Length
+github.com/nao1215/gozen/schema field SpaceStair.Level
+github.com/nao1215/gozen/schema field SpaceStair.X
+github.com/nao1215/gozen/schema field SpaceStair.Y
 github.com/nao1215/gozen/schema field Start.Event
 github.com/nao1215/gozen/schema field Start.Gold
 github.com/nao1215/gozen/schema field Start.Items
@@ -717,6 +726,8 @@ github.com/nao1215/gozen/schema type SceneReviewCfg
 github.com/nao1215/gozen/schema type Screen
 github.com/nao1215/gozen/schema type Shop
 github.com/nao1215/gozen/schema type Skill
+github.com/nao1215/gozen/schema type Space
+github.com/nao1215/gozen/schema type SpaceStair
 github.com/nao1215/gozen/schema type Start
 github.com/nao1215/gozen/schema type StoneSet
 github.com/nao1215/gozen/schema type TacticAction

@@ -19,6 +19,7 @@ import (
 )
 
 type dungeonScene struct {
+	space      *spaceView
 	view, prev *ebiten.Image
 	trans      string
 	transT     int
@@ -45,6 +46,9 @@ func newDungeonScene(g *Game) *dungeonScene {
 }
 
 func (s *dungeonScene) arrive() {
+	if s.space != nil {
+		s.space.remaining = 0
+	}
 	s.age = 0
 	s.snapshot()
 	s.trans, s.transT = "fade", transTicks*2
@@ -63,6 +67,9 @@ func (s *dungeonScene) snapshot() {
 
 func (s *dungeonScene) update(g *Game) {
 	s.age++
+	if s.space != nil {
+		s.space.remaining = max(0, s.space.remaining-1)
+	}
 	if !g.talk.active && len(g.stack) == 1 {
 		s.bannerT = max(0, s.bannerT-1)
 	}
@@ -102,6 +109,9 @@ func (s *dungeonScene) update(g *Game) {
 		g.push(newMenu(g))
 		return
 	}
+	if s.space != nil && s.space.remaining > 0 {
+		return
+	}
 	if s.transT > transTicks/2 {
 		return
 	}
@@ -134,7 +144,10 @@ func (s *dungeonScene) update(g *Game) {
 }
 
 func (s *dungeonScene) forward(g *Game) {
-	s.snapshot()
+	isSpace := dungeon.Of(g.db, g.st).Space != nil
+	if !isSpace {
+		s.snapshot()
+	}
 	was := g.st.Pos
 	s.keep = maps.Clone(g.st.Done)
 	moved, cmds := dungeon.Forward(g.db, g.st)
@@ -143,6 +156,10 @@ func (s *dungeonScene) forward(g *Game) {
 		now := g.st.Pos
 		if now.Facing != was.Facing || abs(now.X-was.X)+abs(now.Y-was.Y) > 2 {
 			s.trans, s.transT = "fade", transTicks*2
+		}
+		if isSpace {
+			s.spaceMotion(was, 0)
+			s.transT = 0
 		}
 		g.sfx("step")
 	} else {
@@ -158,6 +175,12 @@ func (s *dungeonScene) forward(g *Game) {
 }
 
 func (s *dungeonScene) turn(g *Game, n int, how string) {
+	if dungeon.Of(g.db, g.st).Space != nil {
+		s.spaceMotion(g.st.Pos, float64(n)*math.Pi/2)
+		dungeon.Turn(g.st, n)
+		g.sfx("cursor")
+		return
+	}
 	s.snapshot()
 	dungeon.Turn(g.st, n)
 	s.trans, s.transT = how, transTicks
@@ -183,10 +206,15 @@ func (s *dungeonScene) draw(g *Game, dst *ebiten.Image) {
 	} else {
 		s.keep = nil
 	}
-	v := &viewer{g: g, d: d, st: vst, dst: s.view, w: pw, h: ph, vs: s.vs, is: s.is}
-	v.draw()
-	s.vs, s.is = v.vs, v.is
-	s.drawWithTransition(dst, pw, ph, pw/sw)
+	if d.Space != nil {
+		s.drawSpace(g, s.view, d)
+		dst.DrawImage(s.view, nil)
+	} else {
+		v := &viewer{g: g, d: d, st: vst, dst: s.view, w: pw, h: ph, vs: s.vs, is: s.is}
+		v.draw()
+		s.vs, s.is = v.vs, v.is
+		s.drawWithTransition(dst, pw, ph, pw/sw)
+	}
 	if d.Generate != nil {
 		if f, ok := g.st.Vars[dungeon.VarFloor].(float64); ok && f != g.bannerFloor {
 			g.bannerFloor = f
@@ -203,6 +231,9 @@ func (s *dungeonScene) draw(g *Game, dst *ebiten.Image) {
 
 	g.window(dst, 36, 28, 400, 150)
 	area := loc.Area
+	if d.Space != nil {
+		area = fmt.Sprintf("Level %d | %s", g.st.Pos.Level+1, loc.Area)
+	}
 	if a := lookArea(g); a != "" {
 		area = a
 	}

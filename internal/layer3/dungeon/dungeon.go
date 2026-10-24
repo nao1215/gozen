@@ -25,7 +25,7 @@ var (
 // Of is the dungeon the party is in (nil at a location that is not one).
 func Of(db *data.DB, st *rpg.State) *data.Dungeon {
 	if l := db.Locations[st.Location]; l != nil {
-		return l.Dungeon
+		return data.DungeonLevel(l.Dungeon, st.Pos.Level)
 	}
 	return nil
 }
@@ -144,6 +144,13 @@ func Place(db *data.DB, st *rpg.State, loc, at, facing string) {
 		return
 	}
 	d := l.Dungeon
+	level := 0
+	if d.Space != nil {
+		if st.Pos.In == loc && at != "" {
+			level = st.Pos.Level
+		}
+		d = data.DungeonLevel(d, level)
+	}
 	var c rune
 	if at != "" {
 		c = []rune(at)[0]
@@ -178,7 +185,7 @@ func Place(db *data.DB, st *rpg.State, loc, at, facing string) {
 	if st.Pos.In != loc { // the roamers are the last floor's (a dive places the new floor's after)
 		st.Roamers = nil
 	}
-	st.Pos = rpg.Pos{In: loc, X: x, Y: y, Facing: f & 3}
+	st.Pos = rpg.Pos{In: loc, Level: level, X: x, Y: y, Facing: f & 3}
 	st.Bumped = ""
 	front := false // arrived in front of a solid thing (the stairs down in a wall), facing it
 	// On reaching something impassable (stairs in a wall) or something that acts when stepped on (a descent in the floor), stand next to it and face it
@@ -191,7 +198,7 @@ func Place(db *data.DB, st *rpg.State, loc, at, facing string) {
 		for i := range 4 {
 			nx, ny := x-dx[i], y-dy[i] // the cell from which facing i looks at x, y
 			if standable(d, nx, ny) && CellAt(d, st, nx, ny).Passable() && CellAt(d, st, nx, ny).Look != "door" {
-				st.Pos = rpg.Pos{In: loc, X: nx, Y: ny, Facing: i}
+				st.Pos = rpg.Pos{In: loc, Level: level, X: nx, Y: ny, Facing: i}
 				front = true
 				break
 			}
@@ -217,12 +224,20 @@ func Ensure(db *data.DB, st *rpg.State) {
 		Dive(db, st, st.Location, 1) // a made dungeon started in (a test play): its first floor
 		return
 	}
+	if l := db.Locations[st.Location]; l != nil && l.Dungeon != nil && l.Dungeon.Space != nil {
+		if st.Pos.Level < 0 || st.Pos.Level >= len(l.Dungeon.Space.Levels) {
+			st.Pos.Level = 0
+		}
+	}
 	Remake(db, st)
 	d := Of(db, st)
 	if d == nil {
 		return
 	}
 	if st.Pos.In != st.Location || !standable(d, st.Pos.X, st.Pos.Y) {
+		if d.Space != nil {
+			st.Pos.Level = 0
+		}
 		// a save from before the map changed (a smaller map, a wall where it stood): the start
 		Place(db, st, st.Location, "", "")
 	}
@@ -333,6 +348,15 @@ func Rel(p rpg.Pos, f, s int) (int, int) {
 
 // Front is the cell in front of the party.
 func Front(db *data.DB, st *rpg.State) Cell {
+	if d := Of(db, st); d != nil && d.Space != nil {
+		p, ok := spaceStep(d.Space, st.Pos)
+		if !ok {
+			return Cell{Solid: true, Look: "wall"}
+		}
+		copyState := *st
+		copyState.Pos = p
+		return CellAt(data.DungeonLevel(d, p.Level), &copyState, p.X, p.Y)
+	}
 	x, y := Rel(st.Pos, 1, 0)
 	return CellAt(Of(db, st), st, x, y)
 }
@@ -349,6 +373,15 @@ func Forward(db *data.DB, st *rpg.State) (bool, []data.Command) {
 	}
 	SettleRoamers(st)
 	from := [2]int{st.Pos.X, st.Pos.Y} // where the step starts (a roamer next to it was seen there)
+	target := st.Pos
+	if d.Space != nil {
+		var ok bool
+		target, ok = spaceStep(d.Space, st.Pos)
+		if !ok {
+			st.Moved = false
+			return false, nil
+		}
+	}
 	c := Front(db, st)
 	if !c.Passable() {
 		// bumped into it: for a trigger bump tile (the default for solid), its do runs
@@ -357,6 +390,10 @@ func Forward(db *data.DB, st *rpg.State) (bool, []data.Command) {
 	}
 	st.Moved = true
 	st.Pos.X, st.Pos.Y = c.X, c.Y
+	if d.Space != nil {
+		st.Pos.Level = target.Level
+		d = Of(db, st)
+	}
 	st.Bumped = ""
 	st.Steps++
 	Reveal(db, st)
@@ -569,6 +606,9 @@ func doneKey(st *rpg.State, loc string, x, y int) string {
 // floorKey names the floor of loc the party knows: the location, and for a made dungeon
 // its floor too (each floor keeps its own map and opened chests).
 func floorKey(st *rpg.State, loc string) string {
+	if l := st.DB.Locations[loc]; l != nil && l.Dungeon != nil && l.Dungeon.Space != nil {
+		return fmt.Sprintf("%s/level/%d", loc, st.Pos.Level)
+	}
 	if l := st.DB.Locations[loc]; l != nil && l.Dungeon != nil && l.Dungeon.Generate != nil {
 		f := optional.Value[float64](st.Vars[VarFloor])
 		return loc + "/" + fmtF(f)

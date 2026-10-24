@@ -48,6 +48,8 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0038](0038-character-relationship-chart.md) | Relationship chart in the character book | Accepted | |
 | [0039](0039-shared-yaml-paths.md) | Shared YAML path selection and removal of the unused dungeon relay | Accepted | |
 
+| [0040](0040-stacked-spaces.md) | Bounded stacked spaces: streets, interiors and continuous stairs | Accepted for implementation | |
+
 The source of truth for the current public packages is `api/public.txt` and [Boundaries](../architecture/boundaries.md), not this list of ADRs.
 
 When changing a decision, record the current constraint, the concrete users, the alternatives, and the impact. A change that hides a dependency violation by adding configuration exclusions is not accepted. When an ADR changes, fix its status line and the status and change columns of this table in the same change.

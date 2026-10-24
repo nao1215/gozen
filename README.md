@@ -85,6 +85,10 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 | Title | |
 | ![the title screen](docs/images/go-zen-title.jpg) | |
 
+### Continuous stacked spaces
+
+Walk from a plaza up exterior stairs, across a bridge and onto a roof terrace without a scene change. The [technical demo and short video](docs/examples/stacked-spaces.md) show the bounded geometry and its current limits. Requires schema version 8.
+
 ### Novel games
 
 `ui.message: novel` makes a visual novel. All from [After the Pass](examples/novel), the novel sample, at 1920x1080.

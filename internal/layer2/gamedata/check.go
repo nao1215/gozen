@@ -260,7 +260,7 @@ func (c *checker) requiredDefinitions() {
 		}
 	}
 	for _, id := range c.db.Ordered("locations") {
-		if d := c.db.Locations[id].Dungeon; d != nil && d.Generate == nil && strings.TrimSpace(d.Map) == "" {
+		if d := c.db.Locations[id].Dungeon; d != nil && d.Space == nil && d.Generate == nil && strings.TrimSpace(d.Map) == "" {
 			c.errorf(diag.Shape, "locations."+id+".dungeon.map", "the map is empty")
 		}
 	}

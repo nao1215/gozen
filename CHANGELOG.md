@@ -19,6 +19,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
+- Opt-in bounded stacked spaces (schema version 8): continuous bidirectional stairs, open-air levels, solid floor slabs, textured materials and a sky panorama. Existing dungeons retain their renderer and transitions. Includes the Terrace Quarter demo, save/restore and movement regression tests, and graphics E2E checks.
+
 - CLI E2E scenarios for excessive road steps, enemy counts and image dimensions, including successful checks after repairing each input, plus regression tests and large-map benchmarks.
 
 ## v0.5.0 - 2026-10-22

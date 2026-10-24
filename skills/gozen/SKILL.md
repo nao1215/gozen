@@ -30,7 +30,7 @@ In GitHub Actions, `nao1215/setup-gozen` installs the version in the game's `go.
 
 ## What every game needs
 
-- `game.yaml` with `schema_version: 3` (4 for a novel, 5 for a campaign, 6 for monster collection), an `id`, and `start` with a `location` and a `party`.
+- `game.yaml` with `schema_version: 3` (4 for a novel, 5 for a campaign, 6 for monster collection, 7 for battle forms, 8 for stacked spaces), an `id`, and `start` with a `location` and a `party`.
 - A class for each party member, with all eight stats (`mhp mmp atk def mat mdf agi luk`) and `exp_for`.
 - The two skills `attack` and `guard`, even in a game without battles.
 - Pictures under `assets/` for every `image` and `background` you name. Enemies need an `image`.
@@ -59,6 +59,12 @@ YAML traps are in references/yaml.md.
 Tested YAML for shops, inns, flags, companions, dungeons, chests, keys, cut-ins and moving portraits: https://nao1215.github.io/gozen/cookbook/. Start from a recipe and change the names.
 
 A first-person dungeon can take a ready look: `gozen theme list` shows the themes (cave, ice, ruins, castle, crystal, temple, sewer, forest, tomb, keep, dream, mine, vine), `gozen theme add cave game` copies one into the game's assets, and `theme: cave` on `dungeon:` or a look fills the wall, door, floor and ceiling. A value written beside it wins. `gozen check` reports a theme named but not added (GZN1111).
+
+## Continuous stacked spaces
+
+For streets, houses with upper floors, bridges and atriums, set `schema_version: 8` and use `dungeon.space`. Supply 1–8 aligned rectangular `levels` (3–64 cells per side); `_` is open air. Straight `stairs` have a one-based lower `level`, zero-based `x` and `y`, a `facing`, and `length` 3–8. Keep headroom empty and both endpoints unconditional. `pos.level` is zero-based; save/restore, exploration and tile records retain the level.
+
+Use `wall`, `floor_texture`, `ceiling_texture` and optional `space.sky` for materials. A sky panorama wraps horizontally from zenith at the top to horizon at the bottom. Do not combine a space with `map`, `generate`, roamers, themes, door/tile pictures, conditional looks, slide or spin effects. Ordinary dungeon recipes still work without `space`. Read the [complete example and limits](https://github.com/nao1215/gozen/blob/main/docs/examples/stacked-spaces.md), run `gozen check examples/space/game` in the Gozen checkout, and verify movement in both directions in a rendered run.
 
 ## Novel games
 
