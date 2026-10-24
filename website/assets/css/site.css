@@ -204,6 +204,11 @@ table {
   margin: 1rem 0;
 }
 
+/* Image galleries use equal columns regardless of caption length. */
+.table-wrap:has(img) table {
+  table-layout: fixed;
+}
+
 .table-wrap {
   overflow-x: auto;
   margin: 1rem 0;

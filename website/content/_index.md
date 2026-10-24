@@ -59,7 +59,7 @@ The rules are shared by the window, a headless driver and the command line, so a
 
 ## Screens
 
-All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at 1920x1080.
+From [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at 1920x1080 and [Terrace Quarter](https://github.com/nao1215/gozen/tree/main/examples/space) at 960x540.
 
 | Conversation | Painted scene |
 |:--|:--|
@@ -72,10 +72,8 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 | ![the shop's goods](/images/go-zen-shop.jpg) | ![Maren's skill tree with Ink Burst chosen](/images/go-zen-tree.jpg) |
 | Title | |
 | ![the title screen](/images/go-zen-title.jpg) | |
-
-### Continuous stacked spaces
-
-Walk from a plaza up exterior stairs, across a bridge and onto a roof terrace without a scene change. The [technical demo and short video](https://github.com/nao1215/gozen/blob/main/docs/examples/stacked-spaces.md) show the bounded geometry and its current limits. Requires schema version 8.
+| Town with upper floors | Wall-mounted stairs |
+| ![An open plaza with upper floors and connecting stairs](/images/space-street.jpg) | ![Stone stairs along a wall lead from the bridge to the roof terrace](/images/space-stairs.jpg) |
 
 ### Novel games
 
