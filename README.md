@@ -190,12 +190,12 @@ Start the game with `--dev` and these keys work while you play.
 <td width="50%"></td>
 </tr>
 <tr>
-<td width="50%">Tab: relationship chart; arrows choose a face, Z focuses its neighbours, Z again opens its page, and X returns to the full chart</td>
-<td width="50%">Ox&#x27;s incoming and outgoing neighbours gather around him</td>
+<td width="50%">Tab: relationship chart; arrows choose a face, Z focuses its neighbors, Z again opens its page, and X returns to the full chart</td>
+<td width="50%">Ox&#x27;s incoming and outgoing neighbors gather around him</td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/images/go-zen-relations.jpg" width="480" alt="Go Zen&#x27;s full relationship chart with face icons and coloured connections"></td>
-<td width="50%"><img src="docs/images/go-zen-relations-focus.jpg" width="480" alt="Ox focused at the centre of the relationship chart with his neighbours in a circle"></td>
+<td width="50%"><img src="docs/images/go-zen-relations.jpg" width="480" alt="Go Zen&#x27;s full relationship chart with face icons and colored connections"></td>
+<td width="50%"><img src="docs/images/go-zen-relations-focus.jpg" width="480" alt="Ox focused at the center of the relationship chart with his neighbors in a circle"></td>
 </tr>
 </table>
 
