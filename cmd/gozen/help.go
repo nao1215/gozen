@@ -23,6 +23,7 @@ var topPage = clihelp.Page{
 		"release and trial trees, and runs the picture and asset tools. Results go to stdout, " +
 		"diagnostics to stderr.",
 	Commands: [][2]string{
+		{"new", "Create a playable game from a YAML template"},
 		{"check", "Check a game directory: definitions, references, expressions, assets, text layout"},
 		{"sim", "Measure play without a window: battle, dive, floors, design, campaign"},
 		{"play", "Run games and inspect real plays: run, trace, notes, shots"},
@@ -171,6 +172,15 @@ var groups = map[string]clihelp.Page{
 }
 
 var pages = map[string]clihelp.Page{
+	"new": {
+		Summary:  "create a playable game without Go source",
+		Usage:    []string{"gozen new <game-dir> [OPTIONS]"},
+		About:    "Creates editable YAML and original placeholder assets. The destination must not exist. Each game gets a new save identity unless --id is supplied. No Go compiler is required.",
+		Examples: []clihelp.Example{{"create an RPG", "gozen new my-game"}, {"create a novel", "gozen new my-story --template novel --title 'My story'"}, {"create a campaign", "gozen new my-campaign --template campaign"}},
+		Groups:   []clihelp.Group{{Title: "Game", Flags: []string{"template", "id", "title"}}, general},
+		Notes:    []string{noRequirements},
+	},
+
 	"sim breed": {
 		Summary:  "explore the monster breeding graph",
 		Usage:    []string{"gozen sim breed [OPTIONS] <game-dir>"},

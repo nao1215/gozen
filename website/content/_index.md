@@ -2,7 +2,7 @@
 title: Gozen
 ---
 
-Gozen is a YAML-first framework for 2D RPGs, visual novels and strategy games in Go and [Ebitengine](https://ebitengine.org/). You, or your coding agent, write the game as YAML: places, battles and skills for an RPG; lines, choices and staging for a novel, with roll back, skip and a second language; regions, generals and orders for a campaign. `gozen check`, `gozen sim battle` and `gozen sim campaign` catch broken references and bad balance before anyone plays. While you play, you leave a note on the exact moment, watch live win rates, and reload the YAML without restarting.
+Gozen is a no-code toolkit for making 2D RPGs, visual novels and strategy games with YAML and assets. Start with a playable template, edit its dialogue and rules, then check and play it. No Go code or compiler is required for this workflow. YAML and terminal commands are the interface; there is no visual editor. Go and Ebitengine power the engine behind it.
 
 The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan, an ebiten gozen (御膳) is a set meal on one tray: shrimp tempura with soba, small side dishes, and a sweet such as dango. Gozen is that tray for Ebitengine: the engine served with everything a game needs. The name also starts with Go.
 
@@ -12,31 +12,23 @@ The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan
 | Campaign: [Five Banners](https://github.com/nao1215/gozen/tree/main/examples/campaign) ([play in browser](/play/campaign/)) | Monster collection: [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) ([play in browser](/play/go-zen/)) |
 | ![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](/images/campaign.gif) | ![Breeding monsters in Go Zen: Yorn, the two parents, a silhouette reveal and the newborn Succubus](/images/go-zen-breeding.gif) |
 
-## Try it in 30 seconds
+## Create your first game
 
-With Go 1.26.10 or later, paste this. It needs no display and no assets:
+[Install Gozen](/install/), then create a playable template:
 
 ```shell
-go run github.com/nao1215/gozen/examples/minimal@latest
+gozen new my-game --template rpg
+gozen check my-game
 ```
 
-<!-- verify: output -->
-```text
-location=camp gold=2
-```
-
-That game is two YAML files and a 43-line Go host. The sample above is [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen), a module of its own. Play it from a clone:
-
-<!-- verify: skip needs a clone of the repository and opens the game window -->
+<!-- verify: skip opens a window; generated templates are played by the graphics E2E -->
 ```shell
-git clone https://github.com/nao1215/gozen
-cd gozen/examples/go-zen
-go run . --mute
+gozen play run my-game
 ```
 
-Or [play Go Zen and After the Pass in the browser](/play/).
+Choose `novel` or `campaign` for a different starting point. Follow [Getting started](/getting-started/) to edit your game, or [play the showcase games in your browser](/play/).
 
-On Linux the window needs X11 and OpenGL; see [Install](/install/).
+On Linux the window needs a graphics environment; see [Install](/install/).
 
 ## The loop
 

@@ -1,0 +1,26 @@
+# Change the dialog, add a location, or change the practice battle.
+locations:
+  village:
+    name: Village
+    people:
+      - name: Guide
+        talk:
+          - say: Welcome to your village. The meadow is just ahead.
+    exits: [{to: meadow, label: Visit the meadow}]
+  meadow:
+    name: Meadow
+    actions:
+      - label: Practice battle
+        do:
+          - battle: practice
+          - say: You finished your first battle.
+    exits: [{to: village, label: Return to the village}]
+enemies:
+  mote:
+    name: Meadow mote
+    image: mote.png
+    stats: {mhp: 20, mmp: 0, atk: 2, def: 1, mat: 1, mdf: 1, agi: 2, luk: 1}
+    gold: 3
+    ai: [{use: attack}]
+troops:
+  practice: {members: [mote]}

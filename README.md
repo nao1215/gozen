@@ -22,7 +22,7 @@
 
 # Gozen
 
-Gozen is a YAML-first framework for 2D RPGs, visual novels and strategy games in Go and Ebitengine. You write the game in YAML: places, battles and skills for an RPG; lines, choices and staging for a novel, with roll back, skip and a second language; regions, generals and orders for a campaign. `gozen check` finds broken references. `gozen sim battle` measures balance. While you play, F5 reloads the YAML, F9 saves a note, and F7 and F8 show win rates and flags.
+Gozen is a no-code toolkit for creating 2D RPGs, visual novels and strategy games with YAML and assets. Create a template, edit its text and rules, and play it with one command. No Go code or compiler is required to create and play a game. Built with Go and Ebitengine.
 
 Documentation: https://nao1215.github.io/gozen/
 
@@ -34,27 +34,21 @@ Documentation: https://nao1215.github.io/gozen/
 
 ## Try it
 
-Go 1.26.10 or later. No display or assets needed:
+Install the `gozen` binary from [Releases](https://github.com/nao1215/gozen/releases) or follow the [installation guide](https://nao1215.github.io/gozen/install/).
 
 ```sh
-go run github.com/nao1215/gozen/examples/minimal@latest
+gozen new my-game --template rpg
+gozen check my-game
 ```
 
-<!-- verify: output -->
-```text
-location=camp gold=2
-```
-
-That game is two YAML files and a 43-line Go host. The sample above is [Go Zen](examples/go-zen), a module of its own. Play it from a clone:
-
-<!-- verify: skip needs a clone of the repository and opens the game window -->
+<!-- verify: skip opens a window; generated templates are played by the graphics E2E -->
 ```sh
-git clone https://github.com/nao1215/gozen
-cd gozen/examples/go-zen
-go run . --mute
+gozen play run my-game
 ```
 
-Play Go Zen, After the Pass and Five Banners in the browser: https://nao1215.github.io/gozen/play/
+Choose `novel` or `campaign` for another template. Edit `game.yaml` and `data/world.yaml` in a text editor; no programming language is needed. YAML editing and terminal commands are the current interface, not a visual editor.
+
+Play the larger samples in your browser: https://nao1215.github.io/gozen/play/
 
 ## The loop
 
@@ -301,6 +295,7 @@ location=trail battles=1 wins=1 gold=3
 
 | Command | What it does |
 |:--|:--|
+| `new` | create a playable RPG, novel or campaign from a template |
 | `check` | definitions, references, expressions, pictures, text layout (`--only structure` or `--only layout`) |
 | `sim battle`, `sim dive`, `sim floors`, `sim design` | win rate; a dungeon dive; generated floors; scripted players |
 | `play run`, `play trace`, `play notes`, `play shots` | run a game directory; read a trace; notes as HTML; screenshots of a list |

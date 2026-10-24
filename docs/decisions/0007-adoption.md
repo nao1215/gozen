@@ -1,5 +1,7 @@
 # ADR 0007: Embedding a game through the public API
 
+Product direction changed by [ADR 0041](0041-yaml-authoring-and-distribution.md). Existing public APIs remain during migration; retirement is the final stage.
+
 Status: Accepted. Date: 2026-10-18. Corresponds to: D7.
 
 ## Context

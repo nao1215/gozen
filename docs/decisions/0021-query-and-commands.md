@@ -1,5 +1,7 @@
 # ADR 0021: Read with expressions, change with commands
 
+Product direction changed by [ADR 0041](0041-yaml-authoring-and-distribution.md). Existing public APIs remain during migration; retirement is the final stage.
+
 Status: Accepted (2026-10-19). Stage 0 (this ADR), stage 1 (reduce unused public identifiers), stage 2 (additions to YAML), stage 3 (the new root gozen) and stage 4 (play.Main and play.New(session)) are done; stage 5 onward is planned. It partly supersedes [ADR 0002](0002-public-api-scope.md), [0010](0010-core-ownership.md), [0014](0014-dungeon-host-adoption.md) and [0015](0015-reaction-and-chat.md) (see "Superseded decisions" below).
 
 ## Principles

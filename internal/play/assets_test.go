@@ -251,3 +251,11 @@ func TestTitleArtAndBackground(t *testing.T) {
 		t.Fatal("a title with art is not centred")
 	}
 }
+
+// Empty optional artwork must not attempt to open the assets directory as a file.
+func TestDecodeEmptyPicture(t *testing.T) {
+	p := newPictures(nil)
+	if got := p.decode(""); got != nil {
+		t.Fatal("empty picture decoded")
+	}
+}

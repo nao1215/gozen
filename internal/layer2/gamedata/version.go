@@ -47,6 +47,10 @@ const DefaultRollback = 8
 
 var gameIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 
+// ValidGameID shares the persistent identity constraint between loading and
+// template creation, so a CLI-generated game has the same save identity rules.
+func ValidGameID(id string) bool { return gameIDPattern.MatchString(id) }
+
 // checkVersionHeader checks only the version, before the overall type conversion and data loading.
 // Even if future fields exist, the unknown-version diagnostic takes priority, and null or strings are not rounded to 0.
 func checkVersionHeader(b []byte) error {
@@ -92,7 +96,7 @@ func versionErrors(g Game) []error {
 
 func gameVersionErrors(g Game) []error {
 	errs := versionErrors(g)
-	if g.SchemaVersion >= SchemaVersion1 && !gameIDPattern.MatchString(g.ID) {
+	if g.SchemaVersion >= SchemaVersion1 && !ValidGameID(g.ID) {
 		errs = append(errs, fmt.Errorf(lang.T("game.yaml id: 仕様版 %d では作品の ID が必要です。英数字で始まる英数字・_・- だけの名前を指定してください"), g.SchemaVersion))
 	}
 	return errs

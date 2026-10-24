@@ -1,0 +1,7 @@
+schema_version: 3
+id: {{ID}}
+title: {{TITLE}}
+language: en
+screen: {width: 960, height: 540}
+start: {location: village, party: [hero]}
+battle: {variance: 0, critical: 0, escape: 1}

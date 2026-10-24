@@ -1,0 +1,17 @@
+locations:
+  station: {name: Station}
+events:
+  # Replace these lines with your own story. Each choice has its own dialog.
+  opening:
+    do:
+      - say: The last train arrives at the station.
+      - say: {who: Rowan, text: There is still time to choose.}
+      - choice:
+          - label: Take the train
+            do:
+              - say: You step aboard. A new journey begins.
+          - label: Stay in town
+            do:
+              - say: You turn toward the lights of home.
+      - say: Thank you for playing.
+      - clear: true

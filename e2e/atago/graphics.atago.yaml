@@ -144,3 +144,90 @@ scenarios:
         format: png
         width: 960
         height: 540
+
+- name: a generated RPG has a playable conversation
+  tags: [graphics]
+  steps:
+  - run:
+      command: gozen new game --id rpg-play
+  - assert: {exit_code: 0}
+  - fixture:
+      file: play.txt
+      content: |
+        gap 12
+        wait 10
+        press ok
+        wait 20
+        shot conversation
+        quit
+  - run:
+      command: gozen play run game --dev --mute --start village --script play.txt --shots shots --trace trace.jsonl
+      timeout: 30s
+  - assert: {exit_code: 0, stderr: {equals: ''}}
+  - run:
+      command: gozen play trace trace.jsonl --only say
+  - assert:
+      exit_code: 0
+      stdout: {contains: Welcome to your village.}
+
+- name: a generated novel plays the chosen ending
+  tags: [graphics]
+  steps:
+  - run:
+      command: gozen new game --template novel --id novel-play
+  - assert: {exit_code: 0}
+  - fixture:
+      file: play.txt
+      content: |
+        gap 12
+        wait 10
+        read 2
+        press down
+        press ok
+        wait 20
+        shot choice
+        read 3
+        quit
+  - run:
+      command: gozen play run game --dev --mute --event opening --script play.txt --shots shots --trace trace.jsonl
+      timeout: 30s
+  - assert: {exit_code: 0, stderr: {equals: ''}}
+  - run:
+      command: gozen play trace trace.jsonl --only say
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - You turn toward the lights of home.
+        - Thank you for playing.
+
+- name: a generated campaign changes ownership and advances a turn
+  tags: [graphics]
+  steps:
+  - run:
+      command: gozen new game --template campaign --id campaign-play
+  - assert: {exit_code: 0}
+  - fixture:
+      file: play.txt
+      content: |
+        wait 10
+        order attack hero bridge
+        read 1
+        wait 20
+        end_turn
+        wait 60
+        shot turn
+        quit
+  - run:
+      command: gozen play run game --dev --mute --start valley --script play.txt --shots shots --trace trace.jsonl
+      timeout: 30s
+  - assert: {exit_code: 0, stderr: {equals: ''}}
+  - assert:
+      file:
+        path: trace.jsonl
+        contains:
+        - '"t":"order"'
+        - '"target":"bridge"'
+        - '"result":"won"'
+        - '"t":"end_turn"'
+        - '"turn":2'

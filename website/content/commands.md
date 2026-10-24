@@ -18,6 +18,7 @@ gozen help GZN1101                     # explain a diagnostic code
 |:--|:--|
 | [check](#check) | Check definitions, references, expressions, assets and text layout |
 | [sim](#sim) | Measure play without a window: [battle](#sim-battle), [dive](#sim-dive), [floors](#sim-floors), [design](#sim-design), [campaign](#sim-campaign), [routes](#sim-routes), [breed](#sim-breed) |
+| [new](#new) | Create a playable template without Go source |
 | [play](#play) | Run games and inspect real plays: [run](#play-run), [trace](#play-trace), [notes](#play-notes), [shots](#play-shots) |
 | [book](#book) | Write the definitions and events as Markdown |
 | [pack](#pack) | Build what you ship: [release](#pack-release), [trial](#pack-trial) |
@@ -36,6 +37,24 @@ A group alone (`gozen sim`) exits 2 and lists its commands. `gozen sim --help` s
 - Every command except `play run`, `play shots`, `art faces` and `art mosaic` detection needs nothing beyond the `gozen` binary: no cgo, display or sound device.
 
 The examples below use `game` as the game directory, `lesson` as a troop and `grotto` as a dungeon location.
+
+## new
+
+Create an editable game directory from a bundled template. No Go compiler is needed.
+The destination must not exist. A random game ID prevents save collisions; use
+`--id` to choose one deliberately and keep it unchanged after distributing a game.
+
+```sh
+gozen new first-game --template rpg --title "My first game"
+gozen check first-game
+gozen new first-story --template novel
+gozen new first-campaign --template campaign
+```
+
+Run `gozen play run first-game` to play. Edit `game.yaml` for the title,
+`data/world.yaml` for dialogue and places, and `data/rules.yaml` for characters
+and battle rules. The starter pictures are original placeholders you can replace.
+
 
 ## check
 
