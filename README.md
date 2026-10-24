@@ -71,7 +71,7 @@ The window, a headless session and the command line share the rules. The keys ar
 
 ## Screens
 
-From [Go Zen](examples/go-zen) at 1920x1080 and [Terrace Quarter](examples/space) at 960x540.
+All from [Go Zen](examples/go-zen) at 1920x1080.
 
 | Conversation | Painted scene |
 |:--|:--|
@@ -84,8 +84,6 @@ From [Go Zen](examples/go-zen) at 1920x1080 and [Terrace Quarter](examples/space
 | ![the shop's goods](docs/images/go-zen-shop.jpg) | ![Maren's skill tree with Ink Burst chosen](docs/images/go-zen-tree.jpg) |
 | Title | |
 | ![the title screen](docs/images/go-zen-title.jpg) | |
-| Town with upper floors | Wall-mounted stairs |
-| ![An open plaza with upper floors and connecting stairs](docs/images/space-street.jpg) | ![Stone stairs along a wall lead from the bridge to the roof terrace](docs/images/space-stairs.jpg) |
 
 ### Novel games
 
@@ -143,6 +141,10 @@ Enemies can change form at an HP threshold, combine with allies, change pictures
 | ![A damaged monster shows its low HP picture](docs/images/go-zen-hp-pictures.jpg) | ![The Succubus blinks, sways and reacts to a hit](docs/images/go-zen-motion.gif) |
 
 See [the battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-enemy).
+
+### Multi-level maps
+
+[![Walking up to the second and third floors across the town](docs/images/space-stairs.gif)](docs/media/stacked-space-short.mp4)
 
 ## Playtesting
 
