@@ -55,7 +55,7 @@ skills with actual behavior. These are separate final review stages; every
 preceding change still includes its own tests and accurate documentation.
 
 Desktop distribution uses a private player and an explicit local runtime bundle.
-Browser distribution, feature migration, API retirement and the final audits remain planned.
+Browser distribution uses the same private player with a WASM build and the matching Go JavaScript runtime. The `player` startup component depends on presentation, game data and `webfs`; engine layers do not depend on it. Feature migration, API retirement and the final audits remain planned.
 The detailed progress and acceptance criteria are in
 [the migration plan](../development/no-code-migration.md).
 

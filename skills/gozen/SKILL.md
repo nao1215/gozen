@@ -124,5 +124,8 @@ For desktop delivery, use `gozen pack desktop GAME OUT --runtime RUNTIME
 new and outside both inputs. If the game has an asset policy, first use
 `pack release` and export its approved output. Run the packaged player after
 moving the directory, with isolated saves; check save/reload and the actual
-native target. Cross-compilation alone is not runtime verification. Browser
-export remains planned. See the site's `pack desktop` command documentation.
+native target. Cross-compilation alone is not runtime verification. For browser delivery, use `gozen pack web GAME OUT --runtime RUNTIME` with
+the matching js-wasm runtime bundle. Serve the output over HTTP(S), including
+under a subdirectory, and verify choices plus save/reload in a real browser.
+The exporter copies assets unchanged and the player prefetches the manifest;
+saves remain origin-local. See the site's `pack desktop` command documentation.

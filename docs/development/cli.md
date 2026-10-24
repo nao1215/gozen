@@ -61,7 +61,7 @@ if ($LASTEXITCODE -ne 0) { throw "gozen build failed" }
 $env:PATH = (Join-Path $PWD bin) + [IO.Path]::PathSeparator + $env:PATH
 Push-Location build/atago
 try {
-    atago run --ci --parallel 4 --skip-tag graphics ../../e2e/atago
+    atago run --ci --parallel 4 --skip-tag graphics,web ../../e2e/atago
     if ($LASTEXITCODE -ne 0) { throw "CLI E2E failed" }
 } finally { Pop-Location }
 ```
@@ -69,3 +69,8 @@ try {
 The normal specs do not depend on a shell. For every `gozen` subcommand they check the form of help, GNU-style options, exit status, stdout/stderr, determinism, whether anything is written, generated files and protection against overwriting. The capture specs with the `graphics` tag run separately. The capture child process in unit tests is a mock that returns a PNG and a trace, and is not counted as verification of drawing in a real game.
 
 For macOS, the direct steps are the same build command without `.exe`, `bin` added to PATH, and the same atago command run from `build/atago`. The results on Windows and macOS and the remote CI are not confirmed locally. For the check before publication, follow the [release checklist](release-checklist.md).
+
+`make e2e-web` builds the common WASM runtime and runs the browser export
+scenario with Chrome, Python 3 and `go-licenses`. It checks a choice, a save,
+a page reload and a second save under a subdirectory URL. The ordinary CLI
+suite excludes `web`; the Website and Release Smoke workflows run it separately.

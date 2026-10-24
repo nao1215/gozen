@@ -19,6 +19,8 @@ scenarios:
       file: {path: package/game/saves/private.json, exists: false}
   - assert:
       file: {path: package/runtime-licenses/LICENSE, contains: MIT}
+  - assert:
+      file: {path: package/runtime-licenses/GO-LICENSE, contains: 'The Go Authors'}
   - run:
       command: python3 -c "import os; os.rename('package', 'moved'); os.rename('source', 'source-retired'); os.mkdir('empty-tools')"
   - assert: {exit_code: 0}

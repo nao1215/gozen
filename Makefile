@@ -13,7 +13,7 @@ ATAGO ?= atago
 ACTIONLINT ?= actionlint
 ZIZMOR ?= zizmor
 
-.PHONY: desktop-runtime website-go-zen website-novel website-campaign website-play-check go-zen go-zen-graphics novel novel-graphics campaign campaign-graphics test coverage lint tidy workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
+.PHONY: web-runtime e2e-web desktop-runtime website-go-zen website-novel website-campaign website-play-check go-zen go-zen-graphics novel novel-graphics campaign campaign-graphics test coverage lint tidy workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
 
 # One module: ./... includes the gozen command and its internal implementations.
 # Keep ONNX-dependent runtime tests separate; see docs/development/testing.md.
@@ -97,7 +97,7 @@ cli-build:
 
 e2e: cli-build
 	mkdir -p build/atago
-	cd build/atago && PATH="$(CURDIR)/bin:$$PATH" $(ATAGO) run --ci --parallel 4 --skip-tag graphics ../../e2e/atago
+	cd build/atago && PATH="$(CURDIR)/bin:$$PATH" $(ATAGO) run --ci --parallel 4 --skip-tag graphics,web ../../e2e/atago
 
 desktop-runtime:
 	mkdir -p build/runtime/local/THIRD_PARTY_LICENSES
@@ -105,6 +105,17 @@ desktop-runtime:
 	$(GO) run ./internal/dev/runtimebundle -player build/runtime/local/gozen-player -target "$(shell $(GO) env GOOS)-$(shell $(GO) env GOARCH)" -version devel -out build/runtime/local/runtime.json
 	cp LICENSE build/runtime/local/LICENSE
 	GOROOT="$(shell $(GO) env GOROOT)" CGO_ENABLED=0 go-licenses save ./cmd/gozen-player --save_path=build/runtime/local/THIRD_PARTY_LICENSES --force
+
+web-runtime:
+	mkdir -p build/runtime/web
+	GOOS=js GOARCH=wasm $(GO) build -trimpath -buildvcs=false -o build/runtime/web/gozen-player.wasm ./cmd/gozen-player
+	$(GO) run ./internal/dev/runtimebundle -player build/runtime/web/gozen-player.wasm -target js-wasm -version devel -out build/runtime/web/runtime.json
+	cp LICENSE build/runtime/web/LICENSE
+	GOROOT="$(shell $(GO) env GOROOT)" CGO_ENABLED=0 GOOS=js GOARCH=wasm go-licenses save ./cmd/gozen-player --save_path=build/runtime/web/THIRD_PARTY_LICENSES --force
+
+e2e-web: cli-build web-runtime
+	mkdir -p build/atago
+	cd build/atago && PATH="$(CURDIR)/bin:$$PATH" GOZEN_WEB_RUNTIME="$(CURDIR)/build/runtime/web" $(ATAGO) run --ci --parallel 1 --tag web ../../e2e/atago
 
 e2e-graphics: cli-build desktop-runtime
 	$(GO) build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/gozen-game ./play/testdata/host

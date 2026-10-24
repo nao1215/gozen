@@ -71,7 +71,7 @@ case "$(uname -s)" in
                     list=$(tar -tzf "$archive")
                     binary=gozen
                 fi
-                for want in "$binary" LICENSE README.md CHANGELOG.md ASSETS.md \
+                for want in "$binary" LICENSE GO-LICENSE README.md CHANGELOG.md ASSETS.md \
                     THIRD_PARTY_LICENSES/github.com/hajimehoshi/ebiten/v2/LICENSE \
                     THIRD_PARTY_LICENSES/github.com/goccy/go-yaml/LICENSE; do
                     grep -qx "$want" <<< "$list" || fail "$archive has no $want"
@@ -85,7 +85,7 @@ case "$(uname -s)" in
                     list=$(tar -tzf "$archive")
                     player=gozen-player
                 fi
-                for want in "$player" runtime.json LICENSE \
+                for want in "$player" runtime.json LICENSE GO-LICENSE \
                     THIRD_PARTY_LICENSES/github.com/hajimehoshi/ebiten/v2/LICENSE; do
                     grep -qx "$want" <<< "$list" || fail "$archive has no $want"
                 done
@@ -106,6 +106,10 @@ case "$(uname -s)" in
         fi
         tar -xzf "$(ls "$dist"/gozen_*_linux_"$arch".tar.gz)" -C "$work"
         run_binary "$work/gozen"
+        mkdir -p "$work/web-runtime"
+        tar -xzf "$(ls "$dist"/gozen-runtime_*_js_wasm.tar.gz)" -C "$work/web-runtime"
+        PATH="$work:$PATH" GOZEN_WEB_RUNTIME="$work/web-runtime" \
+            atago run --ci --parallel 1 --tag web e2e/atago/web.atago.yaml
         ;;
     Darwin)
         tar -xzf "$(ls "$dist"/gozen_*_darwin_"$arch".tar.gz)" -C "$work"

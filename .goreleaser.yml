@@ -11,6 +11,7 @@ before:
     - sh -c 'GOROOT="$(go env GOROOT)" CGO_ENABLED=0 GOOS=linux go-licenses save ./cmd/gozen --save_path=third_party_licenses/linux --force'
     - sh -c 'GOROOT="$(go env GOROOT)" CGO_ENABLED=0 GOOS=windows go-licenses save ./cmd/gozen --save_path=third_party_licenses/windows --force'
     - sh -c 'GOROOT="$(go env GOROOT)" CGO_ENABLED=0 GOOS=darwin go-licenses save ./cmd/gozen --save_path=third_party_licenses/darwin --force'
+    - sh -c 'GOROOT="$(go env GOROOT)" CGO_ENABLED=0 GOOS=js GOARCH=wasm go-licenses save ./cmd/gozen-player --save_path=third_party_licenses/js --force'
 
 builds:
   - id: gozen
@@ -50,6 +51,20 @@ builds:
         - cmd: go run ./internal/dev/runtimebundle -player "{{ .Path }}" -target "{{ .Os }}-{{ .Arch }}" -version "v{{ .Version }}" -out "build/runtime/{{ .Os }}-{{ .Arch }}/runtime.json"
           env: [GOOS=, GOARCH=]
 
+  - id: web-player
+    main: ./cmd/gozen-player
+    binary: gozen-player
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X github.com/nao1215/gozen/internal/clihelp.version=v{{ .Version }}
+    env: [CGO_ENABLED=0]
+    goos: [js]
+    goarch: [wasm]
+    hooks:
+      post:
+        - cmd: go run ./internal/dev/runtimebundle -player "{{ .Path }}" -target js-wasm -version "v{{ .Version }}" -out build/runtime/js-wasm/runtime.json
+          env: [GOOS=, GOARCH=]
+
 archives:
   - id: cli
     ids: [gozen]
@@ -63,6 +78,9 @@ archives:
       - README.md
       - CHANGELOG.md
       - ASSETS.md
+      - src: "build/runtime/{{ .Os }}-{{ .Arch }}/GO-LICENSE"
+        dst: .
+        strip_parent: true
       - src: "third_party_licenses/{{ .Os }}/**/*"
         dst: THIRD_PARTY_LICENSES
 
@@ -78,7 +96,28 @@ archives:
       - src: "build/runtime/{{ .Os }}-{{ .Arch }}/runtime.json"
         dst: .
         strip_parent: true
+      - src: "build/runtime/{{ .Os }}-{{ .Arch }}/GO-LICENSE"
+        dst: .
+        strip_parent: true
       - src: "third_party_licenses/{{ .Os }}/**/*"
+        dst: THIRD_PARTY_LICENSES
+
+  - id: web-runtime
+    ids: [web-player]
+    name_template: "gozen-runtime_{{ .Version }}_js_wasm"
+    formats: [tar.gz]
+    files:
+      - LICENSE
+      - src: build/runtime/js-wasm/runtime.json
+        dst: .
+        strip_parent: true
+      - src: build/runtime/js-wasm/wasm_exec.js
+        dst: .
+        strip_parent: true
+      - src: build/runtime/js-wasm/GO-LICENSE
+        dst: .
+        strip_parent: true
+      - src: "third_party_licenses/js/**/*"
         dst: THIRD_PARTY_LICENSES
 
 # Linux system packages for apt, dnf and apk users (the same set gup, sqly and
@@ -95,6 +134,8 @@ nfpms:
       - rpm
       - apk
     contents:
+      - src: ./build/runtime/linux-amd64/GO-LICENSE
+        dst: /usr/share/doc/gozen/GO-LICENSE
       - src: ./third_party_licenses/linux
         dst: /usr/share/doc/gozen/THIRD_PARTY_LICENSES
         type: tree
@@ -153,8 +194,8 @@ release:
 
     Gozen creates and plays games written in YAML. The `gozen` archives contain
     the authoring CLI (without ONNX inference). The `gozen-runtime` archives
-    contain desktop players for `gozen pack desktop`; use the runtime from
-    this release that matches the target OS and architecture.
+    contain players for `gozen pack desktop` and `gozen pack web`; use the
+    runtime from this release for the target OS/architecture or js-wasm.
 
     Every archive is signed and ships with an SBOM and build provenance; see
     [Verifying a release](https://nao1215.github.io/gozen/install/#verifying-a-release).

@@ -19,6 +19,7 @@ scenarios:
   - sub: play shots
   - sub: book
   - sub: pack
+  - sub: pack web
   - sub: pack desktop
   - sub: pack release
   - sub: pack trial
@@ -72,7 +73,7 @@ scenarios:
   matrix:
   - {group: sim, subs: 'battle, dive, floors, design, campaign'}
   - {group: play, subs: 'run, trace, notes, shots'}
-  - {group: pack, subs: 'desktop, release, trial'}
+  - {group: pack, subs: 'desktop, web, release, trial'}
   - {group: art, subs: 'prompt, mosaic, fetch, faces, puppet'}
   steps:
   - run:
@@ -158,6 +159,7 @@ scenarios:
   - sub: play shots
   - sub: book
   - sub: pack
+  - sub: pack web
   - sub: pack desktop
   - sub: pack release
   - sub: pack trial
@@ -205,6 +207,7 @@ scenarios:
   - sub: play shots
   - sub: book
   - sub: pack
+  - sub: pack web
   - sub: pack desktop
   - sub: pack release
   - sub: pack trial

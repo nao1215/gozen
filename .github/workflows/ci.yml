@@ -283,7 +283,7 @@ jobs:
           $env:PATH = (Join-Path $PWD bin) + [IO.Path]::PathSeparator + $env:PATH
           Push-Location build/atago
           try {
-            atago run --ci --parallel 4 --skip-tag graphics ../../e2e/atago
+            atago run --ci --parallel 4 --skip-tag graphics,web ../../e2e/atago
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           } finally { Pop-Location }
 

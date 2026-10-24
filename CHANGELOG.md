@@ -6,6 +6,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
+- Export static browser games with `gozen pack web`, a common WASM player and its matching JavaScript runtime.
+
 - Package games with `gozen pack desktop` and matching prebuilt player runtimes. Players need no Go toolchain or authoring CLI.
 
 - Create playable RPG, novel and campaign templates with `gozen new`, using only YAML and assets. Beginner documentation now starts with the no-code authoring workflow.

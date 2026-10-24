@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loading game</title>
+<style>
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #10181c; color: #f4f1e6; font-family: sans-serif; overscroll-behavior: none; }
+canvas { touch-action: none; }
+#loading { position: absolute; inset: 0; z-index: 10; display: grid; place-content: center; padding: 1rem; text-align: center; background: #10181c; }
+</style>
+</head>
+<body>
+<div id="loading"><p id="note">Loading game...</p><noscript>This game needs JavaScript and WebAssembly.</noscript></div>
+<script src="wasm_exec.js"></script>
+<script>
+"use strict";
+window.goZenTimes = {};
+window.goZenStarting = (title) => {
+  document.title = title;
+  goZenTimes.starting = performance.now();
+  document.getElementById("note").textContent = "Starting game...";
+};
+window.goZenReady = () => {
+  goZenTimes.ready = performance.now();
+  document.getElementById("loading").remove();
+};
+window.goZenFail = (message) => {
+  let loading = document.getElementById("loading");
+  if (!loading) {
+    loading = document.createElement("div");
+    loading.id = "loading";
+    document.body.appendChild(loading);
+  }
+  loading.textContent = "Could not start: " + message;
+};
+document.addEventListener("contextmenu", (event) => event.preventDefault());
+(async () => {
+  try {
+    const go = new Go();
+    const response = await fetch("gozen-player.wasm");
+    if (!response.ok) throw new Error("gozen-player.wasm: " + response.status);
+    // arrayBuffer also works on static servers without a WASM MIME mapping.
+    const result = await WebAssembly.instantiate(await response.arrayBuffer(), go.importObject);
+    await go.run(result.instance);
+  } catch (error) {
+    goZenFail(String(error));
+  }
+})();
+</script>
+</body>
+</html>

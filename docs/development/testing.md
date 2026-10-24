@@ -74,3 +74,9 @@ The race check needs cgo and a C compiler. It runs with `-short`, which skips th
 After changing the schema, run `GOZEN_UPDATE_SCHEMA=1 go test ./internal/layer2/gamedata -run '^TestSchemaCoverage$'`. It regenerates `data/schema/` (the [Schema page](https://nao1215.github.io/gozen/schema/) of the site is built from it); confirm with a normal `go test` that they match. This is a separate check from the API update.
 
 These are not execution checks of drawing, real audio, the CLI or ONNX.
+
+`make e2e-web` needs Chrome, Python 3, atago and `go-licenses`. It builds the web
+runtime, exports a game, serves it under a subdirectory, plays a choice and
+checks saved state after reloading the page. Release Smoke repeats this using
+the generated release archives. These tools are test dependencies; authors
+export with the prebuilt CLI and runtime bundle.
