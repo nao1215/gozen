@@ -10,16 +10,16 @@ The product direction and boundaries are recorded in [ADR 0041](../decisions/004
 | 4 | Desktop export and private player | Move the package, hide its source, play and restore with no toolchain; native tests for claimed platforms | Merged in #48 |
 | 5 | Web export and generic WASM runtime | Serve under a subdirectory, play a choice, save and reload in a real browser | Merged in #49 |
 | 6 | First-party samples and useful library-only features | Samples use the common player; retained features have YAML/CLI coverage | Merged in #50 |
-| 6a–6f | [CLI contract migration](../decisions/0042-command-and-output-contract.md): reporting, primary commands, capture, analysis, production tools, help | Each batch updates actual CLI E2E and docs; no CLI-to-CLI execution | 6a merged in #51; 6b merged in #52 and #53; capture (6c) merged in #54. Simulation and trace reporting merged in #55. Book, production tools and machine-readable help are implemented in the final PR |
-| 7 | Public Go API retirement | Existing YAML and pre-migration saves still play; no unintended public application API | Implemented in the final PR; old-save CLI E2E passes |
-| 8 | Post-migration bug audit | End-to-end authoring/distribution, boundary inputs, oversized data and save compatibility; fixes include reproductions | Final PR audit |
-| 9 | Refactoring | Remove dead code, duplication and unused abstractions; organize tests by implementation or integration behavior | Final PR audit |
-| 10 | Documentation and skill audit | README, site, help, architecture, AGENTS.md and Gozen skill match the implementation; authoring-to-distribution instructions execute | Final PR audit |
+| 6a–6f | [CLI contract migration](../decisions/0042-command-and-output-contract.md): reporting, primary commands, capture, analysis, production tools, help | Each batch updates actual CLI E2E and docs; no CLI-to-CLI execution | 6a merged in #51; 6b merged in #52 and #53; capture (6c) merged in #54. Simulation and trace reporting merged in #55. Book, production tools and machine-readable help are implemented in [#56](https://github.com/nao1215/gozen/pull/56) |
+| 7 | Public Go API retirement | Existing YAML and pre-migration saves still play; no unintended public application API | Implemented in [#56](https://github.com/nao1215/gozen/pull/56); old-save CLI E2E passes |
+| 8 | Post-migration bug audit | End-to-end authoring/distribution, boundary inputs, oversized data and save compatibility; fixes include reproductions | Implemented and locally verified in #56 |
+| 9 | Refactoring | Remove dead code, duplication and unused abstractions; organize tests by implementation or integration behavior | Implemented and locally verified in #56 |
+| 10 | Documentation and skill audit | README, site, help, architecture, AGENTS.md and Gozen skill match the implementation; authoring-to-distribution instructions execute | Implemented and locally verified in #56 |
 
 Each PR includes its necessary tests and documentation. Capture merged in #54;
 simulation and trace reporting merged in #55.
 
-The remaining work ships in one PR, with separate commits for the complete book
+The final work ships in [PR #56](https://github.com/nao1215/gozen/pull/56), with separate commits for the complete book
 model, production commands, machine-readable help, public API retirement and the
 final bug, refactoring, documentation and skill audits. Complete the CLI replacements
 before retiring the API. All completion gates above still apply.

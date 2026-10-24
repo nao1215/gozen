@@ -1,9 +1,8 @@
 # ADR 0042: Direct commands and structured output
 
-Status: Accepted for phased implementation. Date: 2026-10-24.
+Status: Implemented. Date: 2026-10-24.
 Changes the command layout and output contracts of ADR 0012, 0018 and 0024.
-The table below is the migration target, not a claim that every command is
-available yet. Track implementation in [the migration plan](../development/no-code-migration.md).
+The table below records the old and replacement forms. Verification is recorded in [the migration plan](../development/no-code-migration.md).
 
 ## Problems found
 
