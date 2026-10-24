@@ -307,7 +307,7 @@ var pages = map[string]clihelp.Page{
 			"faults of the standing pictures and the music instead and exits 1 if there are any. Use - for standard input. Check mode does not accept display filters.",
 		Examples: []clihelp.Example{
 			{"print a trace", "gozen trace run.jsonl"},
-			{"print only dialogue and battles between seconds 10 and 60", "gozen trace run.jsonl --only say --only battle --from 10 --to 60"},
+			{"print only dialog and battles between seconds 10 and 60", "gozen trace run.jsonl --only say --only battle --from 10 --to 60"},
 			{"check pictures and music", "gozen trace run.jsonl --check"},
 		},
 		Groups: []clihelp.Group{
