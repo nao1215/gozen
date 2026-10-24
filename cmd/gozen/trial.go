@@ -21,8 +21,10 @@ import (
 )
 
 func (c *command) trialCmd(args []string) (err error) {
-	fl := clihelp.NewFlagSet("gozen pack trial")
-	conf := fl.String("config", "trial.yaml", "the range settings `FILE`, relative to the game directory and separated by /")
+	fl := clihelp.NewFlagSet("gozen trial")
+	var out string
+	fl.StringVarP(&out, "out", "o", "", "write the trial to this new `DIR`; required unless --dry-run")
+	conf := fl.String("config", "trial.yaml", "the range settings `FILE`, relative to the working directory (default: GAME/trial.yaml)")
 	overlay := fl.String("overlay", "", "take replaced assets from this `DIR` (needs --inspect)")
 	inspect := fl.String("inspect", "", "the inspection records `FILE` (JSON Lines) from production; needed with --overlay")
 	list := fl.String("list", "", "write the list of what was kept and dropped to this new `FILE`")
@@ -30,25 +32,29 @@ func (c *command) trialCmd(args []string) (err error) {
 	if err := c.parse(fl, args); err != nil {
 		return err
 	}
-	if fl.NArg() != 2 && (!*dry || fl.NArg() != 1) {
-		return cliio.Invalid(diag.Operands, "expected <game-dir> <out-dir>")
+	if fl.NArg() != 1 {
+		return cliio.Invalid(diag.Operands, "expected one game directory")
 	}
 	src := fl.Arg(0)
-	if !cli.Relative(*conf) {
-		return cliio.Invalid(diag.BadPath, "--config must be a portable relative FS path")
+	if !*dry && out == "" {
+		return cliio.Invalid(diag.OptionRequired, "trial requires --out DIR unless --dry-run")
 	}
 	if (*overlay == "") != (*inspect == "") {
 		return cliio.Invalid(diag.OptionNeedsAnother, "--overlay and --inspect must be supplied together")
 	}
 	if !*dry {
-		if err := cli.Destination(fl.Arg(1), src, *overlay); err != nil {
+		if err := cli.Destination(out, src, *overlay); err != nil {
 			return err
 		}
 	}
 	if err := gamedata.UseWords(os.DirFS(src)); err != nil {
 		return err
 	}
-	cfg, err := trial.Load(os.DirFS(src), *conf)
+	configPath := filepath.Join(src, "trial.yaml")
+	if fl.Changed("config") {
+		configPath = *conf
+	}
+	cfg, err := trial.Load(os.DirFS(filepath.Dir(configPath)), filepath.Base(configPath))
 	if err != nil {
 		if diag.Of(err) == 0 {
 			err = diag.TrialConfig.Wrap(err)
@@ -64,7 +70,7 @@ func (c *command) trialCmd(args []string) (err error) {
 	}
 	c.summary(res)
 	if !*dry && *list != "" {
-		if err := cli.Destination(*list, src, *overlay, fl.Arg(1)); err != nil {
+		if err := cli.Destination(*list, src, *overlay, out); err != nil {
 			return err
 		}
 		if err := writeList(*list, res); err != nil {
@@ -74,7 +80,6 @@ func (c *command) trialCmd(args []string) (err error) {
 	if *dry {
 		return nil
 	}
-	out := fl.Arg(1)
 	if *overlay == "" {
 		return cli.Publish(out, []string{src}, func(stage string) error { return res.Write(src, stage) })
 	}

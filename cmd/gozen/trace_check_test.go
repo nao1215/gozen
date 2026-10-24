@@ -25,7 +25,7 @@ func checkTraceOut(t *testing.T, want int, lines ...string) string {
 		}
 	})
 	all := append([]string{`{"t":"start","tick":0,"game":"g","seed":1,"language":"en"}`}, lines...)
-	out, _ := invoke(t, want, "play", "trace", traceFile(t, all...), "--check")
+	out, _ := invoke(t, want, "trace", traceFile(t, all...), "--check")
 	return out
 }
 
@@ -203,6 +203,6 @@ func TestTraceCheckMusicArrivesLateOrNever(t *testing.T) {
 		`{"t":"music","tick":10,"wanted":"calm","song":""}`,
 		`{"t":"music","tick":100,"wanted":"calm","song":"calm","wait":90}`,
 	)
-	invoke(t, 0, "play", "trace", file, "--check", "--music-late", "2")
-	invoke(t, 1, "play", "trace", file, "--check", "--music-late", "1")
+	invoke(t, 0, "trace", file, "--check", "--music-late", "2")
+	invoke(t, 1, "trace", file, "--check", "--music-late", "1")
 }

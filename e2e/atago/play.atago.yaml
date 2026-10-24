@@ -17,6 +17,10 @@ scenarios:
   - {path: play run}
   - {path: pack desktop}
   - {path: pack web}
+  - {path: pack release}
+  - {path: pack trial}
+  - {path: play trace}
+  - {path: play notes}
   steps:
   - run:
       command: gozen ${path} absent-game

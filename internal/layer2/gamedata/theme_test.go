@@ -60,7 +60,7 @@ func TestThemeIsReportedByCheck(t *testing.T) {
 		extra         map[string]string
 		want          string
 	}{
-		{"no folder", "      theme: cave\n", nil, "run `gozen theme add cave <game-dir>`"},
+		{"no folder", "      theme: cave\n", nil, "run `gozen theme add <game-dir> --name cave`"},
 		{"no folder for a look", "      looks: [{when: \"true\", theme: ice}]\n", nil, "looks[0].theme: no assets/dungeon/themes/ice/wall.jpg"},
 		{"a file is missing", "      theme: cave\n", map[string]string{"assets/dungeon/themes/cave/wall.jpg": "x"}, "no assets/dungeon/themes/cave/floor.jpg"},
 		{"bad colors", "      theme: cave\n", themeFiles("cave", "floor: nope\n"), "theme.yaml cannot be read"},

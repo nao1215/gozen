@@ -83,10 +83,14 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: sim observable result
+- name: sim observable result ${before} ${after}
+  matrix:
+  - {before: '--troop lesson', after: ''}
+  - {before: '', after: '--troop=lesson'}
+  - {before: '--troop=lesson --', after: ''}
   steps:
   - run:
-      command: gozen sim battle "${specdir}/fixtures/game" lesson -n 3 --seed 9
+      command: gozen sim battle -n 3 --seed 9 ${before} "${specdir}/fixtures/game" ${after}
       deterministic:
         runs: 2
         compare:
@@ -103,10 +107,14 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: floors observable result
+- name: floors observable result ${before} ${after}
+  matrix:
+  - {before: '--location grotto', after: ''}
+  - {before: '', after: '--location=grotto'}
+  - {before: '--location=grotto --', after: ''}
   steps:
   - run:
-      command: gozen sim floors "${specdir}/fixtures/game" grotto --floor 1 --try 2
+      command: gozen sim floors --floor 1 --try 2 ${before} "${specdir}/fixtures/game" ${after}
       deterministic:
         runs: 2
         compare:
@@ -123,10 +131,14 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: curve observable result
+- name: curve observable result ${before} ${after}
+  matrix:
+  - {before: '--location grotto', after: ''}
+  - {before: '', after: '--location=grotto'}
+  - {before: '--location=grotto --', after: ''}
   steps:
   - run:
-      command: gozen sim dive "${specdir}/fixtures/game" grotto --floors 1 --battles 1 --tries 1
+      command: gozen sim dive --floors 1 --battles 1 --tries 1 ${before} "${specdir}/fixtures/game" ${after}
       deterministic:
         runs: 2
         compare:
@@ -155,7 +167,7 @@ scenarios:
 
         '
   - run:
-      command: gozen play trace trace.jsonl --only say --from 1 --to 1
+      command: gozen trace trace.jsonl --only say --from 1 --to 1
   - assert:
       exit_code: 0
       stdout:
@@ -166,7 +178,7 @@ scenarios:
       stderr:
         equals: ''
   - run:
-      command: gozen play trace trace.jsonl --check
+      command: gozen trace trace.jsonl --check
   - assert:
       exit_code: 1
       stdout:
@@ -181,7 +193,7 @@ scenarios:
 
         '
   - run:
-      command: gozen play trace trace.jsonl
+      command: gozen trace trace.jsonl
   - assert:
       exit_code: 1
       stdout:

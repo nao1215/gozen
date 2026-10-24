@@ -52,7 +52,7 @@ The recipes refer to a few IDs they do not define: the actor and class `walker`,
 | [Test-play with notes, reload and quick starts](#test-play-with-notes-reload-and-quick-starts) | `memo`, `--dev`, F5, F9, `--start` |
 | [Measure battles with sim battle and sim dive](#measure-battles-with-sim-battle-and-sim-dive) | `gozen sim battle`, `gozen sim dive` |
 | [Check and measure in CI](#check-and-measure-in-ci) | `setup-gozen`, `gozen check`, `gozen sim` in GitHub Actions |
-| [Cut a release and a trial](#cut-a-release-and-a-trial) | `trial.yaml`, `gozen pack release`, `gozen pack trial` |
+| [Cut a release and a trial](#cut-a-release-and-a-trial) | `trial.yaml`, `gozen release`, `gozen trial` |
 
 ## Start a new game
 
@@ -731,8 +731,8 @@ A theme is a wall, a floor, a ceiling and a door picture with matching colors. `
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen theme add cave game
-gozen theme add ice game
+gozen theme add game --name cave
+gozen theme add game --name ice
 ```
 
 Then name it in the dungeon, and in a look for the deeper floors. What the YAML writes itself (`wall`, `door`, `floor`, `ceiling`, `floor_texture`, `ceiling_texture`) wins over the theme, and a look with a theme replaces the dungeon's theme for what the look does not write.
@@ -1365,7 +1365,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: nao1215/setup-gozen@1c378fc446f62ecb29a7bcd40aea6dff8565d698 # v0.1.1
       - run: gozen check game
-      - run: gozen sim battle game boss --format json   # boss: a troop id of your game
+      - run: gozen sim battle game --troop boss --format json   # boss: a troop id of your game
       - run: gozen sim campaign game --format json      # for a campaign
 ```
 
@@ -1373,7 +1373,7 @@ jobs:
 
 ## Cut a release and a trial
 
-`gozen pack release` copies the game with only approved pictures; `gozen pack trial` keeps the part of the game within the range of `trial.yaml`, a demo. What lies outside the range is not hidden behind a flag but left out of the copy, so the demo build carries none of the later events, endings or pictures: unpacking the demo cannot leak the full game. `-n` counts what would be kept, and `--list` writes what was kept and what was dropped, to check before you ship. Here the demo stops at the third floor of the grotto and leaves out the ending event:
+`gozen release` copies the game with only approved pictures; `gozen trial` keeps the part of the game within the range of `trial.yaml`, a demo. What lies outside the range is not hidden behind a flag but left out of the copy, so the demo build carries none of the later events, endings or pictures: unpacking the demo cannot leak the full game. `-n` counts what would be kept, and `--list` writes what was kept and what was dropped, to check before you ship. Here the demo stops at the third floor of the grotto and leaves out the ending event:
 
 <!-- verify: same internal/dev/docs/testdata/fixtures/cookbook/game/trial.yaml -->
 ```yaml
@@ -1396,7 +1396,7 @@ inspection: {file: file, source: source, required: required, approved: approved}
 records: {file: file, source: source, required: required, approved: approved, output: output}
 ```
 
-The commands are in [Release and trial](#release-and-trial). Reference: [Commands](/commands/#pack-release).
+The commands are in [Release and trial](#release-and-trial). Reference: [Commands](/commands/#release).
 
 ## Commands used by the recipes
 
@@ -1407,10 +1407,10 @@ The examples use `game` as the game directory, `lesson` as a troop and `grotto` 
 <!-- verify: each fixture=cookbook -->
 ```shell
 gozen check game                                       # references, expressions, pictures, text layout
-gozen sim battle game lesson -n 200 --level 5          # win rate of the party at level 5
-gozen sim battle game lesson --party scout --seed 7 -v # the messages of one battle
-gozen sim floors game grotto --from 1 --to 3           # the generated maps
-gozen sim dive game grotto --floors 5 --boss 5:lesson  # a whole dive: levels, gold and wins per floor
+gozen sim battle game --troop lesson -n 200 --level 5          # win rate of the party at level 5
+gozen sim battle game --troop lesson --party scout --seed 7 -v # the messages of one battle
+gozen sim floors game --location grotto --from 1 --to 3           # the generated maps
+gozen sim dive game --location grotto --floors 5 --boss 5:lesson  # a whole dive: levels, gold and wins per floor
 gozen book game > book.md                              # the whole game as one Markdown file
 ```
 
@@ -1439,7 +1439,7 @@ Collect the notes into one HTML page:
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen play notes notes -o notes-html
+gozen notes notes -o notes-html
 ```
 
 ### Moving portraits
@@ -1454,7 +1454,7 @@ gozen art puppet streamer/puppet.yaml --out streamer-packed  # write it with sma
 
 <!-- verify: each fixture=cookbook -->
 ```shell
-gozen pack release game release --overlay overlay --inspect inspect.jsonl
-gozen pack trial game -n                               # count what the trial keeps
-gozen pack trial game trial --list trial.txt           # build it, and list what was kept and dropped
+gozen release game --out release --overlay overlay --inspect inspect.jsonl
+gozen trial game -n                               # count what the trial keeps
+gozen trial game --out trial --list trial.txt           # build it, and list what was kept and dropped
 ```

@@ -16,7 +16,7 @@ func TestSimBattleFormsAreDeterministic(t *testing.T) {
 	} {
 		t.Run(tc.troop, func(t *testing.T) {
 			args := append([]string{"sim", "battle", "--battles", "30", "--seed", "42", "--format", "json"}, tc.args...)
-			args = append(args, "../../examples/go-zen/game", tc.troop)
+			args = append(args, "../../examples/go-zen/game", "--troop", tc.troop)
 			out, _ := invoke(t, 0, args...)
 			var rows []struct{ Won, Lost, Draw int }
 			if err := json.Unmarshal([]byte(out), &rows); err != nil {

@@ -56,7 +56,7 @@ func TestPlayNotesRendersEveryKindOfNote(t *testing.T) {
 	}
 	writeMemo(t, root, memo.Memo{Source: "custom", Kind: "odd", Label: "odd", Text: "elsewhere", Time: "2026-01-05T00:00:00Z"}, false)
 	out := filepath.Join(t.TempDir(), "html")
-	stdout, _ := invoke(t, 0, "play", "notes", root, "--out", out)
+	stdout, _ := invoke(t, 0, "notes", root, "--out", out)
 	if !strings.Contains(stdout, "9 memos exported") {
 		t.Fatalf("stdout: %q", stdout)
 	}
@@ -116,7 +116,7 @@ func TestPlayNotesSpeaksTheLanguageOfTheNotes(t *testing.T) {
 	// A note from before the language was recorded was written with the Japanese words.
 	writeMemo(t, root, memo.Memo{Source: memo.Human, Kind: "good", Label: "良い", Text: "いい", Time: "2026-01-02T03:04:05Z", Location: "camp"}, false)
 	out := filepath.Join(t.TempDir(), "ja")
-	invoke(t, 0, "play", "notes", root, "--out", out)
+	invoke(t, 0, "notes", root, "--out", out)
 	html := string(read(t, filepath.Join(out, "index.html")))
 	if !strings.Contains(html, `<html lang="ja">`) || !strings.Contains(html, "テストプレイのメモ") {
 		t.Errorf("an old note is shown in Japanese: %s", html[:min(300, len(html))])
@@ -125,7 +125,7 @@ func TestPlayNotesSpeaksTheLanguageOfTheNotes(t *testing.T) {
 	root = filepath.Join(t.TempDir(), "notes")
 	writeMemo(t, root, memo.Memo{Source: memo.Human, Kind: "good", Label: "Good", Text: "ok", Time: "2026-01-02T03:04:05Z", Language: "zz", Location: "camp"}, false)
 	out = filepath.Join(t.TempDir(), "zz")
-	invoke(t, 0, "play", "notes", root, "--out", out)
+	invoke(t, 0, "notes", root, "--out", out)
 	if html = string(read(t, filepath.Join(out, "index.html"))); !strings.Contains(html, `<html lang="en">`) || !strings.Contains(html, "<h2>camp (1)</h2>") {
 		t.Errorf("unknown language: %s", html[:min(300, len(html))])
 	}
@@ -135,18 +135,18 @@ func TestPlayNotesDefaultsAndFailures(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "notes")
 	writeMemo(t, root, memo.Memo{Source: memo.Human, Kind: "good", Label: "Good", Text: "ok", Time: "2026-01-02T03:04:05Z", Language: "en", Location: "camp"}, false)
 	// Without --out the page goes next to the notes.
-	invoke(t, 0, "play", "notes", root)
+	invoke(t, 0, "notes", root, "--out", root+"-html")
 	read(t, root+"-html/index.html")
-	invoke(t, 1, "play", "notes", root)
-	invoke(t, 2, "play", "notes")
-	invoke(t, 2, "play", "notes", root, root)
-	invoke(t, 1, "play", "notes", filepath.Join(t.TempDir(), "absent"), "--out", filepath.Join(t.TempDir(), "x"))
+	invoke(t, 1, "notes", root, "--out", root+"-html")
+	invoke(t, 2, "notes")
+	invoke(t, 2, "notes", root, root)
+	invoke(t, 1, "notes", filepath.Join(t.TempDir(), "absent"), "--out", filepath.Join(t.TempDir(), "x"))
 	// The page never goes inside the notes.
-	invoke(t, 1, "play", "notes", root, "--out", filepath.Join(root, "page"))
+	invoke(t, 1, "notes", root, "--out", filepath.Join(root, "page"))
 
 	bad := filepath.Join(t.TempDir(), "bad")
 	writeMemo(t, bad, memo.Memo{Source: memo.Human, Kind: "good", Label: "G", Time: "2026-01-02T03:04:05Z", Image: "gone.png"}, false)
-	_, stderr := invoke(t, 1, "play", "notes", bad, "--out", filepath.Join(t.TempDir(), "o1"))
+	_, stderr := invoke(t, 1, "notes", bad, "--out", filepath.Join(t.TempDir(), "o1"))
 	if stderr == "" {
 		t.Error("an image the note names but the folder lacks is reported")
 	}
@@ -155,7 +155,7 @@ func TestPlayNotesDefaultsAndFailures(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(day, "gone.png"), []byte("not a png"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, stderr = invoke(t, 1, "play", "notes", bad, "--out", filepath.Join(t.TempDir(), "o2"))
+	_, stderr = invoke(t, 1, "notes", bad, "--out", filepath.Join(t.TempDir(), "o2"))
 	if !strings.Contains(stderr, "gone.png") {
 		t.Errorf("stderr: %q", stderr)
 	}

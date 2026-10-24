@@ -73,7 +73,7 @@ scenarios:
         width: 960
         height: 540
   - run:
-      command: gozen play trace run.jsonl --only say
+      command: gozen trace run.jsonl --only say
   - assert:
       exit_code: 0
       stdout:
@@ -165,7 +165,7 @@ scenarios:
       timeout: 30s
   - assert: {exit_code: 0, stderr: {equals: ''}}
   - run:
-      command: gozen play trace trace.jsonl --only say
+      command: gozen trace trace.jsonl --only say
   - assert:
       exit_code: 0
       stdout: {contains: Welcome to your village.}
@@ -193,7 +193,7 @@ scenarios:
       timeout: 30s
   - assert: {exit_code: 0, stderr: {equals: ''}}
   - run:
-      command: gozen play trace trace.jsonl --only say
+      command: gozen trace trace.jsonl --only say
   - assert:
       exit_code: 0
       stdout:

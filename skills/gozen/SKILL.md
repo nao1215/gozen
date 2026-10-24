@@ -61,7 +61,7 @@ YAML traps are in references/yaml.md.
 
 Tested YAML for shops, inns, flags, companions, dungeons, chests, keys, cut-ins and moving portraits: https://nao1215.github.io/gozen/cookbook/. Start from a recipe and change the names.
 
-A first-person dungeon can take a ready look: `gozen theme list` shows the themes (cave, ice, ruins, castle, crystal, temple, sewer, forest, tomb, keep, dream, mine, vine), `gozen theme add cave game` copies one into the game's assets, and `theme: cave` on `dungeon:` or a look fills the wall, door, floor and ceiling. A value written beside it wins. `gozen check` reports a theme named but not added (GZN1111).
+A first-person dungeon can take a ready look: `gozen theme list` shows the themes (cave, ice, ruins, castle, crystal, temple, sewer, forest, tomb, keep, dream, mine, vine), `gozen theme add game --name cave` copies one into the game's assets, and `theme: cave` on `dungeon:` or a look fills the wall, door, floor and ceiling. A value written beside it wins. `gozen check` reports a theme named but not added (GZN1111).
 
 ## Continuous stacked spaces
 
@@ -110,7 +110,7 @@ The sample browser builds keep game files outside WebAssembly. Their generated `
 
 ## Ship a demo
 
-`gozen pack trial game demo` prunes definitions and assets using the range in `trial.yaml`. Analysis is conservative: branches it cannot prove unreachable may remain, and retained files can contain later content. Use `--list FILE` and inspect the resulting definitions and assets before shipping.
+`gozen trial game --out demo` prunes definitions and assets using the range in `trial.yaml`. Analysis is conservative: branches it cannot prove unreachable may remain, and retained files can contain later content. Use `--list FILE` and inspect the resulting definitions and assets before shipping.
 
 ## Do not
 
@@ -122,7 +122,7 @@ The sample browser builds keep game files outside WebAssembly. Their generated `
 For desktop delivery, use `gozen export GAME --out OUT --runtime RUNTIME
 --target OS-ARCH` with a matching release runtime. Keep the output directory
 new and outside both inputs. If the game has an asset policy, first use
-`pack release` and export its approved output. Run the packaged player after
+`release` and export its approved output. Run the packaged player after
 moving the directory, with isolated saves; check save/reload and the actual
 native target. Cross-compilation alone is not runtime verification. For browser delivery, use `gozen export GAME --target web --out OUT --runtime RUNTIME` with
 the matching js-wasm runtime bundle. Serve the output over HTTP(S), including

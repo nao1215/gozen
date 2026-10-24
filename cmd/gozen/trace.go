@@ -21,7 +21,7 @@ import (
 )
 
 func (c *command) traceCmd(args []string) (err error) {
-	fl := clihelp.NewFlagSet("gozen play trace")
+	fl := clihelp.NewFlagSet("gozen trace")
 	only := fl.String("only", "", "print only these `KINDS`, separated by commas: say, scene, battle, menu, view, state, act, problem, and so on")
 	from := fl.Float64("from", 0, "start at this `SECOND`")
 	to := fl.Float64("to", 0, "stop at this `SECOND`; 0 is the end")

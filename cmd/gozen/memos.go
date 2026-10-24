@@ -33,14 +33,7 @@ type memoEntry struct {
 	N     int
 }
 
-func (c *command) memosCmd(args []string, destination string) error {
-	if len(args) != 1 {
-		return errors.New("usage: gozen play notes <dir of the notes, e.g. build/memos>")
-	}
-	root := args[0]
-	if destination == "" {
-		destination = filepath.Clean(root) + "-html"
-	}
+func (c *command) writeMemos(root, destination string) error {
 	return cli.Publish(destination, []string{root}, func(stage string) error { return c.renderMemos(root, stage) })
 }
 

@@ -240,7 +240,7 @@ actors:
 
 `battle:` in `game.yaml` sets the global rules: hit variance, critical hits, escape chance, turn speed, the events before and after every battle. `cutin: true` on a skill shows the actor's standing picture across the screen.
 
-Measure before you tune: `gozen sim battle game TROOP` prints the win rate, and the F7 panel shows the same numbers in the game.
+Measure before you tune: `gozen sim battle game --troop TROOP` prints the win rate, and the F7 panel shows the same numbers in the game.
 
 ## Dungeons
 
@@ -298,7 +298,7 @@ The band has buttons to roll back a line, for the backlog, auto, skip, saving an
 
 Portraits come and go with the speakers unless an event places them with `stand` ([the recipe](/cookbook/#stage-portraits-and-effects)). A line can have a recorded voice ([Add voices](/cookbook/#add-voices)). [After the Pass](https://github.com/nao1215/gozen/tree/main/examples/novel), the novel sample, is a short one with choices, staging and a Japanese translation ([play it in the browser](/play/)).
 
-A line counts as read by its source: the speaker and the text as written, before `{expressions}` are filled in. The read lines are kept in `read.json` beside the saves, so they last across saves and new games. Runs for testing (`--script`, `--start`, autoplay) do not touch them unless you pass `--save-dir`. In a trace, every `say` line says whether it was read, and `gozen play trace --check` fails when skipping passed a line that was not.
+A line counts as read by its source: the speaker and the text as written, before `{expressions}` are filled in. The read lines are kept in `read.json` beside the saves, so they last across saves and new games. Runs for testing (`--script`, `--start`, autoplay) do not touch them unless you pass `--save-dir`. In a trace, every `say` line says whether it was read, and `gozen trace --check` fails when skipping passed a line that was not.
 
 ## Campaigns
 

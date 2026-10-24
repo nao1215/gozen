@@ -27,10 +27,13 @@ var topPage = clihelp.Page{
 		{"run", "Run a game directory in a window"},
 		{"check", "Check a game directory: definitions, references, expressions, assets, text layout"},
 		{"sim", "Measure play without a window: battle, dive, floors, design, campaign"},
-		{"play", "Inspect real plays: trace, notes, shots"},
+		{"trace", "Inspect a gameplay trace"},
+		{"notes", "Build an HTML report from test-play notes"},
+		{"release", "Build an approved asset tree"},
+		{"trial", "Build a trial game tree"},
+		{"play", "Capture screenshots with a game binary: shots"},
 		{"book", "Write the definitions and events as Markdown"},
 		{"export", "Export a playable desktop game or static website"},
-		{"pack", "Build release and trial asset trees"},
 		{"art", "Picture and asset tools: prompt, mosaic, fetch, faces, puppet"},
 		{"theme", "Dungeon themes: add the pictures of a theme to a game, list the themes"},
 		{"version", "Print the gozen version"},
@@ -38,8 +41,8 @@ var topPage = clihelp.Page{
 	},
 	Examples: []clihelp.Example{
 		{"check a game directory", "gozen check game"},
-		{"fight 100 battles against the troop lesson", "gozen sim battle game lesson -n 100"},
-		{"print the trace of a play", "gozen play trace run.jsonl"},
+		{"fight 100 battles against the troop lesson", "gozen sim battle game --troop lesson -n 100"},
+		{"print the trace of a play", "gozen trace run.jsonl"},
 		{"show the options of one command", "gozen help sim dive"},
 	},
 	Groups: []clihelp.Group{{Title: "General", Flags: []string{"help", "version"}}},
@@ -50,7 +53,7 @@ var topPage = clihelp.Page{
 		"Exit status: 0 for success and help, 1 when a check, I/O, simulation, or capture fails, 2 for " +
 			"invalid arguments. A diagnostic may end with a code such as [GZN1101] whose first digit is " +
 			"the exit status; gozen help GZN1101 explains it.",
-		"Requirements: check, sim, book, pack release, pack trial, play trace, play notes, and art prompt need nothing beyond " +
+		"Requirements: check, sim, book, release, trial, trace, notes, and art prompt need nothing beyond " +
 			"the gozen binary; cgo is not required. export needs a matching prebuilt runtime bundle. run and play shots launch a graphics game, and unattended " +
 			"capture on Linux needs Xvfb. art mosaic inference and art faces need a gozen built with cgo, " +
 			"an ONNX Runtime shared library, and user-supplied models. See " + clihelp.README,
@@ -76,9 +79,9 @@ var groups = map[string]clihelp.Page{
 			{"breed", "Show monsters reachable from captures and their shortest recipes"},
 		},
 		Examples: []clihelp.Example{
-			{"fight 100 battles", "gozen sim battle game lesson -n 100"},
-			{"simulate three floors of five battles", "gozen sim dive game grotto --floors 3 --battles 5"},
-			{"compare three seeds on floor 1", "gozen sim floors game grotto --floor 1 --try 3"},
+			{"fight 100 battles", "gozen sim battle game --troop lesson -n 100"},
+			{"simulate three floors of five battles", "gozen sim dive game --location grotto --floors 3 --battles 5"},
+			{"compare three seeds on floor 1", "gozen sim floors game --location grotto --floor 1 --try 3"},
 			{"write a design report to a new directory", "gozen sim design game -o report"},
 		},
 		Groups: []clihelp.Group{general},
@@ -88,44 +91,12 @@ var groups = map[string]clihelp.Page{
 		Hint: `Run "gozen sim <command> --help" for a command's options and examples.`,
 	},
 	"play": {
-		Summary: "inspect real plays",
-		Usage:   []string{"gozen play <command> [OPTIONS] ..."},
-		About: "trace reads the JSON Lines a game writes with --trace, notes turns the F9 notes into HTML, " +
-			"and shots launches the game binary to take a list of screenshots.",
-		Commands: [][2]string{
-			{"trace", "Print or check a JSON Lines trace of a play"},
-			{"notes", "Turn test-play notes into HTML with thumbnails"},
-			{"shots", "Launch the game and take the screenshots of a list"},
-		},
-		Examples: []clihelp.Example{
-			{"print a trace", "gozen play trace run.jsonl"},
-			{"write build/memos-html", "gozen play notes build/memos"},
-			{"take the shots with the original assets", "gozen play shots game shots.yaml --bin ./mygame --raw -o shots"},
-		},
-		Groups: []clihelp.Group{general},
-		Notes: []string{"Requirements: trace and notes need nothing beyond the gozen binary. shots needs a " +
-			"game binary built with the Gozen runner and its graphics runtime (a display and the platform " +
-			"graphics and audio libraries); unattended capture on Linux needs Xvfb (sudo apt-get install " +
-			"xvfb xauth). See " + clihelp.README},
-		Hint: `Run "gozen play <command> --help" for a command's options and examples.`,
-	},
-	"pack": {
-		Summary: "build what you ship",
-		Usage:   []string{"gozen pack <command> [OPTIONS] <game-dir> <out-dir>"},
-		About: "Copies the game to a new directory: release with approved assets only, trial with the " +
-			"reachable part of the game. --overlay takes replaced assets from a directory, and --inspect " +
-			"reads the approval records that every asset of the overlay must have.",
-		Commands: [][2]string{
-			{"release", "Build a release tree with approved assets only"},
-			{"trial", "Build a trial tree with the reachable part of the game"},
-		},
-		Examples: []clihelp.Example{
-			{"build a release tree", "gozen pack release game release --inspect inspect.jsonl"},
-			{"count what a trial would keep, writing nothing", "gozen pack trial game -n"},
-		},
-		Groups: []clihelp.Group{general},
-		Notes:  []string{"The output directory must not exist yet and must not be inside an input.", "Requirements: release and trial need only gozen. See " + clihelp.README},
-		Hint:   `Run "gozen pack <command> --help" for a command's options and examples.`,
+		Summary:  "capture screenshots with a game binary",
+		Usage:    []string{"gozen play shots [OPTIONS] ..."},
+		Commands: [][2]string{{"shots", "Launch a game binary and take screenshots"}},
+		Examples: []clihelp.Example{{"capture a screenshot list", "gozen play shots game shots.yaml --bin ./mygame --raw --out shots"}},
+		Groups:   []clihelp.Group{general},
+		Notes:    []string{"Requirements: a game binary, a display and platform graphics and audio libraries. See " + clihelp.README},
 	},
 	"theme": {
 		Summary: "dungeon themes",
@@ -138,7 +109,7 @@ var groups = map[string]clihelp.Page{
 		},
 		Examples: []clihelp.Example{
 			{"list the themes", "gozen theme list"},
-			{"add the ice theme to a game", "gozen theme add ice game"},
+			{"add the ice theme to a game", "gozen theme add game --name ice"},
 		},
 		Groups: []clihelp.Group{general},
 		Notes:  []string{noRequirements},
@@ -191,16 +162,16 @@ var pages = map[string]clihelp.Page{
 	},
 	"theme add": {
 		Summary: "copy a dungeon theme into a game",
-		Usage:   []string{"gozen theme add [OPTIONS] <name> <game-dir>"},
+		Usage:   []string{"gozen theme add <game-dir> --name NAME [OPTIONS]"},
 		About: "Copies the wall, floor, ceiling and door pictures and the colors of the theme to " +
 			"assets/dungeon/themes/<name>/ of the game, so that theme: <name> in a dungeon or one of its " +
 			"looks fills the walls, floor, ceiling, door and colors. A file the game already has is kept; " +
 			"--force replaces it. The pictures come with the gozen binary: no network is used.",
 		Examples: []clihelp.Example{
-			{"add the cave theme", "gozen theme add cave game"},
-			{"restore the pictures of the cave theme", "gozen theme add cave game --force"},
+			{"add the cave theme", "gozen theme add game --name cave"},
+			{"restore the pictures of the cave theme", "gozen theme add game --name cave --force"},
 		},
-		Groups: []clihelp.Group{{Title: "Files", Flags: []string{"force"}}, general},
+		Groups: []clihelp.Group{{Title: "Files", Flags: []string{"name", "force"}}, general},
 		Notes:  []string{"The theme's pictures are CC BY 4.0; see ASSETS.md of the gozen repository.", noRequirements},
 	},
 	"theme list": {
@@ -232,37 +203,37 @@ var pages = map[string]clihelp.Page{
 	},
 	"sim battle": {
 		Summary: "fight AUTO battles against a troop",
-		Usage:   []string{"gozen sim battle [OPTIONS] <game-dir> <troop>"},
+		Usage:   []string{"gozen sim battle [OPTIONS] <game-dir> --troop ID"},
 		About: "Fights the troop with the starting party (or --party, or a saved state) under AUTO and " +
 			"prints the win, loss, flight, and draw rates and the average turns. The numbers are the " +
 			"same as the development balance panel (F7) of the game. The same --seed gives the same result.",
 		Examples: []clihelp.Example{
-			{"fight 100 battles", "gozen sim battle game lesson -n 100"},
-			{"choose the party, its level, and another seed", "gozen sim battle game lesson -n 100 --party scout --level 5 --seed 7"},
-			{"start from a saved test-play note and show the HP left after a win", "gozen sim battle game lesson --state memo.save --hp"},
-			{"keep the saved HP and count the wins in a row, up to 10", "gozen sim battle game lesson --state memo.save --as-is --streak 10"},
-			{"watch the messages of the first battle", "gozen sim battle game lesson -n 1 -v"},
+			{"fight 100 battles", "gozen sim battle game --troop lesson -n 100"},
+			{"choose the party, its level, and another seed", "gozen sim battle game --troop lesson -n 100 --party scout --level 5 --seed 7"},
+			{"start from a saved test-play note and show the HP left after a win", "gozen sim battle game --troop lesson --state memo.save --hp"},
+			{"keep the saved HP and count the wins in a row, up to 10", "gozen sim battle game --troop lesson --state memo.save --as-is --streak 10"},
+			{"watch the messages of the first battle", "gozen sim battle game --troop lesson -n 1 -v"},
 		},
 		Groups: []clihelp.Group{
 			{Title: "Party", Flags: []string{"party", "level", "gear", "no-tree", "state", "as-is"}},
-			{Title: "Battle", Flags: []string{"battles", "turns", "seed", "streak"}},
+			{Title: "Battle", Flags: []string{"troop", "battles", "turns", "seed", "streak"}},
 			{Title: "Output", Flags: []string{"hp", "verbose", "format"}},
 			general,
 		},
 	},
 	"sim dive": {
 		Summary: "simulate a dive floor by floor",
-		Usage:   []string{"gozen sim dive [OPTIONS] <game-dir> <location>"},
+		Usage:   []string{"gozen sim dive [OPTIONS] <game-dir> --location ID"},
 		About: "Takes the starting party down the dungeon location, fighting --battles battles on each " +
 			"floor, buying better equipment from --shops, resting, and fighting the bosses. Prints the " +
 			"level, HP, gold, and win rates of each floor.",
 		Examples: []clihelp.Example{
-			{"simulate three floors of five battles", "gozen sim dive game grotto --floors 3 --battles 5"},
-			{"add a boss on floor 3 and grind until it is won 80% of the time", "gozen sim dive game grotto --floors 3 --boss 3:lesson --grind 0.8"},
-			{"rest only every two floors, and fight 50 battles for each boss win rate", "gozen sim dive game grotto --floors 4 --rest 2 --boss 2:lesson --tries 50"},
+			{"simulate three floors of five battles", "gozen sim dive game --location grotto --floors 3 --battles 5"},
+			{"add a boss on floor 3 and grind until it is won 80% of the time", "gozen sim dive game --location grotto --floors 3 --boss 3:lesson --grind 0.8"},
+			{"rest only every two floors, and fight 50 battles for each boss win rate", "gozen sim dive game --location grotto --floors 4 --rest 2 --boss 2:lesson --tries 50"},
 		},
 		Groups: []clihelp.Group{
-			{Title: "Dive", Flags: []string{"floors", "battles", "boss", "guards", "retreat", "guards-only", "tries", "grind", "turns", "seed"}},
+			{Title: "Dive", Flags: []string{"location", "floors", "battles", "boss", "guards", "retreat", "guards-only", "tries", "grind", "turns", "seed"}},
 			{Title: "Town", Flags: []string{"shops", "rest", "supplies", "rest-cost", "rest-event", "back-item", "worn-hp", "worn-mp", "no-town"}},
 			{Title: "Events", Flags: []string{"events", "scene-event", "scene-when", "floor-event"}},
 			{Title: "Output", Flags: []string{"format", "arrival-saves"}},
@@ -308,15 +279,15 @@ var pages = map[string]clihelp.Page{
 	},
 	"sim floors": {
 		Summary: "show generated floors: maps, steps, and encounters",
-		Usage:   []string{"gozen sim floors [OPTIONS] <game-dir> <location>"},
+		Usage:   []string{"gozen sim floors [OPTIONS] <game-dir> --location ID"},
 		About: "Generates the floors of the dungeon location and prints each map with the steps to the " +
 			"stairs and the expected encounters. With --try, compares seeds on one floor, one line each.",
 		Examples: []clihelp.Example{
-			{"show floors 1 to 3", "gozen sim floors game grotto --from 1 --to 3"},
-			{"compare three seeds on floor 1", "gozen sim floors game grotto --floor 1 --try 3"},
-			{"print the numbers only", "gozen sim floors game grotto --no-map"},
+			{"show floors 1 to 3", "gozen sim floors game --location grotto --from 1 --to 3"},
+			{"compare three seeds on floor 1", "gozen sim floors game --location grotto --floor 1 --try 3"},
+			{"print the numbers only", "gozen sim floors game --location grotto --no-map"},
 		},
-		Groups: []clihelp.Group{{Title: "Floors", Flags: []string{"from", "to", "floor", "try"}}, {Title: "Output", Flags: []string{"no-map"}}, general},
+		Groups: []clihelp.Group{{Title: "Floors", Flags: []string{"location", "from", "to", "floor", "try"}}, {Title: "Output", Flags: []string{"no-map"}}, general},
 	},
 	"sim design": {
 		Summary: "play the game with personas and write a report",
@@ -337,15 +308,15 @@ var pages = map[string]clihelp.Page{
 		},
 		Notes: []string{"The output directory must not exist yet."},
 	},
-	"play trace": {
+	"trace": {
 		Summary: "print or check a JSON Lines trace of a play",
-		Usage:   []string{"gozen play trace [OPTIONS] <trace.jsonl>"},
+		Usage:   []string{"gozen trace [OPTIONS] <trace.jsonl>"},
 		About: "Prints a trace written by the game's --trace in time order. With --check, lists the " +
 			"faults of the standing pictures and the music instead and exits 1 if there are any.",
 		Examples: []clihelp.Example{
-			{"print a trace", "gozen play trace run.jsonl"},
-			{"print only dialogue and battles between seconds 10 and 60", "gozen play trace run.jsonl --only say,battle --from 10 --to 60"},
-			{"check pictures and music", "gozen play trace run.jsonl --check"},
+			{"print a trace", "gozen trace run.jsonl"},
+			{"print only dialogue and battles between seconds 10 and 60", "gozen trace run.jsonl --only say,battle --from 10 --to 60"},
+			{"check pictures and music", "gozen trace run.jsonl --check"},
 		},
 		Groups: []clihelp.Group{
 			{Title: "Filter", Flags: []string{"only", "from", "to", "input"}},
@@ -353,16 +324,16 @@ var pages = map[string]clihelp.Page{
 			general,
 		},
 	},
-	"play notes": {
+	"notes": {
 		Summary: "turn test-play notes into HTML with thumbnails",
-		Usage:   []string{"gozen play notes [OPTIONS] <memo-dir>"},
+		Usage:   []string{"gozen notes <memo-dir> --out DIR [OPTIONS]"},
 		About:   "Reads the notes the game writes with F9 and builds an HTML page with thumbnails in a new directory. The notes are not changed.",
 		Examples: []clihelp.Example{
-			{"write build/memos-html", "gozen play notes build/memos"},
-			{"choose the output directory", "gozen play notes build/memos -o notes-html"},
+			{"write build/memos-html", "gozen notes build/memos --out build/memos-html"},
+			{"choose the output directory", "gozen notes build/memos -o notes-html"},
 		},
 		Groups: []clihelp.Group{{Title: "Output", Flags: []string{"out"}}, general},
-		Notes:  []string{"The output directory must not exist yet."},
+		Notes:  []string{"The output directory must not exist yet.", noRequirements},
 	},
 	"play shots": {
 		Summary: "launch the game and take the screenshots of a list",
@@ -401,35 +372,35 @@ var pages = map[string]clihelp.Page{
 			{"export a website", "gozen export game --out site --runtime web-runtime --target web"},
 		},
 		Groups: []clihelp.Group{{Title: "Runtime", Flags: []string{"runtime", "target"}}, {Title: "Output", Flags: []string{"out", "format"}}, general},
-		Notes:  []string{"Requirements: an unpacked matching Gozen runtime bundle. Desktop play needs a display and platform graphics and audio libraries; web play needs an HTTP or HTTPS server. See " + clihelp.README, "The output must be new and outside the game and runtime directories. For games with an asset policy, prepare the input with gozen pack release first."},
+		Notes:  []string{"Requirements: an unpacked matching Gozen runtime bundle. Desktop play needs a display and platform graphics and audio libraries; web play needs an HTTP or HTTPS server. See " + clihelp.README, "The output must be new and outside the game and runtime directories. For games with an asset policy, prepare the input with gozen release first."},
 	},
-	"pack release": {
+	"release": {
 		Summary: "build a release tree with approved assets only",
-		Usage:   []string{"gozen pack release [OPTIONS] --inspect FILE <game-dir> <out-dir>"},
+		Usage:   []string{"gozen release <game-dir> --inspect FILE --out DIR [OPTIONS]"},
 		About: "Checks the approval records and the assets the game refers to, then copies the game to a " +
 			"new directory, taking replaced assets from the overlay. Any unapproved reference fails the build.",
 		Examples: []clihelp.Example{
-			{"build a release tree", "gozen pack release game release --inspect inspect.jsonl"},
-			{"take replaced assets from an overlay directory", "gozen pack release game release --overlay overlay --inspect inspect.jsonl"},
+			{"build a release tree", "gozen release game --out release --inspect inspect.jsonl"},
+			{"take replaced assets from an overlay directory", "gozen release game --out release --overlay overlay --inspect inspect.jsonl"},
 		},
-		Groups: []clihelp.Group{{Title: "Assets", Flags: []string{"inspect", "overlay", "prefix"}}, general},
+		Groups: []clihelp.Group{{Title: "Assets", Flags: []string{"out", "inspect", "overlay", "prefix"}}, general},
 	},
-	"pack trial": {
+	"trial": {
 		Summary: "build a trial tree with the reachable part",
-		Usage:   []string{"gozen pack trial [OPTIONS] <game-dir> <out-dir>", "gozen pack trial --dry-run [OPTIONS] <game-dir>"},
+		Usage:   []string{"gozen trial <game-dir> --out DIR [OPTIONS]", "gozen trial --dry-run [OPTIONS] <game-dir>"},
 		About: "Keeps only the definitions and assets reachable within the range of trial.yaml and writes " +
 			"them to a new directory. --overlay and --inspect go together.",
 		Examples: []clihelp.Example{
-			{"count what would be kept, writing nothing", "gozen pack trial game -n"},
-			{"build a trial tree and list what was kept and dropped", "gozen pack trial game trial --list trial.txt"},
-			{"take replaced assets from an overlay", "gozen pack trial game trial --overlay overlay --inspect inspect.jsonl"},
+			{"count what would be kept, writing nothing", "gozen trial game -n"},
+			{"build a trial tree and list what was kept and dropped", "gozen trial game --out trial --list trial.txt"},
+			{"take replaced assets from an overlay", "gozen trial game --out trial --overlay overlay --inspect inspect.jsonl"},
 		},
 		Groups: []clihelp.Group{
 			{Title: "Input", Flags: []string{"config", "overlay", "inspect"}},
-			{Title: "Output", Flags: []string{"list", "dry-run"}},
+			{Title: "Output", Flags: []string{"out", "list", "dry-run"}},
 			general,
 		},
-		Notes: []string{"The --list file must not exist yet. --dry-run writes nothing, even with --list."},
+		Notes: []string{"The --list file must not exist yet. --dry-run writes nothing, even with --list. --config is relative to the working directory; when omitted, GAME/trial.yaml is used."},
 	},
 	"art puppet": {
 		Summary: "check a moving portrait and cut its pictures",
@@ -469,7 +440,7 @@ var pages = map[string]clihelp.Page{
 		Summary:  "print the gozen version",
 		Usage:    []string{"gozen version", "gozen --version"},
 		About:    "Prints the version recorded by go install, or devel for a build from source.",
-		Examples: []clihelp.Example{{"print the version", "gozen version"}, {"the same with the option", "gozen -v"}},
+		Examples: []clihelp.Example{{"print the version", "gozen version"}, {"the same with the option", "gozen --version"}},
 		Groups:   []clihelp.Group{general},
 	},
 }

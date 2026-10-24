@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes, breed), run, play (trace, notes, shots), book, export, pack (release, trial), art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
+description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes, breed), run, trace, notes, play shots, book, export, release, trial, art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
 weight: 60
 toc: true
 ---
@@ -20,10 +20,11 @@ gozen help GZN1101                     # explain a diagnostic code
 | [sim](#sim) | Measure play without a window: [battle](#sim-battle), [dive](#sim-dive), [floors](#sim-floors), [design](#sim-design), [campaign](#sim-campaign), [routes](#sim-routes), [breed](#sim-breed) |
 | [new](#new) | Create a playable template without Go source |
 | [run](#run) | Run a game directory in a window |
-| [play](#play) | Inspect real plays: [trace](#play-trace), [notes](#play-notes), [shots](#play-shots) |
+| [trace](#trace), [notes](#notes) | Inspect traces and build HTML reports from test-play notes |
+| [play](#play) | Capture [screenshots](#play-shots) with a game binary |
 | [book](#book) | Write the definitions and events as Markdown |
 | [export](#export) | Export desktop and browser games with prebuilt runtimes |
-| [pack](#pack) | Prepare [release](#pack-release) and [trial](#pack-trial) trees |
+| [release](#release), [trial](#trial) | Prepare approved asset trees and trial games |
 | [art](#art) | Picture and asset tools: [prompt](/production-tools/#gozen-art-prompt), [mosaic](/production-tools/#gozen-art-mosaic), [fetch](#art-fetch), [faces](#art-faces), [puppet](#art-puppet) |
 | [theme](#theme) | Dungeon themes: [add](#theme-add) the pictures of a theme to a game, [list](#theme-list) the themes |
 | [version and help](#version-and-help) | Print the version; show a command's help or explain a diagnostic code |
@@ -35,10 +36,10 @@ A group alone (`gozen sim`) exits 2 and lists its commands. `gozen sim --help` s
 - Exit status: 0 for success and help, 1 when a check, I/O, simulation or capture fails, 2 for invalid arguments. A name the command line gives that the game does not have (a troop, a location, a persona, a shot) is an invalid argument.
 - A diagnostic may end with a code such as `[GZN1101]`; its first digit is the exit status. `gozen help GZN1101` explains it, and [Error codes](/errors/) lists them all.
 - Options follow the GNU style. `--seed 7` and `--seed=7` both work, a few common options have a one-letter form (`-n 100`, `-o DIR`, `-v`, `-h`), options may come before or after the arguments, and `--` ends the options. A single-dash long option such as `-seed` is rejected with exit status 2.
-- Commands that write a directory (`sim design`, `play notes`, `export`, `pack release`, `pack trial`, `play shots`) refuse one that already exists, even if empty, and an output inside an input. They never overwrite.
+- Commands that write a directory (`sim design`, `notes`, `export`, `release`, `trial`, `play shots`) refuse one that already exists, even if empty, and an output inside an input. They never overwrite.
 - Every command except `export`, `run`, `play shots`, `art faces` and `art mosaic` detection needs nothing beyond the `gozen` binary: no cgo, display or sound device. `export` also needs a matching prebuilt runtime bundle.
 
-The examples below use `game` as the game directory, `lesson` as a troop and `grotto` as a dungeon location.
+The examples below use `game` as the game directory, `lesson` as a troop and `grotto` as a dungeon location. Explicit configuration and output paths are relative to the working directory. Game asset paths, including `release --prefix`, remain game-relative. Omitted configuration paths use the defaults listed for each command. Use `--version` or `version` to print the version; `-v` is reserved for verbose command output.
 
 ## new
 
@@ -124,11 +125,11 @@ Fights the troop with the starting party (or `--party`, or a saved state) under 
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen sim battle game lesson -n 100
-gozen sim battle game lesson -n 100 --party scout --level 5 --seed 7
-gozen sim battle game lesson --state memo.save --hp                 # from a note, HP left after a win
-gozen sim battle game lesson --state memo.save --as-is --streak 10  # keep the saved HP, count wins in a row
-gozen sim battle game lesson -n 1 -v                                # the messages of the first battle
+gozen sim battle game --troop lesson -n 100
+gozen sim battle game --troop lesson -n 100 --party scout --level 5 --seed 7
+gozen sim battle game --troop lesson --state memo.save --hp                 # from a note, HP left after a win
+gozen sim battle game --troop lesson --state memo.save --as-is --streak 10  # keep the saved HP, count wins in a row
+gozen sim battle game --troop lesson -n 1 -v                                # the messages of the first battle
 ```
 
 <!-- verify: output -->
@@ -157,9 +158,9 @@ Takes the starting party down a dungeon location, fighting `--battles` battles o
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen sim dive game grotto --floors 3 --battles 5
-gozen sim dive game grotto --floors 3 --boss 3:lesson --grind 0.8
-gozen sim dive game grotto --floors 4 --rest 2 --boss 2:lesson --tries 50
+gozen sim dive game --location grotto --floors 3 --battles 5
+gozen sim dive game --location grotto --floors 3 --boss 3:lesson --grind 0.8
+gozen sim dive game --location grotto --floors 4 --rest 2 --boss 2:lesson --tries 50
 ```
 
 <!-- verify: output -->
@@ -195,9 +196,9 @@ Generates the floors of a dungeon location and prints each map with the steps to
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen sim floors game grotto --from 1 --to 3
-gozen sim floors game grotto --floor 1 --try 3
-gozen sim floors game grotto --no-map
+gozen sim floors game --location grotto --from 1 --to 3
+gozen sim floors game --location grotto --floor 1 --try 3
+gozen sim floors game --location grotto --no-map
 ```
 
 | Option | Meaning |
@@ -296,19 +297,15 @@ A display and the platform graphics and audio libraries are required; use Xvfb f
 
 The command reads loose assets; it does not encrypt or package them. Keep the runner version with a distributed game. Use the Go library when you need a custom loop, save store, or other Go integration.
 
-## play
-
-Inspects traces and notes, and captures screenshots with a game binary.
-
-### play trace
+## trace
 
 Prints a trace written by the game's `--trace` in time order. With `--check`, lists faults of the standing pictures and the music instead and exits 1 if there are any.
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen play trace run.jsonl
-gozen play trace run.jsonl --only say,battle --from 10 --to 60
-gozen play trace run.jsonl --check
+gozen trace run.jsonl
+gozen trace run.jsonl --only say,battle --from 10 --to 60
+gozen trace run.jsonl --check
 ```
 
 | Option | Meaning |
@@ -319,19 +316,21 @@ gozen play trace run.jsonl --check
 | `--check` | List faults of standing pictures and music; exit 1 if any |
 | `--music-late SECONDS` | With `--check`, a song heard later than this after it was asked for is late (default: 0.5) |
 
-### play notes
+## notes
 
 Reads the notes the game writes with F9 and builds an HTML page with thumbnails in a new directory. The notes are not changed.
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen play notes notes                 # writes notes-html/
-gozen play notes notes -o review-html
+gozen notes notes --out notes-html
+gozen notes notes -o review-html
 ```
 
 | Option | Meaning |
 |:--|:--|
-| `-o, --out DIR` | Write the HTML to this new directory (default: `<memo-dir>-html`) |
+| `-o, --out DIR` | Write the HTML to this new directory; required |
+
+## play
 
 ### play shots
 
@@ -377,40 +376,38 @@ Writes the locations, events, scenes, troops and items of the game to stdout as 
 gozen book game > book.md
 ```
 
-## pack
-
-Copies the game to a new directory. `--overlay` takes replaced assets from a directory, and `--inspect` reads the approval records every asset of the overlay must have.
-
-### pack release
+## release
 
 Checks the approval records and the assets the game refers to, then copies the game to a new directory, taking replaced assets from an overlay. Any unapproved reference fails the build.
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen pack release game release --inspect inspect.jsonl
-gozen pack release game release --overlay overlay --inspect inspect.jsonl
+gozen release game --out release --inspect inspect.jsonl
+gozen release game --out release --overlay overlay --inspect inspect.jsonl
 ```
 
 | Option | Meaning |
 |:--|:--|
+| `-o, --out DIR` | Write the approved tree to this new directory; required |
 | `--inspect FILE` | The inspection records (JSON Lines) from production; required |
 | `--overlay DIR` | Take replaced assets from this directory (default: the game's approval settings) |
 | `--prefix DIR` | The asset directory inside the game, separated by `/` (default: `assets`) |
 
-### pack trial
+## trial
 
 Keeps only the definitions and assets reachable within the range of `trial.yaml` and writes them to a new directory: a demo version of the game.
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen pack trial game -n                            # count what would be kept, write nothing
-gozen pack trial game trial --list trial.txt        # build, and list what was kept and dropped
-gozen pack trial game trial --overlay overlay --inspect inspect.jsonl
+gozen trial game -n                            # count what would be kept, write nothing
+gozen trial game --out trial --list trial.txt        # build, and list what was kept and dropped
+gozen trial game --out trial --overlay overlay --inspect inspect.jsonl
 ```
 
 | Option | Meaning |
 |:--|:--|
-| `--config FILE` | The range settings, relative to the game directory (default: `trial.yaml`) |
+| `-o, --out DIR` | Write the trial to this new directory; required unless `--dry-run` |
+| `--config FILE` | The range settings, relative to the working directory (when omitted: `GAME/trial.yaml`) |
 | `--overlay DIR`, `--inspect FILE` | Take replaced assets from an overlay; the two go together |
 | `--list FILE` | Write what was kept and dropped to this new file |
 | `-n, --dry-run` | Write nothing; print only how much would be kept |
@@ -484,21 +481,21 @@ Copies `wall.jpg`, `floor.jpg`, `ceiling.jpg`, `door.jpg` (1024x1024) and `theme
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen theme add cave game          # the files of the cave theme go to game/assets/dungeon/themes/cave/
-gozen theme add cave game --force  # replace the files that are already there
+gozen theme add game --name cave          # the files of the cave theme go to game/assets/dungeon/themes/cave/
+gozen theme add game --name cave --force  # replace the files that are already there
 ```
 
 | Option | Meaning |
 |:--|:--|
 | `--force` | Replace the files the game already has. |
 
-An unknown theme name exits 2 (`GZN2402`), and a directory without `game.yaml` exits 1 (`GZN1110`). A game that says `theme: cave` without the folder fails `gozen check` with `GZN1111` and the line `run gozen theme add cave <game-dir>`. The pictures are CC BY 4.0, see [ASSETS.md](https://github.com/nao1215/gozen/blob/main/ASSETS.md).
+An unknown theme name exits 2 (`GZN2402`), and a directory without `game.yaml` exits 1 (`GZN1110`). A game that says `theme: cave` without the folder fails `gozen check` with `GZN1111` and the line `run gozen theme add <game-dir> --name cave`. The pictures are CC BY 4.0, see [ASSETS.md](https://github.com/nao1215/gozen/blob/main/ASSETS.md).
 
 ## version and help
 
 ```shell
 gozen version
-gozen -v
+gozen --version
 ```
 
 Prints the version recorded by `go install`, or `devel` for a build from source.
@@ -557,7 +554,7 @@ plain directories, without signing or notarization.
 
 The command checks the runtime version, target and player checksum. It performs
 no download or compilation. The destination must not exist or overlap an input.
-A game with `asset-policy.yaml` must first pass `gozen pack release`; export the
+A game with `asset-policy.yaml` must first pass `gozen release`; export the
 resulting approved tree.
 
 Export copies `game.yaml`, YAML under `data/` and `lang/`, runtime asset formats

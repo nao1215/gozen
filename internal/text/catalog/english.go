@@ -751,7 +751,7 @@ var english = map[string]string{
 	"強調の段階が上限を超えています":                         "emphasis level exceeds the limit",
 	"正負の同じ語が残っています":                           "the same word remains as positive and negative",
 	"検証規則に一致しました":                             "matched a validation rule",
-	// gozen pack trial, play trace, check --only layout and sim design
+	// gozen trial, trace, check --only layout and sim design
 	"trial: assume %s: var.名前 か flag.名前 で書く":            "trial: assume %s: write var.<name> or flag.<name>",
 	"trial: dive_max には blocked（範囲の外へ出ようとしたときのコマンド）が要る": "trial: dive_max needs blocked (the command for trying to leave the range)",
 	"幅は [下, 上] の 2 つ": "a range is two numbers [low, high]",
@@ -854,8 +854,8 @@ var english = map[string]string{
 	"B%dF の着いたときの勝率": "B%dF win rate on arrival",
 	"LLM":            "LLM",
 	"\n## ギャラリー\n\n": "\n## Gallery\n\n",
-	"\n## スキル\n\n| id | 名前 | MP | 範囲 | カットイン | 説明 |\n|---|---|---|---|---|---|\n":          "\n## Skills\n\n| id | name | MP | scope | cut-in | description |\n|---|---|---|---|---|---|\n",
-	"\n## メモ\n\n通信簿で目立った所を、テストプレイのメモ（source bot）として %d 件残した（%s。gozen play notes で一覧）。\n\n": "\n## Notes\n\nLeft %d playtest notes (source bot) where the report stands out (%s; list them with gozen play notes).\n\n",
+	"\n## スキル\n\n| id | 名前 | MP | 範囲 | カットイン | 説明 |\n|---|---|---|---|---|---|\n":     "\n## Skills\n\n| id | name | MP | scope | cut-in | description |\n|---|---|---|---|---|---|\n",
+	"\n## メモ\n\n通信簿で目立った所を、テストプレイのメモ（source bot）として %d 件残した（%s。gozen notes で一覧）。\n\n": "\n## Notes\n\nLeft %d playtest notes (source bot) where the report stands out (%s; list them with gozen notes).\n\n",
 	"\n## 敵の群れ\n\n":         "\n## Troops\n\n",
 	"\n## 職業とスキルツリー\n\n":    "\n## Classes and skill trees\n\n",
 	"\n## 行動ルール（ガンビット）\n\n": "\n## Action rules (gambits)\n\n",

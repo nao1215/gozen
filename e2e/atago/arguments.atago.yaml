@@ -2,6 +2,54 @@ version: '1'
 suite:
   name: Gozen CLI argument and stream contracts
 scenarios:
+- name: an explicit output is required for ${command}
+  matrix:
+  - {command: notes}
+  - {command: trial}
+  - {command: release}
+  steps:
+  - run: {command: 'gozen ${command} unused'}
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr: {contains: '[GZN2303]'}
+      changes: {created: [], modified: [], deleted: []}
+- name: -v is no longer a version alias
+  steps:
+  - run: {command: 'gozen -v'}
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr: {contains: '[GZN2103]'}
+      changes: {created: [], modified: [], deleted: []}
+- name: named selectors are required for ${command}
+  matrix:
+  - {command: sim battle}
+  - {command: sim dive}
+  - {command: sim floors}
+  - {command: theme add}
+  steps:
+  - run:
+      command: gozen ${command} unused
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr: {contains: '[GZN2303]'}
+      changes: {created: [], modified: [], deleted: []}
+- name: positional selectors are rejected for ${command}
+  matrix:
+  - {command: sim battle}
+  - {command: sim dive}
+  - {command: sim floors}
+  - {command: theme add}
+  steps:
+  - run:
+      command: gozen ${command} unused obsolete-selector
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr: {contains: '[GZN2102]'}
+      changes: {created: [], modified: [], deleted: []}
 - name: help for ${sub} through gozen help
   matrix:
   - sub: new
@@ -14,14 +62,13 @@ scenarios:
   - sub: sim campaign
   - sub: play
   - sub: run
-  - sub: play trace
-  - sub: play notes
+  - sub: trace
+  - sub: notes
   - sub: play shots
   - sub: book
-  - sub: pack
   - sub: export
-  - sub: pack release
-  - sub: pack trial
+  - sub: release
+  - sub: trial
   - sub: art
   - sub: art prompt
   - sub: art mosaic
@@ -53,7 +100,6 @@ scenarios:
   matrix:
   - sub: sim
   - sub: play
-  - sub: pack
   - sub: art
   - sub: art prompt
   - sub: art mosaic
@@ -71,8 +117,7 @@ scenarios:
 - name: the group ${group} needs a command
   matrix:
   - {group: sim, subs: 'battle, dive, floors, design, campaign'}
-  - {group: play, subs: 'trace, notes, shots'}
-  - {group: pack, subs: 'release, trial'}
+  - {group: play, subs: 'shots'}
   - {group: art, subs: 'prompt, mosaic, fetch, faces, puppet'}
   steps:
   - run:
@@ -124,7 +169,7 @@ scenarios:
         matches: '^gozen - '
         contains:
         - "[Commands]\n"
-        - "  -v, --version"
+        - "--version"
         - Run "gozen <command> --help" for a command's options and examples.
         - 'Requirements:'
         - https://github.com/nao1215/gozen#gozen
@@ -153,14 +198,13 @@ scenarios:
   - sub: sim campaign
   - sub: play
   - sub: run
-  - sub: play trace
-  - sub: play notes
+  - sub: trace
+  - sub: notes
   - sub: play shots
   - sub: book
-  - sub: pack
   - sub: export
-  - sub: pack release
-  - sub: pack trial
+  - sub: release
+  - sub: trial
   - sub: art
   - sub: art prompt
   - sub: art mosaic
@@ -200,14 +244,13 @@ scenarios:
   - sub: sim campaign
   - sub: play
   - sub: run
-  - sub: play trace
-  - sub: play notes
+  - sub: trace
+  - sub: notes
   - sub: play shots
   - sub: book
-  - sub: pack
   - sub: export
-  - sub: pack release
-  - sub: pack trial
+  - sub: release
+  - sub: trial
   - sub: art
   - sub: art fetch
   - sub: art faces
@@ -282,10 +325,10 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject gozen sim battle -n 0 unused troop
+- name: reject gozen sim battle -n 0 unused --troop troop
   steps:
   - run:
-      command: gozen sim battle -n 0 unused troop
+      command: gozen sim battle -n 0 unused --troop troop
   - assert:
       exit_code: 2
       stdout:
@@ -310,10 +353,10 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject gozen sim dive unused location --grind NaN
+- name: reject gozen sim dive unused --location location --grind NaN
   steps:
   - run:
-      command: gozen sim dive unused location --grind NaN
+      command: gozen sim dive unused --location location --grind NaN
   - assert:
       exit_code: 2
       stdout:
@@ -324,16 +367,16 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject gozen pack trial unused output --config ../escape.yaml
+- name: reject gozen release unused --out output --inspect absent --prefix ../escape
   steps:
   - run:
-      command: gozen pack trial unused output --config ../escape.yaml
+      command: gozen release unused --out output --inspect absent --prefix ../escape
   - assert:
       exit_code: 2
       stdout:
         equals: ''
       stderr:
-        contains: relative
+        contains: invalid --prefix
       changes:
         created: []
         modified: []
@@ -369,7 +412,6 @@ scenarios:
         equals: ''
 - name: gozen version with ${opt}
   matrix:
-  - opt: -v
   - opt: --version
   steps:
   - run:
@@ -382,9 +424,9 @@ scenarios:
         equals: ''
 - name: reject the single-dash long option in ${args}
   matrix:
-  - args: sim battle unused lesson -seed 9
+  - args: sim battle unused --troop lesson -seed 9
   - args: check -only structure unused
-  - args: play notes notes -out html
+  - args: notes notes -out html
   - args: -version
   - args: art prompt -config catalog.yaml
   - args: art mosaic auto -out processed game
@@ -409,7 +451,7 @@ scenarios:
   - form: -n3 --seed=9
   steps:
   - run:
-      command: gozen sim battle "${specdir}/fixtures/game" ${form} lesson
+      command: gozen sim battle "${specdir}/fixtures/game" ${form} --troop lesson
   - assert:
       exit_code: 0
       stdout:

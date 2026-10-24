@@ -22,7 +22,7 @@ scenarios:
       file: g/data/world.yaml
       content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {cave: {name: Cave, dungeon: {theme: cave, map: \"#####\\n#S..#\\n#####\", tiles: {S: {start: true}}}}}\n"
   - run:
-      command: gozen theme add cave g
+      command: gozen theme add g --name cave
   - assert:
       exit_code: 0
       stdout:
@@ -47,7 +47,7 @@ scenarios:
       file: g/assets/dungeon/themes/cave/wall.jpg
       content: mine
   - run:
-      command: gozen theme add cave g
+      command: gozen theme add g --name cave
   - assert:
       exit_code: 0
       stdout:
@@ -57,7 +57,7 @@ scenarios:
         path: g/assets/dungeon/themes/cave/wall.jpg
         equals: mine
   - run:
-      command: gozen theme add cave g --force
+      command: gozen theme add g --name cave --force
   - assert:
       exit_code: 0
       stdout:
@@ -71,7 +71,7 @@ scenarios:
       file: g/data/world.yaml
       content: "classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}\nactors: {scout: {class: walker}}\nskills: {attack: {}, guard: {}}\nlocations: {cave: {name: Cave, dungeon: {theme: cave, map: \"#####\\n#S..#\\n#####\", tiles: {S: {start: true}}}}}\n"
   - run:
-      command: gozen theme add lava g
+      command: gozen theme add g --name lava
   - assert:
       exit_code: 2
       stderr:

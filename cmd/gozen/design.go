@@ -192,7 +192,7 @@ func (c *command) design(args []string) (err error) {
 	prevName, prev := previousRun(*root, filepath.Base(*out))
 	report := designReport(cfg, runs, sums, filepath.Base(*out), hash, prevName, prev)
 	if len(notes) > 0 {
-		report += fmt.Sprintf(lang.T("\n## メモ\n\n通信簿で目立った所を、テストプレイのメモ（source bot）として %d 件残した（%s。gozen play notes で一覧）。\n\n"), len(notes), *memos)
+		report += fmt.Sprintf(lang.T("\n## メモ\n\n通信簿で目立った所を、テストプレイのメモ（source bot）として %d 件残した（%s。gozen notes で一覧）。\n\n"), len(notes), *memos)
 		for _, n := range notes {
 			report += "- " + n + "\n"
 		}

@@ -12,10 +12,11 @@ The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf r
 | `run` | (a leaf) | play a game directory; `--dev` enables author tools |
 | `check` | (a leaf) `--only structure\|layout`, `--format text\|json` | the game directory |
 | `sim` | `battle`, `dive`, `floors`, `design`, `campaign`, `routes`, `breed` | play by the rules without a window |
-| `play` | `trace`, `notes`, `shots` | inspect traces, F9 notes and screenshots |
+| `trace`, `notes` | (leaves) | inspect traces and F9 notes |
+| `play` | `shots` | capture screenshots with a game binary |
 | `book` | (a leaf) | |
 | `export` | (a leaf) | create a desktop or web package with a prebuilt runtime |
-| `pack` | `release`, `trial` | create a new output tree |
+| `release`, `trial` | (leaves) | create a new output tree |
 | `art` | `prompt`, `mosaic`, `fetch`, `faces`, `puppet` | pictures; cgo, ONNX Runtime and models for mosaic inference and faces |
 | `theme` | `add`, `list` | bundled dungeon themes |
 | `version`, `help` | | `gozen help` takes the words of a path, or a code |

@@ -18,7 +18,7 @@ func TestUsageErrorsEndWithCodeAndAPointerToHelp(t *testing.T) {
 	}{
 		{nil, diag.CommandMissing, "gozen --help"},
 		{[]string{"--zzz"}, diag.UnknownOption, "gozen --help"},
-		{[]string{"-v", "extra"}, diag.OptionBeforeCommand, "gozen --help"},
+		{[]string{"--version", "extra"}, diag.OptionBeforeCommand, "gozen --help"},
 		{[]string{"--seed", "3", "check", "x"}, diag.UnknownOption, "gozen --help"},
 		{[]string{"-version"}, diag.SingleDashOption, "gozen --help"},
 		{[]string{"bogus"}, diag.UnknownCommand, "gozen --help"},
@@ -31,7 +31,7 @@ func TestUsageErrorsEndWithCodeAndAPointerToHelp(t *testing.T) {
 		{[]string{"check", "--format", "xml", "x"}, diag.NotAChoice, "gozen check --help"},
 		{[]string{"book"}, diag.Operands, "gozen book --help"},
 		{[]string{"version", "extra"}, diag.Operands, "gozen version --help"},
-		{[]string{"play", "notes"}, diag.Operands, "gozen play notes --help"},
+		{[]string{"notes"}, diag.Operands, "gozen notes --help"},
 		{[]string{"help", "GZN9999"}, diag.UnknownCode, "gozen --help"},
 	} {
 		out, stderr := invoke(t, 2, tc.args...)
@@ -50,7 +50,7 @@ func TestUsageErrorsEndWithCodeAndAPointerToHelp(t *testing.T) {
 }
 
 func TestVersionAndHelpAnswerOnStdoutWithExitZero(t *testing.T) {
-	for _, args := range [][]string{{"version"}, {"-v"}, {"--version"}} {
+	for _, args := range [][]string{{"version"}, {"--version"}} {
 		out, stderr := invoke(t, 0, args...)
 		if !strings.HasPrefix(out, "gozen ") || strings.Count(out, "\n") != 1 || stderr != "" {
 			t.Errorf("%v: %q %q", args, out, stderr)

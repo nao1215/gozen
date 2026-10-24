@@ -19,6 +19,8 @@ import (
 
 func (c *command) sim(args []string) error {
 	fs := clihelp.NewFlagSet("gozen sim battle")
+	var troop string
+	fs.StringVar(&troop, "troop", "", "the troop `ID`; required")
 	n := fs.IntP("battles", "n", 200, "battles to fight")
 	party := fs.String("party", "", "the party, as actor `IDS` separated by commas (default: the starting party)")
 	level := fs.Int("level", 0, "the party's level (default: each actor's own)")
@@ -35,10 +37,13 @@ func (c *command) sim(args []string) error {
 	if err := c.parse(fs, args); err != nil {
 		return err
 	}
-	if fs.NArg() != 2 {
-		return cliio.Invalid(diag.Operands, "expected <game-dir> <troop>")
+	if fs.NArg() != 1 {
+		return cliio.Invalid(diag.Operands, "expected one game directory")
 	}
-	dir, troop := fs.Arg(0), fs.Arg(1)
+	if troop == "" {
+		return cliio.Invalid(diag.OptionRequired, "--troop ID is required")
+	}
+	dir := fs.Arg(0)
 	if *n <= 0 || *maxTurns <= 0 || *level < 0 {
 		return cliio.Invalid(diag.BadValue, "--battles and --turns must be positive; --level must be nonnegative")
 	}

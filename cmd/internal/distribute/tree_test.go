@@ -48,7 +48,7 @@ func TestCopyGameRejectsPolicyAndSymlink(t *testing.T) {
 	if err := os.WriteFile(policy, []byte("{}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := CopyGame(src, t.TempDir()); err == nil || !strings.Contains(err.Error(), "pack release") {
+	if _, err := CopyGame(src, t.TempDir()); err == nil || !strings.Contains(err.Error(), "release") {
 		t.Fatalf("policy: %v", err)
 	}
 	if err := os.Remove(policy); err != nil {

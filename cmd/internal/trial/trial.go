@@ -1,4 +1,4 @@
-// Package trial builds the trial edition of a game for gozen pack trial: the
+// Package trial builds the trial edition of a game for gozen trial: the
 // part of the game a configuration keeps, with the rest pruned away.
 package trial
 

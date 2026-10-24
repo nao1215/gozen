@@ -50,22 +50,22 @@ scenarios:
   - {code: GZN2102, args: 'art mosaic auto'}
   - {code: GZN2103, args: 'sim battle --absent game lesson'}
   - {code: GZN2103, args: 'art mosaic auto --absent game'}
-  - {code: GZN2104, args: 'sim battle game lesson -seed 9'}
+  - {code: GZN2104, args: 'sim battle game --troop lesson -seed 9'}
   - {code: GZN2104, args: 'art prompt -config catalog.yaml'}
   - {code: GZN2105, args: '--help sim'}
   - {code: GZN2106, args: 'sim'}
   - {code: GZN2106, args: 'art mosaic'}
-  - {code: GZN2102, args: 'theme add cave'}
+  - {code: GZN2102, args: 'theme add'}
   - {code: GZN2106, args: 'theme'}
-  - {code: GZN2201, args: 'sim battle game lesson -n 0'}
-  - {code: GZN2201, args: 'sim dive game grotto --grind NaN'}
-  - {code: GZN2201, args: 'sim battle game lesson --seed x'}
+  - {code: GZN2201, args: 'sim battle game --troop lesson -n 0'}
+  - {code: GZN2201, args: 'sim dive game --location grotto --grind NaN'}
+  - {code: GZN2201, args: 'sim battle game --troop lesson --seed x'}
   - {code: GZN2202, args: 'check --format yaml game'}
   - {code: GZN2202, args: 'check --only fonts game'}
   - {code: GZN2301, args: 'play shots --raw game list.yaml'}
-  - {code: GZN2302, args: 'pack trial game out --overlay overlay'}
+  - {code: GZN2302, args: 'trial game --out out --overlay overlay'}
   - {code: GZN2303, args: 'art prompt --scene landscape'}
-  - {code: GZN2401, args: 'pack trial game out --config ../escape.yaml'}
+  - {code: GZN2401, args: 'release game --out out --inspect absent --prefix ../escape'}
   - {code: GZN2501, args: 'help GZN9999'}
   steps:
   - run:
@@ -79,9 +79,9 @@ scenarios:
       changes: {created: [], modified: [], deleted: []}
 - name: GZN2402 for a ${what} the game does not have
   matrix:
-  - {what: troop, sub: sim battle, rest: lessn}
-  - {what: location, sub: sim dive, rest: grot}
-  - {what: dungeon, sub: sim floors, rest: grot}
+  - {what: troop, sub: sim battle, rest: --troop lessn}
+  - {what: location, sub: sim dive, rest: --location grot}
+  - {what: dungeon, sub: sim floors, rest: --location grot}
   - {what: persona, sub: sim design, rest: --only nobody -o report}
   steps:
   - run:
@@ -455,7 +455,7 @@ scenarios:
       stdout:
         equals: ''
       stderr:
-        contains: ['assets/dungeon/themes/cave/wall.jpg', 'gozen theme add cave', '[GZN1111]']
+        contains: ['assets/dungeon/themes/cave/wall.jpg', '--name cave', '[GZN1111]']
 - name: check json carries the code of a definition error
   steps:
   - fixture:
@@ -477,18 +477,18 @@ scenarios:
       file: run.jsonl
       content: "{\n"
   - run:
-      command: gozen play trace run.jsonl
+      command: gozen trace run.jsonl
   - assert:
       exit_code: 1
       stderr:
         contains: '[GZN1401]'
-- name: GZN1402 and GZN1403 for the faults play trace --check finds
+- name: GZN1402 and GZN1403 for the faults trace --check finds
   steps:
   - fixture:
       file: run.jsonl
       content: "{\"t\":\"say\",\"tick\":0,\"who\":\"rin\",\"text\":\"Hello.\"}\n{\"t\":\"stand\",\"tick\":1,\"since\":0,\"speaker\":\"rin\",\"standing\":true,\"figures\":[]}\n{\"t\":\"music\",\"tick\":0,\"wanted\":\"bell\",\"song\":\"\"}\n{\"t\":\"end\",\"tick\":120}\n"
   - run:
-      command: gozen play trace run.jsonl --check
+      command: gozen trace run.jsonl --check
   - assert:
       exit_code: 1
       stdout:
@@ -499,7 +499,7 @@ scenarios:
       file: run.jsonl
       content: "{\"t\":\"skip\",\"tick\":0,\"on\":true}\n{\"t\":\"say\",\"tick\":4,\"text\":\"Hello.\",\"read\":false}\n{\"t\":\"end\",\"tick\":10}\n"
   - run:
-      command: gozen play trace run.jsonl --check
+      command: gozen trace run.jsonl --check
   - assert:
       exit_code: 1
       stdout:
@@ -510,7 +510,7 @@ scenarios:
       file: run.jsonl
       content: "{\"t\":\"rollback\",\"tick\":5,\"from\":3,\"to\":3,\"event\":\"story\"}\n{\"t\":\"end\",\"tick\":10}\n"
   - run:
-      command: gozen play trace run.jsonl --check
+      command: gozen trace run.jsonl --check
   - assert:
       exit_code: 1
       stdout:
@@ -521,7 +521,7 @@ scenarios:
       file: run.jsonl
       content: "{\"t\":\"say\",\"tick\":4,\"text\":\"Hello.\",\"read\":false}\n{\"t\":\"voice\",\"tick\":4,\"file\":\"keeper/voice/hello.ogg\",\"missing\":true}\n{\"t\":\"end\",\"tick\":10}\n"
   - run:
-      command: gozen play trace run.jsonl --check
+      command: gozen trace run.jsonl --check
   - assert:
       exit_code: 1
       stdout:
@@ -659,13 +659,13 @@ scenarios:
       file: taken/keep
       content: "keep"
   - run:
-      command: gozen pack trial "${specdir}/fixtures/game" taken
+      command: gozen trial "${specdir}/fixtures/game" --out taken
   - assert:
       exit_code: 1
       stderr:
         contains: '[GZN1501]'
   - run:
-      command: gozen pack trial "${specdir}/fixtures/game" "${specdir}/fixtures/game/trial-out"
+      command: gozen trial "${specdir}/fixtures/game" --out "${specdir}/fixtures/game/trial-out"
   - assert:
       exit_code: 1
       stderr:
@@ -679,7 +679,7 @@ scenarios:
       file: inspect.jsonl
       content: "{\"file\": \"mote.png\", \"source\": \"dd6fc1bb744b21e9181f1c61ad9c68c613247523a23223c7ac3bdc69cd849f5f\", \"required\": false, \"approved\": false}\n"
   - run:
-      command: gozen pack release "${specdir}/fixtures/game" out --overlay overlay --inspect inspect.jsonl
+      command: gozen release "${specdir}/fixtures/game" --out out --overlay overlay --inspect inspect.jsonl
   - assert:
       exit_code: 1
       stderr:
@@ -690,7 +690,7 @@ scenarios:
       file: overlay/approvals.json
       content: '[]'
   - run:
-      command: gozen pack release "${specdir}/fixtures/game" out --overlay overlay --inspect absent.jsonl
+      command: gozen release "${specdir}/fixtures/game" --out out --overlay overlay --inspect absent.jsonl
   - assert:
       exit_code: 1
       stderr:
@@ -710,7 +710,7 @@ scenarios:
       file: inspect.jsonl
       content: "{\"file\": \"other.png\", \"source\": \"00\", \"required\": false, \"approved\": true}\n"
   - run:
-      command: gozen pack release g out --overlay overlay --inspect inspect.jsonl
+      command: gozen release g --out out --overlay overlay --inspect inspect.jsonl
   - assert:
       exit_code: 1
       stderr:
@@ -727,7 +727,7 @@ scenarios:
       file: g/trial.yaml
       content: "assume: {gold: 1}\n"
   - run:
-      command: gozen pack trial g out
+      command: gozen trial g --out out
   - assert:
       exit_code: 1
       stderr:

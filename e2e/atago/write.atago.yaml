@@ -2,10 +2,30 @@ version: '1'
 suite:
   name: Gozen CLI generated artifacts and overwrite protection
 scenarios:
+- name: explicit trial config is relative to the working directory
+  steps:
+  - run: {command: 'gozen new "game with spaces" --id trial-paths'}
+  - assert: {exit_code: 0}
+  - fixture: {file: 'game with spaces/trial.yaml', content: 'unknown_setting: true'}
+  - fixture: {file: 'settings/trial.yaml', content: 'assume: {}'}
+  - run: {command: 'gozen trial "game with spaces" --dry-run'}
+  - assert:
+      exit_code: 1
+      stderr: {contains: '[GZN1704]'}
+      changes: {created: [], modified: [], deleted: []}
+  - run: {command: 'gozen trial --config=settings/trial.yaml --out="trial output" "game with spaces"'}
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file: {path: 'trial output/game.yaml', contains: trial-paths}
+  - run: {command: 'gozen check --only structure "trial output"'}
+  - assert: {exit_code: 0, stderr: {equals: ''}}
+  - assert:
+      file: {path: 'game with spaces/trial.yaml', equals: 'unknown_setting: true'}
 - name: trial dry run writes nothing including an explicitly named list
   steps:
   - run:
-      command: gozen pack trial "${specdir}/fixtures/game" "trial output 日本語" -n --list trial-list.txt
+      command: gozen trial "${specdir}/fixtures/game" --out "trial output 日本語" -n --list trial-list.txt
   - assert:
       exit_code: 0
       changes:
@@ -18,7 +38,7 @@ scenarios:
       file: expected.png
       from: fixtures/game/assets/mote.png
   - run:
-      command: gozen pack trial "${specdir}/fixtures/game" "trial output 日本語" --list trial-list.txt
+      command: gozen trial "${specdir}/fixtures/game" --out "trial output 日本語" --list trial-list.txt
   - assert:
       exit_code: 0
   - assert:
@@ -48,7 +68,7 @@ scenarios:
 
         '
   - run:
-      command: gozen pack trial "${specdir}/fixtures/game" "trial output 日本語"
+      command: gozen trial "${specdir}/fixtures/game" --out "trial output 日本語"
   - assert:
       exit_code: 1
       stderr:
@@ -76,7 +96,7 @@ scenarios:
 
         '
   - run:
-      command: gozen pack release "${specdir}/fixtures/game" "release output" --overlay overlay --inspect inspect.jsonl
+      command: gozen release "${specdir}/fixtures/game" --out "release output" --overlay overlay --inspect inspect.jsonl
   - assert:
       exit_code: 0
   - run:
@@ -88,7 +108,7 @@ scenarios:
       stderr:
         equals: ''
   - run:
-      command: gozen pack release "${specdir}/fixtures/game" "release output" --overlay overlay --inspect inspect.jsonl
+      command: gozen release "${specdir}/fixtures/game" --out "release output" --overlay overlay --inspect inspect.jsonl
   - assert:
       exit_code: 1
       stderr:
@@ -147,7 +167,7 @@ scenarios:
       file: notes/2026-01-01/001.png
       from: fixtures/game/assets/mote.png
   - run:
-      command: gozen play notes notes --out "note output"
+      command: gozen notes notes --out "note output"
   - assert:
       exit_code: 0
       stdout:
@@ -165,7 +185,7 @@ scenarios:
         width: 480
         height: 480
   - run:
-      command: gozen play notes notes --out "note output"
+      command: gozen notes notes --out "note output"
   - assert:
       exit_code: 1
       stderr:

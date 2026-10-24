@@ -18,6 +18,8 @@ import (
 
 func (c *command) floorsCmd(args []string) error {
 	fs := clihelp.NewFlagSet("gozen sim floors")
+	var loc string
+	fs.StringVar(&loc, "location", "", "the location `ID`; required")
 	from := fs.Int("from", 1, "the first floor to show")
 	to := fs.Int("to", 20, "the last floor to show")
 	floor := fs.Int("floor", 0, "show only this floor; with --try, the floor whose seeds are compared")
@@ -26,10 +28,13 @@ func (c *command) floorsCmd(args []string) error {
 	if err := c.parse(fs, args); err != nil {
 		return err
 	}
-	if fs.NArg() != 2 {
-		return cliio.Invalid(diag.Operands, "expected <game-dir> <location>")
+	if fs.NArg() != 1 {
+		return cliio.Invalid(diag.Operands, "expected one game directory")
 	}
-	dir, loc := fs.Arg(0), fs.Arg(1)
+	if loc == "" {
+		return cliio.Invalid(diag.OptionRequired, "--location ID is required")
+	}
+	dir := fs.Arg(0)
 	if *from <= 0 || *to < *from || *floor < 0 || *try < 0 || (*try > 0 && *floor == 0) {
 		return cliio.Invalid(diag.BadValue, "invalid floor range or seed count; --try requires --floor")
 	}

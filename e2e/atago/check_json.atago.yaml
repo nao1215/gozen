@@ -99,7 +99,7 @@ scenarios:
 - name: sim, curve and design print JSON for a test or an agent
   steps:
   - run:
-      command: gozen sim battle "${specdir}/fixtures/game" lesson -n 4 --seed 2 --format json
+      command: gozen sim battle "${specdir}/fixtures/game" --troop lesson -n 4 --seed 2 --format json
   - assert:
       exit_code: 0
       stdout:
@@ -108,7 +108,7 @@ scenarios:
         - '"battles": 4'
         - '"win_rate":'
   - run:
-      command: gozen sim dive "${specdir}/fixtures/game" grotto --floors 2 --battles 1 --boss 2:lesson --arrival-saves arrivals --format json
+      command: gozen sim dive "${specdir}/fixtures/game" --location grotto --floors 2 --battles 1 --boss 2:lesson --arrival-saves arrivals --format json
   - assert:
       exit_code: 0
       stdout:
@@ -120,7 +120,7 @@ scenarios:
         created:
         - arrivals/floor-2.json
   - run:
-      command: gozen sim battle "${specdir}/fixtures/game" lesson -n 2 --state arrivals/floor-2.json --state arrivals/floor-2.json --as-is --format json
+      command: gozen sim battle "${specdir}/fixtures/game" --troop lesson -n 2 --state arrivals/floor-2.json --state arrivals/floor-2.json --as-is --format json
   - assert:
       exit_code: 0
       stdout:
@@ -136,7 +136,7 @@ scenarios:
       changes:
         created: []
   - run:
-      command: gozen sim dive "${specdir}/fixtures/game" grotto --format xml
+      command: gozen sim dive "${specdir}/fixtures/game" --location grotto --format xml
   - assert:
       exit_code: 2
       stderr:

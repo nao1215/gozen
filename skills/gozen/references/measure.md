@@ -4,8 +4,8 @@
 
 <!-- verify: run fixture=cave -->
 ```shell
-gozen sim battle game cave_boss --level 8
-gozen sim dive game cave --floors 5 --boss 5:cave_boss
+gozen sim battle game --troop cave_boss --level 8
+gozen sim dive game --location cave --floors 5 --boss 5:cave_boss
 ```
 
 For a campaign, `gozen sim campaign game` (below).

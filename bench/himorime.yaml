@@ -73,14 +73,14 @@ benchmarks:
     tags: [smoke]
     commands:
       gozen:
-        command: ["${artifact}", sim, battle, "${head_root}/../e2e/atago/fixtures/game", lesson, -n, "200", --seed, "1"]
+        command: ["${artifact}", sim, battle, "${head_root}/../e2e/atago/fixtures/game", --troop, lesson, -n, "200", --seed, "1"]
 
   - name: sim 50k battles
     description: Fifty thousand AUTO battles against one troop, where the battle rules dominate.
     tags: [large]
     commands:
       gozen:
-        command: ["${artifact}", sim, battle, "${head_root}/../e2e/atago/fixtures/game", lesson, -n, "50000", --seed, "1"]
+        command: ["${artifact}", sim, battle, "${head_root}/../e2e/atago/fixtures/game", --troop, lesson, -n, "50000", --seed, "1"]
 
   - name: book 1 game
     description: Writing the small test game as Markdown.

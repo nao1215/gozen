@@ -35,7 +35,7 @@ func TestSimFromSavedStateMatchesTheShared(t *testing.T) {
 		level int
 		asIs  bool
 	}{{0, false}, {3, false}, {0, true}} {
-		args := []string{"sim", "battle", dir, "lesson", "--state", path, "-n", "40", "--seed", "6", "--level", strconv.Itoa(tc.level), "--hp", "--streak", "5"}
+		args := []string{"sim", "battle", dir, "--troop", "lesson", "--state", path, "-n", "40", "--seed", "6", "--level", strconv.Itoa(tc.level), "--hp", "--streak", "5"}
 		if tc.asIs {
 			args = append(args, "--as-is")
 		}
@@ -60,8 +60,8 @@ func TestSimFromSavedStateMatchesTheShared(t *testing.T) {
 			t.Fatalf("%+v: %q want %q", tc, out, line)
 		}
 	}
-	invoke(t, 2, "sim", "battle", dir, "lesson", "--as-is")
-	invoke(t, 2, "sim", "battle", dir, "lesson", "--state", path, "--streak", "-1")
-	invoke(t, 2, "sim", "battle", dir, "lesson", "--state", path, "--party", "scout")
-	invoke(t, 1, "sim", "battle", dir, "lesson", "--state", filepath.Join(t.TempDir(), "absent.save"))
+	invoke(t, 2, "sim", "battle", dir, "--troop", "lesson", "--as-is")
+	invoke(t, 2, "sim", "battle", dir, "--troop", "lesson", "--state", path, "--streak", "-1")
+	invoke(t, 2, "sim", "battle", dir, "--troop", "lesson", "--state", path, "--party", "scout")
+	invoke(t, 1, "sim", "battle", dir, "--troop", "lesson", "--state", filepath.Join(t.TempDir(), "absent.save"))
 }

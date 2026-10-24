@@ -1,6 +1,6 @@
 ---
 title: The edit–play loop
-description: Tune a Gozen game while you play it. --dev, F5 reload, F6 character book, F7 win rates, F9 notes, test-play starts, autoplay, traces, replays and gozen play notes.
+description: Tune a Gozen game while you play it. --dev, F5 reload, F6 character book, F7 win rates, F9 notes, test-play starts, autoplay, traces, replays and gozen notes.
 weight: 50
 toc: true
 ---
@@ -79,8 +79,8 @@ These are the same numbers `gozen sim battle` prints, with the same seed, so you
 
 <!-- verify: each fixture=go-zen -->
 ```shell
-gozen sim battle game crab --state notes/2026-10-19/001.save --hp
-gozen sim battle game crab --state notes/2026-10-19/001.save --as-is --streak 9
+gozen sim battle game --troop crab --state notes/2026-10-19/001.save --hp
+gozen sim battle game --troop crab --state notes/2026-10-19/001.save --as-is --streak 9
 ```
 
 The panel measures a little each frame (at most 3 ms) and never changes the game state or its random numbers. It measures again when you move, reload, or change the party's level, equipment or skills.
@@ -95,7 +95,7 @@ Collect a session's notes into one page:
 
 <!-- verify: run fixture=cli -->
 ```shell
-gozen play notes notes -o notes-html
+gozen notes notes -o notes-html
 ```
 
 To come back to a note, start the game from it. In an event, the game begins the event again and reads on to the same line; in a battle, it starts the same battle from the state at the note:
@@ -132,12 +132,12 @@ For a dive without a window, `gozen sim dive` does the same with the rules alone
 
 ## Trace and replay
 
-`--trace FILE` records what happens as JSON Lines: every line of dialogue, menu, battle, picture, song, state change and input, with the time. Read it with `gozen play trace`:
+`--trace FILE` records what happens as JSON Lines: every line of dialogue, menu, battle, picture, song, state change and input, with the time. Read it with `gozen trace`:
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen play trace run.jsonl --only say,battle --from 10 --to 60
-gozen play trace run.jsonl --check    # standing pictures and music that went wrong
+gozen trace run.jsonl --only say,battle --from 10 --to 60
+gozen trace run.jsonl --check    # standing pictures and music that went wrong
 ```
 
 ```text
