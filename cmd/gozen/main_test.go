@@ -75,7 +75,7 @@ func read(t *testing.T, p string) []byte {
 // helpPaths are every page: the top, the groups, the leaves, and the leaves of
 // the production tools.
 func helpPaths() []string {
-	paths := []string{"", "art prompt", "art mosaic", "art fetch", "run"}
+	paths := []string{"", "prompt", "prompt lint", "art mosaic", "art fetch", "run"}
 	paths = append(paths, slices.Sorted(maps.Keys(groups))...)
 	return append(paths, slices.Sorted(maps.Keys(pages))...)
 }
@@ -134,7 +134,7 @@ func TestHelpAndArgumentContract(t *testing.T) {
 
 func TestGroupsAndUnknownCommands(t *testing.T) {
 	for name, n := range tree {
-		if n.subs == nil || name == "" {
+		if n.subs == nil || n.build != nil || name == "" {
 			continue
 		}
 		out, stderr := invoke(t, 2, name)
@@ -233,7 +233,7 @@ func TestDispatchHelpVersionAndDelegates(t *testing.T) {
 			t.Fatalf("help %v differs from %v --help", path, path)
 		}
 	}
-	for _, name := range []string{"prompt", "mosaic", "fetch"} {
+	for _, name := range []string{"mosaic", "fetch"} {
 		out, stderr := invoke(t, 0, "help", "art", name)
 		if !strings.HasPrefix(out, "gozen art "+name+" - ") || !strings.Contains(out, "https://github.com/nao1215/gozen#gozen") || stderr != "" {
 			t.Fatalf("help art %s: %q %q", name, out, stderr)
@@ -245,10 +245,10 @@ func TestDispatchHelpVersionAndDelegates(t *testing.T) {
 	if out, _ := invoke(t, 0, "version"); !strings.HasPrefix(out, "gozen ") {
 		t.Fatal(out)
 	}
-	if out, _ := invoke(t, 0, "art", "prompt", "--config", "../../docs/examples/production/catalog.yaml", "--scene", "landscape"); !strings.Contains(out, "quiet garden") {
+	if out, _ := invoke(t, 0, "prompt", "--config", "../../docs/examples/production/catalog.yaml", "--scene", "landscape"); !strings.Contains(out, "quiet garden") {
 		t.Fatal(out)
 	}
-	invoke(t, 1, "art", "prompt", "--config", "missing.yaml")
+	invoke(t, 1, "prompt", "--config", "missing.yaml")
 	invoke(t, 2, "art", "mosaic")
 	invoke(t, 2, "art", "mosaic", "absent")
 }

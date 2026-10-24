@@ -69,7 +69,7 @@ scenarios:
   - sub: release
   - sub: trial
   - sub: art
-  - sub: art prompt
+  - sub: prompt
   - sub: art mosaic
   - sub: art fetch
   - sub: art faces
@@ -99,7 +99,7 @@ scenarios:
   matrix:
   - sub: sim
   - sub: art
-  - sub: art prompt
+  - sub: prompt
   - sub: art mosaic
   - sub: art fetch
   - sub: art puppet
@@ -115,7 +115,7 @@ scenarios:
 - name: the group ${group} needs a command
   matrix:
   - {group: sim, subs: 'battle, dive, floors, design, campaign'}
-  - {group: art, subs: 'prompt, mosaic, fetch, faces, puppet'}
+  - {group: art, subs: 'mosaic, fetch, faces, puppet'}
   steps:
   - run:
       command: gozen ${group}
@@ -202,7 +202,7 @@ scenarios:
   - sub: release
   - sub: trial
   - sub: art
-  - sub: art prompt
+  - sub: prompt
   - sub: art mosaic
   - sub: art fetch
   - sub: art faces
@@ -394,7 +394,7 @@ scenarios:
   matrix:
   - sub: sim battle
   - sub: capture
-  - sub: art prompt
+  - sub: prompt
   - sub: art mosaic
   steps:
   - run:
@@ -423,7 +423,7 @@ scenarios:
   - args: check -only structure unused
   - args: notes notes -out html
   - args: -version
-  - args: art prompt -config catalog.yaml
+  - args: prompt -config catalog.yaml
   - args: art mosaic auto -out processed game
   - args: art mosaic manual add -rect 0,0,4,4 game pattern.png
   steps:

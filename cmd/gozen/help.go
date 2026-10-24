@@ -34,7 +34,8 @@ var topPage = clihelp.Page{
 		{"capture", "Capture PNG images and animated GIFs"},
 		{"book", "Write the definitions and events as Markdown"},
 		{"export", "Export a playable desktop game or static website"},
-		{"art", "Picture and asset tools: prompt, mosaic, fetch, faces, puppet"},
+		{"prompt", "Assemble image-generation text from a catalog"},
+		{"art", "Picture and asset tools: mosaic, fetch, faces, puppet"},
 		{"theme", "Dungeon themes: add the pictures of a theme to a game, list the themes"},
 		{"version", "Print the gozen version"},
 		{"help", "Show the help of a command, or explain a diagnostic code"},
@@ -53,7 +54,7 @@ var topPage = clihelp.Page{
 		"Exit status: 0 for success and help, 1 when a check, I/O, simulation, or capture fails, 2 for " +
 			"invalid arguments. A diagnostic may end with a code such as [GZN1101] whose first digit is " +
 			"the exit status; gozen help GZN1101 explains it.",
-		"Requirements: check, sim, book, release, trial, trace, notes, and art prompt need nothing beyond " +
+		"Requirements: check, sim, book, release, trial, trace, notes, and prompt need nothing beyond " +
 			"the gozen binary; cgo is not required. export needs a matching prebuilt runtime bundle. run and capture launch a graphics game, and unattended " +
 			"capture on Linux needs Xvfb. art mosaic inference and art faces need a gozen built with cgo, " +
 			"an ONNX Runtime shared library, and user-supplied models. See " + clihelp.README,
@@ -114,19 +115,17 @@ var groups = map[string]clihelp.Page{
 			"regions of images, download the detection models, find the faces of standing pictures for " +
 			"the balloons, and check a moving portrait.",
 		Commands: [][2]string{
-			{"prompt", "Assemble image-generation text from a catalog"},
 			{"mosaic", "Pixelate regions of images, with optional ONNX detection"},
 			{"fetch", "Download the pinned detection models into the cache"},
 			{"faces", "Find the faces of the standing pictures for the balloons"},
 			{"puppet", "Check a moving portrait and cut its difference pictures"},
 		},
 		Examples: []clihelp.Example{
-			{"check a catalog", "gozen art prompt lint --config catalog.yaml"},
 			{"list the models and whether each is fetched", "gozen art fetch --list"},
 			{"check a puppet and show the positions", "gozen art puppet streamer/puppet.yaml"},
 		},
 		Groups: []clihelp.Group{general},
-		Notes: []string{"Requirements: prompt, fetch, and puppet need nothing beyond the gozen binary " +
+		Notes: []string{"Requirements: fetch and puppet need nothing beyond the gozen binary " +
 			"(fetch needs the network). mosaic inference and faces need a gozen built with cgo " +
 			"(CGO_ENABLED=1 and a C compiler), an ONNX Runtime shared library, and user-supplied or fetched " +
 			"models; a build without cgo says so and exits 1. Models are never bundled. See " + clihelp.README},

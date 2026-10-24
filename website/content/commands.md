@@ -25,7 +25,7 @@ gozen help GZN1101                     # explain a diagnostic code
 | [book](#book) | Write the definitions and events as Markdown |
 | [export](#export) | Export desktop and browser games with prebuilt runtimes |
 | [release](#release), [trial](#trial) | Prepare approved asset trees and trial games |
-| [art](#art) | Picture and asset tools: [prompt](/production-tools/#gozen-art-prompt), [mosaic](/production-tools/#gozen-art-mosaic), [fetch](#art-fetch), [faces](#art-faces), [puppet](#art-puppet) |
+| [art](#art) | Picture and asset tools: [prompt](/production-tools/#gozen-prompt), [mosaic](/production-tools/#gozen-art-mosaic), [fetch](#art-fetch), [faces](#art-faces), [puppet](#art-puppet) |
 | [theme](#theme) | Dungeon themes: [add](#theme-add) the pictures of a theme to a game, [list](#theme-list) the themes |
 | [version and help](#version-and-help) | Print the version; show a command's help or explain a diagnostic code |
 
@@ -465,7 +465,7 @@ gozen trial game --out trial --overlay overlay --inspect inspect.jsonl
 
 ## art
 
-Tools for the pictures of a game. [art prompt](/production-tools/#gozen-art-prompt) assembles image-generation text from a catalog, and [art mosaic](/production-tools/#gozen-art-mosaic) pixelates regions of images; both are described on [Production tools](/production-tools/).
+Tools for the pictures of a game. [prompt](/production-tools/#gozen-prompt) assembles image-generation text from a catalog, and [art mosaic](/production-tools/#gozen-art-mosaic) pixelates regions of images; both are described on [Production tools](/production-tools/).
 
 ### art fetch
 

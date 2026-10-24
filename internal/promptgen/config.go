@@ -1,5 +1,5 @@
 // Package promptgen assembles deterministic prompts from user-owned catalogs.
-// Its only external consumer is the gozen art prompt command (internal/promptgen/command); it sends no generation jobs.
+// Its only external consumer is the gozen prompt command (internal/promptgen/command); it sends no generation jobs.
 package promptgen
 
 import (
@@ -72,7 +72,7 @@ type Plan struct {
 	Select map[string][]string `yaml:"select" json:"select"`
 }
 
-// Catalog owns validated configuration for the gozen art prompt command. Build does not mutate it.
+// Catalog owns validated configuration for the gozen prompt command. Build does not mutate it.
 type Catalog struct {
 	c       config
 	limit   int
@@ -156,13 +156,24 @@ func ParsePlan(data []byte) (Plan, error) {
 	return p, err
 }
 
-// LayerIDs returns a copy of layer IDs in catalog order for CLI flags.
+// LayerIDs returns a copy of layer IDs in catalog order.
 func (g *Catalog) LayerIDs() []string {
 	var ids []string
 	for _, l := range g.c.Layers {
 		ids = append(ids, l.ID)
 	}
 	return ids
+}
+
+// HasItem reports whether an explicit CLI selection identifies a catalog item.
+func (g *Catalog) HasItem(layerID, itemID string) bool {
+	for _, l := range g.c.Layers {
+		if l.ID == layerID {
+			_, ok := l.Items[itemID]
+			return ok
+		}
+	}
+	return false
 }
 
 // Scene returns a copy of a named selection so CLI overrides cannot mutate the catalog.
@@ -223,7 +234,7 @@ func (g *Catalog) validate() error {
 	layers := map[string]layer{}
 	for _, l := range g.c.Layers {
 		_, exists := layers[l.ID]
-		if !identifier.MatchString(l.ID) || slices.Contains([]string{"config", "plan", "scene", "scenes", "format", "help", "h", "lint"}, l.ID) || exists || l.Min < 0 || l.Max < 0 || (l.Max > 0 && l.Max < l.Min) || len(l.Items) == 0 || !separator(l.Separator) {
+		if !identifier.MatchString(l.ID) || exists || l.Min < 0 || l.Max < 0 || (l.Max > 0 && l.Max < l.Min) || len(l.Items) == 0 || !separator(l.Separator) {
 			return problem(lang.T("層の定義が不正です。%s"), l.ID)
 		}
 		layers[l.ID] = l

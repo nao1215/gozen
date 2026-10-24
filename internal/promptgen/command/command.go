@@ -1,255 +1,179 @@
-// Package command implements gozen art prompt. It builds the image prompt text from the settings and item IDs.
-// It does not exit the process, and uses the caller's writers instead of standard input/output.
+// Package command implements prompt assembly without contacting a generation service.
 package command
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
-	"github.com/spf13/pflag"
-
 	"github.com/nao1215/gozen/internal/clihelp"
+	"github.com/nao1215/gozen/internal/cliio"
 	"github.com/nao1215/gozen/internal/diag"
 	"github.com/nao1215/gozen/internal/promptgen"
 )
 
-const requirements = "Requirements: Go 1.26.10 or later to build or install gozen, and a user-supplied catalog YAML file. No cgo, model, ONNX Runtime, display, or generation server is needed. See " + clihelp.README
+const requirements = "Requirements: a user-supplied catalog YAML file. No model, ONNX Runtime, display, or generation server is needed. See " + clihelp.README
 
 var page = clihelp.Page{
-	Name:    "gozen art prompt",
-	Summary: "assemble image-generation text from a catalog",
-	Usage: []string{
-		"gozen art prompt --config FILE [--scene ID | --plan FILE] [--<layer> ID ...]",
-		"gozen art prompt --config FILE --scenes FILE --format json",
-		"gozen art prompt lint --config FILE [--format json]",
-	},
-	About: "Reads a version 1 catalog of layers and items and assembles the positive and negative text " +
-		"for one scene, one plan, or the defaults, with the selections of --<layer> on top. Duplicates are " +
-		"merged, conflicts resolved, and the limits applied; the JSON output records where each word came " +
-		"from. It only assembles text and never contacts a model or a generation service.\n\n" +
-		"lint checks every item, dependency, and scene of the catalog. Errors fail; warnings alone succeed.",
+	Name: "gozen prompt", Commands: [][2]string{{"lint", "Check every catalog item and scene"}}, Summary: "assemble image-generation text from a catalog",
+	Usage: []string{"gozen prompt --config FILE [--scene ID | --plan FILE] [--select LAYER=ITEM ...]", "gozen prompt --config FILE --scenes FILE [--format text|json|jsonl]"},
+	About: "Builds one scene, a plan, or the defaults. Repeated --select values replace the selected layer. Catalogs contain the text; command arguments contain only IDs.",
 	Examples: []clihelp.Example{
-		{"assemble one scene as JSON", "gozen art prompt --config catalog.yaml --scene landscape --format json"},
-		{"assemble a plan that holds only item IDs", "gozen art prompt --config catalog.yaml --plan plan.yaml"},
-		{"choose an item of the setting layer by hand", "gozen art prompt -c catalog.yaml --setting studio"},
-		{"assemble many scenes, one ID per line, as JSON Lines", "gozen art prompt -c catalog.yaml --scenes ids.txt --format json"},
-		{"check the catalog", "gozen art prompt lint --config catalog.yaml --format json"},
+		{"assemble one scene", "gozen prompt --config catalog.yaml --scene landscape --format json"},
+		{"override a layer", "gozen prompt -c catalog.yaml --select setting=studio"},
+		{"read scene IDs from stdin", "gozen prompt -c catalog.yaml --scenes - --format jsonl"},
 	},
-	Groups: []clihelp.Group{
-		{
-			Title: "Input", Flags: []string{"config", "scene", "plan", "scenes"},
-			Extra: [][2]string{{"    --<layer> ID", "select this item of a layer the catalog defines; repeat it to select several"}},
-		},
-		{Title: "Output", Flags: []string{"format"}},
-		{Title: "General", Flags: []string{"help"}},
-	},
-	Notes: []string{
-		"--scene and --plan do not go together. --scenes reads one scene ID per line, needs --format json, " +
-			"and writes one JSON line per scene with id, result, and error; any failed scene exits 1 after " +
-			"the others are written. Free text as an argument is not accepted. Exit status: 0 for success " +
-			"and help, 1 when loading, building, or lint fails, 2 for invalid arguments.",
-		requirements,
-	},
+	Groups: []clihelp.Group{{Title: "Input", Flags: []string{"config", "scene", "plan", "scenes", "select"}}, {Title: "Output", Flags: []string{"format"}}, {Title: "General", Flags: []string{"help"}}},
+	Notes:  []string{"--scenes reads one scene ID per line and cannot be combined with --scene, --plan or --select. JSON contains all results; JSONL emits an item per scene and a final summary. Failed scenes do not stop the batch. Paths are relative to the working directory; catalog rule paths are catalog-relative.", requirements},
 }
 
-// flags defines the fixed options of gozen art prompt on a new flag set.
-func flags() (fs *pflag.FlagSet, plan, scene, scenes, format *string) {
-	fs = clihelp.NewFlagSet("gozen art prompt")
-	// configArg reads --config before the layers are known; the flag is here for parsing and help.
-	fs.StringP("config", "c", "", "read the catalog from this `FILE`; required")
-	scene = fs.String("scene", "", "assemble the scene with this `ID` in the catalog")
-	plan = fs.String("plan", "", "assemble the plan in this `FILE`, which holds only item IDs")
-	scenes = fs.String("scenes", "", "assemble every scene ID in this `FILE`, one per line, as JSON Lines")
-	format = fs.String("format", "text", "write the result as `FORMAT`: json or text")
-	return
+// Config supplies invocation-owned streams and reporting to the root dispatcher.
+// Input is used only when --scenes is -. The caller retains ownership of streams.
+type Config struct {
+	Input               io.Reader
+	Output, Diagnostics *cliio.Output
+	Report              *cliio.Report
+	Lint                bool
 }
 
-// Run handles gozen art prompt's arguments and returns the exit value. Success and help give 0, a bad argument 2,
-// and any other failure 1 (same as the other subcommands). The failure details and premises go to diagnostics.
-// If nothing could be written to diagnostics, it returns 1 as the exit value of the remaining path. The caller owns the writers.
-func Run(args []string, out, diagnostics io.Writer) int {
-	err := run(args, out, diagnostics)
-	if err == nil {
-		return 0
+// New registers fixed options without reading catalogs, files or environment.
+func New(cfg Config) clihelp.Operation {
+	name := "prompt"
+	p := page
+	if cfg.Lint {
+		name += " lint"
+		p = clihelp.Page{Name: "gozen prompt lint", Summary: "check every catalog item and scene", Examples: []clihelp.Example{{"check a catalog", "gozen prompt lint --config catalog.yaml"}}, Usage: []string{"gozen prompt lint --config FILE [--format text|json|jsonl]"}, Groups: []clihelp.Group{{Title: "Input", Flags: []string{"config"}}, {Title: "Output", Flags: []string{"format"}}, {Title: "General", Flags: []string{"help"}}}, Notes: []string{"Errors fail; warnings alone succeed.", requirements}}
 	}
-	code, msg := 1, fmt.Sprintln(err, "\n"+requirements)
-	if _, ok := errors.AsType[usageError](err); ok {
-		code, msg = 2, fmt.Sprintln(err, "\nRun \"gozen art prompt --help\" for usage.")
+	f := clihelp.NewFlagSet("gozen " + name)
+	catalog := f.StringP("config", "c", "", "read catalog `FILE`; required")
+	cfg.Report.Command = name
+	f.StringVar(&cfg.Report.Format, "format", "text", "result encoding: text, json, or jsonl")
+	var scene, planFile, scenes string
+	var selectors []string
+	if !cfg.Lint {
+		f.StringVar(&scene, "scene", "", "assemble the named scene `ID`")
+		f.StringVar(&planFile, "plan", "", "read selections from `FILE`")
+		f.StringVar(&scenes, "scenes", "", "read scene IDs from `FILE`; - reads stdin")
+		f.StringArrayVar(&selectors, "select", nil, "select `LAYER=ITEM`; repeat to select several items")
 	}
-	if _, werr := io.WriteString(diagnostics, msg); werr != nil {
-		return 1
-	}
-	return code
-}
-
-// usageError is a bad argument (exit value 2).
-type usageError struct{ msg string }
-
-func (e usageError) Error() string { return e.msg }
-
-func invalid(code diag.Code, msg string) error { return usageError{code.Mark(msg)} }
-
-// configArg extracts only the settings location before the layer names are registered as flags.
-func configArg(args []string) (string, error) {
-	var name string
-	set := func(v string) error {
-		if name != "" {
-			return invalid(diag.OptionConflict, "--config may be given only once")
+	return clihelp.Operation{Flags: f, Page: p, Run: func(ctx context.Context) error {
+		if err := ctx.Err(); err != nil {
+			return err
 		}
-		name = v
-		return nil
-	}
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		var err error
-		switch {
-		case arg == "--":
-			i = len(args)
-		case arg == "--config" || arg == "-c":
-			if i+1 >= len(args) {
-				return "", invalid(diag.BadValue, arg+" needs a file")
+		if err := cfg.Report.Validate(); err != nil {
+			return err
+		}
+		if f.NArg() != 0 {
+			return cliio.Invalid(diag.Operands, "positional arguments and free text are not accepted")
+		}
+		if *catalog == "" {
+			return cliio.Invalid(diag.OptionRequired, "--config FILE is required")
+		}
+		if planFile != "" && scene != "" {
+			return cliio.Invalid(diag.OptionConflict, "--plan and --scene cannot be used together")
+		}
+		if scenes != "" && (scene != "" || planFile != "" || len(selectors) > 0) {
+			return cliio.Invalid(diag.OptionConflict, "--scenes cannot be combined with --scene, --plan or --select")
+		}
+		overrides := map[string][]string{}
+		for _, value := range selectors {
+			layer, item, ok := strings.Cut(value, "=")
+			if !ok || layer == "" || item == "" {
+				return cliio.Invalid(diag.BadValue, "--select requires LAYER=ITEM, not %q", value)
 			}
-			i++
-			err = set(args[i])
-		case strings.HasPrefix(arg, "--config="):
-			err = set(strings.TrimPrefix(arg, "--config="))
-		case strings.HasPrefix(arg, "-config"):
-			return "", invalid(diag.SingleDashOption, "single-dash long option "+arg+" is not accepted; use --"+arg[1:])
-		case strings.HasPrefix(arg, "-c") && !strings.HasPrefix(arg, "--"):
-			err = set(strings.TrimPrefix(arg, "-c"))
+			overrides[layer] = append(overrides[layer], item)
 		}
+		c, err := promptgen.Load(os.DirFS(filepath.Dir(*catalog)), filepath.Base(*catalog))
 		if err != nil {
-			return "", err
+			return fmt.Errorf("%w\n%s", err, requirements)
 		}
-	}
-	if name == "" {
-		return "", invalid(diag.OptionRequired, "--config FILE is required; select with --scene ID or --<layer> ID and write with --format json|text")
-	}
-	return name, nil
-}
-
-func run(args []string, out, diagnostics io.Writer) error {
-	if clihelp.HelpRequested(args) {
-		fs, _, _, _, _ := flags()
-		_, err := io.WriteString(out, page.String(fs))
-		return err
-	}
-	lint := len(args) > 0 && args[0] == "lint"
-	if lint {
-		args = args[1:]
-	}
-	name, err := configArg(args)
-	if err != nil {
-		return err
-	}
-	c, err := promptgen.Load(os.DirFS(filepath.Dir(name)), filepath.Base(name))
-	if err != nil {
-		return err
-	}
-	fs, planFile, scene, scenes, format := flags()
-	overrides := map[string][]string{}
-	for _, id := range c.LayerIDs() {
-		if fs.Lookup(id) != nil {
-			return fmt.Errorf("layer %q has the name of a fixed option; rename the layer", id)
+		if cfg.Lint {
+			return cfg.lint(c)
 		}
-		fs.Func(id, "select this item `ID` of the layer; repeat it to select several", func(value string) error {
-			overrides[id] = append(overrides[id], value)
-			return nil
-		})
-	}
-	if _, err := clihelp.Parse(fs, args); err != nil {
-		return usageError{err.Error()} // clihelp.Parse marks the code
-	}
-	if fs.NArg() != 0 {
-		return invalid(diag.Operands, "positional arguments and free text are not accepted")
-	}
-	if *format != "json" && *format != "text" {
-		return invalid(diag.NotAChoice, "--format must be json or text")
-	}
-	if *planFile != "" && *scene != "" {
-		return invalid(diag.OptionConflict, "--plan and --scene cannot be used together")
-	}
-	if *scenes != "" {
-		if lint || *scene != "" || *planFile != "" || len(overrides) != 0 || *format != "json" {
-			return invalid(diag.OptionConflict, "--scenes needs --format json and cannot be combined with lint, --scene, --plan or layer flags")
+		if scenes != "" {
+			return cfg.batchScenes(ctx, c, scenes)
 		}
-		return batchScenes(c, *scenes, out)
-	}
-	if lint {
-		if *scene != "" || *planFile != "" || len(overrides) != 0 {
-			return invalid(diag.Operands, "lint checks every item and scene; it takes no selection")
-		}
-		ds := c.Lint()
-		failed := false
-		if *format == "json" {
-			if err := json.NewEncoder(out).Encode(ds); err != nil {
+		p := promptgen.Plan{Select: map[string][]string{}}
+		if planFile != "" {
+			b, err := os.ReadFile(planFile) //nolint:gosec // Explicit user-supplied input path; this operation does not write files.
+			if err != nil {
 				return err
 			}
-		} else {
-			for _, d := range ds {
-				if err := d.WriteText(out); err != nil {
+			p, err = promptgen.ParsePlan(b)
+			if err != nil {
+				return err
+			}
+		}
+		if scene != "" {
+			p, err = c.Scene(scene)
+			if err != nil {
+				return cliio.Invalid(diag.UnknownName, "%s", err)
+			}
+		}
+		for _, layer := range slices.Sorted(maps.Keys(overrides)) {
+			for _, item := range overrides[layer] {
+				if !c.HasItem(layer, item) {
+					return cliio.Invalid(diag.UnknownName, "unknown selection %s=%s", layer, item)
+				}
+			}
+		}
+		if p.Select == nil {
+			p.Select = map[string][]string{}
+		}
+		maps.Copy(p.Select, overrides)
+		result, err := c.Build(p)
+		if err != nil {
+			validation, ok := errors.AsType[*promptgen.ValidationError](err)
+			if !ok {
+				return err
+			}
+			if cfg.Report.Machine() {
+				if err := cfg.Report.Result(cfg.Output, "failed", result); err != nil {
+					return err
+				}
+				return cliio.ErrReported
+			}
+			for _, d := range validation.Diagnostics {
+				if err := d.WriteText(cfg.Diagnostics); err != nil {
 					return err
 				}
 			}
+			return cliio.ErrReported
 		}
+		if cfg.Report.Machine() {
+			return cfg.Report.Result(cfg.Output, "ok", result)
+		}
+		return result.WriteText(cfg.Output)
+	}}
+}
+
+func (cfg Config) lint(c *promptgen.Catalog) error {
+	ds := c.Lint()
+	status := "ok"
+	for _, d := range ds {
+		if d.Severity == "error" {
+			status = "failed"
+		}
+	}
+	if cfg.Report.Machine() {
+		if err := cfg.Report.Result(cfg.Output, status, ds); err != nil {
+			return err
+		}
+	} else {
 		for _, d := range ds {
-			if d.Severity == "error" {
-				failed = true
+			if err := d.WriteText(cfg.Output); err != nil {
+				return err
 			}
 		}
-		if failed {
-			return errors.New("lint found errors")
-		}
-		return nil
 	}
-	p := promptgen.Plan{Select: map[string][]string{}}
-	if *planFile != "" {
-		data, err := os.ReadFile(*planFile)
-		if err != nil {
-			return err
-		}
-		p, err = promptgen.ParsePlan(data)
-		if err != nil {
-			return err
-		}
+	if status == "failed" {
+		return cliio.ErrReported
 	}
-	if *scene != "" {
-		p, err = c.Scene(*scene)
-		if err != nil {
-			return err
-		}
-	}
-	if p.Select == nil {
-		p.Select = map[string][]string{}
-	}
-	maps.Copy(p.Select, overrides)
-	result, err := c.Build(p)
-	if err != nil {
-		if validation, ok := errors.AsType[*promptgen.ValidationError](err); ok {
-			if *format == "json" {
-				if writeErr := json.NewEncoder(out).Encode(result); writeErr != nil {
-					return writeErr
-				}
-			} else {
-				for _, d := range validation.Diagnostics {
-					if writeErr := d.WriteText(diagnostics); writeErr != nil {
-						return writeErr
-					}
-				}
-			}
-		}
-		return err
-	}
-	if *format == "json" {
-		enc := json.NewEncoder(out)
-		enc.SetIndent("", "  ")
-		return enc.Encode(result)
-	}
-	return result.WriteText(out)
+	return nil
 }

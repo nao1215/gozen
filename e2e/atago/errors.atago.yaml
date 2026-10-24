@@ -51,7 +51,7 @@ scenarios:
   - {code: GZN2103, args: 'sim battle --absent game lesson'}
   - {code: GZN2103, args: 'art mosaic auto --absent game'}
   - {code: GZN2104, args: 'sim battle game --troop lesson -seed 9'}
-  - {code: GZN2104, args: 'art prompt -config catalog.yaml'}
+  - {code: GZN2104, args: 'prompt -config catalog.yaml'}
   - {code: GZN2105, args: '--help sim'}
   - {code: GZN2106, args: 'sim'}
   - {code: GZN2106, args: 'art mosaic'}
@@ -64,7 +64,7 @@ scenarios:
   - {code: GZN2202, args: 'check --only fonts game'}
   - {code: GZN2301, args: 'capture game --config jobs.yaml --out out --raw --overlay replaced'}
   - {code: GZN2302, args: 'trial game --out out --overlay overlay'}
-  - {code: GZN2303, args: 'art prompt --scene landscape'}
+  - {code: GZN2303, args: 'prompt --scene landscape'}
   - {code: GZN2401, args: 'release game --out out --inspect absent --prefix ../escape'}
   - {code: GZN2501, args: 'help GZN9999'}
   steps:

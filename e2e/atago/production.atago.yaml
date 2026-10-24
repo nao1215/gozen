@@ -2,10 +2,10 @@ version: '1'
 suite:
   name: Gozen production CLI contracts with original neutral inputs
 scenarios:
-- name: gozen art prompt help does not read a missing catalog
+- name: gozen prompt help does not read a missing catalog
   steps:
   - run:
-      command: gozen art prompt lint --config missing.yaml --help
+      command: gozen prompt lint --config missing.yaml --help
   - assert:
       exit_code: 0
       stdout:
@@ -30,37 +30,44 @@ scenarios:
       stderr:
         equals: ''
       changes: {created: [], modified: [], deleted: []}
-- name: gozen art prompt builds neutral catalog and lints it
+- name: gozen prompt builds neutral catalog and lints it
   steps:
   - run:
-      command: gozen art prompt --config "${specdir}/../../docs/examples/production/catalog.yaml" --scene landscape --format json
+      command: gozen prompt --config "${specdir}/../../docs/examples/production/catalog.yaml" --scene landscape --format json
   - assert:
       exit_code: 0
       stdout:
-        contains: ['"positive": "quiet garden, soft light"', '"dialect": "sdxl"']
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: prompt}
+        - {path: $.data.positive, equals: "quiet garden, soft light"}
+        - {path: $.data.dialect, equals: sdxl}
       stderr:
         equals: ''
   - run:
-      command: gozen art prompt --config "${specdir}/../../docs/examples/production/catalog.yaml" --scene portrait --format json
+      command: gozen prompt --config "${specdir}/../../docs/examples/production/catalog.yaml" --scene portrait --format json
   - assert:
       exit_code: 0
       stdout:
-        contains: ['"positive": "quiet garden, soft light, (traveler:1.5), adult"']
+        json:
+        - {path: $.data.positive, equals: "quiet garden, soft light, (traveler:1.5), adult"}
       stderr:
         equals: ''
   - run:
-      command: gozen art prompt lint --config "${specdir}/../../docs/examples/production/catalog.yaml" --format json
+      command: gozen prompt lint --config "${specdir}/../../docs/examples/production/catalog.yaml" --format json
   - assert:
       exit_code: 0
       stdout:
-        equals: "[]\n"
+        json:
+        - {path: $.command, equals: prompt lint}
+        - {path: $.data, equals: []}
       stderr:
         equals: ''
       changes: {created: [], modified: [], deleted: []}
-- name: gozen art prompt missing prerequisite points to installation information
+- name: gozen prompt missing prerequisite points to installation information
   steps:
   - run:
-      command: gozen art prompt --config missing.yaml
+      command: gozen prompt --config missing.yaml
   - assert:
       exit_code: 1
       stderr:
@@ -136,4 +143,75 @@ scenarios:
       exit_code: 1
       stderr:
         contains: 'rectangle does not intersect'
+      changes: {created: [], modified: [], deleted: []}
+- name: prompt selectors are fixed and keep explicit ID errors structured
+  steps:
+  - run:
+      command: gozen prompt --select setting=studio --format json --config "${specdir}/../../docs/examples/production/catalog.yaml"
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: $.command, equals: prompt}
+        - {path: $.status, equals: ok}
+        - {path: $.data.positive, equals: plain backdrop}
+      stderr: {equals: ''}
+      changes: {created: [], modified: [], deleted: []}
+  - run:
+      command: gozen prompt --config "${specdir}/../../docs/examples/production/catalog.yaml" --select setting=missing --format jsonl
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr:
+        json:
+        - {path: $.command, equals: prompt}
+        - {path: $.code, equals: GZN2402}
+      changes: {created: [], modified: [], deleted: []}
+- name: prompt validates arguments before reading the catalog
+  matrix:
+  - {args: '--select invalid', code: GZN2201}
+  - {args: '--scene landscape --plan missing.yaml', code: GZN2301}
+  - {args: '--scenes - --select setting=studio', code: GZN2301}
+  steps:
+  - run:
+      command: gozen prompt --config missing.yaml --format json ${args}
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr:
+        json:
+        - {path: $.code, equals: '${code}'}
+      changes: {created: [], modified: [], deleted: []}
+- name: prompt JSON aggregates partial stdin batches in input order
+  steps:
+  - run:
+      command: gozen prompt --config "${specdir}/../../docs/examples/production/catalog.yaml" --scenes - --format json
+      stdin: |
+        landscape
+        missing
+        landscape
+  - assert:
+      exit_code: 1
+      stdout:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: prompt}
+        - {path: $.status, equals: failed}
+        - {path: '$.data[0].id', equals: landscape}
+        - {path: '$.data[1].id', equals: missing}
+        - {path: '$.data[2].id', equals: landscape}
+        - {path: '$.data[2].result.positive', equals: 'quiet garden, soft light'}
+      stderr: {equals: ''}
+      changes: {created: [], modified: [], deleted: []}
+- name: prompt empty stdin JSONL ends with one summary
+  steps:
+  - run:
+      command: gozen prompt --config "${specdir}/../../docs/examples/production/catalog.yaml" --scenes - --format jsonl
+      stdin: ''
+  - assert:
+      exit_code: 0
+      stdout:
+        equals: |
+          {"version":1,"command":"prompt","type":"summary","status":"ok","data":{"succeeded":0,"failed":0}}
+      stderr: {equals: ''}
       changes: {created: [], modified: [], deleted: []}

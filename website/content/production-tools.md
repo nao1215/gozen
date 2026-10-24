@@ -1,6 +1,6 @@
 ---
 title: Production tools
-description: gozen art prompt assembles image-generation text from a catalog; gozen art mosaic pixelates image regions by hand or with a user-supplied ONNX detection model.
+description: gozen prompt assembles image-generation text from a catalog; gozen art mosaic pixelates image regions by hand or with a user-supplied ONNX detection model.
 weight: 90
 toc: true
 ---
@@ -9,20 +9,20 @@ Two subcommands help with pictures. Neither is needed to make or play a game, an
 
 | Command | Does | Needs |
 |:--|:--|:--|
-| `gozen art prompt` | Assembles the positive and negative text for an image generator from a catalog of words | A catalog YAML; nothing else |
+| `gozen prompt` | Assembles the positive and negative text for an image generator from a catalog of words | A catalog YAML; nothing else |
 | `gozen art mosaic` | Pixelates regions of images, drawn by hand or found by a detection model | For detection: a cgo build, ONNX Runtime and your own model |
 
-## gozen art prompt
+## gozen prompt
 
-You describe the words once, in layers (setting, subject, lighting, ...), with IDs, defaults, dependencies, conflicts, priorities and emphasis. `gozen art prompt` picks the items for a scene, merges duplicates, resolves conflicts, applies the limits, and prints the text. The JSON output records where every word came from, so a surprising word can be traced to its item.
+You describe the words once, in layers (setting, subject, lighting, ...), with IDs, defaults, dependencies, conflicts, priorities and emphasis. `gozen prompt` picks the items for a scene, merges duplicates, resolves conflicts, applies the limits, and prints the text. The JSON output records where every word came from, so a surprising word can be traced to its item.
 
 <!-- verify: each fixture=production -->
 ```shell
-gozen art prompt --config catalog.yaml --scene landscape --format json
-gozen art prompt --config catalog.yaml --plan plan.yaml           # a plan holds only item IDs
-gozen art prompt -c catalog.yaml --setting studio                 # choose an item of a layer by hand
-gozen art prompt -c catalog.yaml --scenes ids.txt --format json   # many scenes, one JSON line each
-gozen art prompt lint --config catalog.yaml                       # check every item, dependency and scene
+gozen prompt --config catalog.yaml --scene landscape --format json
+gozen prompt --config catalog.yaml --plan plan.yaml           # a plan holds only item IDs
+gozen prompt -c catalog.yaml --select setting=studio                 # choose an item of a layer by hand
+gozen prompt -c catalog.yaml --scenes ids.txt --format jsonl  # item records followed by a summary
+gozen prompt lint --config catalog.yaml                       # check every item, dependency and scene
 ```
 
 A catalog, abridged from [docs/examples/production/catalog.yaml](https://github.com/nao1215/gozen/blob/main/docs/examples/production/catalog.yaml):
@@ -65,16 +65,16 @@ scenes:
 | `-c, --config FILE` | The catalog; required |
 | `--scene ID` | Assemble this scene of the catalog |
 | `--plan FILE` | Assemble a plan file, which holds only item IDs |
-| `--scenes FILE` | Assemble every scene ID in the file (one per line) as JSON Lines, with `--format json`; a failed scene is reported in its line and the rest continue |
-| `--<layer> ID` | Select an item of a layer; repeat for several |
-| `--format FORMAT` | `text` (default) or `json` |
+| `--scenes FILE` | Assemble one scene ID per line; `-` reads stdin. Failed scenes are reported and the rest continue |
+| `--select LAYER=ITEM` | Select an item of a layer; repeat for several |
+| `--format FORMAT` | `text` (default), `json` (one aggregate), or `jsonl` (items and summary) |
 
 - Emphasis has five steps, 0.9 to 1.5, in SDXL weight syntax. The token count is an estimate, not the model's tokenizer.
 - Unknown fields, several YAML documents in one file, broken references and control characters are rejected.
 - When a catalog selects a person layer, the tool adds its own fixed age constraints. A catalog cannot replace or drop them.
 - `lint` fails on errors and passes on warnings alone.
 
-The output is text. Send it to any generator you like; `gozen art prompt` never does.
+Text is the default output. Machine formats use the version-1 result envelope; `data` contains the assembled result, a batch array, or lint diagnostics. Send the assembled text to any generator you like; `gozen prompt` never does.
 
 ## gozen art mosaic
 

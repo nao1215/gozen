@@ -65,7 +65,7 @@ var (
 	})
 	OptionRequired = register(2303, "OptionRequired", Entry{
 		Summary: "a required option is missing",
-		Detail:  "The command cannot run without the option: capture needs the job file (--config) and destination (--out), release the inspection records (--inspect), and art prompt the catalog (--config).",
+		Detail:  "The command cannot run without the option: capture needs the job file (--config) and destination (--out), release the inspection records (--inspect), and prompt the catalog (--config).",
 		Fix:     "Add the option the message names.",
 	})
 )

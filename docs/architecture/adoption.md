@@ -34,7 +34,7 @@ Scripts, choosing a start point, replay and the like need `--dev`. A script need
 
 ## Checking the tools you brought in
 
-For a trial version, run `gozen trial <input> --out <new output> --list <list>` and check the output's YAML, assets and list with the public `gozen.Load` and FS operations. Use new paths for the output and the list. For text generation, use the structured output of `gozen art prompt --format json`. Neither exposes internal types to the using module.
+For a trial version, run `gozen trial <input> --out <new output> --list <list>` and check the output's YAML, assets and list with the public `gozen.Load` and FS operations. Use new paths for the output and the list. For text generation, use the structured output of `gozen prompt --format json`. Neither exposes internal types to the using module.
 
 Generate the memo list with `gozen notes <input> --out <new output>` and read `<new output>/index.html`. `--out` is required. Do not write HTML inside the input. A using module that publishes the list to the same place repeatedly generates it into a fresh working directory each time and replaces the previous list only on success. If generation fails, keep the previous list and the original JSON, pictures and save data. The overwrite protection of [ADR 0012](../decisions/0012-cli-ownership-and-output.md) stays.
 

@@ -43,7 +43,7 @@ type node struct {
 
 // tree maps a command path to its node.
 var tree = map[string]node{
-	"":             {subs: []string{"new", "run", "export", "check", "sim", "trace", "notes", "release", "trial", "capture", "book", "art", "theme", "version", "help"}},
+	"":             {subs: []string{"new", "run", "export", "check", "sim", "trace", "notes", "release", "trial", "capture", "book", "prompt", "art", "theme", "version", "help"}},
 	"new":          {build: (*command).newGame},
 	"check":        {build: (*command).checkCmd},
 	"sim":          {subs: []string{"battle", "dive", "floors", "design", "campaign", "routes", "breed"}},
@@ -62,8 +62,9 @@ var tree = map[string]node{
 	"export":       {build: (*command).exportGame},
 	"release":      {build: (*command).release},
 	"trial":        {build: (*command).trialCmd},
-	"art":          {subs: []string{"prompt", "mosaic", "fetch", "faces", "puppet"}},
-	"art prompt":   {delegate: promptcmd.Run},
+	"art":          {subs: []string{"mosaic", "fetch", "faces", "puppet"}},
+	"prompt":       {build: (*command).prompt, subs: []string{"lint"}},
+	"prompt lint":  {build: (*command).prompt},
 	"art mosaic":   {delegate: mosaiccmd.Run},
 	"art fetch":    {delegate: mosaiccmd.Fetch},
 	"art faces":    {build: (*command).faces},
@@ -72,6 +73,10 @@ var tree = map[string]node{
 	"theme add":    {build: (*command).themeAdd},
 	"theme list":   {build: (*command).themeList},
 	"version":      {build: (*command).versionCmd},
+}
+
+func (c *command) prompt() clihelp.Operation {
+	return promptcmd.New(promptcmd.Config{Input: os.Stdin, Output: c.out, Diagnostics: c.stderr, Report: &c.report, Lint: c.path == "prompt lint"})
 }
 
 // parse parses a command's options. On --help it prints the page and returns

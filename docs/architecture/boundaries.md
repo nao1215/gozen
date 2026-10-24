@@ -14,7 +14,7 @@ What is published is the contract that a game author or a sample really needs. C
 | `internal/dev/`, `api/` | API checks during development | Not used at run time |
 | `cmd/gozen` | The only CLI. General authoring and checking, and dispatch to the authoring-support subcommands | Not used from the library |
 | `x/` | A place for experiments. Create it when a concrete user appears (the empty reserved directory was removed in [ADR 0021](../decisions/0021-query-and-commands.md)) | No compatibility promised |
-| `internal/promptgen/`, `internal/mosaic/` (including below) | Implementations dedicated to `gozen art prompt` and `gozen art mosaic`. The entry is each `command` package | Used only from `cmd/gozen` and their own implementation |
+| `internal/promptgen/`, `internal/mosaic/` (including below) | Implementations dedicated to `gozen prompt` and `gozen art mosaic`. The entry is each `command` package | Used only from `cmd/gozen` and their own implementation |
 | `examples/` | Newly made general-audience samples | Usage examples of the public API |
 
 The public API of layers 1 to 4 was made when the non-rendering core was implemented (T2), and layers 5 and 6 when the display layer was implemented (T3) (for the symbols see [the symbols of design decisions](../decisions/index.md#symbols)). Purposes and ownership are summarized in [the core API](core-api.md) and [the presentation API](presentation-api.md). `api/public.txt:1` is the current list of declarations. Identifiers of a future `x/` would also go in the list, but that does not make them a stable contract.

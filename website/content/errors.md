@@ -498,7 +498,7 @@ Fix: Add the option the message names, or drop the one that needs it.
 
 A required option is missing.
 
-The command cannot run without the option: capture needs the job file (--config) and destination (--out), release the inspection records (--inspect), and art prompt the catalog (--config).
+The command cannot run without the option: capture needs the job file (--config) and destination (--out), release the inspection records (--inspect), and prompt the catalog (--config).
 
 Fix: Add the option the message names.
 
