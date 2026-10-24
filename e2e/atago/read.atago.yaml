@@ -167,7 +167,7 @@ scenarios:
 
         '
   - run:
-      command: gozen play trace trace.jsonl --only say --from 1 --to 1
+      command: gozen trace trace.jsonl --only say --from 1 --to 1
   - assert:
       exit_code: 0
       stdout:
@@ -178,7 +178,7 @@ scenarios:
       stderr:
         equals: ''
   - run:
-      command: gozen play trace trace.jsonl --check
+      command: gozen trace trace.jsonl --check
   - assert:
       exit_code: 1
       stdout:
@@ -193,7 +193,7 @@ scenarios:
 
         '
   - run:
-      command: gozen play trace trace.jsonl
+      command: gozen trace trace.jsonl
   - assert:
       exit_code: 1
       stdout:

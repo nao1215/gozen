@@ -7,7 +7,7 @@ package diag
 var (
 	UnknownCommand = register(2101, "UnknownCommand", Entry{
 		Summary: "there is no such command",
-		Detail:  "The word is not a command of gozen or of the group it follows. Top-level commands include new, run, export, check, sim, play, book, pack, art, theme, version, and help. Removed command names are not aliases; use gozen --help to list the current commands.",
+		Detail:  "The word is not a command of gozen or of the group it follows. Top-level commands include new, run, export, check, sim, trace, notes, release, trial, play, book, art, theme, version, and help. Removed command names are not aliases; use gozen --help to list the current commands.",
 		Fix:     "Use the command the message names, or run gozen --help (or the group with --help) for the list.",
 	})
 	Operands = register(2102, "Operands", Entry{
@@ -65,7 +65,7 @@ var (
 	})
 	OptionRequired = register(2303, "OptionRequired", Entry{
 		Summary: "a required option is missing",
-		Detail:  "The command cannot run without the option: play shots needs the game binary (--bin), pack release the inspection records (--inspect), and art prompt the catalog (--config).",
+		Detail:  "The command cannot run without the option: play shots needs the game binary (--bin), release the inspection records (--inspect), and art prompt the catalog (--config).",
 		Fix:     "Add the option the message names.",
 	})
 )
@@ -74,7 +74,7 @@ var (
 var (
 	BadPath = register(2401, "BadPath", Entry{
 		Summary: "a path must be relative and stay inside its directory",
-		Detail:  "The option names a file or a directory inside the game, such as pack trial --config or pack release --prefix. It must be a relative path separated by / that does not climb out with .. or start at the root.",
+		Detail:  "The option names a file or a directory inside the game, such as release --prefix. It must be a relative path separated by / that does not climb out with .. or start at the root.",
 		Fix:     "Write the path relative to the game directory, without .., such as trial.yaml.",
 	})
 	UnknownName = register(2402, "UnknownName", Entry{

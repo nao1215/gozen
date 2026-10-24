@@ -18,7 +18,7 @@ func TestPackReleaseTakesItsOverlayFromTheGamePolicy(t *testing.T) {
 	}
 	write(t, filepath.Join(dir, "asset-policy.yaml"), "overlay: ovl\nreport: approvals.json\ninspection: {file: file, source: source, required: required, approved: approved}\nrecords: {file: file, source: source, required: required, approved: approved, output: output}\n")
 	out := filepath.Join(t.TempDir(), "release")
-	stdout, _ := invoke(t, 0, "pack", "release", dir, out, "--inspect", inspect)
+	stdout, _ := invoke(t, 0, "release", dir, "--out", out, "--inspect", inspect)
 	if !strings.Contains(stdout, out+": ") || !strings.Contains(stdout, "(1 approval records)") {
 		t.Errorf("stdout: %q", stdout)
 	}
@@ -27,8 +27,8 @@ func TestPackReleaseTakesItsOverlayFromTheGamePolicy(t *testing.T) {
 	}
 	read(t, filepath.Join(out, "game.yaml"))
 	// The output is never overwritten, nor placed inside the game.
-	invoke(t, 1, "pack", "release", dir, out, "--inspect", inspect)
-	invoke(t, 1, "pack", "release", dir, filepath.Join(dir, "out"), "--inspect", inspect)
+	invoke(t, 1, "release", dir, "--out", out, "--inspect", inspect)
+	invoke(t, 1, "release", dir, "--out", filepath.Join(dir, "out"), "--inspect", inspect)
 }
 
 func TestPackReleaseDiagnosesWhatIsMissing(t *testing.T) {
@@ -36,10 +36,10 @@ func TestPackReleaseDiagnosesWhatIsMissing(t *testing.T) {
 	top, inspect := approvals(t, dir, true)
 	release := func(want int, extra ...string) string {
 		t.Helper()
-		_, stderr := invoke(t, want, append([]string{"pack", "release", dir, filepath.Join(t.TempDir(), "r")}, extra...)...)
+		_, stderr := invoke(t, want, append([]string{"release", dir, "--out", filepath.Join(t.TempDir(), "r")}, extra...)...)
 		return stderr
 	}
-	if stderr := release(2); !strings.Contains(stderr, "usage: gozen pack release --inspect FILE") || !strings.Contains(stderr, diag.OptionRequired.String()) {
+	if stderr := release(2); !strings.Contains(stderr, "release requires --inspect FILE") || !strings.Contains(stderr, diag.OptionRequired.String()) {
 		t.Errorf("no --inspect: %q", stderr)
 	}
 	if stderr := release(2, "--inspect", inspect, "--overlay", top, "--prefix", "../assets"); !strings.Contains(stderr, "invalid --prefix") || !strings.Contains(stderr, diag.BadPath.String()) {
@@ -72,7 +72,7 @@ func TestPackReleaseRefusesWhatIsNotApproved(t *testing.T) {
 	dir := fixture(t)
 	top, inspect := approvals(t, dir, false)
 	out := filepath.Join(t.TempDir(), "r")
-	_, stderr := invoke(t, 1, "pack", "release", dir, out, "--inspect", inspect, "--overlay", top)
+	_, stderr := invoke(t, 1, "release", dir, "--out", out, "--inspect", inspect, "--overlay", top)
 	if !strings.Contains(stderr, diag.Unapproved.String()) || !strings.Contains(stderr, "mote.png") {
 		t.Errorf("stderr: %q", stderr)
 	}

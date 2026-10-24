@@ -35,7 +35,7 @@ func FuzzPlayTraceLine(f *testing.F) {
 		if err := os.WriteFile(p, []byte(`{"t":"start","tick":0,"game":"g","seed":1,"language":"en"}`+"\n"+line+"\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		for _, args := range [][]string{{"play", "trace", p}, {"play", "trace", p, "--check"}, {"play", "trace", p, "--input", "--from", "0.5"}} {
+		for _, args := range [][]string{{"trace", p}, {"trace", p, "--check"}, {"trace", p, "--input", "--from", "0.5"}} {
 			var out, errOut bytes.Buffer
 			got := run(args, &out, &errOut)
 			if got != 0 && got != 1 {

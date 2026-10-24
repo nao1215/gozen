@@ -302,7 +302,7 @@ A trace of a play is broken or shows faults. Exits 1.
 
 A line of the trace is broken.
 
-play trace reads the JSON Lines the game writes with --trace. A line is not JSON, has no kind t, or has a tick that is not a time.
+trace reads the JSON Lines the game writes with --trace. A line is not JSON, has no kind t, or has a tick that is not a time.
 
 Fix: Record the trace again with the game's --trace; do not edit it by hand.
 
@@ -310,7 +310,7 @@ Fix: Record the trace again with the game's --trace; do not edit it by hand.
 
 A standing picture went wrong in the play.
 
-play trace --check found a standing picture that moved while speaking, was left over after its line, hid an event picture, or was missing for a speaker.
+trace --check found a standing picture that moved while speaking, was left over after its line, hid an event picture, or was missing for a speaker.
 
 Fix: Look at the event at the time the line names, and fix its show and hide commands or the speaker's pictures.
 
@@ -318,7 +318,7 @@ Fix: Look at the event at the time the line names, and fix its show and hide com
 
 A song came later than asked for.
 
-play trace --check found a song heard later than --music-late seconds after the game asked for it.
+trace --check found a song heard later than --music-late seconds after the game asked for it.
 
 Fix: Make the song shorter to load (a smaller file) or ask for it earlier.
 
@@ -326,7 +326,7 @@ Fix: Make the song shorter to load (a smaller file) or ask for it earlier.
 
 Skipping passed a line that was not read.
 
-play trace --check found a line marked not read while skip mode or scene skip was on. Skipping stops before every line not read.
+trace --check found a line marked not read while skip mode or scene skip was on. Skipping stops before every line not read.
 
 Fix: Record the trace again with this engine; if it happens again, report it with the trace.
 
@@ -334,7 +334,7 @@ Fix: Record the trace again with this engine; if it happens again, report it wit
 
 Rolling back did not go back.
 
-play trace --check found a rollback line whose event stayed and whose line did not go back. Rolling back replays the event from its start to the line before.
+trace --check found a rollback line whose event stayed and whose line did not go back. Rolling back replays the event from its start to the line before.
 
 Fix: Record the trace again with this engine; if it happens again, report it with the trace.
 
@@ -342,7 +342,7 @@ Fix: Record the trace again with this engine; if it happens again, report it wit
 
 A voice could not be read in the play.
 
-play trace --check found a voice line marked missing: the file of a line's voice was not there or was not a sound the engine reads.
+trace --check found a voice line marked missing: the file of a line's voice was not there or was not a sound the engine reads.
 
 Fix: Add the file under assets/ (ogg or wav), or fix the say.voice that names it; gozen check lists missing voices too.
 
@@ -374,7 +374,7 @@ Building a release or a trial tree. Exits 1.
 
 An asset the game refers to is not approved.
 
-pack release copies only approved assets. An asset of the overlay that the game refers to has no approved inspection record, or it changed since the record.
+release copies only approved assets. An asset of the overlay that the game refers to has no approved inspection record, or it changed since the record.
 
 Fix: Inspect the asset and add an approved record, or stop referring to it.
 
@@ -398,7 +398,7 @@ Fix: Add the asset, or remove the reference; gozen check lists missing pictures 
 
 Trial.yaml cannot be read.
 
-The range settings of pack trial are not valid: YAML, an assume that is not var.<name> or flag.<name>, a dive_max without blocked, or a bad pattern.
+The range settings of trial are not valid: YAML, an assume that is not var.<name> or flag.<name>, a dive_max without blocked, or a bad pattern.
 
 Fix: Fix trial.yaml as the message says.
 
@@ -410,7 +410,7 @@ The shape of the command line: commands, operands, options. Exits 2.
 
 There is no such command.
 
-The word is not a command of gozen or of the group it follows. Top-level commands include new, run, export, check, sim, play, book, pack, art, theme, version, and help. Removed command names are not aliases; use gozen --help to list the current commands.
+The word is not a command of gozen or of the group it follows. Top-level commands include new, run, export, check, sim, trace, notes, release, trial, play, book, art, theme, version, and help. Removed command names are not aliases; use gozen --help to list the current commands.
 
 Fix: Use the command the message names, or run gozen --help (or the group with --help) for the list.
 
@@ -498,7 +498,7 @@ Fix: Add the option the message names, or drop the one that needs it.
 
 A required option is missing.
 
-The command cannot run without the option: play shots needs the game binary (--bin), pack release the inspection records (--inspect), and art prompt the catalog (--config).
+The command cannot run without the option: play shots needs the game binary (--bin), release the inspection records (--inspect), and art prompt the catalog (--config).
 
 Fix: Add the option the message names.
 
@@ -510,7 +510,7 @@ A path or a name the command line gives. Exits 2.
 
 A path must be relative and stay inside its directory.
 
-The option names a file or a directory inside the game, such as pack trial --config or pack release --prefix. It must be a relative path separated by / that does not climb out with .. or start at the root.
+The option names a file or a directory inside the game, such as release --prefix. It must be a relative path separated by / that does not climb out with .. or start at the root.
 
 Fix: Write the path relative to the game directory, without .., such as trial.yaml.
 

@@ -17,11 +17,11 @@ import (
 )
 
 // CopyGame selects runtime content from a prepared game tree into an empty
-// staging directory. Approval-controlled inputs must first use pack release.
+// staging directory. Approval-controlled inputs must first use release.
 // It returns sorted slash-separated filenames for the browser manifest.
 func CopyGame(src, dst string) ([]string, error) {
 	if _, err := os.Lstat(filepath.Join(src, "asset-policy.yaml")); err == nil {
-		return nil, errors.New("game has an asset policy; prepare it with gozen pack release before exporting")
+		return nil, errors.New("game has an asset policy; prepare it with gozen release before exporting")
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
 	}

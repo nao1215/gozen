@@ -262,8 +262,8 @@ Test tools:
 gozen run game --dev --memos notes                   # F9 note, F7 win rates, F5 reload
 gozen run game --dev --start cave --level 8 --battle cave_boss  # jump to a fight
 gozen run game --dev --autoplay 60 --speed 8 --trace run.jsonl  # autoplay and record
-gozen play trace run.jsonl                                # read the record
-gozen play notes notes                                    # notes as one HTML page
+gozen trace run.jsonl                                # read the record
+gozen notes notes --out notes-html                   # notes as one HTML page
 ```
 
 Embed a game:
@@ -298,10 +298,10 @@ location=trail battles=1 wins=1 gold=3
 | `new` | create a playable RPG, novel or campaign from a template |
 | `check` | definitions, references, expressions, pictures, text layout (`--only structure` or `--only layout`) |
 | `sim battle`, `sim dive`, `sim floors`, `sim design` | win rate; a dungeon dive; generated floors; scripted players |
-| `run`, `play trace`, `play notes`, `play shots` | run a game directory; read a trace; notes as HTML; screenshots of a list |
+| `run`, `trace`, `notes`, `play shots` | run a game directory; read a trace; notes as HTML; screenshots of a list |
 | `book` | the whole game as Markdown |
 | `export` | playable desktop directories; static browser games, using prebuilt runtimes |
-| `pack release`, `pack trial` | approved pictures only; a demo |
+| `release`, `trial` | approved pictures only; a demo |
 | `art prompt`, `art mosaic`, `art fetch`, `art faces`, `art puppet` | image prompts; pixelation; models; balloon faces; moving portraits |
 | `theme add`, `theme list` | copy a dungeon theme (walls, floor, ceiling, door) into a game; list the themes |
 | `version`, `help` | the version; a command's help, or a diagnostic code |
@@ -318,7 +318,7 @@ location=trail battles=1 wins=1 gold=3
 - Characters that react to typed words, and a chat log ([react](https://pkg.go.dev/github.com/nao1215/gozen/react), [chat](https://pkg.go.dev/github.com/nao1215/gozen/chat))
 - Campaigns: regions held by factions over turns, orders with generals, a sortie screen with tactics, marches shown as clashes of armies (or decided by numbers or a battle), the other factions' rules, and `gozen sim campaign` ([recipes](https://nao1215.github.io/gozen/cookbook/#make-a-campaign))
 - Visual novels: roll back, skip what was read, save in a scene, choices read as `chose`, staging with `stand` ([recipes](https://nao1215.github.io/gozen/cookbook/#let-the-player-roll-back-and-save-in-a-scene))
-- Demo builds that cannot leak the full game: `gozen pack trial` keeps only what the range in `trial.yaml` reaches, so later events, endings and pictures are not in the demo at all ([recipe](https://nao1215.github.io/gozen/cookbook/#cut-a-release-and-a-trial))
+- Demo builds that cannot leak the full game: `gozen trial` keeps only what the range in `trial.yaml` reaches, so later events, endings and pictures are not in the demo at all ([recipe](https://nao1215.github.io/gozen/cookbook/#cut-a-release-and-a-trial))
 - Engine words in English and Japanese (`language` in game.yaml), and the game's text in two languages (`lang/`)
 
 ## Limitations

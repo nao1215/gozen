@@ -110,7 +110,7 @@ The sample browser builds keep game files outside WebAssembly. Their generated `
 
 ## Ship a demo
 
-`gozen pack trial game demo` prunes definitions and assets using the range in `trial.yaml`. Analysis is conservative: branches it cannot prove unreachable may remain, and retained files can contain later content. Use `--list FILE` and inspect the resulting definitions and assets before shipping.
+`gozen trial game --out demo` prunes definitions and assets using the range in `trial.yaml`. Analysis is conservative: branches it cannot prove unreachable may remain, and retained files can contain later content. Use `--list FILE` and inspect the resulting definitions and assets before shipping.
 
 ## Do not
 
@@ -122,7 +122,7 @@ The sample browser builds keep game files outside WebAssembly. Their generated `
 For desktop delivery, use `gozen export GAME --out OUT --runtime RUNTIME
 --target OS-ARCH` with a matching release runtime. Keep the output directory
 new and outside both inputs. If the game has an asset policy, first use
-`pack release` and export its approved output. Run the packaged player after
+`release` and export its approved output. Run the packaged player after
 moving the directory, with isolated saves; check save/reload and the actual
 native target. Cross-compilation alone is not runtime verification. For browser delivery, use `gozen export GAME --target web --out OUT --runtime RUNTIME` with
 the matching js-wasm runtime bundle. Serve the output over HTTP(S), including

@@ -1,6 +1,6 @@
 version: '1'
 suite:
-  name: Gozen novel games in check and play trace (ADR 0025 to 0029)
+  name: Gozen novel games in check and trace (ADR 0025 to 0029)
 scenarios:
 - name: the novel words at schema_version 3 ask for version 4
   steps:
@@ -36,7 +36,7 @@ scenarios:
       command: gozen check --only structure new
   - assert:
       exit_code: 0
-- name: play trace shows the lines not read and what skipping did
+- name: trace shows the lines not read and what skipping did
   steps:
   - fixture:
       file: run.jsonl
@@ -51,7 +51,7 @@ scenarios:
         {"t":"skip","tick":52,"scene":true,"on":false,"why":"choice","event":"story","line":4}
         {"t":"end","tick":60}
   - run:
-      command: gozen play trace run.jsonl --only say,skip
+      command: gozen trace run.jsonl --only say,skip
   - assert:
       exit_code: 0
       stdout:
@@ -64,12 +64,12 @@ scenarios:
         - 'scene skip off (choice) at line 4'
         not_contains: 'lit.  [unread]'
   - run:
-      command: gozen play trace run.jsonl --check
+      command: gozen trace run.jsonl --check
   - assert:
       exit_code: 0
       stdout:
         contains: 'check: 0'
-- name: play trace shows rolling back and loading in the middle of an event
+- name: trace shows rolling back and loading in the middle of an event
   steps:
   - fixture:
       file: run.jsonl
@@ -80,7 +80,7 @@ scenarios:
         {"t":"resume","tick":50,"event":"story","line":3,"at":3}
         {"t":"end","tick":60}
   - run:
-      command: gozen play trace run.jsonl --only rollback,resume
+      command: gozen trace run.jsonl --only rollback,resume
   - assert:
       exit_code: 0
       stdout:
@@ -89,7 +89,7 @@ scenarios:
         - 'back from line 1 to line 5 of opening (the event before)'
         - 'load at line 3 of story (reached 3)'
   - run:
-      command: gozen play trace run.jsonl --check
+      command: gozen trace run.jsonl --check
   - assert:
       exit_code: 0
 - name: a save of a newer format is refused and one of version 1 is still read
@@ -256,7 +256,7 @@ scenarios:
         - '```mermaid'
         - 'talk --> farewell'
         - 'at_room -->|enter| farewell'
-- name: play trace shows the jumps and edits of the development panel
+- name: trace shows the jumps and edits of the development panel
   steps:
   - fixture:
       file: run.jsonl
@@ -266,7 +266,7 @@ scenarios:
         {"t":"jump","tick":20,"event":"talk","line":2}
         {"t":"end","tick":30}
   - run:
-      command: gozen play trace run.jsonl --only dev_set,jump
+      command: gozen trace run.jsonl --only dev_set,jump
   - assert:
       exit_code: 0
       stdout:

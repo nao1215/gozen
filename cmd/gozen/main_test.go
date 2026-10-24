@@ -106,11 +106,11 @@ func TestHelpAndArgumentContract(t *testing.T) {
 		{"sim", "dive", "unused", "--location", "grotto", "--tries", "0"},
 		{"sim", "floors", "unused", "--location", "grotto", "--try", "1"},
 		{"sim", "floors", "unused", "--location", "grotto", "--from", "0"},
-		{"play", "trace", "unused", "--to", "-1"},
-		{"play", "trace", "unused", "--music-late", "Inf"},
-		{"pack", "trial", "unused", "--config", "../private.yaml"},
-		{"pack", "trial", "unused", "out", "extra", "-n"},
-		{"pack", "trial", "unused", "out", "--overlay", "overlay"},
+		{"trace", "unused", "--to", "-1"},
+		{"trace", "unused", "--music-late", "Inf"},
+		{"trial", "unused", "--config", "../private.yaml"},
+		{"trial", "unused", "out", "extra", "-n"},
+		{"trial", "unused", "--out", "out", "--overlay", "overlay"},
 		{"play", "shots", "unused", "list", "--raw"},
 	} {
 		out, _ := invoke(t, 2, args...)
@@ -171,7 +171,7 @@ func TestHelpPagesHaveTheSameShape(t *testing.T) {
 		}
 	}
 	top, _ := invoke(t, 0, "--help")
-	if !strings.Contains(top, "[Commands]\n") || !strings.Contains(top, "-v, --version") || !strings.Contains(top, `Run "gozen <command> --help"`) {
+	if !strings.Contains(top, "[Commands]\n") || !strings.Contains(top, "--version") || !strings.Contains(top, `Run "gozen <command> --help"`) {
 		t.Fatal(top)
 	}
 }
@@ -189,16 +189,14 @@ func TestGNUOptionForms(t *testing.T) {
 		}
 	}
 	for _, args := range [][]string{
-		{"sim", "battle", dir, "--troop", "lesson", "-seed", "9"}, {"check", "-only", "structure", dir}, {"play", "notes", dir, "-out", "x"}, {"-version"},
+		{"sim", "battle", dir, "--troop", "lesson", "-seed", "9"}, {"check", "-only", "structure", dir}, {"notes", dir, "-out", "x"}, {"-version"},
 	} {
 		out, stderr := invoke(t, 2, args...)
 		if out != "" || !strings.Contains(stderr, "single-dash long option") {
 			t.Fatalf("%v: %q %q", args, out, stderr)
 		}
 	}
-	if v, _ := invoke(t, 0, "-v"); !strings.HasPrefix(v, "gozen ") {
-		t.Fatal(v)
-	}
+	invoke(t, 2, "-v")
 	if v, _ := invoke(t, 0, "--version"); !strings.HasPrefix(v, "gozen ") {
 		t.Fatal(v)
 	}
@@ -206,7 +204,7 @@ func TestGNUOptionForms(t *testing.T) {
 
 func TestDispatchHelpVersionAndDelegates(t *testing.T) {
 	top, _ := invoke(t, 0, "--help")
-	for _, sub := range []string{"check", "sim", "play", "book", "pack", "art", "version", "help"} {
+	for _, sub := range []string{"check", "sim", "play", "book", "export", "release", "trial", "art", "version", "help"} {
 		if !strings.Contains(top, "  "+sub+" ") {
 			t.Fatalf("top help lacks %s: %s", sub, top)
 		}
@@ -308,26 +306,26 @@ func TestTrialRoundTripNoOverwriteAndDryRun(t *testing.T) {
 	root := t.TempDir()
 	out := filepath.Join(root, "trial")
 	list := filepath.Join(root, "list.txt")
-	invoke(t, 0, "pack", "trial", dir, out, "--list", list, "-n")
+	invoke(t, 0, "trial", dir, "--out", out, "--list", list, "-n")
 	for _, p := range []string{out, list} {
 		if _, err := os.Lstat(p); !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("dry run wrote %s", p)
 		}
 	}
-	invoke(t, 0, "pack", "trial", dir, out, "--list", list)
+	invoke(t, 0, "trial", dir, "--out", out, "--list", list)
 	if _, err := data.Load(os.DirFS(out), "."); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(read(t, filepath.Join(dir, "assets", "mote.png")), read(t, filepath.Join(out, "assets", "mote.png"))) {
 		t.Fatal("asset changed")
 	}
-	invoke(t, 1, "pack", "trial", dir, out)
+	invoke(t, 1, "trial", dir, "--out", out)
 	write(t, filepath.Join(out, "sentinel"), "keep")
-	invoke(t, 1, "pack", "trial", dir, out)
+	invoke(t, 1, "trial", dir, "--out", out)
 	if string(read(t, filepath.Join(out, "sentinel"))) != "keep" {
 		t.Fatal("existing output changed")
 	}
-	invoke(t, 1, "pack", "trial", dir, filepath.Join(dir, "output"))
+	invoke(t, 1, "trial", dir, "--out", filepath.Join(dir, "output"))
 }
 
 func approvals(t *testing.T, dir string, approved bool) (string, string) {
@@ -353,14 +351,14 @@ func TestReleaseRoundTripAndApprovalFailure(t *testing.T) {
 	dir := fixture(t)
 	top, inspect := approvals(t, dir, true)
 	out := filepath.Join(t.TempDir(), "release")
-	invoke(t, 0, "pack", "release", dir, "--overlay", top, out, "--inspect", inspect)
+	invoke(t, 0, "release", dir, "--overlay", top, "--out", out, "--inspect", inspect)
 	if _, err := data.Load(os.DirFS(out), "."); err != nil {
 		t.Fatal(err)
 	}
-	invoke(t, 1, "pack", "release", "--inspect", inspect, "--overlay", top, dir, out)
+	invoke(t, 1, "release", "--inspect", inspect, "--overlay", top, dir, "--out", out)
 	top, inspect = approvals(t, dir, false)
 	bad := filepath.Join(t.TempDir(), "rejected")
-	invoke(t, 1, "pack", "release", dir, bad, "--inspect", inspect, "--overlay", top)
+	invoke(t, 1, "release", dir, "--out", bad, "--inspect", inspect, "--overlay", top)
 	if _, err := os.Lstat(bad); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("rejected release produced output")
 	}
@@ -390,29 +388,29 @@ func TestDesignAndMemosArtifacts(t *testing.T) {
 		t.Fatal(err)
 	}
 	html := filepath.Join(t.TempDir(), "html")
-	invoke(t, 0, "play", "notes", memos, "--out", html)
+	invoke(t, 0, "notes", memos, "--out", html)
 	if !strings.Contains(string(read(t, filepath.Join(html, "index.html"))), "&lt;marker&gt;") {
 		t.Fatal("HTML was not escaped")
 	}
 	read(t, filepath.Join(html, "thumbs", "2026-01-01_001.jpg"))
-	invoke(t, 1, "play", "notes", memos, "--out", html)
+	invoke(t, 1, "notes", memos, "--out", html)
 	write(t, filepath.Join(memos, "2026-01-01", "001.json"), `{"image":"../outside.png"}`)
-	invoke(t, 1, "play", "notes", memos, "--out", filepath.Join(t.TempDir(), "bad"))
+	invoke(t, 1, "notes", memos, "--out", filepath.Join(t.TempDir(), "bad"))
 }
 
 func TestTraceValidationAndFailures(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "trace.jsonl")
 	write(t, file, "{\"t\":\"say\",\"tick\":60,\"text\":\"A clear path.\"}\n")
-	out, _ := invoke(t, 0, "play", "trace", file)
+	out, _ := invoke(t, 0, "trace", file)
 	if !strings.Contains(out, "00:01.00") || !strings.Contains(out, "A clear path.") {
 		t.Fatal(out)
 	}
 	for _, bad := range []string{`null`, `{`, `{"t":"state","party":[3]}`, `{"t":"state","party":null}`, `{"t":"say","tick":-1}`, `{"tick":0}`} {
 		write(t, file, bad)
-		invoke(t, 1, "play", "trace", file)
+		invoke(t, 1, "trace", file)
 	}
 	write(t, file, "{\"t\":\"music\",\"tick\":0,\"wanted\":\"bell\",\"song\":\"\"}\n{\"t\":\"end\",\"tick\":120}\n")
-	out, _ = invoke(t, 1, "play", "trace", file, "--check")
+	out, _ = invoke(t, 1, "trace", file, "--check")
 	if !strings.Contains(out, "music-late") {
 		t.Fatal(out)
 	}
@@ -536,7 +534,7 @@ func TestTrialPrunesUnreachableContent(t *testing.T) {
 		t.Fatal(err)
 	}
 	output := filepath.Join(t.TempDir(), "trial")
-	invoke(t, 0, "pack", "trial", dir, output)
+	invoke(t, 0, "trial", dir, "--out", output)
 	db, err := data.Load(os.DirFS(output), ".")
 	if err != nil {
 		t.Fatal(err)

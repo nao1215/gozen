@@ -25,9 +25,9 @@ func TestCommandsRefuseOddInputWithoutPanicking(t *testing.T) {
 			{"sim", "dive", "--location", "cave", "--"},
 			{"sim", "floors", "--location", "cave", "--"},
 			{"sim", "design", "--list", "--"},
-			{"play", "trace", "--"},
-			{"play", "notes", "--"},
-			{"pack", "trial", "-n", "--"},
+			{"trace", "--"},
+			{"notes", "--"},
+			{"trial", "-n", "--"},
 			{"art", "puppet", "--"},
 			{"art", "faces", "--"},
 		} {
@@ -59,7 +59,7 @@ func TestCommandsRefuseOddInputWithoutPanicking(t *testing.T) {
 		{"sim", "battle", dir, "--troop", "lesson", "--turns", ""},
 		{"sim", "dive", dir, "--location", "cave", "--grind", "abc"},
 		{"sim", "floors", dir, "--location", "cave", "--from", "--to"},
-		{"play", "trace", file, "--from", "1,5"},
+		{"trace", file, "--from", "1,5"},
 		{"play", "shots", dir, file, "--bin", file, "--raw", "--timeout", "forever"},
 		{"sim", "design", dir, "--seed", "-1"},
 	} {

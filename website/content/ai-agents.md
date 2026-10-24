@@ -12,7 +12,7 @@ A Gozen game is plain text with a checker that answers in file and line. That su
 2. Give it one rule: `gozen check game` must pass before it says it is done.
 3. Ask for numbers, not opinions: `gozen sim battle` and `gozen sim dive` say whether a fight or a dive is too hard, and `gozen sim campaign` whether a war is too easy.
 4. Review the result as one document with `gozen book game > book.md`, then play it with `--dev` and leave F9 notes.
-5. Hand the notes back: `gozen play notes notes` gives a page of screenshots and comments, and each note's `.json` names the place and line.
+5. Hand the notes back: `gozen notes notes --out notes-html` gives a page of screenshots and comments, and each note's `.json` names the place and line.
 
 <!-- verify: run fixture=cave -->
 ```shell

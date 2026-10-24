@@ -42,7 +42,7 @@ type node struct {
 
 // tree maps a command path to its node.
 var tree = map[string]node{
-	"":             {subs: []string{"new", "run", "export", "check", "sim", "play", "book", "pack", "art", "theme", "version", "help"}},
+	"":             {subs: []string{"new", "run", "export", "check", "sim", "trace", "notes", "release", "trial", "play", "book", "art", "theme", "version", "help"}},
 	"new":          {run: (*command).newGame},
 	"check":        {run: (*command).checkCmd},
 	"sim":          {subs: []string{"battle", "dive", "floors", "design", "campaign", "routes", "breed"}},
@@ -53,16 +53,15 @@ var tree = map[string]node{
 	"sim dive":     {run: (*command).curve},
 	"sim floors":   {run: (*command).floorsCmd},
 	"sim design":   {run: (*command).design},
-	"play":         {subs: []string{"trace", "notes", "shots"}},
+	"play":         {subs: []string{"shots"}},
 	"run":          {run: (*command).playRun},
-	"play trace":   {run: (*command).traceCmd},
-	"play notes":   {run: (*command).notesCmd},
+	"trace":        {run: (*command).traceCmd},
+	"notes":        {run: (*command).notesCmd},
 	"play shots":   {run: (*command).shots},
 	"book":         {run: (*command).bookCmd},
-	"pack":         {subs: []string{"release", "trial"}},
 	"export":       {run: (*command).exportGame},
-	"pack release": {run: (*command).release},
-	"pack trial":   {run: (*command).trialCmd},
+	"release":      {run: (*command).release},
+	"trial":        {run: (*command).trialCmd},
 	"art":          {subs: []string{"prompt", "mosaic", "fetch", "faces", "puppet"}},
 	"art prompt":   {delegate: promptcmd.Run},
 	"art mosaic":   {delegate: mosaiccmd.Run},
@@ -168,13 +167,13 @@ func (c *command) finish(err error) int {
 	return 1
 }
 
-// top handles gozen with no command: -h/--help and -v/--version.
+// top handles gozen with no command: -h/--help and --version.
 func (c *command) top(args []string) error {
 	if len(args) == 0 {
 		return cliio.Invalid(diag.CommandMissing, "usage: gozen <command> [OPTIONS] [ARGUMENTS]; use --help")
 	}
 	fs := clihelp.NewFlagSet("gozen")
-	ver := fs.BoolP("version", "v", false, "print the gozen version and exit")
+	ver := fs.Bool("version", false, "print the gozen version and exit")
 	help, err := clihelp.Parse(fs, args)
 	if err != nil {
 		return cliio.Parse(err)
@@ -267,15 +266,18 @@ func (c *command) bookCmd(args []string) error {
 }
 
 func (c *command) notesCmd(args []string) error {
-	f := clihelp.NewFlagSet("gozen play notes")
-	memoOut := f.StringP("out", "o", "", "write the HTML to this new `DIR` (default: <memo-dir>-html)")
+	f := clihelp.NewFlagSet("gozen notes")
+	memoOut := f.StringP("out", "o", "", "write the HTML to this new `DIR`; required")
 	if err := c.parse(f, args); err != nil {
 		return err
 	}
 	if f.NArg() != 1 {
-		return cliio.Invalid(diag.Operands, "play notes expects one directory")
+		return cliio.Invalid(diag.Operands, "notes expects one directory")
 	}
-	return c.memosCmd(f.Args(), *memoOut)
+	if *memoOut == "" {
+		return cliio.Invalid(diag.OptionRequired, "notes requires --out DIR")
+	}
+	return c.writeMemos(f.Arg(0), *memoOut)
 }
 
 func (c *command) checkCmd(args []string) error {

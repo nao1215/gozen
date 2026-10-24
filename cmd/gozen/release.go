@@ -16,17 +16,22 @@ import (
 )
 
 func (c *command) release(args []string) error {
-	fl := clihelp.NewFlagSet("gozen pack release")
+	fl := clihelp.NewFlagSet("gozen release")
+	var out string
+	fl.StringVarP(&out, "out", "o", "", "write the approved tree to this new `DIR`; required")
 	inspect := fl.String("inspect", "", "the inspection records `FILE` (JSON Lines) from production; required")
 	overlay := fl.String("overlay", "", "take replaced assets from this `DIR` (default: the game's approval settings)")
 	prefix := fl.String("prefix", "assets", "the asset `DIR` inside the game, separated by /")
 	if err := c.parse(fl, args); err != nil {
 		return err
 	}
-	if fl.NArg() != 2 || *inspect == "" {
-		return cliio.Invalid(diag.OptionRequired, "usage: gozen pack release --inspect FILE [--overlay DIR] <game-dir> <out-dir>")
+	if fl.NArg() != 1 {
+		return cliio.Invalid(diag.Operands, "expected one game directory")
 	}
-	src, out := fl.Arg(0), fl.Arg(1)
+	if out == "" || *inspect == "" {
+		return cliio.Invalid(diag.OptionRequired, "release requires --inspect FILE and --out DIR")
+	}
+	src := fl.Arg(0)
 	if !cli.Relative(*prefix) {
 		return cliio.Invalid(diag.BadPath, "invalid --prefix")
 	}

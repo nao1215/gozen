@@ -64,7 +64,7 @@ func TestPlayTracePrintsEveryKindOfRecord(t *testing.T) {
 		`{"t":"end","tick":96}`,
 		`{"t":"custom","tick":97,"anything":1}`,
 	)
-	out, stderr := invoke(t, 0, "play", "trace", file)
+	out, stderr := invoke(t, 0, "trace", file)
 	if stderr != "" {
 		t.Fatalf("stderr: %q", stderr)
 	}
@@ -145,14 +145,14 @@ func TestPlayTraceFilters(t *testing.T) {
 		`{"t":"say","tick":180,"text":"two"}`,
 		`{"t":"say","tick":240,"text":"three"}`,
 	)
-	out, _ := invoke(t, 0, "play", "trace", file, "--only", "say")
+	out, _ := invoke(t, 0, "trace", file, "--only", "say")
 	if strings.Count(out, " say        ") != 3 || strings.Contains(out, "start      ") || strings.Contains(out, "view       ") {
 		t.Errorf("--only say: %q", out)
 	}
 	if !strings.Contains(out, "lines: input 1, say 3, start 1, view 2") {
 		t.Errorf("filters do not change the count: %q", out)
 	}
-	out, _ = invoke(t, 0, "play", "trace", file, "--from", "2", "--to", "3")
+	out, _ = invoke(t, 0, "trace", file, "--from", "2", "--to", "3")
 	if !strings.Contains(out, "00:02.00 view") || !strings.Contains(out, "00:03.00 say") || strings.Contains(out, "one") || strings.Contains(out, "three") {
 		t.Errorf("--from 2 --to 3: %q", out)
 	}
@@ -160,17 +160,17 @@ func TestPlayTraceFilters(t *testing.T) {
 	if !strings.Contains(out, "+b.png") || strings.Contains(out, "+a.png") {
 		t.Errorf("the view diff must start from what was on screen: %q", out)
 	}
-	out, _ = invoke(t, 0, "play", "trace", file, "--input", "--only", "input,say")
+	out, _ = invoke(t, 0, "trace", file, "--input", "--only", "input,say")
 	if !strings.Contains(out, `{"key":"z"}`) {
 		t.Errorf("--input: %q", out)
 	}
 	for _, args := range [][]string{
 		{"--from", "-1"}, {"--to", "-1"}, {"--from", "5", "--to", "2"}, {"--from", "NaN"}, {"--to", "Inf"}, {"--music-late", "-1"},
 	} {
-		invoke(t, 2, append([]string{"play", "trace", file}, args...)...)
+		invoke(t, 2, append([]string{"trace", file}, args...)...)
 	}
-	invoke(t, 2, "play", "trace")
-	invoke(t, 1, "play", "trace", filepath.Join(t.TempDir(), "absent.jsonl"))
+	invoke(t, 2, "trace")
+	invoke(t, 1, "trace", filepath.Join(t.TempDir(), "absent.jsonl"))
 }
 
 func TestPlayTraceLanguageFollowsTheStartRecord(t *testing.T) {
@@ -181,18 +181,18 @@ func TestPlayTraceLanguageFollowsTheStartRecord(t *testing.T) {
 	})
 	state := `{"t":"state","tick":0,"gold":1,"location":"a","party":[{"name":"X","back":true,"lv":1,"hp":1,"mhp":1,"mp":0,"mmp":0}]}`
 	ja := traceFile(t, `{"t":"start","tick":0,"game":"g","seed":1,"language":"ja"}`, state)
-	out, _ := invoke(t, 0, "play", "trace", ja)
+	out, _ := invoke(t, 0, "trace", ja)
 	if !strings.Contains(out, "X後 Lv1") {
 		t.Errorf("a Japanese trace shows its words: %q", out)
 	}
 	// A trace written before the language was recorded used the Japanese words.
 	old := traceFile(t, `{"t":"start","tick":0,"game":"g","seed":1}`, state)
-	if out, _ = invoke(t, 0, "play", "trace", old); !strings.Contains(out, "X後 Lv1") {
+	if out, _ = invoke(t, 0, "trace", old); !strings.Contains(out, "X後 Lv1") {
 		t.Errorf("old trace: %q", out)
 	}
 	// An unknown language falls back to English.
 	odd := traceFile(t, `{"t":"start","tick":0,"game":"g","seed":1,"language":"zz"}`, state)
-	if out, _ = invoke(t, 0, "play", "trace", odd); !strings.Contains(out, "X (back) Lv1") {
+	if out, _ = invoke(t, 0, "trace", odd); !strings.Contains(out, "X (back) Lv1") {
 		t.Errorf("unknown language: %q", out)
 	}
 }
@@ -209,12 +209,12 @@ func TestPlayTraceRejectsBrokenRecords(t *testing.T) {
 		{"member not an object", `{"t":"state","tick":1,"party":[1]}`},
 		{"capture missing", `{"t":"battle_capture","tick":1}`},
 	} {
-		_, stderr := invoke(t, 1, "play", "trace", traceFile(t, tc.line))
+		_, stderr := invoke(t, 1, "trace", traceFile(t, tc.line))
 		if !strings.Contains(stderr, diag.TraceBroken.String()) {
 			t.Errorf("%s: %q", tc.name, stderr)
 		}
 	}
-	_, stderr := invoke(t, 1, "play", "trace", traceFile(t, `{"t":"say","tick":1}`, `{`), "--check")
+	_, stderr := invoke(t, 1, "trace", traceFile(t, `{"t":"say","tick":1}`, `{`), "--check")
 	if !strings.Contains(stderr, diag.TraceBroken.String()) {
 		t.Errorf("--check with a broken line: %q", stderr)
 	}
