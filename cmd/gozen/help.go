@@ -261,7 +261,7 @@ var pages = map[string]clihelp.Page{
 		Usage:   []string{"gozen sim routes [OPTIONS] <game-dir>"},
 		About: "Explores event choices without a screen, counting paths to clear and game-over endings, " +
 			"and listing authored choice options that were never offered. Limits bound paths, event requests " +
-			"per path, and elapsed time. Findings do not fail unless --fail-unreachable is set.",
+			"per path, and elapsed time. Unreachable content fails only with --fail-unreachable. Runtime errors and timeouts always fail.",
 		Examples: []clihelp.Example{
 			{"explore a visual novel", "gozen sim routes examples/novel/game"},
 			{"write JSON and fail CI on unreachable content", "gozen sim routes game --format json --fail-unreachable"},
@@ -279,19 +279,19 @@ var pages = map[string]clihelp.Page{
 			{"compare three seeds on floor 1", "gozen sim floors game --location grotto --floor 1 --try 3"},
 			{"print the numbers only", "gozen sim floors game --location grotto --no-map"},
 		},
-		Groups: []clihelp.Group{{Title: "Floors", Flags: []string{"location", "from", "to", "floor", "try"}}, {Title: "Output", Flags: []string{"no-map"}}, general},
+		Groups: []clihelp.Group{{Title: "Floors", Flags: []string{"location", "from", "to", "floor", "try"}}, {Title: "Output", Flags: []string{"no-map", "format"}}, general},
 	},
 	"sim design": {
 		Summary: "play the game with personas and write a report",
 		Usage:   []string{"gozen sim design [OPTIONS] <game-dir>"},
 		About: "Plays the game headless with the personas of designeval.yaml (players, rewards, and time " +
-			"weights) and writes summary.json, the timelines, band.png, and report.md to a new directory. " +
+			"weights). With --out, writes summary.json, timelines, band.png, and report.md to a new directory. " +
 			"It does not run Git or collect anything from the environment. A simulation error keeps the " +
 			"report and exits 1.",
 		Examples: []clihelp.Example{
 			{"write a report to a new directory", "gozen sim design game -o report"},
-			{"run two personas with their logs", "gozen sim design game -o report --only walker -v"},
-			{"use another configuration and keep notes", "gozen sim design game --config game/designeval.yaml --memos notes"},
+			{"run one persona with its log", "gozen sim design game -o report --only walker -v"},
+			{"use another configuration and keep notes", "gozen sim design game --config game/designeval.yaml --out report --memos notes"},
 		},
 		Groups: []clihelp.Group{
 			{Title: "Input", Flags: []string{"config", "only", "seed", "list"}},
@@ -304,15 +304,16 @@ var pages = map[string]clihelp.Page{
 		Summary: "print or check a JSON Lines trace of a play",
 		Usage:   []string{"gozen trace [OPTIONS] <trace.jsonl>"},
 		About: "Prints a trace written by the game's --trace in time order. With --check, lists the " +
-			"faults of the standing pictures and the music instead and exits 1 if there are any.",
+			"faults of the standing pictures and the music instead and exits 1 if there are any. Use - for standard input. Check mode does not accept display filters.",
 		Examples: []clihelp.Example{
 			{"print a trace", "gozen trace run.jsonl"},
-			{"print only dialogue and battles between seconds 10 and 60", "gozen trace run.jsonl --only say,battle --from 10 --to 60"},
+			{"print only dialogue and battles between seconds 10 and 60", "gozen trace run.jsonl --only say --only battle --from 10 --to 60"},
 			{"check pictures and music", "gozen trace run.jsonl --check"},
 		},
 		Groups: []clihelp.Group{
 			{Title: "Filter", Flags: []string{"only", "from", "to", "input"}},
 			{Title: "Check", Flags: []string{"check", "music-late"}},
+			{Title: "Output", Flags: []string{"format"}},
 			general,
 		},
 	},

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -20,7 +21,7 @@ import (
 	"github.com/nao1215/gozen/internal/layer1/assetfs"
 )
 
-func (c *command) trialCmd(args []string) (err error) {
+func (c *command) trialCmd() clihelp.Operation {
 	fl := clihelp.NewFlagSet("gozen trial")
 	var out string
 	fl.StringVarP(&out, "out", "o", "", "write the trial to this new `DIR`; required unless --dry-run")
@@ -29,106 +30,105 @@ func (c *command) trialCmd(args []string) (err error) {
 	inspect := fl.String("inspect", "", "the inspection records `FILE` (JSON Lines) from production; needed with --overlay")
 	list := fl.String("list", "", "write the list of what was kept and dropped to this new `FILE`")
 	dry := fl.BoolP("dry-run", "n", false, "write nothing; print only how much would be kept")
-	if err := c.parse(fl, args); err != nil {
-		return err
-	}
-	if fl.NArg() != 1 {
-		return cliio.Invalid(diag.Operands, "expected one game directory")
-	}
-	src := fl.Arg(0)
-	if !*dry && out == "" {
-		return cliio.Invalid(diag.OptionRequired, "trial requires --out DIR unless --dry-run")
-	}
-	if (*overlay == "") != (*inspect == "") {
-		return cliio.Invalid(diag.OptionNeedsAnother, "--overlay and --inspect must be supplied together")
-	}
-	if !*dry {
-		if err := cli.Destination(out, src, *overlay); err != nil {
+	return clihelp.Operation{Flags: fl, Run: func(_ context.Context) (err error) {
+		if fl.NArg() != 1 {
+			return cliio.Invalid(diag.Operands, "expected one game directory")
+		}
+		src := fl.Arg(0)
+		if !*dry && out == "" {
+			return cliio.Invalid(diag.OptionRequired, "trial requires --out DIR unless --dry-run")
+		}
+		if (*overlay == "") != (*inspect == "") {
+			return cliio.Invalid(diag.OptionNeedsAnother, "--overlay and --inspect must be supplied together")
+		}
+		if !*dry {
+			if err := cli.Destination(out, src, *overlay); err != nil {
+				return err
+			}
+		}
+		if err := gamedata.UseWords(os.DirFS(src)); err != nil {
 			return err
 		}
-	}
-	if err := gamedata.UseWords(os.DirFS(src)); err != nil {
-		return err
-	}
-	configPath := filepath.Join(src, "trial.yaml")
-	if fl.Changed("config") {
-		configPath = *conf
-	}
-	cfg, err := trial.Load(os.DirFS(filepath.Dir(configPath)), filepath.Base(configPath))
-	if err != nil {
-		if diag.Of(err) == 0 {
-			err = diag.TrialConfig.Wrap(err)
+		configPath := filepath.Join(src, "trial.yaml")
+		if fl.Changed("config") {
+			configPath = *conf
 		}
-		return err
-	}
-	res, err := trial.Build(os.DirFS(src), cfg)
-	if err != nil {
-		return err
-	}
-	if err := res.Check(); err != nil {
-		return fmt.Errorf("the trial copy does not pass the engine's check: %w", err)
-	}
-	c.summary(res)
-	if !*dry && *list != "" {
-		if err := cli.Destination(*list, src, *overlay, out); err != nil {
+		cfg, err := trial.Load(os.DirFS(filepath.Dir(configPath)), filepath.Base(configPath))
+		if err != nil {
+			if diag.Of(err) == 0 {
+				err = diag.TrialConfig.Wrap(err)
+			}
 			return err
 		}
-		if err := writeList(*list, res); err != nil {
+		res, err := trial.Build(os.DirFS(src), cfg)
+		if err != nil {
 			return err
 		}
-	}
-	if *dry {
-		return nil
-	}
-	if *overlay == "" {
-		return cli.Publish(out, []string{src}, func(stage string) error { return res.Write(src, stage) })
-	}
-	if *inspect == "" {
-		return errors.New("replacing needs --inspect")
-	}
+		if err := res.Check(); err != nil {
+			return fmt.Errorf("the trial copy does not pass the engine's check: %w", err)
+		}
+		c.summary(res)
+		if !*dry && *list != "" {
+			if err := cli.Destination(*list, src, *overlay, out); err != nil {
+				return err
+			}
+			if err := writeList(*list, res); err != nil {
+				return err
+			}
+		}
+		if *dry {
+			return nil
+		}
+		if *overlay == "" {
+			return cli.Publish(out, []string{src}, func(stage string) error { return res.Write(src, stage) })
+		}
+		if *inspect == "" {
+			return errors.New("replacing needs --inspect")
+		}
 
-	stage, err := os.MkdirTemp("", "gozen-trial-")
-	if err != nil {
-		return err
-	}
-	if err := res.Write(src, stage); err != nil {
-		return err
-	}
-	defer func() { err = errors.Join(err, os.RemoveAll(stage)) }()
-	policy, ins, outputs, err := releaseInputs(src, overlay, *inspect)
-	if err != nil {
-		return err
-	}
-	in := map[string]bool{}
-	for _, a := range res.Assets {
-		in[a] = true
-	}
-	var mine []assetfs.Approval
-	for _, x := range ins {
-		if in[x.File] {
-			mine = append(mine, x)
+		stage, err := os.MkdirTemp("", "gozen-trial-")
+		if err != nil {
+			return err
 		}
-	}
-	if err := checkReferences(stage, *overlay, "assets", policy, mine, outputs); err != nil {
-		return err
-	}
-	var r assetfs.Result
-	err = cli.Publish(out, []string{src, *overlay}, func(dst string) error {
-		var e error
-		r, e = (assetfs.Tree{Src: stage, Top: *overlay, Prefix: "assets", Dst: dst, Outputs: outputs}).Build(mine)
-		return e
-	})
-	if err != nil {
-		return err
-	}
-	need := 0
-	for _, x := range mine {
-		if x.Required {
-			need++
+		if err := res.Write(src, stage); err != nil {
+			return err
 		}
-	}
-	c.out.Printf("%s: %d assets replaced (%d required for the trial)\n", out, len(r.Replaced), need)
-	return nil
+		defer func() { err = errors.Join(err, os.RemoveAll(stage)) }()
+		policy, ins, outputs, err := releaseInputs(src, overlay, *inspect)
+		if err != nil {
+			return err
+		}
+		in := map[string]bool{}
+		for _, a := range res.Assets {
+			in[a] = true
+		}
+		var mine []assetfs.Approval
+		for _, x := range ins {
+			if in[x.File] {
+				mine = append(mine, x)
+			}
+		}
+		if err := checkReferences(stage, *overlay, "assets", policy, mine, outputs); err != nil {
+			return err
+		}
+		var r assetfs.Result
+		err = cli.Publish(out, []string{src, *overlay}, func(dst string) error {
+			var e error
+			r, e = (assetfs.Tree{Src: stage, Top: *overlay, Prefix: "assets", Dst: dst, Outputs: outputs}).Build(mine)
+			return e
+		})
+		if err != nil {
+			return err
+		}
+		need := 0
+		for _, x := range mine {
+			if x.Required {
+				need++
+			}
+		}
+		c.out.Printf("%s: %d assets replaced (%d required for the trial)\n", out, len(r.Replaced), need)
+		return nil
+	}}
 }
 
 func (c *command) summary(res *trial.Result) {

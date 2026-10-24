@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,7 +14,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/nao1215/gozen/internal/cliio"
 
@@ -28,186 +28,220 @@ import (
 	data "github.com/nao1215/gozen/schema"
 )
 
-func (c *command) design(args []string) (err error) {
+func (c *command) design() clihelp.Operation {
 	fs := clihelp.NewFlagSet("gozen sim design")
-	cfgPath := fs.String("config", "", "the personas and measures `FILE` (default: designeval.yaml in the game directory)")
-	root := fs.String("root", filepath.Join("build", "designeval"), "the `DIR` that keeps the runs when --out is not given")
-	out := fs.StringP("out", "o", "", "write the run to this new `DIR` (default: <root>/<date>)")
-	only := fs.String("only", "", "run only these persona `IDS`, separated by commas")
-	memos := fs.String("memos", "", "write notes on marked places to this `DIR`; empty or none writes no notes")
-	verbose := fs.BoolP("verbose", "v", false, "write each persona's dives, choices, and stumbles to debug.log")
-	format := fs.String("format", "text", "the output: text (a report directory), or json (each persona's summary, run, events, and segments on stdout; nothing is written)")
-	seed := fs.Uint64("seed", 0, "play every persona with this random `SEED` instead of its own")
-	list := fs.Bool("list", false, "print the loaded personas and measures as JSON and play nothing")
-	if err := c.parse(fs, args); err != nil {
-		return err
-	}
-	if fs.NArg() != 1 {
-		return cliio.Invalid(diag.Operands, "expected <game-dir>")
-	}
-	dir := fs.Arg(0)
-	if *cfgPath == "" {
-		*cfgPath = filepath.Join(dir, "designeval.yaml")
-	}
-	fsys, err := gameFS(dir)
-	if err != nil {
-		return err
-	}
-	if err := gamedata.UseWords(fsys); err != nil {
-		return err
-	}
-	db0, err := data.Load(fsys, ".")
-	if err != nil {
-		return err
-	}
-	cfg, err := designeval.Load(os.DirFS(filepath.Dir(*cfgPath)), filepath.Base(*cfgPath))
-	if err != nil {
-		return err
-	}
-	if err := cfg.Validate(db0); err != nil {
-		return err
-	}
-	if *format != "text" && *format != "json" {
-		return cliio.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
-	}
-	if *list {
-		b, err := json.MarshalIndent(cfg, "", "  ")
+	cfgPath := fs.String("config", "", "the personas and measures `FILE` (default: GAME/designeval.yaml)")
+	root := fs.String("root", filepath.Join("build", "designeval"), "read previous runs from this `DIR` for comparison")
+	out := fs.StringP("out", "o", "", "also write report artifacts to this new `DIR`")
+	only := fs.StringArray("only", nil, "run this persona `ID`; repeatable")
+	memos := fs.String("memos", "", "write marked-place notes to this `DIR`; requires --out")
+	verbose := fs.BoolP("verbose", "v", false, "write simulation details to debug.log; requires --out")
+	seed := fs.Uint64("seed", 0, "override every persona's random `SEED`; must be positive when supplied")
+	list := fs.Bool("list", false, "list the loaded configuration without simulating")
+	c.reporting(fs)
+	return clihelp.Operation{Flags: fs, Run: func(_ context.Context) (err error) {
+		if fs.NArg() != 1 {
+			return cliio.Invalid(diag.Operands, "expected one game directory")
+		}
+		if fs.Changed("seed") && *seed == 0 {
+			return cliio.Invalid(diag.BadValue, "--seed must be positive when supplied")
+		}
+		if *out == "" && (*verbose || (*memos != "" && *memos != "none")) {
+			return cliio.Invalid(diag.OptionNeedsAnother, "--verbose and --memos require --out DIR")
+		}
+		if *list && *out != "" {
+			return cliio.Invalid(diag.OptionConflict, "--list and --out cannot be combined")
+		}
+		dir := fs.Arg(0)
+		if *cfgPath == "" {
+			*cfgPath = filepath.Join(dir, "designeval.yaml")
+		}
+		fsys, err := gameFS(dir)
 		if err != nil {
 			return err
 		}
-		c.out.Println(string(b))
-		return nil
-	}
-	if *format == "json" {
-		return c.designJSON(dir, *cfgPath, cfg, split(*only), *seed)
-	}
-	hash := ""
-	name := time.Now().Format("20060102-150405")
-	if *out == "" {
-		*out = filepath.Join(*root, name)
-	}
-	complete := false
-	if err := cli.Destination(*out, dir, *memos); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(*out), 0o750); err != nil {
-		return err
-	}
-	if err := os.Mkdir(*out, 0o750); err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil && !complete {
-			err = errors.Join(err, os.RemoveAll(*out))
+		if err := gamedata.UseWords(fsys); err != nil {
+			return err
 		}
-	}()
-	if err := os.Mkdir(filepath.Join(*out, "timeline"), 0o750); err != nil {
-		return err
-	}
-	var debug *cliio.Output
-	if *verbose {
-		f, openErr := os.Create(filepath.Join(*out, "debug.log"))
-		if openErr != nil {
-			return openErr
+		db0, err := data.Load(fsys, ".")
+		if err != nil {
+			return err
 		}
-		defer func() { err = errors.Join(err, f.Close()) }()
-		debug = &cliio.Output{Writer: f}
-		var mu sync.Mutex
-		cfg.Debug = func(format string, a ...any) {
-			mu.Lock()
-			defer mu.Unlock()
-			debug.Printf(format+"\n", a...)
+		cfg, err := designeval.Load(os.DirFS(filepath.Dir(*cfgPath)), filepath.Base(*cfgPath))
+		if err != nil {
+			return err
 		}
-	}
-	var personas []designeval.Persona
-	for _, p := range cfg.Personas {
-		if *only == "" || strings.Contains(","+*only+",", ","+p.ID+",") {
-			personas = append(personas, p)
+		if err := cfg.Validate(db0); err != nil {
+			return err
 		}
-	}
-	for _, id := range split(*only) {
-		found := false
-		for _, p := range personas {
-			found = found || p.ID == id
+		if *list {
+			if c.report.Machine() {
+				return c.report.Result(c.out, "ok", cfg)
+			}
+			for _, p := range cfg.Personas {
+				c.out.Printf("%s: %s (seed %d)\n", p.ID, p.Name, p.Seed)
+			}
+			return nil
 		}
-		if !found {
-			return cliio.Invalid(diag.UnknownName, "--only: unknown persona %q", id)
+		var personas []designeval.Persona
+		for _, p := range cfg.Personas {
+			if len(*only) == 0 || slices.Contains(*only, p.ID) {
+				if fs.Changed("seed") {
+					p.Seed = *seed
+				}
+				personas = append(personas, p)
+			}
 		}
-	}
-	runs := make([]*designeval.Run, len(personas))
-	errs := make([]error, len(personas))
-
-	for i, p := range personas {
-		func() {
-			db, err := data.Load(os.DirFS(dir), ".")
+		for _, id := range *only {
+			if !slices.ContainsFunc(personas, func(p designeval.Persona) bool { return p.ID == id }) {
+				return cliio.Invalid(diag.UnknownName, "--only: unknown persona %q", id)
+			}
+		}
+		if len(personas) == 0 {
+			return cliio.Invalid(diag.UnknownName, "--only matched no personas")
+		}
+		complete := false
+		if *out != "" {
+			if err := cli.Destination(*out, dir, *memos, *cfgPath); err != nil {
+				return err
+			}
+			if err := os.MkdirAll(filepath.Dir(*out), 0o750); err != nil {
+				return err
+			}
+			if err := os.Mkdir(*out, 0o750); err != nil {
+				return err
+			}
+			defer func() {
+				if err != nil && !complete {
+					err = errors.Join(err, os.RemoveAll(*out))
+				}
+			}()
+			if err := os.Mkdir(filepath.Join(*out, "timeline"), 0o750); err != nil {
+				return err
+			}
+		}
+		var debug *cliio.Output
+		if *verbose {
+			f, err := os.Create(filepath.Join(*out, "debug.log"))
 			if err != nil {
-				errs[i] = err
-				return
+				return err
+			}
+			defer func() {
+				if closeErr := f.Close(); closeErr != nil {
+					err = errors.Join(err, closeErr)
+				}
+			}()
+			debug = &cliio.Output{Writer: f}
+			var mu sync.Mutex
+			cfg.Debug = func(format string, a ...any) { mu.Lock(); defer mu.Unlock(); debug.Printf(format+"\n", a...) }
+		}
+		runs := make([]*designeval.Run, len(personas))
+		sums := make([]designeval.Summary, len(personas))
+		for i, p := range personas {
+			db, err := data.Load(fsys, ".")
+			if err != nil {
+				return err
 			}
 			cfgRun, err := designeval.Load(os.DirFS(filepath.Dir(*cfgPath)), filepath.Base(*cfgPath))
 			if err != nil {
-				errs[i] = err
-				return
+				return err
 			}
 			cfgRun.Debug = cfg.Debug
-			start := time.Now()
-			runs[i] = designeval.Play(db, cfgRun, p)
-			c.stderr.Printf("%s: %d days, %.0f minutes, played in %s\n", p.ID, runs[i].Days, runs[i].End/60, time.Since(start).Round(time.Second))
-		}()
-	}
-	for _, err := range errs {
-		if err != nil {
-			return err
+			runs[i] = designeval.Play(db, cfgRun, p) //nolint:contextcheck // Bounded synchronous computation has no context parameter (API guidelines).
+			sums[i] = designeval.Summarize(runs[i], cfg.Release)
 		}
-	}
-	if debug != nil && debug.Err != nil {
-		return debug.Err
-	}
-	if len(personas) == 0 {
-		return cliio.Invalid(diag.UnknownName, "--only matched no personas")
-	}
-	sums := make([]designeval.Summary, len(runs))
-	for i, r := range runs {
-		sums[i] = designeval.Summarize(r, cfg.Release)
-		if err := writeTimeline(filepath.Join(*out, "timeline", r.Persona.ID+".jsonl"), r); err != nil {
-			return err
+		if debug != nil && debug.Err != nil {
+			return debug.Err
 		}
-	}
-	b, err := json.MarshalIndent(map[string]any{"format_version": 1, "name": filepath.Base(*out), "hash": hash, "personas": sums}, "", "  ")
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(filepath.Join(*out, "summary.json"), b, 0o600); err != nil {
-		return err
-	}
-	if err := writeBand(filepath.Join(*out, "band.png"), runs); err != nil {
-		return err
-	}
-	var notes []string
-	if *memos != "none" && *memos != "" {
-		if notes, err = designMemos(*memos, filepath.Base(*out), db0, cfg, runs, sums); err != nil {
-			return err
+		hash := ""
+		if *out != "" {
+			for _, r := range runs {
+				if err := writeTimeline(filepath.Join(*out, "timeline", r.Persona.ID+".jsonl"), r); err != nil {
+					return err
+				}
+			}
+			b, err := json.MarshalIndent(map[string]any{"format_version": 1, "name": filepath.Base(*out), "hash": hash, "personas": sums}, "", "  ")
+			if err != nil {
+				return err
+			}
+			if err := os.WriteFile(filepath.Join(*out, "summary.json"), b, 0o600); err != nil {
+				return err
+			}
+			if err := writeBand(filepath.Join(*out, "band.png"), runs); err != nil {
+				return err
+			}
+			var notes []string
+			if *memos != "none" && *memos != "" {
+				if notes, err = designMemos(*memos, filepath.Base(*out), db0, cfg, runs, sums); err != nil {
+					return err
+				}
+			}
+			prevName, prev := previousRun(*root, filepath.Base(*out))
+			report := designReport(cfg, runs, sums, filepath.Base(*out), hash, prevName, prev)
+			if len(notes) > 0 {
+				report += fmt.Sprintf(lang.T("\n## メモ\n\n通信簿で目立った所を、テストプレイのメモ（source bot）として %d 件残した（%s。gozen notes で一覧）。\n\n"), len(notes), *memos)
+				for _, n := range notes {
+					report += "- " + n + "\n"
+				}
+			}
+			if err := os.WriteFile(filepath.Join(*out, "report.md"), []byte(report), 0o600); err != nil {
+				return err
+			}
+
+			complete = true
 		}
-	}
-	prevName, prev := previousRun(*root, filepath.Base(*out))
-	report := designReport(cfg, runs, sums, filepath.Base(*out), hash, prevName, prev)
-	if len(notes) > 0 {
-		report += fmt.Sprintf(lang.T("\n## メモ\n\n通信簿で目立った所を、テストプレイのメモ（source bot）として %d 件残した（%s。gozen notes で一覧）。\n\n"), len(notes), *memos)
-		for _, n := range notes {
-			report += "- " + n + "\n"
+		failed := false
+		for _, r := range runs {
+			failed = failed || len(r.Problems) > 0
 		}
-	}
-	if err := os.WriteFile(filepath.Join(*out, "report.md"), []byte(report), 0o600); err != nil {
-		return err
-	}
-	complete = true
-	c.out.Println(filepath.Join(*out, "report.md"))
-	for _, r := range runs {
-		if len(r.Problems) > 0 {
-			return fmt.Errorf("design: persona %s reported simulation errors; see report.md", r.Persona.ID)
+		if c.report.Machine() {
+			status := "ok"
+			if failed {
+				status = "failed"
+			}
+			results := make([]designOutcome, len(runs))
+			for i, r := range runs {
+				results[i] = designOutcome{Summary: sums[i], Seed: r.Seed, Problems: append([]string{}, r.Problems...), ClearT: r.ClearT, End: r.End, Events: append([]designeval.Event{}, r.Events...), Segments: append([]designeval.Segment{}, r.Segments...)}
+				if c.report.Format == "jsonl" {
+					itemStatus := "ok"
+					if len(r.Problems) > 0 {
+						itemStatus = "failed"
+					}
+					if err := c.report.Item(c.out, r.Persona.ID, itemStatus, results[i]); err != nil {
+						return err
+					}
+				}
+			}
+			if err := c.report.Result(c.out, status, struct {
+				Personas []designOutcome `json:"personas"`
+			}{results}); err != nil {
+				return err
+			}
+			if failed {
+				return errReported
+			}
+			return nil
 		}
-	}
-	return nil
+		if *out != "" {
+			c.out.Println(filepath.Join(*out, "report.md"))
+		} else {
+			c.out.Print(designReport(cfg, runs, sums, "", hash, "", nil))
+		}
+		if failed {
+			return errors.New("design reported simulation errors; see report.md or the printed report")
+		}
+		return nil
+	}}
+}
+
+type designOutcome struct {
+	designeval.Summary
+	Seed     uint64               `json:"seed"`
+	Problems []string             `json:"problem_list"`
+	ClearT   float64              `json:"clear_t"`
+	End      float64              `json:"end"`
+	Events   []designeval.Event   `json:"events"`
+	Segments []designeval.Segment `json:"segments"`
 }
 
 func writeTimeline(path string, r *designeval.Run) (err error) {
@@ -647,45 +681,4 @@ func writeBand(path string, runs []*designeval.Run) (err error) {
 	}
 	defer func() { err = errors.Join(err, f.Close()) }()
 	return png.Encode(f, img)
-}
-
-// designJSON plays the personas and prints each one's summary and run as JSON.
-func (c *command) designJSON(dir, cfgPath string, cfg *designeval.Config, only []string, seed uint64) error {
-	type persona struct {
-		designeval.Summary
-		Seed     uint64               `json:"seed"`
-		Problems []string             `json:"problem_list"`
-		ClearT   float64              `json:"clear_t"`
-		End      float64              `json:"end"`
-		Events   []designeval.Event   `json:"events"`
-		Segments []designeval.Segment `json:"segments"`
-	}
-	var out []persona
-	for _, p := range cfg.Personas {
-		if len(only) > 0 && !slices.Contains(only, p.ID) {
-			continue
-		}
-		db, err := data.Load(os.DirFS(dir), ".")
-		if err != nil {
-			return err
-		}
-		run, err := designeval.Load(os.DirFS(filepath.Dir(cfgPath)), filepath.Base(cfgPath))
-		if err != nil {
-			return err
-		}
-		if seed != 0 {
-			p.Seed = seed
-		}
-		r := designeval.Play(db, run, p)
-		out = append(out, persona{Summary: designeval.Summarize(r, cfg.Release), Seed: r.Seed, Problems: r.Problems, ClearT: r.ClearT, End: r.End, Events: r.Events, Segments: r.Segments})
-	}
-	if len(out) == 0 {
-		return cliio.Invalid(diag.UnknownName, "--only matched no personas")
-	}
-	b, err := json.MarshalIndent(map[string]any{"format_version": 1, "personas": out}, "", "  ")
-	if err != nil {
-		return err
-	}
-	c.out.Println(string(b))
-	return nil
 }

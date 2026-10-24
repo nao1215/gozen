@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"maps"
 	"math/rand/v2"
 	"slices"
 	"strconv"
@@ -16,7 +18,7 @@ import (
 	"github.com/nao1215/gozen/internal/rpg"
 )
 
-func (c *command) floorsCmd(args []string) error {
+func (c *command) floorsCmd() clihelp.Operation {
 	fs := clihelp.NewFlagSet("gozen sim floors")
 	var loc string
 	fs.StringVar(&loc, "location", "", "the location `ID`; required")
@@ -24,77 +26,107 @@ func (c *command) floorsCmd(args []string) error {
 	to := fs.Int("to", 20, "the last floor to show")
 	floor := fs.Int("floor", 0, "show only this floor; with --try, the floor whose seeds are compared")
 	try := fs.Int("try", 0, "compare `N` seeds (0 to N-1) on --floor, one line each")
+	c.reporting(fs)
 	noMap := fs.Bool("no-map", false, "print the numbers only, without the maps")
-	if err := c.parse(fs, args); err != nil {
-		return err
-	}
-	if fs.NArg() != 1 {
-		return cliio.Invalid(diag.Operands, "expected one game directory")
-	}
-	if loc == "" {
-		return cliio.Invalid(diag.OptionRequired, "--location ID is required")
-	}
-	dir := fs.Arg(0)
-	if *from <= 0 || *to < *from || *floor < 0 || *try < 0 || (*try > 0 && *floor == 0) {
-		return cliio.Invalid(diag.BadValue, "invalid floor range or seed count; --try requires --floor")
-	}
-	fsys, err := gameFS(dir)
-	if err != nil {
-		return err
-	}
-	if err := data.UseWords(fsys); err != nil {
-		return err
-	}
-	db, err := data.Load(fsys)
-	if err != nil {
-		return err
-	}
-	l := db.Locations[loc]
-	if l == nil || l.Dungeon == nil || l.Dungeon.Generate == nil {
-		return cliio.Invalid(diag.UnknownName, "%s is not a generated dungeon of the game", loc)
-	}
-	g := l.Dungeon.Generate
-	if *floor > 0 {
-		*from, *to = *floor, *floor
-	}
-	if *try > 0 {
-		if *floor == 0 {
-			return cliio.Invalid(diag.OptionNeedsAnother, "--try needs --floor")
+	return clihelp.Operation{Flags: fs, Run: func(_ context.Context) (err error) {
+		if fs.NArg() != 1 {
+			return cliio.Invalid(diag.Operands, "expected one game directory")
 		}
-		keep, had := g.Floors[*floor]
-		if g.Floors == nil {
-			g.Floors = map[int]data.FloorPlan{}
+		if loc == "" {
+			return cliio.Invalid(diag.OptionRequired, "--location ID is required")
 		}
-		for s := range uint64(*try) {
-			g.Floors[*floor] = data.FloorPlan{Seed: &s}
-			st := floorState(db, loc, *floor)
-			c.out.Printf("seed %3d  %s\n", s, floorStats(db, st).line())
+		dir := fs.Arg(0)
+		if *from <= 0 || *to < *from || *floor < 0 || *try < 0 || (*try > 0 && *floor == 0) {
+			return cliio.Invalid(diag.BadValue, "invalid floor range or seed count; --try requires --floor")
 		}
-		if had {
-			g.Floors[*floor] = keep
+		fsys, err := gameFS(dir)
+		if err != nil {
+			return err
+		}
+		if err := data.UseWords(fsys); err != nil {
+			return err
+		}
+		db, err := data.Load(fsys)
+		if err != nil {
+			return err
+		}
+		l := db.Locations[loc]
+		if l == nil || l.Dungeon == nil || l.Dungeon.Generate == nil {
+			return cliio.Invalid(diag.UnknownName, "%s is not a generated dungeon of the game", loc)
+		}
+		g := l.Dungeon.Generate
+		if *floor > 0 {
+			*from, *to = *floor, *floor
+		}
+		results := []floorResult{}
+		emit := func(st *rpg.State, floor int, seed *uint64, source string, comparison bool) error {
+			numbers := floorStats(db, st)
+			row := floorResult{Floor: floor, Seed: seed, Source: source, Note: g.Floors[floor].Note, Numbers: numbers}
+			if !*noMap && !comparison {
+				row.Map = dungeon.Of(db, st).Map
+			}
+			if c.report.Machine() {
+				results = append(results, row)
+				if c.report.Format == "jsonl" {
+					return c.report.Item(c.out, strconv.Itoa(len(results)), "ok", row)
+				}
+				return nil
+			}
+			if comparison {
+				c.out.Printf("seed %3d  %s\n", *seed, numbers.line())
+				return nil
+			}
+			how := source
+			if seed != nil && source != "drawn" {
+				how = "seed " + strconv.FormatUint(*seed, 10)
+			}
+			c.out.Printf("B%dF (%s)  %s\n", floor, how, numbers.line())
+			if row.Note != "" {
+				c.out.Printf("  %s\n", row.Note)
+			}
+			if row.Map != "" {
+				c.out.Println(row.Map)
+			}
+			return nil
+		}
+		if *try > 0 {
+			keep, had := g.Floors[*floor]
+			if g.Floors == nil {
+				g.Floors = map[int]data.FloorPlan{}
+			}
+			for s := range uint64(*try) {
+				g.Floors[*floor] = data.FloorPlan{Seed: &s}
+				st := floorState(db, loc, *floor)
+				if err := emit(st, *floor, &s, "seed", true); err != nil {
+					return err
+				}
+			}
+			if had {
+				g.Floors[*floor] = keep
+			} else {
+				delete(g.Floors, *floor)
+			}
 		} else {
-			delete(g.Floors, *floor)
+			for f := *from; f <= *to; f++ {
+				st := floorState(db, loc, f)
+				source := "made"
+				var seed *uint64
+				if s, ok := g.SeedFor(f); ok {
+					seed, source = &s, "seed"
+				}
+				if g.Drawn(f) != "" {
+					source = "drawn"
+				}
+				if err := emit(st, f, seed, source, false); err != nil {
+					return err
+				}
+			}
+		}
+		if c.report.Machine() {
+			return c.report.Result(c.out, "ok", results)
 		}
 		return nil
-	}
-	for f := *from; f <= *to; f++ {
-		st := floorState(db, loc, f)
-		how := "made"
-		if s, ok := g.SeedFor(f); ok {
-			how = "seed " + strconv.FormatUint(s, 10)
-		}
-		if g.Drawn(f) != "" {
-			how = "drawn"
-		}
-		c.out.Printf("B%dF (%s)  %s\n", f, how, floorStats(db, st).line())
-		if n := g.Floors[f].Note; n != "" {
-			c.out.Printf("  %s\n", n)
-		}
-		if !*noMap {
-			c.out.Println(dungeon.Of(db, st).Map)
-		}
-	}
-	return nil
+	}}
 }
 
 func floorState(db *data.DB, loc string, floor int) *rpg.State {
@@ -106,35 +138,43 @@ func floorState(db *data.DB, loc string, floor int) *rpg.State {
 }
 
 type floorNumbers struct {
-	w, h, open, deadEnds int
-	down, downWarp       int
-	at                   map[rune][]int
-	battles, battlesAll  float64
+	Width      int              `json:"width"`
+	Height     int              `json:"height"`
+	Open       int              `json:"open"`
+	DeadEnds   int              `json:"dead_ends"`
+	Down       int              `json:"down"`
+	DownWarp   int              `json:"down_warp"`
+	Targets    map[string][]int `json:"targets"`
+	Battles    float64          `json:"battles"`
+	BattlesAll float64          `json:"battles_all"`
+}
+
+type floorResult struct {
+	Floor   int          `json:"floor"`
+	Seed    *uint64      `json:"seed,omitempty"`
+	Source  string       `json:"source"`
+	Note    string       `json:"note,omitempty"`
+	Map     string       `json:"map,omitempty"`
+	Numbers floorNumbers `json:"numbers"`
 }
 
 func (n floorNumbers) line() string {
 	var b strings.Builder
-	appendf(&b, "%dx%d open %d deadends %d  down %d", n.w, n.h, n.open, n.deadEnds, n.down)
+	appendf(&b, "%dx%d open %d deadends %d  down %d", n.Width, n.Height, n.Open, n.DeadEnds, n.Down)
 
-	if n.downWarp < n.down {
-		appendf(&b, " (warp %d)", n.downWarp)
+	if n.DownWarp < n.Down {
+		appendf(&b, " (warp %d)", n.DownWarp)
 	}
-	appendf(&b, "  battles %.1f (all %.1f) ", n.battles, n.battlesAll)
+	appendf(&b, "  battles %.1f (all %.1f) ", n.Battles, n.BattlesAll)
 
-	for _, r := range slices.Sorted(func(yield func(rune) bool) {
-		for r := range n.at {
-			if !yield(r) {
-				return
-			}
-		}
-	}) {
-		ds := slices.Clone(n.at[r])
+	for _, r := range slices.Sorted(maps.Keys(n.Targets)) {
+		ds := slices.Clone(n.Targets[r])
 		slices.Sort(ds)
 		var ss []string
 		for _, d := range ds {
 			ss = append(ss, strconv.Itoa(d))
 		}
-		appendf(&b, " %c:%s", r, strings.Join(ss, ","))
+		appendf(&b, " %s:%s", r, strings.Join(ss, ","))
 
 	}
 	return b.String()
@@ -195,16 +235,16 @@ func floorStats(db *data.DB, st *rpg.State) floorNumbers {
 		}
 		return best
 	}
-	n := floorNumbers{w: w, h: h, at: map[rune][]int{}, down: -1, downWarp: -1}
+	n := floorNumbers{Width: w, Height: h, Targets: map[string][]int{}, Down: -1, DownWarp: -1}
 	for y := range h {
 		for x := range w {
 			r := d.At(x, y)
 			if r == data.CellWall || r == data.CellNone {
 				continue
 			}
-			n.open++
+			n.Open++
 			if r != data.CellFloor && r != data.CellDoor {
-				n.at[r] = append(n.at[r], reach(plain, x, y))
+				n.Targets[string(r)] = append(n.Targets[string(r)], reach(plain, x, y))
 			}
 			if pass(x, y) {
 				open := 0
@@ -214,16 +254,16 @@ func floorStats(db *data.DB, st *rpg.State) floorNumbers {
 					}
 				}
 				if open <= 1 {
-					n.deadEnds++
+					n.DeadEnds++
 				}
 			}
 		}
 	}
 	if xs := dests['>']; len(xs) > 0 {
-		n.down, n.downWarp = reach(plain, xs[0][0], xs[0][1]), reach(warped, xs[0][0], xs[0][1])
+		n.Down, n.DownWarp = reach(plain, xs[0][0], xs[0][1]), reach(warped, xs[0][0], xs[0][1])
 	}
-	n.battles = expectedBattles(db, st, max(0, n.downWarp))
-	n.battlesAll = expectedBattles(db, st, n.open)
+	n.Battles = expectedBattles(db, st, max(0, n.DownWarp))
+	n.BattlesAll = expectedBattles(db, st, n.Open)
 	return n
 }
 

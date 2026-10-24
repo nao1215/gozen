@@ -80,7 +80,7 @@ scenarios:
       stdout:
         equals: ''
       stderr:
-        contains: '--format is text or json'
+        contains: '[GZN2202]'
 - name: a mistyped command is an error with the nearest command
   steps:
   - fixture:
@@ -103,19 +103,20 @@ scenarios:
   - assert:
       exit_code: 0
       stdout:
-        contains:
-        - '"troop": "lesson"'
-        - '"battles": 4'
-        - '"win_rate":'
+        json:
+        - {path: $.command, equals: sim battle}
+        - {path: '$.data[0].troop', equals: lesson}
+        - {path: '$.data[0].battles', equals: 4}
+        - {path: '$.data[0].win_rate', equals: 1}
   - run:
       command: gozen sim dive "${specdir}/fixtures/game" --location grotto --floors 2 --battles 1 --boss 2:lesson --arrival-saves arrivals --format json
   - assert:
       exit_code: 0
       stdout:
-        contains:
-        - '"floors": ['
-        - '"boss": "lesson"'
-        - '"boss_rate":'
+        json:
+        - {path: $.command, equals: sim dive}
+        - {path: '$.data.floors[1].boss', equals: lesson}
+        - {path: '$.data.floors[1].boss_rate', equals: 1}
       changes:
         created:
         - arrivals/floor-2.json
@@ -124,15 +125,17 @@ scenarios:
   - assert:
       exit_code: 0
       stdout:
-        contains: '"state": "arrivals/floor-2.json"'
+        json: {path: '$.data[0].state', equals: arrivals/floor-2.json}
   - run:
       command: gozen sim design "${specdir}/fixtures/game" --format json --seed 3
   - assert:
       exit_code: 0
       stdout:
-        contains:
-        - '"format_version": 1'
-        - '"segments":'
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: sim design}
+        - {path: '$.data.personas[0].seed', equals: 3}
+        - {path: '$.data.personas[0].segments', equals: []}
       changes:
         created: []
   - run:
@@ -140,4 +143,4 @@ scenarios:
   - assert:
       exit_code: 2
       stderr:
-        contains: '--format is text or json'
+        contains: '[GZN2202]'

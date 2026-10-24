@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -8,6 +9,40 @@ import (
 	"github.com/nao1215/gozen/internal/diag"
 	lang "github.com/nao1215/gozen/internal/text"
 )
+
+func TestTraceStructuredFiltersPreserveRecords(t *testing.T) {
+	file := traceFile(t,
+		`{"t":"start","tick":0,"language":"en"}`,
+		`{"t":"say","tick":60,"text":"one","read":false}`,
+		`{"t":"say","tick":120,"text":"two","line":0}`,
+		`{"t":"input","tick":120,"key":"z"}`,
+	)
+	out, _ := invoke(t, 0, "trace", file, "--only", "say", "--from", "2", "--format", "json")
+	var report struct {
+		Records  []map[string]any `json:"records"`
+		Selected int              `json:"selected"`
+		Counts   map[string]int   `json:"counts"`
+	}
+	if err := json.Unmarshal(resultData(t, out, "trace"), &report); err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Records) != 1 || report.Selected != 1 || report.Records[0]["text"] != "two" || report.Records[0]["line"] != float64(0) || report.Counts["say"] != 2 || report.Counts["input"] != 1 {
+		t.Fatalf("filtered report lost values or counts: %s", out)
+	}
+	jsonl, stderr := invoke(t, 0, "trace", file, "--only", "say", "--from", "2", "--format", "jsonl")
+	lines := strings.Split(strings.TrimSpace(jsonl), "\n")
+	if stderr != "" || len(lines) != 2 {
+		t.Fatalf("JSONL output: %s; %s", jsonl, stderr)
+	}
+	var record map[string]any
+	if err := json.Unmarshal(resultData(t, lines[0], "trace"), &record); err != nil {
+		t.Fatal(err)
+	}
+	if record["text"] != "two" || record["line"] != float64(0) {
+		t.Fatalf("JSONL changed the record: %v", record)
+	}
+	invoke(t, 2, "trace", file, "--check", "--only", "say", "--format", "json")
+}
 
 func traceFile(t *testing.T, lines ...string) string {
 	t.Helper()
@@ -160,7 +195,7 @@ func TestPlayTraceFilters(t *testing.T) {
 	if !strings.Contains(out, "+b.png") || strings.Contains(out, "+a.png") {
 		t.Errorf("the view diff must start from what was on screen: %q", out)
 	}
-	out, _ = invoke(t, 0, "trace", file, "--input", "--only", "input,say")
+	out, _ = invoke(t, 0, "trace", file, "--input", "--only", "input", "--only", "say")
 	if !strings.Contains(out, `{"key":"z"}`) {
 		t.Errorf("--input: %q", out)
 	}

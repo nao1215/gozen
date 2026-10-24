@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"math/rand/v2"
 	"sort"
@@ -41,130 +40,149 @@ type routesReport struct {
 	Errors             []string      `json:"errors,omitempty"`
 }
 
-func (c *command) routes(args []string) error {
+func (c *command) routes() clihelp.Operation {
 	fs := clihelp.NewFlagSet("gozen sim routes")
 	maxPaths := fs.Int("paths", 300, "maximum paths to explore")
 	maxDepth := fs.Int("depth", 20000, "maximum event requests per path")
 	timeout := fs.Duration("timeout", 30*time.Second, "maximum exploration time (for example 10s or 2m)")
-	format := fs.String("format", "text", "the output: text or json")
+	c.reporting(fs)
 	failUnreachable := fs.Bool("fail-unreachable", false, "exit 1 when an ending, option, or flag is unreachable")
-	if err := c.parse(fs, args); err != nil {
-		return err
-	}
-	if fs.NArg() != 1 {
-		return cliio.Invalid(diag.Operands, "expected <game-dir>")
-	}
-	if *maxPaths <= 0 || *maxDepth <= 0 || *timeout <= 0 {
-		return cliio.Invalid(diag.BadValue, "--paths, --depth, and --timeout must be positive")
-	}
-	if *format != "text" && *format != "json" {
-		return cliio.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
-	}
-	fsys, err := gameFS(fs.Arg(0))
-	if err != nil {
-		return err
-	}
-	if err := gamedata.UseWords(fsys); err != nil {
-		return err
-	}
-	db, err := data.Load(fsys, ".")
-	if err != nil {
-		return err
-	}
-	st := rpg.New(db, rand.New(rand.NewPCG(1, 2))) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
-	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
-	defer cancel()
-	var initial []data.Command
-	if event := db.Events[db.Game.Start.Event]; event != nil {
-		initial = event.Do
-	}
-	paths := headless.Explore(db, st, initial, headless.Config{Context: ctx, MaxPaths: *maxPaths, MaxSteps: *maxDepth, Seed: 1})
-	report := routesReport{Paths: len(paths), Endings: []routeEnding{}, UnreachableEndings: []string{}, UnofferedOptions: []routeOption{}, FlagsSetNeverRead: []string{}}
-	counts := map[string]int{}
-	examples := map[string][]string{}
-	offered := map[string]bool{}
-	for _, p := range paths {
-		if p.Left > 0 {
-			report.Truncated = true
+	return clihelp.Operation{Flags: fs, Run: func(ctx context.Context) (err error) {
+		if fs.NArg() != 1 {
+			return cliio.Invalid(diag.Operands, "expected <game-dir>")
 		}
-		for _, e := range p.Errs {
-			report.Errors = append(report.Errors, e.Error())
+		if *maxPaths <= 0 || *maxDepth <= 0 || *timeout <= 0 {
+			return cliio.Invalid(diag.BadValue, "--paths, --depth, and --timeout must be positive")
 		}
-		kind := ""
-		if p.Cleared {
-			kind = "clear"
-		} else if p.Over {
-			kind = "game_over"
-		}
-		if kind != "" {
-			counts[kind]++
-			if examples[kind] == nil {
-				examples[kind] = append([]string(nil), p.Taken...)
-			}
-		}
-		for _, step := range p.Steps {
-			if step.Kind == "choice" {
-				for _, option := range step.Options {
-					offered[step.Prompt+"\x00"+option] = true
-				}
-			}
-		}
-	}
-	if ctx.Err() != nil {
-		report.TimedOut = true
-		report.Truncated = false
-		report.Errors = append(report.Errors, "exploration timed out")
-	}
-	for kind, n := range counts {
-		report.Endings = append(report.Endings, routeEnding{Kind: kind, Paths: n, Example: examples[kind]})
-	}
-	if db.Game.GameOver.Event != "" && counts["game_over"] == 0 {
-		report.UnreachableEndings = append(report.UnreachableEndings, "game_over")
-	}
-	if hasClear(db) && counts["clear"] == 0 {
-		report.UnreachableEndings = append(report.UnreachableEndings, "clear")
-	}
-	for _, ev := range db.Events {
-		collectOptions(ev.Do, offered, &report.UnofferedOptions)
-	}
-	for _, loc := range db.Locations {
-		collectOptions(loc.OnEnter, offered, &report.UnofferedOptions)
-		for _, person := range loc.People {
-			collectOptions(person.Talk, offered, &report.UnofferedOptions)
-		}
-		for _, action := range loc.Actions {
-			collectOptions(action.Do, offered, &report.UnofferedOptions)
-		}
-		for _, exit := range loc.Exits {
-			collectOptions(exit.Do, offered, &report.UnofferedOptions)
-		}
-	}
-	for _, warning := range db.FlagWarnings() {
-		message := warning.Error()
-		const prefix, suffix = "flag.", " is set but nothing reads it"
-		if i := strings.LastIndex(message, prefix); i >= 0 && strings.Contains(message, suffix) {
-			name, _, _ := strings.Cut(message[i+len(prefix):], " ")
-			if name != "" {
-				report.FlagsSetNeverRead = append(report.FlagsSetNeverRead, name)
-			}
-		}
-	}
-	sort.Strings(report.FlagsSetNeverRead)
-	sort.Slice(report.Endings, func(i, j int) bool { return report.Endings[i].Kind < report.Endings[j].Kind })
-	sort.Strings(report.UnreachableEndings)
-	if *format == "json" {
-		b, err := json.MarshalIndent(report, "", "  ")
+		fsys, err := gameFS(fs.Arg(0))
 		if err != nil {
 			return err
 		}
-		c.out.Println(string(b))
-	} else {
+		if err := gamedata.UseWords(fsys); err != nil {
+			return err
+		}
+		db, err := data.Load(fsys, ".")
+		if err != nil {
+			return err
+		}
+		st := rpg.New(db, rand.New(rand.NewPCG(1, 2))) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
+		ctx, cancel := context.WithTimeout(ctx, *timeout)
+		defer cancel()
+		var initial []data.Command
+		if event := db.Events[db.Game.Start.Event]; event != nil {
+			initial = event.Do
+		}
+		paths := headless.Explore(db, st, initial, headless.Config{Context: ctx, MaxPaths: *maxPaths, MaxSteps: *maxDepth, Seed: 1})
+		report := routesReport{Paths: len(paths), Endings: []routeEnding{}, UnreachableEndings: []string{}, UnofferedOptions: []routeOption{}, FlagsSetNeverRead: []string{}}
+		counts := map[string]int{}
+		examples := map[string][]string{}
+		offered := map[string]bool{}
+		for _, p := range paths {
+			if p.Left > 0 {
+				report.Truncated = true
+			}
+			for _, e := range p.Errs {
+				report.Errors = append(report.Errors, e.Error())
+			}
+			kind := ""
+			if p.Cleared {
+				kind = "clear"
+			} else if p.Over {
+				kind = "game_over"
+			}
+			if kind != "" {
+				counts[kind]++
+				if examples[kind] == nil {
+					examples[kind] = append([]string(nil), p.Taken...)
+				}
+			}
+			for _, step := range p.Steps {
+				if step.Kind == "choice" {
+					for _, option := range step.Options {
+						offered[step.Prompt+"\x00"+option] = true
+					}
+				}
+			}
+		}
+		if ctx.Err() != nil {
+			report.TimedOut = true
+			report.Truncated = false
+			report.Errors = append(report.Errors, "exploration timed out")
+		}
+		for kind, n := range counts {
+			report.Endings = append(report.Endings, routeEnding{Kind: kind, Paths: n, Example: examples[kind]})
+		}
+		if db.Game.GameOver.Event != "" && counts["game_over"] == 0 {
+			report.UnreachableEndings = append(report.UnreachableEndings, "game_over")
+		}
+		if hasClear(db) && counts["clear"] == 0 {
+			report.UnreachableEndings = append(report.UnreachableEndings, "clear")
+		}
+		for _, ev := range db.Events {
+			collectOptions(ev.Do, offered, &report.UnofferedOptions)
+		}
+		for _, loc := range db.Locations {
+			collectOptions(loc.OnEnter, offered, &report.UnofferedOptions)
+			for _, person := range loc.People {
+				collectOptions(person.Talk, offered, &report.UnofferedOptions)
+			}
+			for _, action := range loc.Actions {
+				collectOptions(action.Do, offered, &report.UnofferedOptions)
+			}
+			for _, exit := range loc.Exits {
+				collectOptions(exit.Do, offered, &report.UnofferedOptions)
+			}
+		}
+		for _, warning := range db.FlagWarnings() {
+			message := warning.Error()
+			const prefix, suffix = "flag.", " is set but nothing reads it"
+			if i := strings.LastIndex(message, prefix); i >= 0 && strings.Contains(message, suffix) {
+				name, _, _ := strings.Cut(message[i+len(prefix):], " ")
+				if name != "" {
+					report.FlagsSetNeverRead = append(report.FlagsSetNeverRead, name)
+				}
+			}
+		}
+		sort.Strings(report.FlagsSetNeverRead)
+		sort.Slice(report.Endings, func(i, j int) bool { return report.Endings[i].Kind < report.Endings[j].Kind })
+		sort.Strings(report.UnreachableEndings)
+		sort.Slice(report.UnofferedOptions, func(i, j int) bool {
+			a, b := report.UnofferedOptions[i], report.UnofferedOptions[j]
+			if a.Prompt != b.Prompt {
+				return a.Prompt < b.Prompt
+			}
+			return a.Option < b.Option
+		})
+		var failure error
+		if len(report.Errors) > 0 {
+			failure = errors.New(strings.Join(report.Errors, "; "))
+		}
+		if *failUnreachable && (len(report.UnreachableEndings) > 0 || len(report.UnofferedOptions) > 0 || len(report.FlagsSetNeverRead) > 0) {
+			failure = errors.Join(failure, errors.New("unreachable endings, choice options, or flags found"))
+		}
+		if c.report.Machine() {
+			status := "ok"
+			if failure != nil {
+				status = "failed"
+			}
+			if c.report.Format == "jsonl" {
+				for _, ending := range report.Endings {
+					if err := c.report.Item(c.out, ending.Kind, "ok", ending); err != nil {
+						return err
+					}
+				}
+			}
+			if err := c.report.Result(c.out, status, report); err != nil {
+				return err
+			}
+			if failure != nil {
+				return errReported
+			}
+			return nil
+		}
 		printRoutes(c, report)
-	}
-	if *failUnreachable && (len(report.UnreachableEndings) > 0 || len(report.UnofferedOptions) > 0 || len(report.FlagsSetNeverRead) > 0) {
-		return errors.New("unreachable endings, choice options, or flags found")
-	}
-	return nil
+		return failure
+	}}
 }
 
 func hasClear(db *data.DB) bool {

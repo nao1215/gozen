@@ -45,7 +45,7 @@ scenarios:
       exit_code: 0
       stdout:
         contains:
-        - '"runs": 20'
+        - '"runs":20'
         - '"win_rate":'
         - '"regions_by_turn":'
         - '"attack":'
@@ -63,7 +63,7 @@ scenarios:
   - assert:
       exit_code: 0
       stdout:
-        contains: ['"mode": "strategies"', '"mean_turns":', '"mean_regions_held":', '"mean_changes":', '"end_holders":', '"player_win_rate_by_turn":']
+        contains: ['"mode":"strategies"', '"mean_turns":', '"mean_regions_held":', '"mean_changes":', '"end_holders":', '"player_win_rate_by_turn":']
   - run:
       command: gozen sim campaign war -n 3 --compare tactics
   - assert:
@@ -75,7 +75,7 @@ scenarios:
   - assert:
       exit_code: 0
       stdout:
-        contains: ['"tactic": "guard"', '"attack:guard":']
+        contains: ['"tactic":"guard"', '"attack:guard":']
   - run:
       command: gozen sim campaign war -n 5 --tactic rush
   - assert:

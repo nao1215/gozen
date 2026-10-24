@@ -86,7 +86,7 @@ suite excludes `web`; the Website and Release Smoke workflows run it separately.
 command and output contracts. The shared I/O and argument errors now live in
 `internal/cliio`; protected output paths remain in `cmd/internal/cli`.
 
-`new`, `export`, `capture` and `theme list` currently support `--format text|json|jsonl`. JSON emits one
+`new`, `export`, `capture`, `theme list`, `trace` and every `sim` command support `--format text|json|jsonl`. JSON emits one
 version-1 envelope with `command`, `status` and `data`. JSONL theme lists emit
 ordered `item` records and one terminal `summary`; creation emits one summary.
 Both machine formats send fatal diagnostics to stderr as JSONL, preserving the

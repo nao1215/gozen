@@ -89,3 +89,14 @@ func TestPackTrialListAndConfigDiagnostics(t *testing.T) {
 		t.Errorf("stderr: %q", stderr)
 	}
 }
+
+func TestPackTrialListsTheRangesOfVariables(t *testing.T) {
+	dir := designGame(t)
+	write(t, filepath.Join(dir, "trial.yaml"), "{}\n")
+	list := filepath.Join(t.TempDir(), "list.txt")
+	invoke(t, 0, "trial", dir, "--out", filepath.Join(t.TempDir(), "trial"), "--list", list)
+	text := string(read(t, list))
+	if !strings.Contains(text, "# ranges of variables and flags\n") || !strings.Contains(text, "var.offer = ") || !strings.Contains(text, "<- ") {
+		t.Errorf("the ranges of the variables are listed with what sets them:\n%s", text)
+	}
+}

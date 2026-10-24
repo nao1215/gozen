@@ -32,22 +32,41 @@ func (e *ArgumentError) Unwrap() error { return e.Err }
 
 // Main shares startup between the public play.Main and gozen run.
 // Directory mode requires one game directory operand and enables live reload there.
-func Main(ctx context.Context, fsys fs.FS, dir string, args []string, cfg EntryConfig) (err error) {
-	argument := func(err error) error {
-		if cfg.Directory {
-			return &ArgumentError{Err: err}
-		}
-		return err
-	}
-
+func Main(ctx context.Context, fsys fs.FS, dir string, args []string, cfg EntryConfig) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	out := cfg.Output
-	if out == nil {
-		out = io.Discard
+	op := Entry(fsys, dir, cfg)
+	help, err := clihelp.Parse(op.Flags, args)
+	if err != nil {
+		if cfg.Directory {
+			return &ArgumentError{Err: err}
+		}
+		if inner := errors.Unwrap(err); inner != nil {
+			return inner
+		}
+		return err
 	}
-	fl := clihelp.NewFlagSet("game")
+	if help {
+		out := cfg.Output
+		if out == nil {
+			out = io.Discard
+		}
+		_, err := io.WriteString(out, op.Page.String(op.Flags))
+		return err
+	}
+	return op.Run(ctx)
+}
+
+// Entry registers the shared player's real startup flags without reading game
+// data or initializing graphics. Main and the CLI dispatcher parse these flags;
+// the CLI help catalog reads the same registration without starting a game.
+func Entry(fsys fs.FS, dir string, cfg EntryConfig) clihelp.Operation {
+	name := "game"
+	if cfg.Directory {
+		name = "gozen run"
+	}
+	fl := clihelp.NewFlagSet(name)
 	dev := fl.Bool("dev", false, "enable the author tools; scripted runs isolate saves unless --save-dir is given")
 	collect := fl.Bool("build-info", false, "with --dev, include the embedded revision metadata in notes")
 	external := fl.Bool("external-input", false, "with --dev, permit Linux zenity for text input, falling back to in-window input")
@@ -94,109 +113,113 @@ func Main(ctx context.Context, fsys fs.FS, dir string, args []string, cfg EntryC
 	review := fl.Bool("review", false, "start a review of the pictures of every event: show them one by one and tag each (implies --gallery-all); needs --review-log")
 	reviewLog := fl.String("review-log", "", "with --review, write the tags to this JSON Lines `FILE` (the picture, its source, the tag, and the time)")
 	reviewSources := fl.String("review-sources", "", "with --review, a JSON `FILE` mapping each picture to the one it was made from, so a tag follows the source picture")
-	help, parseErr := clihelp.Parse(fl, args)
-	if parseErr != nil {
-		// The diagnostic codes are gozen's (ADR 0024); a game reports the message alone.
-		if inner := errors.Unwrap(parseErr); inner != nil && !cfg.Directory {
-			return inner
+	return clihelp.Operation{Flags: fl, Page: entryPage(cfg.Directory), Run: func(ctx context.Context) (err error) {
+		if err := ctx.Err(); err != nil {
+			return err
 		}
-		return argument(parseErr)
-	}
-	if help {
-		_, err := io.WriteString(out, entryPage(cfg.Directory).String(fl))
-		return err
-	}
-	if cfg.Directory {
-		if fl.NArg() != 1 {
-			return argument(errors.New("run expects one game directory"))
+		argument := func(err error) error {
+			if cfg.Directory {
+				return &ArgumentError{Err: err}
+			}
+			return err
 		}
-		*dirFlag = fl.Arg(0)
-		if *dirFlag == "" {
-			return argument(errors.New("game directory must not be empty"))
-		}
-	} else if fl.NArg() != 0 {
-		return argument(fmt.Errorf("unexpected positional arguments: %v", fl.Args()))
-	}
-	var devFlag string
-	fl.Visit(func(f *pflag.Flag) {
-		switch f.Name {
-		case "dev", "dir", "seed", "mute", "fullscreen", "window", "save-dir":
-		default:
-			devFlag = f.Name
-		}
-	})
-	if devFlag != "" && !*dev {
-		return argument(fmt.Errorf("--%s requires --dev", devFlag))
-	}
-	if *review && *reviewLog == "" {
-		return argument(errors.New("--review requires --review-log"))
-	}
-	if *scriptFile != "" && *shots == "" {
-		return argument(errors.New("--script requires --shots"))
-	}
 
-	game, err := gameFS(fsys, dir, *dirFlag)
-	if err != nil {
-		return err
-	}
-	opts := Options{
-		Development: *dev, CollectBuildInfo: *collect, ExternalInput: *external, Report: out, FS: game, Seed: *seed, NoSound: *mute || cfg.Mute, SaveDir: *saveDir, ShotDir: *shots,
-		Location: *start, Battle: *fight, Party: split(*party), Level: *level, Flags: split(*flags), Gold: *gold, Items: split(*items), Calm: *calm, Floor: *floor,
-		Replay: *replay, ReplayBattle: *replayBattle, TraceShots: *traceShots, Fullscreen: *fullscreen, Window: *windowScale, GalleryAll: *galleryAll, MemoDir: *memos,
-		FromMemo: *fromMemo, AllowLegacySave: *allowLegacySave, TracePath: *trace, Until: *until, Scene: *scene, Event: *event, Line: *line, Picture: *picture,
-		LiveDir: "", Review: *review, ReviewLog: *reviewLog, ReviewSources: *reviewSources,
-	}
-	if *dev {
-		opts.LiveDir = *dirFlag
-	}
-	if cfg.Store != nil {
-		opts.StoreFor = func(id string) (Store, error) { return cfg.Store(id) }
-	}
-	for _, a := range split(*answers) {
-		n, err := strconv.Atoi(strings.TrimSpace(a))
-		if err != nil {
-			return argument(fmt.Errorf("--answers %q: %w", *answers, err))
+		out := cfg.Output
+		if out == nil {
+			out = io.Discard
 		}
-		opts.Answers = append(opts.Answers, n)
-	}
-	if *auto > 0 {
-		opts.Autopilot = &Autopilot{Seconds: *auto, Report: *report, ShotEvery: *shotEvery, Floors: *autoFloors}
-		opts.Speed = *speed
-	}
-	if *scriptFile != "" {
-		b, err := os.ReadFile(*scriptFile)
+		if cfg.Directory {
+			if fl.NArg() != 1 {
+				return argument(errors.New("run expects one game directory"))
+			}
+			*dirFlag = fl.Arg(0)
+			if *dirFlag == "" {
+				return argument(errors.New("game directory must not be empty"))
+			}
+		} else if fl.NArg() != 0 {
+			return argument(fmt.Errorf("unexpected positional arguments: %v", fl.Args()))
+		}
+		var devFlag string
+		fl.Visit(func(f *pflag.Flag) {
+			switch f.Name {
+			case "dev", "dir", "seed", "mute", "fullscreen", "window", "save-dir":
+			default:
+				devFlag = f.Name
+			}
+		})
+		if devFlag != "" && !*dev {
+			return argument(fmt.Errorf("--%s requires --dev", devFlag))
+		}
+		if *review && *reviewLog == "" {
+			return argument(errors.New("--review requires --review-log"))
+		}
+		if *scriptFile != "" && *shots == "" {
+			return argument(errors.New("--script requires --shots"))
+		}
+
+		game, err := gameFS(fsys, dir, *dirFlag)
 		if err != nil {
 			return err
 		}
-		opts.Script = string(b)
-	}
-	if *trace != "" {
-		if d := filepath.Dir(*trace); d != "." {
-			if err := os.MkdirAll(d, 0o700); err != nil {
+		opts := Options{
+			Development: *dev, CollectBuildInfo: *collect, ExternalInput: *external, Report: out, FS: game, Seed: *seed, NoSound: *mute || cfg.Mute, SaveDir: *saveDir, ShotDir: *shots,
+			Location: *start, Battle: *fight, Party: split(*party), Level: *level, Flags: split(*flags), Gold: *gold, Items: split(*items), Calm: *calm, Floor: *floor,
+			Replay: *replay, ReplayBattle: *replayBattle, TraceShots: *traceShots, Fullscreen: *fullscreen, Window: *windowScale, GalleryAll: *galleryAll, MemoDir: *memos,
+			FromMemo: *fromMemo, AllowLegacySave: *allowLegacySave, TracePath: *trace, Until: *until, Scene: *scene, Event: *event, Line: *line, Picture: *picture,
+			LiveDir: "", Review: *review, ReviewLog: *reviewLog, ReviewSources: *reviewSources,
+		}
+		if *dev {
+			opts.LiveDir = *dirFlag
+		}
+		if cfg.Store != nil {
+			opts.StoreFor = func(id string) (Store, error) { return cfg.Store(id) }
+		}
+		for _, a := range split(*answers) {
+			n, err := strconv.Atoi(strings.TrimSpace(a))
+			if err != nil {
+				return argument(fmt.Errorf("--answers %q: %w", *answers, err))
+			}
+			opts.Answers = append(opts.Answers, n)
+		}
+		if *auto > 0 {
+			opts.Autopilot = &Autopilot{Seconds: *auto, Report: *report, ShotEvery: *shotEvery, Floors: *autoFloors}
+			opts.Speed = *speed
+		}
+		if *scriptFile != "" {
+			b, err := os.ReadFile(*scriptFile)
+			if err != nil {
 				return err
 			}
+			opts.Script = string(b)
 		}
-		f, err := os.Create(*trace)
-		if err != nil {
-			return err
+		if *trace != "" {
+			if d := filepath.Dir(*trace); d != "." {
+				if err := os.MkdirAll(d, 0o700); err != nil {
+					return err
+				}
+			}
+			f, err := os.Create(*trace)
+			if err != nil {
+				return err
+			}
+			defer func() { err = errors.Join(err, f.Close()) }()
+			opts.Trace = f
 		}
-		defer func() { err = errors.Join(err, f.Close()) }()
-		opts.Trace = f
-	}
-	if *record != "" {
-		err = Record(ctx, opts, *record)
-	} else {
-		err = Run(ctx, opts)
-	}
-	if ReplayReport != "" {
-		if _, writeErr := fmt.Fprintln(out, ReplayReport); writeErr != nil {
-			err = errors.Join(err, writeErr)
+		if *record != "" {
+			err = Record(ctx, opts, *record)
+		} else {
+			err = Run(ctx, opts)
 		}
-		if err == nil && strings.HasPrefix(ReplayReport, "replay diverged") {
-			err = errors.New(ReplayReport)
+		if ReplayReport != "" {
+			if _, writeErr := fmt.Fprintln(out, ReplayReport); writeErr != nil {
+				err = errors.Join(err, writeErr)
+			}
+			if err == nil && strings.HasPrefix(ReplayReport, "replay diverged") {
+				err = errors.New(ReplayReport)
+			}
 		}
-	}
-	return err
+		return err
+	}}
 }
 
 // gameFS is the --dir directory, or dir within the FS that was passed in.

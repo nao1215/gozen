@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -8,6 +9,23 @@ import (
 	"github.com/nao1215/gozen/internal/diag"
 	lang "github.com/nao1215/gozen/internal/text"
 )
+
+func TestTraceCheckStructuredDiagnosticCodes(t *testing.T) {
+	file := traceFile(t, `{"t":"start","tick":0,"language":"en"}`, `{"t":"voice","tick":60,"file":"missing.ogg","missing":true}`)
+	for _, format := range []string{"json", "jsonl"} {
+		out, stderr := invoke(t, 1, "trace", file, "--check", "--format", format)
+		lines := strings.Split(strings.TrimSpace(out), "\n")
+		var report struct {
+			Issues []traceIssue `json:"issues"`
+		}
+		if err := json.Unmarshal(resultData(t, lines[len(lines)-1], "trace"), &report); err != nil {
+			t.Fatal(err)
+		}
+		if stderr != "" || len(report.Issues) != 1 || report.Issues[0].Code != diag.VoiceFault.String() || report.Issues[0].Tick != 60 {
+			t.Fatalf("%s lost the trace diagnostic: %s; %s", format, out, stderr)
+		}
+	}
+}
 
 func stand(since int, extra string) string {
 	return fmt.Sprintf(`{"t":"stand","tick":%d,"since":%d%s}`, since, since, extra)

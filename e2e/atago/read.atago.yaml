@@ -201,3 +201,91 @@ scenarios:
       stderr:
         contains: invalid party member
         not_contains: panic
+- name: breeding JSON reports unreachable species without creating artifacts
+  steps:
+  - run:
+      command: gozen sim breed --format json "${specdir}/fixtures/game"
+      deterministic: {runs: 2, compare: [stdout, stderr, exit_code]}
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: sim breed}
+        - {path: $.status, equals: ok}
+        - {path: $.data.reachable, equals: []}
+        - {path: $.data.unreachable, equals: [mote]}
+      changes: {created: [], modified: [], deleted: []}
+  - run:
+      command: gozen sim breed "${specdir}/fixtures/game" --format jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        equals: |
+          {"version":1,"command":"sim breed","type":"item","id":"mote","status":"unreachable","data":{"id":"mote"}}
+          {"version":1,"command":"sim breed","type":"summary","status":"ok","data":{"reachable":[],"unreachable":["mote"]}}
+- name: route findings retain failed status in ${format}
+  matrix:
+  - {format: json}
+  - {format: jsonl}
+  steps:
+  - run:
+      command: gozen sim routes "${specdir}/fixtures/game" --fail-unreachable --format ${format}
+      deterministic: {runs: 2, compare: [stdout, stderr, exit_code]}
+  - assert:
+      exit_code: 1
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: sim routes}
+        - {path: $.status, equals: failed}
+        - {path: $.data.unreachable_endings, equals: [clear]}
+      changes: {created: [], modified: [], deleted: []}
+- name: trace reads stdin and preserves filtered records in ${format}
+  matrix:
+  - {format: json}
+  - {format: jsonl}
+  steps:
+  - run:
+      command: gozen trace --format ${format} - --only say --only input --input --from 1 --to 1
+      stdin: |
+        {"t":"start","tick":0,"language":"en"}
+        {"t":"say","tick":60,"text":"Keep this","read":false}
+        {"t":"input","tick":120,"key":"z"}
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        contains: '"text":"Keep this"'
+        not_contains: '"key":"z"'
+      changes: {created: [], modified: [], deleted: []}
+- name: trace structured checks retain diagnostic codes and failed exit
+  steps:
+  - run:
+      command: gozen trace - --check --format json
+      stdin: |
+        {"t":"start","tick":0,"language":"en"}
+        {"t":"voice","tick":60,"file":"missing.ogg","missing":true}
+  - assert:
+      exit_code: 1
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: trace}
+        - {path: $.status, equals: failed}
+        - {path: '$.data.issues[0].kind', equals: voice}
+        - {path: '$.data.issues[0].tick', equals: 60}
+        - {path: $.data.standing_pictures_checked, equals: false}
+- name: trace rejects display filters in check mode before reading input
+  steps:
+  - run:
+      command: gozen trace absent.jsonl --check --only say --format json
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr:
+        json: {path: $.code, equals: GZN2301}
