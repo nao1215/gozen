@@ -1,0 +1,41 @@
+version: '1'
+suite:
+  name: Direct game startup contracts
+scenarios:
+- name: reject invalid startup ${args}
+  matrix:
+  - args: ''
+  - args: 'one two'
+  - args: 'game --start camp'
+  - args: 'game --dev --script missing'
+  - args: 'game --dev --review'
+  - args: '--seed bad game'
+  - args: 'game --dev --answers x'
+  - args: 'game --window -1'
+  - args: 'game --dev --replay-battle 1'
+  - args: 'game --dev --record unused.mp4'
+  steps:
+  - run:
+      command: gozen play run ${args}
+  - assert:
+      exit_code: 2
+      stdout:
+        equals: ''
+      stderr:
+        contains:
+        - '[GZN2201]'
+        - 'gozen play run --help'
+- name: a missing game fails without a display or output files
+  steps:
+  - run:
+      command: gozen play run absent-game --mute
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: game.yaml
+      changes:
+        created: []
+        modified: []
+        deleted: []

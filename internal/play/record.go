@@ -39,7 +39,7 @@ func (g *Game) recordFrame(screen *ebiten.Image) error {
 
 func Record(ctx context.Context, opts Options, out string) (err error) {
 	if opts.Script == "" && opts.Autopilot == nil && opts.Replay == "" {
-		return errors.New("record: a script, the autopilot or a replay is needed")
+		return &ArgumentError{Err: errors.New("record: a script, the autopilot or a replay is needed")}
 	}
 	ff, err := exec.LookPath("ffmpeg")
 	if err != nil {

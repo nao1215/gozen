@@ -382,7 +382,7 @@ func New(opts Options) (_ *Game, err error) {
 		return nil, errors.New("play: nil filesystem")
 	}
 	if math.IsNaN(opts.Window) || math.IsInf(opts.Window, 0) || opts.Window < 0 || opts.Window > 4 {
-		return nil, errors.New("play: window scale must be between 0 and 4")
+		return nil, &ArgumentError{Err: errors.New("play: window scale must be between 0 and 4")}
 	}
 	if !activeGame.CompareAndSwap(false, true) {
 		return nil, errors.New("play: another game is active; close it first")
@@ -395,7 +395,7 @@ func New(opts Options) (_ *Game, err error) {
 
 	ReplayReport = ""
 	if opts.ReplayBattle < 0 || (opts.ReplayBattle > 0 && (opts.Replay == "" || opts.Until != 0)) {
-		return nil, errors.New(lang.T("--replay-battle は --replay と正の戦闘番号を指定し、--until と併用しない"))
+		return nil, &ArgumentError{Err: errors.New(lang.T("--replay-battle は --replay と正の戦闘番号を指定し、--until と併用しない"))}
 	}
 	db := opts.DB
 	if db == nil {
@@ -635,7 +635,7 @@ func New(opts Options) (_ *Game, err error) {
 		}
 		if t := opts.Battle; t != "" {
 			if g.db.Troops[t] == nil {
-				return nil, fmt.Errorf("unknown troop %q", t)
+				return nil, &ArgumentError{Err: fmt.Errorf("unknown troop %q", t)}
 			}
 			var snap []byte
 			if g.db.Game.Battle.Retry {
@@ -1133,7 +1133,7 @@ func (g *Game) testStart() error {
 	g.bannerFloor = 0
 	if o.Location != "" {
 		if g.db.Locations[o.Location] == nil {
-			return fmt.Errorf("unknown location %q", o.Location)
+			return &ArgumentError{Err: fmt.Errorf("unknown location %q", o.Location)}
 		}
 		g.st.Location = o.Location
 	}
@@ -1141,7 +1141,7 @@ func (g *Game) testStart() error {
 		g.st.Party = nil
 		for _, id := range o.Party {
 			if g.db.Actors[id] == nil {
-				return fmt.Errorf("unknown actor %q", id)
+				return &ArgumentError{Err: fmt.Errorf("unknown actor %q", id)}
 			}
 			g.st.Join(id)
 		}
@@ -1175,7 +1175,7 @@ func (g *Game) testStart() error {
 			}
 		}
 		if g.db.Items[id] == nil {
-			return fmt.Errorf("unknown item %q", id)
+			return &ArgumentError{Err: fmt.Errorf("unknown item %q", id)}
 		}
 		g.st.AddItem(id, n)
 	}

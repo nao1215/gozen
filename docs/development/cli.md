@@ -4,19 +4,19 @@ The CLI is the single `gozen` binary ([ADR 0016](../decisions/0016-single-cli.md
 
 ## Commands
 
-The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf runs. The help pages are `groups` and `pages` in `cmd/gozen/help.go`, keyed by the command path. `art prompt` and `art mosaic` hand their arguments to `internal/promptgen/command` and `internal/mosaic/command`, and `art fetch` to `mosaiccmd.Fetch`.
+The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf runs. The help pages are `groups` and `pages` in `cmd/gozen/help.go`, keyed by the command path. `play run` shares its options and help groups with `play.Main` in `internal/play/entry.go`; it requires a directory operand instead of `--dir`. `art prompt` and `art mosaic` hand their arguments to `internal/promptgen/command` and `internal/mosaic/command`, and `art fetch` to `mosaiccmd.Fetch`.
 
 | Group | Commands | What they share |
 | --- | --- | --- |
 | `check` | (a leaf) `--only structure\|layout`, `--format text\|json` | the game directory |
 | `sim` | `battle`, `dive`, `floors`, `design` | play by the rules without a window; `--seed`, `--turns`, `--format` |
-| `play` | `trace`, `notes`, `shots` | the record of a real play (`--trace`, F9 notes, screenshots) |
+| `play` | `run`, `trace`, `notes`, `shots` | run a directory; inspect traces, F9 notes and screenshots |
 | `book` | (a leaf) | |
 | `pack` | `release`, `trial` | a new output tree; `--overlay` and `--inspect` |
 | `art` | `prompt`, `mosaic`, `fetch`, `faces`, `puppet` | pictures; cgo, ONNX Runtime and models for mosaic inference and faces |
 | `version`, `help` | | `gozen help` takes the words of a path, or a code |
 
-An old name (`curve`, `memos`, `mosaic`, ...) is an unknown command that names the new one (`renamed` in `main.go`); remove that table at v0.1.0.
+An old name (`curve`, `memos`, `mosaic`, ...) is an unknown command; no alias table is kept.
 
 ## Diagnostic codes
 

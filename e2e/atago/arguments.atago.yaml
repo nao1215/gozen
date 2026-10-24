@@ -12,6 +12,7 @@ scenarios:
   - sub: sim design
   - sub: sim campaign
   - sub: play
+  - sub: play run
   - sub: play trace
   - sub: play notes
   - sub: play shots
@@ -68,7 +69,7 @@ scenarios:
 - name: the group ${group} needs a command
   matrix:
   - {group: sim, subs: 'battle, dive, floors, design, campaign'}
-  - {group: play, subs: 'trace, notes, shots'}
+  - {group: play, subs: 'run, trace, notes, shots'}
   - {group: pack, subs: 'release, trial'}
   - {group: art, subs: 'prompt, mosaic, fetch, faces, puppet'}
   steps:
@@ -148,6 +149,7 @@ scenarios:
   - sub: sim design
   - sub: sim campaign
   - sub: play
+  - sub: play run
   - sub: play trace
   - sub: play notes
   - sub: play shots
@@ -192,6 +194,7 @@ scenarios:
   - sub: sim design
   - sub: sim campaign
   - sub: play
+  - sub: play run
   - sub: play trace
   - sub: play notes
   - sub: play shots

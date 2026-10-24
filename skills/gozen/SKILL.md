@@ -5,7 +5,7 @@ description: Make or fix an RPG, a visual novel or a strategy game (a campaign) 
 
 # Making a Gozen game
 
-A Gozen game is a directory: `game.yaml`, `data/*.yaml` and `assets/`. A small Go program embeds it and calls `play.Main`. You write YAML. The `gozen` command checks and measures it.
+A Gozen game is a directory: `game.yaml`, `data/*.yaml` and `assets/`. Run it directly with `gozen play run <game-dir>`, or embed it in a Go program calling `play.Main`. You write YAML. The `gozen` command checks, measures and runs it.
 
 ## The loop
 
@@ -13,7 +13,8 @@ A Gozen game is a directory: `game.yaml`, `data/*.yaml` and `assets/`. A small G
 2. Edit the YAML.
 3. Run `gozen check` on the game directory. Fix every error and run it again. Stop only when it prints `ok:` and exits 0.
 4. When a fight or a dungeon changed, measure it with `gozen sim` (references/measure.md).
-5. For a novel or event-driven game, run `gozen sim routes <game-dir>` to explore choices and check reachable endings and offered options; use `--format json --fail-unreachable` in CI.
+5. Play the game with `gozen play run <game-dir> --dev`; it uses the same standard runner as `play.Main`, including live reload, scripts, traces and screenshots. Use `--save-dir` to isolate manual test saves. A display is required (Xvfb for unattended Linux); inspect `gozen play run --help` before choosing options.
+6. For a novel or event-driven game, run `gozen sim routes <game-dir>` to explore choices and check reachable endings and offered options; use `--format json --fail-unreachable` in CI.
 
 <!-- verify: run fixture=cave -->
 ```shell

@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Added
+
+- Run a game directory with `gozen play run <game-dir>` without writing a Go wrapper. The CLI and `play.Main` share standard options, development tools, rendering and save behavior.
+
 ## v0.6.0 - 2026-10-24
 
 Continuous stairs through bounded stacked spaces, safer limits for oversized game data and pictures, and faster documentation CI. Existing single-floor dungeons keep their renderer and transitions; stacked spaces opt in with schema version 8.

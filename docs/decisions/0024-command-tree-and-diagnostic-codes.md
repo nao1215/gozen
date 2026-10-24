@@ -22,7 +22,7 @@ Diagnostics had no stable name. A message such as `unknown troop "lessn"` could 
 ```
 gozen check   <game-dir>               --only structure|layout, --format text|json
 gozen sim     battle|dive|floors|design
-gozen play    trace|notes|shots
+gozen play    run|trace|notes|shots
 gozen book    <game-dir>
 gozen pack    release|trial
 gozen art     prompt|mosaic|fetch|faces|puppet
@@ -55,6 +55,8 @@ gozen help    [<command> [<sub> ...]] | <code>
 - A group without a command (`gozen sim`) exits 2 and lists its commands on stderr. `gozen sim --help` prints the group page; a leaf page is named by its path (`gozen sim battle`). `gozen help` takes the words of a path (`gozen help art mosaic manual`) and is the same as the path with `--help`.
 - The top page holds the GNU option rules, the exit values, the code form and the general requirements once. A group page holds only what its leaves share (`play`: a display and Xvfb for shots; `art`: cgo, ONNX Runtime and models). A leaf page states requirements only when they differ from its parent's.
 - No aliases are kept, not even with a warning (unreleased, one user who can update the same day, as in ADR 0016 and 0018). Until 2026-10-20 an old name exited 2 and said the new one (`gozen: unknown command "curve"; it is now "gozen sim dive" [GZN2101]`). That table was removed before the first public version (2026-10-20): no released name ever existed, so an old name is an unknown command like any other.
+
+The `play run <game-dir>` addition (2026-10-24) runs a game directory through the same internal startup implementation as `play.Main`. It shares the runner options and help groups, takes a directory operand instead of `--dir`, and adds no public library API or dependency exception. The library remains available for embedding and custom hosts.
 
 ### Exit values
 

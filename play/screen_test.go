@@ -9,7 +9,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -19,22 +18,6 @@ import (
 
 	"github.com/nao1215/gozen"
 )
-
-func TestSplitMakesLists(t *testing.T) {
-	cases := map[string][]string{
-		"":         nil,
-		"a":        {"a"},
-		"a,b,c":    {"a", "b", "c"},
-		"a,,b":     {"a", "", "b"},
-		",a":       {"", "a"},
-		"var.x=3,": {"var.x=3", ""},
-	}
-	for in, want := range cases {
-		if got := split(in); !slices.Equal(got, want) {
-			t.Errorf("split(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
 
 // brokenGame is a game directory whose definitions cannot load, so a run that gets as far as
 // loading it fails at once, without opening a window.
