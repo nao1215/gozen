@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="description" content="Go Zen, the sample game of Gozen, a 2D RPG framework for Go: a short RPG with a town, a dungeon and moving portraits.">
+<meta name="description" content="A playable sample made with Gozen.">
 <meta name="theme-color" content="#10181c">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Go Zen - a Gozen sample game</title>
+<title>Gozen sample</title>
 <style>
   html, body {
     margin: 0; width: 100%; height: 100%; overflow: hidden;
@@ -29,12 +29,12 @@
 </head>
 <body>
 <div id="loading">
-  <div id="note">Loading Go Zen...</div>
+  <div id="note">Loading game...</div>
   <div id="bar"><div></div></div>
   <div id="hint">The game is about @DOWNLOAD_MB@ MB to download. The sound starts once you first touch the screen or press a key.</div>
-  <noscript>Go Zen needs JavaScript and WebAssembly.</noscript>
+  <noscript>This game needs JavaScript and WebAssembly.</noscript>
 </div>
-<script src="wasm_exec.js"></script>
+<script src="../runtime/wasm_exec.js"></script>
 <script>
   "use strict";
   // The program calls these when the game starts, draws its first frame, or cannot start.
@@ -43,7 +43,8 @@
   const bar = document.querySelector("#bar div");
   const mb = (n) => (n / 1e6).toFixed(1);
   window.goZenTimes = {};
-  window.goZenStarting = () => {
+  window.goZenStarting = (title) => {
+    document.title = title;
     goZenTimes.starting = performance.now();
     note.textContent = "Starting the game...";
     bar.style.width = "100%";
@@ -56,12 +57,12 @@
   // Long presses and right clicks would open menus over the game.
   document.addEventListener("contextmenu", (e) => e.preventDefault());
 
-  // The size of go-zen.wasm, written in by make website-go-zen: the server may send it
+  // The size of gozen-player.wasm, written in by make website: the server may send it
   // compressed, and then its Content-Length is not what is read.
   const wasmSize = Number("@WASM_SIZE@") || 0;
   // The program is counted as it comes in and compiled while it does.
   const counted = (res) => {
-    if (!res.ok) throw new Error(`go-zen.wasm: ${res.status} ${res.statusText}`);
+    if (!res.ok) throw new Error(`gozen-player.wasm: ${res.status} ${res.statusText}`);
     if (!wasmSize || !res.body) return res;
     let got = 0;
     const reader = res.body.getReader();
@@ -85,8 +86,8 @@
     const go = new Go();
     // Fetch a plain .gz file so static hosts need not configure Content-Encoding.
     // DecompressStream restores the wasm response for instantiateStreaming.
-    const wasm = fetch("go-zen.wasm.gz").then((res) => {
-      if (!res.ok) throw new Error(`go-zen.wasm.gz: ${res.status} ${res.statusText}`);
+    const wasm = fetch("../runtime/gozen-player.wasm.gz").then((res) => {
+      if (!res.ok) throw new Error(`gozen-player.wasm.gz: ${res.status} ${res.statusText}`);
       if (!res.body || typeof DecompressionStream !== "function") throw new Error("This browser cannot decompress the WebAssembly download.");
       return new Response(res.body.pipeThrough(new DecompressionStream("gzip")), { headers: { "Content-Type": "application/wasm" } });
     });

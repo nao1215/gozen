@@ -255,13 +255,13 @@ gozen sim dive game cave --floors 5 --boss 5:cave_boss # levels and wins per flo
 
 Run the directory directly with `gozen play run game`, or enable author tools with `gozen play run game --dev`. No Go wrapper is needed. The same options are available when embedding a game with `play.Main`.
 
-Test tools of your game's binary:
+Test tools:
 
-<!-- verify: skip runs in your own game's module and opens the game window -->
+<!-- verify: skip opens a game window and waits for input -->
 ```sh
-go run . --dev --dir game --memos notes                   # F9 note, F7 win rates, F5 reload
-go run . --dev --start cave --level 8 --battle cave_boss  # jump to a fight
-go run . --dev --autoplay 60 --speed 8 --trace run.jsonl  # autoplay and record
+gozen play run game --dev --memos notes                   # F9 note, F7 win rates, F5 reload
+gozen play run game --dev --start cave --level 8 --battle cave_boss  # jump to a fight
+gozen play run game --dev --autoplay 60 --speed 8 --trace run.jsonl  # autoplay and record
 gozen play trace run.jsonl                                # read the record
 gozen play notes notes                                    # notes as one HTML page
 ```

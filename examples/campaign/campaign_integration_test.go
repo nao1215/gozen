@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand/v2"
+	"os"
 	"sort"
 	"testing"
 
@@ -17,10 +18,7 @@ var talk = gozen.DefaultPolicy{Prefer: []string{"Take her in", "Accept the truce
 
 func loadGame(t testing.TB) *gozen.Game {
 	t.Helper()
-	fsys, err := gameFS()
-	if err != nil {
-		t.Fatal(err)
-	}
+	fsys := os.DirFS("game")
 	g, err := gozen.Load(fsys, ".")
 	if err != nil {
 		t.Fatal(err)

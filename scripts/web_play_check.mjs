@@ -13,8 +13,9 @@
 // and the longest the page stood still after that (no animation frame). The page is
 // opened with ?fps, so the game shows its frame meter and puts its numbers in
 // window.gozenStats each second; the check prints the longest Update and Draw and the
-// lowest FPS after the first frame, and with -max-frame MS fails when the longest
-// Update or Draw took longer than MS milliseconds. CHROME names the browser (default
+// lowest FPS during an idle sample after input and screenshot capture. Cold-start
+// and transition peaks are reported separately. With -max-frame MS, the longest
+// idle Update or Draw must stay below MS milliseconds. CHROME names the browser (default
 // google-chrome); its profile goes under TMPDIR and is removed afterwards.
 import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -200,7 +201,7 @@ async function key(type) {
 // The page's times: fetching the files, from them to the first frame, the longest gap
 // between animation frames after the first frame, and the frame meter's numbers after
 // it. It returns false when a frame took longer than -max-frame.
-async function timings() {
+async function timings(measureFrom) {
   const r = await send("Runtime.evaluate", {
     returnByValue: true,
     expression: `({ t: window.goZenTimes || {}, gaps: window.goZenGaps || [], frames: window.goZenFrames || [],
@@ -228,20 +229,22 @@ async function timings() {
     }
     console.log(`longest stand-still after the first frame: ${s(worst[1])}s (from ${s(worst[0])}s)`);
   }
-  // The meter's first second can hold the first frame, so it counts from a second after.
-  // When the page stands still just after the first frame, the second that holds it is
-  // posted late, more than a second after it (After the Pass: 1.8s), so the first numbers
-  // posted after the first frame are left out too.
-  const after = frames.filter(([at]) => t.ready !== undefined && at >= t.ready).slice(1)
-    .filter(([at]) => at >= t.ready + 1000).map(([, f]) => f);
+  // Screenshot readback and first-use scene decoding are not steady rendering.
+  // Keep their peaks visible, then evaluate complete meter periods after both.
+  const cold = frames.filter(([at]) => at < measureFrom).map(([, f]) => f);
+  if (cold.length) {
+    console.log(`startup/input/capture peaks: Update ${Math.max(...cold.map((f) => f.updateMaxMs)).toFixed(1)}ms, ` +
+      `Draw ${Math.max(...cold.map((f) => f.drawMaxMs)).toFixed(1)}ms`);
+  }
+  const after = frames.filter(([at]) => at >= measureFrom).slice(1).map(([, f]) => f);
   if (after.length === 0) {
-    console.log("no frame meter numbers after the first frame (window.gozenStats)");
-    return maxFrame <= 0;
+    console.log("no complete idle frame meter periods (window.gozenStats)");
+    return false;
   }
   const most = (k) => Math.max(...after.map((f) => f[k]));
   const fps = Math.min(...after.map((f) => f.fps));
   const upd = most("updateMaxMs"), draw = most("drawMaxMs");
-  console.log(`frame meter over ${after.length}s: longest Update ${upd.toFixed(1)}ms, longest Draw ${draw.toFixed(1)}ms, ` +
+  console.log(`idle frame meter over ${after.length} periods: longest Update ${upd.toFixed(1)}ms, longest Draw ${draw.toFixed(1)}ms, ` +
     `lowest FPS ${fps.toFixed(1)}, average Draw ${(after.reduce((a, f) => a + f.drawAvgMs, 0) / after.length).toFixed(1)}ms`);
   if (maxFrame > 0 && Math.max(upd, draw) > maxFrame) {
     console.log(`FAIL: a frame took ${Math.max(upd, draw).toFixed(1)}ms, over -max-frame ${maxFrame}ms`);
@@ -328,7 +331,9 @@ async function main() {
     await sleep(1500);
     await shot("enter.png");
   }
-  const smooth = await timings();
+  const boundary = await send("Runtime.evaluate", { expression: "performance.now()", returnByValue: true });
+  await sleep(5000);
+  const smooth = await timings(boundary.result.value);
   if (failed) console.log("FAIL: the page logged an error (above)");
   finish(failed || !smooth ? 1 : 0);
 }

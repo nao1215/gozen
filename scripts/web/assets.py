@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """assets.py - write the game's files for the browser build of Go Zen.
 
-    python3 web/assets.py SRC DST                       # game -> .../play/go-zen/game
-    python3 web/assets.py SRC DST PAGE OUT WASM         # and the page, with the sizes
+    python3 scripts/web/assets.py SRC DST                       # game -> .../play/go-zen/game
+    python3 scripts/web/assets.py SRC DST PAGE OUT WASM         # and the page, with the sizes
 
 The page downloads every file of the game before it starts, so the pictures are made
 smaller on the way: a PNG or JPEG becomes a lossy WebP of the same size in pixels (the
@@ -78,7 +78,7 @@ def previous(dst):
 
 def write_page(page, out, wasm, files_total):
     wasm_size = os.path.getsize(wasm)
-    compressed = os.path.join(os.path.dirname(out), os.path.basename(wasm) + ".gz")
+    compressed = os.path.join(os.path.dirname(out), "..", "runtime", os.path.basename(wasm) + ".gz")
     download_size = os.path.getsize(compressed) if os.path.exists(compressed) else wasm_size
     with open(page, encoding="utf-8") as f:
         html = f.read()

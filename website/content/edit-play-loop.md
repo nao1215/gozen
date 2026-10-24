@@ -7,19 +7,18 @@ toc: true
 
 Most of making a game is the second draft: a line that reads wrong, a fight that is too hard. Gozen keeps the game running while you fix it, and keeps a record of what you saw so you can come back to it.
 
-Every option on this page belongs to the game binary, not to `gozen`. Any game started with `play.Main` has them, including your own; the examples use `go run .` in your game's module.
+Run a game directory with `gozen play run game`. Add `--dev` to enable the author tools below. YAML and asset changes can be reloaded with F5.
 
 ## Turn on the author tools
 
-<!-- verify: skip runs in your own game's module and opens the game window -->
+<!-- verify: skip opens a game window and waits for input -->
 ```shell
-go run . --dev --dir game --memos notes
+gozen play run game --dev --memos notes
 ```
 
 | Option | Why |
 |:--|:--|
 | `--dev` | Turns on the keys and options below. Players never need it. |
-| `--dir game` | Reads the YAML and pictures from disk instead of the embedded copy, so edits can be reloaded. |
 | `--memos notes` | Lets F9 write notes into `notes/`. |
 
 Runs with `--dev` that start somewhere other than the beginning (`--start`, `--script`, `--replay`) use a temporary save directory unless you pass `--save-dir`, so testing never touches a player's saves.
@@ -101,30 +100,30 @@ gozen play notes notes -o notes-html
 
 To come back to a note, start the game from it. In an event, the game begins the event again and reads on to the same line; in a battle, it starts the same battle from the state at the note:
 
-<!-- verify: skip runs in your own game's module and opens the game window -->
+<!-- verify: skip opens a game window and waits for input -->
 ```shell
-go run . --dev --dir game --from-memo notes/2026-10-19/001.json
+gozen play run game --dev --from-memo notes/2026-10-19/001.json
 ```
 
 So a round is: play, press F9 on each problem, read the notes page, fix the YAML, `--from-memo` to the note, F5 until it reads right.
 
 ## Start anywhere
 
-<!-- verify: skip runs in your own game's module and opens the game window -->
+<!-- verify: skip opens a game window and waits for input -->
 ```shell
-go run . --dev --start cave --level 8 --battle cave_boss   # straight into a fight
-go run . --dev --start town --party hero,mage --gold 500 --items potion=3
-go run . --dev --start cave --flags met_elder,var.trust=3 --calm   # no random battles
-go run . --dev --event elder_talk --line 4                 # an event, from its 4th line
+gozen play run game --dev --start cave --level 8 --battle cave_boss   # straight into a fight
+gozen play run game --dev --start town --party hero,mage --gold 500 --items potion=3
+gozen play run game --dev --start cave --flags met_elder,var.trust=3 --calm   # no random battles
+gozen play run game --dev --event elder_talk --line 4                 # an event, from its 4th line
 ```
 
 `--floor N` starts on a floor of a generated dungeon. `--scene` opens a gallery scene; `--picture FILE` stops at the line shown over a picture; `--answers 0,1` answers the questions on the way.
 
 ## Autoplay
 
-<!-- verify: skip runs in your own game's module and opens the game window -->
+<!-- verify: skip opens a game window and waits for input -->
 ```shell
-go run . --dev --mute --autoplay 60 --speed 8 --trace run.jsonl --report run.txt
+gozen play run game --dev --mute --autoplay 60 --speed 8 --trace run.jsonl --report run.txt
 ```
 
 The game plays by itself for 60 seconds at eight times speed: it walks into the dungeon reachable from town, fights, goes back after `--auto-floors` floors to rest and shop, and goes down again. It needs a dungeon the party can reach from the starting town. `--shot-every 5` takes a screenshot every five seconds into `--shots`. Use it to see how a long dive feels, and how the numbers move, without playing it.
@@ -149,11 +148,11 @@ gozen play trace run.jsonl --check    # standing pictures and music that went wr
 
 A trace can be played again. `--replay` checks that the game goes the same way and reports the first line that differs, with its tick:
 
-<!-- verify: skip runs in your own game's module and opens the game window -->
+<!-- verify: skip opens a game window and waits for input -->
 ```shell
-go run . --dev --replay run.jsonl
-go run . --dev --replay run.jsonl --replay-battle 3        # only the third battle
-go run . --dev --replay run.jsonl --until 4200 --shots s   # stop at a tick and save the screen
+gozen play run game --dev --replay run.jsonl
+gozen play run game --dev --replay run.jsonl --replay-battle 3        # only the third battle
+gozen play run game --dev --replay run.jsonl --until 4200 --shots s   # stop at a tick and save the screen
 ```
 
 Fix a bug, replay the trace that showed it, and see the difference.
@@ -170,9 +169,9 @@ shot field
 quit
 ```
 
-<!-- verify: skip runs in your own game's module and opens the game window -->
+<!-- verify: skip opens a game window and waits for input -->
 ```shell
-go run . --dev --mute --seed 7 --start camp --script script.txt --shots captures
+gozen play run game --dev --mute --seed 7 --start camp --script script.txt --shots captures
 ```
 
 `wait N` waits N ticks (60 a second), `press BUTTON` presses `ok`, `cancel`, `up`, `down`, `left`, `right` and the other buttons, `shot NAME` writes `NAME.png`, and `quit` ends the run. In a campaign, `order ID [GENERAL|-] [TARGET]` gives an order and `end_turn` ends the turn; GENERAL may be several, the first leading, each with its tactic (`corin:guard,hilde`), and then the sortie screen is not shown; the trace writes `order`, `sortie`, `clash` and `end_turn` lines. `--record out.mp4` writes a video of a scripted, automatic or replayed run (needs ffmpeg). On Linux, wrap any of these in `xvfb-run -a` to run without a screen.

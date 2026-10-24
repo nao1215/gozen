@@ -1424,15 +1424,15 @@ gozen art faces game
 
 ### Test play
 
-These are options of your game's binary, run in your game's module:
+Use the game directory and enable the author tools:
 
-<!-- verify: skip runs in your own game's module and opens the game window -->
+<!-- verify: skip opens a game window and waits for input -->
 ```shell
-go run . --dev --dir game --memos notes           # F5 reloads game/, F9 writes notes/
-go run . --dev --start cave_mouth --level 5 --battle bats
-go run . --dev --start village --flags sela_joined,var.asked=3 --gold 500
-go run . --dev --event greeting --line 2
-go run . --dev --dir game --from-memo notes/2026-01-01/001.json
+gozen play run game --dev --memos notes           # F5 reloads game/, F9 writes notes/
+gozen play run game --dev --start cave_mouth --level 5 --battle bats
+gozen play run game --dev --start village --flags sela_joined,var.asked=3 --gold 500
+gozen play run game --dev --event greeting --line 2
+gozen play run game --dev --from-memo notes/2026-01-01/001.json
 ```
 
 Collect the notes into one HTML page:

@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"io/fs"
+	"os"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -18,10 +19,7 @@ var endings = map[string]string{"brenna": "cg/toast.jpg", "wren": "cg/wine.jpg",
 
 func load(t *testing.T, extra ...fs.FS) *gozen.Session {
 	t.Helper()
-	fsys, err := gameFS()
-	if err != nil {
-		t.Fatal(err)
-	}
+	fsys := os.DirFS("game")
 	g, err := gozen.Load(fsys, ".", extra...)
 	if err != nil {
 		t.Fatal(err)
@@ -106,10 +104,7 @@ func TestEveryWayEnds(t *testing.T) {
 // TestJapanese reads the story with game.yaml's language set to Japanese, as a player
 // who chose it in the settings: every line, speaker and option is in Japanese.
 func TestJapanese(t *testing.T) {
-	fsys, err := gameFS()
-	if err != nil {
-		t.Fatal(err)
-	}
+	fsys := os.DirFS("game")
 	b, err := fs.ReadFile(fsys, "game.yaml")
 	if err != nil {
 		t.Fatal(err)

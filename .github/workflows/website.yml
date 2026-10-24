@@ -54,12 +54,15 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # Go Zen's web/assets.py writes the samples' pictures as WebP with Pillow.
+      # scripts/web/assets.py writes the samples' pictures as WebP with Pillow.
       - name: Install Pillow
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends python3-pil
 
       # make website also builds Go Zen, the novel and the campaign samples for the browser into
       # public/play/go-zen, public/play/novel and public/play/campaign.
+      - name: Install license collector
+        run: go install github.com/google/go-licenses/v2@v2.0.1
+
       - name: Build website
         # The commit is stamped into every page so the deploy can be verified
         # afterwards. Hugo reads HUGO_PARAMS_* as config overrides. The build
@@ -85,9 +88,7 @@ jobs:
       - uses: nao1215/setup-atago@5c563dcd9d85e114f8abe8bbdcd058e51de09efb # v0.1.3
 
       - name: Check exported games in the browser
-        run: |
-          go install github.com/google/go-licenses/v2@v2.0.1
-          make e2e-web
+        run: make e2e-web
 
       - name: Keep the screenshots of the browser check
         if: always()

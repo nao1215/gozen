@@ -1,7 +1,6 @@
 # Novel sample assets
 
-The novel sample is the visual novel of Gozen. Its Go code and YAML (`main.go`, `files.go`,
-the tests, `web/`, `game/game.yaml`, `game/data/`, `game/lang/`) are MIT like the rest of
+The novel sample is the visual novel of Gozen. Its integration tests and YAML (`game/game.yaml`, `game/data/`, `game/lang/`) are MIT like the rest of
 the repository. The files under `game/assets/` are listed here.
 
 | Files | What | License |

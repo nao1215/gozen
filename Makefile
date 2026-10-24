@@ -13,7 +13,7 @@ ATAGO ?= atago
 ACTIONLINT ?= actionlint
 ZIZMOR ?= zizmor
 
-.PHONY: web-runtime e2e-web desktop-runtime website-go-zen website-novel website-campaign website-play-check go-zen go-zen-graphics novel novel-graphics campaign campaign-graphics test coverage lint tidy workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
+.PHONY: website-player web-runtime e2e-web desktop-runtime website-go-zen website-novel website-campaign website-play-check go-zen go-zen-graphics novel novel-graphics campaign campaign-graphics test coverage lint tidy workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
 
 # One module: ./... includes the gozen command and its internal implementations.
 # Keep ONNX-dependent runtime tests separate; see docs/development/testing.md.
@@ -56,7 +56,8 @@ api-update:
 	$(GO) run ./internal/dev/apigen
 
 # examples/go-zen is a nested module (it replaces gozen with this checkout), so
-# ./... does not reach it. go-zen needs no display; go-zen-graphics takes its
+# ./... does not reach its integration tests. Games run through the root CLI.
+# go-zen needs no display; go-zen-graphics takes its
 # screens and needs one (CI runs it in the graphics job under xvfb-run).
 go-zen:
 	cd examples/go-zen && $(GO) vet ./...
@@ -136,62 +137,24 @@ bench-compare:
 # The documentation website (GitHub Pages). Requires hugo; see website/hugo.toml.
 website:
 	cd website && hugo --gc --minify --cleanDestinationDir
-	$(MAKE) website-go-zen
-	$(MAKE) website-novel
-	$(MAKE) website-campaign
+	$(MAKE) website-go-zen website-novel website-campaign
 
-# Go Zen in the browser (GOOS=js) under website/public/play/go-zen/: the program, Go's
-# wasm_exec.js, the page, and the game's files, which the program fetches before it starts.
-# web/assets.py writes the pictures as WebP (needs Pillow with WebP, python3-pil), only
-# those whose source changed since the last run, and the page with the download's size.
-# The converted files are kept in build/ (hugo --cleanDestinationDir empties public/).
-WEB_GO_ZEN = website/public/play/go-zen
-WEB_GO_ZEN_GAME = build/web/go-zen-game
-WEB_GO_ZEN_WASM = build/web/go-zen.wasm
-website-go-zen:
-	mkdir -p $(WEB_GO_ZEN) build/web
-	rm -f $(WEB_GO_ZEN)/go-zen.wasm
-	cd examples/go-zen && GOOS=js GOARCH=wasm $(GO) build -trimpath -buildvcs=false -ldflags="-s -w" -o ../../$(WEB_GO_ZEN_WASM) .
-	gzip -9 -c $(WEB_GO_ZEN_WASM) > $(WEB_GO_ZEN)/go-zen.wasm.gz
-	install -m 644 "$$($(GO) env GOROOT)/lib/wasm/wasm_exec.js" $(WEB_GO_ZEN)/
-	python3 examples/go-zen/web/assets.py examples/go-zen/game $(WEB_GO_ZEN_GAME) \
-		examples/go-zen/web/index.html $(WEB_GO_ZEN)/index.html $(WEB_GO_ZEN_WASM)
-	rm -rf $(WEB_GO_ZEN)/game
-	cp -R $(WEB_GO_ZEN_GAME) $(WEB_GO_ZEN)/game
+# All showcase games share the release player; only their YAML and assets differ.
+# Pillow/WebP conversion is a site-maintenance optimization, not an author prerequisite.
+website-player: web-runtime
+	mkdir -p website/public/play/runtime
+	cp -R build/runtime/web/wasm_exec.js build/runtime/web/LICENSE build/runtime/web/GO-LICENSE build/runtime/web/THIRD_PARTY_LICENSES website/public/play/runtime/
+	gzip -9 -c build/runtime/web/gozen-player.wasm > website/public/play/runtime/gozen-player.wasm.gz
 
-# The novel sample in the browser under website/public/play/novel/, built the same way
-# (Go Zen's web/assets.py writes its pictures as WebP).
-WEB_NOVEL = website/public/play/novel
-WEB_NOVEL_GAME = build/web/novel-game
-WEB_NOVEL_WASM = build/web/novel.wasm
-website-novel:
-	mkdir -p $(WEB_NOVEL) build/web
-	rm -f $(WEB_NOVEL)/novel.wasm
-	cd examples/novel && GOOS=js GOARCH=wasm $(GO) build -trimpath -buildvcs=false -ldflags="-s -w" -o ../../$(WEB_NOVEL_WASM) .
-	gzip -9 -c $(WEB_NOVEL_WASM) > $(WEB_NOVEL)/novel.wasm.gz
-	install -m 644 "$$($(GO) env GOROOT)/lib/wasm/wasm_exec.js" $(WEB_NOVEL)/
-	python3 examples/go-zen/web/assets.py examples/novel/game $(WEB_NOVEL_GAME) \
-		examples/novel/web/index.html $(WEB_NOVEL)/index.html $(WEB_NOVEL_WASM)
-	rm -rf $(WEB_NOVEL)/game
-	cp -R $(WEB_NOVEL_GAME) $(WEB_NOVEL)/game
-
-# The campaign sample in the browser under website/public/play/campaign/, built the same way.
-WEB_CAMPAIGN = website/public/play/campaign
-WEB_CAMPAIGN_GAME = build/web/campaign-game
-WEB_CAMPAIGN_WASM = build/web/campaign.wasm
-website-campaign:
-	mkdir -p $(WEB_CAMPAIGN) build/web
-	rm -f $(WEB_CAMPAIGN)/campaign.wasm
-	cd examples/campaign && GOOS=js GOARCH=wasm $(GO) build -trimpath -buildvcs=false -ldflags="-s -w" -o ../../$(WEB_CAMPAIGN_WASM) .
-	gzip -9 -c $(WEB_CAMPAIGN_WASM) > $(WEB_CAMPAIGN)/campaign.wasm.gz
-	install -m 644 "$$($(GO) env GOROOT)/lib/wasm/wasm_exec.js" $(WEB_CAMPAIGN)/
-	python3 examples/go-zen/web/assets.py examples/campaign/game $(WEB_CAMPAIGN_GAME) \
-		examples/campaign/web/index.html $(WEB_CAMPAIGN)/index.html $(WEB_CAMPAIGN_WASM)
-	rm -rf $(WEB_CAMPAIGN)/game
-	cp -R $(WEB_CAMPAIGN_GAME) $(WEB_CAMPAIGN)/game
+website-go-zen website-novel website-campaign: website-player
+	mkdir -p website/public/play/$(patsubst website-%,%,$@)
+	python3 scripts/web/assets.py examples/$(patsubst website-%,%,$@)/game build/web/$(patsubst website-%,%,$@)-game \
+		scripts/web/index.html website/public/play/$(patsubst website-%,%,$@)/index.html build/runtime/web/gozen-player.wasm
+	rm -rf website/public/play/$(patsubst website-%,%,$@)/game
+	cp -R build/web/$(patsubst website-%,%,$@)-game website/public/play/$(patsubst website-%,%,$@)/game
 
 # Opens the built Go Zen, novel and campaign pages in headless Chrome and fails when nothing is
-# drawn, or when an Update or a Draw of the game took longer than WEB_MAX_FRAME
+# drawn, or when an idle Update or Draw after input/capture exceeds WEB_MAX_FRAME
 # milliseconds (the page's frame meter, ?fps) (after make website; needs google-chrome and
 # node).
 WEB_MAX_FRAME ?= 250
