@@ -410,7 +410,7 @@ The shape of the command line: commands, operands, options. Exits 2.
 
 There is no such command.
 
-The word is not a command of gozen or of the group it follows. The commands are grouped (ADR 0024): new, run, export, check, sim, play, book, pack, art, theme, version, and help. An old name such as curve or memos is answered with its new place, for example gozen sim dive.
+The word is not a command of gozen or of the group it follows. Top-level commands include new, run, export, check, sim, play, book, pack, art, theme, version, and help. Removed command names are not aliases; use gozen --help to list the current commands.
 
 Fix: Use the command the message names, or run gozen --help (or the group with --help) for the list.
 
