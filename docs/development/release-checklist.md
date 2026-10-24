@@ -37,6 +37,7 @@ Run ONNX inference separately, with a user-supplied model and shared library. Do
 Pushing a tag `v*` runs the [Release workflow](../../.github/workflows/release.yml). Its configuration is [.goreleaser.yml](../../.goreleaser.yml).
 
 - Artifacts: `gozen` archives for Linux, macOS and Windows (amd64, arm64), Linux `.deb`, `.rpm` and `.apk` packages, an SBOM per archive, `checksums.txt` signed with cosign (keyless), GitHub attestation and SLSA provenance (`multiple.intoto.jsonl`). The license texts of dependencies are bundled in `THIRD_PARTY_LICENSES/`.
+- Export runtimes: `gozen-runtime` archives for the same desktop targets and `js_wasm`. Each includes a player and `runtime.json`; the web archive also includes `wasm_exec.js`. Check that their version matches the CLI and that desktop and browser export smoke tests pass.
 - Destinations: the cask in `nao1215/homebrew-tap`.
 - Artifacts are built with `CGO_ENABLED=0` and contain no ONNX inference ([ADR 0016](../decisions/0016-single-cli.md)).
 - Before publication, the contents and checksums of all archives and packages are checked on Linux, and `gozen --version`, `gozen help`, `gozen version` and `gozen check` are run on Linux, macOS and Windows (`scripts/smoke_artifacts.sh`). The same jobs ([Release Smoke](../../.github/workflows/release-smoke.yml)) run on every pull request and push to main, so a packaging mistake shows before a tag.
