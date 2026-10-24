@@ -18,6 +18,14 @@ Gozen is a public Go and Ebitengine framework and toolkit for 2D RPGs, visual no
 - Explain the consumer and purpose of every new export. Document its contract, add meaningful usage coverage, and review the `api/public.txt` diff. Inventory updates do not approve API growth.
 - Do not add architecture exceptions to silence a violation. Restructure the code; a necessary policy change needs a reasoned ADR first.
 
+## File organization and maintenance
+
+- Do not add files merely to split a small change or append more coverage. Extend the existing file that owns the behavior unless a separate responsibility justifies a new file.
+- Name unit test files after their implementation: `game.go` is tested in `game_test.go`. Do not use vague or coverage-driven suffixes such as `_more_test.go`, `_extra_test.go`, `_cov_test.go`, or numbered variants.
+- Group tests spanning multiple implementation files by the behavior they integrate, in clearly named `*_integration_test.go` files or an established integration-test directory. Keep executable end-to-end scenarios in the existing E2E suite. Do not mislabel unit tests as integration tests to avoid the naming rule.
+- Reuse existing helpers and implementations. When moving or replacing behavior, remove superseded code, duplicate logic and unused helpers in the same change; do not leave dead code or compatibility wrappers without an explicit consumer.
+- Apply these rules to new and modified test organization, and consolidate nearby legacy test fragments when working on them. Preserve build tags, platform boundaries and meaningful test coverage during consolidation.
+
 ## Verification and reporting
 
 - Read actual code before making claims. Cite `file:line` evidence; mark unverified behavior explicitly. Keep documentation under `docs/`, apart from repository entry documents.
