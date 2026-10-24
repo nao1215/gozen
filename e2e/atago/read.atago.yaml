@@ -289,3 +289,34 @@ scenarios:
       stdout: {equals: ''}
       stderr:
         json: {path: $.code, equals: GZN2301}
+- name: design rejects ${args} before reading the game
+  matrix:
+  - {args: '--seed 0', code: GZN2201}
+  - {args: '--verbose', code: GZN2302}
+  - {args: '--list --out report', code: GZN2301}
+  steps:
+  - run:
+      command: gozen sim design missing-game ${args} --format json
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr:
+        json: {path: $.code, equals: '${code}'}
+      changes: {created: [], modified: [], deleted: []}
+- name: generated floor JSON retains explicit zero seed and numbers
+  steps:
+  - run:
+      command: gozen sim floors "${specdir}/fixtures/game" --location grotto --floor 1 --try 2 --format json
+      deterministic: {runs: 2, compare: [stdout, stderr, exit_code]}
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: sim floors}
+        - {path: '$.data[0].seed', equals: 0}
+        - {path: '$.data[1].seed', equals: 1}
+        - {path: '$.data[0].numbers.width', equals: 11}
+        - {path: '$.data[0].numbers.height', equals: 11}
+      changes: {created: [], modified: [], deleted: []}
