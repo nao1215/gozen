@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.6.0 - 2026-10-24
+
+Continuous stairs through bounded stacked spaces, safer limits for oversized game data and pictures, and faster documentation CI. Existing single-floor dungeons keep their renderer and transitions; stacked spaces opt in with schema version 8.
+
 ### Fixed
 
 - Prevent map route distance overflow and avoid building paths for destinations that are not offered as choices. Map refresh and battle mouse targeting also reuse existing layout information.
