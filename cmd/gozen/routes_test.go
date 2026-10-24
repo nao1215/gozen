@@ -1,12 +1,17 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/nao1215/gozen/internal/cliio"
 )
 
 func TestSimRoutesExploresNovelChoices(t *testing.T) {
@@ -72,8 +77,19 @@ func TestSimRoutesReportsUnreachableClear(t *testing.T) {
 	}
 }
 
-func TestSimRoutesTimeoutIsFailure(t *testing.T) {
-	out, stderr := invoke(t, 1, "sim", "routes", designGame(t), "--timeout", "1ns", "--format", "json")
+func TestSimRoutesExpiredDeadlineIsFailure(t *testing.T) {
+	var stdout, diagnostics bytes.Buffer
+	c := &command{path: "sim routes", out: &cliio.Output{Writer: &stdout}, stderr: &cliio.Output{Writer: &diagnostics}}
+	op := c.operation(tree[c.path])
+	if err := c.parse(op.Flags, []string{designGame(t), "--format", "json"}, op.Page); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+	if exit := c.finish(op.Run(ctx)); exit != 1 {
+		t.Fatalf("expired deadline: exit %d; %s; %s", exit, stdout.String(), diagnostics.String())
+	}
+	out, stderr := stdout.String(), diagnostics.String()
 	var report routesReport
 	if err := json.Unmarshal(resultData(t, out, "sim routes"), &report); err != nil {
 		t.Fatal(err)
