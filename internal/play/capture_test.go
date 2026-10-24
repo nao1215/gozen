@@ -72,7 +72,7 @@ func TestCaptureRejectsInvalidJobsBeforeWriting(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if _, err := Capture(ctx, nil, nil, CaptureConfig{}); !errors.Is(err, context.Canceled) {
-		t.Fatalf("cancelled capture: %v", err)
+		t.Fatalf("canceled capture: %v", err)
 	}
 }
 

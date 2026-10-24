@@ -39,6 +39,8 @@ Windows is assumed to have neither Make nor Bash. At the repository root, run th
 
 `e2e` was replaced in T4 with checks of the real binary using atago. `graphics` is the screen test of T3, and `e2e-graphics` is the CLI capture pipeline of T4. A failure caused by a missing prerequisite is not counted as a success or a skip.
 
+`make coverage` requires atago v0.25.2 and a display. On Linux, run `xvfb-run --auto-servernum --error-file=/dev/stderr make coverage`. It combines unit-test coverage with the real CLI capture scenarios, including PNG/GIF output, rejected assets and per-job timeouts. Both use atomic counters and `-coverpkg=./...`. The unit-test profile retains packages with no tests; `go tool covdata textfmt` converts the CLI counters into additional blocks. Octocov merges repeated blocks in `coverage.out`. Each run uses a fresh temporary directory so old counters cannot affect the result.
+
 `go build -trimpath -buildvcs=false ./...` compiles the libraries; it does not put a game or CLI in `bin/`. `-trimpath` removes absolute source paths and `-buildvcs=false` stops automatic collection of VCS information. Build the individual CLI binary into `bin/` with `make cli-build`.
 
 `make cli-build`, `make e2e-graphics` and the individual binary builds in CI also pass `-ldflags=-compressdwarf=false`. It keeps the debug information but disables DWARF compression, which avoids bytes of compressed data accidentally being picked up as strings by content checks with `strings`. The binary is larger than a compressed one. What the content checks look at and how they judge do not change.

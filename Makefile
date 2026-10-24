@@ -21,9 +21,20 @@ test:
 	$(GO) test ./...
 
 # coverage.out is read by octocov (.octocov.yml). -coverpkg counts tests in one
-# package toward the packages they exercise.
+# package toward the packages they exercise. Include the real capture process:
+# the Ebitengine loop cannot run inside the unit-test process.
 coverage:
-	$(GO) test -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
+	mkdir -p build/atago
+	@set -eu; \
+	work=$$(mktemp -d "$(CURDIR)/build/coverage.XXXXXX"); \
+	trap 'rm -rf "$$work"' EXIT; \
+	mkdir -p "$$work/raw" "$$work/bin"; \
+	$(GO) test -covermode=atomic -coverpkg=./... -coverprofile="$$work/unit.out" ./...; \
+	$(GO) build -cover -covermode=atomic -coverpkg=./... -o "$$work/bin/gozen" ./cmd/gozen; \
+	(cd build/atago && PATH="$$work/bin:$$PATH" GOCOVERDIR="$$work/raw" $(ATAGO) run --ci --parallel 1 --filter capture --tag graphics ../../e2e/atago); \
+	$(GO) tool covdata textfmt -i="$$work/raw" -o="$$work/cli.out"; \
+	cat "$$work/unit.out" > coverage.out; \
+	tail -n +2 "$$work/cli.out" >> coverage.out
 
 lint: arch api tidy workflows
 	$(GOLANGCI_LINT) run ./...
