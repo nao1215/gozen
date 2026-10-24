@@ -5,7 +5,7 @@ description: Make or fix an RPG, a visual novel or a strategy game (a campaign) 
 
 # Making a Gozen game
 
-A Gozen game is a directory: `game.yaml`, `data/*.yaml` and `assets/`. Run it directly with `gozen play run <game-dir>`, or embed it in a Go program calling `play.Main`. You write YAML. The `gozen` command checks, measures and runs it.
+A Gozen game is a directory: `game.yaml`, `data/*.yaml` and `assets/`. Run it directly with `gozen run <game-dir>`, or embed it in a Go program calling `play.Main`. You write YAML. The `gozen` command checks, measures and runs it.
 
 Start a new game with `gozen new <game-dir> --template rpg|novel|campaign`. The generated game contains YAML and assets, not Go source. Keep its generated ID stable for save compatibility; use `--id` only when choosing the identity deliberately. Existing destinations are never overwritten.
 
@@ -15,7 +15,7 @@ Start a new game with `gozen new <game-dir> --template rpg|novel|campaign`. The 
 2. Edit the YAML.
 3. Run `gozen check` on the game directory. Fix every error and run it again. Stop only when it prints `ok:` and exits 0.
 4. When a fight or a dungeon changed, measure it with `gozen sim` (references/measure.md).
-5. Play the game with `gozen play run <game-dir> --dev`; it uses the same standard runner as `play.Main`, including live reload, scripts, traces and screenshots. Use `--save-dir` to isolate manual test saves. A display is required (Xvfb for unattended Linux); inspect `gozen play run --help` before choosing options.
+5. Play the game with `gozen run <game-dir> --dev`; it uses the same standard runner as `play.Main`, including live reload, scripts, traces and screenshots. Use `--save-dir` to isolate manual test saves. A display is required (Xvfb for unattended Linux); inspect `gozen run --help` before choosing options.
 6. For a novel or event-driven game, run `gozen sim routes <game-dir>` to explore choices and check reachable endings and offered options; use `--format json --fail-unreachable` in CI.
 
 <!-- verify: run fixture=cave -->
@@ -92,7 +92,7 @@ A campaign (SLG, a war of regions) sets `schema_version: 5`, `regions` and `fact
 - Give each general (`generals.<id>.army`) and enemy (`enemies.<id>.army`) an army kind: `men`, `women` or `monsters`. `clash.armies.<kind>` lists the pictures of one soldier of that kind, drawn facing right (the engine flips the foe side). `clash.layout` is `below` (the default, cards in a row under the armies) or `front`.
 - The map can be one picture of the whole land. Give each region an `area` (a polygon in picture pixels) and each point an `at`; `landmark` is optional. A region's roads and borders show only for the region chosen (`region_roads` and `region_borders` in the map take `selected` or `always`). `gozen check` reports areas that overlap or leave the picture.
 - With armies, `clash.max_soldiers` (4 by default) sets how many soldiers one unit shows, and `clash.rope: false` leaves out the rope of the two sides' troops. `regions.<id>.landmark` (a cut-out picture of a city or fort, optional) stands on the map at the region's point.
-- Measure with `gozen sim campaign game` (and `--tactic`) before tuning numbers. Use `--compare strategies` or `--compare tactics` to run every variant on the same seeds; `--format json` includes win rate, mean ending turn, mean player regions held and region ownership details. Play orders with `gozen play run game --dev`; use `--script` and an isolated `--save-dir` for repeatable checks.
+- Measure with `gozen sim campaign game` (and `--tactic`) before tuning numbers. Use `--compare strategies` or `--compare tactics` to run every variant on the same seeds; `--format json` includes win rate, mean ending turn, mean player regions held and region ownership details. Play orders with `gozen run game --dev`; use `--script` and an isolated `--save-dir` for repeatable checks.
 
 The recipe is "Make a campaign" in the cookbook. A complete one is [examples/campaign](https://github.com/nao1215/gozen/tree/main/examples/campaign).
 
@@ -119,13 +119,13 @@ The sample browser builds keep game files outside WebAssembly. Their generated `
 - Do not edit generated files (`data/schema/*.json` in Gozen itself).
 - Do not say the game is done while `gozen check` reports an error.
 
-For desktop delivery, use `gozen pack desktop GAME OUT --runtime RUNTIME
+For desktop delivery, use `gozen export GAME --out OUT --runtime RUNTIME
 --target OS-ARCH` with a matching release runtime. Keep the output directory
 new and outside both inputs. If the game has an asset policy, first use
 `pack release` and export its approved output. Run the packaged player after
 moving the directory, with isolated saves; check save/reload and the actual
-native target. Cross-compilation alone is not runtime verification. For browser delivery, use `gozen pack web GAME OUT --runtime RUNTIME` with
+native target. Cross-compilation alone is not runtime verification. For browser delivery, use `gozen export GAME --target web --out OUT --runtime RUNTIME` with
 the matching js-wasm runtime bundle. Serve the output over HTTP(S), including
 under a subdirectory, and verify choices plus save/reload in a real browser.
 The exporter copies assets unchanged and the player prefetches the manifest;
-saves remain origin-local. See the site's `pack desktop` command documentation.
+saves remain origin-local. See the site's `export` command documentation.

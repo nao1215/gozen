@@ -4,16 +4,20 @@ The CLI is the single `gozen` binary ([ADR 0016](../decisions/0016-single-cli.md
 
 ## Commands
 
-The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf runs. The help pages are `groups` and `pages` in `cmd/gozen/help.go`, keyed by the command path. `play run` shares its options and help groups with `play.Main` in `internal/play/entry.go`; it requires a directory operand instead of `--dir`. `art prompt` and `art mosaic` hand their arguments to `internal/promptgen/command` and `internal/mosaic/command`, and `art fetch` to `mosaiccmd.Fetch`.
+The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf runs. The help pages are `groups` and `pages` in `cmd/gozen/help.go`, keyed by the command path. `run` shares its options and help groups with `play.Main` in `internal/play/entry.go`; it requires a directory operand instead of `--dir`. `art prompt` and `art mosaic` hand their arguments to `internal/promptgen/command` and `internal/mosaic/command`, and `art fetch` to `mosaiccmd.Fetch`.
 
 | Group | Commands | What they share |
 | --- | --- | --- |
+| `new` | (a leaf) | create a game directory from a template |
+| `run` | (a leaf) | play a game directory; `--dev` enables author tools |
 | `check` | (a leaf) `--only structure\|layout`, `--format text\|json` | the game directory |
-| `sim` | `battle`, `dive`, `floors`, `design` | play by the rules without a window; `--seed`, `--turns`, `--format` |
-| `play` | `run`, `trace`, `notes`, `shots` | run a directory; inspect traces, F9 notes and screenshots |
+| `sim` | `battle`, `dive`, `floors`, `design`, `campaign`, `routes`, `breed` | play by the rules without a window |
+| `play` | `trace`, `notes`, `shots` | inspect traces, F9 notes and screenshots |
 | `book` | (a leaf) | |
-| `pack` | `release`, `trial` | a new output tree; `--overlay` and `--inspect` |
+| `export` | (a leaf) | create a desktop or web package with a prebuilt runtime |
+| `pack` | `release`, `trial` | create a new output tree |
 | `art` | `prompt`, `mosaic`, `fetch`, `faces`, `puppet` | pictures; cgo, ONNX Runtime and models for mosaic inference and faces |
+| `theme` | `add`, `list` | bundled dungeon themes |
 | `version`, `help` | | `gozen help` takes the words of a path, or a code |
 
 An old name (`curve`, `memos`, `mosaic`, ...) is an unknown command; no alias table is kept.
@@ -81,7 +85,7 @@ suite excludes `web`; the Website and Release Smoke workflows run it separately.
 command and output contracts. The shared I/O and argument errors now live in
 `internal/cliio`; protected output paths remain in `cmd/internal/cli`.
 
-`new` and `theme list` currently support `--format text|json|jsonl`. JSON emits one
+`new`, `export` and `theme list` currently support `--format text|json|jsonl`. JSON emits one
 version-1 envelope with `command`, `status` and `data`. JSONL theme lists emit
 ordered `item` records and one terminal `summary`; creation emits one summary.
 Both machine formats send fatal diagnostics to stderr as JSONL, preserving the

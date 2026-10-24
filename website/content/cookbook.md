@@ -1428,11 +1428,11 @@ Use the game directory and enable the author tools:
 
 <!-- verify: skip opens a game window and waits for input -->
 ```shell
-gozen play run game --dev --memos notes           # F5 reloads game/, F9 writes notes/
-gozen play run game --dev --start cave_mouth --level 5 --battle bats
-gozen play run game --dev --start village --flags sela_joined,var.asked=3 --gold 500
-gozen play run game --dev --event greeting --line 2
-gozen play run game --dev --from-memo notes/2026-01-01/001.json
+gozen run game --dev --memos notes           # F5 reloads game/, F9 writes notes/
+gozen run game --dev --start cave_mouth --level 5 --battle bats
+gozen run game --dev --start village --flags sela_joined,var.asked=3 --gold 500
+gozen run game --dev --event greeting --line 2
+gozen run game --dev --from-memo notes/2026-01-01/001.json
 ```
 
 Collect the notes into one HTML page:

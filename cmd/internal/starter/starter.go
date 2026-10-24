@@ -117,7 +117,7 @@ const readme = `# Your game
 
 Open a terminal in this directory and run:
 
-` + "```sh\ngozen check .\ngozen play run .\n```" + `
+` + "```sh\ngozen check .\ngozen run .\n```" + `
 
 Edit the title in game.yaml and the dialog or regions in data/world.yaml.
 The shared characters and battle rules are in data/rules.yaml.
@@ -126,8 +126,8 @@ The bundled placeholder artwork and template text are original Gozen material
 provided under the MIT license: https://github.com/nao1215/gozen/blob/main/LICENSE.
 No Go source, compiler or dependency installation is needed for these commands.
 
-For testing, run ` + "`gozen play run . --dev --save-dir test-saves`" + `.
-Press F5 after editing YAML to reload; use ` + "`gozen play run --help`" + ` for all options.
+For testing, run ` + "`gozen run . --dev --save-dir test-saves`" + `.
+Press F5 after editing YAML to reload; use ` + "`gozen run --help`" + ` for all options.
 Keep game.yaml's id unchanged after sharing a game: it identifies its saves.
 The built-in font supports Latin text. Add a suitable font for other scripts.
 

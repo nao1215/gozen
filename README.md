@@ -43,7 +43,7 @@ gozen check my-game
 
 <!-- verify: skip opens a window; generated templates are played by the graphics E2E -->
 ```sh
-gozen play run my-game
+gozen run my-game
 ```
 
 Choose `novel` or `campaign` for another template. Edit `game.yaml` and `data/world.yaml` in a text editor; no programming language is needed. YAML editing and terminal commands are the current interface, not a visual editor.
@@ -253,15 +253,15 @@ gozen sim dive game cave --floors 5 --boss 5:cave_boss # levels and wins per flo
 
 `gozen book game > book.md` writes the whole game as one Markdown file.
 
-Run the directory directly with `gozen play run game`, or enable author tools with `gozen play run game --dev`. No Go wrapper is needed. The same options are available when embedding a game with `play.Main`.
+Run the directory directly with `gozen run game`, or enable author tools with `gozen run game --dev`. No Go wrapper is needed. The same options are available when embedding a game with `play.Main`.
 
 Test tools:
 
 <!-- verify: skip opens a game window and waits for input -->
 ```sh
-gozen play run game --dev --memos notes                   # F9 note, F7 win rates, F5 reload
-gozen play run game --dev --start cave --level 8 --battle cave_boss  # jump to a fight
-gozen play run game --dev --autoplay 60 --speed 8 --trace run.jsonl  # autoplay and record
+gozen run game --dev --memos notes                   # F9 note, F7 win rates, F5 reload
+gozen run game --dev --start cave --level 8 --battle cave_boss  # jump to a fight
+gozen run game --dev --autoplay 60 --speed 8 --trace run.jsonl  # autoplay and record
 gozen play trace run.jsonl                                # read the record
 gozen play notes notes                                    # notes as one HTML page
 ```
@@ -298,9 +298,9 @@ location=trail battles=1 wins=1 gold=3
 | `new` | create a playable RPG, novel or campaign from a template |
 | `check` | definitions, references, expressions, pictures, text layout (`--only structure` or `--only layout`) |
 | `sim battle`, `sim dive`, `sim floors`, `sim design` | win rate; a dungeon dive; generated floors; scripted players |
-| `play run`, `play trace`, `play notes`, `play shots` | run a game directory; read a trace; notes as HTML; screenshots of a list |
+| `run`, `play trace`, `play notes`, `play shots` | run a game directory; read a trace; notes as HTML; screenshots of a list |
 | `book` | the whole game as Markdown |
-| `pack desktop`, `pack web` | playable desktop directories; static browser games, using prebuilt runtimes |
+| `export` | playable desktop directories; static browser games, using prebuilt runtimes |
 | `pack release`, `pack trial` | approved pictures only; a demo |
 | `art prompt`, `art mosaic`, `art fetch`, `art faces`, `art puppet` | image prompts; pixelation; models; balloon faces; moving portraits |
 | `theme add`, `theme list` | copy a dungeon theme (walls, floor, ceiling, door) into a game; list the themes |

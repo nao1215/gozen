@@ -63,7 +63,7 @@ func read(t *testing.T, p string) []byte {
 // helpPaths are every page: the top, the groups, the leaves, and the leaves of
 // the production tools.
 func helpPaths() []string {
-	paths := []string{"", "art prompt", "art mosaic", "art fetch", "play run"}
+	paths := []string{"", "art prompt", "art mosaic", "art fetch", "run"}
 	paths = append(paths, slices.Sorted(maps.Keys(groups))...)
 	return append(paths, slices.Sorted(maps.Keys(pages))...)
 }

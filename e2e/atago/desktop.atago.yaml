@@ -11,8 +11,16 @@ scenarios:
   - fixture: {file: source/main.go, content: 'package main'}
   - fixture: {file: source/saves/private.json, content: '{}'}
   - run:
-      command: gozen pack desktop source package --runtime "${env:GOZEN_RUNTIME}"
-  - assert: {exit_code: 0, stderr: {equals: ''}}
+      command: gozen export --out=package --runtime "${env:GOZEN_RUNTIME}" source --format json
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: export}
+        - {path: $.status, equals: ok}
+        - {path: $.data.directory, equals: package}
   - assert:
       file: {path: package/game/main.go, exists: false}
   - assert:
@@ -77,15 +85,15 @@ scenarios:
 
 - name: desktop rejects missing runtime and invalid targets without output
   matrix:
-  - {arguments: 'source output'}
-  - {arguments: 'source output --runtime absent --target unknown'}
+  - {arguments: 'source --out output'}
+  - {arguments: 'source --out output --runtime absent --target unknown'}
   steps:
   - run:
-      command: gozen pack desktop ${arguments}
+      command: gozen export ${arguments}
   - assert:
       exit_code: 2
       stdout: {equals: ''}
-      stderr: {contains: 'gozen pack desktop --help'}
+      stderr: {contains: 'gozen export --help'}
       changes: {created: [], modified: [], deleted: []}
 
 - name: an unusable runtime leaves no partial package
@@ -97,7 +105,7 @@ scenarios:
       file: runtime/runtime.json
       content: '${metadata}'
   - run:
-      command: gozen pack desktop source output --runtime runtime
+      command: gozen export source --out output --runtime runtime
   - assert:
       exit_code: 1
       stdout: {equals: ''}
@@ -108,10 +116,29 @@ scenarios:
   steps:
   - fixture: {file: output/keep.txt, content: original}
   - run:
-      command: gozen pack desktop source output --runtime absent
+      command: gozen export source --out output --runtime absent
   - assert:
       exit_code: 1
       stdout: {equals: ''}
       stderr: {contains: 'output already exists'}
       changes: {created: [], modified: [], deleted: []}
       file: {path: output/keep.txt, contains: original}
+
+- name: export invalid syntax is a structured usage error ${arguments}
+  matrix:
+  - {arguments: 'source extra --out out --runtime runtime', code: GZN2102}
+  - {arguments: 'source --runtime runtime', code: GZN2303}
+  - {arguments: 'source --out out', code: GZN2303}
+  - {arguments: 'source --out out --runtime runtime --target unknown', code: GZN2201}
+  steps:
+  - run:
+      command: gozen export ${arguments} --format json
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: export}
+        - {path: $.code, equals: '${code}'}
+      changes: {created: [], modified: [], deleted: []}

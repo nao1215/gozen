@@ -17,7 +17,7 @@ brew install --cask nao1215/tap/gozen   # macOS and Linux with Homebrew
 
 [The release page](https://github.com/nao1215/gozen/releases) has `.tar.gz` and `.zip` archives for Linux, macOS and Windows (amd64 and arm64) and `.deb`, `.rpm` and `.apk` packages for Linux. The prebuilt binaries are built without cgo, so they have no ONNX inference for `gozen art mosaic`. Each release signs `checksums.txt` with cosign and attaches SBOMs and SLSA provenance; [Verifying a release](#verifying-a-release) shows the commands.
 
-After installation, `gozen version` reports the installed version. Follow [Getting started](/getting-started/) to create your first game. `new`, `check` and simulation do not need a display; `play run` needs the graphics runtime described below. Inference tools have additional prerequisites described in [Production tools](/production-tools/).
+After installation, `gozen version` reports the installed version. Follow [Getting started](/getting-started/) to create your first game. `new`, `check` and simulation do not need a display; `run` needs the graphics runtime described below. Inference tools have additional prerequisites described in [Production tools](/production-tools/).
 
 ## Optional installation from Go source
 
@@ -103,7 +103,7 @@ gozen new window-check
 
 <!-- verify: skip opens a window and waits for a player; graphics E2E plays generated games -->
 ```shell
-gozen play run window-check
+gozen run window-check
 ```
 
 Runtime checks are done on Linux. Windows and macOS are built in CI but have not been played yet; reports are welcome.
@@ -118,7 +118,7 @@ captures its title screen and quits:
 sudo apt-get install xvfb xauth
 gozen new ci-check
 printf 'wait 20\nshot title\nquit\n' > check.txt
-xvfb-run -a gozen play run ci-check --dev --mute --script check.txt --shots frames
+xvfb-run -a gozen run ci-check --dev --mute --script check.txt --shots frames
 ```
 
 `frames/title.png` contains the title screen. Scripted runs, traces and screenshot

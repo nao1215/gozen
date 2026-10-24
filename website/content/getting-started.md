@@ -19,7 +19,7 @@ gozen check my-game
 
 <!-- verify: skip opens a window; atago graphics E2E plays the generated templates -->
 ```shell
-gozen play run my-game
+gozen run my-game
 ```
 
 Press Enter or Z to select an option, use the arrow keys to move through choices,
@@ -68,7 +68,7 @@ fix. The [schema](/schema/) and [cookbook](/cookbook/) describe supported settin
 
 <!-- verify: skip opens a window; live reload is covered by the documentation image checks -->
 ```shell
-gozen play run my-game --dev --save-dir test-saves
+gozen run my-game --dev --save-dir test-saves
 ```
 
 Press F5 after an edit to reload the definitions. The explicit save directory
@@ -89,7 +89,7 @@ appropriately licensed font under `assets/` and set `fonts.regular` in `game.yam
 - [Cookbook](/cookbook/): add shops, battles, dialogue and other game features.
 - [Schema](/schema/): supported YAML fields and their meaning.
 
-Use [pack desktop](/commands/#pack-desktop) to distribute the game with a
-matching prebuilt runtime, or [pack web](/commands/#pack-web) for a static website. The existing
+Use [export](/commands/#desktop) to distribute the game with a
+matching prebuilt runtime, or [export --target web](/commands/#web) for a static website. The existing
 [Go API](/go-api/) remains available during migration; it is not needed for
 these steps.

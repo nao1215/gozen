@@ -6,12 +6,18 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
-- Export static browser games with `gozen pack web`, a common WASM player and its matching JavaScript runtime.
+- Export static browser games with `gozen export --target web`, a common WASM player and its matching JavaScript runtime.
 
-- Package games with `gozen pack desktop` and matching prebuilt player runtimes. Players need no Go toolchain or authoring CLI.
+- Package games with `gozen export` and matching prebuilt player runtimes. Players need no Go toolchain or authoring CLI.
 
 - Create playable RPG, novel and campaign templates with `gozen new`, using only YAML and assets. Beginner documentation now starts with the no-code authoring workflow.
-- Run a game directory with `gozen play run <game-dir>` without writing a Go wrapper. The CLI and `play.Main` share standard options, development tools, rendering and save behavior.
+- Run a game directory with `gozen run <game-dir>` without writing a Go wrapper. The CLI and `play.Main` share standard options, development tools, rendering and save behavior.
+- Read versioned JSON or JSONL results from `gozen new`, `gozen export` and `gozen theme list`, with structured diagnostics on stderr and the existing GZN codes and exit statuses.
+
+### Changed
+
+- Replace `gozen pack desktop GAME OUT` and `gozen pack web GAME OUT` with `gozen export GAME --out OUT`; use `--target web` for browser games.
+- Replace `gozen play run GAME` with `gozen run GAME`. The old command path is removed; game YAML and save formats are unchanged.
 
 ### Fixed
 

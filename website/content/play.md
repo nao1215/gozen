@@ -10,7 +10,7 @@ weight: 15
 
 [Play Five Banners in the browser](/play/campaign/), the campaign sample: three factions, five regions and ten weeks; choose a region, send your generals with their tactics, and watch the clash, in English or Japanese.
 
-The pages run the same YAML and assets as `gozen play run examples/NAME/game`.
+The pages run the same YAML and assets as `gozen run examples/NAME/game`.
 They share one player under `play/runtime/`. Each game's `game/files.json` maps
 original asset paths to served files. The browser fetches every listed file before
 starting and keeps saves in `localStorage`.

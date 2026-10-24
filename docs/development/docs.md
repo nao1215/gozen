@@ -74,7 +74,7 @@ The current exclusions (shown in the log of `docs-steps`):
 | --- | --- |
 | Installing with Homebrew | Installs from the tap, outside the repository |
 | cosign, `gh attestation`, slsa-verifier | Need the files of a published release (and a GitHub login) |
-| `gozen play run game --dev` (README and edit–play loop) | Opens a window and waits for input. Scripted CLI E2E and documentation image runs exercise the same startup |
+| `gozen run game --dev` (README and edit–play loop) | Opens a window and waits for input. Scripted CLI E2E and documentation image runs exercise the same startup |
 | `gozen play shots` | Needs a game built by the runner and a display. `e2e/atago/graphics.atago.yaml` runs it |
 | `gozen art mosaic auto --model`, `gozen art faces` | Need a detection model and ONNX Runtime (and cgo) |
 | `sudo apt-get install xvfb xauth` | Installs system packages. The capture inside Xvfb that follows is run |

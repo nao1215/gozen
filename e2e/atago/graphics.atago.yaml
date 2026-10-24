@@ -54,7 +54,7 @@ scenarios:
         shot conversation
         quit
   - run:
-      command: gozen play run "${specdir}/fixtures/game" --dev --mute --seed 7 --start camp --script play.txt --shots "run shots" --save-dir "run saves" --trace run.jsonl
+      command: gozen run "${specdir}/fixtures/game" --dev --mute --seed 7 --start camp --script play.txt --shots "run shots" --save-dir "run saves" --trace run.jsonl
       timeout: 30s
   - assert:
       exit_code: 0
@@ -94,7 +94,7 @@ scenarios:
         wait 90
         quit
   - run:
-      command: gozen play run "${specdir}/fixtures/game" --dev --mute --start camp --gold 37 --script save.txt --shots first --save-dir saves
+      command: gozen run "${specdir}/fixtures/game" --dev --mute --start camp --gold 37 --script save.txt --shots first --save-dir saves
       timeout: 30s
   - assert:
       exit_code: 0
@@ -121,7 +121,7 @@ scenarios:
         wait 90
         quit
   - run:
-      command: gozen play run --mute "${specdir}/fixtures/game" --dev --script load.txt --shots second --save-dir saves
+      command: gozen run --mute "${specdir}/fixtures/game" --dev --script load.txt --shots second --save-dir saves
       timeout: 30s
   - assert:
       exit_code: 0
@@ -161,7 +161,7 @@ scenarios:
         shot conversation
         quit
   - run:
-      command: gozen play run game --dev --mute --start village --script play.txt --shots shots --trace trace.jsonl
+      command: gozen run game --dev --mute --start village --script play.txt --shots shots --trace trace.jsonl
       timeout: 30s
   - assert: {exit_code: 0, stderr: {equals: ''}}
   - run:
@@ -189,7 +189,7 @@ scenarios:
         read 3
         quit
   - run:
-      command: gozen play run game --dev --mute --event opening --script play.txt --shots shots --trace trace.jsonl
+      command: gozen run game --dev --mute --event opening --script play.txt --shots shots --trace trace.jsonl
       timeout: 30s
   - assert: {exit_code: 0, stderr: {equals: ''}}
   - run:
@@ -219,7 +219,7 @@ scenarios:
         shot turn
         quit
   - run:
-      command: gozen play run game --dev --mute --start valley --script play.txt --shots shots --trace trace.jsonl
+      command: gozen run game --dev --mute --start valley --script play.txt --shots shots --trace trace.jsonl
       timeout: 30s
   - assert: {exit_code: 0, stderr: {equals: ''}}
   - assert:

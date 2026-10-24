@@ -42,7 +42,7 @@ type node struct {
 
 // tree maps a command path to its node.
 var tree = map[string]node{
-	"":             {subs: []string{"new", "check", "sim", "play", "book", "pack", "art", "theme", "version", "help"}},
+	"":             {subs: []string{"new", "run", "export", "check", "sim", "play", "book", "pack", "art", "theme", "version", "help"}},
 	"new":          {run: (*command).newGame},
 	"check":        {run: (*command).checkCmd},
 	"sim":          {subs: []string{"battle", "dive", "floors", "design", "campaign", "routes", "breed"}},
@@ -53,15 +53,14 @@ var tree = map[string]node{
 	"sim dive":     {run: (*command).curve},
 	"sim floors":   {run: (*command).floorsCmd},
 	"sim design":   {run: (*command).design},
-	"play":         {subs: []string{"run", "trace", "notes", "shots"}},
-	"play run":     {run: (*command).playRun},
+	"play":         {subs: []string{"trace", "notes", "shots"}},
+	"run":          {run: (*command).playRun},
 	"play trace":   {run: (*command).traceCmd},
 	"play notes":   {run: (*command).notesCmd},
 	"play shots":   {run: (*command).shots},
 	"book":         {run: (*command).bookCmd},
-	"pack":         {subs: []string{"desktop", "web", "release", "trial"}},
-	"pack web":     {run: (*command).web},
-	"pack desktop": {run: (*command).desktop},
+	"pack":         {subs: []string{"release", "trial"}},
+	"export":       {run: (*command).exportGame},
 	"pack release": {run: (*command).release},
 	"pack trial":   {run: (*command).trialCmd},
 	"art":          {subs: []string{"prompt", "mosaic", "fetch", "faces", "puppet"}},

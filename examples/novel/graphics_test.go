@@ -34,7 +34,7 @@ func TestGraphicsScreens(t *testing.T) {
 			if err := os.WriteFile(script, []byte(tc.script), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			args := append([]string{"run", "./cmd/gozen", "play", "run", "examples/novel/game", "--dev", "--mute", "--seed", "3", "--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves")}, tc.args...)
+			args := append([]string{"run", "./cmd/gozen", "run", "examples/novel/game", "--dev", "--mute", "--seed", "3", "--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves")}, tc.args...)
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 			defer cancel()
 			cmd := exec.CommandContext(ctx, "go", args...) //nolint:gosec // Fixed Go executable; arguments refer to this test's private directory.
