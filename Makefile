@@ -154,7 +154,7 @@ website-go-zen website-novel website-campaign: website-player
 	cp -R build/web/$(patsubst website-%,%,$@)-game website/public/play/$(patsubst website-%,%,$@)/game
 
 # Opens the built Go Zen, novel and campaign pages in headless Chrome and fails when nothing is
-# drawn, or when an Update or a Draw of the game took longer than WEB_MAX_FRAME
+# drawn, or when an idle Update or Draw after input/capture exceeds WEB_MAX_FRAME
 # milliseconds (the page's frame meter, ?fps) (after make website; needs google-chrome and
 # node).
 WEB_MAX_FRAME ?= 250
