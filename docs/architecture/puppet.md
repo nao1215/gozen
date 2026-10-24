@@ -6,11 +6,11 @@ A one-picture character is moved by blinking, mouth movement, breathing, head sw
 
 ## Usage
 
-The calls (`puppet.Load`, `puppet.New`, `Update`, `Speak`, `React`, `SetFace`, `Draw`) and the `puppet:` key of an actor are shown in [Moving portraits: puppet](https://nao1215.github.io/gozen/go-api/#moving-portraits-puppet) in the Go API guide. In `Draw`, `rig.Size()` gives the size of the base picture, which you scale and translate to place it.
+Set `puppet:` on an actor or enemy to use portrait YAML in the game. See [the portrait recipe](https://nao1215.github.io/gozen/cookbook/#give-a-character-faces-and-a-moving-portrait). Validate it with `gozen puppet FILE` and play it with `gozen run GAME`.
 
-A running example is `go run ./examples/puppet` (the streamer from the chest up; Space starts and stops talking, H, S, K, N and T are reactions, F is the face). `--tour --frames DIR` shows all the motions in order and writes 30 fps PNGs (the source of the GIF above; on Linux it runs inside `xvfb-run`).
+`go run ./examples/puppet` is a maintainer inspection tool: Space starts and stops talking, N and T trigger head reactions, and F changes the face. `--tour --frames DIR` writes the tour as 30 fps PNGs for the GIF above. Authors do not need this Go program.
 
-Puppet is used only from the game thread. One `Update` advances `1/TPS` seconds (the default of `Config.TPS` is Ebitengine's default of 60). The same random seed and the same sequence of calls give the same motion. Call `Close` when taking it off the screen.
+The internal renderer uses the game thread, advances motion once per tick, and releases GPU images on close. The same seed and motion sequence produce the same animation.
 
 The head, hair and swaying parts can extend beyond the base picture by some tenths of the head radius, and hop and sway move the whole picture. Leave a little margin on top and on both sides when placing it.
 
@@ -40,7 +40,7 @@ actors:
 
 A whole picture is compared at load time with the base (for the eyes or mouth of a face, with that face's picture), and only the differing part is cut out, with the edge blurred by about 16 pixels. A picture whose whole was redrawn by image generation differs slightly everywhere, so use `area` (`[x, y, w, h]`) to narrow the search range to around the eyes or mouth. For a picture without transparency (drawn with a background), the transparency of the picture beneath is used as it is.
 
-`gozen art puppet <puppet.yaml>` checks the position of each difference. `--out DIR` writes the small pictures with the differences cut out and a YAML with `at`, which makes the distributed files smaller (comments do not remain in the written YAML).
+`gozen puppet <puppet.yaml>` checks the position of each difference. `--out DIR` writes the small pictures with the differences cut out and a YAML with `at`, which makes the distributed files smaller (comments do not remain in the written YAML).
 
 ## YAML
 

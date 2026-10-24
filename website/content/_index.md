@@ -133,14 +133,14 @@ More on each key in [the edit–play loop](/edit-play-loop/).
 
 ## Where to go
 
-- [Install](/install/): the gozen command, the library, and what each OS needs for the window.
+- [Install](/install/): the gozen command and what each OS needs for the window.
 - [Getting started](/getting-started/): run the samples, then start your own game.
 - [Writing a game](/writing-a-game/): how the YAML is laid out, with expressions and events.
 - [Schema](/schema/): every YAML field, its type, default and references.
 - [The edit–play loop](/edit-play-loop/): `--dev`, F5, F7, F9, autoplay, traces and notes.
 - [Commands](/commands/): every `gozen` subcommand and its options.
 - [Using AI agents](/ai-agents/): let an agent write the game and keep `gozen check` green.
-- [Go API](/go-api/): headless tests, embedding the runner, reactions and chat, moving portraits.
+- [Go API migration](/go-api/): replace a Go host with CLI execution and export.
 
 ## Features
 
@@ -168,4 +168,4 @@ More on each key in [the edit–play loop](/edit-play-loop/).
 go install github.com/nao1215/gozen/cmd/gozen@latest
 ```
 
-As a library: `go get github.com/nao1215/gozen@latest`. The [install page](/install/) lists the graphics libraries for each OS.
+The [install page](/install/) lists the graphics libraries for each OS.

@@ -198,7 +198,9 @@ func TestValidateReport(t *testing.T) {
 func TestOptionsValidate(t *testing.T) {
 	good := func() *options {
 		fs := pflag.NewFlagSet("t", pflag.ContinueOnError)
-		return (&cli{}).commonFlags(fs)
+		o := (&cli{}).commonFlags(fs)
+		o.resolveEnvironment()
+		return o
 	}
 	if err := good().validate(); err != nil {
 		t.Fatal(err)
@@ -267,11 +269,15 @@ func TestEnvDefaults(t *testing.T) {
 	if env("MOSAIC_TEST_X", "d") != "d" {
 		t.Fatal("an empty variable is not set")
 	}
-	// The environment feeds the flags' defaults.
+	// Help uses literal defaults; execution resolves omitted options.
 	t.Setenv("MOSAIC_SHAPE", "mask")
 	t.Setenv("MOSAIC_PASSES", "native")
 	fs := pflag.NewFlagSet("t", pflag.ContinueOnError)
 	o := (&cli{}).commonFlags(fs)
+	if o.shape != "box" || o.passes != "default" {
+		t.Fatal("environment leaked into registration")
+	}
+	o.resolveEnvironment()
 	if o.shape != "mask" || o.passes != "native" {
 		t.Fatalf("shape %q passes %q", o.shape, o.passes)
 	}

@@ -15,7 +15,6 @@ import (
 
 	"github.com/nao1215/gozen/internal/battle"
 	"github.com/nao1215/gozen/internal/headless/balance"
-	data "github.com/nao1215/gozen/schema"
 )
 
 func (c *command) sim() clihelp.Operation {
@@ -53,7 +52,7 @@ func (c *command) sim() clihelp.Operation {
 		if err := gamedata.UseWords(fsys); err != nil {
 			return err
 		}
-		db, err := data.Load(fsys, ".")
+		db, err := gamedata.LoadDir(fsys, ".")
 		if err != nil {
 			return err
 		}

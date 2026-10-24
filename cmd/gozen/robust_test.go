@@ -28,8 +28,8 @@ func TestCommandsRefuseOddInputWithoutPanicking(t *testing.T) {
 			{"trace", "--"},
 			{"notes", "--"},
 			{"trial", "-n", "--"},
-			{"art", "puppet", "--"},
-			{"art", "faces", "--"},
+			{"puppet", "--"},
+			{"faces", "--"},
 		} {
 			// The operand is placed after "--" so a value starting with a dash is an operand.
 			args := append(append([]string{}, cmd...), bad)
@@ -41,7 +41,7 @@ func TestCommandsRefuseOddInputWithoutPanicking(t *testing.T) {
 				}()
 				var out, errOut strings.Builder
 				got := run(args, &out, &errOut)
-				if got != 0 && errOut.Len() == 0 {
+				if got != 0 && errOut.Len() == 0 && out.Len() == 0 {
 					t.Errorf("%q failed with %d and said nothing", args, got)
 				}
 				if got != 0 && out.Len() != 0 && cmd[0] != "check" {

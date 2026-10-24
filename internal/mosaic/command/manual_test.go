@@ -33,7 +33,7 @@ func newManualEnv(t *testing.T, boxes ...detect.Box) *manualEnv {
 // call runs a manual command on pattern.png with the environment's files.
 func (e *manualEnv) call(sub string, flags ...string) (int, string, string) {
 	e.t.Helper()
-	args := []string{"manual", sub, "--model", e.model, "--manual", e.manual, "-o", e.out, "--size", "96"}
+	args := []string{sub, "--model", e.model, "--manual", e.manual, "-o", e.out, "--size", "96"}
 	args = append(args, flags...)
 	args = append(args, e.game, "pattern.png")
 	return invoke(e.t, args...)
@@ -141,32 +141,32 @@ func TestManualCommandArgumentErrors(t *testing.T) {
 		code int
 		want string
 	}{
-		{"no command", []string{"manual"}, 2, "a manual command is required"},
-		{"unknown command", []string{"manual", "frobnicate", game, "pattern.png"}, 2, "unknown manual command"},
-		{"help with operands", []string{"manual", "help", "x"}, 2, "help takes no arguments"},
-		{"no image", []string{"manual", "skip", "--manual", e.manual, game}, 2, "expected a game directory and an image"},
-		{"list with image", []string{"manual", "list", game, "pattern.png"}, 2, "expected a game directory"},
-		{"no manual file", []string{"manual", "skip", "-o", e.out, game, "pattern.png"}, 1, "MOSAIC_MANUAL"},
-		{"box on grow", []string{"manual", "grow", "--manual", e.manual, "--box", "0,0,4,4", game, "pattern.png"}, 1, "require add or drop"},
-		{"poly on drop", []string{"manual", "drop", "--manual", e.manual, "--poly", "0,0,4,0,2,4", game, "pattern.png"}, 1, "drop requires rectangles"},
-		{"geometry on skip", []string{"manual", "skip", "--manual", e.manual, "--rect", "0,0,4,4", game, "pattern.png"}, 1, "geometry flags require"},
-		{"view size", []string{"manual", "view", "--size", "0", game, "pattern.png"}, 1, "view size"},
-		{"view size big", []string{"manual", "view", "--size", "5000", game, "pattern.png"}, 1, "view size"},
-		{"view step", []string{"manual", "view", "--step", "-1", game, "pattern.png"}, 1, "view size"},
-		{"bad src", []string{"manual", "view", "--src", "sideways", "-o", e.out, game, "pattern.png"}, 1, "original か masked"},
-		{"region outside", []string{"manual", "view", "--region", "100,100,5,5", "-o", e.out, game, "pattern.png"}, 1, "絵の外"},
-		{"bad coordinate", []string{"manual", "add", "--rect", "a,b,c,d", game, "pattern.png"}, 2, "invalid"},
-		{"empty coordinate", []string{"manual", "add", "--rect", ",", game, "pattern.png"}, 2, "empty"},
-		{"nan", []string{"manual", "add", "--rect", "NaN,0,1,1", game, "pattern.png"}, 2, "invalid coordinate"},
-		{"huge", []string{"manual", "add", "--rect", "2000000,0,1,1", game, "pattern.png"}, 2, "invalid coordinate"},
-		{"no geometry", []string{"manual", "add", "--manual", e.manual, "-o", e.out, game, "pattern.png"}, 1, "add には"},
-		{"drop nothing", []string{"manual", "drop", "--manual", e.manual, "-o", e.out, game, "pattern.png"}, 1, "drop には"},
-		{"grow nothing", []string{"manual", "grow", "--manual", e.manual, "-o", e.out, game, "pattern.png"}, 1, "grow には"},
-		{"grow region without amount", []string{"manual", "grow", "--manual", e.manual, "--region-id", "A1", "-o", e.out, game, "pattern.png"}, 1, "grow には"},
-		{"grow rect without amount", []string{"manual", "grow", "--manual", e.manual, "--rect", "0,0,4,4", "-o", e.out, game, "pattern.png"}, 1, "grow には"},
-		{"drop region without report", []string{"manual", "drop", "--manual", e.manual, "--region-id", "A1", "-o", e.out, game, "pattern.png"}, 1, "report.json に無い"},
-		{"outside the assets", []string{"manual", "skip", "--manual", e.manual, "-o", e.out, game, outside}, 1, "assets の外"},
-		{"escapes", []string{"manual", "skip", "--manual", e.manual, "-o", e.out, game, "../x.png"}, 1, ""},
+		{"no command", []string{}, 2, "select a mosaic action"},
+		{"unknown command", []string{"frobnicate", game, "pattern.png"}, 2, "unknown command"},
+		{"help with operands", []string{"--help", "x"}, 0, ""},
+		{"no image", []string{"skip", "--manual", e.manual, game}, 2, "expected a game directory and an image"},
+		{"list with image", []string{"list", game, "pattern.png"}, 2, "expected a game directory"},
+		{"no manual file", []string{"skip", "-o", e.out, game, "pattern.png"}, 1, "MOSAIC_MANUAL"},
+		{"box on grow", []string{"grow", "--manual", e.manual, "--box", "0,0,4,4", game, "pattern.png"}, 1, "require add or drop"},
+		{"poly on drop", []string{"drop", "--manual", e.manual, "--poly", "0,0,4,0,2,4", game, "pattern.png"}, 1, "drop requires rectangles"},
+		{"geometry on skip", []string{"skip", "--manual", e.manual, "--rect", "0,0,4,4", game, "pattern.png"}, 1, "geometry flags require"},
+		{"view size", []string{"view", "--size", "0", game, "pattern.png"}, 1, "view size"},
+		{"view size big", []string{"view", "--size", "5000", game, "pattern.png"}, 1, "view size"},
+		{"view step", []string{"view", "--step", "-1", game, "pattern.png"}, 1, "view size"},
+		{"bad src", []string{"view", "--src", "sideways", "-o", e.out, game, "pattern.png"}, 1, "original か masked"},
+		{"region outside", []string{"view", "--region", "100,100,5,5", "-o", e.out, game, "pattern.png"}, 1, "絵の外"},
+		{"bad coordinate", []string{"add", "--rect", "a,b,c,d", game, "pattern.png"}, 2, "invalid"},
+		{"empty coordinate", []string{"add", "--rect", ",", game, "pattern.png"}, 2, "empty"},
+		{"nan", []string{"add", "--rect", "NaN,0,1,1", game, "pattern.png"}, 2, "invalid coordinate"},
+		{"huge", []string{"add", "--rect", "2000000,0,1,1", game, "pattern.png"}, 2, "invalid coordinate"},
+		{"no geometry", []string{"add", "--manual", e.manual, "-o", e.out, game, "pattern.png"}, 1, "add には"},
+		{"drop nothing", []string{"drop", "--manual", e.manual, "-o", e.out, game, "pattern.png"}, 1, "drop には"},
+		{"grow nothing", []string{"grow", "--manual", e.manual, "-o", e.out, game, "pattern.png"}, 1, "grow には"},
+		{"grow region without amount", []string{"grow", "--manual", e.manual, "--region-id", "A1", "-o", e.out, game, "pattern.png"}, 1, "grow には"},
+		{"grow rect without amount", []string{"grow", "--manual", e.manual, "--rect", "0,0,4,4", "-o", e.out, game, "pattern.png"}, 1, "grow には"},
+		{"drop region without report", []string{"drop", "--manual", e.manual, "--region-id", "A1", "-o", e.out, game, "pattern.png"}, 1, "report.json に無い"},
+		{"outside the assets", []string{"skip", "--manual", e.manual, "-o", e.out, game, outside}, 1, "assets の外"},
+		{"escapes", []string{"skip", "--manual", e.manual, "-o", e.out, game, "../x.png"}, 1, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -250,7 +250,7 @@ func TestManualGrowByRectangleAndClearAndCheck(t *testing.T) {
 	if r := readEntries(t, e.out)[0].Regions; len(r) != 1 || r[0] != [4]int{2, 2, 10, 10} {
 		t.Fatalf("regions %v", r)
 	}
-	e.ok("check")
+	e.ok("mark", "--checked")
 	if !e.fix().Checked {
 		t.Fatal("check")
 	}
@@ -259,7 +259,7 @@ func TestManualGrowByRectangleAndClearAndCheck(t *testing.T) {
 	if e.fix().Checked {
 		t.Fatal("a changed picture stays checked")
 	}
-	e.ok("check")
+	e.ok("mark", "--checked")
 	e.ok("clear")
 	if _, err := mosaic.LoadFixes(e.manual); err != nil {
 		t.Fatal(err)
@@ -287,7 +287,7 @@ func TestManualBlockAndHumanFixFile(t *testing.T) {
 		t.Fatalf("both files reach the build: %+v", en)
 	}
 	// The same file for both is refused.
-	if code, _, diag := invoke(t, "manual", "check", "--fix", e.manual, "--manual", e.manual, "-o", e.out, e.game, "pattern.png"); code != 1 || !strings.Contains(diag, "separate files") {
+	if code, _, diag := invoke(t, "mark", "--checked", "--fix", e.manual, "--manual", e.manual, "-o", e.out, e.game, "pattern.png"); code != 1 || !strings.Contains(diag, "separate files") {
 		t.Fatalf("code %d: %s", code, diag)
 	}
 }

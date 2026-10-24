@@ -62,7 +62,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -80,7 +80,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -98,7 +98,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -650,7 +650,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -1025,7 +1025,7 @@
             "legacy_default": "no critical hits",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -1056,7 +1056,7 @@
             "legacy_default": "0.5",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -1093,7 +1093,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -1208,7 +1208,7 @@
             "legacy_default": "a.agi * (0.8 + 0.4 * random)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -1724,7 +1724,7 @@
                 "legacy_default": "no expression (true as a condition, 0 as a number)",
                 "zero": "expression value 0 (false as a condition)",
                 "required": "optional",
-                "reference": "expression; checked by gozen.Load",
+                "reference": "expression; checked by gozen check",
                 "version": "3"
               },
               "x-type": "expression"
@@ -2127,7 +2127,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -2242,7 +2242,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -2331,7 +2331,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -2461,7 +2461,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -2531,7 +2531,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -2613,7 +2613,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -2644,7 +2644,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -2662,7 +2662,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -2693,7 +2693,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -2737,7 +2737,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -2854,7 +2854,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -2937,7 +2937,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -2968,7 +2968,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -3006,7 +3006,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -3076,7 +3076,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -3146,7 +3146,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "required",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -3237,7 +3237,7 @@
         },
         "stats": {
           "additionalProperties": {
-            "description": "An expression. gozen.Load checks its syntax, names and types.",
+            "description": "An expression. gozen check checks its syntax, names and types.",
             "type": [
               "string",
               "number",
@@ -4064,7 +4064,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "exactly one verb per command",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -4114,7 +4114,7 @@
             "legacy_default": "1",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional; only with dive",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -4158,7 +4158,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "exactly one verb per command",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -4215,7 +4215,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "exactly one verb per command",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -4543,7 +4543,7 @@
         },
         "set": {
           "additionalProperties": {
-            "description": "An expression. gozen.Load checks its syntax, names and types.",
+            "description": "An expression. gozen check checks its syntax, names and types.",
             "type": [
               "string",
               "number",
@@ -5453,7 +5453,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -5960,7 +5960,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -5998,7 +5998,7 @@
             "legacy_default": "1",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -6016,7 +6016,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "exactly one kind of effect",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -6073,7 +6073,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "exactly one kind of effect",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -6169,7 +6169,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "exactly one kind of effect",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -6252,7 +6252,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -6270,7 +6270,7 @@
             "legacy_default": "turns of the added state",
             "zero": "expression value 0 (false as a condition)",
             "required": "only with add_state",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -6301,7 +6301,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -6419,7 +6419,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -7115,7 +7115,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -7211,7 +7211,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -7249,7 +7249,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -7359,7 +7359,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -7377,7 +7377,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -7447,7 +7447,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -7465,7 +7465,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -8065,7 +8065,7 @@
         },
         "set": {
           "additionalProperties": {
-            "description": "An expression. gozen.Load checks its syntax, names and types.",
+            "description": "An expression. gozen check checks its syntax, names and types.",
             "type": [
               "string",
               "number",
@@ -8140,7 +8140,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "one of flag, when, or seen is required",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -8350,7 +8350,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -8980,7 +8980,7 @@
             "legacy_default": "width and height",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -9036,7 +9036,7 @@
             "legacy_default": "1",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -9146,7 +9146,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -9184,7 +9184,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "required",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -9307,7 +9307,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -10077,7 +10077,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "3"
           },
           "x-type": "expression"
@@ -10197,7 +10197,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "required",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -10390,7 +10390,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -10408,7 +10408,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "required",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -10426,7 +10426,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -10506,7 +10506,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -10918,7 +10918,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -10936,7 +10936,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -11065,7 +11065,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -11096,7 +11096,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -11166,7 +11166,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -11197,7 +11197,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -11234,7 +11234,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -11474,7 +11474,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -11625,7 +11625,7 @@
             "legacy_default": "1",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -12139,7 +12139,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "3"
           },
           "x-type": "expression"
@@ -12164,7 +12164,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "not with count",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -12182,7 +12182,7 @@
             "legacy_default": "1",
             "zero": "expression value 0 (false as a condition)",
             "required": "not with appear",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -12200,7 +12200,7 @@
             "legacy_default": "1",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -12399,7 +12399,7 @@
             "legacy_default": "0",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -12424,7 +12424,7 @@
             "legacy_default": "1",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -12533,7 +12533,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -12982,7 +12982,7 @@
             "legacy_default": "battle.critical (no critical hits if both are omitted)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -13058,7 +13058,7 @@
             "legacy_default": "1",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -13167,7 +13167,7 @@
             "legacy_default": "no change to turn order (when set, added to battle.speed)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -14123,7 +14123,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -14168,7 +14168,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -14186,7 +14186,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -14230,7 +14230,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -14417,7 +14417,7 @@
         },
         "stats_by": {
           "additionalProperties": {
-            "description": "An expression. gozen.Load checks its syntax, names and types.",
+            "description": "An expression. gozen check checks its syntax, names and types.",
             "type": [
               "string",
               "number",
@@ -14882,7 +14882,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -15004,7 +15004,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "required for template",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -15269,7 +15269,7 @@
                 "legacy_default": "no expression (true as a condition, 0 as a number)",
                 "zero": "expression value 0 (false as a condition)",
                 "required": "required when pick is min or max",
-                "reference": "expression; checked by gozen.Load",
+                "reference": "expression; checked by gozen check",
                 "version": "0, 1, 2"
               },
               "x-type": "expression"
@@ -15326,7 +15326,7 @@
                 "legacy_default": "no expression (true as a condition, 0 as a number)",
                 "zero": "expression value 0 (false as a condition)",
                 "required": "optional",
-                "reference": "expression; checked by gozen.Load",
+                "reference": "expression; checked by gozen check",
                 "version": "0, 1, 2"
               },
               "x-type": "expression"
@@ -15550,7 +15550,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "3"
           },
           "x-type": "expression"
@@ -15790,7 +15790,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -15860,7 +15860,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -16447,7 +16447,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -16498,7 +16498,7 @@
             "legacy_default": "no expression (true as a condition, 0 as a number)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -16839,7 +16839,7 @@
             "legacy_default": "battle.critical (no critical hits if both are omitted)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -16902,7 +16902,7 @@
             "legacy_default": "1",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -16985,7 +16985,7 @@
             "legacy_default": "no change to turn order (when set, added to battle.speed)",
             "zero": "expression value 0 (false as a condition)",
             "required": "optional",
-            "reference": "expression; checked by gozen.Load",
+            "reference": "expression; checked by gozen check",
             "version": "0, 1, 2"
           },
           "x-type": "expression"
@@ -17096,5 +17096,5 @@
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "The YAML types of a Gozen game. gozen.Load is the authority on ranges, references and the meaning of expressions."
+  "description": "The YAML types of a Gozen game. gozen check is the authority on ranges, references and the meaning of expressions."
 }

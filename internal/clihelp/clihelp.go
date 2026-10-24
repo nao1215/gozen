@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"runtime/debug"
+	"slices"
 	"strings"
 
 	"github.com/spf13/pflag"
@@ -105,7 +106,23 @@ func Parse(fs *pflag.FlagSet, args []string) (help bool, err error) {
 	if err := fs.Parse(args); err != nil {
 		return false, parseCode(err).Wrap(err)
 	}
-	return fs.GetBool("help")
+	help, err = fs.GetBool("help")
+	if err != nil || help {
+		return help, err
+	}
+	fs.VisitAll(func(f *pflag.Flag) {
+		if err != nil {
+			return
+		}
+		if choices := f.Annotations["choices"]; len(choices) > 0 && !slices.Contains(choices, f.Value.String()) {
+			label := strings.Join(choices, ", ")
+			if len(choices) > 1 {
+				label = strings.Join(choices[:len(choices)-1], ", ") + ", or " + choices[len(choices)-1]
+			}
+			err = diag.NotAChoice.Errorf("--%s must be %s, not %q", f.Name, label, f.Value.String())
+		}
+	})
+	return false, err
 }
 
 // parseCode names a pflag error. pflag has no error types for these, so the
@@ -117,20 +134,6 @@ func parseCode(err error) diag.Code {
 	default:
 		return diag.BadValue
 	}
-}
-
-// HelpRequested reports whether args ask for help before any -- terminator.
-// It is for commands that must answer --help before they can define all flags.
-func HelpRequested(args []string) bool {
-	for _, a := range args {
-		if a == "--" {
-			return false
-		}
-		if a == "-h" || a == "--help" {
-			return true
-		}
-	}
-	return false
 }
 
 // OutputFormat finds the declared --format before parsing fails, so argument
@@ -383,3 +386,12 @@ type helpText []string
 
 func (t *helpText) WriteString(s string) { *t = append(*t, s) }
 func (t helpText) String() string        { return strings.Join(t, "") }
+
+// Choices declares and validates string option values from the same metadata
+// that machine-readable help exposes. Call after registering the flag.
+func Choices(f *pflag.Flag, values ...string) {
+	if f.Annotations == nil {
+		f.Annotations = map[string][]string{}
+	}
+	f.Annotations["choices"] = slices.Clone(values)
+}

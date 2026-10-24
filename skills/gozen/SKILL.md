@@ -5,7 +5,7 @@ description: Make or fix an RPG, a visual novel or a strategy game (a campaign) 
 
 # Making a Gozen game
 
-A Gozen game is a directory: `game.yaml`, `data/*.yaml` and `assets/`. Run it directly with `gozen run <game-dir>`, or embed it in a Go program calling `play.Main`. You write YAML. The `gozen` command checks, measures and runs it.
+A Gozen game is a directory: `game.yaml`, `data/*.yaml` and `assets/`. Run it directly with `gozen run <game-dir>`. You write YAML. The `gozen` command checks, measures and runs it.
 
 Start a new game with `gozen new <game-dir> --template rpg|novel|campaign`. The generated game contains YAML and assets, not Go source. Keep its generated ID stable for save compatibility; use `--id` only when choosing the identity deliberately. Existing destinations are never overwritten.
 
@@ -15,9 +15,11 @@ Start a new game with `gozen new <game-dir> --template rpg|novel|campaign`. The 
 2. Edit the YAML.
 3. Run `gozen check` on the game directory. Fix every error and run it again. Stop only when it prints `ok:` and exits 0.
 4. When a fight or a dungeon changed, measure it with `gozen sim` (references/measure.md).
-5. Play the game with `gozen run <game-dir> --dev`; it uses the same standard runner as `play.Main`, including live reload, scripts, traces and screenshots. Use `--save-dir` to isolate manual test saves. A display is required (Xvfb for unattended Linux); inspect `gozen run --help` before choosing options.
+5. Play the game with `gozen run <game-dir> --dev`; it includes live reload, scripts, traces and screenshots. Use `--save-dir` to isolate manual test saves. A display is required (Xvfb for unattended Linux); inspect `gozen run --help` before choosing options.
 6. Capture promotional or review images with `gozen capture <game-dir> --config captures.yaml --out promo`. Jobs select a location, event or gallery line; `gif` records an animation. Saves are isolated automatically. Check the per-job results and exit status; partial failure exits 1. Use `--format json` or `jsonl` for machine-readable reports. See [capture](https://nao1215.github.io/gozen/commands/#capture) for limits and examples.
 7. For a novel or event-driven game, run `gozen sim routes <game-dir>` to explore choices and check reachable endings and offered options; use `--format json --fail-unreachable` in CI.
+
+Use `gozen help --format json` to inspect registered commands and options without loading a game. `gozen book GAME --format json` describes the whole game; add `--section lineage` to select only monster family trees.
 
 For every `sim` command, `--format json` returns a version-1 result with `command`, `status` and `data`; JSONL emits items and a terminal summary. Keep stdout and stderr separate and check the exit status. To inspect a recorded play, use `gozen trace run.jsonl --format json`, or `gozen trace - --format jsonl` for standard input. Repeat `--only KIND` to select kinds; `--check` rejects these display filters and preserves diagnostic codes in its issue records.
 
@@ -44,7 +46,7 @@ In GitHub Actions, `nao1215/setup-gozen` installs the version in the game's `go.
 
 A complete small game is in references/minimal.md.
 
-For battle forms, HP pictures and enemy motion use schema version 7. `hp_triggers` transforms a foe below an HP threshold; a self-scoped skill's `merge` combines eligible foes. Enemy `images` lists picture files and actor `images` lists face names at descending HP thresholds. Set `puppet` on an enemy or actor for moving portraits; its YAML can use `soft_sway` with `rect` or `ellipse` and `follow: body` for gentle motion. Check it with `gozen art puppet` and see the [battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-enemy).
+For battle forms, HP pictures and enemy motion use schema version 7. `hp_triggers` transforms a foe below an HP threshold; a self-scoped skill's `merge` combines eligible foes. Enemy `images` lists picture files and actor `images` lists face names at descending HP thresholds. Set `puppet` on an enemy or actor for moving portraits; its YAML can use `soft_sway` with `rect` or `ellipse` and `follow: body` for gentle motion. Check it with `gozen puppet` and see the [battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-enemy).
 
 ## Reading the errors
 
@@ -55,7 +57,7 @@ data/world.yaml:30:10: locations.village.exits[0].to: unknown location "feild" [
 ```
 
 - `gozen help GZN1101` explains a code. All codes: https://nao1215.github.io/gozen/errors/.
-- `gozen check --format json game` gives the same problems as JSON (`file`, `line`, `col`, `path`, `code`, `message`, `severity`).
+- `gozen check --format json game` returns a version-1 result with the diagnostic array in `data` (`file`, `line`, `col`, `path`, `code`, `message`, `severity`). Validation failure exits 1 with `status: failed`; do not expect a duplicate stderr error.
 - Warnings do not fail the check. Read them anyway.
 
 YAML traps are in references/yaml.md.
@@ -79,9 +81,9 @@ A novel game (ADV) sets `schema_version: 4` and `ui.message: novel` in game.yaml
 - Give a `choice` an `id` to read the option taken as `chose.<id>`. Keep other facts in flags with `set`. `gozen check` warns of a flag set but never read (GZN0112) and read but never set (GZN0113).
 - Stage a scene with `stand` (who stands where, how they come and go), `effect` (shake one portrait, fade through a color), `music` with `fade` and `wait` with `skip: false`.
 - For a second language, set `written_in` and `languages` and translate every text in `lang/<code>.yaml`. `gozen check --format json` lists each text not translated yet (GZN0111); fill them until the check is quiet.
-- Test every branch in Go with `gozen.Explore` and read `chose.<id>` and the flags at the end of each path.
+- Explore branches with `gozen sim routes GAME --format json --fail-unreachable`; inspect endings and choice coverage, then play important branches through the CLI.
 - Keep who each character is in `profiles` (data/): a title, fields with your own labels, an introduction and how they see the others. Check new lines against it; `--dev` opens it as Characters (F6), and `profile.<id>.unlocked` reads whether its `when` holds.
-- Press Tab in Characters for the relationship chart. Set optional `affiliation` on profiles and `kind` (`like`, `love`, `rival`, `enemy`, `family`, `friend`, `other`) on relations. The author decides what `love` means. Run `gozen art faces` for centred icons and `gozen check` for unknown kinds or targets.
+- Press Tab in Characters for the relationship chart. Set optional `affiliation` on profiles and `kind` (`like`, `love`, `rival`, `enemy`, `family`, `friend`, `other`) on relations. The author decides what `love` means. Run `gozen faces` for centered icons and `gozen check` for unknown kinds or targets.
 - Add `enemies.<id>.lore` for creatures that appear in encounters and set `ui.bestiary: true` to offer the monster book. Encounters reveal name, picture and lore; victories reveal stats, resistances, skills and drops. `bestiary.<id>.seen` and `.defeated` are query expressions; F4 opens every page under `--dev`.
 
 The recipes are under "Let the player roll back", "Stage portraits and effects" and "Offer the game in two languages" in the cookbook. A complete short one is [examples/novel](https://github.com/nao1215/gozen/tree/main/examples/novel).
@@ -109,7 +111,7 @@ The birth screen keeps the ranch keeper centered until they fade in place. Norma
 
 ## Browser builds
 
-The sample browser builds keep game files outside WebAssembly. Their generated `game/files.json` manifest maps game paths to served files; the browser fetches each file when it is opened, so pictures used later do not delay the first screen. `make website` writes a precompressed `.wasm.gz` file for each sample, and the page decompresses it with the browser's `DecompressionStream`. Browser saves remain in `localStorage`.
+Browser exports keep game files outside WebAssembly. `game/files.json` maps game paths to served files; the current player fetches the complete manifest before play. Do not promise lazy loading. The showcase site serves one shared compressed WASM runtime; this compression is a maintainer step. Browser saves remain in origin-local `localStorage`.
 
 ## Ship a demo
 
@@ -117,7 +119,7 @@ The sample browser builds keep game files outside WebAssembly. Their generated `
 
 ## Do not
 
-- Do not import `github.com/nao1215/gozen/internal/...`. Use `play`, `gozen` (Session, Query, Do) and the YAML.
+- Do not import Gozen implementation packages. Author games with YAML and assets, and use the CLI to check, play, simulate, capture and export.
 - Do not add pictures, music or fonts without the right to use them. Record where each came from.
 - Do not edit generated files (`data/schema/*.json` in Gozen itself).
 - Do not say the game is done while `gozen check` reports an error.

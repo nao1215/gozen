@@ -53,7 +53,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0041](0041-yaml-authoring-and-distribution.md) | YAML authoring and distribution; public Go API retirement last | Accepted for phased implementation | |
 | [0042](0042-command-and-output-contract.md) | Direct commands, capture and structured output | Accepted for phased implementation | |
 
-The source of truth for the current public packages is `api/public.txt` and [Boundaries](../architecture/boundaries.md), not this list of ADRs.
+[ADR 0041](0041-yaml-authoring-and-distribution.md) retires the public Go APIs; current implementation boundaries are in [Boundaries](../architecture/boundaries.md). Earlier entries record historical decisions.
 
 When changing a decision, record the current constraint, the concrete users, the alternatives, and the impact. A change that hides a dependency violation by adding configuration exclusions is not accepted. When an ADR changes, fix its status line and the status and change columns of this table in the same change.
 

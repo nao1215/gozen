@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes, breed), run, trace, notes, capture, book, export, release, trial, art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
+description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes, breed), run, trace, notes, capture, book, export, release, trial, prompt, mosaic, models (list, fetch), faces, puppet, theme (add, list), version and help.
 weight: 60
 toc: true
 ---
@@ -22,10 +22,10 @@ gozen help GZN1101                     # explain a diagnostic code
 | [run](#run) | Run a game directory in a window |
 | [trace](#trace), [notes](#notes) | Inspect traces and build HTML reports from test-play notes |
 | [capture](#capture) | Capture PNG images and animated GIFs |
-| [book](#book) | Write the definitions and events as Markdown |
+| [book](#book) | Write the definitions and events as Markdown, JSON or JSONL |
 | [export](#export) | Export desktop and browser games with prebuilt runtimes |
 | [release](#release), [trial](#trial) | Prepare approved asset trees and trial games |
-| [art](#art) | Picture and asset tools: [prompt](/production-tools/#gozen-art-prompt), [mosaic](/production-tools/#gozen-art-mosaic), [fetch](#art-fetch), [faces](#art-faces), [puppet](#art-puppet) |
+| [prompt](/production-tools/#gozen-prompt), [mosaic](/production-tools/#gozen-mosaic), [models](#models-fetch), [faces](#faces), [puppet](#puppet) | Picture and asset tools |
 | [theme](#theme) | Dungeon themes: [add](#theme-add) the pictures of a theme to a game, [list](#theme-list) the themes |
 | [version and help](#version-and-help) | Print the version; show a command's help or explain a diagnostic code |
 
@@ -37,7 +37,7 @@ A group alone (`gozen sim`) exits 2 and lists its commands. `gozen sim --help` s
 - A diagnostic may end with a code such as `[GZN1101]`; its first digit is the exit status. `gozen help GZN1101` explains it, and [Error codes](/errors/) lists them all.
 - Options follow the GNU style. `--seed 7` and `--seed=7` both work, a few common options have a one-letter form (`-n 100`, `-o DIR`, `-v`, `-h`), options may come before or after the arguments, and `--` ends the options. A single-dash long option such as `-seed` is rejected with exit status 2.
 - Commands that write a directory (`sim design`, `notes`, `export`, `release`, `trial`, `capture`) refuse one that already exists, even if empty, and an output inside an input. They never overwrite.
-- Every command except `export`, `run`, `capture`, `art faces` and `art mosaic` detection needs nothing beyond the `gozen` binary: no cgo, display or sound device. `export` also needs a matching prebuilt runtime bundle.
+- Every command except `export`, `run`, `capture`, `faces` and `mosaic` detection needs nothing beyond the `gozen` binary: no cgo, display or sound device. `export` also needs a matching prebuilt runtime bundle.
 
 The examples below use `game` as the game directory, `lesson` as a troop and `grotto` as a dungeon location. Explicit configuration and output paths are relative to the working directory. Game asset paths, including `release --prefix`, remain game-relative. Omitted configuration paths use the defaults listed for each command. Use `--version` or `version` to print the version; `-v` is reserved for verbose command output.
 
@@ -92,7 +92,9 @@ data/world.yaml:26:5: locations.grotto.encounters: unknown troop "lessn" [GZN110
 |:--|:--|
 | `--only structure` | Check definitions, references, expressions and assets only; do not read the font or check the text layout. stdout says so. |
 | `--only layout` | Check only that dialogue and choices fit the message window, with the game's font and display rules. |
-| `--format` | `text` (the default) or `json`: a JSON array on stdout with one object per problem, `{"file", "line", "col", "path", "message", "severity", "code"}`, where `severity` is `error` or `warning` and `code` is the [diagnostic code](/errors/) when the problem has one. An empty game check prints `[]`. It exits 1 when one is an error. |
+| `--format` | `text` (default), `json` or `jsonl`. JSON returns a version-1 result whose `data` is the diagnostic array (`file`, `line`, `col`, `path`, `message`, `severity`, `code`). JSONL emits each diagnostic and a terminal summary. Validation errors set `status: failed` and exit 1, without duplicate stderr output. |
+
+The `data` field contains diagnostics such as:
 
 ```json
 [
@@ -283,15 +285,22 @@ gozen sim routes game --format json
 
 ### sim breed
 
-`gozen sim breed <game-dir>` starts from species with a positive recruit chance and follows the breeding rules. It prints each reachable species, the fewest generations and one recipe, then the unreachable species. `--format json` returns `reachable` rows (`id`, `family`, `rank`, `steps`, `parents`) and an `unreachable` ID list. The recipe gives the male and female parent sexes and the obtainable child sex (`sex` and `parent_sexes` in JSON). The graph tracks obtainable sexes and plus values. Parent levels are assumed raisable for this graph; test `min_plus` recipes in a Session playthrough as well. See [the collection recipe](/cookbook/#collect-raise-and-breed-monsters).
+`gozen sim breed <game-dir>` starts from species with a positive recruit chance and follows the breeding rules. It prints each reachable species, the fewest generations and one recipe, then the unreachable species. `--format json` returns `reachable` rows (`id`, `family`, `rank`, `steps`, `parents`) and an `unreachable` ID list. The recipe gives the male and female parent sexes and the obtainable child sex (`sex` and `parent_sexes` in JSON). The graph tracks obtainable sexes and plus values. Parent levels are assumed raisable for this graph; test `min_plus` recipes in an actual playthrough as well. See [the collection recipe](/cookbook/#collect-raise-and-breed-monsters).
 
 For example, run `gozen sim breed examples/go-zen/game --format json` after `gozen check examples/go-zen/game` to inspect the sample's 40 non-boss species. `gozen book examples/go-zen/game` also prints their recruit settings and rules.
 
-`gozen book <game-dir>` prints each species' shortest buildable family tree with capture locations and other recipes. `gozen book <game-dir> --format json` emits a `monsters` array; each entry has its recipes and a nested `lineage` tree. Family recipes carry concrete `parents` and the two `families`. Repeated species use a `ref` marker, and a species with no buildable route has a null lineage.
+`gozen book GAME` describes the game in Markdown. `--format text` is the same Markdown; `--format json` returns the same sections in a version-1 result envelope. Definitions are keyed by ID. `--format jsonl` emits one item per section and a terminal summary.
+
+Use `--section lineage` for only the monster family trees. Its JSON `data.monsters` array includes recipes, capture locations and nested lineage trees. Family recipes carry concrete `parents` and `families`; repeated species use `ref`, and an unreachable species has a null lineage.
+
+```sh
+gozen book game --format json
+gozen book game --section lineage --format json
+```
 
 ## run
 
-Opens a game directory containing `game.yaml`, `data/` and `assets/`. No Go source or game-specific executable is needed. It uses the same startup and rendering implementation as `play.Main`.
+Opens a game directory containing `game.yaml`, `data/` and `assets/`. No Go source or game-specific executable is needed. It uses the same runtime as exported games.
 
 <!-- verify: skip opens a window; covered by e2e/atago/graphics.atago.yaml -->
 ```sh
@@ -301,13 +310,13 @@ gozen run game --dev --save-dir test-saves
 gozen run game --dev --script check.txt --shots shots --trace run.jsonl
 ```
 
-Options can come before or after the directory; use `--` before a directory starting with a dash. `gozen run --help` lists the shared game options. Use the directory operand instead of the embedded runner's `--dir` option.
+Options can come before or after the directory; use `--` before a directory starting with a dash. `gozen run --help` lists the shared game options. Use the directory operand instead of `--dir`.
 
-`--dev` enables author tools and live reload from that directory. Scripted runs isolate saves unless `--save-dir` is supplied. Ordinary play uses the game's id under the user's Gozen configuration directory, just like an embedded game; use `--save-dir` to keep separate copies apart. Relative output paths are relative to the working directory, which the command does not change.
+`--dev` enables author tools and live reload from that directory. Scripted runs isolate saves unless `--save-dir` is supplied. Ordinary play uses the game's id under the user's Gozen configuration directory; use `--save-dir` to keep separate copies apart. Relative output paths are relative to the working directory, which the command does not change.
 
 A display and the platform graphics and audio libraries are required; use Xvfb for unattended Linux runs. Recording additionally needs ffmpeg. Help, `check`, and `sim` do not need a display. Closing the window exits 0; startup and I/O failures exit 1; argument parsing and startup option errors exit 2.
 
-The command reads loose assets; it does not encrypt or package them. Keep the runner version with a distributed game. Use the Go library when you need a custom loop, save store, or other Go integration.
+The command reads loose assets; it does not encrypt or package them. Keep the runner version with a distributed game. Custom Go loops and save-store callbacks are outside the supported authoring interface.
 
 ## trace
 
@@ -463,29 +472,29 @@ gozen trial game --out trial --overlay overlay --inspect inspect.jsonl
 | `--list FILE` | Write what was kept and dropped to this new file |
 | `-n, --dry-run` | Write nothing; print only how much would be kept |
 
-## art
+## Picture tools
 
-Tools for the pictures of a game. [art prompt](/production-tools/#gozen-art-prompt) assembles image-generation text from a catalog, and [art mosaic](/production-tools/#gozen-art-mosaic) pixelates regions of images; both are described on [Production tools](/production-tools/).
+Tools for the pictures of a game. [prompt](/production-tools/#gozen-prompt) assembles image-generation text from a catalog, and [mosaic](/production-tools/#gozen-mosaic) pixelates regions of images; both are described on [Production tools](/production-tools/).
 
-### art fetch
+### models fetch
 
-Downloads fixed revisions of the detection models (`censor`, `face`, `head`) into the user cache and checks each file against a SHA-256 written in gozen. `art mosaic` and `art faces` use a model in the cache when `--model` is omitted.
+Downloads fixed revisions of the detection models (`censor`, `face`, `head`) into the user cache and checks each file against a SHA-256 written in gozen. `mosaic` and `faces` use a model in the cache when `--model` is omitted.
 
 <!-- verify: skip downloads models from the network -->
 ```shell
-gozen art fetch --list     # the models and whether each is in the cache
-gozen art fetch face       # the face detector of art faces
+gozen models list     # the models and whether each is in the cache
+gozen models fetch face       # the face detector of faces
 ```
 
-### art faces
+### faces
 
-Finds the face in each standing picture a painted scene (`stage:`) cuts a balloon face from (the people placed in a stage and the actors' face pictures) with the anime face detector that `gozen art fetch face` downloads, and writes the boxes with each picture's size and SHA-256 to `assets/faces.json`. The game only reads that file and runs no model, so a web build shows the same faces. A doll's `icon` (a face drawn for the balloons) comes first and is not searched, then its `face_at`, then the box; a picture without a box gets a guessed face, and `gozen check` warns of it and of a picture changed since.
+Finds the face in each standing picture a painted scene (`stage:`) cuts a balloon face from (the people placed in a stage and the actors' face pictures) with the anime face detector that `gozen models fetch face` downloads, and writes the boxes with each picture's size and SHA-256 to `assets/faces.json`. The game only reads that file and runs no model, so a web build shows the same faces. A doll's `icon` (a face drawn for the balloons) comes first and is not searched, then its `face_at`, then the box; a picture without a box gets a guessed face, and `gozen check` warns of it and of a picture changed since.
 
 <!-- verify: skip downloads a model and needs a cgo build with ONNX Runtime -->
 ```shell
-gozen art fetch face                          # download the model once
-gozen art faces game                                 # find the faces
-gozen art faces game --preview faces-check           # and look at the boxes and the cut faces
+gozen models fetch face                          # download the model once
+gozen faces game                                 # find the faces
+gozen faces game --preview faces-check           # and look at the boxes and the cut faces
 ```
 
 | Option | Meaning |
@@ -495,16 +504,16 @@ gozen art faces game --preview faces-check           # and look at the boxes and
 | `--min SCORE` | The lowest score of a face (0.3). |
 | `--preview DIR` | Also write each picture with its face box and its balloon face to this new directory. |
 
-It needs a gozen built with cgo, an ONNX Runtime shared library and the model, as `gozen art mosaic` does; a build without cgo says so and fails.
+It needs a gozen built with cgo, an ONNX Runtime shared library and the model, as `gozen mosaic` does; a build without cgo says so and fails.
 
-### art puppet
+### puppet
 
-Loads a moving portrait (a puppet YAML for the [puppet](/go-api/#moving-portraits-puppet) package) with the same checks as `puppet.Load` and prints where each face, closed-eyes and mouth picture lies on the base picture. A difference picture as large as the base is cut down to the part that differs.
+Loads a moving portrait ([portrait YAML](/cookbook/#give-a-character-faces-and-a-moving-portrait)) with the game renderer's validation and prints where each face, closed-eyes and mouth picture lies on the base picture. A difference picture as large as the base is cut down to the part that differs.
 
 <!-- verify: each fixture=puppet -->
 ```shell
-gozen art puppet streamer/puppet.yaml                        # check it and show the positions
-gozen art puppet streamer/puppet.yaml --out streamer-packed  # write it with small difference pictures
+gozen puppet streamer/puppet.yaml                        # check it and show the positions
+gozen puppet streamer/puppet.yaml --out streamer-packed  # write it with small difference pictures
 ```
 
 | Option | Meaning |

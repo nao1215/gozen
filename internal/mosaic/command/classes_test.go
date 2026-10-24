@@ -16,7 +16,7 @@ func setupWith(t *testing.T, args ...string) (config, error) {
 	if err := fs.Parse(append(args, "-o", out)); err != nil {
 		t.Fatal(err)
 	}
-	return o.setup(game)
+	return o.setup(t.Context(), game)
 }
 
 func labelSet(c config) []string {

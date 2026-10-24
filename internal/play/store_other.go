@@ -3,7 +3,6 @@
 package play
 
 import (
-	"github.com/nao1215/gozen"
 	"github.com/nao1215/gozen/internal/savefile"
 )
 
@@ -13,5 +12,5 @@ func defaultStore(id string) (Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return gozen.DirStore(dir), nil
+	return savefile.DirStore(dir), nil
 }

@@ -14,12 +14,12 @@ import (
 // TestFacesWithoutModel: a game with no painted scene has nothing to do; one with a stage
 // and no model says how to get it, and writes nothing.
 func TestFacesWithoutModel(t *testing.T) {
-	out, _ := invoke(t, 0, "art", "faces", fixture(t))
+	out, _ := invoke(t, 0, "faces", fixture(t))
 	if !strings.Contains(out, "nothing to do") {
 		t.Fatalf("a game without a stage: %s", out)
 	}
 	game := scenesGame(t)
-	_, stderr := invoke(t, 1, "art", "faces", game, "--model", t.TempDir()+"/none.onnx")
+	_, stderr := invoke(t, 1, "faces", game, "--model", t.TempDir()+"/none.onnx")
 	if stderr == "" || strings.Contains(stderr, "no file") {
 		t.Fatalf("the reason: %s", stderr)
 	}

@@ -140,11 +140,11 @@ scenarios:
       exit_code: 1
       stdout:
         contains:
-        - '"path": "events.scene.do[0].stand.at"'
-        - '"path": "events.scene.do[1].effect"'
-        - '"path": "events.scene.do[2].wait"'
-        - '"code": "GZN1107"'
-        - '"code": "GZN1106"'
+        - '"path":"events.scene.do[0].stand.at"'
+        - '"path":"events.scene.do[1].effect"'
+        - '"path":"events.scene.do[2].wait"'
+        - '"code":"GZN1107"'
+        - '"code":"GZN1106"'
         - 'or a reaction'
 - name: the words of staging at schema_version 3 ask for version 4
   steps:
@@ -190,7 +190,7 @@ scenarios:
   - assert:
       exit_code: 0
       stdout:
-        contains: ['"path": "events.scene.do[1].choice[0].label"', '"code": "GZN0111"', '"severity": "warning"']
+        contains: ['"path":"events.scene.do[1].choice[0].label"', '"code":"GZN0111"', '"severity":"warning"']
   - run:
       command: gozen check --only layout tongues
   - assert:

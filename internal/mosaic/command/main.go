@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -16,6 +17,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/clihelp"
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/internal/diag"
 
 	"github.com/spf13/pflag"
@@ -28,7 +32,8 @@ import (
 )
 
 type options struct {
-	outw, diag *output
+	outw, diag *cliio.Output
+	report     *cliio.Report
 
 	block, padBlocks, minBlocks, threads, quality int
 	dilate                                        int
@@ -49,34 +54,62 @@ func env(name, def string) string {
 
 func (cli *cli) commonFlags(fs *pflag.FlagSet) *options {
 	p := defaultParams
-	o := &options{outw: cli.out, diag: cli.diag, flags: fs}
-	fs.StringVar(&o.fixFile, "fix", env("MOSAIC_FIX", ""), "read hand-written fixes from this YAML `FILE`: regions to add, detections to drop, and checked marks per image (env MOSAIC_FIX)")
-	fs.StringVar(&o.manualFile, "manual", env("MOSAIC_MANUAL", ""), "read, and for manual write, the instructions YAML `FILE` that gozen art mosaic manual keeps (env MOSAIC_MANUAL)")
-	fs.StringVar(&o.tagsFile, "tags", env("MOSAIC_TAGS", ""), "the image tag cache JSON `FILE`; missing or stale images are tagged with --tagger and added; empty uses no tags (env MOSAIC_TAGS)")
+	o := &options{outw: cli.out, diag: cli.diag, flags: fs, report: cli.report}
+	fs.StringVar(&o.fixFile, "fix", "", "read hand-written fixes from this YAML `FILE`: regions to add, detections to drop, and checked marks per image (env MOSAIC_FIX)")
+	fs.StringVar(&o.manualFile, "manual", "", "read, and for manual write, the instructions YAML `FILE` that gozen mosaic keeps (env MOSAIC_MANUAL)")
+	fs.StringVar(&o.tagsFile, "tags", "", "the image tag cache JSON `FILE`; missing or stale images are tagged with --tagger and added; empty uses no tags (env MOSAIC_TAGS)")
 	fs.StringVar(&o.model, "model", "", "the detection ONNX model `FILE`")
-	fs.BoolVar(&o.yes, "yes", false, "download the default model without asking when --model is omitted and it is not in the cache (see gozen art fetch)")
-	fs.StringVar(&o.lib, "ort", detect.LibraryPath(), "the ONNX Runtime shared library `FILE` (default: ONNXRUNTIME_LIB)")
+	fs.BoolVar(&o.yes, "yes", false, "download the default model without asking when --model is omitted and it is not in the cache (see gozen models fetch)")
+	fs.StringVar(&o.lib, "ort", "", "the ONNX Runtime shared library `FILE` (default: ONNXRUNTIME_LIB)")
 	fs.StringVar(&o.faceModel, "face", "", "an optional face detection ONNX model `FILE`; failing to read it is an error")
 	fs.StringVar(&o.segModel, "seg", "", "the segmentation ONNX model `FILE` that --shape mask needs")
-	fs.StringVar(&o.taggerDir, "tagger", env("MOSAIC_TAGGER", ""), "a WD tagger model `DIR` holding model.onnx and selected_tags.csv (env MOSAIC_TAGGER)")
+	fs.StringVar(&o.taggerDir, "tagger", "", "a WD tagger model `DIR` holding model.onnx and selected_tags.csv (env MOSAIC_TAGGER)")
 	fs.StringVar(&o.classes, "classes", "", "the class names of the --model output, in the order the model emits them, separated by commas (default: labels.json beside the model, then the ONNX metadata names, then "+strings.Join(detect.Labels, ",")+")")
 	fs.StringVar(&o.labels, "labels", strings.Join(settings.Defaults.Targets, ","), "the detector `CLASSES` to pixelate, separated by commas, chosen from --classes (default: penis,pussy, since nipples are not pixelated by default; with --classes, or a model whose classes differ from the default, every class)")
 	fs.Float64Var(&o.minScore, "threshold", float64(p.minScore), "pixelate detections scoring at least this `SCORE`; lower misses less and finds more false regions")
 	fs.Float64Var(&o.sure, "sure", float64(p.sureScore), "pixelate, but also send to review, a region whose best score is below this `SCORE`")
-	fs.StringVar(&o.passes, "passes", env("MOSAIC_PASSES", "default"), "the detection `PASSES`, separated by commas: default, all, or full640, flip640, native, flipnative, tile2, tile2x, tile3x, fliptile2x (env MOSAIC_PASSES)")
-	fs.IntVar(&o.threads, "threads", max(1, runtime.NumCPU()/2), "ONNX Runtime CPU threads (default: half of the CPUs)")
-	fs.StringVar(&o.shape, "shape", env("MOSAIC_SHAPE", "box"), "the `SHAPE` of automatic regions: box (rectangles) or mask (the --seg model's mask) (env MOSAIC_SHAPE)")
+	fs.StringVar(&o.passes, "passes", "default", "the detection `PASSES`, separated by commas: default, all, or full640, flip640, native, flipnative, tile2, tile2x, tile3x, fliptile2x (env MOSAIC_PASSES)")
+	fs.IntVar(&o.threads, "threads", 0, "ONNX Runtime CPU threads; 0 uses half of the CPUs")
+	fs.StringVar(&o.shape, "shape", "box", "the `SHAPE` of automatic regions: box (rectangles) or mask (the --seg model's mask) (env MOSAIC_SHAPE)")
 	fs.IntVar(&o.block, "block", 0, "the block size in `PIXELS`; 0 uses max(4, ceil(long side / 100)), and a smaller value than that warns")
 	fs.Float64Var(&o.margin, "margin", p.margin, "grow each detected box by this `FRACTION` of its sides; the touched blocks are filled whole, so the outline is covered")
 	fs.IntVar(&o.padBlocks, "pad", p.padBlocks, "grow each region by at least this many `BLOCKS`")
 	fs.IntVar(&o.minBlocks, "min", p.minBlocks, "make each side of a region at least this many `BLOCKS`")
 	fs.IntVar(&o.dilate, "dilate", -1, "grow masks by these `PIXELS`; -1 is one block")
-	fs.StringVarP(&o.out, "out", "o", env("MOSAIC_OUT", ""), "write the images and report.json to this `DIR` outside assets/ (default: <game-dir>/assets_mosaic; env MOSAIC_OUT)")
+	fs.StringVarP(&o.out, "out", "o", "", "write the images and report.json to this `DIR` outside assets/ (default: <game-dir>/assets_mosaic; env MOSAIC_OUT)")
 	fs.IntVar(&o.quality, "quality", 90, "the JPEG `QUALITY` from 1 to 100; it does not change the block size")
 	return o
 }
 
-func (o *options) setup(gameDir string) (config, error) {
+// resolveEnvironment applies runtime defaults only to omitted options.
+func (o *options) resolveEnvironment() {
+	if o.flags == nil {
+		return
+	}
+	for _, v := range []struct {
+		name, key string
+		target    *string
+	}{
+		{"fix", "MOSAIC_FIX", &o.fixFile}, {"manual", "MOSAIC_MANUAL", &o.manualFile}, {"tags", "MOSAIC_TAGS", &o.tagsFile}, {"tagger", "MOSAIC_TAGGER", &o.taggerDir}, {"out", "MOSAIC_OUT", &o.out}, {"passes", "MOSAIC_PASSES", &o.passes}, {"shape", "MOSAIC_SHAPE", &o.shape},
+	} {
+		if !o.flags.Changed(v.name) {
+			*v.target = env(v.key, *v.target)
+		}
+	}
+	if !o.flags.Changed("ort") {
+		o.lib = detect.LibraryPath()
+	}
+	if o.threads == 0 {
+		o.threads = min(1024, max(1, runtime.NumCPU()/2))
+	}
+}
+
+func (o *options) setup(ctx context.Context, gameDir string) (config, error) {
+	o.resolveEnvironment()
+	if o.report != nil && o.report.Machine() {
+		o.outw = &cliio.Output{Writer: io.Discard}
+		o.diag = &cliio.Output{Writer: progress{*o.report, o.diag}}
+	}
 	if err := o.validate(); err != nil {
 		return config{}, err
 	}
@@ -84,7 +117,7 @@ func (o *options) setup(gameDir string) (config, error) {
 	p.minScore, p.sureScore = float32(o.minScore), float32(o.sure)
 	p.margin, p.padBlocks, p.minBlocks = o.margin, o.padBlocks, o.minBlocks
 	if o.model == "" {
-		if p, err := (&cli{}).defaultModel(false, false); err == nil {
+		if p, err := (&cli{}).defaultModel(ctx, false, false); err == nil {
 			o.model = p
 		}
 	}
@@ -148,12 +181,12 @@ func (o *options) setup(gameDir string) (config, error) {
 	return c, nil
 }
 
-func (c *config) open() error {
+func (c *config) open(ctx context.Context) error {
 	if c.det != nil {
 		return nil
 	}
 	if c.opts.model == "" {
-		p, err := (&cli{diag: c.diag}).defaultModel(c.opts.yes, true)
+		p, err := (&cli{diag: c.diag}).defaultModel(ctx, c.opts.yes, true)
 		if err != nil {
 			return err
 		}
@@ -170,7 +203,7 @@ func (c *config) open() error {
 			return err
 		}
 		if c.showClasses {
-			c.diag.printf("face classes: %s (%s)\n", strings.Join(fc, ","), src)
+			c.diag.Printf("face classes: %s (%s)\n", strings.Join(fc, ","), src)
 		}
 		fd, err := newDetector(c.opts.faceModel, c.opts.lib, c.opts.threads, fc)
 		if err != nil {
@@ -223,47 +256,60 @@ func (c *config) close() error {
 	return errors.Join(err, c.tags.close())
 }
 
-func (cli *cli) autoCmd(args []string) (err error) {
-	fs := newFlagSet("gozen art mosaic auto")
+func (cli *cli) autoCmd() clihelp.Operation {
+	fs := newFlagSet("gozen mosaic auto")
 	o := cli.commonFlags(fs)
 	dry := fs.BoolP("dry-run", "n", false, "write nothing; print the regions found and the reasons to review")
-	if err := cli.parse(fs, args, autoPage); err != nil {
-		return err
-	}
-	if fs.NArg() < 1 {
-		return argumentError{diag.Operands.Errorf("expected a game directory: gozen art mosaic auto [OPTIONS] <game-dir> [IMAGE ...]")}
-	}
-	gameDir := fs.Arg(0)
-	c, err := o.setup(gameDir)
-	if err != nil {
-		return err
-	}
-	c.dry = *dry
-	c.showClasses = *dry
-	if *dry {
-		c.printClasses()
-	}
-	c.tags.readOnly = *dry
-	pics := fs.Args()[1:]
-	if len(pics) == 0 {
-		var missing []string
-		if pics, missing, err = mosaic.Pictures(gameDir); err != nil {
+	return clihelp.Operation{Flags: fs, Page: autoPage, Run: func(ctx context.Context) (err error) {
+		if err := ctx.Err(); err != nil {
 			return err
 		}
-		for _, m := range missing {
-			c.diag.printf("warning: YAML に書かれた絵 assets/%s が無い\n", m)
+		if fs.NArg() < 1 {
+			return cliio.Parse(diag.Operands.Errorf("expected a game directory: gozen mosaic auto [OPTIONS] <game-dir> [IMAGE ...]"))
 		}
-	}
-	for rel := range c.fixes {
-		if _, err := os.Stat(filepath.Join(gameDir, "assets", filepath.FromSlash(rel))); err != nil {
-			c.diag.printf("warning: 手直しの絵 assets/%s が無い\n", rel)
+		gameDir := fs.Arg(0)
+		c, err := o.setup(ctx, gameDir)
+		if err != nil {
+			return err
 		}
-	}
-	return run(c, pics)
+		c.dry = *dry
+		c.showClasses = *dry
+		if *dry {
+			c.printClasses()
+		}
+		c.tags.readOnly = *dry
+		pics := fs.Args()[1:]
+		if len(pics) == 0 {
+			var missing []string
+			if pics, missing, err = mosaic.Pictures(gameDir); err != nil {
+				return err
+			}
+			for _, m := range missing {
+				c.diag.Printf("warning: YAML に書かれた絵 assets/%s が無い\n", m)
+			}
+		}
+		for rel := range c.fixes {
+			if _, err := os.Stat(filepath.Join(gameDir, "assets", filepath.FromSlash(rel))); err != nil {
+				c.diag.Printf("warning: 手直しの絵 assets/%s が無い\n", rel)
+			}
+		}
+		rows, err := run(ctx, c, pics)
+		if err != nil {
+			return err
+		}
+		if cli.report.Format == "jsonl" {
+			for _, row := range rows {
+				if err := cli.report.Item(cli.out, row.File, "ok", row); err != nil {
+					return err
+				}
+			}
+		}
+		return cli.result(rows)
+	}}
 }
 
 type config struct {
-	outw, diag *output
+	outw, diag *cliio.Output
 
 	gameDir, out string
 	classes      []string
@@ -316,14 +362,14 @@ type found struct {
 
 func xywh(r image.Rectangle) [4]int { return [4]int{r.Min.X, r.Min.Y, r.Dx(), r.Dy()} }
 
-func run(c config, pics []string) (err error) {
+func run(ctx context.Context, c config, pics []string) (report []entry, err error) {
 	defer func() { err = errors.Join(err, c.close()) }()
-	var report []entry
+	report = []entry{}
 	var masked, review int
 	for i, rel := range pics {
-		e, err := one(&c, rel)
+		e, err := one(ctx, &c, rel)
 		if err != nil {
-			return fmt.Errorf("%s: %w", rel, err)
+			return nil, fmt.Errorf("%s: %w", rel, err)
 		}
 		report = append(report, e)
 		mark := "-"
@@ -335,30 +381,30 @@ func run(c config, pics []string) (err error) {
 			mark += " 要確認: " + strings.Join(e.Review, " / ")
 			review++
 		}
-		c.outw.printf("[%d/%d] %s %s\n", i+1, len(pics), rel, mark)
+		c.outw.Printf("[%d/%d] %s %s\n", i+1, len(pics), rel, mark)
 		if !c.dry && i%20 == 19 {
 			if err := c.tags.save(); err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
 	if !c.dry {
 		if err := c.tags.save(); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	c.outw.printf("%d 枚中 %d 枚にモザイク、要確認 %d 枚\n", len(pics), masked, review)
+	c.outw.Printf("%d 枚中 %d 枚にモザイク、要確認 %d 枚\n", len(pics), masked, review)
 	if c.dry {
-		return nil
+		return report, nil
 	}
 	all, err := writeReport(c.gameDir, c.out, report)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return writeReview(c, all)
+	return report, writeReview(c, all)
 }
 
-func one(c *config, rel string) (result entry, err error) {
+func one(ctx context.Context, c *config, rel string) (result entry, err error) {
 	if err := validPicture(*c, rel); err != nil {
 		return entry{}, err
 	}
@@ -383,11 +429,11 @@ func one(c *config, rel string) (result entry, err error) {
 	if e.Block <= 0 {
 		e.Block = std
 	} else if e.Block < std {
-		c.diag.printf("warning: %s のブロック %dpx は 既定のブロック幅（%dpx）より小さい\n", rel, e.Block, std)
+		c.diag.Printf("warning: %s のブロック %dpx は 既定のブロック幅（%dpx）より小さい\n", rel, e.Block, std)
 	}
 	var boxes []detect.Box
 	if !fx.Skip {
-		if err := c.open(); err != nil {
+		if err := c.open(ctx); err != nil {
 			return entry{}, err
 		}
 		if boxes, err = c.det.Detect(img, c.passes, c.p.minScore); err != nil {
@@ -611,5 +657,5 @@ func (c *config) printClasses() {
 			ls = append(ls, l)
 		}
 	}
-	c.diag.printf("classes: %s (%s)\npixelated: %s\n", strings.Join(c.classes, ","), c.classSource, strings.Join(ls, ","))
+	c.diag.Printf("classes: %s (%s)\npixelated: %s\n", strings.Join(c.classes, ","), c.classSource, strings.Join(ls, ","))
 }

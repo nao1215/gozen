@@ -15,7 +15,7 @@ scenarios:
   - assert:
       exit_code: 0
       stdout:
-        equals: "[]\n"
+        json: {path: $.data, equals: []}
       stderr:
         equals: ''
 - name: check json reports an error with file, line, column and path
@@ -32,13 +32,13 @@ scenarios:
       exit_code: 1
       stdout:
         contains:
-        - '"file": "data/world.yaml"'
-        - '"line": 8'
-        - '"path": "events.bad.do[0].battle"'
-        - '"severity": "error"'
+        - '"file":"data/world.yaml"'
+        - '"line":8'
+        - '"path":"events.bad.do[0].battle"'
+        - '"severity":"error"'
         - wolves
       stderr:
-        contains: 'check: 1 errors'
+        equals: ''
 - name: check json warns of a stat set outside the development mode
   steps:
   - fixture:
@@ -53,10 +53,10 @@ scenarios:
       exit_code: 0
       stdout:
         contains:
-        - '"severity": "warning"'
+        - '"severity":"warning"'
         - actor.scout.level
         - development mode
-        not_contains: '"severity": "error"'
+        not_contains: '"severity":"error"'
 - name: the schema version 2 words need schema_version 2
   steps:
   - fixture:

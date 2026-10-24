@@ -24,7 +24,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
-	"github.com/nao1215/gozen/puppet"
+	"github.com/nao1215/gozen/internal/layer5/puppet"
 )
 
 // The streamer's pictures and puppet.yaml (CC BY 4.0, see assets/LICENSE).
@@ -153,12 +153,12 @@ func tour() []cue {
 	none := func(*puppet.Puppet) error { return nil }
 	return []cue{
 		{0, "idle: blink, breath, head, hair and drawstring sway", none},
-		{1.0, "Speak()", func(p *puppet.Puppet) error { p.Speak(); return nil }},
-		{2.2, "Stop()", func(p *puppet.Puppet) error { p.Stop(); return nil }},
+		{1.0, "Speak()", func(p *puppet.Puppet) error { p.Motion.Speak(true); return nil }},
+		{2.2, "Stop()", func(p *puppet.Puppet) error { p.Motion.Speak(false); return nil }},
 		{2.4, "idle", none},
-		{4.1, `SetFace("surprised")`, func(p *puppet.Puppet) error { return p.SetFace("surprised") }},
-		{5.3, `SetFace("smile") + Speak()`, func(p *puppet.Puppet) error { p.Speak(); return p.SetFace("smile") }},
-		{6.5, "Stop()", func(p *puppet.Puppet) error { p.Stop(); return nil }},
+		{4.1, `SetFace("surprised")`, func(p *puppet.Puppet) error { return setFace(p, "surprised") }},
+		{5.3, `SetFace("smile") + Speak()`, func(p *puppet.Puppet) error { p.Motion.Speak(true); return setFace(p, "smile") }},
+		{6.5, "Stop()", func(p *puppet.Puppet) error { p.Motion.Speak(false); return nil }},
 	}
 }
 
@@ -194,7 +194,7 @@ func (s *stage) Update() error {
 	} else if err := s.keys(); err != nil {
 		return err
 	}
-	s.p.Update()
+	s.p.Motion.Step()
 	s.tick++
 	return nil
 }
@@ -206,9 +206,9 @@ func (s *stage) keys() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
 		s.talking = !s.talking
 		if s.talking {
-			s.p.Speak()
+			s.p.Motion.Speak(true)
 		} else {
-			s.p.Stop()
+			s.p.Motion.Speak(false)
 		}
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF) {
@@ -217,13 +217,13 @@ func (s *stage) keys() error {
 		if s.surprise {
 			face = "surprised"
 		}
-		if err := s.p.SetFace(face); err != nil {
+		if err := setFace(s.p, face); err != nil {
 			return err
 		}
 	}
 	for key, name := range map[ebiten.Key]string{ebiten.KeyN: "nod", ebiten.KeyT: "tilt"} {
 		if inpututil.IsKeyJustPressed(key) {
-			if err := s.p.React(name); err != nil {
+			if err := react(s.p, name); err != nil {
 				return err
 			}
 		}
@@ -293,10 +293,7 @@ func run(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	p, err := puppet.New(rig, puppet.Config{Rand: rand.New(rand.NewPCG(o.seed, 7))}) //nolint:gosec // Animation timing, not security-sensitive data.
-	if err != nil {
-		return err
-	}
+	p := puppet.New(rig, rand.New(rand.NewPCG(o.seed, 7)), 60) //nolint:gosec // Animation timing, not security-sensitive data.
 	defer p.Close()
 	w, h := rig.Size()
 	s := &stage{p: p, w: w, h: h, bg: background(), frames: o.frames}
@@ -329,4 +326,22 @@ func main() {
 		os.Exit(2)
 	}
 	os.Exit(1)
+}
+
+func react(p *puppet.Puppet, name string) error {
+	reaction, ok := p.Rig().Spec.ReactionOf(name)
+	if !ok {
+		return fmt.Errorf("unknown reaction %q", name)
+	}
+	p.Motion.React(reaction)
+	return nil
+}
+
+func setFace(p *puppet.Puppet, name string) error {
+	face, ok := p.Rig().Face(name)
+	if !ok {
+		return fmt.Errorf("unknown face %q", name)
+	}
+	p.Motion.SetFace(face)
+	return nil
 }

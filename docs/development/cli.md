@@ -4,28 +4,28 @@ The CLI is the single `gozen` binary ([ADR 0016](../decisions/0016-single-cli.md
 
 ## Commands
 
-The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf runs. The help pages are `groups` and `pages` in `cmd/gozen/help.go`, keyed by the command path. `run` shares its options and help groups with `play.Main` in `internal/play/entry.go`; it requires a directory operand instead of `--dir`. `art prompt` and `art mosaic` hand their arguments to `internal/promptgen/command` and `internal/mosaic/command`, and `art fetch` to `mosaiccmd.Fetch`.
+The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf runs. The help pages are `groups` and `pages` in `cmd/gozen/help.go`, keyed by the command path. `run` shares its options and help groups with the internal player entry in `internal/play/entry.go`; it requires a directory operand instead of `--dir`. `prompt` registers its operation through `internal/promptgen/command.New`; the root parses its flags once. `mosaic` and `models` register operations through `internal/mosaic/command.New`. The root parses once; help describes those same registered flags without loading inputs.
 
 | Group | Commands | What they share |
 | --- | --- | --- |
 | `new` | (a leaf) | create a game directory from a template |
 | `run` | (a leaf) | play a game directory; `--dev` enables author tools |
-| `check` | (a leaf) `--only structure\|layout`, `--format text\|json` | the game directory |
+| `check` | (a leaf) `--only structure\|layout`, `--format text\|json\|jsonl` | the game directory |
 | `sim` | `battle`, `dive`, `floors`, `design`, `campaign`, `routes`, `breed` | play by the rules without a window |
 | `trace`, `notes` | (leaves) | inspect traces and F9 notes |
 | `capture` | (a leaf) | PNG/GIF jobs in one graphics loop |
 | `book` | (a leaf) | |
 | `export` | (a leaf) | create a desktop or web package with a prebuilt runtime |
 | `release`, `trial` | (leaves) | create a new output tree |
-| `art` | `prompt`, `mosaic`, `fetch`, `faces`, `puppet` | pictures; cgo, ONNX Runtime and models for mosaic inference and faces |
+| `prompt`, `mosaic`, `models`, `faces`, `puppet` | direct operations and their specialized actions | pictures; cgo, ONNX Runtime and models for mosaic inference and faces |
 | `theme` | `add`, `list` | bundled dungeon themes |
 | `version`, `help` | | `gozen help` takes the words of a path, or a code |
 
-An old name (`curve`, `memos`, `mosaic`, ...) is an unknown command; no alias table is kept.
+An old name (`curve`, `memos`, `art`, ...) is an unknown command; no alias table is kept.
 
 ## Diagnostic codes
 
-A diagnostic can end with a code, `[GZN1101]`; `gozen check --format json` and `gozen.Diagnostic` carry it as `code`. The first digit is the exit value, the next two the family:
+A diagnostic can end with a code, `[GZN1101]`; `gozen check --format json` carries it in each diagnostic as `code`. The first digit is the exit value, the next two the family:
 
 | Family | Exit | What to fix |
 | --- | --- | --- |
@@ -42,7 +42,7 @@ The registry is `internal/diag`: `register` is the only way to make a code and n
 
 When testing, run the built binary directly. The exit status of `go run` itself can differ from the CLI's exit status, so the E2E does not use it.
 
-Every `--help` has the same shape: the name, a one-line description and the version on line 1; `[Usage]` and a description; `[Commands]` (for the top level, the groups, `art mosaic` and `art mosaic manual`); `[Examples]` that really work; `[Options]` grouped by kind; notes, where `Requirements:` is written once on the top page, on a group page for what its commands share, and on a leaf only when it differs; and finally the links Documentation, Report an issue and GitHub Sponsors. The examples are written with `e2e/atago/fixtures/game` (troop `lesson`, dungeon `grotto`) as `game`. Help does not require any of the prerequisites. A neutral example of the configuration is `e2e/atago/fixtures/game/{trial,designeval}.yaml`.
+Every `--help` has the same shape: the name, a one-line description and the version on line 1; `[Usage]` and a description; `[Commands]` (for the top level, the groups, `mosaic` and `mosaic`); `[Examples]` that really work; `[Options]` grouped by kind; notes, where `Requirements:` is written once on the top page, on a group page for what its commands share, and on a leaf only when it differs; and finally the links Documentation, Report an issue and GitHub Sponsors. The examples are written with `e2e/atago/fixtures/game` (troop `lesson`, dungeon `grotto`) as `game`. Help does not require any of the prerequisites. A neutral example of the configuration is `e2e/atago/fixtures/game/{trial,designeval}.yaml`.
 
 ## E2E
 
@@ -85,6 +85,10 @@ suite excludes `web`; the Website and Release Smoke workflows run it separately.
 [ADR 0042](../decisions/0042-command-and-output-contract.md) defines the target
 command and output contracts. The shared I/O and argument errors now live in
 `internal/cliio`; protected output paths remain in `cmd/internal/cli`.
+`cliio.Report.Finish` handles exit values and fatal diagnostics. A failed stdout
+or stderr write exits 1, including when reporting invalid arguments. A failed
+result already written to stdout uses `cliio.ErrReported` to avoid a duplicate
+diagnostic.
 
 `new`, `export`, `capture`, `theme list`, `trace` and every `sim` command support `--format text|json|jsonl`. JSON emits one
 version-1 envelope with `command`, `status` and `data`. JSONL theme lists emit

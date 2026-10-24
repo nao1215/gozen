@@ -2,9 +2,12 @@ package hygiene_test
 
 import (
 	"bytes"
+	"go/parser"
+	"go/token"
 	"io/fs"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -98,6 +101,46 @@ func TestRepositoryLocations(t *testing.T) {
 			if loc := pattern.FindIndex(contents); loc != nil {
 				t.Errorf("%s: generic private location at byte %d; remove machine-specific data", name, loc[0])
 			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestApplicationPackagesAreInternal scans source independently of build tags and OS.
+// Only executables may live outside an internal directory; tests may assemble layers.
+func TestApplicationPackagesAreInternal(t *testing.T) {
+	t.Parallel()
+	source := os.DirFS("../../..")
+	err := fs.WalkDir(source, ".", func(name string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			switch d.Name() {
+			case ".git", ".agents", ".codex", ".aws", ".cache", "bin", "build", "dist", "vendor", "node_modules":
+				return fs.SkipDir
+			}
+			if name == "website/public" {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") || strings.Contains("/"+name, "/internal/") {
+			return nil
+		}
+		b, err := fs.ReadFile(source, name)
+		if err != nil {
+			return err
+		}
+		f, err := parser.ParseFile(token.NewFileSet(), name, b, parser.PackageClauseOnly)
+		if err != nil {
+			return err
+		}
+		if f.Name.Name != "main" {
+			t.Errorf("%s: package %s exposes application code outside internal", name, f.Name.Name)
 		}
 		return nil
 	})

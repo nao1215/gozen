@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"errors"
 	"image"
 	"io/fs"
@@ -10,7 +11,7 @@ import (
 
 // publishManual stages derived outputs and the fix document before replacing
 // either. A model or rendering failure leaves the previous files untouched.
-func publishManual(c config, pic, orig, sub string, size, step int) (err error) {
+func publishManual(ctx context.Context, c config, pic, orig, sub string, size, step int) (err error) {
 	parent := filepath.Dir(c.out)
 	if err = os.MkdirAll(parent, 0o750); err != nil {
 		return err
@@ -44,16 +45,16 @@ func publishManual(c config, pic, orig, sub string, size, step int) (err error) 
 	originalOut := c.out
 	c.displayOut = originalOut
 	c.out = stage
-	if err = run(c, []string{pic}); err != nil {
+	if _, err = run(ctx, c, []string{pic}); err != nil {
 		return err
 	}
 	if sub != "check" {
-		if err = manualView(c, pic, orig, "masked", image.Rectangle{}, size, step, ""); err != nil {
+		if _, err = manualView(c, pic, orig, "masked", image.Rectangle{}, size, step, ""); err != nil {
 			return err
 		}
 	}
-	if c.outw.err != nil || c.diag.err != nil {
-		return errors.Join(c.outw.err, c.diag.err)
+	if c.outw.Err != nil || c.diag.Err != nil {
+		return errors.Join(c.outw.Err, c.diag.Err)
 	}
 	temp, err := os.CreateTemp(filepath.Dir(c.opts.manualFile), ".mosaic-fix-")
 	if err != nil {
@@ -68,7 +69,7 @@ func publishManual(c config, pic, orig, sub string, size, step int) (err error) 
 			err = errors.Join(err, e)
 		}
 	}()
-	if err = c.manual.Save(tempName, "gozen art mosaic manual: asset-relative paths, original image pixel coordinates."); err != nil {
+	if err = c.manual.Save(tempName, "gozen mosaic: asset-relative paths, original image pixel coordinates."); err != nil {
 		return err
 	}
 	backup := stage + "-previous"

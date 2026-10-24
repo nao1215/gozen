@@ -116,4 +116,4 @@ scenarios:
         contains:
         - "home borders field, but field's next does not name home"
         - 'unknown faction \"green\"'
-        - '"path": "regions.field.owner"'
+        - '"path":"regions.field.owner"'

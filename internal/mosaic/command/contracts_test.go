@@ -2,6 +2,7 @@ package command
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"image"
 	"image/color"
@@ -10,6 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/nao1215/gozen/internal/clihelp"
+	"github.com/nao1215/gozen/internal/cliio"
 
 	"github.com/nao1215/gozen/internal/mosaic"
 	"github.com/nao1215/gozen/internal/mosaic/detect"
@@ -40,16 +44,12 @@ func fixture(t *testing.T) (string, string) {
 func invoke(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
 	var out, diag bytes.Buffer
-	run := Run
-	if len(args) > 0 && args[0] == "fetch" { // gozen art fetch
-		run, args = Fetch, args[1:]
-	}
-	code := run(args, &out, &diag)
+	code := runCommand(args, &out, &diag)
 	return code, out.String(), diag.String()
 }
 
 func TestGNUOptions(t *testing.T) {
-	for _, args := range [][]string{{"--help"}, {"auto", "--help"}, {"inspect", "-h"}, {"manual", "help"}, {"manual", "grow", "--help"}} {
+	for _, args := range [][]string{{"--help"}, {"auto", "--help"}, {"inspect", "-h"}, {"--help"}, {"grow", "--help"}} {
 		_, out, _ := invoke(t, args...)
 		for _, want := range []string{"[Usage]", "[Examples]", "[Options]", "Report an issue: https://github.com/nao1215/gozen/issues"} {
 			if !strings.Contains(out, want) {
@@ -64,20 +64,20 @@ func TestGNUOptions(t *testing.T) {
 		}
 	}
 	game, out := fixture(t)
-	for _, args := range [][]string{{"auto", "-out", out, game}, {"manual", "add", "-rect", "0,0,4,4", game, "pattern.png"}} {
+	for _, args := range [][]string{{"auto", "-out", out, game}, {"add", "-rect", "0,0,4,4", game, "pattern.png"}} {
 		code, stdout, diag := invoke(t, args...)
 		if code != 2 || stdout != "" || !strings.Contains(diag, "single-dash long option") {
 			t.Fatalf("%v => %d %q %q", args, code, stdout, diag)
 		}
 	}
 	manual := filepath.Join(t.TempDir(), "manual.yaml")
-	if code, _, diag := invoke(t, "manual", "skip", "--manual="+manual, "-o", out, game, "pattern.png"); code != 0 {
+	if code, _, diag := invoke(t, "skip", "--manual="+manual, "-o", out, game, "pattern.png"); code != 0 {
 		t.Fatalf("GNU forms: %d %s", code, diag)
 	}
 }
 
 func TestHelpAndPrerequisites(t *testing.T) {
-	for _, args := range [][]string{{"--help"}, {"auto", "--help"}, {"inspect", "-h"}, {"manual", "help"}, {"manual", "add", "--help"}} {
+	for _, args := range [][]string{{"--help"}, {"auto", "--help"}, {"inspect", "-h"}, {"--help"}, {"add", "--help"}} {
 		code, out, diag := invoke(t, args...)
 		if code != 0 || !strings.Contains(out, "Requirements:") || diag != "" {
 			t.Fatalf("%v => %d %q %q", args, code, out, diag)
@@ -91,13 +91,13 @@ func TestHelpAndPrerequisites(t *testing.T) {
 	if _, err := os.Stat(out); !os.IsNotExist(err) {
 		t.Fatal("missing model wrote output")
 	}
-	for _, args := range [][]string{{}, {"unknown"}, {"manual", "unknown", game, "pattern.png"}, {"auto", "-unknown"}} {
+	for _, args := range [][]string{{}, {"unknown"}, {"unknown", game, "pattern.png"}, {"auto", "-unknown"}} {
 		code, _, _ := invoke(t, args...)
 		if code != 2 {
 			t.Fatalf("argument exit %v: %d", args, code)
 		}
 	}
-	if code := Run([]string{"--help"}, failedWriter{}, io.Discard); code != 1 {
+	if code := runCommand([]string{"--help"}, failedWriter{}, io.Discard); code != 1 {
 		t.Fatal("lost help output failure")
 	}
 }
@@ -111,7 +111,7 @@ func TestManualStateAndRollback(t *testing.T) {
 	}
 	base := []string{"--out", out, "--manual", manual, "--size", "48"}
 	call := func(sub string, flags ...string) int {
-		args := append([]string{"manual", sub}, base...)
+		args := append([]string{sub}, base...)
 		args = append(args, flags...)
 		args = append(args, game, "pattern.png")
 		code, _, diag := invoke(t, args...)
@@ -133,7 +133,7 @@ func TestManualStateAndRollback(t *testing.T) {
 	if call("grow", "--rect", "0,0,4,4", "--by", "2") != 0 {
 		t.Fatal("grow --rect unreachable")
 	}
-	if call("check") != 0 {
+	if call("mark", "--checked") != 0 {
 		t.Fatal("check failed")
 	}
 	fx, err = mosaic.LoadFixes(manual)
@@ -182,7 +182,7 @@ func TestInvalidGeometryAndOptions(t *testing.T) {
 		{"--quality", "101", "--rect", "0,0,4,4"},
 		{"--block", "-1", "--rect", "0,0,4,4"},
 	} {
-		args := append([]string{"manual", "add", "--manual", manual, "--out", out}, flags...)
+		args := append([]string{"add", "--manual", manual, "--out", out}, flags...)
 		args = append(args, game, "pattern.png")
 		code, _, _ := invoke(t, args...)
 		if code == 0 {
@@ -238,7 +238,7 @@ func TestSourceProtection(t *testing.T) {
 	game, out := fixture(t)
 	manual := filepath.Join(filepath.Dir(game), "manual.yaml")
 	for _, destination := range []string{filepath.Join(game, "assets"), filepath.Join(game, "assets", "nested"), filepath.Dir(game)} {
-		code, _, _ := invoke(t, "manual", "skip", "--manual", manual, "--out", destination, game, "pattern.png")
+		code, _, _ := invoke(t, "skip", "--manual", manual, "--out", destination, game, "pattern.png")
 		if code == 0 {
 			t.Fatalf("accepted unsafe output %s", destination)
 		}
@@ -247,7 +247,7 @@ func TestSourceProtection(t *testing.T) {
 	if err := os.Symlink(filepath.Join(game, "assets"), link); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	code, _, _ := invoke(t, "manual", "skip", "--manual", manual, "--out", filepath.Join(link, "nested"), game, "pattern.png")
+	code, _, _ := invoke(t, "skip", "--manual", manual, "--out", filepath.Join(link, "nested"), game, "pattern.png")
 	if code == 0 {
 		t.Fatal("symlink source alias accepted")
 	}
@@ -316,7 +316,7 @@ func TestUnknownReportAndOutputFailures(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(out, "report.json"), []byte("broken"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	code, _, diag := invoke(t, "manual", "list", "--out", out, game)
+	code, _, diag := invoke(t, "list", "--out", out, game)
 	if code != 1 || !strings.Contains(diag, "invalid report") {
 		t.Fatalf("corrupt report hidden: %d %s", code, diag)
 	}
@@ -332,5 +332,99 @@ func TestUnknownReportAndOutputFailures(t *testing.T) {
 	}
 	if err := encode(out, image.NewRGBA(image.Rect(0, 0, 1, 1)), 90); err == nil {
 		t.Fatal("I/O failure hidden")
+	}
+}
+
+func runCommand(args []string, out, diagnostics io.Writer) int {
+	action := "mosaic"
+	if len(args) > 0 && args[0] == "models" {
+		if len(args) < 2 {
+			return 2
+		}
+		action = "models " + args[1]
+		args = args[2:]
+	} else if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		action += " " + args[0]
+		args = args[1:]
+	}
+	report := cliio.Report{}
+	o, d := &cliio.Output{Writer: out}, &cliio.Output{Writer: diagnostics}
+	op := New(Config{Action: action, Output: o, Diagnostics: d, Report: &report})
+	report.Format = clihelp.OutputFormat(op.Flags, args)
+	help, err := clihelp.Parse(op.Flags, args)
+	if err != nil {
+		err = cliio.Parse(err)
+	} else if help {
+		o.Print(op.Page.String(op.Flags))
+	} else {
+		err = op.Run(context.Background())
+	}
+	return report.Finish(o, d, err)
+}
+
+func TestMachineFormatsPreserveManualPublication(t *testing.T) {
+	for _, format := range []string{"text", "json", "jsonl"} {
+		t.Run(format, func(t *testing.T) {
+			game, out := fixture(t)
+			manual := filepath.Join(filepath.Dir(game), "edits.yaml")
+			code, stdout, stderr := invoke(t, "skip", "--manual", manual, "--out", out, "--size", "48", game, "pattern.png", "--format", format)
+			if code != 0 {
+				t.Fatalf("%d: %s %s", code, stdout, stderr)
+			}
+			fixes, err := mosaic.LoadFixes(manual)
+			if err != nil || !fixes["pattern.png"].Skip {
+				t.Fatalf("%+v %v", fixes, err)
+			}
+			for _, file := range []string{"report.json", "manual/pattern.png.masked.png"} {
+				if _, err := os.Stat(filepath.Join(out, filepath.FromSlash(file))); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if format != "text" {
+				var result struct {
+					Version               int
+					Command, Type, Status string
+					Data                  struct{ File, Manual, Output string }
+				}
+				if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+					t.Fatal(err)
+				}
+				if result.Version != 1 || result.Command != "mosaic skip" || result.Status != "ok" || result.Data.File != "pattern.png" || result.Data.Manual != manual || result.Data.Output != out {
+					t.Fatalf("%+v", result)
+				}
+				if (result.Type == "summary") != (format == "jsonl") {
+					t.Fatal(result.Type)
+				}
+				if stderr != "" {
+					dec := json.NewDecoder(strings.NewReader(stderr))
+					for {
+						var v map[string]any
+						err := dec.Decode(&v)
+						if err == io.EOF {
+							break
+						}
+						if err != nil {
+							t.Fatal(err)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestOperationRegistrationDoesNotResolveEnvironment(t *testing.T) {
+	for _, action := range []string{"mosaic auto", "mosaic inspect", "mosaic mark", "models list", "models fetch"} {
+		render := func() string {
+			report := cliio.Report{}
+			op := New(Config{Action: action, Output: &cliio.Output{Writer: io.Discard}, Diagnostics: &cliio.Output{Writer: io.Discard}, Report: &report})
+			return op.Page.String(op.Flags)
+		}
+		before := render()
+		t.Setenv("MOSAIC_OUT", "not-a-default")
+		t.Setenv("ONNXRUNTIME_LIB", "not-a-library")
+		if after := render(); after != before {
+			t.Fatalf("%s changed help", action)
+		}
 	}
 }

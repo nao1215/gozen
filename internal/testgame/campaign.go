@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	data "github.com/nao1215/gozen/schema"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 // CampaignGame is the expedition at schema_version 5 as a campaign of four regions: blue

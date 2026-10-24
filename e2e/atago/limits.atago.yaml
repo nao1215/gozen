@@ -25,8 +25,8 @@ scenarios:
   - assert:
       exit_code: 1
       stdout:
-        contains: ['"path": "locations.map.map.roads[0].steps"', '"code": "GZN1106"', 'want steps in [0, 10000]']
-      stderr: {contains: 'check: 1 errors'}
+        contains: ['"path":"locations.map.map.roads[0].steps"', '"code":"GZN1106"', 'want steps in [0, 10000]']
+      stderr: {equals: ''}
       changes: {created: [], modified: [], deleted: []}
   - fixture:
       file: g/data/world.yaml
@@ -43,7 +43,7 @@ scenarios:
   - run: {command: 'gozen check --only structure --format json g'}
   - assert:
       exit_code: 0
-      stdout: {equals: "[]\n"}
+      stdout: {json: {path: $.data, equals: []}}
       stderr: {equals: ''}
 - name: enemy count is rejected above the display limit and accepts its boundary
   steps:
@@ -61,8 +61,8 @@ scenarios:
   - run: {command: 'gozen check --only structure --format json g'}
   - assert:
       exit_code: 1
-      stdout: {contains: ['"path": "troops.crowd.members"', '"code": "GZN1106"', 'at most 32']}
-      stderr: {contains: 'check: 1 errors'}
+      stdout: {contains: ['"path":"troops.crowd.members"', '"code":"GZN1106"', 'at most 32']}
+      stderr: {equals: ''}
   - fixture:
       file: g/data/world.yaml
       content: |
@@ -75,7 +75,7 @@ scenarios:
   - run: {command: 'gozen check --only structure --format json g'}
   - assert:
       exit_code: 0
-      stdout: {equals: "[]\n"}
+      stdout: {json: {path: $.data, equals: []}}
       stderr: {equals: ''}
 - name: oversized image is rejected and replacing it with the boundary image repairs the game
   steps:
@@ -91,11 +91,11 @@ scenarios:
   - run: {command: 'gozen check --only structure --format json g'}
   - assert:
       exit_code: 1
-      stdout: {contains: ['"path": "locations.camp.background"', '"code": "GZN1106"', 'picture dimensions 8193x1']}
-      stderr: {contains: 'check: 1 errors'}
+      stdout: {contains: ['"path":"locations.camp.background"', '"code":"GZN1106"', 'picture dimensions 8193x1']}
+      stderr: {equals: ''}
   - fixture: {file: g/assets/x.png, from: fixtures/limits/width-8192.png}
   - run: {command: 'gozen check --only structure --format json g'}
   - assert:
       exit_code: 0
-      stdout: {equals: "[]\n"}
+      stdout: {json: {path: $.data, equals: []}}
       stderr: {equals: ''}

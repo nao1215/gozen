@@ -7,8 +7,8 @@ import (
 
 	"github.com/nao1215/gozen/internal/battle"
 	"github.com/nao1215/gozen/internal/headless"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
-	data "github.com/nao1215/gozen/schema"
 )
 
 // Odds is the tally of repeated fights against one enemy group from the same start. Both gozen sim battle and the dev

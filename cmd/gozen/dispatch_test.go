@@ -32,7 +32,7 @@ func TestUsageErrorsEndWithCodeAndAPointerToHelp(t *testing.T) {
 		{[]string{"book"}, diag.Operands, "gozen book --help"},
 		{[]string{"version", "extra"}, diag.Operands, "gozen version --help"},
 		{[]string{"notes"}, diag.Operands, "gozen notes --help"},
-		{[]string{"help", "GZN9999"}, diag.UnknownCode, "gozen --help"},
+		{[]string{"help", "GZN9999"}, diag.UnknownCode, "gozen help --help"},
 	} {
 		out, stderr := invoke(t, 2, tc.args...)
 		if out != "" {
@@ -103,10 +103,10 @@ func (w *failAfter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-// A diagnostic that cannot be written still ends in a nonzero status.
+// A failed diagnostic write is an I/O failure, even for invalid arguments.
 func TestRunSurvivesAStderrThatFails(t *testing.T) {
 	var out bytes.Buffer
-	if got := run([]string{"bogus"}, &out, &failAfter{}); got != 2 {
+	if got := run([]string{"bogus"}, &out, &failAfter{}); got != 1 {
 		t.Errorf("exit %d", got)
 	}
 	if got := run([]string{"check", "/does/not/exist"}, &out, &failAfter{}); got != 1 {

@@ -24,7 +24,7 @@ func checkJSONOut(t *testing.T, want int, args ...string) []problem {
 	t.Helper()
 	out, _ := invoke(t, want, append([]string{"check", "--format", "json"}, args...)...)
 	var ps []problem
-	if err := json.Unmarshal([]byte(out), &ps); err != nil {
+	if err := json.Unmarshal(resultData(t, out, "check"), &ps); err != nil {
 		t.Fatalf("%v: %q", err, out)
 	}
 	return ps
@@ -43,7 +43,7 @@ func TestCheckJSONReportsEveryProblemWithItsCode(t *testing.T) {
 	if ps := checkJSONOut(t, 0, dir); len(ps) != 0 {
 		t.Fatalf("a clean game has no problems: %+v", ps)
 	}
-	if out, _ := invoke(t, 0, "check", "--format", "json", dir); strings.TrimSpace(out) != "[]" {
+	if out, _ := invoke(t, 0, "check", "--format", "json", dir); string(resultData(t, out, "check")) != "[]" {
 		t.Fatalf("an empty report is []: %q", out)
 	}
 	// A broken reference is an error with its own code, at its file and line.

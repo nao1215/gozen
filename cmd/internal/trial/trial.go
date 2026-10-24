@@ -19,8 +19,6 @@ import (
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 
 	"github.com/goccy/go-yaml"
-
-	data "github.com/nao1215/gozen/schema"
 )
 
 type Result struct {
@@ -460,7 +458,7 @@ func (r *Result) text(a string) ([]byte, error) {
 }
 
 func (r *Result) Check() error {
-	_, err := data.Load(r.FS(), ".")
+	_, err := gamedata.LoadDir(r.FS(), ".")
 	return err
 }
 

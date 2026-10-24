@@ -1,0 +1,47 @@
+{
+  "format_version": 2,
+  "game_id": "cli-expedition",
+  "data_version": 0,
+  "state": {
+    "actors": {
+      "scout": {
+        "id": "scout",
+        "level": 1,
+        "exp": 0,
+        "hp": 40,
+        "mp": 5,
+        "equip": {},
+        "learnt": null,
+        "states": {},
+        "sp": 0,
+        "tree": {},
+        "back": false,
+        "tactics": {
+          "version": 1,
+          "mode": "auto",
+          "rows": null
+        }
+      }
+    },
+    "party": [
+      "scout"
+    ],
+    "items": {},
+    "gold": 37,
+    "flags": {},
+    "vars": {},
+    "location": "camp",
+    "steps": 0,
+    "frames": 0,
+    "done": {},
+    "pos": {
+      "in": "",
+      "X": 0,
+      "Y": 0,
+      "facing": 0
+    },
+    "mapped": {},
+    "recruit_seed": 7
+  },
+  "rand": "cGNnOgAAAAAAAAAHnjd5uX9KfBI="
+}

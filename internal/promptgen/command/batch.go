@@ -1,47 +1,93 @@
 package command
 
 import (
-	"encoding/json"
-	"errors"
+	"context"
 	"io"
 	"os"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/cliio"
 	"github.com/nao1215/gozen/internal/promptgen"
 )
 
-// batchScenes builds each composition sharing the settings. It also prints individual failures and
-// reports them with a non-zero exit at the end.
-func batchScenes(c *promptgen.Catalog, path string, out io.Writer) error {
-	b, err := os.ReadFile(path) //nolint:gosec // Explicit user-supplied scene-list file; the command does not write to it.
+type sceneResult struct {
+	ID     string           `json:"id"`
+	Result promptgen.Result `json:"result"`
+	Error  string           `json:"error,omitempty"`
+}
+
+// batchScenes preserves input order, including duplicates and failed scenes.
+func (cfg Config) batchScenes(ctx context.Context, c *promptgen.Catalog, path string) error {
+	var b []byte
+	var err error
+	if path == "-" {
+		b, err = io.ReadAll(cfg.Input)
+	} else {
+		b, err = os.ReadFile(path) //nolint:gosec // Explicit user-supplied input path; this operation does not write files.
+	}
 	if err != nil {
 		return err
 	}
-	enc := json.NewEncoder(out)
-	failed := false
+	rows := []sceneResult{}
+	succeeded, failed := 0, 0
 	for line := range strings.SplitSeq(string(b), "\n") {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		id := strings.TrimSpace(line)
 		if id == "" {
 			continue
 		}
-		row := struct {
-			ID     string           `json:"id"`
-			Result promptgen.Result `json:"result"`
-			Error  string           `json:"error,omitempty"`
-		}{ID: id}
-		plan, err := c.Scene(id)
+		row := sceneResult{ID: id}
+		p, err := c.Scene(id)
 		if err == nil {
-			row.Result, err = c.Build(plan)
+			row.Result, err = c.Build(p)
 		}
+		status := "ok"
 		if err != nil {
-			row.Error, failed = err.Error(), true
+			row.Error = err.Error()
+			failed++
+			status = "failed"
+		} else {
+			succeeded++
 		}
-		if err := enc.Encode(row); err != nil {
-			return err
+		switch cfg.Report.Format {
+		case "json":
+			rows = append(rows, row)
+		case "jsonl":
+			if err := cfg.Report.Item(cfg.Output, id, status, row); err != nil {
+				return err
+			}
+		default:
+			cfg.Output.Println(id + ":")
+			if row.Error != "" {
+				cfg.Output.Println(row.Error)
+			} else if err := row.Result.WriteText(cfg.Output); err != nil {
+				return err
+			}
+			if cfg.Output.Err != nil {
+				return cfg.Output.Err
+			}
 		}
 	}
-	if failed {
-		return errors.New("one or more scenes failed")
+	status := "ok"
+	if failed > 0 {
+		status = "failed"
+	}
+	switch cfg.Report.Format {
+	case "json":
+		err = cfg.Report.Result(cfg.Output, status, rows)
+	case "jsonl":
+		err = cfg.Report.Result(cfg.Output, status, struct {
+			Succeeded int `json:"succeeded"`
+			Failed    int `json:"failed"`
+		}{succeeded, failed})
+	}
+	if err != nil {
+		return err
+	}
+	if failed > 0 {
+		return cliio.ErrReported
 	}
 	return nil
 }

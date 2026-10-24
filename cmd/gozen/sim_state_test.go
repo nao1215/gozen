@@ -10,14 +10,14 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/headless/balance"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
-	data "github.com/nao1215/gozen/schema"
 )
 
 // gozen sim battle --state counts from the memo's .save with the same function and seed as the dev balance display (F7).
 func TestSimFromSavedStateMatchesTheShared(t *testing.T) {
 	dir := fixture(t)
-	db, err := data.Load(os.DirFS(dir), ".")
+	db, err := data.LoadDir(os.DirFS(dir), ".")
 	if err != nil {
 		t.Fatal(err)
 	}

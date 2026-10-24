@@ -11,7 +11,7 @@ import (
 	"testing/fstest"
 	"unicode"
 
-	"github.com/nao1215/gozen"
+	gozen "github.com/nao1215/gozen/internal/session"
 )
 
 // endings are the pictures the night ends on, by the option of the last choice.

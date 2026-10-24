@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 func TestEveryThemeIsComplete(t *testing.T) {
@@ -21,7 +21,7 @@ func TestEveryThemeIsComplete(t *testing.T) {
 		if th.Summary == "" {
 			t.Errorf("%s has no summary", th.Name)
 		}
-		for _, f := range data.ThemeFiles {
+		for _, f := range gamedata.ThemeFiles {
 			b, err := assets.ReadFile("assets/" + th.Name + "/" + f)
 			if err != nil {
 				t.Fatalf("%s/%s: %v", th.Name, f, err)
@@ -52,7 +52,7 @@ func TestAddKeepsWhatIsThereUnlessForced(t *testing.T) {
 		t.Error("an unknown theme must fail")
 	}
 	r, err := Add("ice", dir, false)
-	if err != nil || len(r.Written) != len(data.ThemeFiles)+1 || len(r.Kept) != 0 {
+	if err != nil || len(r.Written) != len(gamedata.ThemeFiles)+1 || len(r.Kept) != 0 {
 		t.Fatalf("first add: %+v %v", r, err)
 	}
 	wall := filepath.Join(dir, "assets", "dungeon", "themes", "ice", "wall.jpg")
@@ -60,14 +60,14 @@ func TestAddKeepsWhatIsThereUnlessForced(t *testing.T) {
 		t.Fatal(err)
 	}
 	r, err = Add("ice", dir, false)
-	if err != nil || len(r.Written) != 0 || len(r.Kept) != len(data.ThemeFiles)+1 {
+	if err != nil || len(r.Written) != 0 || len(r.Kept) != len(gamedata.ThemeFiles)+1 {
 		t.Fatalf("second add: %+v %v", r, err)
 	}
 	if b, err := os.ReadFile(wall); err != nil || string(b) != "mine" { //nolint:gosec // Test-owned path under t.TempDir.
 		t.Error("a file of the game was replaced without --force")
 	}
 	r, err = Add("ice", dir, true)
-	if err != nil || len(r.Written) != len(data.ThemeFiles)+1 {
+	if err != nil || len(r.Written) != len(gamedata.ThemeFiles)+1 {
 		t.Fatalf("forced add: %+v %v", r, err)
 	}
 	if b, err := os.ReadFile(wall); err != nil || string(b) == "mine" { //nolint:gosec // Test-owned path under t.TempDir.
@@ -96,9 +96,9 @@ func TestAddFailsWhenTheDestinationIsBlocked(t *testing.T) {
 // none of the runtime packages may depend on this one. go-arch-lint also forbids it,
 // because play is not allowed to depend on the commands.
 func TestRuntimeDoesNotCarryTheThemes(t *testing.T) {
-	out, err := exec.CommandContext(t.Context(), "go", "list", "-deps", "github.com/nao1215/gozen", "github.com/nao1215/gozen/play", "github.com/nao1215/gozen/gfx", "github.com/nao1215/gozen/schema").Output()
+	out, err := exec.CommandContext(t.Context(), "go", "list", "-deps", "github.com/nao1215/gozen/internal/session", "github.com/nao1215/gozen/internal/play", "github.com/nao1215/gozen/internal/layer5/gfx", "github.com/nao1215/gozen/internal/layer2/gamedata").Output()
 	if err != nil {
-		t.Skipf("go list is not available: %v", err)
+		t.Fatalf("go list failed: %v", err)
 	}
 	for dep := range strings.FieldsSeq(string(out)) {
 		if strings.HasPrefix(dep, "github.com/nao1215/gozen/cmd/") {

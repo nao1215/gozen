@@ -33,15 +33,15 @@ scenarios:
       exit_code: 1
       stdout:
         contains:
-        - '"path": "locations.square.stage.spots.gate.at"'
-        - '"path": "locations.square.stage.spots.gate.facing"'
-        - '"path": "locations.square.stage.exits[0].to"'
-        - '"path": "locations.square.stage.people[0].doll.parts[0].kind"'
-        - '"path": "locations.square.stage.people[0].doll.parts[0].color"'
-        - '"line": 11'
+        - '"path":"locations.square.stage.spots.gate.at"'
+        - '"path":"locations.square.stage.spots.gate.facing"'
+        - '"path":"locations.square.stage.exits[0].to"'
+        - '"path":"locations.square.stage.people[0].doll.parts[0].kind"'
+        - '"path":"locations.square.stage.people[0].doll.parts[0].color"'
+        - '"line":11'
         - not where one can walk
       stderr:
-        contains: 'check: 5 errors'
+        equals: ''
 - name: the same words at schema_version 2 ask for version 3
   steps:
   - fixture:
@@ -69,20 +69,20 @@ scenarios:
       exit_code: 1
       stderr:
         contains: 'stage needs schema_version: 3'
-- name: gozen art faces help names what it needs
+- name: gozen faces help names what it needs
   steps:
   - run:
-      command: gozen art faces --help
+      command: gozen faces --help
   - assert:
       exit_code: 0
       stdout:
-        contains: ['Requirements:', 'gozen art fetch face', 'assets/faces.json', 'cgo']
+        contains: ['Requirements:', 'gozen models fetch face', 'assets/faces.json', 'cgo']
       stderr:
         equals: ''
-- name: gozen art faces without its model fails and writes nothing
+- name: gozen faces without its model fails and writes nothing
   steps:
   - run:
-      command: gozen art faces "${specdir}/fixtures/game"
+      command: gozen faces "${specdir}/fixtures/game"
   - assert:
       exit_code: 0
       stdout:
@@ -112,7 +112,7 @@ scenarios:
               people: [{id: guard, at: [20, 20]}]
             people: [{id: guard, name: Guard, image: guard.png}]
   - run:
-      command: gozen art faces stage --model none.onnx
+      command: gozen faces stage --model none.onnx
   - assert:
       exit_code: 1
       stderr:

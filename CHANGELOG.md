@@ -1,6 +1,6 @@
 # Changelog
 
-Changes not yet released are tracked under Unreleased. All packages and the gozen command share one module version. The v0 API is being established; experimental packages, when there are any, live under `x/` and carry no compatibility promise.
+Changes not yet released are tracked under Unreleased. All packages and the gozen command share one module version. The compatibility boundaries are commands, YAML definitions and saves; Go implementation packages are internal.
 
 ## Unreleased
 
@@ -12,10 +12,14 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - Package games with `gozen export` and matching prebuilt player runtimes. Players need no Go toolchain or authoring CLI.
 
 - Create playable RPG, novel and campaign templates with `gozen new`, using only YAML and assets. Beginner documentation now starts with the no-code authoring workflow.
-- Run a game directory with `gozen run <game-dir>` without writing a Go wrapper. The CLI and `play.Main` share standard options, development tools, rendering and save behavior.
+- Run a game directory with `gozen run <game-dir>` without writing a Go wrapper. The CLI and exported players share standard options, development tools, rendering and save behavior.
 - Read versioned JSON or JSONL results from `gozen new`, `gozen export` and `gozen theme list`, with structured diagnostics on stderr and the existing GZN codes and exit statuses.
 
 ### Changed
+
+- Retire the public Go application API. Session, schema, chat, reaction and rendering implementations remain in their owning internal layers; remove public wrappers, the session-screen bridge and public identifier inventories. YAML and save formats are unchanged.
+- Flatten production tools to `prompt`, `mosaic ACTION`, `models list/fetch`, `faces` and `puppet`; use `mosaic mark --checked` to record review state. Prompt selectors use repeatable `--select LAYER=ITEM` instead of catalog-defined flags.
+- Make `book` formats describe the same game report, with `--section lineage` for family trees. `check`, book, production tools and help support versioned machine-readable output. `help --format json` describes registered commands and options without loading game files or models.
 
 - Replace `play shots` and its external game binary with direct `capture`. Image output now uses PNG or GIF without automatic JPEG copies; the destination is required and `--only ID` is repeatable.
 - Call `trace`, `notes`, `release` and `trial` directly. `notes`, `release` and non-dry `trial` require `--out DIR`. Explicit `trial --config FILE` paths are relative to the working directory; the omitted default remains `GAME/trial.yaml`. Use `--version` or `version` instead of the removed top-level `-v`.

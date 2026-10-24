@@ -30,7 +30,6 @@ import (
 	"github.com/nao1215/gozen/internal/play"
 	"github.com/nao1215/gozen/internal/rpg"
 	lang "github.com/nao1215/gozen/internal/text"
-	data "github.com/nao1215/gozen/schema"
 )
 
 func (c *command) layout(dir string, out io.Writer) error {
@@ -41,7 +40,7 @@ func (c *command) layout(dir string, out io.Writer) error {
 	if err := gamedata.UseWords(fsys); err != nil {
 		return err
 	}
-	db, err := data.Load(fsys, ".")
+	db, err := gamedata.LoadDir(fsys, ".")
 	if err != nil {
 		return err
 	}
@@ -52,7 +51,7 @@ func (c *command) layout(dir string, out io.Writer) error {
 	return err
 }
 
-func layoutMessages(db *data.DB, fsys fs.FS, out io.Writer) error {
+func layoutMessages(db *gamedata.DB, fsys fs.FS, out io.Writer) error {
 	issues, err := checkMessages(db, fsys)
 	if err != nil {
 		return err
@@ -71,7 +70,7 @@ func layoutMessages(db *data.DB, fsys fs.FS, out io.Writer) error {
 
 // builtinFontWarning says which characters of the game's text the built-in Go
 // Regular font cannot draw, when game.yaml has no fonts.regular; "" otherwise.
-func builtinFontWarning(db *data.DB, fsys fs.FS) (string, error) {
+func builtinFontWarning(db *gamedata.DB, fsys fs.FS) (string, error) {
 	if db.Game.Fonts.Regular != "" {
 		return "", nil
 	}
@@ -221,11 +220,11 @@ type msgIssue struct {
 
 var embedRe = regexp.MustCompile(`\{[^{}]*\}`)
 
-func checkMessages(db *data.DB, fsys fs.FS) ([]msgIssue, error) {
+func checkMessages(db *gamedata.DB, fsys fs.FS) ([]msgIssue, error) {
 	if err := play.LoadFonts(db, fsys); err != nil {
 		return nil, fontProblemOf(fsys, err)
 	}
-	// Use the game-local translator through loaded data. The lines are laid out in the
+	// Use the game-local translator through loaded gamedata. The lines are laid out in the
 	// language written and in each other language offered, translated (ADR 0027).
 	var out []msgIssue
 	var err error
@@ -268,7 +267,7 @@ func checkMessages(db *data.DB, fsys fs.FS) ([]msgIssue, error) {
 
 // languageMessages lays out the lines of the data files in a language: the language
 // written as it is, another translated by lang/<code>.yaml (its file is tagged with it).
-func languageMessages(db *data.DB, fsys fs.FS, code string) ([]msgIssue, error) {
+func languageMessages(db *gamedata.DB, fsys fs.FS, code string) ([]msgIssue, error) {
 	tr := func(s string) string { return s }
 	tag := ""
 	if code != db.Game.Written() {
@@ -328,7 +327,7 @@ func scalar(n ast.Node) (string, int, bool) {
 	return "", 0, false
 }
 
-func inspectMapping(gm *data.Game, file string, n ast.Node, tr func(string) string) []msgIssue {
+func inspectMapping(gm *gamedata.Game, file string, n ast.Node, tr func(string) string) []msgIssue {
 	var out []msgIssue
 	var prompt ast.Node
 	var options []string
@@ -377,7 +376,7 @@ func inspectMapping(gm *data.Game, file string, n ast.Node, tr func(string) stri
 	return out
 }
 
-func sayIssue(gm *data.Game, file string, line int, text string) []msgIssue {
+func sayIssue(gm *gamedata.Game, file string, line int, text string) []msgIssue {
 	text = embedRe.ReplaceAllString(text, "〇〇〇")
 	n := len(play.MessageWrap(gm, text))
 	if n <= play.MessageLines() {
@@ -440,7 +439,7 @@ func reportMessages(writer io.Writer, issues []msgIssue) error {
 	return out.Err
 }
 
-func stoneOfferIssues(db *data.DB) []msgIssue {
+func stoneOfferIssues(db *gamedata.DB) []msgIssue {
 	if len(db.StoneSets) == 0 {
 		return nil
 	}
@@ -456,7 +455,7 @@ func stoneOfferIssues(db *data.DB) []msgIssue {
 	slots := 0
 	for _, sl := range db.Game.Slots {
 		for k := range kinds {
-			if (&data.Item{Slot: k}).Fits(sl.ID) {
+			if (&gamedata.Item{Slot: k}).Fits(sl.ID) {
 				slots++
 				break
 			}
@@ -519,7 +518,7 @@ func stoneOfferIssues(db *data.DB) []msgIssue {
 	return out
 }
 
-func spOfferIssues(db *data.DB) []msgIssue {
+func spOfferIssues(db *gamedata.DB) []msgIssue {
 	var out []msgIssue
 	var ids []string
 	for id := range db.Actors {

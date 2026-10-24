@@ -1,6 +1,8 @@
 # ADR 0041: YAML authoring and distribution without a programming toolchain
 
-Status: Accepted for phased implementation. Date: 2026-10-24.
+Status: Implemented. Date: 2026-10-24.
+
+The sequence below records the migration plan. The CLI replacements and public API retirement are implemented; Go packages are now internal. YAML and save versions are unchanged. Verification and the final PR are recorded in [the migration plan](../development/no-code-migration.md).
 
 ## Users and product boundary
 
@@ -55,7 +57,7 @@ skills with actual behavior. These are separate final review stages; every
 preceding change still includes its own tests and accurate documentation.
 
 Desktop distribution uses a private player and an explicit local runtime bundle.
-Browser distribution uses the same private player with a WASM build and the matching Go JavaScript runtime. The `player` startup component depends on presentation, game data and `webfs`; engine layers do not depend on it. Feature migration, API retirement and the final audits remain planned.
+Browser distribution uses the same private player with a WASM build and the matching Go JavaScript runtime. The `player` startup component depends on presentation, game data and `webfs`; engine layers do not depend on it. Feature migration and API retirement are implemented. The final audit retained CLI, browser, graphics and pre-retirement save checks and updated the author documentation and skill.
 The detailed progress and acceptance criteria are in
 [the migration plan](../development/no-code-migration.md).
 

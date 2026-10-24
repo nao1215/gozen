@@ -8,11 +8,12 @@ import (
 	"io/fs"
 	"time"
 
-	"github.com/nao1215/gozen"
+	"github.com/nao1215/gozen/internal/savefile"
+
 	"github.com/nao1215/gozen/internal/rpg"
 )
 
-// Store is where saves are kept (same shape as gozen.Store): an OS directory, memory, or the browser's localStorage.
+// Store is where saves are kept (same shape as savefile.Store): an OS directory, memory, or the browser's localStorage.
 type Store interface {
 	Read(name string) ([]byte, error)
 	Write(name string, b []byte) error
@@ -27,9 +28,9 @@ func openStore(opts Options, id string, trial bool) (st Store, given bool, err e
 	case opts.Store != nil:
 		return opts.Store, true, nil
 	case opts.SaveDir != "":
-		return gozen.DirStore(opts.SaveDir), true, nil
+		return savefile.DirStore(opts.SaveDir), true, nil
 	case trial:
-		return gozen.MemStore(), true, nil
+		return savefile.MemStore(), true, nil
 	case opts.StoreFor != nil:
 		st, err = opts.StoreFor(id)
 		return st, false, err

@@ -242,7 +242,7 @@ func (c *command) capture() clihelp.Operation {
 			c.out.Printf("%s: %d captured, %d failed\n", *out, len(results)-failed, failed)
 		}
 		if failed > 0 {
-			return errReported
+			return cliio.ErrReported
 		}
 		return nil
 	}}

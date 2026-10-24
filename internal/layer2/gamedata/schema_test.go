@@ -157,7 +157,7 @@ func (b *schemaBuilder) node(t reflect.Type) schemaNode {
 		return n
 	}
 	if t == reflect.TypeFor[Expr]() {
-		return schemaNode{"type": []string{"string", "number", "boolean", "null"}, "description": "An expression. gozen.Load checks its syntax, names and types."}
+		return schemaNode{"type": []string{"string", "number", "boolean", "null"}, "description": "An expression. gozen check checks its syntax, names and types."}
 	}
 	if t == reflect.TypeFor[Color]() {
 		return schemaNode{"type": "string", "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"}
@@ -296,7 +296,7 @@ func schemaContract(owner reflect.Type, field reflect.StructField, name string) 
 	if t == reflect.TypeFor[Expr]() {
 		c.Default = "未指定の式（条件は成立、数式は０。個別の継承は下記）"
 		c.Zero = "式の数値０（条件なら不成立）"
-		c.Reference = "式の文脈は DSL と gozen.Load で検査"
+		c.Reference = "式の文脈は DSL と gozen check で検査"
 	}
 	if t == reflect.TypeFor[Color]() {
 		c.Default = "未指定の色（表示先の既定色）"
@@ -474,7 +474,7 @@ func TestSchemaCoverage(t *testing.T) {
 		t.Error(p)
 	}
 	artifacts := map[string][]byte{}
-	artifacts["../../../data/schema/types.schema.json"] = schemaJSON(t, schemaNode{"$schema": "https://json-schema.org/draft/2020-12/schema", "$defs": b.defs, "description": "The YAML types of a Gozen game. gozen.Load is the authority on ranges, references and the meaning of expressions."})
+	artifacts["../../../data/schema/types.schema.json"] = schemaJSON(t, schemaNode{"$schema": "https://json-schema.org/draft/2020-12/schema", "$defs": b.defs, "description": "The YAML types of a Gozen game. gozen check is the authority on ranges, references and the meaning of expressions."})
 	for file, name := range map[string]string{"game": "Game", "data": "DataFile"} {
 		artifacts["../../../data/schema/"+file+".schema.json"] = schemaJSON(t, schemaNode{"$schema": "https://json-schema.org/draft/2020-12/schema", "$ref": "types.schema.json#/$defs/" + name})
 	}

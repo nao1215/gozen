@@ -5,7 +5,7 @@ The README.md and the GitHub Pages site (`website/`) show only what works with t
 After changing the README or the site, pass the following before committing.
 
 ```sh
-go test ./internal/dev/docs   # ledger and references, marks, YAML examples, README links (no display, a few seconds)
+go test ./internal/dev/docs   # ledger and references, marks, YAML examples, README links (no display)
 make docs-images              # remake the pictures (rewrites only those that changed)
 make docs-steps               # run the steps of the README and site
 make website website-check    # build the site and look for broken link and image references
@@ -50,7 +50,7 @@ The code snippets of README.md and `website/content/*.md` are read from the top.
 
 - Shell snippets (`sh`, `shell`, `bash`) without a mark are run as they are. The snippets of one page run one after another in the same directory, and `cd` carries over to the next snippet (the same as a reader going on in one terminal).
 - `go install`, `go run …@latest` and `go get` are not rewritten. A local module proxy that serves the local checkout as `v0.0.0-docs` is placed at the front of `GOPROXY`, so they run with the same content as the published module zip. Dependencies come from the module cache, then from the original `GOPROXY`. `HOME` and `GOPATH` are fresh every time, and `gozen` is built from the checkout and put on PATH.
-- A YAML snippet must always have a mark. A `text` snippet is checked only if it has a mark. Go snippets are type-checked against this checkout by `go test` (TestDocGo) unless marked `skip REASON`: a whole file as it is; declarations (`func`, `var`, `const`, `type`) with the imports of `snippetImports` added; statements inside a function whose parameters are the names a game has at hand (`ctx`, `t`, `files`, `fsys`, `screen`, `s`, `g`). Unused variables and imports are allowed, since an example shows a part of a program; an unknown name, a wrong method or a wrong number of results fails.
+- A YAML snippet must always have a mark. A `text` snippet is checked only if it has a mark. Author-facing examples use YAML and shell commands; the former public Go snippet harness was removed with the API.
 
 A mark is written on the line just before the snippet (it is not shown on GitHub or on the site).
 
@@ -62,7 +62,7 @@ A mark is written on the line just before the snippet (it is not shown on GitHub
 | `<!-- verify: skip REASON -->` | Do not run. The reason is required |
 | `<!-- verify: output -->` | Each line of a `text` snippet appears, in this order, in the standard output of the snippet run just before (the number of spaces does not matter) |
 | `<!-- verify: file PATH -->` | Write the snippet's content to PATH in the page's directory (such as `game/game.yaml` or `main.go`, used by later snippets) |
-| `<!-- verify: load [group=NAME] [under=KEY] [as=game.yaml\|as=assets/PATH] -->` | Overlay a YAML example as a data file on `internal/dev/docs/testdata/docgame` and read it with `gozen.Load`, together with the other load examples of the page, or of the same `group` (each recipe of the cookbook is its own game). Picture and sound names in the example are placed as stub files. `under` puts an indented fragment under `KEY:`; `as=game.yaml` merges the example's keys into the docgame's `game.yaml` instead, and `as=assets/PATH` places the example as that file (such as a moving portrait), its pictures stubbed beside it |
+| `<!-- verify: load [group=NAME] [under=KEY] [as=game.yaml\|as=assets/PATH] -->` | Overlay a YAML example as a data file on `internal/dev/docs/testdata/docgame` and read it with the internal session loader, together with the other load examples of the page, or of the same `group` (each recipe of the cookbook is its own game). Picture and sound names in the example are placed as stub files. `under` puts an indented fragment under `KEY:`; `as=game.yaml` merges the example's keys into the docgame's `game.yaml` instead, and `as=assets/PATH` places the example as that file (such as a moving portrait), its pictures stubbed beside it |
 | `<!-- verify: same PATH -->` | The YAML example has the same values as the file in the repository (comments and style do not matter) |
 | `<!-- verify: parse REASON -->` | Check only that it reads as YAML |
 
@@ -76,7 +76,7 @@ The current exclusions (shown in the log of `docs-steps`):
 | cosign, `gh attestation`, slsa-verifier | Need the files of a published release (and a GitHub login) |
 | `gozen run game --dev` (README and edit–play loop) | Opens a window and waits for input. Scripted CLI E2E and documentation image runs exercise the same startup |
 | `gozen capture` | Needs a display. `e2e/atago/graphics.atago.yaml` runs it |
-| `gozen art mosaic auto --model`, `gozen art faces` | Need a detection model and ONNX Runtime (and cgo) |
+| `gozen mosaic auto --model`, `gozen faces` | Need a detection model and ONNX Runtime (and cgo) |
 | `sudo apt-get install xvfb xauth` | Installs system packages. The capture inside Xvfb that follows is run |
 | `gozen <command> [OPTIONS] [ARGUMENTS]` | Explains the form of a command |
 | The YAML of the verb `roll_dice` and the screen `album`, and the 3 expression examples | Need registration in Go code / separate expressions, not one file |
@@ -104,7 +104,7 @@ A type or field without a description, a description for a field that no longer 
 
 Documents are English only. `go test ./internal/dev/docs` (TestDocumentLanguage) fails on Japanese in any Markdown or JSON file of the repository (outside `testdata/`); a word used on purpose (the origin of the name, an engine text key quoted as data) goes in `japaneseAllowed` in `internal/dev/docs/language_test.go`, by file. Go comments and the engine's own Japanese text (its text catalog) are not documents and are not checked.
 
-The vocabulary of adult content belongs only to the mosaic tool ([ADR 0004](../decisions/0004-content-boundary.md)): its code (`internal/mosaic/`) and the `## gozen art mosaic` sections of `website/content/production-tools.md` and `docs/development/production-tools.md`. The same test fails when one of the words of `adultWords` (English and Japanese) appears in any other text file of the repository.
+The vocabulary of adult content belongs only to the mosaic tool ([ADR 0004](../decisions/0004-content-boundary.md)): its code (`internal/mosaic/`) and the `## gozen mosaic` sections of `website/content/production-tools.md` and `docs/development/production-tools.md`. The same test fails when one of the words of `adultWords` (English and Japanese) appears in any other text file of the repository.
 
 ## The site
 

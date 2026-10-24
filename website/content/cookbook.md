@@ -232,7 +232,7 @@ events:
         else: [{say: Crisp.}]
 ```
 
-`gozen.Restore` reads a save made in the middle of an event the same way, so a test can check that a save made at any line goes on at that line ([the Go API](/go-api/)). Reference: [UIStyle](/schema/#uistyle), [Command](/schema/#command) (`id`).
+The game resumes a save made in the middle of an event at its saved line. Use a separate `--save-dir` when testing save and load through `gozen run`. Reference: [UIStyle](/schema/#uistyle), [Command](/schema/#command) (`id`).
 
 ## Stage portraits and effects
 
@@ -973,7 +973,7 @@ hair:
   - rect: [130, 70, 50, 90]
 ```
 
-[Check where each piece lies](#moving-portraits) with `gozen art puppet`. Reference: [Actor](/schema/#actor), [Say](/schema/#say), [FaceRule](/schema/#facerule), and [the puppet format](https://github.com/nao1215/gozen/blob/main/docs/architecture/puppet.md). [Go Zen's Maren](https://github.com/nao1215/gozen/blob/main/examples/go-zen/game/assets/maren/puppet.yaml) has a puppet.
+[Check where each piece lies](#moving-portraits) with `gozen puppet`. Reference: [Actor](/schema/#actor), [Say](/schema/#say), [FaceRule](/schema/#facerule), and [the puppet format](https://github.com/nao1215/gozen/blob/main/docs/architecture/puppet.md). [Go Zen's Maren](https://github.com/nao1215/gozen/blob/main/examples/go-zen/game/assets/maren/puppet.yaml) has a puppet.
 
 ## Set the face icons
 
@@ -1002,7 +1002,7 @@ locations:
       - {id: baker, name: Baker, image: baker.png, bubbles: [Fresh bread!]}
 ```
 
-In a painted scene, a balloon's face comes from the doll's `icon`, then `face_at`, then the face boxes that [gozen art faces](#check-and-measure) finds. Reference: [Actor](/schema/#actor), [Doll](/schema/#doll).
+In a painted scene, a balloon's face comes from the doll's `icon`, then `face_at`, then the face boxes that [gozen faces](#check-and-measure) finds. Reference: [Actor](/schema/#actor), [Doll](/schema/#doll).
 
 ## Show event pictures and fill the gallery
 
@@ -1033,7 +1033,7 @@ gallery:
 
 ## Keep a character book
 
-`profiles` gives each character a page on the Characters screen: the standing picture with its faces, a few lines of your own labels, an introduction and how they see the others. A profile whose ID is an actor's shows that actor; `picture` shows anyone else. Under `--dev` the title and the menu offer Characters, F6 opens it anywhere and every page is open, so you can check your characters while you write. Run `gozen art faces` once to center the list's face icons on the faces. Every text is translated through `lang/` like the lines.
+`profiles` gives each character a page on the Characters screen: the standing picture with its faces, a few lines of your own labels, an introduction and how they see the others. A profile whose ID is an actor's shows that actor; `picture` shows anyone else. Under `--dev` the title and the menu offer Characters, F6 opens it anywhere and every page is open, so you can check your characters while you write. Run `gozen faces` once to center the list's face icons on the faces. Every text is translated through `lang/` like the lines.
 
 <!-- verify: load group=profiles as=game.yaml -->
 ```yaml
@@ -1075,7 +1075,7 @@ events:
 
 `open: profiles` opens the book from an event, and a test reads `profile.mira.unlocked`. Reference: [Profile](/schema/#profile), [ProfileField](/schema/#profilefield), [ProfileRelation](/schema/#profilerelation), [UIStyle](/schema/#uistyle).
 
-Press Tab in the book for the chart, use arrows to select a face, then Z to focus it. Its incoming and outgoing neighbours gather around it; other faces and lines fade. Press Z again to read its page, X to animate back to the full chart, or use the wheel to zoom. The `kind` colour is chosen by the author; `love` has no engine rule. A line to a locked profile is hidden until it opens. Run `gozen art faces <game-dir>` to generate face boxes, then `gozen check <game-dir>` to catch unknown targets and kinds.
+Press Tab in the book for the chart, use arrows to select a face, then Z to focus it. Its incoming and outgoing neighbours gather around it; other faces and lines fade. Press Z again to read its page, X to animate back to the full chart, or use the wheel to zoom. The `kind` colour is chosen by the author; `love` has no engine rule. A line to a locked profile is hidden until it opens. Run `gozen faces <game-dir>` to generate face boxes, then `gozen check <game-dir>` to catch unknown targets and kinds.
 
 ## Keep a monster book
 
@@ -1141,7 +1141,7 @@ breeding:
   families: [{parents: [slime, slime], children: [dewdrop, silverdrop]}]
 ```
 
-At a safe location, add an action such as `- {label: Monster ranch, do: [{open: ranch}]}`. Each monster instance has a saved male or female sex (♂ or ♀); only opposite-sex parents can breed. A species can specify `sex: male` or `sex: female`, or use `any` with an optional male `sex_ratio`. The ranch shows active and reserve members, swaps them, asks before release, previews a child (`?` until seen), lets the player choose inherited skills and stages the fusion. A full party sends a new recruit to the reserve. `reserve: {in: monster_2, out: monster_1}`, `release: monster_2` and `breed: {parents: [monster_1, monster_2], skills: [attack]}` are commands usable by scripts and Session.Do; the IDs refer to saved instances, not species. Expressions read `reserve.size`, `monster.monster_1.family`, `monster.monster_1.plus`, `monster.monster_1.sex` and `bestiary.dewdrop.caught`.
+At a safe location, add an action such as `- {label: Monster ranch, do: [{open: ranch}]}`. Each monster instance has a saved male or female sex (♂ or ♀); only opposite-sex parents can breed. A species can specify `sex: male` or `sex: female`, or use `any` with an optional male `sex_ratio`. The ranch shows active and reserve members, swaps them, asks before release, previews a child (`?` until seen), lets the player choose inherited skills and stages the fusion. A full party sends a new recruit to the reserve. `reserve: {in: monster_2, out: monster_1}`, `release: monster_2` and `breed: {parents: [monster_1, monster_2], skills: [attack]}` are commands usable by YAML events and development scripts; the IDs refer to saved instances, not species. Expressions read `reserve.size`, `monster.monster_1.family`, `monster.monster_1.plus`, `monster.monster_1.sex` and `bestiary.dewdrop.caught`.
 
 Run `gozen check game`, `gozen sim breed game --format json`, `gozen book game` and battle and dive simulations while tuning. GZN1112 identifies invalid rules; GZN0116 warns of non-boss species unreachable from capturable monsters. A specific pair wins over a family rule, and family offspring are chosen by the mean parent rank. See [ADR 0036](https://github.com/nao1215/gozen/blob/main/docs/decisions/0036-monster-collection.md).
 
@@ -1221,7 +1221,7 @@ enemies:
 
 In `assets/sprite/puppet.yaml`:
 
-<!-- verify: parse The puppet file is checked by gozen art puppet when used in a game. -->
+<!-- verify: parse The puppet file is checked by gozen puppet when used in a game. -->
 ```yaml
 base: base.png
 eyes:
@@ -1233,7 +1233,7 @@ motion:
   breath: {depth: 0.012, period: 4}
 ```
 
-Run `gozen art puppet assets/sprite/puppet.yaml` to inspect the picture parts.
+Run `gozen puppet assets/sprite/puppet.yaml` to inspect the picture parts.
 
 ## Play music for places, battles and moods
 
@@ -1323,7 +1323,7 @@ text:
 
 Lines, speakers, choices, prompts and notices are translated as they are shown, and the names and descriptions of places, people, actions, exits, items, skills, states, enemies, classes, shops, the title and the gallery's scenes when the language changes. Read lines are kept by the text as written, so they stay read in every language. One text has one translation: when the same words must be translated differently in two places, write them differently. The same map may also replace the engine's own words in that language, as `text` in `game.yaml` does.
 
-`gozen check` reports a translation that drops or changes an `{expression}`, warns of a key that is no text of the game (GZN0110) and of every text not translated yet (GZN0111, each with its path; `--format json` lists them for a script or an agent to fill the file), and lays out the lines in each language. A test of the Japanese game loads the same files with `game.yaml` changed to `language: ja` (`gozen.Load` with an overlay); its requests are in Japanese. Reference: [Game](/schema/#game) (`written_in`, `languages`).
+`gozen check` reports a translation that drops or changes an `{expression}`, warns of a key that is no text of the game (GZN0110) and of every text not translated yet (GZN0111, each with its path; `--format json` lists them for a script or an agent to fill the file), and lays out the lines in each language. A test of the Japanese game loads the same files with `game.yaml` changed to `language: ja` (an internal integration test overlay); its requests are in Japanese. Reference: [Game](/schema/#game) (`written_in`, `languages`).
 
 ## Test-play with notes, reload and quick starts
 
@@ -1373,7 +1373,7 @@ jobs:
 
 ## Cut a release and a trial
 
-`gozen release` copies the game with only approved pictures; `gozen trial` keeps the part of the game within the range of `trial.yaml`, a demo. What lies outside the range is not hidden behind a flag but left out of the copy, so the demo build carries none of the later events, endings or pictures: unpacking the demo cannot leak the full game. `-n` counts what would be kept, and `--list` writes what was kept and what was dropped, to check before you ship. Here the demo stops at the third floor of the grotto and leaves out the ending event:
+`gozen release` copies the game with only approved pictures; `gozen trial` keeps the part of the game within the range of `trial.yaml`, a demo. The selector removes definitions and assets it can prove are outside the trial range. Analysis is conservative: unresolved branches and retained files can still contain later content. Inspect the output before distribution; this is not encryption or an asset-secrecy guarantee. `-n` counts what would be kept, and `--list` writes what was kept and what was dropped, to check before you ship. Here the demo stops at the third floor of the grotto and leaves out the ending event:
 
 <!-- verify: same internal/dev/docs/testdata/fixtures/cookbook/game/trial.yaml -->
 ```yaml
@@ -1414,12 +1414,12 @@ gozen sim dive game --location grotto --floors 5 --boss 5:lesson  # a whole dive
 gozen book game > book.md                              # the whole game as one Markdown file
 ```
 
-`gozen art faces` finds the faces of the standing pictures for balloons; it needs a detection model:
+`gozen faces` finds the faces of the standing pictures for balloons; it needs a detection model:
 
 <!-- verify: skip downloads a model and needs a cgo build with ONNX Runtime -->
 ```shell
-gozen art fetch face
-gozen art faces game
+gozen models fetch face
+gozen faces game
 ```
 
 ### Test play
@@ -1446,8 +1446,8 @@ gozen notes notes -o notes-html
 
 <!-- verify: each fixture=puppet -->
 ```shell
-gozen art puppet streamer/puppet.yaml                        # check it and show where each piece lies
-gozen art puppet streamer/puppet.yaml --out streamer-packed  # write it with small difference pictures
+gozen puppet streamer/puppet.yaml                        # check it and show where each piece lies
+gozen puppet streamer/puppet.yaml --out streamer-packed  # write it with small difference pictures
 ```
 
 ### Release and trial

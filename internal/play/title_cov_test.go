@@ -10,9 +10,10 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/nao1215/gozen/internal/savefile"
+
 	"github.com/hajimehoshi/ebiten/v2"
 
-	"github.com/nao1215/gozen"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 
@@ -313,7 +314,7 @@ func TestSettingsSaveFailureShownThenClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	g := sysOpen(t, Options{Script: "wait 2\nquit"}, nil)
-	g.store = gozen.DirStore(blocked)
+	g.store = savefile.DirStore(blocked)
 	g.push(newConfigScreen(g))
 	s := sysAs[*configScreen](t, g.stack[len(g.stack)-1])
 	s.list.sel = len(s.list.items) - 1

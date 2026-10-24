@@ -75,6 +75,45 @@ type Report struct {
 	Format  string
 }
 
+// ErrReported marks a failed result already written to stdout. Finish returns 1
+// without duplicating it on stderr. Joined errors and write failures still report.
+var ErrReported = errors.New("failure already reported")
+
+// Finish completes a CLI operation using the same exit and diagnostic contract
+// for the root dispatcher and production adapters. Callers handle help before
+// calling Finish; a failed help write is an ordinary I/O error.
+func (r Report) Finish(out, stderr *Output, err error) int {
+	if err == ErrReported && out.Err == nil && stderr.Err == nil { //nolint:errorlint // Wrapped or joined errors must remain visible.
+		return 1
+	}
+	err = errors.Join(err, out.Err, stderr.Err)
+	if err == nil {
+		return 0
+	}
+	if r.Machine() {
+		if writeErr := r.Diagnostic(stderr, err); writeErr != nil || out.Err != nil || stderr.Err != nil {
+			return 1
+		}
+		if _, ok := errors.AsType[*UsageError](err); ok {
+			return 2
+		}
+		return 1
+	}
+	stderr.Println(err)
+	if _, ok := errors.AsType[*UsageError](err); ok {
+		help := "gozen --help"
+		if r.Command != "" {
+			help = "gozen " + r.Command + " --help"
+		}
+		stderr.Println(`Run "` + help + `" for usage.`)
+		if out.Err != nil || stderr.Err != nil {
+			return 1
+		}
+		return 2
+	}
+	return 1
+}
+
 // Validate rejects unsupported encodings before a command changes files.
 func (r Report) Validate() error {
 	switch r.Format {

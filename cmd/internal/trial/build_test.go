@@ -8,7 +8,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	data "github.com/nao1215/gozen/schema"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 const pic = "synthetic picture sentinel"
@@ -293,7 +293,7 @@ func TestResultWriteProducesALoadableCopy(t *testing.T) {
 	if err := res.Write(src, out); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := data.Load(os.DirFS(out), "."); err != nil {
+	if _, err := data.LoadDir(os.DirFS(out), "."); err != nil {
 		t.Fatalf("the written trial copy does not load: %v", err)
 	}
 	b, err := os.ReadFile(filepath.Join(out, "assets", "notes.txt")) //nolint:gosec // Test-owned path under t.TempDir.

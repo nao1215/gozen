@@ -7,12 +7,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/internal/mosaic"
 )
 
 type tagCache struct {
 	readOnly bool
-	diag     *output
+	diag     *cliio.Output
 
 	path    string
 	entries map[string]tagEntry
@@ -81,7 +83,7 @@ func (tc *tagCache) get(rel, file string) (map[string]float32, error) {
 			if tc.dir != "" {
 				return nil, fmt.Errorf("tagger model: %w", err)
 			}
-			tc.diag.printf("warning: タガーのモデル %s が無いので、タグ無しで続ける（--tagger で場所を変えられる）\n", tc.dir)
+			tc.diag.Printf("warning: タガーのモデル %s が無いので、タグ無しで続ける（--tagger で場所を変えられる）\n", tc.dir)
 			tc.noModel = true
 			return nil, nil
 		}

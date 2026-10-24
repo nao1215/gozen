@@ -4,7 +4,7 @@ description: Install the Gozen binary without a programming toolchain, and prepa
 weight: 10
 ---
 
-To create and play games, install the prebuilt `gozen` binary for your operating system. No Go compiler is required. Go 1.26.10 or later is needed only when building the engine or using its transitional Go API.
+To create and play games, install the prebuilt `gozen` binary for your operating system. No Go compiler is required. Go 1.26.10 or later is needed only when building the engine .
 
 ## The gozen command
 
@@ -15,7 +15,7 @@ Download the archive for your OS and processor from [Releases](https://github.co
 brew install --cask nao1215/tap/gozen   # macOS and Linux with Homebrew
 ```
 
-[The release page](https://github.com/nao1215/gozen/releases) has `.tar.gz` and `.zip` archives for Linux, macOS and Windows (amd64 and arm64) and `.deb`, `.rpm` and `.apk` packages for Linux. The prebuilt binaries are built without cgo, so they have no ONNX inference for `gozen art mosaic`. Each release signs `checksums.txt` with cosign and attaches SBOMs and SLSA provenance; [Verifying a release](#verifying-a-release) shows the commands.
+[The release page](https://github.com/nao1215/gozen/releases) has `.tar.gz` and `.zip` archives for Linux, macOS and Windows (amd64 and arm64) and `.deb`, `.rpm` and `.apk` packages for Linux. The prebuilt binaries are built without cgo, so they have no ONNX inference for `gozen mosaic`. Each release signs `checksums.txt` with cosign and attaches SBOMs and SLSA provenance; [Verifying a release](#verifying-a-release) shows the commands.
 
 After installation, `gozen version` reports the installed version. Follow [Getting started](/getting-started/) to create your first game. `new`, `check` and simulation do not need a display; `run` needs the graphics runtime described below. Inference tools have additional prerequisites described in [Production tools](/production-tools/).
 
@@ -76,15 +76,6 @@ slsa-verifier verify-artifact gozen_<version>_<os>_<arch>.tar.gz \
   --source-tag v<version>
 ```
 
-## The library during migration
-
-<!-- verify: run fixture=module -->
-```shell
-go get github.com/nao1215/gozen@latest
-```
-
-The public Go API remains available during the no-code migration; it is not part of the beginner workflow. The rules, the headless driver and the YAML loader are pure Go and run anywhere Go does. Only the game window (the `play` package) needs the platform graphics libraries below.
-
 ## What the window needs
 
 Gozen draws with [Ebitengine](https://ebitengine.org/) v2.10. A normal build needs no C compiler. The race detector needs cgo and a C compiler on every OS.
@@ -131,6 +122,6 @@ display at all.
 |:--|:--|
 | ffmpeg | `--record` to write an MP4 of a scripted or automatic play (`sudo apt-get install ffmpeg`, `brew install ffmpeg`, or the ffmpeg build's `bin` on `PATH` on Windows) |
 | zenity | `--external-input` on Linux, for typing text in a system dialog instead of in the window |
-| A C compiler and ONNX Runtime | `gozen art mosaic` detection; see [Production tools](/production-tools/) |
+| A C compiler and ONNX Runtime | `gozen mosaic` detection; see [Production tools](/production-tools/) |
 
 No model, ONNX Runtime or asset download is needed to build or play a game.

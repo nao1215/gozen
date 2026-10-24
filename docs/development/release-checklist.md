@@ -8,7 +8,7 @@ Check the following for a release candidate. Record in the change description th
 - Run the check for leaked specific information separately, with a private list kept outside the repository. Do not put the check list or the details of its matches in public material.
 - Confirm the source and license of assets and that no model is bundled. Cover metadata, embedded files, generated files and strings in distributed binaries, not only how images look.
 - Confirm that no links to deleted documents, absolute paths of a personal environment, host names or private production information remain. `go test ./internal/dev/hygiene -count=1` also checks for leaks of common environment information.
-- Compare the README requirements with the Requirements in each CLI `--help`. Review a public API change together with `api/public.txt`, godoc and examples.
+- Compare the README requirements with the Requirements in each CLI `--help`. Review changes to command output, YAML and saves with their contract tests.
 
 ## Checks to run
 

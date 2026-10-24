@@ -15,10 +15,11 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/nao1215/gozen/internal/savefile"
+
 	"github.com/hajimehoshi/ebiten/v2"
 	"golang.org/x/image/font/gofont/goregular"
 
-	"github.com/nao1215/gozen"
 	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
 	"github.com/nao1215/gozen/internal/testgame"
@@ -163,7 +164,7 @@ func TestSaveAndReadProgressWriteFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	g := openGame(t, Options{Location: "camp"})
-	g.store, g.storeGiven = gozen.DirStore(blocked), true
+	g.store, g.storeGiven = savefile.DirStore(blocked), true
 	if err := g.save(0); err == nil {
 		t.Fatal("save failure hidden")
 	}

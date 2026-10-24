@@ -16,20 +16,18 @@ import (
 
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/puppet"
-
-	data "github.com/nao1215/gozen/schema"
 )
 
 // Load writes a count summary to out and warnings to diagnostics, borrowing all inputs.
-func Load(fsys fs.FS, out, diagnostics io.Writer) (*data.DB, error) {
+func Load(fsys fs.FS, out, diagnostics io.Writer) (*gamedata.DB, error) {
 	if err := gamedata.UseWords(fsys); err != nil {
 		return nil, unreadable(err)
 	}
-	db, err := data.Load(fsys, ".")
+	db, err := gamedata.LoadDir(fsys, ".")
 	if err != nil {
 		return nil, unreadable(err)
 	}
-	// data.Load checks a puppet's YAML and files; the picture sizes and positions
+	// gamedata.Load checks a puppet's YAML and files; the picture sizes and positions
 	// are checked by loading it as the game does (without the GPU).
 	puppets := loadPuppets(fsys, db)
 	for _, id := range slices.Sorted(maps.Keys(db.Actors)) {
@@ -59,11 +57,11 @@ func Load(fsys fs.FS, out, diagnostics io.Writer) (*data.DB, error) {
 
 // Diagnose loads the game like Load and returns every problem as diagnostics: the
 // errors that stop it loading, or else the warnings. db is nil when it did not load.
-func Diagnose(fsys fs.FS) (*data.DB, gamedata.Diagnostics) {
+func Diagnose(fsys fs.FS) (*gamedata.DB, gamedata.Diagnostics) {
 	if err := gamedata.UseWords(fsys); err != nil {
 		return nil, gamedata.Diagnose(unreadable(err), "error")
 	}
-	db, err := data.Load(fsys, ".")
+	db, err := gamedata.LoadDir(fsys, ".")
 	if err != nil {
 		return nil, gamedata.Diagnose(unreadable(err), "error")
 	}
@@ -90,7 +88,7 @@ func Diagnose(fsys fs.FS) (*data.DB, gamedata.Diagnostics) {
 
 // loadPuppets loads every puppet of the actors once, a few side by side (each decodes
 // its pictures), and returns the error of each by its file; nil when it loaded.
-func loadPuppets(fsys fs.FS, db *data.DB) map[string]error {
+func loadPuppets(fsys fs.FS, db *gamedata.DB) map[string]error {
 	files := map[string]bool{}
 	for _, a := range db.Actors {
 		if a.Puppet != "" {

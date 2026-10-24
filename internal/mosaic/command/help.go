@@ -4,7 +4,7 @@ import (
 	"github.com/nao1215/gozen/internal/clihelp"
 )
 
-// The help pages of gozen art mosaic. The examples use the synthetic fixture of
+// The help pages of gozen mosaic. The examples use the synthetic fixture of
 // docs/examples/production (a game directory "game" with assets/pattern.png).
 
 const requirements = "Requirements: Go 1.26.10 or later to build gozen. ONNX inference needs a C compiler " +
@@ -26,9 +26,9 @@ var (
 )
 
 var topPage = clihelp.Page{
-	Name:    "gozen art mosaic",
+	Name:    "gozen mosaic",
 	Summary: "pixelate image regions, with optional ONNX detection",
-	Usage:   []string{"gozen art mosaic <command> [OPTIONS] <game-dir> [IMAGE ...]"},
+	Usage:   []string{"gozen mosaic <command> [OPTIONS] <game-dir> [IMAGE ...]"},
 	About: "The main use is to pixelate adult-oriented anime-style images distributed in Japan, following the " +
 		"distribution standard. Swap the model and its classes and it also serves other uses, such as " +
 		"anonymizing faces. Reads images from <game-dir>/assets/ (or every image the YAML files refer to), pixelates the " +
@@ -38,33 +38,41 @@ var topPage = clihelp.Page{
 	Commands: [][2]string{
 		{"auto", "Detect and pixelate regions, and write the images and the report"},
 		{"inspect", "Report per image whether it needs and has pixelation, as JSON"},
-		{"manual", "Add, drop, grow, or check regions by coordinates"},
+		{"list", "List images needing review"},
+		{"show", "Show image instructions"},
+		{"view", "Render a coordinate preview"},
+		{"add", "Add regions"},
+		{"drop", "Drop regions"},
+		{"grow", "Resize regions"},
+		{"skip", "Skip automatic detection"},
+		{"mark", "Mark an image as reviewed"},
+		{"clear", "Clear manual instructions"},
 	},
 	Examples: []clihelp.Example{
-		{"pixelate the regions of a hand-written fix file, without a model", "gozen art mosaic auto --fix fixes.yaml -o processed game pattern.png"},
-		{"detect with a model", "gozen art mosaic auto --model model.onnx --ort libonnxruntime.so -o processed game"},
-		{"check the result without writing", "gozen art mosaic inspect --fix fixes.yaml -o processed game pattern.png"},
-		{"use only hand-drawn regions for an image, without a model", "gozen art mosaic manual skip --manual edits.yaml game pattern.png"},
+		{"pixelate the regions of a hand-written fix file, without a model", "gozen mosaic auto --fix fixes.yaml -o processed game pattern.png"},
+		{"detect with a model", "gozen mosaic auto --model model.onnx --ort libonnxruntime.so -o processed game"},
+		{"check the result without writing", "gozen mosaic inspect --fix fixes.yaml -o processed game pattern.png"},
+		{"use only hand-drawn regions for an image, without a model", "gozen mosaic skip --manual edits.yaml game pattern.png"},
 	},
 	Groups: []clihelp.Group{generalGroup},
 	Notes:  []string{exitStatus, requirements},
-	Hint:   `Run "gozen art mosaic <command> --help" for a command's options and examples.`,
+	Hint:   `Run "gozen mosaic <command> --help" for a command's options and examples.`,
 }
 
 var autoPage = clihelp.Page{
-	Name:    "gozen art mosaic auto",
+	Name:    "gozen mosaic auto",
 	Summary: "detect and pixelate regions, and write images",
-	Usage:   []string{"gozen art mosaic auto [OPTIONS] <game-dir> [IMAGE ...]"},
+	Usage:   []string{"gozen mosaic auto [OPTIONS] <game-dir> [IMAGE ...]"},
 	About: "IMAGE is a path relative to <game-dir>/assets/; without one, every image the YAML files refer " +
 		"to is processed. Regions come from the detection model (--model), the hand-written fix file " +
 		"(--fix), and the manual file (--manual). A fix file alone needs no model. The images, report.json, " +
 		"and the review sheets go to --out. With --dry-run nothing is written.",
 	Examples: []clihelp.Example{
-		{"pixelate the regions of a fix file, without a model", "gozen art mosaic auto --fix fixes.yaml -o processed game pattern.png"},
-		{"detect every referenced image with a model", "gozen art mosaic auto --model model.onnx --ort libonnxruntime.so -o processed game"},
-		{"follow the outline with a segmentation model", "gozen art mosaic auto --model model.onnx --shape mask --seg seg.onnx game"},
-		{"show what would be pixelated, writing nothing", "gozen art mosaic auto -n --model model.onnx game"},
-		{"pixelate faces with a face detection model", "gozen art mosaic auto --model face.onnx --classes face game"},
+		{"pixelate the regions of a fix file, without a model", "gozen mosaic auto --fix fixes.yaml -o processed game pattern.png"},
+		{"detect every referenced image with a model", "gozen mosaic auto --model model.onnx --ort libonnxruntime.so -o processed game"},
+		{"follow the outline with a segmentation model", "gozen mosaic auto --model model.onnx --shape mask --seg seg.onnx game"},
+		{"show what would be pixelated, writing nothing", "gozen mosaic auto -n --model model.onnx game"},
+		{"pixelate faces with a face detection model", "gozen mosaic auto --model face.onnx --classes face game"},
 	},
 	Groups: []clihelp.Group{
 		inputGroup, detectionGroup, regionGroup,
@@ -81,18 +89,18 @@ var autoPage = clihelp.Page{
 }
 
 var inspectPage = clihelp.Page{
-	Name:    "gozen art mosaic inspect",
+	Name:    "gozen mosaic inspect",
 	Summary: "report if images need and have pixelation",
-	Usage:   []string{"gozen art mosaic inspect [OPTIONS] <game-dir> [IMAGE ...]"},
+	Usage:   []string{"gozen mosaic inspect [OPTIONS] <game-dir> [IMAGE ...]"},
 	About: "Writes one JSON object per image, one per line (indented with --pretty), and writes no file. " +
 		"IMAGE is a path relative to assets/ or a file path; a file inside --out is looked up by its " +
 		"original image. When report.json from auto matches the current image and fixes, the answer comes " +
 		"from the report without running a model. A changed image or fix is detected again and reported " +
 		"as todo.",
 	Examples: []clihelp.Example{
-		{"inspect one image with the regions of a fix file", "gozen art mosaic inspect --fix fixes.yaml -o processed game pattern.png"},
-		{"inspect every referenced image as indented JSON", "gozen art mosaic inspect --pretty -o processed game"},
-		{"detect every image again instead of trusting the report", "gozen art mosaic inspect --redetect --model model.onnx game"},
+		{"inspect one image with the regions of a fix file", "gozen mosaic inspect --fix fixes.yaml -o processed game pattern.png"},
+		{"inspect every referenced image as indented JSON", "gozen mosaic inspect --pretty -o processed game"},
+		{"detect every image again instead of trusting the report", "gozen mosaic inspect --redetect --model model.onnx game"},
 	},
 	Groups: []clihelp.Group{
 		inputGroup, detectionGroup, regionGroup,
@@ -112,11 +120,11 @@ var inspectPage = clihelp.Page{
 }
 
 var manualPage = clihelp.Page{
-	Name:    "gozen art mosaic manual",
+	Name:    "gozen mosaic",
 	Summary: "add, drop, grow, or check regions",
 	Usage: []string{
-		"gozen art mosaic manual list [OPTIONS] <game-dir>",
-		"gozen art mosaic manual <command> [OPTIONS] <game-dir> <IMAGE>",
+		"gozen mosaic list [OPTIONS] <game-dir>",
+		"gozen mosaic <command> [OPTIONS] <game-dir> <IMAGE>",
 	},
 	About: "Writes the instructions to the --manual YAML file (auto reads it too) and rebuilds only that " +
 		"image, with a check image in <out>/manual/. The original image in assets/ is not changed. " +
@@ -129,15 +137,15 @@ var manualPage = clihelp.Page{
 		{"drop", "Drop automatic regions (--region-id A2, or overlapping --rect or --box)"},
 		{"grow", "Grow regions (--region-id A1|all or --rect, with --by or --left, --top, --right, --bottom; negative shrinks), or set --margin for this image"},
 		{"skip", "Use no automatic detection for the image, only regions added by hand"},
-		{"check", "Mark the image as checked, removing it from review"},
+		{"mark", "Mark the image as checked with --checked"},
 		{"clear", "Remove every manual instruction of the image"},
 	},
 	Examples: []clihelp.Example{
-		{"use only regions drawn by hand for an image, so no model is needed", "gozen art mosaic manual skip --manual edits.yaml game pattern.png"},
-		{"add a rectangle and an ellipse", "gozen art mosaic manual add --manual edits.yaml --rect 8,8,6,6 --ellipse 4,4,2,3 game pattern.png"},
-		{"grow the region under a rectangle by 2 pixels on every side", "gozen art mosaic manual grow --manual edits.yaml --rect 8,8,6,6 --by 2 game pattern.png"},
-		{"draw the pixelated image with a scale", "gozen art mosaic manual view --manual edits.yaml --src masked game pattern.png"},
-		{"list the images to review", "gozen art mosaic manual list game"},
+		{"use only regions drawn by hand for an image, so no model is needed", "gozen mosaic skip --manual edits.yaml game pattern.png"},
+		{"add a rectangle and an ellipse", "gozen mosaic add --manual edits.yaml --rect 8,8,6,6 --ellipse 4,4,2,3 game pattern.png"},
+		{"grow the region under a rectangle by 2 pixels on every side", "gozen mosaic grow --manual edits.yaml --rect 8,8,6,6 --by 2 game pattern.png"},
+		{"draw the pixelated image with a scale", "gozen mosaic view --manual edits.yaml --src masked game pattern.png"},
+		{"list the images to review", "gozen mosaic list game"},
 	},
 
 	Groups: []clihelp.Group{
@@ -168,20 +176,20 @@ const classesNote = "Classes: the names of the --model output, read from --class
 	"loaded and where they came from."
 
 var fetchPage = clihelp.Page{
-	Name:    "gozen art fetch",
+	Name:    "gozen models fetch",
 	Summary: "download the pinned detection models into the cache",
-	Usage:   []string{"gozen art fetch [--list] [NAME ...]"},
+	Usage:   []string{"gozen models fetch [OPTIONS] [NAME ...]"},
 	About: "Downloads fixed revisions of models from Hugging Face into the user cache directory " +
 		"(gozen/mosaic/<name>/ under os.UserCacheDir), checks each file against a SHA-256 written in gozen, " +
 		"and deletes the download with an error on a mismatch. Without NAME every model is fetched. " +
-		"This command and the confirmed download prompt of gozen art mosaic are the only places gozen uses the network. " +
-		"A model in the cache is used when --model is omitted: censor by gozen art mosaic, face by gozen art faces.",
+		"This command and the confirmed download prompt of gozen mosaic are the only places gozen uses the network. " +
+		"A model in the cache is used when --model is omitted: censor by gozen mosaic, face by gozen faces.",
 	Examples: []clihelp.Example{
-		{"list the models and whether each is fetched", "gozen art fetch --list"},
-		{"fetch the default detector", "gozen art fetch censor"},
-		{"pixelate faces with the fetched face model (Linux cache path)", "gozen art mosaic auto --model ~/.cache/gozen/mosaic/face/model.onnx game"},
+		{"list the models and whether each is fetched", "gozen models list"},
+		{"fetch the default detector", "gozen models fetch censor"},
+		{"pixelate faces with the fetched face model (Linux cache path)", "gozen mosaic auto --model ~/.cache/gozen/mosaic/face/model.onnx game"},
 	},
-	Groups: []clihelp.Group{{Title: "Options", Flags: []string{"list"}}, generalGroup},
+	Groups: []clihelp.Group{generalGroup},
 	Notes: []string{
 		"Models. censor (deepghs/anime_censor_detection, MIT) detects nipple_f, penis, and pussy for the " +
 			"main use. face (deepghs/anime_face_detection, MIT) and head (deepghs/anime_head_detection, MIT) " +

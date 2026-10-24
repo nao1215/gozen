@@ -5,7 +5,7 @@ scenarios:
 - name: puppet prints where the overlays lie
   steps:
   - run:
-      command: gozen art puppet "${specdir}/fixtures/puppet/puppet.yaml"
+      command: gozen puppet "${specdir}/fixtures/puppet/puppet.yaml"
       deterministic:
         runs: 2
         compare:
@@ -30,7 +30,7 @@ scenarios:
 - name: puppet --out writes small pictures that load again
   steps:
   - run:
-      command: gozen art puppet "${specdir}/fixtures/puppet/puppet.yaml" --out packed
+      command: gozen puppet "${specdir}/fixtures/puppet/puppet.yaml" --out packed
   - assert:
       exit_code: 0
       stdout:
@@ -52,13 +52,13 @@ scenarios:
         - 'image: eyes-default.png'
         - 'at:'
   - run:
-      command: gozen art puppet packed/puppet.yaml
+      command: gozen puppet packed/puppet.yaml
   - assert:
       exit_code: 0
       stdout:
         contains: "  mouth 2: at [26, 32] size 12x6\n"
   - run:
-      command: gozen art puppet "${specdir}/fixtures/puppet/puppet.yaml" --out packed
+      command: gozen puppet "${specdir}/fixtures/puppet/puppet.yaml" --out packed
   - assert:
       exit_code: 1
       stdout:
@@ -68,7 +68,7 @@ scenarios:
 - name: puppet reports a missing file
   steps:
   - run:
-      command: gozen art puppet missing.yaml
+      command: gozen puppet missing.yaml
   - assert:
       exit_code: 1
       stdout:
@@ -90,7 +90,7 @@ scenarios:
         mouth:
           frames: [face, {image: mouth.png, at: [60, 32]}]
   - run:
-      command: gozen art puppet bad/puppet.yaml
+      command: gozen puppet bad/puppet.yaml
   - assert:
       exit_code: 1
       stdout:
@@ -102,7 +102,7 @@ scenarios:
 - name: puppet takes one file
   steps:
   - run:
-      command: gozen art puppet
+      command: gozen puppet
   - assert:
       exit_code: 2
       stdout:

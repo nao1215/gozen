@@ -121,7 +121,7 @@ cells:
   "回想開始から台詞と問いを数える": "counts lines and questions from the scene's start"
   "対象の表情": "the target's face"
   "式の数値０（条件なら不成立）": "expression value 0 (false as a condition)"
-  "式の文脈は DSL と gozen.Load で検査": "expression; checked by gozen.Load"
+  "式の文脈は DSL と gozen check で検査": "expression; checked by gozen check"
   "従来の HP・MP 条件で必須。簡易作戦では指定不可": "required for classic HP and MP conditions; not with simple tactics"
   "必須": "required"
   "必須、種類内で一意": "required; unique within its kind"

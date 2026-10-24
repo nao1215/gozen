@@ -12,7 +12,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	data "github.com/nao1215/gozen/schema"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 // ScenesGame is the expedition at schema_version 3, starting on a map of the plain.

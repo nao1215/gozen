@@ -9,21 +9,24 @@ import (
 
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 	lang "github.com/nao1215/gozen/internal/text"
-	data "github.com/nao1215/gozen/schema"
 )
 
-func (c *command) book(dir string) error {
+func loadBook(dir string) (*bookReport, error) {
 	fsys, err := gameFS(dir)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := gamedata.UseWords(fsys); err != nil {
-		return err
+		return nil, err
 	}
-	db, err := data.Load(fsys, ".")
+	db, err := gamedata.LoadDir(fsys, ".")
 	if err != nil {
-		return err
+		return nil, err
 	}
+	return buildBook(db), nil
+}
+
+func renderBook(db *bookReport) string {
 	var b strings.Builder
 	p := func(format string, a ...any) {
 		appendf(&b, format, a...)
@@ -47,46 +50,46 @@ func (c *command) book(dir string) error {
 		}
 		if len(l.OnEnter) > 0 {
 			p("%s", lang.T("- 着いたとき\n"))
-			commands(p, db, l.OnEnter, "  ")
+			commands(p, l.OnEnter, "  ")
 		}
 		for _, pe := range l.People {
 			p(lang.T("- 人: %s%s\n"), pe.Name, when(pe.When))
-			commands(p, db, pe.Talk, "  ")
+			commands(p, pe.Talk, "  ")
 		}
 		for _, a := range l.Actions {
 			p(lang.T("- できること: %s%s\n"), a.Label, when(a.When))
-			commands(p, db, a.Do, "  ")
+			commands(p, a.Do, "  ")
 		}
 		for _, e := range l.Exits {
 			p(lang.T("- 行き先: %s → %s%s\n"), e.Label, e.To, when(e.When))
-			commands(p, db, e.Do, "  ")
+			commands(p, e.Do, "  ")
 		}
 		if a := l.Map; a != nil {
 			for _, id := range a.PointIDs() {
 				pt := a.Points[id]
 				p(lang.T("- 地図の点: %s → %s%s\n"), id, pt.To, when(pt.When))
-				commands(p, db, pt.Do, "  ")
+				commands(p, pt.Do, "  ")
 			}
 			for _, r := range a.Roads {
 				p(lang.T("- 道: %v（%d 歩）%s\n"), r.Between, r.StepsOrOne(), when(r.When))
-				commands(p, db, r.Do, "  ")
+				commands(p, r.Do, "  ")
 			}
 		}
 		if s := l.Stage; s != nil {
 			for _, id := range s.SpotIDs() {
 				p(lang.T("- 立ち位置: %s\n"), id)
-				commands(p, db, s.Spots[id].Do, "  ")
+				commands(p, s.Spots[id].Do, "  ")
 			}
 			for _, t := range s.Things {
 				if t.Action != "" {
 					continue
 				}
 				p(lang.T("- 調べる物: %s%s\n"), t.Name, when(t.When))
-				commands(p, db, t.Do, "  ")
+				commands(p, t.Do, "  ")
 			}
 		}
 		if d := l.Dungeon; d != nil {
-			dungeonBook(p, db, l)
+			dungeonBook(p, l)
 		}
 		p("\n")
 	}
@@ -106,7 +109,7 @@ func (c *command) book(dir string) error {
 			e.Exp, e.Gold, rates(e.Resist), rates(e.SResist), boss)
 	}
 	p("\n## Monster book pages\n\n")
-	lin := gamedata.BuildLineage(db)
+	lin := db.Lineage
 	for _, id := range db.Ordered("enemies") {
 		e := db.Enemies[id]
 		if e == nil {
@@ -121,7 +124,7 @@ func (c *command) book(dir string) error {
 			p("- Family: %s; rank: %d\n", e.Family, e.Rank)
 		}
 		if e.Recruit != nil {
-			p("- Recruit: %.0f%% after victory; class: %s; level: %d\n", e.Recruit.Chance*100, db.MonsterClass(id), max(1, e.Recruit.Level))
+			p("- Recruit: %.0f%% after victory; class: %s; level: %d\n", e.Recruit.Chance*100, e.Recruit.Class, max(1, e.Recruit.Level))
 			if e.Recruit.BonusItem != "" || e.Recruit.BonusSkill != "" {
 				p("- Recruit bonus: +%.0f%% per matching item or party skill (item: %s; skill: %s)\n", e.Recruit.Bonus*100, e.Recruit.BonusItem, e.Recruit.BonusSkill)
 			}
@@ -168,7 +171,7 @@ func (c *command) book(dir string) error {
 		p("- %s: %v%s\n", id, t.Members, map[bool]string{true: "", false: lang.T("（逃げられない）")}[t.Escapable()])
 		for _, ev := range t.Events {
 			p(lang.T("  - 戦闘中 %s\n"), when(ev.When))
-			commands(p, db, ev.Do, "    ")
+			commands(p, ev.Do, "    ")
 		}
 	}
 	p("%s", lang.T("\n## 行動ルール（ガンビット）\n\n"))
@@ -230,7 +233,7 @@ func (c *command) book(dir string) error {
 			continue
 		}
 		p("### %s\n\n", id)
-		commands(p, db, ev.Do, "")
+		commands(p, ev.Do, "")
 		p("\n")
 	}
 
@@ -264,8 +267,7 @@ func (c *command) book(dir string) error {
 	for _, s := range g.Gallery.Scenes {
 		p(lang.T("- シーン: %s（%s、flag.%s）\n"), s.Title, s.Event, s.Flag)
 	}
-	c.out.Print(tidyBook(b.String()))
-	return nil
+	return tidyBook(b.String())
 }
 
 // listOrNone joins ids with ", ", or says (none).
@@ -339,7 +341,7 @@ func emptySection(body []string) bool {
 	return false
 }
 
-func dungeonBook(p func(string, ...any), db *data.DB, l *data.Location) {
+func dungeonBook(p func(string, ...any), l *bookLocation) {
 	d := l.Dungeon
 	if gen := d.Generate; gen != nil {
 		p(lang.T("- 迷宮: %dx%d、部屋 %d（種から作る。階ごとの種・手書き %d）\n"), gen.Width, gen.Height, gen.Rooms, len(gen.Floors))
@@ -362,7 +364,7 @@ func dungeonBook(p func(string, ...any), db *data.DB, l *data.Location) {
 		}
 		if r.Appear.Set() {
 			p(lang.T("  - 追ってくる者 %s（%s、出る %s、%s 歩に 1 マス）\n"), r.Name, r.Move, r.Appear.String(), r.Every.String())
-			commands(p, db, r.Meet, "    ")
+			commands(p, r.Meet, "    ")
 			continue
 		}
 		p(lang.T("  - 強敵シンボル %s（%s、数 %s）: %v\n"), r.Name, r.Move, r.Count.String(), ts)
@@ -375,7 +377,7 @@ func dungeonBook(p func(string, ...any), db *data.DB, l *data.Location) {
 	for _, c := range chars {
 		if t := d.Tiles[c]; t != nil && len(t.Do) > 0 {
 			p(lang.T("  - タイル %s %s%s\n"), c, t.Name, when(t.When))
-			commands(p, db, t.Do, "    ")
+			commands(p, t.Do, "    ")
 		}
 	}
 	for _, lk := range d.Looks {
@@ -389,19 +391,12 @@ func dungeonBook(p func(string, ...any), db *data.DB, l *data.Location) {
 	}
 }
 
-func commands(p func(string, ...any), db *data.DB, cmds []data.Command, ind string) {
+func commands(p func(string, ...any), cmds []bookCommand, ind string) {
 	for _, c := range cmds {
-		verb, err := c.Verb()
-		if err != nil {
-			p("%s- invalid command: %v\n", ind, err)
-			continue
-		}
+		verb := c.Kind
 		switch verb {
 		case "say":
-			who := c.Say.Who
-			if a := db.Actors[who]; a != nil {
-				who = a.Name
-			}
+			who := c.Say.Name
 			if who != "" {
 				p(lang.T("%s- %s「%s」\n"), ind, who, c.Say.Text)
 			} else {
@@ -413,14 +408,14 @@ func commands(p func(string, ...any), db *data.DB, cmds []data.Command, ind stri
 			}
 			for _, o := range c.Choice {
 				p(lang.T("%s- 選択「%s」%s\n"), ind, o.Label, when(o.When))
-				commands(p, db, o.Do, ind+"  ")
+				commands(p, o.Do, ind+"  ")
 			}
 		case "if":
 			p(lang.T("%s- もし %s\n"), ind, c.If.String())
-			commands(p, db, c.Then, ind+"  ")
+			commands(p, c.Then, ind+"  ")
 			if len(c.Else) > 0 {
 				p(lang.T("%s- そうでなければ\n"), ind)
-				commands(p, db, c.Else, ind+"  ")
+				commands(p, c.Else, ind+"  ")
 			}
 		case "battle":
 			f := ""
@@ -430,11 +425,15 @@ func commands(p func(string, ...any), db *data.DB, cmds []data.Command, ind stri
 			p(lang.T("%s- 戦闘 %s%s\n"), ind, c.Battle, f)
 			if len(c.OnWin) > 0 {
 				p(lang.T("%s- 勝ったら\n"), ind)
-				commands(p, db, c.OnWin, ind+"  ")
+				commands(p, c.OnWin, ind+"  ")
 			}
 			if len(c.OnLose) > 0 {
 				p(lang.T("%s- 負けたら\n"), ind)
-				commands(p, db, c.OnLose, ind+"  ")
+				commands(p, c.OnLose, ind+"  ")
+			}
+			if len(c.OnEscape) > 0 {
+				p("%s- On escape\n", ind)
+				commands(p, c.OnEscape, ind+"  ")
 			}
 		case "set":
 			var kv []string
@@ -457,11 +456,13 @@ func commands(p func(string, ...any), db *data.DB, cmds []data.Command, ind stri
 				floor = " " + c.Floor.String()
 			}
 			p(lang.T("%s- （%s %s%s）\n"), ind, verb, c.Move+c.Dive, floor)
+		default:
+			p("%s- [%s]\n", ind, verb)
 		}
 	}
 }
 
-func when(e data.Expr) string {
+func when(e bookExpr) string {
 	if !e.Set() {
 		return ""
 	}
@@ -498,36 +499,17 @@ func stats(s gamedata.Stats) string {
 // events it calls and where it moves, from the index shared with the checks and the
 // --dev panel (DB.StateUses), and a mermaid graph of the calls, the moves and the places
 // whose arrival starts an event.
-func flowBook(p func(string, ...any), db *data.DB) {
+func flowBook(p func(string, ...any), db *bookReport) {
 	ids := db.Ordered("events")
 	if len(ids) == 0 {
 		return
 	}
-	uses := db.StateUses()
-	names := slices.Sorted(maps.Keys(uses))
-	in := func(paths []string, id string) bool {
-		return slices.ContainsFunc(paths, func(w string) bool { return strings.HasPrefix(w, "events."+id+".") })
-	}
 	p("%s", lang.T("## 流れ\n\n"))
 	var edges []string
-	for _, id := range ids {
+	for _, f := range db.Flow {
+		id := f.ID
 		ev := db.Events[id]
-		if ev == nil {
-			continue
-		}
-		var sets, reads []string
-		for _, n := range names {
-			if strings.HasPrefix(n, "ran.") {
-				continue
-			}
-			if in(uses[n].Sets, id) {
-				sets = append(sets, n)
-			}
-			if in(uses[n].Reads, id) {
-				reads = append(reads, n)
-			}
-		}
-		calls, moves := eventLinks(ev.Do)
+		sets, reads, calls, moves := f.Sets, f.Reads, f.Calls, f.Moves
 		var parts []string
 		for _, part := range []struct {
 			label string
@@ -563,9 +545,9 @@ func flowBook(p func(string, ...any), db *data.DB) {
 
 // eventLinks are the events a command list calls and the places it moves to, into its
 // branches, in the order written.
-func eventLinks(cmds []data.Command) (calls, moves []string) {
-	var walk func(cs []data.Command)
-	walk = func(cs []data.Command) {
+func eventLinks(cmds []gamedata.Command) (calls, moves []string) {
+	var walk func(cs []gamedata.Command)
+	walk = func(cs []gamedata.Command) {
 		for i := range cs {
 			c := &cs[i]
 			if c.Call != "" && !slices.Contains(calls, c.Call) {

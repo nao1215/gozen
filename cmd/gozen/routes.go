@@ -15,7 +15,6 @@ import (
 	"github.com/nao1215/gozen/internal/headless"
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
-	data "github.com/nao1215/gozen/schema"
 )
 
 type routeEnding struct {
@@ -61,14 +60,14 @@ func (c *command) routes() clihelp.Operation {
 		if err := gamedata.UseWords(fsys); err != nil {
 			return err
 		}
-		db, err := data.Load(fsys, ".")
+		db, err := gamedata.LoadDir(fsys, ".")
 		if err != nil {
 			return err
 		}
 		st := rpg.New(db, rand.New(rand.NewPCG(1, 2))) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
 		ctx, cancel := context.WithTimeout(ctx, *timeout)
 		defer cancel()
-		var initial []data.Command
+		var initial []gamedata.Command
 		if event := db.Events[db.Game.Start.Event]; event != nil {
 			initial = event.Do
 		}
@@ -176,7 +175,7 @@ func (c *command) routes() clihelp.Operation {
 				return err
 			}
 			if failure != nil {
-				return errReported
+				return cliio.ErrReported
 			}
 			return nil
 		}
@@ -185,7 +184,7 @@ func (c *command) routes() clihelp.Operation {
 	}}
 }
 
-func hasClear(db *data.DB) bool {
+func hasClear(db *gamedata.DB) bool {
 	for _, ev := range db.Events {
 		if commandsHaveClear(ev.Do) {
 			return true
@@ -221,7 +220,7 @@ func hasClear(db *data.DB) bool {
 	return false
 }
 
-func commandsHaveClear(cs []data.Command) bool {
+func commandsHaveClear(cs []gamedata.Command) bool {
 	for _, c := range cs {
 		if c.Clear || commandsHaveClear(c.Then) || commandsHaveClear(c.Else) || commandsHaveClear(c.OnWin) || commandsHaveClear(c.OnLose) || commandsHaveClear(c.OnRun) {
 			return true
@@ -230,7 +229,7 @@ func commandsHaveClear(cs []data.Command) bool {
 	return false
 }
 
-func collectOptions(cs []data.Command, offered map[string]bool, out *[]routeOption) {
+func collectOptions(cs []gamedata.Command, offered map[string]bool, out *[]routeOption) {
 	for _, c := range cs {
 		for _, o := range c.Choice {
 			if !offered[c.Prompt+"\x00"+o.Label] {

@@ -28,7 +28,7 @@ func TestClassesFromLabelsJSON(t *testing.T) {
 		if err := fs.Parse(append(args, "--model", model, "-o", out)); err != nil {
 			t.Fatal(err)
 		}
-		return o.setup(game)
+		return o.setup(t.Context(), game)
 	}
 	write(`["face"]`)
 	c, err := setup()

@@ -1,6 +1,6 @@
 ---
 title: Production tools
-description: gozen art prompt assembles image-generation text from a catalog; gozen art mosaic pixelates image regions by hand or with a user-supplied ONNX detection model.
+description: gozen prompt assembles image-generation text from a catalog; gozen mosaic pixelates image regions by hand or with a user-supplied ONNX detection model.
 weight: 90
 toc: true
 ---
@@ -9,20 +9,20 @@ Two subcommands help with pictures. Neither is needed to make or play a game, an
 
 | Command | Does | Needs |
 |:--|:--|:--|
-| `gozen art prompt` | Assembles the positive and negative text for an image generator from a catalog of words | A catalog YAML; nothing else |
-| `gozen art mosaic` | Pixelates regions of images, drawn by hand or found by a detection model | For detection: a cgo build, ONNX Runtime and your own model |
+| `gozen prompt` | Assembles the positive and negative text for an image generator from a catalog of words | A catalog YAML; nothing else |
+| `gozen mosaic` | Pixelates regions of images, drawn by hand or found by a detection model | For detection: a cgo build, ONNX Runtime and your own model |
 
-## gozen art prompt
+## gozen prompt
 
-You describe the words once, in layers (setting, subject, lighting, ...), with IDs, defaults, dependencies, conflicts, priorities and emphasis. `gozen art prompt` picks the items for a scene, merges duplicates, resolves conflicts, applies the limits, and prints the text. The JSON output records where every word came from, so a surprising word can be traced to its item.
+You describe the words once, in layers (setting, subject, lighting, ...), with IDs, defaults, dependencies, conflicts, priorities and emphasis. `gozen prompt` picks the items for a scene, merges duplicates, resolves conflicts, applies the limits, and prints the text. The JSON output records where every word came from, so a surprising word can be traced to its item.
 
 <!-- verify: each fixture=production -->
 ```shell
-gozen art prompt --config catalog.yaml --scene landscape --format json
-gozen art prompt --config catalog.yaml --plan plan.yaml           # a plan holds only item IDs
-gozen art prompt -c catalog.yaml --setting studio                 # choose an item of a layer by hand
-gozen art prompt -c catalog.yaml --scenes ids.txt --format json   # many scenes, one JSON line each
-gozen art prompt lint --config catalog.yaml                       # check every item, dependency and scene
+gozen prompt --config catalog.yaml --scene landscape --format json
+gozen prompt --config catalog.yaml --plan plan.yaml           # a plan holds only item IDs
+gozen prompt -c catalog.yaml --select setting=studio                 # choose an item of a layer by hand
+gozen prompt -c catalog.yaml --scenes ids.txt --format jsonl  # item records followed by a summary
+gozen prompt lint --config catalog.yaml                       # check every item, dependency and scene
 ```
 
 A catalog, abridged from [docs/examples/production/catalog.yaml](https://github.com/nao1215/gozen/blob/main/docs/examples/production/catalog.yaml):
@@ -65,35 +65,35 @@ scenes:
 | `-c, --config FILE` | The catalog; required |
 | `--scene ID` | Assemble this scene of the catalog |
 | `--plan FILE` | Assemble a plan file, which holds only item IDs |
-| `--scenes FILE` | Assemble every scene ID in the file (one per line) as JSON Lines, with `--format json`; a failed scene is reported in its line and the rest continue |
-| `--<layer> ID` | Select an item of a layer; repeat for several |
-| `--format FORMAT` | `text` (default) or `json` |
+| `--scenes FILE` | Assemble one scene ID per line; `-` reads stdin. Failed scenes are reported and the rest continue |
+| `--select LAYER=ITEM` | Select an item of a layer; repeat for several |
+| `--format FORMAT` | `text` (default), `json` (one aggregate), or `jsonl` (items and summary) |
 
 - Emphasis has five steps, 0.9 to 1.5, in SDXL weight syntax. The token count is an estimate, not the model's tokenizer.
 - Unknown fields, several YAML documents in one file, broken references and control characters are rejected.
 - When a catalog selects a person layer, the tool adds its own fixed age constraints. A catalog cannot replace or drop them.
 - `lint` fails on errors and passes on warnings alone.
 
-The output is text. Send it to any generator you like; `gozen art prompt` never does.
+Text is the default output. Machine formats use the version-1 result envelope; `data` contains the assembled result, a batch array, or lint diagnostics. Send the assembled text to any generator you like; `gozen prompt` never does.
 
-## gozen art mosaic
+## gozen mosaic
 
 The main use is to pixelate adult-oriented anime-style images distributed in Japan, following the distribution standard. Swap the model and its classes and it also serves other uses, such as anonymizing faces.
 
-`gozen art mosaic` pixelates regions of the images in `<game-dir>/assets/` and writes the results and a `report.json` outside `assets/`. The originals are never changed. Regions come from three places, which can be combined:
+`gozen mosaic` pixelates regions of the images in `<game-dir>/assets/` and writes the results and a `report.json` outside `assets/`. The originals are never changed. Regions come from three places, which can be combined:
 
 - a fix file (`--fix`) written by hand, which needs no model;
-- `gozen art mosaic manual`, which edits a per-image instruction file by coordinates;
+- `gozen mosaic`, which edits a per-image instruction file by coordinates;
 - a detection model (`--model`), optionally with face detection (`--face`), segmentation masks (`--seg`) and a tagger (`--tagger`).
 
 <!-- verify: run fixture=production except=2 needs a detection model and ONNX Runtime -->
 ```shell
-gozen art mosaic auto --fix fixes.yaml -o processed game pattern.png              # hand-written regions, no model
-gozen art mosaic auto --model model.onnx --ort libonnxruntime.so -o processed game   # detect every referenced image
-gozen art mosaic inspect --fix fixes.yaml -o processed game pattern.png           # report, write nothing
-gozen art mosaic manual skip --manual edits.yaml game pattern.png                 # only regions drawn by hand: no model
-gozen art mosaic manual add --manual edits.yaml --rect 8,8,6,6 game pattern.png   # add a rectangle by hand
-gozen art mosaic manual view --manual edits.yaml --src masked game pattern.png    # draw the result with a scale
+gozen mosaic auto --fix fixes.yaml -o processed game pattern.png              # hand-written regions, no model
+gozen mosaic auto --model model.onnx --ort libonnxruntime.so -o processed game   # detect every referenced image
+gozen mosaic inspect --fix fixes.yaml -o processed game pattern.png           # report, write nothing
+gozen mosaic skip --manual edits.yaml game pattern.png                 # only regions drawn by hand: no model
+gozen mosaic add --manual edits.yaml --rect 8,8,6,6 game pattern.png   # add a rectangle by hand
+gozen mosaic view --manual edits.yaml --src masked game pattern.png    # draw the result with a scale
 ```
 
 A fix file ([docs/examples/production/fixes.yaml](https://github.com/nao1215/gozen/blob/main/docs/examples/production/fixes.yaml)):
@@ -121,11 +121,11 @@ How it pixelates:
 - `--labels` picks the classes to pixelate; the default is `penis,pussy`, because the Japanese distribution standard does not pixelate nipples by default. With `--classes`, or a model whose classes differ from the default, and no `--labels`, every class is pixelated. For example, `--model face.onnx --classes face` pixelates faces.
 - `--threshold` and `--sure` (default 0.5) set the detection confidence; detections below `--sure` are pixelated and also listed for review. Automatic detection does not replace a person looking at the result.
 
-Run `gozen art mosaic <subcommand> --help` for every option, including `--margin`, `--pad`, `--min`, `--dilate`, `--classes`, `--labels`, `--passes` and the `MOSAIC_*` environment variables.
+Run `gozen mosaic <subcommand> --help` for every option, including `--margin`, `--pad`, `--min`, `--dilate`, `--classes`, `--labels`, `--passes` and the `MOSAIC_*` environment variables.
 
 ### Fetching models
 
-`gozen art fetch [NAME...]` downloads pinned revisions of models from Hugging Face into `os.UserCacheDir()/gozen/mosaic/<name>/` and checks each file against a SHA-256 written in gozen; a mismatch deletes the download and fails. `gozen art fetch --list` shows the models and whether each is fetched.
+`gozen models fetch [NAME...]` downloads pinned revisions of models from Hugging Face into `os.UserCacheDir()/gozen/mosaic/<name>/` and checks each file against a SHA-256 written in gozen; a mismatch deletes the download and fails. `gozen models list` shows the models and whether each is fetched.
 
 | Name | Source (license) | Classes | Use |
 |---|---|---|---|
@@ -135,11 +135,11 @@ Run `gozen art mosaic <subcommand> --help` for every option, including `--margin
 
 Class names are read from the `labels.json` that is fetched with each model. The text detector deepghs/text_detection (MIT) is a DBNet model, not the YOLO output `[1, 4+classes, N]` that `--model` needs, so it is not offered; to hide names, IDs or garbled signatures, supply a YOLO-format text detector with `--model` and `--classes`.
 
-When `--model` is omitted, the cached `censor` model is used. If it is not cached, gozen asks "Download the model? About N MB from URL to PATH [y/N]" only when standard input and output are a terminal; otherwise it fails and points at `gozen art fetch`. `--yes` skips the question. Only `gozen art fetch` and a confirmed download use the network.
+When `--model` is omitted, the cached `censor` model is used. If it is not cached, gozen asks "Download the model? About N MB from URL to PATH [y/N]" only when standard input and output are a terminal; otherwise it fails and points at `gozen models fetch`. `--yes` skips the question. Only `gozen models fetch` and a confirmed download use the network.
 
 ### Detection setup
 
-Detection runs an ONNX model you supply, through ONNX Runtime. Nothing is bundled or downloaded: not the model, not the runtime library, not training data. Check the license of any model you use.
+Detection runs an ONNX model you supply, through ONNX Runtime. Models, the runtime library and training data are not bundled. Model downloads happen only through `gozen models fetch` or an accepted download prompt (including `--yes`). Check the license of any model you use.
 
 1. Build `gozen` with cgo and a C compiler:
 

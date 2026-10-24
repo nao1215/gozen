@@ -1,6 +1,6 @@
 # ADR 0002: The v0 public contract
 
-Status: Partly changed. Date: 2026-10-18. Corresponds to: D2. The list of public packages and where experiments live changed as described in "Changes made by later ADRs" below. [ADR 0021](0021-query-and-commands.md) supersedes the list of public packages and the reservation of `x/`. The source of truth for the current public packages is `api/public.txt`.
+Status: Partly changed. Date: 2026-10-18. Corresponds to: D2. The list of public packages and where experiments live changed as described in "Changes made by later ADRs" below. [ADR 0021](0021-query-and-commands.md) supersedes the list of public packages and the reservation of `x/`. [ADR 0041](0041-yaml-authoring-and-distribution.md) subsequently retired all public application packages and their inventories. The text below records the historical contract.
 
 ## Context
 

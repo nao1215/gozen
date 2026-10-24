@@ -12,7 +12,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 
-	data "github.com/nao1215/gozen/schema"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 type Config struct {

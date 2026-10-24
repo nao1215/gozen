@@ -1,10 +1,10 @@
 package world
 
 import (
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
 	"github.com/nao1215/gozen/internal/layer3/field"
 	"github.com/nao1215/gozen/internal/rpg"
-	data "github.com/nao1215/gozen/schema"
 )
 
 // Kind identifies a field menu operation for game hosts.

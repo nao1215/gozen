@@ -1,26 +1,17 @@
-# The boundary between public and internal
+# Product and implementation boundaries
 
-What is published is the contract that a game author or a sample really needs. Capitalized identifiers are subject to compatibility, so implementation helpers stay internal.
+| Surface | Contract |
+| --- | --- |
+| CLI | Documented operands, options, output envelopes, diagnostic codes and exit values |
+| Game YAML | Versioned by `schema_version`; definitions and assets remain game-relative |
+| Saves | Game identity, format version and supported restoration behavior |
+| Go packages | Internal implementation; no public application API |
+| `cmd/gozen` | Author-facing executable |
+| `cmd/gozen-player` | Private runtime for desktop and browser exports |
+| `examples/` | Neutral game directories and maintainer integration tools |
 
-| Location | Users and responsibility | Compatibility |
-| --- | --- | --- |
-| `gozen` (root) | Authors who load and validate a game, read state with expressions, run commands and save or restore a session | Under the v0 contract |
-| `chat`, `react` | Authors who keep flowing messages and make characters react to words and happenings | Under the v0 contract |
-| `schema` | Authors who need the YAML definition types | Managed by `schema_version`; inventoried separately in `api/schema.txt` |
-| `gfx`, `play`, `puppet` | Authors who embed display, the screen (`play.Main`, `play.New`) and moving portraits | Under the v0 contract |
-| `internal/<package>/`, `<package>/internal/` | The implementation of the owning package | Not public |
-| `internal/layerN/` | Small implementations shared by layer N | Usable only from the same layer or above |
-| `internal/testgame/` | Assembly of newly made neutral test data | Test only; a neutral game is newly made in T2 |
-| `internal/dev/`, `api/` | API checks during development | Not used at run time |
-| `cmd/gozen` | The only CLI. General authoring and checking, and dispatch to the authoring-support subcommands | Not used from the library |
-| `x/` | A place for experiments. Create it when a concrete user appears (the empty reserved directory was removed in [ADR 0021](../decisions/0021-query-and-commands.md)) | No compatibility promised |
-| `internal/promptgen/`, `internal/mosaic/` (including below) | Implementations dedicated to `gozen art prompt` and `gozen art mosaic`. The entry is each `command` package | Used only from `cmd/gozen` and their own implementation |
-| `examples/` | Newly made general-audience samples | Usage examples of the public API |
+`make boundary` rejects application packages outside `internal/`, including files selected only by other operating systems or build tags. `make arch` checks downward dependencies. Shared code must have an owning layer; internal placement alone does not authorize an import.
 
-The public API of layers 1 to 4 was made when the non-rendering core was implemented (T2), and layers 5 and 6 when the display layer was implemented (T3) (for the symbols see [the symbols of design decisions](../decisions/index.md#symbols)). Purposes and ownership are summarized in [the core API](core-api.md) and [the presentation API](presentation-api.md). `api/public.txt:1` is the current list of declarations. Identifiers of a future `x/` would also go in the list, but that does not make them a stable contract.
+Production CLI adapters depend on their domains, CLI I/O and diagnostics. Domain packages cannot import adapters. The content boundary remains [ADR 0004](../decisions/0004-content-boundary.md): production-specific capabilities belong only to the permitted prompt and mosaic packages.
 
-The dedicated internals for authoring support are not part of the shared implementation of the six layers; the corresponding CLI owns them. For how content is treated see [ADR 0004](../decisions/0004-content-boundary.md), and for the module structure [ADR 0009](../decisions/0009-single-module.md).
-
-A shared internal is not a loophole around the layers. `internal/layerN/` itself may reference only the public packages below it and the shared internals further below. No reverse dependency on a public package of the same layer is made. An internal under an owning package is bound by the same constraints as the owner. Creating an unclassified general-purpose place directly under `internal/` is rejected by the check.
-
-Test assembly is not embedded in the main code. An unpublished feature is internal by default, and if publishing is needed, show the user, purpose and contract and change the ADR and the API list. [ADR 0021](../decisions/0021-query-and-commands.md) reduced the public API to `gozen`, `play`, `gfx`, `react`, `chat` and `puppet`. Expressions, state, events, battles and headless progress are internal implementations. Dungeon rules live directly in `internal/layer3/dungeon`; the unused relay package is removed and its contract tests exercise that implementation. When dealing with the collection of development information or a limited-distribution mechanism, consider only the parts that can be explained generically, and do not include private aggregation machinery.
+Test assembly may compose layers without becoming runtime code. Keep fixtures original and neutral. Public Go wrappers, their inventory generator and the session-to-screen bridge were removed under [ADR 0041](../decisions/0041-yaml-authoring-and-distribution.md); use the CLI for game authoring and distribution.

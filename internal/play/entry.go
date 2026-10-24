@@ -30,7 +30,7 @@ type ArgumentError struct{ Err error }
 func (e *ArgumentError) Error() string { return e.Err.Error() }
 func (e *ArgumentError) Unwrap() error { return e.Err }
 
-// Main shares startup between the public play.Main and gozen run.
+// Main parses startup options for the private player and test host.
 // Directory mode requires one game directory operand and enables live reload there.
 func Main(ctx context.Context, fsys fs.FS, dir string, args []string, cfg EntryConfig) error {
 	if err := ctx.Err(); err != nil {
