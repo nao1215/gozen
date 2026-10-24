@@ -136,3 +136,49 @@ func TestDiagnosticCodesSurviveStructuredReporting(t *testing.T) {
 		})
 	}
 }
+
+func TestFinishPreservesExitAndWriteFailures(t *testing.T) {
+	for _, format := range []string{"text", "json", "jsonl"} {
+		t.Run(format, func(t *testing.T) {
+			report := Report{Command: "sim routes", Format: format}
+			for _, tc := range []struct {
+				name   string
+				err    error
+				exit   int
+				silent bool
+			}{
+				{"success", nil, 0, true},
+				{"usage", Invalid(diag.Operands, "expected a game"), 2, false},
+				{"runtime", io.ErrUnexpectedEOF, 1, false},
+				{"reported", ErrReported, 1, true},
+				{"joined", errors.Join(ErrReported, io.ErrClosedPipe), 1, false},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					var stdout, stderr bytes.Buffer
+					out, diagnostics := &Output{Writer: &stdout}, &Output{Writer: &stderr}
+					if exit := report.Finish(out, diagnostics, tc.err); exit != tc.exit {
+						t.Fatalf("exit %d, want %d", exit, tc.exit)
+					}
+					if stdout.Len() != 0 || (stderr.Len() == 0) != tc.silent {
+						t.Fatalf("stdout %s; stderr %s", stdout.String(), stderr.String())
+					}
+					if tc.name == "usage" && !strings.Contains(stderr.String(), diag.Operands.String()) {
+						t.Fatal("lost diagnostic code")
+					}
+					if report.Machine() && stderr.Len() > 0 && !json.Valid(stderr.Bytes()) {
+						t.Fatalf("non-JSON diagnostic: %s", stderr.String())
+					}
+				})
+			}
+			for _, operationErr := range []error{nil, ErrReported, Invalid(diag.Operands, "bad input")} {
+				out := &Output{Writer: &bytes.Buffer{}, Err: io.ErrShortWrite}
+				if exit := report.Finish(out, &Output{Writer: &bytes.Buffer{}}, operationErr); exit != 1 {
+					t.Fatalf("stdout failure: exit %d", exit)
+				}
+			}
+			if exit := report.Finish(&Output{Writer: &bytes.Buffer{}}, &Output{Writer: shortWriter{}}, Invalid(diag.Operands, "bad input")); exit != 1 {
+				t.Fatalf("diagnostic short write: exit %d", exit)
+			}
+		})
+	}
+}

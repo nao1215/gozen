@@ -218,7 +218,7 @@ func (c *command) design() clihelp.Operation {
 				return err
 			}
 			if failed {
-				return errReported
+				return cliio.ErrReported
 			}
 			return nil
 		}

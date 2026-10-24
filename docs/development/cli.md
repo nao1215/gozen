@@ -85,6 +85,10 @@ suite excludes `web`; the Website and Release Smoke workflows run it separately.
 [ADR 0042](../decisions/0042-command-and-output-contract.md) defines the target
 command and output contracts. The shared I/O and argument errors now live in
 `internal/cliio`; protected output paths remain in `cmd/internal/cli`.
+`cliio.Report.Finish` handles exit values and fatal diagnostics. A failed stdout
+or stderr write exits 1, including when reporting invalid arguments. A failed
+result already written to stdout uses `cliio.ErrReported` to avoid a duplicate
+diagnostic.
 
 `new`, `export`, `capture`, `theme list`, `trace` and every `sim` command support `--format text|json|jsonl`. JSON emits one
 version-1 envelope with `command`, `status` and `data`. JSONL theme lists emit

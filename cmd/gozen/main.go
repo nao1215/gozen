@@ -149,39 +149,16 @@ func (c *command) operation(n node) clihelp.Operation {
 	return op
 }
 
-var errReported = errors.New("failure already reported")
-
 // finish prints err and returns the exit value.
 func (c *command) finish(err error) int {
 	if errors.Is(err, clihelp.ErrHelp) {
 		err = nil
 	}
-	if err == errReported && c.out.Err == nil && c.stderr.Err == nil { //nolint:errorlint // Only the bare marker is silent; joined or wrapped failures must remain visible.
-		return 1
+	report := c.report
+	if report.Command == "" {
+		report.Command = c.path
 	}
-	err = errors.Join(err, c.out.Err, c.stderr.Err)
-	if err == nil {
-		return 0
-	}
-	if c.report.Machine() {
-		if writeErr := c.report.Diagnostic(c.stderr, err); writeErr != nil || c.out.Err != nil || c.stderr.Err != nil {
-			return 1
-		}
-		if _, ok := errors.AsType[*cliio.UsageError](err); ok {
-			return 2
-		}
-		return 1
-	}
-	c.stderr.Println(err)
-	if _, ok := errors.AsType[*cliio.UsageError](err); ok {
-		help := "gozen --help"
-		if c.path != "" {
-			help = "gozen " + c.path + " --help"
-		}
-		c.stderr.Println(`Run "` + help + `" for usage.`)
-		return 2
-	}
-	return 1
+	return report.Finish(c.out, c.stderr, err)
 }
 
 // top handles gozen with no command: -h/--help and --version.

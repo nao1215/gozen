@@ -21,19 +21,27 @@ flowchart TB
   CLI["cmd/gozen"] --> L5
   Player["cmd/gozen-player: desktop / browser"] --> L5
   Player --> WebFS["internal/webfs: fetched game files"]
-  CLI --> Private["internal/promptgen, internal/mosaic"]
+  CLI --> Production["promptcmd / mosaiccmd: production CLI adapters"]
+  Production --> Private["internal/promptgen, internal/mosaic: domain implementations"]
+  CLI --> Private
   Private --> L4
   CLI --> Help["internal/clihelp: GNU-style options and help"]
-  Private --> Help
+  Production --> Help
   CLI --> Output["internal/cliio: output and result contracts"]
+  Production --> Output
   Output --> Diag
   CLI --> Diag["internal/diag: diagnostic codes"]
+  Production --> Diag
   Private --> Diag
   L2 --> Diag
   Example["examples: the game's assembly"] --> L5
 ```
 
-The names in the figure correspond to the components of `.go-arch-lint.yml` as follows. Each public package is a component of the same name. `internal/layerN/` is `privateN` (the shared implementation of layer N), `cmd/gozen/**` and `cmd/internal/**` are `commands`; `cmd/gozen-player/**` is the private `player` startup component, `internal/promptgen/**` and `internal/mosaic/**` are `promptgen` and `mosaic`, `internal/clihelp/**` is `clihelp`, `internal/cliio/**` is `cliio` (command I/O, structured results and argument errors; depends only on diagnostics), `internal/diag/**` (the diagnostic codes) is `diag`, the root `gozen` is `gozen` (above layer 4, below display), and `x/**` is `experiments` (there are no experiments now, and no directory either). Selecting ordered YAML fragments (`internal/layer1/yamlpath`, using the existing YAML dependency for `chat` and `react`), swapping assets (`internal/layer1/assetfs`) bounding encoded picture sizes and decoded dimensions (`internal/layer1/picturelimit`, shared by validation and presentation), and loading sound effects (`internal/layer5/sound`) are not published and live in the shared implementation of their layers ([ADR 0021](../decisions/0021-query-and-commands.md)). `internal/dev/**` (`dev`) uses only the standard library and `diag`, and `internal/testgame/**` (`testgame`) uses only layers 1 and 2. If the figure and the configuration disagree, the configuration is right and the figure is fixed. When you add a component, fix this figure and the paragraph of correspondence in the same change.
+The names in the figure correspond to the components of `.go-arch-lint.yml` as follows. Each public package is a component of the same name. `internal/layerN/` is `privateN` (the shared implementation of layer N), `cmd/gozen/**` and `cmd/internal/**` are `commands`; `cmd/gozen-player/**` is the private `player` startup component, `internal/promptgen` is `promptgen`; the root of `internal/mosaic` and its `detect`, `segment`, `settings` and `tagger` subtrees form `mosaic`.
+
+Their `command` subpackages are separate `promptcmd` and `mosaiccmd` components. Domain components cannot import CLI adapters or output infrastructure. The mappings are disjoint, so their self-dependencies cannot permit imports of command subpackages.
+
+`internal/clihelp/**` is `clihelp`, `internal/cliio/**` is `cliio` (command I/O, structured results and argument errors; depends only on diagnostics), `internal/diag/**` (the diagnostic codes) is `diag`, the root `gozen` is `gozen` (above layer 4, below display), and `x/**` is `experiments` (there are no experiments now, and no directory either). Selecting ordered YAML fragments (`internal/layer1/yamlpath`, using the existing YAML dependency for `chat` and `react`), swapping assets (`internal/layer1/assetfs`) bounding encoded picture sizes and decoded dimensions (`internal/layer1/picturelimit`, shared by validation and presentation), and loading sound effects (`internal/layer5/sound`) are not published and live in the shared implementation of their layers ([ADR 0021](../decisions/0021-query-and-commands.md)). `internal/dev/**` (`dev`) uses only the standard library and `diag`, and `internal/testgame/**` (`testgame`) uses only layers 1 and 2. If the figure and the configuration disagree, the configuration is right and the figure is fixed. When you add a component, fix this figure and the paragraph of correspondence in the same change.
 
 `savefile` is in layer 1 as a base of save locations and bytes that knows nothing of state or definitions. The implementation of `dungeon` is in `internal/layer3/dungeon`. The former public entry from [ADR 0014](../decisions/0014-dungeon-host-adoption.md) was folded into commands and expressions by [ADR 0021](../decisions/0021-query-and-commands.md). Its unused internal relay is removed; callers and contract tests use the shared implementation directly. YAML path selection belongs to layer 1 because it knows only YAML and logical paths, not game definitions or rules; the shared base layer may use the existing YAML vendor for this purpose.
 

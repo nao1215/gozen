@@ -62,8 +62,10 @@ components:
   clihelp: { in: "internal/clihelp/**" }
   # Diagnostic codes (ADR 0024): a leaf like clihelp, used by the commands, the loader and the tools.
   diag: { in: ["internal/diag", "internal/diag/**"] }
-  promptgen: { in: "internal/promptgen/**" }
-  mosaic: { in: "internal/mosaic/**" }
+  promptgen: { in: "internal/promptgen" }
+  promptcmd: { in: "internal/promptgen/command/**" }
+  mosaic: { in: ["internal/mosaic", "internal/mosaic/detect/**", "internal/mosaic/segment/**", "internal/mosaic/settings/**", "internal/mosaic/tagger/**"] }
+  mosaiccmd: { in: "internal/mosaic/command/**" }
   experiments: { in: "x/**" }
   examples: { in: "examples/**" }
   # The file system the browser builds of the samples read their game from (fetched files).
@@ -124,7 +126,7 @@ deps:
     mayDependOn: [private6, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]
   commands:
-    mayDependOn: [commands, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet, private1, private2, private3, private4, private5, promptgen, mosaic, clihelp, cliio, diag]
+    mayDependOn: [commands, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet, private1, private2, private3, private4, private5, promptcmd, mosaiccmd, mosaic, clihelp, cliio, diag]
     canUse: [yaml, ebiten, image, pflag]
   player:
     mayDependOn: [play, private2, webfs]
@@ -137,11 +139,17 @@ deps:
   diag:
     mayDependOn: [diag]
   promptgen:
-    mayDependOn: [promptgen, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, clihelp, diag]
-    canUse: [yaml, image, pflag]
+    mayDependOn: [promptgen, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, diag]
+    canUse: [yaml, image]
+  promptcmd:
+    mayDependOn: [promptcmd, promptgen, clihelp, cliio, diag]
+    canUse: [pflag]
   mosaic:
-    mayDependOn: [mosaic, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, clihelp, diag]
-    canUse: [yaml, image, onnx, pflag]
+    mayDependOn: [mosaic, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, diag]
+    canUse: [yaml, image, onnx]
+  mosaiccmd:
+    mayDependOn: [mosaiccmd, mosaic, clihelp, cliio, diag]
+    canUse: [pflag, image]
   experiments:
     mayDependOn: [expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet]
     canUse: [yaml, ebiten, image]

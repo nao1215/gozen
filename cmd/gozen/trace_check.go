@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/internal/diag"
 
 	lang "github.com/nao1215/gozen/internal/text"
@@ -318,7 +320,7 @@ func (c *command) printTraceCheck(report *traceChecker) error {
 			return err
 		}
 		if len(report.issues) > 0 {
-			return errReported
+			return cliio.ErrReported
 		}
 		return nil
 	}

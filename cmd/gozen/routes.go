@@ -176,7 +176,7 @@ func (c *command) routes() clihelp.Operation {
 				return err
 			}
 			if failure != nil {
-				return errReported
+				return cliio.ErrReported
 			}
 			return nil
 		}
