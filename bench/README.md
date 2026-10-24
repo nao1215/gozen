@@ -27,6 +27,12 @@ close to call is reported as inconclusive and does not fail the job. While the
 repository is private the job runs only when started by hand, to save the
 Actions budget (docs/development/ci.md).
 
+When a PR changes `bench/himorime.yaml`, CI measures the new revision without
+comparing it to the base. A changed command signature may not run in the old
+binary. The job summary records this baseline reset; later PRs with unchanged
+definitions resume comparisons. For local comparisons, choose a base that
+accepts the current suite's commands.
+
 The input is the neutral game of the CLI contract tests,
 `e2e/atago/fixtures/game`, read from the working tree by both revisions.
 

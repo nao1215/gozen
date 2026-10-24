@@ -16,6 +16,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Changed
 
+- Select battle troops with `sim battle GAME --troop ID`, dungeon locations with `sim dive/floors GAME --location ID`, and bundled themes with `theme add GAME --name NAME`. Selectors are no longer positional operands.
 - Replace `gozen pack desktop GAME OUT` and `gozen pack web GAME OUT` with `gozen export GAME --out OUT`; use `--target web` for browser games.
 - Replace `gozen play run GAME` with `gozen run GAME`. The old command path is removed; game YAML and save formats are unchanged.
 

@@ -29,6 +29,8 @@ import (
 
 func (c *command) curve(args []string) (err error) {
 	fs := clihelp.NewFlagSet("gozen sim dive")
+	var loc string
+	fs.StringVar(&loc, "location", "", "the location `ID`; required")
 	o := balance.Config{}
 	fs.IntVar(&o.Floors, "floors", 20, "how many floors to go down")
 	fs.IntVar(&o.Battles, "battles", 7, "battles fought on each floor")
@@ -58,10 +60,13 @@ func (c *command) curve(args []string) (err error) {
 	if err := c.parse(fs, args); err != nil {
 		return err
 	}
-	if fs.NArg() != 2 {
-		return cliio.Invalid(diag.Operands, "expected <game-dir> <location>")
+	if fs.NArg() != 1 {
+		return cliio.Invalid(diag.Operands, "expected one game directory")
 	}
-	dir, loc := fs.Arg(0), fs.Arg(1)
+	if loc == "" {
+		return cliio.Invalid(diag.OptionRequired, "--location ID is required")
+	}
+	dir := fs.Arg(0)
 	o.Location = loc
 	if o.Floors <= 0 || o.Battles < 0 || o.Tries <= 0 || o.MaxTurns <= 0 || o.RestEvery < 0 {
 		return cliio.Invalid(diag.BadValue, "invalid floor, battle, try, turn, or rest count")

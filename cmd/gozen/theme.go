@@ -55,14 +55,19 @@ func (c *command) themeList(args []string) error {
 // themeAdd copies a dungeon theme into a game's assets.
 func (c *command) themeAdd(args []string) error {
 	f := clihelp.NewFlagSet("gozen theme add")
+	var name string
+	f.StringVar(&name, "name", "", "the theme `NAME`; required")
 	force := f.Bool("force", false, "replace the files the game already has")
 	if err := c.parse(f, args); err != nil {
 		return err
 	}
-	if f.NArg() != 2 {
-		return cliio.Invalid(diag.Operands, "theme add expects a theme name and a game directory")
+	if f.NArg() != 1 {
+		return cliio.Invalid(diag.Operands, "expected one game directory")
 	}
-	name, dir := f.Arg(0), f.Arg(1)
+	if name == "" {
+		return cliio.Invalid(diag.OptionRequired, "--name NAME is required")
+	}
+	dir := f.Arg(0)
 	if !themes.Has(name) {
 		return cliio.Invalid(diag.UnknownName, "unknown theme %q: run gozen theme list", name)
 	}

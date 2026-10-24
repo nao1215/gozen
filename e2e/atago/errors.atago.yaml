@@ -50,16 +50,16 @@ scenarios:
   - {code: GZN2102, args: 'art mosaic auto'}
   - {code: GZN2103, args: 'sim battle --absent game lesson'}
   - {code: GZN2103, args: 'art mosaic auto --absent game'}
-  - {code: GZN2104, args: 'sim battle game lesson -seed 9'}
+  - {code: GZN2104, args: 'sim battle game --troop lesson -seed 9'}
   - {code: GZN2104, args: 'art prompt -config catalog.yaml'}
   - {code: GZN2105, args: '--help sim'}
   - {code: GZN2106, args: 'sim'}
   - {code: GZN2106, args: 'art mosaic'}
-  - {code: GZN2102, args: 'theme add cave'}
+  - {code: GZN2102, args: 'theme add'}
   - {code: GZN2106, args: 'theme'}
-  - {code: GZN2201, args: 'sim battle game lesson -n 0'}
-  - {code: GZN2201, args: 'sim dive game grotto --grind NaN'}
-  - {code: GZN2201, args: 'sim battle game lesson --seed x'}
+  - {code: GZN2201, args: 'sim battle game --troop lesson -n 0'}
+  - {code: GZN2201, args: 'sim dive game --location grotto --grind NaN'}
+  - {code: GZN2201, args: 'sim battle game --troop lesson --seed x'}
   - {code: GZN2202, args: 'check --format yaml game'}
   - {code: GZN2202, args: 'check --only fonts game'}
   - {code: GZN2301, args: 'play shots --raw game list.yaml'}
@@ -79,9 +79,9 @@ scenarios:
       changes: {created: [], modified: [], deleted: []}
 - name: GZN2402 for a ${what} the game does not have
   matrix:
-  - {what: troop, sub: sim battle, rest: lessn}
-  - {what: location, sub: sim dive, rest: grot}
-  - {what: dungeon, sub: sim floors, rest: grot}
+  - {what: troop, sub: sim battle, rest: --troop lessn}
+  - {what: location, sub: sim dive, rest: --location grot}
+  - {what: dungeon, sub: sim floors, rest: --location grot}
   - {what: persona, sub: sim design, rest: --only nobody -o report}
   steps:
   - run:
@@ -455,7 +455,7 @@ scenarios:
       stdout:
         equals: ''
       stderr:
-        contains: ['assets/dungeon/themes/cave/wall.jpg', 'gozen theme add cave', '[GZN1111]']
+        contains: ['assets/dungeon/themes/cave/wall.jpg', '--name cave', '[GZN1111]']
 - name: check json carries the code of a definition error
   steps:
   - fixture:

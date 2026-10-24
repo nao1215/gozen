@@ -112,7 +112,7 @@ func (c *checker) theme(where, name string) {
 	}
 	for _, f := range ThemeFiles {
 		if !c.db.Exists("assets/" + ThemeDir(name) + "/" + f) {
-			c.errorf(diag.ThemeMissing, where, "no assets/%s/%s: run `gozen theme add %s <game-dir>`", ThemeDir(name), f, name)
+			c.errorf(diag.ThemeMissing, where, "no assets/%s/%s: run `gozen theme add <game-dir> --name %s`", ThemeDir(name), f, name)
 			return
 		}
 	}

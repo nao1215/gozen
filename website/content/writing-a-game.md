@@ -240,7 +240,7 @@ actors:
 
 `battle:` in `game.yaml` sets the global rules: hit variance, critical hits, escape chance, turn speed, the events before and after every battle. `cutin: true` on a skill shows the actor's standing picture across the screen.
 
-Measure before you tune: `gozen sim battle game TROOP` prints the win rate, and the F7 panel shows the same numbers in the game.
+Measure before you tune: `gozen sim battle game --troop TROOP` prints the win rate, and the F7 panel shows the same numbers in the game.
 
 ## Dungeons
 

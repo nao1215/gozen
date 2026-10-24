@@ -100,12 +100,12 @@ func TestHelpAndArgumentContract(t *testing.T) {
 	invoke(t, 2, "check", "one", "two")
 	invoke(t, 2, "check", "--only", "fonts", "unused")
 	for _, args := range [][]string{
-		{"sim", "battle", "unused", "lesson", "-n", "0"},
-		{"sim", "battle", "unused", "lesson", "--level", "-1"},
-		{"sim", "dive", "unused", "grotto", "--grind", "NaN"},
-		{"sim", "dive", "unused", "grotto", "--tries", "0"},
-		{"sim", "floors", "unused", "grotto", "--try", "1"},
-		{"sim", "floors", "unused", "grotto", "--from", "0"},
+		{"sim", "battle", "unused", "--troop", "lesson", "-n", "0"},
+		{"sim", "battle", "unused", "--troop", "lesson", "--level", "-1"},
+		{"sim", "dive", "unused", "--location", "grotto", "--grind", "NaN"},
+		{"sim", "dive", "unused", "--location", "grotto", "--tries", "0"},
+		{"sim", "floors", "unused", "--location", "grotto", "--try", "1"},
+		{"sim", "floors", "unused", "--location", "grotto", "--from", "0"},
 		{"play", "trace", "unused", "--to", "-1"},
 		{"play", "trace", "unused", "--music-late", "Inf"},
 		{"pack", "trial", "unused", "--config", "../private.yaml"},
@@ -178,18 +178,18 @@ func TestHelpPagesHaveTheSameShape(t *testing.T) {
 
 func TestGNUOptionForms(t *testing.T) {
 	dir := fixture(t)
-	want, _ := invoke(t, 0, "sim", "battle", dir, "lesson", "--battles", "3", "--seed", "9")
+	want, _ := invoke(t, 0, "sim", "battle", dir, "--troop", "lesson", "--battles", "3", "--seed", "9")
 	for _, args := range [][]string{
-		{"sim", "battle", dir, "lesson", "--battles=3", "--seed=9"},
-		{"sim", "battle", "-n", "3", dir, "--seed", "9", "lesson"},
-		{"sim", "battle", "-n3", dir, "lesson", "--seed=9"},
+		{"sim", "battle", dir, "--troop", "lesson", "--battles=3", "--seed=9"},
+		{"sim", "battle", "-n", "3", dir, "--seed", "9", "--troop", "lesson"},
+		{"sim", "battle", "-n3", dir, "--troop=lesson", "--seed=9"},
 	} {
 		if got, _ := invoke(t, 0, args...); got != want {
 			t.Fatalf("%v: %q != %q", args, got, want)
 		}
 	}
 	for _, args := range [][]string{
-		{"sim", "battle", dir, "lesson", "-seed", "9"}, {"check", "-only", "structure", dir}, {"play", "notes", dir, "-out", "x"}, {"-version"},
+		{"sim", "battle", dir, "--troop", "lesson", "-seed", "9"}, {"check", "-only", "structure", dir}, {"play", "notes", dir, "-out", "x"}, {"-version"},
 	} {
 		out, stderr := invoke(t, 2, args...)
 		if out != "" || !strings.Contains(stderr, "single-dash long option") {
@@ -280,7 +280,7 @@ func (failWriter) Write([]byte) (int, error) { return 0, errors.New("failed outp
 
 func TestReadCommandsAndDeterminism(t *testing.T) {
 	dir := fixture(t)
-	for _, args := range [][]string{{"check", dir}, {"check", "--only", "layout", dir}, {"book", dir}, {"sim", "battle", dir, "lesson", "-n", "3"}, {"sim", "dive", dir, "grotto", "--floors", "1", "--battles", "1", "--tries", "1"}, {"sim", "floors", dir, "grotto", "--floor", "1", "--try", "2"}} {
+	for _, args := range [][]string{{"check", dir}, {"check", "--only", "layout", dir}, {"book", dir}, {"sim", "battle", dir, "--troop", "lesson", "-n", "3"}, {"sim", "dive", dir, "--location", "grotto", "--floors", "1", "--battles", "1", "--tries", "1"}, {"sim", "floors", dir, "--location", "grotto", "--floor", "1", "--try", "2"}} {
 		out, stderr := invoke(t, 0, args...)
 		if out == "" || stderr != "" {
 			t.Fatalf("%v: %q %q", args, out, stderr)
@@ -290,17 +290,17 @@ func TestReadCommandsAndDeterminism(t *testing.T) {
 			t.Fatalf("nondeterministic %v", args)
 		}
 	}
-	before, _ := invoke(t, 0, "sim", "battle", dir, "lesson", "-n", "3", "--seed", "9")
-	after, _ := invoke(t, 0, "sim", "battle", "--seed", "9", dir, "-n", "3", "lesson")
+	before, _ := invoke(t, 0, "sim", "battle", dir, "--troop", "lesson", "-n", "3", "--seed", "9")
+	after, _ := invoke(t, 0, "sim", "battle", "--seed", "9", dir, "-n", "3", "--troop", "lesson")
 	if before != after {
 		t.Fatal("flag placement changes result")
 	}
-	out, _ := invoke(t, 0, "sim", "dive", dir, "grotto", "--floors", "1", "--battles", "0", "--tries", "1")
+	out, _ := invoke(t, 0, "sim", "dive", dir, "--location", "grotto", "--floors", "1", "--battles", "0", "--tries", "1")
 	if !strings.Contains(out, "B1") || !strings.Contains(out, "0") {
 		t.Fatal(out)
 	}
-	invoke(t, 2, "sim", "battle", dir, "absent", "-n", "1")
-	invoke(t, 2, "sim", "dive", dir, "grotto", "--boss", "x:lesson")
+	invoke(t, 2, "sim", "battle", dir, "--troop", "absent", "-n", "1")
+	invoke(t, 2, "sim", "dive", dir, "--location", "grotto", "--boss", "x:lesson")
 }
 
 func TestTrialRoundTripNoOverwriteAndDryRun(t *testing.T) {
@@ -424,7 +424,7 @@ type failingWriter struct{}
 
 func (failingWriter) Write([]byte) (int, error) { return 0, errWrite }
 func TestFailedOutputIsNonzero(t *testing.T) {
-	for _, args := range [][]string{{"--help"}, {"sim", "battle", "--help"}, {"book", fixture(t)}, {"sim", "battle", fixture(t), "lesson", "-n", "1"}} {
+	for _, args := range [][]string{{"--help"}, {"sim", "battle", "--help"}, {"book", fixture(t)}, {"sim", "battle", fixture(t), "--troop", "lesson", "-n", "1"}} {
 		var stderr bytes.Buffer
 		if got := run(args, failingWriter{}, &stderr); got != 1 {
 			t.Fatalf("%v: %d", args, got)

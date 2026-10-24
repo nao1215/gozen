@@ -17,8 +17,8 @@ A Gozen game is plain text with a checker that answers in file and line. That su
 <!-- verify: run fixture=cave -->
 ```shell
 gozen check game                                       # references, expressions, pictures, text layout
-gozen sim battle game cave_boss --level 8                     # win rate of the party at level 8
-gozen sim dive game cave --floors 5 --boss 5:cave_boss    # a whole dive: levels and wins per floor
+gozen sim battle game --troop cave_boss --level 8                     # win rate of the party at level 8
+gozen sim dive game --location cave --floors 5 --boss 5:cave_boss    # a whole dive: levels and wins per floor
 gozen book game > book.md                              # everything, as one Markdown file
 ```
 

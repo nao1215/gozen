@@ -79,8 +79,8 @@ These are the same numbers `gozen sim battle` prints, with the same seed, so you
 
 <!-- verify: each fixture=go-zen -->
 ```shell
-gozen sim battle game crab --state notes/2026-10-19/001.save --hp
-gozen sim battle game crab --state notes/2026-10-19/001.save --as-is --streak 9
+gozen sim battle game --troop crab --state notes/2026-10-19/001.save --hp
+gozen sim battle game --troop crab --state notes/2026-10-19/001.save --as-is --streak 9
 ```
 
 The panel measures a little each frame (at most 3 ms) and never changes the game state or its random numbers. It measures again when you move, reload, or change the party's level, equipment or skills.

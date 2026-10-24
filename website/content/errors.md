@@ -264,7 +264,7 @@ A dungeon theme is named but its pictures are not in the game.
 
 A dungeon or one of its looks says theme: <name>, but assets/dungeon/themes/<name>/ lacks wall.jpg, floor.jpg, ceiling.jpg, door.jpg or theme.yaml. The theme's pictures are not part of the game until they are copied in.
 
-Fix: Run gozen theme add <name> <game-dir> (gozen theme list shows the names), or put your own folder of that name there.
+Fix: Run gozen theme add <game-dir> --name <name> (gozen theme list shows the names), or put your own folder of that name there.
 
 ### GZN1112
 
@@ -410,7 +410,7 @@ The shape of the command line: commands, operands, options. Exits 2.
 
 There is no such command.
 
-The word is not a command of gozen or of the group it follows. The commands are grouped (ADR 0024): check, sim, play, book, pack, art, theme, version, and help. An old name such as curve or memos is answered with its new place, for example gozen sim dive.
+The word is not a command of gozen or of the group it follows. The commands are grouped (ADR 0024): new, run, export, check, sim, play, book, pack, art, theme, version, and help. An old name such as curve or memos is answered with its new place, for example gozen sim dive.
 
 Fix: Use the command the message names, or run gozen --help (or the group with --help) for the list.
 
@@ -444,7 +444,7 @@ An option was given before the command.
 
 gozen itself takes only --help and --version. Options of a command come after the command's name, because the command decides what they mean.
 
-Fix: Write gozen <command> [OPTIONS], for example gozen sim battle --seed 7 game lesson.
+Fix: Write gozen <command> [OPTIONS], for example gozen sim battle game --troop lesson --seed 7.
 
 ### GZN2106
 

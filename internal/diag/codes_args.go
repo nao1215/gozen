@@ -7,7 +7,7 @@ package diag
 var (
 	UnknownCommand = register(2101, "UnknownCommand", Entry{
 		Summary: "there is no such command",
-		Detail:  "The word is not a command of gozen or of the group it follows. The commands are grouped (ADR 0024): check, sim, play, book, pack, art, theme, version, and help. An old name such as curve or memos is answered with its new place, for example gozen sim dive.",
+		Detail:  "The word is not a command of gozen or of the group it follows. The commands are grouped (ADR 0024): new, run, export, check, sim, play, book, pack, art, theme, version, and help. An old name such as curve or memos is answered with its new place, for example gozen sim dive.",
 		Fix:     "Use the command the message names, or run gozen --help (or the group with --help) for the list.",
 	})
 	Operands = register(2102, "Operands", Entry{
@@ -28,7 +28,7 @@ var (
 	OptionBeforeCommand = register(2105, "OptionBeforeCommand", Entry{
 		Summary: "an option was given before the command",
 		Detail:  "gozen itself takes only --help and --version. Options of a command come after the command's name, because the command decides what they mean.",
-		Fix:     "Write gozen <command> [OPTIONS], for example gozen sim battle --seed 7 game lesson.",
+		Fix:     "Write gozen <command> [OPTIONS], for example gozen sim battle game --troop lesson --seed 7.",
 	})
 	CommandMissing = register(2106, "CommandMissing", Entry{
 		Summary: "a command is required",

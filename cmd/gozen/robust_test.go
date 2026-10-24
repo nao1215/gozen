@@ -21,9 +21,9 @@ func TestCommandsRefuseOddInputWithoutPanicking(t *testing.T) {
 			{"check", "--only", "structure", "--"},
 			{"check", "--format", "json", "--"},
 			{"book", "--"},
-			{"sim", "battle", "--", "TROOP"},
-			{"sim", "dive", "--", "cave"},
-			{"sim", "floors", "--", "cave"},
+			{"sim", "battle", "--troop", "TROOP", "--"},
+			{"sim", "dive", "--location", "cave", "--"},
+			{"sim", "floors", "--location", "cave", "--"},
 			{"sim", "design", "--list", "--"},
 			{"play", "trace", "--"},
 			{"play", "notes", "--"},
@@ -52,13 +52,13 @@ func TestCommandsRefuseOddInputWithoutPanicking(t *testing.T) {
 	}
 	// Numbers that do not fit or do not parse are usage errors.
 	for _, args := range [][]string{
-		{"sim", "battle", dir, "lesson", "-n", "99999999999999999999"},
-		{"sim", "battle", dir, "lesson", "-n", "1e3"},
-		{"sim", "battle", dir, "lesson", "--level", "1.5"},
-		{"sim", "battle", dir, "lesson", "--seed", "-5"},
-		{"sim", "battle", dir, "lesson", "--turns", ""},
-		{"sim", "dive", dir, "cave", "--grind", "abc"},
-		{"sim", "floors", dir, "cave", "--from", "--to"},
+		{"sim", "battle", dir, "--troop", "lesson", "-n", "99999999999999999999"},
+		{"sim", "battle", dir, "--troop", "lesson", "-n", "1e3"},
+		{"sim", "battle", dir, "--troop", "lesson", "--level", "1.5"},
+		{"sim", "battle", dir, "--troop", "lesson", "--seed", "-5"},
+		{"sim", "battle", dir, "--troop", "lesson", "--turns", ""},
+		{"sim", "dive", dir, "--location", "cave", "--grind", "abc"},
+		{"sim", "floors", dir, "--location", "cave", "--from", "--to"},
 		{"play", "trace", file, "--from", "1,5"},
 		{"play", "shots", dir, file, "--bin", file, "--raw", "--timeout", "forever"},
 		{"sim", "design", dir, "--seed", "-1"},
@@ -70,7 +70,7 @@ func TestCommandsRefuseOddInputWithoutPanicking(t *testing.T) {
 	}
 	// A game directory that is a file, or is empty, is unreadable (GZN1110).
 	for _, d := range []string{file, empty, filepath.Join(empty, "absent")} {
-		for _, args := range [][]string{{"check", d}, {"book", d}, {"sim", "battle", d, "x"}, {"sim", "dive", d, "x"}, {"sim", "floors", d, "x"}, {"sim", "design", d}} {
+		for _, args := range [][]string{{"check", d}, {"book", d}, {"sim", "battle", d, "--troop", "x"}, {"sim", "dive", d, "--location", "x"}, {"sim", "floors", d, "--location", "x"}, {"sim", "design", d}} {
 			_, stderr := invoke(t, 1, args...)
 			if !strings.Contains(stderr, "GZN1110") {
 				t.Errorf("%q: %q", args, stderr)

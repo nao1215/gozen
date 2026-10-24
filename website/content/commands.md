@@ -124,11 +124,11 @@ Fights the troop with the starting party (or `--party`, or a saved state) under 
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen sim battle game lesson -n 100
-gozen sim battle game lesson -n 100 --party scout --level 5 --seed 7
-gozen sim battle game lesson --state memo.save --hp                 # from a note, HP left after a win
-gozen sim battle game lesson --state memo.save --as-is --streak 10  # keep the saved HP, count wins in a row
-gozen sim battle game lesson -n 1 -v                                # the messages of the first battle
+gozen sim battle game --troop lesson -n 100
+gozen sim battle game --troop lesson -n 100 --party scout --level 5 --seed 7
+gozen sim battle game --troop lesson --state memo.save --hp                 # from a note, HP left after a win
+gozen sim battle game --troop lesson --state memo.save --as-is --streak 10  # keep the saved HP, count wins in a row
+gozen sim battle game --troop lesson -n 1 -v                                # the messages of the first battle
 ```
 
 <!-- verify: output -->
@@ -157,9 +157,9 @@ Takes the starting party down a dungeon location, fighting `--battles` battles o
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen sim dive game grotto --floors 3 --battles 5
-gozen sim dive game grotto --floors 3 --boss 3:lesson --grind 0.8
-gozen sim dive game grotto --floors 4 --rest 2 --boss 2:lesson --tries 50
+gozen sim dive game --location grotto --floors 3 --battles 5
+gozen sim dive game --location grotto --floors 3 --boss 3:lesson --grind 0.8
+gozen sim dive game --location grotto --floors 4 --rest 2 --boss 2:lesson --tries 50
 ```
 
 <!-- verify: output -->
@@ -195,9 +195,9 @@ Generates the floors of a dungeon location and prints each map with the steps to
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen sim floors game grotto --from 1 --to 3
-gozen sim floors game grotto --floor 1 --try 3
-gozen sim floors game grotto --no-map
+gozen sim floors game --location grotto --from 1 --to 3
+gozen sim floors game --location grotto --floor 1 --try 3
+gozen sim floors game --location grotto --no-map
 ```
 
 | Option | Meaning |
@@ -484,15 +484,15 @@ Copies `wall.jpg`, `floor.jpg`, `ceiling.jpg`, `door.jpg` (1024x1024) and `theme
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen theme add cave game          # the files of the cave theme go to game/assets/dungeon/themes/cave/
-gozen theme add cave game --force  # replace the files that are already there
+gozen theme add game --name cave          # the files of the cave theme go to game/assets/dungeon/themes/cave/
+gozen theme add game --name cave --force  # replace the files that are already there
 ```
 
 | Option | Meaning |
 |:--|:--|
 | `--force` | Replace the files the game already has. |
 
-An unknown theme name exits 2 (`GZN2402`), and a directory without `game.yaml` exits 1 (`GZN1110`). A game that says `theme: cave` without the folder fails `gozen check` with `GZN1111` and the line `run gozen theme add cave <game-dir>`. The pictures are CC BY 4.0, see [ASSETS.md](https://github.com/nao1215/gozen/blob/main/ASSETS.md).
+An unknown theme name exits 2 (`GZN2402`), and a directory without `game.yaml` exits 1 (`GZN1110`). A game that says `theme: cave` without the folder fails `gozen check` with `GZN1111` and the line `run gozen theme add <game-dir> --name cave`. The pictures are CC BY 4.0, see [ASSETS.md](https://github.com/nao1215/gozen/blob/main/ASSETS.md).
 
 ## version and help
 

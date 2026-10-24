@@ -38,7 +38,7 @@ var topPage = clihelp.Page{
 	},
 	Examples: []clihelp.Example{
 		{"check a game directory", "gozen check game"},
-		{"fight 100 battles against the troop lesson", "gozen sim battle game lesson -n 100"},
+		{"fight 100 battles against the troop lesson", "gozen sim battle game --troop lesson -n 100"},
 		{"print the trace of a play", "gozen play trace run.jsonl"},
 		{"show the options of one command", "gozen help sim dive"},
 	},
@@ -76,9 +76,9 @@ var groups = map[string]clihelp.Page{
 			{"breed", "Show monsters reachable from captures and their shortest recipes"},
 		},
 		Examples: []clihelp.Example{
-			{"fight 100 battles", "gozen sim battle game lesson -n 100"},
-			{"simulate three floors of five battles", "gozen sim dive game grotto --floors 3 --battles 5"},
-			{"compare three seeds on floor 1", "gozen sim floors game grotto --floor 1 --try 3"},
+			{"fight 100 battles", "gozen sim battle game --troop lesson -n 100"},
+			{"simulate three floors of five battles", "gozen sim dive game --location grotto --floors 3 --battles 5"},
+			{"compare three seeds on floor 1", "gozen sim floors game --location grotto --floor 1 --try 3"},
 			{"write a design report to a new directory", "gozen sim design game -o report"},
 		},
 		Groups: []clihelp.Group{general},
@@ -138,7 +138,7 @@ var groups = map[string]clihelp.Page{
 		},
 		Examples: []clihelp.Example{
 			{"list the themes", "gozen theme list"},
-			{"add the ice theme to a game", "gozen theme add ice game"},
+			{"add the ice theme to a game", "gozen theme add game --name ice"},
 		},
 		Groups: []clihelp.Group{general},
 		Notes:  []string{noRequirements},
@@ -191,16 +191,16 @@ var pages = map[string]clihelp.Page{
 	},
 	"theme add": {
 		Summary: "copy a dungeon theme into a game",
-		Usage:   []string{"gozen theme add [OPTIONS] <name> <game-dir>"},
+		Usage:   []string{"gozen theme add <game-dir> --name NAME [OPTIONS]"},
 		About: "Copies the wall, floor, ceiling and door pictures and the colors of the theme to " +
 			"assets/dungeon/themes/<name>/ of the game, so that theme: <name> in a dungeon or one of its " +
 			"looks fills the walls, floor, ceiling, door and colors. A file the game already has is kept; " +
 			"--force replaces it. The pictures come with the gozen binary: no network is used.",
 		Examples: []clihelp.Example{
-			{"add the cave theme", "gozen theme add cave game"},
-			{"restore the pictures of the cave theme", "gozen theme add cave game --force"},
+			{"add the cave theme", "gozen theme add game --name cave"},
+			{"restore the pictures of the cave theme", "gozen theme add game --name cave --force"},
 		},
-		Groups: []clihelp.Group{{Title: "Files", Flags: []string{"force"}}, general},
+		Groups: []clihelp.Group{{Title: "Files", Flags: []string{"name", "force"}}, general},
 		Notes:  []string{"The theme's pictures are CC BY 4.0; see ASSETS.md of the gozen repository.", noRequirements},
 	},
 	"theme list": {
@@ -232,37 +232,37 @@ var pages = map[string]clihelp.Page{
 	},
 	"sim battle": {
 		Summary: "fight AUTO battles against a troop",
-		Usage:   []string{"gozen sim battle [OPTIONS] <game-dir> <troop>"},
+		Usage:   []string{"gozen sim battle [OPTIONS] <game-dir> --troop ID"},
 		About: "Fights the troop with the starting party (or --party, or a saved state) under AUTO and " +
 			"prints the win, loss, flight, and draw rates and the average turns. The numbers are the " +
 			"same as the development balance panel (F7) of the game. The same --seed gives the same result.",
 		Examples: []clihelp.Example{
-			{"fight 100 battles", "gozen sim battle game lesson -n 100"},
-			{"choose the party, its level, and another seed", "gozen sim battle game lesson -n 100 --party scout --level 5 --seed 7"},
-			{"start from a saved test-play note and show the HP left after a win", "gozen sim battle game lesson --state memo.save --hp"},
-			{"keep the saved HP and count the wins in a row, up to 10", "gozen sim battle game lesson --state memo.save --as-is --streak 10"},
-			{"watch the messages of the first battle", "gozen sim battle game lesson -n 1 -v"},
+			{"fight 100 battles", "gozen sim battle game --troop lesson -n 100"},
+			{"choose the party, its level, and another seed", "gozen sim battle game --troop lesson -n 100 --party scout --level 5 --seed 7"},
+			{"start from a saved test-play note and show the HP left after a win", "gozen sim battle game --troop lesson --state memo.save --hp"},
+			{"keep the saved HP and count the wins in a row, up to 10", "gozen sim battle game --troop lesson --state memo.save --as-is --streak 10"},
+			{"watch the messages of the first battle", "gozen sim battle game --troop lesson -n 1 -v"},
 		},
 		Groups: []clihelp.Group{
 			{Title: "Party", Flags: []string{"party", "level", "gear", "no-tree", "state", "as-is"}},
-			{Title: "Battle", Flags: []string{"battles", "turns", "seed", "streak"}},
+			{Title: "Battle", Flags: []string{"troop", "battles", "turns", "seed", "streak"}},
 			{Title: "Output", Flags: []string{"hp", "verbose", "format"}},
 			general,
 		},
 	},
 	"sim dive": {
 		Summary: "simulate a dive floor by floor",
-		Usage:   []string{"gozen sim dive [OPTIONS] <game-dir> <location>"},
+		Usage:   []string{"gozen sim dive [OPTIONS] <game-dir> --location ID"},
 		About: "Takes the starting party down the dungeon location, fighting --battles battles on each " +
 			"floor, buying better equipment from --shops, resting, and fighting the bosses. Prints the " +
 			"level, HP, gold, and win rates of each floor.",
 		Examples: []clihelp.Example{
-			{"simulate three floors of five battles", "gozen sim dive game grotto --floors 3 --battles 5"},
-			{"add a boss on floor 3 and grind until it is won 80% of the time", "gozen sim dive game grotto --floors 3 --boss 3:lesson --grind 0.8"},
-			{"rest only every two floors, and fight 50 battles for each boss win rate", "gozen sim dive game grotto --floors 4 --rest 2 --boss 2:lesson --tries 50"},
+			{"simulate three floors of five battles", "gozen sim dive game --location grotto --floors 3 --battles 5"},
+			{"add a boss on floor 3 and grind until it is won 80% of the time", "gozen sim dive game --location grotto --floors 3 --boss 3:lesson --grind 0.8"},
+			{"rest only every two floors, and fight 50 battles for each boss win rate", "gozen sim dive game --location grotto --floors 4 --rest 2 --boss 2:lesson --tries 50"},
 		},
 		Groups: []clihelp.Group{
-			{Title: "Dive", Flags: []string{"floors", "battles", "boss", "guards", "retreat", "guards-only", "tries", "grind", "turns", "seed"}},
+			{Title: "Dive", Flags: []string{"location", "floors", "battles", "boss", "guards", "retreat", "guards-only", "tries", "grind", "turns", "seed"}},
 			{Title: "Town", Flags: []string{"shops", "rest", "supplies", "rest-cost", "rest-event", "back-item", "worn-hp", "worn-mp", "no-town"}},
 			{Title: "Events", Flags: []string{"events", "scene-event", "scene-when", "floor-event"}},
 			{Title: "Output", Flags: []string{"format", "arrival-saves"}},
@@ -308,15 +308,15 @@ var pages = map[string]clihelp.Page{
 	},
 	"sim floors": {
 		Summary: "show generated floors: maps, steps, and encounters",
-		Usage:   []string{"gozen sim floors [OPTIONS] <game-dir> <location>"},
+		Usage:   []string{"gozen sim floors [OPTIONS] <game-dir> --location ID"},
 		About: "Generates the floors of the dungeon location and prints each map with the steps to the " +
 			"stairs and the expected encounters. With --try, compares seeds on one floor, one line each.",
 		Examples: []clihelp.Example{
-			{"show floors 1 to 3", "gozen sim floors game grotto --from 1 --to 3"},
-			{"compare three seeds on floor 1", "gozen sim floors game grotto --floor 1 --try 3"},
-			{"print the numbers only", "gozen sim floors game grotto --no-map"},
+			{"show floors 1 to 3", "gozen sim floors game --location grotto --from 1 --to 3"},
+			{"compare three seeds on floor 1", "gozen sim floors game --location grotto --floor 1 --try 3"},
+			{"print the numbers only", "gozen sim floors game --location grotto --no-map"},
 		},
-		Groups: []clihelp.Group{{Title: "Floors", Flags: []string{"from", "to", "floor", "try"}}, {Title: "Output", Flags: []string{"no-map"}}, general},
+		Groups: []clihelp.Group{{Title: "Floors", Flags: []string{"location", "from", "to", "floor", "try"}}, {Title: "Output", Flags: []string{"no-map"}}, general},
 	},
 	"sim design": {
 		Summary: "play the game with personas and write a report",

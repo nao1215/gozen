@@ -2,6 +2,34 @@ version: '1'
 suite:
   name: Gozen CLI argument and stream contracts
 scenarios:
+- name: named selectors are required for ${command}
+  matrix:
+  - {command: sim battle}
+  - {command: sim dive}
+  - {command: sim floors}
+  - {command: theme add}
+  steps:
+  - run:
+      command: gozen ${command} unused
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr: {contains: '[GZN2303]'}
+      changes: {created: [], modified: [], deleted: []}
+- name: positional selectors are rejected for ${command}
+  matrix:
+  - {command: sim battle}
+  - {command: sim dive}
+  - {command: sim floors}
+  - {command: theme add}
+  steps:
+  - run:
+      command: gozen ${command} unused obsolete-selector
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr: {contains: '[GZN2102]'}
+      changes: {created: [], modified: [], deleted: []}
 - name: help for ${sub} through gozen help
   matrix:
   - sub: new
@@ -282,10 +310,10 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject gozen sim battle -n 0 unused troop
+- name: reject gozen sim battle -n 0 unused --troop troop
   steps:
   - run:
-      command: gozen sim battle -n 0 unused troop
+      command: gozen sim battle -n 0 unused --troop troop
   - assert:
       exit_code: 2
       stdout:
@@ -310,10 +338,10 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject gozen sim dive unused location --grind NaN
+- name: reject gozen sim dive unused --location location --grind NaN
   steps:
   - run:
-      command: gozen sim dive unused location --grind NaN
+      command: gozen sim dive unused --location location --grind NaN
   - assert:
       exit_code: 2
       stdout:
@@ -382,7 +410,7 @@ scenarios:
         equals: ''
 - name: reject the single-dash long option in ${args}
   matrix:
-  - args: sim battle unused lesson -seed 9
+  - args: sim battle unused --troop lesson -seed 9
   - args: check -only structure unused
   - args: play notes notes -out html
   - args: -version
@@ -409,7 +437,7 @@ scenarios:
   - form: -n3 --seed=9
   steps:
   - run:
-      command: gozen sim battle "${specdir}/fixtures/game" ${form} lesson
+      command: gozen sim battle "${specdir}/fixtures/game" ${form} --troop lesson
   - assert:
       exit_code: 0
       stdout:

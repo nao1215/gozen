@@ -146,7 +146,7 @@ var (
 	ThemeMissing = register(1111, "ThemeMissing", Entry{
 		Summary: "a dungeon theme is named but its pictures are not in the game",
 		Detail:  "A dungeon or one of its looks says theme: <name>, but assets/dungeon/themes/<name>/ lacks wall.jpg, floor.jpg, ceiling.jpg, door.jpg or theme.yaml. The theme's pictures are not part of the game until they are copied in.",
-		Fix:     "Run gozen theme add <name> <game-dir> (gozen theme list shows the names), or put your own folder of that name there.",
+		Fix:     "Run gozen theme add <game-dir> --name <name> (gozen theme list shows the names), or put your own folder of that name there.",
 	})
 	MonsterRules = register(1112, "MonsterRules", Entry{
 		Summary: "a monster collection or breeding rule is invalid",
