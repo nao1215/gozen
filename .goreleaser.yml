@@ -1,8 +1,7 @@
 version: 2
 project_name: gozen
 
-# The release ships the gozen command. The library is consumed with go get and
-# needs no release artifact.
+# The release ships the authoring CLI and a separate generic player runtime.
 before:
   hooks:
     # The license texts of the modules linked into each platform's binary,
@@ -37,8 +36,24 @@ builds:
       - amd64
       - arm64
 
+  - id: player
+    main: ./cmd/gozen-player
+    binary: gozen-player
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X github.com/nao1215/gozen/internal/clihelp.version=v{{ .Version }}
+    env: [CGO_ENABLED=0]
+    goos: [linux, windows, darwin]
+    goarch: [amd64, arm64]
+    hooks:
+      post:
+        - cmd: go run ./internal/dev/runtimebundle -player "{{ .Path }}" -target "{{ .Os }}-{{ .Arch }}" -version "v{{ .Version }}" -out "build/runtime/{{ .Os }}-{{ .Arch }}/runtime.json"
+          env: [GOOS=, GOARCH=]
+
 archives:
-  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  - id: cli
+    ids: [gozen]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     formats: [tar.gz]
     format_overrides:
       - goos: windows
@@ -51,10 +66,26 @@ archives:
       - src: "third_party_licenses/{{ .Os }}/**/*"
         dst: THIRD_PARTY_LICENSES
 
+  - id: runtime
+    ids: [player]
+    name_template: "gozen-runtime_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - src: "build/runtime/{{ .Os }}-{{ .Arch }}/runtime.json"
+        dst: .
+        strip_parent: true
+      - src: "third_party_licenses/{{ .Os }}/**/*"
+        dst: THIRD_PARTY_LICENSES
+
 # Linux system packages for apt, dnf and apk users (the same set gup, sqly and
 # atago ship).
 nfpms:
   - package_name: gozen
+    ids: [gozen]
     maintainer: Naohiro CHIKAMATSU <n.chika156@gmail.com>
     description: "Checks, simulates, documents and packages games written in YAML for the Gozen 2D RPG framework"
     homepage: https://github.com/nao1215/gozen
@@ -93,6 +124,7 @@ signs:
 # GoReleaser when the secret is missing. Skipped by --skip=publish (snapshots).
 homebrew_casks:
   - name: gozen
+    ids: [cli]
     repository:
       owner: nao1215
       name: homebrew-tap
@@ -119,9 +151,10 @@ release:
   header: |
     ## gozen {{ .Tag }}
 
-    Gozen is a 2D RPG framework for Go and Ebitengine. The library is used with
-    `go get github.com/nao1215/gozen@{{ .Tag }}`; the archives below contain the
-    `gozen` command (without ONNX inference; see the README).
+    Gozen creates and plays games written in YAML. The `gozen` archives contain
+    the authoring CLI (without ONNX inference). The `gozen-runtime` archives
+    contain desktop players for `gozen pack desktop`; use the runtime from
+    this release that matches the target OS and architecture.
 
     Every archive is signed and ships with an SBOM and build provenance; see
     [Verifying a release](https://nao1215.github.io/gozen/install/#verifying-a-release).

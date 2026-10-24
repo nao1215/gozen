@@ -46,6 +46,15 @@ run_binary() {
     "$bin" check "$fixture" > "$work/check.txt" || fail "$bin check $fixture failed"
     grep -q '^ok: ' "$work/check.txt" || fail "$bin check printed no ok line"
     echo "smoke: $version runs and checks $fixture"
+    local target_os
+    case "$(uname -s)" in
+        Linux) target_os=linux ;;
+        Darwin) target_os=darwin ;;
+    esac
+    mkdir -p "$work/runtime"
+    tar -xzf "$(ls "$dist"/gozen-runtime_*_"$target_os"_"$arch".tar.gz)" -C "$work/runtime"
+    PATH="$(dirname "$bin"):$PATH" GOZEN_RUNTIME="$work/runtime" GOZEN_EXE_SUFFIX="" \
+        atago run --ci --parallel 1 --tag desktop e2e/atago/desktop.atago.yaml
 }
 
 case "$(uname -s)" in
@@ -65,6 +74,19 @@ case "$(uname -s)" in
                 for want in "$binary" LICENSE README.md CHANGELOG.md ASSETS.md \
                     THIRD_PARTY_LICENSES/github.com/hajimehoshi/ebiten/v2/LICENSE \
                     THIRD_PARTY_LICENSES/github.com/goccy/go-yaml/LICENSE; do
+                    grep -qx "$want" <<< "$list" || fail "$archive has no $want"
+                done
+                if [ "$os" = windows ]; then
+                    archive=$(ls "$dist"/gozen-runtime_*_"$os"_"$a".zip)
+                    list=$(unzip -Z1 "$archive")
+                    player=gozen-player.exe
+                else
+                    archive=$(ls "$dist"/gozen-runtime_*_"$os"_"$a".tar.gz)
+                    list=$(tar -tzf "$archive")
+                    player=gozen-player
+                fi
+                for want in "$player" runtime.json LICENSE \
+                    THIRD_PARTY_LICENSES/github.com/hajimehoshi/ebiten/v2/LICENSE; do
                     grep -qx "$want" <<< "$list" || fail "$archive has no $want"
                 done
             done

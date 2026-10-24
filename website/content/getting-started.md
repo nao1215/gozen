@@ -89,7 +89,7 @@ appropriately licensed font under `assets/` and set `fonts.regular` in `game.yam
 - [Cookbook](/cookbook/): add shops, battles, dialogue and other game features.
 - [Schema](/schema/): supported YAML fields and their meaning.
 
-The current no-code workflow covers creating and playing games. General desktop
-and browser export commands are planned; the showcase build recipes still belong
-to engine development. The existing [Go API](/go-api/) remains available during
-that migration, but it is not needed for the steps above.
+Use [pack desktop](/commands/#pack-desktop) to distribute the game with a
+matching prebuilt runtime. Browser export is planned. The existing
+[Go API](/go-api/) remains available during migration; it is not needed for
+these steps.

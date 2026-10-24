@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes, breed), play (run, trace, notes, shots), book, pack (release, trial), art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
+description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes, breed), play (run, trace, notes, shots), book, pack (desktop, release, trial), art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
 weight: 60
 toc: true
 ---
@@ -21,7 +21,7 @@ gozen help GZN1101                     # explain a diagnostic code
 | [new](#new) | Create a playable template without Go source |
 | [play](#play) | Run games and inspect real plays: [run](#play-run), [trace](#play-trace), [notes](#play-notes), [shots](#play-shots) |
 | [book](#book) | Write the definitions and events as Markdown |
-| [pack](#pack) | Build what you ship: [release](#pack-release), [trial](#pack-trial) |
+| [pack](#pack) | Build what you ship: [desktop](#pack-desktop), [release](#pack-release), [trial](#pack-trial) |
 | [art](#art) | Picture and asset tools: [prompt](/production-tools/#gozen-art-prompt), [mosaic](/production-tools/#gozen-art-mosaic), [fetch](#art-fetch), [faces](#art-faces), [puppet](#art-puppet) |
 | [theme](#theme) | Dungeon themes: [add](#theme-add) the pictures of a theme to a game, [list](#theme-list) the themes |
 | [version and help](#version-and-help) | Print the version; show a command's help or explain a diagnostic code |
@@ -33,8 +33,8 @@ A group alone (`gozen sim`) exits 2 and lists its commands. `gozen sim --help` s
 - Exit status: 0 for success and help, 1 when a check, I/O, simulation or capture fails, 2 for invalid arguments. A name the command line gives that the game does not have (a troop, a location, a persona, a shot) is an invalid argument.
 - A diagnostic may end with a code such as `[GZN1101]`; its first digit is the exit status. `gozen help GZN1101` explains it, and [Error codes](/errors/) lists them all.
 - Options follow the GNU style. `--seed 7` and `--seed=7` both work, a few common options have a one-letter form (`-n 100`, `-o DIR`, `-v`, `-h`), options may come before or after the arguments, and `--` ends the options. A single-dash long option such as `-seed` is rejected with exit status 2.
-- Commands that write a directory (`sim design`, `play notes`, `pack release`, `pack trial`, `play shots`) refuse one that already exists, even if empty, and an output inside an input. They never overwrite.
-- Every command except `play run`, `play shots`, `art faces` and `art mosaic` detection needs nothing beyond the `gozen` binary: no cgo, display or sound device.
+- Commands that write a directory (`sim design`, `play notes`, `pack desktop`, `pack release`, `pack trial`, `play shots`) refuse one that already exists, even if empty, and an output inside an input. They never overwrite.
+- Every command except `pack desktop`, `play run`, `play shots`, `art faces` and `art mosaic` detection needs nothing beyond the `gozen` binary: no cgo, display or sound device. `pack desktop` also needs a matching prebuilt runtime bundle.
 
 The examples below use `game` as the game directory, `lesson` as a troop and `grotto` as a dungeon location.
 
@@ -449,7 +449,7 @@ gozen art puppet streamer/puppet.yaml --out streamer-packed  # write it with sma
 |:--|:--|
 | `-o, --out DIR` | Write the puppet YAML and the cut pictures (each with `at`) to this new directory. The written YAML has no comments. |
 
-It needs nothing beyond the gozen binary: no cgo, display or sound device.
+It needs nothing beyond the gozen binary: no cgo, display or sound device. `pack desktop` also needs a matching prebuilt runtime bundle.
 
 ## theme
 
@@ -497,3 +497,54 @@ gozen help sim battle
 gozen help GZN2101
 ```
 
+
+## pack desktop
+
+Unpack the CLI archive and the `gozen-runtime` archive from the same release.
+Choose the runtime for the computer that will play the game.
+
+<!-- verify: skip Uses a release runtime bundle; exercised by the desktop artifact E2E. -->
+```sh
+gozen pack desktop my-game output --runtime runtime --target windows-amd64
+```
+
+The output contains:
+
+```text
+output/
+  gozen-player.exe
+  game/
+    game.yaml
+    data/
+    assets/
+  runtime.json
+  runtime-licenses/
+```
+
+Move the whole output directory to the player's computer and run
+`gozen-player.exe`. On Linux and macOS, the executable is `gozen-player`.
+Go, Python and the authoring CLI are not needed to play. A display and the
+platform graphics and audio libraries are required. Saves use the game's existing
+ID and per-user save directory; they are not written into the package.
+
+The target defaults to the current computer. Accepted targets are `linux-amd64`,
+`linux-arm64`, `windows-amd64`, `windows-arm64`, `darwin-amd64` and `darwin-arm64`.
+Cross-target packaging does not execute the target binary. macOS packages are
+plain directories, without signing or notarization.
+
+The command checks the runtime version, target and player checksum. It performs
+no download or compilation. The destination must not exist or overlap an input.
+A game with `asset-policy.yaml` must first pass `gozen pack release`; export the
+resulting approved tree.
+
+Export copies `game.yaml`, YAML under `data/` and `lang/`, runtime asset formats
+under `assets/`, root license notices and the contents of `LICENSES/`. Other root
+directories, including `saves/` and `shots/`, are not copied. Hidden paths are
+excluded and symlinks are rejected.
+
+Under `assets/`, export includes images (PNG, JPEG, GIF, WebP), audio (OGG, WAV,
+MP3), fonts (TTF, OTF, TTC), YAML, TXT, Markdown and `faces.json`. Files named
+`LICENSE*` or `NOTICE*` are also retained. This selects files by path and extension;
+it does not inspect their contents. Keep author notes, captures and source art
+outside these runtime directories. Assets are copied without conversion or
+encryption. Keep third-party notices in `LICENSES/` or alongside their assets.

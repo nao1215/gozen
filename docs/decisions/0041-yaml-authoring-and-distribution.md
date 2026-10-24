@@ -54,8 +54,8 @@ bugs, refactor remaining dead or duplicate code, and reconcile all documents and
 skills with actual behavior. These are separate final review stages; every
 preceding change still includes its own tests and accurate documentation.
 
-Distribution, feature migration, API retirement and the final audits are planned,
-not implemented by the initial authoring change.
+Desktop distribution uses a private player and an explicit local runtime bundle.
+Browser distribution, feature migration, API retirement and the final audits remain planned.
 The detailed progress and acceptance criteria are in
 [the migration plan](../development/no-code-migration.md).
 
