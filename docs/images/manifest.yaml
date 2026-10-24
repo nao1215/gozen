@@ -15,6 +15,8 @@
 # images, their references and the checks stay the same.
 
 samples:
+  space:
+    package: ./examples/space
   go-zen:
     package: ./examples/go-zen
   puppet:
@@ -29,6 +31,10 @@ samples:
 # run afterwards with the run directory as its last argument and fails the
 # run when the play did not go as planned.
 runs:
+  space:
+    sample: space
+    script: scripts/capture-space.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, courtyard, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   opening:
     sample: go-zen
     script: scripts/capture-go-zen.txt
@@ -183,6 +189,14 @@ runs:
 # GIF, slimGIF (internal/dev/docs/gifslim_test.go) keeps only the pixels that
 # changed by more than a small tolerance, which halves the size again.
 images:
+  space-street.jpg:
+    run: space
+    shot: street
+    jpeg: {width: 720, height: 405, quality: 3}
+  space-stairs.jpg:
+    run: space
+    shot: upper-stairs
+    jpeg: {width: 720, height: 405, quality: 3}
   # The README's first picture: the town map, the dungeon, a battle with its
   # cut-in, and a talk, about 12 seconds.
   go-zen.gif:

@@ -71,7 +71,7 @@ The window, a headless session and the command line share the rules. The keys ar
 
 ## Screens
 
-All from [Go Zen](examples/go-zen) at 1920x1080.
+From [Go Zen](examples/go-zen) at 1920x1080 and [Terrace Quarter](examples/space) at 960x540.
 
 | Conversation | Painted scene |
 |:--|:--|
@@ -84,10 +84,8 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 | ![the shop's goods](docs/images/go-zen-shop.jpg) | ![Maren's skill tree with Ink Burst chosen](docs/images/go-zen-tree.jpg) |
 | Title | |
 | ![the title screen](docs/images/go-zen-title.jpg) | |
-
-### Continuous stacked spaces
-
-Walk from a plaza up exterior stairs, across a bridge and onto a roof terrace without a scene change. The [technical demo and short video](docs/examples/stacked-spaces.md) show the bounded geometry and its current limits. Requires schema version 8.
+| Town with upper floors | Wall-mounted stairs |
+| ![An open plaza with upper floors and connecting stairs](docs/images/space-street.jpg) | ![Stone stairs along a wall lead from the bridge to the roof terrace](docs/images/space-stairs.jpg) |
 
 ### Novel games
 
@@ -150,19 +148,56 @@ See [the battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-
 
 Start the game with `--dev` and these keys work while you play.
 
-| F5: edit the YAML under `--dir`, the line changes in place | F9: a note with the screen and the state |
-|:--|:--|
-| ![Hedda's line is edited in the YAML and F5 shows the new text at the same place](docs/images/playtest-reload.gif) | ![F9 opens a note, a comment is typed and saved](docs/images/playtest-memo.gif) |
-| F7: win rates of the battles here | F8 State: flip a flag, step a number |
-| ![win rates by troop](docs/images/go-zen-balance.jpg) | ![flag.thanked_hedda and chose.toast in the development panel](docs/images/novel-panel.jpg) |
-| F8 Flags: what each event sets and reads | F8 Scenes: jump to an event |
-| ![the flags each event sets and reads](docs/images/novel-flags.jpg) | ![the Scenes tab jumps to the late night](docs/images/playtest-jump.gif) |
-| F8 Command: run a line of YAML | F8 Frames: ticks and frames a second, the slowest Update and Draw |
-| ![a set typed into the Command tab, then the State tab shows the flag](docs/images/playtest-command.gif) | ![the frame meter over the tavern](docs/images/playtest-frames.jpg) |
-| F6: the character book, every page open: each character's profile, faces and relations | |
-| ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](docs/images/novel-characters.jpg) | |
-| Tab: relationship chart; arrows choose a face, Z focuses its neighbours, Z again opens its page, and X returns to the full chart | Ox's incoming and outgoing neighbours gather around him |
-| ![Go Zen's full relationship chart with face icons and coloured connections](docs/images/go-zen-relations.jpg) | ![Ox focused at the centre of the relationship chart with his neighbours in a circle](docs/images/go-zen-relations-focus.jpg) |
+<table>
+<tr>
+<th width="50%">F5: edit the YAML under <code>--dir</code>, the line changes in place</th>
+<th width="50%">F9: a note with the screen and the state</th>
+</tr>
+<tr>
+<td width="50%"><img src="docs/images/playtest-reload.gif" width="480" alt="Hedda&#x27;s line is edited in the YAML and F5 shows the new text at the same place"></td>
+<td width="50%"><img src="docs/images/playtest-memo.gif" width="480" alt="F9 opens a note, a comment is typed and saved"></td>
+</tr>
+<tr>
+<td width="50%">F7: win rates of the battles here</td>
+<td width="50%">F8 State: flip a flag, step a number</td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/images/go-zen-balance.jpg" width="480" alt="win rates by troop"></td>
+<td width="50%"><img src="docs/images/novel-panel.jpg" width="480" alt="flag.thanked_hedda and chose.toast in the development panel"></td>
+</tr>
+<tr>
+<td width="50%">F8 Flags: what each event sets and reads</td>
+<td width="50%">F8 Scenes: jump to an event</td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/images/novel-flags.jpg" width="480" alt="the flags each event sets and reads"></td>
+<td width="50%"><img src="docs/images/playtest-jump.gif" width="480" alt="the Scenes tab jumps to the late night"></td>
+</tr>
+<tr>
+<td width="50%">F8 Command: run a line of YAML</td>
+<td width="50%">F8 Frames: ticks and frames a second, the slowest Update and Draw</td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/images/playtest-command.gif" width="480" alt="a set typed into the Command tab, then the State tab shows the flag"></td>
+<td width="50%"><img src="docs/images/playtest-frames.jpg" width="480" alt="the frame meter over the tavern"></td>
+</tr>
+<tr>
+<td width="50%">F6: the character book, every page open: each character&#x27;s profile, faces and relations</td>
+<td width="50%"></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/images/novel-characters.jpg" width="480" alt="Wren&#x27;s page in the character book: her picture, fields, introduction and how she sees the others"></td>
+<td width="50%"></td>
+</tr>
+<tr>
+<td width="50%">Tab: relationship chart; arrows choose a face, Z focuses its neighbors, Z again opens its page, and X returns to the full chart</td>
+<td width="50%">Ox&#x27;s incoming and outgoing neighbors gather around him</td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/images/go-zen-relations.jpg" width="480" alt="Go Zen&#x27;s full relationship chart with face icons and colored connections"></td>
+<td width="50%"><img src="docs/images/go-zen-relations-focus.jpg" width="480" alt="Ox focused at the center of the relationship chart with his neighbors in a circle"></td>
+</tr>
+</table>
 
 ## Install
 
