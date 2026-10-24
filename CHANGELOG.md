@@ -6,6 +6,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
+- Package games with `gozen pack desktop` and matching prebuilt player runtimes. Players need no Go toolchain or authoring CLI.
+
 - Create playable RPG, novel and campaign templates with `gozen new`, using only YAML and assets. Beginner documentation now starts with the no-code authoring workflow.
 - Run a game directory with `gozen play run <game-dir>` without writing a Go wrapper. The CLI and `play.Main` share standard options, development tools, rendering and save behavior.
 

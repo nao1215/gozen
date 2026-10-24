@@ -118,3 +118,11 @@ The sample browser builds keep game files outside WebAssembly. Their generated `
 - Do not add pictures, music or fonts without the right to use them. Record where each came from.
 - Do not edit generated files (`data/schema/*.json` in Gozen itself).
 - Do not say the game is done while `gozen check` reports an error.
+
+For desktop delivery, use `gozen pack desktop GAME OUT --runtime RUNTIME
+--target OS-ARCH` with a matching release runtime. Keep the output directory
+new and outside both inputs. If the game has an asset policy, first use
+`pack release` and export its approved output. Run the packaged player after
+moving the directory, with isolated saves; check save/reload and the actual
+native target. Cross-compilation alone is not runtime verification. Browser
+export remains planned. See the site's `pack desktop` command documentation.

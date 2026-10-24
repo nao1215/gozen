@@ -1,0 +1,115 @@
+version: '1'
+suite:
+  name: Gozen desktop distribution
+scenarios:
+- name: a relocated package plays and restores without its source or authoring tools
+  tags: [graphics, desktop]
+  steps:
+  - run:
+      command: gozen new source --id desktop-roundtrip
+  - assert: {exit_code: 0}
+  - fixture: {file: source/main.go, content: 'package main'}
+  - fixture: {file: source/saves/private.json, content: '{}'}
+  - run:
+      command: gozen pack desktop source package --runtime "${env:GOZEN_RUNTIME}"
+  - assert: {exit_code: 0, stderr: {equals: ''}}
+  - assert:
+      file: {path: package/game/main.go, exists: false}
+  - assert:
+      file: {path: package/game/saves/private.json, exists: false}
+  - assert:
+      file: {path: package/runtime-licenses/LICENSE, contains: MIT}
+  - run:
+      command: python3 -c "import os; os.rename('package', 'moved'); os.rename('source', 'source-retired'); os.mkdir('empty-tools')"
+  - assert: {exit_code: 0}
+  - fixture:
+      file: save.txt
+      content: |
+        gap 12
+        wait 10
+        do open: save
+        press ok
+        wait 90
+        shot saved
+        quit
+  - run:
+      command: '"${workdir}/moved/gozen-player${env:GOZEN_EXE_SUFFIX}" --dev --mute --start village --gold 37 --script save.txt --shots first --save-dir saves'
+      env: {PATH: '${workdir}/empty-tools'}
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: saves/save1.json
+        json: {path: $.state.gold, equals: 37}
+  - fixture:
+      file: load.txt
+      content: |
+        gap 12
+        wait 10
+        press ok
+        press ok
+        wait 20
+        shot restored
+        do open: save
+        press down
+        press ok
+        wait 90
+        quit
+  - run:
+      command: '"${workdir}/moved/gozen-player${env:GOZEN_EXE_SUFFIX}" --dev --mute --script load.txt --shots second --save-dir saves'
+      env: {PATH: '${workdir}/empty-tools'}
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: saves/save2.json
+        json: {path: $.state.gold, equals: 37}
+  - assert:
+      file:
+        path: saves/save2.json
+        json: {path: $.state.location, equals: village}
+  - assert:
+      image: {path: second/restored.png, format: png, width: 960, height: 540}
+
+- name: desktop rejects missing runtime and invalid targets without output
+  matrix:
+  - {arguments: 'source output'}
+  - {arguments: 'source output --runtime absent --target unknown'}
+  steps:
+  - run:
+      command: gozen pack desktop ${arguments}
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr: {contains: 'gozen pack desktop --help'}
+      changes: {created: [], modified: [], deleted: []}
+
+- name: an unusable runtime leaves no partial package
+  matrix:
+  - {metadata: 'not json', message: 'runtime metadata'}
+  - {metadata: '{"version":"obsolete","target":"unknown"}', message: 'runtime is obsolete'}
+  steps:
+  - fixture:
+      file: runtime/runtime.json
+      content: '${metadata}'
+  - run:
+      command: gozen pack desktop source output --runtime runtime
+  - assert:
+      exit_code: 1
+      stdout: {equals: ''}
+      stderr: {contains: '${message}'}
+      changes: {created: [], modified: [], deleted: []}
+
+- name: desktop never replaces an existing output
+  steps:
+  - fixture: {file: output/keep.txt, content: original}
+  - run:
+      command: gozen pack desktop source output --runtime absent
+  - assert:
+      exit_code: 1
+      stdout: {equals: ''}
+      stderr: {contains: 'output already exists'}
+      changes: {created: [], modified: [], deleted: []}
+      file: {path: output/keep.txt, contains: original}

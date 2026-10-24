@@ -209,6 +209,9 @@ jobs:
       - name: Render on the native desktop
         if: runner.os != 'Linux'
         run: go test -tags=graphics ./play ./puppet -run TestGraphics -count=1
+      - name: Install runtime license collector
+        if: runner.os == 'Linux'
+        run: go install github.com/google/go-licenses/v2@v2.0.1
       - name: Capture the CLI screenshot pipeline on Linux
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum --error-file=/dev/stderr make e2e-graphics
@@ -224,6 +227,20 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:PATH = (Join-Path $PWD bin) + [IO.Path]::PathSeparator + $env:PATH
           $env:GOZEN_GAME_BIN = Join-Path $PWD "bin/gozen-game$suffix"
+          go build -trimpath -buildvcs=false -o "build/runtime/local/gozen-player$suffix" ./cmd/gozen-player
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $target = (go env GOOS) + '-' + (go env GOARCH)
+          go run ./internal/dev/runtimebundle -player "build/runtime/local/gozen-player$suffix" -target $target -version devel -out build/runtime/local/runtime.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item LICENSE build/runtime/local/LICENSE
+          go install github.com/google/go-licenses/v2@v2.0.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:GOROOT = go env GOROOT
+          $env:CGO_ENABLED = '0'
+          go-licenses save ./cmd/gozen-player --save_path=build/runtime/local/THIRD_PARTY_LICENSES --force
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:GOZEN_RUNTIME = Join-Path $PWD build/runtime/local
+          $env:GOZEN_EXE_SUFFIX = $suffix
           Push-Location build/atago
           try {
             atago run --ci --parallel 1 --tag graphics ../../e2e/atago

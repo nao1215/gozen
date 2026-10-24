@@ -61,8 +61,10 @@ jobs:
           # A release builds from a clean module cache, never one a pull request wrote.
           cache: false
 
-      - name: Install rpm so the .rpm file list can be inspected
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm
+      - name: Install package inspection and desktop test dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm xvfb xauth libgl1 libegl1 libasound2t64
+
+      - uses: nao1215/setup-atago@5c563dcd9d85e114f8abe8bbdcd058e51de09efb # v0.1.3
 
       - name: Install go-licenses
         run: go install github.com/google/go-licenses/v2@v2.0.1
@@ -74,7 +76,7 @@ jobs:
           args: release --snapshot --clean --skip=publish,sign,sbom
 
       - name: Smoke-test artifacts
-        run: ./scripts/smoke_artifacts.sh dist
+        run: xvfb-run --auto-servernum --error-file=/dev/stderr ./scripts/smoke_artifacts.sh dist
 
       - name: Upload artifacts for the macOS and Windows smoke jobs
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -108,6 +110,8 @@ jobs:
           name: dist-snapshot
           path: dist
 
+      - uses: nao1215/setup-atago@5c563dcd9d85e114f8abe8bbdcd058e51de09efb # v0.1.3
+
       - name: Smoke-test the macOS artifacts
         if: runner.os == 'macOS'
         run: ./scripts/smoke_artifacts.sh dist
@@ -133,3 +137,12 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $version -notlike 'gozen v*') { throw "gozen version printed '$version'" }
           & $exe check e2e/atago/fixtures/game
           if ($LASTEXITCODE -ne 0) { throw "gozen check failed" }
+          $runtimeZip = Get-ChildItem "dist/gozen-runtime_*_windows_$arch.zip" | Select-Object -First 1
+          if (-not $runtimeZip) { throw "no Windows runtime archive" }
+          $runtimeDir = Join-Path $env:RUNNER_TEMP gozen-runtime
+          Expand-Archive -Path $runtimeZip.FullName -DestinationPath $runtimeDir
+          $env:GOZEN_RUNTIME = $runtimeDir
+          $env:GOZEN_EXE_SUFFIX = '.exe'
+          $env:PATH = $out + [IO.Path]::PathSeparator + $env:PATH
+          atago run --ci --parallel 1 --tag desktop e2e/atago/desktop.atago.yaml
+          if ($LASTEXITCODE -ne 0) { throw "packaged desktop gameplay failed" }
