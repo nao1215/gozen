@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -146,4 +148,152 @@ func TestBookFailures(t *testing.T) {
 	}
 	invoke(t, 2, "book")
 	invoke(t, 2, "book", dir, dir)
+}
+
+// The optional parts of a game each have a line in the book when the game uses them.
+func TestBookShowsDescriptionsRoamersLooksMusicAndBranches(t *testing.T) {
+	dir := designGame(t)
+	world := filepath.Join(dir, "data", "world.yaml")
+	edit(t, world, "    name: Camp\n", "    name: Camp\n    desc: A quiet clearing.\n")
+	edit(t, world, "      tiles:\n        S: {start: true}", `      roamers:
+        - name: Ghoul
+          picture: mote.png
+          move: chase
+          appear: "flag.met"
+          every: "3"
+          troops: [{troop: lesson}]
+          meet: [{say: Boo}]
+        - name: Brute
+          picture: mote.png
+          move: wander
+          count: "1"
+          troops: [{troop: pair}]
+      looks:
+        - {when: "var.floor >= 2", wall: mote.png, battle_background: mote.png, area: Deep}
+      tiles:
+        S: {start: true}`)
+	edit(t, world, "events:\n", `events:
+  duel:
+    do:
+      - battle: rival
+        fighters: [scout]
+        on_win: [{say: Won}]
+        on_lose: [{say: Lost}]
+  watch: {trigger: enter, location: camp, when: "gold > 0", do: [{say: Welcome back.}]}
+`)
+	write(t, filepath.Join(dir, "assets", "calm.ogg"), "sentinel")
+	write(t, filepath.Join(dir, "data", "music.yaml"), `music:
+  songs:
+    theme: {file: calm.ogg, name: Theme}
+    wind: {dir: wind, bpm: 90, moods: {calm: calm, tense: tense}}
+  rules:
+    field:
+      - {when: "gold > 100", play: theme, now: true}
+      - {when: "gold <= 100", mood: calm}
+`)
+	write(t, filepath.Join(dir, "assets", "wind", "calm.ogg"), "sentinel")
+	write(t, filepath.Join(dir, "assets", "wind", "tense.ogg"), "sentinel")
+	out, _ := invoke(t, 0, "book", dir)
+	for _, want := range []string{
+		"A quiet clearing.",
+		"  - Chaser Ghoul (chase, appears flag.met, 1 cell per 3 steps)",
+		"    - Boo",
+		"  - Strong foe Brute (wander, count 1): [pair]",
+		"  - Look var.floor >= 2: wall mote.png, battle background mote.png",
+		"- battle rival (only [scout])",
+		"- on a win\n  - Won",
+		"- on a loss\n  - Lost",
+		"### watch\n\n- Welcome back.",
+		"at_camp -->|enter gold > 0| watch",
+		"## Music",
+		"- theme (Theme): ",
+		"- wind (): calm tense",
+		"- Rule field: gold > 100 → theme (now)",
+		"- Rule field: gold <= 100 → calm",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the book lacks %q", want)
+		}
+	}
+}
+
+func TestBookFormatsShareACompleteDetachedReport(t *testing.T) {
+	dir := designGame(t)
+	db, err := data.Load(os.DirFS(dir), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := buildBook(db)
+	before := renderBook(model)
+	encoded, err := json.Marshal(model)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Game.Title = "changed after projection"
+	for _, enemy := range db.Enemies {
+		enemy.Name = "changed enemy"
+	}
+	for _, actor := range db.Actors {
+		actor.Name = "changed actor"
+	}
+	for family := range db.MonsterFamilies {
+		db.MonsterFamilies[family] = "changed family"
+	}
+	after, err := json.Marshal(model)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(encoded) != string(after) || before != renderBook(model) {
+		t.Fatal("book retained mutable source definitions")
+	}
+	out, _ := invoke(t, 0, "book", dir, "--format", "json")
+	raw := resultData(t, out, "book")
+	var sections map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &sections); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"game", "locations", "monsters", "troops", "skills", "items", "classes", "events", "music", "flow", "lineage"} {
+		if len(sections[name]) == 0 || string(sections[name]) == "null" {
+			t.Fatalf("missing %s: %s", name, raw)
+		}
+	}
+	lines, _ := invoke(t, 0, "book", dir, "--format", "jsonl")
+	dec := json.NewDecoder(strings.NewReader(lines))
+	items := 0
+	for {
+		var row struct {
+			Type, ID, Status string
+			Data             json.RawMessage
+		}
+		err := dec.Decode(&row)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if row.Type == "summary" {
+			var counts struct{ Sections int }
+			if json.Unmarshal(row.Data, &counts) != nil || counts.Sections != items {
+				t.Fatalf("%s", row.Data)
+			}
+			continue
+		}
+		items++
+		want := sections[row.ID]
+		if row.ID == "breeding" && len(want) == 0 && string(row.Data) == "null" {
+			continue
+		}
+		if string(want) != string(row.Data) {
+			t.Fatalf("section %s changed between encodings", row.ID)
+		}
+	}
+	if items != len(model.sections()) {
+		t.Fatalf("%d sections", items)
+	}
+	lineage, _ := invoke(t, 0, "book", dir, "--section", "lineage")
+	if strings.Contains(lineage, "## Locations") || strings.Contains(lineage, "## Items") {
+		t.Fatal("lineage selection included other sections")
+	}
+	invoke(t, 2, "book", "missing", "--section", "unknown", "--format", "json")
 }

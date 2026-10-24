@@ -1,18 +1,16 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
-	data "github.com/nao1215/gozen/schema"
 )
 
 // lineageLines writes a species' family tree as an indented Markdown list: each line is a
 // species with how it is obtained, and a pair's parents follow it one level deeper.
-func lineageLines(db *gamedata.DB, lin *gamedata.Lineage, id string) []string {
-	root := lin.Tree(id, nil)
+func lineageLines(db *bookReport, lin map[string]lineageMonster, id string) []string {
+	root := lin[id].Lineage
 	if root == nil {
 		return nil
 	}
@@ -20,7 +18,7 @@ func lineageLines(db *gamedata.DB, lin *gamedata.Lineage, id string) []string {
 	root.Walk(func(n *gamedata.LineageNode) {
 		lines = append(lines, strings.Repeat("  ", n.Depth+1)+"- "+lineageLine(db, n))
 	})
-	if rs := lin.Recipes(id); len(rs) > 1 {
+	if rs := lin[id].Recipes; len(rs) > 1 {
 		var others []string
 		for _, r := range rs[1:] {
 			others = append(others, recipeText(db, r))
@@ -30,7 +28,7 @@ func lineageLines(db *gamedata.DB, lin *gamedata.Lineage, id string) []string {
 	return lines
 }
 
-func lineageLine(db *gamedata.DB, n *gamedata.LineageNode) string {
+func lineageLine(db *bookReport, n *gamedata.LineageNode) string {
 	name := n.Species
 	if e := db.Enemies[n.Species]; e != nil {
 		name = fmt.Sprintf("%s (%s)", e.Name, n.Species)
@@ -49,7 +47,7 @@ func lineageLine(db *gamedata.DB, n *gamedata.LineageNode) string {
 	}()
 }
 
-func recipeText(db *gamedata.DB, r gamedata.Recipe) string {
+func recipeText(db *bookReport, r gamedata.Recipe) string {
 	switch r.Kind {
 	case gamedata.RecipeCapture:
 		return "capture"
@@ -73,38 +71,16 @@ type lineageMonster struct {
 	Lineage *gamedata.LineageNode `json:"lineage"`
 }
 
-// bookLineageJSON writes every monster's recipes and default family tree as JSON.
-func (c *command) bookLineageJSON(dir string) error {
-	fsys, err := gameFS(dir)
-	if err != nil {
-		return err
-	}
-	if err := gamedata.UseWords(fsys); err != nil {
-		return err
-	}
-	db, err := data.Load(fsys, ".")
-	if err != nil {
-		return err
-	}
-	lin := gamedata.BuildLineage(db)
-	monsters := []lineageMonster{}
-	for _, id := range db.Ordered("enemies") {
-		e := db.Enemies[id]
-		if e == nil {
-			continue
+func renderLineage(b *bookReport) string {
+	var out strings.Builder
+	for _, id := range b.Ordered("enemies") {
+		if e := b.Enemies[id]; e != nil {
+			fmt.Fprintf(&out, "### %s (%s)\n\n", e.Name, id)
+			for _, line := range lineageLines(b, b.Lineage, id) {
+				fmt.Fprintln(&out, line)
+			}
+			out.WriteByte('\n')
 		}
-		recipes := lin.Recipes(id)
-		if recipes == nil {
-			recipes = []gamedata.Recipe{}
-		}
-		monsters = append(monsters, lineageMonster{ID: id, Name: e.Name, Family: e.Family, Rank: e.Rank, Sex: e.Sex, Recipes: recipes, Lineage: lin.Tree(id, nil)})
 	}
-	b, err := json.MarshalIndent(struct {
-		Monsters []lineageMonster `json:"monsters"`
-	}{monsters}, "", "  ")
-	if err != nil {
-		return err
-	}
-	c.out.Println(string(b))
-	return nil
+	return out.String()
 }

@@ -75,7 +75,7 @@ func read(t *testing.T, p string) []byte {
 // helpPaths are every page: the top, the groups, the leaves, and the leaves of
 // the production tools.
 func helpPaths() []string {
-	paths := []string{"", "prompt", "prompt lint", "art mosaic", "art fetch", "run"}
+	paths := []string{"", "prompt", "prompt lint", "mosaic", "models fetch", "run"}
 	paths = append(paths, slices.Sorted(maps.Keys(groups))...)
 	return append(paths, slices.Sorted(maps.Keys(pages))...)
 }
@@ -102,7 +102,7 @@ func TestHelpAndArgumentContract(t *testing.T) {
 		}
 		if sub != "" {
 			invoke(t, 2, append(strings.Fields(sub), "--unknown")...)
-			if sub != "version" && sub != "art fetch" && sub != "theme list" {
+			if sub != "version" && sub != "models fetch" && sub != "theme list" {
 				invoke(t, 2, strings.Fields(sub)...)
 			}
 		}
@@ -143,7 +143,7 @@ func TestGroupsAndUnknownCommands(t *testing.T) {
 		}
 		invoke(t, 2, name, "absent")
 	}
-	for _, args := range [][]string{{"layout"}, {"curve"}, {"sim", "game", "lesson"}, {"art", "mosaic", "fetch"}} {
+	for _, args := range [][]string{{"layout"}, {"curve"}, {"sim", "game", "lesson"}, {"mosaic", "fetch"}} {
 		_, stderr := invoke(t, 2, args...)
 		if !strings.Contains(stderr, "unknown command") || strings.Contains(stderr, "is now") {
 			t.Fatalf("%v: %q", args, stderr)
@@ -172,7 +172,7 @@ func TestHelpPagesHaveTheSameShape(t *testing.T) {
 		if strings.Contains(out, "  Other:\n") {
 			t.Errorf("%s: an option is missing from the groups", sub)
 		}
-		if _, ok := groups[sub]; (ok || sub == "" || sub == "art mosaic") != strings.Contains(out, "[Commands]\n") {
+		if _, ok := groups[sub]; (ok || sub == "" || sub == "mosaic" || sub == "prompt") != strings.Contains(out, "[Commands]\n") {
 			t.Errorf("%s: [Commands] belongs to the top and the groups only", sub)
 		}
 		for line := range strings.SplitSeq(out, "\n") {
@@ -216,7 +216,7 @@ func TestGNUOptionForms(t *testing.T) {
 
 func TestDispatchHelpVersionAndDelegates(t *testing.T) {
 	top, _ := invoke(t, 0, "--help")
-	for _, sub := range []string{"check", "sim", "capture", "book", "export", "release", "trial", "art", "version", "help"} {
+	for _, sub := range []string{"check", "sim", "capture", "book", "export", "release", "trial", "prompt", "mosaic", "models", "version", "help"} {
 		if !strings.Contains(top, "  "+sub+" ") {
 			t.Fatalf("top help lacks %s: %s", sub, top)
 		}
@@ -227,18 +227,19 @@ func TestDispatchHelpVersionAndDelegates(t *testing.T) {
 	if out, _ := invoke(t, 0, "help", "help"); out != top {
 		t.Fatal("gozen help help differs from gozen --help")
 	}
-	for _, path := range [][]string{{"sim"}, {"sim", "battle"}, {"art", "mosaic", "manual"}, {"art", "fetch"}} {
+	for _, path := range [][]string{{"sim"}, {"sim", "battle"}, {"mosaic", "add"}, {"models", "fetch"}} {
 		viaHelp, _ := invoke(t, 0, append([]string{"help"}, path...)...)
 		if direct, _ := invoke(t, 0, append(path, "--help")...); viaHelp != direct {
 			t.Fatalf("help %v differs from %v --help", path, path)
 		}
 	}
-	for _, name := range []string{"mosaic", "fetch"} {
-		out, stderr := invoke(t, 0, "help", "art", name)
-		if !strings.HasPrefix(out, "gozen art "+name+" - ") || !strings.Contains(out, "https://github.com/nao1215/gozen#gozen") || stderr != "" {
-			t.Fatalf("help art %s: %q %q", name, out, stderr)
+	for _, path := range [][]string{{"mosaic"}, {"models", "fetch"}} {
+		out, stderr := invoke(t, 0, append([]string{"help"}, path...)...)
+		if !strings.HasPrefix(out, "gozen "+strings.Join(path, " ")+" - ") || stderr != "" {
+			t.Fatalf("%v: %s %s", path, out, stderr)
 		}
 	}
+
 	invoke(t, 2, "help", "absent")
 	invoke(t, 2, "help", "sim", "extra")
 	invoke(t, 2, "version", "extra")
@@ -249,8 +250,8 @@ func TestDispatchHelpVersionAndDelegates(t *testing.T) {
 		t.Fatal(out)
 	}
 	invoke(t, 1, "prompt", "--config", "missing.yaml")
-	invoke(t, 2, "art", "mosaic")
-	invoke(t, 2, "art", "mosaic", "absent")
+	invoke(t, 2, "mosaic")
+	invoke(t, 2, "mosaic", "absent")
 }
 
 func TestHelpExplainsCodes(t *testing.T) {
@@ -494,4 +495,45 @@ func TestOperationRegistrationIsInertAndEnvironmentIndependent(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMachineHelpUsesTheRegisteredFlagsWithoutInputs(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("ONNXRUNTIME_LIB", "must-not-be-opened")
+	out, _ := invoke(t, 0, "help", "--format", "json")
+	var catalog struct{ Commands []helpCommand }
+	if err := json.Unmarshal(resultData(t, out, "help"), &catalog); err != nil {
+		t.Fatal(err)
+	}
+	if len(catalog.Commands) != len(tree) {
+		t.Fatalf("%d commands, want %d", len(catalog.Commands), len(tree))
+	}
+	seen := map[string]bool{}
+	for _, description := range catalog.Commands {
+		if seen[description.Command] {
+			t.Fatalf("duplicate %s", description.Command)
+		}
+		seen[description.Command] = true
+		_, _, flags := describeCommand(description.Command, tree[description.Command], tree)
+		for _, option := range description.Options {
+			flag := flags.Lookup(option.Name)
+			if flag == nil || flag.DefValue != option.Default || flag.Value.Type() != option.Type {
+				t.Fatalf("%s: %+v", description.Command, option)
+			}
+		}
+	}
+	one, _ := invoke(t, 0, "help", "capture", "--format", "json")
+	var selected struct{ Commands []helpCommand }
+	if err := json.Unmarshal(resultData(t, one, "help"), &selected); err != nil || len(selected.Commands) != 1 || selected.Commands[0].Command != "capture" {
+		t.Fatalf("%s: %v", one, err)
+	}
+	lines, _ := invoke(t, 0, "help", "capture", "--format", "jsonl")
+	if strings.Count(strings.TrimSpace(lines), "\n") != 1 {
+		t.Fatalf("%s", lines)
+	}
+	files, err := os.ReadDir(".")
+	if err != nil || len(files) != 0 {
+		t.Fatalf("help changed directory: %v %v", files, err)
+	}
+	invoke(t, 2, "help", "missing", "--format", "json")
 }

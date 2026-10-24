@@ -13,16 +13,16 @@ scenarios:
       stderr:
         equals: ''
       changes: {created: [], modified: [], deleted: []}
-- name: gozen art mosaic help for ${sub}
+- name: gozen mosaic help for ${sub}
   matrix:
   - sub: auto
   - sub: inspect
-  - sub: manual
-  - sub: manual add
-  - sub: manual grow
+  - sub: list
+  - sub: add
+  - sub: grow
   steps:
   - run:
-      command: gozen art mosaic ${sub} --help
+      command: gozen mosaic ${sub} --help
   - assert:
       exit_code: 0
       stdout:
@@ -73,19 +73,19 @@ scenarios:
       stderr:
         contains: ['missing.yaml', 'Requirements:', 'gozen#gozen']
       changes: {created: [], modified: [], deleted: []}
-- name: gozen art mosaic inference missing prerequisites writes no output
+- name: gozen mosaic inference missing prerequisites writes no output
   steps:
   - fixture:
       file: game/assets/pattern.png
       from: ../../docs/examples/production/pattern.png
   - run:
-      command: gozen art mosaic auto --fix '' --tags '' --shape box --passes default --manual '' --out processed game pattern.png
+      command: gozen mosaic auto --fix '' --tags '' --shape box --passes default --manual '' --out processed game pattern.png
   - assert:
       exit_code: 1
       stderr:
         contains: ['Requirements:', 'gozen#gozen']
       changes: {created: [], modified: [], deleted: []}
-- name: gozen art mosaic manual workflow preserves input and read-only operations write nothing
+- name: gozen mosaic workflow preserves input and read-only operations write nothing
   steps:
   - fixture:
       file: game/assets/pattern.png
@@ -97,7 +97,7 @@ scenarios:
       file: edits.yaml
       content: 'pattern.png: {skip: true, block: 4, add: [[1, 1, 7, 7], [14, 10, 8, 9]]}'
   - run:
-      command: gozen art mosaic auto --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed game pattern.png
+      command: gozen mosaic auto --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed game pattern.png
   - assert:
       exit_code: 0
   - assert:
@@ -110,35 +110,35 @@ scenarios:
         recursive: true
         contains: [pattern.png, report.json, masks/pattern.png.png, review.md]
   - run:
-      command: gozen art mosaic inspect --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed game pattern.png
+      command: gozen mosaic inspect --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed game pattern.png
   - assert:
       exit_code: 0
       stdout:
         contains: ['"status":"done"', '"output_block":4']
       changes: {created: [], modified: [], deleted: []}
   - run:
-      command: gozen art mosaic auto --fix '' --tags '' --shape box --passes default --dry-run --manual edits.yaml --out dry-output game pattern.png
+      command: gozen mosaic auto --fix '' --tags '' --shape box --passes default --dry-run --manual edits.yaml --out dry-output game pattern.png
   - assert:
       exit_code: 0
       changes: {created: [], modified: [], deleted: []}
   - run:
-      command: gozen art mosaic manual grow --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed --size 48 --rect 0,0,8,8 --by 2 game pattern.png
+      command: gozen mosaic grow --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed --size 48 --rect 0,0,8,8 --by 2 game pattern.png
   - assert:
       exit_code: 0
   - run:
-      command: gozen art mosaic manual clear --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed game pattern.png
+      command: gozen mosaic clear --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed game pattern.png
   - assert:
       exit_code: 1
       stderr:
         contains: 'Requirements:'
       changes: {created: [], modified: [], deleted: []}
-- name: gozen art mosaic rejects empty regions without changing the fix file
+- name: gozen mosaic rejects empty regions without changing the fix file
   steps:
   - fixture:
       file: game/assets/pattern.png
       from: ../../docs/examples/production/pattern.png
   - run:
-      command: gozen art mosaic manual add --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed --rect 80,80,4,4 game pattern.png
+      command: gozen mosaic add --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed --rect 80,80,4,4 game pattern.png
   - assert:
       exit_code: 1
       stderr:
@@ -215,3 +215,38 @@ scenarios:
           {"version":1,"command":"prompt","type":"summary","status":"ok","data":{"succeeded":0,"failed":0}}
       stderr: {equals: ''}
       changes: {created: [], modified: [], deleted: []}
+- name: model list is structured and does not fetch
+  steps:
+  - run:
+      command: gozen models list --format json
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.command, equals: models list}
+        - {path: '$.data[0].name', equals: censor}
+        - {path: '$.data[1].name', equals: face}
+        - {path: '$.data[2].name', equals: head}
+      changes: {created: [], modified: [], deleted: []}
+- name: mosaic ${format} still publishes the manual instruction and review image
+  matrix:
+  - {format: json}
+  - {format: jsonl}
+  steps:
+  - fixture:
+      file: game/assets/pattern.png
+      from: ../../docs/examples/production/pattern.png
+  - run:
+      command: gozen mosaic skip game pattern.png --manual edits.yaml --out processed --fix '' --tags '' --shape box --passes default --format ${format}
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['"command":"mosaic skip"', '"status":"ok"']
+      file:
+        path: edits.yaml
+        contains: 'skip: true'
+  - assert:
+      file:
+        path: processed/manual/pattern.png.masked.png
+        exists: true

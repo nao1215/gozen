@@ -1,10 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 
+	"github.com/nao1215/gozen/internal/cliio"
 	"github.com/nao1215/gozen/internal/diag"
 
 	"github.com/nao1215/gozen/cmd/internal/checkdata"
@@ -12,7 +13,7 @@ import (
 	data "github.com/nao1215/gozen/schema"
 )
 
-// checkJSON prints every problem of the game as a JSON array of diagnostics (file, line,
+// checkJSON reports every problem of the game as structured diagnostics (file, line,
 // col, path, message, severity, code) on stdout, warnings included. It fails when one is
 // an error. only is "", "structure" or "layout" (check --only); with layout, the
 // warnings of the structure are left out (its errors stay: the layout needs a game).
@@ -58,19 +59,29 @@ func (c *command) checkJSON(dir, only string) error {
 	if diags == nil {
 		diags = gamedata.Diagnostics{}
 	}
-	b, err := json.MarshalIndent(diags, "", "  ")
-	if err != nil {
-		return err
-	}
-	c.out.Println(string(b))
 	failed := 0
 	for _, d := range diags {
 		if d.Severity == "error" {
 			failed++
 		}
 	}
+	status := "ok"
 	if failed > 0 {
-		return fmt.Errorf("check: %d errors", failed)
+		status = "failed"
+	}
+	for i, d := range diags {
+		if c.report.Format != "jsonl" {
+			break
+		}
+		if err := c.report.Item(c.out, strconv.Itoa(i), d.Severity, d); err != nil {
+			return err
+		}
+	}
+	if err := c.report.Result(c.out, status, diags); err != nil {
+		return err
+	}
+	if failed > 0 {
+		return cliio.ErrReported
 	}
 	return nil
 }

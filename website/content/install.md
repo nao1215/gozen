@@ -15,7 +15,7 @@ Download the archive for your OS and processor from [Releases](https://github.co
 brew install --cask nao1215/tap/gozen   # macOS and Linux with Homebrew
 ```
 
-[The release page](https://github.com/nao1215/gozen/releases) has `.tar.gz` and `.zip` archives for Linux, macOS and Windows (amd64 and arm64) and `.deb`, `.rpm` and `.apk` packages for Linux. The prebuilt binaries are built without cgo, so they have no ONNX inference for `gozen art mosaic`. Each release signs `checksums.txt` with cosign and attaches SBOMs and SLSA provenance; [Verifying a release](#verifying-a-release) shows the commands.
+[The release page](https://github.com/nao1215/gozen/releases) has `.tar.gz` and `.zip` archives for Linux, macOS and Windows (amd64 and arm64) and `.deb`, `.rpm` and `.apk` packages for Linux. The prebuilt binaries are built without cgo, so they have no ONNX inference for `gozen mosaic`. Each release signs `checksums.txt` with cosign and attaches SBOMs and SLSA provenance; [Verifying a release](#verifying-a-release) shows the commands.
 
 After installation, `gozen version` reports the installed version. Follow [Getting started](/getting-started/) to create your first game. `new`, `check` and simulation do not need a display; `run` needs the graphics runtime described below. Inference tools have additional prerequisites described in [Production tools](/production-tools/).
 
@@ -131,6 +131,6 @@ display at all.
 |:--|:--|
 | ffmpeg | `--record` to write an MP4 of a scripted or automatic play (`sudo apt-get install ffmpeg`, `brew install ffmpeg`, or the ffmpeg build's `bin` on `PATH` on Windows) |
 | zenity | `--external-input` on Linux, for typing text in a system dialog instead of in the window |
-| A C compiler and ONNX Runtime | `gozen art mosaic` detection; see [Production tools](/production-tools/) |
+| A C compiler and ONNX Runtime | `gozen mosaic` detection; see [Production tools](/production-tools/) |
 
 No model, ONNX Runtime or asset download is needed to build or play a game.

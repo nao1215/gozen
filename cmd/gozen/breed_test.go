@@ -55,7 +55,7 @@ func TestSimBreedJSON(t *testing.T) {
 	if !strings.Contains(book, "Recruit: 100% after victory; class: ranger") || !strings.Contains(book, "## Monster breeding") {
 		t.Fatalf("book omitted monster rules: %s", book)
 	}
-	jsonBook, _ := invoke(t, 0, "book", dir, "--format", "json")
+	jsonBook, _ := invoke(t, 0, "book", dir, "--section", "lineage", "--format", "json")
 	var catalog struct {
 		Monsters []struct {
 			ID      string `json:"id"`
@@ -69,7 +69,7 @@ func TestSimBreedJSON(t *testing.T) {
 			} `json:"lineage"`
 		} `json:"monsters"`
 	}
-	if err := json.Unmarshal([]byte(jsonBook), &catalog); err != nil {
+	if err := json.Unmarshal(resultData(t, jsonBook, "book"), &catalog); err != nil {
 		t.Fatal(err)
 	}
 	if len(catalog.Monsters) != 2 || catalog.Monsters[1].Lineage.Recipe.Kind != "pair" || len(catalog.Monsters[1].Lineage.Parents) != 2 || catalog.Monsters[1].Lineage.Parents[1].Ref != "seen" {

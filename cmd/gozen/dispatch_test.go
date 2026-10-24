@@ -32,7 +32,7 @@ func TestUsageErrorsEndWithCodeAndAPointerToHelp(t *testing.T) {
 		{[]string{"book"}, diag.Operands, "gozen book --help"},
 		{[]string{"version", "extra"}, diag.Operands, "gozen version --help"},
 		{[]string{"notes"}, diag.Operands, "gozen notes --help"},
-		{[]string{"help", "GZN9999"}, diag.UnknownCode, "gozen --help"},
+		{[]string{"help", "GZN9999"}, diag.UnknownCode, "gozen help --help"},
 	} {
 		out, stderr := invoke(t, 2, tc.args...)
 		if out != "" {

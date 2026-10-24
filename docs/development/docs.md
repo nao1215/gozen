@@ -76,7 +76,7 @@ The current exclusions (shown in the log of `docs-steps`):
 | cosign, `gh attestation`, slsa-verifier | Need the files of a published release (and a GitHub login) |
 | `gozen run game --dev` (README and edit–play loop) | Opens a window and waits for input. Scripted CLI E2E and documentation image runs exercise the same startup |
 | `gozen capture` | Needs a display. `e2e/atago/graphics.atago.yaml` runs it |
-| `gozen art mosaic auto --model`, `gozen art faces` | Need a detection model and ONNX Runtime (and cgo) |
+| `gozen mosaic auto --model`, `gozen faces` | Need a detection model and ONNX Runtime (and cgo) |
 | `sudo apt-get install xvfb xauth` | Installs system packages. The capture inside Xvfb that follows is run |
 | `gozen <command> [OPTIONS] [ARGUMENTS]` | Explains the form of a command |
 | The YAML of the verb `roll_dice` and the screen `album`, and the 3 expression examples | Need registration in Go code / separate expressions, not one file |
@@ -104,7 +104,7 @@ A type or field without a description, a description for a field that no longer 
 
 Documents are English only. `go test ./internal/dev/docs` (TestDocumentLanguage) fails on Japanese in any Markdown or JSON file of the repository (outside `testdata/`); a word used on purpose (the origin of the name, an engine text key quoted as data) goes in `japaneseAllowed` in `internal/dev/docs/language_test.go`, by file. Go comments and the engine's own Japanese text (its text catalog) are not documents and are not checked.
 
-The vocabulary of adult content belongs only to the mosaic tool ([ADR 0004](../decisions/0004-content-boundary.md)): its code (`internal/mosaic/`) and the `## gozen art mosaic` sections of `website/content/production-tools.md` and `docs/development/production-tools.md`. The same test fails when one of the words of `adultWords` (English and Japanese) appears in any other text file of the repository.
+The vocabulary of adult content belongs only to the mosaic tool ([ADR 0004](../decisions/0004-content-boundary.md)): its code (`internal/mosaic/`) and the `## gozen mosaic` sections of `website/content/production-tools.md` and `docs/development/production-tools.md`. The same test fails when one of the words of `adultWords` (English and Japanese) appears in any other text file of the repository.
 
 ## The site
 

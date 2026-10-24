@@ -1,7 +1,17 @@
 package main
 
 import (
+	"context"
+	"io"
+	"maps"
+	"slices"
+	"strings"
+
+	"github.com/spf13/pflag"
+
 	"github.com/nao1215/gozen/internal/clihelp"
+	"github.com/nao1215/gozen/internal/cliio"
+	"github.com/nao1215/gozen/internal/diag"
 )
 
 // The help pages (ADR 0018, 0024). The examples use the neutral fixture in
@@ -35,7 +45,10 @@ var topPage = clihelp.Page{
 		{"book", "Write the definitions and events as Markdown"},
 		{"export", "Export a playable desktop game or static website"},
 		{"prompt", "Assemble image-generation text from a catalog"},
-		{"art", "Picture and asset tools: mosaic, fetch, faces, puppet"},
+		{"mosaic", "Pixelate and review image regions"},
+		{"models", "List or fetch user-selected inference models"},
+		{"faces", "Find faces in standing pictures"},
+		{"puppet", "Inspect a moving portrait"},
 		{"theme", "Dungeon themes: add the pictures of a theme to a game, list the themes"},
 		{"version", "Print the gozen version"},
 		{"help", "Show the help of a command, or explain a diagnostic code"},
@@ -56,7 +69,7 @@ var topPage = clihelp.Page{
 			"the exit status; gozen help GZN1101 explains it.",
 		"Requirements: check, sim, book, release, trial, trace, notes, and prompt need nothing beyond " +
 			"the gozen binary; cgo is not required. export needs a matching prebuilt runtime bundle. run and capture launch a graphics game, and unattended " +
-			"capture on Linux needs Xvfb. art mosaic inference and art faces need a gozen built with cgo, " +
+			"capture on Linux needs Xvfb. mosaic inference and faces need a gozen built with cgo, " +
 			"an ONNX Runtime shared library, and user-supplied models. See " + clihelp.README,
 	},
 	Hint: `Run "gozen <command> --help" for a command's options and examples.`,
@@ -108,29 +121,7 @@ var groups = map[string]clihelp.Page{
 		Notes:  []string{noRequirements},
 		Hint:   `Run "gozen theme <command> --help" for a command's options and examples.`,
 	},
-	"art": {
-		Summary: "picture and asset tools",
-		Usage:   []string{"gozen art <command> [OPTIONS] ..."},
-		About: "Tools for the pictures of a game: assemble image-generation text from a catalog, pixelate " +
-			"regions of images, download the detection models, find the faces of standing pictures for " +
-			"the balloons, and check a moving portrait.",
-		Commands: [][2]string{
-			{"mosaic", "Pixelate regions of images, with optional ONNX detection"},
-			{"fetch", "Download the pinned detection models into the cache"},
-			{"faces", "Find the faces of the standing pictures for the balloons"},
-			{"puppet", "Check a moving portrait and cut its difference pictures"},
-		},
-		Examples: []clihelp.Example{
-			{"list the models and whether each is fetched", "gozen art fetch --list"},
-			{"check a puppet and show the positions", "gozen art puppet streamer/puppet.yaml"},
-		},
-		Groups: []clihelp.Group{general},
-		Notes: []string{"Requirements: fetch and puppet need nothing beyond the gozen binary " +
-			"(fetch needs the network). mosaic inference and faces need a gozen built with cgo " +
-			"(CGO_ENABLED=1 and a C compiler), an ONNX Runtime shared library, and user-supplied or fetched " +
-			"models; a build without cgo says so and exits 1. Models are never bundled. See " + clihelp.README},
-		Hint: `Run "gozen art <command> --help" for a command's options and examples.`,
-	},
+	"models": {Summary: "inference model cache", Usage: []string{"gozen models <list|fetch> [OPTIONS]"}, Commands: [][2]string{{"list", "List models and cache state"}, {"fetch", "Download models"}}, Examples: []clihelp.Example{{"list available models", "gozen models list"}}, Groups: []clihelp.Group{general}, Notes: []string{noRequirements}},
 }
 
 var pages = map[string]clihelp.Page{
@@ -347,15 +338,15 @@ var pages = map[string]clihelp.Page{
 		},
 	},
 	"book": {
-		Summary: "write the definitions and events as Markdown",
+		Summary: "write the game synopsis as Markdown or structured data",
 		Usage:   []string{"gozen book [OPTIONS] <game-dir>"},
-		About:   "Writes the locations, events, scenes, troops, and items of the game to stdout as one Markdown document. Each monster page includes its lineage (how it is captured or bred). --format json writes only the monsters' lineage data.",
+		About:   "Writes the locations, events, scenes, troops, and items of the game to stdout as one Markdown document. Each monster page includes its lineage (how it is captured or bred). JSON contains the same complete synopsis; --section lineage selects only lineage in every format. JSONL emits one item per section and a final summary.",
 		Examples: []clihelp.Example{
 			{"write the book to a file", "gozen book game > book.md"},
 			{"read it in a pager", "gozen book game | less"},
-			{"read each monster's family tree as JSON", "gozen book game --format json"},
+			{"read each monster's family tree as JSON", "gozen book game --section lineage --format json"},
 		},
-		Groups: []clihelp.Group{{Title: "Output", Flags: []string{"format"}}, general},
+		Groups: []clihelp.Group{{Title: "Output", Flags: []string{"format", "section"}}, general},
 	},
 	"export": {
 		Summary: "export a playable game with a prebuilt runtime",
@@ -396,39 +387,39 @@ var pages = map[string]clihelp.Page{
 		},
 		Notes: []string{"The --list file must not exist yet. --dry-run writes nothing, even with --list. --config is relative to the working directory; when omitted, GAME/trial.yaml is used."},
 	},
-	"art puppet": {
+	"puppet": {
 		Summary: "check a moving portrait and cut its pictures",
-		Usage:   []string{"gozen art puppet [OPTIONS] <puppet.yaml>"},
+		Usage:   []string{"gozen puppet [OPTIONS] <puppet.yaml>"},
 		About: "Loads a puppet (a moving portrait for the puppet package) with the same checks as puppet.Load " +
 			"and prints where each face, closed-eyes, and mouth picture lies on the base. A difference " +
 			"picture as large as the base is cut down to the part that differs. With --out, writes the " +
 			"puppet YAML and the cut pictures (each with at) to a new directory, so the game ships small " +
 			"pictures. The written YAML has no comments.",
 		Examples: []clihelp.Example{
-			{"check a puppet and show the positions", "gozen art puppet streamer/puppet.yaml"},
-			{"write it with small difference pictures", "gozen art puppet streamer/puppet.yaml --out streamer-packed"},
+			{"check a puppet and show the positions", "gozen puppet streamer/puppet.yaml"},
+			{"write it with small difference pictures", "gozen puppet streamer/puppet.yaml --out streamer-packed"},
 		},
 		Groups: []clihelp.Group{{Title: "Output", Flags: []string{"out"}}, general},
 		Notes:  []string{"The output directory must not exist yet.", noRequirements},
 	},
-	"art faces": {
+	"faces": {
 		Summary: "find the faces for the balloons and icons",
-		Usage:   []string{"gozen art faces [OPTIONS] <game-dir>"},
+		Usage:   []string{"gozen faces [OPTIONS] <game-dir>"},
 		About: "Finds the face in each standing picture a painted scene (stage:) cuts a balloon face from: " +
 			"the pictures of the people placed in a stage and the actors' face pictures, and, in a game with a " +
 			"character book (profiles), the actors' and the profiles' pictures its face icons are cut from. Uses the anime face " +
-			"detector that gozen art fetch face downloads, and writes the boxes, the pictures' sizes and " +
+			"detector that gozen models fetch face downloads, and writes the boxes, the pictures' sizes and " +
 			"SHA-256 to assets/faces.json (replacing it). The game reads that file and runs no model, so a web " +
 			"build uses it too. A doll's icon (a face drawn for the balloons) is not searched; it and face_at come first; without a box the face is guessed. gozen check " +
 			"warns of a picture with no box or changed since.",
 		Examples: []clihelp.Example{
-			{"download the model once", "gozen art fetch face"},
-			{"find the faces", "ONNXRUNTIME_LIB=/path/libonnxruntime.so gozen art faces game"},
-			{"and look at what was found", "gozen art faces game --preview faces-check"},
+			{"download the model once", "gozen models fetch face"},
+			{"find the faces", "ONNXRUNTIME_LIB=/path/libonnxruntime.so gozen faces game"},
+			{"and look at what was found", "gozen faces game --preview faces-check"},
 		},
 		Groups: []clihelp.Group{{Title: "Detection", Flags: []string{"model", "ort", "min"}}, {Title: "Output", Flags: []string{"preview"}}, general},
 		Notes: []string{"Requirements: a gozen built with cgo, an ONNX Runtime shared library, and the face model " +
-			"(gozen art fetch face). A build without cgo says so and fails. The preview directory must not exist yet. See " + clihelp.README},
+			"(gozen models fetch face). A build without cgo says so and fails. The preview directory must not exist yet. See " + clihelp.README},
 	},
 	"version": {
 		Summary:  "print the gozen version",
@@ -448,4 +439,113 @@ func init() {
 		p.Name = "gozen " + name
 		groups[name] = p
 	}
+}
+
+// helpOption is derived from the same registered flag used by execution.
+type helpOption struct {
+	Name        string   `json:"name"`
+	Short       string   `json:"short,omitempty"`
+	Type        string   `json:"type"`
+	Default     string   `json:"default"`
+	Value       string   `json:"value,omitempty"`
+	Description string   `json:"description"`
+	Group       string   `json:"group,omitempty"`
+	Repeatable  bool     `json:"repeatable"`
+	Choices     []string `json:"choices,omitempty"`
+	Environment []string `json:"environment,omitempty"`
+}
+type helpCommand struct {
+	Command     string            `json:"command"`
+	Summary     string            `json:"summary"`
+	Usage       []string          `json:"usage"`
+	About       string            `json:"about,omitempty"`
+	Subcommands []string          `json:"subcommands"`
+	Options     []helpOption      `json:"options"`
+	Examples    []clihelp.Example `json:"examples"`
+	Notes       []string          `json:"notes"`
+}
+
+func describeCommand(path string, n node, registry map[string]node) (helpCommand, clihelp.Page, *pflag.FlagSet) {
+	c := &command{registry: registry, path: path, out: &cliio.Output{Writer: io.Discard}, stderr: &cliio.Output{Writer: io.Discard}}
+	var p clihelp.Page
+	var f *pflag.FlagSet
+	if n.build != nil {
+		op := c.operation(n)
+		p, f = op.Page, op.Flags
+	} else {
+		f = clihelp.NewFlagSet("gozen " + path)
+		p = groups[path]
+		if path == "" {
+			f = clihelp.NewFlagSet("gozen")
+			f.Bool("version", false, "print the gozen version and exit")
+			p = topPage
+		}
+	}
+	result := helpCommand{Command: path, Summary: p.Summary, Usage: append([]string{}, p.Usage...), About: p.About, Subcommands: append([]string{}, n.subs...), Options: []helpOption{}, Examples: append([]clihelp.Example{}, p.Examples...), Notes: append([]string{}, p.Notes...)}
+	f.VisitAll(func(flag *pflag.Flag) {
+		value, description := pflag.UnquoteUsage(flag)
+		group := ""
+		for _, g := range p.Groups {
+			if slices.Contains(g.Flags, flag.Name) {
+				group = g.Title
+				break
+			}
+		}
+		typ := flag.Value.Type()
+		result.Options = append(result.Options, helpOption{Name: flag.Name, Short: flag.Shorthand, Type: typ, Default: flag.DefValue, Value: value, Description: description, Group: group, Repeatable: typ == "stringArray" || typ == "stringSlice" || typ == "coords", Choices: slices.Clone(flag.Annotations["choices"]), Environment: slices.Clone(flag.Annotations["env"])})
+	})
+	return result, p, f
+}
+
+func (c *command) helpCmd() clihelp.Operation {
+	f := clihelp.NewFlagSet("gozen help")
+	c.reporting(f)
+	p := clihelp.Page{Name: "gozen help", Summary: "describe commands or diagnostic codes", Usage: []string{"gozen help [COMMAND ... | CODE] [--format text|json|jsonl]"}, Examples: []clihelp.Example{{"describe all commands", "gozen help --format json"}, {"describe one command", "gozen help capture --format json"}}, Groups: []clihelp.Group{{Title: "Output", Flags: []string{"format"}}, general}, Notes: []string{noRequirements}}
+	return clihelp.Operation{Flags: f, Page: p, Run: func(context.Context) error {
+		words := f.Args()
+		for len(words) > 0 && words[0] == "help" {
+			words = words[1:]
+		}
+		if len(words) == 1 && diag.Syntax(words[0]) {
+			if !c.report.Machine() {
+				return c.explain(words[0])
+			}
+			code, ok := diag.Parse(words[0])
+			if !ok {
+				return cliio.Invalid(diag.UnknownCode, "unknown diagnostic code %s", words[0])
+			}
+			entry, _ := diag.Lookup(code)
+			return c.report.Result(c.out, "ok", map[string]any{"code": code.String(), "exit_code": code.ExitCode(), "summary": entry.Summary, "detail": entry.Detail, "fix": entry.Fix, "since": entry.Since})
+		}
+		path := strings.Join(words, " ")
+		n, ok := c.registry[path]
+		if !ok {
+			return cliio.Invalid(diag.UnknownCommand, "unknown command %q; use gozen help", path)
+		}
+		if !c.report.Machine() {
+			_, page, flags := describeCommand(path, n, c.registry)
+			c.out.Print(page.String(flags))
+			return nil
+		}
+		paths := []string{path}
+		if path == "" {
+			paths = slices.Sorted(maps.Keys(c.registry))
+		}
+		commands := make([]helpCommand, 0, len(paths))
+		for _, path := range paths {
+			entry, _, _ := describeCommand(path, c.registry[path], c.registry)
+			commands = append(commands, entry)
+			if c.report.Format == "jsonl" {
+				if err := c.report.Item(c.out, path, "ok", entry); err != nil {
+					return err
+				}
+			}
+		}
+		if c.report.Format == "jsonl" {
+			return c.report.Result(c.out, "ok", map[string]int{"commands": len(commands)})
+		}
+		return c.report.Result(c.out, "ok", struct {
+			Commands []helpCommand `json:"commands"`
+		}{commands})
+	}}
 }

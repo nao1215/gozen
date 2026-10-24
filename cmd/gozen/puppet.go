@@ -20,11 +20,11 @@ import (
 // puppetCmd checks a moving portrait and, with --out, writes it with every
 // difference picture cut down to the part that differs.
 func (c *command) puppetCmd() clihelp.Operation {
-	f := clihelp.NewFlagSet("gozen art puppet")
+	f := clihelp.NewFlagSet("gozen puppet")
 	out := f.StringP("out", "o", "", "write the puppet with small difference pictures to this new `DIR`")
 	return clihelp.Operation{Flags: f, Run: func(_ context.Context) (err error) {
 		if f.NArg() != 1 {
-			return cliio.Invalid(diag.Operands, "art puppet expects one puppet YAML file")
+			return cliio.Invalid(diag.Operands, "puppet expects one puppet YAML file")
 		}
 		file := f.Arg(0)
 		dir, name := filepath.Split(file)

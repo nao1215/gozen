@@ -40,7 +40,7 @@ actors:
 
 A whole picture is compared at load time with the base (for the eyes or mouth of a face, with that face's picture), and only the differing part is cut out, with the edge blurred by about 16 pixels. A picture whose whole was redrawn by image generation differs slightly everywhere, so use `area` (`[x, y, w, h]`) to narrow the search range to around the eyes or mouth. For a picture without transparency (drawn with a background), the transparency of the picture beneath is used as it is.
 
-`gozen art puppet <puppet.yaml>` checks the position of each difference. `--out DIR` writes the small pictures with the differences cut out and a YAML with `at`, which makes the distributed files smaller (comments do not remain in the written YAML).
+`gozen puppet <puppet.yaml>` checks the position of each difference. `--out DIR` writes the small pictures with the differences cut out and a YAML with `at`, which makes the distributed files smaller (comments do not remain in the written YAML).
 
 ## YAML
 

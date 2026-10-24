@@ -68,12 +68,12 @@ scenarios:
   - sub: export
   - sub: release
   - sub: trial
-  - sub: art
+  - sub: models
   - sub: prompt
-  - sub: art mosaic
-  - sub: art fetch
-  - sub: art faces
-  - sub: art puppet
+  - sub: mosaic
+  - sub: models fetch
+  - sub: faces
+  - sub: puppet
   - sub: version
   steps:
   - run:
@@ -98,11 +98,11 @@ scenarios:
 - name: Requirements are written on the page of ${sub}
   matrix:
   - sub: sim
-  - sub: art
+  - sub: models
   - sub: prompt
-  - sub: art mosaic
-  - sub: art fetch
-  - sub: art puppet
+  - sub: mosaic
+  - sub: models fetch
+  - sub: puppet
   steps:
   - run:
       command: gozen ${sub} --help
@@ -115,7 +115,7 @@ scenarios:
 - name: the group ${group} needs a command
   matrix:
   - {group: sim, subs: 'battle, dive, floors, design, campaign'}
-  - {group: art, subs: 'mosaic, fetch, faces, puppet'}
+  - {group: models, subs: 'list, fetch'}
   steps:
   - run:
       command: gozen ${group}
@@ -131,7 +131,7 @@ scenarios:
   - {old: layout, said: 'unknown command "layout"; use --help'}
   - {old: curve, said: 'unknown command "curve"; use --help'}
   - {old: sim game lesson, said: 'unknown command "game" of gozen sim'}
-  - {old: art mosaic fetch, said: 'unknown command "fetch"'}
+  - {old: mosaic fetch, said: 'unknown command "fetch"'}
   steps:
   - run:
       command: gozen ${old}
@@ -146,11 +146,11 @@ scenarios:
 - name: gozen help takes the words of a command path
   steps:
   - run:
-      command: gozen help art mosaic manual
+      command: gozen help mosaic
   - assert:
       exit_code: 0
       stdout:
-        matches: '^gozen art mosaic manual - '
+        matches: '^gozen mosaic - '
       stderr:
         equals: ''
 - name: gozen top-level help with ${opt}
@@ -201,12 +201,12 @@ scenarios:
   - sub: export
   - sub: release
   - sub: trial
-  - sub: art
+  - sub: models
   - sub: prompt
-  - sub: art mosaic
-  - sub: art fetch
-  - sub: art faces
-  - sub: art puppet
+  - sub: mosaic
+  - sub: models fetch
+  - sub: faces
+  - sub: puppet
   - sub: version
   steps:
   - run:
@@ -246,10 +246,10 @@ scenarios:
   - sub: export
   - sub: release
   - sub: trial
-  - sub: art
-  - sub: art fetch
-  - sub: art faces
-  - sub: art puppet
+  - sub: models
+  - sub: models fetch
+  - sub: faces
+  - sub: puppet
   - sub: version
   steps:
   - run:
@@ -395,7 +395,7 @@ scenarios:
   - sub: sim battle
   - sub: capture
   - sub: prompt
-  - sub: art mosaic
+  - sub: mosaic
   steps:
   - run:
       command: gozen help ${sub}
@@ -424,8 +424,8 @@ scenarios:
   - args: notes notes -out html
   - args: -version
   - args: prompt -config catalog.yaml
-  - args: art mosaic auto -out processed game
-  - args: art mosaic manual add -rect 0,0,4,4 game pattern.png
+  - args: mosaic auto -out processed game
+  - args: mosaic add -rect 0,0,4,4 game pattern.png
   steps:
   - run:
       command: gozen ${args}

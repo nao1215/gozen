@@ -173,13 +173,13 @@ func TestAutoLowConfidenceGoesToReview(t *testing.T) {
 		t.Fatalf("sheet %v", sheet.Bounds())
 	}
 	// The list of what to look at is the same set.
-	_, listed, _ := invoke(t, "manual", "list", "-o", out, game)
+	_, listed, _ := invoke(t, "list", "-o", out, game)
 	if !strings.Contains(listed, `"file":"pattern.png"`) || !strings.Contains(listed, `"masked":true`) {
 		t.Fatalf("manual list: %q", listed)
 	}
 	// Checking it clears the review.
 	manual := filepath.Join(filepath.Dir(out), "manual.yaml")
-	code, _, diag = invoke(t, "manual", "check", "--model", model, "--sure", "0.9", "--manual", manual, "-o", out, game, "pattern.png")
+	code, _, diag = invoke(t, "mark", "--checked", "--model", model, "--sure", "0.9", "--manual", manual, "-o", out, game, "pattern.png")
 	if code != 0 {
 		t.Fatal(diag)
 	}
@@ -427,11 +427,11 @@ func TestRunExitCodesAndOutputFailures(t *testing.T) {
 	m := useModels(t)
 	model, _ := m.detector(t, "model.onnx", penis(4, 4, 10, 10, 0.9))
 	var sink bytes.Buffer
-	if code := Run([]string{"auto", "--model", model, "-o", out, game, "pattern.png"}, failedWriter{}, &sink); code != 1 {
+	if code := runCommand([]string{"auto", "--model", model, "-o", out, game, "pattern.png"}, failedWriter{}, &sink); code != 1 {
 		t.Fatalf("a failing stdout gave %d", code)
 	}
 	// A usage error stays a usage error (2) even when the message cannot be written.
-	if code := Run([]string{"nope"}, &sink, failedWriter{}); code != 2 {
+	if code := runCommand([]string{"nope"}, &sink, failedWriter{}); code != 1 {
 		t.Fatalf("a failing diagnostics writer gave %d", code)
 	}
 }

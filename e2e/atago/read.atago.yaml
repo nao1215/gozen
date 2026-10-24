@@ -320,3 +320,47 @@ scenarios:
         - {path: '$.data[0].numbers.width', equals: 11}
         - {path: '$.data[0].numbers.height', equals: 11}
       changes: {created: [], modified: [], deleted: []}
+- name: book JSON describes the whole game and lineage is an explicit section
+  steps:
+  - run:
+      command: gozen book "${specdir}/fixtures/game" --format json
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: book}
+        - {path: $.status, equals: ok}
+        - {path: $.data.locations.camp.name, equals: Camp}
+        - {path: $.data.monsters.mote.name, equals: Mote}
+  - run:
+      command: gozen book --section lineage "${specdir}/fixtures/game" --format json
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: '$.data.monsters[0].id', equals: mote}
+      changes: {created: [], modified: [], deleted: []}
+- name: machine help registers options without opening inputs
+  steps:
+  - run:
+      command: gozen help capture --format json
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.command, equals: help}
+        - {path: '$.data.commands[0].command', equals: capture}
+
+      changes: {created: [], modified: [], deleted: []}
+  - run:
+      command: gozen help missing --format jsonl
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr:
+        json:
+        - {path: $.code, equals: GZN2101}

@@ -1,101 +1,107 @@
-// Package command implements the gozen art mosaic and gozen art fetch process contract. It never exits the process.
+// Package command registers mosaic and model-management CLI operations.
 package command
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
+	"strings"
 
 	"github.com/spf13/pflag"
 
 	"github.com/nao1215/gozen/internal/clihelp"
+	"github.com/nao1215/gozen/internal/cliio"
 	"github.com/nao1215/gozen/internal/diag"
 )
 
-type output struct {
-	io.Writer
-	err error
+type cli struct {
+	out, diag *cliio.Output
+	report    *cliio.Report
 }
 
-func (o *output) Write(b []byte) (int, error) {
-	n, err := o.Writer.Write(b)
-	if err == nil && n != len(b) {
-		err = io.ErrShortWrite
-	}
-	o.err = errors.Join(o.err, err)
-	return n, err
-}
-func (o *output) printf(s string, v ...any) { o.write(fmt.Sprintf(s, v...)) }
-func (o *output) println(v ...any)          { o.write(fmt.Sprintln(v...)) }
-func (o *output) write(s string) {
-	if o.err == nil {
-		_, o.err = io.WriteString(o, s)
-	}
+// Config provides invocation-owned streams and the action selected by dispatch.
+// Constructing an operation performs no file, model or environment reads.
+type Config struct {
+	Action              string
+	Output, Diagnostics *cliio.Output
+	Report              *cliio.Report
 }
 
-type (
-	cli           struct{ out, diag *output }
-	argumentError struct{ error }
-)
-
-// Run runs gozen art mosaic. It returns 0 for success/help, 2 for argument errors, and 1
-// for processing or I/O errors. Caller owns writers. No process state or working
-// directory changes.
-func Run(args []string, out, diagnostics io.Writer) int {
-	c := &cli{&output{Writer: out}, &output{Writer: diagnostics}}
-	var err error
-	switch {
-	case len(args) == 0:
-		err = argumentError{diag.CommandMissing.Errorf("a command is required: auto, inspect, or manual; use --help")}
-	case args[0] == "-h" || args[0] == "--help":
-		c.out.write(topPage.String(newFlagSet("gozen art mosaic")))
-	case args[0] == "auto":
-		err = c.autoCmd(args[1:])
-	case args[0] == "inspect":
-		err = c.inspectCmd(args[1:])
-	case args[0] == "manual":
-		err = c.manualCmd(args[1:])
+// New registers the selected mosaic or models operation for the root dispatcher.
+func New(cfg Config) clihelp.Operation {
+	c := &cli{out: cfg.Output, diag: cfg.Diagnostics, report: cfg.Report}
+	var op clihelp.Operation
+	switch cfg.Action {
+	case "mosaic auto":
+		op = c.autoCmd()
+	case "mosaic inspect":
+		op = c.inspectCmd()
+	case "models list":
+		op = c.fetchCmd(true)
+	case "models fetch":
+		op = c.fetchCmd(false)
+	case "mosaic list", "mosaic show", "mosaic view", "mosaic add", "mosaic drop", "mosaic grow", "mosaic skip", "mosaic mark", "mosaic clear":
+		op = c.manualCmd(cfg.Action[len("mosaic "):])
 	default:
-		err = argumentError{diag.UnknownCommand.Errorf("unknown command %q: use auto, inspect, or manual; see --help", args[0])}
+		op = clihelp.Operation{Flags: newFlagSet("gozen " + cfg.Action), Page: topPage, Run: func(context.Context) error {
+			if cfg.Action != "mosaic" {
+				return cliio.Invalid(diag.UnknownCommand, "unknown command %q", cfg.Action)
+			}
+			return cliio.Invalid(diag.CommandMissing, "select a mosaic action; use --help")
+		}}
 	}
-	return c.finish(err, "gozen art mosaic --help", requirements)
-}
-
-// Fetch runs gozen art fetch, which downloads the models that gozen art mosaic
-// and gozen art faces use. Exit values are those of Run.
-func Fetch(args []string, out, diagnostics io.Writer) int {
-	c := &cli{&output{Writer: out}, &output{Writer: diagnostics}}
-	return c.finish(c.fetchCmd(args), "gozen art fetch --help", fetchRequirements)
-}
-
-func (cli *cli) finish(err error, help, requirements string) int {
-	if errors.Is(err, clihelp.ErrHelp) {
-		err = nil
+	cfg.Report.Command = cfg.Action
+	op.Flags.StringVar(&cfg.Report.Format, "format", "text", "result encoding: text, json, or jsonl")
+	clihelp.Choices(op.Flags.Lookup("format"), "text", "json", "jsonl")
+	op.Page.Groups = append(append([]clihelp.Group{}, op.Page.Groups...), clihelp.Group{Title: "Result", Flags: []string{"format"}})
+	run := op.Run
+	op.Run = func(ctx context.Context) error {
+		if err := cfg.Report.Validate(); err != nil {
+			return err
+		}
+		if cfg.Report.Machine() {
+			c.diag = &cliio.Output{Writer: progress{*cfg.Report, cfg.Diagnostics}}
+		}
+		err := run(ctx)
+		if c.diag.Err != nil {
+			err = errors.Join(err, c.diag.Err)
+		}
+		if err == nil || errors.Is(err, cliio.ErrReported) {
+			return err
+		}
+		if _, ok := errors.AsType[*cliio.UsageError](err); ok {
+			return err
+		}
+		return fmt.Errorf("%w\n%s", err, requirements)
 	}
-	err = errors.Join(err, cli.out.err, cli.diag.err)
-	if err == nil {
-		return 0
-	}
-	cli.diag.println(err)
-	if _, ok := errors.AsType[argumentError](err); ok {
-		cli.diag.println("Run \"" + help + "\" for usage. See " + clihelp.README)
-		return 2
-	}
-	cli.diag.println(requirements)
-	return 1
+	return op
 }
 
 func newFlagSet(name string) *pflag.FlagSet { return clihelp.NewFlagSet(name) }
 
-// parse parses options; on --help it prints the page and returns clihelp.ErrHelp.
-func (cli *cli) parse(fs *pflag.FlagSet, args []string, page clihelp.Page) error {
-	help, err := clihelp.Parse(fs, args)
-	if err != nil {
-		return argumentError{err}
-	}
-	if help {
-		cli.out.write(page.String(fs))
-		return clihelp.ErrHelp
+func (c *cli) result(data any) error {
+	if c.report != nil && c.report.Machine() {
+		return c.report.Result(c.out, "ok", data)
 	}
 	return nil
+}
+
+// progress keeps runtime messages separate from machine-readable results.
+type progress struct {
+	report cliio.Report
+	out    *cliio.Output
+}
+
+func (p progress) Write(b []byte) (int, error) {
+	err := json.NewEncoder(p.out).Encode(struct {
+		Version  int    `json:"version"`
+		Command  string `json:"command"`
+		Severity string `json:"severity"`
+		Message  string `json:"message"`
+	}{1, p.report.Command, "info", strings.TrimSuffix(string(b), "\n")})
+	if err != nil {
+		return 0, err
+	}
+	return len(b), nil
 }

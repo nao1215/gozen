@@ -50,9 +50,9 @@ Fix: Shorten the text, split it into two lines of dialogue, or change the window
 
 A balloon face has no face box, or the box is stale.
 
-A painted scene cuts each person's balloon face around the face that gozen art faces found and wrote to assets/faces.json. The file is missing, has no box for a picture, has none found, or the picture changed since, so the face is guessed.
+A painted scene cuts each person's balloon face around the face that gozen faces found and wrote to assets/faces.json. The file is missing, has no box for a picture, has none found, or the picture changed since, so the face is guessed.
 
-Fix: Run gozen art faces <game-dir> again, or give the doll face_at.
+Fix: Run gozen faces <game-dir> again, or give the doll face_at.
 
 ### GZN0103
 
@@ -518,7 +518,7 @@ Fix: Write the path relative to the game directory, without .., such as trial.ya
 
 The command line names something the game does not have.
 
-An ID given on the command line, such as the troop of sim battle, the location of sim dive or sim floors, a boss or a shop, a persona of sim design --only, a shot of capture --only, or a model of art fetch, is not defined. A typo in an argument is an argument error, so it exits 2 in every command.
+An ID given on the command line, such as the troop of sim battle, the location of sim dive or sim floors, a boss or a shop, a persona of sim design --only, a shot of capture --only, or a model of models fetch, is not defined. A typo in an argument is an argument error, so it exits 2 in every command.
 
 Fix: Check the spelling against the game's data (gozen book lists every ID), or the list the message names.
 

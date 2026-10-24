@@ -41,7 +41,7 @@ func writeReview(c config, all []entry) error {
 	}
 	var md strings.Builder
 	fmt.Fprintf(&md, "# モザイクの要確認（%d 枚）\n\n", len(rev))
-	md.WriteString("review/sheet_NN.jpg の番号と対応する。黄色の枠が自動の範囲、水色・桃色が手で足した範囲。確かめたら `gozen art mosaic manual check`（人は --fix の YAML に `checked: true`）。\n")
+	md.WriteString("review/sheet_NN.jpg の番号と対応する。黄色の枠が自動の範囲、水色・桃色が手で足した範囲。確かめたら `gozen mosaic mark --checked`（人は --fix の YAML に `checked: true`）。\n")
 	md.WriteString("漏れは `add: [[x, y, 幅, 高さ]]`（元の絵の px）、誤検出は `drop: [[x, y, 幅, 高さ]]` で直す。\n\n")
 	if len(rev) == 0 {
 		return os.WriteFile(filepath.Join(c.out, "review.md"), []byte(md.String()), 0o600)
@@ -65,7 +65,7 @@ func writeReview(c config, all []entry) error {
 			}
 			img, err := decode(src)
 			if err != nil {
-				c.diag.printf("warning: 一覧に %s を描けない: %v\n", e.File, err)
+				c.diag.Printf("warning: 一覧に %s を描けない: %v\n", e.File, err)
 				continue
 			}
 			cell := image.Rect(k%sheetCols*thumbW, k/sheetCols*thumbH, (k%sheetCols+1)*thumbW, (k/sheetCols+1)*thumbH)

@@ -22,7 +22,7 @@ func TestManualShowAndListReportWhatTheReportSays(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &shown); err != nil || shown["file"] != "pattern.png" || !strings.Contains(fmt.Sprint(shown["report"]), "report.json に無い") {
 		t.Fatalf("show before a run: %v %v", shown, err)
 	}
-	code, listed, _ := invoke(t, "manual", "list", "-o", e.out, e.game)
+	code, listed, _ := invoke(t, "list", "-o", e.out, e.game)
 	if code != 0 || listed != "" {
 		t.Fatalf("list before a run: %d %q", code, listed)
 	}
@@ -48,7 +48,7 @@ func TestManualShowAndListReportWhatTheReportSays(t *testing.T) {
 		t.Fatalf("show is indented JSON: %q", out)
 	}
 	// list names the pictures under review with the reasons, one JSON line each.
-	code, listed, diag = invoke(t, "manual", "list", "--manual", e.manual, "-o", e.out, e.game)
+	code, listed, diag = invoke(t, "list", "--manual", e.manual, "-o", e.out, e.game)
 	if code != 0 {
 		t.Fatal(diag)
 	}
@@ -125,7 +125,7 @@ func TestManualViewOfAFileOutsideTheAssets(t *testing.T) {
 	if err := encode(other, image.NewRGBA(image.Rect(0, 0, 20, 10)), 90); err != nil {
 		t.Fatal(err)
 	}
-	code, out, diag := invoke(t, "manual", "view", "-o", e.out, "--size", "40", e.game, other)
+	code, out, diag := invoke(t, "view", "-o", e.out, "--size", "40", e.game, other)
 	if code != 0 {
 		t.Fatal(diag)
 	}

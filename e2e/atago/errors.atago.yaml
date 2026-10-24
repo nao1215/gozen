@@ -45,16 +45,16 @@ scenarios:
   matrix:
   - {code: GZN2101, args: 'curve'}
   - {code: GZN2101, args: 'sim absent'}
-  - {code: GZN2101, args: 'art mosaic absent'}
+  - {code: GZN2101, args: 'mosaic absent'}
   - {code: GZN2102, args: 'check one two'}
-  - {code: GZN2102, args: 'art mosaic auto'}
+  - {code: GZN2102, args: 'mosaic auto'}
   - {code: GZN2103, args: 'sim battle --absent game lesson'}
-  - {code: GZN2103, args: 'art mosaic auto --absent game'}
+  - {code: GZN2103, args: 'mosaic auto --absent game'}
   - {code: GZN2104, args: 'sim battle game --troop lesson -seed 9'}
   - {code: GZN2104, args: 'prompt -config catalog.yaml'}
   - {code: GZN2105, args: '--help sim'}
   - {code: GZN2106, args: 'sim'}
-  - {code: GZN2106, args: 'art mosaic'}
+  - {code: GZN2106, args: 'mosaic'}
   - {code: GZN2102, args: 'theme add'}
   - {code: GZN2106, args: 'theme'}
   - {code: GZN2201, args: 'sim battle game --troop lesson -n 0'}
@@ -93,10 +93,10 @@ scenarios:
       stderr:
         contains: '[GZN2402]'
       changes: {created: [], modified: [], deleted: []}
-- name: GZN2402 for a model art fetch does not know
+- name: GZN2402 for a model models fetch does not know
   steps:
   - run:
-      command: gozen art fetch nothing
+      command: gozen models fetch nothing
   - assert:
       exit_code: 2
       stdout:
@@ -283,7 +283,7 @@ scenarios:
   - assert:
       exit_code: 0
       stdout:
-        equals: "[]\n"
+        json: {path: $.data, equals: []}
 - name: a game without fonts warns about characters the built-in font cannot draw
   steps:
   - fixture:
@@ -469,7 +469,7 @@ scenarios:
   - assert:
       exit_code: 1
       stdout:
-        contains: ['"code": "GZN1101"', 'unknown troop', 'wolves']
+        contains: ['"code":"GZN1101"', 'unknown troop', 'wolves']
         not_contains: '[GZN'
 - name: GZN1401 for a broken line of a trace
   steps:

@@ -4,7 +4,7 @@ The CLI is the single `gozen` binary ([ADR 0016](../decisions/0016-single-cli.md
 
 ## Commands
 
-The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf runs. The help pages are `groups` and `pages` in `cmd/gozen/help.go`, keyed by the command path. `run` shares its options and help groups with `play.Main` in `internal/play/entry.go`; it requires a directory operand instead of `--dir`. `prompt` registers its operation through `internal/promptgen/command.New`; the root parses its flags once. `art mosaic` and `art fetch` still delegate to `internal/mosaic/command` during migration.
+The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf runs. The help pages are `groups` and `pages` in `cmd/gozen/help.go`, keyed by the command path. `run` shares its options and help groups with `play.Main` in `internal/play/entry.go`; it requires a directory operand instead of `--dir`. `prompt` registers its operation through `internal/promptgen/command.New`; the root parses its flags once. `mosaic` and `models fetch` still delegate to `internal/mosaic/command` during migration.
 
 | Group | Commands | What they share |
 | --- | --- | --- |
@@ -42,7 +42,7 @@ The registry is `internal/diag`: `register` is the only way to make a code and n
 
 When testing, run the built binary directly. The exit status of `go run` itself can differ from the CLI's exit status, so the E2E does not use it.
 
-Every `--help` has the same shape: the name, a one-line description and the version on line 1; `[Usage]` and a description; `[Commands]` (for the top level, the groups, `art mosaic` and `art mosaic manual`); `[Examples]` that really work; `[Options]` grouped by kind; notes, where `Requirements:` is written once on the top page, on a group page for what its commands share, and on a leaf only when it differs; and finally the links Documentation, Report an issue and GitHub Sponsors. The examples are written with `e2e/atago/fixtures/game` (troop `lesson`, dungeon `grotto`) as `game`. Help does not require any of the prerequisites. A neutral example of the configuration is `e2e/atago/fixtures/game/{trial,designeval}.yaml`.
+Every `--help` has the same shape: the name, a one-line description and the version on line 1; `[Usage]` and a description; `[Commands]` (for the top level, the groups, `mosaic` and `mosaic`); `[Examples]` that really work; `[Options]` grouped by kind; notes, where `Requirements:` is written once on the top page, on a group page for what its commands share, and on a leaf only when it differs; and finally the links Documentation, Report an issue and GitHub Sponsors. The examples are written with `e2e/atago/fixtures/game` (troop `lesson`, dungeon `grotto`) as `game`. Help does not require any of the prerequisites. A neutral example of the configuration is `e2e/atago/fixtures/game/{trial,designeval}.yaml`.
 
 ## E2E
 

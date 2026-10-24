@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,9 +11,10 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/nao1215/gozen/internal/cliio"
 
 	xdraw "golang.org/x/image/draw"
 	"golang.org/x/image/font"
@@ -50,7 +52,7 @@ func (c *coords) Set(s string) error {
 	return nil
 }
 
-// manualOptions are the options of gozen art mosaic manual beyond the common ones.
+// manualOptions are the options of gozen mosaic beyond the common ones.
 type manualOptions struct {
 	o                                     *options
 	rects, boxes, polys, ellipses, region *coords
@@ -82,287 +84,317 @@ func manualFlags(cli *cli, fs *pflag.FlagSet) manualOptions {
 	return m
 }
 
-func (cli *cli) manualCmd(args []string) (err error) {
-	if len(args) == 0 {
-		return argumentError{diag.CommandMissing.Errorf("a manual command is required: list, show, view, add, drop, grow, skip, check, or clear; use --help")}
-	}
-	if args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
-		if len(args) > 1 {
-			return argumentError{diag.Operands.Errorf("help takes no arguments")}
-		}
-		fs := newFlagSet("gozen art mosaic manual")
-		manualFlags(cli, fs)
-		cli.out.write(manualPage.String(fs))
-		return clihelp.ErrHelp
-	}
-	sub := args[0]
-	if !slices.Contains([]string{"list", "show", "view", "add", "drop", "grow", "skip", "check", "clear"}, sub) {
-		return argumentError{diag.UnknownCommand.Errorf("unknown manual command %q: use list, show, view, add, drop, grow, skip, check, or clear", sub)}
-	}
-	fs := newFlagSet("gozen art mosaic manual " + sub)
+func (cli *cli) manualCmd(action string) clihelp.Operation {
+	fs := newFlagSet("gozen mosaic " + action)
 	mo := manualFlags(cli, fs)
-	if err := cli.parse(fs, args[1:], manualPage); err != nil {
-		return err
+	var checked *bool
+	sub := action
+	if action == "mark" {
+		checked = fs.Bool("checked", false, "mark the image as reviewed; required")
+		sub = "check"
 	}
-	o, rects, boxes, polys, ellipses, region := mo.o, *mo.rects, *mo.boxes, *mo.polys, *mo.ellipses, *mo.region
-	norm, note, regionID, by, left, top, right, bottom := mo.norm, mo.note, mo.regionID, mo.by, mo.left, mo.top, mo.right, mo.bottom
-	src, size, step, viewOut := mo.src, mo.size, mo.step, mo.viewOut
-	need := 2
-	if sub == "list" {
-		need = 1
-	}
-	if fs.NArg() != need {
-		if need == 1 {
-			return argumentError{diag.Operands.Errorf("expected a game directory: gozen art mosaic manual list [OPTIONS] <game-dir>")}
+	p := manualPage
+	p.Commands = nil
+	p.Name = "gozen mosaic " + action
+	p.Usage = []string{"gozen mosaic " + action + " [OPTIONS] GAME [IMAGE]"}
+	p.Groups = append([]clihelp.Group{}, p.Groups...)
+	p.Groups = append(p.Groups, clihelp.Group{Title: "Review", Flags: []string{"checked"}})
+	return clihelp.Operation{Flags: fs, Page: p, Run: func(ctx context.Context) (err error) {
+		if err := ctx.Err(); err != nil {
+			return err
 		}
-		return argumentError{diag.Operands.Errorf("expected a game directory and an image: gozen art mosaic manual %s [OPTIONS] <game-dir> <IMAGE>", sub)}
-	}
-	if *size < 1 || *size > 4096 || *step < 0 {
-		return errors.New("view size must be 1..4096 and step >= 0")
-	}
-	if sub != "add" && sub != "drop" && (len(boxes)+len(polys)+len(ellipses) > 0) {
-		return errors.New("box, polygon, and ellipse flags require add or drop")
-	}
-	if sub == "drop" && (len(polys)+len(ellipses) > 0) {
-		return errors.New("drop requires rectangles")
-	}
-	gameDir := fs.Arg(0)
-	c, err := o.setup(gameDir)
-	if err != nil {
-		return err
-	}
-	if sub == "list" {
-		return manualList(c)
-	}
-	pic, _, origPath := resolve(c, fs.Arg(1))
-	if pic == "" && sub != "view" {
-		return fmt.Errorf("%s は assets の外の絵なので、view だけができる（指示は assets の絵にだけ書ける）", fs.Arg(1))
-	}
-	if err := validPicture(c, pic); err != nil && pic != "" {
-		return err
-	}
-	img, err := decode(origPath)
-	if err != nil {
-		return err
-	}
-	b := img.Bounds()
-	conv := func(v []float64, n int, what string) ([]int, error) {
-		if len(v) != n && (n >= 0 || len(v) < 6 || len(v)%2 != 0) {
-			return nil, fmt.Errorf("%s の数が合わない: %v", what, v)
+		if checked != nil && !*checked {
+			return cliio.Invalid(diag.OptionRequired, "mark requires --checked")
 		}
-		out := make([]int, len(v))
-		for i, f := range v {
-			if *norm {
-				if f < 0 || f > 1 {
-					return nil, errors.New("normalized coordinates must be in [0,1]")
-				}
-				if i%2 == 0 {
-					f *= float64(b.Dx())
-				} else {
-					f *= float64(b.Dy())
-				}
-			}
-			out[i] = int(math.Round(f))
-		}
-		return out, nil
-	}
-	if sub != "add" && sub != "drop" && sub != "grow" && len(rects)+len(boxes)+len(polys)+len(ellipses) > 0 {
-		return errors.New("geometry flags require add, drop, or grow")
-	}
-	needsManual := sub == "add" || sub == "drop" || sub == "grow" || sub == "skip" || sub == "check" || sub == "clear"
-	if needsManual && o.manualFile == "" {
-		return errors.New("--manual（または環境変数 MOSAIC_MANUAL）に manual の YAML を指定する")
-	}
-	var geometryErr error
-	clip := func(x []int) [4]int {
-		if x[2] <= 0 || x[3] <= 0 {
-			geometryErr = errors.New("rectangle width and height must be positive")
-			return [4]int{}
-		}
-		r := clipRect(x, b)
-		if r[2] <= 0 || r[3] <= 0 {
-			geometryErr = errors.New("rectangle does not intersect the image")
-		}
-		return r
-	}
-	m := c.manual[pic]
-	switch sub {
-	case "show":
-		return manualShow(c, pic)
-	case "view":
-		var r image.Rectangle
-		if len(region) > 0 {
-			v, err := conv(region[0], 4, "--region")
-			if err != nil {
-				return err
-			}
-			r = mosaic.Rect([4]int{v[0], v[1], v[2], v[3]})
-		}
-		err := manualView(c, pic, origPath, *src, r, *size, *step, *viewOut)
-		return err
-	case "add":
-		n := 0
-		for _, v := range rects {
-			x, err := conv(v, 4, "--rect")
-			if err != nil {
-				return err
-			}
-			m.Add = append(m.Add, clip(x))
-			n++
-		}
-		for _, v := range boxes {
-			x, err := conv(v, 4, "--box")
-			if err != nil {
-				return err
-			}
-			m.Add = append(m.Add, clip([]int{x[0], x[1], x[2] - x[0], x[3] - x[1]}))
-			n++
-		}
-		for _, v := range polys {
-			x, err := conv(v, -1, "--poly")
-			if err != nil {
-				return err
-			}
-			m.Poly = append(m.Poly, x)
-			n++
-		}
-		for _, v := range ellipses {
-			x, err := conv(v, 4, "--ellipse")
-			if err != nil {
-				return err
-			}
-			if x[2] <= 0 || x[3] <= 0 {
-				return errors.New("ellipse radii must be positive")
-			}
-			m.Poly = append(m.Poly, ellipse(x[0], x[1], x[2], x[3], 48))
-			n++
-		}
-		if n == 0 {
-			return errors.New("add には --rect・--box・--poly・--ellipse のどれかが要る")
-		}
-		m.Checked = false
-	case "drop":
-		for _, v := range rects {
-			x, err := conv(v, 4, "--rect")
-			if err != nil {
-				return err
-			}
-			m.Drop = append(m.Drop, clip(x))
-		}
-		for _, v := range boxes {
-			x, err := conv(v, 4, "--box")
-			if err != nil {
-				return err
-			}
-			m.Drop = append(m.Drop, clip([]int{x[0], x[1], x[2] - x[0], x[3] - x[1]}))
-		}
-		if *regionID != "" {
-			e, ok := reportEntry(c, pic)
-			if !ok {
-				return fmt.Errorf("%s は report.json に無い（先に auto か view を動かす）", pic)
-			}
-			for id := range strings.SplitSeq(*regionID, ",") {
-				i, err := strconv.Atoi(strings.TrimPrefix(strings.ToUpper(strings.TrimSpace(id)), "A"))
-				if err != nil || i < 1 || i > len(e.autoRegions()) {
-					return fmt.Errorf("--region-id %s が無い（自動の範囲は A1〜A%d）", id, len(e.autoRegions()))
-				}
-				m.Drop = append(m.Drop, e.autoRegions()[i-1])
-			}
-		}
-		if len(m.Drop) == len(c.manual[pic].Drop) {
-			return errors.New("drop には --region-id か --rect・--box が要る")
-		}
-		m.Checked = false
-	case "grow":
-		set := map[string]bool{}
-		fs.Visit(func(f *pflag.Flag) { set[f.Name] = true })
-		if set["margin"] {
-			if o.margin < 0 {
-				return errors.New("--margin は 0 以上")
-			}
-			m.Margin = o.margin
-		}
-		d := [4]int{*left + *by, *top + *by, *right + *by, *bottom + *by}
-		if *regionID != "" {
-			if d == [4]int{} {
-				return errors.New("grow には --by か --left・--top・--right・--bottom が要る")
-			}
-			e, ok := reportEntry(c, pic)
-			if !ok {
-				return fmt.Errorf("%s は report.json に無い（先に auto を動かす）", pic)
-			}
-			regs := e.autoRegions()
-			var ids []int
-			if strings.TrimSpace(*regionID) == "all" {
-				for i := range regs {
-					ids = append(ids, i)
-				}
-			} else {
-				for id := range strings.SplitSeq(*regionID, ",") {
-					i, err := strconv.Atoi(strings.TrimPrefix(strings.ToUpper(strings.TrimSpace(id)), "A"))
-					if err != nil || i < 1 || i > len(regs) {
-						return fmt.Errorf("--region-id %s が無い（自動の範囲は A1〜A%d）", id, len(regs))
-					}
-					ids = append(ids, i-1)
-				}
-			}
-			for _, i := range ids {
-				r := regs[i]
-				m.Grow = append(m.Grow, [8]int{r[0], r[1], r[2], r[3], d[0], d[1], d[2], d[3]})
-			}
-		} else if len(rects) > 0 {
 
-			if d == [4]int{} {
-				return errors.New("grow には --by か --left・--top・--right・--bottom が要る")
+		o, rects, boxes, polys, ellipses, region := mo.o, *mo.rects, *mo.boxes, *mo.polys, *mo.ellipses, *mo.region
+		norm, note, regionID, by, left, top, right, bottom := mo.norm, mo.note, mo.regionID, mo.by, mo.left, mo.top, mo.right, mo.bottom
+		src, size, step, viewOut := mo.src, mo.size, mo.step, mo.viewOut
+		need := 2
+		if sub == "list" {
+			need = 1
+		}
+		if fs.NArg() != need {
+			if need == 1 {
+				return cliio.Parse(diag.Operands.Errorf("expected a game directory: gozen mosaic list [OPTIONS] <game-dir>"))
 			}
+			return cliio.Parse(diag.Operands.Errorf("expected a game directory and an image: gozen mosaic %s [OPTIONS] <game-dir> <IMAGE>", sub))
+		}
+		if *size < 1 || *size > 4096 || *step < 0 {
+			return errors.New("view size must be 1..4096 and step >= 0")
+		}
+		if sub != "add" && sub != "drop" && (len(boxes)+len(polys)+len(ellipses) > 0) {
+			return errors.New("box, polygon, and ellipse flags require add or drop")
+		}
+		if sub == "drop" && (len(polys)+len(ellipses) > 0) {
+			return errors.New("drop requires rectangles")
+		}
+		gameDir := fs.Arg(0)
+		c, err := o.setup(ctx, gameDir)
+		if err != nil {
+			return err
+		}
+		if sub == "list" {
+			rows := manualList(c)
+			if cli.report.Machine() {
+				if cli.report.Format == "jsonl" {
+					for _, row := range rows {
+						if err := cli.report.Item(cli.out, fmt.Sprint(row["file"]), "ok", row); err != nil {
+							return err
+						}
+					}
+				}
+				return cli.result(rows)
+			}
+			for _, row := range rows {
+				if err := json.NewEncoder(c.outw).Encode(row); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		pic, _, origPath := resolve(c, fs.Arg(1))
+		if pic == "" && sub != "view" {
+			return fmt.Errorf("%s は assets の外の絵なので、view だけができる（指示は assets の絵にだけ書ける）", fs.Arg(1))
+		}
+		if err := validPicture(c, pic); err != nil && pic != "" {
+			return err
+		}
+		img, err := decode(origPath)
+		if err != nil {
+			return err
+		}
+		b := img.Bounds()
+		conv := func(v []float64, n int, what string) ([]int, error) {
+			if len(v) != n && (n >= 0 || len(v) < 6 || len(v)%2 != 0) {
+				return nil, fmt.Errorf("%s の数が合わない: %v", what, v)
+			}
+			out := make([]int, len(v))
+			for i, f := range v {
+				if *norm {
+					if f < 0 || f > 1 {
+						return nil, errors.New("normalized coordinates must be in [0,1]")
+					}
+					if i%2 == 0 {
+						f *= float64(b.Dx())
+					} else {
+						f *= float64(b.Dy())
+					}
+				}
+				out[i] = int(math.Round(f))
+			}
+			return out, nil
+		}
+		if sub != "add" && sub != "drop" && sub != "grow" && len(rects)+len(boxes)+len(polys)+len(ellipses) > 0 {
+			return errors.New("geometry flags require add, drop, or grow")
+		}
+		needsManual := sub == "add" || sub == "drop" || sub == "grow" || sub == "skip" || sub == "check" || sub == "clear"
+		if needsManual && o.manualFile == "" {
+			return errors.New("--manual（または環境変数 MOSAIC_MANUAL）に manual の YAML を指定する")
+		}
+		var geometryErr error
+		clip := func(x []int) [4]int {
+			if x[2] <= 0 || x[3] <= 0 {
+				geometryErr = errors.New("rectangle width and height must be positive")
+				return [4]int{}
+			}
+			r := clipRect(x, b)
+			if r[2] <= 0 || r[3] <= 0 {
+				geometryErr = errors.New("rectangle does not intersect the image")
+			}
+			return r
+		}
+		m := c.manual[pic]
+		switch sub {
+		case "show":
+			data := manualShow(c, pic)
+			if cli.report.Machine() {
+				return cli.result(data)
+			}
+			enc := json.NewEncoder(c.outw)
+			enc.SetIndent("", "  ")
+			return enc.Encode(data)
+		case "view":
+			var r image.Rectangle
+			if len(region) > 0 {
+				v, err := conv(region[0], 4, "--region")
+				if err != nil {
+					return err
+				}
+				r = mosaic.Rect([4]int{v[0], v[1], v[2], v[3]})
+			}
+			path, err := manualView(c, pic, origPath, *src, r, *size, *step, *viewOut)
+			if err != nil {
+				return err
+			}
+			return cli.result(map[string]any{"file": pic, "output": path})
+		case "add":
+			n := 0
 			for _, v := range rects {
 				x, err := conv(v, 4, "--rect")
 				if err != nil {
 					return err
 				}
-				r := clip(x)
-				m.Grow = append(m.Grow, [8]int{r[0], r[1], r[2], r[3], d[0], d[1], d[2], d[3]})
+				m.Add = append(m.Add, clip(x))
+				n++
 			}
-		} else if !set["margin"] {
-			return errors.New("grow には --region-id か --rect（と広げる px）か --margin が要る")
+			for _, v := range boxes {
+				x, err := conv(v, 4, "--box")
+				if err != nil {
+					return err
+				}
+				m.Add = append(m.Add, clip([]int{x[0], x[1], x[2] - x[0], x[3] - x[1]}))
+				n++
+			}
+			for _, v := range polys {
+				x, err := conv(v, -1, "--poly")
+				if err != nil {
+					return err
+				}
+				m.Poly = append(m.Poly, x)
+				n++
+			}
+			for _, v := range ellipses {
+				x, err := conv(v, 4, "--ellipse")
+				if err != nil {
+					return err
+				}
+				if x[2] <= 0 || x[3] <= 0 {
+					return errors.New("ellipse radii must be positive")
+				}
+				m.Poly = append(m.Poly, ellipse(x[0], x[1], x[2], x[3], 48))
+				n++
+			}
+			if n == 0 {
+				return errors.New("add には --rect・--box・--poly・--ellipse のどれかが要る")
+			}
+			m.Checked = false
+		case "drop":
+			for _, v := range rects {
+				x, err := conv(v, 4, "--rect")
+				if err != nil {
+					return err
+				}
+				m.Drop = append(m.Drop, clip(x))
+			}
+			for _, v := range boxes {
+				x, err := conv(v, 4, "--box")
+				if err != nil {
+					return err
+				}
+				m.Drop = append(m.Drop, clip([]int{x[0], x[1], x[2] - x[0], x[3] - x[1]}))
+			}
+			if *regionID != "" {
+				e, ok := reportEntry(c, pic)
+				if !ok {
+					return fmt.Errorf("%s は report.json に無い（先に auto か view を動かす）", pic)
+				}
+				for id := range strings.SplitSeq(*regionID, ",") {
+					i, err := strconv.Atoi(strings.TrimPrefix(strings.ToUpper(strings.TrimSpace(id)), "A"))
+					if err != nil || i < 1 || i > len(e.autoRegions()) {
+						return fmt.Errorf("--region-id %s が無い（自動の範囲は A1〜A%d）", id, len(e.autoRegions()))
+					}
+					m.Drop = append(m.Drop, e.autoRegions()[i-1])
+				}
+			}
+			if len(m.Drop) == len(c.manual[pic].Drop) {
+				return errors.New("drop には --region-id か --rect・--box が要る")
+			}
+			m.Checked = false
+		case "grow":
+			set := map[string]bool{}
+			fs.Visit(func(f *pflag.Flag) { set[f.Name] = true })
+			if set["margin"] {
+				if o.margin < 0 {
+					return errors.New("--margin は 0 以上")
+				}
+				m.Margin = o.margin
+			}
+			d := [4]int{*left + *by, *top + *by, *right + *by, *bottom + *by}
+			if *regionID != "" {
+				if d == [4]int{} {
+					return errors.New("grow には --by か --left・--top・--right・--bottom が要る")
+				}
+				e, ok := reportEntry(c, pic)
+				if !ok {
+					return fmt.Errorf("%s は report.json に無い（先に auto を動かす）", pic)
+				}
+				regs := e.autoRegions()
+				var ids []int
+				if strings.TrimSpace(*regionID) == "all" {
+					for i := range regs {
+						ids = append(ids, i)
+					}
+				} else {
+					for id := range strings.SplitSeq(*regionID, ",") {
+						i, err := strconv.Atoi(strings.TrimPrefix(strings.ToUpper(strings.TrimSpace(id)), "A"))
+						if err != nil || i < 1 || i > len(regs) {
+							return fmt.Errorf("--region-id %s が無い（自動の範囲は A1〜A%d）", id, len(regs))
+						}
+						ids = append(ids, i-1)
+					}
+				}
+				for _, i := range ids {
+					r := regs[i]
+					m.Grow = append(m.Grow, [8]int{r[0], r[1], r[2], r[3], d[0], d[1], d[2], d[3]})
+				}
+			} else if len(rects) > 0 {
+
+				if d == [4]int{} {
+					return errors.New("grow には --by か --left・--top・--right・--bottom が要る")
+				}
+				for _, v := range rects {
+					x, err := conv(v, 4, "--rect")
+					if err != nil {
+						return err
+					}
+					r := clip(x)
+					m.Grow = append(m.Grow, [8]int{r[0], r[1], r[2], r[3], d[0], d[1], d[2], d[3]})
+				}
+			} else if !set["margin"] {
+				return errors.New("grow には --region-id か --rect（と広げる px）か --margin が要る")
+			}
+			m.Checked = false
+		case "skip":
+			m.Skip = true
+			m.Checked = false
+		case "check":
+			m.Checked = true
+		case "clear":
+			m = mosaic.Fix{}
+		default:
+			return cliio.Parse(diag.UnknownCommand.Errorf("unknown manual command %q", sub))
 		}
-		m.Checked = false
-	case "skip":
-		m.Skip = true
-		m.Checked = false
-	case "check":
-		m.Checked = true
-	case "clear":
-		m = mosaic.Fix{}
-	default:
-		return argumentError{diag.UnknownCommand.Errorf("unknown manual command %q", sub)}
-	}
-	if *note != "" {
-		m.Note = strings.TrimSpace(m.Note + " " + *note)
-	}
-	for _, p := range m.Polygons() {
-		if !p.Hits(p.Bounds().Intersect(b)) {
-			return errors.New("polygon does not intersect the image")
+		if *note != "" {
+			m.Note = strings.TrimSpace(m.Note + " " + *note)
 		}
-	}
-	if geometryErr != nil {
-		return geometryErr
-	}
-	fs.Visit(func(f *pflag.Flag) {
-		if f.Name == "block" {
-			m.Block = o.block
+		for _, p := range m.Polygons() {
+			if !p.Hits(p.Bounds().Intersect(b)) {
+				return errors.New("polygon does not intersect the image")
+			}
 		}
-	})
-	c.manual[pic] = m
-	if err := mosaic.ValidateFixes(c.manual); err != nil {
-		return err
-	}
-	human, err := mosaic.LoadFixes(o.fixFile)
-	if err != nil {
-		return err
-	}
-	c.fixes[pic] = mosaic.Combine(human[pic], m)
-	return publishManual(c, pic, origPath, sub, *size, *step)
+		if geometryErr != nil {
+			return geometryErr
+		}
+		fs.Visit(func(f *pflag.Flag) {
+			if f.Name == "block" {
+				m.Block = o.block
+			}
+		})
+		c.manual[pic] = m
+		if err := mosaic.ValidateFixes(c.manual); err != nil {
+			return err
+		}
+		human, err := mosaic.LoadFixes(o.fixFile)
+		if err != nil {
+			return err
+		}
+		c.fixes[pic] = mosaic.Combine(human[pic], m)
+		if err := publishManual(ctx, c, pic, origPath, sub, *size, *step); err != nil {
+			return err
+		}
+		return cli.result(map[string]any{"file": pic, "manual": o.manualFile, "output": c.out, "fix": m})
+	}}
 }
 
 func clipRect(x []int, b image.Rectangle) [4]int {
@@ -404,21 +436,17 @@ func reportEntry(c config, pic string) (entry, bool) {
 
 func (e entry) autoRegions() [][4]int { return e.Regions }
 
-func manualList(c config) error {
-	enc := json.NewEncoder(c.outw)
-	enc.SetEscapeHTML(false)
+func manualList(c config) []map[string]any {
+	rows := []map[string]any{}
 	for _, e := range readReport(c) {
-		if len(e.Review) == 0 {
-			continue
-		}
-		if err := enc.Encode(map[string]any{"file": e.File, "review": e.Review, "masked": e.Output != ""}); err != nil {
-			return err
+		if len(e.Review) > 0 {
+			rows = append(rows, map[string]any{"file": e.File, "review": e.Review, "masked": e.Output != ""})
 		}
 	}
-	return nil
+	return rows
 }
 
-func manualShow(c config, pic string) error {
+func manualShow(c config, pic string) map[string]any {
 	e, ok := reportEntry(c, pic)
 	out := map[string]any{"file": pic, "manual": c.manual[pic], "fix": c.fixes[pic]}
 	if ok {
@@ -426,13 +454,10 @@ func manualShow(c config, pic string) error {
 	} else {
 		out["report"] = "report.json に無い（auto を動かす）"
 	}
-	enc := json.NewEncoder(c.outw)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-	return enc.Encode(out)
+	return out
 }
 
-func manualView(c config, pic, orig, src string, region image.Rectangle, size, step int, dst string) error {
+func manualView(c config, pic, orig, src string, region image.Rectangle, size, step int, dst string) (string, error) {
 	var img image.Image
 	var err error
 	e, ok := reportEntry(c, pic)
@@ -446,10 +471,10 @@ func manualView(c config, pic, orig, src string, region image.Rectangle, size, s
 			img, err = decode(orig)
 		}
 	default:
-		return errors.New("--src は original か masked")
+		return "", errors.New("--src は original か masked")
 	}
 	if err != nil {
-		return err
+		return "", err
 	}
 	b := img.Bounds()
 	if region.Empty() {
@@ -457,7 +482,7 @@ func manualView(c config, pic, orig, src string, region image.Rectangle, size, s
 	}
 	region = region.Intersect(b)
 	if region.Empty() {
-		return errors.New("--region が絵の外")
+		return "", errors.New("--region が絵の外")
 	}
 	var ov overlay
 	if ok {
@@ -475,13 +500,13 @@ func manualView(c config, pic, orig, src string, region image.Rectangle, size, s
 		dst = filepath.Join(c.out, "manual", name+"."+src+".png")
 	}
 	if err := protectView(c, orig, dst); err != nil {
-		return err
+		return "", err
 	}
 	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
-		return err
+		return "", err
 	}
 	if err := encode(dst, view, 95); err != nil {
-		return err
+		return "", err
 	}
 	display := dst
 	if c.displayOut != "" {
@@ -489,8 +514,8 @@ func manualView(c config, pic, orig, src string, region image.Rectangle, size, s
 			display = filepath.Join(c.displayOut, rel)
 		}
 	}
-	c.outw.printf("view: %s（%s、範囲 %v、元の絵 %dx%d）\n", display, src, xywh(region), b.Dx(), b.Dy())
-	return nil
+	c.outw.Printf("view: %s（%s、範囲 %v、元の絵 %dx%d）\n", display, src, xywh(region), b.Dx(), b.Dy())
+	return display, nil
 }
 
 type overlay struct {

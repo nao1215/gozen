@@ -973,7 +973,7 @@ hair:
   - rect: [130, 70, 50, 90]
 ```
 
-[Check where each piece lies](#moving-portraits) with `gozen art puppet`. Reference: [Actor](/schema/#actor), [Say](/schema/#say), [FaceRule](/schema/#facerule), and [the puppet format](https://github.com/nao1215/gozen/blob/main/docs/architecture/puppet.md). [Go Zen's Maren](https://github.com/nao1215/gozen/blob/main/examples/go-zen/game/assets/maren/puppet.yaml) has a puppet.
+[Check where each piece lies](#moving-portraits) with `gozen puppet`. Reference: [Actor](/schema/#actor), [Say](/schema/#say), [FaceRule](/schema/#facerule), and [the puppet format](https://github.com/nao1215/gozen/blob/main/docs/architecture/puppet.md). [Go Zen's Maren](https://github.com/nao1215/gozen/blob/main/examples/go-zen/game/assets/maren/puppet.yaml) has a puppet.
 
 ## Set the face icons
 
@@ -1002,7 +1002,7 @@ locations:
       - {id: baker, name: Baker, image: baker.png, bubbles: [Fresh bread!]}
 ```
 
-In a painted scene, a balloon's face comes from the doll's `icon`, then `face_at`, then the face boxes that [gozen art faces](#check-and-measure) finds. Reference: [Actor](/schema/#actor), [Doll](/schema/#doll).
+In a painted scene, a balloon's face comes from the doll's `icon`, then `face_at`, then the face boxes that [gozen faces](#check-and-measure) finds. Reference: [Actor](/schema/#actor), [Doll](/schema/#doll).
 
 ## Show event pictures and fill the gallery
 
@@ -1033,7 +1033,7 @@ gallery:
 
 ## Keep a character book
 
-`profiles` gives each character a page on the Characters screen: the standing picture with its faces, a few lines of your own labels, an introduction and how they see the others. A profile whose ID is an actor's shows that actor; `picture` shows anyone else. Under `--dev` the title and the menu offer Characters, F6 opens it anywhere and every page is open, so you can check your characters while you write. Run `gozen art faces` once to center the list's face icons on the faces. Every text is translated through `lang/` like the lines.
+`profiles` gives each character a page on the Characters screen: the standing picture with its faces, a few lines of your own labels, an introduction and how they see the others. A profile whose ID is an actor's shows that actor; `picture` shows anyone else. Under `--dev` the title and the menu offer Characters, F6 opens it anywhere and every page is open, so you can check your characters while you write. Run `gozen faces` once to center the list's face icons on the faces. Every text is translated through `lang/` like the lines.
 
 <!-- verify: load group=profiles as=game.yaml -->
 ```yaml
@@ -1075,7 +1075,7 @@ events:
 
 `open: profiles` opens the book from an event, and a test reads `profile.mira.unlocked`. Reference: [Profile](/schema/#profile), [ProfileField](/schema/#profilefield), [ProfileRelation](/schema/#profilerelation), [UIStyle](/schema/#uistyle).
 
-Press Tab in the book for the chart, use arrows to select a face, then Z to focus it. Its incoming and outgoing neighbours gather around it; other faces and lines fade. Press Z again to read its page, X to animate back to the full chart, or use the wheel to zoom. The `kind` colour is chosen by the author; `love` has no engine rule. A line to a locked profile is hidden until it opens. Run `gozen art faces <game-dir>` to generate face boxes, then `gozen check <game-dir>` to catch unknown targets and kinds.
+Press Tab in the book for the chart, use arrows to select a face, then Z to focus it. Its incoming and outgoing neighbours gather around it; other faces and lines fade. Press Z again to read its page, X to animate back to the full chart, or use the wheel to zoom. The `kind` colour is chosen by the author; `love` has no engine rule. A line to a locked profile is hidden until it opens. Run `gozen faces <game-dir>` to generate face boxes, then `gozen check <game-dir>` to catch unknown targets and kinds.
 
 ## Keep a monster book
 
@@ -1221,7 +1221,7 @@ enemies:
 
 In `assets/sprite/puppet.yaml`:
 
-<!-- verify: parse The puppet file is checked by gozen art puppet when used in a game. -->
+<!-- verify: parse The puppet file is checked by gozen puppet when used in a game. -->
 ```yaml
 base: base.png
 eyes:
@@ -1233,7 +1233,7 @@ motion:
   breath: {depth: 0.012, period: 4}
 ```
 
-Run `gozen art puppet assets/sprite/puppet.yaml` to inspect the picture parts.
+Run `gozen puppet assets/sprite/puppet.yaml` to inspect the picture parts.
 
 ## Play music for places, battles and moods
 
@@ -1414,12 +1414,12 @@ gozen sim dive game --location grotto --floors 5 --boss 5:lesson  # a whole dive
 gozen book game > book.md                              # the whole game as one Markdown file
 ```
 
-`gozen art faces` finds the faces of the standing pictures for balloons; it needs a detection model:
+`gozen faces` finds the faces of the standing pictures for balloons; it needs a detection model:
 
 <!-- verify: skip downloads a model and needs a cgo build with ONNX Runtime -->
 ```shell
-gozen art fetch face
-gozen art faces game
+gozen models fetch face
+gozen faces game
 ```
 
 ### Test play
@@ -1446,8 +1446,8 @@ gozen notes notes -o notes-html
 
 <!-- verify: each fixture=puppet -->
 ```shell
-gozen art puppet streamer/puppet.yaml                        # check it and show where each piece lies
-gozen art puppet streamer/puppet.yaml --out streamer-packed  # write it with small difference pictures
+gozen puppet streamer/puppet.yaml                        # check it and show where each piece lies
+gozen puppet streamer/puppet.yaml --out streamer-packed  # write it with small difference pictures
 ```
 
 ### Release and trial

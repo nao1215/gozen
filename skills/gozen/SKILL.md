@@ -19,6 +19,8 @@ Start a new game with `gozen new <game-dir> --template rpg|novel|campaign`. The 
 6. Capture promotional or review images with `gozen capture <game-dir> --config captures.yaml --out promo`. Jobs select a location, event or gallery line; `gif` records an animation. Saves are isolated automatically. Check the per-job results and exit status; partial failure exits 1. Use `--format json` or `jsonl` for machine-readable reports. See [capture](https://nao1215.github.io/gozen/commands/#capture) for limits and examples.
 7. For a novel or event-driven game, run `gozen sim routes <game-dir>` to explore choices and check reachable endings and offered options; use `--format json --fail-unreachable` in CI.
 
+Use `gozen help --format json` to inspect registered commands and options without loading a game. `gozen book GAME --format json` describes the whole game; add `--section lineage` to select only monster family trees.
+
 For every `sim` command, `--format json` returns a version-1 result with `command`, `status` and `data`; JSONL emits items and a terminal summary. Keep stdout and stderr separate and check the exit status. To inspect a recorded play, use `gozen trace run.jsonl --format json`, or `gozen trace - --format jsonl` for standard input. Repeat `--only KIND` to select kinds; `--check` rejects these display filters and preserves diagnostic codes in its issue records.
 
 <!-- verify: run fixture=cave -->
@@ -44,7 +46,7 @@ In GitHub Actions, `nao1215/setup-gozen` installs the version in the game's `go.
 
 A complete small game is in references/minimal.md.
 
-For battle forms, HP pictures and enemy motion use schema version 7. `hp_triggers` transforms a foe below an HP threshold; a self-scoped skill's `merge` combines eligible foes. Enemy `images` lists picture files and actor `images` lists face names at descending HP thresholds. Set `puppet` on an enemy or actor for moving portraits; its YAML can use `soft_sway` with `rect` or `ellipse` and `follow: body` for gentle motion. Check it with `gozen art puppet` and see the [battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-enemy).
+For battle forms, HP pictures and enemy motion use schema version 7. `hp_triggers` transforms a foe below an HP threshold; a self-scoped skill's `merge` combines eligible foes. Enemy `images` lists picture files and actor `images` lists face names at descending HP thresholds. Set `puppet` on an enemy or actor for moving portraits; its YAML can use `soft_sway` with `rect` or `ellipse` and `follow: body` for gentle motion. Check it with `gozen puppet` and see the [battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-enemy).
 
 ## Reading the errors
 
@@ -55,7 +57,7 @@ data/world.yaml:30:10: locations.village.exits[0].to: unknown location "feild" [
 ```
 
 - `gozen help GZN1101` explains a code. All codes: https://nao1215.github.io/gozen/errors/.
-- `gozen check --format json game` gives the same problems as JSON (`file`, `line`, `col`, `path`, `code`, `message`, `severity`).
+- `gozen check --format json game` returns a version-1 result with the diagnostic array in `data` (`file`, `line`, `col`, `path`, `code`, `message`, `severity`). Validation failure exits 1 with `status: failed`; do not expect a duplicate stderr error.
 - Warnings do not fail the check. Read them anyway.
 
 YAML traps are in references/yaml.md.
@@ -81,7 +83,7 @@ A novel game (ADV) sets `schema_version: 4` and `ui.message: novel` in game.yaml
 - For a second language, set `written_in` and `languages` and translate every text in `lang/<code>.yaml`. `gozen check --format json` lists each text not translated yet (GZN0111); fill them until the check is quiet.
 - Test every branch in Go with `gozen.Explore` and read `chose.<id>` and the flags at the end of each path.
 - Keep who each character is in `profiles` (data/): a title, fields with your own labels, an introduction and how they see the others. Check new lines against it; `--dev` opens it as Characters (F6), and `profile.<id>.unlocked` reads whether its `when` holds.
-- Press Tab in Characters for the relationship chart. Set optional `affiliation` on profiles and `kind` (`like`, `love`, `rival`, `enemy`, `family`, `friend`, `other`) on relations. The author decides what `love` means. Run `gozen art faces` for centred icons and `gozen check` for unknown kinds or targets.
+- Press Tab in Characters for the relationship chart. Set optional `affiliation` on profiles and `kind` (`like`, `love`, `rival`, `enemy`, `family`, `friend`, `other`) on relations. The author decides what `love` means. Run `gozen faces` for centred icons and `gozen check` for unknown kinds or targets.
 - Add `enemies.<id>.lore` for creatures that appear in encounters and set `ui.bestiary: true` to offer the monster book. Encounters reveal name, picture and lore; victories reveal stats, resistances, skills and drops. `bestiary.<id>.seen` and `.defeated` are query expressions; F4 opens every page under `--dev`.
 
 The recipes are under "Let the player roll back", "Stage portraits and effects" and "Offer the game in two languages" in the cookbook. A complete short one is [examples/novel](https://github.com/nao1215/gozen/tree/main/examples/novel).

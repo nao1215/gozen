@@ -15,6 +15,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nao1215/gozen/internal/clihelp"
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/internal/diag"
 )
 
@@ -26,7 +29,7 @@ type fileSpec struct {
 	Optional bool // a 404 is not an error
 }
 
-// modelSpec is a model gozen art fetch knows. Rev is a fixed commit of the
+// modelSpec is a model gozen models fetch knows. Rev is a fixed commit of the
 // Hugging Face repository, so the same files come back every time.
 type modelSpec struct {
 	Name, Repo, Rev, Dir, License, Summary string
@@ -135,9 +138,9 @@ func megabytes(n int64) string { return fmt.Sprintf("%.0f MB", float64(n)/1e6) }
 
 // download fetches every file into a temporary directory, checks each SHA-256,
 // and only then replaces the cache directory. A mismatch deletes what was fetched.
-func (m modelSpec) download(diag *output) (err error) {
+func (m modelSpec) download(ctx context.Context, diag *cliio.Output) (err error) {
 	// Ctrl-C ends the transfer with an error, so the partial directory is removed below.
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
 	defer stop()
 	dir, err := m.dir()
 	if err != nil {
@@ -158,7 +161,7 @@ func (m modelSpec) download(diag *output) (err error) {
 	}()
 	client := &http.Client{Timeout: httpTimes}
 	for _, f := range m.Files {
-		diag.printf("fetching %s\n", m.url(f))
+		diag.Printf("fetching %s\n", m.url(f))
 		if err := fetchFile(ctx, client, m.url(f), filepath.Join(tmp, f.Name), f); err != nil {
 			if errors.Is(err, errSkipOptional) {
 				continue
@@ -206,47 +209,80 @@ func fetchFile(ctx context.Context, client *http.Client, url, dst string, f file
 	return nil
 }
 
-func (cli *cli) fetchCmd(args []string) error {
-	fs := newFlagSet("gozen art fetch")
-	list := fs.Bool("list", false, "list the models and whether each is in the cache; download nothing")
-	if err := cli.parse(fs, args, fetchPage); err != nil {
-		return err
+type modelResult struct {
+	Name       string `json:"name"`
+	Repository string `json:"repository"`
+	License    string `json:"license"`
+	Bytes      int64  `json:"bytes"`
+	Cached     bool   `json:"cached"`
+	Path       string `json:"path,omitempty"`
+	Summary    string `json:"summary"`
+}
+
+func (cli *cli) fetchCmd(list bool) clihelp.Operation {
+	name := "models fetch"
+	if list {
+		name = "models list"
 	}
-	if *list {
-		for _, m := range models {
-			state := "not fetched"
-			if p, ok := m.cachedModel(); ok {
-				state = "fetched " + filepath.Dir(p)
+	fs := newFlagSet("gozen " + name)
+	p := fetchPage
+	p.Name = "gozen " + name
+	p.Usage = []string{"gozen " + name + " [OPTIONS] [MODEL ...]"}
+	if list {
+		p.Usage = []string{"gozen models list [OPTIONS]"}
+		p.Summary = "list pinned models and their cache status"
+		p.About = "Reports model names, sources, licenses, sizes and cache status without downloading."
+		p.Notes = []string{exitStatus, "Requirements: no network, cgo or ONNX Runtime. See " + clihelp.README}
+	}
+	return clihelp.Operation{Flags: fs, Page: p, Run: func(ctx context.Context) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if list && fs.NArg() != 0 {
+			return cliio.Invalid(diag.Operands, "models list takes no operands")
+		}
+		names := fs.Args()
+		if len(names) == 0 {
+			for _, m := range models {
+				names = append(names, m.Name)
 			}
-			cli.out.printf("%s\t%s\t%s\t%s\t%s\t%s\n", m.Name, m.Repo, m.License, megabytes(m.size()), state, m.Summary)
 		}
-		return nil
-	}
-	names := fs.Args()
-	if len(names) == 0 {
-		for _, m := range models {
-			names = append(names, m.Name)
+		todo := []modelSpec{}
+		for _, name := range names {
+			m, ok := findModel(name)
+			if !ok {
+				return cliio.Invalid(diag.UnknownName, "unknown model %q: use %s", name, modelNames())
+			}
+			todo = append(todo, m)
 		}
-	}
-	var todo []modelSpec
-	for _, n := range names {
-		m, ok := findModel(n)
-		if !ok {
-			return argumentError{diag.UnknownName.Errorf("unknown model %q: use %s", n, modelNames())}
+		rows := []modelResult{}
+		for _, m := range todo {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if !list {
+				if err := m.download(ctx, cli.diag); err != nil {
+					return err
+				}
+			}
+			path, cached := m.cachedModel()
+			row := modelResult{m.Name, m.Repo, m.License, m.size(), cached, path, m.Summary}
+			rows = append(rows, row)
+			if cli.report.Format == "jsonl" {
+				if err := cli.report.Item(cli.out, m.Name, "ok", row); err != nil {
+					return err
+				}
+			}
+			if !cli.report.Machine() {
+				state := "not fetched"
+				if cached {
+					state = "fetched " + filepath.Dir(path)
+				}
+				cli.out.Printf("%s\t%s\t%s\t%s\t%s\t%s\n", m.Name, m.Repo, m.License, megabytes(m.size()), state, m.Summary)
+			}
 		}
-		todo = append(todo, m)
-	}
-	for _, m := range todo {
-		if err := m.download(cli.diag); err != nil {
-			return err
-		}
-		p, err := m.dir()
-		if err != nil {
-			return err
-		}
-		cli.out.printf("%s: fetched to %s\n", m.Name, p)
-	}
-	return nil
+		return cli.result(rows)
+	}}
 }
 
 func modelNames() string {
@@ -259,7 +295,7 @@ func modelNames() string {
 
 // defaultModel finds the model for an omitted --model: the cache first, then,
 // with ask, a confirmation on the terminal (or yes) before downloading.
-func (cli *cli) defaultModel(yes, ask bool) (string, error) {
+func (cli *cli) defaultModel(ctx context.Context, yes, ask bool) (string, error) {
 	m := models[0]
 	if p, ok := m.cachedModel(); ok {
 		return p, nil
@@ -273,18 +309,18 @@ func (cli *cli) defaultModel(yes, ask bool) (string, error) {
 	}
 	if !yes {
 		if !interactive() {
-			return "", fmt.Errorf("missing --model, and the default model %q is not in the cache; run \"gozen art fetch %s\" (about %s from %s/%s) or pass --yes", m.Name, m.Name, megabytes(m.size()), hubURL, m.Repo)
+			return "", fmt.Errorf("missing --model, and the default model %q is not in the cache; run \"gozen models fetch %s\" (about %s from %s/%s) or pass --yes", m.Name, m.Name, megabytes(m.size()), hubURL, m.Repo)
 		}
-		cli.diag.printf("Download the model? About %s from %s/%s/resolve/%s/%s/ to %s [y/N] ", megabytes(m.size()), hubURL, m.Repo, m.Rev, m.Dir, dir)
+		cli.diag.Printf("Download the model? About %s from %s/%s/resolve/%s/%s/ to %s [y/N] ", megabytes(m.size()), hubURL, m.Repo, m.Rev, m.Dir, dir)
 		line, err := bufio.NewReader(promptIn).ReadString('\n')
 		if err != nil && line == "" {
-			return "", fmt.Errorf("missing --model: no answer was read; run \"gozen art fetch %s\" or pass --model", m.Name)
+			return "", fmt.Errorf("missing --model: no answer was read; run \"gozen models fetch %s\" or pass --model", m.Name)
 		}
 		if a := strings.ToLower(strings.TrimSpace(line)); a != "y" && a != "yes" {
-			return "", fmt.Errorf("missing --model: no model was downloaded; run \"gozen art fetch %s\" or pass --model", m.Name)
+			return "", fmt.Errorf("missing --model: no model was downloaded; run \"gozen models fetch %s\" or pass --model", m.Name)
 		}
 	}
-	if err := m.download(cli.diag); err != nil {
+	if err := m.download(ctx, cli.diag); err != nil {
 		return "", err
 	}
 	p, _ := m.cachedModel()

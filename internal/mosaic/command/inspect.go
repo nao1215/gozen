@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,9 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/nao1215/gozen/internal/clihelp"
+	"github.com/nao1215/gozen/internal/cliio"
 
 	"github.com/nao1215/gozen/internal/diag"
 
@@ -68,52 +72,72 @@ type manualFix struct {
 
 var categoryJa = map[string]string{"penis": "男性器", "pussy": "女性器", "nipple_f": "乳首"}
 
-func (cli *cli) inspectCmd(args []string) (err error) {
-	fs := newFlagSet("gozen art mosaic inspect")
+func (cli *cli) inspectCmd() clihelp.Operation {
+	fs := newFlagSet("gozen mosaic inspect")
 	o := cli.commonFlags(fs)
 	pretty := fs.Bool("pretty", false, "write indented JSON instead of one line per image")
 	redetect := fs.Bool("redetect", false, "detect every image with the model again instead of using report.json (slow)")
-	if err := cli.parse(fs, args, inspectPage); err != nil {
-		return err
-	}
-	if fs.NArg() < 1 {
-		return argumentError{diag.Operands.Errorf("expected a game directory: gozen art mosaic inspect [OPTIONS] <game-dir> [IMAGE ...]")}
-	}
-	gameDir := fs.Arg(0)
-	c, err := o.setup(gameDir)
-	if err != nil {
-		return err
-	}
-	pics := fs.Args()[1:]
-	if len(pics) == 0 {
-		if pics, _, err = mosaic.Pictures(gameDir); err != nil {
+	return clihelp.Operation{Flags: fs, Page: inspectPage, Run: func(ctx context.Context) (err error) {
+		if err := ctx.Err(); err != nil {
 			return err
 		}
-	}
-	c.redetect = *redetect
-	c.showClasses = true
-	c.printClasses()
-	c.tags.readOnly = true
-	defer func() { err = errors.Join(err, c.close()) }()
-	report := map[string]entry{}
-	for _, e := range readReport(c) {
-		report[e.File] = e
-	}
-	enc := json.NewEncoder(c.outw)
-	enc.SetEscapeHTML(false)
-	if *pretty {
-		enc.SetIndent("", "  ")
-	}
-	for _, p := range pics {
-		in, err := inspect(&c, p, report)
+		if fs.NArg() < 1 {
+			return cliio.Parse(diag.Operands.Errorf("expected a game directory: gozen mosaic inspect [OPTIONS] <game-dir> [IMAGE ...]"))
+		}
+		gameDir := fs.Arg(0)
+		c, err := o.setup(ctx, gameDir)
 		if err != nil {
-			return fmt.Errorf("%s: %w", p, err)
-		}
-		if err := enc.Encode(in); err != nil {
 			return err
 		}
-	}
-	return nil
+		pics := fs.Args()[1:]
+		if len(pics) == 0 {
+			if pics, _, err = mosaic.Pictures(gameDir); err != nil {
+				return err
+			}
+		}
+		c.redetect = *redetect
+		c.showClasses = true
+		c.printClasses()
+		c.tags.readOnly = true
+		closed := false
+		defer func() {
+			if !closed {
+				err = errors.Join(err, c.close())
+			}
+		}()
+		report := map[string]entry{}
+		for _, e := range readReport(c) {
+			report[e.File] = e
+		}
+		enc := json.NewEncoder(c.outw)
+		enc.SetEscapeHTML(false)
+		if *pretty {
+			enc.SetIndent("", "  ")
+		}
+		rows := []inspection{}
+		for _, p := range pics {
+			in, err := inspect(ctx, &c, p, report)
+			if err != nil {
+				return fmt.Errorf("%s: %w", p, err)
+			}
+			rows = append(rows, in)
+			if cli.report.Format == "jsonl" {
+				if err := cli.report.Item(cli.out, in.File, "ok", in); err != nil {
+					return err
+				}
+			}
+			if !cli.report.Machine() {
+				if err := enc.Encode(in); err != nil {
+					return err
+				}
+			}
+		}
+		closed = true
+		if err := c.close(); err != nil {
+			return err
+		}
+		return cli.result(rows)
+	}}
 }
 
 func resolve(c config, arg string) (rel, path, orig string) {
@@ -140,7 +164,7 @@ func resolve(c config, arg string) (rel, path, orig string) {
 	return rel, p, p
 }
 
-func inspect(c *config, arg string, report map[string]entry) (inspection, error) {
+func inspect(ctx context.Context, c *config, arg string, report map[string]entry) (inspection, error) {
 	rel, path, origPath := resolve(*c, arg)
 	in := inspection{File: rel, Path: path, Categories: []string{}, Evidence: []string{}, Objects: []object{}, Candidates: []object{}, Review: []string{}}
 	img, err := decode(path)
@@ -196,7 +220,7 @@ func inspect(c *config, arg string, report map[string]entry) (inspection, error)
 
 	var boxes []detect.Box
 	if !fx.Skip {
-		if err := c.open(); err != nil {
+		if err := c.open(ctx); err != nil {
 			return in, err
 		}
 		if boxes, err = c.det.Detect(orig, c.passes, c.p.minScore); err != nil {

@@ -198,7 +198,7 @@ p.Draw(screen, op)
 
 A swaying part is an area of the picture listed under `springs:` with its root (an edge or a point), what it follows (`head`, or `body` for breathing and whole-body reactions such as hop), its axis (`x`, `y` or `both`) and its spring; the end far from the root moves the most and later parts lie over earlier ones. The defaults are small, the same as the hair's.
 
-A difference picture as large as the base is cut down to the part that differs when loading; `gozen art puppet puppet.yaml --out small` writes the small pictures for shipping. In an RPG, `puppet: walker/puppet.yaml` on an actor makes the talk portrait move. `go run ./examples/puppet` shows the streamer above; keys try each motion.
+A difference picture as large as the base is cut down to the part that differs when loading; `gozen puppet puppet.yaml --out small` writes the small pictures for shipping. In an RPG, `puppet: walker/puppet.yaml` on an actor makes the talk portrait move. `go run ./examples/puppet` shows the streamer above; keys try each motion.
 
 ## A message log: chat
 

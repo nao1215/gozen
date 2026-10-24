@@ -30,17 +30,17 @@ import (
 )
 
 // faces finds the face of each standing picture a painted scene cuts a balloon face from,
-// with the anime face detector of gozen art mosaic, and writes the boxes to assets/faces.json
+// with the anime face detector of gozen mosaic, and writes the boxes to assets/faces.json
 // (ADR 0022). The game reads that file; it never runs the model.
 func (c *command) faces() clihelp.Operation {
-	f := clihelp.NewFlagSet("gozen art faces")
-	model := f.String("model", "", "the face detection `MODEL` (default: the one gozen art fetch face keeps in the cache)")
+	f := clihelp.NewFlagSet("gozen faces")
+	model := f.String("model", "", "the face detection `MODEL` (default: the one gozen models fetch face keeps in the cache)")
 	lib := f.String("ort", "", "the ONNX Runtime shared `LIBRARY` (default: $ONNXRUNTIME_LIB)")
 	minScore := f.Float32("min", 0.3, "the lowest `SCORE` of a face")
 	preview := f.String("preview", "", "also write each picture with its face box and its balloon face to this new `DIR`")
 	return clihelp.Operation{Flags: f, Run: func(_ context.Context) (err error) {
 		if f.NArg() != 1 {
-			return cliio.Invalid(diag.Operands, "art faces expects one game directory")
+			return cliio.Invalid(diag.Operands, "faces expects one game directory")
 		}
 		if !f.Changed("ort") {
 			*lib = detect.LibraryPath()
@@ -63,7 +63,7 @@ func (c *command) faces() clihelp.Operation {
 			}
 			*model = filepath.Join(cache, "gozen", "mosaic", "face", "model.onnx")
 			if _, err := os.Stat(*model); err != nil {
-				return fmt.Errorf("no face model at %s: download it with gozen art fetch face, or give --model", *model)
+				return fmt.Errorf("no face model at %s: download it with gozen models fetch face, or give --model", *model)
 			}
 		}
 		d, err := detect.NewWithLabels(*model, *lib, 0, detect.FaceLabels)

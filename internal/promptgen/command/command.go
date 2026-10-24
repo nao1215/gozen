@@ -54,6 +54,7 @@ func New(cfg Config) clihelp.Operation {
 	catalog := f.StringP("config", "c", "", "read catalog `FILE`; required")
 	cfg.Report.Command = name
 	f.StringVar(&cfg.Report.Format, "format", "text", "result encoding: text, json, or jsonl")
+	clihelp.Choices(f.Lookup("format"), "text", "json", "jsonl")
 	var scene, planFile, scenes string
 	var selectors []string
 	if !cfg.Lint {
