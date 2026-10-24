@@ -31,7 +31,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0021](0021-query-and-commands.md) | Read with expressions, change with commands (constrained but simple; the public API in its smallest form) | Partly changed | Product direction and staged API retirement in [0041](0041-yaml-authoring-and-distribution.md) |
 | [0022](0022-maps-and-painted-scenes.md) | Maps and painted scenes: rules are points, looks are pictures | Accepted (stages 0 to 4 done) | |
 | [0023](0023-verified-docs.md) | Checking the images and steps in the README and the site (image ledger, running the steps, links) | Accepted | |
-| [0024](0024-command-tree-and-diagnostic-codes.md) | A command tree of six tools, and diagnostic codes | Accepted | |
+| [0024](0024-command-tree-and-diagnostic-codes.md) | A command tree of six tools, and diagnostic codes | Partly changed | Command and output migration in [0042](0042-command-and-output-contract.md) |
 | [0025](0025-replay-to-roll-back-skip-and-resume.md) | Replay to roll back, skip and resume (`schema_version: 4`, save format version 2) | Accepted (stages 0, 2 and 2b done) | |
 | [0026](0026-read-lines-and-skipping.md) | Read lines keyed by their source, a versioned record, skip mode and scene skip | Accepted (done) | |
 | [0027](0027-text-languages.md) | The languages of a game's text (source to translation) | Accepted (done) | |
@@ -51,6 +51,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0040](0040-stacked-spaces.md) | Bounded stacked spaces: streets, interiors and continuous stairs | Accepted for implementation | |
 
 | [0041](0041-yaml-authoring-and-distribution.md) | YAML authoring and distribution; public Go API retirement last | Accepted for phased implementation | |
+| [0042](0042-command-and-output-contract.md) | Direct commands, capture and structured output | Accepted for phased implementation | |
 
 The source of truth for the current public packages is `api/public.txt` and [Boundaries](../architecture/boundaries.md), not this list of ADRs.
 
