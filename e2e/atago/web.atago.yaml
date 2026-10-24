@@ -1,0 +1,139 @@
+version: '1'
+suite:
+  name: Gozen browser distribution
+runners:
+  browser:
+    type: browser
+    timeout: 90s
+    browser_args: [enable-unsafe-swiftshader, use-angle=swiftshader, window-size=1100,700]
+scenarios:
+- name: a subdirectory export plays a choice and restores browser saves
+  tags: [web]
+  services:
+  - name: site
+    command: >-
+      python3 -c "from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler; from pathlib import Path; s=ThreadingHTTPServer(('127.0.0.1',0),SimpleHTTPRequestHandler); Path('address').write_text('http://127.0.0.1:'+str(s.server_port)); s.serve_forever()"
+    ready: {file: address, store: origin, timeout: 5s}
+  steps:
+  - run: {command: 'gozen new game --id browser-roundtrip'}
+  - assert: {exit_code: 0}
+  - fixture:
+      file: game/game.yaml
+      content: |
+        schema_version: 4
+        id: browser-roundtrip
+        title: 'A <new> journey'
+        language: en
+        screen: {width: 960, height: 540}
+        start: {location: village, party: [hero], event: opening}
+  - fixture:
+      file: 'game/assets/space #%.png'
+      from: fixtures/game/assets/mote.png
+  - fixture:
+      file: game/data/world.yaml
+      content: |
+        locations:
+          village: {name: Village, safe: true, background: 'space #%.png'}
+        events:
+          opening:
+            do:
+              - choice:
+                  - label: Take the bridge
+                    do: [{set: {gold: 5}}]
+                  - label: Take the path
+                    do: [{set: {gold: 37}}]
+  - run:
+      command: 'gozen pack web game site/games/example --runtime "${env:GOZEN_WEB_RUNTIME}"'
+  - assert: {exit_code: 0, stderr: {equals: ''}}
+  - assert:
+      file: {path: site/games/example/runtime-licenses/GO-LICENSE, contains: 'The Go Authors'}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/site/games/example/'
+      - wait_visible: 'body:not(:has(#loading))'
+      - title: true
+  - assert: {value: {equals: 'A <new> journey'}}
+  - cdp:
+      runner: browser
+      actions:
+      - eval: &controls |
+          window.key = async (code) => {
+            const canvas = document.querySelector('canvas');
+            canvas.focus();
+            canvas.dispatchEvent(new KeyboardEvent('keydown', {code, key: code, bubbles: true}));
+            await new Promise(r => setTimeout(r, 100));
+            canvas.dispatchEvent(new KeyboardEvent('keyup', {code, key: code, bubbles: true}));
+            await new Promise(r => setTimeout(r, 250));
+          }; true
+      - eval: |
+          (async () => {
+            await key('Enter');
+            await key('ArrowDown');
+            await key('Enter');
+            await key('Escape');
+            for (let i = 0; i < 4; i++) await key('ArrowDown');
+            await key('Enter');
+            await key('Enter');
+            await new Promise(r => setTimeout(r, 500));
+            document.body.dataset.testSaved = 'true';
+          })()
+      - wait_visible: 'body[data-test-saved=true]'
+      - screenshot: {path: first.png, selector: canvas}
+      - eval: "JSON.parse(localStorage.getItem('gozen/browser-roundtrip/save1.json'))"
+  - assert:
+      value:
+        json: {path: $.state.gold, equals: 37}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/site/games/example/'
+      - wait_visible: 'body:not(:has(#loading))'
+      - eval: *controls
+      - eval: |
+          (async () => {
+            await key('Enter');
+            await key('Enter');
+            await key('Escape');
+            for (let i = 0; i < 4; i++) await key('ArrowDown');
+            await key('Enter');
+            await key('ArrowDown');
+            await key('Enter');
+            await new Promise(r => setTimeout(r, 500));
+            document.body.dataset.testSaved = 'true';
+          })()
+      - wait_visible: 'body[data-test-saved=true]'
+      - screenshot: {path: second.png, selector: canvas}
+      - eval: "JSON.parse(localStorage.getItem('gozen/browser-roundtrip/save2.json'))"
+  - assert:
+      value:
+        json: {path: $.state.gold, equals: 37}
+  - cdp:
+      runner: browser
+      actions:
+      - eval: "JSON.parse(localStorage.getItem('gozen/browser-roundtrip/save2.json')).state.location"
+  - assert: {value: {json: {path: '$', equals: village}}}
+  - cdp:
+      runner: browser
+      actions:
+      - screenshot: {path: restored.png, selector: canvas}
+  - assert:
+      image: {path: restored.png, format: png}
+
+- name: web export requires a runtime option
+  steps:
+  - run: {command: 'gozen pack web game out'}
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr: {contains: '--runtime'}
+      changes: {created: [], modified: [], deleted: []}
+
+- name: an absent web runtime leaves no partial output
+  steps:
+  - run: {command: 'gozen pack web game out --runtime absent'}
+  - assert:
+      exit_code: 1
+      stdout: {equals: ''}
+      stderr: {contains: 'runtime.json'}
+      changes: {created: [], modified: [], deleted: []}

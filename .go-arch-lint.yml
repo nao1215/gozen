@@ -55,8 +55,9 @@ components:
   private5: { in: "internal/layer5/**" }
   private6: { in: "internal/layer6/**" }
   # One CLI (ADR 0016): gozen owns prompt and mosaic through their internal command packages.
-  commands: { in: ["cmd/gozen/**", "cmd/gozen-player/**", "cmd/internal/**"] }
+  commands: { in: ["cmd/gozen/**", "cmd/internal/**"] }
   # GNU-style options and help pages shared by gozen, its production commands, and runner (ADR 0018).
+  player: { in: "cmd/gozen-player/**" }
   clihelp: { in: "internal/clihelp/**" }
   # Diagnostic codes (ADR 0024): a leaf like clihelp, used by the commands, the loader and the tools.
   diag: { in: ["internal/diag", "internal/diag/**"] }
@@ -124,6 +125,9 @@ deps:
   commands:
     mayDependOn: [commands, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet, private1, private2, private3, private4, private5, promptgen, mosaic, clihelp, diag]
     canUse: [yaml, ebiten, image, pflag]
+  player:
+    mayDependOn: [play, private2, webfs]
+    canUse: [ebiten, js]
   clihelp:
     mayDependOn: [clihelp, diag]
     canUse: [pflag]

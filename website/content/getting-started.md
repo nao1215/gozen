@@ -90,6 +90,6 @@ appropriately licensed font under `assets/` and set `fonts.regular` in `game.yam
 - [Schema](/schema/): supported YAML fields and their meaning.
 
 Use [pack desktop](/commands/#pack-desktop) to distribute the game with a
-matching prebuilt runtime. Browser export is planned. The existing
+matching prebuilt runtime, or [pack web](/commands/#pack-web) for a static website. The existing
 [Go API](/go-api/) remains available during migration; it is not needed for
 these steps.

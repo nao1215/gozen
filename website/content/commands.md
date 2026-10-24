@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes, breed), play (run, trace, notes, shots), book, pack (desktop, release, trial), art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
+description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes, breed), play (run, trace, notes, shots), book, pack (desktop, web, release, trial), art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
 weight: 60
 toc: true
 ---
@@ -21,7 +21,7 @@ gozen help GZN1101                     # explain a diagnostic code
 | [new](#new) | Create a playable template without Go source |
 | [play](#play) | Run games and inspect real plays: [run](#play-run), [trace](#play-trace), [notes](#play-notes), [shots](#play-shots) |
 | [book](#book) | Write the definitions and events as Markdown |
-| [pack](#pack) | Build what you ship: [desktop](#pack-desktop), [release](#pack-release), [trial](#pack-trial) |
+| [pack](#pack) | Build what you ship: [desktop](#pack-desktop), [web](#pack-web), [release](#pack-release), [trial](#pack-trial) |
 | [art](#art) | Picture and asset tools: [prompt](/production-tools/#gozen-art-prompt), [mosaic](/production-tools/#gozen-art-mosaic), [fetch](#art-fetch), [faces](#art-faces), [puppet](#art-puppet) |
 | [theme](#theme) | Dungeon themes: [add](#theme-add) the pictures of a theme to a game, [list](#theme-list) the themes |
 | [version and help](#version-and-help) | Print the version; show a command's help or explain a diagnostic code |
@@ -33,8 +33,8 @@ A group alone (`gozen sim`) exits 2 and lists its commands. `gozen sim --help` s
 - Exit status: 0 for success and help, 1 when a check, I/O, simulation or capture fails, 2 for invalid arguments. A name the command line gives that the game does not have (a troop, a location, a persona, a shot) is an invalid argument.
 - A diagnostic may end with a code such as `[GZN1101]`; its first digit is the exit status. `gozen help GZN1101` explains it, and [Error codes](/errors/) lists them all.
 - Options follow the GNU style. `--seed 7` and `--seed=7` both work, a few common options have a one-letter form (`-n 100`, `-o DIR`, `-v`, `-h`), options may come before or after the arguments, and `--` ends the options. A single-dash long option such as `-seed` is rejected with exit status 2.
-- Commands that write a directory (`sim design`, `play notes`, `pack desktop`, `pack release`, `pack trial`, `play shots`) refuse one that already exists, even if empty, and an output inside an input. They never overwrite.
-- Every command except `pack desktop`, `play run`, `play shots`, `art faces` and `art mosaic` detection needs nothing beyond the `gozen` binary: no cgo, display or sound device. `pack desktop` also needs a matching prebuilt runtime bundle.
+- Commands that write a directory (`sim design`, `play notes`, `pack desktop`, `pack web`, `pack release`, `pack trial`, `play shots`) refuse one that already exists, even if empty, and an output inside an input. They never overwrite.
+- Every command except `pack desktop`, `pack web`, `play run`, `play shots`, `art faces` and `art mosaic` detection needs nothing beyond the `gozen` binary: no cgo, display or sound device. `pack desktop` and `pack web` also need matching prebuilt runtime bundles.
 
 The examples below use `game` as the game directory, `lesson` as a troop and `grotto` as a dungeon location.
 
@@ -449,7 +449,7 @@ gozen art puppet streamer/puppet.yaml --out streamer-packed  # write it with sma
 |:--|:--|
 | `-o, --out DIR` | Write the puppet YAML and the cut pictures (each with `at`) to this new directory. The written YAML has no comments. |
 
-It needs nothing beyond the gozen binary: no cgo, display or sound device. `pack desktop` also needs a matching prebuilt runtime bundle.
+It needs nothing beyond the gozen binary: no cgo, display or sound device.
 
 ## theme
 
@@ -548,3 +548,44 @@ MP3), fonts (TTF, OTF, TTC), YAML, TXT, Markdown and `faces.json`. Files named
 it does not inspect their contents. Keep author notes, captures and source art
 outside these runtime directories. Assets are copied without conversion or
 encryption. Keep third-party notices in `LICENSES/` or alongside their assets.
+
+## pack web
+
+Use the `gozen-runtime_VERSION_js_wasm.tar.gz` archive from the same release as
+the CLI. Unpack it into `web-runtime`.
+
+<!-- verify: skip Uses a release runtime bundle; exercised by the browser artifact E2E. -->
+```sh
+gozen pack web my-game site --runtime web-runtime
+```
+
+Upload the contents of `site/` to a static HTTP or HTTPS host:
+
+```text
+site/
+  index.html
+  gozen-player.wasm
+  wasm_exec.js
+  runtime.json
+  runtime-licenses/
+  game/
+    files.json
+    game.yaml
+    data/
+    assets/
+```
+
+The same WASM player runs every exported game. Editing YAML or replacing assets
+requires a new export, not a new Go build. `wasm_exec.js` is supplied by the same
+Go toolchain that built the player; export verifies both files' checksums.
+Opening the HTML directly with a `file:` URL is unsupported.
+
+Relative URLs support hosting under a subdirectory, such as `/games/my-game/`.
+The browser downloads the files listed in `game/files.json` before starting;
+large asset sets increase startup time and memory use. Images are copied without
+conversion. The file selection and approval requirements are the same as
+[desktop export](#pack-desktop).
+
+Saves use browser local storage. They persist on the same origin (scheme, host
+and port) with the same game ID. They do not sync across devices or move with a
+changed origin. YAML and assets remain downloadable; export does not hide them.
