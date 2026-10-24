@@ -9,7 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen"
+	"github.com/nao1215/gozen/internal/savefile"
+
 	"github.com/nao1215/gozen/internal/event"
 )
 
@@ -172,7 +173,7 @@ func TestWldReplayRefusesOptionsItCannotReproduce(t *testing.T) {
 }
 
 func TestWldTraceStartHashesTheSavesItStartedWith(t *testing.T) {
-	store := gozen.MemStore()
+	store := savefile.MemStore()
 	if err := store.Write("save1.json", []byte(`{"x":1}`)); err != nil {
 		t.Fatal(err)
 	}

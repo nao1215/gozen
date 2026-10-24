@@ -6,9 +6,10 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/nao1215/gozen/internal/savefile"
+
 	"github.com/hajimehoshi/ebiten/v2"
 
-	"github.com/nao1215/gozen"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
@@ -124,7 +125,7 @@ func TestFastFightsBattlesWhenAsked(t *testing.T) {
 // TestStoreOptionIsUsedAsGiven: a store given in the options takes the saves, and a store that
 // fails on write makes the save fail with its error.
 func TestStoreOptionIsUsedAsGiven(t *testing.T) {
-	mem := gozen.MemStore()
+	mem := savefile.MemStore()
 	g, err := New(Options{FS: gameFiles(t), NoSound: true, Store: mem, Location: "camp"})
 	if err != nil {
 		t.Fatal(err)
@@ -158,7 +159,7 @@ func TestStoreOptionIsUsedAsGiven(t *testing.T) {
 
 // sysWriteFails is a store that cannot write (except, with readOnly, nothing at all).
 type sysWriteFails struct {
-	gozen.Store
+	savefile.Store
 	err      error
 	readOnly bool
 }

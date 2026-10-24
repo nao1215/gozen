@@ -4,28 +4,28 @@ The CLI is the single `gozen` binary ([ADR 0016](../decisions/0016-single-cli.md
 
 ## Commands
 
-The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf runs. The help pages are `groups` and `pages` in `cmd/gozen/help.go`, keyed by the command path. `run` shares its options and help groups with `play.Main` in `internal/play/entry.go`; it requires a directory operand instead of `--dir`. `prompt` registers its operation through `internal/promptgen/command.New`; the root parses its flags once. `mosaic` and `models fetch` still delegate to `internal/mosaic/command` during migration.
+The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf runs. The help pages are `groups` and `pages` in `cmd/gozen/help.go`, keyed by the command path. `run` shares its options and help groups with the internal player entry in `internal/play/entry.go`; it requires a directory operand instead of `--dir`. `prompt` registers its operation through `internal/promptgen/command.New`; the root parses its flags once. `mosaic` and `models` register operations through `internal/mosaic/command.New`. The root parses once; help describes those same registered flags without loading inputs.
 
 | Group | Commands | What they share |
 | --- | --- | --- |
 | `new` | (a leaf) | create a game directory from a template |
 | `run` | (a leaf) | play a game directory; `--dev` enables author tools |
-| `check` | (a leaf) `--only structure\|layout`, `--format text\|json` | the game directory |
+| `check` | (a leaf) `--only structure\|layout`, `--format text\|json\|jsonl` | the game directory |
 | `sim` | `battle`, `dive`, `floors`, `design`, `campaign`, `routes`, `breed` | play by the rules without a window |
 | `trace`, `notes` | (leaves) | inspect traces and F9 notes |
 | `capture` | (a leaf) | PNG/GIF jobs in one graphics loop |
 | `book` | (a leaf) | |
 | `export` | (a leaf) | create a desktop or web package with a prebuilt runtime |
 | `release`, `trial` | (leaves) | create a new output tree |
-| `art` | `prompt`, `mosaic`, `fetch`, `faces`, `puppet` | pictures; cgo, ONNX Runtime and models for mosaic inference and faces |
+| `prompt`, `mosaic`, `models`, `faces`, `puppet` | direct operations and their specialized actions | pictures; cgo, ONNX Runtime and models for mosaic inference and faces |
 | `theme` | `add`, `list` | bundled dungeon themes |
 | `version`, `help` | | `gozen help` takes the words of a path, or a code |
 
-An old name (`curve`, `memos`, `mosaic`, ...) is an unknown command; no alias table is kept.
+An old name (`curve`, `memos`, `art`, ...) is an unknown command; no alias table is kept.
 
 ## Diagnostic codes
 
-A diagnostic can end with a code, `[GZN1101]`; `gozen check --format json` and `gozen.Diagnostic` carry it as `code`. The first digit is the exit value, the next two the family:
+A diagnostic can end with a code, `[GZN1101]`; `gozen check --format json` carries it in each diagnostic as `code`. The first digit is the exit value, the next two the family:
 
 | Family | Exit | What to fix |
 | --- | --- | --- |

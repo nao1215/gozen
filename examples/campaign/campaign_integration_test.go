@@ -10,7 +10,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/nao1215/gozen"
+	gozen "github.com/nao1215/gozen/internal/session"
 )
 
 // talk answers the choices of the talk between the turns.

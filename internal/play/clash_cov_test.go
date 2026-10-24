@@ -10,12 +10,12 @@ import (
 	"golang.org/x/image/font/gofont/goregular"
 )
 
-// clashFiles is the campaign of play/testdata/campaign (a march with fight: clash_view) with
+// clashFiles is the campaign of internal/play/testdata/campaign (a march with fight: clash_view) with
 // the Go font and the YAML of the clash replaced by repl (old -> new).
 func clashFiles(t *testing.T, repl map[string]string) fstest.MapFS {
 	t.Helper()
 	fsys := fstest.MapFS{}
-	root := os.DirFS("../../play/testdata/campaign")
+	root := os.DirFS("testdata/campaign")
 	for _, name := range []string{"game.yaml", "data/main.yaml", "assets/guard.png", "assets/hero/normal.png", "assets/keep.png", "assets/land.png"} {
 		b, err := fs.ReadFile(root, name)
 		if err != nil {

@@ -16,7 +16,7 @@
 | Go Regular font built into the engine (`golang.org/x/image/font/gofont/goregular`, Bigelow & Holmes). A game whose game.yaml has no `fonts.regular` (the minimal example among them) sets its text in it. It has Latin letters only | BSD notice below |
 | Original single-row boundary PNG fixtures (`e2e/atago/fixtures/limits/`, generated with a constant RGBA color) | MIT |
 | CLI synthetic pattern images and catalog (`docs/examples/production/`) | MIT |
-| Procedural pictures of the painted-scene test (`play/testdata/stage/`, made by a script) | MIT |
+| Procedural pictures of the painted-scene test (`internal/play/testdata/stage/`, made by a script) | MIT |
 | The logo, its icons and the social card (`docs/images/gozen-logo*.svg`, `gozen-favicon*.svg`, `gozen-ogp.png`) | MIT; the letters are outlines from Quicksand Bold, the card text is set in Quicksand and Noto Sans (both SIL Open Font License 1.1, see below) |
 
 No ONNX models are bundled. The only music is the Go Zen soundtrack (the novel sample plays one of its songs), outside the gozen module. Include the font notice when redistributing a game binary that uses the built-in font, the example binaries, or their captures. Other CLI/test font fixtures have their notices in [CLI assets](docs/examples/cli-assets.md).

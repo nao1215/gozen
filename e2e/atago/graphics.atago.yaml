@@ -339,3 +339,37 @@ scenarios:
       file: {path: output/slow.png, exists: false}
   - assert:
       image: {path: output/quick.png, format: png, width: 960, height: 540}
+- name: CLI restores a save written before public API retirement and continues playing
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: saves/save1.json
+      from: fixtures/pre-api-retirement.save
+  - fixture:
+      file: continue.txt
+      content: |
+        gap 12
+        wait 10
+        press ok
+        press ok
+        wait 20
+        shot restored
+        do set: {gold: gold + 5}
+        do open: save
+        press down
+        press ok
+        wait 90
+        quit
+  - run:
+      command: gozen run "${specdir}/fixtures/game" --dev --mute --script continue.txt --shots restored --save-dir saves
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: saves/save2.json
+        json:
+        - {path: $.state.gold, equals: 42}
+        - {path: $.state.location, equals: camp}
+  - assert:
+      image: {path: restored/restored.png, format: png, width: 960, height: 540}

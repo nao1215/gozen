@@ -13,7 +13,7 @@ ATAGO ?= atago
 ACTIONLINT ?= actionlint
 ZIZMOR ?= zizmor
 
-.PHONY: website-player web-runtime e2e-web desktop-runtime website-go-zen website-novel website-campaign website-play-check go-zen go-zen-graphics novel novel-graphics campaign campaign-graphics test coverage lint tidy workflows arch api api-update graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
+.PHONY: website-player web-runtime e2e-web desktop-runtime website-go-zen website-novel website-campaign website-play-check go-zen go-zen-graphics novel novel-graphics campaign campaign-graphics test coverage lint tidy workflows arch boundary graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
 
 # One module: ./... includes the gozen command and its internal implementations.
 # Keep ONNX-dependent runtime tests separate; see docs/development/testing.md.
@@ -36,7 +36,7 @@ coverage:
 	cat "$$work/unit.out" > coverage.out; \
 	tail -n +2 "$$work/cli.out" >> coverage.out
 
-lint: arch api tidy workflows
+lint: arch boundary tidy workflows
 	$(GOLANGCI_LINT) run ./...
 	$(GOLANGCI_LINT) fmt --diff
 	cd examples/go-zen && $(GOLANGCI_LINT) run ./... && $(GOLANGCI_LINT) fmt --diff
@@ -60,11 +60,8 @@ workflows:
 arch:
 	$(ARCH_LINT) check
 
-api:
-	$(GO) test ./api -count=1
-
-api-update:
-	$(GO) run ./internal/dev/apigen
+boundary:
+	$(GO) test ./internal/dev/hygiene -run TestApplicationPackagesAreInternal -count=1
 
 # examples/go-zen is a nested module (it replaces gozen with this checkout), so
 # ./... does not reach its integration tests. Games run through the root CLI.
@@ -100,8 +97,8 @@ campaign-graphics:
 
 # Requires a display; Linux CI wraps this target with xvfb-run.
 graphics:
-	$(GO) test -tags=graphics ./play -run 'TestGraphicsScreens|TestGraphicsStage|TestGraphicsMap|TestGraphicsWild|TestGraphicsNovel|TestGraphicsCampaign|TestGraphicsSpace' -count=1
-	$(GO) test -tags=graphics ./puppet -run TestGraphics -count=1
+	$(GO) test -tags=graphics ./internal/play -run 'TestGraphicsScreens|TestGraphicsStage|TestGraphicsMap|TestGraphicsWild|TestGraphicsNovel|TestGraphicsCampaign|TestGraphicsSpace' -count=1
+	$(GO) test -tags=graphics ./internal/layer5/puppet -run TestGraphics -count=1
 
 cli-build:
 	mkdir -p bin
@@ -130,7 +127,7 @@ e2e-web: cli-build web-runtime
 	cd build/atago && PATH="$(CURDIR)/bin:$$PATH" GOZEN_WEB_RUNTIME="$(CURDIR)/build/runtime/web" $(ATAGO) run --ci --parallel 1 --tag web ../../e2e/atago
 
 e2e-graphics: cli-build desktop-runtime
-	$(GO) build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/gozen-game ./play/testdata/host
+	$(GO) build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/gozen-game ./internal/play/testdata/host
 	mkdir -p build/atago
 	cd build/atago && PATH="$(CURDIR)/bin:$$PATH" GOZEN_GAME_BIN="$(CURDIR)/bin/gozen-game" GOZEN_RUNTIME="$(CURDIR)/build/runtime/local" GOZEN_EXE_SUFFIX="" $(ATAGO) run --ci --parallel 1 --tag graphics ../../e2e/atago
 

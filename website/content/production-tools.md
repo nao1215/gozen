@@ -139,7 +139,7 @@ When `--model` is omitted, the cached `censor` model is used. If it is not cache
 
 ### Detection setup
 
-Detection runs an ONNX model you supply, through ONNX Runtime. Nothing is bundled or downloaded: not the model, not the runtime library, not training data. Check the license of any model you use.
+Detection runs an ONNX model you supply, through ONNX Runtime. Models, the runtime library and training data are not bundled. Model downloads happen only through `gozen models fetch` or an accepted download prompt (including `--yes`). Check the license of any model you use.
 
 1. Build `gozen` with cgo and a C compiler:
 

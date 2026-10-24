@@ -10,11 +10,11 @@ The product direction and boundaries are recorded in [ADR 0041](../decisions/004
 | 4 | Desktop export and private player | Move the package, hide its source, play and restore with no toolchain; native tests for claimed platforms | Merged in #48 |
 | 5 | Web export and generic WASM runtime | Serve under a subdirectory, play a choice, save and reload in a real browser | Merged in #49 |
 | 6 | First-party samples and useful library-only features | Samples use the common player; retained features have YAML/CLI coverage | Merged in #50 |
-| 6a–6f | [CLI contract migration](../decisions/0042-command-and-output-contract.md): reporting, primary commands, capture, analysis, production tools, help | Each batch updates actual CLI E2E and docs; no CLI-to-CLI execution | 6a merged in #51; 6b merged in #52 and #53; capture (6c) merged in #54. Simulation and trace reporting merged in #55. Book, production tools and machine-readable help are in progress |
-| 7 | Public Go API retirement | Existing YAML and pre-migration saves still play; no unintended public application API | After distribution, samples and CLI migration |
-| 8 | Post-migration bug audit | End-to-end authoring/distribution, boundary inputs, oversized data and save compatibility; fixes include reproductions | Planned |
-| 9 | Refactoring | Remove dead code, duplication and unused abstractions; organize tests by implementation or integration behavior | Planned |
-| 10 | Documentation and skill audit | README, site, help, architecture, AGENTS.md and Gozen skill match the implementation; authoring-to-distribution instructions execute | Planned |
+| 6a–6f | [CLI contract migration](../decisions/0042-command-and-output-contract.md): reporting, primary commands, capture, analysis, production tools, help | Each batch updates actual CLI E2E and docs; no CLI-to-CLI execution | 6a merged in #51; 6b merged in #52 and #53; capture (6c) merged in #54. Simulation and trace reporting merged in #55. Book, production tools and machine-readable help are implemented in the final PR |
+| 7 | Public Go API retirement | Existing YAML and pre-migration saves still play; no unintended public application API | Implemented in the final PR; old-save CLI E2E passes |
+| 8 | Post-migration bug audit | End-to-end authoring/distribution, boundary inputs, oversized data and save compatibility; fixes include reproductions | Final PR audit |
+| 9 | Refactoring | Remove dead code, duplication and unused abstractions; organize tests by implementation or integration behavior | Final PR audit |
+| 10 | Documentation and skill audit | README, site, help, architecture, AGENTS.md and Gozen skill match the implementation; authoring-to-distribution instructions execute | Final PR audit |
 
 Each PR includes its necessary tests and documentation. Capture merged in #54;
 simulation and trace reporting merged in #55.
@@ -58,7 +58,7 @@ language. Preserve the useful engine implementation and its tests internally.
 | RPG, novel, campaign and stacked-space samples | `gozen run examples/NAME/game`; browser pages share `cmd/gozen-player` |
 | Development flags, capture scripts and hot reload | `gozen run GAME --dev`; documentation images exercise this command |
 | Moving portraits | Actor `puppet`, `pose` and `effect` YAML use the built-in renderer; the standalone puppet program remains a maintainer animation inspection tool |
-| Headless and minimal Go examples | Temporary API contract examples, to be folded into internal integration tests during PR 7; authors use `gozen sim` |
+| Headless and minimal Go examples | Folded into internal integration tests; authors use `gozen sim` |
 | Standalone `chat` and `react` APIs | No first-party game consumes these packages; retain their internal rules and tests during API retirement without adding an unused YAML scripting interface |
 
 The sample integration tests still cover story branches, translations and campaign

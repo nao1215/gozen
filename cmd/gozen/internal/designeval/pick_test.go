@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/event"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 	"github.com/nao1215/gozen/internal/world"
-	data "github.com/nao1215/gozen/schema"
 )
 
 func pickBot() *bot {

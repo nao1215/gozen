@@ -8,7 +8,7 @@ import (
 
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
-	data "github.com/nao1215/gozen/schema"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 type breedRow struct {
@@ -32,7 +32,7 @@ func (c *command) breedCmd() clihelp.Operation {
 		if err != nil {
 			return err
 		}
-		db, err := data.Load(fsys, ".")
+		db, err := data.LoadDir(fsys, ".")
 		if err != nil {
 			return err
 		}

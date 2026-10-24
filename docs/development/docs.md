@@ -5,7 +5,7 @@ The README.md and the GitHub Pages site (`website/`) show only what works with t
 After changing the README or the site, pass the following before committing.
 
 ```sh
-go test ./internal/dev/docs   # ledger and references, marks, YAML examples, README links (no display, a few seconds)
+go test ./internal/dev/docs   # ledger and references, marks, YAML examples, README links (no display)
 make docs-images              # remake the pictures (rewrites only those that changed)
 make docs-steps               # run the steps of the README and site
 make website website-check    # build the site and look for broken link and image references
@@ -50,7 +50,7 @@ The code snippets of README.md and `website/content/*.md` are read from the top.
 
 - Shell snippets (`sh`, `shell`, `bash`) without a mark are run as they are. The snippets of one page run one after another in the same directory, and `cd` carries over to the next snippet (the same as a reader going on in one terminal).
 - `go install`, `go run …@latest` and `go get` are not rewritten. A local module proxy that serves the local checkout as `v0.0.0-docs` is placed at the front of `GOPROXY`, so they run with the same content as the published module zip. Dependencies come from the module cache, then from the original `GOPROXY`. `HOME` and `GOPATH` are fresh every time, and `gozen` is built from the checkout and put on PATH.
-- A YAML snippet must always have a mark. A `text` snippet is checked only if it has a mark. Go snippets are type-checked against this checkout by `go test` (TestDocGo) unless marked `skip REASON`: a whole file as it is; declarations (`func`, `var`, `const`, `type`) with the imports of `snippetImports` added; statements inside a function whose parameters are the names a game has at hand (`ctx`, `t`, `files`, `fsys`, `screen`, `s`, `g`). Unused variables and imports are allowed, since an example shows a part of a program; an unknown name, a wrong method or a wrong number of results fails.
+- A YAML snippet must always have a mark. A `text` snippet is checked only if it has a mark. Author-facing examples use YAML and shell commands; the former public Go snippet harness was removed with the API.
 
 A mark is written on the line just before the snippet (it is not shown on GitHub or on the site).
 
@@ -62,7 +62,7 @@ A mark is written on the line just before the snippet (it is not shown on GitHub
 | `<!-- verify: skip REASON -->` | Do not run. The reason is required |
 | `<!-- verify: output -->` | Each line of a `text` snippet appears, in this order, in the standard output of the snippet run just before (the number of spaces does not matter) |
 | `<!-- verify: file PATH -->` | Write the snippet's content to PATH in the page's directory (such as `game/game.yaml` or `main.go`, used by later snippets) |
-| `<!-- verify: load [group=NAME] [under=KEY] [as=game.yaml\|as=assets/PATH] -->` | Overlay a YAML example as a data file on `internal/dev/docs/testdata/docgame` and read it with `gozen.Load`, together with the other load examples of the page, or of the same `group` (each recipe of the cookbook is its own game). Picture and sound names in the example are placed as stub files. `under` puts an indented fragment under `KEY:`; `as=game.yaml` merges the example's keys into the docgame's `game.yaml` instead, and `as=assets/PATH` places the example as that file (such as a moving portrait), its pictures stubbed beside it |
+| `<!-- verify: load [group=NAME] [under=KEY] [as=game.yaml\|as=assets/PATH] -->` | Overlay a YAML example as a data file on `internal/dev/docs/testdata/docgame` and read it with the internal session loader, together with the other load examples of the page, or of the same `group` (each recipe of the cookbook is its own game). Picture and sound names in the example are placed as stub files. `under` puts an indented fragment under `KEY:`; `as=game.yaml` merges the example's keys into the docgame's `game.yaml` instead, and `as=assets/PATH` places the example as that file (such as a moving portrait), its pictures stubbed beside it |
 | `<!-- verify: same PATH -->` | The YAML example has the same values as the file in the repository (comments and style do not matter) |
 | `<!-- verify: parse REASON -->` | Check only that it reads as YAML |
 

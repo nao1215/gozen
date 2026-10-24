@@ -37,7 +37,7 @@ func adultAllowed(file string) (whole bool, section string) {
 		file == "internal/dev/docs/language_test.go": // the list of the words itself
 		return true, ""
 	case file == "website/content/production-tools.md", file == "docs/development/production-tools.md":
-		return false, "## gozen art mosaic"
+		return false, "## gozen mosaic"
 	}
 	return false, ""
 }
@@ -151,10 +151,10 @@ func TestCheckLanguageFindsProblems(t *testing.T) {
 		"website/content/_index.md":            "Fine.\n",
 		"internal/play/x.go":                   "// shows a nude figure\n",
 		"internal/mosaic/command/help.go":      "// penis, pussy\n",
-		"website/content/production-tools.md":  "## gozen art prompt\n\nnsfw\n\n## gozen art mosaic\n\npenis\n\n### Fetching\n\npussy\n\n## Next\n\nnipple\n",
+		"website/content/production-tools.md":  "## gozen prompt\n\nnsfw\n\n## gozen mosaic\n\npenis\n\n### Fetching\n\npussy\n\n## Next\n\nnipple\n",
 		"internal/x/testdata/note.md":          "テスト\n",
 		"docs/images/a.png":                    "nude",
-		"docs/development/production-tools.md": "## gozen art mosaic\n\npenis\n",
+		"docs/development/production-tools.md": "## gozen mosaic\n\npenis\n",
 	}.fs()
 	got := strings.Join(checkLanguage(fsys), "\n")
 	for _, want := range []string{

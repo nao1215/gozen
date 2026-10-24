@@ -7,9 +7,9 @@ import (
 
 	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/headless"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/testgame"
-	data "github.com/nao1215/gozen/schema"
 )
 
 func TestCanceledRunDoesNotChangeState(t *testing.T) {

@@ -10,7 +10,6 @@ import (
 
 	"github.com/nao1215/gozen/cmd/internal/checkdata"
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
-	data "github.com/nao1215/gozen/schema"
 )
 
 // checkJSON reports every problem of the game as structured diagnostics (file, line,
@@ -18,7 +17,7 @@ import (
 // an error. only is "", "structure" or "layout" (check --only); with layout, the
 // warnings of the structure are left out (its errors stay: the layout needs a game).
 func (c *command) checkJSON(dir, only string) error {
-	var db *data.DB
+	var db *gamedata.DB
 	var diags gamedata.Diagnostics
 	fsys, err := gameFS(dir)
 	if err != nil {

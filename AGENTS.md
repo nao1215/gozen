@@ -1,21 +1,21 @@
 # Development rules
 
-Gozen is a no-code game creation toolkit for 2D RPGs, visual novels and strategy games, authored with YAML and assets and implemented in Go and Ebitengine. Public Go APIs remain during the phased migration; their retirement is the final stage (ADR 0041). Read [the architecture](docs/architecture/overview.md), [the API rules](docs/architecture/api-guidelines.md), and the relevant [ADRs](docs/decisions/index.md) before changing package boundaries.
+Gozen is a no-code game creation toolkit for 2D RPGs, visual novels and strategy games, authored with YAML and assets and implemented in Go and Ebitengine. Authors use CLI commands, YAML and saves; Go implementation packages are internal (ADR 0041). Read [the architecture](docs/architecture/overview.md), [the API rules](docs/architecture/api-guidelines.md), and the relevant [ADRs](docs/decisions/index.md) before changing package boundaries.
 
 ## Scope and public content
 
 - Work only in the assigned checkout. Treat external reference material as read-only.
 - Do not include private game data, production notes, private generation text, private defaults, or machine-specific paths. Review meaning and context, including comments, fixtures, metadata, generated output, and binary strings.
-- Keep the library and general-purpose commands suitable for general audiences. Only `internal/promptgen` and `internal/mosaic` (including their `command` packages, which `gozen prompt` and `gozen mosaic` dispatch to) may provide the production-specific capabilities permitted by [the content boundary](docs/decisions/0004-content-boundary.md). Models are user-supplied, never bundled.
+- Keep the engine and general-purpose commands suitable for general audiences. Only `internal/promptgen` and `internal/mosaic` (including their `command` packages, which `gozen prompt` and `gozen mosaic` dispatch to) may provide the production-specific capabilities permitted by [the content boundary](docs/decisions/0004-content-boundary.md). Models are user-supplied, never bundled.
 - Create original neutral fixtures and examples. Record the source and license of any third-party asset. Keep project-specific inspection lists outside this repository.
 - In Bash, do not merge stderr into stdout or discard stderr. Do not use `pkill` or `pgrep -f`.
 
 ## Design and implementation
 
-- Public packages live at the module root; experimental packages belong in `x/`. Default implementation details to `internal/` and assign them a layer before adding imports.
+- Keep application packages under `internal/` and assign them a layer before adding imports. Only executable entry points belong outside internal.
 - Follow the downward dependency policy. Ebitengine belongs only to presentation and startup. Stable packages must not import experiments, commands, or development tooling.
 - Use a small `Config` struct consistently rather than functional options. Use `Load(fsys fs.FS, path string) (T, error)` for filesystem loading. See the API rules for context, errors, ownership, and extension interfaces.
-- Explain the consumer and purpose of every new export. Document its contract, add meaningful usage coverage, and review the `api/public.txt` diff. Inventory updates do not approve API growth.
+- Explain the consumer and purpose of every cross-package export. Document its contract and add meaningful usage coverage. Run `make boundary` to prevent public application packages.
 - Do not add architecture exceptions to silence a violation. Restructure the code; a necessary policy change needs a reasoned ADR first.
 
 ## File organization and maintenance

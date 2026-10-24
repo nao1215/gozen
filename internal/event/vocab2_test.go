@@ -8,8 +8,8 @@ import (
 	"testing/fstest"
 
 	"github.com/nao1215/gozen/internal/event"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
-	data "github.com/nao1215/gozen/schema"
 )
 
 // version2 is a small game using the spec version 2 vocabulary (ADR 0021).
@@ -76,7 +76,7 @@ events:
 
 func version2(t *testing.T) (*data.DB, *rpg.State) {
 	t.Helper()
-	db, err := data.Load(fstest.MapFS{
+	db, err := data.LoadDir(fstest.MapFS{
 		"game.yaml":      {Data: []byte(version2Game)},
 		"assets/x.png":   {Data: []byte("synthetic file sentinel")},
 		"data/main.yaml": {Data: []byte(version2Data + "troops: {none: {members: [mote]}}\nenemies: {mote: {image: x.png, stats: {mhp: 1, mmp: 0, atk: 1, def: 0, mat: 0, mdf: 0, agi: 1, luk: 1}, ai: [{use: attack}]}}\n")},

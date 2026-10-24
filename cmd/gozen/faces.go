@@ -26,7 +26,6 @@ import (
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/doll"
 	"github.com/nao1215/gozen/internal/mosaic/detect"
-	data "github.com/nao1215/gozen/schema"
 )
 
 // faces finds the face of each standing picture a painted scene cuts a balloon face from,
@@ -47,7 +46,7 @@ func (c *command) faces() clihelp.Operation {
 		}
 		dir := f.Arg(0)
 		fsys := os.DirFS(dir)
-		db, err := data.Load(fsys, ".")
+		db, err := gamedata.LoadDir(fsys, ".")
 		if err != nil {
 			return err
 		}

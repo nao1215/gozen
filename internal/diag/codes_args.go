@@ -79,7 +79,7 @@ var (
 	})
 	UnknownName = register(2402, "UnknownName", Entry{
 		Summary: "the command line names something the game does not have",
-		Detail:  "An ID given on the command line, such as the troop of sim battle, the location of sim dive or sim floors, a boss or a shop, a persona of sim design --only, a shot of capture --only, or a model of art fetch, is not defined. A typo in an argument is an argument error, so it exits 2 in every command.",
+		Detail:  "An ID given on the command line, such as the troop of sim battle, the location of sim dive or sim floors, a boss or a shop, a persona of sim design --only, a shot of capture --only, or a model of models fetch, is not defined. A typo in an argument is an argument error, so it exits 2 in every command.",
 		Fix:     "Check the spelling against the game's data (gozen book lists every ID), or the list the message names.",
 	})
 )

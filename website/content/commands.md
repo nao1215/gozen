@@ -22,10 +22,10 @@ gozen help GZN1101                     # explain a diagnostic code
 | [run](#run) | Run a game directory in a window |
 | [trace](#trace), [notes](#notes) | Inspect traces and build HTML reports from test-play notes |
 | [capture](#capture) | Capture PNG images and animated GIFs |
-| [book](#book) | Write the definitions and events as Markdown |
+| [book](#book) | Write the definitions and events as Markdown, JSON or JSONL |
 | [export](#export) | Export desktop and browser games with prebuilt runtimes |
 | [release](#release), [trial](#trial) | Prepare approved asset trees and trial games |
-| [art](#art) | Picture and asset tools: [prompt](/production-tools/#gozen-prompt), [mosaic](/production-tools/#gozen-mosaic), [fetch](#art-fetch), [faces](#art-faces), [puppet](#art-puppet) |
+| [prompt](/production-tools/#gozen-prompt), [mosaic](/production-tools/#gozen-mosaic), [models](#models-fetch), [faces](#faces), [puppet](#puppet) | Picture and asset tools |
 | [theme](#theme) | Dungeon themes: [add](#theme-add) the pictures of a theme to a game, [list](#theme-list) the themes |
 | [version and help](#version-and-help) | Print the version; show a command's help or explain a diagnostic code |
 
@@ -93,6 +93,8 @@ data/world.yaml:26:5: locations.grotto.encounters: unknown troop "lessn" [GZN110
 | `--only structure` | Check definitions, references, expressions and assets only; do not read the font or check the text layout. stdout says so. |
 | `--only layout` | Check only that dialogue and choices fit the message window, with the game's font and display rules. |
 | `--format` | `text` (default), `json` or `jsonl`. JSON returns a version-1 result whose `data` is the diagnostic array (`file`, `line`, `col`, `path`, `message`, `severity`, `code`). JSONL emits each diagnostic and a terminal summary. Validation errors set `status: failed` and exit 1, without duplicate stderr output. |
+
+The `data` field contains diagnostics such as:
 
 ```json
 [
@@ -283,7 +285,7 @@ gozen sim routes game --format json
 
 ### sim breed
 
-`gozen sim breed <game-dir>` starts from species with a positive recruit chance and follows the breeding rules. It prints each reachable species, the fewest generations and one recipe, then the unreachable species. `--format json` returns `reachable` rows (`id`, `family`, `rank`, `steps`, `parents`) and an `unreachable` ID list. The recipe gives the male and female parent sexes and the obtainable child sex (`sex` and `parent_sexes` in JSON). The graph tracks obtainable sexes and plus values. Parent levels are assumed raisable for this graph; test `min_plus` recipes in a Session playthrough as well. See [the collection recipe](/cookbook/#collect-raise-and-breed-monsters).
+`gozen sim breed <game-dir>` starts from species with a positive recruit chance and follows the breeding rules. It prints each reachable species, the fewest generations and one recipe, then the unreachable species. `--format json` returns `reachable` rows (`id`, `family`, `rank`, `steps`, `parents`) and an `unreachable` ID list. The recipe gives the male and female parent sexes and the obtainable child sex (`sex` and `parent_sexes` in JSON). The graph tracks obtainable sexes and plus values. Parent levels are assumed raisable for this graph; test `min_plus` recipes in an actual playthrough as well. See [the collection recipe](/cookbook/#collect-raise-and-breed-monsters).
 
 For example, run `gozen sim breed examples/go-zen/game --format json` after `gozen check examples/go-zen/game` to inspect the sample's 40 non-boss species. `gozen book examples/go-zen/game` also prints their recruit settings and rules.
 
@@ -298,7 +300,7 @@ gozen book game --section lineage --format json
 
 ## run
 
-Opens a game directory containing `game.yaml`, `data/` and `assets/`. No Go source or game-specific executable is needed. It uses the same startup and rendering implementation as `play.Main`.
+Opens a game directory containing `game.yaml`, `data/` and `assets/`. No Go source or game-specific executable is needed. It uses the same runtime as exported games.
 
 <!-- verify: skip opens a window; covered by e2e/atago/graphics.atago.yaml -->
 ```sh
@@ -308,13 +310,13 @@ gozen run game --dev --save-dir test-saves
 gozen run game --dev --script check.txt --shots shots --trace run.jsonl
 ```
 
-Options can come before or after the directory; use `--` before a directory starting with a dash. `gozen run --help` lists the shared game options. Use the directory operand instead of the embedded runner's `--dir` option.
+Options can come before or after the directory; use `--` before a directory starting with a dash. `gozen run --help` lists the shared game options. Use the directory operand instead of `--dir`.
 
-`--dev` enables author tools and live reload from that directory. Scripted runs isolate saves unless `--save-dir` is supplied. Ordinary play uses the game's id under the user's Gozen configuration directory, just like an embedded game; use `--save-dir` to keep separate copies apart. Relative output paths are relative to the working directory, which the command does not change.
+`--dev` enables author tools and live reload from that directory. Scripted runs isolate saves unless `--save-dir` is supplied. Ordinary play uses the game's id under the user's Gozen configuration directory; use `--save-dir` to keep separate copies apart. Relative output paths are relative to the working directory, which the command does not change.
 
 A display and the platform graphics and audio libraries are required; use Xvfb for unattended Linux runs. Recording additionally needs ffmpeg. Help, `check`, and `sim` do not need a display. Closing the window exits 0; startup and I/O failures exit 1; argument parsing and startup option errors exit 2.
 
-The command reads loose assets; it does not encrypt or package them. Keep the runner version with a distributed game. Use the Go library when you need a custom loop, save store, or other Go integration.
+The command reads loose assets; it does not encrypt or package them. Keep the runner version with a distributed game. Custom Go loops and save-store callbacks are outside the supported authoring interface.
 
 ## trace
 
@@ -470,7 +472,7 @@ gozen trial game --out trial --overlay overlay --inspect inspect.jsonl
 | `--list FILE` | Write what was kept and dropped to this new file |
 | `-n, --dry-run` | Write nothing; print only how much would be kept |
 
-## art
+## Picture tools
 
 Tools for the pictures of a game. [prompt](/production-tools/#gozen-prompt) assembles image-generation text from a catalog, and [mosaic](/production-tools/#gozen-mosaic) pixelates regions of images; both are described on [Production tools](/production-tools/).
 
@@ -506,7 +508,7 @@ It needs a gozen built with cgo, an ONNX Runtime shared library and the model, a
 
 ### puppet
 
-Loads a moving portrait (a puppet YAML for the [puppet](/go-api/#moving-portraits-puppet) package) with the same checks as `puppet.Load` and prints where each face, closed-eyes and mouth picture lies on the base picture. A difference picture as large as the base is cut down to the part that differs.
+Loads a moving portrait ([portrait YAML](/cookbook/#give-a-character-faces-and-a-moving-portrait)) with the game renderer's validation and prints where each face, closed-eyes and mouth picture lies on the base picture. A difference picture as large as the base is cut down to the part that differs.
 
 <!-- verify: each fixture=puppet -->
 ```shell

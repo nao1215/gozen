@@ -1,10 +1,10 @@
-# API naming and shape
+# Internal API naming and shape
 
 These conventions apply to the v0 implementation. For the implemented contracts and usage of T2, see [the core API](core-api.md).
 
-## Deciding what to publish
+## Cross-package interfaces
 
-The default is `internal/`. A type, function, method or field is published only if you can explain who uses it and why. Helpers the game does not use, functions only tests use, and plain relay interfaces are not published. Review the real usage examples, the godoc contract and the diff of `api/public.txt` together.
+Application packages stay under `internal/`. Export only what another internal consumer needs; document its purpose, ownership and failure behavior. Do not add relay interfaces or wrappers without a consumer. The product contracts are commands, YAML and saves.
 
 ## One shape for entry points
 
@@ -48,4 +48,4 @@ For extensions on the game side, prefer small interfaces of one or two methods d
 
 ## Checking changes
 
-`go test ./api` shows the increase or decrease of declared public identifiers independent of OS and build tags. Update it with `go run ./internal/dev/apigen`. Leave the reason for an addition in the change description and review. A list of names cannot guarantee compatibility of types, signatures and meaning, so contract tests and review are needed too. For details see [API checks](../development/api.md).
+Run `make boundary` and `make arch`, then contract tests and CLI E2E. See [boundary checks](../development/api.md).

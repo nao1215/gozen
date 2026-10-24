@@ -9,7 +9,6 @@ import (
 
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 	lang "github.com/nao1215/gozen/internal/text"
-	data "github.com/nao1215/gozen/schema"
 )
 
 func loadBook(dir string) (*bookReport, error) {
@@ -20,7 +19,7 @@ func loadBook(dir string) (*bookReport, error) {
 	if err := gamedata.UseWords(fsys); err != nil {
 		return nil, err
 	}
-	db, err := data.Load(fsys, ".")
+	db, err := gamedata.LoadDir(fsys, ".")
 	if err != nil {
 		return nil, err
 	}
@@ -546,9 +545,9 @@ func flowBook(p func(string, ...any), db *bookReport) {
 
 // eventLinks are the events a command list calls and the places it moves to, into its
 // branches, in the order written.
-func eventLinks(cmds []data.Command) (calls, moves []string) {
-	var walk func(cs []data.Command)
-	walk = func(cs []data.Command) {
+func eventLinks(cmds []gamedata.Command) (calls, moves []string) {
+	var walk func(cs []gamedata.Command)
+	walk = func(cs []gamedata.Command) {
 		for i := range cs {
 			c := &cs[i]
 			if c.Call != "" && !slices.Contains(calls, c.Call) {

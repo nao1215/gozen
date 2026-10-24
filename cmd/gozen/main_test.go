@@ -15,7 +15,7 @@ import (
 
 	"github.com/nao1215/gozen/internal/cliio"
 	"github.com/nao1215/gozen/internal/diag"
-	data "github.com/nao1215/gozen/schema"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 func fixture(t *testing.T) string {
@@ -326,7 +326,7 @@ func TestTrialRoundTripNoOverwriteAndDryRun(t *testing.T) {
 		}
 	}
 	invoke(t, 0, "trial", dir, "--out", out, "--list", list)
-	if _, err := data.Load(os.DirFS(out), "."); err != nil {
+	if _, err := data.LoadDir(os.DirFS(out), "."); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(read(t, filepath.Join(dir, "assets", "mote.png")), read(t, filepath.Join(out, "assets", "mote.png"))) {
@@ -365,7 +365,7 @@ func TestReleaseRoundTripAndApprovalFailure(t *testing.T) {
 	top, inspect := approvals(t, dir, true)
 	out := filepath.Join(t.TempDir(), "release")
 	invoke(t, 0, "release", dir, "--overlay", top, "--out", out, "--inspect", inspect)
-	if _, err := data.Load(os.DirFS(out), "."); err != nil {
+	if _, err := data.LoadDir(os.DirFS(out), "."); err != nil {
 		t.Fatal(err)
 	}
 	invoke(t, 1, "release", "--inspect", inspect, "--overlay", top, dir, "--out", out)
@@ -456,7 +456,7 @@ func TestTrialPrunesUnreachableContent(t *testing.T) {
 	}
 	output := filepath.Join(t.TempDir(), "trial")
 	invoke(t, 0, "trial", dir, "--out", output)
-	db, err := data.Load(os.DirFS(output), ".")
+	db, err := data.LoadDir(os.DirFS(output), ".")
 	if err != nil {
 		t.Fatal(err)
 	}

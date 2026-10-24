@@ -232,7 +232,7 @@ events:
         else: [{say: Crisp.}]
 ```
 
-`gozen.Restore` reads a save made in the middle of an event the same way, so a test can check that a save made at any line goes on at that line ([the Go API](/go-api/)). Reference: [UIStyle](/schema/#uistyle), [Command](/schema/#command) (`id`).
+The game resumes a save made in the middle of an event at its saved line. Use a separate `--save-dir` when testing save and load through `gozen run`. Reference: [UIStyle](/schema/#uistyle), [Command](/schema/#command) (`id`).
 
 ## Stage portraits and effects
 
@@ -1141,7 +1141,7 @@ breeding:
   families: [{parents: [slime, slime], children: [dewdrop, silverdrop]}]
 ```
 
-At a safe location, add an action such as `- {label: Monster ranch, do: [{open: ranch}]}`. Each monster instance has a saved male or female sex (♂ or ♀); only opposite-sex parents can breed. A species can specify `sex: male` or `sex: female`, or use `any` with an optional male `sex_ratio`. The ranch shows active and reserve members, swaps them, asks before release, previews a child (`?` until seen), lets the player choose inherited skills and stages the fusion. A full party sends a new recruit to the reserve. `reserve: {in: monster_2, out: monster_1}`, `release: monster_2` and `breed: {parents: [monster_1, monster_2], skills: [attack]}` are commands usable by scripts and Session.Do; the IDs refer to saved instances, not species. Expressions read `reserve.size`, `monster.monster_1.family`, `monster.monster_1.plus`, `monster.monster_1.sex` and `bestiary.dewdrop.caught`.
+At a safe location, add an action such as `- {label: Monster ranch, do: [{open: ranch}]}`. Each monster instance has a saved male or female sex (♂ or ♀); only opposite-sex parents can breed. A species can specify `sex: male` or `sex: female`, or use `any` with an optional male `sex_ratio`. The ranch shows active and reserve members, swaps them, asks before release, previews a child (`?` until seen), lets the player choose inherited skills and stages the fusion. A full party sends a new recruit to the reserve. `reserve: {in: monster_2, out: monster_1}`, `release: monster_2` and `breed: {parents: [monster_1, monster_2], skills: [attack]}` are commands usable by YAML events and development scripts; the IDs refer to saved instances, not species. Expressions read `reserve.size`, `monster.monster_1.family`, `monster.monster_1.plus`, `monster.monster_1.sex` and `bestiary.dewdrop.caught`.
 
 Run `gozen check game`, `gozen sim breed game --format json`, `gozen book game` and battle and dive simulations while tuning. GZN1112 identifies invalid rules; GZN0116 warns of non-boss species unreachable from capturable monsters. A specific pair wins over a family rule, and family offspring are chosen by the mean parent rank. See [ADR 0036](https://github.com/nao1215/gozen/blob/main/docs/decisions/0036-monster-collection.md).
 
@@ -1323,7 +1323,7 @@ text:
 
 Lines, speakers, choices, prompts and notices are translated as they are shown, and the names and descriptions of places, people, actions, exits, items, skills, states, enemies, classes, shops, the title and the gallery's scenes when the language changes. Read lines are kept by the text as written, so they stay read in every language. One text has one translation: when the same words must be translated differently in two places, write them differently. The same map may also replace the engine's own words in that language, as `text` in `game.yaml` does.
 
-`gozen check` reports a translation that drops or changes an `{expression}`, warns of a key that is no text of the game (GZN0110) and of every text not translated yet (GZN0111, each with its path; `--format json` lists them for a script or an agent to fill the file), and lays out the lines in each language. A test of the Japanese game loads the same files with `game.yaml` changed to `language: ja` (`gozen.Load` with an overlay); its requests are in Japanese. Reference: [Game](/schema/#game) (`written_in`, `languages`).
+`gozen check` reports a translation that drops or changes an `{expression}`, warns of a key that is no text of the game (GZN0110) and of every text not translated yet (GZN0111, each with its path; `--format json` lists them for a script or an agent to fill the file), and lays out the lines in each language. A test of the Japanese game loads the same files with `game.yaml` changed to `language: ja` (an internal integration test overlay); its requests are in Japanese. Reference: [Game](/schema/#game) (`written_in`, `languages`).
 
 ## Test-play with notes, reload and quick starts
 
@@ -1373,7 +1373,7 @@ jobs:
 
 ## Cut a release and a trial
 
-`gozen release` copies the game with only approved pictures; `gozen trial` keeps the part of the game within the range of `trial.yaml`, a demo. What lies outside the range is not hidden behind a flag but left out of the copy, so the demo build carries none of the later events, endings or pictures: unpacking the demo cannot leak the full game. `-n` counts what would be kept, and `--list` writes what was kept and what was dropped, to check before you ship. Here the demo stops at the third floor of the grotto and leaves out the ending event:
+`gozen release` copies the game with only approved pictures; `gozen trial` keeps the part of the game within the range of `trial.yaml`, a demo. The selector removes definitions and assets it can prove are outside the trial range. Analysis is conservative: unresolved branches and retained files can still contain later content. Inspect the output before distribution; this is not encryption or an asset-secrecy guarantee. `-n` counts what would be kept, and `--list` writes what was kept and what was dropped, to check before you ship. Here the demo stops at the third floor of the grotto and leaves out the ending event:
 
 <!-- verify: same internal/dev/docs/testdata/fixtures/cookbook/game/trial.yaml -->
 ```yaml

@@ -22,7 +22,6 @@ import (
 
 	"github.com/nao1215/gozen/internal/expr"
 	"github.com/nao1215/gozen/internal/headless/balance"
-	data "github.com/nao1215/gozen/schema"
 
 	lang "github.com/nao1215/gozen/internal/text"
 )
@@ -81,7 +80,7 @@ func (c *command) curve() clihelp.Operation {
 		if err := gamedata.UseWords(fsys); err != nil {
 			return err
 		}
-		db, err := data.Load(fsys, ".")
+		db, err := gamedata.LoadDir(fsys, ".")
 		if err != nil {
 			return err
 		}
@@ -226,7 +225,7 @@ func (c *command) curve() clihelp.Operation {
 	}}
 }
 
-func parseSupplies(db *data.DB, s string) (map[string]int, error) {
+func parseSupplies(db *gamedata.DB, s string) (map[string]int, error) {
 	out := map[string]int{}
 	for p := range strings.SplitSeq(s, ",") {
 		id, n, ok := strings.Cut(strings.TrimSpace(p), ":")
@@ -245,7 +244,7 @@ func parseSupplies(db *data.DB, s string) (map[string]int, error) {
 	return out, nil
 }
 
-func name(db *data.DB, id string) string {
+func name(db *gamedata.DB, id string) string {
 	if sk := db.Skills[id]; sk != nil {
 		return sk.Name
 	}

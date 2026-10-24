@@ -47,4 +47,4 @@ gozen check game
 ok: 2 locations, 0 events, 1 actors, 2 skills, 0 items, 0 enemies, 0 troops, 0 ai sets
 ```
 
-To play it in a window, run `gozen run game`. To embed it in a Go program, use `play.Main`: https://nao1215.github.io/gozen/getting-started/#3-start-your-own-game.
+To play it in a window, run `gozen run game`. No Go host is needed.

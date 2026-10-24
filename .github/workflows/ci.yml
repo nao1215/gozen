@@ -208,7 +208,7 @@ jobs:
       # Local Linux results do not establish these runners can render.
       - name: Render on the native desktop
         if: runner.os != 'Linux'
-        run: go test -tags=graphics ./play ./puppet -run TestGraphics -count=1
+        run: go test -tags=graphics ./internal/play ./internal/layer5/puppet -run TestGraphics -count=1
       - name: Install runtime license collector
         if: runner.os == 'Linux'
         run: go install github.com/google/go-licenses/v2@v2.0.1
@@ -223,7 +223,7 @@ jobs:
           $suffix = if ($IsWindows) { '.exe' } else { '' }
           go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/gozen$suffix" ./cmd/gozen
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/gozen-game$suffix" ./play/testdata/host
+          go build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o "bin/gozen-game$suffix" ./internal/play/testdata/host
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:PATH = (Join-Path $PWD bin) + [IO.Path]::PathSeparator + $env:PATH
           $env:GOZEN_GAME_BIN = Join-Path $PWD "bin/gozen-game$suffix"
@@ -376,10 +376,6 @@ jobs:
           go-version: stable
       - name: Compile all examples, including the graphical host
         run: go build -trimpath -buildvcs=false ./examples/...
-      - name: Run the minimal embedded game
-        run: go run ./examples/minimal
-      - name: Run the headless save and restore example
-        run: go run ./examples/headless
 
   go-zen:
     # examples/go-zen, examples/novel and examples/campaign are modules of their own (they use this

@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"io/fs"
+	"math/rand/v2"
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen/puppet"
+	"github.com/nao1215/gozen/internal/layer5/puppet"
 )
 
 func TestHelpAndOptions(t *testing.T) {
@@ -45,10 +46,7 @@ func TestStreamerLoads(t *testing.T) {
 	if w, h := rig.Size(); h != 900 || w < 600 {
 		t.Fatalf("size %dx%d", w, h)
 	}
-	p, err := puppet.New(rig, puppet.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	p := puppet.New(rig, rand.New(rand.NewPCG(1, 2)), 60) //nolint:gosec // Deterministic animation timing, not security.
 	for _, c := range tour() {
 		if err := c.do(p); err != nil {
 			t.Fatalf("%s: %v", c.label, err)

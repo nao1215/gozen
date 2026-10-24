@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/diag"
-	data "github.com/nao1215/gozen/schema"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 // bookGames are the games of this repository that together use most of the schema:
@@ -37,7 +37,7 @@ func TestBookListsEveryDefinitionOfTheGame(t *testing.T) {
 			if again, _ := invoke(t, 0, "book", game); again != out {
 				t.Fatal("the book is not deterministic")
 			}
-			db, err := data.Load(os.DirFS(game), ".")
+			db, err := data.LoadDir(os.DirFS(game), ".")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -219,7 +219,7 @@ func TestBookShowsDescriptionsRoamersLooksMusicAndBranches(t *testing.T) {
 
 func TestBookFormatsShareACompleteDetachedReport(t *testing.T) {
 	dir := designGame(t)
-	db, err := data.Load(os.DirFS(dir), ".")
+	db, err := data.LoadDir(os.DirFS(dir), ".")
 	if err != nil {
 		t.Fatal(err)
 	}

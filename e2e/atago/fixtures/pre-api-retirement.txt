@@ -1,0 +1,1 @@
+Saved from the neutral fixtures/game with public gozen.Load, New, Begin, Do and Save at commit 0135c20. Seed 7; development command: - set: {gold: 37}. The package migration must restore and continue these bytes without rewriting the fixture.

@@ -12,7 +12,7 @@ exclude:
   - bin
   - dist
   # the graphics tests' window host, a test harness like the _test.go files
-  - play/testdata
+  - internal/play/testdata
 excludeFiles:
   # Runtime dependency policy; external test harnesses may compose layers.
   - '^.*_test\.go$'
@@ -33,21 +33,15 @@ components:
   expr: { in: ["internal/expr", "internal/expr/**"] }
   text: { in: ["internal/text", "internal/text/**"] }
   savefile: { in: ["internal/savefile", "internal/savefile/**"] }
-  chat: { in: [chat, "chat/internal/**", "internal/chat/**"] }
-  # The definitions as Go types (ADR 0021): the schema of the YAML, counted in api/schema.txt.
-  data: { in: [schema] }
+  chat: { in: "internal/chat/**" }
   rpg: { in: ["internal/rpg", "internal/rpg/**"] }
   battle: { in: ["internal/battle", "internal/battle/**"] }
   event: { in: ["internal/event", "internal/event/**"] }
   world: { in: ["internal/world", "internal/world/**"] }
-  react: { in: [react, "react/internal/**", "internal/react/**"] }
+  react: { in: "internal/react/**" }
   headless: { in: ["internal/headless", "internal/headless/**"] }
-  gfx: { in: [gfx, "gfx/internal/**", "internal/gfx/**"] }
-  play: { in: [play, "play/internal/**", "internal/play/**"] }
-  # Moving portraits (ADR 0020); the shared implementation is internal/layer5/puppet.
-  puppet: { in: [puppet, "puppet/internal/**"] }
-  # The root package gozen (ADR 0021): one Go entry above the rules and the headless player.
-  gozen: { in: ["."] }
+  play: { in: "internal/play/**" }
+  session: { in: "internal/session/**" }
   private1: { in: "internal/layer1/**" }
   private2: { in: "internal/layer2/**" }
   private3: { in: "internal/layer3/**" }
@@ -84,49 +78,40 @@ deps:
   chat:
     mayDependOn: [chat, private1]
     canUse: [yaml, norm]
-  data:
-    mayDependOn: [data, expr, text, savefile, private1, private2]
-    canUse: [yaml]
   rpg:
     mayDependOn: [rpg, expr, text, savefile, private1, private2]
   private2:
     canUse: [yaml]
     mayDependOn: [private2, expr, text, savefile, private1, diag]
   battle:
-    mayDependOn: [battle, expr, text, savefile, chat, data, rpg, private1, private2, private3]
+    mayDependOn: [battle, expr, text, savefile, chat, rpg, private1, private2, private3]
   event:
-    mayDependOn: [event, expr, text, savefile, chat, data, rpg, private1, private2, private3]
+    mayDependOn: [event, expr, text, savefile, chat, rpg, private1, private2, private3]
   world:
-    mayDependOn: [world, expr, text, savefile, chat, data, rpg, private1, private2, private3]
+    mayDependOn: [world, expr, text, savefile, chat, rpg, private1, private2, private3]
   react:
     mayDependOn: [react, expr, private1]
     canUse: [yaml, width]
   private3:
-    mayDependOn: [private3, expr, text, savefile, chat, data, rpg, private1, private2]
+    mayDependOn: [private3, expr, text, savefile, chat, rpg, private1, private2]
   headless:
-    mayDependOn: [headless, expr, text, savefile, chat, data, rpg, battle, event, world, react, private1, private2, private3, private4, diag]
+    mayDependOn: [headless, expr, text, savefile, chat, rpg, battle, event, world, react, private1, private2, private3, private4, diag]
   private4:
-    mayDependOn: [private4, expr, text, savefile, chat, data, rpg, battle, event, world, react, private1, private2, private3]
-  gozen:
-    mayDependOn: [gozen, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, private1, private2, private3, private4]
+    mayDependOn: [private4, expr, text, savefile, chat, rpg, battle, event, world, react, private1, private2, private3]
+  session:
+    mayDependOn: [session, expr, text, savefile, chat, rpg, battle, event, world, react, headless, private1, private2, private3, private4]
     canUse: [yaml]
-  gfx:
-    mayDependOn: [gfx, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, private1, private2, private3, private4, private5]
-    canUse: [ebiten, image]
   play:
-    mayDependOn: [play, gozen, clihelp, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, private1, private2, private3, private4, private5]
+    mayDependOn: [play, clihelp, expr, text, savefile, chat, rpg, battle, event, world, react, headless, private1, private2, private3, private4, private5]
     canUse: [ebiten, image, pflag, js]
-  puppet:
-    mayDependOn: [puppet, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, private1, private2, private3, private4, private5]
-    canUse: [ebiten, image]
   private5:
-    mayDependOn: [private5, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, private1, private2, private3, private4]
+    mayDependOn: [private5, expr, text, savefile, chat, rpg, battle, event, world, react, headless, private1, private2, private3, private4]
     canUse: [ebiten, image, js]
   private6:
-    mayDependOn: [private6, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet, private1, private2, private3, private4, private5]
+    mayDependOn: [private6, expr, text, savefile, chat, rpg, battle, event, world, react, headless, play, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]
   commands:
-    mayDependOn: [commands, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet, private1, private2, private3, private4, private5, promptcmd, mosaiccmd, mosaic, clihelp, cliio, diag]
+    mayDependOn: [commands, expr, text, savefile, chat, rpg, battle, event, world, react, headless, play, private1, private2, private3, private4, private5, promptcmd, mosaiccmd, mosaic, clihelp, cliio, diag]
     canUse: [yaml, ebiten, image, pflag]
   player:
     mayDependOn: [play, private2, webfs]
@@ -139,24 +124,24 @@ deps:
   diag:
     mayDependOn: [diag]
   promptgen:
-    mayDependOn: [promptgen, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, diag]
+    mayDependOn: [promptgen, expr, text, savefile, chat, rpg, battle, event, world, react, headless, diag]
     canUse: [yaml, image]
   promptcmd:
     mayDependOn: [promptcmd, promptgen, clihelp, cliio, diag]
     canUse: [pflag]
   mosaic:
-    mayDependOn: [mosaic, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, diag]
+    mayDependOn: [mosaic, expr, text, savefile, chat, rpg, battle, event, world, react, headless, diag]
     canUse: [yaml, image, onnx]
   mosaiccmd:
     mayDependOn: [mosaiccmd, mosaic, clihelp, cliio, diag]
     canUse: [pflag, image]
   experiments:
-    mayDependOn: [expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet]
+    mayDependOn: [expr, text, savefile, chat, rpg, battle, event, world, react, headless, play]
     canUse: [yaml, ebiten, image]
   examples:
-    mayDependOn: [gozen, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet, webfs]
+    mayDependOn: [session, expr, text, savefile, chat, rpg, battle, event, world, react, headless, play, private5, webfs]
     canUse: [ebiten, image, js]
   dev:
     mayDependOn: [dev, diag]
   testgame:
-    mayDependOn: [expr, text, savefile, chat, data, rpg]
+    mayDependOn: [expr, text, savefile, chat, rpg, private2]

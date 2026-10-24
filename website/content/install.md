@@ -4,7 +4,7 @@ description: Install the Gozen binary without a programming toolchain, and prepa
 weight: 10
 ---
 
-To create and play games, install the prebuilt `gozen` binary for your operating system. No Go compiler is required. Go 1.26.10 or later is needed only when building the engine or using its transitional Go API.
+To create and play games, install the prebuilt `gozen` binary for your operating system. No Go compiler is required. Go 1.26.10 or later is needed only when building the engine .
 
 ## The gozen command
 
@@ -75,15 +75,6 @@ slsa-verifier verify-artifact gozen_<version>_<os>_<arch>.tar.gz \
   --source-uri github.com/nao1215/gozen \
   --source-tag v<version>
 ```
-
-## The library during migration
-
-<!-- verify: run fixture=module -->
-```shell
-go get github.com/nao1215/gozen@latest
-```
-
-The public Go API remains available during the no-code migration; it is not part of the beginner workflow. The rules, the headless driver and the YAML loader are pure Go and run anywhere Go does. Only the game window (the `play` package) needs the platform graphics libraries below.
 
 ## What the window needs
 

@@ -9,7 +9,8 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/nao1215/gozen"
+	"github.com/nao1215/gozen/internal/savefile"
+
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
@@ -254,7 +255,7 @@ func TestDefaultStoreIsTheUserConfigDirectory(t *testing.T) {
 // TestStoreForIsAskedForTheGameID and its failure.
 func TestStoreForIsAskedForTheGameID(t *testing.T) {
 	var asked string
-	mem := gozen.MemStore()
+	mem := savefile.MemStore()
 	g, err := New(Options{FS: gameFiles(t), NoSound: true, StoreFor: func(id string) (Store, error) { asked = id; return mem, nil }})
 	if err != nil {
 		t.Fatal(err)

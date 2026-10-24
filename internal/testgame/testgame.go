@@ -8,8 +8,8 @@ import (
 	"testing/fstest"
 
 	"github.com/nao1215/gozen/internal/expr"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
-	data "github.com/nao1215/gozen/schema"
 )
 
 // Game defines a deterministic start for the test expedition.
@@ -123,7 +123,7 @@ func TryLoad(extra map[string]string) (*data.DB, error) {
 	for n, s := range extra {
 		fsys[n] = &fstest.MapFile{Data: []byte(s)}
 	}
-	return data.Load(fsys, ".")
+	return data.LoadDir(fsys, ".")
 }
 
 // sentinel is the content of assets/x.png: a file that exists, not a picture.

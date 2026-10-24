@@ -2,7 +2,7 @@
 
 `gozen prompt` and `gozen mosaic` are the production-support subcommands of `gozen` ([ADR 0016](../decisions/0016-single-cli.md)). Installation, per-OS requirements (cgo, C compiler, ONNX Runtime), options, the catalog format, model fetching and detection setup are described for users on the site: [Production tools](https://nao1215.github.io/gozen/production-tools/). This page keeps only what matters when developing them.
 
-The entry point is only the dispatch in `cmd/gozen/main.go`. `internal/promptgen/command.New` registers a fixed operation; the root dispatcher parses it and uses the common `cliio` output and exit contract. Mosaic still owns its dispatch until its migration. No public library API is added. Batch assembly of `gozen prompt --scenes` is in `internal/promptgen/command/batch.go`; the default class names of `gozen mosaic` are in `internal/mosaic/settings/settings.go`.
+The entry point is only the dispatch in `cmd/gozen/main.go`. `internal/promptgen/command.New` registers a fixed operation; the root dispatcher parses it and uses the common `cliio` output and exit contract. `internal/mosaic/command.New` registers mosaic and model operations through the same parser and output contract. There is no secondary dispatcher. Batch assembly of `gozen prompt --scenes` is in `internal/promptgen/command/batch.go`; the default class names of `gozen mosaic` are in `internal/mosaic/settings/settings.go`.
 
 ## Synthetic inputs
 

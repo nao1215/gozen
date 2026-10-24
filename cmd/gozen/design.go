@@ -25,7 +25,6 @@ import (
 
 	"github.com/nao1215/gozen/cmd/gozen/internal/designeval"
 	lang "github.com/nao1215/gozen/internal/text"
-	data "github.com/nao1215/gozen/schema"
 )
 
 func (c *command) design() clihelp.Operation {
@@ -63,7 +62,7 @@ func (c *command) design() clihelp.Operation {
 		if err := gamedata.UseWords(fsys); err != nil {
 			return err
 		}
-		db0, err := data.Load(fsys, ".")
+		db0, err := gamedata.LoadDir(fsys, ".")
 		if err != nil {
 			return err
 		}
@@ -138,7 +137,7 @@ func (c *command) design() clihelp.Operation {
 		runs := make([]*designeval.Run, len(personas))
 		sums := make([]designeval.Summary, len(personas))
 		for i, p := range personas {
-			db, err := data.Load(fsys, ".")
+			db, err := gamedata.LoadDir(fsys, ".")
 			if err != nil {
 				return err
 			}

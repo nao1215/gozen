@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nao1215/gozen"
+	"github.com/nao1215/gozen/internal/savefile"
 )
 
 const sysInnData = `locations:
@@ -251,7 +251,7 @@ func TestSystemMenuOfAPlaceWithoutTheMenu(t *testing.T) {
 
 // sysFailingStore is a store whose reads fail with a chosen error.
 type sysFailingStore struct {
-	gozen.Store
+	savefile.Store
 	readErr error
 }
 
@@ -306,7 +306,7 @@ func TestSaveOverUnreadableKeepsABackup(t *testing.T) {
 	if err := g.save(1); err == nil {
 		t.Fatal("a read error was ignored")
 	}
-	g.store = sysFailingStore{Store: gozen.MemStore(), readErr: fs.ErrNotExist}
+	g.store = sysFailingStore{Store: savefile.MemStore(), readErr: fs.ErrNotExist}
 	if g.storeHas("x") {
 		t.Fatal("a missing file is there")
 	}

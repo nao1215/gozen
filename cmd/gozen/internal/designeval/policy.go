@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/world"
-	data "github.com/nao1215/gozen/schema"
 )
 
 type Policy struct {

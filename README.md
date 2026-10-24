@@ -7,7 +7,6 @@
 [![Security](https://github.com/nao1215/gozen/actions/workflows/security.yml/badge.svg)](https://github.com/nao1215/gozen/actions/workflows/security.yml)
 [![tested with atago](https://img.shields.io/badge/tested%20with-atago-7c3aed?logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTMuNiA0LjIgMTEuOSAxMmwtOC4zIDcuOC0xLjktMi4yTDcuOSAxMiAxLjcgNi40eiIvPjxyZWN0IGZpbGw9IiNmZmYiIHg9IjEyLjYiIHk9IjE3LjIiIHdpZHRoPSI5LjciIGhlaWdodD0iMi44IiByeD0iMS40Ii8%2BPC9zdmc%2B&logoColor=white)](https://github.com/nao1215/atago)
 [![measured with himorime](https://img.shields.io/badge/measured%20with-himorime-d9480f?logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCI%2BPHBhdGggZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIuNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBkPSJNNC4yIDE4LjVBOSA5IDAgMSAxIDE5LjggMTguNSIvPjxwYXRoIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmIiBzdHJva2Utd2lkdGg9IjIuNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBkPSJNMTIgMTQuNSAxNi41IDkiLz48Y2lyY2xlIGZpbGw9IiNmZmYiIGN4PSIxMiIgY3k9IjE0LjUiIHI9IjIuMiIvPjwvc3ZnPg==&logoColor=white)](https://github.com/nao1215/himorime)
-[![Go Reference](https://pkg.go.dev/badge/github.com/nao1215/gozen.svg)](https://pkg.go.dev/github.com/nao1215/gozen)
 ![GitHub](https://img.shields.io/github/license/nao1215/gozen)
 [![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/nao1215/gozen/total)](https://github.com/nao1215/gozen/releases)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/nao1215/gozen/badge)](https://scorecard.dev/viewer/?uri=github.com/nao1215/gozen)
@@ -203,7 +202,7 @@ Go 1.26.10 or later:
 go install github.com/nao1215/gozen/cmd/gozen@latest
 ```
 
-With a C compiler, `CGO_ENABLED=1` adds the ONNX inference of `gozen art mosaic`.
+With a C compiler, `CGO_ENABLED=1` adds the ONNX inference of `gozen mosaic`.
 
 With Homebrew:
 
@@ -213,13 +212,6 @@ brew install --cask nao1215/tap/gozen
 ```
 
 [The release page](https://github.com/nao1215/gozen/releases) has archives for Linux, macOS and Windows (amd64, arm64) and `.deb`, `.rpm` and `.apk` packages. They have no ONNX inference.
-
-As a library:
-
-<!-- verify: run fixture=module -->
-```sh
-go get github.com/nao1215/gozen@latest
-```
 
 The window needs the platform graphics libraries: [OS setup](https://nao1215.github.io/gozen/install/#what-the-window-needs).
 
@@ -253,7 +245,7 @@ gozen sim dive game --location cave --floors 5 --boss 5:cave_boss # levels and w
 
 `gozen book game > book.md` writes the whole game as one Markdown file.
 
-Run the directory directly with `gozen run game`, or enable author tools with `gozen run game --dev`. No Go wrapper is needed. The same options are available when embedding a game with `play.Main`.
+Run the directory directly with `gozen run game`, or enable author tools with `gozen run game --dev`. No Go source is needed.
 
 Test tools:
 
@@ -266,31 +258,6 @@ gozen trace run.jsonl                                # read the record
 gozen notes notes --out notes-html                   # notes as one HTML page
 ```
 
-Embed a game:
-
-```go
-//go:embed game
-var files embed.FS
-
-func main() {
-	// game/ holds game.yaml, data/ and assets/; the options are the game's (--help, --dev ...)
-	if err := play.Main(context.Background(), files, "game", os.Args[1:], play.Config{Output: os.Stdout}); err != nil {
-		log.Fatal(err)
-	}
-}
-```
-
-Test it in Go with `gozen.Session`, which runs the rules without a window:
-
-```sh
-go run github.com/nao1215/gozen/examples/headless@latest
-```
-
-<!-- verify: output -->
-```text
-location=trail battles=1 wins=1 gold=3
-```
-
 ## gozen
 
 | Command | What it does |
@@ -299,10 +266,10 @@ location=trail battles=1 wins=1 gold=3
 | `check` | definitions, references, expressions, pictures, text layout (`--only structure` or `--only layout`) |
 | `sim battle`, `sim dive`, `sim floors`, `sim design` | win rate; a dungeon dive; generated floors; scripted players |
 | `run`, `trace`, `notes`, `capture` | run a game directory; read a trace; notes as HTML; screenshots of a list |
-| `book` | the whole game as Markdown |
+| `book` | the whole game as Markdown, JSON or JSONL |
 | `export` | playable desktop directories; static browser games, using prebuilt runtimes |
 | `release`, `trial` | approved pictures only; a demo |
-| `art prompt`, `art mosaic`, `art fetch`, `art faces`, `art puppet` | image prompts; pixelation; models; balloon faces; moving portraits |
+| `prompt`, `mosaic`, `models fetch`, `faces`, `puppet` | image prompts; pixelation; models; balloon faces; moving portraits |
 | `theme add`, `theme list` | copy a dungeon theme (walls, floor, ceiling, door) into a game; list the themes |
 | `version`, `help` | the version; a command's help, or a diagnostic code |
 
@@ -314,8 +281,7 @@ location=trail battles=1 wins=1 gold=3
 - Turn-based battles with a party, auto battle and enemy tactics
 - Skill trees, shops, a field menu and a picture gallery
 - First-person grid dungeons, fixed or generated, with themes (`theme: cave`, `gozen theme add`)
-- Moving portraits from one picture ([puppet](https://pkg.go.dev/github.com/nao1215/gozen/puppet))
-- Characters that react to typed words, and a chat log ([react](https://pkg.go.dev/github.com/nao1215/gozen/react), [chat](https://pkg.go.dev/github.com/nao1215/gozen/chat))
+- Moving portraits from one picture ([portrait YAML](https://nao1215.github.io/gozen/cookbook/#give-a-character-faces-and-a-moving-portrait))
 - Campaigns: regions held by factions over turns, orders with generals, a sortie screen with tactics, marches shown as clashes of armies (or decided by numbers or a battle), the other factions' rules, and `gozen sim campaign` ([recipes](https://nao1215.github.io/gozen/cookbook/#make-a-campaign))
 - Visual novels: roll back, skip what was read, save in a scene, choices read as `chose`, staging with `stand` ([recipes](https://nao1215.github.io/gozen/cookbook/#let-the-player-roll-back-and-save-in-a-scene))
 - Demo builds that cannot leak the full game: `gozen trial` keeps only what the range in `trial.yaml` reaches, so later events, endings and pictures are not in the demo at all ([recipe](https://nao1215.github.io/gozen/cookbook/#cut-a-release-and-a-trial))
@@ -323,7 +289,7 @@ location=trail battles=1 wins=1 gold=3
 
 ## Limitations
 
-- Go APIs are transitional and will be retired after the CLI migration.
+- The supported interfaces are CLI commands, YAML definitions and saves. Go implementation packages are internal.
 - Gameplay tests cover Linux, Windows and macOS. Browser E2E targets Chrome.
 - There is no graphical editor.
 

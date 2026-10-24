@@ -13,7 +13,6 @@ import (
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
-	data "github.com/nao1215/gozen/schema"
 )
 
 // campaignCmd is gozen sim campaign: many campaigns played headless with a strategy, and
@@ -47,7 +46,7 @@ func (c *command) campaignCmd() clihelp.Operation {
 		if err := gamedata.UseWords(fsys); err != nil {
 			return err
 		}
-		db, err := data.Load(fsys, ".")
+		db, err := gamedata.LoadDir(fsys, ".")
 		if err != nil {
 			return err
 		}

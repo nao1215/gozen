@@ -10,8 +10,8 @@ var (
 	})
 	FaceBox = register(102, "FaceBox", Entry{
 		Summary: "a balloon face has no face box, or the box is stale",
-		Detail:  "A painted scene cuts each person's balloon face around the face that gozen art faces found and wrote to assets/faces.json. The file is missing, has no box for a picture, has none found, or the picture changed since, so the face is guessed.",
-		Fix:     "Run gozen art faces <game-dir> again, or give the doll face_at.",
+		Detail:  "A painted scene cuts each person's balloon face around the face that gozen faces found and wrote to assets/faces.json. The file is missing, has no box for a picture, has none found, or the picture changed since, so the face is guessed.",
+		Fix:     "Run gozen faces <game-dir> again, or give the doll face_at.",
 	})
 	Unreachable = register(103, "Unreachable", Entry{
 		Summary: "a place of a map or a painted scene cannot be reached",
