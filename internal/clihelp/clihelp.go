@@ -88,7 +88,7 @@ func NewFlagSet(name string) *pflag.FlagSet {
 // The errors carry a diagnostic code (ADR 0024): an unknown option, a
 // single-dash long option, or a value that cannot be read.
 func Parse(fs *pflag.FlagSet, args []string) (help bool, err error) {
-	if err := singleDash(fs, args); err != nil {
+	if _, err := inspectOptions(fs, args); err != nil {
 		return false, diag.SingleDashOption.Wrap(err)
 	}
 	if err := fs.Parse(args); err != nil {
@@ -122,16 +122,36 @@ func HelpRequested(args []string) bool {
 	return false
 }
 
-func singleDash(fs *pflag.FlagSet, args []string) error {
+// OutputFormat finds the declared --format before parsing fails, so argument
+// errors use the requested diagnostic encoding regardless of option order.
+// Values of other known flags and operands after -- are never treated as options.
+func OutputFormat(fs *pflag.FlagSet, args []string) string {
+	format, _ := inspectOptions(fs, args) //nolint:errcheck // Parse reports the syntax error after the diagnostic encoding is selected.
+	return format
+}
+
+func inspectOptions(fs *pflag.FlagSet, args []string) (format string, err error) {
+	if f := fs.Lookup("format"); f != nil {
+		format = f.DefValue
+	}
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		if a == "--" {
-			return nil
+			return format, err
 		}
 		if strings.HasPrefix(a, "--") {
-			name, _, hasValue := strings.Cut(a[2:], "=")
-			if f := fs.Lookup(name); f != nil && !hasValue && f.NoOptDefVal == "" {
-				i++ // the next argument is this option's value
+			name, value, hasValue := strings.Cut(a[2:], "=")
+			if f := fs.Lookup(name); f != nil {
+				if !hasValue && f.NoOptDefVal == "" {
+					i++
+					if i >= len(args) {
+						continue
+					}
+					value = args[i]
+				}
+				if name == "format" {
+					format = value
+				}
 			}
 			continue
 		}
@@ -140,15 +160,35 @@ func singleDash(fs *pflag.FlagSet, args []string) error {
 		}
 		if len(a) == 2 {
 			if f := fs.ShorthandLookup(a[1:]); f != nil && f.NoOptDefVal == "" {
-				i++ // the next argument is this option's value
+				i++
 			}
 			continue
 		}
-		if name, _, _ := strings.Cut(a[1:], "="); fs.Lookup(name) != nil {
-			return fmt.Errorf("single-dash long option %s is not accepted; use --%s", a, a[1:])
+		if name, _, hasValue := strings.Cut(a[1:], "="); fs.Lookup(name) != nil {
+			if err == nil {
+				err = fmt.Errorf("single-dash long option %s is not accepted; use --%s", a, a[1:])
+			}
+			if !hasValue && fs.Lookup(name).NoOptDefVal == "" {
+				i++
+			}
+			continue
+		}
+		// A value-taking shorthand ends a cluster; its value can be attached
+		// or the next argument (for example -vt TITLE).
+		for j := 1; j < len(a); j++ {
+			f := fs.ShorthandLookup(a[j : j+1])
+			if f == nil {
+				break
+			}
+			if f.NoOptDefVal == "" {
+				if j == len(a)-1 {
+					i++
+				}
+				break
+			}
 		}
 	}
-	return nil
+	return format, err
 }
 
 // String renders the page. fs may be nil for a page without options.

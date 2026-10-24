@@ -22,7 +22,8 @@ import (
 // deliberate.
 var familyOf = map[string][]int{
 	"cmd/gozen":                     {0, 1, 2},
-	"cmd/internal/cli":              {1, 2},
+	"cmd/internal/cli":              {1},
+	"internal/cliio":                {2},
 	"cmd/internal/checkdata":        {0, 1},
 	"cmd/internal/trial":            {1},
 	"internal/layer2/gamedata":      {0, 1},
@@ -190,7 +191,30 @@ func assertions(t *testing.T, sc map[string]any) []asserted {
 			if err != nil {
 				t.Fatal(err)
 			}
-			out = append(out, asserted{string(b), exit})
+			// Typed stream matchers assert the code field without embedding JSON text.
+			text := string(b)
+			for _, stream := range []string{"stdout", "stderr"} {
+				v, ok := a[stream].(map[string]any)
+				if !ok {
+					continue
+				}
+				checks, ok := v["json"].([]any)
+				if !ok && v["json"] != nil {
+					checks = []any{v["json"]}
+				}
+				for _, raw := range checks {
+					check, ok := raw.(map[string]any)
+					if !ok {
+						continue
+					}
+					if check["path"] == "$.code" {
+						if code, ok := check["equals"].(string); ok {
+							text += fmt.Sprintf(` {"code":%q}`, code)
+						}
+					}
+				}
+			}
+			out = append(out, asserted{text, exit})
 		}
 	}
 	return out
@@ -278,5 +302,18 @@ func repoRoot(t *testing.T) string {
 			t.Fatal("go.mod not found")
 		}
 		dir = parent
+	}
+}
+
+func TestAssertionsRecognizeStructuredCodeMatchers(t *testing.T) {
+	sc := map[string]any{"steps": []any{
+		map[string]any{"assert": map[string]any{"exit_code": 2, "stderr": map[string]any{"json": []any{
+			map[string]any{"path": "$.code", "equals": "GZN2102"},
+			map[string]any{"path": "$.message", "equals": "GZN2201"},
+		}}}},
+	}}
+	got := assertions(t, sc)
+	if len(got) != 1 || got[0].exit != 2 || !slices.Equal(reported(got[0].text), []Code{Operands}) {
+		t.Fatalf("%+v", got)
 	}
 }

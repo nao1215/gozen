@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/cliio"
+
 	xdraw "golang.org/x/image/draw"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
@@ -39,7 +41,7 @@ func (c *command) faces(args []string) (err error) {
 		return err
 	}
 	if f.NArg() != 1 {
-		return cli.Invalid(diag.Operands, "art faces expects one game directory")
+		return cliio.Invalid(diag.Operands, "art faces expects one game directory")
 	}
 	dir := f.Arg(0)
 	fsys := os.DirFS(dir)

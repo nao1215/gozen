@@ -5,9 +5,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 
-	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
 
@@ -35,11 +36,11 @@ func (c *command) sim(args []string) error {
 		return err
 	}
 	if fs.NArg() != 2 {
-		return cli.Invalid(diag.Operands, "expected <game-dir> <troop>")
+		return cliio.Invalid(diag.Operands, "expected <game-dir> <troop>")
 	}
 	dir, troop := fs.Arg(0), fs.Arg(1)
 	if *n <= 0 || *maxTurns <= 0 || *level < 0 {
-		return cli.Invalid(diag.BadValue, "--battles and --turns must be positive; --level must be nonnegative")
+		return cliio.Invalid(diag.BadValue, "--battles and --turns must be positive; --level must be nonnegative")
 	}
 	fsys, err := gameFS(dir)
 	if err != nil {
@@ -53,22 +54,22 @@ func (c *command) sim(args []string) error {
 		return err
 	}
 	if db.Troops[troop] == nil {
-		return cli.Invalid(diag.UnknownName, "unknown troop %q", troop)
+		return cliio.Invalid(diag.UnknownName, "unknown troop %q", troop)
 	}
 	if *asIs && len(*states) == 0 {
-		return cli.Invalid(diag.OptionNeedsAnother, "--as-is needs --state")
+		return cliio.Invalid(diag.OptionNeedsAnother, "--as-is needs --state")
 	}
 	if *streak < 0 {
-		return cli.Invalid(diag.BadValue, "--streak must be nonnegative")
+		return cliio.Invalid(diag.BadValue, "--streak must be nonnegative")
 	}
 	if *format != "text" && *format != "json" {
-		return cli.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
+		return cliio.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
 	}
 	if len(*states) > 0 && *party != "" {
-		return cli.Invalid(diag.OptionConflict, "--state and --party do not go together")
+		return cliio.Invalid(diag.OptionConflict, "--state and --party do not go together")
 	}
 	if len(*states) > 1 && *verbose {
-		return cli.Invalid(diag.OptionConflict, "--verbose goes with one start")
+		return cliio.Invalid(diag.OptionConflict, "--verbose goes with one start")
 	}
 	prep := balance.Prep{Level: *level, Tree: !*noTree, Gear: commaList(*gear), AsIs: *asIs}
 	starts := []string{""}

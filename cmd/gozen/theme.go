@@ -4,7 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/cmd/internal/themes"
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
@@ -13,13 +14,39 @@ import (
 // themeList prints the dungeon themes the command carries.
 func (c *command) themeList(args []string) error {
 	f := clihelp.NewFlagSet("gozen theme list")
+	c.reporting(f)
 	if err := c.parse(f, args); err != nil {
 		return err
 	}
 	if f.NArg() != 0 {
-		return cli.Invalid(diag.Operands, "theme list takes no operands")
+		return cliio.Invalid(diag.Operands, "theme list takes no operands")
 	}
-	for _, t := range themes.List() {
+	items := themes.List()
+	if c.report.Machine() {
+		type item struct {
+			ID      string `json:"id"`
+			Summary string `json:"summary"`
+		}
+		rows := make([]item, 0, len(items))
+		for _, t := range items {
+			row := item{t.Name, t.Summary}
+			rows = append(rows, row)
+			if c.report.Format == "jsonl" {
+				if err := c.report.Item(c.out, t.Name, "ok", row); err != nil {
+					return err
+				}
+			}
+		}
+		if c.report.Format == "jsonl" {
+			return c.report.Result(c.out, "ok", struct {
+				Count int `json:"count"`
+			}{len(rows)})
+		}
+		return c.report.Result(c.out, "ok", struct {
+			Items []item `json:"items"`
+		}{rows})
+	}
+	for _, t := range items {
 		c.out.Printf("%-8s %s\n", t.Name, t.Summary)
 	}
 	return nil
@@ -33,11 +60,11 @@ func (c *command) themeAdd(args []string) error {
 		return err
 	}
 	if f.NArg() != 2 {
-		return cli.Invalid(diag.Operands, "theme add expects a theme name and a game directory")
+		return cliio.Invalid(diag.Operands, "theme add expects a theme name and a game directory")
 	}
 	name, dir := f.Arg(0), f.Arg(1)
 	if !themes.Has(name) {
-		return cli.Invalid(diag.UnknownName, "unknown theme %q: run gozen theme list", name)
+		return cliio.Invalid(diag.UnknownName, "unknown theme %q: run gozen theme list", name)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "game.yaml")); err != nil {
 		return diag.GameUnreadable.Wrap(err)

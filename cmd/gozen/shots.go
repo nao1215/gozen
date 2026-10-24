@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/internal/layer1/decodeguard"
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 
@@ -92,10 +94,10 @@ func (c *command) shots(args []string) (err error) {
 		return err
 	}
 	if fl.NArg() != 2 || *bin == "" || (*overlay == "") == !*raw {
-		return cli.Invalid(diag.OptionConflict, "play shots requires --bin and exactly one of --overlay DIR or --raw")
+		return cliio.Invalid(diag.OptionConflict, "play shots requires --bin and exactly one of --overlay DIR or --raw")
 	}
 	if *timeout <= 0 {
-		return cli.Invalid(diag.BadValue, "--timeout must be positive")
+		return cliio.Invalid(diag.BadValue, "--timeout must be positive")
 	}
 	gameDir, listPath := fl.Arg(0), fl.Arg(1)
 	*bin, err = exec.LookPath(*bin)
@@ -156,7 +158,7 @@ func (c *command) shots(args []string) (err error) {
 			found = found || it.ID == id
 		}
 		if !found {
-			return cli.Invalid(diag.UnknownName, "--only: unknown shot %q", id)
+			return cliio.Invalid(diag.UnknownName, "--only: unknown shot %q", id)
 		}
 	}
 	if err := cli.Destination(*out, fl.Arg(0), *overlay, listPath); err != nil {

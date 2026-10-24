@@ -7,7 +7,8 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/cliio"
+
 	runtime "github.com/nao1215/gozen/internal/play"
 )
 
@@ -16,7 +17,7 @@ func (c *command) playRun(args []string) error {
 	defer stop()
 	err := runtime.Main(ctx, nil, "", args, runtime.EntryConfig{Directory: true, Output: c.out})
 	if arg, ok := errors.AsType[*runtime.ArgumentError](err); ok {
-		return cli.Parse(arg.Err)
+		return cliio.Parse(arg.Err)
 	}
 	if err != nil {
 		return fmt.Errorf("play run: %w\nStartup requirements: https://nao1215.github.io/gozen/commands/#play-run", err)

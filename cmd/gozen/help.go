@@ -179,7 +179,7 @@ var pages = map[string]clihelp.Page{
 		Usage:    []string{"gozen new <game-dir> [OPTIONS]"},
 		About:    "Creates editable YAML and original placeholder assets. The destination must not exist. Each game gets a new save identity unless --id is supplied. No Go compiler is required.",
 		Examples: []clihelp.Example{{"create an RPG", "gozen new my-game"}, {"create a novel", "gozen new my-story --template novel --title 'My story'"}, {"create a campaign", "gozen new my-campaign --template campaign"}},
-		Groups:   []clihelp.Group{{Title: "Game", Flags: []string{"template", "id", "title"}}, general},
+		Groups:   []clihelp.Group{{Title: "Game", Flags: []string{"template", "id", "title"}}, {Title: "Output", Flags: []string{"format"}}, general},
 		Notes:    []string{noRequirements},
 	},
 
@@ -212,7 +212,7 @@ var pages = map[string]clihelp.Page{
 		Examples: []clihelp.Example{
 			{"list the themes", "gozen theme list"},
 		},
-		Groups: []clihelp.Group{general},
+		Groups: []clihelp.Group{{Title: "Output", Flags: []string{"format"}}, general},
 		Notes:  []string{noRequirements},
 	},
 	"check": {

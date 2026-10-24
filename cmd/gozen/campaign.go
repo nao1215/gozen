@@ -8,8 +8,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/cmd/gozen/internal/campaignsim"
-	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
@@ -31,19 +32,19 @@ func (c *command) campaignCmd(args []string) error {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return cli.Invalid(diag.Operands, "expected <game-dir>")
+		return cliio.Invalid(diag.Operands, "expected <game-dir>")
 	}
 	if *n <= 0 || *maxOrders <= 0 {
-		return cli.Invalid(diag.BadValue, "--campaigns and --orders must be positive")
+		return cliio.Invalid(diag.BadValue, "--campaigns and --orders must be positive")
 	}
 	if !slices.Contains(campaignsim.Strategies, *as) {
-		return cli.Invalid(diag.NotAChoice, "--as is %s, not %q", strings.Join(campaignsim.Strategies, ", "), *as)
+		return cliio.Invalid(diag.NotAChoice, "--as is %s, not %q", strings.Join(campaignsim.Strategies, ", "), *as)
 	}
 	if *format != "text" && *format != "json" {
-		return cli.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
+		return cliio.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
 	}
 	if *compare != "" && *compare != "strategies" && *compare != "tactics" {
-		return cli.Invalid(diag.NotAChoice, "--compare is strategies or tactics, not %q", *compare)
+		return cliio.Invalid(diag.NotAChoice, "--compare is strategies or tactics, not %q", *compare)
 	}
 	fsys, err := gameFS(fs.Arg(0))
 	if err != nil {
@@ -57,10 +58,10 @@ func (c *command) campaignCmd(args []string) error {
 		return err
 	}
 	if db.Game.Campaign == nil {
-		return cli.Invalid(diag.UnknownName, "the game has no campaign (game.yaml campaign)")
+		return cliio.Invalid(diag.UnknownName, "the game has no campaign (game.yaml campaign)")
 	}
 	if _, ok := db.Game.Campaign.Clash.DeclaredTactics()[*tactic]; *tactic != "" && !ok {
-		return cli.Invalid(diag.NotAChoice, "--tactic is %s, not %q", strings.Join(db.Game.Campaign.Clash.TacticIDs(), ", "), *tactic)
+		return cliio.Invalid(diag.NotAChoice, "--tactic is %s, not %q", strings.Join(db.Game.Campaign.Clash.TacticIDs(), ", "), *tactic)
 	}
 	cfg := campaignsim.Config{Runs: *n, Seed: *seed, As: *as, MaxOrder: *maxOrders, Tactic: *tactic}
 	if *compare != "" {

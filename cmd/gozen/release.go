@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
@@ -22,11 +24,11 @@ func (c *command) release(args []string) error {
 		return err
 	}
 	if fl.NArg() != 2 || *inspect == "" {
-		return cli.Invalid(diag.OptionRequired, "usage: gozen pack release --inspect FILE [--overlay DIR] <game-dir> <out-dir>")
+		return cliio.Invalid(diag.OptionRequired, "usage: gozen pack release --inspect FILE [--overlay DIR] <game-dir> <out-dir>")
 	}
 	src, out := fl.Arg(0), fl.Arg(1)
 	if !cli.Relative(*prefix) {
-		return cli.Invalid(diag.BadPath, "invalid --prefix")
+		return cliio.Invalid(diag.BadPath, "invalid --prefix")
 	}
 	policy, ins, outputs, err := releaseInputs(src, overlay, *inspect)
 	if err != nil {

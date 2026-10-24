@@ -3,7 +3,8 @@ package main
 import (
 	"runtime"
 
-	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/cmd/internal/distribute"
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
@@ -17,12 +18,12 @@ func (c *command) desktop(args []string) error {
 		return err
 	}
 	if f.NArg() != 2 || *bundle == "" {
-		return cli.Invalid(diag.OptionRequired, "usage: gozen pack desktop --runtime DIR [--target OS-ARCH] <game-dir> <out-dir>")
+		return cliio.Invalid(diag.OptionRequired, "usage: gozen pack desktop --runtime DIR [--target OS-ARCH] <game-dir> <out-dir>")
 	}
 	switch *target {
 	case "linux-amd64", "linux-arm64", "windows-amd64", "windows-arm64", "darwin-amd64", "darwin-arm64":
 	default:
-		return cli.Invalid(diag.BadValue, "unsupported desktop target %q", *target)
+		return cliio.Invalid(diag.BadValue, "unsupported desktop target %q", *target)
 	}
 	if err := distribute.Desktop(f.Arg(0), f.Arg(1), *bundle, *target, clihelp.Version()); err != nil {
 		return err

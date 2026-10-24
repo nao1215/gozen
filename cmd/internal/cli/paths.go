@@ -1,3 +1,4 @@
+// Package cli implements protected command output paths and publication.
 package cli
 
 import (
