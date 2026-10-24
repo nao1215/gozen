@@ -51,7 +51,7 @@ scenarios:
         {"t":"skip","tick":52,"scene":true,"on":false,"why":"choice","event":"story","line":4}
         {"t":"end","tick":60}
   - run:
-      command: gozen trace run.jsonl --only say,skip
+      command: gozen trace run.jsonl --only say --only skip
   - assert:
       exit_code: 0
       stdout:
@@ -80,7 +80,7 @@ scenarios:
         {"t":"resume","tick":50,"event":"story","line":3,"at":3}
         {"t":"end","tick":60}
   - run:
-      command: gozen trace run.jsonl --only rollback,resume
+      command: gozen trace run.jsonl --only rollback --only resume
   - assert:
       exit_code: 0
       stdout:
@@ -266,7 +266,7 @@ scenarios:
         {"t":"jump","tick":20,"event":"talk","line":2}
         {"t":"end","tick":30}
   - run:
-      command: gozen trace run.jsonl --only dev_set,jump
+      command: gozen trace run.jsonl --only dev_set --only jump
   - assert:
       exit_code: 0
       stdout:

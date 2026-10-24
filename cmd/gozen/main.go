@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -35,7 +36,7 @@ func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }
 
 // node is one command of the tree: a group holds subs, a leaf runs.
 type node struct {
-	run      func(c *command, args []string) error
+	build    func(c *command) clihelp.Operation
 	delegate func(args []string, out, stderr io.Writer) int // a leaf with its own exit contract
 	subs     []string                                       // the names of a group's commands, in order
 }
@@ -43,39 +44,39 @@ type node struct {
 // tree maps a command path to its node.
 var tree = map[string]node{
 	"":             {subs: []string{"new", "run", "export", "check", "sim", "trace", "notes", "release", "trial", "capture", "book", "art", "theme", "version", "help"}},
-	"new":          {run: (*command).newGame},
-	"check":        {run: (*command).checkCmd},
+	"new":          {build: (*command).newGame},
+	"check":        {build: (*command).checkCmd},
 	"sim":          {subs: []string{"battle", "dive", "floors", "design", "campaign", "routes", "breed"}},
-	"sim breed":    {run: (*command).breedCmd},
-	"sim campaign": {run: (*command).campaignCmd},
-	"sim routes":   {run: (*command).routes},
-	"sim battle":   {run: (*command).sim},
-	"sim dive":     {run: (*command).curve},
-	"sim floors":   {run: (*command).floorsCmd},
-	"sim design":   {run: (*command).design},
-	"run":          {run: (*command).playRun},
-	"trace":        {run: (*command).traceCmd},
-	"notes":        {run: (*command).notesCmd},
-	"capture":      {run: (*command).capture},
-	"book":         {run: (*command).bookCmd},
-	"export":       {run: (*command).exportGame},
-	"release":      {run: (*command).release},
-	"trial":        {run: (*command).trialCmd},
+	"sim breed":    {build: (*command).breedCmd},
+	"sim campaign": {build: (*command).campaignCmd},
+	"sim routes":   {build: (*command).routes},
+	"sim battle":   {build: (*command).sim},
+	"sim dive":     {build: (*command).curve},
+	"sim floors":   {build: (*command).floorsCmd},
+	"sim design":   {build: (*command).design},
+	"run":          {build: (*command).playRun},
+	"trace":        {build: (*command).traceCmd},
+	"notes":        {build: (*command).notesCmd},
+	"capture":      {build: (*command).capture},
+	"book":         {build: (*command).bookCmd},
+	"export":       {build: (*command).exportGame},
+	"release":      {build: (*command).release},
+	"trial":        {build: (*command).trialCmd},
 	"art":          {subs: []string{"prompt", "mosaic", "fetch", "faces", "puppet"}},
 	"art prompt":   {delegate: promptcmd.Run},
 	"art mosaic":   {delegate: mosaiccmd.Run},
 	"art fetch":    {delegate: mosaiccmd.Fetch},
-	"art faces":    {run: (*command).faces},
-	"art puppet":   {run: (*command).puppetCmd},
+	"art faces":    {build: (*command).faces},
+	"art puppet":   {build: (*command).puppetCmd},
 	"theme":        {subs: []string{"add", "list"}},
-	"theme add":    {run: (*command).themeAdd},
-	"theme list":   {run: (*command).themeList},
-	"version":      {run: (*command).versionCmd},
+	"theme add":    {build: (*command).themeAdd},
+	"theme list":   {build: (*command).themeList},
+	"version":      {build: (*command).versionCmd},
 }
 
 // parse parses a command's options. On --help it prints the page and returns
 // clihelp.ErrHelp, which run turns into exit 0.
-func (c *command) parse(fs *pflag.FlagSet, args []string) error {
+func (c *command) parse(fs *pflag.FlagSet, args []string, page clihelp.Page) error {
 	if c.report.Command != "" {
 		c.report.Format = clihelp.OutputFormat(fs, args)
 	}
@@ -88,7 +89,7 @@ func (c *command) parse(fs *pflag.FlagSet, args []string) error {
 		return cliio.Parse(err)
 	}
 	if help {
-		c.out.Print(pages[strings.TrimPrefix(fs.Name(), "gozen ")].String(fs))
+		c.out.Print(page.String(fs))
 		return clihelp.ErrHelp
 	}
 	if c.report.Command != "" {
@@ -127,13 +128,25 @@ func run(args []string, out, stderr io.Writer) int {
 	switch {
 	case n.delegate != nil:
 		return n.delegate(args, out, stderr)
-	case n.run != nil:
-		return c.finish(n.run(c, args))
+	case n.build != nil:
+		op := c.operation(n)
+		if err := c.parse(op.Flags, args, op.Page); err != nil {
+			return c.finish(err)
+		}
+		return c.finish(op.Run(context.Background()))
 	case c.path == "":
 		return c.finish(c.top(args))
 	default:
 		return c.finish(c.group(n, args))
 	}
+}
+
+func (c *command) operation(n node) clihelp.Operation {
+	op := n.build(c)
+	if op.Page.Summary == "" {
+		op.Page = pages[c.path]
+	}
+	return op
 }
 
 var errReported = errors.New("failure already reported")
@@ -239,78 +252,74 @@ func (c *command) explain(code string) error {
 	return cliio.Invalid(diag.UnknownCode, "unknown diagnostic code %s; %s", strings.ToUpper(code), hint)
 }
 
-func (c *command) versionCmd(args []string) error {
+func (c *command) versionCmd() clihelp.Operation {
 	f := clihelp.NewFlagSet("gozen version")
-	if err := c.parse(f, args); err != nil {
-		return err
-	}
-	if f.NArg() != 0 {
-		return cliio.Invalid(diag.Operands, "version takes no operands")
-	}
-	c.out.Println("gozen", clihelp.Version())
-	return nil
+	return clihelp.Operation{Flags: f, Run: func(_ context.Context) (err error) {
+		if f.NArg() != 0 {
+			return cliio.Invalid(diag.Operands, "version takes no operands")
+		}
+		c.out.Println("gozen", clihelp.Version())
+		return nil
+	}}
 }
 
-func (c *command) bookCmd(args []string) error {
+func (c *command) bookCmd() clihelp.Operation {
 	f := clihelp.NewFlagSet("gozen book")
 	format := f.String("format", "markdown", "output format: markdown, or json for the monsters' lineage")
-	if err := c.parse(f, args); err != nil {
-		return err
-	}
-	if f.NArg() != 1 {
-		return cliio.Invalid(diag.Operands, "book expects one directory")
-	}
-	if *format != "markdown" && *format != "json" {
-		return cliio.Invalid(diag.NotAChoice, "--format is markdown or json, not %q", *format)
-	}
-	if *format == "json" {
-		return c.bookLineageJSON(f.Arg(0))
-	}
-	return c.book(f.Arg(0))
+	return clihelp.Operation{Flags: f, Run: func(_ context.Context) (err error) {
+		if f.NArg() != 1 {
+			return cliio.Invalid(diag.Operands, "book expects one directory")
+		}
+		if *format != "markdown" && *format != "json" {
+			return cliio.Invalid(diag.NotAChoice, "--format is markdown or json, not %q", *format)
+		}
+		if *format == "json" {
+			return c.bookLineageJSON(f.Arg(0))
+		}
+		return c.book(f.Arg(0))
+	}}
 }
 
-func (c *command) notesCmd(args []string) error {
+func (c *command) notesCmd() clihelp.Operation {
 	f := clihelp.NewFlagSet("gozen notes")
 	memoOut := f.StringP("out", "o", "", "write the HTML to this new `DIR`; required")
-	if err := c.parse(f, args); err != nil {
-		return err
-	}
-	if f.NArg() != 1 {
-		return cliio.Invalid(diag.Operands, "notes expects one directory")
-	}
-	if *memoOut == "" {
-		return cliio.Invalid(diag.OptionRequired, "notes requires --out DIR")
-	}
-	return c.writeMemos(f.Arg(0), *memoOut)
+	return clihelp.Operation{Flags: f, Run: func(_ context.Context) (err error) {
+		if f.NArg() != 1 {
+			return cliio.Invalid(diag.Operands, "notes expects one directory")
+		}
+		if *memoOut == "" {
+			return cliio.Invalid(diag.OptionRequired, "notes requires --out DIR")
+		}
+		return c.writeMemos(f.Arg(0), *memoOut)
+	}}
 }
 
-func (c *command) checkCmd(args []string) error {
+func (c *command) checkCmd() clihelp.Operation {
 	f := clihelp.NewFlagSet("gozen check")
 	only := f.String("only", "", "check only `PART`: structure (definitions, references, expressions, and assets; the font is not read) or layout (the text layout)")
 	format := f.String("format", "text", "the output: text, or json (an array of {file, line, col, path, message, severity, code} on stdout, warnings included)")
-	if err := c.parse(f, args); err != nil {
-		return err
-	}
-	if f.NArg() != 1 {
-		return cliio.Invalid(diag.Operands, "check expects one directory")
-	}
-	switch *only {
-	case "", "structure", "layout":
-	default:
-		return cliio.Invalid(diag.NotAChoice, "--only is structure or layout, not %q", *only)
-	}
-	switch *format {
-	case "text":
-	case "json":
-		return c.checkJSON(f.Arg(0), *only)
-	default:
-		return cliio.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
-	}
-	switch *only {
-	case "structure":
-		return c.checkStructure(f.Arg(0))
-	case "layout":
-		return c.layout(f.Arg(0), c.out)
-	}
-	return c.check(f.Arg(0))
+	return clihelp.Operation{Flags: f, Run: func(_ context.Context) (err error) {
+		if f.NArg() != 1 {
+			return cliio.Invalid(diag.Operands, "check expects one directory")
+		}
+		switch *only {
+		case "", "structure", "layout":
+		default:
+			return cliio.Invalid(diag.NotAChoice, "--only is structure or layout, not %q", *only)
+		}
+		switch *format {
+		case "text":
+		case "json":
+			return c.checkJSON(f.Arg(0), *only)
+		default:
+			return cliio.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
+		}
+		switch *only {
+		case "structure":
+			return c.checkStructure(f.Arg(0))
+		case "layout":
+			return c.layout(f.Arg(0), c.out)
+		}
+		return c.check(f.Arg(0))
+	}}
 }

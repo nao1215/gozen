@@ -6,6 +6,7 @@
 package clihelp
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -28,6 +29,16 @@ const Links = "Documentation:   https://nao1215.github.io/gozen/\n" +
 
 // Width is the column help text wraps at.
 const Width = 80
+
+// Operation is a freshly registered command. Constructing it must not read game
+// files, load models, inspect the environment, or perform I/O. The dispatcher
+// parses Flags once before calling Run; help reads Flags and Page without Run.
+// Each caller owns the operation and its flag values; instances are not shared.
+type Operation struct {
+	Flags *pflag.FlagSet
+	Page  Page
+	Run   func(context.Context) error
+}
 
 // Example is one entry of [Examples]: what it does, then the command line.
 type Example [2]string

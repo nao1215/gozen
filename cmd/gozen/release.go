@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -15,44 +16,43 @@ import (
 	"github.com/nao1215/gozen/internal/layer1/assetfs"
 )
 
-func (c *command) release(args []string) error {
+func (c *command) release() clihelp.Operation {
 	fl := clihelp.NewFlagSet("gozen release")
 	var out string
 	fl.StringVarP(&out, "out", "o", "", "write the approved tree to this new `DIR`; required")
 	inspect := fl.String("inspect", "", "the inspection records `FILE` (JSON Lines) from production; required")
 	overlay := fl.String("overlay", "", "take replaced assets from this `DIR` (default: the game's approval settings)")
 	prefix := fl.String("prefix", "assets", "the asset `DIR` inside the game, separated by /")
-	if err := c.parse(fl, args); err != nil {
-		return err
-	}
-	if fl.NArg() != 1 {
-		return cliio.Invalid(diag.Operands, "expected one game directory")
-	}
-	if out == "" || *inspect == "" {
-		return cliio.Invalid(diag.OptionRequired, "release requires --inspect FILE and --out DIR")
-	}
-	src := fl.Arg(0)
-	if !cli.Relative(*prefix) {
-		return cliio.Invalid(diag.BadPath, "invalid --prefix")
-	}
-	policy, ins, outputs, err := releaseInputs(src, overlay, *inspect)
-	if err != nil {
-		return diag.ApprovalRecords.Wrap(err)
-	}
-	if err := checkReferences(src, *overlay, *prefix, policy, ins, outputs); err != nil {
-		return err
-	}
-	var res assetfs.Result
-	err = cli.Publish(out, []string{src, *overlay}, func(stage string) error {
-		var e error
-		res, e = (assetfs.Tree{Src: src, Top: *overlay, Prefix: *prefix, Dst: stage, Outputs: outputs, Skip: []string{"asset-policy.yaml"}}).Build(ins)
-		return e
-	})
-	if err != nil {
-		return err
-	}
-	c.out.Printf("%s: %d files, %d replaced (%d approval records)\n", out, res.Files, len(res.Replaced), len(ins))
-	return nil
+	return clihelp.Operation{Flags: fl, Run: func(_ context.Context) (err error) {
+		if fl.NArg() != 1 {
+			return cliio.Invalid(diag.Operands, "expected one game directory")
+		}
+		if out == "" || *inspect == "" {
+			return cliio.Invalid(diag.OptionRequired, "release requires --inspect FILE and --out DIR")
+		}
+		src := fl.Arg(0)
+		if !cli.Relative(*prefix) {
+			return cliio.Invalid(diag.BadPath, "invalid --prefix")
+		}
+		policy, ins, outputs, err := releaseInputs(src, overlay, *inspect)
+		if err != nil {
+			return diag.ApprovalRecords.Wrap(err)
+		}
+		if err := checkReferences(src, *overlay, *prefix, policy, ins, outputs); err != nil {
+			return err
+		}
+		var res assetfs.Result
+		err = cli.Publish(out, []string{src, *overlay}, func(stage string) error {
+			var e error
+			res, e = (assetfs.Tree{Src: src, Top: *overlay, Prefix: *prefix, Dst: stage, Outputs: outputs, Skip: []string{"asset-policy.yaml"}}).Build(ins)
+			return e
+		})
+		if err != nil {
+			return err
+		}
+		c.out.Printf("%s: %d files, %d replaced (%d approval records)\n", out, res.Files, len(res.Replaced), len(ins))
+		return nil
+	}}
 }
 
 func checkReferences(src, top, prefix string, policy assetpolicy.Policy, records []assetfs.Approval, outputs []string) error {

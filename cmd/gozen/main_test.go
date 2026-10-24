@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nao1215/gozen/internal/cliio"
 	"github.com/nao1215/gozen/internal/diag"
 	data "github.com/nao1215/gozen/schema"
 )
@@ -34,6 +35,22 @@ func invoke(t *testing.T, want int, args ...string) (string, string) {
 		t.Fatalf("%v: exit %d want %d\nstdout: %s\nstderr: %s", args, got, want, out.String(), stderr.String())
 	}
 	return out.String(), stderr.String()
+}
+
+func resultData(t *testing.T, output, command string) json.RawMessage {
+	t.Helper()
+	var result struct {
+		Version int             `json:"version"`
+		Command string          `json:"command"`
+		Data    json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Version != 1 || result.Command != command || len(result.Data) == 0 {
+		t.Fatalf("invalid %s result: %s", command, output)
+	}
+	return result.Data
 }
 
 func write(t *testing.T, p, s string) {
@@ -447,5 +464,34 @@ func TestTrialPrunesUnreachableContent(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(output, "assets", "hidden.png")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("unreachable asset retained")
+	}
+}
+
+func TestOperationRegistrationIsInertAndEnvironmentIndependent(t *testing.T) {
+	t.Chdir(t.TempDir())
+	for path, node := range tree {
+		if node.build == nil {
+			continue
+		}
+		t.Run(path, func(t *testing.T) {
+			var previous string
+			for _, value := range []string{"first-unavailable-library", "second-unavailable-library"} {
+				t.Setenv("ONNXRUNTIME_LIB", value)
+				var out, stderr bytes.Buffer
+				c := &command{path: path, out: &cliio.Output{Writer: &out}, stderr: &cliio.Output{Writer: &stderr}}
+				op := c.operation(node)
+				if op.Flags == nil || op.Run == nil {
+					t.Fatal("incomplete operation")
+				}
+				page := op.Page.String(op.Flags)
+				if out.Len() != 0 || stderr.Len() != 0 || strings.Contains(page, value) {
+					t.Fatal("registering help ran a command or exposed environment defaults")
+				}
+				if previous != "" && page != previous {
+					t.Fatal("help changed with the environment")
+				}
+				previous = page
+			}
+		})
 	}
 }

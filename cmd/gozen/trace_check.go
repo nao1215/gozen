@@ -3,15 +3,11 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
-
-	"github.com/nao1215/gozen/internal/cliio"
 
 	"github.com/nao1215/gozen/internal/diag"
 
@@ -19,9 +15,10 @@ import (
 )
 
 type traceIssue struct {
-	tick int
-	kind string
-	text string
+	Tick int    `json:"tick"`
+	Kind string `json:"kind"`
+	Text string `json:"text"`
+	Code string `json:"code"`
 }
 
 type traceChecker struct {
@@ -81,7 +78,7 @@ type standLine struct {
 }
 
 func (c *traceChecker) add(tick int, kind, format string, a ...any) {
-	c.issues = append(c.issues, traceIssue{tick, kind, fmt.Sprintf(format, a...)})
+	c.issues = append(c.issues, traceIssue{Tick: tick, Kind: kind, Text: fmt.Sprintf(format, a...)})
 }
 
 func (c *traceChecker) say() string {
@@ -255,53 +252,87 @@ func (c *traceChecker) musicEnd(tick int) {
 	c.waiting = false
 }
 
-func checkTrace(path string, musicLate float64, w io.Writer) (n int, err error) {
-	f, err := os.Open(path) //nolint:gosec // Explicit caller-selected input or file within a newly reserved output tree.
-	if err != nil {
-		return 0, err
-	}
-	defer func() { err = errors.Join(err, f.Close()) }()
-	output := &cliio.Output{Writer: w}
+func checkTrace(input io.Reader, musicLate float64) (*traceChecker, error) {
 	c := &traceChecker{
 		musicLate: musicLate, speed: 1, reported: map[string]bool{}, pos: map[string]float64{},
 		carried: map[string]bool{}, spoke: map[string]bool{},
 	}
-	sc := bufio.NewScanner(f)
+	sc := bufio.NewScanner(input)
 	sc.Buffer(make([]byte, 1<<20), 1<<24)
 	last := 0
 	for sc.Scan() {
 		l, err := decodeTrace(sc.Bytes())
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
 		last = int(num(l["tick"]))
 		if err := c.line(l, sc.Bytes()); err != nil {
-			return 0, err
+			return nil, err
 		}
 	}
 	if err := sc.Err(); err != nil {
-		return 0, err
+		return nil, err
 	}
 	c.musicEnd(last)
-	slices.SortStableFunc(c.issues, func(a, b traceIssue) int { return a.tick - b.tick })
-	for _, is := range c.issues {
-		sec := float64(is.tick) / 60
+	slices.SortStableFunc(c.issues, func(a, b traceIssue) int { return a.Tick - b.Tick })
+	for i := range c.issues {
+		is := &c.issues[i]
 		code := diag.PictureFault
 		switch {
-		case strings.HasPrefix(is.kind, "music"):
+		case strings.HasPrefix(is.Kind, "music"):
 			code = diag.MusicFault
-		case strings.HasPrefix(is.kind, "skip"):
+		case strings.HasPrefix(is.Kind, "skip"):
 			code = diag.SkipFault
-		case is.kind == "rollback":
+		case is.Kind == "rollback":
 			code = diag.RollbackFault
-		case is.kind == "voice":
+		case is.Kind == "voice":
 			code = diag.VoiceFault
 		}
-		output.Println(code.Mark(fmt.Sprintf("%02d:%05.2f %-10s %s", int(sec)/60, sec-float64(int(sec)/60*60), is.kind, is.text)))
+		is.Code = code.String()
 	}
-	if c.stands == 0 && c.sayN > 0 {
-		output.Println(lang.T("stand の行が無い（古い trace か、会話の窓を描いていない）。立ち絵は調べていない"))
+	return c, nil
+}
+
+func (c *command) printTraceCheck(report *traceChecker) error {
+	if c.report.Machine() {
+		status := "ok"
+		if len(report.issues) > 0 {
+			status = "failed"
+		}
+		if c.report.Format == "jsonl" {
+			for i, issue := range report.issues {
+				if err := c.report.Item(c.out, strconv.Itoa(i+1), "failed", issue); err != nil {
+					return err
+				}
+			}
+		}
+		if report.issues == nil {
+			report.issues = []traceIssue{}
+		}
+		if err := c.report.Result(c.out, status, struct {
+			Issues                  []traceIssue `json:"issues"`
+			Say                     int          `json:"say"`
+			Stands                  int          `json:"stands"`
+			StandingPicturesChecked bool         `json:"standing_pictures_checked"`
+		}{report.issues, report.sayN, report.stands, report.stands > 0}); err != nil {
+			return err
+		}
+		if len(report.issues) > 0 {
+			return errReported
+		}
+		return nil
 	}
-	output.Printf(lang.T("check: %d 件（台詞 %d、stand %d）\n"), len(c.issues), c.sayN, c.stands)
-	return len(c.issues), output.Err
+	for _, issue := range report.issues {
+		sec := float64(issue.Tick) / 60
+		code, _ := diag.Parse(issue.Code)
+		c.out.Println(code.Mark(fmt.Sprintf("%02d:%05.2f %-10s %s", int(sec)/60, sec-float64(int(sec)/60*60), issue.Kind, issue.Text)))
+	}
+	if report.stands == 0 && report.sayN > 0 {
+		c.out.Println(lang.T("stand の行が無い（古い trace か、会話の窓を描いていない）。立ち絵は調べていない"))
+	}
+	c.out.Printf(lang.T("check: %d 件（台詞 %d、stand %d）\n"), len(report.issues), report.sayN, report.stands)
+	if len(report.issues) > 0 {
+		return fmt.Errorf("trace: %d issues", len(report.issues))
+	}
+	return nil
 }

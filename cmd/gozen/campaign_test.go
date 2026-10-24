@@ -33,7 +33,7 @@ func TestSimCampaign(t *testing.T) {
 			t.Fatalf("--as %s: the same seed gave two results", as)
 		}
 		var r campaignsim.Result
-		if err := json.Unmarshal([]byte(out), &r); err != nil {
+		if err := json.Unmarshal(resultData(t, out, "sim campaign"), &r); err != nil {
 			t.Fatal(err)
 		}
 		if r.Won+r.Lost+r.Cut != 12 || len(r.Regions) == 0 || r.Regions[0].Mean["blue"] != 1 || r.Orders["end_turn"] == 0 {
@@ -64,7 +64,7 @@ func TestSimCampaignCompare(t *testing.T) {
 			t.Fatalf("--compare %s: same seeds gave different JSON", mode)
 		}
 		var got campaignsim.Comparison
-		if err := json.Unmarshal([]byte(out), &got); err != nil {
+		if err := json.Unmarshal(resultData(t, out, "sim campaign"), &got); err != nil {
 			t.Fatal(err)
 		}
 		if got.Mode != mode || len(got.Rows) == 0 {

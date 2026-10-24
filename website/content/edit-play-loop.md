@@ -136,7 +136,7 @@ For a dive without a window, `gozen sim dive` does the same with the rules alone
 
 <!-- verify: each fixture=cli -->
 ```shell
-gozen trace run.jsonl --only say,battle --from 10 --to 60
+gozen trace run.jsonl --only say --only battle --from 10 --to 60
 gozen trace run.jsonl --check    # standing pictures and music that went wrong
 ```
 

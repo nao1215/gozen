@@ -45,6 +45,15 @@ func TestDesignReportsAFloorItCannotLeave(t *testing.T) {
 	if !strings.Contains(stderr, "reported simulation errors") {
 		t.Errorf("stderr: %q", stderr)
 	}
+	for _, format := range []string{"json", "jsonl"} {
+		machineOut := filepath.Join(t.TempDir(), "report")
+		stdout, stderr := invoke(t, 1, "sim", "design", dir, "--only", "eager", "--out", machineOut, "--verbose", "--format", format)
+		if stderr != "" || !strings.Contains(stdout, `"status":"failed"`) {
+			t.Fatalf("%s duplicated or lost the failure: stdout %s; stderr %s", format, stdout, stderr)
+		}
+		read(t, filepath.Join(machineOut, "debug.log"))
+		read(t, filepath.Join(machineOut, "summary.json"))
+	}
 	report := string(read(t, filepath.Join(out, "report.md")))
 	if !strings.Contains(report, "could not go down from floor 1") {
 		t.Errorf("the report names the floor:\n%s", report)

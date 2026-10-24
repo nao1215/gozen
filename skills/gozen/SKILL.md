@@ -19,6 +19,8 @@ Start a new game with `gozen new <game-dir> --template rpg|novel|campaign`. The 
 6. Capture promotional or review images with `gozen capture <game-dir> --config captures.yaml --out promo`. Jobs select a location, event or gallery line; `gif` records an animation. Saves are isolated automatically. Check the per-job results and exit status; partial failure exits 1. Use `--format json` or `jsonl` for machine-readable reports. See [capture](https://nao1215.github.io/gozen/commands/#capture) for limits and examples.
 7. For a novel or event-driven game, run `gozen sim routes <game-dir>` to explore choices and check reachable endings and offered options; use `--format json --fail-unreachable` in CI.
 
+For every `sim` command, `--format json` returns a version-1 result with `command`, `status` and `data`; JSONL emits items and a terminal summary. Keep stdout and stderr separate and check the exit status. To inspect a recorded play, use `gozen trace run.jsonl --format json`, or `gozen trace - --format jsonl` for standard input. Repeat `--only KIND` to select kinds; `--check` rejects these display filters and preserves diagnostic codes in its issue records.
+
 <!-- verify: run fixture=cave -->
 ```shell
 gozen check game

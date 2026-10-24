@@ -36,7 +36,7 @@ func diveJSON(t *testing.T, args ...string) diveReport {
 	t.Helper()
 	out, _ := invoke(t, 0, append([]string{"sim", "dive", "--format", "json"}, args...)...)
 	var r diveReport
-	if err := json.Unmarshal([]byte(out), &r); err != nil {
+	if err := json.Unmarshal(resultData(t, out, "sim dive"), &r); err != nil {
 		t.Fatalf("%v: %q", err, out)
 	}
 	return r
@@ -152,7 +152,7 @@ func TestSimDiveRejectsInvalidOptions(t *testing.T) {
 		{[]string{dir, "--location", "cave", "--guards", "1:lesson,1:pair"}, 2, "--guards"},
 		{[]string{dir, "--location", "cave", "--guards", "x:lesson"}, 2, "--guards"},
 		{[]string{dir, "--location", "cave", "--floor-event", "ghost"}, 1, "--floor-event: unknown event"},
-		{[]string{dir, "--location", "cave", "--format", "xml"}, 2, "text or json"},
+		{[]string{dir, "--location", "cave", "--format", "xml"}, 2, "text, json, or jsonl"},
 		{[]string{dir, "--location", "cave", "--arrival-saves", bad}, 1, ""},
 		{[]string{dir, "--location", "cave", "--shops", "ghost"}, 2, `unknown shop "ghost"`},
 		{[]string{dir, "--location", "cave", "--rest-cost", "("}, 2, "--rest-cost"},
@@ -223,7 +223,7 @@ func TestSimBattleOptionsAndJSON(t *testing.T) {
 	dir := designGame(t)
 	out, _ := invoke(t, 0, "sim", "battle", dir, "--troop", "pair", "-n", "20", "--format", "json", "--hp", "--streak", "5", "--level", "6", "--gear", "blade")
 	var rs []simResult
-	if err := json.Unmarshal([]byte(out), &rs); err != nil || len(rs) != 1 {
+	if err := json.Unmarshal(resultData(t, out, "sim battle"), &rs); err != nil || len(rs) != 1 {
 		t.Fatalf("%v %q", err, out)
 	}
 	r := rs[0]
@@ -259,7 +259,7 @@ func TestSimBattleOptionsAndJSON(t *testing.T) {
 	}{
 		{[]string{dir}, 2, "--troop ID is required"},
 		{[]string{dir, "--troop", "ghost"}, 2, `unknown troop "ghost"`},
-		{[]string{dir, "--troop", "lesson", "--format", "xml"}, 2, "text or json"},
+		{[]string{dir, "--troop", "lesson", "--format", "xml"}, 2, "text, json, or jsonl"},
 		{[]string{dir, "--troop", "lesson", "--level", "-1"}, 2, "--level must be nonnegative"},
 		{[]string{dir, "--troop", "lesson", "--party", "ghost"}, 1, ""},
 		{[]string{dir, "--troop", "lesson", "--gear", "ghost"}, 1, ""},
@@ -269,5 +269,161 @@ func TestSimBattleOptionsAndJSON(t *testing.T) {
 		if !strings.Contains(stderr, tc.msg) {
 			t.Errorf("%v: %q", tc.args, stderr)
 		}
+	}
+}
+
+func TestSimFloorsCountsWalksThroughWarpsAndEncounterGauges(t *testing.T) {
+	dir := designGame(t)
+	world := filepath.Join(dir, "data", "world.yaml")
+	// A warp tile on the way: the walk to the stairs is shorter through it, and the encounter gauge changes the expected fights.
+	edit(t, world, "          - {char: T, count: 1}", "          - {char: T, count: 1}\n          - {char: W, count: 2}")
+	edit(t, world, "        T: {name: Chest,", "        W: {name: Warp, do: [{move: cave, at: S}]}\n        T: {name: Chest,")
+	edit(t, world, "encounters: {rate: 0.2,", "encounters: {rate: 0.2, gauge: 0.5,")
+	out, _ := invoke(t, 0, "sim", "floors", dir, "--location", "cave", "--floor", "1", "--no-map")
+	if !strings.HasPrefix(out, "B1F (seed 7)") || !strings.Contains(out, " W:") {
+		t.Fatalf("the warp tiles are listed with their distance: %q", out)
+	}
+	plain := designGame(t)
+	base, _ := invoke(t, 0, "sim", "floors", plain, "--location", "cave", "--floor", "1", "--no-map")
+	if out == base {
+		t.Error("a gauge and warps change the numbers")
+	}
+	try, _ := invoke(t, 0, "sim", "floors", dir, "--location", "cave", "--floor", "1", "--try", "2", "--no-map")
+	if strings.Count(try, "seed ") != 2 {
+		t.Errorf("--try: %q", try)
+	}
+}
+
+func TestSimBattleVerboseShowsTheTurnsAndSeveralStarts(t *testing.T) {
+	dir := designGame(t)
+	out, _ := invoke(t, 0, "sim", "battle", dir, "--troop", "warden", "-n", "1", "-v", "--level", "6")
+	if !strings.Contains(out, "-- turn 2") || !strings.Contains(out, "warden: 1 battles") {
+		t.Errorf("a battle of several turns is printed turn by turn:\n%s", out)
+	}
+	saves := filepath.Join(t.TempDir(), "saves")
+	invoke(t, 0, "sim", "dive", dir, "--location", "cave", "--floors", "3", "--battles", "0", "--tries", "2", "--boss", "3:warden", "--arrival-saves", saves)
+	state := filepath.Join(saves, "floor-3.json")
+	both, _ := invoke(t, 0, "sim", "battle", dir, "--troop", "warden", "-n", "4", "--state", state, "--state", state, "--as-is")
+	lines := strings.Split(strings.TrimSpace(both), "\n")
+	if len(lines) != 2 || !strings.HasPrefix(lines[0], state+" warden: 4 battles") {
+		t.Errorf("each start is named when there are several:\n%s", both)
+	}
+	js, _ := invoke(t, 0, "sim", "battle", dir, "--troop", "warden", "-n", "4", "--state", state, "--state", state, "--format", "json")
+	var rs []simResult
+	if err := json.Unmarshal(resultData(t, js, "sim battle"), &rs); err != nil || len(rs) != 2 || rs[0].State != state || rs[0].WinRate != rs[1].WinRate {
+		t.Errorf("%v %+v", err, rs)
+	}
+}
+
+func TestSimDiveListsEverySkillAndWhatWasNeverUsed(t *testing.T) {
+	dir := designGame(t)
+	out, _ := invoke(t, 0, "sim", "dive", dir, "--location", "cave", "--floors", "3", "--battles", "4", "--tries", "3", "--boss", "3:warden", "--grind", "0.5")
+	// Both members of the party are listed with the skills they used, most used first.
+	for _, want := range []string{"  Scout Lv", "  Aide Lv", ": Tap "} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+	if !strings.Contains(out, "never used: Spark") {
+		t.Errorf("a skill nobody used is named:\n%s", out)
+	}
+	if !strings.Contains(out, "100%") {
+		t.Errorf("the boss row shows the win rate at arrival:\n%s", out)
+	}
+}
+
+func TestSimBattleFormsAreDeterministic(t *testing.T) {
+	for _, tc := range []struct {
+		troop string
+		args  []string
+		wins  int
+	}{
+		{"drips", []string{"--level", "5"}, 28},
+		{"tollkeeper", []string{"--level", "9", "--party", "maren,ox,tilly,kes"}, 30},
+	} {
+		t.Run(tc.troop, func(t *testing.T) {
+			args := append([]string{"sim", "battle", "--battles", "30", "--seed", "42", "--format", "json"}, tc.args...)
+			args = append(args, "../../examples/go-zen/game", "--troop", tc.troop)
+			out, _ := invoke(t, 0, args...)
+			var rows []struct{ Won, Lost, Draw int }
+			if err := json.Unmarshal(resultData(t, out, "sim battle"), &rows); err != nil {
+				t.Fatal(err)
+			}
+			if len(rows) != 1 || rows[0].Won != tc.wins || rows[0].Won+rows[0].Lost+rows[0].Draw != 30 {
+				t.Fatalf("simulation: %+v", rows)
+			}
+		})
+	}
+}
+
+func TestSimFloorsStructuredOutputPreservesMapsAndSeeds(t *testing.T) {
+	dir := designGame(t)
+	args := []string{"sim", "floors", dir, "--location", "cave", "--floor", "1"}
+	text, _ := invoke(t, 0, args...)
+	output, _ := invoke(t, 0, append(args, "--format", "json")...)
+	var rows []floorResult
+	if err := json.Unmarshal(resultData(t, output, "sim floors"), &rows); err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].Seed == nil || *rows[0].Seed != 7 || rows[0].Map == "" || !strings.Contains(text, rows[0].Map) || !strings.Contains(text, rows[0].Numbers.line()) {
+		t.Fatalf("JSON changed the generated floor: %s", output)
+	}
+	output, _ = invoke(t, 0, append(args, "--try", "2", "--format", "jsonl")...)
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("seed records: %s", output)
+	}
+	for i, line := range lines[:2] {
+		var row floorResult
+		if err := json.Unmarshal(resultData(t, line, "sim floors"), &row); err != nil {
+			t.Fatal(err)
+		}
+		if row.Seed == nil || *row.Seed != uint64(i) || row.Floor != 1 || row.Map != "" || row.Numbers.Width <= 0 {
+			t.Fatalf("seed comparison changed or omitted a value: %s", line)
+		}
+	}
+}
+
+func TestSimulationMachineFormatsAgree(t *testing.T) {
+	dir := fixture(t)
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{"battle", []string{dir, "--troop", "lesson", "--battles", "2", "--seed", "7"}},
+		{"dive", []string{dir, "--location", "grotto", "--floors", "2", "--battles", "1", "--tries", "1", "--seed", "7"}},
+		{"floors", []string{dir, "--location", "grotto", "--from", "1", "--to", "2"}},
+		{"campaign", []string{"../../examples/campaign/game", "--campaigns", "1", "--compare", "strategies", "--seed", "7"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			args := append([]string{"sim", tc.name}, tc.args...)
+			document, stderr := invoke(t, 0, append(args, "--format", "json")...)
+			if stderr != "" {
+				t.Fatal(stderr)
+			}
+			stream, stderr := invoke(t, 0, append(args, "--format", "jsonl")...)
+			if stderr != "" {
+				t.Fatal(stderr)
+			}
+			lines := strings.Split(strings.TrimSpace(stream), "\n")
+			if len(lines) < 2 {
+				t.Fatalf("missing items: %s", stream)
+			}
+			for _, line := range lines[:len(lines)-1] {
+				var item struct {
+					Type string          `json:"type"`
+					Data json.RawMessage `json:"data"`
+				}
+				if err := json.Unmarshal([]byte(line), &item); err != nil {
+					t.Fatal(err)
+				}
+				if item.Type != "item" || len(item.Data) == 0 {
+					t.Fatalf("invalid item: %s", line)
+				}
+			}
+			if string(resultData(t, document, "sim "+tc.name)) != string(resultData(t, lines[len(lines)-1], "sim "+tc.name)) {
+				t.Fatalf("JSON and JSONL disagree: %s\n%s", document, stream)
+			}
+		})
 	}
 }

@@ -117,7 +117,17 @@ gozen check --only layout game
 
 ## sim
 
-Plays the game by its rules alone, with no window or sound. `--seed`, `--turns` and `--format` mean the same in every `sim` command: the same `--seed` gives the same result.
+Plays the game by its rules alone, with no window or sound. Every `sim` command accepts `--format text|json|jsonl`. JSON returns `{"version":1,"command":"sim ...","status":"ok","data":...}`. JSONL emits ordered items when the result has multiple entries, followed by one summary. Fatal diagnostics go to stderr as JSONL and retain their GZN codes. Selectors, seeds and output paths have the same effect in every format.
+
+| Command | JSON `data` | JSONL items |
+|:--|:--|:--|
+| `sim battle` | Array of results, in `--state` order | One start's result |
+| `sim dive` | Floors, skills used and party results | One floor |
+| `sim floors` | Array of floor numbers, seeds, maps and notes | One floor or seed trial |
+| `sim design` | `personas` and their measured results | One persona |
+| `sim campaign` | Campaign totals or comparison rows | One comparison entry; ordinary totals use only a summary |
+| `sim routes` | Paths, endings, unreachable content and errors | One reached ending |
+| `sim breed` | `reachable` rows and `unreachable` IDs | One species |
 
 ### sim battle
 
@@ -210,7 +220,7 @@ gozen sim floors game --location grotto --no-map
 
 ### sim design
 
-Plays the game headless with the personas of `designeval.yaml` (players, rewards and time weights) and writes `summary.json`, the timelines, `band.png` and `report.md` to a new directory. A simulation error keeps the report and exits 1. A small configuration is in [the CLI test fixture](https://github.com/nao1215/gozen/blob/main/e2e/atago/fixtures/game/designeval.yaml).
+Plays the game headless with the personas of `designeval.yaml` (players, rewards and time weights). With `--out`, also writes `summary.json`, timelines, `band.png` and `report.md` to a new directory. Without `--out`, it creates no report files. A simulation error keeps the report and exits 1. A small configuration is in [the CLI test fixture](https://github.com/nao1215/gozen/blob/main/e2e/atago/fixtures/game/designeval.yaml).
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -221,11 +231,13 @@ gozen sim design game -o report --only walker -v
 | Option | Meaning |
 |:--|:--|
 | `--config FILE` | The personas and measures (default: `designeval.yaml` in the game directory) |
-| `--only IDS` | Run only these personas |
-| `-o, --out DIR` | Write the run to this new directory (default: `<root>/<date>`) |
-| `--root DIR` | Where runs go when `--out` is not given (default: `build/designeval`) |
-| `--memos DIR` | Write notes on marked places to this directory |
-| `-v, --verbose` | Write each persona's dives, choices and stumbles to `debug.log` |
+| `--only ID` | Run this persona; repeat for multiple IDs |
+| `-o, --out DIR` | Also write report files to this new directory |
+| `--root DIR` | Read previous runs for comparison (default: `build/designeval`) |
+| `--seed N` | Override every selected persona's seed; N must be positive |
+| `--list` | Print the configuration without simulating; cannot be combined with `--out` |
+| `--memos DIR` | Write notes on marked places to this directory; requires `--out` |
+| `-v, --verbose` | Write each persona's dives, choices and stumbles to `debug.log`; requires `--out` |
 
 ### sim campaign
 
@@ -254,7 +266,7 @@ Explores the game's starting event and automatic arrivals without a display. It 
 reach clear and game-over outcomes, authored options that were never offered on explored paths, and
 flags already reported as set but never read by `gozen check` (GZN0112).
 The run is bounded by path count, event requests per path, and elapsed time. Findings are informational
-unless `--fail-unreachable` is set. JSON includes whether the path limit cut exploration short.
+unless `--fail-unreachable` is set. Runtime errors and timeouts exit 1 regardless of that flag. JSON includes whether the path limit cut exploration short.
 
 ```sh
 gozen sim routes game
@@ -266,7 +278,7 @@ gozen sim routes game --format json
 | `--paths N` | Maximum paths to explore (default: 300) |
 | `--depth N` | Maximum event requests per path (default: 20000) |
 | `--timeout DURATION` | Maximum run time (default: 30s; for example `10s` or `2m`) |
-| `--format text\|json` | Output form (default: text) |
+| `--format text\|json\|jsonl` | Output form (default: text) |
 | `--fail-unreachable` | Exit 1 if an unreachable ending or never-offered choice option, or a GZN0112 flag, is found |
 
 ### sim breed
@@ -299,18 +311,21 @@ The command reads loose assets; it does not encrypt or package them. Keep the ru
 
 ## trace
 
-Prints a trace written by the game's `--trace` in time order. With `--check`, lists faults of the standing pictures and the music instead and exits 1 if there are any.
+Prints a trace written by the game's `--trace` in recorded order. Use `-` instead of a file to read standard input. With `--check`, lists faults of the standing pictures and the music and exits 1 if there are any. Check mode rejects display filters.
+
+`--format json` returns selected records and counts of every input kind in the result's `data`. `--format jsonl` emits the selected records as items, then a summary with counts. Check mode returns issues with their GZN codes, ticks and messages; `standing_pictures_checked` is false when the trace contains no standing-picture records.
 
 <!-- verify: each fixture=cli -->
 ```shell
 gozen trace run.jsonl
-gozen trace run.jsonl --only say,battle --from 10 --to 60
+gozen trace run.jsonl --only say --only battle --from 10 --to 60
 gozen trace run.jsonl --check
 ```
 
 | Option | Meaning |
 |:--|:--|
-| `--only KINDS` | Print only these kinds, separated by commas: `say`, `scene`, `battle`, `menu`, `view`, `state`, `act`, `problem` and so on |
+| `--only KIND` | Select a kind such as `say`, `scene` or `battle`; repeat for multiple kinds |
+| `--format text\|json\|jsonl` | Output form (default: text) |
 | `--from SECOND`, `--to SECOND` | The time window; `--to 0` is the end |
 | `--input` | Also print the player's input |
 | `--check` | List faults of standing pictures and music; exit 1 if any |

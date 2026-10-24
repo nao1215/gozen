@@ -20,7 +20,7 @@ func TestSimBreedJSON(t *testing.T) {
 		Reachable   []breedRow `json:"reachable"`
 		Unreachable []string   `json:"unreachable"`
 	}
-	if err := json.Unmarshal([]byte(out), &result); err != nil {
+	if err := json.Unmarshal(resultData(t, out, "sim breed"), &result); err != nil {
 		t.Fatal(err)
 	}
 	if len(result.Reachable) != 2 || result.Reachable[0].ID != "mote" || result.Reachable[1].ID != "boss" || result.Reachable[1].Steps != 1 || len(result.Unreachable) != 0 {
@@ -28,6 +28,27 @@ func TestSimBreedJSON(t *testing.T) {
 	}
 	if result.Reachable[1].ParentSexes[0] != "male" || result.Reachable[1].ParentSexes[1] != "female" || result.Reachable[1].Sex == "" {
 		t.Fatalf("recipe sexes = %+v", result.Reachable[1])
+	}
+	jsonl, stderr := invoke(t, 0, "sim", "breed", dir, "--format", "jsonl")
+	lines := strings.Split(strings.TrimSpace(jsonl), "\n")
+	if stderr != "" || len(lines) != len(result.Reachable)+1 {
+		t.Fatalf("JSONL records: %s; stderr: %s", jsonl, stderr)
+	}
+	for i, row := range result.Reachable {
+		var record struct {
+			Type string   `json:"type"`
+			ID   string   `json:"id"`
+			Data breedRow `json:"data"`
+		}
+		if err := json.Unmarshal([]byte(lines[i]), &record); err != nil {
+			t.Fatal(err)
+		}
+		if record.Type != "item" || record.ID != row.ID || record.Data.Steps != row.Steps {
+			t.Fatalf("JSONL changed the breeding result: %s", lines[i])
+		}
+	}
+	if string(resultData(t, lines[len(lines)-1], "sim breed")) != string(resultData(t, out, "sim breed")) {
+		t.Fatal("JSON and JSONL summaries differ")
 	}
 	invoke(t, 2, "sim", "breed", dir, "--format", "bad")
 	book, _ := invoke(t, 0, "book", dir)
@@ -62,7 +83,7 @@ func TestGoZenBreedGraphReachesEveryOrdinarySpecies(t *testing.T) {
 		Reachable   []breedRow `json:"reachable"`
 		Unreachable []string   `json:"unreachable"`
 	}
-	if err := json.Unmarshal([]byte(out), &result); err != nil {
+	if err := json.Unmarshal(resultData(t, out, "sim breed"), &result); err != nil {
 		t.Fatal(err)
 	}
 	if len(result.Reachable) != 45 || len(result.Unreachable) != 4 {

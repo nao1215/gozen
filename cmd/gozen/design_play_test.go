@@ -78,16 +78,18 @@ func designJSON(t *testing.T, args ...string) []designPersona {
 	t.Helper()
 	out, _ := invoke(t, 0, append([]string{"sim", "design"}, append(args, "--format", "json")...)...)
 	var got struct {
-		FormatVersion int             `json:"format_version"`
-		Personas      []designPersona `json:"personas"`
+		Version int `json:"version"`
+		Data    struct {
+			Personas []designPersona `json:"personas"`
+		} `json:"data"`
 	}
 	if err := json.Unmarshal([]byte(out), &got); err != nil {
 		t.Fatalf("%v: %q", err, out)
 	}
-	if got.FormatVersion != 1 {
-		t.Fatalf("format_version %d", got.FormatVersion)
+	if got.Version != 1 {
+		t.Fatalf("format_version %d", got.Version)
 	}
-	return got.Personas
+	return got.Data.Personas
 }
 
 // The same seed gives the same play, and the play obeys the game's own rules: a loss
@@ -138,7 +140,7 @@ func TestDesignPlaysThePersonasDeterministically(t *testing.T) {
 			t.Errorf("%s: seed %d", p.ID, p.Seed)
 		}
 	}
-	only := designJSON(t, dir, "--only", "eager,steady")
+	only := designJSON(t, dir, "--only", "eager", "--only", "steady")
 	if len(only) != 2 || only[0].ID != "steady" {
 		t.Fatalf("--only: %+v", only)
 	}
@@ -212,16 +214,18 @@ func TestDesignReportsOnDisk(t *testing.T) {
 
 func TestDesignListAndInvalidInput(t *testing.T) {
 	dir := designGame(t)
-	out, _ := invoke(t, 0, "sim", "design", dir, "--list")
+	out, _ := invoke(t, 0, "sim", "design", dir, "--list", "--format", "json")
 	var cfg struct {
-		Personas []struct{ ID string }
-		Release  string
+		Data struct {
+			Personas []struct{ ID string }
+			Release  string
+		} `json:"data"`
 	}
-	if err := json.Unmarshal([]byte(out), &cfg); err != nil || len(cfg.Personas) != 3 || cfg.Release != "gift" {
+	if err := json.Unmarshal([]byte(out), &cfg); err != nil || len(cfg.Data.Personas) != 3 || cfg.Data.Release != "gift" {
 		t.Fatalf("--list: %v %q", err, out)
 	}
 	list := filepath.Join(t.TempDir(), "list")
-	invoke(t, 0, "sim", "design", dir, "--list", "-o", list)
+	invoke(t, 2, "sim", "design", dir, "--list", "-o", list)
 	if _, err := os.Lstat(list); err == nil {
 		t.Error("--list wrote an output directory")
 	}
@@ -231,10 +235,11 @@ func TestDesignListAndInvalidInput(t *testing.T) {
 		msg  string
 	}{
 		{[]string{dir, "--only", "nobody"}, 2, "unknown persona"},
-		{[]string{dir, "--only", "nobody", "--format", "json"}, 2, "matched no personas"},
-		{[]string{dir, "--format", "xml"}, 2, "text or json"},
-		{[]string{}, 2, "expected <game-dir>"},
-		{[]string{dir, dir}, 2, "expected <game-dir>"},
+		{[]string{dir, "--only", "nobody", "--format", "json"}, 2, "unknown persona"},
+		{[]string{dir, "--format", "xml"}, 2, "format"},
+		{[]string{dir, "--seed", "0"}, 2, "--seed must be positive"},
+		{[]string{}, 2, "expected one game directory"},
+		{[]string{dir, dir}, 2, "expected one game directory"},
 		{[]string{filepath.Join(t.TempDir(), "absent")}, 1, ""},
 		{[]string{dir, "--config", filepath.Join(t.TempDir(), "absent.yaml")}, 1, ""},
 	} {
@@ -288,5 +293,57 @@ func TestDesignListAndInvalidInput(t *testing.T) {
 		if out != "" || !strings.Contains(stderr, tc.msg) {
 			t.Errorf("%s: stdout %q stderr %q (want %q)", tc.name, out, stderr, tc.msg)
 		}
+	}
+}
+
+func TestDesignFormatPreservesSimulationAndArtifacts(t *testing.T) {
+	dir := designGame(t)
+	reference := designJSON(t, dir, "--seed", "43", "--only", "steady")
+	for _, format := range []string{"text", "json", "jsonl"} {
+		out := filepath.Join(t.TempDir(), "report")
+		stdout, stderr := invoke(t, 0, "sim", "design", dir, "--seed", "43", "--only", "steady", "--out", out, "--format", format)
+		if stderr != "" {
+			t.Fatalf("unexpected progress in %s: %s", format, stderr)
+		}
+		for _, path := range []string{"summary.json", "report.md", "band.png", "timeline/steady.jsonl"} {
+			read(t, filepath.Join(out, path))
+		}
+		var saved struct {
+			Personas []designPersona `json:"personas"`
+		}
+		if err := json.Unmarshal(read(t, filepath.Join(out, "summary.json")), &saved); err != nil {
+			t.Fatal(err)
+		}
+		if len(saved.Personas) != 1 || saved.Personas[0].Battles != reference[0].Battles || saved.Personas[0].Days != reference[0].Days {
+			t.Fatalf("format changed simulation: %s", format)
+		}
+		if format == "text" {
+			continue
+		}
+		records := strings.Split(strings.TrimSpace(stdout), "\n")
+		want := 1
+		if format == "jsonl" {
+			want = 2
+		}
+		if len(records) != want {
+			t.Fatalf("%s: %d records", format, len(records))
+		}
+		var result struct {
+			Version int `json:"version"`
+			Data    struct {
+				Personas []designPersona `json:"personas"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal([]byte(records[len(records)-1]), &result); err != nil {
+			t.Fatal(err)
+		}
+		if result.Version != 1 || jsonString(t, result.Data.Personas) != jsonString(t, reference) {
+			t.Fatalf("%s changed results", format)
+		}
+	}
+	root := filepath.Join(t.TempDir(), "unused")
+	invoke(t, 0, "sim", "design", dir, "--only", "steady", "--root", root)
+	if _, err := os.Stat(root); !os.IsNotExist(err) {
+		t.Fatalf("no --out created files: %v", err)
 	}
 }

@@ -89,7 +89,7 @@ type shotResult struct {
 	item     shotItem
 }
 
-func (c *command) capture(args []string) error {
+func (c *command) capture() clihelp.Operation {
 	fl := clihelp.NewFlagSet("gozen capture")
 	config := fl.String("config", "", "capture job YAML `FILE`; required")
 	overlay := fl.String("overlay", "", "approved replacement asset `DIR`")
@@ -98,155 +98,154 @@ func (c *command) capture(args []string) error {
 	only := fl.StringArray("only", nil, "capture this job `ID`; repeatable")
 	timeout := fl.Duration("timeout", 4*time.Minute, "cooperative time limit per job")
 	c.reporting(fl)
-	if err := c.parse(fl, args); err != nil {
-		return err
-	}
-	if fl.NArg() != 1 {
-		return cliio.Invalid(diag.Operands, "expected one game directory")
-	}
-	if *config == "" || *out == "" {
-		return cliio.Invalid(diag.OptionRequired, "capture requires --config FILE and --out DIR")
-	}
-	if *timeout <= 0 {
-		return cliio.Invalid(diag.BadValue, "--timeout must be positive")
-	}
-	if *raw && *overlay != "" {
-		return cliio.Invalid(diag.OptionConflict, "--raw and --overlay cannot be combined")
-	}
-	list, err := readShotList(*config)
-	if err != nil {
-		return err
-	}
-	gameDir := fl.Arg(0)
-	fsys := os.DirFS(gameDir)
-	var gate *assetfs.Gate
-	if !*raw {
-		_, policyErr := fs.Stat(fsys, "asset-policy.yaml")
-		if *overlay != "" || policyErr == nil {
-			policy, err := assetpolicy.Load(fsys, "asset-policy.yaml")
-			if err != nil {
-				return err
-			}
-			top := fsys
-			if *overlay != "" {
-				top = os.DirFS(*overlay)
-			}
-			records, outputs, err := policy.ReadRecords(top)
-			if err != nil {
-				return err
-			}
-			gate = &assetfs.Gate{Base: fsys, Top: top, Prefix: "assets", Records: records, Outputs: outputs, Watch: list.Watch}
-			if *overlay != "" {
-				fsys, err = assetfs.New(fsys, top, assetfs.Config{Prefix: "assets", Manifest: assetfs.Manifest{Name: policy.Report, File: policy.Records.File, Sum: policy.Records.Source}})
-				if err != nil {
-					return err
-				}
-			}
-		} else if !errors.Is(policyErr, fs.ErrNotExist) {
-			return policyErr
+	return clihelp.Operation{Flags: fl, Run: func(ctx context.Context) (err error) {
+		if fl.NArg() != 1 {
+			return cliio.Invalid(diag.Operands, "expected one game directory")
 		}
-	}
-	want := map[string]bool{}
-	for _, id := range *only {
-		want[id] = true
-	}
-	for id := range want {
-		found := false
-		for _, it := range list.Shots {
-			found = found || it.ID == id
+		if *config == "" || *out == "" {
+			return cliio.Invalid(diag.OptionRequired, "capture requires --config FILE and --out DIR")
 		}
-		if !found {
-			return cliio.Invalid(diag.UnknownName, "--only: unknown capture %q", id)
+		if *timeout <= 0 {
+			return cliio.Invalid(diag.BadValue, "--timeout must be positive")
 		}
-	}
-	var jobs []play.CaptureJob
-	var items []shotItem
-	for _, it := range list.Shots {
-		if len(want) > 0 && !want[it.ID] {
-			continue
+		if *raw && *overlay != "" {
+			return cliio.Invalid(diag.OptionConflict, "--raw and --overlay cannot be combined")
 		}
-		seed := it.Seed
-		if seed == 0 {
-			seed = list.Seed
-		}
-		wait := it.Wait
-		if wait == 0 {
-			wait = 120
-		}
-		setup := ""
-		if len(it.Setup) > 0 {
-			b, err := yaml.Marshal(it.Setup)
-			if err != nil {
-				return err
-			}
-			setup = string(b)
-		}
-		j := play.CaptureJob{ID: it.ID, Start: it.Start, Scene: it.Scene, Event: it.Event, Picture: it.Picture, Line: it.Line, Answers: it.Answers, Party: it.Party, Level: it.Level, Floor: it.Floor, Flags: it.Flags, Battle: it.Battle, Calm: it.Calm, Seed: seed, Script: it.Script, Setup: setup, WaitTicks: wait}
-		if it.GIF != nil {
-			duration, err := time.ParseDuration(it.GIF.Duration)
-			if it.GIF.Duration == "" {
-				duration, err = 0, nil
-			}
-			if err != nil {
-				return fmt.Errorf("capture %s: %w", it.ID, err)
-			}
-			j.GIF = &play.CaptureGIF{FPS: it.GIF.FPS, Duration: duration, Width: it.GIF.Width, Script: it.GIF.Script}
-		}
-		jobs, items = append(jobs, j), append(items, it)
-	}
-	var results []shotResult
-	failed := 0
-	err = cli.Publish(*out, []string{gameDir, *config, *overlay}, func(stage string) error {
-		cfg := play.CaptureConfig{Output: stage, Timeout: *timeout}
-		if gate != nil {
-			cfg.CheckAsset = gate.Check
-		}
-		rendered, err := play.Capture(context.Background(), fsys, jobs, cfg)
+		list, err := readShotList(*config)
 		if err != nil {
 			return err
 		}
-		for i, r := range rendered {
-			row := shotResult{N: i + 1, ID: r.ID, Status: "ok", Artifact: r.Artifact, Size: fmt.Sprintf("%dx%d", r.Width, r.Height), Frames: r.Frames, Seed: r.Seed, Pictures: r.Pictures, item: items[i]}
-			if r.Err != nil {
-				row.Status, row.Reason = "failed", r.Err.Error()
-				failed++
-			}
-			results = append(results, row)
-		}
-		return writeShotIndex(stage, list, results, *raw)
-	})
-	if err != nil {
-		return err
-	}
-	status := "ok"
-	if failed > 0 {
-		status = "failed"
-	}
-	if c.report.Machine() {
-		if c.report.Format == "jsonl" {
-			for _, r := range results {
-				if err := c.report.Item(c.out, r.ID, r.Status, r); err != nil {
+		gameDir := fl.Arg(0)
+		fsys := os.DirFS(gameDir)
+		var gate *assetfs.Gate
+		if !*raw {
+			_, policyErr := fs.Stat(fsys, "asset-policy.yaml")
+			if *overlay != "" || policyErr == nil {
+				policy, err := assetpolicy.Load(fsys, "asset-policy.yaml")
+				if err != nil {
 					return err
 				}
+				top := fsys
+				if *overlay != "" {
+					top = os.DirFS(*overlay)
+				}
+				records, outputs, err := policy.ReadRecords(top)
+				if err != nil {
+					return err
+				}
+				gate = &assetfs.Gate{Base: fsys, Top: top, Prefix: "assets", Records: records, Outputs: outputs, Watch: list.Watch}
+				if *overlay != "" {
+					fsys, err = assetfs.New(fsys, top, assetfs.Config{Prefix: "assets", Manifest: assetfs.Manifest{Name: policy.Report, File: policy.Records.File, Sum: policy.Records.Source}})
+					if err != nil {
+						return err
+					}
+				}
+			} else if !errors.Is(policyErr, fs.ErrNotExist) {
+				return policyErr
 			}
 		}
-		if err := c.report.Result(c.out, status, struct {
-			Items     []shotResult `json:"items"`
-			Succeeded int          `json:"succeeded"`
-			Failed    int          `json:"failed"`
-		}{results, len(results) - failed, failed}); err != nil {
+		want := map[string]bool{}
+		for _, id := range *only {
+			want[id] = true
+		}
+		for id := range want {
+			found := false
+			for _, it := range list.Shots {
+				found = found || it.ID == id
+			}
+			if !found {
+				return cliio.Invalid(diag.UnknownName, "--only: unknown capture %q", id)
+			}
+		}
+		var jobs []play.CaptureJob
+		var items []shotItem
+		for _, it := range list.Shots {
+			if len(want) > 0 && !want[it.ID] {
+				continue
+			}
+			seed := it.Seed
+			if seed == 0 {
+				seed = list.Seed
+			}
+			wait := it.Wait
+			if wait == 0 {
+				wait = 120
+			}
+			setup := ""
+			if len(it.Setup) > 0 {
+				b, err := yaml.Marshal(it.Setup)
+				if err != nil {
+					return err
+				}
+				setup = string(b)
+			}
+			j := play.CaptureJob{ID: it.ID, Start: it.Start, Scene: it.Scene, Event: it.Event, Picture: it.Picture, Line: it.Line, Answers: it.Answers, Party: it.Party, Level: it.Level, Floor: it.Floor, Flags: it.Flags, Battle: it.Battle, Calm: it.Calm, Seed: seed, Script: it.Script, Setup: setup, WaitTicks: wait}
+			if it.GIF != nil {
+				duration, err := time.ParseDuration(it.GIF.Duration)
+				if it.GIF.Duration == "" {
+					duration, err = 0, nil
+				}
+				if err != nil {
+					return fmt.Errorf("capture %s: %w", it.ID, err)
+				}
+				j.GIF = &play.CaptureGIF{FPS: it.GIF.FPS, Duration: duration, Width: it.GIF.Width, Script: it.GIF.Script}
+			}
+			jobs, items = append(jobs, j), append(items, it)
+		}
+		var results []shotResult
+		failed := 0
+		err = cli.Publish(*out, []string{gameDir, *config, *overlay}, func(stage string) error {
+			cfg := play.CaptureConfig{Output: stage, Timeout: *timeout}
+			if gate != nil {
+				cfg.CheckAsset = gate.Check
+			}
+			rendered, err := play.Capture(ctx, fsys, jobs, cfg)
+			if err != nil {
+				return err
+			}
+			for i, r := range rendered {
+				row := shotResult{N: i + 1, ID: r.ID, Status: "ok", Artifact: r.Artifact, Size: fmt.Sprintf("%dx%d", r.Width, r.Height), Frames: r.Frames, Seed: r.Seed, Pictures: r.Pictures, item: items[i]}
+				if r.Err != nil {
+					row.Status, row.Reason = "failed", r.Err.Error()
+					failed++
+				}
+				results = append(results, row)
+			}
+			return writeShotIndex(stage, list, results, *raw)
+		})
+		if err != nil {
 			return err
 		}
-	} else {
-		for _, r := range results {
-			c.out.Printf("%s %s %s\n", r.ID, r.Status, r.Reason)
+		status := "ok"
+		if failed > 0 {
+			status = "failed"
 		}
-		c.out.Printf("%s: %d captured, %d failed\n", *out, len(results)-failed, failed)
-	}
-	if failed > 0 {
-		return errReported
-	}
-	return nil
+		if c.report.Machine() {
+			if c.report.Format == "jsonl" {
+				for _, r := range results {
+					if err := c.report.Item(c.out, r.ID, r.Status, r); err != nil {
+						return err
+					}
+				}
+			}
+			if err := c.report.Result(c.out, status, struct {
+				Items     []shotResult `json:"items"`
+				Succeeded int          `json:"succeeded"`
+				Failed    int          `json:"failed"`
+			}{results, len(results) - failed, failed}); err != nil {
+				return err
+			}
+		} else {
+			for _, r := range results {
+				c.out.Printf("%s %s %s\n", r.ID, r.Status, r.Reason)
+			}
+			c.out.Printf("%s: %d captured, %d failed\n", *out, len(results)-failed, failed)
+		}
+		if failed > 0 {
+			return errReported
+		}
+		return nil
+	}}
 }
 
 func readShotList(p string) (*shotList, error) {
