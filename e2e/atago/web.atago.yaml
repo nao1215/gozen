@@ -43,8 +43,18 @@ scenarios:
                   - label: Take the path
                     do: [{set: {gold: 37}}]
   - run:
-      command: 'gozen pack web game site/games/example --runtime "${env:GOZEN_WEB_RUNTIME}"'
-  - assert: {exit_code: 0, stderr: {equals: ''}}
+      command: 'gozen export game --target web --out site/games/example --runtime "${env:GOZEN_WEB_RUNTIME}" --format jsonl'
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: export}
+        - {path: $.type, equals: summary}
+        - {path: $.status, equals: ok}
+        - {path: $.data.directory, equals: site/games/example}
+        - {path: $.data.target, equals: web}
   - assert:
       file: {path: site/games/example/runtime-licenses/GO-LICENSE, contains: 'The Go Authors'}
   - cdp:
@@ -122,7 +132,7 @@ scenarios:
 
 - name: web export requires a runtime option
   steps:
-  - run: {command: 'gozen pack web game out'}
+  - run: {command: 'gozen export game --target web --out out'}
   - assert:
       exit_code: 2
       stdout: {equals: ''}
@@ -131,7 +141,7 @@ scenarios:
 
 - name: an absent web runtime leaves no partial output
   steps:
-  - run: {command: 'gozen pack web game out --runtime absent'}
+  - run: {command: 'gozen export game --target web --out out --runtime absent'}
   - assert:
       exit_code: 1
       stdout: {equals: ''}

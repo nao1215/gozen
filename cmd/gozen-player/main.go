@@ -1,7 +1,7 @@
 //go:build !js
 
 // Command gozen-player starts the game directory beside its executable.
-// Maintainers build it for distribution; authors use gozen pack desktop.
+// Maintainers build it for distribution; authors use gozen export.
 package main
 
 import (

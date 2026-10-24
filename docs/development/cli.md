@@ -14,7 +14,8 @@ The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf r
 | `sim` | `battle`, `dive`, `floors`, `design`, `campaign`, `routes`, `breed` | play by the rules without a window |
 | `play` | `trace`, `notes`, `shots` | inspect traces, F9 notes and screenshots |
 | `book` | (a leaf) | |
-| `pack` | `desktop`, `web`, `release`, `trial` | create a new output tree |
+| `export` | (a leaf) | create a desktop or web package with a prebuilt runtime |
+| `pack` | `release`, `trial` | create a new output tree |
 | `art` | `prompt`, `mosaic`, `fetch`, `faces`, `puppet` | pictures; cgo, ONNX Runtime and models for mosaic inference and faces |
 | `theme` | `add`, `list` | bundled dungeon themes |
 | `version`, `help` | | `gozen help` takes the words of a path, or a code |
@@ -84,7 +85,7 @@ suite excludes `web`; the Website and Release Smoke workflows run it separately.
 command and output contracts. The shared I/O and argument errors now live in
 `internal/cliio`; protected output paths remain in `cmd/internal/cli`.
 
-`new` and `theme list` currently support `--format text|json|jsonl`. JSON emits one
+`new`, `export` and `theme list` currently support `--format text|json|jsonl`. JSON emits one
 version-1 envelope with `command`, `status` and `data`. JSONL theme lists emit
 ordered `item` records and one terminal `summary`; creation emits one summary.
 Both machine formats send fatal diagnostics to stderr as JSONL, preserving the

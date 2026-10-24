@@ -12,10 +12,14 @@ scenarios:
         contains: ['gozen run <game-dir>', '--save-dir', '--dev']
       stderr: {equals: ''}
       changes: {created: [], modified: [], deleted: []}
-- name: removed play run path is not an alias
+- name: removed command path ${path} is not an alias
+  matrix:
+  - {path: play run}
+  - {path: pack desktop}
+  - {path: pack web}
   steps:
   - run:
-      command: gozen play run absent-game
+      command: gozen ${path} absent-game
   - assert:
       exit_code: 2
       stdout: {equals: ''}

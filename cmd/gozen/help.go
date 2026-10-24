@@ -29,7 +29,8 @@ var topPage = clihelp.Page{
 		{"sim", "Measure play without a window: battle, dive, floors, design, campaign"},
 		{"play", "Inspect real plays: trace, notes, shots"},
 		{"book", "Write the definitions and events as Markdown"},
-		{"pack", "Build what you ship: desktop, web, release, trial"},
+		{"export", "Export a playable desktop game or static website"},
+		{"pack", "Build release and trial asset trees"},
 		{"art", "Picture and asset tools: prompt, mosaic, fetch, faces, puppet"},
 		{"theme", "Dungeon themes: add the pictures of a theme to a game, list the themes"},
 		{"version", "Print the gozen version"},
@@ -50,7 +51,7 @@ var topPage = clihelp.Page{
 			"invalid arguments. A diagnostic may end with a code such as [GZN1101] whose first digit is " +
 			"the exit status; gozen help GZN1101 explains it.",
 		"Requirements: check, sim, book, pack release, pack trial, play trace, play notes, and art prompt need nothing beyond " +
-			"the gozen binary; cgo is not required. pack desktop and pack web need matching prebuilt runtime bundles. run and play shots launch a graphics game, and unattended " +
+			"the gozen binary; cgo is not required. export needs a matching prebuilt runtime bundle. run and play shots launch a graphics game, and unattended " +
 			"capture on Linux needs Xvfb. art mosaic inference and art faces need a gozen built with cgo, " +
 			"an ONNX Runtime shared library, and user-supplied models. See " + clihelp.README,
 	},
@@ -115,8 +116,6 @@ var groups = map[string]clihelp.Page{
 			"reachable part of the game. --overlay takes replaced assets from a directory, and --inspect " +
 			"reads the approval records that every asset of the overlay must have.",
 		Commands: [][2]string{
-			{"web", "Export a static website with a prebuilt WASM player"},
-			{"desktop", "Package a game with a prebuilt desktop player"},
 			{"release", "Build a release tree with approved assets only"},
 			{"trial", "Build a trial tree with the reachable part of the game"},
 		},
@@ -125,7 +124,7 @@ var groups = map[string]clihelp.Page{
 			{"count what a trial would keep, writing nothing", "gozen pack trial game -n"},
 		},
 		Groups: []clihelp.Group{general},
-		Notes:  []string{"The output directory must not exist yet and must not be inside an input.", "Requirements: desktop and web need matching prebuilt runtime bundles; release and trial need only gozen. See " + clihelp.README},
+		Notes:  []string{"The output directory must not exist yet and must not be inside an input.", "Requirements: release and trial need only gozen. See " + clihelp.README},
 		Hint:   `Run "gozen pack <command> --help" for a command's options and examples.`,
 	},
 	"theme": {
@@ -393,21 +392,16 @@ var pages = map[string]clihelp.Page{
 		},
 		Groups: []clihelp.Group{{Title: "Output", Flags: []string{"format"}}, general},
 	},
-	"pack web": {
-		Summary:  "export a static website with a prebuilt WASM player",
-		Usage:    []string{"gozen pack web [OPTIONS] --runtime DIR <game-dir> <out-dir>"},
-		About:    "Copies the game, WASM player, matching JavaScript runtime and HTML page. Assets are unchanged; saves stay in the browser's local storage on the same origin.",
-		Examples: []clihelp.Example{{"export a website", "gozen pack web game site --runtime web-runtime"}},
-		Groups:   []clihelp.Group{{Title: "Runtime", Flags: []string{"runtime"}}, general},
-		Notes:    []string{"Requirements: a matching prebuilt web runtime bundle. Serve the output over HTTP or HTTPS; opening index.html as a local file is unsupported. See " + clihelp.README},
-	},
-	"pack desktop": {
-		Summary:  "package a game with a prebuilt desktop player",
-		Usage:    []string{"gozen pack desktop [OPTIONS] --runtime DIR <game-dir> <out-dir>"},
-		About:    "Copies runtime game files and license notices beside a prebuilt player. The runtime must match this Gozen version and the selected target. No compiler or network access is used.",
-		Examples: []clihelp.Example{{"package for Windows", "gozen pack desktop game output --runtime runtime --target windows-amd64"}},
-		Groups:   []clihelp.Group{{Title: "Runtime", Flags: []string{"runtime", "target"}}, general},
-		Notes:    []string{"Requirements: an unpacked matching Gozen runtime bundle. Playing needs a display and platform graphics and audio libraries. See " + clihelp.README, "The output must be new and outside the game and runtime directories. For games with an asset policy, prepare the input with gozen pack release first."},
+	"export": {
+		Summary: "export a playable game with a prebuilt runtime",
+		Usage:   []string{"gozen export <game-dir> --runtime DIR --out DIR [OPTIONS]"},
+		About:   "Copies runtime game files, a matching player and license notices. --target web creates a static website; desktop targets create a directory with a native player. No compiler or network access is used.",
+		Examples: []clihelp.Example{
+			{"package for Windows", "gozen export game --out output --runtime runtime --target windows-amd64"},
+			{"export a website", "gozen export game --out site --runtime web-runtime --target web"},
+		},
+		Groups: []clihelp.Group{{Title: "Runtime", Flags: []string{"runtime", "target"}}, {Title: "Output", Flags: []string{"out", "format"}}, general},
+		Notes:  []string{"Requirements: an unpacked matching Gozen runtime bundle. Desktop play needs a display and platform graphics and audio libraries; web play needs an HTTP or HTTPS server. See " + clihelp.README, "The output must be new and outside the game and runtime directories. For games with an asset policy, prepare the input with gozen pack release first."},
 	},
 	"pack release": {
 		Summary: "build a release tree with approved assets only",

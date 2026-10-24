@@ -300,7 +300,7 @@ location=trail battles=1 wins=1 gold=3
 | `sim battle`, `sim dive`, `sim floors`, `sim design` | win rate; a dungeon dive; generated floors; scripted players |
 | `run`, `play trace`, `play notes`, `play shots` | run a game directory; read a trace; notes as HTML; screenshots of a list |
 | `book` | the whole game as Markdown |
-| `pack desktop`, `pack web` | playable desktop directories; static browser games, using prebuilt runtimes |
+| `export` | playable desktop directories; static browser games, using prebuilt runtimes |
 | `pack release`, `pack trial` | approved pictures only; a demo |
 | `art prompt`, `art mosaic`, `art fetch`, `art faces`, `art puppet` | image prompts; pixelation; models; balloon faces; moving portraits |
 | `theme add`, `theme list` | copy a dungeon theme (walls, floor, ceiling, door) into a game; list the themes |

@@ -119,13 +119,13 @@ The sample browser builds keep game files outside WebAssembly. Their generated `
 - Do not edit generated files (`data/schema/*.json` in Gozen itself).
 - Do not say the game is done while `gozen check` reports an error.
 
-For desktop delivery, use `gozen pack desktop GAME OUT --runtime RUNTIME
+For desktop delivery, use `gozen export GAME --out OUT --runtime RUNTIME
 --target OS-ARCH` with a matching release runtime. Keep the output directory
 new and outside both inputs. If the game has an asset policy, first use
 `pack release` and export its approved output. Run the packaged player after
 moving the directory, with isolated saves; check save/reload and the actual
-native target. Cross-compilation alone is not runtime verification. For browser delivery, use `gozen pack web GAME OUT --runtime RUNTIME` with
+native target. Cross-compilation alone is not runtime verification. For browser delivery, use `gozen export GAME --target web --out OUT --runtime RUNTIME` with
 the matching js-wasm runtime bundle. Serve the output over HTTP(S), including
 under a subdirectory, and verify choices plus save/reload in a real browser.
 The exporter copies assets unchanged and the player prefetches the manifest;
-saves remain origin-local. See the site's `pack desktop` command documentation.
+saves remain origin-local. See the site's `export` command documentation.

@@ -89,7 +89,7 @@ appropriately licensed font under `assets/` and set `fonts.regular` in `game.yam
 - [Cookbook](/cookbook/): add shops, battles, dialogue and other game features.
 - [Schema](/schema/): supported YAML fields and their meaning.
 
-Use [pack desktop](/commands/#pack-desktop) to distribute the game with a
-matching prebuilt runtime, or [pack web](/commands/#pack-web) for a static website. The existing
+Use [export](/commands/#desktop) to distribute the game with a
+matching prebuilt runtime, or [export --target web](/commands/#web) for a static website. The existing
 [Go API](/go-api/) remains available during migration; it is not needed for
 these steps.
