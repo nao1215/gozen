@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.7.0 - 2026-10-25
+
+Create, run, capture and export games with YAML, assets and the CLI. This release removes the public Go API and changes several command paths and arguments. Existing game YAML and save formats remain compatible. Desktop and web exports use the matching prebuilt runtime archive from this release.
+
 ### Added
 
 - Capture PNG images and bounded animated GIFs with `gozen capture GAME --config FILE --out DIR`. Jobs share one graphics loop, use isolated state and saves, and report partial failures in text, JSON or JSONL.
@@ -29,7 +33,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Fixed
 
-- Wait for pending screenshot writes in `Game.Close` and report encoding or filesystem failures before completing a capture job.
+- Wait for pending screenshot writes during shutdown and report encoding or filesystem failures before completing a capture job.
 - Omit portraits for actors without a picture directory instead of requesting `/normal.png` during play.
 
 ## v0.6.0 - 2026-10-24
