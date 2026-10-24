@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes, breed), play (trace, notes, shots), book, pack (release, trial), art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
+description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes, breed), play (run, trace, notes, shots), book, pack (release, trial), art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
 weight: 60
 toc: true
 ---
@@ -18,7 +18,7 @@ gozen help GZN1101                     # explain a diagnostic code
 |:--|:--|
 | [check](#check) | Check definitions, references, expressions, assets and text layout |
 | [sim](#sim) | Measure play without a window: [battle](#sim-battle), [dive](#sim-dive), [floors](#sim-floors), [design](#sim-design), [campaign](#sim-campaign), [routes](#sim-routes), [breed](#sim-breed) |
-| [play](#play) | Read and shoot real plays: [trace](#play-trace), [notes](#play-notes), [shots](#play-shots) |
+| [play](#play) | Run games and inspect real plays: [run](#play-run), [trace](#play-trace), [notes](#play-notes), [shots](#play-shots) |
 | [book](#book) | Write the definitions and events as Markdown |
 | [pack](#pack) | Build what you ship: [release](#pack-release), [trial](#pack-trial) |
 | [art](#art) | Picture and asset tools: [prompt](/production-tools/#gozen-art-prompt), [mosaic](/production-tools/#gozen-art-mosaic), [fetch](#art-fetch), [faces](#art-faces), [puppet](#art-puppet) |
@@ -33,7 +33,7 @@ A group alone (`gozen sim`) exits 2 and lists its commands. `gozen sim --help` s
 - A diagnostic may end with a code such as `[GZN1101]`; its first digit is the exit status. `gozen help GZN1101` explains it, and [Error codes](/errors/) lists them all.
 - Options follow the GNU style. `--seed 7` and `--seed=7` both work, a few common options have a one-letter form (`-n 100`, `-o DIR`, `-v`, `-h`), options may come before or after the arguments, and `--` ends the options. A single-dash long option such as `-seed` is rejected with exit status 2.
 - Commands that write a directory (`sim design`, `play notes`, `pack release`, `pack trial`, `play shots`) refuse one that already exists, even if empty, and an output inside an input. They never overwrite.
-- Every command except `play shots`, `art faces` and `art mosaic` detection needs nothing beyond the `gozen` binary: no cgo, display or sound device.
+- Every command except `play run`, `play shots`, `art faces` and `art mosaic` detection needs nothing beyond the `gozen` binary: no cgo, display or sound device.
 
 The examples below use `game` as the game directory, `lesson` as a troop and `grotto` as a dungeon location.
 
@@ -245,7 +245,27 @@ For example, run `gozen sim breed examples/go-zen/game --format json` after `goz
 
 ## play
 
-Reads and takes pictures of real plays. The game binary itself is run by its own `--dev`.
+Runs game directories and inspects real plays.
+
+### play run
+
+Opens a game directory containing `game.yaml`, `data/` and `assets/`. No Go source or game-specific executable is needed. It uses the same startup and rendering implementation as `play.Main`.
+
+<!-- verify: skip opens a window; covered by e2e/atago/graphics.atago.yaml -->
+```sh
+gozen play run game
+gozen play run game --fullscreen --mute
+gozen play run game --dev --save-dir test-saves
+gozen play run game --dev --script check.txt --shots shots --trace run.jsonl
+```
+
+Options can come before or after the directory; use `--` before a directory starting with a dash. `gozen play run --help` lists the shared game options. Use the directory operand instead of the embedded runner's `--dir` option.
+
+`--dev` enables author tools and live reload from that directory. Scripted runs isolate saves unless `--save-dir` is supplied. Ordinary play uses the game's id under the user's Gozen configuration directory, just like an embedded game; use `--save-dir` to keep separate copies apart. Relative output paths are relative to the working directory, which the command does not change.
+
+A display and the platform graphics and audio libraries are required; use Xvfb for unattended Linux runs. Recording additionally needs ffmpeg. Help, `check`, and `sim` do not need a display. Closing the window exits 0; startup and I/O failures exit 1; argument parsing and startup option errors exit 2.
+
+The command reads loose assets; it does not encrypt or package them. Keep the runner version with a distributed game. Use the Go library when you need a custom loop, save store, or other Go integration.
 
 ### play trace
 

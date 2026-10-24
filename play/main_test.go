@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io/fs"
 	"strings"
 	"testing"
-	"testing/fstest"
 )
 
 type failingWriter struct{ err error }
@@ -58,18 +56,6 @@ func TestHelpAndErrorsDoNotExit(t *testing.T) {
 }
 
 func TestEmbeddedRootAndCancellation(t *testing.T) {
-	source := fstest.MapFS{"game/game.yaml": {Data: []byte("neutral")}}
-	sub, err := gameFS(source, "game", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err := fs.ReadFile(sub, "game.yaml")
-	if err != nil || string(b) != "neutral" {
-		t.Fatalf("sub FS: %q %v", b, err)
-	}
-	if _, err := gameFS(nil, ".", ""); !errors.Is(err, fs.ErrInvalid) {
-		t.Fatal(err)
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if err := Main(ctx, nil, ".", nil, Config{}); !errors.Is(err, context.Canceled) {

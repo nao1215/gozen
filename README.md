@@ -259,6 +259,8 @@ gozen sim dive game cave --floors 5 --boss 5:cave_boss # levels and wins per flo
 
 `gozen book game > book.md` writes the whole game as one Markdown file.
 
+Run the directory directly with `gozen play run game`, or enable author tools with `gozen play run game --dev`. No Go wrapper is needed. The same options are available when embedding a game with `play.Main`.
+
 Test tools of your game's binary:
 
 <!-- verify: skip runs in your own game's module and opens the game window -->
@@ -301,7 +303,7 @@ location=trail battles=1 wins=1 gold=3
 |:--|:--|
 | `check` | definitions, references, expressions, pictures, text layout (`--only structure` or `--only layout`) |
 | `sim battle`, `sim dive`, `sim floors`, `sim design` | win rate; a dungeon dive; generated floors; scripted players |
-| `play trace`, `play notes`, `play shots` | read a trace; notes as HTML; screenshots of a list |
+| `play run`, `play trace`, `play notes`, `play shots` | run a game directory; read a trace; notes as HTML; screenshots of a list |
 | `book` | the whole game as Markdown |
 | `pack release`, `pack trial` | approved pictures only; a demo |
 | `art prompt`, `art mosaic`, `art fetch`, `art faces`, `art puppet` | image prompts; pixelation; models; balloon faces; moving portraits |

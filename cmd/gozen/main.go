@@ -1,4 +1,4 @@
-// Command gozen checks, simulates, documents, and packages game definitions, and
+// Command gozen runs, checks, simulates, documents, and packages game definitions, and
 // runs the picture and asset tools (ADR 0016, 0024).
 package main
 
@@ -44,7 +44,8 @@ var tree = map[string]node{
 	"sim dive":     {run: (*command).curve},
 	"sim floors":   {run: (*command).floorsCmd},
 	"sim design":   {run: (*command).design},
-	"play":         {subs: []string{"trace", "notes", "shots"}},
+	"play":         {subs: []string{"run", "trace", "notes", "shots"}},
+	"play run":     {run: (*command).playRun},
 	"play trace":   {run: (*command).traceCmd},
 	"play notes":   {run: (*command).notesCmd},
 	"play shots":   {run: (*command).shots},

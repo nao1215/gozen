@@ -39,3 +39,108 @@ scenarios:
         json:
           path: $[0].status
           equals: ok
+
+- name: run plays a directory with shared scripts and records its events
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: play.txt
+      content: |
+        gap 12
+        wait 10
+        shot camp
+        press ok
+        wait 12
+        shot conversation
+        quit
+  - run:
+      command: gozen play run "${specdir}/fixtures/game" --dev --mute --seed 7 --start camp --script play.txt --shots "run shots" --save-dir "run saves" --trace run.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+  - assert:
+      image:
+        path: run shots/camp.png
+        format: png
+        width: 960
+        height: 540
+  - assert:
+      image:
+        path: run shots/conversation.png
+        format: png
+        width: 960
+        height: 540
+  - run:
+      command: gozen play trace run.jsonl --only say
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: The trail is clear.
+      stderr:
+        equals: ''
+
+- name: run saves and resumes in a second CLI process
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: save.txt
+      content: |
+        gap 12
+        wait 10
+        do open: save
+        press ok
+        wait 90
+        quit
+  - run:
+      command: gozen play run "${specdir}/fixtures/game" --dev --mute --start camp --gold 37 --script save.txt --shots first --save-dir saves
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+      file:
+        path: saves/save1.json
+        json:
+          path: $.state.gold
+          equals: 37
+  - fixture:
+      file: load.txt
+      content: |
+        gap 12
+        wait 10
+        shot title
+        press ok
+        press ok
+        wait 20
+        shot restored
+        do open: save
+        press down
+        press ok
+        wait 90
+        quit
+  - run:
+      command: gozen play run --mute "${specdir}/fixtures/game" --dev --script load.txt --shots second --save-dir saves
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+      file:
+        path: saves/save2.json
+        json:
+          path: $.state.gold
+          equals: 37
+  - assert:
+      file:
+        path: saves/save2.json
+        json:
+          path: $.state.location
+          equals: camp
+  - assert:
+      image:
+        path: second/restored.png
+        format: png
+        width: 960
+        height: 540

@@ -16,16 +16,16 @@ const noRequirements = "Requirements: none beyond the gozen binary. No cgo, C co
 
 var topPage = clihelp.Page{
 	Name:    "gozen",
-	Summary: "check, simulate, document, and package Gozen RPG games",
+	Summary: "play, check, simulate, and package Gozen games",
 	Usage:   []string{"gozen <command> [<sub-command>] [OPTIONS] [ARGUMENTS]", "gozen help [<command> ...]", "gozen help <code>"},
 	About: "gozen reads a game directory (game.yaml, data/, assets/) and checks the definitions, " +
-		"measures play without a window, reads and shoots real plays, documents the events, builds " +
+		"runs games in a window, measures play without rendering, inspects real plays, documents events, builds " +
 		"release and trial trees, and runs the picture and asset tools. Results go to stdout, " +
 		"diagnostics to stderr.",
 	Commands: [][2]string{
 		{"check", "Check a game directory: definitions, references, expressions, assets, text layout"},
 		{"sim", "Measure play without a window: battle, dive, floors, design, campaign"},
-		{"play", "Read and shoot real plays: trace, notes, shots"},
+		{"play", "Run games and inspect real plays: run, trace, notes, shots"},
 		{"book", "Write the definitions and events as Markdown"},
 		{"pack", "Build what you ship: release, trial"},
 		{"art", "Picture and asset tools: prompt, mosaic, fetch, faces, puppet"},
@@ -48,7 +48,7 @@ var topPage = clihelp.Page{
 			"invalid arguments. A diagnostic may end with a code such as [GZN1101] whose first digit is " +
 			"the exit status; gozen help GZN1101 explains it.",
 		"Requirements: check, sim, book, pack, play trace, play notes, and art prompt need nothing beyond " +
-			"the gozen binary; cgo is not required. play shots launches a graphics game, and unattended " +
+			"the gozen binary; cgo is not required. play run and play shots launch a graphics game, and unattended " +
 			"capture on Linux needs Xvfb. art mosaic inference and art faces need a gozen built with cgo, " +
 			"an ONNX Runtime shared library, and user-supplied models. See " + clihelp.README,
 	},
@@ -85,12 +85,13 @@ var groups = map[string]clihelp.Page{
 		Hint: `Run "gozen sim <command> --help" for a command's options and examples.`,
 	},
 	"play": {
-		Summary: "read and shoot real plays",
+		Summary: "run games and inspect real plays",
 		Usage:   []string{"gozen play <command> [OPTIONS] ..."},
-		About: "Reads and takes pictures of real plays; the game binary itself is run by its own --dev. " +
+		About: "Runs a game directory directly with run; --dev enables its author tools. " +
 			"trace reads the JSON Lines a game writes with --trace, notes turns the F9 notes into HTML, " +
 			"and shots launches the game binary to take a list of screenshots.",
 		Commands: [][2]string{
+			{"run", "Run a game directory in a window"},
 			{"trace", "Print or check a JSON Lines trace of a play"},
 			{"notes", "Turn test-play notes into HTML with thumbnails"},
 			{"shots", "Launch the game and take the screenshots of a list"},
@@ -101,7 +102,7 @@ var groups = map[string]clihelp.Page{
 			{"take the shots with the original assets", "gozen play shots game shots.yaml --bin ./mygame --raw -o shots"},
 		},
 		Groups: []clihelp.Group{general},
-		Notes: []string{"Requirements: trace and notes need nothing beyond the gozen binary. shots needs a " +
+		Notes: []string{"Requirements: trace and notes need nothing beyond the gozen binary. run needs a display and the platform graphics and audio libraries. shots needs a " +
 			"game binary built with the Gozen runner and its graphics runtime (a display and the platform " +
 			"graphics and audio libraries); unattended capture on Linux needs Xvfb (sudo apt-get install " +
 			"xvfb xauth). See " + clihelp.README},
