@@ -8160,7 +8160,13 @@
           "schema_version": {
             "enum": [
               1,
-              2
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8
             ]
           }
         },
@@ -8449,7 +8455,13 @@
           "enum": [
             0,
             1,
-            2
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
           ],
           "type": "integer",
           "x-contract": {
@@ -13321,7 +13333,7 @@
     },
     "Space": {
       "additionalProperties": false,
-      "description": "A bounded stack of equal-sized maps. Blank cells are open air; levels are ordered bottom to top.",
+      "description": "A bounded stack of equal-sized maps (schema version 8). Blank cells are open air; levels are ordered bottom to top.",
       "properties": {
         "levels": {
           "description": "One to eight equal rectangular maps, each 3 to 64 cells wide and high.",

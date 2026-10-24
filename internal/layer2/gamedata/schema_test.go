@@ -398,10 +398,14 @@ func (b *schemaBuilder) constraints(t reflect.Type, n, props schemaNode) {
 		child(props, "line")["minimum"] = 1
 		child(child(props, "answers"), "items")["minimum"] = 0
 	case reflect.TypeFor[Game]():
-		child(props, "schema_version")["enum"] = []int{0, 1, 2}
+		versions := make([]int, CurrentSchemaVersion+1)
+		for i := range versions {
+			versions[i] = i
+		}
+		child(props, "schema_version")["enum"] = versions
 		child(props, "data_version")["minimum"] = 0
 		child(props, "language")["enum"] = []string{"", "en", "ja"}
-		n["if"] = schemaNode{"required": []string{"schema_version"}, "properties": schemaNode{"schema_version": schemaNode{"enum": []int{1, 2}}}}
+		n["if"] = schemaNode{"required": []string{"schema_version"}, "properties": schemaNode{"schema_version": schemaNode{"enum": versions[1:]}}}
 		n["then"] = schemaNode{"required": []string{"id"}, "properties": schemaNode{"id": schemaNode{"type": "string", "pattern": gameIDPattern.String()}}}
 	case reflect.TypeFor[Start]():
 		child(props, "party")["type"] = "array"

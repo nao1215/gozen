@@ -30,10 +30,12 @@ const (
 	SchemaVersion6 = 6
 	// SchemaVersion7 adds battle forms, HP pictures, and enemy motion (ADR 0037).
 	SchemaVersion7 = 7
+	// SchemaVersion8 adds bounded stacked spaces (ADR 0040).
+	SchemaVersion8 = 8
 	// CurrentSchemaVersion is the latest YAML spec version that can be loaded. 3 adds to 2 the place presentation map and stage,
 	// the doll, speech bubbles, and the spot of expressions and set (ADR 0022); 4 adds the novel game vocabulary; 5 adds
-	// campaigns (ADR 0030); 6 adds monster collection; 7 adds battle forms and pictures.
-	CurrentSchemaVersion = SchemaVersion7
+	// campaigns (ADR 0030); 6 adds monster collection; 7 adds battle forms and pictures; 8 adds stacked spaces.
+	CurrentSchemaVersion = SchemaVersion8
 )
 
 // MaxRollback is the most earlier events ui.rollback may keep (the history is a copy of the

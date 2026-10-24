@@ -8,7 +8,7 @@ Authors need continuous streets, house interiors, stairs and atriums, while exis
 
 ## Decision
 
-Add optional `dungeon.space` with aligned, equally sized level maps and explicit bidirectional stairs. The initial bounds are eight levels and 64 cells per horizontal dimension. A story is 1.5 cell units high. Spaces (blank cells) have no floor or walls, allowing sky and atriums. Solid cells provide walls. Floors have a 0.15-cell-thick slab below the walking
+In schema version 8, add optional `dungeon.space` with aligned, equally sized level maps and explicit bidirectional stairs. The initial bounds are eight levels and 64 cells per horizontal dimension. A story is 1.5 cell units high. Spaces (blank cells) have no floor or walls, allowing sky and atriums. Solid cells provide walls. Floors have a 0.15-cell-thick slab below the walking
 surface, with visible sides and undersides. Existing tile definitions and commands remain the authoring vocabulary. Generated floors and roaming enemies are not mixed with stacked spaces in this version; validation reports unsupported combinations rather than ignoring them.
 
 Position gains a zero-based level, defaulting to zero in older saves. Each stair joins adjacent levels over a bounded straight run, preserving per-cell stops and reverse traversal. Rules remain in layer 3, definitions and validation in layer 2, and camera interpolation and depth-correct rendering in presentation. Logical steps commit once; rendering interpolates their positions without changing simulation state. Saving preserves the committed cell and level, not animation progress.

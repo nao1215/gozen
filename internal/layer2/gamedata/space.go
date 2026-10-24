@@ -3,6 +3,7 @@ package gamedata
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/nao1215/gozen/internal/diag"
 )
@@ -38,7 +39,7 @@ func (s *Space) parse() {
 	s.grids = nil
 	for _, m := range s.Levels[:min(len(s.Levels), MaxSpaceLevels)] {
 		// Keep allocation bounded even before validation reports oversized input.
-		rows := strings.Split(strings.TrimRight(m, "\n"), "\n")
+		rows := strings.SplitN(strings.TrimRight(m, "\n"), "\n", MaxSpaceSide+1)
 		grid := make([][]rune, 0, min(len(rows), MaxSpaceSide))
 		for _, row := range rows[:min(len(rows), MaxSpaceSide)] {
 			r := make([]rune, 0, min(len(row), MaxSpaceSide))
@@ -116,6 +117,7 @@ func DungeonLevel(d *Dungeon, level int) *Dungeon {
 func (c *checker) space(w string, d *Dungeon, used map[rune]bool) {
 	s := d.Space
 	w += ".space"
+	c.needsVersion(w, "stacked spaces", SchemaVersion8)
 	c.picture(w+".sky", s.Sky)
 	if d.Map != "" || d.Generate != nil || len(d.Roamers) > 0 {
 		c.errorf(diag.Shape, w, "space cannot combine with map, generate or roamers")
@@ -126,10 +128,10 @@ func (c *checker) space(w string, d *Dungeon, used map[rune]bool) {
 	}
 	width, height := 0, 0
 	for level, m := range s.Levels {
-		rows := strings.Split(strings.TrimRight(m, "\n"), "\n")
+		rows := strings.SplitN(strings.TrimRight(m, "\n"), "\n", MaxSpaceSide+1)
 		lw, lh := 0, len(rows)
 		for _, row := range rows {
-			lw = max(lw, len([]rune(row)))
+			lw = max(lw, utf8.RuneCountInString(row))
 		}
 		if lw < 3 || lh < 3 || lw > MaxSpaceSide || lh > MaxSpaceSide {
 			c.errorf(diag.OutOfRange, w+".levels", "each level must be 3 to %d cells wide and high", MaxSpaceSide)
@@ -142,7 +144,7 @@ func (c *checker) space(w string, d *Dungeon, used map[rune]bool) {
 			c.errorf(diag.Shape, w+".levels", "levels must have equal dimensions")
 		}
 		for _, row := range rows {
-			if len([]rune(row)) != width {
+			if utf8.RuneCountInString(row) != width {
 				c.errorf(diag.Shape, w+".levels", "rows must have equal width; use spaces for open air")
 			}
 			for _, r := range row {

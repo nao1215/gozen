@@ -14,11 +14,11 @@ a roof terrace, and ground-floor space beneath the upper staircase. [Short video
 [mobile GIF](../media/stacked-space-short.gif) show an 11.5-second continuous
 excerpt (18.5–30 seconds) of the [full recorded route](../media/stacked-space-preview.mp4).
 Playback speed is unchanged.
-The visual design is still under review; these are not README showcase images.
+This is a technical demonstration of bounded geometry, not a finished town.
 
 ## Authoring
 
-See the complete [example world](../../examples/space/game/data/world.yaml).
+Set `schema_version: 8` in game.yaml. See the complete [example world](../../examples/space/game/data/world.yaml).
 `space.levels` holds equally sized rectangular maps from bottom to top. A period
 is floor, `#` is a full-height wall, and `_` or a blank cell is open air. Prefer
 underscores because YAML block indentation can make leading blank rows ambiguous.
@@ -66,5 +66,4 @@ inspects the lower flight from the side, ascends twice, crosses the bridge, look
 returns. The native graphics test checks positions, levels and visible geometry,
 and rejects sky-colored holes in ground-level views. A separate colored platform
 checks that the renderer distinguishes its solid edge, underside, and open sky. Save/restore and
-blocked sideways movement also have non-graphics tests. Video review is required
-before merging this feature.
+blocked sideways movement also have non-graphics tests. The short capture was reviewed before merging this feature.

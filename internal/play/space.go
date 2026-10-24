@@ -61,13 +61,13 @@ func (s *dungeonScene) drawSpace(g *Game, dst *ebiten.Image, d *data.Dungeon) {
 		st.Pos.Level = level
 		view := data.DungeonLevel(d, level)
 		for y, row := range view.Grid {
-			for x, r := range row {
+			for x := range row {
 				i := ((level*data.MaxSpaceSide+y)*data.MaxSpaceSide + x) * 4
 				v.pixels[i+3] = 255
-				if r == data.CellNone {
+				c := dungeon.CellAt(view, &st, x, y)
+				if c.Char == data.CellNone {
 					continue
 				}
-				c := dungeon.CellAt(view, &st, x, y)
 				v.pixels[i] = 1
 				if c.Solid || c.Look == "wall" {
 					v.pixels[i] = 2

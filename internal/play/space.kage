@@ -1,6 +1,8 @@
 //kage:unit pixels
 package main
 
+// Kage source 1–3 samplers take source-0 coordinates and translate origins
+// internally. Keep source-0 origin even when the material images are subimages.
 var Eye vec3
 var Facing float
 var ViewSize vec2
@@ -58,7 +60,7 @@ func backdrop(ray vec3) vec3 {
  if HasSky>0 {
   u:=fract(atan2(ray.x,-ray.z)/6.2831853+.5)
   v:=clamp(1-asin(max(ray.y,0))*2/3.14159265,0,.999)
-  sky=imageSrc3UnsafeAt(imageSrc0Origin()+vec2(u*1024,512+v*512)).rgb*SkyTint
+  sky=imageSrc3UnsafeAtFromSrc0Pos(imageSrc0Origin()+vec2(u*1024,512+v*512)).rgb*SkyTint
  }
  if ray.y<0 {return mix(sky,vec3(.57,.59,.56),clamp(-ray.y*12,0,1))}
  return sky
@@ -145,13 +147,13 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
    if c.x==2 {
     col=vec3(.78,.72,.60)
     tex=fract(vec2(point.x+point.z, -point.y/1.5))
-    if Textured.x>0 {col=imageSrc1UnsafeAt(imageSrc0Origin()+tex*imageSrc1Size()).rgb*WallTint}
+    if Textured.x>0 {col=imageSrc1UnsafeAtFromSrc0Pos(imageSrc0Origin()+tex*imageSrc1Size()).rgb*WallTint}
    } else {
     if abs(face.y)<.5 {tex=fract(vec2(point.x+point.z,-point.y))}
-    if Textured.y>0 {col=imageSrc2UnsafeAt(imageSrc0Origin()+tex*imageSrc2Size()).rgb*FloorTint}
+    if Textured.y>0 {col=imageSrc2UnsafeAtFromSrc0Pos(imageSrc0Origin()+tex*imageSrc2Size()).rgb*FloorTint}
     if face.y < -.5 {
      col=CeilingColor
-     if Textured.z>0 {col=imageSrc3UnsafeAt(imageSrc0Origin()+tex*512).rgb*CeilingTint}
+     if Textured.z>0 {col=imageSrc3UnsafeAtFromSrc0Pos(imageSrc0Origin()+tex*512).rgb*CeilingTint}
     }
     if c.x==3 {
      // Reuse the floor stone on the treads, with darker risers.

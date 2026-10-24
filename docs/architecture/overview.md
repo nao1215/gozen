@@ -68,3 +68,5 @@ Novel games are games whose places show events in the novel window (`ui.message:
 A campaign is a game of regions held by factions over turns, with its own YAML words (`regions`, `factions` and `campaign` in `game.yaml`, `schema_version: 5`). Its state is in variables with generated names, read by the expression names `region`, `faction`, `campaign`, `generals`, `general`, `target` and `next_to` ([ADR 0030](../decisions/0030-campaigns.md)).
 
 For switching a using module's calls, save location and CLI checks, see [using Gozen from a game](adoption.md).
+
+Optional stacked spaces (schema version 8) reuse dungeon tiles across bounded levels, with continuous stairs, separate per-level records and an opt-in presentation renderer. See [ADR 0040](../decisions/0040-stacked-spaces.md) and the [technical demonstration](../examples/stacked-spaces.md).

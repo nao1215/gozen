@@ -46,6 +46,9 @@ func newDungeonScene(g *Game) *dungeonScene {
 }
 
 func (s *dungeonScene) arrive() {
+	if s.space != nil {
+		s.space.remaining = 0
+	}
 	s.age = 0
 	s.snapshot()
 	s.trans, s.transT = "fade", transTicks*2

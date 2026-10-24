@@ -146,7 +146,7 @@ func Place(db *data.DB, st *rpg.State, loc, at, facing string) {
 	d := l.Dungeon
 	level := 0
 	if d.Space != nil {
-		if st.Pos.In == loc {
+		if st.Pos.In == loc && at != "" {
 			level = st.Pos.Level
 		}
 		d = data.DungeonLevel(d, level)

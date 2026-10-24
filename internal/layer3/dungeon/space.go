@@ -20,7 +20,7 @@ func spaceStep(s *data.Space, p rpg.Pos) (rpg.Pos, bool) {
 				}
 			}
 			if n, on := data.StairOffset(stair, out.X, out.Y); on && n > 0 && n < stair.Length {
-				if _, along := data.StairOffset(stair, p.X, p.Y); !along {
+				if from, along := data.StairOffset(stair, p.X, p.Y); !along || from == stair.Length {
 					return out, false
 				}
 			}
