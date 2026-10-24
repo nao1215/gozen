@@ -113,18 +113,20 @@ func makeImages(t *testing.T, m manifest, rootAbs, work, out string) []string {
 	t.Logf("selection: %d pictures, %d runs, %d samples, shard %q", len(images), len(runNames), len(m.samplesFor(runNames)), os.Getenv("GOZEN_DOCS_SHARD"))
 	began := time.Now()
 	var builds []func() error
+	built := map[string]string{}
 	for _, name := range m.samplesFor(runNames) {
+		pkg := m.Samples[name].Package
+		if bin, ok := built[pkg]; ok {
+			bins[name] = bin
+			continue
+		}
 		bin := filepath.Join(work, "bin", name)
 		if runtime.GOOS == "windows" {
 			bin += ".exe"
 		}
 		bins[name] = bin
-		pkg := m.Samples[name].Package
+		built[pkg] = bin
 		builds = append(builds, func() error {
-			if _, err := os.Stat(filepath.Join(rootAbs, filepath.FromSlash(pkg), "go.mod")); err == nil {
-				// a sample that is a module of its own (examples/go-zen) is built in its directory
-				return runCommand(t.Context(), filepath.Join(rootAbs, filepath.FromSlash(pkg)), 5*time.Minute, "go", "build", "-trimpath", "-buildvcs=false", "-o", bin, ".")
-			}
 			return runCommand(t.Context(), rootAbs, 5*time.Minute, "go", "build", "-trimpath", "-buildvcs=false", "-o", bin, pkg)
 		})
 	}
@@ -148,6 +150,13 @@ func makeImages(t *testing.T, m manifest, rootAbs, work, out string) []string {
 			a = strings.ReplaceAll(a, "{script}", filepath.Join(rootAbs, filepath.FromSlash(r.Script)))
 			a = strings.ReplaceAll(a, "{game}", game)
 			args[i] = strings.ReplaceAll(a, "{out}", dir)
+		}
+		if source := m.Samples[r.Sample].Game; source != "" {
+			gameDir := filepath.Join(rootAbs, filepath.FromSlash(source))
+			if r.Edit != nil {
+				gameDir = game
+			}
+			args = append([]string{"play", "run", gameDir}, args...)
 		}
 		plays = append(plays, func() error {
 			began := time.Now()

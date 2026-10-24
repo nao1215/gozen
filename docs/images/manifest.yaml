@@ -16,15 +16,19 @@
 
 samples:
   space:
-    package: ./examples/space
+    package: ./cmd/gozen
+    game: examples/space/game
   go-zen:
-    package: ./examples/go-zen
+    package: ./cmd/gozen
+    game: examples/go-zen/game
   puppet:
     package: ./examples/puppet
   novel:
-    package: ./examples/novel
+    package: ./cmd/gozen
+    game: examples/novel/game
   campaign:
-    package: ./examples/campaign
+    package: ./cmd/gozen
+    game: examples/campaign/game
 
 # One run of a sample. {script} is the script file and {out} a new, empty
 # directory for the run: the shots, saves and trace go under it. `check` is
@@ -126,12 +130,12 @@ runs:
     sample: novel
     script: scripts/capture-novel-ending.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --event, with_brenna, --line, "7", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
-  # The hot reload (F5): the game runs from a copy of its files ({game}, --dir), and
+  # The hot reload (F5): the game runs from a copy of its files ({game}), and
   # `edit` changes a line in the copy once the shot `after` is written.
   playtest-reload:
     sample: novel
     script: scripts/capture-playtest-reload.txt
-    args: [--dev, --mute, --seed, "7", --window, "1", --dir, "{game}", --event, toast, --line, "3", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --line, "3", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
     edit:
       copy: examples/novel/game
       after: rl011

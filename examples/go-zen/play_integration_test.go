@@ -10,6 +10,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io/fs"
+	"os"
 	"regexp"
 	"slices"
 	"strconv"
@@ -29,10 +30,7 @@ var missingArt = regexp.MustCompile(`no (?:file|picture|face) assets/(\S+\.(?:pn
 // pictures it stood in for.
 func standIns(t *testing.T) (fs.FS, []string) {
 	t.Helper()
-	sub, err := gameFS()
-	if err != nil {
-		t.Fatal(err)
-	}
+	sub := os.DirFS("game")
 	m := fstest.MapFS{}
 	if err := fs.WalkDir(sub, ".", func(name string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -44,7 +42,7 @@ func standIns(t *testing.T) (fs.FS, []string) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	_, err = gozen.Load(m, ".")
+	_, err := gozen.Load(m, ".")
 	if err == nil {
 		return m, nil
 	}

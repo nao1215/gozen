@@ -8,8 +8,8 @@ The product direction and boundaries are recorded in [ADR 0041](../decisions/004
 | 2 | `play run` and shared startup | Real CLI plays, records and restores saves | Merged in #46 |
 | 3 | `new`, three templates and no-code onboarding | Templates validate and play without Go source | Merged in #47 |
 | 4 | Desktop export and private player | Move the package, hide its source, play and restore with no toolchain; native tests for claimed platforms | Merged in #48 |
-| 5 | Web export and generic WASM runtime | Serve under a subdirectory, play a choice, save and reload in a real browser | Implemented in this change |
-| 6 | First-party samples and useful library-only features | Samples use the common player; retained features have YAML/CLI coverage | Planned |
+| 5 | Web export and generic WASM runtime | Serve under a subdirectory, play a choice, save and reload in a real browser | Merged in #49 |
+| 6 | First-party samples and useful library-only features | Samples use the common player; retained features have YAML/CLI coverage | Implemented in this change |
 | 7 | Public Go API retirement | Existing YAML and pre-migration saves still play; no unintended public application API | After distribution and migration |
 | 8 | Post-migration bug audit | End-to-end authoring/distribution, boundary inputs, oversized data and save compatibility; fixes include reproductions | Planned |
 | 9 | Refactoring | Remove dead code, duplication and unused abstractions; organize tests by implementation or integration behavior | Planned |
@@ -29,8 +29,8 @@ there is no implicit download or author-side compilation.
 A desktop player locates `game/` beside itself. A web player consumes
 `game/files.json`, serves its title from game data, and uses the existing browser
 save store. `internal/webfs` currently prefetches every manifest entry; do not
-claim progressive lazy loading. Existing sample build recipes use Go and Python
-and are maintainer workflows until the generic runtime replaces them.
+claim progressive lazy loading. The showcase site builds one common WASM player and uses Python/Pillow to compress
+its images. These are maintainer tasks; `pack web` needs neither Go nor Python.
 
 ## Scope decisions
 
@@ -43,3 +43,17 @@ Custom Ebitengine loops and arbitrary Go callbacks are not automatically convert
 into YAML features. Evaluate their actual game-author use before retaining them.
 The no-code workflow must remain understandable without learning a new plugin
 language. Preserve the useful engine implementation and its tests internally.
+
+## First-party feature audit
+
+| Consumer | Author-facing replacement or retained purpose |
+| --- | --- |
+| RPG, novel, campaign and stacked-space samples | `gozen play run examples/NAME/game`; browser pages share `cmd/gozen-player` |
+| Development flags, capture scripts and hot reload | `gozen play run GAME --dev`; documentation images exercise this command |
+| Moving portraits | Actor `puppet`, `pose` and `effect` YAML use the built-in renderer; the standalone puppet program remains a maintainer animation inspection tool |
+| Headless and minimal Go examples | Temporary API contract examples, to be folded into internal integration tests during PR 7; authors use `gozen sim` |
+| Standalone `chat` and `react` APIs | No first-party game consumes these packages; retain their internal rules and tests during API retirement without adding an unused YAML scripting interface |
+
+The sample integration tests still cover story branches, translations and campaign
+outcomes. Graphics tests start the real CLI; image capture builds it once for all
+four game directories. No sample-specific native or WASM startup remains.

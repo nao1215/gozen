@@ -208,7 +208,8 @@ func TestReadmeLinks(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if !strings.Contains(string(mk), "website/public/"+page+"\n") {
+				targetRule := regexp.MustCompile(`(?m)^(?:[a-z-]+[ \t]+)*` + regexp.QuoteMeta("website-"+path.Base(page)) + `(?:[ \t]|:)`)
+				if !targetRule.Match(mk) {
 					t.Errorf("README.md: %s: the Makefile builds no website/public/%s", target, page)
 				}
 				continue

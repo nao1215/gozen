@@ -47,6 +47,7 @@ func (m manifest) listed(name string) bool {
 
 type sample struct {
 	Package string `yaml:"package"`
+	Game    string `yaml:"game"`
 }
 
 type run struct {
@@ -136,6 +137,11 @@ func (m manifest) validate(readFile func(string) ([]byte, error)) []string {
 		} else if _, err := readFile(path.Join(s.Package, "main.go")); err != nil {
 			bad = append(bad, fmt.Sprintf("sample %s: %s has no main.go", name, s.Package))
 		}
+		if s.Game != "" {
+			if _, err := readFile(path.Join(s.Game, "game.yaml")); err != nil {
+				bad = append(bad, fmt.Sprintf("sample %s: %s has no game.yaml", name, s.Game))
+			}
+		}
 	}
 	scripts := map[string]string{}
 	for name, r := range m.Runs {
@@ -153,7 +159,11 @@ func (m manifest) validate(readFile func(string) ([]byte, error)) []string {
 			bad = append(bad, fmt.Sprintf("run %s: no argument writes to {out}", name))
 		}
 		if e := r.Edit; e != nil {
-			bad = append(bad, e.validate(name, scripts[name], r.Args, readFile)...)
+			args := r.Args
+			if m.Samples[r.Sample].Game != "" {
+				args = append(slices.Clone(args), "{game}")
+			}
+			bad = append(bad, e.validate(name, scripts[name], args, readFile)...)
 		}
 	}
 	for file, im := range m.Images {
@@ -464,7 +474,7 @@ func TestManifestValidate(t *testing.T) {
 		return nil, errors.New("no file")
 	}
 	m := manifest{
-		Samples: map[string]sample{"s": {Package: "./examples/s"}, "gone": {Package: "./examples/gone"}},
+		Samples: map[string]sample{"s": {Package: "./examples/s"}, "gone": {Package: "./examples/gone", Game: "examples/missing/game"}},
 		Runs:    map[string]run{"r": {Sample: "s", Script: "s.txt", Args: []string{"--shots", "{out}"}}, "q": {Sample: "nope"}},
 		Images: map[string]image{
 			"one.jpg":   {Run: "r", Shot: "one", JPEG: &jpegEncoding{}},
@@ -477,6 +487,7 @@ func TestManifestValidate(t *testing.T) {
 	got := strings.Join(m.validate(read), "\n")
 	for _, want := range []string{
 		"sample gone: ./examples/gone has no main.go",
+		"sample gone: examples/missing/game has no game.yaml",
 		"run q: unknown sample",
 		"run q: no argument writes to {out}",
 		"image two.jpg: s.txt has no `shot two`",

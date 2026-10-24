@@ -11,7 +11,7 @@ make docs-steps               # run the steps of the README and site
 make website website-check    # build the site and look for broken link and image references
 ```
 
-`make docs` runs `docs-images-check`, `docs-steps`, `website` and `website-check` together. Pictures and steps use a display, so on Linux Make wraps them in `xvfb-run -a -s "-screen 0 1920x1080x24"` (no window appears on your screen). You need ffmpeg, python3 and the setup in [Graphics development](graphics.md#requirements). The site needs hugo (the version in `website.yml`).
+`make docs` runs `docs-images-check`, `docs-steps`, `website` and `website-check` together. Pictures and steps use a display, so on Linux Make wraps them in `xvfb-run -a -s "-screen 0 1920x1080x24"` (no window appears on your screen). You need ffmpeg, python3 and the setup in [Graphics development](graphics.md#requirements). The site needs Hugo (the version in `website.yml`), Pillow with WebP support, and `go-licenses` v2.0.1. It builds one WASM player for all three sample games; the runtime notices are published under `play/runtime/`.
 
 ## The picture ledger
 
@@ -19,7 +19,7 @@ All pictures of the README, the site and `docs/` are in `docs/images/`, and each
 
 | Item | Content |
 | --- | --- |
-| `samples` | The name of a sample and its Go package (such as `./examples/go-zen`; a sample with its own `go.mod` is built in its directory). Built first |
+| `samples` | The name of a sample, its `package`, and optional `game` directory. Games use `./cmd/gozen`; each unique package is built once |
 | `runs` | The arguments for one run of a sample. `{script}` is the script file and `{out}` is the new directory of that run (where shots, saves and traces go). `check` runs after the run with that run's directory as its last argument, and confirms that play went as planned. `edit` films the hot reload: `copy` (a game directory) is copied to `{game}` before the run, and once the run writes the shot `after`, `old` in `file` of the copy becomes `new` (the script then presses `reload`) |
 | `images` | For each image, its run, the source frames (`shot: NAME` is `shot NAME` of the script, `pick` takes one frame by a glob of names and an event of the trace, `frames` is the sequence of frames of a moving image) and the encoding (`jpeg`, `gif`). `tolerance` is the share of pixels allowed to differ in the staleness check (default 2%) |
 
@@ -74,7 +74,7 @@ The current exclusions (shown in the log of `docs-steps`):
 | --- | --- |
 | Installing with Homebrew | Installs from the tap, outside the repository |
 | cosign, `gh attestation`, slsa-verifier | Need the files of a published release (and a GitHub login) |
-| `go run .` of your own game and starting with `--dev` (the README's "Play with the test tools", the edit–play loop page) | Opens a window in your own game's module and waits for input. `go run . --dev --dir game` in getting-started is a build, which checks that the game you made builds |
+| `gozen play run game --dev` (README and edit–play loop) | Opens a window and waits for input. Scripted CLI E2E and documentation image runs exercise the same startup |
 | `gozen play shots` | Needs a game built by the runner and a display. `e2e/atago/graphics.atago.yaml` runs it |
 | `gozen art mosaic auto --model`, `gozen art faces` | Need a detection model and ONNX Runtime (and cgo) |
 | `sudo apt-get install xvfb xauth` | Installs system packages. The capture inside Xvfb that follows is run |
