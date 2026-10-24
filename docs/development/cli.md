@@ -31,7 +31,7 @@ A diagnostic can end with a code, `[GZN1101]`; `gozen check --format json` and `
 The registry is `internal/diag`: `register` is the only way to make a code and needs a summary, a detail and a fix. Rules:
 
 - One code per fix, not per call site. Reword a message freely; never renumber a code.
-- `cli.Invalid(code, …)` is an argument error (exit 2); `code.Errorf(…)` or `code.Wrap(err)` marks a failure (exit 1); a definitions check passes the code to `errorf` or `warnf`.
+- `cliio.Invalid(code, …)` is an argument error (exit 2); `code.Errorf(…)` or `code.Wrap(err)` marks a failure (exit 1); a definitions check passes the code to `errorf` or `warnf`.
 - After adding or changing an entry, run `go run ./internal/dev/errgen` to rewrite `website/content/errors.md`. The tests of `internal/diag` fail when the page is stale, when a code is not raised from non-test code, when its first digit disagrees with its package, and when no scenario of `e2e/atago` asserts it with the matching `exit_code` (a code that needs cgo, a display or the network is listed in `untested` with the reason).
 - `gozen help GZN1101` prints the entry.
 
@@ -74,3 +74,23 @@ For macOS, the direct steps are the same build command without `.exe`, `bin` add
 scenario with Chrome, Python 3 and `go-licenses`. It checks a choice, a save,
 a page reload and a second save under a subdirectory URL. The ordinary CLI
 suite excludes `web`; the Website and Release Smoke workflows run it separately.
+
+## Structured result migration
+
+[ADR 0042](../decisions/0042-command-and-output-contract.md) defines the target
+command and output contracts. The shared I/O and argument errors now live in
+`internal/cliio`; protected output paths remain in `cmd/internal/cli`.
+
+`new` and `theme list` currently support `--format text|json|jsonl`. JSON emits one
+version-1 envelope with `command`, `status` and `data`. JSONL theme lists emit
+ordered `item` records and one terminal `summary`; creation emits one summary.
+Both machine formats send fatal diagnostics to stderr as JSONL, preserving the
+existing GZN codes and exit values. Other commands retain their documented
+formats until their migration batch; do not assume the new envelope everywhere.
+
+The real-binary contracts live in `e2e/atago/new.atago.yaml`,
+`e2e/atago/theme.atago.yaml` and the existing `errors.atago.yaml`. They cover
+argument order, a leading-dash directory, format framing, structured diagnostics,
+creation, validation and overwrite refusal. `internal/diag/usage_test.go` checks
+both textual assertions and JSON `$.code` matchers against each code's exit value.
+The registry and existing code meanings are unchanged.

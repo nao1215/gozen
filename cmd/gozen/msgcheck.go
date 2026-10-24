@@ -12,14 +12,14 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"golang.org/x/image/font/gofont/goregular"
 	"golang.org/x/image/font/sfnt"
 
 	"github.com/nao1215/gozen/internal/diag"
 
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
-
-	"github.com/nao1215/gozen/cmd/internal/cli"
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
@@ -391,7 +391,7 @@ func sayIssue(gm *data.Game, file string, line int, text string) []msgIssue {
 }
 
 func reportMessages(writer io.Writer, issues []msgIssue) error {
-	out := &cli.Output{Writer: writer}
+	out := &cliio.Output{Writer: writer}
 	if len(issues) == 0 {
 		return nil
 	}

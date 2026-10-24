@@ -15,6 +15,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
@@ -41,7 +43,7 @@ func (c *command) design(args []string) (err error) {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return cli.Invalid(diag.Operands, "expected <game-dir>")
+		return cliio.Invalid(diag.Operands, "expected <game-dir>")
 	}
 	dir := fs.Arg(0)
 	if *cfgPath == "" {
@@ -66,7 +68,7 @@ func (c *command) design(args []string) (err error) {
 		return err
 	}
 	if *format != "text" && *format != "json" {
-		return cli.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
+		return cliio.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
 	}
 	if *list {
 		b, err := json.MarshalIndent(cfg, "", "  ")
@@ -102,14 +104,14 @@ func (c *command) design(args []string) (err error) {
 	if err := os.Mkdir(filepath.Join(*out, "timeline"), 0o750); err != nil {
 		return err
 	}
-	var debug *cli.Output
+	var debug *cliio.Output
 	if *verbose {
 		f, openErr := os.Create(filepath.Join(*out, "debug.log"))
 		if openErr != nil {
 			return openErr
 		}
 		defer func() { err = errors.Join(err, f.Close()) }()
-		debug = &cli.Output{Writer: f}
+		debug = &cliio.Output{Writer: f}
 		var mu sync.Mutex
 		cfg.Debug = func(format string, a ...any) {
 			mu.Lock()
@@ -129,7 +131,7 @@ func (c *command) design(args []string) (err error) {
 			found = found || p.ID == id
 		}
 		if !found {
-			return cli.Invalid(diag.UnknownName, "--only: unknown persona %q", id)
+			return cliio.Invalid(diag.UnknownName, "--only: unknown persona %q", id)
 		}
 	}
 	runs := make([]*designeval.Run, len(personas))
@@ -162,7 +164,7 @@ func (c *command) design(args []string) (err error) {
 		return debug.Err
 	}
 	if len(personas) == 0 {
-		return cli.Invalid(diag.UnknownName, "--only matched no personas")
+		return cliio.Invalid(diag.UnknownName, "--only matched no personas")
 	}
 	sums := make([]designeval.Summary, len(runs))
 	for i, r := range runs {
@@ -678,7 +680,7 @@ func (c *command) designJSON(dir, cfgPath string, cfg *designeval.Config, only [
 		out = append(out, persona{Summary: designeval.Summarize(r, cfg.Release), Seed: r.Seed, Problems: r.Problems, ClearT: r.ClearT, End: r.End, Events: r.Events, Segments: r.Segments})
 	}
 	if len(out) == 0 {
-		return cli.Invalid(diag.UnknownName, "--only matched no personas")
+		return cliio.Invalid(diag.UnknownName, "--only matched no personas")
 	}
 	b, err := json.MarshalIndent(map[string]any{"format_version": 1, "personas": out}, "", "  ")
 	if err != nil {

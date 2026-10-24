@@ -45,3 +45,106 @@ scenarios:
       exit_code: 2
       stdout: {equals: ''}
       changes: {created: [], modified: [], deleted: []}
+
+- name: structured creation preserves files and rejects a repeated destination (${format})
+  matrix:
+  - {format: json}
+  - {format: jsonl}
+  steps:
+  - run:
+      command: gozen new "my game" --title "Contract game" --format ${format} --id contract-game
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: new}
+        - {path: $.status, equals: ok}
+        - {path: $.data.directory, equals: my game}
+        - {path: $.data.id, equals: contract-game}
+        - {path: $.data.template, equals: rpg}
+      stderr: {equals: ''}
+      changes: {created: ['my game/**'], modified: [], deleted: []}
+  - assert:
+      file:
+        path: my game/game.yaml
+        contains: ['id: "contract-game"', 'title: "Contract game"']
+  - run:
+      command: gozen check "my game"
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      changes: {created: [], modified: [], deleted: []}
+  - run:
+      command: gozen new --format ${format} "my game" --id replacement
+  - assert:
+      exit_code: 1
+      stdout: {equals: ''}
+      stderr:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: new}
+        - {path: $.severity, equals: error}
+        - {path: $.code, equals: GZN1501}
+      changes: {created: [], modified: [], deleted: []}
+- name: option order and a leading-dash directory work with JSON
+  matrix:
+  - {args: '--format json --id contract -- --game'}
+  - {args: '--id contract --format=json -- --game'}
+  steps:
+  - run:
+      command: gozen new ${args}
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.data.directory, equals: --game}
+        - {path: $.data.id, equals: contract}
+  - assert:
+      file:
+        path: --game/game.yaml
+        contains: 'id: "contract"'
+- name: structured argument errors keep their diagnostic codes (${args})
+  matrix:
+  - {args: '--format json', code: GZN2102}
+  - {args: '--format jsonl --template absent game', code: GZN2202}
+  - {args: '--format json game --id ../bad', code: GZN2201}
+  - {args: '--format json --absent game', code: GZN2103}
+  - {args: '--absent game --format json', code: GZN2103}
+  - {args: '--format text --absent --format json', code: GZN2103}
+  - {args: 'game -template rpg --format jsonl', code: GZN2104}
+  - {args: '--format json game -template rpg', code: GZN2104}
+  steps:
+  - run:
+      command: gozen new ${args}
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.severity, equals: error}
+        - {path: $.code, equals: '${code}'}
+      changes: {created: [], modified: [], deleted: []}
+- name: unsupported output encoding fails before creation
+  steps:
+  - run:
+      command: gozen new game --format xml
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr: {contains: '[GZN2202]'}
+      changes: {created: [], modified: [], deleted: []}
+
+- name: the last format also selects text diagnostics after a partial parse
+  steps:
+  - run:
+      command: gozen new --format json --absent --format text
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr:
+        contains: '[GZN2103]'
+        not_contains: '"version":'
+      changes: {created: [], modified: [], deleted: []}

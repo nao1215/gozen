@@ -58,6 +58,7 @@ components:
   commands: { in: ["cmd/gozen/**", "cmd/internal/**"] }
   # GNU-style options and help pages shared by gozen, its production commands, and runner (ADR 0018).
   player: { in: "cmd/gozen-player/**" }
+  cliio: { in: "internal/cliio/**" }
   clihelp: { in: "internal/clihelp/**" }
   # Diagnostic codes (ADR 0024): a leaf like clihelp, used by the commands, the loader and the tools.
   diag: { in: ["internal/diag", "internal/diag/**"] }
@@ -123,11 +124,13 @@ deps:
     mayDependOn: [private6, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]
   commands:
-    mayDependOn: [commands, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet, private1, private2, private3, private4, private5, promptgen, mosaic, clihelp, diag]
+    mayDependOn: [commands, expr, text, savefile, chat, data, rpg, battle, event, world, react, headless, gfx, play, puppet, private1, private2, private3, private4, private5, promptgen, mosaic, clihelp, cliio, diag]
     canUse: [yaml, ebiten, image, pflag]
   player:
     mayDependOn: [play, private2, webfs]
     canUse: [ebiten, js]
+  cliio:
+    mayDependOn: [cliio, diag]
   clihelp:
     mayDependOn: [clihelp, diag]
     canUse: [pflag]

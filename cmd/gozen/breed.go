@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"sort"
 
-	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
 	data "github.com/nao1215/gozen/schema"
@@ -27,10 +28,10 @@ func (c *command) breedCmd(args []string) error {
 		return err
 	}
 	if f.NArg() != 1 {
-		return cli.Invalid(diag.Operands, "sim breed expects one game directory")
+		return cliio.Invalid(diag.Operands, "sim breed expects one game directory")
 	}
 	if *format != "text" && *format != "json" {
-		return cli.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
+		return cliio.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
 	}
 	fsys, err := gameFS(f.Arg(0))
 	if err != nil {

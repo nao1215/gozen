@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
@@ -29,14 +31,14 @@ func (c *command) trialCmd(args []string) (err error) {
 		return err
 	}
 	if fl.NArg() != 2 && (!*dry || fl.NArg() != 1) {
-		return cli.Invalid(diag.Operands, "expected <game-dir> <out-dir>")
+		return cliio.Invalid(diag.Operands, "expected <game-dir> <out-dir>")
 	}
 	src := fl.Arg(0)
 	if !cli.Relative(*conf) {
-		return cli.Invalid(diag.BadPath, "--config must be a portable relative FS path")
+		return cliio.Invalid(diag.BadPath, "--config must be a portable relative FS path")
 	}
 	if (*overlay == "") != (*inspect == "") {
-		return cli.Invalid(diag.OptionNeedsAnother, "--overlay and --inspect must be supplied together")
+		return cliio.Invalid(diag.OptionNeedsAnother, "--overlay and --inspect must be supplied together")
 	}
 	if !*dry {
 		if err := cli.Destination(fl.Arg(1), src, *overlay); err != nil {

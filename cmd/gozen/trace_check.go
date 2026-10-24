@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/cliio"
 
-	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/diag"
 
 	lang "github.com/nao1215/gozen/internal/text"
 )
@@ -261,7 +261,7 @@ func checkTrace(path string, musicLate float64, w io.Writer) (n int, err error) 
 		return 0, err
 	}
 	defer func() { err = errors.Join(err, f.Close()) }()
-	output := &cli.Output{Writer: w}
+	output := &cliio.Output{Writer: w}
 	c := &traceChecker{
 		musicLate: musicLate, speed: 1, reported: map[string]bool{}, pos: map[string]float64{},
 		carried: map[string]bool{}, spoke: map[string]bool{},

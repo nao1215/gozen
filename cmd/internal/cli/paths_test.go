@@ -1,8 +1,8 @@
 package cli
 
 import (
+	"bytes"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -178,54 +178,76 @@ func TestWriteNewCreatesParentsAndRefusesBadPlaces(t *testing.T) {
 	}
 }
 
-type failingWriter struct{ n int }
-
-func (w *failingWriter) Write(b []byte) (int, error) {
-	w.n--
-	if w.n < 0 {
-		return 0, io.ErrClosedPipe
+func TestPortablePaths(t *testing.T) {
+	for _, p := range []string{"../file", "/file", "C:/file", `a\file`, "a//b", "a/CON.txt", "a/nul", "x.", "x ", "a\x00b", "COM1", "a:b"} {
+		if Relative(p) {
+			t.Errorf("accepted %q", p)
+		}
 	}
-	return len(b), nil
-}
-
-func TestOutputKeepsTheFirstFailureAndStopsWriting(t *testing.T) {
-	w := &failingWriter{n: 1}
-	out := &Output{Writer: w}
-	out.Print("a")
-	if out.Err != nil {
-		t.Fatalf("the first write succeeds: %v", out.Err)
+	for _, p := range []string{".", "a/b.yaml", "camp 日本語/file.png"} {
+		if !Relative(p) {
+			t.Errorf("rejected %q", p)
+		}
 	}
-	out.Printf("%d", 2)
-	if !errors.Is(out.Err, io.ErrClosedPipe) {
-		t.Fatalf("the second write fails: %v", out.Err)
-	}
-	first := out.Err
-	out.Println("x")
-	out.Print("y")
-	out.Printf("z")
-	if !errors.Is(out.Err, first) || w.n != -1 {
-		t.Errorf("after a failure nothing more is written: err %v, calls left %d", out.Err, w.n)
-	}
-	if n, err := out.Write([]byte("w")); n != 0 || !errors.Is(err, first) {
-		t.Errorf("Write after a failure: %d %v", n, err)
+	if ID("a/b") || ID(".") || !ID("camp-1") {
+		t.Fatal("invalid file ID policy")
 	}
 }
 
-func TestUsageErrorsCarryTheirCodes(t *testing.T) {
-	err := Invalid(diag.Operands, "expected %d args", 2)
-	var u *UsageError
-	if !errors.As(err, &u) || u.Code != diag.Operands || u.Message != "expected 2 args" {
-		t.Fatalf("%#v", err)
+func TestPublishPreservesExistingAndRejectsOverlaps(t *testing.T) {
+	root := t.TempDir()
+	src := filepath.Join(root, "source")
+	if err := os.Mkdir(src, 0o750); err != nil {
+		t.Fatal(err)
 	}
-	if got := err.Error(); got != "expected 2 args ["+diag.Operands.String()+"]" {
-		t.Errorf("the message ends with the code: %q", got)
+	output := filepath.Join(root, "output")
+	build := func(stage string) error { return os.WriteFile(filepath.Join(stage, "marker"), []byte("kept"), 0o600) }
+	if err := Publish(output, []string{src}, build); err != nil {
+		t.Fatal(err)
 	}
-	coded := Parse(diag.UnknownOption.Errorf("unknown option --zzz"))
-	if !errors.As(coded, &u) || u.Code != diag.UnknownOption || !strings.Contains(u.Message, "--zzz") || strings.Contains(u.Message, "GZN") {
-		t.Errorf("a coded parse error keeps its code and its bare text: %#v", coded)
+	for _, p := range []string{output, filepath.Join(src, "inside"), root} {
+		if err := Publish(p, []string{src}, build); err == nil {
+			t.Fatalf("accepted %s", p)
+		}
 	}
-	plain := Parse(errors.New("something else"))
-	if !errors.As(plain, &u) || u.Code != diag.BadValue || u.Message != "something else" {
-		t.Errorf("an error with no code is a bad value: %#v", plain)
+	b, err := os.ReadFile(filepath.Join(output, "marker")) //nolint:gosec // Test-owned path under t.TempDir.
+	if err != nil || string(b) != "kept" {
+		t.Fatalf("%s %v", b, err)
+	}
+	failure := errors.New("build failed")
+	failed := filepath.Join(root, "failed")
+	if err := Publish(failed, nil, func(stage string) error {
+		if err := build(stage); err != nil {
+			return err
+		}
+		return failure
+	}); !errors.Is(err, failure) {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(failed); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("failed build leaked destination")
+	}
+	if runtime.GOOS != "windows" {
+		link := filepath.Join(root, "link")
+		if err := os.Symlink(src, link); err != nil {
+			t.Fatal(err)
+		}
+		if err := Destination(filepath.Join(link, "new"), src); err == nil {
+			t.Fatal("symlink bypassed overlap check")
+		}
+	}
+}
+
+func TestWriteNew(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "new.txt")
+	if err := WriteNew(p, []byte("keep")); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteNew(p, []byte("replace")); !errors.Is(err, os.ErrExist) {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(p) //nolint:gosec // Test-owned path under t.TempDir.
+	if err != nil || !bytes.Equal(b, []byte("keep")) {
+		t.Fatalf("%s %v", b, err)
 	}
 }

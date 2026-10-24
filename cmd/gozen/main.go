@@ -9,9 +9,10 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/spf13/pflag"
 
-	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
 	mosaiccmd "github.com/nao1215/gozen/internal/mosaic/command"
@@ -19,8 +20,15 @@ import (
 )
 
 type command struct {
-	out, stderr *cli.Output
+	out, stderr *cliio.Output
 	path        string // the command path reached, "sim battle"; "" at the top
+	report      cliio.Report
+}
+
+// reporting registers structured result output for a migrated command.
+func (c *command) reporting(f *pflag.FlagSet) {
+	c.report.Command = strings.TrimPrefix(f.Name(), "gozen ")
+	f.StringVar(&c.report.Format, "format", "text", "result encoding: text, json, or jsonl")
 }
 
 func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }
@@ -71,19 +79,29 @@ var tree = map[string]node{
 // parse parses a command's options. On --help it prints the page and returns
 // clihelp.ErrHelp, which run turns into exit 0.
 func (c *command) parse(fs *pflag.FlagSet, args []string) error {
+	if c.report.Command != "" {
+		c.report.Format = clihelp.OutputFormat(fs, args)
+	}
 	help, err := clihelp.Parse(fs, args)
 	if err != nil {
-		return cli.Parse(err)
+		if c.report.Command != "" {
+			// A partial parse may have overwritten the preselected last --format.
+			c.report.Format = clihelp.OutputFormat(fs, args)
+		}
+		return cliio.Parse(err)
 	}
 	if help {
 		c.out.Print(pages[strings.TrimPrefix(fs.Name(), "gozen ")].String(fs))
 		return clihelp.ErrHelp
 	}
+	if c.report.Command != "" {
+		return c.report.Validate()
+	}
 	return nil
 }
 
 func run(args []string, out, stderr io.Writer) int {
-	c := &command{out: &cli.Output{Writer: out}, stderr: &cli.Output{Writer: stderr}}
+	c := &command{out: &cliio.Output{Writer: out}, stderr: &cliio.Output{Writer: stderr}}
 	if len(args) > 0 && args[0] == "help" {
 		// "gozen help <command> ..." is the same as "gozen <command> ... --help".
 		words := args[1:]
@@ -130,8 +148,17 @@ func (c *command) finish(err error) int {
 	if err == nil {
 		return 0
 	}
+	if c.report.Machine() {
+		if writeErr := c.report.Diagnostic(c.stderr, err); writeErr != nil || c.out.Err != nil || c.stderr.Err != nil {
+			return 1
+		}
+		if _, ok := errors.AsType[*cliio.UsageError](err); ok {
+			return 2
+		}
+		return 1
+	}
 	c.stderr.Println(err)
-	if _, ok := errors.AsType[*cli.UsageError](err); ok {
+	if _, ok := errors.AsType[*cliio.UsageError](err); ok {
 		help := "gozen --help"
 		if c.path != "" {
 			help = "gozen " + c.path + " --help"
@@ -145,16 +172,16 @@ func (c *command) finish(err error) int {
 // top handles gozen with no command: -h/--help and -v/--version.
 func (c *command) top(args []string) error {
 	if len(args) == 0 {
-		return cli.Invalid(diag.CommandMissing, "usage: gozen <command> [OPTIONS] [ARGUMENTS]; use --help")
+		return cliio.Invalid(diag.CommandMissing, "usage: gozen <command> [OPTIONS] [ARGUMENTS]; use --help")
 	}
 	fs := clihelp.NewFlagSet("gozen")
 	ver := fs.BoolP("version", "v", false, "print the gozen version and exit")
 	help, err := clihelp.Parse(fs, args)
 	if err != nil {
-		return cli.Parse(err)
+		return cliio.Parse(err)
 	}
 	if fs.NArg() != 0 {
-		return cli.Invalid(diag.OptionBeforeCommand, "options go after the command: gozen <command> [OPTIONS]; use --help")
+		return cliio.Invalid(diag.OptionBeforeCommand, "options go after the command: gozen <command> [OPTIONS]; use --help")
 	}
 	switch {
 	case help:
@@ -162,7 +189,7 @@ func (c *command) top(args []string) error {
 	case *ver:
 		c.out.Println("gozen", clihelp.Version())
 	default:
-		return cli.Invalid(diag.CommandMissing, "usage: gozen <command> [OPTIONS] [ARGUMENTS]; use --help")
+		return cliio.Invalid(diag.CommandMissing, "usage: gozen <command> [OPTIONS] [ARGUMENTS]; use --help")
 	}
 	return nil
 }
@@ -173,22 +200,22 @@ func (c *command) group(n node, args []string) error {
 	fs := clihelp.NewFlagSet("gozen " + c.path)
 	help, err := clihelp.Parse(fs, args)
 	if err != nil {
-		return cli.Parse(err)
+		return cliio.Parse(err)
 	}
 	if help {
 		c.out.Print(groups[c.path].String(fs))
 		return clihelp.ErrHelp
 	}
-	return cli.Invalid(diag.CommandMissing, "gozen %s needs a command: %s", c.path, strings.Join(n.subs, ", "))
+	return cliio.Invalid(diag.CommandMissing, "gozen %s needs a command: %s", c.path, strings.Join(n.subs, ", "))
 }
 
 // unknown reports a command that is not in the tree.
 func (c *command) unknown(args []string) error {
 	name := args[0]
 	if c.path == "" {
-		return cli.Invalid(diag.UnknownCommand, "unknown command %q; use --help", name)
+		return cliio.Invalid(diag.UnknownCommand, "unknown command %q; use --help", name)
 	}
-	return cli.Invalid(diag.UnknownCommand, "unknown command %q of gozen %s: use %s", name, c.path, strings.Join(tree[c.path].subs, ", "))
+	return cliio.Invalid(diag.UnknownCommand, "unknown command %q of gozen %s: use %s", name, c.path, strings.Join(tree[c.path].subs, ", "))
 }
 
 // explain prints the entry of a diagnostic code (gozen help GZN1101).
@@ -207,7 +234,7 @@ func (c *command) explain(code string) error {
 	if len(near) > 0 {
 		hint = "codes of the same family: " + strings.Join(near, ", ") + "; see " + diag.URL
 	}
-	return cli.Invalid(diag.UnknownCode, "unknown diagnostic code %s; %s", strings.ToUpper(code), hint)
+	return cliio.Invalid(diag.UnknownCode, "unknown diagnostic code %s; %s", strings.ToUpper(code), hint)
 }
 
 func (c *command) versionCmd(args []string) error {
@@ -216,7 +243,7 @@ func (c *command) versionCmd(args []string) error {
 		return err
 	}
 	if f.NArg() != 0 {
-		return cli.Invalid(diag.Operands, "version takes no operands")
+		return cliio.Invalid(diag.Operands, "version takes no operands")
 	}
 	c.out.Println("gozen", clihelp.Version())
 	return nil
@@ -229,10 +256,10 @@ func (c *command) bookCmd(args []string) error {
 		return err
 	}
 	if f.NArg() != 1 {
-		return cli.Invalid(diag.Operands, "book expects one directory")
+		return cliio.Invalid(diag.Operands, "book expects one directory")
 	}
 	if *format != "markdown" && *format != "json" {
-		return cli.Invalid(diag.NotAChoice, "--format is markdown or json, not %q", *format)
+		return cliio.Invalid(diag.NotAChoice, "--format is markdown or json, not %q", *format)
 	}
 	if *format == "json" {
 		return c.bookLineageJSON(f.Arg(0))
@@ -247,7 +274,7 @@ func (c *command) notesCmd(args []string) error {
 		return err
 	}
 	if f.NArg() != 1 {
-		return cli.Invalid(diag.Operands, "play notes expects one directory")
+		return cliio.Invalid(diag.Operands, "play notes expects one directory")
 	}
 	return c.memosCmd(f.Args(), *memoOut)
 }
@@ -260,19 +287,19 @@ func (c *command) checkCmd(args []string) error {
 		return err
 	}
 	if f.NArg() != 1 {
-		return cli.Invalid(diag.Operands, "check expects one directory")
+		return cliio.Invalid(diag.Operands, "check expects one directory")
 	}
 	switch *only {
 	case "", "structure", "layout":
 	default:
-		return cli.Invalid(diag.NotAChoice, "--only is structure or layout, not %q", *only)
+		return cliio.Invalid(diag.NotAChoice, "--only is structure or layout, not %q", *only)
 	}
 	switch *format {
 	case "text":
 	case "json":
 		return c.checkJSON(f.Arg(0), *only)
 	default:
-		return cli.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
+		return cliio.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
 	}
 	switch *only {
 	case "structure":

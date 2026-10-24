@@ -11,7 +11,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
 
@@ -31,11 +32,11 @@ func (c *command) traceCmd(args []string) (err error) {
 		return err
 	}
 	if fl.NArg() != 1 {
-		return cli.Invalid(diag.Operands, "expected <trace.jsonl>")
+		return cliio.Invalid(diag.Operands, "expected <trace.jsonl>")
 	}
 	inputPath := fl.Arg(0)
 	if math.IsNaN(*from) || math.IsNaN(*to) || math.IsNaN(*musicLate) || math.IsInf(*from, 0) || math.IsInf(*to, 0) || math.IsInf(*musicLate, 0) || *from < 0 || *to < 0 || (*to > 0 && *to < *from) || *musicLate < 0 {
-		return cli.Invalid(diag.BadValue, "invalid time range or music delay")
+		return cliio.Invalid(diag.BadValue, "invalid time range or music delay")
 	}
 	if *check {
 		n, err := checkTrace(inputPath, *musicLate, c.out)

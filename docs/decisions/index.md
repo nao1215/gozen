@@ -19,19 +19,19 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0009](0009-single-module.md) | D9, D10 Adoption path and the change to a single module | Accepted | |
 | [0010](0010-core-ownership.md) | T2 Owner of the shared model and rules | Partly changed | The public dungeon package is in [0014](0014-dungeon-host-adoption.md). The YAML type contract, the shape of effects and listeners, and the save entry point are in [0021](0021-query-and-commands.md) |
 | [0011](0011-presentation-ownership.md) | T3 Ownership of presentation and the launch boundary | Partly changed | The public `play.Run` and `sound` were removed in [0021](0021-query-and-commands.md) |
-| [0012](0012-cli-ownership-and-output.md) | T4 Ownership and output of the CLI | Partly changed | The entry point is in [0016](0016-single-cli.md), where win-rate calculation lives in [0017](0017-dev-balance-panel.md), option syntax in [0018](0018-gnu-options-and-help.md), and diagnostic codes in [0024](0024-command-tree-and-diagnostic-codes.md) |
+| [0012](0012-cli-ownership-and-output.md) | T4 Ownership and output of the CLI | Partly changed | The entry point is in [0016](0016-single-cli.md), where win-rate calculation lives in [0017](0017-dev-balance-panel.md), option syntax in [0018](0018-gnu-options-and-help.md), and diagnostic codes in [0024](0024-command-tree-and-diagnostic-codes.md). Direct commands and structured output are in [0042](0042-command-and-output-contract.md) |
 | [0013](0013-battle-hooks-and-meter-limits.md) | SW1 Battle events and variable limits | Accepted | |
 | [0014](0014-dungeon-host-adoption.md) | SW2 Custom dungeon actions and adoption by host games | Partly changed | The public `dungeon` was folded into commands and expressions in [0021](0021-query-and-commands.md) |
 | [0015](0015-reaction-and-chat.md) | Character reactions and chat | Partly changed | The public book and script types became opaque types in [0021](0021-query-and-commands.md) |
 | [0016](0016-single-cli.md) | A single `gozen` CLI | Partly changed | The shape of options and help is in [0018](0018-gnu-options-and-help.md), the command tree in [0024](0024-command-tree-and-diagnostic-codes.md) |
 | [0017](0017-dev-balance-panel.md) | Development balance display and shared win-rate calculation | Accepted | |
-| [0018](0018-gnu-options-and-help.md) | GNU-style CLI options and a consistent help format | Partly changed | The command tree, `check --only` and `gozen help` with several words are in [0024](0024-command-tree-and-diagnostic-codes.md) |
+| [0018](0018-gnu-options-and-help.md) | GNU-style CLI options and a consistent help format | Partly changed | The command tree, `check --only` and `gozen help` with several words are in [0024](0024-command-tree-and-diagnostic-codes.md). Direct commands and structured output are in [0042](0042-command-and-output-contract.md) |
 | [0019](0019-engine-languages.md) | Engine text in English and Japanese, selected by language | Accepted | |
 | [0020](0020-moving-portraits.md) | Moving a single illustration with diffs and mesh deformation (puppet) | Accepted | |
 | [0021](0021-query-and-commands.md) | Read with expressions, change with commands (constrained but simple; the public API in its smallest form) | Partly changed | Product direction and staged API retirement in [0041](0041-yaml-authoring-and-distribution.md) |
 | [0022](0022-maps-and-painted-scenes.md) | Maps and painted scenes: rules are points, looks are pictures | Accepted (stages 0 to 4 done) | |
 | [0023](0023-verified-docs.md) | Checking the images and steps in the README and the site (image ledger, running the steps, links) | Accepted | |
-| [0024](0024-command-tree-and-diagnostic-codes.md) | A command tree of six tools, and diagnostic codes | Accepted | |
+| [0024](0024-command-tree-and-diagnostic-codes.md) | A command tree of six tools, and diagnostic codes | Partly changed | Command and output migration in [0042](0042-command-and-output-contract.md) |
 | [0025](0025-replay-to-roll-back-skip-and-resume.md) | Replay to roll back, skip and resume (`schema_version: 4`, save format version 2) | Accepted (stages 0, 2 and 2b done) | |
 | [0026](0026-read-lines-and-skipping.md) | Read lines keyed by their source, a versioned record, skip mode and scene skip | Accepted (done) | |
 | [0027](0027-text-languages.md) | The languages of a game's text (source to translation) | Accepted (done) | |
@@ -51,6 +51,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0040](0040-stacked-spaces.md) | Bounded stacked spaces: streets, interiors and continuous stairs | Accepted for implementation | |
 
 | [0041](0041-yaml-authoring-and-distribution.md) | YAML authoring and distribution; public Go API retirement last | Accepted for phased implementation | |
+| [0042](0042-command-and-output-contract.md) | Direct commands, capture and structured output | Accepted for phased implementation | |
 
 The source of truth for the current public packages is `api/public.txt` and [Boundaries](../architecture/boundaries.md), not this list of ADRs.
 

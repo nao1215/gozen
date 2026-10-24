@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/goccy/go-yaml"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
@@ -23,7 +25,7 @@ func (c *command) puppetCmd(args []string) error {
 		return err
 	}
 	if f.NArg() != 1 {
-		return cli.Invalid(diag.Operands, "art puppet expects one puppet YAML file")
+		return cliio.Invalid(diag.Operands, "art puppet expects one puppet YAML file")
 	}
 	file := f.Arg(0)
 	dir, name := filepath.Split(file)

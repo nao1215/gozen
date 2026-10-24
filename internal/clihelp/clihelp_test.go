@@ -95,3 +95,26 @@ func TestVersionFromReleaseBuild(t *testing.T) {
 		t.Fatal("Version() is empty without a stamped version")
 	}
 }
+
+func TestOutputFormatIgnoresValuesAndSurvivesParseErrors(t *testing.T) {
+	for _, tc := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"--unknown", "--format", "json"}, "json"},
+		{[]string{"-title", "bad", "--format=jsonl"}, "jsonl"},
+		{[]string{"--title", "--format", "json"}, "text"},
+		{[]string{"--", "--format", "json"}, "text"},
+		{[]string{"-t", "--format", "json"}, "text"},
+		{[]string{"-vt", "--format", "json"}, "text"},
+		{[]string{"--format", "json", "--format", "jsonl"}, "jsonl"},
+	} {
+		f := NewFlagSet("test")
+		f.String("format", "text", "format")
+		f.StringP("title", "t", "", "title")
+		f.BoolP("verbose", "v", false, "verbose")
+		if got := OutputFormat(f, tc.args); got != tc.want {
+			t.Errorf("%v: %s, want %s", tc.args, got, tc.want)
+		}
+	}
+}

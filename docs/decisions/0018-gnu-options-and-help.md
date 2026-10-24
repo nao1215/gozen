@@ -4,6 +4,9 @@ Status: Partly changed. Date: 2026-10-19. Applies to the `gozen` of [ADR 0016](0
 
 Partly changed by [ADR 0024](0024-command-tree-and-diagnostic-codes.md): `check --no-layout` is `check --only structure`, `gozen help` takes the words of a command path, and requirements are written once per page level.
 
+The CLI redesign in [ADR 0042](0042-command-and-output-contract.md) retains GNU
+option syntax and changes short-option consistency and machine-readable help.
+
 ## Users and problem
 
 The users are authors who make games with Gozen, and people who run an author's game with `--dev`. The `gozen` and authoring-support subcommands so far used Go's standard `flag`, which accepts both `-seed 7` and `--seed 7` and does not distinguish short names from long names. `-n`, `-v` and `-o` had different meanings per command, help followed the layout of `flag.PrintDefaults`, and examples and prerequisites were written differently for each command. It also did not match the author's other tools (GNU-style `--name`, help grouped by kind).

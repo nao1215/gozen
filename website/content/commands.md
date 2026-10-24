@@ -56,6 +56,18 @@ Run `gozen play run first-game` to play. Edit `game.yaml` for the title,
 and battle rules. The starter pictures are original placeholders you can replace.
 
 
+`new` and `theme list` also accept `--format json` or `--format jsonl`:
+
+```sh
+gozen new machine-game --id machine-game --format json
+gozen theme list --format jsonl
+```
+
+JSON is one versioned result document. JSONL theme listings contain one item per
+theme and a final summary. Machine-mode errors are JSONL on stderr with the same
+GZN codes and exit statuses; output formatting does not change the created game.
+Other commands currently retain the result shapes described in their sections.
+
 ## check
 
 Loads every definition, resolves references and expressions, checks that the assets exist, and lays out dialogue with the game's font. Warnings go to stderr and do not fail the check.

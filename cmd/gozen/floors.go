@@ -6,7 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
 
@@ -26,11 +27,11 @@ func (c *command) floorsCmd(args []string) error {
 		return err
 	}
 	if fs.NArg() != 2 {
-		return cli.Invalid(diag.Operands, "expected <game-dir> <location>")
+		return cliio.Invalid(diag.Operands, "expected <game-dir> <location>")
 	}
 	dir, loc := fs.Arg(0), fs.Arg(1)
 	if *from <= 0 || *to < *from || *floor < 0 || *try < 0 || (*try > 0 && *floor == 0) {
-		return cli.Invalid(diag.BadValue, "invalid floor range or seed count; --try requires --floor")
+		return cliio.Invalid(diag.BadValue, "invalid floor range or seed count; --try requires --floor")
 	}
 	fsys, err := gameFS(dir)
 	if err != nil {
@@ -45,7 +46,7 @@ func (c *command) floorsCmd(args []string) error {
 	}
 	l := db.Locations[loc]
 	if l == nil || l.Dungeon == nil || l.Dungeon.Generate == nil {
-		return cli.Invalid(diag.UnknownName, "%s is not a generated dungeon of the game", loc)
+		return cliio.Invalid(diag.UnknownName, "%s is not a generated dungeon of the game", loc)
 	}
 	g := l.Dungeon.Generate
 	if *floor > 0 {
@@ -53,7 +54,7 @@ func (c *command) floorsCmd(args []string) error {
 	}
 	if *try > 0 {
 		if *floor == 0 {
-			return cli.Invalid(diag.OptionNeedsAnother, "--try needs --floor")
+			return cliio.Invalid(diag.OptionNeedsAnother, "--try needs --floor")
 		}
 		keep, had := g.Floors[*floor]
 		if g.Floors == nil {

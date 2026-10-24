@@ -9,7 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
 	"github.com/nao1215/gozen/internal/headless"
@@ -51,13 +52,13 @@ func (c *command) routes(args []string) error {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return cli.Invalid(diag.Operands, "expected <game-dir>")
+		return cliio.Invalid(diag.Operands, "expected <game-dir>")
 	}
 	if *maxPaths <= 0 || *maxDepth <= 0 || *timeout <= 0 {
-		return cli.Invalid(diag.BadValue, "--paths, --depth, and --timeout must be positive")
+		return cliio.Invalid(diag.BadValue, "--paths, --depth, and --timeout must be positive")
 	}
 	if *format != "text" && *format != "json" {
-		return cli.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
+		return cliio.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
 	}
 	fsys, err := gameFS(fs.Arg(0))
 	if err != nil {

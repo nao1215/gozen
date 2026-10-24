@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/cliio"
+
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
 
@@ -57,16 +59,16 @@ func (c *command) curve(args []string) (err error) {
 		return err
 	}
 	if fs.NArg() != 2 {
-		return cli.Invalid(diag.Operands, "expected <game-dir> <location>")
+		return cliio.Invalid(diag.Operands, "expected <game-dir> <location>")
 	}
 	dir, loc := fs.Arg(0), fs.Arg(1)
 	o.Location = loc
 	if o.Floors <= 0 || o.Battles < 0 || o.Tries <= 0 || o.MaxTurns <= 0 || o.RestEvery < 0 {
-		return cli.Invalid(diag.BadValue, "invalid floor, battle, try, turn, or rest count")
+		return cliio.Invalid(diag.BadValue, "invalid floor, battle, try, turn, or rest count")
 	}
 	for _, v := range []float64{o.Grind, o.WornHP, o.WornMP} {
 		if math.IsNaN(v) || math.IsInf(v, 0) || v < 0 || v > 1 {
-			return cli.Invalid(diag.BadValue, "rates must be finite values in [0,1]")
+			return cliio.Invalid(diag.BadValue, "rates must be finite values in [0,1]")
 		}
 	}
 	fsys, err := gameFS(dir)
@@ -81,20 +83,20 @@ func (c *command) curve(args []string) (err error) {
 		return err
 	}
 	if db.Locations[loc] == nil {
-		return cli.Invalid(diag.UnknownName, "unknown location %q", loc)
+		return cliio.Invalid(diag.UnknownName, "unknown location %q", loc)
 	}
 	o.Bosses = map[int]string{}
 	for _, v := range split(*bosses) {
 		a, b, ok := strings.Cut(v, ":")
 		f, err := strconv.Atoi(a)
 		if !ok || err != nil || f <= 0 || b == "" || o.Bosses[f] != "" {
-			return cli.Invalid(diag.BadValue, "--boss: expected unique positive floor:troop pairs")
+			return cliio.Invalid(diag.BadValue, "--boss: expected unique positive floor:troop pairs")
 		}
 		o.Bosses[f] = b
 	}
 	for f, t := range o.Bosses {
 		if db.Troops[t] == nil {
-			return cli.Invalid(diag.UnknownName, "--boss %d: unknown troop %q", f, t)
+			return cliio.Invalid(diag.UnknownName, "--boss %d: unknown troop %q", f, t)
 		}
 	}
 	if *supplies != "" {
@@ -124,7 +126,7 @@ func (c *command) curve(args []string) (err error) {
 		a, b, ok := strings.Cut(v, ":")
 		f, err := strconv.Atoi(a)
 		if !ok || err != nil || f <= 0 || db.Troops[b] == nil || o.Guards[f] != "" {
-			return cli.Invalid(diag.BadValue, "--guards: expected unique positive floor:troop pairs of known troops")
+			return cliio.Invalid(diag.BadValue, "--guards: expected unique positive floor:troop pairs of known troops")
 		}
 		o.Guards[f] = b
 	}
@@ -135,7 +137,7 @@ func (c *command) curve(args []string) (err error) {
 		return fmt.Errorf("--floor-event: unknown event %q", o.FloorEvent)
 	}
 	if *format != "text" && *format != "json" {
-		return cli.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
+		return cliio.Invalid(diag.NotAChoice, "--format is text or json, not %q", *format)
 	}
 	if *saves != "" {
 		if err := cli.Destination(*saves, dir); err != nil {
@@ -158,13 +160,13 @@ func (c *command) curve(args []string) (err error) {
 		o.Shops = strings.Split(*shops, ",")
 		for _, id := range o.Shops {
 			if db.Shops[id] == nil {
-				return cli.Invalid(diag.UnknownName, "unknown shop %q", id)
+				return cliio.Invalid(diag.UnknownName, "unknown shop %q", id)
 			}
 		}
 	}
 	if o.RestCost != "" {
 		if _, err := expr.Parse(o.RestCost); err != nil {
-			return cli.Invalid(diag.BadValue, "--rest-cost: %v", err)
+			return cliio.Invalid(diag.BadValue, "--rest-cost: %v", err)
 		}
 	}
 	r, err := balance.Run(db, o)

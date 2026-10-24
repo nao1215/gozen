@@ -1,6 +1,6 @@
 # ADR 0024: A command tree of six tools, and diagnostic codes
 
-Status: Accepted. Date: 2026-10-20. Changes part of [ADR 0016](0016-single-cli.md) (the list of subcommands) and [ADR 0018](0018-gnu-options-and-help.md) (`check --no-layout`, `gozen help` taking one word, `Requirements:` on every page). Adds codes to the diagnostics of [ADR 0012](0012-cli-ownership-and-output.md) without changing its exit values.
+Status: Partly changed by [ADR 0042](0042-command-and-output-contract.md). Date: 2026-10-20. Changes part of [ADR 0016](0016-single-cli.md) (the list of subcommands) and [ADR 0018](0018-gnu-options-and-help.md) (`check --no-layout`, `gozen help` taking one word, `Requirements:` on every page). Adds codes to the diagnostics of [ADR 0012](0012-cli-ownership-and-output.md) without changing its exit values.
 
 ## Users and problem
 

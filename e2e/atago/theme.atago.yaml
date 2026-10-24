@@ -76,3 +76,44 @@ scenarios:
       exit_code: 2
       stderr:
         contains: ['unknown theme', '[GZN2402]']
+
+- name: JSON theme listing is one complete result with stable IDs
+  steps:
+  - run:
+      command: gozen theme list --format json
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      changes: {created: [], modified: [], deleted: []}
+      stdout:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: theme list}
+        - {path: $.status, equals: ok}
+        - {path: $.data.items, length: 13}
+        - {path: '$.data.items[0].id', equals: castle}
+        - {path: '$.data.items[12].id', equals: vine}
+- name: JSONL theme listing has one ordered record per theme and a final summary
+  steps:
+  - run:
+      command: gozen theme list --format jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      changes: {created: [], modified: [], deleted: []}
+      stdout:
+        equals: |
+          {"version":1,"command":"theme list","type":"item","id":"castle","status":"ok","data":{"id":"castle","summary":"stone walls, a wooden floor, a brick ceiling"}}
+          {"version":1,"command":"theme list","type":"item","id":"cave","status":"ok","data":{"id":"cave","summary":"rough rock walls, a dirt and stone floor"}}
+          {"version":1,"command":"theme list","type":"item","id":"crystal","status":"ok","data":{"id":"crystal","summary":"purple rock set with crystals"}}
+          {"version":1,"command":"theme list","type":"item","id":"dream","status":"ok","data":{"id":"dream","summary":"purple walls of eyes, a sleeping face above"}}
+          {"version":1,"command":"theme list","type":"item","id":"forest","status":"ok","data":{"id":"forest","summary":"walls of roots, an earth floor"}}
+          {"version":1,"command":"theme list","type":"item","id":"ice","status":"ok","data":{"id":"ice","summary":"blocks of ice, a frosted stone floor"}}
+          {"version":1,"command":"theme list","type":"item","id":"keep","status":"ok","data":{"id":"keep","summary":"gray stone with pillars and cracked flags"}}
+          {"version":1,"command":"theme list","type":"item","id":"mine","status":"ok","data":{"id":"mine","summary":"timbered shafts, a cobbled floor"}}
+          {"version":1,"command":"theme list","type":"item","id":"ruins","status":"ok","data":{"id":"ruins","summary":"stone walls grown with moss and vines, a bare stone floor"}}
+          {"version":1,"command":"theme list","type":"item","id":"sewer","status":"ok","data":{"id":"sewer","summary":"wet stone, grates and pipes"}}
+          {"version":1,"command":"theme list","type":"item","id":"temple","status":"ok","data":{"id":"temple","summary":"white stone with teal tiles"}}
+          {"version":1,"command":"theme list","type":"item","id":"tomb","status":"ok","data":{"id":"tomb","summary":"sandstone blocks with carved signs"}}
+          {"version":1,"command":"theme list","type":"item","id":"vine","status":"ok","data":{"id":"vine","summary":"dark bricks hung with ivy, a mossy floor"}}
+          {"version":1,"command":"theme list","type":"summary","status":"ok","data":{"count":13}}
