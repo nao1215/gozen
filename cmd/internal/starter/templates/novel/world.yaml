@@ -1,7 +1,7 @@
 locations:
   station: {name: Station}
 events:
-  # Replace these lines with your own story. Each choice has its own dialogue.
+  # Replace these lines with your own story. Each choice has its own dialog.
   opening:
     do:
       - say: The last train arrives at the station.

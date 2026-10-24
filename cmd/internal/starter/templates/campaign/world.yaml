@@ -1,4 +1,4 @@
-# Each region names its neighbours. Change the owners and troop counts here.
+# Each region names its neighbors. Change the owners and troop counts here.
 factions:
   blue: {name: River League, color: "#3578b8", capital: home}
   red: {name: Hill League, color: "#b85b49", capital: hill, ai: [{draft: "10"}]}

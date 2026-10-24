@@ -119,7 +119,7 @@ Open a terminal in this directory and run:
 
 ` + "```sh\ngozen check .\ngozen play run .\n```" + `
 
-Edit the title in game.yaml and the dialogue or regions in data/world.yaml.
+Edit the title in game.yaml and the dialog or regions in data/world.yaml.
 The shared characters and battle rules are in data/rules.yaml.
 Put your pictures and sounds in assets/ and reference their filenames in YAML.
 The bundled placeholder artwork and template text are original Gozen material
