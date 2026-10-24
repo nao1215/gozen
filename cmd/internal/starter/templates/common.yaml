@@ -1,0 +1,10 @@
+# Shared rules needed by each template. Edit names and numbers here.
+classes:
+  adventurer:
+    stats: {mhp: 40, mmp: 10, atk: 10, def: 4, mat: 6, mdf: 4, agi: 8, luk: 5}
+    exp_for: level * 30
+actors:
+  hero: {name: Rowan, class: adventurer}
+skills:
+  attack: {name: Attack, effects: [{damage: 10, variance: 0}]}
+  guard: {name: Guard, scope: self}

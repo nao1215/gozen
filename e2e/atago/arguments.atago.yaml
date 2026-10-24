@@ -4,6 +4,7 @@ suite:
 scenarios:
 - name: help for ${sub} through gozen help
   matrix:
+  - sub: new
   - sub: check
   - sub: sim
   - sub: sim battle
@@ -141,6 +142,7 @@ scenarios:
         deleted: []
 - name: help for ${sub}
   matrix:
+  - sub: new
   - sub: check
   - sub: sim
   - sub: sim battle
@@ -186,6 +188,7 @@ scenarios:
         deleted: []
 - name: invalid arguments for ${sub}
   matrix:
+  - sub: new
   - sub: check
   - sub: sim
   - sub: sim battle

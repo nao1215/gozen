@@ -430,6 +430,9 @@ func (db *DB) Ordered(section string) []string { return db.Order[section] }
 // FacePicture is the picture of the actor's face, in the outfit when one is given and its
 // picture exists (assets/<faces>/<outfit>/<face>.png), else the usual one.
 func (db *DB) FacePicture(a *Actor, face, outfit string) string {
+	if a == nil || a.Faces == "" {
+		return ""
+	}
 	if outfit != "" {
 		if p := a.Faces + "/" + outfit + "/" + face + ".png"; db.Exists("assets/" + p) {
 			return p

@@ -7,6 +7,8 @@ description: Make or fix an RPG, a visual novel or a strategy game (a campaign) 
 
 A Gozen game is a directory: `game.yaml`, `data/*.yaml` and `assets/`. Run it directly with `gozen play run <game-dir>`, or embed it in a Go program calling `play.Main`. You write YAML. The `gozen` command checks, measures and runs it.
 
+Start a new game with `gozen new <game-dir> --template rpg|novel|campaign`. The generated game contains YAML and assets, not Go source. Keep its generated ID stable for save compatibility; use `--id` only when choosing the identity deliberately. Existing destinations are never overwritten.
+
 ## The loop
 
 1. Read the part of the schema you need: https://nao1215.github.io/gozen/schema/. Do not guess a field.

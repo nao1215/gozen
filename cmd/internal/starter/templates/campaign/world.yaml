@@ -1,0 +1,21 @@
+# Each region names its neighbours. Change the owners and troop counts here.
+factions:
+  blue: {name: River League, color: "#3578b8", capital: home}
+  red: {name: Hill League, color: "#b85b49", capital: hill, ai: [{draft: "10"}]}
+regions:
+  home: {name: Riverside, next: [bridge], owner: blue, troops: 300}
+  bridge: {name: Bridge, next: [home, hill], troops: 100}
+  hill: {name: Hilltop, next: [bridge], owner: red, troops: 200}
+locations:
+  valley:
+    name: Valley
+    map:
+      picture: valley.png
+      unknown: named
+      points:
+        home: {at: [160, 390], start: true}
+        bridge: {at: [480, 270]}
+        hill: {at: [800, 150]}
+      roads:
+        - {between: [home, bridge]}
+        - {between: [bridge, hill]}

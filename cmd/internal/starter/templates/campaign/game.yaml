@@ -1,0 +1,15 @@
+schema_version: 5
+id: {{ID}}
+title: {{TITLE}}
+language: en
+screen: {width: 960, height: 540}
+start: {location: valley, party: [hero]}
+campaign:
+  location: valley
+  player: blue
+  turns: 8
+  actions: "2"
+  generals: {hero: {troops: 500, might: 1}}
+  clash: {power: "a.troops"}
+  orders:
+    attack: {label: March, general: ready, target: border, march: true}

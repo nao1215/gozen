@@ -195,6 +195,9 @@ func (p *pictures) load(path string) (*ebiten.Image, image.Rectangle) {
 
 // decode returns only an image in CPU memory. It can finish reading safely even after the screen loop ends.
 func (p *pictures) decode(path string) image.Image {
+	if path == "" {
+		return nil
+	}
 	b, err := picturelimit.Read(p.fsys, "assets/"+path)
 	if err != nil {
 		log.Printf("picture %s: %v", path, err)

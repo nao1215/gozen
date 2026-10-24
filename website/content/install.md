@@ -1,21 +1,14 @@
 ---
 title: Install
-description: Install the gozen command and the Gozen library, and prepare Linux, Windows, or macOS to open the game window.
+description: Install the Gozen binary without a programming toolchain, and prepare your desktop for playing games.
 weight: 10
 ---
 
-Gozen needs Go 1.26.10 or later. The `gozen` command and the library are one Go module.
+To create and play games, install the prebuilt `gozen` binary for your operating system. No Go compiler is required. Go 1.26.10 or later is needed only when building the engine or using its transitional Go API.
 
 ## The gozen command
 
-```shell
-go install github.com/nao1215/gozen/cmd/gozen@latest
-gozen version
-```
-
-`gozen` checks, simulates, documents and packages a game directory. It needs nothing else at run time: no cgo, no display, no sound device. The one exception is `gozen art mosaic` with a detection model, which needs a cgo build; see [Production tools](/production-tools/).
-
-`gozen` is also published as prebuilt binaries:
+Download the archive for your OS and processor from [Releases](https://github.com/nao1215/gozen/releases), extract it, and put its executable in a directory on your PATH. Keep the license notices from the archive. You can also install it with Homebrew:
 
 <!-- verify: skip installs from the Homebrew tap, outside the repository -->
 ```shell
@@ -23,6 +16,17 @@ brew install --cask nao1215/tap/gozen   # macOS and Linux with Homebrew
 ```
 
 [The release page](https://github.com/nao1215/gozen/releases) has `.tar.gz` and `.zip` archives for Linux, macOS and Windows (amd64 and arm64) and `.deb`, `.rpm` and `.apk` packages for Linux. The prebuilt binaries are built without cgo, so they have no ONNX inference for `gozen art mosaic`. Each release signs `checksums.txt` with cosign and attaches SBOMs and SLSA provenance; [Verifying a release](#verifying-a-release) shows the commands.
+
+After installation, `gozen version` reports the installed version. Follow [Getting started](/getting-started/) to create your first game. `new`, `check` and simulation do not need a display; `play run` needs the graphics runtime described below. Inference tools have additional prerequisites described in [Production tools](/production-tools/).
+
+## Optional installation from Go source
+
+These steps are for engine developers and existing Go projects. They are not needed for YAML game creation.
+
+```shell
+go install github.com/nao1215/gozen/cmd/gozen@latest
+gozen version
+```
 
 To keep the command pinned with your game, add it as a Go tool in your module and run it with `go tool gozen`:
 
@@ -72,14 +76,14 @@ slsa-verifier verify-artifact gozen_<version>_<os>_<arch>.tar.gz \
   --source-tag v<version>
 ```
 
-## The library
+## The library during migration
 
 <!-- verify: run fixture=module -->
 ```shell
 go get github.com/nao1215/gozen@latest
 ```
 
-The rules, the headless driver and the YAML loader are pure Go and run anywhere Go does. Only the game window (the `play` package) needs the platform graphics libraries below.
+The public Go API remains available during the no-code migration; it is not part of the beginner workflow. The rules, the headless driver and the YAML loader are pure Go and run anywhere Go does. Only the game window (the `play` package) needs the platform graphics libraries below.
 
 ## What the window needs
 
@@ -91,28 +95,35 @@ Gozen draws with [Ebitengine](https://ebitengine.org/) v2.10. A normal build nee
 | Windows | A GPU driver with OpenGL and a logged-in desktop. |
 | macOS | A desktop session. For the race detector, `xcode-select --install`. |
 
-Check the setup with a small window, a moving portrait:
+Check the setup by opening a generated game:
 
-<!-- verify: build opens the game window and waits for a player -->
 ```shell
-go run github.com/nao1215/gozen/examples/puppet@latest
+gozen new window-check
+```
+
+<!-- verify: skip opens a window and waits for a player; graphics E2E plays generated games -->
+```shell
+gozen play run window-check
 ```
 
 Runtime checks are done on Linux. Windows and macOS are built in CI but have not been played yet; reports are welcome.
 
 ## Without a screen (CI, servers)
 
-On Linux, run the window inside Xvfb, a virtual display. This plays the portrait's motions once, writes the frames and quits:
+On Linux, run the window inside Xvfb, a virtual display. This creates a game,
+captures its title screen and quits:
 
 <!-- verify: run except=1 installs system packages with sudo; the check runs inside Xvfb -->
 ```shell
 sudo apt-get install xvfb xauth
-xvfb-run -a go run github.com/nao1215/gozen/examples/puppet@latest --tour --frames frames
+gozen new ci-check
+printf 'wait 20\nshot title\nquit\n' > check.txt
+xvfb-run -a gozen play run ci-check --dev --mute --script check.txt --shots frames
 ```
 
-`frames/` has the pictures. In your own game, `--dev --script FILE --shots DIR` takes screenshots the same way. Scripted runs, traces and `gozen play shots` work the same way inside Xvfb.
-
-Tests that only use the rules (`gozen.Session` and `gozen.Explore`) need no display at all.
+`frames/title.png` contains the title screen. Scripted runs, traces and screenshot
+capture use the same runner as ordinary play. `gozen check` and `gozen sim` need no
+display at all.
 
 ## Optional tools
 

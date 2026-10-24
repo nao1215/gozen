@@ -1,0 +1,47 @@
+version: '1'
+suite:
+  name: No-code game creation
+scenarios:
+- name: create and check the ${template} template without Go source
+  matrix:
+  - template: rpg
+  - template: novel
+  - template: campaign
+  steps:
+  - run:
+      command: gozen new "my game" --template ${template} --id starter-test --title "Starter test"
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      dir:
+        path: my game
+        recursive: true
+        contains: [game.yaml, data/world.yaml, data/rules.yaml, assets, README.md]
+  - assert:
+      file: {path: my game/go.mod, exists: false}
+  - assert:
+      file: {path: my game/main.go, exists: false}
+  - run:
+      command: gozen check "my game"
+  - assert:
+      exit_code: 0
+      stdout: {contains: 'ok:'}
+      stderr: {equals: ''}
+  - run:
+      command: gozen new "my game" --template ${template}
+  - assert:
+      exit_code: 1
+      stderr: {contains: 'output already exists'}
+      changes: {created: [], modified: [], deleted: []}
+- name: invalid creation ${args} writes no files
+  matrix:
+  - args: '--template missing game'
+  - args: '--id ../bad game'
+  - args: ''
+  steps:
+  - run:
+      command: gozen new ${args}
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      changes: {created: [], modified: [], deleted: []}
