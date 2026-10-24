@@ -20,7 +20,7 @@ func (c *command) playRun(args []string) error {
 		return cliio.Parse(arg.Err)
 	}
 	if err != nil {
-		return fmt.Errorf("play run: %w\nStartup requirements: https://nao1215.github.io/gozen/commands/#play-run", err)
+		return fmt.Errorf("run: %w\nStartup requirements: https://nao1215.github.io/gozen/commands/#run", err)
 	}
 	return nil
 }

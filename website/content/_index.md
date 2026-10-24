@@ -23,7 +23,7 @@ gozen check my-game
 
 <!-- verify: skip opens a window; generated templates are played by the graphics E2E -->
 ```shell
-gozen play run my-game
+gozen run my-game
 ```
 
 Choose `novel` or `campaign` for a different starting point. Follow [Getting started](/getting-started/) to edit your game, or [play the showcase games in your browser](/play/).

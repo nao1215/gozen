@@ -51,6 +51,6 @@ func (c *command) newGame(args []string) error {
 	}
 	c.out.Printf("created %s game in %s (id: %s)\n", *template, f.Arg(0), *id)
 	c.out.Println("Open that directory, then run: gozen check .")
-	c.out.Println("Play it with: gozen play run .")
+	c.out.Println("Play it with: gozen run .")
 	return nil
 }

@@ -30,7 +30,7 @@ type ArgumentError struct{ Err error }
 func (e *ArgumentError) Error() string { return e.Err.Error() }
 func (e *ArgumentError) Unwrap() error { return e.Err }
 
-// Main shares startup between the public play.Main and gozen play run.
+// Main shares startup between the public play.Main and gozen run.
 // Directory mode requires one game directory operand and enables live reload there.
 func Main(ctx context.Context, fsys fs.FS, dir string, args []string, cfg EntryConfig) (err error) {
 	argument := func(err error) error {
@@ -108,7 +108,7 @@ func Main(ctx context.Context, fsys fs.FS, dir string, args []string, cfg EntryC
 	}
 	if cfg.Directory {
 		if fl.NArg() != 1 {
-			return argument(errors.New("play run expects one game directory"))
+			return argument(errors.New("run expects one game directory"))
 		}
 		*dirFlag = fl.Arg(0)
 		if *dirFlag == "" {
@@ -251,15 +251,15 @@ var runnerPage = clihelp.Page{
 func entryPage(directory bool) clihelp.Page {
 	p := runnerPage
 	if directory {
-		p.Name = "gozen play run"
+		p.Name = "gozen run"
 		p.Summary = "run a game directory in a window"
-		p.Usage = []string{"gozen play run <game-dir> [OPTIONS]"}
+		p.Usage = []string{"gozen run <game-dir> [OPTIONS]"}
 		p.About = "Runs game.yaml, data/ and assets/ directly, without a Go wrapper. Options may precede or follow the directory. Author tools require --dev. Relative output paths are resolved from the working directory."
 		p.Examples = []clihelp.Example{
-			{"play a game", "gozen play run game"},
-			{"play in full screen without sound", "gozen play run game --fullscreen --mute"},
-			{"develop with live reload", "gozen play run game --dev"},
-			{"take screenshots with a script", "gozen play run game --dev --script check.txt --shots shots"},
+			{"play a game", "gozen run game"},
+			{"play in full screen without sound", "gozen run game --fullscreen --mute"},
+			{"develop with live reload", "gozen run game --dev"},
+			{"take screenshots with a script", "gozen run game --dev --script check.txt --shots shots"},
 		}
 	}
 	return p

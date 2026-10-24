@@ -2,6 +2,26 @@ version: '1'
 suite:
   name: Direct game startup contracts
 scenarios:
+- name: run help needs no game or display
+  steps:
+  - run:
+      command: gozen help run
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['gozen run <game-dir>', '--save-dir', '--dev']
+      stderr: {equals: ''}
+      changes: {created: [], modified: [], deleted: []}
+- name: removed play run path is not an alias
+  steps:
+  - run:
+      command: gozen play run absent-game
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr:
+        contains: ['GZN2101']
+      changes: {created: [], modified: [], deleted: []}
 - name: reject invalid startup ${args}
   matrix:
   - args: ''
@@ -16,7 +36,7 @@ scenarios:
   - args: 'game --dev --record unused.mp4'
   steps:
   - run:
-      command: gozen play run ${args}
+      command: gozen run ${args}
   - assert:
       exit_code: 2
       stdout:
@@ -24,11 +44,11 @@ scenarios:
       stderr:
         contains:
         - '[GZN2201]'
-        - 'gozen play run --help'
+        - 'gozen run --help'
 - name: a missing game fails without a display or output files
   steps:
   - run:
-      command: gozen play run absent-game --mute
+      command: gozen run absent-game --mute
   - assert:
       exit_code: 1
       stdout:

@@ -10,7 +10,7 @@ The novel sample, After the Pass (`examples/novel`), is a module of its own in t
 
 The startup options that `play.Main` accepts use the same GNU style as `gozen` ([ADR 0018](../decisions/0018-gnu-options-and-help.md)). `--seed 7` and `--seed=7` both work, and a single-dash long name such as `-dev` is an error. `--help` has the shape `[Usage]`, `[Examples]`, `[Options]` grouped by kind (game, trial runs, automatic play, scripts and records, notes and review), `Requirements:` and links; an option that needs `--dev` has `(--dev)` in the name of its group.
 
-Run the samples with `gozen play run examples/go-zen/game`, `gozen play run examples/novel/game` or `gozen play run examples/campaign/game`. Their graphics tests invoke the same CLI. Separate test modules keep the large assets outside the engine module download.
+Run the samples with `gozen run examples/go-zen/game`, `gozen run examples/novel/game` or `gozen run examples/campaign/game`. Their graphics tests invoke the same CLI. Separate test modules keep the large assets outside the engine module download.
 
 ## Requirements
 

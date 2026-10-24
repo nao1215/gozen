@@ -5,7 +5,7 @@ one volume. Ordinary dungeons without `space` keep their existing renderer and
 floor transitions. The standalone demonstration starts with:
 
 ```sh
-gozen play run examples/space/game --dev --mute
+gozen run examples/space/game --dev --mute
 ```
 
 Use Up to walk, Left and Right to turn, and Down to turn around. The demonstration

@@ -23,8 +23,8 @@ func TestPlayRunArguments(t *testing.T) {
 		{"game", "--dev", "--record", "unused.mp4"},
 		{"--dev", "game", "--answers", "x"},
 	} {
-		out, stderr := invoke(t, 2, append([]string{"play", "run"}, args...)...)
-		if out != "" || !strings.Contains(stderr, `Run "gozen play run --help" for usage.`) {
+		out, stderr := invoke(t, 2, append([]string{"run"}, args...)...)
+		if out != "" || !strings.Contains(stderr, `Run "gozen run --help" for usage.`) {
 			t.Fatalf("%v: %q %q", args, out, stderr)
 		}
 	}
@@ -38,15 +38,15 @@ func TestPlayRunLoadsTheOperandAndReportsIOFailures(t *testing.T) {
 		{"--mute", "--seed=7", dir},
 		{"--", dir},
 	} {
-		out, stderr := invoke(t, 1, append([]string{"play", "run"}, args...)...)
+		out, stderr := invoke(t, 1, append([]string{"run"}, args...)...)
 		if out != "" || !strings.Contains(stderr, "game.yaml") {
 			t.Fatalf("%v: %q %q", args, out, stderr)
 		}
 	}
-	invoke(t, 1, "play", "run", filepath.Join(t.TempDir(), "missing"))
-	invoke(t, 1, "play", "run", dir, "--dev", "--script", filepath.Join(t.TempDir(), "absent"), "--shots", t.TempDir())
+	invoke(t, 1, "run", filepath.Join(t.TempDir(), "missing"))
+	invoke(t, 1, "run", dir, "--dev", "--script", filepath.Join(t.TempDir(), "absent"), "--shots", t.TempDir())
 	var stderr bytes.Buffer
-	if code := run([]string{"play", "run", "--help"}, &failAfter{}, &stderr); code != 1 {
+	if code := run([]string{"run", "--help"}, &failAfter{}, &stderr); code != 1 {
 		t.Fatalf("failed help write: exit %d", code)
 	}
 }
@@ -59,7 +59,7 @@ func TestPlayRunUnknownGameNames(t *testing.T) {
 		{"--start", "camp", "--party", "absent"},
 		{"--start", "camp", "--items", "absent"},
 	} {
-		out, stderr := invoke(t, 2, append([]string{"play", "run", dir, "--dev", "--mute"}, args...)...)
+		out, stderr := invoke(t, 2, append([]string{"run", dir, "--dev", "--mute"}, args...)...)
 		if out != "" || !strings.Contains(stderr, "unknown") {
 			t.Fatalf("%v: %q %q", args, out, stderr)
 		}

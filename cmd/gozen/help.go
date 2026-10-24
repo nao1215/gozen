@@ -24,9 +24,10 @@ var topPage = clihelp.Page{
 		"diagnostics to stderr.",
 	Commands: [][2]string{
 		{"new", "Create a playable game from a YAML template"},
+		{"run", "Run a game directory in a window"},
 		{"check", "Check a game directory: definitions, references, expressions, assets, text layout"},
 		{"sim", "Measure play without a window: battle, dive, floors, design, campaign"},
-		{"play", "Run games and inspect real plays: run, trace, notes, shots"},
+		{"play", "Inspect real plays: trace, notes, shots"},
 		{"book", "Write the definitions and events as Markdown"},
 		{"pack", "Build what you ship: desktop, web, release, trial"},
 		{"art", "Picture and asset tools: prompt, mosaic, fetch, faces, puppet"},
@@ -49,7 +50,7 @@ var topPage = clihelp.Page{
 			"invalid arguments. A diagnostic may end with a code such as [GZN1101] whose first digit is " +
 			"the exit status; gozen help GZN1101 explains it.",
 		"Requirements: check, sim, book, pack release, pack trial, play trace, play notes, and art prompt need nothing beyond " +
-			"the gozen binary; cgo is not required. pack desktop and pack web need matching prebuilt runtime bundles. play run and play shots launch a graphics game, and unattended " +
+			"the gozen binary; cgo is not required. pack desktop and pack web need matching prebuilt runtime bundles. run and play shots launch a graphics game, and unattended " +
 			"capture on Linux needs Xvfb. art mosaic inference and art faces need a gozen built with cgo, " +
 			"an ONNX Runtime shared library, and user-supplied models. See " + clihelp.README,
 	},
@@ -86,13 +87,11 @@ var groups = map[string]clihelp.Page{
 		Hint: `Run "gozen sim <command> --help" for a command's options and examples.`,
 	},
 	"play": {
-		Summary: "run games and inspect real plays",
+		Summary: "inspect real plays",
 		Usage:   []string{"gozen play <command> [OPTIONS] ..."},
-		About: "Runs a game directory directly with run; --dev enables its author tools. " +
-			"trace reads the JSON Lines a game writes with --trace, notes turns the F9 notes into HTML, " +
+		About: "trace reads the JSON Lines a game writes with --trace, notes turns the F9 notes into HTML, " +
 			"and shots launches the game binary to take a list of screenshots.",
 		Commands: [][2]string{
-			{"run", "Run a game directory in a window"},
 			{"trace", "Print or check a JSON Lines trace of a play"},
 			{"notes", "Turn test-play notes into HTML with thumbnails"},
 			{"shots", "Launch the game and take the screenshots of a list"},
@@ -103,7 +102,7 @@ var groups = map[string]clihelp.Page{
 			{"take the shots with the original assets", "gozen play shots game shots.yaml --bin ./mygame --raw -o shots"},
 		},
 		Groups: []clihelp.Group{general},
-		Notes: []string{"Requirements: trace and notes need nothing beyond the gozen binary. run needs a display and the platform graphics and audio libraries. shots needs a " +
+		Notes: []string{"Requirements: trace and notes need nothing beyond the gozen binary. shots needs a " +
 			"game binary built with the Gozen runner and its graphics runtime (a display and the platform " +
 			"graphics and audio libraries); unattended capture on Linux needs Xvfb (sudo apt-get install " +
 			"xvfb xauth). See " + clihelp.README},

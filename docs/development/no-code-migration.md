@@ -5,7 +5,7 @@ The product direction and boundaries are recorded in [ADR 0041](../decisions/004
 | PR | Scope | Completion gate | Status |
 | --- | --- | --- | --- |
 | 1 | Test filenames and maintenance rules | Content-preserving renames; no runtime change | Merged in #45 |
-| 2 | `play run` and shared startup | Real CLI plays, records and restores saves | Merged in #46 |
+| 2 | `play run` and shared startup (now `run`) | Real CLI plays, records and restores saves | Merged in #46 |
 | 3 | `new`, three templates and no-code onboarding | Templates validate and play without Go source | Merged in #47 |
 | 4 | Desktop export and private player | Move the package, hide its source, play and restore with no toolchain; native tests for claimed platforms | Merged in #48 |
 | 5 | Web export and generic WASM runtime | Serve under a subdirectory, play a choice, save and reload in a real browser | Merged in #49 |
@@ -49,8 +49,8 @@ language. Preserve the useful engine implementation and its tests internally.
 
 | Consumer | Author-facing replacement or retained purpose |
 | --- | --- |
-| RPG, novel, campaign and stacked-space samples | `gozen play run examples/NAME/game`; browser pages share `cmd/gozen-player` |
-| Development flags, capture scripts and hot reload | `gozen play run GAME --dev`; documentation images exercise this command |
+| RPG, novel, campaign and stacked-space samples | `gozen run examples/NAME/game`; browser pages share `cmd/gozen-player` |
+| Development flags, capture scripts and hot reload | `gozen run GAME --dev`; documentation images exercise this command |
 | Moving portraits | Actor `puppet`, `pose` and `effect` YAML use the built-in renderer; the standalone puppet program remains a maintainer animation inspection tool |
 | Headless and minimal Go examples | Temporary API contract examples, to be folded into internal integration tests during PR 7; authors use `gozen sim` |
 | Standalone `chat` and `react` APIs | No first-party game consumes these packages; retain their internal rules and tests during API retirement without adding an unused YAML scripting interface |

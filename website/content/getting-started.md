@@ -19,7 +19,7 @@ gozen check my-game
 
 <!-- verify: skip opens a window; atago graphics E2E plays the generated templates -->
 ```shell
-gozen play run my-game
+gozen run my-game
 ```
 
 Press Enter or Z to select an option, use the arrow keys to move through choices,
@@ -68,7 +68,7 @@ fix. The [schema](/schema/) and [cookbook](/cookbook/) describe supported settin
 
 <!-- verify: skip opens a window; live reload is covered by the documentation image checks -->
 ```shell
-gozen play run my-game --dev --save-dir test-saves
+gozen run my-game --dev --save-dir test-saves
 ```
 
 Press F5 after an edit to reload the definitions. The explicit save directory

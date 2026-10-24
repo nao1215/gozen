@@ -156,7 +156,7 @@ func makeImages(t *testing.T, m manifest, rootAbs, work, out string) []string {
 			if r.Edit != nil {
 				gameDir = game
 			}
-			args = append([]string{"play", "run", gameDir}, args...)
+			args = append([]string{"run", gameDir}, args...)
 		}
 		plays = append(plays, func() error {
 			began := time.Now()

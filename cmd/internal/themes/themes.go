@@ -1,6 +1,6 @@
 // Package themes holds the dungeon themes the gozen command copies into a game
 // (gozen theme add, ADR 0032). Only the command imports it: the pictures are embedded
-// here, not in the play runtime, so a game that uses no theme does not carry them.
+// here, not in the runtime, so a game that uses no theme does not carry them.
 package themes
 
 import (
