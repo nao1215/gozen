@@ -186,7 +186,7 @@ jobs:
           done
 
           commands=$(fetch commands/)
-          for cmd in check "sim battle" "sim dive" "sim floors" "sim design" "trace" "notes" "play shots" book "release" "trial" "art fetch" "art faces" "art puppet" version help; do
+          for cmd in check "sim battle" "sim dive" "sim floors" "sim design" "trace" "notes" "capture" book "release" "trial" "art fetch" "art faces" "art puppet" version help; do
             require "${commands}" "gozen ${cmd}" "commands"
           done
 

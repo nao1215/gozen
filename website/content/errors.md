@@ -482,7 +482,7 @@ Options that do not go together, or need each other. Exits 2.
 
 Two options do not go together.
 
-The options ask for things that exclude each other, such as a saved state and a chosen party for sim battle, or --raw and --overlay for play shots.
+The options ask for things that exclude each other, such as a saved state and a chosen party for sim battle, or --raw and --overlay for capture.
 
 Fix: Keep one of the options the message names.
 
@@ -498,7 +498,7 @@ Fix: Add the option the message names, or drop the one that needs it.
 
 A required option is missing.
 
-The command cannot run without the option: play shots needs the game binary (--bin), release the inspection records (--inspect), and art prompt the catalog (--config).
+The command cannot run without the option: capture needs the job file (--config) and destination (--out), release the inspection records (--inspect), and art prompt the catalog (--config).
 
 Fix: Add the option the message names.
 
@@ -518,7 +518,7 @@ Fix: Write the path relative to the game directory, without .., such as trial.ya
 
 The command line names something the game does not have.
 
-An ID given on the command line, such as the troop of sim battle, the location of sim dive or sim floors, a boss or a shop, a persona of sim design --only, a shot of play shots --only, or a model of art fetch, is not defined. A typo in an argument is an argument error, so it exits 2 in every command.
+An ID given on the command line, such as the troop of sim battle, the location of sim dive or sim floors, a boss or a shop, a persona of sim design --only, a shot of capture --only, or a model of art fetch, is not defined. A typo in an argument is an argument error, so it exits 2 in every command.
 
 Fix: Check the spelling against the game's data (gozen book lists every ID), or the list the message names.
 

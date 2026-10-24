@@ -15,6 +15,7 @@ scenarios:
 - name: removed command path ${path} is not an alias
   matrix:
   - {path: play run}
+  - {path: play shots}
   - {path: pack desktop}
   - {path: pack web}
   - {path: pack release}
@@ -67,3 +68,36 @@ scenarios:
         created: []
         modified: []
         deleted: []
+
+- name: capture argument contract ${args}
+  matrix:
+  - {args: '', code: GZN2102}
+  - {args: 'game extra', code: GZN2102}
+  - {args: 'game', code: GZN2303}
+  - {args: 'game --config jobs.yaml', code: GZN2303}
+  - {args: 'game --out output', code: GZN2303}
+  - {args: 'game --config jobs.yaml --out output --timeout 0s', code: GZN2201}
+  - {args: 'game --config jobs.yaml --out output --format yaml', code: GZN2202}
+  - {args: 'game --bin old-player', code: GZN2103}
+  steps:
+  - run:
+      command: gozen capture ${args}
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr: {contains: '${code}'}
+      changes: {created: [], modified: [], deleted: []}
+
+- name: capture rejects an unknown selected job before creating output
+  steps:
+  - fixture:
+      file: jobs.yaml
+      content: 'shots: [{id: camp, start: camp}]'
+  - run:
+      command: gozen capture "${specdir}/fixtures/game" --config jobs.yaml --out output --only missing --format json
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr:
+        json: {path: $.code, equals: GZN2402}
+      changes: {created: [], modified: [], deleted: []}

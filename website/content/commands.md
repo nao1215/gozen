@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes, breed), run, trace, notes, play shots, book, export, release, trial, art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
+description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes, breed), run, trace, notes, capture, book, export, release, trial, art (prompt, mosaic, fetch, faces, puppet), theme (add, list), version and help.
 weight: 60
 toc: true
 ---
@@ -21,7 +21,7 @@ gozen help GZN1101                     # explain a diagnostic code
 | [new](#new) | Create a playable template without Go source |
 | [run](#run) | Run a game directory in a window |
 | [trace](#trace), [notes](#notes) | Inspect traces and build HTML reports from test-play notes |
-| [play](#play) | Capture [screenshots](#play-shots) with a game binary |
+| [capture](#capture) | Capture PNG images and animated GIFs |
 | [book](#book) | Write the definitions and events as Markdown |
 | [export](#export) | Export desktop and browser games with prebuilt runtimes |
 | [release](#release), [trial](#trial) | Prepare approved asset trees and trial games |
@@ -36,8 +36,8 @@ A group alone (`gozen sim`) exits 2 and lists its commands. `gozen sim --help` s
 - Exit status: 0 for success and help, 1 when a check, I/O, simulation or capture fails, 2 for invalid arguments. A name the command line gives that the game does not have (a troop, a location, a persona, a shot) is an invalid argument.
 - A diagnostic may end with a code such as `[GZN1101]`; its first digit is the exit status. `gozen help GZN1101` explains it, and [Error codes](/errors/) lists them all.
 - Options follow the GNU style. `--seed 7` and `--seed=7` both work, a few common options have a one-letter form (`-n 100`, `-o DIR`, `-v`, `-h`), options may come before or after the arguments, and `--` ends the options. A single-dash long option such as `-seed` is rejected with exit status 2.
-- Commands that write a directory (`sim design`, `notes`, `export`, `release`, `trial`, `play shots`) refuse one that already exists, even if empty, and an output inside an input. They never overwrite.
-- Every command except `export`, `run`, `play shots`, `art faces` and `art mosaic` detection needs nothing beyond the `gozen` binary: no cgo, display or sound device. `export` also needs a matching prebuilt runtime bundle.
+- Commands that write a directory (`sim design`, `notes`, `export`, `release`, `trial`, `capture`) refuse one that already exists, even if empty, and an output inside an input. They never overwrite.
+- Every command except `export`, `run`, `capture`, `art faces` and `art mosaic` detection needs nothing beyond the `gozen` binary: no cgo, display or sound device. `export` also needs a matching prebuilt runtime bundle.
 
 The examples below use `game` as the game directory, `lesson` as a troop and `grotto` as a dungeon location. Explicit configuration and output paths are relative to the working directory. Game asset paths, including `release --prefix`, remain game-relative. Omitted configuration paths use the defaults listed for each command. Use `--version` or `version` to print the version; `-v` is reserved for verbose command output.
 
@@ -330,42 +330,78 @@ gozen notes notes -o review-html
 |:--|:--|
 | `-o, --out DIR` | Write the HTML to this new directory; required |
 
-## play
+## capture
 
-### play shots
+Capture PNG images and animated GIFs directly from game YAML. No separate game
+binary or ffmpeg is needed. Each job starts with fresh state and memory-only saves.
 
-Launches the game binary once per entry of a list and writes PNG, JPEG, an HTML index and `shots.json` to a new directory. Each shot runs with its own save directory.
-
-<!-- verify: skip needs a game binary built with the runner and a display; e2e/atago/graphics.atago.yaml runs gozen play shots -->
+<!-- verify: skip needs a display; e2e/atago/graphics.atago.yaml exercises direct capture -->
 ```shell
-gozen play shots game shots.yaml --bin ./mygame --raw -o shots
-gozen play shots game shots.yaml --bin ./mygame --raw --only camp --timeout 1m
-xvfb-run -a gozen play shots game shots.yaml --bin ./mygame --raw     # unattended on Linux
+gozen capture game --config captures.yaml --out promo
+gozen capture game --config captures.yaml --out selected --only camp --format json
+xvfb-run -a gozen capture game --config captures.yaml --out unattended
 ```
 
-A list:
-
-<!-- verify: parse read by gozen play shots, which needs a game binary and a display -->
+<!-- verify: parse capture job configuration consumed by the graphics CLI -->
 ```yaml
+seed: 7
 shots:
   - id: camp
-    title: Camp overview
     start: camp
     wait: 30
+  - id: conversation
+    event: finish
+    line: 1
+    setup:
+      - set: {gold: 42}
+    wait: 30
+  - id: greeting
+    start: camp
+    wait: 30
+    gif:
+      fps: 10
+      duration: 3s
+      width: 640
+      script: |
+        press ok
 ```
 
-`id` becomes the file name. An entry can also start a `scene` or an `event`, stop at a `picture`, `line` or `answers`, or run a `script`.
+`id` names the output file. `start` selects a location; `event` or `scene`
+selects an event or gallery scene. `line`, `picture` and `answers` select a
+position within that event. `battle` requires `start` without `scene` or `event`.
+`party`, `level`, `floor`, `flags` and `calm` configure a location start.
+`setup` uses existing YAML commands and must finish without waiting for player
+input. Gallery defaults run before setup.
+
+The top-level `script` runs before `wait` (default: 120 simulation ticks).
+`gif.script` runs during the animation. Scripts use the existing
+[input commands](/edit-play-loop/); capture jobs own image output, so script commands
+that also write images are rejected.
 
 | Option | Meaning |
-|:--|:--|
-| `--bin FILE` | The game binary, built with the Gozen runner; required |
-| `--raw` | Use the original assets without checking approval (for local review) |
-| `--overlay DIR` | Take approved replacements from this directory and check approval; pending approval exits 1 |
-| `--timeout DURATION` | The time limit of one shot, such as `90s` or `2m` (default: 4m) |
-| `-o, --out DIR` | Write the shots to this new directory (default: `build/shots/<date-time>`) |
-| `--only IDS` | Take only these shots |
+| --- | --- |
+| `--config FILE` | Capture jobs; required, relative to the working directory |
+| `-o, --out DIR` | New output directory; required |
+| `--only ID` | Select a job; repeat for multiple jobs |
+| `--format text\|json\|jsonl` | Report encoding; images are unchanged |
+| `--overlay DIR` | Approved asset replacements |
+| `--raw` | Skip approval checks for local review; incompatible with `--overlay` |
+| `--timeout DURATION` | Cooperative limit per job; default `4m` |
 
-`play shots` needs what the game window needs: a display and the graphics libraries (on Linux, Xvfb for unattended runs). A failed launch is recorded in the work tree and exits 1.
+Output contains the images, `shots.json` and `index.html`. Configuration and script validation errors stop the batch before rendering.
+Runtime job failures have a reason in the report and no image; other jobs continue. A partial batch exits 1.
+Existing output directories are preserved. Asset policies check every sampled
+frame, including transient GIF images. Ordinary games need no `--raw`.
+
+GIF defaults are 10 FPS, three seconds and at most 640 pixels wide. Limits are
+1–30 FPS, 10 seconds, 1280 pixels per side, 921600 pixels per frame, 2–300 frames,
+and 64 MiB of retained paletted pixels. Combined limits may require reducing
+width, FPS or duration. GIFs loop without sound. Frame delays use centiseconds;
+the final delay includes any fractional frame interval.
+
+Capture needs a display and platform graphics libraries. Use Xvfb for unattended
+Linux runs. Timeout checks occur between game updates and draws; they cannot
+terminate a stalled graphics driver.
 
 ## book
 

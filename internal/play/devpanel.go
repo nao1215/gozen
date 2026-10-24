@@ -1,6 +1,7 @@
 package play
 
 import (
+	"errors"
 	"fmt"
 	"image/color"
 	"maps"
@@ -229,19 +230,19 @@ func (g *Game) devDo(src string) {
 		src = "- " + src
 	}
 	if ds := data.CheckScript(g.db, src, true); len(ds) > 0 {
-		g.devMessage(ds.Error())
+		g.devCommandError(errors.New(ds.Error()))
 		g.emit("dev_do", traceLine{"do": src, "error": ds.Error()})
 		return
 	}
 	cmds, ds := data.ParseScript(src)
 	if len(ds) > 0 {
-		g.devMessage(ds.Error())
+		g.devCommandError(errors.New(ds.Error()))
 		g.emit("dev_do", traceLine{"do": src, "error": ds.Error()})
 		return
 	}
 	if g.st == nil { // the title: no game to run the commands in
 		msg := lang.T("ゲームが始まっていない（始めるか読み込んでから）")
-		g.devMessage(msg)
+		g.devCommandError(errors.New(msg))
 		g.emit("dev_do", traceLine{"do": src, "error": msg})
 		return
 	}
@@ -249,7 +250,7 @@ func (g *Game) devDo(src string) {
 	if setOnly {
 		r := event.New(g.db, g.st, event.HostFunc(g.Handle))
 		r.Dev = true
-		r.Log = func(err error) { g.devMessage(err.Error()) }
+		r.Log = g.devCommandError
 		r.Start(cmds)
 		for range 100 {
 			if r.Next() == nil && !r.Running() {
@@ -268,6 +269,13 @@ func (g *Game) devDo(src string) {
 func (g *Game) devMessage(s string) {
 	if g.panel != nil {
 		g.panel.msg = s
+	}
+}
+
+func (g *Game) devCommandError(err error) {
+	g.devMessage(err.Error())
+	if g.opts.capture != nil {
+		g.failure = errors.Join(g.failure, err)
 	}
 }
 

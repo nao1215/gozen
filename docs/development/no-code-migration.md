@@ -16,9 +16,20 @@ The product direction and boundaries are recorded in [ADR 0041](../decisions/004
 | 9 | Refactoring | Remove dead code, duplication and unused abstractions; organize tests by implementation or integration behavior | Planned |
 | 10 | Documentation and skill audit | README, site, help, architecture, AGENTS.md and Gozen skill match the implementation; authoring-to-distribution instructions execute | Planned |
 
-Each earlier PR includes its own necessary tests and documentation. The last
-three PRs audit the integrated result; they do not defer known bugs, essential
-cleanup or accurate instructions until the end.
+Each PR includes its necessary tests and documentation. The remaining work is
+grouped into three PRs to avoid repeated changes to the same CLI dispatchers and
+documentation:
+
+1. Direct PNG/GIF capture and real CLI graphics tests (6c).
+2. Analysis and production command output, machine-readable help, and the full
+   CLI contract audit (6d–6f).
+3. Public API retirement (7), followed by the bug, refactoring, documentation and
+   skill audits (8–10) on the resulting implementation.
+
+PR #53 completes 6b. Prepare the next PR while CI runs for its predecessor;
+rebase it after that predecessor merges. Run focused checks during implementation
+and the required complete checks before review. API retirement remains last;
+grouping the audits does not remove their completion gates.
 
 ## Export interfaces
 

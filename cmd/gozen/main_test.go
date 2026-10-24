@@ -6,17 +6,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"image"
-	"image/color"
-	"image/png"
 	"maps"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/nao1215/gozen/internal/diag"
 	data "github.com/nao1215/gozen/schema"
@@ -204,7 +199,7 @@ func TestGNUOptionForms(t *testing.T) {
 
 func TestDispatchHelpVersionAndDelegates(t *testing.T) {
 	top, _ := invoke(t, 0, "--help")
-	for _, sub := range []string{"check", "sim", "play", "book", "export", "release", "trial", "art", "version", "help"} {
+	for _, sub := range []string{"check", "sim", "capture", "book", "export", "release", "trial", "art", "version", "help"} {
 		if !strings.Contains(top, "  "+sub+" ") {
 			t.Fatalf("top help lacks %s: %s", sub, top)
 		}
@@ -428,98 +423,6 @@ func TestFailedOutputIsNonzero(t *testing.T) {
 			t.Fatalf("%v: %d", args, got)
 		}
 	}
-}
-
-func TestShotsProtocolAndTimeout(t *testing.T) {
-	t.Setenv("GOZEN_SHOT_HELPER", "ok")
-	bin, err := os.Executable()
-	if err != nil {
-		t.Fatal(err)
-	}
-	dir := fixture(t)
-	list := filepath.Join(t.TempDir(), "shots.yaml")
-	write(t, list, "shots: [{id: camp, start: camp, wait: 1}]\n")
-	out := filepath.Join(t.TempDir(), "capture")
-	invoke(t, 0, "play", "shots", dir, list, "--bin", bin, "--raw", "--out", out)
-	read(t, filepath.Join(out, "01_camp.png"))
-	read(t, filepath.Join(out, "01_camp.jpg"))
-	read(t, filepath.Join(out, "shots.json"))
-	invoke(t, 1, "play", "shots", dir, list, "--bin", bin, "--raw", "--out", out)
-	write(t, list, "shots: [{id: '../escape', start: camp}]\n")
-	invoke(t, 1, "play", "shots", dir, list, "--bin", bin, "--raw", "--out", filepath.Join(t.TempDir(), "bad"))
-	write(t, list, "shots: [{id: camp, start: camp, picture: mote.png}]\n")
-	top, _ := approvals(t, dir, false)
-	pending := filepath.Join(t.TempDir(), "pending")
-	invoke(t, 1, "play", "shots", dir, list, "--bin", bin, "--overlay", top, "--out", pending)
-	if !strings.Contains(string(read(t, filepath.Join(pending, "shots.json"))), "approval_wait") {
-		t.Fatal("missing pending status")
-	}
-	t.Setenv("GOZEN_SHOT_HELPER", "wait")
-	began := time.Now()
-	invoke(t, 1, "play", "shots", dir, list, "--bin", bin, "--raw", "--timeout", "50ms", "--out", filepath.Join(t.TempDir(), "timeout"))
-	if time.Since(began) > 3*time.Second {
-		t.Fatal("capture ignored timeout")
-	}
-}
-
-// The child exercises the capture protocol only; it never initializes graphics.
-func TestMain(m *testing.M) {
-	mode := os.Getenv("GOZEN_SHOT_HELPER")
-	if mode == "" {
-		os.Exit(m.Run())
-	}
-	if mode == "wait" {
-		time.Sleep(5 * time.Second)
-		os.Exit(0)
-	}
-	arg := func(key string) string {
-		at := slices.Index(os.Args, key)
-		if at < 0 || at+1 == len(os.Args) {
-			panic("missing child flag " + key)
-		}
-		return os.Args[at+1]
-	}
-	if !slices.Contains(os.Args, "--dev") {
-		panic("capture must opt into development")
-	}
-	// The arguments the capture was started with, one run per line, for tests that check them.
-	if p := os.Getenv("GOZEN_SHOT_ARGS"); p != "" {
-		f, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) //nolint:gosec // A path the test chose.
-		if err != nil {
-			panic(err)
-		}
-		if _, err := fmt.Fprintln(f, strings.Join(os.Args[1:], " ")); err != nil {
-			panic(err)
-		}
-		if err := f.Close(); err != nil {
-			panic(err)
-		}
-	}
-	if code := os.Getenv("GOZEN_SHOT_EXIT"); code != "" {
-		os.Exit(3)
-	}
-	im := image.NewNRGBA(image.Rect(0, 0, 8, 8))
-	im.Set(1, 1, color.NRGBA{0, 160, 255, 255})
-	if os.Getenv("GOZEN_SHOT_NOPNG") == "" {
-		f, err := os.Create(filepath.Join(arg("--shots"), "shot.png"))
-		if err != nil {
-			panic(err)
-		}
-		if err := errors.Join(png.Encode(f, im), f.Close()); err != nil {
-			panic(err)
-		}
-	}
-	trace := "{\"t\":\"say\",\"text\":\"Captured marker.\"}\n"
-	if t := os.Getenv("GOZEN_SHOT_TRACE"); t != "" {
-		trace = t + "\n"
-	}
-	if err := os.WriteFile(arg("--trace"), []byte(trace), 0o600); err != nil { //nolint:gosec // The path the capture was told to use.
-		panic(err)
-	}
-	if _, err := fmt.Fprintln(os.Stdout, "capture helper"); err != nil {
-		panic(err)
-	}
-	os.Exit(0)
 }
 
 func TestTrialPrunesUnreachableContent(t *testing.T) {

@@ -617,7 +617,17 @@ func newSceneReplay(g *Game, sc data.GalleryScene) *sceneReplay {
 	g.events.Dev, g.events.UseItem = g.opts.Development, itemuse.For(g.db, st)
 	g.req = nil
 	do := g.db.Events[sc.Event].Do
-	if len(sc.Set) > 0 {
+	if g.opts.capture != nil {
+		var defaults []data.Command
+		if len(sc.Set) > 0 {
+			defaults = []data.Command{{SetV: sc.Set}}
+		}
+		if err := g.captureSetup(defaults); err != nil {
+			g.failure = err
+			return r
+		}
+		g.events.Log = func(err error) { g.failure = err }
+	} else if len(sc.Set) > 0 {
 		do = append([]data.Command{{SetV: sc.Set}}, do...)
 	}
 	g.events.Start(do)

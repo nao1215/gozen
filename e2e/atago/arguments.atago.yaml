@@ -60,11 +60,10 @@ scenarios:
   - sub: sim floors
   - sub: sim design
   - sub: sim campaign
-  - sub: play
   - sub: run
   - sub: trace
   - sub: notes
-  - sub: play shots
+  - sub: capture
   - sub: book
   - sub: export
   - sub: release
@@ -99,7 +98,6 @@ scenarios:
 - name: Requirements are written on the page of ${sub}
   matrix:
   - sub: sim
-  - sub: play
   - sub: art
   - sub: art prompt
   - sub: art mosaic
@@ -117,7 +115,6 @@ scenarios:
 - name: the group ${group} needs a command
   matrix:
   - {group: sim, subs: 'battle, dive, floors, design, campaign'}
-  - {group: play, subs: 'shots'}
   - {group: art, subs: 'prompt, mosaic, fetch, faces, puppet'}
   steps:
   - run:
@@ -196,11 +193,10 @@ scenarios:
   - sub: sim floors
   - sub: sim design
   - sub: sim campaign
-  - sub: play
   - sub: run
   - sub: trace
   - sub: notes
-  - sub: play shots
+  - sub: capture
   - sub: book
   - sub: export
   - sub: release
@@ -242,11 +238,10 @@ scenarios:
   - sub: sim floors
   - sub: sim design
   - sub: sim campaign
-  - sub: play
   - sub: run
   - sub: trace
   - sub: notes
-  - sub: play shots
+  - sub: capture
   - sub: book
   - sub: export
   - sub: release
@@ -381,10 +376,10 @@ scenarios:
         created: []
         modified: []
         deleted: []
-- name: reject gozen play shots --raw unused list.yaml
+- name: reject gozen capture unused
   steps:
   - run:
-      command: gozen play shots --raw unused list.yaml
+      command: gozen capture unused
   - assert:
       exit_code: 2
       stdout:
@@ -398,7 +393,7 @@ scenarios:
 - name: gozen ${sub} help starts with its title line
   matrix:
   - sub: sim battle
-  - sub: play shots
+  - sub: capture
   - sub: art prompt
   - sub: art mosaic
   steps:

@@ -42,7 +42,7 @@ type node struct {
 
 // tree maps a command path to its node.
 var tree = map[string]node{
-	"":             {subs: []string{"new", "run", "export", "check", "sim", "trace", "notes", "release", "trial", "play", "book", "art", "theme", "version", "help"}},
+	"":             {subs: []string{"new", "run", "export", "check", "sim", "trace", "notes", "release", "trial", "capture", "book", "art", "theme", "version", "help"}},
 	"new":          {run: (*command).newGame},
 	"check":        {run: (*command).checkCmd},
 	"sim":          {subs: []string{"battle", "dive", "floors", "design", "campaign", "routes", "breed"}},
@@ -53,11 +53,10 @@ var tree = map[string]node{
 	"sim dive":     {run: (*command).curve},
 	"sim floors":   {run: (*command).floorsCmd},
 	"sim design":   {run: (*command).design},
-	"play":         {subs: []string{"shots"}},
 	"run":          {run: (*command).playRun},
 	"trace":        {run: (*command).traceCmd},
 	"notes":        {run: (*command).notesCmd},
-	"play shots":   {run: (*command).shots},
+	"capture":      {run: (*command).capture},
 	"book":         {run: (*command).bookCmd},
 	"export":       {run: (*command).exportGame},
 	"release":      {run: (*command).release},
@@ -137,10 +136,15 @@ func run(args []string, out, stderr io.Writer) int {
 	}
 }
 
+var errReported = errors.New("failure already reported")
+
 // finish prints err and returns the exit value.
 func (c *command) finish(err error) int {
 	if errors.Is(err, clihelp.ErrHelp) {
 		err = nil
+	}
+	if err == errReported && c.out.Err == nil && c.stderr.Err == nil { //nolint:errorlint // Only the bare marker is silent; joined or wrapped failures must remain visible.
+		return 1
 	}
 	err = errors.Join(err, c.out.Err, c.stderr.Err)
 	if err == nil {

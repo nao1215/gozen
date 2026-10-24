@@ -62,7 +62,7 @@ scenarios:
   - {code: GZN2201, args: 'sim battle game --troop lesson --seed x'}
   - {code: GZN2202, args: 'check --format yaml game'}
   - {code: GZN2202, args: 'check --only fonts game'}
-  - {code: GZN2301, args: 'play shots --raw game list.yaml'}
+  - {code: GZN2301, args: 'capture game --config jobs.yaml --out out --raw --overlay replaced'}
   - {code: GZN2302, args: 'trial game --out out --overlay overlay'}
   - {code: GZN2303, args: 'art prompt --scene landscape'}
   - {code: GZN2401, args: 'release game --out out --inspect absent --prefix ../escape'}

@@ -13,7 +13,7 @@ The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf r
 | `check` | (a leaf) `--only structure\|layout`, `--format text\|json` | the game directory |
 | `sim` | `battle`, `dive`, `floors`, `design`, `campaign`, `routes`, `breed` | play by the rules without a window |
 | `trace`, `notes` | (leaves) | inspect traces and F9 notes |
-| `play` | `shots` | capture screenshots with a game binary |
+| `capture` | (a leaf) | PNG/GIF jobs in one graphics loop |
 | `book` | (a leaf) | |
 | `export` | (a leaf) | create a desktop or web package with a prebuilt runtime |
 | `release`, `trial` | (leaves) | create a new output tree |
@@ -71,7 +71,7 @@ try {
 } finally { Pop-Location }
 ```
 
-The normal specs do not depend on a shell. For every `gozen` subcommand they check the form of help, GNU-style options, exit status, stdout/stderr, determinism, whether anything is written, generated files and protection against overwriting. The capture specs with the `graphics` tag run separately. The capture child process in unit tests is a mock that returns a PNG and a trace, and is not counted as verification of drawing in a real game.
+The normal specs do not depend on a shell. For every `gozen` subcommand they check the form of help, GNU-style options, exit status, stdout/stderr, determinism, whether anything is written, generated files and protection against overwriting. The capture specs with the `graphics` tag run separately. The capture specs run the actual CLI with multiple jobs, PNG/GIF outputs and failure recovery. Capture does not launch a child game process.
 
 For macOS, the direct steps are the same build command without `.exe`, `bin` added to PATH, and the same atago command run from `build/atago`. The results on Windows and macOS and the remote CI are not confirmed locally. For the check before publication, follow the [release checklist](release-checklist.md).
 
@@ -86,7 +86,7 @@ suite excludes `web`; the Website and Release Smoke workflows run it separately.
 command and output contracts. The shared I/O and argument errors now live in
 `internal/cliio`; protected output paths remain in `cmd/internal/cli`.
 
-`new`, `export` and `theme list` currently support `--format text|json|jsonl`. JSON emits one
+`new`, `export`, `capture` and `theme list` currently support `--format text|json|jsonl`. JSON emits one
 version-1 envelope with `command`, `status` and `data`. JSONL theme lists emit
 ordered `item` records and one terminal `summary`; creation emits one summary.
 Both machine formats send fatal diagnostics to stderr as JSONL, preserving the

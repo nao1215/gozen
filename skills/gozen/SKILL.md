@@ -16,7 +16,8 @@ Start a new game with `gozen new <game-dir> --template rpg|novel|campaign`. The 
 3. Run `gozen check` on the game directory. Fix every error and run it again. Stop only when it prints `ok:` and exits 0.
 4. When a fight or a dungeon changed, measure it with `gozen sim` (references/measure.md).
 5. Play the game with `gozen run <game-dir> --dev`; it uses the same standard runner as `play.Main`, including live reload, scripts, traces and screenshots. Use `--save-dir` to isolate manual test saves. A display is required (Xvfb for unattended Linux); inspect `gozen run --help` before choosing options.
-6. For a novel or event-driven game, run `gozen sim routes <game-dir>` to explore choices and check reachable endings and offered options; use `--format json --fail-unreachable` in CI.
+6. Capture promotional or review images with `gozen capture <game-dir> --config captures.yaml --out promo`. Jobs select a location, event or gallery line; `gif` records an animation. Saves are isolated automatically. Check the per-job results and exit status; partial failure exits 1. Use `--format json` or `jsonl` for machine-readable reports. See [capture](https://nao1215.github.io/gozen/commands/#capture) for limits and examples.
+7. For a novel or event-driven game, run `gozen sim routes <game-dir>` to explore choices and check reachable endings and offered options; use `--format json --fail-unreachable` in CI.
 
 <!-- verify: run fixture=cave -->
 ```shell

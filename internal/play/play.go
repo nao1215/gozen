@@ -37,6 +37,7 @@ import (
 )
 
 type Options struct {
+	capture          *captureStartup
 	Development      bool
 	Report           io.Writer
 	CollectBuildInfo bool
@@ -174,7 +175,6 @@ func Run(ctx context.Context, opts Options) (err error) {
 	g.startLive()
 	err = ebiten.RunGameWithOptions(g, &ebiten.RunGameOptions{InitUnfocused: unwatched})
 	g.stopLive()
-	g.failure = errors.Join(g.failure, g.shots.wait())
 	if errors.Is(err, errQuit) {
 		err = nil
 	}
@@ -1182,6 +1182,11 @@ func (g *Game) testStart() error {
 	if o.Floor > 0 && o.Location != "" && g.db.Locations[o.Location].Dungeon != nil && g.db.Locations[o.Location].Dungeon.Generate != nil {
 		dungeon.Dive(g.db, g.st, o.Location, o.Floor)
 	}
+	if o.capture != nil && o.Scene == "" {
+		if err := g.captureSetup(nil); err != nil {
+			return err
+		}
+	}
 	g.startState()
 	return nil
 }
@@ -1225,6 +1230,10 @@ func (g *Game) startState() {
 	// Writing stats and levels with set is allowed only in authoring mode (--dev) (ADR 0021, author's decision 5).
 	g.events.Dev, g.events.UseItem = g.opts.Development || g.opts.SetStats, itemuse.For(g.db, g.st)
 	g.events.Log = func(err error) {
+		if g.opts.capture != nil {
+			g.failure = errors.Join(g.failure, err)
+			return
+		}
 		log.Print(err)
 		if g.auto != nil {
 			g.auto.errs = append(g.auto.errs, err.Error())
@@ -1966,7 +1975,7 @@ func (g *Game) Close() error {
 	g.stopLive()
 	g.flushRead()
 	g.traceEnd()
-	err := errors.Join(g.failure, sound.Close())
+	err := errors.Join(g.failure, g.shots.wait(), sound.Close())
 	if g.tr != nil {
 		err = errors.Join(err, g.tr.err)
 	}
