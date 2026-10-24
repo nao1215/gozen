@@ -68,13 +68,26 @@ scenarios:
       runner: browser
       actions:
       - eval: &controls |
+          window.testFrames = (count) => new Promise(resolve => {
+            const next = () => {
+              if (--count === 0) resolve();
+              else requestAnimationFrame(next);
+            };
+            requestAnimationFrame(next);
+          });
           window.key = async (code) => {
             const canvas = document.querySelector('canvas');
             canvas.focus();
             canvas.dispatchEvent(new KeyboardEvent('keydown', {code, key: code, bubbles: true}));
-            await new Promise(r => setTimeout(r, 100));
+            await testFrames(2);
             canvas.dispatchEvent(new KeyboardEvent('keyup', {code, key: code, bubbles: true}));
-            await new Promise(r => setTimeout(r, 250));
+            await testFrames(15);
+          };
+          window.testSaved = async (slot) => {
+            while (!localStorage.getItem('gozen/browser-roundtrip/save' + slot + '.json')) {
+              await testFrames(1);
+            }
+            document.body.dataset.testSaved = 'true';
           }; true
       - eval: |
           (async () => {
@@ -85,8 +98,7 @@ scenarios:
             for (let i = 0; i < 4; i++) await key('ArrowDown');
             await key('Enter');
             await key('Enter');
-            await new Promise(r => setTimeout(r, 500));
-            document.body.dataset.testSaved = 'true';
+            await testSaved(1);
           })()
       - wait_visible: 'body[data-test-saved=true]'
       - screenshot: {path: first.png, selector: canvas}
@@ -109,8 +121,7 @@ scenarios:
             await key('Enter');
             await key('ArrowDown');
             await key('Enter');
-            await new Promise(r => setTimeout(r, 500));
-            document.body.dataset.testSaved = 'true';
+            await testSaved(2);
           })()
       - wait_visible: 'body[data-test-saved=true]'
       - screenshot: {path: second.png, selector: canvas}
