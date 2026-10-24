@@ -553,7 +553,7 @@ func TestExploreTheEffectsOfAPath(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := gozen.Explore(ctx, s, "- call: tour\n", gozen.ExploreOptions{}); !errors.Is(err, context.Canceled) {
-		t.Errorf("a cancelled context: %v", err)
+		t.Errorf("a canceled context: %v", err)
 	}
 }
 
@@ -570,7 +570,7 @@ func (p cancelAtChoice) Decide(ctx context.Context, s *gozen.Session, q gozen.Re
 	return p.DefaultPolicy.Decide(ctx, s, q)
 }
 
-// TestCancelledMidwayLeavesAUsableSession: a context cancelled while commands run ends Do with the context's error;
+// TestCancelledMidwayLeavesAUsableSession: a context canceled while commands run ends Do with the context's error;
 // the session can be saved, restored and used again with a fresh context.
 func TestCancelledMidwayLeavesAUsableSession(t *testing.T) {
 	g := moreSessionGame(t, nil)
@@ -585,7 +585,7 @@ func TestCancelledMidwayLeavesAUsableSession(t *testing.T) {
 	}
 	b, err := s.Save()
 	if err != nil {
-		t.Fatalf("a session cancelled midway cannot be saved: %v", err)
+		t.Fatalf("a session canceled midway cannot be saved: %v", err)
 	}
 	r, err := gozen.Restore(g, b, gozen.Config{Seed: 1})
 	if err != nil {
