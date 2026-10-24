@@ -77,8 +77,12 @@ jobs:
         with:
           xvfb: true
 
+      - uses: nao1215/setup-atago@5c563dcd9d85e114f8abe8bbdcd058e51de09efb # v0.1.3
+        with:
+          version: v0.25.2
+
       - name: Run tests with coverage
-        run: xvfb-run --auto-servernum make coverage
+        run: xvfb-run --auto-servernum --error-file=/dev/stderr make coverage
       - name: Save the Go caches of this job
         if: ${{ github.ref == 'refs/heads/main' && steps.go-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

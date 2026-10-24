@@ -9,6 +9,7 @@ import (
 	"image/color"
 	"image/png"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -270,5 +271,44 @@ func TestTraceWriterFailureIsReturned(t *testing.T) {
 	}
 	if err := g.Close(); !errors.Is(err, want) {
 		t.Fatalf("close: %v", err)
+	}
+}
+
+// TestRecordNeedsSomethingToRecord: without a script, autopilot or replay Record refuses; with
+// no ffmpeg on the path it says how to get it.
+func TestRecordNeedsSomethingToRecord(t *testing.T) {
+	err := Record(context.Background(), Options{FS: gameFiles(t)}, filepath.Join(t.TempDir(), "o.mp4"))
+	if err == nil || !strings.Contains(err.Error(), "script") {
+		t.Fatalf("err = %v", err)
+	}
+	t.Setenv("PATH", "")
+	err = Record(context.Background(), Options{FS: gameFiles(t), Script: "quit"}, filepath.Join(t.TempDir(), "o.mp4"))
+	if err == nil || !strings.Contains(err.Error(), "ffmpeg") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+// TestRecordRefusesBrokenData: a game that does not load stops Record before anything starts.
+func TestRecordRefusesBrokenData(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg is not installed")
+	}
+	fsys := gameFiles(t)
+	delete(fsys, "game.yaml")
+	err := Record(context.Background(), Options{FS: fsys, Script: "quit"}, filepath.Join(t.TempDir(), "o.mp4"))
+	if err == nil {
+		t.Fatal("recorded a game without game.yaml")
+	}
+}
+
+// TestRunRefusesACancelledContext and bad options.
+func TestRunRefusesACancelledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := Run(ctx, Options{FS: gameFiles(t)}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v", err)
+	}
+	if err := Run(context.Background(), Options{}); err == nil {
+		t.Fatal("ran without a filesystem")
 	}
 }

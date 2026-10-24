@@ -81,6 +81,9 @@ func (g *Game) fastStep() {
 			return
 		}
 		g.fast = nil
+		if g.opts.capture != nil {
+			g.opts.capture.seek = why
+		}
 		g.emit("from_memo_ready", traceLine{"lines": g.evLines, "want": f.lines, "why": why, "picture": g.cg.File})
 		g.landedVoice()
 	}
@@ -97,7 +100,9 @@ func (g *Game) fastStep() {
 		stop("choice")
 		return
 	case f.ticks > 60*300:
-		log.Printf("from memo: gave up reading on to line %d (at %d)", f.lines, g.evLines)
+		if g.opts.capture == nil {
+			log.Printf("from memo: gave up reading on to line %d (at %d)", f.lines, g.evLines)
+		}
 		stop("gave up")
 		return
 	case reached && f.battle && g.currentBattle() != nil:

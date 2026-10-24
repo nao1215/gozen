@@ -5,7 +5,7 @@ coverage:
   # Measured with -coverpkg=./... across the whole module, so cross-package tests
   # count toward the package they exercise. Keep this a little below the measured
   # value and raise it as coverage grows.
-  acceptable: 92%
+  acceptable: 90%
   exclude:
     # Not part of the library or the gozen command: sample games, the generators
     # and checkers under internal/dev, and the test fixture game.

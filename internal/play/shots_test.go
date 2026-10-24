@@ -1,15 +1,11 @@
 package play
 
 import (
-	"context"
-	"errors"
 	"image"
 	"image/color"
 	"image/png"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -117,41 +113,47 @@ func TestShotWriterReusesBuffersOfTheSameSize(t *testing.T) {
 	}
 }
 
-// TestRecordNeedsSomethingToRecord: without a script, autopilot or replay Record refuses; with
-// no ffmpeg on the path it says how to get it.
-func TestRecordNeedsSomethingToRecord(t *testing.T) {
-	err := Record(context.Background(), Options{FS: gameFiles(t)}, filepath.Join(t.TempDir(), "o.mp4"))
-	if err == nil || !strings.Contains(err.Error(), "script") {
-		t.Fatalf("err = %v", err)
-	}
-	t.Setenv("PATH", "")
-	err = Record(context.Background(), Options{FS: gameFiles(t), Script: "quit"}, filepath.Join(t.TempDir(), "o.mp4"))
-	if err == nil || !strings.Contains(err.Error(), "ffmpeg") {
-		t.Fatalf("err = %v", err)
-	}
-}
-
-// TestRecordRefusesBrokenData: a game that does not load stops Record before anything starts.
-func TestRecordRefusesBrokenData(t *testing.T) {
-	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		t.Skip("ffmpeg is not installed")
-	}
-	fsys := gameFiles(t)
-	delete(fsys, "game.yaml")
-	err := Record(context.Background(), Options{FS: fsys, Script: "quit"}, filepath.Join(t.TempDir(), "o.mp4"))
-	if err == nil {
-		t.Fatal("recorded a game without game.yaml")
-	}
-}
-
-// TestRunRefusesACancelledContext and bad options.
-func TestRunRefusesACancelledContext(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	if err := Run(ctx, Options{FS: gameFiles(t)}); !errors.Is(err, context.Canceled) {
-		t.Fatalf("err = %v", err)
-	}
-	if err := Run(context.Background(), Options{}); err == nil {
-		t.Fatal("ran without a filesystem")
+func TestCloseFinishesScreenshots(t *testing.T) {
+	for _, blocked := range []bool{false, true} {
+		t.Run(map[bool]string{false: "complete", true: "write failure"}[blocked], func(t *testing.T) {
+			g, err := New(Options{FS: gameFiles(t), NoSound: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := g.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			path := filepath.Join(t.TempDir(), "capture.png")
+			if blocked {
+				if err := os.Mkdir(path, 0o700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			g.shots.write(path, sysSolid(8, 6, color.NRGBA{R: 19, A: 255}))
+			err = g.Close()
+			if (err != nil) != blocked {
+				t.Fatalf("Close() = %v, blocked = %v", err, blocked)
+			}
+			if !blocked {
+				f, err := os.Open(path) //nolint:gosec // Reads the screenshot path created by this test.
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer func() {
+					if err := f.Close(); err != nil {
+						t.Error(err)
+					}
+				}()
+				img, err := png.Decode(f)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if img.Bounds() != image.Rect(0, 0, 8, 6) {
+					t.Fatalf("incomplete screenshot: %v", img.Bounds())
+				}
+			}
+		})
 	}
 }

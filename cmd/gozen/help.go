@@ -31,7 +31,7 @@ var topPage = clihelp.Page{
 		{"notes", "Build an HTML report from test-play notes"},
 		{"release", "Build an approved asset tree"},
 		{"trial", "Build a trial game tree"},
-		{"play", "Capture screenshots with a game binary: shots"},
+		{"capture", "Capture PNG images and animated GIFs"},
 		{"book", "Write the definitions and events as Markdown"},
 		{"export", "Export a playable desktop game or static website"},
 		{"art", "Picture and asset tools: prompt, mosaic, fetch, faces, puppet"},
@@ -54,7 +54,7 @@ var topPage = clihelp.Page{
 			"invalid arguments. A diagnostic may end with a code such as [GZN1101] whose first digit is " +
 			"the exit status; gozen help GZN1101 explains it.",
 		"Requirements: check, sim, book, release, trial, trace, notes, and art prompt need nothing beyond " +
-			"the gozen binary; cgo is not required. export needs a matching prebuilt runtime bundle. run and play shots launch a graphics game, and unattended " +
+			"the gozen binary; cgo is not required. export needs a matching prebuilt runtime bundle. run and capture launch a graphics game, and unattended " +
 			"capture on Linux needs Xvfb. art mosaic inference and art faces need a gozen built with cgo, " +
 			"an ONNX Runtime shared library, and user-supplied models. See " + clihelp.README,
 	},
@@ -89,14 +89,6 @@ var groups = map[string]clihelp.Page{
 			"gives the same result, --turns ends a battle as a draw, and --format json prints one JSON " +
 			"document for a tool or an agent.", noRequirements},
 		Hint: `Run "gozen sim <command> --help" for a command's options and examples.`,
-	},
-	"play": {
-		Summary:  "capture screenshots with a game binary",
-		Usage:    []string{"gozen play shots [OPTIONS] ..."},
-		Commands: [][2]string{{"shots", "Launch a game binary and take screenshots"}},
-		Examples: []clihelp.Example{{"capture a screenshot list", "gozen play shots game shots.yaml --bin ./mygame --raw --out shots"}},
-		Groups:   []clihelp.Group{general},
-		Notes:    []string{"Requirements: a game binary, a display and platform graphics and audio libraries. See " + clihelp.README},
 	},
 	"theme": {
 		Summary: "dungeon themes",
@@ -335,21 +327,23 @@ var pages = map[string]clihelp.Page{
 		Groups: []clihelp.Group{{Title: "Output", Flags: []string{"out"}}, general},
 		Notes:  []string{"The output directory must not exist yet.", noRequirements},
 	},
-	"play shots": {
-		Summary: "launch the game and take the screenshots of a list",
-		Usage:   []string{"gozen play shots --bin FILE (--raw | --overlay DIR) [OPTIONS] <game-dir> <list>"},
-		About: "Launches the game binary once per entry of the list and writes PNG, JPEG, an HTML index, " +
-			"and shots.json to a new directory. Saves go to a work tree per shot. With --overlay, approval " +
-			"is checked and a pending approval exits 1. A failed launch is recorded in the work tree and exits 1.",
+	"capture": {
+		Summary: "capture PNG images and animated GIFs from a game",
+		Usage:   []string{"gozen capture GAME --config FILE --out DIR [OPTIONS]"},
+		About:   "Runs the YAML capture jobs in one graphics loop with isolated state and saves. Writes PNG or GIF images, shots.json and index.html. Failed jobs remain in the report and cause exit 1. Existing output directories are preserved.",
 		Examples: []clihelp.Example{
-			{"take the shots with the original assets", "gozen play shots game shots.yaml --bin ./mygame --raw -o shots"},
-			{"take only one of them, with a shorter time limit", "gozen play shots game shots.yaml --bin ./mygame --raw --only camp --timeout 1m"},
-			{"run unattended on Linux", "xvfb-run -a gozen play shots game shots.yaml --bin ./mygame --raw"},
+			{"capture a list of views", "gozen capture game --config captures.yaml --out promo"},
+			{"capture one job and report JSON", "gozen capture game --config captures.yaml --out promo --only opening --format json"},
+			{"run unattended on Linux", "xvfb-run -a gozen capture game --config captures.yaml --out promo"},
 		},
 		Groups: []clihelp.Group{
-			{Title: "Game", Flags: []string{"bin", "raw", "overlay", "timeout"}},
-			{Title: "Output", Flags: []string{"out", "only"}},
+			{Title: "Input", Flags: []string{"config", "only", "overlay", "raw", "timeout"}},
+			{Title: "Output", Flags: []string{"out", "format"}},
 			general,
+		},
+		Notes: []string{
+			"Requirements: a display and platform graphics libraries; no game binary, Go toolchain or ffmpeg. See " + clihelp.README,
+			"GIF jobs support 1–30 FPS, up to 10 seconds and 1280 pixels wide. Combined limits: 300 frames, 921600 pixels per frame and 64 MiB of paletted frames. Timeouts are cooperative.",
 		},
 	},
 	"book": {

@@ -298,7 +298,7 @@ location=trail battles=1 wins=1 gold=3
 | `new` | create a playable RPG, novel or campaign from a template |
 | `check` | definitions, references, expressions, pictures, text layout (`--only structure` or `--only layout`) |
 | `sim battle`, `sim dive`, `sim floors`, `sim design` | win rate; a dungeon dive; generated floors; scripted players |
-| `run`, `trace`, `notes`, `play shots` | run a game directory; read a trace; notes as HTML; screenshots of a list |
+| `run`, `trace`, `notes`, `capture` | run a game directory; read a trace; notes as HTML; screenshots of a list |
 | `book` | the whole game as Markdown |
 | `export` | playable desktop directories; static browser games, using prebuilt runtimes |
 | `release`, `trial` | approved pictures only; a demo |

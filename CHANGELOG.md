@@ -6,6 +6,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
+- Capture PNG images and bounded animated GIFs with `gozen capture GAME --config FILE --out DIR`. Jobs share one graphics loop, use isolated state and saves, and report partial failures in text, JSON or JSONL.
 - Export static browser games with `gozen export --target web`, a common WASM player and its matching JavaScript runtime.
 
 - Package games with `gozen export` and matching prebuilt player runtimes. Players need no Go toolchain or authoring CLI.
@@ -16,6 +17,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Changed
 
+- Replace `play shots` and its external game binary with direct `capture`. Image output now uses PNG or GIF without automatic JPEG copies; the destination is required and `--only ID` is repeatable.
 - Call `trace`, `notes`, `release` and `trial` directly. `notes`, `release` and non-dry `trial` require `--out DIR`. Explicit `trial --config FILE` paths are relative to the working directory; the omitted default remains `GAME/trial.yaml`. Use `--version` or `version` instead of the removed top-level `-v`.
 - Select battle troops with `sim battle GAME --troop ID`, dungeon locations with `sim dive/floors GAME --location ID`, and bundled themes with `theme add GAME --name NAME`. Selectors are no longer positional operands.
 - Replace `gozen pack desktop GAME OUT` and `gozen pack web GAME OUT` with `gozen export GAME --out OUT`; use `--target web` for browser games.
@@ -23,6 +25,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Fixed
 
+- Wait for pending screenshot writes in `Game.Close` and report encoding or filesystem failures before completing a capture job.
 - Omit portraits for actors without a picture directory instead of requesting `/normal.png` during play.
 
 ## v0.6.0 - 2026-10-24

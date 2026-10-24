@@ -2,43 +2,86 @@ version: '1'
 suite:
   name: Gozen actual screenshot capture
 scenarios:
-- name: shots captures the original sample through its runner
-  tags:
-  - graphics
+- name: capture isolates jobs and publishes PNG and GIF despite a failed job
+  tags: [graphics]
   steps:
   - fixture:
-      file: shots.yaml
-      content: 'shots: [{id: camp, start: camp, wait: 2}]
-
-        '
+      file: capture jobs.yaml
+      content: |
+        seed: 7
+        shots:
+          - {id: camp, start: camp, wait: 2}
+          - id: conversation
+            event: finish
+            line: 1
+            wait: 2
+            setup: [{set: {gold: 42}}]
+          - id: animated
+            start: camp
+            wait: 2
+            gif:
+              fps: 10
+              duration: 1s
+              width: 320
+              script: |
+                press ok
+          - {id: missing, event: absent}
+          - {id: camp-again, start: camp, wait: 2}
   - run:
-      command: gozen play shots "${specdir}/fixtures/game" shots.yaml --raw --bin "${env:GOZEN_GAME_BIN}" --out captures --timeout
-        30s
+      command: gozen capture --config "capture jobs.yaml" "${specdir}/fixtures/game" --out "capture output" --timeout 30s --format json
       timeout: 45s
   - assert:
-      exit_code: 0
+      exit_code: 1
+      stderr: {equals: ''}
       stdout:
-        contains: ok
-      stderr:
-        equals: ''
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: capture}
+        - {path: $.status, equals: failed}
+        - {path: $.data.succeeded, equals: 4}
+        - {path: $.data.failed, equals: 1}
+        - {path: '$.data.items[1].status', equals: ok}
+        - {path: '$.data.items[2].frames', equals: 10}
+        - {path: '$.data.items[3].reason', equals: 'unknown event "absent"'}
+        - {path: '$.data.items[4].status', equals: ok}
+  - assert:
+      image: {path: capture output/camp.png, format: png, width: 960, height: 540}
   - assert:
       image:
-        path: captures/01_camp.png
-        format: png
-        width: 960
-        height: 540
+        path: capture output/camp-again.png
+        similar_to: capture output/camp.png
+        max_diff: 0.001
   - assert:
-      image:
-        path: captures/01_camp.jpg
-        format: jpeg
-        width: 960
-        height: 540
+      image: {path: capture output/animated.gif, format: gif, width: 320, height: 180}
   - assert:
       file:
-        path: captures/shots.json
-        json:
-          path: $[0].status
-          equals: ok
+        path: capture output/missing.png
+        exists: false
+  - assert:
+      file:
+        path: capture output/shots.json
+        json: {path: '$[3].status', equals: failed}
+  - run:
+      command: gozen capture "${specdir}/fixtures/game" --config "capture jobs.yaml" --out jsonl --only camp --format jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        equals: |
+          {"version":1,"command":"capture","type":"item","id":"camp","status":"ok","data":{"n":1,"id":"camp","status":"ok","artifact":"camp.png","frames":1,"seed":7,"size":"960x540"}}
+          {"version":1,"command":"capture","type":"summary","status":"ok","data":{"items":[{"n":1,"id":"camp","status":"ok","artifact":"camp.png","frames":1,"seed":7,"size":"960x540"}],"succeeded":1,"failed":0}}
+  - assert:
+      image:
+        path: jsonl/camp.png
+        similar_to: capture output/camp.png
+        max_diff: 0.001
+  - run:
+      command: gozen capture "${specdir}/fixtures/game" --config "capture jobs.yaml" --out "capture output" --format json
+  - assert:
+      exit_code: 1
+      stdout: {equals: ''}
+      changes: {created: [], modified: [], deleted: []}
 
 - name: run plays a directory with shared scripts and records its events
   tags: [graphics]
@@ -231,3 +274,68 @@ scenarios:
         - '"result":"won"'
         - '"t":"end_turn"'
         - '"turn":2'
+
+- name: capture checks an asset that appears during animation and continues after rejection
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: overlay/approvals.json
+      content: '[{"file":"mote.png","approved":false,"required":false,"status":"pending"}]'
+  - fixture:
+      file: captures.yaml
+      content: |
+        shots:
+          - id: transient
+            start: camp
+            wait: 2
+            gif:
+              duration: 1s
+              fps: 30
+              width: 320
+              script: |
+                wait 6
+                do image: {file: mote.png}
+                wait 2
+                do image: {}
+          - {id: clean, start: camp, wait: 2}
+  - run:
+      command: gozen capture "${specdir}/fixtures/game" --config captures.yaml --overlay overlay --out output --format json
+      timeout: 30s
+  - assert:
+      exit_code: 1
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.data.succeeded, equals: 1}
+        - {path: $.data.failed, equals: 1}
+        - {path: '$.data.items[0].reason', equals: 'assetfs: unapproved mote.png ()'}
+        - {path: '$.data.items[1].status', equals: ok}
+  - assert:
+      file: {path: output/transient.gif, exists: false}
+  - assert:
+      image: {path: output/clean.png, format: png, width: 960, height: 540}
+
+- name: capture times out one job and starts the next with fresh state
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: captures.yaml
+      content: |
+        shots:
+          - {id: slow, start: camp, script: 'wait 1000000'}
+          - {id: quick, start: camp, wait: 2}
+  - run:
+      command: gozen capture "${specdir}/fixtures/game" --config captures.yaml --out output --timeout 2s --format json
+      timeout: 15s
+  - assert:
+      exit_code: 1
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.data.failed, equals: 1}
+        - {path: '$.data.items[0].reason', equals: 'context deadline exceeded'}
+        - {path: '$.data.items[1].status', equals: ok}
+  - assert:
+      file: {path: output/slow.png, exists: false}
+  - assert:
+      image: {path: output/quick.png, format: png, width: 960, height: 540}
