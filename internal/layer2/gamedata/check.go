@@ -1742,7 +1742,7 @@ var (
 		maps.Copy(m, tUnit.fields)
 		return m
 	}(), resistPrefix)
-	tPos = objType("pos", map[string]*vtype{"x": tNum, "y": tNum, "facing": tStr}, nil)
+	tPos = objType("pos", map[string]*vtype{"x": tNum, "y": tNum, "level": tNum, "facing": tStr}, nil)
 	// tMenuEntry is one menu item (created by an event).
 	tMenuEntry = objType("a menu entry", map[string]*vtype{"kind": tStr, "label": tStr, "new": tBool, "marked": tBool}, nil)
 	// tRepair is one entry of repairs (rpg's LoadChange).

@@ -6,11 +6,68 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nao1215/gozen/internal/expr"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
 	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/testgame"
 )
+
+func TestSpacePositionLevelExpression(t *testing.T) {
+	db, err := data.Load(os.DirFS("../../../examples/space/game"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	level, err := expr.Parse("pos.level")
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := testgame.State(db, 7)
+	check := func(want int) {
+		t.Helper()
+		got, err := level.Number(st.Env())
+		if err != nil || got != float64(want) {
+			t.Fatalf("pos.level = %v, %v; want %d", got, err, want)
+		}
+		saved, err := st.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		st, err = rpg.Parse(db, saved, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err = level.Number(st.Env())
+		if err != nil || got != float64(want) {
+			t.Fatalf("restored pos.level = %v, %v; want %d", got, err, want)
+		}
+	}
+	check(0) // The default position's save omits level, as older saves did.
+	st.Pos = rpg.Pos{In: "courtyard", X: 6, Y: 10, Facing: 0}
+	walk := func(steps int) {
+		t.Helper()
+		for range steps {
+			if moved, _ := dungeon.Forward(db, st); !moved {
+				t.Fatalf("blocked at %+v", st.Pos)
+			}
+		}
+	}
+	walk(4)
+	check(1)
+	dungeon.Turn(st, 1)
+	walk(8)
+	dungeon.Turn(st, 1)
+	walk(4)
+	check(2)
+	dungeon.Turn(st, 2)
+	walk(4)
+	check(1)
+	dungeon.Turn(st, -1)
+	walk(8)
+	dungeon.Turn(st, -1)
+	walk(4)
+	check(0)
+}
 
 func TestSpaceStairsAndRestore(t *testing.T) {
 	db, err := data.Load(os.DirFS("../../../examples/space/game"))

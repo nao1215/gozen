@@ -2,6 +2,42 @@ version: '1'
 suite:
   name: gozen check --format json and the schema version 2 words
 scenarios:
+- name: position level validates in text and JSON while unknown fields are rejected
+  steps:
+  - run:
+      command: gozen new level-game --template rpg
+  - assert:
+      exit_code: 0
+  - fixture:
+      file: level-game/data/level-probe.yaml
+      content: |
+        events:
+          level_probe:
+            do:
+              - if: pos.level == 1
+                then:
+                  - say: Upstairs.
+  - run:
+      command: gozen check level-game
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+  - run:
+      command: gozen check level-game --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json: {path: $.data, equals: []}
+      stderr: {equals: ''}
+  - fixture:
+      file: level-game/data/level-probe.yaml
+      content: 'events: {level_probe: {do: [{if: "pos.unknown == 1", then: []}]}}'
+  - run:
+      command: gozen check level-game --format json
+  - assert:
+      exit_code: 1
+      stdout:
+        contains: ['GZN1103', 'pos has no field']
 - name: check json on a sound game prints an empty list
   steps:
   - run:
