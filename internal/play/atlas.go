@@ -70,6 +70,7 @@ type atlasScene struct {
 	leader  dollSpec // the token's doll when the map has no token picture
 	spot    string   // the spot last written to the trace
 	boxes   []plateBox
+	targets []pointTarget
 	ground  map[string]*ebiten.Image // landmarks settled onto their terrain, by region
 	// warChosen: a campaign's map has chosen its first region
 	warChosen bool
@@ -322,11 +323,20 @@ func (s *atlasScene) firstStep(g *Game, c atlas.Choice) geom.Pt {
 	return a.Points[c.Point].At.Pt()
 }
 
-// pointAt is the choice whose point is nearest (x, y) (UI units) within a finger's reach.
+// pointAt prefers the last visible marker or plate drawn, then the nearest anchor
+// within a finger's reach. Layout is recomputed so input never uses stale bounds.
 func (s *atlasScene) pointAt(g *Game, x, y float64) (atlas.Choice, bool) {
+	s.layoutPoints(g, nil)
+	for i := len(s.targets) - 1; i >= 0; i-- {
+		target := s.targets[i]
+		b := target.box
+		if x >= b.x && x <= b.x+b.w && y >= b.y && y <= b.y+b.h {
+			return s.choices[target.choice], true
+		}
+	}
 	best, bd := -1, pointHit
 	for _, p := range s.points {
-		if p.choice < 0 {
+		if p.choice < 0 || p.shown == 0 {
 			continue
 		}
 		px, py := s.screen(g, p.at)
@@ -337,7 +347,7 @@ func (s *atlasScene) pointAt(g *Game, x, y float64) (atlas.Choice, bool) {
 	if best < 0 && s.campaignMap(g) { // inside a region's area
 		for _, p := range s.points {
 			r := g.db.Regions[p.id]
-			if p.choice < 0 || r == nil || len(r.Area) < 3 {
+			if p.choice < 0 || p.shown == 0 || r == nil || len(r.Area) < 3 {
 				continue
 			}
 			var q geom.Poly
@@ -529,6 +539,41 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 			}
 		}
 	}
+	s.layoutPoints(g, dst)
+	sel := ""
+	if !s.walking() && s.sel < len(s.choices) && !g.busy() {
+		sel = s.choices[s.sel].Point
+	}
+	_, sh := g.screen()
+	war := s.campaignMap(g)
+	if !war {
+		s.drawToken(g, dst, k, ox, oy)
+	}
+	if g.talk.active || len(g.stack) > 1 {
+		return
+	}
+	if war {
+		s.drawCampaign(g, dst, sel)
+		g.text(dst, lang.T("方向：選ぶ　決定：命令　メニュー：一覧"), 36, sh-40, sizeS*0.8, withAlpha(g.th.text, 200))
+		return
+	}
+	if s.banner > 0 {
+		name := data.Render(l.Name, g.st.Env())
+		al := math.Min(1, float64(s.banner)/30)
+		w := math.Max(220, gfx.TextWidth(name, sizeL)+60)
+		gfx.FillRoundRect(dst, 36, 28, float32(w), 60, 14, withAlpha(g.th.window, uint8(float64(g.th.window.A)*al)))
+		g.text(dst, name, 64, 40, sizeL, withAlpha(g.th.text, uint8(255*al)))
+	}
+	g.text(dst, lang.T("方向：選ぶ　決定：進む　メニュー：一覧"), 36, sh-40, sizeS*0.8, withAlpha(g.th.text, 200))
+}
+
+// layoutPoints shares marker and plate geometry between drawing and pointer input.
+// A nil destination performs layout only, including label collision avoidance.
+func (s *atlasScene) layoutPoints(g *Game, dst *ebiten.Image) {
+	a := s.location(g).Map
+	k, ox, oy, _ := s.fit(g)
+	u := g.ui
+	toScreen := func(p geom.Pt) (float32, float32) { return float32((ox + p.X*k) / u), float32((oy + p.Y*k) / u) }
 	sel := ""
 	if !s.walking() && s.sel < len(s.choices) && !g.busy() {
 		sel = s.choices[s.sel].Point
@@ -540,6 +585,7 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	}
 	// the markers, then the name plates laid out so they keep off each other and the markers
 	s.boxes = s.boxes[:0]
+	s.targets = s.targets[:0]
 	war := s.campaignMap(g)
 	for i := range s.points { // a region's plate follows its garrison at once
 		if war && g.db.Regions[s.points[i].id] != nil && s.location(g).Map.Points[s.points[i].id].Label == "" {
@@ -567,7 +613,7 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 		if war && g.db.Regions[p.id] != nil && g.db.Regions[p.id].Landmark != "" {
 			mw := float64(g.pics.get(s.pic).Bounds().Dx()) * k / u
 			if box, ok := s.drawLandmark(g, dst, p, float64(x), float64(y), mw); ok {
-				s.boxes = append(s.boxes, box)
+				s.addPointBox(p, box)
 				continue
 			}
 		}
@@ -580,12 +626,12 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 			s.drawMarker(g, dst, p, float64(x), float64(y), h, pointAlpha(p))
 		}
 		if war && g.db.Regions[p.id] != nil { // a flag reaches to the right of its pole
-			s.boxes = append(s.boxes, plateBox{x: float64(x) - h*0.2, y: float64(y) - h - 4, w: h * 0.95, h: h + 4})
+			s.addPointBox(p, plateBox{x: float64(x) - h*0.24 - 2, y: float64(y) - h - 2, w: h*.86 + 6, h: h*1.24 + 4})
 		} else {
-			s.boxes = append(s.boxes, plateBox{x: float64(x) - h*0.3, y: float64(y) - h, w: h * 0.6, h: h})
+			s.addPointBox(p, s.markerBox(g, p, float64(x), float64(y), h))
 		}
 	}
-	if i := s.pointIndex(sel); i >= 0 { // the chosen plate first: it keeps its place
+	if i := s.pointIndex(sel); i >= 0 && s.points[i].shown > 0 { // the chosen plate first: it keeps its place
 		s.drawPlate(g, dst, s.points[i], sel, mh)
 	}
 	for _, p := range s.points {
@@ -593,25 +639,33 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 			s.drawPlate(g, dst, p, sel, mh)
 		}
 	}
-	if !war {
-		s.drawToken(g, dst, k, ox, oy)
+}
+
+type pointTarget struct {
+	box    plateBox
+	choice int
+}
+
+func (s *atlasScene) addPointBox(p mapPoint, box plateBox) {
+	s.boxes = append(s.boxes, box)
+	if p.shown > 0 && p.choice >= 0 {
+		s.targets = append(s.targets, pointTarget{box: box, choice: p.choice})
 	}
-	if g.talk.active || len(g.stack) > 1 {
-		return
+}
+
+// markerBox uses the same aspect ratio and bottom anchor as drawMarker.
+func (s *atlasScene) markerBox(g *Game, p mapPoint, x, y, h float64) plateBox {
+	pic := p.marker
+	if pic == "" && s.location(g).Map.Marker != nil {
+		pic = s.location(g).Map.Marker.Picture
 	}
-	if war {
-		s.drawCampaign(g, dst, sel)
-		g.text(dst, lang.T("方向：選ぶ　決定：命令　メニュー：一覧"), 36, sh-40, sizeS*0.8, withAlpha(g.th.text, 200))
-		return
+	if pic != "" {
+		b := g.pics.get(pic).Bounds()
+		w := h * float64(b.Dx()) / float64(b.Dy())
+		return plateBox{x: x - w/2, y: y - h, w: w, h: h}
 	}
-	if s.banner > 0 {
-		name := data.Render(l.Name, g.st.Env())
-		al := math.Min(1, float64(s.banner)/30)
-		w := math.Max(220, gfx.TextWidth(name, sizeL)+60)
-		gfx.FillRoundRect(dst, 36, 28, float32(w), 60, 14, withAlpha(g.th.window, uint8(float64(g.th.window.A)*al)))
-		g.text(dst, name, 64, 40, sizeL, withAlpha(g.th.text, uint8(255*al)))
-	}
-	g.text(dst, lang.T("方向：選ぶ　決定：進む　メニュー：一覧"), 36, sh-40, sizeS*0.8, withAlpha(g.th.text, 200))
+	r := h*.28 + 1.5
+	return plateBox{x: x - r, y: y - h - 1.5, w: r * 2, h: h + 3}
 }
 
 // labelSize is the text height of the name plates in UI units: the map's label_size (a
@@ -699,7 +753,10 @@ func (s *atlasScene) drawPlate(g *Game, dst *ebiten.Image, p mapPoint, sel strin
 			break
 		}
 	}
-	s.boxes = append(s.boxes, box)
+	s.addPointBox(p, box)
+	if dst == nil {
+		return
+	}
 	bg, edge := withAlpha(plateBack, uint8(235*alpha)), withAlpha(g.th.border, uint8(200*alpha))
 	if p.id == sel {
 		bg, edge = withAlpha(g.th.window, 245), withAlpha(g.th.accent, 255)
@@ -714,6 +771,9 @@ func (s *atlasScene) drawPlate(g *Game, dst *ebiten.Image, p mapPoint, sel strin
 // drawMarker draws a point's marker standing on (x, y) (UI units), h tall: its picture, the
 // map's, or a small pin (gray when the point is closed).
 func (s *atlasScene) drawMarker(g *Game, dst *ebiten.Image, p mapPoint, x, y, h float64, alpha float32) {
+	if dst == nil {
+		return
+	}
 	a := s.location(g).Map
 	pic := p.marker
 	if pic == "" && a.Marker != nil {
@@ -725,7 +785,8 @@ func (s *atlasScene) drawMarker(g *Game, dst *ebiten.Image, p mapPoint, x, y, h 
 		op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
 		sc := h / float64(b.Dy())
 		op.GeoM.Scale(sc, sc)
-		op.GeoM.Translate(x-float64(b.Dx())*sc/2, y-h)
+		box := s.markerBox(g, p, x, y, h)
+		op.GeoM.Translate(box.x, box.y)
 		if !p.open {
 			op.ColorScale.Scale(0.55, 0.55, 0.58, 1)
 		}
