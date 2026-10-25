@@ -38,6 +38,24 @@ func freePlayFixture(t *testing.T) fstest.MapFS {
 	return fixture
 }
 
+func TestFreeSpaceFocusPausePreservesMemoProgress(t *testing.T) {
+	g := wldOpenWith(t, Options{FS: freePlayFixture(t), Location: "inn"})
+	g.in.script = nil
+	g.pauseUnfocused = true
+	if !g.pauseForFocus(false) || g.pauseForFocus(true) {
+		t.Fatal("ordinary play must pause only while unfocused")
+	}
+	g.memoToastT = 5
+	if g.pauseForFocus(false) {
+		t.Fatal("unfocused memo completion toast cannot expire")
+	}
+	g.memoToastT = 0
+	g.memo = &memoBox{}
+	if g.pauseForFocus(false) {
+		t.Fatal("external memo editor completion cannot be collected")
+	}
+}
+
 func TestFreeSpaceTraceReplay(t *testing.T) {
 	fixture := freePlayFixture(t)
 	var trace bytes.Buffer

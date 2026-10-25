@@ -715,6 +715,16 @@ func (g *Game) rng() *rand.Rand {
 	return nil
 }
 
+func (g *Game) pauseForFocus(focused bool) bool {
+	if g.pauseUnfocused && g.in.script == nil && g.auto == nil && g.rep == nil && !focused {
+		g.resetFreeMotion()
+		// The external memo editor intentionally completes while the game lacks
+		// focus. Keep collecting its result and expiring its completion toast.
+		return g.memo == nil && g.memoToastT == 0
+	}
+	return false
+}
+
 func (g *Game) Update() error {
 	if g.opts.CollectBuildInfo && os.Getenv("GOZEN_DEBUG") != "" {
 		start := time.Now()
@@ -748,8 +758,7 @@ func (g *Game) Update() error {
 	if s := g.in.script; g.rendering && s != nil && s.shot != "" {
 		return nil
 	}
-	if g.pauseUnfocused && g.in.script == nil && g.auto == nil && g.rep == nil && !ebiten.IsFocused() {
-		g.resetFreeMotion()
+	if g.pauseForFocus(ebiten.IsFocused()) {
 		return nil
 	}
 	if g.busy() || g.memo != nil || g.logView != nil || g.panelModal() {
