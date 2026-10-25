@@ -477,6 +477,16 @@ func parseScript(src string) (*script, error) {
 			c.n = n
 		}
 		switch c.verb {
+		case "hold":
+			if len(f) != 3 || c.n < 1 || c.n > 36000 {
+				return nil, fmt.Errorf("script line %d: hold BUTTON[+BUTTON...] TICKS (1..36000)", line)
+			}
+			for name := range strings.SplitSeq(c.arg, "+") {
+				if _, ok := scriptButtons[name]; !ok && name != "shift" {
+					return nil, fmt.Errorf("script line %d: unknown held button %q", line, name)
+				}
+			}
+			c.x = c.n
 		case "wait", "read", "gap":
 			n, err := strconv.Atoi(c.arg)
 			if err != nil {
@@ -603,6 +613,21 @@ func (s *script) step(in *input) {
 	for s.pc < len(s.cmds) {
 		c := &s.cmds[s.pc]
 		switch c.verb {
+		case "hold":
+			for name := range strings.SplitSeq(c.arg, "+") {
+				if name == "shift" {
+					in.shift = true
+					continue
+				}
+				b := scriptButtons[name]
+				in.held[b] = true
+				in.pressed[b] = c.n == c.x
+			}
+			c.n--
+			if c.n == 0 {
+				s.pc++
+			}
+			return
 		case "wait":
 			s.wait = c.n
 			s.pc++

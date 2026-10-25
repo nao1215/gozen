@@ -120,3 +120,26 @@ LIBGL_ALWAYS_SOFTWARE=1 GOZEN_SPACE_BENCH_SPRITES=16 xvfb-run -a \
 | 64 | moving | 0.279 | 0.330 | 0.028 | 0.042 | 60.00 | 60.00 |
 
 The 16-image moving runs recorded lower FPS even though the 64-image moving runs sustained 60. These short software-rendered samples do not establish a monotonic sprite-count cost or a cause for that variability. They also do not establish hardware GPU latency or a 60 FPS guarantee. The separate Lantern Inn correctness route completed at a final sampled 60 FPS / 60 TPS; correctness assertions cover visibility, transparency, occlusion and level transitions independently of these measurements.
+
+## Continuous controller
+
+`BenchmarkFreeSpaceController` measures the fixed-tick controller on a neutral 40 × 36 × 4 dense fixture derived from the public plaza. Walking reverses every 60 updates and uses a speed stage; idle still validates/synchronizes the saved pose. Median results from three 300 ms runs on the environment above were 0.165 microseconds per idle update (zero allocations) and 2.925 microseconds per walking update (4102 bytes, 9 allocations). These are CPU controller costs, excluding rendering and fixture setup.
+
+```sh
+go test ./internal/play -run '^$' -bench '^BenchmarkFreeSpaceController$' \
+  -benchtime=300ms -count=3
+LIBGL_ALWAYS_SOFTWARE=1 GOZEN_SPACE_BENCH_FREE=1 GOZEN_SPACE_BENCH_DENSE=1 \
+  xvfb-run -a go test -tags=graphics ./internal/play -run '^$' \
+  -bench '^BenchmarkGraphicsSpaceScaling/40x36x4' -benchtime=1x -count=2
+```
+
+The native benchmark's free-movement mode selects 40 × 36 × 4 at depth 16. Its moving route holds forward for four cells, turns through 180 degrees, and returns. It uses constant speed 2 and turning 90 degrees/second; the CPU benchmark separately exercises acceleration. No other test suite ran concurrently with these measurements. The fixture contains real floors, walls and stairs; it is not a finished town or a claim about every author's geometry.
+
+Mean run-level sampled percentiles from two runs, in milliseconds:
+
+| Camera | Draw p50 | Draw p95 | Update p50 | Update p95 | FPS p50 | TPS p50 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| stationary | 0.301 | 0.434 | 0.034 | 0.044 | 60.00 | 60.00 |
+| continuous walking/turning | 0.294 | 0.482 | 0.040 | 0.069 | 60.00 | 60.00 |
+
+Separate correctness tours took 20.194 seconds for the inn and 54.132 seconds for the plaza, with final sampled 60 FPS / 60 TPS. Those elapsed times include startup, scripted pauses, interaction and screenshots, so they are not pure walking-speed measurements. Tests assert stair support levels, return to the original location, off-center stopping, non-cardinal yaw and reload preservation. A native keyboard-driven inspection also exercised staged walking, turning, menu pause and Shift-strafing; recorded poses were identical on menu entry and exit. CPU timings, tour elapsed time and FPS/TPS describe different parts of the experience and should not be substituted for each other.

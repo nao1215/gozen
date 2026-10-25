@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image/png"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -227,13 +228,21 @@ func checkSpaceSlab(t *testing.T) {
 // Normal CI does not run benchmarks. An optional external host permits the same
 // harness to compare revisions without changing gameplay configuration.
 func BenchmarkGraphicsSpaceScaling(b *testing.B) {
-	for _, size := range [][2]int{{48, 40}, {64, 64}} {
-		for _, levels := range []int{1, 3, 8} {
-			for _, depth := range []int{8, 16} {
+	free := os.Getenv("GOZEN_SPACE_BENCH_FREE") == "1"
+	sizes, counts, depths := [][2]int{{48, 40}, {64, 64}}, []int{1, 3, 8}, []int{8, 16}
+	if free {
+		sizes, counts, depths = [][2]int{{40, 36}}, []int{4}, []int{16}
+	}
+	for _, size := range sizes {
+		for _, levels := range counts {
+			for _, depth := range depths {
 				for _, moving := range []bool{false, true} {
 					b.Run(fmt.Sprintf("%dx%dx%d/depth=%d/moving=%t", size[0], size[1], levels, depth, moving), func(b *testing.B) {
 						dense := os.Getenv("GOZEN_SPACE_BENCH_DENSE") == "1"
 						fixture := spaceScalingFixture(b, size[0], size[1], levels, dense)
+						if free {
+							fixture["data/world.yaml"].Data = bytes.Replace(fixture["data/world.yaml"].Data, []byte("space:"), []byte("space:\n        free_move: {speed: 2, turn_speed: 90, acceleration: 0}"), 1)
+						}
 						spriteCount := 0
 						if raw := os.Getenv("GOZEN_SPACE_BENCH_SPRITES"); raw != "" {
 							var err error
@@ -251,7 +260,11 @@ func BenchmarkGraphicsSpaceScaling(b *testing.B) {
 						}
 						script := "gap 24\nwait 120\n"
 						if moving {
-							script += "press up 4\npress right 2\npress up 4\n"
+							if free {
+								script += "hold up 120\nhold right 120\nhold up 120\n"
+							} else {
+								script += "press up 4\npress right 2\npress up 4\n"
+							}
 						} else {
 							script += "wait 240\n"
 						}
@@ -337,6 +350,9 @@ func BenchmarkGraphicsSpaceScaling(b *testing.B) {
 							b.ReportMetric(float64(startup)/float64(time.Millisecond), "startup-ms")
 							if dense {
 								b.ReportMetric(1, "dense")
+							}
+							if free {
+								b.ReportMetric(1, "free")
 							}
 							if spriteCount > 0 {
 								b.ReportMetric(float64(spriteCount), "sprites")
@@ -574,6 +590,152 @@ func TestGraphicsSpaceSpriteOcclusion(t *testing.T) {
 			} else if changed != 0 {
 				t.Fatalf("sprite leaked through %s: %d pixels", kind, changed)
 			}
+		})
+	}
+}
+
+func TestGraphicsSpaceFreeMovement(t *testing.T) {
+	for _, town := range []bool{true, false} {
+		t.Run(map[bool]string{true: "inn", false: "plaza"}[town], func(t *testing.T) {
+			out := t.TempDir()
+			game := filepath.Join(out, "game")
+			root, loc, route := "../../examples/space/game", "courtyard", "../../scripts/capture-space.txt"
+			if town {
+				root, loc, route = "../../examples/space-town/game", "inn", "../../scripts/capture-space-free.txt"
+			}
+			if err := os.CopyFS(game, os.DirFS(root)); err != nil {
+				t.Fatal(err)
+			}
+			worldPath := filepath.Join(game, "data", "world.yaml")
+			world, err := os.ReadFile(worldPath) //nolint:gosec // Isolated copied fixture.
+			if err != nil {
+				t.Fatal(err)
+			}
+			world = bytes.Replace(world, []byte("      space:"), []byte("      space:\n        free_move: {speed: 2, turn_speed: 90, acceleration: 0}"), 1)
+			if err := os.WriteFile(worldPath, world, 0o600); err != nil { //nolint:gosec // Isolated copied fixture.
+				t.Fatal(err)
+			}
+			if _, err := gamedata.Load(os.DirFS(game)); err != nil {
+				t.Fatal(err)
+			}
+			script, err := os.ReadFile(route)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !town {
+				var converted strings.Builder
+				for line := range strings.SplitSeq(string(script), "\n") {
+					fields := strings.Fields(line)
+					if len(fields) >= 2 && fields[0] == "press" {
+						n := 1
+						if len(fields) == 3 {
+							n, err = strconv.Atoi(fields[2])
+							if err != nil {
+								t.Fatal(err)
+							}
+						}
+						ticks := 60
+						if fields[1] == "up" {
+							ticks = 30
+						}
+						fmt.Fprintf(&converted, "hold %s %d\n", fields[1], n*ticks)
+					} else {
+						converted.WriteString(line + "\n")
+					}
+				}
+				script = []byte(converted.String())
+			}
+			scriptPath := filepath.Join(out, "route.txt")
+			if err := os.WriteFile(scriptPath, script, 0o600); err != nil { //nolint:gosec // Isolated test script.
+				t.Fatal(err)
+			}
+			trace := filepath.Join(out, "trace.jsonl")
+			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, hostBin, "--build-info", "--dir", game, "--dev", "--mute", "--start", loc, "--script", scriptPath, "--shots", out, "--trace", trace, "--save-dir", filepath.Join(out, "saves")) //nolint:gosec // Fixed native test host, isolated paths.
+			cmd.Env = append(os.Environ(), "GOZEN_DEBUG=1")
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			start := time.Now()
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("%v\n%s\n%s", err, &stdout, &stderr)
+			}
+			logGraphicsTiming(t, start, stderr.String())
+			content, err := os.ReadFile(trace) //nolint:gosec // Isolated test output.
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := map[string]int{"street": 0, "second": 1, "atrium": 2, "returned": 0}
+			if town {
+				want = map[string]int{"street": 0, "mid-stair": 0, "turn-back": 0, "landing": 1, "bed": 1, "upper-npc": 1, "returned": 0, "off-center": 0, "reloaded": 0}
+			}
+			positions := map[string][2]float64{"street": {10.5, 15.5}, "second": {6.5, 6.5}, "atrium": {14.5, 10.5}, "returned": {6.5, 10.5}}
+			if town {
+				positions = map[string][2]float64{"street": {3.5, 8.5}, "mid-stair": {3.5, 6.5}, "turn-back": {3.5, 7.5}, "landing": {3.5, 4.5}, "bed": {4.5, 3.5}, "upper-npc": {4.5, 6.5}, "returned": {3.5, 8.5}}
+			}
+			var before map[string]float64
+			shot := ""
+			for line := range bytes.SplitSeq(content, []byte("\n")) {
+				if len(line) == 0 {
+					continue
+				}
+				var row struct {
+					T, File, Location string
+					Level             int
+					SpacePose         map[string]float64 `json:"space_pose"`
+					Summary           struct {
+						Flags map[string]bool
+						Vars  map[string]any
+					}
+				}
+				if err := json.Unmarshal(line, &row); err != nil {
+					t.Fatal(err)
+				}
+				if row.T == "shot" {
+					shot = strings.TrimSuffix(filepath.Base(row.File), ".png")
+				}
+				if row.T != "state" || shot == "" {
+					continue
+				}
+				if row.Location != loc || row.SpacePose == nil {
+					t.Fatalf("invalid continuous state: %+v", row)
+				}
+				if level, ok := want[shot]; ok {
+					if row.Level != level {
+						t.Fatalf("%s level=%d want=%d pose=%v", shot, row.Level, level, row.SpacePose)
+					}
+					delete(want, shot)
+				}
+				if pos, ok := positions[shot]; ok {
+					if math.Abs(row.SpacePose["x"]-pos[0]) > .01 || math.Abs(row.SpacePose["z"]-pos[1]) > .01 {
+						t.Fatalf("%s pose=%v want x/z=%v", shot, row.SpacePose, pos)
+					}
+				}
+				if town && shot == "returned" && (!row.Summary.Flags["bed_seen"] || row.Summary.Vars["greetings"] != float64(1)) {
+					t.Fatalf("free interaction did not complete: %+v", row.Summary)
+				}
+				if shot == "off-center" {
+					before = row.SpacePose
+					if math.Abs(before["x"]-math.Floor(before["x"])-.5) < .01 {
+						t.Fatal("position snapped to cell center")
+					}
+					if math.Abs(math.Remainder(before["yaw"], math.Pi/2)) < .01 {
+						t.Fatal("yaw snapped to cardinal")
+					}
+				}
+				if shot == "reloaded" {
+					for _, key := range []string{"x", "z", "yaw", "level"} {
+						if math.Abs(row.SpacePose[key]-before[key]) > 1e-8 {
+							t.Fatalf("reload changed %s", key)
+						}
+					}
+				}
+				shot = ""
+			}
+			if len(want) != 0 {
+				t.Fatalf("missing checkpoints %v", want)
+			}
+			checkSpaceFrame(t, filepath.Join(out, "returned.png"))
 		})
 	}
 }

@@ -1,0 +1,36 @@
+# Lantern Inn with free_move: {speed: 2, turn_speed: 90, acceleration: 0}.
+gap 24
+wait 40
+shot street
+hold up 60
+shot mid-stair
+hold down 30
+shot turn-back
+hold up 90
+shot landing
+hold up 30
+hold right 60
+hold up 30
+shot bed
+press z 2
+wait 20
+hold left 60
+hold down 90
+hold right 60
+shot upper-npc
+press z 2
+wait 20
+hold left 60
+hold up 60
+hold left 60
+hold up 30
+hold left 60
+hold up 120
+shot returned
+hold left 13
+hold up 7
+shot off-center
+press reload
+wait 30
+shot reloaded
+quit

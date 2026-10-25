@@ -364,6 +364,9 @@ func (g *Game) traceState(terminal ...bool) {
 		l["facing"] = data.Facings[st.Pos.Facing&3]
 		if loc.Dungeon.Space != nil {
 			l["level"] = st.Pos.Level
+			if p := st.SpacePose; loc.Dungeon.Space.FreeMove != nil && p != nil {
+				l["space_pose"] = traceLine{"x": p.X, "z": p.Z, "yaw": p.Yaw, "level": p.Level, "travel": p.Travel, "encounter": p.Encounter}
+			}
 		}
 		if f, ok := st.Vars[dungeon.VarFloor]; ok {
 			l["floor"] = f

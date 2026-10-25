@@ -7,6 +7,29 @@ import (
 	"testing"
 )
 
+func TestScriptHeldControls(t *testing.T) {
+	s, err := parseScript("hold up+right+shift 3\nwait 1\nquit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := input{script: s}
+	for tick := range 3 {
+		in.update()
+		if !in.held[btnUp] || !in.held[btnRight] || !in.shift || in.pressed[btnUp] != (tick == 0) {
+			t.Fatalf("held tick %d: %+v", tick, in)
+		}
+	}
+	in.update()
+	if in.held[btnUp] || in.shift {
+		t.Fatal("hold did not release")
+	}
+	for _, src := range []string{"hold up 0", "hold up -1", "hold nowhere 3", "hold up+ 3", "hold up 36001", "hold up"} {
+		if _, err := parseScript(src); err == nil {
+			t.Errorf("accepted %s", src)
+		}
+	}
+}
+
 func TestScriptBattleLog(t *testing.T) {
 	for _, src := range []string{"battle-log", "battle-log hidden", "battle-log off extra"} {
 		if _, err := parseScript(src); err == nil {

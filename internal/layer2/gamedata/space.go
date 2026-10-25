@@ -12,6 +12,9 @@ import (
 // Space is an opt-in bounded stack of maps. Blank cells are open air; ordinary
 // floors and tiles provide surfaces. Levels are ordered from lowest to highest.
 type Space struct {
+	// FreeMove opts the layer-3 controller and presentation into continuous motion.
+	// Nil retains grid movement and its existing camera durations.
+	FreeMove *SpaceFreeMove `yaml:"free_move"`
 	// StepTicks and TurnTicks are the presentation's independent camera durations
 	// at 60 updates per second. Zero selects 18; explicit durations are [1, 120].
 	StepTicks int `yaml:"step_ticks"`
@@ -22,6 +25,24 @@ type Space struct {
 	Levels []string     `yaml:"levels"`
 	Stairs []SpaceStair `yaml:"stairs"`
 	grids  [][][]rune   `yaml:"-"`
+}
+
+// SpaceFreeMove is the authored controller configuration consumed by dungeon.
+// Zero speed/turn speed selects 1.6 cells/s and 90 degrees/s. Nil acceleration
+// selects 0.12 seconds; explicit zero changes speed immediately. No stages is
+// constant-speed walking. Simulation, events and animation remain at 60 Hz.
+type SpaceFreeMove struct {
+	Speed        float64           `yaml:"speed"`
+	TurnSpeed    float64           `yaml:"turn_speed"`
+	Acceleration *float64          `yaml:"acceleration"`
+	Stages       []SpaceSpeedStage `yaml:"stages"`
+}
+
+// SpaceSpeedStage selects an absolute speed after uninterrupted successful
+// movement. The controller consumes these in strictly increasing time order.
+type SpaceSpeedStage struct {
+	After float64 `yaml:"after"`
+	Speed float64 `yaml:"speed"`
 }
 
 // SpaceStair joins a lower-level cell to a cell Length steps along Facing on
@@ -41,6 +62,18 @@ const (
 )
 
 func (s *Space) parse() {
+	if f := s.FreeMove; f != nil {
+		if f.Speed == 0 {
+			f.Speed = 1.6
+		}
+		if f.TurnSpeed == 0 {
+			f.TurnSpeed = 90
+		}
+		if f.Acceleration == nil {
+			value := .12
+			f.Acceleration = &value
+		}
+	}
 	s.grids = nil
 	for _, m := range s.Levels[:min(len(s.Levels), MaxSpaceLevels)] {
 		// Keep allocation bounded even before validation reports oversized input.
@@ -95,12 +128,20 @@ func StairOffset(s SpaceStair, x, y int) (int, bool) {
 
 // SpaceHeight is the smoothed standing height at a walkable cell center, in horizontal cell units.
 func SpaceHeight(s *Space, level, x, y int) float64 {
+	return SpaceHeightAt(s, level, float64(x)+.5, float64(y)+.5)
+}
+
+// SpaceHeightAt gives the continuous grounded height for the controller and
+// camera on a known support level. It never infers or changes that level.
+func SpaceHeightAt(s *Space, level int, x, z float64) float64 {
 	for _, stair := range s.Stairs {
 		if stair.Level-1 != level {
 			continue
 		}
-		if n, ok := StairOffset(stair, x, y); ok && stair.Length > 0 && n < stair.Length {
-			return (float64(level) + (float64(n)+0.5)/float64(stair.Length)) * SpaceStoryHeight
+		if n, ok := StairOffset(stair, int(math.Floor(x)), int(math.Floor(z))); ok && stair.Length > 0 && n < stair.Length {
+			dx, dz := StairDelta(stair)
+			along := (x-float64(stair.X)-.5)*float64(dx) + (z-float64(stair.Y)-.5)*float64(dz) + .5
+			return (float64(level) + max(0, min(1, along/float64(stair.Length)))) * SpaceStoryHeight
 		}
 	}
 	return float64(level) * SpaceStoryHeight
@@ -122,6 +163,25 @@ func DungeonLevel(d *Dungeon, level int) *Dungeon {
 func (c *checker) space(w string, d *Dungeon, used map[rune]bool) {
 	s := d.Space
 	w += ".space"
+	if f := s.FreeMove; f != nil {
+		finite := func(v float64) bool { return !math.IsNaN(v) && !math.IsInf(v, 0) }
+		if !finite(f.Speed) || f.Speed <= 0 || f.Speed > 12 || !finite(f.TurnSpeed) || f.TurnSpeed <= 0 || f.TurnSpeed > 360 {
+			c.errorf(diag.OutOfRange, w+".free_move", "speed must be in (0,12] cells/s and turn_speed in (0,360] degrees/s")
+		}
+		if f.Acceleration == nil || !finite(*f.Acceleration) || *f.Acceleration < 0 || *f.Acceleration > 5 {
+			c.errorf(diag.OutOfRange, w+".free_move.acceleration", "want finite seconds in [0,5]")
+		}
+		last := 0.0
+		if len(f.Stages) > 16 {
+			c.errorf(diag.OutOfRange, w+".free_move.stages", "want at most 16 stages")
+		}
+		for i, stage := range f.Stages {
+			if !finite(stage.After) || stage.After <= last || stage.After > 3600 || !finite(stage.Speed) || stage.Speed <= 0 || stage.Speed > 12 {
+				c.errorf(diag.OutOfRange, fmt.Sprintf("%s.free_move.stages[%d]", w, i), "want increasing finite after times in (0,3600] and speeds in (0,12]")
+			}
+			last = stage.After
+		}
+	}
 	for name, ticks := range map[string]int{"step_ticks": s.StepTicks, "turn_ticks": s.TurnTicks} {
 		if ticks < 0 || ticks > 120 {
 			c.errorf(diag.OutOfRange, w+"."+name, "want 0 (default 18) or ticks in [1, 120]")

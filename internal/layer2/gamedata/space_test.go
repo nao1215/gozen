@@ -39,8 +39,20 @@ func TestSpaceValidation(t *testing.T) {
 	if _, err := data.Load(fixture); err != nil {
 		t.Fatalf("upright space sprite: %v", err)
 	}
+	fixture["data/world.yaml"] = &fstest.MapFile{Data: []byte(strings.Replace(string(world), "      space:", "      space:\n        free_move: {speed: 1.6, turn_speed: 90, acceleration: 0.12, stages: [{after: 0.4, speed: 2.4}, {after: 1.2, speed: 3.2}]}", 1))}
+	if _, err := data.Load(fixture); err != nil {
+		t.Fatalf("opt-in continuous movement: %v", err)
+	}
 	for _, tc := range []struct{ name, old, new string }{
 		{"too short stair", "length: 4", "length: 2"},
+		{"negative walking speed", "      space:", "      space:\n        free_move: {speed: -1}"},
+		{"nonfinite walking speed", "      space:", "      space:\n        free_move: {speed: .inf}"},
+		{"excessive walking speed", "      space:", "      space:\n        free_move: {speed: 13}"},
+		{"invalid turning speed", "      space:", "      space:\n        free_move: {turn_speed: 361}"},
+		{"negative acceleration", "      space:", "      space:\n        free_move: {acceleration: -1}"},
+		{"nonfinite acceleration", "      space:", "      space:\n        free_move: {acceleration: .nan}"},
+		{"unordered stages", "      space:", "      space:\n        free_move: {stages: [{after: 1, speed: 2}, {after: 0.5, speed: 3}]}"},
+		{"zero stage speed", "      space:", "      space:\n        free_move: {stages: [{after: 1, speed: 0}]}"},
 		{"negative step duration", "      space:", "      space:\n        step_ticks: -1"},
 		{"excessive turn duration", "      space:", "      space:\n        turn_ticks: 121"},
 		{"no lower level", "level: 1", "level: 0"},

@@ -2,6 +2,34 @@ version: '1'
 suite:
   name: gozen check --format json and the schema version 2 words
 scenarios:
+- name: opt-in continuous stacked space passes public validation
+  steps:
+  - fixture:
+      file: free/game.yaml
+      content: |
+        schema_version: 8
+        id: free-walk-check
+        start: {location: room, party: [walker]}
+  - fixture:
+      file: free/data/world.yaml
+      content: |
+        classes: {visitor: {stats: {mhp: 10, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 10}}
+        actors: {walker: {class: visitor}}
+        skills: {attack: {}, guard: {}}
+        locations:
+          room:
+            dungeon:
+              tiles: {S: {start: true}}
+              space:
+                free_move: {speed: 1.6, turn_speed: 90, acceleration: 0.12, stages: [{after: 0.4, speed: 2.4}]}
+                levels: ["#####\n#S..#\n#####"]
+  - run:
+      command: gozen check free --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json: {path: $.data, equals: []}
+      stderr: {equals: ''}
 - name: stacked space with upright pictures validates in text and JSON
   steps:
   - run:

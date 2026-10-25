@@ -13535,6 +13535,19 @@
       "additionalProperties": false,
       "description": "A bounded stack of equal-sized maps (schema version 8). Blank cells are open air; levels are ordered bottom to top.",
       "properties": {
+        "free_move": {
+          "$ref": "#/$defs/SpaceFreeMove",
+          "description": "Opt in to continuous walking and turning on this stacked space. Omit to retain grid movement.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[SpaceFreeMove](#spacefreemove)"
+        },
         "levels": {
           "description": "One to eight equal rectangular maps, each 3 to 64 cells wide and high.",
           "items": {
@@ -13611,6 +13624,104 @@
             "version": "8"
           },
           "x-type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "SpaceFreeMove": {
+      "additionalProperties": false,
+      "description": "Fixed 60 Hz walking controller with a circular footprint, stair support and optional held-input speed stages.",
+      "properties": {
+        "acceleration": {
+          "description": "Seconds to interpolate between stage targets, from 0 to 5. Omitted selects 0.12; explicit zero changes targets immediately. Release stops promptly.",
+          "type": "number",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "speed": {
+          "description": "Base speed in cells per simulation second, in (0,12]. Omitted or zero selects 1.6.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "stages": {
+          "description": "At most 16 speed stages in strictly increasing hold-time order. Omit for constant speed. Successful sliding counts; release, reversal, blockage, focus loss, blocking UI and placement reset the stage.",
+          "items": {
+            "$ref": "#/$defs/SpaceSpeedStage"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[SpaceSpeedStage](#spacespeedstage)[]"
+        },
+        "turn_speed": {
+          "description": "Turning sensitivity in degrees per simulation second, in (0,360]. Omitted or zero selects 90. Independent of walking speed.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "SpaceSpeedStage": {
+      "additionalProperties": false,
+      "description": "A walking speed target selected after uninterrupted successful movement.",
+      "properties": {
+        "after": {
+          "description": "Positive finite hold time in simulation seconds, at most 3600 and strictly greater than the previous stage.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "speed": {
+          "description": "Absolute target speed in cells per simulation second, in (0,12].",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
         }
       },
       "type": "object"

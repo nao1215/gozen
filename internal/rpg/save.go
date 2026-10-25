@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math"
 	"math/rand/v2"
 	"os"
 	"slices"
@@ -365,6 +366,25 @@ func (s *State) reconcileSave() {
 		if l == nil || l.Dungeon == nil {
 			s.changed("pos", s.Pos.In, lang.T("迷宮の定義がないため位置を初期化"))
 			s.Pos = Pos{}
+		}
+	}
+	if p := s.SpacePose; p != nil {
+		valid := p.In == s.Location && p.Level == s.Pos.Level && math.Floor(p.X) == float64(s.Pos.X) && math.Floor(p.Z) == float64(s.Pos.Y) && p.Yaw >= 0 && p.Yaw < 2*math.Pi && p.Travel >= 0 && p.Travel < 1 && p.Encounter >= 0 && p.Encounter < 1
+		if p.In != s.Pos.In {
+			valid = false
+		}
+		for _, v := range []float64{p.X, p.Z, p.Yaw, p.Travel, p.Encounter} {
+			valid = valid && !math.IsNaN(v) && !math.IsInf(v, 0)
+		}
+		l := db.Locations[p.In]
+		if l == nil || l.Dungeon == nil || l.Dungeon.Space == nil || l.Dungeon.Space.FreeMove == nil {
+			valid = false
+		} else {
+			valid = valid && data.SpaceCell(l.Dungeon.Space, p.Level, s.Pos.X, s.Pos.Y) != data.CellNone
+		}
+		if !valid {
+			s.changed("space_pose", p.In, "Continuous position no longer matches the dungeon; reset to the grid position")
+			s.SpacePose = nil
 		}
 	}
 	// Map records are identified by location ID and separator. Free-named flags, variables and done marks are kept.

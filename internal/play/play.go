@@ -154,6 +154,9 @@ func Run(ctx context.Context, opts Options) (err error) {
 		}
 	}
 	ebiten.SetWindowSize(max(1, int(sw*scale)), max(1, int(sh*scale)))
+	// Run one paused update on focus loss so transient movement is reset. Update
+	// retains the normal pause while unfocused; scripted captures keep running.
+	ebiten.SetRunnableOnUnfocused(true)
 
 	if opts.Fullscreen {
 		g.cfg.Fullscreen = true
@@ -172,6 +175,7 @@ func Run(ctx context.Context, opts Options) (err error) {
 	}
 	unwatched := opts.Script != "" || opts.Autopilot != nil
 	g.rendering = true
+	g.pauseUnfocused = !unwatched
 	g.startLive()
 	err = ebiten.RunGameWithOptions(g, &ebiten.RunGameOptions{InitUnfocused: unwatched})
 	g.stopLive()
@@ -266,8 +270,9 @@ type Game struct {
 	moodOverride       string
 	lastMood           string
 
-	quit      bool
-	rendering bool
+	quit           bool
+	rendering      bool
+	pauseUnfocused bool // Set only by the native/browser Run loop, not offscreen tests.
 
 	backlog  []logLine
 	logView  *backlogView
@@ -743,6 +748,13 @@ func (g *Game) Update() error {
 	if s := g.in.script; g.rendering && s != nil && s.shot != "" {
 		return nil
 	}
+	if g.pauseUnfocused && g.in.script == nil && g.auto == nil && g.rep == nil && !ebiten.IsFocused() {
+		g.resetFreeMotion()
+		return nil
+	}
+	if g.busy() || g.memo != nil || g.logView != nil || g.panelModal() {
+		g.resetFreeMotion()
+	}
 	if g.rep != nil && !g.rep.partial && g.tick >= g.rep.limit {
 		g.quit = true
 	}
@@ -1103,7 +1115,7 @@ func (g *Game) drawCGOver(dst *ebiten.Image, c data.CG, a float32) {
 	g.drawPicture(dst, c.Over, (sw-w)/2, bottom-h, w, h, a)
 }
 
-func (g *Game) push(s scene) { g.stack = append(g.stack, s) }
+func (g *Game) push(s scene) { g.resetFreeMotion(); g.stack = append(g.stack, s) }
 
 func (g *Game) pop() {
 	if len(g.stack) > 1 {

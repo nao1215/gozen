@@ -1,4 +1,5 @@
 Space:
+  free_move: "Opt in to continuous walking and turning on this stacked space. Omit to retain grid movement."
   step_ticks: "Camera interpolation duration for one step at 60 updates per second. Omitted or 0 means 18 ticks; otherwise 1 to 120."
   turn_ticks: "Camera interpolation duration for a turn at 60 updates per second. Omitted or 0 means 18 ticks; otherwise 1 to 120, independent of step_ticks."
   _: "A bounded stack of equal-sized maps (schema version 8). Blank cells are open air; levels are ordered bottom to top."
@@ -12,3 +13,13 @@ SpaceStair:
   y: "Zero-based lower endpoint row."
   facing: "Ascending direction: north, east, south or west."
   length: "Horizontal distance to the upper endpoint, from 3 to 8 cells. Keep the space above the run empty."
+SpaceFreeMove:
+  _: "Fixed 60 Hz walking controller with a circular footprint, stair support and optional held-input speed stages."
+  speed: "Base speed in cells per simulation second, in (0,12]. Omitted or zero selects 1.6."
+  turn_speed: "Turning sensitivity in degrees per simulation second, in (0,360]. Omitted or zero selects 90. Independent of walking speed."
+  acceleration: "Seconds to interpolate between stage targets, from 0 to 5. Omitted selects 0.12; explicit zero changes targets immediately. Release stops promptly."
+  stages: "At most 16 speed stages in strictly increasing hold-time order. Omit for constant speed. Successful sliding counts; release, reversal, blockage, focus loss, blocking UI and placement reset the stage."
+SpaceSpeedStage:
+  _: "A walking speed target selected after uninterrupted successful movement."
+  after: "Positive finite hold time in simulation seconds, at most 3600 and strictly greater than the previous stage."
+  speed: "Absolute target speed in cells per simulation second, in (0,12]."
