@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -327,8 +328,7 @@ func (s *atlasScene) firstStep(g *Game, c atlas.Choice) geom.Pt {
 // within a finger's reach. Layout is recomputed so input never uses stale bounds.
 func (s *atlasScene) pointAt(g *Game, x, y float64) (atlas.Choice, bool) {
 	s.layoutPoints(g, nil)
-	for i := len(s.targets) - 1; i >= 0; i-- {
-		target := s.targets[i]
+	for _, target := range slices.Backward(s.targets) {
 		b := target.box
 		if x >= b.x && x <= b.x+b.w && y >= b.y && y <= b.y+b.h {
 			return s.choices[target.choice], true
