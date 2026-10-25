@@ -60,9 +60,9 @@ func (s *atlasScene) selectionAdvice(g *Game) (heading, text, portrait string) {
 			}
 		}
 		if advice.Heading != "" {
-			heading = data.Render(advice.Heading, env)
+			heading = data.Render(g.db.Tr(advice.Heading), env)
 		}
-		text = data.Render(advice.Text, env)
+		text = data.Render(g.db.Tr(advice.Text), env)
 		if advice.Portrait != "" {
 			portrait = advice.Portrait
 		}

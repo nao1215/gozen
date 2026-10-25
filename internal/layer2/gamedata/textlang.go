@@ -308,6 +308,20 @@ func (db *DB) SourceTexts() []SourceText {
 		add(w+".name", src(&l.Name))
 		add(w+".desc", src(&l.Desc))
 		cmds(w+".on_enter", l.OnEnter)
+		if a := l.Map; a != nil {
+			for _, id := range a.PointIDs() {
+				p := a.Points[id]
+				if p == nil {
+					continue
+				}
+				for i, advice := range p.Advice {
+					aw := fmt.Sprintf("%s.map.points.%s.advice[%d]", w, id, i)
+					add(aw+".heading", advice.Heading)
+					add(aw+".text", advice.Text)
+				}
+			}
+		}
+
 		for i := range l.People {
 			add(fmt.Sprintf("%s.people[%d].name", w, i), src(&l.People[i].Name))
 			cmds(fmt.Sprintf("%s.people[%d].talk", w, i), l.People[i].Talk)

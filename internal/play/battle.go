@@ -1255,7 +1255,6 @@ func (s *battleScene) result(g *Game) {
 			if !g.restoreState(snap) {
 				return
 			}
-			g.st.Fighters = slices.Clone(s.b.St.Fighters)
 			g.pop()
 			g.emit("request", traceLine{"what": "retry", "troop": s.troop})
 			n := g.startBattle(s.troop, s.onEnd)

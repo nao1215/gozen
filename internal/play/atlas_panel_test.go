@@ -105,6 +105,16 @@ func TestAtlasSelectionPanel(t *testing.T) {
 	if !strings.Contains(body, "supplies are ready") || s.selectionPanelBox(g) != box {
 		t.Fatal("state-dependent advice or fixed geometry changed")
 	}
+	// Translation precedes interpolation and leaves the authored source intact.
+	g.db.Words["ja"] = map[string]string{"Quarry guide": "採石場の案内", "Bring three potions. You have {item.potion}.": "薬は {item.potion} 個です。"}
+	g.st.Items["potion"] = 2
+	g.db.Show("ja")
+	heading, translated, _ := s.selectionAdvice(g)
+	if heading != "採石場の案内" || translated != "薬は 2 個です。" {
+		t.Fatalf("untranslated advice: %q %q", heading, translated)
+	}
+	g.db.Show("en")
+
 	// Only the explicit panel confirmation runs the action.
 	b := s.panelButtons(g)[0]
 	g.in = input{click: true, mouse: image.Pt(int(b.x+10), int(b.y+10))}

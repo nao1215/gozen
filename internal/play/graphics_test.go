@@ -308,8 +308,10 @@ func TestGraphicsScreensSaveRandomContinuation(t *testing.T) {
 }
 
 func TestGraphicsScreensCasualtyPolicy(t *testing.T) {
+	t.Parallel()
 	for _, recoverHP := range []bool{false, true} {
 		t.Run(map[bool]string{true: "recover", false: "preserve"}[recoverHP], func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			game, saves := filepath.Join(root, "game"), filepath.Join(root, "saves")
 			content := fmt.Sprintf(`events:
