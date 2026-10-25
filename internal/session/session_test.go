@@ -863,3 +863,91 @@ func TestNilContextIsAnError(t *testing.T) {
 		t.Error("a nil context must be refused")
 	}
 }
+
+// Recovery is an explicit policy, separate from retry and result acknowledgement.
+func TestBattlePreservesCasualties(t *testing.T) {
+	for _, recover := range []bool{true, false} {
+		for _, answer := range []int{gozen.Auto, gozen.Lost} {
+			t.Run(fmt.Sprintf("recover=%v/answer=%d", recover, answer), func(t *testing.T) {
+				g, err := gozen.Load(fstest.MapFS{
+					"game.yaml":      {Data: []byte(testgame.Game)},
+					"data/main.yaml": {Data: []byte(testgame.Data)},
+					"data/doom.yaml": {Data: []byte(`enemies:
+  storm: {name: Storm, image: x.png, stats: {mhp: 99999, mmp: 0, atk: 99999, def: 999, mat: 1, mdf: 1, agi: 999, luk: 1}, ai: [{use: slap}]}
+troops:
+  doom: {members: [storm]}
+`)},
+					"assets/x.png": {Data: []byte("stub")},
+				}, ".")
+				if err != nil {
+					t.Fatal(err)
+				}
+				s := mustNew(t, g, gozen.Config{Seed: 1})
+				src := fmt.Sprintf(`
+- join: guide
+- battle: doom
+  fighters: [guide]
+  retry: false
+  recover: %v
+  on_lose:
+    - set: {var.losses: "var.losses + 1", var.final_hp: "last_battle.hp.guide"}
+- say: acknowledged
+`, recover)
+				if err := s.Start(src); err != nil {
+					t.Fatal(err)
+				}
+				if q := s.Next(); q.Kind != "say" {
+					t.Fatalf("join: %+v", q)
+				}
+				if q := s.Next(); q.Kind != "battle" {
+					t.Fatalf("request: %+v", q)
+				}
+				scout := query[int](t, s, "actor.scout.hp")
+				s.Answer(answer)
+				if q := s.Next(); q.Kind != "say" {
+					t.Fatalf("callback: %+v", q)
+				}
+				if got := query[bool](t, s, "last_battle.participated.guide && !last_battle.participated.scout"); !got {
+					t.Fatal("wrong participants")
+				}
+				hp := query[int](t, s, "last_battle.hp.guide")
+				if answer == gozen.Auto && hp != 0 {
+					t.Fatalf("expected casualty, hp %d", hp)
+				}
+				want := hp
+				if recover {
+					want = max(1, want)
+				}
+				if got := query[int](t, s, "actor.guide.hp"); got != want {
+					t.Fatalf("hp %d want %d", got, want)
+				}
+				if got := query[int](t, s, "actor.scout.hp"); got != scout {
+					t.Fatal("absent scout changed")
+				}
+				s.Answer(answer)
+				if got := query[int](t, s, "var.losses"); got != 1 {
+					t.Fatalf("callbacks %d", got)
+				}
+				saved, err := s.Save()
+				if err != nil {
+					t.Fatal(err)
+				}
+				restored, err := gozen.Restore(g, saved, gozen.Config{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got := query[int](t, restored, "actor.guide.hp"); got != want {
+					t.Fatalf("restored hp %d", got)
+				}
+				if got := query[int](t, restored, "last_battle.hp.guide"); got != hp {
+					t.Fatalf("restored snapshot %d", got)
+				}
+				restored.Next()
+				restored.Answer(answer)
+				if got := query[int](t, restored, "var.losses"); got != 1 {
+					t.Fatalf("restored callbacks %d", got)
+				}
+			})
+		}
+	}
+}

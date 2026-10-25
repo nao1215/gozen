@@ -437,3 +437,20 @@ func TestCheckedSavePreservesAndClonesRandomState(t *testing.T) {
 		})
 	}
 }
+
+func TestSaveRejectsInvalidBattleOutcome(t *testing.T) {
+	db := testgame.Load(t, nil)
+	st := testgame.State(db, 1)
+	st.RecordBattle("lose", st.Members())
+	saved := saveBytes(t, st)
+	for _, bad := range []map[string]any{
+		{"result": "lost", "hp": map[string]any{"scout": 0}},
+		{"result": "lose", "hp": map[string]any{"scout": -1}},
+		{"result": "lose", "hp": map[string]any{"": 0}},
+	} {
+		raw := rewriteSave(t, saved, func(m map[string]any) { object(m, "state")["last_battle"] = bad })
+		if _, err := rpg.Parse(db, raw, nil); err == nil {
+			t.Fatalf("accepted invalid outcome: %v", bad)
+		}
+	}
+}

@@ -380,8 +380,12 @@ func (s *Session) Answer(n int) {
 	res := n
 	switch n {
 	case Won, Lost, Fled:
-		if n == Lost && b.CanLose {
-			for _, m := range s.st.Members() {
+		s.st.Fighters = b.Fighters
+		members := s.st.BattleMembers()
+		s.st.Fighters = nil
+		s.st.RecordBattle(scope.ResultName(n), members)
+		if n == Lost && b.CanLose && !b.NoRecovery {
+			for _, m := range members {
 				m.HP = max(1, m.HP)
 			}
 		}
@@ -421,7 +425,9 @@ func (s *Session) fight(q event.Battle) int {
 		return Fled
 	case battle.Ongoing, battle.Lost:
 	}
-	b.Rise() // as on screen, only the party members who fought get up with 1 HP
+	if !q.NoRecovery {
+		b.Rise()
+	}
 	return Lost
 }
 
@@ -437,6 +443,9 @@ func (s *Session) request(r event.Request) Request {
 		var flags []string
 		if r.CanLose {
 			flags = append(flags, "can_lose")
+		}
+		if r.NoRecovery {
+			flags = append(flags, "no_recovery")
 		}
 		if r.NoRetry {
 			flags = append(flags, "no_retry")

@@ -45,12 +45,13 @@ const (
 )
 
 type battleScene struct {
-	b     *battle.Battle
-	onEnd func(res int)
-	troop string
-	retry []byte
-	phase bphase
-	bg    data.Picture
+	b          *battle.Battle
+	onEnd      func(res int)
+	troop      string
+	retry      []byte
+	noRecovery bool
+	phase      bphase
+	bg         data.Picture
 
 	queue []battle.Step
 	stepT int
@@ -1254,16 +1255,18 @@ func (s *battleScene) result(g *Game) {
 			if !g.restoreState(snap) {
 				return
 			}
+			g.st.Fighters = slices.Clone(s.b.St.Fighters)
 			g.pop()
 			g.emit("request", traceLine{"what": "retry", "troop": s.troop})
 			n := g.startBattle(s.troop, s.onEnd)
 			n.retry = snap
+			n.noRecovery = s.noRecovery
 		})
 		g.push(c)
 		return
 	}
 	res := map[battle.Result]int{battle.Won: event.BattleWon, battle.Lost: event.BattleLost, battle.Fled: event.BattleFled}[s.b.Result]
-	if s.b.Result == battle.Lost {
+	if s.b.Result == battle.Lost && !s.noRecovery {
 		s.b.Rise()
 	}
 	g.pop()

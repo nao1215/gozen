@@ -3511,6 +3511,7 @@
             "on_escape": {},
             "on_lose": {},
             "on_win": {},
+            "recover": {},
             "retry": {}
           },
           "required": [
@@ -4525,6 +4526,22 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "recover": {
+          "description": "With `battle`, defaults to true. False preserves final HP after defeat, independently of retry. Outcome branches can read last_battle for participant IDs and HP before recovery.",
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional; only with battle",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
         },
         "release": {
           "description": "Permanently releases one owned monster instance. Needs schema version 6.",

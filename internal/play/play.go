@@ -1755,6 +1755,7 @@ func (g *Game) begin(r event.Request) {
 			done()
 		})
 		s.retry = snap
+		s.noRecovery = r.NoRecovery
 	case event.Shop:
 		if g.replaying {
 			done()

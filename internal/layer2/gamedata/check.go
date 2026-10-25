@@ -25,7 +25,7 @@ import (
 // The names an expression may use, by where it is written.
 var (
 	// FieldNames are known to the conditions of events, locations and the field music.
-	FieldNames = append([]string{"flag", "var", "gold", "party", "reserve", "monster", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose", "bestiary"}, CampaignNames...)
+	FieldNames = append([]string{"last_battle", "flag", "var", "gold", "party", "reserve", "monster", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose", "bestiary"}, CampaignNames...)
 	// BattleNames are known in battle: the AI, the troop events, the battle music.
 	BattleNames = append(slices.Clone(FieldNames), "turn", "self", "allies", "foes", "enemies", "result", "phase", "boss")
 	// EffectNames are known to the formulas of skills and items: a is the user, b the target.
@@ -1872,6 +1872,13 @@ func typeOf(n string, names []string) *vtype {
 		return &vtype{kind: vDyn, desc: "ran", elem: objType("a run", map[string]*vtype{"count": tNum, "order": tNum}, nil), key: "event"}
 	case "chose":
 		return &vtype{kind: vDyn, desc: "chose", elem: tStr}
+	case "last_battle":
+		return objType("a battle outcome", map[string]*vtype{
+			"result": tStr, "casualties": tNum,
+			"hp":           {kind: vDyn, desc: "participant HP", elem: tNum},
+			"participated": {kind: vDyn, desc: "battle participation", elem: tBool},
+			"defeated":     {kind: vDyn, desc: "battle casualties", elem: tBool},
+		}, nil)
 	case "bestiary":
 		return &vtype{kind: vDyn, desc: "bestiary", elem: objType("a monster record", map[string]*vtype{"seen": tBool, "defeated": tNum, "caught": tNum}, nil), key: "enemy"}
 	case "completed", "moved":

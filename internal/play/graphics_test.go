@@ -306,3 +306,65 @@ func TestGraphicsScreensSaveRandomContinuation(t *testing.T) {
 		t.Fatal("native load menu changed deterministic battle continuation")
 	}
 }
+
+func TestGraphicsScreensCasualtyPolicy(t *testing.T) {
+	for _, recoverHP := range []bool{false, true} {
+		t.Run(map[bool]string{true: "recover", false: "preserve"}[recoverHP], func(t *testing.T) {
+			root := t.TempDir()
+			game, saves := filepath.Join(root, "game"), filepath.Join(root, "saves")
+			content := fmt.Sprintf(`events:
+  expedition:
+    do:
+      - battle: doom
+        fighters: [guide]
+        retry: false
+        recover: %v
+        on_lose:
+          - set: {var.losses: "var.losses + 1", var.final_hp: "last_battle.hp.guide"}
+      - say: "The expedition ended."
+      - save: true
+`, recoverHP)
+			if err := os.CopyFS(game, btlFiles(t, "", content)); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(root, "script.txt")
+			script := "wait 20\ndo call: expedition\npress ok 180\nwait 100\nquit\n"
+			if err := os.WriteFile(path, []byte(script), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, hostBin, "--dir", game, "--dev", "--mute", "--start", "camp", "--party", "scout,guide", "--seed", "31", "--script", path, "--shots", root, "--save-dir", saves) //nolint:gosec // Fixed test host and isolated fixture paths.
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("host: %v\nstdout: %s\nstderr: %s", err, &stdout, &stderr)
+			}
+			raw, err := os.ReadFile(filepath.Join(saves, "save1.json")) //nolint:gosec // Generated save in the isolated fixture.
+			if err != nil {
+				t.Fatal(err)
+			}
+			var save struct {
+				State struct {
+					Actors     map[string]struct{ HP int }
+					Vars       map[string]any
+					LastBattle struct {
+						Result string
+						HP     map[string]int
+					} `json:"last_battle"`
+				}
+			}
+			if err := json.Unmarshal(raw, &save); err != nil {
+				t.Fatal(err)
+			}
+			want := 0
+			if recoverHP {
+				want = 1
+			}
+			st := save.State
+			if st.Actors["guide"].HP != want || st.Actors["scout"].HP <= 1 || st.Vars["losses"] != float64(1) || st.LastBattle.Result != "lose" || len(st.LastBattle.HP) != 1 || st.LastBattle.HP["guide"] != 0 {
+				t.Fatalf("saved outcome: %+v", st)
+			}
+		})
+	}
+}

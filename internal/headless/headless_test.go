@@ -6,8 +6,10 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/battle"
+	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/headless"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
@@ -139,4 +141,43 @@ events:
 			t.Fatalf("表示記録 %v、期待 %v", paths[0].Steps, want)
 		}
 	})
+}
+
+func TestDefeatRecoveryPolicy(t *testing.T) {
+	for _, recoverHP := range []bool{true, false} {
+		for _, supplied := range []bool{true, false} {
+			db := testgame.Load(t, map[string]string{"data/loss.yaml": `
+events:
+  loss:
+    do:
+      - battle: boss
+        fighters: [guide]
+        retry: false
+        on_lose: [{set: {var.losses: "var.losses + 1", var.final_hp: "last_battle.hp.guide"}}]
+`})
+			st := testgame.State(db, 1)
+			st.Join("guide")
+			st.Actors["scout"].HP = 0 // An absent casualty must never be revived by a duel.
+			st.Actors["guide"].HP = 0
+			cmds := db.Events["loss"].Do
+			cmds[0].Recover = &recoverHP
+			d := headless.New(db, st)
+			if supplied {
+				d.Result = func(*rpg.State, string) (int, bool) { return event.BattleLost, true }
+			}
+			if err := d.Run(t.Context(), cmds); err != nil {
+				t.Fatal(err)
+			}
+			want := 0
+			if recoverHP {
+				want = 1
+			}
+			if st.Actors["guide"].HP != want || st.Actors["scout"].HP != 0 {
+				t.Fatalf("recover=%v supplied=%v: guide %d scout %d", recoverHP, supplied, st.Actors["guide"].HP, st.Actors["scout"].HP)
+			}
+			if st.LastBattle == nil || st.LastBattle.Result != "lose" || len(st.LastBattle.HP) != 1 || st.LastBattle.HP["guide"] != 0 || st.Vars["losses"] != float64(1) {
+				t.Fatalf("outcome %+v vars %v", st.LastBattle, st.Vars)
+			}
+		}
+	}
 }
