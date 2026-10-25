@@ -310,3 +310,44 @@ func TestRecruitmentAdmissionPolicy(t *testing.T) {
 		}
 	}
 }
+
+func TestStageFramingMetadata(t *testing.T) {
+	for _, tc := range []struct{ name, frame, want string }{
+		{"valid", "{head: [0.5, 0.1, 0.2], height: 0.25, top: 0.08}", ""},
+		{"missing head", "{height: 0.25}", "head"},
+		{"short head", "{head: [0.5, 0.1], height: 0.25}", "head"},
+		{"outside x", "{head: [1.1, 0.1, 0.2], height: 0.25}", "head"},
+		{"negative top", "{head: [0.5, -0.1, 0.2], height: 0.25}", "head"},
+		{"outside bottom", "{head: [0.5, 0.9, 0.2], height: 0.25}", "head"},
+		{"zero source height", "{head: [0.5, 0.1, 0], height: 0.25}", "head"},
+		{"zero display height", "{head: [0.5, 0.1, 0.2], height: 0}", "height"},
+		{"missing display height", "{head: [0.5, 0.1, 0.2]}", "height"},
+		{"outside display top", "{head: [0.5, 0.1, 0.2], height: 0.25, top: 1.1}", "top"},
+		{"infinite head", "{head: [.inf, 0.1, 0.2], height: 0.25}", "head"},
+		{"nan height", "{head: [0.5, 0.1, 0.2], height: .nan}", "height"},
+		{"oversized display height", "{head: [0.5, 0.1, 0.2], height: 1.1}", "height"},
+		{"nan head", "{head: [0.5, .nan, 0.2], height: 0.25}", "head"},
+		{"infinite top", "{head: [0.5, 0.1, 0.2], height: 0.25, top: .inf}", "top"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: 8\nid: framing\n" + testgame.Game + "\nui: {stage_framing: {x.png: " + tc.frame + "}}\n"})
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), "stage_framing") || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("want stage_framing.%s diagnostic, got %v", tc.want, err)
+			}
+		})
+	}
+	for _, tc := range []struct{ version, file, want string }{
+		{"7", "x.png", "needs schema_version: 8"},
+		{"8", "missing.png", "no file assets/missing.png"},
+		{"8", "''", "needs a picture file"},
+	} {
+		_, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: " + tc.version + "\nid: framing\n" + testgame.Game + "\nui: {stage_framing: {" + tc.file + ": {head: [0.5, 0.1, 0.2], height: 0.25}}}\n"})
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("want %q, got %v", tc.want, err)
+		}
+	}
+}

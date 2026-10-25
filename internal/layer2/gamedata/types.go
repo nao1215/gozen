@@ -500,6 +500,9 @@ type UIStyle struct {
 	// StageScale is the size multiplier per portrait (picture file to multiplier; default 1). The head position stays the same and it is drawn smaller
 	// (to pull back pictures where the body fills the picture and looks bigger than the others).
 	StageScale map[string]float64 `yaml:"stage_scale"`
+	// StageFraming gives play explicit head anchors for static novel portraits.
+	// Keys are asset paths; omitted pictures retain legacy canvas-based framing.
+	StageFraming map[string]StageFraming `yaml:"stage_framing"`
 	// StageDrop is the amount to lower per portrait (picture file to a ratio of the screen height; default 0).
 	// All pictures are drawn with the top of the head aligned, so short characters or those with hair piled high look as tall as tall ones. Lowering fixes that.
 	StageDrop    map[string]float64 `yaml:"stage_drop"`
@@ -509,6 +512,17 @@ type UIStyle struct {
 	// SfxVary is the variation when the same sound effect plays repeatedly in a short time (sound's vary.go).
 	// pitch is the pitch (default 0.03 for ±3%) and volume is the volume (default 0.1 for ±10%). 0 turns it off.
 	SfxVary SfxVary `yaml:"sfx_vary"`
+}
+
+// StageFraming tells play how to place a static novel portrait independently of
+// transparent canvas padding. The source head is [center x, top y, height], in
+// fractions of the source width/height. Height and Top are screen-height fractions.
+// Head and positive Height are required; Top defaults to zero. Content outside the
+// viewport is clipped, and the head center stays at the authored stand.at position.
+type StageFraming struct {
+	Head   []float64 `yaml:"head"`
+	Height float64   `yaml:"height"`
+	Top    float64   `yaml:"top"`
 }
 
 // TalkPortrait is where the speaker's standing picture (or moving portrait) stands beside
