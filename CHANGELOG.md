@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Match atlas pointer targets to visible marker pictures and name plates, preserving small targets and deterministic overlap selection.
+
 ## v0.9.0 - 2026-10-25
 
 Build multi-level towns with continuous movement, building surfaces and roof geometry, and add interactive event actions to authored screens.

@@ -107,6 +107,9 @@ func factionColor(g *Game, faction string) color.NRGBA {
 // drawRegionMarker draws a region's mark standing on (x, y), h tall: a flag in its owner's
 // colour, a ring when it is a capital.
 func (s *atlasScene) drawRegionMarker(g *Game, dst *ebiten.Image, p mapPoint, x, y, h float64) {
+	if dst == nil {
+		return
+	}
 	cs := g.st.Campaign()
 	owner := data.RegionOwner(g.db, cs, p.id)
 	c := factionColor(g, owner)
@@ -193,6 +196,10 @@ func (s *atlasScene) drawLandmark(g *Game, dst *ebiten.Image, p mapPoint, x, y, 
 	b := img.Bounds()
 	w := mapW * scale
 	h := w * float64(b.Dy()) / float64(b.Dx())
+	box := plateBox{x: x - w/2, y: y - h*0.85, w: w*0.92 + h*0.3, h: h}
+	if dst == nil {
+		return box, true
+	}
 	cs := g.st.Campaign()
 	turn := float64(data.Turn(g.db, cs))
 	f := data.Fought(cs, p.id)
@@ -222,7 +229,7 @@ func (s *atlasScene) drawLandmark(g *Game, dst *ebiten.Image, p mapPoint, x, y, 
 		}
 	}
 	s.drawRegionMarker(g, dst, p, x+w*0.36, y+h*0.08, math.Max(36, h*0.45))
-	return plateBox{x: x - w/2, y: y - h*0.85, w: w*0.92 + h*0.3, h: h}, true
+	return box, true
 }
 
 // flagFill is a flag's colour, lightened when it is dark (a navy or a gray would sink into
