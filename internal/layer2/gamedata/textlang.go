@@ -321,6 +321,13 @@ func (db *DB) SourceTexts() []SourceText {
 			cmds(fmt.Sprintf("%s.exits[%d].do", w, i), l.Exits[i].Do)
 		}
 	}
+	for _, name := range sorted(slices.Collect(maps.Keys(g.Screens))) {
+		if screen := g.Screens[name]; screen != nil {
+			for i, entry := range screen.Entries {
+				cmds(fmt.Sprintf("game.yaml screens.%s.entries[%d].do", name, i), entry.Do)
+			}
+		}
+	}
 	for _, id := range sorted(slices.Collect(maps.Keys(db.Events))) {
 		cmds("events."+id+".do", db.Events[id].Do)
 	}

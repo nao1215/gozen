@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Run ordinary event commands from authored screen entries, refreshing their content and preserving dialogue save cursors.
+
 - Add building facade materials, closed gable/shed roofs and canopies with shared collision and sprite occlusion.
 
 - Add opt-in continuous stacked-space walking with footprint collision, held-input speed stages, distance-based encounters and saved off-center poses.

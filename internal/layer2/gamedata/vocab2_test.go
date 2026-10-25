@@ -209,3 +209,16 @@ events:
 		t.Fatalf("correct vocabulary was refused: %v", err)
 	}
 }
+
+func TestScreenEntryCommands(t *testing.T) {
+	base := v2Head + "screens: {stock: {title: Stock, entries: [{label: Add, text: 'Boards: {var.boards}', do: [{set: {var.boards: 'var.boards + 1'}}]}]}}\n"
+	if _, err := loadV2(base, ""); err != nil {
+		t.Fatalf("valid screen action rejected: %v", err)
+	}
+	for _, bad := range []string{"{call: missing}", "{sya: hello}"} {
+		_, err := loadV2(strings.Replace(base, "{set: {var.boards: 'var.boards + 1'}}", bad, 1), "")
+		if err == nil || !strings.Contains(err.Error(), "screens.stock.entries[0].do[0]") {
+			t.Fatalf("missing action diagnostic for %s: %v", bad, err)
+		}
+	}
+}

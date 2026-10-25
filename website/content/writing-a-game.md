@@ -162,6 +162,37 @@ screens:
 Define `greeting` in `data/` as an ordinary event. Open the journal with
 `- open: journal`. Entries accept an optional `picture` asset, interpolated text
 and `when` conditions. Use the arrows to select an entry and Cancel to return.
+An optional `do` list runs ordinary event commands once when the entry is confirmed:
+
+<!-- verify: parse game.yaml fragment -->
+```yaml
+screens:
+  stock:
+    title: Workshop stock
+    entries:
+      - label: Add one board
+        text: 'Boards: {var.boards}'
+        do: [{set: {var.boards: 'var.boards + 1'}}]
+```
+
+After an action, text and conditions refresh and the selected authored entry stays
+selected where possible. Hidden entries are checked again before execution. A
+removed selection moves to an available entry; an empty list can still be closed.
+Entries without `do` remain information pages.
+
+Actions suspend the event that opened the screen. Dialogue uses the normal message
+window; opening another screen or saving uses its normal interface, then returns
+to the list. A location change closes the originating list after the action ends.
+Clear, game over and loading replace the current screen normally. Closing the list
+resumes the opening event after its `open` command.
+
+A save in an action's dialogue resumes that named entry's commands at the saved
+line without applying earlier changes twice. After loading, the action finishes
+at the current location; transient lists and the suspended opening event are not
+restored. Keep changes that must follow the dialogue in the entry's `do` list.
+Entries are identified by screen name and authored index, so keep their order
+stable when maintaining saves. Scripted `press ok` uses the same path, and traces
+record `screen_action` with the screen name and authored entry index.
 No Go registration is required. The former lists of names are no longer accepted.
 
 ### Stories without combat

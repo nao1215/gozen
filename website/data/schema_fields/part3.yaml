@@ -212,6 +212,7 @@ AuthorScreen:
   entries: "Selectable detail pages in authored order."
 ScreenEntry:
   _: "One detail page in an author-defined screen."
+  do: "Optional event commands run once on confirmation; conditions and text refresh afterward."
   label: "Required label shown in the list."
   text: "Detail text, with interpolation and translation."
   picture: "Optional image path under assets/."

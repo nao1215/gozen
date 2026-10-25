@@ -547,7 +547,7 @@ func (r *replay) expectLine(k string, l traceLine) {
 	r.expect[k] = append(r.expect[k], l)
 }
 
-var replayChecked = []string{"say", "scene", "battle"}
+var replayChecked = []string{"say", "scene", "battle", "screen_action"}
 
 func (r *replay) checked(k string) bool {
 	if r.capture != nil {
