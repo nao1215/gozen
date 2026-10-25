@@ -275,10 +275,7 @@ func (s *Session) parse(script string) ([]gamedata.Command, error) {
 	if !gamedata.IsScript(script) {
 		return nil, invalid{Diagnostics{{File: gamedata.ScriptFile, Line: 1, Col: 1, Message: "want a list of commands (YAML starting with \"- \")", Severity: "error"}}}
 	}
-	if ds := gamedata.CheckScript(s.db, script, s.cfg.Dev); len(ds) > 0 {
-		return nil, invalid{ds}
-	}
-	cmds, ds := gamedata.ParseScript(script)
+	cmds, ds := gamedata.CompileScript(s.db, script, s.cfg.Dev)
 	if len(ds) > 0 {
 		return nil, invalid{ds}
 	}

@@ -158,7 +158,7 @@ Game:
   scene_review: "Settings for the scene review debug page, such as the tags attached to scenes."
   schema_version: "The version of the YAML specification the game is written for. 0 or omitted means the legacy rules."
   screen: "The logical screen size."
-  screens: "Names of custom screens implemented in Go. A declared name can be opened with `open`."
+  screens: "Named information screens, each with a title and ordered entries. Open with `open: NAME`."
   stand_ins: "A file under assets/ listing placeholder pictures, one path per line. A placeholder picture does not hide character portraits."
   start: "The state a new game begins in."
   state: "Declarations of the game's variables and whether unknown names are rejected."
@@ -172,7 +172,8 @@ Game:
   title_text: "How the title screen letters the title and the subtitle: sizes, the space between letters and colors. Needs schema version 3."
   title_music: "The song and mood played on the title screen."
   ui: "The look of the game's menus and windows."
-  verbs: "Names of custom commands implemented in Go. A declared name may be used as a command."
+  reactions: "Maps speaker IDs to reaction book paths under assets/. Memory is saved with the game."
+  verbs: "Maps reusable command names to event IDs. Invoke with `NAME: true`, or call the event directly with `call`."
   written_in: "The language the files under `data/` are written in. Each other language is translated by `lang/<code>.yaml`, a map `text` from the text as written to its translation. The default is `language`. Needs schema version 4."
 GameOver:
   _: "What is shown when the party falls."
@@ -204,3 +205,20 @@ General:
   troops: "The troops the general leads at the start."
   skills: "The skills they use in a clash shown as units, IDs of campaign.clash.skills."
   tactic: "The tactic the sortie screen picks for them first, an ID of campaign.clash.tactics (or of the engine's)."
+
+AuthorScreen:
+  _: "An author-defined information or picture list opened by name."
+  title: "The title, with text interpolation and translation."
+  entries: "Selectable detail pages in authored order."
+ScreenEntry:
+  _: "One detail page in an author-defined screen."
+  label: "Required label shown in the list."
+  text: "Detail text, with interpolation and translation."
+  picture: "Optional image path under assets/."
+  when: "Condition for showing this entry; omitted means visible."
+
+Respond:
+  _: "Submit text to a speaker's reaction rules and show the reply as dialogue."
+  who: "A speaker with a book in game.yaml reactions."
+  text: "Text submitted to the rules, with interpolation and translation."
+  from: "Sender name for repeat detection; omitted means player."

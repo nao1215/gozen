@@ -5,7 +5,7 @@ weight: 30
 toc: true
 ---
 
-A Gozen game is data. The Go program only embeds the directory and starts the runner; everything a player sees comes from YAML and the pictures beside it. This page is the map. The [Schema](/schema/) has every field, and the [Cookbook](/cookbook/) has short recipes for common tasks, such as a shop, a boss fight or a locked door.
+A Gozen game is data. Run the directory with `gozen run`; no Go source or compiler is required. Everything a player sees comes from YAML and the pictures beside it. This page is the map. The [Schema](/schema/) has every field, and the [Cookbook](/cookbook/) has short recipes for common tasks, such as a shop, a boss fight or a locked door.
 
 ## The game directory
 
@@ -20,7 +20,7 @@ game/
 
 `game.yaml` is a [Game](/schema/#game). Each file in `data/` is a [DataFile](/schema/#datafile) and may hold any of its sections, so split by area (`town.yaml`, `cave.yaml`) or by kind (`enemies.yaml`, `skills.yaml`) as you like. Every ID lives in one namespace per section, and a duplicate is an error.
 
-Start every `game.yaml` with `schema_version: 2`. From version 1 on, a number you leave out and a `0` you write are different, and the game `id` (used for the save directory) is required. Version 2 adds the commands and `set` targets marked "version 2" below; a version 1 game reads the same as before.
+Start a new `game.yaml` with `schema_version: 8`, as the bundled templates do. From version 1 on, a number you leave out and a `0` you write are different, and the game `id` (used for the save directory) is required. Version 2 adds the commands and `set` targets marked "version 2" below; a version 1 game reads the same as before.
 
 ## What goes where
 
@@ -143,15 +143,47 @@ The full list, with the options each verb accepts, is [Command](/schema/#command
 
 ### Your own commands and screens
 
-A command or a screen that YAML cannot express is declared in `game.yaml` by name (version 2):
+Declare reusable commands as event aliases in `game.yaml`. Invoke an alias with
+`true`, for example `- greet: true`; its target event runs like `call: greeting`.
+Unknown targets, cycles and unsupported arguments are validation errors.
 
-<!-- verify: skip needs Go code that registers the verb roll_dice and the screen album -->
+<!-- verify: parse game.yaml fragment; the event target is defined in data/ -->
 ```yaml
-verbs: [roll_dice]     # - roll_dice: {sides: 6}
-screens: [album]       # - open: album
+verbs: {greet: greeting}
+screens:
+  journal:
+    title: Journal
+    entries:
+      - label: The station
+        text: You found the old station.
+        when: flag.found_station
 ```
 
-`gozen check` then accepts `roll_dice` as a command and `album` as a screen for `open`. Any other unknown name is an error, with the nearest command when it looks like a typo (`unknown field "sya" (did you mean "say"?)`). The Go side that implements them comes in a later version; until then a declared command is logged and skipped.
+Define `greeting` in `data/` as an ordinary event. Open the journal with
+`- open: journal`. Entries accept an optional `picture` asset, interpolated text
+and `when` conditions. Use the arrows to select an entry and Cancel to return.
+No Go registration is required. The former lists of names are no longer accepted.
+
+### Stories without combat
+
+Start with `gozen new my-story --template novel`. A speaker needs only a name:
+`actors: {rowan: {name: Rowan}}`. Use `say: {who: rowan, text: Welcome.}` as
+usual. Faces, voices and profiles work without classes, stats, attack skills or a
+starting party. Saves preserve story state with an empty party. Adding `class`
+to a speaker makes that same ID eligible for combat; games with combat still
+require a valid starting party and battle rules.
+
+### Conversation reactions
+
+Map speakers to reaction books under `assets/` using
+`reactions: {rowan: rowan.yaml}` in `game.yaml`. A command such as
+`respond: {who: rowan, text: Hello., from: player}` sends text to the book and
+shows its reply through normal dialogue. `from` defaults to `player`; both input
+fields support interpolation. Books must contain the matching character ID.
+Reaction memory is included in saves and random replies use the game's seeded
+random stream. This is an authored rules interpreter, without a model or network
+service. See the [narrative recipe](/cookbook/#a-speaker-who-remembers-a-greeting)
+for a complete book.
 
 ## Events
 

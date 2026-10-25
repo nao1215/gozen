@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	md "github.com/nao1215/markdown"
+
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
@@ -66,12 +68,14 @@ func Write(dir string, cfg Config) error {
 	if err != nil {
 		return err
 	}
-	common, err := templates.ReadFile("templates/common.yaml")
-	if err != nil {
-		return err
-	}
-	if err := cli.WriteNew(filepath.Join(dir, "data", "rules.yaml"), common); err != nil {
-		return err
+	if cfg.Template != "novel" {
+		common, err := templates.ReadFile("templates/common.yaml")
+		if err != nil {
+			return err
+		}
+		if err := cli.WriteNew(filepath.Join(dir, "data", "rules.yaml"), common); err != nil {
+			return err
+		}
 	}
 	if err := os.MkdirAll(filepath.Join(dir, "assets"), 0o750); err != nil {
 		return err
@@ -85,7 +89,7 @@ func Write(dir string, cfg Config) error {
 			return err
 		}
 	}
-	if err := cli.WriteNew(filepath.Join(dir, "README.md"), []byte(readme)); err != nil {
+	if err := cli.WriteNew(filepath.Join(dir, "README.md"), []byte(readme())); err != nil {
 		return err
 	}
 	if _, err := data.Load(os.DirFS(dir)); err != nil {
@@ -113,23 +117,13 @@ func valley() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-const readme = `# Your game
-
-Open a terminal in this directory and run:
-
-` + "```sh\ngozen check .\ngozen run .\n```" + `
-
-Edit the title in game.yaml and the dialog or regions in data/world.yaml.
-The shared characters and battle rules are in data/rules.yaml.
-Put your pictures and sounds in assets/ and reference their filenames in YAML.
-The bundled placeholder artwork and template text are original Gozen material
-provided under the MIT license: https://github.com/nao1215/gozen/blob/main/LICENSE.
-No Go source, compiler or dependency installation is needed for these commands.
-
-For testing, run ` + "`gozen run . --dev --save-dir test-saves`" + `.
-Press F5 after editing YAML to reload; use ` + "`gozen run --help`" + ` for all options.
-Keep game.yaml's id unchanged after sharing a game: it identifies its saves.
-The built-in font supports Latin text. Add a suitable font for other scripts.
-
-Documentation: https://nao1215.github.io/gozen/
-`
+func readme() string {
+	return md.NewMarkdown(nil, md.WithBlockSpacing()).
+		H1("Your game").
+		PlainText("Open a terminal in this directory and run:").
+		CodeBlocks(md.SyntaxHighlightShell, "gozen check .\ngozen run .").
+		PlainText("Edit the title in game.yaml and the dialog or regions in data/world.yaml.\nNovel speakers need only names; add faces and voices when ready.\nRPG and campaign templates keep combat rules in data/rules.yaml.\nPut your pictures and sounds in assets/ and reference their filenames in YAML.").
+		PlainText("The bundled placeholder artwork and template text are original Gozen material\nprovided under the MIT license: https://github.com/nao1215/gozen/blob/main/LICENSE.\nNo Go source, compiler or dependency installation is needed for these commands.").
+		PlainText("For testing, run `gozen run . --dev --save-dir test-saves`.\nPress F5 after editing YAML to reload; use `gozen run --help` for all options.\nKeep game.yaml's id unchanged after sharing a game: it identifies its saves.\nThe built-in font supports Latin text. Add a suitable font for other scripts.").
+		PlainText("Documentation: https://nao1215.github.io/gozen/").String() + "\n"
+}

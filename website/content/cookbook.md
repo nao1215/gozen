@@ -1458,3 +1458,44 @@ gozen release game --out release --overlay overlay --inspect inspect.jsonl
 gozen trial game -n                               # count what the trial keeps
 gozen trial game --out trial --list trial.txt           # build it, and list what was kept and dropped
 ```
+
+## A speaker who remembers a greeting
+
+Create a novel with `gozen new my-story --template novel`. In `game.yaml`, add
+`reactions: {rowan: rowan.yaml}`. Save this reaction book as `assets/rowan.yaml`:
+
+<!-- verify: parse reaction book loaded by the narrative resume integration test -->
+```yaml
+people:
+  - id: rowan
+    rules:
+      - {id: repeated, when: tag.repeat > 0, say: [Welcome back.]}
+      - {id: welcome, say: [Hello.]}
+```
+
+In a location's `on_enter` or an event's `do`, use
+`- respond: {who: rowan, text: Hello}`. The first greeting produces "Hello.";
+a repeated greeting produces "Welcome back.". Saving and loading preserves
+that memory. Keep ordinary scripted lines as `say`; use `respond` only where
+rule-based variation is useful. A speaker needs no battle class or stats.
+
+## Check the contents of a trial
+
+Trial analysis is conservative: a condition it cannot prove false retains its
+branch. `gozen trial game -n` reports the count of unresolved conditions;
+`--list trial.txt` includes their paths as well as retained definitions and assets.
+Do not infer that all later story content was removed from a successful build.
+
+Use `forbid` in `trial.yaml` to fail if selected definitions or assets remain:
+
+<!-- verify: parse trial configuration fragment -->
+```yaml
+cut: [ending]
+forbid: [events.ending, assets/ending/*]
+```
+
+`cut` replaces calls to the named event with the configured blocked sequence.
+`forbid` checks retained IDs in `events`, `troops`, `enemies`, `locations`,
+`skills`, `ai`, `shops` and `songs`, plus asset paths, using the same glob syntax
+as the other selection patterns; it reports an error before writing the output.
+Inspect the resulting game and test its routes before distribution.

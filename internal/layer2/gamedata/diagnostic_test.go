@@ -61,7 +61,7 @@ func TestSemanticDiagnosticLocations(t *testing.T) {
 		{"型の不一致", "actors:\n  sample:\n    class: ranger\n    level: wrong\n", "data/z.yaml:4:12: actors.sample.level:"},
 		{"構文", "events: [\n", "data/z.yaml:1:9: $:"},
 		{"ブロックの式", "events:\n  sample:\n    when: |\n      self.hp > 0\n", "data/z.yaml:3:5: events.sample.when:"},
-		{"補完前の必須値", "actors:\n  sample: {}\n", "data/z.yaml:2:3: actors.sample: class is missing"},
+		{"補完前の必須値", "actors:\n  sample: {}\n", "data/z.yaml:2:3: actors.sample: a speaker needs a name"},
 	} {
 		t.Run(tc.name, func(t *testing.T) { wantDiagnostics(t, map[string]string{"data/z.yaml": tc.src}, tc.want) })
 	}

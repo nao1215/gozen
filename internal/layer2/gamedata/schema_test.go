@@ -112,7 +112,7 @@ var schemaReferences = map[string]string{
 var schemaRequired = map[string]string{
 	"GalleryPage.title": "必須。空白だけを拒否", "GalleryPage.line": "必須。１以上",
 	"Game.start": "必須", "Game.id": "仕様版１で必須", "Start.location": "必須", "Start.party": "１人以上必須、重複不可",
-	"Class.stats": "全８能力必須", "Class.exp_for": "必須", "Actor.class": "必須", "Enemy.image": "必須（file が必要）", "Enemy.stats": "全８能力必須", "Troop.members": "１体以上必須",
+	"Class.stats": "全８能力必須", "Class.exp_for": "必須", "Enemy.image": "必須（file が必要）", "Enemy.stats": "全８能力必須", "Troop.members": "１体以上必須",
 	"Dungeon.map": "generate がなければ必須", "Generate.width": "必須、９以上の奇数", "Generate.height": "必須、９以上の奇数", "Generate.start": "必須",
 	"TacticCondition.name": "必須", "TacticCondition.kind": "必須", "TacticCondition.subject": "HP・MP・生死・状態条件で必須", "TacticCondition.state": "状態条件で必須", "TacticCondition.when": "template で必須",
 	"TacticTarget.name": "必須", "TacticTarget.scope": "必須", "TacticAction.name": "必須", "TacticAction.use": "use・item の一方だけ必須", "TacticAction.item": "use・item の一方だけ必須",
@@ -409,7 +409,6 @@ func (b *schemaBuilder) constraints(t reflect.Type, n, props schemaNode) {
 		n["then"] = schemaNode{"required": []string{"id"}, "properties": schemaNode{"id": schemaNode{"type": "string", "pattern": gameIDPattern.String()}}}
 	case reflect.TypeFor[Start]():
 		child(props, "party")["type"] = "array"
-		child(props, "party")["minItems"] = 1
 		child(props, "party")["uniqueItems"] = true
 	case reflect.TypeFor[Troop]():
 		n["required"] = []string{"members"}

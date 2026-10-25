@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	md "github.com/nao1215/markdown"
+
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
@@ -16,14 +18,18 @@ func lineageLines(db *bookReport, lin map[string]lineageMonster, id string) []st
 	}
 	var lines []string
 	root.Walk(func(n *gamedata.LineageNode) {
-		lines = append(lines, strings.Repeat("  ", n.Depth+1)+"- "+lineageLine(db, n))
+		item := md.NewMarkdown(nil)
+		reportBullet(item, strings.Repeat("  ", n.Depth+1), "%s", lineageLine(db, n))
+		lines = append(lines, item.String())
 	})
 	if rs := lin[id].Recipes; len(rs) > 1 {
 		var others []string
 		for _, r := range rs[1:] {
 			others = append(others, recipeText(db, r))
 		}
-		lines = append(lines, "  - Other recipes: "+strings.Join(others, "; "))
+		item := md.NewMarkdown(nil)
+		reportBullet(item, "  ", "Other recipes: %s", strings.Join(others, "; "))
+		lines = append(lines, item.String())
 	}
 	return lines
 }
@@ -72,15 +78,14 @@ type lineageMonster struct {
 }
 
 func renderLineage(b *bookReport) string {
-	var out strings.Builder
+	out := md.NewMarkdown(nil, md.WithBlockSpacing())
 	for _, id := range b.Ordered("enemies") {
 		if e := b.Enemies[id]; e != nil {
-			fmt.Fprintf(&out, "### %s (%s)\n\n", e.Name, id)
+			out.H3f("%s (%s)", e.Name, id)
 			for _, line := range lineageLines(b, b.Lineage, id) {
-				fmt.Fprintln(&out, line)
+				out.PlainText(line)
 			}
-			out.WriteByte('\n')
 		}
 	}
-	return out.String()
+	return reportMarkdown(out)
 }

@@ -101,20 +101,14 @@ func TestEngineWordsFollowTheLanguage(t *testing.T) {
 	}
 }
 
-// TestCustomVerbsAreReadWithTheirValues: a verb declared in game.yaml is carried with its value; a typo is an error that says so.
+// TestCustomVerbsAreReadWithTheirValues checks executable aliases and rejects malformed invocations.
 func TestCustomVerbsAreReadWithTheirValues(t *testing.T) {
-	v2 := "schema_version: 2\nid: v\n" + testgame.Game + "verbs: [dance, wave]\n"
-	db := testgame.Load(t, map[string]string{"game.yaml": v2, "data/z.yaml": "events: {e: {do: [{dance: samba}, {wave: {hand: left}}]}}\n"})
-	verb, arg := data.CustomVerb(&db.Events["e"].Do[0])
-	if verb != "dance" || arg != "samba" {
-		t.Errorf("%q %v", verb, arg)
-	}
-	verb, arg = data.CustomVerb(&db.Events["e"].Do[1])
-	if verb != "wave" || arg == nil {
-		t.Errorf("%q %v", verb, arg)
-	}
-	if verb, arg := data.CustomVerb(&data.Command{}); verb != "" || arg != nil {
-		t.Errorf("a command that is not custom: %q %v", verb, arg)
+	v2 := "schema_version: 2\nid: v\n" + testgame.Game + "verbs: {dance: sub, wave: sub}\n"
+	db := testgame.Load(t, map[string]string{"game.yaml": v2, "data/z.yaml": "events: {e: {do: [{dance: true}, {wave: true}]}}\n"})
+	for _, cmd := range db.Events["e"].Do {
+		if cmd.Call != "sub" {
+			t.Fatal("command was not resolved to its event")
+		}
 	}
 	for name, y := range map[string]string{
 		"a builtin verb with an unknown field": "events: {e: {do: [{gold: 1, dance: samba}]}}",

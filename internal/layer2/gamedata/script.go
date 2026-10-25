@@ -53,12 +53,8 @@ func CheckScript(db *DB, src string, dev bool) Diagnostics {
 		c.expr(ScriptFile, e, withEventNames(FieldNames))
 		return scriptDiagnostics(c.errs, nil)
 	}
-	cmds, diags := ParseScript(src)
-	if diags != nil {
-		return diags
-	}
-	c.commands(ScriptFile, cmds, FieldNames)
-	return scriptDiagnostics(c.errs, itemLines(src))
+	_, ds := CompileScript(db, src, dev)
+	return ds
 }
 
 // scriptDiagnostics turns check errors into Diagnostics, looking up the line from the command's
@@ -123,4 +119,19 @@ func Fork(db *DB) *DB {
 		out.Locations[id] = l
 	}
 	return &out
+}
+
+// CompileScript parses and validates commands for session, capture and development
+// tools. Returned commands resolve reusable verbs to calls; errors return no commands.
+func CompileScript(db *DB, src string, dev bool) ([]Command, Diagnostics) {
+	cmds, ds := ParseScript(src)
+	if ds != nil {
+		return nil, ds
+	}
+	c := &checker{db: db, script: true, noDev: !dev}
+	c.commands(ScriptFile, cmds, FieldNames)
+	if ds := scriptDiagnostics(c.errs, itemLines(src)); len(ds) > 0 {
+		return nil, ds
+	}
+	return cmds, nil
 }

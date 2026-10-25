@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/goccy/go-yaml"
+
+	"github.com/nao1215/gozen/internal/layer1/yamlpath"
 
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 )
@@ -105,8 +105,6 @@ func (g *Game) Check(src string) Diagnostics {
 	return gamedata.CheckScript(g.db, src, true)
 }
 
-var pathStep = regexp.MustCompile(`^([^.\[]+)((?:\[\d+\])*)$`)
-
 // YAML is the definition at a logical path as written, in YAML: a section of data/ (any
 // file under it)
 // ("events.inn.do", "locations.camp.people[0]") or of game.yaml ("start.party"). The
@@ -119,36 +117,15 @@ func (g *Game) YAML(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var v any = root
-	for part := range strings.SplitSeq(path, ".") {
-		m := pathStep.FindStringSubmatch(part)
-		if m == nil {
-			return nil, fmt.Errorf("%w: %s", ErrNotFound, path)
-		}
-		ms, ok := v.(yaml.MapSlice)
-		if !ok {
-			return nil, fmt.Errorf("%w: %s", ErrNotFound, path)
-		}
-		found := false
-		for _, it := range ms {
-			if fmt.Sprint(it.Key) == m[1] {
-				v, found = it.Value, true
-				break
-			}
-		}
-		if !found {
-			return nil, fmt.Errorf("%w: %s", ErrNotFound, path)
-		}
-		for _, idx := range regexp.MustCompile(`\d+`).FindAllString(m[2], -1) {
-			list, ok := v.([]any)
-			n, err := strconv.Atoi(idx)
-			if !ok || err != nil || n >= len(list) {
-				return nil, fmt.Errorf("%w: %s", ErrNotFound, path)
-			}
-			v = list[n]
-		}
+	b, err := yaml.Marshal(root)
+	if err != nil {
+		return nil, err
 	}
-	return yaml.Marshal(v)
+	out, err := yamlpath.At(b, path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, fmt.Errorf("%w: %s", ErrNotFound, path)
+	}
+	return out, err
 }
 
 // source is the YAML that holds a top-level key: game.yaml, or the data/ files merged.

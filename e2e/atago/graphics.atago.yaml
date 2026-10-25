@@ -373,3 +373,81 @@ scenarios:
         - {path: $.state.location, equals: camp}
   - assert:
       image: {path: restored/restored.png, format: png, width: 960, height: 540}
+
+- name: a classless novel runs aliases and reactions, opens a journal and saves
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: story/game.yaml
+      content: |
+        schema_version: 8
+        id: narrative-contract
+        screen: {width: 960, height: 540}
+        title: Station
+        start: {location: station}
+        verbs: {greet: greeting}
+        reactions: {rowan: rowan.yaml}
+        screens:
+          journal:
+            title: Travel journal
+            entries:
+              - {label: Arrival, text: You arrived at the station.}
+              - {label: Unopened, text: A later note., when: flag.later}
+  - fixture:
+      file: story/data/story.yaml
+      content: |
+        actors: {rowan: {name: Rowan}}
+        locations: {station: {name: Station}}
+        events:
+          greeting:
+            do: [{respond: {who: rowan, text: Hello}}]
+  - fixture:
+      file: story/assets/rowan.yaml
+      content: |
+        people:
+          - id: rowan
+            rules:
+              - {id: repeated, when: tag.repeat > 0, say: [Welcome back.]}
+              - {id: hello, say: [Welcome.]}
+  - fixture:
+      file: story.txt
+      content: |
+        gap 12
+        wait 10
+        do greet: true
+        wait 30
+        shot greeting
+        press ok
+        wait 10
+        do greet: true
+        wait 30
+        press ok
+        wait 10
+        do open: journal
+        wait 10
+        shot journal
+        press cancel
+        do open: save
+        press ok
+        wait 90
+        quit
+  - run:
+      command: gozen run story --dev --mute --start station --seed 7 --script story.txt --shots shots --save-dir saves --trace story.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+  - assert:
+      image: {path: shots/greeting.png, format: png, width: 960, height: 540}
+  - assert:
+      image: {path: shots/journal.png, format: png, width: 960, height: 540}
+  - assert:
+      file:
+        path: saves/save1.json
+        json: {path: $.state.party, equals: []}
+  - run:
+      command: gozen trace story.jsonl --only say
+  - assert:
+      exit_code: 0
+      stdout: {contains: [Welcome., Welcome back.]}
+      stderr: {equals: ''}

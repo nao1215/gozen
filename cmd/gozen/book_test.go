@@ -297,3 +297,29 @@ func TestBookFormatsShareACompleteDetachedReport(t *testing.T) {
 	}
 	invoke(t, 2, "book", "missing", "--section", "unknown", "--format", "json")
 }
+
+// User-authored pipes and line breaks must stay inside their table cell; nested
+// dialogue must remain under its choice rather than turning into a new paragraph.
+func TestBookMarkdownCellsAndNestedDialogue(t *testing.T) {
+	b, err := loadBook(designGame(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range b.Enemies {
+		e.Name = "Enemy|name\ncontinued"
+	}
+	for _, s := range b.Skills {
+		s.Desc = "Skill|detail\ncontinued"
+	}
+	for _, i := range b.Items {
+		i.Desc = "Item|detail\ncontinued"
+	}
+	b.Events["formatting"] = &bookEvent{Do: []bookCommand{{Kind: "choice", Choice: []bookChoice{{Label: "Pick", Do: []bookCommand{{Kind: "say", Say: &bookSay{Text: "Line one\nLine two"}}}}}}}}
+	b.order["events"] = append(b.order["events"], "formatting")
+	out := renderBook(b)
+	for _, want := range []string{`Enemy\|name<br>continued`, `Skill\|detail<br>continued`, `Item\|detail<br>continued`, "\n  - Line one\n    Line two"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("report lacks %q", want)
+		}
+	}
+}

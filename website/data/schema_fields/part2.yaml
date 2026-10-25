@@ -1,4 +1,5 @@
 Command:
+  respond: "Submit text to a speaker reaction book; the reply uses the ordinary dialogue flow."
   _: "One step of an event. Each command has a single main key (the verb) and may carry extra keys that only that verb understands."
   end_turn: "Ends the campaign's turn: the other factions follow their rules and the next turn begins. Needs schema version 5."
   act: "Queues one move for the next auto battle: who acts, the skill or item, and the target."

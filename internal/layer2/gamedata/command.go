@@ -32,9 +32,10 @@ type Affect struct {
 // Command is a single event command. The command tags are the only registry of verbs and their accompanying fields.
 // verb is a public verb, internal is Go-only, and any other value lists the verbs that allow the accompanying field.
 type Command struct {
-	Say    *Say           `yaml:"say" command:"verb"`
-	Choice []ChoiceOption `yaml:"choice" command:"verb"`
-	Prompt string         `yaml:"prompt" command:"choice,stone_choose,stone_wearer"` // a line shown with the choice
+	Respond *Respond       `yaml:"respond" command:"verb"`
+	Say     *Say           `yaml:"say" command:"verb"`
+	Choice  []ChoiceOption `yaml:"choice" command:"verb"`
+	Prompt  string         `yaml:"prompt" command:"choice,stone_choose,stone_wearer"` // a line shown with the choice
 	// ID names the choice: the state remembers the option taken there as chose.<id>
 	// (schema_version 4, ADR 0025).
 	ID    string      `yaml:"id" command:"choice"`
@@ -201,15 +202,6 @@ type BattleAct struct {
 	Skill  string `yaml:"skill"`
 	Item   string `yaml:"item"`
 	Target string `yaml:"target"`
-}
-
-// CustomVerb returns the name of a custom command declared in game.yaml's verbs and its value (as written in YAML).
-// It returns "" if the command is not a custom one.
-func CustomVerb(c *Command) (string, any) {
-	if len(c.custom) == 0 {
-		return "", nil
-	}
-	return c.custom[0], c.customArg
 }
 
 // customFields returns the names of fields the command does not know (ones declared in game.yaml's verbs, or typos).
@@ -397,4 +389,11 @@ func (c *Command) Verb() (string, error) {
 		return "", fmt.Errorf("a command without a verb: %s has no active value", verb)
 	}
 	return verb, nil
+}
+
+// Respond submits text to a speaker's reaction rules and shows the reply as dialogue.
+type Respond struct {
+	Who  string `yaml:"who"`
+	Text string `yaml:"text"`
+	From string `yaml:"from"`
 }

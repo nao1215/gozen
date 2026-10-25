@@ -13,6 +13,65 @@ import (
 
 const pic = "synthetic picture sentinel"
 
+func TestForbiddenOutputAndUnresolvedBranches(t *testing.T) {
+	src := fstest.MapFS{
+		"assets/NOTICE.txt": {Data: []byte("Original neutral test fixture.")},
+		"game.yaml":         {Data: []byte("schema_version: 8\nid: narrative-trial\nstart: {location: station, event: opening}\n")},
+		"data/story.yaml":   {Data: []byte("locations: {station: {name: Station}}\nevents:\n  opening:\n    do:\n      - if: chance(0.5)\n        then: [{call: ending}]\n        else: [{say: Welcome}]\n  ending: {do: [{say: Later chapter}]}\n")},
+	}
+	res, err := Build(src, &Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Unresolved) == 0 || !slices.Contains(res.Kept["events"], "ending") {
+		t.Fatal("unresolved branch was not reported and retained")
+	}
+	if _, err := Build(src, &Config{Forbid: []string{"events.ending"}}); err == nil || !strings.Contains(err.Error(), "forbidden content remains: events.ending") {
+		t.Fatalf("forbidden ending: %v", err)
+	}
+	res, err = Build(src, &Config{Cut: []string{"ending"}, Forbid: []string{"events.ending"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := res.Check(); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(res.Files["data/story.yaml"]), "Later chapter") {
+		t.Fatal("cut content survived")
+	}
+}
+
+func TestNarrativeDependenciesAndAliasCut(t *testing.T) {
+	src := fstest.MapFS{
+		"game.yaml":         {Data: []byte("schema_version: 8\nid: trial-story\nstart: {location: station, event: opening}\nverbs: {greet: greeting}\nreactions: {rowan: rowan.yaml}\nscreens: {journal: {title: Journal, entries: [{label: Note, text: Welcome}]}}\n")},
+		"data/story.yaml":   {Data: []byte("actors: {rowan: {name: Rowan}}\nlocations: {station: {name: Station}}\nevents:\n  opening: {do: [{greet: true}, {open: journal}]}\n  greeting: {do: [{respond: {who: rowan, text: Hello}}]}\n")},
+		"assets/rowan.yaml": {Data: []byte("people: [{id: rowan, rules: [{id: hello, say: [Welcome]}]}]\n")},
+	}
+	r, err := Build(src, &Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Check(); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(r.Assets, "rowan.yaml") {
+		t.Fatal("reaction book dropped")
+	}
+	if _, err := Build(src, &Config{Forbid: []string{"assets/rowan.yaml"}}); err == nil {
+		t.Fatal("forbidden book retained")
+	}
+	r, err = Build(src, &Config{Cut: []string{"greeting"}, Forbid: []string{"events.greeting"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Check(); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(r.Files["game.yaml"]), "verbs:") {
+		t.Fatal("expanded aliases left behind")
+	}
+}
+
 // trialGame is a small campaign with a gallery, asides, songs, a cut ending and a dungeon
 // whose stairs go on without end.
 func trialGame(extra map[string]string) fstest.MapFS {
@@ -351,6 +410,8 @@ func TestConfigParseRejectsBadSettings(t *testing.T) {
 		{"dive_max without blocked", "dive_max: {depths: 3}\n", "blocked"},
 		{"bad pattern", "cut: ['[']\n", "trial pattern"},
 		{"bad unknown pattern", "unknown: ['[']\n", "trial pattern"},
+		{"unsupported forbidden section", "forbid: [actors.rowan]\n", "removable definition section"},
+		{"bad forbidden pattern", "forbid: ['assets/[']\n", "trial pattern"},
 		{"bad keep pattern", "keep: ['[']\n", "trial pattern"},
 		{"blocked entry is no command", "blocked: [0]\n", "blocked: each entry is a command"},
 		{"blocked entry is a list", "blocked: [[say]]\n", "blocked: each entry is a command"},

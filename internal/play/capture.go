@@ -312,10 +312,7 @@ type captureStartup struct{ setup, seek string }
 func (g *Game) captureSetup(defaults []data.Command) error {
 	src := g.opts.capture.setup
 	if src != "" {
-		if ds := data.CheckScript(g.db, src, true); len(ds) > 0 {
-			return fmt.Errorf("capture setup: %s", ds.Error())
-		}
-		cmds, ds := data.ParseScript(src)
+		cmds, ds := data.CompileScript(g.db, src, true)
 		if len(ds) > 0 {
 			return fmt.Errorf("capture setup: %s", ds.Error())
 		}

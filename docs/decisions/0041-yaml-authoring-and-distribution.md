@@ -4,6 +4,8 @@ Status: Implemented. Date: 2026-10-24.
 
 The sequence below records the migration plan. The CLI replacements and public API retirement are implemented; Go packages are now internal. YAML and save versions are unchanged. Verification and the final PR are recorded in [the migration plan](../development/no-code-migration.md).
 
+The declaration-only extension syntax and isolated reaction status are superseded by [ADR 0043](0043-narrative-authoring.md).
+
 ## Users and product boundary
 
 Gozen serves authors who make RPGs, visual novels and strategy games with YAML

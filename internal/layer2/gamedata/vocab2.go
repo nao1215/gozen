@@ -65,37 +65,47 @@ func (c *checker) needsVersion(where, what string, n int) bool {
 // declarations checks game.yaml's verbs and screens.
 func (c *checker) declarations() {
 	g := &c.db.Game
-	seen := map[string]bool{}
-	for i, v := range g.Verbs {
-		w := fmt.Sprintf("game.yaml verbs[%d]", i)
-		if i == 0 {
-			c.needsVersion2("game.yaml verbs", "verbs")
-		}
-		switch {
-		case !declaredName.MatchString(v):
+	for _, v := range slices.Sorted(maps.Keys(g.Verbs)) {
+		w := "game.yaml.verbs." + v
+		c.needsVersion2("game.yaml verbs", "verbs")
+		if !declaredName.MatchString(v) {
 			c.errorf(diag.NotAWord, w, "want a name of lowercase letters, digits and _, not %q", v)
-		case commandKeys[v]:
+		}
+		if commandKeys[v] {
 			c.errorf(diag.NotAWord, w, "%q is a built-in command or one of its fields", v)
-		case seen[v]:
-			c.errorf(diag.Duplicate, w, "%q is written twice", v)
 		}
-		seen[v] = true
+		if g.Verbs[v] == "" || c.db.Events[g.Verbs[v]] == nil {
+			c.errorf(diag.UnknownReference, w, "unknown event %q", g.Verbs[v])
+		}
 	}
-	seen = map[string]bool{}
-	for i, s := range g.Screens {
-		w := fmt.Sprintf("game.yaml screens[%d]", i)
-		if i == 0 {
-			c.needsVersion2("game.yaml screens", "screens")
+	for _, name := range slices.Sorted(maps.Keys(g.Screens)) {
+		w := "game.yaml.screens." + name
+		c.needsVersion2("game.yaml screens", "screens")
+		if !declaredName.MatchString(name) {
+			c.errorf(diag.NotAWord, w, "want a name of lowercase letters, digits and _, not %q", name)
 		}
-		switch {
-		case !declaredName.MatchString(s):
-			c.errorf(diag.NotAWord, w, "want a name of lowercase letters, digits and _, not %q", s)
-		case slices.Contains(OpenScreens, s):
-			c.errorf(diag.NotAWord, w, "%q is a built-in screen", s)
-		case seen[s]:
-			c.errorf(diag.Duplicate, w, "%q is written twice", s)
+		if slices.Contains(OpenScreens, name) {
+			c.errorf(diag.NotAWord, w, "%q is a built-in screen", name)
 		}
-		seen[s] = true
+		screen := g.Screens[name]
+		if screen == nil {
+			c.errorf(diag.Shape, w, "a screen needs a title and at least one entry")
+			continue
+		}
+		if screen.Title == "" || len(screen.Entries) == 0 {
+			c.errorf(diag.Shape, w, "a screen needs a title and at least one entry")
+		}
+		c.text(w+".title", screen.Title, FieldNames)
+		for i, e := range screen.Entries {
+			ew := fmt.Sprintf("%s.entries[%d]", w, i)
+			if e.Label == "" {
+				c.errorf(diag.Shape, ew, "an entry needs a label")
+			}
+			c.text(ew+".label", e.Label, FieldNames)
+			c.text(ew+".text", e.Text, FieldNames)
+			c.file(ew+".picture", e.Picture)
+			c.expr(ew+".when", e.When, FieldNames)
+		}
 	}
 }
 
@@ -108,9 +118,13 @@ func (c *checker) unknownFields(w string, cmd *Command) bool {
 		return false
 	}
 	builtin := len(cmd.given) > 0
-	if len(fields) == 1 && !builtin && slices.Contains(c.db.Game.Verbs, fields[0]) {
+	if len(fields) == 1 && !builtin && c.db.Game.Verbs[fields[0]] != "" {
 		c.needsVersion2(w+"."+fields[0], "a declared command")
-		return true
+		if !c.db.resolveVerb(cmd) {
+			c.errorf(diag.Shape, w, "invoke %s with true; its body is the event %s", fields[0], c.db.Game.Verbs[fields[0]])
+			return true
+		}
+		return false
 	}
 	for _, f := range fields {
 		msg := fmt.Sprintf("unknown field %q", f)
@@ -128,7 +142,7 @@ func (c *checker) unknownFields(w string, cmd *Command) bool {
 func (c *checker) nearest(name string) string {
 	best, bestD := "", 3
 	candidates := slices.Sorted(maps.Keys(commandKeys))
-	candidates = append(candidates, c.db.Game.Verbs...)
+	candidates = append(candidates, slices.Sorted(maps.Keys(c.db.Game.Verbs))...)
 	for _, k := range candidates {
 		if d := editDistance(name, k); d < bestD && d < len([]rune(name)) {
 			best, bestD = k, d
@@ -441,3 +455,19 @@ func literalText(n ast.Node) (string, error) {
 	}
 	return scalarText(n)
 }
+
+// resolveVerb reduces a reusable command to the existing event call contract.
+// Validation, replay, traversal and simulation then share exactly one execution path.
+func (db *DB) resolveVerb(c *Command) bool {
+	if len(c.custom) != 1 || len(c.given) != 0 || !isTrue(c.customArg) {
+		return false
+	}
+	target := db.Game.Verbs[c.custom[0]]
+	if target == "" {
+		return false
+	}
+	*c = Command{Call: target}
+	return true
+}
+
+func isTrue(v any) bool { b, ok := v.(bool); return ok && b }

@@ -1915,14 +1915,18 @@ func (g *Game) slotLabel(i int) (string, bool) {
 			loc += fmt.Sprintf(" B%dF", int(f))
 		}
 	}
-	lead := st.Members()[0]
+	party := ""
+	if members := st.Members(); len(members) > 0 {
+		lead := members[0]
+		party = fmt.Sprintf("%s  %s%d  ", lead.Name(), g.db.Game.Terms.Level, lead.Level)
+	}
 	sec := st.Frames / 60
 	when := ""
 	if t, ok := g.storeTime(g.slotPath(i)); ok {
 		when = t.Format("01/02 15:04")
 	}
 
-	return fmt.Sprintf("%s: %s  %s%d  %s  %d:%02d:%02d  %s", slotName(i), lead.Name(), g.db.Game.Terms.Level, lead.Level, loc, sec/3600, sec/60%60, sec%60, when), true
+	return fmt.Sprintf("%s: %s%s  %d:%02d:%02d  %s", slotName(i), party, loc, sec/3600, sec/60%60, sec%60, when), true
 }
 
 var (

@@ -5,11 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"os"
 	"slices"
 	"sort"
 	"strings"
+	"time"
+
+	"github.com/nao1215/gozen/internal/react"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/savefile"
@@ -207,6 +211,21 @@ func (s *State) bind() (*State, error) {
 			db.Actors[id] = &data.Actor{Name: e.Name, Class: db.MonsterClass(a.Monster), Level: 1}
 		}
 	}
+	for _, who := range slices.Sorted(maps.Keys(s.Reactions)) {
+		book := db.ReactionBooks[who]
+		if book == nil {
+			delete(s.Reactions, who)
+			s.changed("reactions", who, "reaction book removed")
+			continue
+		}
+		mind, err := react.New(book, who, react.Config{Clock: func() time.Duration { return 0 }})
+		if err != nil {
+			return nil, fmt.Errorf("reactions/%s: %w", who, err)
+		}
+		if err := mind.Restore(s.Reactions[who]); err != nil {
+			return nil, fmt.Errorf("reactions/%s: %w", who, err)
+		}
+	}
 	if s.Rand == nil {
 		s.Rand = rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())) //nolint:gosec // Gameplay randomness; no security-sensitive values.
 	}
@@ -215,7 +234,7 @@ func (s *State) bind() (*State, error) {
 	}
 	s.reconcileSave()
 	s.initStateNames()
-	if len(s.Party) == 0 {
+	if len(s.Party) == 0 && db.CombatEnabled() {
 		return nil, errors.New(lang.T("現在のデータに残る仲間がいないためロードできない"))
 	}
 	if db.Locations[s.Location] == nil {
@@ -226,7 +245,7 @@ func (s *State) bind() (*State, error) {
 
 func (s *State) checkSavedState() error {
 	bad := func(path string) error { return fmt.Errorf(lang.T("セーブの項目 %s が不正"), path) }
-	if len(s.Party) == 0 || s.Location == "" {
+	if len(s.Party) == 0 && s.DB.CombatEnabled() || s.Location == "" {
 		return bad("party/location")
 	}
 	seen := map[string]bool{}
@@ -268,7 +287,7 @@ func (s *State) reconcileSave() {
 		roamerLocation = s.Location
 	}
 	for id, a := range s.Actors {
-		if db.Actors[id] == nil {
+		if db.Actors[id] == nil || db.Classes[db.Actors[id].Class] == nil {
 			s.changed("actors", id, lang.T("仲間の定義がないため除外"))
 			delete(s.Actors, id)
 			continue

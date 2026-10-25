@@ -29,6 +29,9 @@ type Config struct {
 	Game yaml.MapSlice `yaml:"game"`
 
 	Keep []string `yaml:"keep"`
+
+	// Forbid matches retained definition paths (events.ending) or assets paths (assets/cg/*).
+	Forbid []string `yaml:"forbid"`
 }
 
 func Load(fsys fs.FS, name string) (*Config, error) {
@@ -60,7 +63,16 @@ func Parse(b []byte) (*Config, error) {
 			return nil, fmt.Errorf("trial: blocked: each entry is a command (a mapping such as {say: ...}); entry %d is %v", i, b)
 		}
 	}
-	for _, patterns := range [][]string{c.Cut, c.Unknown, c.Keep} {
+	for _, pattern := range c.Forbid {
+		valid := strings.HasPrefix(pattern, "assets/")
+		for _, section := range deletable {
+			valid = valid || strings.HasPrefix(pattern, section+".")
+		}
+		if !valid {
+			return nil, fmt.Errorf("trial: forbid %q must start with assets/ or a removable definition section", pattern)
+		}
+	}
+	for _, patterns := range [][]string{c.Cut, c.Unknown, c.Keep, c.Forbid} {
 		for _, p := range patterns {
 			if _, err := pathMatch(p, ""); err != nil {
 				return nil, fmt.Errorf("trial pattern %q: %w", p, err)

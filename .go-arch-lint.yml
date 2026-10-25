@@ -17,6 +17,7 @@ excludeFiles:
   # Runtime dependency policy; external test harnesses may compose layers.
   - '^.*_test\.go$'
 vendors:
+  markdown: { in: [github.com/nao1215/markdown] }
   onnx: { in: [github.com/yalue/onnxruntime_go, "github.com/yalue/onnxruntime_go/**"] }
   yaml: { in: [github.com/goccy/go-yaml, "github.com/goccy/go-yaml/**"] }
   image: { in: [golang.org/x/image, "golang.org/x/image/**"] }
@@ -79,14 +80,14 @@ deps:
     mayDependOn: [chat, private1]
     canUse: [yaml, norm]
   rpg:
-    mayDependOn: [rpg, expr, text, savefile, private1, private2]
+    mayDependOn: [rpg, expr, text, savefile, private1, private2, react]
   private2:
     canUse: [yaml]
-    mayDependOn: [private2, expr, text, savefile, private1, diag]
+    mayDependOn: [private2, expr, text, savefile, private1, diag, react]
   battle:
     mayDependOn: [battle, expr, text, savefile, chat, rpg, private1, private2, private3]
   event:
-    mayDependOn: [event, expr, text, savefile, chat, rpg, private1, private2, private3]
+    mayDependOn: [event, expr, text, savefile, chat, react, rpg, private1, private2, private3]
   world:
     mayDependOn: [world, expr, text, savefile, chat, rpg, private1, private2, private3]
   react:
@@ -112,7 +113,7 @@ deps:
     canUse: [ebiten, image]
   commands:
     mayDependOn: [commands, expr, text, savefile, chat, rpg, battle, event, world, react, headless, play, private1, private2, private3, private4, private5, promptcmd, mosaiccmd, mosaic, clihelp, cliio, diag]
-    canUse: [yaml, ebiten, image, pflag]
+    canUse: [yaml, ebiten, image, pflag, markdown]
   player:
     mayDependOn: [play, private2, webfs]
     canUse: [ebiten, js]
@@ -134,7 +135,7 @@ deps:
     canUse: [yaml, image, onnx]
   mosaiccmd:
     mayDependOn: [mosaiccmd, mosaic, clihelp, cliio, diag]
-    canUse: [pflag, image]
+    canUse: [pflag, image, markdown]
   experiments:
     mayDependOn: [expr, text, savefile, chat, rpg, battle, event, world, react, headless, play]
     canUse: [yaml, ebiten, image]
@@ -143,5 +144,6 @@ deps:
     canUse: [ebiten, image, js]
   dev:
     mayDependOn: [dev, diag]
+    canUse: [markdown]
   testgame:
     mayDependOn: [expr, text, savefile, chat, rpg, private2]

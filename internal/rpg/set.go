@@ -161,7 +161,7 @@ func (s *State) setParty(v any) error {
 	var party []string
 	for _, x := range list {
 		id, ok := x.(string)
-		if !ok || s.DB.Actors[id] == nil || slices.Contains(party, id) {
+		if !ok || s.DB.Actors[id] == nil || s.DB.Classes[s.DB.Actors[id].Class] == nil || slices.Contains(party, id) {
 			return fmt.Errorf("set party: %v is not an actor (or is written twice)", x)
 		}
 		party = append(party, id)

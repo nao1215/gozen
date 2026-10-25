@@ -3,8 +3,6 @@ package diag
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -99,23 +97,5 @@ func TestRegisterRefusesIncompleteEntries(t *testing.T) {
 			}()
 			call()
 		}()
-	}
-}
-
-// TestReferencePageIsCurrent keeps website/content/errors.md equal to the registry.
-func TestReferencePageIsCurrent(t *testing.T) {
-	t.Parallel()
-	p := filepath.Join(repoRoot(t), "website", "content", "errors.md")
-	got, err := os.ReadFile(p) //nolint:gosec // A fixed path in the repository.
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.ReplaceAll(string(got), "\r\n", "\n") != string(Markdown()) {
-		t.Fatal("website/content/errors.md is out of date; run go run ./internal/dev/errgen from the module root")
-	}
-	for _, e := range All() {
-		if !strings.Contains(string(got), "### "+e.Code.String()+"\n") {
-			t.Errorf("%s is missing from the page", e.Code)
-		}
 	}
 }

@@ -5,6 +5,7 @@ package trial
 import (
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -22,18 +23,19 @@ import (
 )
 
 type Result struct {
-	Files     map[string][]byte
-	Assets    []string
-	Kept      map[string][]string
-	Removed   map[string][]string
-	Gates     int
-	Passes    int
-	Missing   []string
-	Domains   map[string]string
-	DomainWhy map[string][]string
-	Why       map[string]string
-	Gallery   struct{ CGs, Scenes int }
-	src       fs.FS
+	Files      map[string][]byte
+	Assets     []string
+	Kept       map[string][]string
+	Removed    map[string][]string
+	Gates      int
+	Passes     int
+	Unresolved []string
+	Missing    []string
+	Domains    map[string]string
+	DomainWhy  map[string][]string
+	Why        map[string]string
+	Gallery    struct{ CGs, Scenes int }
+	src        fs.FS
 }
 
 func Build(src fs.FS, cfg *Config) (*Result, error) {
@@ -43,6 +45,7 @@ func Build(src fs.FS, cfg *Config) (*Result, error) {
 	}
 
 	base["game.yaml"] = del(del(base.game(), "cg_review"), "scene_review")
+	expandAliases(base)
 	all, err := listAssets(src)
 	if err != nil {
 		return nil, err
@@ -146,6 +149,48 @@ func Build(src fs.FS, cfg *Config) (*Result, error) {
 	cgs, _ := get(g, "cgs")
 	cl := sequence(cgs)
 	res.Gallery.CGs, res.Gallery.Scenes = len(cl), len(galleryScenes(out))
+	// Report retained conditions whose outcome is not proven within the trial.
+	var inspect func(any, string)
+	inspect = func(v any, where string) {
+		switch x := v.(type) {
+		case yaml.MapSlice:
+			for _, item := range x {
+				key := keyOf(item.Key)
+				at := where + "." + key
+				if key == "if" || key == "when" {
+					r := a.eval(item.Value, full)
+					if r.CanBeTrue() && r.CanBeFalse() {
+						res.Unresolved = append(res.Unresolved, at)
+					}
+				}
+				inspect(item.Value, at)
+			}
+		case []any:
+			for i, item := range x {
+				inspect(item, fmt.Sprintf("%s[%d]", where, i))
+			}
+		}
+	}
+	for _, name := range out.names() {
+		inspect(out[name], name)
+	}
+	var forbidden []string
+	for _, section := range slices.Sorted(maps.Keys(res.Kept)) {
+		for _, id := range res.Kept[section] {
+			name := section + "." + id
+			if match(cfg.Forbid, name) {
+				forbidden = append(forbidden, name)
+			}
+		}
+	}
+	for _, asset := range res.Assets {
+		if match(cfg.Forbid, "assets/"+asset) {
+			forbidden = append(forbidden, "assets/"+asset)
+		}
+	}
+	if len(forbidden) > 0 {
+		return nil, fmt.Errorf("trial: forbidden content remains: %s; narrow the range or cut its references", strings.Join(forbidden, ", "))
+	}
 	return res, nil
 }
 
@@ -369,6 +414,13 @@ func collectAssets(fs files, all []string, keep []string) (map[string]bool, []st
 			}
 		}
 	}
+	if reactions, ok := get(fs.game(), "reactions"); ok {
+		for _, entry := range mapping(reactions) {
+			if name, ok := entry.Value.(string); ok {
+				addPat(name)
+			}
+		}
+	}
 	for _, p := range fs.names() {
 		v := fs[p]
 		if p == "game.yaml" {
@@ -424,7 +476,12 @@ func (r *Result) FS() fstest.MapFS {
 		m[p] = &fstest.MapFile{Data: b}
 	}
 	for _, a := range r.Assets {
-		m["assets/"+a] = &fstest.MapFile{}
+		b, err := fs.ReadFile(r.src, "assets/"+a)
+		if err != nil {
+			// Omit unreadable assets so the loader diagnoses their missing references.
+			continue
+		}
+		m["assets/"+a] = &fstest.MapFile{Data: b}
 	}
 
 	for _, a := range r.Assets {

@@ -252,6 +252,7 @@ type bookFlow struct {
 	Moves []string `json:"moves"`
 }
 type bookCommand struct {
+	Respond  *bookResponse       `json:"respond,omitempty"`
 	Kind     string              `json:"verb"`
 	Say      *bookSay            `json:"say,omitempty"`
 	Prompt   string              `json:"prompt,omitempty"`
@@ -272,6 +273,12 @@ type bookCommand struct {
 	Dive     string              `json:"dive,omitempty"`
 	Floor    bookExpr            `json:"floor,omitempty"`
 }
+type bookResponse struct {
+	Who  string `json:"actor"`
+	Text string `json:"text"`
+	From string `json:"from,omitempty"`
+}
+
 type bookSay struct {
 	Who  string `json:"actor"`
 	Name string `json:"name"`
@@ -312,6 +319,9 @@ func bookCommands(db *gamedata.DB, cs []gamedata.Command) []bookCommand {
 			kind = "invalid"
 		}
 		v := bookCommand{Kind: kind, Prompt: c.Prompt, If: bookExpression(c.If), Then: bookCommands(db, c.Then), Else: bookCommands(db, c.Else), Battle: c.Battle, Fighters: slices.Clone(c.Fighters), OnWin: bookCommands(db, c.OnWin), OnLose: bookCommands(db, c.OnLose), OnEscape: bookCommands(db, c.OnRun), Call: c.Call, Move: c.Move, Dive: c.Dive, Floor: bookExpression(c.Floor)}
+		if c.Respond != nil {
+			v.Respond = &bookResponse{c.Respond.Who, c.Respond.Text, c.Respond.From}
+		}
 		if c.Image != nil {
 			v.Image = bookPicture{c.Image.File}
 		}

@@ -194,11 +194,12 @@ type Game struct {
 	SceneReview SceneReviewCfg `yaml:"scene_review"`
 	// Asides are events inserted after the lines of fixed speakers (a pause to brood, a picture in the mind, and so on).
 	Asides []Aside `yaml:"asides"`
-	// Verbs are the names of custom commands implemented in Go (spec version 2). Declared names can be written as commands, and the check does not reject them as unknown commands.
-	// The Go implementation hook is added at a later stage. Until then, it records "no implementation" at run time and skips.
-	Verbs []string `yaml:"verbs"`
-	// Screens are the names of custom screens made in Go (spec version 2). A declared name can be opened with open.
-	Screens []string `yaml:"screens"`
+	// Verbs maps reusable command names to events. Invoke with name: true.
+	Verbs map[string]string `yaml:"verbs"`
+	// Screens defines author-owned information and picture lists opened by name.
+	Screens map[string]*AuthorScreen `yaml:"screens"`
+	// Reactions maps speaker IDs to validated reaction books under assets/.
+	Reactions map[string]string `yaml:"reactions"`
 	// Campaign makes the game a campaign of regions held by factions over turns
 	// (schema_version 5, ADR 0030).
 	Campaign *Campaign `yaml:"campaign"`
@@ -824,7 +825,7 @@ type Learning struct {
 	Skill string `yaml:"skill"`
 }
 
-// Actor is a character who can join the party.
+// Actor describes a speaker. A class adds combat abilities and permits joining the party.
 type Actor struct {
 	Name    string            `yaml:"name"`
 	Class   string            `yaml:"class"`
@@ -1623,4 +1624,19 @@ func (p Picture) Brightness() float64 {
 		return 1
 	}
 	return p.Bright
+}
+
+// AuthorScreen is a titled list of information or pictures rendered by play.
+// Entries keep authored order; when hides entries until their condition holds.
+type AuthorScreen struct {
+	Title   string        `yaml:"title"`
+	Entries []ScreenEntry `yaml:"entries"`
+}
+
+// ScreenEntry is one selectable detail page in an author-defined screen.
+type ScreenEntry struct {
+	Label   string `yaml:"label"`
+	Text    string `yaml:"text"`
+	Picture string `yaml:"picture"`
+	When    Expr   `yaml:"when"`
 }
