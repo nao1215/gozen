@@ -206,6 +206,9 @@ func freeCell(d *data.Dungeon, st *rpg.State, level, x, z int) Cell {
 // walls on other levels and the underside of floors/stair volumes above the body.
 func freeFits(d *data.Dungeon, st *rpg.State, target rpg.Pos, x, z float64) (Cell, bool) {
 	feet := data.SpaceHeightAt(d.Space, target.Level, x, z)
+	if d.Space.RoofBlocks(x, z, freeRadius, feet, feet+freeBodyHeight) {
+		return Cell{X: target.X, Y: target.Y, Solid: true}, false
+	}
 	for iz := int(math.Floor(z - freeRadius)); iz <= int(math.Floor(z+freeRadius)); iz++ {
 		for ix := int(math.Floor(x - freeRadius)); ix <= int(math.Floor(x+freeRadius)); ix++ {
 			nearX := max(float64(ix), min(float64(ix+1), x))
@@ -402,6 +405,7 @@ func freeFront(db *data.DB, st *rpg.State) Cell {
 	sx, tx, dx := axis(p.X, vx)
 	sz, tz, dz := axis(p.Z, vz)
 	eye := data.SpaceHeightAt(d.Space, p.Level, p.X, p.Z) + .65
+	roofDistance, roofHit := d.Space.RoofRay([3]float64{p.X, eye, p.Z}, [3]float64{vx, 0, vz}, 1.25)
 	for range 8 {
 		distance := tx
 		if tx <= tz+1e-10 {
@@ -414,6 +418,9 @@ func freeFront(db *data.DB, st *rpg.State) Cell {
 		}
 		if distance > 1.25+1e-10 {
 			return Cell{}
+		}
+		if roofHit && roofDistance <= distance+1e-10 {
+			return Cell{Solid: true}
 		}
 		// Upper walls and horizontal slabs can occlude a ray from a stair even
 		// before the logical support changes to their level.

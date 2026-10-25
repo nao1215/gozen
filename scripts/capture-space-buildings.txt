@@ -1,0 +1,62 @@
+# Walk through the shop, climb the stone building, then visit both inn floors.
+gap 8
+wait 30
+hold down 120
+hold right 30
+shot town
+hold left 30
+hold up 120
+hold right 60
+hold up 330
+hold left 60
+shot shop
+hold up 90
+shot shop-room
+hold down 90
+hold right 60
+hold down 120
+hold right 60
+hold up 210
+hold left 60
+hold up 30
+hold left 60
+hold up 120
+shot stone-landing
+hold right 60
+hold up 30
+hold left 60
+shot elevated
+hold left 60
+hold up 30
+hold left 60
+hold up 120
+hold right 60
+hold up 240
+hold right 60
+hold up 210
+shot street-return
+hold up 120
+shot inn-landing
+hold up 30
+hold right 60
+hold up 30
+shot inn-bed
+press z 2
+hold left 60
+hold down 90
+hold right 60
+shot inn-npc
+press z 2
+hold left 60
+hold up 60
+hold left 60
+hold up 30
+hold left 60
+hold up 120
+shot returned
+hold left 17
+shot angled
+press reload
+wait 30
+shot reloaded
+quit

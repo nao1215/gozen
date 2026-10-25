@@ -7,6 +7,32 @@ var FloorTint vec3
 var CeilingTint vec3
 var SkyTint vec3
 var HasSky float
+var BuildingEnabled float
+var BuildingColors [33]vec4
+var BuildingUV [33]vec4
+var RoofAppearance [64]vec2
+
+func buildingTexture(id float, uv vec2) vec3 {
+ tile:=vec2(mod(id,8),floor(id/8))*256
+ return imageSrc1UnsafeAtFromSrc0Pos(imageSrc0Origin()+tile+clamp(uv,vec2(.002),vec2(.998))*256).rgb
+}
+
+func wallMaterial(point,face vec3) float {
+ p:=floor(vec3(point.x-face.x*.001,(point.y-face.y*.001)/1.5,point.z-face.z*.001))
+ if p.x<0 || p.z<0 || p.y<0 || p.x>=MapSize.x || p.z>=MapSize.y || p.y>=Levels {return 0}
+ ids:=floor(imageSrc0UnsafeAt(imageSrc0Origin()+vec2(p.x+.5,640+p.y*64+p.z+.5)).rgb*255+.5)
+ if face.x>0 {return ids.y};if face.z>0 {return ids.z}
+ if face.x<0 {return floor(imageSrc0UnsafeAt(imageSrc0Origin()+vec2(p.x+.5,1152+p.y*64+p.z+.5)).r*255+.5)}
+ return ids.x
+}
+
+func buildingColor(id float, uv vec2) vec3 {
+ index:=int(id)
+ config:=BuildingUV[index]
+ color:=BuildingColors[index]
+ if color.w>0 {return color.rgb*buildingTexture(id,fract((uv-config.zw)/config.xy))}
+ return color.rgb
+}
 
 
 // Trace sunlight through the same bounded occupancy used for visible geometry.
@@ -54,7 +80,21 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
    if c.x==2 {
     col=vec3(.78,.72,.60)
     tex=fract(vec2(point.x+point.z, -point.y/1.5))
-    if Textured.x>0 {col=imageSrc1UnsafeAtFromSrc0Pos(imageSrc0Origin()+tex*imageSrc1Size()).rgb*WallTint}
+    if Textured.x>0 {
+     if BuildingEnabled>0 {col=buildingTexture(0,tex)*WallTint} else {col=imageSrc1UnsafeAtFromSrc0Pos(imageSrc0Origin()+tex*imageSrc1Size()).rgb*WallTint}
+    }
+    if BuildingEnabled>0 {
+     id:=wallMaterial(point,face)
+     u:=point.x
+     if abs(face.x)>.5 {u=point.z}
+     if id>0 {col=buildingColor(id,vec2(u,-point.y))}
+    }
+   } else if c.x==5 {
+    col=vec3(.65,.24,.13)
+    ids:=RoofAppearance[int(c.y)]
+    id:=ids.x
+    if face.y<0 {id=ids.y;col=vec3(.45,.31,.19)}
+    if id>0 {col=buildingColor(id,point.xz)}
    } else {
     if abs(face.y)<.5 {tex=fract(vec2(point.x+point.z,-point.y))}
     if Textured.y>0 {col=imageSrc2UnsafeAtFromSrc0Pos(imageSrc0Origin()+tex*imageSrc2Size()).rgb*FloorTint}

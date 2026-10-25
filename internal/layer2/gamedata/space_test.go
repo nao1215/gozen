@@ -43,6 +43,10 @@ func TestSpaceValidation(t *testing.T) {
 	if _, err := data.Load(fixture); err != nil {
 		t.Fatalf("opt-in continuous movement: %v", err)
 	}
+	fixture["data/world.yaml"] = &fstest.MapFile{Data: []byte(strings.Replace(string(world), "      space:", "      space:\n        materials: {timber: {color: '#a07040', width: 4, height: 3}}\n        wall_regions: [{level: 1, x: 1, y: 1, width: 4, depth: 3, material: timber, north: timber}]", 1))}
+	if _, err := data.Load(fixture); err != nil {
+		t.Fatalf("building facade materials: %v", err)
+	}
 	for _, tc := range []struct{ name, old, new string }{
 		{"too short stair", "length: 4", "length: 2"},
 		{"negative walking speed", "      space:", "      space:\n        free_move: {speed: -1}"},

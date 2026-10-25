@@ -272,7 +272,8 @@ type Game struct {
 
 	quit           bool
 	rendering      bool
-	pauseUnfocused bool // Set only by the native/browser Run loop, not offscreen tests.
+	pauseUnfocused bool      // Set only by the native/browser Run loop, not offscreen tests.
+	debugDrawTime  time.Time // Previous Draw start, used only by explicit timing diagnostics.
 
 	backlog  []logLine
 	logView  *backlogView
@@ -929,9 +930,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	if g.opts.CollectBuildInfo && os.Getenv("GOZEN_DEBUG") != "" {
 		t0 := time.Now()
+		interval := t0.Sub(g.debugDrawTime)
+		g.debugDrawTime = t0
 		defer func() {
 			if g.tick%30 == 0 {
-				log.Printf("draw %v fps %.1f tps %.1f", time.Since(t0), ebiten.ActualFPS(), ebiten.ActualTPS())
+				log.Printf("draw %v fps %.1f tps %.1f frame %v", time.Since(t0), ebiten.ActualFPS(), ebiten.ActualTPS(), interval)
 			}
 		}()
 	}

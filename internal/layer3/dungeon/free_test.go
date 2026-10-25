@@ -13,11 +13,12 @@ import (
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
-func freeFixture(t testing.TB, rows, config, tiles string) (*data.DB, *rpg.State) {
+func freeFixture(t testing.TB, rows, config, tiles string, extra ...string) (*data.DB, *rpg.State) {
 	t.Helper()
 	prefix, _, _ := strings.Cut(testgame.Data, "    name: Camp")
 	_, suffix, _ := strings.Cut(testgame.Data, "  field:\n")
 	spec := fmt.Sprintf("\n    dungeon:\n      tiles: {S: {start: true, facing: east}%s}\n      space:\n        free_move: {%s}\n        levels: [%q]\n", tiles, config, rows)
+	spec = strings.Replace(spec, "        levels:", strings.Join(extra, "")+"        levels:", 1)
 	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 8\nid: continuous-test\n" + testgame.Game, "data/main.yaml": prefix + "    name: Camp" + spec + "  field:\n" + suffix})
 	st := testgame.State(db, 17)
 	Ensure(db, st)
@@ -408,5 +409,30 @@ func TestFreeRestoreRepairsAndStairHeadroom(t *testing.T) {
 	}
 	if st.SpacePose.Z < 9+freeRadius-1e-8 {
 		t.Fatalf("walked into closed stair headroom: %+v", st.SpacePose)
+	}
+}
+
+func TestRoofOverhangBlocksSweptMovement(t *testing.T) {
+	roof := "        roofs: [{shape: flat, level: 1, base: 1, x: 2.9, y: 1, width: 0.2, depth: 1, thickness: 0.2, facing: north}]\n"
+	for _, continuous := range []bool{false, true} {
+		t.Run(fmt.Sprintf("continuous=%t", continuous), func(t *testing.T) {
+			db, st := freeFixture(t, "......\n.S....\n......", "speed: 12, acceleration: 0", "", roof)
+			if !continuous {
+				if moved, _ := Forward(db, st); !moved {
+					t.Fatal("clear first step blocked")
+				}
+				if moved, _ := Forward(db, st); moved {
+					t.Fatal("grid step tunneled through thin roof volume")
+				}
+				return
+			}
+			var c FreeController
+			for range 60 {
+				c.Update(db, st, FreeInput{Forward: 1}, freeContinue)
+			}
+			if st.SpacePose.X > 2.721 || st.SpacePose.X < 2.65 {
+				t.Fatalf("footprint entered roof: %+v", st.SpacePose)
+			}
+		})
 	}
 }

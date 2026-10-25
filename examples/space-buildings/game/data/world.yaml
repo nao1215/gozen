@@ -1,0 +1,94 @@
+skills:
+  attack: {name: Attack, scope: one_enemy, effects: [{damage: "a.atk"}]}
+  guard: {name: Guard, scope: self, effects: []}
+classes:
+  visitor:
+    name: Visitor
+    stats: {mhp: '100', mmp: '10', atk: '10', def: '10', mat: '10', mdf: '10', agi: '10', luk: '10'}
+    exp_for: 'level * 100'
+actors:
+  walker: {name: Walker, class: visitor}
+locations:
+  inn:
+    name: Lantern Inn
+    dungeon:
+      depth: 16
+      darkness: 0.1
+      floor: '#b8ac8b'
+      ceiling: '#9d917c'
+      tiles:
+        S: {start: true, facing: north}
+        N:
+          name: Innkeeper
+          picture: innkeeper.png
+          size: 0.6
+          solid: true
+          trigger: look
+          once: true
+          after: '.'
+          do: [{set: {var.greetings: 'var.greetings + 1'}}]
+        B:
+          name: Guest bed
+          picture: bed.png
+          size: 0.4
+          solid: true
+          trigger: look
+          do: [{set: {flag.bed_seen: true}}]
+      space:
+        free_move: {speed: 2, turn_speed: 90, acceleration: 0}
+        materials:
+          timber: {picture: timber.png, width: 4, height: 3}
+          shop: {picture: shop.png, width: 6, height: 1.5, origin_u: 12}
+          stone: {picture: stone.png, width: 2, height: 1.5}
+          tile: {picture: roof.png, color: '#b84830', width: 1, height: 1}
+          wood: {color: '#96683e'}
+          canvas: {picture: canopy.png, width: 2, height: 1}
+        wall_regions:
+          - {level: 1, x: 1, y: 1, width: 7, depth: 6, material: timber}
+          - {level: 2, x: 2, y: 1, width: 5, depth: 4, material: timber}
+          - {level: 1, x: 12, y: 2, width: 6, depth: 5, material: shop}
+          - {level: 1, x: 12, y: 11, width: 6, depth: 5, material: stone}
+        roofs:
+          - {shape: gable, filled: true, level: 3, base: 0.12, x: 0.75, y: 0.75, width: 7.5, depth: 6, rise: 1, thickness: 0.15, facing: east, material: tile, underside: wood}
+          - {shape: shed, filled: true, level: 2, base: 0.15, x: 11.75, y: 1.75, width: 6.5, depth: 5, rise: 0.5, thickness: 0.15, facing: north, material: tile, underside: wood}
+          - {shape: flat, level: 2, x: 12, y: 6.75, width: 6, depth: 1.25, thickness: 0.12, facing: north, material: canvas, underside: canvas}
+        levels:
+          - |
+              ....................
+              .#######............
+              .#.....#....######..
+              .#.....#....#....#..
+              .#.....#....#....#..
+              .#.....#....#....#..
+              .##..N##....##.###..
+              ....................
+              ...S................
+              ....................
+              ....................
+              ............######..
+              ............#....#..
+              ............#....#..
+              ............#....#..
+              ............##.###..
+              ....................
+              ....................
+          - |
+              ____________________
+              __#####_____________
+              __#...#_____________
+              __#..B#_____________
+              __#...#_____________
+              ____..._____________
+              ____.N._____________
+              ____________________
+              ____________________
+              ____________________
+              ____________________
+              ___________.......__
+              ____________......__
+              ____________......__
+              ____________......__
+              ____________......__
+              ____________________
+              ____________________
+        stairs: [{level: 1, x: 3, y: 7, facing: north, length: 3}, {level: 1, x: 11, y: 15, facing: north, length: 4}]

@@ -228,7 +228,8 @@ func checkSpaceSlab(t *testing.T) {
 // Normal CI does not run benchmarks. An optional external host permits the same
 // harness to compare revisions without changing gameplay configuration.
 func BenchmarkGraphicsSpaceScaling(b *testing.B) {
-	free := os.Getenv("GOZEN_SPACE_BENCH_FREE") == "1"
+	buildings := os.Getenv("GOZEN_SPACE_BENCH_BUILDINGS")
+	free := os.Getenv("GOZEN_SPACE_BENCH_FREE") == "1" || buildings != ""
 	sizes, counts, depths := [][2]int{{48, 40}, {64, 64}}, []int{1, 3, 8}, []int{8, 16}
 	if free {
 		sizes, counts, depths = [][2]int{{40, 36}}, []int{4}, []int{16}
@@ -240,7 +241,12 @@ func BenchmarkGraphicsSpaceScaling(b *testing.B) {
 					b.Run(fmt.Sprintf("%dx%dx%d/depth=%d/moving=%t", size[0], size[1], levels, depth, moving), func(b *testing.B) {
 						dense := os.Getenv("GOZEN_SPACE_BENCH_DENSE") == "1"
 						fixture := spaceScalingFixture(b, size[0], size[1], levels, dense)
-						if free {
+						if buildings != "" {
+							if buildings != "boxes" && buildings != "materials" && buildings != "roofs" && buildings != "combined" {
+								b.Fatal("unknown building benchmark mode")
+							}
+							fixture = buildingBenchmarkFixture(b, buildings)
+						} else if free {
 							fixture["data/world.yaml"].Data = bytes.Replace(fixture["data/world.yaml"].Data, []byte("space:"), []byte("space:\n        free_move: {speed: 2, turn_speed: 90, acceleration: 0}"), 1)
 						}
 						spriteCount := 0
@@ -293,7 +299,7 @@ func BenchmarkGraphicsSpaceScaling(b *testing.B) {
 								cancel()
 								b.Fatal(err)
 							}
-							var draws, updates, fps, tps []float64
+							var draws, updates, fps, tps, frames []float64
 							startup := time.Duration(0)
 							tick := 0
 							scanner := bufio.NewScanner(pipe)
@@ -308,7 +314,7 @@ func BenchmarkGraphicsSpaceScaling(b *testing.B) {
 											tick = value
 										}
 									}
-									if (field == "draw" || field == "update") && i+1 < len(fields) {
+									if (field == "draw" || field == "update" || field == "frame") && i+1 < len(fields) {
 										elapsed, err := time.ParseDuration(fields[i+1])
 										if err != nil {
 											continue
@@ -319,9 +325,12 @@ func BenchmarkGraphicsSpaceScaling(b *testing.B) {
 										if tick < 120 {
 											continue
 										}
-										if field == "draw" {
+										switch field {
+										case "draw":
 											draws = append(draws, float64(elapsed)/float64(time.Millisecond))
-										} else {
+										case "frame":
+											frames = append(frames, float64(elapsed)/float64(time.Millisecond))
+										default:
 											updates = append(updates, float64(elapsed)/float64(time.Millisecond))
 										}
 									}
@@ -357,7 +366,10 @@ func BenchmarkGraphicsSpaceScaling(b *testing.B) {
 							if spriteCount > 0 {
 								b.ReportMetric(float64(spriteCount), "sprites")
 							}
-							for name, values := range map[string][]float64{"draw": draws, "update": updates, "fps": fps, "tps": tps} {
+							for name, values := range map[string][]float64{"draw": draws, "update": updates, "fps": fps, "tps": tps, "frame": frames} {
+								if len(values) == 0 {
+									continue
+								} // Older comparison hosts lack frame intervals.
 								slices.Sort(values)
 								b.ReportMetric(values[len(values)/2], name+"-p50")
 								b.ReportMetric(values[(len(values)-1)*95/100], name+"-p95")
@@ -511,7 +523,7 @@ func TestGraphicsSpaceSprites(t *testing.T) {
 }
 
 func TestGraphicsSpaceSpriteOcclusion(t *testing.T) {
-	for _, kind := range []string{"open", "wall", "slab", "stairs"} {
+	for _, kind := range []string{"open", "wall", "slab", "stairs", "roof", "roof-edge"} {
 		t.Run(kind, func(t *testing.T) {
 			out := t.TempDir()
 			game := filepath.Join(out, "game")
@@ -527,6 +539,7 @@ func TestGraphicsSpaceSpriteOcclusion(t *testing.T) {
 			put(lower, 3, 5, 'S')
 			put(lower, 3, 2, 'N')
 			stairs := ""
+			spriteSize := 0.6
 			switch kind {
 			case "wall":
 				put(lower, 3, 3, '#')
@@ -541,6 +554,14 @@ func TestGraphicsSpaceSpriteOcclusion(t *testing.T) {
 				put(lower, 3, 0, 'N')
 				put(upper, 3, 1, '.')
 				stairs = "\n        stairs: [{level: 1, x: 3, y: 4, facing: north, length: 3}]"
+			case "roof", "roof-edge":
+				lower[3] = "_______"
+				rise := 1.4
+				if kind == "roof-edge" {
+					rise = 0.65
+					spriteSize = 2
+				}
+				stairs = fmt.Sprintf("\n        roofs: [{shape: gable, filled: true, level: 1, base: 0.1, x: 2.5, y: 3.2, width: 2, depth: 0.6, rise: %g, thickness: 0.1, facing: east}]", rise)
 			}
 			source, err := os.ReadFile("../../examples/space-town/game/data/world.yaml")
 			if err != nil {
@@ -548,6 +569,7 @@ func TestGraphicsSpaceSpriteOcclusion(t *testing.T) {
 			}
 			prefix, _, _ := strings.Cut(string(source), "locations:")
 			world := prefix + fmt.Sprintf("locations:\n  inn:\n    name: Occlusion\n    dungeon:\n      depth: 16\n      darkness: 0\n      tiles:\n        S: {start: true, facing: north}\n        N: {picture: innkeeper.png, size: 0.6, when: 'not flag.hide', else: '.'}\n      space:\n        levels: [%q, %q]%s\n", strings.Join(lower, "\n"), strings.Join(upper, "\n"), stairs)
+			world = strings.Replace(world, "size: 0.6", fmt.Sprintf("size: %g", spriteSize), 1)
 			if err := os.WriteFile(filepath.Join(game, "data", "world.yaml"), []byte(world), 0o600); err != nil { //nolint:gosec // Generated fixture under this test's private temporary directory.
 				t.Fatal(err)
 			}
@@ -578,7 +600,18 @@ func TestGraphicsSpaceSpriteOcclusion(t *testing.T) {
 					}
 				}
 			}
-			if kind == "open" {
+			if kind == "roof-edge" {
+				if changed < 100 {
+					t.Fatal("large sprite was hidden entirely by its anchor")
+				}
+				for y := bounds.Dy() / 2; y < bounds.Dy()*3/4; y++ {
+					for x := bounds.Dx() * 2 / 5; x < bounds.Dx()*3/5; x++ {
+						if a.At(x, y) != b.At(x, y) {
+							t.Fatal("large sprite leaked through lower roof volume")
+						}
+					}
+				}
+			} else if kind == "open" {
 				if changed < 100 {
 					t.Fatal("positive control has no visible sprite")
 				}
@@ -737,5 +770,96 @@ func TestGraphicsSpaceFreeMovement(t *testing.T) {
 			}
 			checkSpaceFrame(t, filepath.Join(out, "returned.png"))
 		})
+	}
+}
+
+func TestGraphicsSpaceBuildings(t *testing.T) {
+	out := t.TempDir()
+	trace := filepath.Join(out, "trace.jsonl")
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, hostBin, "--dir", "../../examples/space-buildings/game", "--start", "inn", "--dev", "--mute", "--script", "../../scripts/capture-space-buildings.txt", "--shots", out, "--trace", trace, "--save-dir", filepath.Join(out, "saves")) //nolint:gosec // Fixed public fixture and isolated output.
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("%v\n%s\n%s", err, &stdout, &stderr)
+	}
+	content, err := os.ReadFile(trace) //nolint:gosec // Isolated trace.
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string][3]int{"town": {0, 3, 12}, "shop": {0, 14, 8}, "shop-room": {0, 14, 5}, "stone-landing": {1, 11, 11}, "elevated": {1, 12, 11}, "street-return": {0, 3, 8}, "inn-landing": {1, 3, 4}, "inn-bed": {1, 4, 3}, "inn-npc": {1, 4, 6}, "returned": {0, 3, 8}}
+	shot := ""
+	var before map[string]float64
+	for line := range bytes.SplitSeq(content, []byte("\n")) {
+		if len(line) == 0 {
+			continue
+		}
+		var row struct {
+			T, File, Location string
+			Level             int
+			Pos               []int
+			SpacePose         map[string]float64 `json:"space_pose"`
+			Summary           struct {
+				Flags map[string]bool
+				Vars  map[string]any
+			}
+		}
+		if err := json.Unmarshal(line, &row); err != nil {
+			t.Fatal(err)
+		}
+		if row.T == "shot" {
+			shot = strings.TrimSuffix(filepath.Base(row.File), ".png")
+		}
+		if row.T != "state" || shot == "" {
+			continue
+		}
+		if row.Location != "inn" || row.SpacePose == nil {
+			t.Fatalf("invalid continuous town state: %+v", row)
+		}
+		if pos, ok := want[shot]; ok {
+			if row.Level != pos[0] || len(row.Pos) != 2 || row.Pos[0] != pos[1] || row.Pos[1] != pos[2] {
+				t.Fatalf("%s: %+v want %v", shot, row, pos)
+			}
+			delete(want, shot)
+		}
+		if shot == "returned" && (!row.Summary.Flags["bed_seen"] || row.Summary.Vars["greetings"] != float64(1)) {
+			t.Fatalf("missing interactions: %+v", row.Summary)
+		}
+		if shot == "angled" {
+			before = row.SpacePose
+		}
+		if shot == "reloaded" {
+			for _, key := range []string{"x", "z", "yaw", "level"} {
+				if math.Abs(row.SpacePose[key]-before[key]) > 1e-8 {
+					t.Fatalf("reload changed %s", key)
+				}
+			}
+		}
+		shot = ""
+	}
+	if len(want) > 0 {
+		t.Fatalf("missing checkpoints: %v", want)
+	}
+	for _, name := range []string{"town", "shop", "shop-room", "elevated", "inn-landing"} {
+		checkSpaceFrame(t, filepath.Join(out, name+".png"))
+	}
+	// Above the shop, the roof is red; immediately below its edge the canopy
+	// alternates cream/red. The view must retain open blue sky above both.
+	img := shotImage(t, out, "elevated")
+	red, sky := 0, 0
+	for y := 200; y < 350; y++ {
+		for x := 350; x < 700; x++ {
+			r, g, b, _ := img.At(x, y).RGBA()
+			if r > g*3/2 && r > b*3/2 {
+				red++
+			}
+			if b > r && b > g {
+				sky++
+			}
+		}
+	}
+	if red < 1000 || sky < 1000 {
+		t.Fatalf("roof/sky junction missing: red=%d sky=%d", red, sky)
 	}
 }
