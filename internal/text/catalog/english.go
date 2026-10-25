@@ -363,6 +363,8 @@ var english = map[string]string{
 	"\u3000（%s）": "  (%s)",
 	"↑すすむ ←→むきをかえる ↓ふりむく": "Up: walk   Left/Right: turn   Down: turn back",
 	"X メニュー": "X: menu",
+	"↑↓すすむ・もどる ←→むきをかえる":   "Up/Down: walk   Left/Right: turn",
+	"Shift+←→よこあるき X メニュー": "Shift+Left/Right: strafe   X: menu",
 	"\u3000": " ",
 	"タイトルに もどりますか？（セーブして いない ところは 消えます）":      "Return to title? Unsaved progress will be lost.",
 	"だれか ひとりは つれていこう。":                        "Take at least one member.",

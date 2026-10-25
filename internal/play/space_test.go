@@ -259,9 +259,8 @@ func TestSpaceOccupancyRandomConditionsAreNotCached(t *testing.T) {
 // spaceScalingFixture preserves the public sample in the northwest corner and
 // pads aligned levels with open air. Dense variants fill only the added area;
 // the one-level fixture removes the stairs that no longer have a destination.
-func spaceScalingFixture(tb testing.TB, w, h, levels int, dense bool) fstest.MapFS {
+func spaceFixtureFiles(tb testing.TB, source fs.FS) fstest.MapFS {
 	tb.Helper()
-	source := os.DirFS("../../examples/space/game")
 	out := fstest.MapFS{}
 	if err := fs.WalkDir(source, ".", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -279,6 +278,12 @@ func spaceScalingFixture(tb testing.TB, w, h, levels int, dense bool) fstest.Map
 	}); err != nil {
 		tb.Fatal(err)
 	}
+	return out
+}
+
+func spaceScalingFixture(tb testing.TB, w, h, levels int, dense bool) fstest.MapFS {
+	tb.Helper()
+	out := spaceFixtureFiles(tb, os.DirFS("../../examples/space/game"))
 	var root map[string]any
 	if err := yaml.Unmarshal(out["data/world.yaml"].Data, &root); err != nil {
 		tb.Fatal(err)

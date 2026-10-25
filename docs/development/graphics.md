@@ -55,6 +55,7 @@ Without Xvfb or a drawing environment, the tests fail. A skip or a mere compile 
 Running the game with `--script`, `--trace`, `--replay` and `--record` is described for users on the site: [Scripts and screenshots](https://nao1215.github.io/gozen/edit-play-loop/#scripts-and-screenshots) and [Trace and replay](https://nao1215.github.io/gozen/edit-play-loop/#trace-and-replay). Developer notes follow.
 
 - The canonical list of button names is `scriptButtons` in `internal/play/input.go`.
+- `hold BUTTON[+BUTTON...] TICKS` holds controls for 1 to 36000 exact simulation ticks; `shift` is also accepted. For example, `hold up+shift+right 60` walks diagonally in an opt-in continuous space. The first tick also presses each button; the next script command releases them. Held controls and Shift are recorded in input traces.
 - A picture name that contains a path separator is rejected. A script needs an explicit `--shots`.
 - In a development capture, `battle-hp enemy|party INDEX HP` sets a living battle unit's HP by zero-based troop or party index. HP must be from 1 through that unit's maximum. The trace records each setup as `battle_setup`; it does not count as a damage event.
 - `battle-log off` hides the appended tactic decision text and its on-screen button during a scripted development battle capture. `battle-log on` restores both; decision trace events remain available.

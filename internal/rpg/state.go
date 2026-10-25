@@ -32,9 +32,12 @@ type State struct {
 	Frames int64           `json:"frames"` // play time in ticks
 	Done   map[string]bool `json:"done"`   // events with once that have run
 	// Ran is how many times each event has run and the order of its last run (ran.<id>).
-	Ran    map[string][2]int `json:"ran,omitempty"`
-	Pos    Pos               `json:"pos"`    // where the party is in a dungeon
-	Mapped map[string][]byte `json:"mapped"` // the cells of each dungeon seen (1 a cell)
+	Ran map[string][2]int `json:"ran,omitempty"`
+	Pos Pos               `json:"pos"` // where the party is in a dungeon
+	// SpacePose is the authoritative pose of opt-in continuous stacked spaces.
+	// Dungeon rules update it; presentation reads it. Nil initializes from Pos.
+	SpacePose *SpacePose        `json:"space_pose,omitempty"`
+	Mapped    map[string][]byte `json:"mapped"` // the cells of each dungeon seen (1 a cell)
 	// Put holds dungeon cells changed by events (such as stairs opened into a wall with open_wall). The key is floor and coordinates; the value is the tile character.
 	Put map[string]string `json:"put,omitempty"`
 	// Fighters fight the battle being started instead of the party (a duel); not saved.
@@ -76,6 +79,20 @@ type Pos struct {
 	In     string `json:"in"`              // the dungeon (location) it is in
 	X, Y   int
 	Facing int `json:"facing"`
+}
+
+// SpacePose is saved continuous position on a known support level. X/Z are in
+// cell units and Yaw in radians clockwise from north. Travel and Encounter are
+// fractional actual-distance budgets in [0,1); velocity is deliberately absent.
+// In and Level identify support independently of interpolated/derived height.
+type SpacePose struct {
+	In        string  `json:"in"`
+	Level     int     `json:"level"`
+	X         float64 `json:"x"`
+	Z         float64 `json:"z"`
+	Yaw       float64 `json:"yaw"`
+	Travel    float64 `json:"travel"`
+	Encounter float64 `json:"encounter"`
 }
 
 // New is the state a new game starts in (game.yaml start).

@@ -86,7 +86,10 @@ func (s *dungeonScene) drawSpace(g *Game, dst *ebiten.Image, d *data.Dungeon) {
 	x, z := float64(now.X)+.5, float64(now.Y)+.5
 	height := data.SpaceHeight(d.Space, now.Level, now.X, now.Y) + .65
 	yaw := float64(now.Facing) * math.Pi / 2
-	if v.remaining > 0 {
+	if p := g.st.SpacePose; d.Space.FreeMove != nil && p != nil && p.In == g.st.Location {
+		x, z, yaw = p.X, p.Z, p.Yaw
+		height = data.SpaceHeightAt(d.Space, p.Level, p.X, p.Z) + .65
+	} else if v.remaining > 0 {
 		t := 1 - float64(v.remaining)/float64(v.duration)
 		t = t * t * (3 - 2*t)
 		x = float64(v.from.X) + .5 + float64(now.X-v.from.X)*t

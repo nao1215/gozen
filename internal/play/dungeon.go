@@ -19,6 +19,7 @@ import (
 )
 
 type dungeonScene struct {
+	free       dungeon.FreeController
 	space      *spaceView
 	view, prev *ebiten.Image
 	trans      string
@@ -81,6 +82,7 @@ func (s *dungeonScene) update(g *Game) {
 	freshUp := g.in.held[btnUp] && !s.upHeld || g.in.wheel > 0
 	s.upHeld = g.in.held[btnUp]
 	if g.pump() {
+		s.free.Reset()
 		s.busy = true
 		return
 	}
@@ -116,6 +118,10 @@ func (s *dungeonScene) update(g *Game) {
 		return
 	}
 	if s.transT > transTicks/2 {
+		return
+	}
+	if d := dungeon.Of(g.db, g.st); d != nil && d.Space != nil && d.Space.FreeMove != nil {
+		s.updateFree(g)
 		return
 	}
 	in := &g.in
@@ -315,8 +321,13 @@ func (s *dungeonScene) draw(g *Game, dst *ebiten.Image) {
 		gfx.DrawText(dst, hint, sw/2, y+12, sizeM, g.th.text)
 	}
 	g.drawPartyHUD(dst, sh-140)
-	g.text(dst, lang.T("↑すすむ ←→むきをかえる ↓ふりむく"), 62, 116, sizeS*0.72, g.th.border)
-	g.text(dst, lang.T("X メニュー"), 62, 142, sizeS*0.72, g.th.border)
+	walkHint, menuHint := lang.T("↑すすむ ←→むきをかえる ↓ふりむく"), lang.T("X メニュー")
+	if d.Space != nil && d.Space.FreeMove != nil {
+		walkHint = lang.T("↑↓すすむ・もどる ←→むきをかえる")
+		menuHint = lang.T("Shift+←→よこあるき X メニュー")
+	}
+	g.text(dst, walkHint, 62, 116, sizeS*0.72, g.th.border)
+	g.text(dst, menuHint, 62, 142, sizeS*0.72, g.th.border)
 }
 
 func (s *dungeonScene) drawWithTransition(dst *ebiten.Image, sw, sh, ui float64) {

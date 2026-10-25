@@ -7,6 +7,7 @@ package dungeon
 import (
 	"fmt"
 	"maps"
+	"math"
 	"strings"
 
 	"github.com/nao1215/gozen/internal/layer1/optional"
@@ -186,6 +187,7 @@ func Place(db *data.DB, st *rpg.State, loc, at, facing string) {
 		st.Roamers = nil
 	}
 	st.Pos = rpg.Pos{In: loc, Level: level, X: x, Y: y, Facing: f & 3}
+	st.SpacePose = nil
 	st.Bumped = ""
 	front := false // arrived in front of a solid thing (the stairs down in a wall), facing it
 	// On reaching something impassable (stairs in a wall) or something that acts when stepped on (a descent in the floor), stand next to it and face it
@@ -349,6 +351,9 @@ func Rel(p rpg.Pos, f, s int) (int, int) {
 // Front is the cell in front of the party.
 func Front(db *data.DB, st *rpg.State) Cell {
 	if d := Of(db, st); d != nil && d.Space != nil {
+		if d.Space.FreeMove != nil && st.SpacePose != nil {
+			return freeFront(db, st)
+		}
 		p, ok := spaceStep(d.Space, st.Pos)
 		if !ok {
 			return Cell{Solid: true, Look: "wall"}
@@ -362,11 +367,17 @@ func Front(db *data.DB, st *rpg.State) Cell {
 }
 
 // Turn turns the party by quarter turns (1 right, -1 left, 2 around).
-func Turn(st *rpg.State, n int) { st.Pos.Facing = (st.Pos.Facing + n + 8) & 3 }
+func Turn(st *rpg.State, n int) {
+	st.Pos.Facing = (st.Pos.Facing + n + 8) & 3
+	if st.SpacePose != nil {
+		st.SpacePose.Yaw = float64(st.Pos.Facing) * math.Pi / 2
+	}
+}
 
 // Forward walks one cell ahead. It reports whether the party moved, and the commands
 // that follow: the tile stepped on, or else maybe a random battle.
 func Forward(db *data.DB, st *rpg.State) (bool, []data.Command) {
+	st.SpacePose = nil // Scripted steps retain the grid contract and reset motion.
 	d := Of(db, st)
 	if d == nil {
 		return false, nil
@@ -459,6 +470,11 @@ func Forward(db *data.DB, st *rpg.State) (bool, []data.Command) {
 	if len(slid) > 0 {
 		return true, slid
 	}
+	return true, encounter(db, st)
+}
+
+// encounter is shared by grid steps and the continuous distance budget.
+func encounter(db *data.DB, st *rpg.State) []data.Command {
 	loc := db.Locations[st.Location]
 	if loc.Encounters.Rate.Set() && !st.Calm {
 		p, err := loc.Encounters.Rate.Number(st.Env())
@@ -470,11 +486,11 @@ func Forward(db *data.DB, st *rpg.State) (bool, []data.Command) {
 		if err == nil && st.Rand.Float64() < p {
 			st.Vars["gauge"] = 0.0
 			if t := world.PickTroop(db, st); t != "" {
-				return true, []data.Command{{Battle: t}}
+				return []data.Command{{Battle: t}}
 			}
 		}
 	}
-	return true, nil
+	return nil
 }
 
 // Look is what happens on looking at the cell in front (pressing the button): a trigger
@@ -864,6 +880,7 @@ func OpenWall(db *data.DB, st *rpg.State, ch string) bool {
 			}
 			st.Put[doneKey(st, st.Location, c.x+dx[f], c.y+dy[f])] = ch
 			st.Pos.X, st.Pos.Y, st.Pos.Facing = c.x, c.y, f
+			st.SpacePose = nil
 			st.Bumped = ""
 			Reveal(db, st)
 			return true
