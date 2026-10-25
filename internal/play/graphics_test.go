@@ -5,6 +5,7 @@ package play
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -228,4 +230,79 @@ func logGraphicsTiming(t *testing.T, started time.Time, diagnostic string) {
 		t.Fatal("graphics run did not report FPS/TPS")
 	}
 	t.Logf("fixed-script elapsed %s; last frame sample: %s", time.Since(started).Round(time.Millisecond), sample)
+}
+
+func TestGraphicsScreensSaveRandomContinuation(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	game, saves := filepath.Join(root, "game"), filepath.Join(root, "saves")
+	if err := os.CopyFS(game, btlFiles(t, "", "")); err != nil {
+		t.Fatal(err)
+	}
+	run := func(name, script string, args ...string) []byte {
+		t.Helper()
+		path, trace := filepath.Join(root, name+".txt"), filepath.Join(root, name+".jsonl")
+		if err := os.WriteFile(path, []byte(script), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+		defer cancel()
+		argv := []string{"--dir", game, "--dev", "--mute", "--script", path, "--trace", trace, "--shots", root, "--save-dir", saves}
+		argv = append(argv, args...)
+		cmd := exec.CommandContext(ctx, hostBin, argv...) //nolint:gosec // Fixed test host and isolated fixture paths.
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("%s: %v\nstdout: %s\nstderr: %s", name, err, &stdout, &stderr)
+		}
+		b, err := os.ReadFile(trace) //nolint:gosec // Generated trace under the isolated test directory.
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	direct := run("direct", "wait 20\ndo open: save\nwait 10\npress ok\nwait 100\nwait 20\ndo battle: two\npress ok 160\nquit\n", "--start", "camp", "--party", "scout,guide", "--seed", "31")
+	saved, err := os.ReadFile(filepath.Join(saves, "save1.json")) //nolint:gosec // Generated save under the isolated test directory.
+	if err != nil {
+		t.Fatal(err)
+	}
+	var envelope struct {
+		Rand   []byte
+		Cursor json.RawMessage
+	}
+	if err := json.Unmarshal(saved, &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if len(envelope.Rand) == 0 || len(envelope.Cursor) > 0 {
+		t.Fatal("fixture did not save between events with random state")
+	}
+	// Continue selects the newest save, which is the post-battle autosave.
+	// Move back to the manual slot containing the pre-battle state.
+	loaded := run("loaded", "wait 20\npress ok\nwait 20\npress up 3\npress ok\nwait 40\ndo battle: two\npress ok 160\nquit\n", "--seed", "999")
+	for i, trace := range [][]byte{direct, loaded} {
+		captures := traceLines(t, trace, "battle_capture")
+		if len(captures) != 1 {
+			t.Fatalf("run %d capture count %d; requests: %v", i, len(captures), traceLines(t, trace, "request", "act"))
+		}
+		raw, err := json.Marshal(captures[0]["capture"])
+		if err != nil {
+			t.Fatal(err)
+		}
+		var capture struct{ Rand []byte }
+		if err := json.Unmarshal(raw, &capture); err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(capture.Rand, envelope.Rand) {
+			t.Fatalf("run %d: battle random state %x, saved %x", i, capture.Rand, envelope.Rand)
+		}
+	}
+	a, b := traceLines(t, direct, "ai_decision", "battle_step", "battle_result"), traceLines(t, loaded, "ai_decision", "battle_step", "battle_result")
+	for _, lines := range [][]traceLine{a, b} {
+		for _, line := range lines {
+			delete(line, "tick")
+		}
+	}
+	if len(traceLines(t, direct, "battle_result")) != 1 || !reflect.DeepEqual(a, b) {
+		t.Fatal("native load menu changed deterministic battle continuation")
+	}
 }

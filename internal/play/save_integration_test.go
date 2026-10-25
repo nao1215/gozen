@@ -1,6 +1,7 @@
 package play
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -546,4 +548,52 @@ func TestSaveSlotLocationTemplatesUseEachSavedState(t *testing.T) {
 		}
 	}
 	check(fresh)
+}
+
+func TestLoadMenuPreservesNextBattleRandomState(t *testing.T) {
+	g, out := btlOpen(t, Options{Location: "camp", SaveDir: t.TempDir(), Seed: 31}, "", "")
+	for range 7 {
+		g.st.Rand.Uint64()
+	}
+	if err := g.save(0); err != nil {
+		t.Fatal(err)
+	}
+	expected, err := g.pcg.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := g.startBattle("two", func(int) {})
+	btlAsk(t, g)
+	btlAttackUntilOver(t, g, first)
+	firstLines := btlLines(t, out, "ai_decision", "battle_step", "battle_result")
+	captures := btlLines(t, out, "battle_capture")
+	if len(captures) != 1 {
+		t.Fatalf("captures: %d", len(captures))
+	}
+	// Refreshing the load list reads the save before selecting it reads it again.
+	menu := newSaveMenu(g, false, func() {})
+	menu.slots.sel = 0
+	g.push(menu)
+	sysKey(g, btnOK)
+	menu.update(g)
+	actual, err := g.pcg.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(actual, expected) {
+		t.Fatalf("menu load lost random state: %x != %x", actual, expected)
+	}
+	out.Reset()
+	second := g.startBattle("two", func(int) {})
+	btlAsk(t, g)
+	btlAttackUntilOver(t, g, second)
+	secondLines := btlLines(t, out, "ai_decision", "battle_step", "battle_result")
+	for _, lines := range [][]traceLine{firstLines, secondLines} {
+		for _, line := range lines {
+			delete(line, "tick")
+		}
+	}
+	if !reflect.DeepEqual(firstLines, secondLines) {
+		t.Fatal("loading through the menu changed the next battle's decisions, steps or rewards")
+	}
 }

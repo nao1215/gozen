@@ -380,3 +380,60 @@ func TestSaveKeepsDungeonRecordsAfterReturningToTown(t *testing.T) {
 		t.Fatalf("帰還後の有効な迷宮の記録を変更した %+v", got.LoadReport)
 	}
 }
+
+func TestCheckedSavePreservesAndClonesRandomState(t *testing.T) {
+	for _, mode := range []string{"between", "event", "none", "legacy"} {
+		t.Run(mode, func(t *testing.T) {
+			db := testgame.Load(t, nil)
+			st := testgame.State(db, 7)
+			saved := saveBytes(t, st)
+			want, err := rand.NewPCG(73, 91).MarshalBinary()
+			if err != nil {
+				t.Fatal(err)
+			}
+			switch mode {
+			case "between":
+				saved, err = rpg.WithRand(saved, want)
+			case "event":
+				saved, err = rpg.WithCursor(saved, rpg.Cursor{Event: "main", Line: 1}, want)
+			case "legacy":
+				saved, err = json.Marshal(st)
+				want = nil
+			default:
+				want = nil
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var previous []byte
+			for range 3 {
+				loaded, err := rpg.ParseWithConfig(db, saved, nil, rpg.Config{AllowLegacy: mode == "legacy"})
+				if err != nil {
+					t.Fatal(err)
+				}
+				got := loaded.SavedRand
+				if mode == "event" {
+					if loaded.Resume == nil || loaded.SavedRand != nil {
+						t.Fatal("event cursor random state mixed with between-event state")
+					}
+					got = loaded.Resume.Rand
+				} else if loaded.Resume != nil {
+					t.Fatal("unexpected cursor")
+				}
+				if !bytes.Equal(got, want) {
+					t.Fatalf("cached random bytes = %x, want %x", got, want)
+				}
+				if len(previous) > 0 {
+					previous[0] ^= 1
+					if !bytes.Equal(got, want) {
+						t.Fatal("parsed states share random bytes")
+					}
+				}
+				previous = got
+				if len(got) > 0 {
+					got[0] ^= 1
+				}
+			}
+		})
+	}
+}
