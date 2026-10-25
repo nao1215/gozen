@@ -152,7 +152,8 @@ type Choice struct {
 
 // Choices are the points of the party's map to choose now, in the order written: those the
 // open roads reach that lead somewhere (to) or have something to do (do, not yet done when
-// once), and the closed points next to them that say why (locked).
+// once), and the closed points next to them that say why (locked). Instant maps
+// offer actions independently of roads, including the current point.
 func Choices(db *data.DB, st *rpg.State) []Choice {
 	l := db.Locations[st.Location]
 	if l == nil || l.Map == nil {
@@ -160,11 +161,23 @@ func Choices(db *data.DB, st *rpg.State) []Choice {
 	}
 	a := l.Map
 	here := Here(db, st)
-	routes := findRoutes(st, a, here)
+	var routes *routes
+	if a.Activation != "instant" {
+		routes = findRoutes(st, a, here)
+	}
 	var out []Choice
 	for _, id := range a.PointIDs() {
 		p := a.Points[id]
 		if p == nil {
+			continue
+		}
+		if a.Activation == "instant" {
+			open := Open(st, p)
+			if open && (p.To != "" || pending(st, st.Location, id, p)) {
+				out = append(out, Choice{Point: id})
+			} else if !open && p.Locked != "" {
+				out = append(out, Choice{Point: id, Locked: true})
+			}
 			continue
 		}
 		_, ok := routes.dist[id]
@@ -204,7 +217,8 @@ func DoneKey(loc, id string) string { return loc + "/" + id }
 // road its steps, battles and do, then the party stands on the road's far point; at the
 // end the point's do (once marked done) and, when the point leads somewhere, the move. A
 // battle lost on the way leaves the party on the last point it reached (ADR 0022: the
-// rules settle road by road). A locked choice only says why.
+// rules settle road by road). A locked choice only says why. Instant maps run
+// only the point action, without crossing roads or changing the current point.
 func Go(db *data.DB, st *rpg.State, c Choice) []data.Command {
 	l := db.Locations[st.Location]
 	if l == nil || l.Map == nil {
@@ -217,6 +231,9 @@ func Go(db *data.DB, st *rpg.State, c Choice) []data.Command {
 	}
 	if c.Locked {
 		return []data.Command{{Say: &data.Say{Text: p.Locked}}}
+	}
+	if a.Activation == "instant" {
+		return []data.Command{{Reach: c.Point}}
 	}
 	var cmds []data.Command
 	at := Here(db, st)
@@ -245,19 +262,28 @@ const passing = "~"
 
 // Reach runs the internal command reach (put by Go): the party stands on the point of its
 // map and has visited it; at the end of the way, the point's do (once marked done) and,
-// when the point leads somewhere, the move follow.
+// when the point leads somewhere, the move follow. In instant mode only the
+// action and explicit move run; selecting a point does not count as visiting it.
 func Reach(db *data.DB, st *rpg.State, arg string) []data.Command {
 	l := db.Locations[st.Location]
 	point, pass := strings.CutPrefix(arg, passing)
 	if l == nil || l.Map == nil || l.Map.Points[point] == nil {
 		return nil
 	}
-	st.Spot = point
-	Visit(db, st, st.Location, point)
+	if l.Map.Activation != "instant" {
+		st.Spot = point
+		Visit(db, st, st.Location, point)
+	}
 	if pass {
 		return nil
 	}
 	p := l.Map.Points[point]
+	if l.Map.Activation == "instant" && !Open(st, p) {
+		if p.Locked != "" {
+			return []data.Command{{Say: &data.Say{Text: p.Locked}}}
+		}
+		return nil
+	}
 	var cmds []data.Command
 	if pending(st, st.Location, point, p) {
 		if p.Once {

@@ -181,3 +181,46 @@ events:
 		}
 	}
 }
+
+func TestAtlasInstantActions(t *testing.T) {
+	db := testgame.LoadScenes(t, map[string]string{"data/menu.yaml": testgame.AtlasMenuData, "assets/maps/menu.png": string(testgame.Picture(64, 36))})
+	st := testgame.State(db, 1)
+	d := headless.New(db, st)
+	if err := d.Run(t.Context(), []data.Command{{Move: "selection"}}); err != nil {
+		t.Fatal(err)
+	}
+	steps := st.Steps
+	for _, label := range []string{"Town", "Town", "Quarry"} {
+		if err := d.Do(label); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if st.Location != "selection" || st.Spot != "town" || st.Steps != steps || st.Vars["town"] != 2.0 || st.Vars["quarry"] != 1.0 || st.Vars["road"] != nil || d.Wins != 0 {
+		t.Fatalf("instant actions traveled: location=%s spot=%s steps=%d vars=%v wins=%d", st.Location, st.Spot, st.Steps, st.Vars, d.Wins)
+	}
+	if err := d.Do("Tower"); err != nil {
+		t.Fatal(err)
+	}
+	if st.Location != "selection" {
+		t.Fatal("locked entrance entered")
+	}
+	st.Flags["heard"] = true
+	if err := d.Do("Tower"); err != nil {
+		t.Fatal(err)
+	}
+	if st.Location != "camp" || st.Steps != steps+1 {
+		t.Fatal("explicit entrance did not move directly")
+	}
+	// once applies to actions even though selection never changes the saved spot.
+	p := db.Locations["selection"].Map.Points["quarry"]
+	p.Once = true
+	if err := d.Run(t.Context(), []data.Command{{Move: "selection"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Do("Quarry"); err != nil {
+		t.Fatal(err)
+	}
+	if d.Has("Quarry") {
+		t.Fatal("completed once action remains available")
+	}
+}

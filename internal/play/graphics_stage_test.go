@@ -363,3 +363,50 @@ func TestGraphicsMapCamera(t *testing.T) {
 		t.Fatal("journey did not finish")
 	}
 }
+
+func TestGraphicsMapSelectionPanel(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	game := filepath.Join(root, "game")
+	if err := os.CopyFS(game, atlasPanelFiles(t)); err != nil {
+		t.Fatal(err)
+	}
+	script := filepath.Join(root, "script.txt")
+	trace := filepath.Join(root, "trace.jsonl")
+	body := "gap 1\nwait 20\nshot advice\npress map_zoom_in\npress map_pan\nhold right 20\nshot panned\npress cancel\nshot hidden\npress ok\nshot reopened\npress ok\nwait 60\nshot activated\nquit\n"
+	if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, hostBin, "--dir", game, "--dev", "--mute", "--start", "selection", "--seed", "1", "--script", script, "--trace", trace, "--shots", root, "--save-dir", filepath.Join(root, "saves")) //nolint:gosec // Fixed test host and isolated fixture paths.
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("host: %v\nstdout: %s\nstderr: %s", err, &stdout, &stderr)
+	}
+	// The portrait and heading remain at identical screen coordinates while the
+	// map pans. The panel is opaque except for its rounded frame.
+	first := shotImage(t, root, "advice")
+	for _, name := range []string{"panned", "reopened", "activated"} {
+		img := shotImage(t, root, name)
+		for y := 90; y < 170; y++ {
+			for x := 850; x < 1200; x++ {
+				if first.At(x, y) != img.At(x, y) {
+					t.Fatalf("%s moved or changed fixed portrait/header at %d,%d", name, x, y)
+				}
+			}
+		}
+	}
+	if shotPixelSum(t, root, "hidden") == shotPixelSum(t, root, "reopened") {
+		t.Fatal("cancel did not dismiss the panel")
+	}
+	raw, err := fs.ReadFile(os.DirFS(root), "trace.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	actions := traceLines(t, raw, "activate")
+	if len(actions) != 1 || actions[0]["to"] != "quarry" || len(traceLines(t, raw, "travel")) != 0 {
+		t.Fatalf("browsing activated a destination: %v", actions)
+	}
+}

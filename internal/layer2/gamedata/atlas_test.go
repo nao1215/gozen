@@ -21,3 +21,26 @@ func TestAtlasCameraValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestAtlasSelectionPanelValidation(t *testing.T) {
+	for _, fields := range []string{
+		"activation: instant\n      selection_panel: {}",
+		"selection_panel: {rect: [0.65, 0.1, 0.33, 0.65], portrait: x.png}",
+	} {
+		_, files := scenesWith("    map:", "    map:\n      "+fields)
+		if _, err := testgame.TryLoad(files); err != nil {
+			t.Fatalf("valid panel: %v", err)
+		}
+	}
+	for _, fields := range []string{
+		"activation: immediate", "selection_panel: {rect: [0, 0, 1]}",
+		"selection_panel: {rect: [0.9, 0, 0.2, 0.5]}",
+		"selection_panel: {rect: [0, 0, .nan, 0.5]}",
+		"selection_panel: {portrait: missing.png}",
+	} {
+		_, files := scenesWith("    map:", "    map:\n      "+fields)
+		if _, err := testgame.TryLoad(files); err == nil {
+			t.Fatalf("accepted invalid panel %s", fields)
+		}
+	}
+}

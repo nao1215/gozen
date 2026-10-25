@@ -61,6 +61,7 @@ type atlasScene struct {
 	cameraCenter geom.Pt
 	cameraZoom   float64
 	cameraPan    bool
+	panelHidden  bool
 	loc          string
 	pic          string
 	age          int
@@ -100,6 +101,7 @@ func (s *atlasScene) location(g *Game) *data.Location { return g.db.Locations[s.
 // arrive sets the map up for the party's location, the token on its point.
 func (s *atlasScene) arrive(g *Game) {
 	s.loc = g.st.Location
+	s.panelHidden = false
 	l := s.location(g)
 	s.pic = l.Map.Picture
 	s.age, s.banner, s.queue, s.path, s.cross = 0, 240, nil, nil, nil
@@ -138,7 +140,8 @@ func (s *atlasScene) refresh(g *Game) {
 		g.emit("spot", traceLine{"location": s.loc, "spot": s.here})
 	}
 	ids := a.PointIDs()
-	all := atlas.Choices(g.db, g.st)
+	preview := s.previewState(g)
+	all := atlas.Choices(g.db, preview)
 	reach := map[string]bool{}
 	for _, c := range all {
 		reach[c.Point] = true
@@ -147,7 +150,7 @@ func (s *atlasScene) refresh(g *Game) {
 	index := map[string]int{}
 	for pointIndex, id := range ids {
 		p := a.Points[id]
-		mp := mapPoint{id: id, at: p.At.Pt(), shown: s.shownOf(g, id, pointIndex), open: atlas.Open(g.st, p), label: s.labelOf(g, id), marker: p.Marker, choice: -1}
+		mp := mapPoint{id: id, at: p.At.Pt(), shown: s.shownOf(g, id, pointIndex), open: atlas.Open(preview, p), label: s.labelOf(g, id), marker: p.Marker, choice: -1}
 		if mp.shown == 0 && reach[id] { // hidden until the roads reach it
 			mp.shown = 1
 		}
@@ -174,7 +177,7 @@ func (s *atlasScene) refresh(g *Game) {
 		if len(r.Between) == 2 && a.Points[r.Between[0]] != nil && a.Points[r.Between[1]] != nil {
 			mr.line = roadLine(a, r, r.Between[0])
 			mr.shown = s.points[index[r.Between[0]]].shown > 0 && s.points[index[r.Between[1]]].shown > 0
-			mr.usable = atlas.Usable(g.st, a, r)
+			mr.usable = atlas.Usable(preview, a, r)
 		}
 		s.roads = append(s.roads, mr)
 	}
@@ -293,6 +296,7 @@ func (s *atlasScene) selectCameraPoint(g *Game, want geom.Pt) {
 		}
 	}
 	if best != s.sel {
+		s.panelHidden = false
 		s.sel = best
 		g.sfx("cursor")
 	}
@@ -364,6 +368,7 @@ func (s *atlasScene) updateCamera(g *Game) bool {
 		return true
 	case in.pressed[btnNext] && len(s.choices) > 0:
 		s.sel = (s.sel + 1) % len(s.choices)
+		s.panelHidden = false
 		s.revealCameraPoint(g, s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt())
 		return true
 	}
@@ -451,11 +456,14 @@ func (s *atlasScene) update(g *Game) {
 	}
 	if s.dirty || s.age%60 == 0 { // the state changed (or a while passed): look again
 		s.refresh(g)
-		if s.sel < len(s.choices) && s.choices[s.sel].Point == s.here && !s.campaignMap(g) {
+		if s.sel < len(s.choices) && s.choices[s.sel].Point == s.here && !s.campaignMap(g) && s.location(g).Map.Activation != "instant" {
 			s.sel = s.firstChoice()
 		}
 	}
 	in := &g.in
+	if s.updateSelectionPanel(g) {
+		return
+	}
 	if s.updateCamera(g) {
 		return
 	}
@@ -466,6 +474,10 @@ func (s *atlasScene) update(g *Game) {
 	}
 	if in.click {
 		if c, ok := s.pointAt(g, float64(in.mouse.X), float64(in.mouse.Y)); ok {
+			if s.location(g).Map.SelectionPanel != nil {
+				s.focusPoint(c.Point)
+				return
+			}
 			s.goTo(g, c)
 		}
 		return
@@ -509,7 +521,7 @@ func (s *atlasScene) listed(e world.Entry) bool {
 // selectToward selects the choice whose way out of the token's point is nearest the way
 // (another than the one selected when the way is the same).
 func (s *atlasScene) selectToward(g *Game, want geom.Pt) {
-	if s.location(g).Map.Camera != nil {
+	if a := s.location(g).Map; a.Camera != nil || a.SelectionPanel != nil || a.Activation == "instant" {
 		s.selectCameraPoint(g, want)
 		return
 	}
@@ -602,7 +614,7 @@ func (s *atlasScene) take(g *Game, e world.Entry) {
 // go_ sets off to a choice: its commands run one at a time, a road's after the token has
 // walked it.
 func (s *atlasScene) goTo(g *Game, c atlas.Choice) {
-	if s.regionPoint(g, c.Point) {
+	if s.regionPoint(g, c.Point) && s.location(g).Map.Activation != "instant" {
 		s.regionOrders(g, c.Point)
 		return
 	}
@@ -610,7 +622,11 @@ func (s *atlasScene) goTo(g *Game, c atlas.Choice) {
 	e := world.Entry{Kind: world.Exit, Choice: &c, Spot: c.Point}
 	s.queue = e.Commands(g.db, g.st)
 	s.dirty = true
-	g.emit("travel", traceLine{"location": s.loc, "from": s.here, "to": c.Point, "roads": c.Roads})
+	kind := "travel"
+	if s.location(g).Map.Activation == "instant" {
+		kind = "activate"
+	}
+	g.emit(kind, traceLine{"location": s.loc, "from": s.here, "to": c.Point, "roads": c.Roads})
 }
 
 // startRoad sets the token walking the road of a cross command (false when it has none).
@@ -697,9 +713,9 @@ func (s *atlasScene) labelOf(g *Game, id string) string {
 	p := s.location(g).Map.Points[id]
 	switch {
 	case p.Label != "":
-		return data.Render(p.Label, g.st.Env())
+		return data.Render(p.Label, s.previewState(g).Env())
 	case p.To != "" && g.db.Locations[p.To] != nil:
-		return data.Render(g.db.Locations[p.To].Name, g.st.Env())
+		return data.Render(g.db.Locations[p.To].Name, s.previewState(g).Env())
 	case s.regionPoint(g, id):
 		return regionLabel(g, id)
 	}
@@ -776,6 +792,7 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	}
 	if war {
 		s.drawCampaign(g, dst, sel)
+		s.drawSelectionPanel(g, dst)
 		g.text(dst, lang.T("方向：選ぶ　決定：命令　メニュー：一覧"), 36, sh-40, sizeS*0.8, withAlpha(g.th.text, 200))
 		return
 	}
@@ -787,6 +804,7 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 		g.text(dst, name, 64, 40, sizeL, withAlpha(g.th.text, uint8(255*al)))
 	}
 	g.text(dst, lang.T("方向：選ぶ　決定：進む　メニュー：一覧"), 36, sh-40, sizeS*0.8, withAlpha(g.th.text, 200))
+	s.drawSelectionPanel(g, dst)
 }
 
 // layoutPoints shares marker and plate geometry between drawing and pointer input.
@@ -810,6 +828,9 @@ func (s *atlasScene) layoutPoints(g *Game, dst *ebiten.Image) {
 	s.targets = s.targets[:0]
 	if a.Camera != nil {
 		s.boxes = append(s.boxes, s.cameraButtons(g)...)
+	}
+	if s.panelVisible(g) {
+		s.boxes = append(s.boxes, s.selectionPanelBox(g))
 	}
 	war := s.campaignMap(g)
 	for i := range s.points { // a region's plate follows its garrison at once
