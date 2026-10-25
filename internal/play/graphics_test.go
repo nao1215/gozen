@@ -13,12 +13,74 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
 
 // hostBin is testdata/host, built once by TestMain for every scenario.
 var hostBin string
+
+func TestGraphicsScreensDungeonSnap(t *testing.T) {
+	root := t.TempDir()
+	game, saves := filepath.Join(root, "game"), filepath.Join(root, "saves")
+	if err := os.CopyFS(game, wldWorldFiles(t, "", nil)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(saves, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(saves, "config.json"), []byte(`{"dungeon_snap":true}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var script strings.Builder
+	script.WriteString("gap 1\nwait 40\nshot initial\n")
+	for _, key := range []string{"up", "left", "right", "down"} {
+		fmt.Fprintf(&script, "press %s\nshot %s-early\nwait 3\nshot %s-middle\nwait 20\nshot %s-settled\n", key, key, key, key)
+	}
+	script.WriteString("press reload\nwait 40\nshot reloaded\nquit\n")
+	path := filepath.Join(root, "script.txt")
+	if err := os.WriteFile(path, []byte(script.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, hostBin, "--dir", game, "--dev", "--start", "fx_maze", "--calm", "--mute", "--script", path, "--shots", root, "--save-dir", saves) //nolint:gosec // Fixed host and private fixture paths.
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("game: %v\nstdout: %s\nstderr: %s", err, &stdout, &stderr)
+	}
+	// Compare the rendered view, excluding UI overlays at the screen edges.
+	// Re-uploading textures may change a channel by one byte through GPU rounding.
+	equalView := func(a, b image.Image) bool {
+		bounds := a.Bounds()
+		for y := bounds.Dy() / 3; y < bounds.Dy()*2/3; y++ {
+			for x := bounds.Dx() / 3; x < bounds.Dx()*2/3; x++ {
+				ar, ag, ab, aa := a.At(x, y).RGBA()
+				br, bg, bb, ba := b.At(x, y).RGBA()
+				if abs(int(ar)-int(br)) > 257 || abs(int(ag)-int(bg)) > 257 || abs(int(ab)-int(bb)) > 257 || aa != ba {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	for _, key := range []string{"up", "left", "right", "down"} {
+		settled := shotImage(t, root, key+"-settled")
+		for _, phase := range []string{"early", "middle"} {
+			if !equalView(shotImage(t, root, key+"-"+phase), settled) {
+				t.Errorf("%s %s contains a transition instead of the current view", key, phase)
+			}
+		}
+	}
+	if equalView(shotImage(t, root, "initial"), shotImage(t, root, "up-settled")) {
+		t.Fatal("forward movement did not change the rendered scene")
+	}
+	if !equalView(shotImage(t, root, "down-settled"), shotImage(t, root, "reloaded")) {
+		t.Fatal("live reload changed the settled view")
+	}
+}
 
 // TestMain builds testdata/host once: every scenario runs it as a process of its own,
 // so the scenarios run side by side (t.Parallel) instead of each waiting for go run.

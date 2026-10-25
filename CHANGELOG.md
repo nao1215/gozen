@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add an optional instant-transition setting for ordinary dungeons, avoiding old-frame ghosting while retaining movement input cadence and stacked-space camera interpolation.
+
 ## v0.8.0 - 2026-10-25
 
 Write narrative games without combat scaffolding, run reusable YAML commands and information screens, and retain conversation memory across saves.

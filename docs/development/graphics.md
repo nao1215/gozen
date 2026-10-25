@@ -1,5 +1,14 @@
 # Graphics development and verification
 
+For ordinary dungeons, players can enable **Instant dungeon transitions** in Settings.
+It switches the view immediately for steps, turns, blocked moves and arrivals, without
+overlaying the previous frame. The default remains animated. The setting is saved with
+the player's other preferences and survives live reload. It changes presentation only:
+the existing input cooldown, held-key repeat, collision, encounters and tile events
+retain their timing. It does not accelerate dialogue or gameplay, and stacked spaces
+retain their interpolated camera. Independent author-controlled movement speeds are
+tracked separately in issue #64.
+
 Use Go 1.26.10 or later. The normal tests of T3 start no display or audio device. Real drawing is checked by separate tests with the `graphics` tag. For the items to check before publication, see the [release checklist](release-checklist.md).
 
 ## Original sample

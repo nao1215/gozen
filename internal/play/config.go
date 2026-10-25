@@ -19,12 +19,13 @@ import (
 )
 
 type config struct {
-	TextSpeed  int  `json:"text_speed"`
-	AutoWait   int  `json:"auto_wait"`
-	Window     int  `json:"window"`
-	BGM        int  `json:"bgm"`
-	SE         int  `json:"se"`
-	Fullscreen bool `json:"fullscreen"`
+	TextSpeed   int  `json:"text_speed"`
+	AutoWait    int  `json:"auto_wait"`
+	Window      int  `json:"window"`
+	BGM         int  `json:"bgm"`
+	SE          int  `json:"se"`
+	Fullscreen  bool `json:"fullscreen"`
+	DungeonSnap bool `json:"dungeon_snap"`
 
 	BattleSpeed int  `json:"battle_speed"`
 	SkipAll     bool `json:"skip_all"`
@@ -126,6 +127,7 @@ const (
 	rowBGM
 	rowSE
 	rowFullscreen
+	rowDungeonSnap
 	rowBattleSpeed
 	rowBattleAuto
 	rowSkipAll
@@ -183,6 +185,12 @@ func (s *configScreen) refresh(g *Game) {
 	add(rowBGM, lang.T("BGM の音量"), bar(c.BGM))
 	add(rowSE, lang.T("効果音の音量"), bar(c.SE))
 	add(rowFullscreen, lang.T("全画面"), on[c.Fullscreen])
+	for _, loc := range g.db.Locations {
+		if loc.Dungeon != nil && loc.Dungeon.Space == nil {
+			add(rowDungeonSnap, lang.T("ダンジョンの瞬時切替"), on[c.DungeonSnap])
+			break
+		}
+	}
 	if g.hasBattles() {
 		add(rowBattleSpeed, lang.T("戦闘の速さ"), []string{lang.T("ふつう"), lang.T("はやい"), lang.T("とてもはやい")}[clampInt(c.BattleSpeed, 0, 2)])
 		add(rowBattleAuto, lang.T("戦闘をオートではじめる"), on[g.autoStartBattle()])
@@ -294,6 +302,8 @@ func (s *configScreen) change(g *Game, d int, wrap bool) {
 		c.SE = step(c.SE, 0, 10)
 	case rowFullscreen:
 		c.Fullscreen = !c.Fullscreen
+	case rowDungeonSnap:
+		c.DungeonSnap = !c.DungeonSnap
 	case rowBattleSpeed:
 		c.BattleSpeed = step(c.BattleSpeed, 0, 2)
 	case rowBattleAuto:

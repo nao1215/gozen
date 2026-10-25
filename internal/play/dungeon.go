@@ -58,7 +58,10 @@ func (s *dungeonScene) snapshot() {
 	if s.view == nil {
 		return
 	}
-	if s.prev == nil {
+	if s.prev == nil || s.prev.Bounds() != s.view.Bounds() {
+		if s.prev != nil {
+			s.prev.Deallocate()
+		}
 		s.prev = ebiten.NewImage(s.view.Bounds().Dx(), s.view.Bounds().Dy())
 	}
 	s.prev.Clear()
@@ -145,7 +148,7 @@ func (s *dungeonScene) update(g *Game) {
 
 func (s *dungeonScene) forward(g *Game) {
 	isSpace := dungeon.Of(g.db, g.st).Space != nil
-	if !isSpace {
+	if !isSpace && !g.cfg.DungeonSnap {
 		s.snapshot()
 	}
 	was := g.st.Pos
@@ -181,7 +184,9 @@ func (s *dungeonScene) turn(g *Game, n int, how string) {
 		g.sfx("cursor")
 		return
 	}
-	s.snapshot()
+	if !g.cfg.DungeonSnap {
+		s.snapshot()
+	}
 	dungeon.Turn(g.st, n)
 	s.trans, s.transT = how, transTicks
 	g.sfx("cursor")
@@ -194,8 +199,19 @@ func (s *dungeonScene) draw(g *Game, dst *ebiten.Image) {
 		return
 	}
 	pw, ph := g.pixels()
-	if s.view == nil {
+	if s.view == nil || s.view.Bounds().Dx() != int(pw) || s.view.Bounds().Dy() != int(ph) {
+		if s.view != nil {
+			s.view.Deallocate()
+		}
+		if s.prev != nil {
+			s.prev.Deallocate()
+			s.prev = nil
+		}
 		s.view = ebiten.NewImage(int(pw), int(ph))
+	}
+	if g.cfg.DungeonSnap && s.prev != nil {
+		s.prev.Deallocate()
+		s.prev = nil
 	}
 	s.view.Clear()
 	vst := g.st
