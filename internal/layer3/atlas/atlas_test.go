@@ -76,3 +76,37 @@ func allRoutes(st *rpg.State, a *data.Atlas, from string) map[string][]int {
 	}
 	return out
 }
+
+func TestHideClosedChoices(t *testing.T) {
+	for _, activation := range []string{"travel", "instant"} {
+		db := testgame.LoadScenes(t, map[string]string{"data/menu.yaml": testgame.AtlasMenuData, "assets/maps/menu.png": string(testgame.Picture(64, 36))})
+		st := testgame.State(db, 1)
+		st.Location, st.Spot = "selection", "town"
+		a := db.Locations[st.Location].Map
+		a.Activation = activation
+		p := a.Points["tower"]
+		offered := func() bool {
+			for _, c := range atlas.Choices(db, st) {
+				if c.Point == "tower" {
+					return true
+				}
+			}
+			return false
+		}
+		if !offered() {
+			t.Fatalf("%s: default locked point missing", activation)
+		}
+		p.Hide = "closed"
+		if offered() {
+			t.Fatalf("%s: hidden point offered", activation)
+		}
+		st.Flags["heard"] = true
+		if !offered() {
+			t.Fatalf("%s: opened point missing", activation)
+		}
+		st.Flags["heard"] = false
+		if offered() {
+			t.Fatalf("%s: reclosed point offered", activation)
+		}
+	}
+}

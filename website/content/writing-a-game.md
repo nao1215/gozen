@@ -110,6 +110,18 @@ locations:
 
 On a map the party goes from point to point along the open roads (paint the roads in the picture: their lines in the YAML are what the token walks, drawn only with `draw_roads: true` (on a campaign's map `region_roads` and `region_borders`, `selected` by default, decide instead whether all roads and borders are drawn or only the region chosen's); each point stands a small `marker`, a pin unless you give a picture; the name plates keep clear of each other, their text sized by `label_size`, 0.03 of the screen's height by default; the token is the leader's round face, as in the balloons, sliding along the roads, unless `token` gives a picture or says `doll`); a point with `to` leads into that location, and coming back puts the party on the point that leads to where it came from. In a scene the party walks the painting as a small doll; the picture and its `fronts` hide whoever stands behind them, and walking into an exit's area leaves. The rules know only where the party stands, `spot` (a point of the map or one of the scene's `spots`): every point, person, thing and spot is an ordinary menu entry, so `pick`, `gozen sim design` and the tests walk them without a screen, and `exits[].at` names the spot or point to arrive at.
 
+On a map point, `hide: closed` removes the point, marker, name plate and its roads while `when` is false. Keyboard, pointer, selection-panel and headless choices skip it. It becomes available after an event opens it, without leaving the location. Omit `hide` to keep the usual gray closed pin; `unknown` continues to control unvisited points once they are open.
+
+<!-- verify: parse fragment of a map point; the flag is set by a game event -->
+```yaml
+workshop:
+  at: [640, 360]
+  label: Workshop
+  hide: closed
+  when: flag.workshop_built
+  do: [{say: Welcome.}]
+```
+
 ## Commands
 
 `talk`, `do`, `on_enter` and event bodies are lists of commands. Each command has exactly one verb:
@@ -360,6 +372,8 @@ ui:
 The band has buttons to roll back a line, for the backlog, auto, skip, saving and loading, hiding the window and the settings. Rolling back (Q, or the wheel) takes the state back with the line, and a save made in the middle of a scene goes on at its line ([the recipe](/cookbook/#let-the-player-roll-back-and-save-in-a-scene)). The player can also hold Ctrl to pass the lines already read, press N to turn skip mode on (it stays on until a line not read, a choice, a battle or the end of the events), and press Page Down, or the "Skip scene" button that shows when every line of the running event was read, to go at once to the next choice or line not read. The setting "Text to skip" makes skipping pass lines not read too.
 
 Portraits come and go with the speakers unless an event places them with `stand` ([the recipe](/cookbook/#stage-portraits-and-effects)). A line can have a recorded voice ([Add voices](/cookbook/#add-voices)). [After the Pass](https://github.com/nao1215/gozen/tree/main/examples/novel), the novel sample, is a short one with choices, staging and a Japanese translation ([play it in the browser](/play/)).
+
+Pictures support up to 8192 pixels per side, 33,554,432 pixels total and 64 MiB encoded input. A 4096 by 6144 portrait is supported without additional settings. `gozen check` checks actor face PNGs even when no profile refers to them. The maximum decoded RGBA image uses 128 MiB; GPU limits and memory vary by device, so export pictures near their displayed size and test the target devices.
 
 ### Frame portraits by their heads
 

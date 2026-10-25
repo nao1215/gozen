@@ -644,3 +644,34 @@ func TestAtlasCameraNavigation(t *testing.T) {
 		t.Fatal("load did not reset the camera at the saved point")
 	}
 }
+
+func TestAtlasHideClosedPoint(t *testing.T) {
+	g, s := wldAtlas(t, "fx_named")
+	a := g.db.Locations[s.loc].Map
+	a.Points["gate"].Hide = "closed"
+	// Even a previously visited point must disappear when its condition closes.
+	g.st.Spot = "gate"
+	s.here = "gate"
+	for _, open := range []bool{false, true, false} {
+		g.st.Flags["gate_open"] = open
+		s.refresh(g)
+		if (wldShown(s, "gate") > 0) != open {
+			t.Fatalf("open=%v: wrong visibility", open)
+		}
+		for _, c := range s.choices {
+			if !open && c.Point == "gate" {
+				t.Fatal("hidden point focusable")
+			}
+		}
+		for i, road := range a.Roads {
+			if !open && slices.Contains(road.Between, "gate") && s.roads[i].shown {
+				t.Fatal("hidden point road drawn")
+			}
+		}
+		s.layoutPoints(g, nil)
+		x, y := s.screen(g, a.Points["gate"].At.Pt())
+		if c, ok := s.pointAt(g, x, y); !open && ok && c.Point == "gate" {
+			t.Fatal("hidden pointer target")
+		}
+	}
+}

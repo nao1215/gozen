@@ -99,3 +99,29 @@ scenarios:
       exit_code: 0
       stdout: {json: {path: $.data, equals: []}}
       stderr: {equals: ''}
+- name: actor faces without profiles receive the same picture budget diagnostic
+  matrix:
+  - {face: normal}
+  - {face: alternate}
+  steps:
+  - fixture: {file: g/game.yaml, content: "schema_version: 8\nid: portrait-budget\nstart: {location: hall, party: []}\nui: {message: novel}\n"}
+  - fixture:
+      file: g/data/world.yaml
+      content: |
+        actors: {guide: {name: Guide, faces: portraits/guide}}
+        locations:
+          hall:
+            actions: [{label: Talk, do: [{say: {who: guide, text: Hello.}}]}]
+  - fixture: {file: g/assets/portraits/guide/normal.png, from: fixtures/limits/width-8192.png}
+  - fixture: {file: 'g/assets/portraits/guide/${face}.png', from: fixtures/limits/width-8193.png}
+  - run: {command: 'gozen check --only structure --format json g'}
+  - assert:
+      exit_code: 1
+      stdout: {contains: ['"path":"actors.guide.faces"', '"code":"GZN1106"', 'portraits/guide/${face}.png', 'picture dimensions 8193x1']}
+      stderr: {equals: ''}
+  - fixture: {file: 'g/assets/portraits/guide/${face}.png', from: fixtures/limits/width-8192.png}
+  - run: {command: 'gozen check --only structure --format json g'}
+  - assert:
+      exit_code: 0
+      stdout: {json: {path: $.data, equals: []}}
+      stderr: {equals: ''}

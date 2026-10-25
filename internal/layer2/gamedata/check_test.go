@@ -1,10 +1,13 @@
 package gamedata_test
 
 import (
+	"encoding/binary"
 	"fmt"
+	"hash/crc32"
 	"strings"
 	"testing"
 
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
@@ -349,5 +352,40 @@ func TestStageFramingMetadata(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("want %q, got %v", tc.want, err)
 		}
+	}
+}
+
+func TestActorFacesPictureBudget(t *testing.T) {
+	for _, size := range [][2]uint32{{4096, 6144}, {8192, 4096}, {8192, 4097}, {8193, 1}} {
+		t.Run(fmt.Sprint(size), func(t *testing.T) {
+			// Only the header is inspected by check. Preserve its CRC without allocating
+			// a full oversized image just to test the pre-decode rejection.
+			png := testgame.Picture(1, 1)
+			binary.BigEndian.PutUint32(png[16:20], size[0])
+			binary.BigEndian.PutUint32(png[20:24], size[1])
+			binary.BigEndian.PutUint32(png[29:33], crc32.ChecksumIEEE(png[12:29]))
+			for _, face := range []string{"normal", "alternate"} {
+				files := map[string]string{
+					"data/portrait.yaml":                  "actors: {speaker: {name: Speaker, class: ranger, faces: portraits/speaker}}",
+					"assets/portraits/speaker/normal.png": string(testgame.Picture(1, 1)),
+				}
+				files["assets/portraits/speaker/"+face+".png"] = string(png)
+				_, err := testgame.TryLoad(files)
+				valid := size[0] <= 8192 && size[0]*size[1] <= 32<<20
+				if valid {
+					if err != nil {
+						t.Fatal(err)
+					}
+					continue
+				}
+				found := false
+				for _, d := range data.Diagnose(err, "error") {
+					found = found || d.Code == "GZN1106" && d.Path == "actors.speaker.faces" && strings.Contains(d.Message, face+".png")
+				}
+				if !found {
+					t.Fatalf("missing face size diagnostic: %v", err)
+				}
+			}
+		})
 	}
 }

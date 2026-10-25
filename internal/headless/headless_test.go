@@ -3,6 +3,7 @@ package headless_test
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/nao1215/gozen/internal/battle"
@@ -222,5 +223,35 @@ func TestAtlasInstantActions(t *testing.T) {
 	}
 	if d.Has("Quarry") {
 		t.Fatal("completed once action remains available")
+	}
+}
+
+func TestAtlasHiddenPointUnlocksAfterAction(t *testing.T) {
+	world := strings.Replace(testgame.AtlasMenuData, `do: [{set: {var.town: "var.town + 1"}}]`, `do: [{set: {flag.heard: true}}]`, 1)
+	db := testgame.LoadScenes(t, map[string]string{"data/menu.yaml": world, "assets/maps/menu.png": string(testgame.Picture(64, 36))})
+	a := db.Locations["selection"].Map
+	a.Points["tower"].Hide = "closed"
+	st := testgame.State(db, 1)
+	d := headless.New(db, st)
+	if err := d.Run(t.Context(), []data.Command{{Move: "selection"}}); err != nil {
+		t.Fatal(err)
+	}
+	if d.Has("Tower") {
+		t.Fatal("hidden point offered")
+	}
+	if err := d.Do("Tower"); err == nil {
+		t.Fatal("hidden point selected")
+	}
+	if err := d.Do("Town"); err != nil {
+		t.Fatal(err)
+	}
+	if st.Location != "selection" || !d.Has("Tower") {
+		t.Fatal("point did not open in place")
+	}
+	if err := d.Do("Tower"); err != nil {
+		t.Fatal(err)
+	}
+	if st.Location != "camp" {
+		t.Fatal("open point did not activate")
 	}
 }

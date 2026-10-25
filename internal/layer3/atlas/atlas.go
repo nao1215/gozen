@@ -168,7 +168,7 @@ func Choices(db *data.DB, st *rpg.State) []Choice {
 	var out []Choice
 	for _, id := range a.PointIDs() {
 		p := a.Points[id]
-		if p == nil {
+		if p == nil || p.Hide == "closed" && !Open(st, p) {
 			continue
 		}
 		if a.Activation == "instant" {

@@ -10309,6 +10309,19 @@
           },
           "x-type": "[Command](#command)[]"
         },
+        "hide": {
+          "description": "closed hides the point, marker, plate and incident roads while when is false, and removes it from selection. Omission preserves the usual closed pin.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "string"
+        },
         "label": {
           "description": "The name shown for the point. When empty, the name of `to` is used.",
           "type": "string",

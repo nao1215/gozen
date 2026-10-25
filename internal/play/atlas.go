@@ -151,7 +151,9 @@ func (s *atlasScene) refresh(g *Game) {
 	for pointIndex, id := range ids {
 		p := a.Points[id]
 		mp := mapPoint{id: id, at: p.At.Pt(), shown: s.shownOf(g, id, pointIndex), open: atlas.Open(preview, p), label: s.labelOf(g, id), marker: p.Marker, choice: -1}
-		if mp.shown == 0 && reach[id] { // hidden until the roads reach it
+		if p.Hide == "closed" && !mp.open {
+			mp.shown = 0
+		} else if mp.shown == 0 && reach[id] { // hidden until the roads reach it
 			mp.shown = 1
 		}
 		index[id] = len(s.points)
