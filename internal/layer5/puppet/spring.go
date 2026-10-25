@@ -9,17 +9,18 @@ import (
 // spring is one resolved swaying part. The hair, when given, is the first one:
 // all its shapes share one spring and the defaults below are the hair's.
 type spring struct {
-	shapes    []puppetdef.Shape
-	side      string     // top, bottom, left or right; empty when root is a point
-	root      [2]float64 // the point the part hangs from (the middle of the side for an edge)
-	head      bool       // follows the head (else the body)
-	soft      bool       // receives a region-only hit response
-	mask      [2]float64 // 1 for an axis that sways, 0 for one that does not
-	k, c      float64    // stiffness and damping
-	gain      float64    // lag multiplier
-	limit     float64    // largest lag in pixels
-	feather   float64    // soft edge of the shapes in pixels
-	reachSide float64    // for a point root: the farthest shape point from it
+	shapes                               []puppetdef.Shape
+	side                                 string     // top, bottom, left or right; empty when root is a point
+	root                                 [2]float64 // the point the part hangs from (the middle of the side for an edge)
+	head                                 bool       // follows the head (else the body)
+	soft                                 bool       // receives a region-only hit response
+	mask                                 [2]float64 // 1 for an axis that sways, 0 for one that does not
+	k, c                                 float64    // stiffness and damping
+	gain                                 float64    // lag multiplier
+	limit                                float64    // largest lag in pixels
+	feather                              float64    // soft edge of the shapes in pixels
+	idleAmplitude, idlePeriod, idlePhase float64    // local oscillator, seconds and radians
+	reachSide                            float64    // for a point root: the farthest shape point from it
 }
 
 // unitOf is the size the default strengths scale with: the head radius, or a
@@ -101,6 +102,14 @@ func resolveSprings(s *puppetdef.Spec, h int) []spring {
 		}
 		if p.Limit > 0 {
 			sp.limit = p.Limit
+		}
+		if p.Idle != nil {
+			sp.idleAmplitude = p.Idle.Amplitude
+			sp.idlePeriod = p.Idle.Period
+			if sp.idlePeriod == 0 {
+				sp.idlePeriod = 2
+			}
+			sp.idlePhase = math.Mod(p.Idle.Phase, 360) * math.Pi / 180
 		}
 		add(sp)
 	}

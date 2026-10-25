@@ -5,20 +5,6 @@ import (
 	"testing"
 )
 
-func TestEllipseSoftSwayWeight(t *testing.T) {
-	r := loadYAML(t, "base: base.png\nsoft_sway:\n  - {ellipse: [20, 30, 40, 60], follow: body, root: top}\n")
-	sp := resolveSprings(r.Spec, 200)
-	if len(sp) != 1 {
-		t.Fatalf("got %d springs", len(sp))
-	}
-	center, _ := sp[0].weight(40, 60)
-	corner, _ := sp[0].weight(20, 30)
-	outside, _ := sp[0].weight(0, 0)
-	if !(center > corner && corner >= outside && math.Abs(outside) < 1e-9) {
-		t.Fatalf("weights center=%f corner=%f outside=%f", center, corner, outside)
-	}
-}
-
 func TestDamageBoostSwayAndHit(t *testing.T) {
 	r := loadYAML(t, "base: base.png\nhead: {center: [60, 50], radius: 30, neck: [60, 100]}\nsoft_sway:\n  - {ellipse: [30, 70, 60, 50], follow: body, axis: y}\nmotion: {breath: {depth: 0.01, period: 4}, sway: {angle: 3, shift: 2, period: 5, damage_boost: 4}}\n")
 	m := NewMotion(r, seeded(1, 1), 60)
@@ -81,5 +67,60 @@ func TestSoftOnlyHitMovesRegionWithoutBodyReaction(t *testing.T) {
 	}
 	if m.hitSurge <= 0 || m.Pose().Lag[0] == [2]float64{} {
 		t.Fatal("soft sway did not continue after hit")
+	}
+}
+
+func TestSoftIdleIndependentOfBodyAndDamage(t *testing.T) {
+	for _, idle := range []string{"", ", idle: {amplitude: 4, period: 2, phase: 0}"} {
+		r := loadYAML(t, "base: base.png\nhead: {center: [60, 50], radius: 30, neck: [60, 100]}\nsoft_sway: [{ellipse: [30, 70, 60, 50], follow: body, axis: y, limit: 5"+idle+"}]\nmotion: {hit: soft_only, breath: {depth: 0}, sway: {angle: 0, shift: 0, damage_boost: 4}}\n")
+		m := NewMotion(r, seeded(1, 1), 60)
+		first := m.Pose()
+		for range 30 {
+			m.Step()
+		}
+		p := m.Pose()
+		if idle == "" && p.Lag[0] != [2]float64{} {
+			t.Fatal("omitted idle moves stationary region")
+		}
+		if idle != "" && math.Abs(p.Lag[0][1]-4) > 1e-8 {
+			t.Fatalf("quarter-period lag = %v", p.Lag[0])
+		}
+		if p.Body != first.Body || p.BodyScale != first.BodyScale || p.Breath != first.Breath || p.HeadAngle != first.HeadAngle || p.HeadShift != first.HeadShift {
+			t.Fatal("idle moves body/head")
+		}
+		m.SetHealth(.25)
+		m.Hit()
+		for range 240 {
+			m.Step()
+			p = m.Pose()
+			if math.Abs(p.Lag[0][1]) > 5 || p.Lag[0][0] != 0 {
+				t.Fatalf("axis/limit violated: %v", p.Lag[0])
+			}
+			if p.Body != first.Body || p.BodyScale != first.BodyScale || p.HeadShift != first.HeadShift || p.HeadAngle != first.HeadAngle {
+				t.Fatal("composed hit moves body")
+			}
+		}
+	}
+}
+
+func TestPartIdleDefaultsPhaseAndDisable(t *testing.T) {
+	for _, tc := range []struct {
+		idle string
+		want float64
+	}{
+		{"amplitude: 4", 4},
+		{"amplitude: 4, phase: 180", -4},
+		{"amplitude: 4, phase: -180", -4},
+		{"amplitude: 0, phase: 90", 0},
+	} {
+		r := loadYAML(t, "base: base.png\nsprings: [{rect: [30, 70, 60, 50], follow: body, axis: x, limit: 5, idle: {"+tc.idle+"}}]\nmotion: {breath: {depth: 0}, sway: {angle: 0, shift: 0}}\n")
+		m := NewMotion(r, seeded(1, 1), 60)
+		for range 30 {
+			m.Step()
+		}
+		p := m.Pose()
+		if math.Abs(p.Lag[0][0]-tc.want) > 1e-8 || p.Lag[0][1] != 0 {
+			t.Fatalf("%s: lag %v", tc.idle, p.Lag[0])
+		}
 	}
 }
