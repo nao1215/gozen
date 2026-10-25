@@ -10,6 +10,46 @@ import (
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
+func TestNarrativeReactionResume(t *testing.T) {
+	fsys := fstest.MapFS{
+		"game.yaml":             {Data: []byte("schema_version: 8\nid: reaction-story\nstart: {location: station}\nverbs: {greet: greeting}\nreactions: {rowan: reactions.yaml}\n")},
+		"data/story.yaml":       {Data: []byte("actors: {rowan: {name: Rowan}}\nlocations: {station: {name: Station}}\nevents:\n  greeting:\n    do:\n      - respond: {who: rowan, text: Hello}\n      - respond: {who: rowan, text: Hello}\n")},
+		"assets/reactions.yaml": {Data: []byte("people:\n  - id: rowan\n    rules:\n      - {id: repeated, when: tag.repeat > 0, say: [Again]}\n      - {id: welcome, say: [Welcome]}\n")},
+	}
+	g, err := gozen.Load(fsys, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := gozen.Config{Seed: 7, OnLog: func(err error) { t.Errorf("runtime: %v", err) }}
+	s, err := gozen.New(g, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start("- greet: true"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Kind != "say" || q.Text != "Welcome" {
+		t.Fatalf("first response: %+v", q)
+	}
+	b, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := gozen.Restore(g, b, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q := r.Next(); q.Text != "Welcome" {
+		t.Fatalf("resumed response: %+v", q)
+	}
+	if q := r.Next(); q.Text != "Again" {
+		t.Fatalf("reaction memory was lost: %+v", q)
+	}
+	if q := s.Next(); q.Text != "Again" {
+		t.Fatalf("restore mutated original: %+v", q)
+	}
+}
+
 // storyGame is the test expedition with a short story: lines, a choice with an id, and
 // a random number drawn in the middle.
 func storyGame(t *testing.T) *gozen.Game {

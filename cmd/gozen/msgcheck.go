@@ -526,6 +526,9 @@ func spOfferIssues(db *gamedata.DB) []msgIssue {
 	}
 	sort.Strings(ids)
 	for _, id := range ids {
+		if db.Actors[id].Class == "" {
+			continue
+		}
 		a := rpg.NewActor(db, id)
 		c := a.Class()
 		if c == nil || len(c.Tree) == 0 {

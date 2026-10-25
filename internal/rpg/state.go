@@ -16,13 +16,15 @@ import (
 
 // State is a game in progress.
 type State struct {
-	Actors   map[string]*Actor `json:"actors"` // everyone who has joined, by id
-	Party    []string          `json:"party"`
-	Items    map[string]int    `json:"items"`
-	Gold     int               `json:"gold"`
-	Flags    map[string]bool   `json:"flags"`
-	Vars     map[string]any    `json:"vars"` // numbers (float64), strings and declared booleans
-	Location string            `json:"location"`
+	// Reactions stores per-speaker interpreter memory; event execution owns its contents.
+	Reactions map[string][]byte `json:"reactions,omitempty"`
+	Actors    map[string]*Actor `json:"actors"` // everyone who has joined, by id
+	Party     []string          `json:"party"`
+	Items     map[string]int    `json:"items"`
+	Gold      int               `json:"gold"`
+	Flags     map[string]bool   `json:"flags"`
+	Vars      map[string]any    `json:"vars"` // numbers (float64), strings and declared booleans
+	Location  string            `json:"location"`
 	// Spot is where the party stands at a map or a stage location: a point of the map or a
 	// spot of the stage (ADR 0022). Empty is the location's start.
 	Spot   string          `json:"spot,omitempty"`
@@ -82,7 +84,7 @@ func New(db *data.DB, rng *rand.Rand) *State {
 		rng = rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())) //nolint:gosec // Gameplay randomness; no security-sensitive values.
 	}
 	s := &State{
-		Actors: map[string]*Actor{}, Items: map[string]int{}, Flags: map[string]bool{},
+		Party: []string{}, Actors: map[string]*Actor{}, Items: map[string]int{}, Flags: map[string]bool{},
 		Vars: map[string]any{}, Done: map[string]bool{}, Mapped: map[string][]byte{}, DB: db, Rand: rng,
 		RecruitSeed: collectionSeed(db.Game.ID),
 	}
@@ -127,6 +129,9 @@ func (s *State) RecruitFloat64() float64 {
 
 // Join adds an actor to the party, moving an active monster to the reserve if full.
 func (s *State) Join(id string) bool {
+	if a := s.DB.Actors[id]; a == nil || s.DB.Classes[a.Class] == nil {
+		return false
+	}
 	if slices.Contains(s.Party, id) {
 		return false
 	}
@@ -152,6 +157,9 @@ func (s *State) Join(id string) bool {
 // JoinStory ensures an authored event can add its required member. If a full
 // party has no active monster, the last active actor moves to the reserve.
 func (s *State) JoinStory(id string) bool {
+	if a := s.DB.Actors[id]; a == nil || s.DB.Classes[a.Class] == nil {
+		return false
+	}
 	if s.Join(id) {
 		return true
 	}

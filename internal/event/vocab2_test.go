@@ -18,8 +18,8 @@ id: version-two
 start: {location: camp, party: [scout], gold: 10, items: {tonic: 2, blade: 1}}
 equip_slots: [{id: weapon, name: Weapon}]
 battle: {tactic_presets: {careful: {name: Careful, rows: {}}}}
-verbs: [roll]
-screens: [album]
+verbs: {roll: sub}
+screens: {album: {title: Notes, entries: [{label: Entry, text: Welcome}]}}
 `
 
 const version2Data = `classes:
@@ -62,6 +62,7 @@ locations:
         S: {start: true, facing: east}
         G: {name: Goal, look: door, solid: "true", do: [{set: {var.goal: "var.goal + 1"}}]}
 events:
+  sub: {do: [{set: {var.rolled: 6}}]}
   walkfar: {do: [{move: far}, {walk: G}, {set: {var.at: "pos.x"}}]}
   walk: {do: [{move: deep}, {walk: G}, {set: {var.at: "pos.x * 10 + pos.y"}}]}
   step: {do: [{move: deep}, {step: 2}, {turn: right}, {step: 1}, {set: {var.at: "pos.x * 10 + pos.y", var.facing: "pos.facing"}}]}
@@ -71,7 +72,7 @@ events:
   write: {do: [{set: {gold: 99, item.tonic: 7, party: [scout, guide], location: deep, actor.scout.tactics: careful}}, {set: {var.mode: "actor.scout.tactics.mode", var.preset: "actor.scout.tactics.preset"}}]}
   stats: {do: [{set: {actor.scout.level: 3}}, {set: {actor.scout.hp: 1}}]}
   fight: {do: [{battle: none}, {set: {var.result: "result"}}]}
-  custom: {do: [{roll: {sides: 6}}, {open: album}]}
+  custom: {do: [{roll: true}, {open: album}]}
 `
 
 func version2(t *testing.T) (*data.DB, *rpg.State) {
@@ -227,8 +228,8 @@ func TestVersion2ResultAndCustom(t *testing.T) {
 		t.Fatalf("result: %v %v", st.Vars["result"], errs)
 	}
 	seen, errs := run2(t, db, st, "custom", false)
-	if len(errs) != 1 || !strings.Contains(errs[0].Error(), `"roll"`) {
-		t.Fatalf("a declared command without Go is logged and skipped: %v", errs)
+	if len(errs) != 0 || st.Vars["rolled"] != float64(6) {
+		t.Fatalf("a reusable command executes its event: %v", errs)
 	}
 	if len(seen) != 1 || seen[0] != (event.Open{Screen: "album"}) {
 		t.Fatalf("a declared screen opens: %v", seen)

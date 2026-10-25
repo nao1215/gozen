@@ -229,12 +229,7 @@ func (g *Game) devDo(src string) {
 	if !data.IsScript(src) {
 		src = "- " + src
 	}
-	if ds := data.CheckScript(g.db, src, true); len(ds) > 0 {
-		g.devCommandError(errors.New(ds.Error()))
-		g.emit("dev_do", traceLine{"do": src, "error": ds.Error()})
-		return
-	}
-	cmds, ds := data.ParseScript(src)
+	cmds, ds := data.CompileScript(g.db, src, true)
 	if len(ds) > 0 {
 		g.devCommandError(errors.New(ds.Error()))
 		g.emit("dev_do", traceLine{"do": src, "error": ds.Error()})

@@ -62,6 +62,19 @@ func (db *DB) StateUses() map[string]*NameUse {
 			u.commands(xw+".do", x.Do)
 		}
 	}
+	for _, name := range slices.Sorted(maps.Keys(db.Game.Screens)) {
+		screen := db.Game.Screens[name]
+		if screen == nil {
+			continue
+		}
+		u.text("game.yaml.screens."+name+".title", screen.Title)
+		for i, entry := range screen.Entries {
+			w := fmt.Sprintf("game.yaml.screens.%s.entries[%d]", name, i)
+			u.text(w+".label", entry.Label)
+			u.text(w+".text", entry.Text)
+			u.expr(w+".when", entry.When)
+		}
+	}
 	return u.out
 }
 
@@ -128,6 +141,10 @@ func (u *stateUses) commands(where string, cs []Command) {
 	for i := range cs {
 		c := &cs[i]
 		w := fmt.Sprintf("%s[%d]", where, i)
+		if c.Respond != nil {
+			u.text(w+".respond.text", c.Respond.Text)
+			u.text(w+".respond.from", c.Respond.From)
+		}
 		if c.Say != nil {
 			u.text(w+".say", c.Say.Text)
 			for j, alt := range c.Say.Instead {

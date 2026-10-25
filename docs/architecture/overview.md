@@ -15,8 +15,11 @@ flowchart TD
   Play --> Display[layer5: graphics, sound, portraits]
   Play --> Progress[headless and layer4]
   Session[internal/session: first-party integration tests] --> Progress
-  Progress --> Rules[battle, event, world, react and layer3]
+  Progress --> Rules[battle, event, world and layer3]
   Rules --> Model[rpg and layer2: gamedata]
+  Model --> React[react: conversation rules]
+  Rules --> React
+  React --> Base
   Model --> Base[expr, text, savefile and layer1]
 ```
 
@@ -30,4 +33,4 @@ flowchart TD
 
 `gozen capture` calls a typed internal batch renderer, runs one Ebitengine loop, and writes PNG or GIF artifacts. Handlers do not call another subcommand or reconstruct its argv. CLI reporting and diagnostic classification belong to `internal/cliio` and `internal/diag` ([ADR 0042](../decisions/0042-command-and-output-contract.md)).
 
-The engine retains YAML features for battles, novels, campaigns, maps and stacked spaces. Package moves do not change schema or save versions. See [battle forms](battle-forms.md), [maps and painted scenes](scenes.md), and the [stacked-space demo](../examples/stacked-spaces.md). Standalone chat and reaction implementations remain internal; no unused YAML scripting layer was added for them.
+The engine retains YAML features for battles, novels, campaigns, maps and stacked spaces. Package moves do not change schema or save versions. See [battle forms](battle-forms.md), [maps and painted scenes](scenes.md), and the [stacked-space demo](../examples/stacked-spaces.md). Narrative speakers need no combat class or party. YAML command aliases call events, author screens display conditional entries, and `respond` uses reaction books through the ordinary dialogue and save flow ([ADR 0043](../decisions/0043-narrative-authoring.md)). The standalone chat implementation remains internal; dialogue history has one owner. Markdown reports use `github.com/nao1215/markdown` in CLI adapters and the reference-page generator. Runtime diagnostics expose plain entries and terminal text, so browser players do not depend on a filesystem-oriented report library.

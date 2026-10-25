@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/react"
 	lang "github.com/nao1215/gozen/internal/text"
 
 	"github.com/nao1215/gozen/internal/text/catalog"
@@ -17,6 +18,8 @@ import (
 
 // DB is a loaded game: game.yaml and every section of the data files.
 type DB struct {
+	// ReactionBooks are immutable rules consumed by event execution; keys are speaker IDs.
+	ReactionBooks   map[string]*react.Book
 	FS              fs.FS // the game's directory
 	Game            Game
 	Classes         map[string]*Class
@@ -171,6 +174,9 @@ func Load(fsys fs.FS) (*DB, error) {
 		return nil, joinDiagnostics(c.errs)
 	}
 	db.defaults()
+	if err := db.loadReactions(); err != nil {
+		return nil, err
+	}
 	if err := db.loadStandIns(); err != nil {
 		return nil, err
 	}
@@ -306,6 +312,7 @@ func (g *Game) word(key string) string {
 
 // defaults fills in what was left out.
 func (db *DB) defaults() {
+	db.EachCommand(func(c *Command) { db.resolveVerb(c) })
 	g := &db.Game
 	if g.Screen.Width == 0 {
 		g.Screen = Screen{1280, 720}
@@ -342,10 +349,10 @@ func (db *DB) defaults() {
 			}
 		}
 	}
-	if b.Attack == "" {
+	if b.Attack == "" && db.CombatEnabled() {
 		b.Attack = "attack"
 	}
-	if b.Guard == "" {
+	if b.Guard == "" && db.CombatEnabled() {
 		b.Guard = "guard"
 	}
 	t := &g.Terms
@@ -453,4 +460,19 @@ func (db *DB) Rules(ref AIRef) []Rule {
 		return db.AI[ref.Name]
 	}
 	return ref.Rules
+}
+
+// CombatEnabled tells validation and save loading whether the game requires a
+// combat party. Speakers without a class do not enable combat. Enemy definitions
+// and campaigns do, even when no starting actor was supplied.
+func (db *DB) CombatEnabled() bool {
+	if len(db.Enemies) > 0 || len(db.Troops) > 0 || db.Game.Campaign != nil {
+		return true
+	}
+	for _, a := range db.Actors {
+		if a != nil && a.Class != "" {
+			return true
+		}
+	}
+	return false
 }

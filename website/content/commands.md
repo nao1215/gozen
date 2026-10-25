@@ -455,7 +455,7 @@ gozen release game --out release --overlay overlay --inspect inspect.jsonl
 
 ## trial
 
-Keeps only the definitions and assets reachable within the range of `trial.yaml` and writes them to a new directory: a demo version of the game.
+Builds a demo tree using the range in `trial.yaml`. Analysis retains branches it cannot prove unreachable and reports their conditions. Use `forbid` patterns to reject retained definitions or assets that must not ship; see [trial checks](/cookbook/#check-the-contents-of-a-trial).
 
 <!-- verify: each fixture=cli -->
 ```shell

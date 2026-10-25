@@ -1,3 +1,5 @@
+actors:
+  rowan: {name: Rowan}
 locations:
   station: {name: Station}
 events:
@@ -5,7 +7,7 @@ events:
   opening:
     do:
       - say: The last train arrives at the station.
-      - say: {who: Rowan, text: There is still time to choose.}
+      - say: {who: rowan, text: There is still time to choose.}
       - choice:
           - label: Take the train
             do:

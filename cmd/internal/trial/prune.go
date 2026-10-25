@@ -684,3 +684,43 @@ func dropCalls(fs files, events map[string]bool) {
 		fs[p] = walk(fs[p])
 	}
 }
+
+// expandAliases gives trial analysis ordinary calls, including calls to cut events.
+// Published trials no longer need the alias declarations after expansion.
+func expandAliases(f files) {
+	v, _ := get(f.game(), "verbs")
+	aliases := mapping(v)
+	if len(aliases) == 0 {
+		return
+	}
+	var walk func(any) any
+	walk = func(v any) any {
+		switch x := v.(type) {
+		case []any:
+			for i, item := range x {
+				if m, ok := item.(yaml.MapSlice); ok && len(m) == 1 {
+					if enabled, ok := m[0].Value.(bool); ok && enabled {
+						if target, ok := get(aliases, keyOf(m[0].Key)); ok {
+							x[i] = yaml.MapSlice{{Key: "call", Value: target}}
+							continue
+						}
+					}
+				}
+				x[i] = walk(item)
+			}
+			return x
+		case yaml.MapSlice:
+			for i := range x {
+				x[i].Value = walk(x[i].Value)
+			}
+			return x
+		}
+		return v
+	}
+	f["game.yaml"] = del(f.game(), "verbs")
+	for _, name := range f.names() {
+		if m, ok := walk(f[name]).(yaml.MapSlice); ok {
+			f[name] = m
+		}
+	}
+}

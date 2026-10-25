@@ -205,6 +205,18 @@ func (db *DB) SourceTexts() []SourceText {
 	g := &db.Game
 	add("game.yaml title", src(&g.Title))
 	add("game.yaml subtitle", src(&g.Subtitle))
+	for _, name := range slices.Sorted(maps.Keys(g.Screens)) {
+		screen := g.Screens[name]
+		if screen == nil {
+			continue
+		}
+		add("game.yaml screens."+name+".title", screen.Title)
+		for i, entry := range screen.Entries {
+			w := fmt.Sprintf("game.yaml screens.%s.entries[%d]", name, i)
+			add(w+".label", entry.Label)
+			add(w+".text", entry.Text)
+		}
+	}
 	for i := range g.Gallery.Scenes {
 		add(fmt.Sprintf("game.yaml gallery.scenes[%d].title", i), src(&g.Gallery.Scenes[i].Title))
 	}
@@ -264,6 +276,10 @@ func (db *DB) SourceTexts() []SourceText {
 		for i := range cs {
 			c := &cs[i]
 			cw := fmt.Sprintf("%s[%d]", w, i)
+			if c.Respond != nil {
+				add(cw+".respond.text", c.Respond.Text)
+				add(cw+".respond.from", c.Respond.From)
+			}
 			if c.Say != nil {
 				if _, actor := db.Actors[c.Say.Who]; !actor {
 					add(cw+".say.who", c.Say.Who)

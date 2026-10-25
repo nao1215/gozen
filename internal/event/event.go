@@ -655,6 +655,8 @@ func (r *Runner) run(c *data.Command) Request {
 	}
 	env := r.env()
 	switch verb {
+	case "respond":
+		r.respond(c.Respond)
 	case "say":
 		req := r.say(c.Say, env)
 		if line, ok := req.(Say); ok {
@@ -1070,9 +1072,7 @@ func (r *Runner) run(c *data.Command) Request {
 		}
 		r.Act(c.Act.Actor, c.Act.Skill, c.Act.Item, c.Act.Target)
 	default:
-		if name, _ := data.CustomVerb(c); name != "" {
-			r.logf(fmt.Errorf("command %q is declared in game.yaml verbs but has no Go implementation yet", name))
-		}
+		r.logf(fmt.Errorf("unresolved command %q: validate its event definition before execution", verb))
 	}
 	return nil
 }

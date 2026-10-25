@@ -236,8 +236,8 @@ func (c *checker) requiredDefinitions() {
 		}
 	}
 	for _, id := range c.db.Ordered("actors") {
-		if c.db.Actors[id].Class == "" {
-			c.errorf(diag.Shape, "actors."+id, "class is missing")
+		if a := c.db.Actors[id]; a.Class == "" && a.Name == "" {
+			c.errorf(diag.Shape, "actors."+id, "a speaker needs a name (or a class for a combat actor)")
 		}
 	}
 	for _, id := range c.db.Ordered("enemies") {
@@ -295,7 +295,7 @@ func (db *DB) Check() []error {
 	if g.Start.Location == "" {
 		c.errorf(diag.Shape, "game.yaml", "start.location is missing")
 	}
-	if len(g.Start.Party) == 0 {
+	if db.CombatEnabled() && len(g.Start.Party) == 0 {
 		c.errorf(diag.Shape, "game.yaml", "start.party is empty (a game starts with someone)")
 	}
 	if len(g.Start.Party) > g.MaxParty {
@@ -305,6 +305,7 @@ func (db *DB) Check() []error {
 	for _, a := range g.Start.Party {
 		_, ok := db.Actors[a]
 		c.ref("game.yaml start.party", "actor", a, ok)
+		c.combatActor("game.yaml start.party", a)
 		if inParty[a] {
 			c.errorf(diag.Duplicate, "game.yaml start.party", "%s is written twice", a)
 		}
@@ -1429,6 +1430,12 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 				c.expr(ww+".when", o.When, names)
 				c.commands(ww+".do", o.Do, names)
 			}
+		case "respond":
+			if cmd.Respond.Who == "" || db.ReactionBooks[cmd.Respond.Who] == nil {
+				c.errorf(diag.UnknownReference, w+".respond.who", "speaker %q needs a reaction book in game.yaml reactions", cmd.Respond.Who)
+			}
+			c.text(w+".respond.text", cmd.Respond.Text, names)
+			c.text(w+".respond.from", cmd.Respond.From, names)
 		case "notice":
 			c.text(w+".notice", cmd.Notice, names)
 		case "if":
@@ -1452,6 +1459,7 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			id := cmd.Join + cmd.Leave
 			_, ok := db.Actors[id]
 			c.ref(w+"."+verb, "actor", id, ok)
+			c.combatActor(w+"."+verb, id)
 		case "reserve":
 			c.needsVersion(w+".reserve", "reserve", SchemaVersion6)
 			if cmd.Reserve.In == "" || cmd.Reserve.Out == "" {
@@ -1510,6 +1518,7 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			for _, f := range cmd.Fighters {
 				_, ok := db.Actors[f]
 				c.ref(w+".fighters", "actor", f, ok)
+				c.combatActor(w+".fighters", f)
 			}
 			c.commands(w+".on_win", cmd.OnWin, names)
 			c.commands(w+".on_lose", cmd.OnLose, names)
@@ -1608,7 +1617,7 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 				c.errorf(diag.MonsterRules, w+".open", "open: ranch needs breeding in data/")
 			} else if cmd.Open == "ranch" {
 				c.needsVersion(w+".open", "open: ranch", SchemaVersion6)
-			} else if slices.Contains(db.Game.Screens, cmd.Open) {
+			} else if db.Game.Screens[cmd.Open] != nil {
 				c.needsVersion2(w+".open", "a declared screen")
 			} else if !slices.Contains(OpenScreens, cmd.Open) {
 				c.errorf(diag.NotAWord, w+".open", "want one of %s (or a screen declared in game.yaml screens), not %q", strings.Join(OpenScreens, ", "), cmd.Open)
@@ -2145,4 +2154,11 @@ func (c *checker) dungeonTile(ch string) bool {
 		}
 	}
 	return false
+}
+
+// combatActor keeps presentation-only speakers out of runtime party state.
+func (c *checker) combatActor(where, id string) {
+	if a := c.db.Actors[id]; a != nil && a.Class == "" {
+		c.errorf(diag.Shape, where, "actor %q needs a class to join or fight", id)
+	}
 }

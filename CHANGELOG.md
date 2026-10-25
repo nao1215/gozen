@@ -4,6 +4,19 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.8.0 - 2026-10-25
+
+Write narrative games without combat scaffolding, run reusable YAML commands and information screens, and retain conversation memory across saves.
+
+Breaking change: replace declaration-only `verbs: [name]` and `screens: [name]` with executable mappings. For example, use `verbs: {greet: greeting}` and invoke `greet: true`; define screens with a title and entries. Existing RPG combat definitions continue to work.
+
+- Novel templates use classless speakers and empty-party saves without combat rules.
+- YAML verb aliases call events; author screens show conditional text and pictures.
+- Reaction books respond through dialogue and retain memory across saves.
+- Trial builds report unresolved conditions and reject explicitly forbidden output.
+- Playtesting examples in the README use a single column without fixed-width tables.
+- Markdown reports use nao1215/markdown for headings, tables, lists, images and code blocks. Table cells preserve authored pipes and line breaks; empty book sections are omitted before rendering.
+
 ## v0.7.0 - 2026-10-25
 
 Create, run, capture and export games with YAML, assets and the CLI. This release removes the public Go API and changes several command paths and arguments. Existing game YAML and save formats remain compatible. Desktop and web exports use the matching prebuilt runtime archive from this release.

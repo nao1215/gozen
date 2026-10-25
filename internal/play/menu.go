@@ -68,7 +68,7 @@ func newMenu(g *Game) *menu {
 		}
 	}
 	items := []listItem{{label: lang.T("ステータス")}, {label: lang.T("どうぐ")}, {label: lang.T("スキル")}, {label: lang.T("そうび")}, {label: lang.T("セーブ")}, {label: lang.T("ロード")}, {label: lang.T("せってい")}, {label: lang.T("タイトルへ")}, {label: lang.T("とじる")}}
-	if loc := g.db.Locations[g.st.Location]; loc == nil || !loc.Safe {
+	if loc := g.db.Locations[g.st.Location]; g.db.CombatEnabled() && (loc == nil || !loc.Safe) {
 		items[4].disabled = true
 		items[4].right = "×"
 	}
@@ -84,6 +84,9 @@ func newMenu(g *Game) *menu {
 			at = 7
 		}
 		items = slices.Insert(items, at, listItem{label: "Monsters", id: "bestiary"})
+	}
+	if !g.db.CombatEnabled() {
+		items = items[4:]
 	}
 	items = append(head, items...)
 	m := &menu{tabs: newList(items, 36, 36, 250, len(items)), cmds: cmds}
@@ -185,6 +188,11 @@ func (m *menu) update(g *Game) {
 			return
 		}
 		sel := m.tabs.sel - len(m.cmds)
+		saveIndex := len(m.cmds) + 5
+		if !g.db.CombatEnabled() {
+			sel += 4
+			saveIndex -= 4
+		}
 		if m.tabs.items[m.tabs.sel].id == "profiles" {
 			g.push(newProfiles(g, nil))
 			return
@@ -209,7 +217,7 @@ func (m *menu) update(g *Game) {
 			m.picker = true
 			m.mode = []string{"", "", "skill", "equip"}[m.tabs.sel-len(m.cmds)]
 		case 4:
-			g.push(newSaveMenu(g, true, func() { m.tabs.items[len(m.cmds)+5].disabled = !g.anySave() }))
+			g.push(newSaveMenu(g, true, func() { m.tabs.items[saveIndex].disabled = !g.anySave() }))
 		case 5:
 			sm := newSaveMenu(g, false, func() {})
 			sm.inPlay = true

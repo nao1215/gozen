@@ -10,7 +10,7 @@ Actor:
   _: "A party member or other character: their class, level, faces, equipment and portrait settings."
   ai: "The rules this actor follows in auto battle, either an ID of ai or a list of rules inline. Party members inherit their class AI when omitted."
   back: "If true, the actor starts in the back row."
-  class: "The class this actor belongs to, an ID of classes. Required."
+  class: "An ID of classes for a combat actor. Omit for a speaker who only uses dialog, portraits and voices."
   color: "The color of the actor's name on the status screen."
   cutin: "The picture used for the skill cut-in, a file under assets/. The standing picture is used when omitted."
   cutin_box: "Where the face is in the cut-in picture: the center as fractions of width and height, then the size as a fraction of width."

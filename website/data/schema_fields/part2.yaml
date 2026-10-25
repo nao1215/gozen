@@ -1,4 +1,5 @@
 Command:
+  respond: "Submit text to a speaker reaction book; the reply uses the ordinary dialog flow."
   _: "One step of an event. Each command has a single main key (the verb) and may carry extra keys that only that verb understands."
   end_turn: "Ends the campaign's turn: the other factions follow their rules and the next turn begins. Needs schema version 5."
   act: "Queues one move for the next auto battle: who acts, the skill or item, and the target."
@@ -45,7 +46,7 @@ Command:
   reset_tree: "Gives back the SP spent in the skill tree of an actor, an ID of actors, or of everyone with `all`."
   retry: "With `battle`, set to false to skip the offer to retry after losing."
   save: "If true, opens the save screen."
-  say: "Shows a line of dialogue. It can be plain text or a map with speaker, face, side and text."
+  say: "Shows a line of dialog. It can be plain text or a map with speaker, face, side and text."
   sell: "Sells items to a shop, the same as the Sell screen: the shop, the item and the count."
   set: "Assigns values to variables or state, mapping each name to an expression."
   sfx: "Plays a sound effect by name. A map (version 4) with `wait: true` holds the event until the sound ends."

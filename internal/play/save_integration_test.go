@@ -113,6 +113,21 @@ func TestSaveSlotLabels(t *testing.T) {
 	if !ok || !strings.Contains(l, "Scout") || !strings.Contains(l, "Inn") || !strings.HasPrefix(l, "2:") {
 		t.Fatalf("good slot: %q %v", l, ok)
 	}
+	// A narrative save has no leader, but remains selectable by place and time.
+	g.st.Party = []string{}
+	clear(g.st.Actors)
+	g.db.Actors = nil
+	g.db.Enemies = nil
+	g.db.Troops = nil
+	g.db.Game.Campaign = nil
+	if err := g.save(1); err != nil {
+		t.Fatal(err)
+	}
+	l, ok = g.slotLabel(1)
+	if !ok || !strings.Contains(l, "Inn") || strings.Contains(l, "Scout") {
+		t.Fatalf("narrative slot: %q %v", l, ok)
+	}
+
 	if err := os.WriteFile(filepath.Join(dir, "save3.json"), []byte("{damaged"), 0o600); err != nil {
 		t.Fatal(err)
 	}

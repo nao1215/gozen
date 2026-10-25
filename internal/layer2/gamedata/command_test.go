@@ -16,7 +16,8 @@ import (
 // Positive cases are not built from the registry; they pin down how each command can actually be
 // written.
 var commandExamples = map[string]string{
-	"say": `say: hi`, "choice": `choice: [{label: Yes, do: []}]`,
+	"respond": "respond: {who: scout, text: Hello}",
+	"say":     `say: hi`, "choice": `choice: [{label: Yes, do: []}]`,
 	"if": `if: true`, "set": `set: {flag.ok: true}`, "give": `give: {item: key}`,
 	"take": `take: {item: key}`, "gold": `gold: 0`, "join": `join: guide`,
 	"leave": `leave: guide`, "heal": `heal: all`, "hurt": `hurt: {who: all, amount: 1}`,
@@ -104,7 +105,7 @@ func TestCommandFieldMatrix(t *testing.T) {
 		}
 	}
 	for verb, src := range commandExamples {
-		if verb == "reserve" || verb == "release" || verb == "breed" {
+		if verb == "respond" || verb == "reserve" || verb == "release" || verb == "breed" {
 			continue
 		} // covered with schema version 6 in monster_test.go
 		t.Run(verb, func(t *testing.T) {

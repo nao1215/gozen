@@ -160,10 +160,19 @@ jobs:
           go-version: stable
       # Portable builds omit ONNX inference. Native cgo builds are checked below.
       # arm64 rows are cross-builds, not runtime verification.
-      - run: go build -trimpath -buildvcs=false ./...
+      - if: matrix.goos != 'js'
+        run: go build -trimpath -buildvcs=false ./...
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+      # The browser ships the player, not the host CLI or documentation tools.
+      # Compile its complete dependency graph, matching the release artifact.
+      - if: matrix.goos == 'js'
+        run: go build -trimpath -buildvcs=false -o /tmp/gozen-player.wasm ./cmd/gozen-player
+        env:
+          GOOS: js
+          GOARCH: wasm
           CGO_ENABLED: "0"
 
   graphics:

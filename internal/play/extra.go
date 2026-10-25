@@ -17,6 +17,14 @@ import (
 )
 
 func (g *Game) openScreen(name string, done func()) {
+	if g.db.Game.Screens[name] != nil && g.st != nil {
+		g.push(newAuthorScreen(g, name, done))
+		return
+	}
+	if g.st != nil && len(g.st.Party) == 0 && slices.Contains([]string{"status", "skill", "equip", "formation", "skills", "tactics", "fusion"}, name) {
+		done()
+		return
+	}
 	switch name {
 	case "tactics":
 		if g.currentBattle() != nil || g.st == nil {

@@ -11,11 +11,36 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/testgame"
 )
+
+func TestNarrativeSaveRoundTrip(t *testing.T) {
+	db, err := data.Load(fstest.MapFS{
+		"game.yaml":       {Data: []byte("schema_version: 8\nid: narrative\nstart: {location: station}\n")},
+		"data/story.yaml": {Data: []byte("actors: {guide: {name: Rowan}}\nlocations: {station: {name: Station}}\n")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := testgame.State(db, 1)
+	st.Flags["arrived"] = true
+	st.Vars["visits"] = float64(3)
+	if st.Join("guide") {
+		t.Fatal("a speaker joined without a class")
+	}
+	saved := saveBytes(t, st)
+	restored, err := rpg.Parse(db, saved, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(restored.Party) != 0 || len(restored.Actors) != 0 || !restored.Flags["arrived"] || restored.Vars["visits"] != float64(3) || restored.Location != "station" {
+		t.Fatalf("lost narrative state: %+v", restored)
+	}
+}
 
 func saveBytes(t *testing.T, s *rpg.State) []byte {
 	t.Helper()

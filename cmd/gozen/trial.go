@@ -141,6 +141,9 @@ func (c *command) summary(res *trial.Result) {
 	c.out.Printf("trial: %d events (%d removed), %d locations, %d enemies, %d troops, %d songs, %d pictures and sounds (%d event pictures), gallery %d pictures and %d scenes, %d exits closed, settled in %d passes\n",
 		len(res.Kept["events"]), len(res.Removed["events"]), len(res.Kept["locations"]), len(res.Kept["enemies"]),
 		len(res.Kept["troops"]), len(res.Kept["songs"]), len(res.Assets), cg, res.Gallery.CGs, res.Gallery.Scenes, res.Gates, res.Passes)
+	if len(res.Unresolved) > 0 {
+		c.out.Printf("  %d unresolved conditions retained; inspect --list before distributing\n", len(res.Unresolved))
+	}
 	if len(res.Missing) > 0 {
 		c.out.Printf("  %d files named in the data are missing: %s\n", len(res.Missing), strings.Join(res.Missing, ", "))
 	}
@@ -154,6 +157,7 @@ func writeList(p string, res *trial.Result) error {
 	}
 	appendf(&b, "# pictures and sounds %d\n%s\n", len(res.Assets), strings.Join(res.Assets, "\n"))
 
+	appendf(&b, "# unresolved conditions retained\n%s\n", strings.Join(res.Unresolved, "\n"))
 	appendf(&b, "# why kept (kept <- referenced by)\n")
 
 	for _, k := range sortedStrings(res.Why) {

@@ -150,13 +150,13 @@
           "x-type": "boolean"
         },
         "class": {
-          "description": "The class this actor belongs to, an ID of classes. Required.",
+          "description": "An ID of classes for a combat actor. Omit for a speaker who only uses dialog, portraits and voices.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
             "legacy_default": "empty string",
             "zero": "-",
-            "required": "required",
+            "required": "optional",
             "reference": "classes",
             "version": "0, 1, 2"
           },
@@ -485,9 +485,6 @@
           "x-type": "string"
         }
       },
-      "required": [
-        "class"
-      ],
       "type": "object"
     },
     "Affect": {
@@ -801,6 +798,45 @@
             "required": "optional",
             "reference": "-",
             "version": "3"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "AuthorScreen": {
+      "additionalProperties": false,
+      "description": "An author-defined information or picture list opened by name.",
+      "properties": {
+        "entries": {
+          "description": "Selectable detail pages in authored order.",
+          "items": {
+            "$ref": "#/$defs/ScreenEntry"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[ScreenEntry](#screenentry)[]"
+        },
+        "title": {
+          "description": "The title, with text interpolation and translation.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
           },
           "x-type": "string"
         }
@@ -3300,6 +3336,15 @@
         {
           "additionalProperties": false,
           "properties": {
+            "respond": {}
+          },
+          "required": [
+            "respond"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "say": {}
           },
           "required": [
@@ -4485,6 +4530,19 @@
           },
           "x-type": "string"
         },
+        "respond": {
+          "$ref": "#/$defs/Respond",
+          "description": "Submit text to a speaker reaction book; the reply uses the ordinary dialog flow.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Respond](#respond)"
+        },
         "retry": {
           "description": "With `battle`, set to false to skip the offer to retry after losing.",
           "type": [
@@ -4517,7 +4575,7 @@
         },
         "say": {
           "$ref": "#/$defs/Say",
-          "description": "Shows a line of dialogue. It can be plain text or a map with speaker, face, side and text.",
+          "description": "Shows a line of dialog. It can be plain text or a map with speaker, face, side and text.",
           "x-contract": {
             "default": "nil; nothing is defined",
             "legacy_default": "nil; nothing is defined",
@@ -7857,7 +7915,7 @@
           "x-type": "integer[]"
         },
         "line": {
-          "description": "The 1-based number of the line or question to start from, counting dialogue lines and choices.",
+          "description": "The 1-based number of the line or question to start from, counting dialog lines and choices.",
           "minimum": 1,
           "type": "integer",
           "x-contract": {
@@ -7871,7 +7929,7 @@
           "x-type": "integer"
         },
         "picture": {
-          "description": "If set, only dialogue shown over this picture is counted for `line`.",
+          "description": "If set, only dialog shown over this picture is counted for `line`.",
           "type": "string",
           "x-contract": {
             "default": "counts lines and questions from the scene's start",
@@ -8437,6 +8495,25 @@
           },
           "x-type": "[Meter](#meter)[]"
         },
+        "reactions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Maps speaker IDs to reaction book paths under assets/. Memory is saved with the game.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → string"
+        },
         "scene_review": {
           "$ref": "#/$defs/SceneReviewCfg",
           "description": "Settings for the scene review debug page, such as the tags attached to scenes.",
@@ -8488,23 +8565,23 @@
           "x-type": "[Screen](#screen)"
         },
         "screens": {
-          "description": "Names of custom screens implemented in Go. A declared name can be opened with `open`.",
-          "items": {
-            "type": "string"
+          "additionalProperties": {
+            "$ref": "#/$defs/AuthorScreen"
           },
+          "description": "Named information screens, each with a title and ordered entries. Open with `open: NAME`.",
           "type": [
-            "array",
+            "object",
             "null"
           ],
           "x-contract": {
-            "default": "empty list",
-            "legacy_default": "empty list",
+            "default": "empty map",
+            "legacy_default": "empty map",
             "zero": "-",
             "required": "optional",
             "reference": "-",
             "version": "2"
           },
-          "x-type": "string[]"
+          "x-type": "string → [AuthorScreen](#authorscreen)"
         },
         "stand_ins": {
           "description": "A file under assets/ listing placeholder pictures, one path per line. A placeholder picture does not hide character portraits.",
@@ -8688,23 +8765,23 @@
           "x-type": "[UIStyle](#uistyle)"
         },
         "verbs": {
-          "description": "Names of custom commands implemented in Go. A declared name may be used as a command.",
-          "items": {
+          "additionalProperties": {
             "type": "string"
           },
+          "description": "Maps reusable command names to event IDs. Invoke with `NAME: true`, or call the event directly with `call`.",
           "type": [
-            "array",
+            "object",
             "null"
           ],
           "x-contract": {
-            "default": "empty list",
-            "legacy_default": "empty list",
+            "default": "empty map",
+            "legacy_default": "empty map",
             "zero": "-",
             "required": "optional",
             "reference": "-",
             "version": "2"
           },
-          "x-type": "string[]"
+          "x-type": "string → string"
         },
         "written_in": {
           "description": "The language the files under `data/` are written in. Each other language is translated by `lang/\u003ccode\u003e.yaml`, a map `text` from the text as written to its translation. The default is `language`. Needs schema version 4.",
@@ -12031,6 +12108,52 @@
       },
       "type": "object"
     },
+    "Respond": {
+      "additionalProperties": false,
+      "description": "Submit text to a speaker's reaction rules and show the reply as dialog.",
+      "properties": {
+        "from": {
+          "description": "Sender name for repeat detection; omitted means player.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "text": {
+          "description": "Text submitted to the rules, with interpolation and translation.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "who": {
+          "description": "A speaker with a book in game.yaml reactions.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
     "Road": {
       "additionalProperties": false,
       "description": "A road joining two points of a map, usable in both directions.",
@@ -12807,6 +12930,70 @@
             "version": "0, 1, 2 (omitting it and writing 0 differ in v0)"
           },
           "x-type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "ScreenEntry": {
+      "additionalProperties": false,
+      "description": "One detail page in an author-defined screen.",
+      "properties": {
+        "label": {
+          "description": "Required label shown in the list.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "picture": {
+          "description": "Optional image path under assets/.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "text": {
+          "description": "Detail text, with interpolation and translation.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "when": {
+          "description": "Condition for showing this entry; omitted means visible.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
         }
       },
       "type": "object"
@@ -14086,7 +14273,6 @@
           "items": {
             "type": "string"
           },
-          "minItems": 1,
           "type": "array",
           "uniqueItems": true,
           "x-contract": {
