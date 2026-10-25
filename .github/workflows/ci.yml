@@ -196,10 +196,6 @@ jobs:
       - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
         with:
           xvfb: true
-      # The release binary (checksum checked) instead of go install: no build in each job.
-      - uses: nao1215/setup-atago@5c563dcd9d85e114f8abe8bbdcd058e51de09efb # v0.1.3
-        with:
-          version: v0.25.2
       - name: Render on Linux with Xvfb
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum --error-file=/dev/stderr make graphics
@@ -218,6 +214,31 @@ jobs:
       - name: Render on the native desktop
         if: runner.os != 'Linux'
         run: go test -tags=graphics ./internal/play ./internal/layer5/puppet -run TestGraphics -count=1
+
+  capture:
+    # Run the CLI capture pipeline independently of the rendered screen tests.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
+        with:
+          xvfb: true
+      # The release binary (checksum checked) instead of go install: no build in each job.
+      - uses: nao1215/setup-atago@5c563dcd9d85e114f8abe8bbdcd058e51de09efb # v0.1.3
+        with:
+          version: v0.25.2
       - name: Install runtime license collector
         if: runner.os == 'Linux'
         run: go install github.com/google/go-licenses/v2@v2.0.1
