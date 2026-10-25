@@ -4,14 +4,21 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.10.0 - 2026-10-26
+
+Preview atlas destinations with guide advice, explore large maps with camera controls,
+and branch events on recorded battle casualties.
+
+- Add fixed atlas selection panels with translated, state-dependent advice and explicit confirmation, plus opt-in instant action menus that preserve the party's position.
+- Add bounded atlas pan/zoom, overview and current-position controls, with fixed-size labels and offscreen keyboard navigation.
+- Add opt-in preservation of defeated party HP and saved last-battle outcomes for casualty-aware event branches.
+- Include map advice in translation exports and development state-reference lists.
+- Parallelize isolated camera and casualty rendering tests to remove sequential waits in CI.
+
 - Add opt-in head anchoring for static novel portraits, preserving authored positions and framing across padded canvases, expression changes and save/load.
-
 - Keep atlas label rectangles and collision placement stable while selection changes, including unknown destinations and map edges.
-
 - Preserve and isolate saved random state when load-slot inspection reuses the checked-save cache.
-
 - Allow authors to hide battle AI history and its input controls without changing battle decisions or traces.
-
 - Add opt-in party-only recruitment admission, authored capture commands and saved capture results for event branches.
 - Render save-slot location names using each saved state, including load menus opened from the title.
 - Match atlas pointer targets to visible marker pictures and name plates, preserving small targets and deterministic overlap selection.

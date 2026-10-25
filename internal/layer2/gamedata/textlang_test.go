@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
@@ -67,5 +68,19 @@ func TestTranslations(t *testing.T) {
 	files["lang/ja.yaml"] = "words: {}\n"
 	if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "lang/ja.yaml") {
 		t.Errorf("an unknown field: %v", err)
+	}
+}
+
+func TestMapAdviceSourceTexts(t *testing.T) {
+	db := testgame.LoadScenes(t, nil)
+	db.Locations["town"].Map.Points["square"].Advice = []data.MapAdvice{{Heading: "Guide", Text: "Supplies {item.potion}"}}
+	found := map[string]string{}
+	for _, text := range db.SourceTexts() {
+		found[text.Path] = text.Text
+	}
+	for suffix, want := range map[string]string{"heading": "Guide", "text": "Supplies {item.potion}"} {
+		if got := found["locations.town.map.points.square.advice[0]."+suffix]; got != want {
+			t.Fatalf("%s: %q", suffix, got)
+		}
 	}
 }

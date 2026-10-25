@@ -314,6 +314,7 @@ func shotImage(t *testing.T, root, name string) image.Image {
 // The camera is exercised through native input and pixel readback; the grid is a
 // neutral test asset, not a README illustration.
 func TestGraphicsMapCamera(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	game := filepath.Join(root, "game")
 	if err := os.CopyFS(game, atlasCameraFiles(t)); err != nil {

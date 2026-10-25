@@ -42,6 +42,21 @@ func (db *DB) StateUses() map[string]*NameUse {
 		l := db.Locations[name]
 		w := "locations." + name
 		u.commands(w+".on_enter", l.OnEnter)
+		if a := l.Map; a != nil {
+			for _, id := range a.PointIDs() {
+				p := a.Points[id]
+				if p == nil {
+					continue
+				}
+				for i, advice := range p.Advice {
+					aw := fmt.Sprintf("%s.map.points.%s.advice[%d]", w, id, i)
+					u.expr(aw+".when", advice.When)
+					u.text(aw+".heading", advice.Heading)
+					u.text(aw+".text", advice.Text)
+				}
+			}
+		}
+
 		for i, p := range l.People {
 			pw := fmt.Sprintf("%s.people[%d]", w, i)
 			u.expr(pw+".when", p.When)
