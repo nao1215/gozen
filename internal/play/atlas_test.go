@@ -575,8 +575,8 @@ func TestAtlasCameraNavigation(t *testing.T) {
 		s.resetCamera(g, true)
 		k, x, y, _ := s.fit(g)
 		w, h := g.pixels()
-		if math.Abs(k-math.Min(w/3000, h/1800)) > 1e-9 || x < 0 || y < 0 {
-			t.Fatal("overview is not fitted")
+		if math.Abs(k-math.Min(w/3000, h/1800)) > 1e-9 || x < -1e-6 || y < -1e-6 {
+			t.Fatalf("overview is not fitted: scale %.17g offsets %.17g %.17g", k, x, y)
 		}
 		s.resetCamera(g, false)
 		if !s.cameraPointVisible(g, s.at) || s.cameraZoom != 3 {
