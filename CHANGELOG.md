@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Translate the monster book entries in the title and field menus and its heading, including Japanese defaults and author overrides through `text:` (#109).
+
 ## v0.10.0 - 2026-10-26
 
 Preview atlas destinations with guide advice, explore large maps with camera controls,

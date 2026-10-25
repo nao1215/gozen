@@ -436,6 +436,7 @@ var english = map[string]string{
 	"とまっています":                            "Stopped",
 	// screens: the character book (ADR 0031)
 	"キャラクター": "Characters",
+	"まもののほん": "Monsters",
 	"相関図":    "Relationships",
 	"Tab: ページ   矢印: 選択   Z: 注目/詳細   X: 全体/もどる   F6: とじる":     "Tab: page   arrows: choose   Z: focus/page   X: full/back   F6: close",
 	"←→ / LR: キャラ   ↑↓: 一覧   Z: 表情   Tab: 相関図   X / F6: もどる": "Left/Right / LR: character   Up/Down: list   Z: face   Tab: chart   X / F6: back",

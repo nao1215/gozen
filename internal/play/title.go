@@ -55,7 +55,7 @@ func (g *Game) titleMenu() *list {
 		if g.profilesInMenus() {
 			at = 4
 		}
-		items = slices.Insert(items, at, listItem{label: "Monsters", id: "bestiary"})
+		items = slices.Insert(items, at, listItem{label: lang.T("まもののほん"), id: "bestiary"})
 	}
 	if canQuit {
 		items = append(items, listItem{label: lang.T("おわる")})
