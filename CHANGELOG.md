@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Render save-slot location names using each saved state, including load menus opened from the title.
+
 ## v0.9.0 - 2026-10-25
 
 Build multi-level towns with continuous movement, building surfaces and roof geometry, and add interactive event actions to authored screens.
