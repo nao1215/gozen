@@ -66,11 +66,6 @@ pageRef = "/ai-agents"
 weight = 70
 
 [[menus.main]]
-name = "Go API"
-pageRef = "/go-api"
-weight = 80
-
-[[menus.main]]
 name = "Production tools"
 pageRef = "/production-tools"
 weight = 90
