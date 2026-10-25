@@ -1,0 +1,61 @@
+skills:
+  attack: {name: Attack, scope: one_enemy, effects: [{damage: "a.atk"}]}
+  guard: {name: Guard, scope: self, effects: []}
+classes:
+  visitor:
+    name: Visitor
+    stats: {mhp: '100', mmp: '10', atk: '10', def: '10', mat: '10', mdf: '10', agi: '10', luk: '10'}
+    exp_for: 'level * 100'
+actors:
+  walker: {name: Walker, class: visitor}
+locations:
+  inn:
+    name: Lantern Inn
+    dungeon:
+      depth: 16
+      darkness: 0.1
+      floor: '#b8ac8b'
+      ceiling: '#9d917c'
+      tiles:
+        S: {start: true, facing: north}
+        N:
+          name: Innkeeper
+          picture: innkeeper.png
+          size: 0.6
+          solid: true
+          trigger: look
+          once: true
+          after: '.'
+          do: [{set: {var.greetings: 'var.greetings + 1'}}]
+        B:
+          name: Guest bed
+          picture: bed.png
+          size: 0.4
+          solid: true
+          trigger: look
+          do: [{set: {flag.bed_seen: true}}]
+      space:
+        levels:
+          - |
+              ..........
+              .#######..
+              .#.....#..
+              .#.....#..
+              .#.....#..
+              .#.....#..
+              .##..N##..
+              ..........
+              ...S......
+              ..........
+          - |
+              __________
+              __#####___
+              __#...#___
+              __#..B#___
+              __#...#___
+              ____...___
+              ____.N.___
+              __________
+              __________
+              __________
+        stairs: [{level: 1, x: 3, y: 7, facing: north, length: 3}]

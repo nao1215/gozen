@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Render NPC and furniture billboards in stacked spaces with tile interactions, alpha transparency and terrain occlusion.
+
 - Add optional local idle oscillators to puppet parts, independent of body breathing, health and hit motion.
 - Reuse unchanged stacked-space occupancy data, with state-aware invalidation and reproducible CPU/rendering benchmarks.
 

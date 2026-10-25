@@ -35,6 +35,10 @@ func TestSpaceValidation(t *testing.T) {
 	if _, err := data.Load(fixture); err != nil {
 		t.Fatalf("valid motion durations: %v", err)
 	}
+	fixture["data/world.yaml"] = &fstest.MapFile{Data: []byte(strings.Replace(string(world), "start: true", "start: true, picture: dungeon/limestone.png, size: 1, solid: true", 1))}
+	if _, err := data.Load(fixture); err != nil {
+		t.Fatalf("upright space sprite: %v", err)
+	}
 	for _, tc := range []struct{ name, old, new string }{
 		{"too short stair", "length: 4", "length: 2"},
 		{"negative step duration", "      space:", "      space:\n        step_ticks: -1"},
@@ -42,7 +46,10 @@ func TestSpaceValidation(t *testing.T) {
 		{"no lower level", "level: 1", "level: 0"},
 		{"too deep", "depth: 16", "depth: 17"},
 		{"overlapping stairs", "stairs:", "stairs:\n          - {level: 1, x: 6, y: 10, facing: north, length: 4}"},
-		{"unsupported tile picture", "start: true", "start: true, picture: dungeon/limestone.png"},
+		{"unsupported flat sprite", "start: true", "start: true, picture: dungeon/limestone.png, flat: true"},
+		{"unsupported wall sprite", "start: true", "start: true, picture: dungeon/limestone.png, look: wall"},
+		{"nonfinite sprite", "start: true", "start: true, picture: dungeon/limestone.png, size: .inf"},
+		{"oversized sprite", "start: true", "start: true, picture: dungeon/limestone.png, size: 17"},
 		{"unsupported slide", "start: true", "start: true, slide: north"},
 		{"missing sky", "sky: dungeon/sky.png", "sky: dungeon/missing.png"},
 		{"legacy map conflict", "      depth: 16", "      map: S\n      depth: 16"},

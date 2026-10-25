@@ -1,0 +1,24 @@
+var SpriteOrigin vec3
+var SpriteSize vec2
+var SpriteTint vec3
+var SpriteDarkness float
+
+func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
+ ray:=viewRay(dst.xy-imageDstOrigin())
+ forward:=vec3(sin(Facing),0,-cos(Facing))
+ right:=vec3(cos(Facing),0,sin(Facing))
+ facing:=dot(ray,forward)
+ if facing<=.00001 {return vec4(0)}
+ distance:=dot(SpriteOrigin-Eye,forward)/facing
+ if distance<=.01 || distance*length(ray.xz)>Far {return vec4(0)}
+ point:=Eye+ray*distance
+ tex:=vec2(.5+dot(point-SpriteOrigin,right)/SpriteSize.x,1-(point.y-SpriteOrigin.y)/SpriteSize.y)
+ if tex.x<0 || tex.x>=1 || tex.y<0 || tex.y>=1 {return vec4(0)}
+ color:=imageSrc1UnsafeAtFromSrc0Pos(imageSrc0Origin()+tex*imageSrc1Size())
+ if color.a<=0 {return vec4(0)}
+ hit,_,_:=geometry(ray)
+ if distance>hit+.0001 {return vec4(0)}
+ color.rgb*=SpriteTint
+ // Fade premultiplied color and alpha together into the already drawn scene.
+ return color*exp(-distance*SpriteDarkness*.11)
+}

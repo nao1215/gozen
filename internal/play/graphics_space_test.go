@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/goccy/go-yaml"
+
+	"github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 // The same route supplies the published demonstration and this native E2E.
@@ -232,6 +234,15 @@ func BenchmarkGraphicsSpaceScaling(b *testing.B) {
 					b.Run(fmt.Sprintf("%dx%dx%d/depth=%d/moving=%t", size[0], size[1], levels, depth, moving), func(b *testing.B) {
 						dense := os.Getenv("GOZEN_SPACE_BENCH_DENSE") == "1"
 						fixture := spaceScalingFixture(b, size[0], size[1], levels, dense)
+						spriteCount := 0
+						if raw := os.Getenv("GOZEN_SPACE_BENCH_SPRITES"); raw != "" {
+							var err error
+							spriteCount, err = strconv.Atoi(raw)
+							if err != nil || spriteCount < 0 || spriteCount > 256 {
+								b.Fatal("GOZEN_SPACE_BENCH_SPRITES must be in [0, 256]")
+							}
+							addSpaceBenchmarkSprites(b, fixture, spriteCount)
+						}
 						fixture["data/world.yaml"].Data = bytes.Replace(fixture["data/world.yaml"].Data, []byte("depth: 16"), fmt.Appendf(nil, "depth: %d", depth), 1)
 						root := b.TempDir()
 						game := filepath.Join(root, "game")
@@ -327,6 +338,9 @@ func BenchmarkGraphicsSpaceScaling(b *testing.B) {
 							if dense {
 								b.ReportMetric(1, "dense")
 							}
+							if spriteCount > 0 {
+								b.ReportMetric(float64(spriteCount), "sprites")
+							}
 							for name, values := range map[string][]float64{"draw": draws, "update": updates, "fps": fps, "tps": tps} {
 								slices.Sort(values)
 								b.ReportMetric(values[len(values)/2], name+"-p50")
@@ -396,5 +410,170 @@ func TestGraphicsSpaceConditionalOccupancy(t *testing.T) {
 		if name != "closed" && changed != 0 {
 			t.Errorf("%s retained stale geometry: %d changed pixels", name, changed)
 		}
+	}
+}
+
+func TestGraphicsSpaceSprites(t *testing.T) {
+	t.Parallel()
+	out := t.TempDir()
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	trace := filepath.Join(out, "trace.jsonl")
+	cmd := exec.CommandContext(ctx, hostBin, "--build-info", "--dir", "../../examples/space-town/game", "--dev", "--mute", "--start", "inn", "--script", "../../scripts/capture-space-town.txt", "--shots", out, "--trace", trace, "--save-dir", filepath.Join(out, "saves")) //nolint:gosec // Fixed host, public fixture and isolated outputs.
+	cmd.Env = append(os.Environ(), "GOZEN_DEBUG=1")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	start := time.Now()
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("town: %v\n%s\n%s", err, &stdout, &stderr)
+	}
+	logGraphicsTiming(t, start, stderr.String())
+	content, err := os.ReadFile(trace) //nolint:gosec // Trace is in this test's temporary directory.
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]struct{ level, x, y int }{"street": {0, 3, 8}, "ground-npc": {0, 4, 6}, "mid-stair": {0, 3, 6}, "turn-back": {0, 3, 7}, "landing": {1, 3, 4}, "bed": {1, 4, 3}, "upper-npc": {1, 4, 6}, "returned": {0, 3, 8}, "reloaded": {0, 3, 8}}
+	shot := ""
+	for line := range bytes.SplitSeq(content, []byte("\n")) {
+		if len(line) == 0 {
+			continue
+		}
+		var row struct {
+			T, File, Location string
+			Level             int
+			Pos               []int
+		}
+		if err := json.Unmarshal(line, &row); err != nil {
+			t.Fatal(err)
+		}
+		if row.T == "shot" {
+			shot = strings.TrimSuffix(filepath.Base(row.File), ".png")
+		}
+		if row.T == "state" {
+			if row.Location != "inn" {
+				t.Fatalf("left continuous town: %s", row.Location)
+			}
+			if expected, ok := want[shot]; ok {
+				if row.Level != expected.level || len(row.Pos) != 2 || row.Pos[0] != expected.x || row.Pos[1] != expected.y {
+					t.Fatalf("%s: %+v", shot, row)
+				}
+				delete(want, shot)
+			}
+			shot = ""
+		}
+	}
+	if len(want) != 0 {
+		t.Fatalf("missing checkpoints %v", want)
+	}
+	colored := func(name string, red bool) int {
+		img := shotImage(t, out, name)
+		n := 0
+		b := img.Bounds()
+		for y := b.Dy() / 4; y < b.Dy()*3/4; y++ {
+			for x := b.Dx() / 5; x < b.Dx()*4/5; x++ {
+				r, g, blue, _ := img.At(x, y).RGBA()
+				if (!red && g > r*2 && g > blue*3/2) || (red && r > g*2 && r > blue*2) {
+					n++
+				}
+			}
+		}
+		return n
+	}
+	for _, name := range []string{"ground-npc", "upper-npc"} {
+		if colored(name, false) < 100 {
+			t.Errorf("%s has no visible innkeeper", name)
+		}
+	}
+	for _, name := range []string{"ground-used", "upper-used"} {
+		if n := colored(name, false); n != 0 {
+			t.Errorf("%s retains %d green pixels after once", name, n)
+		}
+	}
+	if colored("bed", true) < 100 {
+		t.Error("upstairs bed is not visible")
+	}
+}
+
+func TestGraphicsSpaceSpriteOcclusion(t *testing.T) {
+	for _, kind := range []string{"open", "wall", "slab", "stairs"} {
+		t.Run(kind, func(t *testing.T) {
+			out := t.TempDir()
+			game := filepath.Join(out, "game")
+			if err := os.CopyFS(game, os.DirFS("../../examples/space-town/game")); err != nil {
+				t.Fatal(err)
+			}
+			lower, upper := make([]string, 7), make([]string, 7)
+			for i := range lower {
+				lower[i] = "......."
+				upper[i] = "_______"
+			}
+			put := func(rows []string, x, y int, ch byte) { row := []byte(rows[y]); row[x] = ch; rows[y] = string(row) }
+			put(lower, 3, 5, 'S')
+			put(lower, 3, 2, 'N')
+			stairs := ""
+			switch kind {
+			case "wall":
+				put(lower, 3, 3, '#')
+			case "slab":
+				put(lower, 3, 2, '.')
+				for i := range upper {
+					upper[i] = "......."
+				}
+				put(upper, 3, 2, 'N')
+			case "stairs":
+				put(lower, 3, 2, '.')
+				put(lower, 3, 0, 'N')
+				put(upper, 3, 1, '.')
+				stairs = "\n        stairs: [{level: 1, x: 3, y: 4, facing: north, length: 3}]"
+			}
+			source, err := os.ReadFile("../../examples/space-town/game/data/world.yaml")
+			if err != nil {
+				t.Fatal(err)
+			}
+			prefix, _, _ := strings.Cut(string(source), "locations:")
+			world := prefix + fmt.Sprintf("locations:\n  inn:\n    name: Occlusion\n    dungeon:\n      depth: 16\n      darkness: 0\n      tiles:\n        S: {start: true, facing: north}\n        N: {picture: innkeeper.png, size: 0.6, when: 'not flag.hide', else: '.'}\n      space:\n        levels: [%q, %q]%s\n", strings.Join(lower, "\n"), strings.Join(upper, "\n"), stairs)
+			if err := os.WriteFile(filepath.Join(game, "data", "world.yaml"), []byte(world), 0o600); err != nil { //nolint:gosec // Generated fixture under this test's private temporary directory.
+				t.Fatal(err)
+			}
+			if _, err := gamedata.Load(os.DirFS(game)); err != nil {
+				t.Fatal(err)
+			}
+			script := filepath.Join(out, "script.txt")
+			if err := os.WriteFile(script, []byte("wait 40\nshot visible\ndo {set: {flag.hide: true}}\nwait 20\nshot control\nquit\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, hostBin, "--dir", game, "--dev", "--mute", "--start", "inn", "--script", script, "--shots", out, "--save-dir", filepath.Join(out, "saves")) //nolint:gosec // Generated fixture and fixed graphics host.
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("%v\n%s\n%s", err, &stdout, &stderr)
+			}
+			a, b := shotImage(t, out, "visible"), shotImage(t, out, "control")
+			bounds := a.Bounds()
+			changed := 0
+			for y := bounds.Dy() / 4; y < bounds.Dy()*3/4; y++ {
+				for x := bounds.Dx() / 4; x < bounds.Dx()*3/4; x++ {
+					ar, ag, ab, _ := a.At(x, y).RGBA()
+					br, bg, bb, _ := b.At(x, y).RGBA()
+					if abs(int(ar)-int(br)) > 257 || abs(int(ag)-int(bg)) > 257 || abs(int(ab)-int(bb)) > 257 {
+						changed++
+					}
+				}
+			}
+			if kind == "open" {
+				if changed < 100 {
+					t.Fatal("positive control has no visible sprite")
+				}
+				// This point lies in the image's transparent upper-left margin.
+				x, y := bounds.Dx()/2-65, bounds.Dy()/2-70
+				if a.At(x, y) != b.At(x, y) {
+					t.Fatal("transparent margin changed the background")
+				}
+			} else if changed != 0 {
+				t.Fatalf("sprite leaked through %s: %d pixels", kind, changed)
+			}
+		})
 	}
 }

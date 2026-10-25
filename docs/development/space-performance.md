@@ -95,3 +95,28 @@ The additional dense 64 × 64 × 8 / depth 16 comparison used two runs per camer
 | moving | 3.134 | 0.283 |
 
 The optimization removes a demonstrated CPU cost while leaving the geometry, draw distance and internal resolution intact. It does not establish a GPU bottleneck or promise higher FPS. Profile a representative game on its target device before adding larger bounds or a different renderer.
+
+## Upright sprite counts
+
+The billboard pass reuses the occupancy cache to collect tile pictures. It culls by full projected image bounds, sorts visible planes by camera depth, then submits one clipped quad per visible image. Each sprite shader checks the shared terrain intersections only for nontransparent image pixels. This avoids a second full-screen terrain pass, but overlapping billboards still repeat ray work and increase draw submissions.
+
+Set `GOZEN_SPACE_BENCH_SPRITES` to 0, 16 or 64 with the same harness:
+
+```sh
+LIBGL_ALWAYS_SOFTWARE=1 GOZEN_SPACE_BENCH_SPRITES=16 xvfb-run -a \
+  go test -tags=graphics ./internal/play -run '^$' \
+  -bench '^BenchmarkGraphicsSpaceScaling/48x40x3/depth=16' -benchtime=1x -count=2
+```
+
+`addSpaceBenchmarkSprites` places the original transparent innkeeper image on existing floor cells, without changing geometry, movement or collision. Counts are total placed images, not guaranteed simultaneously visible images: the stationary and moving cameras cull different subsets. These runs used the same environment and resolution described above, with no other test suite running concurrently. Each row is the mean of two run-level sampled percentiles; timing columns are milliseconds.
+
+| Images | Camera | Draw p50 | Draw p95 | Update p50 | Update p95 | FPS p50 | TPS p50 |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | stationary | 0.232 | 0.285 | 0.029 | 0.034 | 59.95 | 60.00 |
+| 0 | moving | 0.330 | 0.400 | 0.035 | 0.044 | 60.00 | 60.00 |
+| 16 | stationary | 0.285 | 0.319 | 0.029 | 0.035 | 57.50 | 60.00 |
+| 16 | moving | 0.428 | 0.444 | 0.034 | 0.091 | 26.15 | 59.95 |
+| 64 | stationary | 0.257 | 0.311 | 0.028 | 0.040 | 54.45 | 59.85 |
+| 64 | moving | 0.279 | 0.330 | 0.028 | 0.042 | 60.00 | 60.00 |
+
+The 16-image moving runs recorded lower FPS even though the 64-image moving runs sustained 60. These short software-rendered samples do not establish a monotonic sprite-count cost or a cause for that variability. They also do not establish hardware GPU latency or a 60 FPS guarantee. The separate Lantern Inn correctness route completed at a final sampled 60 FPS / 60 TPS; correctness assertions cover visibility, transparency, occlusion and level transitions independently of these measurements.

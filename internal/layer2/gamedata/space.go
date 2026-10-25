@@ -2,6 +2,7 @@ package gamedata
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"unicode/utf8"
 
@@ -175,8 +176,16 @@ func (c *checker) space(w string, d *Dungeon, used map[rune]bool) {
 		c.errorf(diag.Shape, w, "space does not support themes, door pictures or conditional looks")
 	}
 	for name, t := range d.Tiles {
-		if name == "_" || t.Picture.File != "" {
-			c.errorf(diag.Shape, w+".tiles."+name, "space reserves underscore for open air and does not support tile pictures")
+		if name == "_" {
+			c.errorf(diag.Shape, w+".tiles."+name, "space reserves underscore for open air")
+		}
+		if t.Picture.File != "" {
+			if t.Flat || t.Away || t.Look != "floor" {
+				c.errorf(diag.Shape, w+".tiles."+name, "space tile pictures must be upright floor billboards; wall, door and flat pictures are unsupported")
+			}
+			if math.IsNaN(t.Size) || math.IsInf(t.Size, 0) || t.Size <= 0 || t.Size > 16 {
+				c.errorf(diag.OutOfRange, w+".tiles."+name+".size", "space sprite size must be finite and in (0, 16]")
+			}
 		}
 		if t.Slide != "" || t.Spin != "" {
 			c.errorf(diag.Shape, w+".tiles."+name, "space tiles cannot slide or spin")

@@ -1,0 +1,50 @@
+gap 24
+wait 40
+shot street
+press right
+press up
+press left
+shot approach
+press up 2
+press right
+shot ground-npc
+press z 2
+wait 20
+shot ground-used
+press right
+press up 2
+press right
+press up
+press right
+press up 2
+shot mid-stair
+press down
+press up
+shot turn-back
+press down
+press up 3
+shot landing
+press up
+press right
+press up
+shot bed
+press z 2
+wait 20
+press right
+press up 3
+press left
+shot upper-npc
+press z 2
+wait 20
+shot upper-used
+press left
+press up 2
+press left
+press up
+press left
+press up 4
+shot returned
+press reload
+wait 30
+shot reloaded
+quit

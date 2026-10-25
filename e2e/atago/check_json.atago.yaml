@@ -2,6 +2,20 @@ version: '1'
 suite:
   name: gozen check --format json and the schema version 2 words
 scenarios:
+- name: stacked space with upright pictures validates in text and JSON
+  steps:
+  - run:
+      command: gozen check "${specdir}/../../examples/space-town/game"
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+  - run:
+      command: gozen check "${specdir}/../../examples/space-town/game" --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json: {path: $.data, equals: []}
+      stderr: {equals: ''}
 - name: position level validates in text and JSON while unknown fields are rejected
   steps:
   - run:

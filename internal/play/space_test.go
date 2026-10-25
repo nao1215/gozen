@@ -424,3 +424,51 @@ func spaceFixtureValue[T any](tb testing.TB, value any) T {
 	}
 	return out
 }
+
+// addSpaceBenchmarkSprites decorates existing floor cells without changing
+// terrain, collision or camera. It uses the original public innkeeper image.
+func addSpaceBenchmarkSprites(tb testing.TB, fixture fstest.MapFS, count int) {
+	tb.Helper()
+	if count == 0 {
+		return
+	}
+	image, err := os.ReadFile("../../examples/space-town/game/assets/innkeeper.png")
+	if err != nil {
+		tb.Fatal(err)
+	}
+	fixture["assets/benchmark-npc.png"] = &fstest.MapFile{Data: image}
+	var root map[string]any
+	if err := yaml.Unmarshal(fixture["data/world.yaml"].Data, &root); err != nil {
+		tb.Fatal(err)
+	}
+	locations := spaceFixtureValue[map[string]any](tb, root["locations"])
+	location := spaceFixtureValue[map[string]any](tb, locations["courtyard"])
+	d := spaceFixtureValue[map[string]any](tb, location["dungeon"])
+	tiles := spaceFixtureValue[map[string]any](tb, d["tiles"])
+	tiles["P"] = map[string]any{"picture": "benchmark-npc.png", "size": .6}
+	space := spaceFixtureValue[map[string]any](tb, d["space"])
+	levels := spaceFixtureValue[[]any](tb, space["levels"])
+	placed := 0
+	for level, raw := range levels {
+		rows := strings.Split(spaceFixtureValue[string](tb, raw), "\n")
+		for y := min(14, len(rows)-1); y >= 0 && placed < count; y-- {
+			row := []byte(rows[y])
+			for x := range row {
+				if row[x] == '.' && placed < count {
+					row[x] = 'P'
+					placed++
+				}
+			}
+			rows[y] = string(row)
+		}
+		levels[level] = strings.Join(rows, "\n")
+	}
+	if placed != count {
+		tb.Fatalf("placed %d of %d sprites", placed, count)
+	}
+	content, err := yaml.Marshal(root)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	fixture["data/world.yaml"].Data = content
+}

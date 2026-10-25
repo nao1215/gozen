@@ -1,14 +1,3 @@
-//kage:unit pixels
-package main
-
-// Kage source 1–3 samplers take source-0 coordinates and translate origins
-// internally. Keep source-0 origin even when the material images are subimages.
-var Eye vec3
-var Facing float
-var ViewSize vec2
-var MapSize vec2
-var Levels float
-var Far float
 var FloorColor vec3
 var CeilingColor vec3
 var Darkness float
@@ -18,6 +7,7 @@ var FloorTint vec3
 var CeilingTint vec3
 var SkyTint vec3
 var HasSky float
+
 
 // Trace sunlight through the same bounded occupancy used for visible geometry.
 // Horizontal slabs occlude the sky even where there is no full-height wall.
@@ -40,19 +30,6 @@ func sunlight(point, normal vec3) float {
  return max(0,dot(normal,light))
 }
 
-func cell(p vec3) vec3 {
- if p.x<0 || p.z<0 || p.y<0 || p.x>=MapSize.x || p.z>=MapSize.y || p.y>=Levels { return vec3(0) }
- return floor(imageSrc0UnsafeAt(imageSrc0Origin()+vec2(p.x+.5,p.z+p.y*64+.5)).rgb*255+.5)
-}
-
-// The first positive intersection with a bounded horizontal surface.
-func horizontal(eye,ray vec3, h, lo,hi float) float {
- if abs(ray.y)<.00001 {return 10000}
- t:=(h-eye.y)/ray.y
- if t>=lo-.0001 && t<=hi+.0001 {return max(t,lo)}
- return 10000
-}
-
 // Match distant clipping to the horizon instead of drawing a dark wall
 // across an outdoor view. Downward rays fade into ground, never sky.
 func backdrop(ray vec3) vec3 {
@@ -67,79 +44,9 @@ func backdrop(ray vec3) vec3 {
 }
 
 func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
- pixel:=dst.xy-imageDstOrigin()
- sx:=(pixel.x-ViewSize.x*.5)/(ViewSize.y*.9)
- sy:=(pixel.y-ViewSize.y*.42)/(ViewSize.y*.9)
- ray:=normalize(vec3(sin(Facing)+sx*cos(Facing),-sy,-cos(Facing)+sx*sin(Facing)))
- p:=floor(vec3(Eye.x,Eye.y/1.5,Eye.z))
- step:=vec3(1)
- if ray.x<0 {step.x=-1};if ray.y<0 {step.y=-1};if ray.z<0 {step.z=-1}
- delta:=vec3(1/max(abs(ray.x),.00001),1.5/max(abs(ray.y),.00001),1/max(abs(ray.z),.00001))
- edge:=vec3(p.x,p.y*1.5,p.z)
- if step.x>0 {edge.x+=1};if step.y>0 {edge.y+=1.5};if step.z>0 {edge.z+=1}
- next:=abs((edge-Eye)/vec3(max(abs(ray.x),.00001),max(abs(ray.y),.00001),max(abs(ray.z),.00001)))
- lo:=float(0)
- normal:=vec3(0,1,0)
- for iter:=0;iter<96;iter++ {
-  hi:=min(next.x,min(next.y,next.z))
-  if p.y>=Levels && ray.y>0 {break}
-  // Clip by horizontal grid depth. Looking down from an upper story must
-  // still reach the floor below instead of exposing sky at the distance limit.
-  limit:=Far/max(length(ray.xz),.001)
-  if lo>limit {return vec4(backdrop(ray),1)}
-  c:=cell(p)
-  hit:=float(10000)
-  face:=normal
-  if c.x==2 {hit=lo}
-  if c.x==1 {hit=horizontal(Eye,ray,p.y*1.5,lo,hi);face=vec3(0,1,0)}
-  if c.x==3 {
-   // Measure the rise from the first cell edge to the landing edge.
-   // Cell-center offsets alone omit half a cell of the run's rise.
-   length:=mod(c.y,16)
-   direction:=floor(c.y/16)
-   axis:=vec3(0,0,-1)
-   if direction==1 {axis=vec3(1,0,0)};if direction==2 {axis=vec3(0,0,1)};if direction==3 {axis=vec3(-1,0,0)}
-   center:=vec3(p.x+.5,0,p.z+.5)
-   origin:=dot(Eye-center,axis)
-   velocity:=dot(ray,axis)
-   // A staircase is a solid stepped volume, not a collection of floating planes.
-   // Close the side faces at the cell entry and the underside at the story base.
-   entry:=Eye+ray*lo
-   alongEntry:=clamp(dot(entry-center,axis),-.49999,.49999)
-   tread:=floor((alongEntry+.5)*4)
-   top:=p.y*1.5+max(0,c.z+(tread+1)*.25)/length*1.5
-   if entry.y>=p.y*1.5 && entry.y<=top {hit=lo;face=normal}
-   if ray.y>0 {
-    t:=horizontal(Eye,ray,p.y*1.5,lo,hi)
-    if t<hit {hit=t;face=vec3(0,-1,0)}
-   }
-   for j:=0;j<4;j++ {
-    a:=-.5+float(j)*.25
-    b:=a+.25
-    height:=p.y*1.5+max(0,c.z+b+.5)/length*1.5
-    t:=horizontal(Eye,ray,height,lo,hi)
-    along:=origin+t*velocity
-    if along>=a-.0001 && along<=b+.0001 && t<hit {hit=t;face=vec3(0,1,0)}
-    if abs(velocity)>.00001 {
-     t=(a-origin)/velocity
-     y:=Eye.y+t*ray.y
-     low:=p.y*1.5+max(0,c.z+a+.5)/length*1.5
-     if t>=lo-.0001 && t<=hi+.0001 && y>=low && y<=height && t<hit {hit=max(t,lo);face=axis}
-    }
-   }
-  }
-  // Upper floors extend below their walking surface, so atrium edges and
-  // overhangs expose a closed slab rather than a zero-thickness plane.
-  above:=cell(p+vec3(0,1,0))
-  if above.x>0 {
-   underside:=(p.y+1)*1.5-.15
-   entry:=Eye+ray*lo
-   slabHit:=horizontal(Eye,ray,underside,lo,hi)
-   slabFace:=vec3(0,-1,0)
-   if entry.y>=underside {slabHit=lo;slabFace=normal}
-   if slabHit<hit {hit=slabHit;face=slabFace;c=vec3(4,0,0)}
-  }
-  if hit<=hi+.0001 && hit<=limit {
+ ray:=viewRay(dst.xy-imageDstOrigin())
+ hit,face,c:=geometry(ray)
+ if hit<10000 {
    point:=Eye+ray*hit
    if dot(face,ray)>0 {face=-face}
    col:=FloorColor
@@ -167,8 +74,6 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
    light*=.82+.18*abs(face.y)
    fog:=exp(-hit*Darkness*.11)
    return vec4(mix(backdrop(ray),col*light,fog),1)
-  }
-  if next.x<=next.y && next.x<=next.z {lo=next.x;next.x+=delta.x;p.x+=step.x;normal=vec3(-step.x,0,0)} else if next.y<=next.z {lo=next.y;next.y+=delta.y;p.y+=step.y;normal=vec3(0,-step.y,0)} else {lo=next.z;next.z+=delta.z;p.z+=step.z;normal=vec3(0,0,-step.z)}
  }
  return vec4(backdrop(ray),1)
 }
