@@ -39,9 +39,13 @@ type fieldContract struct {
 
 // Types, numeric contracts and command tags are read from the implementation. Only context-dependent inheritance and references are supplemented.
 var schemaDefaults = map[string]string{
-	"StoneSet.family": "省略時は従来の名前による系列。明示 ID とは別系列",
-	"Fonts.regular":   "同梱の Go Regular（ラテン文字のみ）",
-	"GalleryScene.id": "省略時は従来のフラグまたはイベントと題名によるキー", "GalleryScene.legacy_keys": "旧キーからの引き継ぎなし",
+	"Atlas.travel_speed": "0.12 picture widths per second",
+	"Stage.walk_speed":   "1.6 meters per second",
+	"Space.step_ticks":   "18 ticks at 60 updates per second",
+	"Space.turn_ticks":   "18 ticks at 60 updates per second",
+	"StoneSet.family":    "省略時は従来の名前による系列。明示 ID とは別系列",
+	"Fonts.regular":      "同梱の Go Regular（ラテン文字のみ）",
+	"GalleryScene.id":    "省略時は従来のフラグまたはイベントと題名によるキー", "GalleryScene.legacy_keys": "旧キーからの引き継ぎなし",
 	"GalleryScene.pages": "頁選択なし。先頭から再生", "GalleryPage.picture": "回想開始から台詞と問いを数える", "GalleryPage.answers": "未指定の選択肢で止まる",
 	"Game.schema_version": "0（旧仕様）", "Game.language": "en（英語）", "Game.data_version": "0（未管理）",
 	"Game.equip_slots": "weapon・armor・accessory の３枠", "Game.id": "旧版は空文字。新版は必須。標準保存先の準備には空でない ID が必要",
@@ -333,6 +337,11 @@ func schemaContract(owner reflect.Type, field reflect.StructField, name string) 
 		c.Version = "３"
 	}
 	switch key {
+	case "Atlas.travel_speed", "Stage.walk_speed", "Space.step_ticks", "Space.turn_ticks":
+		c.Zero = "Uses the default"
+		if owner == reflect.TypeFor[Space]() {
+			c.Version = "8"
+		}
 	case "GalleryPage.line":
 		c.Zero = "両版で拒否"
 	case "Affect.turns":

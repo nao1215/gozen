@@ -1,12 +1,36 @@
 package play
 
 import (
+	"math"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/nao1215/gozen/internal/event"
+	"github.com/nao1215/gozen/internal/layer1/geom"
 )
+
+func TestAtlasTravelSpeed(t *testing.T) {
+	g, s := wldAtlas(t, "fx_mark")
+	for _, speed := range []float64{0, 0.12, 0.24, 2} {
+		g.db.Locations["fx_mark"].Map.TravelSpeed = speed
+		s.path = geom.Polyline{{X: 0, Y: 100}, {X: 80, Y: 100}}
+		s.walked = 0
+		ticks := 0
+		for len(s.path) > 0 && ticks < 200 {
+			s.walk(g)
+			ticks++
+		}
+		rate := speed
+		if rate == 0 {
+			rate = 0.12
+		}
+		want := int(math.Ceil(80 / (rate * tickSecond * 320)))
+		if abs(ticks-want) > 1 || s.at != (geom.Pt{X: 80, Y: 100}) {
+			t.Fatalf("speed %g: %d ticks, want %d; endpoint %v", speed, ticks, want, s.at)
+		}
+	}
+}
 
 // Maps (docs/architecture/scenes.md, ADR 0022): a map location shows one picture with points
 // joined by roads; the token stands on the current point (the rules' Spot) and walks along
@@ -99,30 +123,35 @@ func TestWldAtlasUnknownModes(t *testing.T) {
 }
 
 func TestWldAtlasWalkRunsStepsAndPointDoOnce(t *testing.T) {
-	covSlow(t)
-	g, as := wldAtlas(t, "fx_mark")
-	steps := g.st.Steps
-	wldPlay(t, g, "walk shrine\nwait 5\n", 100)
-	wldSettle(t, g, as, 1500)
-	if g.st.Spot != "shrine" {
-		t.Fatalf("the party stands on %q after the walk", g.st.Spot)
-	}
-	if !g.st.Flags["prayed"] {
-		t.Fatal("the point's do did not run on arriving")
-	}
-	if got := g.st.Steps - steps; got != 3 {
-		t.Fatalf("the road home-shrine has steps 3, the step count rose by %d", got)
-	}
-	// once: a point that has run once does not appear again
-	wldPlay(t, g, "walk home\nwait 5\n", 100)
-	wldSettle(t, g, as, 1500)
-	if g.st.Spot != "home" || !g.st.Flags["home_seen"] {
-		t.Fatalf("spot %q, home_seen %v", g.st.Spot, g.st.Flags["home_seen"])
-	}
-	for _, c := range as.choices {
-		if c.Point == "shrine" {
-			t.Fatal("a once point that has run is still offered")
-		}
+	for _, speed := range []float64{0, 0.24, 2} {
+		t.Run(strconv.FormatFloat(speed, 'f', -1, 64), func(t *testing.T) {
+			covSlow(t)
+			g, as := wldAtlas(t, "fx_mark")
+			g.db.Locations["fx_mark"].Map.TravelSpeed = speed
+			steps := g.st.Steps
+			wldPlay(t, g, "walk shrine\nwait 5\n", 100)
+			wldSettle(t, g, as, 1500)
+			if g.st.Spot != "shrine" {
+				t.Fatalf("the party stands on %q after the walk", g.st.Spot)
+			}
+			if !g.st.Flags["prayed"] {
+				t.Fatal("the point's do did not run on arriving")
+			}
+			if got := g.st.Steps - steps; got != 3 {
+				t.Fatalf("the road home-shrine has steps 3, the step count rose by %d", got)
+			}
+			// once: a point that has run once does not appear again
+			wldPlay(t, g, "walk home\nwait 5\n", 100)
+			wldSettle(t, g, as, 1500)
+			if g.st.Spot != "home" || !g.st.Flags["home_seen"] {
+				t.Fatalf("spot %q, home_seen %v", g.st.Spot, g.st.Flags["home_seen"])
+			}
+			for _, c := range as.choices {
+				if c.Point == "shrine" {
+					t.Fatal("a once point that has run is still offered")
+				}
+			}
+		})
 	}
 }
 
@@ -209,22 +238,27 @@ func TestWldAtlasListOpensAndChooses(t *testing.T) {
 // The encounters of a road are rolled for each of its steps when the token has walked it, before
 // the party arrives at the point (docs/architecture/scenes.md); a calm test play rolls none.
 func TestWldAtlasRoadBattleComesBeforeArrival(t *testing.T) {
-	g, as := wldAtlas(t, "fx_mark", true)
-	wldPlay(t, g, "walk shrine\nwait 5\n", 200)
-	for range 600 {
-		wldFrames(t, g, 1)
-		if g.currentBattle() != nil {
-			break
-		}
-	}
-	if g.currentBattle() == nil {
-		t.Fatalf("no battle on the road (spot %q, walking %v)", g.st.Spot, as.walking())
-	}
-	if g.st.Spot == "shrine" || g.st.Flags["prayed"] {
-		t.Fatalf("the party had arrived (spot %q) when the battle on the road began", g.st.Spot)
-	}
-	if g.st.Steps < 3 {
-		t.Fatalf("the road's 3 steps were not counted: %d", g.st.Steps)
+	for _, speed := range []float64{0, 0.24, 2} {
+		t.Run(strconv.FormatFloat(speed, 'f', -1, 64), func(t *testing.T) {
+			g, as := wldAtlas(t, "fx_mark", true)
+			g.db.Locations["fx_mark"].Map.TravelSpeed = speed
+			wldPlay(t, g, "walk shrine\nwait 5\n", 200)
+			for range 600 {
+				wldFrames(t, g, 1)
+				if g.currentBattle() != nil {
+					break
+				}
+			}
+			if g.currentBattle() == nil {
+				t.Fatalf("no battle on the road (spot %q, walking %v)", g.st.Spot, as.walking())
+			}
+			if g.st.Spot == "shrine" || g.st.Flags["prayed"] {
+				t.Fatalf("the party had arrived (spot %q) when the battle on the road began", g.st.Spot)
+			}
+			if g.st.Steps < 3 {
+				t.Fatalf("the road's 3 steps were not counted: %d", g.st.Steps)
+			}
+		})
 	}
 }
 

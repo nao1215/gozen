@@ -214,3 +214,18 @@ func hasRecruitMonster(img image.Image) bool {
 	}
 	return blue > 250
 }
+
+// logGraphicsTiming separates fixed-script elapsed time from sampled rendering speed.
+func logGraphicsTiming(t *testing.T, started time.Time, diagnostic string) {
+	t.Helper()
+	sample := ""
+	for line := range strings.SplitSeq(diagnostic, "\n") {
+		if strings.Contains(line, " fps ") && strings.Contains(line, " tps ") {
+			sample = line
+		}
+	}
+	if sample == "" {
+		t.Fatal("graphics run did not report FPS/TPS")
+	}
+	t.Logf("fixed-script elapsed %s; last frame sample: %s", time.Since(started).Round(time.Millisecond), sample)
+}

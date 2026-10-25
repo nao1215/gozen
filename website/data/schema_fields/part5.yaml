@@ -122,6 +122,7 @@ Spot:
   once: "Run `do` only the first time."
   start: "Stand here when arriving without a named spot."
 Stage:
+  walk_speed: "Player walking speed in meters per second, shared by keyboard and click-to-walk. Omitted or 0 means 1.6; otherwise 0.1 to 6.4, finite. NPC speeds are independent."
   _: "A location shown as a painted background seen from a fixed camera, with people as small dolls walking in it."
   blocks: "Polygons where feet may not go, cut out of the walkable area."
   camera: "How many degrees the camera looks down, used to draw the dolls. The default is 30."

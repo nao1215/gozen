@@ -1,4 +1,6 @@
 Space:
+  step_ticks: "Camera interpolation duration for one step at 60 updates per second. Omitted or 0 means 18 ticks; otherwise 1 to 120."
+  turn_ticks: "Camera interpolation duration for a turn at 60 updates per second. Omitted or 0 means 18 ticks; otherwise 1 to 120, independent of step_ticks."
   _: "A bounded stack of equal-sized maps (schema version 8). Blank cells are open air; levels are ordered bottom to top."
   sky: "Optional sky panorama: horizontal wrapping, zenith at the top and horizon at the bottom. Supports picture tint and brightness."
   levels: "One to eight equal rectangular maps, each 3 to 64 cells wide and high."

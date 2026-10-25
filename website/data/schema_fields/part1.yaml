@@ -48,6 +48,7 @@ Aside:
   skip: "Patterns of event names. The aside is not inserted while one of these events, or an event it calls, is running."
   when: "An expression that decides whether the aside is inserted."
 Atlas:
+  travel_speed: "Token travel in picture widths per second, per location. Omitted or 0 means 0.12; otherwise 0.01 to 2, finite. Does not change road steps or encounters."
   _: "A location shown as a picture with points and roads. Needs schema version 3."
   draw_roads: "If true, the roads are drawn over the picture. By default they are only the paths the token walks along. Default false."
   label_size: "The height of the point name plates as a fraction of the screen height. 0.03 when 0."

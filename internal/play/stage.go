@@ -224,26 +224,39 @@ func (s *stageScene) update(g *Game) {
 	if in.held[btnDown] {
 		dy--
 	}
-	switch {
-	case dx != 0 || dy != 0:
-		s.goal, s.then = nil, nil
-		l := math.Hypot(dx, dy)
-		to := s.sc.Move(s.player.at, dx/l*walkSpeed*tickSecond, dy/l*walkSpeed*tickSecond)
-		s.player.facing = geom.Pt{X: dx / l, Y: -dy / l}
-		if to != s.player.at && !s.crowded(to) {
-			s.player.step(to, s.sc)
+	speed := s.location(g).Stage.WalkSpeed
+	if speed == 0 {
+		speed = walkSpeed
+	}
+	// Keep each collision/trigger check within the original per-tick distance.
+	// Faster movement consumes several bounded steps, stopping at the first event.
+	steps := max(1, int(math.Ceil(speed/walkSpeed)))
+	distance := speed * tickSecond / float64(steps)
+	for range steps {
+		switch {
+		case dx != 0 || dy != 0:
+			s.goal, s.then = nil, nil
+			l := math.Hypot(dx, dy)
+			to := s.sc.Move(s.player.at, dx/l*distance, dy/l*distance)
 			s.player.facing = geom.Pt{X: dx / l, Y: -dy / l}
-		} else {
+			if to != s.player.at && !s.crowded(to) {
+				s.player.step(to, s.sc)
+				s.player.facing = geom.Pt{X: dx / l, Y: -dy / l}
+			} else {
+				s.player.moving = false
+			}
+		case s.goal != nil:
+			s.walkOn(g, distance)
+		default:
 			s.player.moving = false
 		}
-	case s.goal != nil:
-		s.walkOn(g)
-	default:
-		s.player.moving = false
-	}
-	if s.leave(g) || s.stepOn(g) {
-		s.reachOK = false
-		return
+		if s.leave(g) || s.stepOn(g) {
+			s.reachOK = false
+			return
+		}
+		if g.busy() {
+			return
+		}
 	}
 	s.reach, s.reachOK = s.near(g)
 	if in.ok() && s.goal == nil {
@@ -311,7 +324,7 @@ func (s *stageScene) walkTo(p geom.Pt, spot string, then *world.Entry) {
 
 // walkOn takes a step along the way toward the goal; on arriving (or when the way is
 // blocked for a while) it stops and takes the waiting entry.
-func (s *stageScene) walkOn(g *Game) {
+func (s *stageScene) walkOn(g *Game, distance float64) {
 	next := *s.goal
 	for len(s.way) > 1 {
 		if _, _, d := s.sc.Toward(s.player.at, s.way[0], 1); d > 0.05 {
@@ -323,7 +336,7 @@ func (s *stageScene) walkOn(g *Game) {
 	if len(s.way) > 0 {
 		next = s.way[0]
 	}
-	dx, dy, _ := s.sc.Toward(s.player.at, next, walkSpeed*tickSecond)
+	dx, dy, _ := s.sc.Toward(s.player.at, next, distance)
 	_, _, left := s.sc.Toward(s.player.at, *s.goal, 1)
 	if len(s.way) > 1 {
 		_, _, left = s.sc.Toward(s.player.at, next, 1)

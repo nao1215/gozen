@@ -49,6 +49,10 @@ func (q Polygon) Poly() geom.Poly {
 // people as small dolls walking in it (stage:). The location's background is the
 // painting; its people, actions and exits are the usual ones, given a place here.
 type Stage struct {
+	// WalkSpeed controls player keyboard and click walking in the stage renderer,
+	// in meters per second. Zero selects 1.6; finite explicit speeds are [0.1, 6.4].
+	// It does not change NPC path speeds.
+	WalkSpeed float64 `yaml:"walk_speed"`
 	// Depth is a 16-bit gray picture of the background's nearness (0 far .. 65535 near),
 	// as large as the background; without it nothing but fronts hides anyone.
 	Depth string `yaml:"depth"`
@@ -463,6 +467,9 @@ func (c *checker) bubbles(w string, bs []Bubble) {
 func (c *checker) stage(w, _ string, l *Location) {
 	s := l.Stage
 	w += ".stage"
+	if math.IsNaN(s.WalkSpeed) || math.IsInf(s.WalkSpeed, 0) || s.WalkSpeed != 0 && (s.WalkSpeed < 0.1 || s.WalkSpeed > 6.4) {
+		c.errorf(diag.OutOfRange, w+".walk_speed", "want 0 (default 1.6) or a finite speed in [0.1, 6.4] meters per second")
+	}
 	c.needsVersion(w, "stage", SchemaVersion3)
 	size, known := c.pictureSize(l.Background.File)
 	if l.Background.File == "" {

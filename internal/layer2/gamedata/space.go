@@ -11,6 +11,10 @@ import (
 // Space is an opt-in bounded stack of maps. Blank cells are open air; ordinary
 // floors and tiles provide surfaces. Levels are ordered from lowest to highest.
 type Space struct {
+	// StepTicks and TurnTicks are the presentation's independent camera durations
+	// at 60 updates per second. Zero selects 18; explicit durations are [1, 120].
+	StepTicks int `yaml:"step_ticks"`
+	TurnTicks int `yaml:"turn_ticks"`
 	// Sky is an optional horizontally wrapping upper-hemisphere panorama.
 	// Its top is the zenith and its bottom is the horizon; tint and brightness apply.
 	Sky    Picture      `yaml:"sky"`
@@ -117,6 +121,11 @@ func DungeonLevel(d *Dungeon, level int) *Dungeon {
 func (c *checker) space(w string, d *Dungeon, used map[rune]bool) {
 	s := d.Space
 	w += ".space"
+	for name, ticks := range map[string]int{"step_ticks": s.StepTicks, "turn_ticks": s.TurnTicks} {
+		if ticks < 0 || ticks > 120 {
+			c.errorf(diag.OutOfRange, w+"."+name, "want 0 (default 18) or ticks in [1, 120]")
+		}
+	}
 	c.needsVersion(w, "stacked spaces", SchemaVersion8)
 	c.picture(w+".sky", s.Sky)
 	if d.Map != "" || d.Generate != nil || len(d.Roamers) > 0 {

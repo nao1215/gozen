@@ -1,11 +1,70 @@
 package play
 
 import (
+	"math"
 	"strconv"
 	"testing"
 
 	"github.com/nao1215/gozen/internal/layer1/geom"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
+
+func TestStageFastWalkChecksNarrowAreas(t *testing.T) {
+	for _, obstacle := range []bool{false, true} {
+		t.Run(strconv.FormatBool(obstacle), func(t *testing.T) {
+			g, s, _ := wldStage(t)
+			st := g.db.Locations["fx_yard"].Stage
+			st.WalkSpeed = 6.4
+			area := data.Polygon{{61.1, 150}, {62.4, 150}, {62.4, 170}, {61.1, 170}}
+			if obstacle {
+				s.sc.Blocks = append(s.sc.Blocks, area.Poly())
+			} else {
+				for i := range st.Things {
+					if st.Things[i].ID == "trap" {
+						st.Things[i].Area = area
+					}
+				}
+			}
+			wldHold(t, g, 10, "right")
+			wldFrames(t, g, 10)
+			if obstacle && s.player.at.X >= 61.1 {
+				t.Fatalf("fast walking tunneled through a narrow block: %v", s.player.at)
+			}
+			if !obstacle && !g.st.Flags["trapped"] {
+				t.Fatalf("fast walking skipped a narrow step trigger: %v", s.player.at)
+			}
+		})
+	}
+}
+
+func TestStagePlayerSpeed(t *testing.T) {
+	for _, click := range []bool{false, true} {
+		var baseline float64
+		for _, speed := range []float64{0, 1.6, 3.2, 6.4} {
+			g, s, _ := wldStage(t)
+			g.db.Locations["fx_yard"].Stage.WalkSpeed = speed
+			start := s.player.at
+			if click {
+				s.walkTo(geom.Pt{X: 150, Y: start.Y}, "", nil)
+				wldFrames(t, g, 10)
+			} else {
+				wldHold(t, g, 10, "right")
+			}
+			distance := s.player.at.X - start.X
+			if speed == 0 {
+				baseline = distance
+			} else if want := baseline * speed / walkSpeed; math.Abs(distance-want) > 1e-7 {
+				t.Fatalf("click=%v speed=%g: displacement %g, want %g", click, speed, distance, want)
+			}
+			if distance <= 0 {
+				t.Fatal("player did not move")
+			}
+			if err := g.Close(); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+}
 
 // Painted scenes (docs/architecture/scenes.md, ADR 0022): the leader is a small doll walking with
 // the arrow keys at 1.6 m/s, kept inside the walk area and out of the blocks; OK takes what is
@@ -247,49 +306,59 @@ func wldStageReloadKeepsTheFeet(t *testing.T, g *Game, s *stageScene, dir string
 
 // The scenes bake dolls (a fraction of a second each), so one game serves the cases of a group.
 func TestWldStageWalking(t *testing.T) {
-	covSlow(t)
-	g, _, dir := wldStage(t)
-	steps := []struct {
-		name string
-		fn   func(*testing.T, *Game, *stageScene)
-	}{
-		{"arrival", wldStageArrivesOnStartSpotFacingIt},
-		{"arrow keys", wldStageArrowKeysWalkAndStayInsideWalkArea},
-		{"blocks", wldStageBlocksAreSolid},
-		{"script", wldStageScriptWalkToMissingSpotFails},
-		{"reload", func(t *testing.T, g *Game, s *stageScene) { wldStageReloadKeepsTheFeet(t, g, s, dir) }},
-		{"exit", wldStageExitAreaLeaves}, // leaves the yard: last
-	}
-	for _, c := range steps {
-		t.Run(c.name, func(t *testing.T) {
-			cur, ok := g.stack[0].(*stageScene) // a reload makes the scene again
-			if !ok {
-				t.Fatalf("scene %T", g.stack[0])
+	for _, speed := range []float64{0, 3.2, 6.4} {
+		t.Run(strconv.FormatFloat(speed, 'f', -1, 64), func(t *testing.T) {
+			covSlow(t)
+			g, _, dir := wldStage(t)
+			g.db.Locations["fx_yard"].Stage.WalkSpeed = speed
+			steps := []struct {
+				name string
+				fn   func(*testing.T, *Game, *stageScene)
+			}{
+				{"arrival", wldStageArrivesOnStartSpotFacingIt},
+				{"arrow keys", wldStageArrowKeysWalkAndStayInsideWalkArea},
+				{"blocks", wldStageBlocksAreSolid},
+				{"script", wldStageScriptWalkToMissingSpotFails},
+				{"reload", func(t *testing.T, g *Game, s *stageScene) { wldStageReloadKeepsTheFeet(t, g, s, dir) }},
+				{"exit", wldStageExitAreaLeaves}, // leaves the yard: last
 			}
-			c.fn(t, g, cur)
+			for _, c := range steps {
+				t.Run(c.name, func(t *testing.T) {
+					cur, ok := g.stack[0].(*stageScene) // a reload makes the scene again
+					if !ok {
+						t.Fatalf("scene %T", g.stack[0])
+					}
+					c.fn(t, g, cur)
+				})
+			}
 		})
 	}
 }
 
 func TestWldStageInteractions(t *testing.T) {
-	covSlow(t)
-	g, s, _ := wldStage(t)
-	steps := []struct {
-		name string
-		fn   func(*testing.T, *Game, *stageScene)
-	}{
-		{"balloons", wldStageBalloonsAppearOverNearbyPeople},
-		{"talk and examine", wldStageOKTalksToPersonAndExaminesThing},
-		{"step trigger", wldStageStepTriggerThingRunsOnEntering},
-		{"spot", wldStageWalkToSpotRunsItsDoOnce},
-		{"click", wldStageClickWalksAndTalks},
-		{"click a thing", wldStageClickExaminesAThing},
-		{"balloon size", wldStageBalloonSizeFollowsDistance},
-		{"list", wldStageListWalksToChosenEntry},
-	}
-	for _, c := range steps {
-		g.st.Flags["met_elder"] = false
-		t.Run(c.name, func(t *testing.T) { c.fn(t, g, s) })
+	for _, speed := range []float64{0, 3.2, 6.4} {
+		t.Run(strconv.FormatFloat(speed, 'f', -1, 64), func(t *testing.T) {
+			covSlow(t)
+			g, s, _ := wldStage(t)
+			g.db.Locations["fx_yard"].Stage.WalkSpeed = speed
+			steps := []struct {
+				name string
+				fn   func(*testing.T, *Game, *stageScene)
+			}{
+				{"balloons", wldStageBalloonsAppearOverNearbyPeople},
+				{"talk and examine", wldStageOKTalksToPersonAndExaminesThing},
+				{"step trigger", wldStageStepTriggerThingRunsOnEntering},
+				{"spot", wldStageWalkToSpotRunsItsDoOnce},
+				{"click", wldStageClickWalksAndTalks},
+				{"click a thing", wldStageClickExaminesAThing},
+				{"balloon size", wldStageBalloonSizeFollowsDistance},
+				{"list", wldStageListWalksToChosenEntry},
+			}
+			for _, c := range steps {
+				g.st.Flags["met_elder"] = false
+				t.Run(c.name, func(t *testing.T) { c.fn(t, g, s) })
+			}
+		})
 	}
 }
 

@@ -31,8 +31,14 @@ func TestSpaceValidation(t *testing.T) {
 	if _, err := data.Load(fixture); err != nil {
 		t.Fatalf("valid fixture: %v", err)
 	}
+	fixture["data/world.yaml"] = &fstest.MapFile{Data: []byte(strings.Replace(string(world), "      space:", "      space:\n        step_ticks: 9\n        turn_ticks: 6", 1))}
+	if _, err := data.Load(fixture); err != nil {
+		t.Fatalf("valid motion durations: %v", err)
+	}
 	for _, tc := range []struct{ name, old, new string }{
 		{"too short stair", "length: 4", "length: 2"},
+		{"negative step duration", "      space:", "      space:\n        step_ticks: -1"},
+		{"excessive turn duration", "      space:", "      space:\n        turn_ticks: 121"},
 		{"no lower level", "level: 1", "level: 0"},
 		{"too deep", "depth: 16", "depth: 17"},
 		{"overlapping stairs", "stairs:", "stairs:\n          - {level: 1, x: 6, y: 10, facing: north, length: 4}"},

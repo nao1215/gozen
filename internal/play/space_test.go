@@ -11,10 +11,47 @@ import (
 
 func TestSpaceArrivalClearsMotion(t *testing.T) {
 	s := &dungeonScene{}
-	s.spaceMotion(rpg.Pos{X: 10, Y: 10, Level: 1}, 0)
+	s.spaceMotion(rpg.Pos{X: 10, Y: 10, Level: 1}, 0, 0)
 	s.arrive()
 	if s.space.remaining != 0 {
 		t.Fatal("arrival keeps motion from the previous location")
+	}
+}
+
+func TestSpaceConfiguredMotion(t *testing.T) {
+	g := wldOpenWith(t, Options{FS: os.DirFS("../../examples/space/game"), Location: "courtyard"})
+	wldFrames(t, g, 25)
+	s, ok := g.stack[0].(*dungeonScene)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	space := g.db.Locations["courtyard"].Dungeon.Space
+	space.StepTicks, space.TurnTicks = 9, 6
+	g.st.Pos = rpg.Pos{In: "courtyard", X: 6, Y: 10}
+	for n := 1; n <= 4; n++ {
+		s.forward(g)
+		if s.space.duration != 9 || s.space.remaining != 9 || g.st.Pos.Y != 10-n {
+			t.Fatalf("step %d: duration %d, remaining %d, pos %+v", n, s.space.duration, s.space.remaining, g.st.Pos)
+		}
+		for range 9 {
+			s.update(g)
+		}
+		if s.space.remaining != 0 {
+			t.Fatal("step did not finish on its configured tick")
+		}
+	}
+	if g.st.Pos.Level != 1 {
+		t.Fatal("fast steps did not reach the next floor")
+	}
+	s.turn(g, 2, "back")
+	if s.space.duration != 6 || s.space.remaining != 6 {
+		t.Fatal("turn reused the step duration")
+	}
+	for range 6 {
+		s.update(g)
+	}
+	if s.space.remaining != 0 {
+		t.Fatal("turn did not finish on its configured tick")
 	}
 }
 
