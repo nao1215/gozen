@@ -35,7 +35,7 @@ type FreeController struct {
 
 // Reset stops motion when play opens blocking UI or loses focus. It does not
 // move the party or discard saved fractional distance. Contact stays armed until
-// release or separation, so closing dialogue while holding does not retrigger it.
+// release or separation, so closing dialog while holding does not retrigger it.
 func (c *FreeController) Reset() {
 	c.held, c.speed, c.forward, c.strafe = 0, 0, 0, 0
 	c.fromSpeed, c.targetSpeed, c.ramp = 0, 0, 0
