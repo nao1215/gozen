@@ -18,12 +18,13 @@ import (
 // (the trials of the F7 measurement and of gozen sim, which start each battle from one
 // save) only decodes the state and binds it to the data.
 type checkedSave struct {
-	db      *data.DB
-	opt     Config
-	b       []byte // a copy of the save
-	payload []byte // the state's JSON
-	report  LoadReport
-	resume  *Resume
+	db        *data.DB
+	opt       Config
+	b         []byte // a copy of the save
+	payload   []byte // the state's JSON
+	report    LoadReport
+	resume    *Resume
+	savedRand []byte
 }
 
 // checkedSaves are the last saves checked, the newest first.
@@ -57,7 +58,7 @@ func remember(c *checkedSave) {
 
 // state decodes the checked save again into a new state, as ParseWithConfig does.
 func (c *checkedSave) state(rng *rand.Rand) (*State, error) {
-	s := &State{DB: c.db, Rand: rng, LoadReport: c.report, Resume: c.resume.clone()}
+	s := &State{DB: c.db, Rand: rng, LoadReport: c.report, Resume: c.resume.clone(), SavedRand: slices.Clone(c.savedRand)}
 	dec := json.NewDecoder(bytes.NewReader(c.payload))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(s); err != nil {

@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Preserve and isolate saved random state when load-slot inspection reuses the checked-save cache.
+
 - Allow authors to hide battle AI history and its input controls without changing battle decisions or traces.
 
 - Add opt-in party-only recruitment admission, authored capture commands and saved capture results for event branches.
