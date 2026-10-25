@@ -2376,6 +2376,25 @@
           },
           "x-type": "string → [General](#general)"
         },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "The names shown for the regions' values in the region window, keyed by value name. A value without a label shows its name.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → string"
+        },
         "location": {
           "description": "The place whose menu lists the orders and the end of the turn. Required.",
           "type": "string",

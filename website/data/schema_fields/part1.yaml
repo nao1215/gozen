@@ -203,6 +203,7 @@ Campaign:
   lose: "An expression that ends the campaign lost. Default: the player's faction does not hold its capital."
   lost: "The event run when the campaign is lost (or the last turn ends), before the game is over."
   on_turn: "The event run at the start of each turn after the first."
+  labels: "The names shown for the regions' values in the region window, keyed by value name. A value without a label shows its name."
   orders: "What the player can do in a turn, keyed by order ID, listed in the written order."
   player: "The player's faction, an ID of factions. Required."
   turns: "The last turn. Ending it without winning loses. 0 means no limit."
