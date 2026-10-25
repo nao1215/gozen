@@ -1,6 +1,6 @@
 # ADR 0040: Bounded stacked spaces
 
-Status: Accepted for implementation (2026-10-23).
+Status: Accepted (2026-10-23); upright tile pictures added 2026-10-25.
 
 ## Context
 

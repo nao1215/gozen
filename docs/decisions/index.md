@@ -48,7 +48,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0038](0038-character-relationship-chart.md) | Relationship chart in the character book | Accepted | |
 | [0039](0039-shared-yaml-paths.md) | Shared YAML path selection and removal of the unused dungeon relay | Accepted | |
 
-| [0040](0040-stacked-spaces.md) | Bounded stacked spaces: streets, interiors and continuous stairs | Accepted for implementation | |
+| [0040](0040-stacked-spaces.md) | Bounded stacked spaces: streets, interiors and continuous stairs | Accepted | Upright tile pictures added 2026-10-25 |
 
 | [0041](0041-yaml-authoring-and-distribution.md) | YAML authoring and distribution; public Go API retirement last | Accepted for phased implementation | |
 | [0042](0042-command-and-output-contract.md) | Direct commands, capture and structured output | Accepted for phased implementation | |
