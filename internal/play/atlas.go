@@ -635,7 +635,7 @@ func (s *atlasScene) layoutPoints(g *Game, dst *ebiten.Image) {
 			s.boxes[len(s.boxes)-1] = s.markerBox(g, p, float64(x), float64(y), mh*1.3)
 		}
 	}
-	// Stable point order keeps focus changes from moving neighbouring plates.
+	// Stable point order keeps focus changes from moving neighboring plates.
 	for _, p := range s.points {
 		if p.shown > 0 {
 			s.drawPlate(g, dst, p, sel, mh)
