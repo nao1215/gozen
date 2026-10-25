@@ -1,0 +1,10 @@
+schema_version: 8
+id: space-town-demo
+title: Lantern Inn
+language: en
+written_in: en
+screen: {width: 960, height: 540}
+start: {location: inn, party: [walker]}
+state:
+  names:
+    flag.bed_seen: {type: bool, initial: false}

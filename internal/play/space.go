@@ -16,10 +16,16 @@ import (
 	"github.com/nao1215/gozen/internal/rpg"
 )
 
+//go:embed space_geometry.kage
+var spaceGeometrySource []byte
+
 //go:embed space.kage
 var spaceShaderSource []byte
 
 type spaceView struct {
+	spriteShader                            *ebiten.Shader
+	sprites                                 []spaceSprite
+	visibleSprites                          []visibleSpaceSprite
 	shader                                  *ebiten.Shader
 	atlas                                   *ebiten.Image
 	frame                                   *ebiten.Image
@@ -57,7 +63,7 @@ func (s *dungeonScene) drawSpace(g *Game, dst *ebiten.Image, d *data.Dungeon) {
 	newAtlas := v.atlas == nil
 	if v.shader == nil {
 		var err error
-		v.shader, err = ebiten.NewShader(spaceShaderSource)
+		v.shader, err = newSpaceShader(spaceShaderSource)
 		if err != nil {
 			g.failure = fmt.Errorf("space shader: %w", err)
 			return
@@ -136,6 +142,7 @@ func (s *dungeonScene) drawSpace(g *Game, dst *ebiten.Image, d *data.Dungeon) {
 		op.Uniforms[name] = tint
 	}
 	v.frame.DrawTrianglesShader([]ebiten.Vertex{{DstX: 0, DstY: 0}, {DstX: float32(w), DstY: 0}, {DstX: 0, DstY: float32(h)}, {DstX: float32(w), DstY: float32(h)}}, []uint16{0, 1, 2, 1, 3, 2}, v.shader, op)
+	v.drawSprites(g, d, [3]float64{x, height, z}, yaw, w, h)
 	imageOp := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
 	imageOp.GeoM.Scale(float64(dst.Bounds().Dx())/float64(w), float64(dst.Bounds().Dy())/float64(h))
 	dst.DrawImage(v.frame, imageOp)
@@ -221,6 +228,8 @@ func (v *spaceView) buildOccupancy(state *rpg.State, d *data.Dungeon) {
 	// One compact bounded occupancy atlas drives depth-correct intersections. Build
 	// from the same cell rules as movement, so once-only doors and conditions agree.
 	clear(v.pixels)
+	clear(v.sprites)
+	v.sprites = v.sprites[:0]
 	st := *state
 	for level := range d.Space.Levels {
 		st.Pos.Level = level
@@ -233,8 +242,11 @@ func (v *spaceView) buildOccupancy(state *rpg.State, d *data.Dungeon) {
 				if c.Char == data.CellNone {
 					continue
 				}
+				if c.Tile != nil && c.Tile.Picture.File != "" {
+					v.sprites = append(v.sprites, spaceSprite{[3]float64{float64(x) + .5, data.SpaceHeight(d.Space, level, x, y), float64(y) + .5}, c.Tile})
+				}
 				v.pixels[i] = 1
-				if c.Solid || c.Look == "wall" {
+				if c.Look == "wall" || (c.Solid && (c.Tile == nil || c.Tile.Picture.File == "")) {
 					v.pixels[i] = 2
 				}
 			}
@@ -251,4 +263,10 @@ func (v *spaceView) buildOccupancy(state *rpg.State, d *data.Dungeon) {
 			v.pixels[i], v.pixels[i+1], v.pixels[i+2] = 3, byte(data.FacingIndex(stair.Facing)*16+stair.Length), byte(n) //nolint:gosec // Validated direction <= 3, length <= 8 and offset < length.
 		}
 	}
+}
+
+// Both passes use identical bounded terrain intersections.
+func newSpaceShader(body []byte) (*ebiten.Shader, error) {
+	source := append([]byte(nil), spaceGeometrySource...)
+	return ebiten.NewShader(append(source, body...))
 }

@@ -1,6 +1,6 @@
 # ADR 0040: Bounded stacked spaces
 
-Status: Accepted for implementation (2026-10-23).
+Status: Accepted (2026-10-23); upright tile pictures added 2026-10-25.
 
 ## Context
 
@@ -20,3 +20,7 @@ Space rendering is opt-in. The existing dungeon renderer, transitions and data c
 A fade or two-image crossfade cannot represent simultaneous views of several levels. Replacing all dungeon rendering would unnecessarily risk existing games. An unrestricted 3D scene format would greatly expand collision, tooling and asset contracts. Bounded aligned grids retain the existing grid movement model and permit predictable work limits.
 
 Wall, floor and ceiling pictures reuse the existing material fields. Stairs use the floor material on closed stepped volumes; their sides and undersides occlude the view. Direct sunlight is occluded by upper slabs and walls, with ambient fill for interiors. Distance clipping returns fog rather than sky when geometry remains beyond the view range.
+
+## Upright tile pictures
+
+Floor tiles may carry camera-facing pictures, including solid NPC/furniture tiles. Collision still occupies the anchor cell; picture size may extend beyond it. Sprite pixels test the same bounded ray intersections as terrain, including slab and stair surfaces. Visible sprites are culled by their full projected image bounds and drawn in camera-depth order so alpha margins expose the scenery and other sprites. The first increment rejects flat decals and wall/door-mounted pictures. This preserves the tile command model without introducing a separate object authoring language.
