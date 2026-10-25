@@ -659,6 +659,19 @@
       "additionalProperties": false,
       "description": "A location shown as a picture with points and roads. Needs schema version 3.",
       "properties": {
+        "camera": {
+          "$ref": "#/$defs/AtlasCamera",
+          "description": "Opt-in pan/zoom camera. An empty map uses zoom 2 and max_zoom 8. Omitted keeps the fitted overview. Camera position is not saved.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "[AtlasCamera](#atlascamera)"
+        },
         "draw_roads": {
           "description": "If true, the roads are drawn over the picture. By default they are only the paths the token walks along. Default false.",
           "type": "boolean",
@@ -813,6 +826,39 @@
             "version": "3"
           },
           "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "AtlasCamera": {
+      "additionalProperties": false,
+      "description": "Presentation-only camera for a large atlas. Bounds are clamped to the picture and labels retain their screen size.",
+      "properties": {
+        "max_zoom": {
+          "description": "Maximum zoom relative to fit-to-screen, from 1 to 64. Zero or omitted means 8.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "number"
+        },
+        "zoom": {
+          "description": "Initial zoom relative to fit-to-screen, from 1 to max_zoom. Zero or omitted means 2, capped at max_zoom.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "number"
         }
       },
       "type": "object"

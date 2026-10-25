@@ -12,6 +12,8 @@ import (
 // point with to is the way into another location; the party walks from point to point
 // along the open roads.
 type Atlas struct {
+	// Camera enables presentation-only pan and zoom; nil keeps the fitted view.
+	Camera *AtlasCamera `yaml:"camera"`
 	// TravelSpeed is the map renderer's token speed in picture widths per second.
 	// Zero selects 0.12; explicit speeds must be finite and in [0.01, 2].
 	TravelSpeed float64 `yaml:"travel_speed"`
@@ -41,6 +43,13 @@ type Atlas struct {
 	Roads   []Road               `yaml:"roads"`
 
 	pointOrder []string // the points as written
+}
+
+// AtlasCamera configures the play renderer's navigable map. Zoom is relative to
+// the fitted overview; camera position is transient and never part of game saves.
+type AtlasCamera struct {
+	Zoom    float64 `yaml:"zoom"`     // Initial/current-position zoom; zero selects min(2, max_zoom).
+	MaxZoom float64 `yaml:"max_zoom"` // Zoom limit in [1,64]; zero selects 8.
 }
 
 // Token is the piece that stands for the party on a map: its picture, else the leader's
@@ -147,6 +156,18 @@ func (c *checker) atlas(w, id string, l *Location) {
 	w += ".map"
 	if math.IsNaN(a.TravelSpeed) || math.IsInf(a.TravelSpeed, 0) || a.TravelSpeed != 0 && (a.TravelSpeed < 0.01 || a.TravelSpeed > 2) {
 		c.errorf(diag.OutOfRange, w+".travel_speed", "want 0 (default 0.12) or a finite speed in [0.01, 2] picture widths per second")
+	}
+	if camera := a.Camera; camera != nil {
+		limit := camera.MaxZoom
+		if limit == 0 {
+			limit = 8
+		}
+		if math.IsNaN(limit) || math.IsInf(limit, 0) || limit < 1 || limit > 64 {
+			c.errorf(diag.OutOfRange, w+".camera.max_zoom", "want 0 (default 8) or a finite zoom in [1, 64]")
+		}
+		if z := camera.Zoom; math.IsNaN(z) || math.IsInf(z, 0) || z != 0 && (z < 1 || z > limit) {
+			c.errorf(diag.OutOfRange, w+".camera.zoom", "want 0 (default 2, capped at max_zoom) or a finite zoom in [1, max_zoom]")
+		}
 	}
 	c.needsVersion(w, "map", SchemaVersion3)
 	if a.Picture == "" {

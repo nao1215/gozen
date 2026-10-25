@@ -5,6 +5,10 @@ package catalog
 
 // english is the built-in English words of the engine.
 var english = map[string]string{
+	"全体":             "All",
+	"現在地":            "Here",
+	"P / R3: 選択に戻る":  "P / R3: switch to selection",
+	"P / R3: 地図を動かす": "P / R3: pan the map",
 	// battle: the messages of a fight
 	"{target}は うごけない！": "{target} can't move!",
 	"は ようすを みている。":     " is watching closely.",

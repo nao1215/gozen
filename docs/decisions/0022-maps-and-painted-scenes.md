@@ -100,7 +100,45 @@ Stage 4: clicks, taps and list walking on a scene use `stage.Scene.Path` (a grid
 | 5 | Creator tools: polygon editing and writing back in `--dev`, `gozen depth` (ONNX with cgo) | Planned |
 | 6 | Samples (examples) and README | Planned |
 
-The stage 3 map screen (`internal/play/atlas.go`): fit the picture to the screen, and put a small marker per point (a `marker` picture, or a small pin the screen draws if none; replaceable per point with that point's `marker`) and a tag with a calm name. Roads are meant to be painted into the map picture, and the road polylines in YAML are used only for the piece's movement and hit areas and are not drawn by default (`draw_roads: true` draws them. After the author's remark of 2026-10-20, "the map is too shabby", the white roads and round points drawn in code were dropped). A visited point gets a name tag; an unvisited point follows `unknown` (`hidden` is not shown until an open road reaches it, `dim` is faint, `mark` is a "?" tag, and `named` is a name tag like a visited point, for maps such as towns where the places are known), and a closed point has a gray marker. The piece is the map's `token.picture`, or if none the round-cut face of the first companion (the same face as the bubbles; `token: doll` gives a doll). Arrow keys select the point closest to a road's direction and confirm; click or tap selects a point; the menu key shows the list. Choosing runs the commands of `atlas.Go` one at a time, and before `cross` the piece walks that road (0.12 of the picture width per second, with the town picture the author chose, a speed at which walking the street is visible. The piece's face is 9.5% of the screen height, with an accent-colored rim and a light shadow, a dark shadow at its feet and a flat ring for the current place. It glides along the road, has no walking animation, and bounces slightly only while moving (the author's instruction of 2026-10-20, "a face icon is fine for moving on the map; there is no need to force a doll to walk". The face is found by its rim color, so no arrow is put above the head). A `token: doll` doll is 17% of the screen height, with a dark shadow and a circle at its feet and a small swaying arrow above its head. The point where the piece stands draws no marker, only the tag. The name tag's text is 3% of the screen height (changeable with the map's `label_size`), on a dark ground with an outline and a light shadow, and the selected point is one size larger in the window color. A tag goes below its point, and if blocked, above the marker, to the left or right, or below shifted, in that order, at a place that overlaps no other tag, marker or piece (if every place overlaps, the one with the least overlap). The marker pin is 6% of the screen height. This follows the author's remarks of 2026-10-20, "the tag text is small and buried in the picture" and "the piece is small and hard to find"). A road's battle occurs where the piece reaches the end of the road, and on a loss it stops there. The trace records `travel` (from, to, roads) and the `spot` stood on for each road. How the points and roads look, and the choices, are recomputed only when the state changes (after a command, on arrival, and every second). F5 while walking waits until the walk ends. The line of a closed point is not a `notice` but the current conversation window (`say`; the form of `atlas.Go` in stage 0). The script's `walk <point>` ends where it starts walking if the point has `to` (arrival is awaited).
+The stage 3 map screen (`internal/play/atlas.go`): fit the picture to the screen, and put a small marker per point (a `marker` picture, or a small pin the screen draws if none; replaceable per point with that point's `marker`) and a tag with a calm name. Roads are meant to be painted into the map picture, and the road polylines in YAML are used only for the piece's movement and hit areas and are not drawn by default (`draw_roads: true` draws them. After the author's remark of 2026-10-20, "the map is too shabby", the white roads and round points drawn in code were dropped). A visited point gets a name tag; an unvisited point follows `unknown` (`hidden` is not shown until an open road reaches it, `dim` is faint, `mark` is a "?" tag, and `named` is a name tag like a visited point, for maps such as towns where the places are known), and a closed point has a gray marker. The piece is the map's `token.picture`, or if none the round-cut face of the first companion (the same face as the bubbles; `token: doll` gives a doll). Arrow keys select the point closest to a road's direction and confirm; click or tap selects a point; the menu key shows the list. Choosing runs the commands of `atlas.Go` one at a time, and before `cross` the piece walks that road (0.12 of the picture width per second, with the town picture the author chose, a speed at which walking the street is visible. The piece's face is 9.5% of the screen height, with an accent-colored rim and a light shadow, a dark shadow at its feet and a flat ring for the current place. It glides along the road, has no walking animation, and bounces slightly only while moving (the author's instruction of 2026-10-20, "a face icon is fine for moving on the map; there is no need to force a doll to walk". The face is found by its rim color, so no arrow is put above the head). A `token: doll` doll is 17% of the screen height, with a dark shadow and a circle at its feet and a small swaying arrow above its head. The point where the piece stands draws no marker, only the tag. The name tag's text is 3% of the screen height (changeable with the map's `label_size`), on a dark ground with an outline and a light shadow, and the selected point uses the window color without changing label geometry. A tag goes below its point, and if blocked, above the marker, to the left or right, or below shifted, in that order, at a place that overlaps no other tag, marker or piece (if every place overlaps, the one with the least overlap). The marker pin is 6% of the screen height. This follows the author's remarks of 2026-10-20, "the tag text is small and buried in the picture" and "the piece is small and hard to find"). A road's battle occurs where the piece reaches the end of the road, and on a loss it stops there. The trace records `travel` (from, to, roads) and the `spot` stood on for each road. How the points and roads look, and the choices, are recomputed only when the state changes (after a command, on arrival, and every second). F5 while walking waits until the walk ends. The line of a closed point is not a `notice` but the current conversation window (`say`; the form of `atlas.Go` in stage 0). The script's `walk <point>` ends where it starts walking if the point has `to` (arrival is awaited).
+
+## Navigable map camera
+
+A large connected world can opt into a camera while retaining the same map rules:
+
+```yaml
+map:
+  picture: world.png
+  camera: {zoom: 3, max_zoom: 8}
+  unknown: named
+```
+
+The snippet belongs to a location with authored points and roads. Omit `camera`
+to retain the fitted overview. With `camera: {}`, the initial zoom is 2 and the
+maximum is 8. Zoom is relative to the fitted picture; 1 always shows the entire
+map. The camera clamps to the picture, centering an axis that is smaller than the
+viewport. Marker text stays at `label_size` of the screen height; zoom does not
+shrink it. Offscreen point labels are not moved onto the viewport edge.
+
+| Control | Effect |
+| --- | --- |
+| Arrow keys / D-pad | Select the nearest point in that direction from the current selection; reveal offscreen selections |
+| Tab | Cycle all available points |
+| `+` / `-`, mouse wheel, right/left shoulder | Zoom in/out around the view center |
+| Home / controller View | Fitted overview |
+| End / left stick click | Focus current party position at the configured initial zoom |
+| P / right stick click | Toggle pan mode; directions then pan without selecting or traveling |
+| Onscreen arrows, `-`, `+`, All, Here | Pointer/touch equivalents for pan, zoom, overview and current position |
+
+Confirm or clicking a marker/label retains ordinary travel. The camera follows the
+token while traveling. Picture, roads, ownership areas, landmarks, markers, labels
+and token use the same transform. Looking around does not change the party's spot,
+road steps, encounters or resources.
+
+Camera position, zoom and pan mode belong to the screen, not saves. Entering or
+loading the map starts at the party's saved point and configured zoom. Opening and
+closing a menu retains the view; reloading game definitions or leaving and
+returning resets it. No camera data enters headless exploration or save migration.
 
 ## Alternatives
 

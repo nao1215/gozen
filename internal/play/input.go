@@ -39,28 +39,39 @@ const (
 	btnPanel
 	btnBook
 	btnBestiary
+	btnMapZoomIn
+	btnMapZoomOut
+	btnMapOverview
+	btnMapFocus
+	btnMapPan
+
 	numButtons
 
 	btnNone button = -1
 )
 
 var keys = [numButtons][]ebiten.Key{
-	btnUp:     {ebiten.KeyArrowUp, ebiten.KeyW, ebiten.KeyK},
-	btnDown:   {ebiten.KeyArrowDown, ebiten.KeyS, ebiten.KeyJ},
-	btnLeft:   {ebiten.KeyArrowLeft, ebiten.KeyA, ebiten.KeyH},
-	btnRight:  {ebiten.KeyArrowRight, ebiten.KeyD, ebiten.KeyL},
-	btnOK:     {ebiten.KeyZ, ebiten.KeyEnter, ebiten.KeySpace, ebiten.KeyNumpadEnter},
-	btnCancel: {ebiten.KeyX, ebiten.KeyEscape, ebiten.KeyBackspace},
-	btnMenu:   {ebiten.KeyX, ebiten.KeyEscape, ebiten.KeyC},
-	btnLog:    {ebiten.KeyPageUp, ebiten.KeyB},
-	btnAuto:   {ebiten.KeyF, ebiten.KeyA},
-	btnHide:   {ebiten.KeyV, ebiten.KeyDelete},
-	btnConfig: {ebiten.KeyO, ebiten.KeyF2},
-	btnNext:   {ebiten.KeyTab},
-	btnMemo:   {ebiten.KeyF9},
-	btnReload: {ebiten.KeyF5},
-	btnTag:    {ebiten.KeyF10},
-	btnGraphs: {ebiten.KeyF7},
+	btnMapZoomIn:   {ebiten.KeyEqual, ebiten.KeyNumpadAdd},
+	btnMapZoomOut:  {ebiten.KeyMinus, ebiten.KeyNumpadSubtract},
+	btnMapOverview: {ebiten.KeyHome},
+	btnMapFocus:    {ebiten.KeyEnd},
+	btnMapPan:      {ebiten.KeyP},
+	btnUp:          {ebiten.KeyArrowUp, ebiten.KeyW, ebiten.KeyK},
+	btnDown:        {ebiten.KeyArrowDown, ebiten.KeyS, ebiten.KeyJ},
+	btnLeft:        {ebiten.KeyArrowLeft, ebiten.KeyA, ebiten.KeyH},
+	btnRight:       {ebiten.KeyArrowRight, ebiten.KeyD, ebiten.KeyL},
+	btnOK:          {ebiten.KeyZ, ebiten.KeyEnter, ebiten.KeySpace, ebiten.KeyNumpadEnter},
+	btnCancel:      {ebiten.KeyX, ebiten.KeyEscape, ebiten.KeyBackspace},
+	btnMenu:        {ebiten.KeyX, ebiten.KeyEscape, ebiten.KeyC},
+	btnLog:         {ebiten.KeyPageUp, ebiten.KeyB},
+	btnAuto:        {ebiten.KeyF, ebiten.KeyA},
+	btnHide:        {ebiten.KeyV, ebiten.KeyDelete},
+	btnConfig:      {ebiten.KeyO, ebiten.KeyF2},
+	btnNext:        {ebiten.KeyTab},
+	btnMemo:        {ebiten.KeyF9},
+	btnReload:      {ebiten.KeyF5},
+	btnTag:         {ebiten.KeyF10},
+	btnGraphs:      {ebiten.KeyF7},
 	// S is down (WASD), so skip mode is N, and scene skip Page Down (Page Up opens the log).
 	btnSkip:      {ebiten.KeyN},
 	btnSceneSkip: {ebiten.KeyPageDown},
@@ -80,16 +91,21 @@ var (
 )
 
 var pads = [numButtons][]ebiten.StandardGamepadButton{
-	btnUp:     {ebiten.StandardGamepadButtonLeftTop},
-	btnDown:   {ebiten.StandardGamepadButtonLeftBottom},
-	btnLeft:   {ebiten.StandardGamepadButtonLeftLeft},
-	btnRight:  {ebiten.StandardGamepadButtonLeftRight},
-	btnOK:     {ebiten.StandardGamepadButtonRightBottom},
-	btnCancel: {ebiten.StandardGamepadButtonRightRight},
-	btnMenu:   {ebiten.StandardGamepadButtonRightRight, ebiten.StandardGamepadButtonRightTop, ebiten.StandardGamepadButtonCenterRight},
-	btnLog:    {ebiten.StandardGamepadButtonFrontTopLeft},
-	btnAuto:   {ebiten.StandardGamepadButtonFrontTopRight},
-	btnHide:   {ebiten.StandardGamepadButtonCenterLeft},
+	btnMapZoomIn:   {ebiten.StandardGamepadButtonFrontTopRight},
+	btnMapZoomOut:  {ebiten.StandardGamepadButtonFrontTopLeft},
+	btnMapOverview: {ebiten.StandardGamepadButtonCenterLeft},
+	btnMapFocus:    {ebiten.StandardGamepadButtonLeftStick},
+	btnMapPan:      {ebiten.StandardGamepadButtonRightStick},
+	btnUp:          {ebiten.StandardGamepadButtonLeftTop},
+	btnDown:        {ebiten.StandardGamepadButtonLeftBottom},
+	btnLeft:        {ebiten.StandardGamepadButtonLeftLeft},
+	btnRight:       {ebiten.StandardGamepadButtonLeftRight},
+	btnOK:          {ebiten.StandardGamepadButtonRightBottom},
+	btnCancel:      {ebiten.StandardGamepadButtonRightRight},
+	btnMenu:        {ebiten.StandardGamepadButtonRightRight, ebiten.StandardGamepadButtonRightTop, ebiten.StandardGamepadButtonCenterRight},
+	btnLog:         {ebiten.StandardGamepadButtonFrontTopLeft},
+	btnAuto:        {ebiten.StandardGamepadButtonFrontTopRight},
+	btnHide:        {ebiten.StandardGamepadButtonCenterLeft},
 }
 
 type input struct {
@@ -555,6 +571,7 @@ func parseScript(src string) (*script, error) {
 }
 
 var scriptButtons = map[string]button{
+	"map_zoom_in": btnMapZoomIn, "map_zoom_out": btnMapZoomOut, "map_overview": btnMapOverview, "map_focus": btnMapFocus, "map_pan": btnMapPan,
 	"z": btnOK, "ok": btnOK, "enter": btnOK, "x": btnCancel, "cancel": btnCancel, "menu": btnMenu,
 	"tab": btnNext, "up": btnUp, "down": btnDown, "left": btnLeft, "right": btnRight,
 	"log": btnLog, "auto": btnAuto, "hide": btnHide, "config": btnConfig, "memo": btnMemo,

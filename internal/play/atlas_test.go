@@ -1,17 +1,24 @@
 package play
 
 import (
+	"bytes"
+	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"math"
 	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/layer1/geom"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/atlas"
+	"github.com/nao1215/gozen/internal/rpg"
 )
 
 func TestAtlasLabelGeometryDoesNotFollowFocus(t *testing.T) {
@@ -458,4 +465,182 @@ func TestAtlasPointerOverlapAndAvailability(t *testing.T) {
 	s.layoutPoints(g, nil)
 	plate := s.targets[len(s.targets)-1].box
 	check("back", plate.x+plate.w/2, plate.y+plate.h/2)
+}
+
+// atlasCameraFiles is an original neutral grid, solely a camera/navigation fixture.
+func atlasCameraFiles(t *testing.T) fstest.MapFS {
+	t.Helper()
+	fsys := btlFiles(t, "schema_version: 3\n", "")
+	var world strings.Builder
+	world.WriteString("locations:\n  large:\n    name: Survey map\n    safe: true\n    map:\n      picture: survey.png\n      camera: {zoom: 3, max_zoom: 8}\n      unknown: named\n      draw_roads: true\n      travel_speed: 2\n      points:\n")
+	for i := range 60 {
+		fmt.Fprintf(&world, "        p%02d: {at: [%d, %d], label: 'Station %02d', do: [{set: {var.arrivals: 'var.arrivals + 1'}}]}\n", i, 180+i%10*290, 180+i/10*280, i)
+	}
+	world.WriteString("      roads:\n")
+	for i := 1; i < 60; i++ {
+		fmt.Fprintf(&world, "        - {between: [p%02d, p%02d], steps: 1}\n", i-1, i)
+	}
+	fsys["data/survey.yaml"] = &fstest.MapFile{Data: []byte(world.String())}
+	img := image.NewNRGBA(image.Rect(0, 0, 3000, 1800))
+	for y := range 1800 {
+		for x := range 3000 {
+			img.SetNRGBA(x, y, color.NRGBA{R: uint8(30 + x/60), G: uint8(60 + y/30), B: 60, A: 255})
+		}
+	}
+	var pic bytes.Buffer
+	if err := png.Encode(&pic, img); err != nil {
+		t.Fatal(err)
+	}
+	fsys["assets/survey.png"] = &fstest.MapFile{Data: pic.Bytes()}
+	return fsys
+}
+
+func TestAtlasCameraNavigation(t *testing.T) {
+	g, err := New(Options{FS: atlasCameraFiles(t), Location: "large", NoSound: true, SaveDir: t.TempDir(), Seed: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := g.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	s, ok := g.stack[0].(*atlasScene)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	if len(s.points) != 60 {
+		t.Fatalf("points %d", len(s.points))
+	}
+	before, err := g.st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	size := s.labelSize(g)
+	for _, screen := range [][2]int{{1280, 720}, {960, 720}} {
+		g.db.Game.Screen.Width, g.db.Game.Screen.Height = screen[0], screen[1]
+		for _, dir := range []geom.Pt{{X: -100, Y: -100}, {X: 100, Y: -100}, {X: 100, Y: 100}, {X: -100, Y: 100}} {
+			s.resetCamera(g, false)
+			s.panCamera(g, dir.X, dir.Y)
+			k, x, y, ok := s.fit(g)
+			w, h := g.pixels()
+			if !ok || x > 1e-6 || y > 1e-6 || x+3000*k < w-1e-6 || y+1800*k < h-1e-6 {
+				t.Fatalf("unclamped view: %g %g %g", k, x, y)
+			}
+			s.layoutPoints(g, nil)
+			for _, target := range s.targets {
+				p := g.db.Locations[s.loc].Map.Points[s.choices[target.choice].Point]
+				if !s.cameraPointVisible(g, p.At.Pt()) {
+					t.Fatal("offscreen point leaked a label into viewport")
+				}
+			}
+		}
+		// Every selectable point can be brought onscreen without traveling, including
+		// the last point beyond dozens of intermediate roads.
+		for i, c := range s.choices {
+			s.sel = i
+			p := g.db.Locations[s.loc].Map.Points[c.Point].At.Pt()
+			s.revealCameraPoint(g, p)
+			x, y := s.screen(g, p)
+			if !s.cameraPointVisible(g, p) {
+				t.Fatalf("selection %s stayed offscreen", c.Point)
+			}
+			got, ok := s.pointAt(g, x, y-10)
+			if !ok || got.Point != c.Point {
+				t.Fatalf("marker %s hit %+v %v at %g %g", c.Point, got, ok, x, y)
+			}
+			s.layoutPoints(g, nil)
+			labelHit := false
+			for _, target := range s.targets {
+				if target.choice == i && target.box.w > 60 {
+					b := target.box
+					for yy := b.y + 4; yy < b.y+b.h-4 && !labelHit; yy += 4 {
+						for xx := b.x + 4; xx < b.x+b.w-4; xx += 4 {
+							if hit, ok := s.pointAt(g, xx, yy); ok && hit.Point == c.Point {
+								labelHit = true
+								break
+							}
+						}
+					}
+				}
+			}
+			if !labelHit {
+				t.Fatalf("label %s not clickable", c.Point)
+			}
+		}
+		s.zoomCamera(g, 1000)
+		if s.cameraZoom != 8 || s.labelSize(g) != size {
+			t.Fatal("zoom limit or label size changed")
+		}
+		s.resetCamera(g, true)
+		k, x, y, _ := s.fit(g)
+		w, h := g.pixels()
+		if math.Abs(k-math.Min(w/3000, h/1800)) > 1e-9 || x < 0 || y < 0 {
+			t.Fatal("overview is not fitted")
+		}
+		s.resetCamera(g, false)
+		if !s.cameraPointVisible(g, s.at) || s.cameraZoom != 3 {
+			t.Fatal("current position not restored")
+		}
+	}
+	// The pointer toolbar consumes its click instead of activating points beneath it.
+	for i, b := range s.cameraButtons(g) {
+		g.in.click, g.in.mouse = true, image.Pt(int(b.x+b.w/2), int(b.y+b.h/2))
+		if !s.updateCamera(g) {
+			t.Fatalf("toolbar button %d not consumed", i)
+		}
+	}
+	g.in.click = false
+	after, err := g.st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("browsing mutated game state")
+	}
+	// Tab gives a complete keyboard traversal; arrow selection is based on the
+	// focused point, so distant points are reachable without moving the token.
+	seen := map[string]bool{}
+	for range len(s.choices) {
+		g.in.pressed[btnNext] = true
+		s.updateCamera(g)
+		g.in.pressed = [numButtons]bool{}
+		seen[s.choices[s.sel].Point] = true
+	}
+	if len(seen) != len(s.choices) {
+		t.Fatal("keyboard traversal missed a point")
+	}
+	s.sel = 0
+	s.selectToward(g, geom.Pt{X: 1})
+	if s.sel == 0 {
+		t.Fatal("direction did not select next point")
+	}
+	// A camera-enabled journey still accounts for every road exactly once.
+	var destination atlas.Choice
+	for _, c := range s.choices {
+		if c.Point == "p59" {
+			destination = c
+		}
+	}
+	steps := g.st.Steps
+	s.goTo(g, destination)
+	wldSettle(t, g, s, 15000)
+	if g.st.Spot != "p59" || g.st.Steps-steps != 59 || g.st.Vars["arrivals"] != float64(1) {
+		t.Fatalf("travel: %s steps %d arrivals %v", g.st.Spot, g.st.Steps-steps, g.st.Vars["arrivals"])
+	}
+	saved, err := g.st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.panCamera(g, -100, -100)
+	s.cameraPan = true
+	restored, err := rpg.Parse(g.db, saved, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.loadGame(restored)
+	fresh, ok := g.stack[0].(*atlasScene)
+	if !ok || fresh.cameraZoom != 3 || fresh.cameraPan || !fresh.cameraPointVisible(g, fresh.at) || fresh.here != "p59" {
+		t.Fatal("load did not reset the camera at the saved point")
+	}
 }
