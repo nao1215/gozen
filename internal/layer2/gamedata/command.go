@@ -92,7 +92,7 @@ type Command struct {
 	Call    string    `yaml:"call" command:"verb"`
 	Wait    WaitCue   `yaml:"wait" command:"verb"`
 	waitSet bool      // waitSet bool // in spec version 1, a wait time of 0 also counts as a command.
-	// Notice is a short message shown at the top of the screen (no dialogue window, and play continues without stopping; narration-only notices such as the pain of a floor trap).
+	// Notice is a short message shown at the top of the screen (no dialog window, and play continues without stopping; narration-only notices such as the pain of a floor trap).
 	Notice string `yaml:"notice" command:"verb"`
 	SFX    SFXCue `yaml:"sfx" command:"verb"`
 	Exp    Expr   `yaml:"exp" command:"verb"`
@@ -207,7 +207,7 @@ type BattleAct struct {
 // customFields returns the names of fields the command does not know (ones declared in game.yaml's verbs, or typos).
 func customFields(c *Command) []string { return c.custom }
 
-// Say is a line of dialogue.
+// Say is a line of dialog.
 type Say struct {
 	Who  string `yaml:"who"`  // an actor id, or any name
 	Face string `yaml:"face"` // a face of the actor (or a picture path)
@@ -391,7 +391,7 @@ func (c *Command) Verb() (string, error) {
 	return verb, nil
 }
 
-// Respond submits text to a speaker's reaction rules and shows the reply as dialogue.
+// Respond submits text to a speaker's reaction rules and shows the reply as dialog.
 type Respond struct {
 	Who  string `yaml:"who"`
 	Text string `yaml:"text"`

@@ -299,7 +299,7 @@ func TestBookFormatsShareACompleteDetachedReport(t *testing.T) {
 }
 
 // User-authored pipes and line breaks must stay inside their table cell; nested
-// dialogue must remain under its choice rather than turning into a new paragraph.
+// dialog must remain under its choice rather than turning into a new paragraph.
 func TestBookMarkdownCellsAndNestedDialogue(t *testing.T) {
 	b, err := loadBook(designGame(t))
 	if err != nil {

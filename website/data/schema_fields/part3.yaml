@@ -117,8 +117,8 @@ GalleryCG:
 GalleryPage:
   _: "An entry point into the middle of a gallery scene, given as a playback position and the answers to choices before it."
   answers: "The 0-based indexes of the options chosen at each choice before this position, in order. Playback stops at the first choice with no listed answer."
-  line: "The 1-based number of the line or question to start from, counting dialogue lines and choices."
-  picture: "If set, only dialogue shown over this picture is counted for `line`."
+  line: "The 1-based number of the line or question to start from, counting dialog lines and choices."
+  picture: "If set, only dialog shown over this picture is counted for `line`."
   title: "The title shown for this entry point in the list."
 GalleryScene:
   _: "A scene that can be played again from the gallery, run as an event with the starting party and no lasting effect."
@@ -218,7 +218,7 @@ ScreenEntry:
   when: "Condition for showing this entry; omitted means visible."
 
 Respond:
-  _: "Submit text to a speaker's reaction rules and show the reply as dialogue."
+  _: "Submit text to a speaker's reaction rules and show the reply as dialog."
   who: "A speaker with a book in game.yaml reactions."
   text: "Text submitted to the rules, with interpolation and translation."
   from: "Sender name for repeat detection; omitted means player."

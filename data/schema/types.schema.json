@@ -150,7 +150,7 @@
           "x-type": "boolean"
         },
         "class": {
-          "description": "An ID of classes for a combat actor. Omit for a speaker who only uses dialogue, portraits and voices.",
+          "description": "An ID of classes for a combat actor. Omit for a speaker who only uses dialog, portraits and voices.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -4532,7 +4532,7 @@
         },
         "respond": {
           "$ref": "#/$defs/Respond",
-          "description": "Submit text to a speaker reaction book; the reply uses the ordinary dialogue flow.",
+          "description": "Submit text to a speaker reaction book; the reply uses the ordinary dialog flow.",
           "x-contract": {
             "default": "nil; nothing is defined",
             "legacy_default": "nil; nothing is defined",
@@ -4575,7 +4575,7 @@
         },
         "say": {
           "$ref": "#/$defs/Say",
-          "description": "Shows a line of dialogue. It can be plain text or a map with speaker, face, side and text.",
+          "description": "Shows a line of dialog. It can be plain text or a map with speaker, face, side and text.",
           "x-contract": {
             "default": "nil; nothing is defined",
             "legacy_default": "nil; nothing is defined",
@@ -7915,7 +7915,7 @@
           "x-type": "integer[]"
         },
         "line": {
-          "description": "The 1-based number of the line or question to start from, counting dialogue lines and choices.",
+          "description": "The 1-based number of the line or question to start from, counting dialog lines and choices.",
           "minimum": 1,
           "type": "integer",
           "x-contract": {
@@ -7929,7 +7929,7 @@
           "x-type": "integer"
         },
         "picture": {
-          "description": "If set, only dialogue shown over this picture is counted for `line`.",
+          "description": "If set, only dialog shown over this picture is counted for `line`.",
           "type": "string",
           "x-contract": {
             "default": "counts lines and questions from the scene's start",
@@ -12110,7 +12110,7 @@
     },
     "Respond": {
       "additionalProperties": false,
-      "description": "Submit text to a speaker's reaction rules and show the reply as dialogue.",
+      "description": "Submit text to a speaker's reaction rules and show the reply as dialog.",
       "properties": {
         "from": {
           "description": "Sender name for repeat detection; omitted means player.",
