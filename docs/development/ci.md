@@ -13,7 +13,7 @@ A private repository has a limit on Actions time. While it is private, only `qui
 | lint | Linux, Go 1.27.2 (`LINT_GO` of the Makefile, not stable: gofmt's output changes between Go releases). golangci-lint v2.14.0 (built by `make lint` with that Go), go-arch-lint v1.19.0, actionlint v1.7.12, zizmor v1.31.1. `make lint` | import direction, API list, tidy modules, static analysis, formatting, workflow syntax and security |
 | unit | Ubuntu, Windows and macOS × Go 1.26.10 / stable. `go test ./...` with cgo enabled | non-graphics contracts, including `gozen` and internal |
 | race | Linux, stable, `go test -race -short ./...` with cgo enabled | race check of the non-graphics contracts (the heavy tests, skipped by `-short`, run without `-race` in the other jobs) |
-| build | amd64 on 3 OSes, arm64 on Linux and macOS. cgo disabled | compiling all packages. arm64 is a cross-build. No ONNX inference |
+| build | amd64 on 3 OSes, arm64 on Linux and macOS, js/wasm. cgo disabled | all packages on desktop targets; the player and its dependencies for browsers. arm64 and wasm are cross-builds. No ONNX inference |
 | graphics | 3 OSes, stable. Linux uses setup-ebitengine and Xvfb; Windows and macOS use the native desktop | real loop of 6 screens with PNG checks, pixel checks of the moving standing pictures, and the capture E2E that starts a real game as a child process. Audio is muted |
 | cli-e2e | 3 OSes, stable, atago v0.25.2 | exit status, stdout and diagnostics, file changes and generated files of every subcommand of the real `gozen`. The graphics tag is a separate job |
 | inference-build | 3 OSes, stable, cgo enabled | building `gozen` with the ONNX adapter and inference. Inference tests without a model skip with a reason |
