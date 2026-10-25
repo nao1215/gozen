@@ -1947,7 +1947,7 @@ func (g *Game) slotLabel(i int) (string, bool) {
 		}
 		return slotName(i) + lang.T(": ---- からっぽ ----"), false
 	}
-	loc := g.db.Locations[st.Location].Name
+	loc := data.Render(g.db.Locations[st.Location].Name, st.Env())
 	if l := g.db.Locations[st.Location]; l != nil && l.Dungeon != nil && l.Dungeon.Generate != nil {
 		if f, ok := st.Vars[dungeon.VarFloor].(float64); ok {
 			loc += fmt.Sprintf(" B%dF", int(f))
