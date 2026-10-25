@@ -8,6 +8,8 @@ import (
 
 	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/layer1/geom"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer3/atlas"
 )
 
 func TestAtlasTravelSpeed(t *testing.T) {
@@ -294,4 +296,100 @@ func TestWldAtlasScriptWalkToUnknownPointFails(t *testing.T) {
 		t.Fatalf("failure %v", g.failure)
 	}
 	g.failure = nil
+}
+
+func TestAtlasPointerVisibleBounds(t *testing.T) {
+	g, s := wldAtlas(t, "fx_mark")
+	s.here = "elsewhere"
+	s.choices = []atlas.Choice{{Point: "destination"}}
+	s.sel = len(s.choices)
+	s.points = []mapPoint{{id: "destination", at: geom.Pt{X: 160, Y: 120}, shown: 3, open: true, choice: 0}}
+	for _, scale := range []struct {
+		width, height int
+		ui            float64
+	}{{1280, 720, 1}, {1920, 1080, 1.5}, {960, 720, 2}} {
+		g.db.Game.Screen.Width, g.db.Game.Screen.Height, g.ui = scale.width, scale.height, scale.ui
+		_, sh := g.screen()
+		h := sh * .3
+		g.db.Locations[s.loc].Map.Marker = &data.Token{Height: .3}
+		x, y := s.screen(g, s.points[0].at)
+		for _, tc := range []struct {
+			name, picture string
+			dx, dy        float64
+		}{
+			{"portrait upper", "pics/portrait.png", 0, -h * .8},
+			{"wide side", "pics/decal.png", h * .8, -h * .5},
+		} {
+			t.Run(tc.name+strconv.Itoa(scale.width), func(t *testing.T) {
+				s.points[0].marker = tc.picture
+				if c, ok := s.pointAt(g, x+tc.dx, y+tc.dy); !ok || c.Point != "destination" {
+					t.Fatalf("visible picture missed: %v %v", c, ok)
+				}
+			})
+		}
+		s.points[0].marker = ""
+		g.db.Locations[s.loc].Map.Marker = nil
+		s.points[0].label = "A long destination name beside the road"
+		if c, ok := s.pointAt(g, x+100, y+12); !ok || c.Point != "destination" {
+			t.Errorf("visible label missed at UI scale %v", scale.ui)
+		}
+		s.points[0].label = ""
+		if _, ok := s.pointAt(g, x+pointHit-1, y); !ok {
+			t.Error("minimum finger target lost")
+		}
+		if _, ok := s.pointAt(g, x+pointHit+1, y); ok {
+			t.Error("point outside small pin selected")
+		}
+		s.points[0].shown = 0
+		if _, ok := s.pointAt(g, x, y); ok {
+			t.Error("hidden destination selected")
+		}
+		s.points[0].shown = 3
+	}
+}
+
+func TestAtlasPointerOverlapAndAvailability(t *testing.T) {
+	g, s := wldAtlas(t, "fx_mark")
+	s.here = "elsewhere"
+	s.choices = []atlas.Choice{{Point: "back"}, {Point: "front"}}
+	s.sel = len(s.choices)
+	s.points = []mapPoint{
+		{id: "back", at: geom.Pt{X: 160, Y: 120}, shown: 3, open: true, choice: 0, marker: "pics/portrait.png"},
+		{id: "front", at: geom.Pt{X: 162, Y: 120}, shown: 3, open: true, choice: 1, marker: "pics/portrait.png"},
+	}
+	g.db.Locations[s.loc].Map.Marker = &data.Token{Height: .4}
+	x, y := s.screen(g, s.points[0].at)
+	_, sh := g.screen()
+	check := func(want string, x, y float64) {
+		t.Helper()
+		c, ok := s.pointAt(g, x, y)
+		if !ok || c.Point != want {
+			t.Fatalf("got %v %v, want %s", c, ok, want)
+		}
+	}
+	check("front", x, y-sh*.2)
+	s.points[1].open = false // Closed choices still explain their locked condition.
+	check("front", x, y-sh*.2)
+	s.points[1].choice = -1
+	check("back", x, y-sh*.2)
+	s.points[1].choice = 1
+	s.points[1].shown = 0
+	check("back", x, y-sh*.2)
+	s.points[1].shown = 3
+	// Outside visible rectangles, the nearest anchor retains the minimum target.
+	check("back", x-10, y+20)
+	// Selection enlargement is part of the hit target even before the next draw.
+	s.points = s.points[:1]
+	s.sel = 0
+	check("back", x, y-sh*.49)
+	s.sel = len(s.choices)
+	if _, ok := s.pointAt(g, x, y-sh*.49); ok {
+		t.Fatal("old selection bounds retained")
+	}
+	// A rendered plate takes precedence over a marker behind it.
+	s.points[0].label = "Destination"
+	s.points = append(s.points, mapPoint{id: "front", at: geom.Pt{X: 160, Y: 150}, shown: 3, open: true, choice: 1, marker: "pics/portrait.png"})
+	s.layoutPoints(g, nil)
+	plate := s.targets[len(s.targets)-1].box
+	check("back", plate.x+plate.w/2, plate.y+plate.h/2)
 }

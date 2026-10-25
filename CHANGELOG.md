@@ -5,6 +5,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 ## Unreleased
 
 - Render save-slot location names using each saved state, including load menus opened from the title.
+- Match atlas pointer targets to visible marker pictures and name plates, preserving small targets and deterministic overlap selection.
 
 ## v0.9.0 - 2026-10-25
 
