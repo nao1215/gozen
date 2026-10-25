@@ -12951,6 +12951,25 @@
       "additionalProperties": false,
       "description": "One detail page in an author-defined screen.",
       "properties": {
+        "do": {
+          "description": "Optional event commands run once on confirmation; conditions and text refresh afterward.",
+          "items": {
+            "$ref": "#/$defs/Command"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Command](#command)[]"
+        },
         "label": {
           "description": "Required label shown in the list.",
           "type": "string",

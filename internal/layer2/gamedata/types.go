@@ -196,7 +196,7 @@ type Game struct {
 	Asides []Aside `yaml:"asides"`
 	// Verbs maps reusable command names to events. Invoke with name: true.
 	Verbs map[string]string `yaml:"verbs"`
-	// Screens defines author-owned information and picture lists opened by name.
+	// Screens defines author-owned information, picture and action lists opened by name.
 	Screens map[string]*AuthorScreen `yaml:"screens"`
 	// Reactions maps speaker IDs to validated reaction books under assets/.
 	Reactions map[string]string `yaml:"reactions"`
@@ -1626,7 +1626,7 @@ func (p Picture) Brightness() float64 {
 	return p.Bright
 }
 
-// AuthorScreen is a titled list of information or pictures rendered by play.
+// AuthorScreen is a titled list of information, pictures or actions rendered by play.
 // Entries keep authored order; when hides entries until their condition holds.
 type AuthorScreen struct {
 	Title   string        `yaml:"title"`
@@ -1635,8 +1635,10 @@ type AuthorScreen struct {
 
 // ScreenEntry is one selectable detail page in an author-defined screen.
 type ScreenEntry struct {
-	Label   string `yaml:"label"`
-	Text    string `yaml:"text"`
-	Picture string `yaml:"picture"`
-	When    Expr   `yaml:"when"`
+	// Do runs through the ordinary event interpreter when the player confirms.
+	Do      []Command `yaml:"do"`
+	Label   string    `yaml:"label"`
+	Text    string    `yaml:"text"`
+	Picture string    `yaml:"picture"`
+	When    Expr      `yaml:"when"`
 }

@@ -4,17 +4,20 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.9.0 - 2026-10-25
+
+Build multi-level towns with continuous movement, building surfaces and roof geometry, and add interactive event actions to authored screens.
+
+- Run ordinary event commands from authored screen entries, refreshing their content and preserving dialogue save cursors.
 - Add building facade materials, closed gable/shed roofs and canopies with shared collision and sprite occlusion.
-
 - Add opt-in continuous stacked-space walking with footprint collision, held-input speed stages, distance-based encounters and saved off-center poses.
-
 - Render NPC and furniture billboards in stacked spaces with tile interactions, alpha transparency and terrain occlusion.
-
 - Add optional local idle oscillators to puppet parts, independent of body breathing, health and hit motion.
 - Reuse unchanged stacked-space occupancy data, with state-aware invalidation and reproducible CPU/rendering benchmarks.
-
 - Add an optional instant-transition setting for ordinary dungeons, avoiding old-frame ghosting while retaining movement input cadence and stacked-space camera interpolation.
 - Allow authors to configure map travel speed, painted-scene player walking speed, and independent stacked-space step and turn durations per location.
+- Preserve completed screen-entry changes across live reload, and parallelize isolated native space tests.
+- Update GitHub Actions tooling and group coordinated CodeQL updates.
 
 ## v0.8.0 - 2026-10-25
 

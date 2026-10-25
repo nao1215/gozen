@@ -105,6 +105,7 @@ func (c *checker) declarations() {
 			c.text(ew+".text", e.Text, FieldNames)
 			c.file(ew+".picture", e.Picture)
 			c.expr(ew+".when", e.When, FieldNames)
+			c.commands(ew+".do", e.Do, FieldNames)
 		}
 	}
 }

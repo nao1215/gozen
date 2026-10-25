@@ -1,11 +1,24 @@
 package gamedata
 
+import "fmt"
+
 // The names of command lists: an event's id, a place's action (<place>.<label>), a place's
 // person (<place>.<name>) and a dungeon tile (<place>.tile.<char>). A note of F9, F5 and a
 // save made in the middle of an event (ADR 0025) name the commands they begin again.
+// Screen entry actions use screen:<id>:<authored index> for the same consumers.
 
 // eachNamed passes every named command list to f until it returns true.
 func (db *DB) eachNamed(f func(name string, cmds []Command) bool) {
+	for id, screen := range db.Game.Screens {
+		if screen == nil {
+			continue
+		}
+		for i, entry := range screen.Entries {
+			if f(fmt.Sprintf("screen:%s:%d", id, i), entry.Do) {
+				return
+			}
+		}
+	}
 	for id, ev := range db.Events {
 		if f(id, ev.Do) {
 			return

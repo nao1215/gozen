@@ -391,7 +391,7 @@ scenarios:
           journal:
             title: Travel journal
             entries:
-              - {label: Arrival, text: You arrived at the station.}
+              - {label: Arrival, text: 'Visits: {var.visits}', do: [{set: {var.visits: 'var.visits + 1'}}]}
               - {label: Unopened, text: A later note., when: flag.later}
   - fixture:
       file: story/data/story.yaml
@@ -425,6 +425,8 @@ scenarios:
         wait 10
         do open: journal
         wait 10
+        press ok
+        wait 10
         shot journal
         press cancel
         do open: save
@@ -445,6 +447,10 @@ scenarios:
       file:
         path: saves/save1.json
         json: {path: $.state.party, equals: []}
+  - assert:
+      file:
+        path: saves/save1.json
+        json: {path: $.state.vars.visits, equals: 1}
   - run:
       command: gozen trace story.jsonl --only say
   - assert:

@@ -73,6 +73,7 @@ func (db *DB) StateUses() map[string]*NameUse {
 			u.text(w+".label", entry.Label)
 			u.text(w+".text", entry.Text)
 			u.expr(w+".when", entry.When)
+			u.commands(w+".do", entry.Do)
 		}
 	}
 	return u.out

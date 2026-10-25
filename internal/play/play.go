@@ -1243,6 +1243,27 @@ func (g *Game) loadGame(st *rpg.State) {
 	g.reportLoad(st.LoadReport)
 }
 
+// newEventRunner also supplies isolated execution for authored screen actions.
+func (g *Game) newEventRunner() *event.Runner {
+	runner := event.New(g.db, g.st, event.HostFunc(g.Handle))
+	runner.Sortie = true
+	runner.BlockAside = g.AsideBlocked
+	runner.OnStart = g.onEventStart
+	// Writing stats and levels with set is allowed only in authoring mode (--dev) (ADR 0021, author's decision 5).
+	runner.Dev, runner.UseItem = g.opts.Development || g.opts.SetStats, itemuse.For(g.db, g.st)
+	runner.Log = func(err error) {
+		if g.opts.capture != nil {
+			g.failure = errors.Join(g.failure, err)
+			return
+		}
+		log.Print(err)
+		if g.auto != nil {
+			g.auto.errs = append(g.auto.errs, err.Error())
+		}
+	}
+	return runner
+}
+
 func (g *Game) startState() {
 	g.st.Calm = g.opts.Calm
 	g.backlog, g.logView = nil, nil
@@ -1252,24 +1273,9 @@ func (g *Game) startState() {
 	if !g.rollingBack {
 		g.backRing = nil
 	}
-	g.events = event.New(g.db, g.st, event.HostFunc(g.Handle))
-	g.events.Sortie = true
+	g.events = g.newEventRunner()
 	if g.sortieTactics == nil {
 		g.sortieTactics = map[string]string{}
-	}
-	g.events.BlockAside = g.AsideBlocked
-	g.events.OnStart = g.onEventStart
-	// Writing stats and levels with set is allowed only in authoring mode (--dev) (ADR 0021, author's decision 5).
-	g.events.Dev, g.events.UseItem = g.opts.Development || g.opts.SetStats, itemuse.For(g.db, g.st)
-	g.events.Log = func(err error) {
-		if g.opts.capture != nil {
-			g.failure = errors.Join(g.failure, err)
-			return
-		}
-		log.Print(err)
-		if g.auto != nil {
-			g.auto.errs = append(g.auto.errs, err.Error())
-		}
 	}
 	g.req = nil
 	g.replace(g.newPlace())
