@@ -16,6 +16,10 @@ on:
   workflow_dispatch:
   workflow_call:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -54,12 +58,26 @@ jobs:
 
       # Published binaries are built with the newest Go, not go.mod's minimum,
       # so users of a prebuilt artifact get the current runtime and its fixes.
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - id: go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: stable
           check-latest: true
-          # A release builds from a clean module cache, never one a pull request wrote.
+          # Tag releases and manual verification always use clean caches.
           cache: false
+
+      # Only branch CI restores this cache. Main is its only writer; release
+      # calls from tags never restore or save it.
+      - name: Restore snapshot build caches
+        id: snapshot-cache
+        if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-release-smoke-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-${{ github.sha }}
+          restore-keys: go-${{ runner.os }}-release-smoke-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-
 
       - name: Install package inspection and desktop test dependencies
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm xvfb xauth libgl1 libegl1 libasound2t64
@@ -88,6 +106,15 @@ jobs:
             dist/*.tar.gz
             dist/*.zip
             dist/checksums.txt
+
+      - name: Save snapshot build caches
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.snapshot-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ steps.snapshot-cache.outputs.cache-primary-key }}
 
   smoke-cross:
     name: Smoke-test artifacts on ${{ matrix.os }}

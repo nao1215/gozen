@@ -35,11 +35,13 @@ The `docs-checks` job of the CI workflow runs on these pull requests only, with 
 
 ## Time
 
-CI, Docs, Coverage and Benchmark cancel superseded runs for the same pull request. Pushes to main and manual runs keep distinct groups and finish independently. The sample job saves its build cache after all three sample modules, including campaign, have passed.
+CI, Docs, Coverage, Benchmark and Release Smoke cancel superseded runs for the same pull request. Pushes to main and manual runs keep distinct groups and finish independently. The sample job saves its build cache after all three sample modules, including campaign, have passed.
 
 The longest jobs are the pictures of the Docs workflow and graphics; most of their time is the samples playing in real time and writing 1920x1080 frames. The game writes a screenshot off its loop (PNG at BestSpeed, by background workers), the docs pictures' runs play side by side, and graphics runs its scenarios side by side.
 
-- graphics and cli-e2e install atago from its release binary with setup-atago (the checksum is checked) instead of building it with `go install`.
+- The graphics matrix runs screen tests while a separate capture matrix runs the CLI screenshot pipeline on all three operating systems. Both remain mandatory executions for code changes; neither waits for the other.
+- Release Smoke keeps a dedicated snapshot build cache for pull requests and main pushes, with main as its only writer. Cache keys include the Go version, module sums and revision. Tag releases and manual runs use clean caches. The first main run populates the cache for subsequent pull requests.
+- capture and cli-e2e install atago from its release binary with setup-atago (the checksum is checked) instead of building it with `go install`.
 - race, go-zen, the Docs jobs and Coverage keep Go caches of their own (`actions/cache`, keyed by the job, Go version, `go.sum` files and revision, saved from main; a dependency-specific prefix restores the newest compatible cache so source changes can refresh it). setup-go's cache is one per Go version and `go.sum`, shared by every job and saved by whichever job ends first, often a short cross-build, so it held little of what these jobs build. The Website workflow, which deploys the site, is left with setup-go's cache.
 - On a pull request, the images job of the Docs workflow remakes the pictures only when the pull request changes a file that can change them. It skips them when every changed file is a Markdown file, under `website/`, `.github/` (other than `docs.yml`), `e2e/`, `bench/` or `skills/`, `LICENSE`, or a `_test.go` file outside `internal/dev/docs`. Any other file, `docs/images/` and `internal/dev/docs/` run them, and so does every push to main and manual run.
 
