@@ -310,3 +310,56 @@ func shotImage(t *testing.T, root, name string) image.Image {
 	}
 	return img
 }
+
+// The camera is exercised through native input and pixel readback; the grid is a
+// neutral test asset, not a README illustration.
+func TestGraphicsMapCamera(t *testing.T) {
+	root := t.TempDir()
+	game := filepath.Join(root, "game")
+	if err := os.CopyFS(game, atlasCameraFiles(t)); err != nil {
+		t.Fatal(err)
+	}
+	path, trace := filepath.Join(root, "script.txt"), filepath.Join(root, "trace.jsonl")
+	body := "gap 1\nwait 20\nshot focused\npress map_overview\nwait 5\nshot overview\npress map_focus\npress map_pan\nhold right 200\nhold down 200\nshot corner\npress map_focus\nwait 5\nshot returned\npress tab 58\nwait 5\nshot selected\nwalk p59\nwait 900\nshot arrived\nquit\n"
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, hostBin, "--dir", game, "--dev", "--mute", "--start", "large", "--seed", "1", "--script", path, "--trace", trace, "--shots", root, "--save-dir", filepath.Join(root, "saves")) //nolint:gosec // Fixed test host and isolated fixture paths.
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("host: %v\nstdout: %s\nstderr: %s", err, &stdout, &stderr)
+	}
+	// The background's gradient at an unobstructed central pixel identifies the
+	// world coordinates being rendered, independently of marker layout.
+	for _, tc := range []struct {
+		name string
+		r, g uint32
+	}{
+		{"focused", 38, 70}, {"returned", 38, 70}, {"overview", 55, 90}, {"corner", 71, 110},
+	} {
+		img := shotImage(t, root, tc.name)
+		bounds := img.Bounds()
+		r, g, b, _ := img.At(bounds.Dx()/2, bounds.Dy()/2).RGBA()
+		if abs(int(r>>8)-int(tc.r)) > 2 || abs(int(g>>8)-int(tc.g)) > 2 || abs(int(b>>8)-60) > 2 {
+			t.Errorf("%s center RGB %d,%d,%d", tc.name, r>>8, g>>8, b>>8)
+		}
+	}
+	if shotPixelSum(t, root, "returned") == shotPixelSum(t, root, "selected") {
+		t.Fatal("offscreen selection did not move camera")
+	}
+	raw, err := fs.ReadFile(os.DirFS(root), "trace.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	trips := traceLines(t, raw, "travel")
+	if len(trips) != 1 || trips[0]["to"] != "p59" {
+		t.Fatalf("browsing triggered travel: %v", trips)
+	}
+	spots := traceLines(t, raw, "spot")
+	if len(spots) == 0 || spots[len(spots)-1]["spot"] != "p59" {
+		t.Fatal("journey did not finish")
+	}
+}

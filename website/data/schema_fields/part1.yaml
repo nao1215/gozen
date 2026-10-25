@@ -48,6 +48,7 @@ Aside:
   skip: "Patterns of event names. The aside is not inserted while one of these events, or an event it calls, is running."
   when: "An expression that decides whether the aside is inserted."
 Atlas:
+  camera: "Opt-in pan/zoom camera. An empty map uses zoom 2 and max_zoom 8. Omitted keeps the fitted overview. Camera position is not saved."
   travel_speed: "Token travel in picture widths per second, per location. Omitted or 0 means 0.12; otherwise 0.01 to 2, finite. Does not change road steps or encounters."
   _: "A location shown as a picture with points and roads. Needs schema version 3."
   draw_roads: "If true, the roads are drawn over the picture. By default they are only the paths the token walks along. Default false."
@@ -60,6 +61,10 @@ Atlas:
   roads: "The roads that connect points. The token walks along them."
   token: "The piece that stands for the party on the map: a picture, the leader's face, or `doll` for the leader's doll."
   unknown: "How a point not yet visited is shown: `hidden`, `dim`, `mark` (a question-mark plate, the default) or `named`."
+AtlasCamera:
+  _: "Presentation-only camera for a large atlas. Bounds are clamped to the picture and labels retain their screen size."
+  zoom: "Initial zoom relative to fit-to-screen, from 1 to max_zoom. Zero or omitted means 2, capped at max_zoom."
+  max_zoom: "Maximum zoom relative to fit-to-screen, from 1 to 64. Zero or omitted means 8."
 BattleAct:
   _: "One move for the next auto battle: who acts, with what skill or item, and on whom."
   actor: "The party member who acts, an ID of actors."

@@ -58,21 +58,24 @@ type mapRoad struct {
 }
 
 type atlasScene struct {
-	loc     string
-	pic     string
-	age     int
-	banner  int
-	sel     int
-	choices []atlas.Choice
-	points  []mapPoint
-	roads   []mapRoad
-	here    string
-	dirty   bool     // the state may have changed: find the points again when idle
-	leader  dollSpec // the token's doll when the map has no token picture
-	spot    string   // the spot last written to the trace
-	boxes   []plateBox
-	targets []pointTarget
-	ground  map[string]*ebiten.Image // landmarks settled onto their terrain, by region
+	cameraCenter geom.Pt
+	cameraZoom   float64
+	cameraPan    bool
+	loc          string
+	pic          string
+	age          int
+	banner       int
+	sel          int
+	choices      []atlas.Choice
+	points       []mapPoint
+	roads        []mapRoad
+	here         string
+	dirty        bool     // the state may have changed: find the points again when idle
+	leader       dollSpec // the token's doll when the map has no token picture
+	spot         string   // the spot last written to the trace
+	boxes        []plateBox
+	targets      []pointTarget
+	ground       map[string]*ebiten.Image // landmarks settled onto their terrain, by region
 	// warChosen: a campaign's map has chosen its first region
 	warChosen bool
 
@@ -112,6 +115,7 @@ func (s *atlasScene) arrive(g *Game) {
 	if p := l.Map.Points[s.here]; p != nil {
 		s.at = p.At.Pt()
 	}
+	s.resetCamera(g, false)
 }
 
 // firstChoice is the first choice that is not the point the token stands on.
@@ -189,7 +193,214 @@ func (s *atlasScene) fit(g *Game) (k, ox, oy float64, ok bool) {
 	pw, ph := g.pixels()
 	b := img.Bounds()
 	k = math.Min(pw/float64(b.Dx()), ph/float64(b.Dy()))
+	if s.location(g).Map.Camera != nil {
+		k *= max(1, s.cameraZoom)
+		s.clampCamera(g, k, float64(b.Dx()), float64(b.Dy()))
+		return k, pw/2 - s.cameraCenter.X*k, ph/2 - s.cameraCenter.Y*k, true
+	}
 	return k, (pw - float64(b.Dx())*k) / 2, (ph - float64(b.Dy())*k) / 2, true
+}
+
+// Camera state belongs to the scene. Entering or loading starts at the current
+// point; returning from an overlay keeps the current view. Browsing never mutates State.
+func (s *atlasScene) cameraLimit(g *Game) float64 {
+	if c := s.location(g).Map.Camera; c != nil && c.MaxZoom > 0 {
+		return c.MaxZoom
+	}
+	return 8
+}
+
+func (s *atlasScene) resetCamera(g *Game, overview bool) {
+	s.cameraZoom, s.cameraCenter, s.cameraPan = 1, s.at, false
+	c := s.location(g).Map.Camera
+	if c == nil || overview {
+		return
+	}
+	s.cameraZoom = c.Zoom
+	if s.cameraZoom == 0 {
+		s.cameraZoom = min(2, s.cameraLimit(g))
+	}
+}
+
+func (s *atlasScene) clampCamera(g *Game, k, w, h float64) {
+	pw, ph := g.pixels()
+	clamp := func(v, size, span float64) float64 {
+		if span >= size {
+			return size / 2
+		}
+		return max(span/2, min(size-span/2, v))
+	}
+	s.cameraCenter.X = clamp(s.cameraCenter.X, w, pw/k)
+	s.cameraCenter.Y = clamp(s.cameraCenter.Y, h, ph/k)
+}
+
+func (s *atlasScene) panCamera(g *Game, dx, dy float64) {
+	k, _, _, ok := s.fit(g)
+	if !ok {
+		return
+	}
+	pw, ph := g.pixels()
+	s.cameraCenter = s.cameraCenter.Add(geom.Pt{X: dx * pw / k, Y: dy * ph / k})
+	s.fit(g)
+}
+
+func (s *atlasScene) zoomCamera(g *Game, factor float64) {
+	s.fit(g) // Clamp the old view before preserving its center.
+	s.cameraZoom = max(1, min(s.cameraLimit(g), s.cameraZoom*factor))
+	s.fit(g)
+}
+
+func (s *atlasScene) revealCameraPoint(g *Game, p geom.Pt) {
+	if s.location(g).Map.Camera == nil {
+		return
+	}
+	k, _, _, ok := s.fit(g)
+	if !ok {
+		return
+	}
+	pw, ph := g.pixels()
+	spanX, spanY := pw/k*.35, ph/k*.35
+	s.cameraCenter.X = max(p.X-spanX, min(p.X+spanX, s.cameraCenter.X))
+	s.cameraCenter.Y = max(p.Y-spanY, min(p.Y+spanY, s.cameraCenter.Y))
+	s.fit(g)
+}
+
+func (s *atlasScene) cameraPointVisible(g *Game, p geom.Pt) bool {
+	if s.location(g).Map.Camera == nil {
+		return true
+	}
+	x, y := s.screen(g, p)
+	w, h := g.screen()
+	return x >= 0 && x <= w && y >= 0 && y <= h
+}
+
+func (s *atlasScene) selectCameraPoint(g *Game, want geom.Pt) {
+	from := s.at
+	if s.sel >= 0 && s.sel < len(s.choices) {
+		from = s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt()
+	}
+	best, score := s.sel, math.Inf(1)
+	for i, c := range s.choices {
+		d := s.location(g).Map.Points[c.Point].At.Pt().Sub(from)
+		ahead := d.X*want.X + d.Y*want.Y
+		if i == s.sel || ahead <= 0 {
+			continue
+		}
+		side := math.Abs(d.X*want.Y - d.Y*want.X)
+		value := d.Len() + side*2
+		if value < score {
+			best, score = i, value
+		}
+	}
+	if best != s.sel {
+		s.sel = best
+		g.sfx("cursor")
+	}
+	if len(s.choices) > 0 {
+		s.revealCameraPoint(g, s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt())
+	}
+}
+
+// cameraButtons are in screen coordinates, independent of the map transform.
+func (s *atlasScene) cameraButtons(g *Game) []plateBox {
+	_, h := g.screen()
+	boxes := make([]plateBox, 8)
+	for i := range boxes {
+		boxes[i] = plateBox{x: 24 + float64(i)*74, y: h - 104, w: 68, h: 42}
+	}
+	return boxes
+}
+
+func (s *atlasScene) cameraAction(g *Game, n int) {
+	switch n {
+	case 0:
+		s.panCamera(g, -.2, 0)
+	case 1:
+		s.panCamera(g, .2, 0)
+	case 2:
+		s.panCamera(g, 0, -.2)
+	case 3:
+		s.panCamera(g, 0, .2)
+	case 4:
+		s.zoomCamera(g, 1/1.25)
+	case 5:
+		s.zoomCamera(g, 1.25)
+	case 6:
+		s.resetCamera(g, true)
+	case 7:
+		s.resetCamera(g, false)
+	}
+}
+
+func (s *atlasScene) updateCamera(g *Game) bool {
+	if s.location(g).Map.Camera == nil {
+		return false
+	}
+	in := &g.in
+	if in.click {
+		x, y := float64(in.mouse.X), float64(in.mouse.Y)
+		for i, b := range s.cameraButtons(g) {
+			if x >= b.x && x <= b.x+b.w && y >= b.y && y <= b.y+b.h {
+				s.cameraAction(g, i)
+				return true
+			}
+		}
+	}
+	switch {
+	case in.pressed[btnMapZoomIn] || in.wheel > 0:
+		s.zoomCamera(g, 1.25)
+		return true
+	case in.pressed[btnMapZoomOut] || in.wheel < 0:
+		s.zoomCamera(g, 1/1.25)
+		return true
+	case in.pressed[btnMapOverview]:
+		s.resetCamera(g, true)
+		return true
+	case in.pressed[btnMapFocus]:
+		s.resetCamera(g, false)
+		return true
+	case in.pressed[btnMapPan]:
+		s.cameraPan = !s.cameraPan
+		return true
+	case in.pressed[btnNext] && len(s.choices) > 0:
+		s.sel = (s.sel + 1) % len(s.choices)
+		s.revealCameraPoint(g, s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt())
+		return true
+	}
+	if s.cameraPan {
+		dx, dy := 0.0, 0.0
+		if in.held[btnLeft] || in.pressed[btnLeft] {
+			dx--
+		}
+		if in.held[btnRight] || in.pressed[btnRight] {
+			dx++
+		}
+		if in.held[btnUp] || in.pressed[btnUp] {
+			dy--
+		}
+		if in.held[btnDown] || in.pressed[btnDown] {
+			dy++
+		}
+		if dx != 0 || dy != 0 {
+			s.panCamera(g, dx*.015, dy*.015)
+			return true
+		}
+	}
+	return false
+}
+
+func (s *atlasScene) drawCamera(g *Game, dst *ebiten.Image) {
+	labels := []string{"<", ">", "^", "v", "-", "+", lang.T("全体"), lang.T("現在地")}
+	for i, b := range s.cameraButtons(g) {
+		gfx.FillRoundRect(dst, float32(b.x), float32(b.y), float32(b.w), float32(b.h), 8, withAlpha(g.th.window, 240))
+		gfx.DrawText(dst, labels[i], b.x+b.w/2, b.y+9, sizeS*.75, g.th.text)
+	}
+	_, h := g.screen()
+	hint := lang.T("P / R3: 地図を動かす")
+	if s.cameraPan {
+		hint = lang.T("P / R3: 選択に戻る")
+	}
+	g.text(dst, hint, 24, h-135, sizeS*.7, g.th.text)
 }
 
 // screen is where a point of the picture shows, in UI units.
@@ -245,6 +456,9 @@ func (s *atlasScene) update(g *Game) {
 		}
 	}
 	in := &g.in
+	if s.updateCamera(g) {
+		return
+	}
 	if in.openList() {
 		g.sfx("decide")
 		g.push(newEntryListOf(g, s.take, s.listed))
@@ -295,6 +509,10 @@ func (s *atlasScene) listed(e world.Entry) bool {
 // selectToward selects the choice whose way out of the token's point is nearest the way
 // (another than the one selected when the way is the same).
 func (s *atlasScene) selectToward(g *Game, want geom.Pt) {
+	if s.location(g).Map.Camera != nil {
+		s.selectCameraPoint(g, want)
+		return
+	}
 	best, bd := s.sel, 0.3
 	for i, c := range s.choices {
 		d := s.firstStep(g, c).Sub(s.at)
@@ -424,6 +642,7 @@ func (s *atlasScene) walk(g *Game) {
 	s.phase = math.Mod(s.phase+tickSecond*7, 2*math.Pi)
 	at, dir := s.path.At(s.walked)
 	s.at = at
+	s.revealCameraPoint(g, at)
 	if dir != (geom.Pt{}) {
 		s.dir = dir
 	}
@@ -552,6 +771,9 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	if g.talk.active || len(g.stack) > 1 {
 		return
 	}
+	if a.Camera != nil {
+		s.drawCamera(g, dst)
+	}
 	if war {
 		s.drawCampaign(g, dst, sel)
 		g.text(dst, lang.T("方向：選ぶ　決定：命令　メニュー：一覧"), 36, sh-40, sizeS*0.8, withAlpha(g.th.text, 200))
@@ -586,6 +808,9 @@ func (s *atlasScene) layoutPoints(g *Game, dst *ebiten.Image) {
 	// the markers, then the name plates laid out so they keep off each other and the markers
 	s.boxes = s.boxes[:0]
 	s.targets = s.targets[:0]
+	if a.Camera != nil {
+		s.boxes = append(s.boxes, s.cameraButtons(g)...)
+	}
 	war := s.campaignMap(g)
 	for i := range s.points { // a region's plate follows its garrison at once
 		if war && g.db.Regions[s.points[i].id] != nil && s.location(g).Map.Points[s.points[i].id].Label == "" {
@@ -594,6 +819,9 @@ func (s *atlasScene) layoutPoints(g *Game, dst *ebiten.Image) {
 	}
 	for _, p := range s.points {
 		x, y := toScreen(p.at)
+		if !s.cameraPointVisible(g, p.at) {
+			continue
+		}
 		if p.id == s.here && s.path == nil && !war { // the token stands on its own point: keep plates off it
 			th := tokenSize(a) * sh
 			if a.Token == nil || a.Token.Picture == "" && !a.Token.Doll { // the round face, its ring too
@@ -637,7 +865,7 @@ func (s *atlasScene) layoutPoints(g *Game, dst *ebiten.Image) {
 	}
 	// Stable point order keeps focus changes from moving neighboring plates.
 	for _, p := range s.points {
-		if p.shown > 0 {
+		if p.shown > 0 && s.cameraPointVisible(g, p.at) {
 			s.drawPlate(g, dst, p, sel, mh)
 		}
 	}
