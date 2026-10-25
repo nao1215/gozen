@@ -507,3 +507,43 @@ func TestRecruitmentAdmissionAfterSavedChoice(t *testing.T) {
 		})
 	}
 }
+
+func TestSaveSlotLocationTemplatesUseEachSavedState(t *testing.T) {
+	dir := t.TempDir()
+	extra := map[string]string{"data/inn.yaml": strings.Replace(sysInnData, "name: Inn", "name: 'Camp - day {var.day}'", 1)}
+	g := sysInnWith(t, Options{SaveDir: dir}, extra)
+	for i, day := range []float64{3, 7} {
+		g.st.Vars["day"] = day
+		if err := g.save(i); err != nil {
+			t.Fatal(err)
+		}
+	}
+	g.st.Vars["day"] = float64(99)
+	check := func(game *Game) {
+		t.Helper()
+		for i, day := range []int{3, 7} {
+			label, ok := game.slotLabel(i)
+			if !ok || !strings.Contains(label, fmt.Sprintf("Camp - day %d", day)) || strings.Contains(label, "{") {
+				t.Errorf("slot %d label = %q, available %v", i, label, ok)
+			}
+		}
+	}
+	check(g)
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	// A fresh session opens Continue before loading either saved state.
+	fresh := sysInnWith(t, Options{SaveDir: dir}, extra)
+	fresh.st.Vars["day"] = float64(0)
+	title := newTitle(fresh)
+	fresh.stack = []scene{title}
+	sysKey(fresh, btnOK)
+	title.update(fresh)
+	menu := sysAs[*saveMenu](t, fresh.stack[len(fresh.stack)-1])
+	for i, day := range []int{3, 7} {
+		if got := menu.slots.items[i].label; !strings.Contains(got, fmt.Sprintf("Camp - day %d", day)) {
+			t.Errorf("title load slot %d = %q", i, got)
+		}
+	}
+	check(fresh)
+}
