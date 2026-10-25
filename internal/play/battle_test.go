@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/nao1215/gozen/internal/battle"
+	"github.com/nao1215/gozen/internal/event"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 )
@@ -509,5 +510,71 @@ func TestBattleAIHistoryDoesNotChangeDecisionsOrReplay(t *testing.T) {
 		if err := replay.Close(); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func TestBattleDefeatRecoveryPolicy(t *testing.T) {
+	for _, noRecovery := range []bool{true, false} {
+		t.Run(map[bool]string{true: "preserve", false: "recover"}[noRecovery], func(t *testing.T) {
+			g, _ := btlOpen(t, Options{}, "", "")
+			scoutHP := g.st.Actors["scout"].HP
+			g.begin(event.Battle{Troop: "doom", Fighters: []string{"guide"}, CanLose: true, NoRetry: true, NoRecovery: noRecovery})
+			s := g.currentBattle()
+			if s == nil || len(s.b.Party) != 1 || s.b.Party[0].Actor.ID != "guide" {
+				t.Fatal("wrong participants")
+			}
+			callbacks := 0
+			end := s.onEnd
+			s.onEnd = func(res int) {
+				callbacks++
+				if res != event.BattleLost {
+					t.Fatalf("result %d", res)
+				}
+				want := 1
+				if noRecovery {
+					want = 0
+				}
+				if g.st.Actors["guide"].HP != want || g.st.Actors["scout"].HP != scoutHP {
+					t.Fatal("wrong recovery")
+				}
+				if g.st.LastBattle == nil || g.st.LastBattle.HP["guide"] != 0 || len(g.st.LastBattle.HP) != 1 {
+					t.Fatal("wrong snapshot")
+				}
+				end(res)
+			}
+			btlAttackUntilOver(t, g, s)
+			if callbacks != 1 {
+				t.Fatalf("callbacks %d", callbacks)
+			}
+		})
+	}
+}
+
+func TestBattleRetryKeepsFightersAndRecovery(t *testing.T) {
+	g, _ := btlOpen(t, Options{}, "", "")
+	g.db.Game.Battle.Retry = true
+	g.begin(event.Battle{Troop: "doom", Fighters: []string{"guide"}, CanLose: true, NoRecovery: true})
+	s := g.currentBattle()
+	s.b.Party[0].HP = 0
+	s.b.Result = battle.Lost
+	s.b.End()
+	s.phase, s.endT = bpResult, 10
+	s.result(g)
+	q, ok := g.stack[len(g.stack)-1].(*confirm)
+	if !ok {
+		t.Fatal("retry question missing")
+	}
+	for range 6 {
+		q.update(g)
+	}
+	g.in.pressed[btnOK] = true
+	q.update(g)
+	g.in.pressed = [numButtons]bool{}
+	n := g.currentBattle()
+	if n == nil || n == s || len(n.b.Party) != 1 || n.b.Party[0].Actor.ID != "guide" || !n.noRecovery {
+		t.Fatal("retry lost fighter selection or recovery policy")
+	}
+	if g.st.LastBattle != nil {
+		t.Fatal("retry retained the discarded outcome")
 	}
 }

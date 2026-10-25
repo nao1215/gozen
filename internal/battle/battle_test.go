@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/battle"
+	"github.com/nao1215/gozen/internal/expr"
 	"github.com/nao1215/gozen/internal/layer1/optional"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
@@ -617,5 +618,51 @@ func TestLevelScaleUnboundedCap(t *testing.T) {
 	}
 	if got := battle.New(db, st, "one").Foes[0].MHP(); got != 60 {
 		t.Errorf("the mote has %d HP at Lv31 (want 60: the cap +100%%)", got)
+	}
+}
+
+func TestOutcomeSnapshotBeforeRecovery(t *testing.T) {
+	for _, result := range []battle.Result{battle.Won, battle.Lost, battle.Fled} {
+		t.Run(result.String(), func(t *testing.T) {
+			db := testgame.Load(t, nil)
+			st := testgame.State(db, 1)
+			st.Join("guide")
+			st.Fighters = []string{"guide"}
+			scoutHP := st.Actors["scout"].HP
+			b := battle.New(db, st, "one")
+			b.Party[0].HP = 0
+			b.Result = result
+			b.End()
+			b.Rise()
+			st.Actors["guide"].Recover()
+			saved, err := st.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			restored, err := rpg.Parse(db, saved, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, state := range []*rpg.State{st, restored} {
+				e, err := expr.Parse(`last_battle.participated.guide && last_battle.defeated.guide && last_battle.hp.guide == 0 && last_battle.casualties == 1 && !last_battle.participated.scout && !last_battle.defeated.scout`)
+				if err != nil {
+					t.Fatal(err)
+				}
+				got, err := e.Eval(state.Env())
+				if err != nil || got != true {
+					t.Fatalf("snapshot: %v %v", got, err)
+				}
+				if state.LastBattle.Result != result.String() {
+					t.Fatal("wrong result")
+				}
+				if state.Actors["scout"].HP != scoutHP {
+					t.Fatal("absent actor changed")
+				}
+			}
+			restored.LastBattle.HP["guide"] = 99
+			if st.LastBattle.HP["guide"] != 0 {
+				t.Fatal("snapshot aliases restored state")
+			}
+		})
 	}
 }

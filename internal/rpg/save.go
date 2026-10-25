@@ -249,6 +249,18 @@ func (s *State) checkSavedState() error {
 	if len(s.Party) == 0 && s.DB.CombatEnabled() || s.Location == "" {
 		return bad("party/location")
 	}
+	if outcome := s.LastBattle; outcome != nil {
+		switch outcome.Result {
+		case "", "win", "lose", "escape":
+		default:
+			return bad("last_battle/result")
+		}
+		for id, hp := range outcome.HP {
+			if id == "" || hp < 0 {
+				return bad("last_battle/hp")
+			}
+		}
+	}
 	seen := map[string]bool{}
 	for _, id := range s.Party {
 		if seen[id] || s.Actors[id] == nil {

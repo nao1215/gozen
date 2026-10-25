@@ -224,6 +224,8 @@ type Battle struct {
 	Fighters []string
 	// NoRetry: losing does not offer to fight again from just before (retry: false).
 	NoRetry bool
+	// NoRecovery preserves participant HP when acknowledging a defeat.
+	NoRecovery bool
 }
 
 // Shop opens a shop.
@@ -915,7 +917,7 @@ func (r *Runner) run(c *data.Command) Request {
 				r.st.Vars["bestiary."+id+".seen"] = true
 			}
 		}
-		return Battle{Troop: c.Battle, CanLose: c.OnLose != nil, Fighters: c.Fighters, NoRetry: c.Retry != nil && !*c.Retry}
+		return Battle{Troop: c.Battle, CanLose: c.OnLose != nil, Fighters: c.Fighters, NoRetry: c.Retry != nil && !*c.Retry, NoRecovery: c.Recover != nil && !*c.Recover}
 	case "move":
 		atlas.Place(r.db, r.st, r.st.Location, c.Move, c.At)
 		dungeon.Place(r.db, r.st, c.Move, c.At, c.Facing)

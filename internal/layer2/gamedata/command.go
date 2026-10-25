@@ -80,6 +80,8 @@ type Command struct {
 	// Fighters are the actors who fight the battle (default: the party): a duel.
 	Fighters []string `yaml:"fighters" command:"battle"`
 	// Retry (retry: false) does not ask "try again" after a loss (for battles where losing is part of the story).
+	// Recover defaults to true; false keeps defeated participants at their final HP.
+	Recover *bool     `yaml:"recover" command:"battle"`
 	Retry   *bool     `yaml:"retry" command:"battle"`
 	OnRun   []Command `yaml:"on_escape" command:"battle"`
 	Move    string    `yaml:"move" command:"verb"`

@@ -33,7 +33,7 @@ func TestActorTacticsRoundTrip(t *testing.T) {
 	d := New(db, saved)
 	var decisions []battle.Decision
 	d.OnDecision = func(v battle.Decision) { decisions = append(decisions, v) }
-	d.fight("one")
+	d.fight("one", true)
 	if len(decisions) == 0 || decisions[0].Selected != 1 || decisions[0].Rules[0].Reason != battle.RuleInvalidTactic || decisions[0].Skill != "fire" {
 		t.Fatalf("描画なしの戦闘で作戦を使わない %+v", decisions)
 	}

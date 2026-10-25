@@ -142,15 +142,7 @@ func New(db *data.DB, st *rpg.State, troop string) *Battle {
 		ok, err := w.Bool(st.Env())
 		b.common = err == nil && ok
 	}
-	members := st.Members()
-	if len(st.Fighters) > 0 { // a duel: these fight instead of the party
-		members = nil
-		for _, id := range st.Fighters {
-			if a := st.Actors[id]; a != nil {
-				members = append(members, a)
-			}
-		}
-	}
+	members := st.BattleMembers()
 	for i, a := range members {
 		b.Party = append(b.Party, newActorUnit(b, a, i))
 	}
@@ -537,6 +529,11 @@ func (b *Battle) End() []string {
 			}
 		}
 	}
+	participants := make([]*rpg.Actor, 0, len(b.Party))
+	for _, u := range b.Party {
+		participants = append(participants, u.Actor)
+	}
+	b.St.RecordBattle(b.Result.String(), participants)
 	// The number defeated in the previous battle (var.last_kill_<enemy>) is rewritten every
 	// battle, whether won, fled or lost
 	// (so the previous battle's count does not linger and mix into the banter after the next
@@ -611,7 +608,7 @@ func (b *Battle) End() []string {
 
 // Rise revives the members who took part in this battle with 1 HP when the story continues even
 // after a loss (the event's on_lose).
-// Members who did not fight (were outside the duel or were already down) are not revived. Call it
+// Members who did not fight (were outside the duel) are not revived. Call it
 // after End.
 func (b *Battle) Rise() {
 	for _, u := range b.Party {

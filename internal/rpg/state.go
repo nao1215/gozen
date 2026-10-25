@@ -16,6 +16,8 @@ import (
 
 // State is a game in progress.
 type State struct {
+	// LastBattle is the saved outcome before recovery or rewards. Battle runners write it; expressions read it.
+	LastBattle *BattleOutcome `json:"last_battle,omitempty"`
 	// Reactions stores per-speaker interpreter memory; event execution owns its contents.
 	Reactions map[string][]byte `json:"reactions,omitempty"`
 	Actors    map[string]*Actor `json:"actors"` // everyone who has joined, by id
@@ -70,6 +72,38 @@ type State struct {
 	SavedRand []byte `json:"-"`
 
 	stateNames map[string]data.StateName
+}
+
+// BattleOutcome stores participant IDs and final HP for outcome callbacks, even after
+// healing, leaving the party, or saving. HP is owned by the state, never actor aliases.
+type BattleOutcome struct {
+	Result string         `json:"result"`
+	HP     map[string]int `json:"hp"`
+}
+
+// RecordBattle snapshots the supplied participants before recovery or rewards.
+// Battle.End and runners accepting supplied results share this recording contract.
+func (s *State) RecordBattle(result string, members []*Actor) {
+	outcome := &BattleOutcome{Result: result, HP: make(map[string]int, len(members))}
+	for _, a := range members {
+		outcome.HP[a.ID] = max(0, a.HP)
+	}
+	s.LastBattle = outcome
+}
+
+// BattleMembers selects the command's fighters, or the party when no override exists.
+// Battle construction and supplied-result runners use the same participant selection.
+func (s *State) BattleMembers() []*Actor {
+	if len(s.Fighters) == 0 {
+		return s.Members()
+	}
+	members := make([]*Actor, 0, len(s.Fighters))
+	for _, id := range s.Fighters {
+		if a := s.Actors[id]; a != nil {
+			members = append(members, a)
+		}
+	}
+	return members
 }
 
 // Pos is a place in a dungeon's map and the way the party faces (0 north, 1 east, 2
@@ -529,6 +563,8 @@ func (e fieldEnv) Lookup(name string) (any, bool) {
 		return data.CampaignEnv(s.DB, s.Campaign()).Lookup(name)
 	}
 	switch name {
+	case "last_battle":
+		return battleOutcomeView{s.LastBattle}, true
 	case "flag":
 		return flagView{s}, true
 	case "var":
@@ -575,6 +611,49 @@ func (e fieldEnv) Lookup(name string) (any, bool) {
 		return choseView{s}, true
 	}
 	return nil, false
+}
+
+type battleOutcomeView struct{ outcome *BattleOutcome }
+
+func (v battleOutcomeView) Field(name string) (any, bool) {
+	result, casualties := "", 0
+	if v.outcome != nil {
+		result = v.outcome.Result
+		for _, hp := range v.outcome.HP {
+			if hp == 0 {
+				casualties++
+			}
+		}
+	}
+	switch name {
+	case "result":
+		return result, true
+	case "casualties":
+		return float64(casualties), true
+	case "hp", "participated", "defeated":
+		return battleParticipantView{v.outcome, name}, true
+	}
+	return nil, false
+}
+
+type battleParticipantView struct {
+	outcome *BattleOutcome
+	field   string
+}
+
+func (v battleParticipantView) Field(id string) (any, bool) {
+	hp, present := 0, false
+	if v.outcome != nil {
+		hp, present = v.outcome.HP[id]
+	}
+	switch v.field {
+	case "hp":
+		return float64(hp), true
+	case "participated":
+		return present, true
+	default:
+		return present && hp == 0, true
+	}
 }
 
 type bestiaryView struct{ s *State }

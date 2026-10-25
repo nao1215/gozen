@@ -45,6 +45,7 @@ Command:
   prompt: "A line of text shown above the answers of a choice or stone selection."
   reset_tree: "Gives back the SP spent in the skill tree of an actor, an ID of actors, or of everyone with `all`."
   retry: "With `battle`, set to false to skip the offer to retry after losing."
+  recover: "With `battle`, defaults to true. False preserves final HP after defeat, independently of retry. Outcome branches can read last_battle for participant IDs and HP before recovery."
   save: "If true, opens the save screen."
   say: "Shows a line of dialog. It can be plain text or a map with speaker, face, side and text."
   sell: "Sells items to a shop, the same as the Sell screen: the shop, the item and the count."

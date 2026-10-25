@@ -12,6 +12,52 @@ A game author can name common event IDs in `battle.before` and `battle.after` of
 
 Basis: `Answer` at `event/event.go:249`, `Next` at `event/event.go:298`, `begin` at `internal/play/play.go:1337`, `result` at `internal/play/battle.go:1107`. `headless/battle_hooks_test.go:15` and `internal/play/battle_hooks_test.go:12` check the common progress and the retry.
 
+## Defeat recovery and casualty records
+
+A `battle` command defaults to raising its defeated participants to 1 HP before
+`on_lose`. Set `recover: false` to keep their final HP instead. This is independent
+of `retry: false`, which only suppresses the retry question. Actors outside
+`fighters` keep their HP. The same policy applies to rendered play, sessions,
+headless exploration and authored event simulation.
+
+```yaml
+- battle: expedition_guard
+  fighters: [guide]
+  retry: false
+  recover: false
+  on_lose:
+    - if: "last_battle.defeated.guide"
+      then:
+        - set: {flag.guide_lost: true}
+        - leave: guide
+    - say: "The expedition did not return."
+```
+
+Keep the protagonist in the party and send a different actor with `fighters` to
+continue a campaign after an expedition loss. The troop and actor IDs above refer
+to author definitions. No development-only HP assignments are needed.
+
+Every completed battle replaces the read-only expression object `last_battle`:
+
+| Expression | Meaning |
+| --- | --- |
+| `last_battle.result` | `"win"`, `"lose"` or `"escape"`; empty before any battle or for an unresolved standalone simulation |
+| `last_battle.participated.<id>` | Whether the actor was in that battle's roster |
+| `last_battle.hp.<id>` | Final HP before recovery or victory rewards; zero for an absent ID |
+| `last_battle.defeated.<id>` | Present in that roster and final HP zero |
+| `last_battle.casualties` | Number of participants with final HP zero |
+
+Check participation when distinguishing an absent actor from a defeated one. The
+record includes already-down actors in the selected roster. Healing, leaving the
+party and saving do not change the record; the next battle replaces it. Victory
+and escape also record partial casualties. A supplied session/headless outcome
+records the participants' current HP; choosing a loss alone does not simulate
+combat damage. A retry restores the pre-battle record and fighter selection.
+
+Saves after result acknowledgement preserve the current HP and record without
+replaying outcome callbacks. As with other battle boundaries, these saves resume
+between events rather than resuming the rest of a suspended battle event.
+
 ## Meter limits
 
 `meters[].max_value` is an expression that refers to the ordinary field state. A limit that evaluates successfully is rounded up to at least 1, and the value is clamped between 0 and the limit. When it is given, the current value and the limit are shown, and the `full` display when full still takes priority. If the expression is omitted, the fixed `max` is used, and if `max` is 0 the existing 100 is used. If evaluation fails, it also falls back to the fixed limit.

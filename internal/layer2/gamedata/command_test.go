@@ -58,6 +58,7 @@ func TestCommandFieldMatrix(t *testing.T) {
 		{"on_escape", "battle", []string{`[{gold: 1}]`, `[]`, `null`}},
 		{"fighters", "battle", []string{`[scout]`, `[]`, `null`}},
 		{"retry", "battle", []string{`true`, `false`, `null`}},
+		{"recover", "battle", []string{`true`, `false`, `null`}},
 		{"at", "move,dive", []string{`S`, `""`}},
 		{"facing", "move,dive", []string{`north`, `""`}},
 		{"floor", "dive", []string{`1`, `0`}},

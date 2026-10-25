@@ -184,10 +184,14 @@ func (d *Driver) answer(r event.Request) {
 			res, ok = d.Result(d.St, r.Troop)
 		}
 		if !ok {
-			res = d.fight(r.Troop)
-		} else if res == event.BattleLost && r.CanLose {
-			for _, m := range d.St.Members() {
-				m.HP = max(1, m.HP)
+			res = d.fight(r.Troop, !r.NoRecovery)
+		} else {
+			members := d.St.BattleMembers()
+			d.St.RecordBattle(battle.Result(res).String(), members)
+			if res == event.BattleLost && r.CanLose && !r.NoRecovery {
+				for _, m := range members {
+					m.HP = max(1, m.HP)
+				}
 			}
 		}
 		d.St.Fighters = nil
@@ -207,9 +211,9 @@ func (d *Driver) answer(r event.Request) {
 	}
 }
 
-// fight fights a battle with the whole party on AUTO and reports its result as an
+// fight fights with the selected participants on AUTO and reports its result as an
 // event answer (event.BattleWon ...).
-func (d *Driver) fight(troop string) int {
+func (d *Driver) fight(troop string, recoverHP bool) int {
 	d.Battles++
 	b := battle.New(d.DB, d.St, troop)
 	b.OnDecision = d.OnDecision
@@ -228,7 +232,9 @@ func (d *Driver) fight(troop string) int {
 		return event.BattleFled
 	}
 	d.Losses++
-	b.Rise() // as on screen, only the party members who fought get up with 1 HP
+	if recoverHP {
+		b.Rise()
+	}
 	return event.BattleLost
 }
 
