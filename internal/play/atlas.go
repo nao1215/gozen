@@ -626,19 +626,25 @@ func (s *atlasScene) layoutPoints(g *Game, dst *ebiten.Image) {
 			s.drawMarker(g, dst, p, float64(x), float64(y), h, pointAlpha(p))
 		}
 		if war && g.db.Regions[p.id] != nil { // a flag reaches to the right of its pole
-			s.addPointBox(p, plateBox{x: float64(x) - h*0.24 - 2, y: float64(y) - h - 2, w: h*.86 + 6, h: h*1.24 + 4})
+			s.addPointBox(p, regionMarkerBox(float64(x), float64(y), h))
+			s.boxes[len(s.boxes)-1] = regionMarkerBox(float64(x), float64(y), mh*1.3)
 		} else {
 			s.addPointBox(p, s.markerBox(g, p, float64(x), float64(y), h))
+			// Reserve the largest marker footprint for collision placement while
+			// keeping pointer targets equal to the marker actually painted.
+			s.boxes[len(s.boxes)-1] = s.markerBox(g, p, float64(x), float64(y), mh*1.3)
 		}
 	}
-	if i := s.pointIndex(sel); i >= 0 && s.points[i].shown > 0 { // the chosen plate first: it keeps its place
-		s.drawPlate(g, dst, s.points[i], sel, mh)
-	}
+	// Stable point order keeps focus changes from moving neighboring plates.
 	for _, p := range s.points {
-		if p.shown > 0 && p.id != sel {
+		if p.shown > 0 {
 			s.drawPlate(g, dst, p, sel, mh)
 		}
 	}
+}
+
+func regionMarkerBox(x, y, h float64) plateBox {
+	return plateBox{x: x - h*0.24 - 2, y: y - h - 2, w: h*.86 + 6, h: h*1.24 + 4}
 }
 
 type pointTarget struct {
@@ -710,23 +716,26 @@ func (b plateBox) overlap(o plateBox) float64 {
 
 // drawPlate draws a point's name plate (the visited points and the one chosen; a point not
 // visited shows "?" when the map marks them): dark, framed and lifted by a soft shadow, the
-// chosen one in the window's color and larger. It goes under its point, else above its
+// chosen one in the window's color. It goes under its point, else above its
 // marker, else beside it, where it keeps off the plates and markers already placed.
 func (s *atlasScene) drawPlate(g *Game, dst *ebiten.Image, p mapPoint, sel string, mh float64) {
 	name := p.label
 	if p.shown == 1 && p.id != sel {
 		name = "?"
 	}
-	if name == "" || p.shown == 2 && p.id != sel {
+	if p.label == "" && p.shown != 1 {
 		return
 	}
 	alpha := pointAlpha(p)
 	size := s.labelSize(g)
-	if p.id == sel {
-		size *= 1.15
-	}
 	px, py := s.screen(g, p.at)
-	w, h := gfx.TextWidth(name, size)+size*1.1, size*1.55
+	// Reserve the revealed name even when this point currently shows only a
+	// question mark or no plate. Revealing it must not displace other labels.
+	width := gfx.TextWidth(p.label, size)
+	if p.shown == 1 {
+		width = math.Max(width, gfx.TextWidth("?", size))
+	}
+	w, h := width+size*1.1, size*1.55
 	under := px - w/2
 	tries := []plateBox{
 		{under, py + 6, w, h},                      // under the point
@@ -752,6 +761,10 @@ func (s *atlasScene) drawPlate(g *Game, dst *ebiten.Image, p mapPoint, sel strin
 		if taken == 0 {
 			break
 		}
+	}
+	if name == "" || p.shown == 2 && p.id != sel {
+		s.boxes = append(s.boxes, box)
+		return
 	}
 	s.addPointBox(p, box)
 	if dst == nil {

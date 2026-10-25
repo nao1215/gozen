@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Keep atlas label rectangles and collision placement stable while selection changes, including unknown destinations and map edges.
+
 - Preserve and isolate saved random state when load-slot inspection reuses the checked-save cache.
 
 - Allow authors to hide battle AI history and its input controls without changing battle decisions or traces.

@@ -2,6 +2,8 @@ package play
 
 import (
 	"math"
+	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -11,6 +13,70 @@ import (
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/atlas"
 )
+
+func TestAtlasLabelGeometryDoesNotFollowFocus(t *testing.T) {
+	g, s := wldAtlas(t, "fx_mark")
+	s.here = "elsewhere"
+	s.at = geom.Pt{X: 160, Y: 120}
+	s.choices = []atlas.Choice{{Point: "a"}, {Point: "b"}, {Point: "c"}}
+	for _, size := range [][2]int{{1280, 720}, {960, 720}} {
+		g.db.Game.Screen.Width, g.db.Game.Screen.Height = size[0], size[1]
+		for _, origin := range []geom.Pt{{X: 140, Y: 100}, {X: 4, Y: 4}, {X: 270, Y: 4}, {X: 4, Y: 145}, {X: 270, Y: 145}} {
+			for _, shown := range []int{1, 2, 3} {
+				s.points = nil
+				for i, id := range []string{"a", "b", "c"} {
+					at := origin.Add(geom.Pt{X: float64(i * 20), Y: float64(i % 2 * 24)})
+					s.points = append(s.points, mapPoint{id: id, at: at, shown: shown, open: true, choice: i, label: "Destination " + id + " by the river"})
+					g.db.Locations[s.loc].Map.Points[id] = &data.MapPoint{At: data.Point{at.X, at.Y}}
+				}
+				s.sel = 0
+				s.layoutPoints(g, nil)
+				want := slices.Clone(s.boxes)
+				for _, i := range []int{1, 2, 0} {
+					d := s.points[i].at.Sub(s.at)
+					s.selectToward(g, geom.Pt{X: d.X / d.Len(), Y: d.Y / d.Len()})
+					if s.sel != i {
+						t.Fatalf("keyboard selected %d, want %d", s.sel, i)
+					}
+					s.layoutPoints(g, nil)
+					if !reflect.DeepEqual(s.boxes, want) {
+						t.Fatalf("screen %v origin %v shown %d: selection %d moved layout\ngot %v\nwant %v", size, origin, shown, i, s.boxes, want)
+					}
+					plate := want[len(want)-3+i]
+					clickable := false
+					for y := plate.y + 3; y < plate.y+plate.h-3 && !clickable; y += 4 {
+						for x := plate.x + 3; x < plate.x+plate.w-3; x += 4 {
+							if c, ok := s.pointAt(g, x, y); ok && c.Point == s.choices[i].Point {
+								clickable = true
+								break
+							}
+						}
+					}
+					if !clickable {
+						t.Fatalf("screen %v origin %v shown %d: label %d has no pointer target; boxes %v", size, origin, shown, i, s.boxes)
+					}
+				}
+			}
+		}
+	}
+	// A revealed name can be narrower than the unknown marker, or absent.
+	for _, name := range []string{".", ""} {
+		for i := range s.points {
+			s.points[i].shown, s.points[i].label = 1, name
+		}
+		s.sel = 0
+		s.layoutPoints(g, nil)
+		want := slices.Clone(s.boxes)
+		s.sel = 1
+		s.layoutPoints(g, nil)
+		if !reflect.DeepEqual(s.boxes, want) {
+			t.Fatal("revealing a short name changed its reserved label rectangle")
+		}
+		if name == "" && len(s.targets) != 5 {
+			t.Fatal("unnamed points must retain their two unselected question-mark plates")
+		}
+	}
+}
 
 func TestAtlasTravelSpeed(t *testing.T) {
 	g, s := wldAtlas(t, "fx_mark")
