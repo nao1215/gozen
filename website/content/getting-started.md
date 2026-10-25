@@ -90,6 +90,4 @@ appropriately licensed font under `assets/` and set `fonts.regular` in `game.yam
 - [Schema](/schema/): supported YAML fields and their meaning.
 
 Use [export](/commands/#desktop) to distribute the game with a
-matching prebuilt runtime, or [export --target web](/commands/#web) for a static website. The existing
-[Go API migration](/go-api/) explains how existing hosts move to the CLI. No Go code is needed for
-these steps.
+matching prebuilt runtime, or [export --target web](/commands/#web) for a static website.

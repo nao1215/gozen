@@ -140,7 +140,6 @@ More on each key in [the edit–play loop](/edit-play-loop/).
 - [The edit–play loop](/edit-play-loop/): `--dev`, F5, F7, F9, autoplay, traces and notes.
 - [Commands](/commands/): every `gozen` subcommand and its options.
 - [Using AI agents](/ai-agents/): let an agent write the game and keep `gozen check` green.
-- [Go API migration](/go-api/): replace a Go host with CLI execution and export.
 
 ## Features
 
