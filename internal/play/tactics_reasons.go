@@ -220,7 +220,7 @@ func (s *tacticReasons) update(g *Game) {
 func (s *tacticReasons) draw(g *Game, dst *ebiten.Image) {
 	sw, _ := g.screen()
 	fill(dst, withAlpha(colorBlack, 0xf8))
-	g.text(dst, lang.T("実際の判断理由（閲覧中は戦闘を停止）"), 30, 25, sizeL, g.th.text)
+	g.text(dst, lang.T("戦闘AI履歴（閲覧中は戦闘を停止）"), 30, 25, sizeL, g.th.text)
 	g.text(dst, lang.T("最新128件・新しい順"), 30, 77, sizeS, g.th.border)
 	g.text(dst, lang.T("評価した行・必要量・結果"), 446, 77, sizeS, g.th.border)
 	s.history.draw(g, dst, s.focus == 0)

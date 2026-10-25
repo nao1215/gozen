@@ -260,8 +260,13 @@ func (g *Game) startBattle(troop string, done func(int)) *battleScene {
 	return s
 }
 
+func (s *battleScene) tacticHistoryVisible(g *Game) bool {
+	enabled := g.db.Game.UI.BattleAIHistory
+	return !s.hideTacticLog && (enabled == nil || *enabled)
+}
+
 func (s *battleScene) update(g *Game) {
-	if !g.talk.active && (g.in.pressed[btnLog] || g.in.click && g.in.mouse.In(s.reasonButton(g))) {
+	if s.tacticHistoryVisible(g) && !g.talk.active && (g.in.pressed[btnLog] || g.in.click && g.in.mouse.In(s.reasonButton(g))) {
 		g.push(newTacticReasons(g, s.decisions))
 		return
 	}
@@ -1458,10 +1463,10 @@ func (s *battleScene) draw(g *Game, dst *ebiten.Image) {
 	if s.auto {
 		gfx.DrawTextOutlineColor(dst, lang.T("AUTO  (X でかいじょ)"), sw-150, 164, sizeS, g.th.accent, g.th.window, 1)
 	}
-	if !talking && !s.hideTacticLog {
+	if !talking && s.tacticHistoryVisible(g) {
 		r := s.reasonButton(g)
 		g.window(dst, float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()))
-		g.text(dst, lang.T("判断理由 B / L1"), float64(r.Min.X)+16, float64(r.Min.Y)+10, sizeS, g.th.text)
+		g.text(dst, lang.T("戦闘AI履歴 B / L1"), float64(r.Min.X)+16, float64(r.Min.Y)+10, sizeS, g.th.text)
 	}
 	if s.phase == bpResult && s.dr.bossWon {
 		s.drawBossWin(g, dst)

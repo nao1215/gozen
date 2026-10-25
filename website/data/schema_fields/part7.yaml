@@ -20,6 +20,7 @@ TroopPick:
   weight: "The relative chance of drawing this troop. The default is 1, and 0 or less counts as 1."
   when: "A condition for the troop to be eligible."
 UIStyle:
+  battle_ai_history: "Show the battle AI history button and enable B/PageUp, controller L1 and pointer activation. True when omitted. False hides the panel entry without changing decisions or replay traces."
   _: "The colors and layout of the windows and message display."
   bestiary: "Show Monsters, the monster book, in the title and field menu. Off by default; under `--dev` the menus show it anyway. Needs schema version 4."
   accent: "The accent color."

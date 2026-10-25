@@ -1,9 +1,13 @@
 package play
 
 import (
+	"image"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/nao1215/gozen/internal/battle"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
@@ -419,5 +423,91 @@ func TestBattleCriticalAndWeakPopups(t *testing.T) {
 	}
 	if !tagged {
 		t.Fatalf("no CRITICAL tag in %+v", s.pops)
+	}
+}
+
+func TestBattleTextCanHideTacticLog(t *testing.T) {
+	s := &battleScene{}
+	st := battle.Step{Kind: battle.Act, Text: "Maren: Strike! [Maren row 3: Always -> Foe]"}
+	if got := s.battleText(st); got != st.Text {
+		t.Fatalf("development log lost: %q", got)
+	}
+	s.hideTacticLog = true
+	if got := s.battleText(st); got != "Maren: Strike! " {
+		t.Fatalf("capture text %q", got)
+	}
+	st.Kind = battle.Message
+	if got := s.battleText(st); got != st.Text {
+		t.Fatalf("non-action text changed: %q", got)
+	}
+}
+
+func TestBattleAIHistoryAuthorVisibility(t *testing.T) {
+	if !slices.Contains(keys[btnLog], ebiten.KeyB) || !slices.Contains(pads[btnLog], ebiten.StandardGamepadButtonFrontTopLeft) {
+		t.Fatal("keyboard/controller history bindings changed")
+	}
+
+	for _, mode := range []string{"default", "true", "false"} {
+		t.Run(mode, func(t *testing.T) {
+			config := ""
+			if mode != "default" {
+				config = "ui: {battle_ai_history: " + mode + "}\n"
+			}
+			g, _ := btlOpen(t, Options{Battle: "one"}, config, "")
+			s := btlAsk(t, g)
+			if s.tacticHistoryVisible(g) != (mode != "false") {
+				t.Fatal("button visibility disagrees with configuration")
+			}
+			for _, control := range []string{"log", "pointer"} {
+				sysKey(g)
+				if control == "log" {
+					g.in.pressed[btnLog] = true
+				} else {
+					g.in.click = true
+					box := s.reasonButton(g)
+					g.in.mouse = box.Min.Add(image.Pt(5, 5))
+				}
+				s.update(g)
+				_, opened := g.stack[len(g.stack)-1].(*tacticReasons)
+				if opened != (mode != "false") {
+					t.Fatalf("mode %s control %s: history opened %v", mode, control, opened)
+				}
+				if opened {
+					g.pop()
+				}
+			}
+		})
+	}
+}
+
+func TestBattleAIHistoryDoesNotChangeDecisionsOrReplay(t *testing.T) {
+	var baseline []traceLine
+	for _, mode := range []string{"true", "false"} {
+		config := "ui: {battle_ai_history: " + mode + "}\n"
+		g, out := btlOpen(t, Options{Battle: "two", Location: "camp", Script: "press ok 160\nquit\n", ShotDir: t.TempDir(), Seed: 11}, config, "")
+		btlRunToEnd(t, g, 8000)
+		lines := btlLines(t, out, "ai_decision", "battle_step", "battle_result")
+		if len(btlLines(t, out, "ai_decision")) == 0 || len(btlLines(t, out, "battle_result")) != 1 {
+			t.Fatal("missing decisions or result")
+		}
+		if err := g.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if baseline == nil {
+			baseline = lines
+		} else if !reflect.DeepEqual(baseline, lines) {
+			t.Fatal("hiding AI history changed decisions, steps or rewards")
+		}
+		replay, err := New(Options{FS: btlFiles(t, config, ""), NoSound: true, SaveDir: t.TempDir(), Replay: btlWriteTrace(t, out.Bytes()), ReplayBattle: 1, Seed: 1})
+		if err != nil {
+			t.Fatal(err)
+		}
+		btlRunToEnd(t, replay, 12000)
+		if ReplayReport == "" || strings.Contains(ReplayReport, "diverged") {
+			t.Fatalf("mode %s replay: %s", mode, ReplayReport)
+		}
+		if err := replay.Close(); err != nil {
+			t.Fatal(err)
+		}
 	}
 }

@@ -464,6 +464,8 @@ type GameOver struct {
 
 // UIStyle are the colors of the windows.
 type UIStyle struct {
+	// BattleAIHistory shows the battle AI history button and enables its input (default true).
+	BattleAIHistory *bool `yaml:"battle_ai_history"`
 	// Message is the message window: "box" (a framed box, the default) or "novel" (as a
 	// visual novel's: across the bottom of the screen, the speaker's picture large behind
 	// it, and buttons for the backlog, auto and hiding the window).
