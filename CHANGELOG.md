@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add opt-in party-only recruitment admission, authored capture commands and saved capture results for event branches.
 - Render save-slot location names using each saved state, including load menus opened from the title.
 - Match atlas pointer targets to visible marker pictures and name plates, preserving small targets and deterministic overlap selection.
 

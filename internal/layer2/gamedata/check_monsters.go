@@ -74,6 +74,11 @@ func (c *checker) monsters() {
 			}
 		}
 		if r := e.Recruit; r != nil {
+			switch r.Admission {
+			case "", "reserve", "party_only":
+			default:
+				c.errorf(diag.MonsterRules, w+".recruit.admission", "admission must be reserve or party_only")
+			}
 			if len(db.captureSites(id)) == 0 {
 				c.warnf(diag.NoCaptureEncounter, w+".recruit", "recruitable monster %q has no location encounter", id)
 			}

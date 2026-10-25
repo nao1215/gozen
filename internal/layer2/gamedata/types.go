@@ -1131,6 +1131,7 @@ type HPTrigger struct {
 
 // Recruit describes the chance and actor growth of a capturable enemy.
 type Recruit struct {
+	Admission  string  `yaml:"admission"` // empty/reserve allows overflow; party_only requires an active slot.
 	Chance     float64 `yaml:"chance"`
 	Class      string  `yaml:"class"`
 	Level      int     `yaml:"level"` // starting level; defaults to one

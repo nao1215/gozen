@@ -188,14 +188,32 @@ func (s *State) JoinStory(id string) bool {
 }
 
 // Recruit creates a distinct monster actor and places it in the active party if there
-// is room. Otherwise it remains in the reserve. The returned ID is save-stable.
+// is room. Overflow remains in reserve unless admission is party_only, which rejects
+// without changing state. The returned ID is save-stable.
 func (s *State) Recruit(species string, level, plus int, skills []string) (string, bool) {
 	return s.RecruitWithSex(species, level, plus, skills, "")
+}
+
+// RecruitmentFull reports whether this species requires an active slot but none is
+// available. The event runner uses it to explain a rejected capture to the author
+// and player. RecruitWithSex rechecks the same policy before any mutation.
+func (s *State) RecruitmentFull(species string) bool {
+	e := s.DB.Enemies[species]
+	return e != nil && e.Recruit != nil && e.Recruit.Admission == "party_only" && len(s.Party) >= s.DB.Game.MaxParty
 }
 
 // RecruitWithSex creates a monster with the sex the event runner drew for its
 // visible offer. An empty sex draws one here, as Recruit does.
 func (s *State) RecruitWithSex(species string, level, plus int, skills []string, sex string) (string, bool) {
+	if s.RecruitmentFull(species) {
+		return "", false
+	}
+	return s.createMonster(species, level, plus, skills, sex)
+}
+
+// createMonster owns instance creation for recruitment and breeding. Admission
+// limits belong to recruitment; a bred child replaces its parents' slot.
+func (s *State) createMonster(species string, level, plus int, skills []string, sex string) (string, bool) {
 	e := s.DB.Enemies[species]
 	if e == nil || s.DB.Classes[s.DB.MonsterClass(species)] == nil || sex != "" && !data.AllowsMonsterSex(s.DB, species, sex) {
 		return "", false
@@ -308,7 +326,7 @@ func (s *State) Breed(first, second string, skills []string) (string, error) {
 	if preferredSlot < 0 || secondSlot >= 0 && secondSlot < preferredSlot {
 		preferredSlot = secondSlot
 	}
-	id, ok := s.Recruit(child, 1, plus, skills)
+	id, ok := s.createMonster(child, 1, plus, skills, "")
 	if !ok {
 		return "", fmt.Errorf("child %q has no monster class", child)
 	}

@@ -16,6 +16,7 @@ import (
 // Positive cases are not built from the registry; they pin down how each command can actually be
 // written.
 var commandExamples = map[string]string{
+	"capture": "capture: mote",
 	"respond": "respond: {who: scout, text: Hello}",
 	"say":     `say: hi`, "choice": `choice: [{label: Yes, do: []}]`,
 	"if": `if: true`, "set": `set: {flag.ok: true}`, "give": `give: {item: key}`,
@@ -105,7 +106,7 @@ func TestCommandFieldMatrix(t *testing.T) {
 		}
 	}
 	for verb, src := range commandExamples {
-		if verb == "respond" || verb == "reserve" || verb == "release" || verb == "breed" {
+		if verb == "capture" || verb == "respond" || verb == "reserve" || verb == "release" || verb == "breed" {
 			continue
 		} // covered with schema version 6 in monster_test.go
 		t.Run(verb, func(t *testing.T) {
@@ -177,5 +178,21 @@ func TestCommandFieldValidation(t *testing.T) {
 	cmd := data.Command{Done: "tile"}
 	if verb, err := cmd.Verb(); err != nil || verb != "done" {
 		t.Fatalf("内部の done が動かない。%s, %v", verb, err)
+	}
+}
+
+func TestCaptureCommandAdmissionValidation(t *testing.T) {
+	db := testgame.Load(t, testgame.MonsterFiles())
+	for _, species := range []string{"mote", "boss", "missing"} {
+		ds := data.CheckScript(db, "- capture: "+species+"\n", false)
+		if species == "mote" && len(ds) > 0 || species != "mote" && len(ds) == 0 {
+			t.Errorf("capture %s: %v", species, ds)
+		}
+	}
+	files := testgame.MonsterFiles()
+	files["game.yaml"] = strings.Replace(files["game.yaml"], "schema_version: 6", "schema_version: 5", 1)
+	files["data/capture.yaml"] = "events: {admit: {do: [{capture: mote}]}}\n"
+	if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "events.admit.do[0].capture") {
+		t.Fatalf("capture before schema version 6: %v", err)
 	}
 }

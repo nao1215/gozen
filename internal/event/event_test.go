@@ -1,6 +1,8 @@
 package event_test
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/nao1215/gozen/internal/event"
@@ -328,5 +330,199 @@ func (h *host) Handle(e event.Effect) {
 		h.SFX(e.Name)
 	case event.VisualEffect:
 		h.Effect(e.Name)
+	}
+}
+
+func TestCaptureAfterVictoryIsAChoice(t *testing.T) {
+	db := testgame.Load(t, testgame.MonsterFiles())
+	for _, answer := range []int{0, 1} {
+		st := testgame.State(db, 1)
+		r := event.New(db, st, &host{})
+		r.Log = func(err error) { t.Error(err) }
+		r.Start([]data.Command{{Battle: "one"}})
+		if _, ok := r.Next().(event.Battle); !ok {
+			t.Fatal("no battle request")
+		}
+		r.Answer(event.BattleWon)
+		line, ok := r.Next().(event.Say)
+		if !ok || !strings.Contains(line.Text, "rises") || line.Recruit == nil || line.Recruit.Image == "" {
+			t.Fatalf("no staged rising line: %+v", line)
+		}
+		choice, ok := r.Next().(event.Choice)
+		if !ok || len(choice.Options) != 2 || choice.Options[0] != "Yes" || choice.Recruit == nil || choice.Recruit.Sex != line.Recruit.Sex {
+			t.Fatalf("join request = %+v", choice)
+		}
+		if !strings.Contains(choice.Prompt, "♂") && !strings.Contains(choice.Prompt, "♀") {
+			t.Fatalf("the offer has no sex sign: %q", choice.Prompt)
+		}
+		r.Answer(answer)
+		for r.Running() {
+			r.Next()
+		}
+		want := float64(1 - answer)
+		if got := st.Vars["bestiary.mote.caught"]; answer == 0 && got != want || answer == 1 && got != nil {
+			t.Fatalf("answer %d caught %v", answer, got)
+		}
+		if st.Vars["bestiary.mote.defeated"] != float64(1) {
+			t.Fatalf("defeated = %v", st.Vars)
+		}
+		if answer == 0 {
+			if got := st.Actors["monster_1"]; got == nil || got.Sex != choice.Recruit.Sex {
+				t.Fatalf("joined monster sex differs from invitation: %+v", got)
+			}
+		}
+	}
+}
+
+func TestRecruitOfferDoesNotShiftBattleRandomStream(t *testing.T) {
+	db := testgame.Load(t, testgame.MonsterFiles())
+	plainDB := data.Fork(db)
+	plainDB.Enemies["mote"].Recruit = nil
+	withOffer, plain := testgame.State(db, 8), testgame.State(plainDB, 8)
+	for _, tc := range []struct {
+		game *data.DB
+		st   *rpg.State
+	}{
+		{db, withOffer}, {plainDB, plain},
+	} {
+		r := event.New(tc.game, tc.st, &host{})
+		r.Start([]data.Command{{Battle: "one"}})
+		if _, ok := r.Next().(event.Battle); !ok {
+			t.Fatal("no battle")
+		}
+		r.Answer(event.BattleWon)
+		for r.Running() {
+			if _, ok := r.Next().(event.Choice); ok {
+				r.Answer(1) // Decline the optional recruit.
+			}
+		}
+	}
+	if got, want := withOffer.Rand.Uint64(), plain.Rand.Uint64(); got != want {
+		t.Fatalf("adding a recruit offer shifted the next unrelated draw: %d != %d", got, want)
+	}
+}
+
+func TestCaptureResultNamesReserveAndFirstCompanion(t *testing.T) {
+	db := testgame.Load(t, testgame.MonsterFiles())
+	st := testgame.State(db, 1)
+	db.Game.MaxParty = len(st.Party)
+	r := event.New(db, st, &host{})
+	r.Start([]data.Command{{Capture: "mote"}})
+	r.Next() // The saved-instance note precedes the staged result line.
+	line, ok := r.Next().(event.Say)
+	if !ok || !strings.Contains(line.Text, "joined your reserve") || !strings.Contains(line.Text, "First companion of this species") {
+		t.Fatalf("reserve result = %+v", line)
+	}
+	if len(st.ReserveIDs()) != 1 {
+		t.Fatalf("reserve = %v", st.ReserveIDs())
+	}
+	r.Start([]data.Command{{Capture: "mote"}})
+	r.Next()
+	line, ok = r.Next().(event.Say)
+	if !ok || strings.Contains(line.Text, "First companion of this species") {
+		t.Fatalf("repeat result = %+v", line)
+	}
+}
+
+func TestStrictRecruitmentAdmission(t *testing.T) {
+	for _, source := range []string{"capture", "battle"} {
+		t.Run(source, func(t *testing.T) {
+			files := testgame.MonsterFiles()
+			for name, body := range files {
+				files[name] = strings.Replace(body, "recruit: {chance: 1,", "recruit: {admission: party_only, chance: 1,", 1)
+			}
+			db := testgame.Load(t, files)
+			st := testgame.State(db, 1)
+			db.Game.MaxParty = len(st.Party) + 1
+			if source == "battle" {
+				db.Troops["one"].Members = []string{"mote", "mote"}
+			}
+			r := event.New(db, st, &host{})
+			if source == "battle" {
+				r.Start([]data.Command{{Battle: "one"}})
+				if _, ok := r.Next().(event.Battle); !ok {
+					t.Fatal("missing battle")
+				}
+				r.Answer(event.BattleWon)
+			} else {
+				r.Start([]data.Command{{Capture: "mote"}, {Capture: "mote"}})
+			}
+			rejected := false
+			for steps := 0; r.Running() && steps < 100; steps++ {
+				switch request := r.Next().(type) {
+				case event.Choice:
+					r.Answer(0)
+				case event.Say:
+					rejected = rejected || strings.Contains(request.Text, "party is full")
+				}
+			}
+			if r.Running() {
+				t.Fatal("runner did not finish")
+			}
+			if !rejected || st.Vars["capture_result"] != "party_full" || st.Vars["bestiary.mote.caught"] != float64(1) || st.Vars["monster.next"] != float64(1) || len(st.ReserveIDs()) != 0 {
+				t.Fatalf("rejected=%v party=%v reserve=%v vars=%v", rejected, st.Party, st.ReserveIDs(), st.Vars)
+			}
+			// The shared state mutation rejects a full party before allocating or drawing sex.
+			before, err := st.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, ok := st.Recruit("mote", 1, 0, nil); ok {
+				t.Fatal("state admitted a full-party recruit")
+			}
+			after, err := st.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(before, after) {
+				t.Fatal("rejected recruitment changed saved state")
+			}
+		})
+	}
+}
+
+func TestStrictRecruitmentRechecksPendingOffer(t *testing.T) {
+	files := testgame.MonsterFiles()
+	for name, body := range files {
+		files[name] = strings.Replace(body, "recruit: {chance: 1,", "recruit: {admission: party_only, chance: 1,", 1)
+	}
+	db := testgame.Load(t, files)
+	st := testgame.State(db, 1)
+	db.Game.MaxParty = len(st.Party) + 1
+	r := event.New(db, st, &host{})
+	r.Start([]data.Command{{Battle: "one"}})
+	r.Next()
+	r.Answer(event.BattleWon)
+	r.Next()
+	if _, ok := r.Next().(event.Choice); !ok {
+		t.Fatal("missing pending offer")
+	}
+	if !st.JoinStory("guide") {
+		t.Fatal("could not fill last slot")
+	}
+	r.Answer(0)
+	for r.Running() {
+		r.Next()
+	}
+	if st.Vars["capture_result"] != "party_full" || st.Vars["monster.next"] != nil || st.Vars["bestiary.mote.caught"] != nil || len(st.ReserveIDs()) != 0 {
+		t.Fatalf("pending offer admitted after party filled: %v", st.Vars)
+	}
+}
+
+func TestStrictRecruitmentDoesNotBlockBreeding(t *testing.T) {
+	db := testgame.Load(t, testgame.MonsterFiles())
+	st := testgame.State(db, 1)
+	db.Game.MaxParty = 2
+	a, _ := st.RecruitWithSex("mote", 2, 0, nil, "male")
+	b, _ := st.RecruitWithSex("mote", 2, 0, nil, "female")
+	db.Enemies["boss"].Recruit = &data.Recruit{Admission: "party_only"}
+	r := event.New(db, st, &host{})
+	r.Log = func(err error) { t.Error(err) }
+	r.Start([]data.Command{{Breed: &data.BreedCmd{Parents: []string{a, b}}}})
+	for r.Running() {
+		r.Next()
+	}
+	if st.Actors[a] != nil || st.Actors[b] != nil || st.Actors["monster_3"] == nil || st.Party[1] != "monster_3" {
+		t.Fatalf("breeding lost its parent slot: %v", st.Party)
 	}
 }

@@ -65,6 +65,7 @@ Command:
   target: "With `use`, the party member who receives the item. The first member when omitted."
   then: "With `if`, the commands that run when the condition holds."
   turn: "Turns in a dungeon: `left`, `right` or `back`."
+  capture: "Recruits a non-boss species with recruit settings under its admission policy. Sets var.capture_result to party, reserve, party_full or unavailable. Needs schema version 6."
   reserve: "Swaps one joined reserve actor into an active party slot. Needs schema version 6."
   release: "Permanently releases one owned monster instance. Needs schema version 6."
   breed: "Breeds two owned monster instances and chooses inherited skills. Needs schema version 6."

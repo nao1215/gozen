@@ -769,6 +769,7 @@ func (r *Runner) run(c *data.Command) Request {
 			r.logf(fmt.Errorf("leave: %s is the last member of the party, who stays (a party is never empty)", c.Leave))
 		}
 	case "capture":
+		r.st.Vars["capture_result"] = "unavailable"
 		if e := r.db.Enemies[c.Capture]; e != nil && e.Recruit != nil {
 			firstCompanion := !expr.Truthy(r.st.Vars["bestiary."+c.Capture+".caught"])
 			sex := ""
@@ -786,11 +787,15 @@ func (r *Runner) run(c *data.Command) Request {
 				if !slices.Contains(r.st.Party, id) {
 					place = "reserve"
 				}
+				r.st.Vars["capture_result"] = place
 				message := e.Name + " " + sign + " joined your " + place + "!"
 				if firstCompanion {
 					message += " First companion of this species."
 				}
 				r.push([]data.Command{{Say: &data.Say{Who: e.Name + " " + sign, Face: e.Image.File, Text: message}}})
+			} else if r.st.RecruitmentFull(c.Capture) {
+				r.st.Vars["capture_result"] = "party_full"
+				r.push([]data.Command{{Say: &data.Say{Who: e.Name, Face: e.Image.File, Text: e.Name + " cannot join: your party is full."}}})
 			}
 		}
 	case "reserve":
