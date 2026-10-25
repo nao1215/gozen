@@ -392,6 +392,10 @@ func Forward(db *data.DB, st *rpg.State) (bool, []data.Command) {
 			st.Moved = false
 			return false, nil
 		}
+		if spaceRoofStepBlocked(d.Space, st.Pos, target) {
+			st.Moved = false
+			return false, nil
+		}
 	}
 	c := Front(db, st)
 	if !c.Passable() {

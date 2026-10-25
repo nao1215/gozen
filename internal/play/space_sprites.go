@@ -109,6 +109,7 @@ func (v *spaceView) drawSprites(g *Game, d *data.Dungeon, eye [3]float64, yaw fl
 			"SpriteDarkness": float32(d.Dark),
 		}}
 		op.Images[0], op.Images[1] = v.atlas, item.image
+		v.roofUniforms(d, op.Uniforms)
 		r := item.bounds
 		v.frame.DrawTrianglesShader([]ebiten.Vertex{{DstX: float32(r.Min.X), DstY: float32(r.Min.Y)}, {DstX: float32(r.Max.X), DstY: float32(r.Min.Y)}, {DstX: float32(r.Min.X), DstY: float32(r.Max.Y)}, {DstX: float32(r.Max.X), DstY: float32(r.Max.Y)}}, []uint16{0, 1, 2, 1, 3, 2}, v.spriteShader, op)
 	}

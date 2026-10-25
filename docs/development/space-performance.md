@@ -33,7 +33,7 @@ Tests cover static reuse, flags, variables, gold, position, conditional fallback
 
 Measurements recorded on 2026-10-25 used Linux amd64 (kernel 7.0.0-38-generic), AMD Ryzen AI Max+ 395, native Go, and Xvfb with Mesa 26.0.8 llvmpipe (LLVM 21.1.8, software rendering). The scene is 960 × 540; the ray-traced target stays 640 × 360. Window size, internal resolution, textures, camera and draw distance were held equal for each before/after pair. Browser performance and hardware GPU timing are separate measurements and were not inferred from these runs.
 
-The atlas dimensions, shader level stride, map bounds and draw-distance limits remain unchanged. These measurements do not establish a need to expand map limits or identify GPU ray traversal as a bottleneck.
+For maps without building surfaces or roofs, the atlas dimensions, shader level stride, map bounds and draw-distance limits remain unchanged. These measurements do not establish a need to expand map limits or identify GPU ray traversal as a bottleneck.
 
 ## CPU results
 
@@ -143,3 +143,36 @@ Mean run-level sampled percentiles from two runs, in milliseconds:
 | continuous walking/turning | 0.294 | 0.482 | 0.040 | 0.069 | 60.00 | 60.00 |
 
 Separate correctness tours took 20.194 seconds for the inn and 54.132 seconds for the plaza, with final sampled 60 FPS / 60 TPS. Those elapsed times include startup, scripted pauses, interaction and screenshots, so they are not pure walking-speed measurements. Tests assert stair support levels, return to the original location, off-center stopping, non-cardinal yaw and reload preservation. A native keyboard-driven inspection also exercised staged walking, turning, menu pause and Shift-strafing; recorded poses were identical on menu entry and exit. CPU timings, tour elapsed time and FPS/TPS describe different parts of the experience and should not be substituted for each other.
+
+## Building surfaces and roofs
+
+The building benchmark uses the same dense 40 × 36 × 4 layout and continuous route in four modes: boxes, named materials, roofs, and all features with 64 placed billboards. Resolution remains 960 × 540 with a 640 × 360 internal image and depth 16. The environment is the Linux/Mesa llvmpipe setup above. No other test suite ran concurrently. Each row averages two run-level sampled percentiles, in milliseconds.
+
+| Mode | Camera | Draw p50 | Draw p95 | Update p50 | Update p95 | Frame interval p50 | Frame interval p95 | FPS p50 | TPS p50 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| boxes | stationary | 0.3030 | 0.3589 | 0.0652 | 0.0732 | 16.735 | 16.815 | 60.00 | 60.00 |
+| boxes | moving | 0.2888 | 0.3857 | 0.0646 | 0.0803 | 16.700 | 16.805 | 60.00 | 60.00 |
+| materials | stationary | 0.3275 | 0.3858 | 0.0606 | 0.0809 | 16.725 | 17.245 | 60.00 | 60.00 |
+| materials | moving | 0.2983 | 0.4303 | 0.0706 | 0.0837 | 16.695 | 16.840 | 59.95 | 60.00 |
+| roofs | stationary | 0.2883 | 0.3145 | 0.0635 | 0.0732 | 16.700 | 16.790 | 59.95 | 60.00 |
+| roofs | moving | 0.3032 | 0.3813 | 0.0665 | 0.1025 | 16.725 | 16.885 | 60.00 | 60.00 |
+| combined | stationary | 0.4062 | 0.4413 | 0.0649 | 0.0847 | 16.810 | 16.885 | 60.00 | 60.00 |
+| combined | moving | 0.3537 | 0.5972 | 0.0758 | 0.1058 | 16.765 | 17.030 | 60.00 | 60.00 |
+
+Frame interval measures successive Draw start times, including pacing; it is not a presentation timestamp or a GPU timer. Draw and Update measure CPU callbacks. GPU timing is unavailable in this harness. Short-run differences do not show that roofs improve performance or guarantee 60 FPS on other devices. Placed billboard counts are not simultaneous visible counts.
+
+```sh
+for mode in boxes materials roofs combined; do
+  GOZEN_SPACE_BENCH_BUILDINGS="$mode" LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a \
+    go test -tags=graphics ./internal/play -run '^$' \
+    -bench '^BenchmarkGraphicsSpaceScaling/40x36x4' -benchtime=1x -count=2
+done
+go test ./internal/play -run '^$' -bench '^BenchmarkBuildingSpaceUpdates$' \
+  -benchtime=300ms -count=3
+```
+
+Median CPU controller/cache costs from three 300 ms runs were 2.352 microseconds for boxes, 2.376 for materials, 2.448 for roofs, and 2.484 for combined; each used 2547 bytes and seven allocations per update. These exclude rendering and fixture setup.
+
+Unchanged occupancy does not call `WritePixels`. On invalidation, the baseline 64 × 512 RGBA atlas submits 131,072 bytes; building metadata extends it to 64 × 1664, or 425,984 bytes. Immutable roof/face metadata is reused during state changes. Named materials use a cached 2048 × 1280 RGBA atlas (10 MiB), rebuilt when the dungeon or source image identities change. These are API payload sizes and cache behavior, not measured GPU traffic. Roofs and wall materials remain in the terrain shader without per-roof draw submissions; visible billboards retain one submission each, followed by the final scaled composite.
+
+Native correctness tests independently verify roof undersides, sprite occlusion and visible roof edges. The building route completed in 60.99 seconds including startup, pauses and captures; it visits the shop, climbs the stone terrace and inn stairs, interacts with the bed and innkeeper, then preserves an arbitrary yaw through reload. The public building fixture is a geometry regression example, not finished game artwork.

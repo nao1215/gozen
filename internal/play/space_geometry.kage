@@ -7,6 +7,57 @@ var ViewSize vec2
 var MapSize vec2
 var Levels float
 var Far float
+var RoofCount float
+var GeometryTop float
+var RoofBounds [64]vec4
+var RoofPlanes [64]vec4
+var RoofBottom [64]vec2
+
+func roofClip(value, velocity, lower, upper, lo, hi float, lowNormal, highNormal, face vec3) (float,float,vec3,bool) {
+ if abs(velocity)<.000001 {return lo,hi,face,value>=lower && value<=upper}
+ a:=(lower-value)/velocity
+ b:=(upper-value)/velocity
+ n:=lowNormal
+ if a>b {a,b=b,a;n=highNormal}
+ if a>lo {lo=a;face=n}
+ hi=min(hi,b)
+ return lo,hi,face,lo<=hi+.000001
+}
+
+// The spatial index includes the full overhang, independent of the anchor.
+// Clip closed inclined slabs only from this cell's (at most four) candidates.
+func roofGeometry(p, ray vec3, start, end float) (float,vec3,float) {
+ best:=float(10000)
+ face:=vec3(0)
+ part:=float(0)
+ if RoofCount==0 || p.x<0 || p.z<0 || p.x>=MapSize.x || p.z>=MapSize.y {return best,face,part}
+ ids:=floor(imageSrc0UnsafeAt(imageSrc0Origin()+vec2(p.x+.5,512+p.z+.5)).rgb*255+.5)
+ fourth:=floor(imageSrc0UnsafeAt(imageSrc0Origin()+vec2(p.x+.5,576+p.z+.5)).r*255+.5)
+ for slot:=0;slot<4;slot++ {
+  id:=ids.x
+  if slot==1 {id=ids.y};if slot==2 {id=ids.z};if slot==3 {id=fourth}
+  if id<=0 {continue}
+  index:=int(id-1)
+  bounds:=RoofBounds[index]
+  plane:=RoofPlanes[index]
+  lo,hi:=start,end
+  normal:=vec3(0,1,0)
+  ok:=false
+  lo,hi,normal,ok=roofClip(Eye.x,ray.x,bounds.x,bounds.z,lo,hi,vec3(-1,0,0),vec3(1,0,0),normal)
+  if !ok {continue}
+  lo,hi,normal,ok=roofClip(Eye.z,ray.z,bounds.y,bounds.w,lo,hi,vec3(0,0,-1),vec3(0,0,1),normal)
+  if !ok {continue}
+  n:=normalize(vec3(-plane.x,1,-plane.y))
+  lower:=-plane.w
+  bottom:=RoofBottom[index]
+  if bottom.x>0 {lower=-10000}
+  lo,hi,normal,ok=roofClip(Eye.y-dot(plane.xy,Eye.xz)-plane.z,ray.y-dot(plane.xy,ray.xz),lower,0,lo,hi,-n,n,normal)
+  if !ok {continue}
+  if bottom.x>0 {lo,hi,normal,ok=roofClip(Eye.y,ray.y,bottom.y,10000,lo,hi,vec3(0,-1,0),vec3(0,1,0),normal)}
+  if ok && lo<best {best=lo;face=normal;part=float(index)}
+ }
+ return best,face,part
+}
 
 func cell(p vec3) vec3 {
  if p.x<0 || p.z<0 || p.y<0 || p.x>=MapSize.x || p.z>=MapSize.y || p.y>=Levels { return vec3(0) }
@@ -41,7 +92,9 @@ func geometry(ray vec3) (float, vec3, vec3) {
  normal:=vec3(0,1,0)
  for iter:=0;iter<96;iter++ {
   hi:=min(next.x,min(next.y,next.z))
-  if p.y>=Levels && ray.y>0 {break}
+  top:=Levels
+  if RoofCount>0 {top=max(top,GeometryTop)}
+  if p.y>=top && ray.y>0 {break}
   // Clip by horizontal grid depth. Looking down from an upper story must
   // still reach the floor below instead of exposing sky at the distance limit.
   limit:=Far/max(length(ray.xz),.001)
@@ -98,6 +151,8 @@ func geometry(ray vec3) (float, vec3, vec3) {
    if entry.y>=underside {slabHit=lo;slabFace=normal}
    if slabHit<hit {hit=slabHit;face=slabFace;c=vec3(4,0,0)}
   }
+  roofHit,roofFace,roofPart:=roofGeometry(p,ray,lo,hi)
+  if roofHit<hit {hit=roofHit;face=roofFace;c=vec3(5,roofPart,0)}
   if hit<=hi+.0001 && hit<=limit {
    return hit, face, c
   }

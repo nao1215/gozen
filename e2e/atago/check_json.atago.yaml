@@ -2,6 +2,15 @@ version: '1'
 suite:
   name: gozen check --format json and the schema version 2 words
 scenarios:
+- name: building materials and roofs validate through the public command
+  steps:
+  - run:
+      command: gozen check "${specdir}/../../examples/space-buildings/game" --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json: {path: $.data, equals: []}
+      stderr: {equals: ''}
 - name: opt-in continuous stacked space passes public validation
   steps:
   - fixture:

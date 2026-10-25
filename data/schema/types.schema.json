@@ -13567,6 +13567,44 @@
           },
           "x-type": "string[]"
         },
+        "materials": {
+          "additionalProperties": {
+            "$ref": "#/$defs/SpaceMaterial"
+          },
+          "description": "Up to 32 named opaque materials for building walls and roofs.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → [SpaceMaterial](#spacematerial)"
+        },
+        "roofs": {
+          "description": "Up to 32 bounded gable, shed or flat roof primitives with indexed collision and occlusion.",
+          "items": {
+            "$ref": "#/$defs/SpaceRoof"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[SpaceRoof](#spaceroof)[]"
+        },
         "sky": {
           "$ref": "#/$defs/Picture",
           "description": "Optional sky panorama: horizontal wrapping, zenith at the top and horizon at the bottom. Supports picture tint and brightness.",
@@ -13624,6 +13662,25 @@
             "version": "8"
           },
           "x-type": "integer"
+        },
+        "wall_regions": {
+          "description": "Up to 128 non-overlapping rectangular wall material assignments.",
+          "items": {
+            "$ref": "#/$defs/SpaceWallRegion"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[SpaceWallRegion](#spacewallregion)[]"
         }
       },
       "type": "object"
@@ -13679,6 +13736,268 @@
         },
         "turn_speed": {
           "description": "Turning sensitivity in degrees per simulation second, in (0,360]. Omitted or zero selects 90. Independent of walking speed.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "SpaceMaterial": {
+      "additionalProperties": false,
+      "description": "An opaque facade or roof material. Pictures are batched into 256-pixel atlas tiles.",
+      "properties": {
+        "color": {
+          "description": "Optional opaque base color, multiplied by picture tint and brightness.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "color string"
+        },
+        "height": {
+          "description": "World units per vertical image repetition, in [0.125,128]; omitted or zero selects 1.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "origin_u": {
+          "description": "World-space horizontal texture origin, in [-128,128].",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "origin_v": {
+          "description": "World-space vertical texture origin, in [-128,128].",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "picture": {
+          "$ref": "#/$defs/Picture",
+          "description": "Optional image, tint and brightness; alpha is composited against white.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Picture](#picture) or string"
+        },
+        "width": {
+          "description": "World units per horizontal image repetition, in [0.125,128]; omitted or zero selects 1.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "SpaceRoof": {
+      "additionalProperties": false,
+      "description": "A closed nonwalkable roof primitive with actual sides and underside; at most 32 roofs.",
+      "properties": {
+        "base": {
+          "description": "Additional height above the anchored level, from 0 to 1.5.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "depth": {
+          "description": "Footprint depth from 0.125 to 64 cells and inside the map.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "facing": {
+          "description": "Uphill cardinal direction; a gable also rises from the opposite edge.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "filled": {
+          "description": "Fill down to a horizontal underside to close gable ends; default false retains constant vertical thickness.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "level": {
+          "description": "One-based base level, including the top of the last authored story.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "material": {
+          "description": "Named top and side material; omitted uses tile color.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "rise": {
+          "description": "Positive roof rise up to 2 world units; exactly zero for flat roofs.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "shape": {
+          "description": "gable, shed or flat; other shapes are rejected.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "thickness": {
+          "description": "Vertical thickness in [0.01,0.5]; a filled roof uses it below its base.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "underside": {
+          "description": "Named underside material; omitted uses wood color.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "width": {
+          "description": "Footprint width from 0.125 to 64 cells and inside the map.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "x": {
+          "description": "Continuous left bound including eaves, inside the map.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "y": {
+          "description": "Continuous top bound including eaves, inside the map.",
           "type": "number",
           "x-contract": {
             "default": "0",
@@ -13784,6 +14103,143 @@
         },
         "y": {
           "description": "Zero-based lower endpoint row.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "SpaceWallRegion": {
+      "additionalProperties": false,
+      "description": "A non-overlapping grid rectangle assigning wall materials on one level. Decoration never changes collision.",
+      "properties": {
+        "depth": {
+          "description": "Positive integer depth in cells, inside the map.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "east": {
+          "description": "Optional material override for outward east faces.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "level": {
+          "description": "One-based existing grid level.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "material": {
+          "description": "Default named material for all wall faces in this region.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "north": {
+          "description": "Optional material override for outward north faces.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "south": {
+          "description": "Optional material override for outward south faces.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "west": {
+          "description": "Optional material override for outward west faces.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "width": {
+          "description": "Positive integer width in cells, inside the map.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "x": {
+          "description": "Zero-based left column.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "y": {
+          "description": "Zero-based top row.",
           "type": "integer",
           "x-contract": {
             "default": "0",

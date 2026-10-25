@@ -57,9 +57,9 @@ to the lowest level's start.
 
 Validation rejects mixing a space with `map`, `generate`, roaming enemies,
 themes, door pictures, conditional dungeon looks, slide or spin
-effects. These combinations are not partially rendered. Full-height walls and
-solid floor slabs are the available building geometry; this does not yet provide
-windows, railings, arbitrary meshes or free vertical looking.
+effects. These combinations are not partially rendered. Full-height walls,
+solid floor slabs and optional [bounded roofs](space-buildings.md) form the building geometry.
+Partial-height windows, railings, arbitrary meshes and free vertical looking remain unsupported.
 
 The [E2E route](../../scripts/capture-space.txt) walks under the upper flight,
 inspects the lower flight from the side, ascends twice, crosses the bridge, looks over the plaza from the roof and
@@ -114,3 +114,7 @@ One legacy step is counted per cell-length actually travelled, independently of 
 Old saves initialize at the saved cell center/cardinal yaw. New saves retain the off-center coordinates, yaw, support level and fractional budgets; velocity is not saved. Invalid or obstructed restored poses fall back to a valid grid placement. `move at`, scripted grid steps/walks and explicit relocation reset continuous motion; scripts retain their existing tile-based semantics. F5 reload preserves a valid pose. Traces include `space_pose`, and capture scripts accept `hold up+right 60` or `hold up+shift+right 60` for exact simulated durations.
 
 To reproduce the [continuous inn route](../../scripts/capture-space-free.txt), copy the Lantern Inn fixture and add `free_move: {speed: 2, turn_speed: 90, acceleration: 0}` under its existing `space`. The native graphics test also drives the original plaza route in this mode. Both routes retain one location while traversing real stairs. See [controller and rendering measurements](../development/space-performance.md) for timings and their scope.
+
+## Building materials and roofs
+
+See [the Lantern Quarter town](space-buildings.md) for named facade materials, actual gable/shed roof geometry, canopies, real doorways and an elevated street view.

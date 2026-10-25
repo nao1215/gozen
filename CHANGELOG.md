@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add building facade materials, closed gable/shed roofs and canopies with shared collision and sprite occlusion.
+
 - Add opt-in continuous stacked-space walking with footprint collision, held-input speed stages, distance-based encounters and saved off-center poses.
 
 - Render NPC and furniture billboards in stacked spaces with tile interactions, alpha transparency and terrain occlusion.

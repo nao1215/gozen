@@ -12,6 +12,12 @@ import (
 // Space is an opt-in bounded stack of maps. Blank cells are open air; ordinary
 // floors and tiles provide surfaces. Levels are ordered from lowest to highest.
 type Space struct {
+	// Building appearance is optional; global dungeon materials remain defaults.
+	Materials   map[string]SpaceMaterial `yaml:"materials"`
+	WallRegions []SpaceWallRegion        `yaml:"wall_regions"`
+	Roofs       []SpaceRoof              `yaml:"roofs"`
+	roofParts   []SpaceRoofPart
+	roofCells   map[[2]int][]int
 	// FreeMove opts the layer-3 controller and presentation into continuous motion.
 	// Nil retains grid movement and its existing camera durations.
 	FreeMove *SpaceFreeMove `yaml:"free_move"`
@@ -62,6 +68,7 @@ const (
 )
 
 func (s *Space) parse() {
+	s.parseBuildings()
 	if f := s.FreeMove; f != nil {
 		if f.Speed == 0 {
 			f.Speed = 1.6
@@ -228,6 +235,7 @@ func (c *checker) space(w string, d *Dungeon, used map[rune]bool) {
 	if _, ok := DungeonLevel(d, 0).StartChar(); !ok {
 		c.errorf(diag.Shape, w, "the lowest level needs a start tile")
 	}
+	c.spaceBuildings(w, d, width, height)
 	if d.Depth > 16 {
 		c.errorf(diag.OutOfRange, w, "space view depth must be at most 16")
 	}

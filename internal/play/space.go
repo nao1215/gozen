@@ -23,6 +23,15 @@ var spaceGeometrySource []byte
 var spaceShaderSource []byte
 
 type spaceView struct {
+	buildingDungeon, buildingColorDungeon   *data.Dungeon
+	buildingPixels                          []byte
+	roofBounds, roofPlanes, roofAppearance  []float32
+	roofBottom                              []float32
+	buildingTop                             float32
+	materialNames                           []string
+	materialSourcesBuilding                 []*ebiten.Image
+	buildingMaterialAtlas                   *ebiten.Image
+	buildingColors, buildingUV              []float32
 	spriteShader                            *ebiten.Shader
 	sprites                                 []spaceSprite
 	visibleSprites                          []visibleSpaceSprite
@@ -60,7 +69,7 @@ func (s *dungeonScene) drawSpace(g *Game, dst *ebiten.Image, d *data.Dungeon) {
 		s.space = &spaceView{}
 	}
 	v := s.space
-	newAtlas := v.atlas == nil
+	newAtlas := v.atlas == nil || v.atlas.Bounds().Dy() != spaceAtlasHeight(d)
 	if v.shader == nil {
 		var err error
 		v.shader, err = newSpaceShader(spaceShaderSource)
@@ -68,7 +77,12 @@ func (s *dungeonScene) drawSpace(g *Game, dst *ebiten.Image, d *data.Dungeon) {
 			g.failure = fmt.Errorf("space shader: %w", err)
 			return
 		}
-		v.atlas = ebiten.NewImage(data.MaxSpaceSide, data.MaxSpaceSide*data.MaxSpaceLevels)
+	}
+	if newAtlas {
+		if v.atlas != nil {
+			v.atlas.Deallocate()
+		}
+		v.atlas = ebiten.NewImage(data.MaxSpaceSide, spaceAtlasHeight(d))
 	}
 	if v.refreshOccupancy(g.st, d) || newAtlas {
 		v.atlas.WritePixels(v.pixels)
@@ -144,6 +158,8 @@ func (s *dungeonScene) drawSpace(g *Game, dst *ebiten.Image, d *data.Dungeon) {
 		}
 		op.Uniforms[name] = tint
 	}
+	v.roofUniforms(d, op.Uniforms)
+	v.buildingMaterials(g, d, op)
 	v.frame.DrawTrianglesShader([]ebiten.Vertex{{DstX: 0, DstY: 0}, {DstX: float32(w), DstY: 0}, {DstX: 0, DstY: float32(h)}, {DstX: float32(w), DstY: float32(h)}}, []uint16{0, 1, 2, 1, 3, 2}, v.shader, op)
 	v.drawSprites(g, d, [3]float64{x, height, z}, yaw, w, h)
 	imageOp := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
@@ -225,12 +241,16 @@ func (v *spaceView) refreshOccupancy(state *rpg.State, d *data.Dungeon) bool {
 }
 
 func (v *spaceView) buildOccupancy(state *rpg.State, d *data.Dungeon) {
-	if len(v.pixels) == 0 {
-		v.pixels = make([]byte, data.MaxSpaceSide*data.MaxSpaceSide*data.MaxSpaceLevels*4)
+	v.prepareBuildings(d)
+	if len(v.pixels) != data.MaxSpaceSide*spaceAtlasHeight(d)*4 {
+		v.pixels = make([]byte, data.MaxSpaceSide*spaceAtlasHeight(d)*4)
 	}
 	// One compact bounded occupancy atlas drives depth-correct intersections. Build
 	// from the same cell rules as movement, so once-only doors and conditions agree.
 	clear(v.pixels)
+	if len(v.buildingPixels) > 0 {
+		copy(v.pixels[512*64*4:], v.buildingPixels)
+	}
 	clear(v.sprites)
 	v.sprites = v.sprites[:0]
 	st := *state
