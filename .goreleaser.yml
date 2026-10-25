@@ -126,7 +126,7 @@ nfpms:
   - package_name: gozen
     ids: [gozen]
     maintainer: Naohiro CHIKAMATSU <n.chika156@gmail.com>
-    description: "Checks, simulates, documents and packages games written in YAML for the Gozen 2D RPG framework"
+    description: "Create, play and export 2D RPGs, visual novels and strategy games with YAML and a CLI"
     homepage: https://github.com/nao1215/gozen
     license: MIT License
     formats:
@@ -172,7 +172,7 @@ homebrew_casks:
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     directory: Casks
     homepage: "https://github.com/nao1215/gozen"
-    description: "Checks, simulates, documents and packages games written in YAML for the Gozen 2D RPG framework"
+    description: "Create, play and export 2D RPGs, visual novels and strategy games with YAML and a CLI"
     # The binary is not signed or notarized, so strip the quarantine attribute
     # on install; otherwise Gatekeeper blocks the cask-installed binary.
     hooks:
@@ -194,7 +194,7 @@ release:
 
     Gozen creates and plays games written in YAML. The `gozen` archives contain
     the authoring CLI (without ONNX inference). The `gozen-runtime` archives
-    contain players for `gozen pack desktop` and `gozen pack web`; use the
+    contain players for `gozen export` and `gozen export --target web`; use the
     runtime from this release for the target OS/architecture or js-wasm.
 
     Every archive is signed and ships with an SBOM and build provenance; see
