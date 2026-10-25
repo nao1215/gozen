@@ -148,3 +148,58 @@ returning resets it. No camera data enters headless exploration or save migratio
 | Save screen coordinates in the state | The rules (headless, Explore) would have to know coordinates, and the branches of play would multiply by coordinate. Rounded to points, the branches are only the entries |
 | Put the scene position in `pos` (the dungeon position) | It collides in meaning with the dungeon position (the repair of `pos.in`, the map record). A separate name `spot` reads better in expressions |
 | `scene:` instead of `stage:` | It collides with the start option `--scene` and the `scenes` of recollections |
+
+## Selection advice and action maps
+
+An optional `map.selection_panel` displays the selected point's advice in a fixed
+screen rectangle. `rect: [x, y, width, height]` uses screen fractions, defaulting to
+`[0.66, 0.1, 0.32, 0.65]`; `portrait` supplies the default face picture relative to
+`assets/`. Each point's `advice` is an ordered list of `{when, heading, text, portrait}`
+variants. The first matching variant wins. Omitted `when` always matches, omitted
+`heading` uses the point label, and omitted `portrait` uses the panel default.
+Conditions and text templates read the usual field state. Preview expressions use
+an isolated random source and do not advance gameplay randomness. Text wraps and
+truncates within the fixed panel; camera movement and text length do not move it.
+
+With a panel, hovering, clicking a point, directions and Tab select advice. Clicking
+the same point again still only previews it. Confirm or the panel's Confirm button
+activates it. Back dismisses the panel; confirming after dismissal first restores
+it. The existing entry list also offers explicit activation. Without a panel, the
+existing point-click behavior remains unchanged.
+
+`map.activation: instant` makes a map an action menu: every open point with a pending
+`do` or `to` is available without a road, including the current point. Confirmation
+runs its `do` and optional `to`; it does not walk roads, add road steps, roll road
+encounters, execute road actions, mark the point visited, or change the saved spot.
+An explicit `to` still performs the usual location move (including its ordinary
+arrival step and events). `once`, `when` and `locked` keep their usual meanings.
+Omitting activation, or using `travel`, preserves road travel and arrival behavior.
+The panel and activation are independent opt-ins; neither selection nor the camera
+is part of a saved game. For example:
+
+```yaml
+map:
+  picture: maps/valley.png
+  activation: instant
+  selection_panel: {portrait: people/guide.png}
+  points:
+    town:
+      at: [120, 240]
+      start: true
+      do: [{say: "Welcome back."}]
+      advice: [{heading: Town guide, text: "Rest before the next expedition."}]
+    quarry:
+      at: [320, 180]
+      to: quarry
+      advice:
+        - {when: "item.potion < 3", text: "Bring three potions. You have {item.potion}."}
+        - {text: "Your supplies are ready for the quarry."}
+    tower:
+      at: [480, 80]
+      to: tower
+      advice: [{text: "The tower overlooks the valley."}]
+```
+
+`TestAtlasInstantActions`, `TestAtlasSelectionPanel` and
+`TestGraphicsMapSelectionPanel` exercise the headless rules, state/RNG isolation,
+pointer and keyboard confirmation, and native rendering of the fixed panel.

@@ -299,6 +299,7 @@ var english = map[string]string{
 	"OK 済みを除く":  "Skip OK'd",
 	"判定済み（札のある絵）を除く": "Skip tagged pictures",
 	"「%s」を入れる":       "Include \"%s\"",
+	"決定":             "Confirm",
 	"もどる":            "Back",
 	"最後まで見た":         "Reached the end",
 	"札":              "Tag",

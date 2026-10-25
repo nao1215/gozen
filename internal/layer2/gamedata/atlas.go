@@ -12,6 +12,10 @@ import (
 // point with to is the way into another location; the party walks from point to point
 // along the open roads.
 type Atlas struct {
+	// Activation is travel (default), or instant for an illustrated action menu.
+	Activation string `yaml:"activation"`
+	// SelectionPanel is the play renderer's fixed selected-point advice panel.
+	SelectionPanel *AtlasPanel `yaml:"selection_panel"`
 	// Camera enables presentation-only pan and zoom; nil keeps the fitted view.
 	Camera *AtlasCamera `yaml:"camera"`
 	// TravelSpeed is the map renderer's token speed in picture widths per second.
@@ -43,6 +47,22 @@ type Atlas struct {
 	Roads   []Road               `yaml:"roads"`
 
 	pointOrder []string // the points as written
+}
+
+// AtlasPanel places selected-point advice in screen space for the play renderer.
+// Rect is [x,y,width,height], as fractions of the screen; omission uses the right side.
+type AtlasPanel struct {
+	Rect     []float64 `yaml:"rect"`
+	Portrait string    `yaml:"portrait"` // Default face picture, relative to assets/.
+}
+
+// MapAdvice is a first-matching advice variant for the selected point. The play
+// renderer evaluates When and renders Heading/Text without advancing gameplay RNG.
+type MapAdvice struct {
+	When     Expr   `yaml:"when"`
+	Heading  string `yaml:"heading"`
+	Text     string `yaml:"text"`
+	Portrait string `yaml:"portrait"` // Replaces the panel's default face picture.
 }
 
 // AtlasCamera configures the play renderer's navigable map. Zoom is relative to
@@ -77,9 +97,10 @@ func (t *Token) UnmarshalYAML(unmarshal func(any) error) error {
 
 // MapPoint is a point of a map.
 type MapPoint struct {
-	At    Point  `yaml:"at"`
-	To    string `yaml:"to"`    // the location it leads into
-	Label string `yaml:"label"` // the name of to when empty
+	Advice []MapAdvice `yaml:"advice"`
+	At     Point       `yaml:"at"`
+	To     string      `yaml:"to"`    // the location it leads into
+	Label  string      `yaml:"label"` // the name of to when empty
 	// When must hold for the point to be open (the roads through a closed point are closed).
 	When Expr `yaml:"when"`
 	// Locked is what is said on choosing the point while it is closed.
@@ -156,6 +177,26 @@ func (c *checker) atlas(w, id string, l *Location) {
 	w += ".map"
 	if math.IsNaN(a.TravelSpeed) || math.IsInf(a.TravelSpeed, 0) || a.TravelSpeed != 0 && (a.TravelSpeed < 0.01 || a.TravelSpeed > 2) {
 		c.errorf(diag.OutOfRange, w+".travel_speed", "want 0 (default 0.12) or a finite speed in [0.01, 2] picture widths per second")
+	}
+	switch a.Activation {
+	case "", "travel", "instant":
+	default:
+		c.errorf(diag.NotAWord, w+".activation", "want travel or instant")
+	}
+	if panel := a.SelectionPanel; panel != nil {
+		c.file(w+".selection_panel.portrait", panel.Portrait)
+		if len(panel.Rect) > 0 {
+			valid := len(panel.Rect) == 4
+			for _, v := range panel.Rect {
+				valid = valid && !math.IsNaN(v) && !math.IsInf(v, 0) && v >= 0 && v <= 1
+			}
+			if valid {
+				valid = panel.Rect[2] >= .2 && panel.Rect[3] >= .25 && panel.Rect[0]+panel.Rect[2] <= 1 && panel.Rect[1]+panel.Rect[3] <= 1
+			}
+			if !valid {
+				c.errorf(diag.OutOfRange, w+".selection_panel.rect", "want finite [x,y,width,height] within the screen, width >= 0.2 and height >= 0.25")
+			}
+		}
 	}
 	if camera := a.Camera; camera != nil {
 		limit := camera.MaxZoom
@@ -239,6 +280,13 @@ func (c *checker) atlas(w, id string, l *Location) {
 		if p.Once && len(p.Do) == 0 {
 			c.errorf(diag.Shape, ww+".once", "once is for a point with do")
 		}
+		for i, advice := range p.Advice {
+			where := fmt.Sprintf("%s.advice[%d]", ww, i)
+			c.expr(where+".when", advice.When, FieldNames)
+			c.text(where+".heading", advice.Heading, FieldNames)
+			c.text(where+".text", advice.Text, FieldNames)
+			c.file(where+".portrait", advice.Portrait)
+		}
 		c.file(ww+".marker", p.Marker)
 		c.text(ww+".label", p.Label, FieldNames)
 		c.text(ww+".locked", p.Locked, FieldNames)
@@ -289,7 +337,7 @@ func (c *checker) atlas(w, id string, l *Location) {
 			c.expr(ww+".encounters.when", tp.When, FieldNames)
 		}
 	}
-	if len(a.Points) > 1 {
+	if len(a.Points) > 1 && a.Activation != "instant" {
 		for _, pid := range a.PointIDs() {
 			if roadsOf[pid] == 0 && a.Points[pid] != nil {
 				c.errorf(diag.Shape, w+".points."+pid, "no road leads to the point")

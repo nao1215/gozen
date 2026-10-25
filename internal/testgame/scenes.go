@@ -158,3 +158,40 @@ func LoadScenes(t testing.TB, extra map[string]string) *data.DB {
 	t.Helper()
 	return Load(t, ScenesFiles(extra))
 }
+
+// AtlasMenuData supplies a neutral destination menu shared by rendered and headless tests.
+const AtlasMenuData = `
+locations:
+  selection:
+    name: Expedition board
+    map:
+      picture: maps/menu.png
+      activation: instant
+      camera: {zoom: 1, max_zoom: 4}
+      selection_panel: {rect: [0.65, 0.1, 0.33, 0.65], portrait: x.png}
+      unknown: named
+      points:
+        town:
+          at: [10, 24]
+          label: Town
+          start: true
+          do: [{set: {var.town: "var.town + 1"}}]
+          advice: [{heading: Town guide, text: "Rest before the next expedition."}]
+        quarry:
+          at: [26, 18]
+          label: Quarry
+          do: [{set: {var.quarry: "var.quarry + 1"}}]
+          advice:
+            - {when: "item.potion < 3", heading: Quarry guide, text: "Bring three potions. You have {item.potion}."}
+            - {heading: Quarry guide, text: "Your supplies are ready. Explore the sheltered quarry and follow the marked trail."}
+        tower:
+          at: [36, 8]
+          label: Tower
+          to: camp
+          when: "flag.heard"
+          locked: "Ask the town guide first."
+          advice: [{heading: Tower guide, text: "The tower offers a clear view of the valley."}]
+      roads:
+        - {between: [town, quarry], steps: 7, do: [{set: {var.road: "var.road + 1"}}], encounters: {rate: "1", troops: [{troop: one}]}}
+        - {between: [quarry, tower]}
+`

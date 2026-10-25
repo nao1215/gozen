@@ -271,7 +271,7 @@ var version2Fields = map[string]bool{
 var (
 	version3Fields = map[string]bool{"Location.map": true, "Location.stage": true, "Person.bubbles": true, "Actor.doll": true, "UIStyle.balloon": true, "UIStyle.talk_portrait": true, "Game.title_text": true, "Fonts.subtitle": true}
 	version3Types  = map[reflect.Type]bool{
-		reflect.TypeFor[Atlas](): true, reflect.TypeFor[AtlasCamera](): true, reflect.TypeFor[Token](): true, reflect.TypeFor[MapPoint](): true, reflect.TypeFor[Road](): true,
+		reflect.TypeFor[Atlas](): true, reflect.TypeFor[AtlasCamera](): true, reflect.TypeFor[AtlasPanel](): true, reflect.TypeFor[MapAdvice](): true, reflect.TypeFor[Token](): true, reflect.TypeFor[MapPoint](): true, reflect.TypeFor[Road](): true,
 		reflect.TypeFor[Stage](): true, reflect.TypeFor[ScaleMark](): true, reflect.TypeFor[Front](): true, reflect.TypeFor[Spot](): true,
 		reflect.TypeFor[StageExit](): true, reflect.TypeFor[StagePerson](): true, reflect.TypeFor[Thing](): true,
 		reflect.TypeFor[Doll](): true, reflect.TypeFor[DollPart](): true, reflect.TypeFor[Bubble](): true, reflect.TypeFor[TalkPortrait](): true, reflect.TypeFor[TitleText](): true,
