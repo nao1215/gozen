@@ -81,3 +81,7 @@ runtime, exports a game, serves it under a subdirectory, plays a choice and
 checks saved state after reloading the page. Release Smoke repeats this using
 the generated release archives. These tools are test dependencies; authors
 export with the prebuilt CLI and runtime bundle.
+
+## Stacked-space performance
+
+See [occupancy measurements](space-performance.md) for generated scaling fixtures, explicit CPU and native graphics benchmarks, and cache-invalidation coverage.

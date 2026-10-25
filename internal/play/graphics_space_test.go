@@ -3,16 +3,22 @@
 package play
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"image/png"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/goccy/go-yaml"
 )
 
 // The same route supplies the published demonstration and this native E2E.
@@ -211,6 +217,184 @@ func checkSpaceSlab(t *testing.T) {
 			if i != probe.channel && dominant <= v {
 				t.Errorf("%s: RGB %v does not show expected material", probe.name, channels)
 			}
+		}
+	}
+}
+
+// Run explicitly with -bench BenchmarkGraphicsSpaceScaling -benchtime=1x.
+// Normal CI does not run benchmarks. An optional external host permits the same
+// harness to compare revisions without changing gameplay configuration.
+func BenchmarkGraphicsSpaceScaling(b *testing.B) {
+	for _, size := range [][2]int{{48, 40}, {64, 64}} {
+		for _, levels := range []int{1, 3, 8} {
+			for _, depth := range []int{8, 16} {
+				for _, moving := range []bool{false, true} {
+					b.Run(fmt.Sprintf("%dx%dx%d/depth=%d/moving=%t", size[0], size[1], levels, depth, moving), func(b *testing.B) {
+						dense := os.Getenv("GOZEN_SPACE_BENCH_DENSE") == "1"
+						fixture := spaceScalingFixture(b, size[0], size[1], levels, dense)
+						fixture["data/world.yaml"].Data = bytes.Replace(fixture["data/world.yaml"].Data, []byte("depth: 16"), fmt.Appendf(nil, "depth: %d", depth), 1)
+						root := b.TempDir()
+						game := filepath.Join(root, "game")
+						if err := os.CopyFS(game, fixture); err != nil {
+							b.Fatal(err)
+						}
+						script := "gap 24\nwait 120\n"
+						if moving {
+							script += "press up 4\npress right 2\npress up 4\n"
+						} else {
+							script += "wait 240\n"
+						}
+						script += "quit\n"
+						scriptPath := filepath.Join(root, "script.txt")
+						if err := os.WriteFile(scriptPath, []byte(script), 0o600); err != nil {
+							b.Fatal(err)
+						}
+						executable := hostBin
+						if override := os.Getenv("GOZEN_SPACE_BENCH_HOST"); override != "" {
+							executable = override
+						}
+						for range b.N {
+							ctx, cancel := context.WithTimeout(b.Context(), 2*time.Minute)
+							cmd := exec.CommandContext(ctx, executable, "--build-info", "--dir", game, "--start", "courtyard", "--dev", "--mute", "--script", scriptPath, "--shots", root, "--save-dir", filepath.Join(root, "saves")) //nolint:gosec // Explicit benchmark host, supplied only by the developer running this test.
+							cmd.Env = append(os.Environ(), "GOZEN_DEBUG=1")
+							var stdout, diagnostic bytes.Buffer
+							cmd.Stdout = &stdout
+							pipe, err := cmd.StderrPipe()
+							if err != nil {
+								cancel()
+								b.Fatal(err)
+							}
+							start := time.Now()
+							if err := cmd.Start(); err != nil {
+								cancel()
+								b.Fatal(err)
+							}
+							var draws, updates, fps, tps []float64
+							startup := time.Duration(0)
+							tick := 0
+							scanner := bufio.NewScanner(pipe)
+							for scanner.Scan() {
+								line := scanner.Text()
+								diagnostic.WriteString(line + "\n")
+								fields := strings.Fields(line)
+								for i, field := range fields {
+									if field == "tick" && i+1 < len(fields) {
+										value, parseErr := strconv.Atoi(fields[i+1])
+										if parseErr == nil {
+											tick = value
+										}
+									}
+									if (field == "draw" || field == "update") && i+1 < len(fields) {
+										elapsed, err := time.ParseDuration(fields[i+1])
+										if err != nil {
+											continue
+										}
+										if field == "draw" && startup == 0 {
+											startup = time.Since(start)
+										}
+										if tick < 120 {
+											continue
+										}
+										if field == "draw" {
+											draws = append(draws, float64(elapsed)/float64(time.Millisecond))
+										} else {
+											updates = append(updates, float64(elapsed)/float64(time.Millisecond))
+										}
+									}
+									if tick >= 120 && (field == "fps" || field == "tps") && i+1 < len(fields) {
+										value, err := strconv.ParseFloat(fields[i+1], 64)
+										if err != nil {
+											continue
+										}
+										if field == "fps" {
+											fps = append(fps, value)
+										} else {
+											tps = append(tps, value)
+										}
+									}
+								}
+							}
+							scanErr := scanner.Err()
+							err = cmd.Wait()
+							cancel()
+							if err != nil || scanErr != nil {
+								b.Fatalf("host: %v / %v\n%s\n%s", err, scanErr, &stdout, &diagnostic)
+							}
+							if len(draws) == 0 || len(updates) == 0 {
+								b.Fatalf("missing samples: %s", &diagnostic)
+							}
+							b.ReportMetric(float64(startup)/float64(time.Millisecond), "startup-ms")
+							if dense {
+								b.ReportMetric(1, "dense")
+							}
+							for name, values := range map[string][]float64{"draw": draws, "update": updates, "fps": fps, "tps": tps} {
+								slices.Sort(values)
+								b.ReportMetric(values[len(values)/2], name+"-p50")
+								b.ReportMetric(values[(len(values)-1)*95/100], name+"-p95")
+							}
+						}
+					})
+				}
+			}
+		}
+	}
+}
+
+func TestGraphicsSpaceConditionalOccupancy(t *testing.T) {
+	fixture := spaceScalingFixture(t, 48, 40, 3, false)
+	var root map[string]any
+	if err := yaml.Unmarshal(fixture["data/world.yaml"].Data, &root); err != nil {
+		t.Fatal(err)
+	}
+	d := spaceFixtureValue[map[string]any](t, spaceFixtureValue[map[string]any](t, spaceFixtureValue[map[string]any](t, root["locations"])["courtyard"])["dungeon"])
+	spaceFixtureValue[map[string]any](t, d["tiles"])["X"] = map[string]any{"look": "wall", "when": "flag.closed", "else": "."}
+	levels := spaceFixtureValue[[]any](t, spaceFixtureValue[map[string]any](t, d["space"])["levels"])
+	rows := strings.Split(spaceFixtureValue[string](t, levels[0]), "\n")
+	row := []byte(rows[14])
+	row[10] = 'X'
+	rows[14] = string(row)
+	levels[0] = strings.Join(rows, "\n")
+	var err error
+	fixture["data/world.yaml"].Data, err = yaml.Marshal(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := t.TempDir()
+	game := filepath.Join(out, "game")
+	if err := os.CopyFS(game, fixture); err != nil {
+		t.Fatal(err)
+	}
+	script := filepath.Join(out, "script.txt")
+	if err := os.WriteFile(script, []byte("wait 40\nshot open\ndo {set: {flag.closed: true}}\nwait 20\nshot closed\ndo {set: {flag.closed: false}}\nwait 20\nshot reopened\npress reload\nwait 30\nshot reloaded\nquit\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, hostBin, "--dir", game, "--dev", "--mute", "--start", "courtyard", "--script", script, "--shots", out, "--save-dir", filepath.Join(out, "saves")) //nolint:gosec // Fixed test host with isolated generated fixture paths.
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("%v\n%s\n%s", err, &stdout, &stderr)
+	}
+	initial := shotImage(t, out, "open")
+	for _, name := range []string{"closed", "reopened", "reloaded"} {
+		other := shotImage(t, out, name)
+		changed := 0
+		bounds := initial.Bounds()
+		for y := bounds.Dy() / 3; y < bounds.Dy()*2/3; y++ {
+			for x := bounds.Dx() / 3; x < bounds.Dx()*2/3; x++ {
+				ar, ag, ab, _ := initial.At(x, y).RGBA()
+				br, bg, bb, _ := other.At(x, y).RGBA()
+				if abs(int(ar)-int(br)) > 257 || abs(int(ag)-int(bg)) > 257 || abs(int(ab)-int(bb)) > 257 {
+					changed++
+				}
+			}
+		}
+		if name == "closed" && changed < 1000 {
+			t.Errorf("conditional wall did not appear: %d changed pixels", changed)
+		}
+		if name != "closed" && changed != 0 {
+			t.Errorf("%s retained stale geometry: %d changed pixels", name, changed)
 		}
 	}
 }

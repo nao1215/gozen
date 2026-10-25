@@ -1,10 +1,13 @@
 package play
 
 import (
+	"bytes"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"image/color"
 	"math"
+	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -17,15 +20,20 @@ import (
 var spaceShaderSource []byte
 
 type spaceView struct {
-	shader              *ebiten.Shader
-	atlas               *ebiten.Image
-	frame               *ebiten.Image
-	ceilingSky          *ebiten.Image
-	materialSources     [2]*ebiten.Image
-	pixels              []byte
-	from                rpg.Pos
-	remaining, duration int
-	turn                float64
+	shader                                  *ebiten.Shader
+	atlas                                   *ebiten.Image
+	frame                                   *ebiten.Image
+	ceilingSky                              *ebiten.Image
+	materialSources                         [2]*ebiten.Image
+	pixels                                  []byte
+	from                                    rpg.Pos
+	remaining, duration                     int
+	turn                                    float64
+	occupancyDungeon                        *data.Dungeon
+	occupancyDB                             *data.DB
+	occupancyState                          *rpg.State
+	occupancyKey                            []byte
+	occupancyConditional, occupancyVolatile bool
 }
 
 func (s *dungeonScene) spaceMotion(from rpg.Pos, turn float64, ticks int) {
@@ -46,6 +54,7 @@ func (s *dungeonScene) drawSpace(g *Game, dst *ebiten.Image, d *data.Dungeon) {
 		s.space = &spaceView{}
 	}
 	v := s.space
+	newAtlas := v.atlas == nil
 	if v.shader == nil {
 		var err error
 		v.shader, err = ebiten.NewShader(spaceShaderSource)
@@ -54,42 +63,10 @@ func (s *dungeonScene) drawSpace(g *Game, dst *ebiten.Image, d *data.Dungeon) {
 			return
 		}
 		v.atlas = ebiten.NewImage(data.MaxSpaceSide, data.MaxSpaceSide*data.MaxSpaceLevels)
-		v.pixels = make([]byte, data.MaxSpaceSide*data.MaxSpaceSide*data.MaxSpaceLevels*4)
 	}
-	// One compact bounded occupancy atlas drives depth-correct intersections. Build
-	// from the same cell rules as movement, so once-only doors and conditions agree.
-	clear(v.pixels)
-	st := *g.st
-	for level := range d.Space.Levels {
-		st.Pos.Level = level
-		view := data.DungeonLevel(d, level)
-		for y, row := range view.Grid {
-			for x := range row {
-				i := ((level*data.MaxSpaceSide+y)*data.MaxSpaceSide + x) * 4
-				v.pixels[i+3] = 255
-				c := dungeon.CellAt(view, &st, x, y)
-				if c.Char == data.CellNone {
-					continue
-				}
-				v.pixels[i] = 1
-				if c.Solid || c.Look == "wall" {
-					v.pixels[i] = 2
-				}
-			}
-		}
+	if v.refreshOccupancy(g.st, d) || newAtlas {
+		v.atlas.WritePixels(v.pixels)
 	}
-	for _, stair := range d.Space.Stairs {
-		dx, dy := data.StairDelta(stair)
-		for n := range stair.Length {
-			x, y := stair.X+n*dx, stair.Y+n*dy
-			i := (((stair.Level-1)*data.MaxSpaceSide+y)*data.MaxSpaceSide + x) * 4
-			if i < 0 || i+3 >= len(v.pixels) {
-				continue
-			}
-			v.pixels[i], v.pixels[i+1], v.pixels[i+2] = 3, byte(data.FacingIndex(stair.Facing)*16+stair.Length), byte(n) //nolint:gosec // Validated direction <= 3, length <= 8 and offset < length.
-		}
-	}
-	v.atlas.WritePixels(v.pixels)
 	// Keep software-rendered CI and browser costs bounded independently of window size.
 	w := min(dst.Bounds().Dx(), 640)
 	h := max(1, w*dst.Bounds().Dy()/dst.Bounds().Dx())
@@ -190,4 +167,88 @@ func (v *spaceView) ceilingAndSky(g *Game, ceiling, sky data.Picture) *ebiten.Im
 	}
 	v.materialSources = sources
 	return v.ceilingSky
+}
+
+// refreshOccupancy reports whether the atlas needs uploading.
+func (v *spaceView) refreshOccupancy(state *rpg.State, d *data.Dungeon) bool {
+	changed := v.occupancyDungeon != d || v.occupancyDB != state.DB || v.occupancyState != state
+	if changed {
+		v.occupancyDungeon, v.occupancyDB, v.occupancyState = d, state.DB, state
+		v.occupancyConditional, v.occupancyVolatile = false, false
+		for _, tile := range d.Tiles {
+			for _, condition := range []data.Expr{tile.When, tile.Solid} {
+				v.occupancyConditional = v.occupancyConditional || condition.Set()
+				names := condition.Names()
+				v.occupancyVolatile = v.occupancyVolatile || slices.Contains(names, "rand") || slices.Contains(names, "chance")
+			}
+		}
+	}
+	// Definitions are immutable between reloads (which replace DB/dungeon pointers).
+	// Static tiles need only mutations and once-state. Expressions can read actors,
+	// inventory, campaign, choices and position: conservatively snapshot the state.
+	var input any = struct {
+		Location string
+		Done     map[string]bool
+		Put      map[string]string
+	}{state.Location, state.Done, state.Put}
+	if v.occupancyConditional {
+		snapshot := *state
+		// These do not participate in field expressions; camera-only updates must
+		// not invalidate geometry. Everything else saved stays in the snapshot.
+		snapshot.Frames, snapshot.Mapped, snapshot.Reactions = 0, nil, nil
+		input = struct {
+			State   *rpg.State
+			Repairs rpg.LoadReport
+		}{&snapshot, state.LoadReport}
+	}
+	key, err := json.Marshal(input)
+	if !changed && !v.occupancyVolatile && err == nil && bytes.Equal(key, v.occupancyKey) {
+		return false
+	}
+	v.buildOccupancy(state, d)
+	v.occupancyKey = key
+	// Failed serialization deliberately forces another rebuild next Draw.
+	if err != nil {
+		v.occupancyDungeon = nil
+	}
+	return true
+}
+
+func (v *spaceView) buildOccupancy(state *rpg.State, d *data.Dungeon) {
+	if len(v.pixels) == 0 {
+		v.pixels = make([]byte, data.MaxSpaceSide*data.MaxSpaceSide*data.MaxSpaceLevels*4)
+	}
+	// One compact bounded occupancy atlas drives depth-correct intersections. Build
+	// from the same cell rules as movement, so once-only doors and conditions agree.
+	clear(v.pixels)
+	st := *state
+	for level := range d.Space.Levels {
+		st.Pos.Level = level
+		view := data.DungeonLevel(d, level)
+		for y, row := range view.Grid {
+			for x := range row {
+				i := ((level*data.MaxSpaceSide+y)*data.MaxSpaceSide + x) * 4
+				v.pixels[i+3] = 255
+				c := dungeon.CellAt(view, &st, x, y)
+				if c.Char == data.CellNone {
+					continue
+				}
+				v.pixels[i] = 1
+				if c.Solid || c.Look == "wall" {
+					v.pixels[i] = 2
+				}
+			}
+		}
+	}
+	for _, stair := range d.Space.Stairs {
+		dx, dy := data.StairDelta(stair)
+		for n := range stair.Length {
+			x, y := stair.X+n*dx, stair.Y+n*dy
+			i := (((stair.Level-1)*data.MaxSpaceSide+y)*data.MaxSpaceSide + x) * 4
+			if i < 0 || i+3 >= len(v.pixels) {
+				continue
+			}
+			v.pixels[i], v.pixels[i+1], v.pixels[i+2] = 3, byte(data.FacingIndex(stair.Facing)*16+stair.Length), byte(n) //nolint:gosec // Validated direction <= 3, length <= 8 and offset < length.
+		}
+	}
 }

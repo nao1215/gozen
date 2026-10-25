@@ -223,7 +223,8 @@ func (s *dungeonScene) draw(g *Game, dst *ebiten.Image) {
 		s.keep = nil
 	}
 	if d.Space != nil {
-		s.drawSpace(g, s.view, d)
+		// Space caches use the immutable definition, not the per-level Styled copy.
+		s.drawSpace(g, s.view, g.db.Locations[g.st.Location].Dungeon)
 		dst.DrawImage(s.view, nil)
 	} else {
 		v := &viewer{g: g, d: d, st: vst, dst: s.view, w: pw, h: ph, vs: s.vs, is: s.is}

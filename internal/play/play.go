@@ -711,6 +711,14 @@ func (g *Game) rng() *rand.Rand {
 }
 
 func (g *Game) Update() error {
+	if g.opts.CollectBuildInfo && os.Getenv("GOZEN_DEBUG") != "" {
+		start := time.Now()
+		defer func() {
+			if g.tick%30 == 0 {
+				log.Printf("update %v", time.Since(start))
+			}
+		}()
+	}
 	if g.meter.on {
 		defer g.meter.updated(time.Now())
 	}
