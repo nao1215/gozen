@@ -1,11 +1,39 @@
 package gamedata_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/nao1215/gozen/internal/testgame"
 )
+
+func TestCheckPositionLevel(t *testing.T) {
+	for _, condition := range []string{"pos.level == 0", "pos.level == 1", "pos.level + 1 > 0"} {
+		t.Run(condition, func(t *testing.T) {
+			_, err := testgame.TryLoad(map[string]string{
+				"data/level-probe.yaml": fmt.Sprintf("events: {level_probe: {do: [{if: %q, then: [{say: Upstairs.}]}]}}", condition),
+			})
+			if err != nil {
+				t.Fatalf("numeric position level must validate: %v", err)
+			}
+		})
+	}
+	for _, tc := range []struct{ command, want string }{
+		{`if: "pos.unknown == 0", then: []`, `pos has no field "unknown"`},
+		{`set: {pos.level: 1}`, `"pos.level": set changes`},
+		{`set: {pos.unknown: 1}`, `"pos.unknown": set changes`},
+	} {
+		t.Run(tc.command, func(t *testing.T) {
+			_, err := testgame.TryLoad(map[string]string{
+				"data/level-probe.yaml": "events: {level_probe: {do: [{" + tc.command + "}]}}",
+			})
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("want %q, got %v", tc.want, err)
+			}
+		})
+	}
+}
 
 // Place of a generated dungeon (tests add content and use it). %s takes the dungeon's body.
 const madeDungeon = `
