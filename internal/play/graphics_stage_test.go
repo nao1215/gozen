@@ -25,69 +25,89 @@ import (
 // (720 high): the screen here is 360 high.
 func TestGraphicsStage(t *testing.T) {
 	t.Parallel()
-	root := t.TempDir()
-	game := filepath.Join(root, "game")
-	if err := os.CopyFS(game, os.DirFS("testdata/stage")); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(game, "assets", "regular.ttf"), goregular.TTF, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	script := filepath.Join(root, "script.txt")
-	body := "wait 40\nshot open\npress reload\nwait 20\nshot reloaded\nwalk behind\nwait 10\nshot hidden\nwalk by_guide\npress z\nwait 30\nshot talk\npress z\nwait 10\nwalk open\nclick 960 492\nwait 150\npress z\nwait 20\nwalk open\nclick 1220 500\nwait 400\nshot left\nquit\n"
-	if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	trace := filepath.Join(root, "run.jsonl")
-	args := []string{
-		"--dir", game, "--dev", "--mute", "--seed", "7", "--start", "square",
-		"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", trace,
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, hostBin, args...) //nolint:gosec // The host built by TestMain; arguments refer to the test fixture and isolated output.
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("game loop: %v\nstdout: %s\nstderr: %s", err, &stdout, &stderr)
-	}
-	magenta := func(name string) int {
-		b, err := os.ReadFile(filepath.Join(root, name+".png")) //nolint:gosec // A fixed name in this test's temporary directory.
-		if err != nil {
-			t.Fatal(err)
-		}
-		img, err := png.Decode(bytes.NewReader(b))
-		if err != nil {
-			t.Fatal(err)
-		}
-		return countMagenta(img)
-	}
-	if n := magenta("open"); n < 100 {
-		t.Errorf("the doll does not show at the start (%d magenta pixels)", n)
-	}
-	// F5 with only the pictures to read again (the data unchanged): the scene makes its
-	// textures again, the background and the doll show as before
-	if n := magenta("reloaded"); n < 100 {
-		t.Errorf("the doll is gone after F5 (%d magenta pixels)", n)
-	}
-	if a, b := shotPixel(t, root, "open", 600, 30), shotPixel(t, root, "reloaded", 600, 30); a != b {
-		t.Errorf("the background after F5 is %v, before %v", b, a)
-	}
-	if n := magenta("hidden"); n != 0 {
-		t.Errorf("the doll shows through the pillar (%d magenta pixels)", n)
-	}
-	tr, err := fs.ReadFile(os.DirFS(root), "run.jsonl")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{`"t":"spot","tick"`, `"spot":"behind"`, `"location":"room"`, `Hello there.`} {
-		if !strings.Contains(string(tr), want) {
-			t.Errorf("the trace has no %s", want)
-		}
-	}
-	// a click on the guide's doll walks there and talks (the second time the line is said)
-	if n := strings.Count(string(tr), `Hello there.`); n < 2 {
-		t.Errorf("a click on the guide did not talk to them (%d lines)", n)
+	for _, fast := range []bool{false, true} {
+		t.Run(map[bool]string{false: "default", true: "double"}[fast], func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			game := filepath.Join(root, "game")
+			if err := os.CopyFS(game, os.DirFS("testdata/stage")); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(game, "assets", "regular.ttf"), goregular.TTF, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if fast {
+				path := filepath.Join(game, "data", "main.yaml")
+				b, err := os.ReadFile(path) //nolint:gosec // Path is a fixture inside this test's private temporary directory.
+				if err != nil {
+					t.Fatal(err)
+				}
+				b = bytes.ReplaceAll(b, []byte("    stage:"), []byte("    stage:\n      walk_speed: 3.2"))
+				if err := os.WriteFile(path, b, 0o600); err != nil { //nolint:gosec // Path is a fixture inside this test's private temporary directory.
+					t.Fatal(err)
+				}
+			}
+			script := filepath.Join(root, "script.txt")
+			body := "wait 40\nshot open\npress reload\nwait 20\nshot reloaded\nwalk behind\nwait 10\nshot hidden\nwalk by_guide\npress z\nwait 30\nshot talk\npress z\nwait 10\nwalk open\nclick 960 492\nwait 150\npress z\nwait 20\nwalk open\nclick 1220 500\nwait 400\nshot left\nquit\n"
+			if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			trace := filepath.Join(root, "run.jsonl")
+			args := []string{
+				"--dir", game, "--dev", "--mute", "--seed", "7", "--start", "square",
+				"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", trace,
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+			defer cancel()
+			args = append(args, "--build-info")
+			cmd := exec.CommandContext(ctx, hostBin, args...) //nolint:gosec // The host built by TestMain; arguments refer to the test fixture and isolated output.
+			cmd.Env = append(os.Environ(), "GOZEN_DEBUG=1")
+			started := time.Now()
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("game loop: %v\nstdout: %s\nstderr: %s", err, &stdout, &stderr)
+			}
+			logGraphicsTiming(t, started, stderr.String())
+			magenta := func(name string) int {
+				b, err := os.ReadFile(filepath.Join(root, name+".png")) //nolint:gosec // A fixed name in this test's temporary directory.
+				if err != nil {
+					t.Fatal(err)
+				}
+				img, err := png.Decode(bytes.NewReader(b))
+				if err != nil {
+					t.Fatal(err)
+				}
+				return countMagenta(img)
+			}
+			if n := magenta("open"); n < 100 {
+				t.Errorf("the doll does not show at the start (%d magenta pixels)", n)
+			}
+			// F5 with only the pictures to read again (the data unchanged): the scene makes its
+			// textures again, the background and the doll show as before
+			if n := magenta("reloaded"); n < 100 {
+				t.Errorf("the doll is gone after F5 (%d magenta pixels)", n)
+			}
+			if a, b := shotPixel(t, root, "open", 600, 30), shotPixel(t, root, "reloaded", 600, 30); a != b {
+				t.Errorf("the background after F5 is %v, before %v", b, a)
+			}
+			if n := magenta("hidden"); n != 0 {
+				t.Errorf("the doll shows through the pillar (%d magenta pixels)", n)
+			}
+			tr, err := fs.ReadFile(os.DirFS(root), "run.jsonl")
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range []string{`"t":"spot","tick"`, `"spot":"behind"`, `"location":"room"`, `Hello there.`} {
+				if !strings.Contains(string(tr), want) {
+					t.Errorf("the trace has no %s", want)
+				}
+			}
+			// a click on the guide's doll walks there and talks (the second time the line is said)
+			if n := strings.Count(string(tr), `Hello there.`); n < 2 {
+				t.Errorf("a click on the guide did not talk to them (%d lines)", n)
+			}
+		})
 	}
 }
 
@@ -125,44 +145,64 @@ func countMagenta(img image.Image) int {
 // leads into the room.
 func TestGraphicsMap(t *testing.T) {
 	t.Parallel()
-	root := t.TempDir()
-	game := filepath.Join(root, "game")
-	if err := os.CopyFS(game, os.DirFS("testdata/stage")); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(game, "assets", "regular.ttf"), goregular.TTF, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	script := filepath.Join(root, "script.txt")
-	body := "wait 30\nshot map\nwalk shut\nwait 30\npress z\nwait 20\nwalk door\nwait 30\nshot walking\nwait 700\nshot room\nquit\n"
-	if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	trace := filepath.Join(root, "run.jsonl")
-	args := []string{
-		"--dir", game, "--dev", "--mute", "--seed", "7", "--start", "town",
-		"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", trace,
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, hostBin, args...) //nolint:gosec // The host built by TestMain; arguments refer to the test fixture and isolated output.
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("game loop: %v\nstdout: %s\nstderr: %s", err, &stdout, &stderr)
-	}
-	tr, err := fs.ReadFile(os.DirFS(root), "run.jsonl")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{`"stack":["atlas"]`, `"t":"travel"`, `"to":"door"`, `"location":"room"`, `Shut.`} {
-		if !strings.Contains(string(tr), want) {
-			t.Errorf("the trace has no %s", want)
-		}
-	}
-	// the token moved between the two shots (the screens differ)
-	if shotPixelSum(t, root, "map") == shotPixelSum(t, root, "walking") {
-		t.Error("the token did not move")
+	for _, fast := range []bool{false, true} {
+		t.Run(map[bool]string{false: "default", true: "double"}[fast], func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			game := filepath.Join(root, "game")
+			if err := os.CopyFS(game, os.DirFS("testdata/stage")); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(game, "assets", "regular.ttf"), goregular.TTF, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if fast {
+				path := filepath.Join(game, "data", "main.yaml")
+				b, err := os.ReadFile(path) //nolint:gosec // Path is a fixture inside this test's private temporary directory.
+				if err != nil {
+					t.Fatal(err)
+				}
+				b = bytes.ReplaceAll(b, []byte("    map:"), []byte("    map:\n      travel_speed: 0.24"))
+				if err := os.WriteFile(path, b, 0o600); err != nil { //nolint:gosec // Path is a fixture inside this test's private temporary directory.
+					t.Fatal(err)
+				}
+			}
+			script := filepath.Join(root, "script.txt")
+			body := "wait 30\nshot map\nwalk shut\nwait 30\npress z\nwait 20\nwalk door\nwait 30\nshot walking\nwait 700\nshot room\nquit\n"
+			if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			trace := filepath.Join(root, "run.jsonl")
+			args := []string{
+				"--dir", game, "--dev", "--mute", "--seed", "7", "--start", "town",
+				"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", trace,
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+			defer cancel()
+			args = append(args, "--build-info")
+			cmd := exec.CommandContext(ctx, hostBin, args...) //nolint:gosec // The host built by TestMain; arguments refer to the test fixture and isolated output.
+			cmd.Env = append(os.Environ(), "GOZEN_DEBUG=1")
+			started := time.Now()
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("game loop: %v\nstdout: %s\nstderr: %s", err, &stdout, &stderr)
+			}
+			logGraphicsTiming(t, started, stderr.String())
+			tr, err := fs.ReadFile(os.DirFS(root), "run.jsonl")
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range []string{`"stack":["atlas"]`, `"t":"travel"`, `"to":"door"`, `"location":"room"`, `Shut.`} {
+				if !strings.Contains(string(tr), want) {
+					t.Errorf("the trace has no %s", want)
+				}
+			}
+			// the token moved between the two shots (the screens differ)
+			if shotPixelSum(t, root, "map") == shotPixelSum(t, root, "walking") {
+				t.Error("the token did not move")
+			}
+		})
 	}
 }
 

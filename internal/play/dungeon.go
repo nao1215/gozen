@@ -161,7 +161,7 @@ func (s *dungeonScene) forward(g *Game) {
 			s.trans, s.transT = "fade", transTicks*2
 		}
 		if isSpace {
-			s.spaceMotion(was, 0)
+			s.spaceMotion(was, 0, dungeon.Of(g.db, g.st).Space.StepTicks)
 			s.transT = 0
 		}
 		g.sfx("step")
@@ -179,7 +179,7 @@ func (s *dungeonScene) forward(g *Game) {
 
 func (s *dungeonScene) turn(g *Game, n int, how string) {
 	if dungeon.Of(g.db, g.st).Space != nil {
-		s.spaceMotion(g.st.Pos, float64(n)*math.Pi/2)
+		s.spaceMotion(g.st.Pos, float64(n)*math.Pi/2, dungeon.Of(g.db, g.st).Space.TurnTicks)
 		dungeon.Turn(g.st, n)
 		g.sfx("cursor")
 		return

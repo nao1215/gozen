@@ -18,54 +18,76 @@ import (
 // The same route supplies the published demonstration and this native E2E.
 // Screens must contain geometry, and the trace must prove two climbs and a return.
 func TestGraphicsSpace(t *testing.T) {
-	out := t.TempDir()
-	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
-	defer cancel()
-	trace := filepath.Join(out, "trace.jsonl")
-	cmd := exec.CommandContext(ctx, hostBin, "--dir", "../../examples/space/game", "--dev", "--mute", "--start", "courtyard", "--script", "../../scripts/capture-space.txt", "--shots", out, "--save-dir", filepath.Join(out, "saves"), "--trace", trace) //nolint:gosec // TestMain builds the fixed graphics host.
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("space: %v\nstdout: %s\nstderr: %s", err, &stdout, &stderr)
-	}
-	b, err := os.ReadFile(trace) //nolint:gosec // Trace lives in this test's temporary directory.
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := map[string]struct{ level, x, y int }{"street": {0, 10, 15}, "stairs": {0, 6, 10}, "stair-side": {0, 7, 8}, "under-stairs": {0, 14, 8}, "lower-join": {0, 6, 7}, "second": {1, 6, 6}, "upper-stairs": {1, 14, 6}, "upper-join": {1, 14, 9}, "atrium": {2, 14, 10}, "returned": {0, 6, 10}}
-	shot := ""
-	for line := range bytes.SplitSeq(b, []byte("\n")) {
-		if len(line) == 0 {
-			continue
-		}
-		var row struct {
-			T     string `json:"t"`
-			File  string `json:"file"`
-			Level int    `json:"level"`
-			Pos   []int  `json:"pos"`
-		}
-		if err := json.Unmarshal(line, &row); err != nil {
-			t.Fatal(err)
-		}
-		if row.T == "shot" {
-			shot = filepath.Base(row.File)
-			shot = shot[:len(shot)-len(filepath.Ext(shot))]
-		}
-		if row.T == "state" && shot != "" {
-			expected, ok := want[shot]
-			if !ok {
-				t.Fatalf("unexpected shot %s", shot)
+	for _, fast := range []bool{false, true} {
+		t.Run(map[bool]string{false: "default", true: "double"}[fast], func(t *testing.T) {
+			out := t.TempDir()
+			game := filepath.Join(out, "game")
+			if err := os.CopyFS(game, os.DirFS("../../examples/space/game")); err != nil {
+				t.Fatal(err)
 			}
-			if row.Level != expected.level || len(row.Pos) != 2 || row.Pos[0] != expected.x || row.Pos[1] != expected.y {
-				t.Fatalf("%s: position %+v level %d", shot, row.Pos, row.Level)
+			if fast {
+				path := filepath.Join(game, "data", "world.yaml")
+				b, err := os.ReadFile(path) //nolint:gosec // Path is a fixture inside this test's private temporary directory.
+				if err != nil {
+					t.Fatal(err)
+				}
+				b = bytes.Replace(b, []byte("      space:"), []byte("      space:\n        step_ticks: 9\n        turn_ticks: 9"), 1)
+				if err := os.WriteFile(path, b, 0o600); err != nil { //nolint:gosec // Path is a fixture inside this test's private temporary directory.
+					t.Fatal(err)
+				}
 			}
-			checkSpaceFrame(t, filepath.Join(out, shot+".png"))
-			delete(want, shot)
-			shot = ""
-		}
-	}
-	if len(want) > 0 {
-		t.Fatalf("missing checkpoints: %v", want)
+			ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
+			defer cancel()
+			trace := filepath.Join(out, "trace.jsonl")
+			cmd := exec.CommandContext(ctx, hostBin, "--build-info", "--dir", game, "--dev", "--mute", "--start", "courtyard", "--script", "../../scripts/capture-space.txt", "--shots", out, "--save-dir", filepath.Join(out, "saves"), "--trace", trace) //nolint:gosec // TestMain builds the fixed graphics host.
+			cmd.Env = append(os.Environ(), "GOZEN_DEBUG=1")
+			started := time.Now()
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("space: %v\nstdout: %s\nstderr: %s", err, &stdout, &stderr)
+			}
+			logGraphicsTiming(t, started, stderr.String())
+			b, err := os.ReadFile(trace) //nolint:gosec // Trace lives in this test's temporary directory.
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := map[string]struct{ level, x, y int }{"street": {0, 10, 15}, "stairs": {0, 6, 10}, "stair-side": {0, 7, 8}, "under-stairs": {0, 14, 8}, "lower-join": {0, 6, 7}, "second": {1, 6, 6}, "upper-stairs": {1, 14, 6}, "upper-join": {1, 14, 9}, "atrium": {2, 14, 10}, "returned": {0, 6, 10}}
+			shot := ""
+			for line := range bytes.SplitSeq(b, []byte("\n")) {
+				if len(line) == 0 {
+					continue
+				}
+				var row struct {
+					T     string `json:"t"`
+					File  string `json:"file"`
+					Level int    `json:"level"`
+					Pos   []int  `json:"pos"`
+				}
+				if err := json.Unmarshal(line, &row); err != nil {
+					t.Fatal(err)
+				}
+				if row.T == "shot" {
+					shot = filepath.Base(row.File)
+					shot = shot[:len(shot)-len(filepath.Ext(shot))]
+				}
+				if row.T == "state" && shot != "" {
+					expected, ok := want[shot]
+					if !ok {
+						t.Fatalf("unexpected shot %s", shot)
+					}
+					if row.Level != expected.level || len(row.Pos) != 2 || row.Pos[0] != expected.x || row.Pos[1] != expected.y {
+						t.Fatalf("%s: position %+v level %d", shot, row.Pos, row.Level)
+					}
+					checkSpaceFrame(t, filepath.Join(out, shot+".png"))
+					delete(want, shot)
+					shot = ""
+				}
+			}
+			if len(want) > 0 {
+				t.Fatalf("missing checkpoints: %v", want)
+			}
+		})
 	}
 	t.Run("slab surfaces", checkSpaceSlab)
 }

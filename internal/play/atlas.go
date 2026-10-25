@@ -402,9 +402,13 @@ func (s *atlasScene) startRoad(g *Game, c data.Command) bool {
 // walk moves the token along the road; at its end the road's command runs.
 func (s *atlasScene) walk(g *Game) {
 	img := g.pics.get(s.pic)
-	speed := tokenSpeed * tickSecond * 1000
+	rate := s.location(g).Map.TravelSpeed
+	if rate == 0 {
+		rate = tokenSpeed
+	}
+	speed := rate * tickSecond * 1000
 	if img != nil {
-		speed = tokenSpeed * tickSecond * float64(img.Bounds().Dx())
+		speed = rate * tickSecond * float64(img.Bounds().Dx())
 	}
 	s.walked += speed
 	s.phase = math.Mod(s.phase+tickSecond*7, 2*math.Pi)

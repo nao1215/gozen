@@ -44,6 +44,27 @@ func TestScenesLoad(t *testing.T) {
 	}
 }
 
+func TestSceneMovementSpeedValidation(t *testing.T) {
+	for _, field := range []struct{ section, name string }{{"map", "travel_speed"}, {"stage", "walk_speed"}} {
+		for _, value := range []string{"0", "0.1", "0.24", "2"} {
+			t.Run(field.name+"/"+value, func(t *testing.T) {
+				_, files := scenesWith("    "+field.section+":", "    "+field.section+":\n      "+field.name+": "+value)
+				if _, err := testgame.TryLoad(files); err != nil {
+					t.Fatalf("valid movement speed: %v", err)
+				}
+			})
+		}
+		for _, value := range []string{"-1", ".nan", ".inf", "1000", "0.00001"} {
+			t.Run(field.name+"/invalid/"+value, func(t *testing.T) {
+				_, files := scenesWith("    "+field.section+":", "    "+field.section+":\n      "+field.name+": "+value)
+				if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), field.name) {
+					t.Fatalf("want invalid %s, got %v", field.name, err)
+				}
+			})
+		}
+	}
+}
+
 // TestSceneErrors reports each mistake of a map and a stage at its file, line and path.
 func TestSceneErrors(t *testing.T) {
 	for _, c := range []struct {

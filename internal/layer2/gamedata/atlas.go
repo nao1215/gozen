@@ -2,6 +2,7 @@ package gamedata
 
 import (
 	"fmt"
+	"math"
 	"slices"
 
 	"github.com/nao1215/gozen/internal/diag"
@@ -11,8 +12,11 @@ import (
 // point with to is the way into another location; the party walks from point to point
 // along the open roads.
 type Atlas struct {
-	Picture string `yaml:"picture"`
-	Token   *Token `yaml:"token"`
+	// TravelSpeed is the map renderer's token speed in picture widths per second.
+	// Zero selects 0.12; explicit speeds must be finite and in [0.01, 2].
+	TravelSpeed float64 `yaml:"travel_speed"`
+	Picture     string  `yaml:"picture"`
+	Token       *Token  `yaml:"token"`
 	// Marker is the picture standing on each point (a pin or a flag; a small pin drawn by
 	// the screen when not given) and its height. A point's own marker replaces it.
 	Marker *Token `yaml:"marker"`
@@ -141,6 +145,9 @@ func (a *Atlas) PointTo(loc string) string {
 func (c *checker) atlas(w, id string, l *Location) {
 	a := l.Map
 	w += ".map"
+	if math.IsNaN(a.TravelSpeed) || math.IsInf(a.TravelSpeed, 0) || a.TravelSpeed != 0 && (a.TravelSpeed < 0.01 || a.TravelSpeed > 2) {
+		c.errorf(diag.OutOfRange, w+".travel_speed", "want 0 (default 0.12) or a finite speed in [0.01, 2] picture widths per second")
+	}
 	c.needsVersion(w, "map", SchemaVersion3)
 	if a.Picture == "" {
 		c.errorf(diag.Shape, w+".picture", "a map needs a picture")

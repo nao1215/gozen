@@ -28,13 +28,16 @@ type spaceView struct {
 	turn                float64
 }
 
-func (s *dungeonScene) spaceMotion(from rpg.Pos, turn float64) {
+func (s *dungeonScene) spaceMotion(from rpg.Pos, turn float64, ticks int) {
 	if s.space == nil {
 		s.space = &spaceView{}
 	}
 	v := s.space
 	v.from, v.turn = from, turn
-	v.duration = 18
+	v.duration = ticks
+	if v.duration == 0 {
+		v.duration = 18
+	}
 	v.remaining = v.duration
 }
 

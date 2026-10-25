@@ -2,6 +2,31 @@
 
 A location (`locations`) can be shown in four ways: a menu (the default), a dungeon (`dungeon:`), a map (`map:`) and a painted scene (`stage:`). Maps and scenes can be written with `schema_version: 3`. The decision is recorded in [ADR 0022](../decisions/0022-maps-and-painted-scenes.md), and the item list is in the [schema](https://nao1215.github.io/gozen/schema/) under `Atlas`, `MapPoint`, `Road`, `Stage`, `Spot`, `StagePerson`, `Thing` and `Doll`.
 
+## Player movement speed
+
+Movement settings belong to each location, so differently scaled maps can use different
+speeds. Omission or zero preserves the existing default; negative, non-finite and
+out-of-range values fail validation.
+
+| Field | Unit | Default | Explicit nonzero range |
+| --- | --- | --- | --- |
+| `map.travel_speed` | picture widths per second | 0.12 | 0.01 to 2 |
+| `stage.walk_speed` | meters per second | 1.6 | 0.1 to 6.4 |
+| `dungeon.space.step_ticks` | updates per step, at 60 updates/second | 18 | 1 to 120 |
+| `dungeon.space.turn_ticks` | updates per turn, at 60 updates/second | 18 | 1 to 120 |
+
+For twice the default speed, set `map.travel_speed: 0.24`, `stage.walk_speed: 3.2`,
+or both space durations to 9 within the corresponding location definition. Step and
+turn durations are independent. One tick is the minimum and always reaches its endpoint.
+
+Keyboard and click walking share the player speed. Faster stage walking uses bounded
+substeps with collision, exit and step-trigger checks between them; NPC path speeds
+remain unchanged. Map speed does not alter road `steps`, encounters or arrival commands.
+Space movement still commits one logical cell per step and interpolates the camera
+without executing the cell twice. These settings do not change dialogue, combat or
+autoplay speed. Saves store game state, not these author settings; loading and live
+reload use the current YAML. Input replays therefore use the current speeds too.
+
 ## Rules know points, looks are pictures
 
 The only position the rules (headless, `Explore`, `gozen sim battle`, `gozen check`) know is one standing point.
