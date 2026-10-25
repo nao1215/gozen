@@ -1460,6 +1460,12 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			_, ok := db.Actors[id]
 			c.ref(w+"."+verb, "actor", id, ok)
 			c.combatActor(w+"."+verb, id)
+		case "capture":
+			c.needsVersion(w+".capture", "capture", SchemaVersion6)
+			e := db.Enemies[cmd.Capture]
+			if e == nil || e.Recruit == nil || e.Boss {
+				c.errorf(diag.MonsterRules, w+".capture", "capture needs a non-boss recruitable species")
+			}
 		case "reserve":
 			c.needsVersion(w+".reserve", "reserve", SchemaVersion6)
 			if cmd.Reserve.In == "" || cmd.Reserve.Out == "" {
@@ -1638,7 +1644,7 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			c.effectCue(w+".effect", cmd.Effect)
 		case "order", "end_turn", "game_over":
 			c.campaignCommand(w, verb, cmd)
-		case "mood", "end", "clear", "save", "done", "ran", "cross", "reach", "clash", "capture":
+		case "mood", "end", "clear", "save", "done", "ran", "cross", "reach", "clash":
 			// Commands without extra reference or expression checks are listed explicitly too, so missed registrations are detected.
 		default:
 			c.errorf(diag.Shape, w, "command %q has no semantic checker", verb)

@@ -67,6 +67,7 @@ Breeding:
   pairs: "Specific species recipes; these win over family rules."
   families: "Family recipes, used when no specific pair matches."
 Recruit:
+  admission: "reserve (default) permits overflow; party_only rejects when the active party is full, without creating an instance. Rechecked at acceptance, including after save/resume."
   _: "The chance and starting level for an enemy to join after victory."
   chance: "A probability greater than zero and at most one."
   class: "An optional class override; otherwise enemy.monster_class is used."

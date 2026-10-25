@@ -296,3 +296,17 @@ locations:
 		t.Errorf("darkness: 0 became %v after SetMap", lit.Dark)
 	}
 }
+
+func TestRecruitmentAdmissionPolicy(t *testing.T) {
+	for _, policy := range []string{"reserve", "party_only", "overflow", "PartyOnly"} {
+		files := testgame.MonsterFiles()
+		for name, body := range files {
+			files[name] = strings.Replace(body, "recruit: {chance: 1,", "recruit: {admission: "+policy+", chance: 1,", 1)
+		}
+		_, err := testgame.TryLoad(files)
+		valid := policy == "reserve" || policy == "party_only"
+		if valid && err != nil || !valid && (err == nil || !strings.Contains(err.Error(), "recruit.admission")) {
+			t.Errorf("policy %q: %v", policy, err)
+		}
+	}
+}

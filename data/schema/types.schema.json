@@ -3470,6 +3470,15 @@
         {
           "additionalProperties": false,
           "properties": {
+            "capture": {}
+          },
+          "required": [
+            "capture"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "heal": {}
           },
           "required": [
@@ -3974,6 +3983,19 @@
             "zero": "-",
             "required": "exactly one verb per command",
             "reference": "events",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "capture": {
+          "description": "Recruits a non-boss species with recruit settings under its admission policy. Sets var.capture_result to party, reserve, party_full or unavailable. Needs schema version 6.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
             "version": "0, 1, 2"
           },
           "x-type": "string"
@@ -11782,6 +11804,24 @@
       "additionalProperties": false,
       "description": "The chance and starting level for an enemy to join after victory.",
       "properties": {
+        "admission": {
+          "description": "reserve (default) permits overflow; party_only rejects when the active party is full, without creating an instance. Rechecked at acceptance, including after save/resume.",
+          "enum": [
+            "",
+            "reserve",
+            "party_only"
+          ],
+          "type": "string",
+          "x-contract": {
+            "default": "reserve",
+            "legacy_default": "reserve",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "bonus": {
           "description": "The additive chance granted by the item or skill.",
           "type": "number",

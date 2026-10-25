@@ -54,8 +54,8 @@ type Command struct {
 	Release string `yaml:"release" command:"verb"`
 	// Breed consumes two monsters and creates a level-one child.
 	Breed *BreedCmd `yaml:"breed" command:"verb"`
-	// Capture is made only by the battle result after the player accepts a join request.
-	Capture string `yaml:"-" command:"internal"`
+	// Capture recruits a species under its admission policy, also used by battle offers.
+	Capture string `yaml:"capture" command:"verb"`
 	Heal    string `yaml:"heal" command:"verb"`
 	// Done marks st.Done[Done] (not written in YAML: the engine's own, a once dungeon tile
 	// spent only when its question is answered yes).

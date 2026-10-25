@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add opt-in party-only recruitment admission, authored capture commands and saved capture results for event branches.
+
 ## v0.9.0 - 2026-10-25
 
 Build multi-level towns with continuous movement, building surfaces and roof geometry, and add interactive event actions to authored screens.

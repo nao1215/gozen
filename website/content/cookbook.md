@@ -1143,6 +1143,20 @@ breeding:
 
 At a safe location, add an action such as `- {label: Monster ranch, do: [{open: ranch}]}`. Each monster instance has a saved male or female sex (♂ or ♀); only opposite-sex parents can breed. A species can specify `sex: male` or `sex: female`, or use `any` with an optional male `sex_ratio`. The ranch shows active and reserve members, swaps them, asks before release, previews a child (`?` until seen), lets the player choose inherited skills and stages the fusion. A full party sends a new recruit to the reserve. `reserve: {in: monster_2, out: monster_1}`, `release: monster_2` and `breed: {parents: [monster_1, monster_2], skills: [attack]}` are commands usable by YAML events and development scripts; the IDs refer to saved instances, not species. Expressions read `reserve.size`, `monster.monster_1.family`, `monster.monster_1.plus`, `monster.monster_1.sex` and `bestiary.dewdrop.caught`.
 
+To require recruits to travel with the active group, use `recruit: {chance: 0.2, level: 1, admission: party_only}`. The default is `admission: reserve`. Capacity is checked when each offer is accepted, including after loading a pending choice. A full party gets a rejection message, with no new instance, caught-count increase or recruitment reward. Breeding still replaces its parents normally.
+
+An event can recruit a specific species directly and react to a full party:
+
+<!-- verify: parse event fragment using the recruitable species defined above -->
+```yaml
+- capture: dewdrop
+- if: 'var.capture_result == "party_full"'
+  then:
+    - say: Make room in the active party before returning.
+```
+
+`capture` requires a non-boss species with `recruit` settings and schema version 6 or later. It attempts admission directly, without rolling the post-battle invitation chance. The saved `var.capture_result` is `party`, `reserve`, `party_full` or `unavailable`; each attempt replaces the previous result.
+
 Run `gozen check game`, `gozen sim breed game --format json`, `gozen book game` and battle and dive simulations while tuning. GZN1112 identifies invalid rules; GZN0116 warns of non-boss species unreachable from capturable monsters. A specific pair wins over a family rule, and family offspring are chosen by the mean parent rank. See [ADR 0036](https://github.com/nao1215/gozen/blob/main/docs/decisions/0036-monster-collection.md).
 
 The monster book shows the shortest recipe first as a picture tree of up to seven monsters: the current species, its parents and its grandparents. Captured leaves show their locations; family rules name the families and example parents. Arrows move between pictures, Z places the chosen species at the top, X returns along the breadcrumb, Tab changes the top species' recipe, and Q opens the chosen known species' page. A parent with a deeper recipe has a `more` mark. An unseen species is shown as `?`; `--dev` reveals all species. `gozen book game --format json` supplies the same tree as structured data. In Go Zen, Yorn at the Breeding Altar opens the ranch. Whisper Imp comes from a male Incense Bloom and Pale Sylph, Vampire from Night Bat and Ghoul, and those two children can produce Succubus. `gozen sim breed examples/go-zen/game` reports that two-generation path.

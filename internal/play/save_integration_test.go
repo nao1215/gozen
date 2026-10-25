@@ -8,11 +8,15 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
+	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/savefile"
+	"github.com/nao1215/gozen/internal/testgame"
 )
 
 const sysInnData = `locations:
@@ -445,5 +449,61 @@ func TestOfferGearIsOnlyOnceUntilTheBagChanges(t *testing.T) {
 	}
 	if got := g.st.Members()[0].Equip["weapon"]; got == "blade" {
 		t.Fatal("equipped although declined")
+	}
+}
+
+func TestRecruitmentAdmissionAfterSavedChoice(t *testing.T) {
+	for _, full := range []bool{false, true} {
+		t.Run(strconv.FormatBool(full), func(t *testing.T) {
+			fsys := gameFiles(t)
+			for name, body := range testgame.MonsterFiles() {
+				body = strings.Replace(body, "recruit: {chance: 1,", "recruit: {admission: party_only, chance: 1,", 1)
+				fsys[name] = &fstest.MapFile{Data: []byte(body)}
+			}
+			fsys["game.yaml"].Data = append(fsys["game.yaml"].Data, []byte("\nfonts: {regular: test.ttf}\n")...)
+			fsys["data/admission.yaml"] = &fstest.MapFile{Data: []byte(`events:
+  admission:
+    do:
+      - choice:
+          - label: Accept
+            do: [{capture: mote}]
+          - label: Decline
+      - set: {var.finished: 'var.finished + 1'}
+`)}
+			g := wldOpenWith(t, Options{FS: fsys, Location: "camp"})
+			g.db.Game.MaxParty = len(g.st.Party) + 1
+			if full && !g.st.JoinStory("guide") {
+				t.Fatal("could not fill party")
+			}
+			wldStartEvent(t, g, "admission")
+			wldFrames(t, g, 8)
+			if !g.talk.active || g.talk.choice == nil {
+				t.Fatal("not at acceptance")
+			}
+			saved, err := g.saveBytes()
+			if err != nil {
+				t.Fatal(err)
+			}
+			restored, err := rpg.Parse(g.db, saved, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if restored.Resume == nil {
+				t.Fatal("missing saved choice cursor")
+			}
+			g.loadSavedGame(restored)
+			wldFrames(t, g, 8)
+			wldPlay(t, g, "wait 40\npress z\nwait 60\npress z\nwait 60\npress z\nwait 15\n", 240)
+			want := "party"
+			if full {
+				want = "party_full"
+			}
+			if g.st.Vars["capture_result"] != want || g.st.Vars["finished"] != float64(1) || len(g.st.ReserveIDs()) != 0 {
+				t.Fatalf("resumed acceptance: %v", g.st.Vars)
+			}
+			if full && g.st.Vars["monster.next"] != nil || !full && g.st.Vars["monster.next"] != float64(1) {
+				t.Fatalf("duplicate or rejected instance: %v", g.st.Vars)
+			}
+		})
 	}
 }

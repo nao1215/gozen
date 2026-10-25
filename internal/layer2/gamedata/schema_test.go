@@ -39,6 +39,7 @@ type fieldContract struct {
 
 // Types, numeric contracts and command tags are read from the implementation. Only context-dependent inheritance and references are supplemented.
 var schemaDefaults = map[string]string{
+	"Recruit.admission":  "reserve",
 	"Atlas.travel_speed": "0.12 picture widths per second",
 	"Stage.walk_speed":   "1.6 meters per second",
 	"Space.step_ticks":   "18 ticks at 60 updates per second",
@@ -447,6 +448,8 @@ func (b *schemaBuilder) constraints(t reflect.Type, n, props schemaNode) {
 		for _, name := range []string{"end", "clear", "save"} {
 			child(props, name)["const"] = true
 		}
+	case reflect.TypeFor[Recruit]():
+		child(props, "admission")["enum"] = []string{"", "reserve", "party_only"}
 	case reflect.TypeFor[TacticAction]():
 		n["oneOf"] = []any{required("use"), required("item")}
 	case reflect.TypeFor[StateName]():
