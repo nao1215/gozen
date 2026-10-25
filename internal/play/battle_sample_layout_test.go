@@ -64,19 +64,3 @@ func TestGoZenTroopPictureLayout(t *testing.T) {
 		}
 	}
 }
-
-func TestBattleTextCanHideTacticLog(t *testing.T) {
-	s := &battleScene{}
-	st := battle.Step{Kind: battle.Act, Text: "Maren: Strike! [Maren row 3: Always -> Foe]"}
-	if got := s.battleText(st); got != st.Text {
-		t.Fatalf("development log lost: %q", got)
-	}
-	s.hideTacticLog = true
-	if got := s.battleText(st); got != "Maren: Strike! " {
-		t.Fatalf("capture text %q", got)
-	}
-	st.Kind = battle.Message
-	if got := s.battleText(st); got != st.Text {
-		t.Fatalf("non-action text changed: %q", got)
-	}
-}

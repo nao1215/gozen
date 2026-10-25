@@ -17414,6 +17414,22 @@
           },
           "x-type": "number"
         },
+        "battle_ai_history": {
+          "description": "Show the battle AI history button and enable B/PageUp, controller L1 and pointer activation. True when omitted. False hides the panel entry without changing decisions or replay traces.",
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "true",
+            "legacy_default": "true",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
         "battle_fx": {
           "$ref": "#/$defs/BattleFx",
           "description": "How strong the battle effects are: shake, flash, number pop, hit stop, charge and finish.",

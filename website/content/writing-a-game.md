@@ -413,3 +413,15 @@ Saves are JSON files in the OS config directory, under the game `id`. They recor
 ## A bigger example
 
 [Go Zen's data](https://github.com/nao1215/gozen/tree/main/examples/go-zen/game/data) uses all of the above: a town on a map with a painted plaza, talk with moving portraits, flags, three companions, AI rules and presets, cut-ins, hand-drawn mazes with chests, keys and gates, a generated floor, and boss fights.
+
+## Battle AI history visibility
+
+The battle AI history panel shows recorded AI decisions and rule matches. It is available by default through the button, B/PageUp or controller L1. To hide it in a game that has not introduced AI rules, set this in `game.yaml`:
+
+<!-- verify: parse game.yaml presentation settings -->
+```yaml
+ui:
+  battle_ai_history: false
+```
+
+This disables the panel's button and input activation. Battle decisions, action messages, rewards, trace recording and replay verification remain the same. Omit the setting or use `true` to enable it. The development `battle-log` switch can still hide tactic explanations for captures, but cannot override an author's disabled history panel.
