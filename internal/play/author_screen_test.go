@@ -205,3 +205,50 @@ func TestAuthorScreenTraceReplay(t *testing.T) {
 		t.Fatalf("replay action: %v", replayed.st.Vars)
 	}
 }
+
+func TestAuthorScreenReloadCompletedAction(t *testing.T) {
+	fsys := wldWorldFiles(t, `screens:
+  stock:
+    title: Stock
+    entries: [{label: Add, text: 'Boards: {var.boards}', do: [{set: {var.boards: 'var.boards + 1'}}]}]
+`, map[string]string{"data/stock.yaml": "locations: {workshop: {name: Workshop, on_enter: [{open: stock}]}}"})
+	g := wldOpenWith(t, Options{FS: fsys, Location: "workshop"})
+	wldFrames(t, g, 30)
+	wldPlay(t, g, "press z\nwait 10\n", 50)
+	if g.st.Vars["boards"] != float64(1) {
+		t.Fatalf("before reload: %v", g.st.Vars)
+	}
+	g.reload()
+	wldFrames(t, g, 10)
+	if g.st.Vars["boards"] != float64(1) {
+		t.Fatalf("reload lost completed action: %v", g.st.Vars)
+	}
+}
+
+func TestAuthorScreenReloadActiveDialogue(t *testing.T) {
+	fsys := wldWorldFiles(t, `screens:
+  stock:
+    title: Stock
+    entries:
+      - label: Add
+        do: [{set: {var.boards: 'var.boards + 1'}}, {say: Added.}, {set: {var.finished: 'var.finished + 1'}}]
+`, map[string]string{"data/stock.yaml": "locations: {workshop: {name: Workshop, on_enter: [{open: stock}]}}"})
+	g := wldOpenWith(t, Options{FS: fsys, Location: "workshop"})
+	wldFrames(t, g, 30)
+	wldPlay(t, g, "press z\nwait 10\n", 50)
+	if !g.talk.active || g.st.Vars["boards"] != float64(1) {
+		t.Fatalf("before reload: %v", g.st.Vars)
+	}
+	g.reload()
+	wldFrames(t, g, 10)
+	if !g.talk.active || g.st.Vars["boards"] != float64(1) {
+		t.Fatalf("reload dialogue: %v talk %v", g.st.Vars, g.talk.active)
+	}
+	wldPlay(t, g, "wait 40\npress z\nwait 8\n", 100)
+	if g.st.Vars["boards"] != float64(1) || g.st.Vars["finished"] != float64(1) {
+		t.Fatalf("reload duplicated/lost commands: %v", g.st.Vars)
+	}
+	if s := sysAs[*authorScreen](t, g.stack[len(g.stack)-1]); s.running {
+		t.Fatal("list still running")
+	}
+}
