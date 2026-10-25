@@ -338,6 +338,7 @@ var english = map[string]string{
 	"BGM の音量":       "Music volume",
 	"効果音の音量":        "Sound volume",
 	"全画面":           "Fullscreen",
+	"ダンジョンの瞬時切替":    "Instant dungeon transitions",
 	"戦闘の速さ":         "Battle speed",
 	"戦闘をオートではじめる":   "Start battles on Auto",
 	"すべて":           "All",

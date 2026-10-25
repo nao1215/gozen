@@ -20,6 +20,7 @@ func TestSpaceArrivalClearsMotion(t *testing.T) {
 
 func TestSpacePresentation(t *testing.T) {
 	g := wldOpenWith(t, Options{FS: os.DirFS("../../examples/space/game"), Location: "courtyard"})
+	g.cfg.DungeonSnap = true // Ordinary-dungeon presentation must not disable space interpolation.
 	wldFrames(t, g, 25)
 	s, ok := g.stack[len(g.stack)-1].(*dungeonScene)
 	if !ok {
@@ -29,6 +30,9 @@ func TestSpacePresentation(t *testing.T) {
 	screen := wldScreen(g)
 	for n := 1; n <= 4; n++ {
 		s.forward(g)
+		if s.space == nil || s.space.remaining != 18 {
+			t.Fatal("instant dungeon transitions disabled stacked-space motion")
+		}
 		if g.st.Pos.Y != 10-n {
 			t.Fatalf("step %d: %+v", n, g.st.Pos)
 		}
