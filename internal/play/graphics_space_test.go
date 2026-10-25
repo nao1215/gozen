@@ -27,8 +27,10 @@ import (
 // The same route supplies the published demonstration and this native E2E.
 // Screens must contain geometry, and the trace must prove two climbs and a return.
 func TestGraphicsSpace(t *testing.T) {
+	t.Parallel() // Each scenario owns a separate native host process and output directory.
 	for _, fast := range []bool{false, true} {
 		t.Run(map[bool]string{false: "default", true: "double"}[fast], func(t *testing.T) {
+			t.Parallel()
 			out := t.TempDir()
 			game := filepath.Join(out, "game")
 			if err := os.CopyFS(game, os.DirFS("../../examples/space/game")); err != nil {
@@ -383,6 +385,7 @@ func BenchmarkGraphicsSpaceScaling(b *testing.B) {
 }
 
 func TestGraphicsSpaceConditionalOccupancy(t *testing.T) {
+	t.Parallel() // Each scenario owns a separate native host process and output directory.
 	fixture := spaceScalingFixture(t, 48, 40, 3, false)
 	var root map[string]any
 	if err := yaml.Unmarshal(fixture["data/world.yaml"].Data, &root); err != nil {
@@ -523,8 +526,10 @@ func TestGraphicsSpaceSprites(t *testing.T) {
 }
 
 func TestGraphicsSpaceSpriteOcclusion(t *testing.T) {
+	t.Parallel() // Each scenario owns a separate native host process and output directory.
 	for _, kind := range []string{"open", "wall", "slab", "stairs", "roof", "roof-edge"} {
 		t.Run(kind, func(t *testing.T) {
+			t.Parallel()
 			out := t.TempDir()
 			game := filepath.Join(out, "game")
 			if err := os.CopyFS(game, os.DirFS("../../examples/space-town/game")); err != nil {
@@ -628,8 +633,10 @@ func TestGraphicsSpaceSpriteOcclusion(t *testing.T) {
 }
 
 func TestGraphicsSpaceFreeMovement(t *testing.T) {
+	t.Parallel() // Each scenario owns a separate native host process and output directory.
 	for _, town := range []bool{true, false} {
 		t.Run(map[bool]string{true: "inn", false: "plaza"}[town], func(t *testing.T) {
+			t.Parallel()
 			out := t.TempDir()
 			game := filepath.Join(out, "game")
 			root, loc, route := "../../examples/space/game", "courtyard", "../../scripts/capture-space.txt"
@@ -774,6 +781,7 @@ func TestGraphicsSpaceFreeMovement(t *testing.T) {
 }
 
 func TestGraphicsSpaceBuildings(t *testing.T) {
+	t.Parallel() // Each scenario owns a separate native host process and output directory.
 	out := t.TempDir()
 	trace := filepath.Join(out, "trace.jsonl")
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
@@ -841,8 +849,32 @@ func TestGraphicsSpaceBuildings(t *testing.T) {
 	if len(want) > 0 {
 		t.Fatalf("missing checkpoints: %v", want)
 	}
-	for _, name := range []string{"town", "shop", "shop-room", "elevated", "inn-landing"} {
+	for _, name := range []string{"town", "shop", "elevated", "inn-landing"} {
 		checkSpaceFrame(t, filepath.Join(out, name+".png"))
+	}
+	// This close interior has only a few flat colors. Count-free probes check
+	// its wall, floor and roof underside without relying on backend rounding
+	// to add extra color buckets along texture edges.
+	room := shotImage(t, out, "shop-room")
+	for _, probe := range []struct {
+		name string
+		y    int
+		rgb  [3]int
+	}{
+		{"wall", 200, [3]int{94, 52, 44}},
+		{"floor", 450, [3]int{186, 168, 130}},
+		{"roof underside", 20, [3]int{103, 75, 50}},
+	} {
+		for y := probe.y - 3; y <= probe.y+3; y++ {
+			for x := 497; x <= 503; x++ {
+				r, g, b, _ := room.At(x, y).RGBA()
+				for channel, got := range []uint32{r, g, b} {
+					if abs(int(got>>8)-probe.rgb[channel]) > 20 {
+						t.Fatalf("shop %s at (%d,%d): RGB=%d,%d,%d", probe.name, x, y, r>>8, g>>8, b>>8)
+					}
+				}
+			}
+		}
 	}
 	// Above the shop, the roof is red; immediately below its edge the canopy
 	// alternates cream/red. The view must retain open blue sky above both.
