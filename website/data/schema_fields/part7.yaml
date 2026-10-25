@@ -20,6 +20,7 @@ TroopPick:
   weight: "The relative chance of drawing this troop. The default is 1, and 0 or less counts as 1."
   when: "A condition for the troop to be eligible."
 UIStyle:
+  stage_framing: "Per-picture static novel portrait framing, keyed by paths under assets/. Sets the source head anchor, displayed head height and top; preserves authored horizontal positions and clips off-screen content. Omitted pictures keep legacy framing. Needs schema version 8."
   battle_ai_history: "Show the battle AI history button and enable B/PageUp, controller L1 and pointer activation. True when omitted. False hides the panel entry without changing decisions or replay traces."
   _: "The colors and layout of the windows and message display."
   bestiary: "Show Monsters, the monster book, in the title and field menu. Off by default; under `--dev` the menus show it anyway. Needs schema version 4."
@@ -42,6 +43,11 @@ UIStyle:
   text: "The text color."
   voice: "How voices play: `cut` and `auto_wait`. Needs schema version 4."
   window: "The window background color."
+StageFraming:
+  _: "Explicit head framing for one static novel portrait. Positions and sizes use fractions rather than pixels; requires schema version 8."
+  head: "Required [center_x, top_y, height] in source-image fractions: x uses image width; y and height use image height. Values must be finite and within the image, with positive height and top_y + height at most 1."
+  height: "Required displayed head height as a positive fraction of screen height, at most 1. stage_scale multiplies this height around the head anchor."
+  top: "Head top as a fraction of screen height, from 0 to 1; defaults to 0. stage_drop adds a screen-height offset."
 BreedCmd:
   _: "Two owned monster instances and a selection of their skills to pass on."
   parents: "Two distinct owned monster instance IDs."

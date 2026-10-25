@@ -116,6 +116,7 @@ var schemaReferences = map[string]string{
 }
 
 var schemaRequired = map[string]string{
+	"StageFraming.head": "必須", "StageFraming.height": "必須",
 	"GalleryPage.title": "必須。空白だけを拒否", "GalleryPage.line": "必須。１以上",
 	"Game.start": "必須", "Game.id": "仕様版１で必須", "Start.location": "必須", "Start.party": "１人以上必須、重複不可",
 	"Class.stats": "全８能力必須", "Class.exp_for": "必須", "Enemy.image": "必須（file が必要）", "Enemy.stats": "全８能力必須", "Troop.members": "１体以上必須",
@@ -338,7 +339,12 @@ func schemaContract(owner reflect.Type, field reflect.StructField, name string) 
 	if version3Fields[key] || version3Types[owner] {
 		c.Version = "３"
 	}
+	if owner == reflect.TypeFor[StageFraming]() || key == "UIStyle.stage_framing" {
+		c.Version = "8"
+	}
 	switch key {
+	case "StageFraming.height":
+		c.Zero = "両版で拒否"
 	case "Atlas.travel_speed", "Stage.walk_speed", "Space.step_ticks", "Space.turn_ticks":
 		c.Zero = "Uses the default"
 		if owner == reflect.TypeFor[Space]() {

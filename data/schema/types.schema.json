@@ -14698,6 +14698,62 @@
       },
       "type": "object"
     },
+    "StageFraming": {
+      "additionalProperties": false,
+      "description": "Explicit head framing for one static novel portrait. Positions and sizes use fractions rather than pixels; requires schema version 8.",
+      "properties": {
+        "head": {
+          "description": "Required [center_x, top_y, height] in source-image fractions: x uses image width; y and height use image height. Values must be finite and within the image, with positive height and top_y + height at most 1.",
+          "items": {
+            "type": "number"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "required",
+            "reference": "-",
+            "version": "8"
+          },
+          "x-type": "number[]"
+        },
+        "height": {
+          "description": "Required displayed head height as a positive fraction of screen height, at most 1. stage_scale multiplies this height around the head anchor.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "rejected",
+            "required": "required",
+            "reference": "-",
+            "version": "8"
+          },
+          "x-type": "number"
+        },
+        "top": {
+          "description": "Head top as a fraction of screen height, from 0 to 1; defaults to 0. stage_drop adds a screen-height offset.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "8"
+          },
+          "x-type": "number"
+        }
+      },
+      "required": [
+        "head",
+        "height"
+      ],
+      "type": "object"
+    },
     "StagePerson": {
       "additionalProperties": false,
       "description": "Places one of the location's people in the stage.",
@@ -17598,6 +17654,25 @@
             "version": "0, 1, 2"
           },
           "x-type": "string → number"
+        },
+        "stage_framing": {
+          "additionalProperties": {
+            "$ref": "#/$defs/StageFraming"
+          },
+          "description": "Per-picture static novel portrait framing, keyed by paths under assets/. Sets the source head anchor, displayed head height and top; preserves authored horizontal positions and clips off-screen content. Omitted pictures keep legacy framing. Needs schema version 8.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "8"
+          },
+          "x-type": "string → [StageFraming](#stageframing)"
         },
         "stage_scale": {
           "additionalProperties": {

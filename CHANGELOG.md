@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add opt-in head anchoring for static novel portraits, preserving authored positions and framing across padded canvases, expression changes and save/load.
+
 - Keep atlas label rectangles and collision placement stable while selection changes, including unknown destinations and map edges.
 
 - Preserve and isolate saved random state when load-slot inspection reuses the checked-save cache.

@@ -12,15 +12,125 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"golang.org/x/image/font/gofont/goregular"
+
+	"github.com/nao1215/gozen/internal/testgame"
 )
+
+func TestGraphicsNovelHeadFraming(t *testing.T) {
+	t.Parallel()
+	for _, width := range []int{1280, 960} {
+		t.Run(strconv.Itoa(width), func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			game, saves := filepath.Join(root, "game"), filepath.Join(root, "saves")
+			if err := os.CopyFS(game, gameFiles(t)); err != nil {
+				t.Fatal(err)
+			}
+			write := func(path string, b []byte) {
+				t.Helper()
+				if err := os.WriteFile(filepath.Join(game, path), b, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var framing strings.Builder
+			for _, spec := range []struct {
+				name   string
+				w, h   int
+				dx, dy int
+			}{{"tight", 200, 350, 0, 0}, {"padded", 1600, 900, 600, 180}, {"changed", 800, 800, 200, 60}} {
+				img := image.NewNRGBA(image.Rect(0, 0, spec.w, spec.h))
+				draw.Draw(img, image.Rect(50+spec.dx, 90+spec.dy, 110+spec.dx, 340+spec.dy), &image.Uniform{color.NRGBA{R: 50, G: 80, B: 90, A: 255}}, image.Point{}, draw.Src)
+				for y := 30; y < 90; y++ {
+					for x := 50; x < 110; x++ {
+						if (x-80)*(x-80)+(y-60)*(y-60) < 30*30 {
+							head := color.NRGBA{R: 255, B: 255, A: 255}
+							if spec.name == "changed" {
+								head.G, head.B = 255, 0
+							}
+							img.SetNRGBA(x+spec.dx, y+spec.dy, head)
+						}
+					}
+				}
+				var b bytes.Buffer
+				if err := png.Encode(&b, img); err != nil {
+					t.Fatal(err)
+				}
+				write("assets/"+spec.name+".png", b.Bytes())
+				fmt.Fprintf(&framing, "    %s.png: {head: [%g, %g, %g], height: 0.18, top: 0.1}\n", spec.name, float64(80+spec.dx)/float64(spec.w), float64(30+spec.dy)/float64(spec.h), 60/float64(spec.h))
+			}
+			write("game.yaml", []byte(fmt.Sprintf("schema_version: 8\nid: framing\n%s\nfonts: {regular: test.ttf}\nscreen: {width: %d, height: 720}\nui:\n  message: novel\n  stage_scale: {tight.png: 1.25, padded.png: 1.25, changed.png: 1.25}\n  stage_drop: {tight.png: 0.02, padded.png: 0.02, changed.png: 0.02}\n  stage_framing:\n%s", testgame.Game, width, &framing)))
+			write("data/framing.yaml", []byte(`events:
+  framing:
+    do:
+      - stand: {who: Left, face: tight.png, at: 0.25}
+      - stand: {who: Right, face: padded.png, at: 0.75}
+      - say: {who: Left, face: tight.png, text: "Compare the heads."}
+      - stand: {who: Left, face: changed.png, at: 0.25}
+      - say: {who: Left, face: changed.png, text: "A different expression canvas."}
+  mirrored:
+    do:
+      - say: {who: Left, face: tight.png, side: left, text: "Automatic placement."}
+      - say: {who: Right, face: padded.png, side: right, text: "A mirrored head anchor."}
+`))
+			run := func(name, script string, extra ...string) {
+				t.Helper()
+				path := filepath.Join(root, name+".txt")
+				if err := os.WriteFile(path, []byte(script), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+				defer cancel()
+				args := []string{"--dir", game, "--dev", "--mute", "--seed", "7", "--script", path, "--shots", root, "--save-dir", saves}
+				args = append(args, extra...)
+				cmd := exec.CommandContext(ctx, hostBin, args...) //nolint:gosec // Fixed test host and isolated fixture paths.
+				var stdout, stderr bytes.Buffer
+				cmd.Stdout, cmd.Stderr = &stdout, &stderr
+				if err := cmd.Run(); err != nil {
+					t.Fatalf("%s: %v\nstdout: %s\nstderr: %s", name, err, &stdout, &stderr)
+				}
+			}
+			run("initial", "wait 40\nshot initial\npress save\nwait 20\npress ok\nwait 100\npress ok\nwait 40\nshot changed\npress reload\nwait 50\nshot reload\nquit\n", "--start", "camp", "--event", "framing")
+			run("load", "wait 20\npress ok\nwait 20\npress ok\nwait 50\nshot loaded\nquit\n")
+			run("mirrored", "wait 40\npress ok\nwait 40\nshot mirrored\nquit\n", "--start", "camp", "--event", "mirrored")
+			for _, shot := range []string{"initial", "changed", "reload", "loaded", "mirrored"} {
+				img := shotImage(t, root, shot)
+				for side := range 2 {
+					box := image.Rectangle{}
+					for y := range img.Bounds().Dy() / 2 {
+						for x := side * width / 2; x < (side+1)*width/2; x++ {
+							r, g, b, _ := img.At(x, y).RGBA()
+							match := r > 20000 && b > 20000 && g < 10000
+							if side == 0 && (shot == "changed" || shot == "reload") {
+								match = r > 20000 && g > 20000 && b < 10000
+							}
+							if match {
+								box = box.Union(image.Rect(x, y, x+1, y+1))
+							}
+						}
+					}
+					cx := float64(box.Min.X+box.Max.X) / 2
+					wantX := float64(width) * (.25 + .5*float64(side))
+					if shot == "mirrored" {
+						wantX = float64(width) * (.3 + .4*float64(side))
+					}
+					if box.Empty() || math.Abs(cx-wantX) > 3 || abs(box.Min.Y-86) > 4 || abs(box.Dy()-162) > 4 || abs(box.Dx()-162) > 4 {
+						t.Fatalf("%s side %d: head %v, want center %g, top 86, size 162", shot, side, box, wantX)
+					}
+				}
+			}
+		})
+	}
+}
 
 // TestGraphicsNovel plays testdata/novel six times with one save directory (ADR 0026).
 // The first run reads two lines. In the second, skip mode passes them and stops before the

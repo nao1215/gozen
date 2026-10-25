@@ -361,6 +361,27 @@ The band has buttons to roll back a line, for the backlog, auto, skip, saving an
 
 Portraits come and go with the speakers unless an event places them with `stand` ([the recipe](/cookbook/#stage-portraits-and-effects)). A line can have a recorded voice ([Add voices](/cookbook/#add-voices)). [After the Pass](https://github.com/nao1215/gozen/tree/main/examples/novel), the novel sample, is a short one with choices, staging and a Japanese translation ([play it in the browser](/play/)).
 
+### Frame portraits by their heads
+
+For static novel portraits with transparent padding, `ui.stage_framing` aligns heads instead of guessing from the whole canvas. This is opt-in per image and requires `schema_version: 8`:
+
+<!-- verify: parse requires the author's portrait image and its measured head coordinates -->
+```yaml
+ui:
+  message: novel
+  stage_framing:
+    portraits/guide.png:
+      head: [0.4, 0.1, 0.2]
+      height: 0.18
+      top: 0.08
+```
+
+The `head` values are the head's horizontal center, top and height within the source image. The center is a fraction of image width; top and height are fractions of image height. In this example, the head starts 10% down the image, is 20% of its height, and is centered 40% across it. All three values must be finite and within the image; the source head height must be positive and fit below its top.
+
+`height` is the required displayed head height as a fraction of screen height (greater than 0, at most 1). `top` places its top using the same screen-height units (0 to 1, default 0). The head's horizontal center follows `stand.at` or automatic speaker placement, even when the scaled image extends beyond the viewport. Off-screen content is clipped; transparent padding never forces both speakers to screen center. Small source images also use the full novel stage when configured this way.
+
+Give each expression image its own entry when its canvas or head coordinates differ. `stage_scale` still multiplies size, now around the head anchor; `stage_drop` adds a screen-height offset to the head's top. Pictures without `stage_framing` retain the existing canvas-based layout. This setting applies to static novel portraits, not moving puppets, battle cut-ins or the `box` message window. It is game metadata: save/load restores the standing cast, while reload or a screen resize recomputes framing from the current image and configuration.
+
 A line counts as read by its source: the speaker and the text as written, before `{expressions}` are filled in. The read lines are kept in `read.json` beside the saves, so they last across saves and new games. Runs for testing (`--script`, `--start`, autoplay) do not touch them unless you pass `--save-dir`. In a trace, every `say` line says whether it was read, and `gozen trace --check` fails when skipping passed a line that was not.
 
 ## Campaigns

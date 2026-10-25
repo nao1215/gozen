@@ -180,7 +180,7 @@ func (t *talk) drawNovel(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
 	s := t.say
 	if g.tr != nil && s.Face != "" {
-		g.traceStandSpeaker(s.Face, g.pics.get(s.Face).Bounds().Dy() >= 600, speakerKey(s))
+		g.traceStandSpeaker(s.Face, g.stagePicture(s.Face), speakerKey(s))
 	}
 	if k := g.stageAlpha(); k > 0 {
 		g.stageK = k
@@ -241,7 +241,7 @@ func (t *talk) drawNovel(g *Game, dst *ebiten.Image) {
 func (t *talk) drawNovelStage(g *Game, dst *ebiten.Image) {
 	_, sh := g.screen()
 	s := t.say
-	big := func(face string) bool { return face != "" && g.pics.get(face).Bounds().Dy() >= 600 }
+	big := g.stagePicture
 	if s.Face != "" && !big(s.Face) {
 		rise := math.Min(1, float64(t.age)/10)
 		if t.still {
@@ -377,6 +377,23 @@ func (g *Game) drawStage(dst *ebiten.Image, face string, x float64, alpha float3
 	sw, sh := g.screen()
 	img := g.pics.get(face)
 	iw, ih := float64(img.Bounds().Dx()), float64(img.Bounds().Dy())
+	if f, ok := g.db.Game.UI.StageFraming[face]; ok {
+		h := sh * f.Height / f.Head[2]
+		if k := g.db.Game.UI.StageScale[face]; k > 0 {
+			h *= k
+		}
+		headX := f.Head[0]
+		if flip {
+			headX = 1 - headX
+		}
+		// drawStanding anchors the canvas center/bottom. Translate those so
+		// the authored head, including mirrored heads, stays at the requested
+		// screen position. Large canvases deliberately clip at the viewport.
+		cx := x + (0.5-headX)*iw*h/ih
+		bottom := sh*(f.Top+g.db.Game.UI.StageDrop[face]) + (1-f.Head[1])*h
+		g.drawStanding(dst, face, cx, bottom, h, alpha, flip, cs)
+		return
+	}
 	bottom, h := sh+sh*0.85, sh*1.85-headRoom
 	if iw/ih > 0.6 {
 		h = math.Min(sh-novelH+60-headRoom, sw*0.42*ih/iw)
@@ -397,6 +414,15 @@ func (g *Game) drawStage(dst *ebiten.Image, face string, x float64, alpha float3
 		x = sw / 2
 	}
 	g.drawStanding(dst, face, x, bottom, h, alpha, flip, cs)
+}
+
+// Explicit framing also opts small source pictures into the novel stage.
+func (g *Game) stagePicture(face string) bool {
+	if face == "" {
+		return false
+	}
+	_, framed := g.db.Game.UI.StageFraming[face]
+	return framed || g.pics.get(face).Bounds().Dy() >= 600
 }
 
 type backlogView struct{ top int }

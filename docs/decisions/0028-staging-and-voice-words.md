@@ -45,6 +45,12 @@ Lines get no inline tags (`{w=0.5}` and the like): `{}` is already the expressio
 - None of these is a boundary of rolling back ([ADR 0025](0025-replay-to-roll-back-skip-and-resume.md)): the replay plays them again quietly.
 - Not done: the warning of `stand` and `say.side` in one event.
 
+### Explicit static portrait framing (2026-10-25)
+
+`ui.stage_framing` (schema version 8) maps asset paths to `head: [center_x, top_y, height]`, a required displayed `height`, and optional `top`. Source coordinates are normalized to the source width/height; output dimensions are fractions of screen height. The static novel renderer anchors the head center at the authored horizontal position and clips the full image at the viewport. This removes dependence on transparent canvas padding without changing unconfigured pictures. Mirroring transforms the source head anchor as well. `stage_scale` scales around that anchor and `stage_drop` offsets its top.
+
+Framing is presentation metadata, so it adds no save fields or event commands. Expression changes select the matching image entry; saved casts and live reload use the current metadata. The box window, animated puppets and battle portraits keep their own framing contracts. Original circle-and-rectangle fixtures verify tight and padded canvases, expression changes, reload and save continuation in two aspect ratios.
+
 ### As built (voice)
 
 - `say.voice` is found by `DB.VoicePath`: in the speaker's `voices` folder when the speaker is an actor with one (the extension may be left out, `.ogg` tried before `.wav`), otherwise as a path under `assets/`. The runner puts the file on `event.Say.Voice` and sends `VoiceEffect` just before the line.

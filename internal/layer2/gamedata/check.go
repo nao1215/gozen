@@ -338,6 +338,29 @@ func (db *DB) Check() []error {
 	if g.UI.Bestiary {
 		c.needsVersion("game.yaml ui.bestiary", "ui.bestiary", SchemaVersion4)
 	}
+	for file, framing := range g.UI.StageFraming {
+		w := "game.yaml ui.stage_framing." + file
+		c.needsVersion(w, "ui.stage_framing", SchemaVersion8)
+		if file == "" {
+			c.errorf(diag.MissingAsset, w, "a framing entry needs a picture file")
+		}
+		c.file(w, file)
+		if len(framing.Head) != 3 {
+			c.errorf(diag.Shape, w+".head", "want [center_x, top_y, height] as fractions of the source picture")
+		} else {
+			for _, n := range framing.Head {
+				c.numberRange(w+".head", n, 0, 1)
+			}
+			if framing.Head[2] == 0 || framing.Head[1]+framing.Head[2] > 1 {
+				c.errorf(diag.OutOfRange, w+".head", "head height must be positive and top_y + height must fit inside the source picture")
+			}
+		}
+		c.numberRange(w+".height", framing.Height, 0, 1)
+		if framing.Height == 0 {
+			c.errorf(diag.OutOfRange, w+".height", "a positive display height is required")
+		}
+		c.numberRange(w+".top", framing.Top, 0, 1)
+	}
 	if tp := g.UI.TalkPortrait; tp != (TalkPortrait{}) {
 		c.needsVersion("game.yaml ui.talk_portrait", "ui.talk_portrait", SchemaVersion3)
 		if tp.X < 0 || tp.X > 1 || tp.Bottom < 0 || tp.Bottom > 4 || tp.Height < 0 || tp.Height > 4 {
