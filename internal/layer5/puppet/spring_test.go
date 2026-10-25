@@ -227,3 +227,17 @@ func TestPointRootWeights(t *testing.T) {
 		t.Fatalf("weights near the root %v, at the far corner %v", near, far)
 	}
 }
+
+func TestEllipseSoftSwayWeight(t *testing.T) {
+	r := loadYAML(t, "base: base.png\nsoft_sway:\n  - {ellipse: [20, 30, 40, 60], follow: body, root: top}\n")
+	sp := resolveSprings(r.Spec, 200)
+	if len(sp) != 1 {
+		t.Fatalf("got %d springs", len(sp))
+	}
+	center, _ := sp[0].weight(40, 60)
+	corner, _ := sp[0].weight(20, 30)
+	outside, _ := sp[0].weight(0, 0)
+	if !(center > corner && corner >= outside && math.Abs(outside) < 1e-9) {
+		t.Fatalf("weights center=%f corner=%f outside=%f", center, corner, outside)
+	}
+}

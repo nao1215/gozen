@@ -145,6 +145,18 @@ type Part struct {
 	// the head radius, or 3% of the height without a head).
 	Amount float64 `yaml:"amount,omitempty"`
 	Limit  float64 `yaml:"limit,omitempty"`
+	// Idle adds a local oscillator in the puppet renderer, independently of body motion.
+	Idle *Idle `yaml:"idle,omitempty"`
+}
+
+// Idle describes a part's optional local displacement for the puppet renderer.
+// Amplitude is pixels (0 disables, at most 10000); Period is seconds (0 selects
+// 2, otherwise [0.1, 3600]); Phase is a finite angle in degrees. The part's axis
+// and limit apply to the sum of idle, spring lag and localized hit motion.
+type Idle struct {
+	Amplitude float64 `yaml:"amplitude,omitempty"`
+	Period    float64 `yaml:"period,omitempty"`
+	Phase     float64 `yaml:"phase,omitempty"`
 }
 
 // Root sides and follow and axis words.
@@ -497,6 +509,11 @@ func (p Part) check(hasHead bool) error {
 	}
 	if err := nonNeg("stiffness, damping, amount and limit", p.Stiffness, p.Damping, p.Amount, p.Limit); err != nil {
 		return err
+	}
+	if idle := p.Idle; idle != nil {
+		if !finite(idle.Amplitude, idle.Period, idle.Phase) || idle.Amplitude < 0 || idle.Amplitude > 10000 || (idle.Period != 0 && (idle.Period < 0.1 || idle.Period > 3600)) {
+			return errors.New("idle: finite amplitude in [0, 10000], period 0 (default 2) or [0.1, 3600], and finite phase required")
+		}
 	}
 	if p.Stiffness > MaxStiffness || p.Damping > MaxDamping {
 		return fmt.Errorf("stiffness is at most %d and damping at most %d", MaxStiffness, MaxDamping)

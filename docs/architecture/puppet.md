@@ -125,3 +125,26 @@ A part follows the motion of what it follows (head or body) with a lag through a
 - `soft_sway` accepts the same settings as `springs` and is drawn after them. It is suitable for a gently moving area of an actor or enemy puppet. Use `rect: [x, y, width, height]` or `ellipse: [x, y, width, height]` with `follow: body` to trail breathing and whole-body reactions. The coordinates are pixels in the base image.
 - With `motion.hit: soft_only`, damage gives the `soft_sway` regions a stronger, lingering oscillation as HP falls. Other regions keep their idle motion, and the battle screen omits its hit shake for that enemy.
 - The same random seed and the same sequence of calls give the same sway. With a stiff spring or a small TPS, one Update is computed in finer sub-steps.
+
+### Local idle motion
+
+Give a `soft_sway` or `springs` part an `idle` oscillator to move it at full HP even when its body is stationary. For example, this moves a small decorative patch on a neutral figure:
+
+```yaml
+soft_sway:
+  - ellipse: [34, 52, 20, 36]
+    follow: body
+    axis: y
+    limit: 4
+    idle: {amplitude: 4, period: 2, phase: 0}
+motion:
+  hit: soft_only
+  breath: {depth: 0}
+  sway: {angle: 0, shift: 0}
+```
+
+`amplitude` is displacement in base-image pixels, from 0 to 10000; zero or an omitted `idle` disables the oscillator. `period` is seconds, from 0.1 to 3600; zero or omission uses 2 seconds. `phase` is a finite angle in degrees, default 0; negative angles are accepted. All values must be finite. The waveform is `amplitude * sin(2*pi*time/period + phase*pi/180)`, uses the puppet's animation clock, and pauses during freeze. It does not consume randomness.
+
+The oscillator adds to spring lag and localized damage motion before the part's axis mask and displacement limit are applied. It works independently of `motion.hit`; `soft_only` selects the separate localized hit response. Zero body breathing and sway as above when a stationary body is wanted. Enemy-level whole-image motion and the battle actor's attack step remain independent settings and behavior.
+
+Deformation blends through mesh triangles, so a strict shape mask is not promised. Allow one mesh cell (at least 8 pixels, or the longest image side divided by 48), plus the displacement limit, around the authored region when comparing rendered frames. The graphics regression compares a neutral figure against a static control, requiring changes within that margin and exact stability outside it.

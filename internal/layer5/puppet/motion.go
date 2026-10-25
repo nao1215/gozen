@@ -390,9 +390,6 @@ func (m *Motion) pose(withSprings bool) Pose {
 		// Only the soft regions answer to damage: the head and body keep their calm sway.
 		strength, speed = 1, 1
 	}
-	if m.p.softOnlyHit {
-		strength, speed = 1, 1
-	}
 	if m.p.breathPeriod > 0 {
 		// Breathing keeps its depth: damage speeds it up but never stretches the body.
 		p.Breath = m.p.breathDepth * 0.5 * (1 - math.Cos(tau*t*speed/m.p.breathPeriod+m.phase[0]))
@@ -414,19 +411,18 @@ func (m *Motion) pose(withSprings bool) Pose {
 			p.Anchor = m.anchor(p)
 		}
 		for i := range m.springs {
-			p.Lag[i] = m.lag(&m.springs[i], m.state[i], p)
-		}
-		if m.p.softOnlyHit {
-			// Keep the whole picture still while damage drives only the named soft regions.
-			for i := range m.springs {
-				sp := &m.springs[i]
-				if !sp.soft {
-					continue
-				}
+			sp := &m.springs[i]
+			p.Lag[i] = m.lag(sp, m.state[i], p)
+			drive := 0.0
+			if sp.idleAmplitude > 0 {
+				drive = sp.idleAmplitude * math.Sin(tau*t/sp.idlePeriod+sp.idlePhase)
+			}
+			if m.p.softOnlyHit && sp.soft {
 				wave := math.Sin(tau*t*(2+damage) + m.phase[i%len(m.phase)])
-				for axis := range 2 {
-					p.Lag[i][axis] = clamp(p.Lag[i][axis]+wave*sp.limit*math.Min(1, damage*0.15)*sp.mask[axis], -sp.limit, sp.limit)
-				}
+				drive += wave * sp.limit * math.Min(1, damage*0.15)
+			}
+			for axis := range 2 {
+				p.Lag[i][axis] = clamp(p.Lag[i][axis]+drive*sp.mask[axis], -sp.limit, sp.limit)
 			}
 		}
 	}

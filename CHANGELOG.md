@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add optional local idle oscillators to puppet parts, independent of body breathing, health and hit motion.
+
 - Add an optional instant-transition setting for ordinary dungeons, avoiding old-frame ghosting while retaining movement input cadence and stacked-space camera interpolation.
 - Allow authors to configure map travel speed, painted-scene player walking speed, and independent stacked-space step and turn durations per location.
 

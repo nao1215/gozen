@@ -334,3 +334,52 @@ func fixture() fstest.MapFS {
 		"fig/mouth.png":  {Data: solid(mouth, red)},
 	}
 }
+
+func TestGraphicsSoftIdleStaysLocal(t *testing.T) {
+	load := func(idle string) *puppet.Puppet {
+		fsys := fixture()
+		fsys["fig/base.png"] = &fstest.MapFile{Data: figure(64, 96, map[image.Rectangle]color.NRGBA{image.Rect(40, 60, 46, 82): red})}
+		fsys["fig/rig.yaml"] = &fstest.MapFile{Data: []byte("base: base.png\nsoft_sway: [{ellipse: [34, 52, 20, 36], follow: body, axis: y, limit: 4" + idle + "}]\nmotion: {hit: soft_only, breath: {depth: 0}, sway: {angle: 0, shift: 0}}\n")}
+		rig, err := puppet.Load(fsys, "fig/rig.yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		p := puppet.New(rig, rand.New(rand.NewPCG(1, 2)), 60) //nolint:gosec // Reproducible animation, not security.
+		t.Cleanup(func() { onLoop(p.Close) })
+		return p
+	}
+	control, moving := load(""), load(", idle: {amplitude: 4, period: 2}")
+	onLoop(func() {
+		baseline := frame(control, shift(ox, oy))
+		// A 64x96 image uses an eight-pixel mesh cell. Allow that cell and the
+		// four-pixel maximum displacement around the authored ellipse bounds.
+		area := image.Rect(34, 52, 54, 88).Inset(-12).Add(image.Pt(ox, oy))
+		changed := 0
+		for i := range 120 {
+			control.Motion.Step()
+			moving.Motion.Step()
+			if i%15 != 14 {
+				continue
+			}
+			a, b := frame(control, shift(ox, oy)), frame(moving, shift(ox, oy))
+			if !bytes.Equal(a.Pix, baseline.Pix) {
+				t.Error("static control changed")
+			}
+			for y := range b.Bounds().Dy() {
+				for x := range b.Bounds().Dx() {
+					if a.RGBAAt(x, y) == b.RGBAAt(x, y) {
+						continue
+					}
+					changed++
+					if !image.Pt(x, y).In(area) {
+						t.Errorf("idle changed pixel outside local region: %d,%d", x, y)
+						return
+					}
+				}
+			}
+		}
+		if changed == 0 {
+			t.Error("full-health idle never changed a pixel")
+		}
+	})
+}
