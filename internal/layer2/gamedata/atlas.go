@@ -78,6 +78,9 @@ type MapAdvice struct {
 type AtlasCamera struct {
 	Zoom    float64 `yaml:"zoom"`     // Initial/current-position zoom; zero selects min(2, max_zoom).
 	MaxZoom float64 `yaml:"max_zoom"` // Zoom limit in [1,64]; zero selects 8.
+	// Buttons is how the camera's on-screen buttons show: shown (the default), faint
+	// (see-through until the pointer is over them) or hidden (keys, wheel and pad only).
+	Buttons string `yaml:"buttons"`
 }
 
 // Token is the piece that stands for the party on a map: its picture, else the leader's
@@ -228,6 +231,11 @@ func (c *checker) atlas(w, id string, l *Location) {
 		}
 		if math.IsNaN(limit) || math.IsInf(limit, 0) || limit < 1 || limit > 64 {
 			c.errorf(diag.OutOfRange, w+".camera.max_zoom", "want 0 (default 8) or a finite zoom in [1, 64]")
+		}
+		switch camera.Buttons {
+		case "", "shown", "faint", "hidden":
+		default:
+			c.errorf(diag.NotAWord, w+".camera.buttons", "want shown, faint or hidden, not %q", camera.Buttons)
 		}
 		if z := camera.Zoom; math.IsNaN(z) || math.IsInf(z, 0) || z != 0 && (z < 1 || z > limit) {
 			c.errorf(diag.OutOfRange, w+".camera.zoom", "want 0 (default 2, capped at max_zoom) or a finite zoom in [1, max_zoom]")

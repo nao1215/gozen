@@ -384,8 +384,7 @@ func (s *atlasScene) generalsBox(g *Game, n int, sw, sh float64) (x, y, w, cell 
 	cell = 132.0
 	left, bottom := 36.0, sh-42
 	var buttons plateBox
-	if s.location(g).Map.Camera != nil {
-		bs := s.cameraButtons(g)
+	if bs := s.cameraButtons(g); len(bs) > 0 {
 		buttons = bs[len(bs)-1]
 		left = buttons.x + buttons.w + 16
 	}

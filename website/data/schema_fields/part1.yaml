@@ -78,6 +78,7 @@ MapAdvice:
   portrait: "Face picture under assets/, overriding the panel default."
 AtlasCamera:
   _: "Presentation-only camera for a large atlas. Bounds are clamped to the picture and labels retain their screen size."
+  buttons: "How the camera's on-screen buttons show: shown (the default), faint (see-through until the pointer is over them) or hidden (the keys, the wheel and the pad still move the camera)."
   zoom: "Initial zoom relative to fit-to-screen, from 1 to max_zoom. Zero or omitted means 2, capped at max_zoom."
   max_zoom: "Maximum zoom relative to fit-to-screen, from 1 to 64. Zero or omitted means 8."
 BattleAct:

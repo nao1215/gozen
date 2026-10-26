@@ -905,6 +905,19 @@
       "additionalProperties": false,
       "description": "Presentation-only camera for a large atlas. Bounds are clamped to the picture and labels retain their screen size.",
       "properties": {
+        "buttons": {
+          "description": "How the camera's on-screen buttons show: shown (the default), faint (see-through until the pointer is over them) or hidden (the keys, the wheel and the pad still move the camera).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "string"
+        },
         "max_zoom": {
           "description": "Maximum zoom relative to fit-to-screen, from 1 to 64. Zero or omitted means 8.",
           "type": "number",

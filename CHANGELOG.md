@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add map `camera.buttons: faint` (see-through until the pointer is over them) and `hidden` (keys, wheel and pad only) for the camera's on-screen buttons.
 - Say "You have nothing." in the menu's empty item list and "No skills to use." in an empty skill list, instead of an empty window.
 - Say why when the player chooses the menu's disabled Save at a place that is not safe; it only sounded the buzzer.
 - Add opt-in `ui.hide_bar_on_choice` to hide the buttons under the novel window while a choice is shown; their keys still work.
