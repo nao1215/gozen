@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Refresh the bundled agent skill for v0.11.0: split novel, map, campaign, battle, puppet, monster, stacked-space and release guidance into references and keep the entry page short.
+
 ## v0.11.0 - 2026-10-26
 
 Use high-resolution portraits, hide closed map points, and name campaign region values.
