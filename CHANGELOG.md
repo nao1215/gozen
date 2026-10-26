@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.13.0 - 2026-10-27
+
+Choose a campaign's orders from icons on the map, fit full-screen games with safe areas and camera limits, and fix the findings of a full engine review.
+
 - Make three settings on by default: `ui.battle_foe_names` is `name` (write `none` for no plates), `ui.battle_message` is `fit` (write `fixed` for the three-line window) and `campaign.pin_end_turn` is true (write `false` to list the end of the turn where it falls); games that do not write them now show foes' names, a battle message window as tall as its lines and the end of the turn last.
 - Make the campaign state a campaign map draws from once a frame instead of for every region, plate and window, and the region window's lines once for both its size and its text.
 - Speed up the mosaic's search for the grid offset: the covered pixels are kept as a summed-area table instead of a list of coordinates, so each offset costs its cells, not every covered pixel (about 21x faster and 23x less memory on a region over most of a 1024x1024 picture); the offsets chosen are the same.
