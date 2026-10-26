@@ -17881,6 +17881,19 @@
           },
           "x-type": "boolean"
         },
+        "battle_foe_names": {
+          "description": "A plate under each foe that is not a boss: name (its name) or hp (its name and a bar of its HP). Omitted: none.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "battle_fx": {
           "$ref": "#/$defs/BattleFx",
           "description": "How strong the battle effects are: shake, flash, number pop, hit stop, charge and finish.",
@@ -17893,6 +17906,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "[BattleFx](#battlefx)"
+        },
+        "battle_message": {
+          "description": "The battle's message window: fixed (three lines tall, the default) or fit (as tall as the lines it shows).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         },
         "bestiary": {
           "description": "Show Monsters, the monster book, in the title and field menu. Off by default; under `--dev` the menus show it anyway. Needs schema version 4.",

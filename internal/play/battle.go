@@ -1433,12 +1433,13 @@ func (s *battleScene) draw(g *Game, dst *ebiten.Image) {
 
 		s.drawParty(g, dst)
 		s.drawBossPlates(g, dst)
+		s.drawFoeNames(g, dst)
 	}
 	s.drawEffects(g, dst)
 	s.drawCharge(g, dst)
 
 	if len(s.msg) > 0 && !talking {
-		g.window(dst, 36, 20, sw-72, 132)
+		g.window(dst, 36, 20, sw-72, s.messageHeight(g))
 		for i, m := range s.msg {
 			g.text(dst, m, 66, 36+float64(i)*36, sizeM, g.th.text)
 		}
@@ -1599,6 +1600,53 @@ func (s *battleScene) drawFoes(g *Game, dst *ebiten.Image) {
 		for _, member := range pending.Members {
 			x := sw/2 + (float64(member.Index)-float64(oldCount-1)/2)*min(180, (sw-foeLeft)/float64(oldCount))
 			g.drawStanding(dst, member.Picture(), x, sh*0.66, 160, 1, false, nil)
+		}
+	}
+}
+
+// messageHeight is the height of the message window: three lines, or with
+// ui.battle_message: fit as many as it shows.
+func (s *battleScene) messageHeight(g *Game) float64 {
+	if g.db.Game.UI.BattleMessage != "fit" {
+		return 132
+	}
+	return 24 + float64(max(1, len(s.msg)))*36
+}
+
+// foeNameBox is where the plate of a foe goes (ui.battle_foe_names): under its feet,
+// above the party's cards; false when it has none.
+func (s *battleScene) foeNameBox(g *Game, u *battle.Unit, box foeBox) (plateBox, bool) {
+	mode := g.db.Game.UI.BattleFoeNames
+	if mode == "" || u.Def.Boss || u.Fled {
+		return plateBox{}, false
+	}
+	if _, gone := s.gone[u]; gone {
+		return plateBox{}, false
+	}
+	_, sh := g.screen()
+	h := 40.0
+	if mode == "hp" {
+		h = 58
+	}
+	w := math.Max(140, math.Min(260, gfx.TextWidth(u.Name, sizeS*0.85)+36))
+	y := math.Min(float64(box.rect.Max.Y)+6, sh-158-h)
+	return plateBox{x: box.cx - w/2, y: y, w: w, h: h}, true
+}
+
+// drawFoeNames puts each foe's name (and with hp, a bar of its HP) on a plate under it.
+func (s *battleScene) drawFoeNames(g *Game, dst *ebiten.Image) {
+	boxes := s.foeBoxes(g)
+	for _, u := range s.b.Foes {
+		p, ok := s.foeNameBox(g, u, boxes[u])
+		if !ok {
+			continue
+		}
+		g.window(dst, p.x, p.y, p.w, p.h)
+		size := sizeS * 0.85
+		gfx.DrawText(dst, gfx.Ellipsis(u.Name, size, p.w-24), p.x+p.w/2, p.y+8, size, g.th.text)
+		if g.db.Game.UI.BattleFoeNames == "hp" {
+			rate := s.hp[u] / float64(max(1, u.MHP()))
+			bar(dst, p.x+14, p.y+38, p.w-28, 10, rate, hpColor(rate))
 		}
 	}
 }

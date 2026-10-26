@@ -500,6 +500,16 @@ func (db *DB) Check() []error {
 			c.errorf(diag.NotAWord, w+".style", "want bar or number, not %q", m.Style)
 		}
 	}
+	switch g.UI.BattleFoeNames {
+	case "", "name", "hp":
+	default:
+		c.errorf(diag.NotAWord, "game.yaml ui.battle_foe_names", "want name or hp, not %q", g.UI.BattleFoeNames)
+	}
+	switch g.UI.BattleMessage {
+	case "", "fixed", "fit":
+	default:
+		c.errorf(diag.NotAWord, "game.yaml ui.battle_message", "want fixed or fit, not %q", g.UI.BattleMessage)
+	}
 	for i, k := range g.UI.HideGold {
 		switch k {
 		case "field", "dungeon", "map", "stage":

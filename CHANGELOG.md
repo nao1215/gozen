@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add opt-in `ui.battle_foe_names` (`name` or `hp`) to put a plate with each foe's name, and a bar of its HP, under the foes that are not bosses, and `ui.battle_message: fit` to size the battle's message window to its lines.
 - Add meter `mark_labels` to name the marks on a bar with a short word under each line.
 - Add opt-in map `talk: dim` or `talk: hide` to darken the map, or also hide its markers, flags and name plates, while a conversation that is not the map's own question runs.
 - Add opt-in map `safe_area` to fit the picture inside the screen less the edges kept for the windows over it, the camera bringing any part of it there; narrow the generals' window of a campaign's map so it no longer covers the camera buttons when many generals have joined.

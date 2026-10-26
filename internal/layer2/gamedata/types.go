@@ -492,6 +492,12 @@ type UIStyle struct {
 	Profiles bool `yaml:"profiles"`
 	// Bestiary puts Monsters in the title and field menu. Under --dev it is offered automatically.
 	Bestiary bool `yaml:"bestiary"`
+	// BattleFoeNames puts a plate under each foe that is not a boss: name (its name) or
+	// hp (its name and a bar of its HP). Empty: none, as before.
+	BattleFoeNames string `yaml:"battle_foe_names"`
+	// BattleMessage is the battle's message window: fixed (three lines tall, the
+	// default) or fit (as tall as the lines it shows).
+	BattleMessage string `yaml:"battle_message"`
 	// HideGold are the kinds of place (field, dungeon, map, stage) where the windows of
 	// the money (the field's, with the play time, and the menu's) are not shown.
 	HideGold []string `yaml:"hide_gold"`
