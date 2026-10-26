@@ -1,8 +1,11 @@
 package play
 
 import (
+	"math"
 	"strings"
 	"testing"
+
+	"github.com/nao1215/gozen/internal/layer1/geom"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
@@ -95,4 +98,39 @@ func TestCampaignHeading(t *testing.T) {
 	if band := campaignBand(g); !strings.Contains(band, "5") || !strings.Contains(band, "Blue") {
 		t.Fatalf("default band %q has no last turn or faction", band)
 	}
+}
+
+// A map's safe_area fits the picture to the screen less its edges, and the camera brings
+// the picture's corner to the edge of that part, not under the windows; the generals'
+// window keeps right of the camera's buttons however many generals there are.
+func TestCampaignSafeAreaAndGenerals(t *testing.T) {
+	area := map[string]string{"unknown: named": "unknown: named\n      safe_area: [0.1, 0.2, 0.25, 0.05]"}
+	g, as := campaignOpen(t, area)
+	k, ox, oy, _ := as.fit(g)
+	pw, ph := g.pixels()
+	l, top, w, h := pw*0.05, ph*0.1, pw*0.75, ph*0.65
+	if ox < l-1e-9 || oy < top-1e-9 || ox+640*k > l+w+1e-9 || oy+360*k > top+h+1e-9 {
+		t.Errorf("the picture lies at (%g, %g) x%g, outside the safe part (%g, %g, %g, %g)", ox, oy, k, l, top, w, h)
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	area["unknown: named"] += "\n      camera: {zoom: 4}"
+	g, as = campaignOpen(t, area)
+	as.cameraCenter = geom.Pt{}
+	k, ox, oy, _ = as.fit(g)
+	if math.Abs(ox-l) > 1e-6 || math.Abs(oy-top) > 1e-6 || k <= 0 {
+		t.Errorf("the camera brings the corner to (%g, %g), want the safe part's corner (%g, %g)", ox, oy, l, top)
+	}
+	sw, sh := g.screen()
+	bs := as.cameraButtons(g)
+	for _, n := range []int{1, 5, 9} {
+		x, y, bw, cell := as.generalsBox(g, n, sw, sh)
+		b := bs[len(bs)-1]
+		if x < b.x+b.w && y+cell+30 > b.y-40 || x < 0 || x+bw > sw || cell > 132 {
+			t.Errorf("%d generals: window at %g wide %g (cell %g) meets the buttons or the edge", n, x, bw, cell)
+		}
+	}
+	wldFramesDrawn(t, g, 2)
 }

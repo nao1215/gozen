@@ -18,6 +18,10 @@ type Atlas struct {
 	SelectionPanel *AtlasPanel `yaml:"selection_panel"`
 	// Camera enables presentation-only pan and zoom; nil keeps the fitted view.
 	Camera *AtlasCamera `yaml:"camera"`
+	// SafeArea keeps the picture inside the screen less its edges [top, right, bottom,
+	// left], fractions of the screen, where the windows over the map stand: the picture is
+	// fitted to the rest, and the camera brings any part of it there. Empty: the whole screen.
+	SafeArea []float64 `yaml:"safe_area"`
 	// TravelSpeed is the map renderer's token speed in picture widths per second.
 	// Zero selects 0.12; explicit speeds must be finite and in [0.01, 2].
 	TravelSpeed float64 `yaml:"travel_speed"`
@@ -199,6 +203,18 @@ func (c *checker) atlas(w, id string, l *Location) {
 			if !valid {
 				c.errorf(diag.OutOfRange, w+".selection_panel.rect", "want finite [x,y,width,height] within the screen, width >= 0.2 and height >= 0.25")
 			}
+		}
+	}
+	if len(a.SafeArea) > 0 {
+		valid := len(a.SafeArea) == 4
+		for _, v := range a.SafeArea {
+			valid = valid && !math.IsNaN(v) && v >= 0 && v <= 0.45
+		}
+		if valid {
+			valid = a.SafeArea[0]+a.SafeArea[2] <= 0.8 && a.SafeArea[1]+a.SafeArea[3] <= 0.8
+		}
+		if !valid {
+			c.errorf(diag.OutOfRange, w+".safe_area", "want [top, right, bottom, left], each a fraction of the screen in [0, 0.45], leaving at least 0.2 of it each way")
 		}
 	}
 	if camera := a.Camera; camera != nil {

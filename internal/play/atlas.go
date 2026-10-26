@@ -195,15 +195,26 @@ func (s *atlasScene) fit(g *Game) (k, ox, oy float64, ok bool) {
 	if img == nil {
 		return 0, 0, 0, false
 	}
-	pw, ph := g.pixels()
+	l, t, pw, ph := s.view(g)
 	b := img.Bounds()
 	k = math.Min(pw/float64(b.Dx()), ph/float64(b.Dy()))
 	if s.location(g).Map.Camera != nil {
 		k *= max(1, s.cameraZoom)
 		s.clampCamera(g, k, float64(b.Dx()), float64(b.Dy()))
-		return k, pw/2 - s.cameraCenter.X*k, ph/2 - s.cameraCenter.Y*k, true
+		return k, l + pw/2 - s.cameraCenter.X*k, t + ph/2 - s.cameraCenter.Y*k, true
 	}
-	return k, (pw - float64(b.Dx())*k) / 2, (ph - float64(b.Dy())*k) / 2, true
+	return k, l + (pw-float64(b.Dx())*k)/2, t + (ph-float64(b.Dy())*k)/2, true
+}
+
+// view is the part of the screen the picture is fitted to (pixels): the left and top
+// edges, the width and the height; the whole screen less the map's safe_area.
+func (s *atlasScene) view(g *Game) (l, t, w, h float64) {
+	pw, ph := g.pixels()
+	a := s.location(g).Map.SafeArea
+	if len(a) != 4 {
+		return 0, 0, pw, ph
+	}
+	return pw * a[3], ph * a[0], pw * (1 - a[1] - a[3]), ph * (1 - a[0] - a[2])
 }
 
 // Camera state belongs to the scene. Entering or loading starts at the current
@@ -228,7 +239,7 @@ func (s *atlasScene) resetCamera(g *Game, overview bool) {
 }
 
 func (s *atlasScene) clampCamera(g *Game, k, w, h float64) {
-	pw, ph := g.pixels()
+	_, _, pw, ph := s.view(g)
 	clamp := func(v, size, span float64) float64 {
 		if span >= size {
 			return size / 2
@@ -263,7 +274,7 @@ func (s *atlasScene) revealCameraPoint(g *Game, p geom.Pt) {
 	if !ok {
 		return
 	}
-	pw, ph := g.pixels()
+	_, _, pw, ph := s.view(g)
 	spanX, spanY := pw/k*.35, ph/k*.35
 	s.cameraCenter.X = max(p.X-spanX, min(p.X+spanX, s.cameraCenter.X))
 	s.cameraCenter.Y = max(p.Y-spanY, min(p.Y+spanY, s.cameraCenter.Y))

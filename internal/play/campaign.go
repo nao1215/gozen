@@ -377,6 +377,31 @@ func (s *atlasScene) drawRegionWindow(g *Game, dst *ebiten.Image, id string) {
 	}
 }
 
+// generalsBox is the window of n generals at the bottom right: its left edge, top and
+// width, and each one's cell. The cells narrow (132 at most, 72 at least) so the window
+// keeps right of the map's camera buttons; too many for that, it stands over them.
+func (s *atlasScene) generalsBox(g *Game, n int, sw, sh float64) (x, y, w, cell float64) {
+	cell = 132.0
+	left, bottom := 36.0, sh-42
+	var buttons plateBox
+	if s.location(g).Map.Camera != nil {
+		bs := s.cameraButtons(g)
+		buttons = bs[len(bs)-1]
+		left = buttons.x + buttons.w + 16
+	}
+	room := sw - 36 - left - 24
+	if cell*float64(n) > room {
+		cell = room / float64(n)
+	}
+	if cell < 72 && buttons.w > 0 { // over the buttons and their hint, across the screen
+		cell = math.Min(132, (sw-72-24)/float64(n))
+		bottom = buttons.y - 44
+	}
+	cell = math.Max(48, cell)
+	w = cell*float64(n) + 24
+	return sw - w - 36, bottom - cell - 30, w, cell
+}
+
 // drawGenerals stands the generals who have joined in a row at the bottom right: each
 // face with its troops under it, dim when it has marched this turn.
 func (s *atlasScene) drawGenerals(g *Game, dst *ebiten.Image, sw, sh float64) {
@@ -390,9 +415,8 @@ func (s *atlasScene) drawGenerals(g *Game, dst *ebiten.Image, sw, sh float64) {
 	if len(ids) == 0 {
 		return
 	}
-	const cell, face = 132.0, 92.0
-	w := cell*float64(len(ids)) + 24
-	x, y := sw-w-36, sh-cell-72
+	x, y, w, cell := s.generalsBox(g, len(ids), sw, sh)
+	face := cell * 92 / 132
 	g.window(dst, x, y, w, cell+30)
 	for i, id := range ids {
 		a := g.db.Actors[id]
@@ -415,7 +439,7 @@ func (s *atlasScene) drawGenerals(g *Game, dst *ebiten.Image, sw, sh float64) {
 		if out := data.Out(cs, id); out > 0 {
 			troops = fmt.Sprintf(lang.T("離脱 あと%d"), out)
 		}
-		gfx.DrawText(dst, troops, cx, y+24+face, sizeS*0.85, withAlpha(g.th.text, alpha))
+		gfx.DrawText(dst, troops, cx, y+24+face, sizeS*0.85*math.Min(1, cell/120), withAlpha(g.th.text, alpha))
 	}
 }
 

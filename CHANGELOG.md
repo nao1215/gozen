@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add opt-in map `safe_area` to fit the picture inside the screen less the edges kept for the windows over it, the camera bringing any part of it there; narrow the generals' window of a campaign's map so it no longer covers the camera buttons when many generals have joined.
 - Add `campaign.heading`, a text with expressions that replaces the turn's words in the band over a campaign's map (such as `"Year {var.year}, month {var.month}"`); the default band is unchanged.
 - Add meter `style: number` to show a value such as `gold` as a plain number, not capped by `max`, and `ui.hide_gold` to hide the money windows of the field and the menu at the listed kinds of place (`field`, `dungeon`, `map`, `stage`).
 - Add opt-in `group` to campaign orders and location actions, listing entries of one group together under a heading in the place's list, and `campaign.pin_end_turn` to keep the end of the turn in the last row below the rows that scroll.

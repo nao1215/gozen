@@ -22,6 +22,21 @@ func TestAtlasCameraValidation(t *testing.T) {
 	}
 }
 
+func TestAtlasSafeAreaValidation(t *testing.T) {
+	for _, value := range []string{"[]", "[0.1, 0.2, 0.15, 0]", "[0.45, 0, 0.35, 0.45]"} {
+		_, files := scenesWith("    map:", "    map:\n      safe_area: "+value)
+		if _, err := testgame.TryLoad(files); err != nil {
+			t.Fatalf("valid safe area %s: %v", value, err)
+		}
+	}
+	for _, value := range []string{"[0.1, 0.1]", "[0.5, 0, 0, 0]", "[-0.1, 0, 0, 0]", "[0.45, 0, 0.45, 0]", "[.nan, 0, 0, 0]"} {
+		_, files := scenesWith("    map:", "    map:\n      safe_area: "+value)
+		if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "safe_area") {
+			t.Fatalf("invalid safe area %s: %v", value, err)
+		}
+	}
+}
+
 func TestAtlasSelectionPanelValidation(t *testing.T) {
 	for _, fields := range []string{
 		"activation: instant\n      selection_panel: {}",
