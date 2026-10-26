@@ -38,6 +38,10 @@ func (s *State) setOther(path string, v any) (bool, error) {
 		if err != nil {
 			return true, err
 		}
+		// A position belongs to a dungeon; loading a save drops one anywhere else.
+		if l := s.DB.Locations[s.Location]; path != "steps" && (l == nil || l.Dungeon == nil) {
+			return true, fmt.Errorf("set %s: %s is not a dungeon", path, s.Location)
+		}
 		switch path {
 		case "pos.x":
 			s.Pos.X = n

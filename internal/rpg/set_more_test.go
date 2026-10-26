@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/expr"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/testgame"
 )
@@ -27,7 +28,7 @@ func TestSetPathRefusals(t *testing.T) {
 		{"gold", "rich", "want a number"},
 		{"steps", "many", "want a number"},
 		{"pos.x", "left", "want a number"},
-		{"pos.y", true, ""}, // booleans are numbers, so this is accepted
+		{"pos.y", 1.0, "camp is not a dungeon"}, // a position belongs to a dungeon; a save would drop it
 		{"pos.facing", "up-left", "is not north, east, south or west"},
 		{"roamers", "all", "only none"},
 		{"location", "nowhere", "is not a location"},
@@ -64,8 +65,7 @@ func TestSetPathRefusals(t *testing.T) {
 			t.Errorf("SetPath(%q, %v) = %v, want an error with %q", c.path, c.v, err, c.want)
 		}
 	}
-	// the refused ones changed nothing (compare after undoing the one accepted case)
-	st.Pos = rpg.Pos{}
+	// the refused ones changed nothing
 	after, err := st.Save()
 	if err != nil {
 		t.Fatal(err)
@@ -78,6 +78,7 @@ func TestSetPathRefusals(t *testing.T) {
 func TestSetPathAcceptedValues(t *testing.T) {
 	db := testgame.Load(t, nil)
 	st := testgame.State(db, 1)
+	db.Locations["field"].Dungeon = &data.Dungeon{}
 	st.Location = "field"
 	set := func(path string, v any) {
 		t.Helper()
@@ -98,6 +99,10 @@ func TestSetPathAcceptedValues(t *testing.T) {
 		t.Errorf("steps %d", st.Steps)
 	}
 	set("pos.x", 4.0)
+	set("pos.y", true) // booleans are numbers
+	if st.Pos.Y != 1 {
+		t.Errorf("pos.y true is 1, got %d", st.Pos.Y)
+	}
 	set("pos.y", 2.0)
 	set("pos.facing", "south")
 	if st.Pos.X != 4 || st.Pos.Y != 2 || st.Pos.Facing != 2 || st.Pos.In != "field" {
