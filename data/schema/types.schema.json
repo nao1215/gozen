@@ -23,6 +23,19 @@
           },
           "x-type": "[Command](#command)[]"
         },
+        "group": {
+          "description": "The heading the action is listed under in the place's list. Entries of one group are listed together under it, the groups in the order first met. Expressions in braces are expanded. Omitted: no heading.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "id": {
           "description": "A stable ID for the action that does not depend on its label.",
           "type": "string",
@@ -2470,6 +2483,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string → [Order](#order)"
+        },
+        "pin_end_turn": {
+          "description": "Keep the end of the turn in the last row of the place's list, below the rows that scroll, so it shows however long the list is. Off by default.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
         },
         "player": {
           "description": "The player's faction, an ID of factions. Required.",
@@ -11173,6 +11199,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "integer"
+        },
+        "group": {
+          "description": "The heading the order is listed under in the place's list, together with the place's actions of the same group. Omitted: no heading.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         },
         "label": {
           "description": "The text shown in the menu.",

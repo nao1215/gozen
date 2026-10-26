@@ -72,7 +72,7 @@ func campaignActions(db *DB) {
 		if o.When.Set() {
 			when += " && (" + o.When.String() + ")"
 		}
-		acts = append(acts, Action{ID: "order_" + id, Label: label, When: MustExpr(when), Do: []Command{{Order: &OrderCmd{ID: id}}}})
+		acts = append(acts, Action{ID: "order_" + id, Label: label, Group: o.Group, When: MustExpr(when), Do: []Command{{Order: &OrderCmd{ID: id}}}})
 	}
 	end := c.EndTurn
 	if end == "" {

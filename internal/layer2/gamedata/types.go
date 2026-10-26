@@ -1397,8 +1397,11 @@ type Person struct {
 
 // Action is a thing to do at a location ("Search the chest", "Rest at the inn").
 type Action struct {
-	ID    string    `yaml:"id"` // an operation identifier that does not depend on the display name
-	Label string    `yaml:"label"`
+	ID    string `yaml:"id"` // an operation identifier that does not depend on the display name
+	Label string `yaml:"label"`
+	// Group is the heading the action is listed under in the place's list (the entries of
+	// one group are listed together under it; none: no heading).
+	Group string    `yaml:"group"`
 	When  Expr      `yaml:"when"`
 	New   Expr      `yaml:"new"`  // an expression that holds only while there is a new talk (same as Person.New; not shown on screen)
 	Mark  Expr      `yaml:"mark"` // an expression that, while it holds, marks the list label (same as Person.Mark)

@@ -1,7 +1,10 @@
 package play
 
 import (
+	"strings"
 	"testing"
+
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 // campaignOpen opens the campaign of testdata/campaign on its map, its YAML changed by repl.
@@ -41,5 +44,41 @@ func TestCampaignRegionWindowKeepsOffTheRegion(t *testing.T) {
 			}
 			wldFramesDrawn(t, g, 2) // the ring and the window draw
 		})
+	}
+}
+
+// Orders and the place's actions with a group are listed together under its heading, and
+// pin_end_turn keeps the end of the turn last.
+func TestCampaignListGroupsAndPinsEndTurn(t *testing.T) {
+	g, _ := campaignOpen(t, map[string]string{
+		"turns: 5":       "turns: 5\n  pin_end_turn: true\n  end_turn: Next month",
+		"label: Attack,": "label: Attack, group: \"War {var.n}\",",
+		"label: Storm,":  "label: Storm, group: Castle,",
+	})
+	g.db.Locations["war"].Actions = append(g.db.Locations["war"].Actions, data.Action{ID: "rest", Label: "Rest", Group: "War {var.n}"})
+	wldPlay(t, g, "press menu\nwait 10\n", 100)
+	l, ok := g.stack[len(g.stack)-1].(*entryList)
+	if !ok {
+		t.Fatalf("the menu key opened %T", g.stack[len(g.stack)-1])
+	}
+	var got []string
+	for _, it := range l.menu.items {
+		if it.heading {
+			got = append(got, "#"+it.label)
+		} else {
+			got = append(got, it.label)
+		}
+	}
+	want := "#War 0|Attack|Rest|#Castle|Storm|Menu|Next month"
+	if s := strings.Join(got, "|"); s != want {
+		t.Fatalf("rows %s, want %s", s, want)
+	}
+	if !l.menu.pin || l.menu.sel != 1 {
+		t.Errorf("pin %v, cursor %d; want pinned, on Attack", l.menu.pin, l.menu.sel)
+	}
+	wldFramesDrawn(t, g, 2)
+	wldPlay(t, g, "press up\nwait 4\npress ok\nwait 30\n", 200)
+	if turn := data.Turn(g.db, g.st.Campaign()); turn != 2 {
+		t.Errorf("choosing the pinned row left turn %d, want 2", turn)
 	}
 }

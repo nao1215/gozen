@@ -1,5 +1,6 @@
 Action:
   _: "Something the player can do at a location, such as searching a chest or resting at an inn."
+  group: "The heading the action is listed under in the place's list. Entries of one group are listed together under it, the groups in the order first met. Expressions in braces are expanded. Omitted: no heading."
   do: "The commands that run when the player picks this action."
   id: "A stable ID for the action that does not depend on its label."
   label: "The text shown for this action in the location menu."
@@ -192,6 +193,7 @@ Class:
   tree: "The skill tree: skills and passive nodes raised with SP, each opening once the nodes it requires are raised far enough."
 Campaign:
   _: "game.yaml's campaign: a game of regions held by factions over turns (ADR 0030). Its state is in variables with generated names."
+  pin_end_turn: "Keep the end of the turn in the last row of the place's list, below the rows that scroll, so it shows however long the list is. Off by default."
   actions: "An expression for how many orders a turn has, worked out at the start of each turn. It may read only region, faction, campaign and generals. Default 1."
   calendar: "How the turns are named: omitted (turn N) or week (a turn is a week of a 52-week year; campaign.week and campaign.year)."
   clash: "How a march is decided."

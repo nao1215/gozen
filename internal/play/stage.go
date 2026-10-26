@@ -591,6 +591,7 @@ func (s *stageScene) draw(g *Game, dst *ebiten.Image) {
 type entryList struct {
 	take    func(*Game, world.Entry)
 	entries []world.Entry
+	rows    []int // the entry of each row of menu, -1 for a group's heading
 	menu    *list
 }
 
@@ -598,6 +599,43 @@ func newStageList(g *Game, s *stageScene) *entryList { return newEntryList(g, s.
 
 func newEntryList(g *Game, take func(*Game, world.Entry)) *entryList {
 	return newEntryListOf(g, take, nil)
+}
+
+// entryGroup is the heading an entry is listed under (its action's group), "" for none.
+func entryGroup(e world.Entry) string {
+	if e.Action != nil {
+		return e.Action.Group
+	}
+	return ""
+}
+
+// groupEntries lists the entries of one group together, the groups in the order each is
+// first met, a heading row (-1) before each group that has a name. The entries keep their
+// order when none has a group. pinned is an entry kept apart at the end (-1 for none).
+func groupEntries(entries []world.Entry, pinned int) (rows []int, heads []string) {
+	var order []string
+	byGroup := map[string][]int{}
+	for i, e := range entries {
+		if i == pinned {
+			continue
+		}
+		k := entryGroup(e)
+		if _, ok := byGroup[k]; !ok {
+			order = append(order, k)
+		}
+		byGroup[k] = append(byGroup[k], i)
+	}
+	for _, k := range order {
+		if k != "" {
+			rows = append(rows, -1)
+			heads = append(heads, k)
+		}
+		rows = append(rows, byGroup[k]...)
+	}
+	if pinned >= 0 {
+		rows = append(rows, pinned)
+	}
+	return rows, heads
 }
 
 // newEntryListOf is the list of the entries keep lets in (all of them when nil).
@@ -608,8 +646,24 @@ func newEntryListOf(g *Game, take func(*Game, world.Entry), keep func(world.Entr
 			l.entries = append(l.entries, e)
 		}
 	}
+	pinned := -1
+	if c := g.db.Game.Campaign; c != nil && c.PinEndTurn && c.Location == g.st.Location {
+		for i, e := range l.entries {
+			if e.Action != nil && e.Action.ID == "end_turn" {
+				pinned = i
+			}
+		}
+	}
+	rows, heads := groupEntries(l.entries, pinned)
+	l.rows = rows
 	var items []listItem
-	for _, e := range l.entries {
+	for _, r := range rows {
+		if r < 0 {
+			items = append(items, listItem{label: data.Render(heads[0], g.st.Env()), heading: true})
+			heads = heads[1:]
+			continue
+		}
+		e := l.entries[r]
 		it := listItem{label: e.Label}
 		switch e.Kind {
 		case world.Talk:
@@ -624,6 +678,7 @@ func newEntryListOf(g *Game, take func(*Game, world.Entry), keep func(world.Entr
 	}
 	_, sh := g.screen()
 	l.menu = newList(items, 36, 110, 470, int((sh-260)/44))
+	l.menu.pin = pinned >= 0
 	return l
 }
 
@@ -635,7 +690,7 @@ func (l *entryList) update(g *Game) {
 	case cancel:
 		g.pop()
 	case chose:
-		e := l.entries[l.menu.sel]
+		e := l.entries[l.rows[l.menu.sel]]
 		g.pop()
 		l.take(g, e)
 	}

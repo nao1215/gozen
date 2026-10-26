@@ -18,6 +18,19 @@ campaign:
   labels: {wealth: Treasury, food: Granary}
 ```
 
+## Arrange the order list
+
+An order's `group` (and a location action's `group`) lists it under a heading in the place's list; the entries of one group stand together. `campaign.pin_end_turn: true` keeps the end of the turn in the last row, below the rows that scroll.
+
+<!-- verify: parse fragment of the campaign section of game.yaml -->
+```yaml
+campaign:
+  pin_end_turn: true
+  orders:
+    raid: {label: Raid, group: Abroad, target: border}
+    farm: {label: Farm, group: Castle}
+```
+
 ## Measure before tuning
 
 - `gozen sim campaign GAME` plays 200 campaigns (`-n`, `--seed`) with `--as greedy|random|ai` and prints win rate, turns, regions held turn by turn and orders given. `--tactic ID` marches every general with one tactic.

@@ -129,6 +129,9 @@ type Campaign struct {
 	Defeat Defeat `yaml:"defeat"`
 	// EndTurn is the label of the entry that ends the turn (the engine's words when empty).
 	EndTurn string `yaml:"end_turn"`
+	// PinEndTurn keeps the end of the turn in the last row of the place's list, below the
+	// rows that scroll, so it shows however long the list is.
+	PinEndTurn bool `yaml:"pin_end_turn"`
 	// Generals are the actors who lead the player's marches, with their first troops.
 	// One serves once they have joined.
 	Generals map[string]General `yaml:"generals"`
@@ -285,6 +288,9 @@ var builtinTactics = map[string]*ClashTactic{
 // region, and runs its do with them bound (general and target in expressions and set).
 type Order struct {
 	Label string `yaml:"label"`
+	// Group is the heading the order is listed under in the place's list (orders and
+	// actions of one group are listed together under it; none: no heading).
+	Group string `yaml:"group"`
 	// Cost is the actions it takes (1 when unset).
 	Cost *int `yaml:"cost"`
 	// When must hold for the order to be listed.
