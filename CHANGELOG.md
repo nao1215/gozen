@@ -8,6 +8,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - Refuse development `set` of `pos.x` and `pos.y` outside a dungeon; the position was kept in memory but dropped when the save was loaded.
 - Stop reporting a condition such as `pow(a * 0, -1) > 0` as never holding in the trial build's range check, which treated a zero as -0 only, while `pow` gives +Inf for 0 and -Inf for -0.
 - Refresh the bundled agent skill for v0.11.0: split novel, map, campaign, battle, puppet, monster, stacked-space and release guidance into references and keep the entry page short.
+- Add the `reset_actor` event command, with optional `level`, to put an actor back to the starting state of the actors file (level, experience, learnt skills, skill tree and SP, HP, MP and states) while keeping equipment, name, row and party membership.
 
 ## v0.11.0 - 2026-10-26
 

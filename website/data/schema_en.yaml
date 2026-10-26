@@ -164,6 +164,7 @@ cells:
   "省略可。許可する動詞は choice": "optional; only with choice"
   "省略可。許可する動詞は dive": "optional; only with dive"
   "省略可。許可する動詞は use": "optional; only with use"
+  "省略可。許可する動詞は reset_actor": "optional; only with reset_actor"
   "省略可。許可する動詞は if": "optional; only with if"
   "省略可。許可する動詞は move,dive": "optional; only with move, dive"
   "省略時は従来のフラグまたはイベントと題名によるキー": "if omitted, a key from the legacy flag or the event and title"

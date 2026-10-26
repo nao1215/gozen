@@ -347,7 +347,21 @@ actors:
   ione: {name: Ione, class: scholar}
 ```
 
-Experience comes from enemies' `exp` and the `exp` command; `learn` teaches a skill at any time. A class `tree` adds a skill tree paid with SP. Reference: [Class](/schema/#class), [Learning](/schema/#learning), [Skill](/schema/#skill).
+Experience comes from enemies' `exp` and the `exp` command; `learn` teaches a skill at any time. A class `tree` adds a skill tree paid with SP.
+
+`reset_actor` puts one actor back to the start, for a new game plus where only some companions begin again. It resets the level, experience, learnt skills, skill tree and SP, restores HP and MP and clears states. Equipment, the name, the row and whether the actor has joined stay. Add `level` to start from another level (1 to the class's max); without it the level in the actors file is used. An unknown actor ID is a `gozen check` error, and an actor who has not joined yet is already at the start.
+
+<!-- verify: load group=growth -->
+```yaml
+events:
+  new_game_plus:
+    do:
+      - reset_actor: ione
+      - reset_actor: ione
+        level: 5
+```
+
+Reference: [Class](/schema/#class), [Learning](/schema/#learning), [Skill](/schema/#skill), [Command](/schema/#command).
 
 ## Make items and equipment
 

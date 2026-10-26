@@ -101,8 +101,13 @@ type Command struct {
 	Learn  *Learn `yaml:"learn" command:"verb"`
 	// ResetTree gives back the skill points put into the skill tree of an actor (an id, or
 	// "all" for everyone who has joined): to raise it again another way.
-	ResetTree string    `yaml:"reset_tree" command:"verb"`
-	Effect    EffectCue `yaml:"effect" command:"verb"`
+	ResetTree string `yaml:"reset_tree" command:"verb"`
+	// ResetActor puts an actor back to the starting state the actors file gives: level, exp,
+	// skills learnt, skill tree and SP, HP, MP and states (an id). Joined or not, equipment
+	// and the name stay. Level sets the level it starts from (default: the actor's own level).
+	ResetActor string    `yaml:"reset_actor" command:"verb"`
+	Level      int       `yaml:"level" command:"reset_actor"`
+	Effect     EffectCue `yaml:"effect" command:"verb"`
 	// Stand brings a portrait onto the stage of the novel window or takes it off
 	// (schema_version 4, ADR 0028).
 	Stand *Stand `yaml:"stand" command:"verb"`

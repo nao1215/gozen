@@ -48,9 +48,25 @@ type Actor struct {
 // starting equipment.
 func NewActor(db *data.DB, id string) *Actor {
 	d := db.Actors[id]
-	a := &Actor{ID: id, Level: d.Level, Back: d.Back, Equip: map[string]string{}, States: map[string]int{}, Tactics: &ActorTactics{Version: TacticsVersion, Mode: TacticsAuto}, db: db}
+	a := &Actor{ID: id, Back: d.Back, Equip: map[string]string{}, Tactics: &ActorTactics{Version: TacticsVersion, Mode: TacticsAuto}, db: db}
 	maps.Copy(a.Equip, d.Equip)
+	a.Reset(d.Level)
+	return a
+}
+
+// Reset puts the actor back to the starting state of their data at the level (the data's
+// own level when level is 0): exp, skills learnt, skill tree and SP, states, and HP and MP
+// full. Equipment, row, name and tactics stay.
+func (a *Actor) Reset(level int) {
+	d := a.Def()
+	if level <= 0 {
+		level = d.Level
+	}
+	a.Level = level
 	a.Exp = a.ExpFor(a.Level)
+	a.Learnt = nil
+	a.States = map[string]int{}
+	a.SP = 0
 	a.Tree = map[string]int{}
 	if c := a.Class(); c != nil {
 		a.SP = c.StartSP + c.SP*(a.Level-1)
@@ -61,7 +77,6 @@ func NewActor(db *data.DB, id string) *Actor {
 		}
 	}
 	a.HP, a.MP = a.Stat("mhp"), a.Stat("mmp")
-	return a
 }
 
 func (a *Actor) bind(db *data.DB) {

@@ -28,7 +28,7 @@ var commandExamples = map[string]string{
 	"move": `move: deep`, "music": `music: ""`, "mood": `mood: calm`, "image": `image: ""`,
 	"shop": `shop: store`, "call": `call: sub`, "wait": `wait: 1`, "notice": `notice: hi`,
 	"sfx": `sfx: decide`, "exp": `exp: 0`, "learn": `learn: {actor: scout, skill: fire}`,
-	"reset_tree": `reset_tree: all`, "effect": `effect: fade`, "stand": `stand: none`, "end": `end: true`,
+	"reset_tree": `reset_tree: all`, "reset_actor": `reset_actor: scout`, "effect": `effect: fade`, "stand": `stand: none`, "end": `end: true`,
 	"clear": `clear: true`, "save": `save: true`, "open": `open: skills`,
 	"dive": `dive: deep`, "open_wall": `open_wall: S`,
 	"stone_suggest": `stone_suggest: offer`, "stone_apply": `stone_apply: offer`,
@@ -63,6 +63,7 @@ func TestCommandFieldMatrix(t *testing.T) {
 		{"facing", "move,dive", []string{`north`, `""`}},
 		{"floor", "dive", []string{`1`, `0`}},
 		{"target", "use", []string{`scout`, `""`}},
+		{"level", "reset_actor", []string{`2`}},
 	}
 	for f := range reflect.TypeFor[data.Command]().Fields() {
 		role := f.Tag.Get("command")

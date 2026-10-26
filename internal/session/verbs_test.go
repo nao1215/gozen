@@ -180,3 +180,39 @@ func TestActTakesTheMove(t *testing.T) {
 		t.Error("an unknown skill passed the check")
 	}
 }
+
+// TestResetActorInASession: reset_actor leaves the same start state through a play
+// session as through the headless driver, also after a save and restore.
+func TestResetActorInASession(t *testing.T) {
+	g, err := gozen.Load(trail, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := session(t, g, gozen.Config{Seed: 1})
+	if err := s.Do(t.Context(), "- exp: 500\n- hurt: {who: walker, amount: '5'}\n- reset_actor: walker\n  level: 3\n"); err != nil {
+		t.Fatal(err)
+	}
+	want := func(s *gozen.Session, level, exp, hp int) {
+		t.Helper()
+		if got := [3]int{query[int](t, s, "actor.walker.level"), query[int](t, s, "actor.walker.exp"), query[int](t, s, "actor.walker.hp")}; got != [3]int{level, exp, hp} {
+			t.Errorf("level, exp, hp %v, want %v", got, [3]int{level, exp, hp})
+		}
+	}
+	want(s, 3, 60, 35)
+	if err := s.Do(t.Context(), "- exp: 500\n- reset_actor: walker\n"); err != nil {
+		t.Fatal(err)
+	}
+	want(s, 1, 0, 25)
+	save, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := gozen.Restore(g, save, gozen.Config{Seed: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want(restored, 1, 0, 25)
+	if err := s.Do(t.Context(), "- reset_actor: nobody\n"); err == nil {
+		t.Error("an unknown actor must be refused")
+	}
+}

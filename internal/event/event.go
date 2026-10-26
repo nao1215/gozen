@@ -1023,6 +1023,10 @@ func (r *Runner) run(c *data.Command) Request {
 				a.ResetTree()
 			}
 		}
+	case "reset_actor":
+		if a := r.st.Actors[c.ResetActor]; a != nil {
+			a.Reset(c.Level)
+		}
 	case "end":
 		r.stack = nil
 	case "clear":
