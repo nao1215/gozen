@@ -103,10 +103,13 @@ func (g *Game) drawMeterRow(dst *ebiten.Image, m *gamedata.Meter, x, y, w float6
 	rw := gfx.TextWidth(right, size)
 	bw := max(20, w-(bx-x)-rw-12)
 	bar(dst, bx, y+8, bw, 10, v/mx, c)
-	for _, k := range m.Marks {
+	for i, k := range m.Marks {
 		if k > 0 && k < mx {
 			mxp := float32(bx + bw*k/mx)
 			gfx.FillRoundRect(dst, mxp-1, float32(y+4), 2, 18, 1, color.NRGBA{0xff, 0xff, 0xff, 0xc0})
+			if i < len(m.MarkLabels) && m.MarkLabels[i] != "" {
+				gfx.DrawText(dst, m.MarkLabels[i], float64(mxp), y+21, size*0.6, g.th.dim)
+			}
 		}
 	}
 	gfx.DrawTextRight(dst, right, x+w, y, size, rc)

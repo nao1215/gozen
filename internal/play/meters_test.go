@@ -10,7 +10,7 @@ import (
 
 const btlMeters = `
 meters:
-  - {label: Energy, value: "var.energy", max: 10, marks: [3, 20], color: "#44aa44"}
+  - {label: Energy, value: "var.energy", max: 10, marks: [3, 20], mark_labels: [Low], color: "#44aa44"}
   - {label: Charge, value: "var.charge", max_value: "var.cap", full: READY, full_color: "#ffcc00"}
   - {label: Secret, value: "var.energy", when: "flag.show", actor: scout}
 `
@@ -51,6 +51,9 @@ func TestMeterValuesAreClampedAndDrawn(t *testing.T) {
 	g.st.Vars["charge"] = 6.0
 	g.st.Vars["cap"] = 6.0
 	ms := g.shownMeters("", false)
+	if got := ms[0].MarkLabels; len(got) != 1 || got[0] != "Low" {
+		t.Fatalf("mark labels %v", got)
+	}
 	if v, mx := g.meterValue(ms[0]); v != 4 || mx != 10 {
 		t.Fatalf("energy %v/%v", v, mx)
 	}

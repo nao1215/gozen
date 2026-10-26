@@ -491,6 +491,9 @@ func (db *DB) Check() []error {
 			_, ok := db.Actors[m.Actor]
 			c.ref(w+".actor", "actor", m.Actor, ok)
 		}
+		if len(m.MarkLabels) > len(m.Marks) {
+			c.errorf(diag.Shape, w+".mark_labels", "%d labels for %d marks", len(m.MarkLabels), len(m.Marks))
+		}
 		switch m.Style {
 		case "", "bar", "number":
 		default:

@@ -297,6 +297,8 @@ type Meter struct {
 	Actor     string `yaml:"actor"`
 	// Marks are values marked on the bar (where something becomes possible).
 	Marks []float64 `yaml:"marks"`
+	// MarkLabels name the marks, in their order (a short word under each line).
+	MarkLabels []string `yaml:"mark_labels"`
 	// Style is how the meter shows: bar (the default) or number (the label and the
 	// value only, not capped by max: money, a count).
 	Style string `yaml:"style"`

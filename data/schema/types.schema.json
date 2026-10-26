@@ -10807,6 +10807,25 @@
           },
           "x-type": "string"
         },
+        "mark_labels": {
+          "description": "Short names of the marks, in their order, drawn small under each line (such as the value where trouble starts). At most one per mark.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
         "marks": {
           "description": "Values marked on the bar, for example where something becomes possible.",
           "items": {

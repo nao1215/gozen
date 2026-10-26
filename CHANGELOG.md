@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add meter `mark_labels` to name the marks on a bar with a short word under each line.
 - Add opt-in map `talk: dim` or `talk: hide` to darken the map, or also hide its markers, flags and name plates, while a conversation that is not the map's own question runs.
 - Add opt-in map `safe_area` to fit the picture inside the screen less the edges kept for the windows over it, the camera bringing any part of it there; narrow the generals' window of a campaign's map so it no longer covers the camera buttons when many generals have joined.
 - Add `campaign.heading`, a text with expressions that replaces the turn's words in the band over a campaign's map (such as `"Year {var.year}, month {var.month}"`); the default band is unchanged.
