@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Keep a campaign map's region window off the region it describes and mark the chosen region with a ring in the cursor colour; on opening, the window could cover the chosen region while the capital's ring looked like the cursor.
 - Hide the tactic explanation appended to battle action messages when `ui.battle_ai_history` is false; the history it pointed to was already hidden, so the bracketed rule text only cluttered the message.
 
 ## v0.12.0 - 2026-10-26

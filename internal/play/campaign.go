@@ -276,14 +276,15 @@ func (s *atlasScene) drawCampaign(g *Game, dst *ebiten.Image, sel string) {
 	// the meters at the top right, the region chosen at the top left
 	g.drawMeters(dst, g.shownMeters("", false), sw-296, 96, 260)
 	if sel != "" && g.db.Regions[sel] != nil {
-		s.drawRegionWindow(g, dst, sel, 36, 96)
+		s.drawSelectionRing(g, dst, sel)
+		s.drawRegionWindow(g, dst, sel)
 	}
 	// the generals who have joined, with their troops
 	s.drawGenerals(g, dst, sw, sh)
 }
 
-// drawRegionWindow is the window of a region: name, owner, garrison and values.
-func (s *atlasScene) drawRegionWindow(g *Game, dst *ebiten.Image, id string, x, y float64) {
+// regionLines are the lines of a region's window under its name: owner, garrison and values.
+func regionLines(g *Game, id string) []string {
 	cs := g.st.Campaign()
 	owner := data.RegionOwner(g.db, cs, id)
 	lines := []string{
@@ -297,12 +298,68 @@ func (s *atlasScene) drawRegionWindow(g *Game, dst *ebiten.Image, id string, x, 
 		}
 		lines = append(lines, fmt.Sprintf("%s　%s", label, expr.Format(data.RegionValue(g.db, cs, id, v))))
 	}
-	h := 70 + float64(len(lines))*gfx.LineHeight(sizeS)
-	g.window(dst, x, y, 300, h)
+	return lines
+}
+
+// regionWindowBox is where the window of the region id goes: at the top left, unless the
+// region's own point lies under it; then at the right under the meters, else at the bottom
+// left, whichever covers the point least. The window never hides the region it tells.
+func (s *atlasScene) regionWindowBox(g *Game, id string) plateBox {
+	sw, sh := g.screen()
+	w, h := 300.0, 70+float64(len(regionLines(g, id)))*gfx.LineHeight(sizeS)
+	i := s.pointIndex(id)
+	if i < 0 {
+		return plateBox{x: 36, y: 96, w: w, h: h}
+	}
+	px, py := s.screen(g, s.points[i].at)
+	// the point with its flag and plate around it
+	mark := plateBox{x: px - 80, y: py - 110, w: 160, h: 160}
+	top := 96.0
+	if mh := g.metersHeight(); mh > 0 {
+		top += mh + 16
+	}
+	tries := []plateBox{
+		{x: 36, y: 96, w: w, h: h},
+		{x: sw - 36 - w, y: top, w: w, h: h},
+		{x: 36, y: sh - 150 - h, w: w, h: h},
+	}
+	best, least := tries[0], math.Inf(1)
+	for _, t := range tries {
+		t.y = math.Max(4, math.Min(sh-4-t.h, t.y))
+		if o := t.overlap(mark); o < least {
+			best, least = t, o
+		}
+		if least == 0 {
+			break
+		}
+	}
+	return best
+}
+
+// drawSelectionRing marks the region chosen on the map: a ring in the cursor's colour round
+// its point, breathing slowly, so the window's region is the one the eye finds.
+func (s *atlasScene) drawSelectionRing(g *Game, dst *ebiten.Image, id string) {
+	i := s.pointIndex(id)
+	if i < 0 || !s.cameraPointVisible(g, s.points[i].at) {
+		return
+	}
+	px, py := s.screen(g, s.points[i].at)
+	_, sh := g.screen()
+	r := float32(markerHeight * sh * 0.55 * (1 + 0.08*math.Sin(float64(g.tick)/12)))
+	gfx.StrokeCircle(dst, float32(px), float32(py), r+2, 6, withAlpha(colorShadowNRGBA, 150), true)
+	gfx.StrokeCircle(dst, float32(px), float32(py), r, 4, g.th.cursor, true)
+}
+
+// drawRegionWindow is the window of a region: name, owner, garrison and values.
+func (s *atlasScene) drawRegionWindow(g *Game, dst *ebiten.Image, id string) {
+	b := s.regionWindowBox(g, id)
+	x, y := b.x, b.y
+	owner := data.RegionOwner(g.db, g.st.Campaign(), id)
+	g.window(dst, x, y, b.w, b.h)
 	gfx.FillRoundRect(dst, float32(x+22), float32(y+24), 18, 18, 4, factionColor(g, owner))
 	g.text(dst, data.RegionName(g.db, id), x+50, y+16, sizeM, g.th.accent)
 	ly := y + 56
-	for _, l := range lines {
+	for _, l := range regionLines(g, id) {
 		g.text(dst, l, x+24, ly, sizeS, g.th.text)
 		ly += gfx.LineHeight(sizeS)
 	}
