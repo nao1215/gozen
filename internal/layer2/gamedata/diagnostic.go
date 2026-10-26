@@ -94,10 +94,14 @@ type sourceDocument struct {
 	root       ast.Node
 	positions  map[string]sourcePosition
 	tokenPaths map[*token.Token]string
+	// bareKeys holds the paths whose key is written as a number, a boolean or null
+	// rather than a string (0: rather than '0':). The decoder converts such a key to a
+	// string for a map, but silently skips the whole struct that holds one.
+	bareKeys map[string]bool
 }
 
 func (db *DB) readSource(b []byte, name string) (*sourceDocument, error) {
-	doc := &sourceDocument{name: name, positions: map[string]sourcePosition{}, tokenPaths: map[*token.Token]string{}}
+	doc := &sourceDocument{name: name, positions: map[string]sourcePosition{}, tokenPaths: map[*token.Token]string{}, bareKeys: map[string]bool{}}
 	parsed, err := parser.ParseBytes(b, 0, parser.AllowDuplicateMapKey())
 	if err != nil {
 		return nil, doc.yamlError(err)
@@ -158,6 +162,10 @@ func (db *DB) readSource(b []byte, name string) (*sourceDocument, error) {
 				p := numberPath(where, key)
 				doc.positions[p] = nodePosition(name, entry.Key.GetToken())
 				doc.tokenPaths[entry.Key.GetToken()] = p
+				switch entry.Key.(type) {
+				case *ast.IntegerNode, *ast.FloatNode, *ast.BoolNode, *ast.NullNode, *ast.InfinityNode, *ast.NanNode:
+					doc.bareKeys[p] = true
+				}
 				walk(entry.Value, p)
 			}
 		case *ast.SequenceNode:

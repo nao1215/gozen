@@ -74,6 +74,12 @@ func (doc *sourceDocument) definitionShape(raw any, typ reflect.Type, where stri
 		fields := definitionFields(typ)
 		for _, it := range m {
 			key := fmt.Sprint(it.Key)
+			// A field name is a string. The decoder would skip the whole definition
+			// without a word, even in strict mode, and it would load as empty.
+			if doc.bareKeys[doc.logicalPath(numberPath(where, key))] {
+				errs = append(errs, coded(doc.diagnostic(numberPath(where, key), fmt.Sprintf("unknown field %q", key)), diag.Shape))
+				continue
+			}
 			// A number whose contract is fixed at this stage is not filled in as omitted when an explicit null is given.
 			if it.Value == nil && ((typ == reflect.TypeFor[BattleCfg]() && (key == "variance" || key == "critical_rate" || key == "guard_rate" || key == "front_weight" || key == "back_weight")) || (typ == reflect.TypeFor[Music]() && key == "volume")) {
 				errs = append(errs, coded(doc.diagnostic(numberPath(where, key), "expected a number, got null"), diag.Shape))
@@ -285,7 +291,7 @@ func (doc *sourceDocument) decodeDefinitions(into any) (yaml.MapSlice, error) {
 		return nil, doc.definitionDecodeError(doc.root, typ, where, err)
 	}
 	// Keep only positions, so the parse tree is not held while the game runs.
-	doc.root, doc.tokenPaths = nil, nil
+	doc.root, doc.tokenPaths, doc.bareKeys = nil, nil, nil
 	mapping, ok := raw.(yaml.MapSlice)
 	if !ok {
 		return nil, errors.New("definition root must be a mapping")

@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Report a definition key written as a number, boolean or null (such as `0:`) as an unknown field; the definition holding it was silently loaded as empty and could crash loading.
+
 ## v0.11.0 - 2026-10-26
 
 Use high-resolution portraits, hide closed map points, and name campaign region values.

@@ -55,6 +55,9 @@ func TestSemanticDiagnosticLocations(t *testing.T) {
 	})
 	for _, tc := range []struct{ name, src, want string }{
 		{"未知の項目", "events:\n  sample:\n    doo: []\n", "data/z.yaml:3:5: events.sample.doo: unknown field"},
+		// The decoder skips a whole definition with a key that is not a string, without an error.
+		{"数の項目名", "events:\n  sample:\n    0: 1\n    do: []\n", "data/z.yaml:3:5: events.sample.0: unknown field \"0\""},
+		{"最上位の真偽値の項目名", "true: 1\nevents:\n  sample: {do: []}\n", "data/z.yaml:1:1: true: unknown field \"true\""},
 		{"式の構文", "events:\n  sample:\n    do:\n      - if: '1 +'\n        then: []\n", "data/z.yaml:4:13: events.sample.do[0].if: \"1 +\": unexpected end"},
 		{"独自の型のエラー", "events:\n  sample:\n    do:\n      - image:\n          file: picture.png\n          tint: wrong\n", "data/z.yaml:6:17: events.sample.do[0].image.tint: color"},
 		{"空の定義", "items:\n  sample: null\n", "data/z.yaml:2:3: items.sample: expected"},
