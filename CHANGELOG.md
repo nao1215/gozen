@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Show in a campaign map's region window only the values the region declares or the play has set; a value written on one region showed as a zero on all the others.
 - Keep a campaign map's region window off the generals' window and the camera buttons too; placed under the meters, its last lines could fall behind the generals.
 - Add opt-in `campaign.sortie` with `background` and `title` to put a picture behind the sortie screen and show its title in a window like the other windows.
 - Add map `camera.buttons: faint` (see-through until the pointer is over them) and `hidden` (keys, wheel and pad only) for the camera's on-screen buttons.

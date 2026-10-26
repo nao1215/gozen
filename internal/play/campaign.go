@@ -305,6 +305,10 @@ func regionLines(g *Game, id string) []string {
 		fmt.Sprintf(lang.T("兵　%d"), int(data.Garrison(g.db, cs, id))),
 	}
 	for _, v := range data.ValueNames(g.db) {
+		// a value only some regions hold is not shown as a zero on the others
+		if !data.HasRegionValue(g.db, cs, id, v) {
+			continue
+		}
 		label := v
 		if cp := g.db.Game.Campaign; cp != nil && cp.Labels[v] != "" {
 			label = cp.Labels[v]

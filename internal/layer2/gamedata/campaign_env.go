@@ -114,6 +114,19 @@ func RegionValue(db *DB, st CampaignState, id, name string) float64 {
 	return r.Values[name]
 }
 
+// HasRegionValue reports whether the region holds the value: it declares it, or the play has set it.
+func HasRegionValue(db *DB, st CampaignState, id, name string) bool {
+	if _, ok := st.Var(RegionVar(id, name)); ok {
+		return true
+	}
+	r := db.Regions[id]
+	if r == nil {
+		return false
+	}
+	_, ok := r.Values[name]
+	return ok
+}
+
 // GeneralTroops is the troops a general leads now.
 func GeneralTroops(db *DB, st CampaignState, id string) float64 {
 	if v, ok := st.Var(GeneralVar(id, "troops")); ok {
