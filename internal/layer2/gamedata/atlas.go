@@ -40,6 +40,10 @@ type Atlas struct {
 	// roads, the lines of all the roads). draw_roads is not read on a campaign's map.
 	RegionRoads   string `yaml:"region_roads"`
 	RegionBorders string `yaml:"region_borders"`
+	// Talk is how the map shows under a conversation that is not its own question (a
+	// region's orders): as it is (the default), dim (darkened) or hide (darkened, without
+	// the marks, the flags and the name plates).
+	Talk string `yaml:"talk"`
 	// LabelSize is the text height of the points' name plates, a fraction of the screen's
 	// height (0.03 when 0).
 	LabelSize float64 `yaml:"label_size"`
@@ -254,6 +258,11 @@ func (c *checker) atlas(w, id string, l *Location) {
 	case "", "hidden", "dim", "mark", "named":
 	default:
 		c.errorf(diag.NotAWord, w+".unknown", "want hidden, dim, mark or named, not %q", a.Unknown)
+	}
+	switch a.Talk {
+	case "", "dim", "hide":
+	default:
+		c.errorf(diag.NotAWord, w+".talk", "want dim or hide, not %q", a.Talk)
 	}
 	for name, v := range map[string]string{"region_roads": a.RegionRoads, "region_borders": a.RegionBorders} {
 		switch v {

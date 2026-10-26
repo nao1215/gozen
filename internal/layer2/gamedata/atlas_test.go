@@ -37,6 +37,20 @@ func TestAtlasSafeAreaValidation(t *testing.T) {
 	}
 }
 
+func TestAtlasTalkValidation(t *testing.T) {
+	for _, value := range []string{"dim", "hide", "fade"} {
+		_, files := scenesWith("    map:", "    map:\n      talk: "+value)
+		_, err := testgame.TryLoad(files)
+		if value == "fade" {
+			if err == nil || !strings.Contains(err.Error(), "want dim or hide") {
+				t.Fatalf("talk %s: %v", value, err)
+			}
+		} else if err != nil {
+			t.Fatalf("talk %s: %v", value, err)
+		}
+	}
+}
+
 func TestAtlasSelectionPanelValidation(t *testing.T) {
 	for _, fields := range []string{
 		"activation: instant\n      selection_panel: {}",

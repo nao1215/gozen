@@ -134,3 +134,30 @@ func TestCampaignSafeAreaAndGenerals(t *testing.T) {
 	}
 	wldFramesDrawn(t, g, 2)
 }
+
+// map.talk darkens the map under a conversation, but not under the map's own question of
+// a region's orders.
+func TestCampaignMapUnderTalk(t *testing.T) {
+	for _, view := range []string{"dim", "hide"} {
+		t.Run(view, func(t *testing.T) {
+			g, as := campaignOpen(t, map[string]string{"unknown: named": "unknown: named\n      talk: " + view})
+			g.events.Start([]data.Command{{Say: &data.Say{Text: "News from the border."}}})
+			wldFramesDrawn(t, g, 5)
+			if !g.talk.active || as.talkView(g) != view {
+				t.Fatalf("talk %v, view %q, want %q", g.talk.active, as.talkView(g), view)
+			}
+			wldUntil(t, g, 300, func() bool {
+				wldPlay(t, g, "press ok\nwait 10\n", 100)
+				return !g.talk.active
+			})
+			if g.talk.active {
+				t.Fatal("the line did not close")
+			}
+			wldPlay(t, g, "press ok\nwait 20\n", 100) // the region's orders
+			wldFramesDrawn(t, g, 2)
+			if !g.talk.active || as.talkView(g) != "" {
+				t.Fatalf("under the region's orders: talk %v, view %q, want none", g.talk.active, as.talkView(g))
+			}
+		})
+	}
+}

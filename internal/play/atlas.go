@@ -79,6 +79,8 @@ type atlasScene struct {
 	ground       map[string]*ebiten.Image // landmarks settled onto their terrain, by region
 	// warChosen: a campaign's map has chosen its first region
 	warChosen bool
+	// asking: the map's own question (a region's orders) and what it led to are running
+	asking bool
 
 	// the walk along the roads: the commands still to run, and the road being walked
 	queue  []data.Command
@@ -467,6 +469,8 @@ func (s *atlasScene) update(g *Game) {
 		g.events.Start([]data.Command{c})
 		return
 	}
+	// idle: what the map asked is over
+	s.asking = false
 	if s.dirty || s.age%60 == 0 { // the state changed (or a while passed): look again
 		s.refresh(g)
 		if s.sel < len(s.choices) && s.choices[s.sel].Point == s.here && !s.campaignMap(g) && s.location(g).Map.Activation != "instant" {
@@ -757,6 +761,14 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	toScreen := func(p geom.Pt) (float32, float32) {
 		return float32((ox + p.X*k) / u), float32((oy + p.Y*k) / u)
 	}
+	talk := s.talkView(g)
+	if talk != "" {
+		defer fill(dst, color.NRGBA{0, 0, 0, 0x90})
+	}
+	if talk == "hide" { // the picture only
+		s.layoutPoints(g, nil)
+		return
+	}
 	if s.campaignMap(g) {
 		sel := ""
 		if !s.walking() && s.sel < len(s.choices) && !g.busy() {
@@ -818,6 +830,15 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	}
 	g.text(dst, lang.T("方向：選ぶ　決定：進む　メニュー：一覧"), 36, sh-40, sizeS*0.8, withAlpha(g.th.text, 200))
 	s.drawSelectionPanel(g, dst)
+}
+
+// talkView is how the map shows now (map.talk): dim or hide while a conversation that is
+// not the map's own question runs, "" otherwise.
+func (s *atlasScene) talkView(g *Game) string {
+	if !g.talk.active || s.asking {
+		return ""
+	}
+	return s.location(g).Map.Talk
 }
 
 // layoutPoints shares marker and plate geometry between drawing and pointer input.

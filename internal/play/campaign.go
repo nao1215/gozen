@@ -87,12 +87,12 @@ func (s *atlasScene) regionOrders(g *Game, id string) {
 	prompt := campaign.TargetLabel(g.db, g.st, id)
 	if len(opts) == 0 {
 		g.events.Start([]data.Command{{Say: &data.Say{Text: prompt + "\n" + lang.T("ここに出せる命令はない")}}})
-		s.dirty = true
+		s.dirty, s.asking = true, true
 		return
 	}
 	opts = append(opts, data.ChoiceOption{Label: lang.T("やめる")})
 	g.events.Start([]data.Command{{Prompt: prompt, Choice: opts}})
-	s.dirty = true
+	s.dirty, s.asking = true, true
 	g.emit("region", traceLine{"location": s.loc, "region": id})
 }
 

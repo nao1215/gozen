@@ -846,6 +846,19 @@
           },
           "x-type": "[AtlasPanel](#atlaspanel)"
         },
+        "talk": {
+          "description": "How the map shows under a conversation that is not its own question (a region's orders): omitted (as it is), dim (darkened) or hide (darkened, without the markers, flags and name plates).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "string"
+        },
         "token": {
           "$ref": "#/$defs/Token",
           "description": "The piece that stands for the party on the map: a picture, the leader's face, or `doll` for the leader's doll.",
