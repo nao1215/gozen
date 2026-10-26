@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Refuse a save, with the reason, in the lines of an event after a battle, a shop, a screen or a move in it; the save kept the state without the rest of the event, which was lost on loading.
 - Stop `campaign.actions` from recursing without end when it reads `campaign.turn` (or any campaign field): the fields are worked out when read, and an expression that reads `campaign.actions` itself is reported by the check.
 - Add opt-in map `region_numbers: near` to show the garrison only on the plates of the region chosen and its neighbours on a campaign's map.
 - Add opt-in `campaign.order_view: icons` to offer a region's orders as a row of icon buttons over the bottom of the map (order `icon`; an order without one shows its label in a square; a wider gap between groups), and `campaign.end_turn_button` to stand a button that ends the turn on the map, pressed with a click, E or the pad's left face button, glowing when no actions are left.

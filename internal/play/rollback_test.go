@@ -161,3 +161,47 @@ func TestSaveInTheMiddleOfAnEvent(t *testing.T) {
 		t.Fatalf("after loading, rolling back reached %q", at(g))
 	}
 }
+
+// A save in the lines after a battle in the same event cannot hold where the event goes
+// on: it is refused with the reason instead of keeping the state without the event's rest.
+func TestSaveRefusedInTalkAfterABoundary(t *testing.T) {
+	g, _ := btlOpen(t, Options{Location: "field"}, "", `
+events:
+  fight_talk: {do: [{battle: one}, {say: {text: "Your reward."}}, {say: {text: "Here is the key."}}, {set: {flag.key: true}}]}
+`)
+	g.events.Start(g.db.Events["fight_talk"].Do)
+	for range 20000 {
+		if g.talk.active && g.currentBattle() == nil && len(g.stack) == 1 {
+			break
+		}
+		if s := g.currentBattle(); s != nil && s.phase == bpInput && s.target == nil && s.sub == nil {
+			btlKey(g, btnOK)
+			btlKey(g, btnOK)
+			continue
+		}
+		if s := g.currentBattle(); s != nil && s.phase == bpResult {
+			g.in.pressed[btnOK] = true
+			g.tick++
+			s.update(g)
+			g.in.pressed = [numButtons]bool{}
+		}
+		btlFrame(t, g)
+	}
+	if !g.talk.active || g.st.Flags["key"] {
+		t.Fatalf("not in the lines after the battle (talk %v, key %v)", g.talk.active, g.st.Flags["key"])
+	}
+	if g.saveBlocked() == "" {
+		t.Fatal("a save after the battle is not refused")
+	}
+	g.in.pressed[btnSave] = true
+	g.novelInput()
+	g.in.pressed = [numButtons]bool{}
+	m, ok := g.stack[len(g.stack)-1].(*saveMenu)
+	if !ok || m.msgT == 0 || m.msg != g.saveBlocked() {
+		t.Fatalf("the save button opened %T without the reason", g.stack[len(g.stack)-1])
+	}
+	btlKey(g, btnOK)
+	if g.storeHas(g.slotPath(0)) {
+		t.Fatal("a save was written that would lose the key")
+	}
+}

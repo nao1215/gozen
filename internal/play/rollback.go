@@ -8,6 +8,7 @@ import (
 	"github.com/nao1215/gozen/internal/event"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
+	lang "github.com/nao1215/gozen/internal/text"
 	"github.com/nao1215/gozen/internal/world"
 )
 
@@ -197,4 +198,14 @@ func (g *Game) resume(r *rpg.Resume) {
 	}
 	g.liveCatchUp(&fastTo{lines: c.Line, answers: c.Answers}, name, nil)
 	g.emit("resume", traceLine{"event": c.Event, "arrival": c.Arrival, "line": c.Line, "at": g.evLines})
+}
+
+// saveBlocked is why a save now is refused, "" when it is not: in the lines of an event
+// after a battle, a shop, a screen or a move, a save cannot hold where the event goes on
+// (the event cannot be read again up to that line), so it would lose the event's rest.
+func (g *Game) saveBlocked() string {
+	if g.events == nil || !g.events.Running() || !g.talk.active || !g.evNoBack || g.replaying {
+		return ""
+	}
+	return lang.T("この 会話の 途中では セーブ できない。会話が 終わってから セーブ しよう。")
 }
