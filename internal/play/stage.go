@@ -638,32 +638,27 @@ func groupEntries(entries []world.Entry, pinned int) (rows []int, heads []string
 	return rows, heads
 }
 
-// newEntryListOf is the list of the entries keep lets in (all of them when nil).
-func newEntryListOf(g *Game, take func(*Game, world.Entry), keep func(world.Entry) bool) *entryList {
-	l := &entryList{take: take}
-	for _, e := range world.Entries(g.db, g.st) {
-		if keep == nil || keep(e) {
-			l.entries = append(l.entries, e)
-		}
-	}
+// entryRows are the rows of a place's entries, the same on every kind of place: the
+// entries of one group together under its heading, the campaign's end of the turn pinned
+// last (campaign.pin_end_turn). rows maps each row to its entry (-1 for a heading); pin
+// tells the list to keep its last row apart.
+func entryRows(g *Game, entries []world.Entry) (items []listItem, rows []int, pin bool) {
 	pinned := -1
 	if c := g.db.Game.Campaign; c != nil && c.PinEndTurn && c.Location == g.st.Location {
-		for i, e := range l.entries {
+		for i, e := range entries {
 			if e.Action != nil && e.Action.ID == "end_turn" {
 				pinned = i
 			}
 		}
 	}
-	rows, heads := groupEntries(l.entries, pinned)
-	l.rows = rows
-	var items []listItem
+	rows, heads := groupEntries(entries, pinned)
 	for _, r := range rows {
 		if r < 0 {
-			items = append(items, listItem{label: data.Render(heads[0], g.st.Env()), heading: true})
+			items = append(items, listItem{label: data.Render(heads[0], g.viewEnv()), heading: true})
 			heads = heads[1:]
 			continue
 		}
-		e := l.entries[r]
+		e := entries[r]
 		it := listItem{label: e.Label}
 		switch e.Kind {
 		case world.Talk:
@@ -676,9 +671,22 @@ func newEntryListOf(g *Game, take func(*Game, world.Entry), keep func(world.Entr
 		}
 		items = append(items, it)
 	}
+	return items, rows, pinned >= 0
+}
+
+// newEntryListOf is the list of the entries keep lets in (all of them when nil).
+func newEntryListOf(g *Game, take func(*Game, world.Entry), keep func(world.Entry) bool) *entryList {
+	l := &entryList{take: take}
+	for _, e := range world.Entries(g.db, g.st) {
+		if keep == nil || keep(e) {
+			l.entries = append(l.entries, e)
+		}
+	}
+	items, rows, pin := entryRows(g, l.entries)
+	l.rows = rows
 	_, sh := g.screen()
 	l.menu = newList(items, 36, 110, 470, int((sh-260)/44))
-	l.menu.pin = pinned >= 0
+	l.menu.pin = pin
 	return l
 }
 
