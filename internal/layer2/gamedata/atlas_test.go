@@ -39,7 +39,7 @@ func TestAtlasSafeAreaValidation(t *testing.T) {
 
 func TestAtlasTalkValidation(t *testing.T) {
 	for _, value := range []string{"dim", "hide", "fade"} {
-		_, files := scenesWith("    map:", "    map:\n      talk: "+value)
+		_, files := scenesWith("    map:", "    map:\n      region_numbers: near\n      talk: "+value)
 		_, err := testgame.TryLoad(files)
 		if value == "fade" {
 			if err == nil || !strings.Contains(err.Error(), "want dim or hide") {
@@ -48,6 +48,13 @@ func TestAtlasTalkValidation(t *testing.T) {
 		} else if err != nil {
 			t.Fatalf("talk %s: %v", value, err)
 		}
+	}
+}
+
+func TestAtlasRegionNumbersValidation(t *testing.T) {
+	_, files := scenesWith("    map:", "    map:\n      region_numbers: few")
+	if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "want all or near") {
+		t.Fatalf("region_numbers: few: %v", err)
 	}
 }
 

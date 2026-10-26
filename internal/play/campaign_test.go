@@ -229,3 +229,21 @@ func TestCampaignRegionWindowKeepsOffTheGenerals(t *testing.T) {
 	}
 	wldFramesDrawn(t, g, 2)
 }
+
+// region_numbers: near shows the garrison on the plates of the region chosen and its
+// neighbours only; the others show their names, in the same place.
+func TestCampaignRegionNumbersNear(t *testing.T) {
+	g, as := campaignOpen(t, map[string]string{"unknown: named": "unknown: named\n      region_numbers: near"})
+	plate := func(id string) string {
+		p := as.points[as.pointIndex(id)]
+		return as.plateName(g, p, "keep")
+	}
+	if plate("home") != "Home" || plate("field") != "" || plate("keep") != "" {
+		t.Errorf("with keep chosen: home %q, field %q, keep %q; want only home short", plate("home"), plate("field"), plate("keep"))
+	}
+	wldFramesDrawn(t, g, 2)
+	g.db.Locations["war"].Map.RegionNumbers = ""
+	if plate("home") != "" {
+		t.Error("a plate is short without region_numbers")
+	}
+}

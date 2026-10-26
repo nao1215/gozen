@@ -1098,6 +1098,11 @@ func (s *atlasScene) drawPlate(g *Game, dst *ebiten.Image, p mapPoint, sel strin
 	if dst == nil {
 		return
 	}
+	if short := s.plateName(g, p, sel); short != "" { // the place keeps the full plate's room
+		name = short
+		dw := gfx.TextWidth(name, size) + size*1.1
+		box.x, box.w = box.x+(box.w-dw)/2, dw
+	}
 	bg, edge := withAlpha(plateBack, uint8(235*alpha)), withAlpha(g.th.border, uint8(200*alpha))
 	if p.id == sel {
 		bg, edge = withAlpha(g.th.window, 245), withAlpha(g.th.accent, 255)

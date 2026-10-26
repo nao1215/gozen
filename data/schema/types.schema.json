@@ -782,6 +782,19 @@
           },
           "x-type": "string"
         },
+        "region_numbers": {
+          "description": "Which regions' plates show their garrison on a campaign's map: all (the default) or near (the region chosen and its neighbours; the others show their names only, in the same place).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "string"
+        },
         "region_roads": {
           "description": "On a campaign's map, when the roads are shown: `selected` (the default, a thin arrow to each neighbour the region chosen can march on) or `always` (the lines of all the roads, as draw_roads does on other maps). draw_roads is not read on a campaign's map.",
           "type": "string",

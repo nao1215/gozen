@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add opt-in map `region_numbers: near` to show the garrison only on the plates of the region chosen and its neighbours on a campaign's map.
 - Add opt-in `campaign.order_view: icons` to offer a region's orders as a row of icon buttons over the bottom of the map (order `icon`; an order without one shows its label in a square; a wider gap between groups), and `campaign.end_turn_button` to stand a button that ends the turn on the map, pressed with a click, E or the pad's left face button, glowing when no actions are left.
 - Keep a map camera's picture over the whole screen, under the `safe_area` bands too, whenever its zoom lets it cover the screen; moving the camera to an edge showed black beyond the picture.
 - Add the puppet reaction `jiggle`, which bounces only the `soft_sway` regions and lets them settle, and `motion.talk.bounce` to play it as each line begins, for regions that should move now and then instead of with a constant idle swing.

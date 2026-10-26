@@ -250,6 +250,22 @@ func flagFill(c color.NRGBA) color.NRGBA {
 	return color.NRGBA{mix(c.R), mix(c.G), mix(c.B), c.A}
 }
 
+// plateName is a region's plate without its garrison when the map shows the numbers near
+// the region chosen only (region_numbers: near) and this one is neither it nor next to it;
+// "" keeps the plate as it is.
+func (s *atlasScene) plateName(g *Game, p mapPoint, sel string) string {
+	if s.location(g).Map.RegionNumbers != "near" || !s.regionPoint(g, p.id) || s.location(g).Map.Points[p.id].Label != "" {
+		return ""
+	}
+	if p.id == sel {
+		return ""
+	}
+	if r := g.db.Regions[sel]; r != nil && slices.Contains(r.Next, p.id) {
+		return ""
+	}
+	return data.RegionName(g.db, p.id)
+}
+
 // regionLabel is a region's plate when the map gives none: its name and garrison.
 func regionLabel(g *Game, id string) string {
 	return fmt.Sprintf("%s  %d", data.RegionName(g.db, id), int(data.Garrison(g.db, g.st.Campaign(), id)))

@@ -41,6 +41,10 @@ type Atlas struct {
 	// roads, the lines of all the roads). draw_roads is not read on a campaign's map.
 	RegionRoads   string `yaml:"region_roads"`
 	RegionBorders string `yaml:"region_borders"`
+	// RegionNumbers is which regions' plates show their garrison on a campaign's map:
+	// all (the default) or near (the region chosen and its neighbours; the others show
+	// their names only).
+	RegionNumbers string `yaml:"region_numbers"`
 	// Talk is how the map shows under a conversation that is not its own question (a
 	// region's orders): as it is (the default), dim (darkened) or hide (darkened, without
 	// the marks, the flags and the name plates).
@@ -267,6 +271,11 @@ func (c *checker) atlas(w, id string, l *Location) {
 	case "", "hidden", "dim", "mark", "named":
 	default:
 		c.errorf(diag.NotAWord, w+".unknown", "want hidden, dim, mark or named, not %q", a.Unknown)
+	}
+	switch a.RegionNumbers {
+	case "", "all", "near":
+	default:
+		c.errorf(diag.NotAWord, w+".region_numbers", "want all or near, not %q", a.RegionNumbers)
 	}
 	switch a.Talk {
 	case "", "dim", "hide":
