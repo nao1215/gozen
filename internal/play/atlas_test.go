@@ -710,3 +710,22 @@ func TestAtlasCameraButtonsShowing(t *testing.T) {
 		})
 	}
 }
+
+// However far a map's camera is moved, the screen's corners stay on the picture: with or
+// without a safe_area, and on a map of instant activation.
+func TestAtlasCameraCoversScreen(t *testing.T) {
+	for _, extra := range []string{"", "\n      safe_area: [0.1, 0.17, 0.08, 0]", "\n      activation: instant\n      safe_area: [0.1, 0.17, 0.08, 0]"} {
+		t.Run(strings.TrimSpace(extra), func(t *testing.T) {
+			fsys := atlasCameraFiles(t)
+			f := fsys["data/survey.yaml"]
+			f.Data = bytes.Replace(f.Data, []byte("max_zoom: 8}"), []byte("max_zoom: 8}"+extra), 1)
+			g := wldOpenWith(t, Options{FS: fsys, Location: "large", Seed: 1})
+			wldFrames(t, g, 5)
+			s, ok := g.stack[0].(*atlasScene)
+			if !ok {
+				t.Fatalf("scene %T", g.stack[0])
+			}
+			atlasCornersCovered(t, g, s)
+		})
+	}
+}

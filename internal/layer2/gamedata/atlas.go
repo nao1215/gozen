@@ -20,7 +20,8 @@ type Atlas struct {
 	Camera *AtlasCamera `yaml:"camera"`
 	// SafeArea keeps the picture inside the screen less its edges [top, right, bottom,
 	// left], fractions of the screen, where the windows over the map stand: the picture is
-	// fitted to the rest, and the camera brings any part of it there. Empty: the whole screen.
+	// fitted to the rest; zoomed in far enough, the camera keeps it over the whole screen.
+	// Empty: the whole screen.
 	SafeArea []float64 `yaml:"safe_area"`
 	// TravelSpeed is the map renderer's token speed in picture widths per second.
 	// Zero selects 0.12; explicit speeds must be finite and in [0.01, 2].
@@ -40,6 +41,10 @@ type Atlas struct {
 	// roads, the lines of all the roads). draw_roads is not read on a campaign's map.
 	RegionRoads   string `yaml:"region_roads"`
 	RegionBorders string `yaml:"region_borders"`
+	// RegionNumbers is which regions' plates show their garrison on a campaign's map:
+	// all (the default) or near (the region chosen and its neighbours; the others show
+	// their names only).
+	RegionNumbers string `yaml:"region_numbers"`
 	// Talk is how the map shows under a conversation that is not its own question (a
 	// region's orders): as it is (the default), dim (darkened) or hide (darkened, without
 	// the marks, the flags and the name plates).
@@ -266,6 +271,11 @@ func (c *checker) atlas(w, id string, l *Location) {
 	case "", "hidden", "dim", "mark", "named":
 	default:
 		c.errorf(diag.NotAWord, w+".unknown", "want hidden, dim, mark or named, not %q", a.Unknown)
+	}
+	switch a.RegionNumbers {
+	case "", "all", "near":
+	default:
+		c.errorf(diag.NotAWord, w+".region_numbers", "want all or near, not %q", a.RegionNumbers)
 	}
 	switch a.Talk {
 	case "", "dim", "hide":

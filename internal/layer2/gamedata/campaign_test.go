@@ -190,6 +190,20 @@ func TestCampaignSortieLook(t *testing.T) {
 	}
 }
 
+// TestCampaignOrderView: order_view takes list or icons, and the icons must exist.
+func TestCampaignOrderView(t *testing.T) {
+	for _, c := range []struct{ add, want string }{
+		{"  order_view: tiles\n", "want list or icons"},
+		{"  end_turn_button: {icon: gone.png}\n", "campaign.end_turn_button.icon"},
+	} {
+		game := strings.Replace(testgame.CampaignGame, "campaign:\n", "campaign:\n"+c.add, 1)
+		_, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"game.yaml": game}))
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%s: want %q, got %v", strings.TrimSpace(c.add), c.want, err)
+		}
+	}
+}
+
 // TestCampaignMapViews: region_roads and region_borders take selected or always.
 func TestCampaignMapViews(t *testing.T) {
 	game := strings.Replace(testgame.CampaignGame, "  location: camp\n", "  location: war\n", 1)

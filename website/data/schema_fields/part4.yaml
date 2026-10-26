@@ -185,6 +185,7 @@ ProfileRelation:
   text: "A note on how the character sees them."
 Order:
   _: "One of the player's orders in a campaign. It costs actions, may need a general and a target region, and runs its do with them bound as general and target."
+  icon: "The order's picture under assets/ in the row of icons (campaign.order_view: icons). Omitted: the label in a square."
   group: "The heading the order is listed under in the place's list, together with the place's actions of the same group. Omitted: no heading."
   cost: "The actions it takes. Default 1."
   do: "The commands run after the march (if any), with general and target bound."

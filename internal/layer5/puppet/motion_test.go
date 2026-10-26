@@ -124,3 +124,39 @@ func TestPartIdleDefaultsPhaseAndDisable(t *testing.T) {
 		}
 	}
 }
+
+// TestTalkBounceJigglesOnlySoftRegions: with talk.bounce, a line's start sets the soft regions
+// bouncing and the bounce dies away; the body and head stay still, and a still puppet stays still.
+func TestTalkBounceJigglesOnlySoftRegions(t *testing.T) {
+	r := loadYAML(t, "base: base.png\nhead: {center: [60, 50], radius: 30, neck: [60, 100]}\nsoft_sway:\n  - {ellipse: [30, 70, 60, 50], follow: body, axis: y, limit: 20}\nmotion: {breath: {depth: 0}, sway: {angle: 0, shift: 0}, tilt: {angle: 0}, talk: {nod: 0, bounce: 1}}\n")
+	m := NewMotion(r, seeded(1, 1), 60)
+	first := m.Pose()
+	for range 120 {
+		m.Step()
+	}
+	if m.Pose().Lag[0] != [2]float64{} {
+		t.Fatalf("a silent puppet moved its soft region: %v", m.Pose().Lag[0])
+	}
+	m.Speak(true)
+	moved := 0.0
+	for range 30 {
+		m.Step()
+		p := m.Pose()
+		moved = math.Max(moved, math.Abs(p.Lag[0][1]))
+		if p.Lag[0][0] != 0 || math.Abs(p.Lag[0][1]) > 20 {
+			t.Fatalf("axis or limit broken: %v", p.Lag[0])
+		}
+		if p.Body != first.Body || p.BodyScale != first.BodyScale || p.HeadAngle != first.HeadAngle || p.HeadShift != first.HeadShift {
+			t.Fatal("the bounce moved the body or head")
+		}
+	}
+	if moved < 5 {
+		t.Fatalf("the line's start barely moved the soft region: %v", moved)
+	}
+	for range 120 { // still speaking: one bounce per line, not a constant one
+		m.Step()
+	}
+	if m.Pose().Lag[0] != [2]float64{} {
+		t.Fatalf("the bounce did not die away: %v", m.Pose().Lag[0])
+	}
+}

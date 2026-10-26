@@ -34,6 +34,7 @@ type params struct {
 	tiltAngle                 float64
 	tiltEvery                 [2]float64
 	talkNod                   float64
+	talkBounce                float64
 	fade                      float64
 	unit                      float64 // the head radius, or a fifth of the height without a head
 	hasHead                   bool
@@ -74,6 +75,7 @@ func resolveParams(s *puppetdef.Spec, _, h int) params {
 	}
 	if t := m.Talk; t != nil {
 		p.talkNod = t.Nod
+		p.talkBounce = t.Bounce
 	}
 	if s.Fade > 0 {
 		p.fade = s.Fade
@@ -159,8 +161,11 @@ func (m *Motion) blinkGap() float64 {
 	return m.between([2]float64{2, 6})
 }
 
-// Speak starts or stops the mouth.
+// Speak starts or stops the mouth. With talk.bounce, the soft regions jiggle as a line begins.
 func (m *Motion) Speak(on bool) {
+	if on && !m.speaking && m.p.talkBounce > 0 {
+		m.React(puppetdef.Reaction{Kind: "jiggle", Amount: m.p.talkBounce})
+	}
 	m.speaking = on
 }
 
@@ -183,7 +188,7 @@ func (m *Motion) React(r puppetdef.Reaction) {
 		a.amount = 1
 	}
 	if a.time == 0 {
-		a.time = map[string]float64{"hop": 0.45, "shrink": 0.5, "shake": 0.6, "nod": 0.5, "tilt": 1.4, "freeze": 1.5}[r.Kind]
+		a.time = map[string]float64{"hop": 0.45, "shrink": 0.5, "shake": 0.6, "nod": 0.5, "tilt": 1.4, "freeze": 1.5, "jiggle": 1.1}[r.Kind]
 	}
 	if !(a.time > 0) { // an unknown kind: nothing to play
 		return
@@ -421,12 +426,29 @@ func (m *Motion) pose(withSprings bool) Pose {
 				wave := math.Sin(tau*t*(2+damage) + m.phase[i%len(m.phase)])
 				drive += wave * sp.limit * math.Min(1, damage*0.15)
 			}
+			if sp.soft {
+				drive += m.jiggle(i) * sp.limit
+			}
 			for axis := range 2 {
 				p.Lag[i][axis] = clamp(p.Lag[i][axis]+drive*sp.mask[axis], -sp.limit, sp.limit)
 			}
 		}
 	}
 	return p
+}
+
+// jiggle is the soft region i's share of the playing jiggles, a fraction of its limit: a quick
+// bounce that dies away, each region a little out of step with the one before.
+func (m *Motion) jiggle(i int) float64 {
+	sum := 0.0
+	for _, a := range m.reactions {
+		if a.kind != "jiggle" {
+			continue
+		}
+		left := 1 - a.t/a.time
+		sum += a.amount * 0.8 * left * left * math.Sin(2*math.Pi*2.6*a.t+0.9*float64(i))
+	}
+	return sum
 }
 
 func (m *Motion) apply(p *Pose, a active) {

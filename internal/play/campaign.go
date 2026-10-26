@@ -69,6 +69,11 @@ func (s *atlasScene) campaignChoices(g *Game) {
 func (s *atlasScene) regionOrders(g *Game, id string) {
 	g.sfx("decide")
 	c := g.db.Game.Campaign
+	if items := regionOrderItems(g, id); c.OrderView == "icons" && len(items) > 0 {
+		g.push(&orderBar{scene: s, region: id, prompt: campaign.TargetLabel(g.db, g.st, id), items: items})
+		g.emit("region", traceLine{"location": s.loc, "region": id})
+		return
+	}
 	var opts []data.ChoiceOption
 	for _, oid := range c.OrderIDs() {
 		o := c.Orders[oid]
@@ -245,6 +250,22 @@ func flagFill(c color.NRGBA) color.NRGBA {
 	return color.NRGBA{mix(c.R), mix(c.G), mix(c.B), c.A}
 }
 
+// plateName is a region's plate without its garrison when the map shows the numbers near
+// the region chosen only (region_numbers: near) and this one is neither it nor next to it;
+// "" keeps the plate as it is.
+func (s *atlasScene) plateName(g *Game, p mapPoint, sel string) string {
+	if s.location(g).Map.RegionNumbers != "near" || !s.regionPoint(g, p.id) || s.location(g).Map.Points[p.id].Label != "" {
+		return ""
+	}
+	if p.id == sel {
+		return ""
+	}
+	if r := g.db.Regions[sel]; r != nil && slices.Contains(r.Next, p.id) {
+		return ""
+	}
+	return data.RegionName(g.db, p.id)
+}
+
 // regionLabel is a region's plate when the map gives none: its name and garrison.
 func regionLabel(g *Game, id string) string {
 	return fmt.Sprintf("%s  %d", data.RegionName(g.db, id), int(data.Garrison(g.db, g.st.Campaign(), id)))
@@ -292,8 +313,9 @@ func (s *atlasScene) drawCampaign(g *Game, dst *ebiten.Image, sel string) {
 		s.drawSelectionRing(g, dst, sel)
 		s.drawRegionWindow(g, dst, sel)
 	}
-	// the generals who have joined, with their troops
+	// the generals who have joined, with their troops, and the end of the turn over them
 	s.drawGenerals(g, dst, sw, sh)
+	s.drawEndTurn(g, dst)
 }
 
 // regionLines are the lines of a region's window under its name: owner, garrison and values.
@@ -347,6 +369,13 @@ func (s *atlasScene) regionWindowBox(g *Game, id string) plateBox {
 		others = append(others, gen)
 	}
 	others = append(others, s.cameraButtons(g)...)
+	if r, ok := s.endTurnRect(g); ok {
+		others = append(others, r)
+	}
+	if b, ok := g.stack[len(g.stack)-1].(*orderBar); ok && b.scene == s {
+		win, _ := b.layout(g)
+		others = append(others, win)
+	}
 	best, least, found := tries[0], math.Inf(1), false
 	for _, t := range tries {
 		t.y = math.Max(4, math.Min(sh-4-t.h, t.y))

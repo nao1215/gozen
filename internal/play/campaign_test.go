@@ -2,7 +2,6 @@ package play
 
 import (
 	"fmt"
-	"math"
 	"strings"
 	"testing"
 
@@ -102,9 +101,9 @@ func TestCampaignHeading(t *testing.T) {
 	}
 }
 
-// A map's safe_area fits the picture to the screen less its edges, and the camera brings
-// the picture's corner to the edge of that part, not under the windows; the generals'
-// window keeps right of the camera's buttons however many generals there are.
+// A map's safe_area fits the picture to the screen less its edges; zoomed in, the camera
+// keeps the picture over the whole screen, its bands too, however far it is moved; the
+// generals' window keeps right of the camera's buttons however many generals there are.
 func TestCampaignSafeAreaAndGenerals(t *testing.T) {
 	area := map[string]string{"unknown: named": "unknown: named\n      safe_area: [0.1, 0.2, 0.25, 0.05]"}
 	g, as := campaignOpen(t, area)
@@ -120,11 +119,7 @@ func TestCampaignSafeAreaAndGenerals(t *testing.T) {
 
 	area["unknown: named"] += "\n      camera: {zoom: 4}"
 	g, as = campaignOpen(t, area)
-	as.cameraCenter = geom.Pt{}
-	k, ox, oy, _ = as.fit(g)
-	if math.Abs(ox-l) > 1e-6 || math.Abs(oy-top) > 1e-6 || k <= 0 {
-		t.Errorf("the camera brings the corner to (%g, %g), want the safe part's corner (%g, %g)", ox, oy, l, top)
-	}
+	atlasCornersCovered(t, g, as)
 	sw, sh := g.screen()
 	bs := as.cameraButtons(g)
 	for _, n := range []int{1, 5, 9} {
@@ -135,6 +130,32 @@ func TestCampaignSafeAreaAndGenerals(t *testing.T) {
 		}
 	}
 	wldFramesDrawn(t, g, 2)
+}
+
+// atlasCornersCovered moves the camera as far as it goes each way (and its centre to each
+// corner of the picture) and checks that the screen's four corners stay on the picture.
+func atlasCornersCovered(t *testing.T, g *Game, as *atlasScene) {
+	t.Helper()
+	img := g.pics.get(as.pic)
+	pw, ph := float64(img.Bounds().Dx()), float64(img.Bounds().Dy())
+	fw, fh := g.pixels()
+	for _, c := range []geom.Pt{{}, {X: pw}, {Y: ph}, {X: pw, Y: ph}, {X: -1e6, Y: 1e6}, {X: 1e6, Y: -1e6}} {
+		as.cameraCenter = c
+		k, ox, oy, _ := as.fit(g)
+		if pw*k < fw || ph*k < fh {
+			t.Fatalf("zoom %g cannot cover the screen: the test needs a closer camera", as.cameraZoom)
+		}
+		const e = 1e-6
+		if ox > e || oy > e || ox+pw*k < fw-e || oy+ph*k < fh-e {
+			t.Errorf("camera at %v: the picture lies at (%g, %g) to (%g, %g), short of the screen %gx%g", c, ox, oy, ox+pw*k, oy+ph*k, fw, fh)
+		}
+	}
+	for range 40 { // the pan buttons, all the way
+		as.panCamera(g, 0.2, 0.2)
+	}
+	if k, ox, oy, _ := as.fit(g); ox+pw*k < fw-1e-6 || oy+ph*k < fh-1e-6 {
+		t.Errorf("panned right and down, the picture ends at (%g, %g), short of %gx%g", ox+pw*k, oy+ph*k, fw, fh)
+	}
 }
 
 // map.talk darkens the map under a conversation, but not under the map's own question of
@@ -207,4 +228,22 @@ func TestCampaignRegionWindowKeepsOffTheGenerals(t *testing.T) {
 		t.Errorf("window %+v meets the generals %+v or the region's point (%g, %g)", b, gen, px, py)
 	}
 	wldFramesDrawn(t, g, 2)
+}
+
+// region_numbers: near shows the garrison on the plates of the region chosen and its
+// neighbours only; the others show their names, in the same place.
+func TestCampaignRegionNumbersNear(t *testing.T) {
+	g, as := campaignOpen(t, map[string]string{"unknown: named": "unknown: named\n      region_numbers: near"})
+	plate := func(id string) string {
+		p := as.points[as.pointIndex(id)]
+		return as.plateName(g, p, "keep")
+	}
+	if plate("home") != "Home" || plate("field") != "" || plate("keep") != "" {
+		t.Errorf("with keep chosen: home %q, field %q, keep %q; want only home short", plate("home"), plate("field"), plate("keep"))
+	}
+	wldFramesDrawn(t, g, 2)
+	g.db.Locations["war"].Map.RegionNumbers = ""
+	if plate("home") != "" {
+		t.Error("a plate is short without region_numbers")
+	}
 }

@@ -132,6 +132,13 @@ type Campaign struct {
 	Defeat Defeat `yaml:"defeat"`
 	// EndTurn is the label of the entry that ends the turn (the engine's words when empty).
 	EndTurn string `yaml:"end_turn"`
+	// OrderView is how the orders of a region chosen on the map are offered: list (a
+	// choice of their labels, the default) or icons (a row of their icons over the bottom
+	// of the map).
+	OrderView string `yaml:"order_view"`
+	// EndTurnButton stands a button that ends the turn at the bottom right of the map,
+	// over the generals, pressed with a click or the E key (none when nil).
+	EndTurnButton *EndTurnButton `yaml:"end_turn_button"`
 	// Sortie dresses the screen that picks who marches (empty: a plain dark screen with
 	// an outlined title).
 	Sortie *SortieLook `yaml:"sortie"`
@@ -150,6 +157,12 @@ type Campaign struct {
 	Labels map[string]string `yaml:"labels"`
 
 	orderIDs []string
+}
+
+// EndTurnButton is the button on the campaign's map that ends the turn: its picture
+// beside the end of the turn's label (the label alone without one).
+type EndTurnButton struct {
+	Icon string `yaml:"icon"`
 }
 
 // SortieLook is how the sortie screen looks: a picture behind it and its title, which is
@@ -303,6 +316,9 @@ var builtinTactics = map[string]*ClashTactic{
 // region, and runs its do with them bound (general and target in expressions and set).
 type Order struct {
 	Label string `yaml:"label"`
+	// Icon is the order's picture in the row of icons (campaign.order_view: icons); an
+	// order without one shows its label in a square.
+	Icon string `yaml:"icon"`
 	// Group is the heading the order is listed under in the place's list (orders and
 	// actions of one group are listed together under it; none: no heading).
 	Group string `yaml:"group"`
@@ -524,6 +540,19 @@ func (c *checker) campaignLabels() {
 		return
 	}
 	c.text("game.yaml campaign.heading", cp.Heading, FieldNames)
+	switch cp.OrderView {
+	case "", "list", "icons":
+	default:
+		c.errorf(diag.NotAWord, "game.yaml campaign.order_view", "want list or icons, not %q", cp.OrderView)
+	}
+	for _, id := range cp.OrderIDs() {
+		if o := cp.Orders[id]; o != nil && o.Icon != "" {
+			c.file("game.yaml campaign.orders."+id+".icon", o.Icon)
+		}
+	}
+	if b := cp.EndTurnButton; b != nil && b.Icon != "" {
+		c.file("game.yaml campaign.end_turn_button.icon", b.Icon)
+	}
 	if sl := cp.Sortie; sl != nil {
 		c.picture("game.yaml campaign.sortie.background", sl.Background)
 		c.text("game.yaml campaign.sortie.title", sl.Title, FieldNames)

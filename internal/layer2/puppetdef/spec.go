@@ -23,7 +23,7 @@ const FaceKeyword = "face"
 const DefaultFace = "default"
 
 // Reaction kinds understood by the presentation layer.
-var Kinds = []string{"hop", "shrink", "shake", "nod", "tilt", "freeze"}
+var Kinds = []string{"hop", "shrink", "shake", "nod", "tilt", "freeze", "jiggle"}
 
 // Spec is one puppet file. Every coordinate is a pixel of the base picture with
 // the origin at its top left. Picture paths are relative to the YAML file.
@@ -242,6 +242,8 @@ type Spring struct {
 // Talk moves the head while speaking (Nod in pixels).
 type Talk struct {
 	Nod float64 `yaml:"nod,omitempty"`
+	// Bounce plays a jiggle of this strength when a line begins (0, the default, plays none).
+	Bounce float64 `yaml:"bounce,omitempty"`
 }
 
 // Reaction is a named one-shot motion. Kind defaults to the name for the

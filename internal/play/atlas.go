@@ -240,16 +240,31 @@ func (s *atlasScene) resetCamera(g *Game, overview bool) {
 	}
 }
 
+// clampCamera keeps the camera on the picture (k its scale, w and h its size). A picture
+// that can cover the whole screen at k never shows an edge inside the screen, under the
+// safe_area's bands too; one that can only cover the safe part covers that; a smaller one
+// stands in the middle of the safe part.
 func (s *atlasScene) clampCamera(g *Game, k, w, h float64) {
-	_, _, pw, ph := s.view(g)
-	clamp := func(v, size, span float64) float64 {
-		if span >= size {
-			return size / 2
-		}
-		return max(span/2, min(size-span/2, v))
+	l, t, iw, ih := s.view(g)
+	fw, fh := g.pixels()
+	s.cameraCenter.X = clampAxis(s.cameraCenter.X, w, k, l, iw, fw)
+	s.cameraCenter.Y = clampAxis(s.cameraCenter.Y, h, k, t, ih, fh)
+}
+
+// clampAxis clamps the camera's centre c along one axis: the picture is size long, shown
+// at k; the safe part begins at lo and is span long, of a screen full long.
+func clampAxis(c, size, k, lo, span, full float64) float64 {
+	shown := size * k
+	off := lo + span/2 - c*k // where the picture's edge shows
+	switch {
+	case shown >= full:
+		off = max(full-shown, min(0, off))
+	case shown >= span:
+		off = max(lo+span-shown, min(lo, off))
+	default:
+		off = lo + (span-shown)/2
 	}
-	s.cameraCenter.X = clamp(s.cameraCenter.X, w, pw/k)
-	s.cameraCenter.Y = clamp(s.cameraCenter.Y, h, ph/k)
+	return (lo + span/2 - off) / k
 }
 
 func (s *atlasScene) panCamera(g *Game, dx, dy float64) {
@@ -506,6 +521,9 @@ func (s *atlasScene) update(g *Game) {
 	}
 	in := &g.in
 	if s.updateSelectionPanel(g) {
+		return
+	}
+	if s.updateEndTurn(g) {
 		return
 	}
 	if s.updateCamera(g) {
@@ -798,13 +816,13 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	}
 	if s.campaignMap(g) {
 		sel := ""
-		if !s.walking() && s.sel < len(s.choices) && !g.busy() {
+		if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
 			sel = s.choices[s.sel].Point
 		}
 		s.drawAreas(g, dst, toScreen, sel)
 	}
 	sel0 := ""
-	if !s.walking() && s.sel < len(s.choices) && !g.busy() {
+	if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
 		sel0 = s.choices[s.sel].Point
 	}
 	if s.campaignMap(g) && a.RegionRoads != "always" {
@@ -828,7 +846,7 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	}
 	s.layoutPoints(g, dst)
 	sel := ""
-	if !s.walking() && s.sel < len(s.choices) && !g.busy() {
+	if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
 		sel = s.choices[s.sel].Point
 	}
 	_, sh := g.screen()
@@ -836,7 +854,7 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	if !war {
 		s.drawToken(g, dst, k, ox, oy)
 	}
-	if g.talk.active || len(g.stack) > 1 {
+	if g.talk.active || len(g.stack) > 1 && !s.barOpen(g) {
 		return
 	}
 	if a.Camera != nil {
@@ -876,7 +894,7 @@ func (s *atlasScene) layoutPoints(g *Game, dst *ebiten.Image) {
 	u := g.ui
 	toScreen := func(p geom.Pt) (float32, float32) { return float32((ox + p.X*k) / u), float32((oy + p.Y*k) / u) }
 	sel := ""
-	if !s.walking() && s.sel < len(s.choices) && !g.busy() {
+	if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
 		sel = s.choices[s.sel].Point
 	}
 	_, sh := g.screen()
@@ -1079,6 +1097,11 @@ func (s *atlasScene) drawPlate(g *Game, dst *ebiten.Image, p mapPoint, sel strin
 	s.addPointBox(p, box)
 	if dst == nil {
 		return
+	}
+	if short := s.plateName(g, p, sel); short != "" { // the place keeps the full plate's room
+		name = short
+		dw := gfx.TextWidth(name, size) + size*1.1
+		box.x, box.w = box.x+(box.w-dw)/2, dw
 	}
 	bg, edge := withAlpha(plateBack, uint8(235*alpha)), withAlpha(g.th.border, uint8(200*alpha))
 	if p.id == sel {
