@@ -67,7 +67,7 @@ func newMenu(g *Game) *menu {
 			head = append(head, listItem{label: it.Name, id: id})
 		}
 	}
-	items := []listItem{{label: lang.T("ステータス")}, {label: lang.T("どうぐ")}, {label: lang.T("スキル")}, {label: lang.T("そうび")}, {label: lang.T("セーブ")}, {label: lang.T("ロード")}, {label: lang.T("せってい")}, {label: lang.T("タイトルへ")}, {label: lang.T("とじる")}}
+	items := []listItem{{label: lang.T("ステータス")}, {label: lang.T("どうぐ")}, {label: lang.T("スキル")}, {label: lang.T("そうび")}, {label: lang.T("セーブ"), id: "save"}, {label: lang.T("ロード")}, {label: lang.T("せってい")}, {label: lang.T("タイトルへ")}, {label: lang.T("とじる")}}
 	if loc := g.db.Locations[g.st.Location]; g.db.CombatEnabled() && (loc == nil || !loc.Safe) {
 		items[4].disabled = true
 		items[4].right = "×"
@@ -169,6 +169,10 @@ func (m *menu) update(g *Game) {
 		chose, cancel := m.tabs.update(g)
 		if cancel {
 			g.pop()
+			return
+		}
+		if it := m.tabs.items[m.tabs.sel]; !chose && it.id == "save" && it.disabled && g.in.ok() {
+			m.msgs, m.msgT, m.msgSoft = []string{lang.T("ここでは セーブ できない。安全な 場所で セーブ しよう。")}, 90, false
 			return
 		}
 		if !chose {
