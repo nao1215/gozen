@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/event"
+	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
@@ -36,6 +37,8 @@ events:
   learn_it: {do: [{learn: {actor: scout, skill: heal}}, {learn: {actor: scout, skill: heal}}]}
   forget_it: {do: [{reset_tree: all}]}
   forget_one: {do: [{reset_tree: monk}]}
+  restart: {do: [{reset_actor: scout}]}
+  restart_at_three: {do: [{reset_actor: scout, level: 3}]}
   acting: {do: [{act: {actor: scout, skill: guard}}]}
   hurting: {do: [{hurt: {who: scout, amount: "9999"}}, {affect: {who: scout, add: poison}}, {affect: {who: guide, add: sleep}}]}
   asking: {do: [{save: true}, {open: skills}, {say: after}]}
@@ -96,6 +99,74 @@ func TestLearnIsOnceAndResetGivesBackPoints(t *testing.T) {
 	run("forget_it")
 	if len(monk.Tree) != 0 {
 		t.Errorf("reset_tree all: %v", monk.Tree)
+	}
+}
+
+func TestResetActorGoesBackToTheStartAndSurvivesASave(t *testing.T) {
+	db := testgame.Load(t, moreFiles(nil))
+	st := testgame.State(db, 1)
+	st.Join("guide")
+	st.Actors["guide"].GainExp(500)
+	guideLevel := st.Actors["guide"].Level
+	r := event.New(db, st, &host{})
+	r.Log = func(err error) { t.Error(err) }
+	run := func(name string) {
+		r.Start(db.Events[name].Do)
+		for i := 0; r.Running() && i < 100; i++ {
+			r.Next()
+		}
+	}
+	grown := func() *rpg.Actor {
+		a := st.Actors["scout"]
+		a.GainExp(500)
+		a.Learnt = append(a.Learnt, "guard")
+		a.States["poison"] = rpg.StateForever
+		a.Nickname = "Ace"
+		a.HP, a.MP = 1, 0
+		return a
+	}
+	scout := grown()
+	if scout.Level < 5 || len(scout.Skills()) < 3 {
+		t.Fatalf("the scout did not grow: level %d skills %v", scout.Level, scout.Skills())
+	}
+	run("restart")
+	assertStart := func(t *testing.T, a *rpg.Actor, level int) {
+		t.Helper()
+		if a.Level != level || a.Exp != a.ExpFor(level) || len(a.Learnt) != 0 || len(a.States) != 0 {
+			t.Errorf("level %d exp %d learnt %v states %v, want the start of level %d", a.Level, a.Exp, a.Learnt, a.States, level)
+		}
+		if a.HP != a.Stat("mhp") || a.MP != a.Stat("mmp") {
+			t.Errorf("hp %d/%d mp %d/%d, want full", a.HP, a.Stat("mhp"), a.MP, a.Stat("mmp"))
+		}
+		if a.Equip["weapon"] != "stick" || a.Nickname != "Ace" || !slices.Contains(st.Party, "scout") {
+			t.Errorf("equipment %v, name %q and party %v stay", a.Equip, a.Nickname, st.Party)
+		}
+	}
+	assertStart(t, st.Actors["scout"], 1)
+	if sk := st.Actors["scout"].Skills(); slices.Contains(sk, "heal") || slices.Contains(sk, "guard") {
+		t.Errorf("skills after the reset: %v", sk)
+	}
+	b, err := st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := rpg.Parse(db, b, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st = again
+	assertStart(t, st.Actors["scout"], 1)
+
+	r = event.New(db, st, &host{})
+	r.Log = func(err error) { t.Error(err) }
+	grown()
+	run("restart_at_three")
+	assertStart(t, st.Actors["scout"], 3)
+	if sk := st.Actors["scout"].Skills(); !slices.Contains(sk, "heal") {
+		t.Errorf("the skill of level 3 is known at level 3: %v", sk)
+	}
+	if g := st.Actors["guide"]; g.Level != guideLevel || guideLevel < 3 {
+		t.Errorf("others stay: guide level %d, was %d", g.Level, guideLevel)
 	}
 }
 

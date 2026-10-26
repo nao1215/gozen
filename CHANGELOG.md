@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add the `reset_actor` event command, with optional `level`, to put an actor back to the starting state of the actors file (level, experience, learnt skills, skill tree and SP, HP, MP and states) while keeping equipment, name, row and party membership.
+
 ## v0.11.0 - 2026-10-26
 
 Use high-resolution portraits, hide closed map points, and name campaign region values.
