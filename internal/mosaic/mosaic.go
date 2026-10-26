@@ -235,23 +235,33 @@ func BestOffset(b image.Rectangle, shapes []Shape, block int) image.Point {
 		return image.Point{}
 	}
 
+	// The covered pixels of u as a summed-area table (sat[(y+1)*(w+1)+x+1] is how many are
+	// covered above and left of (x, y), inclusive): whether a cell holds one is then four
+	// lookups, so each offset costs its cells, not every covered pixel.
 	w, h := u.Dx(), u.Dy()
-	var xs, ys []int
-	for y := u.Min.Y; y < u.Max.Y; y++ {
-		for x := u.Min.X; x < u.Max.X; x++ {
-			px := image.Rect(x, y, x+1, y+1)
+	sat := make([]int32, (w+1)*(h+1))
+	for y := range h {
+		row := int32(0)
+		for x := range w {
+			px := image.Rect(u.Min.X+x, u.Min.Y+y, u.Min.X+x+1, u.Min.Y+y+1)
 			for _, s := range shapes {
 				if s.Bounds().Overlaps(px) && s.Hits(px) {
-					xs, ys = append(xs, x-b.Min.X), append(ys, y-b.Min.Y)
+					row++
 					break
 				}
 			}
+			sat[(y+1)*(w+1)+x+1] = sat[y*(w+1)+x+1] + row
 		}
+	}
+	covered := func(x0, y0, x1, y1 int) bool { // u's pixels [x0,x1) x [y0,y1), clamped
+		x0, y0, x1, y1 = max(0, x0), max(0, y0), min(w, x1), min(h, y1)
+		if x0 >= x1 || y0 >= y1 {
+			return false
+		}
+		return sat[y1*(w+1)+x1]-sat[y0*(w+1)+x1]-sat[y1*(w+1)+x0]+sat[y0*(w+1)+x0] > 0
 	}
 
 	ux, uy := u.Min.X-b.Min.X, u.Min.Y-b.Min.Y
-	cw, ch := w/block+3, h/block+3
-	seen := make([]bool, cw*ch)
 	best, bestArea := image.Point{}, -1
 
 	thin := func(o, size int) bool {
@@ -262,20 +272,22 @@ func BestOffset(b image.Rectangle, shapes []Shape, block int) image.Point {
 		if oy > 0 && thin(oy, b.Dy()) {
 			continue
 		}
+		// the cells' rows that meet u (cell cy spans oy+(cy-1)*block to oy+cy*block of b)
+		cy0, cy1 := (uy-oy+block)/block, (uy+h-1-oy+block)/block
 		for ox := range block {
 			if ox > 0 && thin(ox, b.Dx()) {
 				continue
 			}
-			clear(seen)
-			bx0, by0 := (ux-ox+block)/block, (uy-oy+block)/block
+			cx0, cx1 := (ux-ox+block)/block, (ux+w-1-ox+block)/block
 			area := 0
-			for i := range xs {
-				cx, cy := (xs[i]-ox+block)/block, (ys[i]-oy+block)/block
-				k := (cy-by0)*cw + cx - bx0
-				if !seen[k] {
-					seen[k] = true
-					r := image.Rect(b.Min.X+ox+(cx-1)*block, b.Min.Y+oy+(cy-1)*block, b.Min.X+ox+cx*block, b.Min.Y+oy+cy*block).Intersect(b)
-					area += r.Dx() * r.Dy()
+			for cy := cy0; cy <= cy1; cy++ {
+				top := oy + (cy-1)*block - uy
+				for cx := cx0; cx <= cx1; cx++ {
+					left := ox + (cx-1)*block - ux
+					if covered(left, top, left+block, top+block) {
+						r := image.Rect(b.Min.X+ox+(cx-1)*block, b.Min.Y+oy+(cy-1)*block, b.Min.X+ox+cx*block, b.Min.Y+oy+cy*block).Intersect(b)
+						area += r.Dx() * r.Dy()
+					}
 				}
 			}
 			if bestArea < 0 || area < bestArea {

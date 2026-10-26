@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Speed up the mosaic's search for the grid offset: the covered pixels are kept as a summed-area table instead of a list of coordinates, so each offset costs its cells, not every covered pixel (about 21x faster and 23x less memory on a region over most of a 1024x1024 picture); the offsets chosen are the same.
 - Group a plain field's list under the entries' `group` headings and pin the campaign's end of the turn there too, as on maps and painted scenes; the field built its own list and ignored both.
 - Scroll the sortie screen's list of generals, following the cursor, instead of drawing every general: from the seventh the rows ran into the bottom line and off the screen.
 - Keep what the screen shows from drawing the play's random numbers: `rand()` or `chance()` in `campaign.heading`, the sortie title, the end-turn button or a meter now draws from a copy of the generator, so how often frames are drawn no longer changes what follows.
