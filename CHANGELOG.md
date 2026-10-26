@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Load a save whose monster's species was removed or whose sex the species no longer allows: the monster leaves, or takes an allowed sex, and the load report says so, as for other actors; the whole save failed to load.
 - Refuse a save whose cursor has a negative answer, and never put one on a choice when reading a cursor on; a negative index could reach the choice's list.
 - Count a won battle in the monster book and offer recruits for the foes it beat (its `last_kill` counts), not every member the troop began with: a foe that fled no longer counts, and one summoned or transformed into does.
 - Hold an `order` command that names its general, `with` and target to the rules of the choices: a general twice, more generals than the order takes, a general who cannot lead it or a target it cannot be given now refuses the order with the reason; `general: x, with: [x]` counted the troops twice.

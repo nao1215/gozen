@@ -145,6 +145,8 @@ var english = map[string]string{
 	"読み込み先のゲームデータがない":               "no game data to load into",
 	"保存形式版 %d には対応していない（対応版 %d〜%d）": "save format %d is not supported (supported: %d to %d)",
 	"カーソルは現在の保存形式のセーブにだけ足せる":        "a cursor goes only on a save of the current format",
+	"仲間モンスターの種族の定義がないため除外":          "removed: the monster's species is no longer defined",
+	"この種族に許されない性別のため付け直し":           "reassigned: the species no longer allows this sex",
 	"カーソルの行またはイベントが不正":              "the cursor's line or event is not valid",
 	"別のゲームのセーブ（保存元 %q、読み込み先 %q）":    "the save belongs to another game (saved by %q, loading into %q)",
 	"セーブのデータ版 %d は読み込めない（現在 %d）":    "cannot load data version %d of the save (current %d)",
