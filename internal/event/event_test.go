@@ -526,3 +526,36 @@ func TestStrictRecruitmentDoesNotBlockBreeding(t *testing.T) {
 		t.Fatalf("breeding lost its parent slot: %v", st.Party)
 	}
 }
+
+// A won battle counts in the monster book and offers to recruit the foes the battle beat
+// (its last_kill counts), not every member the troop began with: one of two motes fled.
+func TestWonBattleCountsTheFoesBeaten(t *testing.T) {
+	files := testgame.MonsterFiles()
+	files["data/z.yaml"] = "events:\n  fight: {do: [{battle: two}]}\n"
+	db := testgame.Load(t, files)
+	st := testgame.State(db, 1)
+	r := event.New(db, st, &host{})
+	r.Start(db.Events["fight"].Do)
+	if _, ok := r.Next().(event.Battle); !ok {
+		t.Fatal("no battle")
+	}
+	// what a battle that beat one mote and saw the other flee leaves behind
+	st.RecordBattle("won", st.Members())
+	st.Vars["last_kill_mote"] = 1.0
+	r.Answer(event.BattleWon)
+	if n := st.Vars["bestiary.mote.defeated"]; n != 1.0 {
+		t.Errorf("the book counts %v motes defeated, want 1", n)
+	}
+	offers := 0
+	for req := r.Next(); req != nil; req = r.Next() {
+		if s, ok := req.(event.Say); ok && strings.Contains(s.Text, "rises") {
+			offers++
+		}
+		if c, ok := req.(event.Choice); ok {
+			r.Answer(len(c.Options) - 1)
+		}
+	}
+	if offers != 1 {
+		t.Errorf("%d recruit offers, want 1", offers)
+	}
+}

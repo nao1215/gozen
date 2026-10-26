@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Count a won battle in the monster book and offer recruits for the foes it beat (its `last_kill` counts), not every member the troop began with: a foe that fled no longer counts, and one summoned or transformed into does.
 - Hold an `order` command that names its general, `with` and target to the rules of the choices: a general twice, more generals than the order takes, a general who cannot lead it or a target it cannot be given now refuses the order with the reason; `general: x, with: [x]` counted the troops twice.
 - Report two campaign fields saved under one generated name (a region `north_gate`'s value `income` and a region `north`'s value `gate_income`), which overwrote each other, and reserve `fought` as a region value name; the save format is unchanged.
 - Treat the campaign sortie screen as a boundary of an event: the lines after it no longer roll back into it or save a cursor that stopped on the sortie when loaded, and a save there is refused with the reason.
