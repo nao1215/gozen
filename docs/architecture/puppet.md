@@ -27,7 +27,29 @@ actors:
 - The mouth moves only while text is appearing, and consecutive lines of the same person change the face softly. The handling of size is the same as for tall portraits (fit to the screen height).
 - The randomness is determined from the party member's ID and does not use the game's randomness (so it does not affect reproducing a recording). It is rebuilt on an F5 reload.
 - `data.Load` (`gozen check --only structure`) checks the YAML, the existence of the picture files, and that the party member's `face` exists in the puppet; `gozen check` also checks the size and position of the pictures.
-- Portraits in menus, battles and cut-ins do not move (they stay as the face picture).
+- Portraits in menus, battles and cut-ins do not move (they stay as the face picture). The novel stage moves them only with `ui.stage_puppets` (below).
+
+## Standing portraits on the novel stage
+
+With `ui.message: novel`, the stage shows the face pictures of the figures that `stand` places or that come on with their lines. `ui.stage_puppets: true` in game.yaml (schema version 8) draws an actor's puppet there instead ([ADR 0046](../decisions/0046-moving-portraits-on-the-novel-stage.md)):
+
+```yaml
+schema_version: 8
+ui:
+  message: novel
+  stage_puppets: true
+  stage_framing:
+    walker/normal.png: {head: [0.5, 0.12, 0.1], height: 0.3, top: 0.06}
+    walker/smile.png: {head: [0.5, 0.12, 0.1], height: 0.3, top: 0.06}
+```
+
+- A figure uses the puppet when it is an actor with `puppet` and the puppet has a face named like the face picture. Any other figure, a face the puppet lacks, or a puppet that fails to load shows the picture as before.
+- The base picture stands where the face picture would: `stand.at` or the automatic places, `stage_framing` (keyed by the face picture's path), `stage_scale`, `stage_drop`, mirroring and the fit to the screen. Give the base the canvas of the face pictures (the same size and the same place of the figure), so the frames written for the pictures fit it.
+- Every figure breathes, sways, blinks and moves its springs, `soft_sway` and hair. Only the speaker's figure moves its mouth while the text is typing; the others keep the mouth closed.
+- A line's `face` and a `stand` with `face` fade the figure to that face over the puppet's `fade`. A figure that comes on starts on its face. `effect` with a reaction name (`nod`, `hop`, ...) plays it on the figure; `{name: shake, who}` shakes the figure as it does a picture.
+- A stage puppet is composed at the largest power-of-two fraction of its size that is still no smaller than the drawn size. A 4096 by 6144 base drawn 1.2 screens tall on a 720-line screen is composed at 1024 by 1536: about 12 MB of GPU memory instead of 200 MB, and a face, blink or mouth change redraws that small picture. The face pictures the puppet replaces are not loaded.
+- The first time an actor stands, its puppet pictures are decoded on the game thread (under a second for a 4096 by 6144 base and one whole face picture). Later face changes load nothing.
+- Without `ui.stage_puppets`, and in the `box` window, nothing changes.
 
 ## Pictures to prepare
 

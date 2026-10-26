@@ -442,7 +442,7 @@ func (s *profileScreen) drawFigure(g *Game, dst *ebiten.Image, id string) {
 	cx, bottom, h := sw*0.36, sh-92, sh-92-profileTop
 	if p := s.puppet(g); p != nil {
 		if open {
-			g.drawPuppet(dst, p, cx, bottom, h, 1, false)
+			g.drawPuppet(dst, p, cx, bottom, h, 1, false, nil)
 		}
 		// A locked puppet shows no shadow (its parts are drawn apart); the name says ???.
 	} else if pic := g.profilePicture(id, s.faceName(g)); pic != "" {

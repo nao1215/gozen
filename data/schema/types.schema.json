@@ -17917,6 +17917,19 @@
           },
           "x-type": "string → [StageFraming](#stageframing)"
         },
+        "stage_puppets": {
+          "description": "Let the novel stage draw the moving portrait (puppet) of an actor whose face the puppet has, in place of the face picture and in the same frame: it breathes, sways and blinks, the speaker's mouth moves, and faces fade. Off by default; needs schema version 8.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "8"
+          },
+          "x-type": "boolean"
+        },
         "stage_scale": {
           "additionalProperties": {
             "type": "number"

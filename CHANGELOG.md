@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add opt-in `ui.stage_puppets` (schema version 8) to draw actors' moving portraits on the novel stage in the frame of their face pictures: every standing figure breathes, blinks and sways, only the speaker's mouth moves, and line and `stand` faces fade. Stage puppets compose near their drawn size, so 4096x6144 portraits stay cheap; existing games and the `box` window look as before.
+
 ## v0.11.0 - 2026-10-26
 
 Use high-resolution portraits, hide closed map points, and name campaign region values.

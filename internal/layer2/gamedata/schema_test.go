@@ -339,7 +339,7 @@ func schemaContract(owner reflect.Type, field reflect.StructField, name string) 
 	if version3Fields[key] || version3Types[owner] {
 		c.Version = "３"
 	}
-	if owner == reflect.TypeFor[StageFraming]() || key == "UIStyle.stage_framing" {
+	if owner == reflect.TypeFor[StageFraming]() || key == "UIStyle.stage_framing" || key == "UIStyle.stage_puppets" {
 		c.Version = "8"
 	}
 	switch key {

@@ -361,6 +361,9 @@ func (db *DB) Check() []error {
 		}
 		c.numberRange(w+".top", framing.Top, 0, 1)
 	}
+	if g.UI.StagePuppets {
+		c.needsVersion("game.yaml ui.stage_puppets", "ui.stage_puppets", SchemaVersion8)
+	}
 	if tp := g.UI.TalkPortrait; tp != (TalkPortrait{}) {
 		c.needsVersion("game.yaml ui.talk_portrait", "ui.talk_portrait", SchemaVersion3)
 		if tp.X < 0 || tp.X > 1 || tp.Bottom < 0 || tp.Bottom > 4 || tp.Height < 0 || tp.Height > 4 {
