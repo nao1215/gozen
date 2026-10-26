@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"testing"
 	"testing/fstest"
+
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 // storyData is two events: the first sets a flag after its lines and a choice; the second
@@ -203,5 +205,33 @@ events:
 	btlKey(g, btnOK)
 	if g.storeHas(g.slotPath(0)) {
 		t.Fatal("a save was written that would lose the key")
+	}
+}
+
+// The sortie screen cannot be read again by a loaded save, so it is a boundary: the lines
+// after a march chosen there neither roll back into it nor save a cursor that would stop
+// on it.
+func TestSortieIsABoundary(t *testing.T) {
+	g, _ := campaignOpen(t, nil)
+	g.db.Events["march"] = &data.Event{Do: []data.Command{{Order: &data.OrderCmd{ID: "storm", Target: "keep"}}, {Say: &data.Say{Text: "We marched."}}, {Say: &data.Say{Text: "And came back."}}}}
+	g.events.Start(g.db.Events["march"].Do)
+	wldUntil(t, g, 300, func() bool { _, ok := g.stack[len(g.stack)-1].(*sortieScene); return ok })
+	s, ok := g.stack[len(g.stack)-1].(*sortieScene)
+	if !ok {
+		t.Fatalf("the order opened %T, not the sortie", g.stack[len(g.stack)-1])
+	}
+	s.toggle(g, "hero")
+	s.close(g, true)
+	wldUntil(t, g, 3000, func() bool {
+		if _, ok := g.stack[len(g.stack)-1].(*clashScene); ok {
+			wldPlay(t, g, "press ok\nwait 3\n", 50)
+		}
+		return g.talk.active && len(g.stack) == 1
+	})
+	if !g.talk.active {
+		t.Fatal("the lines after the march did not come")
+	}
+	if _, _, _, ok := g.cursor(); ok || g.saveBlocked() == "" {
+		t.Fatalf("after the sortie a save keeps a cursor (%v) or is not refused", ok)
 	}
 }

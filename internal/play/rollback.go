@@ -50,7 +50,7 @@ func (g *Game) keepEvent() {
 	}
 }
 
-// boundary marks a request that cannot be replayed (a battle, a shop, a save, a screen, a
+// boundary marks a request that cannot be replayed (a battle, a shop, a save, a screen, a sortie, a
 // move, the end): the running event is not rolled back nor saved with a cursor, and the
 // earlier events are dropped.
 func (g *Game) boundary() {
@@ -61,7 +61,7 @@ func (g *Game) boundary() {
 // isBoundary reports whether a request is a boundary.
 func isBoundary(r event.Request) bool {
 	switch r.(type) {
-	case event.Battle, event.Shop, event.Save, event.Open, event.Clear, event.GameOver:
+	case event.Battle, event.Shop, event.Save, event.Open, event.Clear, event.GameOver, event.SortieScene:
 		return true
 	}
 	return false
