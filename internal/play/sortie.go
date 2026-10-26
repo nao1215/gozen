@@ -239,12 +239,34 @@ func (s *sortieScene) generalStats(g *Game, id string) string {
 	return strings.Join(parts, "　")
 }
 
+// title is the sortie screen's title: campaign.sortie.title (the engine's words when
+// empty) and the region marched on.
+func (s *sortieScene) title(g *Game) string {
+	region := data.RegionName(g.db, s.r.Target)
+	if look := g.db.Game.Campaign.Sortie; look != nil && look.Title != "" {
+		return data.Render(g.db.Tr(look.Title), g.st.Env()) + "　" + region
+	}
+	return fmt.Sprintf(lang.T("出陣　%s"), region)
+}
+
 func (s *sortieScene) draw(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
-	gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), color.NRGBA{0x10, 0x16, 0x1c, 0xd8}, false)
 	cs := g.st.Campaign()
-	title := fmt.Sprintf(lang.T("出陣　%s"), data.RegionName(g.db, s.r.Target))
-	gfx.DrawTextOutline(dst, title, sw/2, sh*0.035, sizeL*1.2, g.th.text)
+	if look := g.db.Game.Campaign.Sortie; look != nil {
+		shade := uint8(0xd8)
+		if look.Background.File != "" {
+			g.drawPicture(dst, look.Background, 0, 0, sw, sh, 1)
+			shade = 0x90
+		}
+		gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), color.NRGBA{0x10, 0x16, 0x1c, shade}, false)
+		title := s.title(g)
+		tw := gfx.TextWidth(title, sizeM) + 80
+		g.window(dst, (sw-tw)/2, 18, tw, 64)
+		gfx.DrawText(dst, title, sw/2, 18+16, sizeM, g.th.text)
+	} else {
+		gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), color.NRGBA{0x10, 0x16, 0x1c, 0xd8}, false)
+		gfx.DrawTextOutline(dst, s.title(g), sw/2, sh*0.035, sizeL*1.2, g.th.text)
+	}
 	// the generals
 	for i, id := range s.all {
 		x, y, w, h := s.rowBox(g, i)

@@ -161,3 +161,23 @@ func TestCampaignMapUnderTalk(t *testing.T) {
 		})
 	}
 }
+
+// campaign.sortie puts a picture behind the sortie screen and its title, before the
+// region's name, in a window; without it the title keeps the engine's words.
+func TestCampaignSortieLook(t *testing.T) {
+	g, _ := campaignOpen(t, map[string]string{"turns: 5": "turns: 5\n  sortie: {background: land.png, title: \"Go {campaign.turn}\"}"})
+	wldPlay(t, g, "order storm - keep\nwait 30\n", 200)
+	s, ok := g.stack[len(g.stack)-1].(*sortieScene)
+	if !ok {
+		t.Fatalf("the order opened %T, not the sortie", g.stack[len(g.stack)-1])
+	}
+	if got := s.title(g); got != "Go 1　Keep" {
+		t.Errorf("title %q, want the title, then the region", got)
+	}
+	s.draw(g, wldScreen(g))
+	g.db.Game.Campaign.Sortie = nil
+	if got := s.title(g); strings.HasPrefix(got, "Go") || !strings.Contains(got, "Keep") {
+		t.Errorf("title %q without campaign.sortie", got)
+	}
+	s.draw(g, wldScreen(g))
+}

@@ -132,6 +132,9 @@ type Campaign struct {
 	Defeat Defeat `yaml:"defeat"`
 	// EndTurn is the label of the entry that ends the turn (the engine's words when empty).
 	EndTurn string `yaml:"end_turn"`
+	// Sortie dresses the screen that picks who marches (empty: a plain dark screen with
+	// an outlined title).
+	Sortie *SortieLook `yaml:"sortie"`
 	// PinEndTurn keeps the end of the turn in the last row of the place's list, below the
 	// rows that scroll, so it shows however long the list is.
 	PinEndTurn bool `yaml:"pin_end_turn"`
@@ -147,6 +150,15 @@ type Campaign struct {
 	Labels map[string]string `yaml:"labels"`
 
 	orderIDs []string
+}
+
+// SortieLook is how the sortie screen looks: a picture behind it and its title, which is
+// then shown in a window like the other windows, followed by the region marched on.
+type SortieLook struct {
+	Background Picture `yaml:"background"`
+	// Title is the words before the region's name (the engine's when empty), a text with
+	// {expressions}.
+	Title string `yaml:"title"`
 }
 
 // Defeat is what becomes of a general beaten to no troops: away for Out turns (0: stays,
@@ -512,6 +524,10 @@ func (c *checker) campaignLabels() {
 		return
 	}
 	c.text("game.yaml campaign.heading", cp.Heading, FieldNames)
+	if sl := cp.Sortie; sl != nil {
+		c.picture("game.yaml campaign.sortie.background", sl.Background)
+		c.text("game.yaml campaign.sortie.title", sl.Title, FieldNames)
+	}
 	names := ValueNames(c.db)
 	for k := range cp.Labels {
 		if !slices.Contains(names, k) {
