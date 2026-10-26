@@ -213,7 +213,7 @@ func (s *atlasScene) endTurnRect(g *Game) (plateBox, bool) {
 		return plateBox{}, false
 	}
 	sw, sh := g.screen()
-	label := data.Render(endTurnAction(g).Label, g.st.Env())
+	label := data.Render(endTurnAction(g).Label, g.viewEnv())
 	w := gfx.TextWidth(label, sizeM) + 70
 	if c.EndTurnButton.Icon != "" {
 		w += 58 // the picture, 48 wide, and a gap
@@ -239,7 +239,7 @@ func (s *atlasScene) drawEndTurn(g *Game, dst *ebiten.Image) {
 		}
 		x += 58
 	}
-	g.text(dst, data.Render(endTurnAction(g).Label, g.st.Env()), x, r.y+14, sizeM, g.th.text)
+	g.text(dst, data.Render(endTurnAction(g).Label, g.viewEnv()), x, r.y+14, sizeM, g.th.text)
 	gfx.DrawTextRight(dst, "E", r.x+r.w-14, r.y+r.h-24, sizeS*0.7, g.th.dim)
 	cs := g.st.Campaign()
 	if g.db.Game.Campaign.Count != "orders" && data.ActionsLeft(g.db, cs) <= 0 {

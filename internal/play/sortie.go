@@ -244,7 +244,7 @@ func (s *sortieScene) generalStats(g *Game, id string) string {
 func (s *sortieScene) title(g *Game) string {
 	region := data.RegionName(g.db, s.r.Target)
 	if look := g.db.Game.Campaign.Sortie; look != nil && look.Title != "" {
-		return data.Render(g.db.Tr(look.Title), g.st.Env()) + "　" + region
+		return data.Render(g.db.Tr(look.Title), g.viewEnv()) + "　" + region
 	}
 	return fmt.Sprintf(lang.T("出陣　%s"), region)
 }

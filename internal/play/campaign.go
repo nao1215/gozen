@@ -283,7 +283,7 @@ func campaignBand(g *Game) string {
 		when = fmt.Sprintf(lang.T("%d年目 第%d週"), (turn-1)/52+1, (turn-1)%52+1)
 	}
 	if c.Heading != "" {
-		when = data.Render(g.db.Tr(c.Heading), g.st.Env())
+		when = data.Render(g.db.Tr(c.Heading), g.viewEnv())
 	}
 	band := when + "　" + campaign.FactionName(g.db, c.Player)
 	if c.Count != "orders" {

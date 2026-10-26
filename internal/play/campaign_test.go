@@ -247,3 +247,38 @@ func TestCampaignRegionNumbersNear(t *testing.T) {
 		t.Error("a plate is short without region_numbers")
 	}
 }
+
+// What the screen shows never draws the play's random numbers: a heading or a meter with
+// rand() leaves the generator as it was, so drawing more or less often changes nothing.
+func TestDrawingKeepsTheRandomNumbers(t *testing.T) {
+	g, _ := campaignOpen(t, map[string]string{
+		"turns: 5":            "turns: 5\n  heading: \"Turn {campaign.turn}: {rand(100)}\"",
+		"id: campaign-test\n": "id: campaign-test\nmeters: [{label: Luck, value: \"rand(10)\", when: \"chance(0.5)\"}, {label: Gold, value: \"rand(10)\", style: number}]\n",
+	})
+	before, err := g.pcg.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	campaignBand(g)
+	for _, m := range g.shownMeters("", false) {
+		g.meterValue(m)
+		g.meterNumber(m)
+	}
+	wldFramesDrawnOnly(t, g, 3)
+	after, err := g.pcg.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("drawing drew the play's random numbers")
+	}
+}
+
+// wldFramesDrawnOnly draws n frames without updating the game.
+func wldFramesDrawnOnly(t *testing.T, g *Game, n int) {
+	t.Helper()
+	screen := wldScreen(g)
+	for range n {
+		g.Draw(screen)
+	}
+}
