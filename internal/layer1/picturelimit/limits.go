@@ -14,10 +14,10 @@ import (
 const MaxBytes = 64 << 20
 
 // Dimensions checks the shared CPU image budget: at most 8192 per side and
-// 16 million pixels (64 MiB for RGBA). Backend texture support can be lower.
+// 32 Mi pixels (128 MiB for RGBA). Backend texture support can be lower.
 func Dimensions(w, h int) error {
-	if w <= 0 || h <= 0 || w > 8192 || h > 8192 || w > (16<<20)/h {
-		return fmt.Errorf("picture dimensions %dx%d exceed limits (8192 per side, 16777216 pixels)", w, h)
+	if w <= 0 || h <= 0 || w > 8192 || h > 8192 || w > (32<<20)/h {
+		return fmt.Errorf("picture dimensions %dx%d exceed limits (8192 per side, 33554432 pixels)", w, h)
 	}
 	return nil
 }

@@ -83,7 +83,7 @@ func newMenu(g *Game) *menu {
 		if g.profilesInMenus() {
 			at = 7
 		}
-		items = slices.Insert(items, at, listItem{label: "Monsters", id: "bestiary"})
+		items = slices.Insert(items, at, listItem{label: lang.T("まもののほん"), id: "bestiary"})
 	}
 	if !g.db.CombatEnabled() {
 		items = items[4:]

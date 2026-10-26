@@ -57,3 +57,19 @@ func TestDecodeRejectsOversize(t *testing.T) {
 		t.Fatal("oversized image accepted")
 	}
 }
+
+func TestDecodeHighResolutionPortrait(t *testing.T) {
+	src := image.NewNRGBA(image.Rect(0, 0, 4096, 6144))
+	src.SetNRGBA(2048, 3072, color.NRGBA{R: 255, A: 255})
+	var b bytes.Buffer
+	if err := png.Encode(&b, src); err != nil {
+		t.Fatal(err)
+	}
+	img, err := Decode(b.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if img.Bounds() != src.Bounds() || img.At(2048, 3072) != src.At(2048, 3072) {
+		t.Fatal("portrait dimensions or pixels changed")
+	}
+}

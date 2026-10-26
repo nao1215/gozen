@@ -97,6 +97,9 @@ func (t *Token) UnmarshalYAML(unmarshal func(any) error) error {
 
 // MapPoint is a point of a map.
 type MapPoint struct {
+	// Hide lets the checker and atlas consumers omit a closed point entirely.
+	// Empty preserves its usual appearance; closed hides it while When is false.
+	Hide   string      `yaml:"hide"`
 	Advice []MapAdvice `yaml:"advice"`
 	At     Point       `yaml:"at"`
 	To     string      `yaml:"to"`    // the location it leads into
@@ -253,6 +256,9 @@ func (c *checker) atlas(w, id string, l *Location) {
 		if p == nil || !p.hasAt {
 			c.errorf(diag.Shape, ww, "a point needs at")
 			continue
+		}
+		if p.Hide != "" && p.Hide != "closed" {
+			c.errorf(diag.NotAWord, ww+".hide", "want closed or an empty value")
 		}
 		c.inPicture(ww+".at", p.At, size, known)
 		if p.To != "" {

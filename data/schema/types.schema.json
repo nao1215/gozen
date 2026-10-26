@@ -2376,6 +2376,25 @@
           },
           "x-type": "string → [General](#general)"
         },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "The names shown for the regions' values in the region window, keyed by value name. A value without a label shows its name.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → string"
+        },
         "location": {
           "description": "The place whose menu lists the orders and the end of the turn. Required.",
           "type": "string",
@@ -10308,6 +10327,19 @@
             "version": "3"
           },
           "x-type": "[Command](#command)[]"
+        },
+        "hide": {
+          "description": "closed hides the point, marker, plate and incident roads while when is false, and removes it from selection. Omission preserves the usual closed pin.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "string"
         },
         "label": {
           "description": "The name shown for the point. When empty, the name of `to` is used.",

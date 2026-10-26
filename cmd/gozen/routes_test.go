@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/nao1215/gozen/internal/cliio"
@@ -96,5 +97,51 @@ func TestSimRoutesExpiredDeadlineIsFailure(t *testing.T) {
 	}
 	if stderr != "" || !report.TimedOut || report.Truncated || !slices.Contains(report.Errors, "exploration timed out") {
 		t.Fatalf("timeout was not reported as a failure: %s; %s", out, stderr)
+	}
+}
+
+func TestSimRoutesCannotPickHiddenMapPoint(t *testing.T) {
+	for _, open := range []bool{false, true} {
+		t.Run(map[bool]string{false: "closed", true: "open"}[open], func(t *testing.T) {
+			dir := filepath.Join(t.TempDir(), "game")
+			commands := "[{pick: Workshop}]"
+			if open {
+				commands = "[{set: {flag.built: true}}, {pick: Workshop}]"
+			}
+			files := fstest.MapFS{
+				"game.yaml":      {Data: []byte("schema_version: 8\nid: hidden-point\nstart: {location: board, party: [], event: enter}\n")},
+				"assets/map.png": {Data: []byte("synthetic image sentinel")},
+				"data/world.yaml": {Data: []byte(`locations:
+  board:
+    map:
+      picture: map.png
+      activation: instant
+      points:
+        well: {at: [0, 0], start: true}
+        workshop: {at: [10, 0], label: Workshop, hide: closed, when: flag.built, locked: Build first., do: [{clear: true}]}
+events:
+  enter:
+    do: ` + commands)},
+			}
+			if err := os.CopyFS(dir, files); err != nil {
+				t.Fatal(err)
+			}
+			code := 1
+			if open {
+				code = 0
+			}
+			out, _ := invoke(t, code, "sim", "routes", dir, "--format", "json")
+			var report routesReport
+			if err := json.Unmarshal(resultData(t, out, "sim routes"), &report); err != nil {
+				t.Fatal(err)
+			}
+			if open {
+				if len(report.Errors) != 0 || len(report.Endings) != 1 || report.Endings[0].Kind != "clear" {
+					t.Fatalf("open point: %+v", report)
+				}
+			} else if len(report.Errors) != 1 || !strings.Contains(report.Errors[0], `there is no "Workshop"`) {
+				t.Fatalf("hidden point was offered to pick: %+v", report)
+			}
+		})
 	}
 }

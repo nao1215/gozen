@@ -1187,6 +1187,20 @@ func (c *checker) element(where, el string) {
 }
 
 func (c *checker) faces(where, dir string, rules []FaceRule) {
+	// Expressions can select any PNG in this directory, including faces not
+	// referenced by a profile or an explicit say command.
+	if dir != "" && c.db.FS != nil {
+		entries, err := fs.ReadDir(c.db.FS, "assets/"+dir)
+		if err != nil {
+			c.errorf(diag.MissingAsset, where+".faces", "cannot read faces: %v", err)
+		} else {
+			for _, entry := range entries {
+				if !entry.IsDir() && path.Ext(entry.Name()) == ".png" {
+					c.pictureLimit(where+".faces", dir+"/"+entry.Name())
+				}
+			}
+		}
+	}
 	for i, r := range rules {
 		c.exprIn(fmt.Sprintf("%s.face_rules[%d]", where, i), r.When, BattleNames, map[string]*vtype{"self": tSelfFace})
 		if dir != "" && !c.db.Exists("assets/"+dir+"/"+r.Face+".png") {

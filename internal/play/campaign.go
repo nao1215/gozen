@@ -291,7 +291,11 @@ func (s *atlasScene) drawRegionWindow(g *Game, dst *ebiten.Image, id string, x, 
 		fmt.Sprintf(lang.T("兵　%d"), int(data.Garrison(g.db, cs, id))),
 	}
 	for _, v := range data.ValueNames(g.db) {
-		lines = append(lines, fmt.Sprintf("%s　%s", v, expr.Format(data.RegionValue(g.db, cs, id, v))))
+		label := v
+		if cp := g.db.Game.Campaign; cp != nil && cp.Labels[v] != "" {
+			label = cp.Labels[v]
+		}
+		lines = append(lines, fmt.Sprintf("%s　%s", label, expr.Format(data.RegionValue(g.db, cs, id, v))))
 	}
 	h := 70 + float64(len(lines))*gfx.LineHeight(sizeS)
 	g.window(dst, x, y, 300, h)

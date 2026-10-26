@@ -44,3 +44,17 @@ func TestAtlasSelectionPanelValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestAtlasHideValidation(t *testing.T) {
+	for _, hide := range []string{"", "closed", "always"} {
+		world := strings.Replace(testgame.AtlasMenuData, "label: Tower", "label: Tower\n          hide: '"+hide+"'", 1)
+		_, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: 3\nid: hide-points\n" + testgame.Game, "data/menu.yaml": world, "assets/maps/menu.png": string(testgame.Picture(64, 36))})
+		if hide == "always" {
+			if err == nil || !strings.Contains(err.Error(), "points.tower.hide") {
+				t.Fatalf("invalid hide: %v", err)
+			}
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+}

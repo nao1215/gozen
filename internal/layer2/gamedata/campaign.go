@@ -136,6 +136,9 @@ type Campaign struct {
 	Clash Clash `yaml:"clash"`
 	// Orders are what the player can do in a turn, listed in the written order.
 	Orders map[string]*Order `yaml:"orders"`
+	// Labels are the names shown for the regions' values in the region window, keyed by
+	// value name (the value name itself when a value has none).
+	Labels map[string]string `yaml:"labels"`
 
 	orderIDs []string
 }
@@ -494,7 +497,21 @@ func areasOverlap(q, r geom.Poly) bool {
 	return false
 }
 
+func (c *checker) campaignLabels() {
+	cp := c.db.Game.Campaign
+	if cp == nil {
+		return
+	}
+	names := ValueNames(c.db)
+	for k := range cp.Labels {
+		if !slices.Contains(names, k) {
+			c.errorf(diag.UnknownReference, "game.yaml campaign.labels."+k, "no region has a value %q", k)
+		}
+	}
+}
+
 func (c *checker) campaign() {
+	c.campaignLabels()
 	db := c.db
 	if len(db.Regions) == 0 && len(db.Factions) == 0 && db.Game.Campaign == nil {
 		return

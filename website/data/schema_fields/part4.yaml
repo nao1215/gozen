@@ -77,6 +77,7 @@ Location:
   stage: "If set, shows the location as its painted background seen from a fixed camera and walked by small dolls (needs schema version 3)."
   talk_on_enter: "If `true`, one of the people's stories plays on each entry instead of a list of people to talk to, with people who have something new first."
 MapPoint:
+  hide: "closed hides the point, marker, plate and incident roads while when is false, and removes it from selection. Omission preserves the usual closed pin."
   advice: "Selected-point advice variants, evaluated in order. Requires map.selection_panel to be displayed."
   _: "A point on a map location."
   at: "The position of the point on the map picture."
