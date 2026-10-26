@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Hide the tactic explanation appended to battle action messages when `ui.battle_ai_history` is false; the history it pointed to was already hidden, so the bracketed rule text only cluttered the message.
+
 ## v0.12.0 - 2026-10-26
 
 Move portraits on the novel stage, run scripts without a window, and reset actors to their starting state.

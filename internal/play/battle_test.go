@@ -428,18 +428,28 @@ func TestBattleCriticalAndWeakPopups(t *testing.T) {
 }
 
 func TestBattleTextCanHideTacticLog(t *testing.T) {
-	s := &battleScene{}
+	g, _ := btlOpen(t, Options{Battle: "one"}, "", "")
+	s := btlAsk(t, g)
 	st := battle.Step{Kind: battle.Act, Text: "Maren: Strike! [Maren row 3: Always -> Foe]"}
-	if got := s.battleText(st); got != st.Text {
+	if got := s.battleText(g, st); got != st.Text {
 		t.Fatalf("development log lost: %q", got)
 	}
 	s.hideTacticLog = true
-	if got := s.battleText(st); got != "Maren: Strike! " {
+	if got := s.battleText(g, st); got != "Maren: Strike! " {
 		t.Fatalf("capture text %q", got)
 	}
 	st.Kind = battle.Message
-	if got := s.battleText(st); got != st.Text {
+	if got := s.battleText(g, st); got != st.Text {
 		t.Fatalf("non-action text changed: %q", got)
+	}
+}
+
+func TestBattleTextHidesTacticLogWithoutHistory(t *testing.T) {
+	g, _ := btlOpen(t, Options{Battle: "one"}, "ui: {battle_ai_history: false}\n", "")
+	s := btlAsk(t, g)
+	st := battle.Step{Kind: battle.Act, Text: "Maren: Strike! [Maren row 3: Always -> Foe]"}
+	if got := s.battleText(g, st); got != "Maren: Strike! " {
+		t.Fatalf("explanation shown without a history to read: %q", got)
 	}
 }
 

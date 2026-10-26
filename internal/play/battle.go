@@ -463,9 +463,11 @@ func (s *battleScene) catchUp(st battle.Step) {
 	}
 }
 
-// battleText hides the appended tactic explanation only when a scripted capture asks for it.
-func (s *battleScene) battleText(st battle.Step) string {
-	if s.hideTacticLog && st.Kind == battle.Act {
+// battleText hides the appended tactic explanation when a scripted capture asks for it or when the
+// game hides the battle AI history (ui.battle_ai_history: false), so the explanation never reaches a
+// player who has no way to read the history behind it.
+func (s *battleScene) battleText(g *Game, st battle.Step) string {
+	if (s.hideTacticLog || !s.tacticHistoryVisible(g)) && st.Kind == battle.Act {
 		if i := strings.IndexAny(st.Text, "[［"); i >= 0 {
 			return st.Text[:i]
 		}
@@ -488,7 +490,7 @@ func (s *battleScene) show(g *Game, st battle.Step) {
 	}
 	if st.Text != "" && !replay {
 		g.emit("battle", traceLine{"text": st.Text})
-		s.msg = append(s.msg, s.battleText(st))
+		s.msg = append(s.msg, s.battleText(g, st))
 		if len(s.msg) > 3 {
 			s.msg = s.msg[len(s.msg)-3:]
 		}
@@ -520,7 +522,7 @@ func (s *battleScene) show(g *Game, st battle.Step) {
 		if !s.cutDone && s.startCutIn(g, st) {
 			s.cutDone = true
 			s.queue = append([]battle.Step{st}, s.queue...)
-			s.msg = []string{s.battleText(st)}
+			s.msg = []string{s.battleText(g, st)}
 			s.stepT = cutInTicks - 6
 			return
 		}
@@ -530,7 +532,7 @@ func (s *battleScene) show(g *Game, st battle.Step) {
 		if u := st.User; u != nil {
 			s.shownMP[u] = u.MP
 		}
-		s.msg = []string{s.battleText(st)}
+		s.msg = []string{s.battleText(g, st)}
 		s.reactTo(g, st.User, "act", 30)
 		sfx := ""
 		if use := s.usage(st.Skill); use != nil {

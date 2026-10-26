@@ -17750,7 +17750,7 @@
           "x-type": "number"
         },
         "battle_ai_history": {
-          "description": "Show the battle AI history button and enable B/PageUp, controller L1 and pointer activation. True when omitted. False hides the panel entry without changing decisions or replay traces.",
+          "description": "Show the battle AI history button and enable B/PageUp, controller L1 and pointer activation. True when omitted. False hides the panel entry and the tactic explanation appended to action messages, without changing decisions or replay traces.",
           "type": [
             "boolean",
             "null"
