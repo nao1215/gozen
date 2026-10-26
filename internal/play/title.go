@@ -61,6 +61,8 @@ func (g *Game) titleMenu() *list {
 		items = append(items, listItem{label: lang.T("おわる")})
 	}
 	m := newList(items, sw*0.08, sh*0.5, 340, max(5, len(items)))
+	// a long menu rises so the key hint under it stays clear
+	m.y = math.Max(sh*0.35, math.Min(m.y, sh-titleHintRoom-m.height()))
 	if g.titleCentered() {
 		m.x = (sw - 340) / 2
 	}
@@ -166,11 +168,21 @@ func (t *title) draw(g *Game, dst *ebiten.Image) {
 	}
 	t.menu.draw(g, dst, true)
 
+	hint := lang.T("Z / Enter: けってい   X / Esc: もどる   O: せってい   M: ミュート   F11: ぜんがめん")
+	gfx.DrawTextOutlineColor(dst, hint, titleHintX(g, gfx.TextWidth(hint, sizeS*0.8)), sh-44, sizeS*0.8, g.th.text, g.th.window, a)
+}
+
+// titleHintRoom is the room kept under the title's menu for the key hint.
+const titleHintRoom = 56.0
+
+// titleHintX is the centre of the key hint, tw wide: under the menu, kept inside the screen.
+func titleHintX(g *Game, tw float64) float64 {
+	sw, _ := g.screen()
 	hx := sw*0.08 + 170
 	if g.titleCentered() {
 		hx = sw / 2
 	}
-	gfx.DrawTextOutlineColor(dst, lang.T("Z / Enter: けってい   X / Esc: もどる   O: せってい   M: ミュート   F11: ぜんがめん"), hx, sh-44, sizeS*0.8, g.th.text, g.th.window, a)
+	return math.Max(tw/2+16, math.Min(sw-tw/2-16, hx))
 }
 
 type gameOver struct{ age int }
