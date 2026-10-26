@@ -297,6 +297,9 @@ type Meter struct {
 	Actor     string `yaml:"actor"`
 	// Marks are values marked on the bar (where something becomes possible).
 	Marks []float64 `yaml:"marks"`
+	// Style is how the meter shows: bar (the default) or number (the label and the
+	// value only, not capped by max: money, a count).
+	Style string `yaml:"style"`
 }
 
 // CardBubble is a rule for particles welling up from a card. For cards of Actor (anyone if empty), tied to State
@@ -487,6 +490,9 @@ type UIStyle struct {
 	Profiles bool `yaml:"profiles"`
 	// Bestiary puts Monsters in the title and field menu. Under --dev it is offered automatically.
 	Bestiary bool `yaml:"bestiary"`
+	// HideGold are the kinds of place (field, dungeon, map, stage) where the windows of
+	// the money (the field's, with the play time, and the menu's) are not shown.
+	HideGold []string `yaml:"hide_gold"`
 	// Voice shapes how voices play: cut at the next line, auto waits for them
 	// (schema_version 4, ADR 0028).
 	Voice   VoiceStyle `yaml:"voice"`

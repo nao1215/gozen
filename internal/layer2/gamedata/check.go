@@ -491,6 +491,18 @@ func (db *DB) Check() []error {
 			_, ok := db.Actors[m.Actor]
 			c.ref(w+".actor", "actor", m.Actor, ok)
 		}
+		switch m.Style {
+		case "", "bar", "number":
+		default:
+			c.errorf(diag.NotAWord, w+".style", "want bar or number, not %q", m.Style)
+		}
+	}
+	for i, k := range g.UI.HideGold {
+		switch k {
+		case "field", "dungeon", "map", "stage":
+		default:
+			c.errorf(diag.NotAWord, fmt.Sprintf("game.yaml ui.hide_gold[%d]", i), "want field, dungeon, map or stage, not %q", k)
+		}
 	}
 	for i, cb := range g.CardBubbles {
 		w := fmt.Sprintf("game.yaml card_bubbles[%d]", i)

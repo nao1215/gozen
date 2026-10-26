@@ -273,12 +273,16 @@ func (f *field) draw(g *Game, dst *ebiten.Image) {
 	}
 
 	t := g.db.Game.Terms
-	sec := g.st.Frames / 60
-	info := fmt.Sprintf("%d %s", g.st.Gold, t.Currency)
-	g.window(dst, sw-goldBoxW-36, goldBoxY, goldBoxW, goldBoxH)
-	gfx.DrawTextRight(dst, info, sw-60, 40, sizeM, g.th.text)
-	gfx.DrawTextRight(dst, fmt.Sprintf("%d:%02d:%02d", sec/3600, sec/60%60, sec%60), sw-60, 72, sizeS*0.8, g.th.border)
-	g.drawMeters(dst, g.shownMeters("", false), sw-goldBoxW-36, goldBoxY+goldBoxH+8, goldBoxW)
+	meterY := goldBoxY
+	if g.goldShown() {
+		sec := g.st.Frames / 60
+		info := fmt.Sprintf("%d %s", g.st.Gold, t.Currency)
+		g.window(dst, sw-goldBoxW-36, goldBoxY, goldBoxW, goldBoxH)
+		gfx.DrawTextRight(dst, info, sw-60, 40, sizeM, g.th.text)
+		gfx.DrawTextRight(dst, fmt.Sprintf("%d:%02d:%02d", sec/3600, sec/60%60, sec%60), sw-60, 72, sizeS*0.8, g.th.border)
+		meterY += goldBoxH + 8
+	}
+	g.drawMeters(dst, g.shownMeters("", false), sw-goldBoxW-36, meterY, goldBoxW)
 	if f.menu != nil {
 		f.menu.draw(g, dst, !g.busy())
 	}

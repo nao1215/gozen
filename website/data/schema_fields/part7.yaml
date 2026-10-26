@@ -21,6 +21,7 @@ TroopPick:
   when: "A condition for the troop to be eligible."
 UIStyle:
   stage_framing: "Per-picture static novel portrait framing, keyed by paths under assets/. Sets the source head anchor, displayed head height and top; preserves authored horizontal positions and clips off-screen content. Omitted pictures keep legacy framing. Needs schema version 8."
+  hide_gold: "The kinds of place (field, dungeon, map, stage) where the windows of the money are not shown: the field's, with the play time, and the menu's. Omitted: shown everywhere."
   battle_ai_history: "Show the battle AI history button and enable B/PageUp, controller L1 and pointer activation. True when omitted. False hides the panel entry and the tactic explanation appended to action messages, without changing decisions or replay traces."
   _: "The colors and layout of the windows and message display."
   bestiary: "Show Monsters, the monster book, in the title and field menu. Off by default; under `--dev` the menus show it anyway. Needs schema version 4."

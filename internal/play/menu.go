@@ -567,9 +567,10 @@ func (m *menu) draw(g *Game, dst *ebiten.Image) {
 		m.tabs.draw(g, dst, m.mode == "" && !m.picker)
 	}
 
-	t := g.db.Game.Terms
-	g.window(dst, 36, sh-110, 250, 74)
-	gfx.DrawTextRight(dst, fmt.Sprintf("%d %s", g.st.Gold, t.Currency), 260, sh-90, sizeM, g.th.text)
+	if g.goldShown() {
+		g.window(dst, 36, sh-110, 250, 74)
+		gfx.DrawTextRight(dst, fmt.Sprintf("%d %s", g.st.Gold, g.db.Game.Terms.Currency), 260, sh-90, sizeM, g.th.text)
+	}
 	ms := m.members(g)
 	switch m.mode {
 	case "status":

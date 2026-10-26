@@ -35,6 +35,8 @@ func TestCheckRejectsMistakes(t *testing.T) {
 		{"gallery music picture empty", game("gallery: {music_pictures: {theme: ['']}}\n"), "an empty picture"},
 		{"meter without a value", game("meters: [{label: Hunger}]\n"), "a meter needs value"},
 		{"meter of an unknown actor", game("meters: [{value: '1', actor: nobody}]\n"), `unknown actor "nobody"`},
+		{"meter of an unknown style", game("meters: [{value: '1', style: pie}]\n"), "want bar or number"},
+		{"money hidden at an unknown place", game("ui: {hide_gold: [battle]}\n"), "want field, dungeon, map or stage"},
 		{"card bubble of an unknown actor", game("card_bubbles: [{actor: nobody, when: 'true'}]\n"), `unknown actor "nobody"`},
 		{"card bubble of an unknown state", game("card_bubbles: [{state: nostate}]\n"), `unknown state "nostate"`},
 		{"card bubble negative", game("card_bubbles: [{size: -1}]\n"), "must not be negative"},

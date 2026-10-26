@@ -104,6 +104,7 @@ MemoVar:
   value: "An expression giving the number from the game state when the note is made."
 Meter:
   _: "A gauge of a number, showing `value` out of `max` while `when` holds."
+  style: "How the meter shows: bar (the default) or number (the label and the value only, not capped by max; for money such as value: gold)."
   actor: "The ID of the actor (an ID of actors) whose status page shows the meter. When empty, it shows on every page."
   color: "The color of the bar."
   full: "The text written after the bar when it is full."

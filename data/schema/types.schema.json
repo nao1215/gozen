@@ -10812,6 +10812,19 @@
           },
           "x-type": "expression"
         },
+        "style": {
+          "description": "How the meter shows: bar (the default) or number (the label and the value only, not capped by max; for money such as value: gold).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "value": {
           "description": "An expression giving the current value.",
           "type": [
@@ -17873,6 +17886,25 @@
             "version": "0, 1, 2"
           },
           "x-type": "boolean"
+        },
+        "hide_gold": {
+          "description": "The kinds of place (field, dungeon, map, stage) where the windows of the money are not shown: the field's, with the play time, and the menu's. Omitted: shown everywhere.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
         },
         "message": {
           "description": "The message window style: `box` (a framed box, the default) or `novel` (across the bottom like a visual novel).",

@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 const btlMeters = `
@@ -75,6 +77,37 @@ func TestMeterValuesAreClampedAndDrawn(t *testing.T) {
 	g.st.Vars["cap"] = 6.0
 	g.st.Vars["charge"] = 6.0
 	g.drawMeters(btlImage(), ms, 10, 100, 400)
+}
+
+// A number meter shows its whole value, past max too (money), and ui.hide_gold hides the
+// windows of the money at the kinds of place it lists.
+func TestMeterNumberAndHiddenGold(t *testing.T) {
+	g, _ := btlOpen(t, Options{Location: "camp"}, "meters:\n  - {label: Gold, value: gold, style: number}\n", "")
+	g.st.Gold = 2500
+	ms := g.shownMeters("", false)
+	if got := g.meterNumber(ms[0]); got != "2500" {
+		t.Fatalf("the number meter shows %q, want 2500", got)
+	}
+	g.drawMeters(btlImage(), ms, 10, 10, 260)
+	if !g.goldShown() {
+		t.Fatal("the money is hidden with no ui.hide_gold")
+	}
+	g.db.Game.UI.HideGold = []string{"dungeon"}
+	if !g.goldShown() {
+		t.Fatal("the money is hidden in a field when only dungeon is listed")
+	}
+	loc := g.db.Locations[g.st.Location]
+	loc.Dungeon = &data.Dungeon{}
+	if g.goldShown() {
+		t.Fatal("the money shows in a dungeon listed in ui.hide_gold")
+	}
+	loc.Dungeon = nil
+	g.db.Game.UI.HideGold = []string{"field"}
+	if g.goldShown() {
+		t.Fatal("the money shows in a field listed in ui.hide_gold")
+	}
+	m := newMenu(g)
+	m.draw(g, btlImage())
 }
 
 // TestFrameMeterSecond: the meter counts updates and draws and, once a second has gone by,

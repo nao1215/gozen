@@ -3,6 +3,7 @@ package play
 import (
 	"fmt"
 	"image/color"
+	"slices"
 	"strconv"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -65,8 +66,23 @@ func (g *Game) drawMeters(dst *ebiten.Image, ms []*gamedata.Meter, x, y, w float
 	}
 }
 
+// meterNumber is what a number meter shows: its value, whole, not capped by max (0 when
+// the value cannot be worked out).
+func (g *Game) meterNumber(m *gamedata.Meter) string {
+	v, err := m.Value.Number(g.st.Env())
+	if err != nil {
+		v = 0
+	}
+	return strconv.Itoa(int(v))
+}
+
 func (g *Game) drawMeterRow(dst *ebiten.Image, m *gamedata.Meter, x, y, w float64) {
 	size := sizeS * 0.8
+	if m.Style == "number" { // the label and the value, uncapped: no bar
+		g.text(dst, m.Label, x, y, size, g.th.dim)
+		gfx.DrawTextRight(dst, g.meterNumber(m), x+w, y, size, m.Color.Or(g.th.text))
+		return
+	}
 	v, mx := g.meterValue(m)
 	g.text(dst, m.Label, x, y, size, g.th.dim)
 	bx := x + gfx.TextWidth(m.Label, size) + 12
@@ -94,4 +110,25 @@ func (g *Game) drawMeterRow(dst *ebiten.Image, m *gamedata.Meter, x, y, w float6
 		}
 	}
 	gfx.DrawTextRight(dst, right, x+w, y, size, rc)
+}
+
+// goldShown reports whether the windows of the money show where the party is: not at a kind
+// of place listed in ui.hide_gold.
+func (g *Game) goldShown() bool {
+	hide := g.db.Game.UI.HideGold
+	if len(hide) == 0 {
+		return true
+	}
+	kind := "field"
+	if l := g.db.Locations[g.st.Location]; l != nil {
+		switch {
+		case l.Dungeon != nil:
+			kind = "dungeon"
+		case l.Stage != nil:
+			kind = "stage"
+		case l.Map != nil:
+			kind = "map"
+		}
+	}
+	return !slices.Contains(hide, kind)
 }
