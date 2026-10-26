@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Write a browser save and its time as one localStorage value, so a write that fails (a full quota) keeps the old save whole; the time was a second write that could fail after the save was replaced. Saves of earlier versions still read.
 - Load a save whose monster's species was removed or whose sex the species no longer allows: the monster leaves, or takes an allowed sex, and the load report says so, as for other actors; the whole save failed to load.
 - Refuse a save whose cursor has a negative answer, and never put one on a choice when reading a cursor on; a negative index could reach the choice's list.
 - Count a won battle in the monster book and offer recruits for the foes it beat (its `last_kill` counts), not every member the troop began with: a foe that fled no longer counts, and one summoned or transformed into does.

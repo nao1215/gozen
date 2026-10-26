@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/nao1215/gozen/internal/savefile"
@@ -95,4 +97,100 @@ func (g *Game) saveState(name string) (string, error) {
 		}
 	}
 	return "", g.store.Write(name, b)
+}
+
+// kv is a browser's key/value storage (localStorage), its values strings.
+type kv interface {
+	get(key string) (string, bool, error)
+	set(key, value string) error
+	remove(key string) error
+	keys() ([]string, error)
+}
+
+// kvStore keeps saves in a kv: a save and the time it was written in one value under
+// prefix+name, so that a write is one set that either replaces both or fails and keeps
+// the old save. An older version kept the time under prefix+name+"#time"; such saves
+// still read.
+type kvStore struct {
+	kv     kv
+	prefix string
+	now    func() time.Time
+}
+
+// kvTime begins a value that carries its time: the mark, the time, a newline, the save.
+const kvTime = "gozen-time "
+
+const oldTimeKey = "#time"
+
+// unpack splits a value into its save and its time (zero for an older value).
+func unpack(v string) ([]byte, time.Time) {
+	head, body, ok := strings.Cut(v, "\n")
+	if rest, marked := strings.CutPrefix(head, kvTime); ok && marked {
+		if t, err := time.Parse(time.RFC3339, rest); err == nil {
+			return []byte(body), t
+		}
+	}
+	return []byte(v), time.Time{}
+}
+
+func (s kvStore) Read(name string) ([]byte, error) {
+	v, ok, err := s.kv.get(s.prefix + name)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, &fs.PathError{Op: "read", Path: name, Err: fs.ErrNotExist}
+	}
+	b, _ := unpack(v)
+	return b, nil
+}
+
+func (s kvStore) Write(name string, b []byte) error {
+	// An older version's time key may stay; the value's own time is read first, and Remove
+	// takes both.
+	return s.kv.set(s.prefix+name, kvTime+s.now().UTC().Format(time.RFC3339)+"\n"+string(b))
+}
+
+func (s kvStore) List() ([]string, error) {
+	keys, err := s.kv.keys()
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, k := range keys {
+		if name, ok := strings.CutPrefix(k, s.prefix); ok && !strings.HasSuffix(name, oldTimeKey) {
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+func (s kvStore) Remove(name string) error {
+	if err := s.kv.remove(s.prefix + name); err != nil {
+		return err
+	}
+	return s.kv.remove(s.prefix + name + oldTimeKey)
+}
+
+// ModTime is the time the save was written.
+func (s kvStore) ModTime(name string) (time.Time, error) {
+	v, ok, err := s.kv.get(s.prefix + name)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if !ok {
+		return time.Time{}, fs.ErrNotExist
+	}
+	if _, t := unpack(v); !t.IsZero() {
+		return t, nil
+	}
+	old, ok, err := s.kv.get(s.prefix + name + oldTimeKey)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if !ok {
+		return time.Time{}, fs.ErrNotExist
+	}
+	return time.Parse(time.RFC3339, old)
 }
