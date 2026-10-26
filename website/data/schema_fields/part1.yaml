@@ -51,7 +51,7 @@ Aside:
 Atlas:
   activation: "travel (default) follows roads; instant executes the chosen point directly, including the current point, without walking, steps, encounters or changing the standing point. A to entrance still moves to its destination."
   talk: "How the map shows under a conversation that is not its own question (a region's orders): omitted (as it is), dim (darkened) or hide (darkened, without the markers, flags and name plates)."
-  safe_area: "The edges of the screen kept for the windows over the map, [top, right, bottom, left] as fractions of the screen (each at most 0.45). The picture is fitted to the rest, and the camera brings any part of it there. Omitted: the whole screen."
+  safe_area: "The edges of the screen kept for the windows over the map, [top, right, bottom, left] as fractions of the screen (each at most 0.45). The picture is fitted to the rest; zoomed in far enough, the camera keeps it over the whole screen, the edges included, however far it is moved. Omitted: the whole screen."
   selection_panel: "Optional fixed panel showing the focused point's first matching advice variant. Clicking selects; Confirm executes; Back hides the panel."
   camera: "Opt-in pan/zoom camera. An empty map uses zoom 2 and max_zoom 8. Omitted keeps the fitted overview. Camera position is not saved."
   travel_speed: "Token travel in picture widths per second, per location. Omitted or 0 means 0.12; otherwise 0.01 to 2, finite. Does not change road steps or encounters."

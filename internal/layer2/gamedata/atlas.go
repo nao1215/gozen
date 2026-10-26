@@ -20,7 +20,8 @@ type Atlas struct {
 	Camera *AtlasCamera `yaml:"camera"`
 	// SafeArea keeps the picture inside the screen less its edges [top, right, bottom,
 	// left], fractions of the screen, where the windows over the map stand: the picture is
-	// fitted to the rest, and the camera brings any part of it there. Empty: the whole screen.
+	// fitted to the rest; zoomed in far enough, the camera keeps it over the whole screen.
+	// Empty: the whole screen.
 	SafeArea []float64 `yaml:"safe_area"`
 	// TravelSpeed is the map renderer's token speed in picture widths per second.
 	// Zero selects 0.12; explicit speeds must be finite and in [0.01, 2].

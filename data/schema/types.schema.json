@@ -815,7 +815,7 @@
           "x-type": "[Road](#road)[]"
         },
         "safe_area": {
-          "description": "The edges of the screen kept for the windows over the map, [top, right, bottom, left] as fractions of the screen (each at most 0.45). The picture is fitted to the rest, and the camera brings any part of it there. Omitted: the whole screen.",
+          "description": "The edges of the screen kept for the windows over the map, [top, right, bottom, left] as fractions of the screen (each at most 0.45). The picture is fitted to the rest; zoomed in far enough, the camera keeps it over the whole screen, the edges included, however far it is moved. Omitted: the whole screen.",
           "items": {
             "type": "number"
           },

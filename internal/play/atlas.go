@@ -240,16 +240,31 @@ func (s *atlasScene) resetCamera(g *Game, overview bool) {
 	}
 }
 
+// clampCamera keeps the camera on the picture (k its scale, w and h its size). A picture
+// that can cover the whole screen at k never shows an edge inside the screen, under the
+// safe_area's bands too; one that can only cover the safe part covers that; a smaller one
+// stands in the middle of the safe part.
 func (s *atlasScene) clampCamera(g *Game, k, w, h float64) {
-	_, _, pw, ph := s.view(g)
-	clamp := func(v, size, span float64) float64 {
-		if span >= size {
-			return size / 2
-		}
-		return max(span/2, min(size-span/2, v))
+	l, t, iw, ih := s.view(g)
+	fw, fh := g.pixels()
+	s.cameraCenter.X = clampAxis(s.cameraCenter.X, w, k, l, iw, fw)
+	s.cameraCenter.Y = clampAxis(s.cameraCenter.Y, h, k, t, ih, fh)
+}
+
+// clampAxis clamps the camera's centre c along one axis: the picture is size long, shown
+// at k; the safe part begins at lo and is span long, of a screen full long.
+func clampAxis(c, size, k, lo, span, full float64) float64 {
+	shown := size * k
+	off := lo + span/2 - c*k // where the picture's edge shows
+	switch {
+	case shown >= full:
+		off = max(full-shown, min(0, off))
+	case shown >= span:
+		off = max(lo+span-shown, min(lo, off))
+	default:
+		off = lo + (span-shown)/2
 	}
-	s.cameraCenter.X = clamp(s.cameraCenter.X, w, pw/k)
-	s.cameraCenter.Y = clamp(s.cameraCenter.Y, h, ph/k)
+	return (lo + span/2 - off) / k
 }
 
 func (s *atlasScene) panCamera(g *Game, dx, dy float64) {
