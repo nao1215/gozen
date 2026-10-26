@@ -1,4 +1,4 @@
-# ADR 0046: Headless scripted runs
+# ADR 0047: Headless scripted runs
 
 Status: Accepted (2026-10-26).
 
