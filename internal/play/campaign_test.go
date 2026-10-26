@@ -282,3 +282,20 @@ func wldFramesDrawnOnly(t *testing.T, g *Game, n int) {
 		g.Draw(screen)
 	}
 }
+
+// campaignSink keeps a result alive so that making it is counted.
+var campaignSink data.CampaignState
+
+// The campaign's state the drawing reads is made once a frame, not once for every
+// region, plate and window that reads it.
+func TestCampaignStateMadeOnceAFrame(t *testing.T) {
+	g, _ := campaignOpen(t, nil)
+	first := g.campaignNow()
+	if n := testing.AllocsPerRun(50, func() { campaignSink = g.campaignNow() }); n != 0 {
+		t.Errorf("reading the campaign's state again in a frame allocates %g times", n)
+	}
+	g.tick++
+	if again := g.campaignNow(); len(again.JoinedIDs) != len(first.JoinedIDs) {
+		t.Errorf("the next frame's state has %v, want %v", again.JoinedIDs, first.JoinedIDs)
+	}
+}

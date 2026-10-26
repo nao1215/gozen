@@ -18,6 +18,7 @@ import (
 	"github.com/nao1215/gozen/internal/layer3/atlas"
 	"github.com/nao1215/gozen/internal/layer3/campaign"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"github.com/nao1215/gozen/internal/rpg"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 
@@ -53,7 +54,7 @@ func (s *atlasScene) campaignChoices(g *Game) {
 	}
 	if !s.warChosen { // at first, the first region the player can march on
 		s.warChosen = true
-		cs := g.st.Campaign()
+		cs := g.campaignNow()
 		for i, c := range s.choices {
 			if data.RegionOwner(g.db, cs, c.Point) != g.db.Game.Campaign.Player && data.Borders(g.db, cs, c.Point, g.db.Game.Campaign.Player) {
 				s.sel = i
@@ -116,7 +117,7 @@ func (s *atlasScene) drawRegionMarker(g *Game, dst *ebiten.Image, p mapPoint, x,
 	if dst == nil {
 		return
 	}
-	cs := g.st.Campaign()
+	cs := g.campaignNow()
 	owner := data.RegionOwner(g.db, cs, p.id)
 	c := factionColor(g, owner)
 	pole := float32(h)
@@ -136,7 +137,7 @@ func (s *atlasScene) drawRegionMarker(g *Game, dst *ebiten.Image, p mapPoint, x,
 // for a free one, and draws its border; the region chosen is brighter, its border lit.
 func (s *atlasScene) drawAreas(g *Game, dst *ebiten.Image, toScreen func(geom.Pt) (float32, float32), sel string) {
 	u := float32(g.ui)
-	cs := g.st.Campaign()
+	cs := g.campaignNow()
 	for _, id := range data.RegionIDs(g.db) {
 		r := g.db.Regions[id]
 		if len(r.Area) < 3 {
@@ -206,7 +207,7 @@ func (s *atlasScene) drawLandmark(g *Game, dst *ebiten.Image, p mapPoint, x, y, 
 	if dst == nil {
 		return box, true
 	}
-	cs := g.st.Campaign()
+	cs := g.campaignNow()
 	turn := float64(data.Turn(g.db, cs))
 	f := data.Fought(cs, p.id)
 	ravaged := f > 0 && f >= turn-1
@@ -268,7 +269,7 @@ func (s *atlasScene) plateName(g *Game, p mapPoint, sel string) string {
 
 // regionLabel is a region's plate when the map gives none: its name and garrison.
 func regionLabel(g *Game, id string) string {
-	return fmt.Sprintf("%s  %d", data.RegionName(g.db, id), int(data.Garrison(g.db, g.st.Campaign(), id)))
+	return fmt.Sprintf("%s  %d", data.RegionName(g.db, id), int(data.Garrison(g.db, g.campaignNow(), id)))
 }
 
 // campaignBand is the band's text: the turn (campaign.heading, else the calendar's words),
@@ -276,7 +277,7 @@ func regionLabel(g *Game, id string) string {
 // the engine's words.
 func campaignBand(g *Game) string {
 	c := g.db.Game.Campaign
-	cs := g.st.Campaign()
+	cs := g.campaignNow()
 	turn := data.Turn(g.db, cs)
 	when := fmt.Sprintf(lang.T("第%dターン"), turn)
 	if c.Calendar == "week" {
@@ -320,7 +321,7 @@ func (s *atlasScene) drawCampaign(g *Game, dst *ebiten.Image, sel string) {
 
 // regionLines are the lines of a region's window under its name: owner, garrison and values.
 func regionLines(g *Game, id string) []string {
-	cs := g.st.Campaign()
+	cs := g.campaignNow()
 	owner := data.RegionOwner(g.db, cs, id)
 	lines := []string{
 		fmt.Sprintf(lang.T("持ち主　%s"), campaign.FactionName(g.db, owner)),
@@ -344,8 +345,13 @@ func regionLines(g *Game, id string) []string {
 // region's own point lies under it; then at the right under the meters, else at the bottom
 // left, whichever covers the point least. The window never hides the region it tells.
 func (s *atlasScene) regionWindowBox(g *Game, id string) plateBox {
+	return s.regionWindowFor(g, id, len(regionLines(g, id)))
+}
+
+// regionWindowFor is regionWindowBox for a window of n lines (made once by the caller).
+func (s *atlasScene) regionWindowFor(g *Game, id string, n int) plateBox {
 	sw, sh := g.screen()
-	w, h := 300.0, 70+float64(len(regionLines(g, id)))*gfx.LineHeight(sizeS)
+	w, h := 300.0, 70+float64(n)*gfx.LineHeight(sizeS)
 	i := s.pointIndex(id)
 	if i < 0 {
 		return plateBox{x: 36, y: 96, w: w, h: h}
@@ -411,14 +417,15 @@ func (s *atlasScene) drawSelectionRing(g *Game, dst *ebiten.Image, id string) {
 
 // drawRegionWindow is the window of a region: name, owner, garrison and values.
 func (s *atlasScene) drawRegionWindow(g *Game, dst *ebiten.Image, id string) {
-	b := s.regionWindowBox(g, id)
+	lines := regionLines(g, id)
+	b := s.regionWindowFor(g, id, len(lines))
 	x, y := b.x, b.y
-	owner := data.RegionOwner(g.db, g.st.Campaign(), id)
+	owner := data.RegionOwner(g.db, g.campaignNow(), id)
 	g.window(dst, x, y, b.w, b.h)
 	gfx.FillRoundRect(dst, float32(x+22), float32(y+24), 18, 18, 4, factionColor(g, owner))
 	g.text(dst, data.RegionName(g.db, id), x+50, y+16, sizeM, g.th.accent)
 	ly := y + 56
-	for _, l := range regionLines(g, id) {
+	for _, l := range lines {
 		g.text(dst, l, x+24, ly, sizeS, g.th.text)
 		ly += gfx.LineHeight(sizeS)
 	}
@@ -473,7 +480,7 @@ func (s *atlasScene) generalsBox(g *Game, n int, sw, sh float64) (x, y, w, cell 
 // drawGenerals stands the generals who have joined in a row at the bottom right: each
 // face with its troops under it, dim when it has marched this turn.
 func (s *atlasScene) drawGenerals(g *Game, dst *ebiten.Image, sw, sh float64) {
-	cs := g.st.Campaign()
+	cs := g.campaignNow()
 	ids := generalIDs(g)
 	if len(ids) == 0 {
 		return
@@ -631,7 +638,7 @@ func (s *atlasScene) drawReach(g *Game, dst *ebiten.Image, toScreen func(geom.Pt
 	if r == nil {
 		return
 	}
-	cs := g.st.Campaign()
+	cs := g.campaignNow()
 	at := func(id string) (geom.Pt, bool) {
 		if i := s.pointIndex(id); i >= 0 {
 			return s.points[i].at, true
@@ -690,4 +697,24 @@ func (s *atlasScene) drawReach(g *Game, dst *ebiten.Image, toScreen func(geom.Pt
 			gfx.StrokeLine(dst, bx, by, bx+float32(hx), by+float32(hy), 2, c, true)
 		}
 	}
+}
+
+// campaignNow is the campaign's state as this frame reads it: made once a frame (the
+// tick), and again when someone joins or leaves, instead of for every region, plate and
+// window that reads it. Its variables are the play's own, never a copy.
+func (g *Game) campaignNow() data.CampaignState {
+	if c := &g.campaignCache; c.ok && c.tick == g.tick && c.st == g.st && c.actors == len(g.st.Actors) {
+		return c.state
+	}
+	g.campaignCache = campaignCache{ok: true, tick: g.tick, st: g.st, actors: len(g.st.Actors), state: g.st.Campaign()}
+	return g.campaignCache.state
+}
+
+// campaignCache is campaignNow's state and what it was made for.
+type campaignCache struct {
+	ok     bool
+	tick   int
+	st     *rpg.State
+	actors int
+	state  data.CampaignState
 }
