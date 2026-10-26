@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add `campaign.heading`, a text with expressions that replaces the turn's words in the band over a campaign's map (such as `"Year {var.year}, month {var.month}"`); the default band is unchanged.
 - Add meter `style: number` to show a value such as `gold` as a plain number, not capped by `max`, and `ui.hide_gold` to hide the money windows of the field and the menu at the listed kinds of place (`field`, `dungeon`, `map`, `stage`).
 - Add opt-in `group` to campaign orders and location actions, listing entries of one group together under a heading in the place's list, and `campaign.pin_end_turn` to keep the end of the turn in the last row below the rows that scroll.
 - Keep a campaign map's region window off the region it describes and mark the chosen region with a ring in the cursor colour; on opening, the window could cover the chosen region while the capital's ring looked like the cursor.

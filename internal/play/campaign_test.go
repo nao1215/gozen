@@ -82,3 +82,17 @@ func TestCampaignListGroupsAndPinsEndTurn(t *testing.T) {
 		t.Errorf("choosing the pinned row left turn %d, want 2", turn)
 	}
 }
+
+// campaign.heading replaces the turn's words of the band with its text, its expressions
+// worked out; without it the band keeps the engine's words and the last turn.
+func TestCampaignHeading(t *testing.T) {
+	g, _ := campaignOpen(t, map[string]string{"turns: 5": "turns: 5\n  heading: \"Year {var.year + 1}, month {campaign.turn + 3}\""})
+	if band := campaignBand(g); !strings.HasPrefix(band, "Year 1, month 4") || strings.Contains(band, "5") {
+		t.Fatalf("band %q, want the heading and no last turn", band)
+	}
+	wldFramesDrawn(t, g, 2)
+	g.db.Game.Campaign.Heading = ""
+	if band := campaignBand(g); !strings.Contains(band, "5") || !strings.Contains(band, "Blue") {
+		t.Fatalf("default band %q has no last turn or faction", band)
+	}
+}

@@ -892,6 +892,7 @@ func (db *DB) Check() []error {
 				entryIDs[a.ID] = true
 			}
 			c.text(ww+".label", a.Label, FieldNames)
+			c.text(ww+".group", a.Group, FieldNames)
 			c.expr(ww+".when", a.When, FieldNames)
 			c.expr(ww+".new", a.New, FieldNames)
 			c.expr(ww+".mark", a.Mark, FieldNames)

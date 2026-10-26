@@ -249,25 +249,37 @@ func regionLabel(g *Game, id string) string {
 	return fmt.Sprintf("%s  %d", data.RegionName(g.db, id), int(data.Garrison(g.db, g.st.Campaign(), id)))
 }
 
-// drawCampaign draws the band, the meters, the window of the region chosen and the
-// generals over a campaign's map.
-func (s *atlasScene) drawCampaign(g *Game, dst *ebiten.Image, sel string) {
-	sw, sh := g.screen()
+// campaignBand is the band's text: the turn (campaign.heading, else the calendar's words),
+// the player's faction, the actions left, and the last turn when the turns are counted by
+// the engine's words.
+func campaignBand(g *Game) string {
 	c := g.db.Game.Campaign
 	cs := g.st.Campaign()
-	// the band: the turn, the player's faction, the actions
 	turn := data.Turn(g.db, cs)
 	when := fmt.Sprintf(lang.T("第%dターン"), turn)
 	if c.Calendar == "week" {
 		when = fmt.Sprintf(lang.T("%d年目 第%d週"), (turn-1)/52+1, (turn-1)%52+1)
 	}
+	if c.Heading != "" {
+		when = data.Render(g.db.Tr(c.Heading), g.st.Env())
+	}
 	band := when + "　" + campaign.FactionName(g.db, c.Player)
 	if c.Count != "orders" {
 		band += fmt.Sprintf(lang.T("　行動 %d/%d"), int(data.ActionsLeft(g.db, cs)), int(data.TurnActions(g.db, cs)))
 	}
-	if c.Turns > 0 {
+	if c.Turns > 0 && c.Heading == "" {
 		band = fmt.Sprintf(lang.T("%s　（全 %d ターン）"), band, c.Turns)
 	}
+	return band
+}
+
+// drawCampaign draws the band, the meters, the window of the region chosen and the
+// generals over a campaign's map.
+func (s *atlasScene) drawCampaign(g *Game, dst *ebiten.Image, sel string) {
+	sw, sh := g.screen()
+	c := g.db.Game.Campaign
+	// the band: the turn, the player's faction, the actions
+	band := campaignBand(g)
 	bw := gfx.TextWidth(band, sizeM) + 120
 	bx := (sw - bw) / 2
 	g.window(dst, bx, 18, bw, 64)

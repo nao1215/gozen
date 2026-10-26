@@ -2389,6 +2389,19 @@
           },
           "x-type": "string → [General](#general)"
         },
+        "heading": {
+          "description": "The turn's part of the band over the campaign's map, a text with {expressions}, such as \"Year {campaign.year}\". With it the band leaves out the last turn. Omitted: the calendar's words.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "labels": {
           "additionalProperties": {
             "type": "string"

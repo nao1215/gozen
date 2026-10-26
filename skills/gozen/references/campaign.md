@@ -18,13 +18,14 @@ campaign:
   labels: {wealth: Treasury, food: Granary}
 ```
 
-## Arrange the order list
+## Arrange the campaign screen
 
-An order's `group` (and a location action's `group`) lists it under a heading in the place's list; the entries of one group stand together. `campaign.pin_end_turn: true` keeps the end of the turn in the last row, below the rows that scroll.
+`campaign.heading` replaces the turn's words in the band over the map with a text with `{expressions}`. An order's `group` (and a location action's `group`) lists it under a heading in the place's list; the entries of one group stand together. `campaign.pin_end_turn: true` keeps the end of the turn in the last row, below the rows that scroll.
 
 <!-- verify: parse fragment of the campaign section of game.yaml -->
 ```yaml
 campaign:
+  heading: "Year {var.year}, month {var.month}"
   pin_end_turn: true
   orders:
     raid: {label: Raid, group: Abroad, target: border}

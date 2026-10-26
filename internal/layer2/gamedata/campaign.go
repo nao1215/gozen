@@ -119,6 +119,9 @@ type Campaign struct {
 	Lost string `yaml:"lost"`
 	// OnTurn is the event run at the start of each turn after the first.
 	OnTurn string `yaml:"on_turn"`
+	// Heading is the turn's part of the band over the campaign's map, a text with
+	// {expressions} (the calendar's words when empty).
+	Heading string `yaml:"heading"`
 	// Calendar names the turns: "" (turn N) or week (a turn is a week of a 52-week
 	// year: campaign.week and campaign.year).
 	Calendar string `yaml:"calendar"`
@@ -508,6 +511,7 @@ func (c *checker) campaignLabels() {
 	if cp == nil {
 		return
 	}
+	c.text("game.yaml campaign.heading", cp.Heading, FieldNames)
 	names := ValueNames(c.db)
 	for k := range cp.Labels {
 		if !slices.Contains(names, k) {
