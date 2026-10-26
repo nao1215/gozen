@@ -89,6 +89,7 @@ var english = map[string]string{
 	"第%dターン":          "Turn %d",
 	"%d年目 第%d週":       "Year %d, week %d",
 	"　行動 %d/%d":       "   Actions %d/%d",
+	"行動 %d":           "%d actions",
 	"離脱 あと%d":         "Away, %d more",
 	"%d人":             "%d men",
 	"壊滅":              "ROUTED",

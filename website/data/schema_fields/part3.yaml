@@ -1,3 +1,6 @@
+EndTurnButton:
+  _: "The button on a campaign's map that ends the turn (campaign.end_turn_button)."
+  icon: "Its picture under assets/, beside the end of the turn's label. Omitted: the label alone."
 Encounter:
   _: "The random battles met at a location, checked on arrival and on each search (or each step in a dungeon)."
   gauge: "If set, each step fills an on-screen gauge by `rate`, and the chance of a battle on a step is the gauge's fill times this number (for example 0.3). The gauge empties after a battle."

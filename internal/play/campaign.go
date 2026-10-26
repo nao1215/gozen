@@ -69,6 +69,11 @@ func (s *atlasScene) campaignChoices(g *Game) {
 func (s *atlasScene) regionOrders(g *Game, id string) {
 	g.sfx("decide")
 	c := g.db.Game.Campaign
+	if items := regionOrderItems(g, id); c.OrderView == "icons" && len(items) > 0 {
+		g.push(&orderBar{scene: s, region: id, prompt: campaign.TargetLabel(g.db, g.st, id), items: items})
+		g.emit("region", traceLine{"location": s.loc, "region": id})
+		return
+	}
 	var opts []data.ChoiceOption
 	for _, oid := range c.OrderIDs() {
 		o := c.Orders[oid]
@@ -292,8 +297,9 @@ func (s *atlasScene) drawCampaign(g *Game, dst *ebiten.Image, sel string) {
 		s.drawSelectionRing(g, dst, sel)
 		s.drawRegionWindow(g, dst, sel)
 	}
-	// the generals who have joined, with their troops
+	// the generals who have joined, with their troops, and the end of the turn over them
 	s.drawGenerals(g, dst, sw, sh)
+	s.drawEndTurn(g, dst)
 }
 
 // regionLines are the lines of a region's window under its name: owner, garrison and values.
@@ -347,6 +353,13 @@ func (s *atlasScene) regionWindowBox(g *Game, id string) plateBox {
 		others = append(others, gen)
 	}
 	others = append(others, s.cameraButtons(g)...)
+	if r, ok := s.endTurnRect(g); ok {
+		others = append(others, r)
+	}
+	if b, ok := g.stack[len(g.stack)-1].(*orderBar); ok && b.scene == s {
+		win, _ := b.layout(g)
+		others = append(others, win)
+	}
 	best, least, found := tries[0], math.Inf(1), false
 	for _, t := range tries {
 		t.y = math.Max(4, math.Min(sh-4-t.h, t.y))

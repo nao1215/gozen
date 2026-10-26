@@ -44,6 +44,7 @@ const (
 	btnMapOverview
 	btnMapFocus
 	btnMapPan
+	btnEndTurn
 
 	numButtons
 
@@ -56,6 +57,7 @@ var keys = [numButtons][]ebiten.Key{
 	btnMapOverview: {ebiten.KeyHome},
 	btnMapFocus:    {ebiten.KeyEnd},
 	btnMapPan:      {ebiten.KeyP},
+	btnEndTurn:     {ebiten.KeyE},
 	btnUp:          {ebiten.KeyArrowUp, ebiten.KeyW, ebiten.KeyK},
 	btnDown:        {ebiten.KeyArrowDown, ebiten.KeyS, ebiten.KeyJ},
 	btnLeft:        {ebiten.KeyArrowLeft, ebiten.KeyA, ebiten.KeyH},
@@ -96,6 +98,7 @@ var pads = [numButtons][]ebiten.StandardGamepadButton{
 	btnMapOverview: {ebiten.StandardGamepadButtonCenterLeft},
 	btnMapFocus:    {ebiten.StandardGamepadButtonLeftStick},
 	btnMapPan:      {ebiten.StandardGamepadButtonRightStick},
+	btnEndTurn:     {ebiten.StandardGamepadButtonRightLeft},
 	btnUp:          {ebiten.StandardGamepadButtonLeftTop},
 	btnDown:        {ebiten.StandardGamepadButtonLeftBottom},
 	btnLeft:        {ebiten.StandardGamepadButtonLeftLeft},
@@ -582,7 +585,7 @@ func parseScript(src string) (*script, error) {
 }
 
 var scriptButtons = map[string]button{
-	"map_zoom_in": btnMapZoomIn, "map_zoom_out": btnMapZoomOut, "map_overview": btnMapOverview, "map_focus": btnMapFocus, "map_pan": btnMapPan,
+	"map_zoom_in": btnMapZoomIn, "map_zoom_out": btnMapZoomOut, "map_overview": btnMapOverview, "map_focus": btnMapFocus, "map_pan": btnMapPan, "end_turn_key": btnEndTurn,
 	"z": btnOK, "ok": btnOK, "enter": btnOK, "x": btnCancel, "cancel": btnCancel, "menu": btnMenu,
 	"tab": btnNext, "up": btnUp, "down": btnDown, "left": btnLeft, "right": btnRight,
 	"log": btnLog, "auto": btnAuto, "hide": btnHide, "config": btnConfig, "memo": btnMemo,

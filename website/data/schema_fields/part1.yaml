@@ -196,6 +196,8 @@ Class:
   tree: "The skill tree: skills and passive nodes raised with SP, each opening once the nodes it requires are raised far enough."
 Campaign:
   _: "game.yaml's campaign: a game of regions held by factions over turns (ADR 0030). Its state is in variables with generated names."
+  end_turn_button: "A button at the bottom right of the map, over the generals, that ends the turn on a click or the E key (the pad's left face button); it glows when no actions are left. Omitted: none."
+  order_view: "How the orders of a region chosen on the map are offered: list (a choice of their labels, the default) or icons (a row of square buttons with the orders' icons over the bottom of the map; left and right choose, OK gives the order, Cancel closes it)."
   sortie: "How the sortie screen looks: a picture behind it, and its title, then shown in a window like the other windows. Omitted: a plain dark screen with an outlined title."
   heading: "The turn's part of the band over the campaign's map, a text with {expressions}, such as \"Year {campaign.year}\". With it the band leaves out the last turn. Omitted: the calendar's words."
   pin_end_turn: "Keep the end of the turn in the last row of the place's list, below the rows that scroll, so it shows however long the list is. Off by default."

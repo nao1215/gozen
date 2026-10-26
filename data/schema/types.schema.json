@@ -2415,6 +2415,19 @@
           },
           "x-type": "string"
         },
+        "end_turn_button": {
+          "$ref": "#/$defs/EndTurnButton",
+          "description": "A button at the bottom right of the map, over the generals, that ends the turn on a click or the E key (the pad's left face button); it glows when no actions are left. Omitted: none.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[EndTurnButton](#endturnbutton)"
+        },
         "generals": {
           "additionalProperties": {
             "$ref": "#/$defs/General"
@@ -2512,6 +2525,19 @@
         },
         "on_turn": {
           "description": "The event run at the start of each turn after the first.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "order_view": {
+          "description": "How the orders of a region chosen on the map are offered: list (a choice of their labels, the default) or icons (a row of square buttons with the orders' icons over the bottom of the map; left and right choose, OK gives the order, Cancel closes it).",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -6828,6 +6854,26 @@
             "version": "0, 1, 2"
           },
           "x-type": "[TroopPick](#trooppick)[]"
+        }
+      },
+      "type": "object"
+    },
+    "EndTurnButton": {
+      "additionalProperties": false,
+      "description": "The button on a campaign's map that ends the turn (campaign.end_turn_button).",
+      "properties": {
+        "icon": {
+          "description": "Its picture under assets/, beside the end of the turn's label. Omitted: the label alone.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         }
       },
       "type": "object"
@@ -11305,6 +11351,19 @@
         },
         "group": {
           "description": "The heading the order is listed under in the place's list, together with the place's actions of the same group. Omitted: no heading.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "icon": {
+          "description": "The order's picture under assets/ in the row of icons (campaign.order_view: icons). Omitted: the label in a square.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
