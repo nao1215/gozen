@@ -17977,6 +17977,19 @@
           },
           "x-type": "boolean"
         },
+        "hide_bar_on_choice": {
+          "description": "Hide the buttons under the novel window (back, log, save and the rest) while a choice is shown; their keys still work. Off by default.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
         "hide_gold": {
           "description": "The kinds of place (field, dungeon, map, stage) where the windows of the money are not shown: the field's, with the play time, and the menu's. Omitted: shown everywhere.",
           "items": {

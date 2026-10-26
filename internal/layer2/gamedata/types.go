@@ -498,6 +498,9 @@ type UIStyle struct {
 	// BattleMessage is the battle's message window: fixed (three lines tall, the
 	// default) or fit (as tall as the lines it shows).
 	BattleMessage string `yaml:"battle_message"`
+	// HideBarOnChoice hides the buttons under the novel window (back, log, save and the
+	// rest) while a choice is shown; their keys still work.
+	HideBarOnChoice bool `yaml:"hide_bar_on_choice"`
 	// HideGold are the kinds of place (field, dungeon, map, stage) where the windows of
 	// the money (the field's, with the play time, and the menu's) are not shown.
 	HideGold []string `yaml:"hide_gold"`

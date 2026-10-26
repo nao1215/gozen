@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add opt-in `ui.hide_bar_on_choice` to hide the buttons under the novel window while a choice is shown; their keys still work.
 - Keep the title's key hint clear of a long title menu and inside the screen; with seven entries the menu covered the hint, whose left end was cut off.
 - Add opt-in `ui.battle_foe_names` (`name` or `hp`) to put a plate with each foe's name, and a bar of its HP, under the foes that are not bosses, and `ui.battle_message: fit` to size the battle's message window to its lines.
 - Add meter `mark_labels` to name the marks on a bar with a short word under each line.
