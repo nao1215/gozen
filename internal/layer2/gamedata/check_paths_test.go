@@ -37,7 +37,7 @@ func TestCheckRejectsMistakes(t *testing.T) {
 		{"meter of an unknown actor", game("meters: [{value: '1', actor: nobody}]\n"), `unknown actor "nobody"`},
 		{"meter with more mark labels than marks", game("meters: [{value: '1', marks: [5], mark_labels: [a, b]}]\n"), "2 labels for 1 marks"},
 		{"meter of an unknown style", game("meters: [{value: '1', style: pie}]\n"), "want bar or number"},
-		{"foe names of an unknown kind", game("ui: {battle_foe_names: big}\n"), "want name or hp"},
+		{"foe names of an unknown kind", game("ui: {battle_foe_names: big}\n"), "want name, hp or none"},
 		{"battle message of an unknown kind", game("ui: {battle_message: tall}\n"), "want fixed or fit"},
 		{"money hidden at an unknown place", game("ui: {hide_gold: [battle]}\n"), "want field, dungeon, map or stage"},
 		{"card bubble of an unknown actor", game("card_bubbles: [{actor: nobody, when: 'true'}]\n"), `unknown actor "nobody"`},

@@ -644,7 +644,7 @@ func groupEntries(entries []world.Entry, pinned int) (rows []int, heads []string
 // tells the list to keep its last row apart.
 func entryRows(g *Game, entries []world.Entry) (items []listItem, rows []int, pin bool) {
 	pinned := -1
-	if c := g.db.Game.Campaign; c != nil && c.PinEndTurn && c.Location == g.st.Location {
+	if c := g.db.Game.Campaign; c != nil && c.PinsEndTurn() && c.Location == g.st.Location {
 		for i, e := range entries {
 			if e.Action != nil && e.Action.ID == "end_turn" {
 				pinned = i

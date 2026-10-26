@@ -492,11 +492,11 @@ type UIStyle struct {
 	Profiles bool `yaml:"profiles"`
 	// Bestiary puts Monsters in the title and field menu. Under --dev it is offered automatically.
 	Bestiary bool `yaml:"bestiary"`
-	// BattleFoeNames puts a plate under each foe that is not a boss: name (its name) or
-	// hp (its name and a bar of its HP). Empty: none, as before.
+	// BattleFoeNames puts a plate under each foe that is not a boss: name (its name, the
+	// default), hp (its name and a bar of its HP) or none.
 	BattleFoeNames string `yaml:"battle_foe_names"`
-	// BattleMessage is the battle's message window: fixed (three lines tall, the
-	// default) or fit (as tall as the lines it shows).
+	// BattleMessage is the battle's message window: fit (as tall as the lines it shows,
+	// the default) or fixed (three lines tall).
 	BattleMessage string `yaml:"battle_message"`
 	// HideBarOnChoice hides the buttons under the novel window (back, log, save and the
 	// rest) while a choice is shown; their keys still work.

@@ -145,7 +145,8 @@ type Campaign struct {
 	Sortie *SortieLook `yaml:"sortie"`
 	// PinEndTurn keeps the end of the turn in the last row of the place's list, below the
 	// rows that scroll, so it shows however long the list is.
-	PinEndTurn bool `yaml:"pin_end_turn"`
+	// On when not written; false lists it where it falls.
+	PinEndTurn *bool `yaml:"pin_end_turn"`
 	// Generals are the actors who lead the player's marches, with their first troops.
 	// One serves once they have joined.
 	Generals map[string]General `yaml:"generals"`
@@ -159,6 +160,10 @@ type Campaign struct {
 
 	orderIDs []string
 }
+
+// PinsEndTurn reports whether the end of the turn is pinned last (pin_end_turn; true when
+// not written).
+func (c *Campaign) PinsEndTurn() bool { return c.PinEndTurn == nil || *c.PinEndTurn }
 
 // EndTurnButton is the button on the campaign's map that ends the turn: its picture
 // beside the end of the turn's label (the label alone without one).
