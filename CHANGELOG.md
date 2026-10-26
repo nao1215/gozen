@@ -7,6 +7,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - Report a definition key written as a number, boolean or null (such as `0:`) as an unknown field; the definition holding it was silently loaded as empty and could crash loading.
 - Refuse development `set` of `pos.x` and `pos.y` outside a dungeon; the position was kept in memory but dropped when the save was loaded.
 - Stop reporting a condition such as `pow(a * 0, -1) > 0` as never holding in the trial build's range check, which treated a zero as -0 only, while `pow` gives +Inf for 0 and -Inf for -0.
+- Refresh the bundled agent skill for v0.11.0: split novel, map, campaign, battle, puppet, monster, stacked-space and release guidance into references and keep the entry page short.
 
 ## v0.11.0 - 2026-10-26
 
