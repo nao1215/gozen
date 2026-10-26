@@ -987,7 +987,7 @@ hair:
   - rect: [130, 70, 50, 90]
 ```
 
-[Check where each piece lies](#moving-portraits) with `gozen puppet`. Reference: [Actor](/schema/#actor), [Say](/schema/#say), [FaceRule](/schema/#facerule), and [the puppet format](https://github.com/nao1215/gozen/blob/main/docs/architecture/puppet.md). [Go Zen's Maren](https://github.com/nao1215/gozen/blob/main/examples/go-zen/game/assets/maren/puppet.yaml) has a puppet.
+[Check where each piece lies](#moving-portraits) with `gozen puppet`. Reference: [Actor](/schema/#actor), [Say](/schema/#say), [FaceRule](/schema/#facerule), and [the puppet format](https://github.com/nao1215/gozen/blob/main/docs/architecture/puppet.md). [Go Zen's Maren](https://github.com/nao1215/gozen/blob/main/examples/go-zen/game/assets/maren/puppet.yaml) has a puppet. In a novel game, `ui.stage_puppets: true` lets the standing portraits move too ([Move the standing portraits](/writing-a-game/#move-the-standing-portraits)).
 
 ## Set the face icons
 

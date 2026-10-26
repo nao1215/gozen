@@ -503,6 +503,10 @@ type UIStyle struct {
 	// StageFraming gives play explicit head anchors for static novel portraits.
 	// Keys are asset paths; omitted pictures retain legacy canvas-based framing.
 	StageFraming map[string]StageFraming `yaml:"stage_framing"`
+	// StagePuppets lets the novel stage draw the moving portrait (Actor.Puppet) of an
+	// actor whose face the puppet has, in place of the face picture, in the same frame
+	// (schema_version 8). Off, the stage shows the face pictures as before.
+	StagePuppets bool `yaml:"stage_puppets"`
 	// StageDrop is the amount to lower per portrait (picture file to a ratio of the screen height; default 0).
 	// All pictures are drawn with the top of the head aligned, so short characters or those with hair piled high look as tall as tall ones. Lowering fixes that.
 	StageDrop    map[string]float64 `yaml:"stage_drop"`

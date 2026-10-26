@@ -355,6 +355,19 @@ func TestStageFramingMetadata(t *testing.T) {
 	}
 }
 
+// TestStagePuppetsNeedsVersion8: ui.stage_puppets is a word of schema version 8.
+func TestStagePuppetsNeedsVersion8(t *testing.T) {
+	for _, tc := range []struct{ version, want string }{{"7", "needs schema_version: 8"}, {"8", ""}} {
+		db, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: " + tc.version + "\nid: staged\n" + testgame.Game + "\nui: {message: novel, stage_puppets: true}\n"})
+		switch {
+		case tc.want == "" && (err != nil || !db.Game.UI.StagePuppets):
+			t.Errorf("version %s: %v", tc.version, err)
+		case tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), "stage_puppets")):
+			t.Errorf("version %s: want %q, got %v", tc.version, tc.want, err)
+		}
+	}
+}
+
 func TestActorFacesPictureBudget(t *testing.T) {
 	for _, size := range [][2]uint32{{4096, 6144}, {8192, 4096}, {8192, 4097}, {8193, 1}} {
 		t.Run(fmt.Sprint(size), func(t *testing.T) {

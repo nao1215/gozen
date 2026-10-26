@@ -49,7 +49,7 @@ Lines get no inline tags (`{w=0.5}` and the like): `{}` is already the expressio
 
 `ui.stage_framing` (schema version 8) maps asset paths to `head: [center_x, top_y, height]`, a required displayed `height`, and optional `top`. Source coordinates are normalized to the source width/height; output dimensions are fractions of screen height. The static novel renderer anchors the head center at the authored horizontal position and clips the full image at the viewport. This removes dependence on transparent canvas padding without changing unconfigured pictures. Mirroring transforms the source head anchor as well. `stage_scale` scales around that anchor and `stage_drop` offsets its top.
 
-Framing is presentation metadata, so it adds no save fields or event commands. Expression changes select the matching image entry; saved casts and live reload use the current metadata. The box window, animated puppets and battle portraits keep their own framing contracts. Original circle-and-rectangle fixtures verify tight and padded canvases, expression changes, reload and save continuation in two aspect ratios.
+Framing is presentation metadata, so it adds no save fields or event commands. Expression changes select the matching image entry; saved casts and live reload use the current metadata. The box window, animated puppets and battle portraits keep their own framing contracts. With `ui.stage_puppets` ([ADR 0046](0046-moving-portraits-on-the-novel-stage.md)) the stage draws an actor's puppet in this framing, keyed by the face picture it replaces. Original circle-and-rectangle fixtures verify tight and padded canvases, expression changes, reload and save continuation in two aspect ratios.
 
 ### As built (voice)
 

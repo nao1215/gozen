@@ -132,6 +132,147 @@ func TestGraphicsNovelHeadFraming(t *testing.T) {
 	}
 }
 
+// TestGraphicsNovelStagePuppets stands two actors who share a still puppet (no breathing or
+// sway) and compares the stage with ui.stage_puppets to the stage of the face pictures: the
+// heads stand in the same frames, only the speaker's figure shows its green mouth frame, and
+// a line's face turns the head yellow.
+func TestGraphicsNovelStagePuppets(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	game := filepath.Join(root, "game")
+	if err := os.CopyFS(game, gameFiles(t)); err != nil {
+		t.Fatal(err)
+	}
+	write := func(path string, b []byte) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(game, path)), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(game, path), b, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	magenta, yellow := color.NRGBA{R: 255, B: 255, A: 255}, color.NRGBA{R: 255, G: 255, A: 255}
+	green := color.NRGBA{G: 220, A: 255}
+	type part struct {
+		r image.Rectangle
+		c color.NRGBA
+	}
+	picture := func(w, h int, parts ...part) []byte {
+		img := image.NewNRGBA(image.Rect(0, 0, w, h))
+		for _, pt := range parts {
+			r, c := pt.r, pt.c
+			for y := r.Min.Y; y < r.Max.Y; y++ {
+				for x := r.Min.X; x < r.Max.X; x++ {
+					if r.Dx() == r.Dy() && (2*x-r.Min.X-r.Max.X+1)*(2*x-r.Min.X-r.Max.X+1)+(2*y-r.Min.Y-r.Max.Y+1)*(2*y-r.Min.Y-r.Max.Y+1) > r.Dx()*r.Dx() {
+						continue // a square is drawn as its circle
+					}
+					img.SetNRGBA(x, y, c)
+				}
+			}
+		}
+		var b bytes.Buffer
+		if err := png.Encode(&b, img); err != nil {
+			t.Fatal(err)
+		}
+		return b.Bytes()
+	}
+	body, head := image.Rect(90, 130, 210, 600), image.Rect(100, 30, 200, 130)
+	gray := color.NRGBA{R: 90, G: 100, B: 110, A: 255}
+	write("assets/fig/normal.png", picture(300, 600, part{body, gray}, part{head, magenta}))
+	write("assets/fig/glad.png", picture(300, 600, part{body, gray}, part{head, yellow}))
+	write("assets/fig/mouth.png", picture(30, 10, part{image.Rect(0, 0, 30, 10), green}))
+	write("assets/fig/puppet.yaml", []byte(`base: normal.png
+face: normal
+fade: 0.2
+faces:
+  normal: {}
+  glad: {image: glad.png}
+mouth:
+  frames: [{image: mouth.png, at: [135, 100]}, face]
+  speed: 12
+motion: {breath: {depth: 0}}
+`))
+	write("data/stage_puppets.yaml", []byte(`actors:
+  lefty: {name: Lefty, faces: fig, face: normal, puppet: fig/puppet.yaml}
+  righty: {name: Righty, faces: fig, face: normal, puppet: fig/puppet.yaml}
+events:
+  scene:
+    do:
+      - stand: {who: lefty, face: normal, at: 0.25}
+      - stand: {who: righty, face: normal, at: 0.75}
+      - say: {who: lefty, text: "Hello."}
+      - say: {who: lefty, text: "A long line that keeps the text typing for a while, so that the mouth of the speaker has time to open and close many times over."}
+      - say: {who: lefty, face: glad, text: "Glad."}
+`))
+	frame := "{head: [0.5, 0.05, 0.16667], height: 0.2, top: 0.1}"
+	var shots []string
+	script := "wait 20\npress ok\nwait 2\n" // --event shows its first line whole; the second types
+	for i := range 8 {
+		shots = append(shots, fmt.Sprintf("talk%d", i))
+		script += fmt.Sprintf("shot talk%d\nwait 1\n", i)
+	}
+	script += "wait 200\npress ok\nwait 60\nshot glad\nquit\n"
+	run := func(name, ui string) {
+		t.Helper()
+		write("game.yaml", []byte(fmt.Sprintf("schema_version: 8\nid: stage-puppets\n%s\nfonts: {regular: test.ttf}\nscreen: {width: 1280, height: 720}\nui:\n  message: novel\n%s  stage_framing: {fig/normal.png: %s, fig/glad.png: %s}\n", testgame.Game, ui, frame, frame)))
+		path := filepath.Join(root, name+".txt")
+		if err := os.WriteFile(path, []byte(strings.ReplaceAll(script, "shot ", "shot "+name+"-")), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, hostBin, "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "camp", "--event", "scene", "--script", path, "--shots", root, "--save-dir", filepath.Join(root, name+"-saves")) //nolint:gosec // Fixed test host and isolated fixture paths.
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("%s: %v\nstdout: %s\nstderr: %s", name, err, &stdout, &stderr)
+		}
+	}
+	run("puppet", "  stage_puppets: true\n")
+	run("picture", "")
+	// box is the bounding box of the pixels like c in one half of the screen, above the window.
+	box := func(img image.Image, side int, like func(r, g, b uint32) bool) image.Rectangle {
+		out := image.Rectangle{}
+		for y := range 470 {
+			for x := side * 640; x < (side+1)*640; x++ {
+				r, g, b, _ := img.At(x, y).RGBA()
+				if like(r>>8, g>>8, b>>8) {
+					out = out.Union(image.Rect(x, y, x+1, y+1))
+				}
+			}
+		}
+		return out
+	}
+	isMagenta := func(r, g, b uint32) bool { return r > 120 && b > 120 && g < 40 }
+	isGreen := func(r, g, b uint32) bool { return g > 120 && r < 60 && b < 60 }
+	isYellow := func(r, g, b uint32) bool { return r > 180 && g > 180 && b < 60 }
+	talked := false
+	for _, shot := range shots {
+		p, still := shotImage(t, root, "puppet-"+shot), shotImage(t, root, "picture-"+shot)
+		for side := range 2 {
+			a, b := box(p, side, isMagenta), box(still, side, isMagenta)
+			if a.Empty() || b.Empty() || abs(a.Min.X-b.Min.X) > 2 || abs(a.Min.Y-b.Min.Y) > 2 || abs(a.Dx()-b.Dx()) > 2 || abs(a.Dy()-b.Dy()) > 2 {
+				t.Fatalf("%s side %d: the puppet's head %v, the picture's %v", shot, side, a, b)
+			}
+		}
+		talked = talked || !box(p, 0, isGreen).Empty()
+		if m := box(p, 1, isGreen); !m.Empty() {
+			t.Fatalf("%s: the figure who does not speak opened its mouth at %v", shot, m)
+		}
+		if m := box(still, 0, isGreen); !m.Empty() {
+			t.Fatalf("%s: the still picture has a mouth frame at %v", shot, m)
+		}
+	}
+	if !talked {
+		t.Fatal("the speaker's mouth never opened while the text was typing")
+	}
+	glad := shotImage(t, root, "puppet-glad")
+	if box(glad, 0, isYellow).Empty() || !box(glad, 1, isYellow).Empty() || box(glad, 1, isMagenta).Empty() {
+		t.Fatal("the line's face did not turn only the speaker's head yellow")
+	}
+}
+
 // TestGraphicsNovel plays testdata/novel six times with one save directory (ADR 0026).
 // The first run reads two lines. In the second, skip mode passes them and stops before the
 // third line, which was not read; the player reads it. In the third, skip mode passes the

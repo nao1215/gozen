@@ -79,7 +79,9 @@ func (g *Game) stand(e event.StandEffect) {
 	if e.Leave != "" {
 		return
 	}
-	g.pics.get(e.Face)
+	if p := g.stagePuppet(key, e.Face); p == nil {
+		g.pics.get(e.Face)
+	}
 	g.cast = append(g.cast, castFigure{key: key, face: e.Face, x: e.At, enter: e.Enter, entered: g.tick})
 }
 

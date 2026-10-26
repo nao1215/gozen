@@ -1560,7 +1560,7 @@ func (s *battleScene) drawFoes(g *Game, dst *ebiten.Image) {
 			}
 			if p := g.enemyPuppet(u, path, s.shownHP[u]); p != nil {
 				p.Motion.Speak(s.actor == u)
-				g.drawPuppet(dst, p, x, box.bottom+bob, fh, newAlpha, false)
+				g.drawPuppet(dst, p, x, box.bottom+bob, fh, newAlpha, false, nil)
 			} else {
 				g.drawStanding(dst, path, x, box.bottom+bob, fh, newAlpha, false, cs)
 			}

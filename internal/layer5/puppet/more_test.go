@@ -2,6 +2,8 @@ package puppet
 
 import (
 	"bytes"
+	"image"
+	"image/color"
 	"image/png"
 	"math"
 	"testing"
@@ -353,24 +355,25 @@ func TestPuppetDrawsAndCaches(t *testing.T) {
 	}
 	dst := ebiten.NewImage(300, 300)
 	p.Draw(dst, nil)
-	if !p.key.valid || p.canvas == nil || p.base == nil {
-		t.Fatal("first Draw must compose the picture")
+	l := p.layers[0]
+	if l == nil || len(p.layers) != 1 || !l.key.valid || l.canvas == nil || l.base == nil {
+		t.Fatal("first Draw must compose the picture at the base size")
 	}
-	if len(p.images) != 0 {
+	if len(l.images) != 0 {
 		t.Fatal("the first face has no patch and the eyes are open: no overlay is needed")
 	}
-	canvas := p.canvas
+	canvas := l.canvas
 	p.Draw(dst, nil)
-	if p.canvas != canvas {
+	if l.canvas != canvas {
 		t.Fatal("an unchanged pose recomposed the canvas")
 	}
 	p.Motion.SetFace(1)
 	p.Draw(dst, nil)
-	if len(p.images) != 1 {
-		t.Fatalf("face change loads its patch, have %d images", len(p.images))
+	if len(l.images) != 1 {
+		t.Fatalf("face change loads its patch, have %d images", len(l.images))
 	}
-	if p.key.face != 1 || p.key.prev != 0 {
-		t.Fatalf("key %+v", p.key)
+	if l.key.face != 1 || l.key.prev != 0 {
+		t.Fatalf("key %+v", l.key)
 	}
 	// Blinking brings in the closed eyes; mouths come in while speaking.
 	p.Motion.Speak(true)
@@ -385,8 +388,86 @@ func TestPuppetDrawsAndCaches(t *testing.T) {
 	if !sawEyes || !sawMouth {
 		t.Fatal("test never reached a blink or a mouth overlay")
 	}
-	if len(p.images) < 3 {
-		t.Fatalf("patches for face, eyes and mouth expected, have %d", len(p.images))
+	if len(l.images) < 3 {
+		t.Fatalf("patches for face, eyes and mouth expected, have %d", len(l.images))
+	}
+}
+
+// TestPuppetReduceComposesSmaller: with Reduce, a puppet drawn at a quarter of its size
+// composes a picture a quarter as large and samples it at the same place; without it, or
+// drawn larger than half, it keeps the base size.
+func TestPuppetReduceComposesSmaller(t *testing.T) {
+	r := load(t)
+	w, h := r.Size()
+	p := New(r, seeded(1, 1), 60)
+	dst := ebiten.NewImage(300, 300)
+	quarter := &ebiten.DrawImageOptions{}
+	quarter.GeoM.Scale(0.25, 0.25)
+	p.Draw(dst, quarter)
+	if len(p.layers) != 1 || p.layers[0] == nil {
+		t.Fatal("without Reduce the picture is composed at the base size")
+	}
+	full := p.verts[len(p.verts)-1]
+	p.Reduce = true
+	for _, c := range []struct {
+		scale float64
+		level int
+	}{{1, 0}, {0.6, 0}, {0.5, 1}, {0.3, 1}, {0.25, 2}, {0.01, maxLevel}} {
+		var geo ebiten.GeoM
+		geo.Scale(c.scale, c.scale)
+		geo.Rotate(0.3) // a turn does not change the size
+		if got := p.Level(geo); got != c.level {
+			t.Errorf("scale %v: level %d, want %d", c.scale, got, c.level)
+		}
+	}
+	p.Draw(dst, quarter)
+	l := p.layers[2]
+	if l == nil {
+		t.Fatal("a quarter-size draw composes at level 2")
+	}
+	if b := l.canvas.Bounds(); b.Dx() != (w+3)/4 || b.Dy() != (h+3)/4 {
+		t.Fatalf("canvas %v for base %dx%d", b, w, h)
+	}
+	v := p.verts[len(p.verts)-1]
+	if v.DstX != full.DstX || v.DstY != full.DstY || v.SrcX != full.SrcX/4 || v.SrcY != full.SrcY/4 {
+		t.Fatalf("reduced vertex %+v, full %+v", v, full)
+	}
+	p.Motion.SetFace(1)
+	p.Draw(dst, quarter)
+	if len(l.images) != 1 {
+		t.Fatalf("the reduced layer loads the face patch, have %d", len(l.images))
+	}
+	p.Close()
+	if p.layers != nil {
+		t.Fatal("Close keeps layers")
+	}
+}
+
+// TestShrinkAveragesAlignedBlocks: shrink averages 2^level blocks aligned to the base,
+// weighting colors by alpha, and places an overlay where its blocks fall.
+func TestShrinkAveragesAlignedBlocks(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 3, 2))
+	img.SetNRGBA(0, 0, color.NRGBA{R: 200, A: 255})
+	img.SetNRGBA(1, 0, color.NRGBA{B: 100, A: 85})
+	img.SetNRGBA(2, 1, color.NRGBA{G: 90, A: 255})
+	out, at := shrink(img, image.Pt(1, 0), 1)
+	if at != image.Pt(0, 0) || out.Bounds() != image.Rect(0, 0, 2, 1) {
+		t.Fatalf("at %v bounds %v", at, out.Bounds())
+	}
+	// the first block holds only the pixel at base x 1 (the overlay's first pixel)
+	if c := out.NRGBAAt(0, 0); c != (color.NRGBA{R: 200, A: 64}) {
+		t.Fatalf("first block %+v", c)
+	}
+	// the second: a faint blue and an opaque green over four pixels
+	c := out.NRGBAAt(1, 0)
+	if c.A != 85 || c.R != 0 || c.B != 25 || c.G != 68 {
+		t.Fatalf("second block %+v", c)
+	}
+	if _, at := shrink(img, image.Pt(-3, 5), 2); at != image.Pt(-1, 1) {
+		t.Fatalf("negative placement %v", at)
+	}
+	if out, _ := shrink(image.NewNRGBA(image.Rect(0, 0, 4, 4)), image.Point{}, 2); out.NRGBAAt(0, 0) != (color.NRGBA{}) {
+		t.Fatal("a transparent block stays transparent")
 	}
 }
 
@@ -412,7 +493,7 @@ func TestPuppetDrawTransformAndColor(t *testing.T) {
 	}
 	p.Close()
 	p.Close()
-	if !p.closed || p.images != nil {
+	if !p.closed || p.layers != nil {
 		t.Fatal("Close")
 	}
 	op2 := &ebiten.DrawImageOptions{}
