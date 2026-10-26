@@ -295,6 +295,7 @@ func (m *menu) openItems(g *Game) {
 	}
 	_, sh := g.screen()
 	m.items = newList(items, 300, 36, menuListW, int((sh-200)/44))
+	m.items.empty = lang.T("なにも もっていない。")
 	m.items.sel = sel
 	m.items.scroll()
 }
@@ -422,6 +423,7 @@ func (m *menu) openSkills(g *Game) {
 	}
 	_, sh := g.screen()
 	m.items = newList(items, 300, 36, menuListW, int((sh-200)/44))
+	m.items.empty = lang.T("つかえる スキルが ない。")
 	m.items.sel = sel
 }
 

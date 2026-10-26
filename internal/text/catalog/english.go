@@ -510,6 +510,8 @@ var english = map[string]string{
 	"［装備］":       "[E] ",
 	"いまは つかえない。": "Can't use that now.",
 	"ここでは セーブ できない。安全な 場所で セーブ しよう。": "You can't save here. Save at a safe place.",
+	"なにも もっていない。":                    "You have nothing.",
+	"つかえる スキルが ない。":                  "No skills to use.",
 	"★ さいきょうそうび（ぜんいん）":               "★ Equip strongest (everyone)",
 	"（はずす）": "(Remove)",
 	"いまの そうびが いちばん 強い。":          "Already the strongest equipment.",

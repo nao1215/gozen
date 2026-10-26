@@ -100,6 +100,17 @@ func TestMenuTabsAndSaveRules(t *testing.T) {
 		t.Fatalf("no reason for the disabled save: %v", m.msgs)
 	}
 	m.msgT = 0
+	// an empty bag says so in the item list
+	for id := range g.st.Items {
+		delete(g.st.Items, id)
+	}
+	m.openItems(g)
+	if len(m.items.items) != 0 || m.items.empty == "" {
+		t.Fatalf("empty bag: %d rows, empty text %q", len(m.items.items), m.items.empty)
+	}
+	m.mode = "item"
+	mnuDrawAll(g)
+	m.mode = ""
 	mnuPress(g, btnCancel)
 	if len(g.stack) != 1 {
 		t.Fatalf("cancel left the menu open: %d scenes", len(g.stack))

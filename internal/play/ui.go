@@ -90,6 +90,8 @@ type list struct {
 	// pin keeps the last item in the last row, under the rows that scroll, while the
 	// items do not all fit.
 	pin bool
+	// empty is said in the first row while there are no items.
+	empty string
 }
 
 func newList(items []listItem, x, y, w float64, rows int) *list {
@@ -213,6 +215,10 @@ func (l *list) draw(g *Game, dst *ebiten.Image, active bool) {
 }
 
 func (l *list) drawRows(g *Game, dst *ebiten.Image, active bool) {
+	if len(l.items) == 0 && l.empty != "" {
+		r := l.rowRect(0)
+		g.text(dst, l.empty, float64(r.Min.X)+42, float64(r.Min.Y)+(l.rowH-l.size*1.3)/2, l.size*0.9, g.th.dim)
+	}
 	for _, i := range l.shown() {
 		it := l.items[i]
 		r := l.rowRect(i)
