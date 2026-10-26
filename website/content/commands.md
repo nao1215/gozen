@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes, breed), run, trace, notes, capture, book, export, release, trial, prompt, mosaic, models (list, fetch), faces, puppet, theme (add, list), version and help.
+description: Every gozen command with its options and examples - check, sim (battle, dive, floors, design, campaign, routes, breed, script), run, trace, notes, capture, book, export, release, trial, prompt, mosaic, models (list, fetch), faces, puppet, theme (add, list), version and help.
 weight: 60
 toc: true
 ---
@@ -17,7 +17,7 @@ gozen help GZN1101                     # explain a diagnostic code
 | Command | What it does |
 |:--|:--|
 | [check](#check) | Check definitions, references, expressions, assets and text layout |
-| [sim](#sim) | Measure play without a window: [battle](#sim-battle), [dive](#sim-dive), [floors](#sim-floors), [design](#sim-design), [campaign](#sim-campaign), [routes](#sim-routes), [breed](#sim-breed) |
+| [sim](#sim) | Measure play without a window: [battle](#sim-battle), [dive](#sim-dive), [floors](#sim-floors), [design](#sim-design), [campaign](#sim-campaign), [routes](#sim-routes), [breed](#sim-breed), [script](#sim-script) |
 | [new](#new) | Create a playable template without Go source |
 | [run](#run) | Run a game directory in a window |
 | [trace](#trace), [notes](#notes) | Inspect traces and build HTML reports from test-play notes |
@@ -119,7 +119,7 @@ gozen check --only layout game
 
 ## sim
 
-Plays the game by its rules alone, with no window or sound. Every `sim` command accepts `--format text|json|jsonl`. JSON returns `{"version":1,"command":"sim ...","status":"ok","data":...}`. JSONL emits ordered items when the result has multiple entries, followed by one summary. Fatal diagnostics go to stderr as JSONL and retain their GZN codes. Selectors, seeds and output paths have the same effect in every format.
+Plays the game by its rules alone, with no window or sound. Every `sim` command but `sim script`, which writes a trace, accepts `--format text|json|jsonl`. JSON returns `{"version":1,"command":"sim ...","status":"ok","data":...}`. JSONL emits ordered items when the result has multiple entries, followed by one summary. Fatal diagnostics go to stderr as JSONL and retain their GZN codes. Selectors, seeds and output paths have the same effect in every format.
 
 | Command | JSON `data` | JSONL items |
 |:--|:--|:--|
@@ -297,6 +297,38 @@ Use `--section lineage` for only the monster family trees. Its JSON `data.monste
 gozen book game --format json
 gozen book game --section lineage --format json
 ```
+
+### sim script
+
+Plays the game with a script of [`run --dev --script`](/edit-play-loop/#scripts-and-screenshots), without a window, sound or screenshots, as fast as it goes, and writes the same [trace](/edit-play-loop/#trace-and-replay). The same options and `--seed` give the same game as `run` with the same script: the same `say`, `request`, `order`, `dev_do`, `battle`, `autosave` and `state` lines at the same ticks, and the same state in `end`. Use it to measure long plays without Xvfb.
+
+<!-- verify: each fixture=cli -->
+```shell
+gozen sim script game --start camp --script check.txt --trace sim.jsonl
+gozen sim script game --start camp --party scout --level 3 --seed 7 --script check.txt --trace -
+```
+
+What needs the window is left out:
+
+- `shot NAME` takes no picture, and neither do the automatic shots of `lines`, `play` and walking; the trace has no `shot` line.
+- The trace lines that come from drawing, `view`, `stand` and `menu`, are not written, and `--trace-shots` is not available. `music` lines say which song was asked for; whether it had started depends on how fast songs decode in the background.
+- Every other command, `wait`, `gap`, `press`, `hold`, `read`, `until`, `walk`, `do`, `order`, `end_turn`, `skip`, `quit` and the rest, runs as in `run`, tick for tick. `click X Y` runs too, but a position that is only known once drawn is not checked.
+
+With `--script -` the script is read line by line from the standard input and the trace goes to the standard output (unless `--trace FILE` is given). Each time the game is ready for the next command, a line `{"t":"ready","tick":N,"busy":false,"location":"camp","waiting":""}` is written and the trace flushed; `waiting` is `text`, `choice`, `command` (a battle waits for a command) or empty. A program can read the trace up to `ready`, decide, and send the next line, so one process plays as long as needed. The command `snapshot` writes `{"t":"snapshot","state":{...}}` with the whole state, the same as the state of `end`; it works in `run --script` as well. A line that does not parse is written as `script_error` and skipped. The end of the input, or `quit`, ends the run with `end`.
+
+<!-- verify: skip reads the script from the standard input -->
+```shell
+gozen sim script game --start camp --script - < check.txt
+```
+
+Saves are kept in memory unless `--save-dir` is given. Startup options that `run` has for scripted plays are available: `--start`, `--battle`, `--party`, `--level`, `--flags`, `--gold`, `--items`, `--floor`, `--calm`, `--event`, `--line` and `--answers`. The default `--seed` is 1. Without `--trace -`, it prints the ticks played and the lines written.
+
+| Option | Meaning |
+|:--|:--|
+| `--script FILE` | The script; `-` reads it line by line from the standard input (required) |
+| `--trace FILE` | Write the trace to this file; `-` is the standard output (default with `--script -`) |
+| `--seed N` | The random seed (default: 1) |
+| `--save-dir DIR` | Keep the saves in this directory (default: in memory) |
 
 ## run
 

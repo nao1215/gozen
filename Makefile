@@ -97,7 +97,7 @@ campaign-graphics:
 
 # Requires a display; Linux CI wraps this target with xvfb-run.
 graphics:
-	$(GO) test -tags=graphics ./internal/play -run 'TestGraphicsScreens|TestGraphicsStage|TestGraphicsMap|TestGraphicsWild|TestGraphicsNovel|TestGraphicsCampaign|TestGraphicsSpace' -count=1
+	$(GO) test -tags=graphics ./internal/play -run 'TestGraphicsScreens|TestGraphicsStage|TestGraphicsMap|TestGraphicsWild|TestGraphicsNovel|TestGraphicsCampaign|TestGraphicsSpace|TestGraphicsSimulateMatchesRun' -count=1
 	$(GO) test -tags=graphics ./internal/layer5/puppet -run TestGraphics -count=1
 
 cli-build:
