@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
@@ -335,15 +336,28 @@ func (s *atlasScene) regionWindowBox(g *Game, id string) plateBox {
 		{x: sw - 36 - w, y: top, w: w, h: h},
 		{x: 36, y: sh - 150 - h, w: w, h: h},
 	}
-	best, least := tries[0], math.Inf(1)
+	// the other windows over the map: the generals' and the camera's buttons
+	var others []plateBox
+	gen, hasGen := s.generalsRect(g)
+	if hasGen {
+		others = append(others, gen)
+	}
+	others = append(others, s.cameraButtons(g)...)
+	best, least, found := tries[0], math.Inf(1), false
 	for _, t := range tries {
 		t.y = math.Max(4, math.Min(sh-4-t.h, t.y))
+		if slices.ContainsFunc(others, func(o plateBox) bool { return t.overlap(o) > 0 }) {
+			continue
+		}
 		if o := t.overlap(mark); o < least {
-			best, least = t, o
+			best, least, found = t, o, true
 		}
 		if least == 0 {
 			break
 		}
+	}
+	if !found && hasGen { // none fits: the first, kept above the generals
+		best.y = math.Max(4, math.Min(best.y, gen.y-8-best.h))
 	}
 	return best
 }
@@ -377,6 +391,28 @@ func (s *atlasScene) drawRegionWindow(g *Game, dst *ebiten.Image, id string) {
 	}
 }
 
+// generalIDs are the generals who have joined, in the actors' order.
+func generalIDs(g *Game) []string {
+	var ids []string
+	for _, id := range g.db.Ordered("actors") {
+		if _, ok := g.db.Game.Campaign.Generals[id]; ok && g.st.Actors[id] != nil {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+// generalsRect is the generals' window on the map (false while none has joined).
+func (s *atlasScene) generalsRect(g *Game) (plateBox, bool) {
+	n := len(generalIDs(g))
+	if n == 0 {
+		return plateBox{}, false
+	}
+	sw, sh := g.screen()
+	x, y, w, cell := s.generalsBox(g, n, sw, sh)
+	return plateBox{x: x, y: y, w: w, h: cell + 30}, true
+}
+
 // generalsBox is the window of n generals at the bottom right: its left edge, top and
 // width, and each one's cell. The cells narrow (132 at most, 72 at least) so the window
 // keeps right of the map's camera buttons; too many for that, it stands over them.
@@ -405,12 +441,7 @@ func (s *atlasScene) generalsBox(g *Game, n int, sw, sh float64) (x, y, w, cell 
 // face with its troops under it, dim when it has marched this turn.
 func (s *atlasScene) drawGenerals(g *Game, dst *ebiten.Image, sw, sh float64) {
 	cs := g.st.Campaign()
-	var ids []string
-	for _, id := range g.db.Ordered("actors") {
-		if _, ok := g.db.Game.Campaign.Generals[id]; ok && g.st.Actors[id] != nil {
-			ids = append(ids, id)
-		}
-	}
+	ids := generalIDs(g)
 	if len(ids) == 0 {
 		return
 	}

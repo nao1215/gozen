@@ -1,11 +1,13 @@
 package play
 
 import (
+	"fmt"
 	"math"
 	"strings"
 	"testing"
 
 	"github.com/nao1215/gozen/internal/layer1/geom"
+	"github.com/nao1215/gozen/internal/layer5/gfx"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
@@ -180,4 +182,29 @@ func TestCampaignSortieLook(t *testing.T) {
 		t.Errorf("title %q without campaign.sortie", got)
 	}
 	s.draw(g, wldScreen(g))
+}
+
+// The region window keeps off the generals' window too: with many meters the place under
+// them would reach down into it, so another place is taken.
+func TestCampaignRegionWindowKeepsOffTheGenerals(t *testing.T) {
+	meters := "id: campaign-test\nmeters:\n"
+	for i := range 6 {
+		meters += fmt.Sprintf("  - {label: M%d, value: '1'}\n", i)
+	}
+	g, as := campaignOpen(t, map[string]string{"field: {at: [320, 180]}": "field: {at: [60, 70]}", "id: campaign-test\n": meters})
+	gen, ok := as.generalsRect(g)
+	if !ok {
+		t.Fatal("no generals' window")
+	}
+	_, sh := g.screen()
+	top := 96 + g.metersHeight() + 16
+	if b := (plateBox{x: 0, y: top, w: 2000, h: 70 + 2*gfx.LineHeight(sizeS)}); b.overlap(gen) == 0 || top+b.h > sh {
+		t.Fatalf("the fixture does not put the place under the meters into the generals' window (top %g, generals %+v)", top, gen)
+	}
+	b := as.regionWindowBox(g, "field")
+	px, py := as.screen(g, as.points[as.pointIndex("field")].at)
+	if b.overlap(gen) > 0 || b.overlap(plateBox{x: px - 1, y: py - 1, w: 2, h: 2}) > 0 {
+		t.Errorf("window %+v meets the generals %+v or the region's point (%g, %g)", b, gen, px, py)
+	}
+	wldFramesDrawn(t, g, 2)
 }
