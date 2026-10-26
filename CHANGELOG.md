@@ -4,6 +4,14 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Report a definition key written as a number, boolean or null (such as `0:`) as an unknown field; the definition holding it was silently loaded as empty and could crash loading.
+- Refuse development `set` of `pos.x` and `pos.y` outside a dungeon; the position was kept in memory but dropped when the save was loaded.
+- Stop reporting a condition such as `pow(a * 0, -1) > 0` as never holding in the trial build's range check, which treated a zero as -0 only, while `pow` gives +Inf for 0 and -Inf for -0.
+- Refresh the bundled agent skill for v0.11.0: split novel, map, campaign, battle, puppet, monster, stacked-space and release guidance into references and keep the entry page short.
+- Add the `reset_actor` event command, with optional `level`, to put an actor back to the starting state of the actors file (level, experience, learnt skills, skill tree and SP, HP, MP and states) while keeping equipment, name, row and party membership.
+- Add opt-in `ui.stage_puppets` (schema version 8) to draw actors' moving portraits on the novel stage in the frame of their face pictures: every standing figure breathes, blinks and sways, only the speaker's mouth moves, and line and `stand` faces fade. Stage puppets compose near their drawn size, so 4096x6144 portraits stay cheap; existing games and the `box` window look as before.
+- Add `gozen sim script` to play a `run --dev --script` script without a window, as fast as it goes, writing the same trace; `--script -` reads the script line by line from the standard input with a `ready` line before each read, and the new script command `snapshot` writes the whole state (ADR 0046).
+
 ## v0.11.0 - 2026-10-26
 
 Use high-resolution portraits, hide closed map points, and name campaign region values.

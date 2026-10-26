@@ -361,6 +361,9 @@ func (db *DB) Check() []error {
 		}
 		c.numberRange(w+".top", framing.Top, 0, 1)
 	}
+	if g.UI.StagePuppets {
+		c.needsVersion("game.yaml ui.stage_puppets", "ui.stage_puppets", SchemaVersion8)
+	}
 	if tp := g.UI.TalkPortrait; tp != (TalkPortrait{}) {
 		c.needsVersion("game.yaml ui.talk_portrait", "ui.talk_portrait", SchemaVersion3)
 		if tp.X < 0 || tp.X > 1 || tp.Bottom < 0 || tp.Bottom > 4 || tp.Height < 0 || tp.Height > 4 {
@@ -1645,6 +1648,14 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			if cmd.ResetTree != "all" {
 				_, ok := db.Actors[cmd.ResetTree]
 				c.ref(w+".reset_tree", "actor", cmd.ResetTree, ok)
+			}
+		case "reset_actor":
+			def, ok := db.Actors[cmd.ResetActor]
+			c.ref(w+".reset_actor", "actor", cmd.ResetActor, ok)
+			if ok && slices.Contains(cmd.given, "level") {
+				if cl := db.Classes[def.Class]; cmd.Level < 1 || (cl != nil && cmd.Level > cl.Max) {
+					c.errorf(diag.OutOfRange, w+".level", "want 1 to the max level of the class of %s, not %d", cmd.ResetActor, cmd.Level)
+				}
 			}
 		case "learn":
 			_, ok := db.Actors[cmd.Learn.Actor]

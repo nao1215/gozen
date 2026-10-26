@@ -363,6 +363,13 @@ type script struct {
 	do               func(src string)
 	recruit          func(species string, level int)
 	guaranteeRecruit func(species string)
+
+	// snapshot writes the whole game state to the trace (the snapshot command).
+	snapshot func()
+	// next supplies further lines after the commands run out (Simulate's interactive
+	// input); false ends the lines. rejected hears of a line that does not parse.
+	next     func() (string, bool)
+	rejected func(line string, err error)
 }
 
 type scriptCmd struct {
@@ -524,6 +531,10 @@ func parseScript(src string) (*script, error) {
 				return nil, fmt.Errorf("script line %d: wait-graphs takes no arguments", line)
 			}
 		case "press", "shot", "until", "quit":
+		case "snapshot":
+			if len(f) != 1 {
+				return nil, fmt.Errorf("script line %d: snapshot takes no arguments", line)
+			}
 		case "recruit":
 			if c.arg == "" || len(f) != 3 {
 				return nil, fmt.Errorf("script line %d: recruit SPECIES LEVEL", line)
@@ -627,7 +638,7 @@ func (s *script) step(in *input) {
 		s.wait--
 		return
 	}
-	for s.pc < len(s.cmds) {
+	for s.pc < len(s.cmds) || s.more() {
 		c := &s.cmds[s.pc]
 		switch c.verb {
 		case "hold":
@@ -938,10 +949,40 @@ func (s *script) step(in *input) {
 			s.pc++
 			s.wait = 2
 			return
+		case "snapshot":
+			if s.snapshot != nil {
+				s.snapshot()
+			}
+			s.pc++
+			continue
 		case "quit":
 			s.quit = true
 			return
 		}
 	}
 	s.quit = true
+}
+
+// more appends the commands of the next line that parses from next, and reports whether
+// there were any. A line that does not parse goes to rejected and the next is read.
+func (s *script) more() bool {
+	for s.next != nil {
+		line, ok := s.next()
+		if !ok {
+			s.next = nil
+			return false
+		}
+		more, err := parseScript(line)
+		if err != nil {
+			if s.rejected != nil {
+				s.rejected(line, err)
+			}
+			continue
+		}
+		if len(more.cmds) > 0 {
+			s.cmds = append(s.cmds, more.cmds...)
+			return true
+		}
+	}
+	return false
 }

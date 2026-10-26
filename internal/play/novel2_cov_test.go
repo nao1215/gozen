@@ -169,7 +169,7 @@ func TestWldNovelSpeakerWhoLeavesFadesOut(t *testing.T) {
 	if g.stageLeftT == 0 && g.stageOutT == 0 {
 		t.Fatalf("nobody left the stage: out %d left %d", g.stageOutT, g.stageLeftT)
 	}
-	figs := g.stageFigures(true, func(face string) bool { return face != "" })
+	figs := g.stageFigures(true, func(_, face string) bool { return face != "" })
 	if len(figs) == 0 {
 		t.Fatal("no figures on the stage")
 	}

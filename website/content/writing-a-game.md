@@ -149,9 +149,9 @@ The full list, with the options each verb accepts, is [Command](/schema/#command
 
 ### Changing the state
 
-`set` writes flags and variables, and from version 2 also `gold`, `item.ID` (how many), `party`, `location` (without the arrival events) and `actor.ID.tactics` (`auto`, `manual` or a preset). The values of flags, variables, `gold` and `item.ID` are expressions; `location`, `party` and `actor.ID.tactics` take names as written: `{location: camp, party: [hero, sela], actor.hero.tactics: auto}`. `actor.ID.tactics` also takes the rows themselves: `{mode: manual, rows: [{enabled: true, condition: always, action: guard}]}`. In the development mode (`--dev`, `Config.Dev`) `set` also moves the party in a dungeon (`pos.x`, `pos.y`, `pos.facing`), sets `steps`, and sends the floor's strong foes away (`roamers: none`).
+`set` writes flags and variables, and from version 2 also `gold`, `item.ID` (how many), `party`, `location` (without the arrival events) and `actor.ID.tactics` (`auto`, `manual` or a preset). The values of flags, variables, `gold` and `item.ID` are expressions; `location`, `party` and `actor.ID.tactics` take names as written: `{location: camp, party: [hero, sela], actor.hero.tactics: auto}`. `actor.ID.tactics` also takes the rows themselves: `{mode: manual, rows: [{enabled: true, condition: always, action: guard}]}`. In the development mode (`--dev`, `Config.Dev`) `set` also moves the party in a dungeon (`pos.x`, `pos.y`, `pos.facing`; `pos.x` and `pos.y` elsewhere are an error), sets `steps`, and sends the floor's strong foes away (`roamers: none`).
 
-`actor.ID.hp`, `mp`, `exp`, `level` and `sp` can be set too, but only in the development mode (`--dev`) and in tests. A game played normally skips them, and `gozen check` warns where game data sets them. Grow a party in the game with `exp`, `heal` and `learn`.
+`actor.ID.hp`, `mp`, `exp`, `level` and `sp` can be set too, but only in the development mode (`--dev`) and in tests. A game played normally skips them, and `gozen check` warns where game data sets them. Grow a party in the game with `exp`, `heal` and `learn`. To start someone over, for a new game plus, use `reset_actor` ([cookbook](/cookbook/#grow-by-level-and-learn-skills)).
 
 ### Your own commands and screens
 
@@ -394,7 +394,20 @@ The `head` values are the head's horizontal center, top and height within the so
 
 `height` is the required displayed head height as a fraction of screen height (greater than 0, at most 1). `top` places its top using the same screen-height units (0 to 1, default 0). The head's horizontal center follows `stand.at` or automatic speaker placement, even when the scaled image extends beyond the viewport. Off-screen content is clipped; transparent padding never forces both speakers to screen center. Small source images also use the full novel stage when configured this way.
 
-Give each expression image its own entry when its canvas or head coordinates differ. `stage_scale` still multiplies size, now around the head anchor; `stage_drop` adds a screen-height offset to the head's top. Pictures without `stage_framing` retain the existing canvas-based layout. This setting applies to static novel portraits, not moving puppets, battle cut-ins or the `box` message window. It is game metadata: save/load restores the standing cast, while reload or a screen resize recomputes framing from the current image and configuration.
+Give each expression image its own entry when its canvas or head coordinates differ. `stage_scale` still multiplies size, now around the head anchor; `stage_drop` adds a screen-height offset to the head's top. Pictures without `stage_framing` retain the existing canvas-based layout. This setting applies to novel portraits (and, with `ui.stage_puppets`, to the moving portraits standing in their place), not battle cut-ins or the `box` message window. It is game metadata: save/load restores the standing cast, while reload or a screen resize recomputes framing from the current image and configuration.
+
+### Move the standing portraits
+
+An actor with a `puppet` ([the recipe](/cookbook/#give-a-character-faces-and-a-moving-portrait)) can stand on the novel stage as a moving portrait: `ui.stage_puppets: true` (schema version 8) draws the puppet in place of the face picture, in the frame the picture would have.
+
+<!-- verify: parse requires the author's actor, puppet and face pictures -->
+```yaml
+ui:
+  message: novel
+  stage_puppets: true
+```
+
+Every standing figure breathes, blinks and sways its hair and swaying parts; only the speaker's mouth moves while the text is typing. A line's `face` or a `stand` with `face` fades the figure to that face over the puppet's `fade`, and `effect: nod` and the other reactions play on it. A face the puppet does not have, or a figure that is not an actor, shows the picture as before. Give the puppet's base the canvas of the face pictures, so `stage_framing`, `stage_scale` and `stage_drop`, written for the pictures, fit it. A large base is composed near the size it is drawn at, so a 4096 by 6144 portrait does not cost its full size every frame. Without the setting the stage shows the pictures as before.
 
 A line counts as read by its source: the speaker and the text as written, before `{expressions}` are filled in. The read lines are kept in `read.json` beside the saves, so they last across saves and new games. Runs for testing (`--script`, `--start`, autoplay) do not touch them unless you pass `--save-dir`. In a trace, every `say` line says whether it was read, and `gozen trace --check` fails when skipping passed a line that was not.
 

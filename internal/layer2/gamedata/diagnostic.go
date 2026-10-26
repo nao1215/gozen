@@ -94,10 +94,15 @@ type sourceDocument struct {
 	root       ast.Node
 	positions  map[string]sourcePosition
 	tokenPaths map[*token.Token]string
+	// bareKeys holds the paths, as the decoder names them, whose key is written as a
+	// number, a boolean or null rather than a string (0: rather than '0':). The decoder
+	// converts such a key to a string for a map, but silently skips the whole struct
+	// that holds one.
+	bareKeys map[string]bool
 }
 
 func (db *DB) readSource(b []byte, name string) (*sourceDocument, error) {
-	doc := &sourceDocument{name: name, positions: map[string]sourcePosition{}, tokenPaths: map[*token.Token]string{}}
+	doc := &sourceDocument{name: name, positions: map[string]sourcePosition{}, tokenPaths: map[*token.Token]string{}, bareKeys: map[string]bool{}}
 	parsed, err := parser.ParseBytes(b, 0, parser.AllowDuplicateMapKey())
 	if err != nil {
 		return nil, doc.yamlError(err)
@@ -110,8 +115,10 @@ func (db *DB) readSource(b []byte, name string) (*sourceDocument, error) {
 	var errs []error
 	anchors := map[string]ast.Node{}
 	active := map[ast.Node]bool{}
-	var walk func(ast.Node, string)
-	walk = func(node ast.Node, where string) {
+	// where is the path as written (00:) and named the path as decoded (0), which
+	// the shape check uses.
+	var walk func(node ast.Node, where, named string)
+	walk = func(node ast.Node, where, named string) {
 		if node == nil || active[node] {
 			return
 		}
@@ -143,10 +150,10 @@ func (db *DB) readSource(b []byte, name string) (*sourceDocument, error) {
 					if seq, ok := entry.Value.(*ast.SequenceNode); ok {
 						// In a YAML merge sequence, the first map takes priority.
 						for _, v := range slices.Backward(seq.Values) {
-							walk(v, where)
+							walk(v, where, named)
 						}
 					} else {
-						walk(entry.Value, where)
+						walk(entry.Value, where, named)
 					}
 				}
 			}
@@ -158,27 +165,52 @@ func (db *DB) readSource(b []byte, name string) (*sourceDocument, error) {
 				p := numberPath(where, key)
 				doc.positions[p] = nodePosition(name, entry.Key.GetToken())
 				doc.tokenPaths[entry.Key.GetToken()] = p
-				walk(entry.Value, p)
+				name, bare := decodedKey(entry.Key)
+				np := numberPath(named, name)
+				if bare {
+					doc.bareKeys[np] = true
+				}
+				walk(entry.Value, p, np)
 			}
 		case *ast.SequenceNode:
 			for i, value := range n.Values {
-				walk(value, fmt.Sprintf("%s[%d]", where, i))
+				walk(value, fmt.Sprintf("%s[%d]", where, i), fmt.Sprintf("%s[%d]", named, i))
 			}
 		case *ast.AnchorNode:
 			anchors[n.Name.GetToken().Value] = n.Value
-			walk(n.Value, where)
+			walk(n.Value, where, named)
 		case *ast.AliasNode:
-			walk(anchors[n.Value.GetToken().Value], where)
+			walk(anchors[n.Value.GetToken().Value], where, named)
 		case *ast.TagNode:
-			walk(n.Value, where)
+			walk(n.Value, where, named)
 		}
 	}
-	walk(doc.root, "")
+	walk(doc.root, "", "")
 	if len(errs) > 0 {
 		return nil, joinDiagnostics(errs)
 	}
 	db.sourceFiles[name] = doc
 	return doc, nil
+}
+
+// decodedKey is the key as the decoder turns it into a string (00 is 0, ~ is null), and
+// whether it was written as something other than a string.
+func decodedKey(node ast.MapKeyNode) (string, bool) {
+	switch n := node.(type) {
+	case *ast.NullNode:
+		return "null", true
+	case *ast.IntegerNode:
+		return fmt.Sprint(n.GetValue()), true
+	case *ast.FloatNode:
+		return fmt.Sprint(n.GetValue()), true
+	case *ast.BoolNode:
+		return fmt.Sprint(n.GetValue()), true
+	case *ast.InfinityNode:
+		return fmt.Sprint(n.GetValue()), true
+	case *ast.NanNode:
+		return fmt.Sprint(n.GetValue()), true
+	}
+	return sourceKey(node), false
 }
 
 func sourceKey(node ast.MapKeyNode) string {

@@ -1,0 +1,8 @@
+wait 10
+do say: "Night falls."
+until idle
+do battle: lesson
+until idle
+until idle
+snapshot
+quit

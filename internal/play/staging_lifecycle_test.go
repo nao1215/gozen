@@ -28,7 +28,7 @@ func TestLoadClearsAllPreviousPortraits(t *testing.T) {
 	g.leaveStage()
 	g.onStage(event.Say{Name: "Guard", Face: "x.png"})
 	g.loadGame(g.st)
-	if figs := g.stageFigures(false, func(face string) bool { return face != "" }); len(figs) != 0 {
+	if figs := g.stageFigures(false, func(_, face string) bool { return face != "" }); len(figs) != 0 {
 		t.Fatalf("loaded game retained portraits: %+v", figs)
 	}
 }

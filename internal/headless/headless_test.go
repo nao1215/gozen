@@ -255,3 +255,27 @@ func TestAtlasHiddenPointUnlocksAfterAction(t *testing.T) {
 		t.Fatal("open point did not activate")
 	}
 }
+
+// TestResetActorMatchesTheSession: reset_actor leaves the same start state through the
+// headless driver as through a play session (see TestResetActorInASession).
+func TestResetActorMatchesTheSession(t *testing.T) {
+	db := testgame.Load(t, nil)
+	st := testgame.State(db, 1)
+	scout := st.Actors["scout"]
+	scout.GainExp(500)
+	scout.HP, scout.MP = 1, 0
+	scout.States["poison"] = rpg.StateForever
+	d := headless.New(db, st)
+	if err := d.Run(context.Background(), []data.Command{{ResetActor: "scout", Level: 3}}); err != nil {
+		t.Fatal(err)
+	}
+	if scout.Level != 3 || scout.Exp != 90 || scout.HP != scout.Stat("mhp") || scout.MP != scout.Stat("mmp") || len(scout.States) != 0 || scout.Equip["weapon"] != "stick" {
+		t.Errorf("level %d exp %d hp %d mp %d states %v equip %v", scout.Level, scout.Exp, scout.HP, scout.MP, scout.States, scout.Equip)
+	}
+	if err := d.Run(context.Background(), []data.Command{{ResetActor: "scout"}}); err != nil {
+		t.Fatal(err)
+	}
+	if scout.Level != 1 || scout.Exp != 0 || scout.HP != 50 {
+		t.Errorf("level %d exp %d hp %d, want the start of level 1", scout.Level, scout.Exp, scout.HP)
+	}
+}

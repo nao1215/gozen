@@ -26,7 +26,10 @@ import (
 )
 
 type pictures struct {
-	fsys         fs.FS
+	fsys fs.FS
+	// undrawn is a Simulate run, which never draws: nothing is decoded ahead, and a
+	// picture is only an empty image of its size (its size can matter to the rules).
+	undrawn      bool
 	mu           sync.Mutex
 	workers      sync.WaitGroup
 	decoded      map[string]image.Image
@@ -184,6 +187,9 @@ func (p *pictures) load(path string) (*ebiten.Image, image.Rectangle) {
 		p.decodedBytes -= src.Bounds().Dx() * src.Bounds().Dy() * 4
 	}
 	p.mu.Unlock()
+	if p.undrawn {
+		return p.blank(path), image.Rectangle{}
+	}
 	if src == nil {
 		src = p.decode(path)
 	}
@@ -191,6 +197,23 @@ func (p *pictures) load(path string) (*ebiten.Image, image.Rectangle) {
 		return missing, image.Rectangle{}
 	}
 	return ebiten.NewImageFromImage(src), findHead(src)
+}
+
+// blank is an empty image of the picture's size, for a run that never draws.
+func (p *pictures) blank(path string) *ebiten.Image {
+	b, err := picturelimit.Read(p.fsys, "assets/"+path)
+	var size image.Point
+	if err == nil {
+		size, err = picdecode.Size(b)
+	}
+	if err != nil {
+		log.Printf("picture %s: %v", path, err)
+		return missing
+	}
+	if size.X <= 0 || size.Y <= 0 {
+		return missing
+	}
+	return ebiten.NewImage(size.X, size.Y)
 }
 
 // decode returns only an image in CPU memory. It can finish reading safely even after the screen loop ends.
@@ -212,6 +235,9 @@ func (p *pictures) decode(path string) image.Image {
 }
 
 func (p *pictures) preload(paths ...string) {
+	if p.undrawn {
+		return
+	}
 	p.workers.Go(func() {
 		if p.after != nil {
 			<-p.after

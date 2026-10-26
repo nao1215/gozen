@@ -39,6 +39,7 @@ UIStyle:
   shadow: "The text shadow color."
   stage_drop: "Per standing picture, how far to move it down as a fraction of the screen height, to even out heights. The default is 0."
   stage_scale: "Per standing picture, a size multiplier keyed by picture file. The default is 1."
+  stage_puppets: "Let the novel stage draw the moving portrait (puppet) of an actor whose face the puppet has, in place of the face picture and in the same frame: it breathes, sways and blinks, the speaker's mouth moves, and faces fade. Off by default; needs schema version 8."
   talk_portrait: "Where the speaker's standing picture stands beside the `box` message window, to bring the speaker closer. The default is a picture as tall as the screen at the window's left end; needs schema version 3."
   text: "The text color."
   voice: "How voices play: `cut` and `auto_wait`. Needs schema version 4."

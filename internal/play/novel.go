@@ -180,7 +180,7 @@ func (t *talk) drawNovel(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
 	s := t.say
 	if g.tr != nil && s.Face != "" {
-		g.traceStandSpeaker(s.Face, g.stagePicture(s.Face), speakerKey(s))
+		g.traceStandSpeaker(s.Face, g.stageBig(speakerKey(s), s.Face), speakerKey(s))
 	}
 	if k := g.stageAlpha(); k > 0 {
 		g.stageK = k
@@ -241,8 +241,8 @@ func (t *talk) drawNovel(g *Game, dst *ebiten.Image) {
 func (t *talk) drawNovelStage(g *Game, dst *ebiten.Image) {
 	_, sh := g.screen()
 	s := t.say
-	big := g.stagePicture
-	if s.Face != "" && !big(s.Face) {
+	big := g.stageBig
+	if s.Face != "" && !big(speakerKey(s), s.Face) {
 		rise := math.Min(1, float64(t.age)/10)
 		if t.still {
 			rise = 1
@@ -274,7 +274,7 @@ func (t *talk) drawNovelStage(g *Game, dst *ebiten.Image) {
 	}
 	g.traceStandFigures(figs)
 	for _, f := range figs {
-		g.drawStage(dst, f.face, f.x, f.alpha, f.flip, dim(f.dim))
+		g.drawStage(dst, f.id, f.face, f.x, f.alpha, f.flip, dim(f.dim))
 	}
 }
 
@@ -289,13 +289,13 @@ type stageFigure struct {
 	leaving bool
 }
 
-func (g *Game) stageFigures(speaking bool, big func(string) bool) []stageFigure {
+func (g *Game) stageFigures(speaking bool, big func(id, face string) bool) []stageFigure {
 	var out []stageFigure
 	a, b := g.stage[0], g.stage[1]
 
 	behind := g.cg.File != "" && !g.cg.Faces
-	showA := big(a.face) && a.id != b.id && !behind
-	showB := big(b.face) && !behind
+	showA := big(a.id, a.face) && a.id != b.id && !behind
+	showB := big(b.id, b.face) && !behind
 	var xa, xb float64
 	if showA {
 		other := ""
@@ -318,7 +318,7 @@ func (g *Game) stageFigures(speaking bool, big func(string) bool) []stageFigure 
 
 	if k := 1 - float64(g.tick-g.stageLeftT)/12; k > 0 {
 		for _, o := range g.stageLeft {
-			if big(o.face) && o.id != a.id && o.id != b.id {
+			if big(o.id, o.face) && o.id != a.id && o.id != b.id {
 				v := float32(1)
 				if o.dim {
 					v = 0.75
@@ -335,7 +335,7 @@ func (g *Game) stageFigures(speaking bool, big func(string) bool) []stageFigure 
 		out = append(out, stageFigure{a.id, a.face, xa, 1, a.flip, v, false})
 	}
 
-	if o := g.stageOut; o.id != "" && !behind && big(o.face) && o.id != a.id && o.id != b.id {
+	if o := g.stageOut; o.id != "" && !behind && big(o.id, o.face) && o.id != a.id && o.id != b.id {
 		if k := 1 - float64(g.tick-g.stageOutT)/10; k > 0 {
 			if x, ok := g.sides[o.id]; ok {
 				out = append(out, stageFigure{o.id, o.face, sw * x, float32(k), o.flip, 0.56, true})
@@ -372,11 +372,27 @@ func (g *Game) stageAlpha() float32 {
 	return 1
 }
 
-func (g *Game) drawStage(dst *ebiten.Image, face string, x float64, alpha float32, flip bool, cs *ebiten.ColorScale) {
+// drawStage draws the figure id with the face picture face, or with its moving portrait
+// in the picture's frame when the stage draws puppets (stagePuppet).
+func (g *Game) drawStage(dst *ebiten.Image, id, face string, x float64, alpha float32, flip bool, cs *ebiten.ColorScale) {
 	alpha *= g.stageK
 	sw, sh := g.screen()
-	img := g.pics.get(face)
-	iw, ih := float64(img.Bounds().Dx()), float64(img.Bounds().Dy())
+	var iw, ih float64
+	p := g.stagePuppet(id, face)
+	if p != nil {
+		w, h := p.Rig().Size()
+		iw, ih = float64(w), float64(h)
+	} else {
+		img := g.pics.get(face)
+		iw, ih = float64(img.Bounds().Dx()), float64(img.Bounds().Dy())
+	}
+	stand := func(cx, bottom, h float64) {
+		if p != nil {
+			g.drawPuppet(dst, p, cx, bottom, h, alpha, flip, cs)
+			return
+		}
+		g.drawStanding(dst, face, cx, bottom, h, alpha, flip, cs)
+	}
 	if f, ok := g.db.Game.UI.StageFraming[face]; ok {
 		h := sh * f.Height / f.Head[2]
 		if k := g.db.Game.UI.StageScale[face]; k > 0 {
@@ -391,7 +407,7 @@ func (g *Game) drawStage(dst *ebiten.Image, face string, x float64, alpha float3
 		// screen position. Large canvases deliberately clip at the viewport.
 		cx := x + (0.5-headX)*iw*h/ih
 		bottom := sh*(f.Top+g.db.Game.UI.StageDrop[face]) + (1-f.Head[1])*h
-		g.drawStanding(dst, face, cx, bottom, h, alpha, flip, cs)
+		stand(cx, bottom, h)
 		return
 	}
 	bottom, h := sh+sh*0.85, sh*1.85-headRoom
@@ -413,7 +429,17 @@ func (g *Game) drawStage(dst *ebiten.Image, face string, x float64, alpha float3
 	} else {
 		x = sw / 2
 	}
-	g.drawStanding(dst, face, x, bottom, h, alpha, flip, cs)
+	stand(x, bottom, h)
+}
+
+// stageBig reports whether the figure id with the face picture face stands on the novel
+// stage: a moving portrait that has the face does, whatever its size, without loading
+// the picture.
+func (g *Game) stageBig(id, face string) bool {
+	if p := g.stagePuppet(id, face); p != nil {
+		return true
+	}
+	return g.stagePicture(face)
 }
 
 // Explicit framing also opts small source pictures into the novel stage.

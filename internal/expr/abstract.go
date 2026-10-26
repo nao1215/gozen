@@ -263,6 +263,11 @@ func (r Range) exact() ([]float64, bool) {
 	if r.True {
 		vs = append(vs, 1)
 	}
+	// A range does not tell 0 from -0 (they compare equal), but pow(0, -1) is +Inf and
+	// pow(-0, -1) is -Inf, so a zero stands for both.
+	if slices.Contains(vs, 0) {
+		vs = append(vs, math.Copysign(0, -1), 0)
+	}
 	return vs, len(vs) > 0
 }
 

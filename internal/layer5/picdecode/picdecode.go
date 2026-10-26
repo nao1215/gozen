@@ -24,6 +24,16 @@ func goDecode(b []byte) (image.Image, error) {
 	return img, err
 }
 
+// Size checks b's header as Decode does and returns the picture's width and height
+// without decoding its pixels. A run that never draws (play.Simulate) needs only that.
+func Size(b []byte) (image.Point, error) {
+	if err := picturelimit.Header(b); err != nil {
+		return image.Point{}, err
+	}
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(b))
+	return image.Pt(cfg.Width, cfg.Height), err
+}
+
 // browserKind reports whether b is a WebP or a JPEG, the pictures a browser build hands
 // to the browser to decode.
 func browserKind(b []byte) bool {

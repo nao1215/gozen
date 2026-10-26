@@ -55,7 +55,9 @@ func (t *talk) open(g *Game, s event.Say) {
 	g.remember(logLine{name: s.Name, text: s.Text, line: &s})
 	t.layout(g)
 	if s.Face != "" {
-		g.pics.get(s.Face)
+		if p := g.stagePuppet(speakerKey(s), s.Face); p == nil {
+			g.pics.get(s.Face) // a moving portrait on the stage does not need the picture
+		}
 		if g.castOn {
 			g.castSays(s)
 		} else {
@@ -360,7 +362,7 @@ func (t *talk) draw(g *Game, dst *ebiten.Image) {
 		}
 		if p, _ := g.talkPuppet(s); p != nil {
 			// A moving portrait stands like a tall picture, whatever its size.
-			g.drawPuppet(dst, p, cx, bottom, tall, float32(rise), s.Right)
+			g.drawPuppet(dst, p, cx, bottom, tall, float32(rise), s.Right, nil)
 		} else if ih >= 600 {
 			g.drawStanding(dst, s.Face, cx, bottom, tall, float32(rise), s.Right, nil)
 		} else {

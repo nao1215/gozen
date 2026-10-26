@@ -1,0 +1,2 @@
+go test fuzz v1
+string("pow(0*a,b)")
