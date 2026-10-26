@@ -6,6 +6,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 - Check all actor face PNGs for picture limits and accept high-resolution portrait canvases up to 33,554,432 pixels, retaining the 8192-per-side and 64 MiB encoded limits (#107).
 - Add opt-in map point `hide: closed` to omit closed points and their roads from display and selection, including headless choices (#108).
+- Translate the monster book entries in the title and field menus and its heading, including Japanese defaults and author overrides through `text:` (#109).
 
 ## v0.10.0 - 2026-10-26
 

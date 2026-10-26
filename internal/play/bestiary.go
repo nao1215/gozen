@@ -13,6 +13,7 @@ import (
 	"github.com/nao1215/gozen/internal/expr"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
+	lang "github.com/nao1215/gozen/internal/text"
 )
 
 func (g *Game) bestiaryInMenus() bool {
@@ -253,7 +254,7 @@ func (s *bestiaryScreen) draw(g *Game, dst *ebiten.Image) {
 	g.drawPicture(dst, g.db.Game.TitleBG, 0, 0, sw, sh, 1)
 	fill(dst, withAlpha(colorBlack, 0xb8))
 	bestiaryPanel(g, dst, 20, 20, sw-40, sh-40)
-	g.text(dst, "Monsters", 48, 40, sizeL, g.th.text)
+	g.text(dst, lang.T("まもののほん"), 48, 40, sizeL, g.th.text)
 	listX, listW, top, rowH := 42.0, 252.0, 100.0, 48.0
 	rows := max(1, int((sh-top-88)/rowH))
 	first := max(0, s.sel-rows/2)

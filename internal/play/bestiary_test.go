@@ -8,6 +8,7 @@ import (
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
+	lang "github.com/nao1215/gozen/internal/text"
 )
 
 func TestBestiaryStagesAndDevelopmentKey(t *testing.T) {
@@ -215,5 +216,38 @@ func TestBestiaryFitsBothScreenSizes(t *testing.T) {
 		if tiles[0].w < 180 || tiles[0].h < 108 {
 			t.Fatalf("child picture is too small at %dx%d: %+v", w, h, tiles[0])
 		}
+	}
+}
+
+func TestBestiaryMenuLanguageAndOverrides(t *testing.T) {
+	for _, tc := range []struct {
+		name, yaml, want string
+	}{
+		{"default", "", "Monsters"},
+		{"english", "language: en\n", "Monsters"},
+		{"japanese", "language: ja\n", "まもののほん"},
+		{"english override", "language: en\ntext: {まもののほん: Creature guide}\n", "Creature guide"},
+		{"japanese override", "language: ja\ntext: {まもののほん: 生き物図鑑}\n", "生き物図鑑"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Cleanup(func() {
+				if err := lang.Use(lang.English, nil); err != nil {
+					t.Error(err)
+				}
+			})
+			g := bookGame(t, Options{Location: "camp"}, "ui: {bestiary: true}\n"+tc.yaml)
+			for name, items := range map[string][]listItem{
+				"title": g.titleMenu().items,
+				"field": newMenu(g).tabs.items,
+			} {
+				i := slices.IndexFunc(items, func(item listItem) bool { return item.id == "bestiary" })
+				if i < 0 {
+					t.Fatalf("%s menu lacks bestiary", name)
+				}
+				if got := items[i].label; got != tc.want {
+					t.Errorf("%s label = %q, want %q", name, got, tc.want)
+				}
+			}
+		})
 	}
 }
