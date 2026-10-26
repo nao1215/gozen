@@ -3,6 +3,7 @@ package rpg_test
 import (
 	"encoding/json"
 	"math/rand/v2"
+	"slices"
 	"testing"
 
 	"github.com/nao1215/gozen/internal/rpg"
@@ -145,5 +146,40 @@ func TestStoryJoinMovesFullPartyMemberToReserve(t *testing.T) {
 	}
 	if len(st.Party) != 2 || st.Party[1] != "healer" || st.Actors["guide"] == nil || len(st.ReserveIDs()) != 1 || st.ReserveIDs()[0] != "guide" {
 		t.Fatalf("join lost an actor: party=%v reserve=%v", st.Party, st.ReserveIDs())
+	}
+}
+
+// A save with monsters still loads when a newer version of the game drops one's species
+// or narrows its sexes: the monster without its species leaves, one whose sex is no longer
+// allowed takes an allowed one, and both are in the load report.
+func TestMonsterSaveAfterTheGameChanged(t *testing.T) {
+	db := testgame.Load(t, testgame.MonsterFiles())
+	st := testgame.State(db, 4)
+	db.Game.MaxParty = 3
+	a, okA := st.Recruit("mote", 1, 0, nil)
+	b, okB := st.Recruit("boss", 1, 0, nil)
+	if !okA || !okB {
+		t.Fatal("recruit failed")
+	}
+	st.Actors[a].Sex = "male"
+	saved, err := st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	newer := testgame.Load(t, testgame.MonsterFiles())
+	delete(newer.Enemies, "boss")
+	newer.Enemies["mote"].Sex = "female"
+	got, err := rpg.Parse(newer, saved, rand.New(rand.NewPCG(4, 4))) //nolint:gosec // Fixed seed keeps the round trip reproducible.
+	if err != nil {
+		t.Fatalf("the save no longer loads: %v", err)
+	}
+	if got.Actors[b] != nil || slices.Contains(got.Party, b) {
+		t.Errorf("the monster without its species stayed: party %v", got.Party)
+	}
+	if got.Actors[a] == nil || got.Actors[a].Sex != "female" {
+		t.Errorf("the mote is %+v, want kept as female", got.Actors[a])
+	}
+	if len(got.LoadReport.Changes) < 2 {
+		t.Errorf("the load report has %v", got.LoadReport.Changes)
 	}
 }

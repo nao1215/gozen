@@ -245,8 +245,10 @@ type Game struct {
 	waitT   int
 
 	notices noticeBoard
-	tapT    int
-	tapAuto float64
+	// campaignCache is the campaign state of this frame (campaignNow)
+	campaignCache campaignCache
+	tapT          int
+	tapAuto       float64
 
 	cg     data.CG
 	cgAge  int

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"testing"
 	"testing/fstest"
+
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 // storyData is two events: the first sets a flag after its lines and a choice; the second
@@ -159,5 +161,77 @@ func TestSaveInTheMiddleOfAnEvent(t *testing.T) {
 	g.rollBack()
 	if at(g) != "choice" {
 		t.Fatalf("after loading, rolling back reached %q", at(g))
+	}
+}
+
+// A save in the lines after a battle in the same event cannot hold where the event goes
+// on: it is refused with the reason instead of keeping the state without the event's rest.
+func TestSaveRefusedInTalkAfterABoundary(t *testing.T) {
+	g, _ := btlOpen(t, Options{Location: "field"}, "", `
+events:
+  fight_talk: {do: [{battle: one}, {say: {text: "Your reward."}}, {say: {text: "Here is the key."}}, {set: {flag.key: true}}]}
+`)
+	g.events.Start(g.db.Events["fight_talk"].Do)
+	for range 20000 {
+		if g.talk.active && g.currentBattle() == nil && len(g.stack) == 1 {
+			break
+		}
+		if s := g.currentBattle(); s != nil && s.phase == bpInput && s.target == nil && s.sub == nil {
+			btlKey(g, btnOK)
+			btlKey(g, btnOK)
+			continue
+		}
+		if s := g.currentBattle(); s != nil && s.phase == bpResult {
+			g.in.pressed[btnOK] = true
+			g.tick++
+			s.update(g)
+			g.in.pressed = [numButtons]bool{}
+		}
+		btlFrame(t, g)
+	}
+	if !g.talk.active || g.st.Flags["key"] {
+		t.Fatalf("not in the lines after the battle (talk %v, key %v)", g.talk.active, g.st.Flags["key"])
+	}
+	if g.saveBlocked() == "" {
+		t.Fatal("a save after the battle is not refused")
+	}
+	g.in.pressed[btnSave] = true
+	g.novelInput()
+	g.in.pressed = [numButtons]bool{}
+	m, ok := g.stack[len(g.stack)-1].(*saveMenu)
+	if !ok || m.msgT == 0 || m.msg != g.saveBlocked() {
+		t.Fatalf("the save button opened %T without the reason", g.stack[len(g.stack)-1])
+	}
+	btlKey(g, btnOK)
+	if g.storeHas(g.slotPath(0)) {
+		t.Fatal("a save was written that would lose the key")
+	}
+}
+
+// The sortie screen cannot be read again by a loaded save, so it is a boundary: the lines
+// after a march chosen there neither roll back into it nor save a cursor that would stop
+// on it.
+func TestSortieIsABoundary(t *testing.T) {
+	g, _ := campaignOpen(t, nil)
+	g.db.Events["march"] = &data.Event{Do: []data.Command{{Order: &data.OrderCmd{ID: "storm", Target: "keep"}}, {Say: &data.Say{Text: "We marched."}}, {Say: &data.Say{Text: "And came back."}}}}
+	g.events.Start(g.db.Events["march"].Do)
+	wldUntil(t, g, 300, func() bool { _, ok := g.stack[len(g.stack)-1].(*sortieScene); return ok })
+	s, ok := g.stack[len(g.stack)-1].(*sortieScene)
+	if !ok {
+		t.Fatalf("the order opened %T, not the sortie", g.stack[len(g.stack)-1])
+	}
+	s.toggle(g, "hero")
+	s.close(g, true)
+	wldUntil(t, g, 3000, func() bool {
+		if _, ok := g.stack[len(g.stack)-1].(*clashScene); ok {
+			wldPlay(t, g, "press ok\nwait 3\n", 50)
+		}
+		return g.talk.active && len(g.stack) == 1
+	})
+	if !g.talk.active {
+		t.Fatal("the lines after the march did not come")
+	}
+	if _, _, _, ok := g.cursor(); ok || g.saveBlocked() == "" {
+		t.Fatalf("after the sortie a save keeps a cursor (%v) or is not refused", ok)
 	}
 }

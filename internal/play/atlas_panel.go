@@ -2,7 +2,6 @@ package play
 
 import (
 	"math"
-	"math/rand/v2"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -18,13 +17,7 @@ func (s *atlasScene) previewState(g *Game) *rpg.State {
 	if s.location(g).Map.SelectionPanel == nil {
 		return g.st
 	}
-	state := *g.st
-	source := rand.PCG{}
-	if g.pcg != nil {
-		source = *g.pcg
-	}
-	state.Rand = rand.New(&source) //nolint:gosec // Isolated gameplay preview, not security.
-	return &state
+	return g.viewState()
 }
 
 func (s *atlasScene) panelVisible(g *Game) bool {

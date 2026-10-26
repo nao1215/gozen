@@ -17,6 +17,7 @@ type field struct {
 	quiet   bool
 	menu    *list
 	entries []world.Entry
+	rows    []int // the entry of each row of menu, -1 for a heading
 	dirty   bool
 	age     int
 	busy    bool
@@ -48,20 +49,8 @@ func (f *field) arrive(g *Game) {
 
 func (f *field) rebuild(g *Game) {
 	f.entries = world.Entries(g.db, g.st)
-	var items []listItem
-	for _, e := range f.entries {
-		it := listItem{label: e.Label}
-		switch e.Kind {
-		case world.Do, world.Search:
-		case world.Talk:
-			it.color = g.th.cursor
-		case world.Exit:
-			it.color = g.th.border
-		case world.Menu:
-			it.right = "X"
-		}
-		items = append(items, it)
-	}
+	items, rows, pin := entryRows(g, f.entries)
+	f.rows = rows
 	sel := 0
 	if f.menu != nil {
 		sel = min(f.menu.sel, len(items)-1)
@@ -69,9 +58,20 @@ func (f *field) rebuild(g *Game) {
 	_, sh := g.screen()
 	top := 28 + f.headH(g) + 16
 	f.menu = newList(items, 36, top, 470, int((sh-top-150)/44))
-	f.menu.sel = sel
+	f.menu.pin = pin
+	if sel >= 0 && sel < len(items) && !items[sel].heading {
+		f.menu.sel = sel
+	}
 	f.menu.scroll()
 	f.dirty = false
+}
+
+// chosen is the entry of the row the cursor is on (false on none).
+func (f *field) chosen() (world.Entry, bool) {
+	if f.menu == nil || f.menu.sel < 0 || f.menu.sel >= len(f.rows) || f.rows[f.menu.sel] < 0 {
+		return world.Entry{}, false
+	}
+	return f.entries[f.rows[f.menu.sel]], true
 }
 
 func (f *field) update(g *Game) {
@@ -113,7 +113,10 @@ func (f *field) update(g *Game) {
 	if !chose {
 		return
 	}
-	e := f.entries[f.menu.sel]
+	e, ok := f.chosen()
+	if !ok {
+		return
+	}
 	if e.Kind == world.Menu {
 		g.push(newMenu(g))
 		return
@@ -238,8 +241,8 @@ func (f *field) draw(g *Game, dst *ebiten.Image) {
 	g.drawPicture(dst, loc.Background, 0, 0, sw, sh, 1)
 	people := f.people(g)
 	var focus *data.Person
-	if f.menu != nil && f.menu.sel < len(f.entries) && !g.talk.active {
-		focus = f.entries[f.menu.sel].Person
+	if e, ok := f.chosen(); ok && !g.talk.active {
+		focus = e.Person
 	}
 	if len(g.stack) > 1 || g.talk.active || g.events != nil && g.events.Running() {
 		people = nil

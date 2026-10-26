@@ -3,13 +3,16 @@ package play
 import (
 	"fmt"
 	"image/color"
+	"math/rand/v2"
 	"slices"
 	"strconv"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	"github.com/nao1215/gozen/internal/expr"
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"github.com/nao1215/gozen/internal/rpg"
 )
 
 const meterH = 44.0
@@ -20,13 +23,13 @@ func (g *Game) meterValue(m *gamedata.Meter) (v, mx float64) {
 		mx = 100
 	}
 	if m.MaxValue.Set() {
-		value, err := m.MaxValue.Number(g.st.Env())
+		value, err := m.MaxValue.Number(g.viewEnv())
 		if err == nil {
 			mx = max(1, value)
 		}
 	}
 	var err error
-	v, err = m.Value.Number(g.st.Env())
+	v, err = m.Value.Number(g.viewEnv())
 	if err != nil {
 		return 0, mx
 	}
@@ -41,7 +44,7 @@ func (g *Game) shownMeters(actor string, page bool) []*gamedata.Meter {
 			continue
 		}
 		if m.When.Set() {
-			if ok, err := m.When.Bool(g.st.Env()); err != nil || !ok {
+			if ok, err := m.When.Bool(g.viewEnv()); err != nil || !ok {
 				continue
 			}
 		}
@@ -69,7 +72,7 @@ func (g *Game) drawMeters(dst *ebiten.Image, ms []*gamedata.Meter, x, y, w float
 // meterNumber is what a number meter shows: its value, whole, not capped by max (0 when
 // the value cannot be worked out).
 func (g *Game) meterNumber(m *gamedata.Meter) string {
-	v, err := m.Value.Number(g.st.Env())
+	v, err := m.Value.Number(g.viewEnv())
 	if err != nil {
 		v = 0
 	}
@@ -135,3 +138,19 @@ func (g *Game) goldShown() bool {
 	}
 	return !slices.Contains(hide, kind)
 }
+
+// viewState is the state as the screen shows it: the play's, but rand() and chance() draw
+// from a copy of the generator, so drawing (as often as the frames come) or previewing
+// never moves the play's random numbers.
+func (g *Game) viewState() *rpg.State {
+	state := *g.st
+	source := rand.PCG{}
+	if g.pcg != nil {
+		source = *g.pcg
+	}
+	state.Rand = rand.New(&source) //nolint:gosec // Display only, not security.
+	return &state
+}
+
+// viewEnv is the names of viewState.
+func (g *Game) viewEnv() expr.Env { return g.viewState().Env() }

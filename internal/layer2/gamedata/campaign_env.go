@@ -29,12 +29,18 @@ func (s CampaignState) Joined(id string) bool { return slices.Contains(s.JoinedI
 
 // CampaignEnv is the campaign's names on a play: region, faction, campaign, generals,
 // general, target and next_to (ADR 0030).
-func CampaignEnv(db *DB, st CampaignState) expr.Env { return campaignEnv{db, st} }
+func CampaignEnv(db *DB, st CampaignState) expr.Env { return campaignEnv{db: db, st: st} }
 
 type campaignEnv struct {
 	db *DB
 	st CampaignState
+	// inActions: campaign.actions is being worked out, so campaign.actions and
+	// campaign.actions_left are not there to read (they would read themselves)
+	inActions bool
 }
+
+// errActionsSelf is campaign.actions reading the actions it works out.
+var errActionsSelf = errors.New("campaign.actions cannot read campaign.actions or campaign.actions_left (they are what it works out)")
 
 func (e campaignEnv) Lookup(name string) (any, bool) {
 	switch name {
@@ -183,17 +189,27 @@ func Turn(_ *DB, st CampaignState) int {
 	return 1
 }
 
-// TurnActions is how many actions a turn has now (campaign.actions; 1 when unset).
+// TurnActions is how many actions a turn has now (campaign.actions; 1 when unset or when
+// it cannot be worked out).
 func TurnActions(db *DB, st CampaignState) float64 {
-	c := db.Game.Campaign
-	if c == nil || !c.Actions.Set() {
-		return 1
-	}
-	n, err := c.Actions.Number(CampaignEnv(db, st))
+	n, err := turnActions(db, st)
 	if err != nil {
 		return 1
 	}
-	return max(0, float64(int(n)))
+	return n
+}
+
+// turnActions works campaign.actions out; it may read every name but the actions.
+func turnActions(db *DB, st CampaignState) (float64, error) {
+	c := db.Game.Campaign
+	if c == nil || !c.Actions.Set() {
+		return 1, nil
+	}
+	n, err := c.Actions.Number(campaignEnv{db: db, st: st, inActions: true})
+	if err != nil {
+		return 1, err
+	}
+	return max(0, float64(int(n))), nil
 }
 
 // ActionsLeft is the actions left in the turn.
@@ -340,21 +356,62 @@ func (v factionView) Keys() []string {
 	return keys
 }
 
-func (e campaignEnv) campaign() expr.Map {
-	c := e.db.Game.Campaign
-	m := expr.Map{
-		"turn": float64(Turn(e.db, e.st)), "actions": TurnActions(e.db, e.st), "actions_left": ActionsLeft(e.db, e.st),
-		"target": e.str(VarTarget), "general": e.str(VarGeneral), "result": e.str(VarResult), "turns": 0.0, "player": "",
-		"taken": float64(Taken(e.st)), "week": 0.0, "year": 0.0, "clash": e.str(VarClash),
+// campaignView is campaign.<field>: each field worked out when it is read, so that
+// campaign.actions may read campaign.turn without working itself out.
+type campaignView struct{ e campaignEnv }
+
+func (e campaignEnv) campaign() campaignView { return campaignView{e} }
+
+// Field implements expr.Object.
+func (v campaignView) Field(name string) (any, bool) {
+	e, c := v.e, v.e.db.Game.Campaign
+	week := func() int { return Turn(e.db, e.st) - 1 }
+	switch name {
+	case "turn":
+		return float64(Turn(e.db, e.st)), true
+	case "actions", "actions_left":
+		if e.inActions {
+			return nil, false
+		}
+		if name == "actions" {
+			return TurnActions(e.db, e.st), true
+		}
+		return ActionsLeft(e.db, e.st), true
+	case "target":
+		return e.str(VarTarget), true
+	case "general":
+		return e.str(VarGeneral), true
+	case "result":
+		return e.str(VarResult), true
+	case "clash":
+		return e.str(VarClash), true
+	case "taken":
+		return float64(Taken(e.st)), true
+	case "turns":
+		if c == nil {
+			return 0.0, true
+		}
+		return float64(c.Turns), true
+	case "player":
+		if c == nil {
+			return "", true
+		}
+		return c.Player, true
+	case "week", "year":
+		if c == nil || c.Calendar != "week" {
+			return 0.0, true
+		}
+		if name == "week" {
+			return float64(week()%52 + 1), true
+		}
+		return float64(week()/52 + 1), true
 	}
-	if c != nil && c.Calendar == "week" {
-		t := Turn(e.db, e.st) - 1
-		m["week"], m["year"] = float64(t%52+1), float64(t/52+1)
-	}
-	if c != nil {
-		m["turns"], m["player"] = float64(c.Turns), c.Player
-	}
-	return m
+	return nil, false
+}
+
+// Keys lists the fields of campaign.
+func (v campaignView) Keys() []string {
+	return []string{"actions", "actions_left", "clash", "general", "player", "result", "taken", "target", "turn", "turns", "week", "year"}
 }
 
 // generalsView is generals.<actor id>.

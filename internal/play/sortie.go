@@ -32,6 +32,7 @@ type sortieScene struct {
 	picked  []string // in the slots, the leader first
 	tactics map[string]string
 	cursor  int // over all, then march, then cancel
+	top     int // the first general's row shown (the list scrolls)
 	swap    int // the slot clicked first for a swap (-1 none)
 	closed  bool
 }
@@ -53,6 +54,7 @@ func newSortie(g *Game, r event.SortieScene, done func()) *sortieScene {
 	if len(r.Ready) > 0 {
 		s.picked = []string{r.Ready[0]}
 		s.cursor = slices.Index(s.all, r.Ready[0])
+		s.follow(g)
 	}
 	return s
 }
@@ -106,11 +108,39 @@ func (s *sortieScene) close(g *Game, march bool) {
 	s.done()
 }
 
-// The places of the screen (UI units).
+// The places of the screen (UI units). The generals' rows stand from 0.14 of the screen
+// down to 0.86 (above the bottom line), as many as fit; the list scrolls past them.
 func (s *sortieScene) rowBox(g *Game, i int) (x, y, w, h float64) {
 	sw, sh := g.screen()
 	h = sh * 0.105
-	return sw * 0.04, sh*0.14 + float64(i)*(h+8), sw * 0.42, h
+	return sw * 0.04, sh*0.14 + float64(i-s.top)*(h+8), sw * 0.42, h
+}
+
+// rows is how many generals' rows fit.
+func (s *sortieScene) rows(g *Game) int {
+	_, sh := g.screen()
+	h := sh * 0.105
+	return max(1, int((sh*0.86-sh*0.14+8)/(h+8)))
+}
+
+// shownRows are the generals' rows drawn now: first to last, last not included.
+func (s *sortieScene) shownRows(g *Game) (first, last int) {
+	return s.top, min(len(s.all), s.top+s.rows(g))
+}
+
+// follow scrolls the list so the cursor's row shows (when it is on a general).
+func (s *sortieScene) follow(g *Game) {
+	if s.cursor >= len(s.all) {
+		return
+	}
+	n := s.rows(g)
+	if s.cursor < s.top {
+		s.top = s.cursor
+	}
+	if s.cursor >= s.top+n {
+		s.top = s.cursor - n + 1
+	}
+	s.top = max(0, min(s.top, len(s.all)-n))
 }
 
 func (s *sortieScene) slotBox(g *Game, k int) (x, y, w, h float64) {
@@ -138,9 +168,11 @@ func (s *sortieScene) update(g *Game) {
 		return
 	case in.up():
 		s.cursor = (s.cursor - 1 + n) % n
+		s.follow(g)
 		g.sfx("cursor")
 	case in.down():
 		s.cursor = (s.cursor + 1) % n
+		s.follow(g)
 		g.sfx("cursor")
 	case (in.left() || in.right()) && s.cursor < len(s.all) && slices.Contains(s.picked, s.all[s.cursor]):
 		step := 1
@@ -168,7 +200,9 @@ func (s *sortieScene) update(g *Game) {
 		return
 	}
 	mx, my := float64(in.mouse.X), float64(in.mouse.Y)
-	for i, id := range s.all {
+	first, last := s.shownRows(g)
+	for i := first; i < last; i++ {
+		id := s.all[i]
 		if x, y, w, h := s.rowBox(g, i); inBox(mx, my, x, y, w, h) {
 			s.cursor = i
 			s.toggle(g, id)
@@ -244,7 +278,7 @@ func (s *sortieScene) generalStats(g *Game, id string) string {
 func (s *sortieScene) title(g *Game) string {
 	region := data.RegionName(g.db, s.r.Target)
 	if look := g.db.Game.Campaign.Sortie; look != nil && look.Title != "" {
-		return data.Render(g.db.Tr(look.Title), g.st.Env()) + "　" + region
+		return data.Render(g.db.Tr(look.Title), g.viewEnv()) + "　" + region
 	}
 	return fmt.Sprintf(lang.T("出陣　%s"), region)
 }
@@ -267,8 +301,18 @@ func (s *sortieScene) draw(g *Game, dst *ebiten.Image) {
 		gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), color.NRGBA{0x10, 0x16, 0x1c, 0xd8}, false)
 		gfx.DrawTextOutline(dst, s.title(g), sw/2, sh*0.035, sizeL*1.2, g.th.text)
 	}
-	// the generals
-	for i, id := range s.all {
+	// the generals, the rows that fit, with arrows when there are more
+	first, last := s.shownRows(g)
+	if first > 0 {
+		x, y, w, _ := s.rowBox(g, first)
+		gfx.DrawText(dst, "▲", x+w/2, y-sizeS, sizeS*0.8, g.th.cursor)
+	}
+	if last < len(s.all) {
+		x, y, w, h := s.rowBox(g, last-1)
+		gfx.DrawText(dst, "▼", x+w/2, y+h-4, sizeS*0.8, g.th.cursor)
+	}
+	for i := first; i < last; i++ {
+		id := s.all[i]
 		x, y, w, h := s.rowBox(g, i)
 		g.window(dst, x, y, w, h)
 		alpha := uint8(255)

@@ -88,6 +88,12 @@ scenarios:
               await testFrames(1);
             }
             document.body.dataset.testSaved = 'true';
+          };
+          // A browser save is "gozen-time <time>", a newline, then the save's JSON.
+          window.testSave = (slot) => {
+            const v = localStorage.getItem('gozen/browser-roundtrip/save' + slot + '.json');
+            if (!v.startsWith('gozen-time ')) throw new Error('save without its time: ' + v.slice(0, 40));
+            return JSON.parse(v.slice(v.indexOf('\n') + 1));
           }; true
       - eval: |
           (async () => {
@@ -102,7 +108,7 @@ scenarios:
           })()
       - wait_visible: 'body[data-test-saved=true]'
       - screenshot: {path: first.png, selector: canvas}
-      - eval: "JSON.parse(localStorage.getItem('gozen/browser-roundtrip/save1.json'))"
+      - eval: "testSave(1)"
   - assert:
       value:
         json: {path: $.state.gold, equals: 37}
@@ -125,14 +131,14 @@ scenarios:
           })()
       - wait_visible: 'body[data-test-saved=true]'
       - screenshot: {path: second.png, selector: canvas}
-      - eval: "JSON.parse(localStorage.getItem('gozen/browser-roundtrip/save2.json'))"
+      - eval: "testSave(2)"
   - assert:
       value:
         json: {path: $.state.gold, equals: 37}
   - cdp:
       runner: browser
       actions:
-      - eval: "JSON.parse(localStorage.getItem('gozen/browser-roundtrip/save2.json')).state.location"
+      - eval: "testSave(2).state.location"
   - assert: {value: {json: {path: '$', equals: village}}}
   - cdp:
       runner: browser

@@ -247,3 +247,55 @@ func TestCampaignRegionNumbersNear(t *testing.T) {
 		t.Error("a plate is short without region_numbers")
 	}
 }
+
+// What the screen shows never draws the play's random numbers: a heading or a meter with
+// rand() leaves the generator as it was, so drawing more or less often changes nothing.
+func TestDrawingKeepsTheRandomNumbers(t *testing.T) {
+	g, _ := campaignOpen(t, map[string]string{
+		"turns: 5":            "turns: 5\n  heading: \"Turn {campaign.turn}: {rand(100)}\"",
+		"id: campaign-test\n": "id: campaign-test\nmeters: [{label: Luck, value: \"rand(10)\", when: \"chance(0.5)\"}, {label: Gold, value: \"rand(10)\", style: number}]\n",
+	})
+	before, err := g.pcg.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	campaignBand(g)
+	for _, m := range g.shownMeters("", false) {
+		g.meterValue(m)
+		g.meterNumber(m)
+	}
+	wldFramesDrawnOnly(t, g, 3)
+	after, err := g.pcg.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("drawing drew the play's random numbers")
+	}
+}
+
+// wldFramesDrawnOnly draws n frames without updating the game.
+func wldFramesDrawnOnly(t *testing.T, g *Game, n int) {
+	t.Helper()
+	screen := wldScreen(g)
+	for range n {
+		g.Draw(screen)
+	}
+}
+
+// campaignSink keeps a result alive so that making it is counted.
+var campaignSink data.CampaignState
+
+// The campaign's state the drawing reads is made once a frame, not once for every
+// region, plate and window that reads it.
+func TestCampaignStateMadeOnceAFrame(t *testing.T) {
+	g, _ := campaignOpen(t, nil)
+	first := g.campaignNow()
+	if n := testing.AllocsPerRun(50, func() { campaignSink = g.campaignNow() }); n != 0 {
+		t.Errorf("reading the campaign's state again in a frame allocates %g times", n)
+	}
+	g.tick++
+	if again := g.campaignNow(); len(again.JoinedIDs) != len(first.JoinedIDs) {
+		t.Errorf("the next frame's state has %v, want %v", again.JoinedIDs, first.JoinedIDs)
+	}
+}

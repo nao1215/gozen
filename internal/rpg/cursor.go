@@ -32,6 +32,12 @@ type Resume struct {
 	Rand   []byte
 }
 
+// valid reports whether the cursor can be read on: a line, an event or the arrival (one
+// of them), and answers that are options (none below 0).
+func (c Cursor) valid() bool {
+	return c.Line >= 1 && (c.Event == "") == c.Arrival && !slices.ContainsFunc(c.Answers, func(n int) bool { return n < 0 })
+}
+
 // WithCursor adds a cursor and the random bytes to a save made by Save at the start of the
 // event (the state of the save is the event's start).
 func WithCursor(save []byte, c Cursor, rnd []byte) ([]byte, error) {
@@ -42,7 +48,7 @@ func WithCursor(save []byte, c Cursor, rnd []byte) ([]byte, error) {
 	if e.FormatVersion != saveFormatVersion {
 		return nil, errors.New(lang.T("カーソルは現在の保存形式のセーブにだけ足せる"))
 	}
-	if c.Line < 1 || (c.Event == "") == !c.Arrival {
+	if !c.valid() {
 		return nil, errors.New(lang.T("カーソルの行またはイベントが不正"))
 	}
 	c.Answers = slices.Clone(c.Answers)

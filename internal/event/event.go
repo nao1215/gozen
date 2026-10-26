@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"math"
 	"path"
 	"slices"
@@ -322,6 +323,9 @@ type Runner struct {
 	pick   func(n int)
 	asked  *data.Command // the choice whose answer is waited for
 	battle *data.Command
+	// battleBefore is the record of the battle before the one asked for: a new record
+	// when the answer comes means a battle was fought and left its last_kill counts
+	battleBefore *rpg.BattleOutcome
 	// Extra is looked up before the state's names (a battle's scope, for troop events).
 	Extra        expr.Env
 	gameOver     bool
@@ -461,15 +465,14 @@ func (r *Runner) Answer(n int) {
 		r.afterPending = r.db.Events[r.db.Game.Battle.After] != nil
 		switch n {
 		case BattleWon:
-			if troop := r.db.Troops[c.Battle]; troop != nil {
-				for _, id := range troop.Members {
-					key := "bestiary." + id + ".defeated"
-					old, _ := expr.ToNumber(r.st.Vars[key])
-					r.st.Vars[key] = old + 1
-				}
+			beaten := r.beaten(c.Battle)
+			for _, id := range beaten {
+				key := "bestiary." + id + ".defeated"
+				old, _ := expr.ToNumber(r.st.Vars[key])
+				r.st.Vars[key] = old + 1
 			}
 			r.push(c.OnWin)
-			r.offerCaptures(c.Battle)
+			r.offerCaptures(beaten)
 		case BattleLost:
 			if c.OnLose == nil {
 				r.Stop()
@@ -483,14 +486,47 @@ func (r *Runner) Answer(n int) {
 	}
 }
 
+// beaten are the enemies a won battle beat, one entry each: the battle's last_kill
+// counts when a battle was fought (the foes that fled are not in them, those summoned or
+// transformed into are), in the troop's order and then by name; the troop's members when
+// the win was given without a battle that counted any (a result supplied by a driver).
+func (r *Runner) beaten(troopID string) []string {
+	troop := r.db.Troops[troopID]
+	left := map[string]int{}
+	for k, v := range r.st.Vars {
+		if id, ok := strings.CutPrefix(k, "last_kill_"); ok {
+			if n, ok := expr.ToNumber(v); ok && n > 0 {
+				left[id] = int(n)
+			}
+		}
+	}
+	if r.st.LastBattle == nil || r.st.LastBattle == r.battleBefore || len(left) == 0 {
+		if troop == nil {
+			return nil
+		}
+		return slices.Clone(troop.Members)
+	}
+	var out []string
+	if troop != nil {
+		for _, id := range troop.Members {
+			if left[id] > 0 {
+				out = append(out, id)
+				left[id]--
+			}
+		}
+	}
+	for _, id := range slices.Sorted(maps.Keys(left)) {
+		for range left[id] {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
 // offerCaptures rolls once per defeated recruitable enemy. Each successful roll
 // becomes a normal choice, so policies, traces, scripts and the screen agree.
-func (r *Runner) offerCaptures(troopID string) {
-	troop := r.db.Troops[troopID]
-	if troop == nil {
-		return
-	}
-	for _, id := range slices.Backward(troop.Members) {
+func (r *Runner) offerCaptures(beaten []string) {
+	for _, id := range slices.Backward(beaten) {
 		e := r.db.Enemies[id]
 		if e == nil || e.Recruit == nil || e.Boss {
 			continue
@@ -911,7 +947,7 @@ func (r *Runner) run(c *data.Command) Request {
 			}
 		}
 	case "battle":
-		r.battle = c
+		r.battle, r.battleBefore = c, r.st.LastBattle
 		if troop := r.db.Troops[c.Battle]; troop != nil {
 			for _, id := range troop.Members {
 				r.st.Vars["bestiary."+id+".seen"] = true

@@ -146,7 +146,12 @@ func (g *Game) novelInput() bool {
 		g.rollBack()
 		return true
 	case press[btnSave] && t.active && !g.replaying:
-		g.push(newSaveMenu(g, true, func() {}))
+		m := newSaveMenu(g, true, func() {})
+		if why := g.saveBlocked(); why != "" {
+			g.sfx("buzzer")
+			m.msg, m.msgT = why, 120
+		}
+		g.push(m)
 		return true
 	case press[btnLoad] && t.active && !g.replaying:
 		m := newSaveMenu(g, false, func() {})

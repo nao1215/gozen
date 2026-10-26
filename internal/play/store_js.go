@@ -5,19 +5,18 @@ package play
 import (
 	"errors"
 	"fmt"
-	"io/fs"
-	"sort"
-	"strings"
 	"syscall/js"
 	"time"
 )
 
 // defaultStore is the browser page's localStorage (keys are gozen/<ID>/<name>).
-func defaultStore(id string) (Store, error) { return localStore{prefix: "gozen/" + id + "/"}, nil }
+func defaultStore(id string) (Store, error) {
+	return kvStore{kv: localKV{}, prefix: "gozen/" + id + "/", now: time.Now}, nil
+}
 
-// localStore is the localStorage save. In browsers where it is unavailable (private windows, quota exhausted)
-// the exception becomes a panic, so call turns it into an error. The value is the saved JSON string.
-type localStore struct{ prefix string }
+// localKV is localStorage. In browsers where it is unavailable (private windows, quota
+// exhausted) the exception becomes a panic, so call turns it into an error.
+type localKV struct{}
 
 var errNoStorage = errors.New("this browser keeps no localStorage for the page")
 
@@ -34,61 +33,40 @@ func call(method string, args ...any) (v js.Value, err error) {
 	return ls.Call(method, args...), nil
 }
 
-func (s localStore) Read(name string) ([]byte, error) {
-	v, err := call("getItem", s.prefix+name)
+func (localKV) get(key string) (string, bool, error) {
+	v, err := call("getItem", key)
 	if err != nil {
-		return nil, err
+		return "", false, err
 	}
 	if v.Type() != js.TypeString {
-		return nil, &fs.PathError{Op: "read", Path: name, Err: fs.ErrNotExist}
+		return "", false, nil
 	}
-	return []byte(v.String()), nil
+	return v.String(), true, nil
 }
 
-func (s localStore) Write(name string, b []byte) error {
-	if _, err := call("setItem", s.prefix+name, string(b)); err != nil {
-		return err
-	}
-	_, err := call("setItem", s.prefix+name+"#time", time.Now().UTC().Format(time.RFC3339))
+func (localKV) set(key, value string) error {
+	_, err := call("setItem", key, value)
 	return err
 }
 
-func (s localStore) List() ([]string, error) {
+func (localKV) remove(key string) error {
+	_, err := call("removeItem", key)
+	return err
+}
+
+func (localKV) keys() ([]string, error) {
 	n, err := call("valueOf")
 	if err != nil {
 		return nil, err
 	}
 	length := n.Get("length").Int()
-	var out []string
+	out := make([]string, 0, length)
 	for i := range length {
 		k, err := call("key", i)
 		if err != nil {
 			return nil, err
 		}
-		if name, ok := strings.CutPrefix(k.String(), s.prefix); ok && !strings.HasSuffix(name, "#time") {
-			out = append(out, name)
-		}
+		out = append(out, k.String())
 	}
-	sort.Strings(out)
 	return out, nil
-}
-
-func (s localStore) Remove(name string) error {
-	if _, err := call("removeItem", s.prefix+name); err != nil {
-		return err
-	}
-	_, err := call("removeItem", s.prefix+name+"#time")
-	return err
-}
-
-// ModTime is the time of writing (Write leaves it under another key).
-func (s localStore) ModTime(name string) (time.Time, error) {
-	v, err := call("getItem", s.prefix+name+"#time")
-	if err != nil {
-		return time.Time{}, err
-	}
-	if v.Type() != js.TypeString {
-		return time.Time{}, fs.ErrNotExist
-	}
-	return time.Parse(time.RFC3339, v.String())
 }

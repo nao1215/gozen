@@ -82,6 +82,10 @@ func (r *Runner) order(c *data.Command) Request {
 			}
 		})
 	}
+	if why := campaign.Check(r.db, r.st, o, oc.General, oc.With, oc.Target); why != "" {
+		r.notes = append(r.notes, why)
+		return nil
+	}
 	if cl := campaign.FightView(r.db, r.st, oc.ID, oc.General, oc.With, oc.Target, oc.Tactics); cl != nil {
 		r.push(o.Do)
 		r.push(outcome(o, cl.Result))

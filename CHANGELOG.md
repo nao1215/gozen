@@ -4,6 +4,21 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Make three settings on by default: `ui.battle_foe_names` is `name` (write `none` for no plates), `ui.battle_message` is `fit` (write `fixed` for the three-line window) and `campaign.pin_end_turn` is true (write `false` to list the end of the turn where it falls); games that do not write them now show foes' names, a battle message window as tall as its lines and the end of the turn last.
+- Make the campaign state a campaign map draws from once a frame instead of for every region, plate and window, and the region window's lines once for both its size and its text.
+- Speed up the mosaic's search for the grid offset: the covered pixels are kept as a summed-area table instead of a list of coordinates, so each offset costs its cells, not every covered pixel (about 21x faster and 23x less memory on a region over most of a 1024x1024 picture); the offsets chosen are the same.
+- Group a plain field's list under the entries' `group` headings and pin the campaign's end of the turn there too, as on maps and painted scenes; the field built its own list and ignored both.
+- Scroll the sortie screen's list of generals, following the cursor, instead of drawing every general: from the seventh the rows ran into the bottom line and off the screen.
+- Keep what the screen shows from drawing the play's random numbers: `rand()` or `chance()` in `campaign.heading`, the sortie title, the end-turn button or a meter now draws from a copy of the generator, so how often frames are drawn no longer changes what follows.
+- Write a browser save and its time as one localStorage value, so a write that fails (a full quota) keeps the old save whole; the time was a second write that could fail after the save was replaced. Saves of earlier versions still read.
+- Load a save whose monster's species was removed or whose sex the species no longer allows: the monster leaves, or takes an allowed sex, and the load report says so, as for other actors; the whole save failed to load.
+- Refuse a save whose cursor has a negative answer, and never put one on a choice when reading a cursor on; a negative index could reach the choice's list.
+- Count a won battle in the monster book and offer recruits for the foes it beat (its `last_kill` counts), not every member the troop began with: a foe that fled no longer counts, and one summoned or transformed into does.
+- Hold an `order` command that names its general, `with` and target to the rules of the choices: a general twice, more generals than the order takes, a general who cannot lead it or a target it cannot be given now refuses the order with the reason; `general: x, with: [x]` counted the troops twice.
+- Report two campaign fields saved under one generated name (a region `north_gate`'s value `income` and a region `north`'s value `gate_income`), which overwrote each other, and reserve `fought` as a region value name; the save format is unchanged.
+- Treat the campaign sortie screen as a boundary of an event: the lines after it no longer roll back into it or save a cursor that stopped on the sortie when loaded, and a save there is refused with the reason.
+- Refuse a save, with the reason, in the lines of an event after a battle, a shop, a screen or a move in it; the save kept the state without the rest of the event, which was lost on loading.
+- Stop `campaign.actions` from recursing without end when it reads `campaign.turn` (or any campaign field): the fields are worked out when read, and an expression that reads `campaign.actions` itself is reported by the check.
 - Add opt-in map `region_numbers: near` to show the garrison only on the plates of the region chosen and its neighbours on a campaign's map.
 - Add opt-in `campaign.order_view: icons` to offer a region's orders as a row of icon buttons over the bottom of the map (order `icon`; an order without one shows its label in a square; a wider gap between groups), and `campaign.end_turn_button` to stand a button that ends the turn on the map, pressed with a click, E or the pad's left face button, glowing when no actions are left.
 - Keep a map camera's picture over the whole screen, under the `safe_area` bands too, whenever its zoom lets it cover the screen; moving the camera to an edge showed black beyond the picture.

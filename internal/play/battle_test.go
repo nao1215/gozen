@@ -621,12 +621,21 @@ func TestBattleFoeNamesAndFittedMessage(t *testing.T) {
 		t.Errorf("three lines: window %g tall, want 132", h)
 	}
 	s.draw(g, btlImage())
+	// not written: names, and a window as tall as its lines
 	g.db.Game.UI.BattleFoeNames, g.db.Game.UI.BattleMessage = "", ""
-	if _, ok := s.foeNameBox(g, s.b.Foes[0], boxes[s.b.Foes[0]]); ok {
-		t.Error("a plate without ui.battle_foe_names")
+	if _, ok := s.foeNameBox(g, s.b.Foes[0], boxes[s.b.Foes[0]]); !ok && !s.b.Foes[0].Def.Boss {
+		t.Error("no plate when ui.battle_foe_names is not written")
 	}
 	s.msg = []string{"one"}
+	if h := s.messageHeight(g); h != 60 {
+		t.Errorf("the default window is %g tall, want 60", h)
+	}
+	// none and fixed: as before
+	g.db.Game.UI.BattleFoeNames, g.db.Game.UI.BattleMessage = "none", "fixed"
+	if _, ok := s.foeNameBox(g, s.b.Foes[0], boxes[s.b.Foes[0]]); ok {
+		t.Error("a plate with battle_foe_names: none")
+	}
 	if h := s.messageHeight(g); h != 132 {
-		t.Errorf("the default window is %g tall, want 132", h)
+		t.Errorf("the fixed window is %g tall, want 132", h)
 	}
 }

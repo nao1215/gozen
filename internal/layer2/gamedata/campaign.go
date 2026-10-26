@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"maps"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -144,7 +145,8 @@ type Campaign struct {
 	Sortie *SortieLook `yaml:"sortie"`
 	// PinEndTurn keeps the end of the turn in the last row of the place's list, below the
 	// rows that scroll, so it shows however long the list is.
-	PinEndTurn bool `yaml:"pin_end_turn"`
+	// On when not written; false lists it where it falls.
+	PinEndTurn *bool `yaml:"pin_end_turn"`
 	// Generals are the actors who lead the player's marches, with their first troops.
 	// One serves once they have joined.
 	Generals map[string]General `yaml:"generals"`
@@ -158,6 +160,10 @@ type Campaign struct {
 
 	orderIDs []string
 }
+
+// PinsEndTurn reports whether the end of the turn is pinned last (pin_end_turn; true when
+// not written).
+func (c *Campaign) PinsEndTurn() bool { return c.PinEndTurn == nil || *c.PinEndTurn }
 
 // EndTurnButton is the button on the campaign's map that ends the turn: its picture
 // beside the end of the turn's label (the label alone without one).
@@ -534,6 +540,38 @@ func areasOverlap(q, r geom.Poly) bool {
 	return false
 }
 
+// campaignSavedNames reports two things of a campaign saved under one generated name (a
+// region north_gate's value income and a region north's value gate_income are both
+// var.region_north_gate_income): one would overwrite the other.
+func (c *checker) campaignSavedNames() {
+	db := c.db
+	made := map[string]string{}
+	add := func(name, by, where string) {
+		key := "var." + name
+		if first, ok := made[key]; ok {
+			c.errorf(diag.Duplicate, where, "%s is made by both %s and %s: rename one of them", key, first, by)
+			return
+		}
+		made[key] = by
+	}
+	values := ValueNames(db)
+	for _, id := range RegionIDs(db) {
+		for _, f := range append([]string{"owner", "troops", "fought"}, values...) {
+			add(RegionVar(id, f), "region "+id+"'s "+f, "regions."+id)
+		}
+	}
+	if cp := db.Game.Campaign; cp != nil {
+		for _, id := range slices.Sorted(maps.Keys(cp.Generals)) {
+			for _, f := range []string{"troops", "acted", "out"} {
+				add(GeneralVar(id, f), "general "+id+"'s "+f, "game.yaml campaign.generals."+id)
+			}
+		}
+		for _, id := range cp.OrderIDs() {
+			add(OrderVar(id, "used"), "order "+id+"'s used", "game.yaml campaign.orders."+id)
+		}
+	}
+}
+
 func (c *checker) campaignLabels() {
 	cp := c.db.Game.Campaign
 	if cp == nil {
@@ -567,6 +605,7 @@ func (c *checker) campaignLabels() {
 
 func (c *checker) campaign() {
 	c.campaignLabels()
+	c.campaignSavedNames()
 	db := c.db
 	if len(db.Regions) == 0 && len(db.Factions) == 0 && db.Game.Campaign == nil {
 		return
@@ -689,6 +728,9 @@ func (c *checker) campaign() {
 		c.errorf(diag.OutOfRange, w+".turns", "turns are 0 (no limit) or more, not %d", cp.Turns)
 	}
 	c.expr(w+".actions", cp.Actions, CampaignNames)
+	if cp.Actions.Set() && actionsSelf.MatchString(cp.Actions.String()) {
+		c.errorf(diag.Expression, w+".actions", "%v", errActionsSelf)
+	}
 	c.expr(w+".win", cp.Win, FieldNames)
 	c.expr(w+".lose", cp.Lose, FieldNames)
 	for _, ev := range []struct{ name, id string }{{"won", cp.Won}, {"lost", cp.Lost}, {"on_turn", cp.OnTurn}} {
@@ -852,7 +894,8 @@ func (c *checker) campaign() {
 }
 
 // regionFields are the fields of region.<id> that are not values.
-var regionFields = []string{"id", "name", "owner", "troops", "next", "capital", "border"}
+// fought is saved beside them, so no value takes its name either.
+var regionFields = []string{"id", "name", "owner", "troops", "next", "capital", "border", "fought"}
 
 func (c *checker) factionRule(w string, r *FactionRule, names []string) {
 	c.expr(w+".when", r.When, FieldNames)
@@ -945,6 +988,9 @@ func (c *checker) campaignWarnings() {
 		}
 	}
 }
+
+// actionsSelf finds campaign.actions or campaign.actions_left in an expression's text.
+var actionsSelf = regexp.MustCompile(`\bcampaign\.actions(_left)?\b`)
 
 // CampaignWin is the condition that wins the campaign (its default when unset).
 func CampaignWin(db *DB) Expr {

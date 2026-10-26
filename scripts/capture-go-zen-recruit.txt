@@ -1,7 +1,8 @@
-# Start the troop through the event runner so its post-win recruitment runs.
+# Start the troop through the event runner so its post-win recruitment runs. The troop
+# has one Drip Slime, which cannot merge: a merged slime is not a defeated one.
 # The development command makes the Drip Slime roll certain before battle starts.
 guarantee-recruit drip_slime
-do battle: drips
+do battle: drip_and_rat
 play join 5
 wait 30
 shot s-rise

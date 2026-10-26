@@ -137,7 +137,7 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 		if envelope.DataVersion < 0 || envelope.DataVersion > db.Game.DataVersion {
 			return nil, fmt.Errorf(lang.T("セーブのデータ版 %d は読み込めない（現在 %d）"), envelope.DataVersion, db.Game.DataVersion)
 		}
-		if envelope.Cursor != nil && (v < 2 || envelope.Cursor.Line < 1 || (envelope.Cursor.Event == "") == !envelope.Cursor.Arrival) {
+		if envelope.Cursor != nil && (v < 2 || !envelope.Cursor.valid()) {
 			return nil, errors.New(lang.T("カーソルの行またはイベントが不正"))
 		}
 		report.SavedDataVersion = envelope.DataVersion
@@ -180,14 +180,32 @@ func (s *State) bind() (*State, error) {
 	db := s.DB
 	// Older saves predate instance sexes. Give each existing monster a stable sex
 	// without advancing the restored gameplay random stream.
-	for id, a := range s.Actors {
-		if a != nil && a.Monster != "" && a.Sex == "" && db.Enemies[a.Monster] != nil {
+	// A newer version of the game may have dropped a monster's species or narrowed its
+	// sexes: the monster leaves, or takes a sex allowed now (both reported), rather than
+	// the whole save failing to load.
+	for _, id := range slices.Sorted(maps.Keys(s.Actors)) {
+		a := s.Actors[id]
+		if a == nil || a.Monster == "" {
+			continue
+		}
+		if db.Enemies[a.Monster] == nil {
+			delete(s.Actors, id)
+			s.Party = slices.DeleteFunc(s.Party, func(p string) bool { return p == id })
+			s.changed("actors", id, lang.T("仲間モンスターの種族の定義がないため除外"))
+			continue
+		}
+		if a.Sex == "" || !data.AllowsMonsterSex(db, a.Monster, a.Sex) {
 			var hash uint64 = 14695981039346656037
 			for i := range len(id) {
 				hash = (hash ^ uint64(id[i])) * 1099511628211
 			}
+			old := a.Sex
 			a.Sex = data.MonsterSex(db, a.Monster, float64(hash>>11)/float64(uint64(1)<<53))
-			s.changed("actors/"+id+"/sex", "", "assigned a stable sex to an older monster instance")
+			if old == "" {
+				s.changed("actors/"+id+"/sex", "", "assigned a stable sex to an older monster instance")
+			} else {
+				s.changed("actors/"+id+"/sex", old, lang.T("この種族に許されない性別のため付け直し"))
+			}
 		}
 	}
 	if err := s.checkSavedState(); err != nil {

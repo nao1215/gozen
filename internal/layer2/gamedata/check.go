@@ -501,9 +501,9 @@ func (db *DB) Check() []error {
 		}
 	}
 	switch g.UI.BattleFoeNames {
-	case "", "name", "hp":
+	case "", "name", "hp", "none":
 	default:
-		c.errorf(diag.NotAWord, "game.yaml ui.battle_foe_names", "want name or hp, not %q", g.UI.BattleFoeNames)
+		c.errorf(diag.NotAWord, "game.yaml ui.battle_foe_names", "want name, hp or none, not %q", g.UI.BattleFoeNames)
 	}
 	switch g.UI.BattleMessage {
 	case "", "fixed", "fit":

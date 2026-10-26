@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/nao1215/gozen/internal/expr"
@@ -91,6 +92,32 @@ func Targets(db *data.DB, st *rpg.State, o *data.Order) []string {
 		out = append(out, id)
 	}
 	return out
+}
+
+// Check reports why the order cannot be given with these parts ("" when it can): the
+// same rules the choices that ask for them keep, for an order that names them itself. The
+// leader and those marching with it are generals who can lead it, none twice, no more
+// than the order takes; the target is one it can be given.
+func Check(db *data.DB, st *rpg.State, o *data.Order, general string, with []string, target string) string {
+	if o.General != "" {
+		can := Generals(db, st, o)
+		marching := append([]string{general}, with...)
+		for i, g := range marching {
+			if !slices.Contains(can, g) {
+				return fmt.Sprintf(lang.T("%sはこの命令を率いられない"), GeneralLabelName(db, g))
+			}
+			if slices.Contains(marching[:i], g) {
+				return fmt.Sprintf(lang.T("%sが二度数えられている"), GeneralLabelName(db, g))
+			}
+		}
+		if len(marching) > max(1, o.Generals) {
+			return fmt.Sprintf(lang.T("この命令で出られる将は %d 人まで"), max(1, o.Generals))
+		}
+	}
+	if o.Target != "" && !slices.Contains(Targets(db, st, o), target) {
+		return fmt.Sprintf(lang.T("%sにはこの命令を出せない"), data.RegionName(db, target))
+	}
+	return ""
 }
 
 // GeneralLabel and TargetLabel are the options of the choices that ask for them.

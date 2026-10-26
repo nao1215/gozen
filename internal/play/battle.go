@@ -1604,20 +1604,20 @@ func (s *battleScene) drawFoes(g *Game, dst *ebiten.Image) {
 	}
 }
 
-// messageHeight is the height of the message window: three lines, or with
-// ui.battle_message: fit as many as it shows.
+// messageHeight is the height of the message window: as many lines as it shows, or with
+// ui.battle_message: fixed three.
 func (s *battleScene) messageHeight(g *Game) float64 {
-	if g.db.Game.UI.BattleMessage != "fit" {
+	if g.db.Game.UI.BattleMessage == "fixed" {
 		return 132
 	}
 	return 24 + float64(max(1, len(s.msg)))*36
 }
 
-// foeNameBox is where the plate of a foe goes (ui.battle_foe_names): under its feet,
-// above the party's cards; false when it has none.
+// foeNameBox is where the plate of a foe goes (ui.battle_foe_names, name when not
+// written): under its feet, above the party's cards; false when it has none.
 func (s *battleScene) foeNameBox(g *Game, u *battle.Unit, box foeBox) (plateBox, bool) {
 	mode := g.db.Game.UI.BattleFoeNames
-	if mode == "" || u.Def.Boss || u.Fled {
+	if mode == "none" || u.Def.Boss || u.Fled {
 		return plateBox{}, false
 	}
 	if _, gone := s.gone[u]; gone {
