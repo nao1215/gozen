@@ -113,7 +113,7 @@ motion:                  # omitted groups take the defaults. A strength of 0 ins
   sway: {angle: 2.5, shift: 10, period: 6.5, damage_boost: 0}  # head sway; damage_boost increases strength and speed at low HP
   tilt: {angle: 7, every: [5, 11]}      # an occasional head tilt
   hair: {gain: 1, stiffness: 60, damping: 7}  # the spring of the hair
-  talk: {nod: 8}                        # up and down of the head while talking (pixels)
+  talk: {nod: 8, bounce: 1}             # up and down of the head while talking (pixels); a jiggle of the soft_sway regions as a line begins
 reactions:               # named variants of strength. The built-in names can be used as they are
   jump: {kind: hop, amount: 1.6}
   nod: {time: 0.7}
@@ -131,7 +131,8 @@ reactions:               # named variants of strength. The built-in names can be
 | `motion.sway.shift`, `talk.nod` | 2.5% and 2% of the head radius | 0 or more. The angle up to 45 degrees, `breath.depth` up to 0.2 |
 | `motion.sway.damage_boost` | 0 (off) | Nonnegative. Lower HP increases sway size and speed; a hit adds a brief bounce and lingering sway. |
 | `motion.hit` | whole-body response | `soft_only` requires `soft_sway`; damage drives only those regions, without a hit hop or shake of the picture. |
-| `reactions` | the built-in hop, shrink, shake, nod, tilt, freeze (temporarily stops breathing, sway, blinking and mouth) | `kind` is one of the built-ins. `amount` (multiplier, default 1) and `time` (seconds) are 0 or more |
+| `motion.talk.bounce` | 0 (off) | 0 or more. Each line's start plays a `jiggle` of this strength: the `soft_sway` regions bounce and settle, the body and head stay still |
+| `reactions` | the built-in hop, shrink, shake, nod, tilt, freeze (temporarily stops breathing, sway, blinking and mouth), jiggle (bounces only the `soft_sway` regions) | `kind` is one of the built-ins. `amount` (multiplier, default 1) and `time` (seconds) are 0 or more |
 
 Picture errors (missing, not a PNG or WebP, larger than 8192 pixels, sticking out of the base, a whole picture whose size differs from the base, no differing part) are returned by `Load` with a location.
 

@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add the puppet reaction `jiggle`, which bounces only the `soft_sway` regions and lets them settle, and `motion.talk.bounce` to play it as each line begins, for regions that should move now and then instead of with a constant idle swing.
 - Show in a campaign map's region window only the values the region declares or the play has set; a value written on one region showed as a zero on all the others.
 - Keep a campaign map's region window off the generals' window and the camera buttons too; placed under the meters, its last lines could fall behind the generals.
 - Add opt-in `campaign.sortie` with `background` and `title` to put a picture behind the sortie screen and show its title in a window like the other windows.
