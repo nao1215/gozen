@@ -47,6 +47,8 @@ func TestCampaignErrors(t *testing.T) {
 		{"a rule that drafts and marches", `{draft: "50"}`, `{draft: "50", march: true}`, "one of them"},
 		{"an unknown pick", "pick: min, by: t.troops", "pick: least, by: t.troops", `pick is first, min, max or random, not "least"`},
 		{"a value named like a field", "values: {wealth: 15}", "values: {owner: 15}", "a value's name"},
+		{"a value named like the record of a fight", "values: {wealth: 15}", "values: {fought: 15}", "a value's name"},
+		{"two regions making one saved name", "hill: {name: Hill, next: [field, keep], troops: 150}", "hill: {name: Hill, next: [field, keep], troops: 150, values: {top_wealth: 1}}\n  hill_top: {name: Hilltop, troops: 10, values: {wealth: 1}}", `var.region_hill_top_wealth is made by both`},
 		{"an unknown defending troop", "hill: {name: Hill, next: [field, keep], troops: 150}", "hill: {name: Hill, next: [field, keep], troops: 150, defend: ghosts}", `unknown troop "ghosts"`},
 		{"an unknown name in a rule", `"s.troops * 0.6 > t.troops * 1.25"`, `"s.troops * 0.6 > u.troops"`, `unknown name "u"`},
 	} {

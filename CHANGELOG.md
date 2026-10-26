@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Report two campaign fields saved under one generated name (a region `north_gate`'s value `income` and a region `north`'s value `gate_income`), which overwrote each other, and reserve `fought` as a region value name; the save format is unchanged.
 - Treat the campaign sortie screen as a boundary of an event: the lines after it no longer roll back into it or save a cursor that stopped on the sortie when loaded, and a save there is refused with the reason.
 - Refuse a save, with the reason, in the lines of an event after a battle, a shop, a screen or a move in it; the save kept the state without the rest of the event, which was lost on loading.
 - Stop `campaign.actions` from recursing without end when it reads `campaign.turn` (or any campaign field): the fields are worked out when read, and an expression that reads `campaign.actions` itself is reported by the check.

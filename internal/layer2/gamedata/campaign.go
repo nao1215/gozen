@@ -535,6 +535,38 @@ func areasOverlap(q, r geom.Poly) bool {
 	return false
 }
 
+// campaignSavedNames reports two things of a campaign saved under one generated name (a
+// region north_gate's value income and a region north's value gate_income are both
+// var.region_north_gate_income): one would overwrite the other.
+func (c *checker) campaignSavedNames() {
+	db := c.db
+	made := map[string]string{}
+	add := func(name, by, where string) {
+		key := "var." + name
+		if first, ok := made[key]; ok {
+			c.errorf(diag.Duplicate, where, "%s is made by both %s and %s: rename one of them", key, first, by)
+			return
+		}
+		made[key] = by
+	}
+	values := ValueNames(db)
+	for _, id := range RegionIDs(db) {
+		for _, f := range append([]string{"owner", "troops", "fought"}, values...) {
+			add(RegionVar(id, f), "region "+id+"'s "+f, "regions."+id)
+		}
+	}
+	if cp := db.Game.Campaign; cp != nil {
+		for _, id := range slices.Sorted(maps.Keys(cp.Generals)) {
+			for _, f := range []string{"troops", "acted", "out"} {
+				add(GeneralVar(id, f), "general "+id+"'s "+f, "game.yaml campaign.generals."+id)
+			}
+		}
+		for _, id := range cp.OrderIDs() {
+			add(OrderVar(id, "used"), "order "+id+"'s used", "game.yaml campaign.orders."+id)
+		}
+	}
+}
+
 func (c *checker) campaignLabels() {
 	cp := c.db.Game.Campaign
 	if cp == nil {
@@ -568,6 +600,7 @@ func (c *checker) campaignLabels() {
 
 func (c *checker) campaign() {
 	c.campaignLabels()
+	c.campaignSavedNames()
 	db := c.db
 	if len(db.Regions) == 0 && len(db.Factions) == 0 && db.Game.Campaign == nil {
 		return
@@ -856,7 +889,8 @@ func (c *checker) campaign() {
 }
 
 // regionFields are the fields of region.<id> that are not values.
-var regionFields = []string{"id", "name", "owner", "troops", "next", "capital", "border"}
+// fought is saved beside them, so no value takes its name either.
+var regionFields = []string{"id", "name", "owner", "troops", "next", "capital", "border", "fought"}
 
 func (c *checker) factionRule(w string, r *FactionRule, names []string) {
 	c.expr(w+".when", r.When, FieldNames)
