@@ -297,6 +297,11 @@ type Meter struct {
 	Actor     string `yaml:"actor"`
 	// Marks are values marked on the bar (where something becomes possible).
 	Marks []float64 `yaml:"marks"`
+	// MarkLabels name the marks, in their order (a short word under each line).
+	MarkLabels []string `yaml:"mark_labels"`
+	// Style is how the meter shows: bar (the default) or number (the label and the
+	// value only, not capped by max: money, a count).
+	Style string `yaml:"style"`
 }
 
 // CardBubble is a rule for particles welling up from a card. For cards of Actor (anyone if empty), tied to State
@@ -487,6 +492,18 @@ type UIStyle struct {
 	Profiles bool `yaml:"profiles"`
 	// Bestiary puts Monsters in the title and field menu. Under --dev it is offered automatically.
 	Bestiary bool `yaml:"bestiary"`
+	// BattleFoeNames puts a plate under each foe that is not a boss: name (its name) or
+	// hp (its name and a bar of its HP). Empty: none, as before.
+	BattleFoeNames string `yaml:"battle_foe_names"`
+	// BattleMessage is the battle's message window: fixed (three lines tall, the
+	// default) or fit (as tall as the lines it shows).
+	BattleMessage string `yaml:"battle_message"`
+	// HideBarOnChoice hides the buttons under the novel window (back, log, save and the
+	// rest) while a choice is shown; their keys still work.
+	HideBarOnChoice bool `yaml:"hide_bar_on_choice"`
+	// HideGold are the kinds of place (field, dungeon, map, stage) where the windows of
+	// the money (the field's, with the play time, and the menu's) are not shown.
+	HideGold []string `yaml:"hide_gold"`
 	// Voice shapes how voices play: cut at the next line, auto waits for them
 	// (schema_version 4, ADR 0028).
 	Voice   VoiceStyle `yaml:"voice"`
@@ -1397,8 +1414,11 @@ type Person struct {
 
 // Action is a thing to do at a location ("Search the chest", "Rest at the inn").
 type Action struct {
-	ID    string    `yaml:"id"` // an operation identifier that does not depend on the display name
-	Label string    `yaml:"label"`
+	ID    string `yaml:"id"` // an operation identifier that does not depend on the display name
+	Label string `yaml:"label"`
+	// Group is the heading the action is listed under in the place's list (the entries of
+	// one group are listed together under it; none: no heading).
+	Group string    `yaml:"group"`
 	When  Expr      `yaml:"when"`
 	New   Expr      `yaml:"new"`  // an expression that holds only while there is a new talk (same as Person.New; not shown on screen)
 	Mark  Expr      `yaml:"mark"` // an expression that, while it holds, marks the list label (same as Person.Mark)

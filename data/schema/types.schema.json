@@ -23,6 +23,19 @@
           },
           "x-type": "[Command](#command)[]"
         },
+        "group": {
+          "description": "The heading the action is listed under in the place's list. Entries of one group are listed together under it, the groups in the order first met. Expressions in braces are expanded. Omitted: no heading.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "id": {
           "description": "A stable ID for the action that does not depend on its label.",
           "type": "string",
@@ -801,6 +814,25 @@
           },
           "x-type": "[Road](#road)[]"
         },
+        "safe_area": {
+          "description": "The edges of the screen kept for the windows over the map, [top, right, bottom, left] as fractions of the screen (each at most 0.45). The picture is fitted to the rest, and the camera brings any part of it there. Omitted: the whole screen.",
+          "items": {
+            "type": "number"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "number[]"
+        },
         "selection_panel": {
           "$ref": "#/$defs/AtlasPanel",
           "description": "Optional fixed panel showing the focused point's first matching advice variant. Clicking selects; Confirm executes; Back hides the panel.",
@@ -813,6 +845,19 @@
             "version": "3"
           },
           "x-type": "[AtlasPanel](#atlaspanel)"
+        },
+        "talk": {
+          "description": "How the map shows under a conversation that is not its own question (a region's orders): omitted (as it is), dim (darkened) or hide (darkened, without the markers, flags and name plates).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "string"
         },
         "token": {
           "$ref": "#/$defs/Token",
@@ -860,6 +905,19 @@
       "additionalProperties": false,
       "description": "Presentation-only camera for a large atlas. Bounds are clamped to the picture and labels retain their screen size.",
       "properties": {
+        "buttons": {
+          "description": "How the camera's on-screen buttons show: shown (the default), faint (see-through until the pointer is over them) or hidden (the keys, the wheel and the pad still move the camera).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "string"
+        },
         "max_zoom": {
           "description": "Maximum zoom relative to fit-to-screen, from 1 to 64. Zero or omitted means 8.",
           "type": "number",
@@ -2376,6 +2434,19 @@
           },
           "x-type": "string → [General](#general)"
         },
+        "heading": {
+          "description": "The turn's part of the band over the campaign's map, a text with {expressions}, such as \"Year {campaign.year}\". With it the band leaves out the last turn. Omitted: the calendar's words.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "labels": {
           "additionalProperties": {
             "type": "string"
@@ -2471,6 +2542,19 @@
           },
           "x-type": "string → [Order](#order)"
         },
+        "pin_end_turn": {
+          "description": "Keep the end of the turn in the last row of the place's list, below the rows that scroll, so it shows however long the list is. Off by default.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
         "player": {
           "description": "The player's faction, an ID of factions. Required.",
           "type": "string",
@@ -2483,6 +2567,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "sortie": {
+          "$ref": "#/$defs/SortieLook",
+          "description": "How the sortie screen looks: a picture behind it, and its title, then shown in a window like the other windows. Omitted: a plain dark screen with an outlined title.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[SortieLook](#sortielook)"
         },
         "turns": {
           "description": "The last turn. Ending it without winning loses. 0 means no limit.",
@@ -10736,6 +10833,25 @@
           },
           "x-type": "string"
         },
+        "mark_labels": {
+          "description": "Short names of the marks, in their order, drawn small under each line (such as the value where trouble starts). At most one per mark.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
         "marks": {
           "description": "Values marked on the bar, for example where something becomes possible.",
           "items": {
@@ -10785,6 +10901,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "expression"
+        },
+        "style": {
+          "description": "How the meter shows: bar (the default) or number (the label and the value only, not capped by max; for money such as value: gold).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         },
         "value": {
           "description": "An expression giving the current value.",
@@ -11173,6 +11302,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "integer"
+        },
+        "group": {
+          "description": "The heading the order is listed under in the place's list, together with the place's actions of the same group. Omitted: no heading.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         },
         "label": {
           "description": "The text shown in the menu.",
@@ -13859,6 +14001,39 @@
           "x-contract": {
             "default": "song ID",
             "legacy_default": "song ID",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "SortieLook": {
+      "additionalProperties": false,
+      "description": "How a campaign's sortie screen looks (campaign.sortie).",
+      "properties": {
+        "background": {
+          "$ref": "#/$defs/Picture",
+          "description": "The picture behind the sortie screen, darkened a little so the windows read on it.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Picture](#picture) or string"
+        },
+        "title": {
+          "description": "The words before the name of the region marched on, a text with {expressions}. The title shows in a window like the other windows. Omitted: the engine's words.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
             "zero": "-",
             "required": "optional",
             "reference": "-",
@@ -17750,7 +17925,7 @@
           "x-type": "number"
         },
         "battle_ai_history": {
-          "description": "Show the battle AI history button and enable B/PageUp, controller L1 and pointer activation. True when omitted. False hides the panel entry without changing decisions or replay traces.",
+          "description": "Show the battle AI history button and enable B/PageUp, controller L1 and pointer activation. True when omitted. False hides the panel entry and the tactic explanation appended to action messages, without changing decisions or replay traces.",
           "type": [
             "boolean",
             "null"
@@ -17765,6 +17940,19 @@
           },
           "x-type": "boolean"
         },
+        "battle_foe_names": {
+          "description": "A plate under each foe that is not a boss: name (its name) or hp (its name and a bar of its HP). Omitted: none.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "battle_fx": {
           "$ref": "#/$defs/BattleFx",
           "description": "How strong the battle effects are: shake, flash, number pop, hit stop, charge and finish.",
@@ -17777,6 +17965,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "[BattleFx](#battlefx)"
+        },
+        "battle_message": {
+          "description": "The battle's message window: fixed (three lines tall, the default) or fit (as tall as the lines it shows).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         },
         "bestiary": {
           "description": "Show Monsters, the monster book, in the title and field menu. Off by default; under `--dev` the menus show it anyway. Needs schema version 4.",
@@ -17834,6 +18035,38 @@
             "version": "0, 1, 2"
           },
           "x-type": "boolean"
+        },
+        "hide_bar_on_choice": {
+          "description": "Hide the buttons under the novel window (back, log, save and the rest) while a choice is shown; their keys still work. Off by default.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "hide_gold": {
+          "description": "The kinds of place (field, dungeon, map, stage) where the windows of the money are not shown: the field's, with the play time, and the menu's. Omitted: shown everywhere.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
         },
         "message": {
           "description": "The message window style: `box` (a framed box, the default) or `novel` (across the bottom like a visual novel).",

@@ -105,6 +105,10 @@ Slot:
   id: "The slot's ID, which items refer to in their `slot`."
   manual: "Leave this slot alone for the menu's best-equipment and recommendation features, for gear that cannot be compared by total stats."
   name: "The name shown in the equipment menu."
+SortieLook:
+  _: "How a campaign's sortie screen looks (campaign.sortie)."
+  background: "The picture behind the sortie screen, darkened a little so the windows read on it."
+  title: "The words before the name of the region marched on, a text with {expressions}. The title shows in a window like the other windows. Omitted: the engine's words."
 Song:
   _: "A piece of music, either a single track file or a modular song with one module per mood."
   bpm: "The tempo in beats per minute, for a modular song."

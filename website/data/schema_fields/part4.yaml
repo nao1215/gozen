@@ -104,6 +104,8 @@ MemoVar:
   value: "An expression giving the number from the game state when the note is made."
 Meter:
   _: "A gauge of a number, showing `value` out of `max` while `when` holds."
+  mark_labels: "Short names of the marks, in their order, drawn small under each line (such as the value where trouble starts). At most one per mark."
+  style: "How the meter shows: bar (the default) or number (the label and the value only, not capped by max; for money such as value: gold)."
   actor: "The ID of the actor (an ID of actors) whose status page shows the meter. When empty, it shows on every page."
   color: "The color of the bar."
   full: "The text written after the bar when it is full."
@@ -183,6 +185,7 @@ ProfileRelation:
   text: "A note on how the character sees them."
 Order:
   _: "One of the player's orders in a campaign. It costs actions, may need a general and a target region, and runs its do with them bound as general and target."
+  group: "The heading the order is listed under in the place's list, together with the place's actions of the same group. Omitted: no heading."
   cost: "The actions it takes. Default 1."
   do: "The commands run after the march (if any), with general and target bound."
   fight: "clash_view to decide the march by a clash of units shown on its own screen (the generals against the members of the target's defend troop, at most four a side), or battle to decide it by the game's battle: the general alone against the target's defend troop. A win takes the region with the share of the troops of the HP left; a loss leaves the clash's lost. Omitted: by the numbers of clash."

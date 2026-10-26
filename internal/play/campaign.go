@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
@@ -87,12 +88,12 @@ func (s *atlasScene) regionOrders(g *Game, id string) {
 	prompt := campaign.TargetLabel(g.db, g.st, id)
 	if len(opts) == 0 {
 		g.events.Start([]data.Command{{Say: &data.Say{Text: prompt + "\n" + lang.T("ここに出せる命令はない")}}})
-		s.dirty = true
+		s.dirty, s.asking = true, true
 		return
 	}
 	opts = append(opts, data.ChoiceOption{Label: lang.T("やめる")})
 	g.events.Start([]data.Command{{Prompt: prompt, Choice: opts}})
-	s.dirty = true
+	s.dirty, s.asking = true, true
 	g.emit("region", traceLine{"location": s.loc, "region": id})
 }
 
@@ -249,25 +250,37 @@ func regionLabel(g *Game, id string) string {
 	return fmt.Sprintf("%s  %d", data.RegionName(g.db, id), int(data.Garrison(g.db, g.st.Campaign(), id)))
 }
 
-// drawCampaign draws the band, the meters, the window of the region chosen and the
-// generals over a campaign's map.
-func (s *atlasScene) drawCampaign(g *Game, dst *ebiten.Image, sel string) {
-	sw, sh := g.screen()
+// campaignBand is the band's text: the turn (campaign.heading, else the calendar's words),
+// the player's faction, the actions left, and the last turn when the turns are counted by
+// the engine's words.
+func campaignBand(g *Game) string {
 	c := g.db.Game.Campaign
 	cs := g.st.Campaign()
-	// the band: the turn, the player's faction, the actions
 	turn := data.Turn(g.db, cs)
 	when := fmt.Sprintf(lang.T("第%dターン"), turn)
 	if c.Calendar == "week" {
 		when = fmt.Sprintf(lang.T("%d年目 第%d週"), (turn-1)/52+1, (turn-1)%52+1)
 	}
+	if c.Heading != "" {
+		when = data.Render(g.db.Tr(c.Heading), g.st.Env())
+	}
 	band := when + "　" + campaign.FactionName(g.db, c.Player)
 	if c.Count != "orders" {
 		band += fmt.Sprintf(lang.T("　行動 %d/%d"), int(data.ActionsLeft(g.db, cs)), int(data.TurnActions(g.db, cs)))
 	}
-	if c.Turns > 0 {
+	if c.Turns > 0 && c.Heading == "" {
 		band = fmt.Sprintf(lang.T("%s　（全 %d ターン）"), band, c.Turns)
 	}
+	return band
+}
+
+// drawCampaign draws the band, the meters, the window of the region chosen and the
+// generals over a campaign's map.
+func (s *atlasScene) drawCampaign(g *Game, dst *ebiten.Image, sel string) {
+	sw, sh := g.screen()
+	c := g.db.Game.Campaign
+	// the band: the turn, the player's faction, the actions
+	band := campaignBand(g)
 	bw := gfx.TextWidth(band, sizeM) + 120
 	bx := (sw - bw) / 2
 	g.window(dst, bx, 18, bw, 64)
@@ -276,14 +289,15 @@ func (s *atlasScene) drawCampaign(g *Game, dst *ebiten.Image, sel string) {
 	// the meters at the top right, the region chosen at the top left
 	g.drawMeters(dst, g.shownMeters("", false), sw-296, 96, 260)
 	if sel != "" && g.db.Regions[sel] != nil {
-		s.drawRegionWindow(g, dst, sel, 36, 96)
+		s.drawSelectionRing(g, dst, sel)
+		s.drawRegionWindow(g, dst, sel)
 	}
 	// the generals who have joined, with their troops
 	s.drawGenerals(g, dst, sw, sh)
 }
 
-// drawRegionWindow is the window of a region: name, owner, garrison and values.
-func (s *atlasScene) drawRegionWindow(g *Game, dst *ebiten.Image, id string, x, y float64) {
+// regionLines are the lines of a region's window under its name: owner, garrison and values.
+func regionLines(g *Game, id string) []string {
 	cs := g.st.Campaign()
 	owner := data.RegionOwner(g.db, cs, id)
 	lines := []string{
@@ -291,39 +305,152 @@ func (s *atlasScene) drawRegionWindow(g *Game, dst *ebiten.Image, id string, x, 
 		fmt.Sprintf(lang.T("兵　%d"), int(data.Garrison(g.db, cs, id))),
 	}
 	for _, v := range data.ValueNames(g.db) {
+		// a value only some regions hold is not shown as a zero on the others
+		if !data.HasRegionValue(g.db, cs, id, v) {
+			continue
+		}
 		label := v
 		if cp := g.db.Game.Campaign; cp != nil && cp.Labels[v] != "" {
 			label = cp.Labels[v]
 		}
 		lines = append(lines, fmt.Sprintf("%s　%s", label, expr.Format(data.RegionValue(g.db, cs, id, v))))
 	}
-	h := 70 + float64(len(lines))*gfx.LineHeight(sizeS)
-	g.window(dst, x, y, 300, h)
+	return lines
+}
+
+// regionWindowBox is where the window of the region id goes: at the top left, unless the
+// region's own point lies under it; then at the right under the meters, else at the bottom
+// left, whichever covers the point least. The window never hides the region it tells.
+func (s *atlasScene) regionWindowBox(g *Game, id string) plateBox {
+	sw, sh := g.screen()
+	w, h := 300.0, 70+float64(len(regionLines(g, id)))*gfx.LineHeight(sizeS)
+	i := s.pointIndex(id)
+	if i < 0 {
+		return plateBox{x: 36, y: 96, w: w, h: h}
+	}
+	px, py := s.screen(g, s.points[i].at)
+	// the point with its flag and plate around it
+	mark := plateBox{x: px - 80, y: py - 110, w: 160, h: 160}
+	top := 96.0
+	if mh := g.metersHeight(); mh > 0 {
+		top += mh + 16
+	}
+	tries := []plateBox{
+		{x: 36, y: 96, w: w, h: h},
+		{x: sw - 36 - w, y: top, w: w, h: h},
+		{x: 36, y: sh - 150 - h, w: w, h: h},
+	}
+	// the other windows over the map: the generals' and the camera's buttons
+	var others []plateBox
+	gen, hasGen := s.generalsRect(g)
+	if hasGen {
+		others = append(others, gen)
+	}
+	others = append(others, s.cameraButtons(g)...)
+	best, least, found := tries[0], math.Inf(1), false
+	for _, t := range tries {
+		t.y = math.Max(4, math.Min(sh-4-t.h, t.y))
+		if slices.ContainsFunc(others, func(o plateBox) bool { return t.overlap(o) > 0 }) {
+			continue
+		}
+		if o := t.overlap(mark); o < least {
+			best, least, found = t, o, true
+		}
+		if least == 0 {
+			break
+		}
+	}
+	if !found && hasGen { // none fits: the first, kept above the generals
+		best.y = math.Max(4, math.Min(best.y, gen.y-8-best.h))
+	}
+	return best
+}
+
+// drawSelectionRing marks the region chosen on the map: a ring in the cursor's colour round
+// its point, breathing slowly, so the window's region is the one the eye finds.
+func (s *atlasScene) drawSelectionRing(g *Game, dst *ebiten.Image, id string) {
+	i := s.pointIndex(id)
+	if i < 0 || !s.cameraPointVisible(g, s.points[i].at) {
+		return
+	}
+	px, py := s.screen(g, s.points[i].at)
+	_, sh := g.screen()
+	r := float32(markerHeight * sh * 0.55 * (1 + 0.08*math.Sin(float64(g.tick)/12)))
+	gfx.StrokeCircle(dst, float32(px), float32(py), r+2, 6, withAlpha(colorShadowNRGBA, 150), true)
+	gfx.StrokeCircle(dst, float32(px), float32(py), r, 4, g.th.cursor, true)
+}
+
+// drawRegionWindow is the window of a region: name, owner, garrison and values.
+func (s *atlasScene) drawRegionWindow(g *Game, dst *ebiten.Image, id string) {
+	b := s.regionWindowBox(g, id)
+	x, y := b.x, b.y
+	owner := data.RegionOwner(g.db, g.st.Campaign(), id)
+	g.window(dst, x, y, b.w, b.h)
 	gfx.FillRoundRect(dst, float32(x+22), float32(y+24), 18, 18, 4, factionColor(g, owner))
 	g.text(dst, data.RegionName(g.db, id), x+50, y+16, sizeM, g.th.accent)
 	ly := y + 56
-	for _, l := range lines {
+	for _, l := range regionLines(g, id) {
 		g.text(dst, l, x+24, ly, sizeS, g.th.text)
 		ly += gfx.LineHeight(sizeS)
 	}
 }
 
-// drawGenerals stands the generals who have joined in a row at the bottom right: each
-// face with its troops under it, dim when it has marched this turn.
-func (s *atlasScene) drawGenerals(g *Game, dst *ebiten.Image, sw, sh float64) {
-	cs := g.st.Campaign()
+// generalIDs are the generals who have joined, in the actors' order.
+func generalIDs(g *Game) []string {
 	var ids []string
 	for _, id := range g.db.Ordered("actors") {
 		if _, ok := g.db.Game.Campaign.Generals[id]; ok && g.st.Actors[id] != nil {
 			ids = append(ids, id)
 		}
 	}
+	return ids
+}
+
+// generalsRect is the generals' window on the map (false while none has joined).
+func (s *atlasScene) generalsRect(g *Game) (plateBox, bool) {
+	n := len(generalIDs(g))
+	if n == 0 {
+		return plateBox{}, false
+	}
+	sw, sh := g.screen()
+	x, y, w, cell := s.generalsBox(g, n, sw, sh)
+	return plateBox{x: x, y: y, w: w, h: cell + 30}, true
+}
+
+// generalsBox is the window of n generals at the bottom right: its left edge, top and
+// width, and each one's cell. The cells narrow (132 at most, 72 at least) so the window
+// keeps right of the map's camera buttons; too many for that, it stands over them.
+func (s *atlasScene) generalsBox(g *Game, n int, sw, sh float64) (x, y, w, cell float64) {
+	cell = 132.0
+	left, bottom := 36.0, sh-42
+	var buttons plateBox
+	if bs := s.cameraButtons(g); len(bs) > 0 {
+		buttons = bs[len(bs)-1]
+		left = buttons.x + buttons.w + 16
+	}
+	room := sw - 36 - left - 24
+	if cell*float64(n) > room {
+		cell = room / float64(n)
+	}
+	if cell < 72 && buttons.w > 0 { // over the buttons and their hint, across the screen
+		cell = math.Min(132, (sw-72-24)/float64(n))
+		bottom = buttons.y - 44
+	}
+	cell = math.Max(48, cell)
+	w = cell*float64(n) + 24
+	return sw - w - 36, bottom - cell - 30, w, cell
+}
+
+// drawGenerals stands the generals who have joined in a row at the bottom right: each
+// face with its troops under it, dim when it has marched this turn.
+func (s *atlasScene) drawGenerals(g *Game, dst *ebiten.Image, sw, sh float64) {
+	cs := g.st.Campaign()
+	ids := generalIDs(g)
 	if len(ids) == 0 {
 		return
 	}
-	const cell, face = 132.0, 92.0
-	w := cell*float64(len(ids)) + 24
-	x, y := sw-w-36, sh-cell-72
+	x, y, w, cell := s.generalsBox(g, len(ids), sw, sh)
+	face := cell * 92 / 132
 	g.window(dst, x, y, w, cell+30)
 	for i, id := range ids {
 		a := g.db.Actors[id]
@@ -346,7 +473,7 @@ func (s *atlasScene) drawGenerals(g *Game, dst *ebiten.Image, sw, sh float64) {
 		if out := data.Out(cs, id); out > 0 {
 			troops = fmt.Sprintf(lang.T("離脱 あと%d"), out)
 		}
-		gfx.DrawText(dst, troops, cx, y+24+face, sizeS*0.85, withAlpha(g.th.text, alpha))
+		gfx.DrawText(dst, troops, cx, y+24+face, sizeS*0.85*math.Min(1, cell/120), withAlpha(g.th.text, alpha))
 	}
 }
 

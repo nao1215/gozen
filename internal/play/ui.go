@@ -74,6 +74,8 @@ type listItem struct {
 	disabled bool
 	color    color.Color
 	id       string
+	// heading is a row naming the group of the rows under it: drawn small, never chosen.
+	heading bool
 
 	note      string
 	noteColor color.Color
@@ -85,17 +87,65 @@ type list struct {
 	rows       int
 	x, y, w    float64
 	rowH, size float64
+	// pin keeps the last item in the last row, under the rows that scroll, while the
+	// items do not all fit.
+	pin bool
+	// empty is said in the first row while there are no items.
+	empty string
 }
 
 func newList(items []listItem, x, y, w float64, rows int) *list {
-	return &list{items: items, x: x, y: y, w: w, rows: rows, rowH: 44, size: sizeM}
+	l := &list{items: items, x: x, y: y, w: w, rows: rows, rowH: 44, size: sizeM}
+	if len(items) > 0 && items[0].heading {
+		l.step(1)
+	}
+	return l
 }
 
 func (l *list) height() float64 { return float64(min(l.rows, max(1, len(l.items))))*l.rowH + 24 }
 
+// pinned reports whether the last item stands apart in the last row.
+func (l *list) pinned() bool { return l.pin && l.rows > 1 && len(l.items) > l.rows }
+
+// scrolled is how many items scroll and how many rows they have.
+func (l *list) scrolled() (items, rows int) {
+	if l.pinned() {
+		return len(l.items) - 1, l.rows - 1
+	}
+	return len(l.items), l.rows
+}
+
 func (l *list) rowRect(i int) image.Rectangle {
-	ry := l.y + 12 + float64(i-l.top)*l.rowH
+	slot := i - l.top
+	if l.pinned() && i == len(l.items)-1 {
+		slot = l.rows - 1
+	}
+	ry := l.y + 12 + float64(slot)*l.rowH
 	return image.Rect(int(l.x), int(ry), int(l.x+l.w), int(ry+l.rowH))
+}
+
+// shown are the items drawn now: the rows scrolled to, then the pinned one.
+func (l *list) shown() []int {
+	n, rows := l.scrolled()
+	var out []int
+	for i := l.top; i < min(n, l.top+rows); i++ {
+		out = append(out, i)
+	}
+	if l.pinned() {
+		out = append(out, len(l.items)-1)
+	}
+	return out
+}
+
+// step moves the cursor by d (1 or -1), round, past the headings.
+func (l *list) step(d int) {
+	n := len(l.items)
+	for range n {
+		l.sel = (l.sel + d + n) % n
+		if !l.items[l.sel].heading {
+			return
+		}
+	}
 }
 
 func (l *list) update(g *Game) (chose, cancel bool) {
@@ -110,14 +160,14 @@ func (l *list) update(g *Game) (chose, cancel bool) {
 	}
 	old := l.sel
 	if in.up() {
-		l.sel = (l.sel - 1 + n) % n
+		l.step(-1)
 	}
 	if in.down() {
-		l.sel = (l.sel + 1) % n
+		l.step(1)
 	}
 	hit := -1
-	for i := l.top; i < min(n, l.top+l.rows); i++ {
-		if in.mouse.In(l.rowRect(i)) {
+	for _, i := range l.shown() {
+		if in.mouse.In(l.rowRect(i)) && !l.items[i].heading {
 			hit = i
 		}
 	}
@@ -129,7 +179,7 @@ func (l *list) update(g *Game) (chose, cancel bool) {
 	}
 	l.scroll()
 	if in.ok() || (in.click && hit >= 0) {
-		if l.items[l.sel].disabled {
+		if l.items[l.sel].disabled || l.items[l.sel].heading {
 			g.sfx("buzzer")
 			return false, false
 		}
@@ -140,11 +190,19 @@ func (l *list) update(g *Game) (chose, cancel bool) {
 }
 
 func (l *list) scroll() {
+	n, rows := l.scrolled()
+	if l.sel >= n { // the pinned item: the rows stay where they are
+		return
+	}
 	if l.sel < l.top {
 		l.top = l.sel
 	}
-	if l.sel >= l.top+l.rows {
-		l.top = l.sel - l.rows + 1
+	if l.sel >= l.top+rows {
+		l.top = l.sel - rows + 1
+	}
+	// the heading of the first row shown, when there is room for it
+	if l.top > 0 && l.items[l.top-1].heading && l.sel < l.top+rows-1 {
+		l.top--
 	}
 }
 
@@ -157,10 +215,25 @@ func (l *list) draw(g *Game, dst *ebiten.Image, active bool) {
 }
 
 func (l *list) drawRows(g *Game, dst *ebiten.Image, active bool) {
-	for i := l.top; i < min(len(l.items), l.top+l.rows); i++ {
+	if len(l.items) == 0 && l.empty != "" {
+		r := l.rowRect(0)
+		g.text(dst, l.empty, float64(r.Min.X)+42, float64(r.Min.Y)+(l.rowH-l.size*1.3)/2, l.size*0.9, g.th.dim)
+	}
+	for _, i := range l.shown() {
 		it := l.items[i]
 		r := l.rowRect(i)
 		ty := float64(r.Min.Y) + (l.rowH-l.size*1.3)/2
+		if it.heading {
+			hs := l.size * 0.7
+			hy := float64(r.Max.Y) - gfx.LineHeight(hs) - 2
+			g.text(dst, it.label, float64(r.Min.X)+22, hy, hs, g.th.accent)
+			lx := float32(float64(r.Min.X) + 22 + gfx.TextWidth(it.label, hs) + 12)
+			gfx.FillRect(dst, lx, float32(hy+hs*0.7), float32(r.Max.X-22)-lx, 1.5, withAlpha(g.th.border, 0xa0), false)
+			continue
+		}
+		if l.pinned() && i == len(l.items)-1 {
+			gfx.FillRect(dst, float32(r.Min.X+16), float32(r.Min.Y-1), float32(l.w-32), 2, withAlpha(g.th.border, 0xc0), false)
+		}
 		if i == l.sel && active {
 			pulse := uint8(0x50 + 0x20*math.Sin(float64(g.tick)/8))
 			gfx.FillRoundRect(dst, float32(r.Min.X+10), float32(r.Min.Y+2), float32(l.w-20), float32(l.rowH-4), 10, withAlpha(g.th.accent, pulse))
@@ -204,11 +277,16 @@ func (l *list) drawRows(g *Game, dst *ebiten.Image, active bool) {
 			gfx.DrawTextRight(dst, it.right, float64(r.Max.X)-22, ty, l.size, c)
 		}
 	}
+	n, rows := l.scrolled()
 	if l.top > 0 {
 		gfx.DrawText(dst, "▲", l.x+l.w/2, l.y-4, sizeS*0.8, g.th.cursor)
 	}
-	if l.top+l.rows < len(l.items) {
-		gfx.DrawText(dst, "▼", l.x+l.w/2, l.y+l.height()-22, sizeS*0.8, g.th.cursor)
+	if l.top+rows < n {
+		y := l.y + l.height() - 22
+		if l.pinned() {
+			y = float64(l.rowRect(len(l.items)-1).Min.Y) - 16
+		}
+		gfx.DrawText(dst, "▼", l.x+l.w/2, y, sizeS*0.8, g.th.cursor)
 	}
 }
 

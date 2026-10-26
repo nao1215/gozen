@@ -4,6 +4,24 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Show in a campaign map's region window only the values the region declares or the play has set; a value written on one region showed as a zero on all the others.
+- Keep a campaign map's region window off the generals' window and the camera buttons too; placed under the meters, its last lines could fall behind the generals.
+- Add opt-in `campaign.sortie` with `background` and `title` to put a picture behind the sortie screen and show its title in a window like the other windows.
+- Add map `camera.buttons: faint` (see-through until the pointer is over them) and `hidden` (keys, wheel and pad only) for the camera's on-screen buttons.
+- Say "You have nothing." in the menu's empty item list and "No skills to use." in an empty skill list, instead of an empty window.
+- Say why when the player chooses the menu's disabled Save at a place that is not safe; it only sounded the buzzer.
+- Add opt-in `ui.hide_bar_on_choice` to hide the buttons under the novel window while a choice is shown; their keys still work.
+- Keep the title's key hint clear of a long title menu and inside the screen; with seven entries the menu covered the hint, whose left end was cut off.
+- Add opt-in `ui.battle_foe_names` (`name` or `hp`) to put a plate with each foe's name, and a bar of its HP, under the foes that are not bosses, and `ui.battle_message: fit` to size the battle's message window to its lines.
+- Add meter `mark_labels` to name the marks on a bar with a short word under each line.
+- Add opt-in map `talk: dim` or `talk: hide` to darken the map, or also hide its markers, flags and name plates, while a conversation that is not the map's own question runs.
+- Add opt-in map `safe_area` to fit the picture inside the screen less the edges kept for the windows over it, the camera bringing any part of it there; narrow the generals' window of a campaign's map so it no longer covers the camera buttons when many generals have joined.
+- Add `campaign.heading`, a text with expressions that replaces the turn's words in the band over a campaign's map (such as `"Year {var.year}, month {var.month}"`); the default band is unchanged.
+- Add meter `style: number` to show a value such as `gold` as a plain number, not capped by `max`, and `ui.hide_gold` to hide the money windows of the field and the menu at the listed kinds of place (`field`, `dungeon`, `map`, `stage`).
+- Add opt-in `group` to campaign orders and location actions, listing entries of one group together under a heading in the place's list, and `campaign.pin_end_turn` to keep the end of the turn in the last row below the rows that scroll.
+- Keep a campaign map's region window off the region it describes and mark the chosen region with a ring in the cursor colour; on opening, the window could cover the chosen region while the capital's ring looked like the cursor.
+- Hide the tactic explanation appended to battle action messages when `ui.battle_ai_history` is false; the history it pointed to was already hidden, so the bracketed rule text only cluttered the message.
+
 ## v0.12.0 - 2026-10-26
 
 Move portraits on the novel stage, run scripts without a window, and reset actors to their starting state.

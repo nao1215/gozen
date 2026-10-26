@@ -4,11 +4,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 const btlMeters = `
 meters:
-  - {label: Energy, value: "var.energy", max: 10, marks: [3, 20], color: "#44aa44"}
+  - {label: Energy, value: "var.energy", max: 10, marks: [3, 20], mark_labels: [Low], color: "#44aa44"}
   - {label: Charge, value: "var.charge", max_value: "var.cap", full: READY, full_color: "#ffcc00"}
   - {label: Secret, value: "var.energy", when: "flag.show", actor: scout}
 `
@@ -49,6 +51,9 @@ func TestMeterValuesAreClampedAndDrawn(t *testing.T) {
 	g.st.Vars["charge"] = 6.0
 	g.st.Vars["cap"] = 6.0
 	ms := g.shownMeters("", false)
+	if got := ms[0].MarkLabels; len(got) != 1 || got[0] != "Low" {
+		t.Fatalf("mark labels %v", got)
+	}
 	if v, mx := g.meterValue(ms[0]); v != 4 || mx != 10 {
 		t.Fatalf("energy %v/%v", v, mx)
 	}
@@ -75,6 +80,37 @@ func TestMeterValuesAreClampedAndDrawn(t *testing.T) {
 	g.st.Vars["cap"] = 6.0
 	g.st.Vars["charge"] = 6.0
 	g.drawMeters(btlImage(), ms, 10, 100, 400)
+}
+
+// A number meter shows its whole value, past max too (money), and ui.hide_gold hides the
+// windows of the money at the kinds of place it lists.
+func TestMeterNumberAndHiddenGold(t *testing.T) {
+	g, _ := btlOpen(t, Options{Location: "camp"}, "meters:\n  - {label: Gold, value: gold, style: number}\n", "")
+	g.st.Gold = 2500
+	ms := g.shownMeters("", false)
+	if got := g.meterNumber(ms[0]); got != "2500" {
+		t.Fatalf("the number meter shows %q, want 2500", got)
+	}
+	g.drawMeters(btlImage(), ms, 10, 10, 260)
+	if !g.goldShown() {
+		t.Fatal("the money is hidden with no ui.hide_gold")
+	}
+	g.db.Game.UI.HideGold = []string{"dungeon"}
+	if !g.goldShown() {
+		t.Fatal("the money is hidden in a field when only dungeon is listed")
+	}
+	loc := g.db.Locations[g.st.Location]
+	loc.Dungeon = &data.Dungeon{}
+	if g.goldShown() {
+		t.Fatal("the money shows in a dungeon listed in ui.hide_gold")
+	}
+	loc.Dungeon = nil
+	g.db.Game.UI.HideGold = []string{"field"}
+	if g.goldShown() {
+		t.Fatal("the money shows in a field listed in ui.hide_gold")
+	}
+	m := newMenu(g)
+	m.draw(g, btlImage())
 }
 
 // TestFrameMeterSecond: the meter counts updates and draws and, once a second has gone by,

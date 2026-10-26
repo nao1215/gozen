@@ -1,6 +1,7 @@
 package play
 
 import (
+	"strings"
 	"testing"
 
 	lang "github.com/nao1215/gozen/internal/text"
@@ -93,7 +94,23 @@ func TestMenuTabsAndSaveRules(t *testing.T) {
 	if !load.disabled {
 		t.Fatal("load offered with no save")
 	}
+	// choosing the disabled save says why
+	mnuTab(t, g, lang.T("セーブ"))
+	if m.msgT == 0 || len(m.msgs) != 1 || !strings.Contains(m.msgs[0], lang.T("ここでは セーブ できない。安全な 場所で セーブ しよう。")) {
+		t.Fatalf("no reason for the disabled save: %v", m.msgs)
+	}
+	m.msgT = 0
+	// an empty bag says so in the item list
+	for id := range g.st.Items {
+		delete(g.st.Items, id)
+	}
+	m.openItems(g)
+	if len(m.items.items) != 0 || m.items.empty == "" {
+		t.Fatalf("empty bag: %d rows, empty text %q", len(m.items.items), m.items.empty)
+	}
+	m.mode = "item"
 	mnuDrawAll(g)
+	m.mode = ""
 	mnuPress(g, btnCancel)
 	if len(g.stack) != 1 {
 		t.Fatalf("cancel left the menu open: %d scenes", len(g.stack))

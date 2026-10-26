@@ -18,6 +18,10 @@ type Atlas struct {
 	SelectionPanel *AtlasPanel `yaml:"selection_panel"`
 	// Camera enables presentation-only pan and zoom; nil keeps the fitted view.
 	Camera *AtlasCamera `yaml:"camera"`
+	// SafeArea keeps the picture inside the screen less its edges [top, right, bottom,
+	// left], fractions of the screen, where the windows over the map stand: the picture is
+	// fitted to the rest, and the camera brings any part of it there. Empty: the whole screen.
+	SafeArea []float64 `yaml:"safe_area"`
 	// TravelSpeed is the map renderer's token speed in picture widths per second.
 	// Zero selects 0.12; explicit speeds must be finite and in [0.01, 2].
 	TravelSpeed float64 `yaml:"travel_speed"`
@@ -36,6 +40,10 @@ type Atlas struct {
 	// roads, the lines of all the roads). draw_roads is not read on a campaign's map.
 	RegionRoads   string `yaml:"region_roads"`
 	RegionBorders string `yaml:"region_borders"`
+	// Talk is how the map shows under a conversation that is not its own question (a
+	// region's orders): as it is (the default), dim (darkened) or hide (darkened, without
+	// the marks, the flags and the name plates).
+	Talk string `yaml:"talk"`
 	// LabelSize is the text height of the points' name plates, a fraction of the screen's
 	// height (0.03 when 0).
 	LabelSize float64 `yaml:"label_size"`
@@ -70,6 +78,9 @@ type MapAdvice struct {
 type AtlasCamera struct {
 	Zoom    float64 `yaml:"zoom"`     // Initial/current-position zoom; zero selects min(2, max_zoom).
 	MaxZoom float64 `yaml:"max_zoom"` // Zoom limit in [1,64]; zero selects 8.
+	// Buttons is how the camera's on-screen buttons show: shown (the default), faint
+	// (see-through until the pointer is over them) or hidden (keys, wheel and pad only).
+	Buttons string `yaml:"buttons"`
 }
 
 // Token is the piece that stands for the party on a map: its picture, else the leader's
@@ -201,6 +212,18 @@ func (c *checker) atlas(w, id string, l *Location) {
 			}
 		}
 	}
+	if len(a.SafeArea) > 0 {
+		valid := len(a.SafeArea) == 4
+		for _, v := range a.SafeArea {
+			valid = valid && !math.IsNaN(v) && v >= 0 && v <= 0.45
+		}
+		if valid {
+			valid = a.SafeArea[0]+a.SafeArea[2] <= 0.8 && a.SafeArea[1]+a.SafeArea[3] <= 0.8
+		}
+		if !valid {
+			c.errorf(diag.OutOfRange, w+".safe_area", "want [top, right, bottom, left], each a fraction of the screen in [0, 0.45], leaving at least 0.2 of it each way")
+		}
+	}
 	if camera := a.Camera; camera != nil {
 		limit := camera.MaxZoom
 		if limit == 0 {
@@ -208,6 +231,11 @@ func (c *checker) atlas(w, id string, l *Location) {
 		}
 		if math.IsNaN(limit) || math.IsInf(limit, 0) || limit < 1 || limit > 64 {
 			c.errorf(diag.OutOfRange, w+".camera.max_zoom", "want 0 (default 8) or a finite zoom in [1, 64]")
+		}
+		switch camera.Buttons {
+		case "", "shown", "faint", "hidden":
+		default:
+			c.errorf(diag.NotAWord, w+".camera.buttons", "want shown, faint or hidden, not %q", camera.Buttons)
 		}
 		if z := camera.Zoom; math.IsNaN(z) || math.IsInf(z, 0) || z != 0 && (z < 1 || z > limit) {
 			c.errorf(diag.OutOfRange, w+".camera.zoom", "want 0 (default 2, capped at max_zoom) or a finite zoom in [1, max_zoom]")
@@ -238,6 +266,11 @@ func (c *checker) atlas(w, id string, l *Location) {
 	case "", "hidden", "dim", "mark", "named":
 	default:
 		c.errorf(diag.NotAWord, w+".unknown", "want hidden, dim, mark or named, not %q", a.Unknown)
+	}
+	switch a.Talk {
+	case "", "dim", "hide":
+	default:
+		c.errorf(diag.NotAWord, w+".talk", "want dim or hide, not %q", a.Talk)
 	}
 	for name, v := range map[string]string{"region_roads": a.RegionRoads, "region_borders": a.RegionBorders} {
 		switch v {

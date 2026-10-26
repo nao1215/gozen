@@ -428,18 +428,28 @@ func TestBattleCriticalAndWeakPopups(t *testing.T) {
 }
 
 func TestBattleTextCanHideTacticLog(t *testing.T) {
-	s := &battleScene{}
+	g, _ := btlOpen(t, Options{Battle: "one"}, "", "")
+	s := btlAsk(t, g)
 	st := battle.Step{Kind: battle.Act, Text: "Maren: Strike! [Maren row 3: Always -> Foe]"}
-	if got := s.battleText(st); got != st.Text {
+	if got := s.battleText(g, st); got != st.Text {
 		t.Fatalf("development log lost: %q", got)
 	}
 	s.hideTacticLog = true
-	if got := s.battleText(st); got != "Maren: Strike! " {
+	if got := s.battleText(g, st); got != "Maren: Strike! " {
 		t.Fatalf("capture text %q", got)
 	}
 	st.Kind = battle.Message
-	if got := s.battleText(st); got != st.Text {
+	if got := s.battleText(g, st); got != st.Text {
 		t.Fatalf("non-action text changed: %q", got)
+	}
+}
+
+func TestBattleTextHidesTacticLogWithoutHistory(t *testing.T) {
+	g, _ := btlOpen(t, Options{Battle: "one"}, "ui: {battle_ai_history: false}\n", "")
+	s := btlAsk(t, g)
+	st := battle.Step{Kind: battle.Act, Text: "Maren: Strike! [Maren row 3: Always -> Foe]"}
+	if got := s.battleText(g, st); got != "Maren: Strike! " {
+		t.Fatalf("explanation shown without a history to read: %q", got)
 	}
 }
 
@@ -576,5 +586,47 @@ func TestBattleRetryKeepsFightersAndRecovery(t *testing.T) {
 	}
 	if g.st.LastBattle != nil {
 		t.Fatal("retry retained the discarded outcome")
+	}
+}
+
+// ui.battle_foe_names puts a plate under each foe that is not a boss, above the party's
+// cards, and ui.battle_message: fit sizes the message window to its lines.
+func TestBattleFoeNamesAndFittedMessage(t *testing.T) {
+	g, _ := btlOpen(t, Options{Battle: "one"}, "ui: {battle_foe_names: hp, battle_message: fit}\n", "")
+	s := btlAsk(t, g)
+	_, sh := g.screen()
+	boxes := s.foeBoxes(g)
+	plates := 0
+	for _, u := range s.b.Foes {
+		p, ok := s.foeNameBox(g, u, boxes[u])
+		if ok == u.Def.Boss {
+			t.Errorf("%s (boss %v): plate %v", u.Name, u.Def.Boss, ok)
+		}
+		if ok {
+			plates++
+			if p.y < float64(boxes[u].rect.Min.Y) || p.y+p.h > sh-150 {
+				t.Errorf("%s: plate %+v leaves the foe's feet or meets the party's cards", u.Name, p)
+			}
+		}
+	}
+	if plates == 0 {
+		t.Fatal("no foe has a plate")
+	}
+	s.msg = []string{"one"}
+	if h := s.messageHeight(g); h != 60 {
+		t.Errorf("one line: window %g tall, want 60", h)
+	}
+	s.msg = []string{"one", "two", "three"}
+	if h := s.messageHeight(g); h != 132 {
+		t.Errorf("three lines: window %g tall, want 132", h)
+	}
+	s.draw(g, btlImage())
+	g.db.Game.UI.BattleFoeNames, g.db.Game.UI.BattleMessage = "", ""
+	if _, ok := s.foeNameBox(g, s.b.Foes[0], boxes[s.b.Foes[0]]); ok {
+		t.Error("a plate without ui.battle_foe_names")
+	}
+	s.msg = []string{"one"}
+	if h := s.messageHeight(g); h != 132 {
+		t.Errorf("the default window is %g tall, want 132", h)
 	}
 }

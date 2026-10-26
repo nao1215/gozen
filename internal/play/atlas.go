@@ -79,6 +79,8 @@ type atlasScene struct {
 	ground       map[string]*ebiten.Image // landmarks settled onto their terrain, by region
 	// warChosen: a campaign's map has chosen its first region
 	warChosen bool
+	// asking: the map's own question (a region's orders) and what it led to are running
+	asking bool
 
 	// the walk along the roads: the commands still to run, and the road being walked
 	queue  []data.Command
@@ -195,15 +197,26 @@ func (s *atlasScene) fit(g *Game) (k, ox, oy float64, ok bool) {
 	if img == nil {
 		return 0, 0, 0, false
 	}
-	pw, ph := g.pixels()
+	l, t, pw, ph := s.view(g)
 	b := img.Bounds()
 	k = math.Min(pw/float64(b.Dx()), ph/float64(b.Dy()))
 	if s.location(g).Map.Camera != nil {
 		k *= max(1, s.cameraZoom)
 		s.clampCamera(g, k, float64(b.Dx()), float64(b.Dy()))
-		return k, pw/2 - s.cameraCenter.X*k, ph/2 - s.cameraCenter.Y*k, true
+		return k, l + pw/2 - s.cameraCenter.X*k, t + ph/2 - s.cameraCenter.Y*k, true
 	}
-	return k, (pw - float64(b.Dx())*k) / 2, (ph - float64(b.Dy())*k) / 2, true
+	return k, l + (pw-float64(b.Dx())*k)/2, t + (ph-float64(b.Dy())*k)/2, true
+}
+
+// view is the part of the screen the picture is fitted to (pixels): the left and top
+// edges, the width and the height; the whole screen less the map's safe_area.
+func (s *atlasScene) view(g *Game) (l, t, w, h float64) {
+	pw, ph := g.pixels()
+	a := s.location(g).Map.SafeArea
+	if len(a) != 4 {
+		return 0, 0, pw, ph
+	}
+	return pw * a[3], ph * a[0], pw * (1 - a[1] - a[3]), ph * (1 - a[0] - a[2])
 }
 
 // Camera state belongs to the scene. Entering or loading starts at the current
@@ -228,7 +241,7 @@ func (s *atlasScene) resetCamera(g *Game, overview bool) {
 }
 
 func (s *atlasScene) clampCamera(g *Game, k, w, h float64) {
-	pw, ph := g.pixels()
+	_, _, pw, ph := s.view(g)
 	clamp := func(v, size, span float64) float64 {
 		if span >= size {
 			return size / 2
@@ -263,7 +276,7 @@ func (s *atlasScene) revealCameraPoint(g *Game, p geom.Pt) {
 	if !ok {
 		return
 	}
-	pw, ph := g.pixels()
+	_, _, pw, ph := s.view(g)
 	spanX, spanY := pw/k*.35, ph/k*.35
 	s.cameraCenter.X = max(p.X-spanX, min(p.X+spanX, s.cameraCenter.X))
 	s.cameraCenter.Y = max(p.Y-spanY, min(p.Y+spanY, s.cameraCenter.Y))
@@ -307,8 +320,12 @@ func (s *atlasScene) selectCameraPoint(g *Game, want geom.Pt) {
 	}
 }
 
-// cameraButtons are in screen coordinates, independent of the map transform.
+// cameraButtons are in screen coordinates, independent of the map transform; none when
+// the map's camera hides them.
 func (s *atlasScene) cameraButtons(g *Game) []plateBox {
+	if c := s.location(g).Map.Camera; c == nil || c.Buttons == "hidden" {
+		return nil
+	}
 	_, h := g.screen()
 	boxes := make([]plateBox, 8)
 	for i := range boxes {
@@ -398,9 +415,17 @@ func (s *atlasScene) updateCamera(g *Game) bool {
 
 func (s *atlasScene) drawCamera(g *Game, dst *ebiten.Image) {
 	labels := []string{"<", ">", "^", "v", "-", "+", lang.T("全体"), lang.T("現在地")}
-	for i, b := range s.cameraButtons(g) {
-		gfx.FillRoundRect(dst, float32(b.x), float32(b.y), float32(b.w), float32(b.h), 8, withAlpha(g.th.window, 240))
-		gfx.DrawText(dst, labels[i], b.x+b.w/2, b.y+9, sizeS*.75, g.th.text)
+	bs := s.cameraButtons(g)
+	if len(bs) == 0 {
+		return
+	}
+	alpha := s.cameraButtonsAlpha(g, bs)
+	for i, b := range bs {
+		gfx.FillRoundRect(dst, float32(b.x), float32(b.y), float32(b.w), float32(b.h), 8, withAlpha(g.th.window, uint8(240*alpha)))
+		gfx.DrawText(dst, labels[i], b.x+b.w/2, b.y+9, sizeS*.75, withAlpha(g.th.text, uint8(255*alpha)))
+	}
+	if alpha < 1 {
+		return
 	}
 	_, h := g.screen()
 	hint := lang.T("P / R3: 地図を動かす")
@@ -408,6 +433,21 @@ func (s *atlasScene) drawCamera(g *Game, dst *ebiten.Image) {
 		hint = lang.T("P / R3: 選択に戻る")
 	}
 	g.text(dst, hint, 24, h-135, sizeS*.7, g.th.text)
+}
+
+// cameraButtonsAlpha is how opaque the camera's buttons draw: faint ones are see-through
+// until the pointer is over one of them.
+func (s *atlasScene) cameraButtonsAlpha(g *Game, bs []plateBox) float64 {
+	if s.location(g).Map.Camera.Buttons != "faint" {
+		return 1
+	}
+	x, y := float64(g.in.mouse.X), float64(g.in.mouse.Y)
+	for _, b := range bs {
+		if inPlate(b, x, y) {
+			return 1
+		}
+	}
+	return 0.35
 }
 
 // screen is where a point of the picture shows, in UI units.
@@ -456,6 +496,8 @@ func (s *atlasScene) update(g *Game) {
 		g.events.Start([]data.Command{c})
 		return
 	}
+	// idle: what the map asked is over
+	s.asking = false
 	if s.dirty || s.age%60 == 0 { // the state changed (or a while passed): look again
 		s.refresh(g)
 		if s.sel < len(s.choices) && s.choices[s.sel].Point == s.here && !s.campaignMap(g) && s.location(g).Map.Activation != "instant" {
@@ -746,6 +788,14 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	toScreen := func(p geom.Pt) (float32, float32) {
 		return float32((ox + p.X*k) / u), float32((oy + p.Y*k) / u)
 	}
+	talk := s.talkView(g)
+	if talk != "" {
+		defer fill(dst, color.NRGBA{0, 0, 0, 0x90})
+	}
+	if talk == "hide" { // the picture only
+		s.layoutPoints(g, nil)
+		return
+	}
 	if s.campaignMap(g) {
 		sel := ""
 		if !s.walking() && s.sel < len(s.choices) && !g.busy() {
@@ -807,6 +857,15 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	}
 	g.text(dst, lang.T("方向：選ぶ　決定：進む　メニュー：一覧"), 36, sh-40, sizeS*0.8, withAlpha(g.th.text, 200))
 	s.drawSelectionPanel(g, dst)
+}
+
+// talkView is how the map shows now (map.talk): dim or hide while a conversation that is
+// not the map's own question runs, "" otherwise.
+func (s *atlasScene) talkView(g *Game) string {
+	if !g.talk.active || s.asking {
+		return ""
+	}
+	return s.location(g).Map.Talk
 }
 
 // layoutPoints shares marker and plate geometry between drawing and pointer input.

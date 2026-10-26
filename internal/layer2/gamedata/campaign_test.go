@@ -172,6 +172,24 @@ locations:
 	}
 }
 
+// TestCampaignHeadingNames: the expressions of campaign.heading are checked like any text's.
+func TestCampaignHeadingNames(t *testing.T) {
+	game := strings.Replace(testgame.CampaignGame, "campaign:\n", "campaign:\n  heading: \"Turn {campaign.trun}\"\n", 1)
+	_, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"game.yaml": game}))
+	if err == nil || !strings.Contains(err.Error(), "campaign.heading") {
+		t.Fatalf("a misspelt name in the heading: %v", err)
+	}
+}
+
+// TestCampaignSortieLook: the sortie's background must exist.
+func TestCampaignSortieLook(t *testing.T) {
+	game := strings.Replace(testgame.CampaignGame, "campaign:\n", "campaign:\n  sortie: {background: gone.png}\n", 1)
+	_, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"game.yaml": game}))
+	if err == nil || !strings.Contains(err.Error(), "campaign.sortie.background") {
+		t.Fatalf("a missing sortie background: %v", err)
+	}
+}
+
 // TestCampaignMapViews: region_roads and region_borders take selected or always.
 func TestCampaignMapViews(t *testing.T) {
 	game := strings.Replace(testgame.CampaignGame, "  location: camp\n", "  location: war\n", 1)

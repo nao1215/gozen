@@ -79,6 +79,12 @@ func (g *Game) novelButtons() []novelButton {
 	return out
 }
 
+// novelBarShown reports whether the buttons under the novel window show (and take clicks):
+// not while a choice is shown with ui.hide_bar_on_choice.
+func (g *Game) novelBarShown() bool {
+	return !g.db.Game.UI.HideBarOnChoice || g.talk.choice == nil
+}
+
 func (g *Game) novelButtonRects() []image.Rectangle {
 	sw, sh := g.screen()
 	var out []image.Rectangle
@@ -104,7 +110,7 @@ func (g *Game) novelInput() bool {
 	for b := range numButtons {
 		press[b] = g.in.pressed[b]
 	}
-	if g.in.click && g.novel() && t.active {
+	if g.in.click && g.novel() && t.active && g.novelBarShown() {
 		buttons := g.novelButtons()
 		for i, r := range g.novelButtonRects() {
 			if g.in.mouse.In(r) {
@@ -224,6 +230,9 @@ func (t *talk) drawNovel(g *Game, dst *ebiten.Image) {
 	}
 	buttons := g.novelButtons()
 	for i, r := range g.novelButtonRects() {
+		if !g.novelBarShown() {
+			break
+		}
 		c := g.th.dim
 		if buttons[i].b == btnAuto && g.autoRead || buttons[i].b == btnSkip && g.skipping {
 			c = g.th.accent

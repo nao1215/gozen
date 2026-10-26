@@ -491,6 +491,31 @@ func (db *DB) Check() []error {
 			_, ok := db.Actors[m.Actor]
 			c.ref(w+".actor", "actor", m.Actor, ok)
 		}
+		if len(m.MarkLabels) > len(m.Marks) {
+			c.errorf(diag.Shape, w+".mark_labels", "%d labels for %d marks", len(m.MarkLabels), len(m.Marks))
+		}
+		switch m.Style {
+		case "", "bar", "number":
+		default:
+			c.errorf(diag.NotAWord, w+".style", "want bar or number, not %q", m.Style)
+		}
+	}
+	switch g.UI.BattleFoeNames {
+	case "", "name", "hp":
+	default:
+		c.errorf(diag.NotAWord, "game.yaml ui.battle_foe_names", "want name or hp, not %q", g.UI.BattleFoeNames)
+	}
+	switch g.UI.BattleMessage {
+	case "", "fixed", "fit":
+	default:
+		c.errorf(diag.NotAWord, "game.yaml ui.battle_message", "want fixed or fit, not %q", g.UI.BattleMessage)
+	}
+	for i, k := range g.UI.HideGold {
+		switch k {
+		case "field", "dungeon", "map", "stage":
+		default:
+			c.errorf(diag.NotAWord, fmt.Sprintf("game.yaml ui.hide_gold[%d]", i), "want field, dungeon, map or stage, not %q", k)
+		}
 	}
 	for i, cb := range g.CardBubbles {
 		w := fmt.Sprintf("game.yaml card_bubbles[%d]", i)
@@ -880,6 +905,7 @@ func (db *DB) Check() []error {
 				entryIDs[a.ID] = true
 			}
 			c.text(ww+".label", a.Label, FieldNames)
+			c.text(ww+".group", a.Group, FieldNames)
 			c.expr(ww+".when", a.When, FieldNames)
 			c.expr(ww+".new", a.New, FieldNames)
 			c.expr(ww+".mark", a.Mark, FieldNames)

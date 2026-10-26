@@ -675,3 +675,38 @@ func TestAtlasHideClosedPoint(t *testing.T) {
 		}
 	}
 }
+
+// camera.buttons: faint buttons draw see-through until the pointer is over one, hidden
+// ones are neither drawn nor clicked.
+func TestAtlasCameraButtonsShowing(t *testing.T) {
+	for _, mode := range []string{"faint", "hidden"} {
+		t.Run(mode, func(t *testing.T) {
+			fsys := atlasCameraFiles(t)
+			f := fsys["data/survey.yaml"]
+			f.Data = bytes.Replace(f.Data, []byte("max_zoom: 8}"), []byte("max_zoom: 8, buttons: "+mode+"}"), 1)
+			g := wldOpenWith(t, Options{FS: fsys, Location: "large", Seed: 1})
+			wldFrames(t, g, 5)
+			s, ok := g.stack[0].(*atlasScene)
+			if !ok {
+				t.Fatalf("scene %T", g.stack[0])
+			}
+			bs := s.cameraButtons(g)
+			if mode == "hidden" {
+				if len(bs) != 0 {
+					t.Fatalf("%d hidden buttons", len(bs))
+				}
+				wldFramesDrawn(t, g, 2)
+				return
+			}
+			g.in.mouse.X, g.in.mouse.Y = 1, 1
+			if a := s.cameraButtonsAlpha(g, bs); a >= 1 {
+				t.Errorf("faint buttons away from the pointer draw at %g", a)
+			}
+			g.in.mouse.X, g.in.mouse.Y = int(bs[0].x+2), int(bs[0].y+2)
+			if a := s.cameraButtonsAlpha(g, bs); a != 1 {
+				t.Errorf("faint buttons under the pointer draw at %g", a)
+			}
+			s.drawCamera(g, wldScreen(g))
+		})
+	}
+}
