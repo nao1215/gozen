@@ -122,7 +122,7 @@ func (g *Game) fastStep() {
 		}
 	case "choice":
 		if g.talk.active && g.talk.choice != nil {
-			if k := len(g.evAnswers); k < len(f.answers) && f.answers[k] < len(g.talk.choice.items) {
+			if k := len(g.evAnswers); k < len(f.answers) && f.answers[k] >= 0 && f.answers[k] < len(g.talk.choice.items) {
 				g.talk.choice.sel = f.answers[k]
 			}
 		}

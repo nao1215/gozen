@@ -39,11 +39,12 @@ func TestSaveFormatTwo(t *testing.T) {
 		t.Fatalf("the cursor did not come back: %v %+v", err, got)
 	}
 	for name, edit := range map[string]func(map[string]any){
-		"version 1":      func(m map[string]any) { m["format_version"] = 1 },
-		"no line":        func(m map[string]any) { object(m, "cursor")["line"] = 0 },
-		"no event":       func(m map[string]any) { delete(object(m, "cursor"), "event") },
-		"both":           func(m map[string]any) { object(m, "cursor")["arrival"] = true },
-		"unknown fields": func(m map[string]any) { object(m, "cursor")["page"] = 1 },
+		"version 1":         func(m map[string]any) { m["format_version"] = 1 },
+		"no line":           func(m map[string]any) { object(m, "cursor")["line"] = 0 },
+		"no event":          func(m map[string]any) { delete(object(m, "cursor"), "event") },
+		"both":              func(m map[string]any) { object(m, "cursor")["arrival"] = true },
+		"unknown fields":    func(m map[string]any) { object(m, "cursor")["page"] = 1 },
+		"a negative answer": func(m map[string]any) { object(m, "cursor")["answers"] = []any{0, -1} },
 	} {
 		if _, err := rpg.Parse(db, rewriteSave(t, withCursor, edit), nil); err == nil {
 			t.Errorf("%s: accepted", name)
@@ -51,6 +52,9 @@ func TestSaveFormatTwo(t *testing.T) {
 	}
 	if _, err := rpg.WithCursor(b, rpg.Cursor{Line: 1}, nil); err == nil {
 		t.Errorf("a cursor without an event: %v", err)
+	}
+	if _, err := rpg.WithCursor(b, rpg.Cursor{Event: "greet", Line: 1, Answers: []int{-1}}, nil); err == nil {
+		t.Errorf("a cursor with a negative answer: %v", err)
 	}
 }
 

@@ -137,7 +137,7 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 		if envelope.DataVersion < 0 || envelope.DataVersion > db.Game.DataVersion {
 			return nil, fmt.Errorf(lang.T("セーブのデータ版 %d は読み込めない（現在 %d）"), envelope.DataVersion, db.Game.DataVersion)
 		}
-		if envelope.Cursor != nil && (v < 2 || envelope.Cursor.Line < 1 || (envelope.Cursor.Event == "") == !envelope.Cursor.Arrival) {
+		if envelope.Cursor != nil && (v < 2 || !envelope.Cursor.valid()) {
 			return nil, errors.New(lang.T("カーソルの行またはイベントが不正"))
 		}
 		report.SavedDataVersion = envelope.DataVersion
