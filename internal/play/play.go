@@ -37,7 +37,9 @@ import (
 )
 
 type Options struct {
-	capture          *captureStartup
+	capture *captureStartup
+	// headless is a Simulate run: never drawn, so a script needs no screenshot directory.
+	headless         bool
 	Development      bool
 	Report           io.Writer
 	CollectBuildInfo bool
@@ -429,6 +431,7 @@ func New(opts Options) (_ *Game, err error) {
 	}
 	runctx, cancel := context.WithCancel(context.Background())
 	g := &Game{context: runctx, cancel: cancel, db: db, opts: opts, pics: newPictures(opts.FS), rep: rep, stageK: 1, started: time.Now(), drawn: make(chan struct{})}
+	g.pics.undrawn = opts.headless
 	if meterAsked() {
 		g.meter.toggle()
 	}
@@ -487,8 +490,8 @@ func New(opts Options) (_ *Game, err error) {
 	if opts.Autopilot != nil {
 		g.auto = newAutopilot(*opts.Autopilot)
 	}
-	if opts.Script != "" {
-		if opts.ShotDir == "" {
+	if opts.Script != "" || opts.headless {
+		if opts.ShotDir == "" && !opts.headless {
 			return nil, errors.New("play: scripted runs require a screenshot directory")
 		}
 		s, err := parseScript(opts.Script)
@@ -557,6 +560,7 @@ func New(opts Options) (_ *Game, err error) {
 			e.Recruit.Chance = 1
 		}
 		s.memoNote = func(kind, text string) { g.quickMemo(kind, text, memo.LLM) }
+		s.snapshot = func() { g.emit("snapshot", traceLine{"state": g.traceSummary()}) }
 		g.in.script = s
 	}
 	if opts.Audio != nil {

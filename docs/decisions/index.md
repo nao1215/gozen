@@ -55,6 +55,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0043](0043-narrative-authoring.md) | Narrative authoring and executable YAML extensions | Accepted | |
 | [0044](0044-continuous-space-movement.md) | Opt-in continuous movement, collision and held-input acceleration | Accepted | Implemented 2026-10-25 |
 | [0045](0045-building-surfaces-and-roofs.md) | Building surfaces and bounded roofs | Accepted | Implemented 2026-10-25 |
+| [0046](0046-headless-scripted-runs.md) | Headless scripted runs (`gozen sim script`) | Accepted | Implemented 2026-10-26 |
 
 [ADR 0041](0041-yaml-authoring-and-distribution.md) retires the public Go APIs; current implementation boundaries are in [Boundaries](../architecture/boundaries.md). Earlier entries record historical decisions.
 

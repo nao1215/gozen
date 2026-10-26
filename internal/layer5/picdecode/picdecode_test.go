@@ -73,3 +73,24 @@ func TestDecodeHighResolutionPortrait(t *testing.T) {
 		t.Fatal("portrait dimensions or pixels changed")
 	}
 }
+
+// Size gives the dimensions Decode would, and rejects what Decode rejects.
+func TestSize(t *testing.T) {
+	var b bytes.Buffer
+	if err := png.Encode(&b, image.NewNRGBA(image.Rect(0, 0, 5, 7))); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := Size(b.Bytes()); err != nil || got != image.Pt(5, 7) {
+		t.Fatalf("Size = %v, %v", got, err)
+	}
+	b.Reset()
+	if err := png.Encode(&b, image.NewNRGBA(image.Rect(0, 0, 8193, 1))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Size(b.Bytes()); err == nil {
+		t.Error("oversized image accepted")
+	}
+	if _, err := Size([]byte("not a picture")); err == nil {
+		t.Error("no error for bytes that are no picture")
+	}
+}

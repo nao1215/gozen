@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add `gozen sim script` to play a `run --dev --script` script without a window, as fast as it goes, writing the same trace; `--script -` reads the script line by line from the standard input with a `ready` line before each read, and the new script command `snapshot` writes the whole state (ADR 0046).
+
 ## v0.11.0 - 2026-10-26
 
 Use high-resolution portraits, hide closed map points, and name campaign region values.

@@ -91,6 +91,7 @@ var groups = map[string]clihelp.Page{
 			{"campaign", "Play a campaign many times with a strategy and print what it came to"},
 			{"routes", "Explore event choices and report reachable endings and options"},
 			{"breed", "Show monsters reachable from captures and their shortest recipes"},
+			{"script", "Play a run --script script without a window and write its trace"},
 		},
 		Examples: []clihelp.Example{
 			{"fight 100 battles", "gozen sim battle game --troop lesson -n 100"},
@@ -245,6 +246,28 @@ var pages = map[string]clihelp.Page{
 			{Title: "Output", Flags: []string{"format"}},
 			general,
 		},
+	},
+	"sim script": {
+		Summary: "play a script without a window and write its trace",
+		Usage:   []string{"gozen sim script [OPTIONS] <game-dir> --script FILE"},
+		About: "Plays the game with the script of run --dev --script, tick by tick as fast as it goes, " +
+			"without a window, sound, or screenshots, and writes the same JSON Lines trace (say, request, " +
+			"order, dev_do, autosave, state, end). The same options and seed give the same game as run. " +
+			"shot takes no picture, and the trace lines that come from drawing (shot, view, stand, menu) " +
+			"are not written. With --script -, the script is read line by line from the standard input " +
+			"and the trace goes to the standard output: before each line it writes a ready line and " +
+			"flushes, so a program can read the trace and send the next command; snapshot writes the " +
+			"whole state, and the end of the input ends the run.",
+		Examples: []clihelp.Example{
+			{"play a script and write its trace", "gozen sim script game --start camp --script check.txt --trace run.jsonl"},
+			{"read the script from the standard input, the trace on the standard output", "gozen sim script game --start camp --script - < check.txt"},
+		},
+		Groups: []clihelp.Group{
+			{Title: "Script", Flags: []string{"script", "trace", "seed", "save-dir"}},
+			{Title: "Start", Flags: []string{"start", "battle", "party", "level", "flags", "gold", "items", "floor", "calm", "event", "line", "answers"}},
+			general,
+		},
+		Notes: []string{noRequirements},
 	},
 	"sim routes": {
 		Summary: "find unreachable endings and choice options",
