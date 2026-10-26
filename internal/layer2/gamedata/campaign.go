@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"maps"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -689,6 +690,9 @@ func (c *checker) campaign() {
 		c.errorf(diag.OutOfRange, w+".turns", "turns are 0 (no limit) or more, not %d", cp.Turns)
 	}
 	c.expr(w+".actions", cp.Actions, CampaignNames)
+	if cp.Actions.Set() && actionsSelf.MatchString(cp.Actions.String()) {
+		c.errorf(diag.Expression, w+".actions", "%v", errActionsSelf)
+	}
 	c.expr(w+".win", cp.Win, FieldNames)
 	c.expr(w+".lose", cp.Lose, FieldNames)
 	for _, ev := range []struct{ name, id string }{{"won", cp.Won}, {"lost", cp.Lost}, {"on_turn", cp.OnTurn}} {
@@ -945,6 +949,9 @@ func (c *checker) campaignWarnings() {
 		}
 	}
 }
+
+// actionsSelf finds campaign.actions or campaign.actions_left in an expression's text.
+var actionsSelf = regexp.MustCompile(`\bcampaign\.actions(_left)?\b`)
 
 // CampaignWin is the condition that wins the campaign (its default when unset).
 func CampaignWin(db *DB) Expr {

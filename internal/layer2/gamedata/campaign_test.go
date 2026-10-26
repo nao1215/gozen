@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
@@ -200,6 +201,24 @@ func TestCampaignOrderView(t *testing.T) {
 		_, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"game.yaml": game}))
 		if err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%s: want %q, got %v", strings.TrimSpace(c.add), c.want, err)
+		}
+	}
+}
+
+// TestCampaignActionsReadTurn: campaign.actions may read campaign.turn (only the actions
+// themselves are out of its reach), at the check and on a play.
+func TestCampaignActionsReadTurn(t *testing.T) {
+	game := strings.Replace(testgame.CampaignGame, `actions: "1 + floor(faction.blue.regions / 2)"`, `actions: "campaign.turn + 1"`, 1)
+	db := testgame.LoadCampaign(t, map[string]string{"game.yaml": game})
+	st := data.CampaignState{JoinedIDs: db.Game.Start.Party, Vars: map[string]any{data.VarTurn: 3.0}}
+	if n := data.TurnActions(db, st); n != 4 {
+		t.Fatalf("turn 3 has %g actions, want 4", n)
+	}
+	for _, self := range []string{"campaign.actions + 1", "campaign.actions_left"} {
+		game := strings.Replace(testgame.CampaignGame, `actions: "1 + floor(faction.blue.regions / 2)"`, `actions: "`+self+`"`, 1)
+		_, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"game.yaml": game}))
+		if err == nil || !strings.Contains(err.Error(), "campaign.actions") {
+			t.Errorf("actions %q: %v", self, err)
 		}
 	}
 }
