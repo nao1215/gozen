@@ -65,6 +65,16 @@ func TestAbstract(t *testing.T) {
 }
 
 // TestAbstractSound: a value actually evaluated with values inside the ranges always falls in the computed range.
+// TestAbstractSignedZero: a zero of a range stands for 0 and -0, which pow tells apart.
+func TestAbstractSignedZero(t *testing.T) {
+	look := func(Ref) Range { return Between(-3, 6) } // a * 0 is -0 for a = -3 and 0 for a = 6
+	for _, src := range []string{"pow(a * 0, -1) > 0", "pow(a * 0, -1) < 0", "pow(0 * a, -1) > 0"} {
+		if r := mustParse(src).Abstract(look); !r.CanBeTrue() {
+			t.Errorf("%s: 幅 %s では成り立たないことになる", src, r)
+		}
+	}
+}
+
 func TestAbstractSound(t *testing.T) {
 	srcs := []string{
 		"var.a + var.b * 2", "var.a % 5", "var.a % 5 == 0", "var.a / (var.b + 1)", "max(var.a, var.b) - min(var.a, 2)",
