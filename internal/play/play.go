@@ -1613,13 +1613,17 @@ func (g *Game) noticesDropped() bool {
 	return ok
 }
 
-func (g *Game) busy() bool {
-	if len(g.stack) == 1 {
-		if as, ok := g.stack[0].(*atlasScene); ok && as.walking() { // the token is on its way
-			return true
-		}
+// walking reports whether the map's token is on its way (the map under nothing else).
+func (g *Game) walking() bool {
+	if len(g.stack) != 1 {
+		return false
 	}
-	return g.req != nil || (g.events != nil && g.events.Running()) || g.talk.active || len(g.stack) > 1
+	as, ok := g.stack[0].(*atlasScene)
+	return ok && as.walking()
+}
+
+func (g *Game) busy() bool {
+	return g.walking() || g.req != nil || (g.events != nil && g.events.Running()) || g.talk.active || len(g.stack) > 1
 }
 
 func (g *Game) waiting() (string, int) {

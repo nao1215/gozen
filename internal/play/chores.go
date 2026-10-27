@@ -20,6 +20,9 @@ func (g *Game) rests() bool {
 	if g.st == nil || g.replaying || g.fadeT > 0 || len(g.stack) == 0 || g.req != nil || g.talk.active || g.events != nil && g.events.Running() {
 		return false
 	}
+	if g.walking() {
+		return false
+	}
 	for _, s := range g.stack[1:] {
 		switch s.(type) {
 		case *streamWatch, *menu, *configScreen:
