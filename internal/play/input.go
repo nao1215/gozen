@@ -398,8 +398,11 @@ type script struct {
 
 	// snapshot writes the whole game state to the trace (the snapshot command).
 	snapshot func()
-	// window sets the window's inside to w×h device-independent pixels (nil without a window).
+	// window sets the window's inside to w×h device-independent pixels (nil without a window),
+	// and size is the inside the script asked for (zero: the game's screen), which the game
+	// lays out for (Layout).
 	window func(w, h int)
+	size   [2]int
 	// next supplies further lines after the commands run out (Simulate's interactive
 	// input); false ends the lines. rejected hears of a line that does not parse.
 	next     func() (string, bool)
@@ -999,6 +1002,7 @@ func (s *script) step(in *input) {
 			s.pc++
 			continue
 		case "window":
+			s.size = [2]int{c.x, c.y}
 			if s.window != nil {
 				s.window(c.x, c.y)
 			}

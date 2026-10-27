@@ -716,12 +716,23 @@ func (g *Game) pixels() (float64, float64) {
 // Layout keeps the game's screen, except on the stream screens, which choose their size and
 // layout from the window's inside (streamView, ADR 0050).
 func (g *Game) Layout(ow, oh int) (int, int) {
-	dsf := 1.0
-	if m := ebiten.Monitor(); m != nil {
-		dsf = m.DeviceScaleFactor()
+	w, h, dsf := float64(ow), float64(oh), 1.0
+	switch s := g.in.script; {
+	case s != nil:
+		// a scripted run lays out for the window it asked for (window W H), else the game's
+		// screen, a pixel a unit: what it draws does not change with a desktop that made
+		// the window smaller (a small monitor) or scales it
+		w, h = float64(g.db.Game.Screen.Width), float64(g.db.Game.Screen.Height)
+		if s.size[0] > 0 {
+			w, h = float64(s.size[0]), float64(s.size[1])
+		}
+	case g.streamShown(): // only the stream screens draw at the device's pixels
+		if m := ebiten.Monitor(); m != nil {
+			dsf = m.DeviceScaleFactor()
+		}
 	}
-	g.fitView(float64(ow), float64(oh), dsf)
-	w, h := g.pixels()
+	g.fitView(w, h, dsf)
+	w, h = g.pixels()
 	return int(w), int(h)
 }
 
