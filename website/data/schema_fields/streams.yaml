@@ -102,7 +102,7 @@ StreamAffection:
   reply: "Points more when the streamer answers a comment. The default is 2."
   answer: "Points for an answer the streamer picks. The default is 5."
   tip_per: "The gold of a tip that earns one point, above 0. The default is 100."
-  stayed: "Points for watching an episode to its end. The default is 10."
+  stayed: "Points for watching most of a stream to the end of its slot (60% of its beats from where the viewer came in), whether or not the channel has stayed lines to thank with. The default is 10."
 StreamEcho:
   _: "When a streamer reads back a comment its reaction book found nothing in (the `dodge.unknown` lines): two beats after the comment, as if it came upon it in the chat; a comment not read back flows by unanswered (ADR 0052)."
   max_runes: "Only comments of at most this many characters. The default is 24."

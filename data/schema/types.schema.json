@@ -16816,7 +16816,7 @@
           "x-type": "number"
         },
         "stayed": {
-          "description": "Points for watching an episode to its end. The default is 10.",
+          "description": "Points for watching most of a stream to the end of its slot (60% of its beats from where the viewer came in), whether or not the channel has stayed lines to thank with. The default is 10.",
           "type": "number",
           "x-contract": {
             "default": "0",

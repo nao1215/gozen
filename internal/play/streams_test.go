@@ -909,6 +909,27 @@ func TestStreamsSettingsLanguageReachesTheChat(t *testing.T) {
 	}
 }
 
+// TestStreamsStayedEarnsWithoutLines: a viewer who watched most of a stream earns
+// affection.stayed at its end, whether or not the channel has lines to thank with.
+func TestStreamsStayedEarnsWithoutLines(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "bo" })].show // bo has no stayed lines
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	for i := 0; i < 4000 && !w.ended; i++ {
+		wldFrames(t, g, 1)
+	}
+	if p := broadcast.Progress(g.st.Streams, "bo").Points; !w.ended || p < g.db.Streams.Affection.Stayed {
+		t.Fatalf("watching bo's stream to the end earns %v points (ended %v), not stayed %v", p, w.ended, g.db.Streams.Affection.Stayed)
+	}
+}
+
 // TestStreamsNoVoicesNoButton: outside a browser, a game without recorded voices has no
 // read-aloud button.
 func TestStreamsNoVoicesNoButton(t *testing.T) {

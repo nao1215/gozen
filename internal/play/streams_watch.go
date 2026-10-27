@@ -759,12 +759,15 @@ func (w *streamWatch) finish(g *Game) {
 		w.markSeen(g)
 	}
 	c := w.show.Hosts[0]
-	if !w.thanked && broadcast.Seen(w.watched, w.from, len(w.show.Beats)) && w.watched > 0 && len(c.Stayed) > 0 {
+	if !w.thanked && broadcast.Seen(w.watched, w.from, len(w.show.Beats)) && w.watched > 0 {
+		// the viewer who stayed earns affection.stayed, thanked when the channel has lines
 		w.thanked = true
 		g.earn(c, g.db.Streams.Affection.Stayed)
-		w.queue = append(w.queue, dataLine(0, c.Stayed[g.desk.rng.IntN(len(c.Stayed))], g.st.Streams.Viewer, 0))
-		w.step(g)
-		return
+		if len(c.Stayed) > 0 {
+			w.queue = append(w.queue, dataLine(0, c.Stayed[g.desk.rng.IntN(len(c.Stayed))], g.st.Streams.Viewer, 0))
+			w.step(g)
+			return
+		}
 	}
 	w.ended = true
 	w.caption = ""
