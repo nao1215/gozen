@@ -101,6 +101,20 @@ func TestGraphicsScreensStreams(t *testing.T) {
 				t.Error("no band of the tip over the stage")
 			}
 		}},
+		// the tips: the field of their message over the amounts, empty with its hint
+		{"tipbox", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 60\nclick 1162 683\nwait 10\nshot tipbox\npress hide\nwait 20\nshot tipbox_full\nquit\n", nil, func(t *testing.T, root string) {
+			page := [3]uint32{0xf4, 0xf4, 0xf6}
+			for _, name := range []string{"tipbox", "tipbox_full"} {
+				if img := shotImage(t, root, name); !near(img, 918, 488, page) || !near(img, 910, 488, white) {
+					t.Errorf("%s: no field of the tip's message over the amounts", name)
+				}
+			}
+		}},
+		{"tipbox_tall", "0", "window 390 844\ngap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 100\nclick 272 807\nwait 10\nshot tipbox\nquit\n", nil, func(t *testing.T, root string) {
+			if img := shotImage(t, root, "tipbox"); !near(img, 18, 612, [3]uint32{0xf4, 0xf4, 0xf6}) || !near(img, 10, 612, white) {
+				t.Error("no field of the tip's message over the amounts on a phone held upright")
+			}
+		}},
 		{"full", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 100\npress hide\nwait 20\nshot full\nquit\n", nil, func(t *testing.T, root string) {
 			full := shotImage(t, root, "full")
 			// the room under where the page's bar and the information were, and the chat darkened over the stage

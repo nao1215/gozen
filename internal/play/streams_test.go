@@ -715,6 +715,46 @@ func TestStreamsSendEndsTyping(t *testing.T) {
 	}
 }
 
+// TestStreamsTipChoiceKeptOverAQuestion: a question beginning while the tips are open
+// does not move the amount chosen with the keys (its answers take the controls' focus).
+func TestStreamsTipChoiceKeptOverAQuestion(t *testing.T) {
+	g, w, _ := voicedShow(t)
+	key := func(b button) {
+		g.in.pressed[b] = true
+		w.input(g)
+		g.in.pressed[b] = false
+	}
+	w.tips = true
+	key(btnDown)
+	w.run(g, data.Beat{Ask: &data.StreamAsk{Q: "Which?", Options: []data.StreamOption{{C: "A"}, {C: "B"}}, NPC: []data.NPCAnswer{{Name: "leaf"}}}})
+	gold := g.st.Gold
+	key(btnOK)
+	if paid := gold - g.st.Gold; paid != g.db.Streams.Tips[1] {
+		t.Fatalf("paid %d, not the second amount %d chosen before the question", paid, g.db.Streams.Tips[1])
+	}
+}
+
+// TestStreamsTipMessage: the tips show the comment field's text as their message and send it
+// with the amount chosen; closing them keeps the text, Backspace deleting in it.
+func TestStreamsTipMessage(t *testing.T) {
+	g, w, _ := voicedShow(t)
+	key := func(b button) {
+		g.in.pressed[b] = true
+		w.input(g)
+		g.in.pressed[b] = false
+	}
+	w.field.text, w.tips = "kept", true
+	key(btnCancel)
+	if w.tips || w.field.text != "kept" {
+		t.Fatalf("closing the tips: open %v, text %q", w.tips, w.field.text)
+	}
+	w.field.text, w.tips = "for seeds", true
+	key(btnOK)
+	if w.tips || w.field.text != "" || !strings.Contains(chatText(w), "Pat: for seeds") || len(w.cheers) != 1 || w.cheers[0].text != "for seeds" {
+		t.Fatalf("a tip with its message: open %v, field %q, chat:\n%s", w.tips, w.field.text, chatText(w))
+	}
+}
+
 // TestStreamsNoVoicesNoButton: outside a browser, a game without recorded voices has no
 // read-aloud button.
 func TestStreamsNoVoicesNoButton(t *testing.T) {

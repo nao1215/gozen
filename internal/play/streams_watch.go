@@ -82,8 +82,11 @@ type streamWatch struct {
 	typing    bool
 	speaker   stamp // the reading-aloud button's speaker
 	chatFling fling
-	tips      bool
-	focus     int // the control chosen with the keys (watchControls)
+	// tips is whether the tips are open, with the field of their message (the comment
+	// field's text) and the amount tipAt chosen with the keys.
+	tips  bool
+	tipAt int
+	focus int // the control chosen with the keys (watchControls)
 }
 
 // streamSay is a line a host says: the host's index, the face, and the line as written
@@ -195,6 +198,9 @@ func newStreamWatch(g *Game, show *broadcast.Show, viewers int) *streamWatch {
 	w.nextTip = now.Add(time.Duration(40+g.desk.rng.IntN(60)) * time.Second)
 	w.field.start(g, func() (float64, float64) {
 		x, y, _, _ := w.controlRect(g, [2]int{int(ctlComment), 0})
+		if w.tips {
+			x, y, _, _ = w.tipField(g)
+		}
 		return w.field.caretX(x+10, 16), y + 12
 	})
 	w.greet(g)
@@ -886,7 +892,7 @@ func (w *streamWatch) input(g *Game) {
 		case ctlComment:
 			w.typing = true
 		case ctlTip:
-			w.tips, w.focus = true, 0
+			w.tips, w.tipAt = true, 0
 			g.sfx("decide")
 		case ctlSpeak:
 			g.desk.speak = !g.desk.speak
@@ -958,10 +964,14 @@ func (w *streamWatch) scrollChat(g *Game) {
 	}
 }
 
-// updateTips reads the choice of a tip's amount.
+// updateTips reads the tips: the message typed in their field (the comment field's text,
+// which a tip takes with it), the amount chosen with the keys and sent with OK (Enter), or
+// tapped, and closing them with Cancel (Escape), the text kept. A finger on the field opens
+// a phone's keyboard.
 func (w *streamWatch) updateTips(g *Game) {
 	in := &g.in
 	tips := g.db.Streams.Tips
+	typed := in.devices() && w.field.readTyping()
 	pay := func(i int) {
 		if g.st.Gold < tips[i] {
 			g.sfx("buzzer")
@@ -971,22 +981,40 @@ func (w *streamWatch) updateTips(g *Game) {
 		w.tips = false
 		w.tip(g, tips[i])
 	}
+	fx, fy, fw, fh := w.tipField(g)
+	if in.began && g.touchIn(fx, fy, fw, fh) {
+		if in.devices() {
+			w.field.readTyping()
+		}
+		return
+	}
 	for i := range tips {
 		if x, y, tw, th := w.tipRect(g, i); g.clickedIn(x, y, tw, th) {
 			pay(i)
 			return
 		}
 	}
+	if typed { // the keys that were text, Z and the space and X too, are the message's
+		return
+	}
 	switch {
 	case in.up() || in.left():
-		w.focus = (w.focus + len(tips) - 1) % len(tips)
+		w.tipAt = (w.tipAt + len(tips) - 1) % len(tips)
 	case in.down() || in.right():
-		w.focus = (w.focus + 1) % len(tips)
+		w.tipAt = (w.tipAt + 1) % len(tips)
 	case in.ok():
-		pay(w.focus)
-	case in.cancel() || in.click:
+		pay(w.tipAt)
+	case in.cancel() && !inpututil.IsKeyJustPressed(ebiten.KeyBackspace) || in.click && !g.clickedIn(fx, fy, fw, fh):
+		// Backspace deletes in the field, and a click on it stays
+		w.field.composer.Confirm()
 		w.tips = false
 	}
+}
+
+// tipField is where the field of a tip's message is: over the amounts.
+func (w *streamWatch) tipField(g *Game) (x, y, fw, fh float64) {
+	x, y, fw, _ = w.tipRect(g, 0)
+	return x, y - 50, fw, 40
 }
 
 // controlRect is where a control is drawn: at the bottom of the chat column, the full
@@ -1272,7 +1300,7 @@ func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, lay watchLayout, sh
 			}
 			gfx.FillRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, streamPage)
 			gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, 1.5, edge)
-			if w.field.text+w.field.comp == "" && !w.typing {
+			if w.field.text+w.field.comp == "" && !w.typing || w.tips { // the tips show the text
 				gfx.DrawTextLeft(dst, lang.T("コメントする"), x+10, y+11, 16, streamInk3)
 			} else {
 				w.field.draw(dst, x+10, y+11, cw-20, 16, streamInk, streamBrand, w.typing, w.age)
@@ -1313,10 +1341,16 @@ func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, lay watchLayout, sh
 	}
 	if w.tips {
 		tips := g.db.Streams.Tips
-		x, y, tw, _ := w.tipRect(g, 0)
-		gfx.FillRoundRect(dst, float32(x-6), float32(y-36), float32(tw+12), float32(len(tips))*46+44, 8, streamPanel)
-		gfx.StrokeRoundRect(dst, float32(x-6), float32(y-36), float32(tw+12), float32(len(tips))*46+44, 8, 1.5, streamRule)
-		gfx.DrawTextLeft(dst, lang.T("入力欄の文も一緒に送られます。"), x, y-28, 13, streamInk2)
+		x, y, tw, th := w.tipField(g)
+		h := float32(len(tips))*46 + 70
+		gfx.FillRoundRect(dst, float32(x-6), float32(y-10), float32(tw+12), h, 8, streamPanel)
+		gfx.StrokeRoundRect(dst, float32(x-6), float32(y-10), float32(tw+12), h, 8, 1.5, streamRule)
+		gfx.FillRoundRect(dst, float32(x), float32(y), float32(tw), float32(th), 6, streamPage)
+		gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(tw), float32(th), 6, 1.5, streamBrand)
+		if w.field.text+w.field.comp == "" {
+			gfx.DrawTextLeft(dst, lang.T("メッセージ（任意）"), x+10, y+11, 16, streamInk3)
+		}
+		w.field.draw(dst, x+10, y+11, tw-20, 16, streamInk, streamBrand, true, w.age)
 		for i, a := range tips {
 			bx, by, bw, bh := w.tipRect(g, i)
 			col := streamTips[g.tipTier(a)]
@@ -1325,7 +1359,7 @@ func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, lay watchLayout, sh
 				ink = streamInk3
 			}
 			gfx.FillRoundRect(dst, float32(bx), float32(by), float32(bw), float32(bh), 6, col)
-			if i == w.focus {
+			if i == w.tipAt {
 				gfx.StrokeRoundRect(dst, float32(bx), float32(by), float32(bw), float32(bh), 6, 2, streamBrand)
 			}
 			gfx.DrawText(dst, g.money(a), bx+bw/2, by+9, 17, ink)

@@ -1008,8 +1008,8 @@ var english = map[string]string{
 	"受け取る":   "Collect",
 	"あなたの名前": "Your name",
 	"配信者に読まれる名前です。": "The streamers will read this name.",
-	"決める":             "OK",
-	"名無しの視聴者":         "Nameless viewer",
-	"%sに覚えられた（%d）":    "%s remembers you (%d)",
-	"入力欄の文も一緒に送られます。": "Whatever is in the comment box goes with it.",
+	"決める":          "OK",
+	"名無しの視聴者":      "Nameless viewer",
+	"%sに覚えられた（%d）": "%s remembers you (%d)",
+	"メッセージ（任意）":    "Message (optional)",
 }
