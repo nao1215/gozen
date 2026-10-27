@@ -17131,7 +17131,7 @@
           "x-contract": {
             "default": "0, or 0.35 when max_runes is left out too",
             "legacy_default": "0, or 0.35 when max_runes is left out too",
-            "zero": "0 is kept",
+            "zero": "0 is kept, unless max_runes is 0 or left out too: then 0.35",
             "required": "optional",
             "reference": "-",
             "version": "9"
@@ -17363,7 +17363,7 @@
       "description": "The length of the beats. A line lasts `say` plus `per_char` for each character; a question shows its options for `ask` and then says its longest answer.",
       "properties": {
         "ask": {
-          "description": "Seconds the options of a question stay open, more than 0.",
+          "description": "Seconds the options of a question stay open, at least 0.1.",
           "type": "number",
           "x-contract": {
             "default": "0",
@@ -17376,7 +17376,7 @@
           "x-type": "number"
         },
         "chat": {
-          "description": "Seconds a chat beat lasts, more than 0.",
+          "description": "Seconds a chat beat lasts, at least 0.1.",
           "type": "number",
           "x-contract": {
             "default": "0",
@@ -17402,7 +17402,7 @@
           "x-type": "number"
         },
         "say": {
-          "description": "Seconds every line lasts, more than 0.",
+          "description": "Seconds every line lasts, at least 0.1.",
           "type": "number",
           "x-contract": {
             "default": "0",

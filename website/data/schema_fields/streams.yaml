@@ -20,10 +20,10 @@ StreamSlot:
   rest: "Minutes from the end of a stream to the channel's next, 0 to 1440 (0: at once), which again starts from the next episode not seen, round again from the first after the last. Without it a channel whose stream ended stays offline until the game opens again. With `rest: 0` and `live: {share: 1}` every channel is always on the air while the game is open."
 StreamTiming:
   _: "The length of the beats. A line lasts `say` plus `per_char` for each character; a question shows its options for `ask` and then says its longest answer."
-  say: "Seconds every line lasts, more than 0."
+  say: "Seconds every line lasts, at least 0.1."
   per_char: "Seconds more for each character of a line, 0 or more."
-  chat: "Seconds a chat beat lasts, more than 0."
-  ask: "Seconds the options of a question stay open, more than 0."
+  chat: "Seconds a chat beat lasts, at least 0.1."
+  ask: "Seconds the options of a question stay open, at least 0.1."
 StreamLive:
   _: "Who is live: every channel the first time the game opens, then each with the chance `share` and at least `min_share` of them."
   share: "The chance of each channel to be live, 0 to 1."

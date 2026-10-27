@@ -533,6 +533,9 @@ func (s *Streams) defaults() {
 	}
 }
 
+// minBeat is the fewest seconds a line, a chat beat or a question's options last.
+const minBeat = 0.1
+
 // minEpisodeSeconds is the length below which an episode is warned of.
 const minEpisodeSeconds = 10 * 60
 
@@ -548,8 +551,10 @@ func (c *checker) streams() {
 	at := func(p string, args ...any) string { return s.file + " " + fmt.Sprintf(p, args...) }
 	c.file(at("logo"), s.Logo)
 	t := s.Timing
-	if !(t.Say > 0) || !(t.PerChar >= 0) || !(t.Chat > 0) || !(t.Ask > 0) {
-		c.errorf(diag.OutOfRange, at("timing"), "say, chat and ask need more than 0 seconds, per_char 0 or more")
+	// a beat of less than minBeat would have a stream that ends at once start again so
+	// often that catching the streams up would not end
+	if !(t.Say >= minBeat) || !(t.PerChar >= 0) || !(t.Chat >= minBeat) || !(t.Ask >= minBeat) {
+		c.errorf(diag.OutOfRange, at("timing"), "say, chat and ask need at least 0.1 seconds, per_char 0 or more")
 	}
 	if m := s.Slot.Minutes; !(m > 0 && m <= 24*60) {
 		c.errorf(diag.OutOfRange, at("slot.minutes"), "want more than 0 and at most 1440 minutes, not %g", m)

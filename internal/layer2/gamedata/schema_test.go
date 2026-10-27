@@ -374,6 +374,8 @@ func schemaContract(owner reflect.Type, field reflect.StructField, name string) 
 	switch key {
 	case "StreamAffection.comment", "StreamAffection.reply", "StreamAffection.answer", "StreamAffection.tip_per", "StreamAffection.stayed", "StreamSlot.minutes", "StreamEcho.max_runes":
 		c.Zero = "Uses the default"
+	case "StreamEcho.chance":
+		c.Zero = "0 is kept, unless max_runes is 0 or left out too: then 0.35"
 	case "StageFraming.height":
 		c.Zero = "両版で拒否"
 	case "Atlas.travel_speed", "Stage.walk_speed", "Space.step_ticks", "Space.turn_ticks":
