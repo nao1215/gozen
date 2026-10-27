@@ -388,7 +388,7 @@ func (t StreamTiming) Seconds(b Beat) float64 {
 
 // VoiceKey names the recorded voice of a stream line: the first 16 hexadecimal digits of
 // the SHA-1 of the line in UTF-8, as shown (translated) and before its {fields} are filled
-// (a reaction book's line as written in the book).
+// (a reaction book's line too).
 func VoiceKey(line string) string {
 	sum := sha1.Sum([]byte(line)) //nolint:gosec // A file name for a line, not security.
 	return hex.EncodeToString(sum[:])[:16]

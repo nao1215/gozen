@@ -48,6 +48,9 @@ type Config struct {
 	MaxRunes int
 	// History is how many recent texts per sender are kept to find repeats (0 means 8).
 	History int
+	// Translate gives a line as it is shown, before its fields are filled (nil: as the
+	// book writes it).
+	Translate func(string) string
 }
 
 // Reaction is how the person reacted.
@@ -57,8 +60,8 @@ type Reaction struct {
 	Rule string
 	// Lines are the line said and, when the rule asks a question, the question.
 	Lines []string
-	// Written are the Lines as the book writes them, before their fields are filled (a
-	// game finds a line's recorded voice by them).
+	// Written are the Lines as shown (Config.Translate), before their fields are filled
+	// (a game finds a line's recorded voice by them).
 	Written []string
 	Face    string
 	// Delta is the mood change applied; Mood is the mood after it.
@@ -367,7 +370,7 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 		delta += rule.Delta
 		out.Rule, out.Face = rule.ID, rule.Face
 		for _, l := range m.pickEntry(rule.ID, rule.Say) {
-			out.say(m.fill(l, e), l)
+			out.say(m, l, e)
 		}
 		for _, r := range rule.Remember {
 			m.write(r, e)
@@ -381,7 +384,7 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 		if rule.Ask != "" {
 			q := m.ask(rule.Ask)
 			l := m.pick("ask."+q.ID, q.Say)
-			out.say(m.fill(l, e), l)
+			out.say(m, l, e)
 			if q.Face != "" {
 				out.Face = q.Face
 			}
@@ -398,7 +401,7 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 		}
 		if l := m.pick("dodge."+name, lines); l != "" {
 			out.Rule, out.Face = "dodge."+name, d.Face
-			out.say(m.fill(l, e), l)
+			out.say(m, l, e)
 		}
 	}
 	m.asked = pending
@@ -447,13 +450,19 @@ func (m *Mind) Ask(id string) (Reaction, error) {
 	e := &env{m: m, found: map[string]Tag{}}
 	m.asked = m.pose(q)
 	l := m.pick("ask."+q.ID, q.Say)
-	return Reaction{Rule: "ask." + id, Lines: []string{m.fill(l, e)}, Written: []string{l}, Face: q.Face, Mood: m.mood, Ask: id}, nil
+	var r Reaction
+	r.say(m, l, e)
+	r.Rule, r.Face, r.Mood, r.Ask = "ask."+id, q.Face, m.mood, id
+	return r, nil
 }
 
-// say adds a line, filled and as written.
-func (r *Reaction) say(filled, written string) {
-	r.Lines = append(r.Lines, filled)
-	r.Written = append(r.Written, written)
+// say adds the line as the book writes it: as shown (Config.Translate), and filled.
+func (r *Reaction) say(m *Mind, l string, e *env) {
+	if m.cfg.Translate != nil {
+		l = m.cfg.Translate(l)
+	}
+	r.Lines = append(r.Lines, m.fill(l, e))
+	r.Written = append(r.Written, l)
 }
 
 func (m *Mind) ask(id string) *question {

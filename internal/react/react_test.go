@@ -805,3 +805,28 @@ people:
 		}
 	}
 }
+
+// TestTranslate: a line is said as Config.Translate shows it, its fields filled after, and
+// Written is the line as shown before they are; a line it does not change is as written.
+func TestTranslate(t *testing.T) {
+	b, err := Parse([]byte(host))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := New(b, "host", Config{Translate: func(l string) string {
+		if l == "{from}、ありがと！" {
+			return "Thanks, {from}!"
+		}
+		return l
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := m.React(Stimulus{Kind: "event", From: "Pat", Tags: []string{"gift"}, Values: map[string]float64{"amount": 1000}})
+	if err != nil || len(r.Lines) != 1 || r.Lines[0] != "Thanks, Pat!" || r.Written[0] != "Thanks, {from}!" {
+		t.Fatalf("a translated line: %+v, %v", r, err)
+	}
+	if r, err := m.React(Stimulus{Kind: KindSay, From: "Pat", Text: "猫かわいい"}); err != nil || len(r.Lines) == 0 || r.Lines[0] != "猫いいよね" {
+		t.Fatalf("a line without a translation: %+v, %v", r, err)
+	}
+}

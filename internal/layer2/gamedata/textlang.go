@@ -324,6 +324,11 @@ func (db *DB) SourceTexts() []SourceText {
 			}
 		}
 	}
+	for _, id := range slices.Sorted(maps.Keys(db.ReactionBooks)) {
+		for i, l := range db.ReactionBooks[id].Lines(id) {
+			add(fmt.Sprintf("reactions.%s[%d]", id, i), l)
+		}
+	}
 	var cmds func(w string, cs []Command)
 	cmds = func(w string, cs []Command) {
 		for i := range cs {

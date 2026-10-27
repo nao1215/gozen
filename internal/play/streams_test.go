@@ -827,6 +827,40 @@ func TestStreamsFamilyEpisode(t *testing.T) {
 	}
 }
 
+// TestStreamsRepliesInTheLanguageShown: the reaction book's lines are texts of the game to
+// translate, and a reply is said in the language shown, its fields filled after: a line
+// with a translation in it, a line without one as written.
+func TestStreamsRepliesInTheLanguageShown(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	fsys["lang/ja.yaml"].Data = append(fsys["lang/ja.yaml"].Data, []byte("  \"Plants!\": \"植物！\"\n")...)
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	texts := map[string]bool{}
+	for _, st := range g.db.SourceTexts() {
+		texts[st.Text] = true
+	}
+	if !texts["Plants!"] || !texts["You said {text}."] || !texts["Hm."] {
+		t.Fatal("the reaction book's lines are not texts of the game to translate")
+	}
+	g.setLanguage("ja")
+	g.st.Streams.Viewer = "Pat"
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })].show
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	w.comments = append(w.comments, "beans")
+	for i := 0; i < 3000 && !strings.Contains(chatText(w), "You said beans."); i++ {
+		wldFrames(t, g, 1)
+	}
+	if chat := chatText(w); !strings.Contains(chat, "Ann: 植物！") || !strings.Contains(chat, "Ann: You said beans.") {
+		t.Fatalf("the reply is not in the language shown:\n%s", chat)
+	}
+}
+
 // TestStreamsUnansweredKeepsTheLast: the file of unanswered comments keeps the last 200,
 // and a damaged file starts again.
 func TestStreamsUnansweredKeepsTheLast(t *testing.T) {
