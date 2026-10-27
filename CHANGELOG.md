@@ -4,6 +4,11 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.14.2 - 2026-10-28
+
+- Open a game that offers two or more languages in the device's language the first time (ADR 0027): until a language is kept in the settings, a browser export takes the first of `navigator.languages` the game offers and the desktop the locale (`LC_ALL`, `LC_MESSAGES`, `LANG`, then macOS's or Windows's), `en-US` counting as `en`, else `language`.
+- Press the stream bar's language buttons while the box that asks the viewer's name is open (ADR 0048): the box is shown in the language at once and the name being typed stays; the bar over the box keeps only its languages.
+
 ## v0.14.1 - 2026-10-28
 
 - Read aloud the stream line after a tip's message in a browser: Chrome can still say it is speaking after a line has ended, and the line spoken just after the queue was cleared was dropped unsaid; a line now waits a tenth of a second after a cancel before it is spoken.
