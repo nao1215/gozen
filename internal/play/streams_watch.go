@@ -47,9 +47,9 @@ type streamWatch struct {
 	npcAt    []time.Time
 	comments []string // comments the streamer has not answered yet
 
-	caption       string
-	captionWho    int
-	captionT, age int
+	caption    string
+	captionWho int
+	age        int
 
 	viewers int
 	nextTip time.Time
@@ -164,7 +164,7 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 		}
 	}
 	runes := utf8.RuneCountInString(l.text)
-	w.caption, w.captionWho, w.captionT = l.text, l.host, g.tick
+	w.caption, w.captionWho = l.text, l.host
 	w.chat.post(chat.Message{From: g.channelName(w.show.Hosts[l.host]), Text: l.text, Values: map[string]float64{chatHost: 1}})
 	w.talk[l.host] = now.Add(time.Duration(min(4, 0.5+0.07*float64(runes)) * float64(time.Second)))
 	w.busy = now.Add(seconds(d.Timing.LineSeconds(l.text)))
@@ -656,15 +656,13 @@ func (w *streamWatch) draw(g *Game, dst *ebiten.Image) {
 	g.drawToast(dst)
 }
 
-// drawCaption draws the line being said as white text on black bands, typed out, with
-// the speaker's name over it in a duo.
+// drawCaption draws the whole line being said as white text on black bands, with the
+// speaker's name over it in a duo.
 func (w *streamWatch) drawCaption(g *Game, dst *ebiten.Image, x, y, stw, sth float64) {
 	if w.caption == "" {
 		return
 	}
-	shown := []rune(w.caption)
-	shown = shown[:min(len(shown), (g.tick-w.captionT)/2+1)]
-	lines := gfx.Wrap(string(shown), captionSize, stw*captionShare)
+	lines := gfx.Wrap(w.caption, captionSize, stw*captionShare)
 	lh := gfx.LineHeight(captionSize)
 	top := y + sth*0.95 - float64(len(lines))*lh
 	if len(w.show.Hosts) > 1 {
