@@ -15,6 +15,8 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/hajimehoshi/ebiten/v2"
+
 	"github.com/nao1215/gozen/internal/chat"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/broadcast"
@@ -661,5 +663,24 @@ func TestStreamsSlot(t *testing.T) {
 	}
 	if bridge := strings.Index(chat, "Ann: Water break."); bridge < strings.Index(chat, "Ann: That is all for today!") || bridge > strings.LastIndex(chat, "Ann: Hello, everyone.") {
 		t.Errorf("the bridge is not between the episodes:\n%s", chat)
+	}
+}
+
+// TestStreamsStartAgain: with slot.rest a stream that ends starts again after the rest, so
+// the channel is on the air again in the lobby with a new stream.
+func TestStreamsStartAgain(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	fsys["data/streams.yaml"].Data = []byte(strings.Replace(string(fsys["data/streams.yaml"].Data), "slot: {minutes: 0.01}", "slot: {minutes: 0.01, rest: 0.05}", 1))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	first := g.desk.shows[0]
+	wldFrames(t, g, int((first.Seconds()+3+5)*ebiten.DefaultTPS)) // past its end and a rest of 3 s
+	again := g.desk.shows[0]
+	if again == first || again.Key != first.Key || !again.Live(g.streamNow()) || !again.Start.Equal(first.Start.Add(seconds(first.Seconds()+3))) {
+		t.Fatalf("the stream does not start again after its rest: %v from %v", again.Start, first.Start)
+	}
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok || len(l.cards) != 2 || len(l.offline(g)) != 0 {
+		t.Fatalf("the lobby does not show every channel on the air again")
 	}
 }

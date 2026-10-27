@@ -87,6 +87,7 @@ func TestStreamsCheck(t *testing.T) {
 		{"a room missing", edit("data/streams.yaml", "room: x.png", "room: none.png"), "no file assets/none.png"},
 		{"a logo missing", edit("data/streams.yaml", "tips:", "logo: gone.png\ntips:"), "no file assets/gone.png"},
 		{"a slot of no minutes", edit("data/streams.yaml", "tips:", "slot: {minutes: -5}\ntips:"), "slot.minutes"},
+		{"a negative rest", edit("data/streams.yaml", "tips:", "slot: {minutes: 60, rest: -1}\ntips:"), "slot.rest"},
 		{"a slot over a day", edit("data/streams.yaml", "tips:", "slot: {minutes: 1500}\ntips:"), "at most 1440 minutes"},
 		{"a bridge with a field", edit("data/streams.yaml", "first: [", "bridges: [\"Back, {from}.\"]\n    first: ["), "unknown {from}"},
 	} {

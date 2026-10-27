@@ -77,9 +77,12 @@ type StreamAffection struct {
 
 // StreamSlot is the length of a stream: a live channel plays its episodes one after
 // another, from the next the player has not seen, until Minutes have passed, and ends with
-// the episode it is in then (60 when left out).
+// the episode it is in then (60 when left out). With Rest, the channel starts its next
+// stream Rest minutes after one ends (0: at once); without it, a channel whose stream
+// ended stays offline until the game opens again.
 type StreamSlot struct {
-	Minutes float64 `yaml:"minutes"`
+	Minutes float64  `yaml:"minutes"`
+	Rest    *float64 `yaml:"rest"`
 }
 
 // StreamEcho reads back a comment the streamer found nothing in (the reaction book's
@@ -528,6 +531,9 @@ func (c *checker) streams() {
 	}
 	if m := s.Slot.Minutes; !(m > 0 && m <= 24*60) {
 		c.errorf(diag.OutOfRange, at("slot.minutes"), "want more than 0 and at most 1440 minutes, not %g", m)
+	}
+	if r := s.Slot.Rest; r != nil && !(*r >= 0 && *r <= 24*60) {
+		c.errorf(diag.OutOfRange, at("slot.rest"), "want 0 to 1440 minutes, not %g", *r)
 	}
 	l := s.Live
 	for _, v := range []float64{l.Share, l.MinShare, l.DuoChance} {

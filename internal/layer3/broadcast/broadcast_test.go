@@ -241,3 +241,32 @@ func TestSlot(t *testing.T) {
 		t.Errorf("without bridges: %d beats, %g s", len(s.Beats), s.Seconds())
 	}
 }
+
+// TestAgain: without slot.rest a stream that ended stays over; with it, the next stream of
+// the same channel or duo starts rest minutes after the end, from the episode the player has
+// not seen by then, and not before.
+func TestAgain(t *testing.T) {
+	d := streams()
+	p := &rpg.Streams{}
+	s := newShow(d, d.Channels[:1], "a", d.Channels[0].Shows, 0)
+	s.Start = noon
+	end := noon.Add(22 * time.Second)
+	if Again(d, p, s, end.Add(time.Hour)) != nil {
+		t.Fatal("a stream starts again without slot.rest")
+	}
+	rest := 2.0
+	d.Slot.Rest = &rest
+	if Again(d, p, s, end.Add(119*time.Second)) != nil {
+		t.Fatal("a stream starts again before its rest has passed")
+	}
+	MarkSeen(p, s, 0)
+	n := Again(d, p, s, end.Add(3*time.Minute))
+	if n == nil || !n.Start.Equal(end.Add(2*time.Minute)) || n.Episodes[0].Title != "a2" || n.Key != "a" {
+		t.Fatalf("the next stream %+v", n)
+	}
+	duo := newShow(d, []*data.Channel{d.Channels[0], d.Channels[1]}, DuoKey("a", "b"), d.Duos[0].Shows, 0)
+	duo.Start = noon
+	if n := Again(d, p, duo, end.Add(2*time.Minute)); n == nil || len(n.Hosts) != 2 || n.Episodes[0].Title != "ab1" {
+		t.Fatalf("the duo's next stream %+v", n)
+	}
+}

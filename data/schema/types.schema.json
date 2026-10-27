@@ -17302,6 +17302,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "number"
+        },
+        "rest": {
+          "description": "Minutes from the end of a stream to the channel's next, 0 to 1440 (0: at once), which again starts from the next episode not seen, round again from the first after the last. Without it a channel whose stream ended stays offline until the game opens again. With `live: {share: 1}` every channel is always on the air.",
+          "type": "number",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
         }
       },
       "type": "object"

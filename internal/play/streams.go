@@ -90,6 +90,11 @@ func (g *Game) stepStreams() {
 		g.desk.st = g.st
 		g.desk.shows = broadcast.Lineup(g.db.Streams, g.st.Streams, now, g.desk.rng)
 	}
+	for i, s := range g.desk.shows { // a stream over starts again after its rest (slot.rest)
+		for n := broadcast.Again(g.db.Streams, g.st.Streams, s, now); n != nil; n = broadcast.Again(g.db.Streams, g.st.Streams, s, now) {
+			s, g.desk.shows[i] = n, n
+		}
+	}
 	if gold := broadcast.Settle(g.db.Streams, g.st.Streams, now); gold > 0 {
 		g.st.Gold += gold
 		g.desk.away += gold

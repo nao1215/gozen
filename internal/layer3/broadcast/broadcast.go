@@ -68,6 +68,35 @@ func newShow(d *data.Streams, hosts []*data.Channel, key string, shows []*data.E
 	return s
 }
 
+// Again is the show's next stream when the streams file has slot.rest and the rest after
+// the show has passed at now, else nil: the same hosts, from the episode the player has not
+// seen by then (round again from the first after the last, so a channel whose episodes have
+// all been seen plays them again, the oldest first), starting rest minutes after the show
+// ended.
+func Again(d *data.Streams, p *rpg.Streams, s *Show, now time.Time) *Show {
+	if d.Slot.Rest == nil {
+		return nil
+	}
+	start := s.Start.Add(time.Duration((s.Seconds() + *d.Slot.Rest*60) * float64(time.Second)))
+	if now.Before(start) {
+		return nil
+	}
+	var next *Show
+	if len(s.Hosts) > 1 {
+		for _, duo := range d.Duos {
+			if DuoKey(duo.Host, duo.With) == s.Key {
+				next = newShow(d, s.Hosts, s.Key, duo.Shows, p.Duos[s.Key])
+			}
+		}
+	} else {
+		next = newShow(d, s.Hosts, s.Key, s.Hosts[0].Shows, Progress(p, s.Key).Next)
+	}
+	if next != nil {
+		next.Start = start
+	}
+	return next
+}
+
 // Part is the episode playing at the beat, an index of Episodes.
 func (s *Show) Part(beat int) int {
 	i := 0
