@@ -28,7 +28,7 @@ StreamLive:
   _: "Who is live: every channel the first time the game opens, then each with the chance `share` and at least `min_share` of them."
   share: "The chance of each channel to be live, 0 to 1."
   min_share: "The least part of the channels that are live, 0 to 1."
-  duo_chance: "The chance that two live hosts of a duo stream together, 0 to 1."
+  duo_chance: "The chance, 0 to 1, that an unlocked duo streams when the game opens with both its hosts live, or when the stream of one of its hosts ends with slot.rest while the other streams on its own (or is a guest in no stream): the duo then takes both their places."
 StreamAway:
   _: "Gold earned while the game is closed, shown when the stream screen opens."
   per_hour: "Gold an hour, 0 or more."
@@ -50,6 +50,7 @@ Channel:
   room: "The background picture under assets/."
   frame: "The part of the puppet shown."
   voice: "Speech synthesis in a browser build."
+  guest: "true for a streamer of no channel of its own, such as a visitor from another show: no stream, no card in the lobby, not listed offline; it streams only as the `with` of a duo, which unlocks with its host's streams watched. It needs no room and has no episodes; its actor, puppet, color and voices folder are as a channel's."
   episodes: "The episode files (`Episode`), under `streams/` of the game (the files under `data/` are data files), such as `streams/<id>/001.yaml`; `gozen export` copies them. A channel plays the next one the player has not seen."
   greet: "Lines said to a returning viewer, one list for each affection step from 0. `{from}` is the viewer's name."
   first: "Lines for a first-time viewer; one is said. `{from}` is the viewer's name."
@@ -66,9 +67,10 @@ StreamVoice:
   pitch: "The pitch, 0 to 2."
   rate: "The speed, 0 to 10."
 Duo:
-  _: "Episodes two channels stream together when both are live."
+  _: "Episodes two channels (or a channel and a guest) stream together, once the duo is unlocked."
   host: "The channel that hosts it."
-  with: "The other channel."
+  with: "The other channel, or a guest (a guest is no host)."
+  unlock: "The minutes each host's own streams must have been watched (a guest's host's alone) before the duo streams, 0 to 6000; 30 when left out. Until then the duo never streams."
   episodes: "The episode files, relative to the game."
 Episode:
   _: "One stream: its title, the lines of its lobby card, and its parts. An episode shorter than 10 minutes is warned of."

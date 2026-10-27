@@ -9,6 +9,7 @@ import (
 	"image/color"
 	"io/fs"
 	"log"
+	"maps"
 	"math"
 	"math/rand/v2"
 	"slices"
@@ -108,12 +109,9 @@ func (g *Game) stepStreams() {
 		g.desk.st = g.st
 		g.desk.shows = broadcast.Lineup(g.db.Streams, g.st.Streams, now, g.desk.rng)
 	}
-	for i, s := range g.desk.shows { // a stream over starts again after its rest (slot.rest)
-		for n := broadcast.Again(g.db.Streams, g.st.Streams, s, now); n != nil; n = broadcast.Again(g.db.Streams, g.st.Streams, s, now) {
-			delete(g.desk.left, s)
-			s, g.desk.shows[i] = n, n
-		}
-	}
+	// the streams over start again after their rest (slot.rest), a duo's at times
+	g.desk.shows = broadcast.Turn(g.db.Streams, g.st.Streams, g.desk.shows, now, g.desk.rng)
+	maps.DeleteFunc(g.desk.left, func(s *broadcast.Show, _ int) bool { return !slices.Contains(g.desk.shows, s) })
 	if gold := broadcast.Settle(g.db.Streams, g.st.Streams, now); gold > 0 {
 		g.st.Gold += gold
 		g.desk.away += gold

@@ -93,6 +93,8 @@ func TestStreamsCheck(t *testing.T) {
 		{"a negative rest", edit("data/streams.yaml", "tips:", "slot: {minutes: 60, rest: -1}\ntips:"), "slot.rest"},
 		{"a slot over a day", edit("data/streams.yaml", "tips:", "slot: {minutes: 1500}\ntips:"), "at most 1440 minutes"},
 		{"a family that is no bool", edit("streams/bo/1.yaml", "title: Garden tour", "title: Garden tour\nfamily: maybe"), "Family of type bool"},
+		{"an unlock below 0", edit("data/streams.yaml", "host: ann, with: bo,", "host: ann, with: bo, unlock: -1,"), "duos[0].unlock"},
+		{"a guest with an episode", edit("data/streams.yaml", "  - id: bo\n", "  - id: bo\n    guest: true\n"), "a guest has no episodes"},
 		{"a bridge with a field", edit("data/streams.yaml", "first: [", "bridges: [\"Back, {from}.\"]\n    first: ["), "unknown {from}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -155,5 +157,26 @@ func TestStreamsVoices(t *testing.T) {
 	}
 	if s := testgame.Load(t, g).Streams; s.Voice("ann", "Hello, everyone.") != "assets/voice/ann/6f2529aa52538b73.ogg" || s.Voice("ann", "") != "" {
 		t.Errorf("voice file %q", s.Voice("ann", "Hello, everyone."))
+	}
+}
+
+// TestStreamsGuest: a guest is a channel with no stream of its own that streams in a duo
+// with its host only: it loads with no episodes and no room, and the check refuses a guest
+// with episodes or a duo a guest hosts.
+func TestStreamsGuest(t *testing.T) {
+	guest := func(duo string) map[string]string {
+		g := streamGame()
+		g["data/streams.yaml"] = strings.NewReplacer("    room: x.png\n    frame: {cx: 100, top: 0, bottom: 200}\n    episodes: [streams/bo/1.yaml]\n", "    guest: true\n    frame: {cx: 100, top: 0, bottom: 200}\n", "host: ann, with: bo", duo).Replace(g["data/streams.yaml"])
+		return g
+	}
+	db, err := testgame.TryLoad(guest("host: ann, with: bo"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bo := db.Streams.Channel("bo"); bo == nil || !bo.Guest || len(bo.Shows) != 0 {
+		t.Fatalf("the guest %+v", bo)
+	}
+	if _, err := testgame.TryLoad(guest("host: bo, with: ann")); err == nil || !strings.Contains(err.Error(), "a guest hosts no duo") {
+		t.Fatalf("a duo hosted by a guest: %v", err)
 	}
 }

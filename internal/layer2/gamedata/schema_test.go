@@ -44,6 +44,7 @@ var schemaDefaults = map[string]string{
 	"Streams.answer_chance": "0.6, 0.75, 0.9, 1, 1 (one for each step of the default steps)",
 	"StreamEcho.max_runes":  "24, with chance 0.35 when chance is left out too", "StreamEcho.chance": "0, or 0.35 when max_runes is left out too",
 	"StreamSlot.minutes":        "60",
+	"Duo.unlock":                "30 minutes",
 	"UIStyle.battle_ai_history": "true",
 	"Recruit.admission":         "reserve",
 	"Atlas.travel_speed":        "0.12 picture widths per second",

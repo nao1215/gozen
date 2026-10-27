@@ -22,12 +22,15 @@ type Streams struct {
 // internal/layer3/broadcast goes on no further when an episode is seen.
 const MaxNextEpisode = 1 << 30
 
-// check reports the first next episode of a channel or a duo out of 0 to MaxNextEpisode, as
-// the path of the save's field.
+// check reports the first next episode of a channel or a duo out of 0 to MaxNextEpisode, or
+// time watched below 0, as the path of the save's field.
 func (p *Streams) check() string {
 	for _, id := range slices.Sorted(maps.Keys(p.Channels)) {
 		if c := p.Channels[id]; c != nil && (c.Next < 0 || c.Next > MaxNextEpisode) {
 			return "streams/channels/" + id + "/next"
+		}
+		if c := p.Channels[id]; c != nil && !(c.Watched >= 0) {
+			return "streams/channels/" + id + "/watched"
 		}
 	}
 	for _, key := range slices.Sorted(maps.Keys(p.Duos)) {
@@ -50,4 +53,7 @@ type ChannelProgress struct {
 	Run int `json:"run,omitempty"`
 	// Visits are how many times the player opened the channel's shows.
 	Visits int `json:"visits,omitempty"`
+	// Watched is the seconds the player watched the channel's own streams (not its duos),
+	// which unlock its duos.
+	Watched float64 `json:"watched,omitempty"`
 }

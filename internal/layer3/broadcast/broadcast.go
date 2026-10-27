@@ -8,6 +8,7 @@ package broadcast
 import (
 	"math"
 	"math/rand/v2"
+	"slices"
 	"time"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
@@ -70,33 +71,77 @@ func newShow(d *data.Streams, hosts []*data.Channel, key string, shows []*data.E
 	return s
 }
 
-// Again is the show's next stream when the streams file has slot.rest and the rest after
-// the show has passed at now, else nil: the same hosts, from the episode the player has not
-// seen by then (round again from the first after the last, so a channel whose episodes have
-// all been seen plays them again, the oldest first), starting rest minutes after the show
-// ended.
-func Again(d *data.Streams, p *rpg.Streams, s *Show, now time.Time) *Show {
+// Turn has the shows over start again when the streams file has slot.rest, rest minutes
+// after each ended (catching up with now), and returns the shows on the air then. A
+// channel streams again from the episode the player has not seen by then (round again from
+// the first after the last), unless a duo of it that is unlocked, whose other host is on
+// the air on its own, streams instead by the chance live.duo_chance: the duo takes both
+// their places (a viewer watching the other host's stream sees it to its end in the watch
+// view). When a duo ends, each of its hosts streams on its own again.
+func Turn(d *data.Streams, p *rpg.Streams, shows []*Show, now time.Time, rng *rand.Rand) []*Show {
 	if d.Slot.Rest == nil {
-		return nil
+		return shows
 	}
-	start := s.Start.Add(time.Duration((s.Seconds() + *d.Slot.Rest*60) * float64(time.Second)))
-	if now.Before(start) || !start.After(s.Start) { // a stream of no length would start again for ever
-		return nil
-	}
-	var next *Show
-	if len(s.Hosts) > 1 {
-		for _, duo := range d.Duos {
-			if DuoKey(duo.Host, duo.With) == s.Key {
-				next = newShow(d, s.Hosts, s.Key, duo.Shows, p.Duos[s.Key])
+	for i := 0; i < len(shows); {
+		s := shows[i]
+		start := s.Start.Add(time.Duration((s.Seconds() + *d.Slot.Rest*60) * float64(time.Second)))
+		if now.Before(start) || !start.After(s.Start) { // a stream of no length would start again for ever
+			i++
+			continue
+		}
+		shows = slices.Delete(slices.Clone(shows), i, i+1)
+		var next []*Show
+		if len(s.Hosts) > 1 {
+			for _, h := range s.Hosts {
+				if !h.Guest {
+					next = append(next, newShow(d, []*data.Channel{h}, h.ID, h.Shows, Progress(p, h.ID).Next))
+				}
+			}
+		} else {
+			var other int
+			next, other = pairOrSolo(d, p, s.Hosts[0], shows, rng)
+			if other >= 0 {
+				shows = slices.Delete(shows, other, other+1)
 			}
 		}
-	} else {
-		next = newShow(d, s.Hosts, s.Key, s.Hosts[0].Shows, Progress(p, s.Key).Next)
+		for _, n := range next {
+			n.Start = start
+		}
+		shows = append(shows, next...)
+		i = 0 // the shows started again may end too, by now
 	}
-	if next != nil {
-		next.Start = start
+	return shows
+}
+
+// pairOrSolo is the next stream of the channel c: a duo of c that is unlocked and whose
+// other host is on the air on its own (shows[other]) or a guest in no stream, by the chance
+// live.duo_chance, else c's own (other -1).
+func pairOrSolo(d *data.Streams, p *rpg.Streams, c *data.Channel, shows []*Show, rng *rand.Rand) (next []*Show, other int) {
+	for _, duo := range d.Duos {
+		mate := duo.With
+		switch c.ID {
+		case duo.Host:
+		case duo.With:
+			mate = duo.Host
+		default:
+			continue
+		}
+		j := slices.IndexFunc(shows, func(s *Show) bool { return s.Key == mate })
+		guest := d.Channel(mate).Guest && !slices.ContainsFunc(shows, func(s *Show) bool { return slices.Contains(s.Hosts, d.Channel(mate)) })
+		if j < 0 && !guest || !Unlocked(d, p, duo) || rng.Float64() >= d.Live.DuoChance || len(duo.Shows) == 0 {
+			continue
+		}
+		key := DuoKey(duo.Host, duo.With)
+		return []*Show{newShow(d, []*data.Channel{d.Channel(duo.Host), d.Channel(duo.With)}, key, duo.Shows, p.Duos[key])}, j
 	}
-	return next
+	return []*Show{newShow(d, []*data.Channel{c}, c.ID, c.Shows, Progress(p, c.ID).Next)}, -1
+}
+
+// Unlocked reports whether the duo streams: each of its hosts' own streams watched for its
+// unlock minutes (the host's alone when the other is a guest, who has none).
+func Unlocked(d *data.Streams, p *rpg.Streams, duo *data.Duo) bool {
+	need := duo.UnlockSeconds()
+	return Progress(p, duo.Host).Watched >= need && (d.Channel(duo.With).Guest || Progress(p, duo.With).Watched >= need)
 }
 
 // Part is the episode playing at the beat, an index of Episodes.
@@ -137,8 +182,8 @@ const maxLate = 4 * time.Minute
 
 // Lineup decides who is live at now: every channel with an episode when the game opens
 // for the first time (p.Open is 0), else each with the chance live.share and at least
-// live.min_share of them, in the order written. Two live hosts of a duo stream it
-// together with the chance live.duo_chance. Each show plays its slot from the next
+// live.min_share of them, in the order written. Two live hosts of an unlocked duo
+// (Unlocked) stream it together with the chance live.duo_chance. Each show plays its slot from the next
 // episode the player has not seen and started up to four minutes ago, before its middle.
 // The shows are in the order of their hosts.
 func Lineup(d *data.Streams, p *rpg.Streams, now time.Time, rng *rand.Rand) []*Show {
@@ -151,7 +196,13 @@ func Lineup(d *data.Streams, p *rpg.Streams, now time.Time, rng *rand.Rand) []*S
 			n++
 		}
 	}
-	want := int(math.Ceil(d.Live.MinShare * float64(len(d.Channels))))
+	own := 0 // the channels of streams of their own, not the guests
+	for _, c := range d.Channels {
+		if !c.Guest {
+			own++
+		}
+	}
+	want := int(math.Ceil(d.Live.MinShare * float64(own)))
 	for _, c := range d.Channels {
 		if n < want && !live[c.ID] && len(c.Shows) > 0 {
 			live[c.ID] = true
@@ -165,7 +216,8 @@ func Lineup(d *data.Streams, p *rpg.Streams, now time.Time, rng *rand.Rand) []*S
 	}
 	paired := map[string]*Show{}
 	for _, duo := range d.Duos {
-		if !live[duo.Host] || !live[duo.With] || paired[duo.Host] != nil || paired[duo.With] != nil || len(duo.Shows) == 0 || rng.Float64() >= d.Live.DuoChance {
+		with := d.Channel(duo.With)
+		if !live[duo.Host] || !live[duo.With] && !with.Guest || paired[duo.Host] != nil || paired[duo.With] != nil || len(duo.Shows) == 0 || !Unlocked(d, p, duo) || rng.Float64() >= d.Live.DuoChance {
 			continue
 		}
 		key := DuoKey(duo.Host, duo.With)

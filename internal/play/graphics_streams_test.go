@@ -155,7 +155,14 @@ func TestGraphicsScreensStreams(t *testing.T) {
 				t.Errorf("the small card has no caption band (%d dark pixels)", dark)
 			}
 		}},
-		{"duo", "1", "gap 1\nwait 60\npress ok\nwait 20\npress ok\nwait 100\nshot duo\nquit\n", nil, func(t *testing.T, root string) {
+		{"duo", "1", "gap 1\nwait 60\npress ok\nwait 20\nshot lobby\npress ok\nwait 100\nshot duo\nquit\n", nil, func(t *testing.T, root string) {
+			// the lobby: the duo's one card (its hosts have none of their own), both on it
+			lobby := shotImage(t, root, "lobby")
+			w := 1280 - 2*lobbyEdge - lobbyChatW
+			y := streamBarH + 20 + w*9/16*0.55
+			if !differs(lobby, int(lobbyEdge+w*0.28), int(y)) || !differs(lobby, int(lobbyEdge+w*0.72), int(y)) {
+				t.Error("the duo's card does not stand both hosts")
+			}
 			duo := shotImage(t, root, "duo")
 			sw := 1280.0 - streamChatW
 			if !differs(duo, int(sw*0.28), 330) || !differs(duo, int(sw*0.72), 330) {

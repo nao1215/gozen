@@ -870,6 +870,9 @@ func (w *streamWatch) update(g *Game) {
 		keepAwake(g.desk.speak) // a browser may have let the lock go while the page was hidden
 	}
 	if !w.ended {
+		if len(w.show.Hosts) == 1 { // a channel's own stream watched unlocks its duos
+			broadcast.Progress(g.st.Streams, w.show.Key).Watched += 1.0 / ebiten.DefaultTPS
+		}
 		for len(w.npcAt) > 0 && w.ask != nil && !now.Before(w.npcAt[0]) {
 			n := w.ask.NPC[len(w.ask.NPC)-len(w.npcAt)]
 			w.chat.post(chat.Message{From: g.db.Tr(n.Name), Text: g.db.Tr(w.ask.Options[n.Option].C)})

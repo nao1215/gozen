@@ -455,6 +455,9 @@ func (l *streamLobby) update(g *Game) {
 func (l *streamLobby) offline(g *Game) []int {
 	var out []int
 	for i, c := range g.db.Streams.Channels {
+		if c.Guest { // no channel of its own to be offline
+			continue
+		}
 		on := false
 		for _, card := range l.cards {
 			for _, h := range card.show.Hosts {

@@ -200,6 +200,9 @@ type Channel struct {
 	Frame StreamFrame `yaml:"frame"`
 	// Voice is the speech synthesis of a browser build.
 	Voice StreamVoice `yaml:"voice"`
+	// Guest marks a streamer of no channel of its own: no stream, no card in the lobby; it
+	// streams only as the other host of a duo (its with), and needs no room or episodes.
+	Guest bool `yaml:"guest"`
 	// Episodes are the episode files, relative to the game.
 	Episodes []string `yaml:"episodes"`
 	// Greet are the lines said to a returning viewer, one list per affection step 0..4.
@@ -229,10 +232,12 @@ type StreamVoice struct {
 	Rate  float64 `yaml:"rate"`
 }
 
-// Duo is the episodes Host streams with With.
+// Duo is the episodes Host streams with With, once each of their own streams has been
+// watched Unlock minutes (30 when left out).
 type Duo struct {
 	Host     string   `yaml:"host"`
 	With     string   `yaml:"with"`
+	Unlock   *float64 `yaml:"unlock"`
 	Episodes []string `yaml:"episodes"`
 
 	// Shows are the loaded episodes, in the order of Episodes.
@@ -403,6 +408,19 @@ func (s *Streams) Voice(channel, line string) string {
 		return ""
 	}
 	return "assets/" + path.Join(s.Voices, channel, VoiceKey(line)+".ogg")
+}
+
+// duoUnlock is the minutes of each host's own streams watched a duo needs when unlock is
+// left out.
+const duoUnlock = 30
+
+// UnlockSeconds is how long each host's own streams must have been watched before the duo
+// streams.
+func (d *Duo) UnlockSeconds() float64 {
+	if d.Unlock == nil {
+		return duoUnlock * 60
+	}
+	return *d.Unlock * 60
 }
 
 // Channel is the channel with the id, or nil.
@@ -588,7 +606,9 @@ func (c *checker) streams() {
 		if a != nil && a.Puppet == "" {
 			c.errorf(diag.Shape, w+".actor", "actor %q has no puppet to stream with", ch.Actor)
 		}
-		c.file(w+".room", ch.Room)
+		if !ch.Guest || ch.Room != "" {
+			c.file(w+".room", ch.Room)
+		}
 		if !(ch.Frame.Bottom > ch.Frame.Top) || ch.Frame.Top < 0 {
 			c.errorf(diag.OutOfRange, w+".frame", "bottom must be below top, and top 0 or more")
 		}
@@ -598,7 +618,10 @@ func (c *checker) streams() {
 		if len(ch.Greet) > len(af.Steps) {
 			c.errorf(diag.OutOfRange, w+".greet", "one list for each affection step 0 to %d, not %d", s.MaxStep(), len(ch.Greet))
 		}
-		if len(ch.Episodes) == 0 {
+		switch {
+		case ch.Guest && len(ch.Episodes) > 0:
+			c.errorf(diag.Shape, w+".episodes", "a guest has no episodes: it streams only in a duo")
+		case !ch.Guest && len(ch.Episodes) == 0:
 			c.errorf(diag.Shape, w+".episodes", "a channel needs an episode")
 		}
 		for _, lines := range append(slices.Clone(ch.Greet), ch.First, ch.Stayed) {
@@ -621,6 +644,9 @@ func (c *checker) streams() {
 			continue
 		}
 		c.ref(w+".host", "channel", d.Host, ids[d.Host])
+		if h := s.Channel(d.Host); h != nil && h.Guest {
+			c.errorf(diag.Shape, w+".host", "%s is a guest: a guest hosts no duo, it is its with", d.Host)
+		}
 		c.ref(w+".with", "channel", d.With, ids[d.With])
 		if d.Host == d.With || pairs[[2]string{d.Host, d.With}] {
 			c.errorf(diag.Duplicate, w, "a duo is two channels, written once")
@@ -628,6 +654,9 @@ func (c *checker) streams() {
 		pairs[[2]string{d.Host, d.With}] = true
 		if len(d.Episodes) == 0 {
 			c.errorf(diag.Shape, w+".episodes", "a duo needs an episode")
+		}
+		if u := d.Unlock; u != nil && !(*u >= 0 && *u <= 100*60) {
+			c.errorf(diag.OutOfRange, w+".unlock", "want 0 to 6000 minutes of each host's streams watched, not %g", *u)
 		}
 		for _, e := range d.Shows {
 			c.episode(e, []string{d.Host, d.With})

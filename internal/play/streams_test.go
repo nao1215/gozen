@@ -48,7 +48,7 @@ channels:
   - {id: ann, actor: ann, tag: Gardening, tagline: Seeds every week, color: "#2a8c4a", room: x.png, frame: {cx: 373, top: 40, bottom: 640}, episodes: [streams/one.yaml], first: ["Welcome, {from}!"], stayed: ["Thanks, {from}."]}
   - {id: bo, actor: bo, tag: Cooking, room: x.png, frame: {cx: 373, top: 40, bottom: 640}, episodes: [streams/one.yaml]}
 duos:
-  - {host: ann, with: bo, episodes: [streams/duo.yaml]}
+  - {host: ann, with: bo, unlock: 0, episodes: [streams/duo.yaml]}
 `,
 	"streams/one.yaml": `title: Planting day
 lobby: [Beans today]
@@ -930,6 +930,80 @@ func TestStreamsStayedEarnsWithoutLines(t *testing.T) {
 	}
 }
 
+// TestStreamsWatchingUnlocksTheDuo: the time a channel's own stream is watched counts in
+// the save (not a duo's), and once each of a duo's hosts has been watched its unlock
+// minutes the duo streams when one of their streams ends: one card of the duo in place of
+// the two hosts' (slot.rest 0, every channel on the air), and the viewer watching one of
+// them sees that stream to its end.
+func TestStreamsWatchingUnlocksTheDuo(t *testing.T) {
+	fsys := streamsFS(t, "1")
+	fsys["data/streams.yaml"].Data = []byte(strings.NewReplacer("slot: {minutes: 0.01}", "slot: {minutes: 0.01, rest: 0}", "unlock: 0", "unlock: 0.01").Replace(string(fsys["data/streams.yaml"].Data)))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok || len(l.cards) != 2 {
+		t.Fatalf("a locked duo streams: %d cards", len(l.cards))
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	watch := func(id string) *streamWatch {
+		show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Key == id })].show
+		w := newStreamWatch(g, show, 100)
+		g.push(w)
+		return w
+	}
+	w := watch("ann")
+	wldFrames(t, g, 60)
+	if got := broadcast.Progress(g.st.Streams, "ann").Watched; got < 0.9 || got > 1.1 {
+		t.Fatalf("a second of ann's stream counts %v seconds", got)
+	}
+	w.leave(g)
+	broadcast.Progress(g.st.Streams, "ann").Watched = 0.6
+	w = watch("bo")
+	for i := 0; i < 3000 && slices.IndexFunc(g.desk.shows, func(s *broadcast.Show) bool { return len(s.Hosts) > 1 }) < 0; i++ {
+		wldFrames(t, g, 1)
+	}
+	if got := hosts(g.desk.shows); len(got) != 1 || got[0] != "ann+bo" {
+		t.Fatalf("on the air after both were watched: %v", got)
+	}
+	if w.show.Key != "bo" || w.ended && w.next < len(w.show.Beats) {
+		t.Fatalf("the stream of bo watched is cut (ended %v at beat %d of %d, %s)", w.ended, w.next, len(w.show.Beats), w.show.Key)
+	}
+	w.leave(g)
+	l.update(g)
+	if len(l.cards) != 1 || len(l.cards[0].show.Hosts) != 2 {
+		t.Fatalf("the lobby shows %d cards, not the duo's alone", len(l.cards))
+	}
+}
+
+// TestStreamsGuestInTheLobby: a guest has no card and is never listed offline; its duo with
+// its host is the host's card.
+func TestStreamsGuestInTheLobby(t *testing.T) {
+	for _, duo := range []string{"0", "1"} {
+		fsys := streamsFS(t, duo)
+		fsys["data/streams.yaml"].Data = []byte(strings.Replace(string(fsys["data/streams.yaml"].Data), "  - {id: bo, actor: bo, tag: Cooking, room: x.png, frame: {cx: 373, top: 40, bottom: 640}, episodes: [streams/one.yaml]}", "  - {id: bo, actor: bo, guest: true, frame: {cx: 373, top: 40, bottom: 640}}", 1))
+		t.Run(duo, func(t *testing.T) {
+			g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+			wldFrames(t, g, 40)
+			l, ok := g.stack[0].(*streamLobby)
+			if !ok || len(l.cards) != 1 || len(l.offline(g)) != 0 {
+				t.Fatalf("cards %d, offline %v", len(l.cards), l.offline(g))
+			}
+			if want := map[string]string{"0": "ann", "1": "ann+bo"}[duo]; l.cards[0].show.Key != want {
+				t.Fatalf("the card is %s, not %s", l.cards[0].show.Key, want)
+			}
+		})
+	}
+}
+
+// hosts are the keys of the shows.
+func hosts(shows []*broadcast.Show) []string {
+	var out []string
+	for _, s := range shows {
+		out = append(out, s.Key)
+	}
+	return out
+}
+
 // TestStreamsNoVoicesNoButton: outside a browser, a game without recorded voices has no
 // read-aloud button.
 func TestStreamsNoVoicesNoButton(t *testing.T) {
@@ -1292,7 +1366,7 @@ func TestStreamsStartAgain(t *testing.T) {
 	wldFrames(t, g, 40)
 	first := g.desk.shows[0]
 	wldFrames(t, g, int((first.Seconds()+3+5)*ebiten.DefaultTPS)) // past its end and a rest of 3 s
-	again := g.desk.shows[0]
+	again := g.desk.shows[slices.IndexFunc(g.desk.shows, func(s *broadcast.Show) bool { return s.Key == first.Key })]
 	if again == first || again.Key != first.Key || !again.Live(g.streamNow()) || !again.Start.Equal(first.Start.Add(seconds(first.Seconds()+3))) {
 		t.Fatalf("the stream does not start again after its rest: %v from %v", again.Start, first.Start)
 	}

@@ -2,6 +2,7 @@ package broadcast
 
 import (
 	"math/rand/v2"
+	"slices"
 	"testing"
 	"time"
 
@@ -29,7 +30,8 @@ func streams() *data.Streams {
 	for _, id := range []string{"a", "b", "c"} {
 		d.Channels = append(d.Channels, &data.Channel{ID: id, Shows: []*data.Episode{ep(id + "1"), ep(id + "2")}})
 	}
-	d.Duos = []*data.Duo{{Host: "a", With: "b", Shows: []*data.Episode{ep("ab1")}}}
+	unlocked := 0.0
+	d.Duos = []*data.Duo{{Host: "a", With: "b", Unlock: &unlocked, Shows: []*data.Episode{ep("ab1")}}}
 	return d
 }
 
@@ -242,32 +244,86 @@ func TestSlot(t *testing.T) {
 	}
 }
 
-// TestAgain: without slot.rest a stream that ended stays over; with it, the next stream of
-// the same channel or duo starts rest minutes after the end, from the episode the player has
-// not seen by then, and not before.
-func TestAgain(t *testing.T) {
+// TestTurn: without slot.rest a stream that ended stays over; with it, a channel's next
+// stream starts rest minutes after the end, from the episode the player has not seen by
+// then, and not before; a duo it may stream with (unlocked, its other host on the air on
+// its own, by live.duo_chance) takes both their places, and when the duo ends each host
+// streams on its own again.
+func TestTurn(t *testing.T) {
 	d := streams()
 	p := &rpg.Streams{}
-	s := newShow(d, d.Channels[:1], "a", d.Channels[0].Shows, 0)
-	s.Start = noon
+	rng := rand.New(rand.NewPCG(1, 2)) //nolint:gosec // reproducible draws
+	solo := func(i int) *Show {
+		s := newShow(d, d.Channels[i:i+1], d.Channels[i].ID, d.Channels[i].Shows, 0)
+		s.Start = noon
+		return s
+	}
 	end := noon.Add(22 * time.Second)
-	if Again(d, p, s, end.Add(time.Hour)) != nil {
-		t.Fatal("a stream starts again without slot.rest")
+	shows := []*Show{solo(0), solo(1), solo(2)}
+	if got := hosts(Turn(d, p, shows, end.Add(time.Hour), rng)); len(got) != 3 || got[0] != "a" {
+		t.Fatalf("a stream starts again without slot.rest: %v", got)
 	}
 	rest := 2.0
 	d.Slot.Rest = &rest
-	if Again(d, p, s, end.Add(119*time.Second)) != nil {
+	d.Live.DuoChance = 0
+	if got := Turn(d, p, shows, end.Add(119*time.Second), rng); got[0] != shows[0] {
 		t.Fatal("a stream starts again before its rest has passed")
 	}
-	MarkSeen(p, s, 0)
-	n := Again(d, p, s, end.Add(3*time.Minute))
-	if n == nil || !n.Start.Equal(end.Add(2*time.Minute)) || n.Episodes[0].Title != "a2" || n.Key != "a" {
-		t.Fatalf("the next stream %+v", n)
+	MarkSeen(p, shows[0], 0)
+	got := Turn(d, p, shows, end.Add(3*time.Minute), rng)
+	if a := got[slices.IndexFunc(got, func(s *Show) bool { return s.Key == "a" })]; !a.Start.Equal(end.Add(2*time.Minute)) || a.Episodes[0].Title != "a2" {
+		t.Fatalf("the next stream of a %+v", a)
 	}
-	duo := newShow(d, []*data.Channel{d.Channels[0], d.Channels[1]}, DuoKey("a", "b"), d.Duos[0].Shows, 0)
-	duo.Start = noon
-	if n := Again(d, p, duo, end.Add(2*time.Minute)); n == nil || len(n.Hosts) != 2 || n.Episodes[0].Title != "ab1" {
-		t.Fatalf("the duo's next stream %+v", n)
+	// a duo: a's stream ends while b streams on its own; the duo takes both their places
+	d.Live.DuoChance = 1
+	shows = []*Show{solo(0), solo(1), solo(2)}
+	shows[1].Start = end // b is on the air when a starts again
+	got = Turn(d, p, shows, end.Add(2*time.Minute), rng)
+	if h := hosts(got); len(h) != 2 || !slices.Contains(h, "a+b") || !slices.Contains(h, "c") {
+		t.Fatalf("the duo does not take a's and b's places: %v", h)
+	}
+	duo := got[slices.IndexFunc(got, func(s *Show) bool { return s.Key == "a+b" })]
+	if !duo.Start.Equal(end.Add(2*time.Minute)) || len(duo.Hosts) != 2 || duo.Episodes[0].Title != "ab1" {
+		t.Fatalf("the duo's stream %+v", duo)
+	}
+	// the duo ends: each host on its own again
+	after := duo.Start.Add(time.Duration((duo.Seconds() + rest*60 + 1) * float64(time.Second)))
+	if h := hosts(Turn(d, p, []*Show{duo}, after, rng)); len(h) != 2 || !slices.Contains(h, "a") || !slices.Contains(h, "b") {
+		t.Fatalf("after the duo: %v", h)
+	}
+}
+
+// TestDuoUnlock: a duo streams only once each of its hosts' own streams have been watched
+// its unlock minutes (30 when left out): not at the opening, nor when a stream ends.
+func TestDuoUnlock(t *testing.T) {
+	d := streams()
+	d.Duos[0].Unlock = nil // 30 minutes
+	p := &rpg.Streams{}
+	rng := rand.New(rand.NewPCG(1, 2)) //nolint:gosec // reproducible draws
+	if h := hosts(Lineup(d, p, noon, rng)); slices.Contains(h, "a+b") {
+		t.Fatalf("a locked duo streams at the opening: %v", h)
+	}
+	Progress(p, "a").Watched, Progress(p, "b").Watched = 30*60, 29*60
+	if Unlocked(d, p, d.Duos[0]) {
+		t.Fatal("unlocked with b watched 29 minutes")
+	}
+	Progress(p, "b").Watched = 30 * 60
+	if !Unlocked(d, p, d.Duos[0]) || !slices.Contains(hosts(Lineup(d, p, noon, rng)), "a+b") {
+		t.Fatal("not unlocked with both watched 30 minutes")
+	}
+}
+
+// TestTurnGoesOn: a stream of no length (timings too small to count) with no rest does not
+// start again at its own start, which would start it again for ever.
+func TestTurnGoesOn(t *testing.T) {
+	d := streams()
+	d.Timing = data.StreamTiming{Say: 1e-12, Chat: 1e-12, Ask: 1e-12}
+	rest := 0.0
+	d.Slot.Rest = &rest
+	s := newShow(d, d.Channels[:1], "a", d.Channels[0].Shows, 0)
+	s.Start = noon
+	if got := Turn(d, &rpg.Streams{}, []*Show{s}, noon.Add(time.Hour), rand.New(rand.NewPCG(1, 2))); got[0] != s { //nolint:gosec // reproducible draws
+		t.Fatalf("a stream of %v seconds starts again at %v", s.Seconds(), got[0].Start)
 	}
 }
 
@@ -294,16 +350,32 @@ func TestMarkSeenAtTheLimit(t *testing.T) {
 	}
 }
 
-// TestAgainGoesOn: a stream of no length (timings too small to count) with no rest does not
-// start again at its own start, which would start it again for ever.
-func TestAgainGoesOn(t *testing.T) {
+// TestGuest: a guest has no stream of its own and is never on the air but in a duo with its
+// host, which unlocks once the host's own streams have been watched its unlock minutes; the
+// lineup does not count the guest among the channels min_share asks for, and when the duo
+// ends the host streams on its own again.
+func TestGuest(t *testing.T) {
 	d := streams()
-	d.Timing = data.StreamTiming{Say: 1e-12, Chat: 1e-12, Ask: 1e-12}
+	d.Channels = append(d.Channels, &data.Channel{ID: "g", Guest: true})
+	unlock := 1.0
+	d.Duos = []*data.Duo{{Host: "a", With: "g", Unlock: &unlock, Shows: d.Duos[0].Shows}}
+	d.Live.Share, d.Live.MinShare = 0, 1
+	p := &rpg.Streams{Open: 1}
+	rng := rand.New(rand.NewPCG(1, 2)) //nolint:gosec // reproducible draws
+	if h := hosts(Lineup(d, p, noon, rng)); len(h) != 3 || slices.Contains(h, "g") || slices.Contains(h, "a+g") {
+		t.Fatalf("a guest streams, or its locked duo: %v", h)
+	}
+	Progress(p, "a").Watched = 60
+	h := hosts(Lineup(d, p, noon, rng))
+	if !slices.Contains(h, "a+g") || slices.Contains(h, "a") || len(h) != 3 {
+		t.Fatalf("the guest's duo once a was watched a minute: %v", h)
+	}
 	rest := 0.0
 	d.Slot.Rest = &rest
-	s := newShow(d, d.Channels[:1], "a", d.Channels[0].Shows, 0)
-	s.Start = noon
-	if n := Again(d, &rpg.Streams{}, s, noon.Add(time.Hour)); n != nil {
-		t.Fatalf("a stream of %v seconds starts again at %v", s.Seconds(), n.Start)
+	duo := Lineup(d, p, noon, rng)
+	duo = duo[slices.IndexFunc(duo, func(s *Show) bool { return s.Key == "a+g" }) : slices.IndexFunc(duo, func(s *Show) bool { return s.Key == "a+g" })+1]
+	d.Live.DuoChance = 0
+	if h := hosts(Turn(d, p, duo, noon.Add(time.Hour), rng)); len(h) != 1 || h[0] != "a" {
+		t.Fatalf("after the guest's duo: %v", h)
 	}
 }
