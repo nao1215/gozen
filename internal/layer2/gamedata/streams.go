@@ -51,7 +51,7 @@ type Streams struct {
 	Bounce StreamBounce `yaml:"bounce"`
 	// Crowd is the bot viewers of the chat.
 	Crowd StreamCrowd `yaml:"crowd"`
-	// Channels are the streamers, in the order the lobby lists them.
+	// Channels are the streamers (the lobby lists the live ones by their viewers).
 	Channels []*Channel `yaml:"channels"`
 	// Duos are the episodes two channels stream together.
 	Duos []*Duo `yaml:"duos"`

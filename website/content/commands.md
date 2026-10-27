@@ -649,7 +649,7 @@ no download or compilation. The destination must not exist or overlap an input.
 A game with `asset-policy.yaml` must first pass `gozen release`; export the
 resulting approved tree.
 
-Export copies `game.yaml`, YAML under `data/` and `lang/`, runtime asset formats
+Export copies `game.yaml`, YAML under `data/`, `lang/` and `streams/`, runtime asset formats
 under `assets/`, root license notices and the contents of `LICENSES/`. Other root
 directories, including `saves/` and `shots/`, are not copied. Hidden paths are
 excluded and symlinks are rejected.
@@ -676,7 +676,7 @@ Upload the contents of `site/` to a static HTTP or HTTPS host:
 ```text
 site/
   index.html
-  gozen-player.wasm
+  gozen-player.wasm.gz
   wasm_exec.js
   runtime.json
   runtime-licenses/
@@ -693,9 +693,13 @@ Go toolchain that built the player; export verifies both files' checksums.
 Opening the HTML directly with a `file:` URL is unsupported.
 
 Relative URLs support hosting under a subdirectory, such as `/games/my-game/`.
-The browser downloads the files listed in `game/files.json` before starting;
-large asset sets increase startup time and memory use. Images are copied without
-conversion. The file selection and approval requirements are the same as
+The player is served gzipped, which the page undoes as it downloads. Pictures
+become WebP (paletted pictures lossless) and other files that gzip makes smaller
+are served gzipped; `game/files.json` lists what each file is served as. The
+browser downloads the files listed there, the pictures and sounds last, and starts
+once the others have come; the recorded stream voices are fetched only as the watch
+view comes to their lines. Large asset sets still increase startup time and memory
+use. The file selection and approval requirements are the same as
 [desktop export](#desktop).
 
 Saves use browser local storage. They persist on the same origin (scheme, host
