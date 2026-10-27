@@ -71,6 +71,7 @@ type Reaction struct {
 type lexWord struct {
 	norm, text string
 	weight     float64
+	whole      bool
 }
 
 type entry struct {
@@ -87,6 +88,8 @@ type Mind struct {
 	rng  *rand.Rand
 	lex  map[string][]lexWord
 	tags []string // lexicon tags, sorted
+	// except are the normalized words that cancel each tag (Book except).
+	except map[string][]string
 
 	mood    float64
 	turn    int
@@ -125,13 +128,18 @@ func New(b *Book, id string, cfg Config) (*Mind, error) {
 		rng = rand.New(rand.NewPCG(1, 2)) //nolint:gosec // G404: reproducible line choice, not security
 	}
 	m := &Mind{
-		book: b, p: p, cfg: cfg, rng: rng, lex: map[string][]lexWord{},
+		book: b, p: p, cfg: cfg, rng: rng, lex: map[string][]lexWord{}, except: map[string][]string{},
 		mem: map[string]entry{}, cool: map[string]int{}, recent: map[string][]string{},
 	}
 	for tag, words := range b.doc.Lexicon {
 		m.tags = append(m.tags, tag)
 		for _, w := range words {
-			m.lex[tag] = append(m.lex[tag], lexWord{norm: Normalize(w.Text), text: w.Text, weight: w.Weight})
+			m.lex[tag] = append(m.lex[tag], lexWord{norm: Normalize(w.Text), text: w.Text, weight: w.Weight, whole: w.Whole})
+		}
+	}
+	for tag, words := range b.doc.Except {
+		for _, w := range words {
+			m.except[tag] = append(m.except[tag], Normalize(w))
 		}
 	}
 	sort.Strings(m.tags)
@@ -174,18 +182,52 @@ func (m *Mind) expire() {
 	}
 }
 
-// match finds the lexicon tags in normalized text.
-func (m *Mind) match(norm string, prefix string, found map[string]Tag) {
+// match finds the lexicon tags in normalized text. A whole word is looked for in raw,
+// the text as written, between word boundaries; a tag is not found when norm holds one
+// of its except words. raw is empty for the acrostic, which has no words.
+func (m *Mind) match(norm, raw string, prefix string, found map[string]Tag) {
 	if norm == "" {
 		return
 	}
 	for _, tag := range m.tags {
+		if slices.ContainsFunc(m.except[tag], func(x string) bool { return strings.Contains(norm, x) }) {
+			continue
+		}
 		for _, w := range m.lex[tag] {
-			if strings.Contains(norm, w.norm) {
+			if (w.whole && wholeWord(raw, w.text)) || (!w.whole && strings.Contains(norm, w.norm)) {
 				add(found, Tag{Name: prefix + tag, Score: w.weight, Slot: w.text})
 			}
 		}
 	}
+}
+
+// wholeWord reports whether text holds word, ignoring case, with no letter or digit
+// right before or after it.
+func wholeWord(text, word string) bool {
+	text, word = strings.ToLower(text), strings.ToLower(word)
+	edge := func(s string, last bool) bool {
+		if s == "" {
+			return true
+		}
+		r, _ := utf8.DecodeRuneInString(s)
+		if last {
+			r, _ = utf8.DecodeLastRuneInString(s)
+		}
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	}
+	for i := 0; word != ""; {
+		j := strings.Index(text[i:], word)
+		if j < 0 {
+			return false
+		}
+		at := i + j
+		if edge(text[:at], true) && edge(text[at+len(word):], false) {
+			return true
+		}
+		_, n := utf8.DecodeRuneInString(text[at:])
+		i = at + n
+	}
+	return false
 }
 
 // add keeps the most confident finding per tag.
@@ -211,14 +253,14 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 	text := s.Text
 	norm := Normalize(text)
 	found := map[string]Tag{}
-	m.match(norm, "", found)
+	m.match(norm, text, "", found)
 	if ls := lines(text); len(ls) >= 2 {
 		var heads strings.Builder
 		for _, l := range ls {
 			r, _ := utf8.DecodeRuneInString(l)
 			heads.WriteRune(r)
 		}
-		m.match(heads.String(), AcrosticPrefix, found)
+		m.match(heads.String(), "", AcrosticPrefix, found)
 	}
 	for _, t := range s.Tags {
 		add(found, Tag{Name: t, Score: 1})
@@ -292,7 +334,7 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 	if rule != nil {
 		delta += rule.Delta
 		out.Rule, out.Face = rule.ID, rule.Face
-		if l := m.pick(rule.Say); l != "" {
+		for _, l := range m.pickEntry(rule.Say) {
 			out.Lines = append(out.Lines, m.fill(l, e))
 		}
 		for _, r := range rule.Remember {
@@ -421,18 +463,32 @@ func (m *Mind) write(r memoryWrite, e *env) {
 
 // pick chooses a line, avoiding the previous one when there is a choice.
 func (m *Mind) pick(lines []string) string {
-	if len(lines) == 0 {
-		return ""
+	entries := make([]sayEntry, len(lines))
+	for i, l := range lines {
+		entries[i] = sayEntry{l}
 	}
-	choice := slices.DeleteFunc(slices.Clone(lines), func(l string) bool { return l == m.last })
-	if len(choice) == 0 {
-		choice = lines
+	if e := m.pickEntry(entries); e != nil {
+		return e[0]
 	}
-	m.last = choice[m.rng.IntN(len(choice))]
-	return m.last
+	return ""
 }
 
-// fill replaces {from}, {mood}, {slot.TAG} and {mem.KEY}.
+// pickEntry chooses an entry of a rule's say, avoiding the previous one (by its first
+// line) when there is a choice.
+func (m *Mind) pickEntry(entries []sayEntry) sayEntry {
+	if len(entries) == 0 {
+		return nil
+	}
+	choice := slices.DeleteFunc(slices.Clone(entries), func(e sayEntry) bool { return e[0] == m.last })
+	if len(choice) == 0 {
+		choice = entries
+	}
+	e := choice[m.rng.IntN(len(choice))]
+	m.last = e[0]
+	return e
+}
+
+// fill replaces {from}, {text}, {mood}, {slot.TAG} and {mem.KEY}.
 func (m *Mind) fill(l string, e *env) string {
 	var b strings.Builder
 	for {
@@ -447,6 +503,8 @@ func (m *Mind) fill(l string, e *env) string {
 		switch {
 		case f == "from":
 			b.WriteString(e.s.From)
+		case f == "text":
+			b.WriteString(e.s.Text)
 		case f == "mood":
 			fmt.Fprintf(&b, "%.0f", m.mood)
 		case strings.HasPrefix(f, "slot."):

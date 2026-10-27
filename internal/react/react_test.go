@@ -630,6 +630,9 @@ func TestBookErrors(t *testing.T) {
 		"tag with a field":               strings.Replace(clerk, "when: tag.greet > 0\n        say: [\"Hello", "when: tag > 0\n        say: [\"Hello", 1),
 		"mood with a field":              strings.Replace(clerk, "when: tag.rude > 0", "when: mood.x > 0", 1),
 		"a lexicon word of a map of two": strings.Replace(clerk, "greet: [hello, hi,", "greet: [{a: 1, b: 2}, hi,", 1),
+		"except of an unknown tag":       strings.Replace(clerk, "people:\n", "except: {nothing: [x]}\npeople:\n", 1),
+		"except of an empty word":        strings.Replace(clerk, "people:\n", "except: {greet: [\"!\"]}\npeople:\n", 1),
+		"an empty say entry":             strings.Replace(clerk, "say: [\"Goodbye\"]", "say: [[]]", 1),
 	}
 	for name, src := range cases {
 		if src == clerk {
@@ -672,4 +675,53 @@ func TestBookYAMLPaths(t *testing.T) {
 func atLeast(v any, n float64) bool {
 	f, ok := v.(float64)
 	return ok && f >= n
+}
+
+// TestWholeWordsExceptsAndLineLists checks a lexicon word matched only as a whole word
+// of the text as written, a tag cancelled by an except word, a rule saying a list of
+// lines in order, and {text}.
+func TestWholeWordsExceptsAndLineLists(t *testing.T) {
+	book, err := Parse([]byte(`
+lexicon:
+  cat: [{word: cat, whole: true}]
+  sun: [sun]
+except:
+  sun: [sunday]
+people:
+  - id: host
+    rules:
+      - id: cat
+        when: tag.cat > 0
+        say: [[Cats!, "You said: {text}"]]
+      - id: sun
+        when: tag.sun > 0
+        say: [Sunny.]
+    dodge:
+      unknown: [Hm.]
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := New(book, "host", Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		text string
+		want []string
+	}{
+		{"I like CATS", []string{"Hm."}},
+		{"a category", []string{"Hm."}},
+		{"my Cat, again", []string{"Cats!", "You said: my Cat, again"}},
+		{"the sun is out", []string{"Sunny."}},
+		{"see you sunday", []string{"Hm."}},
+	} {
+		r, err := m.React(Stimulus{Kind: KindSay, From: "viewer", Text: tc.text})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Join(r.Lines, "|") != strings.Join(tc.want, "|") {
+			t.Errorf("%q: lines %q, want %q", tc.text, r.Lines, tc.want)
+		}
+	}
 }
