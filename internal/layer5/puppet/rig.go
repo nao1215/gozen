@@ -14,7 +14,7 @@ import (
 
 	"github.com/nao1215/gozen/internal/layer1/picturelimit"
 
-	_ "golang.org/x/image/webp" // or WebP in a browser build (smaller to download)
+	_ "github.com/deepteams/webp" // or WebP in a browser build (smaller to download)
 
 	"github.com/nao1215/gozen/internal/layer2/puppetdef"
 	"github.com/nao1215/gozen/internal/layer5/picdecode"
@@ -100,9 +100,12 @@ func (l *loader) resolve(s *puppetdef.Spec) (*Rig, error) {
 	for _, name := range s.FaceNames() {
 		f := s.Faces[name]
 		face := Face{Name: name}
-		full := base // the whole face picture, for cutting its overlays
+		// The whole face picture, for cutting its overlays: made only when a whole
+		// picture of its eyes or mouth needs it, since a face drawn in a part would
+		// otherwise copy the base for each face.
+		full := func() *image.NRGBA { return base }
 		if f.Image != "" {
-			p, whole, err := l.pic(puppetdef.Pic{Image: f.Image, At: f.At, Area: f.Area}, base)
+			p, whole, err := l.pic(puppetdef.Pic{Image: f.Image, At: f.At, Area: f.Area}, full)
 			if err != nil {
 				return nil, fmt.Errorf("faces.%s: %w", name, err)
 			}
@@ -154,9 +157,9 @@ func (l *loader) resolve(s *puppetdef.Spec) (*Rig, error) {
 	return rig, nil
 }
 
-// pic resolves a picture against ref (the picture it is drawn over). It also
-// returns the whole picture with the patch applied.
-func (l *loader) pic(p puppetdef.Pic, ref *image.NRGBA) (*Patch, *image.NRGBA, error) {
+// pic resolves a picture against the picture it is drawn over, which under gives. It
+// also returns the whole picture with the patch applied, made when first asked for.
+func (l *loader) pic(p puppetdef.Pic, under func() *image.NRGBA) (*Patch, func() *image.NRGBA, error) {
 	img, err := l.read(p.Image)
 	if err != nil {
 		return nil, nil, err
@@ -168,8 +171,15 @@ func (l *loader) pic(p puppetdef.Pic, ref *image.NRGBA) (*Patch, *image.NRGBA, e
 		if !patch.Rect().In(bounds) {
 			return nil, nil, fmt.Errorf("%s at %v (%dx%d) lies outside the base %dx%d", p.Image, at, img.Bounds().Dx(), img.Bounds().Dy(), bounds.Dx(), bounds.Dy())
 		}
-		return patch, over(ref, patch), nil
+		var whole *image.NRGBA
+		return patch, func() *image.NRGBA {
+			if whole == nil {
+				whole = over(under(), patch)
+			}
+			return whole
+		}, nil
 	}
+	ref := under()
 	if img.Bounds().Size() != bounds.Size() {
 		return nil, nil, fmt.Errorf("%s is %dx%d: give at, or make it as large as the base (%dx%d)", p.Image, img.Bounds().Dx(), img.Bounds().Dy(), bounds.Dx(), bounds.Dy())
 	}
@@ -187,7 +197,7 @@ func (l *loader) pic(p puppetdef.Pic, ref *image.NRGBA) (*Patch, *image.NRGBA, e
 	if !ok {
 		return nil, nil, fmt.Errorf("%s does not differ from the picture under it", p.Image)
 	}
-	return &patch, img, nil
+	return &patch, func() *image.NRGBA { return img }, nil
 }
 
 // opaque reports whether a picture has no transparency at all, as image
