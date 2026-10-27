@@ -321,6 +321,92 @@ scenarios:
       - eval: "document.body.dataset.total"
   - assert: {value: {json: {path: '$', equals: "true"}}}
 
+- name: lines read by speech synthesis follow one another
+  tags: [web]
+  services:
+  - name: site
+    command: >-
+      python3 -c "from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler; from pathlib import Path; s=ThreadingHTTPServer(('127.0.0.1',0),SimpleHTTPRequestHandler); Path('address').write_text('http://127.0.0.1:'+str(s.server_port)); s.serve_forever()"
+    ready: {file: address, store: origin, timeout: 5s}
+  steps:
+  - fixture:
+      file: game/game.yaml
+      content: "schema_version: 9\nid: stream-speech\ntitle: Speech\nlanguage: en\nstart: {location: booth, gold: 100}\nstreams: data/streams.yaml\nreactions: {host: talk.yaml}\n"
+  - fixture:
+      file: game/data/world.yaml
+      content: "actors: {host: {name: Host, puppet: p/puppet.yaml}}\nlocations: {booth: {name: Booth, stream: lobby}}\n"
+  # a voices folder, so the lines are read aloud from the start, but no voice of these lines:
+  # each is read by speech synthesis, one after another
+  - fixture:
+      file: game/data/streams.yaml
+      content: "voices: voice\ntiming: {say: 1, per_char: 0, chat: 1, ask: 10}\ntips: [10]\ncrowd: {names: [leaf], lines: [Hi], tip_lines: [Here], rate: 0.1}\nchannels: [{id: host, actor: host, room: room.png, frame: {cx: 32, top: 0, bottom: 96}, episodes: [streams/one.yaml]}]\n"
+  - fixture: {file: game/streams/one.yaml, content: "title: Talk\nparts: [[{say: One.}, {say: Two.}, {say: Three.}, {say: Four.}, {say: Five.}, {say: Six.}, {say: Seven.}, {say: Eight.}]]\n"}
+  - fixture: {file: game/assets/talk.yaml, content: "people:\n  - id: host\n    rules:\n      - {id: tip, kind: tip, say: [\"Thanks, {from}!\"]}\n"}
+  - fixture: {file: game/assets/voice/host/0000000000000000.ogg, from: fixtures/game/assets/tone.ogg}
+  - fixture: {file: game/assets/p/puppet.yaml, content: "base: base.png\nface: normal\nfaces: {normal: {}}\n"}
+  - fixture: {file: game/assets/p/base.png, from: fixtures/puppet/base.png}
+  - fixture: {file: game/assets/room.png, from: fixtures/game/assets/mote.png}
+  - run:
+      command: 'gozen export game --target web --out site/games/speech --runtime "${env:GOZEN_WEB_RUNTIME}" --format jsonl'
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: $.status, equals: ok}
+  # the browser's speech synthesis as Chrome's can be: still speaking after an utterance has
+  # ended (its end event come), until it is cancelled, and dropping unsaid an utterance
+  # spoken just after a cancel
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/site/games/speech/'
+      - wait_visible: 'body:not(:has(#loading))'
+      - eval: |
+          window.synth = {
+            speaking: false, pending: false, delivered: [], dropped: [], quiet: 0,
+            getVoices() { return []; },
+            addEventListener() {}, removeEventListener() {}, resume() {},
+            speak(u) {
+              if (performance.now() < this.quiet) { this.dropped.push(u.text); return; }
+              this.delivered.push(u.text);
+              this.speaking = true;
+              setTimeout(() => { if (u.onend) u.onend({type: 'end'}); }, 300);
+            },
+            cancel() { this.quiet = performance.now() + 50; this.speaking = false; },
+          };
+          Object.defineProperty(window, 'speechSynthesis', {value: synth, configurable: true}); true
+      - eval: *controls
+      - eval: |
+          (async () => {
+            await key('Enter');
+            await key('Enter');
+            await key('Enter');
+            for (let i = 0; i < 300 && synth.delivered.length < 3; i++) await testFrames(3);
+            // a tip with a message: its message read out, then the reply to it
+            await key('ArrowDown');
+            await key('Enter');
+            for (const c of 'hi') {
+              const canvas = document.querySelector('canvas');
+              canvas.dispatchEvent(new KeyboardEvent('keydown', {code: 'Key' + c.toUpperCase(), key: c, bubbles: true}));
+              await testFrames(2);
+              canvas.dispatchEvent(new KeyboardEvent('keyup', {code: 'Key' + c.toUpperCase(), key: c, bubbles: true}));
+              await testFrames(4);
+            }
+            await key('Enter');
+            const after = () => synth.delivered.slice(synth.delivered.findIndex(t => t.includes('hi')));
+            for (let i = 0; i < 400 && after().length < 3; i++) await testFrames(3);
+            document.body.dataset.said = JSON.stringify({after: after(), dropped: synth.dropped});
+          })(); true
+      - wait_visible: 'body[data-said]'
+      - eval: "JSON.parse(document.body.dataset.said)"
+  # each line is said, the tip's message, then the reply to it, then the show's next line
+  - assert:
+      value:
+        json:
+        - {path: $.dropped, equals: []}
+        - {path: '$.after[0]', equals: "\u201chi\u201d"}
+        - {path: '$.after[1]', equals: "Thanks, Nameless viewer!"}
+
 - name: a page starts however its pieces come and keeps the game running as media come late
   tags: [web]
   services:

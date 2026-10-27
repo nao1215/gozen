@@ -86,30 +86,52 @@ func speak(text, language string, pitch, rate float64) func() bool {
 	})
 	u.Set("onend", end)
 	u.Set("onerror", end)
-	start := func() {
+	// gone reports whether the line is not to be read: ended, or the reading stopped
+	// while it waited.
+	gone := func() bool {
 		mu.Lock()
-		gone := ended
-		if !gone && silenced.Load() != asked { // the reading stopped while it waited
-			ended, gone = true, true
+		defer mu.Unlock()
+		if !ended && silenced.Load() != asked {
+			ended = true
 			u.Set("onend", js.Null())
 			u.Set("onerror", js.Null())
 			end.Release()
 		}
-		mu.Unlock()
-		if gone {
+		return ended
+	}
+	start := func() {
+		if gone() {
 			return
 		}
 		if v := voiceFor(synth, language); !v.IsUndefined() {
 			u.Set("voice", v)
 		}
 		// A line left in the queue (one whose end never came) would hold this one back,
-		// and a phone may keep the speech paused after the page was in the background.
+		// and Chrome may still say it is speaking after a line has ended; a phone may
+		// keep the speech paused after the page was in the background.
 		if synth.Get("speaking").Bool() || synth.Get("pending").Bool() {
-			synth.Call("cancel")
+			cancelSpeech(synth)
 		}
-		synth.Call("resume")
-		speaking = u
-		synth.Call("speak", u)
+		say := func() {
+			if gone() {
+				return
+			}
+			synth.Call("resume")
+			speaking = u
+			synth.Call("speak", u)
+		}
+		wait := hushed - js.Global().Get("performance").Call("now").Float()
+		if wait <= 0 {
+			say()
+			return
+		}
+		var later js.Func
+		later = js.FuncOf(func(js.Value, []js.Value) any {
+			later.Release()
+			say()
+			return nil
+		})
+		js.Global().Call("setTimeout", later, wait)
 	}
 	if synth.Call("getVoices").Length() > 0 {
 		start()
@@ -231,5 +253,18 @@ func whenHidden(f func()) {
 // stopSpeaking stops reading aloud.
 func stopSpeaking() {
 	silenced.Add(1)
-	js.Global().Get("speechSynthesis").Call("cancel")
+	cancelSpeech(js.Global().Get("speechSynthesis"))
+}
+
+// hushed is when (the page's performance.now, in milliseconds) a line may be spoken after
+// the last cancel: Chrome drops unsaid a line spoken just after one.
+var hushed float64
+
+// cancelGap is how long a line waits after a cancel, in milliseconds.
+const cancelGap = 100
+
+// cancelSpeech cancels the lines being read and those waiting.
+func cancelSpeech(synth js.Value) {
+	synth.Call("cancel")
+	hushed = js.Global().Get("performance").Call("now").Float() + cancelGap
 }

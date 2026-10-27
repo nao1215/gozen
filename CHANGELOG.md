@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.14.1 - 2026-10-28
+
+- Read aloud the stream line after a tip's message in a browser: Chrome can still say it is speaking after a line has ended, and the line spoken just after the queue was cleared was dropped unsaid; a line now waits a tenth of a second after a cancel before it is spoken.
+
 ## v0.14.0 - 2026-10-28
 
 - Stream a slot of episodes (ADR 0052): a live channel plays its episodes one after another from the next unseen one until `slot.minutes` (60 by default) have passed, says one of the channel's `bridges` between two episodes, marks each episode seen as it is watched and ends with a thanks, and with `slot.rest` starts the next stream after that many minutes; while the lines are read aloud a browser holds a screen wake lock.
