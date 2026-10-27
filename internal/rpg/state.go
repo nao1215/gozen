@@ -20,6 +20,8 @@ type State struct {
 	LastBattle *BattleOutcome `json:"last_battle,omitempty"`
 	// Reactions stores per-speaker interpreter memory; event execution owns its contents.
 	Reactions map[string][]byte `json:"reactions,omitempty"`
+	// Streams is the progress of the live streams (nil: none yet).
+	Streams *Streams `json:"streams,omitempty"`
 	Actors    map[string]*Actor `json:"actors"` // everyone who has joined, by id
 	Party     []string          `json:"party"`
 	Items     map[string]int    `json:"items"`

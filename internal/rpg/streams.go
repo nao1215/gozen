@@ -1,0 +1,25 @@
+package rpg
+
+// Streams is the progress of the live streams (ADR 0048), kept by internal/layer3/broadcast.
+type Streams struct {
+	// Open is when the game was last open, in Unix seconds (0: never).
+	Open int64 `json:"open,omitempty"`
+	// Viewer is the name the streamers call the player.
+	Viewer string `json:"viewer,omitempty"`
+	// Channels are the progress of each channel by its id.
+	Channels map[string]*ChannelProgress `json:"channels,omitempty"`
+	// Duos are the next episode of each duo by its key (host+with).
+	Duos map[string]int `json:"duos,omitempty"`
+}
+
+// ChannelProgress is what a channel remembers of the player.
+type ChannelProgress struct {
+	// Next is the next episode the player has not seen.
+	Next int `json:"next,omitempty"`
+	// Points are the affection points.
+	Points float64 `json:"points,omitempty"`
+	// Day is the last day visited (days since 1970-01-01 in local time, 0: never) and
+	// Run the number of days in a row up to it.
+	Day int `json:"day,omitempty"`
+	Run int `json:"run,omitempty"`
+}
