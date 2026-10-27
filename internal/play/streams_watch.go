@@ -319,12 +319,12 @@ func (w *streamWatch) voiced(g *Game) {
 	w.busy, w.talk[w.captionWho] = end.Add(voiceGap+w.hold), end
 }
 
-// The times of a caption: at least captionMin before the next step, whatever the line's
+// The times of a caption: at least captionLeast before the next step, whatever the line's
 // timing or voice (a short line would go before it is read; the watch view lags the
 // stream's clock for it as for a voice), and captionLinger after the chat beat that
 // follows its line begins.
 const (
-	captionMin    = 2500 * time.Millisecond
+	captionLeast  = 2500 * time.Millisecond
 	captionLinger = 1500 * time.Millisecond
 )
 
@@ -735,7 +735,7 @@ func (w *streamWatch) update(g *Game) {
 			w.busy = now.Add(voiceGap + w.hold)
 			w.talk[w.captionWho] = now
 		}
-		if !now.Before(w.busy) && !now.Before(w.said.Add(captionMin)) {
+		if !now.Before(w.busy) && !now.Before(w.said.Add(captionLeast)) {
 			w.spoken, w.voice, w.hold = nil, nil, 0
 			w.step(g)
 		}

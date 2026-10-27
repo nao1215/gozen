@@ -447,7 +447,7 @@ func TestStreamsLineAt(t *testing.T) {
 	}
 }
 
-// TestStreamsCaptionTimes: the watch view shows a line's caption at least captionMin before
+// TestStreamsCaptionTimes: the watch view shows a line's caption at least captionLeast before
 // the next step, even when the line's timing is shorter, and takes it away captionLinger
 // after the chat beat that follows it begins.
 func TestStreamsCaptionTimes(t *testing.T) {
@@ -478,8 +478,8 @@ func TestStreamsCaptionTimes(t *testing.T) {
 	if said.IsZero() || next.IsZero() {
 		t.Fatal("the line and the chat after it never come")
 	}
-	if g.db.Streams.Timing.LineSeconds("Hello, everyone.") >= captionMin.Seconds() || next.Sub(said) < captionMin {
-		t.Fatalf("a short line moves on after %v, before %v", next.Sub(said), captionMin)
+	if g.db.Streams.Timing.LineSeconds("Hello, everyone.") >= captionLeast.Seconds() || next.Sub(said) < captionLeast {
+		t.Fatalf("a short line moves on after %v, before %v", next.Sub(said), captionLeast)
 	}
 	if w.shownCaption(g) != "Hello, everyone." {
 		t.Fatal("the caption goes with the chat beat")
