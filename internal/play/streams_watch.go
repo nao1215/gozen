@@ -1066,9 +1066,9 @@ func (w *streamWatch) tipField(g *Game) (x, y, fw, fh float64) {
 }
 
 // controlRect is where a control is drawn: at the bottom of the chat column, the full
-// screen's at the top of it (at the top right of the screen in full screen).
+// screen's on the stage, at its bottom right.
 func (w *streamWatch) controlRect(g *Game, c [2]int) (x, y, cw, ch float64) {
-	sw, sh := g.screen()
+	_, sh := g.screen()
 	lay := g.watchLayout()
 	cx, right := lay.colX+14, lay.colX+lay.colW
 	switch watchControl(c[0]) {
@@ -1079,14 +1079,40 @@ func (w *streamWatch) controlRect(g *Game, c [2]int) (x, y, cw, ch float64) {
 		return cx, sh - 58, lay.colW - 170, 42
 	case ctlTip:
 		return right - 150, sh - 58, 64, 42
-	case ctlFull:
-		if g.cfg.StreamFull {
-			return sw - 86, 10, 72, 28
+	case ctlFull: // at the bottom right of the stage, clear of the chat over it in full screen
+		x := lay.stageW
+		if g.cfg.StreamFull && !g.view.tall {
+			x = lay.colX
 		}
-		return right - 86, lay.colTop + 5, 72, 28
+		return x - fullGap - fullSize, lay.stageY + lay.stageH - fullGap - fullSize, fullSize, fullSize
 	case ctlSpeak:
 	}
 	return right - 80, sh - 58, 66, 42
+}
+
+// The full screen's button on the stage: fullSize square (a finger's size), fullGap from
+// the stage's corner.
+const fullSize, fullGap = 44.0, 10.0
+
+// drawFullButton draws the full screen's button at x, y, size square: on a see-through
+// round ground, four corners pointing out to go to the full screen, in to come back (full),
+// ringed when chosen with the keys.
+func drawFullButton(dst *ebiten.Image, x, y, size float64, full, focused bool) {
+	cx, cy, r := float32(x+size/2), float32(y+size/2), float32(size/2)
+	gfx.FillCircle(dst, cx, cy, r, withAlpha(colorBlack, 0x80), true)
+	if focused {
+		gfx.StrokeCircle(dst, cx, cy, r-1, 2, streamBrand, true)
+	}
+	d, l := float32(size*0.2), float32(size*0.12) // the corners' distance from the middle, their arms
+	for _, s := range [][2]float32{{-1, -1}, {1, -1}, {-1, 1}, {1, 1}} {
+		px, py := cx+s[0]*d, cy+s[1]*d // the corner
+		ax, ay := -s[0]*l, -s[1]*l     // its arms point back to the middle (the full screen)
+		if full {                      // or away from it, the corner in by an arm (back)
+			px, py, ax, ay = px-s[0]*l, py-s[1]*l, s[0]*l, s[1]*l
+		}
+		gfx.StrokeLine(dst, px, py, px+ax, py, 2.5, streamPanel, true)
+		gfx.StrokeLine(dst, px, py, px, py+ay, 2.5, streamPanel, true)
+	}
 }
 
 // drawSpeaker draws a speaker 22 wide from x, centered on cy: with sound waves when
@@ -1180,8 +1206,8 @@ func (w *streamWatch) drawPlate(g *Game, dst *ebiten.Image, lay watchLayout, y f
 			tw = gfx.TextWidth(tag, tagSize) + 12
 		}
 		x, top := 12.0, bottom-10-h
-		pw := min(nw+tw+24, lay.stageW-24)
-		if nw+tw+24 > pw { // no room for the tag: the name takes the plate
+		pw := min(nw+tw+24, lay.stageW-24-fullGap-fullSize) // clear of the full screen's button
+		if nw+tw+24 > pw {                                  // no room for the tag: the name takes the plate
 			tw = 0
 		}
 		gfx.FillRoundRect(dst, float32(x), float32(top), float32(pw), float32(h), 4, c.Color.Or(streamBrand))
@@ -1251,7 +1277,8 @@ func (w *streamWatch) drawCaption(g *Game, dst *ebiten.Image, lay watchLayout, y
 	x, stw, sth, size := lay.capX, lay.capW, lay.capH, lay.capSize
 	lines := gfx.Wrap(caption, size, stw*lay.capShare)
 	lh := gfx.LineHeight(size)
-	top := min(y+sth*0.95, bottom-6) - float64(len(lines))*lh
+	_, fy, _, _ := w.controlRect(g, [2]int{int(ctlFull), 0}) // over the full screen's button
+	top := min(y+sth*0.95, bottom-6, fy-6) - float64(len(lines))*lh
 	if len(w.show.Hosts) > 1 {
 		c := w.show.Hosts[w.captionWho]
 		name := g.channelName(c)
@@ -1378,13 +1405,7 @@ func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, lay watchLayout, sh
 			w.speaker.draw(dst, fmt.Sprint(on, ink), x+8, y+ch/2-12, 24, 24, func(img *ebiten.Image) { drawSpeaker(img, 0, 12, on, ink) })
 			gfx.DrawTextLeft(dst, label, x+34, y+12, 13, ink)
 		case ctlFull:
-			label := lang.T("全画面")
-			if g.cfg.StreamFull {
-				label = lang.T("通常表示")
-			}
-			gfx.FillRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, streamPage)
-			gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, 1.5, edge)
-			gfx.DrawText(dst, label, x+cw/2, y+5, 13, streamInk2)
+			drawFullButton(dst, x, y, cw, g.cfg.StreamFull, focused)
 		}
 	}
 	if w.tips {
