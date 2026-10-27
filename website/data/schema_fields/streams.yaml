@@ -65,7 +65,7 @@ Duo:
 Episode:
   _: "One stream: its title, the lines of its lobby card, and its parts. An episode shorter than 20 minutes is warned of."
   title: "The title shown under the stream."
-  lobby: "Short lines for the lobby card, shown in turn. The title is shown when there are none."
+  lobby: "Short lines under the show's lobby card, shown in turn. Without them the card shows the channel's tagline, or its tag; it never shows the title."
   parts: "The parts, each a list of beats played in order."
 Beat:
   _: "One beat: `say`, `chat`, `ask`, or the channel ID of the other host of a duo with a line."

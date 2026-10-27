@@ -214,8 +214,8 @@ type Duo struct {
 	Shows []*Episode `yaml:"-"`
 }
 
-// Episode is one stream: its title, the short lines of its lobby card (the title when
-// there are none) and its parts.
+// Episode is one stream: its title (shown under the watch view), the short lines of its
+// lobby card (the channel's tagline or tag when there are none) and its parts.
 type Episode struct {
 	Title string   `yaml:"title"`
 	Lobby []string `yaml:"lobby"`

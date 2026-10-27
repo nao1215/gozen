@@ -1,6 +1,7 @@
 package play
 
 import (
+	"cmp"
 	"fmt"
 	"strconv"
 	"strings"
@@ -330,9 +331,10 @@ func (l *streamLobby) drawCard(g *Game, dst *ebiten.Image, c *lobbyCard, i int, 
 	g.drawAvatar(dst, host, x+pad, my, 36)
 	tx := x + 46 + pad
 	gfx.DrawTextLeft(dst, gfx.Ellipsis(g.showName(c.show), size+1, w-60), tx, my, size+1, streamInk)
-	sub := g.db.Tr(c.show.Episode.Title)
-	if i == 0 && len(c.show.Episode.Lobby) > 0 {
-		sub = g.db.Tr(c.show.Episode.Lobby[(l.age/300)%len(c.show.Episode.Lobby)])
+	// the episode's lobby lines in turn, else the channel's tagline or tag (never the title)
+	sub := g.db.Tr(cmp.Or(host.Tagline, host.Tag))
+	if lines := c.show.Episode.Lobby; len(lines) > 0 {
+		sub = g.db.Tr(lines[(l.age/300)%len(lines)])
 	}
 	gfx.DrawTextLeft(dst, gfx.Ellipsis(sub, size-1, w-60), tx, my+size+6, size-1, streamInk2)
 	if i == 0 {
