@@ -159,6 +159,51 @@ scenarios:
   - assert:
       image: {path: restored.png, format: png}
 
+- name: a stream export carries its recorded voices and starts
+  tags: [web]
+  services:
+  - name: site
+    command: >-
+      python3 -c "from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler; from pathlib import Path; s=ThreadingHTTPServer(('127.0.0.1',0),SimpleHTTPRequestHandler); Path('address').write_text('http://127.0.0.1:'+str(s.server_port)); s.serve_forever()"
+    ready: {file: address, store: origin, timeout: 5s}
+  steps:
+  - fixture:
+      file: game/game.yaml
+      content: "schema_version: 9\nid: stream-voices\ntitle: Voices\nlanguage: en\nstart: {location: booth}\nstreams: data/streams.yaml\n"
+  - fixture:
+      file: game/data/world.yaml
+      content: "actors: {host: {name: Host, puppet: p/puppet.yaml}}\nlocations: {booth: {name: Booth, stream: lobby}}\n"
+  - fixture:
+      file: game/data/streams.yaml
+      content: "voices: voice\ntiming: {say: 2, per_char: 0.1, chat: 2, ask: 10}\ntips: [10]\ncrowd: {names: [leaf], lines: [Hi], tip_lines: [Here], rate: 0.5}\nchannels: [{id: host, actor: host, room: room.png, frame: {cx: 32, top: 0, bottom: 96}, episodes: [streams/one.yaml]}]\n"
+  - fixture: {file: game/streams/one.yaml, content: "title: Listen\nparts: [[{say: 'Hello, listener.'}, {chat: [leaf, Hi there]}, {say: 'Hello, listener.'}, {say: 'Hello, listener.'}]]\n"}
+  - fixture: {file: game/assets/p/puppet.yaml, content: "base: base.png\nface: normal\nfaces: {normal: {}}\n"}
+  - fixture: {file: game/assets/p/base.png, from: fixtures/puppet/base.png}
+  - fixture: {file: game/assets/room.png, from: fixtures/game/assets/mote.png}
+  # the voice of "Hello, listener." (the first 16 hex digits of its SHA-1)
+  - fixture: {file: game/assets/voice/host/4710afdb1942b927.ogg, from: fixtures/game/assets/tone.ogg}
+  # the voice is the voice of a line: no GZN0119
+  - run: {command: 'gozen check game'}
+  - assert:
+      exit_code: 0
+      stderr: {not_contains: GZN0119}
+  - run:
+      command: 'gozen export game --target web --out site/games/voices --runtime "${env:GOZEN_WEB_RUNTIME}" --format jsonl'
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: $.status, equals: ok}
+  - assert:
+      file: {path: site/games/voices/game/files.json, contains: 'assets/voice/host/4710afdb1942b927.ogg'}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/site/games/voices/'
+      - wait_visible: 'body:not(:has(#loading))'
+      - eval: "goZenLoad.files.total > 0 && goZenLoad.files.done === goZenLoad.files.total"
+  - assert: {value: {equals: true}}
+
 - name: web export requires a runtime option
   steps:
   - run: {command: 'gozen export game --target web --out out'}
