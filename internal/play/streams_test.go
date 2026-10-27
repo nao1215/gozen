@@ -562,6 +562,20 @@ func TestStreamsVoiceWaitsForTheLine(t *testing.T) {
 	}
 }
 
+// tonePCM is the test tone as a voice clip.
+func tonePCM(t *testing.T) []byte {
+	t.Helper()
+	tone, err := os.ReadFile("testdata/tone.ogg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pcm, err := sound.VoiceClip(fstest.MapFS{"tone.ogg": {Data: tone}}, "tone.ogg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pcm
+}
+
 // TestStreamsQuestionWaitsAfterTheVoice: a question read aloud gives the viewers timing.ask
 // after its line ends, whether speech synthesis says it has ended or its recorded voice
 // loads late (a browser still fetching it) and then plays.
@@ -588,14 +602,7 @@ func TestStreamsQuestionWaitsAfterTheVoice(t *testing.T) {
 	})
 	t.Run("a voice loaded late", func(t *testing.T) {
 		g, w := asked(t)
-		tone, err := os.ReadFile("testdata/tone.ogg")
-		if err != nil {
-			t.Fatal(err)
-		}
-		pcm, err := sound.VoiceClip(fstest.MapFS{"tone.ogg": {Data: tone}}, "tone.ogg")
-		if err != nil {
-			t.Fatal(err)
-		}
+		pcm := tonePCM(t)
 		v := &voiceLoad{file: "assets/voice/ann/late.ogg", done: make(chan struct{})}
 		w.voice = v
 		wldFrames(t, g, 1)
@@ -604,6 +611,18 @@ func TestStreamsQuestionWaitsAfterTheVoice(t *testing.T) {
 		wldFrames(t, g, 1)
 		if want := g.streamNow().Add(seconds(sound.ClipSeconds(pcm)) + voiceGap + seconds(g.db.Streams.Timing.Ask)); w.ask == nil || w.busy.Before(want.Add(-time.Second/ebiten.DefaultTPS)) {
 			t.Fatalf("the answers close at %v, before %v (asking: %v)", w.busy, want, w.ask != nil)
+		}
+	})
+	t.Run("a voice past its limit", func(t *testing.T) {
+		g, w := asked(t)
+		v := &voiceLoad{file: "assets/voice/ann/late.ogg", done: make(chan struct{}), pcm: tonePCM(t)}
+		limit := g.streamNow()
+		w.voice, w.limit, w.busy = v, limit, limit.Add(w.hold)
+		wldFrames(t, g, 1)
+		close(v.done) // after its limit: the line is not read any more
+		wldFrames(t, g, 1)
+		if want := limit.Add(seconds(g.db.Streams.Timing.Ask)); !w.busy.Equal(want) || w.spoken != nil {
+			t.Fatalf("a voice past its limit moves the answers' end from %v to %v", want, w.busy)
 		}
 	})
 }

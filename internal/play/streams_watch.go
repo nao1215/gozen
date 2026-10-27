@@ -42,6 +42,9 @@ type streamWatch struct {
 	// hold is how long the next step waits after the line said ends, read aloud or not:
 	// timing.ask for a question, for the viewers to answer.
 	hold time.Duration
+	// limit is when the line read aloud is given up: its voice still loading or its
+	// speech not reported ended (a line whose voice does not come lasts until then).
+	limit time.Time
 	// spoken reports the end of the line read aloud (nil: none is being read), and voice
 	// is the recorded voice of the line said while it loads (nil: none).
 	spoken func() bool
@@ -261,8 +264,8 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 		// the line waits for its voice to load (a browser may still be fetching it), then
 		// for it to end
 		if w.voice = loadVoice(g.db.FS, f); !w.voice.loaded() {
-			limit := now.Add(seconds(5 + 0.4*float64(runes)))
-			w.busy, w.talk[l.host] = limit.Add(w.hold), limit
+			w.limit = now.Add(seconds(5 + 0.4*float64(runes)))
+			w.busy, w.talk[l.host] = w.limit.Add(w.hold), w.limit
 		}
 		w.voiced(g)
 		return
@@ -282,8 +285,8 @@ func (w *streamWatch) readAloud(g *Game, host int, text string) {
 		language = "ja-JP"
 	}
 	w.spoken = speak(strings.NewReplacer("「", "", "」", "", "『", "", "』", "").Replace(text), language, v.Pitch, v.Rate)
-	limit := g.streamNow().Add(seconds(5 + 0.4*float64(utf8.RuneCountInString(text))))
-	w.busy, w.talk[host] = limit.Add(w.hold), limit
+	w.limit = g.streamNow().Add(seconds(5 + 0.4*float64(utf8.RuneCountInString(text))))
+	w.busy, w.talk[host] = w.limit.Add(w.hold), w.limit
 }
 
 // voiced plays the recorded voice of the line said once it has loaded, the next step
@@ -697,6 +700,10 @@ func (w *streamWatch) update(g *Game) {
 		if !now.Before(w.nextTip) {
 			w.nextTip = now.Add(time.Duration(60+g.desk.rng.IntN(90)) * time.Second)
 			w.botTip(g)
+		}
+		if (w.voice != nil || w.spoken != nil) && !now.Before(w.limit) {
+			// given up: a voice or speech that ends later does not move the next step
+			w.voice, w.spoken = nil, nil
 		}
 		w.voiced(g)
 		if w.spoken != nil && w.spoken() {
