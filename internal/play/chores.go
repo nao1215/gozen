@@ -11,9 +11,21 @@ import (
 )
 
 // idle reports whether the game rests on a screen the autosave is written on.
-func (g *Game) idle() bool {
-	if g.st == nil || g.replaying || g.busy() || g.fadeT > 0 || len(g.stack) != 1 {
+func (g *Game) idle() bool { return len(g.stack) == 1 && g.rests() && !g.busy() }
+
+// rests reports whether the game rests on a screen the autosave is written on, under at
+// most screens that do not change the state: the watch view, the menu and the settings
+// (keepOpen writes the time the game is open there).
+func (g *Game) rests() bool {
+	if g.st == nil || g.replaying || g.fadeT > 0 || len(g.stack) == 0 || g.req != nil || g.talk.active || g.events != nil && g.events.Running() {
 		return false
+	}
+	for _, s := range g.stack[1:] {
+		switch s.(type) {
+		case *streamWatch, *menu, *configScreen:
+		default:
+			return false
+		}
 	}
 	switch g.stack[0].(type) {
 	case *field, *dungeonScene, *stageScene, *atlasScene, *streamLobby:

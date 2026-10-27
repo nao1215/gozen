@@ -222,8 +222,9 @@ func TestStreamsDuoAndAway(t *testing.T) {
 	}
 }
 
-// TestStreamsKeepTheTimeOpen: while the game stays open on one screen, the autosave keeps
-// the time it was last open at most a minute old, and closing the game writes it: opening
+// TestStreamsKeepTheTimeOpen: while the game stays open on one screen (the settings over the
+// lobby too), the autosave keeps the time it was last open at most a minute old, and closing
+// the game writes it: opening
 // it again at once earns nothing while away, and opening it two hours later two hours.
 func TestStreamsKeepTheTimeOpen(t *testing.T) {
 	g := streamsGame(t, "0")
@@ -247,6 +248,12 @@ func TestStreamsKeepTheTimeOpen(t *testing.T) {
 	wldFrames(t, g, int(2.5*60*ebiten.DefaultTPS))
 	if open := time.Unix(saved().Open, 0); g.streamNow().Sub(open) > streamKeep {
 		t.Fatalf("after 2.5 minutes in the lobby the autosave has the game open at %v, now %v", open, g.streamNow())
+	}
+	g.push(newMenu(g)) // the settings opened from the menu over the lobby
+	g.push(newConfigScreen(g))
+	wldFrames(t, g, int(2.5*60*ebiten.DefaultTPS))
+	if open := time.Unix(saved().Open, 0); g.streamNow().Sub(open) > streamKeep {
+		t.Fatalf("after 2.5 minutes in the settings the autosave has the game open at %v, now %v", open, g.streamNow())
 	}
 	sysClose(t, g)
 	closed := g.streamNow()

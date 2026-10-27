@@ -117,11 +117,11 @@ func (g *Game) stepStreams() {
 }
 
 // keepOpen writes the autosave with the time the game is open now (Settle keeps it in
-// the state), when the game rests where the autosave is written: an idle screen or the
-// watch view. It runs every streamKeep, when the game closes and when a browser hides its
-// page, whose frames then stop.
+// the state), when the game rests where the autosave is written (rests: an idle screen,
+// the watch view, the menu or the settings over it). It runs every streamKeep, when the
+// game closes and when a browser hides its page, whose frames then stop.
 func (g *Game) keepOpen() {
-	if g.desk == nil || !g.idle() && g.watching() == nil {
+	if g.desk == nil || !g.rests() {
 		return
 	}
 	g.desk.kept = g.streamNow()
