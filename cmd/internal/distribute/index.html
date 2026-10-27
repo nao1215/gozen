@@ -52,6 +52,29 @@ window.goZenFail = (message) => {
   loading.textContent = "Could not start: " + message;
 };
 document.addEventListener("contextmenu", (event) => event.preventDefault());
+// Phones read aloud only after speechSynthesis has spoken once inside a touch, a click
+// or a key press, and the game speaks from its frame, outside any: so each touch says
+// nothing until that has once begun (iOS also wants the voices asked for in one).
+const speechEvents = ["pointerdown", "touchend", "click", "keydown"];
+let speechOpen = false;
+const openSpeech = () => {
+  speechOpen = true;
+  for (const type of speechEvents) removeEventListener(type, unlockSpeech, true);
+};
+const unlockSpeech = () => {
+  if (speechOpen || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
+  if (speechSynthesis.speaking) return openSpeech(); // the game's line is being heard
+  const silence = new SpeechSynthesisUtterance(" ");
+  silence.volume = 0;
+  silence.onstart = silence.onend = openSpeech;
+  // refused outside a touch: the next one tries again; another failure will not pass
+  silence.onerror = (event) => { if (event.error !== "not-allowed") openSpeech(); };
+  window.goZenSilence = silence; // an utterance nothing holds may be dropped unsaid
+  speechSynthesis.resume();
+  speechSynthesis.speak(silence);
+  speechSynthesis.getVoices();
+};
+for (const type of speechEvents) addEventListener(type, unlockSpeech, true);
 (async () => {
   try {
     const go = new Go();

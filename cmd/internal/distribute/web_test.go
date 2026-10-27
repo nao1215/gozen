@@ -71,7 +71,7 @@ func TestWebManifestAndRuntimeValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	// the page shows how much of the player and of the game's files has come
-	for _, want := range []string{`id="fill"`, `id="amount"`, "window.goZenProgress", "response.body.getReader()", `goZenProgress("player"`} {
+	for _, want := range []string{`id="fill"`, `id="amount"`, "window.goZenProgress", "response.body.getReader()", `goZenProgress("player"`, "unlockSpeech"} {
 		if !strings.Contains(string(page), want) {
 			t.Errorf("index.html has no %s", want)
 		}

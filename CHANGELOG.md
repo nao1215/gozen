@@ -4,6 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Read stream lines aloud on phones: a browser export speaks once, silently, inside the first touch, click or key (iOS reads aloud only after that), and each line waits up to a second for the voices to load, takes a voice of its language, clears a stuck queue and resumes paused speech before it is said, and stays referenced until it ends.
 - Add live streams (ADR 0048, schema version 9): `game.yaml` `streams` names a file of channels, episodes, duos, timing, tips, affection, a bot crowd and the gold earned while away; a location with `stream: lobby` or the command `open: streams` shows the lobby of the live channels and the watch view of a show, with captions, a chat, comments and tips the streamer answers from its reaction book, questions the viewers answer, and reading aloud in a browser build.
 - Check the stream file and its episodes in `gozen check`: unknown channels, actors, faces and speakers, answers out of range, options outside 2 to 4, affection steps and answer chances, and warn of an episode shorter than 20 minutes (GZN0118) and of a caption longer than two lines.
 - Save the streams' progress (the viewer's name, the next episode, affection, days in a row and the time the game was last open) with the game; older saves load with none.
