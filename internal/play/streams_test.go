@@ -938,10 +938,10 @@ func TestStreamsComeBackWhereLeft(t *testing.T) {
 	show.Start = g.streamNow()
 	w := newStreamWatch(g, show, 100)
 	g.push(w)
-	w.next = 3 // ahead of the clock, at beat 0
+	w.next = 2 // ahead of the clock, at beat 0
 	w.leave(g)
-	if again := newStreamWatch(g, show, 100); again.next != 3 {
-		t.Fatalf("opened again at beat %d, not 3 where it was left", again.next)
+	if again := newStreamWatch(g, show, 100); again.next != 2 {
+		t.Fatalf("opened again at beat %d, not 2 where it was left", again.next)
 	}
 	show.Start = g.streamNow().Add(-seconds(show.Times[len(show.Beats)-1] + 0.1)) // the clock at the last beat
 	if again := newStreamWatch(g, show, 100); again.next != len(show.Beats)-1 {
@@ -965,6 +965,15 @@ func TestStreamsTipsCheer(t *testing.T) {
 	}
 	w := newStreamWatch(g, l.cards[0].show, 100)
 	g.push(w)
+	laugh, _ := w.bodies[0].Rig().Face("laugh")
+	w.queue = append([]streamSay{{line: g.quote("Hi"), quote: true}}, w.queue...) // a tip's comment read out
+	w.busy = g.streamNow()
+	for i := 0; i < 600 && w.caption != g.quote("Hi"); i++ {
+		wldFrames(t, g, 1)
+	}
+	if w.caption != g.quote("Hi") || w.bodies[0].Motion.Pose().Face != laugh {
+		t.Errorf("a tip is not read out with the laughing face (caption %q, face %d)", w.caption, w.bodies[0].Motion.Pose().Face)
+	}
 	_, top, _, _ := w.chatRect(g)
 	w.tip(g, 500)
 	w.botTip(g)
@@ -984,9 +993,6 @@ func TestStreamsTipsCheer(t *testing.T) {
 	wldFrames(t, g, int(tipBand.Seconds()*ebiten.DefaultTPS)+1)
 	if len(w.cheers) != 0 {
 		t.Fatalf("the bands stay: %+v", w.cheers)
-	}
-	if laugh, _ := w.bodies[0].Rig().Face("laugh"); sayFace(w.bodies[0], streamSay{line: "\"Hi\"", quote: true}) != laugh {
-		t.Error("a tip is not read out with the laughing face")
 	}
 	wldFrames(t, g, int(120*ebiten.DefaultTPS))
 	if w.pin(g) != nil {
