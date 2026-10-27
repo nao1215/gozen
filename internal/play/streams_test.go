@@ -131,8 +131,9 @@ func TestStreamsWatchAShow(t *testing.T) {
 	if l.name == nil {
 		t.Fatal("the first opening does not ask the viewer's name")
 	}
+	chosen := l.cards[l.sel].show.Key
 	wldPlay(t, g, "press right\nwait 5\n", 100)
-	if l.name == nil || l.sel != 0 {
+	if l.name == nil || l.sel >= len(l.cards) || l.cards[l.sel].show.Key != chosen {
 		t.Fatal("the lobby takes keys before the name is given")
 	}
 	wldPlay(t, g, "type Pat\npress ok\nwait 5\n", 100)
@@ -424,6 +425,64 @@ func TestStreamsPortrait(t *testing.T) {
 	g.fitView(390, 844, 3)
 	if g.view != (gameView{}) || g.ui != UIScale(&g.db.Game) || g.in.ui != g.ui {
 		t.Fatalf("a menu over the streams is drawn at %+v, ui %v", g.view, g.ui)
+	}
+}
+
+// TestStreamsLobbyKeepsItsCards: when a show of the lobby starts again (or another ends),
+// the cards still on the air keep their viewers, and the card chosen with the keys stays
+// the same channel's, wherever it now is.
+func TestStreamsLobbyKeepsItsCards(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok || len(l.cards) != 2 {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	l.sel = 1
+	chosen, viewers := l.cards[1].show.Key, map[string]int{}
+	for _, c := range l.cards {
+		viewers[c.show.Key] = c.viewers
+	}
+	again := *g.desk.shows[0] // the first show starts again
+	again.Start = again.Start.Add(time.Second)
+	g.desk.shows[0] = &again
+	l.rebuild(g)
+	if len(l.cards) != 2 || l.cards[l.sel].show.Key != chosen {
+		t.Fatalf("the card chosen moved from %s to %s", chosen, l.cards[l.sel].show.Key)
+	}
+	for _, c := range l.cards {
+		if c.viewers != viewers[c.show.Key] {
+			t.Errorf("%s has %d viewers again, not %d", c.show.Key, c.viewers, viewers[c.show.Key])
+		}
+	}
+}
+
+// TestStreamsTapStopsAGlide: a finger that touches the lobby while it glides after a swipe
+// stops it, and lifting does not open the card under it; a tap on a still lobby does.
+func TestStreamsTapStopsAGlide(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	x, y, w, h := l.shown(g, 0)
+	at := image.Pt(int(x+w/2), int(y+h/2))
+	tap := func() {
+		g.in.touching, g.in.began, g.in.touchFrom, g.in.mouse = true, true, at, at
+		l.update(g)
+		g.in.touching, g.in.began, g.in.click = false, false, true
+		l.update(g)
+		g.in.click = false
+	}
+	l.fling.v = 30
+	tap()
+	if g.watching() != nil {
+		t.Fatal("the tap that stopped the glide opened a show")
+	}
+	tap()
+	if g.watching() == nil {
+		t.Fatal("a tap on the still lobby does not open the show")
 	}
 }
 

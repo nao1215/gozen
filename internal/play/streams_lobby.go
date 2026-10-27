@@ -152,20 +152,51 @@ func (l *streamLobby) rebuild(g *Game) {
 		return
 	}
 	l.key = key
-	l.close()
+	// a channel still on the air keeps its card, its viewers and its bodies (a show that
+	// started again goes on in it), and the card chosen stays the same channel's
+	old := map[string]*lobbyCard{}
+	for _, c := range l.cards {
+		old[c.show.Key] = c
+	}
+	chosen, entry := "", -1 // the channel or the entry of the place chosen
+	switch {
+	case l.sel < len(l.cards):
+		chosen = l.cards[l.sel].show.Key
+	case l.cards != nil:
+		entry = l.sel - len(l.cards)
+	}
 	l.cards = nil
 	for _, s := range live {
-		c := &lobbyCard{show: s, beat: -1, viewers: 300 + g.desk.rng.IntN(4000)}
-		for i, h := range s.Hosts {
-			c.bodies = append(c.bodies, g.channelPuppet(h, fmt.Sprintf("lobby:%s:%d", s.Key, i)))
+		c := old[s.Key]
+		switch {
+		case c == nil:
+			c = &lobbyCard{show: s, beat: -1, viewers: 300 + g.desk.rng.IntN(4000)}
+			for i, h := range s.Hosts {
+				c.bodies = append(c.bodies, g.channelPuppet(h, fmt.Sprintf("lobby:%s:%d", s.Key, i)))
+			}
+		case c.show != s:
+			c.show, c.beat = s, -1
 		}
+		delete(old, s.Key)
 		l.cards = append(l.cards, c)
 	}
+	for _, c := range old {
+		closeBodies(c.bodies)
+	}
 	// The most watched show comes first, as on a streaming site; the order holds until
-	// the live shows change.
+	// the live shows change, the viewers changing meanwhile.
 	slices.SortStableFunc(l.cards, func(a, b *lobbyCard) int { return cmp.Compare(b.viewers, a.viewers) })
-	l.chat, l.crowd = newStreamChat(lobbyChatW-28), g.newCrowd()
-	l.sel = min(l.sel, max(0, len(l.cards)-1))
+	if l.chat == nil {
+		l.chat, l.crowd = newStreamChat(lobbyChatW-28), g.newCrowd()
+	}
+	switch i := slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Key == chosen }); {
+	case entry >= 0:
+		l.sel = len(l.cards) + entry
+	case i >= 0:
+		l.sel = i
+	default:
+		l.sel = min(l.sel, max(0, len(l.cards)-1))
+	}
 }
 
 func (l *streamLobby) close() {

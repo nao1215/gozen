@@ -842,18 +842,27 @@ func (g *Game) touchIn(x, y, w, h float64) bool {
 
 // fling is a scroll by a finger: it follows the finger as it swipes and, when the finger
 // lifts, glides on at the finger's speed, slowing down by flingSlow a tick.
-type fling struct{ v float64 }
+type fling struct {
+	v float64
+	// caught is set by a touch that began while the content glided: it stops the glide,
+	// and its lifting is no tap (as a phone scrolls).
+	caught bool
+}
 
 const flingSlow = 0.95
 
 // step is how far the content moves down this tick: with a finger that swipes from the
 // scrolled part (from), or gliding after it lifted. A new touch stops the glide.
 func (f *fling) step(in *input, from bool) float64 {
+	if f.caught && !in.touching {
+		f.caught, in.click = false, false
+	}
 	switch {
 	case in.touching && in.swiped && from:
 		f.v = 0.5*f.v + 0.5*in.swipe
 		return in.swipe
 	case in.touching:
+		f.caught = f.caught || f.v != 0
 		f.v = 0
 		return 0
 	}
