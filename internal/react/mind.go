@@ -69,9 +69,16 @@ type Reaction struct {
 }
 
 type lexWord struct {
-	norm, text string
-	weight     float64
-	whole      bool
+	norm, text   string
+	weight       float64
+	whole, exact bool
+}
+
+// lexRun is a lexicon tag ready to match: its words, and its except words normalized
+// (for the normal words) and lowered (for the exact ones).
+type lexRun struct {
+	words           []lexWord
+	exceptNorm, low []string
 }
 
 type entry struct {
@@ -86,10 +93,8 @@ type Mind struct {
 	p    *personDef
 	cfg  Config
 	rng  *rand.Rand
-	lex  map[string][]lexWord
+	lex  map[string]*lexRun
 	tags []string // lexicon tags, sorted
-	// except are the normalized words that cancel each tag (Book except).
-	except map[string][]string
 
 	mood    float64
 	turn    int
@@ -128,19 +133,20 @@ func New(b *Book, id string, cfg Config) (*Mind, error) {
 		rng = rand.New(rand.NewPCG(1, 2)) //nolint:gosec // G404: reproducible line choice, not security
 	}
 	m := &Mind{
-		book: b, p: p, cfg: cfg, rng: rng, lex: map[string][]lexWord{}, except: map[string][]string{},
+		book: b, p: p, cfg: cfg, rng: rng, lex: map[string]*lexRun{},
 		mem: map[string]entry{}, cool: map[string]int{}, recent: map[string][]string{},
 	}
-	for tag, words := range b.doc.Lexicon {
+	for tag, lt := range b.doc.Lexicon {
 		m.tags = append(m.tags, tag)
-		for _, w := range words {
-			m.lex[tag] = append(m.lex[tag], lexWord{norm: Normalize(w.Text), text: w.Text, weight: w.Weight, whole: w.Whole})
+		run := &lexRun{}
+		for _, w := range lt.Words {
+			run.words = append(run.words, lexWord{norm: Normalize(w.Text), text: w.Text, weight: w.Weight, whole: w.Whole, exact: w.Exact || w.Whole})
 		}
-	}
-	for tag, words := range b.doc.Except {
-		for _, w := range words {
-			m.except[tag] = append(m.except[tag], Normalize(w))
+		for _, x := range lt.Except {
+			run.exceptNorm = append(run.exceptNorm, Normalize(x))
+			run.low = append(run.low, strings.ToLower(x))
 		}
+		m.lex[tag] = run
 	}
 	sort.Strings(m.tags)
 	lo, hi := p.bounds()
@@ -182,50 +188,71 @@ func (m *Mind) expire() {
 	}
 }
 
-// match finds the lexicon tags in normalized text. A whole word is looked for in raw,
-// the text as written, between word boundaries; a tag is not found when norm holds one
-// of its except words. raw is empty for the acrostic, which has no words.
+// match finds the lexicon tags: a normal word in norm, the normalized text, an exact or
+// whole word in raw, the text as written. An occurrence inside an occurrence of one of
+// the tag's except words is not counted. raw is empty for the acrostic, which has no
+// words as written.
 func (m *Mind) match(norm, raw string, prefix string, found map[string]Tag) {
 	if norm == "" {
 		return
 	}
+	low := strings.ToLower(raw)
 	for _, tag := range m.tags {
-		if slices.ContainsFunc(m.except[tag], func(x string) bool { return strings.Contains(norm, x) }) {
-			continue
-		}
-		for _, w := range m.lex[tag] {
-			if (w.whole && wholeWord(raw, w.text)) || (!w.whole && strings.Contains(norm, w.norm)) {
+		run := m.lex[tag]
+		for _, w := range run.words {
+			hit := false
+			if w.exact {
+				hit = occurs(low, strings.ToLower(w.text), run.low, w.whole)
+			} else {
+				hit = occurs(norm, w.norm, run.exceptNorm, false)
+			}
+			if hit {
 				add(found, Tag{Name: prefix + tag, Score: w.weight, Slot: w.text})
 			}
 		}
 	}
 }
 
-// wholeWord reports whether text holds word, ignoring case, with no letter or digit
-// right before or after it.
-func wholeWord(text, word string) bool {
-	text, word = strings.ToLower(text), strings.ToLower(word)
-	edge := func(s string, last bool) bool {
-		if s == "" {
-			return true
-		}
-		r, _ := utf8.DecodeRuneInString(s)
-		if last {
-			r, _ = utf8.DecodeLastRuneInString(s)
-		}
-		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+// occurs reports whether text holds word somewhere not inside an occurrence of an
+// except word, and, when whole, with no letter or digit right before or after it.
+func occurs(text, word string, except []string, whole bool) bool {
+	if word == "" {
+		return false
 	}
-	for i := 0; word != ""; {
+	edge := func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) }
+	for i := 0; ; {
 		j := strings.Index(text[i:], word)
 		if j < 0 {
 			return false
 		}
-		at := i + j
-		if edge(text[:at], true) && edge(text[at+len(word):], false) {
+		at, end := i+j, i+j+len(word)
+		ok := true
+		if whole {
+			before, _ := utf8.DecodeLastRuneInString(text[:at])
+			after, _ := utf8.DecodeRuneInString(text[end:])
+			ok = (at == 0 || edge(before)) && (end == len(text) || edge(after))
+		}
+		if ok && !covered(text, at, end, except) {
 			return true
 		}
 		_, n := utf8.DecodeRuneInString(text[at:])
 		i = at + n
+	}
+}
+
+// covered reports whether text[at:end] lies inside an occurrence of an except word.
+func covered(text string, at, end int, except []string) bool {
+	for _, x := range except {
+		for from := max(0, end-len(x)); from <= at; {
+			k := strings.Index(text[from:], x)
+			if k < 0 || from+k > at {
+				break
+			}
+			if from+k+len(x) >= end {
+				return true
+			}
+			from += k + 1
+		}
 	}
 	return false
 }

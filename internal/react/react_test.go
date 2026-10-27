@@ -630,8 +630,8 @@ func TestBookErrors(t *testing.T) {
 		"tag with a field":               strings.Replace(clerk, "when: tag.greet > 0\n        say: [\"Hello", "when: tag > 0\n        say: [\"Hello", 1),
 		"mood with a field":              strings.Replace(clerk, "when: tag.rude > 0", "when: mood.x > 0", 1),
 		"a lexicon word of a map of two": strings.Replace(clerk, "greet: [hello, hi,", "greet: [{a: 1, b: 2}, hi,", 1),
-		"except of an unknown tag":       strings.Replace(clerk, "people:\n", "except: {nothing: [x]}\npeople:\n", 1),
-		"except of an empty word":        strings.Replace(clerk, "people:\n", "except: {greet: [\"!\"]}\npeople:\n", 1),
+		"except without words":           strings.Replace(clerk, "lexicon:\n", "lexicon:\n  none: {except: [x]}\n", 1),
+		"except of an empty word":        strings.Replace(clerk, "lexicon:\n", "lexicon:\n  sun: {words: [sun], except: [\"!\"]}\n", 1),
 		"an empty say entry":             strings.Replace(clerk, "say: [\"Goodbye\"]", "say: [[]]", 1),
 	}
 	for name, src := range cases {
@@ -677,16 +677,16 @@ func atLeast(v any, n float64) bool {
 	return ok && f >= n
 }
 
-// TestWholeWordsExceptsAndLineLists checks a lexicon word matched only as a whole word
-// of the text as written, a tag cancelled by an except word, a rule saying a list of
-// lines in order, and {text}.
-func TestWholeWordsExceptsAndLineLists(t *testing.T) {
+// TestWholeExactExceptAndLineLists checks a lexicon word matched only as a whole word
+// of the text as written, an exact word not matched through normalization, an
+// occurrence inside an except word not counted while another one is, a rule saying a
+// list of lines in order, and {text}.
+func TestWholeExactExceptAndLineLists(t *testing.T) {
 	book, err := Parse([]byte(`
 lexicon:
   cat: [{word: cat, whole: true}]
-  sun: [sun]
-except:
-  sun: [sunday]
+  sun: {words: [sun], except: [sunday]}
+  moon: [{word: ムーン, exact: true}]
 people:
   - id: host
     rules:
@@ -696,6 +696,9 @@ people:
       - id: sun
         when: tag.sun > 0
         say: [Sunny.]
+      - id: moon
+        when: tag.moon > 0
+        say: [Moon.]
     dodge:
       unknown: [Hm.]
 `))
@@ -715,6 +718,9 @@ people:
 		{"my Cat, again", []string{"Cats!", "You said: my Cat, again"}},
 		{"the sun is out", []string{"Sunny."}},
 		{"see you sunday", []string{"Hm."}},
+		{"sunday sun", []string{"Sunny."}},
+		{"むーん", []string{"Hm."}},
+		{"ムーンだ", []string{"Moon."}},
 	} {
 		r, err := m.React(Stimulus{Kind: KindSay, From: "viewer", Text: tc.text})
 		if err != nil {

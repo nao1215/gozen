@@ -43,10 +43,7 @@ type Book struct {
 // bookDoc is the book as decoded from YAML.
 type bookDoc struct {
 	// Lexicon maps a tag to the words that suggest it.
-	Lexicon map[string][]lexEntry `yaml:"lexicon"`
-	// Except maps a lexicon tag to words that cancel it: when one of them is in the
-	// text, the tag is not found (a longer word that holds a lexicon word).
-	Except map[string][]string `yaml:"except"`
+	Lexicon map[string]lexTag `yaml:"lexicon"`
 	// Tags declares the extra tags that games attach (event tags),
 	// so rules may refer to them.
 	Tags []string `yaml:"tags"`
@@ -59,17 +56,37 @@ type bookDoc struct {
 // own small structs from it. An unknown path is an error that is fs.ErrNotExist.
 func (b *Book) YAML(path string) ([]byte, error) { return yamlpath.At(b.src, path) }
 
+// lexTag is the words of a lexicon tag, and the words that hold one of them without
+// meaning it: an occurrence of a word inside an occurrence of an except word is not
+// counted. In YAML it is a list of words, or {words: [...], except: [...]}.
+type lexTag struct {
+	Words  []lexEntry `yaml:"words"`
+	Except []string   `yaml:"except"`
+}
+
+// UnmarshalYAML reads a list of words or {words, except}.
+func (t *lexTag) UnmarshalYAML(unmarshal func(any) error) error {
+	if err := unmarshal(&t.Words); err == nil {
+		return nil
+	}
+	type plain lexTag
+	return unmarshal((*plain)(t))
+}
+
 // lexEntry is a lexicon entry. In YAML it is a plain string (weight 1), a one-entry
-// map {word: weight}, or {word: text, weight: w, whole: true}. The weight in 0..1 is the
-// confidence the word gives its tag. A whole word matches only between word boundaries
-// of the text as written, ignoring case (for Latin words that are parts of others).
+// map {word: weight}, or {word: text, weight: w, whole: true, exact: true}. The weight
+// in 0..1 is the confidence the word gives its tag. A normal word is matched in the
+// normalized text (Normalize). An exact word is matched in the text as written, ignoring
+// only case (a katakana word that normalizes into unrelated words); a whole word is
+// exact and also needs a word boundary on both sides (a Latin word that is part of others).
 type lexEntry struct {
 	Text   string
 	Weight float64
 	Whole  bool
+	Exact  bool
 }
 
-// UnmarshalYAML reads "word", {word: weight} or {word, weight, whole}.
+// UnmarshalYAML reads "word", {word: weight} or {word, weight, whole, exact}.
 func (w *lexEntry) UnmarshalYAML(unmarshal func(any) error) error {
 	var s string
 	if err := unmarshal(&s); err == nil {
@@ -80,9 +97,10 @@ func (w *lexEntry) UnmarshalYAML(unmarshal func(any) error) error {
 		Word   string   `yaml:"word"`
 		Weight *float64 `yaml:"weight"`
 		Whole  bool     `yaml:"whole"`
+		Exact  bool     `yaml:"exact"`
 	}
 	if err := unmarshal(&full); err == nil && full.Word != "" {
-		*w = lexEntry{Text: full.Word, Weight: 1, Whole: full.Whole}
+		*w = lexEntry{Text: full.Word, Weight: 1, Whole: full.Whole, Exact: full.Exact}
 		if full.Weight != nil {
 			w.Weight = *full.Weight
 		}
@@ -218,7 +236,8 @@ func Parse(b []byte) (*Book, error) {
 // validate checks every reference: tags in conditions, likes and asks, faces, ask IDs,
 // memory keys and template fields. It does not modify the book.
 func (b *Book) validate() error {
-	for tag, words := range b.doc.Lexicon {
+	for tag, lt := range b.doc.Lexicon {
+		words := lt.Words
 		if tag == "" || strings.HasPrefix(tag, AcrosticPrefix) || builtin(tag) {
 			return fmt.Errorf("lexicon: tag %q is empty or reserved", tag)
 		}
@@ -227,14 +246,12 @@ func (b *Book) validate() error {
 				return fmt.Errorf("lexicon.%s: word %q needs text and a weight in (0, 1]", tag, w.Text)
 			}
 		}
-	}
-	for tag, words := range b.doc.Except {
-		if _, ok := b.doc.Lexicon[tag]; !ok {
-			return fmt.Errorf("except: %q is not a lexicon tag", tag)
+		if len(words) == 0 && len(lt.Except) > 0 {
+			return fmt.Errorf("lexicon.%s: except without words", tag)
 		}
-		for _, w := range words {
-			if Normalize(w) == "" {
-				return fmt.Errorf("except.%s: word %q has no text", tag, w)
+		for _, x := range lt.Except {
+			if Normalize(x) == "" {
+				return fmt.Errorf("lexicon.%s: except word %q has no text", tag, x)
 			}
 		}
 	}
