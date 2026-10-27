@@ -1390,6 +1390,9 @@ type Location struct {
 	// Stage shows the location as its background painted from a fixed camera, walked by
 	// small dolls (schema_version 3, ADR 0022).
 	Stage *Stage `yaml:"stage"`
+	// Stream shows the location as the stream lobby (lobby; schema_version 9, ADR 0048),
+	// with the place's entries under the channels.
+	Stream string `yaml:"stream"`
 	// ResumeTo: when a save made here is loaded, start from this place (an ID in locations)
 	// (for example, saving in a small place inside a shop starts from the town's first menu).
 	// If not written, it stays at the place saved. The place name on the load screen also becomes this.

@@ -2845,7 +2845,7 @@
     },
     "Channel": {
       "additionalProperties": false,
-      "description": "A streamer.",
+      "description": "A streamer: an actor streaming from a room, with its episodes and its greetings.",
       "properties": {
         "actor": {
           "description": "The actor (`actors`) whose name, puppet and reaction book (`reactions`) the channel uses. It needs a puppet.",
@@ -10740,6 +10740,19 @@
           },
           "x-type": "[Stage](#stage)"
         },
+        "stream": {
+          "description": "`lobby` shows the location as the stream lobby, with the place's entries listed under the channels. Needs `streams` in game.yaml and schema version 9.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
+        },
         "talk_on_enter": {
           "description": "If `true`, one of the people's stories plays on each entry instead of a list of people to talk to, with people who have something new first.",
           "type": "boolean",
@@ -16667,7 +16680,7 @@
           "x-type": "[StreamOption](#streamoption)[]"
         },
         "q": {
-          "description": "The question.",
+          "description": "The question the asking channel says.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -16955,7 +16968,7 @@
       "description": "An answer and what is said when it is picked.",
       "properties": {
         "c": {
-          "description": "The answer.",
+          "description": "The answer shown on its card and in the chat.",
           "type": "string",
           "x-contract": {
             "default": "empty string",

@@ -358,7 +358,7 @@ func schemaContract(owner reflect.Type, field reflect.StructField, name string) 
 	if owner == reflect.TypeFor[StageFraming]() || key == "UIStyle.stage_framing" || key == "UIStyle.stage_puppets" {
 		c.Version = "8"
 	}
-	if streamTypes[owner] || key == "Game.streams" {
+	if streamTypes[owner] || key == "Game.streams" || key == "Location.stream" {
 		c.Version = "9"
 	}
 	switch key {

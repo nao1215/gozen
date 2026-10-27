@@ -13,7 +13,7 @@ func streamGame() map[string]string {
 	ep := "title: Garden tour\nlobby: [Planting day]\nparts:\n  - - say: Hello, everyone.\n    - say: {face: smile, text: Today we plant beans.}\n    - chat: [sprout, Beans!]\n    - ask: {q: Which seeds?, options: [{c: Beans, r: [\"{name} picked beans.\"]}, {c: Peas, r: [Peas it is.]}], npc: [[sprout, 1]]}\n"
 	return map[string]string{
 		"game.yaml": testgame.Game + "schema_version: 9\nid: streams-test\nstreams: data/streams.yaml\n",
-		"data/cast.yaml": "actors:\n  ann: {name: Ann, puppet: p/rig.yaml}\n  bo: {name: Bo, puppet: p/rig.yaml}\n",
+		"data/cast.yaml": "actors:\n  ann: {name: Ann, puppet: p/rig.yaml}\n  bo: {name: Bo, puppet: p/rig.yaml}\nlocations: {booth: {stream: lobby}}\nevents: {watch: {do: [{open: streams}]}}\n",
 		"assets/p/rig.yaml": "base: base.png\nface: normal\nfaces: {normal: {}, smile: {}}\n",
 		"assets/p/base.png":  "x",
 		"data/streams.yaml": `timing: {say: 1.8, per_char: 0.11, chat: 1.6, ask: 12}
@@ -105,6 +105,9 @@ func TestStreamsCheck(t *testing.T) {
 		{"an unknown key", edit("data/streams.yaml", "tips:", "tipz: [1]\ntips:"), "tipz"},
 		{"tips out of order", edit("data/streams.yaml", "tips: [10, 50]", "tips: [50, 10]"), "smallest first"},
 		{"a live share above 1", edit("data/streams.yaml", "share: 0.8", "share: 1.5"), "from 0 to 1"},
+		{"a lobby without streams", map[string]string{"game.yaml": testgame.Game + "schema_version: 9\nid: t\n", "data/z.yaml": "locations: {booth: {stream: lobby}}"}, "stream: lobby needs streams"},
+		{"a stream that is no lobby", edit("data/cast.yaml", "stream: lobby", "stream: hall"), "want lobby"},
+		{"open streams without streams", map[string]string{"game.yaml": testgame.Game + "schema_version: 9\nid: t\n", "data/z.yaml": "events: {e: {do: [{open: streams}]}}"}, "open: streams needs streams"},
 		{"a room missing", edit("data/streams.yaml", "room: x.png", "room: none.png"), "no file assets/none.png"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
