@@ -9,3 +9,10 @@ const canQuit = true
 func meterAsked() bool { return false }
 
 func publishMeter(meterStats) {}
+
+// canSpeak: only a browser build reads stream lines aloud.
+func canSpeak() bool { return false }
+
+func speak(string, string, float64, float64) func() bool { return nil }
+
+func stopSpeaking() {}

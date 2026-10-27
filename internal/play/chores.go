@@ -15,7 +15,7 @@ func (g *Game) idleChores() {
 		return
 	}
 	switch g.stack[0].(type) {
-	case *field, *dungeonScene, *stageScene, *atlasScene:
+	case *field, *dungeonScene, *stageScene, *atlasScene, *streamLobby:
 	default:
 		return
 	}

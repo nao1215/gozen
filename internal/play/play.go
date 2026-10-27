@@ -48,6 +48,10 @@ type Options struct {
 
 	Seed uint64
 
+	// Now is the wall clock of the stream screens (nil is time.Now). It is read once,
+	// when a game with streams starts, and a trace records the time read.
+	Now func() time.Time
+
 	SaveDir string
 
 	// Store is where saves go (takes precedence over SaveDir). StoreFor opens one from the work's ID (default: the OS config directory; in the browser, localStorage).
@@ -204,6 +208,8 @@ type overlay interface{ overlay() bool }
 type modal interface{ modal() bool }
 
 type Game struct {
+	// desk is the stream screens' state of the run (ADR 0048), nil until a game with streams plays.
+	desk    *streamDesk
 	context context.Context
 	cancel  context.CancelFunc
 	failure error
@@ -866,6 +872,7 @@ func (g *Game) Update() error {
 	if g.st != nil {
 		g.st.Frames++
 	}
+	g.stepStreams()
 	if g.recruit != nil && g.recruit.leave == 0 && g.tick-g.recruit.start == 12 {
 		g.sfx("lift")
 	}
@@ -1324,11 +1331,16 @@ func (g *Game) Move(loc string) {
 		dungeon.Reveal(g.db, g.st)
 	}
 	switch g.stack[0].(type) {
-	case *field, *dungeonScene, *stageScene, *atlasScene:
+	case *field, *dungeonScene, *stageScene, *atlasScene, *streamLobby:
 	default:
 		return
 	}
 	switch cur := g.stack[0]; {
+	case l.Stream != "":
+		g.bannerFloor = 0
+		if _, ok := cur.(*streamLobby); !ok {
+			g.stack[0] = newStreamLobby(g, nil)
+		}
 	case l.Dungeon != nil:
 		if ds, ok := cur.(*dungeonScene); ok {
 			ds.arrive()
@@ -1367,6 +1379,10 @@ func (g *Game) newPlace() scene {
 	if l := g.db.Locations[g.st.Location]; l != nil && l.Stage != nil {
 		g.enterAt = g.st.Location
 		return newStageScene(g)
+	}
+	if l := g.db.Locations[g.st.Location]; l != nil && l.Stream != "" {
+		g.enterAt = g.st.Location
+		return newStreamLobby(g, nil)
 	}
 	if l := g.db.Locations[g.st.Location]; l != nil && l.Map != nil {
 		g.enterAt = g.st.Location

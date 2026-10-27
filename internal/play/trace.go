@@ -18,6 +18,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -521,6 +522,8 @@ func (g *Game) isAutopilot() bool {
 }
 
 type replay struct {
+	// now is the time the recorded run read for its streams (the "now" line).
+	now         time.Time
 	inputs      map[int]traceLine
 	acts        map[int][]traceLine
 	expect      map[string][]traceLine
@@ -682,6 +685,8 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			r.acts[tick] = append(r.acts[tick], l)
 		case "live_reload":
 			reloads = append(reloads, tick)
+		case "now":
+			r.now = time.UnixMilli(int64(num(l["unix_ms"])))
 		default:
 			if r.checked(k) {
 				r.expectLine(k, l)
