@@ -712,7 +712,7 @@ func (g *Game) quote(text string) string {
 	if g.db.Shown() == "ja" {
 		return "「" + text + "」"
 	}
-	return `"` + text + `"`
+	return "“" + text + "”"
 }
 
 // tip sends a tip with the comment field's text.
