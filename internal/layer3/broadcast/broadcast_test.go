@@ -293,3 +293,17 @@ func TestMarkSeenAtTheLimit(t *testing.T) {
 		t.Errorf("the next stream starts with %q", next.Episodes[0].Title)
 	}
 }
+
+// TestAgainGoesOn: a stream of no length (timings too small to count) with no rest does not
+// start again at its own start, which would start it again for ever.
+func TestAgainGoesOn(t *testing.T) {
+	d := streams()
+	d.Timing = data.StreamTiming{Say: 1e-12, Chat: 1e-12, Ask: 1e-12}
+	rest := 0.0
+	d.Slot.Rest = &rest
+	s := newShow(d, d.Channels[:1], "a", d.Channels[0].Shows, 0)
+	s.Start = noon
+	if n := Again(d, &rpg.Streams{}, s, noon.Add(time.Hour)); n != nil {
+		t.Fatalf("a stream of %v seconds starts again at %v", s.Seconds(), n.Start)
+	}
+}

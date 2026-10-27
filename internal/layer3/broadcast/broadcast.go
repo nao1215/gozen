@@ -80,7 +80,7 @@ func Again(d *data.Streams, p *rpg.Streams, s *Show, now time.Time) *Show {
 		return nil
 	}
 	start := s.Start.Add(time.Duration((s.Seconds() + *d.Slot.Rest*60) * float64(time.Second)))
-	if now.Before(start) {
+	if now.Before(start) || !start.After(s.Start) { // a stream of no length would start again for ever
 		return nil
 	}
 	var next *Show
