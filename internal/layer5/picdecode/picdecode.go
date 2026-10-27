@@ -12,7 +12,7 @@ import (
 
 	"github.com/nao1215/gozen/internal/layer1/picturelimit"
 
-	_ "golang.org/x/image/webp" // a browser build ships its pictures as WebP
+	_ "github.com/deepteams/webp" // a browser build ships its pictures as WebP
 )
 
 // goDecode decodes b with Go's decoders.

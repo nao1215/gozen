@@ -78,31 +78,37 @@ for (const type of speechEvents) addEventListener(type, unlockSpeech, true);
 (async () => {
   try {
     const go = new Go();
-    const response = await fetch("gozen-player.wasm");
-    if (!response.ok) throw new Error("gozen-player.wasm: " + response.status);
-    // The player is read in chunks to show how much has come; Content-Length is the
-    // bytes sent, so a compressed response shows the megabytes alone. A buffer also
-    // works on static servers without a WASM MIME mapping.
+    const response = await fetch("gozen-player.wasm.gz");
+    if (!response.ok) throw new Error("gozen-player.wasm.gz: " + response.status);
+    // The player is gzip, which the page undoes (DecompressionStream) as it comes in, so
+    // no host needs to be set up for it; a host that undid it already sends the WASM.
+    // The bytes are counted as they come (Content-Length is what is sent) and the
+    // player is compiled while it downloads.
     const total = Number(response.headers.get("Content-Length")) || 0;
     const reader = response.body.getReader();
-    const chunks = [];
     let done = 0;
     goZenProgress("player", 0, total);
-    for (;;) {
-      const chunk = await reader.read();
-      if (chunk.done) break;
-      chunks.push(chunk.value);
-      done += chunk.value.length;
-      goZenProgress("player", done, total);
-    }
-    const player = new Uint8Array(done);
-    let at = 0;
-    for (const chunk of chunks) {
-      player.set(chunk, at);
-      at += chunk.length;
-    }
+    const counted = new ReadableStream({
+      async pull(controller) {
+        const chunk = await reader.read();
+        if (chunk.done) {
+          controller.close();
+          return;
+        }
+        done += chunk.value.length;
+        goZenProgress("player", done, total);
+        controller.enqueue(chunk.value);
+      },
+    });
+    const [head, body] = counted.tee();
+    const peek = head.getReader();
+    const first = (await peek.read()).value || new Uint8Array();
+    peek.cancel();
+    const gzip = first[0] === 0x1f && first[1] === 0x8b;
+    if (gzip && typeof DecompressionStream !== "function") throw new Error("this browser cannot decompress the player");
+    const player = new Response(gzip ? body.pipeThrough(new DecompressionStream("gzip")) : body, {headers: {"Content-Type": "application/wasm"}});
+    const result = await WebAssembly.instantiateStreaming(player, go.importObject);
     document.getElementById("note").textContent = "Starting the player...";
-    const result = await WebAssembly.instantiate(player, go.importObject);
     await go.run(result.instance);
   } catch (error) {
     goZenFail(String(error));

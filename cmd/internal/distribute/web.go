@@ -2,6 +2,7 @@ package distribute
 
 import (
 	"bytes"
+	"compress/gzip"
 	_ "embed"
 	"encoding/json"
 	"errors"
@@ -16,7 +17,9 @@ import (
 var webPage []byte
 
 // Web assembles a static website from a game and a matching WASM runtime.
-// The runtime must carry the wasm_exec.js from the same Go build.
+// The runtime must carry the wasm_exec.js from the same Go build. The player is served
+// gzipped (gozen-player.wasm.gz) and the game's files made smaller (shrinkWeb): the page
+// and the player undo the gzip themselves, so any static host serves the site.
 func Web(src, dst, bundle, version string) error {
 	return cli.Publish(dst, []string{src, bundle}, func(stage string) error {
 		r, err := prepareRuntime(bundle, stage, "js-wasm", version, "gozen-player.wasm")
@@ -48,17 +51,16 @@ func Web(src, dst, bundle, version string) error {
 		if err := copyLicenses(bundle, stage); err != nil {
 			return err
 		}
+		if err := gzipPlayer(filepath.Join(stage, "gozen-player.wasm")); err != nil {
+			return err
+		}
 		files, err := CopyGame(src, filepath.Join(stage, "game"))
 		if err != nil {
 			return err
 		}
-		manifest := make([]map[string]any, 0, len(files))
-		for _, name := range files {
-			info, err := os.Stat(filepath.Join(stage, "game", filepath.FromSlash(name)))
-			if err != nil {
-				return err
-			}
-			manifest = append(manifest, map[string]any{"name": name, "file": name, "size": info.Size()})
+		manifest, err := shrinkWeb(filepath.Join(stage, "game"), files)
+		if err != nil {
+			return err
 		}
 		b, err := json.Marshal(manifest)
 		if err != nil {
@@ -69,4 +71,27 @@ func Web(src, dst, bundle, version string) error {
 		}
 		return cli.WriteNew(filepath.Join(stage, "index.html"), webPage)
 	})
+}
+
+// gzipPlayer replaces the player with gozen-player.wasm.gz (a fifth of its size).
+func gzipPlayer(name string) error {
+	b, err := os.ReadFile(name) //nolint:gosec // The newly staged player.
+	if err != nil {
+		return err
+	}
+	var buf bytes.Buffer
+	w, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(b); err != nil {
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+	if err := cli.WriteNew(name+".gz", buf.Bytes()); err != nil {
+		return err
+	}
+	return os.Remove(name)
 }

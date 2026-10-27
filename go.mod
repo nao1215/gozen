@@ -3,6 +3,7 @@ module github.com/nao1215/gozen
 go 1.26.10
 
 require (
+	github.com/deepteams/webp v1.2.8
 	github.com/goccy/go-yaml v1.19.2
 	github.com/hajimehoshi/ebiten/v2 v2.10.5
 	github.com/nao1215/markdown v1.1.1
