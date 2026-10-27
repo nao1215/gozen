@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -57,6 +58,26 @@ func TestStreamsSaveRoundTrip(t *testing.T) {
 	}
 	if !reflect.DeepEqual(restored.Streams, st.Streams) {
 		t.Fatalf("streams %+v, want %+v", restored.Streams, st.Streams)
+	}
+	// The next episode is an index the shows are taken round from: a save with one below 0
+	// or past 1<<30 (where adding the episodes of a slot could overflow) does not load.
+	for _, tc := range []struct {
+		name    string
+		channel int
+		duo     int
+		want    string
+	}{
+		{"at the limit", 1 << 30, 1 << 30, ""},
+		{"a channel below 0", -1, 0, "streams/channels/ann/next"},
+		{"a channel past the limit", 1<<30 + 1, 0, "streams/channels/ann/next"},
+		{"a duo below 0", 0, -1, "streams/duos/ann+bo"},
+		{"a duo past the limit", 0, math.MaxInt, "streams/duos/ann+bo"},
+	} {
+		st.Streams.Channels["ann"].Next, st.Streams.Duos["ann+bo"] = tc.channel, tc.duo
+		_, err := rpg.Parse(db, saveBytes(t, st), nil)
+		if tc.want == "" && err != nil || tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+			t.Errorf("%s: %v, want %q", tc.name, err, tc.want)
+		}
 	}
 }
 

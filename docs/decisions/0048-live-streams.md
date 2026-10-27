@@ -62,7 +62,7 @@ The beat at a time is found from the seconds since the episode started with the 
 
 ### State
 
-`rpg.State` gains `Streams`: the viewer's name, per channel the next episode, affection points, the last day visited and the run of days, per duo its next episode, plus the time the game was last open. Saved like the rest; old saves load with it empty. The game's starting gold is `start.gold` of `game.yaml`.
+`rpg.State` gains `Streams`: the viewer's name, per channel the next episode, affection points, the last day visited and the run of days, per duo its next episode, plus the time the game was last open. Saved like the rest; old saves load with it empty, and a save whose next episode of a channel or a duo is below 0 or above 2^30 does not load (the episodes are taken round from it). The game's starting gold is `start.gold` of `game.yaml`.
 
 ### Screen (`internal/play`)
 
