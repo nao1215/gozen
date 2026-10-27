@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall/js"
 )
 
@@ -41,6 +42,10 @@ func canSpeak() bool {
 // references, and then never says it has ended.
 var speaking js.Value
 
+// silenced counts stopSpeaking: a line still waiting for the voices to load when the
+// reading stops is not read after.
+var silenced atomic.Int64
+
 // speak starts reading text aloud in the language (a BCP 47 tag) with the pitch and
 // rate (0 is the browser's). The function returned reports whether it has ended (or
 // failed); the caller still gives up after a while, should neither ever be reported.
@@ -58,6 +63,7 @@ func speak(text, language string, pitch, rate float64) func() bool {
 	}
 	var mu sync.Mutex
 	ended := false
+	asked := silenced.Load()
 	var end js.Func
 	end = js.FuncOf(func(_ js.Value, args []js.Value) any {
 		mu.Lock()
@@ -83,6 +89,12 @@ func speak(text, language string, pitch, rate float64) func() bool {
 	start := func() {
 		mu.Lock()
 		gone := ended
+		if !gone && silenced.Load() != asked { // the reading stopped while it waited
+			ended, gone = true, true
+			u.Set("onend", js.Null())
+			u.Set("onerror", js.Null())
+			end.Release()
+		}
 		mu.Unlock()
 		if gone {
 			return
@@ -217,4 +229,7 @@ func whenHidden(f func()) {
 }
 
 // stopSpeaking stops reading aloud.
-func stopSpeaking() { js.Global().Get("speechSynthesis").Call("cancel") }
+func stopSpeaking() {
+	silenced.Add(1)
+	js.Global().Get("speechSynthesis").Call("cancel")
+}
