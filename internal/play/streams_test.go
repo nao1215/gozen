@@ -903,9 +903,16 @@ func TestStreamsSettingsLanguageReachesTheChat(t *testing.T) {
 		t.Fatalf("scene %T", g.stack[0])
 	}
 	watch, lobby := w.crowd, l.crowd
+	g.db.Words["ja"]["Hi!"] = "やあ！"
 	g.setLanguage("ja") // as the settings' row of the language does
 	if w.crowd == watch || l.crowd == lobby {
 		t.Fatal("the crowds keep the language they were made in")
+	}
+	for i := 0; i < 600 && !strings.Contains(chatText(w), "やあ！"); i++ {
+		wldFrames(t, g, 1)
+	}
+	if !strings.Contains(chatText(w), "やあ！") {
+		t.Fatalf("the crowd does not chat in the language chosen:\n%s", chatText(w))
 	}
 }
 

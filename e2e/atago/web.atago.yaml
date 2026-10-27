@@ -256,8 +256,10 @@ scenarios:
             if len(set(asked)) >= 5:
                 break
             time.sleep(0.1)
-        got = sorted(line[k] for k in set(asked))
-        ok = 5 <= len(got) <= 12 and got[-1] - got[0] < len(got) + 3 and len(asked) == len(set(asked))
+        got = {line[k] for k in set(asked)}
+        # a run of lines with no gap, round from line 40 to line 1 as the show goes round
+        run = any(got == {(s + i) % 40 + 1 for i in range(len(got))} for s in range(40))
+        ok = 5 <= len(got) <= 12 and run and len(asked) == len(set(asked))
         print("a run of lines" if ok else (got, len(asked)))
         '
   - assert: {stdout: {equals: "a run of lines\n"}}
