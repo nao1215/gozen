@@ -41,7 +41,7 @@ func TestGraphicsScreensStreams(t *testing.T) {
 	isEn := func(b barButton) bool { return b.lang == "en" }
 	isJa := func(b barButton) bool { return b.lang == "ja" }
 	ja, set := button(bar, isJa), button(barJa, func(b barButton) bool { return b.gear })
-	tall := fmt.Sprintf("window 390 844\ngap 1\nwait 30\ntype Pat\npress ok\nwait 30\nshot lobby\nclick %d %d\nwait 20\nshot lobby_ja\nclick %d %d\nwait 30\nshot settings\nclick 30 20\nwait 30\npress ok\nwait 100\nshot watch\npress hide\nwait 20\nshot full\nquit\n",
+	tall := fmt.Sprintf("window 390 844\ngap 1\nwait 30\nshot name\ntype Pat\npress ok\nwait 30\nshot lobby\nclick %d %d\nwait 20\nshot lobby_ja\nclick %d %d\nwait 30\nshot settings\nclick 30 20\nwait 30\npress ok\nwait 100\nshot watch\npress hide\nwait 20\nshot full\nquit\n",
 		int(ja.x+ja.w/2), int(ja.y+15), int(set.x+set.w/2), int(set.y+15))
 	brand := [3]uint32{0xe0, 0x45, 0x7b}
 	// plate: the name plate's band, in the host's color: ann's, or bo's, who has none (the brand's)
@@ -68,7 +68,11 @@ func TestGraphicsScreensStreams(t *testing.T) {
 		edit              func(fstest.MapFS)
 		check             func(t *testing.T, root string)
 	}{
-		{"single", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\nshot lobby\npress ok\nwait 100\nshot watch\nquit\n", nil, func(t *testing.T, root string) {
+		{"single", "0", "gap 1\nwait 30\nshot name\ntype Pat\npress ok\nwait 30\nshot lobby\npress ok\nwait 100\nshot watch\nquit\n", nil, func(t *testing.T, root string) {
+			// the box of the name, with its notes, holds its button
+			if !near(shotImage(t, root, "name"), 640, 456, brand) {
+				t.Error("the box of the name does not hold its button under its notes")
+			}
 			lobby := shotImage(t, root, "lobby")
 			// the bar, the first card's picture (its room from the left edge, its puppet) and its chat
 			x, y, w, h := lobbyEdge, streamBarH+20, 1280-2*lobbyEdge-lobbyChatW, (1280-2*lobbyEdge-lobbyChatW)*9/16
@@ -160,6 +164,9 @@ func TestGraphicsScreensStreams(t *testing.T) {
 		}},
 		{"tall", "0", tall, nil, func(t *testing.T, root string) {
 			// a phone held upright: one card across the screen under the bar, then the next card under it
+			if !near(shotImage(t, root, "name"), 195, 518, brand) {
+				t.Error("the box of the name does not hold its button under its notes on a phone held upright")
+			}
 			lobby := shotImage(t, root, "lobby")
 			if b := lobby.Bounds(); b.Dx() != 390 || b.Dy() != 844 {
 				t.Fatalf("the lobby is %v, not the window's 390x844", b.Size())

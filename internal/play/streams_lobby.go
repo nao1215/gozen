@@ -85,7 +85,7 @@ func newStreamLobby(g *Game, done func()) *streamLobby {
 		l.name = &textField{}
 		l.name.start(g, func() (float64, float64) {
 			bx, by, _ := nameBox(g)
-			return l.name.caretX(bx+40, 17), by + 101
+			return l.name.caretX(bx+40, 17), by + nameField + 11
 		})
 	}
 	return l
@@ -95,8 +95,24 @@ func newStreamLobby(g *Game, done func()) *streamLobby {
 // gold earned while away: as wide as boxW, narrower on a narrow screen.
 const (
 	boxW     = 520.0
-	nameBoxH = 220.0
+	nameBoxH = 260.0
+	// nameNoteSize is the letters of the notes under the name's hint, smaller when a note
+	// would not fit in a line.
+	nameNoteSize = 13.0
+	// nameField and nameOK are how far under the box's top its field and its button are.
+	nameField, nameOK = 126.0, 196.0
 )
+
+// nameNotes are the notes of the box that asks the viewer's name: the name cannot be
+// changed later (nothing changes it), and the gold piles up while the game is closed when
+// the streams earn any (away.per_hour).
+func nameNotes(g *Game) []string {
+	notes := []string{lang.T("名前は、あとから変えられません。")}
+	if g.db.Streams.Away.PerHour > 0 {
+		notes = append(notes, lang.T("見ていない間も、ゴールドが少しずつ貯まります。"))
+	}
+	return notes
+}
 
 // nameBox is where the box that asks the viewer's name is, and its width.
 func nameBox(g *Game) (x, y, w float64) {
@@ -113,8 +129,8 @@ func (l *streamLobby) updateName(g *Game) {
 	// keyboard still composes (taking the name confirms it)
 	typed := in.devices() && l.name.readTyping()
 	ok := !in.devices() && in.pressed[btnOK] || in.devices() && !typed && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter))
-	sw, sh := g.screen()
-	if !ok && !g.clickedIn(sw/2-60, sh/2+40, 120, 40) {
+	sw, _ := g.screen()
+	if _, by, _ := nameBox(g); !ok && !g.clickedIn(sw/2-60, by+nameOK, 120, 40) {
 		return
 	}
 	name := strings.TrimSpace(l.name.take())
@@ -125,19 +141,23 @@ func (l *streamLobby) updateName(g *Game) {
 }
 
 // drawName draws the box that asks the viewer's name over the lobby.
-func (l *streamLobby) drawName(g *Game, dst *ebiten.Image, sw, sh float64) {
+func (l *streamLobby) drawName(g *Game, dst *ebiten.Image, sw float64) {
 	fill(dst, withAlpha(colorBlack, 0x80))
 	bx, by, bw := nameBox(g)
 	gfx.FillRoundRect(dst, float32(bx), float32(by), float32(bw), nameBoxH, 12, streamPanel)
 	gfx.DrawTextLeft(dst, lang.T("あなたの名前"), bx+28, by+22, 20, streamInk)
-	gfx.DrawTextLeft(dst, lang.T("配信者に読まれる名前です。"), bx+28, by+56, 15, streamInk2)
-	gfx.StrokeRoundRect(dst, float32(bx+28), float32(by+90), float32(bw-56), 44, 6, 1.5, streamBrand)
-	if l.name.text+l.name.comp == "" {
-		gfx.DrawTextLeft(dst, lang.T("名無しの視聴者"), bx+40, by+101, 17, streamInk3)
+	gfx.DrawTextLeft(dst, lang.T("配信者に読まれる名前です。"), bx+28, by+54, 15, streamInk2)
+	for i, n := range nameNotes(g) { // a line each
+		lines, size := gfx.FitLines(n, nameNoteSize, bw-56, 1)
+		gfx.DrawTextLeft(dst, lines[0], bx+28, by+80+float64(i)*20, size, streamInk2)
 	}
-	l.name.draw(dst, bx+40, by+101, bw-80, 17, streamInk, streamBrand, true, l.age)
-	gfx.FillRoundRect(dst, float32(sw/2-60), float32(sh/2+40), 120, 40, 6, streamBrand)
-	gfx.DrawText(dst, lang.T("決める"), sw/2, sh/2+49, 16, streamPanel)
+	gfx.StrokeRoundRect(dst, float32(bx+28), float32(by+nameField), float32(bw-56), 44, 6, 1.5, streamBrand)
+	if l.name.text+l.name.comp == "" {
+		gfx.DrawTextLeft(dst, lang.T("名無しの視聴者"), bx+40, by+nameField+11, 17, streamInk3)
+	}
+	l.name.draw(dst, bx+40, by+nameField+11, bw-80, 17, streamInk, streamBrand, true, l.age)
+	gfx.FillRoundRect(dst, float32(sw/2-60), float32(by+nameOK), 120, 40, 6, streamBrand)
+	gfx.DrawText(dst, lang.T("決める"), sw/2, by+nameOK+9, 16, streamPanel)
 }
 
 // rebuild makes the cards again when the live shows changed.
@@ -469,7 +489,7 @@ func (l *streamLobby) draw(g *Game, dst *ebiten.Image) {
 	sel := slices.IndexFunc(bs, func(b barButton) bool { return b.lang == "" && len(l.cards)+b.entry == l.sel })
 	g.streamTop(dst, "", bs, sel)
 	if l.name != nil {
-		l.drawName(g, dst, sw, sh)
+		l.drawName(g, dst, sw)
 	}
 	if g.desk.away > 0 {
 		fill(dst, withAlpha(colorBlack, 0x80))

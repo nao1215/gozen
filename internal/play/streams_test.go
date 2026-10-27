@@ -21,6 +21,7 @@ import (
 	"github.com/nao1215/gozen/internal/chat"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/broadcast"
+	"github.com/nao1215/gozen/internal/layer5/gfx"
 	"github.com/nao1215/gozen/internal/layer5/sound"
 	"github.com/nao1215/gozen/internal/rpg"
 	lang "github.com/nao1215/gozen/internal/text"
@@ -484,6 +485,36 @@ func TestStreamsTapStopsAGlide(t *testing.T) {
 	tap()
 	if g.watching() == nil {
 		t.Fatal("a tap on the still lobby does not open the show")
+	}
+}
+
+// TestStreamsNameNotes: the box that asks the viewer's name says the name cannot be changed
+// later and, when the game earns gold while it is closed, that it does: a line each, which
+// fits the box at a readable size, on a phone held upright and on a wide screen, in both
+// languages.
+func TestStreamsNameNotes(t *testing.T) {
+	g := streamsGame(t, "0")
+	for _, away := range []float64{100, 0} {
+		g.db.Streams.Away.PerHour = away
+		for _, code := range []string{"ja", "en"} {
+			g.setLanguage(code)
+			want := []string{lang.T("名前は、あとから変えられません。")}
+			if away > 0 {
+				want = append(want, lang.T("見ていない間も、ゴールドが少しずつ貯まります。"))
+			}
+			if got := nameNotes(g); !slices.Equal(got, want) {
+				t.Fatalf("%s, away %v: the notes %q, not %q", code, away, got, want)
+			}
+			for _, size := range [][3]float64{{390, 844, 3}, {1280, 720, 1}} {
+				g.fitView(size[0], size[1], size[2])
+				_, _, bw := nameBox(g)
+				for _, n := range want {
+					if lines, s := gfx.FitLines(n, nameNoteSize, bw-56, 1); len(lines) != 1 || s < 11 || gfx.TextWidth(lines[0], s) > bw-56 {
+						t.Errorf("%s %v: %q fits the box as %q at %v", code, size, n, lines, s)
+					}
+				}
+			}
+		}
 	}
 }
 

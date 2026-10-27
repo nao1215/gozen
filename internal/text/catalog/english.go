@@ -1010,5 +1010,7 @@ var english = map[string]string{
 	"決める":              "OK",
 	"名無しの視聴者":          "Nameless viewer",
 	"%sに覚えられた（%d）":     "%s remembers you (%d)",
-	"メッセージ（任意）":        "Message (optional)",
+	"名前は、あとから変えられません。":        "Your name cannot be changed later.",
+	"見ていない間も、ゴールドが少しずつ貯まります。": "Gold piles up a little while you are away.",
+	"メッセージ（任意）":               "Message (optional)",
 }
