@@ -66,6 +66,16 @@ func TestWebManifestAndRuntimeValidation(t *testing.T) {
 	if !found {
 		t.Fatal("special-character asset missing from manifest")
 	}
+	page, err := os.ReadFile(filepath.Join(out, "index.html")) //nolint:gosec // Test-owned exported file.
+	if err != nil {
+		t.Fatal(err)
+	}
+	// the page shows how much of the player and of the game's files has come
+	for _, want := range []string{`id="fill"`, `id="amount"`, "window.goZenProgress", "response.body.getReader()", `goZenProgress("player"`} {
+		if !strings.Contains(string(page), want) {
+			t.Errorf("index.html has no %s", want)
+		}
+	}
 	if err := os.WriteFile(filepath.Join(bundle, "wasm_exec.js"), []byte("wrong runtime"), 0o600); err != nil {
 		t.Fatal(err)
 	}

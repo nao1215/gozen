@@ -26,8 +26,10 @@ type file struct {
 
 // Load reads files.json, downloads its files with bounded concurrency, and returns an
 // in-memory filesystem. Open can still fetch an entry that was not included in the cache.
-func Load(base string) (fs.FS, error) {
-	b, err := get(base + "files.json")
+// While the files download, progress (when not nil) is called with the bytes read so far
+// and the bytes the manifest lists, at least every half percent and once at the end.
+func Load(base string, progress func(done, total int64)) (fs.FS, error) {
+	b, err := get(base+"files.json", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -37,6 +39,7 @@ func Load(base string) (fs.FS, error) {
 	}
 	served := make(map[string]string, len(files))
 	entries := fstest.MapFS{}
+	counter := &count{report: progress}
 	for _, f := range files {
 		if !fs.ValidPath(f.Name) || !fs.ValidPath(f.File) || f.Size < 0 {
 			return nil, fmt.Errorf("files.json: invalid entry %q", f.Name)
@@ -46,6 +49,7 @@ func Load(base string) (fs.FS, error) {
 		}
 		served[f.Name] = f.File
 		entries[f.Name] = &fstest.MapFile{Data: nil}
+		counter.total += f.Size
 	}
 
 	type result struct {
@@ -66,7 +70,7 @@ func Load(base string) (fs.FS, error) {
 			defer wg.Done()
 			for f := range jobs {
 				u := base + (&url.URL{Path: path.Clean(f.File)}).EscapedPath()
-				data, err := get(u)
+				data, err := get(u, counter)
 				results <- result{name: f.Name, data: data, err: err}
 			}
 		}()
@@ -87,6 +91,7 @@ func Load(base string) (fs.FS, error) {
 		}
 		cache[result.name] = result.data
 	}
+	counter.finish()
 	return &httpFS{base: base, entries: entries, served: served, cache: cache}, nil
 }
 
@@ -108,7 +113,7 @@ func (f *httpFS) Open(name string) (fs.File, error) {
 		f.mu.Unlock()
 		if !cached {
 			var err error
-			data, err = get(f.base + (&url.URL{Path: path.Clean(served)}).EscapedPath())
+			data, err = get(f.base+(&url.URL{Path: path.Clean(served)}).EscapedPath(), nil)
 			if err != nil {
 				return nil, err
 			}
@@ -121,7 +126,48 @@ func (f *httpFS) Open(name string) (fs.File, error) {
 	return f.entries.Open(name)
 }
 
-func get(u string) (b []byte, err error) {
+// count adds up the bytes the downloads of Load have read and reports them.
+type count struct {
+	mu          sync.Mutex
+	done, shown int64
+	total       int64
+	report      func(done, total int64)
+}
+
+func (c *count) add(n int) {
+	if c == nil || c.report == nil || n == 0 {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.done += int64(n)
+	if c.done-c.shown >= c.total/200 {
+		c.shown = c.done
+		c.report(c.done, c.total)
+	}
+}
+
+// finish reports the end, the failed downloads left out.
+func (c *count) finish() {
+	if c.report != nil {
+		c.report(c.done, c.total)
+	}
+}
+
+// reader counts what it reads into a count.
+type reader struct {
+	io.Reader
+	c *count
+}
+
+func (r reader) Read(p []byte) (int, error) {
+	n, err := r.Reader.Read(p)
+	r.c.add(n)
+	return n, err
+}
+
+// get downloads u, counting its bytes into c when c is not nil.
+func get(u string, c *count) (b []byte, err error) {
 	resp, err := http.Get(u) //nolint:gosec,noctx // The page's own files, next to the program.
 	if err != nil {
 		return nil, err
@@ -134,5 +180,8 @@ func get(u string) (b []byte, err error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%s: %s", u, resp.Status)
 	}
-	return io.ReadAll(resp.Body)
+	if c == nil {
+		return io.ReadAll(resp.Body)
+	}
+	return io.ReadAll(reader{resp.Body, c})
 }

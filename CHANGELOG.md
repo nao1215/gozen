@@ -10,6 +10,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - Let a reaction book's lexicon match a word only as a whole word (`whole: true`) or as written (`exact: true`), hide a word's occurrences inside except words (`{words, except}`), say a list of lines in order from one `say` entry, and insert the comment with `{text}`.
 - Share one loaded puppet rig between the bodies drawn from it, and the memo's text field with the stream screens.
 - Add `game.yaml` `menus: none` (ADR 0049, schema version 9) for a game without the title screen and the game menu: it opens on the newest save, the autosave included, or a new game at `start`, no input opens a menu, and `gozen check` reports `open: save`, `open: load` and `open: title` with it.
+- Show on a browser export's loading page how much of the player and then of the game's files has come, as a thin bar with the percent and the megabytes, on a white page until the game draws; the files' bytes are counted against the sizes in `files.json`.
 - Show a stream's caption whole the moment its beat begins, as the lobby's card and the chat do, instead of typing it out.
 
 ## v0.13.0 - 2026-10-27

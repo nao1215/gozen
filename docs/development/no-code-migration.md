@@ -35,7 +35,7 @@ there is no implicit download or author-side compilation.
 
 A desktop player locates `game/` beside itself. A web player consumes
 `game/files.json`, serves its title from game data, and uses the existing browser
-save store. `internal/webfs` currently prefetches every manifest entry; do not
+save store. `internal/webfs` currently prefetches every manifest entry, reporting its bytes to the loading page; do not
 claim progressive lazy loading. The showcase site builds one common WASM player and uses Python/Pillow to compress
 its images. These are maintainer tasks; `export --target web` needs neither Go nor Python.
 

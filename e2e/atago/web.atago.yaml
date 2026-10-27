@@ -64,6 +64,18 @@ scenarios:
       - wait_visible: 'body:not(:has(#loading))'
       - title: true
   - assert: {value: {equals: 'A <new> journey'}}
+  # the loading page counted the whole player and every file of the game
+  - cdp:
+      runner: browser
+      actions:
+      - eval: |
+          ({player: goZenLoad.player.done > 0 && (goZenLoad.player.total === 0 || goZenLoad.player.done === goZenLoad.player.total),
+            files: goZenLoad.files.total > 0 && goZenLoad.files.done === goZenLoad.files.total})
+  - assert:
+      value:
+        json:
+        - {path: $.player, equals: true}
+        - {path: $.files, equals: true}
   - cdp:
       runner: browser
       actions:

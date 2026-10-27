@@ -20,7 +20,7 @@ func main() {
 }
 
 func run() (err error) {
-	fsys, err := webfs.Load("game/")
+	fsys, err := webfs.Load("game/", func(done, total int64) { page("goZenProgress", "files", done, total) })
 	if err != nil {
 		return err
 	}
