@@ -10,13 +10,20 @@ import (
 	lang "github.com/nao1215/gozen/internal/text"
 )
 
-func (g *Game) idleChores() {
+// idle reports whether the game rests on a screen the autosave is written on.
+func (g *Game) idle() bool {
 	if g.st == nil || g.replaying || g.busy() || g.fadeT > 0 || len(g.stack) != 1 {
-		return
+		return false
 	}
 	switch g.stack[0].(type) {
 	case *field, *dungeonScene, *stageScene, *atlasScene, *streamLobby:
-	default:
+		return true
+	}
+	return false
+}
+
+func (g *Game) idleChores() {
+	if !g.idle() {
 		return
 	}
 	g.autoSave()

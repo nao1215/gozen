@@ -27,5 +27,8 @@ func loadVoice(fsys fs.FS, file string) *voiceLoad {
 	return v
 }
 
+// whenHidden: a desktop build writes what it keeps when it closes.
+func whenHidden(func()) {}
+
 // keepAwake: only a browser build holds the screen awake while the lines are read aloud.
 func keepAwake(bool) {}

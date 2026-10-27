@@ -50,6 +50,8 @@ type streamDesk struct {
 	// toast is a short message over the stream screens for toastT more ticks.
 	toast  string
 	toastT int
+	// kept is when keepOpen last wrote the autosave.
+	kept time.Time
 }
 
 // streamNow is the wall clock of the streams.
@@ -88,6 +90,12 @@ func (g *Game) stepStreams() {
 			g.desk.voices = err == nil && st.IsDir()
 			g.desk.speak = g.desk.voices
 		}
+		g.desk.kept = now
+		whenHidden(func() {
+			if !g.updating.Load() {
+				g.keepOpen()
+			}
+		})
 	}
 	now := g.streamNow()
 	if g.desk.st != g.st {
@@ -103,6 +111,21 @@ func (g *Game) stepStreams() {
 		g.st.Gold += gold
 		g.desk.away += gold
 	}
+	if now.Sub(g.desk.kept) >= streamKeep {
+		g.keepOpen()
+	}
+}
+
+// keepOpen writes the autosave with the time the game is open now (Settle keeps it in
+// the state), when the game rests where the autosave is written: an idle screen or the
+// watch view. It runs every streamKeep, when the game closes and when a browser hides its
+// page, whose frames then stop.
+func (g *Game) keepOpen() {
+	if g.desk == nil || !g.idle() && g.watching() == nil {
+		return
+	}
+	g.desk.kept = g.streamNow()
+	g.saveStreams()
 }
 
 // voiceLoad is the recorded voice of a stream line being loaded (loadVoice): done is
@@ -141,6 +164,11 @@ func (g *Game) liveShows() []*broadcast.Show {
 	}
 	return out
 }
+
+// streamKeep is how often the autosave is written while the game stays open, for the time
+// it was last open: a game closed (or its page hidden) without it would count the time it
+// was open as time away.
+const streamKeep = time.Minute
 
 // saveStreams writes the autosave after the streams' progress changed.
 func (g *Game) saveStreams() {

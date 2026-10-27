@@ -222,6 +222,45 @@ func TestStreamsDuoAndAway(t *testing.T) {
 	}
 }
 
+// TestStreamsKeepTheTimeOpen: while the game stays open on one screen, the autosave keeps
+// the time it was last open at most a minute old, and closing the game writes it: opening
+// it again at once earns nothing while away, and opening it two hours later two hours.
+func TestStreamsKeepTheTimeOpen(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	saved := func() *rpg.Streams {
+		t.Helper()
+		b, err := g.storeRead(g.autoPath())
+		if err != nil {
+			t.Fatal(err)
+		}
+		st, err := rpg.Parse(g.db, b, nil)
+		if err != nil || st.Streams == nil {
+			t.Fatalf("the autosave: %v", err)
+		}
+		return st.Streams
+	}
+	wldFrames(t, g, int(2.5*60*ebiten.DefaultTPS))
+	if open := time.Unix(saved().Open, 0); g.streamNow().Sub(open) > streamKeep {
+		t.Fatalf("after 2.5 minutes in the lobby the autosave has the game open at %v, now %v", open, g.streamNow())
+	}
+	sysClose(t, g)
+	closed := g.streamNow()
+	if open := saved().Open; open != closed.Unix() {
+		t.Fatalf("closing keeps the game open at %v, not %v", time.Unix(open, 0), closed)
+	}
+	if gold := broadcast.Settle(g.db.Streams, saved(), closed.Add(5*time.Second)); gold != 0 {
+		t.Errorf("opening again at once earns %d", gold)
+	}
+	if gold := broadcast.Settle(g.db.Streams, saved(), closed.Add(2*time.Hour)); gold != 200 {
+		t.Errorf("opening again two hours later earns %d, not 200", gold)
+	}
+}
+
 // TestStreamsReplayReadsTheRecordedClock: the trace records the time the run read with its
 // offset from UTC, and a replay plays the streams at that time where it was read, not at its
 // own time or in its own zone, so it does not diverge: just after midnight in Tokyo is that

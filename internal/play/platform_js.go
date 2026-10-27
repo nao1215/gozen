@@ -200,5 +200,17 @@ func keepAwake(on bool) {
 	api.Call("request", "screen").Call("then", got, failed)
 }
 
+// whenHidden calls f each time the page is hidden (another tab, a phone's browser sent to
+// the background): the game's frames stop then, and the page may be closed unseen.
+func whenHidden(f func()) {
+	doc := js.Global().Get("document")
+	doc.Call("addEventListener", "visibilitychange", js.FuncOf(func(js.Value, []js.Value) any {
+		if doc.Get("visibilityState").String() == "hidden" {
+			f()
+		}
+		return nil
+	}))
+}
+
 // stopSpeaking stops reading aloud.
 func stopSpeaking() { js.Global().Get("speechSynthesis").Call("cancel") }

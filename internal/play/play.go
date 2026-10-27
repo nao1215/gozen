@@ -215,6 +215,9 @@ type Game struct {
 	cancel  context.CancelFunc
 	failure error
 	closed  bool
+	// updating is set while Update runs: a page hidden then (an Update waiting for a file
+	// still coming) does not write the autosave over a frame half done (keepOpen).
+	updating atomic.Bool
 	// drawn is closed once the first frame is drawn (the dolls of a browser's build wait for it).
 	drawn     chan struct{}
 	drawnOnce sync.Once
@@ -775,6 +778,8 @@ func (g *Game) pauseForFocus(focused bool) bool {
 }
 
 func (g *Game) Update() error {
+	g.updating.Store(true)
+	defer g.updating.Store(false)
 	if g.opts.CollectBuildInfo && os.Getenv("GOZEN_DEBUG") != "" {
 		start := time.Now()
 		defer func() {
@@ -2086,6 +2091,9 @@ func (g *Game) Handle(e event.Effect) {
 func (g *Game) Close() error {
 	if g.closed {
 		return nil
+	}
+	if g.tr == nil || !g.tr.ended { // a trace ended by its script's quit takes no more lines
+		g.keepOpen()
 	}
 	g.closed = true
 	if g.cancel != nil {
