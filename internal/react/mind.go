@@ -200,7 +200,7 @@ func (m *Mind) match(norm, raw string, prefix string, found map[string]Tag) {
 	for _, tag := range m.tags {
 		run := m.lex[tag]
 		for _, w := range run.words {
-			hit := false
+			var hit bool
 			if w.exact {
 				hit = occurs(low, strings.ToLower(w.text), run.low, w.whole)
 			} else {

@@ -146,7 +146,7 @@ type ruleDef struct {
 	// An entry is a line, or a list of lines said in order. Lines may use {from}, {text},
 	// {mood}, {slot.TAG} and {mem.KEY}.
 	Say  []sayEntry `yaml:"say"`
-	Face string   `yaml:"face"`
+	Face string     `yaml:"face"`
 	// Delta is added to the mood on top of the likes.
 	Delta float64 `yaml:"delta"`
 	// Remember and Forget change the memory.

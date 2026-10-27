@@ -21,14 +21,14 @@ type State struct {
 	// Reactions stores per-speaker interpreter memory; event execution owns its contents.
 	Reactions map[string][]byte `json:"reactions,omitempty"`
 	// Streams is the progress of the live streams (nil: none yet).
-	Streams *Streams `json:"streams,omitempty"`
-	Actors    map[string]*Actor `json:"actors"` // everyone who has joined, by id
-	Party     []string          `json:"party"`
-	Items     map[string]int    `json:"items"`
-	Gold      int               `json:"gold"`
-	Flags     map[string]bool   `json:"flags"`
-	Vars      map[string]any    `json:"vars"` // numbers (float64), strings and declared booleans
-	Location  string            `json:"location"`
+	Streams  *Streams          `json:"streams,omitempty"`
+	Actors   map[string]*Actor `json:"actors"` // everyone who has joined, by id
+	Party    []string          `json:"party"`
+	Items    map[string]int    `json:"items"`
+	Gold     int               `json:"gold"`
+	Flags    map[string]bool   `json:"flags"`
+	Vars     map[string]any    `json:"vars"` // numbers (float64), strings and declared booleans
+	Location string            `json:"location"`
 	// Spot is where the party stands at a map or a stage location: a point of the map or a
 	// spot of the stage (ADR 0022). Empty is the location's start.
 	Spot   string          `json:"spot,omitempty"`
