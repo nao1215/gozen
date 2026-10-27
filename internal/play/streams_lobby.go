@@ -3,7 +3,6 @@ package play
 import (
 	"cmp"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -18,8 +17,8 @@ import (
 )
 
 // streamLobby lists the live channels: a large first card with its chat beside it,
-// smaller cards for the others, and on the left the channels live and offline (and, when
-// the lobby is a place, the place's entries).
+// smaller cards for the others and a row of the channels offline after them, and, when the
+// lobby is a place, the place's entries in the bar.
 type streamLobby struct {
 	done  func() // nil: the lobby is the place's scene
 	key   string // the live shows the cards were made for
@@ -78,7 +77,7 @@ func (l *streamLobby) close() {
 	}
 }
 
-// entries are the place's entries, listed under the channels when the lobby is a place.
+// entries are the place's entries, listed in the bar when the lobby is a place.
 func (l *streamLobby) entries(g *Game) []world.Entry {
 	if l.done != nil {
 		return nil
@@ -88,15 +87,15 @@ func (l *streamLobby) entries(g *Game) []world.Entry {
 
 // The layout of the lobby.
 const (
-	lobbySideW = 260.0
 	lobbyChatW = 300.0
 	lobbyGap   = 16.0
+	lobbyEdge  = 24.0 // the margin left and right of the cards
 )
 
 // cardRect is where the i-th card's picture is: the first large, the others four in a row.
 func (l *streamLobby) cardRect(g *Game, i int) (x, y, w, h float64) {
 	sw, _ := g.screen()
-	x0, mw := lobbySideW+24, sw-lobbySideW-48
+	x0, mw := lobbyEdge, sw-2*lobbyEdge
 	if i == 0 {
 		w = mw - lobbyChatW
 		return x0, streamBarH + 20, w, w * 9 / 16
@@ -114,7 +113,8 @@ func (l *streamLobby) shown(g *Game, i int) (x, y, w, h float64) {
 	return x, y - l.scroll, w, h
 }
 
-// follow scrolls so the chosen card, with the names under it, is in view.
+// follow scrolls so the chosen card, with the names under it, is in view, and the row of
+// the channels offline with the last card.
 func (l *streamLobby) follow(g *Game) {
 	if l.sel >= len(l.cards) {
 		return
@@ -122,11 +122,37 @@ func (l *streamLobby) follow(g *Game) {
 	_, sh := g.screen()
 	_, y, _, h := l.cardRect(g, l.sel)
 	_, top, _, _ := l.cardRect(g, 0)
-	l.scroll = max(0, min(y-top, max(l.scroll, y+h+60-sh)))
+	bottom := y + h + 60
+	if l.sel == len(l.cards)-1 && len(l.offline(g)) > 0 {
+		bottom = l.offlineTop(g) + offlineH
+	}
+	l.scroll = max(0, min(y-top, max(l.scroll, bottom-sh)))
 }
 
-// sideRow is where the i-th row of the left list is.
-func sideRow(i int) (y float64) { return streamBarH + 44 + float64(i)*48 }
+// offlineH is the height of the row of the channels offline, with its heading.
+const offlineH = 84.0
+
+// offlineTop is where the row of the channels offline begins, unscrolled: after the cards.
+func (l *streamLobby) offlineTop(g *Game) float64 {
+	if len(l.cards) == 0 {
+		return streamBarH + 70
+	}
+	_, y, _, h := l.cardRect(g, len(l.cards)-1)
+	return y + h + 66
+}
+
+// entryRect is where the i-th entry of the place is in the bar: after the game's title.
+func (l *streamLobby) entryRect(g *Game, i int) (x, y, w, h float64) {
+	x = 16 + 30 + gfx.TextWidth(cmp.Or(g.db.Game.Title, lang.T("配信")), 18) + 32
+	for k, e := range l.entries(g) {
+		w = gfx.TextWidth(e.Label, 14) + 24
+		if k == i {
+			break
+		}
+		x += w + 8
+	}
+	return x, 11, w, 30
+}
 
 func (l *streamLobby) update(g *Game) {
 	l.age++
@@ -193,13 +219,13 @@ func (l *streamLobby) update(g *Game) {
 		g.events.Start(e.Commands(g.db, g.st))
 	}
 	for i := range l.cards {
-		if x, y, w, h := l.shown(g, i); y+h > streamBarH && g.clickedIn(x, y, w, h+50) || g.clickedIn(0, sideRow(i), lobbySideW, 48) {
+		if x, y, w, h := l.shown(g, i); y+h > streamBarH && g.clickedIn(x, max(y, streamBarH), w, y+h+50-max(y, streamBarH)) {
 			choose(i)
 			return
 		}
 	}
 	for i := range entries {
-		if g.clickedIn(0, l.entryRow(g, i), lobbySideW, 40) {
+		if g.clickedIn(l.entryRect(g, i)) {
 			choose(len(l.cards) + i)
 			return
 		}
@@ -229,11 +255,6 @@ func (l *streamLobby) update(g *Game) {
 	}
 }
 
-// entryRow is where the i-th entry of the place is in the left list.
-func (l *streamLobby) entryRow(g *Game, i int) float64 {
-	return sideRow(len(l.cards)+len(l.offline(g))) + 30 + float64(i)*40
-}
-
 // offline are the channels not live.
 func (l *streamLobby) offline(g *Game) []int {
 	var out []int
@@ -255,7 +276,7 @@ func (l *streamLobby) draw(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
 	dst.Fill(streamPage)
 	if len(l.cards) == 0 {
-		gfx.DrawTextLeft(dst, lang.T("今は誰も配信していません。"), lobbySideW+24, streamBarH+30, 18, streamInk2)
+		gfx.DrawTextLeft(dst, lang.T("今は誰も配信していません。"), lobbyEdge, streamBarH+30, 18, streamInk2)
 	}
 	for i, c := range l.cards {
 		x, y, w, h := l.shown(g, i)
@@ -267,8 +288,9 @@ func (l *streamLobby) draw(g *Game, dst *ebiten.Image) {
 		}
 		l.drawCard(g, dst, c, i, x, y, w, h)
 	}
-	l.drawSide(g, dst, sh)
+	l.drawOffline(g, dst, sh)
 	g.streamTop(dst, "")
+	l.drawEntries(g, dst)
 	if g.desk.away > 0 {
 		fill(dst, withAlpha(colorBlack, 0x80))
 		bx, by := sw/2-260, sh/2-110
@@ -326,7 +348,7 @@ func (l *streamLobby) drawCard(g *Game, dst *ebiten.Image, c *lobbyCard, i int, 
 			}
 		}
 		rect(dst, x+w, y, 1, h+62, streamRule)
-		g.drawChat(dst, l.chat, x+w+14, y+10, h+40, g.money)
+		g.drawChat(dst, l.chat, x+w+14, y+10, h+40, g.money, streamInk)
 	}
 	g.drawAvatar(dst, host, x+pad, my, 36)
 	tx := x + 46 + pad
@@ -347,36 +369,37 @@ func (l *streamLobby) drawCard(g *Game, dst *ebiten.Image, c *lobbyCard, i int, 
 	}
 }
 
-// drawSide draws the left list: the live channels, those offline and the place's entries.
-func (l *streamLobby) drawSide(g *Game, dst *ebiten.Image, sh float64) {
-	rect(dst, 0, streamBarH, lobbySideW, sh-streamBarH, streamPanel)
-	rect(dst, lobbySideW-1, streamBarH, 1, sh-streamBarH, streamRule)
-	gfx.DrawTextLeft(dst, lang.T("配信中のチャンネル"), 16, streamBarH+14, 14, streamInk2)
-	row := 0
-	for _, c := range l.cards {
-		y := sideRow(row)
-		h := c.show.Hosts[0]
-		g.drawAvatar(dst, h, 14, y+6, 32)
-		gfx.DrawTextLeft(dst, gfx.Ellipsis(g.showName(c.show), 15, 140), 56, y+4, 15, streamInk)
-		gfx.DrawTextLeft(dst, gfx.Ellipsis(g.db.Tr(h.Tag), 13, 140), 56, y+24, 13, streamInk3)
-		gfx.FillCircle(dst, float32(lobbySideW-62), float32(y+14), 4, streamLive, true)
-		gfx.DrawTextLeft(dst, strconv.Itoa(c.viewers), lobbySideW-54, y+6, 13, streamInk2)
-		row++
+// drawOffline draws the channels offline in a row after the cards.
+func (l *streamLobby) drawOffline(g *Game, dst *ebiten.Image, sh float64) {
+	off := l.offline(g)
+	y := l.offlineTop(g) - l.scroll
+	if len(off) == 0 || y > sh || y+offlineH < streamBarH {
+		return
 	}
-	for _, i := range l.offline(g) {
-		y := sideRow(row)
+	gfx.DrawTextLeft(dst, lang.T("オフライン"), lobbyEdge, y, 14, streamInk2)
+	x := lobbyEdge
+	for _, i := range off {
 		c := g.db.Streams.Channels[i]
-		g.drawAvatar(dst, c, 14, y+6, 32)
-		gfx.DrawTextLeft(dst, g.channelName(c), 56, y+4, 15, streamInk3)
-		gfx.DrawTextLeft(dst, lang.T("オフライン"), 56, y+24, 13, streamInk3)
-		row++
-	}
-	entries := l.entries(g)
-	for i, e := range entries {
-		y := l.entryRow(g, i)
-		if len(l.cards)+i == l.sel {
-			rect(dst, 0, y, lobbySideW-1, 40, streamPage)
+		name := g.channelName(c)
+		g.drawAvatar(dst, c, x, y+28, 28)
+		gfx.DrawTextLeft(dst, name, x+36, y+33, 14, streamInk3)
+		x += 36 + gfx.TextWidth(name, 14) + 24
+		if sw, _ := g.screen(); x > sw-lobbyEdge {
+			break
 		}
-		gfx.DrawTextLeft(dst, gfx.Ellipsis(e.Label, 15, lobbySideW-32), 16, y+10, 15, streamInk)
+	}
+}
+
+// drawEntries draws the place's entries as small buttons in the bar.
+func (l *streamLobby) drawEntries(g *Game, dst *ebiten.Image) {
+	for i, e := range l.entries(g) {
+		x, y, w, h := l.entryRect(g, i)
+		edge := streamRule
+		if len(l.cards)+i == l.sel {
+			edge = streamBrand
+		}
+		gfx.FillRoundRect(dst, float32(x), float32(y), float32(w), float32(h), 15, streamPage)
+		gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(w), float32(h), 15, 1.5, edge)
+		gfx.DrawText(dst, e.Label, x+w/2, y+6, 14, streamInk)
 	}
 }

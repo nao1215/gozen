@@ -108,18 +108,34 @@ func (g *Game) watching() *streamWatch {
 	return nil
 }
 
-// The layout of the watch view: the chat column on the right, the stage on the left, and
-// the caption's letters and the part of the stage's width it takes.
+// The layout of the watch view: the chat column on the right, the stage on the left (or,
+// in full screen, the whole screen under the chat), and the caption's letters and the part
+// of the stage's width it takes.
 const (
 	streamChatW  = 380.0
 	captionSize  = 21.0
 	captionShare = 0.86
 )
 
-func (g *Game) watchStage() (x, y, w, h float64) {
-	sw, _ := g.screen()
+// watchStage is where the stage is, from the left edge.
+func (g *Game) watchStage() (y, w, h float64) {
+	sw, sh := g.screen()
+	if g.cfg.StreamFull {
+		h = min(sh, sw*9/16)
+		return (sh - h) / 2, sw, h
+	}
 	w = sw - streamChatW
-	return 0, streamBarH, w, w * 9 / 16
+	return streamBarH, w, w * 9 / 16
+}
+
+// toggleStreamFull switches the watch view between the page and the full screen, kept in
+// the settings for every save.
+func (g *Game) toggleStreamFull() {
+	g.cfg.StreamFull = !g.cfg.StreamFull
+	g.sfx("decide")
+	if err := g.saveConfig(); err != nil {
+		g.failure = err
+	}
 }
 
 // fillLine translates a line and puts in whom it is said to ({from}) and the days.
@@ -416,6 +432,7 @@ const (
 	ctlComment
 	ctlTip
 	ctlSpeak
+	ctlFull // the full screen and back
 )
 
 // controls are the controls shown now, in order: [kind, option].
@@ -430,7 +447,7 @@ func (w *streamWatch) controls() [][2]int {
 	if canSpeak() {
 		out = append(out, [2]int{int(ctlSpeak), 0})
 	}
-	return out
+	return append(out, [2]int{int(ctlFull), 0})
 }
 
 func (w *streamWatch) update(g *Game) {
@@ -499,7 +516,7 @@ func (w *streamWatch) input(g *Game) {
 	in := &g.in
 	sw, sh := g.screen()
 	if w.ended {
-		_, sy, stw, sth := g.watchStage()
+		sy, stw, sth := g.watchStage()
 		if in.ok() || in.cancel() || g.clickedIn(stw/2-80, sy+sth/2+20, 160, 44) {
 			w.leave(g)
 		}
@@ -543,6 +560,8 @@ func (w *streamWatch) input(g *Game) {
 				stopSpeaking()
 			}
 			g.sfx("decide")
+		case ctlFull:
+			g.toggleStreamFull()
 		}
 	}
 	for i, c := range ctl {
@@ -555,6 +574,8 @@ func (w *streamWatch) input(g *Game) {
 	switch {
 	case in.pressed[btnNext]:
 		w.typing = true
+	case in.pressed[btnHide]:
+		g.toggleStreamFull()
 	case in.digit > 0 && w.ask != nil && w.mine < 0:
 		w.choose(g, in.digit-1)
 	case in.up():
@@ -613,6 +634,12 @@ func (w *streamWatch) controlRect(g *Game, c [2]int) (x, y, cw, ch float64) {
 		return cx, sh - 58, streamChatW - 170, 42
 	case ctlTip:
 		return sw - 150, sh - 58, 64, 42
+	case ctlFull:
+		top := streamBarH + 5
+		if g.cfg.StreamFull {
+			top = 10
+		}
+		return sw - 86, top, 72, 28
 	case ctlSpeak:
 	}
 	return sw - 80, sh - 58, 66, 42
@@ -628,7 +655,8 @@ func (w *streamWatch) tipRect(g *Game, i int) (x, y, tw, th float64) {
 func (w *streamWatch) draw(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
 	dst.Fill(streamPage)
-	x, y, stw, sth := g.watchStage()
+	x := 0.0
+	y, stw, sth := g.watchStage()
 	rect(dst, x, y, stw, sth, streamInk)
 	n := len(w.show.Hosts)
 	for i, c := range w.show.Hosts {
@@ -638,18 +666,30 @@ func (w *streamWatch) draw(g *Game, dst *ebiten.Image) {
 		}
 		g.drawFramed(dst, c, w.bodies[i], x, y, stw, sth, shift, zoom, i == 0)
 	}
-	gfx.FillRoundRect(dst, float32(x+12), float32(y+12), 46, 22, 3, streamLive)
-	gfx.DrawText(dst, "LIVE", x+35, y+14, 14, streamPanel)
-	w.drawCaption(g, dst, x, y, stw, sth)
+	lx, inset := x+12, 0.0
+	if g.cfg.StreamFull { // the way back over the stage; the caption clear of the chat, still centred
+		back := "‹ " + lang.T("配信の一覧")
+		bw := gfx.TextWidth(back, 15) + 28
+		rect(dst, 0, 8, bw, 30, withAlpha(colorBlack, 0x80))
+		gfx.DrawTextLeft(dst, back, 14, 13, 15, streamPanel)
+		lx, inset = bw+12, streamChatW
+	}
+	gfx.FillRoundRect(dst, float32(lx), float32(y+12), 46, 22, 3, streamLive)
+	gfx.DrawText(dst, "LIVE", lx+23, y+14, 14, streamPanel)
+	w.drawCaption(g, dst, x+inset, y, stw-2*inset, sth)
 	if w.ended {
 		rect(dst, x, y, stw, sth, withAlpha(colorBlack, 0x99))
 		gfx.DrawText(dst, lang.T("配信は終了しました"), stw/2, y+sth/2-30, 24, streamPanel)
 		gfx.FillRoundRect(dst, float32(stw/2-80), float32(y+sth/2+20), 160, 44, 6, streamBrand)
 		gfx.DrawText(dst, lang.T("一覧へ"), stw/2, y+sth/2+30, 18, streamPanel)
 	}
-	w.drawInfo(g, dst, y+sth, stw)
+	if !g.cfg.StreamFull {
+		w.drawInfo(g, dst, y+sth, stw)
+	}
 	w.drawColumn(g, dst, sw, sh)
-	g.streamTop(dst, lang.T("配信の一覧"))
+	if !g.cfg.StreamFull {
+		g.streamTop(dst, lang.T("配信の一覧"))
+	}
 	if w.naming {
 		w.drawName(dst, sw, sh)
 	}
@@ -707,18 +747,24 @@ func (w *streamWatch) drawInfo(g *Game, dst *ebiten.Image, top, width float64) {
 // and the buttons, and the tips when they are open.
 func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, sw, sh float64) {
 	cx := sw - streamChatW
-	rect(dst, cx, streamBarH, streamChatW, sh-streamBarH, streamPanel)
-	rect(dst, cx, streamBarH, 1, sh-streamBarH, streamRule)
-	gfx.DrawText(dst, lang.T("配信チャット"), cx+streamChatW/2, streamBarH+10, 14, streamInk2)
-	rect(dst, cx, streamBarH+38, streamChatW, 1, streamRule)
+	top, ink, ink2 := streamBarH+38, streamInk, streamInk2
+	if g.cfg.StreamFull { // over the stage, on a darkened band
+		top, ink, ink2 = 44, streamPanel, streamRule
+		rect(dst, cx, 0, streamChatW, sh, withAlpha(colorBlack, 0x70))
+	} else {
+		rect(dst, cx, streamBarH, streamChatW, sh-streamBarH, streamPanel)
+		rect(dst, cx, streamBarH, 1, sh-streamBarH, streamRule)
+		gfx.DrawTextLeft(dst, lang.T("配信チャット"), cx+14, streamBarH+10, 14, streamInk2)
+		rect(dst, cx, top, streamChatW, 1, streamRule)
+	}
 	ctl := w.controls()
 	bottom := sh - 70
 	if w.ask != nil && w.mine < 0 {
 		bottom -= float64(len(w.ask.Options))*40 + 28
 	}
-	g.drawChat(dst, w.chat, cx+14, streamBarH+46, bottom-streamBarH-52, g.money)
+	g.drawChat(dst, w.chat, cx+14, top+8, bottom-top-14, g.money, ink)
 	if w.ask != nil && w.mine < 0 {
-		gfx.DrawTextLeft(dst, lang.T("答える："), cx+14, bottom+2, 14, streamInk2)
+		gfx.DrawTextLeft(dst, lang.T("答える："), cx+14, bottom+2, 14, ink2)
 	}
 	for i, c := range ctl {
 		x, y, cw, ch := w.controlRect(g, c)
@@ -762,7 +808,15 @@ func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, sw, sh float64) {
 				edge = streamBrand
 			}
 			gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, 1.5, edge)
-			gfx.DrawText(dst, label, x+cw/2, y+12, 13, streamInk2)
+			gfx.DrawText(dst, label, x+cw/2, y+12, 13, ink2)
+		case ctlFull:
+			label := lang.T("全画面")
+			if g.cfg.StreamFull {
+				label = lang.T("通常表示")
+			}
+			gfx.FillRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, streamPage)
+			gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, 1.5, edge)
+			gfx.DrawText(dst, label, x+cw/2, y+5, 13, streamInk2)
 		}
 	}
 	if w.tips {

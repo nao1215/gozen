@@ -13,9 +13,11 @@ import (
 	"time"
 )
 
-// TestGraphicsScreensStreams draws the stream lobby, the watch view and a duo: the cards
-// and the stage show the puppets over their rooms, the bar and the chat column are the
-// light page, and a line stands on a black caption band.
+// TestGraphicsScreensStreams draws the stream lobby, the watch view, a duo and the full
+// screen: the cards and the stage show the puppets over their rooms, the cards begin at the
+// left edge, the bar and the chat column are the light page, a line stands on a black
+// caption band, and in full screen the stage fills the screen under a darkened chat that
+// the settings keep.
 func TestGraphicsScreensStreams(t *testing.T) {
 	room := [3]uint32{80, 120, 170} // assets/x.png, the rooms
 	differs := func(img image.Image, x, y int) bool {
@@ -35,10 +37,10 @@ func TestGraphicsScreensStreams(t *testing.T) {
 	}{
 		{"single", "0", "gap 1\nwait 60\nshot lobby\npress ok\nwait 20\ntype Pat\npress ok\nwait 100\nshot watch\nquit\n", func(t *testing.T, root string) {
 			lobby := shotImage(t, root, "lobby")
-			// the bar, the side list, the first card's picture (its puppet over the room) and its chat
-			x, y, w, h := 284.0, streamBarH+20, 1280-260-48-lobbyChatW, (1280-260-48-lobbyChatW)*9/16
-			if !near(lobby, 640, 6, white) || !near(lobby, 100, 690, white) || !differs(lobby, int(x+w/2), int(y+h/2)) || !near(lobby, int(x+w+lobbyChatW/2), int(y+4), white) {
-				t.Error("the lobby is not drawn as the bar, the list and a card with its puppet and chat")
+			// the bar, the first card's picture (its room from the left edge, its puppet) and its chat
+			x, y, w, h := lobbyEdge, streamBarH+20, 1280-2*lobbyEdge-lobbyChatW, (1280-2*lobbyEdge-lobbyChatW)*9/16
+			if !near(lobby, 640, 6, white) || !near(lobby, int(x+60), int(y+60), room) || !differs(lobby, int(x+w/2), int(y+h/2)) || !near(lobby, int(x+w+lobbyChatW/2), int(y+4), white) {
+				t.Error("the lobby is not drawn as the bar and a card from the left edge with its puppet and chat")
 			}
 			watch := shotImage(t, root, "watch")
 			sw := 1280.0 - streamChatW
@@ -53,6 +55,17 @@ func TestGraphicsScreensStreams(t *testing.T) {
 			}
 			if black < 10 {
 				t.Error("no caption band under the line")
+			}
+		}},
+		{"full", "0", "gap 1\nwait 60\npress ok\nwait 20\ntype Pat\npress ok\nwait 100\npress hide\nwait 20\nshot full\nquit\n", func(t *testing.T, root string) {
+			full := shotImage(t, root, "full")
+			// the room under where the page's bar and the information were, and the chat darkened over the stage
+			if !near(full, 60, 100, room) || !near(full, 60, 700, room) || near(full, int(1280-streamChatW/2), 300, white) {
+				t.Error("the full screen does not spread the stage under a darkened chat")
+			}
+			b, err := os.ReadFile(filepath.Join(root, "saves", "config.json")) //nolint:gosec // Test-owned save.
+			if err != nil || !bytes.Contains(b, []byte(`"stream_full": true`)) {
+				t.Errorf("the settings do not keep the full screen: %s, %v", b, err)
 			}
 		}},
 		{"duo", "1", "gap 1\nwait 60\npress ok\nwait 20\npress ok\nwait 100\nshot duo\nquit\n", func(t *testing.T, root string) {

@@ -391,8 +391,9 @@ func (c *streamChat) pull(crowd *chat.Crowd, since time.Duration) {
 	}
 }
 
-// draw draws the newest messages that fit in x, y, w, h, the newest at the bottom.
-func (g *Game) drawChat(dst *ebiten.Image, c *streamChat, x, y, h float64, money func(int) string) {
+// drawChat draws the newest messages that fit in x, y, w, h, the newest at the bottom, the
+// plain lines in ink.
+func (g *Game) drawChat(dst *ebiten.Image, c *streamChat, x, y, h float64, money func(int) string, ink color.NRGBA) {
 	lh := gfx.LineHeight(chatSize)
 	bottom := y + h
 	recent := c.log.Recent(int(h/lh) + 1)
@@ -420,7 +421,7 @@ func (g *Game) drawChat(dst *ebiten.Image, c *streamChat, x, y, h float64, money
 		for j, l := range lines {
 			ly := bottom + float64(j)*lh
 			if j > 0 {
-				gfx.DrawTextLeft(dst, l, x, ly, chatSize, streamInk)
+				gfx.DrawTextLeft(dst, l, x, ly, chatSize, ink)
 				continue
 			}
 			lx := x
@@ -444,7 +445,7 @@ func (g *Game) drawChat(dst *ebiten.Image, c *streamChat, x, y, h float64, money
 				lx += gfx.TextWidth(m.From, chatSize)
 				rest = name
 			}
-			gfx.DrawTextLeft(dst, rest, lx, ly, chatSize, streamInk)
+			gfx.DrawTextLeft(dst, rest, lx, ly, chatSize, ink)
 		}
 	}
 }

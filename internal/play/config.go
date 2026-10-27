@@ -38,6 +38,8 @@ type config struct {
 	VoiceBy map[string]int `json:"voice_by,omitempty"`
 	// Language is the language the player chose, one of game.yaml's languages (ADR 0027).
 	Language string `json:"language,omitempty"`
+	// StreamFull: the watch view of a stream fills the screen with the stage (ADR 0048).
+	StreamFull bool `json:"stream_full,omitempty"`
 }
 
 func defaultConfig() config {
