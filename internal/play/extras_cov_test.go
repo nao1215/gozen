@@ -214,7 +214,7 @@ func TestWldPuppetStartsOnFirstTalkAndFallsBack(t *testing.T) {
 	}
 	// a puppet that cannot be loaded is remembered as failed and the picture is shown
 	wldPlay(t, g, "press ok\nwait 60\npress ok\nwait 60\n", 300)
-	if g.talk.say.Text != "A broken puppet." || !g.puppets.failed["broken"] || g.puppets.live["broken"] != nil {
+	if g.talk.say.Text != "A broken puppet." || !g.puppets.failed[g.db.Actors["broken"].Puppet] || g.puppets.live["broken"] != nil {
 		t.Fatalf("line %q failed %v", g.talk.say.Text, g.puppets.failed)
 	}
 	g.closePuppets()
