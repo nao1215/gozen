@@ -108,6 +108,9 @@ type configScreen struct {
 	list *list
 	done func()
 	err  string
+	// streams: opened over a stream screen, the settings are a page of the stream site, with
+	// its bar and the way back to the streams (ADR 0050).
+	streams bool
 	// rows are what each row of the list sets, in order; the last row goes back.
 	rows []cfgRow
 	// voiceRow is the row of the voice volume (-1: the game has no voices), followed by a
@@ -152,11 +155,23 @@ func (s *configScreen) row(i int) cfgRow {
 func (g *Game) hasBattles() bool { return len(g.db.Troops) > 0 }
 
 func newConfigScreen(g *Game) *configScreen {
-	s := &configScreen{list: newList(nil, 0, 0, 640, 11)}
+	s := &configScreen{list: newList(nil, 0, 0, 640, 11), streams: g.streamBase()}
 	sw, sh := g.screen()
 	s.list.x, s.list.y = (sw-640)/2, sh*0.13
+	s.place(g)
 	s.refresh(g)
 	return s
+}
+
+// place puts the list of a stream page under the bar and the heading, as wide as the
+// screen allows (the screen's size follows the window).
+func (s *configScreen) place(g *Game) {
+	if !s.streams {
+		return
+	}
+	sw, _ := g.screen()
+	s.list.w = min(640, sw-48)
+	s.list.x, s.list.y = (sw-s.list.w)/2, streamBarH+80
 }
 
 func (s *configScreen) overlay() bool { return true }
@@ -230,6 +245,7 @@ func (g *Game) showSP() bool {
 }
 
 func (s *configScreen) update(g *Game) {
+	s.place(g)
 	l := s.list
 	last := len(l.items) - 1
 	d, wrap := 0, false
@@ -268,6 +284,9 @@ func (s *configScreen) update(g *Game) {
 		return
 	}
 	chose, cancel := l.update(g)
+	if s.streams && g.clickedIn(0, 0, 140, streamBarH) {
+		cancel = true
+	}
 	if cancel || (chose && l.sel == last) {
 		if err := g.saveConfig(); err != nil && s.err == "" {
 			s.err = lang.T("設定を保存できなかった: ") + err.Error()
@@ -330,11 +349,7 @@ func (s *configScreen) change(g *Game, d int, wrap bool) {
 	case rowLanguage:
 		offered := g.db.Game.Offered()
 		i := slices.Index(offered, g.language())
-		c.Language = offered[(i+d+len(offered))%len(offered)]
-		if err := g.useLanguage(); err != nil {
-			log.Printf("language: %v", err)
-		}
-		g.talk.reword(g)
+		g.setLanguage(offered[(i+d+len(offered))%len(offered)])
 	case rowBack:
 	}
 	g.applyConfig()
@@ -343,13 +358,20 @@ func (s *configScreen) change(g *Game, d int, wrap bool) {
 }
 
 func (s *configScreen) draw(g *Game, dst *ebiten.Image) {
+	s.place(g)
 	sw, sh := g.screen()
-	fill(dst, withAlpha(colorBlack, 0x80))
 	l := s.list
-
-	gfx.FillRoundRect(dst, float32(l.x-30), float32(l.y-80), float32(l.w+60), float32(l.height()+190), 16, withAlpha(g.th.window, 0xff))
-	g.window(dst, l.x-30, l.y-80, l.w+60, l.height()+190)
-	gfx.DrawTextOutlineColor(dst, lang.T("せってい"), sw/2, l.y-62, sizeM, g.th.text, g.th.window, 1)
+	if s.streams { // a page of the stream site: its bar with the way back, and a heading
+		dst.Fill(streamPage)
+		g.streamTop(dst, lang.T("配信の一覧"), nil, -1)
+		gfx.DrawTextLeft(dst, lang.T("設定"), l.x, streamBarH+24, 22, streamInk)
+		gfx.FillRoundRect(dst, float32(l.x-12), float32(l.y-12), float32(l.w+24), float32(l.height()+110), 12, withAlpha(g.th.window, 0xff))
+	} else {
+		fill(dst, withAlpha(colorBlack, 0x80))
+		gfx.FillRoundRect(dst, float32(l.x-30), float32(l.y-80), float32(l.w+60), float32(l.height()+190), 16, withAlpha(g.th.window, 0xff))
+		g.window(dst, l.x-30, l.y-80, l.w+60, l.height()+190)
+		gfx.DrawTextOutlineColor(dst, lang.T("せってい"), sw/2, l.y-62, sizeM, g.th.text, g.th.window, 1)
+	}
 	l.draw(g, dst, true)
 	if s.err != "" {
 		ls, sz := gfx.FitLines(s.err+lang.T("（もう一度 閉じると そのまま 閉じる）"), sizeS, l.w, 2)
@@ -389,6 +411,16 @@ func (g *Game) language() string {
 		return l
 	}
 	return cmp.Or(g.db.Game.Language, lang.English)
+}
+
+// setLanguage shows the game in the language and keeps it in the settings (saved with
+// them).
+func (g *Game) setLanguage(code string) {
+	g.cfg.Language = code
+	if err := g.useLanguage(); err != nil {
+		log.Printf("language: %v", err)
+	}
+	g.talk.reword(g)
 }
 
 // useLanguage shows the game's text and the engine's words in the language (ADR 0027).

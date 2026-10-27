@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"image"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -32,6 +33,8 @@ type streamLobby struct {
 	open  time.Time
 	sel   int // the card (then the entry) chosen with the keys
 	age   int
+	// barH is the height of the bar over the lobby (barHeight).
+	barH float64
 	// scroll is how far the cards are scrolled up, and fling the finger's scrolling.
 	scroll float64
 	fling  fling
@@ -47,8 +50,8 @@ type lobbyCard struct {
 	beat    int
 	talk    time.Time
 	viewers int
-	// line is the caption: the show's line now, and its lines as the card shows them,
-	// wrapped from wrapFor to the width wrapW.
+	// line is the caption: the show's line now (untranslated), and its lines as the card
+	// shows them, wrapped from wrapFor (translated) to the width wrapW.
 	line, wrapFor string
 	wrapW         float64
 	lines         []string
@@ -70,7 +73,7 @@ func lineAt(s *broadcast.Show, b int) string {
 
 func newStreamLobby(g *Game, done func()) *streamLobby {
 	g.stepStreams()
-	l := &streamLobby{done: done, open: g.streamNow()}
+	l := &streamLobby{done: done, open: g.streamNow(), barH: streamBarH}
 	if g.st.Streams.Viewer == "" {
 		l.name = &textField{}
 		l.name.start(g, func() (float64, float64) {
@@ -193,11 +196,11 @@ func (l *streamLobby) cardRect(g *Game, i int) (x, y, w, h float64) {
 		x0, mw = tallEdge, sw-2*tallEdge
 		w = mw
 		h = w * 9 / 16
-		return x0, streamBarH + 16 + float64(i)*(h+tallNames), w, h
+		return x0, l.barH + 16 + float64(i)*(h+tallNames), w, h
 	}
 	if i == 0 {
 		w = mw - lobbyChatW
-		return x0, streamBarH + 20, w, w * 9 / 16
+		return x0, l.barH + 20, w, w * 9 / 16
 	}
 	_, fy, _, fh := l.cardRect(g, 0)
 	w = (mw - 3*lobbyGap) / 4
@@ -258,40 +261,16 @@ func (l *streamLobby) swipe(g *Game) {
 // offlineTop is where the row of the channels offline begins, unscrolled: after the cards.
 func (l *streamLobby) offlineTop(g *Game) float64 {
 	if len(l.cards) == 0 {
-		return streamBarH + 70
+		return l.barH + 70
 	}
 	_, y, _, h := l.cardRect(g, len(l.cards)-1)
 	return y + h + 66
 }
 
-// entryRect is where the i-th entry of the place is in the bar: after the game's title.
-func (l *streamLobby) entryRect(g *Game, i int) (x, y, w, h float64) {
-	title, x := g.barTitle("", l.entriesW(g))
-	x += gfx.TextWidth(title, 18) + 32
-	for k, e := range l.entries(g) {
-		w = gfx.TextWidth(e.Label, 14) + 24
-		if k == i {
-			break
-		}
-		x += w + 8
-	}
-	return x, 11, w, 30
-}
-
-// entriesW is how wide the place's entries in the bar are, with the space before them.
-func (l *streamLobby) entriesW(g *Game) float64 {
-	w := 0.0
-	for _, e := range l.entries(g) {
-		w += gfx.TextWidth(e.Label, 14) + 24 + 8
-	}
-	if w > 0 {
-		w += 24
-	}
-	return w
-}
-
 func (l *streamLobby) update(g *Game) {
 	l.age++
+	bs := g.barButtons(l.entries(g))
+	l.barH = barHeight(bs)
 	l.rebuild(g)
 	now := g.streamNow()
 	in := &g.in
@@ -316,7 +295,7 @@ func (l *streamLobby) update(g *Game) {
 			case i == 0 && beat.Chat != nil:
 				l.chat.post(chat.Message{From: g.db.Tr(beat.Chat[0]), Text: g.db.Tr(beat.Chat[1])})
 			}
-			c.line = g.db.Tr(lineAt(c.show, b))
+			c.line = lineAt(c.show, b)
 			if text != "" {
 				c.talk = now.Add(seconds(min(3.5, 0.6+0.07*float64(len([]rune(text))))))
 				if g.db.Streams.Bounces(text) {
@@ -345,6 +324,9 @@ func (l *streamLobby) update(g *Game) {
 		g.keepCrowd(l.crowd)
 		l.chat.pull(l.crowd, now.Sub(l.open))
 	}
+	if l.done == nil && g.pump() { // the commands of the place's entry taken, as a field runs them
+		return
+	}
 	if l.name != nil {
 		l.updateName(g)
 		return
@@ -368,16 +350,18 @@ func (l *streamLobby) update(g *Game) {
 	}
 	l.swipe(g)
 	for i := range l.cards {
-		if x, y, w, h := l.shown(g, i); y+h > streamBarH && g.clickedIn(x, max(y, streamBarH), w, y+h+50-max(y, streamBarH)) {
+		if x, y, w, h := l.shown(g, i); y+h > l.barH && g.clickedIn(x, max(y, l.barH), w, y+h+50-max(y, l.barH)) {
 			choose(i)
 			return
 		}
 	}
-	for i := range entries {
-		if g.clickedIn(l.entryRect(g, i)) {
-			choose(len(l.cards) + i)
+	if i := g.barClick(bs); i >= 0 {
+		if bs[i].lang != "" {
+			g.switchLanguage(bs[i].lang)
 			return
 		}
+		choose(len(l.cards) + bs[i].entry)
+		return
 	}
 	switch {
 	case n == 0:
@@ -425,22 +409,24 @@ func (l *streamLobby) offline(g *Game) []int {
 func (l *streamLobby) draw(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
 	dst.Fill(streamPage)
+	bs := g.barButtons(l.entries(g))
+	l.barH = barHeight(bs)
 	if len(l.cards) == 0 {
-		gfx.DrawTextLeft(dst, lang.T("今は誰も配信していません。"), lobbyEdge, streamBarH+30, 18, streamInk2)
+		gfx.DrawTextLeft(dst, lang.T("今は誰も配信していません。"), lobbyEdge, l.barH+30, 18, streamInk2)
 	}
 	for i, c := range l.cards {
 		x, y, w, h := l.shown(g, i)
 		if y > sh {
 			break
 		}
-		if y+h+60 < streamBarH {
+		if y+h+60 < l.barH {
 			continue
 		}
 		l.drawCard(g, dst, c, i, x, y, w, h)
 	}
 	l.drawOffline(g, dst, sh)
-	g.streamTop(dst, "", l.entriesW(g))
-	l.drawEntries(g, dst)
+	sel := slices.IndexFunc(bs, func(b barButton) bool { return b.lang == "" && len(l.cards)+b.entry == l.sel })
+	g.streamTop(dst, "", bs, sel)
 	if l.name != nil {
 		l.drawName(g, dst, sw, sh)
 	}
@@ -498,7 +484,7 @@ func (l *streamLobby) drawCard(g *Game, dst *ebiten.Image, c *lobbyCard, i int, 
 	if g.view.tall {
 		pad = 0
 	}
-	l.drawLine(dst, c, x, y, w, h)
+	l.drawLine(g, dst, c, x, y, w, h)
 	if g.beside(i) {
 		rect(dst, x+w, y, 1, h+62, streamRule)
 		g.drawChat(dst, l.chat, x+w+14, y+10, lobbyChatW-28, h+40, g.money, streamInk)
@@ -527,14 +513,14 @@ func (l *streamLobby) drawCard(g *Game, dst *ebiten.Image, c *lobbyCard, i int, 
 
 // drawLine draws the card's caption at the bottom of its picture: white letters on black
 // bands, as large as the card's width allows (cardCaption), in two lines at most.
-func (l *streamLobby) drawLine(dst *ebiten.Image, c *lobbyCard, x, y, w, h float64) {
+func (l *streamLobby) drawLine(g *Game, dst *ebiten.Image, c *lobbyCard, x, y, w, h float64) {
 	if c.line == "" {
 		return
 	}
 	size := cardCaption(w)
-	if c.wrapFor != c.line || c.wrapW != w {
-		c.wrapFor, c.wrapW = c.line, w
-		c.lines = gfx.Wrap(c.line, size, w*0.86)
+	if line := g.db.Tr(c.line); c.wrapFor != line || c.wrapW != w {
+		c.wrapFor, c.wrapW = line, w
+		c.lines = gfx.Wrap(line, size, w*0.86)
 		if len(c.lines) > 2 {
 			c.lines = c.lines[:2]
 			c.lines[1] = gfx.Ellipsis(c.lines[1]+"…", size, w*0.86)
@@ -579,7 +565,7 @@ func (l *streamLobby) offlineSpots(g *Game, off []int) []image.Point {
 func (l *streamLobby) drawOffline(g *Game, dst *ebiten.Image, sh float64) {
 	off := l.offline(g)
 	top := l.offlineTop(g) - l.scroll
-	if len(off) == 0 || top > sh || top+l.end(g)-l.offlineTop(g) < streamBarH {
+	if len(off) == 0 || top > sh || top+l.end(g)-l.offlineTop(g) < l.barH {
 		return
 	}
 	edge := lobbyEdge
@@ -592,19 +578,5 @@ func (l *streamLobby) drawOffline(g *Game, dst *ebiten.Image, sh float64) {
 		x, y := float64(p.X), top+float64(p.Y)
 		g.drawAvatar(dst, c, x, y, 28)
 		gfx.DrawTextLeft(dst, g.channelName(c), x+36, y+5, 14, streamInk3)
-	}
-}
-
-// drawEntries draws the place's entries as small buttons in the bar.
-func (l *streamLobby) drawEntries(g *Game, dst *ebiten.Image) {
-	for i, e := range l.entries(g) {
-		x, y, w, h := l.entryRect(g, i)
-		edge := streamRule
-		if len(l.cards)+i == l.sel {
-			edge = streamBrand
-		}
-		gfx.FillRoundRect(dst, float32(x), float32(y), float32(w), float32(h), 15, streamPage)
-		gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(w), float32(h), 15, 1.5, edge)
-		gfx.DrawText(dst, e.Label, x+w/2, y+6, 14, streamInk)
 	}
 }

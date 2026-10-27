@@ -10,6 +10,7 @@ import (
 	"log"
 	"math"
 	"math/rand/v2"
+	"slices"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/nao1215/gozen/internal/layer5/puppet"
 	"github.com/nao1215/gozen/internal/rpg"
 	lang "github.com/nao1215/gozen/internal/text"
+	"github.com/nao1215/gozen/internal/world"
 )
 
 // The live streams (ADR 0048): the lobby (streams_lobby.go) and the watch view
@@ -40,6 +42,8 @@ type streamDesk struct {
 	// speak reads the lines aloud (a browser build).
 	speak   bool
 	avatars map[string]*ebiten.Image
+	// gear is the settings' gear in the bar.
+	gear stamp
 	// toast is a short message over the stream screens for toastT more ticks.
 	toast  string
 	toastT int
@@ -431,6 +435,12 @@ func (c *streamChat) fit(width float64) {
 		return
 	}
 	c.width, c.back = width, 0
+	c.rewrap()
+}
+
+// rewrap wraps the messages again: for a new width, or the streamer's mark in another
+// language.
+func (c *streamChat) rewrap() {
 	clear(c.lines)
 	for _, m := range c.log.Recent(150) {
 		c.wrap(m)
@@ -549,35 +559,190 @@ func (g *Game) tipTier(amount int) int {
 	return min(tier, len(streamTips)-1)
 }
 
-// streamTop draws the bar over the stream screens: the way back on the left (back, when
-// not empty), the logo, the game's title and the gold; the title leaves reserve free after it.
-func (g *Game) streamTop(dst *ebiten.Image, back string, reserve float64) {
+// barButton is a button of the bar over the stream screens, between the title and the
+// gold: a language the screens can be shown in, or an entry of the place. x and w are where
+// it is in the bar.
+type barButton struct {
+	label string
+	lang  string // the language it shows ("" for an entry)
+	entry int    // the place's entry
+	gear  bool   // the entry opens the settings
+	x, y  float64
+	w     float64
+}
+
+// The top and the height of the bar's buttons.
+const barButtonY, barButtonH = 11.0, 30.0
+
+// barButtons are the bar's buttons, laid out leftward from the gold: the languages side by
+// side when the game offers more than one, then the place's entries. An entry has a › after
+// its label, for it goes to another screen, and the settings' a gear before it. The buttons
+// that would push into the logo and the title's first letters go to a second row under the
+// first, from the right edge (a narrow screen).
+func (g *Game) barButtons(entries []world.Entry) []barButton {
+	var bs []barButton
+	if offered := g.db.Game.Offered(); len(offered) > 1 {
+		for _, code := range offered {
+			bs = append(bs, barButton{label: langShort(code), lang: code})
+		}
+	}
+	for i, e := range entries {
+		bs = append(bs, barButton{label: e.Label, entry: i, gear: opensConfig(e)})
+	}
 	sw, _ := g.screen()
-	rect(dst, 0, 0, sw, streamBarH, streamPanel)
-	rect(dst, 0, streamBarH-1, sw, 1, streamRule)
+	langs := 0.0 // the languages' width together: they go to the second row together
+	for i := range bs {
+		b := &bs[i]
+		b.w = gfx.TextWidth(b.label, 14) + 20
+		if b.lang == "" {
+			b.w += gfx.TextWidth("›", 14) + 6
+			if b.gear {
+				b.w += 20
+			}
+		} else {
+			langs += b.w + 2
+		}
+	}
+	x, y := sw-16-gfx.TextWidth(g.money(g.st.Gold), 17)-16, barButtonY
+	for i := len(bs) - 1; i >= 0; i-- {
+		b := &bs[i]
+		need := b.w
+		if b.lang != "" && (i == len(bs)-1 || bs[i+1].lang == "") { // the last language
+			need = langs - 2
+		}
+		if x-need < 16+30+40 && y == barButtonY {
+			x, y = sw-16, streamBarH+barButtonY-6
+		}
+		b.x, b.y = x-b.w, y
+		x = b.x - 8
+		if i > 0 && b.lang != "" {
+			x = b.x - 2 // the languages side by side
+		}
+	}
+	return bs
+}
+
+// barHeight is the height of the bar with the buttons: taller by a row when they take two.
+func barHeight(bs []barButton) float64 {
+	for _, b := range bs {
+		if b.y > barButtonY {
+			return streamBarH + barButtonH + 4
+		}
+	}
+	return streamBarH
+}
+
+// opensConfig reports whether the entry opens the settings.
+func opensConfig(e world.Entry) bool {
+	return e.Action != nil && slices.ContainsFunc(e.Action.Do, func(c data.Command) bool { return c.Open == "config" })
+}
+
+// langShort is a language as the bar's button names it.
+func langShort(code string) string {
+	switch code {
+	case lang.Japanese:
+		return "日本語"
+	case lang.English:
+		return "EN"
+	}
+	return strings.ToUpper(code)
+}
+
+// barClick is the bar's button clicked now, or -1.
+func (g *Game) barClick(bs []barButton) int {
+	for i, b := range bs {
+		if g.clickedIn(b.x, b.y, b.w, barButtonH) {
+			return i
+		}
+	}
+	return -1
+}
+
+// switchLanguage shows the stream screens in the language, as the settings' language row
+// does, and keeps it in the settings; the crowds chat in it from now on, and the chats mark
+// the streamers' messages in it.
+func (g *Game) switchLanguage(code string) {
+	g.setLanguage(code)
+	if err := g.saveConfig(); err != nil {
+		g.failure = err
+	}
+	g.sfx("decide")
+	for _, s := range g.stack {
+		switch s := s.(type) {
+		case *streamLobby:
+			if s.chat != nil {
+				s.crowd = g.newCrowd()
+				s.chat.rewrap()
+			}
+		case *streamWatch:
+			s.crowd = g.newCrowd()
+			s.chat.rewrap()
+		}
+	}
+}
+
+// streamTop draws the bar over the stream screens: the way back on the left (back, when
+// not empty), the logo, the game's title, the buttons (the entry sel framed) and the gold.
+func (g *Game) streamTop(dst *ebiten.Image, back string, bs []barButton, sel int) {
+	sw, _ := g.screen()
+	bh := barHeight(bs)
+	rect(dst, 0, 0, sw, bh, streamPanel)
+	rect(dst, 0, bh-1, sw, 1, streamRule)
+	x := 16.0 + 30
 	if back != "" {
 		gfx.DrawTextLeft(dst, "‹ "+back, 16, 15, 16, streamInk2)
+		x += gfx.TextWidth("‹ "+back, 16) + 24
 	}
-	title, x := g.barTitle(back, reserve)
 	if img := g.pics.get(g.db.Streams.Logo); img != nil {
 		gfx.DrawImageFit(dst, img, x-33, 12, 28, 28, 1)
 	} else {
 		gfx.FillRoundRect(dst, float32(x-30), 15, 22, 22, 6, streamBrand)
 	}
-	gfx.DrawTextLeft(dst, title, x, 14, 18, streamInk)
+	end := sw - 16 - gfx.TextWidth(g.money(g.st.Gold), 17)
+	for _, b := range bs {
+		if b.y == barButtonY {
+			end = min(end, b.x)
+		}
+	}
+	gfx.DrawTextLeft(dst, gfx.Ellipsis(cmp.Or(g.db.Game.Title, lang.T("配信")), 18, max(0, end-x-16)), x, 14, 18, streamInk)
+	shown := g.language()
+	for i, b := range bs {
+		x, y, w, h := float32(b.x), float32(b.y), float32(b.w), float32(barButtonH)
+		if b.lang != "" {
+			if b.lang == shown {
+				gfx.FillRoundRect(dst, x, y, w, h, 15, streamInk)
+				gfx.DrawText(dst, b.label, b.x+b.w/2, b.y+6, 14, streamPanel)
+				continue
+			}
+			gfx.StrokeRoundRect(dst, x, y, w, h, 15, 1.5, streamRule)
+			gfx.DrawText(dst, b.label, b.x+b.w/2, b.y+6, 14, streamInk2)
+			continue
+		}
+		edge := streamRule
+		if i == sel {
+			edge = streamBrand
+		}
+		gfx.FillRoundRect(dst, x, y, w, h, 15, streamPage)
+		gfx.StrokeRoundRect(dst, x, y, w, h, 15, 1.5, edge)
+		lx := b.x + 10
+		if b.gear {
+			g.desk.gear.draw(dst, "gear", lx, b.y+7, 16, 16, func(img *ebiten.Image) { drawGear(img, 8, 8, 7, streamInk2) })
+			lx += 20
+		}
+		gfx.DrawTextLeft(dst, b.label, lx, b.y+6, 14, streamInk)
+		gfx.DrawTextRight(dst, "›", b.x+b.w-10, b.y+5, 14, streamInk2)
+	}
 	gfx.DrawTextRight(dst, g.money(g.st.Gold), sw-16, 15, 17, streamInk)
 }
 
-// barTitle is the game's title as the bar shows it, cut to leave reserve free before the
-// gold, and where it begins.
-func (g *Game) barTitle(back string, reserve float64) (string, float64) {
-	sw, _ := g.screen()
-	x := 16.0 + 30
-	if back != "" {
-		x += gfx.TextWidth("‹ "+back, 16) + 24
+// drawGear draws a gear of radius r centred on cx, cy: eight teeth around a ring.
+func drawGear(dst *ebiten.Image, cx, cy, r float32, clr color.Color) {
+	for i := range 8 {
+		a := float64(i) * math.Pi / 4
+		c, s := float32(math.Cos(a)), float32(math.Sin(a))
+		gfx.StrokeLine(dst, cx+r*0.5*c, cy+r*0.5*s, cx+r*c, cy+r*s, r*0.4, clr, true)
 	}
-	room := sw - x - reserve - gfx.TextWidth(g.money(g.st.Gold), 17) - 32
-	return gfx.Ellipsis(cmp.Or(g.db.Game.Title, lang.T("配信")), 18, max(0, room)), x
+	gfx.StrokeCircle(dst, cx, cy, r*0.55, r*0.32, clr, true)
 }
 
 // streamBarH is the height of the bar over the stream screens.
@@ -659,14 +824,36 @@ func streamView(ow, oh, dsf, uw, uh float64) gameView {
 	return gameView{w: max(1, int(math.Round(ow/k*p))), h: max(1, int(math.Round(oh/k*p))), ui: p, tall: tall}
 }
 
-// streamShown reports whether a stream screen is the screen shown, with no talk over it.
+// streamShown reports whether a stream screen is the screen shown, with no talk over it,
+// or the settings opened over one.
 func (g *Game) streamShown() bool {
-	if len(g.stack) == 0 || g.talk.active || g.events != nil && g.events.Running() {
+	if len(g.stack) == 0 {
+		return false
+	}
+	if c, ok := g.stack[len(g.stack)-1].(*configScreen); ok {
+		return c.streams
+	}
+	if g.talk.active || g.events != nil && g.events.Running() {
 		return false
 	}
 	switch g.stack[len(g.stack)-1].(type) {
 	case *streamLobby, *streamWatch:
 		return true
+	}
+	return false
+}
+
+// streamBase reports whether the screen under the overlays is a stream screen.
+func (g *Game) streamBase() bool {
+	for _, s := range slices.Backward(g.stack) {
+		if o, ok := s.(overlay); ok && o.overlay() {
+			continue
+		}
+		switch s.(type) {
+		case *streamLobby, *streamWatch:
+			return true
+		}
+		return false
 	}
 	return false
 }

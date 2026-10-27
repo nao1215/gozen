@@ -16,6 +16,7 @@ import (
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/broadcast"
 	"github.com/nao1215/gozen/internal/rpg"
+	lang "github.com/nao1215/gozen/internal/text"
 )
 
 // streamsData is a neutral stream game: two channels of the example puppet, one short
@@ -25,7 +26,7 @@ var streamsData = map[string]string{
   ann: {name: Ann, face: smile, puppet: streamer/puppet.yaml}
   bo: {name: Bo, face: smile, puppet: streamer/puppet.yaml}
 locations:
-  booth: {name: Booth, stream: lobby, exits: [{to: camp, label: Camp}]}
+  booth: {name: Booth, stream: lobby, exits: [{to: camp, label: Camp}], actions: [{label: Settings, do: [{open: config}]}]}
 `,
 	"data/streams.yaml": `logo: x.png
 timing: {say: 2, per_char: 0.01, chat: 0.3, ask: 1}
@@ -85,7 +86,8 @@ func streamsGame(t *testing.T, duo string) *Game {
 func streamsFS(t *testing.T, duo string) fstest.MapFS {
 	t.Helper()
 	fsys := gameFiles(t)
-	fsys["game.yaml"] = &fstest.MapFile{Data: append([]byte("schema_version: 9\nstreams: data/streams.yaml\nreactions: {ann: talk.yaml}\n"), fsys["game.yaml"].Data...)}
+	fsys["game.yaml"] = &fstest.MapFile{Data: append([]byte("schema_version: 9\nwritten_in: en\nlanguages: [en, ja]\nstreams: data/streams.yaml\nreactions: {ann: talk.yaml}\n"), fsys["game.yaml"].Data...)}
+	fsys["lang/ja.yaml"] = &fstest.MapFile{Data: []byte("text:\n  \"Hello, everyone.\": \"みなさん、こんにちは。\"\n  \"Which seeds?\": \"どの種？\"\n  \"That is all for today!\": \"今日はここまで！\"\n  \"Settings\": \"設定\"\n")}
 	for n, s := range streamsData {
 		fsys[n] = &fstest.MapFile{Data: []byte(strings.ReplaceAll(s, "DUO", duo))}
 	}
@@ -301,7 +303,7 @@ func TestStreamsPortrait(t *testing.T) {
 	if g.watching() != nil {
 		t.Fatal("a swipe's lifting opens a card")
 	}
-	if c := l.cards[0]; c.line == "" || c.line != g.db.Tr(lineAt(c.show, c.show.BeatAt(g.streamNow()))) {
+	if c := l.cards[0]; c.line == "" || c.line != lineAt(c.show, c.show.BeatAt(g.streamNow())) {
 		t.Fatalf("the card's caption %q is not the show's line now", c.line)
 	}
 	g.in.swiped = false
@@ -363,5 +365,66 @@ func TestStreamsLineAt(t *testing.T) {
 		if got := lineAt(s, b); got != want {
 			t.Errorf("beat %d: %q, want %q", b, got, want)
 		}
+	}
+}
+
+// TestStreamsBarLanguageAndSettings: the bar shows the languages side by side with the one
+// shown filled, then the place's entries, the settings' with a gear; a language's button
+// shows the streams in it and keeps it in the settings, and the settings opened from the bar
+// are a page of the stream site, in the stream screens' size, whose bar goes back.
+func TestStreamsBarLanguageAndSettings(t *testing.T) {
+	g := streamsGame(t, "0")
+	t.Cleanup(func() {
+		if err := lang.Use(lang.English, nil); err != nil {
+			t.Error(err)
+		}
+	})
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	g.fitView(390, 844, 1)
+	bs := g.barButtons(l.entries(g))
+	if len(bs) != 5 || bs[0].lang != "en" || bs[1].label != "日本語" || bs[1].x != bs[0].x+bs[0].w+2 || bs[1].y != bs[0].y || !bs[2].gear || bs[2].label != "Settings" || bs[3].gear {
+		t.Fatalf("bar buttons %+v", bs)
+	}
+	for _, b := range bs { // two rows on a narrow screen, inside it
+		if sw, _ := g.screen(); b.x < 16 || b.x+b.w > sw-16 || b.y != barButtonY && b.y != streamBarH+barButtonY-6 {
+			t.Fatalf("the buttons leave the bar: %+v", bs)
+		}
+	}
+	l.update(g)
+	if _, y, _, _ := l.cardRect(g, 0); barHeight(bs) == streamBarH || y != barHeight(bs)+16 {
+		t.Fatalf("the cards start at %v under a bar of two rows %v", y, barHeight(bs))
+	}
+	g.in.click, g.in.mouse = true, image.Pt(int(bs[1].x+5), int(bs[1].y+10))
+	l.update(g)
+	g.in.click = false
+	if g.language() != "ja" || g.cfg.Language != "ja" || g.db.Tr("Hello, everyone.") != "みなさん、こんにちは。" {
+		t.Fatalf("language %q, settings %q", g.language(), g.cfg.Language)
+	}
+	if b, err := g.storeRead(g.configPath()); err != nil || !strings.Contains(string(b), `"language": "ja"`) {
+		t.Fatalf("saved settings %s, %v", b, err)
+	}
+	bs = g.barButtons(l.entries(g))
+	g.in.click, g.in.mouse = true, image.Pt(int(bs[2].x+5), int(bs[2].y+10))
+	l.update(g)
+	g.in.click = false
+	wldFrames(t, g, 5)
+	c, ok := g.stack[len(g.stack)-1].(*configScreen)
+	if !ok || !c.streams {
+		t.Fatalf("the settings entry opens %T", g.stack[len(g.stack)-1])
+	}
+	g.fitView(390, 844, 1)
+	c.place(g)
+	if !g.view.tall || c.list.w != 390-48 || c.list.y != streamBarH+80 {
+		t.Fatalf("the settings over the streams: view %+v, list %v wide at %v", g.view, c.list.w, c.list.y)
+	}
+	g.in.click, g.in.mouse = true, image.Pt(30, 20)
+	c.update(g)
+	g.in.click = false
+	if _, ok := g.stack[len(g.stack)-1].(*streamLobby); !ok {
+		t.Fatalf("the bar's way back leads to %T", g.stack[len(g.stack)-1])
 	}
 }

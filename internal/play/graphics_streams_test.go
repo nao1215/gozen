@@ -5,12 +5,15 @@ package play
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"image"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
+
+	lang "github.com/nao1215/gozen/internal/text"
 )
 
 // TestGraphicsScreensStreams draws the stream lobby, the watch view, a duo and the full
@@ -31,6 +34,10 @@ func TestGraphicsScreensStreams(t *testing.T) {
 		return d(r, want[0]) && d(g, want[1]) && d(b, want[2])
 	}
 	white := [3]uint32{255, 255, 255}
+	bar, barJa, barH := tallBar(t)
+	ja, set := bar[1], barJa[2]
+	tall := fmt.Sprintf("window 390 844\ngap 1\nwait 30\ntype Pat\npress ok\nwait 30\nshot lobby\nclick %d %d\nwait 20\nshot lobby_ja\nclick %d %d\nwait 30\nshot settings\nclick 30 20\nwait 30\npress ok\nwait 100\nshot watch\npress hide\nwait 20\nshot full\nquit\n",
+		int(ja.x+ja.w/2), int(ja.y+15), int(set.x+set.w/2), int(set.y+15))
 	for _, tc := range []struct {
 		name, duo, script string
 		check             func(t *testing.T, root string)
@@ -84,7 +91,7 @@ func TestGraphicsScreensStreams(t *testing.T) {
 				t.Error("the duo does not stand both hosts on the stage")
 			}
 		}},
-		{"tall", "0", "window 390 844\ngap 1\nwait 30\ntype Pat\npress ok\nwait 30\nshot lobby\npress ok\nwait 100\nshot watch\npress hide\nwait 20\nshot full\nquit\n", func(t *testing.T, root string) {
+		{"tall", "0", tall, func(t *testing.T, root string) {
 			// a phone held upright: one card across the screen under the bar, then the next card under it
 			lobby := shotImage(t, root, "lobby")
 			if b := lobby.Bounds(); b.Dx() != 390 || b.Dy() != 844 {
@@ -92,12 +99,25 @@ func TestGraphicsScreensStreams(t *testing.T) {
 			}
 			w := 390 - 2*tallEdge
 			h := w * 9 / 16
-			top := streamBarH + 16
+			top := barH + 16
 			if !near(lobby, 195, 6, white) || !near(lobby, int(tallEdge+20), int(top+60), room) || !differs(lobby, 195, int(top+h/2)) || !near(lobby, int(tallEdge+20), int(top+h+tallNames+60), room) {
 				t.Error("the portrait lobby does not stand the cards one under another across the screen")
 			}
 			if y1 := top + h + tallNames; darkRun(lobby, 195, int(y1+h-40), int(y1+h-6)) < 8 {
 				t.Error("the second portrait card has no caption band")
+			}
+			// the languages in the bar, the one shown filled: English, then Japanese once its
+			// button is tapped
+			ink := [3]uint32{0x11, 0x11, 0x14}
+			filled := func(img image.Image, b barButton) bool { return near(img, int(b.x+5), int(b.y+15), ink) }
+			lobbyJa := shotImage(t, root, "lobby_ja")
+			if !filled(lobby, bar[0]) || filled(lobby, bar[1]) || filled(lobbyJa, barJa[0]) || !filled(lobbyJa, barJa[1]) {
+				t.Error("the language buttons do not show the language shown, or a tap does not switch it")
+			}
+			// the settings: a page of the stream site under its bar, not a window over the lobby
+			settings := shotImage(t, root, "settings")
+			if !near(settings, 195, 6, white) || !near(settings, 4, 400, [3]uint32{0xf4, 0xf4, 0xf6}) {
+				t.Error("the settings opened from the bar are not a page under the stream bar")
 			}
 			// the stage across the top, the chat column under it, and a caption band on the stage
 			watch := shotImage(t, root, "watch")
@@ -147,4 +167,25 @@ func darkRun(img image.Image, x, y0, y1 int) int {
 		}
 	}
 	return n
+}
+
+// tallBar is where the portrait lobby's bar puts its buttons (the English and the Japanese
+// ones first, then the settings'), before and after Japanese is shown, and the height of the
+// bar.
+func tallBar(t *testing.T) (bar, barJa []barButton, barH float64) {
+	t.Helper()
+	g := streamsGame(t, "0")
+	defer func() {
+		if err := lang.Use(lang.English, nil); err != nil {
+			t.Error(err)
+		}
+	}()
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.fitView(390, 844, 1)
+	bar = g.barButtons(l.entries(g))
+	g.setLanguage("ja")
+	return bar, g.barButtons(l.entries(g)), barHeight(bar)
 }

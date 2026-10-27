@@ -634,6 +634,11 @@ func (w *streamWatch) input(g *Game) {
 	case in.cancel() || g.clickedIn(0, 0, 140, streamBarH):
 		w.leave(g)
 	}
+	if bs := g.barButtons(nil); !g.cfg.StreamFull {
+		if i := g.barClick(bs); i >= 0 {
+			g.switchLanguage(bs[i].lang)
+		}
+	}
 }
 
 // scrollChat scrolls the chat back and forth with the wheel over it, or a finger swiping
@@ -775,7 +780,7 @@ func (w *streamWatch) draw(g *Game, dst *ebiten.Image) {
 	}
 	w.drawColumn(g, dst, lay, sh)
 	if !g.cfg.StreamFull {
-		g.streamTop(dst, lang.T("配信の一覧"), 0)
+		g.streamTop(dst, lang.T("配信の一覧"), g.barButtons(nil), -1)
 	}
 	g.drawToast(dst)
 }
