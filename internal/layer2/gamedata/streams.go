@@ -404,7 +404,7 @@ func (s *Streams) Voice(channel, line string) string {
 // Channel is the channel with the id, or nil.
 func (s *Streams) Channel(id string) *Channel {
 	for _, c := range s.Channels {
-		if c.ID == id {
+		if c != nil && c.ID == id {
 			return c
 		}
 	}
@@ -660,6 +660,9 @@ func (c *checker) episode(e *Episode, hosts []string) {
 			return
 		}
 		ch := c.db.Streams.Channel(id)
+		if ch == nil { // a duo's unknown channel, reported with the duo
+			return
+		}
 		a := c.db.Actors[ch.Actor]
 		if face == "" || a == nil {
 			return

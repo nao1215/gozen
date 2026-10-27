@@ -66,6 +66,8 @@ func TestStreamsCheck(t *testing.T) {
 		{"an old schema", edit("game.yaml", "schema_version: 9", "schema_version: 8"), "streams needs schema_version: 9"},
 		{"an unknown actor", edit("data/streams.yaml", "actor: bo", "actor: nobody"), `unknown actor "nobody"`},
 		{"an unknown channel of a duo", edit("data/streams.yaml", "with: bo", "with: cy"), `unknown channel "cy"`},
+		{"an unknown host of a duo", edit("data/streams.yaml", "host: ann, with: bo", "host: cy, with: bo"), `unknown channel "cy"`},
+		{"a null channel", edit("data/streams.yaml", "channels:\n", "channels:\n  - null\n"), "a channel needs an id"},
 		{"an unknown face", edit("streams/bo/1.yaml", "face: smile", "face: grin"), `has no face "grin"`},
 		{"one option", edit("streams/bo/1.yaml", ", {c: Peas, r: [Peas it is.]}", ""), "want 2 to 4 options, not 1"},
 		{"an answer out of range", edit("streams/bo/1.yaml", "[sprout, 1]", "[sprout, 2]"), "option 2 is not one of the 2 options"},
