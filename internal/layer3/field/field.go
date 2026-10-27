@@ -138,7 +138,7 @@ func Entries(db *data.DB, st *rpg.State) []Entry {
 		}
 		out = append(out, Entry{Kind: Exit, Label: "→ " + data.Render(label, env), Exit: e})
 	}
-	if loc.NoMenu {
+	if loc.NoMenu || db.Game.NoMenus() {
 		return out
 	}
 	return append(out, Entry{Kind: Menu, Label: lang.T("メニュー")})

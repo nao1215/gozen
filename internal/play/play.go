@@ -679,6 +679,9 @@ func New(opts Options) (_ *Game, err error) {
 			return nil, err
 		}
 	}
+	if _, title := g.stack[0].(*title); title && len(g.stack) == 1 && g.db.Game.NoMenus() {
+		g.opening()
+	}
 	if g.failure != nil {
 		return nil, g.failure
 	}
@@ -1944,6 +1947,26 @@ func resumeAt(db *data.DB, st *rpg.State) {
 		st.Location = l.ResumeTo
 		atlas.Place(db, st, saved, l.ResumeTo, "") // a map: the point back to where it was saved
 	}
+}
+
+// newestSave is the readable slot, the autosave included, written last, and its state: the
+// first readable one when the store keeps no times, or 0 and nil when none is readable.
+func (g *Game) newestSave() (int, *rpg.State) {
+	at, found := 0, (*rpg.State)(nil)
+	var newest time.Time
+	for i := range saveSlots + 1 {
+		st, err := g.load(i)
+		if err != nil {
+			continue
+		}
+		if t, ok := g.storeTime(g.slotPath(i)); found == nil || ok && t.After(newest) {
+			at, found = i, st
+			if ok {
+				newest = t
+			}
+		}
+	}
+	return at, found
 }
 
 func (g *Game) anySave() bool {

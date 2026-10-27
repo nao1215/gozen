@@ -230,8 +230,7 @@ func (m *menu) update(g *Game) {
 			g.push(newConfigScreen(g))
 		case 7:
 			g.push(newConfirm(lang.T("タイトルに もどりますか？（セーブして いない ところは 消えます）"), func() {
-				g.st = nil
-				g.replace(newTitle(g))
+				g.toTitle()
 			}))
 		case 8:
 			g.pop()

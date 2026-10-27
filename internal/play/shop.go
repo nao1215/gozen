@@ -6,7 +6,6 @@ import (
 	"image/color"
 	"math"
 	"strings"
-	"time"
 
 	lang "github.com/nao1215/gozen/internal/text"
 
@@ -470,12 +469,7 @@ func (s *saveMenu) refresh(g *Game) {
 	if s.slots != nil {
 		sel = s.slots.sel
 	} else if !s.saving {
-		var newest time.Time
-		for i, it := range items {
-			if t, ok := g.storeTime(g.slotPath(i)); ok && !it.disabled && t.After(newest) {
-				sel, newest = i, t
-			}
-		}
+		sel, _ = g.newestSave()
 	}
 	s.slots = newList(items, sw/2-400, sh/2-110, 800, n)
 	s.slots.rowH = 60

@@ -58,6 +58,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0046](0046-moving-portraits-on-the-novel-stage.md) | Opt-in moving portraits on the novel stage (`ui.stage_puppets`) | Accepted | Implemented 2026-10-26 |
 | [0046](0047-headless-scripted-runs.md) | Headless scripted runs (`gozen sim script`) | Accepted | Implemented 2026-10-26 |
 | [0048](0048-live-streams.md) | Live streams: the stream lobby and watch view, the stream data, and the reaction book's whole, exact and except words | Accepted | Implemented 2026-10-27 |
+| [0049](0049-games-without-menus.md) | Games without menus (`menus: none`): no title screen and no game menu, opening on the newest save | Accepted | Implemented 2026-10-27 |
 
 [ADR 0041](0041-yaml-authoring-and-distribution.md) retires the public Go APIs; current implementation boundaries are in [Boundaries](../architecture/boundaries.md). Earlier entries record historical decisions.
 

@@ -69,8 +69,7 @@ func (g *Game) openScreen(name string, done func()) {
 		g.push(c)
 	case "title":
 		c := newConfirm(lang.T("タイトルに もどりますか？（セーブして いない ところは 消えます）"), func() {
-			g.st = nil
-			g.replace(newTitle(g))
+			g.toTitle()
 		})
 		c.onNo = done
 		g.push(c)

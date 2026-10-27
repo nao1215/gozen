@@ -505,6 +505,13 @@ func (db *DB) Check() []error {
 	default:
 		c.errorf(diag.NotAWord, "game.yaml ui.battle_foe_names", "want name, hp or none, not %q", g.UI.BattleFoeNames)
 	}
+	switch g.Menus {
+	case "":
+	case "none":
+		c.needsVersion("game.yaml menus", "menus", SchemaVersion9)
+	default:
+		c.errorf(diag.NotAWord, "game.yaml menus", "want none, not %q", g.Menus)
+	}
 	switch g.UI.BattleMessage {
 	case "", "fixed", "fit":
 	default:
@@ -1698,7 +1705,9 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			_, ok = db.Skills[cmd.Learn.Skill]
 			c.ref(w+".learn.skill", "skill", cmd.Learn.Skill, ok)
 		case "open":
-			if cmd.Open == "profiles" && len(db.Profiles) == 0 {
+			if db.Game.NoMenus() && slices.Contains([]string{"save", "load", "title"}, cmd.Open) {
+				c.errorf(diag.Shape, w+".open", "open: %s does not go with menus: none in game.yaml (there is no title, and the play is kept in the autosave alone)", cmd.Open)
+			} else if cmd.Open == "profiles" && len(db.Profiles) == 0 {
 				c.errorf(diag.UnknownReference, w+".open", "open: profiles needs profiles in data/ (the character book is empty)")
 			} else if cmd.Open == "bestiary" && len(db.Enemies) == 0 {
 				c.errorf(diag.UnknownReference, w+".open", "open: bestiary needs enemies in data/ (the monster book is empty)")

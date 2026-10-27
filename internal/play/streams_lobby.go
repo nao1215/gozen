@@ -223,7 +223,7 @@ func (l *streamLobby) update(g *Game) {
 		l.close()
 		g.pop()
 		l.done()
-	case l.done == nil && in.openList():
+	case l.done == nil && !g.db.Game.NoMenus() && in.openList():
 		g.sfx("decide")
 		g.push(newMenu(g))
 	}

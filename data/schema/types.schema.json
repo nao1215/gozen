@@ -9313,6 +9313,19 @@
           },
           "x-type": "[MemoCfg](#memocfg)"
         },
+        "menus": {
+          "description": "`none` leaves out the title screen and the game menu: the game opens on the newest save, the autosave included, or starts a new game at `start`, and saves only by autosave. `open: save`, `open: load` and `open: title` are errors with it. Needs schema version 9.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "meters": {
           "description": "Gauges of the player's numbers shown on the field, in the dungeon and in the status menu.",
           "items": {

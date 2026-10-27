@@ -247,6 +247,11 @@ func (in *input) touch() {
 	}
 }
 
+// menuKey reports whether the menu key opens the game menu now (never with menus: none).
+func (g *Game) menuKey() bool {
+	return !g.db.Game.NoMenus() && g.in.pressed[btnMenu] && !g.in.held[btnOK]
+}
+
 // openList reports whether a map or a painted scene opens its list now: the menu key, the
 // right click, or a long press (then used: the finger lifting does not click).
 func (in *input) openList() bool {

@@ -20,7 +20,8 @@ type title struct {
 
 func newTitle(g *Game) *title {
 	t := &title{menu: g.titleMenu()}
-	if c := g.db.Game.TitleBGM; c.Song != "" {
+	// a game with menus: none makes a title only to open in its place (New)
+	if c := g.db.Game.TitleBGM; c.Song != "" && !g.db.Game.NoMenus() {
 		mood := c.Mood
 		if mood == "" {
 			mood = sound.Neutral
@@ -185,6 +186,27 @@ func titleHintX(g *Game, tw float64) float64 {
 	return math.Max(tw/2+16, math.Min(sw-tw/2-16, hx))
 }
 
+// toTitle ends the play for the title screen, or, in a game with menus: none, for the
+// opening that takes its place.
+func (g *Game) toTitle() {
+	g.st = nil
+	if g.db.Game.NoMenus() {
+		g.opening()
+		return
+	}
+	g.replace(newTitle(g))
+}
+
+// opening starts the play where a game with menus: none has no title: from the newest
+// readable save, the one the title's load list offers first, or a new game.
+func (g *Game) opening() {
+	if _, st := g.newestSave(); st != nil {
+		g.loadSavedGame(st)
+		return
+	}
+	g.newGame()
+}
+
 type gameOver struct{ age int }
 
 func newGameOver(g *Game) *gameOver {
@@ -205,8 +227,7 @@ func (s *gameOver) update(g *Game) {
 			g.events.Start(g.db.Events[ev].Do)
 			return
 		}
-		g.st = nil
-		g.replace(newTitle(g))
+		g.toTitle()
 	}
 }
 
@@ -242,8 +263,7 @@ func newEnding(g *Game) *ending {
 func (s *ending) update(g *Game) {
 	s.age++
 	if s.age > 150 && (g.in.advance() || g.in.cancel()) {
-		g.st = nil
-		g.replace(newTitle(g))
+		g.toTitle()
 	}
 }
 
