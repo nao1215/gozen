@@ -401,7 +401,7 @@ func TestStreamsBarLanguageAndSettings(t *testing.T) {
 	g.st.Streams.Viewer, l.name = "Pat", nil
 	g.fitView(390, 844, 1)
 	bs := g.barButtons(l.entries(g))
-	if len(bs) != 5 || bs[0].lang != "en" || bs[1].label != "日本語" || bs[1].x != bs[0].x+bs[0].w+2 || bs[1].y != bs[0].y || !bs[2].gear || bs[2].label != "Settings" || bs[3].gear {
+	if len(bs) != 5 || !bs[0].gear || bs[0].label != "Settings" || bs[1].gear || bs[3].lang != "en" || bs[4].label != "日本語" || bs[4].x != bs[3].x+bs[3].w+2 || bs[4].y != bs[3].y {
 		t.Fatalf("bar buttons %+v", bs)
 	}
 	for _, b := range bs { // two rows on a narrow screen, inside it
@@ -413,9 +413,12 @@ func TestStreamsBarLanguageAndSettings(t *testing.T) {
 	if _, y, _, _ := l.cardRect(g, 0); barHeight(bs) == streamBarH || y != barHeight(bs)+16 {
 		t.Fatalf("the cards start at %v under a bar of two rows %v", y, barHeight(bs))
 	}
-	g.in.click, g.in.mouse = true, image.Pt(int(bs[1].x+5), int(bs[1].y+10))
+	g.in.click, g.in.mouse = true, image.Pt(int(bs[4].x+5), int(bs[4].y+10))
 	l.update(g)
 	g.in.click = false
+	if after := g.barButtons(l.entries(g)); after[3].x != bs[3].x || after[4].x != bs[4].x {
+		t.Fatalf("the languages move when switched: %+v, then %+v", bs[3:], after[3:])
+	}
 	if g.language() != "ja" || g.cfg.Language != "ja" || g.db.Tr("Hello, everyone.") != "みなさん、こんにちは。" {
 		t.Fatalf("language %q, settings %q", g.language(), g.cfg.Language)
 	}
@@ -423,7 +426,7 @@ func TestStreamsBarLanguageAndSettings(t *testing.T) {
 		t.Fatalf("saved settings %s, %v", b, err)
 	}
 	bs = g.barButtons(l.entries(g))
-	g.in.click, g.in.mouse = true, image.Pt(int(bs[2].x+5), int(bs[2].y+10))
+	g.in.click, g.in.mouse = true, image.Pt(int(bs[0].x+5), int(bs[0].y+10))
 	l.update(g)
 	g.in.click = false
 	wldFrames(t, g, 5)

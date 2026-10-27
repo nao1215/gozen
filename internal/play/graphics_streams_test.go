@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -35,7 +36,10 @@ func TestGraphicsScreensStreams(t *testing.T) {
 	}
 	white := [3]uint32{255, 255, 255}
 	bar, barJa, barH := tallBar(t)
-	ja, set := bar[1], barJa[2]
+	button := func(bs []barButton, pick func(barButton) bool) barButton { return bs[slices.IndexFunc(bs, pick)] }
+	isEn := func(b barButton) bool { return b.lang == "en" }
+	isJa := func(b barButton) bool { return b.lang == "ja" }
+	ja, set := button(bar, isJa), button(barJa, func(b barButton) bool { return b.gear })
 	tall := fmt.Sprintf("window 390 844\ngap 1\nwait 30\ntype Pat\npress ok\nwait 30\nshot lobby\nclick %d %d\nwait 20\nshot lobby_ja\nclick %d %d\nwait 30\nshot settings\nclick 30 20\nwait 30\npress ok\nwait 100\nshot watch\npress hide\nwait 20\nshot full\nquit\n",
 		int(ja.x+ja.w/2), int(ja.y+15), int(set.x+set.w/2), int(set.y+15))
 	for _, tc := range []struct {
@@ -111,7 +115,7 @@ func TestGraphicsScreensStreams(t *testing.T) {
 			ink := [3]uint32{0x11, 0x11, 0x14}
 			filled := func(img image.Image, b barButton) bool { return near(img, int(b.x+5), int(b.y+15), ink) }
 			lobbyJa := shotImage(t, root, "lobby_ja")
-			if !filled(lobby, bar[0]) || filled(lobby, bar[1]) || filled(lobbyJa, barJa[0]) || !filled(lobbyJa, barJa[1]) {
+			if !filled(lobby, button(bar, isEn)) || filled(lobby, ja) || filled(lobbyJa, button(barJa, isEn)) || !filled(lobbyJa, button(barJa, isJa)) {
 				t.Error("the language buttons do not show the language shown, or a tap does not switch it")
 			}
 			// the settings: a page of the stream site under its bar, not a window over the lobby

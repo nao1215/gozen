@@ -575,19 +575,21 @@ type barButton struct {
 const barButtonY, barButtonH = 11.0, 30.0
 
 // barButtons are the bar's buttons, laid out leftward from the gold: the languages side by
-// side when the game offers more than one, then the place's entries. An entry has a › after
+// side when the game offers more than one, next to the gold so that switching does not move
+// them (their labels do not change with the language, the entries' do), then the place's
+// entries. An entry has a › after
 // its label, for it goes to another screen, and the settings' a gear before it. The buttons
 // that would push into the logo and the title's first letters go to a second row under the
 // first, from the right edge (a narrow screen).
 func (g *Game) barButtons(entries []world.Entry) []barButton {
 	var bs []barButton
+	for i, e := range entries {
+		bs = append(bs, barButton{label: e.Label, entry: i, gear: opensConfig(e)})
+	}
 	if offered := g.db.Game.Offered(); len(offered) > 1 {
 		for _, code := range offered {
 			bs = append(bs, barButton{label: langShort(code), lang: code})
 		}
-	}
-	for i, e := range entries {
-		bs = append(bs, barButton{label: e.Label, entry: i, gear: opensConfig(e)})
 	}
 	sw, _ := g.screen()
 	langs := 0.0 // the languages' width together: they go to the second row together
@@ -615,7 +617,7 @@ func (g *Game) barButtons(entries []world.Entry) []barButton {
 		}
 		b.x, b.y = x-b.w, y
 		x = b.x - 8
-		if i > 0 && b.lang != "" {
+		if i > 0 && b.lang != "" && bs[i-1].lang != "" {
 			x = b.x - 2 // the languages side by side
 		}
 	}
