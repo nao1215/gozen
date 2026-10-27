@@ -284,7 +284,7 @@ gozen notes notes --out notes-html                   # notes as one HTML page
 
 | [Succubus Live](https://github.com/nao1215/succubus-live): a streaming-site game with succubus VTubers ([watch in your browser](https://nao1215.github.io/succubus-live/)) |
 |:--|
-| ![Succubus Live: Ella streams with a caption, the chat and a tip](docs/images/succubus-live.jpg) |
+| ![Succubus Live: Ella streams with a caption, the chat and a tip](https://raw.githubusercontent.com/nao1215/succubus-live/main/doc/img/stream.jpg) |
 
 ## Limitations
 
