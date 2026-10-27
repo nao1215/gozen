@@ -92,22 +92,35 @@ for (const type of speechEvents) addEventListener(type, unlockSpeech, true);
     const reader = response.body.getReader();
     let done = 0;
     goZenProgress("player", 0, total);
-    const counted = new ReadableStream({
-      async pull(controller) {
-        const chunk = await reader.read();
-        if (chunk.done) {
-          controller.close();
-          return;
-        }
+    const read = async () => {
+      const chunk = await reader.read();
+      if (!chunk.done) {
         done += chunk.value.length;
         goZenProgress("player", done, total);
-        controller.enqueue(chunk.value);
+      }
+      return chunk;
+    };
+    // The first two bytes tell gzip, however the pieces of the download split them; the
+    // pieces read for them go first into the body.
+    const head = [];
+    let ended = false;
+    while (!ended && head.reduce((n, piece) => n + piece.length, 0) < 2) {
+      const chunk = await read();
+      if (chunk.done) ended = true;
+      else head.push(chunk.value);
+    }
+    const first = head.flatMap((piece) => Array.from(piece.subarray(0, 2)));
+    const body = new ReadableStream({
+      start(controller) {
+        for (const piece of head) controller.enqueue(piece);
+        if (ended) controller.close();
+      },
+      async pull(controller) {
+        const chunk = await read();
+        if (chunk.done) controller.close();
+        else controller.enqueue(chunk.value);
       },
     });
-    const [head, body] = counted.tee();
-    const peek = head.getReader();
-    const first = (await peek.read()).value || new Uint8Array();
-    peek.cancel();
     const gzip = first[0] === 0x1f && first[1] === 0x8b;
     if (gzip && typeof DecompressionStream !== "function") throw new Error("this browser cannot decompress the player");
     const player = new Response(gzip ? body.pipeThrough(new DecompressionStream("gzip")) : body, {headers: {"Content-Type": "application/wasm"}});
