@@ -17,15 +17,28 @@ import (
 	"github.com/deepteams/webp"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 // webFile is an entry of a web export's game/files.json: the name the game reads, the
-// file the page serves and its size, and whether that file is gzip (internal/webfs).
+// file the page serves and its size, whether that file is gzip, and whether the page
+// fetches it only when the game opens it (a recorded stream voice; internal/webfs).
 type webFile struct {
-	Name string `json:"name"`
-	File string `json:"file"`
-	Size int64  `json:"size"`
-	Gzip bool   `json:"gzip,omitempty"`
+	Name  string `json:"name"`
+	File  string `json:"file"`
+	Size  int64  `json:"size"`
+	Gzip  bool   `json:"gzip,omitempty"`
+	Later bool   `json:"later,omitempty"`
+}
+
+// voiceDir is the folder of the game's recorded stream voices ("assets/VOICES/", ADR 0052),
+// whose files a web export fetches only when the watch view comes to their lines, or ""
+// when the game has none.
+func voiceDir(db *gamedata.DB) string {
+	if db.Streams == nil || db.Streams.Voices == "" {
+		return ""
+	}
+	return "assets/" + db.Streams.Voices + "/"
 }
 
 // webQuality is the quality of the lossy WebP the pictures become. At 85 a painted
@@ -38,7 +51,7 @@ const webQuality = 85
 // tenth smaller is served gzipped. A file stays as it is when that does not make it
 // smaller. The game reads a picture by its content, not by its name, so it is served as
 // name.webp under its own name; the game files under the source do not change.
-func shrinkWeb(dir string, names []string) ([]webFile, error) {
+func shrinkWeb(dir string, names []string, later string) ([]webFile, error) {
 	taken := make(map[string]bool, len(names))
 	for _, name := range names {
 		taken[name] = true
@@ -59,6 +72,9 @@ func shrinkWeb(dir string, names []string) ([]webFile, error) {
 	}
 	close(jobs)
 	wg.Wait()
+	for i := range files {
+		files[i].Later = later != "" && strings.HasPrefix(files[i].Name, later)
+	}
 	return files, errors.Join(errs...)
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image/color"
 	"log"
+	"maps"
 	"math"
 	"slices"
 	"strconv"
@@ -49,6 +50,8 @@ type streamWatch struct {
 	// is the recorded voice of the line said while it loads (nil: none).
 	spoken func() bool
 	voice  *voiceLoad
+	// ahead are the voices of the next voicesAhead lines being loaded, by file (aheadVoices).
+	ahead map[string]*voiceLoad
 
 	next, from, watched  int // the next beat, the beat come in at, the beats watched
 	seen, thanked, ended bool
@@ -183,7 +186,7 @@ func sayFace(p *puppet.Puppet, l streamSay) int {
 
 func newStreamWatch(g *Game, show *broadcast.Show, viewers int) *streamWatch {
 	now := g.streamNow()
-	w := &streamWatch{show: show, minds: map[string]*react.Mind{}, chat: newStreamChat(streamChatW - 28), crowd: g.newCrowd(), opened: now, mine: -1, viewers: viewers}
+	w := &streamWatch{show: show, minds: map[string]*react.Mind{}, ahead: map[string]*voiceLoad{}, chat: newStreamChat(streamChatW - 28), crowd: g.newCrowd(), opened: now, mine: -1, viewers: viewers}
 	for i, c := range show.Hosts {
 		w.bodies = append(w.bodies, g.channelPuppet(c, fmt.Sprintf("watch:%s:%d", show.Key, i)))
 	}
@@ -204,6 +207,7 @@ func newStreamWatch(g *Game, show *broadcast.Show, viewers int) *streamWatch {
 		return w.field.caretX(x+10, 16), y + 12
 	})
 	w.greet(g)
+	w.aheadVoices(g)
 	g.emit("stream", traceLine{"show": show.Key, "episode": show.Episodes[w.part].Title, "beat": w.next})
 	return w
 }
@@ -362,7 +366,10 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 	if f := d.Voice(w.show.Hosts[l.host].ID, raw); f != "" && g.desk.voices {
 		// the line waits for its voice to load (a browser may still be fetching it), then
 		// for it to end
-		if w.voice = loadVoice(g.db.FS, f); !w.voice.loaded() {
+		if w.voice = w.ahead[f]; w.voice == nil {
+			w.voice = loadVoice(g.db.FS, f)
+		}
+		if !w.voice.loaded() {
 			w.limit = now.Add(seconds(5 + 0.4*float64(runes)))
 			w.busy, w.talk[l.host] = w.limit.Add(w.hold), w.limit
 		}
@@ -430,6 +437,46 @@ func (w *streamWatch) shownCaption(g *Game) string {
 		return ""
 	}
 	return w.caption
+}
+
+// aheadVoices starts loading the voices of the next voicesAhead lines, the lines waiting
+// first and then those of the beats to come, and lets go of the voices no longer among
+// them (a language changed, a reply came between): a browser fetches a voice only then.
+func (w *streamWatch) aheadVoices(g *Game) {
+	if voicesAhead == 0 || !g.desk.speak || !g.desk.voices {
+		return
+	}
+	want := map[string]bool{}
+	add := func(host int, l streamSay) {
+		if _, raw := l.shown(g); raw != "" {
+			if f := g.db.Streams.Voice(w.show.Hosts[host].ID, raw); f != "" {
+				want[f] = true
+				if w.ahead[f] == nil {
+					w.ahead[f] = loadVoice(g.db.FS, f)
+				}
+			}
+		}
+	}
+	n := 0
+	for _, l := range w.queue {
+		if n == voicesAhead {
+			break
+		}
+		add(l.host, l)
+		n++
+	}
+	for b := w.next; b < len(w.show.Beats) && n < voicesAhead; b++ {
+		switch bt := w.show.Beats[b]; {
+		case bt.Line != nil:
+			add(w.host(bt.Speaker), streamSay{line: bt.Line.Text})
+		case bt.Ask != nil:
+			add(w.host(bt.Ask.Who), streamSay{line: bt.Ask.Q})
+		default:
+			continue
+		}
+		n++
+	}
+	maps.DeleteFunc(w.ahead, func(f string, _ *voiceLoad) bool { return !want[f] })
 }
 
 func minTime(a, b time.Time) time.Time {
@@ -836,6 +883,7 @@ func (w *streamWatch) update(g *Game) {
 		if !now.Before(w.busy) && !now.Before(w.said.Add(captionLeast)) {
 			w.spoken, w.voice, w.hold = nil, nil, 0
 			w.step(g)
+			w.aheadVoices(g)
 		}
 	}
 	w.input(g)

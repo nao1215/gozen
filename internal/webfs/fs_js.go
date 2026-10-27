@@ -30,6 +30,9 @@ type file struct {
 	Size int64  `json:"size"`
 	// Gzip marks a file served gzipped (gozen export), which get undoes.
 	Gzip bool `json:"gzip"`
+	// Later marks a file Load does not fetch (a recorded stream voice): it is fetched when
+	// the game opens it, and the progress leaves it out.
+	Later bool `json:"later"`
 }
 
 // Load reads files.json and downloads its files with bounded concurrency into an
@@ -38,7 +41,9 @@ type file struct {
 // come: opening a file that is still coming waits for it, and a file whose download
 // failed is fetched again when the game opens it. While the files download, progress
 // (when not nil) is called with the bytes of the files come so far and the bytes the
-// manifest lists, as a file comes (at most every half percent) and once at the end.
+// manifest lists, as a file comes (at most every half percent) and once at the end. A file
+// marked later (a recorded stream voice) is fetched only when the game opens it and is not
+// in the progress.
 func Load(base string, progress func(done, total int64)) (fs.FS, error) {
 	b, err := fetch(base+"files.json", nil)
 	if err != nil {
@@ -62,9 +67,13 @@ func Load(base string, progress func(done, total int64)) (fs.FS, error) {
 		}
 		h.served[f.Name] = f
 		h.entries[f.Name] = &fstest.MapFile{Data: nil}
+		if f.Later {
+			continue
+		}
 		h.coming[f.Name] = make(chan struct{})
 		counter.total += f.Size
 	}
+	files = slices.DeleteFunc(files, func(f file) bool { return f.Later })
 	slices.SortStableFunc(files, func(a, b file) int { return cmp.Compare(media(a.Name), media(b.Name)) })
 	jobs := make(chan file, len(files))
 	var first, all sync.WaitGroup

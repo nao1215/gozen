@@ -143,6 +143,10 @@ func voiceFor(synth js.Value, language string) js.Value {
 	return near
 }
 
+// voicesAhead is how many lines coming next the watch view fetches the voices of: a web
+// export fetches the voices only then (ADR 0051), not when the page opens.
+const voicesAhead = 5
+
 // loadVoice loads a stream line's recorded voice in the background: a file the page is
 // still fetching (the sounds come last, ADR 0051) would hold the frame until it came.
 func loadVoice(fsys fs.FS, file string) *voiceLoad {

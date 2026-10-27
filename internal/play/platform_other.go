@@ -19,6 +19,9 @@ func speak(string, string, float64, float64) func() bool { return nil }
 
 func stopSpeaking() {}
 
+// voicesAhead: a desktop build reads a line's voice from the disk when the line begins.
+const voicesAhead = 0
+
 // loadVoice loads a stream line's recorded voice at once (the files are on the disk), so
 // a run and its replay time the lines the same.
 func loadVoice(fsys fs.FS, file string) *voiceLoad {

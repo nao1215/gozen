@@ -54,11 +54,11 @@ func Web(src, dst, bundle, version string) error {
 		if err := gzipPlayer(filepath.Join(stage, "gozen-player.wasm")); err != nil {
 			return err
 		}
-		files, err := CopyGame(src, filepath.Join(stage, "game"))
+		files, db, err := CopyGame(src, filepath.Join(stage, "game"))
 		if err != nil {
 			return err
 		}
-		manifest, err := shrinkWeb(filepath.Join(stage, "game"), files)
+		manifest, err := shrinkWeb(filepath.Join(stage, "game"), files, voiceDir(db))
 		if err != nil {
 			return err
 		}

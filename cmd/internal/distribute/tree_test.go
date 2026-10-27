@@ -23,7 +23,7 @@ func TestCopyGameSelectsRuntimeContent(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	files, err := CopyGame(src, dst)
+	files, _, err := CopyGame(src, dst)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestCopyGameRejectsPolicyAndSymlink(t *testing.T) {
 	if err := os.WriteFile(policy, []byte("{}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := CopyGame(src, t.TempDir()); err == nil || !strings.Contains(err.Error(), "release") {
+	if _, _, err := CopyGame(src, t.TempDir()); err == nil || !strings.Contains(err.Error(), "release") {
 		t.Fatalf("policy: %v", err)
 	}
 	if err := os.Remove(policy); err != nil {
@@ -57,7 +57,7 @@ func TestCopyGameRejectsPolicyAndSymlink(t *testing.T) {
 	if err := os.Symlink(t.TempDir(), filepath.Join(src, "data")); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	if _, err := CopyGame(src, t.TempDir()); err == nil || !strings.Contains(err.Error(), "symlinks") {
+	if _, _, err := CopyGame(src, t.TempDir()); err == nil || !strings.Contains(err.Error(), "symlinks") {
 		t.Fatalf("symlink: %v", err)
 	}
 }

@@ -17,16 +17,21 @@ import (
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/cmd/internal/starter"
+	"github.com/nao1215/gozen/internal/testgame"
 )
 
-func TestWebManifestAndRuntimeValidation(t *testing.T) {
-	src, bundle := t.TempDir(), t.TempDir()
-	if err := starter.Write(src, starter.Config{Template: "rpg", ID: "web-test", Title: "Web test"}); err != nil {
-		t.Fatal(err)
-	}
-	// A minimal WASM header tests packaging only. The browser E2E runs the real player.
-	wasm := []byte{0, 'a', 's', 'm', 1, 0, 0, 0}
-	js := []byte("// neutral runtime fixture\n")
+// webWASM and webJS are the player and the wasm_exec.js of webBundle: a minimal WASM header
+// tests packaging only; the browser E2E runs the real player.
+var (
+	webWASM = []byte{0, 'a', 's', 'm', 1, 0, 0, 0}
+	webJS   = []byte("// neutral runtime fixture\n")
+)
+
+// webBundle is a web runtime bundle of webWASM and webJS.
+func webBundle(t *testing.T) string {
+	t.Helper()
+	bundle := t.TempDir()
+	wasm, js := webWASM, webJS
 	for name, b := range map[string][]byte{"gozen-player.wasm": wasm, "wasm_exec.js": js, "LICENSE": []byte("MIT"), "GO-LICENSE": []byte("BSD fixture"), "THIRD_PARTY_LICENSES/notice.txt": []byte("fixture notice")} {
 		if err := cli.WriteNew(filepath.Join(bundle, filepath.FromSlash(name)), b); err != nil {
 			t.Fatal(err)
@@ -39,6 +44,15 @@ func TestWebManifestAndRuntimeValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := cli.WriteNew(filepath.Join(bundle, "runtime.json"), metadata); err != nil {
+		t.Fatal(err)
+	}
+	return bundle
+}
+
+func TestWebManifestAndRuntimeValidation(t *testing.T) {
+	src, bundle := t.TempDir(), webBundle(t)
+	wasm := webWASM
+	if err := starter.Write(src, starter.Config{Template: "rpg", ID: "web-test", Title: "Web test"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := cli.WriteNew(filepath.Join(src, "assets", "space #%.txt"), []byte("kept")); err != nil {
@@ -138,5 +152,47 @@ func TestWebManifestAndRuntimeValidation(t *testing.T) {
 	files, err := os.ReadDir(parent)
 	if err != nil || len(files) != 0 {
 		t.Fatalf("partial output: %v, %v", files, err)
+	}
+}
+
+// TestWebFetchesVoicesLater: the recorded voices of a stream game (the streams file's
+// voices folder) are marked to be fetched only when the game opens them; its other files,
+// sounds too, are not.
+func TestWebFetchesVoicesLater(t *testing.T) {
+	src := t.TempDir()
+	files := testgame.StreamFiles()
+	files["game.yaml"] = testgame.Game + "id: voices-later\n" + testgame.StreamsGame
+	files["data/streams.yaml"] = "voices: voice\n" + files["data/streams.yaml"]
+	files["assets/voice/ann/6f2529aa52538b73.ogg"] = "OggS voice" // Hello, everyone.
+	files["assets/bell.ogg"] = "OggS bell"
+	files["data/main.yaml"], files["assets/x.png"] = testgame.Data, "x"
+	for name, text := range files {
+		if err := cli.WriteNew(filepath.Join(src, filepath.FromSlash(name)), []byte(text)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	out := filepath.Join(t.TempDir(), "site")
+	if err := Web(src, out, webBundle(t), "devel"); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(filepath.Join(out, "game", "files.json")) //nolint:gosec // Test-owned exported file.
+	if err != nil {
+		t.Fatal(err)
+	}
+	var entries []webFile
+	if err := json.Unmarshal(b, &entries); err != nil {
+		t.Fatal(err)
+	}
+	later := 0
+	for _, e := range entries {
+		if want := strings.HasPrefix(e.Name, "assets/voice/"); e.Later != want {
+			t.Errorf("%s: fetched later %v, want %v", e.Name, e.Later, want)
+		}
+		if e.Later {
+			later++
+		}
+	}
+	if later != 1 {
+		t.Errorf("%d files fetched later, not the one voice", later)
 	}
 }
