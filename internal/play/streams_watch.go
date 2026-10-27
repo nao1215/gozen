@@ -919,7 +919,8 @@ func (w *streamWatch) input(g *Game) {
 		// the keys that were text are not Enter or Escape; the send button is pressed even
 		// while a phone's keyboard still composes (sending confirms it)
 		typed := in.devices() && w.field.readTyping()
-		send := !in.devices() && in.pressed[btnOK] || in.devices() && !typed && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter) || in.pad[btnOK])
+		// a pad's buttons are no text, a composition going on or not
+		send := !in.devices() && in.pressed[btnOK] || in.devices() && (in.pad[btnOK] || !typed && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter)))
 		right := lay.colX + lay.colW
 		sent := g.clickedIn(right-150, sh-62, 64, 44)
 		switch {
@@ -928,7 +929,7 @@ func (w *streamWatch) input(g *Game) {
 			// the keys and the pads move between the controls
 			w.comment(g)
 			w.typing = false
-		case !in.devices() && in.cancel() || in.devices() && !typed && (inpututil.IsKeyJustPressed(ebiten.KeyEscape) || in.pad[btnCancel]):
+		case !in.devices() && in.cancel() || in.devices() && (in.pad[btnCancel] || !typed && inpututil.IsKeyJustPressed(ebiten.KeyEscape)):
 			w.field.composer.Cancel()
 			w.typing = false
 		}

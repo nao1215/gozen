@@ -128,7 +128,7 @@ func (l *streamLobby) updateName(g *Game) {
 	// the keys that were text are not Enter; the button is pressed even while a phone's
 	// keyboard still composes (taking the name confirms it)
 	typed := in.devices() && l.name.readTyping()
-	ok := !in.devices() && in.pressed[btnOK] || in.devices() && !typed && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter) || in.pad[btnOK])
+	ok := !in.devices() && in.pressed[btnOK] || in.devices() && (in.pad[btnOK] || !typed && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter)))
 	sw, _ := g.screen()
 	if _, by, _ := nameBox(g); !ok && !g.clickedIn(sw/2-60, by+nameOK, 120, 40) {
 		return
@@ -395,6 +395,7 @@ func (l *streamLobby) update(g *Game) {
 	entries := l.entries(g)
 	n := len(l.cards) + len(entries)
 	l.sel = min(l.sel, max(0, n-1)) // an entry chosen may be gone (its when no longer holds)
+	bs = g.barButtons(entries)      // the entries as they are after the commands taken
 	choose := func(i int) {
 		if i < len(l.cards) {
 			g.sfx("decide")
