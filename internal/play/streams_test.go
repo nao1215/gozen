@@ -1,12 +1,14 @@
 package play
 
 import (
+	"cmp"
 	"fmt"
 	"image"
 	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -132,6 +134,7 @@ func TestStreamsWatchAShow(t *testing.T) {
 	if l.name != nil || g.st.Streams.Viewer != "Pat" {
 		t.Fatalf("the name box stays (%v), viewer %q", l.name != nil, g.st.Streams.Viewer)
 	}
+	l.sel = slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" }) // the cards go by viewers
 	wldPlay(t, g, "press ok\nwait 5\n", 100)
 	w := g.watching()
 	if w == nil {
@@ -176,6 +179,18 @@ func TestStreamsWatchAShow(t *testing.T) {
 
 // TestStreamsDuoAndAway: two live hosts stream their duo together, the other host saying
 // its lines; the gold earned while away is added and shown once.
+// TestStreamsLobbyMostWatchedFirst: the lobby lists its cards by viewers, most first.
+func TestStreamsLobbyMostWatchedFirst(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok || len(l.cards) < 2 {
+		t.Fatalf("cards %+v", l.cards)
+	}
+	if !slices.IsSortedFunc(l.cards, func(a, b *lobbyCard) int { return cmp.Compare(b.viewers, a.viewers) }) {
+		t.Fatalf("cards not by viewers: %d, %d", l.cards[0].viewers, l.cards[1].viewers)
+	}
+}
+
 func TestStreamsDuoAndAway(t *testing.T) {
 	g := streamsGame(t, "1")
 	l, ok := g.stack[0].(*streamLobby)

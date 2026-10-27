@@ -154,6 +154,9 @@ func (l *streamLobby) rebuild(g *Game) {
 		}
 		l.cards = append(l.cards, c)
 	}
+	// The most watched show comes first, as on a streaming site; the order holds until
+	// the live shows change.
+	slices.SortStableFunc(l.cards, func(a, b *lobbyCard) int { return cmp.Compare(b.viewers, a.viewers) })
 	l.chat, l.crowd = newStreamChat(lobbyChatW-28), g.newCrowd()
 	l.sel = min(l.sel, max(0, len(l.cards)-1))
 }
