@@ -1,5 +1,5 @@
-// Package broadcast is the rules of the live streams (ADR 0048), without drawing: when
-// each beat of an episode plays, who is live, which episode each channel plays, when an
+// Package broadcast is the rules of the live streams (ADR 0048), without drawing: the
+// episodes a stream plays one after another (ADR 0052), when each beat plays, who is live, which episode each channel plays, when an
 // episode counts as seen, the affection steps, the days in a row and the gold earned
 // while the game was closed. The clock and the random source are passed in, so the
 // rules run headless. The stream screen of internal/play uses them.
@@ -14,34 +14,75 @@ import (
 	"github.com/nao1215/gozen/internal/rpg"
 )
 
-// Show is an episode on the air.
+// Show is a stream on the air: the episodes of a slot one after another.
 type Show struct {
 	// Hosts are the channels streaming it, the host first (two for a duo).
 	Hosts []*data.Channel
 	// Key is the progress key: the channel id, or DuoKey for a duo.
-	Key     string
-	Episode *data.Episode
-	// Beats are the episode's beats and Times when each starts, in seconds after
-	// Start; Times has one more entry, the end of the episode.
-	Beats []data.Beat
-	Times []float64
-	Start time.Time
+	Key string
+	// Episodes are the episodes it plays in order, the first the one at First among the
+	// channel's (or the duo's) episodes, the next ones following it round.
+	Episodes []*data.Episode
+	First    int
+	// Beats are the beats of the episodes, a bridge line of the host before each episode
+	// but the first, Starts the beat each episode begins at (its bridge, when it has one),
+	// and Times when each beat starts, in seconds after Start; Times has one more entry,
+	// the end of the stream.
+	Beats  []data.Beat
+	Starts []int
+	Times  []float64
+	Start  time.Time
 }
 
 // DuoKey is the progress key of a duo.
 func DuoKey(host, with string) string { return host + "+" + with }
 
-// newShow times the episode of the key that the player has not seen yet.
+// newShow times the slot of the key: its episodes from the next the player has not seen,
+// one after another with the host's bridges between them, until slot.minutes have passed;
+// the stream ends with the episode it is in then.
 func newShow(d *data.Streams, hosts []*data.Channel, key string, shows []*data.Episode, next int) *Show {
-	ep := shows[next%len(shows)]
-	s := &Show{Hosts: hosts, Key: key, Episode: ep, Beats: ep.Beats()}
+	s := &Show{Hosts: hosts, Key: key, First: next}
 	t := 0.0
-	for _, b := range s.Beats {
+	add := func(b data.Beat) {
+		s.Beats = append(s.Beats, b)
 		s.Times = append(s.Times, t)
 		t += d.Timing.Seconds(b)
 	}
+	bridges := hosts[0].Bridges
+	for i := 0; i == 0 || t < d.Slot.Minutes*60; i++ {
+		before := t
+		s.Starts = append(s.Starts, len(s.Beats))
+		if i > 0 && len(bridges) > 0 {
+			add(data.Beat{Line: &data.StreamLine{Text: bridges[(next+i-1)%len(bridges)]}})
+		}
+		ep := shows[(next+i)%len(shows)]
+		s.Episodes = append(s.Episodes, ep)
+		for _, b := range ep.Beats() {
+			add(b)
+		}
+		if t == before { // an episode without beats would never fill the slot
+			break
+		}
+	}
 	s.Times = append(s.Times, t)
 	return s
+}
+
+// Part is the episode playing at the beat, an index of Episodes.
+func (s *Show) Part(beat int) int {
+	i := 0
+	for i+1 < len(s.Starts) && s.Starts[i+1] <= beat {
+		i++
+	}
+	return i
+}
+
+// PartEnd is the beat after the last of the episode part.
+func (s *Show) PartEnd(part int) int {
+	if part+1 < len(s.Starts) {
+		return s.Starts[part+1]
+	}
+	return len(s.Beats)
 }
 
 // Seconds is how long the episode lasts.
@@ -66,9 +107,9 @@ const maxLate = 4 * time.Minute
 // Lineup decides who is live at now: every channel with an episode when the game opens
 // for the first time (p.Open is 0), else each with the chance live.share and at least
 // live.min_share of them, in the order written. Two live hosts of a duo stream it
-// together with the chance live.duo_chance. Each show plays the next episode the
-// player has not seen and started up to four minutes ago, before its middle. The shows are in the order of
-// their hosts.
+// together with the chance live.duo_chance. Each show plays its slot from the next
+// episode the player has not seen and started up to four minutes ago, before its middle.
+// The shows are in the order of their hosts.
 func Lineup(d *data.Streams, p *rpg.Streams, now time.Time, rng *rand.Rand) []*Show {
 	first := p.Open == 0
 	live := map[string]bool{}
@@ -128,8 +169,8 @@ func Progress(p *rpg.Streams, id string) *rpg.ChannelProgress {
 	return c
 }
 
-// SeenShare is the part of the beats from where the player came in that marks an
-// episode seen.
+// SeenShare is the part of an episode's beats from where the player came in that marks
+// it seen.
 const SeenShare = 0.6
 
 // Seen reports whether watching watched beats of an episode of total beats, coming in at
@@ -138,16 +179,20 @@ func Seen(watched, from, total int) bool {
 	return float64(watched) >= SeenShare*float64(total-from)
 }
 
-// MarkSeen moves the show's channel or duo on to its next episode.
-func MarkSeen(p *rpg.Streams, s *Show) {
+// MarkSeen marks the episode part of the show seen: the channel or the duo goes on to the
+// episode after it (the episodes before it that the player came in too late for stay
+// behind, as a stream does not wait).
+func MarkSeen(p *rpg.Streams, s *Show, part int) {
+	next := s.First + part + 1
 	if len(s.Hosts) > 1 {
 		if p.Duos == nil {
 			p.Duos = map[string]int{}
 		}
-		p.Duos[s.Key]++
+		p.Duos[s.Key] = max(p.Duos[s.Key], next)
 		return
 	}
-	Progress(p, s.Key).Next++
+	pr := Progress(p, s.Key)
+	pr.Next = max(pr.Next, next)
 }
 
 // Step is the affection step of the points, 0 to the streams file's MaxStep.

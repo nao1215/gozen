@@ -3,6 +3,7 @@ Streams:
   logo: "The picture under assets/ drawn before the game's title in the bar over the stream screens, square and transparent around the mark. Without it, a colored square."
   voices: "A folder under assets/ of recorded lines (ADR 0052): a folder for each channel holding the line it says as `KEY.ogg`, KEY the first 16 hexadecimal digits of the SHA-1 of the line in UTF-8, as shown (translated) and before its `{fields}` are filled; a reaction book's line as the book writes it. A line with its voice plays it, and the watch view waits for it to end; a line without one is read by speech synthesis in a browser and only captioned elsewhere. `gozen check` warns of a missing folder and of a file that is the voice of no line (GZN0119)."
   timing: "How long each kind of beat lasts, in seconds."
+  slot: "How long a live channel streams: its episodes one after another (ADR 0052)."
   live: "Who is live when the game opens."
   away: "The gold earned while the game is closed."
   tips: "The amounts the player can tip, above 0, smallest first, each once."
@@ -13,6 +14,9 @@ Streams:
   bounce: "The lines that jiggle the streamer's puppet."
   channels: "The streamers, in the order the lobby lists them."
   duos: "Episodes two channels stream together."
+StreamSlot:
+  _: "The length of a stream. A live channel plays its episodes one after another, from the next the player has not seen, with a bridge line between them, until the slot has passed, and ends with the episode it is in then, thanking the viewer who stayed."
+  minutes: "The minutes of a stream, more than 0 and at most 1440. The default is 60."
 StreamTiming:
   _: "The length of the beats. A line lasts `say` plus `per_char` for each character; a question shows its options for `ask` and then says its longest answer."
   say: "Seconds every line lasts, more than 0."
@@ -50,6 +54,7 @@ Channel:
   first: "Lines for a first-time viewer; one is said. `{from}` is the viewer's name."
   streak: "Lines for a viewer who came three days in a row or more; one is said. `{days}` is the days and `{from}` the name."
   stayed: "Lines for a viewer who watched to the end; one is said. `{from}` is the viewer's name."
+  bridges: "Lines said between two episodes of a stream, one in turn (ADR 0052), such as a short break before the next topic; without them the next episode follows at once. No `{fields}`; each line may have a recorded voice like the others."
 StreamFrame:
   _: "The part of the puppet a stream shows, in the puppet's pixels."
   cx: "The column at the center of the frame."

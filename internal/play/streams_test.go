@@ -34,6 +34,7 @@ locations:
 `,
 	"data/streams.yaml": `logo: x.png
 timing: {say: 2, per_char: 0.01, chat: 0.3, ask: 1}
+slot: {minutes: 0.01}   # one episode a stream
 live: {share: 1, min_share: 1, duo_chance: DUO}
 away: {per_hour: 100, cap_hours: 24, star_bonus: 0.5}
 tips: [10, 50]
@@ -525,51 +526,6 @@ func TestStreamsNoVoicesNoButton(t *testing.T) {
 	}
 }
 
-// TestStreamsRadio: the radio's key turns it on and keeps it in the settings; it reads the
-// chat beat and the answer picked as viewers' messages, and a while after the show ends it
-// tunes to the other show on the air; its stop button turns it off.
-func TestStreamsRadio(t *testing.T) {
-	g := streamsGame(t, "0")
-	g.st.Streams.Viewer = "Pat"
-	l, ok := g.stack[0].(*streamLobby)
-	if !ok {
-		t.Fatalf("scene %T", g.stack[0])
-	}
-	i := slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })
-	show, other := l.cards[i].show, l.cards[1-i].show
-	show.Start = g.streamNow()
-	w := newStreamWatch(g, show, 100)
-	g.push(w)
-	wldPlay(t, g, "press auto\nwait 2\n", 10)
-	b, err := g.store.Read(g.configPath())
-	if !g.cfg.StreamRadio || err != nil || !strings.Contains(string(b), `"stream_radio": true`) {
-		t.Fatalf("the radio is not on and kept: %v %s %v", g.cfg.StreamRadio, b, err)
-	}
-	heard := map[string]bool{}
-	for range 3000 {
-		if g.watching() != w {
-			break
-		}
-		heard[w.heard] = true
-		other.Start = g.streamNow() // still on the air when ann's show ends
-		wldFrames(t, g, 1)
-	}
-	for _, want := range []string{"sprout  Beans!", "leaf  Peas"} {
-		if !heard[want] {
-			t.Errorf("the radio does not read %q: %v", want, heard)
-		}
-	}
-	next := g.watching()
-	if next == nil || next == w || next.show.Hosts[0].ID != "bo" || !w.ended {
-		t.Fatalf("the radio does not tune to the other show after the end (ended %v, now %v)", w.ended, next)
-	}
-	x, y, bw, bh := g.radioButton(1)
-	wldPlay(t, g, fmt.Sprintf("click %d %d\nwait 2\n", int(x+bw/2), int(y+bh/2)), 10)
-	if g.cfg.StreamRadio || g.watching() != next {
-		t.Fatalf("stop does not turn the radio off in the show (%v)", g.cfg.StreamRadio)
-	}
-}
-
 // TestStreamsChatMemory: a reaction book remembers what a viewer said and brings it up on
 // a later visit, its rules read the visits and the hour of a comment (value.visits,
 // value.hour), and a comment it found nothing in is read back two beats later.
@@ -657,5 +613,53 @@ func TestStreamsUnansweredKeepsTheLast(t *testing.T) {
 	}
 	if len(noted) != unansweredMax || noted[0].Text != "comment 5" || noted[len(noted)-1].Text != fmt.Sprint("comment ", unansweredMax+4) || noted[0].At != noonish.Format(time.RFC3339) {
 		t.Fatalf("kept %d, from %+v to %+v", len(noted), noted[0], noted[len(noted)-1])
+	}
+}
+
+// TestStreamsSlot: a stream plays its episodes one after another with the host's bridge
+// between them until its slot has passed, marks each episode seen as it is watched, shows
+// the title of the episode playing, and thanks the viewer once at the end of the slot.
+func TestStreamsSlot(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	y := string(fsys["data/streams.yaml"].Data)
+	y = strings.Replace(y, "slot: {minutes: 0.01}", "slot: {minutes: 0.2}", 1)
+	y = strings.Replace(y, "first: [", "bridges: [Water break.], first: [", 1)
+	fsys["data/streams.yaml"].Data = []byte(y)
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	g.st.Streams.Viewer = "Pat"
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })].show
+	if len(show.Episodes) != 2 {
+		t.Fatalf("a slot of 12 s has %d episodes of about 10 s", len(show.Episodes))
+	}
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	p := g.st.Streams.Channels["ann"]
+	for range 3000 {
+		if w.part == 1 {
+			break
+		}
+		wldFrames(t, g, 1)
+	}
+	if w.part != 1 || p.Next != 1 {
+		t.Fatalf("the first episode is not seen before the second (part %d, next %d)", w.part, p.Next)
+	}
+	for range 3000 {
+		if w.ended {
+			break
+		}
+		wldFrames(t, g, 1)
+	}
+	chat := chatText(w)
+	if !w.ended || p.Next != 2 || strings.Count(chat, "Ann: Water break.") != 1 || strings.Count(chat, "Ann: Thanks, Pat.") != 1 || strings.Count(chat, "Ann: Hello, everyone.") != 2 {
+		t.Fatalf("ended %v, next %d, chat:\n%s", w.ended, p.Next, chat)
+	}
+	if bridge := strings.Index(chat, "Ann: Water break."); bridge < strings.Index(chat, "Ann: That is all for today!") || bridge > strings.LastIndex(chat, "Ann: Hello, everyone.") {
+		t.Errorf("the bridge is not between the episodes:\n%s", chat)
 	}
 }

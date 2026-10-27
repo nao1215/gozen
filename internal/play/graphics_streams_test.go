@@ -81,26 +81,6 @@ func TestGraphicsScreensStreams(t *testing.T) {
 				t.Error("the desktop does not show the read-aloud button, on, with recorded voices")
 			}
 		}},
-		{"radio", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 60\npress auto\nwait 40\nshot radio\nquit\n", nil, func(t *testing.T, root string) {
-			// a dark screen with the streamer's face, the line in large white letters and the next button
-			radio := shotImage(t, root, "radio")
-			ink := [3]uint32{0x11, 0x11, 0x14}
-			light := 0
-			for x := 100; x < 1180; x++ {
-				for y := 296; y < 340; y++ {
-					if near(radio, x, y, white) {
-						light++
-					}
-				}
-			}
-			if !near(radio, 20, 400, ink) || near(radio, 640, 136, ink) || light < 100 || !near(radio, 486, 656, brand) {
-				t.Errorf("the radio is not a dark screen of the face, the line (%d white pixels) and the buttons", light)
-			}
-			b, err := os.ReadFile(filepath.Join(root, "saves", "config.json")) //nolint:gosec // Test-owned save.
-			if err != nil || !bytes.Contains(b, []byte(`"stream_radio": true`)) {
-				t.Errorf("the settings do not keep the radio: %s, %v", b, err)
-			}
-		}},
 		{"full", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 100\npress hide\nwait 20\nshot full\nquit\n", nil, func(t *testing.T, root string) {
 			full := shotImage(t, root, "full")
 			// the room under where the page's bar and the information were, and the chat darkened over the stage

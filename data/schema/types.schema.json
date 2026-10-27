@@ -2860,6 +2860,25 @@
           },
           "x-type": "string"
         },
+        "bridges": {
+          "description": "Lines said between two episodes of a stream, one in turn (ADR 0052), such as a short break before the next topic; without them the next episode follows at once. No `{fields}`; each line may have a recorded voice like the others.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string[]"
+        },
         "color": {
           "description": "The channel's color: its name in the chat and its card in the lobby.",
           "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
@@ -17267,6 +17286,26 @@
       },
       "type": "object"
     },
+    "StreamSlot": {
+      "additionalProperties": false,
+      "description": "The length of a stream. A live channel plays its episodes one after another, from the next the player has not seen, with a bridge line between them, until the slot has passed, and ends with the episode it is in then, thanking the viewer who stayed.",
+      "properties": {
+        "minutes": {
+          "description": "The minutes of a stream, more than 0 and at most 1440. The default is 60.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
     "StreamTiming": {
       "additionalProperties": false,
       "description": "The length of the beats. A line lasts `say` plus `per_char` for each character; a question shows its options for `ask` and then says its longest answer.",
@@ -17510,6 +17549,19 @@
             "version": "9"
           },
           "x-type": "string"
+        },
+        "slot": {
+          "$ref": "#/$defs/StreamSlot",
+          "description": "How long a live channel streams: its episodes one after another (ADR 0052).",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[StreamSlot](#streamslot)"
         },
         "timing": {
           "$ref": "#/$defs/StreamTiming",

@@ -86,6 +86,9 @@ func TestStreamsCheck(t *testing.T) {
 		{"too many greetings", edit("data/streams.yaml", `greet: [[], ["{from}, you came back."]]`, `greet: [[], [], [], []]`), "affection step 0 to 2"},
 		{"a room missing", edit("data/streams.yaml", "room: x.png", "room: none.png"), "no file assets/none.png"},
 		{"a logo missing", edit("data/streams.yaml", "tips:", "logo: gone.png\ntips:"), "no file assets/gone.png"},
+		{"a slot of no minutes", edit("data/streams.yaml", "tips:", "slot: {minutes: -5}\ntips:"), "slot.minutes"},
+		{"a slot over a day", edit("data/streams.yaml", "tips:", "slot: {minutes: 1500}\ntips:"), "at most 1440 minutes"},
+		{"a bridge with a field", edit("data/streams.yaml", "first: [", "bridges: [\"Back, {from}.\"]\n    first: ["), "unknown {from}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := testgame.TryLoad(tc.files)

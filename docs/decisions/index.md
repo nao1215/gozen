@@ -61,7 +61,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0049](0049-games-without-menus.md) | Games without menus (`menus: none`): no title screen and no game menu, opening on the newest save | Accepted | Implemented 2026-10-27 |
 | [0050](0050-stream-screens-fit-the-window.md) | Stream screens fit the window: a portrait layout on a phone held upright, a landscape one fitted on its side, touch scrolling and the keyboard | Accepted | Implemented 2026-10-27 |
 | [0051](0051-smaller-faster-web-exports.md) | Smaller and faster web exports: a gzipped player, WebP pictures and gzipped files, the media fetched last, and a startup without go-yaml's per-condition reformatting | Accepted | Implemented 2026-10-27 |
-| [0052](0052-stream-voices-radio-and-chat.md) | Stream voices, the radio and the chat's memory: recorded lines named by the SHA-1 of their text, the watch view waiting for them, a radio that reads the show and its chat aloud and tunes to the next show, and a chat that remembers the viewer and does not repeat its lines soon, and a local record of the comments no book answered | Accepted | Implemented 2026-10-27 |
+| [0052](0052-stream-voices-slots-and-chat.md) | Stream voices, slots and the chat's memory: recorded lines named by the SHA-1 of their text and waited for, a stream that plays an hour of episodes with bridges between them, a chat that remembers the viewer and does not repeat its lines soon, and a local record of the comments no book answered | Accepted | Implemented 2026-10-27 |
 
 [ADR 0041](0041-yaml-authoring-and-distribution.md) retires the public Go APIs; current implementation boundaries are in [Boundaries](../architecture/boundaries.md). Earlier entries record historical decisions.
 

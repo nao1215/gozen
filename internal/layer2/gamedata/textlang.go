@@ -293,6 +293,7 @@ func (db *DB) SourceTexts() []SourceText {
 			all(w+".first", ch.First)
 			all(w+".streak", ch.Streak)
 			all(w+".stayed", ch.Stayed)
+			all(w+".bridges", ch.Bridges)
 			episodes = append(episodes, ch.Shows...)
 		}
 		for _, d := range st.Duos {

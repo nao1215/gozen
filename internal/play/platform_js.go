@@ -151,15 +151,15 @@ func loadVoice(fsys fs.FS, file string) *voiceLoad {
 	return v
 }
 
-// wakeLock is the screen's wake lock the radio holds (undefined: none), asking while one
-// is requested and awake while the radio wants one.
+// wakeLock is the screen's wake lock held while a show is read aloud (undefined: none),
+// asking while one is requested and awake while the watch view wants one.
 var (
 	wakeLock      js.Value
 	asking, awake bool
 )
 
 // keepAwake asks for the screen's wake lock (Screen Wake Lock API) so the screen does not
-// turn off while the radio plays, again when the page lost it (it does when hidden), or lets
+// turn off while a show is read aloud, again when the page lost it (it does when hidden), or lets
 // it go. A browser without the API, or one that refuses, keeps its screen as it would.
 func keepAwake(on bool) {
 	api := js.Global().Get("navigator").Get("wakeLock")
@@ -186,7 +186,7 @@ func keepAwake(on bool) {
 		failed.Release()
 	}
 	got = js.FuncOf(func(_ js.Value, args []js.Value) any {
-		if wakeLock = args[0]; !awake { // the radio stopped while it was asked for
+		if wakeLock = args[0]; !awake { // the reading stopped while it was asked for
 			wakeLock.Call("release")
 			wakeLock = js.Undefined()
 		}

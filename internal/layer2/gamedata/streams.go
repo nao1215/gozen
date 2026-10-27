@@ -31,6 +31,8 @@ type Streams struct {
 	Voices string `yaml:"voices"`
 	// Timing is how long each kind of beat lasts.
 	Timing StreamTiming `yaml:"timing"`
+	// Slot is how long a channel streams when it is live, its episodes one after another.
+	Slot StreamSlot `yaml:"slot"`
 	// Live decides who is live when the game opens.
 	Live StreamLive `yaml:"live"`
 	// Away is the gold earned while the game is closed.
@@ -71,6 +73,13 @@ type StreamAffection struct {
 	Answer  float64 `yaml:"answer"`
 	TipPer  float64 `yaml:"tip_per"`
 	Stayed  float64 `yaml:"stayed"`
+}
+
+// StreamSlot is the length of a stream: a live channel plays its episodes one after
+// another, from the next the player has not seen, until Minutes have passed, and ends with
+// the episode it is in then (60 when left out).
+type StreamSlot struct {
+	Minutes float64 `yaml:"minutes"`
 }
 
 // StreamEcho reads back a comment the streamer found nothing in (the reaction book's
@@ -196,6 +205,8 @@ type Channel struct {
 	First  []string `yaml:"first"`
 	Streak []string `yaml:"streak"`
 	Stayed []string `yaml:"stayed"`
+	// Bridges are said between two episodes of a stream, one in turn (none when empty).
+	Bridges []string `yaml:"bridges"`
 
 	// Shows are the loaded episodes, in the order of Episodes.
 	Shows []*Episode `yaml:"-"`
@@ -472,7 +483,7 @@ func (db *DB) loadStreams() ([]string, error) {
 	return files, nil
 }
 
-// defaults fills in the affection, the answer chances and the echo when left out.
+// defaults fills in the affection, the answer chances, the slot and the echo when left out.
 func (s *Streams) defaults() {
 	a := &s.Affection
 	if len(a.Steps) == 0 {
@@ -488,6 +499,9 @@ func (s *Streams) defaults() {
 	}
 	if len(s.AnswerChance) == 0 {
 		s.AnswerChance = []float64{0.6, 0.75, 0.9, 1, 1}
+	}
+	if s.Slot.Minutes == 0 {
+		s.Slot.Minutes = 60
 	}
 	if s.Echo.MaxRunes == 0 {
 		s.Echo = StreamEcho{MaxRunes: 24, Chance: cmp.Or(s.Echo.Chance, 0.35)}
@@ -511,6 +525,9 @@ func (c *checker) streams() {
 	t := s.Timing
 	if !(t.Say > 0) || !(t.PerChar >= 0) || !(t.Chat > 0) || !(t.Ask > 0) {
 		c.errorf(diag.OutOfRange, at("timing"), "say, chat and ask need more than 0 seconds, per_char 0 or more")
+	}
+	if m := s.Slot.Minutes; !(m > 0 && m <= 24*60) {
+		c.errorf(diag.OutOfRange, at("slot.minutes"), "want more than 0 and at most 1440 minutes, not %g", m)
 	}
 	l := s.Live
 	for _, v := range []float64{l.Share, l.MinShare, l.DuoChance} {
@@ -578,6 +595,10 @@ func (c *checker) streams() {
 			c.streamLines(w, lines, "from")
 		}
 		c.streamLines(w+".streak", ch.Streak, "from", "days")
+		c.streamLines(w+".bridges", ch.Bridges)
+		if slices.Contains(ch.Bridges, "") {
+			c.errorf(diag.Shape, w+".bridges", "a bridge needs text")
+		}
 		for _, e := range ch.Shows {
 			c.episode(e, []string{ch.ID})
 		}
@@ -715,7 +736,7 @@ func (c *checker) streamVoices() {
 // its greetings, its lines and questions in its episodes and duos, and its reaction book's.
 func (c *checker) voiceKeys(ch *Channel) map[string]bool {
 	s := c.db.Streams
-	lines := slices.Concat(ch.First, ch.Streak, ch.Stayed)
+	lines := slices.Concat(ch.First, ch.Streak, ch.Stayed, ch.Bridges)
 	for _, g := range ch.Greet {
 		lines = append(lines, g...)
 	}

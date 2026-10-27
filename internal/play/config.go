@@ -40,8 +40,6 @@ type config struct {
 	Language string `json:"language,omitempty"`
 	// StreamFull: the watch view of a stream fills the screen with the stage (ADR 0048).
 	StreamFull bool `json:"stream_full,omitempty"`
-	// StreamRadio: the watch view of a stream is the radio (ADR 0052).
-	StreamRadio bool `json:"stream_radio,omitempty"`
 }
 
 func defaultConfig() config {

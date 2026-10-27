@@ -508,7 +508,7 @@ func (l *streamLobby) drawCard(g *Game, dst *ebiten.Image, c *lobbyCard, i int, 
 	gfx.DrawTextLeft(dst, gfx.Ellipsis(g.showName(c.show), size+1, nameW), tx, my, size+1, streamInk)
 	// the episode's lobby lines in turn, else the channel's tagline or tag (never the title)
 	sub := g.db.Tr(cmp.Or(host.Tagline, host.Tag))
-	if lines := c.show.Episode.Lobby; len(lines) > 0 {
+	if lines := c.show.Episodes[c.show.Part(c.beat)].Lobby; len(lines) > 0 {
 		sub = g.db.Tr(lines[(l.age/300)%len(lines)])
 	}
 	gfx.DrawTextLeft(dst, gfx.Ellipsis(sub, size-1, w-60-pad), tx, my+size+6, size-1, streamInk2)

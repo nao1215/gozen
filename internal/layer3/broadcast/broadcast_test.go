@@ -36,7 +36,8 @@ func streams() *data.Streams {
 var noon = time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC)
 
 func TestTimesAndBeatAt(t *testing.T) {
-	s := newShow(streams(), nil, "a", streams().Channels[0].Shows, 0)
+	d := streams()
+	s := newShow(d, d.Channels[:1], "a", d.Channels[0].Shows, 0)
 	s.Start = noon
 	// say 1+4*0.5, chat 2, ask (1+2*0.5)+10+max(1+6*0.5, 2*1+2*0.5), say 1
 	want := []float64{0, 3, 5, 21, 22}
@@ -113,17 +114,20 @@ func TestNextEpisodeAndSeen(t *testing.T) {
 	p := &rpg.Streams{}
 	rng := rand.New(rand.NewPCG(1, 2)) //nolint:gosec // reproducible draws
 	shows := Lineup(d, p, noon, rng)
-	if shows[0].Episode.Title != "a1" {
-		t.Fatalf("first episode %q", shows[0].Episode.Title)
+	if shows[0].Episodes[0].Title != "a1" {
+		t.Fatalf("first episode %q", shows[0].Episodes[0].Title)
 	}
-	MarkSeen(p, shows[0])
-	MarkSeen(p, shows[0])
-	MarkSeen(p, shows[0])
-	if got := Lineup(d, p, noon, rng)[0].Episode.Title; got != "a2" {
-		t.Errorf("after three, the episode %q (two wrap round)", got)
+	MarkSeen(p, shows[0], 0)
+	MarkSeen(p, shows[0], 0) // seen again: no farther
+	if p.Channels["a"].Next != 1 {
+		t.Fatalf("next %d after the first seen twice", p.Channels["a"].Next)
+	}
+	MarkSeen(p, &Show{Hosts: shows[0].Hosts, Key: "a", First: 1}, 1) // the third, the second missed
+	if got := Lineup(d, p, noon, rng)[0].Episodes[0].Title; got != "a2" || p.Channels["a"].Next != 3 {
+		t.Errorf("after the third, the episode %q (two wrap round)", got)
 	}
 	duo := &Show{Hosts: []*data.Channel{d.Channels[0], d.Channels[1]}, Key: DuoKey("a", "b")}
-	MarkSeen(p, duo)
+	MarkSeen(p, duo, 0)
 	if p.Duos["a+b"] != 1 || p.Channels["a"].Next != 3 {
 		t.Errorf("a duo moves on by itself: %v %v", p.Duos, p.Channels["a"])
 	}
@@ -202,5 +206,38 @@ func TestSettle(t *testing.T) {
 				t.Errorf("open %d", p.Open)
 			}
 		})
+	}
+}
+
+// TestSlot: a stream plays the episodes from the next unseen one after another, wrapping
+// round, a bridge of the host before each but the first, until the slot has passed, and
+// ends with the episode it is in then; Part and PartEnd find the episode of a beat.
+func TestSlot(t *testing.T) {
+	d := streams()
+	d.Slot.Minutes = 1 // 60 s: three episodes of 22 s (and a bridge of 1 s before the 2nd and 3rd)
+	c := d.Channels[0]
+	c.Bridges = []string{"", ""}
+	s := newShow(d, d.Channels[:1], "a", c.Shows, 1)
+	titles := []string{}
+	for _, e := range s.Episodes {
+		titles = append(titles, e.Title)
+	}
+	if len(titles) != 3 || titles[0] != "a2" || titles[1] != "a1" || titles[2] != "a2" || s.First != 1 {
+		t.Fatalf("episodes %v from %d", titles, s.First)
+	}
+	if len(s.Starts) != 3 || s.Starts[1] != 4 || s.Beats[4].Line == nil || s.Starts[2] != 9 || len(s.Beats) != 14 || s.Seconds() != 22*3+2 {
+		t.Fatalf("starts %v, %d beats, %g s", s.Starts, len(s.Beats), s.Seconds())
+	}
+	for beat, part := range map[int]int{0: 0, 3: 0, 4: 1, 8: 1, 9: 2, 13: 2} {
+		if got := s.Part(beat); got != part {
+			t.Errorf("beat %d in episode %d, want %d", beat, got, part)
+		}
+	}
+	if s.PartEnd(0) != 4 || s.PartEnd(2) != 14 {
+		t.Errorf("ends %d %d", s.PartEnd(0), s.PartEnd(2))
+	}
+	c.Bridges = nil
+	if s := newShow(d, d.Channels[:1], "a", c.Shows, 0); len(s.Beats) != 12 || s.Seconds() != 66 {
+		t.Errorf("without bridges: %d beats, %g s", len(s.Beats), s.Seconds())
 	}
 }

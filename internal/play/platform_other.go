@@ -27,5 +27,5 @@ func loadVoice(fsys fs.FS, file string) *voiceLoad {
 	return v
 }
 
-// keepAwake: only a browser build holds the screen awake for the radio.
+// keepAwake: only a browser build holds the screen awake while the lines are read aloud.
 func keepAwake(bool) {}
