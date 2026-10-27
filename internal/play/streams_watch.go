@@ -1278,23 +1278,15 @@ func (w *streamWatch) drawPlate(g *Game, dst *ebiten.Image, lay watchLayout, y f
 	if g.view.tall {
 		size, tagSize, h = 14, 11, 26
 	}
-	name, tag := g.showName(w.show), g.db.Tr(c.Tag)
 	bottom := y + lay.stageH
 	gfx.Pop(func() {
+		name, tag, pw := w.plate(g, lay, size, tagSize)
 		nw := gfx.TextWidth(name, size)
-		tw := 0.0
-		if tag != "" {
-			tw = gfx.TextWidth(tag, tagSize) + 12
-		}
 		x, top := 12.0, bottom-10-h
-		pw := min(nw+tw+24, lay.stageW-24-2*(fullGap+fullSize)) // clear of the CC and full screen's buttons
-		if nw+tw+24 > pw {                                      // no room for the tag: the name takes the plate
-			tw = 0
-		}
 		gfx.FillRoundRect(dst, float32(x), float32(top), float32(pw), float32(h), 4, c.Color.Or(streamBrand))
 		rect(dst, x, top+h-3, pw, 3, withAlpha(colorBlack, 0x40))
-		gfx.DrawTextLeft(dst, gfx.Ellipsis(name, size, pw-tw-24), x+12, top+(h-size*1.4)/2+1, size, streamPanel)
-		if tw > 0 {
+		gfx.DrawTextLeft(dst, name, x+12, top+(h-size*1.4)/2+1, size, streamPanel)
+		if tag != "" {
 			gfx.DrawTextLeft(dst, tag, x+12+nw+12, top+(h-tagSize*1.4)/2+2, tagSize, withAlpha(streamPanel, 0xd8))
 		}
 		if x+pw > lay.capX {
@@ -1346,6 +1338,24 @@ func (g *Game) drawTip(dst *ebiten.Image, t streamTip, x, y, w, h, size, sub flo
 		return
 	}
 	gfx.DrawTextLeft(dst, gfx.Ellipsis(t.text, sub, w-30-hw), x+20+hw, y+5+(size-sub)*0.7, sub, streamInk2)
+}
+
+// plate is what the name plate shows, measured in the font it is drawn in (inside gfx.Pop):
+// the hosts' names, the host's tag ("" when there is no room for it) and the plate's width,
+// clear of the CC and full screen's buttons; a name too long for the plate is cut.
+func (w *streamWatch) plate(g *Game, lay watchLayout, size, tagSize float64) (name, tag string, pw float64) {
+	name, tag = g.showName(w.show), g.db.Tr(w.show.Hosts[0].Tag)
+	nw := gfx.TextWidth(name, size)
+	tw := 0.0
+	if tag != "" {
+		tw = gfx.TextWidth(tag, tagSize) + 12
+	}
+	if room := lay.stageW - 24 - 2*(fullGap+fullSize); nw+tw+24 > room {
+		// no room for the tag: the name takes the plate, cut only when it alone has none
+		// (its width is not taken back from the sum, which a rounding would cut short)
+		return gfx.Ellipsis(name, size, room-24), "", min(nw+24, room)
+	}
+	return name, tag, nw + tw + 24
 }
 
 // drawCaption draws the whole line being said as white text on black bands, ending at

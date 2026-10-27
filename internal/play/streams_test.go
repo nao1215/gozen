@@ -1100,6 +1100,33 @@ func TestStreamsCaptionsButton(t *testing.T) {
 	}
 }
 
+// TestStreamsPlateKeepsTheName: the name plate shows a host's whole name, in English with a
+// long tag too, on a wide screen, a phone held upright and in full screen; a tag with no room
+// is left out, never the name cut for it.
+func TestStreamsPlateKeepsTheName(t *testing.T) {
+	g, w, _ := voicedShow(t)
+	g.db.Actors["ann"].Name = "Nox"
+	for _, tag := range []string{"Programming", "Family Life", "Music", "A tag far too long to sit beside the name on a phone held upright"} {
+		w.show.Hosts[0].Tag = tag
+		for _, view := range [][3]float64{{1280, 720, 1}, {390, 844, 3}} {
+			for _, full := range []bool{false, true} {
+				g.cfg.StreamFull = full
+				g.fitView(view[0], view[1], view[2])
+				size, tagSize := 18.0, 13.0
+				if g.view.tall {
+					size, tagSize = 14, 11
+				}
+				var name, shown string
+				var pw float64
+				gfx.Pop(func() { name, shown, pw = w.plate(g, g.watchLayout(), size, tagSize) })
+				if name != "Nox" {
+					t.Errorf("tag %q, %v, full %v: the plate shows %q (tag %q, %v wide)", tag, view, full, name, shown, pw)
+				}
+			}
+		}
+	}
+}
+
 // TestStreamsNoVoicesNoButton: outside a browser, a game without recorded voices has no
 // read-aloud button.
 func TestStreamsNoVoicesNoButton(t *testing.T) {
