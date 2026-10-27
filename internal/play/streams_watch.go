@@ -723,18 +723,19 @@ func (w *streamWatch) input(g *Game) {
 		typed := in.devices() && w.field.readTyping()
 		send := !in.devices() && in.pressed[btnOK] || in.devices() && !typed && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter))
 		right := lay.colX + lay.colW
+		sent := g.clickedIn(right-150, sh-62, 64, 44)
 		switch {
-		case send || g.clickedIn(right-150, sh-62, 64, 44):
+		case send || sent:
 			w.comment(g)
 		case !in.devices() && in.cancel() || in.devices() && !typed && inpututil.IsKeyJustPressed(ebiten.KeyEscape):
 			w.field.composer.Cancel()
 			w.typing = false
 		}
-		if g.clickedIn(lay.colX, sh-62, lay.colW, 62) || !in.click || in.swiped || !w.typing {
+		if x, y, cw, ch := w.controlRect(g, [2]int{int(ctlComment), 0}); sent || g.clickedIn(x, y, cw, ch) || !in.click || in.swiped || !w.typing {
 			return
 		}
-		// a click elsewhere stops typing (the text stays in the field, a phone's keyboard
-		// closes) and goes on to what it clicked
+		// a click elsewhere, the read-aloud button too, stops typing (the text stays in the
+		// field, a phone's keyboard closes) and goes on to what it clicked
 		w.field.composer.Confirm()
 		w.typing = false
 	}

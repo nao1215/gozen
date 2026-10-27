@@ -560,6 +560,27 @@ func TestStreamsQuestionWaitsAfterTheVoice(t *testing.T) {
 	})
 }
 
+// TestStreamsSpeakerWhileTyping: while a comment is typed, a click on the field keeps typing,
+// and a click on the read-aloud button stops typing and turns reading aloud off.
+func TestStreamsSpeakerWhileTyping(t *testing.T) {
+	g, w, _ := voicedShow(t)
+	click := func(c watchControl) {
+		x, y, cw, ch := w.controlRect(g, [2]int{int(c), 0})
+		g.in.click, g.in.mouse = true, image.Pt(int(x+cw/2), int(y+ch/2))
+		w.input(g)
+		g.in.click = false
+	}
+	w.typing = true
+	click(ctlComment)
+	if !w.typing {
+		t.Fatal("a click on the comment field stops typing")
+	}
+	click(ctlSpeak)
+	if w.typing || g.desk.speak {
+		t.Fatalf("the read-aloud button while typing: typing %v, reading aloud %v", w.typing, g.desk.speak)
+	}
+}
+
 // TestStreamsNoVoicesNoButton: outside a browser, a game without recorded voices has no
 // read-aloud button.
 func TestStreamsNoVoicesNoButton(t *testing.T) {
