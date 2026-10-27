@@ -1035,6 +1035,24 @@ func hosts(shows []*broadcast.Show) []string {
 	return out
 }
 
+// TestStreamsLateVoiceIsSpoken: a line whose voice a browser is still fetching waits for it
+// voiceWait at most, the line lasting its timing at least, and is then read as a line
+// without its voice (by speech synthesis in a browser).
+func TestStreamsLateVoiceIsSpoken(t *testing.T) {
+	g, w, _ := voicedShow(t, "Hello, everyone.")
+	f := g.db.Streams.Voice("ann", "Hello, everyone.")
+	w.ahead[f] = &voiceLoad{file: f, done: make(chan struct{})} // still coming
+	now := g.streamNow()
+	w.say(g, streamSay{line: "Hello, everyone."})
+	if !w.limit.Equal(now.Add(voiceWait)) || w.busy.Before(now.Add(seconds(g.db.Streams.Timing.LineSeconds("Hello, everyone.")))) || w.voice == nil {
+		t.Fatalf("waiting for the voice: limit %v, busy %v from %v", w.limit, w.busy, now)
+	}
+	wldFrames(t, g, int(voiceWait.Seconds()*ebiten.DefaultTPS)+1)
+	if w.voice != nil {
+		t.Fatal("the line still waits for its voice after voiceWait")
+	}
+}
+
 // TestStreamsNoVoicesNoButton: outside a browser, a game without recorded voices has no
 // read-aloud button.
 func TestStreamsNoVoicesNoButton(t *testing.T) {

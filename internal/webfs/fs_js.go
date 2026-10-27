@@ -22,7 +22,11 @@ import (
 	"testing/fstest"
 )
 
-const workers = 20
+// workers bound the files fetched at once, and mediaAtOnce the pictures and sounds Load
+// fetches at once: a browser opens six connections to a host, and the media, which come in
+// the background, leave two to the files the game opens meanwhile (a voice of the line it
+// is to say), so those do not wait behind them.
+const workers, mediaAtOnce = 20, 4
 
 type file struct {
 	Name string `json:"name"`
@@ -45,7 +49,7 @@ type file struct {
 // marked later (a recorded stream voice) is fetched only when the game opens it and is not
 // in the progress.
 func Load(base string, progress func(done, total int64)) (fs.FS, error) {
-	b, err := fetch(base+"files.json", nil)
+	b, err := fetch(base+"files.json", nil, "high")
 	if err != nil {
 		return nil, err
 	}
@@ -84,12 +88,21 @@ func Load(base string, progress func(done, total int64)) (fs.FS, error) {
 		}
 	}
 	close(jobs)
+	mediaSlots := make(chan struct{}, mediaAtOnce)
 	for range min(workers, len(files)) {
 		all.Go(func() {
 			for f := range jobs {
+				priority := "high" // the media come last, and give way to a file the game opens meanwhile
+				if media(f.Name) == 1 {
+					priority = "low"
+					mediaSlots <- struct{}{} // before a place among all, which it would hold waiting
+				}
 				h.fetchers <- struct{}{}
-				data, err := get(base, f, counter)
+				data, err := get(base, f, counter, priority)
 				<-h.fetchers
+				if priority == "low" {
+					<-mediaSlots
+				}
 				h.mu.Lock()
 				if err == nil {
 					h.cache[f.Name] = data
@@ -160,7 +173,7 @@ func (f *httpFS) fetchOnce(name string, served file) ([]byte, error) {
 	f.fetching[name] = c
 	f.mu.Unlock()
 	f.fetchers <- struct{}{}
-	c.data, c.err = get(f.base, served, nil)
+	c.data, c.err = get(f.base, served, nil, "high")
 	<-f.fetchers
 	f.mu.Lock()
 	delete(f.fetching, name)
@@ -226,9 +239,10 @@ func (c *count) finish() {
 	}
 }
 
-// get downloads f from base, counting the bytes that come into c when c is not nil.
-func get(base string, f file, c *count) ([]byte, error) {
-	b, err := fetch(base+(&url.URL{Path: path.Clean(f.File)}).EscapedPath(), c)
+// get downloads f from base with the browser's priority (fetch's priority: high or low),
+// counting the bytes that come into c when c is not nil.
+func get(base string, f file, c *count, priority string) ([]byte, error) {
+	b, err := fetch(base+(&url.URL{Path: path.Clean(f.File)}).EscapedPath(), c, priority)
 	// A host may already have undone the gzip (Content-Encoding); then it is not gzip.
 	if err != nil || !f.Gzip || !bytes.HasPrefix(b, []byte{0x1f, 0x8b}) {
 		return b, err
@@ -246,8 +260,8 @@ func get(base string, f file, c *count) ([]byte, error) {
 // fetch downloads u, adding its bytes to c when c is not nil. The browser reads the
 // whole of it (arrayBuffer) while the game goes on: read in Go, a file came only as fast
 // as the game, busy reading the files before it, took its pieces.
-func fetch(u string, c *count) ([]byte, error) {
-	resp, err := await(js.Global().Call("fetch", u))
+func fetch(u string, c *count, priority string) ([]byte, error) {
+	resp, err := await(js.Global().Call("fetch", u, map[string]any{"priority": priority}))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", u, err)
 	}

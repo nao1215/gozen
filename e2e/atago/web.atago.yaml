@@ -162,13 +162,24 @@ scenarios:
 - name: a stream export fetches a voice only when its line comes
   tags: [web]
   services:
-  # the server keeps the path of every request in requests.log
+  # the server keeps the path of every request in requests.log as it is answered, with
+  # when it came and when it was answered in arrivals.log, and answers a picture under
+  # assets/zfiller/ twenty seconds late (pictures still coming in the background when the
+  # show opens)
   - name: site
     command: |
       python3 -c '
+      import time
       from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
       from pathlib import Path
       class Site(SimpleHTTPRequestHandler):
+          def do_GET(self):
+              came = time.time()
+              if "/assets/zfiller/" in self.path:
+                  time.sleep(20)
+              super().do_GET()
+              with open("arrivals.log", "a") as f:
+                  f.write("%f %f %s\n" % (came, time.time(), self.path))
           def log_message(self, *args):
               with open("requests.log", "a") as f:
                   f.write(self.path + "\n")
@@ -204,6 +215,9 @@ scenarios:
         Path("game/assets/voice/host").mkdir(parents=True)
         for l in lines:
             shutil.copy("tone.ogg", "game/assets/voice/host/%s.ogg" % hashlib.sha1(l.encode()).hexdigest()[:16])
+        Path("game/assets/zfiller").mkdir()
+        for i in range(30):
+            Path("game/assets/zfiller/f%d.png" % i).write_bytes(bytes(range(256)) * 64)
         '
   - assert: {exit_code: 0}
   # the voices are the voices of lines: no GZN0119
@@ -220,14 +234,12 @@ scenarios:
         - {path: $.status, equals: ok}
   - assert:
       file: {path: site/games/voices/game/files.json, contains: '"later":true'}
-  # the page opens without fetching a voice, its progress without them
+  # the page opens without fetching a voice
   - cdp:
       runner: browser
       actions:
       - navigate: '${origin}/site/games/voices/'
       - wait_visible: 'body:not(:has(#loading))'
-      - eval: "goZenLoad.files.total > 0 && goZenLoad.files.done === goZenLoad.files.total"
-  - assert: {value: {equals: true}}
   - run: {command: "python3 -c 'print(sum(\"/assets/voice/\" in l for l in open(\"requests.log\")))'"}
   - assert: {stdout: {equals: "0\n"}}
   # watching (a new game, the name left empty, then the first card) fetches the voices of
@@ -260,9 +272,33 @@ scenarios:
         # a run of lines with no gap, round from line 40 to line 1 as the show goes round
         run = any(got == {(s + i) % 40 + 1 for i in range(len(got))} for s in range(40))
         ok = 5 <= len(got) <= 12 and run and len(asked) == len(set(asked))
+        # the first voice was asked for before a picture coming in the background was
+        # answered: the pictures leave a browser connections for the files the game opens
+        log = [l.split() for l in open("arrivals.log")]
+        voice = min((float(c) for c, d, p in log if "/assets/voice/" in p), default=1e18)
+        picture = min((float(d) for c, d, p in log if "/assets/zfiller/" in p), default=1e18)
+        ok = ok and voice < picture
         print("a run of lines" if ok else (got, len(asked)))
         '
   - assert: {stdout: {equals: "a run of lines\n"}}
+  # the progress of the page leaves the voices out
+  - cdp:
+      runner: browser
+      actions:
+      - eval: |
+          (async () => {
+            try {
+              for (let i = 0; i < 300 && !goZenLoad.files; i++) await new Promise(resolve => setTimeout(resolve, 100));
+              const files = await (await fetch('game/files.json', {cache: 'no-store'})).json();
+              const want = files.filter(f => !f.later).reduce((n, f) => n + f.size, 0);
+              document.body.dataset.total = String(goZenLoad.files.total === want);
+            } catch (e) {
+              document.body.dataset.total = String(e);
+            }
+          })(); true
+      - wait_visible: 'body[data-total]'
+      - eval: "document.body.dataset.total"
+  - assert: {value: {json: {path: '$', equals: "true"}}}
 
 - name: a page starts however its pieces come and keeps the game running as media come late
   tags: [web]

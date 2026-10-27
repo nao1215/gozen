@@ -371,9 +371,9 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 		if w.voice = w.ahead[f]; w.voice == nil {
 			w.voice = loadVoice(g.db.FS, f)
 		}
-		if !w.voice.loaded() {
-			w.limit = now.Add(seconds(5 + 0.4*float64(runes)))
-			w.busy, w.talk[l.host] = w.limit.Add(w.hold), w.limit
+		if !w.voice.loaded() { // a browser still fetching it: waited for voiceWait at most
+			w.limit = now.Add(voiceWait)
+			w.busy, w.talk[l.host] = maxTime(w.limit, now.Add(seconds(d.Timing.LineSeconds(text)))).Add(w.hold), w.limit
 		}
 		w.voiced(g)
 		return
@@ -488,6 +488,18 @@ func (w *streamWatch) aheadVoices(g *Game) {
 
 func minTime(a, b time.Time) time.Time {
 	if b.Before(a) {
+		return b
+	}
+	return a
+}
+
+// voiceWait is how long a line waits for its voice still being fetched (a browser's)
+// before it is read by speech synthesis instead.
+const voiceWait = 1500 * time.Millisecond
+
+// maxTime is the later of a and b.
+func maxTime(a, b time.Time) time.Time {
+	if b.After(a) {
 		return b
 	}
 	return a
@@ -890,8 +902,13 @@ func (w *streamWatch) update(g *Game) {
 		}
 		if (w.voice != nil || w.spoken != nil) && !now.Before(w.limit) {
 			// given up (speech still going is stopped): a voice or speech that ends later
-			// does not move the next step
+			// does not move the next step; a voice that has not come is a line without one,
+			// read by speech synthesis
+			late := w.voice != nil
 			w.hush()
+			if late {
+				w.readAloud(g, w.captionWho, w.caption)
+			}
 		}
 		w.voiced(g)
 		if w.spoken != nil && w.spoken() {
