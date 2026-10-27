@@ -138,11 +138,19 @@ type input struct {
 	touching, touchDone  bool
 	touchAt              image.Point
 	longPress, longUsed  bool
+	// touchFrom is where the touch began, began is true on the tick it does, swipe is how far
+	// the finger moved down this tick (UI units), and swiped tells that the touch held or just
+	// lifted moved farther than a tap: the stream screens scroll with it and take its lifting
+	// for no click.
+	touchFrom     image.Point
+	began, swiped bool
+	swipe         float64
 }
 
 func (in *input) update() {
 	in.pressed = [numButtons]bool{}
 	in.click, in.rclick, in.moved, in.wheel = false, false, false, 0
+	in.began, in.swipe, in.swiped = false, 0, in.swiped && in.touching
 	in.esc, in.shift = false, false
 	in.digit = 0
 	if in.script != nil {
@@ -206,6 +214,9 @@ func (in *input) update() {
 // longPress is how many ticks a touch is held to be a long press (half a second).
 const longPress = 30
 
+// swipeFrom is how far (UI units) a finger moves before its touch is a swipe, not a tap.
+const swipeFrom = 12
+
 // touch turns the touches into the mouse. A tap is a click where the finger lifts; a finger
 // held moves the pointer (the lists follow it). A long press is its own signal (longPress):
 // a map and a painted scene open the list of the place's entries with it and mark it used;
@@ -228,7 +239,12 @@ func (in *input) touch() {
 			return
 		}
 		x, y := ebiten.TouchPosition(in.touchID)
-		in.touchAt = in.toUI(x, y)
+		at := in.toUI(x, y)
+		in.swipe = float64(at.Y - in.touchAt.Y)
+		if d := at.Sub(in.touchFrom); d.X*d.X+d.Y*d.Y > swipeFrom*swipeFrom {
+			in.swiped = true
+		}
+		in.touchAt = at
 		in.mouse, in.moved = in.touchAt, true
 		if inpututil.TouchPressDuration(in.touchID) == longPress {
 			in.longPress = true
@@ -242,6 +258,7 @@ func (in *input) touch() {
 	for _, id := range inpututil.AppendJustPressedTouchIDs(in.justTouched[:0]) {
 		x, y := ebiten.TouchPosition(id)
 		in.touchID, in.touching, in.touchDone, in.longUsed, in.touchAt = id, true, false, false, in.toUI(x, y)
+		in.touchFrom, in.began, in.swiped = in.touchAt, true, false
 		in.mouse, in.moved = in.touchAt, true
 		return
 	}
@@ -378,6 +395,8 @@ type script struct {
 
 	// snapshot writes the whole game state to the trace (the snapshot command).
 	snapshot func()
+	// window sets the window's inside to w×h device-independent pixels (nil without a window).
+	window func(w, h int)
 	// next supplies further lines after the commands run out (Simulate's interactive
 	// input); false ends the lines. rejected hears of a line that does not parse.
 	next     func() (string, bool)
@@ -538,6 +557,15 @@ func parseScript(src string) (*script, error) {
 			}
 			c.x, c.y = x, c.n
 			c.n = 1
+		case "window":
+			if len(f) != 3 || c.n < 1 {
+				return nil, fmt.Errorf("script line %d: window WIDTH HEIGHT", line)
+			}
+			w, err := strconv.Atoi(c.arg)
+			if err != nil || w < 1 {
+				return nil, fmt.Errorf("script line %d: window WIDTH HEIGHT", line)
+			}
+			c.x, c.y = w, c.n
 		case "wait-graphs":
 			if len(f) != 1 {
 				return nil, fmt.Errorf("script line %d: wait-graphs takes no arguments", line)
@@ -967,6 +995,13 @@ func (s *script) step(in *input) {
 			}
 			s.pc++
 			continue
+		case "window":
+			if s.window != nil {
+				s.window(c.x, c.y)
+			}
+			s.pc++
+			s.wait = 10
+			return
 		case "quit":
 			s.quit = true
 			return

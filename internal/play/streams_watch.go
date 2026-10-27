@@ -55,10 +55,12 @@ type streamWatch struct {
 	viewers int
 	nextTip time.Time
 
-	field  textField
-	typing bool
-	tips   bool
-	focus  int // the control chosen with the keys (watchControls)
+	field     textField
+	typing    bool
+	speaker   stamp // the reading-aloud button's speaker
+	chatFling fling
+	tips      bool
+	focus     int // the control chosen with the keys (watchControls)
 }
 
 // streamSay is a line a host says: the host's index, the text and the face.
@@ -84,8 +86,8 @@ func newStreamWatch(g *Game, show *broadcast.Show, viewers int) *streamWatch {
 	w.from = w.next
 	w.nextTip = now.Add(time.Duration(40+g.desk.rng.IntN(60)) * time.Second)
 	w.field.start(g, func() (float64, float64) {
-		sw, sh := g.screen()
-		return w.field.caretX(sw-streamChatW+24, 16), sh - 46
+		x, y, _, _ := w.controlRect(g, [2]int{int(ctlComment), 0})
+		return w.field.caretX(x+10, 16), y + 12
 	})
 	w.greet(g)
 	g.emit("stream", traceLine{"show": show.Key, "episode": show.Episode.Title, "beat": w.next})
@@ -105,24 +107,78 @@ func (g *Game) watching() *streamWatch {
 	return nil
 }
 
-// The layout of the watch view: the chat column on the right, the stage on the left (or,
-// in full screen, the whole screen under the chat), and the caption's letters and the part
-// of the stage's width it takes.
+// The layout of the watch view: the widest chat column, the caption's letters and the part
+// of the stage's width it takes, and the height of the information under the stage in the
+// portrait layout.
 const (
 	streamChatW  = 380.0
 	captionSize  = 21.0
 	captionShare = 0.86
+	tallInfoH    = 74.0
+	// The caption on the small stage of the portrait layout: smaller letters across more of it.
+	tallCaption, tallCaptionShare = 17.0, 0.95
 )
 
-// watchStage is where the stage is, from the left edge.
-func (g *Game) watchStage() (y, w, h float64) {
+// watchLayout is where the parts of the watch view are, in UI units: the stage from the
+// left edge, the information under it (none in full screen), the chat column down to the
+// bottom of the screen, the part of the stage the caption is centred in, its letters and the
+// part of that width it takes. zoom is how many times the stage's height the puppets' frame
+// is.
+type watchLayout struct {
+	stageY, stageW, stageH float64
+	infoH                  float64
+	colX, colTop, colW     float64
+	capX, capW, capH       float64
+	capSize, capShare      float64
+	zoom                   float64
+}
+
+// watchLayout lays out the watch view. In the landscape layout the chat column is on the
+// right of the stage, and in full screen the stage fills the screen at 16:9 under the chat;
+// in the portrait layout the stage is at the top with the information and the chat under
+// it, and in full screen the stage fills the screen with the chat over its lower part.
+func (g *Game) watchLayout() watchLayout {
 	sw, sh := g.screen()
-	if g.cfg.StreamFull {
-		h = min(sh, sw*9/16)
-		return (sh - h) / 2, sw, h
+	full := g.cfg.StreamFull
+	if g.view.tall {
+		if full {
+			top := sh * 0.58
+			return watchLayout{stageW: sw, stageH: sh, colTop: top, colW: sw, capW: sw, capH: top, capSize: captionSize, capShare: captionShare, zoom: max(1, sh/(sw*9/16)*0.6)}
+		}
+		h := sw * 9 / 16
+		return watchLayout{stageY: streamBarH, stageW: sw, stageH: h, infoH: tallInfoH, colTop: streamBarH + h + tallInfoH, colW: sw, capW: sw, capH: h, capSize: tallCaption, capShare: tallCaptionShare, zoom: 1}
 	}
-	w = sw - streamChatW
-	return streamBarH, w, w * 9 / 16
+	cw := min(streamChatW, max(300, sw*0.3))
+	if full { // the caption centred on the screen clear of the chat, or left of it when narrow
+		h := min(sh, sw*9/16)
+		capX, capW := cw, sw-2*cw
+		if capW < 480 {
+			capX, capW = 0, sw-cw
+		}
+		return watchLayout{stageY: (sh - h) / 2, stageW: sw, stageH: h, colX: sw - cw, colW: cw, capX: capX, capW: capW, capH: h, capSize: captionSize, capShare: captionShare, zoom: 1}
+	}
+	w := sw - cw
+	h := w * 9 / 16
+	return watchLayout{stageY: streamBarH, stageW: w, stageH: h, infoH: sh - streamBarH - h, colX: w, colTop: streamBarH, colW: cw, capW: w, capH: h, capSize: captionSize, capShare: captionShare, zoom: 1}
+}
+
+// chatRect is where the chat's messages are: the chat column under its heading, over the
+// answers and the comment field.
+func (w *streamWatch) chatRect(g *Game) (x, y, cw, h float64) {
+	_, sh := g.screen()
+	lay := g.watchLayout()
+	top := lay.colTop + 38 // under the heading
+	switch {
+	case g.cfg.StreamFull && g.view.tall:
+		top = lay.colTop + 8
+	case g.cfg.StreamFull:
+		top = lay.colTop + 44
+	}
+	bottom := sh - 70
+	if w.ask != nil && w.mine < 0 {
+		bottom -= float64(len(w.ask.Options))*40 + 28
+	}
+	return lay.colX + 14, top + 8, lay.colW - 28, bottom - top - 14
 }
 
 // toggleStreamFull switches the watch view between the page and the full screen, kept in
@@ -391,6 +447,7 @@ func (w *streamWatch) leave(g *Game) {
 		stopSpeaking()
 	}
 	closeBodies(w.bodies)
+	w.speaker.free()
 	g.sfx("cancel")
 	g.saveStreams()
 	g.pop()
@@ -488,30 +545,35 @@ func (w *streamWatch) update(g *Game) {
 // aloud and going back.
 func (w *streamWatch) input(g *Game) {
 	in := &g.in
-	sw, sh := g.screen()
+	_, sh := g.screen()
+	lay := g.watchLayout()
 	if w.ended {
-		sy, stw, sth := g.watchStage()
-		if in.ok() || in.cancel() || g.clickedIn(stw/2-80, sy+sth/2+20, 160, 44) {
+		if in.ok() || in.cancel() || g.clickedIn(lay.stageW/2-80, lay.stageY+lay.stageH/2+20, 160, 44) {
 			w.leave(g)
 		}
 		return
 	}
+	w.scrollChat(g)
 	if w.typing {
-		if in.devices() && w.field.readTyping() {
-			return
-		}
-		send := !in.devices() && in.pressed[btnOK] || in.devices() && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter))
+		// the keys that were text are not Enter or Escape; the send button is pressed even
+		// while a phone's keyboard still composes (sending confirms it)
+		typed := in.devices() && w.field.readTyping()
+		send := !in.devices() && in.pressed[btnOK] || in.devices() && !typed && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter))
+		right := lay.colX + lay.colW
 		switch {
-		case send || g.clickedIn(sw-streamChatW+streamChatW-150, sh-62, 64, 44):
+		case send || g.clickedIn(right-150, sh-62, 64, 44):
 			w.comment(g)
-		case !in.devices() && in.cancel() || in.devices() && inpututil.IsKeyJustPressed(ebiten.KeyEscape):
+		case !in.devices() && in.cancel() || in.devices() && !typed && inpututil.IsKeyJustPressed(ebiten.KeyEscape):
 			w.field.composer.Cancel()
 			w.typing = false
 		}
-		if !g.clickedIn(sw-streamChatW, sh-62, streamChatW, 62) && in.click {
-			w.typing = false
+		if g.clickedIn(lay.colX, sh-62, lay.colW, 62) || !in.click || in.swiped || !w.typing {
+			return
 		}
-		return
+		// a click elsewhere stops typing (the text stays in the field, a phone's keyboard
+		// closes) and goes on to what it clicked
+		w.field.composer.Confirm()
+		w.typing = false
 	}
 	if w.tips {
 		w.updateTips(g)
@@ -538,6 +600,15 @@ func (w *streamWatch) input(g *Game) {
 			g.toggleStreamFull()
 		}
 	}
+	// A finger down on the comment field starts typing then, so the browser's keyboard
+	// opens when it lifts (a page's text field takes the focus only in a touch's events).
+	if x, y, cw, ch := w.controlRect(g, [2]int{int(ctlComment), 0}); in.began && g.touchIn(x, y, cw, ch) {
+		w.typing = true
+		if in.devices() {
+			w.field.readTyping()
+		}
+		return
+	}
 	for i, c := range ctl {
 		if x, y, cw, ch := w.controlRect(g, c); g.clickedIn(x, y, cw, ch) {
 			w.focus = i
@@ -562,6 +633,24 @@ func (w *streamWatch) input(g *Game) {
 		activate(ctl[w.focus])
 	case in.cancel() || g.clickedIn(0, 0, 140, streamBarH):
 		w.leave(g)
+	}
+}
+
+// scrollChat scrolls the chat back and forth with the wheel over it, or a finger swiping
+// from it (gliding on when it lifts).
+func (w *streamWatch) scrollChat(g *Game) {
+	in := &g.in
+	x, y, cw, h := w.chatRect(g)
+	w.chat.fit(cw)
+	m := in.mouse
+	switch {
+	case in.wheel != 0 && float64(m.X) >= x && float64(m.X) < x+cw && float64(m.Y) >= y && float64(m.Y) < y+h:
+		w.chat.scroll(in.wheel*3*gfx.LineHeight(chatSize), h)
+		in.wheel = 0 // not the keys' up and down
+	default:
+		if d := w.chatFling.step(in, g.touchIn(x, y, cw, h)); d != 0 {
+			w.chat.scroll(d, h)
+		}
 	}
 }
 
@@ -596,27 +685,28 @@ func (w *streamWatch) updateTips(g *Game) {
 	}
 }
 
-// controlRect is where a control is drawn.
+// controlRect is where a control is drawn: at the bottom of the chat column, the full
+// screen's at the top of it (at the top right of the screen in full screen).
 func (w *streamWatch) controlRect(g *Game, c [2]int) (x, y, cw, ch float64) {
 	sw, sh := g.screen()
-	cx := sw - streamChatW + 14
+	lay := g.watchLayout()
+	cx, right := lay.colX+14, lay.colX+lay.colW
 	switch watchControl(c[0]) {
 	case ctlAnswer:
 		n := len(w.ask.Options)
-		return cx, sh - 70 - float64(n-c[1])*40, streamChatW - 28, 34
+		return cx, sh - 70 - float64(n-c[1])*40, lay.colW - 28, 34
 	case ctlComment:
-		return cx, sh - 58, streamChatW - 170, 42
+		return cx, sh - 58, lay.colW - 170, 42
 	case ctlTip:
-		return sw - 150, sh - 58, 64, 42
+		return right - 150, sh - 58, 64, 42
 	case ctlFull:
-		top := streamBarH + 5
 		if g.cfg.StreamFull {
-			top = 10
+			return sw - 86, 10, 72, 28
 		}
-		return sw - 86, top, 72, 28
+		return right - 86, lay.colTop + 5, 72, 28
 	case ctlSpeak:
 	}
-	return sw - 80, sh - 58, 66, 42
+	return right - 80, sh - 58, 66, 42
 }
 
 // drawSpeaker draws a speaker 22 wide from x, centered on cy: with sound waves when
@@ -643,60 +733,62 @@ func drawSpeaker(dst *ebiten.Image, x, cy float32, on bool, clr color.Color) {
 
 // tipRect is where the button of the i-th tip is drawn.
 func (w *streamWatch) tipRect(g *Game, i int) (x, y, tw, th float64) {
-	sw, sh := g.screen()
+	_, sh := g.screen()
+	lay := g.watchLayout()
 	n := len(g.db.Streams.Tips)
-	return sw - streamChatW + 14, sh - 110 - float64(n-i)*46, streamChatW - 28, 40
+	return lay.colX + 14, sh - 110 - float64(n-i)*46, lay.colW - 28, 40
 }
 
 func (w *streamWatch) draw(g *Game, dst *ebiten.Image) {
-	sw, sh := g.screen()
+	_, sh := g.screen()
 	dst.Fill(streamPage)
-	x := 0.0
-	y, stw, sth := g.watchStage()
-	rect(dst, x, y, stw, sth, streamInk)
+	lay := g.watchLayout()
+	y, stw, sth := lay.stageY, lay.stageW, lay.stageH
+	rect(dst, 0, y, stw, sth, streamInk)
 	n := len(w.show.Hosts)
 	for i, c := range w.show.Hosts {
-		shift, zoom := 0.0, 1.0
+		shift, zoom := 0.0, lay.zoom
 		if n > 1 {
-			shift, zoom = 0.22-0.44*float64(i), 1.25
+			shift, zoom = 0.22-0.44*float64(i), 1.25*lay.zoom
 		}
-		g.drawFramed(dst, c, w.bodies[i], x, y, stw, sth, shift, zoom, i == 0)
+		g.drawFramed(dst, c, w.bodies[i], 0, y, stw, sth, shift, zoom, i == 0)
 	}
-	lx, inset := x+12, 0.0
-	if g.cfg.StreamFull { // the way back over the stage; the caption clear of the chat, still centred
+	lx := 12.0
+	if g.cfg.StreamFull { // the way back over the stage
 		back := "‹ " + lang.T("配信の一覧")
 		bw := gfx.TextWidth(back, 15) + 28
 		rect(dst, 0, 8, bw, 30, withAlpha(colorBlack, 0x80))
 		gfx.DrawTextLeft(dst, back, 14, 13, 15, streamPanel)
-		lx, inset = bw+12, streamChatW
+		lx = bw + 12
 	}
 	gfx.FillRoundRect(dst, float32(lx), float32(y+12), 46, 22, 3, streamLive)
 	gfx.DrawText(dst, "LIVE", lx+23, y+14, 14, streamPanel)
-	w.drawCaption(g, dst, x+inset, y, stw-2*inset, sth)
+	w.drawCaption(g, dst, lay, y)
 	if w.ended {
-		rect(dst, x, y, stw, sth, withAlpha(colorBlack, 0x99))
+		rect(dst, 0, y, stw, sth, withAlpha(colorBlack, 0x99))
 		gfx.DrawText(dst, lang.T("配信は終了しました"), stw/2, y+sth/2-30, 24, streamPanel)
 		gfx.FillRoundRect(dst, float32(stw/2-80), float32(y+sth/2+20), 160, 44, 6, streamBrand)
 		gfx.DrawText(dst, lang.T("一覧へ"), stw/2, y+sth/2+30, 18, streamPanel)
 	}
-	if !g.cfg.StreamFull {
-		w.drawInfo(g, dst, y+sth, stw)
+	if lay.infoH > 0 {
+		w.drawInfo(g, dst, y+sth, stw, lay.infoH)
 	}
-	w.drawColumn(g, dst, sw, sh)
+	w.drawColumn(g, dst, lay, sh)
 	if !g.cfg.StreamFull {
-		g.streamTop(dst, lang.T("配信の一覧"))
+		g.streamTop(dst, lang.T("配信の一覧"), 0)
 	}
 	g.drawToast(dst)
 }
 
 // drawCaption draws the whole line being said as white text on black bands, with the
 // speaker's name over it in a duo.
-func (w *streamWatch) drawCaption(g *Game, dst *ebiten.Image, x, y, stw, sth float64) {
+func (w *streamWatch) drawCaption(g *Game, dst *ebiten.Image, lay watchLayout, y float64) {
 	if w.caption == "" {
 		return
 	}
-	lines := gfx.Wrap(w.caption, captionSize, stw*captionShare)
-	lh := gfx.LineHeight(captionSize)
+	x, stw, sth, size := lay.capX, lay.capW, lay.capH, lay.capSize
+	lines := gfx.Wrap(w.caption, size, stw*lay.capShare)
+	lh := gfx.LineHeight(size)
 	top := y + sth*0.95 - float64(len(lines))*lh
 	if len(w.show.Hosts) > 1 {
 		c := w.show.Hosts[w.captionWho]
@@ -706,22 +798,28 @@ func (w *streamWatch) drawCaption(g *Game, dst *ebiten.Image, x, y, stw, sth flo
 		gfx.DrawText(dst, name, x+stw/2, top-22, 14, c.Color.Or(streamPanel))
 	}
 	for i, l := range lines {
-		lw := gfx.TextWidth(l, captionSize)
+		lw := gfx.TextWidth(l, size)
 		ly := top + float64(i)*lh
 		rect(dst, x+stw/2-lw/2-8, ly, lw+16, lh, withAlpha(colorBlack, 0xc0))
-		gfx.DrawText(dst, l, x+stw/2, ly+2, captionSize, streamPanel)
+		gfx.DrawText(dst, l, x+stw/2, ly+2, size, streamPanel)
 	}
 }
 
-// drawInfo draws the channel's information under the stage.
-func (w *streamWatch) drawInfo(g *Game, dst *ebiten.Image, top, width float64) {
-	_, sh := g.screen()
-	rect(dst, 0, top, width, sh-top, streamPanel)
+// drawInfo draws the channel's information under the stage, height tall: the title in
+// two lines (one in the portrait layout), the names, the tag and the stars, the tagline
+// (not in the portrait layout) and the viewers.
+func (w *streamWatch) drawInfo(g *Game, dst *ebiten.Image, top, width, height float64) {
+	rect(dst, 0, top, width, height, streamPanel)
 	c := w.show.Hosts[0]
 	g.drawAvatar(dst, c, 16, top+14, 48)
-	title, _ := gfx.FitLines(g.db.Tr(w.show.Episode.Title), 17, width-260, 2)
+	views := fmt.Sprintf(lang.T("%d人が視聴中"), w.viewers)
+	lines := 2
+	if g.view.tall {
+		lines = 1
+	}
+	title, size := gfx.FitLines(g.db.Tr(w.show.Episode.Title), 17, width-78-gfx.TextWidth(views, 15)-32, lines)
 	for i, l := range title {
-		gfx.DrawTextLeft(dst, l, 78, top+12+float64(i)*24, 17, streamInk)
+		gfx.DrawTextLeft(dst, l, 78, top+12+float64(i)*24, size, streamInk)
 	}
 	ly := top + 16 + float64(len(title))*24
 	name := g.showName(w.show)
@@ -730,34 +828,35 @@ func (w *streamWatch) drawInfo(g *Game, dst *ebiten.Image, top, width float64) {
 	gfx.DrawTextLeft(dst, g.db.Tr(c.Tag), lx, ly, 15, c.Color.Or(streamBrand))
 	lx += gfx.TextWidth(g.db.Tr(c.Tag), 15) + 12
 	g.drawStars(dst, lx, ly+3, g.step(c))
-	if c.Tagline != "" {
+	if c.Tagline != "" && !g.view.tall {
 		gfx.DrawTextLeft(dst, gfx.Ellipsis(g.db.Tr(c.Tagline), 14, width-100), 78, ly+26, 14, streamInk2)
 	}
-	gfx.DrawTextRight(dst, fmt.Sprintf(lang.T("%d人が視聴中"), w.viewers), width-16, top+16, 15, streamLive)
+	gfx.DrawTextRight(dst, views, width-16, top+16, 15, streamLive)
 }
 
 // drawColumn draws the chat column: the chat, the question's answers, the comment field
 // and the buttons, and the tips when they are open.
-func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, sw, sh float64) {
-	cx := sw - streamChatW
-	top, ink, ink2 := streamBarH+38, streamInk, streamInk2
+func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, lay watchLayout, sh float64) {
+	cx, colW := lay.colX, lay.colW
+	ink, ink2 := streamInk, streamInk2
 	if g.cfg.StreamFull { // over the stage, on a darkened band
-		top, ink, ink2 = 44, streamPanel, streamRule
-		rect(dst, cx, 0, streamChatW, sh, withAlpha(colorBlack, 0x70))
+		ink, ink2 = streamPanel, streamRule
+		rect(dst, cx, lay.colTop, colW, sh-lay.colTop, withAlpha(colorBlack, 0x70))
 	} else {
-		rect(dst, cx, streamBarH, streamChatW, sh-streamBarH, streamPanel)
-		rect(dst, cx, streamBarH, 1, sh-streamBarH, streamRule)
-		gfx.DrawTextLeft(dst, lang.T("配信チャット"), cx+14, streamBarH+10, 14, streamInk2)
-		rect(dst, cx, top, streamChatW, 1, streamRule)
+		rect(dst, cx, lay.colTop, colW, sh-lay.colTop, streamPanel)
+		if g.view.tall {
+			rect(dst, cx, lay.colTop, colW, 1, streamRule)
+		} else {
+			rect(dst, cx, lay.colTop, 1, sh-lay.colTop, streamRule)
+		}
+		gfx.DrawTextLeft(dst, lang.T("配信チャット"), cx+14, lay.colTop+10, 14, streamInk2)
+		rect(dst, cx, lay.colTop+38, colW, 1, streamRule)
 	}
 	ctl := w.controls()
-	bottom := sh - 70
+	x, y, chw, chh := w.chatRect(g)
+	g.drawChat(dst, w.chat, x, y, chw, chh, g.money, ink)
 	if w.ask != nil && w.mine < 0 {
-		bottom -= float64(len(w.ask.Options))*40 + 28
-	}
-	g.drawChat(dst, w.chat, cx+14, top+8, bottom-top-14, g.money, ink)
-	if w.ask != nil && w.mine < 0 {
-		gfx.DrawTextLeft(dst, lang.T("答える："), cx+14, bottom+2, 14, ink2)
+		gfx.DrawTextLeft(dst, lang.T("答える："), cx+14, y+chh+8, 14, ink2)
 	}
 	for i, c := range ctl {
 		x, y, cw, ch := w.controlRect(g, c)
@@ -783,8 +882,8 @@ func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, sw, sh float64) {
 				w.field.draw(dst, x+10, y+11, cw-20, 16, streamInk, streamBrand, w.typing, w.age)
 			}
 			if w.typing {
-				gfx.FillRoundRect(dst, float32(sw-150), float32(y), 64, float32(ch), 6, streamBrand)
-				gfx.DrawText(dst, lang.T("送信"), sw-118, y+11, 15, streamPanel)
+				gfx.FillRoundRect(dst, float32(cx+colW-150), float32(y), 64, float32(ch), 6, streamBrand)
+				gfx.DrawText(dst, lang.T("送信"), cx+colW-118, y+11, 15, streamPanel)
 			}
 		case ctlTip:
 			if w.typing {
@@ -803,7 +902,8 @@ func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, sw, sh float64) {
 			} else {
 				gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, 1.5, edge)
 			}
-			drawSpeaker(dst, float32(x+8), float32(y+ch/2), g.desk.speak, ink)
+			on := g.desk.speak
+			w.speaker.draw(dst, fmt.Sprint(on, ink), x+8, y+ch/2-12, 24, 24, func(img *ebiten.Image) { drawSpeaker(img, 0, 12, on, ink) })
 			gfx.DrawTextLeft(dst, label, x+34, y+12, 13, ink)
 		case ctlFull:
 			label := lang.T("全画面")

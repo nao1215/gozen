@@ -8,6 +8,7 @@ import (
 	"image"
 	"image/color"
 	"log"
+	"math"
 	"math/rand/v2"
 	"strings"
 	"time"
@@ -233,21 +234,54 @@ func (g *Game) avatar(c *data.Channel) *ebiten.Image {
 
 // drawAvatar draws the channel's avatar d across at x, y.
 func (g *Game) drawAvatar(dst *ebiten.Image, c *data.Channel, x, y, d float64) {
-	gfx.FillCircle(dst, float32(x+d/2), float32(y+d/2), float32(d/2), streamRule, true)
+	gfx.FillRoundRect(dst, float32(x), float32(y), float32(d), float32(d), float32(d/2), streamRule)
 	if img := g.avatar(c); img != nil {
 		gfx.DrawImageFit(dst, img, x, y, d, d, 1)
 	}
 }
 
 // drawStars draws the affection step as a dot for each step above 0, filled up to the step.
+// The dots are round rectangles, whose pictures gfx keeps (a circle's path is filled again
+// every frame, which costs a phone much with a dozen cards).
 func (g *Game) drawStars(dst *ebiten.Image, x, y float64, step int) {
 	for i := range g.db.Streams.MaxStep() {
 		cx := float32(x + 6 + float64(i)*14)
 		if i < step {
-			gfx.FillCircle(dst, cx, float32(y+6), 5, streamStar, true)
+			gfx.FillRoundRect(dst, cx-5, float32(y+1), 10, 10, 5, streamStar)
 		} else {
-			gfx.StrokeCircle(dst, cx, float32(y+6), 4.5, 1.5, streamStar, true)
+			gfx.StrokeRoundRect(dst, cx-4.5, float32(y+1.5), 9, 9, 4.5, 1.5, streamStar)
 		}
+	}
+}
+
+// stamp is a small picture of the stream screens drawn from many vector shapes, painted
+// once into its own image and copied every frame while its key and the scale stay the same
+// (filling the shapes again every frame costs a phone much).
+type stamp struct {
+	key string
+	img *ebiten.Image
+}
+
+// draw copies the picture of w×h UI units that paint draws from the origin to x, y,
+// painting it again when key or the scale changed.
+func (s *stamp) draw(dst *ebiten.Image, key string, x, y, w, h float64, paint func(dst *ebiten.Image)) {
+	k := gfx.Scale()
+	key = fmt.Sprint(key, k, w, h)
+	if s.img == nil || s.key != key {
+		s.free()
+		s.key, s.img = key, ebiten.NewImage(max(1, int(math.Ceil(w*k))), max(1, int(math.Ceil(h*k))))
+		paint(s.img)
+	}
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(x*k, y*k)
+	dst.DrawImage(s.img, op)
+}
+
+// free lets the picture go.
+func (s *stamp) free() {
+	if s.img != nil {
+		s.img.Deallocate()
+		s.img = nil
 	}
 }
 
@@ -329,12 +363,14 @@ func (g *Game) keepCrowd(c *chat.Crowd) {
 	}
 }
 
-// streamChat is a column of chat messages: the log, and each message wrapped once when
-// it is posted.
+// streamChat is a column of chat messages: the log, each message wrapped once to the
+// column's width (again when the width changes), and how far the column is scrolled back
+// from the newest message.
 type streamChat struct {
 	log   *chat.Log
 	lines map[uint64][]string
 	width float64
+	back  float64
 }
 
 // The values of a chat message (chat.Message.Values).
@@ -361,16 +397,15 @@ func prefix(m chat.Message) string {
 	return m.From + " "
 }
 
-// post adds the message, wrapped to the column.
+// post adds the message, wrapped to the column; a column scrolled back keeps its place.
 func (c *streamChat) post(m chat.Message) {
 	m, ok := c.log.Post(m)
 	if !ok {
 		return
 	}
-	if m.Values[chatTip] > 0 {
-		c.lines[m.ID] = gfx.Wrap(m.Text, chatSize, c.width-16)
-	} else {
-		c.lines[m.ID] = gfx.Wrap(prefix(m)+m.Text, chatSize, c.width)
+	c.wrap(m)
+	if c.back > 0 {
+		c.back += c.height(m)
 	}
 	if len(c.lines) > 200 {
 		keep := map[uint64][]string{}
@@ -379,6 +414,46 @@ func (c *streamChat) post(m chat.Message) {
 		}
 		c.lines = keep
 	}
+}
+
+// wrap wraps the message to the column.
+func (c *streamChat) wrap(m chat.Message) {
+	if m.Values[chatTip] > 0 {
+		c.lines[m.ID] = gfx.Wrap(m.Text, chatSize, c.width-16)
+	} else {
+		c.lines[m.ID] = gfx.Wrap(prefix(m)+m.Text, chatSize, c.width)
+	}
+}
+
+// fit wraps the messages again for a column of the width.
+func (c *streamChat) fit(width float64) {
+	if width == c.width {
+		return
+	}
+	c.width, c.back = width, 0
+	clear(c.lines)
+	for _, m := range c.log.Recent(150) {
+		c.wrap(m)
+	}
+}
+
+// height is how much of the column the message takes, with the space after it.
+func (c *streamChat) height(m chat.Message) float64 {
+	lh := gfx.LineHeight(chatSize)
+	if m.Values[chatTip] > 0 {
+		return float64(len(c.lines[m.ID])+1)*lh + 18
+	}
+	return float64(len(c.lines[m.ID]))*lh + 4
+}
+
+// scroll scrolls the column of height h back (toward older messages) by d, no farther
+// than the oldest message.
+func (c *streamChat) scroll(d, h float64) {
+	total := 0.0
+	for _, m := range c.log.Recent(150) {
+		total += c.height(m)
+	}
+	c.back = max(0, min(c.back+d, total-h))
 }
 
 // pull posts what the crowd says by now (seconds of the clock since the screen opened).
@@ -391,21 +466,28 @@ func (c *streamChat) pull(crowd *chat.Crowd, since time.Duration) {
 	}
 }
 
-// drawChat draws the newest messages that fit in x, y, w, h, the newest at the bottom, the
-// plain lines in ink.
-func (g *Game) drawChat(dst *ebiten.Image, c *streamChat, x, y, h float64, money func(int) string, ink color.NRGBA) {
+// drawChat draws the messages that fit in x, y, w, h, the newest at the bottom unless the
+// column is scrolled back, the plain lines in ink.
+func (g *Game) drawChat(dst *ebiten.Image, c *streamChat, x, y, w, h float64, money func(int) string, ink color.NRGBA) {
+	c.fit(w)
+	k := gfx.Scale()
+	clip, ok := dst.SubImage(image.Rect(int(x*k), int(y*k), int((x+w)*k)+1, int((y+h)*k))).(*ebiten.Image)
+	if !ok {
+		return
+	}
+	dst = clip
 	lh := gfx.LineHeight(chatSize)
-	bottom := y + h
-	recent := c.log.Recent(int(h/lh) + 1)
+	bottom := y + h + c.back
+	recent := c.log.Recent(int((h+c.back)/lh) + 1) // a message takes a line or more
 	for i := len(recent) - 1; i >= 0 && bottom > y; i-- {
 		m := recent[i]
 		lines := c.lines[m.ID]
+		bottom -= c.height(m)
+		if bottom > y+h {
+			continue
+		}
 		if tip := int(m.Values[chatTip]); tip > 0 {
 			bh := float64(len(lines)+1)*lh + 12
-			bottom -= bh + 6
-			if bottom < y {
-				break
-			}
 			gfx.FillRoundRect(dst, float32(x), float32(bottom), float32(c.width), float32(bh), 6, streamTips[g.tipTier(tip)])
 			gfx.DrawTextLeft(dst, m.From, x+8, bottom+6, chatSize, streamInk)
 			gfx.DrawTextRight(dst, money(tip), x+c.width-8, bottom+6, chatSize, streamInk)
@@ -413,10 +495,6 @@ func (g *Game) drawChat(dst *ebiten.Image, c *streamChat, x, y, h float64, money
 				gfx.DrawTextLeft(dst, l, x+8, bottom+6+float64(j+1)*lh, chatSize, streamInk)
 			}
 			continue
-		}
-		bottom -= float64(len(lines))*lh + 4
-		if bottom < y {
-			break
 		}
 		for j, l := range lines {
 			ly := bottom + float64(j)*lh
@@ -471,31 +549,124 @@ func (g *Game) tipTier(amount int) int {
 	return min(tier, len(streamTips)-1)
 }
 
-// streamTop draws the bar over the stream screens: the game's title, the gold, and the
-// way back on the left (back, when not empty).
-func (g *Game) streamTop(dst *ebiten.Image, back string) {
+// streamTop draws the bar over the stream screens: the way back on the left (back, when
+// not empty), the logo, the game's title and the gold; the title leaves reserve free after it.
+func (g *Game) streamTop(dst *ebiten.Image, back string, reserve float64) {
 	sw, _ := g.screen()
 	rect(dst, 0, 0, sw, streamBarH, streamPanel)
 	rect(dst, 0, streamBarH-1, sw, 1, streamRule)
-	x := 16.0
 	if back != "" {
-		gfx.DrawTextLeft(dst, "‹ "+back, x, 15, 16, streamInk2)
+		gfx.DrawTextLeft(dst, "‹ "+back, 16, 15, 16, streamInk2)
+	}
+	title, x := g.barTitle(back, reserve)
+	if img := g.pics.get(g.db.Streams.Logo); img != nil {
+		gfx.DrawImageFit(dst, img, x-33, 12, 28, 28, 1)
+	} else {
+		gfx.FillRoundRect(dst, float32(x-30), 15, 22, 22, 6, streamBrand)
+	}
+	gfx.DrawTextLeft(dst, title, x, 14, 18, streamInk)
+	gfx.DrawTextRight(dst, g.money(g.st.Gold), sw-16, 15, 17, streamInk)
+}
+
+// barTitle is the game's title as the bar shows it, cut to leave reserve free before the
+// gold, and where it begins.
+func (g *Game) barTitle(back string, reserve float64) (string, float64) {
+	sw, _ := g.screen()
+	x := 16.0 + 30
+	if back != "" {
 		x += gfx.TextWidth("‹ "+back, 16) + 24
 	}
-	if img := g.pics.get(g.db.Streams.Logo); img != nil {
-		gfx.DrawImageFit(dst, img, x-3, 12, 28, 28, 1)
-	} else {
-		gfx.FillRoundRect(dst, float32(x), 15, 22, 22, 6, streamBrand)
-	}
-	gfx.DrawTextLeft(dst, cmp.Or(g.db.Game.Title, lang.T("配信")), x+30, 14, 18, streamInk)
-	gfx.DrawTextRight(dst, g.money(g.st.Gold), sw-16, 15, 17, streamInk)
+	room := sw - x - reserve - gfx.TextWidth(g.money(g.st.Gold), 17) - 32
+	return gfx.Ellipsis(cmp.Or(g.db.Game.Title, lang.T("配信")), 18, max(0, room)), x
 }
 
 // streamBarH is the height of the bar over the stream screens.
 const streamBarH = 52.0
 
-// clickedIn reports whether the pointer clicked in x, y, w, h.
+// clickedIn reports whether the pointer clicked in x, y, w, h (a finger that swiped does not
+// click).
 func (g *Game) clickedIn(x, y, w, h float64) bool {
 	m := g.in.mouse
-	return g.in.click && float64(m.X) >= x && float64(m.X) < x+w && float64(m.Y) >= y && float64(m.Y) < y+h
+	return g.in.click && !g.in.swiped && float64(m.X) >= x && float64(m.X) < x+w && float64(m.Y) >= y && float64(m.Y) < y+h
+}
+
+// touchIn reports whether the touch held or just lifted began in x, y, w, h.
+func (g *Game) touchIn(x, y, w, h float64) bool {
+	m := g.in.touchFrom
+	return (g.in.touching || g.in.click) && float64(m.X) >= x && float64(m.X) < x+w && float64(m.Y) >= y && float64(m.Y) < y+h
+}
+
+// fling is a scroll by a finger: it follows the finger as it swipes and, when the finger
+// lifts, glides on at the finger's speed, slowing down by flingSlow a tick.
+type fling struct{ v float64 }
+
+const flingSlow = 0.95
+
+// step is how far the content moves down this tick: with a finger that swipes from the
+// scrolled part (from), or gliding after it lifted. A new touch stops the glide.
+func (f *fling) step(in *input, from bool) float64 {
+	switch {
+	case in.touching && in.swiped && from:
+		f.v = 0.5*f.v + 0.5*in.swipe
+		return in.swipe
+	case in.touching:
+		f.v = 0
+		return 0
+	}
+	if f.v *= flingSlow; math.Abs(f.v) < 0.2 {
+		f.v = 0
+	}
+	return f.v
+}
+
+// gameView is the size the screen is drawn at when the stream screens choose it from the
+// window: w×h pixels, ui pixels to a UI unit, tall for the portrait layout. The zero value
+// is the game's screen.
+type gameView struct {
+	w, h int
+	ui   float64
+	tall bool
+}
+
+// The sizes the stream screens choose from (streamView).
+const (
+	tallMinW, tallMaxW = 360.0, 600.0 // the UI width of the portrait layout
+	wideUnit           = 0.9          // the fewest window pixels to a UI unit in the landscape layout
+	wideMinW, wideMinH = 760.0, 420.0 // the smallest UI size of the landscape layout
+	maxPixelsPerUnit   = 3.0
+)
+
+// streamView is the size the stream screens are drawn at in a window whose inside is
+// ow×oh device-independent pixels of dsf device pixels each, for a game whose screen is
+// uw×uh UI units. A window taller than wide takes the portrait layout, 360 to 600 units
+// wide (a phone held upright: a unit to a pixel). A wide window keeps the game's screen
+// unless it would draw a unit smaller than wideUnit pixels (a phone on its side); it then
+// takes a UI of the window's shape at wideUnit pixels a unit, smaller when the window is
+// under wideMinW×wideMinH units. The pixels follow the device's, at most
+// maxPixelsPerUnit to a unit.
+func streamView(ow, oh, dsf, uw, uh float64) gameView {
+	if ow <= 0 || oh <= 0 || uw <= 0 || uh <= 0 {
+		return gameView{}
+	}
+	tall := ow < oh
+	k := ow / min(max(ow, tallMinW), tallMaxW) // window pixels to a UI unit
+	if !tall {
+		if k = min(wideUnit, oh/wideMinH, ow/wideMinW); k <= min(ow/uw, oh/uh) {
+			return gameView{}
+		}
+	}
+	p := min(k*max(dsf, 1), max(maxPixelsPerUnit, k))
+	return gameView{w: max(1, int(math.Round(ow/k*p))), h: max(1, int(math.Round(oh/k*p))), ui: p, tall: tall}
+}
+
+// streamShown reports whether a stream screen is the screen shown, with no talk over it.
+func (g *Game) streamShown() bool {
+	if len(g.stack) == 0 || g.talk.active || g.events != nil && g.events.Running() {
+		return false
+	}
+	switch g.stack[len(g.stack)-1].(type) {
+	case *streamLobby, *streamWatch:
+		return true
+	}
+	return false
 }

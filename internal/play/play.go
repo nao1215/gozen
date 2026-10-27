@@ -1,6 +1,7 @@
 package play
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -221,7 +222,9 @@ type Game struct {
 	store      Store
 	storeGiven bool
 
-	ui       float64
+	ui float64
+	// view is the size the stream screens chose from the window (zero: the game's screen).
+	view     gameView
 	cfg      config
 	windowA  uint8
 	auto     *autopilot
@@ -569,6 +572,9 @@ func New(opts Options) (_ *Game, err error) {
 		}
 		s.memoNote = func(kind, text string) { g.quickMemo(kind, text, memo.LLM) }
 		s.snapshot = func() { g.emit("snapshot", traceLine{"state": g.traceSummary()}) }
+		if !opts.headless {
+			s.window = func(w, h int) { ebiten.SetWindowSize(w, h) }
+		}
 		g.in.script = s
 	}
 	if opts.Audio != nil {
@@ -698,11 +704,38 @@ func (g *Game) screen() (float64, float64) {
 }
 
 func (g *Game) pixels() (float64, float64) {
+	if g.view.w > 0 {
+		return float64(g.view.w), float64(g.view.h)
+	}
 	return float64(g.db.Game.Screen.Width), float64(g.db.Game.Screen.Height)
 }
 
-func (g *Game) Layout(int, int) (int, int) {
-	return g.db.Game.Screen.Width, g.db.Game.Screen.Height
+// Layout keeps the game's screen, except on the stream screens, which choose their size and
+// layout from the window's inside (streamView, ADR 0050).
+func (g *Game) Layout(ow, oh int) (int, int) {
+	dsf := 1.0
+	if m := ebiten.Monitor(); m != nil {
+		dsf = m.DeviceScaleFactor()
+	}
+	g.fitView(float64(ow), float64(oh), dsf)
+	w, h := g.pixels()
+	return int(w), int(h)
+}
+
+// fitView sets the size the screen is drawn at for a window whose inside is ow×oh
+// device-independent pixels of dsf device pixels each, and the UI scale with it.
+func (g *Game) fitView(ow, oh, dsf float64) {
+	v := gameView{}
+	if g.streamShown() {
+		k := UIScale(&g.db.Game)
+		v = streamView(ow, oh, dsf, float64(g.db.Game.Screen.Width)/k, float64(g.db.Game.Screen.Height)/k)
+	}
+	if v == g.view {
+		return
+	}
+	g.view, g.ui = v, cmp.Or(v.ui, UIScale(&g.db.Game))
+	gfx.SetScale(g.ui)
+	g.in.ui = g.ui
 }
 
 func (g *Game) stateRng() *rand.Rand {
@@ -999,8 +1032,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		dst.DrawImage(g.freeze, op)
 	}
 	if g.fadeT == 0 && g.freezeT == 0 {
-		if g.lastView == nil {
-			b := dst.Bounds()
+		if b := dst.Bounds(); g.lastView == nil || g.lastView.Bounds().Size() != b.Size() {
 			g.lastView = ebiten.NewImage(b.Dx(), b.Dy())
 		}
 		g.lastView.Clear()
@@ -1548,8 +1580,7 @@ func (g *Game) freezeView(t int) {
 	if g.lastView == nil {
 		return
 	}
-	if g.freeze == nil {
-		b := g.lastView.Bounds()
+	if b := g.lastView.Bounds(); g.freeze == nil || g.freeze.Bounds().Size() != b.Size() {
 		g.freeze = ebiten.NewImage(b.Dx(), b.Dy())
 	}
 	g.freeze.Clear()

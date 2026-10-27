@@ -50,13 +50,7 @@ func TestGraphicsScreensStreams(t *testing.T) {
 			if !differs(watch, int(sw/2), 300) || !near(watch, int(sw+streamChatW/2), 300, white) {
 				t.Error("the watch view has no puppet on its stage or no chat column")
 			}
-			black := 0
-			for yy := 420; yy < int(streamBarH+sw*9/16); yy++ {
-				if r, g, b, _ := watch.At(int(sw/2), yy).RGBA(); r>>8 < 90 && g>>8 < 90 && b>>8 < 90 {
-					black++
-				}
-			}
-			if black < 10 {
+			if darkRun(watch, int(sw/2), 420, int(streamBarH+sw*9/16)) < 10 {
 				t.Error("no caption band under the line")
 			}
 		}},
@@ -71,11 +65,53 @@ func TestGraphicsScreensStreams(t *testing.T) {
 				t.Errorf("the settings do not keep the full screen: %s, %v", b, err)
 			}
 		}},
+		{"cards", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress right\nwait 20\nshot cards\nquit\n", func(t *testing.T, root string) {
+			// the second, small card scrolled into view has its show's line on a black band too
+			cards := shotImage(t, root, "cards")
+			w0 := 1280.0 - 2*lobbyEdge - lobbyChatW
+			w := (1280 - 2*lobbyEdge - 3*lobbyGap) / 4
+			h := w * 9 / 16
+			y := streamBarH + 20 + w0*9/16 + 66
+			y -= y + h + 60 - 720 // scrolled to the chosen card
+			if dark := darkRun(cards, int(lobbyEdge+w/2), int(y+h-40), int(y+h-6)); dark < 8 {
+				t.Errorf("the small card has no caption band (%d dark pixels)", dark)
+			}
+		}},
 		{"duo", "1", "gap 1\nwait 60\npress ok\nwait 20\npress ok\nwait 100\nshot duo\nquit\n", func(t *testing.T, root string) {
 			duo := shotImage(t, root, "duo")
 			sw := 1280.0 - streamChatW
 			if !differs(duo, int(sw*0.28), 330) || !differs(duo, int(sw*0.72), 330) {
 				t.Error("the duo does not stand both hosts on the stage")
+			}
+		}},
+		{"tall", "0", "window 390 844\ngap 1\nwait 30\ntype Pat\npress ok\nwait 30\nshot lobby\npress ok\nwait 100\nshot watch\npress hide\nwait 20\nshot full\nquit\n", func(t *testing.T, root string) {
+			// a phone held upright: one card across the screen under the bar, then the next card under it
+			lobby := shotImage(t, root, "lobby")
+			if b := lobby.Bounds(); b.Dx() != 390 || b.Dy() != 844 {
+				t.Fatalf("the lobby is %v, not the window's 390x844", b.Size())
+			}
+			w := 390 - 2*tallEdge
+			h := w * 9 / 16
+			top := streamBarH + 16
+			if !near(lobby, 195, 6, white) || !near(lobby, int(tallEdge+20), int(top+60), room) || !differs(lobby, 195, int(top+h/2)) || !near(lobby, int(tallEdge+20), int(top+h+tallNames+60), room) {
+				t.Error("the portrait lobby does not stand the cards one under another across the screen")
+			}
+			if y1 := top + h + tallNames; darkRun(lobby, 195, int(y1+h-40), int(y1+h-6)) < 8 {
+				t.Error("the second portrait card has no caption band")
+			}
+			// the stage across the top, the chat column under it, and a caption band on the stage
+			watch := shotImage(t, root, "watch")
+			sth := 390.0 * 9 / 16
+			if !differs(watch, 195, int(streamBarH+sth/2)) || !near(watch, 30, int(streamBarH+sth+tallInfoH+120), white) {
+				t.Error("the portrait watch view has no puppet on its stage or no chat under it")
+			}
+			if darkRun(watch, 195, int(streamBarH+sth*0.6), int(streamBarH+sth)) < 10 {
+				t.Error("no caption band on the portrait stage")
+			}
+			// full screen: the room from the top to the bottom, the chat darkened over its lower part
+			full := shotImage(t, root, "full")
+			if !near(full, 20, 120, room) || near(full, 20, 700, room) || near(full, 20, 700, white) {
+				t.Error("the portrait full screen does not fill the screen with the stage under a darkened chat")
 			}
 		}},
 	} {
@@ -100,4 +136,15 @@ func TestGraphicsScreensStreams(t *testing.T) {
 			tc.check(t, root)
 		})
 	}
+}
+
+// darkRun counts the dark pixels of the column x from y0 to y1: a caption's black band.
+func darkRun(img image.Image, x, y0, y1 int) int {
+	n := 0
+	for y := y0; y < y1; y++ {
+		if r, g, b, _ := img.At(x, y).RGBA(); r>>8 < 90 && g>>8 < 90 && b>>8 < 90 {
+			n++
+		}
+	}
+	return n
 }
