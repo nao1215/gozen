@@ -39,6 +39,11 @@ type fieldContract struct {
 
 // Types, numeric contracts and command tags are read from the implementation. Only context-dependent inheritance and references are supplemented.
 var schemaDefaults = map[string]string{
+	"StreamAffection.steps": "0, 30, 150, 600, 3000", "StreamAffection.comment": "1", "StreamAffection.reply": "2",
+	"StreamAffection.answer": "5", "StreamAffection.tip_per": "100", "StreamAffection.stayed": "10",
+	"Streams.answer_chance": "0.6, 0.75, 0.9, 1, 1 (one for each step of the default steps)",
+	"StreamEcho.max_runes":  "24, with chance 0.35 when chance is left out too", "StreamEcho.chance": "0, or 0.35 when max_runes is left out too",
+	"StreamSlot.minutes":        "60",
 	"UIStyle.battle_ai_history": "true",
 	"Recruit.admission":         "reserve",
 	"Atlas.travel_speed":        "0.12 picture widths per second",
@@ -276,6 +281,7 @@ var streamTypes = map[reflect.Type]bool{
 	reflect.TypeFor[Episode](): true, reflect.TypeFor[Beat](): true, reflect.TypeFor[StreamLine](): true,
 	reflect.TypeFor[StreamAsk](): true, reflect.TypeFor[StreamOption](): true, reflect.TypeFor[StreamAffection](): true,
 	reflect.TypeFor[StreamEcho](): true, reflect.TypeFor[StreamBounce](): true, reflect.TypeFor[CrowdLines](): true,
+	reflect.TypeFor[StreamSlot](): true,
 }
 
 // version2Fields are the fields added in spec version 2 (ADR 0021).
@@ -365,6 +371,8 @@ func schemaContract(owner reflect.Type, field reflect.StructField, name string) 
 		c.Version = "9"
 	}
 	switch key {
+	case "StreamAffection.comment", "StreamAffection.reply", "StreamAffection.answer", "StreamAffection.tip_per", "StreamAffection.stayed", "StreamSlot.minutes", "StreamEcho.max_runes":
+		c.Zero = "Uses the default"
 	case "StageFraming.height":
 		c.Zero = "両版で拒否"
 	case "Atlas.travel_speed", "Stage.walk_speed", "Space.step_ticks", "Space.turn_ticks":
