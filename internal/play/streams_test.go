@@ -459,6 +459,25 @@ func TestStreamsLobbyKeepsItsCards(t *testing.T) {
 	}
 }
 
+// TestStreamsLobbyEntryGone: an entry of the place chosen with the keys that is gone (its
+// when no longer holds) leaves the choice on the last one there, and OK takes that.
+func TestStreamsLobbyEntryGone(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	n := len(l.cards) + len(l.entries(g))
+	l.sel = n // the entry chosen, gone
+	g.in.pressed[btnOK] = true
+	l.update(g)
+	g.in.pressed[btnOK] = false
+	if l.sel != n-1 {
+		t.Fatalf("the choice is %d, not the last one there, %d", l.sel, n-1)
+	}
+}
+
 // TestStreamsTapStopsAGlide: a finger that touches the lobby while it glides after a swipe
 // stops it, and lifting does not open the card under it; a tap on a still lobby does.
 func TestStreamsTapStopsAGlide(t *testing.T) {

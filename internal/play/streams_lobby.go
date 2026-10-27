@@ -394,6 +394,7 @@ func (l *streamLobby) update(g *Game) {
 	}
 	entries := l.entries(g)
 	n := len(l.cards) + len(entries)
+	l.sel = min(l.sel, max(0, n-1)) // an entry chosen may be gone (its when no longer holds)
 	choose := func(i int) {
 		if i < len(l.cards) {
 			g.sfx("decide")
