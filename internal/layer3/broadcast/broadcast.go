@@ -146,29 +146,10 @@ func MarkSeen(p *rpg.Streams, s *Show) {
 	Progress(p, s.Key).Next++
 }
 
-// Points a viewer earns with a channel.
-const (
-	// CommentPoints is for a comment; ReplyPoints more when the streamer answers it.
-	CommentPoints = 1
-	ReplyPoints   = 2
-	// AnswerPoints is for an answer the streamer picks; StayPoints for watching an
-	// episode to its end.
-	AnswerPoints = 5
-	StayPoints   = 10
-	// TipPerPoint is the gold of a tip that earns one point.
-	TipPerPoint = 100
-)
-
-// steps are the points each affection step starts at.
-var steps = [...]float64{0, 30, 150, 600, 3000}
-
-// MaxStep is the highest affection step.
-const MaxStep = len(steps) - 1
-
-// Step is the affection step of the points, 0 to MaxStep.
-func Step(points float64) int {
+// Step is the affection step of the points, 0 to the streams file's MaxStep.
+func Step(d *data.Streams, points float64) int {
 	s := 0
-	for i, at := range steps {
+	for i, at := range d.Affection.Steps {
 		if points >= at {
 			s = i
 		}
@@ -176,12 +157,9 @@ func Step(points float64) int {
 	return s
 }
 
-// answerChance is the chance a streamer picks the player's answer, by affection step.
-var answerChance = [...]float64{0.6, 0.75, 0.9, 1, 1}
-
 // PicksAnswer reports whether a streamer of the affection step picks the player's
-// answer to a question, with the draw roll in [0, 1).
-func PicksAnswer(step int, roll float64) bool { return roll < answerChance[step] }
+// answer to a question (answer_chance), with the draw roll in [0, 1).
+func PicksAnswer(d *data.Streams, step int, roll float64) bool { return roll < d.AnswerChance[step] }
 
 // Day is the calendar day of t where t is, counted from 1970-01-01.
 func Day(t time.Time) int {
@@ -221,7 +199,7 @@ func Settle(d *data.Streams, p *rpg.Streams, now time.Time) int {
 	stars := 0
 	for _, c := range d.Channels {
 		if pr := p.Channels[c.ID]; pr != nil {
-			stars += Step(pr.Points)
+			stars += Step(d, pr.Points)
 		}
 	}
 	return int(d.Away.PerHour * min(away, d.Away.CapHours) * (1 + d.Away.StarBonus*float64(stars)))

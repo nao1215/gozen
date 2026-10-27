@@ -20,9 +20,11 @@ func streams() *data.Streams {
 		}}
 	}
 	d := &data.Streams{
-		Timing: data.StreamTiming{Say: 1, PerChar: 0.5, Chat: 2, Ask: 10},
-		Live:   data.StreamLive{Share: 0.5, MinShare: 0.6, DuoChance: 1},
-		Away:   data.StreamAway{PerHour: 100, CapHours: 24, StarBonus: 0.1},
+		Timing:       data.StreamTiming{Say: 1, PerChar: 0.5, Chat: 2, Ask: 10},
+		Live:         data.StreamLive{Share: 0.5, MinShare: 0.6, DuoChance: 1},
+		Away:         data.StreamAway{PerHour: 100, CapHours: 24, StarBonus: 0.1},
+		Affection:    data.StreamAffection{Steps: []float64{0, 30, 150, 600, 3000}},
+		AnswerChance: []float64{0.6, 0.75, 0.9, 1, 1},
 	}
 	for _, id := range []string{"a", "b", "c"} {
 		d.Channels = append(d.Channels, &data.Channel{ID: id, Shows: []*data.Episode{ep(id + "1"), ep(id + "2")}})
@@ -135,15 +137,16 @@ func TestNextEpisodeAndSeen(t *testing.T) {
 }
 
 func TestStepAndAnswers(t *testing.T) {
+	d := streams()
 	for _, tc := range []struct {
 		points float64
 		step   int
-	}{{0, 0}, {29.9, 0}, {30, 1}, {149, 1}, {150, 2}, {600, 3}, {2999, 3}, {3000, 4}, {1e9, MaxStep}} {
-		if got := Step(tc.points); got != tc.step {
+	}{{0, 0}, {29.9, 0}, {30, 1}, {149, 1}, {150, 2}, {600, 3}, {2999, 3}, {3000, 4}, {1e9, 4}} {
+		if got := Step(d, tc.points); got != tc.step {
 			t.Errorf("Step(%g) = %d, want %d", tc.points, got, tc.step)
 		}
 	}
-	if PicksAnswer(0, 0.6) || !PicksAnswer(0, 0.59) || !PicksAnswer(MaxStep, 0.999) {
+	if PicksAnswer(d, 0, 0.6) || !PicksAnswer(d, 0, 0.59) || !PicksAnswer(d, 4, 0.999) {
 		t.Error("answer chances")
 	}
 }

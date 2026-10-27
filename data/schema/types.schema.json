@@ -2860,8 +2860,22 @@
           },
           "x-type": "string"
         },
+        "color": {
+          "description": "The channel's color: its name in the chat and its card in the lobby.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "color string"
+        },
         "episodes": {
-          "description": "The episode files (`Episode`), relative to the streams file. A channel plays the next one the player has not seen.",
+          "description": "The episode files (`Episode`), relative to the game, outside `data/`, such as `streams/\u003cid\u003e/001.yaml`. A channel plays the next one the player has not seen.",
           "items": {
             "type": "string"
           },
@@ -2912,7 +2926,7 @@
           "x-type": "[StreamFrame](#streamframe)"
         },
         "greet": {
-          "description": "Lines said to a returning viewer, one list for each affection step 0 to 4. `{from}` is the viewer's name.",
+          "description": "Lines said to a returning viewer, one list for each affection step from 0. `{from}` is the viewer's name.",
           "items": {
             "items": {
               "type": "string"
@@ -3002,6 +3016,19 @@
         },
         "tag": {
           "description": "The category shown under the name.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
+        },
+        "tagline": {
+          "description": "A line about the channel, shown in the lobby and under the stream.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -5505,6 +5532,80 @@
       },
       "type": "object"
     },
+    "CrowdLines": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "any": {
+              "description": "Lines for any hour.",
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ],
+              "x-contract": {
+                "default": "empty list",
+                "legacy_default": "empty list",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "9"
+              },
+              "x-type": "string[]"
+            },
+            "evening": {
+              "description": "Lines also chatted from 17 to 5 o'clock.",
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ],
+              "x-contract": {
+                "default": "empty list",
+                "legacy_default": "empty list",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "9"
+              },
+              "x-type": "string[]"
+            },
+            "morning": {
+              "description": "Lines also chatted from 5 to 11 o'clock.",
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ],
+              "x-contract": {
+                "default": "empty list",
+                "legacy_default": "empty list",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "9"
+              },
+              "x-type": "string[]"
+            }
+          },
+          "type": "object"
+        }
+      ],
+      "description": "What the bots chat, by the hour of the player's clock."
+    },
     "DataFile": {
       "additionalProperties": false,
       "description": "A file under data/. It can hold any of these sections, and the sections from all files are merged.",
@@ -6630,7 +6731,7 @@
       "description": "Episodes two channels stream together when both are live.",
       "properties": {
         "episodes": {
-          "description": "The episode files, relative to the streams file.",
+          "description": "The episode files, relative to the game.",
           "items": {
             "type": "string"
           },
@@ -16626,6 +16727,97 @@
       ],
       "type": "object"
     },
+    "StreamAffection": {
+      "additionalProperties": false,
+      "description": "How a viewer earns a channel's affection. The steps raise the gold earned away and the chance of an answer being picked.",
+      "properties": {
+        "answer": {
+          "description": "Points for an answer the streamer picks. The default is 5.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "comment": {
+          "description": "Points for a comment. The default is 1.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "reply": {
+          "description": "Points more when the streamer answers a comment. The default is 2.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "stayed": {
+          "description": "Points for watching an episode to its end. The default is 10.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "steps": {
+          "description": "The points each step starts at, from 0 and increasing. The default is [0, 30, 150, 600, 3000].",
+          "items": {
+            "type": "number"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number[]"
+        },
+        "tip_per": {
+          "description": "The gold of a tip that earns one point, above 0. The default is 100.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
     "StreamAsk": {
       "additionalProperties": false,
       "description": "A question. The player may answer it; the streamer reads one answer and its lines.",
@@ -16754,28 +16946,55 @@
       },
       "type": "object"
     },
-    "StreamCrowd": {
+    "StreamBounce": {
       "additionalProperties": false,
-      "description": "The bot viewers of the chat.",
+      "description": "The lines that jiggle the streamer's puppet; a tip jiggles it too.",
       "properties": {
-        "lines": {
-          "description": "What they chat.",
-          "items": {
-            "type": "string"
-          },
-          "type": [
-            "array",
-            "null"
-          ],
+        "amount": {
+          "description": "The strength of the jiggle, 0 to 10.",
+          "type": "number",
           "x-contract": {
-            "default": "empty list",
-            "legacy_default": "empty list",
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "on": {
+          "description": "A regular expression (Go syntax) of the lines that jiggle. Empty jiggles none.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
             "zero": "-",
             "required": "optional",
             "reference": "-",
             "version": "9"
           },
-          "x-type": "string[]"
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "StreamCrowd": {
+      "additionalProperties": false,
+      "description": "The bot viewers of the chat.",
+      "properties": {
+        "lines": {
+          "$ref": "#/$defs/CrowdLines",
+          "description": "What they chat: a list for any hour, or `{any, morning, evening}`.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[CrowdLines](#crowdlines) or string[]"
         },
         "names": {
           "description": "The names of the bot viewers.",
@@ -16827,6 +17046,39 @@
             "version": "9"
           },
           "x-type": "string[]"
+        }
+      },
+      "type": "object"
+    },
+    "StreamEcho": {
+      "additionalProperties": false,
+      "description": "When a streamer reads back a comment its reaction book found nothing in (the `dodge.unknown` lines).",
+      "properties": {
+        "chance": {
+          "description": "The chance of reading one back, 0 to 1. The default is 0.35.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "max_runes": {
+          "description": "Only comments of at most this many characters. The default is 24.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "integer"
         }
       },
       "type": "object"
@@ -17098,6 +17350,38 @@
       "additionalProperties": false,
       "description": "The live-stream file named by `streams` in game.yaml (schema version 9): the channels, their episodes, and the rules of the stream screen.",
       "properties": {
+        "affection": {
+          "$ref": "#/$defs/StreamAffection",
+          "description": "The points of the affection steps and what earns them.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[StreamAffection](#streamaffection)"
+        },
+        "answer_chance": {
+          "description": "The chance, for each affection step, that a streamer picks the player's answer to a question, 0 to 1. The default is [0.6, 0.75, 0.9, 1, 1].",
+          "items": {
+            "type": "number"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number[]"
+        },
         "away": {
           "$ref": "#/$defs/StreamAway",
           "description": "The gold earned while the game is closed.",
@@ -17110,6 +17394,19 @@
             "version": "9"
           },
           "x-type": "[StreamAway](#streamaway)"
+        },
+        "bounce": {
+          "$ref": "#/$defs/StreamBounce",
+          "description": "The lines that jiggle the streamer's puppet.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[StreamBounce](#streambounce)"
         },
         "channels": {
           "description": "The streamers, in the order the lobby lists them.",
@@ -17161,6 +17458,19 @@
             "version": "9"
           },
           "x-type": "[Duo](#duo)[]"
+        },
+        "echo": {
+          "$ref": "#/$defs/StreamEcho",
+          "description": "When a streamer reads back a comment it found nothing in.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[StreamEcho](#streamecho)"
         },
         "live": {
           "$ref": "#/$defs/StreamLive",

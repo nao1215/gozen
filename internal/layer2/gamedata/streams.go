@@ -1,10 +1,12 @@
 package gamedata
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"io/fs"
 	"path"
+	"regexp"
 	"slices"
 	"unicode/utf8"
 
@@ -25,6 +27,15 @@ type Streams struct {
 	Away StreamAway `yaml:"away"`
 	// Tips are the amounts the player can tip, smallest first.
 	Tips []int `yaml:"tips"`
+	// Affection is how a viewer earns the affection of a channel.
+	Affection StreamAffection `yaml:"affection"`
+	// AnswerChance is the chance, by affection step, that a streamer picks the player's
+	// answer to a question (one for each step).
+	AnswerChance []float64 `yaml:"answer_chance"`
+	// Echo is when a streamer reads back a comment it found nothing in.
+	Echo StreamEcho `yaml:"echo"`
+	// Bounce jiggles a streamer's puppet on the lines that match.
+	Bounce StreamBounce `yaml:"bounce"`
 	// Crowd is the bot viewers of the chat.
 	Crowd StreamCrowd `yaml:"crowd"`
 	// Channels are the streamers, in the order the lobby lists them.
@@ -32,9 +43,45 @@ type Streams struct {
 	// Duos are the episodes two channels stream together.
 	Duos []*Duo `yaml:"duos"`
 
-	// file is the path of the streams file, for diagnostics and the episodes' directory.
+	// file is the path of the streams file, for diagnostics.
 	file string
+	// bounce is Bounce.On compiled (nil: no line bounces).
+	bounce *regexp.Regexp
 }
+
+// StreamAffection is the points of the affection steps and what earns them.
+type StreamAffection struct {
+	// Steps are the points each step starts at, from 0, increasing.
+	Steps []float64 `yaml:"steps"`
+	// Comment is earned by a comment, Reply more when the streamer answers it, Answer by
+	// an answer the streamer picks, Stayed by watching to the end, and a point by every
+	// TipPer gold of a tip.
+	Comment float64 `yaml:"comment"`
+	Reply   float64 `yaml:"reply"`
+	Answer  float64 `yaml:"answer"`
+	TipPer  float64 `yaml:"tip_per"`
+	Stayed  float64 `yaml:"stayed"`
+}
+
+// StreamEcho reads back a comment the streamer found nothing in (the reaction book's
+// dodge.unknown): only a comment of at most MaxRunes characters, with the chance Chance.
+type StreamEcho struct {
+	MaxRunes int     `yaml:"max_runes"`
+	Chance   float64 `yaml:"chance"`
+}
+
+// StreamBounce is a regular expression (On) of the lines that jiggle the streamer's
+// puppet, and the strength of the jiggle (Amount; a tip jiggles it too).
+type StreamBounce struct {
+	On     string  `yaml:"on"`
+	Amount float64 `yaml:"amount"`
+}
+
+// Bounces reports whether a line jiggles the streamer's puppet.
+func (s *Streams) Bounces(line string) bool { return s.bounce != nil && s.bounce.MatchString(line) }
+
+// MaxStep is the highest affection step.
+func (s *Streams) MaxStep() int { return len(s.Affection.Steps) - 1 }
 
 // StreamTiming is in seconds: a line lasts Say plus PerChar a character, a chat beat
 // Chat, and a question Ask plus its longest answer.
@@ -64,10 +111,38 @@ type StreamAway struct {
 // StreamCrowd is the bot viewers: their names, what they chat, what they write with a
 // tip, and how many messages a second they post on average.
 type StreamCrowd struct {
-	Names    []string `yaml:"names"`
-	Lines    []string `yaml:"lines"`
-	TipLines []string `yaml:"tip_lines"`
-	Rate     float64  `yaml:"rate"`
+	Names    []string   `yaml:"names"`
+	Lines    CrowdLines `yaml:"lines"`
+	TipLines []string   `yaml:"tip_lines"`
+	Rate     float64    `yaml:"rate"`
+}
+
+// CrowdLines are what the bots chat at any hour, and only in the morning (5 to 11
+// o'clock) or the evening (17 to 5 o'clock). A plain list is Any.
+type CrowdLines struct {
+	Any     []string `yaml:"any"`
+	Morning []string `yaml:"morning"`
+	Evening []string `yaml:"evening"`
+}
+
+// UnmarshalYAML reads a list of lines or {any, morning, evening}.
+func (l *CrowdLines) UnmarshalYAML(unmarshal func(any) error) error {
+	if err := unmarshal(&l.Any); err == nil {
+		return nil
+	}
+	type plain CrowdLines
+	return unmarshal((*plain)(l))
+}
+
+// At are the lines of the hour (0 to 23).
+func (l CrowdLines) At(hour int) []string {
+	switch {
+	case hour >= 5 && hour < 11:
+		return slices.Concat(l.Any, l.Morning)
+	case hour >= 17 || hour < 5:
+		return slices.Concat(l.Any, l.Evening)
+	}
+	return l.Any
 }
 
 // Channel is one streamer.
@@ -75,15 +150,18 @@ type Channel struct {
 	ID string `yaml:"id"`
 	// Actor is the streamer's actor: its name, its puppet and its reaction book.
 	Actor string `yaml:"actor"`
-	// Tag is the category shown under the name.
-	Tag string `yaml:"tag"`
+	// Tag is the category shown under the name, Tagline a line about the channel.
+	Tag     string `yaml:"tag"`
+	Tagline string `yaml:"tagline"`
+	// Color is the channel's color: its name in the chat and its frame in the lobby.
+	Color Color `yaml:"color"`
 	// Room is the background picture under assets/.
 	Room string `yaml:"room"`
 	// Frame is the part of the puppet shown, in puppet pixels.
 	Frame StreamFrame `yaml:"frame"`
 	// Voice is the speech synthesis of a browser build.
 	Voice StreamVoice `yaml:"voice"`
-	// Episodes are the episode files, relative to the streams file.
+	// Episodes are the episode files, relative to the game.
 	Episodes []string `yaml:"episodes"`
 	// Greet are the lines said to a returning viewer, one list per affection step 0..4.
 	Greet [][]string `yaml:"greet"`
@@ -304,12 +382,20 @@ func (db *DB) loadStreams() ([]string, error) {
 	if err := db.readStrict(name, s); err != nil {
 		return nil, err
 	}
+	s.defaults()
+	if s.Bounce.On != "" {
+		re, err := regexp.Compile(s.Bounce.On)
+		if err != nil {
+			return nil, coded(db.diagnostic(name+" bounce.on", err.Error()), diag.Shape)
+		}
+		s.bounce = re
+	}
 	files := []string{name}
 	var errs []error
 	load := func(where string, eps []string) []*Episode {
 		var out []*Episode
 		for i, ep := range eps {
-			p := path.Join(path.Dir(name), ep)
+			p := ep
 			if !fs.ValidPath(ep) || path.Ext(ep) != ".yaml" {
 				errs = append(errs, coded(db.diagnostic(fmt.Sprintf("%s %s.episodes[%d]", name, where, i), fmt.Sprintf("want a relative .yaml file, not %q", ep)), diag.Shape))
 				continue
@@ -339,6 +425,28 @@ func (db *DB) loadStreams() ([]string, error) {
 	}
 	db.Streams = s
 	return files, nil
+}
+
+// defaults fills in the affection, the answer chances and the echo when left out.
+func (s *Streams) defaults() {
+	a := &s.Affection
+	if len(a.Steps) == 0 {
+		a.Steps = []float64{0, 30, 150, 600, 3000}
+	}
+	for _, d := range []struct {
+		p   *float64
+		def float64
+	}{{&a.Comment, 1}, {&a.Reply, 2}, {&a.Answer, 5}, {&a.TipPer, 100}, {&a.Stayed, 10}} {
+		if *d.p == 0 {
+			*d.p = d.def
+		}
+	}
+	if len(s.AnswerChance) == 0 {
+		s.AnswerChance = []float64{0.6, 0.75, 0.9, 1, 1}
+	}
+	if s.Echo.MaxRunes == 0 {
+		s.Echo = StreamEcho{MaxRunes: 24, Chance: cmp.Or(s.Echo.Chance, 0.35)}
+	}
 }
 
 // minEpisodeSeconds is the length below which an episode is warned of.
@@ -371,9 +479,22 @@ func (c *checker) streams() {
 	if len(s.Tips) == 0 || s.Tips[0] <= 0 || !slices.IsSorted(s.Tips) || len(slices.Compact(slices.Clone(s.Tips))) != len(s.Tips) {
 		c.errorf(diag.OutOfRange, at("tips"), "want one or more amounts above 0, smallest first, each once")
 	}
+	af := s.Affection
+	if af.Steps[0] != 0 || !slices.IsSorted(af.Steps) || len(slices.Compact(slices.Clone(af.Steps))) != len(af.Steps) || af.Comment < 0 || af.Reply < 0 || af.Answer < 0 || af.TipPer <= 0 || af.Stayed < 0 {
+		c.errorf(diag.OutOfRange, at("affection"), "steps start at 0 and increase; the points are 0 or more and tip_per above 0")
+	}
+	if len(s.AnswerChance) != len(af.Steps) || slices.ContainsFunc(s.AnswerChance, func(v float64) bool { return !(v >= 0 && v <= 1) }) {
+		c.errorf(diag.OutOfRange, at("answer_chance"), "want a chance from 0 to 1 for each of the %d affection steps", len(af.Steps))
+	}
+	if s.Echo.MaxRunes < 0 || !(s.Echo.Chance >= 0 && s.Echo.Chance <= 1) {
+		c.errorf(diag.OutOfRange, at("echo"), "max_runes is 0 or more and chance from 0 to 1")
+	}
+	if s.Bounce.Amount < 0 || s.Bounce.Amount > 10 {
+		c.errorf(diag.OutOfRange, at("bounce.amount"), "want 0 to 10")
+	}
 	cr := s.Crowd
-	if len(cr.Names) == 0 || slices.Contains(cr.Names, "") || len(cr.Lines) == 0 || len(cr.TipLines) == 0 {
-		c.errorf(diag.Shape, at("crowd"), "the crowd needs names, lines and tip_lines")
+	if len(cr.Names) == 0 || slices.Contains(cr.Names, "") || len(cr.Lines.Any) == 0 || len(cr.TipLines) == 0 {
+		c.errorf(diag.Shape, at("crowd"), "the crowd needs names, lines (any) and tip_lines")
 	}
 	if !(cr.Rate > 0 && cr.Rate <= 100) {
 		c.errorf(diag.OutOfRange, at("crowd.rate"), "want more than 0 and at most 100 messages a second")
@@ -401,8 +522,8 @@ func (c *checker) streams() {
 		if v := ch.Voice; v.Pitch < 0 || v.Pitch > 2 || v.Rate < 0 || v.Rate > 10 {
 			c.errorf(diag.OutOfRange, w+".voice", "pitch is 0 to 2 and rate 0 to 10 (0 is 1)")
 		}
-		if len(ch.Greet) > 5 {
-			c.errorf(diag.OutOfRange, w+".greet", "one list for each affection step 0 to 4, not %d", len(ch.Greet))
+		if len(ch.Greet) > len(af.Steps) {
+			c.errorf(diag.OutOfRange, w+".greet", "one list for each affection step 0 to %d, not %d", s.MaxStep(), len(ch.Greet))
 		}
 		if len(ch.Episodes) == 0 {
 			c.errorf(diag.Shape, w+".episodes", "a channel needs an episode")

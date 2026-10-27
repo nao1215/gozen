@@ -277,12 +277,15 @@ func (db *DB) SourceTexts() []SourceText {
 				add(fmt.Sprintf("%s[%d]", w, i), l)
 			}
 		}
-		all(st.file+" crowd.lines", st.Crowd.Lines)
+		all(st.file+" crowd.lines.any", st.Crowd.Lines.Any)
+		all(st.file+" crowd.lines.morning", st.Crowd.Lines.Morning)
+		all(st.file+" crowd.lines.evening", st.Crowd.Lines.Evening)
 		all(st.file+" crowd.tip_lines", st.Crowd.TipLines)
 		var episodes []*Episode
 		for i, ch := range st.Channels {
 			w := fmt.Sprintf("%s channels[%d]", st.file, i)
 			add(w+".tag", ch.Tag)
+			add(w+".tagline", ch.Tagline)
 			for j, g := range ch.Greet {
 				all(fmt.Sprintf("%s.greet[%d]", w, j), g)
 			}

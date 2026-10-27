@@ -198,6 +198,8 @@ func (b *schemaBuilder) node(t reflect.Type) schemaNode {
 			case reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
 				reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[StreamLine]():
 				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "string"}, n}}
+			case reflect.TypeFor[CrowdLines](): // a list is the lines of any hour
+				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "array", "items": schemaNode{"type": "string"}}, n}}
 			case reflect.TypeFor[Beat](): // or the line of the other host of a duo, keyed by its channel id
 				n["additionalProperties"] = b.node(reflect.TypeFor[StreamLine]())
 				n["minProperties"], n["maxProperties"] = 1, 1
@@ -272,7 +274,8 @@ var streamTypes = map[reflect.Type]bool{
 	reflect.TypeFor[StreamAway](): true, reflect.TypeFor[StreamCrowd](): true, reflect.TypeFor[Channel](): true,
 	reflect.TypeFor[StreamFrame](): true, reflect.TypeFor[StreamVoice](): true, reflect.TypeFor[Duo](): true,
 	reflect.TypeFor[Episode](): true, reflect.TypeFor[Beat](): true, reflect.TypeFor[StreamLine](): true,
-	reflect.TypeFor[StreamAsk](): true, reflect.TypeFor[StreamOption](): true,
+	reflect.TypeFor[StreamAsk](): true, reflect.TypeFor[StreamOption](): true, reflect.TypeFor[StreamAffection](): true,
+	reflect.TypeFor[StreamEcho](): true, reflect.TypeFor[StreamBounce](): true, reflect.TypeFor[CrowdLines](): true,
 }
 
 // version2Fields are the fields added in spec version 2 (ADR 0021).
@@ -608,6 +611,8 @@ func schemaTypeLabel(t reflect.Type) string {
 			result += " または文字列"
 		case reflect.TypeFor[WaitCue]():
 			result += " または数値"
+		case reflect.TypeFor[CrowdLines]():
+			result += " or string[]"
 		case reflect.TypeFor[Token]():
 			result += " または doll"
 		}
