@@ -28,6 +28,25 @@ scenarios:
   - assert:
       exit_code: 0
       stderr: {contains: ['[GZN0116]', '[GZN0117]']}
+- name: GZN0118 for a stream episode shorter than 20 minutes
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 9\nid: g\nstart: {location: room}\nstreams: data/streams.yaml\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "actors: {host: {name: Host, puppet: p/rig.yaml}}\nlocations: {room: {}}\n"
+  - fixture:
+      file: g/data/streams.yaml
+      content: "timing: {say: 2, per_char: 0.1, chat: 2, ask: 10}\ntips: [10]\ncrowd: {names: [leaf], lines: [Hi], tip_lines: [Here], rate: 0.5}\nchannels: [{id: host, actor: host, room: x.png, frame: {cx: 1, top: 0, bottom: 1}, episodes: [one.yaml]}]\n"
+  - fixture: {file: g/data/one.yaml, content: "title: Short\nlobby: [Short]\nparts: [[{say: Hello.}]]\n"}
+  - fixture: {file: g/assets/p/rig.yaml, content: "base: base.png\n"}
+  - fixture: {file: g/assets/p/base.png, content: x}
+  - fixture: {file: g/assets/x.png, content: x}
+  - run: {command: "gozen check --only structure g"}
+  - assert:
+      exit_code: 0
+      stderr: {contains: '[GZN0118]'}
 - name: GZN1113 for a recruit level above the monster class maximum
   steps:
   - fixture:

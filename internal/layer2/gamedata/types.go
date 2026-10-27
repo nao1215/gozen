@@ -200,6 +200,8 @@ type Game struct {
 	Screens map[string]*AuthorScreen `yaml:"screens"`
 	// Reactions maps speaker IDs to validated reaction books under assets/.
 	Reactions map[string]string `yaml:"reactions"`
+	// Streams names the live-stream file, relative to the game (schema_version 9, ADR 0048).
+	Streams string `yaml:"streams"`
 	// Campaign makes the game a campaign of regions held by factions over turns
 	// (schema_version 5, ADR 0030).
 	Campaign *Campaign `yaml:"campaign"`

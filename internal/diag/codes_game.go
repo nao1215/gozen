@@ -88,6 +88,11 @@ var (
 		Detail:  "A positive recruit chance only matters after winning a battle with that species. No location encounter names a troop containing it. A scripted battle may still offer it, so this is a warning.",
 		Fix:     "Add the species to a troop in a reachable location encounter, or confirm that a scripted battle is intentional.",
 	})
+	ShortEpisode = register(118, "ShortEpisode", Entry{
+		Summary: "a stream episode lasts less than 20 minutes",
+		Detail:  "The beats of the episode, timed by the timing of the streams file, add up to less than 20 minutes, so a viewer sees it end soon after opening the game.",
+		Fix:     "Add beats to the episode, or lengthen the timing.",
+	})
 )
 
 // GZN11xx: the definitions of the game. The game does not load, and check

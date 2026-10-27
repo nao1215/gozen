@@ -1031,6 +1031,7 @@ func (db *DB) Check() []error {
 	c.bestiaryWarnings()
 	c.monsters()
 	c.mergeReachability()
+	c.streams()
 	db.sceneWarns, db.sceneWarned = sortedDiagnostics(c.warns), true
 	return sortedDiagnostics(c.errs)
 }

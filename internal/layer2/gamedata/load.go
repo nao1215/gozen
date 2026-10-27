@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 
@@ -41,6 +42,8 @@ type DB struct {
 	Music           Music
 	// Profiles are the pages of the character book (ADR 0031).
 	Profiles map[string]*Profile
+	// Streams is the live-stream file and its episodes (game.yaml streams), or nil.
+	Streams *Streams
 	// Regions and Factions are a campaign's (schema_version 5, ADR 0030).
 	Regions  map[string]*Region
 	Factions map[string]*Faction
@@ -145,12 +148,16 @@ func Load(fsys fs.FS) (*DB, error) {
 	}{{"critical_rate", &bc.CriticalRate, 1.5}, {"variance", &bc.Variance, 0.1}, {"guard_rate", &bc.GuardRate, 0.5}} {
 		db.numberDefault(sectionMap(rawGame, "battle"), field.name, field.value, field.fallback)
 	}
+	streamFiles, err := db.loadStreams()
+	if err != nil {
+		return nil, err
+	}
 	var files []string
 	err = fs.WalkDir(fsys, "data", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if !d.IsDir() && (strings.HasSuffix(p, ".yaml") || strings.HasSuffix(p, ".yml")) {
+		if !d.IsDir() && (strings.HasSuffix(p, ".yaml") || strings.HasSuffix(p, ".yml")) && !slices.Contains(streamFiles, p) {
 			files = append(files, p)
 		}
 		return nil

@@ -15,7 +15,7 @@ Codes are assigned one family at a time. A diagnostic without a code still exits
 
 | Codes | Exit | Meaning | Assigned |
 |---------|---------|---------|---------|
-| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 17 codes |
+| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 18 codes |
 | `GZN02xx` | 0 | warnings of a measurement or a record | not yet |
 | `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 13 codes |
 | `GZN12xx` | 1 | fonts and text layout | 1 codes |
@@ -171,6 +171,14 @@ A recruitable monster has no encounter in a location.
 A positive recruit chance only matters after winning a battle with that species. No location encounter names a troop containing it. A scripted battle may still offer it, so this is a warning.
 
 Fix: Add the species to a troop in a reachable location encounter, or confirm that a scripted battle is intentional.
+
+### GZN0118
+
+A stream episode lasts less than 20 minutes.
+
+The beats of the episode, timed by the timing of the streams file, add up to less than 20 minutes, so a viewer sees it end soon after opening the game.
+
+Fix: Add beats to the episode, or lengthen the timing.
 
 ## GZN11xx
 

@@ -176,6 +176,7 @@ Game:
   title_music: "The song and mood played on the title screen."
   ui: "The look of the game's menus and windows."
   reactions: "Maps speaker IDs to reaction book paths under assets/. Memory is saved with the game."
+  streams: "The live-stream file (`Streams`), relative to the game, such as `data/streams.yaml`. It and its episodes are not data files. Needs schema version 9."
   verbs: "Maps reusable command names to event IDs. Invoke with `NAME: true`, or call the event directly with `call`."
   written_in: "The language the files under `data/` are written in. Each other language is translated by `lang/<code>.yaml`, a map `text` from the text as written to its translation. The default is `language`. Needs schema version 4."
 GameOver:

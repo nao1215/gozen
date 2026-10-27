@@ -1649,6 +1649,62 @@
       },
       "type": "object"
     },
+    "Beat": {
+      "additionalProperties": {
+        "$ref": "#/$defs/StreamLine"
+      },
+      "description": "One beat: `say`, `chat`, `ask`, or the channel ID of the other host of a duo with a line.",
+      "maxProperties": 1,
+      "minProperties": 1,
+      "properties": {
+        "ask": {
+          "$ref": "#/$defs/StreamAsk",
+          "description": "A question the viewers answer.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[StreamAsk](#streamask)"
+        },
+        "chat": {
+          "description": "A viewer's message, `[name, text]`.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string[]"
+        },
+        "say": {
+          "$ref": "#/$defs/StreamLine",
+          "description": "A line of the host: the text, or `{face, text}`.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[StreamLine](#streamline) or string"
+        }
+      },
+      "type": "object"
+    },
     "BreedCmd": {
       "additionalProperties": false,
       "description": "Two owned monster instances and a selection of their skills to pass on.",
@@ -2783,6 +2839,192 @@
             "version": "0, 1, 2"
           },
           "x-type": "expression"
+        }
+      },
+      "type": "object"
+    },
+    "Channel": {
+      "additionalProperties": false,
+      "description": "A streamer.",
+      "properties": {
+        "actor": {
+          "description": "The actor (`actors`) whose name, puppet and reaction book (`reactions`) the channel uses. It needs a puppet.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
+        },
+        "episodes": {
+          "description": "The episode files (`Episode`), relative to the streams file. A channel plays the next one the player has not seen.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string[]"
+        },
+        "first": {
+          "description": "Lines for a first-time viewer; one is said. `{from}` is the viewer's name.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string[]"
+        },
+        "frame": {
+          "$ref": "#/$defs/StreamFrame",
+          "description": "The part of the puppet shown.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[StreamFrame](#streamframe)"
+        },
+        "greet": {
+          "description": "Lines said to a returning viewer, one list for each affection step 0 to 4. `{from}` is the viewer's name.",
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string[][]"
+        },
+        "id": {
+          "description": "The channel's ID, unique, not `say`, `chat` or `ask`. A duo's episodes use it as the key of the other host's lines.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
+        },
+        "room": {
+          "description": "The background picture under assets/.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
+        },
+        "stayed": {
+          "description": "Lines for a viewer who watched to the end; one is said. `{from}` is the viewer's name.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string[]"
+        },
+        "streak": {
+          "description": "Lines for a viewer who came three days in a row or more; one is said. `{days}` is the days and `{from}` the name.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string[]"
+        },
+        "tag": {
+          "description": "The category shown under the name.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
+        },
+        "voice": {
+          "$ref": "#/$defs/StreamVoice",
+          "description": "Speech synthesis in a browser build.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[StreamVoice](#streamvoice)"
         }
       },
       "type": "object"
@@ -6383,6 +6625,58 @@
       },
       "type": "object"
     },
+    "Duo": {
+      "additionalProperties": false,
+      "description": "Episodes two channels stream together when both are live.",
+      "properties": {
+        "episodes": {
+          "description": "The episode files, relative to the streams file.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string[]"
+        },
+        "host": {
+          "description": "The channel that hosts it.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
+        },
+        "with": {
+          "description": "The other channel.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
     "Effect": {
       "additionalProperties": false,
       "description": "One thing a skill or item does to each target, such as dealing damage, healing or adding a state.",
@@ -7380,6 +7674,70 @@
         "image",
         "stats"
       ],
+      "type": "object"
+    },
+    "Episode": {
+      "additionalProperties": false,
+      "description": "One stream: its title, the lines of its lobby card, and its parts. An episode shorter than 20 minutes is warned of.",
+      "properties": {
+        "lobby": {
+          "description": "Short lines for the lobby card.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string[]"
+        },
+        "parts": {
+          "description": "The parts, each a list of beats played in order.",
+          "items": {
+            "items": {
+              "$ref": "#/$defs/Beat"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[Beat](#beat)[][]"
+        },
+        "title": {
+          "description": "The title shown under the stream.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
+        }
+      },
       "type": "object"
     },
     "EquipItem": {
@@ -8601,7 +8959,8 @@
               5,
               6,
               7,
-              8
+              8,
+              9
             ]
           }
         },
@@ -8915,7 +9274,8 @@
             5,
             6,
             7,
-            8
+            8,
+            9
           ],
           "type": "integer",
           "x-contract": {
@@ -8998,6 +9358,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "[StateNames](#statenames)"
+        },
+        "streams": {
+          "description": "The live-stream file (`Streams`), relative to the game, such as `data/streams.yaml`. It and its episodes are not data files. Needs schema version 9.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
         },
         "subtitle": {
           "description": "The subtitle shown on the title screen.",
@@ -16238,6 +16611,590 @@
         "name",
         "stones"
       ],
+      "type": "object"
+    },
+    "StreamAsk": {
+      "additionalProperties": false,
+      "description": "A question. The player may answer it; the streamer reads one answer and its lines.",
+      "properties": {
+        "npc": {
+          "description": "Answers of bot viewers, `[name, option]`, the option counted from 0. At least one.",
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "minimum": 0,
+                "type": "integer"
+              }
+            ],
+            "type": "array"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[name, index][]"
+        },
+        "options": {
+          "description": "Two to four answers.",
+          "items": {
+            "$ref": "#/$defs/StreamOption"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[StreamOption](#streamoption)[]"
+        },
+        "q": {
+          "description": "The question.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
+        },
+        "who": {
+          "description": "The channel that asks; the host when left out.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "StreamAway": {
+      "additionalProperties": false,
+      "description": "Gold earned while the game is closed, shown when the stream screen opens.",
+      "properties": {
+        "cap_hours": {
+          "description": "The most hours counted, 0 or more.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "per_hour": {
+          "description": "Gold an hour, 0 or more.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "star_bonus": {
+          "description": "The part added for each affection step of each channel, 0 or more (0.1 adds 10%).",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "StreamCrowd": {
+      "additionalProperties": false,
+      "description": "The bot viewers of the chat.",
+      "properties": {
+        "lines": {
+          "description": "What they chat.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string[]"
+        },
+        "names": {
+          "description": "The names of the bot viewers.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string[]"
+        },
+        "rate": {
+          "description": "Messages a second on average, more than 0 and at most 100.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "tip_lines": {
+          "description": "What they write with a tip.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string[]"
+        }
+      },
+      "type": "object"
+    },
+    "StreamFrame": {
+      "additionalProperties": false,
+      "description": "The part of the puppet a stream shows, in the puppet's pixels.",
+      "properties": {
+        "bottom": {
+          "description": "The row at the bottom of the frame, below top.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "cx": {
+          "description": "The column at the center of the frame.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "top": {
+          "description": "The row at the top of the frame, 0 or more.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "StreamLine": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "face": {
+              "description": "A face of the speaker's puppet.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "9"
+              },
+              "x-type": "string"
+            },
+            "text": {
+              "description": "What is said.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "9"
+              },
+              "x-type": "string"
+            }
+          },
+          "type": "object"
+        }
+      ],
+      "description": "A line, written as its text or with the face it is said with."
+    },
+    "StreamLive": {
+      "additionalProperties": false,
+      "description": "Who is live: every channel the first time the game opens, then each with the chance `share` and at least `min_share` of them.",
+      "properties": {
+        "duo_chance": {
+          "description": "The chance that two live hosts of a duo stream together, 0 to 1.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "min_share": {
+          "description": "The least part of the channels that are live, 0 to 1.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "share": {
+          "description": "The chance of each channel to be live, 0 to 1.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "StreamOption": {
+      "additionalProperties": false,
+      "description": "An answer and what is said when it is picked.",
+      "properties": {
+        "c": {
+          "description": "The answer.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
+        },
+        "r": {
+          "description": "The lines said when it is picked. `{name}` is who picked it.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string[]"
+        }
+      },
+      "type": "object"
+    },
+    "StreamTiming": {
+      "additionalProperties": false,
+      "description": "The length of the beats. A line lasts `say` plus `per_char` for each character; a question shows its options for `ask` and then says its longest answer.",
+      "properties": {
+        "ask": {
+          "description": "Seconds the options of a question stay open, more than 0.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "chat": {
+          "description": "Seconds a chat beat lasts, more than 0.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "per_char": {
+          "description": "Seconds more for each character of a line, 0 or more.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "say": {
+          "description": "Seconds every line lasts, more than 0.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "StreamVoice": {
+      "additionalProperties": false,
+      "description": "The voice of speech synthesis; 0 is 1.",
+      "properties": {
+        "pitch": {
+          "description": "The pitch, 0 to 2.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        },
+        "rate": {
+          "description": "The speed, 0 to 10.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "Streams": {
+      "additionalProperties": false,
+      "description": "The live-stream file named by `streams` in game.yaml (schema version 9): the channels, their episodes, and the rules of the stream screen.",
+      "properties": {
+        "away": {
+          "$ref": "#/$defs/StreamAway",
+          "description": "The gold earned while the game is closed.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[StreamAway](#streamaway)"
+        },
+        "channels": {
+          "description": "The streamers, in the order the lobby lists them.",
+          "items": {
+            "$ref": "#/$defs/Channel"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[Channel](#channel)[]"
+        },
+        "crowd": {
+          "$ref": "#/$defs/StreamCrowd",
+          "description": "The bot viewers of the chat.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[StreamCrowd](#streamcrowd)"
+        },
+        "duos": {
+          "description": "Episodes two channels stream together.",
+          "items": {
+            "$ref": "#/$defs/Duo"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[Duo](#duo)[]"
+        },
+        "live": {
+          "$ref": "#/$defs/StreamLive",
+          "description": "Who is live when the game opens.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[StreamLive](#streamlive)"
+        },
+        "timing": {
+          "$ref": "#/$defs/StreamTiming",
+          "description": "How long each kind of beat lasts, in seconds.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "[StreamTiming](#streamtiming)"
+        },
+        "tips": {
+          "description": "The amounts the player can tip, above 0, smallest first, each once.",
+          "items": {
+            "type": "integer"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "integer[]"
+        }
+      },
       "type": "object"
     },
     "TacticAction": {
