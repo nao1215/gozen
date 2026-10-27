@@ -163,6 +163,14 @@ func TestGraphicsScreensStreams(t *testing.T) {
 			if !differs(lobby, int(lobbyEdge+w*0.28), int(y)) || !differs(lobby, int(lobbyEdge+w*0.72), int(y)) {
 				t.Error("the duo's card does not stand both hosts")
 			}
+			// the collab mark after the viewers, in the brand's color
+			marked := false
+			for mx := int(lobbyEdge + 120); mx < int(lobbyEdge+400) && !marked; mx++ {
+				marked = near(lobby, mx, int(streamBarH+20+18), brand)
+			}
+			if !marked {
+				t.Error("the duo's card has no collab mark")
+			}
 			duo := shotImage(t, root, "duo")
 			sw := 1280.0 - streamChatW
 			if !differs(duo, int(sw*0.28), 330) || !differs(duo, int(sw*0.72), 330) {

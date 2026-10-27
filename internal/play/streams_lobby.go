@@ -542,6 +542,12 @@ func (l *streamLobby) drawCard(g *Game, dst *ebiten.Image, c *lobbyCard, i int, 
 		vw := gfx.TextWidth(views, badge)
 		rect(dst, x+14+lw, y+8, vw+12, badge+7, withAlpha(colorBlack, 0xa0))
 		gfx.DrawTextLeft(dst, views, x+20+lw, y+9, badge, streamPanel)
+		if len(c.show.Hosts) > 1 { // a duo: a mark to see it at once, unlocked or come again
+			collab := lang.T("コラボ")
+			bx, bw := x+20+lw+vw+6, gfx.TextWidth(collab, badge)+14
+			gfx.FillRoundRect(dst, float32(bx), float32(y+8), float32(bw), float32(badge+7), 3, streamBrand)
+			gfx.DrawText(dst, collab, bx+bw/2, y+9, badge, streamPanel)
+		}
 	})
 	size, pad := 13.0, 0.0
 	my := y + h + 8
