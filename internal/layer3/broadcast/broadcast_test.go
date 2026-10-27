@@ -17,7 +17,7 @@ func streams() *data.Streams {
 	ep := func(title string) *data.Episode {
 		return &data.Episode{Title: title, Parts: [][]data.Beat{
 			{line("abcd"), {Chat: []string{"viewer", "hi"}}},
-			{{Ask: &data.StreamAsk{Q: "ab", Options: []data.StreamOption{{C: "x", R: []string{"abcdef"}}, {C: "y", R: []string{"a", "b"}}}}}, line("")},
+			{{Ask: &data.StreamAsk{Q: "ab", Options: []data.StreamOption{{C: "x", R: []data.StreamReply{{Line: data.StreamLine{Text: "abcdef"}}}}, {C: "y", R: []data.StreamReply{{Line: data.StreamLine{Text: "a"}}, {Line: data.StreamLine{Text: "b"}}}}}}}, line("")},
 		}}
 	}
 	d := &data.Streams{

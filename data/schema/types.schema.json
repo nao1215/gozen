@@ -17304,9 +17304,9 @@
           "x-type": "string"
         },
         "r": {
-          "description": "The lines said when it is picked. `{from}` is who picked it.",
+          "description": "The lines said when it is picked (`StreamReply`). `{from}` is who picked it.",
           "items": {
-            "type": "string"
+            "$ref": "#/$defs/StreamReply"
           },
           "type": [
             "array",
@@ -17320,9 +17320,15 @@
             "reference": "-",
             "version": "9"
           },
-          "x-type": "string[]"
+          "x-type": "[StreamReply](#streamreply)[]"
         }
       },
+      "type": "object"
+    },
+    "StreamReply": {
+      "additionalProperties": false,
+      "description": "A line said when an answer is picked: by the one who asked, as text or `{face, text}`, or by a host of the episode written with its channel id, `{bo: text}` or `{bo: {face, text}}`, so the two hosts of a duo answer in turn. Its voice is in the folder of the one who says it.",
+      "properties": {},
       "type": "object"
     },
     "StreamSlot": {

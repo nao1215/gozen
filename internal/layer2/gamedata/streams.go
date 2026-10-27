@@ -299,8 +299,43 @@ type StreamAsk struct {
 
 // StreamOption is an answer (C) and the lines said when it is chosen (R, {from} is who chose it).
 type StreamOption struct {
-	C string   `yaml:"c"`
-	R []string `yaml:"r"`
+	C string        `yaml:"c"`
+	R []StreamReply `yaml:"r"`
+}
+
+// StreamReply is a line said when an answer is chosen: by the one who asked (Speaker empty),
+// or by Speaker, a host of the episode (the other of a duo), with the face it is said with.
+type StreamReply struct {
+	Speaker string     `yaml:"-"`
+	Line    StreamLine `yaml:"-"`
+}
+
+// UnmarshalYAML reads a line said by the one who asked ("text" or {face, text}) or by a host
+// of the episode ({id: line}).
+func (r *StreamReply) UnmarshalYAML(unmarshal func(any) error) error {
+	var m map[string]any
+	if err := unmarshal(&m); err == nil && len(m) == 1 {
+		for key := range m {
+			if key != "face" && key != "text" {
+				var v map[string]StreamLine
+				if err := unmarshal(&v); err != nil {
+					return err
+				}
+				r.Speaker, r.Line = key, v[key]
+				return nil
+			}
+		}
+	}
+	return unmarshal(&r.Line)
+}
+
+// replyTexts are the texts of the lines.
+func replyTexts(rs []StreamReply) []string {
+	out := make([]string, len(rs))
+	for i, r := range rs {
+		out[i] = r.Line.Text
+	}
+	return out
 }
 
 // NPCAnswer is a bot viewer's answer: [name, option index from 0].
@@ -383,7 +418,7 @@ func (t StreamTiming) Seconds(b Beat) float64 {
 		for _, o := range b.Ask.Options {
 			sum := 0.0
 			for _, r := range o.R {
-				sum += t.LineSeconds(r)
+				sum += t.LineSeconds(r.Line.Text)
 			}
 			longest = max(longest, sum)
 		}
@@ -735,7 +770,13 @@ func (c *checker) episode(e *Episode, hosts []string) {
 					}
 				}
 				for k, o := range q.Options {
-					c.streamLines(fmt.Sprintf("%s.ask.options[%d].r", w, k), o.R, "from")
+					c.streamLines(fmt.Sprintf("%s.ask.options[%d].r", w, k), replyTexts(o.R), "from")
+					for m, r := range o.R { // said by the one who asked, or by a host
+						speaker(fmt.Sprintf("%s.ask.options[%d].r[%d]", w, k, m), cmp.Or(r.Speaker, q.Who), r.Line.Face)
+						if r.Line.Text == "" {
+							c.errorf(diag.Shape, fmt.Sprintf("%s.ask.options[%d].r[%d]", w, k, m), "a line needs text")
+						}
+					}
 				}
 			}
 		}
@@ -852,10 +893,17 @@ func (c *checker) voiceKeys(ch *Channel) map[string]bool {
 				switch {
 				case b.Line != nil && cmp.Or(b.Speaker, host) == ch.ID:
 					lines = append(lines, b.Line.Text)
-				case b.Ask != nil && cmp.Or(b.Ask.Who, host) == ch.ID:
-					lines = append(lines, b.Ask.Q)
+				case b.Ask != nil:
+					asker := cmp.Or(b.Ask.Who, host)
+					if asker == ch.ID {
+						lines = append(lines, b.Ask.Q)
+					}
 					for _, o := range b.Ask.Options {
-						lines = append(lines, o.R...)
+						for _, r := range o.R {
+							if cmp.Or(r.Speaker, asker) == ch.ID {
+								lines = append(lines, r.Line.Text)
+							}
+						}
 					}
 				}
 			}

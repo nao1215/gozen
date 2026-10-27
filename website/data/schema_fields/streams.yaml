@@ -96,7 +96,9 @@ StreamAsk:
 StreamOption:
   _: "An answer and what is said when it is picked."
   c: "The answer shown on its card and in the chat."
-  r: "The lines said when it is picked. `{from}` is who picked it."
+  r: "The lines said when it is picked (`StreamReply`). `{from}` is who picked it."
+StreamReply:
+  _: "A line said when an answer is picked: by the one who asked, as text or `{face, text}`, or by a host of the episode written with its channel id, `{bo: text}` or `{bo: {face, text}}`, so the two hosts of a duo answer in turn. Its voice is in the folder of the one who says it."
 StreamAffection:
   _: "How a viewer earns a channel's affection. The steps raise the gold earned away and the chance of an answer being picked."
   steps: "The points each step starts at, from 0 and increasing. The default is [0, 30, 150, 600, 3000]."

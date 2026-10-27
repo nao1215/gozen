@@ -1002,6 +1002,30 @@ func TestStreamsGuestInTheLobby(t *testing.T) {
 	}
 }
 
+// TestStreamsDuoAnswerInTurn: a line of an answer written for the other host of a duo is
+// said by that host.
+func TestStreamsDuoAnswerInTurn(t *testing.T) {
+	fsys := streamsFS(t, "1")
+	fsys["streams/duo.yaml"].Data = []byte(strings.Replace(string(fsys["streams/duo.yaml"].Data), "    - bo: {face: surprised, text: Hello from Bo!}\n", "    - ask: {q: Beans or peas?, options: [{c: Beans, r: [{bo: Bo likes beans.}, Me too.]}, {c: Peas, r: [{bo: {face: surprised, text: Peas for Bo.}}]}], npc: [[leaf, 0]]}\n", 1))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok || len(l.cards) != 1 {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	show := l.cards[0].show
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	for i := 0; i < 4000 && !strings.Contains(chatText(w), "Me too."); i++ {
+		wldFrames(t, g, 1)
+	}
+	if chat := chatText(w); !strings.Contains(chat, "Bo: Bo likes beans.") || !strings.Contains(chat, "Ann: Me too.") {
+		t.Fatalf("the answer's lines are not said in turn:\n%s", chat)
+	}
+}
+
 // hosts are the keys of the shows.
 func hosts(shows []*broadcast.Show) []string {
 	var out []string

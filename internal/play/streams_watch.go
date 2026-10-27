@@ -582,8 +582,14 @@ func (w *streamWatch) answer(g *Game) {
 		n := q.NPC[g.desk.rng.IntN(len(q.NPC))]
 		who, option = g.db.Tr(n.Name), n.Option
 	}
-	for _, r := range q.Options[option].R {
-		w.queue = append(w.queue, dataLine(w.askHost, r, who, 0))
+	for _, r := range q.Options[option].R { // said by the one who asked, or by a host
+		host := w.askHost
+		if r.Speaker != "" {
+			host = w.host(r.Speaker)
+		}
+		l := dataLine(host, r.Line.Text, who, 0)
+		l.face = r.Line.Face
+		w.queue = append(w.queue, l)
 	}
 	w.step(g)
 }

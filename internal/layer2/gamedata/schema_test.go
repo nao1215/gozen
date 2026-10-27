@@ -282,7 +282,7 @@ var streamTypes = map[reflect.Type]bool{
 	reflect.TypeFor[Episode](): true, reflect.TypeFor[Beat](): true, reflect.TypeFor[StreamLine](): true,
 	reflect.TypeFor[StreamAsk](): true, reflect.TypeFor[StreamOption](): true, reflect.TypeFor[StreamAffection](): true,
 	reflect.TypeFor[StreamEcho](): true, reflect.TypeFor[StreamBounce](): true, reflect.TypeFor[CrowdLines](): true,
-	reflect.TypeFor[StreamSlot](): true,
+	reflect.TypeFor[StreamSlot](): true, reflect.TypeFor[StreamReply](): true,
 }
 
 // version2Fields are the fields added in spec version 2 (ADR 0021).

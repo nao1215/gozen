@@ -95,6 +95,7 @@ func TestStreamsCheck(t *testing.T) {
 		{"a family that is no bool", edit("streams/bo/1.yaml", "title: Garden tour", "title: Garden tour\nfamily: maybe"), "Family of type bool"},
 		{"a line of no time", edit("data/streams.yaml", "say: 1.8,", "say: 0.001,"), "at least 0.1 seconds"},
 		{"a channel id of a duo's name", edit("data/streams.yaml", "  - id: bo\n", "  - id: bo+cy\n"), "without +"},
+		{"an answer said by no host", edit("streams/ann/1.yaml", "r: [Peas it is.]", "r: [{bo: Peas it is.}]"), `"bo" is not a host`},
 		{"an unlock below 0", edit("data/streams.yaml", "host: ann, with: bo,", "host: ann, with: bo, unlock: -1,"), "duos[0].unlock"},
 		{"a guest with an episode", edit("data/streams.yaml", "  - id: bo\n", "  - id: bo\n    guest: true\n"), "a guest has no episodes"},
 		{"a bridge with a field", edit("data/streams.yaml", "first: [", "bridges: [\"Back, {from}.\"]\n    first: ["), "unknown {from}"},
@@ -180,5 +181,35 @@ func TestStreamsGuest(t *testing.T) {
 	}
 	if _, err := testgame.TryLoad(guest("host: bo, with: ann")); err == nil || !strings.Contains(err.Error(), "a guest hosts no duo") {
 		t.Fatalf("a duo hosted by a guest: %v", err)
+	}
+}
+
+// TestStreamsAnswerSpeakers: a line of an answer is said by the asker (a string, or its
+// {face, text}), or by a host of the episode written as {id: line}, with a face too.
+func TestStreamsAnswerSpeakers(t *testing.T) {
+	g := streamGame()
+	g["streams/ann-bo/1.yaml"] = strings.Replace(g["streams/ann-bo/1.yaml"], "r: [Peas it is.]", "r: [{bo: {face: smile, text: Peas for Bo.}}, {face: smile, text: Peas it is.}, Peas.]", 1)
+	db := testgame.Load(t, g)
+	r := db.Streams.Duos[0].Shows[0].Beats()[3].Ask.Options[1].R
+	if len(r) != 3 || r[0].Speaker != "bo" || r[0].Line != (data.StreamLine{Face: "smile", Text: "Peas for Bo."}) || r[1].Speaker != "" || r[1].Line.Face != "smile" || r[2].Line.Text != "Peas." {
+		t.Fatalf("the answer's lines %+v", r)
+	}
+	texts := map[string]bool{}
+	for _, st := range db.SourceTexts() {
+		texts[st.Text] = true
+	}
+	if !texts["Peas for Bo."] {
+		t.Error("a line of an answer said by a host is not a text to translate")
+	}
+	// its voice is in the folder of the one who says it
+	g["data/streams.yaml"] = "voices: voice\n" + g["data/streams.yaml"]
+	g["assets/voice/bo/"+data.VoiceKey("Peas for Bo.")+".ogg"] = "x"
+	g["assets/voice/ann/"+data.VoiceKey("Peas for Bo.")+".ogg"] = "x"
+	var w strings.Builder
+	for _, e := range testgame.Load(t, g).SceneWarnings() {
+		w.WriteString(e.Error() + "\n")
+	}
+	if strings.Contains(w.String(), "bo/"+data.VoiceKey("Peas for Bo.")) || !strings.Contains(w.String(), "ann/"+data.VoiceKey("Peas for Bo.")+".ogg is the voice of no line") {
+		t.Errorf("the voice of bo's line of an answer:\n%s", w.String())
 	}
 }
