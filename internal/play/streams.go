@@ -77,7 +77,11 @@ func (g *Game) stepStreams() {
 		default:
 			now = time.Now()
 		}
-		g.emit("now", traceLine{"unix_ms": now.UnixMilli()})
+		// the clock keeps the offset from UTC it was read at for the run (across a change
+		// of summer time too), which a replay reads back with the time
+		_, offset := now.Zone()
+		now = now.In(time.FixedZone("", offset))
+		g.emit("now", traceLine{"unix_ms": now.UnixMilli(), "utc_offset": offset})
 		g.desk = &streamDesk{base: now, tick0: g.tick, rng: rand.New(rand.NewPCG(g.opts.Seed, uint64(now.UnixMilli()))), avatars: map[string]*ebiten.Image{}} //nolint:gosec // Who streams is not security-sensitive.
 		if v := g.db.Streams.Voices; v != "" {
 			st, err := fs.Stat(g.db.FS, "assets/"+v)

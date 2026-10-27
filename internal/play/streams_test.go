@@ -222,10 +222,16 @@ func TestStreamsDuoAndAway(t *testing.T) {
 	}
 }
 
-// TestStreamsReplayReadsTheRecordedClock: the trace records the time the run read, and a
-// replay plays the streams at that time, not at its own, so it does not diverge.
+// TestStreamsReplayReadsTheRecordedClock: the trace records the time the run read with its
+// offset from UTC, and a replay plays the streams at that time where it was read, not at its
+// own time or in its own zone, so it does not diverge: just after midnight in Tokyo is that
+// day and hour in a replay on a machine set to UTC.
 func TestStreamsReplayReadsTheRecordedClock(t *testing.T) {
 	covSlow(t)
+	tokyo := time.Date(2026, 10, 28, 0, 30, 0, 0, time.FixedZone("JST", 9*3600))
+	local := time.Local
+	time.Local = time.UTC
+	t.Cleanup(func() { time.Local = local })
 	path := filepath.Join(t.TempDir(), "run.jsonl")
 	f, err := os.Create(path) //nolint:gosec // a file in the test directory
 	if err != nil {
@@ -234,7 +240,7 @@ func TestStreamsReplayReadsTheRecordedClock(t *testing.T) {
 	fsys := streamsFS(t, "0")
 	g, err := New(Options{
 		FS: fsys, NoSound: true, Seed: 3, SaveDir: t.TempDir(), ShotDir: t.TempDir(), Location: "booth", Trace: f,
-		Script: "wait 30\npress ok\nwait 300\nquit", Now: func() time.Time { return noonish },
+		Script: "wait 30\npress ok\nwait 300\nquit", Now: func() time.Time { return tokyo },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -254,8 +260,11 @@ func TestStreamsReplayReadsTheRecordedClock(t *testing.T) {
 	if !sysFrames(t, r, 5000) {
 		t.Fatal("the replay did not end")
 	}
-	if r.rep.diverge != "" || !r.rep.finished || !r.desk.base.Equal(noonish) {
+	if r.rep.diverge != "" || !r.rep.finished || !r.desk.base.Equal(tokyo) {
 		t.Fatalf("diverged %q, finished %v, clock %v", r.rep.diverge, r.rep.finished, r.desk.base)
+	}
+	if _, off := r.desk.base.Zone(); off != 9*3600 || broadcast.Day(r.desk.base) != broadcast.Day(tokyo) || r.desk.base.Hour() != 0 {
+		t.Fatalf("the replay's clock %v is not the day and hour read in Tokyo (%v)", r.desk.base, tokyo)
 	}
 }
 

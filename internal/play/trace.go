@@ -522,7 +522,8 @@ func (g *Game) isAutopilot() bool {
 }
 
 type replay struct {
-	// now is the time the recorded run read for its streams (the "now" line).
+	// now is the time the recorded run read for its streams, at its offset from UTC (the
+	// "now" line).
 	now         time.Time
 	inputs      map[int]traceLine
 	acts        map[int][]traceLine
@@ -686,7 +687,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 		case "live_reload":
 			reloads = append(reloads, tick)
 		case "now":
-			r.now = time.UnixMilli(int64(num(l["unix_ms"])))
+			r.now = time.UnixMilli(int64(num(l["unix_ms"]))).In(time.FixedZone("", int(num(l["utc_offset"]))))
 		default:
 			if r.checked(k) {
 				r.expectLine(k, l)
