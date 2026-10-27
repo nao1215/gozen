@@ -204,6 +204,167 @@ scenarios:
       - eval: "goZenLoad.files.total > 0 && goZenLoad.files.done === goZenLoad.files.total"
   - assert: {value: {equals: true}}
 
+- name: a page starts however its pieces come and keeps the game running as media come late
+  tags: [web]
+  services:
+  # /v/MODE/ serves the export: "late" holds the sounds until the file release exists,
+  # and the other modes send the gzipped player in pieces of 1, 1 and 1, or 2 bytes
+  # first, uncompressed, undone by the host (Content-Encoding) or empty.
+  - name: site
+    command: |
+      python3 -c '
+      import gzip, time
+      from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+      from pathlib import Path
+      class Site(SimpleHTTPRequestHandler):
+          def do_GET(self):
+              parts = self.path.split("/", 3)
+              if len(parts) < 4 or parts[1] != "v":
+                  return super().do_GET()
+              mode, rest = parts[2], parts[3]
+              self.path, name = "/site/games/voices/" + rest, rest.split("?")[0]
+              if mode == "late" and name.endswith((".ogg", ".wav.gz")):
+                  while not Path("release").exists():
+                      time.sleep(0.1)
+              if mode == "late" or name != "gozen-player.wasm.gz":
+                  return super().do_GET()
+              b = Path("site/games/voices/gozen-player.wasm.gz").read_bytes()
+              pieces = {"one": [b[:1], b[1:]], "ones": [b[:1], b[1:2], b[2:]], "two": [b[:2], b[2:]], "plain": [gzip.decompress(b)], "encoded": [b], "empty": []}[mode]
+              self.send_response(200)
+              self.send_header("Content-Type", "application/octet-stream")
+              if mode == "encoded":
+                  self.send_header("Content-Encoding", "gzip")
+              self.end_headers()
+              for piece in pieces:
+                  self.wfile.write(piece)
+                  self.wfile.flush()
+                  time.sleep(0.3)
+      s = ThreadingHTTPServer(("127.0.0.1", 0), Site)
+      Path("address").write_text("http://127.0.0.1:" + str(s.server_port))
+      s.serve_forever()
+      '
+    ready: {file: address, store: origin, timeout: 5s}
+  steps:
+  - fixture:
+      file: game/game.yaml
+      content: "schema_version: 9\nid: stream-late\ntitle: Late\nlanguage: en\nstart: {location: booth}\nstreams: data/streams.yaml\n"
+  - fixture:
+      file: game/data/world.yaml
+      content: "actors: {host: {name: Host, puppet: p/puppet.yaml}}\nlocations: {booth: {name: Booth, stream: lobby}}\n"
+  - fixture:
+      file: game/data/streams.yaml
+      content: "voices: voice\ntiming: {say: 2, per_char: 0.1, chat: 2, ask: 10}\ntips: [10]\ncrowd: {names: [leaf], lines: [Hi], tip_lines: [Here], rate: 0.5}\nchannels: [{id: host, actor: host, room: room.png, frame: {cx: 32, top: 0, bottom: 96}, episodes: [streams/one.yaml]}]\n"
+  - fixture: {file: game/streams/one.yaml, content: "title: Listen\nparts: [[{say: 'Hello, listener.'}, {chat: [leaf, Hi there]}]]\n"}
+  - fixture: {file: game/assets/p/puppet.yaml, content: "base: base.png\nface: normal\nfaces: {normal: {}}\n"}
+  - fixture: {file: game/assets/p/base.png, from: fixtures/puppet/base.png}
+  - fixture: {file: game/assets/room.png, from: fixtures/game/assets/mote.png}
+  - fixture: {file: game/assets/voice/host/4710afdb1942b927.ogg, from: fixtures/game/assets/tone.ogg}
+  # a second of silence, which the export gzips: still a sound, fetched after the game starts
+  - run:
+      command: >-
+        python3 -c "import wave; w = wave.open('game/assets/quiet.wav', 'wb'); w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100); w.writeframes(bytes(88200)); w.close()"
+  - assert: {exit_code: 0}
+  - run:
+      command: 'gozen export game --target web --out site/games/voices --runtime "${env:GOZEN_WEB_RUNTIME}" --format jsonl'
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: $.status, equals: ok}
+  - assert:
+      file: {path: site/games/voices/game/files.json, contains: '"file":"assets/quiet.wav.gz"'}
+  # the game starts while its sounds are held back (the page tells in data-state when it
+  # started or failed), and goes on drawing after they come
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/v/late/?fps'
+      - eval: &started |
+          (async () => {
+            let state = 'still loading';
+            for (let i = 0; i < 600; i++) {
+              const loading = document.getElementById('loading');
+              if (!loading) state = 'started';
+              else if (loading.textContent.startsWith('Could not start')) state = loading.textContent;
+              else {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                continue;
+              }
+              break;
+            }
+            document.body.dataset.state = state;
+          })(); true
+      - wait_visible: &stated 'body[data-state]'
+      - eval: &state "document.body.dataset.state"
+  - assert: {value: {json: {path: '$', equals: started}}}
+  - fixture: {file: release, content: "now\n"}
+  - cdp:
+      runner: browser
+      actions:
+      - eval: |
+          (async () => {
+            const wait = () => new Promise(resolve => setTimeout(resolve, 100));
+            for (let i = 0; i < 300 && !(goZenLoad.files.done === goZenLoad.files.total); i++) await wait();
+            window.gozenStats = undefined;
+            let state = 'the game stopped';
+            for (let i = 0; i < 50 && state !== 'running'; i++) {
+              if (window.gozenStats) state = goZenLoad.files.done === goZenLoad.files.total ? 'running' : 'files missing';
+              else await wait();
+            }
+            document.body.dataset.alive = state;
+          })(); true
+      - wait_visible: 'body[data-alive]'
+      - eval: "document.body.dataset.alive"
+  - assert: {value: {json: {path: '$', equals: running}}}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/v/one/'
+      - eval: *started
+      - wait_visible: *stated
+      - eval: *state
+  - assert: {value: {json: {path: '$', equals: started}}}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/v/ones/'
+      - eval: *started
+      - wait_visible: *stated
+      - eval: *state
+  - assert: {value: {json: {path: '$', equals: started}}}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/v/two/'
+      - eval: *started
+      - wait_visible: *stated
+      - eval: *state
+  - assert: {value: {json: {path: '$', equals: started}}}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/v/plain/'
+      - eval: *started
+      - wait_visible: *stated
+      - eval: *state
+  - assert: {value: {json: {path: '$', equals: started}}}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/v/encoded/'
+      - eval: *started
+      - wait_visible: *stated
+      - eval: *state
+  - assert: {value: {json: {path: '$', equals: started}}}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/v/empty/'
+      - eval: *started
+      - wait_visible: *stated
+      - eval: *state
+  - assert: {value: {contains: 'Could not start'}}
+
 - name: web export requires a runtime option
   steps:
   - run: {command: 'gozen export game --target web --out out'}
