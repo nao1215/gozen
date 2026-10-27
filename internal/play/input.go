@@ -113,21 +113,24 @@ var pads = [numButtons][]ebiten.StandardGamepadButton{
 
 type input struct {
 	pressed [numButtons]bool
-	held    [numButtons]bool
-	fast    bool
-	esc     bool
-	shift   bool
-	digit   int
-	mouse   image.Point
-	ui      float64
-	moved   bool
-	click   bool
-	rclick  bool
-	wheel   float64
-	script  *script
-	replay  *replay
-	tick    int
-	lastXY  image.Point
+	// pad are the buttons pressed with a pad: a field that takes the keyboard's keys as text
+	// still takes a pad's OK and Cancel.
+	pad    [numButtons]bool
+	held   [numButtons]bool
+	fast   bool
+	esc    bool
+	shift  bool
+	digit  int
+	mouse  image.Point
+	ui     float64
+	moved  bool
+	click  bool
+	rclick bool
+	wheel  float64
+	script *script
+	replay *replay
+	tick   int
+	lastXY image.Point
 
 	stick [4]int
 	pads  []ebiten.GamepadID
@@ -148,7 +151,7 @@ type input struct {
 }
 
 func (in *input) update() {
-	in.pressed = [numButtons]bool{}
+	in.pressed, in.pad = [numButtons]bool{}, [numButtons]bool{}
 	in.click, in.rclick, in.moved, in.wheel = false, false, false, 0
 	in.began, in.swipe, in.swiped = false, 0, in.swiped && in.touching
 	in.esc, in.shift = false, false
@@ -305,7 +308,7 @@ func (in *input) gamepads() {
 					in.held[b] = true
 				}
 				if d == 1 || (d > 18 && d%5 == 0 && button(b) <= btnRight) {
-					in.pressed[b] = true
+					in.pressed[b], in.pad[b] = true, true
 				}
 			}
 		}

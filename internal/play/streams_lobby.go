@@ -128,7 +128,7 @@ func (l *streamLobby) updateName(g *Game) {
 	// the keys that were text are not Enter; the button is pressed even while a phone's
 	// keyboard still composes (taking the name confirms it)
 	typed := in.devices() && l.name.readTyping()
-	ok := !in.devices() && in.pressed[btnOK] || in.devices() && !typed && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter))
+	ok := !in.devices() && in.pressed[btnOK] || in.devices() && !typed && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter) || in.pad[btnOK])
 	sw, _ := g.screen()
 	if _, by, _ := nameBox(g); !ok && !g.clickedIn(sw/2-60, by+nameOK, 120, 40) {
 		return
