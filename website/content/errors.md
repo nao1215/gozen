@@ -15,7 +15,7 @@ Codes are assigned one family at a time. A diagnostic without a code still exits
 
 | Codes | Exit | Meaning | Assigned |
 |---------|---------|---------|---------|
-| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 19 codes |
+| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 20 codes |
 | `GZN02xx` | 0 | warnings of a measurement or a record | not yet |
 | `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 13 codes |
 | `GZN12xx` | 1 | fonts and text layout | 1 codes |
@@ -187,6 +187,14 @@ A stream voice is missing its folder or matches no line.
 The voices folder of the streams file does not exist, holds something other than a folder for each channel, or holds a file that is not the recorded voice of a line the channel says: its name is not the voice key of one of the channel's lines (in any language the game offers) followed by .ogg, usually because the line changed after the voice was recorded. A line without its voice is still read by speech synthesis in a browser and captioned elsewhere.
 
 Fix: Record the voices again for the lines as they are now and remove the old files, or correct voices in the streams file.
+
+### GZN0120
+
+A stream voice is not Ogg Vorbis.
+
+A recorded voice of a line is not an Ogg Vorbis file: Ogg Opus (what many recorders and speech engines write), a WAV or another file named .ogg. gozen cannot play it, so the line is read by speech synthesis in a browser and only captioned elsewhere.
+
+Fix: Convert the voice to Ogg Vorbis (for example: ffmpeg -i in.ogg -c:a libvorbis -q:a 4 out.ogg).
 
 ## GZN11xx
 

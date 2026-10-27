@@ -2,8 +2,10 @@ package play
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image/color"
+	"io/fs"
 	"log"
 	"maps"
 	"math"
@@ -408,6 +410,11 @@ func (w *streamWatch) voiced(g *Game) {
 	l := traceLine{"file": v.file, "who": w.show.Hosts[w.captionWho].ID}
 	if v.err != nil {
 		l["missing"] = true
+		if !errors.Is(v.err, fs.ErrNotExist) && !g.desk.voiceFailed { // once: the voices are of one making
+			g.desk.voiceFailed = true
+			l["error"] = v.err.Error() + " (gozen plays Ogg Vorbis voices)"
+			log.Printf("streams: %s: %s", v.file, l["error"])
+		}
 		g.emit("voice", l)
 		// the line's own timing, from now when it waited for the voice to load
 		w.busy = minTime(w.busy, now.Add(seconds(g.db.Streams.Timing.LineSeconds(w.caption))+w.hold))

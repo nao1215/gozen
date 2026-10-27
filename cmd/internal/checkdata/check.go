@@ -45,7 +45,7 @@ func Load(fsys fs.FS, out, diagnostics io.Writer) (*gamedata.DB, error) {
 			return nil, err
 		}
 	}
-	for _, warnings := range [][]error{db.AIWarnings(), db.SetWarnings(), db.SceneWarnings(), db.FlagWarnings()} {
+	for _, warnings := range [][]error{db.AIWarnings(), db.SetWarnings(), db.SceneWarnings(), db.FlagWarnings(), db.VoiceWarnings()} {
 		for _, w := range warnings {
 			if _, err = fmt.Fprintf(diagnostics, "warning: %v\n", w); err != nil {
 				return nil, err
@@ -80,7 +80,7 @@ func Diagnose(fsys fs.FS) (*gamedata.DB, gamedata.Diagnostics) {
 	for _, w := range languageWarnings(fsys, &db.Game) {
 		out = append(out, gamedata.Diagnostic{File: "game.yaml", Path: "language", Message: w, Severity: "warning", Code: diag.LanguageWords.String()})
 	}
-	for _, warnings := range [][]error{db.AIWarnings(), db.SetWarnings(), db.SceneWarnings(), db.FlagWarnings()} {
+	for _, warnings := range [][]error{db.AIWarnings(), db.SetWarnings(), db.SceneWarnings(), db.FlagWarnings(), db.VoiceWarnings()} {
 		out = append(out, gamedata.Diagnose(errors.Join(warnings...), "warning")...)
 	}
 	return db, out

@@ -1,6 +1,7 @@
 package gamedata_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -122,11 +123,13 @@ func TestStreamsVoices(t *testing.T) {
 	if w := warnings(g); !strings.Contains(w, "GZN0119") || !strings.Contains(w, "no folder assets/voice") {
 		t.Errorf("a missing voices folder is not warned of:\n%s", w)
 	}
-	g["assets/voice/ann/6f2529aa52538b73.ogg"] = "x" // Hello, everyone.
-	g["assets/voice/ann/70624a7e70244116.ogg"] = "x" // Welcome, {from}.
-	g["assets/voice/bo/6f2529aa52538b73.ogg"] = "x"  // in the duo too
-	g["assets/voice/ann/0000000000000000.ogg"] = "x" // no line
-	g["assets/voice/cy/6f2529aa52538b73.ogg"] = "x"  // no channel
+	// an Ogg page's header, 27 bytes and a segment table of one segment, then the packet
+	ogg := func(packet string) string { return "OggS" + strings.Repeat("\x00", 22) + "\x01\x1e" + packet }
+	g["assets/voice/ann/6f2529aa52538b73.ogg"] = ogg("\x01vorbis") // Hello, everyone.
+	g["assets/voice/ann/70624a7e70244116.ogg"] = ogg("OpusHead")   // Welcome, {from}.
+	g["assets/voice/bo/6f2529aa52538b73.ogg"] = "RIFF....WAVE"     // in the duo too
+	g["assets/voice/ann/0000000000000000.ogg"] = "x"               // no line
+	g["assets/voice/cy/6f2529aa52538b73.ogg"] = "x"                // no channel
 	w := warnings(g)
 	for _, want := range []string{"assets/voice/ann/0000000000000000.ogg is the voice of no line of ann", "assets/voice/cy is not the folder of a channel"} {
 		if !strings.Contains(w, want) {
@@ -135,6 +138,20 @@ func TestStreamsVoices(t *testing.T) {
 	}
 	if strings.Count(w, "GZN0119") != 2 {
 		t.Errorf("the voices of lines are warned of:\n%s", w)
+	}
+	// gozen reads Ogg Vorbis: gozen check warns of a voice of a line in Opus or WAV, not of
+	// a Vorbis one; loading the game reads no voice
+	if strings.Contains(w, "GZN0120") {
+		t.Errorf("loading the game reads the voices:\n%s", w)
+	}
+	w = fmt.Sprint(testgame.Load(t, g).VoiceWarnings())
+	for _, want := range []string{"assets/voice/ann/70624a7e70244116.ogg is Ogg Opus", "assets/voice/bo/6f2529aa52538b73.ogg is not an Ogg file"} {
+		if !strings.Contains(w, want) {
+			t.Errorf("no warning %q:\n%s", want, w)
+		}
+	}
+	if strings.Count(w, "GZN0120") != 2 {
+		t.Errorf("not 2 voices warned of as unreadable:\n%s", w)
 	}
 	if s := testgame.Load(t, g).Streams; s.Voice("ann", "Hello, everyone.") != "assets/voice/ann/6f2529aa52538b73.ogg" || s.Voice("ann", "") != "" {
 		t.Errorf("voice file %q", s.Voice("ann", "Hello, everyone."))

@@ -52,6 +52,8 @@ type streamDesk struct {
 	toastT int
 	// kept is when keepOpen last wrote the autosave.
 	kept time.Time
+	// voiceFailed is whether a voice that is there could not be played (it is said once).
+	voiceFailed bool
 	// left is the beat the watch view of each show was to play next when it was left: it
 	// goes at its own pace, ahead of the stream's clock at times, and a show opened again
 	// comes in there rather than say again what was heard.

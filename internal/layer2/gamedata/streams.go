@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"path"
 	"regexp"
@@ -742,6 +743,65 @@ func (c *checker) streamVoices() {
 			}
 		}
 	}
+}
+
+// VoiceWarnings are the warnings of the recorded stream voices of lines that gozen cannot
+// play, not Ogg Vorbis (GZN0120). gozen check reads the head of each voice for them, which
+// loading the game does not: a browser fetches a voice only when its line comes (ADR 0051).
+func (db *DB) VoiceWarnings() []error {
+	s := db.Streams
+	if s == nil || s.Voices == "" {
+		return nil
+	}
+	c := &checker{db: db}
+	dir := "assets/" + s.Voices
+	for _, ch := range s.Channels {
+		if ch == nil {
+			continue
+		}
+		files, err := fs.ReadDir(db.FS, dir+"/"+ch.ID)
+		if err != nil {
+			continue
+		}
+		keys := c.voiceKeys(ch)
+		for _, f := range files {
+			name := dir + "/" + ch.ID + "/" + f.Name()
+			if key, ok := strings.CutSuffix(f.Name(), ".ogg"); !ok || f.IsDir() || !keys[key] {
+				continue // GZN0119
+			}
+			if format := oggCodec(db.FS, name); format != "vorbis" {
+				c.warnf(diag.VoiceFormat, s.file+" voices", "%s is %s: gozen plays Ogg Vorbis; convert it", name, format)
+			}
+		}
+	}
+	return sortedDiagnostics(c.warns)
+}
+
+// oggCodec is "vorbis" for an Ogg Vorbis file, else what the file is ("Ogg Opus", "not an
+// Ogg file"), read from its first page: the identification header of the first packet.
+func oggCodec(fsys fs.FS, name string) string {
+	f, err := fsys.Open(name)
+	if err != nil {
+		return "unreadable"
+	}
+	defer f.Close() //nolint:errcheck // Read only.
+	b := make([]byte, 27+255+8)
+	n, err := io.ReadFull(f, b)
+	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, io.EOF) { // a short file is read whole
+		return "unreadable"
+	}
+	b = b[:n]
+	if len(b) < 27 || string(b[:4]) != "OggS" {
+		return "not an Ogg file"
+	}
+	packet := b[min(len(b), 27+int(b[26])):]
+	switch {
+	case strings.HasPrefix(string(packet), "\x01vorbis"):
+		return "vorbis"
+	case strings.HasPrefix(string(packet), "OpusHead"):
+		return "Ogg Opus"
+	}
+	return "an Ogg file of another codec"
 }
 
 // voiceKeys are the voice keys of the lines the channel says, in every language offered:

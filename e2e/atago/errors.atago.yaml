@@ -67,6 +67,27 @@ scenarios:
   - assert:
       exit_code: 0
       stderr: {contains: ['[GZN0119]', 'assets/voice/host/0000000000000000.ogg is the voice of no line of host']}
+- name: GZN0120 for a stream voice that is not Ogg Vorbis
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 9\nid: g\nstart: {location: room}\nstreams: data/streams.yaml\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "actors: {host: {name: Host, puppet: p/rig.yaml}}\nlocations: {room: {}}\n"
+  - fixture:
+      file: g/data/streams.yaml
+      content: "voices: voice\ntiming: {say: 2, per_char: 0.1, chat: 2, ask: 10}\ntips: [10]\ncrowd: {names: [leaf], lines: [Hi], tip_lines: [Here], rate: 0.5}\nchannels: [{id: host, actor: host, room: x.png, frame: {cx: 1, top: 0, bottom: 1}, episodes: [streams/one.yaml]}]\n"
+  - fixture: {file: g/streams/one.yaml, content: "title: Short\nlobby: [Short]\nparts: [[{say: Hello.}]]\n"}
+  - fixture: {file: g/assets/p/rig.yaml, content: "base: base.png\nface: normal\nfaces: {normal: {}}\n"}
+  - fixture: {file: g/assets/p/base.png, from: fixtures/game/assets/mote.png}
+  - fixture: {file: g/assets/x.png, content: x}
+  # the voice of "Hello." (the first 16 hex digits of its SHA-1), written as a WAV
+  - fixture: {file: g/assets/voice/host/9b56d519ccd9e1e5.ogg, content: "RIFF....WAVEfmt "}
+  - run: {command: "gozen check --only structure g"}
+  - assert:
+      exit_code: 0
+      stderr: {contains: ['[GZN0120]', 'assets/voice/host/9b56d519ccd9e1e5.ogg is not an Ogg file: gozen plays Ogg Vorbis']}
 - name: GZN1113 for a recruit level above the monster class maximum
   steps:
   - fixture:

@@ -1,6 +1,7 @@
 package play
 
 import (
+	"bytes"
 	"cmp"
 	"encoding/json"
 	"fmt"
@@ -811,6 +812,35 @@ func TestStreamsTipMessage(t *testing.T) {
 	key(btnOK)
 	if w.tips || w.field.text != "" || !strings.Contains(chatText(w), "Pat: for seeds") || len(w.cheers) != 1 || w.cheers[0].text != "for seeds" {
 		t.Fatalf("a tip with its message: open %v, field %q, chat:\n%s", w.tips, w.field.text, chatText(w))
+	}
+}
+
+// TestStreamsVoiceUnreadableSaysWhy: a voice gozen cannot play (Ogg Opus) is a line without
+// its voice, and the first one says why in the trace (and the log, a browser's console).
+func TestStreamsVoiceUnreadableSaysWhy(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	fsys["data/streams.yaml"].Data = append([]byte("voices: voice\n"), fsys["data/streams.yaml"].Data...)
+	opus := []byte("OggS" + strings.Repeat("\x00", 22) + "\x01\x13OpusHead")
+	for _, l := range []string{"Hello, everyone.", "That is all for today!"} {
+		fsys["assets/voice/ann/"+data.VoiceKey(l)+".ogg"] = &fstest.MapFile{Data: opus}
+	}
+	var trace bytes.Buffer
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }, Trace: &trace})
+	wldFrames(t, g, 40)
+	g.st.Streams.Viewer = "Pat"
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })].show
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	for i := 0; i < 4000 && !w.ended; i++ {
+		wldFrames(t, g, 1)
+	}
+	if n := strings.Count(trace.String(), `"error":`); n != 1 || !strings.Contains(trace.String(), "Ogg Vorbis") {
+		t.Fatalf("%d reasons in the trace, not 1 naming Ogg Vorbis:\n%s", n, trace.String())
 	}
 }
 

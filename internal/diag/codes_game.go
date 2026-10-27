@@ -98,6 +98,11 @@ var (
 		Detail:  "The voices folder of the streams file does not exist, holds something other than a folder for each channel, or holds a file that is not the recorded voice of a line the channel says: its name is not the voice key of one of the channel's lines (in any language the game offers) followed by .ogg, usually because the line changed after the voice was recorded. A line without its voice is still read by speech synthesis in a browser and captioned elsewhere.",
 		Fix:     "Record the voices again for the lines as they are now and remove the old files, or correct voices in the streams file.",
 	})
+	VoiceFormat = register(120, "VoiceFormat", Entry{
+		Summary: "a stream voice is not Ogg Vorbis",
+		Detail:  "A recorded voice of a line is not an Ogg Vorbis file: Ogg Opus (what many recorders and speech engines write), a WAV or another file named .ogg. gozen cannot play it, so the line is read by speech synthesis in a browser and only captioned elsewhere.",
+		Fix:     "Convert the voice to Ogg Vorbis (for example: ffmpeg -i in.ogg -c:a libvorbis -q:a 4 out.ogg).",
+	})
 )
 
 // GZN11xx: the definitions of the game. The game does not load, and check
