@@ -478,13 +478,15 @@ func (l *streamLobby) drawCard(g *Game, dst *ebiten.Image, c *lobbyCard, i int, 
 	if g.view.tall {
 		badge = 15
 	}
-	lw := gfx.TextWidth("LIVE", badge) + 14
-	gfx.FillRoundRect(dst, float32(x+8), float32(y+8), float32(lw), float32(badge+7), 3, streamLive)
-	gfx.DrawText(dst, "LIVE", x+8+lw/2, y+9, badge, streamPanel)
-	views := fmt.Sprintf(lang.T("%d人が視聴中"), c.viewers)
-	vw := gfx.TextWidth(views, badge)
-	rect(dst, x+14+lw, y+8, vw+12, badge+7, withAlpha(colorBlack, 0xa0))
-	gfx.DrawTextLeft(dst, views, x+20+lw, y+9, badge, streamPanel)
+	gfx.Pop(func() {
+		lw := gfx.TextWidth("LIVE", badge) + 14
+		gfx.FillRoundRect(dst, float32(x+8), float32(y+8), float32(lw), float32(badge+7), 3, streamLive)
+		gfx.DrawText(dst, "LIVE", x+8+lw/2, y+9, badge, streamPanel)
+		views := fmt.Sprintf(lang.T("%d人が視聴中"), c.viewers)
+		vw := gfx.TextWidth(views, badge)
+		rect(dst, x+14+lw, y+8, vw+12, badge+7, withAlpha(colorBlack, 0xa0))
+		gfx.DrawTextLeft(dst, views, x+20+lw, y+9, badge, streamPanel)
+	})
 	size, pad := 13.0, 0.0
 	my := y + h + 8
 	if big {
@@ -512,7 +514,9 @@ func (l *streamLobby) drawCard(g *Game, dst *ebiten.Image, c *lobbyCard, i int, 
 		g.drawStars(dst, x+w-pad-stars, my+9, g.step(host))
 		nameW = ax - tx - 8
 	}
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(g.showName(c.show), size+1, nameW), tx, my, size+1, streamInk)
+	gfx.Pop(func() {
+		gfx.DrawTextLeft(dst, gfx.Ellipsis(g.showName(c.show), size+1, nameW), tx, my, size+1, streamInk)
+	})
 	// the episode's lobby lines in turn, else the channel's tagline or tag (never the title)
 	sub := g.db.Tr(cmp.Or(host.Tagline, host.Tag))
 	if lines := c.show.Episodes[c.show.Part(c.beat)].Lobby; len(lines) > 0 {

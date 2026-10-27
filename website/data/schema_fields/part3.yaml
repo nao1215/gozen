@@ -92,7 +92,7 @@ FloorPlan:
   seed: "The random seed for this floor, taking priority over the dungeon's `seed`."
 Fonts:
   _: "The font files used by the game, as paths under assets/. All are optional: without them the text is set in Go Regular, which Gozen carries and which has Latin letters only."
-  pop: "The font used for pop-up text such as damage numbers."
+  pop: "The font used for pop-up text such as damage numbers (text all ASCII), and for the decorations of the stream screens: the bar's title, LIVE, the viewers, the hosts' names and the name plate, the glyphs it lacks in the regular font."
   regular: "The font used for ordinary text. When omitted, the built-in Go Regular is used; it has Latin letters only, so a game in Japanese or another script names its own font here. gozen check warns about characters the built-in font cannot draw."
   subtitle: "The font of the title screen's subtitle. When empty, the title's font is used."
   title: "The font of the title screen's title and subtitle. When empty, the regular font is used."

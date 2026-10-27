@@ -971,8 +971,8 @@ func (w *streamWatch) draw(g *Game, dst *ebiten.Image) {
 		lx = bw + 12
 	}
 	gfx.FillRoundRect(dst, float32(lx), float32(y+12), 46, 22, 3, streamLive)
-	gfx.DrawText(dst, "LIVE", lx+23, y+14, 14, streamPanel)
-	w.drawCaption(g, dst, lay, y)
+	gfx.Pop(func() { gfx.DrawText(dst, "LIVE", lx+23, y+14, 14, streamPanel) })
+	w.drawCaption(g, dst, lay, y, w.drawPlate(g, dst, lay, y))
 	if w.ended {
 		rect(dst, 0, y, stw, sth, withAlpha(colorBlack, 0x99))
 		gfx.DrawText(dst, lang.T("配信は終了しました"), stw/2, y+sth/2-30, 24, streamPanel)
@@ -989,9 +989,42 @@ func (w *streamWatch) draw(g *Game, dst *ebiten.Image) {
 	g.drawToast(dst)
 }
 
-// drawCaption draws the whole line being said as white text on black bands, with the
-// speaker's name over it in a duo.
-func (w *streamWatch) drawCaption(g *Game, dst *ebiten.Image, lay watchLayout, y float64) {
+// drawPlate draws the name plate at the bottom left of the stage, as streams have: the
+// hosts' names and the host's tag in the pop font on a band of the host's color. It
+// returns the top of the plate when the caption could reach over it, else the stage's
+// bottom.
+func (w *streamWatch) drawPlate(g *Game, dst *ebiten.Image, lay watchLayout, y float64) float64 {
+	c := w.show.Hosts[0]
+	size, tagSize, h := 18.0, 13.0, 32.0
+	if g.view.tall {
+		size, tagSize, h = 14, 11, 26
+	}
+	name, tag := g.showName(w.show), g.db.Tr(c.Tag)
+	bottom := y + lay.stageH
+	gfx.Pop(func() {
+		nw := gfx.TextWidth(name, size)
+		tw := 0.0
+		if tag != "" {
+			tw = gfx.TextWidth(tag, tagSize) + 12
+		}
+		x, top := 12.0, bottom-10-h
+		pw := min(nw+tw+24, lay.stageW-24)
+		gfx.FillRoundRect(dst, float32(x), float32(top), float32(pw), float32(h), 4, c.Color.Or(streamBrand))
+		rect(dst, x, top+h-3, pw, 3, withAlpha(colorBlack, 0x40))
+		gfx.DrawTextLeft(dst, gfx.Ellipsis(name, size, pw-tw-24), x+12, top+(h-size*1.4)/2+1, size, streamPanel)
+		if tag != "" && nw+tw+24 <= pw {
+			gfx.DrawTextLeft(dst, tag, x+12+nw+12, top+(h-tagSize*1.4)/2+2, tagSize, withAlpha(streamPanel, 0xd8))
+		}
+		if x+pw > lay.capX {
+			bottom = top
+		}
+	})
+	return bottom
+}
+
+// drawCaption draws the whole line being said as white text on black bands, ending at
+// bottom (over the name plate), with the speaker's name over it in a duo.
+func (w *streamWatch) drawCaption(g *Game, dst *ebiten.Image, lay watchLayout, y, bottom float64) {
 	caption := w.shownCaption(g)
 	if caption == "" {
 		return
@@ -999,13 +1032,15 @@ func (w *streamWatch) drawCaption(g *Game, dst *ebiten.Image, lay watchLayout, y
 	x, stw, sth, size := lay.capX, lay.capW, lay.capH, lay.capSize
 	lines := gfx.Wrap(caption, size, stw*lay.capShare)
 	lh := gfx.LineHeight(size)
-	top := y + sth*0.95 - float64(len(lines))*lh
+	top := min(y+sth*0.95, bottom-6) - float64(len(lines))*lh
 	if len(w.show.Hosts) > 1 {
 		c := w.show.Hosts[w.captionWho]
 		name := g.channelName(c)
-		nw := gfx.TextWidth(name, 14)
-		rect(dst, x+stw/2-nw/2-6, top-24, nw+12, 22, withAlpha(colorBlack, 0xb8))
-		gfx.DrawText(dst, name, x+stw/2, top-22, 14, c.Color.Or(streamPanel))
+		gfx.Pop(func() {
+			nw := gfx.TextWidth(name, 14)
+			rect(dst, x+stw/2-nw/2-6, top-24, nw+12, 22, withAlpha(colorBlack, 0xb8))
+			gfx.DrawText(dst, name, x+stw/2, top-22, 14, c.Color.Or(streamPanel))
+		})
 	}
 	for i, l := range lines {
 		lw := gfx.TextWidth(l, size)
@@ -1027,21 +1062,26 @@ func (w *streamWatch) drawInfo(g *Game, dst *ebiten.Image, top, width, height fl
 	if g.view.tall {
 		lines = 1
 	}
-	title, size := gfx.FitLines(g.db.Tr(w.show.Episodes[w.part].Title), 17, width-78-gfx.TextWidth(views, 15)-32, lines)
+	var vw float64
+	gfx.Pop(func() { vw = gfx.TextWidth(views, 15) })
+	title, size := gfx.FitLines(g.db.Tr(w.show.Episodes[w.part].Title), 17, width-78-vw-32, lines)
 	for i, l := range title {
 		gfx.DrawTextLeft(dst, l, 78, top+12+float64(i)*24, size, streamInk)
 	}
 	ly := top + 16 + float64(len(title))*24
 	name := g.showName(w.show)
-	gfx.DrawTextLeft(dst, name, 78, ly, 15, streamInk)
-	lx := 78 + gfx.TextWidth(name, 15) + 12
+	var lx float64
+	gfx.Pop(func() {
+		gfx.DrawTextLeft(dst, name, 78, ly, 15, streamInk)
+		lx = 78 + gfx.TextWidth(name, 15) + 12
+	})
 	gfx.DrawTextLeft(dst, g.db.Tr(c.Tag), lx, ly, 15, c.Color.Or(streamBrand))
 	lx += gfx.TextWidth(g.db.Tr(c.Tag), 15) + 12
 	g.drawStars(dst, lx, ly+3, g.step(c))
 	if c.Tagline != "" && !g.view.tall {
 		gfx.DrawTextLeft(dst, gfx.Ellipsis(g.db.Tr(c.Tagline), 14, width-100), 78, ly+26, 14, streamInk2)
 	}
-	gfx.DrawTextRight(dst, views, width-16, top+16, 15, streamLive)
+	gfx.Pop(func() { gfx.DrawTextRight(dst, views, width-16, top+16, 15, streamLive) })
 }
 
 // drawColumn draws the chat column: the chat, the question's answers, the comment field

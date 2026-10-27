@@ -44,6 +44,10 @@ func TestGraphicsScreensStreams(t *testing.T) {
 	tall := fmt.Sprintf("window 390 844\ngap 1\nwait 30\ntype Pat\npress ok\nwait 30\nshot lobby\nclick %d %d\nwait 20\nshot lobby_ja\nclick %d %d\nwait 30\nshot settings\nclick 30 20\nwait 30\npress ok\nwait 100\nshot watch\npress hide\nwait 20\nshot full\nquit\n",
 		int(ja.x+ja.w/2), int(ja.y+15), int(set.x+set.w/2), int(set.y+15))
 	brand := [3]uint32{0xe0, 0x45, 0x7b}
+	// plate: the name plate's band, in the host's color: ann's, or bo's, who has none (the brand's)
+	plate := func(img image.Image, x, y int) bool {
+		return near(img, x, y, [3]uint32{0x2a, 0x8c, 0x4a}) || near(img, x, y, brand)
+	}
 	speakerOn := func(img image.Image) bool { return near(img, 1205, 668, brand) } // the read-aloud button, filled when on
 	voiced := func(fsys fstest.MapFS) {
 		fsys["data/streams.yaml"].Data = append([]byte("voices: voice\n"), fsys["data/streams.yaml"].Data...)
@@ -72,6 +76,10 @@ func TestGraphicsScreensStreams(t *testing.T) {
 			if darkRun(watch, int(sw/2), 420, int(streamBarH+sw*9/16)) < 10 {
 				t.Error("no caption band under the line")
 			}
+			// the name plate at the bottom left of the stage, the caption above it
+			if bottom := int(streamBarH + sw*9/16); !plate(watch, 20, bottom-24) || darkRun(watch, int(sw/2), bottom-42, bottom-10) > 6 {
+				t.Error("no name plate at the bottom left of the stage, or the caption over it")
+			}
 			if speakerOn(watch) {
 				t.Error("the desktop shows a read-aloud button without voices")
 			}
@@ -84,7 +92,7 @@ func TestGraphicsScreensStreams(t *testing.T) {
 		{"full", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 100\npress hide\nwait 20\nshot full\nquit\n", nil, func(t *testing.T, root string) {
 			full := shotImage(t, root, "full")
 			// the room under where the page's bar and the information were, and the chat darkened over the stage
-			if !near(full, 60, 100, room) || !near(full, 60, 700, room) || near(full, int(1280-streamChatW/2), 300, white) {
+			if !near(full, 60, 100, room) || !near(full, 60, 650, room) || !plate(full, 20, 695) || near(full, int(1280-streamChatW/2), 300, white) {
 				t.Error("the full screen does not spread the stage under a darkened chat")
 			}
 			b, err := os.ReadFile(filepath.Join(root, "saves", "config.json")) //nolint:gosec // Test-owned save.
@@ -147,6 +155,9 @@ func TestGraphicsScreensStreams(t *testing.T) {
 			}
 			if darkRun(watch, 195, int(streamBarH+sth*0.6), int(streamBarH+sth)) < 10 {
 				t.Error("no caption band on the portrait stage")
+			}
+			if bottom := int(streamBarH + sth); !plate(watch, 16, bottom-22) || darkRun(watch, 195, bottom-36, bottom-10) > 6 {
+				t.Error("no name plate on the portrait stage, or the caption over it")
 			}
 			// full screen: the stage at the top, 16:9 as on the page (the puppets show the same
 			// part of themselves), the darkened chat under it from the stage's bottom down

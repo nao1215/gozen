@@ -8450,7 +8450,7 @@
       "description": "The font files used by the game, as paths under assets/. All are optional: without them the text is set in Go Regular, which Gozen carries and which has Latin letters only.",
       "properties": {
         "pop": {
-          "description": "The font used for pop-up text such as damage numbers.",
+          "description": "The font used for pop-up text such as damage numbers (text all ASCII), and for the decorations of the stream screens: the bar's title, LIVE, the viewers, the hosts' names and the name plate, the glyphs it lacks in the regular font.",
           "type": "string",
           "x-contract": {
             "default": "empty string",

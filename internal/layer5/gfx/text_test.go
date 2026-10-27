@@ -210,6 +210,31 @@ func TestFaceChoosesPopFontOnlyForASCII(t *testing.T) {
 	}
 }
 
+// TestPopDrawsDecorationsInThePopFont: inside Pop, text is measured in the pop font where it
+// has the glyphs (Japanese falls back to the regular font glyph by glyph), and as before
+// outside it or without a pop font.
+func TestPopDrawsDecorationsInThePopFont(t *testing.T) {
+	t.Cleanup(Reset)
+	if err := LoadFonts(goregular.TTF, nil); err != nil {
+		t.Fatal(err)
+	}
+	plain := TextWidth("Ann あ", 24)
+	var noPop float64
+	Pop(func() { noPop = TextWidth("Ann あ", 24) })
+	if noPop != plain {
+		t.Fatalf("without a pop font Pop measures %v, not %v", noPop, plain)
+	}
+	if err := LoadFonts(goregular.TTF, gobold.TTF); err != nil {
+		t.Fatal(err)
+	}
+	regular := TextWidth("Ann あ", 24)
+	var popped float64
+	Pop(func() { popped = TextWidth("Ann あ", 24) })
+	if popped == regular || TextWidth("Ann あ", 24) != regular {
+		t.Fatalf("Pop measures %v, the regular font %v, and after Pop %v", popped, regular, TextWidth("Ann あ", 24))
+	}
+}
+
 func TestLoadFontsFailedPopKeepsTheOldFonts(t *testing.T) {
 	useFont(t)
 	old := regularSource

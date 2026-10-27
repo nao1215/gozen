@@ -776,7 +776,9 @@ func (g *Game) streamTop(dst *ebiten.Image, back string, bs []barButton, sel int
 			end = min(end, b.x)
 		}
 	}
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(cmp.Or(g.db.Game.Title, lang.T("配信")), 18, max(0, end-x-16)), x, 14, 18, streamInk)
+	gfx.Pop(func() {
+		gfx.DrawTextLeft(dst, gfx.Ellipsis(cmp.Or(g.db.Game.Title, lang.T("配信")), 18, max(0, end-x-16)), x, 14, 18, streamInk)
+	})
 	shown := g.language()
 	for i, b := range bs {
 		x, y, w, h := float32(b.x), float32(b.y), float32(b.w), float32(barButtonH)
