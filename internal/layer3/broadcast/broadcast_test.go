@@ -36,7 +36,8 @@ func streams() *data.Streams {
 var noon = time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC)
 
 func TestTimesAndBeatAt(t *testing.T) {
-	s := newShow(streams(), nil, "a", streams().Channels[0].Shows, 0, noon)
+	s := newShow(streams(), nil, "a", streams().Channels[0].Shows, 0)
+	s.Start = noon
 	// say 1+4*0.5, chat 2, ask (1+2*0.5)+10+max(1+6*0.5, 2*1+2*0.5), say 1
 	want := []float64{0, 3, 5, 21, 22}
 	if len(s.Times) != len(want) {
@@ -86,7 +87,7 @@ func TestLineup(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			d := streams()
 			d.Live.Share, d.Live.DuoChance = tc.share, tc.duo
-			shows := Lineup(d, &rpg.Streams{Open: tc.open}, noon, rand.New(rand.NewPCG(1, 2)))
+			shows := Lineup(d, &rpg.Streams{Open: tc.open}, noon, rand.New(rand.NewPCG(1, 2))) //nolint:gosec // reproducible draws
 			if got := hosts(shows); len(got) != len(tc.want) || func() bool {
 				for i := range got {
 					if got[i] != tc.want[i] {
@@ -98,7 +99,7 @@ func TestLineup(t *testing.T) {
 				t.Fatalf("live %v, want %v", got, tc.want)
 			}
 			for _, s := range shows {
-				if late := noon.Sub(s.Start); late < 0 || late > maxLate {
+				if late := noon.Sub(s.Start); late < 0 || late > maxLate || late.Seconds() > s.Seconds()/2 {
 					t.Errorf("%s started %v before", s.Key, late)
 				}
 			}
@@ -110,7 +111,7 @@ func TestNextEpisodeAndSeen(t *testing.T) {
 	d := streams()
 	d.Live.DuoChance = 0
 	p := &rpg.Streams{}
-	rng := rand.New(rand.NewPCG(1, 2))
+	rng := rand.New(rand.NewPCG(1, 2)) //nolint:gosec // reproducible draws
 	shows := Lineup(d, p, noon, rng)
 	if shows[0].Episode.Title != "a1" {
 		t.Fatalf("first episode %q", shows[0].Episode.Title)

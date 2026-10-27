@@ -277,6 +277,7 @@ func (db *DB) SourceTexts() []SourceText {
 				add(fmt.Sprintf("%s[%d]", w, i), l)
 			}
 		}
+		all(st.file+" crowd.names", st.Crowd.Names)
 		all(st.file+" crowd.lines.any", st.Crowd.Lines.Any)
 		all(st.file+" crowd.lines.morning", st.Crowd.Lines.Morning)
 		all(st.file+" crowd.lines.evening", st.Crowd.Lines.Evening)
@@ -307,9 +308,12 @@ func (db *DB) SourceTexts() []SourceText {
 					case b.Line != nil:
 						add(w, b.Line.Text)
 					case b.Chat != nil:
-						add(w+".chat", b.Chat[1])
+						all(w+".chat", b.Chat)
 					case b.Ask != nil:
 						add(w+".ask.q", b.Ask.Q)
+						for k, n := range b.Ask.NPC {
+							add(fmt.Sprintf("%s.ask.npc[%d]", w, k), n.Name)
+						}
 						for k, o := range b.Ask.Options {
 							add(fmt.Sprintf("%s.ask.options[%d].c", w, k), o.C)
 							all(fmt.Sprintf("%s.ask.options[%d].r", w, k), o.R)

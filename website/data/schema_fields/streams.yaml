@@ -65,7 +65,7 @@ Duo:
 Episode:
   _: "One stream: its title, the lines of its lobby card, and its parts. An episode shorter than 20 minutes is warned of."
   title: "The title shown under the stream."
-  lobby: "Short lines for the lobby card."
+  lobby: "Short lines for the lobby card, shown in turn. The title is shown when there are none."
   parts: "The parts, each a list of beats played in order."
 Beat:
   _: "One beat: `say`, `chat`, `ask`, or the channel ID of the other host of a duo with a line."
@@ -85,7 +85,7 @@ StreamAsk:
 StreamOption:
   _: "An answer and what is said when it is picked."
   c: "The answer shown on its card and in the chat."
-  r: "The lines said when it is picked. `{name}` is who picked it."
+  r: "The lines said when it is picked. `{from}` is who picked it."
 StreamAffection:
   _: "How a viewer earns a channel's affection. The steps raise the gold earned away and the chance of an answer being picked."
   steps: "The points each step starts at, from 0 and increasing. The default is [0, 30, 150, 600, 3000]."

@@ -10,12 +10,12 @@ import (
 
 // streamGame is a valid game with two streaming channels and a duo.
 func streamGame() map[string]string {
-	ep := "title: Garden tour\nlobby: [Planting day]\nparts:\n  - - say: Hello, everyone.\n    - say: {face: smile, text: Today we plant beans.}\n    - chat: [sprout, Beans!]\n    - ask: {q: Which seeds?, options: [{c: Beans, r: [\"{name} picked beans.\"]}, {c: Peas, r: [Peas it is.]}], npc: [[sprout, 1]]}\n"
+	ep := "title: Garden tour\nlobby: [Planting day]\nparts:\n  - - say: Hello, everyone.\n    - say: {face: smile, text: Today we plant beans.}\n    - chat: [sprout, Beans!]\n    - ask: {q: Which seeds?, options: [{c: Beans, r: [\"{from} picked beans.\"]}, {c: Peas, r: [Peas it is.]}], npc: [[sprout, 1]]}\n"
 	return map[string]string{
-		"game.yaml": testgame.Game + "schema_version: 9\nid: streams-test\nstreams: data/streams.yaml\n",
-		"data/cast.yaml": "actors:\n  ann: {name: Ann, puppet: p/rig.yaml}\n  bo: {name: Bo, puppet: p/rig.yaml}\nlocations: {booth: {stream: lobby}}\nevents: {watch: {do: [{open: streams}]}}\n",
+		"game.yaml":         testgame.Game + "schema_version: 9\nid: streams-test\nstreams: data/streams.yaml\n",
+		"data/cast.yaml":    "actors:\n  ann: {name: Ann, puppet: p/rig.yaml}\n  bo: {name: Bo, puppet: p/rig.yaml}\nlocations: {booth: {stream: lobby}}\nevents: {watch: {do: [{open: streams}]}}\n",
 		"assets/p/rig.yaml": "base: base.png\nface: normal\nfaces: {normal: {}, smile: {}}\n",
-		"assets/p/base.png":  "x",
+		"assets/p/base.png": "x",
 		"data/streams.yaml": `timing: {say: 1.8, per_char: 0.11, chat: 1.6, ask: 12}
 live: {share: 0.8, min_share: 0.6, duo_chance: 0.25}
 away: {per_hour: 100, cap_hours: 24, star_bonus: 0.1}
@@ -80,7 +80,7 @@ func TestStreamsLoad(t *testing.T) {
 	for _, st := range db.SourceTexts() {
 		texts[st.Text] = true
 	}
-	for _, want := range []string{"Garden tour", "Planting day", "Today we plant beans.", "Beans!", "Which seeds?", "Peas", "{name} picked beans.", "Gardening", "Seeds every week", "Hi!", "Good morning", "For seeds", "{from}, you came back."} {
+	for _, want := range []string{"Garden tour", "Planting day", "Today we plant beans.", "Beans!", "Which seeds?", "Peas", "{from} picked beans.", "Gardening", "Seeds every week", "Hi!", "Good morning", "For seeds", "{from}, you came back."} {
 		if !texts[want] {
 			t.Errorf("%q is not a text to translate", want)
 		}

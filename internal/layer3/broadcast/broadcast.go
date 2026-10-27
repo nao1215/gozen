@@ -32,9 +32,9 @@ type Show struct {
 func DuoKey(host, with string) string { return host + "+" + with }
 
 // newShow times the episode of the key that the player has not seen yet.
-func newShow(d *data.Streams, hosts []*data.Channel, key string, shows []*data.Episode, next int, start time.Time) *Show {
+func newShow(d *data.Streams, hosts []*data.Channel, key string, shows []*data.Episode, next int) *Show {
 	ep := shows[next%len(shows)]
-	s := &Show{Hosts: hosts, Key: key, Episode: ep, Beats: ep.Beats(), Start: start}
+	s := &Show{Hosts: hosts, Key: key, Episode: ep, Beats: ep.Beats()}
 	t := 0.0
 	for _, b := range s.Beats {
 		s.Times = append(s.Times, t)
@@ -67,7 +67,7 @@ const maxLate = 4 * time.Minute
 // for the first time (p.Open is 0), else each with the chance live.share and at least
 // live.min_share of them, in the order written. Two live hosts of a duo stream it
 // together with the chance live.duo_chance. Each show plays the next episode the
-// player has not seen and started up to four minutes ago. The shows are in the order of
+// player has not seen and started up to four minutes ago, before its middle. The shows are in the order of
 // their hosts.
 func Lineup(d *data.Streams, p *rpg.Streams, now time.Time, rng *rand.Rand) []*Show {
 	first := p.Open == 0
@@ -86,14 +86,18 @@ func Lineup(d *data.Streams, p *rpg.Streams, now time.Time, rng *rand.Rand) []*S
 			n++
 		}
 	}
-	start := func() time.Time { return now.Add(-time.Duration(rng.Float64() * float64(maxLate))) }
+	// late starts a show up to four minutes ago, and before its middle.
+	late := func(s *Show) *Show {
+		s.Start = now.Add(-time.Duration(rng.Float64() * min(float64(maxLate), s.Seconds()/2*float64(time.Second))))
+		return s
+	}
 	paired := map[string]*Show{}
 	for _, duo := range d.Duos {
 		if !live[duo.Host] || !live[duo.With] || paired[duo.Host] != nil || paired[duo.With] != nil || len(duo.Shows) == 0 || rng.Float64() >= d.Live.DuoChance {
 			continue
 		}
 		key := DuoKey(duo.Host, duo.With)
-		s := newShow(d, []*data.Channel{d.Channel(duo.Host), d.Channel(duo.With)}, key, duo.Shows, p.Duos[key], start())
+		s := late(newShow(d, []*data.Channel{d.Channel(duo.Host), d.Channel(duo.With)}, key, duo.Shows, p.Duos[key]))
 		paired[duo.Host], paired[duo.With] = s, s
 	}
 	var out []*Show
@@ -105,7 +109,7 @@ func Lineup(d *data.Streams, p *rpg.Streams, now time.Time, rng *rand.Rand) []*S
 				out = append(out, s)
 			}
 		default:
-			out = append(out, newShow(d, []*data.Channel{c}, c.ID, c.Shows, Progress(p, c.ID).Next, start()))
+			out = append(out, late(newShow(d, []*data.Channel{c}, c.ID, c.Shows, Progress(p, c.ID).Next)))
 		}
 	}
 	return out

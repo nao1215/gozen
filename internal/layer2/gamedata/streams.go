@@ -198,7 +198,8 @@ type Duo struct {
 	Shows []*Episode `yaml:"-"`
 }
 
-// Episode is one stream: its title, the short lines of its lobby card and its parts.
+// Episode is one stream: its title, the short lines of its lobby card (the title when
+// there are none) and its parts.
 type Episode struct {
 	Title string   `yaml:"title"`
 	Lobby []string `yaml:"lobby"`
@@ -247,7 +248,7 @@ type StreamAsk struct {
 	NPC     []NPCAnswer    `yaml:"npc"`
 }
 
-// StreamOption is an answer (C) and the lines said when it is chosen (R, {name} is who chose it).
+// StreamOption is an answer (C) and the lines said when it is chosen (R, {from} is who chose it).
 type StreamOption struct {
 	C string   `yaml:"c"`
 	R []string `yaml:"r"`
@@ -574,9 +575,6 @@ func (c *checker) episode(e *Episode, hosts []string) {
 	if e.Title == "" {
 		c.errorf(diag.Shape, at("title"), "an episode needs a title")
 	}
-	if len(e.Lobby) == 0 {
-		c.errorf(diag.Shape, at("lobby"), "an episode needs lobby lines for its card")
-	}
 	if len(e.Beats()) == 0 {
 		c.errorf(diag.Shape, at("parts"), "an episode needs beats")
 	}
@@ -623,7 +621,7 @@ func (c *checker) episode(e *Episode, hosts []string) {
 					}
 				}
 				for k, o := range q.Options {
-					c.streamLines(fmt.Sprintf("%s.ask.options[%d].r", w, k), o.R, "name")
+					c.streamLines(fmt.Sprintf("%s.ask.options[%d].r", w, k), o.R, "from")
 				}
 			}
 		}
