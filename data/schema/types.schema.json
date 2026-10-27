@@ -17498,6 +17498,19 @@
           },
           "x-type": "[StreamLive](#streamlive)"
         },
+        "logo": {
+          "description": "The picture under assets/ drawn before the game's title in the bar over the stream screens, square and transparent around the mark. Without it, a colored square.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
+        },
         "timing": {
           "$ref": "#/$defs/StreamTiming",
           "description": "How long each kind of beat lasts, in seconds.",

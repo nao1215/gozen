@@ -1,7 +1,6 @@
 package play
 
 import (
-	"cmp"
 	"fmt"
 	"slices"
 	"strconv"
@@ -56,7 +55,6 @@ type streamWatch struct {
 
 	field  textField
 	typing bool
-	naming bool
 	tips   bool
 	focus  int // the control chosen with the keys (watchControls)
 }
@@ -87,10 +85,7 @@ func newStreamWatch(g *Game, show *broadcast.Show, viewers int) *streamWatch {
 		sw, sh := g.screen()
 		return w.field.caretX(sw-streamChatW+24, 16), sh - 46
 	})
-	w.naming = g.st.Streams.Viewer == ""
-	if !w.naming {
-		w.greet(g)
-	}
+	w.greet(g)
 	g.emit("stream", traceLine{"show": show.Key, "episode": show.Episode.Title, "beat": w.next})
 	return w
 }
@@ -459,10 +454,6 @@ func (w *streamWatch) update(g *Game) {
 			p.Motion.Step()
 		}
 	}
-	if w.naming {
-		w.updateName(g)
-		return
-	}
 	g.keepCrowd(w.crowd)
 	w.chat.pull(w.crowd, now.Sub(w.opened))
 	if w.age%180 == 0 {
@@ -489,25 +480,6 @@ func (w *streamWatch) update(g *Game) {
 		}
 	}
 	w.input(g)
-}
-
-// updateName reads the viewer's name, asked before the first show.
-func (w *streamWatch) updateName(g *Game) {
-	in := &g.in
-	if in.devices() && w.field.readTyping() {
-		return
-	}
-	ok := !in.devices() && in.pressed[btnOK] || in.devices() && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter))
-	sw, sh := g.screen()
-	if !ok && !g.clickedIn(sw/2-60, sh/2+40, 120, 40) {
-		return
-	}
-	name := strings.TrimSpace(w.field.take())
-	g.st.Streams.Viewer = cmp.Or(string([]rune(name)[:min(utf8.RuneCountInString(name), 16)]), lang.T("名無しの視聴者"))
-	w.naming = false
-	g.sfx("decide")
-	w.greet(g)
-	g.saveStreams()
 }
 
 // input reads the keys and the pointer: typing a comment, the answers, the tips, reading
@@ -690,9 +662,6 @@ func (w *streamWatch) draw(g *Game, dst *ebiten.Image) {
 	if !g.cfg.StreamFull {
 		g.streamTop(dst, lang.T("配信の一覧"))
 	}
-	if w.naming {
-		w.drawName(dst, sw, sh)
-	}
 	g.drawToast(dst)
 }
 
@@ -784,7 +753,7 @@ func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, sw, sh float64) {
 			}
 			gfx.FillRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, streamPage)
 			gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, 1.5, edge)
-			if w.naming || w.field.text+w.field.comp == "" && !w.typing {
+			if w.field.text+w.field.comp == "" && !w.typing {
 				gfx.DrawTextLeft(dst, lang.T("コメントする"), x+10, y+11, 16, streamInk3)
 			} else {
 				w.field.draw(dst, x+10, y+11, cw-20, 16, streamInk, streamBrand, w.typing, w.age)
@@ -839,20 +808,4 @@ func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, sw, sh float64) {
 			gfx.DrawText(dst, g.money(a), bx+bw/2, by+9, 17, ink)
 		}
 	}
-}
-
-// drawName draws the box that asks the viewer's name.
-func (w *streamWatch) drawName(dst *ebiten.Image, sw, sh float64) {
-	fill(dst, withAlpha(colorBlack, 0x80))
-	bx, by := sw/2-260, sh/2-120
-	gfx.FillRoundRect(dst, float32(bx), float32(by), 520, 220, 12, streamPanel)
-	gfx.DrawTextLeft(dst, lang.T("あなたの名前"), bx+28, by+22, 20, streamInk)
-	gfx.DrawTextLeft(dst, lang.T("配信者に読まれる名前です。"), bx+28, by+56, 15, streamInk2)
-	gfx.StrokeRoundRect(dst, float32(bx+28), float32(by+90), 464, 44, 6, 1.5, streamBrand)
-	if w.field.text+w.field.comp == "" {
-		gfx.DrawTextLeft(dst, lang.T("名無しの視聴者"), bx+40, by+101, 17, streamInk3)
-	}
-	w.field.draw(dst, bx+40, by+101, 440, 17, streamInk, streamBrand, true, w.age)
-	gfx.FillRoundRect(dst, float32(sw/2-60), float32(sh/2+40), 120, 40, 6, streamBrand)
-	gfx.DrawText(dst, lang.T("決める"), sw/2, sh/2+49, 16, streamPanel)
 }

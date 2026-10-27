@@ -85,6 +85,7 @@ func TestStreamsCheck(t *testing.T) {
 		{"a broken bounce", edit("data/streams.yaml", `on: "!$"`, `on: "("`), "bounce.on"},
 		{"too many greetings", edit("data/streams.yaml", `greet: [[], ["{from}, you came back."]]`, `greet: [[], [], [], []]`), "affection step 0 to 2"},
 		{"a room missing", edit("data/streams.yaml", "room: x.png", "room: none.png"), "no file assets/none.png"},
+		{"a logo missing", edit("data/streams.yaml", "tips:", "logo: gone.png\ntips:"), "no file assets/gone.png"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := testgame.TryLoad(tc.files)

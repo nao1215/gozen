@@ -312,8 +312,11 @@ func (g *Game) typeMemo(s string) {
 	if p := g.panel; p != nil && p.tab == tabCommand {
 		p.text += s
 	}
-	if w := g.watching(); g.memo == nil && w != nil && (w.typing || w.naming) {
+	if w := g.watching(); g.memo == nil && w != nil && w.typing {
 		w.field.text += s
+	}
+	if l, ok := g.stack[len(g.stack)-1].(*streamLobby); ok && g.memo == nil && l.name != nil {
+		l.name.text += s
 	}
 	if r := g.reviewOpen(); g.memo == nil && r != nil && r.box != nil {
 		r.box.text += s

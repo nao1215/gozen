@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"github.com/nao1215/gozen/internal/chat"
 	"github.com/nao1215/gozen/internal/layer3/broadcast"
@@ -30,6 +32,9 @@ type streamLobby struct {
 	age   int
 	// scroll is how far the cards are scrolled up.
 	scroll float64
+	// name is the field over the lobby that asks the viewer's name on the first opening
+	// (nil once it is given).
+	name *textField
 }
 
 // lobbyCard is one live show in the lobby.
@@ -43,7 +48,56 @@ type lobbyCard struct {
 
 func newStreamLobby(g *Game, done func()) *streamLobby {
 	g.stepStreams()
-	return &streamLobby{done: done, open: g.streamNow()}
+	l := &streamLobby{done: done, open: g.streamNow()}
+	if g.st.Streams.Viewer == "" {
+		l.name = &textField{}
+		l.name.start(g, func() (float64, float64) {
+			sw, sh := g.screen()
+			return l.name.caretX(sw/2-220, 17), sh/2 - 19
+		})
+	}
+	return l
+}
+
+// The box that asks the viewer's name, centred on the screen, and its button.
+const (
+	nameBoxW = 520.0
+	nameBoxH = 220.0
+)
+
+// updateName reads the viewer's name, asked over the lobby on the first opening, and keeps
+// it with the streams' progress.
+func (l *streamLobby) updateName(g *Game) {
+	in := &g.in
+	if in.devices() && l.name.readTyping() {
+		return
+	}
+	ok := !in.devices() && in.pressed[btnOK] || in.devices() && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter))
+	sw, sh := g.screen()
+	if !ok && !g.clickedIn(sw/2-60, sh/2+40, 120, 40) {
+		return
+	}
+	name := strings.TrimSpace(l.name.take())
+	g.st.Streams.Viewer = cmp.Or(string([]rune(name)[:min(utf8.RuneCountInString(name), 16)]), lang.T("名無しの視聴者"))
+	l.name = nil
+	g.sfx("decide")
+	g.saveStreams()
+}
+
+// drawName draws the box that asks the viewer's name over the lobby.
+func (l *streamLobby) drawName(dst *ebiten.Image, sw, sh float64) {
+	fill(dst, withAlpha(colorBlack, 0x80))
+	bx, by := sw/2-nameBoxW/2, sh/2-120
+	gfx.FillRoundRect(dst, float32(bx), float32(by), nameBoxW, nameBoxH, 12, streamPanel)
+	gfx.DrawTextLeft(dst, lang.T("あなたの名前"), bx+28, by+22, 20, streamInk)
+	gfx.DrawTextLeft(dst, lang.T("配信者に読まれる名前です。"), bx+28, by+56, 15, streamInk2)
+	gfx.StrokeRoundRect(dst, float32(bx+28), float32(by+90), nameBoxW-56, 44, 6, 1.5, streamBrand)
+	if l.name.text+l.name.comp == "" {
+		gfx.DrawTextLeft(dst, lang.T("名無しの視聴者"), bx+40, by+101, 17, streamInk3)
+	}
+	l.name.draw(dst, bx+40, by+101, nameBoxW-80, 17, streamInk, streamBrand, true, l.age)
+	gfx.FillRoundRect(dst, float32(sw/2-60), float32(sh/2+40), 120, 40, 6, streamBrand)
+	gfx.DrawText(dst, lang.T("決める"), sw/2, sh/2+49, 16, streamPanel)
 }
 
 // rebuild makes the cards again when the live shows changed.
@@ -201,6 +255,10 @@ func (l *streamLobby) update(g *Game) {
 		g.keepCrowd(l.crowd)
 		l.chat.pull(l.crowd, now.Sub(l.open))
 	}
+	if l.name != nil {
+		l.updateName(g)
+		return
+	}
 	entries := l.entries(g)
 	n := len(l.cards) + len(entries)
 	choose := func(i int) {
@@ -291,6 +349,9 @@ func (l *streamLobby) draw(g *Game, dst *ebiten.Image) {
 	l.drawOffline(g, dst, sh)
 	g.streamTop(dst, "")
 	l.drawEntries(g, dst)
+	if l.name != nil {
+		l.drawName(dst, sw, sh)
+	}
 	if g.desk.away > 0 {
 		fill(dst, withAlpha(colorBlack, 0x80))
 		bx, by := sw/2-260, sh/2-110

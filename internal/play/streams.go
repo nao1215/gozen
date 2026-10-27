@@ -482,7 +482,11 @@ func (g *Game) streamTop(dst *ebiten.Image, back string) {
 		gfx.DrawTextLeft(dst, "‹ "+back, x, 15, 16, streamInk2)
 		x += gfx.TextWidth("‹ "+back, 16) + 24
 	}
-	gfx.FillRoundRect(dst, float32(x), 15, 22, 22, 6, streamBrand)
+	if img := g.pics.get(g.db.Streams.Logo); img != nil {
+		gfx.DrawImageFit(dst, img, x-3, 12, 28, 28, 1)
+	} else {
+		gfx.FillRoundRect(dst, float32(x), 15, 22, 22, 6, streamBrand)
+	}
 	gfx.DrawTextLeft(dst, cmp.Or(g.db.Game.Title, lang.T("配信")), x+30, 14, 18, streamInk)
 	gfx.DrawTextRight(dst, g.money(g.st.Gold), sw-16, 15, 17, streamInk)
 }

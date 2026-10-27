@@ -35,10 +35,13 @@ func TestGraphicsScreensStreams(t *testing.T) {
 		name, duo, script string
 		check             func(t *testing.T, root string)
 	}{
-		{"single", "0", "gap 1\nwait 60\nshot lobby\npress ok\nwait 20\ntype Pat\npress ok\nwait 100\nshot watch\nquit\n", func(t *testing.T, root string) {
+		{"single", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\nshot lobby\npress ok\nwait 100\nshot watch\nquit\n", func(t *testing.T, root string) {
 			lobby := shotImage(t, root, "lobby")
 			// the bar, the first card's picture (its room from the left edge, its puppet) and its chat
 			x, y, w, h := lobbyEdge, streamBarH+20, 1280-2*lobbyEdge-lobbyChatW, (1280-2*lobbyEdge-lobbyChatW)*9/16
+			if !near(lobby, 27, 26, room) {
+				t.Error("the bar does not draw the logo before the title")
+			}
 			if !near(lobby, 640, 6, white) || !near(lobby, int(x+60), int(y+60), room) || !differs(lobby, int(x+w/2), int(y+h/2)) || !near(lobby, int(x+w+lobbyChatW/2), int(y+4), white) {
 				t.Error("the lobby is not drawn as the bar and a card from the left edge with its puppet and chat")
 			}
@@ -57,7 +60,7 @@ func TestGraphicsScreensStreams(t *testing.T) {
 				t.Error("no caption band under the line")
 			}
 		}},
-		{"full", "0", "gap 1\nwait 60\npress ok\nwait 20\ntype Pat\npress ok\nwait 100\npress hide\nwait 20\nshot full\nquit\n", func(t *testing.T, root string) {
+		{"full", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 100\npress hide\nwait 20\nshot full\nquit\n", func(t *testing.T, root string) {
 			full := shotImage(t, root, "full")
 			// the room under where the page's bar and the information were, and the chat darkened over the stage
 			if !near(full, 60, 100, room) || !near(full, 60, 700, room) || near(full, int(1280-streamChatW/2), 300, white) {

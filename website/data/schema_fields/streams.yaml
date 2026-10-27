@@ -1,5 +1,6 @@
 Streams:
   _: "The live-stream file named by `streams` in game.yaml (schema version 9): the channels, their episodes, and the rules of the stream screen."
+  logo: "The picture under assets/ drawn before the game's title in the bar over the stream screens, square and transparent around the mark. Without it, a colored square."
   timing: "How long each kind of beat lasts, in seconds."
   live: "Who is live when the game opens."
   away: "The gold earned while the game is closed."

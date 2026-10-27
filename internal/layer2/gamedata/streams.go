@@ -20,6 +20,9 @@ import (
 // Streams is the live-stream file named by game.yaml streams (schema_version 9, ADR 0048):
 // the channels, their episodes and the rules of the stream screen.
 type Streams struct {
+	// Logo is the picture under assets/ drawn before the game's title in the bar over the
+	// stream screens (a colored square when empty).
+	Logo string `yaml:"logo"`
 	// Timing is how long each kind of beat lasts.
 	Timing StreamTiming `yaml:"timing"`
 	// Live decides who is live when the game opens.
@@ -480,6 +483,7 @@ func (c *checker) streams() {
 		return
 	}
 	at := func(p string, args ...any) string { return s.file + " " + fmt.Sprintf(p, args...) }
+	c.file(at("logo"), s.Logo)
 	t := s.Timing
 	if !(t.Say > 0) || !(t.PerChar >= 0) || !(t.Chat > 0) || !(t.Ask > 0) {
 		c.errorf(diag.OutOfRange, at("timing"), "say, chat and ask need more than 0 seconds, per_char 0 or more")

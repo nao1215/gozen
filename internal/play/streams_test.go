@@ -22,7 +22,8 @@ var streamsData = map[string]string{
 locations:
   booth: {name: Booth, stream: lobby, exits: [{to: camp, label: Camp}]}
 `,
-	"data/streams.yaml": `timing: {say: 2, per_char: 0.01, chat: 0.3, ask: 1}
+	"data/streams.yaml": `logo: x.png
+timing: {say: 2, per_char: 0.01, chat: 0.3, ask: 1}
 live: {share: 1, min_share: 1, duo_chance: DUO}
 away: {per_hour: 100, cap_hours: 24, star_bonus: 0.5}
 tips: [10, 50]
@@ -104,7 +105,7 @@ func chatText(w *streamWatch) string {
 }
 
 // TestStreamsWatchAShow: the lobby is the place's scene with every channel live on the
-// first opening; watching asks the viewer's name, greets a first visit, posts the beats
+// first opening, asking the viewer's name over it; watching greets a first visit, posts the beats
 // and the comments, answers a comment and a tip from the reaction book, and at the end
 // thanks the viewer, moves the channel on to its next episode and keeps it in the save.
 func TestStreamsWatchAShow(t *testing.T) {
@@ -113,10 +114,21 @@ func TestStreamsWatchAShow(t *testing.T) {
 	if !ok || len(l.cards) != 2 || len(l.entries(g)) == 0 {
 		t.Fatalf("scene %T, cards %d", g.stack[0], len(l.cards))
 	}
-	wldPlay(t, g, "press ok\nwait 5\ntype Pat\npress ok\nwait 5\n", 100)
+	if l.name == nil {
+		t.Fatal("the first opening does not ask the viewer's name")
+	}
+	wldPlay(t, g, "press right\nwait 5\n", 100)
+	if l.name == nil || l.sel != 0 {
+		t.Fatal("the lobby takes keys before the name is given")
+	}
+	wldPlay(t, g, "type Pat\npress ok\nwait 5\n", 100)
+	if l.name != nil || g.st.Streams.Viewer != "Pat" {
+		t.Fatalf("the name box stays (%v), viewer %q", l.name != nil, g.st.Streams.Viewer)
+	}
+	wldPlay(t, g, "press ok\nwait 5\n", 100)
 	w := g.watching()
-	if w == nil || w.naming || g.st.Streams.Viewer != "Pat" {
-		t.Fatalf("watch %v, viewer %q", w, g.st.Streams.Viewer)
+	if w == nil {
+		t.Fatal("the lobby does not open the show")
 	}
 	wldPlay(t, g, "press tab\ntype I planted beans\npress ok\nwait 2\n", 100)
 	wldFrames(t, g, 600)
