@@ -174,9 +174,9 @@ Fix: Add the species to a troop in a reachable location encounter, or confirm th
 
 ### GZN0118
 
-A stream episode lasts less than 20 minutes.
+A stream episode lasts less than 10 minutes.
 
-The beats of the episode, timed by the timing of the streams file, add up to less than 20 minutes, so a viewer sees it end soon after opening the game.
+The beats of the episode, timed by the timing of the streams file, add up to less than 10 minutes, so a viewer sees it end soon after opening the game.
 
 Fix: Add beats to the episode, or lengthen the timing.
 

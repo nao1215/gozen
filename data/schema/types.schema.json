@@ -7779,7 +7779,7 @@
     },
     "Episode": {
       "additionalProperties": false,
-      "description": "One stream: its title, the lines of its lobby card, and its parts. An episode shorter than 20 minutes is warned of.",
+      "description": "One stream: its title, the lines of its lobby card, and its parts. An episode shorter than 10 minutes is warned of.",
       "properties": {
         "lobby": {
           "description": "Short lines under the show's lobby card, shown in turn. Without them the card shows the channel's tagline, or its tag; it never shows the title.",

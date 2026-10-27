@@ -89,8 +89,8 @@ var (
 		Fix:     "Add the species to a troop in a reachable location encounter, or confirm that a scripted battle is intentional.",
 	})
 	ShortEpisode = register(118, "ShortEpisode", Entry{
-		Summary: "a stream episode lasts less than 20 minutes",
-		Detail:  "The beats of the episode, timed by the timing of the streams file, add up to less than 20 minutes, so a viewer sees it end soon after opening the game.",
+		Summary: "a stream episode lasts less than 10 minutes",
+		Detail:  "The beats of the episode, timed by the timing of the streams file, add up to less than 10 minutes, so a viewer sees it end soon after opening the game.",
 		Fix:     "Add beats to the episode, or lengthen the timing.",
 	})
 	StreamVoice = register(119, "StreamVoice", Entry{

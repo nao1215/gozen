@@ -28,7 +28,7 @@ scenarios:
   - assert:
       exit_code: 0
       stderr: {contains: ['[GZN0116]', '[GZN0117]']}
-- name: GZN0118 for a stream episode shorter than 20 minutes
+- name: GZN0118 for a stream episode shorter than 10 minutes
   steps:
   - fixture:
       file: g/game.yaml

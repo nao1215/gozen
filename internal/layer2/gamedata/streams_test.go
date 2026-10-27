@@ -33,7 +33,7 @@ func TestStreamsLoad(t *testing.T) {
 	}
 	warned := false
 	for _, w := range db.SceneWarnings() {
-		warned = warned || strings.Contains(w.Error(), "less than 20")
+		warned = warned || strings.Contains(w.Error(), "less than 10")
 	}
 	if !warned {
 		t.Error("a short episode is not warned of")

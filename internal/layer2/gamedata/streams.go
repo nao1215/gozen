@@ -495,7 +495,7 @@ func (s *Streams) defaults() {
 }
 
 // minEpisodeSeconds is the length below which an episode is warned of.
-const minEpisodeSeconds = 20 * 60
+const minEpisodeSeconds = 10 * 60
 
 // streams checks the streams file and its episodes.
 func (c *checker) streams() {
@@ -673,7 +673,7 @@ func (c *checker) episode(e *Episode, hosts []string) {
 		}
 	}
 	if total < minEpisodeSeconds {
-		c.warnf(diag.ShortEpisode, at("parts"), "the episode lasts %.0f minutes, less than 20", total/60)
+		c.warnf(diag.ShortEpisode, at("parts"), "the episode lasts %.0f minutes, less than 10", total/60)
 	}
 }
 
