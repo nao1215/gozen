@@ -39,6 +39,7 @@ const (
 	btnPanel
 	btnBook
 	btnBestiary
+	btnCaptions
 	btnMapZoomIn
 	btnMapZoomOut
 	btnMapOverview
@@ -85,6 +86,9 @@ var keys = [numButtons][]ebiten.Key{
 	// when game.yaml sets ui.profiles.
 	btnBook:     {ebiten.KeyF6},
 	btnBestiary: {ebiten.KeyF4},
+	// C turns a stream's captions off and on in its watch view, as on a video site (the
+	// menu's C is not read there).
+	btnCaptions: {ebiten.KeyC},
 }
 
 var (
@@ -633,8 +637,8 @@ var scriptButtons = map[string]button{
 	"tab": btnNext, "up": btnUp, "down": btnDown, "left": btnLeft, "right": btnRight,
 	"log": btnLog, "auto": btnAuto, "hide": btnHide, "config": btnConfig, "memo": btnMemo,
 	"reload": btnReload, "tag": btnTag, "graphs": btnGraphs, "skip": btnSkip, "scene_skip": btnSceneSkip,
-	"bestiary": btnBestiary,
-	"back":     btnBack, "save": btnSave, "load": btnLoad, "panel": btnPanel, "characters": btnBook,
+	"bestiary": btnBestiary, "captions": btnCaptions,
+	"back": btnBack, "save": btnSave, "load": btnLoad, "panel": btnPanel, "characters": btnBook,
 }
 
 func (s *script) midEvent(in *input, name string) {

@@ -1071,6 +1071,35 @@ func TestStreamsTipLineVoiced(t *testing.T) {
 	}
 }
 
+// TestStreamsCaptionsButton: the CC button beside the full screen's on the stage, as large
+// and clear of it, turns the stage's caption off and on (the chat keeps the lines), with a
+// click or C, and the choice is kept in the settings.
+func TestStreamsCaptionsButton(t *testing.T) {
+	g, w, _ := voicedShow(t)
+	w.caption = "Hello."
+	cc := w.controlRect
+	x, y, cw, ch := cc(g, [2]int{int(ctlCaptions), 0})
+	fx, fy, _, _ := cc(g, [2]int{int(ctlFull), 0})
+	if cw < 44 || ch < 44 || y != fy || x+cw > fx {
+		t.Fatalf("the CC button at %v,%v %vx%v beside the full screen's at %v,%v", x, y, cw, ch, fx, fy)
+	}
+	g.in.click, g.in.mouse = true, image.Pt(int(x+cw/2), int(y+ch/2))
+	w.input(g)
+	g.in.click = false
+	if w.shownCaption(g) != "" || !g.cfg.StreamCaptionsOff {
+		t.Fatalf("the caption after CC: %q, setting %v", w.shownCaption(g), g.cfg.StreamCaptionsOff)
+	}
+	if b, err := g.storeRead(g.configPath()); err != nil || !strings.Contains(string(b), `"stream_captions_off": true`) {
+		t.Fatalf("the settings do not keep the captions off: %s, %v", b, err)
+	}
+	g.in.pressed[btnCaptions] = true
+	w.input(g)
+	g.in.pressed[btnCaptions] = false
+	if w.shownCaption(g) != "Hello." {
+		t.Fatal("C does not turn the captions on again")
+	}
+}
+
 // TestStreamsNoVoicesNoButton: outside a browser, a game without recorded voices has no
 // read-aloud button.
 func TestStreamsNoVoicesNoButton(t *testing.T) {

@@ -319,6 +319,21 @@ func (g *Game) toggleStreamFull() {
 	}
 }
 
+// toggleStreamCaptions turns the stage's caption off and on (the chat keeps the lines), kept
+// in the settings for every save, and says which in a toast.
+func (g *Game) toggleStreamCaptions() {
+	g.cfg.StreamCaptionsOff = !g.cfg.StreamCaptionsOff
+	g.sfx("decide")
+	state := lang.T("オン")
+	if g.cfg.StreamCaptionsOff {
+		state = lang.T("オフ")
+	}
+	g.desk.toast, g.desk.toastT = lang.T("字幕")+" "+state, 120
+	if err := g.saveConfig(); err != nil {
+		g.failure = err
+	}
+}
+
 // dataLine is a line of the data the host says, with whom it is said to ({from}) and the
 // days ({days}).
 func dataLine(host int, line, from string, days int) streamSay {
@@ -445,7 +460,7 @@ const (
 
 // shownCaption is the caption drawn now ("" for none).
 func (w *streamWatch) shownCaption(g *Game) string {
-	if !w.off.IsZero() && !g.streamNow().Before(w.off) {
+	if g.cfg.StreamCaptionsOff || !w.off.IsZero() && !g.streamNow().Before(w.off) {
 		return ""
 	}
 	return w.caption
@@ -843,7 +858,8 @@ const (
 	ctlComment
 	ctlTip
 	ctlSpeak
-	ctlFull // the full screen and back
+	ctlCaptions // the stage's caption off and on (CC)
+	ctlFull     // the full screen and back
 )
 
 // hush stops the line being read aloud or its voice.
@@ -872,7 +888,7 @@ func (w *streamWatch) controls(g *Game) [][2]int {
 	if g.canRead() {
 		out = append(out, [2]int{int(ctlSpeak), 0})
 	}
-	return append(out, [2]int{int(ctlFull), 0})
+	return append(out, [2]int{int(ctlCaptions), 0}, [2]int{int(ctlFull), 0})
 }
 
 func (w *streamWatch) update(g *Game) {
@@ -992,6 +1008,8 @@ func (w *streamWatch) input(g *Game) {
 				w.hush()
 			}
 			g.sfx("decide")
+		case ctlCaptions:
+			g.toggleStreamCaptions()
 		case ctlFull:
 			g.toggleStreamFull()
 		}
@@ -1017,6 +1035,8 @@ func (w *streamWatch) input(g *Game) {
 		w.typing = true
 	case in.pressed[btnHide]:
 		g.toggleStreamFull()
+	case in.pressed[btnCaptions]:
+		g.toggleStreamCaptions()
 	case in.digit > 0 && w.ask != nil && w.mine < 0:
 		w.choose(g, in.digit-1)
 	case in.up():
@@ -1128,6 +1148,9 @@ func (w *streamWatch) controlRect(g *Game, c [2]int) (x, y, cw, ch float64) {
 			x = lay.colX
 		}
 		return x - fullGap - fullSize, lay.stageY + lay.stageH - fullGap - fullSize, fullSize, fullSize
+	case ctlCaptions: // left of the full screen's
+		x, y, s, _ := w.controlRect(g, [2]int{int(ctlFull), 0})
+		return x - fullGap - s, y, s, s
 	case ctlSpeak:
 	}
 	return right - 80, sh - 58, 66, 42
@@ -1155,6 +1178,21 @@ func drawFullButton(dst *ebiten.Image, x, y, size float64, full, focused bool) {
 		}
 		gfx.StrokeLine(dst, px, py, px+ax, py, 2.5, streamPanel, true)
 		gfx.StrokeLine(dst, px, py, px, py+ay, 2.5, streamPanel, true)
+	}
+}
+
+// drawCaptionsButton draws the captions' button at x, y, size square, as the full screen's:
+// CC on a see-through round ground, struck through when the captions are off, ringed when
+// chosen with the keys.
+func drawCaptionsButton(dst *ebiten.Image, x, y, size float64, on, focused bool) {
+	cx, cy, r := float32(x+size/2), float32(y+size/2), float32(size/2)
+	gfx.FillCircle(dst, cx, cy, r, withAlpha(colorBlack, 0x80), true)
+	if focused {
+		gfx.StrokeCircle(dst, cx, cy, r-1, 2, streamBrand, true)
+	}
+	gfx.Pop(func() { gfx.DrawText(dst, "CC", x+size/2, y+size/2-9, 15, streamPanel) })
+	if !on {
+		gfx.StrokeLine(dst, cx-r*0.55, cy+r*0.55, cx+r*0.55, cy-r*0.55, 2.5, streamPanel, true)
 	}
 }
 
@@ -1249,8 +1287,8 @@ func (w *streamWatch) drawPlate(g *Game, dst *ebiten.Image, lay watchLayout, y f
 			tw = gfx.TextWidth(tag, tagSize) + 12
 		}
 		x, top := 12.0, bottom-10-h
-		pw := min(nw+tw+24, lay.stageW-24-fullGap-fullSize) // clear of the full screen's button
-		if nw+tw+24 > pw {                                  // no room for the tag: the name takes the plate
+		pw := min(nw+tw+24, lay.stageW-24-2*(fullGap+fullSize)) // clear of the CC and full screen's buttons
+		if nw+tw+24 > pw {                                      // no room for the tag: the name takes the plate
 			tw = 0
 		}
 		gfx.FillRoundRect(dst, float32(x), float32(top), float32(pw), float32(h), 4, c.Color.Or(streamBrand))
@@ -1447,6 +1485,8 @@ func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, lay watchLayout, sh
 			on := g.desk.speak
 			w.speaker.draw(dst, fmt.Sprint(on, ink), x+8, y+ch/2-12, 24, 24, func(img *ebiten.Image) { drawSpeaker(img, 0, 12, on, ink) })
 			gfx.DrawTextLeft(dst, label, x+34, y+12, 13, ink)
+		case ctlCaptions:
+			drawCaptionsButton(dst, x, y, cw, !g.cfg.StreamCaptionsOff, focused)
 		case ctlFull:
 			drawFullButton(dst, x, y, cw, g.cfg.StreamFull, focused)
 		}

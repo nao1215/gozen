@@ -40,6 +40,8 @@ type config struct {
 	Language string `json:"language,omitempty"`
 	// StreamFull: the watch view of a stream fills the screen with the stage (ADR 0048).
 	StreamFull bool `json:"stream_full,omitempty"`
+	// StreamCaptionsOff: the watch view of a stream shows no caption on its stage (CC).
+	StreamCaptionsOff bool `json:"stream_captions_off,omitempty"`
 }
 
 func defaultConfig() config {

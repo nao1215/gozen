@@ -1012,6 +1012,7 @@ var english = map[string]string{
 	"%sに覚えられた（%d）":     "%s remembers you (%d)",
 	"名前は、あとから変えられません。":        "Your name cannot be changed later.",
 	"見ていない間も、ゴールドが少しずつ貯まります。": "Gold piles up a little while you are away.",
+	"字幕":        "Captions",
 	"コラボ":       "Collab",
 	"メッセージ（任意）": "Message (optional)",
 }
