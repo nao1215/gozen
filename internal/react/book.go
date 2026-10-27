@@ -430,6 +430,26 @@ func (p *personDef) bounds() (float64, float64) {
 	return p.MoodMin, p.MoodMax
 }
 
+// Lines are the lines of the person id as the book writes them, before their fields are
+// filled: those of its rules, its questions and its dodges, in that order (nil for an
+// unknown person). gozen check reads them to find the recorded voices that are no line.
+func (b *Book) Lines(id string) []string {
+	p, ok := b.person(id)
+	if !ok {
+		return nil
+	}
+	var out []string
+	for _, r := range p.Rules {
+		for _, e := range r.Say {
+			out = append(out, e...)
+		}
+	}
+	for _, a := range p.Asks {
+		out = append(out, a.Say...)
+	}
+	return slices.Concat(out, p.Dodge.Repeat, p.Dodge.Unsure, p.Dodge.Unknown)
+}
+
 func (b *Book) person(id string) (*personDef, bool) {
 	for i := range b.doc.People {
 		if b.doc.People[i].ID == id {

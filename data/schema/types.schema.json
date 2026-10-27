@@ -17542,6 +17542,19 @@
             "version": "9"
           },
           "x-type": "integer[]"
+        },
+        "voices": {
+          "description": "A folder under assets/ of recorded lines (ADR 0052): a folder for each channel holding the line it says as `KEY.ogg`, KEY the first 16 hexadecimal digits of the SHA-1 of the line in UTF-8, as shown (translated) and before its `{fields}` are filled; a reaction book's line as the book writes it. A line with its voice plays it, and the watch view waits for it to end; a line without one is read by speech synthesis in a browser and only captioned elsewhere. `gozen check` warns of a missing folder and of a file that is the voice of no line (GZN0119).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
         }
       },
       "type": "object"

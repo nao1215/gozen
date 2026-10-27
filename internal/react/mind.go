@@ -57,7 +57,10 @@ type Reaction struct {
 	Rule string
 	// Lines are the line said and, when the rule asks a question, the question.
 	Lines []string
-	Face  string
+	// Written are the Lines as the book writes them, before their fields are filled (a
+	// game finds a line's recorded voice by them).
+	Written []string
+	Face    string
 	// Delta is the mood change applied; Mood is the mood after it.
 	Delta, Mood float64
 	// Confidence is the highest tag score (0 when nothing was found).
@@ -362,7 +365,7 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 		delta += rule.Delta
 		out.Rule, out.Face = rule.ID, rule.Face
 		for _, l := range m.pickEntry(rule.Say) {
-			out.Lines = append(out.Lines, m.fill(l, e))
+			out.say(m.fill(l, e), l)
 		}
 		for _, r := range rule.Remember {
 			m.write(r, e)
@@ -375,7 +378,8 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 		}
 		if rule.Ask != "" {
 			q := m.ask(rule.Ask)
-			out.Lines = append(out.Lines, m.fill(m.pick(q.Say), e))
+			l := m.pick(q.Say)
+			out.say(m.fill(l, e), l)
 			if q.Face != "" {
 				out.Face = q.Face
 			}
@@ -392,7 +396,7 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 		}
 		if l := m.pick(lines); l != "" {
 			out.Rule, out.Face = "dodge."+name, d.Face
-			out.Lines = append(out.Lines, m.fill(l, e))
+			out.say(m.fill(l, e), l)
 		}
 	}
 	m.asked = pending
@@ -440,7 +444,14 @@ func (m *Mind) Ask(id string) (Reaction, error) {
 	}
 	e := &env{m: m, found: map[string]Tag{}}
 	m.asked = m.pose(q)
-	return Reaction{Rule: "ask." + id, Lines: []string{m.fill(m.pick(q.Say), e)}, Face: q.Face, Mood: m.mood, Ask: id}, nil
+	l := m.pick(q.Say)
+	return Reaction{Rule: "ask." + id, Lines: []string{m.fill(l, e)}, Written: []string{l}, Face: q.Face, Mood: m.mood, Ask: id}, nil
+}
+
+// say adds a line, filled and as written.
+func (r *Reaction) say(filled, written string) {
+	r.Lines = append(r.Lines, filled)
+	r.Written = append(r.Written, written)
 }
 
 func (m *Mind) ask(id string) *question {

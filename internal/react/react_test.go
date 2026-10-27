@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/fs"
 	"math/rand/v2"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -729,5 +730,31 @@ people:
 		if strings.Join(r.Lines, "|") != strings.Join(tc.want, "|") {
 			t.Errorf("%q: lines %q, want %q", tc.text, r.Lines, tc.want)
 		}
+	}
+}
+
+// TestWrittenLines: a reaction gives its lines as the book writes them beside the filled
+// ones (a rule that asks, the question too), and Lines lists a person's lines as written.
+func TestWrittenLines(t *testing.T) {
+	m := mind(t)
+	r := do(t, m, Stimulus{Kind: "event", From: "rich", Tags: []string{"gift"}, Values: map[string]float64{"amount": 5000}})
+	if len(r.Written) != 1 || r.Written[0] != "{from}、ありがと！" || r.Lines[0] != "rich、ありがと！" {
+		t.Fatalf("lines %q, written %q", r.Lines, r.Written)
+	}
+	if r = do(t, m, say("ねこ")); len(r.Written) != 2 || r.Written[1] != "犬派？ 猫派？" {
+		t.Fatalf("a rule that asks: written %q", r.Written)
+	}
+	b, err := Parse([]byte(host))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := b.Lines("host")
+	for _, want := range []string{"わかってるじゃん", "{mem.pet}の話、覚えてるよ", "犬派？ 猫派？", "日本語でおｋ", "それさっきも言った"} {
+		if !slices.Contains(lines, want) {
+			t.Errorf("Lines lacks %q: %q", want, lines)
+		}
+	}
+	if b.Lines("nobody") != nil {
+		t.Error("an unknown person has lines")
 	}
 }

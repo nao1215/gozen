@@ -7,6 +7,7 @@ import (
 	"hash/fnv"
 	"image"
 	"image/color"
+	"io/fs"
 	"log"
 	"math"
 	"math/rand/v2"
@@ -21,6 +22,7 @@ import (
 	"github.com/nao1215/gozen/internal/layer3/broadcast"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 	"github.com/nao1215/gozen/internal/layer5/puppet"
+	"github.com/nao1215/gozen/internal/layer5/sound"
 	"github.com/nao1215/gozen/internal/rpg"
 	lang "github.com/nao1215/gozen/internal/text"
 	"github.com/nao1215/gozen/internal/world"
@@ -39,9 +41,10 @@ type streamDesk struct {
 	st    *rpg.State
 	shows []*broadcast.Show
 	away  int
-	// speak reads the lines aloud (a browser build).
-	speak   bool
-	avatars map[string]*ebiten.Image
+	// speak reads the lines aloud: their recorded voices (voices: the streams have them),
+	// else speech synthesis in a browser build. It starts on when there are voices.
+	speak, voices bool
+	avatars       map[string]*ebiten.Image
 	// gear is the settings' gear in the bar.
 	gear stamp
 	// toast is a short message over the stream screens for toastT more ticks.
@@ -76,6 +79,11 @@ func (g *Game) stepStreams() {
 		}
 		g.emit("now", traceLine{"unix_ms": now.UnixMilli()})
 		g.desk = &streamDesk{base: now, tick0: g.tick, rng: rand.New(rand.NewPCG(g.opts.Seed, uint64(now.UnixMilli()))), avatars: map[string]*ebiten.Image{}} //nolint:gosec // Who streams is not security-sensitive.
+		if v := g.db.Streams.Voices; v != "" {
+			st, err := fs.Stat(g.db.FS, "assets/"+v)
+			g.desk.voices = err == nil && st.IsDir()
+			g.desk.speak = g.desk.voices
+		}
 	}
 	now := g.streamNow()
 	if g.desk.st != g.st {
@@ -85,6 +93,31 @@ func (g *Game) stepStreams() {
 	if gold := broadcast.Settle(g.db.Streams, g.st.Streams, now); gold > 0 {
 		g.st.Gold += gold
 		g.desk.away += gold
+	}
+}
+
+// voiceLoad is the recorded voice of a stream line being loaded (loadVoice): done is
+// closed once pcm or err is set.
+type voiceLoad struct {
+	file string
+	done chan struct{}
+	pcm  []byte
+	err  error
+}
+
+// read loads the voice from the game's files and closes done.
+func (v *voiceLoad) read(fsys fs.FS) {
+	v.pcm, v.err = sound.VoiceClip(fsys, v.file)
+	close(v.done)
+}
+
+// loaded reports whether the voice has loaded (or failed to).
+func (v *voiceLoad) loaded() bool {
+	select {
+	case <-v.done:
+		return true
+	default:
+		return false
 	}
 }
 

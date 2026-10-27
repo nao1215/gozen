@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	lang "github.com/nao1215/gozen/internal/text"
@@ -42,11 +43,18 @@ func TestGraphicsScreensStreams(t *testing.T) {
 	ja, set := button(bar, isJa), button(barJa, func(b barButton) bool { return b.gear })
 	tall := fmt.Sprintf("window 390 844\ngap 1\nwait 30\ntype Pat\npress ok\nwait 30\nshot lobby\nclick %d %d\nwait 20\nshot lobby_ja\nclick %d %d\nwait 30\nshot settings\nclick 30 20\nwait 30\npress ok\nwait 100\nshot watch\npress hide\nwait 20\nshot full\nquit\n",
 		int(ja.x+ja.w/2), int(ja.y+15), int(set.x+set.w/2), int(set.y+15))
+	brand := [3]uint32{0xe0, 0x45, 0x7b}
+	speakerOn := func(img image.Image) bool { return near(img, 1205, 668, brand) } // the read-aloud button, filled when on
+	voiced := func(fsys fstest.MapFS) {
+		fsys["data/streams.yaml"].Data = append([]byte("voices: voice\n"), fsys["data/streams.yaml"].Data...)
+		fsys["assets/voice/ann/.keep"] = &fstest.MapFile{}
+	}
 	for _, tc := range []struct {
 		name, duo, script string
+		edit              func(fstest.MapFS)
 		check             func(t *testing.T, root string)
 	}{
-		{"single", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\nshot lobby\npress ok\nwait 100\nshot watch\nquit\n", func(t *testing.T, root string) {
+		{"single", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\nshot lobby\npress ok\nwait 100\nshot watch\nquit\n", nil, func(t *testing.T, root string) {
 			lobby := shotImage(t, root, "lobby")
 			// the bar, the first card's picture (its room from the left edge, its puppet) and its chat
 			x, y, w, h := lobbyEdge, streamBarH+20, 1280-2*lobbyEdge-lobbyChatW, (1280-2*lobbyEdge-lobbyChatW)*9/16
@@ -64,8 +72,16 @@ func TestGraphicsScreensStreams(t *testing.T) {
 			if darkRun(watch, int(sw/2), 420, int(streamBarH+sw*9/16)) < 10 {
 				t.Error("no caption band under the line")
 			}
+			if speakerOn(watch) {
+				t.Error("the desktop shows a read-aloud button without voices")
+			}
 		}},
-		{"full", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 100\npress hide\nwait 20\nshot full\nquit\n", func(t *testing.T, root string) {
+		{"voices", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 100\nshot watch\nquit\n", voiced, func(t *testing.T, root string) {
+			if !speakerOn(shotImage(t, root, "watch")) {
+				t.Error("the desktop does not show the read-aloud button, on, with recorded voices")
+			}
+		}},
+		{"full", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 100\npress hide\nwait 20\nshot full\nquit\n", nil, func(t *testing.T, root string) {
 			full := shotImage(t, root, "full")
 			// the room under where the page's bar and the information were, and the chat darkened over the stage
 			if !near(full, 60, 100, room) || !near(full, 60, 700, room) || near(full, int(1280-streamChatW/2), 300, white) {
@@ -76,7 +92,7 @@ func TestGraphicsScreensStreams(t *testing.T) {
 				t.Errorf("the settings do not keep the full screen: %s, %v", b, err)
 			}
 		}},
-		{"cards", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress right\nwait 20\nshot cards\nquit\n", func(t *testing.T, root string) {
+		{"cards", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress right\nwait 20\nshot cards\nquit\n", nil, func(t *testing.T, root string) {
 			// the second, small card scrolled into view has its show's line on a black band too
 			cards := shotImage(t, root, "cards")
 			w0 := 1280.0 - 2*lobbyEdge - lobbyChatW
@@ -88,14 +104,14 @@ func TestGraphicsScreensStreams(t *testing.T) {
 				t.Errorf("the small card has no caption band (%d dark pixels)", dark)
 			}
 		}},
-		{"duo", "1", "gap 1\nwait 60\npress ok\nwait 20\npress ok\nwait 100\nshot duo\nquit\n", func(t *testing.T, root string) {
+		{"duo", "1", "gap 1\nwait 60\npress ok\nwait 20\npress ok\nwait 100\nshot duo\nquit\n", nil, func(t *testing.T, root string) {
 			duo := shotImage(t, root, "duo")
 			sw := 1280.0 - streamChatW
 			if !differs(duo, int(sw*0.28), 330) || !differs(duo, int(sw*0.72), 330) {
 				t.Error("the duo does not stand both hosts on the stage")
 			}
 		}},
-		{"tall", "0", tall, func(t *testing.T, root string) {
+		{"tall", "0", tall, nil, func(t *testing.T, root string) {
 			// a phone held upright: one card across the screen under the bar, then the next card under it
 			lobby := shotImage(t, root, "lobby")
 			if b := lobby.Bounds(); b.Dx() != 390 || b.Dy() != 844 {
@@ -144,7 +160,11 @@ func TestGraphicsScreensStreams(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
 			game := filepath.Join(root, "game")
-			if err := os.CopyFS(game, streamsFS(t, tc.duo)); err != nil {
+			fsys := streamsFS(t, tc.duo)
+			if tc.edit != nil {
+				tc.edit(fsys)
+			}
+			if err := os.CopyFS(game, fsys); err != nil {
 				t.Fatal(err)
 			}
 			script := filepath.Join(root, "script.txt")

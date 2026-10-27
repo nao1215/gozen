@@ -2,6 +2,8 @@ package gamedata
 
 import (
 	"cmp"
+	"crypto/sha1" //nolint:gosec // A file name for a line, not security.
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -23,6 +25,10 @@ type Streams struct {
 	// Logo is the picture under assets/ drawn before the game's title in the bar over the
 	// stream screens (a colored square when empty).
 	Logo string `yaml:"logo"`
+	// Voices is a folder under assets/ of recorded lines: a folder for each channel, the
+	// line it says in VOICEKEY.ogg (VoiceKey). A line without its file is read by speech
+	// synthesis in a browser build and only captioned elsewhere.
+	Voices string `yaml:"voices"`
 	// Timing is how long each kind of beat lasts.
 	Timing StreamTiming `yaml:"timing"`
 	// Live decides who is live when the game opens.
@@ -363,6 +369,24 @@ func (t StreamTiming) Seconds(b Beat) float64 {
 	return t.Chat
 }
 
+// VoiceKey names the recorded voice of a stream line: the first 16 hexadecimal digits of
+// the SHA-1 of the line in UTF-8, as shown (translated) and before its {fields} are filled
+// (a reaction book's line as written in the book).
+func VoiceKey(line string) string {
+	sum := sha1.Sum([]byte(line)) //nolint:gosec // A file name for a line, not security.
+	return hex.EncodeToString(sum[:])[:16]
+}
+
+// Voice is the file, under the game's files, of the recorded voice of the line the
+// channel says (VoiceKey), or "" when the streams have no voices folder or the line is
+// empty.
+func (s *Streams) Voice(channel, line string) string {
+	if s.Voices == "" || line == "" {
+		return ""
+	}
+	return "assets/" + path.Join(s.Voices, channel, VoiceKey(line)+".ogg")
+}
+
 // Channel is the channel with the id, or nil.
 func (s *Streams) Channel(id string) *Channel {
 	for _, c := range s.Channels {
@@ -558,6 +582,7 @@ func (c *checker) streams() {
 			c.episode(e, []string{ch.ID})
 		}
 	}
+	c.streamVoices()
 	pairs := map[[2]string]bool{}
 	for i, d := range s.Duos {
 		w := at("duos[%d]", i)
@@ -650,4 +675,79 @@ func (c *checker) episode(e *Episode, hosts []string) {
 	if total < minEpisodeSeconds {
 		c.warnf(diag.ShortEpisode, at("parts"), "the episode lasts %.0f minutes, less than 20", total/60)
 	}
+}
+
+// streamVoices warns of a voices folder that is missing, of what in it is not a channel's
+// folder, and of a file that is not the voice of a line of its channel (StreamVoice).
+func (c *checker) streamVoices() {
+	s := c.db.Streams
+	if s.Voices == "" {
+		return
+	}
+	where := s.file + " voices"
+	dir := "assets/" + s.Voices
+	entries, err := fs.ReadDir(c.db.FS, dir)
+	if err != nil {
+		c.warnf(diag.StreamVoice, where, "no folder %s: the lines are read by speech synthesis in a browser and only captioned elsewhere", dir)
+		return
+	}
+	for _, e := range entries {
+		ch := s.Channel(e.Name())
+		if !e.IsDir() || ch == nil {
+			c.warnf(diag.StreamVoice, where, "%s/%s is not the folder of a channel", dir, e.Name())
+			continue
+		}
+		keys := c.voiceKeys(ch)
+		files, err := fs.ReadDir(c.db.FS, dir+"/"+ch.ID)
+		if err != nil {
+			c.warnf(diag.StreamVoice, where, "%s/%s: %v", dir, ch.ID, err)
+			continue
+		}
+		for _, f := range files {
+			if key, ok := strings.CutSuffix(f.Name(), ".ogg"); !ok || f.IsDir() || !keys[key] {
+				c.warnf(diag.StreamVoice, where, "%s/%s/%s is the voice of no line of %s", dir, ch.ID, f.Name(), ch.ID)
+			}
+		}
+	}
+}
+
+// voiceKeys are the voice keys of the lines the channel says, in every language offered:
+// its greetings, its lines and questions in its episodes and duos, and its reaction book's.
+func (c *checker) voiceKeys(ch *Channel) map[string]bool {
+	s := c.db.Streams
+	lines := slices.Concat(ch.First, ch.Streak, ch.Stayed)
+	for _, g := range ch.Greet {
+		lines = append(lines, g...)
+	}
+	says := func(eps []*Episode, host string) {
+		for _, e := range eps {
+			for _, b := range e.Beats() {
+				switch {
+				case b.Line != nil && cmp.Or(b.Speaker, host) == ch.ID:
+					lines = append(lines, b.Line.Text)
+				case b.Ask != nil && cmp.Or(b.Ask.Who, host) == ch.ID:
+					lines = append(lines, b.Ask.Q)
+					for _, o := range b.Ask.Options {
+						lines = append(lines, o.R...)
+					}
+				}
+			}
+		}
+	}
+	says(ch.Shows, ch.ID)
+	for _, d := range s.Duos {
+		if d != nil && (d.Host == ch.ID || d.With == ch.ID) {
+			says(d.Shows, d.Host)
+		}
+	}
+	if b := c.db.ReactionBooks[ch.Actor]; b != nil {
+		lines = append(lines, b.Lines(ch.Actor)...)
+	}
+	keys := map[string]bool{}
+	for _, code := range slices.Concat(c.db.Game.Offered(), []string{c.db.Game.Written()}) {
+		for _, l := range lines {
+			keys[VoiceKey(c.db.TrIn(code, l))] = true
+		}
+	}
+	return keys
 }

@@ -2,6 +2,8 @@
 
 package play
 
+import "io/fs"
+
 // canQuit: the title's last item ends the game.
 const canQuit = true
 
@@ -16,3 +18,11 @@ func canSpeak() bool { return false }
 func speak(string, string, float64, float64) func() bool { return nil }
 
 func stopSpeaking() {}
+
+// loadVoice loads a stream line's recorded voice at once (the files are on the disk), so
+// a run and its replay time the lines the same.
+func loadVoice(fsys fs.FS, file string) *voiceLoad {
+	v := &voiceLoad{file: file, done: make(chan struct{})}
+	v.read(fsys)
+	return v
+}

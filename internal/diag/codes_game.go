@@ -93,6 +93,11 @@ var (
 		Detail:  "The beats of the episode, timed by the timing of the streams file, add up to less than 20 minutes, so a viewer sees it end soon after opening the game.",
 		Fix:     "Add beats to the episode, or lengthen the timing.",
 	})
+	StreamVoice = register(119, "StreamVoice", Entry{
+		Summary: "a stream voice is missing its folder or matches no line",
+		Detail:  "The voices folder of the streams file does not exist, holds something other than a folder for each channel, or holds a file that is not the recorded voice of a line the channel says: its name is not the voice key of one of the channel's lines (in any language the game offers) followed by .ogg, usually because the line changed after the voice was recorded. A line without its voice is still read by speech synthesis in a browser and captioned elsewhere.",
+		Fix:     "Record the voices again for the lines as they are now and remove the old files, or correct voices in the streams file.",
+	})
 )
 
 // GZN11xx: the definitions of the game. The game does not load, and check

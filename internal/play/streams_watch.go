@@ -19,6 +19,7 @@ import (
 	"github.com/nao1215/gozen/internal/layer3/broadcast"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 	"github.com/nao1215/gozen/internal/layer5/puppet"
+	"github.com/nao1215/gozen/internal/layer5/sound"
 	"github.com/nao1215/gozen/internal/react"
 	lang "github.com/nao1215/gozen/internal/text"
 )
@@ -36,8 +37,10 @@ type streamWatch struct {
 
 	queue []streamSay // lines to say before the next beat
 	busy  time.Time   // the next step is due then
-	// spoken reports the end of the line read aloud (nil: none is being read).
+	// spoken reports the end of the line read aloud (nil: none is being read), and voice
+	// is the recorded voice of the line said while it loads (nil: none).
 	spoken func() bool
+	voice  *voiceLoad
 
 	next, from, watched  int // the next beat, the beat come in at, the beats watched
 	seen, thanked, ended bool
@@ -63,10 +66,11 @@ type streamWatch struct {
 	focus     int // the control chosen with the keys (watchControls)
 }
 
-// streamSay is a line a host says: the host's index, the text and the face.
+// streamSay is a line a host says: the host's index, the text and the face, and the line
+// as shown before its {fields} were filled, which names its recorded voice ("" for none).
 type streamSay struct {
-	host       int
-	text, face string
+	host            int
+	text, face, raw string
 }
 
 // tipKind is the stimulus kind of a tip; value.amount is its amount.
@@ -191,9 +195,11 @@ func (g *Game) toggleStreamFull() {
 	}
 }
 
-// fillLine translates a line and puts in whom it is said to ({from}) and the days.
-func (g *Game) fillLine(line, from string, days int) string {
-	return strings.NewReplacer("{from}", from, "{days}", strconv.Itoa(days)).Replace(g.db.Tr(line))
+// dataLine is a line of the data the host says: translated, with whom it is said to
+// ({from}) and the days put in.
+func (g *Game) dataLine(host int, line, from string, days int) streamSay {
+	raw := g.db.Tr(line)
+	return streamSay{host: host, raw: raw, text: strings.NewReplacer("{from}", from, "{days}", strconv.Itoa(days)).Replace(raw)}
 }
 
 // greet says what the host says to a viewer coming in: the first visit's line, or the
@@ -203,7 +209,7 @@ func (w *streamWatch) greet(g *Game) {
 	p := broadcast.Progress(g.st.Streams, c.ID)
 	pick := func(lines []string) {
 		if len(lines) > 0 {
-			w.queue = append(w.queue, streamSay{text: g.fillLine(lines[g.desk.rng.IntN(len(lines))], g.st.Streams.Viewer, p.Run)})
+			w.queue = append(w.queue, g.dataLine(0, lines[g.desk.rng.IntN(len(lines))], g.st.Streams.Viewer, p.Run))
 		}
 	}
 	if broadcast.Visit(p, g.streamNow()) {
@@ -212,7 +218,7 @@ func (w *streamWatch) greet(g *Game) {
 	}
 	if s := g.step(c); s < len(c.Greet) {
 		for _, l := range c.Greet[s] {
-			w.queue = append(w.queue, streamSay{text: g.fillLine(l, g.st.Streams.Viewer, p.Run)})
+			w.queue = append(w.queue, g.dataLine(0, l, g.st.Streams.Viewer, p.Run))
 		}
 	}
 	if p.Run >= broadcast.StreakDays {
@@ -237,17 +243,75 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 	w.chat.post(chat.Message{From: g.channelName(w.show.Hosts[l.host]), Text: l.text, Values: map[string]float64{chatHost: 1}})
 	w.talk[l.host] = now.Add(time.Duration(min(4, 0.5+0.07*float64(runes)) * float64(time.Second)))
 	w.busy = now.Add(seconds(d.Timing.LineSeconds(l.text)))
-	if g.desk.speak && canSpeak() {
-		v := w.show.Hosts[l.host].Voice
-		language := "en-US"
-		if g.db.Shown() == "ja" {
-			language = "ja-JP"
-		}
-		w.spoken = speak(strings.NewReplacer("「", "", "」", "", "『", "", "』", "").Replace(l.text), language, v.Pitch, v.Rate)
-		limit := now.Add(seconds(5 + 0.4*float64(runes)))
-		w.busy, w.talk[l.host] = limit, limit
+	w.voice = nil
+	if !g.desk.speak {
+		return
 	}
+	if f := d.Voice(w.show.Hosts[l.host].ID, l.raw); f != "" && g.desk.voices {
+		// the line waits for its voice to load (a browser may still be fetching it), then
+		// for it to end
+		if w.voice = loadVoice(g.db.FS, f); !w.voice.loaded() {
+			limit := now.Add(seconds(5 + 0.4*float64(runes)))
+			w.busy, w.talk[l.host] = limit, limit
+		}
+		w.voiced(g)
+		return
+	}
+	w.readAloud(g, l.host, l.text)
 }
+
+// readAloud reads the line the host says with speech synthesis (a browser build), the
+// next step waiting for it to end.
+func (w *streamWatch) readAloud(g *Game, host int, text string) {
+	if !canSpeak() {
+		return
+	}
+	v := w.show.Hosts[host].Voice
+	language := "en-US"
+	if g.db.Shown() == "ja" {
+		language = "ja-JP"
+	}
+	w.spoken = speak(strings.NewReplacer("「", "", "」", "", "『", "", "』", "").Replace(text), language, v.Pitch, v.Rate)
+	limit := g.streamNow().Add(seconds(5 + 0.4*float64(utf8.RuneCountInString(text))))
+	w.busy, w.talk[host] = limit, limit
+}
+
+// voiced plays the recorded voice of the line said once it has loaded, the next step
+// waiting for it to end; a line whose voice did not load is read aloud as a line without
+// one (captioned only, outside a browser).
+func (w *streamWatch) voiced(g *Game) {
+	v := w.voice
+	if v == nil || !v.loaded() {
+		return
+	}
+	w.voice = nil
+	now := g.streamNow()
+	l := traceLine{"file": v.file, "who": w.show.Hosts[w.captionWho].ID}
+	if v.err != nil {
+		l["missing"] = true
+		g.emit("voice", l)
+		// the line's own timing, from now when it waited for the voice to load
+		w.busy = minTime(w.busy, now.Add(seconds(g.db.Streams.Timing.LineSeconds(w.caption))))
+		w.talk[w.captionWho] = minTime(w.talk[w.captionWho], now.Add(time.Duration(min(4, 0.5+0.07*float64(utf8.RuneCountInString(w.caption)))*float64(time.Second))))
+		w.readAloud(g, w.captionWho, w.caption)
+		return
+	}
+	sound.PlayVoice(v.pcm, g.voiceGain(w.show.Hosts[w.captionWho].Actor))
+	end := now.Add(seconds(sound.ClipSeconds(v.pcm)))
+	l["ticks"] = int(math.Ceil(sound.ClipSeconds(v.pcm) * ebiten.DefaultTPS))
+	g.emit("voice", l)
+	w.busy, w.talk[w.captionWho] = end.Add(voiceGap), end
+}
+
+func minTime(a, b time.Time) time.Time {
+	if b.Before(a) {
+		return b
+	}
+	return a
+}
+
+// voiceGap is the pause after a line read aloud, before the next step.
+const voiceGap = 250 * time.Millisecond
 
 func seconds(s float64) time.Duration { return time.Duration(s * float64(time.Second)) }
 
@@ -292,13 +356,15 @@ func (w *streamWatch) run(g *Game, b data.Beat) {
 	t := g.db.Streams.Timing
 	switch {
 	case b.Line != nil:
-		w.say(g, streamSay{host: w.host(b.Speaker), text: g.db.Tr(b.Line.Text), face: b.Line.Face})
+		raw := g.db.Tr(b.Line.Text)
+		w.say(g, streamSay{host: w.host(b.Speaker), text: raw, face: b.Line.Face, raw: raw})
 	case b.Chat != nil:
 		w.chat.post(chat.Message{From: g.db.Tr(b.Chat[0]), Text: g.db.Tr(b.Chat[1])})
 		w.busy = now.Add(seconds(t.Chat))
 	case b.Ask != nil:
 		w.askHost = w.host(b.Ask.Who)
-		w.say(g, streamSay{host: w.askHost, text: g.db.Tr(b.Ask.Q)})
+		q := g.db.Tr(b.Ask.Q)
+		w.say(g, streamSay{host: w.askHost, text: q, raw: q})
 		w.ask, w.mine, w.focus = b.Ask, -1, 0
 		w.busy = w.busy.Add(seconds(t.Ask))
 		w.npcAt = nil
@@ -325,7 +391,7 @@ func (w *streamWatch) answer(g *Game) {
 		who, option = g.db.Tr(n.Name), n.Option
 	}
 	for _, r := range q.Options[option].R {
-		w.queue = append(w.queue, streamSay{host: w.askHost, text: g.fillLine(r, who, 0)})
+		w.queue = append(w.queue, g.dataLine(w.askHost, r, who, 0))
 	}
 	w.step(g)
 }
@@ -365,7 +431,7 @@ func (w *streamWatch) reply(g *Game, host int, s react.Stimulus, first bool) boo
 	}
 	lines := make([]streamSay, len(r.Lines))
 	for i, l := range r.Lines {
-		lines[i] = streamSay{host: host, text: l, face: r.Face}
+		lines[i] = streamSay{host: host, text: l, face: r.Face, raw: r.Written[i]}
 	}
 	if first {
 		w.queue = slices.Concat(lines, w.queue)
@@ -432,7 +498,7 @@ func (w *streamWatch) finish(g *Game) {
 	if !w.thanked && broadcast.Seen(w.watched, w.from, len(w.show.Beats)) && w.watched > 0 && len(c.Stayed) > 0 {
 		w.thanked = true
 		g.earn(c, g.db.Streams.Affection.Stayed)
-		w.queue = append(w.queue, streamSay{text: g.fillLine(c.Stayed[g.desk.rng.IntN(len(c.Stayed))], g.st.Streams.Viewer, 0)})
+		w.queue = append(w.queue, g.dataLine(0, c.Stayed[g.desk.rng.IntN(len(c.Stayed))], g.st.Streams.Viewer, 0))
 		w.step(g)
 		return
 	}
@@ -443,9 +509,7 @@ func (w *streamWatch) finish(g *Game) {
 
 // leave goes back to the lobby.
 func (w *streamWatch) leave(g *Game) {
-	if w.spoken != nil {
-		stopSpeaking()
-	}
+	w.hush()
 	closeBodies(w.bodies)
 	w.speaker.free()
 	g.sfx("cancel")
@@ -489,8 +553,22 @@ const (
 	ctlFull // the full screen and back
 )
 
+// hush stops the line being read aloud or its voice.
+func (w *streamWatch) hush() {
+	if w.spoken != nil {
+		stopSpeaking()
+		w.spoken = nil
+	}
+	w.voice = nil
+	sound.StopVoice()
+}
+
+// canRead reports whether the lines can be read aloud: with speech synthesis (a browser
+// build) or the streams' recorded voices.
+func (g *Game) canRead() bool { return canSpeak() || g.desk.voices }
+
 // controls are the controls shown now, in order: [kind, option].
-func (w *streamWatch) controls() [][2]int {
+func (w *streamWatch) controls(g *Game) [][2]int {
 	var out [][2]int
 	if w.ask != nil && w.mine < 0 {
 		for i := range w.ask.Options {
@@ -498,7 +576,7 @@ func (w *streamWatch) controls() [][2]int {
 		}
 	}
 	out = append(out, [2]int{int(ctlComment), 0}, [2]int{int(ctlTip), 0})
-	if canSpeak() {
+	if g.canRead() {
 		out = append(out, [2]int{int(ctlSpeak), 0})
 	}
 	return append(out, [2]int{int(ctlFull), 0})
@@ -528,13 +606,14 @@ func (w *streamWatch) update(g *Game) {
 			w.nextTip = now.Add(time.Duration(60+g.desk.rng.IntN(90)) * time.Second)
 			w.botTip(g)
 		}
+		w.voiced(g)
 		if w.spoken != nil && w.spoken() {
 			w.spoken = nil
-			w.busy = now.Add(250 * time.Millisecond)
+			w.busy = now.Add(voiceGap)
 			w.talk[w.captionWho] = now
 		}
 		if !now.Before(w.busy) {
-			w.spoken = nil
+			w.spoken, w.voice = nil, nil
 			w.step(g)
 		}
 	}
@@ -579,7 +658,7 @@ func (w *streamWatch) input(g *Game) {
 		w.updateTips(g)
 		return
 	}
-	ctl := w.controls()
+	ctl := w.controls(g)
 	w.focus = min(w.focus, len(ctl)-1)
 	activate := func(c [2]int) {
 		switch watchControl(c[0]) {
@@ -592,8 +671,8 @@ func (w *streamWatch) input(g *Game) {
 			g.sfx("decide")
 		case ctlSpeak:
 			g.desk.speak = !g.desk.speak
-			if !g.desk.speak && w.spoken != nil {
-				stopSpeaking()
+			if !g.desk.speak {
+				w.hush()
 			}
 			g.sfx("decide")
 		case ctlFull:
@@ -857,7 +936,7 @@ func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, lay watchLayout, sh
 		gfx.DrawTextLeft(dst, lang.T("配信チャット"), cx+14, lay.colTop+10, 14, streamInk2)
 		rect(dst, cx, lay.colTop+38, colW, 1, streamRule)
 	}
-	ctl := w.controls()
+	ctl := w.controls(g)
 	x, y, chw, chh := w.chatRect(g)
 	g.drawChat(dst, w.chat, x, y, chw, chh, g.money, ink)
 	if w.ask != nil && w.mine < 0 {

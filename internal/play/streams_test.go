@@ -17,6 +17,7 @@ import (
 	"github.com/nao1215/gozen/internal/chat"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/broadcast"
+	"github.com/nao1215/gozen/internal/layer5/sound"
 	"github.com/nao1215/gozen/internal/rpg"
 	lang "github.com/nao1215/gozen/internal/text"
 )
@@ -444,5 +445,81 @@ func TestStreamsBarLanguageAndSettings(t *testing.T) {
 	g.in.click = false
 	if _, ok := g.stack[len(g.stack)-1].(*streamLobby); !ok {
 		t.Fatalf("the bar's way back leads to %T", g.stack[len(g.stack)-1])
+	}
+}
+
+// voicedShow opens the stream game with recorded voices for the lines of ann named in
+// voiced (from internal/play/testdata/tone.ogg) and watches ann's show from its start.
+func voicedShow(t *testing.T, voiced ...string) (*Game, *streamWatch, fstest.MapFS) {
+	t.Helper()
+	fsys := streamsFS(t, "0")
+	tone, err := os.ReadFile("testdata/tone.ogg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fsys["data/streams.yaml"].Data = append([]byte("voices: voice\n"), fsys["data/streams.yaml"].Data...)
+	for _, l := range voiced {
+		fsys["assets/voice/ann/"+data.VoiceKey(l)+".ogg"] = &fstest.MapFile{Data: tone}
+	}
+	fsys["assets/voice/bo/.keep"] = &fstest.MapFile{} // a folder without voices
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	g.st.Streams.Viewer = "Pat"
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	i := slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })
+	show := l.cards[i].show
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	return g, w, fsys
+}
+
+// TestStreamsVoiceWaitsForTheLine: a game with recorded voices reads its lines aloud from
+// the start, with the read-aloud button even outside a browser; a line with its voice waits
+// for the voice to end before the next step, and a line without one lasts its timing.
+func TestStreamsVoiceWaitsForTheLine(t *testing.T) {
+	g, w, fsys := voicedShow(t, "Hello, everyone.")
+	if !g.desk.speak || !slices.Contains(w.controls(g), [2]int{int(ctlSpeak), 0}) {
+		t.Fatalf("voices do not read aloud (%v) or show the button: %v", g.desk.speak, w.controls(g))
+	}
+	wait := func(line string) time.Time {
+		for range 2000 {
+			if w.caption == line {
+				return g.streamNow()
+			}
+			wldFrames(t, g, 1)
+		}
+		t.Fatalf("%q is never said (caption %q)", line, w.caption)
+		return time.Time{}
+	}
+	at := wait("Welcome, Pat!")
+	if want := at.Add(seconds(g.db.Streams.Timing.LineSeconds("Welcome, Pat!"))); !w.busy.Equal(want) {
+		t.Errorf("a line without its voice lasts until %v, not its timing %v", w.busy, want)
+	}
+	at = wait("Hello, everyone.")
+	pcm, err := sound.VoiceClip(fsys, g.db.Streams.Voice("ann", "Hello, everyone."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	clip := seconds(sound.ClipSeconds(pcm))
+	if want := at.Add(clip + voiceGap); !w.busy.Equal(want) || clip == seconds(g.db.Streams.Timing.LineSeconds("Hello, everyone.")) {
+		t.Errorf("the voiced line waits until %v, not the voice's end %v (a clip of %v)", w.busy, want, clip)
+	}
+}
+
+// TestStreamsNoVoicesNoButton: outside a browser, a game without recorded voices has no
+// read-aloud button.
+func TestStreamsNoVoicesNoButton(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	w := newStreamWatch(g, l.cards[0].show, 100)
+	if g.desk.speak || slices.Contains(w.controls(g), [2]int{int(ctlSpeak), 0}) {
+		t.Fatalf("a game without voices reads aloud (%v) or shows the button: %v", g.desk.speak, w.controls(g))
 	}
 }

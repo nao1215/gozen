@@ -95,3 +95,41 @@ func TestStreamsCheck(t *testing.T) {
 		})
 	}
 }
+
+// TestStreamsVoices: a line's voice is named by the SHA-1 of the line as written, and the
+// check warns of a missing voices folder, of what in it is not a channel's folder and of a
+// file that is the voice of no line of its channel, but not of the voices of its lines.
+func TestStreamsVoices(t *testing.T) {
+	if got := data.VoiceKey("Hello, everyone."); got != "6f2529aa52538b73" {
+		t.Fatalf("voice key %q", got)
+	}
+	warnings := func(files map[string]string) string {
+		var b strings.Builder
+		for _, w := range testgame.Load(t, files).SceneWarnings() {
+			b.WriteString(w.Error() + "\n")
+		}
+		return b.String()
+	}
+	g := streamGame()
+	g["data/streams.yaml"] = "voices: voice\n" + g["data/streams.yaml"]
+	if w := warnings(g); !strings.Contains(w, "GZN0119") || !strings.Contains(w, "no folder assets/voice") {
+		t.Errorf("a missing voices folder is not warned of:\n%s", w)
+	}
+	g["assets/voice/ann/6f2529aa52538b73.ogg"] = "x" // Hello, everyone.
+	g["assets/voice/ann/70624a7e70244116.ogg"] = "x" // Welcome, {from}.
+	g["assets/voice/bo/6f2529aa52538b73.ogg"] = "x"  // in the duo too
+	g["assets/voice/ann/0000000000000000.ogg"] = "x" // no line
+	g["assets/voice/cy/6f2529aa52538b73.ogg"] = "x"  // no channel
+	w := warnings(g)
+	for _, want := range []string{"assets/voice/ann/0000000000000000.ogg is the voice of no line of ann", "assets/voice/cy is not the folder of a channel"} {
+		if !strings.Contains(w, want) {
+			t.Errorf("no warning %q:\n%s", want, w)
+		}
+	}
+	if strings.Count(w, "GZN0119") != 2 {
+		t.Errorf("the voices of lines are warned of:\n%s", w)
+	}
+	if s := testgame.Load(t, g).Streams; s.Voice("ann", "Hello, everyone.") != "assets/voice/ann/6f2529aa52538b73.ogg" || s.Voice("ann", "") != "" {
+		t.Errorf("voice file %q", s.Voice("ann", "Hello, everyone."))
+	}
+}

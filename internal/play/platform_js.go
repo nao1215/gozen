@@ -3,6 +3,7 @@
 package play
 
 import (
+	"io/fs"
 	"strings"
 	"sync"
 	"syscall/js"
@@ -140,6 +141,14 @@ func voiceFor(synth js.Value, language string) js.Value {
 		}
 	}
 	return near
+}
+
+// loadVoice loads a stream line's recorded voice in the background: a file the page is
+// still fetching (the sounds come last, ADR 0051) would hold the frame until it came.
+func loadVoice(fsys fs.FS, file string) *voiceLoad {
+	v := &voiceLoad{file: file, done: make(chan struct{})}
+	go v.read(fsys)
+	return v
 }
 
 // stopSpeaking stops reading aloud.
