@@ -544,8 +544,9 @@ func (m *Mind) pickEntry(key string, entries []sayEntry) sayEntry {
 // fill replaces {from}, {text}, {mood}, {slot.TAG} and {mem.KEY}.
 func (m *Mind) fill(l string, e *env) string { return Fill(l, m.fields(l, e)) }
 
-// fields are the values of the fields of l now: {from}, {text}, {mood}, {slot.TAG} and
-// {mem.KEY} (an unknown field is empty).
+// fields are the values of the fields of l now, each field of l by its whole name: {from},
+// {text}, {mood}, {slot.TAG} and {mem.KEY}, and "" for a memory not kept or an unknown
+// field.
 func (m *Mind) fields(l string, e *env) map[string]string {
 	out := map[string]string{}
 	for {
@@ -555,6 +556,7 @@ func (m *Mind) fields(l string, e *env) map[string]string {
 			return out
 		}
 		f := l[i+1 : j]
+		out[f] = ""
 		switch {
 		case f == "from":
 			out[f] = e.s.From

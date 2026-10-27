@@ -226,9 +226,9 @@ type Say struct {
 	// Instead is a substitute used when who is down during battle. It shows the line of the first member who is not down
 	// (skipped if everyone is down or there is none). It is not used outside battle.
 	Instead []Say `yaml:"instead"`
-	// Values are the values of the text's {fields} that the game gives, by the field (a
-	// reaction book's reply of respond: its from, text, mood, slot.TAG and mem.KEY), found
-	// before the event's expressions; a slot or memory it has no value of is empty.
+	// Values are the values of the text's {fields} that the game gives, by the field's
+	// whole name (a reaction book's reply of respond: its from, text, mood, slot.TAG and
+	// mem.KEY): the text is filled with them in place of its {expressions}.
 	Values map[string]string `yaml:"-"`
 }
 

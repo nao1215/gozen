@@ -150,3 +150,34 @@ func TestRespondKeepsTheBooksSource(t *testing.T) {
 		t.Fatalf("shown again in the source language: %q", got.Text)
 	}
 }
+
+// TestRespondFillsAnyKey: a reply's fields are filled by their whole names as the book
+// filled them, a memory key that is no expression (pet-name) and a comment with braces
+// included, never evaluated.
+func TestRespondFillsAnyKey(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml":      "schema_version: 4\nid: keys\nreactions: {rowan: talk.yaml}\n" + testgame.Game,
+		"data/talk.yaml": "actors: {rowan: {name: Rowan}}\nevents:\n  talk:\n    do:\n      - respond: {who: rowan, text: \"a{{gold}b\"}\n",
+		"assets/talk.yaml": `people:
+  - id: rowan
+    asks:
+      - {id: q, say: ["Pet: {mem.pet-name}, said {text}."]}
+    rules:
+      - id: r
+        when: length > 0
+        say: [Noted.]
+        remember: [{key: pet-name, set: cat}]
+        ask: q
+`,
+	})
+	st := testgame.State(db, 1)
+	r := event.New(db, st, &host{})
+	r.Log = func(err error) { t.Error(err) }
+	r.Start(db.Events["talk"].Do)
+	if first := testgame.As[event.Say](t, r.Next()); first.Text != "Noted." {
+		t.Fatalf("first line %q", first.Text)
+	}
+	if got := testgame.As[event.Say](t, r.Next()).Text; got != "Pet: cat, said a{gold}b." {
+		t.Fatalf("the second line %q", got)
+	}
+}

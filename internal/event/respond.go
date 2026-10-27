@@ -36,25 +36,3 @@ func (r *Runner) respond(q *data.Respond) {
 	}
 	r.push(commands)
 }
-
-// sayValues are a line's Values (data.Say) as names of its expressions: slot and mem are
-// objects whose fields are the values of slot.TAG and mem.KEY, empty when there is none.
-type sayValues map[string]string
-
-// Lookup implements expr.Env.
-func (v sayValues) Lookup(name string) (any, bool) {
-	if name == "slot" || name == "mem" {
-		return sayFields{v, name + "."}, true
-	}
-	s, ok := v[name]
-	return s, ok
-}
-
-// sayFields are the values of sayValues under a prefix.
-type sayFields struct {
-	v      sayValues
-	prefix string
-}
-
-// Field implements expr.Object.
-func (f sayFields) Field(name string) (any, bool) { return f.v[f.prefix+name], true }
