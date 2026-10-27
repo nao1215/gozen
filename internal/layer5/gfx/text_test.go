@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -232,6 +233,20 @@ func TestPopDrawsDecorationsInThePopFont(t *testing.T) {
 	Pop(func() { popped = TextWidth("Ann あ", 24) })
 	if popped == regular || TextWidth("Ann あ", 24) != regular {
 		t.Fatalf("Pop measures %v, the regular font %v, and after Pop %v", popped, regular, TextWidth("Ann あ", 24))
+	}
+	// a glyph the pop font lacks is the regular font's: a Japanese one of M+ under Go Bold
+	mplus, err := os.ReadFile("../../../examples/novel/game/assets/fonts/mplus-1p-regular.ttf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := LoadFonts(mplus, gobold.TTF); err != nil {
+		t.Fatal(err)
+	}
+	kana := TextWidth("あい", 24)
+	var poppedKana float64
+	Pop(func() { poppedKana = TextWidth("あい", 24) })
+	if math.Abs(poppedKana-kana) > 0.01 {
+		t.Fatalf("Pop measures a glyph the pop font lacks %v wide, not the regular font's %v", poppedKana, kana)
 	}
 }
 

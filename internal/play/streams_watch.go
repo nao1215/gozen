@@ -1009,10 +1009,13 @@ func (w *streamWatch) drawPlate(g *Game, dst *ebiten.Image, lay watchLayout, y f
 		}
 		x, top := 12.0, bottom-10-h
 		pw := min(nw+tw+24, lay.stageW-24)
+		if nw+tw+24 > pw { // no room for the tag: the name takes the plate
+			tw = 0
+		}
 		gfx.FillRoundRect(dst, float32(x), float32(top), float32(pw), float32(h), 4, c.Color.Or(streamBrand))
 		rect(dst, x, top+h-3, pw, 3, withAlpha(colorBlack, 0x40))
 		gfx.DrawTextLeft(dst, gfx.Ellipsis(name, size, pw-tw-24), x+12, top+(h-size*1.4)/2+1, size, streamPanel)
-		if tag != "" && nw+tw+24 <= pw {
+		if tw > 0 {
 			gfx.DrawTextLeft(dst, tag, x+12+nw+12, top+(h-tagSize*1.4)/2+2, tagSize, withAlpha(streamPanel, 0xd8))
 		}
 		if x+pw > lay.capX {
