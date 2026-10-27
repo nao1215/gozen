@@ -65,12 +65,12 @@ func Load(base string, progress func(done, total int64)) (fs.FS, error) {
 		h.coming[f.Name] = make(chan struct{})
 		counter.total += f.Size
 	}
-	slices.SortStableFunc(files, func(a, b file) int { return cmp.Compare(media(a.File), media(b.File)) })
+	slices.SortStableFunc(files, func(a, b file) int { return cmp.Compare(media(a.Name), media(b.Name)) })
 	jobs := make(chan file, len(files))
 	var first, all sync.WaitGroup
 	for _, f := range files {
 		jobs <- f
-		if media(f.File) == 0 {
+		if media(f.Name) == 0 {
 			first.Add(1)
 		}
 	}
@@ -86,7 +86,7 @@ func Load(base string, progress func(done, total int64)) (fs.FS, error) {
 				close(h.coming[f.Name])
 				delete(h.coming, f.Name)
 				h.mu.Unlock()
-				if media(f.File) == 0 {
+				if media(f.Name) == 0 {
 					first.Done()
 				}
 			}
@@ -100,7 +100,8 @@ func Load(base string, progress func(done, total int64)) (fs.FS, error) {
 	return h, nil
 }
 
-// media is 1 for a picture or a sound (by the file served), which Load fetches last.
+// media is 1 for a picture or a sound, which Load fetches last: by the name the game reads,
+// as the file served may be another (a picture as WebP, a sound gzipped).
 func media(name string) int {
 	switch strings.ToLower(path.Ext(name)) {
 	case ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ogg", ".mp3", ".wav":
