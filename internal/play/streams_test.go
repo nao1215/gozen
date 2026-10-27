@@ -1053,6 +1053,24 @@ func TestStreamsLateVoiceIsSpoken(t *testing.T) {
 	}
 }
 
+// TestStreamsTipLineVoiced: a bot's tip line of the crowd is read out in quotes with its
+// recorded voice, keyed by the line before it is quoted.
+func TestStreamsTipLineVoiced(t *testing.T) {
+	g, w, fsys := voicedShow(t, "For seeds")
+	w.botTip(g)
+	for i := 0; i < 2000 && w.caption != g.quote("For seeds"); i++ {
+		wldFrames(t, g, 1)
+	}
+	at := g.streamNow()
+	pcm, err := sound.VoiceClip(fsys, g.db.Streams.Voice("ann", "For seeds"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := at.Add(seconds(sound.ClipSeconds(pcm)) + voiceGap); w.caption != g.quote("For seeds") || !w.busy.Equal(want) {
+		t.Fatalf("the tip line %q waits until %v, not its voice's end %v", w.caption, w.busy, want)
+	}
+}
+
 // TestStreamsNoVoicesNoButton: outside a browser, a game without recorded voices has no
 // read-aloud button.
 func TestStreamsNoVoicesNoButton(t *testing.T) {
@@ -1304,7 +1322,7 @@ func TestStreamsTipsCheer(t *testing.T) {
 	w := newStreamWatch(g, l.cards[0].show, 100)
 	g.push(w)
 	laugh, _ := w.bodies[0].Rig().Face("laugh")
-	w.queue = append([]streamSay{{line: g.quote("Hi"), quote: true}}, w.queue...) // a tip's comment read out
+	w.queue = append([]streamSay{{line: "Hi", quote: true}}, w.queue...) // a tip's comment read out
 	w.busy = g.streamNow()
 	for i := 0; i < 600 && w.caption != g.quote("Hi"); i++ {
 		wldFrames(t, g, 1)

@@ -191,13 +191,15 @@ scenarios:
   steps:
   - fixture:
       file: game/game.yaml
-      content: "schema_version: 9\nid: stream-voices\ntitle: Voices\nlanguage: en\nstart: {location: booth}\nstreams: data/streams.yaml\n"
+      content: "schema_version: 9\nid: stream-voices\ntitle: Voices\nlanguage: en\nstart: {location: booth, gold: 100}\nstreams: data/streams.yaml\nreactions: {host: talk.yaml}\n"
   - fixture:
       file: game/data/world.yaml
       content: "actors: {host: {name: Host, puppet: p/puppet.yaml}}\nlocations: {booth: {name: Booth, stream: lobby}}\n"
   - fixture:
       file: game/data/streams.yaml
       content: "voices: voice\ntiming: {say: 2, per_char: 0.1, chat: 2, ask: 10}\ntips: [10]\ncrowd: {names: [leaf], lines: [Hi], tip_lines: [Here], rate: 0.5}\nchannels: [{id: host, actor: host, room: room.png, frame: {cx: 32, top: 0, bottom: 96}, episodes: [streams/one.yaml]}]\n"
+  # the reply to a tip has a field, so no recorded voice: it is read by speech synthesis
+  - fixture: {file: game/assets/talk.yaml, content: "people:\n  - id: host\n    rules:\n      - {id: tip, kind: tip, say: [\"Thanks, {from}!\"]}\n"}
   - fixture: {file: game/assets/p/puppet.yaml, content: "base: base.png\nface: normal\nfaces: {normal: {}}\n"}
   - fixture: {file: game/assets/p/base.png, from: fixtures/puppet/base.png}
   - fixture: {file: game/assets/room.png, from: fixtures/game/assets/mote.png}
@@ -281,6 +283,25 @@ scenarios:
         print("a run of lines" if ok else (got, len(asked)))
         '
   - assert: {stdout: {equals: "a run of lines\n"}}
+  # a tip: the reply, which has no recorded voice, is read by speech synthesis
+  - cdp:
+      runner: browser
+      actions:
+      - eval: |
+          window.spoken = [];
+          const speak = speechSynthesis.speak.bind(speechSynthesis);
+          speechSynthesis.speak = (u) => { spoken.push(u.text); speak(u); }; true
+      - eval: |
+          (async () => {
+            await key('ArrowDown');
+            await key('Enter');
+            await key('Enter');
+            for (let i = 0; i < 300 && !spoken.some(t => t.startsWith('Thanks,')); i++) await testFrames(3);
+            document.body.dataset.spoken = JSON.stringify(spoken);
+          })(); true
+      - wait_visible: 'body[data-spoken]'
+      - eval: "JSON.parse(document.body.dataset.spoken).some(t => t.startsWith('Thanks,'))"
+  - assert: {value: {equals: true}}
   # the progress of the page leaves the voices out
   - cdp:
       runner: browser

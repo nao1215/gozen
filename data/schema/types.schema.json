@@ -17100,7 +17100,7 @@
           "x-type": "number"
         },
         "tip_lines": {
-          "description": "What they write with a tip.",
+          "description": "What they write with a tip, which the host reads out in quotes. Its recorded voice is in each host's folder, keyed by the line as shown before it is quoted.",
           "items": {
             "type": "string"
           },

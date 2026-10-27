@@ -97,20 +97,25 @@ type streamWatch struct {
 // streamSay is a line a host says: the host's index, the face, and the line as written
 // with what its {fields} are filled with (none: a line without fields). Said, it is
 // translated into the language shown then and filled, and the translation before it is
-// filled names its recorded voice. A quote (a tip's comment read out) is said as it is,
-// without a voice.
+// filled names its recorded voice. A quote (a tip's comment read out) is said in quotes:
+// a viewer's own as it is, without a voice, a tip line of the crowd (tipLine) translated,
+// its voice named by it before it is quoted.
 type streamSay struct {
-	host       int
-	line, face string
-	fields     map[string]string
-	quote      bool
+	host           int
+	line, face     string
+	fields         map[string]string
+	quote, tipLine bool
 }
 
 // shown is the line as said in the language shown now, and as shown before its fields are
 // filled, which names its recorded voice ("" for none).
 func (l streamSay) shown(g *Game) (text, raw string) {
-	if l.quote {
-		return l.line, ""
+	switch {
+	case l.quote && l.tipLine:
+		raw = g.db.Tr(l.line)
+		return g.quote(raw), raw
+	case l.quote:
+		return g.quote(l.line), ""
 	}
 	raw = g.db.Tr(l.line)
 	if l.fields == nil {
@@ -741,7 +746,7 @@ func (w *streamWatch) tip(g *Game, amount int) {
 	values["amount"] = float64(amount)
 	w.reply(g, 0, react.Stimulus{Kind: tipKind, From: g.st.Streams.Viewer, Text: text, Values: values}, true)
 	if text != "" {
-		w.queue = append([]streamSay{{line: g.quote(text), quote: true}}, w.queue...)
+		w.queue = append([]streamSay{{line: text, quote: true}}, w.queue...)
 	}
 	if p := w.bodies[0]; p != nil && g.db.Streams.Bounce.Amount > 0 {
 		p.Motion.React(puppetdef.Reaction{Kind: "jiggle", Amount: g.db.Streams.Bounce.Amount})
@@ -754,12 +759,13 @@ func (w *streamWatch) botTip(g *Game) {
 	d, rng := g.db.Streams, g.desk.rng
 	amount := d.Tips[rng.IntN(min(2, len(d.Tips)))]
 	who := g.db.Tr(d.Crowd.Names[rng.IntN(len(d.Crowd.Names))])
-	text := g.db.Tr(d.Crowd.TipLines[rng.IntN(len(d.Crowd.TipLines))])
+	line := d.Crowd.TipLines[rng.IntN(len(d.Crowd.TipLines))]
+	text := g.db.Tr(line)
 	w.chat.post(chat.Message{From: who, Text: text, Values: map[string]float64{chatTip: float64(amount)}})
 	w.cheer(g, who, text, amount)
 	host := rng.IntN(len(w.show.Hosts))
 	if text != "" {
-		w.queue = append(w.queue, streamSay{host: host, line: g.quote(text), quote: true})
+		w.queue = append(w.queue, streamSay{host: host, line: line, quote: true, tipLine: true})
 	}
 	w.reply(g, host, react.Stimulus{Kind: tipKind, From: who, Text: text, Values: map[string]float64{"amount": float64(amount), "hour": float64(g.streamNow().Hour()), "family": w.family()}}, false)
 }

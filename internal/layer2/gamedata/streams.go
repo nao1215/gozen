@@ -883,7 +883,8 @@ func oggCodec(fsys fs.FS, name string) string {
 // its greetings, its lines and questions in its episodes and duos, and its reaction book's.
 func (c *checker) voiceKeys(ch *Channel) map[string]bool {
 	s := c.db.Streams
-	lines := slices.Concat(ch.First, ch.Streak, ch.Stayed, ch.Bridges)
+	// the crowd's tip lines too, which any host reads out (keyed before they are quoted)
+	lines := slices.Concat(ch.First, ch.Streak, ch.Stayed, ch.Bridges, s.Crowd.TipLines)
 	for _, g := range ch.Greet {
 		lines = append(lines, g...)
 	}

@@ -38,7 +38,7 @@ StreamCrowd:
   _: "The bot viewers of the chat."
   names: "The names of the bot viewers."
   lines: "What they chat: a list for any hour, or `{any, morning, evening}`."
-  tip_lines: "What they write with a tip."
+  tip_lines: "What they write with a tip, which the host reads out in quotes. Its recorded voice is in each host's folder, keyed by the line as shown before it is quoted."
   rate: "Messages a second on average, more than 0 and at most 100."
 Channel:
   _: "A streamer: an actor streaming from a room, with its episodes and its greetings."

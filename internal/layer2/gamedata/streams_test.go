@@ -131,11 +131,12 @@ func TestStreamsVoices(t *testing.T) {
 	}
 	// an Ogg page's header, 27 bytes and a segment table of one segment, then the packet
 	ogg := func(packet string) string { return "OggS" + strings.Repeat("\x00", 22) + "\x01\x1e" + packet }
-	g["assets/voice/ann/6f2529aa52538b73.ogg"] = ogg("\x01vorbis") // Hello, everyone.
-	g["assets/voice/ann/70624a7e70244116.ogg"] = ogg("OpusHead")   // Welcome, {from}.
-	g["assets/voice/bo/6f2529aa52538b73.ogg"] = "RIFF....WAVE"     // in the duo too
-	g["assets/voice/ann/0000000000000000.ogg"] = "x"               // no line
-	g["assets/voice/cy/6f2529aa52538b73.ogg"] = "x"                // no channel
+	g["assets/voice/ann/6f2529aa52538b73.ogg"] = ogg("\x01vorbis")               // Hello, everyone.
+	g["assets/voice/ann/70624a7e70244116.ogg"] = ogg("OpusHead")                 // Welcome, {from}.
+	g["assets/voice/ann/"+data.VoiceKey("For seeds")+".ogg"] = ogg("\x01vorbis") // a tip line of the crowd
+	g["assets/voice/bo/6f2529aa52538b73.ogg"] = "RIFF....WAVE"                   // in the duo too
+	g["assets/voice/ann/0000000000000000.ogg"] = "x"                             // no line
+	g["assets/voice/cy/6f2529aa52538b73.ogg"] = "x"                              // no channel
 	w := warnings(g)
 	for _, want := range []string{"assets/voice/ann/0000000000000000.ogg is the voice of no line of ann", "assets/voice/cy is not the folder of a channel"} {
 		if !strings.Contains(w, want) {
