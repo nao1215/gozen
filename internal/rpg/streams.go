@@ -22,4 +22,6 @@ type ChannelProgress struct {
 	// Run the number of days in a row up to it.
 	Day int `json:"day,omitempty"`
 	Run int `json:"run,omitempty"`
+	// Visits are how many times the player opened the channel's shows.
+	Visits int `json:"visits,omitempty"`
 }

@@ -97,7 +97,7 @@ StreamAffection:
   tip_per: "The gold of a tip that earns one point, above 0. The default is 100."
   stayed: "Points for watching an episode to its end. The default is 10."
 StreamEcho:
-  _: "When a streamer reads back a comment its reaction book found nothing in (the `dodge.unknown` lines)."
+  _: "When a streamer reads back a comment its reaction book found nothing in (the `dodge.unknown` lines): two beats after the comment, as if it came upon it in the chat; a comment not read back flows by unanswered (ADR 0052)."
   max_runes: "Only comments of at most this many characters. The default is 24."
   chance: "The chance of reading one back, 0 to 1. The default is 0.35."
 StreamBounce:

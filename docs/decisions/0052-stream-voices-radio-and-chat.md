@@ -32,6 +32,37 @@ The watch view has a radio, for a show heard without looking at the screen: a bu
 
 The radio reuses the watch view, its steps and its chat; it only draws and reads differently, so a show heard in the radio counts as watched as it would on the screen.
 
+### The chat's memory
+
+The reaction book (ADR 0015) already remembers, keeps its memory in the save across shows and fills a line with what it remembers; the stream adds only the values its rules need and two changes of how a reply is said. The player is the one viewer whose comments reach the book, so a memory is the player's.
+
+- A comment's stimulus carries `value.hour` (the hour of the stream's clock, 0 to 23), `value.visits` (how many times the player opened the channel's shows, kept as `visits` in the channel's progress of the save), `value.days` (the days in a row) and `value.step` (the affection step); a tip's has them with `value.amount`, and a bot's tip only `value.amount` and `value.hour`. Remembering and recalling need nothing new:
+
+```yaml
+lexicon:
+  snack: [chocolate, cookies, chips]
+people:
+  - id: lise
+    rules:
+      - id: snack_again              # a later comment on snacks, on any later show
+        when: tag.snack > 0 && mem.snack != 0
+        say: ["{from}, the {mem.snack} fan, back again?"]
+      - id: snack                    # the first: remember which snack
+        when: tag.snack > 0
+        say: ["{slot.snack}? Good choice."]
+        remember: [{key: snack, set: "{slot.snack}"}]
+      - id: night_owl
+        when: value.hour >= 23 || value.hour < 5
+        say: ["Still up, {from}?"]
+      - id: regular
+        when: value.visits >= 10 && mem.snack != 0
+        say: ["Ten visits! Have some {mem.snack}, {from}."]
+```
+
+  A memory not written reads as 0 in a condition, so `mem.snack != 0` holds once the snack is remembered.
+- A list of lines (a rule's `say`, a question, a dodge) does not say again any line it said the last half of its length times (by their first line, for an entry of several lines): a list of two alternates, a list of ten says five others before it may repeat one. The lines said lately are part of the reaction state, saved with the game (`used`), and replace the single last line the book avoided before.
+- A comment the book found nothing in (`dodge.unknown`) is not answered at once: it is read back, as before only when short (`echo.max_runes`) and by the chance `echo.chance`, two beats later, as if the streamer came upon it in the chat; otherwise it flows by unanswered. A show that ends first reads it back before its end.
+
 ## Consequences
 
 A recording tool computes the same key from the texts of the streams file, its episodes, the translations and the reaction book, and writes the files where the game looks; the check tells it which files are stale. Voices cost a browser export their download; the game does not wait for them to start.

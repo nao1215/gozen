@@ -93,12 +93,13 @@ func (w *streamWatch) hear(g *Game, from, text string) {
 	w.speakAloud(g, text, pitch, viewerRate)
 }
 
-// hearFirst has the radio read a viewer's message before the lines queued (the comment or
-// the answer they reply to).
-func (w *streamWatch) hearFirst(g *Game, from, text string) {
-	if g.cfg.StreamRadio && text != "" {
-		w.queue = append([]streamSay{{from: from, text: text}}, w.queue...)
+// heardBefore puts a viewer's message before the lines that reply to it (the comment, the
+// answer picked) in the radio, which reads it first.
+func (g *Game) heardBefore(from, text string, lines []streamSay) []streamSay {
+	if !g.cfg.StreamRadio || text == "" || len(lines) == 0 {
+		return lines
 	}
+	return append([]streamSay{{from: from, text: text}}, lines...)
 }
 
 // radioButton is where the radio's button i is: 0 the next show, 1 stop.

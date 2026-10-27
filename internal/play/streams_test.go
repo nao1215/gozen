@@ -568,3 +568,69 @@ func TestStreamsRadio(t *testing.T) {
 		t.Fatalf("stop does not turn the radio off in the show (%v)", g.cfg.StreamRadio)
 	}
 }
+
+// TestStreamsChatMemory: a reaction book remembers what a viewer said and brings it up on
+// a later visit, its rules read the visits and the hour of a comment (value.visits,
+// value.hour), and a comment it found nothing in is read back two beats later.
+func TestStreamsChatMemory(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	fsys["data/streams.yaml"].Data = append([]byte("echo: {max_runes: 24, chance: 1}\n"), fsys["data/streams.yaml"].Data...)
+	fsys["assets/talk.yaml"] = &fstest.MapFile{Data: []byte(`lexicon:
+  snack: [cookies, chips]
+people:
+  - id: ann
+    rules:
+      - id: night
+        when: value.hour >= 22 || value.hour < 5
+        say: [Up late?]
+      - id: snack
+        when: tag.snack > 0
+        say: ["{slot.snack}, nice."]
+        remember: [{key: snack, set: "{slot.snack}"}]
+      - id: regular
+        when: value.visits >= 2 && mem.snack != 0 && length > 6
+        say: ["{mem.snack} fan {from}, welcome back."]
+    dodge:
+      unknown: ["Hm, {text}."]
+`)}
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	g.st.Streams.Viewer = "Pat"
+	watch := func() *streamWatch {
+		l, ok := g.stack[0].(*streamLobby)
+		if !ok {
+			t.Fatalf("scene %T", g.stack[0])
+		}
+		show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })].show
+		show.Start = g.streamNow()
+		w := newStreamWatch(g, show, 100)
+		g.push(w)
+		return w
+	}
+	until := func(w *streamWatch, done func() bool) {
+		for range 3000 {
+			if done() {
+				return
+			}
+			wldFrames(t, g, 1)
+		}
+		t.Fatalf("never happened; chat:\n%s", chatText(w))
+	}
+	w := watch()
+	w.comments = append(w.comments, "I love cookies")
+	until(w, func() bool { return strings.Contains(chatText(w), "Ann: cookies, nice.") })
+	w.comments = append(w.comments, "zzz")
+	until(w, func() bool { return len(w.comments) == 0 })
+	if len(w.later) != 1 || w.later[0].at <= w.next || strings.Contains(chatText(w), "Hm, zzz.") {
+		t.Fatalf("an unknown comment is not put off: later %+v at beat %d", w.later, w.next)
+	}
+	due := w.later[0].at
+	until(w, func() bool { return strings.Contains(chatText(w), "Ann: Hm, zzz.") })
+	if w.next < due {
+		t.Errorf("an unknown comment is read back at beat %d, before %d", w.next, due)
+	}
+	w.leave(g)
+	w = watch()
+	w.comments = append(w.comments, "hello there")
+	until(w, func() bool { return strings.Contains(chatText(w), "Ann: cookies fan Pat, welcome back.") })
+}

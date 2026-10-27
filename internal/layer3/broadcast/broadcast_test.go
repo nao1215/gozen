@@ -152,6 +152,8 @@ func TestStepAndAnswers(t *testing.T) {
 	}
 }
 
+// TestVisitCountsDaysInARow: every visit is counted, the days in a row grow on the next
+// day, stay on the same day and start again after a day missed.
 func TestVisitCountsDaysInARow(t *testing.T) {
 	c := &rpg.ChannelProgress{}
 	day := func(n int, h int) time.Time { return noon.AddDate(0, 0, n).Add(time.Duration(h) * time.Hour) }
@@ -169,6 +171,9 @@ func TestVisitCountsDaysInARow(t *testing.T) {
 		if first := Visit(c, tc.at); first != tc.first || c.Run != tc.run {
 			t.Errorf("%v: first %v run %d, want %v %d", tc.at, first, c.Run, tc.first, tc.run)
 		}
+	}
+	if c.Visits != 5 {
+		t.Errorf("visits %d, want 5", c.Visits)
 	}
 }
 

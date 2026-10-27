@@ -758,3 +758,50 @@ func TestWrittenLines(t *testing.T) {
 		t.Error("an unknown person has lines")
 	}
 }
+
+// TestLinesAreNotRepeatedSoon: a list of lines (a rule's say, a dodge) does not say again
+// any of the lines it said the last half of its length times, also after Save and Restore.
+func TestLinesAreNotRepeatedSoon(t *testing.T) {
+	b, err := Parse([]byte(`
+people:
+  - id: host
+    rules:
+      - id: hi
+        when: length > 3
+        say: [a, b, c, d]
+    dodge:
+      unknown: [x, y]
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := New(b, "host", Config{Rand: rand.New(rand.NewPCG(7, 7))}) //nolint:gosec // a test's line choice
+	if err != nil {
+		t.Fatal(err)
+	}
+	var said, dodged []string
+	for i := range 40 {
+		if i == 20 {
+			saved, err := m.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if m, err = New(b, "host", Config{Rand: rand.New(rand.NewPCG(8, 8))}); err != nil { //nolint:gosec // a test's line choice
+				t.Fatal(err)
+			}
+			if err := m.Restore(saved); err != nil {
+				t.Fatal(err)
+			}
+		}
+		said = append(said, do(t, m, say("hello")).Lines[0])
+		dodged = append(dodged, do(t, m, say("hm")).Lines[0])
+	}
+	for i := 2; i < len(said); i++ {
+		if said[i] == said[i-1] || said[i] == said[i-2] {
+			t.Fatalf("a line of four said again within two: %q", said)
+		}
+		if dodged[i] == dodged[i-1] {
+			t.Fatalf("a line of two said twice in a row: %q", dodged)
+		}
+	}
+}

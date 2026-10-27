@@ -171,11 +171,12 @@ func Day(t time.Time) int {
 	return int(time.Date(y, m, d, 0, 0, 0, 0, time.UTC).Unix() / 86400)
 }
 
-// Visit records a visit to a channel at now: the days in a row grow on the next day,
-// start again after a day missed, and stay on the same day. It reports whether it is
-// the first visit ever.
+// Visit records a visit to a channel at now: it counts the visit, and the days in a row
+// grow on the next day, start again after a day missed, and stay on the same day. It
+// reports whether it is the first visit ever.
 func Visit(c *rpg.ChannelProgress, now time.Time) bool {
 	first := c.Day == 0
+	c.Visits++
 	switch today := Day(now); {
 	case today == c.Day:
 	case c.Day > 0 && today == c.Day+1:

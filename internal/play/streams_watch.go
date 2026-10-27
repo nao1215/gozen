@@ -53,7 +53,8 @@ type streamWatch struct {
 	askHost  int
 	mine     int // the option the player chose (-1: none)
 	npcAt    []time.Time
-	comments []string // comments the streamer has not answered yet
+	comments []string   // comments the streamer has not answered yet
+	later    []laterSay // comments read back later (reply)
 
 	caption    string
 	captionWho int
@@ -345,10 +346,13 @@ func (w *streamWatch) step(g *Game) {
 	case len(w.comments) > 0:
 		text := w.comments[0]
 		w.comments = w.comments[1:]
-		if w.reply(g, 0, react.Stimulus{Kind: react.KindSay, From: g.st.Streams.Viewer, Text: text}, false) {
+		if w.reply(g, 0, react.Stimulus{Kind: react.KindSay, From: g.st.Streams.Viewer, Text: text, Values: w.values(g)}, false) {
 			g.earn(w.show.Hosts[0], g.db.Streams.Affection.Reply)
-			w.hearFirst(g, g.st.Streams.Viewer, text)
 		}
+		w.step(g)
+	case len(w.later) > 0 && (w.later[0].at <= w.next || w.next >= len(w.show.Beats)):
+		w.queue = append(w.queue, w.later[0].lines...)
+		w.later = w.later[1:]
 		w.step(g)
 	case w.next < len(w.show.Beats):
 		b := w.show.Beats[w.next]
@@ -414,7 +418,7 @@ func (w *streamWatch) answer(g *Game) {
 	for _, r := range q.Options[option].R {
 		w.queue = append(w.queue, g.dataLine(w.askHost, r, who, 0))
 	}
-	w.hearFirst(g, who, g.db.Tr(q.Options[option].C))
+	w.queue = g.heardBefore(who, g.db.Tr(q.Options[option].C), w.queue)
 	w.step(g)
 }
 
@@ -433,8 +437,10 @@ func (w *streamWatch) mind(g *Game, host int) *react.Mind {
 }
 
 // reply has the host react to the stimulus and queues what it says (first, when
-// first), reporting whether it says anything. A comment the host found nothing in is
-// read back only when it is short, and then by chance (echo).
+// first), reporting whether it says anything; the radio reads a comment before its answer.
+// A comment the host found nothing in is read back only when it is short, and then by
+// chance (echo), echoLater beats later, as if the streamer came upon it in the chat; the
+// others flow by unanswered.
 func (w *streamWatch) reply(g *Game, host int, s react.Stimulus, first bool) bool {
 	m := w.mind(g, host)
 	if m == nil {
@@ -455,12 +461,36 @@ func (w *streamWatch) reply(g *Game, host int, s react.Stimulus, first bool) boo
 	for i, l := range r.Lines {
 		lines[i] = streamSay{host: host, text: l, face: r.Face, raw: r.Written[i]}
 	}
-	if first {
+	if s.Kind == react.KindSay {
+		lines = g.heardBefore(s.From, s.Text, lines)
+	}
+	switch {
+	case r.Rule == "dodge.unknown" && s.Kind == react.KindSay:
+		w.later = append(w.later, laterSay{at: w.next + echoLater, lines: lines})
+	case first:
 		w.queue = slices.Concat(lines, w.queue)
-	} else {
+	default:
 		w.queue = append(w.queue, lines...)
 	}
 	return len(lines) > 0
+}
+
+// echoLater is how many beats after a comment the streamer reads it back (reply).
+const echoLater = 2
+
+// laterSay are lines said once the show has come to the beat at (or to its end).
+type laterSay struct {
+	at    int
+	lines []streamSay
+}
+
+// values are the numbers of the player's comment or tip that the reaction book's rules
+// read as value.NAME: the hour (0 to 23), the visits to the host's channel, the days in a
+// row and the affection step.
+func (w *streamWatch) values(g *Game) map[string]float64 {
+	c := w.show.Hosts[0]
+	p := broadcast.Progress(g.st.Streams, c.ID)
+	return map[string]float64{"hour": float64(g.streamNow().Hour()), "visits": float64(p.Visits), "days": float64(p.Run), "step": float64(g.step(c))}
 }
 
 // quote is a tip's comment as the streamer reads it out.
@@ -480,7 +510,9 @@ func (w *streamWatch) tip(g *Game, amount int) {
 	w.chat.post(chat.Message{From: g.st.Streams.Viewer, Text: text, Values: map[string]float64{chatTip: float64(amount), chatMine: 1}})
 	g.earn(c, float64(amount)/g.db.Streams.Affection.TipPer)
 	g.emit("stream_tip", traceLine{"show": w.show.Key, "amount": amount})
-	w.reply(g, 0, react.Stimulus{Kind: tipKind, From: g.st.Streams.Viewer, Text: text, Values: map[string]float64{"amount": float64(amount)}}, true)
+	values := w.values(g)
+	values["amount"] = float64(amount)
+	w.reply(g, 0, react.Stimulus{Kind: tipKind, From: g.st.Streams.Viewer, Text: text, Values: values}, true)
 	if text != "" {
 		w.queue = append([]streamSay{{text: g.quote(text)}}, w.queue...)
 	}
@@ -501,7 +533,7 @@ func (w *streamWatch) botTip(g *Game) {
 	if text != "" {
 		w.queue = append(w.queue, streamSay{host: host, text: g.quote(text)})
 	}
-	w.reply(g, host, react.Stimulus{Kind: tipKind, From: who, Text: text, Values: map[string]float64{"amount": float64(amount)}}, false)
+	w.reply(g, host, react.Stimulus{Kind: tipKind, From: who, Text: text, Values: map[string]float64{"amount": float64(amount), "hour": float64(g.streamNow().Hour())}}, false)
 }
 
 // markSeen moves the channel on to its next episode.

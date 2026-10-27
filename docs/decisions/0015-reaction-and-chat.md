@@ -99,7 +99,7 @@ people:
       unknown: [Say that again in plain words.]
 ```
 
-Rules are evaluated from the top, and the first rule whose `kind` and cooldown fit and whose condition holds is taken. If none holds, a line is picked from the `dodge` set in this order: `repeat` (a repeated line), `unsure` (some tag is present), `unknown` (nothing). Lines are chosen so as to avoid the same one as last time. Mood moves by the sum of `likes` times confidence plus the rule's `delta`, and is clamped to `mood_min` to `mood_max` (default 0 to 100). When a question is asked, on the next stimuli (`turns` times) the `expect` tags get confidence 1, readable as `asked` and `answer`.
+Rules are evaluated from the top, and the first rule whose `kind` and cooldown fit and whose condition holds is taken. If none holds, a line is picked from the `dodge` set in this order: `repeat` (a repeated line), `unsure` (some tag is present), `unknown` (nothing). Lines are chosen so that a list does not repeat a line it said the last half of its length times ([ADR 0052](0052-stream-voices-radio-and-chat.md)). Mood moves by the sum of `likes` times confidence plus the rule's `delta`, and is clamped to `mood_min` to `mood_max` (default 0 to 100). When a question is asked, on the next stimuli (`turns` times) the `expect` tags get confidence 1, readable as `asked` and `answer`.
 
 ### chat: scrolling messages
 

@@ -142,7 +142,7 @@ type ruleDef struct {
 	Kind string `yaml:"kind"`
 	// When is the condition (an expr expression); empty always holds.
 	When *expr.Expr `yaml:"when"`
-	// Say is a set of entries; one is chosen, avoiding the previous one when possible.
+	// Say is a set of entries; one is chosen, avoiding those said lately (pickEntry).
 	// An entry is a line, or a list of lines said in order. Lines may use {from}, {text},
 	// {mood}, {slot.TAG} and {mem.KEY}.
 	Say  []sayEntry `yaml:"say"`

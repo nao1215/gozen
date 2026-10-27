@@ -9349,7 +9349,7 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Maps speaker IDs to reaction book paths under assets/. Memory is saved with the game.",
+          "description": "Maps speaker IDs to reaction book paths under assets/. Memory is saved with the game. A stream's comment gives the rules `value.hour` (0 to 23), `value.visits` (the player's visits to the channel), `value.days` (days in a row) and `value.step` (affection step), as in `when: value.hour \u003e= 23 || value.hour \u003c 5`; a rule can `remember: [{key: snack, set: \"{slot.snack}\"}]` and a later show say `\"{from}, the {mem.snack} fan\"` under `when: mem.snack != 0` (ADR 0052).",
           "type": [
             "object",
             "null"
@@ -17065,7 +17065,7 @@
     },
     "StreamEcho": {
       "additionalProperties": false,
-      "description": "When a streamer reads back a comment its reaction book found nothing in (the `dodge.unknown` lines).",
+      "description": "When a streamer reads back a comment its reaction book found nothing in (the `dodge.unknown` lines): two beats after the comment, as if it came upon it in the chat; a comment not read back flows by unanswered (ADR 0052).",
       "properties": {
         "chance": {
           "description": "The chance of reading one back, 0 to 1. The default is 0.35.",

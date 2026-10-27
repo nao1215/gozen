@@ -105,8 +105,10 @@ type Mind struct {
 	cool    map[string]int // rule ID -> first turn it may react again
 	asked   string
 	askTill int
-	last    string
-	recent  map[string][]string
+	// used are the lines each list (a rule, a question, a dodge) said last, by their first
+	// line, which it does not say again for a while (pickEntry).
+	used   map[string][]string
+	recent map[string][]string
 }
 
 // New makes the running state of the person id in the book. The book must have been
@@ -137,7 +139,7 @@ func New(b *Book, id string, cfg Config) (*Mind, error) {
 	}
 	m := &Mind{
 		book: b, p: p, cfg: cfg, rng: rng, lex: map[string]*lexRun{},
-		mem: map[string]entry{}, cool: map[string]int{}, recent: map[string][]string{},
+		mem: map[string]entry{}, cool: map[string]int{}, recent: map[string][]string{}, used: map[string][]string{},
 	}
 	for tag, lt := range b.doc.Lexicon {
 		m.tags = append(m.tags, tag)
@@ -364,7 +366,7 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 	if rule != nil {
 		delta += rule.Delta
 		out.Rule, out.Face = rule.ID, rule.Face
-		for _, l := range m.pickEntry(rule.Say) {
+		for _, l := range m.pickEntry(rule.ID, rule.Say) {
 			out.say(m.fill(l, e), l)
 		}
 		for _, r := range rule.Remember {
@@ -378,7 +380,7 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 		}
 		if rule.Ask != "" {
 			q := m.ask(rule.Ask)
-			l := m.pick(q.Say)
+			l := m.pick("ask."+q.ID, q.Say)
 			out.say(m.fill(l, e), l)
 			if q.Face != "" {
 				out.Face = q.Face
@@ -394,7 +396,7 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 		case len(tags) > 0 && len(d.Unsure) > 0:
 			lines, name = d.Unsure, "unsure"
 		}
-		if l := m.pick(lines); l != "" {
+		if l := m.pick("dodge."+name, lines); l != "" {
 			out.Rule, out.Face = "dodge."+name, d.Face
 			out.say(m.fill(l, e), l)
 		}
@@ -444,7 +446,7 @@ func (m *Mind) Ask(id string) (Reaction, error) {
 	}
 	e := &env{m: m, found: map[string]Tag{}}
 	m.asked = m.pose(q)
-	l := m.pick(q.Say)
+	l := m.pick("ask."+q.ID, q.Say)
 	return Reaction{Rule: "ask." + id, Lines: []string{m.fill(l, e)}, Written: []string{l}, Face: q.Face, Mood: m.mood, Ask: id}, nil
 }
 
@@ -499,30 +501,35 @@ func (m *Mind) write(r memoryWrite, e *env) {
 	m.mem[r.Key] = en
 }
 
-// pick chooses a line, avoiding the previous one when there is a choice.
-func (m *Mind) pick(lines []string) string {
+// pick chooses a line of the list key as pickEntry does.
+func (m *Mind) pick(key string, lines []string) string {
 	entries := make([]sayEntry, len(lines))
 	for i, l := range lines {
 		entries[i] = sayEntry{l}
 	}
-	if e := m.pickEntry(entries); e != nil {
+	if e := m.pickEntry(key, entries); e != nil {
 		return e[0]
 	}
 	return ""
 }
 
-// pickEntry chooses an entry of a rule's say, avoiding the previous one (by its first
-// line) when there is a choice.
-func (m *Mind) pickEntry(entries []sayEntry) sayEntry {
+// pickEntry chooses an entry of the list key (a rule's say, a question, a dodge), avoiding
+// those it chose the last len(entries)/2 times (by their first line): a list of two
+// alternates, one of ten says five others before it repeats one.
+func (m *Mind) pickEntry(key string, entries []sayEntry) sayEntry {
 	if len(entries) == 0 {
 		return nil
 	}
-	choice := slices.DeleteFunc(slices.Clone(entries), func(e sayEntry) bool { return e[0] == m.last })
+	used := m.used[key]
+	choice := slices.DeleteFunc(slices.Clone(entries), func(e sayEntry) bool { return slices.Contains(used, e[0]) })
 	if len(choice) == 0 {
 		choice = entries
 	}
 	e := choice[m.rng.IntN(len(choice))]
-	m.last = e[0]
+	if keep := len(entries) / 2; keep > 0 {
+		used = append(used, e[0])
+		m.used[key] = slices.Clone(used[max(0, len(used)-keep):])
+	}
 	return e
 }
 
@@ -628,16 +635,17 @@ type state struct {
 	Cool    map[string]int      `json:"cool"`
 	Asked   string              `json:"asked,omitempty"`
 	AskTill int                 `json:"ask_till,omitempty"`
-	Last    string              `json:"last,omitempty"`
+	Used    map[string][]string `json:"used,omitempty"`
 	Recent  map[string][]string `json:"recent"`
 }
 
-// Save returns the mood, memory, cooldowns, pending question and recent texts as JSON.
+// Save returns the mood, memory, cooldowns, pending question, recent texts and the lines
+// said lately as JSON.
 // The random generator's position is not saved.
 func (m *Mind) Save() ([]byte, error) {
 	return json.Marshal(state{
 		Version: 1, Person: m.p.ID, Mood: m.mood, Turn: m.turn, Mem: m.mem, Cool: m.cool,
-		Asked: m.asked, AskTill: m.askTill, Last: m.last, Recent: m.recent,
+		Asked: m.asked, AskTill: m.askTill, Used: m.used, Recent: m.recent,
 	})
 }
 
@@ -663,8 +671,8 @@ func (m *Mind) Restore(b []byte) error {
 	}
 	lo, hi := m.p.bounds()
 	m.mood = math.Max(lo, math.Min(hi, s.Mood))
-	m.turn, m.asked, m.askTill, m.last = s.Turn, s.Asked, s.AskTill, s.Last
-	m.mem, m.cool, m.recent = orEmpty(s.Mem), orEmpty(s.Cool), orEmpty(s.Recent)
+	m.turn, m.asked, m.askTill = s.Turn, s.Asked, s.AskTill
+	m.mem, m.cool, m.recent, m.used = orEmpty(s.Mem), orEmpty(s.Cool), orEmpty(s.Recent), orEmpty(s.Used)
 	return nil
 }
 
