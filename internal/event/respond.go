@@ -2,7 +2,6 @@ package event
 
 import (
 	"fmt"
-	"strings"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/react"
@@ -29,9 +28,33 @@ func (r *Runner) respond(q *data.Respond) {
 		r.logf(err)
 		return
 	}
+	// each line as the book writes it, filled as the book filled it: translated and read
+	// as any line of the source (ADR 0027)
 	var commands []data.Command
-	for _, line := range reply.Lines {
-		commands = append(commands, data.Command{Say: &data.Say{Who: q.Who, Text: strings.ReplaceAll(line, "{", "{{"), Face: reply.Face}})
+	for i, line := range reply.Written {
+		commands = append(commands, data.Command{Say: &data.Say{Who: q.Who, Text: line, Face: reply.Face, Values: reply.Fields[i]}})
 	}
 	r.push(commands)
 }
+
+// sayValues are a line's Values (data.Say) as names of its expressions: slot and mem are
+// objects whose fields are the values of slot.TAG and mem.KEY, empty when there is none.
+type sayValues map[string]string
+
+// Lookup implements expr.Env.
+func (v sayValues) Lookup(name string) (any, bool) {
+	if name == "slot" || name == "mem" {
+		return sayFields{v, name + "."}, true
+	}
+	s, ok := v[name]
+	return s, ok
+}
+
+// sayFields are the values of sayValues under a prefix.
+type sayFields struct {
+	v      sayValues
+	prefix string
+}
+
+// Field implements expr.Object.
+func (f sayFields) Field(name string) (any, bool) { return f.v[f.prefix+name], true }

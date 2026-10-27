@@ -122,14 +122,15 @@ func TestInsteadLinesAreRewordedToo(t *testing.T) {
 }
 
 // TestRespondKeepsTheBooksSource (ADR 0027): a reply of a reaction book is a line of its
-// source, translated as it is shown: shown in Japanese, it is shown again in the source
-// language when that is chosen, and its read key is that of the source.
+// source, translated as it is shown and filled with what the book filled it with: shown
+// in Japanese, it is shown again in the source language when that is chosen, and its read
+// key is that of the source, whoever it was said to.
 func TestRespondKeepsTheBooksSource(t *testing.T) {
 	db := testgame.Load(t, map[string]string{
 		"game.yaml":        "schema_version: 4\nid: tongues\nwritten_in: en\nlanguages: [en, ja]\nreactions: {rowan: talk.yaml}\n" + testgame.Game,
-		"data/talk.yaml":   "actors: {rowan: {name: Rowan}}\nevents:\n  talk:\n    do:\n      - respond: {who: rowan, text: zzz}\n",
-		"assets/talk.yaml": "people:\n  - id: rowan\n    dodge:\n      unknown: [Hello.]\n",
-		"lang/ja.yaml":     "text:\n  \"Hello.\": \"こんにちは。\"\n",
+		"data/talk.yaml":   "actors: {rowan: {name: Rowan}}\nevents:\n  talk:\n    do:\n      - respond: {who: rowan, from: Pat, text: zzz}\n",
+		"assets/talk.yaml": "people:\n  - id: rowan\n    dodge:\n      unknown: [\"Hello, {from}. {text}?\"]\n",
+		"lang/ja.yaml":     "text:\n  \"Hello, {from}. {text}?\": \"こんにちは、{from}。{text}？\"\n",
 	})
 	reply := func() event.Say {
 		st := testgame.State(db, 1)
@@ -141,11 +142,11 @@ func TestRespondKeepsTheBooksSource(t *testing.T) {
 	en := reply()
 	db.Show("ja")
 	ja := reply()
-	if ja.Text != "こんにちは。" || ja.Key != en.Key {
+	if en.Text != "Hello, Pat. zzz?" || ja.Text != "こんにちは、Pat。zzz？" || ja.Key != en.Key {
 		t.Fatalf("in Japanese %q (key %d), in the source %q (key %d)", ja.Text, ja.Key, en.Text, en.Key)
 	}
 	db.Show("en")
-	if got := ja.Reword(db); got.Text != "Hello." {
+	if got := ja.Reword(db); got.Text != "Hello, Pat. zzz?" {
 		t.Fatalf("shown again in the source language: %q", got.Text)
 	}
 }

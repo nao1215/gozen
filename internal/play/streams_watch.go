@@ -495,7 +495,7 @@ func (w *streamWatch) reply(g *Game, host int, s react.Stimulus, first bool) boo
 	}
 	lines := make([]streamSay, len(r.Written))
 	for i, l := range r.Written {
-		lines[i] = streamSay{host: host, line: l, face: r.Face, fields: r.Fields}
+		lines[i] = streamSay{host: host, line: l, face: r.Face, fields: r.Fields[i]}
 	}
 	switch {
 	case r.Rule == "dodge.unknown" && s.Kind == react.KindSay:

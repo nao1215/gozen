@@ -1141,6 +1141,9 @@ func (r *Runner) say(s *data.Say, env expr.Env) Request {
 // line builds one line (false when it has nothing to show).
 func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
 	out := Say{Name: s.Who, Key: SourceKey(s.Who, s.Text)}
+	if s.Values != nil {
+		env = expr.Chain{sayValues(s.Values), env}
+	}
 	out.Text, out.text = data.Fill(r.db, s.Text, env)
 	if s.Voice != "" {
 		out.Voice, _ = r.db.VoicePath(s.Who, s.Voice)

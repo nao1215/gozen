@@ -812,10 +812,44 @@ people:
 func TestFillATranslation(t *testing.T) {
 	m := mind(t)
 	r := do(t, m, Stimulus{Kind: "event", From: "Pat", Tags: []string{"gift"}, Values: map[string]float64{"amount": 1000}})
-	if len(r.Written) != 1 || r.Written[0] != "{from}、ありがと！" || r.Lines[0] != "Pat、ありがと！" || r.Fields["from"] != "Pat" {
+	if len(r.Written) != 1 || r.Written[0] != "{from}、ありがと！" || r.Lines[0] != "Pat、ありがと！" || r.Fields[0]["from"] != "Pat" {
 		t.Fatalf("the reaction %+v", r)
 	}
-	if got := Fill("Thanks, {from}!{none}", r.Fields); got != "Thanks, Pat!" {
+	if got := Fill("Thanks, {from}!{none}", r.Fields[0]); got != "Thanks, Pat!" {
 		t.Fatalf("the translation filled: %q", got)
+	}
+}
+
+// TestFieldsOfEachLine: each line keeps what its own fields were filled with, so a line
+// said before the rule remembers keeps the value before it, and the question after it the
+// value after.
+func TestFieldsOfEachLine(t *testing.T) {
+	b, err := Parse([]byte(`lexicon: {pet: [dog]}
+people:
+  - id: p
+    asks:
+      - {id: q, say: ["Now: {mem.pet}?"]}
+    rules:
+      - id: r
+        when: tag.pet > 0
+        say: ["Before: {mem.pet}."]
+        remember: [{key: pet, set: "{slot.pet}"}]
+        ask: q
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := New(b, "p", Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := do(t, m, Stimulus{Kind: KindSay, From: "Pat", Text: "dog"})
+	if len(r.Lines) != 2 || len(r.Fields) != 2 || r.Lines[0] != "Before: ." || r.Lines[1] != "Now: dog?" {
+		t.Fatalf("the reaction %+v", r)
+	}
+	for i, l := range r.Written {
+		if got := Fill(l, r.Fields[i]); got != r.Lines[i] {
+			t.Errorf("line %d filled again: %q, not %q", i, got, r.Lines[i])
+		}
 	}
 }

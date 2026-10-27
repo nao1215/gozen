@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 	"math"
 	"math/rand/v2"
 	"slices"
@@ -59,10 +58,11 @@ type Reaction struct {
 	// Lines are the line said and, when the rule asks a question, the question.
 	Lines []string
 	// Written are the Lines as the book writes them, before their fields are filled, and
-	// Fields what the fields were filled with, by name ("from", "slot.cat", "mem.pet"): a
-	// game that shows a line in another language fills its translation with them (Fill).
+	// Fields what each line's fields were filled with, by name ("from", "slot.cat",
+	// "mem.pet"): a game that shows a line in another language fills its translation with
+	// them (Fill).
 	Written []string
-	Fields  map[string]string
+	Fields  []map[string]string
 	Face    string
 	// Delta is the mood change applied; Mood is the mood after it.
 	Delta, Mood float64
@@ -459,12 +459,9 @@ func (m *Mind) Ask(id string) (Reaction, error) {
 // say adds the line as the book writes it, filled, and what its fields were filled with.
 func (r *Reaction) say(m *Mind, l string, e *env) {
 	fields := m.fields(l, e)
-	if r.Fields == nil {
-		r.Fields = map[string]string{}
-	}
-	maps.Copy(r.Fields, fields)
 	r.Lines = append(r.Lines, Fill(l, fields))
 	r.Written = append(r.Written, l)
+	r.Fields = append(r.Fields, fields)
 }
 
 func (m *Mind) ask(id string) *question {
