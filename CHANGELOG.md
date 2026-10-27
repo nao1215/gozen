@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.14.0 - 2026-10-28
+
 - Stream a slot of episodes (ADR 0052): a live channel plays its episodes one after another from the next unseen one until `slot.minutes` (60 by default) have passed, says one of the channel's `bridges` between two episodes, marks each episode seen as it is watched and ends with a thanks, and with `slot.rest` starts the next stream after that many minutes; while the lines are read aloud a browser holds a screen wake lock.
 - Keep the stream comments no reaction book found anything in (ADR 0052) in `stream_unanswered.json` beside the saves (the save folder on the desktop, localStorage in a browser), the last 200 with their time, channel and language, for the author to grow the books from; nothing is sent anywhere.
 - Let the hosts of a stream duo answer a question in turn (ADR 0048): a line of an answer's `r` is the asker's, or a host's written `{id: line}` (a face too); its voice is in the speaker's folder.
