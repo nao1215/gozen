@@ -55,7 +55,7 @@ func Load(base string, progress func(done, total int64)) (fs.FS, error) {
 	}
 	h := &httpFS{
 		base: base, entries: fstest.MapFS{}, served: make(map[string]file, len(files)),
-		cache: make(map[string][]byte, len(files)), coming: make(map[string]chan struct{}, len(files)),
+		cache: make(map[string][]byte, len(files)), coming: make(map[string]chan struct{}, len(files)), fetching: map[string]*fetchCall{},
 	}
 	counter := &count{report: progress}
 	for _, f := range files {
@@ -127,6 +127,42 @@ type httpFS struct {
 	cache   map[string][]byte
 	// coming holds the files Load still downloads, closed when one has come.
 	coming map[string]chan struct{}
+	// fetching are the files opened that are being fetched, which another opening of one
+	// waits for rather than fetch it again.
+	fetching map[string]*fetchCall
+}
+
+// fetchCall is a file being fetched for the game opening it: done is closed once data or
+// err is set.
+type fetchCall struct {
+	done chan struct{}
+	data []byte
+	err  error
+}
+
+// fetchOnce fetches the file served for name once for all who open it meanwhile, and keeps
+// it unless it is fetched later (a recorded voice, which a game plays once in a while: kept,
+// the voices of a long stream would fill the memory).
+func (f *httpFS) fetchOnce(name string, served file) ([]byte, error) {
+	f.mu.Lock()
+	c := f.fetching[name]
+	if c != nil {
+		f.mu.Unlock()
+		<-c.done
+		return c.data, c.err
+	}
+	c = &fetchCall{done: make(chan struct{})}
+	f.fetching[name] = c
+	f.mu.Unlock()
+	c.data, c.err = get(f.base, served, nil)
+	f.mu.Lock()
+	delete(f.fetching, name)
+	if c.err == nil && !served.Later {
+		f.cache[name] = c.data
+	}
+	f.mu.Unlock()
+	close(c.done)
+	return c.data, c.err
 }
 
 func (f *httpFS) Open(name string) (fs.File, error) {
@@ -146,13 +182,9 @@ func (f *httpFS) Open(name string) (fs.File, error) {
 		}
 		if !cached {
 			var err error
-			data, err = get(f.base, served, nil)
-			if err != nil {
+			if data, err = f.fetchOnce(name, served); err != nil {
 				return nil, err
 			}
-			f.mu.Lock()
-			f.cache[name] = data
-			f.mu.Unlock()
 		}
 		return fstest.MapFS{name: &fstest.MapFile{Data: data}}.Open(name)
 	}

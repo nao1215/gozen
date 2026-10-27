@@ -231,7 +231,9 @@ scenarios:
   - run: {command: "python3 -c 'print(sum(\"/assets/voice/\" in l for l in open(\"requests.log\")))'"}
   - assert: {stdout: {equals: "0\n"}}
   # watching (a new game, the name left empty, then the first card) fetches the voices of
-  # the next five lines, not the others
+  # the next lines ahead of them, a run of them where the show is, each once, not the
+  # others: five within 8 seconds, where a line lasts 2.7 (said one by one, they would come
+  # in 11)
   - cdp:
       runner: browser
       actions:
@@ -241,12 +243,24 @@ scenarios:
             await key('Enter');
             await key('Enter');
             await key('Enter');
-            await new Promise(resolve => setTimeout(resolve, 3000));
             document.body.dataset.watched = 'true';
           })(); true
       - wait_visible: 'body[data-watched=true]'
-  - run: {command: "python3 -c 'n = len({l for l in open(\"requests.log\") if \"/assets/voice/\" in l}); print(\"fetched\" if 1 <= n <= 12 else n)'"}
-  - assert: {stdout: {equals: "fetched\n"}}
+  - run:
+      command: |
+        python3 -c '
+        import hashlib, time
+        line = {hashlib.sha1(("Line %d." % i).encode()).hexdigest()[:16]: i for i in range(1, 41)}
+        for _ in range(80):
+            asked = [l.strip().rsplit("/", 1)[1][:16] for l in open("requests.log") if "/assets/voice/" in l]
+            if len(set(asked)) >= 5:
+                break
+            time.sleep(0.1)
+        got = sorted(line[k] for k in set(asked))
+        ok = 5 <= len(got) <= 12 and got[-1] - got[0] < len(got) + 3 and len(asked) == len(set(asked))
+        print("a run of lines" if ok else (got, len(asked)))
+        '
+  - assert: {stdout: {equals: "a run of lines\n"}}
 
 - name: a page starts however its pieces come and keeps the game running as media come late
   tags: [web]
