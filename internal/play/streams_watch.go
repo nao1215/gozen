@@ -2,6 +2,8 @@ package play
 
 import (
 	"fmt"
+	"image/color"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -617,6 +619,28 @@ func (w *streamWatch) controlRect(g *Game, c [2]int) (x, y, cw, ch float64) {
 	return sw - 80, sh - 58, 66, 42
 }
 
+// drawSpeaker draws a speaker 22 wide from x, centered on cy: with sound waves when
+// on, crossed out when off.
+func drawSpeaker(dst *ebiten.Image, x, cy float32, on bool, clr color.Color) {
+	gfx.FillRect(dst, x, cy-4, 5, 8, clr, true)
+	for i := float32(0); i < 6; i++ {
+		gfx.FillRect(dst, x+5+i, cy-4-i, 1.2, 8+2*i, clr, true)
+	}
+	if !on {
+		gfx.StrokeLine(dst, x+14, cy-4, x+21, cy+4, 2, clr, true)
+		gfx.StrokeLine(dst, x+14, cy+4, x+21, cy-4, 2, clr, true)
+		return
+	}
+	for _, r := range []float32{5, 9} {
+		px, py := x+12+r*float32(math.Cos(-0.9)), cy+r*float32(math.Sin(-0.9))
+		for a := -0.9 + 0.15; a <= 0.9; a += 0.15 {
+			nx, ny := x+12+r*float32(math.Cos(a)), cy+r*float32(math.Sin(a))
+			gfx.StrokeLine(dst, px, py, nx, ny, 1.8, clr, true)
+			px, py = nx, ny
+		}
+	}
+}
+
 // tipRect is where the button of the i-th tip is drawn.
 func (w *streamWatch) tipRect(g *Game, i int) (x, y, tw, th float64) {
 	sw, sh := g.screen()
@@ -772,12 +796,15 @@ func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, sw, sh float64) {
 			}
 			gfx.DrawText(dst, lang.T("投げ銭"), x+cw/2, y+11, 15, streamPanel)
 		case ctlSpeak:
-			label := lang.T("読み上げ")
+			label, ink := lang.T("オフ"), ink2
 			if g.desk.speak {
-				edge = streamBrand
+				label, ink = lang.T("オン"), streamPanel
+				gfx.FillRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, streamBrand)
+			} else {
+				gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, 1.5, edge)
 			}
-			gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, 1.5, edge)
-			gfx.DrawText(dst, label, x+cw/2, y+12, 13, ink2)
+			drawSpeaker(dst, float32(x+8), float32(y+ch/2), g.desk.speak, ink)
+			gfx.DrawTextLeft(dst, label, x+34, y+12, 13, ink)
 		case ctlFull:
 			label := lang.T("全画面")
 			if g.cfg.StreamFull {

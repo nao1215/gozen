@@ -999,7 +999,6 @@ var english = map[string]string{
 	"コメントする":        "Say something",
 	"送信":            "Send",
 	"投げ銭":           "Tip",
-	"読み上げ":          "Read aloud",
 	"通常表示":          "Normal view",
 	"答える：":          "Answer:",
 	"配信は終了しました":     "The stream has ended",
