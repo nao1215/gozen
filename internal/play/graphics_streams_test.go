@@ -132,10 +132,12 @@ func TestGraphicsScreensStreams(t *testing.T) {
 			if darkRun(watch, 195, int(streamBarH+sth*0.6), int(streamBarH+sth)) < 10 {
 				t.Error("no caption band on the portrait stage")
 			}
-			// full screen: the room from the top to the bottom, the chat darkened over its lower part
+			// full screen: the stage at the top, 16:9 as on the page (the puppets show the same
+			// part of themselves), the darkened chat under it from the stage's bottom down
 			full := shotImage(t, root, "full")
-			if !near(full, 20, 120, room) || near(full, 20, 700, room) || near(full, 20, 700, white) {
-				t.Error("the portrait full screen does not fill the screen with the stage under a darkened chat")
+			band := func(y int) bool { return !near(full, 20, y, white) && !near(full, 20, y, room) }
+			if under := full.At(20, int(sth+12)); full.At(20, int(sth-12)) == under || under != full.At(20, 400) || !band(int(sth+12)) {
+				t.Error("the portrait full screen does not keep a 16:9 stage at the top over a darkened chat")
 			}
 		}},
 	} {

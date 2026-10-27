@@ -136,16 +136,16 @@ type watchLayout struct {
 // watchLayout lays out the watch view. In the landscape layout the chat column is on the
 // right of the stage, and in full screen the stage fills the screen at 16:9 under the chat;
 // in the portrait layout the stage is at the top with the information and the chat under
-// it, and in full screen the stage fills the screen with the chat over its lower part.
+// it, and in full screen the stage takes the bar's place at the top, still 16:9, so the
+// puppets show the same part of themselves, with the chat under it.
 func (g *Game) watchLayout() watchLayout {
 	sw, sh := g.screen()
 	full := g.cfg.StreamFull
 	if g.view.tall {
-		if full {
-			top := sh * 0.58
-			return watchLayout{stageW: sw, stageH: sh, colTop: top, colW: sw, capW: sw, capH: top, capSize: captionSize, capShare: captionShare, zoom: max(1, sh/(sw*9/16)*0.6)}
-		}
 		h := sw * 9 / 16
+		if full {
+			return watchLayout{stageW: sw, stageH: h, colTop: h, colW: sw, capW: sw, capH: h, capSize: tallCaption, capShare: tallCaptionShare, zoom: 1}
+		}
 		return watchLayout{stageY: streamBarH, stageW: sw, stageH: h, infoH: tallInfoH, colTop: streamBarH + h + tallInfoH, colW: sw, capW: sw, capH: h, capSize: tallCaption, capShare: tallCaptionShare, zoom: 1}
 	}
 	cw := min(streamChatW, max(300, sw*0.3))
