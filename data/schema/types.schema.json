@@ -17126,7 +17126,7 @@
       "description": "When a streamer reads back a comment its reaction book found nothing in (the `dodge.unknown` lines): two beats after the comment, as if it came upon it in the chat; a comment not read back flows by unanswered (ADR 0052).",
       "properties": {
         "chance": {
-          "description": "The chance of reading one back, 0 to 1. The default is 0.35.",
+          "description": "The chance of reading one back, 0 to 1. 0.35 when max_runes is left out too; with max_runes given, 0 when left out.",
           "type": "number",
           "x-contract": {
             "default": "0, or 0.35 when max_runes is left out too",
@@ -17245,7 +17245,7 @@
       "description": "Who is live: every channel the first time the game opens, then each with the chance `share` and at least `min_share` of them.",
       "properties": {
         "duo_chance": {
-          "description": "The chance, 0 to 1, that an unlocked duo streams when the game opens with both its hosts live, or when the stream of one of its hosts ends with slot.rest while the other streams on its own (or is a guest in no stream): the duo then takes both their places.",
+          "description": "The chance, 0 to 1, drawn for each duo in the order written, that an unlocked duo streams when the game opens with both its hosts live, or when the stream of one of its hosts ends with slot.rest while the other streams on its own then (or is a guest in no stream): the duo then takes both their places, and its hosts are in no other duo meanwhile.",
           "type": "number",
           "x-contract": {
             "default": "0",

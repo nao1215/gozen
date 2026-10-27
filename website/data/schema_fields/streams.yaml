@@ -28,7 +28,7 @@ StreamLive:
   _: "Who is live: every channel the first time the game opens, then each with the chance `share` and at least `min_share` of them."
   share: "The chance of each channel to be live, 0 to 1."
   min_share: "The least part of the channels that are live, 0 to 1."
-  duo_chance: "The chance, 0 to 1, that an unlocked duo streams when the game opens with both its hosts live, or when the stream of one of its hosts ends with slot.rest while the other streams on its own (or is a guest in no stream): the duo then takes both their places."
+  duo_chance: "The chance, 0 to 1, drawn for each duo in the order written, that an unlocked duo streams when the game opens with both its hosts live, or when the stream of one of its hosts ends with slot.rest while the other streams on its own then (or is a guest in no stream): the duo then takes both their places, and its hosts are in no other duo meanwhile."
 StreamAway:
   _: "Gold earned while the game is closed, shown when the stream screen opens."
   per_hour: "Gold an hour, 0 or more."
@@ -108,7 +108,7 @@ StreamAffection:
 StreamEcho:
   _: "When a streamer reads back a comment its reaction book found nothing in (the `dodge.unknown` lines): two beats after the comment, as if it came upon it in the chat; a comment not read back flows by unanswered (ADR 0052)."
   max_runes: "Only comments of at most this many characters. The default is 24."
-  chance: "The chance of reading one back, 0 to 1. The default is 0.35."
+  chance: "The chance of reading one back, 0 to 1. 0.35 when max_runes is left out too; with max_runes given, 0 when left out."
 StreamBounce:
   _: "The lines that jiggle the streamer's puppet; a tip jiggles it too."
   "on": "A regular expression (Go syntax) of the lines that jiggle. Empty jiggles none."
