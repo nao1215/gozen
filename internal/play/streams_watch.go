@@ -1,8 +1,10 @@
 package play
 
 import (
+	"encoding/json"
 	"fmt"
 	"image/color"
+	"log"
 	"math"
 	"slices"
 	"strconv"
@@ -454,6 +456,9 @@ func (w *streamWatch) reply(g *Game, host int, s react.Stimulus, first bool) boo
 	if err := g.st.KeepMind(w.show.Hosts[host].Actor, m); err != nil {
 		g.emit("stream_error", traceLine{"error": err.Error()})
 	}
+	if s.Kind == react.KindSay && len(r.Tags) == 0 && (r.Rule == "" || r.Rule == "dodge.unknown") {
+		g.noteUnanswered(w.show.Hosts[host].ID, s.Text)
+	}
 	if e := g.db.Streams.Echo; r.Rule == "dodge.unknown" && (utf8.RuneCountInString(s.Text) > e.MaxRunes || g.desk.rng.Float64() >= e.Chance) {
 		return false
 	}
@@ -473,6 +478,41 @@ func (w *streamWatch) reply(g *Game, host int, s react.Stimulus, first bool) boo
 		w.queue = append(w.queue, lines...)
 	}
 	return len(lines) > 0
+}
+
+// unansweredFile, beside the saves (a file of the save folder, a key of a browser's
+// localStorage), keeps the last unansweredMax comments of the player that no reaction book
+// found anything in, for the author to read and grow the books from (ADR 0052). Nothing
+// sends it anywhere.
+const (
+	unansweredFile = "stream_unanswered.json"
+	unansweredMax  = 200
+)
+
+// unanswered is a comment kept in unansweredFile: when, to which channel, in which language.
+type unanswered struct {
+	At       string `json:"at"`
+	Channel  string `json:"channel"`
+	Language string `json:"language"`
+	Text     string `json:"text"`
+}
+
+// noteUnanswered adds the comment to unansweredFile, dropping the oldest beyond
+// unansweredMax. A damaged file starts again; a failed write is logged.
+func (g *Game) noteUnanswered(channel, text string) {
+	var list []unanswered
+	if b, err := g.store.Read(unansweredFile); err == nil && json.Unmarshal(b, &list) != nil {
+		list = nil
+	}
+	list = append(list, unanswered{At: g.streamNow().Format(time.RFC3339), Channel: channel, Language: g.db.Shown(), Text: text})
+	list = list[max(0, len(list)-unansweredMax):]
+	b, err := json.MarshalIndent(list, "", "  ")
+	if err == nil {
+		err = g.store.Write(unansweredFile, b)
+	}
+	if err != nil {
+		log.Printf("streams: %s: %v", unansweredFile, err)
+	}
 }
 
 // echoLater is how many beats after a comment the streamer reads it back (reply).

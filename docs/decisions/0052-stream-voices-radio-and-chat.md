@@ -1,6 +1,6 @@
 # ADR 0052: Stream voices, the radio and the chat's memory
 
-Status: Accepted (2026-10-27). Home: `internal/layer2/gamedata` (the voices folder, the voice key and its check), `internal/react` (the lines as written), `internal/play` (playing the voices in the watch view).
+Status: Accepted (2026-10-27). Home: `internal/layer2/gamedata` (the voices folder, the voice key and its check), `internal/react` (the lines as written, the lines said lately), `internal/layer3/broadcast` and `internal/rpg` (the visits), `internal/play` (the voices, the radio, the replies and the record of unanswered comments).
 
 ## Context
 
@@ -62,6 +62,10 @@ people:
   A memory not written reads as 0 in a condition, so `mem.snack != 0` holds once the snack is remembered.
 - A list of lines (a rule's `say`, a question, a dodge) does not say again any line it said the last half of its length times (by their first line, for an entry of several lines): a list of two alternates, a list of ten says five others before it may repeat one. The lines said lately are part of the reaction state, saved with the game (`used`), and replace the single last line the book avoided before.
 - A comment the book found nothing in (`dodge.unknown`) is not answered at once: it is read back, as before only when short (`echo.max_runes`) and by the chance `echo.chance`, two beats later, as if the streamer came upon it in the chat; otherwise it flows by unanswered. A show that ends first reads it back before its end.
+
+### The comments the book could not answer
+
+A comment the player typed that the reaction book found nothing in (no tag: the rule `dodge.unknown`, or no rule and no dodge line) is written to `stream_unanswered.json` beside the saves, read back or not: a file of the save folder on the desktop (`--save-dir`, or the game's folder under the OS configuration directory), a key of the page's localStorage in a browser (`gozen/<game id>/stream_unanswered.json`). It is a JSON list of `{at, channel, language, text}`, the oldest dropped beyond 200, and a damaged file starts again. It is for the author, who reads it to grow the lexicon and the rules; the game never sends it anywhere and shows it nowhere. A trial run (`--script`) keeps it in memory with its saves.
 
 ## Consequences
 

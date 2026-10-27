@@ -2,6 +2,7 @@ package play
 
 import (
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"image"
 	"io/fs"
@@ -629,8 +630,32 @@ people:
 	if w.next < due {
 		t.Errorf("an unknown comment is read back at beat %d, before %d", w.next, due)
 	}
+	var noted []unanswered
+	if b, err := g.store.Read(unansweredFile); err != nil || json.Unmarshal(b, &noted) != nil || len(noted) != 1 || noted[0].Text != "zzz" || noted[0].Channel != "ann" || noted[0].Language != "en" {
+		t.Errorf("the comment found nothing in is not kept alone: %+v %v", noted, err)
+	}
 	w.leave(g)
 	w = watch()
 	w.comments = append(w.comments, "hello there")
 	until(w, func() bool { return strings.Contains(chatText(w), "Ann: cookies fan Pat, welcome back.") })
+}
+
+// TestStreamsUnansweredKeepsTheLast: the file of unanswered comments keeps the last 200,
+// and a damaged file starts again.
+func TestStreamsUnansweredKeepsTheLast(t *testing.T) {
+	g := streamsGame(t, "0")
+	if err := g.store.Write(unansweredFile, []byte("{damaged")); err != nil {
+		t.Fatal(err)
+	}
+	for i := range unansweredMax + 5 {
+		g.noteUnanswered("ann", fmt.Sprint("comment ", i))
+	}
+	var noted []unanswered
+	b, err := g.store.Read(unansweredFile)
+	if err != nil || json.Unmarshal(b, &noted) != nil {
+		t.Fatalf("%s: %v", b, err)
+	}
+	if len(noted) != unansweredMax || noted[0].Text != "comment 5" || noted[len(noted)-1].Text != fmt.Sprint("comment ", unansweredMax+4) || noted[0].At != noonish.Format(time.RFC3339) {
+		t.Fatalf("kept %d, from %+v to %+v", len(noted), noted[0], noted[len(noted)-1])
+	}
 }
