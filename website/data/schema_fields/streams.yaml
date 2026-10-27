@@ -17,7 +17,7 @@ Streams:
 StreamSlot:
   _: "The length of a stream. A live channel plays its episodes one after another, from the next the player has not seen, with a bridge line between them, until the slot has passed, and ends with the episode it is in then, thanking the viewer who stayed."
   minutes: "The minutes of a stream, more than 0 and at most 1440. The default is 60."
-  rest: "Minutes from the end of a stream to the channel's next, 0 to 1440 (0: at once), which again starts from the next episode not seen, round again from the first after the last. Without it a channel whose stream ended stays offline until the game opens again. With `live: {share: 1}` every channel is always on the air."
+  rest: "Minutes from the end of a stream to the channel's next, 0 to 1440 (0: at once), which again starts from the next episode not seen, round again from the first after the last. Without it a channel whose stream ended stays offline until the game opens again. With `rest: 0` and `live: {share: 1}` every channel is always on the air while the game is open."
 StreamTiming:
   _: "The length of the beats. A line lasts `say` plus `per_char` for each character; a question shows its options for `ask` and then says its longest answer."
   say: "Seconds every line lasts, more than 0."
