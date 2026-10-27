@@ -24,10 +24,14 @@ window.goZenTimes = {};
 window.goZenLoad = {};
 const notes = {player: "Loading the player...", files: "Loading the game's files..."};
 const megabytes = (n) => (n / 1048576).toFixed(1);
+// The game's media still come once it has started and the loading page is gone (or shows
+// a failure): the bytes are kept, and nothing is shown.
 window.goZenProgress = (part, done, total) => {
   goZenLoad[part] = {done, total};
+  const note = document.getElementById("note");
+  if (!note) return;
   const known = total > 0 && done <= total;
-  document.getElementById("note").textContent = notes[part];
+  note.textContent = notes[part];
   document.getElementById("fill").style.width = known ? (100 * done / total).toFixed(1) + "%" : "0";
   document.getElementById("amount").textContent = known
     ? Math.floor(100 * done / total) + "%  " + megabytes(done) + " / " + megabytes(total) + " MB"

@@ -4,6 +4,7 @@ package main
 
 import (
 	"errors"
+	"log"
 	"syscall/js"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -51,7 +52,15 @@ func (g *shown) Draw(screen *ebiten.Image) {
 	}
 }
 
+// page calls the page's function name, when it has one. The page only shows the loading:
+// an error it throws is logged and does not stop the game (a file coming in the background
+// reports its bytes after the game has started).
 func page(name string, args ...any) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("%s: %v", name, r)
+		}
+	}()
 	if f := js.Global().Get(name); f.Type() == js.TypeFunction {
 		f.Invoke(args...)
 	}
