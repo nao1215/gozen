@@ -82,13 +82,22 @@ func Turn(d *data.Streams, p *rpg.Streams, shows []*Show, now time.Time, rng *ra
 	if d.Slot.Rest == nil {
 		return shows
 	}
-	for i := 0; i < len(shows); {
-		s := shows[i]
-		start := s.Start.Add(time.Duration((s.Seconds() + *d.Slot.Rest*60) * float64(time.Second)))
-		if now.Before(start) || !start.After(s.Start) { // a stream of no length would start again for ever
-			i++
-			continue
+	again := func(s *Show) time.Time {
+		return s.Start.Add(time.Duration((s.Seconds() + *d.Slot.Rest*60) * float64(time.Second)))
+	}
+	for {
+		// the show to start again first, in the order of time
+		i := -1
+		for k, s := range shows {
+			// a stream of no length would start again for ever
+			if at := again(s); !now.Before(at) && at.After(s.Start) && (i < 0 || at.Before(again(shows[i]))) {
+				i = k
+			}
 		}
+		if i < 0 {
+			return shows
+		}
+		s, start := shows[i], again(shows[i])
 		shows = slices.Delete(slices.Clone(shows), i, i+1)
 		var next []*Show
 		if len(s.Hosts) > 1 {
@@ -99,7 +108,7 @@ func Turn(d *data.Streams, p *rpg.Streams, shows []*Show, now time.Time, rng *ra
 			}
 		} else {
 			var other int
-			next, other = pairOrSolo(d, p, s.Hosts[0], shows, rng)
+			next, other = pairOrSolo(d, p, s.Hosts[0], shows, start, rng)
 			if other >= 0 {
 				shows = slices.Delete(shows, other, other+1)
 			}
@@ -108,15 +117,14 @@ func Turn(d *data.Streams, p *rpg.Streams, shows []*Show, now time.Time, rng *ra
 			n.Start = start
 		}
 		shows = append(shows, next...)
-		i = 0 // the shows started again may end too, by now
 	}
-	return shows
 }
 
-// pairOrSolo is the next stream of the channel c: a duo of c that is unlocked and whose
-// other host is on the air on its own (shows[other]) or a guest in no stream, by the chance
-// live.duo_chance, else c's own (other -1).
-func pairOrSolo(d *data.Streams, p *rpg.Streams, c *data.Channel, shows []*Show, rng *rand.Rand) (next []*Show, other int) {
+// pairOrSolo is the next stream of the channel c from start: a duo of c that is unlocked
+// and whose other host streams on its own at start (shows[other]) or is a guest in no
+// stream, by the chance live.duo_chance drawn for each such duo in the order written, else
+// c's own (other -1).
+func pairOrSolo(d *data.Streams, p *rpg.Streams, c *data.Channel, shows []*Show, start time.Time, rng *rand.Rand) (next []*Show, other int) {
 	for _, duo := range d.Duos {
 		mate := duo.With
 		switch c.ID {
@@ -126,7 +134,9 @@ func pairOrSolo(d *data.Streams, p *rpg.Streams, c *data.Channel, shows []*Show,
 		default:
 			continue
 		}
-		j := slices.IndexFunc(shows, func(s *Show) bool { return s.Key == mate })
+		j := slices.IndexFunc(shows, func(s *Show) bool {
+			return len(s.Hosts) == 1 && s.Key == mate && !start.Before(s.Start) && s.Live(start)
+		})
 		guest := d.Channel(mate).Guest && !slices.ContainsFunc(shows, func(s *Show) bool { return slices.Contains(s.Hosts, d.Channel(mate)) })
 		if j < 0 && !guest || !Unlocked(d, p, duo) || rng.Float64() >= d.Live.DuoChance || len(duo.Shows) == 0 {
 			continue

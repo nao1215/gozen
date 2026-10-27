@@ -601,8 +601,8 @@ func (c *checker) streams() {
 	ids := map[string]bool{}
 	for i, ch := range s.Channels {
 		w := at("channels[%d]", i)
-		if ch == nil || ch.ID == "" || ids[ch.ID] || ch.ID == "say" || ch.ID == "chat" || ch.ID == "ask" {
-			c.errorf(diag.Duplicate, w+".id", "a channel needs an id of its own (not say, chat or ask)")
+		if ch == nil || ch.ID == "" || ids[ch.ID] || ch.ID == "say" || ch.ID == "chat" || ch.ID == "ask" || strings.Contains(ch.ID, "+") {
+			c.errorf(diag.Duplicate, w+".id", "a channel needs an id of its own (not say, chat or ask, and without +, which names a duo)")
 			continue
 		}
 		ids[ch.ID] = true

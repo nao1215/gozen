@@ -277,7 +277,7 @@ func TestTurn(t *testing.T) {
 	// a duo: a's stream ends while b streams on its own; the duo takes both their places
 	d.Live.DuoChance = 1
 	shows = []*Show{solo(0), solo(1), solo(2)}
-	shows[1].Start = end // b is on the air when a starts again
+	shows[1].Start = end.Add(2*time.Minute - 5*time.Second) // b is on the air when a starts again
 	got = Turn(d, p, shows, end.Add(2*time.Minute), rng)
 	if h := hosts(got); len(h) != 2 || !slices.Contains(h, "a+b") || !slices.Contains(h, "c") {
 		t.Fatalf("the duo does not take a's and b's places: %v", h)
@@ -377,5 +377,40 @@ func TestGuest(t *testing.T) {
 	d.Live.DuoChance = 0
 	if h := hosts(Turn(d, p, duo, noon.Add(time.Hour), rng)); len(h) != 1 || h[0] != "a" {
 		t.Fatalf("after the guest's duo: %v", h)
+	}
+}
+
+// TestTurnInTime: the streams over start again in the order of time, and a duo takes in
+// only the other host on the air then, not one resting between its streams: caught up in
+// one call or tick by tick, the same shows are on the air.
+func TestTurnInTime(t *testing.T) {
+	d := streams()
+	rest := 1.0
+	d.Slot.Rest = &rest
+	at := func(id string, start time.Time) *Show {
+		i := slices.IndexFunc(d.Channels, func(c *data.Channel) bool { return c.ID == id })
+		s := newShow(d, d.Channels[i:i+1], id, d.Channels[i].Shows, 0)
+		s.Start = start
+		return s
+	}
+	// a ends at 22 s and starts again at 82 s; b ended at 12 s and rests until 72 s, then
+	// starts again (alone: a is resting then) and is on the air at 82 s
+	rng := rand.New(rand.NewPCG(1, 2)) //nolint:gosec // reproducible draws
+	once := Turn(d, &rpg.Streams{}, []*Show{at("a", noon), at("b", noon.Add(-10*time.Second))}, noon.Add(83*time.Second), rng)
+	rng = rand.New(rand.NewPCG(1, 2)) //nolint:gosec // reproducible draws
+	shows := []*Show{at("a", noon), at("b", noon.Add(-10*time.Second))}
+	for s := 1; s <= 83; s++ {
+		shows = Turn(d, &rpg.Streams{}, shows, noon.Add(time.Duration(s)*time.Second), rng)
+	}
+	for name, got := range map[string][]*Show{"caught up at once": once, "tick by tick": shows} {
+		if h := hosts(got); len(h) != 1 || h[0] != "a+b" || !got[0].Start.Equal(noon.Add(82*time.Second)) {
+			t.Errorf("%s: %v from %v, not the duo from 82 s", name, h, got[0].Start.Sub(noon))
+		}
+	}
+	// b resting when a starts again: no duo
+	rng = rand.New(rand.NewPCG(1, 2))             //nolint:gosec // reproducible draws
+	resting := at("b", noon.Add(-15*time.Second)) // ends at 7 s, rests until 67 s
+	if h := hosts(Turn(d, &rpg.Streams{}, []*Show{at("a", noon.Add(-60*time.Second)), resting}, noon.Add(30*time.Second), rng)); slices.Contains(h, "a+b") {
+		t.Fatalf("a duo takes in b resting: %v", h)
 	}
 }
