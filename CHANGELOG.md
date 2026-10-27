@@ -4,6 +4,12 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add live streams (ADR 0048, schema version 9): `game.yaml` `streams` names a file of channels, episodes, duos, timing, tips, affection, a bot crowd and the gold earned while away; a location with `stream: lobby` or the command `open: streams` shows the lobby of the live channels and the watch view of a show, with captions, a chat, comments and tips the streamer answers from its reaction book, questions the viewers answer, and reading aloud in a browser build.
+- Check the stream file and its episodes in `gozen check`: unknown channels, actors, faces and speakers, answers out of range, options outside 2 to 4, affection steps and answer chances, and warn of an episode shorter than 20 minutes (GZN0118) and of a caption longer than two lines.
+- Save the streams' progress (the viewer's name, the next episode, affection, days in a row and the time the game was last open) with the game; older saves load with none.
+- Let a reaction book's lexicon match a word only as a whole word (`whole: true`) or as written (`exact: true`), hide a word's occurrences inside except words (`{words, except}`), say a list of lines in order from one `say` entry, and insert the comment with `{text}`.
+- Share one loaded puppet rig between the bodies drawn from it, and the memo's text field with the stream screens.
+
 ## v0.13.0 - 2026-10-27
 
 Choose a campaign's orders from icons on the map, fit full-screen games with safe areas and camera limits, and fix the findings of a full engine review.

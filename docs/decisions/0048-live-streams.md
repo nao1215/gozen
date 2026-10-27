@@ -1,0 +1,74 @@
+# ADR 0048: Live streams
+
+Status: Accepted (2026-10-27). Home: `internal/layer2/gamedata` (the stream data and its check), `internal/layer3/broadcast` (the rules), `internal/rpg` (the progress in the save), `internal/react` (the additions to the reaction book), `internal/play` (the lobby and the watch view).
+
+## Context
+
+ADR 0015 named a streamer game as the first user of `react` and `chat`, but no screen uses them: `chat` has no importer outside tests and `react` is reached only through the `respond` command inside a novel event. A streamer game shows several channels at once, each a moving portrait in its own room speaking lines that advance with the wall clock, with a chat that flows, free comments the streamer answers, tips, and questions the viewers answer. None of the existing screens advances several scripts at once by time, and the novel's single event flow, rollback and read marks (ADR 0025, ADR 0026) do not fit lines that keep going whether or not anyone watches.
+
+## Decision
+
+Add a live-stream screen, opened from a location (`stream: lobby`) or with the command `open: streams`. It has two views: the lobby, which shows every live channel as a card (a large first card with its chat beside it, the others smaller, four to a row, scrolled to the chosen card) and on the left a list of the channels live and offline, and the watch view of one show. A lobby that is a location lists the place's entries (its exits, actions, people and the menu) under the channels, and the menu key opens the menu; an opened lobby goes back with cancel.
+
+### Data (written by the author, checked by `gozen check`)
+
+`game.yaml` names one file with `streams: data/streams.yaml` (schema version 9):
+
+```yaml
+timing: {say: 1.8, per_char: 0.11, chat: 1.6, ask: 12}   # seconds a beat lasts
+live: {share: 0.8, min_share: 0.6, duo_chance: 0.25}      # who is live when the game opens; everyone on the first opening
+away: {per_hour: 1500, cap_hours: 24, star_bonus: 0.1}    # gold earned while the game is closed
+tips: [500, 2000, 10000, 50000]
+affection: {steps: [0, 30, 150, 600, 3000], comment: 1, reply: 2, answer: 5, tip_per: 100, stayed: 10}
+answer_chance: [0.6, 0.75, 0.9, 1, 1]                     # by affection step
+echo: {max_runes: 24, chance: 0.35}                       # reading back a comment the book found nothing in
+bounce: {on: "[!！]|[wW]{2}", amount: 1}                  # the lines that jiggle the puppet
+crowd:                                                    # bot viewers (chat.Crowd)
+  names: [...]
+  lines: {any: [...], morning: [...], evening: [...]}     # or a plain list (any)
+  tip_lines: [...]
+  rate: 0.4
+channels:
+  - id: lise
+    actor: lise              # the actor's name, puppet (ADR 0020) and reaction book (reactions:)
+    tag: Games
+    tagline: A line about the channel
+    color: "#c0392b"         # the name in the chat, the card's frame
+    room: rooms/lise.jpg     # under assets/, one per channel
+    frame: {cx: 575, top: 230, bottom: 660}   # the part of the puppet shown, in puppet pixels
+    voice: {pitch: 0.9, rate: 0.95}           # speech synthesis in a browser build
+    episodes: [streams/lise/001.yaml, streams/lise/002.yaml]   # relative to the game
+    greet: [[], ["{from}, you came back."], ...]   # one list of lines per affection step
+    first: [...]
+    streak: [...]            # {days} is the run of days in a row
+    stayed: [...]
+duos:
+  - {host: lise, with: mora, episodes: [streams/lise-mora/001.yaml]}
+```
+
+`affection`, `answer_chance` and `echo` have the defaults shown; `bounce` without `on` jiggles nothing. The episodes live outside `data/` (the files under `data/` are data files, and the streams file is read apart from them). An episode is `title`, `lobby` (short lines shown in turn on the first card; the title when there are none) and `parts`, each a list of beats: `say: text` or `say: {face, text}` for the host, `<channel id>: text` (or `{face, text}`) for the other host of a duo, `chat: [name, text]`, and `ask: {who, q, options: [{c, r: [lines]}], npc: [[name, option]]}` with the option counted from 0. In every line `{from}` is whom the line is said to: the viewer in greetings, the one who answered in the lines of an answer. The check reports unknown channels, actors (an actor needs a puppet), faces, speakers who are not hosts of the episode, rooms, out-of-range answers, options outside 2 to 4, a question without a bot answer, unknown `{fields}`, affection steps that do not start at 0 and increase, an answer chance missing for a step, more greetings than steps, a broken `bounce.on`, episodes shorter than 20 minutes (warning GZN0118), and, in the layout check, lines that take more than two lines of the caption (GZN0101). The titles, lobby lines, lines, chat messages and viewer names, questions, answers, tags, taglines and crowd texts are texts to translate (ADR 0027).
+
+Comments go to the host's `react` person (`reactions:` in `game.yaml`, ADR 0015) as a `say` stimulus with the comment's text; tips as a stimulus of the kind `tip` with `value.amount` and the tip's comment as its text. A comment the book found nothing in (the person's `dodge.unknown`) is read back only when it has at most `echo.max_runes` characters, with the chance `echo.chance`. A tip with a comment first has the streamer read the comment in quotes (corner brackets in Japanese, double quotes otherwise); the bots tip now and then (an amount among the two smallest `tips`, a `tip_lines` comment) and a host reads it the same way. To answer comments in two languages without false matches, `react` gains, all in the book:
+
+- a lexicon word may be `{word: cat, whole: true}`: matched in the text as written, ignoring case, between word boundaries (for Latin words);
+- a lexicon word may be `{word: WORD, exact: true}`: matched in the text as written, ignoring only case (a katakana word that the normalization would turn into unrelated words);
+- a tag may be `{words: [...], except: [...]}`: an occurrence of a word inside an occurrence of an except word is not counted, while another occurrence of a word still is;
+- a rule's `say` entry may be a list of lines spoken in order, and `{text}` inserts the comment.
+
+### Rules (`internal/layer3/broadcast`, no drawing)
+
+The beat at a time is found from the seconds since the episode started with the timing above (a question lasts its line, `timing.ask` and its longest answer), so the lobby cards and the watch view show the same line, and a show opened late starts in the middle (at the next beat after a question). Opening the game decides who is live: every channel on the first opening, then each with probability `share` and at least `min_share` of them in the order written, a duo when both hosts are live with probability `duo_chance`. Each show started up to four minutes before the game opened, and before its middle. A channel (or a duo) plays the next episode the player has not seen; watching 60% of the beats from where the player came in marks it seen. The affection step, the answer chance, the days-in-a-row count (from 3 days a streak line is said) and the away gold (`per_hour` for at most `cap_hours`, raised by `star_bonus` for every affection step of every channel) are computed here. The clock and the random source are passed in, so the rules run headless and are table-tested.
+
+### State
+
+`rpg.State` gains `Streams`: the viewer's name, per channel the next episode, affection points, the last day visited and the run of days, per duo its next episode, plus the time the game was last open. Saved like the rest; old saves load with it empty. The game's starting gold is `start.gold` of `game.yaml`.
+
+### Screen (`internal/play`)
+
+The cards and the watch view draw the channel's room and its puppet's frame into a sub-image, the frame filling the height; a duo frames both hosts 1.25 times as tall, side by side. Each place that shows a puppet has its own body made from the shared rig, so one channel can be on a card and in a duo at once. The chat is a `chat.Log` with the crowd (`chat.Crowd`, its moods the hours of the crowd's lines) as its source; each message is wrapped once when posted, and only the visible messages are drawn. A streamer's message has a mark and the channel's color; the viewers' names have colors of their own. The caption is white text on black bands under the stage, typed out, with the speaker's name over it in a duo. A line that matches `bounce.on`, and a tip, jiggle the puppet. The comment field is the memo's text field, moved into a shared type used by both; the first watch asks the viewer's name with it. The chat column has the question's answer cards, the comment field, the tip button with the amounts the player can pay, and, in a browser build, a button that reads the lines aloud with `speechSynthesis` and waits for each line to end (other builds have no such button). A show that ends thanks a viewer who watched most of it by name and then shows that it ended. The lobby rebuilds its cards only when the live set changes, and shows the gold earned while away once. The progress is autosaved when an episode is seen, after a tip, when the name is given and when the player leaves a show.
+
+The game reads the clock once, when a game with streams starts (`Options.Now`, the wall clock when nil), and advances it by ticks. A trace records the time read and a replay plays the streams at that time, so a replay is still deterministic. Text typed into the comment field is not part of a replay (as for the memo).
+
+## Consequences
+
+A streamer game is YAML only. The chat, the reactions and the puppets are the existing packages; the new code is the stream data and check, the stream rules, and the two views. Screens stay in the game's fixed logical size; a portrait phone shows the landscape layout scaled down. The content of a particular game (its scripts, its words) stays in that game, not in this repository (ADR 0004).

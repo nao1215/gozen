@@ -117,6 +117,10 @@ Online communication is not implemented. Only the `Source` hook is provided; Web
 
 `react` sits in layer 3 (rules) and uses only `expr`, YAML and `golang.org/x/text/width`. It does not use Ebitengine and is tested without drawing. `chat` sits in layer 1 (foundation) and uses only the standard library, YAML (the bot script) and `golang.org/x/text/width`. Following the ban on sideways dependencies within a layer, the two do not import each other. The caller assembles the display.
 
+### Additions for live streams (2026-10-27)
+
+[ADR 0048](0048-live-streams.md) adds to the book what a streamer game needs to answer comments in two languages: a lexicon word may be `{word, whole: true}` (matched in the text as written, ignoring case, between word boundaries) or `{word, exact: true}` (matched in the text as written, ignoring only case), a tag may be `{words: [...], except: [...]}` (an occurrence of a word inside an occurrence of an except word is not counted), a rule's `say` entry may be a list of lines spoken in order, and lines may insert the stimulus's text with `{text}`.
+
 ## Alternatives
 
 - LLM (an external API or a small in-browser model): not chosen because of network cost, distribution size and difficulty of controlling output.
