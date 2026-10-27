@@ -120,6 +120,7 @@ func newStreamWatch(g *Game, show *broadcast.Show, viewers int) *streamWatch {
 	if w.next < len(show.Beats) && show.Beats[w.next].Ask != nil {
 		w.next++
 	}
+	w.next = max(w.next, g.desk.left[show])
 	w.from = w.next
 	w.part, w.partFrom = show.Part(w.next), w.next
 	w.nextTip = now.Add(time.Duration(40+g.desk.rng.IntN(60)) * time.Second)
@@ -644,6 +645,7 @@ func (w *streamWatch) leave(g *Game) {
 	closeBodies(w.bodies)
 	g.sfx("cancel")
 	w.speaker.free()
+	g.desk.left[w.show] = w.next
 	g.saveStreams()
 	g.pop()
 }

@@ -910,6 +910,32 @@ func TestStreamsRepliesFollowTheLanguage(t *testing.T) {
 	}
 }
 
+// TestStreamsComeBackWhereLeft: the watch view goes at its own pace (voices, captions),
+// ahead of the stream's clock at times; leaving and opening the same stream again comes in
+// where it left, not back at the clock's beat to say again what was heard, and at the
+// clock's beat once the clock is past it.
+func TestStreamsComeBackWhereLeft(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	show := l.cards[0].show
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	w.next = 3 // ahead of the clock, at beat 0
+	w.leave(g)
+	if again := newStreamWatch(g, show, 100); again.next != 3 {
+		t.Fatalf("opened again at beat %d, not 3 where it was left", again.next)
+	}
+	show.Start = g.streamNow().Add(-seconds(show.Times[len(show.Beats)-1] + 0.1)) // the clock at the last beat
+	if again := newStreamWatch(g, show, 100); again.next != len(show.Beats)-1 {
+		t.Fatalf("opened again at beat %d, not the clock's %d", again.next, len(show.Beats)-1)
+	}
+}
+
 // TestStreamsUnansweredKeepsTheLast: the file of unanswered comments keeps the last 200,
 // and a damaged file starts again.
 func TestStreamsUnansweredKeepsTheLast(t *testing.T) {

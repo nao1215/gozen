@@ -52,6 +52,10 @@ type streamDesk struct {
 	toastT int
 	// kept is when keepOpen last wrote the autosave.
 	kept time.Time
+	// left is the beat the watch view of each show was to play next when it was left: it
+	// goes at its own pace, ahead of the stream's clock at times, and a show opened again
+	// comes in there rather than say again what was heard.
+	left map[*broadcast.Show]int
 }
 
 // streamNow is the wall clock of the streams.
@@ -84,7 +88,7 @@ func (g *Game) stepStreams() {
 		_, offset := now.Zone()
 		now = now.In(time.FixedZone("", offset))
 		g.emit("now", traceLine{"unix_ms": now.UnixMilli(), "utc_offset": offset})
-		g.desk = &streamDesk{base: now, tick0: g.tick, rng: rand.New(rand.NewPCG(g.opts.Seed, uint64(now.UnixMilli()))), avatars: map[string]*ebiten.Image{}} //nolint:gosec // Who streams is not security-sensitive.
+		g.desk = &streamDesk{base: now, tick0: g.tick, rng: rand.New(rand.NewPCG(g.opts.Seed, uint64(now.UnixMilli()))), avatars: map[string]*ebiten.Image{}, left: map[*broadcast.Show]int{}} //nolint:gosec // Who streams is not security-sensitive.
 		if v := g.db.Streams.Voices; v != "" {
 			st, err := fs.Stat(g.db.FS, "assets/"+v)
 			g.desk.voices = err == nil && st.IsDir()
@@ -104,6 +108,7 @@ func (g *Game) stepStreams() {
 	}
 	for i, s := range g.desk.shows { // a stream over starts again after its rest (slot.rest)
 		for n := broadcast.Again(g.db.Streams, g.st.Streams, s, now); n != nil; n = broadcast.Again(g.db.Streams, g.st.Streams, s, now) {
+			delete(g.desk.left, s)
 			s, g.desk.shows[i] = n, n
 		}
 	}
