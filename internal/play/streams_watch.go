@@ -725,8 +725,9 @@ func (w *streamWatch) update(g *Game) {
 			w.botTip(g)
 		}
 		if (w.voice != nil || w.spoken != nil) && !now.Before(w.limit) {
-			// given up: a voice or speech that ends later does not move the next step
-			w.voice, w.spoken = nil, nil
+			// given up (speech still going is stopped): a voice or speech that ends later
+			// does not move the next step
+			w.hush()
 		}
 		w.voiced(g)
 		if w.spoken != nil && w.spoken() {
