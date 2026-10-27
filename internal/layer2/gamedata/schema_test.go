@@ -175,6 +175,10 @@ func (b *schemaBuilder) node(t reflect.Type) schemaNode {
 	if t == reflect.TypeFor[Color]() {
 		return schemaNode{"type": "string", "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"}
 	}
+	if t == reflect.TypeFor[StreamReply]() { // the asker's line, or a host's keyed by its channel id
+		line := b.node(reflect.TypeFor[StreamLine]())
+		return schemaNode{"anyOf": []any{line, schemaNode{"type": "object", "additionalProperties": line, "minProperties": 1, "maxProperties": 1}}}
+	}
 	if t == reflect.TypeFor[NPCAnswer]() {
 		return schemaNode{"type": "array", "prefixItems": []any{schemaNode{"type": "string"}, schemaNode{"type": "integer", "minimum": 0}}, "minItems": 2, "maxItems": 2}
 	}
@@ -612,6 +616,8 @@ func schemaTypeLabel(t reflect.Type) string {
 		return "能力名 → 倍率"
 	case reflect.TypeFor[NPCAnswer]():
 		return "[name, index]"
+	case reflect.TypeFor[StreamReply]():
+		return "[StreamLine](#streamline) or {id: StreamLine}"
 	}
 	switch t.Kind() { //nolint:exhaustive // Only schema container/scalar kinds need handling; other reflection kinds are intentionally ignored.
 	case reflect.Struct:

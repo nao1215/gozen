@@ -2983,7 +2983,7 @@
           "x-type": "boolean"
         },
         "id": {
-          "description": "The channel's ID, unique, not `say`, `chat` or `ask`. A duo's episodes use it as the key of the other host's lines.",
+          "description": "The channel's ID, unique, not `say`, `chat`, `ask`, `text` or `face` and without `+` (which names a duo). A duo's episodes use it as the key of the other host's lines, and an answer's `r` as the key of a line a host says.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -17304,9 +17304,21 @@
           "x-type": "string"
         },
         "r": {
-          "description": "The lines said when it is picked (`StreamReply`). `{from}` is who picked it.",
+          "description": "The lines said when it is picked, `{from}` being who picked it: each said by the one who asked, as text or `{face, text}`, or by a host of the episode written with its channel id, `{bo: text}` or `{bo: {face, text}}`, so the two hosts of a duo answer in turn. A line's voice is in the folder of the one who says it.",
           "items": {
-            "$ref": "#/$defs/StreamReply"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/StreamLine"
+              },
+              {
+                "additionalProperties": {
+                  "$ref": "#/$defs/StreamLine"
+                },
+                "maxProperties": 1,
+                "minProperties": 1,
+                "type": "object"
+              }
+            ]
           },
           "type": [
             "array",
@@ -17320,15 +17332,9 @@
             "reference": "-",
             "version": "9"
           },
-          "x-type": "[StreamReply](#streamreply)[]"
+          "x-type": "[StreamLine](#streamline) or {id: StreamLine}[]"
         }
       },
-      "type": "object"
-    },
-    "StreamReply": {
-      "additionalProperties": false,
-      "description": "A line said when an answer is picked: by the one who asked, as text or `{face, text}`, or by a host of the episode written with its channel id, `{bo: text}` or `{bo: {face, text}}`, so the two hosts of a duo answer in turn. Its voice is in the folder of the one who says it.",
-      "properties": {},
       "type": "object"
     },
     "StreamSlot": {

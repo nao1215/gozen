@@ -42,7 +42,7 @@ StreamCrowd:
   rate: "Messages a second on average, more than 0 and at most 100."
 Channel:
   _: "A streamer: an actor streaming from a room, with its episodes and its greetings."
-  id: "The channel's ID, unique, not `say`, `chat` or `ask`. A duo's episodes use it as the key of the other host's lines."
+  id: "The channel's ID, unique, not `say`, `chat`, `ask`, `text` or `face` and without `+` (which names a duo). A duo's episodes use it as the key of the other host's lines, and an answer's `r` as the key of a line a host says."
   actor: "The actor (`actors`) whose name, puppet and reaction book (`reactions`) the channel uses. It needs a puppet."
   tag: "The category shown under the name."
   tagline: "A line about the channel, shown in the lobby and under the stream."
@@ -96,9 +96,7 @@ StreamAsk:
 StreamOption:
   _: "An answer and what is said when it is picked."
   c: "The answer shown on its card and in the chat."
-  r: "The lines said when it is picked (`StreamReply`). `{from}` is who picked it."
-StreamReply:
-  _: "A line said when an answer is picked: by the one who asked, as text or `{face, text}`, or by a host of the episode written with its channel id, `{bo: text}` or `{bo: {face, text}}`, so the two hosts of a duo answer in turn. Its voice is in the folder of the one who says it."
+  r: "The lines said when it is picked, `{from}` being who picked it: each said by the one who asked, as text or `{face, text}`, or by a host of the episode written with its channel id, `{bo: text}` or `{bo: {face, text}}`, so the two hosts of a duo answer in turn. A line's voice is in the folder of the one who says it."
 StreamAffection:
   _: "How a viewer earns a channel's affection. The steps raise the gold earned away and the chance of an answer being picked."
   steps: "The points each step starts at, from 0 and increasing. The default is [0, 30, 150, 600, 3000]."

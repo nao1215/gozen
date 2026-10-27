@@ -94,6 +94,7 @@ func TestStreamsCheck(t *testing.T) {
 		{"a slot over a day", edit("data/streams.yaml", "tips:", "slot: {minutes: 1500}\ntips:"), "at most 1440 minutes"},
 		{"a family that is no bool", edit("streams/bo/1.yaml", "title: Garden tour", "title: Garden tour\nfamily: maybe"), "Family of type bool"},
 		{"a line of no time", edit("data/streams.yaml", "say: 1.8,", "say: 0.001,"), "at least 0.1 seconds"},
+		{"a channel id of a line's key", edit("data/streams.yaml", "  - id: bo\n", "  - id: text\n"), "not say, chat, ask, text or face"},
 		{"a channel id of a duo's name", edit("data/streams.yaml", "  - id: bo\n", "  - id: bo+cy\n"), "without +"},
 		{"an answer said by no host", edit("streams/ann/1.yaml", "r: [Peas it is.]", "r: [{bo: Peas it is.}]"), `"bo" is not a host`},
 		{"an unlock below 0", edit("data/streams.yaml", "host: ann, with: bo,", "host: ann, with: bo, unlock: -1,"), "duos[0].unlock"},
