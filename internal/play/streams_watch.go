@@ -783,7 +783,10 @@ func (w *streamWatch) input(g *Game) {
 		sent := g.clickedIn(right-150, sh-62, 64, 44)
 		switch {
 		case send || sent:
+			// sent, typing ends (a phone's keyboard closes and shows the stream again), and
+			// the keys and the pads move between the controls
 			w.comment(g)
+			w.typing = false
 		case !in.devices() && in.cancel() || in.devices() && !typed && inpututil.IsKeyJustPressed(ebiten.KeyEscape):
 			w.field.composer.Cancel()
 			w.typing = false

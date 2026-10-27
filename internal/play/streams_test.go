@@ -702,6 +702,19 @@ func TestStreamsSpeakerWhileTyping(t *testing.T) {
 	}
 }
 
+// TestStreamsSendEndsTyping: sending a comment ends typing, so the keys and the pads move
+// between the controls again (the tip button) without Escape first.
+func TestStreamsSendEndsTyping(t *testing.T) {
+	g, w, _ := voicedShow(t)
+	w.typing, w.field.text = true, "hello"
+	g.in.pressed[btnOK] = true
+	w.input(g)
+	g.in.pressed[btnOK] = false
+	if w.typing || !strings.Contains(chatText(w), "Pat: hello") {
+		t.Fatalf("after sending: typing %v, chat:\n%s", w.typing, chatText(w))
+	}
+}
+
 // TestStreamsNoVoicesNoButton: outside a browser, a game without recorded voices has no
 // read-aloud button.
 func TestStreamsNoVoicesNoButton(t *testing.T) {
