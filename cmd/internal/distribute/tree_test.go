@@ -16,8 +16,8 @@ func TestCopyGameSelectsRuntimeContent(t *testing.T) {
 	if err := starter.Write(src, starter.Config{Template: "rpg", ID: "export-test", Title: "Export test"}); err != nil {
 		t.Fatal(err)
 	}
-	keep := []string{"LICENSE", "LICENSES/pictures.txt", "assets/faces.json", "assets/sub/NOTICE", "assets/credits.md"}
-	drop := []string{"main.go", "go.mod", ".git/config", "saves/save1.json", "shots/test.png", "data/debug.go", "assets/model.onnx", "assets/source.psd", "assets/inspection.jsonl", "assets/workflow.json"}
+	keep := []string{"LICENSE", "LICENSES/pictures.txt", "streams/host/001.yaml", "assets/faces.json", "assets/sub/NOTICE", "assets/credits.md"}
+	drop := []string{"main.go", "go.mod", ".git/config", "saves/save1.json", "shots/test.png", "data/debug.go", "streams/notes.go", "assets/model.onnx", "assets/source.psd", "assets/inspection.jsonl", "assets/workflow.json"}
 	for _, name := range append(slices.Clone(keep), drop...) {
 		if err := cli.WriteNew(filepath.Join(src, filepath.FromSlash(name)), []byte("neutral fixture")); err != nil {
 			t.Fatal(err)

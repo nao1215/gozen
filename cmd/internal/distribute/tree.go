@@ -79,7 +79,7 @@ func runtimePath(name string, dir bool) bool {
 	}
 	top, _, nested := strings.Cut(name, "/")
 	switch top {
-	case "data", "lang":
+	case "data", "lang", "streams":
 		return dir || strings.HasSuffix(name, ".yaml") || strings.HasSuffix(name, ".yml")
 	case "assets", "LICENSES":
 		// Runtime assets may include fonts, puppet YAML, audio and notices.

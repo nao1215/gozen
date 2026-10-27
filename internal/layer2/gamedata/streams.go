@@ -8,6 +8,7 @@ import (
 	"path"
 	"regexp"
 	"slices"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/goccy/go-yaml"
@@ -413,8 +414,8 @@ func (db *DB) loadStreams() ([]string, error) {
 		var out []*Episode
 		for i, ep := range eps {
 			p := ep
-			if !fs.ValidPath(ep) || path.Ext(ep) != ".yaml" {
-				errs = append(errs, coded(db.diagnostic(fmt.Sprintf("%s %s.episodes[%d]", name, where, i), fmt.Sprintf("want a relative .yaml file, not %q", ep)), diag.Shape))
+			if !fs.ValidPath(ep) || !strings.HasPrefix(ep, "streams/") || path.Ext(ep) != ".yaml" {
+				errs = append(errs, coded(db.diagnostic(fmt.Sprintf("%s %s.episodes[%d]", name, where, i), fmt.Sprintf("want a .yaml file under streams/, not %q", ep)), diag.Shape))
 				continue
 			}
 			e := &Episode{file: p}

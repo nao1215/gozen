@@ -2875,7 +2875,7 @@
           "x-type": "color string"
         },
         "episodes": {
-          "description": "The episode files (`Episode`), relative to the game, outside `data/`, such as `streams/\u003cid\u003e/001.yaml`. A channel plays the next one the player has not seen.",
+          "description": "The episode files (`Episode`), under `streams/` of the game (the files under `data/` are data files), such as `streams/\u003cid\u003e/001.yaml`; `gozen export` copies them. A channel plays the next one the player has not seen.",
           "items": {
             "type": "string"
           },

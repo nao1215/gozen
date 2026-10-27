@@ -43,7 +43,7 @@ Channel:
   room: "The background picture under assets/."
   frame: "The part of the puppet shown."
   voice: "Speech synthesis in a browser build."
-  episodes: "The episode files (`Episode`), relative to the game, outside `data/`, such as `streams/<id>/001.yaml`. A channel plays the next one the player has not seen."
+  episodes: "The episode files (`Episode`), under `streams/` of the game (the files under `data/` are data files), such as `streams/<id>/001.yaml`; `gozen export` copies them. A channel plays the next one the player has not seen."
   greet: "Lines said to a returning viewer, one list for each affection step from 0. `{from}` is the viewer's name."
   first: "Lines for a first-time viewer; one is said. `{from}` is the viewer's name."
   streak: "Lines for a viewer who came three days in a row or more; one is said. `{days}` is the days and `{from}` the name."
