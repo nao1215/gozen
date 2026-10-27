@@ -270,3 +270,15 @@ func TestAgain(t *testing.T) {
 		t.Fatalf("the duo's next stream %+v", n)
 	}
 }
+
+// TestMarkSeenAtTheLimit: a channel or a duo at the highest next episode a save keeps stays
+// there when an episode is seen, so its save loads again.
+func TestMarkSeenAtTheLimit(t *testing.T) {
+	d := streams()
+	p := &rpg.Streams{Channels: map[string]*rpg.ChannelProgress{"a": {Next: rpg.MaxNextEpisode}}, Duos: map[string]int{DuoKey("a", "b"): rpg.MaxNextEpisode}}
+	MarkSeen(p, newShow(d, d.Channels[:1], "a", d.Channels[0].Shows, rpg.MaxNextEpisode), 0)
+	MarkSeen(p, newShow(d, []*data.Channel{d.Channels[0], d.Channels[1]}, DuoKey("a", "b"), d.Duos[0].Shows, rpg.MaxNextEpisode), 0)
+	if p.Channels["a"].Next != rpg.MaxNextEpisode || p.Duos[DuoKey("a", "b")] != rpg.MaxNextEpisode {
+		t.Fatalf("past the limit: channel %d, duo %d", p.Channels["a"].Next, p.Duos[DuoKey("a", "b")])
+	}
+}

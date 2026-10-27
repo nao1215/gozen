@@ -210,9 +210,9 @@ func Seen(watched, from, total int) bool {
 
 // MarkSeen marks the episode part of the show seen: the channel or the duo goes on to the
 // episode after it (the episodes before it that the player came in too late for stay
-// behind, as a stream does not wait).
+// behind, as a stream does not wait), at most to rpg.MaxNextEpisode.
 func MarkSeen(p *rpg.Streams, s *Show, part int) {
-	next := s.First + part + 1
+	next := min(s.First+part+1, rpg.MaxNextEpisode)
 	if len(s.Hosts) > 1 {
 		if p.Duos == nil {
 			p.Duos = map[string]int{}

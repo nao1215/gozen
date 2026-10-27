@@ -17,20 +17,21 @@ type Streams struct {
 	Duos map[string]int `json:"duos,omitempty"`
 }
 
-// maxNextEpisode is the highest next episode a save may keep: the episodes are taken round
+// MaxNextEpisode is the highest next episode a save keeps: the episodes are taken round
 // from it, and a stream adds its episodes to it, which must not overflow.
-const maxNextEpisode = 1 << 30
+// internal/layer3/broadcast goes on no further when an episode is seen.
+const MaxNextEpisode = 1 << 30
 
-// check reports the first next episode of a channel or a duo out of 0 to maxNextEpisode, as
+// check reports the first next episode of a channel or a duo out of 0 to MaxNextEpisode, as
 // the path of the save's field.
 func (p *Streams) check() string {
 	for _, id := range slices.Sorted(maps.Keys(p.Channels)) {
-		if c := p.Channels[id]; c != nil && (c.Next < 0 || c.Next > maxNextEpisode) {
+		if c := p.Channels[id]; c != nil && (c.Next < 0 || c.Next > MaxNextEpisode) {
 			return "streams/channels/" + id + "/next"
 		}
 	}
 	for _, key := range slices.Sorted(maps.Keys(p.Duos)) {
-		if n := p.Duos[key]; n < 0 || n > maxNextEpisode {
+		if n := p.Duos[key]; n < 0 || n > MaxNextEpisode {
 			return "streams/duos/" + key
 		}
 	}
