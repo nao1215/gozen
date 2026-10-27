@@ -51,7 +51,7 @@ func TestStreamsSaveRoundTrip(t *testing.T) {
 	if restored, err := rpg.Parse(db, saveBytes(t, st), nil); err != nil || restored.Streams != nil {
 		t.Fatalf("a save without streams: %v %+v", err, restored)
 	}
-	st.Streams = &rpg.Streams{Open: 1700000000, Viewer: "Pat", Channels: map[string]*rpg.ChannelProgress{"ann": {Next: 2, Points: 31.5, Day: 20000, Run: 3}}, Duos: map[string]int{"ann+bo": 1}}
+	st.Streams = &rpg.Streams{Open: 1700000000, Viewer: "Pat", Channels: map[string]*rpg.ChannelProgress{"ann": {Next: 2, Points: 31.5, Day: 20000, Run: 3, Visits: 4}}, Duos: map[string]int{"ann+bo": 1}}
 	restored, err := rpg.Parse(db, saveBytes(t, st), nil)
 	if err != nil {
 		t.Fatal(err)
