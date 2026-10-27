@@ -98,3 +98,12 @@ func LoadFonts(db *data.DB, fsys fs.FS) error {
 	gfx.SetScale(UIScale(&db.Game))
 	return nil
 }
+
+// StreamCaptionMax is how many lines a stream caption takes before it hides the stage
+// (gozen check warns of a longer line).
+const StreamCaptionMax = 2
+
+// StreamCaptionLines is how many lines a streamer's line takes in the watch view's caption.
+func StreamCaptionLines(gm *data.Game, text string) int {
+	return len(gfx.Wrap(text, captionSize, (logicalWidth(gm)-streamChatW)*captionShare))
+}

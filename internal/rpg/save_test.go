@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -39,6 +40,49 @@ func TestNarrativeSaveRoundTrip(t *testing.T) {
 	}
 	if len(restored.Party) != 0 || len(restored.Actors) != 0 || !restored.Flags["arrived"] || restored.Vars["visits"] != float64(3) || restored.Location != "station" {
 		t.Fatalf("lost narrative state: %+v", restored)
+	}
+}
+
+// TestStreamsSaveRoundTrip keeps the progress of the live streams; a save without it
+// loads with none.
+func TestStreamsSaveRoundTrip(t *testing.T) {
+	db := testgame.Load(t, nil)
+	st := testgame.State(db, 1)
+	if restored, err := rpg.Parse(db, saveBytes(t, st), nil); err != nil || restored.Streams != nil {
+		t.Fatalf("a save without streams: %v %+v", err, restored)
+	}
+	st.Streams = &rpg.Streams{Open: 1700000000, Viewer: "Pat", Channels: map[string]*rpg.ChannelProgress{"ann": {Next: 2, Points: 31.5, Day: 20000, Run: 3, Visits: 4, Watched: 1800.5}}, Duos: map[string]int{"ann+bo": 1}}
+	restored, err := rpg.Parse(db, saveBytes(t, st), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(restored.Streams, st.Streams) {
+		t.Fatalf("streams %+v, want %+v", restored.Streams, st.Streams)
+	}
+	// The next episode is an index the shows are taken round from: a save with one below 0
+	// or past 1<<30 (where adding the episodes of a slot could overflow) does not load.
+	for _, tc := range []struct {
+		name    string
+		channel int
+		duo     int
+		want    string
+	}{
+		{"at the limit", 1 << 30, 1 << 30, ""},
+		{"a channel below 0", -1, 0, "streams/channels/ann/next"},
+		{"a channel past the limit", 1<<30 + 1, 0, "streams/channels/ann/next"},
+		{"a duo below 0", 0, -1, "streams/duos/ann+bo"},
+		{"a duo past the limit", 0, math.MaxInt, "streams/duos/ann+bo"},
+	} {
+		st.Streams.Channels["ann"].Next, st.Streams.Duos["ann+bo"] = tc.channel, tc.duo
+		_, err := rpg.Parse(db, saveBytes(t, st), nil)
+		if tc.want == "" && err != nil || tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+			t.Errorf("%s: %v, want %q", tc.name, err, tc.want)
+		}
+	}
+	// the time watched is not below 0
+	st.Streams.Channels["ann"].Next, st.Streams.Duos["ann+bo"], st.Streams.Channels["ann"].Watched = 0, 0, -1
+	if _, err := rpg.Parse(db, saveBytes(t, st), nil); err == nil || !strings.Contains(err.Error(), "streams/channels/ann/watched") {
+		t.Errorf("a time watched below 0: %v", err)
 	}
 }
 

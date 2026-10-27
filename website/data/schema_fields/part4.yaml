@@ -57,6 +57,7 @@ LevelScale:
 Location:
   _: "A place the party can be: a picture with people to talk to, things to do and ways out."
   actions: "Things the party can do here, shown as menu entries."
+  stream: "`lobby` shows the location as the stream lobby, with the place's entries listed under the channels. Needs `streams` in game.yaml and schema version 9."
   area: "The name of the wider area this location belongs to."
   background: "The picture shown behind the location."
   battle_background: "The picture shown behind battles fought here."

@@ -9,10 +9,8 @@ import (
 	"slices"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/exp/textinput"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"github.com/nao1215/gozen/internal/layer1/memo"
@@ -25,20 +23,17 @@ import (
 const DefaultMemoDir = memo.DefaultDir
 
 type memoBox struct {
-	kinds     []data.MemoKind
-	list      *list
-	kind      int
-	typed     bool
-	text      string
-	comp      string
-	age       int
-	committed bool
+	kinds []data.MemoKind
+	list  *list
+	kind  int
+	typed bool
+	age   int
+	textField
 
-	composer textinput.Composer
-	ext      chan extInput
-	shot     *image.NRGBA
-	info     memo.Memo
-	save     []byte
+	ext  chan extInput
+	shot *image.NRGBA
+	info memo.Memo
+	save []byte
 }
 
 func (g *Game) memoKinds() []data.MemoKind {
@@ -61,20 +56,7 @@ func (g *Game) openMemo() {
 		items = append(items, listItem{label: k.Label, id: k.ID})
 	}
 	m.list = newList(items, 0, 0, 420, len(items))
-	m.composer.OnNewSession = func() *textinput.SessionOptions {
-		x, y := g.memoCaret()
-		return &textinput.SessionOptions{CaretBounds: image.Rect(int(x*g.ui), int(y*g.ui), int(x*g.ui)+2, int((y+sizeM*1.3)*g.ui)), TextBeforeCaret: m.text}
-	}
-	m.composer.OnComposition = func(c *textinput.Composition) { m.comp = c.Text() }
-	m.composer.OnCommit = func(c *textinput.Commit) {
-		m.committed = true
-		if before, after := c.IsSurroundingTextReplaced(); before || after {
-			b, a := c.SurroundingText()
-			m.text = b + c.Text() + a
-			return
-		}
-		m.text += c.Text()
-	}
+	m.start(g, g.memoCaret)
 	g.memo = m
 	g.sfx("decide")
 }
@@ -299,25 +281,14 @@ func (g *Game) updateMemo() {
 		return
 	}
 	scripted := in.script != nil
-	if !scripted {
-		handled, err := m.readInput(m.composer.Update, ebiten.AppendInputChars)
-		if err != nil {
-			log.Print(err)
-		}
-		if handled {
-			return
-		}
+	if !scripted && m.readTyping() {
+		return
 	}
 	save := in.script != nil && in.pressed[btnOK]
 	cancel := in.script != nil && in.cancel()
 	if !scripted {
 		save = inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter)
 		cancel = inpututil.IsKeyJustPressed(ebiten.KeyEscape)
-		if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) && m.text != "" {
-			m.composer.Confirm()
-			_, n := utf8.DecodeLastRuneInString(m.text)
-			m.text = m.text[:len(m.text)-n]
-		}
 	}
 	switch {
 	case cancel:
@@ -327,21 +298,6 @@ func (g *Game) updateMemo() {
 		m.composer.Confirm()
 		g.saveMemo()
 	}
-}
-
-// readInput gives priority to IME composition confirmation and avoids duplicating the plain character path.
-// In a frame that received a character, Enter and Backspace are not used for save and delete.
-func (m *memoBox) readInput(update func() (bool, error), chars func([]rune) []rune) (bool, error) {
-	m.committed = false
-	handled, err := update()
-	if handled || m.committed || m.comp != "" {
-		return true, err
-	}
-	if rs := chars(nil); len(rs) > 0 {
-		m.text += string(rs)
-		return true, err
-	}
-	return false, err
 }
 
 func (g *Game) closeMemo() {
@@ -355,6 +311,12 @@ func (g *Game) typeMemo(s string) {
 	}
 	if p := g.panel; p != nil && p.tab == tabCommand {
 		p.text += s
+	}
+	if w := g.watching(); g.memo == nil && w != nil && w.typing {
+		w.field.text += s
+	}
+	if l, ok := g.stack[len(g.stack)-1].(*streamLobby); ok && g.memo == nil && l.name != nil {
+		l.name.text += s
 	}
 	if r := g.reviewOpen(); g.memo == nil && r != nil && r.box != nil {
 		r.box.text += s
@@ -455,7 +417,7 @@ func (g *Game) memoBoxRect() (x, y, w, h float64) {
 
 func (g *Game) memoCaret() (x, y float64) {
 	bx, by, _, bh := g.memoBoxRect()
-	return bx + 40 + gfx.TextWidth(g.memo.text, sizeM), by + bh - 102
+	return g.memo.caretX(bx+40, sizeM), by + bh - 102
 }
 
 func (g *Game) drawMemo(screen *ebiten.Image) {
@@ -483,27 +445,13 @@ func (g *Game) drawMemo(screen *ebiten.Image) {
 	}
 	fy := y + h - 112
 	gfx.FillRoundRect(screen, float32(x+28), float32(fy), float32(w-56), 52, 8, withAlpha(colorBlack, 0x90))
-	s := m.text + m.comp
-	room := w - 80
-	for s != "" && gfx.TextWidth(s, sizeM) > room {
-		_, n := utf8.DecodeRuneInString(s)
-		s = s[n:]
-	}
 	switch {
 	case !m.typed:
 		g.text(screen, lang.T("（種類を選ぶと一言を書ける）"), x+40, fy+10, sizeM, g.th.dim)
 	case m.ext != nil:
 		g.text(screen, lang.T("（別の窓で一言を書いている）"), x+40, fy+10, sizeM, g.th.dim)
 	default:
-		g.text(screen, s, x+40, fy+10, sizeM, g.th.text)
-		if m.comp != "" {
-			cw := gfx.TextWidth(m.comp, sizeM)
-			tw := gfx.TextWidth(s, sizeM)
-			rect(screen, x+40+tw-cw, fy+44, cw, 2, g.th.text)
-		}
-		if m.age/30%2 == 0 {
-			rect(screen, x+42+gfx.TextWidth(s, sizeM), fy+10, 2, sizeM*1.2, g.th.cursor)
-		}
+		m.draw(screen, x+40, fy+10, w-80, sizeM, g.th.text, g.th.cursor, true, m.age)
 	}
 	help := lang.T("↑↓で選んで決定　Escでやめる")
 	if m.typed {

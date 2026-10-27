@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -207,6 +208,45 @@ func TestFaceChoosesPopFontOnlyForASCII(t *testing.T) {
 	}
 	if !isASCII("~ plain 123") || isASCII("é") || isASCII("\x7f") {
 		t.Fatal("isASCII boundary is 0x7e")
+	}
+}
+
+// TestPopDrawsDecorationsInThePopFont: inside Pop, text is measured in the pop font where it
+// has the glyphs (Japanese falls back to the regular font glyph by glyph), and as before
+// outside it or without a pop font.
+func TestPopDrawsDecorationsInThePopFont(t *testing.T) {
+	t.Cleanup(Reset)
+	if err := LoadFonts(goregular.TTF, nil); err != nil {
+		t.Fatal(err)
+	}
+	plain := TextWidth("Ann あ", 24)
+	var noPop float64
+	Pop(func() { noPop = TextWidth("Ann あ", 24) })
+	if noPop != plain {
+		t.Fatalf("without a pop font Pop measures %v, not %v", noPop, plain)
+	}
+	if err := LoadFonts(goregular.TTF, gobold.TTF); err != nil {
+		t.Fatal(err)
+	}
+	regular := TextWidth("Ann あ", 24)
+	var popped float64
+	Pop(func() { popped = TextWidth("Ann あ", 24) })
+	if popped == regular || TextWidth("Ann あ", 24) != regular {
+		t.Fatalf("Pop measures %v, the regular font %v, and after Pop %v", popped, regular, TextWidth("Ann あ", 24))
+	}
+	// a glyph the pop font lacks is the regular font's: a Japanese one of M+ under Go Bold
+	mplus, err := os.ReadFile("../../../examples/novel/game/assets/fonts/mplus-1p-regular.ttf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := LoadFonts(mplus, gobold.TTF); err != nil {
+		t.Fatal(err)
+	}
+	kana := TextWidth("あい", 24)
+	var poppedKana float64
+	Pop(func() { poppedKana = TextWidth("あい", 24) })
+	if math.Abs(poppedKana-kana) > 0.01 {
+		t.Fatalf("Pop measures a glyph the pop font lacks %v wide, not the regular font's %v", poppedKana, kana)
 	}
 }
 

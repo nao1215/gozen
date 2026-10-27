@@ -43,7 +43,7 @@ type Book struct {
 // bookDoc is the book as decoded from YAML.
 type bookDoc struct {
 	// Lexicon maps a tag to the words that suggest it.
-	Lexicon map[string][]lexEntry `yaml:"lexicon"`
+	Lexicon map[string]lexTag `yaml:"lexicon"`
 	// Tags declares the extra tags that games attach (event tags),
 	// so rules may refer to them.
 	Tags []string `yaml:"tags"`
@@ -56,18 +56,54 @@ type bookDoc struct {
 // own small structs from it. An unknown path is an error that is fs.ErrNotExist.
 func (b *Book) YAML(path string) ([]byte, error) { return yamlpath.At(b.src, path) }
 
-// lexEntry is a lexicon entry. In YAML it is a plain string (weight 1) or a one-entry
-// map {word: weight}. The weight in 0..1 is the confidence the word gives its tag.
+// lexTag is the words of a lexicon tag, and the words that hold one of them without
+// meaning it: an occurrence of a word inside an occurrence of an except word is not
+// counted. In YAML it is a list of words, or {words: [...], except: [...]}.
+type lexTag struct {
+	Words  []lexEntry `yaml:"words"`
+	Except []string   `yaml:"except"`
+}
+
+// UnmarshalYAML reads a list of words or {words, except}.
+func (t *lexTag) UnmarshalYAML(unmarshal func(any) error) error {
+	if err := unmarshal(&t.Words); err == nil {
+		return nil
+	}
+	type plain lexTag
+	return unmarshal((*plain)(t))
+}
+
+// lexEntry is a lexicon entry. In YAML it is a plain string (weight 1), a one-entry
+// map {word: weight}, or {word: text, weight: w, whole: true, exact: true}. The weight
+// in 0..1 is the confidence the word gives its tag. A normal word is matched in the
+// normalized text (Normalize). An exact word is matched in the text as written, ignoring
+// only case (a katakana word that normalizes into unrelated words); a whole word is
+// exact and also needs a word boundary on both sides (a Latin word that is part of others).
 type lexEntry struct {
 	Text   string
 	Weight float64
+	Whole  bool
+	Exact  bool
 }
 
-// UnmarshalYAML reads "word" or {word: weight}.
+// UnmarshalYAML reads "word", {word: weight} or {word, weight, whole, exact}.
 func (w *lexEntry) UnmarshalYAML(unmarshal func(any) error) error {
 	var s string
 	if err := unmarshal(&s); err == nil {
 		*w = lexEntry{Text: s, Weight: 1}
+		return nil
+	}
+	var full struct {
+		Word   string   `yaml:"word"`
+		Weight *float64 `yaml:"weight"`
+		Whole  bool     `yaml:"whole"`
+		Exact  bool     `yaml:"exact"`
+	}
+	if err := unmarshal(&full); err == nil && full.Word != "" {
+		*w = lexEntry{Text: full.Word, Weight: 1, Whole: full.Whole, Exact: full.Exact}
+		if full.Weight != nil {
+			w.Weight = *full.Weight
+		}
 		return nil
 	}
 	var m map[string]float64
@@ -106,10 +142,11 @@ type ruleDef struct {
 	Kind string `yaml:"kind"`
 	// When is the condition (an expr expression); empty always holds.
 	When *expr.Expr `yaml:"when"`
-	// Say is a set of lines; one is chosen, avoiding the previous line when possible.
-	// Lines may use {from}, {mood}, {slot.TAG} and {mem.KEY}.
-	Say  []string `yaml:"say"`
-	Face string   `yaml:"face"`
+	// Say is a set of entries; one is chosen, avoiding those said lately (pickEntry).
+	// An entry is a line, or a list of lines said in order. Lines may use {from}, {text},
+	// {mood}, {slot.TAG} and {mem.KEY}.
+	Say  []sayEntry `yaml:"say"`
+	Face string     `yaml:"face"`
 	// Delta is added to the mood on top of the likes.
 	Delta float64 `yaml:"delta"`
 	// Remember and Forget change the memory.
@@ -119,6 +156,24 @@ type ruleDef struct {
 	Ask string `yaml:"ask"`
 	// Cooldown is how many stimuli must pass before the rule may react again.
 	Cooldown int `yaml:"cooldown"`
+}
+
+// sayEntry is the lines of one choice of a rule's say: "line" or [line, line].
+type sayEntry []string
+
+// UnmarshalYAML reads a line or a list of lines.
+func (e *sayEntry) UnmarshalYAML(unmarshal func(any) error) error {
+	var s string
+	if err := unmarshal(&s); err == nil {
+		*e = sayEntry{s}
+		return nil
+	}
+	var l []string
+	if err := unmarshal(&l); err != nil || len(l) == 0 {
+		return errors.New("a say entry is a line or a list of lines")
+	}
+	*e = l
+	return nil
 }
 
 // memoryWrite writes one memory entry: Set (a template) or Add (a number added to the
@@ -181,13 +236,22 @@ func Parse(b []byte) (*Book, error) {
 // validate checks every reference: tags in conditions, likes and asks, faces, ask IDs,
 // memory keys and template fields. It does not modify the book.
 func (b *Book) validate() error {
-	for tag, words := range b.doc.Lexicon {
+	for tag, lt := range b.doc.Lexicon {
+		words := lt.Words
 		if tag == "" || strings.HasPrefix(tag, AcrosticPrefix) || builtin(tag) {
 			return fmt.Errorf("lexicon: tag %q is empty or reserved", tag)
 		}
 		for _, w := range words {
 			if Normalize(w.Text) == "" || w.Weight <= 0 || w.Weight > 1 {
 				return fmt.Errorf("lexicon.%s: word %q needs text and a weight in (0, 1]", tag, w.Text)
+			}
+		}
+		if len(words) == 0 && len(lt.Except) > 0 {
+			return fmt.Errorf("lexicon.%s: except without words", tag)
+		}
+		for _, x := range lt.Except {
+			if Normalize(x) == "" {
+				return fmt.Errorf("lexicon.%s: except word %q has no text", tag, x)
 			}
 		}
 	}
@@ -301,7 +365,12 @@ func (b *Book) checkRule(r ruleDef, asks map[string]bool) error {
 			return fmt.Errorf("remember %q: %w", m.Key, err)
 		}
 	}
-	return checkLines(r.Say)
+	for _, e := range r.Say {
+		if err := checkLines(e); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // envNames are the names a condition may use, with whether they take a field.
@@ -344,7 +413,7 @@ func checkLines(lines []string) error {
 				return fmt.Errorf("line %q: unclosed {", l)
 			}
 			f := rest[i+1 : i+j]
-			if f != "from" && f != "mood" && !strings.HasPrefix(f, "slot.") && !strings.HasPrefix(f, "mem.") {
+			if f != "from" && f != "text" && f != "mood" && !strings.HasPrefix(f, "slot.") && !strings.HasPrefix(f, "mem.") {
 				return fmt.Errorf("line %q: unknown field {%s}", l, f)
 			}
 			rest = rest[i+j+1:]
@@ -359,6 +428,26 @@ func (p *personDef) bounds() (float64, float64) {
 		return 0, 100
 	}
 	return p.MoodMin, p.MoodMax
+}
+
+// Lines are the lines of the person id as the book writes them, before their fields are
+// filled: those of its rules, its questions and its dodges, in that order (nil for an
+// unknown person). gozen check reads them to find the recorded voices that are no line.
+func (b *Book) Lines(id string) []string {
+	p, ok := b.person(id)
+	if !ok {
+		return nil
+	}
+	var out []string
+	for _, r := range p.Rules {
+		for _, e := range r.Say {
+			out = append(out, e...)
+		}
+	}
+	for _, a := range p.Asks {
+		out = append(out, a.Say...)
+	}
+	return slices.Concat(out, p.Dodge.Repeat, p.Dodge.Unsure, p.Dodge.Unknown)
 }
 
 func (b *Book) person(id string) (*personDef, bool) {

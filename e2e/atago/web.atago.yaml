@@ -64,6 +64,18 @@ scenarios:
       - wait_visible: 'body:not(:has(#loading))'
       - title: true
   - assert: {value: {equals: 'A <new> journey'}}
+  # the loading page counted the whole player and every file of the game
+  - cdp:
+      runner: browser
+      actions:
+      - eval: |
+          ({player: goZenLoad.player.done > 0 && (goZenLoad.player.total === 0 || goZenLoad.player.done === goZenLoad.player.total),
+            files: goZenLoad.files.total > 0 && goZenLoad.files.done === goZenLoad.files.total})
+  - assert:
+      value:
+        json:
+        - {path: $.player, equals: true}
+        - {path: $.files, equals: true}
   - cdp:
       runner: browser
       actions:
@@ -146,6 +158,329 @@ scenarios:
       - screenshot: {path: restored.png, selector: canvas}
   - assert:
       image: {path: restored.png, format: png}
+
+- name: a stream export fetches a voice only when its line comes
+  tags: [web]
+  services:
+  # the server keeps the path of every request in requests.log as it is answered, with
+  # when it came and when it was answered in arrivals.log, and answers a picture under
+  # assets/zfiller/ twenty seconds late (pictures still coming in the background when the
+  # show opens)
+  - name: site
+    command: |
+      python3 -c '
+      import time
+      from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+      from pathlib import Path
+      class Site(SimpleHTTPRequestHandler):
+          def do_GET(self):
+              came = time.time()
+              if "/assets/zfiller/" in self.path:
+                  time.sleep(20)
+              super().do_GET()
+              with open("arrivals.log", "a") as f:
+                  f.write("%f %f %s\n" % (came, time.time(), self.path))
+          def log_message(self, *args):
+              with open("requests.log", "a") as f:
+                  f.write(self.path + "\n")
+      s = ThreadingHTTPServer(("127.0.0.1", 0), Site)
+      Path("address").write_text("http://127.0.0.1:" + str(s.server_port))
+      s.serve_forever()
+      '
+    ready: {file: address, store: origin, timeout: 5s}
+  steps:
+  - fixture:
+      file: game/game.yaml
+      content: "schema_version: 9\nid: stream-voices\ntitle: Voices\nlanguage: en\nstart: {location: booth, gold: 100}\nstreams: data/streams.yaml\nreactions: {host: talk.yaml}\n"
+  - fixture:
+      file: game/data/world.yaml
+      content: "actors: {host: {name: Host, puppet: p/puppet.yaml}}\nlocations: {booth: {name: Booth, stream: lobby}}\n"
+  - fixture:
+      file: game/data/streams.yaml
+      content: "voices: voice\ntiming: {say: 2, per_char: 0.1, chat: 2, ask: 10}\ntips: [10]\ncrowd: {names: [leaf], lines: [Hi], tip_lines: [Here], rate: 0.5}\nchannels: [{id: host, actor: host, room: room.png, frame: {cx: 32, top: 0, bottom: 96}, episodes: [streams/one.yaml]}]\n"
+  # the reply to a tip has a field, so no recorded voice: it is read by speech synthesis
+  - fixture: {file: game/assets/talk.yaml, content: "people:\n  - id: host\n    rules:\n      - {id: tip, kind: tip, say: [\"Thanks, {from}!\"]}\n"}
+  - fixture: {file: game/assets/p/puppet.yaml, content: "base: base.png\nface: normal\nfaces: {normal: {}}\n"}
+  - fixture: {file: game/assets/p/base.png, from: fixtures/puppet/base.png}
+  - fixture: {file: game/assets/room.png, from: fixtures/game/assets/mote.png}
+  - fixture: {file: tone.ogg, from: fixtures/game/assets/tone.ogg}
+  # an episode of 40 lines, "Line 1." to "Line 40.", each with its voice (the first 16 hex
+  # digits of the SHA-1 of the line)
+  - run:
+      command: |
+        python3 -c '
+        import hashlib, shutil
+        from pathlib import Path
+        lines = ["Line %d." % i for i in range(1, 41)]
+        Path("game/streams").mkdir()
+        Path("game/streams/one.yaml").write_text("title: Listen\nparts: [[" + ", ".join("{say: \"%s\"}" % l for l in lines) + "]]\n")
+        Path("game/assets/voice/host").mkdir(parents=True)
+        for l in lines:
+            shutil.copy("tone.ogg", "game/assets/voice/host/%s.ogg" % hashlib.sha1(l.encode()).hexdigest()[:16])
+        Path("game/assets/zfiller").mkdir()
+        for i in range(30):
+            Path("game/assets/zfiller/f%d.png" % i).write_bytes(bytes(range(256)) * 64)
+        '
+  - assert: {exit_code: 0}
+  # the voices are the voices of lines: no GZN0119
+  - run: {command: 'gozen check game'}
+  - assert:
+      exit_code: 0
+      stderr: {not_contains: GZN0119}
+  - run:
+      command: 'gozen export game --target web --out site/games/voices --runtime "${env:GOZEN_WEB_RUNTIME}" --format jsonl'
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: $.status, equals: ok}
+  - assert:
+      file: {path: site/games/voices/game/files.json, contains: '"later":true'}
+  # the page opens without fetching a voice
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/site/games/voices/'
+      - wait_visible: 'body:not(:has(#loading))'
+  - run: {command: "python3 -c 'print(sum(\"/assets/voice/\" in l for l in open(\"requests.log\")))'"}
+  - assert: {stdout: {equals: "0\n"}}
+  # watching (a new game, the name left empty, then the first card) fetches the voices of
+  # the next lines ahead of them, a run of them where the show is, each once, not the
+  # others: five within 8 seconds, where a line lasts 2.7 (said one by one, they would come
+  # in 11)
+  - cdp:
+      runner: browser
+      actions:
+      - eval: *controls
+      - eval: |
+          (async () => {
+            await key('Enter');
+            await key('Enter');
+            await key('Enter');
+            document.body.dataset.watched = 'true';
+          })(); true
+      - wait_visible: 'body[data-watched=true]'
+  - run:
+      command: |
+        python3 -c '
+        import hashlib, time
+        line = {hashlib.sha1(("Line %d." % i).encode()).hexdigest()[:16]: i for i in range(1, 41)}
+        for _ in range(80):
+            asked = [l.strip().rsplit("/", 1)[1][:16] for l in open("requests.log") if "/assets/voice/" in l]
+            if len(set(asked)) >= 5:
+                break
+            time.sleep(0.1)
+        got = {line[k] for k in set(asked)}
+        # a run of lines with no gap, round from line 40 to line 1 as the show goes round
+        run = any(got == {(s + i) % 40 + 1 for i in range(len(got))} for s in range(40))
+        ok = 5 <= len(got) <= 12 and run and len(asked) == len(set(asked))
+        # the first voice was asked for before a picture coming in the background was
+        # answered: the pictures leave a browser connections for the files the game opens
+        log = [l.split() for l in open("arrivals.log")]
+        voice = min((float(c) for c, d, p in log if "/assets/voice/" in p), default=1e18)
+        picture = min((float(d) for c, d, p in log if "/assets/zfiller/" in p), default=1e18)
+        ok = ok and voice < picture
+        print("a run of lines" if ok else (got, len(asked)))
+        '
+  - assert: {stdout: {equals: "a run of lines\n"}}
+  # a tip: the reply, which has no recorded voice, is read by speech synthesis
+  - cdp:
+      runner: browser
+      actions:
+      - eval: |
+          window.spoken = [];
+          const speak = speechSynthesis.speak.bind(speechSynthesis);
+          speechSynthesis.speak = (u) => { spoken.push(u.text); speak(u); }; true
+      - eval: |
+          (async () => {
+            await key('ArrowDown');
+            await key('Enter');
+            await key('Enter');
+            for (let i = 0; i < 300 && !spoken.some(t => t.startsWith('Thanks,')); i++) await testFrames(3);
+            document.body.dataset.spoken = JSON.stringify(spoken);
+          })(); true
+      - wait_visible: 'body[data-spoken]'
+      - eval: "JSON.parse(document.body.dataset.spoken).some(t => t.startsWith('Thanks,'))"
+  - assert: {value: {equals: true}}
+  # the progress of the page leaves the voices out
+  - cdp:
+      runner: browser
+      actions:
+      - eval: |
+          (async () => {
+            try {
+              for (let i = 0; i < 300 && !goZenLoad.files; i++) await new Promise(resolve => setTimeout(resolve, 100));
+              const files = await (await fetch('game/files.json', {cache: 'no-store'})).json();
+              const want = files.filter(f => !f.later).reduce((n, f) => n + f.size, 0);
+              document.body.dataset.total = String(goZenLoad.files.total === want);
+            } catch (e) {
+              document.body.dataset.total = String(e);
+            }
+          })(); true
+      - wait_visible: 'body[data-total]'
+      - eval: "document.body.dataset.total"
+  - assert: {value: {json: {path: '$', equals: "true"}}}
+
+- name: a page starts however its pieces come and keeps the game running as media come late
+  tags: [web]
+  services:
+  # /v/MODE/ serves the export: "late" holds the sounds until the file release exists,
+  # and the other modes send the gzipped player in pieces of 1, 1 and 1, or 2 bytes
+  # first, uncompressed, undone by the host (Content-Encoding) or empty.
+  - name: site
+    command: |
+      python3 -c '
+      import gzip, time
+      from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+      from pathlib import Path
+      class Site(SimpleHTTPRequestHandler):
+          def do_GET(self):
+              parts = self.path.split("/", 3)
+              if len(parts) < 4 or parts[1] != "v":
+                  return super().do_GET()
+              mode, rest = parts[2], parts[3]
+              self.path, name = "/site/games/voices/" + rest, rest.split("?")[0]
+              if mode == "late" and name.endswith((".ogg", ".wav.gz")):
+                  while not Path("release").exists():
+                      time.sleep(0.1)
+              if mode == "late" or name != "gozen-player.wasm.gz":
+                  return super().do_GET()
+              b = Path("site/games/voices/gozen-player.wasm.gz").read_bytes()
+              pieces = {"one": [b[:1], b[1:]], "ones": [b[:1], b[1:2], b[2:]], "two": [b[:2], b[2:]], "plain": [gzip.decompress(b)], "encoded": [b], "empty": []}[mode]
+              self.send_response(200)
+              self.send_header("Content-Type", "application/octet-stream")
+              if mode == "encoded":
+                  self.send_header("Content-Encoding", "gzip")
+              self.end_headers()
+              for piece in pieces:
+                  self.wfile.write(piece)
+                  self.wfile.flush()
+                  time.sleep(0.3)
+      s = ThreadingHTTPServer(("127.0.0.1", 0), Site)
+      Path("address").write_text("http://127.0.0.1:" + str(s.server_port))
+      s.serve_forever()
+      '
+    ready: {file: address, store: origin, timeout: 5s}
+  steps:
+  - fixture:
+      file: game/game.yaml
+      content: "schema_version: 9\nid: stream-late\ntitle: Late\nlanguage: en\nstart: {location: booth}\nstreams: data/streams.yaml\n"
+  - fixture:
+      file: game/data/world.yaml
+      content: "actors: {host: {name: Host, puppet: p/puppet.yaml}}\nlocations: {booth: {name: Booth, stream: lobby}}\n"
+  - fixture:
+      file: game/data/streams.yaml
+      content: "voices: voice\ntiming: {say: 2, per_char: 0.1, chat: 2, ask: 10}\ntips: [10]\ncrowd: {names: [leaf], lines: [Hi], tip_lines: [Here], rate: 0.5}\nchannels: [{id: host, actor: host, room: room.png, frame: {cx: 32, top: 0, bottom: 96}, episodes: [streams/one.yaml]}]\n"
+  - fixture: {file: game/streams/one.yaml, content: "title: Listen\nparts: [[{say: 'Hello, listener.'}, {chat: [leaf, Hi there]}]]\n"}
+  - fixture: {file: game/assets/p/puppet.yaml, content: "base: base.png\nface: normal\nfaces: {normal: {}}\n"}
+  - fixture: {file: game/assets/p/base.png, from: fixtures/puppet/base.png}
+  - fixture: {file: game/assets/room.png, from: fixtures/game/assets/mote.png}
+  - fixture: {file: game/assets/voice/host/4710afdb1942b927.ogg, from: fixtures/game/assets/tone.ogg}
+  # a second of silence, which the export gzips: still a sound, fetched after the game starts
+  - run:
+      command: >-
+        python3 -c "import wave; w = wave.open('game/assets/quiet.wav', 'wb'); w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100); w.writeframes(bytes(88200)); w.close()"
+  - assert: {exit_code: 0}
+  - run:
+      command: 'gozen export game --target web --out site/games/voices --runtime "${env:GOZEN_WEB_RUNTIME}" --format jsonl'
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: $.status, equals: ok}
+  - assert:
+      file: {path: site/games/voices/game/files.json, contains: '"file":"assets/quiet.wav.gz"'}
+  # the game starts while its sounds are held back (the page tells in data-state when it
+  # started or failed), and goes on drawing after they come
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/v/late/?fps'
+      - eval: &started |
+          (async () => {
+            let state = 'still loading';
+            for (let i = 0; i < 600; i++) {
+              const loading = document.getElementById('loading');
+              if (!loading) state = 'started';
+              else if (loading.textContent.startsWith('Could not start')) state = loading.textContent;
+              else {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                continue;
+              }
+              break;
+            }
+            document.body.dataset.state = state;
+          })(); true
+      - wait_visible: &stated 'body[data-state]'
+      - eval: &state "document.body.dataset.state"
+  - assert: {value: {json: {path: '$', equals: started}}}
+  - fixture: {file: release, content: "now\n"}
+  - cdp:
+      runner: browser
+      actions:
+      - eval: |
+          (async () => {
+            const wait = () => new Promise(resolve => setTimeout(resolve, 100));
+            for (let i = 0; i < 300 && !(goZenLoad.files.done === goZenLoad.files.total); i++) await wait();
+            window.gozenStats = undefined;
+            let state = 'the game stopped';
+            for (let i = 0; i < 50 && state !== 'running'; i++) {
+              if (window.gozenStats) state = goZenLoad.files.done === goZenLoad.files.total ? 'running' : 'files missing';
+              else await wait();
+            }
+            document.body.dataset.alive = state;
+          })(); true
+      - wait_visible: 'body[data-alive]'
+      - eval: "document.body.dataset.alive"
+  - assert: {value: {json: {path: '$', equals: running}}}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/v/one/'
+      - eval: *started
+      - wait_visible: *stated
+      - eval: *state
+  - assert: {value: {json: {path: '$', equals: started}}}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/v/ones/'
+      - eval: *started
+      - wait_visible: *stated
+      - eval: *state
+  - assert: {value: {json: {path: '$', equals: started}}}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/v/two/'
+      - eval: *started
+      - wait_visible: *stated
+      - eval: *state
+  - assert: {value: {json: {path: '$', equals: started}}}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/v/plain/'
+      - eval: *started
+      - wait_visible: *stated
+      - eval: *state
+  - assert: {value: {json: {path: '$', equals: started}}}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/v/encoded/'
+      - eval: *started
+      - wait_visible: *stated
+      - eval: *state
+  - assert: {value: {json: {path: '$', equals: started}}}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/v/empty/'
+      - eval: *started
+      - wait_visible: *stated
+      - eval: *state
+  - assert: {value: {contains: 'Could not start'}}
 
 - name: web export requires a runtime option
   steps:

@@ -82,7 +82,7 @@ func TestMemoInputRouting(t *testing.T) {
 		{name: "idle"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			m := &memoBox{comp: tc.composing, committed: true}
+			m := &memoBox{textField: textField{comp: tc.composing, committed: true}}
 			consumed, err := m.readInput(func() (bool, error) {
 				if tc.commit != "" {
 					m.committed = true

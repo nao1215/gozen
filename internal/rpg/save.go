@@ -279,6 +279,11 @@ func (s *State) checkSavedState() error {
 			}
 		}
 	}
+	if s.Streams != nil {
+		if path := s.Streams.check(); path != "" {
+			return bad(path)
+		}
+	}
 	seen := map[string]bool{}
 	for _, id := range s.Party {
 		if seen[id] || s.Actors[id] == nil {

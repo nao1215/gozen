@@ -162,6 +162,10 @@ type Game struct {
 	// TitleText letters the title and the subtitle on the title screen (schema_version 3).
 	TitleText TitleText `yaml:"title_text"`
 	TitleBGM  MusicCue  `yaml:"title_music"`
+	// Menus is "none" for a game without the title screen and the game menu (schema_version
+	// 9, ADR 0049): it opens on the newest save, the autosave included, or a new game, and
+	// keeps the play in the autosave alone.
+	Menus string `yaml:"menus"`
 	// Gallery is what the title's gallery shows: the event pictures seen and the scenes
 	// whose flag was set, in any play (kept beside the saves).
 	Gallery  Gallery `yaml:"gallery"`
@@ -200,10 +204,16 @@ type Game struct {
 	Screens map[string]*AuthorScreen `yaml:"screens"`
 	// Reactions maps speaker IDs to validated reaction books under assets/.
 	Reactions map[string]string `yaml:"reactions"`
+	// Streams names the live-stream file, relative to the game (schema_version 9, ADR 0048).
+	Streams string `yaml:"streams"`
 	// Campaign makes the game a campaign of regions held by factions over turns
 	// (schema_version 5, ADR 0030).
 	Campaign *Campaign `yaml:"campaign"`
 }
+
+// NoMenus reports whether game.yaml has menus: none. The play leaves out the title and every
+// way into the game menu with it, and the field leaves the menu out of a place's entries.
+func (g *Game) NoMenus() bool { return g.Menus == "none" }
 
 // Aside inserts the Call event right after a line by a speaker (any of actor, face and name; face may be a pattern) is shown, if When holds
 // (and returns to the original conversation when it ends). It does not insert while a CG is shown (a picture that hides the portraits), during battle,
@@ -1388,6 +1398,9 @@ type Location struct {
 	// Stage shows the location as its background painted from a fixed camera, walked by
 	// small dolls (schema_version 3, ADR 0022).
 	Stage *Stage `yaml:"stage"`
+	// Stream shows the location as the stream lobby (lobby; schema_version 9, ADR 0048),
+	// with the place's entries under the channels.
+	Stream string `yaml:"stream"`
 	// ResumeTo: when a save made here is loaded, start from this place (an ID in locations)
 	// (for example, saving in a small place inside a shop starts from the town's first menu).
 	// If not written, it stays at the place saved. The place name on the load screen also becomes this.

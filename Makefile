@@ -110,14 +110,14 @@ e2e: cli-build
 
 desktop-runtime:
 	mkdir -p build/runtime/local/THIRD_PARTY_LICENSES
-	$(GO) build -trimpath -buildvcs=false -o build/runtime/local/gozen-player ./cmd/gozen-player
+	$(GO) build -trimpath -buildvcs=false -ldflags="-s -w" -o build/runtime/local/gozen-player ./cmd/gozen-player
 	$(GO) run ./internal/dev/runtimebundle -player build/runtime/local/gozen-player -target "$(shell $(GO) env GOOS)-$(shell $(GO) env GOARCH)" -version devel -out build/runtime/local/runtime.json
 	cp LICENSE build/runtime/local/LICENSE
 	GOROOT="$(shell $(GO) env GOROOT)" CGO_ENABLED=0 go-licenses save ./cmd/gozen-player --save_path=build/runtime/local/THIRD_PARTY_LICENSES --force
 
 web-runtime:
 	mkdir -p build/runtime/web
-	GOOS=js GOARCH=wasm $(GO) build -trimpath -buildvcs=false -o build/runtime/web/gozen-player.wasm ./cmd/gozen-player
+	GOOS=js GOARCH=wasm $(GO) build -trimpath -buildvcs=false -ldflags="-s -w" -o build/runtime/web/gozen-player.wasm ./cmd/gozen-player
 	$(GO) run ./internal/dev/runtimebundle -player build/runtime/web/gozen-player.wasm -target js-wasm -version devel -out build/runtime/web/runtime.json
 	cp LICENSE build/runtime/web/LICENSE
 	GOROOT="$(shell $(GO) env GOROOT)" CGO_ENABLED=0 GOOS=js GOARCH=wasm go-licenses save ./cmd/gozen-player --save_path=build/runtime/web/THIRD_PARTY_LICENSES --force

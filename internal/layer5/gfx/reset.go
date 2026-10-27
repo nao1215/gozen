@@ -15,6 +15,7 @@ func Reset() {
 	}
 	clear(maskCache)
 	clear(faceCache)
+	clear(popFaces)
 	regularSource, popSource, titleSource, subSource = nil, nil, nil, nil
 	scale = 1
 }

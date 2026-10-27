@@ -16,8 +16,8 @@ import (
 
 	"github.com/nao1215/gozen/internal/layer1/picturelimit"
 
+	_ "github.com/deepteams/webp" // a browser build may ship its pictures as WebP
 	"github.com/hajimehoshi/ebiten/v2"
-	_ "golang.org/x/image/webp" // a browser build may ship its pictures as WebP
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/doll"

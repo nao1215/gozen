@@ -92,7 +92,7 @@ FloorPlan:
   seed: "The random seed for this floor, taking priority over the dungeon's `seed`."
 Fonts:
   _: "The font files used by the game, as paths under assets/. All are optional: without them the text is set in Go Regular, which Gozen carries and which has Latin letters only."
-  pop: "The font used for pop-up text such as damage numbers."
+  pop: "The font used for pop-up text such as damage numbers (text all ASCII), and for the decorations of the stream screens: the bar's title, LIVE, the viewers, the hosts' names and the name plate, the glyphs it lacks in the regular font."
   regular: "The font used for ordinary text. When omitted, the built-in Go Regular is used; it has Latin letters only, so a game in Japanese or another script names its own font here. gozen check warns about characters the built-in font cannot draw."
   subtitle: "The font of the title screen's subtitle. When empty, the title's font is used."
   title: "The font of the title screen's title and subtitle. When empty, the regular font is used."
@@ -156,6 +156,7 @@ Game:
   language: "The language shown: the engine's built-in words, `en` (the default) or `ja`, and the game's own text, translated by `lang/<language>.yaml` when it is not the language written."
   languages: "The languages the player may choose in the settings, from `en` and `ja`; the language shown must be one of them. The default is `language` alone. Needs schema version 4."
   max_party: "The largest number of characters in the active party."
+  menus: "`none` leaves out the title screen and the game menu: the game opens on the newest save, the autosave included, or starts a new game at `start`, and saves only by autosave. `open: save`, `open: load` and `open: title` are errors with it. Needs schema version 9."
   memo: "Settings for the test player's notes (kinds of notes and numbers kept with each)."
   meters: "Gauges of the player's numbers shown on the field, in the dungeon and in the status menu."
   scene_review: "Settings for the scene review debug page, such as the tags attached to scenes."
@@ -175,7 +176,8 @@ Game:
   title_text: "How the title screen letters the title and the subtitle: sizes, the space between letters and colors. Needs schema version 3."
   title_music: "The song and mood played on the title screen."
   ui: "The look of the game's menus and windows."
-  reactions: "Maps speaker IDs to reaction book paths under assets/. Memory is saved with the game."
+  reactions: "Maps speaker IDs to reaction book paths under assets/. Memory is saved with the game. A stream's comment gives the rules `value.hour` (0 to 23), `value.visits` (the player's visits to the channel), `value.days` (days in a row), `value.step` (affection step) and `value.family` (1 on an episode with `family: true`, else 0), as in `when: value.hour >= 23 || value.hour < 5`; a rule can `remember: [{key: snack, set: \"{slot.snack}\"}]` and a later show say `\"{from}, the {mem.snack} fan\"` under `when: mem.snack != 0` (ADR 0052)."
+  streams: "The live-stream file (`Streams`), relative to the game, such as `data/streams.yaml`. It and its episodes are not data files. Needs schema version 9."
   verbs: "Maps reusable command names to event IDs. Invoke with `NAME: true`, or call the event directly with `call`."
   written_in: "The language the files under `data/` are written in. Each other language is translated by `lang/<code>.yaml`, a map `text` from the text as written to its translation. The default is `language`. Needs schema version 4."
 GameOver:

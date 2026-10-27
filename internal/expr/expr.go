@@ -301,6 +301,18 @@ func (e *Expr) UnmarshalText(b []byte) error {
 	return nil
 }
 
+// UnmarshalYAML parses the expression from a YAML scalar. go-yaml hands a TextUnmarshaler
+// its text by formatting the node again from every token of the file, so each expression
+// cost the whole file: a 190 kB reaction book (about 400 conditions) took most of a
+// phone's startup. Read as a string, the node is decoded where it is.
+func (e *Expr) UnmarshalYAML(unmarshal func(any) error) error {
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return err
+	}
+	return e.UnmarshalText([]byte(s))
+}
+
 // MarshalText writes the expression's source.
 func (e Expr) MarshalText() ([]byte, error) { return []byte(e.src), nil }
 

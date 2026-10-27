@@ -3,6 +3,8 @@ package expr
 import (
 	"strings"
 	"testing"
+
+	"github.com/goccy/go-yaml"
 )
 
 type actor struct{ hp, mhp float64 }
@@ -163,6 +165,28 @@ func TestNestingLimit(t *testing.T) {
 	} {
 		if _, err := Parse(src); err == nil || !strings.Contains(err.Error(), "nests too deeply") {
 			t.Errorf("%.20q...: %v", src, err)
+		}
+	}
+}
+
+// A condition in YAML is any scalar, read as its text; a list or map is an error.
+func TestUnmarshalYAML(t *testing.T) {
+	for src, want := range map[string]string{
+		"when: hp > 3": "hp > 3", "when: 1": "1", "when: true": "true", "when: \"a == 'x'\"": "a == 'x'",
+	} {
+		var doc struct {
+			When *Expr `yaml:"when"`
+		}
+		if err := yaml.UnmarshalWithOptions([]byte(src), &doc, yaml.Strict()); err != nil || doc.When == nil || doc.When.String() != want {
+			t.Errorf("%s: got %v, %v; want %q", src, doc.When, err, want)
+		}
+	}
+	for _, src := range []string{"when: [1]", "when: {a: 1}", "when: 1 +"} {
+		var doc struct {
+			When *Expr `yaml:"when"`
+		}
+		if err := yaml.UnmarshalWithOptions([]byte(src), &doc, yaml.Strict()); err == nil {
+			t.Errorf("%s: want an error", src)
 		}
 	}
 }

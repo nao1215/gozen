@@ -2,6 +2,33 @@ version: '1'
 suite:
   name: gozen check --format json and the schema version 2 words
 scenarios:
+- name: a stream file names its mistakes with their file and line
+  steps:
+  - fixture:
+      file: s/game.yaml
+      content: "schema_version: 9\nid: stream-check\nstart: {location: booth}\nstreams: data/streams.yaml\n"
+  - fixture:
+      file: s/data/world.yaml
+      content: "actors: {host: {name: Host, puppet: p/rig.yaml}}\nlocations: {booth: {stream: lobby}}\n"
+  - fixture:
+      file: s/data/streams.yaml
+      content: "timing: {say: 2, per_char: 0.1, chat: 2, ask: 10}\ntips: [10]\ncrowd: {names: [leaf], lines: [Hi], tip_lines: [Here], rate: 0.5}\nchannels: [{id: host, actor: nobody, room: x.png, frame: {cx: 1, top: 0, bottom: 1}, episodes: [streams/one.yaml]}]\n"
+  - fixture:
+      file: s/streams/one.yaml
+      content: "title: One\nparts:\n- - ask: {q: Which?, options: [{c: A, r: [\"{weeks}\"]}], npc: [[leaf, 3]]}\n"
+  - fixture: {file: s/assets/p/rig.yaml, content: "base: base.png\nface: normal\nfaces: {normal: {}}\n"}
+  - fixture: {file: s/assets/p/base.png, from: fixtures/game/assets/mote.png}
+  - fixture: {file: s/assets/x.png, from: fixtures/game/assets/mote.png}
+  - run:
+      command: gozen check s --format json
+  - assert:
+      exit_code: 1
+      stdout:
+        json:
+        - {path: '$.data[?(@.message =~ /unknown actor "nobody"/)].file', equals: data/streams.yaml}
+        - {path: '$.data[?(@.message =~ /want 2 to 4 options/)].line', equals: 3}
+        - {path: '$.data[?(@.message =~ /option 3 is not one/)].file', equals: streams/one.yaml}
+        - {path: '$.data[?(@.message =~ /unknown \{weeks\}/)].code', equals: GZN1101}
 - name: building materials and roofs validate through the public command
   steps:
   - run:

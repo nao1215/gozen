@@ -7,15 +7,36 @@
 <style>
 html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #10181c; color: #f4f1e6; font-family: sans-serif; overscroll-behavior: none; }
 canvas { touch-action: none; }
-#loading { position: absolute; inset: 0; z-index: 10; display: grid; place-content: center; padding: 1rem; text-align: center; background: #10181c; }
+#loading { position: absolute; inset: 0; z-index: 10; display: grid; place-content: center; padding: 1rem; text-align: center; background: #fff; color: #333; font-size: 14px; }
+#bar { width: min(320px, 70vw); height: 3px; margin: 0.75rem auto; background: #e6e6e6; }
+#fill { width: 0; height: 100%; background: #555; }
+#amount { margin: 0; color: #777; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
-<div id="loading"><p id="note">Loading game...</p><noscript>This game needs JavaScript and WebAssembly.</noscript></div>
+<div id="loading"><p id="note">Loading game...</p><div id="bar"><div id="fill"></div></div><p id="amount"></p><noscript>This game needs JavaScript and WebAssembly.</noscript></div>
 <script src="wasm_exec.js"></script>
 <script>
 "use strict";
 window.goZenTimes = {};
+// goZenLoad keeps the last bytes read of the player and of the game's files, with the
+// bytes expected (0 when unknown).
+window.goZenLoad = {};
+const notes = {player: "Loading the player...", files: "Loading the game's files..."};
+const megabytes = (n) => (n / 1048576).toFixed(1);
+// The game's media still come once it has started and the loading page is gone (or shows
+// a failure): the bytes are kept, and nothing is shown.
+window.goZenProgress = (part, done, total) => {
+  goZenLoad[part] = {done, total};
+  const note = document.getElementById("note");
+  if (!note) return;
+  const known = total > 0 && done <= total;
+  note.textContent = notes[part];
+  document.getElementById("fill").style.width = known ? (100 * done / total).toFixed(1) + "%" : "0";
+  document.getElementById("amount").textContent = known
+    ? Math.floor(100 * done / total) + "%  " + megabytes(done) + " / " + megabytes(total) + " MB"
+    : megabytes(done) + " MB";
+};
 window.goZenStarting = (title) => {
   document.title = title;
   goZenTimes.starting = performance.now();
@@ -35,13 +56,76 @@ window.goZenFail = (message) => {
   loading.textContent = "Could not start: " + message;
 };
 document.addEventListener("contextmenu", (event) => event.preventDefault());
+// Phones read aloud only after speechSynthesis has spoken once inside a touch, a click
+// or a key press, and the game speaks from its frame, outside any: so each touch says
+// nothing until that has once begun (iOS also wants the voices asked for in one).
+const speechEvents = ["pointerdown", "touchend", "click", "keydown"];
+let speechOpen = false;
+const openSpeech = () => {
+  speechOpen = true;
+  for (const type of speechEvents) removeEventListener(type, unlockSpeech, true);
+};
+const unlockSpeech = () => {
+  if (speechOpen || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
+  if (speechSynthesis.speaking) return openSpeech(); // the game's line is being heard
+  const silence = new SpeechSynthesisUtterance(" ");
+  silence.volume = 0;
+  silence.onstart = silence.onend = openSpeech;
+  // refused outside a touch: the next one tries again; another failure will not pass
+  silence.onerror = (event) => { if (event.error !== "not-allowed") openSpeech(); };
+  window.goZenSilence = silence; // an utterance nothing holds may be dropped unsaid
+  speechSynthesis.resume();
+  speechSynthesis.speak(silence);
+  speechSynthesis.getVoices();
+};
+for (const type of speechEvents) addEventListener(type, unlockSpeech, true);
 (async () => {
   try {
     const go = new Go();
-    const response = await fetch("gozen-player.wasm");
-    if (!response.ok) throw new Error("gozen-player.wasm: " + response.status);
-    // arrayBuffer also works on static servers without a WASM MIME mapping.
-    const result = await WebAssembly.instantiate(await response.arrayBuffer(), go.importObject);
+    const response = await fetch("gozen-player.wasm.gz");
+    if (!response.ok) throw new Error("gozen-player.wasm.gz: " + response.status);
+    // The player is gzip, which the page undoes (DecompressionStream) as it comes in, so
+    // no host needs to be set up for it; a host that undid it already sends the WASM.
+    // The bytes are counted as they come (Content-Length is what is sent) and the
+    // player is compiled while it downloads.
+    const total = Number(response.headers.get("Content-Length")) || 0;
+    const reader = response.body.getReader();
+    let done = 0;
+    goZenProgress("player", 0, total);
+    const read = async () => {
+      const chunk = await reader.read();
+      if (!chunk.done) {
+        done += chunk.value.length;
+        goZenProgress("player", done, total);
+      }
+      return chunk;
+    };
+    // The first two bytes tell gzip, however the pieces of the download split them; the
+    // pieces read for them go first into the body.
+    const head = [];
+    let ended = false;
+    while (!ended && head.reduce((n, piece) => n + piece.length, 0) < 2) {
+      const chunk = await read();
+      if (chunk.done) ended = true;
+      else head.push(chunk.value);
+    }
+    const first = head.flatMap((piece) => Array.from(piece.subarray(0, 2)));
+    const body = new ReadableStream({
+      start(controller) {
+        for (const piece of head) controller.enqueue(piece);
+        if (ended) controller.close();
+      },
+      async pull(controller) {
+        const chunk = await read();
+        if (chunk.done) controller.close();
+        else controller.enqueue(chunk.value);
+      },
+    });
+    const gzip = first[0] === 0x1f && first[1] === 0x8b;
+    if (gzip && typeof DecompressionStream !== "function") throw new Error("this browser cannot decompress the player");
+    const player = new Response(gzip ? body.pipeThrough(new DecompressionStream("gzip")) : body, {headers: {"Content-Type": "application/wasm"}});
+    const result = await WebAssembly.instantiateStreaming(player, go.importObject);
+    document.getElementById("note").textContent = "Starting the player...";
     await go.run(result.instance);
   } catch (error) {
     goZenFail(String(error));

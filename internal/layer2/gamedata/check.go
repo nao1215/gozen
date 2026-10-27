@@ -505,6 +505,13 @@ func (db *DB) Check() []error {
 	default:
 		c.errorf(diag.NotAWord, "game.yaml ui.battle_foe_names", "want name, hp or none, not %q", g.UI.BattleFoeNames)
 	}
+	switch g.Menus {
+	case "":
+	case "none":
+		c.needsVersion("game.yaml menus", "menus", SchemaVersion9)
+	default:
+		c.errorf(diag.NotAWord, "game.yaml menus", "want none, not %q", g.Menus)
+	}
 	switch g.UI.BattleMessage {
 	case "", "fixed", "fit":
 	default:
@@ -924,13 +931,13 @@ func (db *DB) Check() []error {
 			c.arrival(ww, e.To, e.At, e.Facing)
 		}
 		shows := 0
-		for _, set := range []bool{l.Dungeon != nil, l.Map != nil, l.Stage != nil} {
+		for _, set := range []bool{l.Dungeon != nil, l.Map != nil, l.Stage != nil, l.Stream != ""} {
 			if set {
 				shows++
 			}
 		}
 		if shows > 1 {
-			c.errorf(diag.Shape, w, "a location is shown one way: dungeon, map or stage (not two of them)")
+			c.errorf(diag.Shape, w, "a location is shown one way: dungeon, map, stage or stream (not two of them)")
 		}
 		if l.Dungeon != nil {
 			c.dungeon(w, l)
@@ -940,6 +947,14 @@ func (db *DB) Check() []error {
 		}
 		if l.Stage != nil {
 			c.stage(w, id, l)
+		}
+		if l.Stream != "" && c.needsVersion(w+".stream", "stream", SchemaVersion9) {
+			switch {
+			case l.Stream != "lobby":
+				c.errorf(diag.NotAWord, w+".stream", "want lobby, not %q", l.Stream)
+			case db.Streams == nil:
+				c.errorf(diag.UnknownReference, w+".stream", "stream: lobby needs streams in game.yaml")
+			}
 		}
 		c.expr(w+".encounters.rate", l.Encounters.Rate, FieldNames)
 		for _, tp := range l.Encounters.Troops {
@@ -1031,6 +1046,7 @@ func (db *DB) Check() []error {
 	c.bestiaryWarnings()
 	c.monsters()
 	c.mergeReachability()
+	c.streams()
 	db.sceneWarns, db.sceneWarned = sortedDiagnostics(c.warns), true
 	return sortedDiagnostics(c.errs)
 }
@@ -1689,12 +1705,18 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			_, ok = db.Skills[cmd.Learn.Skill]
 			c.ref(w+".learn.skill", "skill", cmd.Learn.Skill, ok)
 		case "open":
-			if cmd.Open == "profiles" && len(db.Profiles) == 0 {
+			if db.Game.NoMenus() && slices.Contains([]string{"save", "load", "title"}, cmd.Open) {
+				c.errorf(diag.Shape, w+".open", "open: %s does not go with menus: none in game.yaml (there is no title, and the play is kept in the autosave alone)", cmd.Open)
+			} else if cmd.Open == "profiles" && len(db.Profiles) == 0 {
 				c.errorf(diag.UnknownReference, w+".open", "open: profiles needs profiles in data/ (the character book is empty)")
 			} else if cmd.Open == "bestiary" && len(db.Enemies) == 0 {
 				c.errorf(diag.UnknownReference, w+".open", "open: bestiary needs enemies in data/ (the monster book is empty)")
 			} else if cmd.Open == "ranch" && db.Breeding == nil {
 				c.errorf(diag.MonsterRules, w+".open", "open: ranch needs breeding in data/")
+			} else if cmd.Open == "streams" && db.Streams == nil {
+				c.errorf(diag.UnknownReference, w+".open", "open: streams needs streams in game.yaml")
+			} else if cmd.Open == "streams" {
+				c.needsVersion(w+".open", "open: streams", SchemaVersion9)
 			} else if cmd.Open == "ranch" {
 				c.needsVersion(w+".open", "open: ranch", SchemaVersion6)
 			} else if db.Game.Screens[cmd.Open] != nil {
@@ -2074,9 +2096,10 @@ func (c *checker) fields(where string, e Expr, names []string, over map[string]*
 }
 
 // OpenScreens are the screens the open command can open: formation, the skill tree (skills),
-// stone fusion (fusion), out-of-battle tactics editing (tactics), and the character book (profiles).
+// stone fusion (fusion), out-of-battle tactics editing (tactics), the character book (profiles)
+// and the stream lobby (streams).
 // status, item, skill, equip, save, load, config and title are single menu screens (not scattered across shops and inns).
-var OpenScreens = []string{"formation", "skills", "fusion", "status", "item", "skill", "equip", "save", "load", "config", "title", "tactics", "profiles", "bestiary", "ranch"}
+var OpenScreens = []string{"formation", "skills", "fusion", "status", "item", "skill", "equip", "save", "load", "config", "title", "tactics", "profiles", "bestiary", "ranch", "streams"}
 
 // tree checks a class's skill tree: node IDs (or skill IDs when absent) must not collide,
 // skill, stat and prerequisite nodes must exist, and prerequisites must not form a cycle.

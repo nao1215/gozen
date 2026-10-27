@@ -20,15 +20,18 @@ vendors:
   markdown: { in: [github.com/nao1215/markdown] }
   onnx: { in: [github.com/yalue/onnxruntime_go, "github.com/yalue/onnxruntime_go/**"] }
   yaml: { in: [github.com/goccy/go-yaml, "github.com/goccy/go-yaml/**"] }
-  image: { in: [golang.org/x/image, "golang.org/x/image/**"] }
+  # x/image, and WebP: deepteams/webp decodes it with the colours libwebp gives (x/image/webp
+  # reads its limited-range YUV as full range) and encodes the pictures of a web export.
+  image: { in: [golang.org/x/image, "golang.org/x/image/**", github.com/deepteams/webp, "github.com/deepteams/webp/**"] }
   ebiten: { in: [github.com/hajimehoshi/ebiten/v2, "github.com/hajimehoshi/ebiten/v2/**"] }
   width: { in: [golang.org/x/text/width] }
   norm: { in: [golang.org/x/text/unicode/norm] }
   pflag: { in: [github.com/spf13/pflag] }
   # The browser's localStorage for the saves of a web build (internal/play/store_js.go),
   # its pictures decoded by the browser (internal/layer5/picdecode), its frame meter
-  # (internal/play/platform_js.go), and the page that the browser build of Go Zen
-  # reports its loading to.
+  # (internal/play/platform_js.go), the page that the browser build of Go Zen
+  # reports its loading to, and the game's files fetched whole by the browser
+  # (internal/webfs).
   js: { in: [syscall/js] }
 components:
   expr: { in: ["internal/expr", "internal/expr/**"] }
@@ -68,6 +71,8 @@ components:
   dev: { in: "internal/dev/**" }
   testgame: { in: "internal/testgame/**" }
 deps:
+  webfs:
+    canUse: [js]
   private1:
     canUse: [yaml]
   expr:

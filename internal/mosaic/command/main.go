@@ -22,8 +22,8 @@ import (
 
 	"github.com/nao1215/gozen/internal/diag"
 
+	_ "github.com/deepteams/webp" // decodes the WebP pictures a game may hold
 	"github.com/spf13/pflag"
-	_ "golang.org/x/image/webp" // decodes the WebP pictures a game may hold
 
 	"github.com/nao1215/gozen/internal/mosaic"
 	"github.com/nao1215/gozen/internal/mosaic/detect"

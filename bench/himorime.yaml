@@ -44,6 +44,14 @@ benchmarks:
   - name: version
     description: Starting gozen and exiting.
     tags: [smoke]
+    # Start-up alone, about 10 ms: the WebP encoder of web exports (github.com/deepteams/webp,
+    # ADR 0051) builds a table of 65536 logarithms in its package's init, about 2 ms of every
+    # start (GODEBUG=inittrace=1), gozen's own inits not grown. A start-up benchmark takes a
+    # rise of 20% before it calls a regression, the others 10%.
+    regression:
+      latency:
+        max_percent: 20
+        min_difference: 1ms
     commands:
       gozen:
         command: ["${artifact}", version]
@@ -64,6 +72,11 @@ benchmarks:
     description: A game directory that does not exist, which exits 1.
     tags: [smoke]
     exit_codes: [1]
+    # start-up alone, as version: a rise of 20% before a regression
+    regression:
+      latency:
+        max_percent: 20
+        min_difference: 1ms
     commands:
       gozen:
         command: ["${artifact}", check, "${workdir}/missing"]

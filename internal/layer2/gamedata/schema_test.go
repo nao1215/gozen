@@ -39,6 +39,12 @@ type fieldContract struct {
 
 // Types, numeric contracts and command tags are read from the implementation. Only context-dependent inheritance and references are supplemented.
 var schemaDefaults = map[string]string{
+	"StreamAffection.steps": "0, 30, 150, 600, 3000", "StreamAffection.comment": "1", "StreamAffection.reply": "2",
+	"StreamAffection.answer": "5", "StreamAffection.tip_per": "100", "StreamAffection.stayed": "10",
+	"Streams.answer_chance": "0.6, 0.75, 0.9, 1, 1 (one for each step of the default steps)",
+	"StreamEcho.max_runes":  "24, with chance 0.35 when chance is left out too", "StreamEcho.chance": "0, or 0.35 when max_runes is left out too",
+	"StreamSlot.minutes":        "60",
+	"Duo.unlock":                "30 minutes",
 	"UIStyle.battle_ai_history": "true",
 	"Recruit.admission":         "reserve",
 	"Atlas.travel_speed":        "0.12 picture widths per second",
@@ -169,6 +175,13 @@ func (b *schemaBuilder) node(t reflect.Type) schemaNode {
 	if t == reflect.TypeFor[Color]() {
 		return schemaNode{"type": "string", "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"}
 	}
+	if t == reflect.TypeFor[StreamReply]() { // the asker's line, or a host's keyed by its channel id
+		line := b.node(reflect.TypeFor[StreamLine]())
+		return schemaNode{"anyOf": []any{line, schemaNode{"type": "object", "additionalProperties": line, "minProperties": 1, "maxProperties": 1}}}
+	}
+	if t == reflect.TypeFor[NPCAnswer]() {
+		return schemaNode{"type": "array", "prefixItems": []any{schemaNode{"type": "string"}, schemaNode{"type": "integer", "minimum": 0}}, "minItems": 2, "maxItems": 2}
+	}
 	if t == reflect.TypeFor[AIRef]() {
 		return schemaNode{"anyOf": []any{schemaNode{"type": "string"}, schemaNode{"type": []string{"array", "null"}, "items": b.node(reflect.TypeFor[Rule]())}}}
 	}
@@ -193,8 +206,14 @@ func (b *schemaBuilder) node(t reflect.Type) schemaNode {
 			b.constraints(t, n, props)
 			switch t {
 			case reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
-				reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd]():
+				reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[StreamLine]():
 				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "string"}, n}}
+			case reflect.TypeFor[CrowdLines](): // a list is the lines of any hour
+				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "array", "items": schemaNode{"type": "string"}}, n}}
+			case reflect.TypeFor[Beat](): // or the line of the other host of a duo, keyed by its channel id
+				n["additionalProperties"] = b.node(reflect.TypeFor[StreamLine]())
+				n["minProperties"], n["maxProperties"] = 1, 1
+				b.defs[name] = n
 			case reflect.TypeFor[WaitCue]():
 				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "number"}, n}}
 			case reflect.TypeFor[Token](): // a map piece can also be written as the single word doll
@@ -257,6 +276,17 @@ func schemaFields(t reflect.Type) []schemaField {
 		out = append(out, schemaField{t, f, name})
 	}
 	return out
+}
+
+// streamTypes are the types of the streams file and its episodes (schema version 9, ADR 0048).
+var streamTypes = map[reflect.Type]bool{
+	reflect.TypeFor[Streams](): true, reflect.TypeFor[StreamTiming](): true, reflect.TypeFor[StreamLive](): true,
+	reflect.TypeFor[StreamAway](): true, reflect.TypeFor[StreamCrowd](): true, reflect.TypeFor[Channel](): true,
+	reflect.TypeFor[StreamFrame](): true, reflect.TypeFor[StreamVoice](): true, reflect.TypeFor[Duo](): true,
+	reflect.TypeFor[Episode](): true, reflect.TypeFor[Beat](): true, reflect.TypeFor[StreamLine](): true,
+	reflect.TypeFor[StreamAsk](): true, reflect.TypeFor[StreamOption](): true, reflect.TypeFor[StreamAffection](): true,
+	reflect.TypeFor[StreamEcho](): true, reflect.TypeFor[StreamBounce](): true, reflect.TypeFor[CrowdLines](): true,
+	reflect.TypeFor[StreamSlot](): true, reflect.TypeFor[StreamReply](): true,
 }
 
 // version2Fields are the fields added in spec version 2 (ADR 0021).
@@ -342,7 +372,14 @@ func schemaContract(owner reflect.Type, field reflect.StructField, name string) 
 	if owner == reflect.TypeFor[StageFraming]() || key == "UIStyle.stage_framing" || key == "UIStyle.stage_puppets" {
 		c.Version = "8"
 	}
+	if streamTypes[owner] || key == "Game.streams" || key == "Location.stream" {
+		c.Version = "9"
+	}
 	switch key {
+	case "StreamAffection.comment", "StreamAffection.reply", "StreamAffection.answer", "StreamAffection.tip_per", "StreamAffection.stayed", "StreamSlot.minutes", "StreamEcho.max_runes":
+		c.Zero = "Uses the default"
+	case "StreamEcho.chance":
+		c.Zero = "0 is kept, unless max_runes is 0 or left out too: then 0.35"
 	case "StageFraming.height":
 		c.Zero = "両版で拒否"
 	case "Atlas.travel_speed", "Stage.walk_speed", "Space.step_ticks", "Space.turn_ticks":
@@ -487,13 +524,15 @@ func TestSchemaCoverage(t *testing.T) {
 	b := newSchemaBuilder()
 	b.node(reflect.TypeFor[Game]())
 	b.node(reflect.TypeFor[file]())
+	b.node(reflect.TypeFor[Streams]())
+	b.node(reflect.TypeFor[Episode]())
 	// The contracts below are in Japanese; the schema is published in English.
 	for _, p := range b.translate(loadSchemaEnglish(t)) {
 		t.Error(p)
 	}
 	artifacts := map[string][]byte{}
 	artifacts["../../../data/schema/types.schema.json"] = schemaJSON(t, schemaNode{"$schema": "https://json-schema.org/draft/2020-12/schema", "$defs": b.defs, "description": "The YAML types of a Gozen game. gozen check is the authority on ranges, references and the meaning of expressions."})
-	for file, name := range map[string]string{"game": "Game", "data": "DataFile"} {
+	for file, name := range map[string]string{"game": "Game", "data": "DataFile", "streams": "Streams", "episode": "Episode"} {
 		artifacts["../../../data/schema/"+file+".schema.json"] = schemaJSON(t, schemaNode{"$schema": "https://json-schema.org/draft/2020-12/schema", "$ref": "types.schema.json#/$defs/" + name})
 	}
 	for _, metadata := range []map[string]string{schemaDefaults, schemaReferences, schemaRequired} {
@@ -575,16 +614,22 @@ func schemaTypeLabel(t reflect.Type) string {
 		return "能力名 → 式"
 	case reflect.TypeFor[StatRates]():
 		return "能力名 → 倍率"
+	case reflect.TypeFor[NPCAnswer]():
+		return "[name, index]"
+	case reflect.TypeFor[StreamReply]():
+		return "[StreamLine](#streamline) or {id: StreamLine}"
 	}
 	switch t.Kind() { //nolint:exhaustive // Only schema container/scalar kinds need handling; other reflection kinds are intentionally ignored.
 	case reflect.Struct:
 		result := "[" + schemaName(t) + "](#" + strings.ToLower(schemaName(t)) + ")"
 		switch t {
 		case reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
-			reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd]():
+			reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[StreamLine]():
 			result += " または文字列"
 		case reflect.TypeFor[WaitCue]():
 			result += " または数値"
+		case reflect.TypeFor[CrowdLines]():
+			result += " or string[]"
 		case reflect.TypeFor[Token]():
 			result += " または doll"
 		}

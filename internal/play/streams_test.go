@@ -1,0 +1,1500 @@
+package play
+
+import (
+	"bytes"
+	"cmp"
+	"encoding/json"
+	"fmt"
+	"image"
+	"io/fs"
+	"math"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+	"testing/fstest"
+	"time"
+
+	"github.com/hajimehoshi/ebiten/v2"
+
+	"github.com/nao1215/gozen/internal/chat"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer3/broadcast"
+	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"github.com/nao1215/gozen/internal/layer5/sound"
+	"github.com/nao1215/gozen/internal/rpg"
+	lang "github.com/nao1215/gozen/internal/text"
+)
+
+// streamsData is a neutral stream game: two channels of the example puppet, one short
+// episode each and a duo, and a reaction book that answers comments and tips.
+var streamsData = map[string]string{
+	"data/streams_cast.yaml": `actors:
+  ann: {name: Ann, face: smile, puppet: streamer/puppet.yaml}
+  bo: {name: Bo, face: smile, puppet: streamer/puppet.yaml}
+locations:
+  booth: {name: Booth, stream: lobby, exits: [{to: camp, label: Camp}], actions: [{label: Settings, do: [{open: config}]}]}
+`,
+	"data/streams.yaml": `logo: x.png
+timing: {say: 2, per_char: 0.01, chat: 0.3, ask: 1}
+slot: {minutes: 0.01}   # one episode a stream
+live: {share: 1, min_share: 1, duo_chance: DUO}
+away: {per_hour: 100, cap_hours: 24, star_bonus: 0.5}
+tips: [10, 50]
+crowd: {names: [sprout, leaf], lines: [Hi!], tip_lines: [For seeds], rate: 2}
+bounce: {on: "!$", amount: 1}
+channels:
+  - {id: ann, actor: ann, tag: Gardening, tagline: Seeds every week, color: "#2a8c4a", room: x.png, frame: {cx: 373, top: 40, bottom: 640}, episodes: [streams/one.yaml], first: ["Welcome, {from}!"], stayed: ["Thanks, {from}."]}
+  - {id: bo, actor: bo, tag: Cooking, room: x.png, frame: {cx: 373, top: 40, bottom: 640}, episodes: [streams/one.yaml]}
+duos:
+  - {host: ann, with: bo, unlock: 0, episodes: [streams/duo.yaml]}
+`,
+	"streams/one.yaml": `title: Planting day
+lobby: [Beans today]
+parts:
+  - - say: Hello, everyone.
+    - chat: [sprout, Beans!]
+    - ask: {q: Which seeds?, options: [{c: Beans, r: ["{from} picked beans."]}, {c: Peas, r: [Peas it is.]}], npc: [[leaf, 1]]}
+    - say: {face: surprised, text: That is all for today!}
+`,
+	"streams/duo.yaml": `title: Two of us
+parts:
+  - - say: We are two.
+    - bo: {face: surprised, text: Hello from Bo!}
+`,
+	"assets/talk.yaml": `lexicon:
+  plant: [beans, seeds]
+people:
+  - id: ann
+    rules:
+      - id: tip
+        kind: tip
+        say: ["Thank you, {from}!"]
+      - id: plant
+        when: tag.plant > 0
+        say: [[Plants!, "You said {text}."]]
+    dodge:
+      unknown: [Hm.]
+`,
+}
+
+// noonish is the clock of the stream tests.
+var noonish = time.Date(2026, 10, 27, 20, 0, 0, 0, time.UTC)
+
+// streamsGame opens the stream game at its lobby at a fixed time; duo is the chance of
+// the duo.
+func streamsGame(t *testing.T, duo string) *Game {
+	t.Helper()
+	g := wldOpenWith(t, Options{FS: streamsFS(t, duo), Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	return g
+}
+
+// streamsFS is the stream game's files.
+func streamsFS(t *testing.T, duo string) fstest.MapFS {
+	t.Helper()
+	fsys := gameFiles(t)
+	fsys["game.yaml"] = &fstest.MapFile{Data: append([]byte("schema_version: 9\nwritten_in: en\nlanguages: [en, ja]\nstreams: data/streams.yaml\nreactions: {ann: talk.yaml}\n"), fsys["game.yaml"].Data...)}
+	fsys["lang/ja.yaml"] = &fstest.MapFile{Data: []byte("text:\n  \"Hello, everyone.\": \"みなさん、こんにちは。\"\n  \"Which seeds?\": \"どの種？\"\n  \"That is all for today!\": \"今日はここまで！\"\n  \"Settings\": \"設定\"\n")}
+	for n, s := range streamsData {
+		fsys[n] = &fstest.MapFile{Data: []byte(strings.ReplaceAll(s, "DUO", duo))}
+	}
+	src := os.DirFS("../../examples/puppet/assets/streamer")
+	for _, n := range []string{"puppet.yaml", "streamer.png", "surprised.png", "eyes_closed.png", "mouth_closed.png", "mouth_half.png"} {
+		b, err := fs.ReadFile(src, n)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fsys["assets/streamer/"+n] = &fstest.MapFile{Data: b}
+	}
+	return fsys
+}
+
+// chatText is the chat of the watch view, one "name: text" a message.
+func chatText(w *streamWatch) string {
+	var b strings.Builder
+	for _, m := range w.chat.log.Recent(150) {
+		b.WriteString(m.From + ": " + m.Text + "\n")
+	}
+	return b.String()
+}
+
+// TestStreamsWatchAShow: the lobby is the place's scene with every channel live on the
+// first opening, asking the viewer's name over it; watching greets a first visit, posts the beats
+// and the comments, answers a comment and a tip from the reaction book, and at the end
+// thanks the viewer, moves the channel on to its next episode and keeps it in the save.
+func TestStreamsWatchAShow(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok || len(l.cards) != 2 || len(l.entries(g)) == 0 {
+		t.Fatalf("scene %T, cards %d", g.stack[0], len(l.cards))
+	}
+	if l.name == nil {
+		t.Fatal("the first opening does not ask the viewer's name")
+	}
+	chosen := l.cards[l.sel].show.Key
+	wldPlay(t, g, "press right\nwait 5\n", 100)
+	if l.name == nil || l.sel >= len(l.cards) || l.cards[l.sel].show.Key != chosen {
+		t.Fatal("the lobby takes keys before the name is given")
+	}
+	wldPlay(t, g, "type Pat\npress ok\nwait 5\n", 100)
+	if l.name != nil || g.st.Streams.Viewer != "Pat" {
+		t.Fatalf("the name box stays (%v), viewer %q", l.name != nil, g.st.Streams.Viewer)
+	}
+	l.sel = slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" }) // the cards go by viewers
+	wldPlay(t, g, "press ok\nwait 5\n", 100)
+	w := g.watching()
+	if w == nil {
+		t.Fatal("the lobby does not open the show")
+	}
+	wldPlay(t, g, "press tab\ntype I planted beans\npress ok\nwait 2\n", 100)
+	wldFrames(t, g, 600)
+	chat := chatText(w)
+	for _, want := range []string{"Ann: Welcome, Pat!", "Pat: I planted beans", "Ann: Plants!", "Ann: You said I planted beans."} {
+		if !strings.Contains(chat, want) {
+			t.Errorf("chat lacks %q:\n%s", want, chat)
+		}
+	}
+	gold := g.st.Gold
+	w.tip(g, 10)
+	wldFrames(t, g, 300)
+	if g.st.Gold != gold-10 || !strings.Contains(chatText(w), "Ann: Thank you, Pat!") {
+		t.Errorf("gold %d (was %d), chat:\n%s", g.st.Gold, gold, chatText(w))
+	}
+	w.choose(g, 0)
+	wldFrames(t, g, 1800)
+	if !w.ended || !w.seen || !w.thanked {
+		t.Fatalf("ended %v seen %v thanked %v, chat:\n%s", w.ended, w.seen, w.thanked, chatText(w))
+	}
+	p := g.st.Streams.Channels["ann"]
+	if p.Next != 1 || p.Points <= 0 || p.Run != 1 {
+		t.Fatalf("progress %+v", p)
+	}
+	b, err := g.st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := rpg.Parse(g.db, b, nil)
+	if err != nil || st.Streams.Viewer != "Pat" || st.Streams.Channels["ann"].Next != 1 {
+		t.Fatalf("saved streams %+v %v", st.Streams, err)
+	}
+	wldPlay(t, g, "press ok\nwait 2\n", 10)
+	if g.watching() != nil {
+		t.Fatal("the end does not go back to the lobby")
+	}
+}
+
+// TestStreamsDuoAndAway: two live hosts stream their duo together, the other host saying
+// its lines; the gold earned while away is added and shown once.
+// TestStreamsLobbyMostWatchedFirst: the lobby lists its cards by viewers, most first.
+func TestStreamsLobbyMostWatchedFirst(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok || len(l.cards) < 2 {
+		t.Fatalf("cards %+v", l.cards)
+	}
+	if !slices.IsSortedFunc(l.cards, func(a, b *lobbyCard) int { return cmp.Compare(b.viewers, a.viewers) }) {
+		t.Fatalf("cards not by viewers: %d, %d", l.cards[0].viewers, l.cards[1].viewers)
+	}
+}
+
+func TestStreamsDuoAndAway(t *testing.T) {
+	g := streamsGame(t, "1")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok || len(l.cards) != 1 || len(l.cards[0].show.Hosts) != 2 || len(l.cards[0].bodies) != 2 {
+		t.Fatalf("cards %+v", l.cards)
+	}
+	g.st.Streams.Viewer = "Pat"
+	g.push(newStreamWatch(g, l.cards[0].show, 100))
+	wldFrames(t, g, 400)
+	if !strings.Contains(chatText(g.watching()), "Bo: Hello from Bo!") {
+		t.Errorf("chat:\n%s", chatText(g.watching()))
+	}
+	g.watching().leave(g)
+	gold := g.st.Gold
+	g.st.Streams.Open = g.streamNow().Add(-2 * time.Hour).Unix()
+	broadcast.Progress(g.st.Streams, "ann").Points = 1e9
+	wldFrames(t, g, 2)
+	if got := g.st.Gold - gold; got != 100*2*(1+0.5*4) || g.desk.away != got {
+		t.Fatalf("away gold %d, shown %d", got, g.desk.away)
+	}
+	wldPlay(t, g, "press ok\nwait 2\n", 10)
+	if g.desk.away != 0 {
+		t.Fatal("the away gold is shown again")
+	}
+}
+
+// TestStreamsKeepTheTimeOpen: while the game stays open on one screen (the settings over the
+// lobby too), the autosave keeps the time it was last open at most a minute old, and closing
+// the game writes it: opening
+// it again at once earns nothing while away, and opening it two hours later two hours.
+func TestStreamsKeepTheTimeOpen(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	saved := func() *rpg.Streams {
+		t.Helper()
+		b, err := g.storeRead(g.autoPath())
+		if err != nil {
+			t.Fatal(err)
+		}
+		st, err := rpg.Parse(g.db, b, nil)
+		if err != nil || st.Streams == nil {
+			t.Fatalf("the autosave: %v", err)
+		}
+		return st.Streams
+	}
+	wldFrames(t, g, int(2.5*60*ebiten.DefaultTPS))
+	if open := time.Unix(saved().Open, 0); g.streamNow().Sub(open) > streamKeep {
+		t.Fatalf("after 2.5 minutes in the lobby the autosave has the game open at %v, now %v", open, g.streamNow())
+	}
+	g.push(newMenu(g)) // the settings opened from the menu over the lobby
+	g.push(newConfigScreen(g))
+	wldFrames(t, g, int(2.5*60*ebiten.DefaultTPS))
+	if open := time.Unix(saved().Open, 0); g.streamNow().Sub(open) > streamKeep {
+		t.Fatalf("after 2.5 minutes in the settings the autosave has the game open at %v, now %v", open, g.streamNow())
+	}
+	sysClose(t, g)
+	closed := g.streamNow()
+	if open := saved().Open; open != closed.Unix() {
+		t.Fatalf("closing keeps the game open at %v, not %v", time.Unix(open, 0), closed)
+	}
+	if gold := broadcast.Settle(g.db.Streams, saved(), closed.Add(5*time.Second)); gold != 0 {
+		t.Errorf("opening again at once earns %d", gold)
+	}
+	if gold := broadcast.Settle(g.db.Streams, saved(), closed.Add(2*time.Hour)); gold != 200 {
+		t.Errorf("opening again two hours later earns %d, not 200", gold)
+	}
+}
+
+// TestStreamsReplayReadsTheRecordedClock: the trace records the time the run read with its
+// offset from UTC, and a replay plays the streams at that time where it was read, not at its
+// own time or in its own zone, so it does not diverge: just after midnight in Tokyo is that
+// day and hour in a replay on a machine set to UTC.
+func TestStreamsReplayReadsTheRecordedClock(t *testing.T) {
+	covSlow(t)
+	tokyo := time.Date(2026, 10, 28, 0, 30, 0, 0, time.FixedZone("JST", 9*3600))
+	local := time.Local
+	time.Local = time.UTC
+	t.Cleanup(func() { time.Local = local })
+	path := filepath.Join(t.TempDir(), "run.jsonl")
+	f, err := os.Create(path) //nolint:gosec // a file in the test directory
+	if err != nil {
+		t.Fatal(err)
+	}
+	fsys := streamsFS(t, "0")
+	g, err := New(Options{
+		FS: fsys, NoSound: true, Seed: 3, SaveDir: t.TempDir(), ShotDir: t.TempDir(), Location: "booth", Trace: f,
+		Script: "wait 30\npress ok\nwait 300\nquit", Now: func() time.Time { return tokyo },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !sysFrames(t, g, 3000) {
+		t.Fatal("the script did not end")
+	}
+	sysClose(t, g)
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	r, err := New(Options{FS: fsys, NoSound: true, SaveDir: t.TempDir(), Replay: path, Now: func() time.Time { return noonish.Add(5 * time.Hour) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sysClose(t, r)
+	if !sysFrames(t, r, 5000) {
+		t.Fatal("the replay did not end")
+	}
+	if r.rep.diverge != "" || !r.rep.finished || !r.desk.base.Equal(tokyo) {
+		t.Fatalf("diverged %q, finished %v, clock %v", r.rep.diverge, r.rep.finished, r.desk.base)
+	}
+	if _, off := r.desk.base.Zone(); off != 9*3600 || broadcast.Day(r.desk.base) != broadcast.Day(tokyo) || r.desk.base.Hour() != 0 {
+		t.Fatalf("the replay's clock %v is not the day and hour read in Tokyo (%v)", r.desk.base, tokyo)
+	}
+}
+
+// TestStreamView: a window taller than wide takes the portrait layout at a unit to a pixel
+// (narrow phones a little smaller, tablets larger), a phone on its side a UI of its shape
+// at 0.9 pixels a unit, and a window where the game's screen draws its units large enough
+// keeps the game's screen; the pixels follow the device's, at most three to a unit.
+func TestStreamView(t *testing.T) {
+	for _, tc := range []struct {
+		ow, oh, dsf float64
+		want        gameView
+	}{
+		{390, 844, 3, gameView{w: 1170, h: 2532, ui: 3, tall: true}},
+		{390, 844, 1, gameView{w: 390, h: 844, ui: 1, tall: true}},
+		{320, 640, 2, gameView{w: 640, h: 1280, ui: 320.0 / 360 * 2, tall: true}},
+		{1200, 1600, 2, gameView{w: 1800, h: 2400, ui: 3, tall: true}},
+		{844, 390, 3, gameView{w: 2532, h: 1170, ui: 2.7}},
+		{640, 360, 1, gameView{w: 640, h: 360, ui: 640.0 / 760}},
+		{1920, 1080, 1, gameView{}},
+		{1366, 650, 2, gameView{}},
+		{0, 844, 1, gameView{}},
+	} {
+		if got := streamView(tc.ow, tc.oh, tc.dsf, 1280, 720); got != tc.want {
+			t.Errorf("%vx%v at %v: %+v, want %+v", tc.ow, tc.oh, tc.dsf, got, tc.want)
+		}
+	}
+}
+
+// TestStreamsPortrait: on a phone held upright the lobby stands the cards one under another
+// across the screen, a finger swiping scrolls them without its lifting opening one, and the
+// watch view has the chat under the stage, scrolled back by a finger and kept in place as
+// messages come, and starts typing when a finger touches the comment field. A screen over the
+// streams keeps the game's size, and so does a phone on its side its landscape layout.
+func TestStreamsPortrait(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	g.fitView(390, 500, 3)
+	if sw, sh := g.screen(); !g.view.tall || g.ui != 3 || g.in.ui != 3 || sw != 390 || sh != 500 {
+		t.Fatalf("view %+v, screen %vx%v", g.view, sw, sh)
+	}
+	x0, y0, w0, h0 := l.cardRect(g, 0)
+	x1, y1, w1, _ := l.cardRect(g, 1)
+	if x0 != tallEdge || x1 != x0 || w0 != 390-2*tallEdge || w1 != w0 || y1 != y0+h0+tallNames || g.beside(0) {
+		t.Fatalf("cards %v,%v %v wide, %v,%v %v wide", x0, y0, w0, x1, y1, w1)
+	}
+	g.in.touching, g.in.swiped, g.in.swipe = true, true, -400
+	l.update(g)
+	if want := l.end(g) - 500; l.scroll != want || want <= 0 {
+		t.Fatalf("swiped to %v, want the end %v", l.scroll, want)
+	}
+	g.in.touching, g.in.swipe, l.scroll = false, 0, 0
+	l.fling.v = -20
+	l.update(g)
+	if l.scroll <= 0 || l.fling.v >= 0 || l.fling.v <= -20 {
+		t.Fatalf("a lifted finger does not glide on, slowing: scroll %v, speed %v", l.scroll, l.fling.v)
+	}
+	l.fling.v = 0
+	_, y, _, _ := l.shown(g, 1)
+	g.in.touching, g.in.swipe, g.in.click, g.in.mouse = false, 0, true, image.Pt(100, int(y)+20)
+	l.update(g)
+	if g.watching() != nil {
+		t.Fatal("a swipe's lifting opens a card")
+	}
+	if c := l.cards[0]; c.line == "" || c.line != lineAt(c.show, g.streamNow()) {
+		t.Fatalf("the card's caption %q is not the show's line now", c.line)
+	}
+	g.in.swiped = false
+	l.update(g)
+	w := g.watching()
+	if w == nil || w.show != l.cards[1].show {
+		t.Fatal("a tap does not open the card")
+	}
+	g.in.click = false
+	g.fitView(390, 844, 3)
+	if lay := g.watchLayout(); lay.stageW != 390 || lay.colX != 0 || lay.colW != 390 || lay.colTop != streamBarH+390.0*9/16+tallInfoH {
+		t.Fatalf("layout %+v", lay)
+	}
+	for i := range 40 {
+		w.chat.post(chat.Message{From: "leaf", Text: fmt.Sprintf("line %d", i)})
+	}
+	_, _, cw, h := w.chatRect(g)
+	g.in.touching, g.in.swiped, g.in.swipe, g.in.touchFrom = true, true, 60, image.Pt(100, int(g.watchLayout().colTop)+80)
+	w.input(g)
+	if w.chat.back != 60 || w.chat.width != cw {
+		t.Fatalf("chat scrolled back %v, %v wide", w.chat.back, w.chat.width)
+	}
+	w.chat.post(chat.Message{From: "leaf", Text: "new"})
+	if w.chat.back <= 60 {
+		t.Fatal("a new message moves the chat scrolled back")
+	}
+	w.chat.scroll(1e9, h)
+	if w.chat.back >= 1e9 || w.chat.back <= 0 {
+		t.Fatalf("the chat scrolls back past its oldest message: %v", w.chat.back)
+	}
+	x, cy, _, _ := w.controlRect(g, [2]int{int(ctlComment), 0})
+	g.in.swiped, g.in.began, g.in.touchFrom = false, true, image.Pt(int(x)+20, int(cy)+10)
+	w.input(g)
+	if !w.typing {
+		t.Fatal("a finger on the comment field does not start typing")
+	}
+	g.in.touching, g.in.began = false, false
+	g.fitView(844, 390, 3)
+	if sw, sh := g.screen(); g.view.tall || math.Abs(sw-844/0.9) > 1 || math.Abs(sh-390/0.9) > 1 {
+		t.Fatalf("on its side: view %+v, screen %vx%v", g.view, sw, sh)
+	}
+	g.push(newMenu(g))
+	g.fitView(390, 844, 3)
+	if g.view != (gameView{}) || g.ui != UIScale(&g.db.Game) || g.in.ui != g.ui {
+		t.Fatalf("a menu over the streams is drawn at %+v, ui %v", g.view, g.ui)
+	}
+}
+
+// TestStreamsLobbyKeepsItsCards: when a show of the lobby starts again (or another ends),
+// the cards still on the air keep their viewers, and the card chosen with the keys stays
+// the same channel's, wherever it now is.
+func TestStreamsLobbyKeepsItsCards(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok || len(l.cards) != 2 {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	l.sel = 1
+	chosen, viewers := l.cards[1].show.Key, map[string]int{}
+	for _, c := range l.cards {
+		viewers[c.show.Key] = c.viewers
+	}
+	again := *g.desk.shows[0] // the first show starts again
+	again.Start = again.Start.Add(time.Second)
+	g.desk.shows[0] = &again
+	l.rebuild(g)
+	if len(l.cards) != 2 || l.cards[l.sel].show.Key != chosen {
+		t.Fatalf("the card chosen moved from %s to %s", chosen, l.cards[l.sel].show.Key)
+	}
+	for _, c := range l.cards {
+		if c.viewers != viewers[c.show.Key] {
+			t.Errorf("%s has %d viewers again, not %d", c.show.Key, c.viewers, viewers[c.show.Key])
+		}
+	}
+}
+
+// TestStreamsLobbyEntryGone: an entry of the place chosen with the keys that is gone (its
+// when no longer holds) leaves the choice on the last one there, and OK takes that.
+func TestStreamsLobbyEntryGone(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	n := len(l.cards) + len(l.entries(g))
+	l.sel = n // the entry chosen, gone
+	g.in.pressed[btnOK] = true
+	l.update(g)
+	g.in.pressed[btnOK] = false
+	if l.sel != n-1 {
+		t.Fatalf("the choice is %d, not the last one there, %d", l.sel, n-1)
+	}
+}
+
+// TestStreamsTapStopsAGlide: a finger that touches the lobby while it glides after a swipe
+// stops it, and lifting does not open the card under it; a tap on a still lobby does.
+func TestStreamsTapStopsAGlide(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	x, y, w, h := l.shown(g, 0)
+	at := image.Pt(int(x+w/2), int(y+h/2))
+	tap := func() {
+		g.in.touching, g.in.began, g.in.touchFrom, g.in.mouse = true, true, at, at
+		l.update(g)
+		g.in.touching, g.in.began, g.in.click = false, false, true
+		l.update(g)
+		g.in.click = false
+	}
+	l.fling.v = 30
+	tap()
+	if g.watching() != nil {
+		t.Fatal("the tap that stopped the glide opened a show")
+	}
+	tap()
+	if g.watching() == nil {
+		t.Fatal("a tap on the still lobby does not open the show")
+	}
+}
+
+// TestStreamsNameNotes: the box that asks the viewer's name says the name cannot be changed
+// later and, when the game earns gold while it is closed, that it does: a line each, which
+// fits the box at a readable size, on a phone held upright and on a wide screen, in both
+// languages.
+func TestStreamsNameNotes(t *testing.T) {
+	g := streamsGame(t, "0")
+	for _, away := range []float64{100, 0} {
+		g.db.Streams.Away.PerHour = away
+		for _, code := range []string{"ja", "en"} {
+			g.setLanguage(code)
+			want := []string{lang.T("名前は、あとから変えられません。")}
+			if away > 0 {
+				want = append(want, lang.T("見ていない間も、ゴールドが少しずつ貯まります。"))
+			}
+			if got := nameNotes(g); !slices.Equal(got, want) {
+				t.Fatalf("%s, away %v: the notes %q, not %q", code, away, got, want)
+			}
+			for _, size := range [][3]float64{{390, 844, 3}, {1280, 720, 1}} {
+				g.fitView(size[0], size[1], size[2])
+				_, _, bw := nameBox(g)
+				for _, n := range want {
+					if lines, s := gfx.FitLines(n, nameNoteSize, bw-56, 1); len(lines) != 1 || s < 11 || gfx.TextWidth(lines[0], s) > bw-56 {
+						t.Errorf("%s %v: %q fits the box as %q at %v", code, size, n, lines, s)
+					}
+				}
+			}
+		}
+	}
+}
+
+// TestStreamsLineAt: a card's caption is the last line or question up to the beat, kept over
+// the chat beats after it, and none before the first line.
+func TestStreamsLineAt(t *testing.T) {
+	s := &broadcast.Show{Beats: []data.Beat{
+		{Chat: []string{"leaf", "hi"}},
+		{Line: &data.StreamLine{Text: "Hello."}},
+		{Chat: []string{"leaf", "hi"}},
+		{Chat: []string{"leaf", "hi"}},
+		{Ask: &data.StreamAsk{Q: "Which?"}},
+	}, Times: []float64{0, 1, 3, 4, 6, 9}, Start: noonish}
+	for _, tc := range []struct {
+		at   float64
+		want string
+	}{{0.5, ""}, {1, "Hello."}, {2.9, "Hello."}, {3 + captionLinger.Seconds() - 0.1, "Hello."}, {3 + captionLinger.Seconds(), ""}, {5, ""}, {6, "Which?"}, {9.5, "Which?"}} {
+		if got := lineAt(s, noonish.Add(seconds(tc.at))); got != tc.want {
+			t.Errorf("at %v s: %q, want %q", tc.at, got, tc.want)
+		}
+	}
+}
+
+// TestStreamsCaptionTimes: the watch view shows a line's caption at least captionLeast before
+// the next step, even when the line's timing is shorter, and takes it away captionLinger
+// after the chat beat that follows it begins.
+func TestStreamsCaptionTimes(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	fsys["data/streams.yaml"].Data = []byte(strings.Replace(string(fsys["data/streams.yaml"].Data), "chat: 0.3", "chat: 3", 1))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })].show
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	var said, next time.Time
+	for range 3000 {
+		wldFrames(t, g, 1)
+		if said.IsZero() && w.caption == "Hello, everyone." {
+			said = g.streamNow()
+		}
+		if !said.IsZero() && w.next == 2 { // the chat beat after the line has begun
+			next = g.streamNow()
+			break
+		}
+	}
+	if said.IsZero() || next.IsZero() {
+		t.Fatal("the line and the chat after it never come")
+	}
+	if g.db.Streams.Timing.LineSeconds("Hello, everyone.") >= captionLeast.Seconds() || next.Sub(said) < captionLeast {
+		t.Fatalf("a short line moves on after %v, before %v", next.Sub(said), captionLeast)
+	}
+	if w.shownCaption(g) != "Hello, everyone." {
+		t.Fatal("the caption goes with the chat beat")
+	}
+	wldFrames(t, g, int(captionLinger.Seconds()*ebiten.DefaultTPS)+1)
+	if got := w.shownCaption(g); got != "" {
+		t.Fatalf("the caption %q stays %v after the chat beat began", got, captionLinger)
+	}
+}
+
+// TestStreamsBarLanguageAndSettings: the bar shows the languages side by side with the one
+// shown filled, then the place's entries, the settings' with a gear; a language's button
+// shows the streams in it and keeps it in the settings, and the settings opened from the bar
+// are a page of the stream site, in the stream screens' size, whose bar goes back.
+func TestStreamsBarLanguageAndSettings(t *testing.T) {
+	g := streamsGame(t, "0")
+	t.Cleanup(func() {
+		if err := lang.Use(lang.English, nil); err != nil {
+			t.Error(err)
+		}
+	})
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	g.fitView(390, 844, 1)
+	bs := g.barButtons(l.entries(g))
+	if len(bs) != 5 || !bs[0].gear || bs[0].label != "Settings" || bs[1].gear || bs[3].lang != "en" || bs[4].label != "日本語" || bs[4].x != bs[3].x+bs[3].w+2 || bs[4].y != bs[3].y {
+		t.Fatalf("bar buttons %+v", bs)
+	}
+	for _, b := range bs { // two rows on a narrow screen, inside it
+		if sw, _ := g.screen(); b.x < 16 || b.x+b.w > sw-16 || b.y != barButtonY && b.y != streamBarH+barButtonY-6 {
+			t.Fatalf("the buttons leave the bar: %+v", bs)
+		}
+	}
+	l.update(g)
+	if _, y, _, _ := l.cardRect(g, 0); barHeight(bs) == streamBarH || y != barHeight(bs)+16 {
+		t.Fatalf("the cards start at %v under a bar of two rows %v", y, barHeight(bs))
+	}
+	g.in.click, g.in.mouse = true, image.Pt(int(bs[4].x+5), int(bs[4].y+10))
+	l.update(g)
+	g.in.click = false
+	if after := g.barButtons(l.entries(g)); after[3].x != bs[3].x || after[4].x != bs[4].x {
+		t.Fatalf("the languages move when switched: %+v, then %+v", bs[3:], after[3:])
+	}
+	if g.language() != "ja" || g.cfg.Language != "ja" || g.db.Tr("Hello, everyone.") != "みなさん、こんにちは。" {
+		t.Fatalf("language %q, settings %q", g.language(), g.cfg.Language)
+	}
+	if b, err := g.storeRead(g.configPath()); err != nil || !strings.Contains(string(b), `"language": "ja"`) {
+		t.Fatalf("saved settings %s, %v", b, err)
+	}
+	bs = g.barButtons(l.entries(g))
+	g.in.click, g.in.mouse = true, image.Pt(int(bs[0].x+5), int(bs[0].y+10))
+	l.update(g)
+	g.in.click = false
+	wldFrames(t, g, 5)
+	c, ok := g.stack[len(g.stack)-1].(*configScreen)
+	if !ok || !c.streams {
+		t.Fatalf("the settings entry opens %T", g.stack[len(g.stack)-1])
+	}
+	g.fitView(390, 844, 1)
+	c.place(g)
+	if !g.view.tall || c.list.w != 390-48 || c.list.y != streamBarH+80 {
+		t.Fatalf("the settings over the streams: view %+v, list %v wide at %v", g.view, c.list.w, c.list.y)
+	}
+	g.in.click, g.in.mouse = true, image.Pt(30, 20)
+	c.update(g)
+	g.in.click = false
+	if _, ok := g.stack[len(g.stack)-1].(*streamLobby); !ok {
+		t.Fatalf("the bar's way back leads to %T", g.stack[len(g.stack)-1])
+	}
+}
+
+// voicedShow opens the stream game with recorded voices for the lines of ann named in
+// voiced (from internal/play/testdata/tone.ogg) and watches ann's show from its start.
+func voicedShow(t *testing.T, voiced ...string) (*Game, *streamWatch, fstest.MapFS) {
+	t.Helper()
+	fsys := streamsFS(t, "0")
+	tone, err := os.ReadFile("testdata/tone.ogg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fsys["data/streams.yaml"].Data = append([]byte("voices: voice\n"), fsys["data/streams.yaml"].Data...)
+	for _, l := range voiced {
+		fsys["assets/voice/ann/"+data.VoiceKey(l)+".ogg"] = &fstest.MapFile{Data: tone}
+	}
+	fsys["assets/voice/bo/.keep"] = &fstest.MapFile{} // a folder without voices
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	g.st.Streams.Viewer = "Pat"
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	i := slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })
+	show := l.cards[i].show
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	return g, w, fsys
+}
+
+// TestStreamsVoiceWaitsForTheLine: a game with recorded voices reads its lines aloud from
+// the start, with the read-aloud button even outside a browser; a line with its voice waits
+// for the voice to end before the next step, and a line without one lasts its timing.
+func TestStreamsVoiceWaitsForTheLine(t *testing.T) {
+	g, w, fsys := voicedShow(t, "Hello, everyone.")
+	if !g.desk.speak || !slices.Contains(w.controls(g), [2]int{int(ctlSpeak), 0}) {
+		t.Fatalf("voices do not read aloud (%v) or show the button: %v", g.desk.speak, w.controls(g))
+	}
+	wait := func(line string) time.Time {
+		for range 2000 {
+			if w.caption == line {
+				return g.streamNow()
+			}
+			wldFrames(t, g, 1)
+		}
+		t.Fatalf("%q is never said (caption %q)", line, w.caption)
+		return time.Time{}
+	}
+	at := wait("Welcome, Pat!")
+	if want := at.Add(seconds(g.db.Streams.Timing.LineSeconds("Welcome, Pat!"))); !w.busy.Equal(want) {
+		t.Errorf("a line without its voice lasts until %v, not its timing %v", w.busy, want)
+	}
+	at = wait("Hello, everyone.")
+	pcm, err := sound.VoiceClip(fsys, g.db.Streams.Voice("ann", "Hello, everyone."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	clip := seconds(sound.ClipSeconds(pcm))
+	if want := at.Add(clip + voiceGap); !w.busy.Equal(want) || clip == seconds(g.db.Streams.Timing.LineSeconds("Hello, everyone.")) {
+		t.Errorf("the voiced line waits until %v, not the voice's end %v (a clip of %v)", w.busy, want, clip)
+	}
+}
+
+// tonePCM is the test tone as a voice clip.
+func tonePCM(t *testing.T) []byte {
+	t.Helper()
+	tone, err := os.ReadFile("testdata/tone.ogg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pcm, err := sound.VoiceClip(fstest.MapFS{"tone.ogg": {Data: tone}}, "tone.ogg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pcm
+}
+
+// TestStreamsQuestionWaitsAfterTheVoice: a question read aloud gives the viewers timing.ask
+// after its line ends, whether speech synthesis says it has ended or its recorded voice
+// loads late (a browser still fetching it) and then plays.
+func TestStreamsQuestionWaitsAfterTheVoice(t *testing.T) {
+	asked := func(t *testing.T) (*Game, *streamWatch) {
+		t.Helper()
+		g, w, _ := voicedShow(t)
+		for range 3000 {
+			if w.ask != nil {
+				return g, w
+			}
+			wldFrames(t, g, 1)
+		}
+		t.Fatal("the question is never asked")
+		return nil, nil
+	}
+	t.Run("speech synthesis", func(t *testing.T) {
+		g, w := asked(t)
+		w.spoken = func() bool { return true } // the browser says the line has ended
+		wldFrames(t, g, 1)
+		if want := g.streamNow().Add(seconds(g.db.Streams.Timing.Ask)); w.ask == nil || w.busy.Before(want) {
+			t.Fatalf("the answers close at %v, before %v (asking: %v)", w.busy, want, w.ask != nil)
+		}
+	})
+	t.Run("a voice loaded late", func(t *testing.T) {
+		g, w := asked(t)
+		pcm := tonePCM(t)
+		v := &voiceLoad{file: "assets/voice/ann/late.ogg", done: make(chan struct{})}
+		w.voice = v
+		wldFrames(t, g, 1)
+		v.pcm = pcm
+		close(v.done)
+		wldFrames(t, g, 1)
+		if want := g.streamNow().Add(seconds(sound.ClipSeconds(pcm)) + voiceGap + seconds(g.db.Streams.Timing.Ask)); w.ask == nil || w.busy.Before(want.Add(-time.Second/ebiten.DefaultTPS)) {
+			t.Fatalf("the answers close at %v, before %v (asking: %v)", w.busy, want, w.ask != nil)
+		}
+	})
+	t.Run("a voice past its limit", func(t *testing.T) {
+		g, w := asked(t)
+		v := &voiceLoad{file: "assets/voice/ann/late.ogg", done: make(chan struct{}), pcm: tonePCM(t)}
+		limit := g.streamNow()
+		w.voice, w.limit, w.busy = v, limit, limit.Add(w.hold)
+		wldFrames(t, g, 1)
+		close(v.done) // after its limit: the line is not read any more
+		wldFrames(t, g, 1)
+		if want := limit.Add(seconds(g.db.Streams.Timing.Ask)); !w.busy.Equal(want) || w.spoken != nil {
+			t.Fatalf("a voice past its limit moves the answers' end from %v to %v", want, w.busy)
+		}
+	})
+}
+
+// TestStreamsSpeakerWhileTyping: while a comment is typed, a click on the field keeps typing,
+// and a click on the read-aloud button stops typing and turns reading aloud off.
+func TestStreamsSpeakerWhileTyping(t *testing.T) {
+	g, w, _ := voicedShow(t)
+	click := func(c watchControl) {
+		x, y, cw, ch := w.controlRect(g, [2]int{int(c), 0})
+		g.in.click, g.in.mouse = true, image.Pt(int(x+cw/2), int(y+ch/2))
+		w.input(g)
+		g.in.click = false
+	}
+	w.typing = true
+	click(ctlComment)
+	if !w.typing {
+		t.Fatal("a click on the comment field stops typing")
+	}
+	click(ctlSpeak)
+	if w.typing || g.desk.speak {
+		t.Fatalf("the read-aloud button while typing: typing %v, reading aloud %v", w.typing, g.desk.speak)
+	}
+}
+
+// TestStreamsSendEndsTyping: sending a comment ends typing, so the keys and the pads move
+// between the controls again (the tip button) without Escape first.
+func TestStreamsSendEndsTyping(t *testing.T) {
+	g, w, _ := voicedShow(t)
+	w.typing, w.field.text = true, "hello"
+	g.in.pressed[btnOK] = true
+	w.input(g)
+	g.in.pressed[btnOK] = false
+	if w.typing || !strings.Contains(chatText(w), "Pat: hello") {
+		t.Fatalf("after sending: typing %v, chat:\n%s", w.typing, chatText(w))
+	}
+}
+
+// TestStreamsTipChoiceKeptOverAQuestion: a question beginning while the tips are open
+// does not move the amount chosen with the keys (its answers take the controls' focus).
+func TestStreamsTipChoiceKeptOverAQuestion(t *testing.T) {
+	g, w, _ := voicedShow(t)
+	key := func(b button) {
+		g.in.pressed[b] = true
+		w.input(g)
+		g.in.pressed[b] = false
+	}
+	w.tips = true
+	key(btnDown)
+	w.run(g, data.Beat{Ask: &data.StreamAsk{Q: "Which?", Options: []data.StreamOption{{C: "A"}, {C: "B"}}, NPC: []data.NPCAnswer{{Name: "leaf"}}}})
+	gold := g.st.Gold
+	key(btnOK)
+	if paid := gold - g.st.Gold; paid != g.db.Streams.Tips[1] {
+		t.Fatalf("paid %d, not the second amount %d chosen before the question", paid, g.db.Streams.Tips[1])
+	}
+}
+
+// TestStreamsTipMessage: the tips show the comment field's text as their message and send it
+// with the amount chosen; closing them keeps the text, Backspace deleting in it.
+func TestStreamsTipMessage(t *testing.T) {
+	g, w, _ := voicedShow(t)
+	key := func(b button) {
+		g.in.pressed[b] = true
+		w.input(g)
+		g.in.pressed[b] = false
+	}
+	w.field.text, w.tips = "kept", true
+	key(btnCancel)
+	if w.tips || w.field.text != "kept" {
+		t.Fatalf("closing the tips: open %v, text %q", w.tips, w.field.text)
+	}
+	w.field.text, w.tips = "for seeds", true
+	key(btnOK)
+	if w.tips || w.field.text != "" || !strings.Contains(chatText(w), "Pat: for seeds") || len(w.cheers) != 1 || w.cheers[0].text != "for seeds" {
+		t.Fatalf("a tip with its message: open %v, field %q, chat:\n%s", w.tips, w.field.text, chatText(w))
+	}
+}
+
+// TestStreamsVoiceUnreadableSaysWhy: a voice gozen cannot play (Ogg Opus) is a line without
+// its voice, and the first one says why in the trace (and the log, a browser's console).
+func TestStreamsVoiceUnreadableSaysWhy(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	fsys["data/streams.yaml"].Data = append([]byte("voices: voice\n"), fsys["data/streams.yaml"].Data...)
+	opus := []byte("OggS" + strings.Repeat("\x00", 22) + "\x01\x13OpusHead")
+	for _, l := range []string{"Hello, everyone.", "That is all for today!"} {
+		fsys["assets/voice/ann/"+data.VoiceKey(l)+".ogg"] = &fstest.MapFile{Data: opus}
+	}
+	var trace bytes.Buffer
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }, Trace: &trace})
+	wldFrames(t, g, 40)
+	g.st.Streams.Viewer = "Pat"
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })].show
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	for i := 0; i < 4000 && !w.ended; i++ {
+		wldFrames(t, g, 1)
+	}
+	if n := strings.Count(trace.String(), `"error":`); n != 1 || !strings.Contains(trace.String(), "Ogg Vorbis") {
+		t.Fatalf("%d reasons in the trace, not 1 naming Ogg Vorbis:\n%s", n, trace.String())
+	}
+}
+
+// TestStreamsSettingsLanguageReachesTheChat: a language chosen in the settings, as one chosen
+// in the bar, has the crowds of the screens under them chat in it.
+func TestStreamsSettingsLanguageReachesTheChat(t *testing.T) {
+	g, w, _ := voicedShow(t)
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	watch, lobby := w.crowd, l.crowd
+	g.db.Words["ja"]["Hi!"] = "やあ！"
+	g.setLanguage("ja") // as the settings' row of the language does
+	if w.crowd == watch || l.crowd == lobby {
+		t.Fatal("the crowds keep the language they were made in")
+	}
+	for i := 0; i < 600 && !strings.Contains(chatText(w), "やあ！"); i++ {
+		wldFrames(t, g, 1)
+	}
+	if !strings.Contains(chatText(w), "やあ！") {
+		t.Fatalf("the crowd does not chat in the language chosen:\n%s", chatText(w))
+	}
+}
+
+// TestStreamsStayedEarnsWithoutLines: a viewer who watched most of a stream earns
+// affection.stayed at its end, whether or not the channel has lines to thank with.
+func TestStreamsStayedEarnsWithoutLines(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "bo" })].show // bo has no stayed lines
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	for i := 0; i < 4000 && !w.ended; i++ {
+		wldFrames(t, g, 1)
+	}
+	if p := broadcast.Progress(g.st.Streams, "bo").Points; !w.ended || p < g.db.Streams.Affection.Stayed {
+		t.Fatalf("watching bo's stream to the end earns %v points (ended %v), not stayed %v", p, w.ended, g.db.Streams.Affection.Stayed)
+	}
+}
+
+// TestStreamsWatchingUnlocksTheDuo: the time a channel's own stream is watched counts in
+// the save (not a duo's), and once each of a duo's hosts has been watched its unlock
+// minutes the duo streams when one of their streams ends: one card of the duo in place of
+// the two hosts' (slot.rest 0, every channel on the air), and the viewer watching one of
+// them sees that stream to its end.
+func TestStreamsWatchingUnlocksTheDuo(t *testing.T) {
+	fsys := streamsFS(t, "1")
+	fsys["data/streams.yaml"].Data = []byte(strings.NewReplacer("slot: {minutes: 0.01}", "slot: {minutes: 0.01, rest: 0}", "unlock: 0", "unlock: 0.01").Replace(string(fsys["data/streams.yaml"].Data)))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok || len(l.cards) != 2 {
+		t.Fatalf("a locked duo streams: %d cards", len(l.cards))
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	watch := func(id string) *streamWatch {
+		show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Key == id })].show
+		w := newStreamWatch(g, show, 100)
+		g.push(w)
+		return w
+	}
+	w := watch("ann")
+	wldFrames(t, g, 60)
+	if got := broadcast.Progress(g.st.Streams, "ann").Watched; got < 0.9 || got > 1.1 {
+		t.Fatalf("a second of ann's stream counts %v seconds", got)
+	}
+	w.leave(g)
+	broadcast.Progress(g.st.Streams, "ann").Watched = 0.6
+	w = watch("bo")
+	for i := 0; i < 3000 && slices.IndexFunc(g.desk.shows, func(s *broadcast.Show) bool { return len(s.Hosts) > 1 }) < 0; i++ {
+		wldFrames(t, g, 1)
+	}
+	if got := hosts(g.desk.shows); len(got) != 1 || got[0] != "ann+bo" {
+		t.Fatalf("on the air after both were watched: %v", got)
+	}
+	if w.show.Key != "bo" || w.ended && w.next < len(w.show.Beats) {
+		t.Fatalf("the stream of bo watched is cut (ended %v at beat %d of %d, %s)", w.ended, w.next, len(w.show.Beats), w.show.Key)
+	}
+	w.leave(g)
+	l.update(g)
+	if len(l.cards) != 1 || len(l.cards[0].show.Hosts) != 2 {
+		t.Fatalf("the lobby shows %d cards, not the duo's alone", len(l.cards))
+	}
+}
+
+// TestStreamsGuestInTheLobby: a guest has no card and is never listed offline; its duo with
+// its host is the host's card.
+func TestStreamsGuestInTheLobby(t *testing.T) {
+	for _, duo := range []string{"0", "1"} {
+		fsys := streamsFS(t, duo)
+		fsys["data/streams.yaml"].Data = []byte(strings.Replace(string(fsys["data/streams.yaml"].Data), "  - {id: bo, actor: bo, tag: Cooking, room: x.png, frame: {cx: 373, top: 40, bottom: 640}, episodes: [streams/one.yaml]}", "  - {id: bo, actor: bo, guest: true, frame: {cx: 373, top: 40, bottom: 640}}", 1))
+		t.Run(duo, func(t *testing.T) {
+			g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+			wldFrames(t, g, 40)
+			l, ok := g.stack[0].(*streamLobby)
+			if !ok || len(l.cards) != 1 || len(l.offline(g)) != 0 {
+				t.Fatalf("cards %d, offline %v", len(l.cards), l.offline(g))
+			}
+			if want := map[string]string{"0": "ann", "1": "ann+bo"}[duo]; l.cards[0].show.Key != want {
+				t.Fatalf("the card is %s, not %s", l.cards[0].show.Key, want)
+			}
+		})
+	}
+}
+
+// TestStreamsDuoAnswerInTurn: a line of an answer written for the other host of a duo is
+// said by that host.
+func TestStreamsDuoAnswerInTurn(t *testing.T) {
+	fsys := streamsFS(t, "1")
+	fsys["streams/duo.yaml"].Data = []byte(strings.Replace(string(fsys["streams/duo.yaml"].Data), "    - bo: {face: surprised, text: Hello from Bo!}\n", "    - ask: {q: Beans or peas?, options: [{c: Beans, r: [{bo: Bo likes beans.}, Me too.]}, {c: Peas, r: [{bo: {face: surprised, text: Peas for Bo.}}]}], npc: [[leaf, 0]]}\n", 1))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok || len(l.cards) != 1 {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	show := l.cards[0].show
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	for i := 0; i < 4000 && !strings.Contains(chatText(w), "Me too."); i++ {
+		wldFrames(t, g, 1)
+	}
+	if chat := chatText(w); !strings.Contains(chat, "Bo: Bo likes beans.") || !strings.Contains(chat, "Ann: Me too.") {
+		t.Fatalf("the answer's lines are not said in turn:\n%s", chat)
+	}
+}
+
+// hosts are the keys of the shows.
+func hosts(shows []*broadcast.Show) []string {
+	var out []string
+	for _, s := range shows {
+		out = append(out, s.Key)
+	}
+	return out
+}
+
+// TestStreamsLateVoiceIsSpoken: a line whose voice a browser is still fetching waits for it
+// voiceWait at most, the line lasting its timing at least, and is then read as a line
+// without its voice (by speech synthesis in a browser).
+func TestStreamsLateVoiceIsSpoken(t *testing.T) {
+	g, w, _ := voicedShow(t, "Hello, everyone.")
+	f := g.db.Streams.Voice("ann", "Hello, everyone.")
+	w.ahead[f] = &voiceLoad{file: f, done: make(chan struct{})} // still coming
+	now := g.streamNow()
+	w.say(g, streamSay{line: "Hello, everyone."})
+	if !w.limit.Equal(now.Add(voiceWait)) || w.busy.Before(now.Add(seconds(g.db.Streams.Timing.LineSeconds("Hello, everyone.")))) || w.voice == nil {
+		t.Fatalf("waiting for the voice: limit %v, busy %v from %v", w.limit, w.busy, now)
+	}
+	wldFrames(t, g, int(voiceWait.Seconds()*ebiten.DefaultTPS)+1)
+	if w.voice != nil {
+		t.Fatal("the line still waits for its voice after voiceWait")
+	}
+}
+
+// TestStreamsTipLineVoiced: a bot's tip line of the crowd is read out in quotes with its
+// recorded voice, keyed by the line before it is quoted.
+func TestStreamsTipLineVoiced(t *testing.T) {
+	g, w, fsys := voicedShow(t, "For seeds")
+	w.botTip(g)
+	for i := 0; i < 2000 && w.caption != g.quote("For seeds"); i++ {
+		wldFrames(t, g, 1)
+	}
+	at := g.streamNow()
+	pcm, err := sound.VoiceClip(fsys, g.db.Streams.Voice("ann", "For seeds"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := at.Add(seconds(sound.ClipSeconds(pcm)) + voiceGap); w.caption != g.quote("For seeds") || !w.busy.Equal(want) {
+		t.Fatalf("the tip line %q waits until %v, not its voice's end %v", w.caption, w.busy, want)
+	}
+}
+
+// TestStreamsCaptionsButton: the CC button beside the full screen's on the stage, as large
+// and clear of it, turns the stage's caption off and on (the chat keeps the lines), with a
+// click or C, and the choice is kept in the settings.
+func TestStreamsCaptionsButton(t *testing.T) {
+	g, w, _ := voicedShow(t)
+	w.caption = "Hello."
+	cc := w.controlRect
+	x, y, cw, ch := cc(g, [2]int{int(ctlCaptions), 0})
+	fx, fy, _, _ := cc(g, [2]int{int(ctlFull), 0})
+	if cw < 44 || ch < 44 || y != fy || x+cw > fx {
+		t.Fatalf("the CC button at %v,%v %vx%v beside the full screen's at %v,%v", x, y, cw, ch, fx, fy)
+	}
+	g.in.click, g.in.mouse = true, image.Pt(int(x+cw/2), int(y+ch/2))
+	w.input(g)
+	g.in.click = false
+	if w.shownCaption(g) != "" || !g.cfg.StreamCaptionsOff {
+		t.Fatalf("the caption after CC: %q, setting %v", w.shownCaption(g), g.cfg.StreamCaptionsOff)
+	}
+	if b, err := g.storeRead(g.configPath()); err != nil || !strings.Contains(string(b), `"stream_captions_off": true`) {
+		t.Fatalf("the settings do not keep the captions off: %s, %v", b, err)
+	}
+	g.in.pressed[btnCaptions] = true
+	w.input(g)
+	g.in.pressed[btnCaptions] = false
+	if w.shownCaption(g) != "Hello." {
+		t.Fatal("C does not turn the captions on again")
+	}
+}
+
+// TestStreamsPlateKeepsTheName: the name plate shows a host's whole name, in English with a
+// long tag too, on a wide screen, a phone held upright and in full screen; a tag with no room
+// is left out, never the name cut for it.
+func TestStreamsPlateKeepsTheName(t *testing.T) {
+	g, w, _ := voicedShow(t)
+	g.db.Actors["ann"].Name = "Nox"
+	for _, tag := range []string{"Programming", "Family Life", "Music", "A tag far too long to sit beside the name on a phone held upright"} {
+		w.show.Hosts[0].Tag = tag
+		for _, view := range [][3]float64{{1280, 720, 1}, {390, 844, 3}} {
+			for _, full := range []bool{false, true} {
+				g.cfg.StreamFull = full
+				g.fitView(view[0], view[1], view[2])
+				size, tagSize := 18.0, 13.0
+				if g.view.tall {
+					size, tagSize = 14, 11
+				}
+				var name, shown string
+				var pw float64
+				gfx.Pop(func() { name, shown, pw = w.plate(g, g.watchLayout(), size, tagSize) })
+				if name != "Nox" {
+					t.Errorf("tag %q, %v, full %v: the plate shows %q (tag %q, %v wide)", tag, view, full, name, shown, pw)
+				}
+			}
+		}
+	}
+}
+
+// TestStreamsNoVoicesNoButton: outside a browser, a game without recorded voices has no
+// read-aloud button.
+func TestStreamsNoVoicesNoButton(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	w := newStreamWatch(g, l.cards[0].show, 100)
+	if g.desk.speak || slices.Contains(w.controls(g), [2]int{int(ctlSpeak), 0}) {
+		t.Fatalf("a game without voices reads aloud (%v) or shows the button: %v", g.desk.speak, w.controls(g))
+	}
+}
+
+// TestStreamsChatMemory: a reaction book remembers what a viewer said and brings it up on
+// a later visit, its rules read the visits and the hour of a comment (value.visits,
+// value.hour), and a comment it found nothing in is read back two beats later.
+func TestStreamsChatMemory(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	fsys["data/streams.yaml"].Data = append([]byte("echo: {max_runes: 24, chance: 1}\n"), fsys["data/streams.yaml"].Data...)
+	fsys["assets/talk.yaml"] = &fstest.MapFile{Data: []byte(`lexicon:
+  snack: [cookies, chips]
+people:
+  - id: ann
+    rules:
+      - id: night
+        when: value.hour >= 22 || value.hour < 5
+        say: [Up late?]
+      - id: snack
+        when: tag.snack > 0
+        say: ["{slot.snack}, nice."]
+        remember: [{key: snack, set: "{slot.snack}"}]
+      - id: regular
+        when: value.visits >= 2 && mem.snack != 0 && length > 6
+        say: ["{mem.snack} fan {from}, welcome back."]
+    dodge:
+      unknown: ["Hm, {text}."]
+`)}
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	g.st.Streams.Viewer = "Pat"
+	watch := func() *streamWatch {
+		l, ok := g.stack[0].(*streamLobby)
+		if !ok {
+			t.Fatalf("scene %T", g.stack[0])
+		}
+		show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })].show
+		show.Start = g.streamNow()
+		w := newStreamWatch(g, show, 100)
+		g.push(w)
+		return w
+	}
+	until := func(w *streamWatch, done func() bool) {
+		for range 3000 {
+			if done() {
+				return
+			}
+			wldFrames(t, g, 1)
+		}
+		t.Fatalf("never happened; chat:\n%s", chatText(w))
+	}
+	w := watch()
+	w.comments = append(w.comments, "I love cookies")
+	until(w, func() bool { return strings.Contains(chatText(w), "Ann: cookies, nice.") })
+	w.comments = append(w.comments, "zzz")
+	until(w, func() bool { return len(w.comments) == 0 })
+	if len(w.later) != 1 || w.later[0].at <= w.next || strings.Contains(chatText(w), "Hm, zzz.") {
+		t.Fatalf("an unknown comment is not put off: later %+v at beat %d", w.later, w.next)
+	}
+	due := w.later[0].at
+	until(w, func() bool { return strings.Contains(chatText(w), "Ann: Hm, zzz.") })
+	if w.next < due {
+		t.Errorf("an unknown comment is read back at beat %d, before %d", w.next, due)
+	}
+	var noted []unanswered
+	if b, err := g.store.Read(unansweredFile); err != nil || json.Unmarshal(b, &noted) != nil || len(noted) != 1 || noted[0].Text != "zzz" || noted[0].Channel != "ann" || noted[0].Language != "en" {
+		t.Errorf("the comment found nothing in is not kept alone: %+v %v", noted, err)
+	}
+	w.leave(g)
+	w = watch()
+	w.comments = append(w.comments, "hello there")
+	until(w, func() bool { return strings.Contains(chatText(w), "Ann: cookies fan Pat, welcome back.") })
+}
+
+// TestStreamsFamilyEpisode: a comment on an episode with family: true gives the reaction
+// book value.family 1, and on another episode 0.
+func TestStreamsFamilyEpisode(t *testing.T) {
+	for _, tc := range []struct {
+		family, want string
+	}{{"family: true\n", "Ann: For the family."}, {"", "Ann: Just us."}} {
+		t.Run(tc.want, func(t *testing.T) {
+			fsys := streamsFS(t, "0")
+			fsys["streams/one.yaml"].Data = append([]byte(tc.family), fsys["streams/one.yaml"].Data...)
+			fsys["assets/talk.yaml"] = &fstest.MapFile{Data: []byte(`people:
+  - id: ann
+    rules:
+      - id: family
+        when: value.family == 1
+        say: [For the family.]
+      - id: grown
+        when: value.family == 0
+        say: [Just us.]
+`)}
+			g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+			wldFrames(t, g, 40)
+			g.st.Streams.Viewer = "Pat"
+			l, ok := g.stack[0].(*streamLobby)
+			if !ok {
+				t.Fatalf("scene %T", g.stack[0])
+			}
+			show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })].show
+			show.Start = g.streamNow()
+			w := newStreamWatch(g, show, 100)
+			g.push(w)
+			w.comments = append(w.comments, "hello")
+			for i := 0; i < 3000 && !strings.Contains(chatText(w), tc.want); i++ {
+				wldFrames(t, g, 1)
+			}
+			if !strings.Contains(chatText(w), tc.want) {
+				t.Errorf("%q: no %q in the chat:\n%s", tc.family, tc.want, chatText(w))
+			}
+		})
+	}
+}
+
+// TestStreamsRepliesInTheLanguageShown: the reaction book's lines are texts of the game to
+// translate, and a reply is said in the language shown, its fields filled after: a line
+// with a translation in it, a line without one as written.
+func TestStreamsRepliesInTheLanguageShown(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	fsys["lang/ja.yaml"].Data = append(fsys["lang/ja.yaml"].Data, []byte("  \"Plants!\": \"植物！\"\n")...)
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	texts := map[string]bool{}
+	for _, st := range g.db.SourceTexts() {
+		texts[st.Text] = true
+	}
+	if !texts["Plants!"] || !texts["You said {text}."] || !texts["Hm."] {
+		t.Fatal("the reaction book's lines are not texts of the game to translate")
+	}
+	g.setLanguage("ja")
+	g.st.Streams.Viewer = "Pat"
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })].show
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	w.comments = append(w.comments, "beans")
+	for i := 0; i < 3000 && !strings.Contains(chatText(w), "You said beans."); i++ {
+		wldFrames(t, g, 1)
+	}
+	if chat := chatText(w); !strings.Contains(chat, "Ann: 植物！") || !strings.Contains(chat, "Ann: You said beans.") {
+		t.Fatalf("the reply is not in the language shown:\n%s", chat)
+	}
+}
+
+// TestStreamsRepliesFollowTheLanguage: a reply waiting to be said, the rest of one of two
+// lines or a comment read back later, is said in the language shown when it is said, its
+// fields filled with what they were when the book answered.
+func TestStreamsRepliesFollowTheLanguage(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	fsys["data/streams.yaml"].Data = append([]byte("echo: {max_runes: 24, chance: 1}\n"), fsys["data/streams.yaml"].Data...)
+	fsys["lang/ja.yaml"].Data = append(fsys["lang/ja.yaml"].Data, []byte("  \"You said {text}.\": \"「{text}」って言ったね。\"\n  \"Hm.\": \"うーん。\"\n")...)
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	g.st.Streams.Viewer = "Pat"
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })].show
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	until := func(done func() bool) {
+		t.Helper()
+		for range 3000 {
+			if done() {
+				return
+			}
+			wldFrames(t, g, 1)
+		}
+		t.Fatalf("never happened; chat:\n%s", chatText(w))
+	}
+	w.comments = append(w.comments, "beans")
+	until(func() bool { return w.caption == "Plants!" })
+	g.setLanguage("ja")
+	until(func() bool {
+		return strings.Contains(chatText(w), "「beans」って言ったね。") || strings.Contains(chatText(w), "You said beans.")
+	})
+	if !strings.Contains(chatText(w), "Ann: 「beans」って言ったね。") {
+		t.Fatalf("the second line of a reply is not said in the language shown:\n%s", chatText(w))
+	}
+	g.setLanguage("en")
+	w.comments = append(w.comments, "zzz")
+	until(func() bool { return len(w.later) == 1 })
+	g.setLanguage("ja")
+	until(func() bool {
+		return strings.Contains(chatText(w), "Ann: うーん。") || strings.Contains(chatText(w), "Ann: Hm.")
+	})
+	if !strings.Contains(chatText(w), "Ann: うーん。") {
+		t.Fatalf("a comment read back later is not said in the language shown:\n%s", chatText(w))
+	}
+}
+
+// TestStreamsComeBackWhereLeft: the watch view goes at its own pace (voices, captions),
+// ahead of the stream's clock at times; leaving and opening the same stream again comes in
+// where it left, not back at the clock's beat to say again what was heard, and at the
+// clock's beat once the clock is past it.
+func TestStreamsComeBackWhereLeft(t *testing.T) {
+	g := streamsGame(t, "0")
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	show := l.cards[0].show
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	w.next = 2 // ahead of the clock, at beat 0
+	w.leave(g)
+	if again := newStreamWatch(g, show, 100); again.next != 2 {
+		t.Fatalf("opened again at beat %d, not 2 where it was left", again.next)
+	}
+	show.Start = g.streamNow().Add(-seconds(show.Times[len(show.Beats)-1] + 0.1)) // the clock at the last beat
+	if again := newStreamWatch(g, show, 100); again.next != len(show.Beats)-1 {
+		t.Fatalf("opened again at beat %d, not the clock's %d", again.next, len(show.Beats)-1)
+	}
+}
+
+// TestStreamsTipsCheer: a tip, the player's or a bot's, shows a band over the stage for
+// tipBand, one after another; one of the top two tiers stays over the chat, the top 120
+// seconds; and a host reads a tip out with the happiest face its puppet has.
+func TestStreamsTipsCheer(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	fsys["data/streams.yaml"].Data = []byte(strings.Replace(string(fsys["data/streams.yaml"].Data), "tips: [10, 50]", "tips: [10, 50, 100, 500]", 1))
+	fsys["assets/streamer/puppet.yaml"].Data = []byte(strings.Replace(string(fsys["assets/streamer/puppet.yaml"].Data), "  smile: {}\n", "  smile: {}\n  laugh: {}\n", 1))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	g.st.Streams.Viewer, g.st.Gold = "Pat", 1000
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	w := newStreamWatch(g, l.cards[0].show, 100)
+	g.push(w)
+	laugh, _ := w.bodies[0].Rig().Face("laugh")
+	w.queue = append([]streamSay{{line: "Hi", quote: true}}, w.queue...) // a tip's comment read out
+	w.busy = g.streamNow()
+	for i := 0; i < 600 && w.caption != g.quote("Hi"); i++ {
+		wldFrames(t, g, 1)
+	}
+	if w.caption != g.quote("Hi") || w.bodies[0].Motion.Pose().Face != laugh {
+		t.Errorf("a tip is not read out with the laughing face (caption %q, face %d)", w.caption, w.bodies[0].Motion.Pose().Face)
+	}
+	_, top, _, _ := w.chatRect(g)
+	w.tip(g, 500)
+	w.botTip(g)
+	if len(w.cheers) != 2 || w.cheers[0].who != "Pat" || w.cheers[0].amount != 500 {
+		t.Fatalf("the bands of the tips %+v", w.cheers)
+	}
+	if p := w.pin(g); p == nil || p.amount != 500 || !p.until.Equal(g.streamNow().Add(120*time.Second)) {
+		t.Fatalf("the top tip kept over the chat %+v", p)
+	}
+	if _, y, _, _ := w.chatRect(g); y != top+pinH {
+		t.Fatalf("the chat starts at %v under the kept tip, not %v", y, top+pinH)
+	}
+	wldFrames(t, g, int(tipBand.Seconds()*ebiten.DefaultTPS)+1)
+	if len(w.cheers) != 1 || w.cheers[0].who == "Pat" {
+		t.Fatalf("after %v the bands are %+v, not the bot's alone", tipBand, w.cheers)
+	}
+	wldFrames(t, g, int(tipBand.Seconds()*ebiten.DefaultTPS)+1)
+	if len(w.cheers) != 0 {
+		t.Fatalf("the bands stay: %+v", w.cheers)
+	}
+	wldFrames(t, g, int(120*ebiten.DefaultTPS))
+	if w.pin(g) != nil {
+		t.Error("the tip stays over the chat after 120 seconds")
+	}
+}
+
+// TestStreamsUnansweredKeepsTheLast: the file of unanswered comments keeps the last 200,
+// and a damaged file starts again.
+func TestStreamsUnansweredKeepsTheLast(t *testing.T) {
+	g := streamsGame(t, "0")
+	if err := g.store.Write(unansweredFile, []byte("{damaged")); err != nil {
+		t.Fatal(err)
+	}
+	for i := range unansweredMax + 5 {
+		g.noteUnanswered("ann", fmt.Sprint("comment ", i))
+	}
+	var noted []unanswered
+	b, err := g.store.Read(unansweredFile)
+	if err != nil || json.Unmarshal(b, &noted) != nil {
+		t.Fatalf("%s: %v", b, err)
+	}
+	if len(noted) != unansweredMax || noted[0].Text != "comment 5" || noted[len(noted)-1].Text != fmt.Sprint("comment ", unansweredMax+4) || noted[0].At != noonish.Format(time.RFC3339) {
+		t.Fatalf("kept %d, from %+v to %+v", len(noted), noted[0], noted[len(noted)-1])
+	}
+}
+
+// TestStreamsSlot: a stream plays its episodes one after another with the host's bridge
+// between them until its slot has passed, marks each episode seen as it is watched, shows
+// the title of the episode playing, and thanks the viewer once at the end of the slot.
+func TestStreamsSlot(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	y := string(fsys["data/streams.yaml"].Data)
+	y = strings.Replace(y, "slot: {minutes: 0.01}", "slot: {minutes: 0.2}", 1)
+	y = strings.Replace(y, "first: [", "bridges: [Water break.], first: [", 1)
+	fsys["data/streams.yaml"].Data = []byte(y)
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	g.st.Streams.Viewer = "Pat"
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })].show
+	if len(show.Episodes) != 2 {
+		t.Fatalf("a slot of 12 s has %d episodes of about 10 s", len(show.Episodes))
+	}
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	p := g.st.Streams.Channels["ann"]
+	for range 3000 {
+		if w.part == 1 {
+			break
+		}
+		wldFrames(t, g, 1)
+	}
+	if w.part != 1 || p.Next != 1 {
+		t.Fatalf("the first episode is not seen before the second (part %d, next %d)", w.part, p.Next)
+	}
+	for range 3000 {
+		if w.ended {
+			break
+		}
+		wldFrames(t, g, 1)
+	}
+	chat := chatText(w)
+	if !w.ended || p.Next != 2 || strings.Count(chat, "Ann: Water break.") != 1 || strings.Count(chat, "Ann: Thanks, Pat.") != 1 || strings.Count(chat, "Ann: Hello, everyone.") != 2 {
+		t.Fatalf("ended %v, next %d, chat:\n%s", w.ended, p.Next, chat)
+	}
+	if bridge := strings.Index(chat, "Ann: Water break."); bridge < strings.Index(chat, "Ann: That is all for today!") || bridge > strings.LastIndex(chat, "Ann: Hello, everyone.") {
+		t.Errorf("the bridge is not between the episodes:\n%s", chat)
+	}
+}
+
+// TestStreamsStartAgain: with slot.rest a stream that ends starts again after the rest, so
+// the channel is on the air again in the lobby with a new stream.
+func TestStreamsStartAgain(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	fsys["data/streams.yaml"].Data = []byte(strings.Replace(string(fsys["data/streams.yaml"].Data), "slot: {minutes: 0.01}", "slot: {minutes: 0.01, rest: 0.05}", 1))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	first := g.desk.shows[0]
+	wldFrames(t, g, int((first.Seconds()+3+5)*ebiten.DefaultTPS)) // past its end and a rest of 3 s
+	again := g.desk.shows[slices.IndexFunc(g.desk.shows, func(s *broadcast.Show) bool { return s.Key == first.Key })]
+	if again == first || again.Key != first.Key || !again.Live(g.streamNow()) || !again.Start.Equal(first.Start.Add(seconds(first.Seconds()+3))) {
+		t.Fatalf("the stream does not start again after its rest: %v from %v", again.Start, first.Start)
+	}
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok || len(l.cards) != 2 || len(l.offline(g)) != 0 {
+		t.Fatalf("the lobby does not show every channel on the air again")
+	}
+}

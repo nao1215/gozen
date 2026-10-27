@@ -57,6 +57,11 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0045](0045-building-surfaces-and-roofs.md) | Building surfaces and bounded roofs | Accepted | Implemented 2026-10-25 |
 | [0046](0046-moving-portraits-on-the-novel-stage.md) | Opt-in moving portraits on the novel stage (`ui.stage_puppets`) | Accepted | Implemented 2026-10-26 |
 | [0046](0047-headless-scripted-runs.md) | Headless scripted runs (`gozen sim script`) | Accepted | Implemented 2026-10-26 |
+| [0048](0048-live-streams.md) | Live streams: the stream lobby and watch view, the stream data, and the reaction book's whole, exact and except words | Accepted | Implemented 2026-10-27 |
+| [0049](0049-games-without-menus.md) | Games without menus (`menus: none`): no title screen and no game menu, opening on the newest save | Accepted | Implemented 2026-10-27 |
+| [0050](0050-stream-screens-fit-the-window.md) | Stream screens fit the window: a portrait layout on a phone held upright, a landscape one fitted on its side, touch scrolling and the keyboard | Accepted | Implemented 2026-10-27 |
+| [0051](0051-smaller-faster-web-exports.md) | Smaller and faster web exports: a gzipped player, WebP pictures and gzipped files, the media fetched last, and a startup without go-yaml's per-condition reformatting | Accepted | Implemented 2026-10-27 |
+| [0052](0052-stream-voices-slots-and-chat.md) | Stream voices, slots and the chat's memory: recorded lines named by the SHA-1 of their text and waited for, a stream that plays an hour of episodes with bridges between them, a chat that remembers the viewer and does not repeat its lines soon, and a local record of the comments no book answered | Accepted | Implemented 2026-10-27 |
 
 [ADR 0041](0041-yaml-authoring-and-distribution.md) retires the public Go APIs; current implementation boundaries are in [Boundaries](../architecture/boundaries.md). Earlier entries record historical decisions.
 

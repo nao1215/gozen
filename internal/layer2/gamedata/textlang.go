@@ -271,6 +271,64 @@ func (db *DB) SourceTexts() []SourceText {
 	for _, id := range FactionIDs(db) {
 		add("factions."+id+".name", src(&db.Factions[id].Name))
 	}
+	if st := db.Streams; st != nil {
+		all := func(w string, lines []string) {
+			for i, l := range lines {
+				add(fmt.Sprintf("%s[%d]", w, i), l)
+			}
+		}
+		all(st.file+" crowd.names", st.Crowd.Names)
+		all(st.file+" crowd.lines.any", st.Crowd.Lines.Any)
+		all(st.file+" crowd.lines.morning", st.Crowd.Lines.Morning)
+		all(st.file+" crowd.lines.evening", st.Crowd.Lines.Evening)
+		all(st.file+" crowd.tip_lines", st.Crowd.TipLines)
+		var episodes []*Episode
+		for i, ch := range st.Channels {
+			w := fmt.Sprintf("%s channels[%d]", st.file, i)
+			add(w+".tag", ch.Tag)
+			add(w+".tagline", ch.Tagline)
+			for j, g := range ch.Greet {
+				all(fmt.Sprintf("%s.greet[%d]", w, j), g)
+			}
+			all(w+".first", ch.First)
+			all(w+".streak", ch.Streak)
+			all(w+".stayed", ch.Stayed)
+			all(w+".bridges", ch.Bridges)
+			episodes = append(episodes, ch.Shows...)
+		}
+		for _, d := range st.Duos {
+			episodes = append(episodes, d.Shows...)
+		}
+		for _, e := range episodes {
+			add(e.file+" title", e.Title)
+			all(e.file+" lobby", e.Lobby)
+			for i, part := range e.Parts {
+				for j, b := range part {
+					w := fmt.Sprintf("%s parts[%d][%d]", e.file, i, j)
+					switch {
+					case b.Line != nil:
+						add(w, b.Line.Text)
+					case b.Chat != nil:
+						all(w+".chat", b.Chat)
+					case b.Ask != nil:
+						add(w+".ask.q", b.Ask.Q)
+						for k, n := range b.Ask.NPC {
+							add(fmt.Sprintf("%s.ask.npc[%d]", w, k), n.Name)
+						}
+						for k, o := range b.Ask.Options {
+							add(fmt.Sprintf("%s.ask.options[%d].c", w, k), o.C)
+							all(fmt.Sprintf("%s.ask.options[%d].r", w, k), replyTexts(o.R))
+						}
+					}
+				}
+			}
+		}
+	}
+	for _, id := range slices.Sorted(maps.Keys(db.ReactionBooks)) {
+		for i, l := range db.ReactionBooks[id].Lines(id) {
+			add(fmt.Sprintf("reactions.%s[%d]", id, i), l)
+		}
+	}
 	var cmds func(w string, cs []Command)
 	cmds = func(w string, cs []Command) {
 		for i := range cs {

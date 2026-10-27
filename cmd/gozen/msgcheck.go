@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"path"
 	"regexp"
 	"slices"
@@ -294,7 +295,67 @@ func languageMessages(db *gamedata.DB, fsys fs.FS, code string) ([]msgIssue, err
 		}
 		return nil
 	})
+	if err == nil && db.Streams != nil {
+		var more []msgIssue
+		more, err = streamMessages(db, fsys, tag, tr)
+		out = append(out, more...)
+	}
 	return out, err
+}
+
+// streamKeys are the keys of the stream files whose texts a streamer says as captions.
+var streamKeys = map[string]bool{"say": true, "q": true, "r": true, "greet": true, "first": true, "streak": true, "stayed": true}
+
+// streamMessages lays out the captions of the stream file and its episodes: a line the
+// streamer says that takes more than the caption's lines.
+func streamMessages(db *gamedata.DB, fsys fs.FS, tag string, tr func(string) string) ([]msgIssue, error) {
+	keys := maps.Clone(streamKeys)
+	for _, c := range db.Streams.Channels {
+		keys[c.ID] = true
+	}
+	var out []msgIssue
+	var said func(file string, n ast.Node)
+	said = func(file string, n ast.Node) {
+		switch v := n.(type) {
+		case *ast.SequenceNode:
+			for _, it := range v.Values {
+				said(file, it)
+			}
+		case *ast.MappingNode, *ast.MappingValueNode:
+			for _, kv := range pairs(v) {
+				if kv.Key.String() == "text" {
+					said(file, kv.Value)
+				}
+			}
+		default:
+			if text, line, ok := scalar(n); ok {
+				text = embedRe.ReplaceAllString(tr(text), "〇〇〇")
+				if lines := play.StreamCaptionLines(&db.Game, text); lines > play.StreamCaptionMax {
+					out = append(out, msgIssue{file + tag, line, lines, "stream caption", text})
+				}
+			}
+		}
+	}
+	for _, name := range db.Streams.Files() {
+		b, err := fs.ReadFile(fsys, name)
+		if err != nil {
+			return nil, err
+		}
+		f, err := parser.ParseBytes(b, 0)
+		if err != nil {
+			return nil, err
+		}
+		for _, doc := range f.Docs {
+			ast.Walk(msgVisitor(func(n ast.Node) {
+				for _, kv := range pairs(n) {
+					if keys[kv.Key.String()] {
+						said(name, kv.Value)
+					}
+				}
+			}), doc)
+		}
+	}
+	return out, nil
 }
 
 type msgVisitor func(ast.Node)

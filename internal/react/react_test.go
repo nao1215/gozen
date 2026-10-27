@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/fs"
 	"math/rand/v2"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -630,6 +631,9 @@ func TestBookErrors(t *testing.T) {
 		"tag with a field":               strings.Replace(clerk, "when: tag.greet > 0\n        say: [\"Hello", "when: tag > 0\n        say: [\"Hello", 1),
 		"mood with a field":              strings.Replace(clerk, "when: tag.rude > 0", "when: mood.x > 0", 1),
 		"a lexicon word of a map of two": strings.Replace(clerk, "greet: [hello, hi,", "greet: [{a: 1, b: 2}, hi,", 1),
+		"except without words":           strings.Replace(clerk, "lexicon:\n", "lexicon:\n  none: {except: [x]}\n", 1),
+		"except of an empty word":        strings.Replace(clerk, "lexicon:\n", "lexicon:\n  sun: {words: [sun], except: [\"!\"]}\n", 1),
+		"an empty say entry":             strings.Replace(clerk, "say: [\"Goodbye\"]", "say: [[]]", 1),
 	}
 	for name, src := range cases {
 		if src == clerk {
@@ -672,4 +676,180 @@ func TestBookYAMLPaths(t *testing.T) {
 func atLeast(v any, n float64) bool {
 	f, ok := v.(float64)
 	return ok && f >= n
+}
+
+// TestWholeExactExceptAndLineLists checks a lexicon word matched only as a whole word
+// of the text as written, an exact word not matched through normalization, an
+// occurrence inside an except word not counted while another one is, a rule saying a
+// list of lines in order, and {text}.
+func TestWholeExactExceptAndLineLists(t *testing.T) {
+	book, err := Parse([]byte(`
+lexicon:
+  cat: [{word: cat, whole: true}]
+  sun: {words: [sun], except: [sunday]}
+  moon: [{word: ムーン, exact: true}]
+people:
+  - id: host
+    rules:
+      - id: cat
+        when: tag.cat > 0
+        say: [[Cats!, "You said: {text}"]]
+      - id: sun
+        when: tag.sun > 0
+        say: [Sunny.]
+      - id: moon
+        when: tag.moon > 0
+        say: [Moon.]
+    dodge:
+      unknown: [Hm.]
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := New(book, "host", Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		text string
+		want []string
+	}{
+		{"I like CATS", []string{"Hm."}},
+		{"a category", []string{"Hm."}},
+		{"my Cat, again", []string{"Cats!", "You said: my Cat, again"}},
+		{"the sun is out", []string{"Sunny."}},
+		{"see you sunday", []string{"Hm."}},
+		{"sunday sun", []string{"Sunny."}},
+		{"むーん", []string{"Hm."}},
+		{"ムーンだ", []string{"Moon."}},
+	} {
+		r, err := m.React(Stimulus{Kind: KindSay, From: "viewer", Text: tc.text})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Join(r.Lines, "|") != strings.Join(tc.want, "|") {
+			t.Errorf("%q: lines %q, want %q", tc.text, r.Lines, tc.want)
+		}
+	}
+}
+
+// TestWrittenLines: a reaction gives its lines as the book writes them beside the filled
+// ones (a rule that asks, the question too), and Lines lists a person's lines as written.
+func TestWrittenLines(t *testing.T) {
+	m := mind(t)
+	r := do(t, m, Stimulus{Kind: "event", From: "rich", Tags: []string{"gift"}, Values: map[string]float64{"amount": 5000}})
+	if len(r.Written) != 1 || r.Written[0] != "{from}、ありがと！" || r.Lines[0] != "rich、ありがと！" {
+		t.Fatalf("lines %q, written %q", r.Lines, r.Written)
+	}
+	if r = do(t, m, say("ねこ")); len(r.Written) != 2 || r.Written[1] != "犬派？ 猫派？" {
+		t.Fatalf("a rule that asks: written %q", r.Written)
+	}
+	b, err := Parse([]byte(host))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := b.Lines("host")
+	for _, want := range []string{"わかってるじゃん", "{mem.pet}の話、覚えてるよ", "犬派？ 猫派？", "日本語でおｋ", "それさっきも言った"} {
+		if !slices.Contains(lines, want) {
+			t.Errorf("Lines lacks %q: %q", want, lines)
+		}
+	}
+	if b.Lines("nobody") != nil {
+		t.Error("an unknown person has lines")
+	}
+}
+
+// TestLinesAreNotRepeatedSoon: a list of lines (a rule's say, a dodge) does not say again
+// any of the lines it said the last half of its length times, also after Save and Restore.
+func TestLinesAreNotRepeatedSoon(t *testing.T) {
+	b, err := Parse([]byte(`
+people:
+  - id: host
+    rules:
+      - id: hi
+        when: length > 3
+        say: [a, b, c, d]
+    dodge:
+      unknown: [x, y]
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := New(b, "host", Config{Rand: rand.New(rand.NewPCG(7, 7))}) //nolint:gosec // a test's line choice
+	if err != nil {
+		t.Fatal(err)
+	}
+	var said, dodged []string
+	for i := range 40 {
+		if i == 20 {
+			saved, err := m.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if m, err = New(b, "host", Config{Rand: rand.New(rand.NewPCG(8, 8))}); err != nil { //nolint:gosec // a test's line choice
+				t.Fatal(err)
+			}
+			if err := m.Restore(saved); err != nil {
+				t.Fatal(err)
+			}
+		}
+		said = append(said, do(t, m, say("hello")).Lines[0])
+		dodged = append(dodged, do(t, m, say("hm")).Lines[0])
+	}
+	for i := 2; i < len(said); i++ {
+		if said[i] == said[i-1] || said[i] == said[i-2] {
+			t.Fatalf("a line of four said again within two: %q", said)
+		}
+		if dodged[i] == dodged[i-1] {
+			t.Fatalf("a line of two said twice in a row: %q", dodged)
+		}
+	}
+}
+
+// TestFillATranslation: a reaction gives its lines as the book writes them and what their
+// fields were filled with, so a translation of a line is filled as the line was; a field it
+// has no value of is empty.
+func TestFillATranslation(t *testing.T) {
+	m := mind(t)
+	r := do(t, m, Stimulus{Kind: "event", From: "Pat", Tags: []string{"gift"}, Values: map[string]float64{"amount": 1000}})
+	if len(r.Written) != 1 || r.Written[0] != "{from}、ありがと！" || r.Lines[0] != "Pat、ありがと！" || r.Fields[0]["from"] != "Pat" {
+		t.Fatalf("the reaction %+v", r)
+	}
+	if got := Fill("Thanks, {from}!{none}", r.Fields[0]); got != "Thanks, Pat!" {
+		t.Fatalf("the translation filled: %q", got)
+	}
+}
+
+// TestFieldsOfEachLine: each line keeps what its own fields were filled with, so a line
+// said before the rule remembers keeps the value before it, and the question after it the
+// value after.
+func TestFieldsOfEachLine(t *testing.T) {
+	b, err := Parse([]byte(`lexicon: {pet: [dog]}
+people:
+  - id: p
+    asks:
+      - {id: q, say: ["Now: {mem.pet}?"]}
+    rules:
+      - id: r
+        when: tag.pet > 0
+        say: ["Before: {mem.pet}."]
+        remember: [{key: pet, set: "{slot.pet}"}]
+        ask: q
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := New(b, "p", Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := do(t, m, Stimulus{Kind: KindSay, From: "Pat", Text: "dog"})
+	if len(r.Lines) != 2 || len(r.Fields) != 2 || r.Lines[0] != "Before: ." || r.Lines[1] != "Now: dog?" {
+		t.Fatalf("the reaction %+v", r)
+	}
+	for i, l := range r.Written {
+		if got := Fill(l, r.Fields[i]); got != r.Lines[i] {
+			t.Errorf("line %d filled again: %q, not %q", i, got, r.Lines[i])
+		}
+	}
 }

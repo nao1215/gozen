@@ -5,29 +5,51 @@
 package webfs
 
 import (
+	"bytes"
+	"cmp"
+	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
-	"net/http"
 	"net/url"
 	"path"
+	"slices"
+	"strings"
 	"sync"
+	"syscall/js"
 	"testing/fstest"
 )
 
-const workers = 20
+// workers bound the files fetched at once, and mediaAtOnce the pictures and sounds Load
+// fetches at once: a browser opens six connections to a host, and the media, which come in
+// the background, leave two to the files the game opens meanwhile (a voice of the line it
+// is to say), so those do not wait behind them.
+const workers, mediaAtOnce = 20, 4
 
 type file struct {
 	Name string `json:"name"`
 	File string `json:"file"`
 	Size int64  `json:"size"`
+	// Gzip marks a file served gzipped (gozen export), which get undoes.
+	Gzip bool `json:"gzip"`
+	// Later marks a file Load does not fetch (a recorded stream voice): it is fetched when
+	// the game opens it, and the progress leaves it out.
+	Later bool `json:"later"`
 }
 
-// Load reads files.json, downloads its files with bounded concurrency, and returns an
-// in-memory filesystem. Open can still fetch an entry that was not included in the cache.
-func Load(base string) (fs.FS, error) {
-	b, err := get(base + "files.json")
+// Load reads files.json and downloads its files with bounded concurrency into an
+// in-memory filesystem, the pictures and the sound last. It returns once the other files
+// (the game's YAML, its font) have come, so the game reads them while its media still
+// come: opening a file that is still coming waits for it, and a file whose download
+// failed is fetched again when the game opens it. While the files download, progress
+// (when not nil) is called with the bytes of the files come so far and the bytes the
+// manifest lists, as a file comes (at most every half percent) and once at the end. A file
+// marked later (a recorded stream voice) is fetched only when the game opens it and is not
+// in the progress.
+func Load(base string, progress func(done, total int64)) (fs.FS, error) {
+	b, err := fetch(base+"files.json", nil, "high")
 	if err != nil {
 		return nil, err
 	}
@@ -35,67 +57,132 @@ func Load(base string) (fs.FS, error) {
 	if err := json.Unmarshal(b, &files); err != nil {
 		return nil, fmt.Errorf("files.json: %w", err)
 	}
-	served := make(map[string]string, len(files))
-	entries := fstest.MapFS{}
+	h := &httpFS{
+		base: base, entries: fstest.MapFS{}, served: make(map[string]file, len(files)),
+		cache: make(map[string][]byte, len(files)), coming: make(map[string]chan struct{}, len(files)), fetching: map[string]*fetchCall{}, fetchers: make(chan struct{}, workers),
+	}
+	counter := &count{report: progress}
 	for _, f := range files {
 		if !fs.ValidPath(f.Name) || !fs.ValidPath(f.File) || f.Size < 0 {
 			return nil, fmt.Errorf("files.json: invalid entry %q", f.Name)
 		}
-		if _, exists := served[f.Name]; exists {
+		if _, exists := h.served[f.Name]; exists {
 			return nil, fmt.Errorf("files.json: duplicate entry %q", f.Name)
 		}
-		served[f.Name] = f.File
-		entries[f.Name] = &fstest.MapFile{Data: nil}
-	}
-
-	type result struct {
-		name string
-		data []byte
-		err  error
-	}
-	jobs := make(chan file)
-	results := make(chan result, len(files))
-	var wg sync.WaitGroup
-	count := workers
-	if len(files) < count {
-		count = len(files)
-	}
-	for i := 0; i < count; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for f := range jobs {
-				u := base + (&url.URL{Path: path.Clean(f.File)}).EscapedPath()
-				data, err := get(u)
-				results <- result{name: f.Name, data: data, err: err}
-			}
-		}()
-	}
-	go func() {
-		for _, f := range files {
-			jobs <- f
-		}
-		close(jobs)
-		wg.Wait()
-		close(results)
-	}()
-	cache := make(map[string][]byte, len(files))
-	for result := range results {
-		if result.err != nil {
-			// A failed speculative download is retried if the game later opens the file.
+		h.served[f.Name] = f
+		h.entries[f.Name] = &fstest.MapFile{Data: nil}
+		if f.Later {
 			continue
 		}
-		cache[result.name] = result.data
+		h.coming[f.Name] = make(chan struct{})
+		counter.total += f.Size
 	}
-	return &httpFS{base: base, entries: entries, served: served, cache: cache}, nil
+	files = slices.DeleteFunc(files, func(f file) bool { return f.Later })
+	slices.SortStableFunc(files, func(a, b file) int { return cmp.Compare(media(a.Name), media(b.Name)) })
+	jobs := make(chan file, len(files))
+	var first, all sync.WaitGroup
+	for _, f := range files {
+		jobs <- f
+		if media(f.Name) == 0 {
+			first.Add(1)
+		}
+	}
+	close(jobs)
+	mediaSlots := make(chan struct{}, mediaAtOnce)
+	for range min(workers, len(files)) {
+		all.Go(func() {
+			for f := range jobs {
+				priority := "high" // the media come last, and give way to a file the game opens meanwhile
+				if media(f.Name) == 1 {
+					priority = "low"
+					mediaSlots <- struct{}{} // before a place among all, which it would hold waiting
+				}
+				h.fetchers <- struct{}{}
+				data, err := get(base, f, counter, priority)
+				<-h.fetchers
+				if priority == "low" {
+					<-mediaSlots
+				}
+				h.mu.Lock()
+				if err == nil {
+					h.cache[f.Name] = data
+				}
+				close(h.coming[f.Name])
+				delete(h.coming, f.Name)
+				h.mu.Unlock()
+				if media(f.Name) == 0 {
+					first.Done()
+				}
+			}
+		})
+	}
+	go func() {
+		all.Wait()
+		counter.finish()
+	}()
+	first.Wait()
+	return h, nil
+}
+
+// media is 1 for a picture or a sound, which Load fetches last: by the name the game reads,
+// as the file served may be another (a picture as WebP, a sound gzipped).
+func media(name string) int {
+	switch strings.ToLower(path.Ext(name)) {
+	case ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ogg", ".mp3", ".wav":
+		return 1
+	}
+	return 0
 }
 
 type httpFS struct {
 	base    string
 	entries fstest.MapFS
-	served  map[string]string
+	served  map[string]file
 	mu      sync.Mutex
 	cache   map[string][]byte
+	// coming holds the files Load still downloads, closed when one has come.
+	coming map[string]chan struct{}
+	// fetching are the files opened that are being fetched, which another opening of one
+	// waits for rather than fetch it again.
+	fetching map[string]*fetchCall
+	// fetchers bounds the files fetched at once (workers): by Load and for the game
+	// opening them alike.
+	fetchers chan struct{}
+}
+
+// fetchCall is a file being fetched for the game opening it: done is closed once data or
+// err is set.
+type fetchCall struct {
+	done chan struct{}
+	data []byte
+	err  error
+}
+
+// fetchOnce fetches the file served for name once for all who open it meanwhile, and keeps
+// it unless it is fetched later (a recorded voice, which a game plays once in a while: kept,
+// the voices of a long stream would fill the memory).
+func (f *httpFS) fetchOnce(name string, served file) ([]byte, error) {
+	f.mu.Lock()
+	c := f.fetching[name]
+	if c != nil {
+		f.mu.Unlock()
+		<-c.done
+		return c.data, c.err
+	}
+	c = &fetchCall{done: make(chan struct{})}
+	f.fetching[name] = c
+	f.mu.Unlock()
+	f.fetchers <- struct{}{}
+	c.data, c.err = get(f.base, served, nil, "high")
+	<-f.fetchers
+	f.mu.Lock()
+	delete(f.fetching, name)
+	if c.err == nil && !served.Later {
+		f.cache[name] = c.data
+	}
+	f.mu.Unlock()
+	close(c.done)
+	return c.data, c.err
 }
 
 func (f *httpFS) Open(name string) (fs.File, error) {
@@ -105,34 +192,110 @@ func (f *httpFS) Open(name string) (fs.File, error) {
 	if served, ok := f.served[name]; ok {
 		f.mu.Lock()
 		data, cached := f.cache[name]
+		coming := f.coming[name]
 		f.mu.Unlock()
+		if !cached && coming != nil {
+			<-coming
+			f.mu.Lock()
+			data, cached = f.cache[name]
+			f.mu.Unlock()
+		}
 		if !cached {
 			var err error
-			data, err = get(f.base + (&url.URL{Path: path.Clean(served)}).EscapedPath())
-			if err != nil {
+			if data, err = f.fetchOnce(name, served); err != nil {
 				return nil, err
 			}
-			f.mu.Lock()
-			f.cache[name] = data
-			f.mu.Unlock()
 		}
 		return fstest.MapFS{name: &fstest.MapFile{Data: data}}.Open(name)
 	}
 	return f.entries.Open(name)
 }
 
-func get(u string) (b []byte, err error) {
-	resp, err := http.Get(u) //nolint:gosec,noctx // The page's own files, next to the program.
+// count adds up the bytes the downloads of Load have read and reports them.
+type count struct {
+	mu          sync.Mutex
+	done, shown int64
+	total       int64
+	report      func(done, total int64)
+}
+
+func (c *count) add(n int) {
+	if c == nil || c.report == nil || n == 0 {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.done += int64(n)
+	if c.done-c.shown >= c.total/200 {
+		c.shown = c.done
+		c.report(c.done, c.total)
+	}
+}
+
+// finish reports the end, the failed downloads left out.
+func (c *count) finish() {
+	if c.report != nil {
+		c.report(c.done, c.total)
+	}
+}
+
+// get downloads f from base with the browser's priority (fetch's priority: high or low),
+// counting the bytes that come into c when c is not nil.
+func get(base string, f file, c *count, priority string) ([]byte, error) {
+	b, err := fetch(base+(&url.URL{Path: path.Clean(f.File)}).EscapedPath(), c, priority)
+	// A host may already have undone the gzip (Content-Encoding); then it is not gzip.
+	if err != nil || !f.Gzip || !bytes.HasPrefix(b, []byte{0x1f, 0x8b}) {
+		return b, err
+	}
+	z, err := gzip.NewReader(bytes.NewReader(b))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", f.File, err)
 	}
-	defer func() {
-		if cerr := resp.Body.Close(); err == nil {
-			err = cerr
-		}
-	}()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s: %s", u, resp.Status)
+	if b, err = io.ReadAll(z); err != nil {
+		return nil, fmt.Errorf("%s: %w", f.File, err)
 	}
-	return io.ReadAll(resp.Body)
+	return b, nil
+}
+
+// fetch downloads u, adding its bytes to c when c is not nil. The browser reads the
+// whole of it (arrayBuffer) while the game goes on: read in Go, a file came only as fast
+// as the game, busy reading the files before it, took its pieces.
+func fetch(u string, c *count, priority string) ([]byte, error) {
+	resp, err := await(js.Global().Call("fetch", u, map[string]any{"priority": priority}))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", u, err)
+	}
+	if !resp.Get("ok").Bool() {
+		return nil, fmt.Errorf("%s: %d %s", u, resp.Get("status").Int(), resp.Get("statusText").String())
+	}
+	buf, err := await(resp.Call("arrayBuffer"))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", u, err)
+	}
+	b := make([]byte, buf.Get("byteLength").Int())
+	js.CopyBytesToGo(b, js.Global().Get("Uint8Array").New(buf))
+	c.add(len(b))
+	return b, nil
+}
+
+// await waits for the promise p to settle (other goroutines run meanwhile).
+func await(p js.Value) (js.Value, error) {
+	type result struct {
+		v   js.Value
+		err error
+	}
+	ch := make(chan result, 1)
+	ok := js.FuncOf(func(_ js.Value, args []js.Value) any {
+		ch <- result{v: args[0]}
+		return nil
+	})
+	fail := js.FuncOf(func(_ js.Value, args []js.Value) any {
+		ch <- result{err: errors.New(args[0].Call("toString").String())}
+		return nil
+	})
+	defer ok.Release()
+	defer fail.Release()
+	p.Call("then", ok, fail)
+	r := <-ch
+	return r.v, r.err
 }

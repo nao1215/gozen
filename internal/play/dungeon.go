@@ -109,7 +109,7 @@ func (s *dungeonScene) update(g *Game) {
 		g.events.Start(cmds)
 		return
 	}
-	if g.in.pressed[btnMenu] && !g.in.held[btnOK] {
+	if g.menuKey() {
 		g.sfx("decide")
 		g.push(newMenu(g))
 		return

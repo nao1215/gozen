@@ -15,9 +15,12 @@ import (
 )
 
 // puppetSet holds the moving portraits of actors with a puppet (Actor.Puppet),
-// made on the first talk and kept until the assets are reloaded or the game closes.
+// made on the first talk and kept until the assets are reloaded or the game closes,
+// and the rigs they are made of, which the stream screens share.
 type puppetSet struct {
-	live   map[string]*puppet.Puppet
+	live map[string]*puppet.Puppet
+	rigs map[string]*puppet.Rig
+	// failed are the puppet files that did not load.
 	failed map[string]bool
 	// staged is the tick each actor's puppet last stood on the novel stage (ui.stage_puppets).
 	staged map[string]int
@@ -37,23 +40,17 @@ func (g *Game) actorPuppet(actor, face string) (*puppet.Puppet, int) {
 		return nil, 0
 	}
 	a := g.db.Actors[actor]
-	if a == nil || a.Puppet == "" || g.puppets.failed[actor] {
+	if a == nil || a.Puppet == "" {
 		return nil, 0
 	}
 	p := g.puppets.live[actor]
 	if p == nil {
-		rig, err := puppet.Load(g.opts.FS, "assets/"+a.Puppet)
-		if err != nil {
+		rig := g.rig(a.Puppet)
+		if rig == nil {
 			// gozen check reports a broken puppet; the game falls back to the face picture.
-			if g.puppets.failed == nil {
-				g.puppets.failed = map[string]bool{}
-			}
-			g.puppets.failed[actor] = true
 			return nil, 0
 		}
-		h := fnv.New64a()
-		h.Write([]byte(actor))
-		p = puppet.New(rig, rand.New(rand.NewPCG(h.Sum64(), 1)), ebiten.DefaultTPS) //nolint:gosec // Animation timing, not security-sensitive data.
+		p = seededPuppet(rig, actor)
 		if g.puppets.live == nil {
 			g.puppets.live = map[string]*puppet.Puppet{}
 		}
@@ -66,27 +63,46 @@ func (g *Game) actorPuppet(actor, face string) (*puppet.Puppet, int) {
 	return p, i
 }
 
+// rig is the puppet file under assets/, loaded once, or nil when it does not load.
+func (g *Game) rig(file string) *puppet.Rig {
+	if r := g.puppets.rigs[file]; r != nil || g.puppets.failed[file] {
+		return r
+	}
+	r, err := puppet.Load(g.opts.FS, "assets/"+file)
+	if err != nil {
+		if g.puppets.failed == nil {
+			g.puppets.failed = map[string]bool{}
+		}
+		g.puppets.failed[file] = true
+		return nil
+	}
+	if g.puppets.rigs == nil {
+		g.puppets.rigs = map[string]*puppet.Rig{}
+	}
+	g.puppets.rigs[file] = r
+	return r
+}
+
+// seededPuppet is a new body of the rig whose motion is seeded by its key, so the
+// same body moves the same way every run.
+func seededPuppet(rig *puppet.Rig, key string) *puppet.Puppet {
+	h := fnv.New64a()
+	h.Write([]byte(key))
+	return puppet.New(rig, rand.New(rand.NewPCG(h.Sum64(), 1)), ebiten.DefaultTPS) //nolint:gosec // Animation timing, not security-sensitive data.
+}
+
 func (g *Game) enemyPuppet(u *battle.Unit, picture string, hp int) *puppet.Puppet {
 	if u == nil || u.Def == nil || u.Def.Puppet == "" {
 		return nil
 	}
 	key := "enemy." + u.EID
-	if g.puppets.failed[key] {
-		return nil
-	}
 	p := g.puppets.live[key]
 	if p == nil {
-		rig, err := puppet.Load(g.opts.FS, "assets/"+u.Def.Puppet)
-		if err != nil {
-			if g.puppets.failed == nil {
-				g.puppets.failed = map[string]bool{}
-			}
-			g.puppets.failed[key] = true
+		rig := g.rig(u.Def.Puppet)
+		if rig == nil {
 			return nil
 		}
-		h := fnv.New64a()
-		h.Write([]byte(key))
-		p = puppet.New(rig, rand.New(rand.NewPCG(h.Sum64(), 1)), ebiten.DefaultTPS) //nolint:gosec // Animation timing.
+		p = seededPuppet(rig, key)
 		if g.puppets.live == nil {
 			g.puppets.live = map[string]*puppet.Puppet{}
 		}

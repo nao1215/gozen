@@ -18,12 +18,13 @@ import (
 
 // CopyGame selects runtime content from a prepared game tree into an empty
 // staging directory. Approval-controlled inputs must first use release.
-// It returns sorted slash-separated filenames for the browser manifest.
-func CopyGame(src, dst string) ([]string, error) {
+// It returns sorted slash-separated filenames for the browser manifest, and the game
+// loaded from the copy, which it checks.
+func CopyGame(src, dst string) ([]string, *gamedata.DB, error) {
 	if _, err := os.Lstat(filepath.Join(src, "asset-policy.yaml")); err == nil {
-		return nil, errors.New("game has an asset policy; prepare it with gozen release before exporting")
+		return nil, nil, errors.New("game has an asset policy; prepare it with gozen release before exporting")
 	} else if !errors.Is(err, fs.ErrNotExist) {
-		return nil, err
+		return nil, nil, err
 	}
 	var files []string
 	err := filepath.WalkDir(src, func(name string, d fs.DirEntry, err error) error {
@@ -63,12 +64,13 @@ func CopyGame(src, dst string) ([]string, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if _, err := gamedata.Load(os.DirFS(dst)); err != nil {
-		return nil, fmt.Errorf("exported game: %w", err)
+	db, err := gamedata.Load(os.DirFS(dst))
+	if err != nil {
+		return nil, nil, fmt.Errorf("exported game: %w", err)
 	}
-	return files, nil
+	return files, db, nil
 }
 
 func runtimePath(name string, dir bool) bool {
@@ -79,7 +81,7 @@ func runtimePath(name string, dir bool) bool {
 	}
 	top, _, nested := strings.Cut(name, "/")
 	switch top {
-	case "data", "lang":
+	case "data", "lang", "streams":
 		return dir || strings.HasSuffix(name, ".yaml") || strings.HasSuffix(name, ".yml")
 	case "assets", "LICENSES":
 		// Runtime assets may include fonts, puppet YAML, audio and notices.

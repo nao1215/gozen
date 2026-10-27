@@ -57,7 +57,13 @@ type Reaction struct {
 	Rule string
 	// Lines are the line said and, when the rule asks a question, the question.
 	Lines []string
-	Face  string
+	// Written are the Lines as the book writes them, before their fields are filled, and
+	// Fields what each line's fields were filled with, by name ("from", "slot.cat",
+	// "mem.pet"): a game that shows a line in another language fills its translation with
+	// them (Fill).
+	Written []string
+	Fields  []map[string]string
+	Face    string
 	// Delta is the mood change applied; Mood is the mood after it.
 	Delta, Mood float64
 	// Confidence is the highest tag score (0 when nothing was found).
@@ -69,8 +75,16 @@ type Reaction struct {
 }
 
 type lexWord struct {
-	norm, text string
-	weight     float64
+	norm, text   string
+	weight       float64
+	whole, exact bool
+}
+
+// lexRun is a lexicon tag ready to match: its words, and its except words normalized
+// (for the normal words) and lowered (for the exact ones).
+type lexRun struct {
+	words           []lexWord
+	exceptNorm, low []string
 }
 
 type entry struct {
@@ -85,7 +99,7 @@ type Mind struct {
 	p    *personDef
 	cfg  Config
 	rng  *rand.Rand
-	lex  map[string][]lexWord
+	lex  map[string]*lexRun
 	tags []string // lexicon tags, sorted
 
 	mood    float64
@@ -94,8 +108,10 @@ type Mind struct {
 	cool    map[string]int // rule ID -> first turn it may react again
 	asked   string
 	askTill int
-	last    string
-	recent  map[string][]string
+	// used are the lines each list (a rule, a question, a dodge) said last, by their first
+	// line, which it does not say again for a while (pickEntry).
+	used   map[string][]string
+	recent map[string][]string
 }
 
 // New makes the running state of the person id in the book. The book must have been
@@ -125,14 +141,20 @@ func New(b *Book, id string, cfg Config) (*Mind, error) {
 		rng = rand.New(rand.NewPCG(1, 2)) //nolint:gosec // G404: reproducible line choice, not security
 	}
 	m := &Mind{
-		book: b, p: p, cfg: cfg, rng: rng, lex: map[string][]lexWord{},
-		mem: map[string]entry{}, cool: map[string]int{}, recent: map[string][]string{},
+		book: b, p: p, cfg: cfg, rng: rng, lex: map[string]*lexRun{},
+		mem: map[string]entry{}, cool: map[string]int{}, recent: map[string][]string{}, used: map[string][]string{},
 	}
-	for tag, words := range b.doc.Lexicon {
+	for tag, lt := range b.doc.Lexicon {
 		m.tags = append(m.tags, tag)
-		for _, w := range words {
-			m.lex[tag] = append(m.lex[tag], lexWord{norm: Normalize(w.Text), text: w.Text, weight: w.Weight})
+		run := &lexRun{}
+		for _, w := range lt.Words {
+			run.words = append(run.words, lexWord{norm: Normalize(w.Text), text: w.Text, weight: w.Weight, whole: w.Whole, exact: w.Exact || w.Whole})
 		}
+		for _, x := range lt.Except {
+			run.exceptNorm = append(run.exceptNorm, Normalize(x))
+			run.low = append(run.low, strings.ToLower(x))
+		}
+		m.lex[tag] = run
 	}
 	sort.Strings(m.tags)
 	lo, hi := p.bounds()
@@ -174,18 +196,73 @@ func (m *Mind) expire() {
 	}
 }
 
-// match finds the lexicon tags in normalized text.
-func (m *Mind) match(norm string, prefix string, found map[string]Tag) {
+// match finds the lexicon tags: a normal word in norm, the normalized text, an exact or
+// whole word in raw, the text as written. An occurrence inside an occurrence of one of
+// the tag's except words is not counted. raw is empty for the acrostic, which has no
+// words as written.
+func (m *Mind) match(norm, raw string, prefix string, found map[string]Tag) {
 	if norm == "" {
 		return
 	}
+	low := strings.ToLower(raw)
 	for _, tag := range m.tags {
-		for _, w := range m.lex[tag] {
-			if strings.Contains(norm, w.norm) {
+		run := m.lex[tag]
+		for _, w := range run.words {
+			var hit bool
+			if w.exact {
+				hit = occurs(low, strings.ToLower(w.text), run.low, w.whole)
+			} else {
+				hit = occurs(norm, w.norm, run.exceptNorm, false)
+			}
+			if hit {
 				add(found, Tag{Name: prefix + tag, Score: w.weight, Slot: w.text})
 			}
 		}
 	}
+}
+
+// occurs reports whether text holds word somewhere not inside an occurrence of an
+// except word, and, when whole, with no letter or digit right before or after it.
+func occurs(text, word string, except []string, whole bool) bool {
+	if word == "" {
+		return false
+	}
+	edge := func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) }
+	for i := 0; ; {
+		j := strings.Index(text[i:], word)
+		if j < 0 {
+			return false
+		}
+		at, end := i+j, i+j+len(word)
+		ok := true
+		if whole {
+			before, _ := utf8.DecodeLastRuneInString(text[:at])
+			after, _ := utf8.DecodeRuneInString(text[end:])
+			ok = (at == 0 || edge(before)) && (end == len(text) || edge(after))
+		}
+		if ok && !covered(text, at, end, except) {
+			return true
+		}
+		_, n := utf8.DecodeRuneInString(text[at:])
+		i = at + n
+	}
+}
+
+// covered reports whether text[at:end] lies inside an occurrence of an except word.
+func covered(text string, at, end int, except []string) bool {
+	for _, x := range except {
+		for from := max(0, end-len(x)); from <= at; {
+			k := strings.Index(text[from:], x)
+			if k < 0 || from+k > at {
+				break
+			}
+			if from+k+len(x) >= end {
+				return true
+			}
+			from += k + 1
+		}
+	}
+	return false
 }
 
 // add keeps the most confident finding per tag.
@@ -211,14 +288,14 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 	text := s.Text
 	norm := Normalize(text)
 	found := map[string]Tag{}
-	m.match(norm, "", found)
+	m.match(norm, text, "", found)
 	if ls := lines(text); len(ls) >= 2 {
 		var heads strings.Builder
 		for _, l := range ls {
 			r, _ := utf8.DecodeRuneInString(l)
 			heads.WriteRune(r)
 		}
-		m.match(heads.String(), AcrosticPrefix, found)
+		m.match(heads.String(), "", AcrosticPrefix, found)
 	}
 	for _, t := range s.Tags {
 		add(found, Tag{Name: t, Score: 1})
@@ -292,8 +369,8 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 	if rule != nil {
 		delta += rule.Delta
 		out.Rule, out.Face = rule.ID, rule.Face
-		if l := m.pick(rule.Say); l != "" {
-			out.Lines = append(out.Lines, m.fill(l, e))
+		for _, l := range m.pickEntry(rule.ID, rule.Say) {
+			out.say(m, l, e)
 		}
 		for _, r := range rule.Remember {
 			m.write(r, e)
@@ -306,7 +383,8 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 		}
 		if rule.Ask != "" {
 			q := m.ask(rule.Ask)
-			out.Lines = append(out.Lines, m.fill(m.pick(q.Say), e))
+			l := m.pick("ask."+q.ID, q.Say)
+			out.say(m, l, e)
 			if q.Face != "" {
 				out.Face = q.Face
 			}
@@ -321,9 +399,9 @@ func (m *Mind) React(s Stimulus) (Reaction, error) {
 		case len(tags) > 0 && len(d.Unsure) > 0:
 			lines, name = d.Unsure, "unsure"
 		}
-		if l := m.pick(lines); l != "" {
+		if l := m.pick("dodge."+name, lines); l != "" {
 			out.Rule, out.Face = "dodge."+name, d.Face
-			out.Lines = append(out.Lines, m.fill(l, e))
+			out.say(m, l, e)
 		}
 	}
 	m.asked = pending
@@ -371,7 +449,19 @@ func (m *Mind) Ask(id string) (Reaction, error) {
 	}
 	e := &env{m: m, found: map[string]Tag{}}
 	m.asked = m.pose(q)
-	return Reaction{Rule: "ask." + id, Lines: []string{m.fill(m.pick(q.Say), e)}, Face: q.Face, Mood: m.mood, Ask: id}, nil
+	l := m.pick("ask."+q.ID, q.Say)
+	var r Reaction
+	r.say(m, l, e)
+	r.Rule, r.Face, r.Mood, r.Ask = "ask."+id, q.Face, m.mood, id
+	return r, nil
+}
+
+// say adds the line as the book writes it, filled, and what its fields were filled with.
+func (r *Reaction) say(m *Mind, l string, e *env) {
+	fields := m.fields(l, e)
+	r.Lines = append(r.Lines, Fill(l, fields))
+	r.Written = append(r.Written, l)
+	r.Fields = append(r.Fields, fields)
 }
 
 func (m *Mind) ask(id string) *question {
@@ -419,21 +509,75 @@ func (m *Mind) write(r memoryWrite, e *env) {
 	m.mem[r.Key] = en
 }
 
-// pick chooses a line, avoiding the previous one when there is a choice.
-func (m *Mind) pick(lines []string) string {
-	if len(lines) == 0 {
-		return ""
+// pick chooses a line of the list key as pickEntry does.
+func (m *Mind) pick(key string, lines []string) string {
+	entries := make([]sayEntry, len(lines))
+	for i, l := range lines {
+		entries[i] = sayEntry{l}
 	}
-	choice := slices.DeleteFunc(slices.Clone(lines), func(l string) bool { return l == m.last })
-	if len(choice) == 0 {
-		choice = lines
+	if e := m.pickEntry(key, entries); e != nil {
+		return e[0]
 	}
-	m.last = choice[m.rng.IntN(len(choice))]
-	return m.last
+	return ""
 }
 
-// fill replaces {from}, {mood}, {slot.TAG} and {mem.KEY}.
-func (m *Mind) fill(l string, e *env) string {
+// pickEntry chooses an entry of the list key (a rule's say, a question, a dodge), avoiding
+// those it chose the last len(entries)/2 times (by their first line): a list of two
+// alternates, one of ten says five others before it repeats one.
+func (m *Mind) pickEntry(key string, entries []sayEntry) sayEntry {
+	if len(entries) == 0 {
+		return nil
+	}
+	used := m.used[key]
+	choice := slices.DeleteFunc(slices.Clone(entries), func(e sayEntry) bool { return slices.Contains(used, e[0]) })
+	if len(choice) == 0 {
+		choice = entries
+	}
+	e := choice[m.rng.IntN(len(choice))]
+	if keep := len(entries) / 2; keep > 0 {
+		used = append(used, e[0])
+		m.used[key] = slices.Clone(used[max(0, len(used)-keep):])
+	}
+	return e
+}
+
+// fill replaces {from}, {text}, {mood}, {slot.TAG} and {mem.KEY}.
+func (m *Mind) fill(l string, e *env) string { return Fill(l, m.fields(l, e)) }
+
+// fields are the values of the fields of l now, each field of l by its whole name: {from},
+// {text}, {mood}, {slot.TAG} and {mem.KEY}, and "" for a memory not kept or an unknown
+// field.
+func (m *Mind) fields(l string, e *env) map[string]string {
+	out := map[string]string{}
+	for {
+		i := strings.IndexByte(l, '{')
+		j := strings.IndexByte(l, '}')
+		if i < 0 || j < i {
+			return out
+		}
+		f := l[i+1 : j]
+		out[f] = ""
+		switch {
+		case f == "from":
+			out[f] = e.s.From
+		case f == "text":
+			out[f] = e.s.Text
+		case f == "mood":
+			out[f] = fmt.Sprintf("%.0f", m.mood)
+		case strings.HasPrefix(f, "slot."):
+			out[f] = e.found[f[5:]].Slot
+		case strings.HasPrefix(f, "mem."):
+			if v, ok := m.mem[f[4:]]; ok {
+				out[f] = format(v.Value)
+			}
+		}
+		l = l[j+1:]
+	}
+}
+
+// Fill replaces each {NAME} of l with fields[NAME] (empty when it has none): a line of a
+// reaction, or its translation, with Reaction.Fields.
+func Fill(l string, fields map[string]string) string {
 	var b strings.Builder
 	for {
 		i := strings.IndexByte(l, '{')
@@ -443,19 +587,7 @@ func (m *Mind) fill(l string, e *env) string {
 			return b.String()
 		}
 		b.WriteString(l[:i])
-		f := l[i+1 : j]
-		switch {
-		case f == "from":
-			b.WriteString(e.s.From)
-		case f == "mood":
-			fmt.Fprintf(&b, "%.0f", m.mood)
-		case strings.HasPrefix(f, "slot."):
-			b.WriteString(e.found[f[5:]].Slot)
-		case strings.HasPrefix(f, "mem."):
-			if v, ok := m.mem[f[4:]]; ok {
-				b.WriteString(format(v.Value))
-			}
-		}
+		b.WriteString(fields[l[i+1:j]])
 		l = l[j+1:]
 	}
 }
@@ -532,16 +664,17 @@ type state struct {
 	Cool    map[string]int      `json:"cool"`
 	Asked   string              `json:"asked,omitempty"`
 	AskTill int                 `json:"ask_till,omitempty"`
-	Last    string              `json:"last,omitempty"`
+	Used    map[string][]string `json:"used,omitempty"`
 	Recent  map[string][]string `json:"recent"`
 }
 
-// Save returns the mood, memory, cooldowns, pending question and recent texts as JSON.
+// Save returns the mood, memory, cooldowns, pending question, recent texts and the lines
+// said lately as JSON.
 // The random generator's position is not saved.
 func (m *Mind) Save() ([]byte, error) {
 	return json.Marshal(state{
 		Version: 1, Person: m.p.ID, Mood: m.mood, Turn: m.turn, Mem: m.mem, Cool: m.cool,
-		Asked: m.asked, AskTill: m.askTill, Last: m.last, Recent: m.recent,
+		Asked: m.asked, AskTill: m.askTill, Used: m.used, Recent: m.recent,
 	})
 }
 
@@ -567,8 +700,8 @@ func (m *Mind) Restore(b []byte) error {
 	}
 	lo, hi := m.p.bounds()
 	m.mood = math.Max(lo, math.Min(hi, s.Mood))
-	m.turn, m.asked, m.askTill, m.last = s.Turn, s.Asked, s.AskTill, s.Last
-	m.mem, m.cool, m.recent = orEmpty(s.Mem), orEmpty(s.Cool), orEmpty(s.Recent)
+	m.turn, m.asked, m.askTill = s.Turn, s.Asked, s.AskTill
+	m.mem, m.cool, m.recent, m.used = orEmpty(s.Mem), orEmpty(s.Cool), orEmpty(s.Recent), orEmpty(s.Used)
 	return nil
 }
 

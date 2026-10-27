@@ -104,6 +104,40 @@ type faceKey struct {
 
 var faceCache = map[faceKey]*text.GoTextFace{}
 
+// popOn is set inside Pop, and popFaces are its faces by size: the pop font, the regular
+// one for a glyph it lacks.
+var (
+	popOn    bool
+	popFaces = map[float64]*text.MultiFace{}
+)
+
+// Pop runs draw with its text drawn and measured in the pop font (fonts.pop) wherever it
+// has the glyph, a glyph it lacks in the regular font, for the decorations of a screen (a
+// title in a bar, a name on a plate); without a pop font it changes nothing. Outside Pop
+// only text all ASCII takes the pop font (Face). Use only on the game thread.
+func Pop(draw func()) {
+	popOn = true
+	defer func() { popOn = false }()
+	draw()
+}
+
+// face is the face text s is drawn in at size: Face, or inside Pop the pop font over the
+// regular one.
+func face(size float64, s string) text.Face {
+	if !popOn || popSource == nil {
+		return Face(size, s)
+	}
+	f, ok := popFaces[size]
+	if !ok {
+		var err error
+		if f, err = text.NewMultiFace(&text.GoTextFace{Source: popSource, Size: size}, &text.GoTextFace{Source: regularSource, Size: size}); err != nil {
+			return Face(size, s)
+		}
+		popFaces[size] = f
+	}
+	return f
+}
+
 func Face(size float64, s string) *text.GoTextFace {
 	pop := popSource != nil && isASCII(s)
 	k := faceKey{size, pop}
@@ -156,12 +190,12 @@ func drawTextRaw(dst *ebiten.Image, s string, x, y, size float64, clr color.Colo
 	op.LineSpacing = base * 1.4
 	op.PrimaryAlign = text.AlignCenter
 	op.Filter = ebiten.FilterLinear
-	text.Draw(dst, s, Face(base, s), op)
+	text.Draw(dst, s, face(base, s), op)
 }
 
 func textMeasure(s string, size float64) (float64, float64) {
 	base := baseSize(size)
-	w, h := text.Measure(s, Face(base, s), base*1.4)
+	w, h := text.Measure(s, face(base, s), base*1.4)
 	return w * size / base, h * size / base
 }
 
@@ -196,7 +230,7 @@ func textWidthRaw(s string, size float64) float64 {
 		return 0
 	}
 	base := baseSize(size)
-	w, _ := text.Measure(s, Face(base, s), base*1.4)
+	w, _ := text.Measure(s, face(base, s), base*1.4)
 	return w * size / base
 }
 
@@ -214,7 +248,7 @@ func DrawTextLeft(dst *ebiten.Image, s string, x, y, size float64, clr color.Col
 	op.LineSpacing = base * 1.4
 	op.PrimaryAlign = text.AlignStart
 	op.Filter = ebiten.FilterLinear
-	text.Draw(dst, s, Face(base, s), op)
+	text.Draw(dst, s, face(base, s), op)
 }
 
 func DrawTextRight(dst *ebiten.Image, s string, x, y, size float64, clr color.Color) {

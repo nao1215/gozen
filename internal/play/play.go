@@ -1,6 +1,7 @@
 package play
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -47,6 +48,10 @@ type Options struct {
 	FS               fs.FS
 
 	Seed uint64
+
+	// Now is the wall clock of the stream screens (nil is time.Now). It is read once,
+	// when a game with streams starts, and a trace records the time read.
+	Now func() time.Time
 
 	SaveDir string
 
@@ -204,10 +209,15 @@ type overlay interface{ overlay() bool }
 type modal interface{ modal() bool }
 
 type Game struct {
+	// desk is the stream screens' state of the run (ADR 0048), nil until a game with streams plays.
+	desk    *streamDesk
 	context context.Context
 	cancel  context.CancelFunc
 	failure error
 	closed  bool
+	// updating is set while Update runs: a page hidden then (an Update waiting for a file
+	// still coming) does not write the autosave over a frame half done (keepOpen).
+	updating atomic.Bool
 	// drawn is closed once the first frame is drawn (the dolls of a browser's build wait for it).
 	drawn     chan struct{}
 	drawnOnce sync.Once
@@ -215,7 +225,9 @@ type Game struct {
 	store      Store
 	storeGiven bool
 
-	ui       float64
+	ui float64
+	// view is the size the stream screens chose from the window (zero: the game's screen).
+	view     gameView
 	cfg      config
 	windowA  uint8
 	auto     *autopilot
@@ -278,6 +290,7 @@ type Game struct {
 	rendering      bool
 	pauseUnfocused bool      // Set only by the native/browser Run loop, not offscreen tests.
 	debugDrawTime  time.Time // Previous Draw start, used only by explicit timing diagnostics.
+	debugDrawTick  int       // The tick of the last timing diagnostic of Draw.
 
 	backlog  []logLine
 	logView  *backlogView
@@ -563,6 +576,9 @@ func New(opts Options) (_ *Game, err error) {
 		}
 		s.memoNote = func(kind, text string) { g.quickMemo(kind, text, memo.LLM) }
 		s.snapshot = func() { g.emit("snapshot", traceLine{"state": g.traceSummary()}) }
+		if !opts.headless {
+			s.window = func(w, h int) { ebiten.SetWindowSize(w, h) }
+		}
 		g.in.script = s
 	}
 	if opts.Audio != nil {
@@ -673,6 +689,9 @@ func New(opts Options) (_ *Game, err error) {
 			return nil, err
 		}
 	}
+	if _, title := g.stack[0].(*title); title && len(g.stack) == 1 && g.db.Game.NoMenus() {
+		g.opening()
+	}
 	if g.failure != nil {
 		return nil, g.failure
 	}
@@ -689,11 +708,49 @@ func (g *Game) screen() (float64, float64) {
 }
 
 func (g *Game) pixels() (float64, float64) {
+	if g.view.w > 0 {
+		return float64(g.view.w), float64(g.view.h)
+	}
 	return float64(g.db.Game.Screen.Width), float64(g.db.Game.Screen.Height)
 }
 
-func (g *Game) Layout(int, int) (int, int) {
-	return g.db.Game.Screen.Width, g.db.Game.Screen.Height
+// Layout keeps the game's screen, except on the stream screens, which choose their size and
+// layout from the window's inside (streamView, ADR 0050).
+func (g *Game) Layout(ow, oh int) (int, int) {
+	w, h, dsf := float64(ow), float64(oh), 1.0
+	switch s := g.in.script; {
+	case s != nil:
+		// a scripted run lays out for the window it asked for (window W H), else the game's
+		// screen, a pixel a unit: what it draws does not change with a desktop that made
+		// the window smaller (a small monitor) or scales it
+		w, h = float64(g.db.Game.Screen.Width), float64(g.db.Game.Screen.Height)
+		if s.size[0] > 0 {
+			w, h = float64(s.size[0]), float64(s.size[1])
+		}
+	case g.streamShown(): // only the stream screens draw at the device's pixels
+		if m := ebiten.Monitor(); m != nil {
+			dsf = m.DeviceScaleFactor()
+		}
+	}
+	g.fitView(w, h, dsf)
+	w, h = g.pixels()
+	return int(w), int(h)
+}
+
+// fitView sets the size the screen is drawn at for a window whose inside is ow×oh
+// device-independent pixels of dsf device pixels each, and the UI scale with it.
+func (g *Game) fitView(ow, oh, dsf float64) {
+	v := gameView{}
+	if g.streamShown() {
+		k := UIScale(&g.db.Game)
+		v = streamView(ow, oh, dsf, float64(g.db.Game.Screen.Width)/k, float64(g.db.Game.Screen.Height)/k)
+	}
+	if v == g.view {
+		return
+	}
+	g.view, g.ui = v, cmp.Or(v.ui, UIScale(&g.db.Game))
+	gfx.SetScale(g.ui)
+	g.in.ui = g.ui
 }
 
 func (g *Game) stateRng() *rand.Rand {
@@ -733,6 +790,8 @@ func (g *Game) pauseForFocus(focused bool) bool {
 }
 
 func (g *Game) Update() error {
+	g.updating.Store(true)
+	defer g.updating.Store(false)
 	if g.opts.CollectBuildInfo && os.Getenv("GOZEN_DEBUG") != "" {
 		start := time.Now()
 		defer func() {
@@ -866,6 +925,7 @@ func (g *Game) Update() error {
 	if g.st != nil {
 		g.st.Frames++
 	}
+	g.stepStreams()
 	if g.recruit != nil && g.recruit.leave == 0 && g.tick-g.recruit.start == 12 {
 		g.sfx("lift")
 	}
@@ -939,7 +999,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		interval := t0.Sub(g.debugDrawTime)
 		g.debugDrawTime = t0
 		defer func() {
-			if g.tick%30 == 0 {
+			// every 30 ticks or more: a loaded machine draws every few ticks, which a tick
+			// that is a multiple of 30 could always fall between
+			if g.tick-g.debugDrawTick >= 30 {
+				g.debugDrawTick = g.tick
 				log.Printf("draw %v fps %.1f tps %.1f frame %v", time.Since(t0), ebiten.ActualFPS(), ebiten.ActualTPS(), interval)
 			}
 		}()
@@ -989,8 +1052,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		dst.DrawImage(g.freeze, op)
 	}
 	if g.fadeT == 0 && g.freezeT == 0 {
-		if g.lastView == nil {
-			b := dst.Bounds()
+		if b := dst.Bounds(); g.lastView == nil || g.lastView.Bounds().Size() != b.Size() {
 			g.lastView = ebiten.NewImage(b.Dx(), b.Dy())
 		}
 		g.lastView.Clear()
@@ -1324,11 +1386,16 @@ func (g *Game) Move(loc string) {
 		dungeon.Reveal(g.db, g.st)
 	}
 	switch g.stack[0].(type) {
-	case *field, *dungeonScene, *stageScene, *atlasScene:
+	case *field, *dungeonScene, *stageScene, *atlasScene, *streamLobby:
 	default:
 		return
 	}
 	switch cur := g.stack[0]; {
+	case l.Stream != "":
+		g.bannerFloor = 0
+		if _, ok := cur.(*streamLobby); !ok {
+			g.stack[0] = newStreamLobby(g, nil)
+		}
 	case l.Dungeon != nil:
 		if ds, ok := cur.(*dungeonScene); ok {
 			ds.arrive()
@@ -1367,6 +1434,10 @@ func (g *Game) newPlace() scene {
 	if l := g.db.Locations[g.st.Location]; l != nil && l.Stage != nil {
 		g.enterAt = g.st.Location
 		return newStageScene(g)
+	}
+	if l := g.db.Locations[g.st.Location]; l != nil && l.Stream != "" {
+		g.enterAt = g.st.Location
+		return newStreamLobby(g, nil)
 	}
 	if l := g.db.Locations[g.st.Location]; l != nil && l.Map != nil {
 		g.enterAt = g.st.Location
@@ -1529,8 +1600,7 @@ func (g *Game) freezeView(t int) {
 	if g.lastView == nil {
 		return
 	}
-	if g.freeze == nil {
-		b := g.lastView.Bounds()
+	if b := g.lastView.Bounds(); g.freeze == nil || g.freeze.Bounds().Size() != b.Size() {
 		g.freeze = ebiten.NewImage(b.Dx(), b.Dy())
 	}
 	g.freeze.Clear()
@@ -1558,13 +1628,17 @@ func (g *Game) noticesDropped() bool {
 	return ok
 }
 
-func (g *Game) busy() bool {
-	if len(g.stack) == 1 {
-		if as, ok := g.stack[0].(*atlasScene); ok && as.walking() { // the token is on its way
-			return true
-		}
+// walking reports whether the map's token is on its way (the map under nothing else).
+func (g *Game) walking() bool {
+	if len(g.stack) != 1 {
+		return false
 	}
-	return g.req != nil || (g.events != nil && g.events.Running()) || g.talk.active || len(g.stack) > 1
+	as, ok := g.stack[0].(*atlasScene)
+	return ok && as.walking()
+}
+
+func (g *Game) busy() bool {
+	return g.walking() || g.req != nil || (g.events != nil && g.events.Running()) || g.talk.active || len(g.stack) > 1
 }
 
 func (g *Game) waiting() (string, int) {
@@ -1930,6 +2004,26 @@ func resumeAt(db *data.DB, st *rpg.State) {
 	}
 }
 
+// newestSave is the readable slot, the autosave included, written last, and its state: the
+// first readable one when the store keeps no times, or 0 and nil when none is readable.
+func (g *Game) newestSave() (int, *rpg.State) {
+	at, found := 0, (*rpg.State)(nil)
+	var newest time.Time
+	for i := range saveSlots + 1 {
+		st, err := g.load(i)
+		if err != nil {
+			continue
+		}
+		if t, ok := g.storeTime(g.slotPath(i)); found == nil || ok && t.After(newest) {
+			at, found = i, st
+			if ok {
+				newest = t
+			}
+		}
+	}
+	return at, found
+}
+
 func (g *Game) anySave() bool {
 	for i := range saveSlots + 1 {
 		if g.storeHas(g.slotPath(i)) {
@@ -2016,6 +2110,9 @@ func (g *Game) Handle(e event.Effect) {
 func (g *Game) Close() error {
 	if g.closed {
 		return nil
+	}
+	if g.tr == nil || !g.tr.ended { // a trace ended by its script's quit takes no more lines
+		g.keepOpen()
 	}
 	g.closed = true
 	if g.cancel != nil {

@@ -120,3 +120,64 @@ func TestInsteadLinesAreRewordedToo(t *testing.T) {
 		t.Error("Reword changed the line it was given")
 	}
 }
+
+// TestRespondKeepsTheBooksSource (ADR 0027): a reply of a reaction book is a line of its
+// source, translated as it is shown and filled with what the book filled it with: shown
+// in Japanese, it is shown again in the source language when that is chosen, and its read
+// key is that of the source, whoever it was said to.
+func TestRespondKeepsTheBooksSource(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml":        "schema_version: 4\nid: tongues\nwritten_in: en\nlanguages: [en, ja]\nreactions: {rowan: talk.yaml}\n" + testgame.Game,
+		"data/talk.yaml":   "actors: {rowan: {name: Rowan}}\nevents:\n  talk:\n    do:\n      - respond: {who: rowan, from: Pat, text: zzz}\n",
+		"assets/talk.yaml": "people:\n  - id: rowan\n    dodge:\n      unknown: [\"Hello, {from}. {text}?\"]\n",
+		"lang/ja.yaml":     "text:\n  \"Hello, {from}. {text}?\": \"こんにちは、{from}。{text}？\"\n",
+	})
+	reply := func() event.Say {
+		st := testgame.State(db, 1)
+		r := event.New(db, st, &host{})
+		r.Log = func(err error) { t.Error(err) }
+		r.Start(db.Events["talk"].Do)
+		return testgame.As[event.Say](t, r.Next())
+	}
+	en := reply()
+	db.Show("ja")
+	ja := reply()
+	if en.Text != "Hello, Pat. zzz?" || ja.Text != "こんにちは、Pat。zzz？" || ja.Key != en.Key {
+		t.Fatalf("in Japanese %q (key %d), in the source %q (key %d)", ja.Text, ja.Key, en.Text, en.Key)
+	}
+	db.Show("en")
+	if got := ja.Reword(db); got.Text != "Hello, Pat. zzz?" {
+		t.Fatalf("shown again in the source language: %q", got.Text)
+	}
+}
+
+// TestRespondFillsAnyKey: a reply's fields are filled by their whole names as the book
+// filled them, a memory key that is no expression (pet-name) and a comment with braces
+// included, never evaluated.
+func TestRespondFillsAnyKey(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml":      "schema_version: 4\nid: keys\nreactions: {rowan: talk.yaml}\n" + testgame.Game,
+		"data/talk.yaml": "actors: {rowan: {name: Rowan}}\nevents:\n  talk:\n    do:\n      - respond: {who: rowan, text: \"a{{gold}b\"}\n",
+		"assets/talk.yaml": `people:
+  - id: rowan
+    asks:
+      - {id: q, say: ["Pet: {mem.pet-name}, said {text}."]}
+    rules:
+      - id: r
+        when: length > 0
+        say: [Noted.]
+        remember: [{key: pet-name, set: cat}]
+        ask: q
+`,
+	})
+	st := testgame.State(db, 1)
+	r := event.New(db, st, &host{})
+	r.Log = func(err error) { t.Error(err) }
+	r.Start(db.Events["talk"].Do)
+	if first := testgame.As[event.Say](t, r.Next()); first.Text != "Noted." {
+		t.Fatalf("first line %q", first.Text)
+	}
+	if got := testgame.As[event.Say](t, r.Next()).Text; got != "Pet: cat, said a{gold}b." {
+		t.Fatalf("the second line %q", got)
+	}
+}
