@@ -20,6 +20,18 @@ A desktop build reads a voice when its line begins, so a run and its replay time
 
 `gozen check` warns (GZN0119) of a voices folder that does not exist, of what in it is not a channel's folder, and of a file that is the voice of no line of its channel in any language offered (usually a line changed after it was recorded). A line without a voice is not reported: the voices are optional and may cover only some lines.
 
+### The radio
+
+The watch view has a radio, for a show heard without looking at the screen: a button over the chat column (beside the full screen's) or the auto key (F) turns it on, and the choice is a setting (`stream_radio` in the settings file) kept for every save, so a show opened from the lobby opens as the radio while it is on. In the radio:
+
+- every line is read aloud, whatever the read-aloud button says: its recorded voice, else `speechSynthesis` in a browser (captioned only elsewhere), and the next step waits for it to end;
+- the chat messages the show picks up are read in the viewers' voice, with `speechSynthesis` only (no recorded voice): a chat beat, the answer picked for a question (before the lines that answer it), and the player's comment the streamer answers (before the answer). The viewers' voice is 1.4 times the normal pitch, 0.7 when the host's own pitch is above 1, at 1.15 times the rate, so it is never the streamer's;
+- a show that ends tunes, three seconds later, to the next show on the air in the order of the lineup (another channel's, or a duo's), as a new watch view (greeting the player, counting the visit);
+- the screen is the face of the streamer speaking, the name, the episode's title, the line in large letters, the viewer's message being read under it, and two buttons: next (also right or OK), which tunes to the next show at once, and stop (also cancel or the auto key), which turns the radio off and shows the watch view;
+- a browser build holds the Screen Wake Lock (`navigator.wakeLock.request("screen")`) so the screen does not turn off, asking again every five seconds when the page lost it (it does when hidden) and letting it go when the radio stops or the view closes; a browser without the API, or one that refuses, does nothing more.
+
+The radio reuses the watch view, its steps and its chat; it only draws and reads differently, so a show heard in the radio counts as watched as it would on the screen.
+
 ## Consequences
 
 A recording tool computes the same key from the texts of the streams file, its episodes, the translations and the reaction book, and writes the files where the game looks; the check tells it which files are stale. Voices cost a browser export their download; the game does not wait for them to start.

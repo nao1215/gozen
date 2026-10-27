@@ -44,6 +44,10 @@ type streamWatch struct {
 
 	next, from, watched  int // the next beat, the beat come in at, the beats watched
 	seen, thanked, ended bool
+	// heard is the viewer's message the radio reads now, endAt when the radio tunes to
+	// another show after the end.
+	heard string
+	endAt time.Time
 
 	ask      *data.StreamAsk
 	askHost  int
@@ -68,9 +72,10 @@ type streamWatch struct {
 
 // streamSay is a line a host says: the host's index, the text and the face, and the line
 // as shown before its {fields} were filled, which names its recorded voice ("" for none).
+// With from, it is instead a viewer's message the radio reads (hear).
 type streamSay struct {
-	host            int
-	text, face, raw string
+	host                  int
+	text, face, raw, from string
 }
 
 // tipKind is the stimulus kind of a tip; value.amount is its amount.
@@ -243,8 +248,8 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 	w.chat.post(chat.Message{From: g.channelName(w.show.Hosts[l.host]), Text: l.text, Values: map[string]float64{chatHost: 1}})
 	w.talk[l.host] = now.Add(time.Duration(min(4, 0.5+0.07*float64(runes)) * float64(time.Second)))
 	w.busy = now.Add(seconds(d.Timing.LineSeconds(l.text)))
-	w.voice = nil
-	if !g.desk.speak {
+	w.voice, w.heard = nil, ""
+	if !g.desk.speak && !g.cfg.StreamRadio {
 		return
 	}
 	if f := d.Voice(w.show.Hosts[l.host].ID, l.raw); f != "" && g.desk.voices {
@@ -263,17 +268,25 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 // readAloud reads the line the host says with speech synthesis (a browser build), the
 // next step waiting for it to end.
 func (w *streamWatch) readAloud(g *Game, host int, text string) {
-	if !canSpeak() {
-		return
-	}
 	v := w.show.Hosts[host].Voice
+	if w.speakAloud(g, text, v.Pitch, v.Rate) {
+		w.talk[host] = w.busy
+	}
+}
+
+// speakAloud reads text with speech synthesis at the pitch and rate, the next step waiting
+// for it to end, and reports whether it does (a browser build).
+func (w *streamWatch) speakAloud(g *Game, text string, pitch, rate float64) bool {
+	if !canSpeak() {
+		return false
+	}
 	language := "en-US"
 	if g.db.Shown() == "ja" {
 		language = "ja-JP"
 	}
-	w.spoken = speak(strings.NewReplacer("「", "", "」", "", "『", "", "』", "").Replace(text), language, v.Pitch, v.Rate)
-	limit := g.streamNow().Add(seconds(5 + 0.4*float64(utf8.RuneCountInString(text))))
-	w.busy, w.talk[host] = limit, limit
+	w.spoken = speak(strings.NewReplacer("「", "", "」", "", "『", "", "』", "").Replace(text), language, pitch, rate)
+	w.busy = g.streamNow().Add(seconds(5 + 0.4*float64(utf8.RuneCountInString(text))))
+	return true
 }
 
 // voiced plays the recorded voice of the line said once it has loaded, the next step
@@ -322,6 +335,10 @@ func (w *streamWatch) step(g *Game) {
 	case len(w.queue) > 0:
 		l := w.queue[0]
 		w.queue = w.queue[1:]
+		if l.from != "" {
+			w.hear(g, l.from, l.text)
+			return
+		}
 		w.say(g, l)
 	case w.ask != nil:
 		w.answer(g)
@@ -330,6 +347,7 @@ func (w *streamWatch) step(g *Game) {
 		w.comments = w.comments[1:]
 		if w.reply(g, 0, react.Stimulus{Kind: react.KindSay, From: g.st.Streams.Viewer, Text: text}, false) {
 			g.earn(w.show.Hosts[0], g.db.Streams.Affection.Reply)
+			w.hearFirst(g, g.st.Streams.Viewer, text)
 		}
 		w.step(g)
 	case w.next < len(w.show.Beats):
@@ -361,6 +379,9 @@ func (w *streamWatch) run(g *Game, b data.Beat) {
 	case b.Chat != nil:
 		w.chat.post(chat.Message{From: g.db.Tr(b.Chat[0]), Text: g.db.Tr(b.Chat[1])})
 		w.busy = now.Add(seconds(t.Chat))
+		if g.cfg.StreamRadio {
+			w.hear(g, g.db.Tr(b.Chat[0]), g.db.Tr(b.Chat[1]))
+		}
 	case b.Ask != nil:
 		w.askHost = w.host(b.Ask.Who)
 		q := g.db.Tr(b.Ask.Q)
@@ -393,6 +414,7 @@ func (w *streamWatch) answer(g *Game) {
 	for _, r := range q.Options[option].R {
 		w.queue = append(w.queue, g.dataLine(w.askHost, r, who, 0))
 	}
+	w.hearFirst(g, who, g.db.Tr(q.Options[option].C))
 	w.step(g)
 }
 
@@ -503,16 +525,23 @@ func (w *streamWatch) finish(g *Game) {
 		return
 	}
 	w.ended = true
-	w.caption = ""
+	w.caption, w.heard = "", ""
+	w.endAt = g.streamNow().Add(radioTune)
 	g.saveStreams()
 }
 
 // leave goes back to the lobby.
 func (w *streamWatch) leave(g *Game) {
+	g.sfx("cancel")
+	w.close(g)
+}
+
+// close closes the view: the voice stops, its bodies close and the progress is saved.
+func (w *streamWatch) close(g *Game) {
 	w.hush()
+	keepAwake(false)
 	closeBodies(w.bodies)
 	w.speaker.free()
-	g.sfx("cancel")
 	g.saveStreams()
 	g.pop()
 }
@@ -550,7 +579,8 @@ const (
 	ctlComment
 	ctlTip
 	ctlSpeak
-	ctlFull // the full screen and back
+	ctlFull  // the full screen and back
+	ctlRadio // the radio (streams_radio.go)
 )
 
 // hush stops the line being read aloud or its voice.
@@ -579,7 +609,7 @@ func (w *streamWatch) controls(g *Game) [][2]int {
 	if g.canRead() {
 		out = append(out, [2]int{int(ctlSpeak), 0})
 	}
-	return append(out, [2]int{int(ctlFull), 0})
+	return append(out, [2]int{int(ctlFull), 0}, [2]int{int(ctlRadio), 0})
 }
 
 func (w *streamWatch) update(g *Game) {
@@ -595,6 +625,9 @@ func (w *streamWatch) update(g *Game) {
 	w.chat.pull(w.crowd, now.Sub(w.opened))
 	if w.age%180 == 0 {
 		w.viewers = max(20, w.viewers+g.desk.rng.IntN(17)-7)
+	}
+	if g.cfg.StreamRadio {
+		w.keepRadio(g)
 	}
 	if !w.ended {
 		for len(w.npcAt) > 0 && w.ask != nil && !now.Before(w.npcAt[0]) {
@@ -623,6 +656,10 @@ func (w *streamWatch) update(g *Game) {
 // input reads the keys and the pointer: typing a comment, the answers, the tips, reading
 // aloud and going back.
 func (w *streamWatch) input(g *Game) {
+	if g.cfg.StreamRadio {
+		w.radioInput(g)
+		return
+	}
 	in := &g.in
 	_, sh := g.screen()
 	lay := g.watchLayout()
@@ -677,6 +714,8 @@ func (w *streamWatch) input(g *Game) {
 			g.sfx("decide")
 		case ctlFull:
 			g.toggleStreamFull()
+		case ctlRadio:
+			w.toggleRadio(g)
 		}
 	}
 	// A finger down on the comment field starts typing then, so the browser's keyboard
@@ -700,6 +739,8 @@ func (w *streamWatch) input(g *Game) {
 		w.typing = true
 	case in.pressed[btnHide]:
 		g.toggleStreamFull()
+	case in.pressed[btnAuto]:
+		w.toggleRadio(g)
 	case in.digit > 0 && w.ask != nil && w.mine < 0:
 		w.choose(g, in.digit-1)
 	case in.up():
@@ -788,6 +829,11 @@ func (w *streamWatch) controlRect(g *Game, c [2]int) (x, y, cw, ch float64) {
 			return sw - 86, 10, 72, 28
 		}
 		return right - 86, lay.colTop + 5, 72, 28
+	case ctlRadio:
+		if g.cfg.StreamFull {
+			return sw - 166, 10, 72, 28
+		}
+		return right - 166, lay.colTop + 5, 72, 28
 	case ctlSpeak:
 	}
 	return right - 80, sh - 58, 66, 42
@@ -824,6 +870,10 @@ func (w *streamWatch) tipRect(g *Game, i int) (x, y, tw, th float64) {
 }
 
 func (w *streamWatch) draw(g *Game, dst *ebiten.Image) {
+	if g.cfg.StreamRadio {
+		w.drawRadio(g, dst)
+		return
+	}
 	_, sh := g.screen()
 	dst.Fill(streamPage)
 	lay := g.watchLayout()
@@ -989,9 +1039,12 @@ func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, lay watchLayout, sh
 			on := g.desk.speak
 			w.speaker.draw(dst, fmt.Sprint(on, ink), x+8, y+ch/2-12, 24, 24, func(img *ebiten.Image) { drawSpeaker(img, 0, 12, on, ink) })
 			gfx.DrawTextLeft(dst, label, x+34, y+12, 13, ink)
-		case ctlFull:
+		case ctlFull, ctlRadio:
 			label := lang.T("全画面")
-			if g.cfg.StreamFull {
+			switch {
+			case watchControl(c[0]) == ctlRadio:
+				label = lang.T("ラジオ")
+			case g.cfg.StreamFull:
 				label = lang.T("通常表示")
 			}
 			gfx.FillRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, streamPage)

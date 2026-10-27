@@ -523,3 +523,48 @@ func TestStreamsNoVoicesNoButton(t *testing.T) {
 		t.Fatalf("a game without voices reads aloud (%v) or shows the button: %v", g.desk.speak, w.controls(g))
 	}
 }
+
+// TestStreamsRadio: the radio's key turns it on and keeps it in the settings; it reads the
+// chat beat and the answer picked as viewers' messages, and a while after the show ends it
+// tunes to the other show on the air; its stop button turns it off.
+func TestStreamsRadio(t *testing.T) {
+	g := streamsGame(t, "0")
+	g.st.Streams.Viewer = "Pat"
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	i := slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })
+	show, other := l.cards[i].show, l.cards[1-i].show
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	wldPlay(t, g, "press auto\nwait 2\n", 10)
+	b, err := g.store.Read(g.configPath())
+	if !g.cfg.StreamRadio || err != nil || !strings.Contains(string(b), `"stream_radio": true`) {
+		t.Fatalf("the radio is not on and kept: %v %s %v", g.cfg.StreamRadio, b, err)
+	}
+	heard := map[string]bool{}
+	for range 3000 {
+		if g.watching() != w {
+			break
+		}
+		heard[w.heard] = true
+		other.Start = g.streamNow() // still on the air when ann's show ends
+		wldFrames(t, g, 1)
+	}
+	for _, want := range []string{"sprout  Beans!", "leaf  Peas"} {
+		if !heard[want] {
+			t.Errorf("the radio does not read %q: %v", want, heard)
+		}
+	}
+	next := g.watching()
+	if next == nil || next == w || next.show.Hosts[0].ID != "bo" || !w.ended {
+		t.Fatalf("the radio does not tune to the other show after the end (ended %v, now %v)", w.ended, next)
+	}
+	x, y, bw, bh := g.radioButton(1)
+	wldPlay(t, g, fmt.Sprintf("click %d %d\nwait 2\n", int(x+bw/2), int(y+bh/2)), 10)
+	if g.cfg.StreamRadio || g.watching() != next {
+		t.Fatalf("stop does not turn the radio off in the show (%v)", g.cfg.StreamRadio)
+	}
+}
