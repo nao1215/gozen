@@ -120,3 +120,32 @@ func TestInsteadLinesAreRewordedToo(t *testing.T) {
 		t.Error("Reword changed the line it was given")
 	}
 }
+
+// TestRespondKeepsTheBooksSource (ADR 0027): a reply of a reaction book is a line of its
+// source, translated as it is shown: shown in Japanese, it is shown again in the source
+// language when that is chosen, and its read key is that of the source.
+func TestRespondKeepsTheBooksSource(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml":        "schema_version: 4\nid: tongues\nwritten_in: en\nlanguages: [en, ja]\nreactions: {rowan: talk.yaml}\n" + testgame.Game,
+		"data/talk.yaml":   "actors: {rowan: {name: Rowan}}\nevents:\n  talk:\n    do:\n      - respond: {who: rowan, text: zzz}\n",
+		"assets/talk.yaml": "people:\n  - id: rowan\n    dodge:\n      unknown: [Hello.]\n",
+		"lang/ja.yaml":     "text:\n  \"Hello.\": \"こんにちは。\"\n",
+	})
+	reply := func() event.Say {
+		st := testgame.State(db, 1)
+		r := event.New(db, st, &host{})
+		r.Log = func(err error) { t.Error(err) }
+		r.Start(db.Events["talk"].Do)
+		return testgame.As[event.Say](t, r.Next())
+	}
+	en := reply()
+	db.Show("ja")
+	ja := reply()
+	if ja.Text != "こんにちは。" || ja.Key != en.Key {
+		t.Fatalf("in Japanese %q (key %d), in the source %q (key %d)", ja.Text, ja.Key, en.Text, en.Key)
+	}
+	db.Show("en")
+	if got := ja.Reword(db); got.Text != "Hello." {
+		t.Fatalf("shown again in the source language: %q", got.Text)
+	}
+}

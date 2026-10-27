@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"math/rand/v2"
 	"slices"
@@ -48,9 +49,6 @@ type Config struct {
 	MaxRunes int
 	// History is how many recent texts per sender are kept to find repeats (0 means 8).
 	History int
-	// Translate gives a line as it is shown, before its fields are filled (nil: as the
-	// book writes it).
-	Translate func(string) string
 }
 
 // Reaction is how the person reacted.
@@ -60,9 +58,11 @@ type Reaction struct {
 	Rule string
 	// Lines are the line said and, when the rule asks a question, the question.
 	Lines []string
-	// Written are the Lines as shown (Config.Translate), before their fields are filled
-	// (a game finds a line's recorded voice by them).
+	// Written are the Lines as the book writes them, before their fields are filled, and
+	// Fields what the fields were filled with, by name ("from", "slot.cat", "mem.pet"): a
+	// game that shows a line in another language fills its translation with them (Fill).
 	Written []string
+	Fields  map[string]string
 	Face    string
 	// Delta is the mood change applied; Mood is the mood after it.
 	Delta, Mood float64
@@ -456,12 +456,14 @@ func (m *Mind) Ask(id string) (Reaction, error) {
 	return r, nil
 }
 
-// say adds the line as the book writes it: as shown (Config.Translate), and filled.
+// say adds the line as the book writes it, filled, and what its fields were filled with.
 func (r *Reaction) say(m *Mind, l string, e *env) {
-	if m.cfg.Translate != nil {
-		l = m.cfg.Translate(l)
+	fields := m.fields(l, e)
+	if r.Fields == nil {
+		r.Fields = map[string]string{}
 	}
-	r.Lines = append(r.Lines, m.fill(l, e))
+	maps.Copy(r.Fields, fields)
+	r.Lines = append(r.Lines, Fill(l, fields))
 	r.Written = append(r.Written, l)
 }
 
@@ -543,7 +545,40 @@ func (m *Mind) pickEntry(key string, entries []sayEntry) sayEntry {
 }
 
 // fill replaces {from}, {text}, {mood}, {slot.TAG} and {mem.KEY}.
-func (m *Mind) fill(l string, e *env) string {
+func (m *Mind) fill(l string, e *env) string { return Fill(l, m.fields(l, e)) }
+
+// fields are the values of the fields of l now: {from}, {text}, {mood}, {slot.TAG} and
+// {mem.KEY} (an unknown field is empty).
+func (m *Mind) fields(l string, e *env) map[string]string {
+	out := map[string]string{}
+	for {
+		i := strings.IndexByte(l, '{')
+		j := strings.IndexByte(l, '}')
+		if i < 0 || j < i {
+			return out
+		}
+		f := l[i+1 : j]
+		switch {
+		case f == "from":
+			out[f] = e.s.From
+		case f == "text":
+			out[f] = e.s.Text
+		case f == "mood":
+			out[f] = fmt.Sprintf("%.0f", m.mood)
+		case strings.HasPrefix(f, "slot."):
+			out[f] = e.found[f[5:]].Slot
+		case strings.HasPrefix(f, "mem."):
+			if v, ok := m.mem[f[4:]]; ok {
+				out[f] = format(v.Value)
+			}
+		}
+		l = l[j+1:]
+	}
+}
+
+// Fill replaces each {NAME} of l with fields[NAME] (empty when it has none): a line of a
+// reaction, or its translation, with Reaction.Fields.
+func Fill(l string, fields map[string]string) string {
 	var b strings.Builder
 	for {
 		i := strings.IndexByte(l, '{')
@@ -553,21 +588,7 @@ func (m *Mind) fill(l string, e *env) string {
 			return b.String()
 		}
 		b.WriteString(l[:i])
-		f := l[i+1 : j]
-		switch {
-		case f == "from":
-			b.WriteString(e.s.From)
-		case f == "text":
-			b.WriteString(e.s.Text)
-		case f == "mood":
-			fmt.Fprintf(&b, "%.0f", m.mood)
-		case strings.HasPrefix(f, "slot."):
-			b.WriteString(e.found[f[5:]].Slot)
-		case strings.HasPrefix(f, "mem."):
-			if v, ok := m.mem[f[4:]]; ok {
-				b.WriteString(format(v.Value))
-			}
-		}
+		b.WriteString(fields[l[i+1:j]])
 		l = l[j+1:]
 	}
 }

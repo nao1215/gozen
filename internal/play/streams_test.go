@@ -861,6 +861,55 @@ func TestStreamsRepliesInTheLanguageShown(t *testing.T) {
 	}
 }
 
+// TestStreamsRepliesFollowTheLanguage: a reply waiting to be said, the rest of one of two
+// lines or a comment read back later, is said in the language shown when it is said, its
+// fields filled with what they were when the book answered.
+func TestStreamsRepliesFollowTheLanguage(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	fsys["data/streams.yaml"].Data = append([]byte("echo: {max_runes: 24, chance: 1}\n"), fsys["data/streams.yaml"].Data...)
+	fsys["lang/ja.yaml"].Data = append(fsys["lang/ja.yaml"].Data, []byte("  \"You said {text}.\": \"「{text}」って言ったね。\"\n  \"Hm.\": \"うーん。\"\n")...)
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	g.st.Streams.Viewer = "Pat"
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })].show
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	until := func(done func() bool) {
+		t.Helper()
+		for range 3000 {
+			if done() {
+				return
+			}
+			wldFrames(t, g, 1)
+		}
+		t.Fatalf("never happened; chat:\n%s", chatText(w))
+	}
+	w.comments = append(w.comments, "beans")
+	until(func() bool { return w.caption == "Plants!" })
+	g.setLanguage("ja")
+	until(func() bool {
+		return strings.Contains(chatText(w), "「beans」って言ったね。") || strings.Contains(chatText(w), "You said beans.")
+	})
+	if !strings.Contains(chatText(w), "Ann: 「beans」って言ったね。") {
+		t.Fatalf("the second line of a reply is not said in the language shown:\n%s", chatText(w))
+	}
+	g.setLanguage("en")
+	w.comments = append(w.comments, "zzz")
+	until(func() bool { return len(w.later) == 1 })
+	g.setLanguage("ja")
+	until(func() bool {
+		return strings.Contains(chatText(w), "Ann: うーん。") || strings.Contains(chatText(w), "Ann: Hm.")
+	})
+	if !strings.Contains(chatText(w), "Ann: うーん。") {
+		t.Fatalf("a comment read back later is not said in the language shown:\n%s", chatText(w))
+	}
+}
+
 // TestStreamsUnansweredKeepsTheLast: the file of unanswered comments keeps the last 200,
 // and a damaged file starts again.
 func TestStreamsUnansweredKeepsTheLast(t *testing.T) {

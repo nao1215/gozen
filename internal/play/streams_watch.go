@@ -81,11 +81,29 @@ type streamWatch struct {
 	focus     int // the control chosen with the keys (watchControls)
 }
 
-// streamSay is a line a host says: the host's index, the text and the face, and the line
-// as shown before its {fields} were filled, which names its recorded voice ("" for none).
+// streamSay is a line a host says: the host's index, the face, and the line as written
+// with what its {fields} are filled with (none: a line without fields). Said, it is
+// translated into the language shown then and filled, and the translation before it is
+// filled names its recorded voice. A quote (a tip's comment read out) is said as it is,
+// without a voice.
 type streamSay struct {
-	host            int
-	text, face, raw string
+	host       int
+	line, face string
+	fields     map[string]string
+	quote      bool
+}
+
+// shown is the line as said in the language shown now, and as shown before its fields are
+// filled, which names its recorded voice ("" for none).
+func (l streamSay) shown(g *Game) (text, raw string) {
+	if l.quote {
+		return l.line, ""
+	}
+	raw = g.db.Tr(l.line)
+	if l.fields == nil {
+		return raw, raw
+	}
+	return react.Fill(raw, l.fields), raw
 }
 
 // tipKind is the stimulus kind of a tip; value.amount is its amount.
@@ -211,11 +229,10 @@ func (g *Game) toggleStreamFull() {
 	}
 }
 
-// dataLine is a line of the data the host says: translated, with whom it is said to
-// ({from}) and the days put in.
-func (g *Game) dataLine(host int, line, from string, days int) streamSay {
-	raw := g.db.Tr(line)
-	return streamSay{host: host, raw: raw, text: strings.NewReplacer("{from}", from, "{days}", strconv.Itoa(days)).Replace(raw)}
+// dataLine is a line of the data the host says, with whom it is said to ({from}) and the
+// days ({days}).
+func dataLine(host int, line, from string, days int) streamSay {
+	return streamSay{host: host, line: line, fields: map[string]string{"from": from, "days": strconv.Itoa(days)}}
 }
 
 // greet says what the host says to a viewer coming in: the first visit's line, or the
@@ -225,7 +242,7 @@ func (w *streamWatch) greet(g *Game) {
 	p := broadcast.Progress(g.st.Streams, c.ID)
 	pick := func(lines []string) {
 		if len(lines) > 0 {
-			w.queue = append(w.queue, g.dataLine(0, lines[g.desk.rng.IntN(len(lines))], g.st.Streams.Viewer, p.Run))
+			w.queue = append(w.queue, dataLine(0, lines[g.desk.rng.IntN(len(lines))], g.st.Streams.Viewer, p.Run))
 		}
 	}
 	if broadcast.Visit(p, g.streamNow()) {
@@ -234,7 +251,7 @@ func (w *streamWatch) greet(g *Game) {
 	}
 	if s := g.step(c); s < len(c.Greet) {
 		for _, l := range c.Greet[s] {
-			w.queue = append(w.queue, g.dataLine(0, l, g.st.Streams.Viewer, p.Run))
+			w.queue = append(w.queue, dataLine(0, l, g.st.Streams.Viewer, p.Run))
 		}
 	}
 	if p.Run >= broadcast.StreakDays {
@@ -247,23 +264,24 @@ func (w *streamWatch) greet(g *Game) {
 func (w *streamWatch) say(g *Game, l streamSay) {
 	now := g.streamNow()
 	d := g.db.Streams
+	text, raw := l.shown(g)
 	if p := w.bodies[l.host]; p != nil {
 		face, _ := p.Rig().Face(l.face)
 		p.Motion.SetFace(face)
-		if d.Bounces(l.text) {
+		if d.Bounces(text) {
 			p.Motion.React(puppetdef.Reaction{Kind: "jiggle", Amount: d.Bounce.Amount})
 		}
 	}
-	runes := utf8.RuneCountInString(l.text)
-	w.caption, w.captionWho, w.said, w.off = l.text, l.host, now, time.Time{}
-	w.chat.post(chat.Message{From: g.channelName(w.show.Hosts[l.host]), Text: l.text, Values: map[string]float64{chatHost: 1}})
+	runes := utf8.RuneCountInString(text)
+	w.caption, w.captionWho, w.said, w.off = text, l.host, now, time.Time{}
+	w.chat.post(chat.Message{From: g.channelName(w.show.Hosts[l.host]), Text: text, Values: map[string]float64{chatHost: 1}})
 	w.talk[l.host] = now.Add(time.Duration(min(4, 0.5+0.07*float64(runes)) * float64(time.Second)))
-	w.busy = now.Add(seconds(d.Timing.LineSeconds(l.text)) + w.hold)
+	w.busy = now.Add(seconds(d.Timing.LineSeconds(text)) + w.hold)
 	w.voice = nil
 	if !g.desk.speak {
 		return
 	}
-	if f := d.Voice(w.show.Hosts[l.host].ID, l.raw); f != "" && g.desk.voices {
+	if f := d.Voice(w.show.Hosts[l.host].ID, raw); f != "" && g.desk.voices {
 		// the line waits for its voice to load (a browser may still be fetching it), then
 		// for it to end
 		if w.voice = loadVoice(g.db.FS, f); !w.voice.loaded() {
@@ -273,7 +291,7 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 		w.voiced(g)
 		return
 	}
-	w.readAloud(g, l.host, l.text)
+	w.readAloud(g, l.host, text)
 }
 
 // readAloud reads the line the host says with speech synthesis (a browser build), the
@@ -397,8 +415,7 @@ func (w *streamWatch) run(g *Game, b data.Beat) {
 	t := g.db.Streams.Timing
 	switch {
 	case b.Line != nil:
-		raw := g.db.Tr(b.Line.Text)
-		w.say(g, streamSay{host: w.host(b.Speaker), text: raw, face: b.Line.Face, raw: raw})
+		w.say(g, streamSay{host: w.host(b.Speaker), line: b.Line.Text, face: b.Line.Face})
 	case b.Chat != nil:
 		w.chat.post(chat.Message{From: g.db.Tr(b.Chat[0]), Text: g.db.Tr(b.Chat[1])})
 		w.busy = now.Add(seconds(t.Chat))
@@ -407,9 +424,8 @@ func (w *streamWatch) run(g *Game, b data.Beat) {
 		}
 	case b.Ask != nil:
 		w.askHost = w.host(b.Ask.Who)
-		q := g.db.Tr(b.Ask.Q)
 		w.hold = seconds(t.Ask)
-		w.say(g, streamSay{host: w.askHost, text: q, raw: q})
+		w.say(g, streamSay{host: w.askHost, line: b.Ask.Q})
 		w.ask, w.mine, w.focus = b.Ask, -1, 0
 		w.npcAt = nil
 		for k := range b.Ask.NPC {
@@ -435,7 +451,7 @@ func (w *streamWatch) answer(g *Game) {
 		who, option = g.db.Tr(n.Name), n.Option
 	}
 	for _, r := range q.Options[option].R {
-		w.queue = append(w.queue, g.dataLine(w.askHost, r, who, 0))
+		w.queue = append(w.queue, dataLine(w.askHost, r, who, 0))
 	}
 	w.step(g)
 }
@@ -477,9 +493,9 @@ func (w *streamWatch) reply(g *Game, host int, s react.Stimulus, first bool) boo
 	if e := g.db.Streams.Echo; r.Rule == "dodge.unknown" && (utf8.RuneCountInString(s.Text) > e.MaxRunes || g.desk.rng.Float64() >= e.Chance) {
 		return false
 	}
-	lines := make([]streamSay, len(r.Lines))
-	for i, l := range r.Lines {
-		lines[i] = streamSay{host: host, text: l, face: r.Face, raw: r.Written[i]}
+	lines := make([]streamSay, len(r.Written))
+	for i, l := range r.Written {
+		lines[i] = streamSay{host: host, line: l, face: r.Face, fields: r.Fields}
 	}
 	switch {
 	case r.Rule == "dodge.unknown" && s.Kind == react.KindSay:
@@ -574,7 +590,7 @@ func (w *streamWatch) tip(g *Game, amount int) {
 	values["amount"] = float64(amount)
 	w.reply(g, 0, react.Stimulus{Kind: tipKind, From: g.st.Streams.Viewer, Text: text, Values: values}, true)
 	if text != "" {
-		w.queue = append([]streamSay{{text: g.quote(text)}}, w.queue...)
+		w.queue = append([]streamSay{{line: g.quote(text), quote: true}}, w.queue...)
 	}
 	if p := w.bodies[0]; p != nil && g.db.Streams.Bounce.Amount > 0 {
 		p.Motion.React(puppetdef.Reaction{Kind: "jiggle", Amount: g.db.Streams.Bounce.Amount})
@@ -591,7 +607,7 @@ func (w *streamWatch) botTip(g *Game) {
 	w.chat.post(chat.Message{From: who, Text: text, Values: map[string]float64{chatTip: float64(amount)}})
 	host := rng.IntN(len(w.show.Hosts))
 	if text != "" {
-		w.queue = append(w.queue, streamSay{host: host, text: g.quote(text)})
+		w.queue = append(w.queue, streamSay{host: host, line: g.quote(text), quote: true})
 	}
 	w.reply(g, host, react.Stimulus{Kind: tipKind, From: who, Text: text, Values: map[string]float64{"amount": float64(amount), "hour": float64(g.streamNow().Hour()), "family": w.family()}}, false)
 }
@@ -612,7 +628,7 @@ func (w *streamWatch) finish(g *Game) {
 	if !w.thanked && broadcast.Seen(w.watched, w.from, len(w.show.Beats)) && w.watched > 0 && len(c.Stayed) > 0 {
 		w.thanked = true
 		g.earn(c, g.db.Streams.Affection.Stayed)
-		w.queue = append(w.queue, g.dataLine(0, c.Stayed[g.desk.rng.IntN(len(c.Stayed))], g.st.Streams.Viewer, 0))
+		w.queue = append(w.queue, dataLine(0, c.Stayed[g.desk.rng.IntN(len(c.Stayed))], g.st.Streams.Viewer, 0))
 		w.step(g)
 		return
 	}

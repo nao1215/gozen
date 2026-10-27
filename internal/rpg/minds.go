@@ -17,9 +17,8 @@ func (s *State) Mind(who string, rng *rand.Rand) (*react.Mind, error) {
 		return nil, fmt.Errorf("speaker %q has no reaction book", who)
 	}
 	mind, err := react.New(book, who, react.Config{
-		Rand:      rng,
-		Clock:     func() time.Duration { return time.Duration(s.Frames) * time.Second / 60 },
-		Translate: func(l string) string { return s.DB.Tr(l) },
+		Rand:  rng,
+		Clock: func() time.Duration { return time.Duration(s.Frames) * time.Second / 60 },
 	})
 	if err != nil {
 		return nil, err
