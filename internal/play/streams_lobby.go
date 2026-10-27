@@ -389,6 +389,12 @@ func (l *streamLobby) update(g *Game) {
 		return
 	}
 	if l.name != nil {
+		// the bar's languages are pressed while the name is asked (the name typed stays)
+		bs := g.barButtons(l.entries(g))
+		if i := g.barClick(bs); i >= 0 && bs[i].lang != "" {
+			g.switchLanguage(bs[i].lang)
+			return
+		}
 		l.updateName(g)
 		return
 	}
@@ -495,6 +501,8 @@ func (l *streamLobby) draw(g *Game, dst *ebiten.Image) {
 	g.streamTop(dst, "", bs, sel)
 	if l.name != nil {
 		l.drawName(g, dst, sw)
+		// the bar again over the box's shade with its languages only, which are pressed
+		g.streamTop(dst, "", slices.DeleteFunc(bs, func(b barButton) bool { return b.lang == "" }), -1)
 	}
 	if g.desk.away > 0 {
 		fill(dst, withAlpha(colorBlack, 0x80))

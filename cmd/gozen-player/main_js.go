@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
 	"syscall/js"
@@ -29,7 +30,7 @@ func run() (err error) {
 	if err != nil {
 		return err
 	}
-	g, err := play.New(play.Options{FS: fsys, DB: db})
+	g, err := play.New(play.Options{FS: fsys, DB: db, Locales: play.DeviceLocales(context.Background())})
 	if err != nil {
 		return err
 	}

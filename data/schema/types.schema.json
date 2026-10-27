@@ -9327,7 +9327,7 @@
           "x-type": "string"
         },
         "languages": {
-          "description": "The languages the player may choose in the settings, from `en` and `ja`; the language shown must be one of them. The default is `language` alone. Needs schema version 4.",
+          "description": "The languages the player may choose in the settings, from `en` and `ja`; the language shown must be one of them. The default is `language` alone. With two or more, a first run (no language kept in the settings) is shown in the first of the device's languages offered (the browser's `navigator.languages`, the desktop's `LC_ALL`, `LC_MESSAGES` and `LANG`; `en-US` counts as `en`), else in `language`. Needs schema version 4.",
           "items": {
             "type": "string"
           },

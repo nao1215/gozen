@@ -147,7 +147,8 @@ type Game struct {
 	// lang/<code>.yaml translates them into the others (schema_version 4, ADR 0027).
 	WrittenIn string `yaml:"written_in"`
 	// Languages are the languages the player may choose in the settings (default:
-	// Language alone; schema_version 4).
+	// Language alone; schema_version 4). With two or more, a first run is shown in the
+	// first of the device's languages offered (ADR 0027).
 	Languages []string `yaml:"languages"`
 	ID        string   `yaml:"id"` // names the save directory
 	Title     string   `yaml:"title"`

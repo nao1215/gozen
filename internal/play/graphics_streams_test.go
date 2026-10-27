@@ -36,11 +36,12 @@ func TestGraphicsScreensStreams(t *testing.T) {
 		return d(r, want[0]) && d(g, want[1]) && d(b, want[2])
 	}
 	white := [3]uint32{255, 255, 255}
-	bar, barJa, barH := tallBar(t)
+	bar, barJa, barH, wide := tallBar(t)
 	button := func(bs []barButton, pick func(barButton) bool) barButton { return bs[slices.IndexFunc(bs, pick)] }
 	isEn := func(b barButton) bool { return b.lang == "en" }
 	isJa := func(b barButton) bool { return b.lang == "ja" }
 	ja, set := button(bar, isJa), button(barJa, func(b barButton) bool { return b.gear })
+	wideJa := button(wide, isJa)
 	tall := fmt.Sprintf("window 390 844\ngap 1\nwait 30\nshot name\ntype Pat\npress ok\nwait 30\nshot lobby\nclick %d %d\nwait 20\nshot lobby_ja\nclick %d %d\nwait 30\nshot settings\nclick 30 20\nwait 30\npress ok\nwait 100\nshot watch\npress hide\nwait 20\nshot full\nquit\n",
 		int(ja.x+ja.w/2), int(ja.y+15), int(set.x+set.w/2), int(set.y+15))
 	brand := [3]uint32{0xe0, 0x45, 0x7b}
@@ -115,6 +116,17 @@ func TestGraphicsScreensStreams(t *testing.T) {
 			}
 			if speakerOn(watch) {
 				t.Error("the desktop shows a read-aloud button without voices")
+			}
+		}},
+		// the bar's language pressed while the name is asked: the box stays, under a bar
+		// not shaded whose Japanese is now the language shown
+		{"name_language", "0", fmt.Sprintf("gap 1\nwait 30\ntype Pa\nclick %d %d\nwait 20\nshot name_ja\nquit\n", int(wideJa.x+wideJa.w/2), int(wideJa.y+15)), nil, func(t *testing.T, root string) {
+			img := shotImage(t, root, "name_ja")
+			if !near(img, 640, 456, brand) {
+				t.Error("the box of the name closes when the language is pressed")
+			}
+			if !near(img, 640, 6, white) || !near(img, int(wideJa.x+5), int(wideJa.y+15), [3]uint32{0x11, 0x11, 0x14}) {
+				t.Error("the bar is shaded under the name box, or its Japanese is not the language shown")
 			}
 		}},
 		{"voices", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 100\nshot watch\nquit\n", voiced, func(t *testing.T, root string) {
@@ -284,9 +296,9 @@ func darkRun(img image.Image, x, y0, y1 int) int {
 }
 
 // tallBar is where the portrait lobby's bar puts its buttons (the English and the Japanese
-// ones first, then the settings'), before and after Japanese is shown, and the height of the
-// bar.
-func tallBar(t *testing.T) (bar, barJa []barButton, barH float64) {
+// ones first, then the settings'), before and after Japanese is shown, the height of the
+// bar, and where the landscape lobby's bar puts them.
+func tallBar(t *testing.T) (bar, barJa []barButton, barH float64, wide []barButton) {
 	t.Helper()
 	g := streamsGame(t, "0")
 	defer func() {
@@ -298,8 +310,9 @@ func tallBar(t *testing.T) (bar, barJa []barButton, barH float64) {
 	if !ok {
 		t.Fatalf("scene %T", g.stack[0])
 	}
+	wide = g.barButtons(l.entries(g))
 	g.fitView(390, 844, 1)
 	bar = g.barButtons(l.entries(g))
 	g.setLanguage("ja")
-	return bar, g.barButtons(l.entries(g)), barHeight(bar)
+	return bar, g.barButtons(l.entries(g)), barHeight(bar), wide
 }

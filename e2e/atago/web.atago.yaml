@@ -6,6 +6,11 @@ runners:
     type: browser
     timeout: 90s
     browser_args: [enable-unsafe-swiftshader, use-angle=swiftshader, window-size=1100,700]
+  # a browser whose languages are American English first
+  english:
+    type: browser
+    timeout: 90s
+    browser_args: [enable-unsafe-swiftshader, use-angle=swiftshader, window-size=1100,700, lang=en-US, accept-lang=en-US]
 scenarios:
 - name: a subdirectory export plays a choice and restores browser saves
   tags: [web]
@@ -406,6 +411,68 @@ scenarios:
         - {path: $.dropped, equals: []}
         - {path: '$.after[0]', equals: "\u201chi\u201d"}
         - {path: '$.after[1]', equals: "Thanks, Nameless viewer!"}
+
+- name: a game of two languages opens in the browser's language the first time
+  tags: [web]
+  services:
+  - name: site
+    command: >-
+      python3 -c "from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler; from pathlib import Path; s=ThreadingHTTPServer(('127.0.0.1',0),SimpleHTTPRequestHandler); Path('address').write_text('http://127.0.0.1:'+str(s.server_port)); s.serve_forever()"
+    ready: {file: address, store: origin, timeout: 5s}
+  steps:
+  # written in Japanese, offering Japanese and English
+  - fixture:
+      file: game/game.yaml
+      content: "schema_version: 9\nid: stream-first-language\ntitle: First\nlanguage: ja\nlanguages: [ja, en]\nstart: {location: booth, gold: 100}\nstreams: data/streams.yaml\n"
+  - fixture: {file: game/lang/en.yaml, content: "text:\n  ブース: Booth\n"}
+  - fixture:
+      file: game/data/world.yaml
+      content: "actors: {host: {name: Host, puppet: p/puppet.yaml}}\nlocations: {booth: {name: ブース, stream: lobby}}\n"
+  - fixture:
+      file: game/data/streams.yaml
+      content: "timing: {say: 1, per_char: 0, chat: 1, ask: 10}\ntips: [10]\ncrowd: {names: [leaf], lines: [Hi], tip_lines: [Here], rate: 0.1}\nchannels: [{id: host, actor: host, room: room.png, frame: {cx: 32, top: 0, bottom: 96}, episodes: [streams/one.yaml]}]\n"
+  - fixture: {file: game/streams/one.yaml, content: "title: Talk\nparts: [[{say: One.}, {say: Two.}]]\n"}
+  - fixture: {file: game/assets/p/puppet.yaml, content: "base: base.png\nface: normal\nfaces: {normal: {}}\n"}
+  - fixture: {file: game/assets/p/base.png, from: fixtures/puppet/base.png}
+  - fixture: {file: game/assets/room.png, from: fixtures/game/assets/mote.png}
+  - run:
+      command: 'gozen export game --target web --out site/games/first --runtime "${env:GOZEN_WEB_RUNTIME}" --format jsonl'
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: $.status, equals: ok}
+  # a new game from the title, then the name asked in English: left empty, it is the English one, kept in the save; no
+  # language is written in the settings, which were not changed
+  - cdp:
+      runner: english
+      actions:
+      - navigate: '${origin}/site/games/first/'
+      - wait_visible: 'body:not(:has(#loading))'
+      - eval: *controls
+      - eval: |
+          (async () => {
+            const viewer = () => {
+              for (let i = 0; i < localStorage.length; i++) {
+                const m = /"viewer":\s*"([^"]*)"/.exec(localStorage.getItem(localStorage.key(i)));
+                if (m) return m[1];
+              }
+              return '';
+            };
+            await key('Enter'); // the title's new game
+            await key('Enter'); // the name, left empty
+            for (let i = 0; i < 300 && !viewer(); i++) await testFrames(3);
+            const config = localStorage.getItem('gozen/stream-first-language/config.json') || '';
+            document.body.dataset.first = JSON.stringify({languages: navigator.languages, viewer: viewer(), language: config.includes('"language"')});
+          })(); true
+      - wait_visible: 'body[data-first]'
+      - eval: "JSON.parse(document.body.dataset.first)"
+  - assert:
+      value:
+        json:
+        - {path: '$.languages[0]', equals: en-US}
+        - {path: $.viewer, equals: Nameless viewer}
+        - {path: $.language, equals: false}
 
 - name: a page starts however its pieces come and keeps the game running as media come late
   tags: [web]
