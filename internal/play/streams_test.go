@@ -514,6 +514,52 @@ func TestStreamsVoiceWaitsForTheLine(t *testing.T) {
 	}
 }
 
+// TestStreamsQuestionWaitsAfterTheVoice: a question read aloud gives the viewers timing.ask
+// after its line ends, whether speech synthesis says it has ended or its recorded voice
+// loads late (a browser still fetching it) and then plays.
+func TestStreamsQuestionWaitsAfterTheVoice(t *testing.T) {
+	asked := func(t *testing.T) (*Game, *streamWatch) {
+		t.Helper()
+		g, w, _ := voicedShow(t)
+		for range 3000 {
+			if w.ask != nil {
+				return g, w
+			}
+			wldFrames(t, g, 1)
+		}
+		t.Fatal("the question is never asked")
+		return nil, nil
+	}
+	t.Run("speech synthesis", func(t *testing.T) {
+		g, w := asked(t)
+		w.spoken = func() bool { return true } // the browser says the line has ended
+		wldFrames(t, g, 1)
+		if want := g.streamNow().Add(seconds(g.db.Streams.Timing.Ask)); w.ask == nil || w.busy.Before(want) {
+			t.Fatalf("the answers close at %v, before %v (asking: %v)", w.busy, want, w.ask != nil)
+		}
+	})
+	t.Run("a voice loaded late", func(t *testing.T) {
+		g, w := asked(t)
+		tone, err := os.ReadFile("testdata/tone.ogg")
+		if err != nil {
+			t.Fatal(err)
+		}
+		pcm, err := sound.VoiceClip(fstest.MapFS{"tone.ogg": {Data: tone}}, "tone.ogg")
+		if err != nil {
+			t.Fatal(err)
+		}
+		v := &voiceLoad{file: "assets/voice/ann/late.ogg", done: make(chan struct{})}
+		w.voice = v
+		wldFrames(t, g, 1)
+		v.pcm = pcm
+		close(v.done)
+		wldFrames(t, g, 1)
+		if want := g.streamNow().Add(seconds(sound.ClipSeconds(pcm)) + voiceGap + seconds(g.db.Streams.Timing.Ask)); w.ask == nil || w.busy.Before(want.Add(-time.Second/ebiten.DefaultTPS)) {
+			t.Fatalf("the answers close at %v, before %v (asking: %v)", w.busy, want, w.ask != nil)
+		}
+	})
+}
+
 // TestStreamsNoVoicesNoButton: outside a browser, a game without recorded voices has no
 // read-aloud button.
 func TestStreamsNoVoicesNoButton(t *testing.T) {

@@ -39,6 +39,9 @@ type streamWatch struct {
 
 	queue []streamSay // lines to say before the next beat
 	busy  time.Time   // the next step is due then
+	// hold is how long the next step waits after the line said ends, read aloud or not:
+	// timing.ask for a question, for the viewers to answer.
+	hold time.Duration
 	// spoken reports the end of the line read aloud (nil: none is being read), and voice
 	// is the recorded voice of the line said while it loads (nil: none).
 	spoken func() bool
@@ -249,7 +252,7 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 	w.caption, w.captionWho = l.text, l.host
 	w.chat.post(chat.Message{From: g.channelName(w.show.Hosts[l.host]), Text: l.text, Values: map[string]float64{chatHost: 1}})
 	w.talk[l.host] = now.Add(time.Duration(min(4, 0.5+0.07*float64(runes)) * float64(time.Second)))
-	w.busy = now.Add(seconds(d.Timing.LineSeconds(l.text)))
+	w.busy = now.Add(seconds(d.Timing.LineSeconds(l.text)) + w.hold)
 	w.voice = nil
 	if !g.desk.speak {
 		return
@@ -259,7 +262,7 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 		// for it to end
 		if w.voice = loadVoice(g.db.FS, f); !w.voice.loaded() {
 			limit := now.Add(seconds(5 + 0.4*float64(runes)))
-			w.busy, w.talk[l.host] = limit, limit
+			w.busy, w.talk[l.host] = limit.Add(w.hold), limit
 		}
 		w.voiced(g)
 		return
@@ -280,7 +283,7 @@ func (w *streamWatch) readAloud(g *Game, host int, text string) {
 	}
 	w.spoken = speak(strings.NewReplacer("「", "", "」", "", "『", "", "』", "").Replace(text), language, v.Pitch, v.Rate)
 	limit := g.streamNow().Add(seconds(5 + 0.4*float64(utf8.RuneCountInString(text))))
-	w.busy, w.talk[host] = limit, limit
+	w.busy, w.talk[host] = limit.Add(w.hold), limit
 }
 
 // voiced plays the recorded voice of the line said once it has loaded, the next step
@@ -298,7 +301,7 @@ func (w *streamWatch) voiced(g *Game) {
 		l["missing"] = true
 		g.emit("voice", l)
 		// the line's own timing, from now when it waited for the voice to load
-		w.busy = minTime(w.busy, now.Add(seconds(g.db.Streams.Timing.LineSeconds(w.caption))))
+		w.busy = minTime(w.busy, now.Add(seconds(g.db.Streams.Timing.LineSeconds(w.caption))+w.hold))
 		w.talk[w.captionWho] = minTime(w.talk[w.captionWho], now.Add(time.Duration(min(4, 0.5+0.07*float64(utf8.RuneCountInString(w.caption)))*float64(time.Second))))
 		w.readAloud(g, w.captionWho, w.caption)
 		return
@@ -307,7 +310,7 @@ func (w *streamWatch) voiced(g *Game) {
 	end := now.Add(seconds(sound.ClipSeconds(v.pcm)))
 	l["ticks"] = int(math.Ceil(sound.ClipSeconds(v.pcm) * ebiten.DefaultTPS))
 	g.emit("voice", l)
-	w.busy, w.talk[w.captionWho] = end.Add(voiceGap), end
+	w.busy, w.talk[w.captionWho] = end.Add(voiceGap+w.hold), end
 }
 
 func minTime(a, b time.Time) time.Time {
@@ -379,9 +382,9 @@ func (w *streamWatch) run(g *Game, b data.Beat) {
 	case b.Ask != nil:
 		w.askHost = w.host(b.Ask.Who)
 		q := g.db.Tr(b.Ask.Q)
+		w.hold = seconds(t.Ask)
 		w.say(g, streamSay{host: w.askHost, text: q, raw: q})
 		w.ask, w.mine, w.focus = b.Ask, -1, 0
-		w.busy = w.busy.Add(seconds(t.Ask))
 		w.npcAt = nil
 		for k := range b.Ask.NPC {
 			w.npcAt = append(w.npcAt, now.Add(seconds(1.5+2.2*float64(k))))
@@ -690,11 +693,11 @@ func (w *streamWatch) update(g *Game) {
 		w.voiced(g)
 		if w.spoken != nil && w.spoken() {
 			w.spoken = nil
-			w.busy = now.Add(voiceGap)
+			w.busy = now.Add(voiceGap + w.hold)
 			w.talk[w.captionWho] = now
 		}
 		if !now.Before(w.busy) {
-			w.spoken, w.voice = nil, nil
+			w.spoken, w.voice, w.hold = nil, nil, 0
 			w.step(g)
 		}
 	}
