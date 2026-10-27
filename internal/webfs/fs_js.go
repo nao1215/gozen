@@ -87,7 +87,9 @@ func Load(base string, progress func(done, total int64)) (fs.FS, error) {
 	for range min(workers, len(files)) {
 		all.Go(func() {
 			for f := range jobs {
+				h.fetchers <- struct{}{}
 				data, err := get(base, f, counter)
+				<-h.fetchers
 				h.mu.Lock()
 				if err == nil {
 					h.cache[f.Name] = data
@@ -130,7 +132,8 @@ type httpFS struct {
 	// fetching are the files opened that are being fetched, which another opening of one
 	// waits for rather than fetch it again.
 	fetching map[string]*fetchCall
-	// fetchers bounds the files fetched for the game opening them at once (workers).
+	// fetchers bounds the files fetched at once (workers): by Load and for the game
+	// opening them alike.
 	fetchers chan struct{}
 }
 
