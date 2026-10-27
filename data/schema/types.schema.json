@@ -7800,6 +7800,19 @@
       "additionalProperties": false,
       "description": "One stream: its title, the lines of its lobby card, and its parts. An episode shorter than 10 minutes is warned of.",
       "properties": {
+        "family": {
+          "description": "true for an episode a family is in (a child among the guests): while it plays, a comment or a tip gives the reaction book `value.family` 1 (0 on other episodes), so its rules can keep to lines fit for it, as in `when: value.family == 0`. false by default.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "boolean"
+        },
         "lobby": {
           "description": "Short lines under the show's lobby card, shown in turn. Without them the card shows the channel's tagline, or its tag; it never shows the title.",
           "items": {
@@ -9368,7 +9381,7 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Maps speaker IDs to reaction book paths under assets/. Memory is saved with the game. A stream's comment gives the rules `value.hour` (0 to 23), `value.visits` (the player's visits to the channel), `value.days` (days in a row) and `value.step` (affection step), as in `when: value.hour \u003e= 23 || value.hour \u003c 5`; a rule can `remember: [{key: snack, set: \"{slot.snack}\"}]` and a later show say `\"{from}, the {mem.snack} fan\"` under `when: mem.snack != 0` (ADR 0052).",
+          "description": "Maps speaker IDs to reaction book paths under assets/. Memory is saved with the game. A stream's comment gives the rules `value.hour` (0 to 23), `value.visits` (the player's visits to the channel), `value.days` (days in a row), `value.step` (affection step) and `value.family` (1 on an episode with `family: true`, else 0), as in `when: value.hour \u003e= 23 || value.hour \u003c 5`; a rule can `remember: [{key: snack, set: \"{slot.snack}\"}]` and a later show say `\"{from}, the {mem.snack} fan\"` under `when: mem.snack != 0` (ADR 0052).",
           "type": [
             "object",
             "null"

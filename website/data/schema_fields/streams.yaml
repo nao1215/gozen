@@ -74,6 +74,7 @@ Episode:
   _: "One stream: its title, the lines of its lobby card, and its parts. An episode shorter than 10 minutes is warned of."
   title: "The title shown under the stream."
   lobby: "Short lines under the show's lobby card, shown in turn. Without them the card shows the channel's tagline, or its tag; it never shows the title."
+  family: "true for an episode a family is in (a child among the guests): while it plays, a comment or a tip gives the reaction book `value.family` 1 (0 on other episodes), so its rules can keep to lines fit for it, as in `when: value.family == 0`. false by default."
   parts: "The parts, each a list of beats played in order."
 Beat:
   _: "One beat: `say`, `chat`, `ask`, or the channel ID of the other host of a duo with a line."

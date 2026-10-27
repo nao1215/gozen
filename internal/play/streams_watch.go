@@ -512,11 +512,19 @@ type laterSay struct {
 
 // values are the numbers of the player's comment or tip that the reaction book's rules
 // read as value.NAME: the hour (0 to 23), the visits to the host's channel, the days in a
-// row and the affection step.
+// row, the affection step and whether the episode playing is a family's (family, 1 or 0).
 func (w *streamWatch) values(g *Game) map[string]float64 {
 	c := w.show.Hosts[0]
 	p := broadcast.Progress(g.st.Streams, c.ID)
-	return map[string]float64{"hour": float64(g.streamNow().Hour()), "visits": float64(p.Visits), "days": float64(p.Run), "step": float64(g.step(c))}
+	return map[string]float64{"hour": float64(g.streamNow().Hour()), "visits": float64(p.Visits), "days": float64(p.Run), "step": float64(g.step(c)), "family": w.family()}
+}
+
+// family is 1 when the episode playing is a family's (family: true), else 0.
+func (w *streamWatch) family() float64 {
+	if w.show.Episodes[w.part].Family {
+		return 1
+	}
+	return 0
 }
 
 // quote is a tip's comment as the streamer reads it out.
@@ -559,7 +567,7 @@ func (w *streamWatch) botTip(g *Game) {
 	if text != "" {
 		w.queue = append(w.queue, streamSay{host: host, text: g.quote(text)})
 	}
-	w.reply(g, host, react.Stimulus{Kind: tipKind, From: who, Text: text, Values: map[string]float64{"amount": float64(amount), "hour": float64(g.streamNow().Hour())}}, false)
+	w.reply(g, host, react.Stimulus{Kind: tipKind, From: who, Text: text, Values: map[string]float64{"amount": float64(amount), "hour": float64(g.streamNow().Hour()), "family": w.family()}}, false)
 }
 
 // markSeen marks the episode playing seen: the channel goes on to the episode after it.

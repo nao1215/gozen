@@ -30,7 +30,7 @@ The rules of ADR 0048 run on the slot as they did on an episode: the beat at a t
 
 The reaction book (ADR 0015) already remembers, keeps its memory in the save across shows and fills a line with what it remembers; the stream adds only the values its rules need and two changes of how a reply is said. The player is the one viewer whose comments reach the book, so a memory is the player's.
 
-- A comment's stimulus carries `value.hour` (the hour of the stream's clock, 0 to 23), `value.visits` (how many times the player opened the channel's shows, kept as `visits` in the channel's progress of the save), `value.days` (the days in a row) and `value.step` (the affection step); a tip's has them with `value.amount`, and a bot's tip only `value.amount` and `value.hour`. Remembering and recalling need nothing new:
+- A comment's stimulus carries `value.hour` (the hour of the stream's clock, 0 to 23), `value.visits` (how many times the player opened the channel's shows, kept as `visits` in the channel's progress of the save), `value.days` (the days in a row), `value.step` (the affection step) and `value.family` (1 while an episode with `family: true` plays, one a family is in with a child among the guests, else 0, so the book's rules can keep to lines fit for it, as in `when: value.family == 0`); a tip's has them with `value.amount`, and a bot's tip only `value.amount`, `value.hour` and `value.family`. Remembering and recalling need nothing new:
 
 ```yaml
 lexicon:

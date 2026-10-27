@@ -713,6 +713,47 @@ people:
 	until(w, func() bool { return strings.Contains(chatText(w), "Ann: cookies fan Pat, welcome back.") })
 }
 
+// TestStreamsFamilyEpisode: a comment on an episode with family: true gives the reaction
+// book value.family 1, and on another episode 0.
+func TestStreamsFamilyEpisode(t *testing.T) {
+	for _, tc := range []struct {
+		family, want string
+	}{{"family: true\n", "Ann: For the family."}, {"", "Ann: Just us."}} {
+		t.Run(tc.want, func(t *testing.T) {
+			fsys := streamsFS(t, "0")
+			fsys["streams/one.yaml"].Data = append([]byte(tc.family), fsys["streams/one.yaml"].Data...)
+			fsys["assets/talk.yaml"] = &fstest.MapFile{Data: []byte(`people:
+  - id: ann
+    rules:
+      - id: family
+        when: value.family == 1
+        say: [For the family.]
+      - id: grown
+        when: value.family == 0
+        say: [Just us.]
+`)}
+			g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+			wldFrames(t, g, 40)
+			g.st.Streams.Viewer = "Pat"
+			l, ok := g.stack[0].(*streamLobby)
+			if !ok {
+				t.Fatalf("scene %T", g.stack[0])
+			}
+			show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })].show
+			show.Start = g.streamNow()
+			w := newStreamWatch(g, show, 100)
+			g.push(w)
+			w.comments = append(w.comments, "hello")
+			for i := 0; i < 3000 && !strings.Contains(chatText(w), tc.want); i++ {
+				wldFrames(t, g, 1)
+			}
+			if !strings.Contains(chatText(w), tc.want) {
+				t.Errorf("%q: no %q in the chat:\n%s", tc.family, tc.want, chatText(w))
+			}
+		})
+	}
+}
+
 // TestStreamsUnansweredKeepsTheLast: the file of unanswered comments keeps the last 200,
 // and a damaged file starts again.
 func TestStreamsUnansweredKeepsTheLast(t *testing.T) {

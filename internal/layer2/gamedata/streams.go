@@ -239,11 +239,14 @@ type Duo struct {
 }
 
 // Episode is one stream: its title (shown under the watch view), the short lines of its
-// lobby card (the channel's tagline or tag when there are none) and its parts.
+// lobby card (the channel's tagline or tag when there are none) and its parts. Family marks
+// an episode a family is in (a child among the guests): a comment on it gives the reaction
+// book value.family 1, for the book's rules to keep to lines fit for it.
 type Episode struct {
-	Title string   `yaml:"title"`
-	Lobby []string `yaml:"lobby"`
-	Parts [][]Beat `yaml:"parts"`
+	Title  string   `yaml:"title"`
+	Lobby  []string `yaml:"lobby"`
+	Family bool     `yaml:"family"`
+	Parts  [][]Beat `yaml:"parts"`
 
 	// file is the episode's path, for diagnostics.
 	file string
