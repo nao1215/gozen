@@ -894,6 +894,21 @@ func TestStreamsVoiceUnreadableSaysWhy(t *testing.T) {
 	}
 }
 
+// TestStreamsSettingsLanguageReachesTheChat: a language chosen in the settings, as one chosen
+// in the bar, has the crowds of the screens under them chat in it.
+func TestStreamsSettingsLanguageReachesTheChat(t *testing.T) {
+	g, w, _ := voicedShow(t)
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	watch, lobby := w.crowd, l.crowd
+	g.setLanguage("ja") // as the settings' row of the language does
+	if w.crowd == watch || l.crowd == lobby {
+		t.Fatal("the crowds keep the language they were made in")
+	}
+}
+
 // TestStreamsNoVoicesNoButton: outside a browser, a game without recorded voices has no
 // read-aloud button.
 func TestStreamsNoVoicesNoButton(t *testing.T) {

@@ -746,18 +746,6 @@ func (g *Game) switchLanguage(code string) {
 		g.failure = err
 	}
 	g.sfx("decide")
-	for _, s := range g.stack {
-		switch s := s.(type) {
-		case *streamLobby:
-			if s.chat != nil {
-				s.crowd = g.newCrowd()
-				s.chat.rewrap()
-			}
-		case *streamWatch:
-			s.crowd = g.newCrowd()
-			s.chat.rewrap()
-		}
-	}
 }
 
 // streamTop draws the bar over the stream screens: the way back on the left (back, when

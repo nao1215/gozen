@@ -421,6 +421,18 @@ func (g *Game) setLanguage(code string) {
 		log.Printf("language: %v", err)
 	}
 	g.talk.reword(g)
+	for _, s := range g.stack { // the crowds of the stream screens chat in it
+		switch s := s.(type) {
+		case *streamLobby:
+			if s.chat != nil {
+				s.crowd = g.newCrowd()
+				s.chat.rewrap()
+			}
+		case *streamWatch:
+			s.crowd = g.newCrowd()
+			s.chat.rewrap()
+		}
+	}
 }
 
 // useLanguage shows the game's text and the engine's words in the language (ADR 0027).
