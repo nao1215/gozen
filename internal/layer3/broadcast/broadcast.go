@@ -24,6 +24,8 @@ type Show struct {
 	// channel's (or the duo's) episodes, the next ones following it round.
 	Episodes []*data.Episode
 	First    int
+	// round is how many episodes the channel (or the duo) takes round.
+	round int
 	// Beats are the beats of the episodes, a bridge line of the host before each episode
 	// but the first, Starts the beat each episode begins at (its bridge, when it has one),
 	// and Times when each beat starts, in seconds after Start; Times has one more entry,
@@ -41,7 +43,7 @@ func DuoKey(host, with string) string { return host + "+" + with }
 // one after another with the host's bridges between them, until slot.minutes have passed;
 // the stream ends with the episode it is in then.
 func newShow(d *data.Streams, hosts []*data.Channel, key string, shows []*data.Episode, next int) *Show {
-	s := &Show{Hosts: hosts, Key: key, First: next}
+	s := &Show{Hosts: hosts, Key: key, First: next, round: len(shows)}
 	t := 0.0
 	add := func(b data.Beat) {
 		s.Beats = append(s.Beats, b)
@@ -210,18 +212,24 @@ func Seen(watched, from, total int) bool {
 
 // MarkSeen marks the episode part of the show seen: the channel or the duo goes on to the
 // episode after it (the episodes before it that the player came in too late for stay
-// behind, as a stream does not wait), at most to rpg.MaxNextEpisode.
+// behind, as a stream does not wait). Past rpg.MaxNextEpisode the next episode is taken
+// round to the same one among the first, so a save keeps it.
 func MarkSeen(p *rpg.Streams, s *Show, part int) {
-	next := min(s.First+part+1, rpg.MaxNextEpisode)
+	next := s.First + part + 1
+	later := func(was int) int { return max(was, next) }
+	if next > rpg.MaxNextEpisode {
+		next %= s.round
+		later = func(int) int { return next }
+	}
 	if len(s.Hosts) > 1 {
 		if p.Duos == nil {
 			p.Duos = map[string]int{}
 		}
-		p.Duos[s.Key] = max(p.Duos[s.Key], next)
+		p.Duos[s.Key] = later(p.Duos[s.Key])
 		return
 	}
 	pr := Progress(p, s.Key)
-	pr.Next = max(pr.Next, next)
+	pr.Next = later(pr.Next)
 }
 
 // Step is the affection step of the points, 0 to the streams file's MaxStep.
