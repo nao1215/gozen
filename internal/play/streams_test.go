@@ -378,7 +378,7 @@ func TestStreamsPortrait(t *testing.T) {
 	if g.watching() != nil {
 		t.Fatal("a swipe's lifting opens a card")
 	}
-	if c := l.cards[0]; c.line == "" || c.line != lineAt(c.show, c.show.BeatAt(g.streamNow())) {
+	if c := l.cards[0]; c.line == "" || c.line != lineAt(c.show, g.streamNow()) {
 		t.Fatalf("the card's caption %q is not the show's line now", c.line)
 	}
 	g.in.swiped = false
@@ -434,12 +434,59 @@ func TestStreamsLineAt(t *testing.T) {
 		{Chat: []string{"leaf", "hi"}},
 		{Line: &data.StreamLine{Text: "Hello."}},
 		{Chat: []string{"leaf", "hi"}},
+		{Chat: []string{"leaf", "hi"}},
 		{Ask: &data.StreamAsk{Q: "Which?"}},
-	}}
-	for b, want := range []string{"", "Hello.", "Hello.", "Which?"} {
-		if got := lineAt(s, b); got != want {
-			t.Errorf("beat %d: %q, want %q", b, got, want)
+	}, Times: []float64{0, 1, 3, 4, 6, 9}, Start: noonish}
+	for _, tc := range []struct {
+		at   float64
+		want string
+	}{{0.5, ""}, {1, "Hello."}, {2.9, "Hello."}, {3 + captionLinger.Seconds() - 0.1, "Hello."}, {3 + captionLinger.Seconds(), ""}, {5, ""}, {6, "Which?"}, {9.5, "Which?"}} {
+		if got := lineAt(s, noonish.Add(seconds(tc.at))); got != tc.want {
+			t.Errorf("at %v s: %q, want %q", tc.at, got, tc.want)
 		}
+	}
+}
+
+// TestStreamsCaptionTimes: the watch view shows a line's caption at least captionMin before
+// the next step, even when the line's timing is shorter, and takes it away captionLinger
+// after the chat beat that follows it begins.
+func TestStreamsCaptionTimes(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	fsys["data/streams.yaml"].Data = []byte(strings.Replace(string(fsys["data/streams.yaml"].Data), "chat: 0.3", "chat: 3", 1))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	g.st.Streams.Viewer, l.name = "Pat", nil
+	show := l.cards[slices.IndexFunc(l.cards, func(c *lobbyCard) bool { return c.show.Hosts[0].ID == "ann" })].show
+	show.Start = g.streamNow()
+	w := newStreamWatch(g, show, 100)
+	g.push(w)
+	var said, next time.Time
+	for range 3000 {
+		wldFrames(t, g, 1)
+		if said.IsZero() && w.caption == "Hello, everyone." {
+			said = g.streamNow()
+		}
+		if !said.IsZero() && w.next == 2 { // the chat beat after the line has begun
+			next = g.streamNow()
+			break
+		}
+	}
+	if said.IsZero() || next.IsZero() {
+		t.Fatal("the line and the chat after it never come")
+	}
+	if g.db.Streams.Timing.LineSeconds("Hello, everyone.") >= captionMin.Seconds() || next.Sub(said) < captionMin {
+		t.Fatalf("a short line moves on after %v, before %v", next.Sub(said), captionMin)
+	}
+	if w.shownCaption(g) != "Hello, everyone." {
+		t.Fatal("the caption goes with the chat beat")
+	}
+	wldFrames(t, g, int(captionLinger.Seconds()*ebiten.DefaultTPS)+1)
+	if got := w.shownCaption(g); got != "" {
+		t.Fatalf("the caption %q stays %v after the chat beat began", got, captionLinger)
 	}
 }
 

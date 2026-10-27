@@ -57,16 +57,23 @@ type lobbyCard struct {
 	lines         []string
 }
 
-// lineAt is the line a show is saying at the beat: the last line said or question asked up
-// to it, kept over the chat beats after it (as the watch view's caption).
-func lineAt(s *broadcast.Show, b int) string {
-	for ; b >= 0; b-- {
-		switch bt := s.Beats[b]; {
-		case bt.Line != nil:
-			return bt.Line.Text
-		case bt.Ask != nil:
-			return bt.Ask.Q
+// lineAt is the caption of a show at now: the last line said or question asked, kept over
+// the chat beats after it for captionLinger from its end (as the watch view's caption), and
+// none after that.
+func lineAt(s *broadcast.Show, now time.Time) string {
+	b := s.BeatAt(now)
+	for k := min(b, len(s.Beats)-1); k >= 0; k-- {
+		bt := s.Beats[k]
+		if bt.Line == nil && bt.Ask == nil {
+			continue
 		}
+		if k < b && now.Sub(s.Start).Seconds() >= s.Times[k+1]+captionLinger.Seconds() {
+			return ""
+		}
+		if bt.Line != nil {
+			return bt.Line.Text
+		}
+		return bt.Ask.Q
 	}
 	return ""
 }
@@ -298,7 +305,6 @@ func (l *streamLobby) update(g *Game) {
 			case i == 0 && beat.Chat != nil:
 				l.chat.post(chat.Message{From: g.db.Tr(beat.Chat[0]), Text: g.db.Tr(beat.Chat[1])})
 			}
-			c.line = lineAt(c.show, b)
 			if text != "" {
 				c.talk = now.Add(seconds(min(3.5, 0.6+0.07*float64(len([]rune(text))))))
 				if g.db.Streams.Bounces(text) {
@@ -313,6 +319,7 @@ func (l *streamLobby) update(g *Game) {
 				}
 			}
 		}
+		c.line = lineAt(c.show, now)
 		for _, p := range c.bodies {
 			if p != nil {
 				p.Motion.Speak(now.Before(c.talk))

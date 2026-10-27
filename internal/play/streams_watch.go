@@ -65,7 +65,10 @@ type streamWatch struct {
 
 	caption    string
 	captionWho int
-	age        int
+	// said is when the caption was shown, and off when it is taken away (zero: while its
+	// line is said): captionLinger after the chat beat that follows it begins.
+	said, off time.Time
+	age       int
 
 	viewers int
 	nextTip time.Time
@@ -252,7 +255,7 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 		}
 	}
 	runes := utf8.RuneCountInString(l.text)
-	w.caption, w.captionWho = l.text, l.host
+	w.caption, w.captionWho, w.said, w.off = l.text, l.host, now, time.Time{}
 	w.chat.post(chat.Message{From: g.channelName(w.show.Hosts[l.host]), Text: l.text, Values: map[string]float64{chatHost: 1}})
 	w.talk[l.host] = now.Add(time.Duration(min(4, 0.5+0.07*float64(runes)) * float64(time.Second)))
 	w.busy = now.Add(seconds(d.Timing.LineSeconds(l.text)) + w.hold)
@@ -314,6 +317,23 @@ func (w *streamWatch) voiced(g *Game) {
 	l["ticks"] = int(math.Ceil(sound.ClipSeconds(v.pcm) * ebiten.DefaultTPS))
 	g.emit("voice", l)
 	w.busy, w.talk[w.captionWho] = end.Add(voiceGap+w.hold), end
+}
+
+// The times of a caption: at least captionMin before the next step, whatever the line's
+// timing or voice (a short line would go before it is read; the watch view lags the
+// stream's clock for it as for a voice), and captionLinger after the chat beat that
+// follows its line begins.
+const (
+	captionMin    = 2500 * time.Millisecond
+	captionLinger = 1500 * time.Millisecond
+)
+
+// shownCaption is the caption drawn now ("" for none).
+func (w *streamWatch) shownCaption(g *Game) string {
+	if !w.off.IsZero() && !g.streamNow().Before(w.off) {
+		return ""
+	}
+	return w.caption
 }
 
 func minTime(a, b time.Time) time.Time {
@@ -382,6 +402,9 @@ func (w *streamWatch) run(g *Game, b data.Beat) {
 	case b.Chat != nil:
 		w.chat.post(chat.Message{From: g.db.Tr(b.Chat[0]), Text: g.db.Tr(b.Chat[1])})
 		w.busy = now.Add(seconds(t.Chat))
+		if w.off.IsZero() {
+			w.off = now.Add(captionLinger)
+		}
 	case b.Ask != nil:
 		w.askHost = w.host(b.Ask.Who)
 		q := g.db.Tr(b.Ask.Q)
@@ -711,7 +734,7 @@ func (w *streamWatch) update(g *Game) {
 			w.busy = now.Add(voiceGap + w.hold)
 			w.talk[w.captionWho] = now
 		}
-		if !now.Before(w.busy) {
+		if !now.Before(w.busy) && !now.Before(w.said.Add(captionMin)) {
 			w.spoken, w.voice, w.hold = nil, nil, 0
 			w.step(g)
 		}
@@ -968,11 +991,12 @@ func (w *streamWatch) draw(g *Game, dst *ebiten.Image) {
 // drawCaption draws the whole line being said as white text on black bands, with the
 // speaker's name over it in a duo.
 func (w *streamWatch) drawCaption(g *Game, dst *ebiten.Image, lay watchLayout, y float64) {
-	if w.caption == "" {
+	caption := w.shownCaption(g)
+	if caption == "" {
 		return
 	}
 	x, stw, sth, size := lay.capX, lay.capW, lay.capH, lay.capSize
-	lines := gfx.Wrap(w.caption, size, stw*lay.capShare)
+	lines := gfx.Wrap(caption, size, stw*lay.capShare)
 	lh := gfx.LineHeight(size)
 	top := y + sth*0.95 - float64(len(lines))*lh
 	if len(w.show.Hosts) > 1 {
