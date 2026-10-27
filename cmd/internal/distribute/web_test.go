@@ -7,7 +7,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"image"
+	"image/draw"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -194,5 +196,51 @@ func TestWebFetchesVoicesLater(t *testing.T) {
 	}
 	if later != 1 {
 		t.Errorf("%d files fetched later, not the one voice", later)
+	}
+}
+
+// TestWebPKeepsThinLines: a painted puppet's lines (its eyes, lips, strands of hair: the
+// pixels that differ much from the one beside them) stay sharp in its WebP, which the
+// default 4:2:0 color of WebP at quality 85 smears.
+func TestWebPKeepsThinLines(t *testing.T) {
+	src, err := os.ReadFile("../../../examples/puppet/assets/streamer/streamer.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	img, _, err := image.Decode(bytes.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := image.NewNRGBA(img.Bounds())
+	draw.Draw(want, want.Bounds(), img, img.Bounds().Min, draw.Src)
+	out := toWebP(src)
+	if out == nil {
+		t.Fatal("not made a WebP")
+	}
+	d, err := webp.Decode(bytes.NewReader(out))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := image.NewNRGBA(d.Bounds())
+	draw.Draw(got, got.Bounds(), d, d.Bounds().Min, draw.Src)
+	var se, n float64
+	for i := 4; i < len(want.Pix); i += 4 {
+		edge := 0
+		for k := range 3 {
+			edge += max(int(want.Pix[i+k])-int(want.Pix[i-4+k]), int(want.Pix[i-4+k])-int(want.Pix[i+k]))
+		}
+		if want.Pix[i+3] < 255 || edge < 90 {
+			continue
+		}
+		for k := range 3 {
+			e := float64(want.Pix[i+k]) - float64(got.Pix[i+k])
+			se += e * e
+			n++
+		}
+	}
+	psnr := 10 * math.Log10(255*255/(se/n))
+	t.Logf("the lines keep a PSNR of %.1f dB at %d bytes (PNG %d)", psnr, len(out), len(src))
+	if psnr < 32 {
+		t.Fatalf("the lines keep a PSNR of %.1f dB, not 32", psnr)
 	}
 }

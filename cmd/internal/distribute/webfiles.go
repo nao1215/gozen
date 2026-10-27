@@ -41,9 +41,11 @@ func voiceDir(db *gamedata.DB) string {
 	return "assets/" + db.Streams.Voices + "/"
 }
 
-// webQuality is the quality of the lossy WebP the pictures become. At 85 a painted
-// 1024×1536 puppet keeps a PSNR near 45 dB (no visible change) at a fifth of its PNG.
-const webQuality = 85
+// webQuality is the quality of the lossy WebP the pictures become, made with sharp RGB to
+// YUV: at 85 with the default conversion the thin lines of a painted puppet (eyes, lips,
+// strands) were smeared on a phone's screen; at 95 a 1024×1536 puppet keeps a PSNR of
+// 33 dB on its lines (31 before) at a fifth of its PNG (a seventh before).
+const webQuality = 95
 
 // shrinkWeb rewrites the staged game files under dir (as CopyGame listed them) to
 // download less: an 8-bit PNG or JPEG becomes a WebP of the same pixels (lossy, its
@@ -112,7 +114,7 @@ func toWebP(b []byte) []byte {
 		return nil
 	}
 	opts := webp.DefaultOptions()
-	opts.Quality = webQuality
+	opts.Quality, opts.UseSharpYUV = webQuality, true
 	switch img.(type) {
 	case *image.NRGBA, *image.RGBA, *image.YCbCr, *image.Gray, *image.CMYK:
 	case *image.Paletted:
