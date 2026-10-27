@@ -3,6 +3,7 @@ package play
 import (
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -21,7 +22,7 @@ var streamsData = map[string]string{
 locations:
   booth: {name: Booth, stream: lobby, exits: [{to: camp, label: Camp}]}
 `,
-	"data/streams.yaml": `timing: {say: 0.5, per_char: 0.01, chat: 0.3, ask: 1}
+	"data/streams.yaml": `timing: {say: 2, per_char: 0.01, chat: 0.3, ask: 1}
 live: {share: 1, min_share: 1, duo_chance: DUO}
 away: {per_hour: 100, cap_hours: 24, star_bonus: 0.5}
 tips: [10, 50]
@@ -62,9 +63,20 @@ people:
 `,
 }
 
+// noonish is the clock of the stream tests.
+var noonish = time.Date(2026, 10, 27, 20, 0, 0, 0, time.UTC)
+
 // streamsGame opens the stream game at its lobby at a fixed time; duo is the chance of
 // the duo.
 func streamsGame(t *testing.T, duo string) *Game {
+	t.Helper()
+	g := wldOpenWith(t, Options{FS: streamsFS(t, duo), Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	return g
+}
+
+// streamsFS is the stream game's files.
+func streamsFS(t *testing.T, duo string) fstest.MapFS {
 	t.Helper()
 	fsys := gameFiles(t)
 	fsys["game.yaml"] = &fstest.MapFile{Data: append([]byte("schema_version: 9\nstreams: data/streams.yaml\nreactions: {ann: talk.yaml}\n"), fsys["game.yaml"].Data...)}
@@ -79,9 +91,7 @@ func streamsGame(t *testing.T, duo string) *Game {
 		}
 		fsys["assets/streamer/"+n] = &fstest.MapFile{Data: b}
 	}
-	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return time.Date(2026, 10, 27, 20, 0, 0, 0, time.UTC) }})
-	wldFrames(t, g, 40)
-	return g
+	return fsys
 }
 
 // chatText is the chat of the watch view, one "name: text" a message.
@@ -109,7 +119,7 @@ func TestStreamsWatchAShow(t *testing.T) {
 		t.Fatalf("watch %v, viewer %q", w, g.st.Streams.Viewer)
 	}
 	wldPlay(t, g, "press tab\ntype I planted beans\npress ok\nwait 2\n", 100)
-	wldFrames(t, g, 120)
+	wldFrames(t, g, 600)
 	chat := chatText(w)
 	for _, want := range []string{"Ann: Welcome, Pat!", "Pat: I planted beans", "Ann: Plants!", "Ann: You said I planted beans."} {
 		if !strings.Contains(chat, want) {
@@ -118,12 +128,12 @@ func TestStreamsWatchAShow(t *testing.T) {
 	}
 	gold := g.st.Gold
 	w.tip(g, 10)
-	wldFrames(t, g, 60)
+	wldFrames(t, g, 300)
 	if g.st.Gold != gold-10 || !strings.Contains(chatText(w), "Ann: Thank you, Pat!") {
 		t.Errorf("gold %d (was %d), chat:\n%s", g.st.Gold, gold, chatText(w))
 	}
 	w.choose(g, 0)
-	wldFrames(t, g, 900)
+	wldFrames(t, g, 1800)
 	if !w.ended || !w.seen || !w.thanked {
 		t.Fatalf("ended %v seen %v thanked %v, chat:\n%s", w.ended, w.seen, w.thanked, chatText(w))
 	}
@@ -170,5 +180,42 @@ func TestStreamsDuoAndAway(t *testing.T) {
 	wldPlay(t, g, "press ok\nwait 2\n", 10)
 	if g.desk.away != 0 {
 		t.Fatal("the away gold is shown again")
+	}
+}
+
+// TestStreamsReplayReadsTheRecordedClock: the trace records the time the run read, and a
+// replay plays the streams at that time, not at its own, so it does not diverge.
+func TestStreamsReplayReadsTheRecordedClock(t *testing.T) {
+	covSlow(t)
+	path := filepath.Join(t.TempDir(), "run.jsonl")
+	f, err := os.Create(path) //nolint:gosec // a file in the test directory
+	if err != nil {
+		t.Fatal(err)
+	}
+	fsys := streamsFS(t, "0")
+	g, err := New(Options{
+		FS: fsys, NoSound: true, Seed: 3, SaveDir: t.TempDir(), ShotDir: t.TempDir(), Location: "booth", Trace: f,
+		Script: "wait 30\npress ok\nwait 300\nquit", Now: func() time.Time { return noonish },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !sysFrames(t, g, 3000) {
+		t.Fatal("the script did not end")
+	}
+	sysClose(t, g)
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	r, err := New(Options{FS: fsys, NoSound: true, SaveDir: t.TempDir(), Replay: path, Now: func() time.Time { return noonish.Add(5 * time.Hour) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sysClose(t, r)
+	if !sysFrames(t, r, 5000) {
+		t.Fatal("the replay did not end")
+	}
+	if r.rep.diverge != "" || !r.rep.finished || !r.desk.base.Equal(noonish) {
+		t.Fatalf("diverged %q, finished %v, clock %v", r.rep.diverge, r.rep.finished, r.desk.base)
 	}
 }

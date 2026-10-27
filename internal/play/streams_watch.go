@@ -108,8 +108,13 @@ func (g *Game) watching() *streamWatch {
 	return nil
 }
 
-// The layout of the watch view: the chat column on the right, the stage on the left.
-const streamChatW = 380.0
+// The layout of the watch view: the chat column on the right, the stage on the left, and
+// the caption's letters and the part of the stage's width it takes.
+const (
+	streamChatW  = 380.0
+	captionSize  = 21.0
+	captionShare = 0.86
+)
 
 func (g *Game) watchStage() (x, y, w, h float64) {
 	sw, _ := g.screen()
@@ -472,10 +477,10 @@ func (w *streamWatch) update(g *Game) {
 // updateName reads the viewer's name, asked before the first show.
 func (w *streamWatch) updateName(g *Game) {
 	in := &g.in
-	if in.script == nil && w.field.readTyping() {
+	if in.devices() && w.field.readTyping() {
 		return
 	}
-	ok := in.script != nil && in.pressed[btnOK] || in.script == nil && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter))
+	ok := !in.devices() && in.pressed[btnOK] || in.devices() && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter))
 	sw, sh := g.screen()
 	if !ok && !g.clickedIn(sw/2-60, sh/2+40, 120, 40) {
 		return
@@ -501,14 +506,14 @@ func (w *streamWatch) input(g *Game) {
 		return
 	}
 	if w.typing {
-		if in.script == nil && w.field.readTyping() {
+		if in.devices() && w.field.readTyping() {
 			return
 		}
-		send := in.script != nil && in.pressed[btnOK] || in.script == nil && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter))
+		send := !in.devices() && in.pressed[btnOK] || in.devices() && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter))
 		switch {
 		case send || g.clickedIn(sw-streamChatW+streamChatW-150, sh-62, 64, 44):
 			w.comment(g)
-		case in.script != nil && in.cancel() || in.script == nil && inpututil.IsKeyJustPressed(ebiten.KeyEscape):
+		case !in.devices() && in.cancel() || in.devices() && inpututil.IsKeyJustPressed(ebiten.KeyEscape):
 			w.field.composer.Cancel()
 			w.typing = false
 		}
@@ -657,11 +662,10 @@ func (w *streamWatch) drawCaption(g *Game, dst *ebiten.Image, x, y, stw, sth flo
 	if w.caption == "" {
 		return
 	}
-	const size = 21.0
 	shown := []rune(w.caption)
 	shown = shown[:min(len(shown), (g.tick-w.captionT)/2+1)]
-	lines := gfx.Wrap(string(shown), size, stw*0.86)
-	lh := gfx.LineHeight(size)
+	lines := gfx.Wrap(string(shown), captionSize, stw*captionShare)
+	lh := gfx.LineHeight(captionSize)
 	top := y + sth*0.95 - float64(len(lines))*lh
 	if len(w.show.Hosts) > 1 {
 		c := w.show.Hosts[w.captionWho]
@@ -671,10 +675,10 @@ func (w *streamWatch) drawCaption(g *Game, dst *ebiten.Image, x, y, stw, sth flo
 		gfx.DrawText(dst, name, x+stw/2, top-22, 14, c.Color.Or(streamPanel))
 	}
 	for i, l := range lines {
-		lw := gfx.TextWidth(l, size)
+		lw := gfx.TextWidth(l, captionSize)
 		ly := top + float64(i)*lh
 		rect(dst, x+stw/2-lw/2-8, ly, lw+16, lh, withAlpha(colorBlack, 0xc0))
-		gfx.DrawText(dst, l, x+stw/2, ly+2, size, streamPanel)
+		gfx.DrawText(dst, l, x+stw/2, ly+2, captionSize, streamPanel)
 	}
 }
 
@@ -736,7 +740,7 @@ func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, sw, sh float64) {
 			}
 			gfx.FillRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, streamPage)
 			gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(cw), float32(ch), 6, 1.5, edge)
-			if w.field.text+w.field.comp == "" && !w.typing {
+			if w.naming || w.field.text+w.field.comp == "" && !w.typing {
 				gfx.DrawTextLeft(dst, lang.T("コメントする"), x+10, y+11, 16, streamInk3)
 			} else {
 				w.field.draw(dst, x+10, y+11, cw-20, 16, streamInk, streamBrand, w.typing, w.age)

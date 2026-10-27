@@ -80,6 +80,22 @@ type StreamBounce struct {
 // Bounces reports whether a line jiggles the streamer's puppet.
 func (s *Streams) Bounces(line string) bool { return s.bounce != nil && s.bounce.MatchString(line) }
 
+// Files are the streams file and its episodes.
+func (s *Streams) Files() []string {
+	out := []string{s.file}
+	for _, c := range s.Channels {
+		for _, e := range c.Shows {
+			out = append(out, e.file)
+		}
+	}
+	for _, d := range s.Duos {
+		for _, e := range d.Shows {
+			out = append(out, e.file)
+		}
+	}
+	return out
+}
+
 // MaxStep is the highest affection step.
 func (s *Streams) MaxStep() int { return len(s.Affection.Steps) - 1 }
 

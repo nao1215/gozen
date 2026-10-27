@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nao1215/gozen/internal/testgame"
+
 	"github.com/nao1215/gozen/internal/diag"
 )
 
@@ -116,6 +118,23 @@ func TestCheckLayoutWarnsOfTextThatOverflowsTheWindow(t *testing.T) {
 	}
 	// A warning never fails the check.
 	invoke(t, 0, "check", dir)
+}
+
+// TestCheckLayoutWarnsOfLongStreamCaptions: a streamer's line longer than the caption
+// of the watch view is a layout warning naming its episode file.
+func TestCheckLayoutWarnsOfLongStreamCaptions(t *testing.T) {
+	dir := fixture(t)
+	for name, body := range testgame.StreamFiles() {
+		write(t, filepath.Join(dir, name), body)
+	}
+	write(t, filepath.Join(dir, "assets", "x.png"), string(read(t, filepath.Join(dir, "assets", "mote.png"))))
+	write(t, filepath.Join(dir, "streams", "bo", "1.yaml"), strings.Replace(string(read(t, filepath.Join(dir, "streams", "bo", "1.yaml"))), "Hello, everyone.", longLine(8), 1))
+	game := strings.Replace(string(read(t, filepath.Join(dir, "game.yaml"))), "schema_version: 1\n", "", 1)
+	write(t, filepath.Join(dir, "game.yaml"), game+testgame.StreamsGame)
+	_, stderr := invoke(t, 0, "check", "--only", "layout", dir)
+	if !strings.Contains(stderr, "streams/bo/1.yaml") || strings.Contains(stderr, "streams/ann/1.yaml") {
+		t.Fatalf("stderr: %q", stderr)
+	}
 }
 
 func TestCheckLayoutCutsAPromptAboveItsChoices(t *testing.T) {

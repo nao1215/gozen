@@ -205,7 +205,8 @@ func (g *Game) drawFramed(dst *ebiten.Image, c *data.Channel, p *puppet.Puppet, 
 	p.Draw(sub, op)
 }
 
-// avatar is a round picture of the channel's face, cut from its puppet's base.
+// avatar is a round picture of the channel's face, cut from its puppet's base around
+// the head.
 func (g *Game) avatar(c *data.Channel) *ebiten.Image {
 	if img, ok := g.desk.avatars[c.ID]; ok {
 		return img
@@ -213,9 +214,14 @@ func (g *Game) avatar(c *data.Channel) *ebiten.Image {
 	var img *ebiten.Image
 	if a := g.db.Actors[c.Actor]; a != nil {
 		if rig := g.rig(a.Puppet); rig != nil {
+			// the head of the puppet, or the top of the frame when it names none
 			f := c.Frame
 			d := (f.Bottom - f.Top) * 0.4
-			r := image.Rect(int(f.CX-d/2), int(f.Top), int(f.CX+d/2), int(f.Top+d)).Intersect(rig.Base.Bounds())
+			cx, cy := f.CX, f.Top+d/2
+			if h := rig.Spec.Head; h != nil && len(h.Center) == 2 && h.Radius > 0 {
+				cx, cy, d = h.Center[0], h.Center[1], h.Radius*2.2
+			}
+			r := image.Rect(int(cx-d/2), int(cy-d/2), int(cx+d/2), int(cy+d/2)).Intersect(rig.Base.Bounds())
 			if !r.Empty() {
 				img = gfx.RoundedMask(ebiten.NewImageFromImage(rig.Base.SubImage(r)), float32(r.Dx())/2)
 			}

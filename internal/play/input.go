@@ -312,6 +312,10 @@ func (in *input) gamepads() {
 	}
 }
 
+// devices reports whether the input comes from the keyboard, the mouse and the pads, not
+// a script or a replay: only then is text typed with the keyboard and an input method.
+func (in *input) devices() bool { return in.script == nil && in.replay == nil }
+
 func (in *input) ok() bool     { return in.pressed[btnOK] }
 func (in *input) cancel() bool { return in.pressed[btnCancel] || in.rclick }
 func (in *input) up() bool     { return in.pressed[btnUp] || in.wheel > 0 }
