@@ -89,7 +89,10 @@ func TestGraphicsScreensStreams(t *testing.T) {
 				t.Error("the desktop does not show the read-aloud button, on, with recorded voices")
 			}
 		}},
-		{"tip", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 60\npress down\nwait 5\npress ok\nwait 10\npress ok\nwait 20\nshot tip\nquit\n", nil, func(t *testing.T, root string) {
+		// the tip button and the first amount are clicked where they are, not reached with
+		// the keys: the show starts at a random beat, and a question's answers come first
+		// among the controls the keys go through
+		{"tip", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 60\nclick 1162 683\nwait 10\nclick 1090 538\nwait 20\nshot tip\nquit\n", nil, func(t *testing.T, root string) {
 			// a tip of the first tier: a band of its color at the top of the stage, centred
 			tip := shotImage(t, root, "tip")
 			sw := 1280.0 - streamChatW
