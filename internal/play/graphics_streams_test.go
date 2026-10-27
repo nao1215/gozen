@@ -89,6 +89,15 @@ func TestGraphicsScreensStreams(t *testing.T) {
 				t.Error("the desktop does not show the read-aloud button, on, with recorded voices")
 			}
 		}},
+		{"tip", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 60\npress down\nwait 5\npress ok\nwait 10\npress ok\nwait 20\nshot tip\nquit\n", nil, func(t *testing.T, root string) {
+			// a tip of the first tier: a band of its color at the top of the stage, centred
+			tip := shotImage(t, root, "tip")
+			sw := 1280.0 - streamChatW
+			x := int((sw - min(sw*0.8, 460)) / 2)
+			if !near(tip, x+4, int(streamBarH+44+27), [3]uint32{0xe3, 0xf1, 0xff}) {
+				t.Error("no band of the tip over the stage")
+			}
+		}},
 		{"full", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 100\npress hide\nwait 20\nshot full\nquit\n", nil, func(t *testing.T, root string) {
 			full := shotImage(t, root, "full")
 			// the room under where the page's bar and the information were, and the chat darkened over the stage

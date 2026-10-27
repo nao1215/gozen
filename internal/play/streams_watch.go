@@ -72,6 +72,11 @@ type streamWatch struct {
 
 	viewers int
 	nextTip time.Time
+	// cheers are the tips shown in turn in a band over the stage, the first since
+	// cheerAt, and pins the tips of the top two tiers kept over the chat until their time.
+	cheers  []streamTip
+	cheerAt time.Time
+	pins    []streamTip
 
 	field     textField
 	typing    bool
@@ -108,6 +113,70 @@ func (l streamSay) shown(g *Game) (text, raw string) {
 
 // tipKind is the stimulus kind of a tip; value.amount is its amount.
 const tipKind = "tip"
+
+// streamTip is a tip shown: who sent it, its comment and its amount, and until when it is
+// kept over the chat (a pin).
+type streamTip struct {
+	who, text string
+	amount    int
+	until     time.Time
+}
+
+// tipBand is how long a tip's band stays over the stage.
+const tipBand = 5 * time.Second
+
+// tipFaces are the faces a host reads a tip out with, the first its puppet has.
+var tipFaces = []string{"happy", "laugh"}
+
+// cheer shows a tip, the player's or a bot's: a band of its tier's color over the stage for
+// tipBand (after the bands before it), the sound "tip", and, of the top two tiers, a band
+// over the chat for 60 seconds (the third tier) or 120 (the top).
+func (w *streamWatch) cheer(g *Game, who, text string, amount int) {
+	now := g.streamNow()
+	if len(w.cheers) == 0 {
+		w.cheerAt = now
+	}
+	w.cheers = append(w.cheers, streamTip{who: who, text: text, amount: amount})
+	g.sfx("tip")
+	if tier := g.tipTier(amount); tier >= len(streamTips)-2 {
+		w.pins = append(w.pins, streamTip{who: who, text: text, amount: amount, until: now.Add(time.Duration(30<<(tier-1)) * time.Second)})
+	}
+}
+
+// pin is the tip kept over the chat now, the latest (nil: none).
+func (w *streamWatch) pin(g *Game) *streamTip {
+	now := g.streamNow()
+	for i := len(w.pins) - 1; i >= 0; i-- {
+		if now.Before(w.pins[i].until) {
+			return &w.pins[i]
+		}
+	}
+	return nil
+}
+
+// stepCheers takes away the band of a tip shown for tipBand, the next one in its place,
+// and the pins past their time.
+func (w *streamWatch) stepCheers(g *Game) {
+	now := g.streamNow()
+	for len(w.cheers) > 0 && !now.Before(w.cheerAt.Add(tipBand)) {
+		w.cheers, w.cheerAt = w.cheers[1:], w.cheerAt.Add(tipBand)
+	}
+	w.pins = slices.DeleteFunc(w.pins, func(p streamTip) bool { return !now.Before(p.until) })
+}
+
+// sayFace is the face a host says the line with: a tip read out with the happiest face its
+// puppet has (tipFaces), else the line's.
+func sayFace(p *puppet.Puppet, l streamSay) int {
+	if l.quote {
+		for _, f := range tipFaces {
+			if i, ok := p.Rig().Face(f); ok {
+				return i
+			}
+		}
+	}
+	i, _ := p.Rig().Face(l.face)
+	return i
+}
 
 func newStreamWatch(g *Game, show *broadcast.Show, viewers int) *streamWatch {
 	now := g.streamNow()
@@ -213,6 +282,9 @@ func (w *streamWatch) chatRect(g *Game) (x, y, cw, h float64) {
 	case g.cfg.StreamFull:
 		top = lay.colTop + 44
 	}
+	if w.pin(g) != nil { // under the tip kept over the chat
+		top += pinH
+	}
 	bottom := sh - 70
 	if w.ask != nil && w.mine < 0 {
 		bottom -= float64(len(w.ask.Options))*40 + 28
@@ -267,8 +339,7 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 	d := g.db.Streams
 	text, raw := l.shown(g)
 	if p := w.bodies[l.host]; p != nil {
-		face, _ := p.Rig().Face(l.face)
-		p.Motion.SetFace(face)
+		p.Motion.SetFace(sayFace(p, l))
 		if d.Bounces(text) {
 			p.Motion.React(puppetdef.Reaction{Kind: "jiggle", Amount: d.Bounce.Amount})
 		}
@@ -585,6 +656,7 @@ func (w *streamWatch) tip(g *Game, amount int) {
 	g.st.Gold -= amount
 	c := w.show.Hosts[0]
 	w.chat.post(chat.Message{From: g.st.Streams.Viewer, Text: text, Values: map[string]float64{chatTip: float64(amount), chatMine: 1}})
+	w.cheer(g, g.st.Streams.Viewer, text, amount)
 	g.earn(c, float64(amount)/g.db.Streams.Affection.TipPer)
 	g.emit("stream_tip", traceLine{"show": w.show.Key, "amount": amount})
 	values := w.values(g)
@@ -606,6 +678,7 @@ func (w *streamWatch) botTip(g *Game) {
 	who := g.db.Tr(d.Crowd.Names[rng.IntN(len(d.Crowd.Names))])
 	text := g.db.Tr(d.Crowd.TipLines[rng.IntN(len(d.Crowd.TipLines))])
 	w.chat.post(chat.Message{From: who, Text: text, Values: map[string]float64{chatTip: float64(amount)}})
+	w.cheer(g, who, text, amount)
 	host := rng.IntN(len(w.show.Hosts))
 	if text != "" {
 		w.queue = append(w.queue, streamSay{host: host, line: g.quote(text), quote: true})
@@ -726,6 +799,7 @@ func (w *streamWatch) update(g *Game) {
 	}
 	g.keepCrowd(w.crowd)
 	w.chat.pull(w.crowd, now.Sub(w.opened))
+	w.stepCheers(g)
 	if w.age%180 == 0 {
 		w.viewers = max(20, w.viewers+g.desk.rng.IntN(17)-7)
 	}
@@ -994,6 +1068,7 @@ func (w *streamWatch) draw(g *Game, dst *ebiten.Image) {
 	gfx.FillRoundRect(dst, float32(lx), float32(y+12), 46, 22, 3, streamLive)
 	gfx.Pop(func() { gfx.DrawText(dst, "LIVE", lx+23, y+14, 14, streamPanel) })
 	w.drawCaption(g, dst, lay, y, w.drawPlate(g, dst, lay, y))
+	w.drawCheer(g, dst, lay, y)
 	if w.ended {
 		rect(dst, 0, y, stw, sth, withAlpha(colorBlack, 0x99))
 		gfx.DrawText(dst, lang.T("配信は終了しました"), stw/2, y+sth/2-30, 24, streamPanel)
@@ -1044,6 +1119,50 @@ func (w *streamWatch) drawPlate(g *Game, dst *ebiten.Image, lay watchLayout, y f
 		}
 	})
 	return bottom
+}
+
+// pinH is the height a tip kept over the chat takes.
+const pinH = 36.0
+
+// drawCheer draws the band of the tip being shown at the top of the stage, centred where
+// the caption is: who sent it and the amount in the pop font, the comment under them, on
+// the tip's tier's color; it is clear of the LIVE mark, the name plate and the caption.
+func (w *streamWatch) drawCheer(g *Game, dst *ebiten.Image, lay watchLayout, y float64) {
+	if len(w.cheers) == 0 {
+		return
+	}
+	t := w.cheers[0]
+	size, sub, h := 17.0, 14.0, 54.0
+	if g.view.tall {
+		size, sub, h = 14, 12, 44
+	}
+	if t.text == "" {
+		h -= sub * 1.4
+	}
+	cw := min(lay.capW*0.8, 460)
+	g.drawTip(dst, t, lay.capX+(lay.capW-cw)/2, y+44, cw, h, size, sub)
+}
+
+// drawTip draws a tip on a band of its tier's color at x, y, w wide and h tall: who sent it
+// and the amount in the pop font, and its comment under them when there is room, else
+// after them.
+func (g *Game) drawTip(dst *ebiten.Image, t streamTip, x, y, w, h, size, sub float64) {
+	gfx.FillRoundRect(dst, float32(x), float32(y), float32(w), float32(h), 6, streamTips[g.tipTier(t.amount)])
+	head := t.who + "  " + g.money(t.amount)
+	var hw float64
+	gfx.Pop(func() {
+		head = gfx.Ellipsis(head, size, w-20)
+		hw = gfx.TextWidth(head, size)
+		gfx.DrawTextLeft(dst, head, x+10, y+5, size, streamInk)
+	})
+	if t.text == "" {
+		return
+	}
+	if h >= (size+sub)*1.4+8 {
+		gfx.DrawTextLeft(dst, gfx.Ellipsis(t.text, sub, w-20), x+10, y+5+size*1.4, sub, streamInk2)
+		return
+	}
+	gfx.DrawTextLeft(dst, gfx.Ellipsis(t.text, sub, w-30-hw), x+20+hw, y+5+(size-sub)*0.7, sub, streamInk2)
 }
 
 // drawCaption draws the whole line being said as white text on black bands, ending at
@@ -1128,6 +1247,9 @@ func (w *streamWatch) drawColumn(g *Game, dst *ebiten.Image, lay watchLayout, sh
 	}
 	ctl := w.controls(g)
 	x, y, chw, chh := w.chatRect(g)
+	if p := w.pin(g); p != nil {
+		g.drawTip(dst, *p, x, y-8-pinH, chw, pinH-6, 13, 12)
+	}
 	g.drawChat(dst, w.chat, x, y, chw, chh, g.money, ink)
 	if w.ask != nil && w.mine < 0 {
 		gfx.DrawTextLeft(dst, lang.T("答える："), cx+14, y+chh+8, 14, ink2)

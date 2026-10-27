@@ -34,6 +34,8 @@ var Effects = []string{
 	"levelup",
 
 	"treasure",
+
+	"tip",
 }
 
 func Play(name string) {
@@ -309,6 +311,14 @@ func makeActionEffects(effects map[string][]byte, noise func() float64) {
 		v := arpeggio([]float64{523.25, 659.25, 783.99, 1046.5, 1318.51}, 0.055, 0.14, 0.12)(t)
 		if u := t - 0.3; u > 0 {
 			v += (tone(u, 523.25) + tone(u, 783.99)*0.7 + tone(u, 1046.5)*0.5) * env(u, 0.01, 0.3) * 0.08
+		}
+		return v
+	})
+	// a stream's tip: two bright coin pings and a shimmer
+	effects["tip"] = synth(0.9, func(t float64) float64 {
+		v := arpeggio([]float64{1567.98, 2093}, 0.07, 0.25, 0.13)(t)
+		if u := t - 0.16; u > 0 {
+			v += (tone(u, 2637.02) + tone(u, 3135.96)*0.5) * env(u, 0.005, 0.45) * 0.06
 		}
 		return v
 	})

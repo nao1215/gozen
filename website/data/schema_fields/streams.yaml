@@ -6,7 +6,7 @@ Streams:
   slot: "How long a live channel streams: its episodes one after another (ADR 0052)."
   live: "Who is live when the game opens."
   away: "The gold earned while the game is closed."
-  tips: "The amounts the player can tip, above 0, smallest first, each once."
+  tips: "The amounts the player can tip, above 0, smallest first, each once. They make the tiers of the tips' colors (the first four amounts). A tip, the player's or a bot's, shows a band of its tier's color with who sent it, the amount and the comment over the stage for 5 seconds and plays the sound `tip` (`assets/sfx/tip.ogg` replaces it); one of the third tier stays over the chat for 60 seconds, of the fourth for 120; the host reads a tip out with the face `happy`, else `laugh`, when its puppet has one."
   crowd: "The bot viewers of the chat."
   affection: "The points of the affection steps and what earns them."
   answer_chance: "The chance, for each affection step, that a streamer picks the player's answer to a question, 0 to 1. The default is [0.6, 0.75, 0.9, 1, 1]."

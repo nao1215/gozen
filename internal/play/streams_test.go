@@ -949,6 +949,51 @@ func TestStreamsComeBackWhereLeft(t *testing.T) {
 	}
 }
 
+// TestStreamsTipsCheer: a tip, the player's or a bot's, shows a band over the stage for
+// tipBand, one after another; one of the top two tiers stays over the chat, the top 120
+// seconds; and a host reads a tip out with the happiest face its puppet has.
+func TestStreamsTipsCheer(t *testing.T) {
+	fsys := streamsFS(t, "0")
+	fsys["data/streams.yaml"].Data = []byte(strings.Replace(string(fsys["data/streams.yaml"].Data), "tips: [10, 50]", "tips: [10, 50, 100, 500]", 1))
+	fsys["assets/streamer/puppet.yaml"].Data = []byte(strings.Replace(string(fsys["assets/streamer/puppet.yaml"].Data), "  smile: {}\n", "  smile: {}\n  laugh: {}\n", 1))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "booth", Now: func() time.Time { return noonish }})
+	wldFrames(t, g, 40)
+	g.st.Streams.Viewer, g.st.Gold = "Pat", 1000
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	w := newStreamWatch(g, l.cards[0].show, 100)
+	g.push(w)
+	_, top, _, _ := w.chatRect(g)
+	w.tip(g, 500)
+	w.botTip(g)
+	if len(w.cheers) != 2 || w.cheers[0].who != "Pat" || w.cheers[0].amount != 500 {
+		t.Fatalf("the bands of the tips %+v", w.cheers)
+	}
+	if p := w.pin(g); p == nil || p.amount != 500 || !p.until.Equal(g.streamNow().Add(120*time.Second)) {
+		t.Fatalf("the top tip kept over the chat %+v", p)
+	}
+	if _, y, _, _ := w.chatRect(g); y != top+pinH {
+		t.Fatalf("the chat starts at %v under the kept tip, not %v", y, top+pinH)
+	}
+	wldFrames(t, g, int(tipBand.Seconds()*ebiten.DefaultTPS)+1)
+	if len(w.cheers) != 1 || w.cheers[0].who == "Pat" {
+		t.Fatalf("after %v the bands are %+v, not the bot's alone", tipBand, w.cheers)
+	}
+	wldFrames(t, g, int(tipBand.Seconds()*ebiten.DefaultTPS)+1)
+	if len(w.cheers) != 0 {
+		t.Fatalf("the bands stay: %+v", w.cheers)
+	}
+	if laugh, _ := w.bodies[0].Rig().Face("laugh"); sayFace(w.bodies[0], streamSay{line: "\"Hi\"", quote: true}) != laugh {
+		t.Error("a tip is not read out with the laughing face")
+	}
+	wldFrames(t, g, int(120*ebiten.DefaultTPS))
+	if w.pin(g) != nil {
+		t.Error("the tip stays over the chat after 120 seconds")
+	}
+}
+
 // TestStreamsUnansweredKeepsTheLast: the file of unanswered comments keeps the last 200,
 // and a damaged file starts again.
 func TestStreamsUnansweredKeepsTheLast(t *testing.T) {
