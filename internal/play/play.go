@@ -290,6 +290,7 @@ type Game struct {
 	rendering      bool
 	pauseUnfocused bool      // Set only by the native/browser Run loop, not offscreen tests.
 	debugDrawTime  time.Time // Previous Draw start, used only by explicit timing diagnostics.
+	debugDrawTick  int       // The tick of the last timing diagnostic of Draw.
 
 	backlog  []logLine
 	logView  *backlogView
@@ -998,7 +999,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		interval := t0.Sub(g.debugDrawTime)
 		g.debugDrawTime = t0
 		defer func() {
-			if g.tick%30 == 0 {
+			// every 30 ticks or more: a loaded machine draws every few ticks, which a tick
+			// that is a multiple of 30 could always fall between
+			if g.tick-g.debugDrawTick >= 30 {
+				g.debugDrawTick = g.tick
 				log.Printf("draw %v fps %.1f tps %.1f frame %v", time.Since(t0), ebiten.ActualFPS(), ebiten.ActualTPS(), interval)
 			}
 		}()
