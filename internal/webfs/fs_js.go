@@ -55,7 +55,7 @@ func Load(base string, progress func(done, total int64)) (fs.FS, error) {
 	}
 	h := &httpFS{
 		base: base, entries: fstest.MapFS{}, served: make(map[string]file, len(files)),
-		cache: make(map[string][]byte, len(files)), coming: make(map[string]chan struct{}, len(files)), fetching: map[string]*fetchCall{},
+		cache: make(map[string][]byte, len(files)), coming: make(map[string]chan struct{}, len(files)), fetching: map[string]*fetchCall{}, fetchers: make(chan struct{}, workers),
 	}
 	counter := &count{report: progress}
 	for _, f := range files {
@@ -130,6 +130,8 @@ type httpFS struct {
 	// fetching are the files opened that are being fetched, which another opening of one
 	// waits for rather than fetch it again.
 	fetching map[string]*fetchCall
+	// fetchers bounds the files fetched for the game opening them at once (workers).
+	fetchers chan struct{}
 }
 
 // fetchCall is a file being fetched for the game opening it: done is closed once data or
@@ -154,7 +156,9 @@ func (f *httpFS) fetchOnce(name string, served file) ([]byte, error) {
 	c = &fetchCall{done: make(chan struct{})}
 	f.fetching[name] = c
 	f.mu.Unlock()
+	f.fetchers <- struct{}{}
 	c.data, c.err = get(f.base, served, nil)
+	<-f.fetchers
 	f.mu.Lock()
 	delete(f.fetching, name)
 	if c.err == nil && !served.Later {
