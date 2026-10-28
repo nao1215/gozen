@@ -51,19 +51,47 @@ const autoSlot = saveSlots
 
 func (g *Game) autoPath() string { return "auto.json" }
 
+// Failed background saves wait five seconds of game updates between attempts.
+const saveRetryTicks = 300
+
+type saveRetry struct {
+	next int
+	err  string
+}
+
+func (r *saveRetry) record(tick int, operation string, err error) {
+	if err == nil {
+		*r = saveRetry{}
+		return
+	}
+	if msg := err.Error(); msg != r.err {
+		log.Printf("%s: %v", operation, err)
+		r.err = msg
+	}
+	r.next = tick + saveRetryTicks
+}
+
+func (g *Game) saveNotice() string {
+	if g.autoSaveRetry.err != "" || g.unlockSaveRetry.err != "" {
+		return lang.T("保存できていません。再試行しています。")
+	}
+	return ""
+}
+
 func (g *Game) autoSave() {
-	if g.testRun() && !g.storeGiven {
+	if g.tick < g.autoSaveRetry.next || g.testRun() && !g.storeGiven {
 		return
 	}
 	key := g.st.Location
 	if f, ok := g.st.Vars[dungeon.VarFloor].(float64); ok && dungeon.Of(g.db, g.st) != nil {
 		key += fmt.Sprintf("/%d", int(f))
 	}
-	if key == g.autoKey {
+	if key == g.autoKey && g.autoSaveRetry.err == "" {
 		return
 	}
-	if err := g.writeSave(g.autoPath()); err != nil {
-		log.Printf("autosave: %v", err)
+	err := g.writeSave(g.autoPath())
+	g.autoSaveRetry.record(g.tick, "autosave", err)
+	if err != nil {
 		return
 	}
 	g.autoKey = key

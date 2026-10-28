@@ -578,6 +578,9 @@ func (g *Game) liveNotice() string {
 
 func (g *Game) drawLiveNotice(screen *ebiten.Image) {
 	msg := g.liveNotice()
+	if warning := g.saveNotice(); warning != "" {
+		msg = strings.TrimSpace(warning + "\n" + msg)
+	}
 	if msg == "" {
 		return
 	}

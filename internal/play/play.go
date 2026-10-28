@@ -323,12 +323,15 @@ type Game struct {
 	unlocked   map[string]bool
 	replaying  bool
 	// sortieTactics are the tactics last chosen on the sortie screen, by general.
-	sortieTactics map[string]string
-	autoBattle    bool
-	read          map[uint64]bool
-	readDirty     bool
-	autoKey       string
-	offered       string
+	sortieTactics   map[string]string
+	autoBattle      bool
+	read            map[uint64]bool
+	readDirty       bool
+	autoSaveRetry   saveRetry
+	unlockSaveRetry saveRetry
+	unlockDirty     bool
+	autoKey         string
+	offered         string
 
 	unlockReadErr     error
 	unlockNeedsBackup bool
@@ -987,6 +990,7 @@ func (g *Game) Update() error {
 		g.checkUnlocks()
 	}
 	if g.tick%10 == 0 {
+		g.saveUnlocks()
 		g.idleChores()
 	}
 	if g.tick%600 == 0 {

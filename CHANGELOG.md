@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Show a persistent warning when autosaves or gallery unlocks cannot be saved; retry at five-second update intervals, log repeated failures only once until recovery, and clear the warning after saving succeeds.
+
 - Initialize browser playback like desktop playback, including resetting transient movement on focus loss and pausing until focus returns.
 
 ## v0.14.2 - 2026-10-28
