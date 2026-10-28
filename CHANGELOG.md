@@ -6,7 +6,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 - Show a persistent warning when autosaves or gallery unlocks cannot be saved; retry at five-second update intervals, log repeated failures only once until recovery, and clear the warning after saving succeeds.
 
-- Initialize browser playback like desktop playback, including resetting transient movement on focus loss and pausing until focus returns.
+- Initialize browser playback like desktop playback, including resetting transient movement on focus loss. A browser keeps running while unfocused, since an embedded page can start without focus.
 
 ## v0.14.2 - 2026-10-28
 

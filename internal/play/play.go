@@ -13,6 +13,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -199,9 +200,10 @@ func (g *Game) StartRendering() {
 	}
 	g.loopStarted = true
 	g.rendering = true
-	g.pauseUnfocused = g.opts.Script == "" && g.opts.Autopilot == nil
-	// Run one paused update on focus loss so transient movement is reset. Update
-	// retains the normal pause while unfocused; scripted captures keep running.
+	// A browser keeps running unfocused: an embedded page can start without focus and would
+	// never begin, and the browser already slows a hidden tab. Scripted captures keep running.
+	g.pauseUnfocused = runtime.GOOS != "js" && g.opts.Script == "" && g.opts.Autopilot == nil
+	// Run updates on focus loss so transient movement is reset (pauseForFocus).
 	ebiten.SetRunnableOnUnfocused(true)
 
 	g.startLive()
@@ -301,7 +303,7 @@ type Game struct {
 	quit           bool
 	loopStarted    bool
 	rendering      bool
-	pauseUnfocused bool      // Set only by the native/browser Run loop, not offscreen tests.
+	pauseUnfocused bool      // Set only by the desktop loop (StartRendering), not a browser or offscreen tests.
 	debugDrawTime  time.Time // Previous Draw start, used only by explicit timing diagnostics.
 	debugDrawTick  int       // The tick of the last timing diagnostic of Draw.
 
@@ -796,13 +798,13 @@ func (g *Game) rng() *rand.Rand {
 }
 
 func (g *Game) pauseForFocus(focused bool) bool {
-	if g.pauseUnfocused && g.in.script == nil && g.auto == nil && g.rep == nil && !focused {
-		g.resetFreeMotion()
-		// The external memo editor intentionally completes while the game lacks
-		// focus. Keep collecting its result and expiring its completion toast.
-		return g.memo == nil && g.memoToastT == 0
+	if focused || !g.rendering || g.in.script != nil || g.auto != nil || g.rep != nil {
+		return false
 	}
-	return false
+	g.resetFreeMotion()
+	// The external memo editor intentionally completes while the game lacks
+	// focus. Keep collecting its result and expiring its completion toast.
+	return g.pauseUnfocused && g.memo == nil && g.memoToastT == 0
 }
 
 func (g *Game) Update() error {
