@@ -53,7 +53,8 @@ type streamWatch struct {
 	spoken func() bool
 	voice  *voiceLoad
 	// ahead are the voices of the next voicesAhead lines being loaded, by file (aheadVoices).
-	ahead map[string]*voiceLoad
+	ahead   map[string]*voiceLoad
+	started bool // the first spoken line gets a longer cold-load budget
 
 	next, from, watched  int // the next beat, the beat come in at, the beats watched
 	seen, thanked, ended bool
@@ -198,11 +199,7 @@ func newStreamWatch(g *Game, show *broadcast.Show, viewers int) *streamWatch {
 		w.bodies = append(w.bodies, g.channelPuppet(c, fmt.Sprintf("watch:%s:%d", show.Key, i)))
 	}
 	w.talk = make([]time.Time, len(show.Hosts))
-	w.next = show.BeatAt(now)
-	if w.next < len(show.Beats) && show.Beats[w.next].Ask != nil {
-		w.next++
-	}
-	w.next = max(w.next, g.desk.left[show])
+	w.next = streamEntryBeat(g, show)
 	w.from = w.next
 	w.part, w.partFrom = show.Part(w.next), w.next
 	w.nextTip = now.Add(time.Duration(40+g.desk.rng.IntN(60)) * time.Second)
@@ -213,10 +210,35 @@ func newStreamWatch(g *Game, show *broadcast.Show, viewers int) *streamWatch {
 		}
 		return w.field.caretX(x+10, 16), y + 12
 	})
-	w.greet(g)
+	if len(g.stack) > 0 {
+		if l, ok := g.stack[len(g.stack)-1].(*streamLobby); ok {
+			for _, c := range l.cards {
+				if c.show == show && c.opening != nil && c.openingKey == streamOpeningKey(g, show) {
+					w.queue, w.ahead = c.opening.queue, c.opening.ahead
+				}
+			}
+		}
+	}
+	if w.queue == nil {
+		w.greet(g)
+	}
+	p := broadcast.Progress(g.st.Streams, show.Hosts[0].ID)
+	broadcast.Visit(p, now)
+	for i, l := range w.queue {
+		w.queue[i] = dataLine(l.host, l.line, g.st.Streams.Viewer, p.Run)
+	}
 	w.aheadVoices(g)
 	g.emit("stream", traceLine{"show": show.Key, "episode": show.Episodes[w.part].Title, "beat": w.next})
 	return w
+}
+
+// streamEntryBeat skips a question already in progress and lines heard before leaving.
+func streamEntryBeat(g *Game, show *broadcast.Show) int {
+	n := show.BeatAt(g.streamNow())
+	if n < len(show.Beats) && show.Beats[n].Ask != nil {
+		n++
+	}
+	return max(n, g.desk.left[show])
 }
 
 func (w *streamWatch) modal() bool { return true }
@@ -344,13 +366,13 @@ func dataLine(host int, line, from string, days int) streamSay {
 // lines of the affection step and the days in a row.
 func (w *streamWatch) greet(g *Game) {
 	c := w.show.Hosts[0]
-	p := broadcast.Progress(g.st.Streams, c.ID)
+	p := *broadcast.Progress(g.st.Streams, c.ID) // preview without recording a visit
 	pick := func(lines []string) {
 		if len(lines) > 0 {
 			w.queue = append(w.queue, dataLine(0, lines[g.desk.rng.IntN(len(lines))], g.st.Streams.Viewer, p.Run))
 		}
 	}
-	if broadcast.Visit(p, g.streamNow()) {
+	if broadcast.Visit(&p, g.streamNow()) {
 		pick(c.First)
 		return
 	}
@@ -368,6 +390,11 @@ func (w *streamWatch) greet(g *Game) {
 // long (until it has been read aloud, when that is on).
 func (w *streamWatch) say(g *Game, l streamSay) {
 	now := g.streamNow()
+	wait := voiceWait
+	if !w.started {
+		wait = firstVoiceWait
+	}
+	w.started = true
 	d := g.db.Streams
 	text, raw := l.shown(g)
 	if p := w.bodies[l.host]; p != nil {
@@ -391,9 +418,9 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 		if w.voice = w.ahead[f]; w.voice == nil {
 			w.voice = loadVoice(g.db.FS, f)
 		}
-		if !w.voice.loaded() { // a browser still fetching it: waited for voiceWait at most
-			w.limit = now.Add(voiceWait)
-			w.busy, w.talk[l.host] = maxTime(w.limit, now.Add(seconds(d.Timing.LineSeconds(text)))).Add(w.hold), w.limit
+		if !w.voice.loaded() { // fetching and decoding both count toward the budget
+			w.limit = now.Add(wait)
+			w.busy, w.talk[l.host] = maxTime(w.limit, now.Add(seconds(d.Timing.LineSeconds(text)))).Add(w.hold), now
 		}
 		w.voiced(g)
 		return
@@ -449,6 +476,16 @@ func (w *streamWatch) voiced(g *Game) {
 	w.busy, w.talk[w.captionWho] = end.Add(voiceGap+w.hold), end
 }
 
+// voiceFallback records one decision per line, before releasing its pending voice.
+func (w *streamWatch) voiceFallback(g *Game, v *voiceLoad, reason string) {
+	elapsed := g.streamNow().Sub(w.said).Seconds()
+	g.emit("voice", traceLine{
+		"file": v.file, "who": w.show.Hosts[w.captionWho].ID,
+		"missing": true, "fallback": true, "elapsed_seconds": elapsed, "error": reason,
+	})
+	log.Printf("streams: voice fallback file=%s elapsed=%.3fs reason=%s", v.file, elapsed, reason)
+}
+
 // The times of a caption: at least captionLeast before the next step, whatever the line's
 // timing or voice (a short line would go before it is read; the watch view lags the
 // stream's clock for it as for a voice), and captionLinger after the chat beat that
@@ -470,8 +507,16 @@ func (w *streamWatch) shownCaption(g *Game) string {
 // first and then those of the beats to come, and lets go of the voices no longer among
 // them (a language changed, a reply came between): a browser fetches a voice only then.
 func (w *streamWatch) aheadVoices(g *Game) {
-	if voicesAhead == 0 || !g.desk.speak || !g.desk.voices {
+	if voicesAhead == 0 {
 		return
+	}
+	w.prefetchVoices(g, voicesAhead)
+}
+
+// prefetchVoices shares the bounded loader with the lobby opening preview.
+func (w *streamWatch) prefetchVoices(g *Game, count int) {
+	if !g.desk.speak || !g.desk.voices {
+		count = 0
 	}
 	want := map[string]bool{}
 	add := func(host int, l streamSay) {
@@ -486,13 +531,13 @@ func (w *streamWatch) aheadVoices(g *Game) {
 	}
 	n := 0
 	for _, l := range w.queue {
-		if n == voicesAhead {
+		if n == count {
 			break
 		}
 		add(l.host, l)
 		n++
 	}
-	for b := w.next; b < len(w.show.Beats) && n < voicesAhead; b++ {
+	for b := w.next; b < len(w.show.Beats) && n < count; b++ {
 		switch bt := w.show.Beats[b]; {
 		case bt.Line != nil:
 			add(w.host(bt.Speaker), streamSay{line: bt.Line.Text})
@@ -516,6 +561,10 @@ func minTime(a, b time.Time) time.Time {
 // voiceWait is how long a line waits for its voice still being fetched (a browser's)
 // before it is read by speech synthesis instead.
 const voiceWait = 1500 * time.Millisecond
+
+// firstVoiceWait allows four normal budgets for cold fetch/decode contention at entry.
+// Six seconds bounds a stalled request without delaying every later line.
+const firstVoiceWait = 6 * time.Second
 
 // maxTime is the later of a and b.
 func maxTime(a, b time.Time) time.Time {
@@ -922,17 +971,20 @@ func (w *streamWatch) update(g *Game) {
 			w.nextTip = now.Add(time.Duration(60+g.desk.rng.IntN(90)) * time.Second)
 			w.botTip(g)
 		}
+		w.voiced(g) // a completed decode wins even on the deadline frame
 		if (w.voice != nil || w.spoken != nil) && !now.Before(w.limit) {
 			// given up (speech still going is stopped): a voice or speech that ends later
 			// does not move the next step; a voice that has not come is a line without one,
 			// read by speech synthesis
 			late := w.voice != nil
+			if late {
+				w.voiceFallback(g, w.voice, "fetch/decode timeout")
+			}
 			w.hush()
 			if late {
 				w.readAloud(g, w.captionWho, w.caption)
 			}
 		}
-		w.voiced(g)
 		if w.spoken != nil && w.spoken() {
 			w.spoken = nil
 			w.busy = now.Add(voiceGap + w.hold)

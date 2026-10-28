@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"image"
 	"io/fs"
+	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -1035,21 +1036,156 @@ func hosts(shows []*broadcast.Show) []string {
 	return out
 }
 
-// TestStreamsLateVoiceIsSpoken: a line whose voice a browser is still fetching waits for it
-// voiceWait at most, the line lasting its timing at least, and is then read as a line
-// without its voice (by speech synthesis in a browser).
+// TestStreamsLateVoiceIsSpoken checks the first-line budget, subsequent budgets and
+// the single diagnostic for a timeout. Pending voices leave the caption visible and mouth still.
 func TestStreamsLateVoiceIsSpoken(t *testing.T) {
 	g, w, _ := voicedShow(t, "Hello, everyone.")
-	f := g.db.Streams.Voice("ann", "Hello, everyone.")
-	w.ahead[f] = &voiceLoad{file: f, done: make(chan struct{})} // still coming
-	now := g.streamNow()
-	w.say(g, streamSay{line: "Hello, everyone."})
-	if !w.limit.Equal(now.Add(voiceWait)) || w.busy.Before(now.Add(seconds(g.db.Streams.Timing.LineSeconds("Hello, everyone.")))) || w.voice == nil {
-		t.Fatalf("waiting for the voice: limit %v, busy %v from %v", w.limit, w.busy, now)
+	w.queue = nil
+	var logs, trace bytes.Buffer
+	g.tr = newTracer(&trace)
+	old := log.Writer()
+	log.SetOutput(&logs)
+	t.Cleanup(func() { log.SetOutput(old) })
+	for i, wait := range []time.Duration{firstVoiceWait, voiceWait} {
+		f := g.db.Streams.Voice("ann", "Hello, everyone.")
+		v := &voiceLoad{file: f, done: make(chan struct{})}
+		w.ahead[f] = v
+		now := g.streamNow()
+		w.hold = time.Second
+		w.say(g, streamSay{line: "Hello, everyone."})
+		if !w.limit.Equal(now.Add(wait)) || w.voice != v || w.talk[0].After(now) || w.shownCaption(g) != "Hello, everyone." {
+			t.Fatalf("line %d: limit %v, voice %p, talk %v, caption %q", i, w.limit, w.voice, w.talk[0], w.shownCaption(g))
+		}
+		wldFrames(t, g, int(wait.Seconds()*ebiten.DefaultTPS)-1)
+		if w.voice != v {
+			t.Fatal("voice abandoned before its deadline")
+		}
+		wldFrames(t, g, 1)
+		if w.voice != nil {
+			t.Fatal("voice retained past its deadline")
+		}
+		close(v.done) // late completion must neither play nor log again
+		wldFrames(t, g, 2)
+		if strings.Count(trace.String(), `"fallback":true`) != i+1 || !strings.Contains(trace.String(), fmt.Sprintf(`"elapsed_seconds":%g`, wait.Seconds())) {
+			t.Fatalf("timeout trace: %s", &trace)
+		}
+		if strings.Count(logs.String(), "voice fallback") != i+1 || !strings.Contains(logs.String(), fmt.Sprintf("file=%s elapsed=%.3fs reason=fetch/decode timeout", f, wait.Seconds())) {
+			t.Fatalf("timeout log: %s", &logs)
+		}
 	}
-	wldFrames(t, g, int(voiceWait.Seconds()*ebiten.DefaultTPS)+1)
-	if w.voice != nil {
-		t.Fatal("the line still waits for its voice after voiceWait")
+}
+
+// TestStreamsVoiceReadyAtDeadline must play a decode completed by the deadline frame.
+func TestStreamsVoiceReadyAtDeadline(t *testing.T) {
+	g, w, fsys := voicedShow(t, "Hello, everyone.")
+	f := g.db.Streams.Voice("ann", "Hello, everyone.")
+	v := &voiceLoad{file: f, done: make(chan struct{})}
+	w.ahead[f] = v
+	w.say(g, streamSay{line: "Hello, everyone."})
+	wldFrames(t, g, int(firstVoiceWait.Seconds()*ebiten.DefaultTPS)-1)
+	v.read(fsys)
+	wldFrames(t, g, 1)
+	want := g.streamNow().Add(seconds(sound.ClipSeconds(v.pcm)))
+	if v.err != nil || w.voice != nil || !w.talk[0].Equal(want) || !w.busy.Equal(want.Add(voiceGap)) {
+		t.Fatalf("completed voice did not play: error %v, talk %v, busy %v", v.err, w.talk[0], w.busy)
+	}
+}
+
+// TestStreamsLobbyVoices shares opening loads without visiting a channel early.
+func TestStreamsLobbyVoices(t *testing.T) {
+	g, _, _ := voicedShow(t, "Welcome, {from}!", "Hello, everyone.")
+	g.pop()
+	l, ok := g.stack[0].(*streamLobby)
+	if !ok {
+		t.Fatalf("scene %T", g.stack[0])
+	}
+	for _, c := range l.cards {
+		p := broadcast.Progress(g.st.Streams, c.show.Hosts[0].ID)
+		p.Day, p.Run, p.Visits = 0, 0, 0
+		c.show.Start = g.streamNow()
+	}
+	l.prefetchVoices(g, 3) // exercise the browser budget with the native loader
+	var chosen *lobbyCard
+	for _, c := range l.cards {
+		if c.opening == nil || len(c.opening.ahead) > 3 || len(c.opening.ahead) == 0 {
+			t.Fatalf("unbounded or absent opening: %+v", c.opening)
+		}
+		if broadcast.Progress(g.st.Streams, c.show.Hosts[0].ID).Visits != 0 {
+			t.Fatal("prefetch recorded a visit")
+		}
+		if c.show.Hosts[0].ID == "ann" {
+			chosen = c
+		}
+	}
+	f := g.db.Streams.Voice("ann", "Welcome, {from}!")
+	v := chosen.opening.ahead[f]
+	if v == nil || v.err != nil {
+		t.Fatalf("greeting not loaded: %+v", v)
+	}
+	l.prefetchVoices(g, 3)
+	if chosen.opening.ahead[f] != v {
+		t.Fatal("prefetch duplicated the load")
+	}
+	g.db.Words["ja"]["Welcome, {from}!"] = "Welcome back, {from}!"
+	g.setLanguage("ja")
+	l.prefetchVoices(g, 3)
+	translated := g.db.Streams.Voice("ann", "Welcome back, {from}!")
+	if chosen.opening.ahead[f] != nil || chosen.opening.ahead[translated] == nil {
+		t.Fatal("lobby kept the previous language")
+	}
+	g.setLanguage("en")
+	l.prefetchVoices(g, 3)
+	v = chosen.opening.ahead[f]
+	g.st.Streams.Viewer = "Robin"
+	w := newStreamWatch(g, chosen.show, 100)
+	g.push(w)
+	if w.ahead[f] != v {
+		t.Fatal("watch did not adopt the lobby load")
+	}
+	if broadcast.Progress(g.st.Streams, "ann").Visits != 1 {
+		t.Fatal("opening did not record one visit")
+	}
+	w.say(g, w.queue[0])
+	if w.caption != "Welcome, Robin!" || w.voice != nil || !w.talk[0].After(g.streamNow()) {
+		t.Fatalf("prepared greeting not played: %q", w.caption)
+	}
+	for _, c := range l.cards {
+		if c.opening != nil {
+			t.Fatal("lobby retained loads after leaving")
+		}
+	}
+	g.pop()
+	l.prefetchVoices(g, 3)
+	for _, c := range l.cards {
+		g.desk.left[c.show] = len(c.show.Beats)
+	}
+	l.prefetchVoices(g, 3)
+	for _, c := range l.cards {
+		for f := range c.opening.ahead {
+			if f == g.db.Streams.Voice(c.show.Hosts[0].ID, "Hello, everyone.") {
+				t.Fatal("lobby retained a beat already heard")
+			}
+		}
+	}
+	g.desk.speak = false
+	l.prefetchVoices(g, 3)
+	for _, c := range l.cards {
+		if c.opening != nil {
+			t.Fatal("muted lobby retained loads")
+		}
+	}
+	g.desk.speak = true
+	l.prefetchVoices(g, 3)
+	chosen.show.Start = g.streamNow().Add(-24 * time.Hour)
+	l.prefetchVoices(g, 3)
+	if chosen.opening != nil {
+		t.Fatal("offline show retained loads")
+	}
+	l.close()
+	for _, c := range l.cards {
+		if c.opening != nil {
+			t.Fatal("closed lobby retained loads")
+		}
 	}
 }
 

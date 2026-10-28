@@ -45,11 +45,13 @@ type streamLobby struct {
 
 // lobbyCard is one live show in the lobby.
 type lobbyCard struct {
-	show    *broadcast.Show
-	bodies  []*puppet.Puppet
-	beat    int
-	talk    time.Time
-	viewers int
+	show       *broadcast.Show
+	bodies     []*puppet.Puppet
+	beat       int
+	talk       time.Time
+	viewers    int
+	opening    *streamWatch // only the greeting queue and bounded voice loads
+	openingKey string
 	// line is the caption: the show's line now (untranslated), and its lines as the card
 	// shows them, wrapped from wrapFor (translated) to the width wrapW.
 	line, wrapFor string
@@ -195,7 +197,7 @@ func (l *streamLobby) rebuild(g *Game) {
 				c.bodies = append(c.bodies, g.channelPuppet(h, fmt.Sprintf("lobby:%s:%d", s.Key, i)))
 			}
 		case c.show != s:
-			c.show, c.beat = s, -1
+			c.show, c.beat, c.opening = s, -1, nil
 		}
 		delete(old, s.Key)
 		l.cards = append(l.cards, c)
@@ -219,7 +221,40 @@ func (l *streamLobby) rebuild(g *Game) {
 	}
 }
 
+// streamOpeningKey invalidates a greeting when the day or visit/affection state changes.
+func streamOpeningKey(g *Game, show *broadcast.Show) string {
+	p := broadcast.Progress(g.st.Streams, show.Hosts[0].ID)
+	return fmt.Sprint(broadcast.Day(g.streamNow()), ":", p.Day, ":", p.Run, ":", p.Visits, ":", g.step(show.Hosts[0]))
+}
+
+// prefetchVoices prepares three opening lines per live show, including its chosen greeting.
+// Only opening the show commits the visit; the watch view adopts these same loads.
+func (l *streamLobby) prefetchVoices(g *Game, count int) {
+	for _, c := range l.cards {
+		if count == 0 || !g.desk.speak || !g.desk.voices || !c.show.Live(g.streamNow()) {
+			c.opening = nil
+			continue
+		}
+		key := streamOpeningKey(g, c.show)
+		if c.opening == nil || c.openingKey != key {
+			c.opening = &streamWatch{show: c.show, ahead: map[string]*voiceLoad{}}
+			c.opening.greet(g)
+			c.openingKey = key
+		}
+		c.opening.next = streamEntryBeat(g, c.show)
+		c.opening.prefetchVoices(g, count)
+	}
+}
+
+// dropVoices releases lobby ownership when another scene takes over.
+func (l *streamLobby) dropVoices() {
+	for _, c := range l.cards {
+		c.opening = nil
+	}
+}
+
 func (l *streamLobby) close() {
+	l.dropVoices()
 	for _, c := range l.cards {
 		closeBodies(c.bodies)
 	}
@@ -333,6 +368,7 @@ func (l *streamLobby) update(g *Game) {
 	bs := g.barButtons(l.entries(g))
 	l.barH = barHeight(bs)
 	l.rebuild(g)
+	l.prefetchVoices(g, min(3, voicesAhead))
 	now := g.streamNow()
 	in := &g.in
 	if g.desk.away > 0 {
