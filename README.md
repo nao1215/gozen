@@ -280,6 +280,12 @@ gozen notes notes --out notes-html                   # notes as one HTML page
 - Inspectable demo builds: `gozen trial` selects content using `trial.yaml`, reports unresolved conditions, and rejects explicitly forbidden definitions or assets before writing ([recipe](https://nao1215.github.io/gozen/cookbook/#check-the-contents-of-a-trial))
 - Engine words in English and Japanese (`language` in game.yaml), and the game's text in two languages (`lang/`)
 
+## Made with Gozen
+
+| [Succubus Live](https://github.com/nao1215/succubus-live): a streaming-site game with succubus VTubers ([watch in your browser](https://nao1215.github.io/succubus-live/)) |
+|:--|
+| ![Succubus Live: Ella streams with a caption, the chat and a tip](https://raw.githubusercontent.com/nao1215/succubus-live/main/doc/img/stream.jpg) |
+
 ## Limitations
 
 - The supported interfaces are CLI commands, YAML definitions and saves. Go implementation packages are internal.
