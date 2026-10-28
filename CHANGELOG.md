@@ -4,19 +4,14 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
-- Resolve stream voices from filled text, then the translated template, then the eligible channel fallback; export template recording paths in the voice inventory.
+## v0.15.0 - 2026-10-28
 
-- Add streams missing_voice: captions to suppress browser speech for missing, invalid or late recordings while retaining desktop timing, recorded-audio controls and timeout diagnostics; omission keeps speech synthesis.
-
-- Resolve stream recordings from translated, filled text; use an optional channel voice_fallback for missing dynamic recordings without changing captions or fetching absent files.
-- Export deterministic recording candidates and unresolved templates with gozen book --section voices --format json; validate fallback recordings and filled scripted voice keys.
-
-- Give the first stream line up to six seconds for its recorded voice, keep later lines at 1.5 seconds, and log each fetch/decode timeout once.
-- Prefetch three opening lines per live show in the browser lobby, reuse their loads on entry, and release unused lobby references on exit.
-
-- Show a persistent warning when autosaves or gallery unlocks cannot be saved; retry at five-second update intervals, log repeated failures only once until recovery, and clear the warning after saving succeeds.
-
-- Initialize browser playback like desktop playback, including resetting transient movement on focus loss. A browser keeps running while unfocused, since an embedded page can start without focus.
+- A stream line with `{fields}` plays the recording of its filled text, then the recording of its translated template, then the channel's `voice_fallback` for a line holding the player's own words (ADR 0052). It looked only for the template's recording, which games could not make, so every such line was read by speech synthesis. A game can now record each template once, said without the name.
+- `streams.missing_voice: captions` shows a line without a recording as a caption instead of reading it with the browser's speech synthesis; left out, lines are read as before.
+- `gozen book GAME --section voices --format json` lists the lines a game can record and the file each one goes to.
+- The first line of a stream waits up to six seconds for its recording (later lines 1.5 seconds), and the lobby starts loading the opening lines of the streams on air. On a slow connection the first line was read by speech synthesis. A recording that misses its wait is logged once.
+- A failed autosave or gallery unlock is retried every five seconds and shows "Progress could not be saved. Retrying." until a save succeeds. A failed gallery unlock was lost on restart, and a failed autosave logged the same error six times a second.
+- The browser player resets held movement when it loses focus, as the desktop does, and keeps running while unfocused, since an embedded page can start without focus.
 
 ## v0.14.2 - 2026-10-28
 
