@@ -1093,7 +1093,8 @@ func TestStreamsVoiceReadyAtDeadline(t *testing.T) {
 
 // TestStreamsLobbyVoices shares opening loads without visiting a channel early.
 func TestStreamsLobbyVoices(t *testing.T) {
-	g, _, _ := voicedShow(t, "Welcome, {from}!", "Hello, everyone.")
+	g, _, fsys := voicedShow(t, "Welcome, Robin!", "Hello, everyone.")
+	g.st.Streams.Viewer = "Robin"
 	g.pop()
 	l, ok := g.stack[0].(*streamLobby)
 	if !ok {
@@ -1107,7 +1108,7 @@ func TestStreamsLobbyVoices(t *testing.T) {
 	l.prefetchVoices(g, 3) // exercise the browser budget with the native loader
 	var chosen *lobbyCard
 	for _, c := range l.cards {
-		if c.opening == nil || len(c.opening.ahead) > 3 || len(c.opening.ahead) == 0 {
+		if c.opening == nil || len(c.opening.ahead) > 3 {
 			t.Fatalf("unbounded or absent opening: %+v", c.opening)
 		}
 		if broadcast.Progress(g.st.Streams, c.show.Hosts[0].ID).Visits != 0 {
@@ -1117,7 +1118,7 @@ func TestStreamsLobbyVoices(t *testing.T) {
 			chosen = c
 		}
 	}
-	f := g.db.Streams.Voice("ann", "Welcome, {from}!")
+	f := g.db.Streams.Voice("ann", "Welcome, Robin!")
 	v := chosen.opening.ahead[f]
 	if v == nil || v.err != nil {
 		t.Fatalf("greeting not loaded: %+v", v)
@@ -1127,9 +1128,10 @@ func TestStreamsLobbyVoices(t *testing.T) {
 		t.Fatal("prefetch duplicated the load")
 	}
 	g.db.Words["ja"]["Welcome, {from}!"] = "Welcome back, {from}!"
+	fsys[g.db.Streams.Voice("ann", "Welcome back, Robin!")] = fsys[f]
 	g.setLanguage("ja")
 	l.prefetchVoices(g, 3)
-	translated := g.db.Streams.Voice("ann", "Welcome back, {from}!")
+	translated := g.db.Streams.Voice("ann", "Welcome back, Robin!")
 	if chosen.opening.ahead[f] != nil || chosen.opening.ahead[translated] == nil {
 		t.Fatal("lobby kept the previous language")
 	}
@@ -1632,5 +1634,58 @@ func TestStreamsStartAgain(t *testing.T) {
 	l, ok := g.stack[0].(*streamLobby)
 	if !ok || len(l.cards) != 2 || len(l.offline(g)) != 0 {
 		t.Fatalf("the lobby does not show every channel on the air again")
+	}
+}
+
+// TestStreamsFilledVoiceSelection checks the same paths used by playback and ahead.
+func TestStreamsFilledVoiceSelection(t *testing.T) {
+	g, w, fsys := voicedShow(t, "Thanks, Rowan!", "Thank you.")
+	ch := w.show.Hosts[0]
+	ch.VoiceFallback = "Thank you."
+	line := dataLine(0, "Thanks, {from}!", "Rowan", 0)
+	exact := g.db.Streams.Voice(ch.ID, "Thanks, Rowan!")
+	fallback := g.db.Streams.Voice(ch.ID, "Thank you.")
+	for _, tc := range []struct {
+		name, from, fallback, want string
+	}{
+		{"exact", "Rowan", "Thank you.", exact},
+		{"fallback", "Player", "Thank you.", fallback},
+		{"legacy", "Player", "", ""},
+		{"missing fallback", "Player", "Absent.", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			line.fields["from"] = tc.from
+			ch.VoiceFallback = tc.fallback
+			if got := w.voiceFile(g, line); got != tc.want {
+				t.Fatalf("file %q, want %q", got, tc.want)
+			}
+			w.queue = []streamSay{line}
+			w.prefetchVoices(g, 1)
+			if tc.want != "" && w.ahead[tc.want] == nil {
+				t.Fatal("selected recording was not prefetched")
+			}
+			w.say(g, line)
+			if tc.want != "" {
+				clip := w.ahead[tc.want]
+				end := g.streamNow().Add(seconds(sound.ClipSeconds(clip.pcm)))
+				if clip.err != nil || w.voice != nil || !w.busy.Equal(end.Add(voiceGap)) {
+					t.Fatalf("selected recording did not play: %v", clip.err)
+				}
+			}
+			if w.caption != "Thanks, "+tc.from+"!" {
+				t.Fatalf("caption changed: %q", w.caption)
+			}
+		})
+	}
+	ch.VoiceFallback = "Thank you."
+	if got := w.voiceFile(g, streamSay{line: "User text", quote: true}); got != fallback {
+		t.Fatalf("user tip quote: %q", got)
+	}
+	g.db.Words["ja"]["Thank you."] = "Many thanks."
+	translated := g.db.Streams.Voice(ch.ID, "Many thanks.")
+	fsys[translated] = fsys[fallback]
+	g.setLanguage("ja")
+	if got := w.voiceFile(g, line); got != translated {
+		t.Fatalf("translated fallback: %q", got)
 	}
 }

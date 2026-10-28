@@ -97,9 +97,8 @@ type streamWatch struct {
 
 // streamSay is a line a host says: the host's index, the face, and the line as written
 // with what its {fields} are filled with (none: a line without fields). Said, it is
-// translated into the language shown then and filled, and the translation before it is
-// filled names its recorded voice. A quote (a tip's comment read out) is said in quotes:
-// a viewer's own as it is, without a voice, a tip line of the crowd (tipLine) translated,
+// translated and filled; that text names its recording. A quote (a tip comment)
+// keeps the player's text and uses the fallback, or translates a crowd tip (tipLine),
 // its voice named by it before it is quoted.
 type streamSay struct {
 	host           int
@@ -108,8 +107,7 @@ type streamSay struct {
 	quote, tipLine bool
 }
 
-// shown is the line as said in the language shown now, and as shown before its fields are
-// filled, which names its recorded voice ("" for none).
+// shown returns the caption and the filled text naming its recording (before quotation).
 func (l streamSay) shown(g *Game) (text, raw string) {
 	switch {
 	case l.quote && l.tipLine:
@@ -122,7 +120,8 @@ func (l streamSay) shown(g *Game) (text, raw string) {
 	if l.fields == nil {
 		return raw, raw
 	}
-	return react.Fill(raw, l.fields), raw
+	raw = react.Fill(raw, l.fields)
+	return raw, raw
 }
 
 // tipKind is the stimulus kind of a tip; value.amount is its amount.
@@ -396,7 +395,7 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 	}
 	w.started = true
 	d := g.db.Streams
-	text, raw := l.shown(g)
+	text, _ := l.shown(g)
 	if p := w.bodies[l.host]; p != nil {
 		p.Motion.SetFace(sayFace(p, l))
 		if d.Bounces(text) {
@@ -412,7 +411,7 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 	if !g.desk.speak {
 		return
 	}
-	if f := d.Voice(w.show.Hosts[l.host].ID, raw); f != "" && g.desk.voices {
+	if f := w.voiceFile(g, l); f != "" && g.desk.voices {
 		// the line waits for its voice to load (a browser may still be fetching it), then
 		// for it to end
 		if w.voice = w.ahead[f]; w.voice == nil {
@@ -426,6 +425,29 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 		return
 	}
 	w.readAloud(g, l.host, text)
+}
+
+// voiceFile resolves both playback and prefetch without opening a recording.
+// Browser Stat uses the export manifest, so absent lines never start a fetch.
+func (w *streamWatch) voiceFile(g *Game, l streamSay) string {
+	_, line := l.shown(g)
+	ch := w.show.Hosts[l.host]
+	exists := func(text string) string {
+		f := g.db.Streams.Voice(ch.ID, text)
+		if f != "" {
+			if st, err := fs.Stat(g.db.FS, f); err == nil && !st.IsDir() {
+				return f
+			}
+		}
+		return ""
+	}
+	if f := exists(line); f != "" {
+		return f
+	}
+	if len(l.fields) > 0 && strings.Contains(g.db.Tr(l.line), "{") || l.quote && !l.tipLine {
+		return exists(g.db.Tr(ch.VoiceFallback))
+	}
+	return ""
 }
 
 // readAloud reads the line the host says with speech synthesis (a browser build), the
@@ -520,12 +542,11 @@ func (w *streamWatch) prefetchVoices(g *Game, count int) {
 	}
 	want := map[string]bool{}
 	add := func(host int, l streamSay) {
-		if _, raw := l.shown(g); raw != "" {
-			if f := g.db.Streams.Voice(w.show.Hosts[host].ID, raw); f != "" {
-				want[f] = true
-				if w.ahead[f] == nil {
-					w.ahead[f] = loadVoice(g.db.FS, f)
-				}
+		l.host = host
+		if f := w.voiceFile(g, l); f != "" {
+			want[f] = true
+			if w.ahead[f] == nil {
+				w.ahead[f] = loadVoice(g.db.FS, f)
 			}
 		}
 	}

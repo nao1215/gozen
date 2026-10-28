@@ -1,7 +1,7 @@
 Streams:
   _: "The live-stream file named by `streams` in game.yaml (schema version 9): the channels, their episodes, and the rules of the stream screen."
   logo: "The picture under assets/ drawn before the game's title in the bar over the stream screens, square and transparent around the mark. Without it, a colored square."
-  voices: "A folder under assets/ of recorded lines (ADR 0052): a folder for each channel holding the line it says as `KEY.ogg`, KEY the first 16 hexadecimal digits of the SHA-1 of the line in UTF-8, as shown (translated) and before its `{fields}` are filled, a reaction book's line too. A line with its voice plays it, and the watch view waits for it to end; a line without one is read by speech synthesis in a browser and only captioned elsewhere. `gozen check` warns of a missing folder and of a file that is the voice of no line (GZN0119). A voice is Ogg Vorbis; one in Ogg Opus or another format is warned of (GZN0120) and not played."
+  voices: "A folder under assets/ of recorded lines (ADR 0052): a folder for each channel holding the line it says as `KEY.ogg`, KEY the first 16 hexadecimal digits of the SHA-1 of the line in UTF-8, as shown (translated) after its `{fields}` are filled, a reaction book's line too. A line with its voice plays it, and the watch view waits for it to end; a line without one is read by speech synthesis in a browser and only captioned elsewhere. `gozen check` warns of a missing folder and of a file that is the voice of no line (GZN0119). A voice is Ogg Vorbis; one in Ogg Opus or another format is warned of (GZN0120) and not played."
   timing: "How long each kind of beat lasts, in seconds."
   slot: "How long a live channel streams: its episodes one after another (ADR 0052)."
   live: "Who is live when the game opens."
@@ -41,6 +41,7 @@ StreamCrowd:
   tip_lines: "What they write with a tip, which the host reads out in quotes. Its recorded voice is in each host's folder, keyed by the line as shown before it is quoted."
   rate: "Messages a second on average, more than 0 and at most 100."
 Channel:
+  voice_fallback: "Optional fixed phrase with no fields, translated and recorded in the channel voice folder. Used when a filled line or a player tip quotation has no recording; captions keep the full text. Missing fallback recordings warn with GZN0119. Omitted or missing recordings retain speech synthesis. Added to schema version 9; export candidates with gozen book --section voices --format json."
   _: "A streamer: an actor streaming from a room, with its episodes and its greetings."
   id: "The channel's ID, unique, not `say`, `chat`, `ask`, `text` or `face` and without `+` (which names a duo). A duo's episodes use it as the key of the other host's lines, and an answer's `r` as the key of a line a host says."
   actor: "The actor (`actors`) whose name, puppet and reaction book (`reactions`) the channel uses. It needs a puppet."

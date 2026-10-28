@@ -4,6 +4,9 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Resolve stream recordings from translated, filled text; use an optional channel voice_fallback for missing dynamic recordings without changing captions or fetching absent files.
+- Export deterministic recording candidates and unresolved templates with gozen book --section voices --format json; validate fallback recordings and filled scripted voice keys.
+
 - Give the first stream line up to six seconds for its recorded voice, keep later lines at 1.5 seconds, and log each fetch/decode timeout once.
 - Prefetch three opening lines per live show in the browser lobby, reuse their loads on entry, and release unused lobby references on exit.
 

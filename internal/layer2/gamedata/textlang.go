@@ -294,6 +294,7 @@ func (db *DB) SourceTexts() []SourceText {
 			all(w+".streak", ch.Streak)
 			all(w+".stayed", ch.Stayed)
 			all(w+".bridges", ch.Bridges)
+			add(w+".voice_fallback", ch.VoiceFallback)
 			episodes = append(episodes, ch.Shows...)
 		}
 		for _, d := range st.Duos {

@@ -546,3 +546,26 @@ func eventLinks(cmds []gamedata.Command) (calls, moves []string) {
 	walk(cmds)
 	return calls, moves
 }
+
+// bookVoices exposes the runtime's recording inventory to external voice generators.
+func (c *command) bookVoices(dir string) error {
+	fsys, err := gameFS(dir)
+	if err != nil {
+		return err
+	}
+	db, err := gamedata.LoadDir(fsys, ".")
+	if err != nil {
+		return err
+	}
+	lines := db.StreamVoiceLines()
+	if c.report.Machine() {
+		return c.report.Result(c.out, "ok", map[string]any{"version": 1, "lines": lines})
+	}
+	doc := md.NewMarkdown(nil)
+	doc.H1("Stream voices")
+	for _, line := range lines {
+		reportBullet(doc, "", "%s / %s: %s (file: %s; runtime fields: %s)", line.Channel, line.Language, line.Text, line.File, strings.Join(line.Fields, ", "))
+	}
+	c.out.Print(reportMarkdown(doc))
+	return nil
+}

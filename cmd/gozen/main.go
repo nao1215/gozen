@@ -255,11 +255,14 @@ func (c *command) bookCmd() clihelp.Operation {
 	c.report.Command = "book"
 	f.StringVar(&c.report.Format, "format", "markdown", "output encoding: markdown, text, json, or jsonl")
 	clihelp.Choices(f.Lookup("format"), "markdown", "text", "json", "jsonl")
-	section := f.String("section", "all", "select all or lineage")
-	clihelp.Choices(f.Lookup("section"), "all", "lineage")
+	section := f.String("section", "all", "select all, lineage, or voices")
+	clihelp.Choices(f.Lookup("section"), "all", "lineage", "voices")
 	return clihelp.Operation{Flags: f, Run: func(context.Context) error {
 		if f.NArg() != 1 {
 			return cliio.Invalid(diag.Operands, "book expects one directory")
+		}
+		if *section == "voices" {
+			return c.bookVoices(f.Arg(0))
 		}
 		report, err := loadBook(f.Arg(0))
 		if err != nil {
