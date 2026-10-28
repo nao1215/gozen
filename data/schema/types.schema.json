@@ -9705,6 +9705,19 @@
           },
           "x-type": "string → string"
         },
+        "web": {
+          "$ref": "#/$defs/WebPage",
+          "description": "The page of a browser export as a link to it is shown: its address, a description and a picture, written into the page as Open Graph and X card tags. Without it the page has only the game's title. Needs schema version 9.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[WebPage](#webpage)"
+        },
         "written_in": {
           "description": "The language the files under `data/` are written in. Each other language is translated by `lang/\u003ccode\u003e.yaml`, a map `text` from the text as written to its translation. The default is `language`. Needs schema version 4.",
           "type": "string",
@@ -20083,6 +20096,52 @@
         }
       ],
       "description": "A pause, written as seconds or a map (the map needs schema version 4)."
+    },
+    "WebPage": {
+      "additionalProperties": false,
+      "description": "The page of a browser export as the sites a link to it is shared on show it (Open Graph and X cards).",
+      "properties": {
+        "description": {
+          "description": "A sentence or two about the game, the page's description and the card's text.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "image": {
+          "description": "The card's picture under assets/, a PNG or a JPEG of 1200x630 or more (smaller is warned of, GZN0121). gozen export copies it as it is beside the page as og-image with its extension; it needs url.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "url": {
+          "description": "Where the page is published, an https:// address ending in /: the page's og:url and the start of its picture's address.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",

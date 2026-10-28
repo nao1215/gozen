@@ -7,6 +7,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 ## v0.14.2 - 2026-10-28
 
 - Open a game that offers two or more languages in the device's language the first time (ADR 0027): until a language is kept in the settings, a browser export takes the first of `navigator.languages` the game offers and the desktop the locale (`LC_ALL`, `LC_MESSAGES`, `LANG`, then macOS's or Windows's), `en-US` counting as `en`, else `language`.
+- Title a browser export's page with the game's title, and describe it for shared links with `game.yaml` `web` (ADR 0051, schema version 9): `url`, `description` and `image` (a PNG or a JPEG under assets/, copied as it is beside the page as `og-image`) add the description and the Open Graph and X card tags; `gozen check` reports an address not https:// or not ending in /, a missing picture or one not PNG or JPEG, and warns of one under 1200x630 (GZN0121).
 - Press the stream bar's language buttons while the box that asks the viewer's name is open (ADR 0048): the box is shown in the language at once and the name being typed stays; the bar over the box keeps only its languages.
 
 ## v0.14.1 - 2026-10-28

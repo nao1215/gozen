@@ -4,7 +4,7 @@
 # fails the build and go test (internal/dev/docs).
 sections:
   - title: The game file and the data files
-    types: [Game, DataFile, Start, Fonts, Screen, Terms, UIStyle, TitleFigure, GameOver, Music, Song, MusicCue, SfxVary, MemoCfg, MemoKind, MemoVar]
+    types: [Game, DataFile, Start, Fonts, Screen, Terms, UIStyle, TitleFigure, GameOver, Music, Song, MusicCue, SfxVary, MemoCfg, MemoKind, MemoVar, WebPage]
   - title: Places
     types: [Location, Person, Action, Exit, Encounter, Shop, Trade, Roamer, Picture]
   - title: Maps and painted scenes

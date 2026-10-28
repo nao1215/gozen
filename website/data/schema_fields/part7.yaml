@@ -111,3 +111,8 @@ VoiceStyle:
   _: "How the voices of lines play."
   cut: "Whether the next line stops a voice still playing. The default is true; false lets it finish."
   auto_wait: "Whether auto waits for a voice to end as well as for the text. The default is true."
+WebPage:
+  _: "The page of a browser export as the sites a link to it is shared on show it (Open Graph and X cards)."
+  url: "Where the page is published, an https:// address ending in /: the page's og:url and the start of its picture's address."
+  description: "A sentence or two about the game, the page's description and the card's text."
+  image: "The card's picture under assets/, a PNG or a JPEG of 1200x630 or more (smaller is warned of, GZN0121). gozen export copies it as it is beside the page as og-image with its extension; it needs url."

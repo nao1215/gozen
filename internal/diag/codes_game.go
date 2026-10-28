@@ -103,6 +103,11 @@ var (
 		Detail:  "A recorded voice of a line is not an Ogg Vorbis file: Ogg Opus (what many recorders and speech engines write), a WAV or another file named .ogg. gozen cannot play it, so the line is read by speech synthesis in a browser and only captioned elsewhere.",
 		Fix:     "Convert the voice to Ogg Vorbis (for example: ffmpeg -i in.ogg -c:a libvorbis -q:a 4 out.ogg).",
 	})
+	ShareImage = register(121, "ShareImage", Entry{
+		Summary: "the picture of a browser export's link card is small",
+		Detail:  "The picture of game.yaml's web.image is smaller than 1200x630 pixels, the size the sites a link is shared on (X, Slack, Facebook) show a large card with; they show it blurred, small or not at all.",
+		Fix:     "Use a picture of 1200x630 or more (1280x720 suits a 16:9 game).",
+	})
 )
 
 // GZN11xx: the definitions of the game. The game does not load, and check

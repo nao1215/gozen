@@ -512,6 +512,7 @@ func (db *DB) Check() []error {
 	default:
 		c.errorf(diag.NotAWord, "game.yaml menus", "want none, not %q", g.Menus)
 	}
+	c.webPage(g.Web)
 	switch g.UI.BattleMessage {
 	case "", "fixed", "fit":
 	default:
