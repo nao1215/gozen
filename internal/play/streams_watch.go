@@ -402,11 +402,9 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 			p.Motion.React(puppetdef.Reaction{Kind: "jiggle", Amount: d.Bounce.Amount})
 		}
 	}
-	runes := utf8.RuneCountInString(text)
 	w.caption, w.captionWho, w.said, w.off = text, l.host, now, time.Time{}
 	w.chat.post(chat.Message{From: g.channelName(w.show.Hosts[l.host]), Text: text, Values: map[string]float64{chatHost: 1}})
-	w.talk[l.host] = now.Add(time.Duration(min(4, 0.5+0.07*float64(runes)) * float64(time.Second)))
-	w.busy = now.Add(seconds(d.Timing.LineSeconds(text)) + w.hold)
+	w.busy, w.talk[l.host] = w.captionTimes(g, text)
 	w.voice = nil
 	if !g.desk.speak {
 		return
@@ -450,10 +448,23 @@ func (w *streamWatch) voiceFile(g *Game, l streamSay) string {
 	return ""
 }
 
+// captionTimes is shared by unvoiced lines and failed recordings on every platform.
+func (w *streamWatch) captionTimes(g *Game, text string) (time.Time, time.Time) {
+	now := g.streamNow()
+	return now.Add(seconds(g.db.Streams.Timing.LineSeconds(text)) + w.hold),
+		now.Add(time.Duration(min(4, 0.5+0.07*float64(utf8.RuneCountInString(text))) * float64(time.Second)))
+}
+
+// Platform speech hooks also allow the browser contract to be tested without a browser.
+var (
+	streamCanSpeak = canSpeak
+	streamSpeak    = speak
+)
+
 // readAloud reads the line the host says with speech synthesis (a browser build), the
 // next step waiting for it to end.
 func (w *streamWatch) readAloud(g *Game, host int, text string) {
-	if !canSpeak() {
+	if g.db.Streams.MissingVoice == "captions" || !streamCanSpeak() {
 		return
 	}
 	v := w.show.Hosts[host].Voice
@@ -461,14 +472,13 @@ func (w *streamWatch) readAloud(g *Game, host int, text string) {
 	if g.db.Shown() == "ja" {
 		language = "ja-JP"
 	}
-	w.spoken = speak(strings.NewReplacer("「", "", "」", "", "『", "", "』", "").Replace(text), language, v.Pitch, v.Rate)
+	w.spoken = streamSpeak(strings.NewReplacer("「", "", "」", "", "『", "", "』", "").Replace(text), language, v.Pitch, v.Rate)
 	w.limit = g.streamNow().Add(seconds(5 + 0.4*float64(utf8.RuneCountInString(text))))
 	w.busy, w.talk[host] = w.limit.Add(w.hold), w.limit
 }
 
 // voiced plays the recorded voice of the line said once it has loaded, the next step
-// waiting for it to end; a line whose voice did not load is read aloud as a line without
-// one (captioned only, outside a browser).
+// waiting for it to end; a failed recording follows the missing-voice policy.
 func (w *streamWatch) voiced(g *Game) {
 	v := w.voice
 	if v == nil || !v.loaded() {
@@ -486,8 +496,9 @@ func (w *streamWatch) voiced(g *Game) {
 		}
 		g.emit("voice", l)
 		// the line's own timing, from now when it waited for the voice to load
-		w.busy = minTime(w.busy, now.Add(seconds(g.db.Streams.Timing.LineSeconds(w.caption))+w.hold))
-		w.talk[w.captionWho] = minTime(w.talk[w.captionWho], now.Add(time.Duration(min(4, 0.5+0.07*float64(utf8.RuneCountInString(w.caption)))*float64(time.Second))))
+		busy, talk := w.captionTimes(g, w.caption)
+		w.busy = minTime(w.busy, busy)
+		w.talk[w.captionWho] = minTime(w.talk[w.captionWho], talk)
 		w.readAloud(g, w.captionWho, w.caption)
 		return
 	}
@@ -580,7 +591,7 @@ func minTime(a, b time.Time) time.Time {
 }
 
 // voiceWait is how long a line waits for its voice still being fetched (a browser's)
-// before it is read by speech synthesis instead.
+// before the missing-voice policy applies.
 const voiceWait = 1500 * time.Millisecond
 
 // firstVoiceWait allows four normal budgets for cold fetch/decode contention at entry.
@@ -943,8 +954,10 @@ func (w *streamWatch) hush() {
 }
 
 // canRead reports whether the lines can be read aloud: with speech synthesis (a browser
-// build) or the streams' recorded voices.
-func (g *Game) canRead() bool { return canSpeak() || g.desk.voices }
+// build, when permitted) or the streams' recorded voices.
+func (g *Game) canRead() bool {
+	return g.desk.voices || g.db.Streams.MissingVoice != "captions" && streamCanSpeak()
+}
 
 // controls are the controls shown now, in order: [kind, option].
 func (w *streamWatch) controls(g *Game) [][2]int {
@@ -996,7 +1009,7 @@ func (w *streamWatch) update(g *Game) {
 		if (w.voice != nil || w.spoken != nil) && !now.Before(w.limit) {
 			// given up (speech still going is stopped): a voice or speech that ends later
 			// does not move the next step; a voice that has not come is a line without one,
-			// read by speech synthesis
+			// handled by the configured missing-voice policy
 			late := w.voice != nil
 			if late {
 				w.voiceFallback(g, w.voice, "fetch/decode timeout")

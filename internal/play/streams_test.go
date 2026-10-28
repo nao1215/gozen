@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	"io/fs"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -1687,5 +1689,77 @@ func TestStreamsFilledVoiceSelection(t *testing.T) {
 	g.setLanguage("ja")
 	if got := w.voiceFile(g, line); got != translated {
 		t.Fatalf("translated fallback: %q", got)
+	}
+}
+
+// TestStreamsMissingVoice compares browser captions with the desktop clock,
+// including decode failure and the unchanged timeout diagnostic.
+func TestStreamsMissingVoice(t *testing.T) {
+	oldCan, oldSpeak := streamCanSpeak, streamSpeak
+	t.Cleanup(func() { streamCanSpeak, streamSpeak = oldCan, oldSpeak })
+	calls := 0
+	streamSpeak = func(string, string, float64, float64) func() bool {
+		calls++
+		return func() bool { return false }
+	}
+	for _, policy := range []string{"", "speech", "captions"} {
+		t.Run(policy, func(t *testing.T) {
+			for _, failure := range []string{"absent", "decode", "timeout", "recorded"} {
+				t.Run(failure, func(t *testing.T) {
+					var desktopBusy, desktopTalk time.Duration
+					for _, browser := range []bool{false, true} {
+						t.Run(strconv.FormatBool(browser), func(t *testing.T) {
+							streamCanSpeak = func() bool { return browser }
+							g, w, _ := voicedShow(t, "Hello, everyone.")
+							g.db.Streams.MissingVoice = policy
+							w.queue = nil
+							w.hold = time.Second
+							var trace bytes.Buffer
+							g.tr = newTracer(&trace)
+							line := "Hello, everyone."
+							if failure == "absent" {
+								line = "No recording."
+							} else if failure != "recorded" {
+								v := &voiceLoad{file: g.db.Streams.Voice("ann", line), done: make(chan struct{})}
+								w.ahead[v.file] = v
+								if failure == "decode" {
+									v.err = errors.New("invalid recording")
+									close(v.done)
+								} else {
+									t.Cleanup(func() { close(v.done) })
+								}
+							}
+							before := calls
+							w.say(g, streamSay{line: line})
+							if failure == "recorded" && (w.voice != nil || !w.talk[0].After(w.said) || !w.busy.Equal(w.talk[0].Add(voiceGap+w.hold))) {
+								t.Fatal("recording did not set playback timing")
+							}
+							if failure == "timeout" {
+								wldFrames(t, g, int(firstVoiceWait.Seconds()*ebiten.DefaultTPS))
+								if !strings.Contains(trace.String(), `"fallback":true`) {
+									t.Fatal("timeout diagnostic lost")
+								}
+							}
+							if want := browser && policy != "captions" && failure != "recorded"; (calls > before) != want {
+								t.Fatalf("speech called = %v, want %v", calls > before, want)
+							}
+							busy, talk := w.busy.Sub(w.said), w.talk[0].Sub(w.said)
+							if !browser {
+								desktopBusy, desktopTalk = busy, talk
+							} else if policy == "captions" && (busy != desktopBusy || talk != desktopTalk) {
+								t.Fatalf("caption timing %v/%v, desktop %v/%v", busy, talk, desktopBusy, desktopTalk)
+							}
+							if !g.canRead() {
+								t.Fatal("recorded audio control hidden")
+							}
+							g.desk.voices = false
+							if got, want := slices.Contains(w.controls(g), [2]int{int(ctlSpeak), 0}), browser && policy != "captions"; got != want {
+								t.Fatalf("speech control visible = %v, want %v", got, want)
+							}
+						})
+					}
+				})
+			}
+		})
 	}
 }

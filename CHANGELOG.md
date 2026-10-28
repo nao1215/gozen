@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add streams missing_voice: captions to suppress browser speech for missing, invalid or late recordings while retaining desktop timing, recorded-audio controls and timeout diagnostics; omission keeps speech synthesis.
+
 - Resolve stream recordings from translated, filled text; use an optional channel voice_fallback for missing dynamic recordings without changing captions or fetching absent files.
 - Export deterministic recording candidates and unresolved templates with gozen book --section voices --format json; validate fallback recordings and filled scripted voice keys.
 

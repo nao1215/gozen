@@ -39,6 +39,7 @@ type fieldContract struct {
 
 // Types, numeric contracts and command tags are read from the implementation. Only context-dependent inheritance and references are supplemented.
 var schemaDefaults = map[string]string{
+	"Streams.missing_voice": "speech (empty also permits browser speech synthesis)",
 	"StreamAffection.steps": "0, 30, 150, 600, 3000", "StreamAffection.comment": "1", "StreamAffection.reply": "2",
 	"StreamAffection.answer": "5", "StreamAffection.tip_per": "100", "StreamAffection.stayed": "10",
 	"Streams.answer_chance": "0.6, 0.75, 0.9, 1, 1 (one for each step of the default steps)",

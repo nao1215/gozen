@@ -65,6 +65,7 @@ func TestStreamsCheck(t *testing.T) {
 		want  string
 	}{
 		{"a fallback with a field", edit("data/streams.yaml", "voice: {pitch: 1.1}", `voice_fallback: "Thanks {from}."`), "unknown {from}"},
+		{"an unknown missing voice policy", edit("data/streams.yaml", "tips:", "missing_voice: silent\ntips:"), "GZN1104"},
 		{"a blank fallback", edit("data/streams.yaml", "voice: {pitch: 1.1}", `voice_fallback: " "`), "a fallback needs text"},
 		{"an old schema", edit("game.yaml", "schema_version: 9", "schema_version: 8"), "streams needs schema_version: 9"},
 		{"an unknown actor", edit("data/streams.yaml", "actor: bo", "actor: nobody"), `unknown actor "nobody"`},
@@ -232,5 +233,19 @@ func TestStreamsFallbackRecordingCheck(t *testing.T) {
 	warnings := fmt.Sprint(db.SceneWarnings())
 	if strings.Contains(warnings, "fallback recording is missing") || strings.Contains(warnings, "is the voice of no line") {
 		t.Fatalf("valid inventory warned: %s", warnings)
+	}
+}
+
+func TestStreamsMissingVoice(t *testing.T) {
+	for _, policy := range []string{"", "speech", "captions"} {
+		t.Run(policy, func(t *testing.T) {
+			files := streamGame()
+			if policy != "" {
+				files["data/streams.yaml"] = "missing_voice: " + policy + "\n" + files["data/streams.yaml"]
+			}
+			if got := testgame.Load(t, files).Streams.MissingVoice; got != policy {
+				t.Fatalf("missing_voice = %q, want %q", got, policy)
+			}
+		})
 	}
 }

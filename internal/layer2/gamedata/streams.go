@@ -28,8 +28,11 @@ type Streams struct {
 	Logo string `yaml:"logo"`
 	// Voices is a folder under assets/ of recorded lines: a folder for each channel, the
 	// line it says in VOICEKEY.ogg (VoiceKey). A line without its file is read by speech
-	// synthesis in a browser build and only captioned elsewhere.
+	// synthesis in a browser build unless MissingVoice selects captions.
 	Voices string `yaml:"voices"`
+	// MissingVoice selects the watch view's behavior without a playable recording:
+	// empty or "speech" permits browser speech; "captions" uses only caption timing.
+	MissingVoice string `yaml:"missing_voice"`
 	// Timing is how long each kind of beat lasts.
 	Timing StreamTiming `yaml:"timing"`
 	// Slot is how long a channel streams when it is live, its episodes one after another.
@@ -587,6 +590,9 @@ func (c *checker) streams() {
 	}
 	at := func(p string, args ...any) string { return s.file + " " + fmt.Sprintf(p, args...) }
 	c.file(at("logo"), s.Logo)
+	if s.MissingVoice != "" && s.MissingVoice != "speech" && s.MissingVoice != "captions" {
+		c.errorf(diag.Shape, at("missing_voice"), "want speech or captions, not %q", s.MissingVoice)
+	}
 	t := s.Timing
 	// a beat of less than minBeat would have a stream that ends at once start again so
 	// often that catching the streams up would not end

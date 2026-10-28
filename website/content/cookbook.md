@@ -1534,7 +1534,7 @@ For a stream game, set `voices: voice` in the streams file and an optional
 `voice_fallback: Thank you.` on each channel (schema version 9).
 Record that translated phrase as Ogg Vorbis in the channel's voice folder.
 When a filled line has no recording, this phrase plays and the subtitle keeps
-the full line. Without its recording, the browser uses speech synthesis as before.
+the full line. Without its recording, the browser uses speech synthesis by default.
 Player tip quotations also use the fallback. Static lines keep their usual behavior.
 
 Export the recording inventory with `gozen book GAME --section voices --format json`.
@@ -1553,3 +1553,15 @@ after unfilled templates must be regenerated. `gozen check` checks the expanded
 keys, missing fallback recordings (GZN0119) and audio format (GZN0120).
 The browser checks its file manifest before loading a voice; an absent recording
 does not incur a network request.
+
+To keep unvoiced lines silent, write `missing_voice: captions` beside `voices`
+in the file named by `game.yaml`'s `streams`. This optional schema version 9
+field accepts `speech` (the default when omitted) or `captions`; other values
+fail `gozen check` with GZN1104. It applies to absent recordings, decode errors
+and fetch timeouts, including an unavailable channel fallback.
+
+Captions mode uses the same caption duration and mouth timing as desktop
+playback without speech synthesis, including the existing loading deadline and
+question-answer hold. It does not change recording playback or timeout logs.
+The speaker ON/OFF button controls recorded audio when `voices` is configured;
+without recorded audio it is hidden. The captions button remains independent.
