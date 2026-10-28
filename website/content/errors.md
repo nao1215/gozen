@@ -15,7 +15,7 @@ Codes are assigned one family at a time. A diagnostic without a code still exits
 
 | Codes | Exit | Meaning | Assigned |
 |---------|---------|---------|---------|
-| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 20 codes |
+| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 21 codes |
 | `GZN02xx` | 0 | warnings of a measurement or a record | not yet |
 | `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 13 codes |
 | `GZN12xx` | 1 | fonts and text layout | 1 codes |
@@ -195,6 +195,14 @@ A stream voice is not Ogg Vorbis.
 A recorded voice of a line is not an Ogg Vorbis file: Ogg Opus (what many recorders and speech engines write), a WAV or another file named .ogg. gozen cannot play it, so the line is read by speech synthesis in a browser and only captioned elsewhere.
 
 Fix: Convert the voice to Ogg Vorbis (for example: ffmpeg -i in.ogg -c:a libvorbis -q:a 4 out.ogg).
+
+### GZN0121
+
+The picture of a browser export's link card is small.
+
+The picture of game.yaml's web.image is smaller than 1200x630 pixels, the size the sites a link is shared on (X, Slack, Facebook) show a large card with; they show it blurred, small or not at all.
+
+Fix: Use a picture of 1200x630 or more (1280x720 suits a 16:9 game).
 
 ## GZN11xx
 

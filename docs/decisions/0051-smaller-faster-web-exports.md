@@ -19,6 +19,7 @@ The stream game of ADR 0048 is mostly opened on a phone. Its web export served a
 - `expr.Expr` reads itself from YAML as a string (`UnmarshalYAML`), which go-yaml decodes where the node is, so a condition costs its own text. Scalars read as before; a list or a map is an error as before.
 - A puppet makes the whole picture of a face only when one of its eyes or mouth pictures is a whole picture.
 - `make web-runtime` and `make desktop-runtime` build with `-ldflags="-s -w"`, as the release does. A Go panic still prints its stack (from the program's own tables); a browser's profiler no longer names the functions.
+- The page is titled with the game's title (not "Loading game") in the game's language, and `game.yaml`'s `web` (`url`, an https:// address ending in /; `description`; `image`, a PNG or a JPEG under assets/ of 1200×630 or more, smaller warned of with GZN0121; schema version 9) adds the description and the Open Graph and X card tags (`og:type` website, `og:title`, `og:description`, `og:url`, `og:image` with its width and height, `twitter:card` summary_large_image and its title, description and picture), so a link to a published game shows a card; the picture is copied as it is (not WebP) beside the page as `og-image` with its extension, whose absolute address is `url` and that name. Without `web` the page has the title alone.
 
 ## Consequences
 

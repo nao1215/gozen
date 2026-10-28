@@ -55,6 +55,11 @@ type Options struct {
 
 	SaveDir string
 
+	// Locales are the device's languages, the preferred first (BCP 47 tags such as "en-US";
+	// DeviceLocales reads them). A game offering two languages or more is shown in the
+	// first it offers until the player chooses one; nil leaves game.yaml's language.
+	Locales []string
+
 	// Store is where saves go (takes precedence over SaveDir). StoreFor opens one from the work's ID (default: the OS config directory; in the browser, localStorage).
 	Store    Store
 	StoreFor func(id string) (Store, error)

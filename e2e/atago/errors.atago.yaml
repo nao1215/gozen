@@ -88,6 +88,17 @@ scenarios:
   - assert:
       exit_code: 0
       stderr: {contains: ['[GZN0120]', 'assets/voice/host/9b56d519ccd9e1e5.ogg is not an Ogg file: gozen plays Ogg Vorbis']}
+- name: GZN0121 for a small picture of a browser export's link card
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 9\nid: g\nstart: {location: room}\nweb: {url: 'https://example.org/g/', image: card.png}\n"
+  - fixture: {file: g/data/world.yaml, content: "locations: {room: {}}\n"}
+  - fixture: {file: g/assets/card.png, from: fixtures/game/assets/mote.png}
+  - run: {command: "gozen check --only structure g"}
+  - assert:
+      exit_code: 0
+      stderr: {contains: ['[GZN0121]', 'game.yaml web.image', 'the sites show a large card from 1200x630']}
 - name: GZN1113 for a recruit level above the monster class maximum
   steps:
   - fixture:

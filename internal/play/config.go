@@ -407,10 +407,17 @@ func (s *configScreen) draw(g *Game, dst *ebiten.Image) {
 }
 
 // language is the language shown: the one chosen in the settings when the game offers it,
-// otherwise game.yaml's language.
+// otherwise, when the game offers two or more, the first of the device's languages it
+// offers (Options.Locales), otherwise game.yaml's language.
 func (g *Game) language() string {
-	if l := g.cfg.Language; l != "" && slices.Contains(g.db.Game.Offered(), l) {
+	offered := g.db.Game.Offered()
+	if l := g.cfg.Language; l != "" && slices.Contains(offered, l) {
 		return l
+	}
+	if len(offered) > 1 {
+		if l := firstLanguage(g.opts.Locales, offered); l != "" {
+			return l
+		}
 	}
 	return cmp.Or(g.db.Game.Language, lang.English)
 }

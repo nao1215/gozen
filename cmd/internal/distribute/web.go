@@ -69,7 +69,11 @@ func Web(src, dst, bundle, version string) error {
 		if err := cli.WriteNew(filepath.Join(stage, "game", "files.json"), b); err != nil {
 			return err
 		}
-		return cli.WriteNew(filepath.Join(stage, "index.html"), webPage)
+		page, err := pageFor(src, stage, db)
+		if err != nil {
+			return err
+		}
+		return cli.WriteNew(filepath.Join(stage, "index.html"), page)
 	})
 }
 

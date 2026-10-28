@@ -171,6 +171,9 @@ func Entry(fsys fs.FS, dir string, cfg EntryConfig) clihelp.Operation {
 		if *dev {
 			opts.LiveDir = *dirFlag
 		}
+		if *replay == "" && *scriptFile == "" && *auto <= 0 { // a run checked again plays as written
+			opts.Locales = DeviceLocales(ctx)
+		}
 		if cfg.Store != nil {
 			opts.StoreFor = func(id string) (Store, error) { return cfg.Store(id) }
 		}

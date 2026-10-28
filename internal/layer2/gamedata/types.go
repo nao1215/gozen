@@ -147,7 +147,8 @@ type Game struct {
 	// lang/<code>.yaml translates them into the others (schema_version 4, ADR 0027).
 	WrittenIn string `yaml:"written_in"`
 	// Languages are the languages the player may choose in the settings (default:
-	// Language alone; schema_version 4).
+	// Language alone; schema_version 4). With two or more, a first run is shown in the
+	// first of the device's languages offered (ADR 0027).
 	Languages []string `yaml:"languages"`
 	ID        string   `yaml:"id"` // names the save directory
 	Title     string   `yaml:"title"`
@@ -166,6 +167,9 @@ type Game struct {
 	// 9, ADR 0049): it opens on the newest save, the autosave included, or a new game, and
 	// keeps the play in the autosave alone.
 	Menus string `yaml:"menus"`
+	// Web is the page of a browser export as a link to it is shown (schema_version 9,
+	// ADR 0051): nil leaves the page with the game's title alone.
+	Web *WebPage `yaml:"web"`
 	// Gallery is what the title's gallery shows: the event pictures seen and the scenes
 	// whose flag was set, in any play (kept beside the saves).
 	Gallery  Gallery `yaml:"gallery"`
@@ -209,6 +213,17 @@ type Game struct {
 	// Campaign makes the game a campaign of regions held by factions over turns
 	// (schema_version 5, ADR 0030).
 	Campaign *Campaign `yaml:"campaign"`
+}
+
+// WebPage describes the page of a browser export for the sites a link to it is shared on
+// (Open Graph and X cards).
+type WebPage struct {
+	// URL is where the page is published: an https:// address ending in /.
+	URL string `yaml:"url"`
+	// Description is the page's description, a sentence or two.
+	Description string `yaml:"description"`
+	// Image is the card's picture under assets/, a PNG or a JPEG of 1200x630 or more.
+	Image string `yaml:"image"`
 }
 
 // NoMenus reports whether game.yaml has menus: none. The play leaves out the title and every
