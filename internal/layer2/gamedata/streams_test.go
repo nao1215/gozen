@@ -64,6 +64,9 @@ func TestStreamsCheck(t *testing.T) {
 		files map[string]string
 		want  string
 	}{
+		{"a fallback with a field", edit("data/streams.yaml", "voice: {pitch: 1.1}", `voice_fallback: "Thanks {from}."`), "unknown {from}"},
+		{"an unknown missing voice policy", edit("data/streams.yaml", "tips:", "missing_voice: silent\ntips:"), "GZN1104"},
+		{"a blank fallback", edit("data/streams.yaml", "voice: {pitch: 1.1}", `voice_fallback: " "`), "a fallback needs text"},
 		{"an old schema", edit("game.yaml", "schema_version: 9", "schema_version: 8"), "streams needs schema_version: 9"},
 		{"an unknown actor", edit("data/streams.yaml", "actor: bo", "actor: nobody"), `unknown actor "nobody"`},
 		{"an unknown channel of a duo", edit("data/streams.yaml", "with: bo", "with: cy"), `unknown channel "cy"`},
@@ -131,12 +134,12 @@ func TestStreamsVoices(t *testing.T) {
 	}
 	// an Ogg page's header, 27 bytes and a segment table of one segment, then the packet
 	ogg := func(packet string) string { return "OggS" + strings.Repeat("\x00", 22) + "\x01\x1e" + packet }
-	g["assets/voice/ann/6f2529aa52538b73.ogg"] = ogg("\x01vorbis")               // Hello, everyone.
-	g["assets/voice/ann/70624a7e70244116.ogg"] = ogg("OpusHead")                 // Welcome, {from}.
-	g["assets/voice/ann/"+data.VoiceKey("For seeds")+".ogg"] = ogg("\x01vorbis") // a tip line of the crowd
-	g["assets/voice/bo/6f2529aa52538b73.ogg"] = "RIFF....WAVE"                   // in the duo too
-	g["assets/voice/ann/0000000000000000.ogg"] = "x"                             // no line
-	g["assets/voice/cy/6f2529aa52538b73.ogg"] = "x"                              // no channel
+	g["assets/voice/ann/6f2529aa52538b73.ogg"] = ogg("\x01vorbis")                         // Hello, everyone.
+	g["assets/voice/ann/"+data.VoiceKey("Today we plant beans.")+".ogg"] = ogg("OpusHead") // Today we plant beans.
+	g["assets/voice/ann/"+data.VoiceKey("For seeds")+".ogg"] = ogg("\x01vorbis")           // a tip line of the crowd
+	g["assets/voice/bo/6f2529aa52538b73.ogg"] = "RIFF....WAVE"                             // in the duo too
+	g["assets/voice/ann/0000000000000000.ogg"] = "x"                                       // no line
+	g["assets/voice/cy/6f2529aa52538b73.ogg"] = "x"                                        // no channel
 	w := warnings(g)
 	for _, want := range []string{"assets/voice/ann/0000000000000000.ogg is the voice of no line of ann", "assets/voice/cy is not the folder of a channel"} {
 		if !strings.Contains(w, want) {
@@ -152,7 +155,7 @@ func TestStreamsVoices(t *testing.T) {
 		t.Errorf("loading the game reads the voices:\n%s", w)
 	}
 	w = fmt.Sprint(testgame.Load(t, g).VoiceWarnings())
-	for _, want := range []string{"assets/voice/ann/70624a7e70244116.ogg is Ogg Opus", "assets/voice/bo/6f2529aa52538b73.ogg is not an Ogg file"} {
+	for _, want := range []string{"assets/voice/ann/76a274d349befa06.ogg is Ogg Opus", "assets/voice/bo/6f2529aa52538b73.ogg is not an Ogg file"} {
 		if !strings.Contains(w, want) {
 			t.Errorf("no warning %q:\n%s", want, w)
 		}
@@ -213,5 +216,36 @@ func TestStreamsAnswerSpeakers(t *testing.T) {
 	}
 	if strings.Contains(w.String(), "bo/"+data.VoiceKey("Peas for Bo.")) || !strings.Contains(w.String(), "ann/"+data.VoiceKey("Peas for Bo.")+".ogg is the voice of no line") {
 		t.Errorf("the voice of bo's line of an answer:\n%s", w.String())
+	}
+}
+
+func TestStreamsFallbackRecordingCheck(t *testing.T) {
+	files := streamGame()
+	files["data/streams.yaml"] = "voices: voice\n" + strings.Replace(files["data/streams.yaml"], "actor: ann", "actor: ann\n    voice_fallback: Thank you.", 1)
+	db := testgame.Load(t, files)
+	if !strings.Contains(fmt.Sprint(db.SceneWarnings()), "fallback recording is missing") {
+		t.Fatal("missing fallback was not diagnosed")
+	}
+	files["assets/voice/ann/"+data.VoiceKey("Thank you.")+".ogg"] = "x"
+	files["assets/voice/ann/"+data.VoiceKey("sprout picked beans.")+".ogg"] = "x"
+	files["streams/ann/1.yaml"] = strings.Replace(files["streams/ann/1.yaml"], "[sprout, 1]", "[sprout, 0]", 1)
+	db = testgame.Load(t, files)
+	warnings := fmt.Sprint(db.SceneWarnings())
+	if strings.Contains(warnings, "fallback recording is missing") || strings.Contains(warnings, "is the voice of no line") {
+		t.Fatalf("valid inventory warned: %s", warnings)
+	}
+}
+
+func TestStreamsMissingVoice(t *testing.T) {
+	for _, policy := range []string{"", "speech", "captions"} {
+		t.Run(policy, func(t *testing.T) {
+			files := streamGame()
+			if policy != "" {
+				files["data/streams.yaml"] = "missing_voice: " + policy + "\n" + files["data/streams.yaml"]
+			}
+			if got := testgame.Load(t, files).Streams.MissingVoice; got != policy {
+				t.Fatalf("missing_voice = %q, want %q", got, policy)
+			}
+		})
 	}
 }

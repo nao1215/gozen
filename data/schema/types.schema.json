@@ -3084,6 +3084,19 @@
             "version": "9"
           },
           "x-type": "[StreamVoice](#streamvoice)"
+        },
+        "voice_fallback": {
+          "description": "Optional fixed phrase with no fields, translated and recorded in the channel voice folder. Used when a filled line or a player tip quotation has no recording; captions keep the full text. Missing fallback recordings warn with GZN0119. Omitted or missing recordings follow missing_voice. Added to schema version 9; export candidates with gozen book --section voices --format json.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
         }
       },
       "type": "object"
@@ -17627,6 +17640,19 @@
           },
           "x-type": "string"
         },
+        "missing_voice": {
+          "description": "Optional schema version 9 policy for absent, invalid or late recordings: speech (also when omitted) permits browser speech synthesis; captions uses the desktop caption and mouth timing on every platform. Invalid values fail with GZN1104. The speaker button still toggles recorded audio when voices is configured, otherwise it is hidden in captions mode. Timeout diagnostics remain enabled.",
+          "type": "string",
+          "x-contract": {
+            "default": "speech (empty also permits browser speech synthesis)",
+            "legacy_default": "speech (empty also permits browser speech synthesis)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "9"
+          },
+          "x-type": "string"
+        },
         "slot": {
           "$ref": "#/$defs/StreamSlot",
           "description": "How long a live channel streams: its episodes one after another (ADR 0052).",
@@ -17673,7 +17699,7 @@
           "x-type": "integer[]"
         },
         "voices": {
-          "description": "A folder under assets/ of recorded lines (ADR 0052): a folder for each channel holding the line it says as `KEY.ogg`, KEY the first 16 hexadecimal digits of the SHA-1 of the line in UTF-8, as shown (translated) and before its `{fields}` are filled, a reaction book's line too. A line with its voice plays it, and the watch view waits for it to end; a line without one is read by speech synthesis in a browser and only captioned elsewhere. `gozen check` warns of a missing folder and of a file that is the voice of no line (GZN0119). A voice is Ogg Vorbis; one in Ogg Opus or another format is warned of (GZN0120) and not played.",
+          "description": "A folder under assets/ of recorded lines (ADR 0052): a folder for each channel holding the line it says as `KEY.ogg`, KEY the first 16 hexadecimal digits of the SHA-1 of the line in UTF-8, as shown (translated) after its `{fields}` are filled, a reaction book's line too. A line with its voice plays it, and the watch view waits for it to end; a line without one follows missing_voice (browser speech by default, captions elsewhere). `gozen check` warns of a missing folder and of a file that is the voice of no line (GZN0119). A voice is Ogg Vorbis; one in Ogg Opus or another format is warned of (GZN0120) and not played.",
           "type": "string",
           "x-contract": {
             "default": "empty string",

@@ -1214,7 +1214,15 @@ func (g *Game) drawCGOver(dst *ebiten.Image, c data.CG, a float32) {
 	g.drawPicture(dst, c.Over, (sw-w)/2, bottom-h, w, h, a)
 }
 
-func (g *Game) push(s scene) { g.resetFreeMotion(); g.stack = append(g.stack, s) }
+func (g *Game) push(s scene) {
+	if len(g.stack) > 0 {
+		if l, ok := g.stack[len(g.stack)-1].(*streamLobby); ok {
+			l.dropVoices()
+		}
+	}
+	g.resetFreeMotion()
+	g.stack = append(g.stack, s)
+}
 
 func (g *Game) pop() {
 	if len(g.stack) > 1 {

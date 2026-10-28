@@ -4,6 +4,14 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add streams missing_voice: captions to suppress browser speech for missing, invalid or late recordings while retaining desktop timing, recorded-audio controls and timeout diagnostics; omission keeps speech synthesis.
+
+- Resolve stream recordings from translated, filled text; use an optional channel voice_fallback for missing dynamic recordings without changing captions or fetching absent files.
+- Export deterministic recording candidates and unresolved templates with gozen book --section voices --format json; validate fallback recordings and filled scripted voice keys.
+
+- Give the first stream line up to six seconds for its recorded voice, keep later lines at 1.5 seconds, and log each fetch/decode timeout once.
+- Prefetch three opening lines per live show in the browser lobby, reuse their loads on entry, and release unused lobby references on exit.
+
 - Show a persistent warning when autosaves or gallery unlocks cannot be saved; retry at five-second update intervals, log repeated failures only once until recovery, and clear the warning after saving succeeds.
 
 - Initialize browser playback like desktop playback, including resetting transient movement on focus loss. A browser keeps running while unfocused, since an embedded page can start without focus.
