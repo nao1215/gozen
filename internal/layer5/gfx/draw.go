@@ -65,16 +65,8 @@ func DrawImageScaled(dst, img *ebiten.Image, x, y, s float64, alpha float32) {
 }
 
 func DrawImageCover(dst, img *ebiten.Image, x, y, w, h float64, alpha float32) {
-	drawImageCropped(dst, img, x, y, w, h, alpha, false)
-}
-
-func DrawImageCoverTop(dst, img *ebiten.Image, x, y, w, h float64, alpha float32) {
-	drawImageCropped(dst, img, x, y, w, h, alpha, true)
-}
-
-func drawImageCropped(dst, img *ebiten.Image, x, y, w, h float64, alpha float32, top bool) {
 	iw, ih := float64(img.Bounds().Dx()), float64(img.Bounds().Dy())
-	crop, s := coverCrop(iw, ih, w, h, top)
+	crop, s := coverCrop(iw, ih, w, h)
 	sub, ok := img.SubImage(crop).(*ebiten.Image)
 	if !ok {
 		return
@@ -83,14 +75,11 @@ func drawImageCropped(dst, img *ebiten.Image, x, y, w, h float64, alpha float32,
 }
 
 // coverCrop is the part of an iw x ih image that fills a w x h box, and the scale to draw it
-// at: centered, or from the top edge when top is set.
-func coverCrop(iw, ih, w, h float64, top bool) (image.Rectangle, float64) {
+// at, centered in the box.
+func coverCrop(iw, ih, w, h float64) (image.Rectangle, float64) {
 	s := math.Max(w/iw, h/ih)
 	sw, sh := w/s, h/s
 	sx, sy := (iw-sw)/2, (ih-sh)/2
-	if top {
-		sy = 0
-	}
 	return image.Rect(int(sx), int(sy), int(sx+sw), int(sy+sh)), s
 }
 

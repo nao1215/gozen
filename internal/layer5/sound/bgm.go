@@ -325,12 +325,6 @@ func ToggleMute() bool {
 	return muted
 }
 
-func Muted() bool {
-	mu.Lock()
-	defer mu.Unlock()
-	return muted
-}
-
 func bgmVolume() float64 {
 	if muted {
 		return 0

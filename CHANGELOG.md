@@ -12,6 +12,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - Give the first stream line up to six seconds for its recorded voice, keep later lines at 1.5 seconds, and log each fetch/decode timeout once.
 - Prefetch three opening lines per live show in the browser lobby, reuse their loads on entry, and release unused lobby references on exit.
 
+- Show a persistent warning when autosaves or gallery unlocks cannot be saved; retry at five-second update intervals, log repeated failures only once until recovery, and clear the warning after saving succeeds.
+
+- Initialize browser playback like desktop playback, including resetting transient movement on focus loss. A browser keeps running while unfocused, since an embedded page can start without focus.
+
 ## v0.14.2 - 2026-10-28
 
 - Open a game that offers two or more languages in the device's language the first time (ADR 0027): until a language is kept in the settings, a browser export takes the first of `navigator.languages` the game offers and the desktop the locale (`LC_ALL`, `LC_MESSAGES`, `LANG`, then macOS's or Windows's), `en-US` counting as `en`, else `language`.

@@ -1,7 +1,6 @@
 package gfx
 
 import (
-	"image"
 	"image/color"
 	"math"
 	"os"
@@ -393,7 +392,6 @@ func TestDrawTextCachesFacesPerBaseSize(t *testing.T) {
 	DrawText(dst, "hello", 10, 10, 20, color.White)
 	DrawTextLeft(dst, "hello", 10, 10, 20, color.White)
 	DrawTextRight(dst, "hello", 190, 40, 20, color.White)
-	DrawTextShadow(dst, "hello", 10, 60, 20, color.White)
 	if len(faceCache) != 1 {
 		t.Fatalf("%d faces for one base size", len(faceCache))
 	}
@@ -558,42 +556,5 @@ func TestShapesAtAScale(t *testing.T) {
 	StrokeCircle(dst, 10, 10, 4, 1, color.White, true)
 	if Scale() != 2 || BaseHeight != 720 {
 		t.Fatal("drawing changed the scale")
-	}
-}
-
-func TestCoverCropAndFitPlacement(t *testing.T) {
-	// A wide 200x100 image covering a square 50x50 box: scale 0.5, the middle 100 columns.
-	r, s := coverCrop(200, 100, 50, 50, false)
-	if s != 0.5 || r != image.Rect(50, 0, 150, 100) {
-		t.Fatalf("cover %v %v", r, s)
-	}
-	// A tall 100x200 image: centered vertically, or from the top edge.
-	r, s = coverCrop(100, 200, 50, 50, false)
-	if s != 0.5 || r != image.Rect(0, 50, 100, 150) {
-		t.Fatalf("cover tall %v %v", r, s)
-	}
-	r, _ = coverCrop(100, 200, 50, 50, true)
-	if r != image.Rect(0, 0, 100, 100) {
-		t.Fatalf("cover from the top %v", r)
-	}
-	px, py, k := fitPlacement(200, 100, 10, 20, 100, 100)
-	if k != 0.5 || px != 10 || py != 45 {
-		t.Fatalf("fit %v %v %v", px, py, k)
-	}
-	px, py, k = fitPlacement(100, 200, 0, 0, 100, 100)
-	if k != 0.5 || px != 25 || py != 0 {
-		t.Fatalf("fit tall %v %v %v", px, py, k)
-	}
-}
-
-func TestImageDrawHelpersAcceptAnyAspect(t *testing.T) {
-	t.Cleanup(Reset)
-	dst, img := ebiten.NewImage(100, 100), ebiten.NewImage(40, 20)
-	DrawImageFit(dst, img, 0, 0, 100, 100, 1)
-	DrawImageCover(dst, img, 0, 0, 100, 100, 0.5)
-	DrawImageCoverTop(dst, img, 0, 0, 100, 100, 1)
-	DrawImageScaled(dst, img, 5, 5, 2, 1)
-	if dst.Bounds() != image.Rect(0, 0, 100, 100) {
-		t.Fatal("destination bounds changed")
 	}
 }

@@ -41,7 +41,8 @@ func freePlayFixture(t *testing.T) fstest.MapFS {
 func TestFreeSpaceFocusPausePreservesMemoProgress(t *testing.T) {
 	g := wldOpenWith(t, Options{FS: freePlayFixture(t), Location: "inn"})
 	g.in.script = nil
-	g.pauseUnfocused = true
+	g.opts.Script = ""
+	g.StartRendering()
 	if !g.pauseForFocus(false) || g.pauseForFocus(true) {
 		t.Fatal("ordinary play must pause only while unfocused")
 	}

@@ -507,6 +507,9 @@ var english = map[string]string{
 	"↑↓で選んで決定\u3000Escでやめる":   "Up/Down and Enter to choose   Esc to cancel",
 	"一言を書いてEnterで保存（空でもよい）\u3000Escでやめる":      "Type a note, Enter saves (may be empty)   Esc to cancel",
 	"別の窓で書いて OK で保存、取消でやめる（窓が見えなければ Alt+Tab）": "Write in the other window: OK saves, Cancel discards (Alt+Tab if hidden)",
+
+	"保存できていません。再試行しています。": "Progress could not be saved. Retrying.",
+
 	// screens: menu, backlog, save, shop
 	"そうび":        "Equip",
 	"とじる":        "Close",

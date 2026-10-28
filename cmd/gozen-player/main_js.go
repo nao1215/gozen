@@ -37,6 +37,7 @@ func run() (err error) {
 	defer func() { err = errors.Join(err, g.Close()) }()
 	ebiten.SetWindowTitle(db.Game.Title)
 	page("goZenStarting", db.Game.Title)
+	g.StartRendering()
 	return ebiten.RunGame(&shown{Game: g})
 }
 

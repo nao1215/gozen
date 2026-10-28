@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"maps"
 	"os"
 	"path/filepath"
@@ -595,5 +596,96 @@ func TestLoadMenuPreservesNextBattleRandomState(t *testing.T) {
 	}
 	if !reflect.DeepEqual(firstLines, secondLines) {
 		t.Fatal("loading through the menu changed the next battle's decisions, steps or rewards")
+	}
+}
+
+// retryStore injects write failures while retaining real save serialization and reads.
+type retryStore struct {
+	savefile.Store
+	fail   map[string]error
+	writes map[string]int
+}
+
+func (s *retryStore) Write(name string, b []byte) error {
+	s.writes[name]++
+	if err := s.fail[name]; err != nil {
+		return err
+	}
+	return s.Store.Write(name, b)
+}
+
+func TestBackgroundSavesRetryAndRecoverIndependently(t *testing.T) {
+	g := sysOpen(t, Options{SaveDir: t.TempDir(), Location: "camp"}, nil)
+	g.opts.Script, g.opts.Replay = "", ""
+	g.auto = nil
+	s := &retryStore{Store: g.store, fail: map[string]error{}, writes: map[string]int{}}
+	g.store = s
+	failure := errors.New("storage full")
+	s.fail[g.autoPath()], s.fail[g.galleryPath()] = failure, failure
+	var logs bytes.Buffer
+	old := log.Writer()
+	log.SetOutput(&logs)
+	t.Cleanup(func() { log.SetOutput(old) })
+	g.autoSave()
+	g.unlock("cg:first")
+	if g.saveNotice() == "" || !g.unlockDirty || g.autoKey != "" || g.failure != nil {
+		t.Fatal("save failure must remain pending and visible without stopping play")
+	}
+	for g.tick = 1; g.tick < saveRetryTicks; g.tick++ {
+		g.autoSave()
+		g.saveUnlocks()
+	}
+	g.unlock("cg:second")
+	g.autoSave()
+	g.saveUnlocks()
+	if s.writes[g.autoPath()] != 2 || s.writes[g.galleryPath()] != 2 {
+		t.Fatalf("retry interval: %v", s.writes)
+	}
+	if strings.Count(logs.String(), "autosave:") != 1 || strings.Count(logs.String(), "gallery:") != 1 {
+		t.Fatalf("repeated errors logged: %s", logs.String())
+	}
+	delete(s.fail, g.autoPath())
+	g.tick += saveRetryTicks
+	g.autoSave()
+	g.saveUnlocks()
+	if g.autoKey != "camp" || g.saveNotice() == "" || !g.unlockDirty {
+		t.Fatal("autosave recovery must not hide unsaved gallery unlocks")
+	}
+	delete(s.fail, g.galleryPath())
+	g.tick += saveRetryTicks
+	g.saveUnlocks()
+	if g.unlockDirty || g.saveNotice() != "" {
+		t.Fatal("recovery did not clear pending state and warning")
+	}
+	b, err := s.Read(g.galleryPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	unlocked, _, err := readUnlocks(b, g.db.Game.ID)
+	if err != nil || !unlocked["cg:first"] || !unlocked["cg:second"] {
+		t.Fatalf("unlock round trip: %v, %v", unlocked, err)
+	}
+	// A later outage must be reported again, even with the same cause.
+	g.autoKey = ""
+	s.fail[g.autoPath()] = failure
+	g.autoSave()
+	if strings.Count(logs.String(), "autosave:") != 2 || g.saveNotice() == "" {
+		t.Fatal("new outage was hidden")
+	}
+}
+
+func TestPendingGalleryRetriesFromUpdate(t *testing.T) {
+	g := sysOpen(t, Options{SaveDir: t.TempDir(), Location: "camp"}, nil)
+	g.opts.Script = ""
+	s := &retryStore{Store: g.store, fail: map[string]error{g.galleryPath(): errors.New("storage full")}, writes: map[string]int{}}
+	g.store = s
+	g.unlock("cg:pending")
+	delete(s.fail, g.galleryPath())
+	g.tick = saveRetryTicks - 1
+	if err := g.Update(); err != nil {
+		t.Fatal(err)
+	}
+	if g.unlockDirty || s.writes[g.galleryPath()] != 2 {
+		t.Fatal("Update did not retry the pending gallery record")
 	}
 }

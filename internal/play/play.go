@@ -13,6 +13,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -64,11 +65,9 @@ type Options struct {
 	Store    Store
 	StoreFor func(id string) (Store, error)
 
-	// DB and State start the screen from a gozen Session's state (skipping the title). SetStats is the hook that writes party stats and levels for that Session
-	// when Config.Dev is set.
-	DB       *data.DB
-	State    *rpg.State
-	SetStats bool
+	// DB and State resume an existing state without showing the title.
+	DB    *data.DB
+	State *rpg.State
 	// Fresh means a new playthrough where State has not run anything yet: start from the opening event on screen.
 	Fresh bool
 
@@ -166,18 +165,13 @@ func Run(ctx context.Context, opts Options) (err error) {
 		}
 	}
 	ebiten.SetWindowSize(max(1, int(sw*scale)), max(1, int(sh*scale)))
-	// Run one paused update on focus loss so transient movement is reset. Update
-	// retains the normal pause while unfocused; scripted captures keep running.
-	ebiten.SetRunnableOnUnfocused(true)
 
 	if opts.Fullscreen {
 		g.cfg.Fullscreen = true
 	}
 	ebiten.SetFullscreen(g.cfg.Fullscreen)
 	if opts.Script != "" || opts.Autopilot != nil {
-
 		ebiten.SetVsyncEnabled(false)
-		ebiten.SetRunnableOnUnfocused(true)
 	}
 	if opts.Speed > 1 {
 		ebiten.SetTPS(60 * opts.Speed)
@@ -186,11 +180,8 @@ func Run(ctx context.Context, opts Options) (err error) {
 		ebiten.SetTPS(ebiten.SyncWithFPS)
 	}
 	unwatched := opts.Script != "" || opts.Autopilot != nil
-	g.rendering = true
-	g.pauseUnfocused = !unwatched
-	g.startLive()
+	g.StartRendering()
 	err = ebiten.RunGameWithOptions(g, &ebiten.RunGameOptions{InitUnfocused: unwatched})
-	g.stopLive()
 	if errors.Is(err, errQuit) {
 		err = nil
 	}
@@ -198,6 +189,24 @@ func Run(ctx context.Context, opts Options) (err error) {
 		err = g.tr.err
 	}
 	return errors.Join(err, g.failure)
+}
+
+// StartRendering prepares the native or browser player for its Ebitengine loop.
+// Call it on the loop's goroutine after New, and defer Close to stop live watching.
+// Repeated calls are harmless; offscreen consumers can leave rendering disabled.
+func (g *Game) StartRendering() {
+	if g.loopStarted || g.closed {
+		return
+	}
+	g.loopStarted = true
+	g.rendering = true
+	// A browser keeps running unfocused: an embedded page can start without focus and would
+	// never begin, and the browser already slows a hidden tab. Scripted captures keep running.
+	g.pauseUnfocused = runtime.GOOS != "js" && g.opts.Script == "" && g.opts.Autopilot == nil
+	// Run updates on focus loss so transient movement is reset (pauseForFocus).
+	ebiten.SetRunnableOnUnfocused(true)
+
+	g.startLive()
 }
 
 var activeGame atomic.Bool
@@ -292,8 +301,9 @@ type Game struct {
 	lastMood           string
 
 	quit           bool
+	loopStarted    bool
 	rendering      bool
-	pauseUnfocused bool      // Set only by the native/browser Run loop, not offscreen tests.
+	pauseUnfocused bool      // Set only by the desktop loop (StartRendering), not a browser or offscreen tests.
 	debugDrawTime  time.Time // Previous Draw start, used only by explicit timing diagnostics.
 	debugDrawTick  int       // The tick of the last timing diagnostic of Draw.
 
@@ -315,12 +325,15 @@ type Game struct {
 	unlocked   map[string]bool
 	replaying  bool
 	// sortieTactics are the tactics last chosen on the sortie screen, by general.
-	sortieTactics map[string]string
-	autoBattle    bool
-	read          map[uint64]bool
-	readDirty     bool
-	autoKey       string
-	offered       string
+	sortieTactics   map[string]string
+	autoBattle      bool
+	read            map[uint64]bool
+	readDirty       bool
+	autoSaveRetry   saveRetry
+	unlockSaveRetry saveRetry
+	unlockDirty     bool
+	autoKey         string
+	offered         string
 
 	unlockReadErr     error
 	unlockNeedsBackup bool
@@ -785,13 +798,13 @@ func (g *Game) rng() *rand.Rand {
 }
 
 func (g *Game) pauseForFocus(focused bool) bool {
-	if g.pauseUnfocused && g.in.script == nil && g.auto == nil && g.rep == nil && !focused {
-		g.resetFreeMotion()
-		// The external memo editor intentionally completes while the game lacks
-		// focus. Keep collecting its result and expiring its completion toast.
-		return g.memo == nil && g.memoToastT == 0
+	if focused || !g.rendering || g.in.script != nil || g.auto != nil || g.rep != nil {
+		return false
 	}
-	return false
+	g.resetFreeMotion()
+	// The external memo editor intentionally completes while the game lacks
+	// focus. Keep collecting its result and expiring its completion toast.
+	return g.pauseUnfocused && g.memo == nil && g.memoToastT == 0
 }
 
 func (g *Game) Update() error {
@@ -979,6 +992,7 @@ func (g *Game) Update() error {
 		g.checkUnlocks()
 	}
 	if g.tick%10 == 0 {
+		g.saveUnlocks()
 		g.idleChores()
 	}
 	if g.tick%600 == 0 {
@@ -1331,7 +1345,7 @@ func (g *Game) newEventRunner() *event.Runner {
 	runner.BlockAside = g.AsideBlocked
 	runner.OnStart = g.onEventStart
 	// Writing stats and levels with set is allowed only in authoring mode (--dev) (ADR 0021, author's decision 5).
-	runner.Dev, runner.UseItem = g.opts.Development || g.opts.SetStats, itemuse.For(g.db, g.st)
+	runner.Dev, runner.UseItem = g.opts.Development, itemuse.For(g.db, g.st)
 	runner.Log = func(err error) {
 		if g.opts.capture != nil {
 			g.failure = errors.Join(g.failure, err)

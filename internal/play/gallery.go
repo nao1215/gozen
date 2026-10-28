@@ -92,10 +92,14 @@ func (g *Game) unlock(key string) {
 	}
 	g.unlocked[key] = true
 	g.emit("unlock", traceLine{"key": key})
+	g.unlockDirty = true
 	g.saveUnlocks()
 }
 
 func (g *Game) saveUnlocks() {
+	if !g.unlockDirty || g.tick < g.unlockSaveRetry.next {
+		return
+	}
 	if g.auto != nil || g.opts.Script != "" || g.opts.Replay != "" || g.replaying || g.unlockReadErr != nil {
 		return
 	}
@@ -107,10 +111,11 @@ func (g *Game) saveUnlocks() {
 			err = g.store.Write(g.galleryPath(), b)
 		}
 	}
+	g.unlockSaveRetry.record(g.tick, "gallery", err)
 	if err != nil {
-		log.Printf("gallery: %v", err)
 		return
 	}
+	g.unlockDirty = false
 	g.unlockNeedsBackup = false
 }
 
