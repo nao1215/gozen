@@ -10,7 +10,7 @@ The watch view of ADR 0048 reads its lines aloud only with a browser's `speechSy
 
 ### Recorded voices
 
-The streams file gains `voices: voice`, a folder under assets/ (the word of an actor's `voices`, ADR 0028). It holds a folder for each channel, named by the channel's id, and in it the voice of each line the channel says as `KEY.ogg`. The key is the first 16 hexadecimal digits (lower case) of the SHA-1 of the line in UTF-8, as it is shown (translated into the language shown, ADR 0027) after its `{fields}` are filled: `Hello, everyone.` is `6f2529aa52538b73.ogg`; `Welcome, {from}.` needs the recording of the actual welcome, including the name. The lines with voices are a channel's greetings (`greet`, `first`, `streak`, `stayed`), its `bridges`, the lines and questions and answers it says in its episodes and duos, and its reaction book's lines. A reaction book's line is said, and keyed, as the other lines are: translated into the language shown when it is said, after its fields are filled. The book answers in its source (`react.Reaction.Written`, with what each line's fields were filled with in `Fields`, so a reply waiting to be said, the rest of its lines or a comment read back later, follows a change of language and is filled with `react.Fill` as it was; an event's `respond` says each line as a line of the source with those values, `data.Say.Values`, so it is translated, shown again in another language and read by its source's key as any line, ADR 0027), and its lines are texts of the game to translate (`lang/*.yaml`, GZN0110 and GZN0111 count them). A duo's line is in the folder of the host who says it. A viewer's own tip comment read out in quotes uses the channel fallback when available; a tip line of the crowd (`crowd.tip_lines`, which any host reads out) has one in each host's folder, keyed by the line as shown before it is quoted.
+The streams file gains `voices: voice`, a folder under assets/ (the word of an actor's `voices`, ADR 0028). It holds a folder for each channel, named by the channel's id, and in it the voice of each line the channel says as `KEY.ogg`. The key is the first 16 hexadecimal digits (lower case) of the SHA-1 of the line in UTF-8, as it is shown (translated into the language shown, ADR 0027) after its `{fields}` are filled: `Hello, everyone.` is `6f2529aa52538b73.ogg`; `Welcome, {from}.` first looks for the recording of the actual welcome, including the name, then for the translated template key. The lines with voices are a channel's greetings (`greet`, `first`, `streak`, `stayed`), its `bridges`, the lines and questions and answers it says in its episodes and duos, and its reaction book's lines. A reaction book's line is said, and keyed, as the other lines are: translated into the language shown when it is said, after its fields are filled. The book answers in its source (`react.Reaction.Written`, with what each line's fields were filled with in `Fields`, so a reply waiting to be said, the rest of its lines or a comment read back later, follows a change of language and is filled with `react.Fill` as it was; an event's `respond` says each line as a line of the source with those values, `data.Say.Values`, so it is translated, shown again in another language and read by its source's key as any line, ADR 0027), and its lines are texts of the game to translate (`lang/*.yaml`, GZN0110 and GZN0111 count them). A duo's line is in the folder of the host who says it. A viewer's own tip comment read out in quotes uses the channel fallback when available; a tip line of the crowd (`crowd.tip_lines`, which any host reads out) has one in each host's folder, keyed by the line as shown before it is quoted.
 
 When the lines are read aloud and the line has its voice, the watch view plays it at the voice volume (and the actor's, ADR 0028) and waits for it to end, with a quarter of a second after it, before its next step (a question then gives the viewers `timing.ask` to answer, however its line was read: with its voice, loaded late or not at all, or by speech synthesis); the mouth moves while it plays. By default, a line without its voice is read by `speechSynthesis` in a browser build and only captioned elsewhere, lasting its timing. The read-aloud button shows when either can be used: in a browser when speech is permitted, or in any build when the voices folder exists; reading aloud starts on when it exists (the button turns it off), and off otherwise as before. While the lines are read aloud a browser build holds the Screen Wake Lock (`navigator.wakeLock.request("screen")`), so a stream can be listened to with the screen untouched; it asks again every five seconds when the page lost it (it does when hidden) and lets it go when reading aloud is turned off or the view closes, and a browser without the API, or one that refuses, does nothing more.
 
@@ -24,10 +24,12 @@ A desktop build reads a voice when its line begins, so a run and its replay time
 
 Updated 2026-10-28. Channel `voice_fallback` is an optional fixed phrase with no
 fields, for example `voice_fallback: Thank you.`. It is translated and recorded
-through the same voice key and channel folder. A missing recording of a filled
-line, or a player tip quotation, selects this recording while keeping the full
-caption and chat text. An absent fallback or fallback recording retains the
-configured missing-voice behavior. Decode errors and fetch timeouts retain the
+through the same voice key and channel folder. Lookup tries the filled text, then
+the translated unfilled template, then this fallback for dynamic lines, then no
+recording. Template audio can omit the name or other runtime values; its filename
+still hashes the template with placeholders intact. Player tip quotations use the
+fallback directly. Caption and chat text keep the full filled line. An absent
+fallback or fallback recording retains the configured missing-voice behavior. Decode errors and fetch timeouts retain the
 existing diagnostics and follow that policy. Static lines without fields retain
 their previous behavior.
 
@@ -39,20 +41,21 @@ decoded cache continue to own that work.
 
 This optional field extends schema version 9, like the existing voices and slot
 fields: no save format or schema version bump. Omission preserves old games.
-The corrected filled-text key intentionally replaces template keys: regenerate
-recordings made from unfilled templates. GZN0119 checks known expanded candidates
+Template recordings remain usable when a filled-text recording is absent.
+GZN0119 checks translated template keys and known expanded candidates
 and warns of missing fallback recordings in each offered language; GZN0120 checks
 their codec. Translation collection includes the fallback, and validation rejects
 fields in its source or translation.
 
 `gozen book GAME --section voices --format json` returns the usual command result
 envelope. Its `data` is `{"version":1,"lines":[...]}`. Each line has `channel`,
-`language` and `text`. A resolved line has `file`, relative to the game directory
-(empty/omitted when `voices` is not configured). An unresolved template instead
-has `fields`, the sorted names of values needed at runtime, and no `file`.
-Recording tools synthesize only records without `fields`, write Ogg Vorbis to
-`file`, and deduplicate by that path across languages. Text and paths are exact:
-do not normalize whitespace, translate again, add quotation marks or hash templates.
+`language`, `text` and `file`, relative to the game directory (empty/omitted when
+`voices` is not configured). A template also has `fields`, the sorted names of
+values needed at runtime; its `file` hashes the translated unfilled `text`.
+Recording tools may omit placeholders from the spoken audio while saving Ogg
+Vorbis to that template path, and deduplicate by path across languages. Keys use
+the exact exported text: do not normalize whitespace, translate again or add
+quotation marks.
 The inventory is deterministic and does not read audio or mutate reaction state.
 JSONL returns the same inventory in one result; text and Markdown are for inspection.
 

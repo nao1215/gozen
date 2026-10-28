@@ -329,6 +329,9 @@ func TestBookStreamVoices(t *testing.T) {
 	dir := fixture(t)
 	write(t, filepath.Join(dir, "assets", "x.png"), string(read(t, filepath.Join(dir, "assets", "mote.png"))))
 	for name, body := range testgame.StreamFiles() {
+		if name == "data/streams.yaml" {
+			body = "voices: voice\n" + body
+		}
 		write(t, filepath.Join(dir, name), body)
 	}
 	game := strings.Replace(string(read(t, filepath.Join(dir, "game.yaml"))), "schema_version: 1\n", "", 1)
@@ -343,6 +346,20 @@ func TestBookStreamVoices(t *testing.T) {
 	}
 	if got.Version != 1 || len(got.Lines) == 0 {
 		t.Fatalf("inventory: %s", out)
+	}
+
+	templates := 0
+	for _, line := range got.Lines {
+		if len(line.Fields) > 0 {
+			templates++
+			want := "assets/voice/" + line.Channel + "/" + data.VoiceKey(line.Text) + ".ogg"
+			if line.File != want {
+				t.Fatalf("template path = %q, want %q", line.File, want)
+			}
+		}
+	}
+	if templates == 0 {
+		t.Fatal("inventory has no templates")
 	}
 	again, _ := invoke(t, 0, "book", dir, "--section", "voices", "--format", "json")
 	if out != again {

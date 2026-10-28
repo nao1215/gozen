@@ -910,9 +910,7 @@ func oggCodec(fsys fs.FS, name string) string {
 func (c *checker) voiceKeys(ch *Channel) map[string]bool {
 	keys := map[string]bool{}
 	for _, line := range c.db.streamVoiceLines(ch) {
-		if len(line.Fields) == 0 {
-			keys[VoiceKey(line.Text)] = true
-		}
+		keys[VoiceKey(line.Text)] = true
 	}
 	return keys
 }

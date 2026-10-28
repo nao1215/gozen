@@ -1533,24 +1533,26 @@ Inspect the resulting game and test its routes before distribution.
 For a stream game, set `voices: voice` in the streams file and an optional
 `voice_fallback: Thank you.` on each channel (schema version 9).
 Record that translated phrase as Ogg Vorbis in the channel's voice folder.
-When a filled line has no recording, this phrase plays and the subtitle keeps
-the full line. Without its recording, the browser uses speech synthesis by default.
+Lookup tries the filled text, then the translated unfilled template, then the
+channel fallback for dynamic lines, then no recording. The subtitle keeps the
+full filled line. Without a recording, the browser uses speech synthesis by default.
 Player tip quotations also use the fallback. Static lines keep their usual behavior.
 
 Export the recording inventory with `gozen book GAME --section voices --format json`.
 The command result's `data` contains `version: 1` and `lines`.
-Each line carries `channel`, `language`, `text` and, when resolved, `file`.
+Each line carries `channel`, `language`, `text` and `file`.
 Generate the exact text as Ogg Vorbis at that game-relative path, deduplicating by
-path. Records with `fields` are unresolved templates: skip them, and use the
-channel fallback for those runtime cases. Set `voices` before exporting paths.
+path. Records with `fields` are templates: their `file` hashes the translated
+text with placeholders intact. Record these without speaking the name or other
+runtime values, and save at that path. Set `voices` before exporting paths.
 
 The inventory expands NPC names for their authored question options and candidate
 bot-tip reactions from crowd names and tip lines. Player names and input, visit
 counts, reaction mood, matched slots and remembered values remain runtime values.
 Reaction candidates may include rules that will not run for a particular tip.
 Translations are applied before filling and hashing. Existing recordings named
-after unfilled templates must be regenerated. `gozen check` checks the expanded
-keys, missing fallback recordings (GZN0119) and audio format (GZN0120).
+after translated unfilled templates remain usable. `gozen check` checks template
+and expanded keys, missing fallback recordings (GZN0119) and audio format (GZN0120).
 The browser checks its file manifest before loading a voice; an absent recording
 does not incur a network request.
 

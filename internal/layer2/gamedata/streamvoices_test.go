@@ -36,15 +36,12 @@ func TestStreamVoiceLines(t *testing.T) {
 		if l.Channel != "ann" {
 			continue
 		}
+		if l.File != db.Streams.Voice(l.Channel, l.Text) {
+			t.Fatalf("wrong recording path: %+v", l)
+		}
 		if len(l.Fields) == 0 {
-			if l.File != db.Streams.Voice(l.Channel, l.Text) {
-				t.Fatalf("wrong recording path: %+v", l)
-			}
 			known[l.Text] = true
 		} else {
-			if l.File != "" {
-				t.Fatalf("template offered for recording: %+v", l)
-			}
 			pending[l.Text] = true
 		}
 	}
@@ -53,7 +50,7 @@ func TestStreamVoiceLines(t *testing.T) {
 			t.Errorf("missing candidate %q", want)
 		}
 	}
-	for _, want := range []string{"Welcome, {from}.", "{days} days in a row, {from}!", "Mood {mood}"} {
+	for _, want := range []string{"Welcome, {from}.", "{days} days in a row, {from}!", "Mood {mood}", "Beans for {from}."} {
 		if !pending[want] {
 			t.Errorf("missing runtime template %q", want)
 		}
