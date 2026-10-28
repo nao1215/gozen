@@ -1641,21 +1641,27 @@ func TestStreamsStartAgain(t *testing.T) {
 
 // TestStreamsFilledVoiceSelection checks the same paths used by playback and ahead.
 func TestStreamsFilledVoiceSelection(t *testing.T) {
-	g, w, fsys := voicedShow(t, "Thanks, Rowan!", "Thank you.")
+	g, w, fsys := voicedShow(t, "Thanks, Rowan!", "Thanks, {from}!", "Thank you.")
 	ch := w.show.Hosts[0]
 	ch.VoiceFallback = "Thank you."
 	line := dataLine(0, "Thanks, {from}!", "Rowan", 0)
+	template := g.db.Streams.Voice(ch.ID, "Thanks, {from}!")
+	templateAudio := fsys[template]
 	exact := g.db.Streams.Voice(ch.ID, "Thanks, Rowan!")
 	fallback := g.db.Streams.Voice(ch.ID, "Thank you.")
 	for _, tc := range []struct {
 		name, from, fallback, want string
 	}{
 		{"exact", "Rowan", "Thank you.", exact},
+		{"template", "Player", "Thank you.", template},
 		{"fallback", "Player", "Thank you.", fallback},
 		{"legacy", "Player", "", ""},
 		{"missing fallback", "Player", "Absent.", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.name != "exact" && tc.name != "template" {
+				delete(fsys, template)
+			}
 			line.fields["from"] = tc.from
 			ch.VoiceFallback = tc.fallback
 			if got := w.voiceFile(g, line); got != tc.want {
@@ -1689,6 +1695,17 @@ func TestStreamsFilledVoiceSelection(t *testing.T) {
 	g.setLanguage("ja")
 	if got := w.voiceFile(g, line); got != translated {
 		t.Fatalf("translated fallback: %q", got)
+	}
+
+	g.db.Words["ja"]["Thanks, {from}!"] = "Well done, {from}!"
+	translatedTemplate := g.db.Streams.Voice(ch.ID, "Well done, {from}!")
+	fsys[template] = templateAudio
+	if got := w.voiceFile(g, line); got != translated {
+		t.Fatalf("source template used instead of translated fallback: %q", got)
+	}
+	fsys[translatedTemplate] = templateAudio
+	if got := w.voiceFile(g, line); got != translatedTemplate {
+		t.Fatalf("translated template: %q", got)
 	}
 }
 

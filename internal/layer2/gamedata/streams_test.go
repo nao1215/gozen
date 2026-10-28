@@ -228,6 +228,7 @@ func TestStreamsFallbackRecordingCheck(t *testing.T) {
 	}
 	files["assets/voice/ann/"+data.VoiceKey("Thank you.")+".ogg"] = "x"
 	files["assets/voice/ann/"+data.VoiceKey("sprout picked beans.")+".ogg"] = "x"
+	files["assets/voice/ann/"+data.VoiceKey("Welcome, {from}.")+".ogg"] = "x"
 	files["streams/ann/1.yaml"] = strings.Replace(files["streams/ann/1.yaml"], "[sprout, 1]", "[sprout, 0]", 1)
 	db = testgame.Load(t, files)
 	warnings := fmt.Sprint(db.SceneWarnings())

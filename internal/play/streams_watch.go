@@ -442,7 +442,13 @@ func (w *streamWatch) voiceFile(g *Game, l streamSay) string {
 	if f := exists(line); f != "" {
 		return f
 	}
-	if len(l.fields) > 0 && strings.Contains(g.db.Tr(l.line), "{") || l.quote && !l.tipLine {
+	template := g.db.Tr(l.line)
+	if !l.quote && len(l.fields) > 0 && template != line {
+		if f := exists(template); f != "" {
+			return f
+		}
+	}
+	if len(l.fields) > 0 && strings.Contains(template, "{") || l.quote && !l.tipLine {
 		return exists(g.db.Tr(ch.VoiceFallback))
 	}
 	return ""

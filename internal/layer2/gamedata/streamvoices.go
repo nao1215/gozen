@@ -8,9 +8,9 @@ import (
 )
 
 // StreamVoiceLine is one authoring record consumed by gozen book --section voices.
-// Text is translated and filled when Fields is empty; File is then its recording
-// path (empty without streams.voices). Otherwise Text is a template and Fields
-// lists the runtime values still needed; such a record must not be synthesized.
+// Text is translated and filled when Fields is empty; otherwise it is a template
+// and Fields lists the runtime values. File keys Text (empty without streams.voices);
+// tools can record a template without speaking its placeholders.
 type StreamVoiceLine struct {
 	Channel  string   `json:"channel"`
 	Language string   `json:"language"`
@@ -67,9 +67,7 @@ func (db *DB) streamVoiceLines(ch *Channel) []StreamVoiceLine {
 			}
 			seen[key] = true
 			line := StreamVoiceLine{Channel: ch.ID, Language: code, Text: text, Fields: pending}
-			if len(pending) == 0 {
-				line.File = s.Voice(ch.ID, text)
-			}
+			line.File = s.Voice(ch.ID, text)
 			out = append(out, line)
 		}
 		for _, l := range slices.Concat(ch.First, ch.Streak, ch.Stayed, ch.Bridges, s.Crowd.TipLines, []string{ch.VoiceFallback}) {
