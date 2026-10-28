@@ -64,11 +64,9 @@ type Options struct {
 	Store    Store
 	StoreFor func(id string) (Store, error)
 
-	// DB and State start the screen from a gozen Session's state (skipping the title). SetStats is the hook that writes party stats and levels for that Session
-	// when Config.Dev is set.
-	DB       *data.DB
-	State    *rpg.State
-	SetStats bool
+	// DB and State resume an existing state without showing the title.
+	DB    *data.DB
+	State *rpg.State
 	// Fresh means a new playthrough where State has not run anything yet: start from the opening event on screen.
 	Fresh bool
 
@@ -1323,7 +1321,7 @@ func (g *Game) newEventRunner() *event.Runner {
 	runner.BlockAside = g.AsideBlocked
 	runner.OnStart = g.onEventStart
 	// Writing stats and levels with set is allowed only in authoring mode (--dev) (ADR 0021, author's decision 5).
-	runner.Dev, runner.UseItem = g.opts.Development || g.opts.SetStats, itemuse.For(g.db, g.st)
+	runner.Dev, runner.UseItem = g.opts.Development, itemuse.For(g.db, g.st)
 	runner.Log = func(err error) {
 		if g.opts.capture != nil {
 			g.failure = errors.Join(g.failure, err)

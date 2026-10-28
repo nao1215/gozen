@@ -255,11 +255,6 @@ func DrawTextRight(dst *ebiten.Image, s string, x, y, size float64, clr color.Co
 	DrawTextLeft(dst, s, x-TextWidth(s, size), y, size, clr)
 }
 
-func DrawTextShadow(dst *ebiten.Image, s string, x, y, size float64, clr color.Color) {
-	DrawTextLeft(dst, s, x+2, y+2, size, color.NRGBA{0, 0, 0, 0xa0})
-	DrawTextLeft(dst, s, x, y, size, clr)
-}
-
 func Wrap(s string, size, width float64) []string {
 	return wrapWith(s, func(line []rune) bool { return TextWidth(string(line), size) <= width })
 }

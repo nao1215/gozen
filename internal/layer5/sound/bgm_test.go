@@ -531,10 +531,10 @@ func TestLoadBGMControlsAndVolumes(t *testing.T) {
 	if bgmVolume() != 0.25 || math.Abs(seVolume()-0.175) > 1e-12 {
 		t.Fatalf("scaled volumes %v %v", bgmVolume(), seVolume())
 	}
-	if !ToggleMute() || !Muted() || bgmVolume() != 0 || seVolume() != 0 {
+	if !ToggleMute() || bgmVolume() != 0 || seVolume() != 0 {
 		t.Fatal("mute")
 	}
-	if ToggleMute() || Muted() {
+	if ToggleMute() || bgmVolume() != 0.25 || math.Abs(seVolume()-0.175) > 1e-12 {
 		t.Fatal("unmute")
 	}
 	PlaySongFade("b", Neutral, 0.5)
@@ -557,7 +557,7 @@ func TestLoadBGMControlsAndVolumes(t *testing.T) {
 	if err := Close(); err != nil {
 		t.Fatal(err)
 	}
-	if Active() || Muted() || bgmVolume() != 0.7 {
+	if Active() || bgmVolume() != 0.7 {
 		t.Fatalf("Close leaves the session: active %v volume %v", Active(), bgmVolume())
 	}
 }
