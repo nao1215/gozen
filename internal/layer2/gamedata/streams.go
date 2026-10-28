@@ -28,8 +28,11 @@ type Streams struct {
 	Logo string `yaml:"logo"`
 	// Voices is a folder under assets/ of recorded lines: a folder for each channel, the
 	// line it says in VOICEKEY.ogg (VoiceKey). A line without its file is read by speech
-	// synthesis in a browser build and only captioned elsewhere.
+	// synthesis in a browser build unless MissingVoice selects captions.
 	Voices string `yaml:"voices"`
+	// MissingVoice selects the watch view's behavior without a playable recording:
+	// empty or "speech" permits browser speech; "captions" uses only caption timing.
+	MissingVoice string `yaml:"missing_voice"`
 	// Timing is how long each kind of beat lasts.
 	Timing StreamTiming `yaml:"timing"`
 	// Slot is how long a channel streams when it is live, its episodes one after another.
@@ -200,6 +203,9 @@ type Channel struct {
 	Frame StreamFrame `yaml:"frame"`
 	// Voice is the speech synthesis of a browser build.
 	Voice StreamVoice `yaml:"voice"`
+	// VoiceFallback is the recorded phrase used when a filled line has no recording.
+	// It is translated, contains no fields, and leaves the original caption intact.
+	VoiceFallback string `yaml:"voice_fallback"`
 	// Guest marks a streamer of no channel of its own: no stream, no card in the lobby; it
 	// streams only as the other host of a duo (its with), and needs no room or episodes.
 	Guest bool `yaml:"guest"`
@@ -428,8 +434,7 @@ func (t StreamTiming) Seconds(b Beat) float64 {
 }
 
 // VoiceKey names the recorded voice of a stream line: the first 16 hexadecimal digits of
-// the SHA-1 of the line in UTF-8, as shown (translated) and before its {fields} are filled
-// (a reaction book's line too).
+// the SHA-1 of the line in UTF-8 after translation and field substitution, before quoting.
 func VoiceKey(line string) string {
 	sum := sha1.Sum([]byte(line)) //nolint:gosec // A file name for a line, not security.
 	return hex.EncodeToString(sum[:])[:16]
@@ -585,6 +590,9 @@ func (c *checker) streams() {
 	}
 	at := func(p string, args ...any) string { return s.file + " " + fmt.Sprintf(p, args...) }
 	c.file(at("logo"), s.Logo)
+	if s.MissingVoice != "" && s.MissingVoice != "speech" && s.MissingVoice != "captions" {
+		c.errorf(diag.Shape, at("missing_voice"), "want speech or captions, not %q", s.MissingVoice)
+	}
 	t := s.Timing
 	// a beat of less than minBeat would have a stream that ends at once start again so
 	// often that catching the streams up would not end
@@ -669,6 +677,10 @@ func (c *checker) streams() {
 		}
 		c.streamLines(w+".streak", ch.Streak, "from", "days")
 		c.streamLines(w+".bridges", ch.Bridges)
+		c.streamLines(w+".voice_fallback", []string{ch.VoiceFallback})
+		if ch.VoiceFallback != "" && strings.TrimSpace(ch.VoiceFallback) == "" {
+			c.errorf(diag.Shape, w+".voice_fallback", "a fallback needs text")
+		}
 		if slices.Contains(ch.Bridges, "") {
 			c.errorf(diag.Shape, w+".bridges", "a bridge needs text")
 		}
@@ -790,6 +802,20 @@ func (c *checker) episode(e *Episode, hosts []string) {
 // folder, and of a file that is not the voice of a line of its channel (StreamVoice).
 func (c *checker) streamVoices() {
 	s := c.db.Streams
+	for _, ch := range s.Channels {
+		if ch == nil || ch.VoiceFallback == "" {
+			continue
+		}
+		for _, code := range slices.Compact(slices.Sorted(slices.Values(append(slices.Clone(c.db.Game.Offered()), c.db.Game.Written())))) {
+			text := c.db.TrIn(code, ch.VoiceFallback)
+			c.streamLines(s.file+" voice_fallback "+code, []string{text})
+			f := s.Voice(ch.ID, text)
+			st, err := fs.Stat(c.db.FS, f)
+			if f == "" || err != nil || st.IsDir() {
+				c.warnf(diag.StreamVoice, s.file+" voice_fallback", "%s (%s): fallback recording is missing", ch.ID, code)
+			}
+		}
+	}
 	if s.Voices == "" {
 		return
 	}
@@ -882,47 +908,10 @@ func oggCodec(fsys fs.FS, name string) string {
 // voiceKeys are the voice keys of the lines the channel says, in every language offered:
 // its greetings, its lines and questions in its episodes and duos, and its reaction book's.
 func (c *checker) voiceKeys(ch *Channel) map[string]bool {
-	s := c.db.Streams
-	// the crowd's tip lines too, which any host reads out (keyed before they are quoted)
-	lines := slices.Concat(ch.First, ch.Streak, ch.Stayed, ch.Bridges, s.Crowd.TipLines)
-	for _, g := range ch.Greet {
-		lines = append(lines, g...)
-	}
-	says := func(eps []*Episode, host string) {
-		for _, e := range eps {
-			for _, b := range e.Beats() {
-				switch {
-				case b.Line != nil && cmp.Or(b.Speaker, host) == ch.ID:
-					lines = append(lines, b.Line.Text)
-				case b.Ask != nil:
-					asker := cmp.Or(b.Ask.Who, host)
-					if asker == ch.ID {
-						lines = append(lines, b.Ask.Q)
-					}
-					for _, o := range b.Ask.Options {
-						for _, r := range o.R {
-							if cmp.Or(r.Speaker, asker) == ch.ID {
-								lines = append(lines, r.Line.Text)
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	says(ch.Shows, ch.ID)
-	for _, d := range s.Duos {
-		if d != nil && (d.Host == ch.ID || d.With == ch.ID) {
-			says(d.Shows, d.Host)
-		}
-	}
-	if b := c.db.ReactionBooks[ch.Actor]; b != nil {
-		lines = append(lines, b.Lines(ch.Actor)...)
-	}
 	keys := map[string]bool{}
-	for _, code := range slices.Concat(c.db.Game.Offered(), []string{c.db.Game.Written()}) {
-		for _, l := range lines {
-			keys[VoiceKey(c.db.TrIn(code, l))] = true
+	for _, line := range c.db.streamVoiceLines(ch) {
+		if len(line.Fields) == 0 {
+			keys[VoiceKey(line.Text)] = true
 		}
 	}
 	return keys

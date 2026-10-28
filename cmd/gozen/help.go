@@ -363,11 +363,12 @@ var pages = map[string]clihelp.Page{
 	"book": {
 		Summary: "write the game synopsis as Markdown or structured data",
 		Usage:   []string{"gozen book [OPTIONS] <game-dir>"},
-		About:   "Writes the locations, events, scenes, troops, and items of the game to stdout as one Markdown document. Each monster page includes its lineage (how it is captured or bred). JSON contains the same complete synopsis; --section lineage selects only lineage in every format. JSONL emits one item per section and a final summary.",
+		About:   "Writes the locations, events, scenes, troops, and items of the game to stdout as one Markdown document. Each monster page includes its lineage (how it is captured or bred). JSON contains the same complete synopsis; --section lineage selects only lineage in every format. JSONL emits one item per section and a final summary. --section voices exports a versioned recording inventory, including filled scripted lines and unresolved runtime fields; JSON and JSONL return one result.",
 		Examples: []clihelp.Example{
 			{"write the book to a file", "gozen book game > book.md"},
 			{"read it in a pager", "gozen book game | less"},
 			{"read each monster's family tree as JSON", "gozen book game --section lineage --format json"},
+			{"list stream recordings", "gozen book game --section voices --format json"},
 		},
 		Groups: []clihelp.Group{{Title: "Output", Flags: []string{"format", "section"}}, general},
 	},

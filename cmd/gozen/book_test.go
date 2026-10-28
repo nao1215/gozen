@@ -11,6 +11,7 @@ import (
 
 	"github.com/nao1215/gozen/internal/diag"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/testgame"
 )
 
 // bookGames are the games of this repository that together use most of the schema:
@@ -321,5 +322,34 @@ func TestBookMarkdownCellsAndNestedDialogue(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("report lacks %q", want)
 		}
+	}
+}
+
+func TestBookStreamVoices(t *testing.T) {
+	dir := fixture(t)
+	write(t, filepath.Join(dir, "assets", "x.png"), string(read(t, filepath.Join(dir, "assets", "mote.png"))))
+	for name, body := range testgame.StreamFiles() {
+		write(t, filepath.Join(dir, name), body)
+	}
+	game := strings.Replace(string(read(t, filepath.Join(dir, "game.yaml"))), "schema_version: 1\n", "", 1)
+	write(t, filepath.Join(dir, "game.yaml"), game+testgame.StreamsGame)
+	out, _ := invoke(t, 0, "book", dir, "--section", "voices", "--format", "json")
+	var got struct {
+		Version int                    `json:"version"`
+		Lines   []data.StreamVoiceLine `json:"lines"`
+	}
+	if err := json.Unmarshal(resultData(t, out, "book"), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Version != 1 || len(got.Lines) == 0 {
+		t.Fatalf("inventory: %s", out)
+	}
+	again, _ := invoke(t, 0, "book", dir, "--section", "voices", "--format", "json")
+	if out != again {
+		t.Fatal("unstable inventory")
+	}
+	text, _ := invoke(t, 0, "book", dir, "--section", "voices")
+	if !strings.Contains(text, "runtime fields: from") {
+		t.Fatal(text)
 	}
 }

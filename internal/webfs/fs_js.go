@@ -185,6 +185,11 @@ func (f *httpFS) fetchOnce(name string, served file) ([]byte, error) {
 	return c.data, c.err
 }
 
+// Stat reads only manifest metadata; checking a deferred voice must not fetch it.
+func (f *httpFS) Stat(name string) (fs.FileInfo, error) {
+	return fs.Stat(f.entries, name)
+}
+
 func (f *httpFS) Open(name string) (fs.File, error) {
 	if !fs.ValidPath(name) {
 		return nil, fs.ErrInvalid

@@ -4,6 +4,14 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Add streams missing_voice: captions to suppress browser speech for missing, invalid or late recordings while retaining desktop timing, recorded-audio controls and timeout diagnostics; omission keeps speech synthesis.
+
+- Resolve stream recordings from translated, filled text; use an optional channel voice_fallback for missing dynamic recordings without changing captions or fetching absent files.
+- Export deterministic recording candidates and unresolved templates with gozen book --section voices --format json; validate fallback recordings and filled scripted voice keys.
+
+- Give the first stream line up to six seconds for its recorded voice, keep later lines at 1.5 seconds, and log each fetch/decode timeout once.
+- Prefetch three opening lines per live show in the browser lobby, reuse their loads on entry, and release unused lobby references on exit.
+
 ## v0.14.2 - 2026-10-28
 
 - Open a game that offers two or more languages in the device's language the first time (ADR 0027): until a language is kept in the settings, a browser export takes the first of `navigator.languages` the game offers and the desktop the locale (`LC_ALL`, `LC_MESSAGES`, `LANG`, then macOS's or Windows's), `en-US` counting as `en`, else `language`.
