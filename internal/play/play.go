@@ -164,18 +164,13 @@ func Run(ctx context.Context, opts Options) (err error) {
 		}
 	}
 	ebiten.SetWindowSize(max(1, int(sw*scale)), max(1, int(sh*scale)))
-	// Run one paused update on focus loss so transient movement is reset. Update
-	// retains the normal pause while unfocused; scripted captures keep running.
-	ebiten.SetRunnableOnUnfocused(true)
 
 	if opts.Fullscreen {
 		g.cfg.Fullscreen = true
 	}
 	ebiten.SetFullscreen(g.cfg.Fullscreen)
 	if opts.Script != "" || opts.Autopilot != nil {
-
 		ebiten.SetVsyncEnabled(false)
-		ebiten.SetRunnableOnUnfocused(true)
 	}
 	if opts.Speed > 1 {
 		ebiten.SetTPS(60 * opts.Speed)
@@ -184,11 +179,8 @@ func Run(ctx context.Context, opts Options) (err error) {
 		ebiten.SetTPS(ebiten.SyncWithFPS)
 	}
 	unwatched := opts.Script != "" || opts.Autopilot != nil
-	g.rendering = true
-	g.pauseUnfocused = !unwatched
-	g.startLive()
+	g.StartRendering()
 	err = ebiten.RunGameWithOptions(g, &ebiten.RunGameOptions{InitUnfocused: unwatched})
-	g.stopLive()
 	if errors.Is(err, errQuit) {
 		err = nil
 	}
@@ -196,6 +188,23 @@ func Run(ctx context.Context, opts Options) (err error) {
 		err = g.tr.err
 	}
 	return errors.Join(err, g.failure)
+}
+
+// StartRendering prepares the native or browser player for its Ebitengine loop.
+// Call it on the loop's goroutine after New, and defer Close to stop live watching.
+// Repeated calls are harmless; offscreen consumers can leave rendering disabled.
+func (g *Game) StartRendering() {
+	if g.loopStarted || g.closed {
+		return
+	}
+	g.loopStarted = true
+	g.rendering = true
+	g.pauseUnfocused = g.opts.Script == "" && g.opts.Autopilot == nil
+	// Run one paused update on focus loss so transient movement is reset. Update
+	// retains the normal pause while unfocused; scripted captures keep running.
+	ebiten.SetRunnableOnUnfocused(true)
+
+	g.startLive()
 }
 
 var activeGame atomic.Bool
@@ -290,6 +299,7 @@ type Game struct {
 	lastMood           string
 
 	quit           bool
+	loopStarted    bool
 	rendering      bool
 	pauseUnfocused bool      // Set only by the native/browser Run loop, not offscreen tests.
 	debugDrawTime  time.Time // Previous Draw start, used only by explicit timing diagnostics.

@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+- Initialize browser playback like desktop playback, including resetting transient movement on focus loss and pausing until focus returns.
+
 ## v0.14.2 - 2026-10-28
 
 - Open a game that offers two or more languages in the device's language the first time (ADR 0027): until a language is kept in the settings, a browser export takes the first of `navigator.languages` the game offers and the desktop the locale (`LC_ALL`, `LC_MESSAGES`, `LANG`, then macOS's or Windows's), `en-US` counting as `en`, else `language`.
