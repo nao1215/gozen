@@ -6,6 +6,7 @@ import (
 	"math"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 type node interface {
@@ -410,6 +411,28 @@ var builtins = map[string]Func{
 		}
 		v, ok := o.Field(name)
 		return ok && Truthy(v), nil
+	},
+	"grouped": func(args []any) (any, error) {
+		if len(args) != 1 {
+			return nil, errors.New("grouped takes 1 numeric argument")
+		}
+		n, ok := ToNumber(args[0])
+		if !ok || math.IsNaN(n) || math.IsInf(n, 0) {
+			return nil, errors.New("grouped needs a finite number")
+		}
+		text := strconv.FormatFloat(n, 'f', -1, 64)
+		end := strings.IndexByte(text, '.')
+		if end < 0 {
+			end = len(text)
+		}
+		start := 0
+		if strings.HasPrefix(text, "-") {
+			start = 1
+		}
+		for i := end - 3; i > start; i -= 3 {
+			text = text[:i] + "," + text[i:]
+		}
+		return text, nil
 	},
 	"str": func(args []any) (any, error) {
 		if len(args) != 1 {

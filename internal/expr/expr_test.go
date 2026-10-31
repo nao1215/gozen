@@ -190,3 +190,28 @@ func TestUnmarshalYAML(t *testing.T) {
 		}
 	}
 }
+
+func TestGroupedNumber(t *testing.T) {
+	for source, want := range map[string]string{
+		"grouped(420000)": "420,000", "grouped(-1234567.25)": "-1,234,567.25",
+		"grouped(0)": "0", "grouped(999)": "999", "grouped(1000)": "1,000",
+	} {
+		e, err := Parse(source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := e.Eval(nil)
+		if err != nil || got != want {
+			t.Fatalf("%s: %v, %v", source, got, err)
+		}
+	}
+	for _, source := range []string{"grouped()", "grouped(1,2)", "grouped(\"oops\")"} {
+		e, err := Parse(source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.Eval(nil); err == nil {
+			t.Fatalf("accepted %s", source)
+		}
+	}
+}

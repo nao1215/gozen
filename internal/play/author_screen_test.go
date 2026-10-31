@@ -285,3 +285,22 @@ func TestFullScreenContextUsesVisibleTargetActions(t *testing.T) {
 		t.Fatal(r)
 	}
 }
+
+func TestEntityDetailSelectionSurvivesRefresh(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{Entities: map[string]data.Entity{"artisan": {}, "gardener": {}}}
+	db.Game.Screens = map[string]*data.AuthorScreen{"team": {
+		Kind: "entities", View: data.PlanningView{Fullscreen: true, Detail: "notes"},
+	}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "team", nil)
+	ids, cells := s.surfaceTargets(g)
+	if len(ids) != 2 || len(cells) != 2 {
+		t.Fatal("missing member targets")
+	}
+	s.openTarget(g, ids[1], cells[1])
+	s.refresh(g)
+	if s.target != "gardener" || s.popup != nil {
+		t.Fatal("member selection lost or opened an action popup")
+	}
+}

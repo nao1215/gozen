@@ -99,7 +99,7 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 				}
 				rect(dst, axisX+axisW*left, yy+18, axisW*(right-left)*actual, 8, tint)
 			}
-			g.text(dst, fmt.Sprintf("%.1f / %.1f", a.Observed, d.Effort), x+w*.48, yy+28, 16, g.th.text)
+			g.text(dst, fmt.Sprintf("%.1f / %.1f", a.Observed, d.Effort), x+w*.28, yy+28, 16, g.th.text)
 		}
 		today, err := time.Parse(time.DateOnly, st.Date)
 		if err != nil {
@@ -211,6 +211,10 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 			w *= .72
 		}
 	}
+	if kind == "entities" && v.Detail != "" {
+		s.drawEntityDetail(g, dst, x+w*.64, y, w*.36, h)
+		w *= .64
+	}
 	for i, r := range planningCells(x+12, y, w-24, h, len(ids), cols) {
 		id := ids[i]
 		values := g.st.EntityValues(id, false)
@@ -235,7 +239,7 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 			rect(dst, xx, yy, cw, ch, color.NRGBA{53, 58, 60, 255})
 			if values[v.Camera] == true {
 				bg := value(v.Backdrop)
-				if bg != "" {
+				if bg != "" && g.pics.get(bg) != missing {
 					g.planningBackdrop(dst, bg, values[v.Mask] == true, xx, yy, cw, ch-28)
 				} else {
 					rect(dst, xx, yy, cw, ch-28, color.NRGBA{183, 184, 180, 255})
@@ -369,4 +373,26 @@ func planningDate(date, phase string, v data.PlanningView) string {
 		return label
 	}
 	return label + " " + phase
+}
+
+// The detail binding is an explicitly observed value, never a hidden attribute.
+func (s *authorScreen) drawEntityDetail(g *Game, dst *ebiten.Image, x, y, w, h float64) {
+	if s.target == "" {
+		return
+	}
+	p := g.db.Game.Planning
+	v := g.db.Game.Screens[s.name].View
+	g.window(dst, x, y, w-12, h)
+	g.text(dst, p.Entities[s.target].Name, x+16, y+16, sizeM, g.th.accent)
+	yy := y + 54
+	for _, id := range slices.Sorted(maps.Keys(g.st.Planning.Activities)) {
+		a := g.st.Planning.Activities[id]
+		if a.Assignee != s.target || a.Completed != "" {
+			continue
+		}
+		d := p.Activities[id]
+		g.drawLinesFit(dst, fmt.Sprintf("%s  %.0f%%", d.Name, 100*a.Observed/d.Effort), x+16, yy, w-44, 16, 1, g.th.text)
+		yy += 24
+	}
+	g.drawLinesFit(dst, fmt.Sprint(g.st.EntityValues(s.target, false)[v.Detail]), x+16, yy+16, w-44, 16, max(1, int((y+h-yy-24)/24)), g.th.text)
 }

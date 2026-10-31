@@ -13493,6 +13493,19 @@
           },
           "x-type": "string"
         },
+        "detail": {
+          "description": "Public text binding for the selected entity pane, shown alongside its assigned activities.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "door": {
           "description": "Authored label on the island view's door.",
           "type": "string",

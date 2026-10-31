@@ -61,6 +61,8 @@ func (s *authorScreen) liveKeep(g *Game) scene { return s.refreshed(g) }
 
 func (s *authorScreen) refreshed(g *Game) *authorScreen {
 	n := newAuthorScreen(g, s.name, s.done)
+	n.target = s.target
+	n.focus = s.focus
 	n.list.sel = min(s.list.sel, max(0, len(n.entries)-1))
 	if s.list.sel < len(s.indices) {
 		for i, index := range n.indices {
@@ -193,13 +195,16 @@ func (s *authorScreen) draw(g *Game, dst *ebiten.Image) {
 // surfaceTargets shares the exact resident layout with drawing.
 func (s *authorScreen) surfaceTargets(g *Game) ([]string, []image.Rectangle) {
 	def := g.db.Game.Screens[s.name]
-	if def.Kind != "islands" {
+	if def.Kind != "islands" && (def.Kind != "entities" || def.View.Detail == "") {
 		return nil, nil
 	}
 	sw, sh := g.screen()
 	ids := def.View.Order
 	if len(ids) == 0 {
 		ids = slices.Sorted(maps.Keys(g.db.Game.Planning.Entities))
+	}
+	if def.Kind == "entities" {
+		return ids, planningCells(12, 108, sw*.64-24, sh-226, len(ids), 1)
 	}
 	return ids, planningCells(12, 48+60+116, sw*.72-24, sh-156-70-116, len(ids), 4)
 }
@@ -213,6 +218,9 @@ func entryBounds(e data.ScreenEntry) image.Rectangle {
 
 func (s *authorScreen) openTarget(g *Game, id string, r image.Rectangle) {
 	s.target = id
+	if g.db.Game.Screens[s.name].Kind == "entities" {
+		return
+	}
 	s.popupIndices = nil
 	var items []listItem
 	for i, e := range s.entries {

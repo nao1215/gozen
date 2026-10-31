@@ -68,7 +68,7 @@ func (e *Expr) ResultType(resolve func(Ref) ValueType) ValueType {
 		case *call:
 			if id, ok := x.fn.(*ident); ok {
 				switch id.name {
-				case "str":
+				case "str", "grouped":
 					return StringType
 				case "has", "chance":
 					return BoolType

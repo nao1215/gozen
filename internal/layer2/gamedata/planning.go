@@ -431,6 +431,8 @@ type PlanningView struct {
 	Phases     map[string]string `yaml:"phases"`
 	EventLabel string            `yaml:"event_label"`
 
+	// Detail binds the selected entity pane to an explicitly public text value.
+	Detail   string          `yaml:"detail"`
 	Icon     string          `yaml:"icon"`
 	Order    []string        `yaml:"order"`
 	Fields   []PlanningField `yaml:"fields"`
@@ -468,7 +470,7 @@ func (c *checker) planningView(w string, v PlanningView) {
 		}
 		seen[id] = true
 	}
-	keys := []string{v.Icon, v.Portrait, v.Camera, v.Badge, v.Backdrop, v.Mask}
+	keys := []string{v.Detail, v.Icon, v.Portrait, v.Camera, v.Badge, v.Backdrop, v.Mask}
 	for _, f := range v.Fields {
 		keys = append(keys, f.Key)
 		if f.Maximum < 0 || math.IsNaN(f.Maximum) || math.IsInf(f.Maximum, 0) {

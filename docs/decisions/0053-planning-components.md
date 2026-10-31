@@ -56,7 +56,11 @@ Authors bind portrait, fixed video-off icon, camera, backdrop, mask and seat bad
 to public attributes or observations. Hidden attributes cannot be bound directly.
 Omitted columns show names only, never a dump of available attributes. Seating
 order and door labels belong to game data. Background masking affects only the
-backdrop; portraits are drawn afterward.
+backdrop; portraits are drawn afterward. Missing backdrop assets use the geometric
+room fallback. An optional public `detail` text binding enables entity selection
+and a pane listing assigned, unfinished activities and observed notes. Timeline
+quantities stay in the name column, clear of the date axis. Header expressions can
+use `grouped(number)` to show comma-separated thousands without changing state.
 
 An optional unsigned `seed_xor` chooses the second PCG seed for an explicit
 nonzero run seed. Omitting it preserves the existing seed derivation. This does
