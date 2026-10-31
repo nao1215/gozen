@@ -48,6 +48,25 @@ option renders a 16:9 inner framebuffer at device resolution; Ebitengine owns
 letterboxing and pointer conversion. Scripted captures with an explicit window size include opaque black outer bars,
 centered around the native framebuffer without resampling its pixels.
 
+## Authored retry points
+
+Schema 9 events may use `checkpoint: resume_event` to replace one retry point.
+`restore_checkpoint: true` abandons the current event and suspended screen actions,
+restores the state and PCG stream, and starts that event. Both the interactive
+runtime and non-rendering sessions implement this contract. Missing or damaged
+checkpoints produce an error without replacing the current state.
+
+The point contains an ordinary save envelope without an event cursor or another
+checkpoint. Manual saves retain it; repeated captures replace it without growing
+history. Read marks, gallery unlocks and settings remain player-owned. The
+checkpoint command is a replay boundary, like opening a screen.
+
+Authors place captures after one-time period accounting and before repeatable
+scenes. The resume event must restore the desired screen and must not redo that
+accounting. For example, a workshop can capture after morning deliveries and
+resume its briefing before the player chooses an activity. Capturing a point
+does not write a disk autosave; players still save their progress normally.
+
 ## Current limits
 
 Views include explicit public-value columns with gauges, separate planned and
@@ -69,6 +88,6 @@ not guarantee compatibility of random draw ordering.
 Box-style dialogue may select an ensemble screen with `say.ensemble`; the actor
 ID highlights its participant tile and replaces the standalone talking portrait.
 
-Scrolling of long planning views, reservation
-cancellation, general activity splitting and full policy metrics are not implemented. No external game's rule
+Timeline rows and entity action menus scroll when they exceed the available height.
+Reservation cancellation, general activity splitting and full policy metrics are not implemented. No external game's rule
 compatibility is claimed by the neutral component tests.

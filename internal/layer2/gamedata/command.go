@@ -116,10 +116,14 @@ type Command struct {
 	Stand *Stand `yaml:"stand" command:"verb"`
 	End   bool   `yaml:"end" command:"verb"`
 	Clear bool   `yaml:"clear" command:"verb"`
-	Save  bool   `yaml:"save" command:"verb"`
-	Open  string `yaml:"open" command:"verb"`
-	Dive  string `yaml:"dive" command:"verb"`
-	Floor Expr   `yaml:"floor" command:"dive"`
+	// Checkpoint replaces the saved retry point; its value is the event run on restoration.
+	Checkpoint string `yaml:"checkpoint" command:"verb"`
+	// RestoreCheckpoint abandons the current execution and resumes the saved retry point.
+	RestoreCheckpoint bool   `yaml:"restore_checkpoint" command:"verb"`
+	Save              bool   `yaml:"save" command:"verb"`
+	Open              string `yaml:"open" command:"verb"`
+	Dive              string `yaml:"dive" command:"verb"`
+	Floor             Expr   `yaml:"floor" command:"dive"`
 	// OpenWall turns the wall next to the cell the player is standing on in the dungeon (the facing one first, otherwise the nearest wall facing a floor)
 	// into the tile of that character and faces it. It persists per floor and in saves (e.g. stairs that appear at 100% exploration).
 	OpenWall string `yaml:"open_wall" command:"verb"`

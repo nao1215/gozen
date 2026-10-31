@@ -519,3 +519,60 @@ func (s *State) SaveFile(path string) (string, error) {
 	}
 	return "", savefile.Write(path, b)
 }
+
+// Checkpoint holds one retry point for event frontends. Save contains the ordinary
+// save envelope without another checkpoint, keeping repeated captures bounded.
+type Checkpoint struct {
+	Event string `json:"event"`
+	Save  []byte `json:"save"`
+}
+
+// KeepCheckpoint replaces the retry point only after state and PCG bytes validate.
+// Frontends supply their random source and an authored entry event, not runner frames.
+func (s *State) KeepCheckpoint(event string, rnd []byte) error {
+	if s.DB.Events[event] == nil {
+		return fmt.Errorf("checkpoint: unknown event %q", event)
+	}
+	p := rand.NewPCG(1, 2)
+	if err := p.UnmarshalBinary(rnd); err != nil {
+		return fmt.Errorf("checkpoint random state: %w", err)
+	}
+	snapshot := *s
+	snapshot.Checkpoint = nil
+	b, err := snapshot.Save()
+	if err != nil {
+		return err
+	}
+	b, err = WithRand(b, rnd)
+	if err != nil {
+		return err
+	}
+	s.Checkpoint = &Checkpoint{Event: event, Save: b}
+	return nil
+}
+
+// RetryCheckpoint returns an independent restored state. It leaves the current
+// state untouched on failure. Frontends restore SavedRand before starting Event
+// from the retained Checkpoint and discard their old execution and presentation.
+func (s *State) RetryCheckpoint() (*State, error) {
+	c := s.Checkpoint
+	if c == nil {
+		return nil, errors.New("no checkpoint has been recorded")
+	}
+	if s.DB.Events[c.Event] == nil {
+		return nil, fmt.Errorf("checkpoint: unknown event %q", c.Event)
+	}
+	st, err := Parse(s.DB, c.Save, nil)
+	if err != nil {
+		return nil, fmt.Errorf("checkpoint: %w", err)
+	}
+	if st.Checkpoint != nil || st.Resume != nil {
+		return nil, errors.New("checkpoint contains nested state or a cursor")
+	}
+	p := rand.NewPCG(1, 2)
+	if err := p.UnmarshalBinary(st.SavedRand); err != nil {
+		return nil, fmt.Errorf("checkpoint random state: %w", err)
+	}
+	st.Checkpoint = &Checkpoint{Event: c.Event, Save: slices.Clone(c.Save)}
+	return st, nil
+}

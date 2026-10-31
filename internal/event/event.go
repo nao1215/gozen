@@ -244,6 +244,13 @@ type Wait struct {
 	Sound string
 }
 
+// Checkpoint asks the frontend to keep the state and random stream for retry.
+// Event is the entry event on restoration; Restore abandons the current execution.
+type Checkpoint struct {
+	Event   string
+	Restore bool
+}
+
 // Save opens the save screen.
 type Save struct{}
 
@@ -263,17 +270,18 @@ type Clear struct{}
 // GameOver ends the game.
 type GameOver struct{}
 
-func (Say) isRequest()      {}
-func (Choice) isRequest()   {}
-func (Battle) isRequest()   {}
-func (Shop) isRequest()     {}
-func (Wait) isRequest()     {}
-func (Save) isRequest()     {}
-func (Open) isRequest()     {}
-func (Clear) isRequest()    {}
-func (Tap) isRequest()      {}
-func (Notice) isRequest()   {}
-func (GameOver) isRequest() {}
+func (Say) isRequest()        {}
+func (Choice) isRequest()     {}
+func (Battle) isRequest()     {}
+func (Shop) isRequest()       {}
+func (Wait) isRequest()       {}
+func (Checkpoint) isRequest() {}
+func (Save) isRequest()       {}
+func (Open) isRequest()       {}
+func (Clear) isRequest()      {}
+func (Tap) isRequest()        {}
+func (Notice) isRequest()     {}
+func (GameOver) isRequest()   {}
 
 // ClashScene is a march decided by a clash shown as units (fight: clash_view, ADR 0030):
 // the rules have played it and written it back; the screen plays it back (it needs no
@@ -1078,6 +1086,10 @@ func (r *Runner) run(c *data.Command) Request {
 		r.stack = nil
 		r.last.Cleared = true
 		return Clear{}
+	case "checkpoint":
+		return Checkpoint{Event: c.Checkpoint}
+	case "restore_checkpoint":
+		return Checkpoint{Restore: true}
 	case "save":
 		return Save{}
 	case "open":

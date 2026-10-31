@@ -951,3 +951,48 @@ troops:
 		}
 	}
 }
+
+func TestCheckpointDiscardsContinuationAndSurvivesSave(t *testing.T) {
+	files := fstest.MapFS{}
+	for k, v := range trail {
+		fileCopy := *v
+		files[k] = &fileCopy
+	}
+	files["game.yaml"] = &fstest.MapFile{Data: []byte("schema_version: 9\nid: retry-test\nstart: {location: camp, party: [walker]}\n")}
+	files["data/retry.yaml"] = &fstest.MapFile{Data: []byte("events: {retry: {do: [{say: Ready}]}}")}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := session(t, g, gozen.Config{Seed: 7})
+	if err := s.Do(t.Context(), "- set: {var.counter: 17}\n- checkpoint: retry\n- set: {var.draw: 'rand()', var.counter: 1}"); err != nil {
+		t.Fatal(err)
+	}
+	want := query[float64](t, s, "var.draw")
+	b, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err = gozen.Restore(g, b, gozen.Config{Seed: 8})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start("- restore_checkpoint: true\n- set: {var.counter: 999}"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Kind != "say" || q.Text != "Ready" {
+		t.Fatal(q)
+	}
+	if q := s.Next(); q.Kind != "" {
+		t.Fatal(q)
+	}
+	if got := query[float64](t, s, "var.counter"); got != 17 {
+		t.Fatal(got)
+	}
+	if err := s.Do(t.Context(), "- set: {var.draw: 'rand()'}"); err != nil {
+		t.Fatal(err)
+	}
+	if got := query[float64](t, s, "var.draw"); got != want {
+		t.Fatalf("random draw %v want %v", got, want)
+	}
+}

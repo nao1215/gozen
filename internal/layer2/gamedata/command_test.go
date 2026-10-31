@@ -16,10 +16,12 @@ import (
 // Positive cases are not built from the registry; they pin down how each command can actually be
 // written.
 var commandExamples = map[string]string{
-	"plan":    `plan: {op: observe}`,
-	"capture": "capture: mote",
-	"respond": "respond: {who: scout, text: Hello}",
-	"say":     `say: hi`, "choice": `choice: [{label: Yes, do: []}]`,
+	"checkpoint":         `checkpoint: sub`,
+	"restore_checkpoint": `restore_checkpoint: true`,
+	"plan":               `plan: {op: observe}`,
+	"capture":            "capture: mote",
+	"respond":            "respond: {who: scout, text: Hello}",
+	"say":                `say: hi`, "choice": `choice: [{label: Yes, do: []}]`,
 	"if": `if: true`, "set": `set: {flag.ok: true}`, "give": `give: {item: key}`,
 	"take": `take: {item: key}`, "gold": `gold: 0`, "join": `join: guide`,
 	"leave": `leave: guide`, "heal": `heal: all`, "hurt": `hurt: {who: all, amount: 1}`,
@@ -88,10 +90,10 @@ func TestCommandFieldMatrix(t *testing.T) {
 		db.Events["matrix"] = &data.Event{Do: []data.Command{cmd}}
 		errs := db.Check()
 		campaign := wantVerb == "order" || wantVerb == "end_turn" || wantVerb == "game_over"
-		if slices.Contains(data.NewVerbs, wantVerb) || wantVerb == "stand" || campaign { // a spec version 2 (stand: 4, a campaign's: 5) command yields only a version error in older versions
+		if slices.Contains(data.NewVerbs, wantVerb) || wantVerb == "stand" || campaign || wantVerb == "checkpoint" || wantVerb == "restore_checkpoint" { // a spec version 2 (stand: 4, a campaign's: 5) command yields only a version error in older versions
 			var rest []error
 			for _, e := range errs {
-				if !strings.Contains(e.Error(), "needs schema_version: 2") && !strings.Contains(e.Error(), "stand needs schema_version: 4") && !strings.Contains(e.Error(), "needs schema_version: 5") {
+				if !strings.Contains(e.Error(), "needs schema_version: 2") && !strings.Contains(e.Error(), "stand needs schema_version: 4") && !strings.Contains(e.Error(), "needs schema_version: 5") && !strings.Contains(e.Error(), "needs schema_version: 9") {
 					rest = append(rest, e)
 				}
 			}

@@ -4583,6 +4583,24 @@
         {
           "additionalProperties": false,
           "properties": {
+            "checkpoint": {}
+          },
+          "required": [
+            "checkpoint"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "restore_checkpoint": {}
+          },
+          "required": [
+            "restore_checkpoint"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "save": {}
           },
           "required": [
@@ -4906,6 +4924,19 @@
         },
         "capture": {
           "description": "Recruits a non-boss species with recruit settings under its admission policy. Sets var.capture_result to party, reserve, party_full or unavailable. Needs schema version 6.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "checkpoint": {
+          "description": "Replaces the retry point with current state and random stream. Names the event to run when restored; schema version 9. Included in ordinary saves.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -5549,6 +5580,20 @@
             "version": "0, 1, 2"
           },
           "x-type": "[Respond](#respond)"
+        },
+        "restore_checkpoint": {
+          "const": true,
+          "description": "If true, discards the current execution and restores the latest checkpoint, then runs its entry event; schema version 9.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
         },
         "retry": {
           "description": "With `battle`, set to false to skip the offer to retry after losing.",

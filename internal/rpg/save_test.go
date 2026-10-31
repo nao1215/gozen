@@ -498,3 +498,50 @@ func TestSaveRejectsInvalidBattleOutcome(t *testing.T) {
 		}
 	}
 }
+
+func TestCheckpointRoundTripAndFailures(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/retry.yaml": "events: {retry: {do: [{say: Ready}]}}"})
+	st := testgame.State(db, 5)
+	p := rand.NewPCG(5, 9)
+	rnd, err := p.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	st.Gold = 17
+	for range 20 {
+		if err := st.KeepCheckpoint("retry", rnd); err != nil {
+			t.Fatal(err)
+		}
+	}
+	st.Gold = 1
+	loaded, err := rpg.Parse(db, saveBytes(t, st), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		restored, err := loaded.RetryCheckpoint()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if restored.Gold != 17 || !bytes.Equal(restored.SavedRand, rnd) || restored.Checkpoint.Event != "retry" {
+			t.Fatal("retry lost saved state")
+		}
+		restored.Gold = 999
+		restored.Checkpoint.Save[0] = '!'
+	}
+	old := loaded.Checkpoint
+	if err := loaded.KeepCheckpoint("absent", rnd); err == nil || loaded.Checkpoint != old {
+		t.Fatal("failed capture replaced checkpoint")
+	}
+	if err := loaded.KeepCheckpoint("retry", nil); err == nil || loaded.Checkpoint != old {
+		t.Fatal("invalid randomness accepted")
+	}
+	loaded.Checkpoint.Save = []byte("broken")
+	if _, err := loaded.RetryCheckpoint(); err == nil || loaded.Gold != 1 {
+		t.Fatal("bad snapshot changed state")
+	}
+	loaded.Checkpoint = nil
+	if _, err := loaded.RetryCheckpoint(); err == nil {
+		t.Fatal("missing snapshot accepted")
+	}
+}

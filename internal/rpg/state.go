@@ -16,6 +16,9 @@ import (
 
 // State is a game in progress.
 type State struct {
+	// Checkpoint is the latest authored retry point, retained in manual saves.
+	Checkpoint *Checkpoint `json:"checkpoint,omitempty"`
+
 	// Planning is simulation progress, shared by event and presentation consumers.
 	Planning *PlanningState `json:"planning,omitempty"`
 

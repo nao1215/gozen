@@ -324,6 +324,13 @@ func (s *Session) Next() Request {
 			if r == nil {
 				continue
 			}
+			if q, ok := r.(event.Checkpoint); ok {
+				s.at.noBack = true
+				if err := s.checkpoint(q); err != nil {
+					s.runner.Log(err)
+				}
+				continue
+			}
 			q := s.request(r)
 			switch q.Kind {
 			case "say", "choice":
@@ -656,5 +663,30 @@ func targetOf(b *battle.Battle, id string) *battle.Unit {
 			return u
 		}
 	}
+	return nil
+}
+
+func (s *Session) checkpoint(q event.Checkpoint) error {
+	if !q.Restore {
+		rnd, err := s.pcg.MarshalBinary()
+		if err != nil {
+			return err
+		}
+		return s.st.KeepCheckpoint(q.Event, rnd)
+	}
+	st, err := s.st.RetryCheckpoint()
+	if err != nil {
+		return err
+	}
+	if err := s.pcg.UnmarshalBinary(st.SavedRand); err != nil {
+		return err
+	}
+	st.Rand = rand.New(s.pcg) //nolint:gosec // Deterministic gameplay, not secrets.
+	s.st = st
+	s.pending, s.held = nil, nil
+	s.arrived = false
+	s.last = scope.Last{}
+	s.start()
+	s.runner.Start(s.db.Events[st.Checkpoint.Event].Do)
 	return nil
 }

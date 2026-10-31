@@ -352,3 +352,24 @@ func TestScriptReadStopsAtAuthorScreen(t *testing.T) {
 		t.Fatal("the action was not selectable after reading")
 	}
 }
+
+func TestAuthorScreenUntilIdleDoesNotActivateEntry(t *testing.T) {
+	fsys := wldWorldFiles(t, `screens:
+  stock:
+    title: Stock
+    entries: [{label: Add, do: [{set: {var.boards: 'var.boards + 1'}}]}]
+`, map[string]string{"data/stock.yaml": "locations: {workshop: {name: Workshop, on_enter: [{say: Welcome}, {open: stock}]}}"})
+	g := wldOpenWith(t, Options{FS: fsys, Location: "workshop", Script: "wait 10\nuntil idle\nquit\n"})
+	screen := wldScreen(g)
+	for range 300 {
+		if !wldStep(t, g, screen) {
+			break
+		}
+	}
+	if g.tick >= 300 || g.st.Vars["boards"] != nil {
+		t.Fatalf("idle activated menu or timed out: tick=%d vars=%v", g.tick, g.st.Vars)
+	}
+	if _, ok := g.stack[len(g.stack)-1].(*authorScreen); !ok {
+		t.Fatal("script did not reach menu")
+	}
+}

@@ -1678,6 +1678,12 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 		case "shop":
 			_, ok := db.Shops[cmd.Shop]
 			c.ref(w+".shop", "shop", cmd.Shop, ok)
+		case "checkpoint":
+			c.needsVersion(w+".checkpoint", "checkpoint", SchemaVersion9)
+			_, ok := db.Events[cmd.Checkpoint]
+			c.ref(w+".checkpoint", "event", cmd.Checkpoint, ok)
+		case "restore_checkpoint":
+			c.needsVersion(w+".restore_checkpoint", "restore_checkpoint", SchemaVersion9)
 		case "call":
 			_, ok := db.Events[cmd.Call]
 			c.ref(w+".call", "event", cmd.Call, ok)

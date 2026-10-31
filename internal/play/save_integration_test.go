@@ -17,6 +17,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/savefile"
 	"github.com/nao1215/gozen/internal/testgame"
@@ -687,5 +688,40 @@ func TestPendingGalleryRetriesFromUpdate(t *testing.T) {
 	}
 	if g.unlockDirty || s.writes[g.galleryPath()] != 2 {
 		t.Fatal("Update did not retry the pending gallery record")
+	}
+}
+
+func TestCheckpointRestoresAfterManualLoad(t *testing.T) {
+	g := sysInnWith(t, Options{SaveDir: t.TempDir(), Seed: 7}, map[string]string{
+		"data/retry.yaml": "events: {retry: {do: [{say: Ready again}]}}",
+	})
+	g.st.Gold = 17
+	if err := g.checkpoint(event.Checkpoint{Event: "retry"}); err != nil {
+		t.Fatal(err)
+	}
+	want := g.st.Rand.Float64()
+	g.st.Gold = 1
+	saved, err := g.saveBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := rpg.Parse(g.db, saved, g.st.Rand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.loadGame(st)
+	// Restoration must discard every suspended overlay and caller.
+	g.openScreen("save", func() { t.Error("discarded caller resumed") })
+	for range 2 {
+		if err := g.checkpoint(event.Checkpoint{Restore: true}); err != nil {
+			t.Fatal(err)
+		}
+		if len(g.stack) != 1 || g.st.Gold != 17 || g.st.Rand.Float64() != want {
+			t.Fatal("retry did not reset the state and screen stack")
+		}
+		q, ok := g.events.Next().(event.Say)
+		if !ok || q.Text != "Ready again" {
+			t.Fatalf("retry entry: %#v", q)
+		}
 	}
 }

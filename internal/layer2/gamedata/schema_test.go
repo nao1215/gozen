@@ -490,7 +490,7 @@ func (b *schemaBuilder) constraints(t reflect.Type, n, props schemaNode) {
 			branches = append(branches, schemaNode{"required": []string{verb.name}, "properties": allowed, "additionalProperties": false})
 		}
 		n["oneOf"] = branches
-		for _, name := range []string{"end", "clear", "save"} {
+		for _, name := range []string{"end", "clear", "save", "restore_checkpoint"} {
 			child(props, name)["const"] = true
 		}
 	case reflect.TypeFor[Recruit]():

@@ -531,7 +531,16 @@ func New(opts Options) (_ *Game, err error) {
 		if err != nil {
 			return nil, err
 		}
-		s.idle = func() bool { return !g.busy() }
+		s.idle = func() bool {
+			// An authored menu awaits an explicit action, not another dialogue tap.
+			// In particular, until idle must not repeatedly activate a retry button.
+			if !g.talk.active && len(g.stack) > 0 {
+				if menu, ok := g.stack[len(g.stack)-1].(*authorScreen); ok && !menu.running {
+					return true
+				}
+			}
+			return !g.busy()
+		}
 		s.waiting = g.waiting
 		s.graphsReady = g.scriptGraphsReady
 		s.walk = g.walkStep
@@ -1892,6 +1901,13 @@ func (g *Game) begin(r event.Request) {
 			return
 		}
 		g.push(newShop(g, r.ID, done))
+	case event.Checkpoint:
+		if err := g.checkpoint(r); err != nil {
+			g.failure = err
+		}
+		if !r.Restore {
+			done()
+		}
 	case event.Save:
 		if g.replaying {
 			done()

@@ -61,7 +61,7 @@ func (g *Game) boundary() {
 // isBoundary reports whether a request is a boundary.
 func isBoundary(r event.Request) bool {
 	switch r.(type) {
-	case event.Battle, event.Shop, event.Save, event.Open, event.Clear, event.GameOver, event.SortieScene:
+	case event.Checkpoint, event.Battle, event.Shop, event.Save, event.Open, event.Clear, event.GameOver, event.SortieScene:
 		return true
 	}
 	return false
@@ -208,4 +208,33 @@ func (g *Game) saveBlocked() string {
 		return ""
 	}
 	return lang.T("この 会話の 途中では セーブ できない。会話が 終わってから セーブ しよう。")
+}
+
+// checkpoint shares ordinary save serialization, but resumes at an authored event
+// after discarding all suspended screen actions and event callers.
+func (g *Game) checkpoint(q event.Checkpoint) error {
+	if !q.Restore {
+		rnd, err := g.pcg.MarshalBinary()
+		if err != nil {
+			return err
+		}
+		return g.st.KeepCheckpoint(q.Event, rnd)
+	}
+	st, err := g.st.RetryCheckpoint()
+	if err != nil {
+		return err
+	}
+	p := rand.NewPCG(1, 2)
+	if err := p.UnmarshalBinary(st.SavedRand); err != nil {
+		return err
+	}
+	st.Rand = rand.New(p) //nolint:gosec // Deterministic gameplay, not secrets.
+	g.stopSkip("checkpoint")
+	g.pcg = p
+	g.talk = talk{}
+	g.loadGame(st)
+	g.enterAt = ""
+	g.events.Start(g.db.Events[st.Checkpoint.Event].Do)
+	g.emit("checkpoint_restored", traceLine{"event": st.Checkpoint.Event})
+	return nil
 }
