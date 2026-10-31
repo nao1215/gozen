@@ -32,8 +32,9 @@ type EntityState struct {
 
 // ActivityState tracks assignment and reversible completion independently of actors.
 type ActivityState struct {
-	Observed float64 `json:"observed"`
-	Effort   float64 `json:"effort,omitempty"` // Zero retains the authored effort for older saves.
+	Cancelled bool    `json:"cancelled,omitempty"` // Excluded work retains its budget and progress.
+	Observed  float64 `json:"observed"`
+	Effort    float64 `json:"effort,omitempty"` // Zero retains the authored effort for older saves.
 
 	Assignee  string  `json:"assignee"`
 	Progress  float64 `json:"progress"`
@@ -134,7 +135,7 @@ func (s *State) planningLookup(name string) (any, bool) {
 		}
 	case "activity":
 		for id, a := range st.Activities {
-			out[id] = expr.Map{"progress": a.Progress, "effort": s.ActivityEffort(id), "assignee": a.Assignee, "completed": a.Completed != ""}
+			out[id] = expr.Map{"progress": a.Progress, "effort": s.ActivityEffort(id), "assignee": a.Assignee, "completed": a.Completed != "", "cancelled": a.Cancelled}
 		}
 	}
 	return out, true

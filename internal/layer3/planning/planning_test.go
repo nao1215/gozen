@@ -320,3 +320,39 @@ func TestEffortChangesCompletionDependenciesAndSave(t *testing.T) {
 		t.Fatalf("legacy budget: %v", err)
 	}
 }
+
+func TestCancellationPreservesWorkAndRestoresDependencies(t *testing.T) {
+	s := state(t)
+	apply(t, s, data.PlanCommand{Op: "progress", Activity: "prepare", Value: value(t, ".5")})
+	apply(t, s, data.PlanCommand{Op: "cancel", Activity: "prepare", Value: value(t, "true")})
+	restored, err := rpg.Parse(s.DB, snapshot(t, s), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, st := range []*rpg.State{s, restored} {
+		st.DB.Game.Planning.Policies = map[string][]data.PolicyRule{"excluded": {{When: value(t, "activity.prepare.cancelled"), Event: "bell"}}}
+		commands := apply(t, st, data.PlanCommand{Op: "policy", Policy: "excluded"})
+		if len(commands) != 1 || commands[0].Call != "bell" {
+			t.Fatal("policy cannot observe cancellation")
+		}
+		apply(t, st, data.PlanCommand{Op: "progress", Activity: "prepare", Value: value(t, "2")})
+		if a := st.Planning.Activities["prepare"]; a.Progress != .5 || a.Completed != "" || !a.Cancelled {
+			t.Fatalf("cancel lost work: %+v", a)
+		}
+		apply(t, st, data.PlanCommand{Op: "progress", Activity: "shape", Value: value(t, "1")})
+		if st.Planning.Activities["shape"].Progress != 1 {
+			t.Fatal("cancelled dependency blocked work")
+		}
+		apply(t, st, data.PlanCommand{Op: "cancel", Activity: "prepare", Value: value(t, "false")})
+		apply(t, st, data.PlanCommand{Op: "progress", Activity: "shape", Value: value(t, "1")})
+		if st.Planning.Activities["shape"].Progress != 1 {
+			t.Fatal("restored dependency ignored")
+		}
+	}
+	for _, input := range []string{"1", `"true"`} {
+		before := snapshot(t, s)
+		if _, err := planning.Apply(s, data.PlanCommand{Op: "cancel", Activity: "prepare", Value: value(t, input)}); err == nil || string(before) != string(snapshot(t, s)) {
+			t.Fatal("invalid cancellation was not atomic")
+		}
+	}
+}

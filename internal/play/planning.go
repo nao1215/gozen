@@ -63,7 +63,7 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 		g.text(dst, start.Format("1/2")+" — "+end.Format("1/2"), axisX, y, 14, g.th.dim)
 		y += 24
 		h -= 24
-		ids := slices.Sorted(maps.Keys(st.Activities))
+		ids := slices.DeleteFunc(slices.Sorted(maps.Keys(st.Activities)), func(id string) bool { return st.Activities[id].Cancelled })
 		slices.SortFunc(ids, func(a, b string) int {
 			if order := strings.Compare(p.Activities[a].From, p.Activities[b].From); order != 0 {
 				return order
@@ -399,7 +399,7 @@ func (s *authorScreen) drawEntityDetail(g *Game, dst *ebiten.Image, x, y, w, h f
 	yy := y + 54
 	for _, id := range slices.Sorted(maps.Keys(g.st.Planning.Activities)) {
 		a := g.st.Planning.Activities[id]
-		if a.Assignee != s.target || a.Completed != "" {
+		if a.Cancelled || a.Assignee != s.target || a.Completed != "" {
 			continue
 		}
 		d := p.Activities[id]

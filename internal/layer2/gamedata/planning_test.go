@@ -13,6 +13,8 @@ func TestPlanningDiagnostics(t *testing.T) {
 	for _, tc := range []struct{ body, want string }{
 		{"  activities: {a: {effort: 2}}\n  rules: {resize: {do: [{op: effort, activity: missing, value: 3}]}}\n", "unknown activity"},
 		{"  activities: {a: {effort: 2}}\n  rules: {resize: {do: [{op: effort, activity: a}]}}\n", "operation requires a value"},
+		{"  activities: {a: {effort: 2}}\n  rules: {exclude: {do: [{op: cancel, activity: missing, value: true}]}}\n", "unknown activity"},
+		{"  activities: {a: {effort: 2}}\n  rules: {exclude: {do: [{op: cancel, activity: a}]}}\n", "operation requires a value"},
 		{"  attributes: {vigor: {type: number, initial: true}}\n", "expected a finite number"},
 		{"  attributes: {vigor: {type: number, initial: 7, max: 5}}\n", "outside declared range"},
 		{"  attributes: {vigor: {type: number, initial: 7}}\n  entities: {potter: {attributes: {unknown: 4}}}\n", "unknown attribute"},

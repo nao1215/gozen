@@ -89,7 +89,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 		// Shadow hidden activity progress as well as entity attributes.
 		activities := expr.Map{}
 		for id, a := range st.Activities {
-			activities[id] = expr.Map{"progress": a.Observed, "effort": s.ActivityEffort(id), "assignee": a.Assignee}
+			activities[id] = expr.Map{"progress": a.Observed, "effort": s.ActivityEffort(id), "assignee": a.Assignee, "cancelled": a.Cancelled}
 		}
 		env := expr.Chain{expr.Map{"entity": entities, "activity": activities}, base}
 		for _, r := range rules {
@@ -174,7 +174,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 			keys = keys[1:]
 		}
 		return nil, nil
-	case "progress", "effort":
+	case "progress", "effort", "cancel":
 		a := st.Activities[c.Activity]
 		if a == nil {
 			return nil, fmt.Errorf("unknown activity %q", c.Activity)
@@ -184,9 +184,20 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 		if err != nil {
 			return nil, err
 		}
+		if c.Op == "cancel" {
+			cancelled, ok := v.(bool)
+			if !ok {
+				return nil, errors.New("cancel requires a boolean")
+			}
+			a.Cancelled = cancelled
+			return nil, nil
+		}
 		n, ok := expr.ToNumber(v)
 		if !ok || math.IsNaN(n) || math.IsInf(n, 0) {
 			return nil, fmt.Errorf("%s requires a finite number", c.Op)
+		}
+		if c.Op == "progress" && a.Cancelled {
+			return nil, nil
 		}
 		if c.Op == "effort" {
 			if n <= 0 {
@@ -202,7 +213,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 				if p.Activities[c.Activity].DependencyRatio != nil {
 					ratio = *p.Activities[c.Activity].DependencyRatio
 				}
-				if st.Activities[dep].Progress < s.ActivityEffort(dep)*ratio {
+				if !st.Activities[dep].Cancelled && st.Activities[dep].Progress < s.ActivityEffort(dep)*ratio {
 					return nil, nil
 				}
 			}
@@ -229,7 +240,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 				a.Observed = a.Progress
 				continue
 			}
-			env := expr.Chain{expr.Map{"self": expr.Map{"progress": a.Progress, "effort": s.ActivityEffort(id), "assignee": a.Assignee}}, base}
+			env := expr.Chain{expr.Map{"self": expr.Map{"progress": a.Progress, "effort": s.ActivityEffort(id), "assignee": a.Assignee, "cancelled": a.Cancelled}}, base}
 			v, err := def.Observation.Eval(env)
 			if err != nil {
 				return nil, err

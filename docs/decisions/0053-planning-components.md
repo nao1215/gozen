@@ -44,6 +44,14 @@ budget, and reopens work when the new budget exceeds progress. Dependencies,
 observations, policies and views use the current budget. The override is saved;
 older saves without it retain the authored budget. Invalid values fail atomically.
 
+The `cancel` operation sets an activity's saved exclusion flag with a boolean
+`value`. Cancelled activities retain assignment, effort, progress and observations,
+but progress operations leave them unchanged and dependents ignore them. Setting
+`value: 'false'` restores the dependency requirement. The `activity.ID.cancelled`
+expression lets authored workload, quality and outcome rules exclude the same work.
+Timeline and resident detail views omit cancelled activities. Old saves default to
+false. Cancellation is distinct from completing work or deleting its history.
+
 Monthly ledgers accept explicit historical periods until closed. Closing twice or
 writing a closed month fails. Retention removes old totals but retains closed
 period markers so pruned periods cannot be reopened. Closure is explicit, allowing
