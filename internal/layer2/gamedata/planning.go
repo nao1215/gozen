@@ -420,6 +420,8 @@ func (c *checker) planningPure(w string, e Expr) {
 // PlanningView selects only explicitly named player values for presentation.
 // Order controls seating; fields and portrait bindings never read hidden state.
 type PlanningView struct {
+	// Visible binds an optional public boolean; only true values show a resident.
+	Visible string `yaml:"visible"`
 	// Fullscreen uses the play surface, with authored hotspots and entity actions.
 	Fullscreen bool `yaml:"fullscreen"`
 	// Header and Footer are rendered through the ordinary text interpolator.
@@ -470,7 +472,7 @@ func (c *checker) planningView(w string, v PlanningView) {
 		}
 		seen[id] = true
 	}
-	keys := []string{v.Detail, v.Icon, v.Portrait, v.Camera, v.Badge, v.Backdrop, v.Mask}
+	keys := []string{v.Visible, v.Detail, v.Icon, v.Portrait, v.Camera, v.Badge, v.Backdrop, v.Mask}
 	for _, f := range v.Fields {
 		keys = append(keys, f.Key)
 		if f.Maximum < 0 || math.IsNaN(f.Maximum) || math.IsInf(f.Maximum, 0) {

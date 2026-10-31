@@ -3,8 +3,6 @@ package play
 import (
 	"image"
 	"image/color"
-	"maps"
-	"slices"
 
 	"github.com/nao1215/gozen/internal/event"
 
@@ -205,10 +203,7 @@ func (s *authorScreen) surfaceTargets(g *Game) ([]string, []image.Rectangle) {
 		return nil, nil
 	}
 	sw, sh := g.screen()
-	ids := def.View.Order
-	if len(ids) == 0 {
-		ids = slices.Sorted(maps.Keys(g.db.Game.Planning.Entities))
-	}
+	ids := g.visibleResidents(def.View)
 	if def.Kind == "entities" {
 		return ids, planningCells(12, 108, sw*.64-24, sh-226, len(ids), 1)
 	}

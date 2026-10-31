@@ -73,6 +73,7 @@ PolicyRule:
   when: "Condition evaluated from visible entity and activity observations. Omitted means true."
   event: "Existing event to run through the ordinary interpreter."
 PlanningView:
+  visible: Optional public boolean binding; only true residents are displayed and selectable. Missing values hide the resident.
   detail: Public text binding for the selected entity pane, shown alongside its assigned activities.
   fullscreen: Use the entire play surface with authored action bounds and contextual entity actions.
   header: Interpolated status text on the full-screen top strip.

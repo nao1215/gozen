@@ -13712,6 +13712,19 @@
           },
           "x-type": "string"
         },
+        "visible": {
+          "description": "Optional public boolean binding; only true residents are displayed and selectable. Missing values hide the resident.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "weekdays": {
           "description": "Seven weekday labels starting with Sunday; omitted uses English.",
           "items": {

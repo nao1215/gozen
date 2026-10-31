@@ -106,3 +106,9 @@ ID highlights its participant tile and replaces the standalone talking portrait.
 Timeline rows and entity action menus scroll when they exceed the available height.
 Reservation cancellation, general activity splitting and full policy metrics are not implemented. No external game's rule
 compatibility is claimed by the neutral component tests.
+
+Resident views may bind `visible` to a public boolean attribute or observation.
+When set, only an exact true value displays the resident and its selection target;
+a missing or non-boolean value hides it. Omission preserves all residents and
+explicit order. Authors can reveal newly available residents using saved state
+and explicit observation refresh, without exposing hidden rule attributes.

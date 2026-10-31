@@ -172,12 +172,27 @@ func planningCells(x, y, w, h float64, count, cols int) []image.Rectangle {
 	return out
 }
 
+// visibleResidents uses observations, never hidden rule attributes.
+func (g *Game) visibleResidents(v data.PlanningView) []string {
+	ids := v.Order
+	if len(ids) == 0 {
+		ids = slices.Sorted(maps.Keys(g.db.Game.Planning.Entities))
+	}
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if v.Visible == "" || g.st.EntityValues(id, false)[v.Visible] == true {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
 func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x, y, w, h float64) {
 	p := g.db.Game.Planning
 	v := g.db.Game.Screens[s.name].View
-	ids := v.Order
-	if len(ids) == 0 {
-		ids = slices.Sorted(maps.Keys(p.Entities))
+	ids := g.visibleResidents(v)
+	if s.target != "" && !slices.Contains(ids, s.target) {
+		s.target = ""
 	}
 	cols := 1
 	if kind == "ensemble" || kind == "islands" {

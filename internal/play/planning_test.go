@@ -2,6 +2,7 @@ package play
 
 import (
 	"math/rand/v2"
+	"slices"
 	"strconv"
 	"testing"
 
@@ -119,5 +120,33 @@ func TestTimelineScrollReachesLastTask(t *testing.T) {
 	}
 	if s.timelineTop != 0 {
 		t.Fatal("cannot return to first task")
+	}
+}
+
+func TestResidentVisibilityUsesPublicState(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{Entities: map[string]data.Entity{"potter": {}, "weaver": {}}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	g.st.Planning.Entities["potter"].Observations["shown"] = true
+	g.st.Planning.Entities["weaver"].Attributes["secret"] = true
+	db.Game.Planning.Attributes = map[string]data.Attribute{"secret": {Hidden: true}}
+	if got := g.visibleResidents(data.PlanningView{Visible: "secret"}); len(got) != 0 {
+		t.Fatal(got)
+	}
+	v := data.PlanningView{Order: []string{"weaver", "potter"}, Visible: "shown"}
+	if got := g.visibleResidents(v); !slices.Equal(got, []string{"potter"}) {
+		t.Fatal(got)
+	}
+	g.st.Planning.Entities["weaver"].Observations["shown"] = true
+	if got := g.visibleResidents(v); !slices.Equal(got, v.Order) {
+		t.Fatal(got)
+	}
+	delete(g.st.Planning.Entities["potter"].Observations, "shown")
+	if got := g.visibleResidents(v); !slices.Equal(got, []string{"weaver"}) {
+		t.Fatal(got)
+	}
+	v.Visible = ""
+	if got := g.visibleResidents(v); !slices.Equal(got, v.Order) {
+		t.Fatal(got)
 	}
 }

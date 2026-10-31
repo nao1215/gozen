@@ -284,6 +284,17 @@ func TestFullScreenContextUsesVisibleTargetActions(t *testing.T) {
 	if r := entryBounds(s.entries[0]); r.Dx() != 120 || r.Dy() != 40 {
 		t.Fatal(r)
 	}
+	db.Game.Screens["workshop"].View.Visible = "present"
+	g.st.Planning.Entities["gardener"].Observations["present"] = true
+	ids, cells = s.surfaceTargets(g)
+	if len(ids) != 1 || len(cells) != 1 || ids[0] != "gardener" {
+		t.Fatalf("hidden resident retained an input target: %v", ids)
+	}
+	g.st.Planning.Entities["artisan"].Observations["present"] = true
+	ids, cells = s.surfaceTargets(g)
+	if len(ids) != 2 || len(cells) != 2 || ids[0] != "artisan" {
+		t.Fatalf("revealed resident missing from input targets: %v", ids)
+	}
 }
 
 func TestEntityDetailSelectionSurvivesRefresh(t *testing.T) {
