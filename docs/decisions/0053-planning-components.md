@@ -52,6 +52,13 @@ expression lets authored workload, quality and outcome rules exclude the same wo
 Timeline and resident detail views omit cancelled activities. Old saves default to
 false. Cancellation is distinct from completing work or deleting its history.
 
+The `deadline` operation sets an activity's end date using an ISO date string in
+`value`. The date must be on or after its authored start. For example,
+`{plan: {op: deadline, activity: prepare, value: '"2030-08-01"'}}` moves its
+planned finish without changing effort or progress. Expressions read the effective
+date as `activity.ID.deadline`; timelines and saves retain the same override.
+Old saves without an override use the authored end date. Invalid dates fail atomically.
+
 Monthly ledgers accept explicit historical periods until closed. Closing twice or
 writing a closed month fails. Retention removes old totals but retains closed
 period markers so pruned periods cannot be reopened. Closure is explicit, allowing

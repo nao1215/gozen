@@ -32,6 +32,7 @@ type EntityState struct {
 
 // ActivityState tracks assignment and reversible completion independently of actors.
 type ActivityState struct {
+	Deadline  string  `json:"deadline,omitempty"`  // Empty retains the authored end date.
 	Cancelled bool    `json:"cancelled,omitempty"` // Excluded work retains its budget and progress.
 	Observed  float64 `json:"observed"`
 	Effort    float64 `json:"effort,omitempty"` // Zero retains the authored effort for older saves.
@@ -54,6 +55,20 @@ func (s *State) ActivityEffort(id string) float64 {
 		return s.DB.Game.Planning.Activities[id].Effort
 	}
 	return 0
+}
+
+// ActivityDeadline supplies the saved end date to planning expressions and timelines.
+// An empty override retains the authored date; unknown activities return empty.
+func (s *State) ActivityDeadline(id string) string {
+	if s.Planning != nil {
+		if a := s.Planning.Activities[id]; a != nil && a.Deadline != "" {
+			return a.Deadline
+		}
+	}
+	if s.DB.Game.Planning != nil {
+		return s.DB.Game.Planning.Activities[id].To
+	}
+	return ""
 }
 
 func (s *State) initPlanning() {
@@ -135,7 +150,7 @@ func (s *State) planningLookup(name string) (any, bool) {
 		}
 	case "activity":
 		for id, a := range st.Activities {
-			out[id] = expr.Map{"progress": a.Progress, "effort": s.ActivityEffort(id), "assignee": a.Assignee, "completed": a.Completed != "", "cancelled": a.Cancelled}
+			out[id] = expr.Map{"deadline": s.ActivityDeadline(id), "progress": a.Progress, "effort": s.ActivityEffort(id), "assignee": a.Assignee, "completed": a.Completed != "", "cancelled": a.Cancelled}
 		}
 	}
 	return out, true
@@ -192,6 +207,12 @@ func (s *State) validatePlanning() error {
 		effort := s.ActivityEffort(id)
 		if !ok || a == nil || math.IsNaN(a.Effort) || math.IsInf(a.Effort, 0) || a.Effort < 0 || math.IsNaN(a.Progress) || math.IsInf(a.Progress, 0) || a.Progress < 0 || a.Progress > effort || math.IsNaN(a.Observed) || math.IsInf(a.Observed, 0) || a.Observed < 0 || a.Observed > effort {
 			return fmt.Errorf("planning.activities.%s: invalid progress", id)
+		}
+		if a.Deadline != "" {
+			d, err := time.Parse(time.DateOnly, a.Deadline)
+			if err != nil || d.Format(time.DateOnly) != a.Deadline || a.Deadline < p.Activities[id].From {
+				return fmt.Errorf("planning.activities.%s: invalid deadline", id)
+			}
 		}
 		if a.Assignee != "" {
 			if _, ok := st.Entities[a.Assignee]; !ok {

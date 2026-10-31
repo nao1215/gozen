@@ -50,11 +50,11 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 		if err != nil {
 			return
 		}
-		for _, a := range p.Activities {
+		for id, a := range p.Activities {
 			if d, err := time.Parse(time.DateOnly, a.From); err == nil && d.Before(start) {
 				start = d
 			}
-			if d, err := time.Parse(time.DateOnly, a.To); err == nil && d.After(end) {
+			if d, err := time.Parse(time.DateOnly, g.st.ActivityDeadline(id)); err == nil && d.After(end) {
 				end = d
 			}
 		}
@@ -89,8 +89,8 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 					from = date
 				}
 			}
-			if d.To != "" {
-				if date, err := time.Parse(time.DateOnly, d.To); err == nil {
+			if deadline := g.st.ActivityDeadline(id); deadline != "" {
+				if date, err := time.Parse(time.DateOnly, deadline); err == nil {
 					to = date
 				}
 			}

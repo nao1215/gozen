@@ -356,3 +356,35 @@ func TestCancellationPreservesWorkAndRestoresDependencies(t *testing.T) {
 		}
 	}
 }
+
+func TestDeadlineChangesPersistAndRejectInvalidDates(t *testing.T) {
+	s := state(t)
+	def := s.DB.Game.Planning.Activities["prepare"]
+	def.From, def.To = "2030-07-31", "2030-08-03"
+	s.DB.Game.Planning.Activities["prepare"] = def
+	apply(t, s, data.PlanCommand{Op: "deadline", Activity: "prepare", Value: value(t, `"2030-08-01"`)})
+	if s.ActivityDeadline("prepare") != "2030-08-01" || s.DB.Game.Planning.Activities["prepare"].To != "2030-08-03" {
+		t.Fatal("deadline did not override the authored date independently")
+	}
+	loaded, err := rpg.Parse(s.DB, snapshot(t, s), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.ActivityDeadline("prepare") != "2030-08-01" {
+		t.Fatal("deadline lost on load")
+	}
+	for _, input := range []string{`"2030-07-30"`, `"2030-02-30"`, `"2030-8-01"`, `42`, `true`, `""`} {
+		before := snapshot(t, s)
+		if _, err := planning.Apply(s, data.PlanCommand{Op: "deadline", Activity: "prepare", Value: value(t, input)}); err == nil || string(before) != string(snapshot(t, s)) {
+			t.Fatalf("invalid deadline %s accepted or mutated state", input)
+		}
+	}
+	s.Planning.Activities["prepare"].Deadline = "2030-07-01"
+	if _, err := s.Save(); err == nil {
+		t.Fatal("invalid deadline serialized")
+	}
+	s.Planning.Activities["prepare"].Deadline = ""
+	if s.ActivityDeadline("prepare") != "2030-08-03" {
+		t.Fatal("legacy save must retain authored deadline")
+	}
+}

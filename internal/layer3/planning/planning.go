@@ -89,7 +89,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 		// Shadow hidden activity progress as well as entity attributes.
 		activities := expr.Map{}
 		for id, a := range st.Activities {
-			activities[id] = expr.Map{"progress": a.Observed, "effort": s.ActivityEffort(id), "assignee": a.Assignee, "cancelled": a.Cancelled}
+			activities[id] = expr.Map{"deadline": s.ActivityDeadline(id), "progress": a.Observed, "effort": s.ActivityEffort(id), "assignee": a.Assignee, "cancelled": a.Cancelled}
 		}
 		env := expr.Chain{expr.Map{"entity": entities, "activity": activities}, base}
 		for _, r := range rules {
@@ -174,7 +174,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 			keys = keys[1:]
 		}
 		return nil, nil
-	case "progress", "effort", "cancel":
+	case "progress", "effort", "cancel", "deadline":
 		a := st.Activities[c.Activity]
 		if a == nil {
 			return nil, fmt.Errorf("unknown activity %q", c.Activity)
@@ -183,6 +183,15 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 		v, err := c.Value.Eval(env)
 		if err != nil {
 			return nil, err
+		}
+		if c.Op == "deadline" {
+			deadline, ok := v.(string)
+			date, parseErr := time.Parse(time.DateOnly, deadline)
+			if !ok || parseErr != nil || date.Format(time.DateOnly) != deadline || deadline < p.Activities[c.Activity].From {
+				return nil, errors.New("deadline requires an ISO date on or after the activity start")
+			}
+			a.Deadline = deadline
+			return nil, nil
 		}
 		if c.Op == "cancel" {
 			cancelled, ok := v.(bool)

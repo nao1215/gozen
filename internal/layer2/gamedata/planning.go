@@ -324,7 +324,7 @@ func (c *checker) planCommand(w string, cmd *PlanCommand) {
 	}
 	allowed := map[string][]string{
 		"set": {"entity", "tag", "where", "attribute", "value"}, "observe": {"entity", "tag", "where"},
-		"cancel": {"activity", "value"}, "effort": {"activity", "value"}, "progress": {"activity", "value"}, "assign": {"activity", "entity"}, "advance": {}, "dispatch": {},
+		"deadline": {"activity", "value"}, "cancel": {"activity", "value"}, "effort": {"activity", "value"}, "progress": {"activity", "value"}, "assign": {"activity", "entity"}, "advance": {}, "dispatch": {},
 		"record": {"entity", "tag", "where", "ledger", "period", "value"}, "close": {"ledger", "period"},
 		"rule": {"rule", "args"}, "policy": {"policy"},
 	}
@@ -339,7 +339,7 @@ func (c *checker) planCommand(w string, cmd *PlanCommand) {
 		c.errorf(diag.Shape, w, "plan requires game.yaml planning")
 		return
 	}
-	if !slices.Contains([]string{"set", "observe", "assign", "progress", "effort", "cancel", "advance", "dispatch", "record", "close", "rule", "policy"}, cmd.Op) {
+	if !slices.Contains([]string{"set", "observe", "assign", "progress", "effort", "cancel", "deadline", "advance", "dispatch", "record", "close", "rule", "policy"}, cmd.Op) {
 		c.errorf(diag.NotAWord, w+".op", "unknown planning operation %q", cmd.Op)
 	}
 	if cmd.Entity != "" {
@@ -352,7 +352,7 @@ func (c *checker) planCommand(w string, cmd *PlanCommand) {
 			c.errorf(diag.UnknownReference, w+".attribute", "unknown attribute")
 		}
 	}
-	if cmd.Op == "cancel" || cmd.Op == "effort" || cmd.Op == "progress" || cmd.Op == "assign" {
+	if cmd.Op == "deadline" || cmd.Op == "cancel" || cmd.Op == "effort" || cmd.Op == "progress" || cmd.Op == "assign" {
 		if _, ok := p.Activities[cmd.Activity]; !ok {
 			c.errorf(diag.UnknownReference, w+".activity", "unknown activity")
 		}
@@ -362,7 +362,7 @@ func (c *checker) planCommand(w string, cmd *PlanCommand) {
 			c.errorf(diag.UnknownReference, w+".ledger", "unknown ledger")
 		}
 	}
-	if cmd.Op == "set" || cmd.Op == "cancel" || cmd.Op == "effort" || cmd.Op == "progress" || cmd.Op == "record" {
+	if cmd.Op == "set" || cmd.Op == "deadline" || cmd.Op == "cancel" || cmd.Op == "effort" || cmd.Op == "progress" || cmd.Op == "record" {
 		if !cmd.Value.Set() {
 			c.errorf(diag.Shape, w+".value", "operation requires a value")
 		}
