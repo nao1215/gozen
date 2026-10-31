@@ -304,3 +304,51 @@ func TestEntityDetailSelectionSurvivesRefresh(t *testing.T) {
 		t.Fatal("member selection lost or opened an action popup")
 	}
 }
+
+func TestTargetActionsScrollInsideViewport(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Screens = map[string]*data.AuthorScreen{"team": {
+		Kind: "islands", View: data.PlanningView{Fullscreen: true},
+	}}
+	for range 30 {
+		db.Game.Screens["team"].Entries = append(db.Game.Screens["team"].Entries, data.ScreenEntry{Label: "Assign", Target: "artisan"})
+	}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "team", nil)
+	s.openTarget(g, "artisan", entryBounds(data.ScreenEntry{Bounds: []int{900, 450, 200, 80}}))
+	_, sh := g.screen()
+	if s.popup.y < 0 || s.popup.y+s.popup.height() > sh || s.popup.rows >= 30 {
+		t.Fatalf("popup outside viewport: %+v", s.popup)
+	}
+	for range 29 {
+		s.popup.step(1)
+		s.popup.scroll()
+	}
+	shown := s.popup.shown()
+	if s.popupIndices[s.popup.sel] != 29 || shown[len(shown)-1] != 29 {
+		t.Fatal("last assignment is inaccessible")
+	}
+}
+
+func TestScriptReadStopsAtAuthorScreen(t *testing.T) {
+	fsys := wldWorldFiles(t, `screens:
+  desk:
+    title: Desk
+    entries: [{label: Continue, do: [{set: {flag.acted: true}}]}]
+`, map[string]string{"data/desk.yaml": `events:
+  greeting:
+    do: [{say: Welcome.}, {open: desk}]
+`})
+	var trace bytes.Buffer
+	g := wldOpenWith(t, Options{FS: fsys, Location: "camp", Trace: &trace})
+	wldFrames(t, g, 30)
+	wldStartEvent(t, g, "greeting")
+	wldPlay(t, g, "read 1\nsnapshot\n", 300)
+	if !strings.Contains(trace.String(), `"t":"snapshot"`) || g.st.Flags["acted"] {
+		t.Fatal("read did not stop at the screen before choosing an action")
+	}
+	wldPlay(t, g, "press ok\nwait 10\n", 30)
+	if !g.st.Flags["acted"] {
+		t.Fatal("the action was not selectable after reading")
+	}
+}

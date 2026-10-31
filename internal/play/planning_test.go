@@ -2,9 +2,11 @@ package play
 
 import (
 	"math/rand/v2"
+	"strconv"
 	"testing"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/testgame"
 )
 
 func TestNativeViewport(t *testing.T) {
@@ -85,5 +87,37 @@ func TestPlanningAuthoredDateLabels(t *testing.T) {
 	}
 	if got := planningEventLabel(data.PlanningView{}); got != "events" {
 		t.Fatal(got)
+	}
+}
+
+func TestTimelineScrollReachesLastTask(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{Activities: map[string]data.Activity{}}
+	for i := range 28 {
+		db.Game.Planning.Activities[strconv.Itoa(i)] = data.Activity{Effort: 1}
+	}
+	db.Game.Screens = map[string]*data.AuthorScreen{"tasks": {
+		Kind: "timeline", View: data.PlanningView{Fullscreen: true},
+	}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "tasks", nil)
+	g.in.wheel = -1
+	for range 40 {
+		s.updateSurface(g)
+	}
+	_, sh := g.screen()
+	if s.timelineTop+timelineRows(sh-250) != 28 {
+		t.Fatalf("last task cannot be reached: %d", s.timelineTop)
+	}
+	s.refresh(g)
+	if s.timelineTop == 0 {
+		t.Fatal("refresh lost scroll position")
+	}
+	g.in.wheel = 1
+	for range 40 {
+		s.updateSurface(g)
+	}
+	if s.timelineTop != 0 {
+		t.Fatal("cannot return to first task")
 	}
 }

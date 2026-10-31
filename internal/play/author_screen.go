@@ -15,6 +15,7 @@ import (
 
 // authorScreen presents an authored list without requiring a custom Go screen.
 type authorScreen struct {
+	timelineTop  int
 	target       string
 	focus        int
 	popup        *list
@@ -63,6 +64,7 @@ func (s *authorScreen) refreshed(g *Game) *authorScreen {
 	n := newAuthorScreen(g, s.name, s.done)
 	n.target = s.target
 	n.focus = s.focus
+	n.timelineTop = s.timelineTop
 	n.list.sel = min(s.list.sel, max(0, len(n.entries)-1))
 	if s.list.sel < len(s.indices) {
 		for i, index := range n.indices {
@@ -106,6 +108,10 @@ func (s *authorScreen) update(g *Game) {
 	if g.db.Game.Screens[s.name].View.Fullscreen {
 		s.updateSurface(g)
 		return
+	}
+	if g.db.Game.Screens[s.name].Kind == "timeline" && len(s.entries) == 0 {
+		_, sh := g.screen()
+		s.scrollTimeline(g, sh-214)
 	}
 	chose, cancel := s.list.update(g)
 	if cancel {
@@ -235,7 +241,8 @@ func (s *authorScreen) openTarget(g *Game, id string, r image.Rectangle) {
 		return
 	}
 	sw, sh := g.screen()
-	s.popup = newList(items, min(float64(r.Min.X), sw-380), min(float64(r.Max.Y), sh-44*float64(len(items))-32), 360, max(1, len(items)))
+	rows := max(1, min(len(items), int((sh-64)/44)))
+	s.popup = newList(items, max(0, min(float64(r.Min.X), sw-380)), max(0, min(float64(r.Max.Y), sh-44*float64(rows)-32)), 360, rows)
 }
 
 func (s *authorScreen) closeSurface(g *Game) {
@@ -269,6 +276,10 @@ func (s *authorScreen) updateSurface(g *Game) {
 	if g.in.cancel() {
 		s.closeSurface(g)
 		return
+	}
+	if g.db.Game.Screens[s.name].Kind == "timeline" {
+		_, sh := g.screen()
+		s.scrollTimeline(g, sh-250)
 	}
 	ids, cells := s.surfaceTargets(g)
 	var actions []int
@@ -349,4 +360,14 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 	if s.popup != nil {
 		s.popup.draw(g, dst, true)
 	}
+}
+
+func (s *authorScreen) scrollTimeline(g *Game, height float64) {
+	if g.in.down() {
+		s.timelineTop++
+	}
+	if g.in.up() {
+		s.timelineTop--
+	}
+	s.timelineTop = max(0, min(s.timelineTop, len(g.st.Planning.Activities)-timelineRows(height)))
 }

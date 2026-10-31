@@ -64,8 +64,20 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 		y += 24
 		h -= 24
 		ids := slices.Sorted(maps.Keys(st.Activities))
-		rowH := min(64.0, h/float64(max(1, len(ids))))
-		for i, id := range ids {
+		slices.SortFunc(ids, func(a, b string) int {
+			if order := strings.Compare(p.Activities[a].From, p.Activities[b].From); order != 0 {
+				return order
+			}
+			return strings.Compare(a, b)
+		})
+		rows := timelineRows(h)
+		s.timelineTop = max(0, min(s.timelineTop, len(ids)-rows))
+		last := min(len(ids), s.timelineTop+rows)
+		if len(ids) > rows {
+			g.text(dst, fmt.Sprintf("%d–%d / %d  ↑ ↓", s.timelineTop+1, last, len(ids)), x+20, y-24, 14, g.th.dim)
+		}
+		rowH := 56.0
+		for i, id := range ids[s.timelineTop:last] {
 			a := st.Activities[id]
 			d := p.Activities[id]
 			yy := y + float64(i)*rowH
@@ -395,4 +407,9 @@ func (s *authorScreen) drawEntityDetail(g *Game, dst *ebiten.Image, x, y, w, h f
 		yy += 24
 	}
 	g.drawLinesFit(dst, fmt.Sprint(g.st.EntityValues(s.target, false)[v.Detail]), x+16, yy+16, w-44, 16, max(1, int((y+h-yy-24)/24)), g.th.text)
+}
+
+// timelineRows keeps task names and quantities on distinct, readable rows.
+func timelineRows(height float64) int {
+	return max(1, int(height/56))
 }

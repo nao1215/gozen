@@ -1707,6 +1707,11 @@ func (g *Game) waiting() (string, int) {
 		}
 		return "", 0
 	}
+	if len(g.stack) > 0 {
+		if s, ok := g.stack[len(g.stack)-1].(*authorScreen); ok && !s.running {
+			return "command", 0
+		}
+	}
 	b := g.currentBattle()
 	if b == nil || g.stack[len(g.stack)-1] != b {
 		return "", 0
