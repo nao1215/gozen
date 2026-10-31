@@ -132,6 +132,9 @@ type StatRates map[string]float64
 
 // Game is game.yaml: the game's title, screen and starting state.
 type Game struct {
+	// Planning supplies optional calendar, entity and activity definitions.
+	Planning *Planning `yaml:"planning"`
+
 	State StateNames `yaml:"state"`
 	// SchemaVersion is the YAML spec version. 0 (omitted) means the old spec.
 	SchemaVersion int `yaml:"schema_version,omitempty"`
@@ -345,6 +348,9 @@ type CardBubble struct {
 
 // Screen is the logical screen size.
 type Screen struct {
+	// Native draws at device resolution inside a fixed 16:9 viewport.
+	Native bool `yaml:"native"`
+
 	Width  int `yaml:"width"`
 	Height int `yaml:"height"`
 }
@@ -1698,6 +1704,10 @@ func (p Picture) Brightness() float64 {
 // AuthorScreen is a titled list of information, pictures or actions rendered by play.
 // Entries keep authored order; when hides entries until their condition holds.
 type AuthorScreen struct {
+	// Kind optionally binds a planning view: entities, timeline, calendar or ensemble.
+	Kind string       `yaml:"kind"`
+	View PlanningView `yaml:"view"`
+
 	Title   string        `yaml:"title"`
 	Entries []ScreenEntry `yaml:"entries"`
 }

@@ -1,0 +1,91 @@
+Planning:
+  seed_xor: "Optional unsigned XOR constant deriving the second PCG seed from an explicit nonzero run seed; omitted retains the standard stream."
+  rules: "Bounded reusable operation sequences with scalar parameters."
+  policies: "Ordered choices of events, evaluated from player observations."
+  _: "Planning definition for deterministic planning simulations."
+  attributes: "Attributes of this planning."
+  entities: "Entities of this planning."
+  calendar: "Calendar of this planning."
+  activities: "Activities of this planning."
+  ledgers: "Ledgers of this planning."
+  schedule: "Schedule of this planning."
+Attribute:
+  _: "Attribute definition for deterministic planning simulations."
+  type: "Type of this attribute."
+  initial: "Initial of this attribute."
+  min: "Min of this attribute."
+  max: "Max of this attribute."
+  hidden: "Hidden of this attribute."
+Entity:
+  _: "Entity definition for deterministic planning simulations."
+  name: "Name of this entity."
+  actor: "Actor of this entity."
+  tags: "Tags of this entity."
+  attributes: "Attributes of this entity."
+  observations: "Observations of this entity."
+Calendar:
+  _: "Calendar definition for deterministic planning simulations."
+  start: "Start of this calendar."
+  end: "End of this calendar."
+  phases: "Phases of this calendar."
+  weekdays_off: "Weekdays off of this calendar."
+  closed: "Closed of this calendar."
+Activity:
+  observation: "Displayed progress formula; self contains progress, effort and assignee. Refreshed by observe."
+  dependency_ratio: "Fraction of each prerequisite needed before positive progress; omitted means 1."
+  _: "Activity definition for deterministic planning simulations."
+  name: "Name of this activity."
+  effort: "Effort of this activity."
+  assignee: "Assignee of this activity."
+  after: "After of this activity."
+  from: "From of this activity."
+  to: "To of this activity."
+Ledger:
+  _: "Ledger definition for deterministic planning simulations."
+  retain: "Retain of this ledger."
+Reservation:
+  _: "An event reservation dispatched once per matching date."
+  id: "Stable reservation ID."
+  date: "Date of this ledger."
+  weekdays: "Weekdays of this ledger."
+  phase: "Phase of this ledger."
+  event: "Event of this ledger."
+PlanCommand:
+  rule: "Reusable rule ID for the rule operation."
+  args: "Expressions bound to the rule parameters for this invocation."
+  policy: "Policy ID for selecting one event from observations."
+  _: "PlanCommand definition for deterministic planning simulations."
+  op: "Op of this plancommand."
+  entity: "Entity of this plancommand."
+  tag: "Tag of this plancommand."
+  where: "Where of this plancommand."
+  attribute: "Attribute of this plancommand."
+  value: "Value of this plancommand."
+  activity: "Activity of this plancommand."
+  ledger: "Ledger of this plancommand."
+  period: "Period of this plancommand."
+PlanRule:
+  _: "A sequence of at most 256 immediate operations; nested rule calls are rejected."
+  params: "Unique scalar argument names available as arg.NAME."
+  do: "Operations evaluated in authored order, atomically."
+PolicyRule:
+  _: "An ordered policy candidate; the first matching candidate supplies its event."
+  when: "Condition evaluated from visible entity and activity observations. Omitted means true."
+  event: "Existing event to run through the ordinary interpreter."
+PlanningView:
+  icon: Fixed public portrait binding for video-off participants.
+  _: Explicit player-facing columns, seating and observed image bindings for planning screens.
+  order: Entity IDs in seat order; omitted order uses ascending IDs.
+  fields: Player value columns; hidden attributes are rejected.
+  portrait: Public value containing a portrait asset path.
+  camera: Public boolean value controlling participant video.
+  badge: Public value shown instead of a face at an unoccupied seat.
+  backdrop: Public value containing a participant background asset path.
+  mask: Public boolean value selecting coarse background masking.
+  door: Authored label on the island view's door.
+PlanningField:
+  _: A labeled public value with an optional numeric gauge.
+  key: Attribute or observation name; hidden attributes are rejected.
+  label: The authored label displayed above this public value column.
+  maximum: Positive gauge maximum, or zero for text only.
+  marks: Threshold positions in gauge units.

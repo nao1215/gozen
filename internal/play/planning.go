@@ -1,0 +1,322 @@
+package play
+
+import (
+	"fmt"
+	"image"
+	"image/color"
+	"maps"
+	"math"
+	"slices"
+	"strconv"
+	"time"
+
+	"github.com/hajimehoshi/ebiten/v2"
+
+	"github.com/nao1215/gozen/internal/expr"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer5/gfx"
+)
+
+// nativeView returns an inner render target. Ebitengine fits this target in the
+// window, supplies the letterbox and transforms pointer coordinates exactly once.
+func nativeView(w, h, dsf float64) gameView {
+	if w <= 0 || h <= 0 || dsf <= 0 {
+		return gameView{}
+	}
+	k := min(w/1280, h/720) * dsf
+	return gameView{w: max(1, int(math.Round(1280*k))), h: max(1, int(math.Round(720*k))), ui: k}
+}
+
+func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, y, w, h float64) {
+	st, p := g.st.Planning, g.db.Game.Planning
+	if st == nil || p == nil {
+		return
+	}
+	g.window(dst, x, y, w, h)
+	g.text(dst, st.Date+" / "+p.Calendar.Phases[st.Phase], x+20, y+18, sizeM, g.th.accent)
+	y += 60
+	h -= 70
+	switch kind {
+	case "timeline":
+		start, err := time.Parse(time.DateOnly, p.Calendar.Start)
+		if err != nil {
+			return
+		}
+		end, err := time.Parse(time.DateOnly, p.Calendar.End)
+		if err != nil {
+			return
+		}
+		days := end.Sub(start).Hours()/24 + 1
+		axisX, axisW := x+w*.48, w*.46
+		g.text(dst, start.Format("Jan 02")+" — "+end.Format("Jan 02"), axisX, y, 14, g.th.dim)
+		y += 24
+		h -= 24
+		ids := slices.Sorted(maps.Keys(st.Activities))
+		rowH := min(64.0, h/float64(max(1, len(ids))))
+		for i, id := range ids {
+			a := st.Activities[id]
+			d := p.Activities[id]
+			yy := y + float64(i)*rowH
+			g.drawLinesFit(dst, d.Name, x+20, yy, w*.45, sizeS, 1, g.th.text)
+			g.text(dst, p.Entities[a.Assignee].Name, x+20, yy+24, 16, g.th.dim)
+			from, to := start, end
+			if d.From != "" {
+				if date, err := time.Parse(time.DateOnly, d.From); err == nil {
+					from = date
+				}
+			}
+			if d.To != "" {
+				if date, err := time.Parse(time.DateOnly, d.To); err == nil {
+					to = date
+				}
+			}
+			left := max(0, min(1, from.Sub(start).Hours()/24/days))
+			right := max(left, min(1, (to.Sub(start).Hours()/24+1)/days))
+			gfx.StrokeLine(dst, float32(axisX), float32(yy+14), float32(axisX+axisW), float32(yy+14), 1, g.th.dim, true)
+			if right > left {
+				rect(dst, axisX+axisW*left, yy+6, axisW*(right-left), 10, color.NRGBA{160, 190, 235, 255})
+				actual := max(0, min(1, a.Observed/d.Effort))
+				tint := g.th.accent
+				today, err := time.Parse(time.DateOnly, st.Date)
+				if err != nil {
+					return
+				}
+				expected := max(0, min(1, (today.Sub(from).Hours()/24)/max(1, to.Sub(from).Hours()/24+1)))
+				if actual < expected {
+					tint = color.NRGBA{220, 65, 65, 255}
+				}
+				rect(dst, axisX+axisW*left, yy+18, axisW*(right-left)*actual, 8, tint)
+			}
+			g.text(dst, fmt.Sprintf("%.1f / %.1f", a.Observed, d.Effort), x+w*.48, yy+28, 16, g.th.text)
+		}
+		today, err := time.Parse(time.DateOnly, st.Date)
+		if err != nil {
+			return
+		}
+		tx := axisX + axisW*max(0, min(1, today.Sub(start).Hours()/24/days))
+		gfx.StrokeLine(dst, float32(tx), float32(y), float32(tx), float32(y+h), 2, color.NRGBA{220, 65, 65, 255}, true)
+	case "calendar":
+		start, err := time.Parse(time.DateOnly, st.Date)
+		if err != nil {
+			return
+		}
+		start = time.Date(start.Year(), start.Month(), 1, 0, 0, 0, 0, time.UTC)
+		cw, ch := (w-40)/7, (h-30)/6
+		for col, label := range []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"} {
+			g.text(dst, label, x+20+float64(col)*cw, y, 16, g.th.dim)
+		}
+		for d := start; d.Month() == start.Month(); d = d.AddDate(0, 0, 1) {
+			n := int(start.Weekday()) + d.Day() - 1
+			xx, yy := x+20+float64(n%7)*cw, y+30+float64(n/7)*ch
+			clr := g.th.dim
+			if d.Format(time.DateOnly) == st.Date {
+				clr = g.th.accent
+			}
+			gfx.StrokeLine(dst, float32(xx), float32(yy), float32(xx+cw-6), float32(yy), 1, clr, true)
+			g.text(dst, strconv.Itoa(d.Day()), xx+4, yy+5, 18, clr)
+			count := 0
+			for _, r := range p.Schedule {
+				if r.Date != "" && r.Date != d.Format(time.DateOnly) || len(r.Weekdays) > 0 && !slices.Contains(r.Weekdays, int(d.Weekday())) {
+					continue
+				}
+				count++
+			}
+			if count > 0 {
+				g.text(dst, fmt.Sprintf("%d events", count), xx+4, yy+29, 12, g.th.text)
+			}
+		}
+	case "entities", "ensemble", "islands":
+		s.drawResidents(g, dst, kind, x, y, w, h)
+	}
+}
+
+// planningCells reserves gaps and never lets one tile overlap another.
+func planningCells(x, y, w, h float64, count, cols int) []image.Rectangle {
+	if count <= 0 || cols <= 0 {
+		return nil
+	}
+	rows := (count + cols - 1) / cols
+	cw, ch := w/float64(cols), h/float64(rows)
+	out := make([]image.Rectangle, count)
+	for i := range out {
+		out[i] = image.Rect(int(x+float64(i%cols)*cw+6), int(y+float64(i/cols)*ch+6), int(x+float64(i%cols+1)*cw-6), int(y+float64(i/cols+1)*ch-6))
+	}
+	return out
+}
+
+func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x, y, w, h float64) {
+	p := g.db.Game.Planning
+	v := g.db.Game.Screens[s.name].View
+	ids := v.Order
+	if len(ids) == 0 {
+		ids = slices.Sorted(maps.Keys(p.Entities))
+	}
+	cols := 1
+	if kind == "ensemble" || kind == "islands" {
+		cols = 4
+	}
+	if kind == "islands" {
+		rect(dst, x+12, y, w-24, h, color.NRGBA{216, 210, 196, 255})
+		// Wall boards use the same observed state as the detailed views.
+		rect(dst, x+24, y+8, w*.46, 86, color.NRGBA{248, 248, 244, 255})
+		total, done := 0.0, 0.0
+		for id, a := range g.st.Planning.Activities {
+			total += p.Activities[id].Effort
+			done += a.Observed
+		}
+		if total > 0 {
+			bar(dst, x+36, y+42, w*.42, 12, done/total, g.th.accent)
+		}
+		g.text(dst, g.db.Game.Screens[s.name].Title, x+36, y+14, 18, color.Black)
+		rect(dst, x+w*.52, y+8, w*.25, 86, color.NRGBA{248, 248, 244, 255})
+		g.text(dst, g.st.Planning.Date, x+w*.53, y+16, 16, color.Black)
+		date, err := time.Parse(time.DateOnly, g.st.Planning.Date)
+		if err != nil {
+			return
+		}
+		monday := date.AddDate(0, 0, -(int(date.Weekday())+6)%7)
+		for i := range 7 {
+			d := monday.AddDate(0, 0, i)
+			cx := x + w*.53 + float64(i)*w*.032
+			tint := color.NRGBA{225, 229, 234, 255}
+			if d.Equal(date) {
+				tint = color.NRGBA{145, 183, 236, 255}
+			}
+			rect(dst, cx, y+45, w*.029, 34, tint)
+			g.text(dst, strconv.Itoa(d.Day()), cx+2, y+53, 12, color.Black)
+		}
+		rect(dst, x+w*.81, y+4, w*.15, 100, color.NRGBA{151, 118, 81, 255})
+		g.drawLinesFit(dst, v.Door, x+w*.82, y+20, w*.13, 16, 2, color.White)
+		y += 116
+		h -= 116
+	}
+	for i, r := range planningCells(x+12, y, w-24, h, len(ids), cols) {
+		id := ids[i]
+		values := g.st.EntityValues(id, false)
+		xx, yy, cw, ch := float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())
+		value := func(key string) string {
+			if key == "" || values[key] == nil {
+				return ""
+			}
+			return fmt.Sprint(values[key])
+		}
+		portrait, badge := value(v.Portrait), value(v.Badge)
+		switch kind {
+		case "islands":
+			rect(dst, xx, yy+ch*.62, cw, ch*.30, color.NRGBA{174, 145, 105, 255})
+			if badge != "" {
+				g.drawLinesFit(dst, badge, xx+8, yy+ch*.25, cw-16, 18, 1, color.Black)
+			} else {
+				g.planningFace(dst, portrait, xx+cw/2, yy+ch*.27, min(30, ch*.22))
+			}
+			g.drawLinesFit(dst, p.Entities[id].Name, xx+4, yy+ch*.64, cw-8, 16, 1, color.Black)
+		case "ensemble":
+			rect(dst, xx, yy, cw, ch, color.NRGBA{53, 58, 60, 255})
+			if values[v.Camera] == true {
+				bg := value(v.Backdrop)
+				if bg != "" {
+					g.planningBackdrop(dst, bg, values[v.Mask] == true, xx, yy, cw, ch-28)
+				} else {
+					rect(dst, xx, yy, cw, ch-28, color.NRGBA{183, 184, 180, 255})
+					rect(dst, xx+cw*.62, yy+12, cw*.30, ch*.35, color.NRGBA{196, 216, 231, 255})
+					if values[v.Mask] == true { // Geometric fallback is coarse too.
+						for row := range 4 {
+							for col := range 6 {
+								rect(dst, xx+float64(col)*cw/6, yy+float64(row)*(ch-28)/4, cw/6, (ch-28)/4, color.NRGBA{uint8(154 + col*6), uint8(160 + row*9), 170, 255})
+							}
+						}
+					}
+				}
+				if portrait != "" {
+					g.planningTorso(dst, portrait, xx+cw*.16, yy, cw*.68, ch-28)
+				} else {
+					g.planningFace(dst, "", xx+cw/2, yy+ch*.38, min(30, ch*.23))
+					rect(dst, xx+cw*.26, yy+ch*.58, cw*.48, ch*.20, color.NRGBA{55, 69, 93, 255})
+				}
+			} else {
+				g.planningFace(dst, value(v.Icon), xx+cw/2, yy+ch*.43, min(32, ch*.26))
+			}
+			g.drawLinesFit(dst, p.Entities[id].Name, xx+8, yy+ch-24, cw-16, 16, 1, color.White)
+			if g.talk.active && g.talk.say.Actor != "" && p.Entities[id].Actor == g.talk.say.Actor {
+				rect(dst, xx, yy, cw, 3, g.th.accent)
+				rect(dst, xx, yy+ch-3, cw, 3, g.th.accent)
+				rect(dst, xx, yy, 3, ch, g.th.accent)
+				rect(dst, xx+cw-3, yy, 3, ch, g.th.accent)
+			}
+		default:
+			g.planningFace(dst, portrait, xx+24, yy+ch/2, min(22, ch*.40))
+			g.drawLinesFit(dst, p.Entities[id].Name, xx+58, yy+8, cw*.24, 16, 1, g.th.text)
+			fw := (cw * .66) / float64(max(1, len(v.Fields)))
+			for j, f := range v.Fields {
+				fx := xx + cw*.34 + float64(j)*fw
+				g.drawLinesFit(dst, f.Label+" "+value(f.Key), fx, yy+4, fw-12, 16, 1, g.th.text)
+				if f.Maximum > 0 {
+					n, _ := expr.ToNumber(values[f.Key])
+					bar(dst, fx, yy+26, fw-16, 8, n/f.Maximum, g.th.accent)
+					for _, m := range f.Marks {
+						mx := fx + (fw-16)*m/f.Maximum
+						gfx.StrokeLine(dst, float32(mx), float32(yy+23), float32(mx), float32(yy+35), 1, g.th.dim, true)
+						g.text(dst, strconv.FormatFloat(m, 'f', 0, 64), mx-8, yy+36, 12, g.th.dim)
+					}
+				}
+			}
+		}
+	}
+}
+
+func (g *Game) planningFace(dst *ebiten.Image, path string, cx, cy, r float64) {
+	gfx.FillCircle(dst, float32(cx), float32(cy), float32(r), color.NRGBA{238, 232, 219, 255}, true)
+	if path != "" {
+		// Face crop is centered; circular clipping keeps transparent portraits within a badge.
+		img := g.pics.get(path)
+		head := g.pics.head(path)
+		scale := 2 * r / float64(max(1, head.Dx()))
+		vertices := make([]ebiten.Vertex, 34)
+		for i := range vertices {
+			angle := float64(i-1) * 2 * math.Pi / 32
+			dx, dy := math.Cos(angle)*r, math.Sin(angle)*r
+			if i == 0 {
+				dx, dy = 0, 0
+			}
+			vertices[i] = ebiten.Vertex{DstX: float32((cx + dx) * gfx.Scale()), DstY: float32((cy + dy) * gfx.Scale()), SrcX: float32(float64(head.Min.X+head.Dx()/2) + dx/scale), SrcY: float32(float64(head.Min.Y+head.Dy()/2) + dy/scale), ColorR: 1, ColorG: 1, ColorB: 1, ColorA: 1}
+		}
+		indices := make([]uint16, 0, 96)
+		for i := 1; i <= 32; i++ {
+			indices = append(indices, 0, uint16(i), uint16(i+1))
+		}
+		dst.DrawTriangles(vertices, indices, img, &ebiten.DrawTrianglesOptions{Filter: ebiten.FilterLinear})
+		return
+	}
+	gfx.FillCircle(dst, float32(cx), float32(cy), float32(r*.77), color.NRGBA{235, 190, 148, 255}, true)
+	for _, dx := range []float64{-.25, .25} {
+		gfx.FillCircle(dst, float32(cx+dx*r), float32(cy-r*.12), 2, color.Black, true)
+	}
+	gfx.StrokeLine(dst, float32(cx-r*.20), float32(cy+r*.30), float32(cx+r*.20), float32(cy+r*.30), 2, color.Black, true)
+}
+
+func (g *Game) planningTorso(dst *ebiten.Image, path string, x, y, w, h float64) {
+	img := g.pics.get(path)
+	bounds := img.Bounds()
+	bounds.Max.Y = bounds.Min.Y + int(float64(bounds.Dy())*.58)
+	sub, ok := img.SubImage(bounds).(*ebiten.Image)
+	if !ok {
+		return
+	}
+	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+	scale := min(w/float64(bounds.Dx()), h/float64(bounds.Dy()))
+	op.GeoM.Scale(scale, scale)
+	op.GeoM.Translate(x+(w-float64(bounds.Dx())*scale)/2, y+h-float64(bounds.Dy())*scale)
+	gfx.DrawImage(dst, sub, op)
+}
+
+func (g *Game) planningBackdrop(dst *ebiten.Image, path string, masked bool, x, y, w, h float64) {
+	if !masked {
+		g.drawPicture(dst, data.Picture{File: path}, x, y, w, h, 1)
+		return
+	}
+	img := g.pics.blurred(path)
+	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterNearest}
+	op.GeoM.Scale(w/float64(img.Bounds().Dx()), h/float64(img.Bounds().Dy()))
+	op.GeoM.Translate(x, y)
+	gfx.DrawImage(dst, img, op)
+}

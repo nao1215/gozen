@@ -322,7 +322,7 @@ func (db *DB) defaults() {
 	db.EachCommand(func(c *Command) { db.resolveVerb(c) })
 	g := &db.Game
 	if g.Screen.Width == 0 {
-		g.Screen = Screen{1280, 720}
+		g.Screen.Width, g.Screen.Height = 1280, 720
 	}
 	if g.MaxParty == 0 {
 		g.MaxParty = 4

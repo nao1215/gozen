@@ -79,6 +79,9 @@ func (s *State) Save() ([]byte, error) {
 			}
 		}
 	}
+	if err := s.validatePlanning(); err != nil {
+		return nil, err
+	}
 	b, err := json.Marshal(s)
 	if err != nil {
 		return nil, err
@@ -251,6 +254,10 @@ func (s *State) bind() (*State, error) {
 	if err := s.validateStateNames(); err != nil {
 		return nil, err
 	}
+	if err := s.validatePlanning(); err != nil {
+		return nil, err
+	}
+	s.initPlanning()
 	s.reconcileSave()
 	s.initStateNames()
 	if len(s.Party) == 0 && db.CombatEnabled() {

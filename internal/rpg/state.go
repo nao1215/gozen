@@ -16,6 +16,9 @@ import (
 
 // State is a game in progress.
 type State struct {
+	// Planning is simulation progress, shared by event and presentation consumers.
+	Planning *PlanningState `json:"planning,omitempty"`
+
 	// LastBattle is the saved outcome before recovery or rewards. Battle runners write it; expressions read it.
 	LastBattle *BattleOutcome `json:"last_battle,omitempty"`
 	// Reactions stores per-speaker interpreter memory; event execution owns its contents.
@@ -142,6 +145,7 @@ func New(db *data.DB, rng *rand.Rand) *State {
 		RecruitSeed: collectionSeed(db.Game.ID),
 	}
 	s.initStateNames()
+	s.initPlanning()
 	st := db.Game.Start
 	for _, id := range st.Party {
 		s.Join(id)
@@ -565,6 +569,8 @@ func (e fieldEnv) Lookup(name string) (any, bool) {
 		return data.CampaignEnv(s.DB, s.Campaign()).Lookup(name)
 	}
 	switch name {
+	case "planning", "entity", "activity", "period_value":
+		return s.planningLookup(name)
 	case "last_battle":
 		return battleOutcomeView{s.LastBattle}, true
 	case "flag":

@@ -32,6 +32,9 @@ type Affect struct {
 // Command is a single event command. The command tags are the only registry of verbs and their accompanying fields.
 // verb is a public verb, internal is Go-only, and any other value lists the verbs that allow the accompanying field.
 type Command struct {
+	// Plan performs one deterministic planning operation.
+	Plan *PlanCommand `yaml:"plan" command:"verb"`
+
 	Respond *Respond       `yaml:"respond" command:"verb"`
 	Say     *Say           `yaml:"say" command:"verb"`
 	Choice  []ChoiceOption `yaml:"choice" command:"verb"`
@@ -216,10 +219,12 @@ func customFields(c *Command) []string { return c.custom }
 
 // Say is a line of dialog.
 type Say struct {
-	Who  string `yaml:"who"`  // an actor id, or any name
-	Face string `yaml:"face"` // a face of the actor (or a picture path)
-	Text string `yaml:"text"`
-	Side string `yaml:"side"` // left, right (default: left for party, right for others)
+	// Ensemble names a planning participant screen shown behind this line.
+	Ensemble string `yaml:"ensemble"`
+	Who      string `yaml:"who"`  // an actor id, or any name
+	Face     string `yaml:"face"` // a face of the actor (or a picture path)
+	Text     string `yaml:"text"`
+	Side     string `yaml:"side"` // left, right (default: left for party, right for others)
 	// Voice is the line's voice: a name in the speaker's voices folder, or a path under
 	// assets/ (schema_version 4, ADR 0028).
 	Voice string `yaml:"voice"`

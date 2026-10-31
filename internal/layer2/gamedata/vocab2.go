@@ -92,9 +92,13 @@ func (c *checker) declarations() {
 			c.errorf(diag.Shape, w, "a screen needs a title and at least one entry")
 			continue
 		}
-		if screen.Title == "" || len(screen.Entries) == 0 {
+		if screen.Kind != "" && (!slices.Contains([]string{"entities", "timeline", "calendar", "ensemble", "islands"}, screen.Kind) || g.Planning == nil) {
+			c.errorf(diag.Shape, w+".kind", "planning view requires planning data and a known kind")
+		}
+		if screen.Title == "" || len(screen.Entries) == 0 && screen.Kind == "" {
 			c.errorf(diag.Shape, w, "a screen needs a title and at least one entry")
 		}
+		c.planningView(w+".view", screen.View)
 		c.text(w+".title", screen.Title, FieldNames)
 		for i, e := range screen.Entries {
 			ew := fmt.Sprintf("%s.entries[%d]", w, i)

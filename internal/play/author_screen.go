@@ -147,8 +147,17 @@ func (s *authorScreen) draw(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
 	fill(dst, color.NRGBA{0, 0, 0, 220})
 	g.drawLinesFit(dst, s.title, 36, 28, sw-72, sizeL, 1, g.th.accent)
-	s.list.draw(g, dst, true)
+	if len(s.entries) > 0 {
+		s.list.draw(g, dst, true)
+	}
 	x, w := sw*0.36, sw*0.64-36
+	if def := g.db.Game.Screens[s.name]; def != nil && def.Kind != "" {
+		if len(s.entries) == 0 {
+			x, w = 24, sw-48
+		}
+		s.drawPlanning(g, dst, def.Kind, x, 88, w, sh-120)
+		return
+	}
 	g.window(dst, x, 88, w, sh-120)
 	if len(s.entries) == 0 {
 		g.text(dst, "No entries yet", x+20, 108, sizeM, g.th.dim)

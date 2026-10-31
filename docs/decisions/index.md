@@ -83,3 +83,4 @@ The symbols in ADRs and design documents are stages of the initial implementatio
 | T7 | CI and repository policy (CONTRIBUTING, SECURITY, CHANGELOG) |
 | SW1 | Stage 1 of putting a host game on Gozen. Common battle events and a variable meter limit (ADR 0013) |
 | SW2 | Stage 2 of the same. Custom dungeon actions and adoption by host games (ADR 0014) |
+| [0053](0053-planning-components.md) | Composable typed state, calendar, activities, ledgers and planning views | In development | |

@@ -49,6 +49,7 @@ Rule:
   weight: "The weight when one of the top-priority rules is drawn at random. The default is 1."
   when: "A condition for the rule, with `self`, `allies`, `foes`, `turn`, `flag` and `var` available."
 Say:
+  ensemble: "Optional ensemble planning screen displayed behind a box-style dialogue line with the active speaker highlighted."
   _: "A line of dialogue, written as a plain string or as a map with the speaker, face and text."
   who: "Who speaks: an actor ID, or any name to show."
   face: "A face of the speaking actor (the actor's own face when left out), or for a speaker who is not an actor, a picture path under `assets/`."
@@ -66,6 +67,7 @@ SceneReviewCfg:
   tags: "The tags a reviewer can put on a scene, each with an ID, a label and whether it counts as OK."
   title: "The name of the review section. It defaults to a translatable built-in title."
 Screen:
+  native: "Render a 16:9 viewport at native device resolution."
   _: "The logical screen size the game is drawn at."
   height: "The logical screen height in pixels."
   width: "The logical screen width in pixels."

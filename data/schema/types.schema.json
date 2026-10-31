@@ -119,6 +119,128 @@
       },
       "type": "object"
     },
+    "Activity": {
+      "additionalProperties": false,
+      "description": "Activity definition for deterministic planning simulations.",
+      "properties": {
+        "after": {
+          "description": "After of this activity.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
+        "assignee": {
+          "description": "Assignee of this activity.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "dependency_ratio": {
+          "description": "Fraction of each prerequisite needed before positive progress; omitted means 1.",
+          "type": "number",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "effort": {
+          "description": "Effort of this activity.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "from": {
+          "description": "From of this activity.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "name": {
+          "description": "Name of this activity.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "observation": {
+          "description": "Displayed progress formula; self contains progress, effort and assignee. Refreshed by observe.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "to": {
+          "description": "To of this activity.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
     "Actor": {
       "additionalProperties": false,
       "description": "A party member or other character: their class, level, faces, equipment and portrait settings.",
@@ -999,6 +1121,82 @@
       },
       "type": "object"
     },
+    "Attribute": {
+      "additionalProperties": false,
+      "description": "Attribute definition for deterministic planning simulations.",
+      "properties": {
+        "hidden": {
+          "description": "Hidden of this attribute.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "initial": {
+          "description": "Initial of this attribute.",
+          "type": [
+            "boolean",
+            "number",
+            "string"
+          ],
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean, number, or string literal"
+        },
+        "max": {
+          "description": "Max of this attribute.",
+          "type": "number",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "min": {
+          "description": "Min of this attribute.",
+          "type": "number",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "type": {
+          "description": "Type of this attribute.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
     "AuthorScreen": {
       "additionalProperties": false,
       "description": "An author-defined information or picture list opened by name.",
@@ -1022,6 +1220,19 @@
           },
           "x-type": "[ScreenEntry](#screenentry)[]"
         },
+        "kind": {
+          "description": "Bind entities, timeline, calendar, ensemble or islands planning data.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "title": {
           "description": "The title, with text interpolation and translation.",
           "type": "string",
@@ -1034,6 +1245,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "view": {
+          "$ref": "#/$defs/PlanningView",
+          "description": "Explicit public value columns, seating and portrait bindings for planning views.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PlanningView](#planningview)"
         }
       },
       "type": "object"
@@ -2393,6 +2617,96 @@
             "version": "0, 1, 2"
           },
           "x-type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "Calendar": {
+      "additionalProperties": false,
+      "description": "Calendar definition for deterministic planning simulations.",
+      "properties": {
+        "closed": {
+          "description": "Closed of this calendar.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
+        "end": {
+          "description": "End of this calendar.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "phases": {
+          "description": "Phases of this calendar.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
+        "start": {
+          "description": "Start of this calendar.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "weekdays_off": {
+          "description": "Weekdays off of this calendar.",
+          "items": {
+            "type": "integer"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer[]"
         }
       },
       "type": "object"
@@ -3932,6 +4246,15 @@
         {
           "additionalProperties": false,
           "properties": {
+            "plan": {}
+          },
+          "required": [
+            "plan"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "respond": {}
           },
           "required": [
@@ -5119,6 +5442,19 @@
             "version": "2"
           },
           "x-type": "string"
+        },
+        "plan": {
+          "$ref": "#/$defs/PlanCommand",
+          "description": "Apply one deterministic planning operation.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PlanCommand](#plancommand)"
         },
         "prompt": {
           "description": "A line of text shown above the answers of a choice or stone selection.",
@@ -7835,6 +8171,106 @@
       ],
       "type": "object"
     },
+    "Entity": {
+      "additionalProperties": false,
+      "description": "Entity definition for deterministic planning simulations.",
+      "properties": {
+        "actor": {
+          "description": "Actor of this entity.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "attributes": {
+          "additionalProperties": {
+            "type": [
+              "boolean",
+              "number",
+              "string"
+            ]
+          },
+          "description": "Attributes of this entity.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → boolean, number, or string literal"
+        },
+        "name": {
+          "description": "Name of this entity.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "observations": {
+          "additionalProperties": {
+            "description": "An expression. gozen check checks its syntax, names and types.",
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          "description": "Observations of this entity.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → expression"
+        },
+        "tags": {
+          "description": "Tags of this entity.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        }
+      },
+      "type": "object"
+    },
     "Episode": {
       "additionalProperties": false,
       "description": "One stream: its title, the lines of its lobby card, and its parts. An episode shorter than 10 minutes is warned of.",
@@ -9416,6 +9852,19 @@
           },
           "x-type": "[Meter](#meter)[]"
         },
+        "planning": {
+          "$ref": "#/$defs/Planning",
+          "description": "Optional typed entities, calendar, activities and period ledgers.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Planning](#planning)"
+        },
         "reactions": {
           "additionalProperties": {
             "type": "string"
@@ -10577,6 +11026,26 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Ledger": {
+      "additionalProperties": false,
+      "description": "Ledger definition for deterministic planning simulations.",
+      "properties": {
+        "retain": {
+          "description": "Retain of this ledger.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
         }
       },
       "type": "object"
@@ -12501,6 +12970,647 @@
       ],
       "description": "A picture under assets/, optionally tinted and darkened. Written as a path or as a map."
     },
+    "PlanCommand": {
+      "additionalProperties": false,
+      "description": "PlanCommand definition for deterministic planning simulations.",
+      "properties": {
+        "activity": {
+          "description": "Activity of this plancommand.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "args": {
+          "additionalProperties": {
+            "description": "An expression. gozen check checks its syntax, names and types.",
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          "description": "Expressions bound to the rule parameters for this invocation.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → expression"
+        },
+        "attribute": {
+          "description": "Attribute of this plancommand.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "entity": {
+          "description": "Entity of this plancommand.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "ledger": {
+          "description": "Ledger of this plancommand.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "op": {
+          "description": "Op of this plancommand.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "period": {
+          "description": "Period of this plancommand.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "policy": {
+          "description": "Policy ID for selecting one event from observations.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "rule": {
+          "description": "Reusable rule ID for the rule operation.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "tag": {
+          "description": "Tag of this plancommand.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "value": {
+          "description": "Value of this plancommand.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "where": {
+          "description": "Where of this plancommand.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        }
+      },
+      "type": "object"
+    },
+    "PlanRule": {
+      "additionalProperties": false,
+      "description": "A sequence of at most 256 immediate operations; nested rule calls are rejected.",
+      "properties": {
+        "do": {
+          "description": "Operations evaluated in authored order, atomically.",
+          "items": {
+            "$ref": "#/$defs/PlanCommand"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PlanCommand](#plancommand)[]"
+        },
+        "params": {
+          "description": "Unique scalar argument names available as arg.NAME.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        }
+      },
+      "type": "object"
+    },
+    "Planning": {
+      "additionalProperties": false,
+      "description": "Planning definition for deterministic planning simulations.",
+      "properties": {
+        "activities": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Activity"
+          },
+          "description": "Activities of this planning.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → [Activity](#activity)"
+        },
+        "attributes": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Attribute"
+          },
+          "description": "Attributes of this planning.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → [Attribute](#attribute)"
+        },
+        "calendar": {
+          "$ref": "#/$defs/Calendar",
+          "description": "Calendar of this planning.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Calendar](#calendar)"
+        },
+        "entities": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Entity"
+          },
+          "description": "Entities of this planning.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → [Entity](#entity)"
+        },
+        "ledgers": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Ledger"
+          },
+          "description": "Ledgers of this planning.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → [Ledger](#ledger)"
+        },
+        "policies": {
+          "additionalProperties": {
+            "items": {
+              "$ref": "#/$defs/PolicyRule"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "description": "Ordered choices of events, evaluated from player observations.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → [PolicyRule](#policyrule)[]"
+        },
+        "rules": {
+          "additionalProperties": {
+            "$ref": "#/$defs/PlanRule"
+          },
+          "description": "Bounded reusable operation sequences with scalar parameters.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → [PlanRule](#planrule)"
+        },
+        "schedule": {
+          "description": "Schedule of this planning.",
+          "items": {
+            "$ref": "#/$defs/Reservation"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Reservation](#reservation)[]"
+        },
+        "seed_xor": {
+          "description": "Optional unsigned XOR constant deriving the second PCG seed from an explicit nonzero run seed; omitted retains the standard stream.",
+          "type": "integer",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "PlanningField": {
+      "additionalProperties": false,
+      "description": "A labeled public value with an optional numeric gauge.",
+      "properties": {
+        "key": {
+          "description": "Attribute or observation name; hidden attributes are rejected.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "label": {
+          "description": "The authored label displayed above this public value column.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "marks": {
+          "description": "Threshold positions in gauge units.",
+          "items": {
+            "type": "number"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number[]"
+        },
+        "maximum": {
+          "description": "Positive gauge maximum, or zero for text only.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "PlanningView": {
+      "additionalProperties": false,
+      "description": "Explicit player-facing columns, seating and observed image bindings for planning screens.",
+      "properties": {
+        "backdrop": {
+          "description": "Public value containing a participant background asset path.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "badge": {
+          "description": "Public value shown instead of a face at an unoccupied seat.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "camera": {
+          "description": "Public boolean value controlling participant video.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "door": {
+          "description": "Authored label on the island view's door.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "fields": {
+          "description": "Player value columns; hidden attributes are rejected.",
+          "items": {
+            "$ref": "#/$defs/PlanningField"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PlanningField](#planningfield)[]"
+        },
+        "icon": {
+          "description": "Fixed public portrait binding for video-off participants.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "mask": {
+          "description": "Public boolean value selecting coarse background masking.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "order": {
+          "description": "Entity IDs in seat order; omitted order uses ascending IDs.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
+        "portrait": {
+          "description": "Public value containing a portrait asset path.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "PolicyRule": {
+      "additionalProperties": false,
+      "description": "An ordered policy candidate; the first matching candidate supplies its event.",
+      "properties": {
+        "event": {
+          "description": "Existing event to run through the ordinary interpreter.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "when": {
+          "description": "Condition evaluated from visible entity and activity observations. Omitted means true.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        }
+      },
+      "type": "object"
+    },
     "Profile": {
       "additionalProperties": false,
       "description": "A page of the character book: who a character is, shown on the Characters screen once its when holds (ADR 0031).",
@@ -13208,6 +14318,84 @@
       ],
       "type": "object"
     },
+    "Reservation": {
+      "additionalProperties": false,
+      "description": "An event reservation dispatched once per matching date.",
+      "properties": {
+        "date": {
+          "description": "Date of this ledger.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "event": {
+          "description": "Event of this ledger.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "id": {
+          "description": "Stable reservation ID.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "phase": {
+          "description": "Phase of this ledger.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "weekdays": {
+          "description": "Weekdays of this ledger.",
+          "items": {
+            "type": "integer"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer[]"
+        }
+      },
+      "type": "object"
+    },
     "ReserveSwap": {
       "additionalProperties": false,
       "description": "One reserve-to-party exchange.",
@@ -13845,6 +15033,19 @@
         {
           "additionalProperties": false,
           "properties": {
+            "ensemble": {
+              "description": "Optional ensemble planning screen displayed behind a box-style dialogue line with the active speaker highlighted.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            },
             "face": {
               "description": "A face of the speaking actor (the actor's own face when left out), or for a speaker who is not an actor, a picture path under `assets/`.",
               "type": "string",
@@ -14050,6 +15251,19 @@
             "version": "0, 1, 2 (omitting it and writing 0 differ in v0)"
           },
           "x-type": "integer"
+        },
+        "native": {
+          "description": "Render a 16:9 viewport at native device resolution.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
         },
         "width": {
           "description": "The logical screen width in pixels.",

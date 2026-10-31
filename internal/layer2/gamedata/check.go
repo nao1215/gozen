@@ -25,7 +25,7 @@ import (
 // The names an expression may use, by where it is written.
 var (
 	// FieldNames are known to the conditions of events, locations and the field music.
-	FieldNames = append([]string{"last_battle", "flag", "var", "gold", "party", "reserve", "monster", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose", "bestiary"}, CampaignNames...)
+	FieldNames = append([]string{"planning", "entity", "activity", "period_value", "last_battle", "flag", "var", "gold", "party", "reserve", "monster", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose", "bestiary"}, CampaignNames...)
 	// BattleNames are known in battle: the AI, the troop events, the battle music.
 	BattleNames = append(slices.Clone(FieldNames), "turn", "self", "allies", "foes", "enemies", "result", "phase", "boss")
 	// EffectNames are known to the formulas of skills and items: a is the user, b the target.
@@ -278,6 +278,7 @@ func (db *DB) Check() []error {
 	}
 	c.requiredDefinitions()
 	c.declarations()
+	c.planning()
 	c.stateDeclarations()
 	c.campaign()
 	c.callLoops()
@@ -1419,6 +1420,12 @@ func (c *checker) aiTarget(w string, t Target) {
 // say checks one line of dialogue.
 func (c *checker) say(w string, s *Say, names []string) {
 	db := c.db
+	if s.Ensemble != "" {
+		screen := db.Game.Screens[s.Ensemble]
+		if screen == nil || screen.Kind != "ensemble" {
+			c.errorf(diag.UnknownReference, w+".ensemble", "expected an ensemble screen")
+		}
+	}
 	if a, ok := db.Actors[s.Who]; ok {
 		switch {
 		case s.Face == "":
@@ -1525,6 +1532,8 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			c.expr(w+".if", cmd.If, names)
 			c.commands(w+".then", cmd.Then, names)
 			c.commands(w+".else", cmd.Else, names)
+		case "plan":
+			c.planCommand(w+".plan", cmd.Plan)
 		case "set":
 			c.assignments(w+".set", cmd.SetV, names)
 		case "give", "take":
@@ -1959,7 +1968,7 @@ func typeOf(n string, names []string) *vtype {
 		return tBool
 	case "roamers":
 		return &vtype{kind: vList, desc: "roamers", elem: objType("a roamer", map[string]*vtype{"kind": tNum, "name": tStr, "troop": tStr, "x": tNum, "y": tNum}, nil)}
-	case "rand", "chance", "pages", "next_to":
+	case "rand", "chance", "pages", "next_to", "period_value":
 		return tFunc
 	case "region":
 		return &vtype{kind: vDyn, desc: "region", elem: tRegion, key: "region"}
@@ -1973,6 +1982,8 @@ func typeOf(n string, names []string) *vtype {
 		return &vtype{kind: vDyn, desc: "orders", elem: tOrder, key: "order"}
 	case "general":
 		return tGeneral
+	case "planning", "entity", "activity":
+		return tAny
 	case "campaign":
 		return tCampaign
 	case "pos":

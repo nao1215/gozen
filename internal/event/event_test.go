@@ -559,3 +559,13 @@ func TestWonBattleCountsTheFoesBeaten(t *testing.T) {
 		t.Errorf("%d recruit offers, want 1", offers)
 	}
 }
+
+func TestSayCarriesEnsembleWithoutChangingText(t *testing.T) {
+	db := testgame.Load(t, nil)
+	r := event.New(db, testgame.State(db, 1), &host{})
+	r.Start([]data.Command{{Say: &data.Say{Who: "scout", Text: "Welcome, everyone.", Ensemble: "gathering"}}})
+	got, ok := r.Next().(event.Say)
+	if !ok || got.Ensemble != "gathering" || got.Actor != "scout" || got.Text != "Welcome, everyone." {
+		t.Fatalf("line lost presentation or identity: %+v", got)
+	}
+}

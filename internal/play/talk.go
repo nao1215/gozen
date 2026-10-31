@@ -334,7 +334,13 @@ func (t *talk) draw(g *Game, dst *ebiten.Image) {
 	x, y, w, h := g.talkBox()
 	sw, sh := g.screen()
 	s := t.say
-	if s.Face != "" && (g.cg.File == "" || g.cg.Faces) && g.recruit == nil {
+	if s.Ensemble != "" {
+		if def := g.db.Game.Screens[s.Ensemble]; def != nil && def.Kind == "ensemble" {
+			screen := &authorScreen{name: s.Ensemble}
+			screen.drawPlanning(g, dst, "ensemble", 24, 16, sw-48, y-56)
+		}
+	}
+	if s.Ensemble == "" && s.Face != "" && (g.cg.File == "" || g.cg.Faces) && g.recruit == nil {
 		img := g.pics.get(s.Face)
 		ih := float64(img.Bounds().Dy())
 		cx := x + 230

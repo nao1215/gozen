@@ -23,6 +23,7 @@ import (
 	"github.com/nao1215/gozen/internal/layer3/atlas"
 	"github.com/nao1215/gozen/internal/layer3/campaign"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
+	"github.com/nao1215/gozen/internal/layer3/planning"
 	"github.com/nao1215/gozen/internal/layer3/scope"
 	"github.com/nao1215/gozen/internal/rpg"
 )
@@ -128,12 +129,14 @@ type RecruitOffer struct {
 
 // Say is a line to read.
 type Say struct {
-	Name    string // "" for narration
-	Face    string // a picture under assets/ ("" for none)
-	Text    string
-	Right   bool // the picture stands on the right
-	Actor   string
-	Recruit *RecruitOffer // present only for a defeated monster's invitation
+	// Ensemble is the authored participant screen for this dialogue line.
+	Ensemble string
+	Name     string // "" for narration
+	Face     string // a picture under assets/ ("" for none)
+	Text     string
+	Right    bool // the picture stands on the right
+	Actor    string
+	Recruit  *RecruitOffer // present only for a defeated monster's invitation
 	// Voice is the line's voice, a file under assets/ ("" for none; ADR 0028).
 	Voice string
 	// Key is the key of the line's source (SourceKey of who and text as written, before
@@ -746,6 +749,12 @@ func (r *Runner) run(c *data.Command) Request {
 		} else {
 			r.push(c.Else)
 		}
+	case "plan":
+		cmds, err := planning.Apply(r.st, *c.Plan)
+		r.logf(err)
+		if err == nil {
+			r.push(cmds)
+		}
 	case "set":
 		// Both the old/new version and the recollection assign in lexicographic order, one at a time. The right side is evaluated once, and earlier assignments are visible to later right sides.
 		keys := make([]string, 0, len(c.SetV))
@@ -1140,7 +1149,7 @@ func (r *Runner) say(s *data.Say, env expr.Env) Request {
 
 // line builds one line (false when it has nothing to show).
 func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
-	out := Say{Name: s.Who, Key: SourceKey(s.Who, s.Text)}
+	out := Say{Name: s.Who, Key: SourceKey(s.Who, s.Text), Ensemble: s.Ensemble}
 	if s.Values != nil { // filled by the fields' whole names, not evaluated
 		out.text = data.Phrase{Source: s.Text, Values: s.Values}
 		out.Text = data.Again(r.db, out.text)

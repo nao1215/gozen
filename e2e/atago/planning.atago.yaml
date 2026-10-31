@@ -1,0 +1,345 @@
+version: '1'
+suite:
+  name: Planning state and native views
+scenarios:
+- name: planning workshop checks and finishes across a month boundary
+  steps:
+  - run:
+      command: gozen check "${specdir}/../../examples/workshop/game"
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+  - fixture:
+      file: play.txt
+      content: 'gap 1
+
+        wait 10
+
+        do plan: {op: observe}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        snapshot
+
+        quit
+
+        '
+  - run:
+      command: gozen sim script "${specdir}/../../examples/workshop/game" --start
+        workshop --script play.txt --trace trace.jsonl
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+      file:
+        path: trace.jsonl
+        contains:
+        - '"finished":true'
+        - '"date":"2030-08-04"'
+        - '"usage/2030-07":true'
+- name: planning views at 1920 by 1080
+  tags:
+  - graphics
+  steps:
+  - fixture:
+      file: screens.txt
+      content: 'gap 1
+
+        wait 10
+
+        window 1920 1080
+
+        do plan: {op: observe}
+
+        until idle
+
+        do open: workshop
+
+        wait 20
+
+        shot workshop
+
+        press cancel
+
+        wait 10
+
+        do open: timeline
+
+        wait 20
+
+        shot timeline
+
+        press cancel
+
+        wait 10
+
+        do open: calendar
+
+        wait 20
+
+        shot calendar
+
+        press cancel
+
+        wait 10
+
+        do open: assembly
+
+        wait 20
+
+        shot assembly
+
+        press cancel
+
+        wait 10
+
+        quit
+
+        '
+  - run:
+      command: gozen run "${specdir}/../../examples/workshop/game" --dev --start workshop
+        --mute --script screens.txt --shots shots --save-dir saves
+      timeout: 45s
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+  - assert:
+      image:
+        path: shots/workshop.png
+        format: png
+        width: 1920
+        height: 1080
+  - assert:
+      image:
+        path: shots/timeline.png
+        format: png
+        width: 1920
+        height: 1080
+  - assert:
+      image:
+        path: shots/calendar.png
+        format: png
+        width: 1920
+        height: 1080
+  - assert:
+      image:
+        path: shots/assembly.png
+        format: png
+        width: 1920
+        height: 1080
+- name: planning views at 3840 by 2160
+  tags:
+  - graphics
+  steps:
+  - fixture:
+      file: screens.txt
+      content: 'gap 1
+
+        wait 10
+
+        window 3840 2160
+
+        do plan: {op: observe}
+
+        until idle
+
+        do open: workshop
+
+        wait 20
+
+        shot workshop
+
+        press cancel
+
+        wait 10
+
+        do open: timeline
+
+        wait 20
+
+        shot timeline
+
+        press cancel
+
+        wait 10
+
+        do open: calendar
+
+        wait 20
+
+        shot calendar
+
+        press cancel
+
+        wait 10
+
+        do open: assembly
+
+        wait 20
+
+        shot assembly
+
+        press cancel
+
+        wait 10
+
+        quit
+
+        '
+  - run:
+      command: gozen run "${specdir}/../../examples/workshop/game" --dev --start workshop
+        --mute --script screens.txt --shots shots --save-dir saves
+      timeout: 45s
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+  - assert:
+      image:
+        path: shots/workshop.png
+        format: png
+        width: 3840
+        height: 2160
+  - assert:
+      image:
+        path: shots/timeline.png
+        format: png
+        width: 3840
+        height: 2160
+  - assert:
+      image:
+        path: shots/calendar.png
+        format: png
+        width: 3840
+        height: 2160
+  - assert:
+      image:
+        path: shots/assembly.png
+        format: png
+        width: 3840
+        height: 2160
+- name: planning views at 2560 by 1080
+  tags:
+  - graphics
+  steps:
+  - fixture:
+      file: screens.txt
+      content: 'gap 1
+
+        wait 10
+
+        window 2560 1080
+
+        do plan: {op: observe}
+
+        until idle
+
+        do open: workshop
+
+        wait 20
+
+        shot workshop
+
+        press cancel
+
+        wait 10
+
+        do open: timeline
+
+        wait 20
+
+        shot timeline
+
+        press cancel
+
+        wait 10
+
+        do open: calendar
+
+        wait 20
+
+        shot calendar
+
+        press cancel
+
+        wait 10
+
+        do open: assembly
+
+        wait 20
+
+        shot assembly
+
+        press cancel
+
+        wait 10
+
+        quit
+
+        '
+  - run:
+      command: gozen run "${specdir}/../../examples/workshop/game" --dev --start workshop
+        --mute --script screens.txt --shots shots --save-dir saves
+      timeout: 45s
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+  - assert:
+      image:
+        path: shots/workshop.png
+        format: png
+        width: 1920
+        height: 1080
+  - assert:
+      image:
+        path: shots/timeline.png
+        format: png
+        width: 1920
+        height: 1080
+  - assert:
+      image:
+        path: shots/calendar.png
+        format: png
+        width: 1920
+        height: 1080
+  - assert:
+      image:
+        path: shots/assembly.png
+        format: png
+        width: 1920
+        height: 1080

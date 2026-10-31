@@ -3,6 +3,8 @@ package play
 import (
 	"errors"
 	"image"
+	"image/color"
+	"image/draw"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -106,4 +108,16 @@ func (w *shotWriter) wait() error {
 		w.jobs = nil
 	}
 	return w.failed()
+}
+
+// letterboxShot includes the native target's outer bars without resampling pixels.
+func letterboxShot(src *image.NRGBA, width, height int) *image.NRGBA {
+	if width < src.Bounds().Dx() || height < src.Bounds().Dy() || width == src.Bounds().Dx() && height == src.Bounds().Dy() {
+		return src
+	}
+	dst := image.NewNRGBA(image.Rect(0, 0, width, height))
+	draw.Draw(dst, dst.Bounds(), image.NewUniform(color.Black), image.Point{}, draw.Src)
+	at := image.Pt((width-src.Bounds().Dx())/2, (height-src.Bounds().Dy())/2)
+	draw.Draw(dst, src.Bounds().Add(at), src, src.Bounds().Min, draw.Src)
+	return dst
 }

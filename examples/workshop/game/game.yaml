@@ -1,0 +1,57 @@
+schema_version: 9
+id: workshop-planning
+title: The pottery workshop
+language: en
+screen: {width: 1280, height: 720, native: true}
+start: {location: workshop, event: opening}
+planning:
+  attributes:
+    vigor: {type: number, initial: 70, min: 0, max: 100, hidden: true}
+    craft: {type: number, initial: 2, min: 0, max: 5}
+    place: {type: string, initial: workshop}
+  entities:
+    potter:
+      name: Potter
+      tags: [residents]
+      observations: {condition: 'self.vigor >= 50 ? "ready" : "tired"'}
+    weaver:
+      name: Weaver
+      tags: [residents]
+      attributes: {craft: 1}
+      observations: {condition: 'self.vigor >= 50 ? "ready" : "tired"'}
+  calendar:
+    start: '2030-07-31'
+    end: '2030-08-04'
+    phases: [morning, evening]
+    weekdays_off: [0, 6]
+  activities:
+    prepare: {name: Prepare clay, effort: 2, assignee: potter, from: '2030-07-31', to: '2030-07-31'}
+    shape: {name: Shape bowls, effort: 6, assignee: potter, after: [prepare], from: '2030-08-01', to: '2030-08-02'}
+  ledgers: {usage: {retain: 12}}
+  schedule:
+    - {id: assembly, date: '2030-08-01', phase: morning, event: assembly}
+  rules:
+    recover:
+      params: [amount]
+      do:
+        - {op: set, tag: residents, attribute: vigor, value: 'min(100, self.vigor + arg.amount)'}
+        - {op: observe}
+  policies:
+    steady:
+      - {when: 'entity.potter.condition == "tired"', event: rest}
+      - {event: work}
+screens:
+  workshop:
+    title: 'Workshop / current usage: {period_value("usage", "potter", 0)}'
+    kind: entities
+    entries:
+      - {label: Work this phase, do: [{call: work}]}
+      - {label: Rest this phase, do: [{call: rest}]}
+      - {label: Assign bowls to Weaver, do: [{plan: {op: assign, activity: shape, entity: weaver}}]}
+      - {label: Timeline, do: [{open: timeline}]}
+      - {label: Calendar, do: [{open: calendar}]}
+      - {label: Assembly, do: [{open: assembly}]}
+      - {label: Save, do: [{open: save}]}
+  timeline: {title: Work plan, kind: timeline}
+  calendar: {title: Calendar, kind: calendar}
+  assembly: {title: Workshop assembly, kind: ensemble}

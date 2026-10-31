@@ -734,8 +734,17 @@ func (g *Game) pixels() (float64, float64) {
 
 // Layout keeps the game's screen, except on the stream screens, which choose their size and
 // layout from the window's inside (streamView, ADR 0050).
-func (g *Game) Layout(ow, oh int) (int, int) {
-	w, h, dsf := float64(ow), float64(oh), 1.0
+func (g *Game) Layout(ow, oh int) (int, int) { return g.layout(float64(ow), float64(oh)) }
+
+// LayoutF preserves fractional window dimensions for Ebitengine's device-pixel layout.
+// Fixed games retain their authored framebuffer; native games use the fitted viewport.
+func (g *Game) LayoutF(ow, oh float64) (float64, float64) {
+	w, h := g.layout(ow, oh)
+	return float64(w), float64(h)
+}
+
+func (g *Game) layout(ow, oh float64) (int, int) {
+	w, h, dsf := ow, oh, 1.0
 	switch s := g.in.script; {
 	case s != nil:
 		// a scripted run lays out for the window it asked for (window W H), else the game's
@@ -745,7 +754,7 @@ func (g *Game) Layout(ow, oh int) (int, int) {
 		if s.size[0] > 0 {
 			w, h = float64(s.size[0]), float64(s.size[1])
 		}
-	case g.streamShown(): // only the stream screens draw at the device's pixels
+	case g.streamShown() || g.db.Game.Screen.Native: // opt-in screens draw at device pixels
 		if m := ebiten.Monitor(); m != nil {
 			dsf = m.DeviceScaleFactor()
 		}
@@ -759,7 +768,9 @@ func (g *Game) Layout(ow, oh int) (int, int) {
 // device-independent pixels of dsf device pixels each, and the UI scale with it.
 func (g *Game) fitView(ow, oh, dsf float64) {
 	v := gameView{}
-	if g.streamShown() {
+	if g.db.Game.Screen.Native {
+		v = nativeView(ow, oh, dsf)
+	} else if g.streamShown() {
 		k := UIScale(&g.db.Game)
 		v = streamView(ow, oh, dsf, float64(g.db.Game.Screen.Width)/k, float64(g.db.Game.Screen.Height)/k)
 	}
@@ -785,14 +796,18 @@ func (g *Game) collectionSeed() uint64 {
 
 func (g *Game) newPCG() *rand.PCG {
 	if g.opts.Seed != 0 {
-		return rand.NewPCG(g.opts.Seed, g.opts.Seed*7+1)
+		second := g.opts.Seed*7 + 1
+		if g.db != nil && g.db.Game.Planning != nil && g.db.Game.Planning.SeedXor != nil {
+			second = g.opts.Seed ^ *g.db.Game.Planning.SeedXor
+		}
+		return rand.NewPCG(g.opts.Seed, second)
 	}
 	return rand.NewPCG(rand.Uint64(), rand.Uint64()) //nolint:gosec // Gameplay randomness is not used for security.
 }
 
 func (g *Game) rng() *rand.Rand {
 	if g.opts.Seed != 0 {
-		return rand.New(rand.NewPCG(g.opts.Seed, g.opts.Seed*7+1)) //nolint:gosec // Gameplay randomness is not used for security.
+		return rand.New(g.newPCG()) //nolint:gosec // Gameplay randomness is not used for security.
 	}
 	return nil
 }
@@ -1160,6 +1175,9 @@ func (g *Game) saveShotQuiet(screen *ebiten.Image, name string) {
 
 	img := g.shots.pixels(screen.Bounds())
 	screen.ReadPixels(img.Pix)
+	if s := g.in.script; g.db.Game.Screen.Native && s != nil && s.size[0] > 0 {
+		img = letterboxShot(img, s.size[0], s.size[1])
+	}
 	g.shots.write(filepath.Join(g.shotDir(), name+".png"), img)
 }
 

@@ -140,6 +140,7 @@ GalleryScene:
   title: "The title shown for the scene in the gallery."
   when: "An expression that must hold for the scene to open."
 Game:
+  planning: "Optional typed entities, calendar, activities and period ledgers."
   _: "The contents of game.yaml: the game's title, screen and starting state."
   asides: "Events inserted after the lines of certain speakers, such as a moment of thought or a picture in the character's mind."
   battle: "The rules every battle shares."
@@ -213,6 +214,8 @@ General:
   tactic: "The tactic the sortie screen picks for them first, an ID of campaign.clash.tactics (or of the engine's)."
 
 AuthorScreen:
+  view: "Explicit public value columns, seating and portrait bindings for planning views."
+  kind: "Bind entities, timeline, calendar, ensemble or islands planning data."
   _: "An author-defined information or picture list opened by name."
   title: "The title, with text interpolation and translation."
   entries: "Selectable detail pages in authored order."
