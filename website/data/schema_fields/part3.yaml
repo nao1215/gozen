@@ -220,6 +220,8 @@ AuthorScreen:
   title: "The title, with text interpolation and translation."
   entries: "Selectable detail pages in authored order."
 ScreenEntry:
+  target: Planning entity ID whose seat opens this contextual action.
+  bounds: Direct action rectangle as logical x, y, width and height for full-screen views.
   _: "One detail page in an author-defined screen."
   do: "Optional event commands run once on confirmation; conditions and text refresh afterward."
   label: "Required label shown in the list."

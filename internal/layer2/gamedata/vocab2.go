@@ -98,10 +98,26 @@ func (c *checker) declarations() {
 		if screen.Title == "" || len(screen.Entries) == 0 && screen.Kind == "" {
 			c.errorf(diag.Shape, w, "a screen needs a title and at least one entry")
 		}
+		if screen.View.Fullscreen && (g.Planning == nil || screen.Kind == "") {
+			c.errorf(diag.Shape, w+".view.fullscreen", "full-screen planning surfaces require a planning kind")
+		}
 		c.planningView(w+".view", screen.View)
 		c.text(w+".title", screen.Title, FieldNames)
 		for i, e := range screen.Entries {
 			ew := fmt.Sprintf("%s.entries[%d]", w, i)
+			if len(e.Bounds) != 0 && (len(e.Bounds) != 4 || e.Bounds[0] < 0 || e.Bounds[1] < 0 || e.Bounds[2] <= 0 || e.Bounds[3] <= 0) {
+				c.errorf(diag.Shape, ew+".bounds", "want nonnegative x/y and positive width/height")
+			}
+			if e.Target != "" {
+				if !screen.View.Fullscreen || screen.Kind != "islands" || len(e.Bounds) > 0 {
+					c.errorf(diag.Shape, ew+".target", "contextual targets require a full-screen island view and no direct bounds")
+				}
+				if g.Planning == nil {
+					c.errorf(diag.Shape, ew+".target", "target requires planning data")
+				} else if _, ok := g.Planning.Entities[e.Target]; !ok {
+					c.errorf(diag.UnknownReference, ew+".target", "unknown entity %q", e.Target)
+				}
+			}
 			if e.Label == "" {
 				c.errorf(diag.Shape, ew, "an entry needs a label")
 			}

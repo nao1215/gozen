@@ -13480,8 +13480,34 @@
           },
           "x-type": "string"
         },
+        "date_format": {
+          "description": "Go time layout for dates; the literal {weekday} is replaced using weekdays.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "door": {
           "description": "Authored label on the island view's door.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "event_label": {
+          "description": "Calendar count suffix; omitted uses events.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -13511,6 +13537,45 @@
             "version": "0, 1, 2"
           },
           "x-type": "[PlanningField](#planningfield)[]"
+        },
+        "footer": {
+          "description": "Interpolated guidance text on the full-screen bottom strip.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "fullscreen": {
+          "description": "Use the entire play surface with authored action bounds and contextual entity actions.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "header": {
+          "description": "Interpolated status text on the full-screen top strip.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         },
         "icon": {
           "description": "Fixed public portrait binding for video-off participants.",
@@ -13557,6 +13622,25 @@
           },
           "x-type": "string[]"
         },
+        "phases": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Display labels keyed by calendar phase IDs.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → string"
+        },
         "portrait": {
           "description": "Public value containing a portrait asset path.",
           "type": "string",
@@ -13569,6 +13653,25 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "weekdays": {
+          "description": "Seven weekday labels starting with Sunday; omitted uses English.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
         }
       },
       "type": "object"
@@ -15285,6 +15388,25 @@
       "additionalProperties": false,
       "description": "One detail page in an author-defined screen.",
       "properties": {
+        "bounds": {
+          "description": "Direct action rectangle as logical x, y, width and height for full-screen views.",
+          "items": {
+            "type": "integer"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer[]"
+        },
         "do": {
           "description": "Optional event commands run once on confirmation; conditions and text refresh afterward.",
           "items": {
@@ -15319,6 +15441,19 @@
         },
         "picture": {
           "description": "Optional image path under assets/.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "target": {
+          "description": "Planning entity ID whose seat opens this contextual action.",
           "type": "string",
           "x-contract": {
             "default": "empty string",

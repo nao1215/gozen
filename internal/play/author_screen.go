@@ -1,7 +1,10 @@
 package play
 
 import (
+	"image"
 	"image/color"
+	"maps"
+	"slices"
 
 	"github.com/nao1215/gozen/internal/event"
 
@@ -12,16 +15,20 @@ import (
 
 // authorScreen presents an authored list without requiring a custom Go screen.
 type authorScreen struct {
-	name    string
-	title   string
-	indices []int
-	running bool
-	parent  *event.Runner
-	request event.Request
-	origin  string
-	entries []data.ScreenEntry
-	list    *list
-	done    func()
+	target       string
+	focus        int
+	popup        *list
+	popupIndices []int
+	name         string
+	title        string
+	indices      []int
+	running      bool
+	parent       *event.Runner
+	request      event.Request
+	origin       string
+	entries      []data.ScreenEntry
+	list         *list
+	done         func()
 }
 
 func newAuthorScreen(g *Game, name string, done func()) *authorScreen {
@@ -94,6 +101,10 @@ func (s *authorScreen) update(g *Game) {
 		s.refresh(g)
 		return
 	}
+	if g.db.Game.Screens[s.name].View.Fullscreen {
+		s.updateSurface(g)
+		return
+	}
 	chose, cancel := s.list.update(g)
 	if cancel {
 		g.pop()
@@ -142,6 +153,13 @@ func (s *authorScreen) activate(g *Game) {
 
 func (s *authorScreen) draw(g *Game, dst *ebiten.Image) {
 	if s.running {
+		if g.db.Game.Screens[s.name].View.Fullscreen {
+			s.drawSurface(g, dst)
+		}
+		return
+	}
+	if g.db.Game.Screens[s.name].View.Fullscreen {
+		s.drawSurface(g, dst)
 		return
 	}
 	sw, sh := g.screen()
@@ -170,4 +188,157 @@ func (s *authorScreen) draw(g *Game, dst *ebiten.Image) {
 		y += (sh-160)*0.55 + 16
 	}
 	g.drawLinesFit(dst, e.Text, x+20, y, w-40, sizeM, max(1, int((sh-y-52)/32)), g.th.text)
+}
+
+// surfaceTargets shares the exact resident layout with drawing.
+func (s *authorScreen) surfaceTargets(g *Game) ([]string, []image.Rectangle) {
+	def := g.db.Game.Screens[s.name]
+	if def.Kind != "islands" {
+		return nil, nil
+	}
+	sw, sh := g.screen()
+	ids := def.View.Order
+	if len(ids) == 0 {
+		ids = slices.Sorted(maps.Keys(g.db.Game.Planning.Entities))
+	}
+	return ids, planningCells(12, 48+60+116, sw*.72-24, sh-156-70-116, len(ids), 4)
+}
+
+func entryBounds(e data.ScreenEntry) image.Rectangle {
+	if len(e.Bounds) != 4 {
+		return image.Rectangle{}
+	}
+	return image.Rect(e.Bounds[0], e.Bounds[1], e.Bounds[0]+e.Bounds[2], e.Bounds[1]+e.Bounds[3])
+}
+
+func (s *authorScreen) openTarget(g *Game, id string, r image.Rectangle) {
+	s.target = id
+	s.popupIndices = nil
+	var items []listItem
+	for i, e := range s.entries {
+		if e.Target == id {
+			s.popupIndices = append(s.popupIndices, i)
+			items = append(items, listItem{label: e.Label})
+		}
+	}
+	if len(items) == 0 {
+		s.target = ""
+		s.popup = nil
+		return
+	}
+	sw, sh := g.screen()
+	s.popup = newList(items, min(float64(r.Min.X), sw-380), min(float64(r.Max.Y), sh-44*float64(len(items))-32), 360, max(1, len(items)))
+}
+
+func (s *authorScreen) closeSurface(g *Game) {
+	g.pop()
+	if s.done != nil {
+		s.done()
+	}
+}
+
+func (s *authorScreen) updateSurface(g *Game) {
+	if s.popup != nil {
+		r := image.Rect(int(s.popup.x), int(s.popup.y), int(s.popup.x+s.popup.w), int(s.popup.y+s.popup.height()))
+		if g.in.click && !g.in.mouse.In(r) {
+			s.popup = nil
+			s.target = ""
+			return
+		}
+		chose, cancel := s.popup.update(g)
+		if cancel {
+			s.popup = nil
+			s.target = ""
+			return
+		}
+		if chose && len(s.popupIndices) > 0 {
+			s.list.sel = s.popupIndices[s.popup.sel]
+			s.popup = nil
+			s.activate(g)
+		}
+		return
+	}
+	if g.in.cancel() {
+		s.closeSurface(g)
+		return
+	}
+	ids, cells := s.surfaceTargets(g)
+	var actions []int
+	for i, e := range s.entries {
+		if e.Target == "" && len(e.Bounds) == 4 {
+			actions = append(actions, i)
+		}
+	}
+	n := len(actions) + len(ids)
+	if n == 0 {
+		return
+	}
+	if g.in.down() {
+		s.focus = (s.focus + 1) % n
+	}
+	if g.in.up() {
+		s.focus = (s.focus + n - 1) % n
+	}
+	if g.in.click {
+		for i, r := range cells {
+			if g.in.mouse.In(r) {
+				s.focus = len(actions) + i
+				s.openTarget(g, ids[i], r)
+				return
+			}
+		}
+		for j, i := range actions {
+			if g.in.mouse.In(entryBounds(s.entries[i])) {
+				s.focus = j
+				s.list.sel = i
+				s.activate(g)
+				return
+			}
+		}
+	}
+	if g.in.ok() {
+		if s.focus < len(actions) {
+			s.list.sel = actions[s.focus]
+			s.activate(g)
+		} else {
+			i := s.focus - len(actions)
+			s.openTarget(g, ids[i], cells[i])
+		}
+	}
+}
+
+func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
+	sw, sh := g.screen()
+	def := g.db.Game.Screens[s.name]
+	v := def.View
+	fill(dst, color.NRGBA{30, 34, 40, 255})
+	s.drawPlanning(g, dst, def.Kind, 0, 48, sw, sh-156)
+	g.window(dst, 0, 0, sw, 48)
+	st := g.st.Planning
+	g.text(dst, planningDate(st.Date, g.db.Game.Planning.Calendar.Phases[st.Phase], v), 24, 12, sizeS, g.th.text)
+	g.text(dst, data.Render(g.db.Tr(v.Header), g.st.Env()), sw*.5, 12, sizeS, g.th.text)
+	g.window(dst, 0, sh-108, sw, 108)
+	g.drawLinesFit(dst, data.Render(g.db.Tr(v.Footer), g.st.Env()), 24, sh-88, sw*.70, sizeS, 2, g.th.text)
+	j := 0
+	for _, e := range s.entries {
+		if e.Target != "" || len(e.Bounds) != 4 {
+			continue
+		}
+		r := entryBounds(e)
+		g.window(dst, float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()))
+		tint := g.th.text
+		if j == s.focus {
+			tint = g.th.accent
+		}
+		g.drawLinesFit(dst, e.Label, float64(r.Min.X+10), float64(r.Min.Y+10), float64(r.Dx()-20), sizeS, 1, tint)
+		j++
+	}
+	_, cells := s.surfaceTargets(g)
+	if i := s.focus - j; i >= 0 && i < len(cells) {
+		r := cells[i]
+		rect(dst, float64(r.Min.X), float64(r.Max.Y-3), float64(r.Dx()), 3, g.th.accent)
+	}
+	if s.popup != nil {
+		s.popup.draw(g, dst, true)
+	}
 }

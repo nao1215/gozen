@@ -74,3 +74,16 @@ func TestEnsembleCellsLeaveDialogueClear(t *testing.T) {
 		}
 	}
 }
+
+func TestPlanningAuthoredDateLabels(t *testing.T) {
+	v := data.PlanningView{DateFormat: "1/2({weekday})", Weekdays: []string{"Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"}, Phases: map[string]string{"dawn": "Early"}}
+	if got := planningDate("2030-04-01", "dawn", v); got != "4/1(Mo) Early" {
+		t.Fatal(got)
+	}
+	if got := planningDate("2030-04-01", "", v); got != "4/1(Mo)" {
+		t.Fatal(got)
+	}
+	if got := planningEventLabel(data.PlanningView{}); got != "events" {
+		t.Fatal(got)
+	}
+}

@@ -8,6 +8,7 @@ import (
 	"math"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -32,8 +33,11 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 	if st == nil || p == nil {
 		return
 	}
-	g.window(dst, x, y, w, h)
-	g.text(dst, st.Date+" / "+p.Calendar.Phases[st.Phase], x+20, y+18, sizeM, g.th.accent)
+	v := g.db.Game.Screens[s.name].View
+	if !v.Fullscreen {
+		g.window(dst, x, y, w, h)
+		g.text(dst, planningDate(st.Date, p.Calendar.Phases[st.Phase], v), x+20, y+18, sizeM, g.th.accent)
+	}
 	y += 60
 	h -= 70
 	switch kind {
@@ -46,9 +50,17 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 		if err != nil {
 			return
 		}
+		for _, a := range p.Activities {
+			if d, err := time.Parse(time.DateOnly, a.From); err == nil && d.Before(start) {
+				start = d
+			}
+			if d, err := time.Parse(time.DateOnly, a.To); err == nil && d.After(end) {
+				end = d
+			}
+		}
 		days := end.Sub(start).Hours()/24 + 1
 		axisX, axisW := x+w*.48, w*.46
-		g.text(dst, start.Format("Jan 02")+" — "+end.Format("Jan 02"), axisX, y, 14, g.th.dim)
+		g.text(dst, start.Format("1/2")+" — "+end.Format("1/2"), axisX, y, 14, g.th.dim)
 		y += 24
 		h -= 24
 		ids := slices.Sorted(maps.Keys(st.Activities))
@@ -102,7 +114,11 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 		}
 		start = time.Date(start.Year(), start.Month(), 1, 0, 0, 0, 0, time.UTC)
 		cw, ch := (w-40)/7, (h-30)/6
-		for col, label := range []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"} {
+		weekdays := v.Weekdays
+		if len(weekdays) != 7 {
+			weekdays = []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
+		}
+		for col, label := range weekdays {
 			g.text(dst, label, x+20+float64(col)*cw, y, 16, g.th.dim)
 		}
 		for d := start; d.Month() == start.Month(); d = d.AddDate(0, 0, 1) {
@@ -122,7 +138,7 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 				count++
 			}
 			if count > 0 {
-				g.text(dst, fmt.Sprintf("%d events", count), xx+4, yy+29, 12, g.th.text)
+				g.text(dst, strconv.Itoa(count)+" "+planningEventLabel(v), xx+4, yy+29, 12, g.th.text)
 			}
 		}
 	case "entities", "ensemble", "islands":
@@ -169,7 +185,7 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 		}
 		g.text(dst, g.db.Game.Screens[s.name].Title, x+36, y+14, 18, color.Black)
 		rect(dst, x+w*.52, y+8, w*.25, 86, color.NRGBA{248, 248, 244, 255})
-		g.text(dst, g.st.Planning.Date, x+w*.53, y+16, 16, color.Black)
+		g.text(dst, planningDate(g.st.Planning.Date, "", v), x+w*.53, y+16, 16, color.Black)
 		date, err := time.Parse(time.DateOnly, g.st.Planning.Date)
 		if err != nil {
 			return
@@ -189,6 +205,11 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 		g.drawLinesFit(dst, v.Door, x+w*.82, y+20, w*.13, 16, 2, color.White)
 		y += 116
 		h -= 116
+		if v.Fullscreen {
+			rect(dst, x+w*.75, y+h*.20, w*.23, h*.72, color.NRGBA{174, 145, 105, 255})
+			rect(dst, x+w*.77, y+h*.24, w*.19, h*.50, color.NRGBA{53, 58, 60, 255})
+			w *= .72
+		}
 	}
 	for i, r := range planningCells(x+12, y, w-24, h, len(ids), cols) {
 		id := ids[i]
@@ -319,4 +340,33 @@ func (g *Game) planningBackdrop(dst *ebiten.Image, path string, masked bool, x, 
 	op.GeoM.Scale(w/float64(img.Bounds().Dx()), h/float64(img.Bounds().Dy()))
 	op.GeoM.Translate(x, y)
 	gfx.DrawImage(dst, img, op)
+}
+
+func planningEventLabel(v data.PlanningView) string {
+	if v.EventLabel != "" {
+		return v.EventLabel
+	}
+	return "events"
+}
+
+func planningDate(date, phase string, v data.PlanningView) string {
+	d, err := time.Parse(time.DateOnly, date)
+	if err != nil {
+		return date
+	}
+	layout := v.DateFormat
+	if layout == "" {
+		layout = time.DateOnly
+	}
+	label := d.Format(layout)
+	if len(v.Weekdays) == 7 {
+		label = strings.ReplaceAll(label, "{weekday}", v.Weekdays[d.Weekday()])
+	}
+	if translated := v.Phases[phase]; translated != "" {
+		phase = translated
+	}
+	if phase == "" {
+		return label
+	}
+	return label + " " + phase
 }

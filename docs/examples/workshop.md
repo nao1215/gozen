@@ -27,3 +27,18 @@ A snapshot is a full development record, including hidden state. It must not be
 shown as a player-facing report. Repeat policy invocations with a bounded script
 to measure a complete run. See [ADR 0053](../decisions/0053-planning-components.md)
 for the current limits. The fixture contains no third-party artwork.
+
+Planning screens can opt into `view.fullscreen: true`. The screen then fills the
+play surface with a date and status strip, its planning view, and a footer.
+`header` and `footer` accept ordinary text interpolation. `date_format` uses Go
+time layout tokens; `{weekday}` uses the seven `weekdays` labels, starting with
+Sunday. `phases` maps calendar IDs to display labels and `event_label` replaces
+the calendar count suffix. Omitted labels retain English defaults.
+
+In this mode, an entry's `bounds: [x, y, width, height]` places a direct action in
+logical screen coordinates. An entry's `target: potter` instead puts that action
+in the potter's seat menu. Its usual `when` condition still controls visibility.
+Up and down select direct actions and seats; confirm opens or executes the
+selection, and cancel dismisses a seat menu before closing the screen. Mouse
+users select the same rectangles. A timeline includes the full planned activity
+range, even when an activity finishes after the playable calendar ends.

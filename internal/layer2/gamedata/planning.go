@@ -420,6 +420,17 @@ func (c *checker) planningPure(w string, e Expr) {
 // PlanningView selects only explicitly named player values for presentation.
 // Order controls seating; fields and portrait bindings never read hidden state.
 type PlanningView struct {
+	// Fullscreen uses the play surface, with authored hotspots and entity actions.
+	Fullscreen bool `yaml:"fullscreen"`
+	// Header and Footer are rendered through the ordinary text interpolator.
+	Header string `yaml:"header"`
+	Footer string `yaml:"footer"`
+	// DateFormat uses Go time layout tokens. Weekdays and Phases replace display labels.
+	DateFormat string            `yaml:"date_format"`
+	Weekdays   []string          `yaml:"weekdays"`
+	Phases     map[string]string `yaml:"phases"`
+	EventLabel string            `yaml:"event_label"`
+
 	Icon     string          `yaml:"icon"`
 	Order    []string        `yaml:"order"`
 	Fields   []PlanningField `yaml:"fields"`
@@ -445,6 +456,11 @@ func (c *checker) planningView(w string, v PlanningView) {
 	if p == nil {
 		return
 	}
+	if len(v.Weekdays) != 0 && len(v.Weekdays) != 7 {
+		c.errorf(diag.Shape, w+".weekdays", "provide seven weekday labels")
+	}
+	c.text(w+".header", v.Header, FieldNames)
+	c.text(w+".footer", v.Footer, FieldNames)
 	seen := map[string]bool{}
 	for _, id := range v.Order {
 		if _, ok := p.Entities[id]; !ok || seen[id] {

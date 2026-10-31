@@ -1714,6 +1714,11 @@ type AuthorScreen struct {
 
 // ScreenEntry is one selectable detail page in an author-defined screen.
 type ScreenEntry struct {
+	// Target binds a contextual action to a planning entity; Bounds places a
+	// direct action in logical screen coordinates [x, y, width, height].
+	Target string `yaml:"target"`
+	Bounds []int  `yaml:"bounds"`
+
 	// Do runs through the ordinary event interpreter when the player confirms.
 	Do      []Command `yaml:"do"`
 	Label   string    `yaml:"label"`

@@ -252,3 +252,36 @@ func TestAuthorScreenReloadActiveDialogue(t *testing.T) {
 		t.Fatal("list still running")
 	}
 }
+
+func TestFullScreenContextUsesVisibleTargetActions(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{Entities: map[string]data.Entity{"artisan": {}, "gardener": {}}}
+	db.Game.Screens = map[string]*data.AuthorScreen{"workshop": {
+		Kind: "islands", Title: "Workshop", View: data.PlanningView{Fullscreen: true},
+		Entries: []data.ScreenEntry{
+			{Label: "Plan", Bounds: []int{20, 20, 120, 40}},
+			{Label: "Rest", Target: "artisan"},
+			{Label: "Water", Target: "gardener"},
+			{Label: "Repair", Target: "artisan", When: data.Expr{Expr: testgame.Expr("flag.broken")}},
+		},
+	}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "workshop", nil)
+	ids, cells := s.surfaceTargets(g)
+	if len(ids) != 2 || ids[0] != "artisan" {
+		t.Fatalf("default seat order: %v", ids)
+	}
+	s.openTarget(g, ids[0], cells[0])
+	if len(s.popupIndices) != 1 || s.entries[s.popupIndices[0]].Label != "Rest" {
+		t.Fatalf("unrelated or invisible action leaked: %v", s.popupIndices)
+	}
+	g.st.Flags["broken"] = true
+	s.refresh(g)
+	s.openTarget(g, ids[0], cells[0])
+	if len(s.popupIndices) != 2 || s.entries[s.popupIndices[1]].Label != "Repair" {
+		t.Fatal("visibility was not refreshed")
+	}
+	if r := entryBounds(s.entries[0]); r.Dx() != 120 || r.Dy() != 40 {
+		t.Fatal(r)
+	}
+}

@@ -73,6 +73,13 @@ PolicyRule:
   when: "Condition evaluated from visible entity and activity observations. Omitted means true."
   event: "Existing event to run through the ordinary interpreter."
 PlanningView:
+  fullscreen: Use the entire play surface with authored action bounds and contextual entity actions.
+  header: Interpolated status text on the full-screen top strip.
+  footer: Interpolated guidance text on the full-screen bottom strip.
+  date_format: Go time layout for dates; the literal {weekday} is replaced using weekdays.
+  weekdays: Seven weekday labels starting with Sunday; omitted uses English.
+  phases: Display labels keyed by calendar phase IDs.
+  event_label: Calendar count suffix; omitted uses events.
   icon: Fixed public portrait binding for video-off participants.
   _: Explicit player-facing columns, seating and observed image bindings for planning screens.
   order: Entity IDs in seat order; omitted order uses ascending IDs.
