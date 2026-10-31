@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 )
 
 // Hurt is a command that reduces the HP of the given party member outside battle. The self in amount is the target member.
@@ -319,6 +320,35 @@ var commandFields = func() []commandField {
 func (c *Command) UnmarshalYAML(unmarshal func(any) error) error {
 	type plain Command
 	var out plain
+	// Inspect only the keys of ordinary commands. Decoding their entire subtree
+	// into an untyped map first repeats that work at every nesting level. Keep
+	// the caller's decoder for values so aliases retain their document context.
+	var node ast.Node
+	if err := unmarshal(&node); err != nil {
+		return err
+	}
+	if mapping, ok := node.(*ast.MappingNode); ok {
+		allKnown := true
+		for _, entry := range mapping.Values {
+			key, _ := decodedKey(entry.Key)
+			if !commandKeys[key] {
+				allKnown = false
+				break
+			}
+		}
+		if allKnown {
+			if err := unmarshal(&out); err != nil {
+				return err
+			}
+			for _, entry := range mapping.Values {
+				key, _ := decodedKey(entry.Key)
+				out.given = append(out.given, key)
+			}
+			*c = Command(out)
+			return nil
+		}
+	}
+	// Aliases and custom commands need the decoded key/value representation.
 	var raw yaml.MapSlice
 	if err := unmarshal(&raw); err != nil {
 		return err

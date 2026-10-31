@@ -201,3 +201,34 @@ func TestCaptureCommandAdmissionValidation(t *testing.T) {
 		t.Fatalf("capture before schema version 6: %v", err)
 	}
 }
+
+func BenchmarkNestedCommands(b *testing.B) {
+	source := `{say: {who: guide, text: "Ready?"}}`
+	for range 7 {
+		source = `{if: true, then: [` + source + `], else: [{wait: 0}]}`
+	}
+	source = "[" + strings.Repeat(source+",", 40) + "]"
+	b.ReportAllocs()
+	for b.Loop() {
+		var commands []data.Command
+		if err := yaml.UnmarshalWithOptions([]byte(source), &commands, yaml.Strict()); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestNestedCommandAliases(t *testing.T) {
+	var commands []data.Command
+	source := `
+- say: &line {who: guide, text: Ready}
+- say: *line
+- &branch {if: true, then: [{say: *line}]}
+- *branch
+`
+	if err := yaml.UnmarshalWithOptions([]byte(source), &commands, yaml.Strict()); err != nil {
+		t.Fatal(err)
+	}
+	if len(commands) != 4 || commands[0].Say.Text != "Ready" || commands[1].Say.Text != "Ready" || commands[2].Then[0].Say.Text != "Ready" || commands[3].Then[0].Say.Text != "Ready" {
+		t.Fatalf("alias content changed: %+v", commands)
+	}
+}
