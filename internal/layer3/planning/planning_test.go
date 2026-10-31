@@ -239,3 +239,84 @@ func TestLedgerRetentionKeepsClosure(t *testing.T) {
 		t.Fatal("pruned closed period was reopened")
 	}
 }
+
+func TestEffortChangesCompletionDependenciesAndSave(t *testing.T) {
+	s := state(t)
+	apply(t, s, data.PlanCommand{Op: "progress", Activity: "prepare", Value: value(t, "2")})
+	apply(t, s, data.PlanCommand{Op: "effort", Activity: "prepare", Value: value(t, "activity.prepare.effort * 2")})
+	if s.Planning.Activities["prepare"].Completed != "" || s.ActivityEffort("prepare") != 4 {
+		t.Fatal("increased budget did not reopen completed work")
+	}
+	apply(t, s, data.PlanCommand{Op: "progress", Activity: "shape", Value: value(t, "4")})
+	if s.Planning.Activities["shape"].Progress != 0 {
+		t.Fatal("dependency used the old budget")
+	}
+	restored, err := rpg.Parse(s.DB, snapshot(t, s), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, st := range []*rpg.State{s, restored} {
+		apply(t, st, data.PlanCommand{Op: "effort", Activity: "prepare", Value: value(t, "1")})
+		a := st.Planning.Activities["prepare"]
+		if a.Progress != 1 || a.Observed != 1 || a.Completed == "" {
+			t.Fatalf("reduced budget did not clamp and complete: %+v", a)
+		}
+		apply(t, st, data.PlanCommand{Op: "progress", Activity: "shape", Value: value(t, "4")})
+		if st.Planning.Activities["shape"].Completed == "" {
+			t.Fatal("reduced dependency did not unlock work")
+		}
+	}
+	if !reflect.DeepEqual(s.Planning, restored.Planning) {
+		t.Fatal("resumed effort changes differ")
+	}
+	for _, input := range []string{"0", "-1", `"invalid"`, "1/0"} {
+		before := snapshot(t, s)
+		if _, err := planning.Apply(s, data.PlanCommand{Op: "effort", Activity: "shape", Value: value(t, input)}); err == nil || string(before) != string(snapshot(t, s)) {
+			t.Fatalf("invalid effort %s was accepted or mutated state", input)
+		}
+	}
+	for _, invalid := range []float64{-1, .5} {
+		var envelope struct {
+			State map[string]any `json:"state"`
+		}
+		if err := json.Unmarshal(snapshot(t, s), &envelope); err != nil {
+			t.Fatal(err)
+		}
+		plan, ok := envelope.State["planning"].(map[string]any)
+		if !ok {
+			t.Fatal("missing planning state")
+		}
+		activities, ok := plan["activities"].(map[string]any)
+		if !ok {
+			t.Fatal("missing activities")
+		}
+		activity, ok := activities["prepare"].(map[string]any)
+		if !ok {
+			t.Fatal("missing activity")
+		}
+		activity["effort"] = invalid
+		corrupt, err := json.Marshal(envelope.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Keep the ordinary envelope metadata while replacing only its state.
+		var saved map[string]json.RawMessage
+		if err := json.Unmarshal(snapshot(t, s), &saved); err != nil {
+			t.Fatal(err)
+		}
+		saved["state"] = corrupt
+		encoded, err := json.Marshal(saved)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := rpg.Parse(s.DB, encoded, nil); err == nil {
+			t.Fatalf("accepted saved effort %g inconsistent with progress", invalid)
+		}
+	}
+	// Unmodified saves omit the override and still use the definition's budget.
+	legacy := state(t)
+	loaded, err := rpg.Parse(legacy.DB, snapshot(t, legacy), nil)
+	if err != nil || loaded.ActivityEffort("prepare") != 2 {
+		t.Fatalf("legacy budget: %v", err)
+	}
+}

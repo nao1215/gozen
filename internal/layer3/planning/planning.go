@@ -89,7 +89,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 		// Shadow hidden activity progress as well as entity attributes.
 		activities := expr.Map{}
 		for id, a := range st.Activities {
-			activities[id] = expr.Map{"progress": a.Observed, "effort": p.Activities[id].Effort, "assignee": a.Assignee}
+			activities[id] = expr.Map{"progress": a.Observed, "effort": s.ActivityEffort(id), "assignee": a.Assignee}
 		}
 		env := expr.Chain{expr.Map{"entity": entities, "activity": activities}, base}
 		for _, r := range rules {
@@ -174,7 +174,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 			keys = keys[1:]
 		}
 		return nil, nil
-	case "progress":
+	case "progress", "effort":
 		a := st.Activities[c.Activity]
 		if a == nil {
 			return nil, fmt.Errorf("unknown activity %q", c.Activity)
@@ -186,7 +186,15 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 		}
 		n, ok := expr.ToNumber(v)
 		if !ok || math.IsNaN(n) || math.IsInf(n, 0) {
-			return nil, errors.New("progress requires a finite number")
+			return nil, fmt.Errorf("%s requires a finite number", c.Op)
+		}
+		if c.Op == "effort" {
+			if n <= 0 {
+				return nil, errors.New("effort requires a positive number")
+			}
+			a.Effort = n
+			a.Observed = min(a.Observed, n)
+			n = 0
 		}
 		if n > 0 {
 			for _, dep := range p.Activities[c.Activity].After {
@@ -194,13 +202,13 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 				if p.Activities[c.Activity].DependencyRatio != nil {
 					ratio = *p.Activities[c.Activity].DependencyRatio
 				}
-				if st.Activities[dep].Progress < p.Activities[dep].Effort*ratio {
+				if st.Activities[dep].Progress < s.ActivityEffort(dep)*ratio {
 					return nil, nil
 				}
 			}
 		}
-		a.Progress = max(0, min(p.Activities[c.Activity].Effort, a.Progress+n))
-		if a.Progress < p.Activities[c.Activity].Effort {
+		a.Progress = max(0, min(s.ActivityEffort(c.Activity), a.Progress+n))
+		if a.Progress < s.ActivityEffort(c.Activity) {
 			a.Completed = ""
 		} else if a.Completed == "" {
 			a.Completed = st.Date
@@ -221,7 +229,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 				a.Observed = a.Progress
 				continue
 			}
-			env := expr.Chain{expr.Map{"self": expr.Map{"progress": a.Progress, "effort": def.Effort, "assignee": a.Assignee}}, base}
+			env := expr.Chain{expr.Map{"self": expr.Map{"progress": a.Progress, "effort": s.ActivityEffort(id), "assignee": a.Assignee}}, base}
 			v, err := def.Observation.Eval(env)
 			if err != nil {
 				return nil, err
@@ -230,7 +238,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 			if !ok || math.IsNaN(n) || math.IsInf(n, 0) {
 				return nil, errors.New("activity observation must be finite")
 			}
-			a.Observed = max(0, min(def.Effort, n))
+			a.Observed = max(0, min(s.ActivityEffort(id), n))
 		}
 	}
 	if c.Entity != "" && st.Entities[c.Entity] == nil {

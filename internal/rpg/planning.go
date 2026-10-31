@@ -33,10 +33,26 @@ type EntityState struct {
 // ActivityState tracks assignment and reversible completion independently of actors.
 type ActivityState struct {
 	Observed float64 `json:"observed"`
+	Effort   float64 `json:"effort,omitempty"` // Zero retains the authored effort for older saves.
 
 	Assignee  string  `json:"assignee"`
 	Progress  float64 `json:"progress"`
 	Completed string  `json:"completed"`
+}
+
+// ActivityEffort supplies the current work budget to rules and presentation.
+// A zero saved override uses the authored budget, preserving older saves.
+// Unknown IDs return zero; callers must validate activity references first.
+func (s *State) ActivityEffort(id string) float64 {
+	if s.Planning != nil {
+		if a := s.Planning.Activities[id]; a != nil && a.Effort != 0 {
+			return a.Effort
+		}
+	}
+	if s.DB.Game.Planning != nil {
+		return s.DB.Game.Planning.Activities[id].Effort
+	}
+	return 0
 }
 
 func (s *State) initPlanning() {
@@ -118,7 +134,7 @@ func (s *State) planningLookup(name string) (any, bool) {
 		}
 	case "activity":
 		for id, a := range st.Activities {
-			out[id] = expr.Map{"progress": a.Progress, "effort": p.Activities[id].Effort, "assignee": a.Assignee, "completed": a.Completed != ""}
+			out[id] = expr.Map{"progress": a.Progress, "effort": s.ActivityEffort(id), "assignee": a.Assignee, "completed": a.Completed != ""}
 		}
 	}
 	return out, true
@@ -171,8 +187,9 @@ func (s *State) validatePlanning() error {
 		}
 	}
 	for id, a := range st.Activities {
-		def, ok := p.Activities[id]
-		if !ok || a == nil || math.IsNaN(a.Progress) || math.IsInf(a.Progress, 0) || a.Progress < 0 || a.Progress > def.Effort || math.IsNaN(a.Observed) || math.IsInf(a.Observed, 0) || a.Observed < 0 || a.Observed > def.Effort {
+		_, ok := p.Activities[id]
+		effort := s.ActivityEffort(id)
+		if !ok || a == nil || math.IsNaN(a.Effort) || math.IsInf(a.Effort, 0) || a.Effort < 0 || math.IsNaN(a.Progress) || math.IsInf(a.Progress, 0) || a.Progress < 0 || a.Progress > effort || math.IsNaN(a.Observed) || math.IsInf(a.Observed, 0) || a.Observed < 0 || a.Observed > effort {
 			return fmt.Errorf("planning.activities.%s: invalid progress", id)
 		}
 		if a.Assignee != "" {
@@ -180,7 +197,7 @@ func (s *State) validatePlanning() error {
 				return fmt.Errorf("planning.activities.%s: unknown assignee", id)
 			}
 		}
-		if (a.Completed != "") != (a.Progress == def.Effort) {
+		if (a.Completed != "") != (a.Progress == effort) {
 			return fmt.Errorf("planning.activities.%s: invalid completion", id)
 		}
 		if a.Completed != "" {

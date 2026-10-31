@@ -37,6 +37,13 @@ Progress clamps to zero and effort, and rework reopens completed work. A depende
 ratio defaults to one and may be specified per activity. Explicit operation order
 decides whether work completed earlier in a phase enables subsequent work.
 
+The `effort` operation sets a finite, positive activity budget with `activity`
+and `value`, for example `{plan: {op: effort, activity: prepare, value: 'activity.prepare.effort * 1.5'}}`.
+It preserves completed work units, clamps progress and observations to a reduced
+budget, and reopens work when the new budget exceeds progress. Dependencies,
+observations, policies and views use the current budget. The override is saved;
+older saves without it retain the authored budget. Invalid values fail atomically.
+
 Monthly ledgers accept explicit historical periods until closed. Closing twice or
 writing a closed month fails. Retention removes old totals but retains closed
 period markers so pruned periods cannot be reopened. Closure is explicit, allowing

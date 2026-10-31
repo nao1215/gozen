@@ -99,7 +99,7 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 			gfx.StrokeLine(dst, float32(axisX), float32(yy+14), float32(axisX+axisW), float32(yy+14), 1, g.th.dim, true)
 			if right > left {
 				rect(dst, axisX+axisW*left, yy+6, axisW*(right-left), 10, color.NRGBA{160, 190, 235, 255})
-				actual := max(0, min(1, a.Observed/d.Effort))
+				actual := max(0, min(1, a.Observed/g.st.ActivityEffort(id)))
 				tint := g.th.accent
 				today, err := time.Parse(time.DateOnly, st.Date)
 				if err != nil {
@@ -111,7 +111,7 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 				}
 				rect(dst, axisX+axisW*left, yy+18, axisW*(right-left)*actual, 8, tint)
 			}
-			g.text(dst, fmt.Sprintf("%.1f / %.1f", a.Observed, d.Effort), x+w*.28, yy+28, 16, g.th.text)
+			g.text(dst, fmt.Sprintf("%.1f / %.1f", a.Observed, g.st.ActivityEffort(id)), x+w*.28, yy+28, 16, g.th.text)
 		}
 		today, err := time.Parse(time.DateOnly, st.Date)
 		if err != nil {
@@ -189,7 +189,7 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 		rect(dst, x+24, y+8, w*.46, 86, color.NRGBA{248, 248, 244, 255})
 		total, done := 0.0, 0.0
 		for id, a := range g.st.Planning.Activities {
-			total += p.Activities[id].Effort
+			total += g.st.ActivityEffort(id)
 			done += a.Observed
 		}
 		if total > 0 {
@@ -403,7 +403,7 @@ func (s *authorScreen) drawEntityDetail(g *Game, dst *ebiten.Image, x, y, w, h f
 			continue
 		}
 		d := p.Activities[id]
-		g.drawLinesFit(dst, fmt.Sprintf("%s  %.0f%%", d.Name, 100*a.Observed/d.Effort), x+16, yy, w-44, 16, 1, g.th.text)
+		g.drawLinesFit(dst, fmt.Sprintf("%s  %.0f%%", d.Name, 100*a.Observed/g.st.ActivityEffort(id)), x+16, yy, w-44, 16, 1, g.th.text)
 		yy += 24
 	}
 	g.drawLinesFit(dst, fmt.Sprint(g.st.EntityValues(s.target, false)[v.Detail]), x+16, yy+16, w-44, 16, max(1, int((y+h-yy-24)/24)), g.th.text)

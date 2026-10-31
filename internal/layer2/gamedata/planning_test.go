@@ -11,6 +11,8 @@ func TestPlanningDiagnostics(t *testing.T) {
 	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n"
 	source := regexp.MustCompile(`game\.yaml:\d+:\d+:`)
 	for _, tc := range []struct{ body, want string }{
+		{"  activities: {a: {effort: 2}}\n  rules: {resize: {do: [{op: effort, activity: missing, value: 3}]}}\n", "unknown activity"},
+		{"  activities: {a: {effort: 2}}\n  rules: {resize: {do: [{op: effort, activity: a}]}}\n", "operation requires a value"},
 		{"  attributes: {vigor: {type: number, initial: true}}\n", "expected a finite number"},
 		{"  attributes: {vigor: {type: number, initial: 7, max: 5}}\n", "outside declared range"},
 		{"  attributes: {vigor: {type: number, initial: 7}}\n  entities: {potter: {attributes: {unknown: 4}}}\n", "unknown attribute"},
