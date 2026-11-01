@@ -318,7 +318,7 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 				rect(dst, xx, yy, cw, 28, g.th.accent)
 				g.drawPlanningText(dst, badge, xx+8, yy+4, cw-16, 15, 1, color.Black)
 			}
-			if g.talk.active && g.talk.say.Actor != "" && p.Entities[id].Actor == g.talk.say.Actor {
+			if values[v.Highlight] == true || (g.talk.active && g.talk.say.Actor != "" && p.Entities[id].Actor == g.talk.say.Actor) {
 				rect(dst, xx, yy, cw, 3, g.th.accent)
 				rect(dst, xx, yy+ch-3, cw, 3, g.th.accent)
 				rect(dst, xx, yy, 3, ch, g.th.accent)

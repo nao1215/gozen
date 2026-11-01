@@ -13635,6 +13635,19 @@
           },
           "x-type": "string"
         },
+        "highlight": {
+          "description": "Optional public boolean binding that outlines ensemble tiles when exactly true. Missing or non-boolean values do not highlight; use a badge to explain the meaning.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "icon": {
           "description": "Fixed public portrait binding for video-off participants.",
           "type": "string",

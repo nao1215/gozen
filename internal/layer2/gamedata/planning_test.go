@@ -35,12 +35,37 @@ func TestPlanningDiagnostics(t *testing.T) {
 }
 
 func TestPlanningViewRejectsHiddenColumnsAndBindings(t *testing.T) {
-	for _, view := range []string{"visible: reserve", "visible: unknown", "fields: [{key: reserve, label: Reserve}]", "portrait: reserve", "detail: reserve", "weekdays: [Sun]", "order: [missing]", "fields: [{key: name, maximum: 10, marks: [11]}]"} {
+	for _, view := range []string{"highlight: reserve", "highlight: unknown", "visible: reserve", "visible: unknown", "fields: [{key: reserve, label: Reserve}]", "portrait: reserve", "detail: reserve", "weekdays: [Sun]", "order: [missing]", "fields: [{key: name, maximum: 10, marks: [11]}]"} {
 		src := "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  attributes: {reserve: {type: number, initial: 5, hidden: true}}\n  entities: {potter: {name: Potter}}\nscreens:\n  board:\n    title: Board\n    kind: entities\n    view: {" + view + "}\n"
 		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(src)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
 		if err == nil {
 			t.Fatalf("accepted invalid view: %s", view)
 		}
+	}
+}
+
+func TestPlanningEnsembleHighlightObservation(t *testing.T) {
+	const src = `schema_version: 9
+id: workshop
+start: {location: room}
+planning:
+  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}
+  attributes: {reserve: {type: number, initial: 5, hidden: true}}
+  entities:
+    potter:
+      observations: {attention: 'self.reserve < 3'}
+screens:
+  gathering:
+    title: Gathering
+    kind: ensemble
+    view: {highlight: attention}
+`
+	db, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(src)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := db.Game.Screens["gathering"].View.Highlight; got != "attention" {
+		t.Fatalf("highlight binding = %q", got)
 	}
 }
 

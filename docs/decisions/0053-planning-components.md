@@ -119,6 +119,9 @@ public `badge` binding appears in a contrasting strip above the portrait; empty
 badges add no strip. Fullscreen ensembles also retain the authored date and
 header during dialogue. Header columns use normal-size text with ellipsis for
 overflow, shared with the fullscreen planning surfaces.
+The optional public boolean `highlight` binding outlines ensemble tiles even
+when nobody is speaking. Only an exact true value enables the outline; missing
+or non-boolean observations do not. A badge can explain the highlight in words.
 Fullscreen entry `text` is visible below its label when its bounds are at least
 72 logical pixels high. This supports an authored agenda or notice card without
 adding another source of state. Target action menus have a resident heading,

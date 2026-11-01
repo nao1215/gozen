@@ -77,6 +77,7 @@ PlanningView:
   rows: Optional grouped timeline rows. The calendar range stays fixed and oversized tables scroll by group.
   markers: Named date annotations on the grouped timeline calendar band.
   visible: Optional public boolean binding; only true residents are displayed and selectable. Missing values hide the resident.
+  highlight: Optional public boolean binding that outlines ensemble tiles when exactly true. Missing or non-boolean values do not highlight; use a badge to explain the meaning.
   detail: Public text binding for the selected entity pane, shown alongside its assigned activities.
   fullscreen: Use the entire play surface with authored action bounds and contextual entity actions.
   header: Interpolated status text on the full-screen top strip.

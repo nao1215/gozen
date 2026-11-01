@@ -430,6 +430,9 @@ type PlanningView struct {
 
 	// Visible binds an optional public boolean; only true values show a resident.
 	Visible string `yaml:"visible"`
+	// Highlight binds a public boolean used by play to outline ensemble tiles.
+	// Missing, false or non-boolean values leave the tile unaccented.
+	Highlight string `yaml:"highlight"`
 	// Fullscreen uses the play surface, with authored hotspots and entity actions.
 	Fullscreen bool `yaml:"fullscreen"`
 	// Header and Footer are rendered through the ordinary text interpolator.
@@ -539,7 +542,7 @@ func (c *checker) planningView(w string, v PlanningView) {
 		}
 		seen[id] = true
 	}
-	keys := []string{v.Visible, v.Detail, v.Icon, v.Portrait, v.Camera, v.Badge, v.Backdrop, v.Mask}
+	keys := []string{v.Visible, v.Highlight, v.Detail, v.Icon, v.Portrait, v.Camera, v.Badge, v.Backdrop, v.Mask}
 	for _, f := range v.Fields {
 		keys = append(keys, f.Key)
 		if f.Maximum < 0 || math.IsNaN(f.Maximum) || math.IsInf(f.Maximum, 0) {
