@@ -625,3 +625,12 @@ continue and the player can close existing screens. Built-in overlays do not
 count; returning from a child makes room for another child. This closes a live
 navigation mismatch discovered before implementing player continuation replay.
 It is not evidence that the player can restore a saved screen transcript.
+
+### Development reload boundary
+
+The player also defers definition reload while an authored screen is open. The
+previous live-view refresh restored entry dialogue but lost the suspended opener;
+keeping runner pointers would instead bind them to the discarded state. Reload
+therefore waits for screen close and caller completion through the existing idle
+queue. This covers preview, active dialogue and completed entry phases. It does
+not change the save format or claim that player screen restoration is implemented.

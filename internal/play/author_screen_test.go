@@ -339,50 +339,72 @@ func TestAuthorScreenTraceReplay(t *testing.T) {
 	}
 }
 
-func TestAuthorScreenReloadCompletedAction(t *testing.T) {
-	fsys := wldWorldFiles(t, `screens:
-  stock:
-    title: Stock
-    entries: [{label: Add, text: 'Boards: {var.boards}', do: [{set: {var.boards: 'var.boards + 1'}}]}]
-`, map[string]string{"data/stock.yaml": "locations: {workshop: {name: Workshop, on_enter: [{open: stock}]}}"})
-	g := wldOpenWith(t, Options{FS: fsys, Location: "workshop"})
-	wldFrames(t, g, 30)
-	wldPlay(t, g, "press z\nwait 10\n", 50)
-	if g.st.Vars["boards"] != float64(1) {
-		t.Fatalf("before reload: %v", g.st.Vars)
-	}
-	g.reload()
-	wldFrames(t, g, 10)
-	if g.st.Vars["boards"] != float64(1) {
-		t.Fatalf("reload lost completed action: %v", g.st.Vars)
-	}
-}
-
-func TestAuthorScreenReloadActiveDialogue(t *testing.T) {
-	fsys := wldWorldFiles(t, `screens:
+func TestAuthorScreenReloadContinuation(t *testing.T) {
+	for _, phase := range []string{"preview", "dialogue", "completed"} {
+		t.Run(phase, func(t *testing.T) {
+			fsys := wldWorldFiles(t, `screens:
   stock:
     title: Stock
     entries:
       - label: Add
         do: [{set: {var.boards: 'var.boards + 1'}}, {say: Added.}, {set: {var.finished: 'var.finished + 1'}}]
-`, map[string]string{"data/stock.yaml": "locations: {workshop: {name: Workshop, on_enter: [{open: stock}]}}"})
-	g := wldOpenWith(t, Options{FS: fsys, Location: "workshop"})
-	wldFrames(t, g, 30)
-	wldPlay(t, g, "press z\nwait 10\n", 50)
-	if !g.talk.active || g.st.Vars["boards"] != float64(1) {
-		t.Fatalf("before reload: %v", g.st.Vars)
-	}
-	g.reload()
-	wldFrames(t, g, 10)
-	if !g.talk.active || g.st.Vars["boards"] != float64(1) {
-		t.Fatalf("reload dialogue: %v talk %v", g.st.Vars, g.talk.active)
-	}
-	wldPlay(t, g, "wait 40\npress z\nwait 8\n", 100)
-	if g.st.Vars["boards"] != float64(1) || g.st.Vars["finished"] != float64(1) {
-		t.Fatalf("reload duplicated/lost commands: %v", g.st.Vars)
-	}
-	if s := sysAs[*authorScreen](t, g.stack[len(g.stack)-1]); s.running {
-		t.Fatal("list still running")
+`, map[string]string{"data/stock.yaml": `events:
+  stock_open:
+    do:
+      - open: stock
+      - set: {var.closed: 'var.closed + 1'}
+      - say: Returned.
+      - set: {var.returned: 'var.returned + 1'}
+`})
+			g := wldOpenWith(t, Options{FS: fsys, Location: "camp", Seed: 17, Development: true})
+			wldFrames(t, g, 30)
+			wldStartEvent(t, g, "stock_open")
+			wldFrames(t, g, 4)
+			if phase != "preview" {
+				wldPlay(t, g, "press z\nwait 8\n", 40)
+			}
+			if phase == "completed" {
+				wldPlay(t, g, "wait 40\npress z\nwait 8\n", 100)
+			}
+			// A changed definition must wait for the entire suspended call.
+			fsys["game.yaml"].Data = bytes.ReplaceAll(fsys["game.yaml"].Data, []byte("title: Stock"), []byte("title: New stock"))
+			state, runner, db := g.st, g.events, g.db
+			rng, err := g.pcg.MarshalBinary()
+			if err != nil {
+				t.Fatal(err)
+			}
+			g.reload()
+			if g.st != state || g.events != runner || g.db != db || !g.live.pending {
+				t.Error("reload replaced a suspended screen continuation instead of deferring")
+			}
+			after, err := g.pcg.MarshalBinary()
+			if err != nil || !bytes.Equal(rng, after) {
+				t.Fatalf("deferred reload changed randomness: %v", err)
+			}
+			if phase == "dialogue" {
+				wldPlay(t, g, "wait 40\npress z\nwait 8\n", 100)
+			}
+			wldPlay(t, g, "press x\nwait 8\n", 40)
+			if g.st.Vars["closed"] != float64(1) || !g.talk.active || !g.live.pending || g.db != db {
+				t.Errorf("close lost caller or reloaded before caller finished: %v", g.st.Vars)
+			}
+			// Repeated reload requests after close must not bypass the queue
+			// while the caller still has dialogue and effects to complete.
+			g.reload()
+			if !g.live.pending || g.db != db || !g.talk.active {
+				t.Fatal("repeated reload discarded the caller")
+			}
+			wldPlay(t, g, "wait 40\npress z\nwait 12\n", 100)
+			if g.live.pending || g.db.Game.Screens["stock"].Title != "New stock" {
+				t.Fatal("queued reload was not applied after the caller completed")
+			}
+			if g.st.Vars["closed"] != float64(1) || g.st.Vars["returned"] != float64(1) {
+				t.Fatalf("caller did not complete exactly once: %v", g.st.Vars)
+			}
+			if phase != "preview" && (g.st.Vars["boards"] != float64(1) || g.st.Vars["finished"] != float64(1)) {
+				t.Fatalf("reload duplicated/lost entry commands: %v", g.st.Vars)
+			}
+		})
 	}
 }
 

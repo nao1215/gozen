@@ -181,6 +181,9 @@ type liveKeeper interface {
 }
 
 func (g *Game) reloadWait() string {
+	if g.live.pending && g.busy() {
+		return "Definitions will reload after the current action finishes."
+	}
 	switch {
 	case g.currentBattle() != nil:
 		return lang.T("戦闘の後で読み直す")
@@ -203,6 +206,11 @@ func (g *Game) reloadWait() string {
 		return lang.T("この画面を出てから読み直す")
 	}
 	for _, s := range g.stack[1:] {
+		// Authored screens suspend runners and callbacks tied to the live state.
+		// A view refresh cannot reconstruct those callers on a replacement state.
+		if _, ok := s.(*authorScreen); ok {
+			return "Definitions will reload after this screen and its calling event finish."
+		}
 		if _, ok := s.(liveKeeper); !ok {
 			return lang.T("画面を閉じたら読み直す")
 		}
@@ -239,6 +247,11 @@ func (g *Game) reloadAssets() {
 }
 
 func (g *Game) reload() {
+	if why := g.reloadWait(); why != "" {
+		g.live.pending = true
+		g.liveSay(why, 180)
+		return
+	}
 	db, err := data.Load(g.opts.FS)
 
 	if err == nil && (db.Game.ID != g.db.Game.ID || db.Game.DataVersion < g.db.Game.DataVersion) {

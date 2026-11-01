@@ -147,3 +147,13 @@ the command after that open. Existing screens remain open, and closing one frees
 a slot. Save menus and other built-in overlays do not consume authored slots or
 hide their count. This bounds live navigation; it does not enable player screen
 save restoration, which remains unsupported.
+
+## Definition reload during an authored screen
+
+Development-mode definition reload waits until all authored screens close and the
+calling event finishes. For example, requesting reload while the stock entry shows
+a receipt keeps the current action and its caller alive; closing the screen still
+executes the caller's `Returned` line once. The queued reload applies at idle.
+This also protects a screen beneath a save menu. Picture and sound reload remains
+available through the existing asset-only path. This is a reload safety boundary,
+not support for saving or restoring the player's screen continuation.
