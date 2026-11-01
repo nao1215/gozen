@@ -328,8 +328,11 @@ func TestTargetActionsScrollInsideViewport(t *testing.T) {
 	s := newAuthorScreen(g, "team", nil)
 	s.openTarget(g, "artisan", entryBounds(data.ScreenEntry{Bounds: []int{900, 450, 200, 80}}))
 	_, sh := g.screen()
-	if s.popup.y < 0 || s.popup.y+s.popup.height() > sh || s.popup.rows >= 30 {
+	if s.popup.y < 0 || s.popup.y+s.popup.height() > sh || s.popup.rows > 6 {
 		t.Fatalf("popup outside viewport: %+v", s.popup)
+	}
+	if s.popup.x < 1280*.72 || s.popup.y < 40 {
+		t.Fatal("action popup covers resident seats or has no heading space")
 	}
 	for range 29 {
 		s.popup.step(1)

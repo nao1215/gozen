@@ -60,7 +60,7 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 		}
 		days := end.Sub(start).Hours()/24 + 1
 		axisX, axisW := x+w*.48, w*.46
-		g.text(dst, start.Format("1/2")+" — "+end.Format("1/2"), axisX, y, 14, g.th.dim)
+		g.text(dst, start.Format("1/2")+" — "+end.Format("1/2"), axisX, y, 15, g.th.dim)
 		y += 24
 		h -= 24
 		ids := slices.DeleteFunc(slices.Sorted(maps.Keys(st.Activities)), func(id string) bool { return st.Activities[id].Cancelled })
@@ -74,14 +74,14 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 		s.timelineTop = max(0, min(s.timelineTop, len(ids)-rows))
 		last := min(len(ids), s.timelineTop+rows)
 		if len(ids) > rows {
-			g.text(dst, fmt.Sprintf("%d–%d / %d  ↑ ↓", s.timelineTop+1, last, len(ids)), x+20, y-24, 14, g.th.dim)
+			g.text(dst, fmt.Sprintf("%d–%d / %d  ↑ ↓", s.timelineTop+1, last, len(ids)), x+20, y-24, 15, g.th.dim)
 		}
 		rowH := 56.0
 		for i, id := range ids[s.timelineTop:last] {
 			a := st.Activities[id]
 			d := p.Activities[id]
 			yy := y + float64(i)*rowH
-			g.drawLinesFit(dst, d.Name, x+20, yy, w*.45, sizeS, 1, g.th.text)
+			g.drawPlanningText(dst, d.Name, x+20, yy, w*.45, sizeS, 1, g.th.text)
 			g.text(dst, p.Entities[a.Assignee].Name, x+20, yy+24, 16, g.th.dim)
 			from, to := start, end
 			if d.From != "" {
@@ -109,9 +109,13 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 				if actual < expected {
 					tint = color.NRGBA{220, 65, 65, 255}
 				}
-				rect(dst, axisX+axisW*left, yy+18, axisW*(right-left)*actual, 8, tint)
+				// The unfilled shortfall remains visible even at zero progress.
+				if actual < expected {
+					rect(dst, axisX+axisW*(left+(right-left)*actual), yy+18, axisW*(right-left)*(expected-actual), 8, tint)
+				}
+				rect(dst, axisX+axisW*left, yy+18, axisW*(right-left)*actual, 8, g.th.accent)
 			}
-			g.text(dst, fmt.Sprintf("%.1f / %.1f", a.Observed, g.st.ActivityEffort(id)), x+w*.28, yy+28, 16, g.th.text)
+			g.text(dst, fmt.Sprintf("%.0f%%", 100*a.Observed/g.st.ActivityEffort(id)), x+w*.28, yy+28, 16, g.th.text)
 		}
 		today, err := time.Parse(time.DateOnly, st.Date)
 		if err != nil {
@@ -150,7 +154,7 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 				count++
 			}
 			if count > 0 {
-				g.text(dst, strconv.Itoa(count)+" "+planningEventLabel(v), xx+4, yy+29, 12, g.th.text)
+				g.text(dst, strconv.Itoa(count)+" "+planningEventLabel(v), xx+4, yy+29, 15, g.th.text)
 			}
 		}
 	case "entities", "ensemble", "islands":
@@ -226,10 +230,10 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 				tint = color.NRGBA{145, 183, 236, 255}
 			}
 			rect(dst, cx, y+45, w*.029, 34, tint)
-			g.text(dst, strconv.Itoa(d.Day()), cx+2, y+53, 12, color.Black)
+			g.text(dst, strconv.Itoa(d.Day()), cx+2, y+53, 15, color.Black)
 		}
 		rect(dst, x+w*.81, y+4, w*.15, 100, color.NRGBA{151, 118, 81, 255})
-		g.drawLinesFit(dst, v.Door, x+w*.82, y+20, w*.13, 16, 2, color.White)
+		g.drawPlanningText(dst, v.Door, x+w*.82, y+20, w*.13, 16, 2, color.White)
 		y += 116
 		h -= 116
 		if v.Fullscreen {
@@ -255,13 +259,16 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 		portrait, badge := value(v.Portrait), value(v.Badge)
 		switch kind {
 		case "islands":
-			rect(dst, xx, yy+ch*.62, cw, ch*.30, color.NRGBA{174, 145, 105, 255})
+			rect(dst, xx, yy+ch-78, cw, 76, color.NRGBA{174, 145, 105, 255})
 			if badge != "" {
-				g.drawLinesFit(dst, badge, xx+8, yy+ch*.25, cw-16, 18, 1, color.Black)
+				g.drawPlanningText(dst, badge, xx+8, yy+8, cw-16, 18, 1, color.Black)
 			} else {
-				g.planningFace(dst, portrait, xx+cw/2, yy+ch*.27, min(30, ch*.22))
+				g.planningFace(dst, portrait, xx+cw/2, yy+ch*.20, min(26, ch*.18))
 			}
-			g.drawLinesFit(dst, p.Entities[id].Name, xx+4, yy+ch*.64, cw-8, 16, 1, color.Black)
+			g.drawPlanningText(dst, p.Entities[id].Name, xx+4, yy+ch-72, cw-8, 18, 1, color.Black)
+			for j, f := range v.Fields {
+				g.drawPlanningText(dst, f.Label+" "+value(f.Key), xx+4, yy+ch-48+float64(j)*20, cw-8, 15, 1, color.Black)
+			}
 		case "ensemble":
 			rect(dst, xx, yy, cw, ch, color.NRGBA{53, 58, 60, 255})
 			if values[v.Camera] == true {
@@ -279,7 +286,7 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 						}
 					}
 				}
-				if portrait != "" {
+				if portrait != "" && g.pics.get(portrait) != missing {
 					g.planningTorso(dst, portrait, xx+cw*.16, yy, cw*.68, ch-28)
 				} else {
 					g.planningFace(dst, "", xx+cw/2, yy+ch*.38, min(30, ch*.23))
@@ -288,7 +295,16 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 			} else {
 				g.planningFace(dst, value(v.Icon), xx+cw/2, yy+ch*.43, min(32, ch*.26))
 			}
-			g.drawLinesFit(dst, p.Entities[id].Name, xx+8, yy+ch-24, cw-16, 16, 1, color.White)
+			if len(v.Fields) > 0 {
+				count := min(2, len(v.Fields))
+				summaryH := min(80.0, ch-28)
+				fieldH := summaryH / float64(count)
+				rect(dst, xx, yy+ch-28-summaryH, cw, summaryH, color.NRGBA{30, 34, 40, 245})
+				for j, f := range v.Fields[:count] {
+					g.drawPlanningText(dst, f.Label+value(f.Key), xx+8, yy+ch-24-summaryH+float64(j)*fieldH, cw-16, 15, max(1, int((fieldH-8)/gfx.LineHeight(15))), color.White)
+				}
+			}
+			g.drawPlanningText(dst, p.Entities[id].Name, xx+8, yy+ch-24, cw-16, 16, 1, color.White)
 			if g.talk.active && g.talk.say.Actor != "" && p.Entities[id].Actor == g.talk.say.Actor {
 				rect(dst, xx, yy, cw, 3, g.th.accent)
 				rect(dst, xx, yy+ch-3, cw, 3, g.th.accent)
@@ -297,18 +313,18 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 			}
 		default:
 			g.planningFace(dst, portrait, xx+24, yy+ch/2, min(22, ch*.40))
-			g.drawLinesFit(dst, p.Entities[id].Name, xx+58, yy+8, cw*.24, 16, 1, g.th.text)
+			g.drawPlanningText(dst, p.Entities[id].Name, xx+58, yy+8, cw*.24, 16, 1, g.th.text)
 			fw := (cw * .66) / float64(max(1, len(v.Fields)))
 			for j, f := range v.Fields {
 				fx := xx + cw*.34 + float64(j)*fw
-				g.drawLinesFit(dst, f.Label+" "+value(f.Key), fx, yy+4, fw-12, 16, 1, g.th.text)
+				g.drawPlanningText(dst, f.Label+" "+value(f.Key), fx, yy+4, fw-12, 16, 1, g.th.text)
 				if f.Maximum > 0 {
 					n, _ := expr.ToNumber(values[f.Key])
 					bar(dst, fx, yy+26, fw-16, 8, n/f.Maximum, g.th.accent)
 					for _, m := range f.Marks {
 						mx := fx + (fw-16)*m/f.Maximum
 						gfx.StrokeLine(dst, float32(mx), float32(yy+23), float32(mx), float32(yy+35), 1, g.th.dim, true)
-						g.text(dst, strconv.FormatFloat(m, 'f', 0, 64), mx-8, yy+36, 12, g.th.dim)
+						g.text(dst, strconv.FormatFloat(m, 'f', 0, 64), mx-8, yy+36, 15, g.th.dim)
 					}
 				}
 			}
@@ -318,7 +334,7 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 
 func (g *Game) planningFace(dst *ebiten.Image, path string, cx, cy, r float64) {
 	gfx.FillCircle(dst, float32(cx), float32(cy), float32(r), color.NRGBA{238, 232, 219, 255}, true)
-	if path != "" {
+	if path != "" && g.pics.get(path) != missing {
 		// Face crop is centered; circular clipping keeps transparent portraits within a badge.
 		img := g.pics.get(path)
 		head := g.pics.head(path)
@@ -418,13 +434,26 @@ func (s *authorScreen) drawEntityDetail(g *Game, dst *ebiten.Image, x, y, w, h f
 			continue
 		}
 		d := p.Activities[id]
-		g.drawLinesFit(dst, fmt.Sprintf("%s  %.0f%%", d.Name, 100*a.Observed/g.st.ActivityEffort(id)), x+16, yy, w-44, 16, 1, g.th.text)
+		g.drawPlanningText(dst, fmt.Sprintf("%s  %.0f%%", d.Name, 100*a.Observed/g.st.ActivityEffort(id)), x+16, yy, w-44, 16, 1, g.th.text)
 		yy += 24
 	}
-	g.drawLinesFit(dst, fmt.Sprint(g.st.EntityValues(s.target, false)[v.Detail]), x+16, yy+16, w-44, 16, max(1, int((y+h-yy-24)/24)), g.th.text)
+	g.drawPlanningText(dst, fmt.Sprint(g.st.EntityValues(s.target, false)[v.Detail]), x+16, yy+16, w-44, 16, max(1, int((y+h-yy-24)/24)), g.th.text)
 }
 
 // timelineRows keeps task names and quantities on distinct, readable rows.
 func timelineRows(height float64) int {
 	return max(1, int(height/56))
+}
+
+// Planning tables truncate overflow instead of shrinking below the readable size.
+func (g *Game) drawPlanningText(dst *ebiten.Image, text string, x, y, width, size float64, limit int, tint color.Color) {
+	size = max(15, size)
+	lines := gfx.Wrap(text, size, width)
+	if len(lines) > limit {
+		lines = lines[:limit]
+		lines[limit-1] = gfx.Ellipsis(lines[limit-1]+"…", size, width)
+	}
+	for i, line := range lines {
+		g.text(dst, line, x, y+float64(i)*gfx.LineHeight(size), size, tint)
+	}
 }

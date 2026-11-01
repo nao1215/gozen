@@ -236,8 +236,13 @@ func (s *authorScreen) openTarget(g *Game, id string, r image.Rectangle) {
 		return
 	}
 	sw, sh := g.screen()
-	rows := max(1, min(len(items), int((sh-64)/44)))
-	s.popup = newList(items, max(0, min(float64(r.Min.X), sw-380)), max(0, min(float64(r.Max.Y), sh-44*float64(rows)-32)), 360, rows)
+	rows := max(1, min(6, len(items), int((sh-128)/44)))
+	s.popup = newList(items, max(0, min(float64(r.Min.X), sw-380)), max(40, min(float64(r.Max.Y), sh-44*float64(rows)-32)), 360, rows)
+	if g.db.Game.Screens[s.name].View.Fullscreen {
+		// Use the auxiliary column rather than covering another resident.
+		s.popup.x, s.popup.y, s.popup.w = sw*.72+8, 148, sw*.28-24
+	}
+	s.popup.size = 22
 }
 
 func (s *authorScreen) closeSurface(g *Game) {
@@ -332,7 +337,14 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 	g.text(dst, planningDate(st.Date, g.db.Game.Planning.Calendar.Phases[st.Phase], v), 24, 12, sizeS, g.th.text)
 	g.text(dst, data.Render(g.db.Tr(v.Header), g.st.Env()), sw*.5, 12, sizeS, g.th.text)
 	g.window(dst, 0, sh-108, sw, 108)
-	g.drawLinesFit(dst, data.Render(g.db.Tr(v.Footer), g.st.Env()), 24, sh-88, sw*.70, sizeS, 2, g.th.text)
+	footerWidth := sw * .70
+	for _, e := range s.entries {
+		r := entryBounds(e)
+		if e.Target == "" && !r.Empty() && float64(r.Min.Y) >= sh-108 {
+			footerWidth = min(footerWidth, float64(r.Min.X)-40)
+		}
+	}
+	g.drawPlanningText(dst, data.Render(g.db.Tr(v.Footer), g.st.Env()), 24, sh-88, max(1, footerWidth), sizeS, 2, g.th.text)
 	j := 0
 	for _, e := range s.entries {
 		if e.Target != "" || len(e.Bounds) != 4 {
@@ -344,7 +356,10 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 		if j == s.focus {
 			tint = g.th.accent
 		}
-		g.drawLinesFit(dst, e.Label, float64(r.Min.X+10), float64(r.Min.Y+10), float64(r.Dx()-20), sizeS, 1, tint)
+		g.drawPlanningText(dst, e.Label, float64(r.Min.X+10), float64(r.Min.Y+10), float64(r.Dx()-20), sizeS, 1, tint)
+		if e.Text != "" && r.Dy() >= 72 {
+			g.drawPlanningText(dst, e.Text, float64(r.Min.X+10), float64(r.Min.Y+38), float64(r.Dx()-20), 16, max(1, (r.Dy()-46)/24), g.th.text)
+		}
 		j++
 	}
 	_, cells := s.surfaceTargets(g)
@@ -353,6 +368,8 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 		rect(dst, float64(r.Min.X), float64(r.Max.Y-3), float64(r.Dx()), 3, g.th.accent)
 	}
 	if s.popup != nil {
+		g.window(dst, s.popup.x, s.popup.y-40, s.popup.w, 42)
+		g.drawPlanningText(dst, g.db.Game.Planning.Entities[s.target].Name, s.popup.x+12, s.popup.y-30, s.popup.w-24, sizeS, 1, g.th.accent)
 		s.popup.draw(g, dst, true)
 	}
 }

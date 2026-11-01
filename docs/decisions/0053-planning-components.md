@@ -110,6 +110,15 @@ not guarantee compatibility of random draw ordering.
 Box-style dialogue may select an ensemble screen with `say.ensemble`; the actor
 ID highlights its participant tile and replaces the standalone talking portrait.
 
+Island seats render authored public `fields` below the name, including when a
+badge replaces the face. Keep seat fields short (two fields fit the compact layout).
+Ensemble tiles can show up to two public fields over the lower portrait area for
+briefing summaries. Authors choose the text and use an ordinary `say.ensemble`
+to keep the summary within the existing dialogue and save flow.
+Fullscreen entry `text` is visible below its label when its bounds are at least
+72 logical pixels high. This supports an authored agenda or notice card without
+adding another source of state. Target action menus have a resident heading,
+show at most six rows and use the auxiliary column on island screens.
 Timeline rows and entity action menus scroll when they exceed the available height.
 Reservation cancellation, general activity splitting and full policy metrics are not implemented. No external game's rule
 compatibility is claimed by the neutral component tests.
