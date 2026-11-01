@@ -68,6 +68,8 @@ screens:
     entries:
     - label: Read calendar ranges
       do: [{call: calendar_demo}]
+    - label: Draw an available resident
+      do: [{call: lottery_demo}]
     - label: Compare priorities
       do: [{call: priority_demo}]
     kind: timeline

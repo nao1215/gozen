@@ -357,3 +357,20 @@ weekday, then keep only authored exceptions such as festivals in conditional
 rows. This avoids copying an entire card for every date. Preserve the original
 range and integer-day guard when replacing a fixed date table, including its
 behavior for inputs outside the authored calendar.
+
+## Gate random scores inside a shared event
+
+The workshop's `lottery_demo` calls `rank_resident` for two residents. Only the
+resident with positive vigor draws a score. The event evaluates eligibility
+first, writes the random score once, then passes that value to `consider_task`.
+That helper retains the first candidate on a tie. Keep the original candidate
+order when replacing copied branches with calls: both ties and later random
+results depend on that order. Random expressions cannot be call arguments.
+
+For a longer selection pass, pure totals and availability checks can be passed
+once as typed arguments to the event that scans candidates. Freeze only inputs
+that cannot change during that pass. Nested named events need those values
+forwarded explicitly. Keep random predicates inside their original gates, and
+keep score draws after eligibility checks. This pattern applies to choosing a
+farm task, assigning a workshop resident, or selecting a training encounter;
+it does not require scratch values in saved state for the frozen inputs.

@@ -132,3 +132,18 @@ events:
     params: {first: date, last: date}
     do:
     - say: 'Days {calendar_days(arg.first, arg.last)}; workdays {calendar_workdays(arg.first, arg.last)}'
+  lottery_demo:
+    do:
+    - plan: {op: set, entity: weaver, attribute: vigor, value: '1'}
+    - set: {var.top_score: '-1', var.top_title: '""'}
+    - call: {event: rank_resident, args: {resident: '"potter"'}}
+    - call: {event: rank_resident, args: {resident: '"weaver"'}}
+    - set: {var.next_draw: 'rand(1000)'}
+    - say: 'Lottery {var.top_title}/{var.top_score}; next {var.next_draw}'
+  rank_resident:
+    params: {resident: entity}
+    do:
+    - if: entity[arg.resident].vigor > 0
+      then:
+      - set: {var.score: 'rand(1000)'}
+      - call: {event: consider_task, args: {score: var.score, title: arg.resident}}
