@@ -119,6 +119,10 @@ Fullscreen entry `text` is visible below its label when its bounds are at least
 72 logical pixels high. This supports an authored agenda or notice card without
 adding another source of state. Target action menus have a resident heading,
 show at most six rows and use the auxiliary column on island screens.
+On fullscreen authored screens, `notice` results temporarily replace the footer,
+one at a time, without blocking event execution. Queued results retain their
+display time until shown; dialogue pauses notification time. Keep result text
+short enough for the footer's two lines. Other screens retain floating notices.
 Timeline rows and entity action menus scroll when they exceed the available height.
 Reservation cancellation, general activity splitting and full policy metrics are not implemented. No external game's rule
 compatibility is claimed by the neutral component tests.

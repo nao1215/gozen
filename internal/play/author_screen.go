@@ -379,6 +379,9 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 	if def.Kind == "timeline" && len(v.Rows) > 0 {
 		footer = s.timelineDescription(g)
 	}
+	if g.noticeSurface() == s && g.noticesShown() && len(g.notices.list) > 0 {
+		footer = g.notices.list[0].text
+	}
 	g.drawPlanningText(dst, footer, 24, sh-88, max(1, footerWidth), sizeS, 2, g.th.text)
 	j := 0
 	for _, e := range s.entries {

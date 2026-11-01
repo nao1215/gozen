@@ -894,7 +894,7 @@ func (g *Game) Update() error {
 	g.tick++
 	g.in.tick = g.tick
 	if g.noticesShown() {
-		g.notices.update()
+		g.notices.update(g.noticeVisible())
 	} else if g.noticesDropped() {
 		g.notices.list = nil
 	}

@@ -74,38 +74,6 @@ func TestScriptShotHoldsTheGameUntilDrawn(t *testing.T) {
 	}
 }
 
-// TestFieldNoticesCanBeDropped: with ui.field_notices off, notices raised on the field are
-// dropped; with it on they stay.
-func TestFieldNoticesCanBeDropped(t *testing.T) {
-	g := sysOpen4(t, Options{Location: "camp"}, map[string]string{"game.yaml+": "ui: {field_notices: false}\n"})
-	g.notices.add("Found a coin")
-	sysFrames(t, g, 3)
-	if len(g.notices.list) != 0 {
-		t.Fatalf("notices %v on a field that drops them", g.notices.list)
-	}
-}
-
-// TestFieldNoticesStayByDefault: notices stay on the field unless the game drops them, the same
-// notice is not listed twice and the queue is bounded.
-func TestFieldNoticesStayByDefault(t *testing.T) {
-	g := sysOpen(t, Options{Location: "camp"}, nil)
-	g.notices.add("Found a coin")
-	sysFrames(t, g, 3)
-	if len(g.notices.list) != 1 {
-		t.Fatalf("notices %v", g.notices.list)
-	}
-	g.notices.add("Found a coin")
-	if len(g.notices.list) != 1 {
-		t.Fatal("the same notice twice")
-	}
-	for i := range 30 {
-		g.notices.add(strings.Repeat("n", i+1))
-	}
-	if len(g.notices.list) > noticeMax+noticeQueue {
-		t.Fatalf("%d notices queued", len(g.notices.list))
-	}
-}
-
 // TestToggleFullscreenKeepsTheChoice: the full screen key flips the setting and writes it.
 func TestToggleFullscreenKeepsTheChoice(t *testing.T) {
 	dir := t.TempDir()

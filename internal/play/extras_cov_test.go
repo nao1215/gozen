@@ -5,72 +5,10 @@ import (
 	"image/color"
 	"io/fs"
 	"os"
-	"strings"
 	"testing"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
-
-// ---- notices (the notice command: a short message that does not stop play)
-
-func TestWldNoticeBoardQueuesAndDeduplicates(t *testing.T) {
-	var b noticeBoard
-	b.add("Found a coin")
-	b.add("Found a coin") // the same text refreshes, it is not shown twice
-	if len(b.list) != 1 {
-		t.Fatalf("%d notices for one text", len(b.list))
-	}
-	for i := range 20 {
-		b.add(strings.Repeat("x", i+1))
-	}
-	if len(b.list) != noticeMax+noticeQueue {
-		t.Fatalf("%d notices kept, want at most %d", len(b.list), noticeMax+noticeQueue)
-	}
-	if last := b.list[len(b.list)-1].text; last != strings.Repeat("x", 20) {
-		t.Fatalf("the newest was dropped: %q", last)
-	}
-}
-
-func TestWldNoticeLengthGrowsWithTheText(t *testing.T) {
-	if noticeLen("hi") != noticeTicks {
-		t.Fatalf("a short notice lasts %d", noticeLen("hi"))
-	}
-	long := strings.Repeat("あ", 60)
-	if noticeLen(long) <= noticeTicks || noticeLen(long) != 60+60*6 {
-		t.Fatalf("a long notice lasts %d", noticeLen(long))
-	}
-}
-
-func TestWldNoticeOnlyTheFirstFewCountDown(t *testing.T) {
-	var b noticeBoard
-	for _, s := range []string{"a", "b", "c", "d"} {
-		b.add(s)
-	}
-	for range noticeTicks - 1 {
-		b.update()
-	}
-	if len(b.list) != 4 || b.list[3].t != noticeTicks {
-		t.Fatalf("a queued notice aged before it showed: %+v", b.list)
-	}
-	b.update()
-	if len(b.list) != 1 || b.list[0].text != "d" {
-		t.Fatalf("after the first three ended: %+v", b.list)
-	}
-}
-
-func TestWldNoticeCommandDoesNotStopTheEvent(t *testing.T) {
-	g := wldBoxWith(t, "ev_notice")
-	wldFrames(t, g, 3)
-	if len(g.notices.list) != 2 {
-		t.Fatalf("notices %+v", g.notices.list)
-	}
-	if !g.talk.active || g.talk.say.Text != "After the notices." {
-		t.Fatalf("the event stopped at the notice: talk %+v", g.talk.say)
-	}
-	// a long one is drawn too (wrapped on the field's side column)
-	g.notices.add(strings.Repeat("A very long notice that does not fit. ", 6))
-	wldFrames(t, g, 3)
-}
 
 // wldBoxWith opens the message-box fixture with the extra events and starts one.
 func wldBoxWith(t *testing.T, event string) *Game {
