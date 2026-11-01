@@ -20311,6 +20311,37 @@
           },
           "x-type": "string"
         },
+        "sample": {
+          "description": "Optional saved observation ratio expression (0 to 1). Negative, missing or invalid values hide the marker; never implicitly reads live progress.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "sample_label": {
+          "description": "Text template describing the saved observation, such as its date and source, shown with its percentage in the footer.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "screen": {
           "description": "Optional authored screen to open when the lane is clicked or confirmed.",
           "type": "string",

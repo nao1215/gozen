@@ -154,7 +154,12 @@ Pointing at the calendar band reads that day's names; milestones have dashed
 vertical lines. Fullscreen grouped views allow pointer selection or up/down and
 Enter to open a lane's authored screen. The footer shows the selected activity,
 assignee, reported percentage and dates. No hidden progress, inferred forecast or
-verification history is exposed. At the standard logical viewport twelve groups
+verification history is inferred. An optional lane `sample` expression supplies
+a saved ratio from 0 to 1, with `sample_label` for its date and source. Valid
+samples draw a downward wedge and a footer percentage; absent, negative or
+invalid values hide it. Authors snapshot the ratio and provenance in ordinary
+save variables at the observation event. Rendering never reads live progress
+to populate or refresh a sample. At the standard logical viewport twelve groups
 with three lanes fit without scrolling; larger tables scroll whole groups.
 
 Targeted actions on fullscreen islands use their existing entry `text` as an

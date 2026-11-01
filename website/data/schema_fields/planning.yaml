@@ -107,6 +107,8 @@ TimelineRow:
   label: Group heading. Long text is truncated at a readable font size.
   items: Activity lanes in display order. Activities omitted from all rows appear in fallback rows.
 TimelineItem:
+  sample: Optional saved observation ratio expression (0 to 1). Negative, missing or invalid values hide the marker; never implicitly reads live progress.
+  sample_label: Text template describing the saved observation, such as its date and source, shown with its percentage in the footer.
   _: An activity lane rendered from its reported observation, never its hidden progress.
   activity: Existing planning activity ID; each activity may appear only once in the view.
   label: Short lane identifier shown below the group heading.

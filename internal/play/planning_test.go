@@ -5,6 +5,7 @@ import (
 	"math/rand/v2"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
@@ -198,6 +199,31 @@ func TestGroupedTimelineCalendarFitAndPrivacy(t *testing.T) {
 	g.st.Planning.Activities["0"] = a
 	if got := s.timelineDescription(g); got != before {
 		t.Fatalf("hidden progress leaked: %s", got)
+	}
+	// A stored sample stays fixed while hidden progress, effort and dates change.
+	item := &db.Game.Screens["tasks"].View.Rows[0].Items[0]
+	item.Sample = data.MustExpr("var.sample")
+	item.SampleLabel = "Checked {var.sample_date}"
+	g.st.Vars["sample"] = .4
+	g.st.Vars["sample_date"] = "2030-08-20"
+	before = s.timelineDescription(g)
+	if !strings.Contains(before, "Checked 2030-08-20 40%") {
+		t.Fatal(before)
+	}
+	a.Progress = 2
+	g.st.Planning.Activities["0"] = a
+	if got := s.timelineDescription(g); got != before {
+		t.Fatal("live progress replaced saved sample", got)
+	}
+	for _, value := range []any{-1.0, 1.1, "unknown", nil} {
+		g.st.Vars["sample"] = value
+		if strings.Contains(s.timelineDescription(g), "Checked") {
+			t.Fatal("invalid sample displayed", value)
+		}
+	}
+	g.st.Vars["sample"] = 0.0
+	if !strings.Contains(s.timelineDescription(g), "Checked 2030-08-20 0%") {
+		t.Fatal("zero sample lost")
 	}
 	// Pointer and keyboard selection share the rendered lane rectangles.
 	db.Game.Screens["detail"] = &data.AuthorScreen{Title: "Detail", Entries: []data.ScreenEntry{{Label: "Inspect"}}}

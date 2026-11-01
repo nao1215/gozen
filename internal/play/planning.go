@@ -504,6 +504,8 @@ type timelineLane struct {
 	item                            data.TimelineItem
 	bounds                          image.Rectangle
 	left, right, reported, expected float64
+	sample                          float64
+	sampleLabel                     string
 }
 
 type timelineGroup struct {
@@ -538,6 +540,7 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 	s.timelineTop = min(s.timelineTop, max(0, len(rows)-1))
 	var out []timelineGroup
 	bottom := y + h
+	env := g.st.Env()
 	for _, row := range rows[s.timelineTop:] {
 		rh := rowHeight(row)
 		if y+rh > bottom {
@@ -564,8 +567,14 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 			right := max(left, min(1, (to.Sub(start).Hours()/24+1)/days))
 			reported := max(0, min(1, a.Observed/g.st.ActivityEffort(item.Activity)))
 			expected := max(0, min(1, today.Sub(from).Hours()/24/max(1, to.Sub(from).Hours()/24+1)))
+			sample := -1.0
+			if value, err := item.Sample.Eval(env); err == nil {
+				if number, ok := value.(float64); ok && !math.IsNaN(number) && !math.IsInf(number, 0) && number >= 0 && number <= 1 {
+					sample = number
+				}
+			}
 			ly := y + 3 + float64(j)*10
-			group.lanes = append(group.lanes, timelineLane{item: item, bounds: image.Rect(int(axisX+axisW*left), int(ly), int(math.Ceil(axisX+axisW*right)), int(ly+9)), left: left, right: right, reported: reported, expected: expected})
+			group.lanes = append(group.lanes, timelineLane{item: item, bounds: image.Rect(int(axisX+axisW*left), int(ly), int(math.Ceil(axisX+axisW*right)), int(ly+9)), left: left, right: right, reported: reported, expected: expected, sample: sample, sampleLabel: data.Render(g.db.Tr(item.SampleLabel), env)})
 		}
 		out = append(out, group)
 		y += rh
@@ -654,6 +663,13 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 					rect(dst, lx+lw*lane.expected, ly-1, 1, lh+2, g.th.text)
 				}
 			}
+			if lane.sample >= 0 && lw >= 5 {
+				// A small downward wedge remains inside its lane at both endpoints.
+				sx := lx + 2 + (lw-5)*lane.sample
+				for step := range 3 {
+					rect(dst, sx-float64(2-step), ly+float64(step), float64(5-2*step), 1, g.th.text)
+				}
+			}
 			index++
 		}
 		g.drawPlanningText(dst, strings.Join(labels, " / "), x+16, group.y+18, 232, 15, 1, g.th.dim)
@@ -710,8 +726,12 @@ func (s *authorScreen) timelineDescription(g *Game) string {
 	lane := lanes[s.timelineFocus]
 	d := p.Activities[lane.item.Activity]
 	a := g.st.Planning.Activities[lane.item.Activity]
-	// Only the reported observation enters the label. Progress remains hidden.
-	return fmt.Sprintf("%s · %s · %.0f%%\n%s — %s", d.Name, p.Entities[a.Assignee].Name, 100*lane.reported, d.From, g.st.ActivityDeadline(lane.item.Activity))
+	// Only authored saved samples and reported observations enter the label.
+	description := fmt.Sprintf("%s · %s · %.0f%%\n%s — %s", d.Name, p.Entities[a.Assignee].Name, 100*lane.reported, d.From, g.st.ActivityDeadline(lane.item.Activity))
+	if lane.sample >= 0 {
+		description += fmt.Sprintf(" · %s %.0f%%", lane.sampleLabel, 100*lane.sample)
+	}
+	return description
 }
 
 func (s *authorScreen) updateGroupedTimeline(g *Game) bool {

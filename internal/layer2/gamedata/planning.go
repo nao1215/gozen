@@ -470,6 +470,10 @@ type TimelineItem struct {
 	Activity string `yaml:"activity"`
 	Label    string `yaml:"label"`
 	Screen   string `yaml:"screen"`
+	// Sample is a saved observed ratio (0..1), negative or absent when unknown.
+	// SampleLabel gives its authored provenance, such as the observation date.
+	Sample      Expr   `yaml:"sample"`
+	SampleLabel string `yaml:"sample_label"`
 }
 
 // TimelineMarker is a named calendar annotation consumed by the timeline renderer.
@@ -523,6 +527,9 @@ func (c *checker) planningView(w string, v PlanningView) {
 				c.errorf(diag.UnknownReference, at, "unknown or duplicate timeline activity %q", item.Activity)
 			}
 			used[item.Activity] = true
+			c.planningPure(at+".sample", item.Sample)
+			c.exprIn(at+".sample", item.Sample, FieldNames, nil)
+			c.text(at+".sample_label", item.SampleLabel, FieldNames)
 			if item.Screen != "" && c.db.Game.Screens[item.Screen] == nil {
 				c.errorf(diag.UnknownReference, at, "unknown timeline screen %q", item.Screen)
 			}
