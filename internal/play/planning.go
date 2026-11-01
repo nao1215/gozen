@@ -476,6 +476,7 @@ type timelineLane struct {
 	sampleLabel                     string
 	forecast                        float64
 	forecastLabel                   string
+	dimmed                          bool
 }
 
 type timelineGroup struct {
@@ -490,6 +491,7 @@ type timelineGroup struct {
 func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineGroup, float64, float64) {
 	p := g.db.Game.Planning
 	rows := timelineGroups(p, g.db.Game.Screens[s.name].View)
+	s.timelineAssignees(g)
 	axisX, axisW := x+260, max(1, w-280)
 	start, err := time.Parse(time.DateOnly, p.Calendar.Start)
 	if err != nil {
@@ -546,7 +548,7 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 			}
 			forecast, forecastLabel := timelineForecast(from, today, start, end, reported, a.Cancelled, data.Render(g.db.Tr(item.ForecastLabel), env))
 			ly := y + 3 + float64(j)*10
-			group.lanes = append(group.lanes, timelineLane{item: item, bounds: image.Rect(int(axisX+axisW*left), int(ly), int(math.Ceil(axisX+axisW*right)), int(ly+9)), left: left, right: right, reported: reported, expected: expected, forecast: forecast, forecastLabel: forecastLabel, sample: sample, sampleLabel: data.Render(g.db.Tr(item.SampleLabel), env)})
+			group.lanes = append(group.lanes, timelineLane{item: item, bounds: image.Rect(int(axisX+axisW*left), int(ly), int(math.Ceil(axisX+axisW*right)), int(ly+9)), left: left, right: right, reported: reported, expected: expected, forecast: forecast, forecastLabel: forecastLabel, dimmed: s.timelineAssignee != "" && a.Assignee != s.timelineAssignee, sample: sample, sampleLabel: data.Render(g.db.Tr(item.SampleLabel), env)})
 		}
 		out = append(out, group)
 		y += rh
@@ -577,6 +579,7 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 	p := g.db.Game.Planning
 	v := g.db.Game.Screens[s.name].View
 	groups, ax, aw := s.groupedTimeline(g, x, y, w, h)
+	s.drawTimelineFilter(g, dst, x, y)
 	start, err := time.Parse(time.DateOnly, p.Calendar.Start)
 	if err != nil {
 		return
@@ -674,6 +677,11 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 					rect(dst, sx-float64(2-step), ly+float64(step), float64(5-2*step), 1, g.th.text)
 				}
 			}
+			if lane.dimmed {
+				// Preserve the whole calendar and row positions; de-emphasize only
+				// this lane, including its forecast, without hiding assignments.
+				rect(dst, ax, ly, aw, lh, color.NRGBA{30, 34, 40, 185})
+			}
 			index++
 		}
 		summary := strings.Join(labels, " / ")
@@ -687,6 +695,77 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 		tx := ax + today.Sub(start).Hours()/24*dx
 		rect(dst, tx, y+41, 2, max(0, bottom-y-41), red)
 	}
+}
+
+// The selector changes presentation only. A disappearing resident clears the
+// filter rather than leaving the player with every lane dimmed.
+func (s *authorScreen) timelineAssignees(g *Game) []string {
+	v := g.db.Game.Screens[s.name].View
+	if v.FilterLabel == "" {
+		s.timelineAssignee = ""
+		return nil
+	}
+	ids := append([]string{""}, g.visibleResidents(v)...)
+	if !slices.Contains(ids, s.timelineAssignee) {
+		s.timelineAssignee = ""
+	}
+	return ids
+}
+
+func timelineFilterBounds(x, y float64) [3]image.Rectangle {
+	return [3]image.Rectangle{
+		image.Rect(int(x+16), int(y+4), int(x+48), int(y+48)),
+		image.Rect(int(x+48), int(y+4), int(x+216), int(y+48)),
+		image.Rect(int(x+216), int(y+4), int(x+248), int(y+48)),
+	}
+}
+
+func (s *authorScreen) drawTimelineFilter(g *Game, dst *ebiten.Image, x, y float64) {
+	ids := s.timelineAssignees(g)
+	if len(ids) == 0 {
+		return
+	}
+	v := g.db.Game.Screens[s.name].View
+	for _, r := range timelineFilterBounds(x, y) {
+		g.window(dst, float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()))
+	}
+	g.text(dst, "‹", x+24, y+16, 18, g.th.text)
+	g.text(dst, "›", x+224, y+16, 18, g.th.text)
+	label := g.db.Tr(v.FilterLabel)
+	if s.timelineAssignee != "" {
+		label = g.db.Game.Planning.Entities[s.timelineAssignee].Name
+		path, ok := g.st.EntityValues(s.timelineAssignee, false)[v.Portrait].(string)
+		if !ok {
+			path = ""
+		}
+		g.planningFace(dst, path, x+68, y+26, 16)
+	}
+	g.drawPlanningText(dst, label, x+88, y+8, 122, 16, 1, g.th.text)
+	g.text(dst, fmt.Sprintf("%d / %d", slices.Index(ids, s.timelineAssignee), len(ids)-1), x+88, y+28, 15, g.th.dim)
+}
+
+func (s *authorScreen) updateTimelineFilter(g *Game) bool {
+	ids := s.timelineAssignees(g)
+	if len(ids) == 0 || !g.in.click {
+		return false
+	}
+	for i, r := range timelineFilterBounds(0, 108) {
+		if !g.in.mouse.In(r) {
+			continue
+		}
+		index := slices.Index(ids, s.timelineAssignee)
+		switch i {
+		case 0:
+			index = (index + len(ids) - 1) % len(ids)
+		case 1:
+			index = 0 // The current portrait/name resets to the complete view.
+		case 2:
+			index = (index + 1) % len(ids)
+		}
+		s.timelineAssignee = ids[index]
+		return true
+	}
+	return false
 }
 
 func (s *authorScreen) timelineLanes(g *Game) []timelineLane {
@@ -742,6 +821,9 @@ func (s *authorScreen) timelineDescription(g *Game) string {
 }
 
 func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
+	if s.updateTimelineFilter(g) {
+		return true
+	}
 	lanes := s.timelineLanes(g)
 	if len(lanes) == 0 {
 		return false

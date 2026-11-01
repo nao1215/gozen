@@ -425,6 +425,9 @@ type PlanningView struct {
 	Tabs []string `yaml:"tabs"`
 	// Rows groups timeline activities in authored order; omission keeps the task list.
 	Rows []TimelineRow `yaml:"rows"`
+	// FilterLabel enables the grouped timeline assignee selector and labels its
+	// unfiltered state. Order, Visible and Portrait supply its public residents.
+	FilterLabel string `yaml:"filter_label"`
 	// Markers annotates dates without changing scheduling or simulation rules.
 	Markers []TimelineMarker `yaml:"markers"`
 

@@ -1,6 +1,7 @@
 package play
 
 import (
+	"encoding/json"
 	"image"
 	"math"
 	"math/rand/v2"
@@ -449,5 +450,91 @@ func TestTimelineForecast(t *testing.T) {
 				t.Fatalf("got %v %q", got, text)
 			}
 		})
+	}
+}
+
+func TestTimelineAssigneeFilter(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{
+		Calendar:   data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}},
+		Entities:   map[string]data.Entity{"a": {Name: "Weaver"}, "b": {Name: "Potter"}},
+		Activities: map[string]data.Activity{"cloth": {Name: "Cloth", Effort: 10, Assignee: "a"}, "vase": {Name: "Vase", Effort: 10, Assignee: "b"}},
+	}
+	v := data.PlanningView{Fullscreen: true, FilterLabel: "All residents", Order: []string{"b", "a"}, Visible: "shown", Rows: []data.TimelineRow{{Label: "Crafts", Items: []data.TimelineItem{{Activity: "cloth"}, {Activity: "vase"}}}}}
+	db.Game.Screens = map[string]*data.AuthorScreen{"tasks": {Kind: "timeline", View: v}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	for _, id := range v.Order {
+		g.st.Planning.Entities[id].Observations["shown"] = true
+	}
+	s := newAuthorScreen(g, "tasks", nil)
+	before, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := s.timelineLanes(g)
+	click := func(button int) {
+		t.Helper()
+		g.in.click = true
+		g.in.mouse = timelineFilterBounds(0, 108)[button].Min.Add(image.Pt(4, 4))
+		s.updateSurface(g)
+		g.in.click = false
+	}
+	click(2)
+	if s.timelineAssignee != "b" {
+		t.Fatal("authored order ignored")
+	}
+	lanes := s.timelineLanes(g)
+	if !lanes[0].dimmed || lanes[1].dimmed {
+		t.Fatal("wrong assignment emphasized")
+	}
+	for i, lane := range lanes {
+		if lane.bounds != original[i].bounds || lane.reported != original[i].reported {
+			t.Fatal("filter changed timeline geometry or report")
+		}
+	}
+	s.refresh(g)
+	if s.timelineAssignee != "b" {
+		t.Fatal("refresh lost filter")
+	}
+	click(2)
+	if s.timelineAssignee != "a" {
+		t.Fatal("cannot select second resident")
+	}
+	click(2)
+	if s.timelineAssignee != "" {
+		t.Fatal("cannot cycle to all")
+	}
+	click(0)
+	if s.timelineAssignee != "a" {
+		t.Fatal("reverse cycle broken")
+	}
+	click(1)
+	if s.timelineAssignee != "" {
+		t.Fatal("name did not reset")
+	}
+	after, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) || len(g.stack) != 0 {
+		t.Fatal("viewing changed game state")
+	}
+	click(2)
+	a := g.st.Planning.Activities["cloth"]
+	a.Assignee = "b"
+	g.st.Planning.Activities["cloth"] = a
+	if s.timelineLanes(g)[0].dimmed {
+		t.Fatal("reassignment not reflected")
+	}
+	delete(g.st.Planning.Entities["b"].Observations, "shown")
+	if got := s.timelineAssignees(g); !slices.Equal(got, []string{"", "a"}) || s.timelineAssignee != "" {
+		t.Fatal("hidden resident retained", got)
+	}
+	if newAuthorScreen(g, "tasks", nil).timelineAssignee != "" {
+		t.Fatal("reopening retained filter")
+	}
+	db.Game.Screens["tasks"].View.FilterLabel = ""
+	if s.timelineAssignees(g) != nil {
+		t.Fatal("selector enabled without label")
 	}
 }

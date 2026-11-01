@@ -74,6 +74,7 @@ PolicyRule:
   event: "Existing event to run through the ordinary interpreter."
 PlanningView:
   tabs: "Two to five fullscreen screen IDs in the same order on every peer, including this screen. Bottom tabs or left/right replace the surface without consuming time or nesting screens."
+  filter_label: Optional label for the unfiltered grouped timeline. Enables arrow buttons to cycle public residents from order and visible; clicking the portrait or name resets to all. Other lanes become faint without moving or changing state.
   rows: Optional grouped timeline rows. The calendar range stays fixed and oversized tables scroll by group.
   markers: Named date annotations on the grouped timeline calendar band.
   visible: Optional public boolean binding; only true residents are displayed and selectable. Missing values hide the resident.

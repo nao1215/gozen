@@ -191,3 +191,13 @@ with a numeric overflow indicator; pointing at a day shows its names in the
 footer. Fullscreen calendars offer left/right keys and arrow buttons to browse
 within the authored start/end months. Browsing changes only transient view state,
 never the simulation date, reservations or save. Reopening starts at today's month.
+
+Grouped timelines may opt into an assignee selector with `view.filter_label`,
+which labels the unfiltered state. The arrows cycle through that state and the
+public residents selected by `order` and `visible`; the middle name/portrait
+resets to all residents. `portrait` uses the same public binding as resident
+cards. Other residents' lanes become faint but keep their positions and remain
+selectable, including in authored quality summaries. Refresh preserves the
+selection; reopening clears it, and a newly hidden resident clears the filter.
+The selector changes no assignments, observations, date or saved state. Existing
+left/right tab keys retain their meaning. Omission keeps the previous view.

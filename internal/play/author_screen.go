@@ -14,25 +14,26 @@ import (
 
 // authorScreen presents an authored list without requiring a custom Go screen.
 type authorScreen struct {
-	calendarMonth string
-	residentTop   int
-	timelineTop   int
-	timelineFocus int
-	target        string
-	focus         int
-	popup         *list
-	popupIndices  []int
-	popupArmed    bool
-	name          string
-	title         string
-	indices       []int
-	running       bool
-	parent        *event.Runner
-	request       event.Request
-	origin        string
-	entries       []data.ScreenEntry
-	list          *list
-	done          func()
+	calendarMonth    string
+	residentTop      int
+	timelineTop      int
+	timelineFocus    int
+	timelineAssignee string
+	target           string
+	focus            int
+	popup            *list
+	popupIndices     []int
+	popupArmed       bool
+	name             string
+	title            string
+	indices          []int
+	running          bool
+	parent           *event.Runner
+	request          event.Request
+	origin           string
+	entries          []data.ScreenEntry
+	list             *list
+	done             func()
 }
 
 func newAuthorScreen(g *Game, name string, done func()) *authorScreen {
@@ -71,6 +72,7 @@ func (s *authorScreen) refreshed(g *Game) *authorScreen {
 	n.residentTop = s.residentTop
 	n.timelineTop = s.timelineTop
 	n.timelineFocus = s.timelineFocus
+	n.timelineAssignee = s.timelineAssignee
 	n.list.sel = min(s.list.sel, max(0, len(n.entries)-1))
 	if s.list.sel < len(s.indices) {
 		for i, index := range n.indices {

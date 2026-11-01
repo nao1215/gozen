@@ -13596,6 +13596,19 @@
           },
           "x-type": "[PlanningField](#planningfield)[]"
         },
+        "filter_label": {
+          "description": "Optional label for the unfiltered grouped timeline. Enables arrow buttons to cycle public residents from order and visible; clicking the portrait or name resets to all. Other lanes become faint without moving or changing state.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "footer": {
           "description": "Interpolated guidance text on the full-screen bottom strip.",
           "type": "string",
