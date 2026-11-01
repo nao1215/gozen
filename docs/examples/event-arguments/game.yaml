@@ -68,6 +68,8 @@ screens:
     entries:
     - label: Greet the residents
       do: [{call: speaker_demo}]
+    - label: Selected source templates
+      do: [{call: selected_text_demo}]
     - label: Read collection totals
       do: [{call: collection_demo}]
     - label: Read calendar ranges

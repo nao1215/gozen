@@ -2,6 +2,7 @@ package event_test
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -1045,5 +1046,52 @@ events:
 	voice, ok := effects[0].(event.VoiceEffect)
 	if !ok || voice.Who != "potter" || voice.File != line.Voice {
 		t.Fatal(effects)
+	}
+}
+
+func TestSelectedSourceKeepsLiteralReadIdentity(t *testing.T) {
+	for _, dynamic := range []bool{false, true} {
+		field := `text: 'Potter has {gold} coins.'`
+		if dynamic {
+			field = `text_expr: 'arg.name + " has {gold} coins."'`
+		}
+		db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: sources\n" + testgame.Game, "data/source.yaml": `events:
+  speak:
+    params: {name: string}
+    do:
+    - say: {who: scout, ` + field + `}
+  visit:
+    do:
+    - call: {event: speak, args: {name: '"Potter"'}}
+`})
+		for _, gold := range []int{5, 9} {
+			st := testgame.State(db, 17)
+			st.Gold = gold
+			r := event.New(db, st, &host{})
+			r.Log = func(err error) { t.Error(err) }
+			r.Start(db.Events["visit"].Do)
+			line := testgame.As[event.Say](t, r.Next())
+			if line.Key != event.SourceKey("scout", "Potter has {gold} coins.") || line.Text != fmt.Sprintf("Potter has %d coins.", gold) {
+				t.Fatalf("source identity: %+v", line)
+			}
+		}
+	}
+}
+
+func TestInvalidSelectedSourceDoesNotConsumeRandomness(t *testing.T) {
+	db := testgame.Load(t, nil)
+	for _, source := range []string{`42`, `rand()`, `"x" + missing.name`} {
+		st, control := testgame.State(db, 17), testgame.State(db, 17)
+		r := event.New(db, st, &host{})
+		var failures int
+		r.Log = func(error) { failures++ }
+		r.Start([]data.Command{{Say: &data.Say{TextExpr: data.MustExpr(source)}}})
+		if got := r.Next(); got != nil || failures != 1 {
+			t.Fatalf("invalid source %s: %v, failures %d", source, got, failures)
+		}
+		a, b := st.Rand.Uint64(), control.Rand.Uint64()
+		if a != b {
+			t.Fatalf("source consumed randomness: %v != %v", a, b)
+		}
 	}
 }

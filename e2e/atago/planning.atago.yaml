@@ -1013,3 +1013,40 @@ scenarios:
       file:
         path: after.jsonl
         contains: ['"who":"Potter"', '"who":"Weaver"', 'Encouraged weaver', 'Visits 2', '"greetings":2']
+- name: selected source text survives cross-process resume
+  steps:
+  - fixture:
+      file: source-save.txt
+      content: |
+        gap 4
+        wait 30
+        press save
+        press z
+        wait 90
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --event selected_text_demo --script source-save.txt --save-dir saves --trace before.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: saves/save1.json
+        json: {path: $.cursor.event, equals: selected_text_demo}
+  - fixture:
+      file: source-resume.txt
+      content: |
+        gap 4
+        wait 20
+        press z
+        press z
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --script source-resume.txt --save-dir saves --trace after.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: after.jsonl
+        contains: ['Potter visits the workshop.', 'Weaver visits the workshop.']

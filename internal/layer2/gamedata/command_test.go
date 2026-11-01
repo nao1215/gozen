@@ -1,11 +1,13 @@
 package gamedata_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"slices"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/goccy/go-yaml"
 
@@ -230,5 +232,32 @@ func TestNestedCommandAliases(t *testing.T) {
 	}
 	if len(commands) != 4 || commands[0].Say.Text != "Ready" || commands[1].Say.Text != "Ready" || commands[2].Then[0].Say.Text != "Ready" || commands[3].Then[0].Say.Text != "Ready" {
 		t.Fatalf("alias content changed: %+v", commands)
+	}
+}
+
+func TestSourceTextDiagnostics(t *testing.T) {
+	for _, tc := range []struct{ field, want string }{
+		{`text_expr: '"Ready"'`, ""},
+		{`text_expr: '42'`, "expected string"},
+		{`text_expr: 'rand()'`, "pure"},
+		{`text: Ready, text_expr: '"Ready"'`, "not both"},
+	} {
+		_, err := data.Load(fstest.MapFS{
+			"game.yaml":       {Data: []byte("schema_version: 10\nid: sources\nstart: {location: room}\n")},
+			"data/world.yaml": {Data: []byte("locations: {room: {name: Room}}\nevents: {main: {do: [{say: {" + tc.field + "}}]}}\n")},
+		})
+		if tc.want == "" && err != nil || tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+			t.Fatalf("%s: %v", tc.field, err)
+		}
+	}
+}
+
+func TestLiteralSayOmitsSelectedSourceFromReplayDefinition(t *testing.T) {
+	encoded, err := json.Marshal(data.Say{Text: "Ready"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "TextExpr") {
+		t.Fatalf("literal replay definition gained a field: %s", encoded)
 	}
 }

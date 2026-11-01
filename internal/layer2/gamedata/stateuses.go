@@ -163,8 +163,10 @@ func (u *stateUses) commands(where string, cs []Command) {
 		}
 		if c.Say != nil {
 			u.text(w+".say", c.Say.Text)
+			u.expr(w+".say.text_expr", c.Say.TextExpr)
 			for j, alt := range c.Say.Instead {
 				u.text(fmt.Sprintf("%s.say.instead[%d]", w, j), alt.Text)
+				u.expr(fmt.Sprintf("%s.say.instead[%d].text_expr", w, j), alt.TextExpr)
 			}
 		}
 		u.expr(w+".if", c.If)

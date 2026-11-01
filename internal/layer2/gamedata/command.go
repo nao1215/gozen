@@ -229,6 +229,9 @@ type Say struct {
 	Who      IDRef  `yaml:"who"`  // a literal name, or an actor expression
 	Face     string `yaml:"face"` // a face of the actor (or a picture path)
 	Text     string `yaml:"text"`
+	// TextExpr selects a source template before translation and read-key hashing.
+	// Narrative consumers require a pure string expression, exclusive with Text.
+	TextExpr Expr   `yaml:"text_expr,omitempty" json:",omitzero"`
 	Side     string `yaml:"side"` // left, right (default: left for party, right for others)
 	// Voice is the line's voice: a name in the speaker's voices folder, or a path under
 	// assets/ (schema_version 4, ADR 0028).

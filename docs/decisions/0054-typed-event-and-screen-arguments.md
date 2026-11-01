@@ -782,3 +782,15 @@ conversion and serialization; no new table or save format is introduced.
 Static usage records the selected table and reads in the index expression.
 The counter example and CLI scenario cover independent resident flags, and the
 runtime tests cover toggling, save/load and invalid targets without RNG changes.
+
+
+## Selected narrative sources
+
+Schema 10 additionally accepts the pure string expression `say.text_expr`,
+exclusive with `text`. The selected source is used before translation and text
+interpolation, including for the ADR 0026 source key. This allows a shared
+resident conversation to retain the literal read identities it replaces.
+Literal `text` semantics and serialization remain unchanged. Static scene-read
+summaries treat selected sources as unknown, and language extraction cannot
+enumerate them. The author guide records these limitations. No package boundary
+or save format changes are needed; replay uses the existing argument scope.

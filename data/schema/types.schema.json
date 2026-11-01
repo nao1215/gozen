@@ -15568,6 +15568,24 @@
               },
               "x-type": "string"
             },
+            "text_expr": {
+              "description": "Pure string expression selecting the source template before read-key hashing and translation; exclusive with text (schema 10).",
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ],
+              "x-contract": {
+                "default": "no expression (true as a condition, 0 as a number)",
+                "legacy_default": "no expression (true as a condition, 0 as a number)",
+                "zero": "expression value 0 (false as a condition)",
+                "required": "optional",
+                "reference": "expression; checked by gozen check",
+                "version": "0, 1, 2"
+              },
+              "x-type": "expression"
+            },
             "voice": {
               "description": "The line's voice: for an actor with `voices`, a name in that folder (the `.ogg` or `.wav` may be left out); for anyone else, a path under `assets/`. Needs schema version 4.",
               "type": "string",

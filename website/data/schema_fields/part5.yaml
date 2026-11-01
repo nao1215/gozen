@@ -49,6 +49,7 @@ Rule:
   weight: "The weight when one of the top-priority rules is drawn at random. The default is 1."
   when: "A condition for the rule, with `self`, `allies`, `foes`, `turn`, `flag` and `var` available."
 Say:
+  text_expr: Pure string expression selecting the source template before read-key hashing and translation; exclusive with text (schema 10).
   ensemble: "Optional ensemble planning screen displayed behind a box-style dialogue line with the active speaker highlighted."
   _: "A line of dialogue, written as a plain string or as a map with the speaker, face and text."
   who: "Who speaks: an actor ID, or any name to show."

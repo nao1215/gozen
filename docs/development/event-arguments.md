@@ -538,3 +538,39 @@ stay in one body. This does not generate repeated screen entries. Dialogue
 templates have a separate read-history contract: replacing a literal `say`
 with an interpolated template can change its read key even if the displayed
 sentence is identical.
+
+
+## Selecting a source template
+
+Schema 10 accepts `say.text_expr` instead of `say.text`. A pure expression must
+return a string. The runner evaluates it once, then uses that selected source
+for the read key, translation lookup and ordinary `{expression}` interpolation.
+For example, the workshop's `selected_text_demo` calls this event twice:
+
+```yaml
+report_resident:
+  params: {name: string}
+  do:
+  - say: {text_expr: 'arg.name + " visits the workshop."'}
+```
+
+Selecting `Potter visits the workshop.` has exactly the same read key as a
+literal line with that source and speaker. This is useful when replacing copied
+resident conversations while preserving their read records. Ordinary `text`
+interpolation still shares a key across displayed values. Choose `text_expr`
+only when the source identity itself should vary, not for counters or prices.
+
+Unknown values, non-string results and random expressions are errors and display
+no line. Supplying both fields is invalid. Reactions continue to provide literal
+sources with their own interpolation values. Replay reevaluates the expression
+in the reconstructed call scope; changing a definition still invalidates older
+continuation fingerprints. Atago saves a selected line and resumes it in a new
+process. The line identity tests compare selected and literal sources.
+
+Static scene-read summaries cannot enumerate dynamic sources and conservatively
+keep such scenes unread; ordinary line skipping uses their exact keys. Language
+catalog extraction cannot enumerate them either: authors must maintain entries
+for the selected sources themselves; the checker reports these entries as
+unknown static sources. Templates returned by the expression are
+not recursively evaluated as source expressions. Their interpolation has the
+same behavior as ordinary text, but its field names cannot be checked statically.

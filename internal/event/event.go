@@ -1289,12 +1289,32 @@ func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
 		r.logf(err)
 		return Say{}, false
 	}
-	out := Say{Name: who, Key: SourceKey(who, s.Text), Ensemble: s.Ensemble}
+	source := s.Text
+	if s.TextExpr.Set() {
+		for _, name := range s.TextExpr.Names() {
+			if name == "rand" || name == "chance" {
+				r.logf(errors.New("say.text_expr must be pure"))
+				return Say{}, false
+			}
+		}
+		value, evalErr := s.TextExpr.Eval(env)
+		selected, ok := value.(string)
+		if evalErr != nil {
+			r.logf(fmt.Errorf("say.text_expr: %w", evalErr))
+			return Say{}, false
+		}
+		if !ok || s.Text != "" || s.Values != nil {
+			r.logf(errors.New("say.text_expr: expected a string source without text or reaction values"))
+			return Say{}, false
+		}
+		source = selected
+	}
+	out := Say{Name: who, Key: SourceKey(who, source), Ensemble: s.Ensemble}
 	if s.Values != nil { // filled by the fields' whole names, not evaluated
-		out.text = data.Phrase{Source: s.Text, Values: s.Values}
+		out.text = data.Phrase{Source: source, Values: s.Values}
 		out.Text = data.Again(r.db, out.text)
 	} else {
-		out.Text, out.text = data.Fill(r.db, s.Text, env)
+		out.Text, out.text = data.Fill(r.db, source, env)
 	}
 	if s.Voice != "" {
 		out.Voice, _ = r.db.VoicePath(who, s.Voice)

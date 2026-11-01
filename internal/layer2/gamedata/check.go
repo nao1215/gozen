@@ -1468,6 +1468,13 @@ func (c *checker) say(w string, s *Say, names []string) {
 		c.errorf(diag.NotAWord, w+".side", "want left or right")
 	}
 	c.text(w, s.Text, names)
+	if s.TextExpr.Set() {
+		c.needsVersion(w+".text_expr", "source text expressions", SchemaVersion10)
+		if s.Text != "" {
+			c.errorf(diag.Shape, w, "use text or text_expr, not both")
+		}
+		c.argumentExpression(w+".text_expr", s.TextExpr, "string", names, nil)
+	}
 }
 
 func (c *checker) commands(where string, cmds []Command, names []string) {

@@ -245,6 +245,14 @@ events:
       - label: 'Confirm {arg.resident}'
         do: [{set: {var.visits: 'arg.amount'}}]
     - say: 'Visited {arg.resident}: {var.visits}'
+  selected_text_demo:
+    do:
+    - call: {event: report_resident, args: {name: '"Potter"'}}
+    - call: {event: report_resident, args: {name: '"Weaver"'}}
+  report_resident:
+    params: {name: string}
+    do:
+    - say: {text_expr: 'arg.name + " visits the workshop."'}
   speaker_demo:
     do:
     - call: {event: greet, args: {speaker: '"potter"'}}
