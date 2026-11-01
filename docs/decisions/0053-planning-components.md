@@ -204,8 +204,9 @@ ID highlights its participant tile and replaces the standalone talking portrait.
 
 Island seats render authored public `fields` below the name, including when a
 badge replaces the face. Keep seat fields short (two fields fit the compact layout).
-Ensemble tiles can show up to two public fields over the lower portrait area for
-briefing summaries. Authors choose the text and use an ordinary `say.ensemble`
+Ensemble tiles reserve at most the lower third of the content area for up to
+two public summary fields. Camera images and fallback icons stay above that
+strip; the participant name retains its separate bottom row. Authors choose the text and use an ordinary `say.ensemble`
 to keep the summary within the existing dialogue and save flow. An ensemble's
 public `badge` binding appears in a contrasting strip above the portrait; empty
 badges add no strip. Fullscreen ensembles also retain the authored date and
@@ -217,7 +218,9 @@ or non-boolean observations do not. A badge can explain the highlight in words.
 Fullscreen entry `text` is visible below its label when its bounds are at least
 72 logical pixels high. This supports an authored agenda or notice card without
 adding another source of state. Target action menus have a resident heading,
-show at most six rows and use the auxiliary column on island screens.
+show at most six rows and open beside the selected island seat. The menu and
+confirmation preview have opaque backgrounds and stay left of the sidebar,
+below the header and above the footer.
 On fullscreen authored screens, `notice` results temporarily replace the footer,
 one at a time, without blocking event execution. Queued results retain their
 display time until shown; dialogue pauses notification time. Keep result text

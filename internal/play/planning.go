@@ -164,6 +164,15 @@ func (g *Game) visibleResidents(v data.PlanningView) []string {
 	return out
 }
 
+// ensembleHeights reserves a separate summary strip below the camera image.
+func ensembleHeights(height float64, fields int) (face, summary float64) {
+	content := max(0, height-28)
+	if fields > 0 {
+		summary = min(80, content/3)
+	}
+	return content - summary, summary
+}
+
 func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x, y, w, h float64) {
 	p := g.db.Game.Planning
 	v := g.db.Game.Screens[s.name].View
@@ -247,34 +256,34 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 				g.drawPlanningText(dst, f.Label+" "+value(f.Key), xx+4, yy+ch-48+float64(j)*20, cw-8, 15, 1, color.Black)
 			}
 		case "ensemble":
+			faceH, summaryH := ensembleHeights(ch, len(v.Fields))
 			rect(dst, xx, yy, cw, ch, color.NRGBA{53, 58, 60, 255})
 			if values[v.Camera] == true {
 				bg := value(v.Backdrop)
 				if bg != "" && g.pics.get(bg) != missing {
-					g.planningBackdrop(dst, bg, values[v.Mask] == true, xx, yy, cw, ch-28)
+					g.planningBackdrop(dst, bg, values[v.Mask] == true, xx, yy, cw, faceH)
 				} else {
-					rect(dst, xx, yy, cw, ch-28, color.NRGBA{183, 184, 180, 255})
+					rect(dst, xx, yy, cw, faceH, color.NRGBA{183, 184, 180, 255})
 					rect(dst, xx+cw*.62, yy+12, cw*.30, ch*.35, color.NRGBA{196, 216, 231, 255})
 					if values[v.Mask] == true { // Geometric fallback is coarse too.
 						for row := range 4 {
 							for col := range 6 {
-								rect(dst, xx+float64(col)*cw/6, yy+float64(row)*(ch-28)/4, cw/6, (ch-28)/4, color.NRGBA{uint8(154 + col*6), uint8(160 + row*9), 170, 255})
+								rect(dst, xx+float64(col)*cw/6, yy+float64(row)*faceH/4, cw/6, faceH/4, color.NRGBA{uint8(154 + col*6), uint8(160 + row*9), 170, 255})
 							}
 						}
 					}
 				}
 				if portrait != "" && g.pics.get(portrait) != missing {
-					g.planningTorso(dst, portrait, xx+cw*.16, yy, cw*.68, ch-28)
+					g.planningTorso(dst, portrait, xx+cw*.16, yy, cw*.68, faceH)
 				} else {
-					g.planningFace(dst, "", xx+cw/2, yy+ch*.38, min(30, ch*.23))
-					rect(dst, xx+cw*.26, yy+ch*.58, cw*.48, ch*.20, color.NRGBA{55, 69, 93, 255})
+					g.planningFace(dst, "", xx+cw/2, yy+faceH*.38, min(30, faceH*.23))
+					rect(dst, xx+cw*.26, yy+faceH*.58, cw*.48, faceH*.20, color.NRGBA{55, 69, 93, 255})
 				}
 			} else {
-				g.planningFace(dst, value(v.Icon), xx+cw/2, yy+ch*.43, min(32, ch*.26))
+				g.planningFace(dst, value(v.Icon), xx+cw/2, yy+faceH*.43, min(32, faceH*.26))
 			}
 			if len(v.Fields) > 0 {
 				count := min(2, len(v.Fields))
-				summaryH := min(80.0, ch-28)
 				fieldH := summaryH / float64(count)
 				rect(dst, xx, yy+ch-28-summaryH, cw, summaryH, color.NRGBA{30, 34, 40, 245})
 				for j, f := range v.Fields[:count] {

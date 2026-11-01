@@ -1070,3 +1070,16 @@ func TestPlanningTorsoBounds(t *testing.T) {
 		}
 	}
 }
+
+func TestEnsembleRegionsKeepFacesAboveSummary(t *testing.T) {
+	for _, h := range []float64{120, 160, 240, 400} {
+		face, summary := ensembleHeights(h, 2)
+		if face < (h-28)*2/3-0.001 || summary > (h-28)/3+0.001 || math.Abs(face+summary+28-h) > 0.001 {
+			t.Fatalf("height %v: face %v summary %v", h, face, summary)
+		}
+		face, summary = ensembleHeights(h, 0)
+		if face != h-28 || summary != 0 {
+			t.Fatal("empty summary reserves portrait space")
+		}
+	}
+}

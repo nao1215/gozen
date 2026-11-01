@@ -486,8 +486,8 @@ func TestTargetActionsScrollInsideViewport(t *testing.T) {
 	if s.popup.y < 0 || s.popup.y+s.popup.height() > sh || s.popup.rows > 6 {
 		t.Fatalf("popup outside viewport: %+v", s.popup)
 	}
-	if s.popup.x < 1280*.72 || s.popup.y < 40 {
-		t.Fatal("action popup covers resident seats or has no heading space")
+	if s.popup.x+s.popup.w > 1280*.72 || s.popup.y < 88 || s.popup.y+s.popup.height()+144 > sh-100 {
+		t.Fatal("action popup overlaps the sidebar, header or footer")
 	}
 	for range 29 {
 		s.popup.step(1)

@@ -473,8 +473,15 @@ func (s *authorScreen) openTarget(g *Game, id string, r image.Rectangle) {
 	rows := max(1, min(6, len(items), int((sh-128)/44)))
 	s.popup = newList(items, max(0, min(float64(r.Min.X), sw-380)), max(40, min(float64(r.Max.Y), sh-44*float64(rows)-32)), 360, rows)
 	if g.db.Game.Screens[s.name].View.Fullscreen {
-		// Use the auxiliary column rather than covering another resident.
-		s.popup.x, s.popup.y, s.popup.w = sw*.72+8, 148, sw*.28-24
+		// Anchor beside the selected seat and leave the authored sidebar clear.
+		right := sw*.72 - 12
+		s.popup.w = min(360, right-24)
+		s.popup.x = float64(r.Max.X) + 8
+		if s.popup.x+s.popup.w > right {
+			s.popup.x = max(12, float64(r.Min.X)-s.popup.w-8)
+		}
+		s.popup.x = min(s.popup.x, right-s.popup.w)
+		s.popup.y = max(88, min(float64(r.Min.Y)+40, sh-100-144-s.popup.height()))
 	}
 	s.popup.size = 22
 }
@@ -637,12 +644,15 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 		rect(dst, float64(r.Min.X), float64(r.Max.Y-3), float64(r.Dx()), 3, g.th.accent)
 	}
 	if s.popup != nil {
+		// A solid backing keeps underlying status text from showing through.
+		rect(dst, s.popup.x, s.popup.y-40, s.popup.w, s.popup.height()+40, withAlpha(g.th.window, 255))
 		g.window(dst, s.popup.x, s.popup.y-40, s.popup.w, 42)
 		g.drawPlanningText(dst, g.db.Game.Planning.Entities[s.target].Name, s.popup.x+12, s.popup.y-30, s.popup.w-24, sizeS, 1, g.th.accent)
 		s.popup.draw(g, dst, true)
 		if s.popupArmed {
 			e := s.entries[s.popupIndices[s.popup.sel]]
 			y := s.popup.y + s.popup.height()
+			rect(dst, s.popup.x, y, s.popup.w, 144, withAlpha(g.th.window, 255))
 			g.window(dst, s.popup.x, y, s.popup.w, 144)
 			g.drawPlanningText(dst, e.Text, s.popup.x+12, y+12, s.popup.w-24, 18, 5, g.th.text)
 		}
