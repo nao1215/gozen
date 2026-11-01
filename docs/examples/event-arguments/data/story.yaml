@@ -157,3 +157,20 @@ events:
     params: {resident: entity, slot: number, amount: number}
     do:
     - set: {'var["stock_" + arg.resident + "_" + arg.slot]': 'var["stock_" + arg.resident + "_" + arg.slot] + arg.amount'}
+  threshold_demo:
+    do:
+    - call: {event: post_threshold, args: {key: '"water"', level: '1'}}
+    - say: 'First warning {var.posted_water}'
+    - set: {var.posted_water: '0'}
+    - call: {event: post_threshold, args: {key: '"water"', level: '1'}}
+    - say: 'Acknowledged warning {var.posted_water}'
+    - call: {event: post_threshold, args: {key: '"water"', level: '2'}}
+    - call: {event: post_threshold, args: {key: '"stock"', level: '1'}}
+    - say: 'Escalated warning {var.posted_water}; independent warning {var.posted_stock}'
+  post_threshold:
+    params: {key: string, level: number}
+    do:
+    - if: 'arg.level > var["shown_" + arg.key]'
+      then:
+      - set: {'var["posted_" + arg.key]': arg.level}
+      - set: {'var["shown_" + arg.key]': arg.level}

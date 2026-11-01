@@ -852,3 +852,22 @@ scenarios:
       file:
         path: counters.jsonl
         contains: ['Counters 6/3', '"stock_potter_1":6', '"stock_weaver_2":3']
+- name: keyed thresholds retain acknowledgements until severity increases
+  steps:
+  - fixture:
+      file: threshold.txt
+      content: |
+        gap 1
+        wait 10
+        do call: threshold_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script threshold.txt --trace threshold.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: threshold.jsonl
+        contains: ['First warning 1', 'Acknowledged warning 0', 'Escalated warning 2; independent warning 1', '"shown_water":2', '"shown_stock":1']

@@ -414,3 +414,16 @@ lines and effects for one cast under one argument-only guard. Arguments cannot
 change while the call runs, so that guard remains valid across dialogue waits.
 Do not combine state-dependent guards this way: their conditions may change
 between commands.
+
+The workshop's `threshold_demo` uses one keyed rule for water and stock
+warnings. It keeps the displayed level separate from the highest level already
+shown. Acknowledging a warning clears only the displayed level; another call at
+the same level leaves it cleared, and a higher level posts it again. These are
+ordinary saved variables, so the shared rule needs no per-resource event body.
+The atago scenario checks acknowledgement, escalation and independent keys.
+
+When extracting a sequence that updates several variables, preserve its original
+evaluation order. Literal `set` keys execute in lexical order, which may differ
+from the order of computed keys. Use separate commands when later values depend
+on earlier writes. Pass stable inputs as arguments, but keep changing values in
+the shared body so each call reads the current state.
