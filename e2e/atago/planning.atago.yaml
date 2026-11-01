@@ -757,3 +757,22 @@ scenarios:
       file:
         path: shifts.jsonl
         contains: ['Unavailable 0', 'Shifts 2/3']
+- name: shared adjustments preserve completed and unstarted tasks
+  steps:
+  - fixture:
+      file: adjustment.txt
+      content: |
+        gap 1
+        wait 10
+        do call: adjustment_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script adjustment.txt --trace adjustment.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: adjustment.jsonl
+        contains: ['Before start 2/0', 'After adjustment 2/0.5']

@@ -283,3 +283,21 @@ An invariant eligibility check can surround mutually exclusive branches rather
 than being copied into each branch. This is safe only when earlier branches
 cannot change eligibility for another matching branch. Do not hoist a check
 across mutations merely because its expression text is repeated.
+
+## Sharing ordered adjustments
+
+The workshop's `adjustment_demo` calls one `adjust_started` event with a numeric
+amount. Each task checks its current completion and progress before applying the
+adjustment. A completed task stays complete, an unstarted task stays at zero,
+and a started task receives the amount. The CLI scenario checks all three cases.
+This pattern also fits crop growth and training exercises.
+
+Freeze an amount only when its inputs stay unchanged throughout the original
+sequence. A value computed from progress that an earlier operation changes must
+be evaluated at that operation instead. Preserve task order, eligibility tests,
+and random draws when replacing copies with calls.
+
+Consecutive selection candidates can share an outer condition when none of their
+checks or effects changes its inputs. Keep candidate-specific cooldowns and
+priority checks inside, and keep source order: regrouping nonconsecutive
+candidates can change which one wins or consumes the next random draw.

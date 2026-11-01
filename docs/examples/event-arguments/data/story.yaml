@@ -88,3 +88,22 @@ events:
     params: {resident: entity, amount: number}
     do:
     - plan: {op: set, entity: {expr: arg.resident}, attribute: vigor, value: 'self.vigor + arg.amount'}
+  adjustment_demo:
+    do:
+    - plan: {op: progress, activity: prepare, value: '2'}
+    - call: {event: adjust_started, args: {amount: '-0.5'}}
+    - say: 'Before start {activity.prepare.progress}/{activity.shape.progress}'
+    - plan: {op: progress, activity: shape, value: '1'}
+    - call: {event: adjust_started, args: {amount: '-0.5'}}
+    - say: 'After adjustment {activity.prepare.progress}/{activity.shape.progress}'
+  adjust_started:
+    params: {amount: number}
+    do:
+    - call: {event: adjust_task, args: {task: '"prepare"', amount: arg.amount}}
+    - call: {event: adjust_task, args: {task: '"shape"', amount: arg.amount}}
+  adjust_task:
+    params: {task: activity, amount: number}
+    do:
+    - if: '!activity[arg.task].completed && activity[arg.task].progress > 0'
+      then:
+      - plan: {op: progress, activity: {expr: arg.task}, value: arg.amount}
