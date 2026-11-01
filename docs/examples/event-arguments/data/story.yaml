@@ -71,3 +71,20 @@ events:
     params: {budget: number}
     do:
     - set: {var.ratio: 'arg.budget < 1 ? 1 : var.finished / arg.budget'}
+  shift_demo:
+    do:
+    - call: {event: shift, args: {resident: '"potter"', available: 'false', amount: '9'}}
+    - say: 'Unavailable {entity.potter.vigor}'
+    - call: {event: shift, args: {resident: '"potter"', available: 'true', amount: '2'}}
+    - call: {event: shift, args: {resident: '"weaver"', available: 'true', amount: 'entity.potter.vigor + 1'}}
+    - say: 'Shifts {entity.potter.vigor}/{entity.weaver.vigor}'
+  shift:
+    params: {resident: entity, available: bool, amount: number}
+    do:
+    - if: arg.available
+      then:
+      - call: {event: apply_shift, args: {resident: arg.resident, amount: arg.amount}}
+  apply_shift:
+    params: {resident: entity, amount: number}
+    do:
+    - plan: {op: set, entity: {expr: arg.resident}, attribute: vigor, value: 'self.vigor + arg.amount'}

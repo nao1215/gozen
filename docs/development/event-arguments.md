@@ -270,3 +270,16 @@ draws random values, put those draws in its body and call it once per effect.
 Do not move a draw into an argument (arguments must be pure), cache a draw across
 calls, or sort the calls: those changes alter the random sequence. Compare the
 state and the next random value before and after replacing expanded commands.
+
+The `shift_demo` example shares an ordered work sequence between residents.
+An unavailable resident leaves state unchanged; later calls see the effects of
+previous calls. Each call freezes its own `available` and `amount` values, and
+`shift` passes only the arguments needed by `apply_shift`. This also fits farm
+chores or training sessions. Keep eligibility checks before random draws and
+preserve participant order when replacing copied command lists: reordering them
+can change both shared resources and the random stream.
+
+An invariant eligibility check can surround mutually exclusive branches rather
+than being copied into each branch. This is safe only when earlier branches
+cannot change eligibility for another matching branch. Do not hoist a check
+across mutations merely because its expression text is repeated.

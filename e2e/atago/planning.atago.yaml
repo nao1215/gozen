@@ -738,3 +738,22 @@ scenarios:
       file:
         path: progress.jsonl
         contains: ['First ratio 0.5', 'Empty ratio 1', '"ratio":1']
+- name: shared ordered shifts preserve unavailable and sequential participants
+  steps:
+  - fixture:
+      file: shifts.txt
+      content: |
+        gap 1
+        wait 10
+        do call: shift_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script shifts.txt --trace shifts.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: shifts.jsonl
+        contains: ['Unavailable 0', 'Shifts 2/3']
