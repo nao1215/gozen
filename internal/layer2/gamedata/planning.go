@@ -439,7 +439,9 @@ type PlanningView struct {
 	Header string `yaml:"header"`
 	Footer string `yaml:"footer"`
 	// DateFormat uses Go time layout tokens. Weekdays and Phases replace display labels.
-	DateFormat string            `yaml:"date_format"`
+	DateFormat string `yaml:"date_format"`
+	// WeekStart chooses the first calendar column: 0 (default Sunday) through 6.
+	WeekStart  int               `yaml:"week_start"`
 	Weekdays   []string          `yaml:"weekdays"`
 	Phases     map[string]string `yaml:"phases"`
 	EventLabel string            `yaml:"event_label"`
@@ -514,6 +516,9 @@ func (c *checker) planningView(w string, v PlanningView) {
 			}
 			seenTabs[id] = true
 		}
+	}
+	if v.WeekStart < 0 || v.WeekStart > 6 {
+		c.errorf(diag.OutOfRange, w+".week_start", "weekday must be 0 through 6")
 	}
 	if len(v.Weekdays) != 0 && len(v.Weekdays) != 7 {
 		c.errorf(diag.Shape, w+".weekdays", "provide seven weekday labels")

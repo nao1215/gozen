@@ -13795,6 +13795,19 @@
           },
           "x-type": "string"
         },
+        "week_start": {
+          "description": "First monthly calendar column, from 0 (Sunday, default) to 6 (Saturday). Weekday labels remain in Sunday-first order.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
         "weekdays": {
           "description": "Seven weekday labels starting with Sunday; omitted uses English.",
           "items": {

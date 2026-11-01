@@ -346,3 +346,64 @@ func TestEntityTableInlineDetailAndNavigation(t *testing.T) {
 		t.Fatal("keyboard opened wrong resident")
 	}
 }
+
+func TestCalendarNamesClosuresAndSixWeekLayout(t *testing.T) {
+	p := &data.Planning{Calendar: data.Calendar{Start: "2030-08-01", End: "2030-11-30", WeekdaysOff: []int{0, 6}, Closed: []string{"2030-09-02"}}, Schedule: []data.Reservation{{Date: "2030-09-03", Event: "private_event"}}}
+	v := data.PlanningView{WeekStart: 1, Markers: []data.TimelineMarker{{Date: "2030-09-02", Label: "Fair"}, {Date: "2030-09-02", Label: "Fair"}, {Date: "2030-09-02", Label: "Delivery"}}}
+	cells := calendarCells(p, v, "2030-09-30", 0, 108, 1280, 494)
+	if len(cells) != 30 || cells[0].bounds.Min.X < 1000 || cells[29].bounds.Min.X != 20 || cells[29].bounds.Min.Y <= cells[22].bounds.Min.Y {
+		t.Fatalf("Sunday start / Monday end must occupy six weeks: %+v", cells)
+	}
+	if !cells[0].closed || !cells[1].closed || cells[2].closed || !slices.Equal(cells[1].labels, []string{"Fair", "Delivery"}) || !slices.Equal(cells[2].labels, []string{"1 events"}) {
+		t.Fatalf("closures or public names wrong: %+v", cells[:3])
+	}
+	for i, cell := range cells {
+		if cell.bounds.Max.Y > 602 || cell.bounds.Dy() < 72 {
+			t.Fatalf("cell cannot fit date and three 15px lines: %v", cell)
+		}
+		for _, other := range cells[:i] {
+			if cell.bounds.Overlaps(other.bounds) {
+				t.Fatal("overlapping cells")
+			}
+		}
+	}
+	v.WeekStart = 0
+	if calendarCells(p, v, "2030-09-01", 0, 108, 1280, 494)[0].bounds.Min.X != 20 {
+		t.Fatal("default Sunday column changed")
+	}
+}
+
+func TestCalendarBrowsePreservesDateAndRefresh(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{Calendar: data.Calendar{Start: "2030-08-31", End: "2030-11-30", Phases: []string{"morning"}}}
+	db.Game.Screens = map[string]*data.AuthorScreen{"calendar": {Kind: "calendar", View: data.PlanningView{Fullscreen: true, WeekStart: 1}}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "calendar", nil)
+	g.in.click = true
+	width, _ := g.screen()
+	g.in.mouse = calendarButtons(width)[1].Min.Add(image.Pt(20, 20))
+	s.updateSurface(g)
+	if s.calendarMonth != "2030-09-01" {
+		t.Fatalf("month-end rolled over incorrectly: %s", s.calendarMonth)
+	}
+	s.refresh(g)
+	if s.calendarMonth != "2030-09-01" {
+		t.Fatal("refresh reset browsing")
+	}
+	for range 6 {
+		s.updateSurface(g)
+	}
+	if s.calendarMonth != "2030-11-01" {
+		t.Fatal("past calendar end")
+	}
+	g.in.mouse = calendarButtons(width)[0].Min.Add(image.Pt(20, 20))
+	for range 6 {
+		s.updateSurface(g)
+	}
+	if s.calendarMonth != "2030-08-01" || g.st.Planning.Date != "2030-08-31" || g.st.Planning.Phase != 0 {
+		t.Fatal("browsing changed state or escaped calendar range")
+	}
+	if newAuthorScreen(g, "calendar", nil).calendarDate(g) != "2030-08-31" {
+		t.Fatal("reopening must show current month")
+	}
+}

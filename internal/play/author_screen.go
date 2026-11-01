@@ -14,6 +14,7 @@ import (
 
 // authorScreen presents an authored list without requiring a custom Go screen.
 type authorScreen struct {
+	calendarMonth string
 	residentTop   int
 	timelineTop   int
 	timelineFocus int
@@ -66,6 +67,7 @@ func (s *authorScreen) refreshed(g *Game) *authorScreen {
 	n := newAuthorScreen(g, s.name, s.done)
 	n.target = s.target
 	n.focus = s.focus
+	n.calendarMonth = s.calendarMonth
 	n.residentTop = s.residentTop
 	n.timelineTop = s.timelineTop
 	n.timelineFocus = s.timelineFocus
@@ -297,6 +299,9 @@ func (s *authorScreen) updateSurface(g *Game) {
 	if s.updateTabs(g) {
 		return
 	}
+	if g.db.Game.Screens[s.name].Kind == "calendar" && s.updateCalendar(g) {
+		return
+	}
 	if g.db.Game.Screens[s.name].Kind == "entities" {
 		s.updateEntityTable(g)
 		return
@@ -375,6 +380,11 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 	footer := data.Render(g.db.Tr(v.Footer), g.st.Env())
 	if def.Kind == "timeline" && len(v.Rows) > 0 {
 		footer = s.timelineDescription(g)
+	}
+	if def.Kind == "calendar" {
+		if description := s.calendarDescription(g); description != "" {
+			footer = description
+		}
 	}
 	if g.noticeSurface() == s && g.noticesShown() && len(g.notices.list) > 0 {
 		footer = g.notices.list[0].text

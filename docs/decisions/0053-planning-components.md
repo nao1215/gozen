@@ -174,3 +174,12 @@ confirmation. Escape or clicking outside the menu cancels it. Authors should
 include the effect, cost and confirmation instruction in the text. Entries
 without text retain immediate activation. The preview uses 18 logical pixels
 and at most five lines; authors must keep the explanation within that space.
+
+Monthly calendars reuse `view.markers` as named day entries and shade calendar
+closures. `view.week_start` chooses the first column (0 Sunday by default,
+1 Monday); the seven weekday labels remain in Sunday-first order. Named markers
+replace the legacy reservation count on that day. Cells show up to three lines,
+with a numeric overflow indicator; pointing at a day shows its names in the
+footer. Fullscreen calendars offer left/right keys and arrow buttons to browse
+within the authored start/end months. Browsing changes only transient view state,
+never the simulation date, reservations or save. Reopening starts at today's month.

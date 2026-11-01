@@ -128,39 +128,7 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 		tx := axisX + axisW*max(0, min(1, today.Sub(start).Hours()/24/days))
 		gfx.StrokeLine(dst, float32(tx), float32(y), float32(tx), float32(y+h), 2, color.NRGBA{220, 65, 65, 255}, true)
 	case "calendar":
-		start, err := time.Parse(time.DateOnly, st.Date)
-		if err != nil {
-			return
-		}
-		start = time.Date(start.Year(), start.Month(), 1, 0, 0, 0, 0, time.UTC)
-		cw, ch := (w-40)/7, (h-30)/6
-		weekdays := v.Weekdays
-		if len(weekdays) != 7 {
-			weekdays = []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
-		}
-		for col, label := range weekdays {
-			g.text(dst, label, x+20+float64(col)*cw, y, 16, g.th.dim)
-		}
-		for d := start; d.Month() == start.Month(); d = d.AddDate(0, 0, 1) {
-			n := int(start.Weekday()) + d.Day() - 1
-			xx, yy := x+20+float64(n%7)*cw, y+30+float64(n/7)*ch
-			clr := g.th.dim
-			if d.Format(time.DateOnly) == st.Date {
-				clr = g.th.accent
-			}
-			gfx.StrokeLine(dst, float32(xx), float32(yy), float32(xx+cw-6), float32(yy), 1, clr, true)
-			g.text(dst, strconv.Itoa(d.Day()), xx+4, yy+5, 18, clr)
-			count := 0
-			for _, r := range p.Schedule {
-				if r.Date != "" && r.Date != d.Format(time.DateOnly) || len(r.Weekdays) > 0 && !slices.Contains(r.Weekdays, int(d.Weekday())) {
-					continue
-				}
-				count++
-			}
-			if count > 0 {
-				g.text(dst, strconv.Itoa(count)+" "+planningEventLabel(v), xx+4, yy+29, 15, g.th.text)
-			}
-		}
+		s.drawCalendar(g, dst, x, y, w, h)
 	case "entities", "ensemble", "islands":
 		s.drawResidents(g, dst, kind, x, y, w, h)
 	}
@@ -945,4 +913,150 @@ func (s *authorScreen) drawEntityTable(g *Game, dst *ebiten.Image) {
 	if !detail.Empty() {
 		s.drawEntityDetail(g, dst, float64(detail.Min.X), float64(detail.Min.Y), float64(detail.Dx()), float64(detail.Dy()))
 	}
+}
+
+// calendarCells shares hit regions with drawing, including six-week months.
+type calendarCell struct {
+	date   string
+	bounds image.Rectangle
+	closed bool
+	labels []string
+}
+
+func calendarCells(p *data.Planning, v data.PlanningView, month string, x, y, w, h float64) []calendarCell {
+	start, err := time.Parse(time.DateOnly, month)
+	if err != nil {
+		return nil
+	}
+	start = time.Date(start.Year(), start.Month(), 1, 0, 0, 0, 0, time.UTC)
+	cw, ch := (w-40)/7, (h-30)/6
+	var cells []calendarCell
+	for d := start; d.Month() == start.Month(); d = d.AddDate(0, 0, 1) {
+		n := (int(start.Weekday())-v.WeekStart+7)%7 + d.Day() - 1
+		xx, yy := x+20+float64(n%7)*cw, y+30+float64(n/7)*ch
+		date := d.Format(time.DateOnly)
+		cell := calendarCell{date: date, bounds: image.Rect(int(xx), int(yy), int(xx+cw-6), int(yy+ch-2)), closed: slices.Contains(p.Calendar.WeekdaysOff, int(d.Weekday())) || slices.Contains(p.Calendar.Closed, date)}
+		for _, marker := range v.Markers {
+			if marker.Date == date && !slices.Contains(cell.labels, marker.Label) {
+				cell.labels = append(cell.labels, marker.Label)
+			}
+		}
+		// Authored markers supply player-facing names. Preserve the old count
+		// for games that have not authored names; never expose internal event IDs.
+		if len(cell.labels) == 0 {
+			count := 0
+			for _, r := range p.Schedule {
+				if r.Date != "" && r.Date != date || len(r.Weekdays) > 0 && !slices.Contains(r.Weekdays, int(d.Weekday())) {
+					continue
+				}
+				count++
+			}
+			if count > 0 {
+				cell.labels = append(cell.labels, strconv.Itoa(count)+" "+planningEventLabel(v))
+			}
+		}
+		cells = append(cells, cell)
+	}
+	return cells
+}
+
+func (s *authorScreen) calendarDate(g *Game) string {
+	if s.calendarMonth != "" {
+		return s.calendarMonth
+	}
+	return g.st.Planning.Date
+}
+
+func calendarButtons(w float64) []image.Rectangle {
+	return []image.Rectangle{image.Rect(int(w)-180, 58, int(w)-108, 100), image.Rect(int(w)-92, 58, int(w)-20, 100)}
+}
+
+func (s *authorScreen) updateCalendar(g *Game) bool {
+	delta := 0
+	if g.in.left() {
+		delta = -1
+	} else if g.in.right() {
+		delta = 1
+	}
+	w, _ := g.screen()
+	if g.in.click {
+		for i, r := range calendarButtons(w) {
+			if g.in.mouse.In(r) {
+				delta = i*2 - 1
+			}
+		}
+	}
+	if delta == 0 {
+		return false
+	}
+	d, err := time.Parse(time.DateOnly, s.calendarDate(g))
+	if err != nil {
+		return true
+	}
+	d = time.Date(d.Year(), d.Month(), 1, 0, 0, 0, 0, time.UTC).AddDate(0, delta, 0)
+	p := g.db.Game.Planning
+	month := d.Format("2006-01")
+	if month >= p.Calendar.Start[:7] && month <= p.Calendar.End[:7] {
+		s.calendarMonth = d.Format(time.DateOnly)
+	}
+	return true
+}
+
+func (s *authorScreen) drawCalendar(g *Game, dst *ebiten.Image, x, y, w, h float64) {
+	v := g.db.Game.Screens[s.name].View
+	month := s.calendarDate(g)
+	if len(month) < 7 {
+		return
+	}
+	if v.Fullscreen {
+		g.text(dst, month[:7], x+24, 66, 22, g.th.text)
+		for i, r := range calendarButtons(w) {
+			g.window(dst, float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()))
+			g.text(dst, []string{"<", ">"}[i], float64(r.Min.X+28), float64(r.Min.Y+9), 22, g.th.text)
+		}
+	}
+	weekdays := v.Weekdays
+	if len(weekdays) != 7 {
+		weekdays = []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
+	}
+	for col := range 7 {
+		g.text(dst, weekdays[(col+v.WeekStart)%7], x+20+float64(col)*(w-40)/7, y, 16, g.th.dim)
+	}
+	for _, cell := range calendarCells(g.db.Game.Planning, v, month, x, y, w, h) {
+		r := cell.bounds
+		xx, yy := float64(r.Min.X), float64(r.Min.Y)
+		if cell.closed {
+			rect(dst, xx, yy, float64(r.Dx()), float64(r.Dy()), color.NRGBA{77, 46, 50, 255})
+		}
+		tint := g.th.text
+		if cell.date == g.st.Planning.Date {
+			tint = g.th.accent
+			rect(dst, xx, yy, 3, float64(r.Dy()), tint)
+		}
+		gfx.StrokeLine(dst, float32(xx), float32(yy), float32(r.Max.X), float32(yy), 1, tint, true)
+		g.text(dst, strings.TrimLeft(cell.date[8:], "0"), xx+6, yy+2, 18, tint)
+		limit := min(3, max(0, (r.Dy()-24)/16))
+		for i := range min(limit, len(cell.labels)) {
+			label := g.db.Tr(cell.labels[i])
+			if i == limit-1 && len(cell.labels) > limit {
+				label = fmt.Sprintf("+%d", len(cell.labels)-i)
+			}
+			g.drawPlanningText(dst, label, xx+6, yy+24+float64(i)*16, float64(r.Dx()-12), 15, 1, g.th.text)
+		}
+	}
+}
+
+func (s *authorScreen) calendarDescription(g *Game) string {
+	w, h := g.screen()
+	v := g.db.Game.Screens[s.name].View
+	for _, cell := range calendarCells(g.db.Game.Planning, v, s.calendarDate(g), 0, 108, w, h-226) {
+		if g.in.mouse.In(cell.bounds) {
+			labels := []string{planningDate(cell.date, "", v)}
+			for _, label := range cell.labels {
+				labels = append(labels, g.db.Tr(label))
+			}
+			return strings.Join(labels, " · ")
+		}
+	}
+	return ""
 }

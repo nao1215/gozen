@@ -83,6 +83,7 @@ PlanningView:
   header: Interpolated status text on the full-screen top strip.
   footer: Interpolated guidance text on the full-screen bottom strip.
   date_format: Go time layout for dates; the literal {weekday} is replaced using weekdays.
+  week_start: First monthly calendar column, from 0 (Sunday, default) to 6 (Saturday). Weekday labels remain in Sunday-first order.
   weekdays: Seven weekday labels starting with Sunday; omitted uses English.
   phases: Display labels keyed by calendar phase IDs.
   event_label: Calendar count suffix; omitted uses events.
