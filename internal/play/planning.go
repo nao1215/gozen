@@ -480,18 +480,25 @@ type timelineLane struct {
 	dimmed                          bool
 }
 
+type timelineResident struct {
+	id, portrait string
+}
+
 type timelineGroup struct {
 	label     string
 	text      string
 	y, height float64
 	lanes     []timelineLane
+	residents []timelineResident
 }
 
 // Grouped axes stay fixed to the authored calendar, even after deadline changes.
 // All geometry is logical, shared by drawing, pointer input and keyboard focus.
 func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineGroup, float64, float64) {
 	p := g.db.Game.Planning
-	rows := timelineGroups(p, g.db.Game.Screens[s.name].View)
+	v := g.db.Game.Screens[s.name].View
+	rows := timelineGroups(p, v)
+	visible := g.visibleResidents(v)
 	s.timelineAssignees(g)
 	axisX, axisW := x+260, max(1, w-280)
 	start, err := time.Parse(time.DateOnly, p.Calendar.Start)
@@ -524,6 +531,13 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 		for j, item := range row.Items {
 			d := p.Activities[item.Activity]
 			a := g.st.Planning.Activities[item.Activity]
+			if v.Portrait != "" && !a.Cancelled && slices.Contains(visible, a.Assignee) && !slices.ContainsFunc(group.residents, func(r timelineResident) bool { return r.id == a.Assignee }) {
+				portrait, ok := g.st.EntityValues(a.Assignee, false)[v.Portrait].(string)
+				if !ok {
+					portrait = ""
+				}
+				group.residents = append(group.residents, timelineResident{id: a.Assignee, portrait: portrait})
+			}
 			from, to := start, end
 			if d.From != "" {
 				date, err := time.Parse(time.DateOnly, d.From)
@@ -649,7 +663,22 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 	}
 	index := 0
 	for _, group := range groups {
-		g.drawPlanningText(dst, group.label, x+16, group.y, 232, 16, 1, g.th.text)
+		nameWidth := 232.0
+		if len(group.residents) > 0 {
+			nameWidth -= float64(min(3, len(group.residents)))*28 + 8
+		}
+		g.drawPlanningText(dst, group.label, x+16, group.y, nameWidth, 16, 1, g.th.text)
+		for i, resident := range group.residents[:min(3, len(group.residents))] {
+			cx := x + 248 - float64(min(3, len(group.residents))-i)*28 + 14
+			if i == 2 && len(group.residents) > 3 {
+				g.text(dst, fmt.Sprintf("+%d", len(group.residents)-2), cx-12, group.y, 15, g.th.text)
+				continue
+			}
+			g.planningFace(dst, resident.portrait, cx, group.y+12, 12)
+			if resident.id == s.timelineAssignee {
+				gfx.StrokeCircle(dst, float32(cx), float32(group.y+12), 13, 1, g.th.accent, true)
+			}
+		}
 		var labels []string
 		for _, lane := range group.lanes {
 			labels = append(labels, lane.item.Label)
@@ -705,7 +734,7 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 		if group.text != "" {
 			summary = group.text
 		}
-		g.drawPlanningText(dst, summary, x+16, group.y+18, 232, 15, 1, g.th.dim)
+		g.drawPlanningText(dst, summary, x+16, group.y+18, nameWidth, 15, 1, g.th.dim)
 		rect(dst, x+16, group.y+group.height-1, w-32, 1, muted)
 	}
 	if !today.Before(start) && !today.After(end) {
@@ -817,6 +846,19 @@ func (s *authorScreen) timelineDescription(g *Game) string {
 			}
 		}
 		return strings.Join(labels, " · ")
+	}
+	if g.in.mouse.X >= 16 && g.in.mouse.X < 248 {
+		_, sh := g.screen()
+		groups, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
+		for _, group := range groups {
+			if float64(g.in.mouse.Y) >= group.y && float64(g.in.mouse.Y) < group.y+group.height {
+				names := []string{group.label}
+				for _, resident := range group.residents {
+					names = append(names, p.Entities[resident.id].Name)
+				}
+				return strings.Join(names, " · ") + "\n" + group.text
+			}
+		}
 	}
 	lanes := s.timelineLanes(g)
 	if len(lanes) == 0 {

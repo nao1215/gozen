@@ -207,3 +207,13 @@ selectable, including in authored quality summaries. Refresh preserves the
 selection; reopening clears it, and a newly hidden resident clears the filter.
 The selector changes no assignments, observations, date or saved state. Existing
 left/right tab keys retain their meaning. Omission keeps the previous view.
+
+Grouped rows with a `portrait` binding show distinct visible assignees beside the
+row name, in lane order. Cancelled lanes do not contribute a resident. Up to three
+24-pixel portraits fit in the name column; for larger groups the third position
+shows the remaining count. Names and summaries truncate at the existing minimum
+text size, while pointing at the name column reveals the full row label, resident
+names and summary in the footer. The selected filter resident has an accent ring.
+Portraits come only from the public binding, so authors can supply a neutral icon
+for off-site residents. Omission retains text-only rows. This does not change the
+calendar geometry, assignments or saved state.

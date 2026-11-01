@@ -574,3 +574,55 @@ func TestTimelineAssigneeFilter(t *testing.T) {
 		t.Fatal("selector enabled without label")
 	}
 }
+
+func TestTimelineRowResidentsUsePublicIdentity(t *testing.T) {
+	db := testgame.Load(t, nil)
+	p := &data.Planning{Calendar: data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}}, Entities: map[string]data.Entity{}, Activities: map[string]data.Activity{}}
+	row := data.TimelineRow{Label: "Workshop", Text: "Public summary"}
+	for i, id := range []string{"a", "b", "c", "d", "a"} {
+		p.Entities[id] = data.Entity{Name: "Resident " + id}
+		task := strconv.Itoa(i)
+		p.Activities[task] = data.Activity{Name: task, Effort: 10, Assignee: id}
+		row.Items = append(row.Items, data.TimelineItem{Activity: task})
+	}
+	db.Game.Planning = p
+	v := data.PlanningView{Fullscreen: true, Portrait: "icon", Visible: "shown", Rows: []data.TimelineRow{row}}
+	db.Game.Screens = map[string]*data.AuthorScreen{"tasks": {Kind: "timeline", View: v}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	p.Attributes = map[string]data.Attribute{"icon": {Hidden: true}}
+	for id, e := range g.st.Planning.Entities {
+		e.Observations["shown"] = true
+		e.Observations["icon"] = "neutral-" + id
+		e.Attributes["icon"] = "private-expression"
+	}
+	s := newAuthorScreen(g, "tasks", nil)
+	groups, _, _ := s.groupedTimeline(g, 0, 108, 1280, 494)
+	if len(groups[0].residents) != 4 || groups[0].residents[0].portrait != "neutral-a" {
+		t.Fatalf("deduplication or public portrait: %+v", groups[0].residents)
+	}
+	g.in.mouse = image.Pt(200, 170)
+	if got := s.timelineDescription(g); !strings.Contains(got, "Resident d") || !strings.Contains(got, "Public summary") {
+		t.Fatal("overflow identities and row text must remain readable", got)
+	}
+	g.st.Planning.Entities["b"].Observations["shown"] = false
+	a := g.st.Planning.Activities["2"]
+	a.Cancelled = true
+	g.st.Planning.Activities["2"] = a
+	a = g.st.Planning.Activities["3"]
+	a.Assignee = "a"
+	g.st.Planning.Activities["3"] = a
+	groups, _, _ = s.groupedTimeline(g, 0, 108, 1280, 494)
+	if len(groups[0].residents) != 1 || groups[0].residents[0].id != "a" {
+		t.Fatal("hidden, cancelled or reassigned residents retained", groups[0].residents)
+	}
+	delete(g.st.Planning.Entities["a"].Observations, "icon")
+	groups, _, _ = s.groupedTimeline(g, 0, 108, 1280, 494)
+	if groups[0].residents[0].portrait != "" {
+		t.Fatal("missing observation fell back to hidden portrait")
+	}
+	db.Game.Screens["tasks"].View.Portrait = ""
+	groups, _, _ = s.groupedTimeline(g, 0, 108, 1280, 494)
+	if len(groups[0].residents) != 0 {
+		t.Fatal("portrait omission must preserve text-only rows")
+	}
+}
