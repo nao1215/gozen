@@ -360,10 +360,7 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 	v := def.View
 	fill(dst, color.NRGBA{30, 34, 40, 255})
 	s.drawPlanning(g, dst, def.Kind, 0, 48, sw, sh-156)
-	g.window(dst, 0, 0, sw, 48)
-	st := g.st.Planning
-	g.text(dst, planningDate(st.Date, g.db.Game.Planning.Calendar.Phases[st.Phase], v), 24, 12, sizeS, g.th.text)
-	g.text(dst, data.Render(g.db.Tr(v.Header), g.st.Env()), sw*.5, 12, sizeS, g.th.text)
+	s.drawPlanningHeader(g, dst)
 	g.window(dst, 0, sh-108, sw, 108)
 	footerWidth := sw * .70
 	if tabs := s.tabBounds(g); len(tabs) > 0 {
@@ -480,4 +477,15 @@ func (s *authorScreen) scrollTimeline(g *Game, height float64) {
 		s.timelineTop--
 	}
 	s.timelineTop = max(0, min(s.timelineTop, len(g.st.Planning.Activities)-timelineRows(height)))
+}
+
+// drawPlanningHeader keeps authored status text shared by surfaces and dialogue.
+// Clip each column by ellipsis, never by shrinking below the normal label size.
+func (s *authorScreen) drawPlanningHeader(g *Game, dst *ebiten.Image) {
+	sw, _ := g.screen()
+	v := g.db.Game.Screens[s.name].View
+	st := g.st.Planning
+	g.window(dst, 0, 0, sw, 48)
+	g.drawPlanningText(dst, planningDate(st.Date, g.db.Game.Planning.Calendar.Phases[st.Phase], v), 24, 12, 200, sizeS, 1, g.th.text)
+	g.drawPlanningText(dst, data.Render(g.db.Tr(v.Header), g.st.Env()), 240, 12, sw-264, sizeS, 1, g.th.text)
 }

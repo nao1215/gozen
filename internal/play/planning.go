@@ -313,6 +313,11 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 				}
 			}
 			g.drawPlanningText(dst, p.Entities[id].Name, xx+8, yy+ch-24, cw-16, 16, 1, color.White)
+			if badge != "" {
+				// Badges use only the explicitly observed binding, like seat cards.
+				rect(dst, xx, yy, cw, 28, g.th.accent)
+				g.drawPlanningText(dst, badge, xx+8, yy+4, cw-16, 15, 1, color.Black)
+			}
 			if g.talk.active && g.talk.say.Actor != "" && p.Entities[id].Actor == g.talk.say.Actor {
 				rect(dst, xx, yy, cw, 3, g.th.accent)
 				rect(dst, xx, yy+ch-3, cw, 3, g.th.accent)

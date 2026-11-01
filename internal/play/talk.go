@@ -338,6 +338,9 @@ func (t *talk) draw(g *Game, dst *ebiten.Image) {
 		if def := g.db.Game.Screens[s.Ensemble]; def != nil && def.Kind == "ensemble" {
 			screen := &authorScreen{name: s.Ensemble}
 			screen.drawPlanning(g, dst, "ensemble", 24, 16, sw-48, y-56)
+			if def.View.Fullscreen {
+				screen.drawPlanningHeader(g, dst)
+			}
 		}
 	}
 	if s.Ensemble == "" && s.Face != "" && (g.cg.File == "" || g.cg.Faces) && g.recruit == nil {

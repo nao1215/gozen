@@ -114,7 +114,11 @@ Island seats render authored public `fields` below the name, including when a
 badge replaces the face. Keep seat fields short (two fields fit the compact layout).
 Ensemble tiles can show up to two public fields over the lower portrait area for
 briefing summaries. Authors choose the text and use an ordinary `say.ensemble`
-to keep the summary within the existing dialogue and save flow.
+to keep the summary within the existing dialogue and save flow. An ensemble's
+public `badge` binding appears in a contrasting strip above the portrait; empty
+badges add no strip. Fullscreen ensembles also retain the authored date and
+header during dialogue. Header columns use normal-size text with ellipsis for
+overflow, shared with the fullscreen planning surfaces.
 Fullscreen entry `text` is visible below its label when its bounds are at least
 72 logical pixels high. This supports an authored agenda or notice card without
 adding another source of state. Target action menus have a resident heading,
