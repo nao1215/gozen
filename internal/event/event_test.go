@@ -814,6 +814,7 @@ func TestIndexedVariableAssignment(t *testing.T) {
     params: {resident: string, day: number}
     do:
     - set: {'var["stock_" + arg.resident + "_" + arg.day]': 'var["stock_" + arg.resident + "_" + arg.day] + 2'}
+    - set: {'flag["visited_" + arg.resident]': '!flag["visited_" + arg.resident]'}
   visit:
     do:
     - call: {event: count, args: {resident: '"potter"', day: '1'}}
@@ -837,6 +838,9 @@ func TestIndexedVariableAssignment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if loaded.Flags["visited_potter"] || !loaded.Flags["visited_weaver"] {
+		t.Fatalf("loaded visit flags: %v", loaded.Flags)
+	}
 	if loaded.Vars["stock_potter_1"] != 4.0 || loaded.Vars["stock_weaver_2"] != 2.0 {
 		t.Fatalf("loaded counters: %v", loaded.Vars)
 	}
@@ -844,7 +848,7 @@ func TestIndexedVariableAssignment(t *testing.T) {
 
 func TestInvalidIndexedTargetPreservesStateAndRandomness(t *testing.T) {
 	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: counters\n" + testgame.Game})
-	for _, target := range []string{`var[true]`, `var[""]`, `var["nested.key"]`, `var["bad key"]`, `var[rand(10)]`, `var["x"`, `var[nil]`} {
+	for _, target := range []string{`var[true]`, `var[""]`, `var["nested.key"]`, `var["bad key"]`, `var[rand(10)]`, `var["x"`, `var[nil]`, `flag[true]`, `flag[""]`, `flag["nested.key"]`, `flag[rand(10)]`, `flag["x"`, `flag[nil]`} {
 		t.Run(target, func(t *testing.T) {
 			st, control := testgame.State(db, 17), testgame.State(db, 17)
 			before, err := st.Save()

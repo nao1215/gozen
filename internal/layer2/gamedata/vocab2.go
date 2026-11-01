@@ -409,7 +409,7 @@ func DevSet(key string) bool {
 // (location: camp, party: [scout, guide]). There is no way to choose a place by an expression (kept simple by a constraint; ADR 0021).
 type Assignments map[string]Expr
 
-// ResolveSetTarget resolves an indexed variable destination for the event runner.
+// ResolveSetTarget resolves an indexed variable or flag destination for the event runner.
 // Literal destinations are returned unchanged. An index must be pure and yield a
 // nonempty state identifier; it is evaluated before the assignment's value.
 // This does not write state or replace SetPath's declaration/type checks.
@@ -427,19 +427,21 @@ func ResolveSetTarget(key string, env expr.Env) (string, error) {
 	}
 	name, ok := value.(string)
 	if !ok || !varName.MatchString(name) {
-		return "", fmt.Errorf("set target %s must yield a nonempty variable name (letters, digits and underscores)", key)
+		return "", fmt.Errorf("set target %s must yield a nonempty state name (letters, digits and underscores)", key)
 	}
-	return "var." + name, nil
+	table, _, _ := strings.Cut(key, "[")
+	return table + "." + name, nil
 }
 
 func assignmentIndex(key string) (Expr, error) {
-	if !strings.HasPrefix(key, "var[") {
+	table, _, indexed := strings.Cut(key, "[")
+	if !indexed || table != "var" && table != "flag" {
 		return Expr{}, nil
 	}
 	if !strings.HasSuffix(key, "]") {
 		return Expr{}, fmt.Errorf("set target %s requires a closing bracket", key)
 	}
-	index, err := parseExpr(key[4 : len(key)-1])
+	index, err := parseExpr(key[len(table)+1 : len(key)-1])
 	if err != nil {
 		return Expr{}, fmt.Errorf("set target %s: %w", key, err)
 	}

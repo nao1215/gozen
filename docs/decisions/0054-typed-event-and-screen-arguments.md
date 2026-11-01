@@ -768,3 +768,17 @@ repeated screen rows: collection-generated entries remain separate work. The
 neutral `speaker_demo` and `resident_card` example exercises both namespaces;
 atago saves during dialogue and resumes in a second process before activating
 the portrait action. This is headless input verification, not graphical acceptance.
+
+
+## Indexed state destinations
+
+Schema 10 accepts `var[expression]` and `flag[expression]` in `set` using the
+same pure string index validation and immediate target resolution. This lets
+one parameterized event update existing saved counters and acknowledgements
+without a branch for every resident or activity. Invalid names fail before the
+value is evaluated. Strict state declarations continue to require literal
+assignment targets. Resolved writes use the existing state namespace, value
+conversion and serialization; no new table or save format is introduced.
+Static usage records the selected table and reads in the index expression.
+The counter example and CLI scenario cover independent resident flags, and the
+runtime tests cover toggling, save/load and invalid targets without RNG changes.

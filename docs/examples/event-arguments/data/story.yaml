@@ -157,6 +157,7 @@ events:
     params: {resident: entity, slot: number, amount: number}
     do:
     - set: {'var["stock_" + arg.resident + "_" + arg.slot]': 'var["stock_" + arg.resident + "_" + arg.slot] + arg.amount'}
+    - set: {'flag["stocked_" + arg.resident]': 'true'}
   threshold_demo:
     do:
     - call: {event: post_threshold, args: {key: '"water"', level: '1'}}

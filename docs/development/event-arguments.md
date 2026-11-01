@@ -48,7 +48,7 @@ go test ./internal/session -run 'Test(EventArgumentsResume|BoundEventRootAndChan
 ```
 
 This is the event-call slice of [ADR 0054](../decisions/0054-typed-event-and-screen-arguments.md).
-Expression-form `say.who` remains pending. The sections below describe implemented
+Expression-form `say.who` is described under reusing speakers below. The sections below describe implemented
 planning targets and screen continuations.
 The event-call example uses `where` filtering for entity selection. It does not expand event
 bodies or add a generator. The session contract tests load these same example
@@ -409,9 +409,9 @@ farm task, assigning a workshop resident, or selecting a training encounter;
 it does not require scratch values in saved state for the frozen inputs.
 
 
-## Indexed variable destinations
+## Indexed variable and flag destinations
 
-Schema 10 permits a computed variable name in `set`. The workshop's
+Schema 10 permits a computed variable or flag name in `set`. The workshop's
 `counter_demo` records stock by resident and slot with one shared event:
 
 ```yaml
@@ -425,16 +425,20 @@ underscore followed by letters, digits or underscores. Empty names, dots,
 spaces, non-string results and random draws are rejected. A bad destination
 logs an execution error before evaluating its value; that assignment changes
 neither state nor randomness. Other assignments continue normally. Values use
-the existing variable type and save checks, including declared types.
+the existing state value conversion and save checks, including declared types.
 
 Assignments execute in lexical order of their **authored** keys. Each target
 is resolved immediately before its value, so earlier writes are visible to
 later targets and values. Split order-dependent operations into separate
 commands. The saved key is the resolved name, exactly as with a literal write;
-there is no new save representation. Only `var[...]` supports this syntax,
+there is no new save representation. Both `var[...]` and `flag[...]` support this syntax,
 and strict state declarations still require literal destinations. The state
-usage index records a computed write against the variable table and records
+usage index records a computed write against the corresponding state table and records
 reads made by its index expression.
+
+The same example marks `flag["stocked_" + arg.resident]` as true. Use this
+for per-resident acknowledgements, crop inspections or completed lessons;
+flags retain the ordinary literal flag value conversion and save format.
 
 This is useful when replacing an existing family of saved scalar counters.
 The complexity checker measures index expressions as well as values. This

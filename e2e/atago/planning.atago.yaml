@@ -851,7 +851,7 @@ scenarios:
       stderr: {equals: ''}
       file:
         path: counters.jsonl
-        contains: ['Counters 6/3', '"stock_potter_1":6', '"stock_weaver_2":3']
+        contains: ['Counters 6/3', '"stock_potter_1":6', '"stock_weaver_2":3', '"stocked_potter":true', '"stocked_weaver":true']
 - name: keyed thresholds retain acknowledgements until severity increases
   steps:
   - fixture:

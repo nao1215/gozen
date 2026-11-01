@@ -232,7 +232,7 @@ func (c *checker) assignments(w string, set map[string]Expr, names []string) {
 			continue
 		}
 		if index.Set() {
-			c.needsVersion(w+"."+k, "indexed variable assignment", SchemaVersion10)
+			c.needsVersion(w+"."+k, "indexed state assignment", SchemaVersion10)
 			if c.db.Game.State.Strict {
 				c.errorf(diag.Expression, w+"."+k, "strict state requires a literal assignment target")
 			}
