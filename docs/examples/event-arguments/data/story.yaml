@@ -60,3 +60,14 @@ events:
       - label: 'Inspect {arg.name}'
         do:
         - say: '{arg.name}: {entity[arg.resident].vigor}'
+  progress_demo:
+    do:
+    - set: {var.finished: '6'}
+    - call: {event: progress_report, args: {budget: '3 + 9'}}
+    - say: 'First ratio {var.ratio}'
+    - call: {event: progress_report, args: {budget: '0'}}
+    - say: 'Empty ratio {var.ratio}'
+  progress_report:
+    params: {budget: number}
+    do:
+    - set: {var.ratio: 'arg.budget < 1 ? 1 : var.finished / arg.budget'}

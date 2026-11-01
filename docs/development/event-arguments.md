@@ -256,3 +256,17 @@ line deliberately gives them a shared read identity. Keep literal lines or label
 in guarded branches when that would change the game's read/skip behavior. Several
 guarded labels can call one parameterized choice-effect event, without duplicating
 those effects.
+
+## Share calculations instead of copying expressions
+
+The example's `progress_demo` passes two different budgets to `progress_report`.
+The caller supplies a pure expression (`3 + 9` or `0`); the event receives its
+number once, computes a ratio, and returns. This keeps the formula in one place
+without introducing a temporary saved variable. For date-specific reports, keep
+the small date inputs at the call sites and share the calculation body.
+
+A shared event also preserves the order of side effects. If a repeated effect
+draws random values, put those draws in its body and call it once per effect.
+Do not move a draw into an argument (arguments must be pure), cache a draw across
+calls, or sort the calls: those changes alter the random sequence. Compare the
+state and the next random value before and after replacing expanded commands.
