@@ -178,3 +178,28 @@ func TestPlanningCandidateTargets(t *testing.T) {
 		}
 	}
 }
+
+func TestPlanningNumericTypes(t *testing.T) {
+	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  ledgers: {hours: {retain: 2}}\n"
+	for _, formula := range []string{"true", "false", "nil", "\"2\"", "true ? 2 : nil", "2", "int(true)"} {
+		for _, op := range []string{"progress", "effort", "record", "observe"} {
+			t.Run(op+"/"+formula, func(t *testing.T) {
+				body := "  activities: {clay: {effort: 2}}\n  rules: {update: {do: [{op: " + op + ", activity: clay, value: '" + formula + "'}]}}\n"
+				if op == "record" {
+					body = strings.ReplaceAll(body, "activity: clay", "ledger: hours")
+				}
+				if op == "observe" {
+					body = "  activities: {clay: {effort: 2, observation: '" + formula + "'}}\n"
+				}
+				_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header + body)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
+				if formula == "2" || formula == "int(true)" {
+					if err != nil {
+						t.Fatal(err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), "requires a number") || !regexp.MustCompile(`game\.yaml:\d+:\d+:`).MatchString(err.Error()) {
+					t.Fatalf("missing numeric diagnostic with source: %v", err)
+				}
+			})
+		}
+	}
+}

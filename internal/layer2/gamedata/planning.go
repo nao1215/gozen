@@ -266,6 +266,7 @@ func (c *checker) planning() {
 			c.errorf(diag.Shape, at, "invalid activity ID")
 		}
 		c.planningPure(at+".observation", a.Observation)
+		c.planningNumber(at+".observation", a.Observation)
 		c.exprIn(at+".observation", a.Observation, append(slices.Clone(FieldNames), "self"), map[string]*vtype{"self": tAny})
 		if a.DependencyRatio != nil && (math.IsNaN(*a.DependencyRatio) || *a.DependencyRatio < 0 || *a.DependencyRatio > 1) {
 			c.errorf(diag.OutOfRange, at+".dependency_ratio", "ratio must be between 0 and 1")
@@ -388,6 +389,9 @@ func (c *checker) planCommand(w string, cmd *PlanCommand) {
 		if _, ok := p.Policies[cmd.Policy]; !ok {
 			c.errorf(diag.UnknownReference, w+".policy", "unknown policy")
 		}
+	}
+	if cmd.Op == "progress" || cmd.Op == "effort" || cmd.Op == "record" {
+		c.planningNumber(w+".value", cmd.Value)
 	}
 	names := append(slices.Clone(FieldNames), "self", "arg")
 	for key, e := range cmd.Args {
@@ -622,5 +626,17 @@ func (c *checker) planningView(w string, v PlanningView) {
 		if !found {
 			c.errorf(diag.UnknownReference, w, "unknown player value %q", key)
 		}
+	}
+}
+
+// planningNumber rejects known nonnumeric results without evaluating formulas.
+// Dynamic references are checked by the executor when their values are available.
+func (c *checker) planningNumber(w string, e Expr) {
+	if !e.Set() {
+		return
+	}
+	t := c.resultType(e, append(slices.Clone(FieldNames), "self", "arg"))
+	if t & ^(expr.NumberType|expr.UnknownType) != 0 {
+		c.errorf(diag.Expression, w, "planning value requires a number; use a numeric expression or an explicit conversion such as int(value)")
 	}
 }

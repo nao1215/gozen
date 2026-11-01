@@ -343,3 +343,36 @@ scenarios:
         format: png
         width: 1920
         height: 1080
+
+- name: numeric planning inputs report source locations and fail check
+  steps:
+  - fixture:
+      file: numeric/game.yaml
+      content: |
+        schema_version: 9
+        id: numeric-workshop
+        start: {location: room}
+        planning:
+          calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}
+          activities: {clay: {effort: 2, observation: 'nil'}}
+          ledgers: {hours: {retain: 2}}
+  - fixture:
+      file: numeric/data/world.yaml
+      content: |
+        locations: {room: {name: Workshop}}
+        events:
+          work:
+            do:
+            - plan: {op: progress, activity: clay, value: 'true'}
+            - plan: {op: effort, activity: clay, value: 'false'}
+            - plan: {op: record, ledger: hours, value: 'nil'}
+  - run:
+      command: gozen check numeric --format json
+  - assert:
+      exit_code: 1
+      stdout:
+        json:
+        - {path: '$.data[?(@.line == 5)].file', equals: data/world.yaml}
+        - {path: '$.data[?(@.line == 6 && @.file == "data/world.yaml")].message', equals: "planning value requires a number; use a numeric expression or an explicit conversion such as int(value)"}
+        - {path: '$.data[?(@.line == 7)].message', equals: "planning value requires a number; use a numeric expression or an explicit conversion such as int(value)"}
+        - {path: '$.data[?(@.file == "game.yaml")].message', equals: "planning value requires a number; use a numeric expression or an explicit conversion such as int(value)"}

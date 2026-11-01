@@ -46,6 +46,26 @@ Here `vigor` is a declared numeric attribute. If an authored formula overflows,
 the whole `observe` operation fails; the previous report remains available.
 The same validation applies to rule arguments even if their body ignores them.
 
+### Numeric operation inputs
+
+Progress, effort, ledger records and activity observations require finite numbers.
+Boolean, nil and string results are rejected without implicit numeric conversion.
+The checker rejects statically known nonnumeric results, including a nonnumeric
+conditional branch. Dynamic references are validated at execution; a rejected
+operation rolls back the entire rule, including earlier steps. Entity observations
+remain finite scalars and may still be boolean, string or nil.
+Authors can explicitly convert a boolean with `int(value)` when that is intended.
+For example, a workshop can record one inspection for an active resident:
+
+```yaml
+- plan: {op: record, ledger: inspections, value: 'int(self.active)'}
+- plan: {op: progress, activity: prepare, value: '2'}
+```
+
+The first command requires the declared boolean attribute `active` and the
+`inspections` ledger. Direct `value: 'self.active'` is invalid at execution.
+This contract does not change conversions inside ordinary arithmetic expressions.
+
 ### Scoped observation contract
 
 - Bare `observe` retains the existing global refresh of activities and entities.

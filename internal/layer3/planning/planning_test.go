@@ -543,3 +543,72 @@ func TestNonFiniteScalarRollback(t *testing.T) {
 		}
 	}
 }
+
+// Numeric operations reject implicit scalar coercion and roll back earlier rule steps.
+func TestNumericOperationTypes(t *testing.T) {
+	for _, formula := range []string{"true", "false", "nil", "\"2\"", "2", "int(true)", "entity.potter.active"} {
+		for _, op := range []string{"progress", "effort", "record", "observe"} {
+			t.Run(op+"/"+formula, func(t *testing.T) {
+				s := state(t)
+				cmd := data.PlanCommand{Op: op, Activity: "prepare", Value: value(t, formula)}
+				if op == "record" {
+					cmd = data.PlanCommand{Op: op, Ledger: "usage", Value: value(t, formula)}
+				}
+				if op == "observe" {
+					def := s.DB.Game.Planning.Activities["prepare"]
+					def.Observation = value(t, formula)
+					s.DB.Game.Planning.Activities["prepare"] = def
+					cmd = data.PlanCommand{Op: op, Activity: "prepare"}
+				}
+				s.DB.Game.Planning.Rules = map[string]data.PlanRule{"update": {Do: []data.PlanCommand{{Op: "advance"}, cmd}}}
+				before := snapshot(t, s)
+				_, err := planning.Apply(s, data.PlanCommand{Op: "rule", Rule: "update"})
+				valid := formula == "2" || formula == "int(true)"
+				if valid {
+					if err != nil {
+						t.Fatal(err)
+					}
+					want := 2.0
+					if formula == "int(true)" {
+						want = 1
+					}
+					switch op {
+					case "progress":
+						if s.Planning.Activities["prepare"].Progress != want {
+							t.Fatal("progress mismatch")
+						}
+					case "effort":
+						if s.ActivityEffort("prepare") != want {
+							t.Fatal("effort mismatch")
+						}
+					case "observe":
+						if s.Planning.Activities["prepare"].Observed != want {
+							t.Fatal("observation mismatch")
+						}
+					case "record":
+						for _, id := range []string{"potter", "weaver"} {
+							if s.Planning.Ledgers["usage"]["2030-07"][id] != want {
+								t.Fatal("ledger mismatch")
+							}
+						}
+					}
+				} else {
+					if err == nil || !strings.Contains(err.Error(), "finite number") {
+						t.Fatalf("expected numeric diagnostic, got %v", err)
+					}
+					if string(snapshot(t, s)) != string(before) {
+						t.Fatal("rejected rule changed state")
+					}
+					apply(t, s, data.PlanCommand{Op: "advance"})
+				}
+				restored, err := rpg.Parse(s.DB, snapshot(t, s), nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(s.Planning, restored.Planning) {
+					t.Fatal("resume changed state")
+				}
+			})
+		}
+	}
+}

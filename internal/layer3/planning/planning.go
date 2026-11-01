@@ -202,7 +202,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 			return nil, nil
 		}
 		n, ok := expr.ToNumber(v)
-		if !ok || math.IsNaN(n) || math.IsInf(n, 0) {
+		if !ok || expr.TypeOfValue(v) != expr.NumberType || !expr.IsFiniteScalar(v) {
 			return nil, fmt.Errorf("%s requires a finite number", c.Op)
 		}
 		if c.Op == "progress" && a.Cancelled {
@@ -272,8 +272,8 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 				return nil, err
 			}
 			n, ok := expr.ToNumber(v)
-			if !ok || math.IsNaN(n) || math.IsInf(n, 0) {
-				return nil, errors.New("activity observation must be finite")
+			if !ok || expr.TypeOfValue(v) != expr.NumberType || !expr.IsFiniteScalar(v) {
+				return nil, errors.New("activity observation requires a finite number")
 			}
 			a.Observed = max(0, min(s.ActivityEffort(id), n))
 		}
@@ -341,7 +341,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 			return nil, errors.New("period already closed")
 		}
 		n, ok := expr.ToNumber(v)
-		if !ok || math.IsNaN(n) || math.IsInf(n, 0) {
+		if !ok || expr.TypeOfValue(v) != expr.NumberType || !expr.IsFiniteScalar(v) {
 			return nil, errors.New("ledger requires finite number")
 		}
 		totals := st.Ledgers[c.Ledger]
