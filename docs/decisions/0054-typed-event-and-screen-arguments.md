@@ -424,3 +424,47 @@ Saving while any authored screen is suspended is still rejected, including while
 an entry's conversation has its own replay cursor. Closing the screen and finishing
 its opener permits saving again. Restoring an open screen, typed screen arguments,
 presentation preview restoration and CLI screen E2E remain required follow-up work.
+
+## Definition checks before restoring screens
+
+The replay fingerprint now follows authored `open` edges as well as `call` edges,
+including commands nested inside choices and conditions. A screen contributes its
+whole definition and the events and screens reachable from its entries. An entry
+root also contributes its owning screen: two entries with identical commands but
+different labels or guards must not become interchangeable after reordering.
+Visited event and screen sets terminate cycles independently.
+
+For example, these existing-schema fragments connect an event to a screen and
+then to another event:
+
+```yaml
+screens:
+  stock:
+    title: Stock
+    entries:
+    - label: Boards
+      do: [{call: report}]
+```
+
+```yaml
+events:
+  visit:
+    do:
+    - say: Ready.
+    - open: stock
+  report:
+    do: [{say: Checked.}]
+```
+
+A schema-10 save at `Ready.` rejects edits to `stock` or `report` before replay.
+Whitespace and mapping order do not change the fingerprint. Unreachable definitions
+do not contribute. Screen presentation fields do contribute, so editing a reachable
+title or label also requires restarting the event. Built-in screens have no authored
+definition to include.
+
+Existing schema-10 cursor saves whose roots reach authored screens, or are screen
+entries, used the narrower fingerprint and are now rejected; restart those events.
+Fingerprints for roots with no authored screen dependency remain unchanged. Legacy
+save-format and schema gates are unchanged. This check does not enable saves while
+a screen is open, implement screen arguments, or reconstruct opener continuations.
+Those remain the next implementation step.

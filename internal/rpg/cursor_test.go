@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/testgame"
 )
@@ -79,4 +80,42 @@ func fmtBool(v any) string {
 		return "true"
 	}
 	return "false"
+}
+
+// Entry indices alone cannot distinguish an edited screen with identical commands.
+func TestCursorChecksOwningScreen(t *testing.T) {
+	loadDB := func() *data.DB {
+		t.Helper()
+		db := testgame.Load(t, nil)
+		db.Game.SchemaVersion = data.SchemaVersion10
+		db.Game.Screens = map[string]*data.AuthorScreen{
+			"stock": {Title: "Stock", Entries: []data.ScreenEntry{
+				{Label: "Boards", Do: []data.Command{{Notice: "Ready"}}},
+				{Label: "Tools", Do: []data.Command{{Notice: "Ready"}}},
+			}},
+		}
+		return db
+	}
+	db := loadDB()
+	st := testgame.State(db, 17)
+	cur := rpg.Cursor{Event: "screen:stock:0", Line: 1}
+	if err := cur.Seal(db); err != nil {
+		t.Fatal(err)
+	}
+	b, err := rpg.WithCursor(saveBytes(t, st), cur, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rpg.Parse(db, b, nil); err != nil {
+		t.Fatalf("unchanged entry rejected: %v", err)
+	}
+	edited := loadDB()
+	entries := edited.Game.Screens["stock"].Entries
+	entries[0], entries[1] = entries[1], entries[0]
+	if _, err := rpg.Parse(edited, b, nil); err == nil {
+		t.Fatal("accepted a different entry at the same index with identical commands")
+	}
+	if _, err := rpg.Parse(db, b, nil); err != nil {
+		t.Fatalf("original definition no longer loads: %v", err)
+	}
 }

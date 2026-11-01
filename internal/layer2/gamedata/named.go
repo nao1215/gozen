@@ -78,7 +78,8 @@ func (db *DB) NamedCommands(name string) []Command {
 	return out
 }
 
-// CommandsFingerprint identifies a replay root and its reachable named callees.
+// CommandsFingerprint identifies a replay root, its reachable events and authored
+// screens, including a screen-entry root's owning definition.
 // Save consumers use this to reject edited actions before replay. JSON canonicalizes
 // map order, while command order, expression source and parameter types remain significant.
 func (db *DB) CommandsFingerprint(name string) (string, error) {
@@ -87,26 +88,61 @@ func (db *DB) CommandsFingerprint(name string) (string, error) {
 		return "", fmt.Errorf("unknown replay root %q", name)
 	}
 	events := map[string]*Event{}
-	var visit func(string)
-	visit = func(id string) {
+	screens := map[string]*AuthorScreen{}
+	var visitEvent, visitScreen func(string)
+	walk := func(cmds []Command) {
+		eachCommand(reflect.ValueOf(cmds), func(cmd Command) {
+			if cmd.Call.Event != "" {
+				visitEvent(cmd.Call.Event)
+			}
+			if cmd.Open != "" {
+				visitScreen(cmd.Open)
+			}
+		})
+	}
+	visitEvent = func(id string) {
 		if _, seen := events[id]; seen {
 			return
 		}
 		ev := db.Events[id]
 		events[id] = ev
 		if ev != nil {
-			eachCall(reflect.ValueOf(ev.Do), visit)
+			walk(ev.Do)
+		}
+	}
+	visitScreen = func(id string) {
+		if _, seen := screens[id]; seen {
+			return
+		}
+		screen := db.Game.Screens[id]
+		if screen == nil {
+			return // Built-in screens have no authored definition.
+		}
+		screens[id] = screen
+		for _, entry := range screen.Entries {
+			walk(entry.Do)
 		}
 	}
 	if db.Events[name] != nil {
-		visit(name)
+		visitEvent(name)
 	} else {
-		eachCall(reflect.ValueOf(cmds), visit)
+		walk(cmds)
+		for id, screen := range db.Game.Screens {
+			if screen == nil {
+				continue
+			}
+			for i := range screen.Entries {
+				if name == fmt.Sprintf("screen:%s:%d", id, i) {
+					visitScreen(id)
+				}
+			}
+		}
 	}
 	b, err := json.Marshal(struct {
 		Commands []Command
 		Events   map[string]*Event
-	}{cmds, events})
+		Screens  map[string]*AuthorScreen `json:",omitempty"`
+	}{cmds, events, screens})
 	if err != nil {
 		return "", err
 	}

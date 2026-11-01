@@ -1446,3 +1446,136 @@ func TestAuthorScreenNestingIsBounded(t *testing.T) {
 		t.Fatalf("could not close after rejection: %+v", q)
 	}
 }
+
+// A cursor before open must reject changed reachable screen actions before replay,
+// even though saving while the screen is open is still unsupported.
+func TestResumeChecksReachableScreens(t *testing.T) {
+	const header = `schema_version: 10
+id: screen-fingerprint
+start: {location: workshop}
+screens:
+  stock:
+    title: Stock
+    entries:
+    - label: Boards
+      when: 'true'
+      do:
+      - choice:
+        - {label: Inspect, do: [{open: receipt}]}
+        - {label: Cancel}
+  receipt:
+    title: Receipt
+    entries:
+    - {label: Read, do: [{call: report}]}
+  unused:
+    title: Unused
+    entries: [{label: Spare}]
+`
+	const story = `locations: {workshop: {name: Workshop}}
+events:
+  visit:
+    do:
+    - set: {var.opened: 'var.opened + 1'}
+    - say: Ready.
+    - open: stock
+    - set: {var.closed: 'var.closed + 1'}
+  report:
+    do:
+    - say: Checked.
+    - if: 'false'
+      then: [{call: visit}]
+  unused:
+    do: [{say: Unused.}]
+`
+	loadGame := func(head, body string) *gozen.Game {
+		t.Helper()
+		g, err := gozen.Load(fstest.MapFS{
+			"game.yaml":       {Data: []byte(head)},
+			"data/world.yaml": {Data: []byte(body)},
+		}, ".")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return g
+	}
+	cfg := gozen.Config{Seed: 17}
+	g := loadGame(header, story)
+	s := session(t, g, cfg)
+	if err := s.Start("- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Text != "Ready." {
+		t.Fatalf("before open: %+v", q)
+	}
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, from, to   string
+		inHeader, reject bool
+	}{
+		{"entry identity", "label: Boards", "label: Tools", true, true},
+		{"entry guard", "when: 'true'", "when: 'false'", true, true},
+		{"nested screen", "label: Read", "label: Inspect receipt", true, true},
+		{"screen callee", "say: Checked.", "say: Changed.", false, true},
+		{"unrelated screen", "title: Unused", "title: Elsewhere", true, false},
+		{"unrelated event", "say: Unused.", "say: Elsewhere.", false, false},
+		{"mapping order", "label: Read, do: [{call: report}]", "do: [{call: report}], label: Read", true, false},
+		{"whitespace", "title: Stock", "title:   Stock # same title", true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			head, body := header, story
+			if tc.inHeader {
+				head = strings.Replace(head, tc.from, tc.to, 1)
+			} else {
+				body = strings.Replace(body, tc.from, tc.to, 1)
+			}
+			r, err := gozen.Restore(loadGame(head, body), saved, cfg)
+			if tc.reject {
+				if !errors.Is(err, gozen.ErrIncompatibleSave) {
+					t.Fatalf("changed action accepted: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if q := r.Next(); q.Text != "Ready." {
+				t.Fatalf("resume: %+v", q)
+			}
+			if q := r.Next(); q.Kind != "open" || q.ID != "stock" {
+				t.Fatalf("open: %+v", q)
+			}
+			r.Answer(0)
+			if q := r.Next(); q.Kind != "choice" {
+				t.Fatalf("confirmation: %+v", q)
+			}
+			r.Answer(0)
+			if q := r.Next(); q.ID != "receipt" {
+				t.Fatalf("nested screen: %+v", q)
+			}
+			r.Answer(0)
+			if q := r.Next(); q.Text != "Checked." {
+				t.Fatalf("callee: %+v", q)
+			}
+			r.Next()
+			r.Answer(-1)
+			r.Next()
+			r.Answer(-1)
+			r.Next()
+			if opened, closed := query[float64](t, r, "var.opened"), query[float64](t, r, "var.closed"); opened != 1 || closed != 1 {
+				t.Fatalf("opener effects: %v/%v", opened, closed)
+			}
+		})
+	}
+	// Rejected restores leave the original session and its continuation usable.
+	if q := s.Next(); q.ID != "stock" {
+		t.Fatalf("original screen: %+v", q)
+	}
+	s.Answer(-1)
+	s.Next()
+	if query[float64](t, s, "var.opened") != 1 || query[float64](t, s, "var.closed") != 1 {
+		t.Fatal("original continuation changed")
+	}
+}
