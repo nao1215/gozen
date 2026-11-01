@@ -54,6 +54,32 @@ The event-call example uses `where` filtering for entity selection. It does not 
 bodies or add a generator. The session contract tests load these same example
 files; the CLI E2E runs both residents and checks their resulting attributes.
 
+## Repeating a call over a collection
+
+Use `call.each` to reuse one event for a bounded list of residents or activities:
+
+```yaml
+- call:
+    event: each_visit
+    each: {param: resident, in: 'filter(entities, it.vigor == 0)'}
+    args: {amount: 'var.visits + 1'}
+```
+
+The example's `each_visit` declares `resident: entity` and `amount: number`.
+The selected IDs are frozen before the first call, so changing eligibility during
+one visit does not change the remaining visits. Other arguments are evaluated
+before each invocation. The ordinary argument scopes and dialogue pauses apply.
+For explicit order, use `each: {param: resident, items: [weaver, potter]}` instead.
+An empty list makes no calls. Lists are limited to 4,096 items, with a shared
+65,536-item budget across nested repetitions in one execution.
+
+Put the repeated call inside a named event to save and resume it. An anonymous
+repeated call is not a single bound event root and does not save its pending
+continuation. The `each_demo` example and planning atago suite demonstrate
+membership changes and saving at a choice in a named repeated call. See
+[the repeated-call contract](../decisions/0054-typed-event-and-screen-arguments.md#bounded-repeated-calls)
+for validation, ordering and error behavior.
+
 ## Reusing plain screens
 
 Schema 10 also supports typed arguments on plain authored lists. The same example

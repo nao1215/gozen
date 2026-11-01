@@ -80,6 +80,8 @@ screens:
       do: [{call: release_demo}]
     - label: Compare sampled and live work
       do: [{call: evidence_demo}]
+    - label: Inspect the available residents
+      do: [{call: each_demo}]
     - label: Compare priorities
       do: [{call: priority_demo}]
     kind: timeline

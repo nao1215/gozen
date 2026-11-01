@@ -226,7 +226,7 @@ func (s *Session) start() {
 // onStart keeps the state when an event begins, for a save made in its middle.
 func (s *Session) onStart(cmds []gamedata.Command, args map[string]any) {
 	name := s.db.CommandsName(cmds)
-	if name == "" && len(cmds) == 1 && cmds[0].Call.Event != "" && s.db.Events[cmds[0].Call.Event] != nil {
+	if name == "" && len(cmds) == 1 && cmds[0].Call.Each == nil && cmds[0].Call.Event != "" && s.db.Events[cmds[0].Call.Event] != nil {
 		name = cmds[0].Call.Event // - call: NAME from Do or Start
 	}
 	c := cursor{args: args, name: name, arrival: s.at.arriving && name == "", before: s.at.before, rbf: s.at.rbf}
@@ -308,7 +308,7 @@ func (s *Session) Start(script string) error {
 	if err != nil {
 		return err
 	}
-	if len(cmds) == 1 && len(cmds[0].Call.Args) > 0 {
+	if len(cmds) == 1 && cmds[0].Call.Each == nil && len(cmds[0].Call.Args) > 0 {
 		args, err := s.db.Bind(cmds[0].Call, s.st.Env())
 		if err != nil {
 			return err

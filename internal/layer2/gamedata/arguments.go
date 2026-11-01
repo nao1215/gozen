@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -76,9 +77,96 @@ func (v IDRef) Resolve(db *DB, kind string, env expr.Env) (string, error) {
 // EventCall is a named invocation consumed by the event interpreter. Args are pure
 // expressions evaluated in the caller's scope before any callee command executes.
 type EventCall struct {
+	// Each repeats the call over a bounded snapshot of IDs.
+	Each   *CallEach       `yaml:"each" json:"Each,omitempty"`
 	Event  string          `yaml:"event"`
 	Args   map[string]Expr `yaml:"args"`
 	mapped bool
+}
+
+// CallEach selects IDs for repeated calls. Items preserves explicit order; In
+// reads a pure collection of IDs or records with an id field. Exactly one is
+// required. Param names the callee parameter supplied by each selected ID.
+// The event runner freezes membership, but evaluates other arguments per call.
+type CallEach struct {
+	Param string   `yaml:"param"`
+	In    Expr     `yaml:"in"`
+	Items []string `yaml:"items"`
+}
+
+// ExpandCall validates and freezes a repeated invocation for the event runner.
+// It returns at most 4096 ordinary calls; no callee or other argument runs here.
+// A failure returns no commands and leaves the caller's state and RNG untouched.
+func (db *DB) ExpandCall(call EventCall, env expr.Env) ([]Command, error) {
+	each := call.Each
+	ev := db.Events[call.Event]
+	if each == nil || ev == nil {
+		return nil, errors.New("repeated call requires each and a known event")
+	}
+	kind, ok := ev.Params[each.Param]
+	if !ok || kind == "number" || kind == "bool" {
+		return nil, errors.New("each.param must name an ID or string parameter")
+	}
+	if _, exists := call.Args[each.Param]; exists || len(call.Args)+1 != len(ev.Params) {
+		return nil, errors.New("each parameter must be supplied only by each; supply the other arguments")
+	}
+	for name := range call.Args {
+		if _, ok := ev.Params[name]; !ok {
+			return nil, fmt.Errorf("unknown argument %q", name)
+		}
+	}
+	if each.In.Set() == (each.Items != nil) {
+		return nil, errors.New("each requires exactly one of in or items")
+	}
+	ids := each.Items
+	if each.In.Set() {
+		for _, name := range each.In.Names() {
+			if name == "rand" || name == "chance" {
+				return nil, errors.New("each.in must be pure")
+			}
+		}
+		value, err := each.In.Eval(env)
+		if err != nil {
+			return nil, err
+		}
+		values := reflect.ValueOf(value)
+		if values.Kind() != reflect.Slice {
+			return nil, errors.New("each.in must return a list")
+		}
+		if values.Len() > 4096 {
+			return nil, errors.New("each exceeds 4096 items")
+		}
+		ids = make([]string, 0, values.Len())
+		for i := range values.Len() {
+			item := values.Index(i).Interface()
+			if record, ok := item.(expr.Map); ok {
+				item = record["id"]
+			}
+			id, ok := item.(string)
+			if !ok {
+				return nil, fmt.Errorf("each item %d must be an ID or record with id", i)
+			}
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) > 4096 {
+		return nil, errors.New("each exceeds 4096 items")
+	}
+	commands := make([]Command, 0, len(ids))
+	for _, id := range ids {
+		if _, err := db.argumentValue(kind, id); err != nil {
+			return nil, err
+		}
+		args := maps.Clone(call.Args)
+		if args == nil {
+			args = map[string]Expr{}
+		}
+		// The expression lexer only escapes the next byte; Go string escapes
+		// would change control characters into letters. Preserve their bytes.
+		args[each.Param] = MustExpr(`"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(id) + `"`)
+		commands = append(commands, Command{Call: EventCall{Event: call.Event, Args: args}})
+	}
+	return commands, nil
 }
 
 func (v *EventCall) UnmarshalYAML(unmarshal func(any) error) error {
@@ -239,7 +327,39 @@ func (c *checker) eventCall(w string, call EventCall, names []string) {
 	if call.mapped || len(call.Args) > 0 {
 		c.needsVersion(w, "event arguments", SchemaVersion10)
 	}
-	c.callArguments(w, ev.Params, call.Args, names)
+	if call.Each == nil {
+		c.callArguments(w, ev.Params, call.Args, names)
+		return
+	}
+	c.needsVersion(w+".each", "repeated calls", SchemaVersion10)
+	each := call.Each
+	if each.In.Set() == (each.Items != nil) {
+		c.errorf(diag.Shape, w+".each", "provide exactly one of in or items")
+	}
+	params := maps.Clone(ev.Params)
+	kind, ok := params[each.Param]
+	if !ok || kind == "number" || kind == "bool" {
+		c.errorf(diag.Shape, w+".each.param", "must name an ID or string parameter")
+	}
+	delete(params, each.Param)
+	c.callArguments(w, params, call.Args, names)
+	if each.In.Set() {
+		c.expr(w+".each.in", each.In, names)
+		c.planningPure(w+".each.in", each.In)
+		if c.resultType(each.In, names) != expr.UnknownType {
+			c.errorf(diag.Expression, w+".each.in", "must return a list")
+		}
+	}
+	if len(each.Items) > 4096 {
+		c.errorf(diag.Shape, w+".each.items", "exceeds 4096 items")
+	}
+	if ok {
+		for _, id := range each.Items {
+			if _, err := c.db.argumentValue(kind, id); err != nil {
+				c.errorf(diag.UnknownReference, w+".each.items", "%v", err)
+			}
+		}
+	}
 }
 
 func (c *checker) screenCall(w string, call ScreenCall, names []string) {

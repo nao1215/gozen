@@ -195,6 +195,9 @@ func (u *stateUses) commands(where string, cs []Command) {
 		}
 		if c.Call.Event != "" {
 			u.set("ran."+c.Call.Event, w+".call")
+			if c.Call.Each != nil {
+				u.expr(w+".call.each.in", c.Call.Each.In)
+			}
 		}
 		u.commands(w+".then", c.Then)
 		u.commands(w+".else", c.Else)

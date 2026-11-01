@@ -869,3 +869,53 @@ func TestInvalidIndexedTargetPreservesStateAndRandomness(t *testing.T) {
 		})
 	}
 }
+
+func TestRepeatedCallKeepsOrderAndEvaluatesArgumentsAtEachCall(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: bindings\n" + testgame.Game, "data/bindings.yaml": `events:
+  visit:
+    params: {worker: string, amount: number, note: string}
+    do:
+    - set: {var.total: arg.amount}
+    - say: '{arg.note} {arg.worker}: {arg.amount}'
+  tour:
+    params: {prefix: string}
+    do:
+    - set: {var.total: '0'}
+    - call:
+        event: visit
+        each: {param: worker, items: [second, first, second]}
+        args: {amount: 'var.total+1', note: arg.prefix}
+    - say: '{arg.prefix} Finished {var.total}'
+`})
+	r := event.New(db, testgame.State(db, 17), &host{})
+	r.Log = func(err error) { t.Fatal(err) }
+	if err := r.StartBound("tour", map[string]any{"prefix": "Outer"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Outer second: 1", "Outer first: 2", "Outer second: 3", "Outer Finished 3"} {
+		q, ok := r.Next().(event.Say)
+		if !ok || q.Text != want {
+			t.Fatalf("got %+v; want %q", q, want)
+		}
+	}
+	if q := r.Next(); q != nil {
+		t.Fatalf("unexpected continuation: %+v", q)
+	}
+}
+
+func TestRepeatedCallNestedBudgetStopsExecution(t *testing.T) {
+	db := testgame.Load(t, nil)
+	items := make([]string, 4096)
+	for i := range items {
+		items[i] = "unit"
+	}
+	db.Events["leaf"] = &data.Event{Params: map[string]string{"item": "string"}, Do: []data.Command{{SetV: data.Assignments{"var.visits": data.MustExpr("var.visits+1")}}}}
+	db.Events["branch"] = &data.Event{Params: map[string]string{"item": "string"}, Do: []data.Command{{Call: data.EventCall{Event: "leaf", Each: &data.CallEach{Param: "item", Items: items}}}}}
+	r := event.New(db, testgame.State(db, 17), &host{})
+	var failure error
+	r.Log = func(err error) { failure = err }
+	r.Start([]data.Command{{Call: data.EventCall{Event: "branch", Each: &data.CallEach{Param: "item", Items: items}}}})
+	if q := r.Next(); q != nil || r.Running() || failure == nil || !strings.Contains(failure.Error(), "65536") {
+		t.Fatalf("unbounded execution: %v %v", q, failure)
+	}
+}

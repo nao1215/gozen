@@ -66,9 +66,15 @@ EquipStones:
   _: "Puts the stones of a stone set on an actor."
   actor: "An expression giving the ID of the actor who receives the stones."
   set: "An expression giving the ID of the stone set to put on."
+CallEach:
+  _: "A bounded snapshot of IDs for repeated event calls (schema 10)."
+  param: "The callee ID or string parameter filled from each item; omit it from args."
+  in: "A pure list expression, such as entities or filter(activities, !it.cancelled). Mutually exclusive with items."
+  items: "An explicit ordered ID list, including optional duplicates. At most 4096 items; an empty list performs no calls."
 EventCall:
   _: "A named event invocation; a literal event ID remains shorthand for a call without arguments."
   event: "The literal event ID. Required in the mapping form."
+  each: "Repeat over frozen IDs. Other arguments are evaluated before each call; at most 65536 items across nested calls per execution."
   args: "Required parameter values as pure expressions, evaluated once in the caller scope, in sorted parameter-name order."
 Event:
   params: "Required parameter names and types: number, bool, string, entity, activity, actor or date (schema 10)."

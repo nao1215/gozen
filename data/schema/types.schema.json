@@ -2730,6 +2730,63 @@
       },
       "type": "object"
     },
+    "CallEach": {
+      "additionalProperties": false,
+      "description": "A bounded snapshot of IDs for repeated event calls (schema 10).",
+      "properties": {
+        "in": {
+          "description": "A pure list expression, such as entities or filter(activities, !it.cancelled). Mutually exclusive with items.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "items": {
+          "description": "An explicit ordered ID list, including optional duplicates. At most 4096 items; an empty list performs no calls.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
+        "param": {
+          "description": "The callee ID or string parameter filled from each item; omit it from args.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
     "Campaign": {
       "additionalProperties": false,
       "description": "game.yaml's campaign: a game of regions held by factions over turns (ADR 0030). Its state is in variables with generated names.",
@@ -8639,6 +8696,19 @@
                 "version": "0, 1, 2"
               },
               "x-type": "string → expression"
+            },
+            "each": {
+              "$ref": "#/$defs/CallEach",
+              "description": "Repeat over frozen IDs. Other arguments are evaluated before each call; at most 65536 items across nested calls per execution.",
+              "x-contract": {
+                "default": "nil; nothing is defined",
+                "legacy_default": "nil; nothing is defined",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "[CallEach](#calleach)"
             },
             "event": {
               "description": "The literal event ID. Required in the mapping form.",

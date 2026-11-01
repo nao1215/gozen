@@ -368,7 +368,9 @@ type Runner struct {
 	st    *rpg.State
 	host  Host
 	stack []frame
-	notes []string
+	// repeated counts frozen loop membership across this execution, including nested calls.
+	repeated int
+	notes    []string
 	// ups are the notes that tell of a level gained: a sound goes with them when they are shown
 	ups map[string]bool
 	// waiting for an answer
@@ -446,6 +448,9 @@ func (r *Runner) StartBound(name string, values map[string]any) error {
 }
 
 func (r *Runner) start(cmds []data.Command, args expr.Map) {
+	if !r.Running() {
+		r.repeated = 0
+	}
 	// OnStart keeps the state the event begins from, so it comes before the run is counted:
 	// begun again from that state (a save made in the middle of the event, ADR 0025), the event
 	// is counted once, not once more for every save and load.
@@ -1096,6 +1101,21 @@ func (r *Runner) run(c *data.Command) Request {
 	case "shop":
 		return Shop{ID: c.Shop}
 	case "call":
+		if c.Call.Each != nil {
+			commands, err := r.db.ExpandCall(c.Call, env)
+			if err != nil {
+				r.logf(err)
+				break
+			}
+			r.repeated += len(commands)
+			if r.repeated > 65536 {
+				r.logf(errors.New("repeated calls exceed 65536 items per execution"))
+				r.Stop()
+				break
+			}
+			r.push(commands)
+			break
+		}
 		args, err := r.db.Bind(c.Call, env)
 		if err != nil {
 			r.logf(err)

@@ -703,3 +703,38 @@ frozen screen scope. Dynamic lookup uses public entity values only; missing and
 hidden values are omitted. Literal-key validation is unchanged, and native
 surface columns remain literal. This supports different public skill columns
 without separate screens or exposing hidden simulation attributes.
+
+## Bounded repeated calls
+
+A schema-10 call may supply one ID or string parameter through `each`:
+
+```yaml
+call:
+  event: inspect
+  each: {param: resident, in: 'filter(entities, it.vigor == 0)'}
+  args: {amount: 'var.visits + 1'}
+```
+
+`in` is a pure list expression. Elements are string IDs or records with a string
+`id`. Alternatively, `items: [weaver, potter, weaver]` preserves an explicit
+order, including duplicates. Specify exactly one source; an empty list does
+nothing. Collections use their documented ID order. The selected IDs are
+validated and frozen before any call executes, with a maximum of 4,096 items.
+Missing IDs, an invalid parameter, an oversized list or an impure selector
+reject the expansion without executing a callee or consuming randomness.
+
+Other arguments are evaluated in the caller's scope immediately before each
+invocation, so later calls observe earlier effects. Each callee has its usual
+independent argument scope and can pause for dialogue, choices or screens.
+There is no transaction across invocations: an error in a later argument does
+not undo earlier completed calls. Existing call error reporting applies.
+Nested repeated calls share a 65,536-item budget per execution, in addition to
+the existing call-depth bound. Exhaustion stops that execution with a diagnostic.
+
+Repeated calls expand into ordinary invocations internally. Save reconstruction
+re-evaluates membership from the saved root state, then replays the recorded
+answers; it does not reselect members from the partially completed live state.
+The existing definition fingerprint includes both the selector and the reachable
+callee. The neutral `each_demo` uses workshop residents, changes eligibility
+inside the first visit, and still visits both original residents. Its atago
+scenario saves at a choice and resumes in a separate process.

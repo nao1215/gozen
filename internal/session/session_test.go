@@ -2047,3 +2047,42 @@ events:
 		t.Fatalf("root continuation: %v", got)
 	}
 }
+
+func TestAnonymousRepeatedCallIsNotASingleBoundRoot(t *testing.T) {
+	g, err := gozen.Load(os.DirFS("../../docs/examples/event-arguments"), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := gozen.New(g, gozen.Config{Seed: 19, OnLog: func(err error) { t.Error(err) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start("- call: {event: each_visit, each: {param: resident, items: [weaver, potter]}, args: {amount: '1'}}"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Kind != "choice" {
+		t.Fatalf("choice: %+v", q)
+	}
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(saved, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if doc["cursor"] != nil {
+		t.Fatal("anonymous repetition was misidentified as one named call")
+	}
+	s.Answer(0)
+	if q := s.Next(); q.Text != "Visited weaver: 1" {
+		t.Fatalf("first visit: %+v", q)
+	}
+	if q := s.Next(); q.Kind != "choice" {
+		t.Fatalf("second choice: %+v", q)
+	}
+	s.Answer(0)
+	if q := s.Next(); q.Text != "Visited potter: 1" {
+		t.Fatalf("second visit: %+v", q)
+	}
+}

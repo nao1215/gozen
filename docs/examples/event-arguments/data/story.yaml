@@ -226,3 +226,20 @@ events:
     - plan: {op: cancel, activity: shape, value: 'true'}
     - set: {var.remaining: 'sum(filter(activities, !it.cancelled), it.effort)'}
     - say: 'Effort {var.effort}; residents {var.residents}; remaining {var.remaining}; days {sum(activities, calendar_days(it.from,it.to))}'
+  each_demo:
+    do:
+    - say: Ready for inspections.
+    - set: {var.visits: '0'}
+    - call:
+        event: each_visit
+        each: {param: resident, in: 'filter(entities, it.vigor == 0)'}
+        args: {amount: 'var.visits + 1'}
+    - say: 'Finished {var.visits} inspections'
+  each_visit:
+    params: {resident: entity, amount: number}
+    do:
+    - plan: {op: set, attribute: vigor, value: '1'}
+    - choice:
+      - label: 'Confirm {arg.resident}'
+        do: [{set: {var.visits: 'arg.amount'}}]
+    - say: 'Visited {arg.resident}: {var.visits}'

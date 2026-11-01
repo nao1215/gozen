@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/nao1215/gozen/internal/expr"
 )
 
 func TestEventArgumentDiagnostics(t *testing.T) {
@@ -114,6 +116,79 @@ func TestScreenArgumentDiagnostics(t *testing.T) {
 		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(strings.Replace(game, tc.old, tc.new, 1))}, "data/world.yaml": {Data: []byte(story + "open: {screen: stock, args: {amount: 2}}\n")}})
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Fatalf("want %s: %v", tc.want, err)
+		}
+	}
+}
+
+func TestRepeatedCallValidationAndFrozenMembership(t *testing.T) {
+	const header = "schema_version: 10\nid: repeat\nstart: {location: room}\n"
+	const story = "locations: {room: {name: Room}}\nactors: {guide: {name: Guide}}\nevents:\n  visit:\n    params: {worker: actor}\n    do: [{say: hello}]\n  main:\n    do:\n    - call: {event: visit, each: "
+	for _, tc := range []struct{ each, want string }{
+		{"{param: worker, items: [guide]}", ""},
+		{"{param: worker, items: []}", ""},
+		{"{param: missing, items: [guide]}", "parameter"},
+		{"{param: worker, items: [missing]}", "invalid actor"},
+		{"{param: worker}", "exactly one"},
+		{"{param: worker, in: entities, items: []}", "exactly one"},
+		{"{param: worker, in: 'rand()'}", "pure"},
+		{"{param: worker, in: true}", "list"},
+	} {
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header)}, "data/story.yaml": {Data: []byte(story + tc.each + "}\n")}})
+		if tc.want == "" && err != nil || tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+			t.Fatalf("%s: %v", tc.each, err)
+		}
+	}
+	db, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header)}, "data/story.yaml": {Data: []byte(story + "{param: worker, items: []}}\n")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := expr.Map{"id": "guide"}
+	rows := []any{row}
+	call := EventCall{Event: "visit", Each: &CallEach{Param: "worker", In: MustExpr("rows")}}
+	commands, err := db.ExpandCall(call, expr.Map{"rows": rows})
+	if err != nil || len(commands) != 1 {
+		t.Fatalf("expand: %v %v", commands, err)
+	}
+	row["id"] = "missing"
+	args, err := db.Bind(commands[0].Call, expr.Map{})
+	if err != nil || args["worker"] != "guide" {
+		t.Fatalf("membership not frozen: %v %v", args, err)
+	}
+	for _, value := range []any{true, []any{expr.Map{"id": "guide"}, expr.Map{"id": "missing"}}, []any{1.0}, make([]any, 4097)} {
+		commands, err := db.ExpandCall(call, expr.Map{"rows": value})
+		if err == nil || commands != nil {
+			t.Fatalf("partial/invalid expansion: %v %v", commands, err)
+		}
+	}
+	call.Each.In = MustExpr("rand()")
+	draws := 0
+	_, err = db.ExpandCall(call, expr.Map{"rand": expr.Func(func([]any) (any, error) { draws++; return 0.0, nil })})
+	if err == nil || draws != 0 {
+		t.Fatalf("impure selector evaluated: %d %v", draws, err)
+	}
+	call.Each = &CallEach{Param: "worker", Items: make([]string, 4096)}
+	for i := range call.Each.Items {
+		call.Each.Items[i] = "guide"
+	}
+	commands, err = db.ExpandCall(call, expr.Map{})
+	if err != nil || len(commands) != 4096 {
+		t.Fatalf("limit: %d %v", len(commands), err)
+	}
+	call.Each.Items = append(call.Each.Items, "guide")
+	if _, err = db.ExpandCall(call, expr.Map{}); err == nil {
+		t.Fatal("accepted oversized literal list")
+	}
+
+	db.Events["visit"].Params["worker"] = "string"
+	call.Each.Items = []string{"line\nbreak", "quote\"slash\\", "tab\tvalue", "雪", "\x00"}
+	commands, err = db.ExpandCall(call, expr.Map{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, command := range commands {
+		args, err := db.Bind(command.Call, expr.Map{})
+		if err != nil || args["worker"] != call.Each.Items[i] {
+			t.Fatalf("string changed: %q -> %q (%v)", call.Each.Items[i], args["worker"], err)
 		}
 	}
 }
