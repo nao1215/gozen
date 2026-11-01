@@ -443,3 +443,20 @@ inputs can be passed as arguments; freezing a whole day's readiness before any
 work would change the rule. Similarly, a shared acceptance check can receive pure
 progress, effort and defect totals while updating separate named counters in its
 original order. Keep the original grouping and order of floating-point sums.
+
+## Summarize sampled evidence
+
+The workshop's `evidence_demo` stores an inspected quantity separately from live
+activity progress. `summarize_samples` resets the totals and calls one
+`include_sample` body with each typed activity ID. That body reads indexed saved
+counters, ignores cancelled activities, caps a sample at the activity's effort,
+and counts missing inspections separately. Completing more work does not silently
+increase an earlier sample. The planning atago scenario checks that distinction
+and cancellation using the real CLI.
+
+Use the same approach for inventory audits, training assessments or crop surveys.
+Keep calls in their original order when floating-point addition or later work
+can observe intermediate totals. An eligibility condition belongs inside the
+shared body when an earlier call can change the state it reads. Preserve literal
+per-person dialogue in small branches if replacing it with interpolation would
+change read/skip identity.

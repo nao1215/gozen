@@ -194,3 +194,29 @@ events:
     - if: 'activity[arg.task].assignee == arg.resident && !activity[arg.task].completed'
       then:
       - plan: {op: assign, activity: {expr: arg.task}, entity: ''}
+  evidence_demo:
+    do:
+    - set: {var.sample_prepare: '1', flag.sampled_prepare: 'true', flag.sampled_shape: 'false'}
+    - call: summarize_samples
+    - say: 'Sampled {var.sample_total}; missing {var.sample_missing}'
+    - plan: {op: progress, activity: prepare, value: '2'}
+    - call: summarize_samples
+    - say: 'After work {var.sample_total}; missing {var.sample_missing}'
+    - plan: {op: cancel, activity: prepare, value: 'true'}
+    - call: summarize_samples
+    - say: 'After cancellation {var.sample_total}; missing {var.sample_missing}'
+  summarize_samples:
+    do:
+    - set: {var.sample_total: '0', var.sample_missing: '0'}
+    - call: {event: include_sample, args: {task: '"prepare"', sampled: flag.sampled_prepare}}
+    - call: {event: include_sample, args: {task: '"shape"', sampled: flag.sampled_shape}}
+  include_sample:
+    params: {task: activity, sampled: bool}
+    do:
+    - if: '!activity[arg.task].cancelled'
+      then:
+      - if: arg.sampled
+        then:
+        - set: {var.sample_total: 'var.sample_total + min(activity[arg.task].effort, var["sample_" + arg.task])'}
+        else:
+        - set: {var.sample_missing: 'var.sample_missing + 1'}

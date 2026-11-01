@@ -890,3 +890,22 @@ scenarios:
       file:
         path: release.jsonl
         contains: ['Released []; other owner weaver', 'Finished owner potter; other owner weaver']
+- name: sampled totals exclude later work and cancelled activities
+  steps:
+  - fixture:
+      file: evidence.txt
+      content: |
+        gap 1
+        wait 10
+        do call: evidence_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script evidence.txt --trace evidence.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: evidence.jsonl
+        contains: ['Sampled 1; missing 1', 'After work 1; missing 1', 'After cancellation 0; missing 1']
