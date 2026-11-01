@@ -217,3 +217,12 @@ names and summary in the footer. The selected filter resident has an accent ring
 Portraits come only from the public binding, so authors can supply a neutral icon
 for off-site residents. Omission retains text-only rows. This does not change the
 calendar geometry, assignments or saved state.
+
+Grouped timeline name headers toggle one inline group at a time. Expanded
+lanes show activity names, public assignees and reported percentages at 16/15
+logical pixels; their labels and bars open the same authored item screen.
+The calendar axis remains fixed. Opening a group near the footer scrolls it
+into view; collapsing restores the overview. Groups too tall to fit the
+available detail area retain the compact layout. Expansion and focus survive
+screen refresh but are presentation state, not save data. A twelve-group
+overview still fits at the standard logical viewport when collapsed.

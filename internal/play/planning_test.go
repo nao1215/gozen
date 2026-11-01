@@ -626,3 +626,81 @@ func TestTimelineRowResidentsUsePublicIdentity(t *testing.T) {
 		t.Fatal("portrait omission must preserve text-only rows")
 	}
 }
+
+func TestTimelineInlineExpansionPreservesCalendarAndState(t *testing.T) {
+	db := testgame.Load(t, nil)
+	p := &data.Planning{
+		Calendar:   data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}},
+		Entities:   map[string]data.Entity{"maker": {Name: "Weaver"}},
+		Activities: map[string]data.Activity{},
+	}
+	v := data.PlanningView{Fullscreen: true}
+	for i := range 12 {
+		row := data.TimelineRow{Label: "Craft " + strconv.Itoa(i)}
+		for j := range 3 {
+			id := strconv.Itoa(i*3 + j)
+			p.Activities[id] = data.Activity{Name: "Item " + id, Assignee: "maker", Effort: 10}
+			row.Items = append(row.Items, data.TimelineItem{Activity: id, Screen: "detail"})
+		}
+		v.Rows = append(v.Rows, row)
+	}
+	db.Game.Planning = p
+	db.Game.Screens = map[string]*data.AuthorScreen{
+		"tasks":  {Kind: "timeline", View: v},
+		"detail": {Title: "Details", Entries: []data.ScreenEntry{{Label: "Inspect"}}},
+	}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	a := g.st.Planning.Activities["33"]
+	a.Progress, a.Observed = 9, 2
+	g.st.Planning.Activities["33"] = a
+	before, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := newAuthorScreen(g, "tasks", nil)
+	groups, ax, aw := s.groupedTimeline(g, 0, 108, 1280, 494)
+	g.in.click, g.in.mouse = true, image.Pt(24, int(groups[11].y)+4)
+	s.updateSurface(g)
+	expanded, bx, bw := s.groupedTimeline(g, 0, 108, 1280, 494)
+	if s.timelineTop != 11 || len(expanded) != 1 || !expanded[0].expanded || ax != bx || aw != bw {
+		t.Fatal("last group was not revealed on the fixed axis")
+	}
+	for i, lane := range expanded[0].lanes {
+		if lane.labelBounds.Max.Y > 602 || lane.labelBounds.Empty() {
+			t.Fatal("detail clipped", lane.labelBounds)
+		}
+		for _, other := range expanded[0].lanes[:i] {
+			if lane.labelBounds.Overlaps(other.labelBounds) {
+				t.Fatal("overlapping labels")
+			}
+		}
+	}
+	if title, text := timelineLaneSummary(g, expanded[0].lanes[0]); title != "Item 33" || text != "Weaver · 20%" {
+		t.Fatal("summary leaked hidden work", title, text)
+	}
+	s.refresh(g)
+	if s.timelineExpanded != "33" {
+		t.Fatal("refresh lost expansion")
+	}
+	g.in.mouse = expanded[0].lanes[1].labelBounds.Min
+	if !strings.Contains(s.timelineDescription(g), "Item 34") {
+		t.Fatal("hover did not reveal full activity detail")
+	}
+	s.updateSurface(g)
+	if len(g.stack) != 1 {
+		t.Fatal("label did not open authored detail")
+	}
+	g.in.mouse = image.Pt(24, int(expanded[0].y)+4)
+	s.updateSurface(g)
+	groups, _, _ = s.groupedTimeline(g, 0, 108, 1280, 494)
+	if s.timelineExpanded != "" || s.timelineTop != 0 || len(groups) != 12 {
+		t.Fatal("collapse did not restore overview")
+	}
+	after, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("browsing mutated planning")
+	}
+}

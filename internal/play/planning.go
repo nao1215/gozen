@@ -469,6 +469,7 @@ func timelineGroups(p *data.Planning, v data.PlanningView) []data.TimelineRow {
 }
 
 type timelineLane struct {
+	labelBounds                     image.Rectangle
 	item                            data.TimelineItem
 	bounds                          image.Rectangle
 	left, right, reported, expected float64
@@ -485,6 +486,8 @@ type timelineResident struct {
 }
 
 type timelineGroup struct {
+	key       string
+	expanded  bool
 	label     string
 	text      string
 	y, height float64
@@ -514,7 +517,12 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 		return nil, axisX, axisW
 	}
 	days := end.Sub(start).Hours()/24 + 1
-	rowHeight := func(row data.TimelineRow) float64 { return max(36, float64(len(row.Items))*10+4) }
+	rowHeight := func(row data.TimelineRow) float64 {
+		if len(row.Items) > 0 && row.Items[0].Activity == s.timelineExpanded {
+			return 40 + float64(len(row.Items))*44
+		}
+		return max(36, float64(len(row.Items))*10+4)
+	}
 	y += 56
 	h -= 56
 	// Keep readable minimums: larger authored tables scroll whole groups.
@@ -528,6 +536,10 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 			break
 		}
 		group := timelineGroup{label: row.Label, text: data.Render(g.db.Tr(row.Text), env), y: y, height: rh}
+		if len(row.Items) > 0 {
+			group.key = row.Items[0].Activity
+			group.expanded = group.key == s.timelineExpanded
+		}
 		for j, item := range row.Items {
 			d := p.Activities[item.Activity]
 			a := g.st.Planning.Activities[item.Activity]
@@ -572,7 +584,14 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 			}
 			forecast, forecastLabel := timelineForecast(from, today, start, end, reported, a.Cancelled, data.Render(g.db.Tr(item.ForecastLabel), env))
 			ly := y + 3 + float64(j)*10
-			group.lanes = append(group.lanes, timelineLane{item: item, bounds: image.Rect(int(axisX+axisW*left), int(ly), int(math.Ceil(axisX+axisW*right)), int(ly+9)), left: left, right: right, reported: reported, expected: expected, forecast: forecast, forecastLabel: forecastLabel, dimmed: s.timelineAssignee != "" && a.Assignee != s.timelineAssignee, sample: sample, sampleFreshness: freshness, sampleLabel: data.Render(g.db.Tr(item.SampleLabel), env)})
+			if group.expanded {
+				ly = y + 52 + float64(j)*44
+			}
+			labelBounds := image.Rectangle{}
+			if group.expanded {
+				labelBounds = image.Rect(int(x+24), int(ly-12), int(x+248), int(ly+32))
+			}
+			group.lanes = append(group.lanes, timelineLane{labelBounds: labelBounds, item: item, bounds: image.Rect(int(axisX+axisW*left), int(ly), int(math.Ceil(axisX+axisW*right)), int(ly+9)), left: left, right: right, reported: reported, expected: expected, forecast: forecast, forecastLabel: forecastLabel, dimmed: s.timelineAssignee != "" && a.Assignee != s.timelineAssignee, sample: sample, sampleFreshness: freshness, sampleLabel: data.Render(g.db.Tr(item.SampleLabel), env)})
 		}
 		out = append(out, group)
 		y += rh
@@ -667,7 +686,11 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 		if len(group.residents) > 0 {
 			nameWidth -= float64(min(3, len(group.residents)))*28 + 8
 		}
-		g.drawPlanningText(dst, group.label, x+16, group.y, nameWidth, 16, 1, g.th.text)
+		indicator := "+ "
+		if group.expanded {
+			indicator = "− "
+		}
+		g.drawPlanningText(dst, indicator+group.label, x+16, group.y, nameWidth, 16, 1, g.th.text)
 		for i, resident := range group.residents[:min(3, len(group.residents))] {
 			cx := x + 248 - float64(min(3, len(group.residents))-i)*28 + 14
 			if i == 2 && len(group.residents) > 3 {
@@ -680,11 +703,17 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 			}
 		}
 		var labels []string
-		for _, lane := range group.lanes {
+		for j, lane := range group.lanes {
 			labels = append(labels, lane.item.Label)
 			r := lane.bounds
 			lx, ly, lw, lh := float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())
 			a := g.st.Planning.Activities[lane.item.Activity]
+			if group.expanded {
+				top := group.y + 40 + float64(j)*44
+				title, summary := timelineLaneSummary(g, lane)
+				g.drawPlanningText(dst, title, x+24, top, 224, 16, 1, g.th.text)
+				g.drawPlanningText(dst, summary, x+24, top+20, 224, 15, 1, g.th.dim)
+			}
 			border := g.th.dim
 			if index == s.timelineFocus {
 				border = g.th.text
@@ -851,7 +880,11 @@ func (s *authorScreen) timelineDescription(g *Game) string {
 		_, sh := g.screen()
 		groups, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
 		for _, group := range groups {
-			if float64(g.in.mouse.Y) >= group.y && float64(g.in.mouse.Y) < group.y+group.height {
+			headerHeight := group.height
+			if group.expanded {
+				headerHeight = 36
+			}
+			if float64(g.in.mouse.Y) >= group.y && float64(g.in.mouse.Y) < group.y+headerHeight {
 				names := []string{group.label}
 				for _, resident := range group.residents {
 					names = append(names, p.Entities[resident.id].Name)
@@ -866,6 +899,12 @@ func (s *authorScreen) timelineDescription(g *Game) string {
 	}
 	s.timelineFocus = max(0, min(s.timelineFocus, len(lanes)-1))
 	lane := lanes[s.timelineFocus]
+	for _, candidate := range lanes {
+		if g.in.mouse.In(candidate.labelBounds) || g.in.mouse.In(candidate.bounds) {
+			lane = candidate
+			break
+		}
+	}
 	d := p.Activities[lane.item.Activity]
 	a := g.st.Planning.Activities[lane.item.Activity]
 	// Only authored saved samples and reported observations enter the label.
@@ -879,8 +918,56 @@ func (s *authorScreen) timelineDescription(g *Game) string {
 	return description
 }
 
+// Expanded labels use public reports and assignments, never live hidden work.
+func timelineLaneSummary(g *Game, lane timelineLane) (string, string) {
+	p := g.db.Game.Planning
+	a := g.st.Planning.Activities[lane.item.Activity]
+	return p.Activities[lane.item.Activity].Name,
+		fmt.Sprintf("%s · %.0f%%", p.Entities[a.Assignee].Name, 100*lane.reported)
+}
+
+// A group header toggles its inline lanes. If it is near the footer, reveal it
+// at the top rather than clipping details. Collapsing restores the overview.
+func (s *authorScreen) toggleTimelineGroup(g *Game) bool {
+	if !g.in.click || g.in.mouse.X < 16 || g.in.mouse.X >= 248 {
+		return false
+	}
+	sw, sh := g.screen()
+	groups, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
+	for i, group := range groups {
+		if float64(g.in.mouse.Y) < group.y || float64(g.in.mouse.Y) >= group.y+36 {
+			continue
+		}
+		if group.expanded {
+			s.timelineExpanded = ""
+			s.timelineTop = 0
+		} else {
+			// Very large authored groups retain the compact representation.
+			if 40+float64(len(group.lanes))*44 > sh-282 {
+				return true
+			}
+			s.timelineExpanded = group.key
+			if group.y+40+float64(len(group.lanes))*44 > sh-118 {
+				s.timelineTop += i
+			}
+		}
+		s.timelineFocus = 0
+		if s.timelineExpanded != "" {
+			visible, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
+			for _, row := range visible {
+				if row.expanded {
+					break
+				}
+				s.timelineFocus += len(row.lanes)
+			}
+		}
+		return true
+	}
+	return false
+}
+
 func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
-	if s.updateTimelineFilter(g) {
+	if s.updateTimelineFilter(g) || s.toggleTimelineGroup(g) {
 		return true
 	}
 	lanes := s.timelineLanes(g)
@@ -917,7 +1004,8 @@ func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
 	}
 	if g.in.click {
 		for i, lane := range lanes {
-			if g.in.mouse.In(lane.bounds) {
+			hit := g.in.mouse.In(lane.bounds) || g.in.mouse.In(lane.labelBounds)
+			if hit {
 				s.timelineFocus = i
 				open(lane)
 				return true
