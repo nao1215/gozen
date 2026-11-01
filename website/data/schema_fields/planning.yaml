@@ -100,8 +100,8 @@ PlanningView:
   door: Authored label on the island view's door.
 PlanningField:
   _: A labeled public value with an optional numeric gauge.
-  key: Attribute or observation name; hidden attributes are rejected.
-  label: The authored label displayed above this public value column.
+  key: Attribute or observation name; hidden attributes are rejected. Schema-10 plain portrait lists also accept a text template; missing or hidden resolved values are omitted.
+  label: The authored label displayed above this public value column; plain portrait lists support interpolation.
   maximum: Positive gauge maximum, or zero for text only.
   marks: Threshold positions in gauge units.
 TimelineRow:
@@ -110,6 +110,7 @@ TimelineRow:
   text: Optional interpolated summary replacing the lane-label line; truncated at 15 logical pixels without changing row or bar positions.
   items: Activity lanes in display order. Activities omitted from all rows appear in fallback rows.
 TimelineItem:
+  args: "Schema 10: pure expressions binding the destination screen parameters when the lane is opened."
   text: Optional interpolated explanation below the public assignment and report summary in expanded rows. Reserves an extra 20 logical pixels per lane and uses 15-pixel text; overflow is truncated. Also included in the activity description.
   sample: Optional saved observation ratio expression (0 to 1). Negative, missing or invalid values hide the marker; never implicitly reads live progress.
   forecast_label: Optional explanatory label enabling a linear finish forecast from reported work and elapsed calendar days. Empty disables it; zero reports, completed and excluded work have no forecast.

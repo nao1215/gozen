@@ -7,6 +7,7 @@ import (
 	"math"
 	"reflect"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/nao1215/gozen/internal/diag"
@@ -509,6 +510,8 @@ type TimelineItem struct {
 	Activity string `yaml:"activity"`
 	Label    string `yaml:"label"`
 	Screen   string `yaml:"screen"`
+	// Args bind the lane destination when the player opens it.
+	Args map[string]Expr `yaml:"args"`
 	// Text adds one authored, interpolated line to an expanded activity.
 	// The renderer also includes the full text in the activity description.
 	Text string `yaml:"text"`
@@ -547,7 +550,7 @@ type PlanningField struct {
 	Marks   []float64 `yaml:"marks"`
 }
 
-func (c *checker) planningView(w string, v PlanningView) {
+func (c *checker) planningView(w string, v PlanningView, plain bool) {
 	p := c.db.Game.Planning
 	if p == nil {
 		return
@@ -596,8 +599,10 @@ func (c *checker) planningView(w string, v PlanningView) {
 			c.text(at+".forecast_label", item.ForecastLabel, FieldNames)
 			if item.Screen != "" && c.db.Game.Screens[item.Screen] == nil {
 				c.errorf(diag.UnknownReference, at, "unknown timeline screen %q", item.Screen)
-			} else if screen := c.db.Game.Screens[item.Screen]; screen != nil && len(screen.Params) > 0 {
-				c.errorf(diag.Shape, at, "timeline screen requires arguments; use a parameterless wrapper")
+			} else if item.Screen != "" {
+				c.screenCall(at, ScreenCall{Screen: item.Screen, Args: item.Args}, FieldNames)
+			} else if len(item.Args) > 0 {
+				c.errorf(diag.Shape, at, "arguments require a destination screen")
 			}
 		}
 	}
@@ -632,8 +637,20 @@ func (c *checker) planningView(w string, v PlanningView) {
 		seen[id] = true
 	}
 	keys := []string{v.Visible, v.Highlight, v.Detail, v.Icon, v.Portrait, v.Camera, v.Badge, v.Backdrop, v.Mask}
-	for _, f := range v.Fields {
-		keys = append(keys, f.Key)
+	for i, f := range v.Fields {
+		at := fmt.Sprintf("%s.fields[%d]", w, i)
+		if strings.Contains(f.Key, "{") && plain {
+			c.needsVersion(at+".key", "field key interpolation", SchemaVersion10)
+			c.text(at+".key", f.Key, FieldNames)
+		} else {
+			keys = append(keys, f.Key)
+		}
+		if plain {
+			if strings.Contains(f.Label, "{") {
+				c.needsVersion(at+".label", "field label interpolation", SchemaVersion10)
+			}
+			c.text(at+".label", f.Label, FieldNames)
+		}
 		if f.Maximum < 0 || math.IsNaN(f.Maximum) || math.IsInf(f.Maximum, 0) {
 			c.errorf(diag.Shape, w, "gauge maximum must be finite and nonnegative")
 		}

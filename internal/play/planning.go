@@ -1091,7 +1091,12 @@ func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
 	}
 	open := func(lane timelineLane) {
 		if lane.item.Screen != "" {
-			g.openScreen(lane.item.Screen, nil)
+			args, err := g.db.BindScreen(data.ScreenCall{Screen: lane.item.Screen, Args: lane.item.Args}, s.env(g))
+			if err != nil {
+				g.events.Log(err)
+				return
+			}
+			g.openAuthorScreen(lane.item.Screen, nil, args)
 			if len(g.stack) > 0 {
 				if child, ok := g.stack[len(g.stack)-1].(*authorScreen); ok && child != s && child.candidateList(g) {
 					child.timelineContext, child.timelineActivity = s, lane.item.Activity

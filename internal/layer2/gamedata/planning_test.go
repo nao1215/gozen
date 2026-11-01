@@ -353,3 +353,53 @@ screens:
 		}
 	}
 }
+
+func TestTimelineDestinationArguments(t *testing.T) {
+	const header = `schema_version: 10
+id: workshop
+start: {location: room}
+planning:
+  calendar: {start: '2030-08-01', end: '2030-08-03', phases: [morning]}
+  entities: {maker: {name: Maker}}
+  attributes: {load: {type: number, initial: 1}}
+  activities: {kiln: {name: Kiln, effort: 2}}
+screens:
+  detail:
+    params: {task: activity, field: string}
+    title: 'Choose for {arg.task}'
+    view: {fields: [{key: '{arg.field}', label: 'Work {arg.task}'}]}
+    entries: [{label: Read}]
+  tasks:
+    title: Tasks
+    kind: timeline
+    view:
+      rows:
+      - label: Pottery
+        items:
+`
+	for _, tc := range []struct {
+		item  string
+		valid bool
+	}{
+		{`{activity: kiln, screen: detail, args: {task: '"kiln"', field: '"load"'}}`, true},
+		{`{activity: kiln, screen: detail}`, false},
+		{`{activity: kiln, screen: detail, args: {task: '1', field: '"load"'}}`, false},
+		{`{activity: kiln, screen: detail, args: {task: '"missing"', field: '"load"'}}`, false},
+		{`{activity: kiln, screen: detail, args: {task: 'rand(2)', field: '"load"'}}`, false},
+		{`{activity: kiln, args: {task: '"kiln"'}}`, false},
+	} {
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header + "        - " + tc.item + "\n")}, "data/story.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
+		if (err == nil) != tc.valid {
+			t.Fatalf("%s: %v", tc.item, err)
+		}
+	}
+	for _, invalid := range []string{
+		strings.Replace(header, "schema_version: 10", "schema_version: 9", 1),
+		strings.Replace(header, "{arg.field}", "{arg.missing}", 1),
+	} {
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(invalid + `        - {activity: kiln, screen: detail, args: {task: '"kiln"', field: '"load"'}}` + "\n")}, "data/story.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
+		if err == nil || !strings.Contains(err.Error(), "fields[0].key") {
+			t.Fatalf("missing field-key diagnostic: %v", err)
+		}
+	}
+}

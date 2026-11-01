@@ -6,8 +6,8 @@ planning:
   attributes: {vigor: {type: number, initial: 0}}
   entities: {potter: {name: Potter}, weaver: {name: Weaver}}
   activities:
-    prepare: {name: Prepare, effort: 2, assignee: potter}
-    shape: {name: Shape, effort: 2, assignee: potter}
+    prepare: {name: Prepare, effort: 2, assignee: potter, from: '2030-01-01', to: '2030-01-02'}
+    shape: {name: Shape, effort: 2, assignee: potter, from: '2030-01-01', to: '2030-01-02'}
 screens:
   stock:
     params: {amount: number}
@@ -62,3 +62,20 @@ screens:
     - label: 'Inspect {arg.day}'
       do:
       - say: 'Selected {arg.day}'
+
+  tasks:
+    title: Workshop tasks
+    kind: timeline
+    view:
+      fullscreen: true
+      rows:
+      - label: Pottery
+        items:
+        - activity: prepare
+          label: Prepare
+          screen: candidates
+          args: {task: '"prepare"', resident: '"weaver"'}
+        - activity: shape
+          label: Shape
+          screen: candidates
+          args: {task: '"shape"', resident: '"weaver"'}

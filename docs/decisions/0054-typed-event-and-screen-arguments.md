@@ -687,3 +687,19 @@ commands. It does not parameterize native planning surfaces, timeline lane
 links, or tabs, and it does not make implicit navigation replayable for saving.
 The calendar click and timeline band tests cover the same binding and preserve
 state; the CLI example selects two dates through one detail screen.
+
+
+## Timeline lane binding and plain candidate columns
+
+Timeline items now accept `args` with `screen`, reusing the date-link and explicit
+open argument contract. The player binds before opening and retains the lane's
+activity context for the candidate pane. This removes the need to duplicate a
+candidate screen for every task. The workshop example has two activity lanes
+that open the same candidate list. Native planning surfaces themselves remain
+parameterless, and implicit navigation does not gain save replay support.
+
+Plain schema-10 portrait-list column keys and labels may be text templates in the
+frozen screen scope. Dynamic lookup uses public entity values only; missing and
+hidden values are omitted. Literal-key validation is unchanged, and native
+surface columns remain literal. This supports different public skill columns
+without separate screens or exposing hidden simulation attributes.

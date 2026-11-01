@@ -668,6 +668,15 @@ func TestCandidateListPublicValuesAndSelection(t *testing.T) {
 	if !bytes.Equal(before, after) {
 		t.Fatal("candidate browsing mutated simulation")
 	}
+	// Bind public columns without exposing a hidden attribute through a dynamic key.
+	db.Game.Screens["pick"].View.Fields = []data.PlanningField{{Key: "{arg.field}", Label: "{arg.caption}"}}
+	for _, tc := range []struct{ key, want string }{{"load", "Work 3"}, {"icon", ""}, {"missing", ""}} {
+		bound := newAuthorScreen(g, "pick", nil, map[string]any{"field": tc.key, "caption": "Work"})
+		_, got := bound.candidateInfo(g, bound.entries[0])
+		if got != tc.want {
+			t.Fatalf("column %s: %q", tc.key, got)
+		}
+	}
 	db.Game.Screens["pick"].View.Portrait = ""
 	if newAuthorScreen(g, "pick", nil, nil).list.rowH != 44 {
 		t.Fatal("ordinary list compatibility lost")

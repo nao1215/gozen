@@ -660,3 +660,43 @@ scenarios:
       file:
         path: calendar-args.jsonl
         contains: ['Selected 2030-01-01', 'Selected 2030-01-02', '"date":"2030-01-01"', '"phase":0']
+- name: timeline lanes reuse one candidate screen
+  steps:
+  - fixture:
+      file: lane-args.txt
+      content: |
+        gap 4
+        wait 10
+        do open: tasks
+        wait 10
+        press ok
+        wait 10
+        press ok
+        wait 10
+        press down
+        press ok
+        until idle
+        snapshot
+        press ok
+        wait 10
+        press ok
+        until idle
+        press cancel
+        wait 10
+        press down
+        press ok
+        wait 10
+        press ok
+        wait 10
+        press ok
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script lane-args.txt --trace lane-args.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: lane-args.jsonl
+        contains: ['Reviewed prepare', 'Reviewed shape', '"assignee":"potter"', '"assignee":"weaver"']

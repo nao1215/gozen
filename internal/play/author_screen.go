@@ -115,8 +115,8 @@ func (s *authorScreen) candidateInfo(g *Game, e data.ScreenEntry) (string, strin
 	}
 	var fields []string
 	for _, f := range v.Fields {
-		if value := values[f.Key]; value != nil {
-			fields = append(fields, f.Label+" "+fmt.Sprint(value))
+		if value := values[data.Render(f.Key, s.env(g))]; value != nil {
+			fields = append(fields, data.Render(g.db.Tr(f.Label), s.env(g))+" "+fmt.Sprint(value))
 		}
 	}
 	return portrait, strings.Join(fields, " · ")

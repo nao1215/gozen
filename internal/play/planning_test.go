@@ -935,6 +935,20 @@ func TestTimelineCandidatePaneBrowsing(t *testing.T) {
 	if newAuthorScreen(g, "pick", nil, nil).timelineContext != nil {
 		t.Fatal("standalone picker changed")
 	}
+	db.Game.Screens["pick"].Params = map[string]string{"task": "activity"}
+	db.Game.Screens["pick"].Title = "Choose for {arg.task}"
+	db.Game.Screens["tasks"].View.Rows[0].Items[0].Args = map[string]data.Expr{"task": data.MustExpr(`"kiln"`)}
+	g.in = input{click: true, mouse: lane.bounds.Min}
+	if !parent.updateGroupedTimeline(g) {
+		t.Fatal("bound lane did not open")
+	}
+	bound, ok := g.stack[len(g.stack)-1].(*authorScreen)
+	if !ok {
+		t.Fatal("bound candidate screen missing")
+	}
+	if bound.title != "Choose for kiln" || bound.args["task"] != "kiln" || bound.timelineContext != parent {
+		t.Fatal("lane lost bound destination or context")
+	}
 }
 
 func TestTimelineZoomBrowsing(t *testing.T) {

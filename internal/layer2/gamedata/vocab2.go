@@ -107,8 +107,8 @@ func (c *checker) declarations() {
 		if len(screen.Params) > 0 && (screen.Kind != "" || screen.View.Fullscreen) {
 			c.errorf(diag.Shape, w+".params", "parameters currently require a plain authored list")
 		}
-		c.planningView(w+".view", screen.View)
 		c.params = screen.Params
+		c.planningView(w+".view", screen.View, screen.Kind == "")
 		if len(screen.View.Tabs) > 0 && !slices.Contains(screen.View.Tabs, name) {
 			c.errorf(diag.Shape, w+".view.tabs", "tabs must include the current screen")
 		}

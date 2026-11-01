@@ -13546,7 +13546,7 @@
       "description": "A labeled public value with an optional numeric gauge.",
       "properties": {
         "key": {
-          "description": "Attribute or observation name; hidden attributes are rejected.",
+          "description": "Attribute or observation name; hidden attributes are rejected. Schema-10 plain portrait lists also accept a text template; missing or hidden resolved values are omitted.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -13559,7 +13559,7 @@
           "x-type": "string"
         },
         "label": {
-          "description": "The authored label displayed above this public value column.",
+          "description": "The authored label displayed above this public value column; plain portrait lists support interpolation.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -20499,6 +20499,31 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "args": {
+          "additionalProperties": {
+            "description": "An expression. gozen check checks its syntax, names and types.",
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          "description": "Schema 10: pure expressions binding the destination screen parameters when the lane is opened.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → expression"
         },
         "forecast_label": {
           "description": "Optional explanatory label enabling a linear finish forecast from reported work and elapsed calendar days. Empty disables it; zero reports, completed and excluded work have no forecast.",

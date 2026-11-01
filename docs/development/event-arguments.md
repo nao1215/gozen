@@ -68,7 +68,7 @@ a named event or nested screen receives only explicitly passed values. Closing
 resumes the original caller once. A malformed dynamic argument logs an execution
 error and skips opening the screen before any entry effect or random draw.
 
-Parameterized planning surfaces, implicit tab/timeline lane destinations and
+Parameterized planning surfaces, implicit tab destinations and
 expression-form screen entry target IDs are not supported yet. Use a parameterless wrapper
 screen with an explicit `open` action when a literal-only destination is required.
 Plain portrait lists can still use fixed entity targets. Parameters do not expand
@@ -207,3 +207,22 @@ at click time. A failed binding reports an error without opening or changing
 state. Multiple links on the same date must agree on both screen and arguments.
 Browsing does not advance the planning calendar. Native navigation still cannot
 be saved while open; this does not extend the named-event replay contract.
+
+
+## Timeline lane destinations and candidate columns
+
+The workshop `tasks` timeline above supplies `screen: candidates` and an `args`
+map on each lane. Clicking or confirming either activity opens the same list
+with its own task and resident. Bindings use the same pure, typed validation as
+explicit `open`; a runtime binding error leaves the current screen and state
+unchanged. The candidate pane retains the selected timeline activity on return.
+Implicit navigation still does not establish a saveable named event root.
+
+Schema-10 plain portrait lists may interpolate `view.fields[].key` and `label`.
+For example, a reusable workshop picker can declare `column: string` and
+`caption: string`, then use `fields: [{key: '{arg.column}', label: '{arg.caption}'}]`.
+Pass `column: '"vigor"'` and `caption: '"Vigor"'` to display that public value.
+The lookup reads the same public observations as literal columns: a missing key
+or a hidden attribute is omitted. Literal keys retain reference validation;
+dynamic keys are checked as templates and resolved on display. Native planning
+surfaces still require literal column keys.
