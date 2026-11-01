@@ -14,11 +14,11 @@ type Request struct {
 	// lost or draw; it needs no answer); and, only seen by Config.OnRequest, step (a line of a battle fought on
 	// AUTO) and decision (an AI's choice: Who the actor, Text the skill or item).
 	Kind string
-	// Text is the line of say, notice and step, and the prompt of choice.
+	// Text is the line of say, notice and step, the prompt of choice, or the authored screen title.
 	Text string
 	// Who is the speaker of say ("" for narration); Face its picture under assets/.
 	Who, Face string
-	// Options are the options of choice, copied for each returned request and callback.
+	// Options are choice options or visible authored screen entries, copied for each request and callback.
 	Options []string
 	// ID is the troop of battle, the shop of shop, the screen of open, and the speaker's
 	// actor of say ("" when the speaker is not an actor).
@@ -57,13 +57,15 @@ type Effect struct {
 	At int
 }
 
-// Policy answers the choices (the option's index) and battles (Auto, Won, Lost, Fled)
-// that Session.Do and Explore meet. Embed DefaultPolicy to answer only some yourself.
+// Policy answers choices (the option index), battles (Auto, Won, Lost, Fled)
+// and, in Do, authored screens (a visible entry index, or -1 to close). Explore
+// only asks about choices and battles. Embed DefaultPolicy to answer some yourself.
 type Policy interface {
 	Decide(ctx context.Context, s *Session, q Request) int
 }
 
-// DefaultPolicy takes the first option of a choice and fights a battle on AUTO.
+// DefaultPolicy takes the first option of a choice, fights a battle on AUTO,
+// and closes authored screens without selecting an entry.
 type DefaultPolicy struct {
 	// Prefer are labels to take when a choice shows them, in order: the first label
 	// that an option equals, else the first that an option contains. A choice without
@@ -71,8 +73,12 @@ type DefaultPolicy struct {
 	Prefer []string
 }
 
-// Decide answers the preferred option, else 0: the first option, or Auto.
+// Decide closes authored screens and otherwise answers the preferred option,
+// else 0: the first option, or Auto.
 func (p DefaultPolicy) Decide(_ context.Context, _ *Session, q Request) int {
+	if q.Kind == "open" {
+		return -1
+	}
 	if q.Kind != "choice" {
 		return 0
 	}

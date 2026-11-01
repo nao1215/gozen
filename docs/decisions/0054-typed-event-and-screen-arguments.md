@@ -376,3 +376,51 @@ Typed invocations add explicit save and checker work, especially around suspende
 screens. That cost is intentional: one authored body and one candidate screen should
 replace copies while preserving target identity. Do not ship screen arguments with
 only display reuse and postpone save/confirmation correctness to a later cleanup.
+
+## Live authored screens in non-rendering sessions
+
+The session lifecycle now suspends an opener until its authored screen is closed.
+Previously `Session.Next` returned an `open` notification and immediately continued
+on the following call, without any way to select the screen's entries. This could
+not serve as an oracle for screen actions or future continuation restoration.
+
+First-party integration tests use the existing `Next` and `Answer` interface:
+
+- An authored `open` request contains its title and visible entry labels. Repeated
+  `Next` calls leave it open. Returned labels belong to the caller.
+- `Answer(n)` selects visible entry `n`; `Answer(-1)` closes the screen. Invalid
+  indices and entries without commands leave it open. Selection retains the
+  authored index and rechecks its condition before executing commands.
+- Entry execution suspends the opener and uses a separate runner. Confirmation
+  remains an ordinary authored choice. A second answer before the next request
+  cannot enqueue the action again. Completed entries refresh the screen; nested
+  screens close back to their caller. The screen stack is limited to 64 entries.
+- Moving to another location closes the completed action's screen. Checkpoint
+  restoration discards suspended screens and their continuations.
+- `Start` and `Do` reject new scripts while an authored screen is active. The
+  default policy used by unattended `Do` closes screens without taking actions,
+  preserving its earlier outcome. A custom policy may answer `open` requests.
+  Built-in screens remain presentation-only notifications; `Explore` and CLI
+  headless drivers do not acquire screen exploration through this change.
+
+A neutral stock screen uses existing YAML syntax:
+
+```yaml
+screens:
+  stock:
+    title: Stock
+    entries:
+    - label: Collect boards
+      when: 'var.boards == 0'
+      do:
+      - choice:
+        - label: Confirm
+          do: [{set: {var.boards: 'var.boards + 1'}}]
+        - label: Cancel
+```
+
+No screen argument schema or save representation is introduced by this slice.
+Saving while any authored screen is suspended is still rejected, including while
+an entry's conversation has its own replay cursor. Closing the screen and finishing
+its opener permits saving again. Restoring an open screen, typed screen arguments,
+presentation preview restoration and CLI screen E2E remain required follow-up work.

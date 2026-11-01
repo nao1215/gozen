@@ -1195,6 +1195,9 @@ events:
 		if query[int](t, s, "var.opened") != 1 || query[int](t, s, "var.closed") != 0 {
 			t.Fatal("rejection changed event state")
 		}
+		if kind == "open" {
+			s.Answer(-1)
+		}
 	}
 	if q := s.Next(); q.Kind != "" {
 		t.Fatalf("event did not finish: %+v", q)
@@ -1209,5 +1212,237 @@ events:
 	}
 	if query[int](t, r, "var.opened") != 1 || query[int](t, r, "var.closed") != 1 {
 		t.Fatal("finished event was lost or repeated")
+	}
+}
+
+func TestAuthorScreenLifecycle(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml": {Data: []byte(`schema_version: 8
+id: screen-actions
+start: {location: workshop}
+screens:
+  stock:
+    title: Stock
+    entries:
+    - {label: Hidden, when: 'false', do: [{set: {var.wrong: '1'}}]}
+    - label: Boards
+      when: 'var.boards == 0'
+      do:
+      - choice:
+        - {label: Confirm, do: [{set: {var.boards: 'var.boards + 1'}}]}
+        - {label: Cancel}
+      - open: receipt
+      - set: {var.finished: 'var.finished + 1'}
+    - {label: Read only}
+  receipt:
+    title: Receipt
+    entries:
+    - {label: Read, do: [{say: Ready.}]}
+`)},
+		"data/world.yaml": {Data: []byte(`locations: {workshop: {name: Workshop}}
+events:
+  visit:
+    do:
+    - set: {var.opened: 'var.opened + 1'}
+    - open: stock
+    - set: {var.closed: 'var.closed + 1'}
+`)},
+	}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := session(t, g, gozen.Config{Seed: 17, OnRequest: func(q gozen.Request) {
+		if q.Kind == "open" && len(q.Options) > 0 {
+			q.Options[0] = "observer mutation"
+		}
+	}})
+	control := session(t, g, gozen.Config{Seed: 17})
+	if err := s.Start("- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	expect := func(kind, id string) gozen.Request {
+		t.Helper()
+		q := s.Next()
+		if q.Kind != kind || q.ID != id {
+			t.Fatalf("request %+v, want %s/%s", q, kind, id)
+		}
+		if kind == "open" {
+			if saved, err := s.Save(); err == nil || saved != nil {
+				t.Fatal("open screen save lost continuation")
+			}
+		}
+		return q
+	}
+	q := expect("open", "stock")
+	if !slices.Equal(q.Options, []string{"Boards", "Read only"}) {
+		t.Fatalf("options: %v", q.Options)
+	}
+	q.Options[0] = "tampered"
+	for range 2 {
+		if q := expect("open", "stock"); q.Options[0] != "Boards" {
+			t.Fatal("request alias")
+		}
+	}
+	if query[int](t, s, "var.closed") != 0 {
+		t.Fatal("Next closed the screen")
+	}
+	s.Answer(99)
+	expect("open", "stock")
+	s.Answer(1) // A read-only entry leaves the screen open.
+	expect("open", "stock")
+	if err := s.Start("- set: {var.wrong: '1'}"); !errors.Is(err, gozen.ErrInvalid) {
+		t.Fatalf("Start during screen: %v", err)
+	}
+	if err := s.Do(t.Context(), "- set: {var.wrong: '1'}"); !errors.Is(err, gozen.ErrInvalid) {
+		t.Fatalf("Do during screen: %v", err)
+	}
+	s.Answer(0)
+	s.Answer(0) // Repeated confirmation cannot queue another action.
+	expect("choice", "")
+	if b, err := s.Save(); err == nil || b != nil {
+		t.Fatal("entry save lost parent")
+	}
+	s.Answer(1) // Cancel the authored confirmation.
+	expect("open", "receipt")
+	if query[int](t, s, "var.boards") != 0 {
+		t.Fatal("cancel committed boards")
+	}
+	s.Answer(-1)
+	expect("open", "stock")
+	s.Answer(0)
+	expect("choice", "")
+	s.Answer(0)
+	expect("open", "receipt")
+	s.Answer(0)
+	if q := expect("say", ""); q.Text != "Ready." {
+		t.Fatalf("receipt: %+v", q)
+	}
+	expect("open", "receipt")
+	s.Answer(-1)
+	q = expect("open", "stock")
+	if !slices.Equal(q.Options, []string{"Read only"}) {
+		t.Fatalf("stale entries: %v", q.Options)
+	}
+	if query[int](t, s, "var.boards") != 1 || query[int](t, s, "var.finished") != 2 || query[int](t, s, "var.closed") != 0 {
+		t.Fatal("entry effects or opener continuation")
+	}
+	s.Answer(-1)
+	expect("", "")
+	if query[int](t, s, "var.opened") != 1 || query[int](t, s, "var.closed") != 1 || query[int](t, s, "var.wrong") != 0 {
+		t.Fatal("opener lost or repeated")
+	}
+	b, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := gozen.Restore(g, b, gozen.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if query[int](t, r, "var.boards") != 1 || query[int](t, r, "var.closed") != 1 {
+		t.Fatal("finished save lost effects")
+	}
+	for _, current := range []*gozen.Session{s, r, control} {
+		if err := current.Do(t.Context(), "- set: {var.draw: 'rand(1000000)'}"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if query[int](t, s, "var.draw") != query[int](t, control, "var.draw") || query[int](t, r, "var.draw") != query[int](t, control, "var.draw") {
+		t.Fatal("screen consumed randomness")
+	}
+	// Default unattended execution explicitly closes authored screens.
+	if err := control.Do(t.Context(), "- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	if query[int](t, control, "var.closed") != 1 || query[int](t, control, "var.boards") != 0 {
+		t.Fatal("default policy performed a screen action")
+	}
+}
+
+func TestAuthorScreenActionLeavesLocationOrRestoresCheckpoint(t *testing.T) {
+	for _, tc := range []struct {
+		name, action     string
+		closed, finished int
+	}{
+		{"move", "- move: yard", 1, 1},
+		{"checkpoint", "- restore_checkpoint: true", 0, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files := fstest.MapFS{
+				"game.yaml": {Data: []byte("schema_version: 9\nid: screen-exit\nstart: {location: workshop}\nscreens:\n  stock:\n    title: Stock\n    entries:\n    - label: Leave\n      do:\n      " + tc.action + "\n      - set: {var.finished: '1'}\n")},
+				"data/world.yaml": {Data: []byte(`locations: {workshop: {name: Workshop}, yard: {name: Yard}}
+events:
+  retry:
+    do: [{say: Retry.}]
+  visit:
+    do:
+    - checkpoint: retry
+    - open: stock
+    - set: {var.closed: '1'}
+`)},
+			}
+			g, err := gozen.Load(files, ".")
+			if err != nil {
+				t.Fatal(err)
+			}
+			s := session(t, g, gozen.Config{Seed: 17})
+			if err := s.Start("- call: visit"); err != nil {
+				t.Fatal(err)
+			}
+			if q := s.Next(); q.Kind != "open" {
+				t.Fatalf("open: %+v", q)
+			}
+			s.Answer(0)
+			if tc.name == "checkpoint" {
+				if q := s.Next(); q.Text != "Retry." {
+					t.Fatalf("checkpoint: %+v", q)
+				}
+			}
+			if q := s.Next(); q.Kind != "" {
+				t.Fatalf("screen survived exit: %+v", q)
+			}
+			if query[int](t, s, "var.closed") != tc.closed || query[int](t, s, "var.finished") != tc.finished {
+				t.Fatal("wrong continuation after exit")
+			}
+			if _, err := s.Save(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestAuthorScreenNestingIsBounded(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml":       {Data: []byte("schema_version: 8\nid: screen-depth\nstart: {location: workshop}\nscreens: {stock: {title: Stock, entries: [{label: Again, do: [{open: stock}]}]}}\n")},
+		"data/world.yaml": {Data: []byte("locations: {workshop: {name: Workshop}}\nevents: {visit: {do: [{open: stock}, {set: {var.closed: '1'}}]}}\n")},
+	}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var logs []error
+	s := session(t, g, gozen.Config{OnLog: func(err error) { logs = append(logs, err) }})
+	if err := s.Start("- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	for range 65 {
+		if q := s.Next(); q.Kind != "open" {
+			t.Fatalf("open: %+v", q)
+		}
+		s.Answer(0)
+	}
+	if q := s.Next(); q.Kind != "open" {
+		t.Fatalf("open after limit: %+v", q)
+	}
+	if len(logs) == 0 || !strings.Contains(logs[0].Error(), "nested too deep") {
+		t.Fatalf("missing depth rejection: %v", logs)
+	}
+	for range 64 {
+		s.Answer(-1)
+		s.Next()
+	}
+	if q := s.Next(); q.Kind != "" || query[int](t, s, "var.closed") != 1 {
+		t.Fatalf("could not close after rejection: %+v", q)
 	}
 }

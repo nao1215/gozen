@@ -28,7 +28,8 @@ type Config struct {
 	// development and tests. The zero value is the game as played: Do and Explore refuse
 	// such a set (ErrInvalid), and the game's own events skip it.
 	Dev bool
-	// Policy answers the choices and battles that Do and Explore meet; nil is DefaultPolicy.
+	// Policy answers choices, battles and authored screens in Do; Explore asks
+	// only about choices and battles. Nil is DefaultPolicy.
 	Policy Policy
 	// OnRequest sees every request shown, answered by the Policy or by the caller of Next.
 	OnRequest func(Request)
@@ -59,7 +60,8 @@ type Session struct {
 	acts    []act // moves decided by the act command for the next battle
 	errs    []error
 	at      cursor
-	held    *Request // the line a restored save goes on at, shown by the next Next
+	screens []screenFrame // suspended author screens, outermost first
+	held    *Request      // the line a restored save goes on at, shown by the next Next
 }
 
 // cursor is where the running event is, for a save made in its middle (ADR 0025): the state
@@ -77,6 +79,15 @@ type cursor struct {
 	screen      bool // this root crossed an open request; continuation is not serializable
 	arriving    bool
 	before, rbf []byte
+}
+
+// screenFrame retains the opener while an authored entry runs independently.
+// It is live session state, not a serialized save representation.
+type screenFrame struct {
+	name, origin string
+	runner       *event.Runner
+	at           cursor
+	indices      []int
 }
 
 // New starts a session at the game's start (game.yaml start), running nothing yet;
@@ -249,6 +260,9 @@ func (s *Session) Begin(ctx context.Context) error {
 // command that does not fit the game is ErrInvalid with the Diagnostics; the problems
 // met while running are returned joined, after everything ran.
 func (s *Session) Do(ctx context.Context, script string) error {
+	if len(s.screens) > 0 {
+		return fmt.Errorf("%w: answer or close the author screen before starting commands", ErrInvalid)
+	}
 	cmds, err := s.parse(script)
 	if err != nil {
 		return err
@@ -271,6 +285,9 @@ func (s *Session) Do(ctx context.Context, script string) error {
 
 // Start queues a list of YAML commands for a screen that shows them with Next and Answer.
 func (s *Session) Start(script string) error {
+	if len(s.screens) > 0 {
+		return fmt.Errorf("%w: answer or close the author screen before starting commands", ErrInvalid)
+	}
 	cmds, err := s.parse(script)
 	if err != nil {
 		return err
@@ -311,6 +328,10 @@ func (s *Session) settle(ctx context.Context) error {
 		switch q.Kind {
 		case "":
 			return errors.Join(s.errs...)
+		case "open":
+			if s.pending != nil {
+				s.Answer(s.cfg.Policy.Decide(ctx, s, q))
+			}
 		case "choice", "battle":
 			n := s.cfg.Policy.Decide(ctx, s, q)
 			if n == Branch {
@@ -323,7 +344,8 @@ func (s *Session) settle(ctx context.Context) error {
 }
 
 // Next runs until something must be shown and returns it; Kind "" means nothing is
-// waiting. A choice or a battle waits for Answer (Next returns it again until then).
+// waiting. A choice, battle or authored screen waits for Answer (Next returns it
+// again until then). Built-in screens remain presentation-only requests.
 func (s *Session) Next() Request {
 	if s.pending != nil {
 		return cloneRequest(*s.pending)
@@ -356,6 +378,15 @@ func (s *Session) Next() Request {
 			case "battle", "shop", "save", "open", "clear", "game_over":
 				s.at.noBack = true
 			}
+			if q.Kind == "open" && s.db.Game.Screens[q.ID] != nil {
+				if len(s.screens) >= 64 {
+					s.runner.Log(errors.New("author screens nested too deep"))
+					continue
+				}
+				s.screens = append(s.screens, screenFrame{name: q.ID, origin: s.st.Location, runner: s.runner, at: s.at})
+				q = s.screenRequest()
+				s.pending = &q
+			}
 			if s.cfg.OnRequest != nil {
 				s.cfg.OnRequest(cloneRequest(q))
 			}
@@ -365,7 +396,22 @@ func (s *Session) Next() Request {
 			return cloneRequest(q)
 		}
 		if s.last.Over || s.last.Cleared {
+			s.screens = nil
 			return Request{}
+		}
+		if len(s.screens) > 0 {
+			frame := &s.screens[len(s.screens)-1]
+			s.runner, s.at = frame.runner, frame.at
+			if s.st.Location != frame.origin {
+				s.screens = s.screens[:len(s.screens)-1]
+				continue
+			}
+			q := s.screenRequest()
+			s.pending = &q
+			if s.cfg.OnRequest != nil {
+				s.cfg.OnRequest(cloneRequest(q))
+			}
+			return cloneRequest(q)
 		}
 		if s.arrived {
 			s.arrived = false
@@ -389,10 +435,17 @@ func (s *Session) Next() Request {
 }
 
 // Answer answers the choice (the option's index) or the battle (Auto, Won, Lost or
-// Fled) that Next returned. Other requests need no answer.
+// Fled) that Next returned. For an authored open, n is the visible entry index;
+// -1 closes the screen. Invalid indices leave it open. Selection rechecks the
+// displayed entry's condition without retargeting a stale row. Other requests
+// need no answer. A second answer before the next request does nothing.
 func (s *Session) Answer(n int) {
 	q := s.pending
 	if q == nil {
+		return
+	}
+	if q.Kind == "open" {
+		s.answerScreen(n)
 		return
 	}
 	s.pending = nil
@@ -544,7 +597,7 @@ func (s *Session) effect(e event.Effect) {
 // the events being run are not saved. A running root that opened an author
 // screen is rejected until it finishes: state alone would lose its continuation.
 func (s *Session) Save() ([]byte, error) {
-	if s.runner.Running() && s.at.screen {
+	if len(s.screens) > 0 || s.runner.Running() && s.at.screen {
 		return nil, errors.New("gozen: finish the event that opened the author screen before saving")
 	}
 	c := s.at
@@ -708,10 +761,60 @@ func (s *Session) checkpoint(q event.Checkpoint) error {
 	}
 	st.Rand = rand.New(s.pcg) //nolint:gosec // Deterministic gameplay, not secrets.
 	s.st = st
-	s.pending, s.held = nil, nil
+	s.pending, s.held, s.screens = nil, nil, nil
 	s.arrived = false
 	s.last = scope.Last{}
 	s.start()
 	s.runner.Start(s.db.Events[st.Checkpoint.Event].Do)
 	return nil
+}
+
+// screenRequest takes a stable visible-row snapshot; Answer uses its authored
+// indices even if state changes before confirmation.
+func (s *Session) screenRequest() Request {
+	frame := &s.screens[len(s.screens)-1]
+	def := s.db.Game.Screens[frame.name]
+	q := Request{Kind: "open", ID: frame.name, Text: gamedata.Render(s.db.Tr(def.Title), s.st.Env())}
+	frame.indices = nil
+	for i, entry := range def.Entries {
+		visible, err := entry.When.Bool(s.st.Env())
+		if err != nil {
+			s.runner.Log(err)
+			continue
+		}
+		if visible {
+			frame.indices = append(frame.indices, i)
+			q.Options = append(q.Options, gamedata.Render(s.db.Tr(entry.Label), s.st.Env()))
+		}
+	}
+	return q
+}
+
+func (s *Session) answerScreen(n int) {
+	frame := &s.screens[len(s.screens)-1]
+	if n == -1 {
+		s.runner, s.at = frame.runner, frame.at
+		s.screens = s.screens[:len(s.screens)-1]
+		s.pending = nil
+		return
+	}
+	if n < 0 || n >= len(frame.indices) {
+		return
+	}
+	entry := s.db.Game.Screens[frame.name].Entries[frame.indices[n]]
+	visible, err := entry.When.Bool(s.st.Env())
+	if err != nil {
+		s.runner.Log(err)
+	}
+	if err != nil || !visible {
+		q := s.screenRequest()
+		s.pending = &q
+		return
+	}
+	if len(entry.Do) == 0 {
+		return
+	}
+	s.pending = nil
+	s.start()
+	s.runner.Start(entry.Do)
 }
