@@ -74,6 +74,8 @@ screens:
       do: [{call: counter_demo}]
     - label: Check threshold warnings
       do: [{call: threshold_demo}]
+    - label: Release unfinished assignments
+      do: [{call: release_demo}]
     - label: Compare priorities
       do: [{call: priority_demo}]
     kind: timeline

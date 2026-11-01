@@ -174,3 +174,23 @@ events:
       then:
       - set: {'var["posted_" + arg.key]': arg.level}
       - set: {'var["shown_" + arg.key]': arg.level}
+  release_demo:
+    do:
+    - plan: {op: assign, activity: shape, entity: weaver}
+    - call: {event: release_jobs, args: {resident: '"potter"'}}
+    - say: 'Released [{activity.prepare.assignee}]; other owner {activity.shape.assignee}'
+    - plan: {op: assign, activity: prepare, entity: potter}
+    - plan: {op: progress, activity: prepare, value: '2'}
+    - call: {event: release_jobs, args: {resident: '"potter"'}}
+    - say: 'Finished owner {activity.prepare.assignee}; other owner {activity.shape.assignee}'
+  release_jobs:
+    params: {resident: entity}
+    do:
+    - call: {event: release_job, args: {resident: arg.resident, task: '"prepare"'}}
+    - call: {event: release_job, args: {resident: arg.resident, task: '"shape"'}}
+  release_job:
+    params: {resident: entity, task: activity}
+    do:
+    - if: 'activity[arg.task].assignee == arg.resident && !activity[arg.task].completed'
+      then:
+      - plan: {op: assign, activity: {expr: arg.task}, entity: ''}

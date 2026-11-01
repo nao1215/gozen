@@ -427,3 +427,19 @@ evaluation order. Literal `set` keys execute in lexical order, which may differ
 from the order of computed keys. Use separate commands when later values depend
 on earlier writes. Pass stable inputs as arguments, but keep changing values in
 the shared body so each call reads the current state.
+
+## Releasing unfinished assignments
+
+The workshop's `release_demo` calls one `release_jobs` event with a resident
+argument. Each ordered call to `release_job` checks the activity's current owner
+and completion before clearing its assignment. Completed work and work owned by
+someone else remain unchanged. The same pattern applies to a farm worker changing
+roles or a trainee leaving a course. The CLI scenario checks both preserved owners
+and the empty assignment.
+
+Keep changing readiness checks inside the per-activity event. Earlier calls can
+complete dependencies or consume a worker's available turn. Pure, unchanged
+inputs can be passed as arguments; freezing a whole day's readiness before any
+work would change the rule. Similarly, a shared acceptance check can receive pure
+progress, effort and defect totals while updating separate named counters in its
+original order. Keep the original grouping and order of floating-point sums.

@@ -871,3 +871,22 @@ scenarios:
       file:
         path: threshold.jsonl
         contains: ['First warning 1', 'Acknowledged warning 0', 'Escalated warning 2; independent warning 1', '"shown_water":2', '"shown_stock":1']
+- name: shared release preserves completed work and another residents assignments
+  steps:
+  - fixture:
+      file: release.txt
+      content: |
+        gap 1
+        wait 10
+        do call: release_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script release.txt --trace release.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: release.jsonl
+        contains: ['Released []; other owner weaver', 'Finished owner potter; other owner weaver']
