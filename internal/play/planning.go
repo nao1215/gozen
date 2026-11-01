@@ -344,10 +344,20 @@ func (g *Game) planningFace(dst *ebiten.Image, path string, cx, cy, r float64) {
 	gfx.StrokeLine(dst, float32(cx-r*.20), float32(cy+r*.30), float32(cx+r*.20), float32(cy+r*.30), 2, color.Black, true)
 }
 
+// planningTorsoBounds keeps the head and chest in view even for an off-center
+// full-length portrait. The head includes the authored face margin.
+func planningTorsoBounds(bounds, head image.Rectangle) image.Rectangle {
+	if head.Intersect(bounds).Empty() {
+		return bounds
+	}
+	side := max(head.Dx(), head.Dy())
+	cx := head.Min.X + head.Dx()/2
+	return image.Rect(cx-side, head.Min.Y-side/5, cx+side, head.Max.Y+side).Intersect(bounds)
+}
+
 func (g *Game) planningTorso(dst *ebiten.Image, path string, x, y, w, h float64) {
 	img := g.pics.get(path)
-	bounds := img.Bounds()
-	bounds.Max.Y = bounds.Min.Y + int(float64(bounds.Dy())*.58)
+	bounds := planningTorsoBounds(img.Bounds(), g.pics.head(path))
 	sub, ok := img.SubImage(bounds).(*ebiten.Image)
 	if !ok {
 		return

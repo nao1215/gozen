@@ -1024,3 +1024,18 @@ func TestTimelineZoomBrowsing(t *testing.T) {
 		t.Fatal("short calendar expanded")
 	}
 }
+
+func TestPlanningTorsoBounds(t *testing.T) {
+	bounds := image.Rect(0, 0, 1000, 2000)
+	for _, head := range []image.Rectangle{image.Rect(600, 120, 800, 320), image.Rect(0, 0, 200, 200), image.Rect(800, 1700, 1000, 1900)} {
+		crop := planningTorsoBounds(bounds, head)
+		if !head.In(crop) || !crop.In(bounds) || crop.Dy() > 500 {
+			t.Fatalf("head %v: invalid chest crop %v", head, crop)
+		}
+	}
+	for _, head := range []image.Rectangle{{}, image.Rect(2000, 0, 2100, 100)} {
+		if got := planningTorsoBounds(bounds, head); got != bounds {
+			t.Fatalf("unusable head %v: %v", head, got)
+		}
+	}
+}
