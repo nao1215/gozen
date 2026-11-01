@@ -311,6 +311,7 @@ const (
 )
 
 type frame struct {
+	args         expr.Map
 	cmds         []data.Command
 	pc           int
 	prepared     bool
@@ -374,7 +375,7 @@ type Runner struct {
 	last scope.Last
 	// OnStart is told of an event started when nothing was running (before any of it runs):
 	// a test player's note keeps the state there, to begin the event again from it.
-	OnStart func(cmds []data.Command)
+	OnStart func(cmds []data.Command, args map[string]any)
 	// optionAt is the place of each option shown in its choice as written (chose.<id> of an
 	// option without an id is that number).
 	optionAt []int
@@ -387,15 +388,30 @@ func New(db *data.DB, st *rpg.State, host Host) *Runner {
 
 // Start begins running cmds (after whatever is running).
 func (r *Runner) Start(cmds []data.Command) {
+	r.start(cmds, nil)
+}
+
+// StartBound resumes a named event with frozen scalar bindings. Validation occurs
+// before callbacks, run counts or frames change; input maps are never retained.
+func (r *Runner) StartBound(name string, values map[string]any) error {
+	args, err := r.db.ValidateArguments(name, values)
+	if err != nil {
+		return err
+	}
+	r.start(r.db.Events[name].Do, args)
+	return nil
+}
+
+func (r *Runner) start(cmds []data.Command, args expr.Map) {
 	// OnStart keeps the state the event begins from, so it comes before the run is counted:
 	// begun again from that state (a save made in the middle of the event, ADR 0025), the event
 	// is counted once, not once more for every save and load.
 	if len(cmds) > 0 && r.OnStart != nil && !r.Running() {
-		r.OnStart(cmds)
+		r.OnStart(cmds, maps.Clone(args))
 	}
 	r.countRun(cmds)
 	if len(cmds) > 0 {
-		r.stack = append([]frame{{cmds: cmds}}, r.stack...)
+		r.stack = append([]frame{{cmds: cmds, args: args}}, r.stack...)
 	}
 }
 
@@ -437,10 +453,14 @@ func (r *Runner) Won() {
 }
 
 func (r *Runner) env() expr.Env {
-	if r.Extra != nil {
-		return expr.Chain{r.Extra, scope.Env(r.db, r.st, &r.last), r.st.Env()}
+	var args expr.Env
+	if len(r.stack) > 0 && len(r.stack[len(r.stack)-1].args) > 0 {
+		args = expr.Map{"arg": r.stack[len(r.stack)-1].args}
 	}
-	return expr.Chain{scope.Env(r.db, r.st, &r.last), r.st.Env()}
+	if r.Extra != nil {
+		return expr.Chain{args, r.Extra, scope.Env(r.db, r.st, &r.last), r.st.Env()}
+	}
+	return expr.Chain{args, scope.Env(r.db, r.st, &r.last), r.st.Env()}
 }
 
 func (r *Runner) logf(err error) {
@@ -606,7 +626,15 @@ func (r *Runner) chose(n int) {
 func (r *Runner) push(cmds []data.Command) {
 	r.countRun(cmds)
 	if len(cmds) > 0 {
-		r.stack = append(r.stack, frame{cmds: cmds})
+		var args expr.Map
+		if len(r.stack) > 0 {
+			args = r.stack[len(r.stack)-1].args
+		}
+		// Named events entered by hooks do not capture their caller's bindings.
+		if r.events[&cmds[0]] != "" {
+			args = nil
+		}
+		r.stack = append(r.stack, frame{cmds: cmds, args: args})
 	}
 }
 
@@ -758,7 +786,7 @@ func (r *Runner) run(c *data.Command) Request {
 			r.push(c.Else)
 		}
 	case "plan":
-		cmds, err := planning.Apply(r.st, *c.Plan)
+		cmds, err := planning.ApplyIn(r.st, *c.Plan, env)
 		r.logf(err)
 		if err == nil {
 			r.push(cmds)
@@ -1020,7 +1048,16 @@ func (r *Runner) run(c *data.Command) Request {
 	case "shop":
 		return Shop{ID: c.Shop}
 	case "call":
-		r.push(r.db.Events[c.Call].Do)
+		args, err := r.db.Bind(c.Call, env)
+		if err != nil {
+			r.logf(err)
+			break
+		}
+		ev := r.db.Events[c.Call.Event]
+		r.push(ev.Do)
+		if len(ev.Do) > 0 {
+			r.stack[len(r.stack)-1].args = args
+		}
 	case "wait":
 		return Wait{Seconds: c.Wait.Seconds, NoSkip: !c.Wait.Skippable()}
 	case "notice":

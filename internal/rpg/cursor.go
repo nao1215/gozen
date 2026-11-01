@@ -6,6 +6,7 @@ import (
 	"maps"
 	"slices"
 
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 
@@ -14,6 +15,10 @@ import (
 // again (Event, or the commands of arriving at the state's location when Arrival) and reads
 // on to Line with Answers, the same replay as a note of F9 and F5.
 type Cursor struct {
+	// Args are frozen root bindings, validated against the current declaration.
+	Args map[string]any `json:"args,omitempty"`
+	// Fingerprint protects schema-10 named replay roots against changed commands.
+	Fingerprint string `json:"fingerprint,omitempty"`
 	// Event is the name of the commands (an event id, or a place's action or person as the
 	// screen names them); empty with Arrival.
 	Event string `json:"event,omitempty"`
@@ -52,6 +57,7 @@ func WithCursor(save []byte, c Cursor, rnd []byte) ([]byte, error) {
 		return nil, errors.New(lang.T("カーソルの行またはイベントが不正"))
 	}
 	c.Answers = slices.Clone(c.Answers)
+	c.Args = maps.Clone(c.Args)
 	e.Cursor, e.Rand = &c, slices.Clone(rnd)
 	return json.MarshalIndent(e, "", "  ")
 }
@@ -80,3 +86,42 @@ type choseView struct{ s *State }
 func (v choseView) Field(id string) (any, bool) { return v.s.Chose[id], true }
 
 func (v choseView) Keys() []string { return slices.Sorted(maps.Keys(v.s.Chose)) }
+
+// Seal records the current definition for session/play saves. Legacy games keep
+// their original cursor contract; arrival reconstruction is still owned by world.
+func (c *Cursor) Seal(db *data.DB) error {
+	if db.Game.SchemaVersion < data.SchemaVersion10 || c.Event == "" {
+		return nil
+	}
+	fingerprint, err := db.CommandsFingerprint(c.Event)
+	if err != nil {
+		return err
+	}
+	c.Fingerprint = fingerprint
+	return nil
+}
+
+func (c Cursor) validateBindings(db *data.DB, version int) error {
+	if len(c.Args) > 0 || c.Fingerprint != "" {
+		if version < 3 || c.Arrival {
+			return errors.New("bound cursor requires save format 3 and a named root")
+		}
+	}
+	if ev := db.Events[c.Event]; ev != nil {
+		if _, err := db.ValidateArguments(c.Event, c.Args); err != nil {
+			return err
+		}
+	} else if len(c.Args) > 0 {
+		return errors.New("arguments require a named event")
+	}
+	if version >= 3 && db.Game.SchemaVersion >= data.SchemaVersion10 && c.Event != "" {
+		fingerprint, err := db.CommandsFingerprint(c.Event)
+		if err != nil {
+			return err
+		}
+		if fingerprint != c.Fingerprint {
+			return errors.New("replay action changed; restart the event instead of resuming this save")
+		}
+	}
+	return nil
+}

@@ -196,6 +196,9 @@ func scalarType(t expr.ValueType) *vtype {
 func (c *checker) resultType(e Expr, names []string) expr.ValueType {
 	return e.ResultType(func(r expr.Ref) expr.ValueType {
 		t := typeOf(r.Name, names)
+		if r.Name == "arg" && c.params != nil {
+			t = c.argumentType()
+		}
 		if r.Name == "flag" || r.Name == "var" {
 			t = c.stateType(r.Name)
 		}

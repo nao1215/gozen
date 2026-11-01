@@ -4910,17 +4910,17 @@
           "x-type": "[Trade](#trade)"
         },
         "call": {
+          "$ref": "#/$defs/EventCall",
           "description": "Runs another event, an ID of events, then continues.",
-          "type": "string",
           "x-contract": {
-            "default": "empty string",
-            "legacy_default": "empty string",
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
             "zero": "-",
             "required": "exactly one verb per command",
             "reference": "events",
             "version": "0, 1, 2"
           },
-          "x-type": "string"
+          "x-type": "[EventCall](#eventcall) or string"
         },
         "capture": {
           "description": "Recruits a non-boss species with recruit settings under its admission policy. Sets var.capture_result to party, reserve, party_full or unavailable. Needs schema version 6.",
@@ -8535,6 +8535,25 @@
           },
           "x-type": "boolean"
         },
+        "params": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Required parameter names and types: number, bool, string, entity, activity, actor or date (schema 10).",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → string"
+        },
         "trigger": {
           "description": "When the event runs by itself: empty for only when called, `enter` on entering a location, or `auto` whenever its conditions hold.",
           "type": "string",
@@ -8568,6 +8587,58 @@
         }
       },
       "type": "object"
+    },
+    "EventCall": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "args": {
+              "additionalProperties": {
+                "description": "An expression. gozen check checks its syntax, names and types.",
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              },
+              "description": "Required parameter values as pure expressions, evaluated once in the caller scope, in sorted parameter-name order.",
+              "type": [
+                "object",
+                "null"
+              ],
+              "x-contract": {
+                "default": "empty map",
+                "legacy_default": "empty map",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string → expression"
+            },
+            "event": {
+              "description": "The literal event ID. Required in the mapping form.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            }
+          },
+          "type": "object"
+        }
+      ],
+      "description": "A named event invocation; a literal event ID remains shorthand for a call without arguments."
     },
     "Exit": {
       "additionalProperties": false,
@@ -9613,7 +9684,8 @@
               6,
               7,
               8,
-              9
+              9,
+              10
             ]
           }
         },
@@ -9954,7 +10026,8 @@
             6,
             7,
             8,
-            9
+            9,
+            10
           ],
           "type": "integer",
           "x-contract": {

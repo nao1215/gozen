@@ -1491,11 +1491,13 @@ type TroopPick struct {
 // Event is a named list of commands: run from another event (call), or by itself when
 // its trigger fires.
 type Event struct {
-	Trigger  string    `yaml:"trigger"` // "", enter, auto
-	Location string    `yaml:"location"`
-	When     Expr      `yaml:"when"`
-	Once     bool      `yaml:"once"`
-	Do       []Command `yaml:"do"`
+	// Params are required typed bindings for named calls; inline branches inherit them.
+	Params   map[string]string `yaml:"params"`
+	Trigger  string            `yaml:"trigger"` // "", enter, auto
+	Location string            `yaml:"location"`
+	When     Expr              `yaml:"when"`
+	Once     bool              `yaml:"once"`
+	Do       []Command         `yaml:"do"`
 }
 
 // Shop is a list of goods.

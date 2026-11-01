@@ -136,7 +136,7 @@ func TestRestoreRejectsDamagedSaves(t *testing.T) {
 		return b
 	}
 	cases := map[string][]byte{
-		"future format version":     with("format_version", "3"),
+		"future format version":     with("format_version", "4"),
 		"format version zero":       with("format_version", "0"),
 		"negative format version":   with("format_version", "-1"),
 		"format version as string":  with("format_version", `"2"`),

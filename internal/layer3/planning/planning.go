@@ -20,6 +20,12 @@ import (
 // existing interpreter. Invalid expressions or targets leave progress unchanged.
 // Selection visits stable entity IDs, with updates visible to subsequent entities.
 func Apply(s *rpg.State, c data.PlanCommand) ([]data.Command, error) {
+	return ApplyIn(s, c, nil)
+}
+
+// ApplyIn is Apply with the event interpreter's immutable argument scope. Rule
+// bodies replace that scope with their own parameters; state remains transactional.
+func ApplyIn(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, error) {
 	if s.Planning == nil {
 		return nil, errors.New("planning is not configured")
 	}
@@ -33,7 +39,7 @@ func Apply(s *rpg.State, c data.PlanCommand) ([]data.Command, error) {
 	}
 	old := s.Planning
 	s.Planning = &next
-	cmds, err := apply(s, c, nil)
+	cmds, err := apply(s, c, args)
 	if err != nil {
 		s.Planning = old
 		return nil, err
@@ -98,7 +104,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 				return nil, err
 			}
 			if yes {
-				return []data.Command{{Call: r.Event}}, nil
+				return []data.Command{{Call: data.EventCall{Event: r.Event}}}, nil
 			}
 		}
 		return nil, errors.New("policy has no matching rule")
@@ -135,7 +141,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 				continue
 			}
 			st.Dispatched[key] = true
-			out = append(out, data.Command{Call: r.Event})
+			out = append(out, data.Command{Call: data.EventCall{Event: r.Event}})
 		}
 		return out, nil
 	case "assign":

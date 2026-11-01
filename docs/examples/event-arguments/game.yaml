@@ -1,0 +1,7 @@
+schema_version: 10
+id: argument-workshop
+start: {location: workshop}
+planning:
+  calendar: {start: '2030-01-01', end: '2030-01-02', phases: [day]}
+  attributes: {vigor: {type: number, initial: 0}}
+  entities: {potter: {name: Potter}, weaver: {name: Weaver}}

@@ -405,3 +405,34 @@ scenarios:
         - {path: '$.data[0].file', equals: game.yaml}
         - {path: '$.data[0].line', equals: 11}
         - {path: '$.data[0].message', equals: '"arg.amonut": arg: rule arguments has no field "amonut" (known: amount)'}
+- name: one typed event updates two residents without expanded bodies
+  steps:
+  - run:
+      command: gozen check "${specdir}/../../docs/examples/event-arguments" --only structure
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+  - fixture:
+      file: arguments.txt
+      content: |
+        gap 1
+        wait 10
+        do call: visit
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script arguments.txt --trace arguments.jsonl
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+      file:
+        path: arguments.jsonl
+        contains:
+        - 'Ready potter'
+        - 'Ready weaver'
+        - 'Returned potter/2'
+        - 'Returned weaver/3'
+        - 'Totals 2/3'

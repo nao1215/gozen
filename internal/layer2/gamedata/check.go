@@ -41,6 +41,7 @@ var (
 )
 
 type checker struct {
+	params        map[string]string
 	stateNames    map[string]StateName
 	pictureErrors map[string]error
 	db            *DB
@@ -83,6 +84,14 @@ func (c *checker) expr(where string, e Expr, names []string) {
 func (c *checker) exprIn(where string, e Expr, names []string, over map[string]*vtype) {
 	if !e.Set() {
 		return
+	}
+	if c.params != nil && over["arg"] == nil {
+		names = append(slices.Clone(names), "arg")
+		over = maps.Clone(over)
+		if over == nil {
+			over = map[string]*vtype{}
+		}
+		over["arg"] = c.argumentType()
 	}
 	for _, n := range e.Names() {
 		if !slices.Contains(names, n) {
@@ -129,6 +138,9 @@ func (c *checker) functionValues(where string, e Expr, names []string, over map[
 }
 
 func (c *checker) ref(where, kind, id string, ok bool) {
+	if kind == "event" && id != "" && ok && len(c.db.Events[id].Params) > 0 {
+		c.errorf(diag.Shape, where, "event %q requires arguments; use a parameterless wrapper here", id)
+	}
 	if id != "" && !ok {
 		c.errorf(diag.UnknownReference, where, "unknown %s %q", kind, id)
 	}
@@ -977,7 +989,20 @@ func (db *DB) Check() []error {
 		_, ok := db.Locations[e.Location]
 		c.ref(w+".location", "location", e.Location, ok)
 		c.expr(w+".when", e.When, FieldNames)
+		if e.Params != nil {
+			c.needsVersion(w+".params", "event parameters", SchemaVersion10)
+			if e.Trigger != "" {
+				c.errorf(diag.Shape, w+".trigger", "triggered events cannot require arguments; use a parameterless wrapper")
+			}
+			for name, kind := range e.Params {
+				if !varName.MatchString(name) || !slices.Contains([]string{"number", "bool", "string", "entity", "activity", "actor", "date"}, kind) {
+					c.errorf(diag.Shape, w+".params."+name, "invalid parameter name or type %q", kind)
+				}
+			}
+		}
+		c.params = e.Params
 		c.commands(w+".do", e.Do, FieldNames)
+		c.params = nil
 	}
 	for _, id := range db.Ordered("shops") {
 		s := db.Shops[id]
@@ -1685,8 +1710,7 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 		case "restore_checkpoint":
 			c.needsVersion(w+".restore_checkpoint", "restore_checkpoint", SchemaVersion9)
 		case "call":
-			_, ok := db.Events[cmd.Call]
-			c.ref(w+".call", "event", cmd.Call, ok)
+			c.eventCall(w+".call", cmd.Call, names)
 		case "stone_suggest", "stone_apply", "stone_choose", "stone_wearer", "stone_decline":
 			name := cmd.StoneSuggest + cmd.StoneApply + cmd.StoneChoose + cmd.StoneWearer + cmd.StoneDecline
 			if !varName.MatchString(name) {

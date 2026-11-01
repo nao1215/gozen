@@ -1,6 +1,12 @@
 package gamedata
 
-import "fmt"
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"reflect"
+)
 
 // The names of command lists: an event's id, a place's action (<place>.<label>), a place's
 // person (<place>.<name>) and a dungeon tile (<place>.tile.<char>). A note of F9, F5 and a
@@ -70,4 +76,40 @@ func (db *DB) NamedCommands(name string) []Command {
 		return false
 	})
 	return out
+}
+
+// CommandsFingerprint identifies a replay root and its reachable named callees.
+// Save consumers use this to reject edited actions before replay. JSON canonicalizes
+// map order, while command order, expression source and parameter types remain significant.
+func (db *DB) CommandsFingerprint(name string) (string, error) {
+	cmds := db.NamedCommands(name)
+	if cmds == nil {
+		return "", fmt.Errorf("unknown replay root %q", name)
+	}
+	events := map[string]*Event{}
+	var visit func(string)
+	visit = func(id string) {
+		if _, seen := events[id]; seen {
+			return
+		}
+		ev := db.Events[id]
+		events[id] = ev
+		if ev != nil {
+			eachCall(reflect.ValueOf(ev.Do), visit)
+		}
+	}
+	if db.Events[name] != nil {
+		visit(name)
+	} else {
+		eachCall(reflect.ValueOf(cmds), visit)
+	}
+	b, err := json.Marshal(struct {
+		Commands []Command
+		Events   map[string]*Event
+	}{cmds, events})
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:]), nil
 }

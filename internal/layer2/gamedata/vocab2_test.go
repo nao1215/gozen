@@ -69,7 +69,7 @@ func TestVersion2Checks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if db.Events["e"].Do[0].Call != "sub" {
+	if db.Events["e"].Do[0].Call.Event != "sub" {
 		t.Fatal("custom command was not resolved")
 	}
 }

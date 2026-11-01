@@ -1,6 +1,8 @@
 # ADR 0054: Typed arguments for reusable events and screens
 
-Status: Accepted for phased implementation (2026-11-01); not implemented.
+Status: Accepted for phased implementation (2026-11-01). Event calls implemented; screen calls and expression-form target fields remain planned.
+
+See [the executable event-call slice](../development/event-arguments.md) for supported syntax and remaining limits.
 
 ## Authors and current constraint
 
@@ -224,8 +226,7 @@ abandons all suspended screens as today; parameterized checkpoint targets remain
 rejected until their saved invocation is explicitly supported.
 
 Introduce schema version 10 for these forms and save format 3 for bound invocation
-context. No version change occurs in this documentation-only step. Implement the
-version gate with the first feature; old formats load with empty bindings, while
+context. The event-call slice introduces these version gates; old formats load with empty bindings, while
 an older engine rejects the new format instead of silently dropping its context.
 Validate saved types, target existence, action fingerprints, cursor reachability and
 nesting limits before replacing the live state. A changed declaration or malformed

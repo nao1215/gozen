@@ -307,7 +307,7 @@ func TestRulesAndPolicyUseObservations(t *testing.T) {
 	apply(t, s, data.PlanCommand{Op: "rule", Rule: "recover", Args: map[string]data.Expr{"amount": value(t, "-40")}})
 	s.DB.Game.Planning.Policies = map[string][]data.PolicyRule{"steady": {{When: value(t, `entity.potter.condition == "tired"`), Event: "gather"}}}
 	cmds := apply(t, s, data.PlanCommand{Op: "policy", Policy: "steady"})
-	if len(cmds) != 1 || cmds[0].Call != "gather" {
+	if len(cmds) != 1 || cmds[0].Call.Event != "gather" {
 		t.Fatal("policy ignored observation")
 	}
 	s.DB.Game.Planning.Policies["hidden"] = []data.PolicyRule{{When: value(t, "entity.potter.vigor < 50"), Event: "gather"}}
@@ -442,7 +442,7 @@ func TestCancellationPreservesWorkAndRestoresDependencies(t *testing.T) {
 	for _, st := range []*rpg.State{s, restored} {
 		st.DB.Game.Planning.Policies = map[string][]data.PolicyRule{"excluded": {{When: value(t, "activity.prepare.cancelled"), Event: "bell"}}}
 		commands := apply(t, st, data.PlanCommand{Op: "policy", Policy: "excluded"})
-		if len(commands) != 1 || commands[0].Call != "bell" {
+		if len(commands) != 1 || commands[0].Call.Event != "bell" {
 			t.Fatal("policy cannot observe cancellation")
 		}
 		apply(t, st, data.PlanCommand{Op: "progress", Activity: "prepare", Value: value(t, "2")})

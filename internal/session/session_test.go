@@ -2,10 +2,12 @@ package session_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -994,5 +996,165 @@ func TestCheckpointDiscardsContinuationAndSurvivesSave(t *testing.T) {
 	}
 	if got := query[float64](t, s, "var.draw"); got != want {
 		t.Fatalf("random draw %v want %v", got, want)
+	}
+}
+
+// TestEventArgumentsResume observes a reused rule, a nested choice and caller restoration.
+func TestEventArgumentsResume(t *testing.T) {
+	fsys := os.DirFS("../../docs/examples/event-arguments")
+	g, err := gozen.Load(fsys, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := gozen.Config{Seed: 7, OnLog: func(err error) { t.Error(err) }}
+	s, err := gozen.New(g, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start("- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Ready potter", "Returned potter/2", "Ready weaver", "Returned weaver/3", "Totals 2/3"} {
+		q := s.Next()
+		if q.Kind == "choice" {
+			s.Answer(0)
+			q = s.Next()
+		}
+		if strings.HasPrefix(q.Text, "Roll ") {
+			q = s.Next()
+		}
+		if q.Text != want {
+			t.Fatalf("got %+v, want %s", q, want)
+		}
+		saved, err := s.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		restored, err := gozen.Restore(g, saved, cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := restored.Next(); got.Text != want {
+			t.Fatalf("resume %+v, want %s", got, want)
+		}
+		// Save and restore twice at the same line; earlier effects must not accumulate.
+		saved, err = restored.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		restored, err = gozen.Restore(g, saved, cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := restored.Next(); got.Text != want {
+			t.Fatalf("second resume %+v", got)
+		}
+		if strings.HasPrefix(want, "Ready ") {
+			a, b := s.Next(), restored.Next()
+			if a.Text != b.Text || !strings.HasPrefix(a.Text, "Roll ") {
+				t.Fatalf("RNG %v / %v", a, b)
+			}
+		}
+		s = restored
+	}
+}
+
+func TestBoundEventRootAndChangedSave(t *testing.T) {
+	fsys := os.DirFS("../../docs/examples/event-arguments")
+	g, err := gozen.Load(fsys, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := gozen.Config{Seed: 19, OnLog: func(err error) { t.Error(err) }}
+	s, err := gozen.New(g, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start("- call: {event: encourage, args: {resident: '\"potter\"', amount: '2'}}"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Kind != "choice" {
+		t.Fatalf("choice %+v", q)
+	}
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := gozen.Restore(g, saved, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A pending choice is restored without applying the effect twice.
+	r.Answer(0)
+	if q := r.Next(); q.Text != "Ready potter" {
+		t.Fatalf("ready %+v", q)
+	}
+	again, err := r.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err = gozen.Restore(g, again, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q := r.Next(); q.Text != "Ready potter" {
+		t.Fatalf("ready %+v", q)
+	}
+	r.Next()
+	if q := r.Next(); q.Text != "Returned potter/2" {
+		t.Fatalf("bindings %+v", q)
+	}
+
+	for _, mutate := range []func(map[string]any){
+		func(c map[string]any) { c["args"] = map[string]any{"resident": "missing", "amount": 2} },
+		func(c map[string]any) { c["args"] = map[string]any{"resident": "potter", "amount": true} },
+		func(c map[string]any) { delete(c, "args") },
+		func(c map[string]any) { c["fingerprint"] = "changed" },
+	} {
+		var doc map[string]any
+		if err := json.Unmarshal(saved, &doc); err != nil {
+			t.Fatal(err)
+		}
+		cursor, ok := doc["cursor"].(map[string]any)
+		if !ok {
+			t.Fatal("missing cursor")
+		}
+		mutate(cursor)
+		broken, err := json.Marshal(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := gozen.Restore(g, broken, cfg); err == nil {
+			t.Fatal("accepted damaged bindings")
+		}
+	}
+	header, err := os.ReadFile("../../docs/examples/event-arguments/game.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story, err := os.ReadFile("../../docs/examples/event-arguments/data/story.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		from, to string
+		reject   bool
+	}{
+		{"Ready {arg.resident}", "Changed {arg.resident}", true},
+		{"params: {resident: entity, amount: number}", "params: {amount: number, resident: entity}", false},
+	} {
+		edited, err := gozen.Load(fstest.MapFS{"game.yaml": {Data: header}, "data/story.yaml": {Data: []byte(strings.Replace(string(story), tc.from, tc.to, 1))}}, ".")
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = gozen.Restore(edited, saved, cfg)
+		if (err != nil) != tc.reject {
+			t.Fatalf("changed definition: %v, want reject=%v", err, tc.reject)
+		}
+	}
+	// A refused restore has not damaged the original session.
+	s.Answer(0)
+	if q := s.Next(); q.Text != "Ready potter" {
+		t.Fatalf("original %+v", q)
 	}
 }

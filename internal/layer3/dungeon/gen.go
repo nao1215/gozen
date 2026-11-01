@@ -1040,9 +1040,9 @@ func carries(db *data.DB, cmds []data.Command, seen map[string]bool) bool {
 		if c.Move != "" || c.Dive != "" {
 			return true
 		}
-		if c.Call != "" && !seen[c.Call] && db.Events[c.Call] != nil {
-			seen[c.Call] = true
-			if carries(db, db.Events[c.Call].Do, seen) {
+		if c.Call.Event != "" && !seen[c.Call.Event] && db.Events[c.Call.Event] != nil {
+			seen[c.Call.Event] = true
+			if carries(db, db.Events[c.Call.Event].Do, seen) {
 				return true
 			}
 		}

@@ -1,0 +1,22 @@
+locations: {workshop: {name: Workshop}}
+events:
+  visit:
+    do:
+    - call: {event: encourage, args: {resident: '"potter"', amount: '2'}}
+    - call: {event: encourage, args: {resident: '"weaver"', amount: '3'}}
+    - say: 'Totals {entity.potter.vigor}/{entity.weaver.vigor}'
+  encourage:
+    params: {resident: entity, amount: number}
+    do:
+    - plan: {op: set, where: 'self.id == arg.resident', attribute: vigor, value: 'self.vigor + arg.amount'}
+    - call: {event: report, args: {resident: 'arg.resident'}}
+    - say: 'Returned {arg.resident}/{arg.amount}'
+  report:
+    params: {resident: entity}
+    do:
+    - choice:
+      - label: 'Confirm {arg.resident}'
+        do:
+        - say: 'Ready {arg.resident}'
+    - set: {var.roll: 'rand(1000)'}
+    - say: 'Roll {var.roll}'

@@ -23,8 +23,9 @@ import (
 
 // saveFormatVersion is the save format version of the JSON wrapper and the state. It is managed separately from the YAML spec version.
 // Version 2 adds the cursor and the random bytes of a save made in the middle of an event and the state's chose (ADR 0025);
-// a reader takes 1 and 2.
-const saveFormatVersion = 2
+// version 3 adds typed root arguments and action fingerprints (ADR 0054).
+// A reader accepts versions 1 through 3.
+const saveFormatVersion = 3
 
 // oldestSaveFormat is the oldest save format version read.
 const oldestSaveFormat = 1
@@ -142,6 +143,11 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 		}
 		if envelope.Cursor != nil && (v < 2 || !envelope.Cursor.valid()) {
 			return nil, errors.New(lang.T("カーソルの行またはイベントが不正"))
+		}
+		if envelope.Cursor != nil {
+			if err := envelope.Cursor.validateBindings(db, v); err != nil {
+				return nil, err
+			}
 		}
 		report.SavedDataVersion = envelope.DataVersion
 		payload = envelope.State

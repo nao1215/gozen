@@ -17,8 +17,8 @@ func eachCall(v reflect.Value, fn func(string)) {
 		}
 	case reflect.Struct:
 		if v.Type() == commandType {
-			if c, ok := reflect.TypeAssert[Command](v); ok && c.Call != "" {
-				fn(c.Call)
+			if c, ok := reflect.TypeAssert[Command](v); ok && c.Call.Event != "" {
+				fn(c.Call.Event)
 			}
 		}
 		for i := range v.NumField() {

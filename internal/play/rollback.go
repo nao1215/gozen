@@ -18,6 +18,7 @@ import (
 
 // backEvent is an earlier event the player can roll back into.
 type backEvent struct {
+	args      map[string]any
 	snap, rnd []byte
 	cmds      []data.Command
 	name      string
@@ -42,7 +43,7 @@ func (g *Game) keepEvent() {
 		return
 	}
 	g.backRing = append(g.backRing, backEvent{
-		snap: g.evSnap, rnd: g.evRand, cmds: g.evCmds, name: g.evName,
+		snap: g.evSnap, rnd: g.evRand, cmds: g.evCmds, name: g.evName, args: g.evArgs,
 		lines: g.evLines, answers: slices.Clone(g.evAnswers), log: g.evLog,
 	})
 	if len(g.backRing) > n {
@@ -86,7 +87,7 @@ func (g *Game) rollBack() {
 	var to backEvent
 	into := false
 	if from > 1 && !g.evNoBack && g.evSnap != nil && g.evCmds != nil && len(g.evHist) >= from-1 {
-		to = backEvent{snap: g.evSnap, rnd: g.evRand, cmds: g.evCmds, name: g.evName, lines: from - 1, answers: slices.Clone(g.evAnswers[:g.evHist[from-2]]), log: g.evLog}
+		to = backEvent{snap: g.evSnap, rnd: g.evRand, cmds: g.evCmds, name: g.evName, args: g.evArgs, lines: from - 1, answers: slices.Clone(g.evAnswers[:g.evHist[from-2]]), log: g.evLog}
 	} else {
 		last := len(g.backRing) - 1
 		to, into = g.backRing[last], true
@@ -120,7 +121,16 @@ func (g *Game) replayEvent(e backEvent) bool {
 	g.loadGame(st)
 	g.enterAt = ""
 	g.backlog = slices.Clip(e.log)
-	g.events.Start(e.cmds)
+	if len(e.args) > 0 {
+		if err := g.events.StartBound(e.name, e.args); err != nil {
+			g.failure = err
+			g.rollingBack = false
+			g.backRing = ring
+			return false
+		}
+	} else {
+		g.events.Start(e.cmds)
+	}
 	g.rollingBack = false
 	g.backRing = ring
 	g.liveCatchUp(&fastTo{lines: e.lines, answers: e.answers}, g.evName, nil)
@@ -155,7 +165,7 @@ func (g *Game) cursor() (rpg.Cursor, []byte, []byte, bool) {
 	if g.events == nil || !g.events.Running() || !g.talk.active || g.evNoBack || g.evLines == 0 || g.replaying || g.fast != nil || g.evSnap == nil {
 		return rpg.Cursor{}, nil, nil, false
 	}
-	c := rpg.Cursor{Event: g.evName, Line: g.evLines, Answers: slices.Clone(g.evAnswers)}
+	c := rpg.Cursor{Event: g.evName, Args: g.evArgs, Line: g.evLines, Answers: slices.Clone(g.evAnswers)}
 	switch {
 	case g.evName != "":
 		return c, g.evSnap, g.evRand, true
@@ -179,6 +189,9 @@ func (g *Game) saveBytes() ([]byte, error) {
 		}
 		return rpg.WithRand(b, rnd)
 	}
+	if err := c.Seal(g.db); err != nil {
+		return nil, err
+	}
 	return rpg.WithCursor(snap, c, rnd)
 }
 
@@ -194,7 +207,14 @@ func (g *Game) resume(r *rpg.Resume) {
 			return
 		}
 		g.enterAt = ""
-		g.events.Start(cmds)
+		if len(c.Args) > 0 {
+			if err := g.events.StartBound(c.Event, c.Args); err != nil {
+				g.failure = err
+				return
+			}
+		} else {
+			g.events.Start(cmds)
+		}
 	}
 	g.liveCatchUp(&fastTo{lines: c.Line, answers: c.Answers}, name, nil)
 	g.emit("resume", traceLine{"event": c.Event, "arrival": c.Arrival, "line": c.Line, "at": g.evLines})

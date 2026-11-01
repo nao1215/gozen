@@ -236,6 +236,8 @@ func (c *checker) planning() {
 			c.expr(at+".when", r.When, FieldNames)
 			if c.db.Events[r.Event] == nil {
 				c.errorf(diag.UnknownReference, at+".event", "unknown policy event")
+			} else {
+				c.ref(at+".event", "event", r.Event, true)
 			}
 		}
 	}
@@ -310,6 +312,8 @@ func (c *checker) planning() {
 		}
 		if c.db.Events[r.Event] == nil {
 			c.errorf(diag.UnknownReference, at+".event", "unknown event")
+		} else {
+			c.ref(at+".event", "event", r.Event, true)
 		}
 		for _, d := range r.Weekdays {
 			if d < 0 || d > 6 {

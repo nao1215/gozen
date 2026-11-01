@@ -278,9 +278,9 @@ func carryTo(db *data.DB, loc string, d *data.Dungeon, r rune) (rune, bool) {
 			if c.Move == loc && c.At != "" {
 				return []rune(c.At)[0], true
 			}
-			if c.Call != "" && !seen[c.Call] && db.Events[c.Call] != nil {
-				seen[c.Call] = true
-				if to, ok := find(db.Events[c.Call].Do, seen); ok {
+			if c.Call.Event != "" && !seen[c.Call.Event] && db.Events[c.Call.Event] != nil {
+				seen[c.Call.Event] = true
+				if to, ok := find(db.Events[c.Call.Event].Do, seen); ok {
 					return to, true
 				}
 			}

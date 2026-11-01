@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"slices"
 	"sync"
@@ -74,6 +75,7 @@ func (r *Resume) clone() *Resume {
 	}
 	c := *r
 	c.Cursor.Answers = slices.Clone(r.Cursor.Answers)
+	c.Cursor.Args = maps.Clone(r.Cursor.Args)
 	c.Rand = slices.Clone(r.Rand)
 	return &c
 }

@@ -67,6 +67,7 @@ type Session struct {
 // shown and the answers given, and whether it passed a boundary (a battle, a shop, a save,
 // a screen, a move, the end), after which it cannot be begun again.
 type cursor struct {
+	args        map[string]any
 	snap, rnd   []byte
 	name        string
 	arrival     bool
@@ -134,7 +135,13 @@ func (s *Session) resume(c rpg.Cursor) error {
 		if cmds == nil {
 			return fmt.Errorf("no event %q to go on with", c.Event)
 		}
-		s.runner.Start(cmds)
+		if len(c.Args) > 0 {
+			if err := s.runner.StartBound(c.Event, c.Args); err != nil {
+				return err
+			}
+		} else {
+			s.runner.Start(cmds)
+		}
 	}
 	onRequest, onEffect := s.cfg.OnRequest, s.cfg.OnEffect
 	s.cfg.OnRequest, s.cfg.OnEffect = nil, nil
@@ -194,12 +201,12 @@ func (s *Session) start() {
 }
 
 // onStart keeps the state when an event begins, for a save made in its middle.
-func (s *Session) onStart(cmds []gamedata.Command) {
+func (s *Session) onStart(cmds []gamedata.Command, args map[string]any) {
 	name := s.db.CommandsName(cmds)
-	if name == "" && len(cmds) == 1 && cmds[0].Call != "" && s.db.Events[cmds[0].Call] != nil {
-		name = cmds[0].Call // - call: NAME from Do or Start
+	if name == "" && len(cmds) == 1 && cmds[0].Call.Event != "" && s.db.Events[cmds[0].Call.Event] != nil {
+		name = cmds[0].Call.Event // - call: NAME from Do or Start
 	}
-	c := cursor{name: name, arrival: s.at.arriving && name == "", before: s.at.before, rbf: s.at.rbf}
+	c := cursor{args: args, name: name, arrival: s.at.arriving && name == "", before: s.at.before, rbf: s.at.rbf}
 	var err error
 	if c.snap, err = s.st.Save(); err != nil {
 		c.noBack = true
@@ -266,6 +273,13 @@ func (s *Session) Start(script string) error {
 	cmds, err := s.parse(script)
 	if err != nil {
 		return err
+	}
+	if len(cmds) == 1 && len(cmds[0].Call.Args) > 0 {
+		args, err := s.db.Bind(cmds[0].Call, s.st.Env())
+		if err != nil {
+			return err
+		}
+		return s.runner.StartBound(cmds[0].Call.Event, args)
 	}
 	s.runner.Start(cmds)
 	return nil
@@ -529,7 +543,10 @@ func (s *Session) Save() ([]byte, error) {
 	if !s.runner.Running() || c.noBack || c.lines == 0 || c.snap == nil || c.name == "" && !c.arrival {
 		return s.saveBetween()
 	}
-	cur := rpg.Cursor{Event: c.name, Line: c.lines, Answers: c.answers}
+	cur := rpg.Cursor{Event: c.name, Args: c.args, Line: c.lines, Answers: c.answers}
+	if err := cur.Seal(s.db); err != nil {
+		return nil, err
+	}
 	if c.arrival {
 		cur.Arrival = true
 		if c.before == nil {

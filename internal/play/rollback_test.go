@@ -235,3 +235,49 @@ func TestSortieIsABoundary(t *testing.T) {
 		t.Fatalf("after the sortie a save keeps a cursor (%v) or is not refused", ok)
 	}
 }
+
+func TestBoundEventSaveAndRollback(t *testing.T) {
+	g := sysOpen(t, Options{Location: "camp", Script: "wait 1000000\n"}, map[string]string{
+		"game.yaml": "schema_version: 10\n" + string(gameFiles(t)["game.yaml"].Data),
+		"data/arguments.yaml": `events:
+  credit:
+    params: {amount: number}
+    do:
+    - gold: arg.amount
+    - say: 'Credit {arg.amount}'
+    - say: 'After {arg.amount}'
+`,
+	})
+	sysFrames(t, g, 2)
+	before := g.st.Gold
+	if err := g.events.StartBound("credit", map[string]any{"amount": 2.0}); err != nil {
+		t.Fatal(err)
+	}
+	sysFrames(t, g, 2)
+	if at(g) != "Credit 2" || g.st.Gold != before+2 {
+		t.Fatalf("bound line %q, gold %d", at(g), g.st.Gold)
+	}
+	for range 2 {
+		if err := g.save(0); err != nil {
+			t.Fatal(err)
+		}
+		st, err := g.load(0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		g.loadSavedGame(st)
+		if at(g) != "Credit 2" || g.st.Gold != before+2 {
+			t.Fatalf("resumed line %q, gold %d", at(g), g.st.Gold)
+		}
+	}
+	btlKey(g, btnOK)
+	btlKey(g, btnOK)
+	sysFrames(t, g, 2)
+	if at(g) != "After 2" {
+		t.Fatalf("after: %q", at(g))
+	}
+	g.rollBack()
+	if at(g) != "Credit 2" || g.st.Gold != before+2 {
+		t.Fatalf("rolled back %q, gold %d", at(g), g.st.Gold)
+	}
+}

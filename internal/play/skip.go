@@ -91,8 +91,8 @@ func commandLines(db *data.DB, cmds []data.Command) []uint64 {
 					keys = append(keys, k)
 				}
 			}
-			if ev := db.Events[c.Call]; ev != nil && !called[c.Call] {
-				called[c.Call] = true
+			if ev := db.Events[c.Call.Event]; ev != nil && !called[c.Call.Event] {
+				called[c.Call.Event] = true
 				walk(ev.Do)
 			}
 			walk(c.Then)

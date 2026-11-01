@@ -66,7 +66,12 @@ EquipStones:
   _: "Puts the stones of a stone set on an actor."
   actor: "An expression giving the ID of the actor who receives the stones."
   set: "An expression giving the ID of the stone set to put on."
+EventCall:
+  _: "A named event invocation; a literal event ID remains shorthand for a call without arguments."
+  event: "The literal event ID. Required in the mapping form."
+  args: "Required parameter values as pure expressions, evaluated once in the caller scope, in sorted parameter-name order."
 Event:
+  params: "Required parameter names and types: number, bool, string, entity, activity, actor or date (schema 10)."
   _: "A named list of commands, run from another event with `call` or by itself when its trigger fires."
   do: "The commands the event runs."
   location: "The ID of the location (an ID of locations) where a triggered event fires. For `auto`, empty means anywhere. An `enter` event needs a location."

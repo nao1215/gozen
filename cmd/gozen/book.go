@@ -527,8 +527,8 @@ func eventLinks(cmds []gamedata.Command) (calls, moves []string) {
 	walk = func(cs []gamedata.Command) {
 		for i := range cs {
 			c := &cs[i]
-			if c.Call != "" && !slices.Contains(calls, c.Call) {
-				calls = append(calls, c.Call)
+			if c.Call.Event != "" && !slices.Contains(calls, c.Call.Event) {
+				calls = append(calls, c.Call.Event)
 			}
 			if c.Move != "" && !slices.Contains(moves, c.Move) {
 				moves = append(moves, c.Move)

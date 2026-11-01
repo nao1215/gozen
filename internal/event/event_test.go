@@ -569,3 +569,75 @@ func TestSayCarriesEnsembleWithoutChangingText(t *testing.T) {
 		t.Fatalf("line lost presentation or identity: %+v", got)
 	}
 }
+
+func TestInvalidEventBindingLeavesStateAndRNG(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: bindings\n" + testgame.Game, "data/bindings.yaml": `events:
+  add:
+    params: {amount: number}
+    do: [{gold: arg.amount}]
+`})
+	for _, value := range []string{"true", "nil", "pow(10, 309)", "rand(10)"} {
+		t.Run(value, func(t *testing.T) {
+			st, control := testgame.State(db, 17), testgame.State(db, 17)
+			before, err := st.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			runner := event.New(db, st, &host{})
+			var problems []error
+			runner.Log = func(err error) { problems = append(problems, err) }
+			runner.Start([]data.Command{{Call: data.EventCall{Event: "add", Args: map[string]data.Expr{"amount": data.MustExpr(value)}}}})
+			if q := runner.Next(); q != nil {
+				t.Fatalf("invalid call produced %v", q)
+			}
+			after, err := st.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(problems) != 1 || !bytes.Equal(before, after) {
+				t.Fatalf("invalid binding changed state: %v", problems)
+			}
+			if st.Rand.Uint64() != control.Rand.Uint64() {
+				t.Fatal("invalid binding consumed RNG")
+			}
+			runner.Start([]data.Command{{Call: data.EventCall{Event: "add", Args: map[string]data.Expr{"amount": data.MustExpr("2")}}}})
+			runner.Next()
+			if st.Gold != control.Gold+2 {
+				t.Fatal("runner unusable after rejection")
+			}
+		})
+	}
+}
+
+func TestPlanningRuleShadowsEventArguments(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml": "schema_version: 10\nid: bindings\n" + testgame.Game + `planning:
+  calendar: {start: '2030-01-01', end: '2030-01-02', phases: [day]}
+  attributes: {vigor: {type: number, initial: 0}}
+  entities: {potter: {name: Potter}}
+  rules:
+    boost:
+      params: [amount]
+      do: [{op: set, entity: potter, attribute: vigor, value: arg.amount}]
+`,
+		"data/bindings.yaml": `events:
+  encourage:
+    params: {amount: number}
+    do:
+    - plan: {op: rule, rule: boost, args: {amount: 'arg.amount + 1'}}
+    - say: '{arg.amount}/{entity.potter.vigor}'
+`,
+	})
+	st := testgame.State(db, 5)
+	r := event.New(db, st, &host{})
+	r.Log = func(err error) { t.Error(err) }
+	args := map[string]any{"amount": 2.0}
+	if err := r.StartBound("encourage", args); err != nil {
+		t.Fatal(err)
+	}
+	args["amount"] = 99.0
+	line, ok := r.Next().(event.Say)
+	if !ok || line.Text != "2/3" {
+		t.Fatalf("rule leaked or root retained input map: %+v", line)
+	}
+}

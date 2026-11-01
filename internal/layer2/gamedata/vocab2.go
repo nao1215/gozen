@@ -76,6 +76,8 @@ func (c *checker) declarations() {
 		}
 		if g.Verbs[v] == "" || c.db.Events[g.Verbs[v]] == nil {
 			c.errorf(diag.UnknownReference, w, "unknown event %q", g.Verbs[v])
+		} else {
+			c.ref(w, "event", g.Verbs[v], true)
 		}
 	}
 	for _, name := range slices.Sorted(maps.Keys(g.Screens)) {
@@ -492,7 +494,7 @@ func (db *DB) resolveVerb(c *Command) bool {
 	if target == "" {
 		return false
 	}
-	*c = Command{Call: target}
+	*c = Command{Call: EventCall{Event: target}}
 	return true
 }
 

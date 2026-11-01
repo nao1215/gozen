@@ -495,7 +495,7 @@ func shopOf(g *Game, id string) string {
 
 func hasHeal(db *data.DB, cmds []data.Command) bool {
 	for _, c := range cmds {
-		if c.Heal != "" || (c.Call != "" && db.Events[c.Call] != nil && hasHeal(db, db.Events[c.Call].Do)) ||
+		if c.Heal != "" || (c.Call.Event != "" && db.Events[c.Call.Event] != nil && hasHeal(db, db.Events[c.Call.Event].Do)) ||
 			hasHeal(db, c.Then) || hasHeal(db, c.Else) {
 			return true
 		}

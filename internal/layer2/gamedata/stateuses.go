@@ -188,8 +188,8 @@ func (u *stateUses) commands(where string, cs []Command) {
 		if c.Move != "" {
 			u.set("location", w+".move")
 		}
-		if c.Call != "" {
-			u.set("ran."+c.Call, w+".call")
+		if c.Call.Event != "" {
+			u.set("ran."+c.Call.Event, w+".call")
 		}
 		u.commands(w+".then", c.Then)
 		u.commands(w+".else", c.Else)

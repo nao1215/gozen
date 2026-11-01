@@ -95,7 +95,7 @@ type Command struct {
 	Mood    string    `yaml:"mood" command:"verb"`
 	Image   *CG       `yaml:"image" command:"verb"`
 	Shop    string    `yaml:"shop" command:"verb"`
-	Call    string    `yaml:"call" command:"verb"`
+	Call    EventCall `yaml:"call" command:"verb"`
 	Wait    WaitCue   `yaml:"wait" command:"verb"`
 	waitSet bool      // waitSet bool // in spec version 1, a wait time of 0 also counts as a command.
 	// Notice is a short message shown at the top of the screen (no dialog window, and play continues without stopping; narration-only notices such as the pain of a floor trap).

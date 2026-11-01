@@ -34,10 +34,12 @@ const (
 	SchemaVersion8 = 8
 	// SchemaVersion9 adds live streams (ADR 0048).
 	SchemaVersion9 = 9
+	// SchemaVersion10 adds typed event arguments (ADR 0054).
+	SchemaVersion10 = 10
 	// CurrentSchemaVersion is the latest YAML spec version that can be loaded. 3 adds to 2 the place presentation map and stage,
 	// the doll, speech bubbles, and the spot of expressions and set (ADR 0022); 4 adds the novel game vocabulary; 5 adds
-	// campaigns (ADR 0030); 6 adds monster collection; 7 adds battle forms and pictures; 8 adds stacked spaces; 9 adds live streams.
-	CurrentSchemaVersion = SchemaVersion9
+	// campaigns (ADR 0030); 6 adds monster collection; 7 adds battle forms and pictures; 8 adds stacked spaces; 9 adds live streams; 10 adds event arguments.
+	CurrentSchemaVersion = SchemaVersion10
 )
 
 // MaxRollback is the most earlier events ui.rollback may keep (the history is a copy of the

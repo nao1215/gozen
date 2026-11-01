@@ -399,6 +399,7 @@ type Game struct {
 	pcg       *rand.PCG
 	evSnap    []byte
 	evRand    []byte
+	evArgs    map[string]any
 	evName    string
 	evLines   int
 	evAnswers []int
