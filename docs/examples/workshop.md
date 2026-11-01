@@ -70,3 +70,11 @@ logical pixels per activity instead of 44; the collapsed overview is unchanged.
 The extra line uses at least 15-pixel text and truncates overflow. Hover or
 keyboard focus includes the full explanation in the timeline description.
 Use public values or saved observations for player-facing explanations.
+
+A calendar marker may set `screen: day_detail` to open an authored screen when
+its date is clicked, both in the timeline band and in the month calendar.
+Define `day_detail` in `screens` with the day's information and any actions.
+Markers sharing a date must agree on the destination. Omitting `screen` keeps
+the date read-only. Opening or closing a date detail does not advance time;
+only commands explicitly authored in its entries can change the game state.
+For a date link without an annotation tick or label, omit the marker label.

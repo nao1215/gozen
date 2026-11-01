@@ -676,6 +676,9 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 	// Annotation text follows the pointer's date in the footer; compact ticks
 	// keep dense holidays from overwriting adjacent labels on the shared axis.
 	for _, marker := range v.Markers {
+		if marker.Label == "" && !marker.Milestone {
+			continue
+		}
 		d, err := time.Parse(time.DateOnly, marker.Date)
 		if err != nil {
 			continue
@@ -871,20 +874,10 @@ func (s *authorScreen) timelineDescription(g *Game) string {
 	p := g.db.Game.Planning
 	v := g.db.Game.Screens[s.name].View
 	sw, _ := g.screen()
-	if g.in.mouse.Y >= 108 && g.in.mouse.Y < 164 && g.in.mouse.X >= 260 && float64(g.in.mouse.X) < sw-20 {
-		start, err := time.Parse(time.DateOnly, p.Calendar.Start)
-		if err != nil {
-			return ""
-		}
-		end, err := time.Parse(time.DateOnly, p.Calendar.End)
-		if err != nil {
-			return ""
-		}
-		days := end.Sub(start).Hours()/24 + 1
-		d := start.AddDate(0, 0, int((float64(g.in.mouse.X)-260)/(sw-280)*days))
-		labels := []string{planningDate(d.Format(time.DateOnly), "", v)}
+	if date := s.timelinePointerDate(g); date != "" {
+		labels := []string{planningDate(date, "", v)}
 		for _, marker := range v.Markers {
-			if marker.Date == d.Format(time.DateOnly) {
+			if marker.Date == date && marker.Label != "" {
 				labels = append(labels, marker.Label)
 			}
 		}
@@ -984,6 +977,9 @@ func (s *authorScreen) toggleTimelineGroup(g *Game) bool {
 }
 
 func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
+	if g.in.click && s.openCalendarDate(g, s.timelinePointerDate(g)) {
+		return true
+	}
 	if s.updateTimelineFilter(g) || s.toggleTimelineGroup(g) {
 		return true
 	}
@@ -1217,7 +1213,7 @@ func calendarCells(p *data.Planning, v data.PlanningView, month string, x, y, w,
 		date := d.Format(time.DateOnly)
 		cell := calendarCell{date: date, bounds: image.Rect(int(xx), int(yy), int(xx+cw-6), int(yy+ch-2)), closed: slices.Contains(p.Calendar.WeekdaysOff, int(d.Weekday())) || slices.Contains(p.Calendar.Closed, date)}
 		for _, marker := range v.Markers {
-			if marker.Date == date && !slices.Contains(cell.labels, marker.Label) {
+			if marker.Date == date && marker.Label != "" && !slices.Contains(cell.labels, marker.Label) {
 				cell.labels = append(cell.labels, marker.Label)
 			}
 		}
@@ -1267,6 +1263,15 @@ func (s *authorScreen) updateCalendar(g *Game) bool {
 		}
 	}
 	if delta == 0 {
+		if g.in.click {
+			_, h := g.screen()
+			v := g.db.Game.Screens[s.name].View
+			for _, cell := range calendarCells(g.db.Game.Planning, v, s.calendarDate(g), 0, 108, w, h-226) {
+				if g.in.mouse.In(cell.bounds) {
+					return s.openCalendarDate(g, cell.date)
+				}
+			}
+		}
 		return false
 	}
 	d, err := time.Parse(time.DateOnly, s.calendarDate(g))
@@ -1339,4 +1344,36 @@ func (s *authorScreen) calendarDescription(g *Game) string {
 		}
 	}
 	return ""
+}
+
+// Date links open authored screens without advancing or rewriting planning time.
+func (s *authorScreen) openCalendarDate(g *Game, date string) bool {
+	if date == "" {
+		return false
+	}
+	for _, marker := range g.db.Game.Screens[s.name].View.Markers {
+		if marker.Date == date && marker.Screen != "" {
+			g.openScreen(marker.Screen, nil)
+			return true
+		}
+	}
+	return false
+}
+
+func (s *authorScreen) timelinePointerDate(g *Game) string {
+	w, _ := g.screen()
+	if g.in.mouse.Y < 108 || g.in.mouse.Y >= 164 || g.in.mouse.X < 260 || float64(g.in.mouse.X) >= w-20 {
+		return ""
+	}
+	p := g.db.Game.Planning
+	start, err := time.Parse(time.DateOnly, p.Calendar.Start)
+	if err != nil {
+		return ""
+	}
+	end, err := time.Parse(time.DateOnly, p.Calendar.End)
+	if err != nil {
+		return ""
+	}
+	days := end.Sub(start).Hours()/24 + 1
+	return start.AddDate(0, 0, int((float64(g.in.mouse.X)-260)/(w-280)*days)).Format(time.DateOnly)
 }

@@ -131,6 +131,12 @@ func TestTimelineRowsAndMarkers(t *testing.T) {
 		{`{rows: [{label: Pottery, items: [{activity: clay, screen: unknown}]}]}`, false},
 		{`{rows: [{items: [{activity: clay}]}]}`, false},
 		{`{markers: [{date: tomorrow, label: Fair}]}`, false},
+		{`{markers: [{date: '2030-08-01', screen: detail}]}`, true},
+		{`{markers: [{date: '2030-08-01'}]}`, false},
+		{`{markers: [{date: '2030-08-01', label: Fair, screen: detail}]}`, true},
+		{`{markers: [{date: '2030-08-01', label: Fair, screen: missing}]}`, false},
+		{`{markers: [{date: '2030-08-01', label: Fair, screen: detail}, {date: '2030-08-01', label: Market, screen: board}]}`, false},
+		{`{markers: [{date: '2030-08-01', label: Fair, screen: detail}, {date: '2030-08-01', label: Market, screen: detail}]}`, true},
 	} {
 		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header + tc.view + "\n")}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
 		if (err == nil) != tc.valid {

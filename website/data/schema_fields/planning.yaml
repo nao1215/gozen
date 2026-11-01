@@ -122,5 +122,6 @@ TimelineItem:
 TimelineMarker:
   _: A named date annotation independent of scheduling rules.
   date: ISO date; annotations outside the calendar range are not drawn.
-  label: Text shown when pointing at that date in the calendar band.
+  label: Text shown when pointing at that date in the calendar band. May be omitted for a screen-only link, which adds no annotation tick or calendar label.
   milestone: Draw a dashed vertical line through the timeline rows.
+  screen: Optional authored screen to open when clicking this date in the timeline band or month calendar. Markers on the same date must use the same destination. Browsing does not advance time.

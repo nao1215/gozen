@@ -704,3 +704,51 @@ func TestTimelineInlineExpansionPreservesCalendarAndState(t *testing.T) {
 		t.Fatal("browsing mutated planning")
 	}
 }
+
+func TestCalendarDateLinksPreserveState(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{Calendar: data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}}}
+	view := data.PlanningView{Fullscreen: true, Markers: []data.TimelineMarker{{Date: "2030-08-02", Label: "Fair", Screen: "detail"}}}
+	db.Game.Screens = map[string]*data.AuthorScreen{
+		"calendar": {Kind: "calendar", View: view}, "timeline": {Kind: "timeline", View: view},
+		"detail": {Title: "Day detail", Entries: []data.ScreenEntry{{Label: "Read schedule"}}},
+	}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	before, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w, h := g.screen()
+	calendar := newAuthorScreen(g, "calendar", nil)
+	g.stack = []scene{calendar}
+	cells := calendarCells(db.Game.Planning, view, calendar.calendarDate(g), 0, 108, w, h-226)
+	g.in.click = true
+	g.in.mouse = cells[1].bounds.Min.Add(image.Pt(8, 8))
+	if !calendar.updateCalendar(g) || len(g.stack) != 2 {
+		t.Fatal("date did not open detail")
+	}
+	g.pop()
+	g.in.mouse = cells[0].bounds.Min.Add(image.Pt(8, 8))
+	if calendar.updateCalendar(g) || len(g.stack) != 1 {
+		t.Fatal("unlinked date opened screen")
+	}
+	timeline := newAuthorScreen(g, "timeline", nil)
+	g.in.mouse = image.Pt(int(260+(w-280)*1.5/122), 150)
+	if timeline.timelinePointerDate(g) != "2030-08-02" || !timeline.updateGroupedTimeline(g) || len(g.stack) != 2 {
+		t.Fatal("band did not open same date")
+	}
+	g.pop()
+	for _, pt := range []image.Point{image.Pt(259, 150), image.Pt(int(w)-20, 150), image.Pt(270, 164)} {
+		g.in.mouse = pt
+		if timeline.timelinePointerDate(g) != "" {
+			t.Fatal("outside band maps to date")
+		}
+	}
+	after, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("browsing changed saved state")
+	}
+}

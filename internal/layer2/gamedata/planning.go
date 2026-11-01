@@ -499,6 +499,9 @@ type TimelineMarker struct {
 	Date      string `yaml:"date"`
 	Label     string `yaml:"label"`
 	Milestone bool   `yaml:"milestone"`
+	// Screen opens an authored date detail from calendar and timeline input.
+	// Omission keeps the annotation read-only. One destination is allowed per date.
+	Screen string `yaml:"screen"`
 }
 
 // PlanningField describes a public value column and optional numeric gauge.
@@ -560,9 +563,20 @@ func (c *checker) planningView(w string, v PlanningView) {
 			}
 		}
 	}
+	destinations := map[string]string{}
 	for i, marker := range v.Markers {
-		if _, err := time.Parse(time.DateOnly, marker.Date); err != nil || marker.Label == "" {
-			c.errorf(diag.Shape, fmt.Sprintf("%s.markers[%d]", w, i), "timeline marker requires an ISO date and label")
+		if _, err := time.Parse(time.DateOnly, marker.Date); err != nil || (marker.Label == "" && marker.Screen == "") {
+			c.errorf(diag.Shape, fmt.Sprintf("%s.markers[%d]", w, i), "timeline marker requires an ISO date and a label or screen")
+		}
+		if marker.Screen != "" {
+			at := fmt.Sprintf("%s.markers[%d].screen", w, i)
+			if c.db.Game.Screens[marker.Screen] == nil {
+				c.errorf(diag.UnknownReference, at, "unknown calendar screen %q", marker.Screen)
+			}
+			if previous := destinations[marker.Date]; previous != "" && previous != marker.Screen {
+				c.errorf(diag.Shape, at, "calendar date has conflicting screens")
+			}
+			destinations[marker.Date] = marker.Screen
 		}
 	}
 	c.text(w+".header", v.Header, FieldNames)
