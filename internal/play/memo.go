@@ -17,6 +17,7 @@ import (
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"github.com/nao1215/gozen/internal/rpg"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 
@@ -190,6 +191,9 @@ func (g *Game) onEventStart(cmds []data.Command, args map[string]any) {
 			return
 		}
 		g.evRand = r
+	}
+	if !g.hasAuthorScreen() {
+		g.screenTrace = screenTranscript{cursor: rpg.Cursor{Event: g.evName, Args: g.evArgs, Arrival: g.evArrival}, snap: g.evSnap, rnd: g.evRand}
 	}
 }
 

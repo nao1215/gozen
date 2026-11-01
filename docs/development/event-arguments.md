@@ -38,8 +38,8 @@ snapshot and RNG. Editing a reachable command or declaration rejects that cursor
 reordering YAML mapping keys does not. Both slot selection and direct player
 installation validate saved answers and reachability on private state before
 replacing the current game. A rejected replay preserves the current dialogue,
-state and random stream. Older save formats remain readable for legacy games. As before, anonymous scripts have no named replay root and screen
-opening is a replay boundary.
+state and random stream. Older save formats remain readable for legacy games. Anonymous scripts have no named replay root. Schema-10 named roots can also
+retain plain screen continuations, as described below.
 
 Run the example's rules and save/resume checks with:
 
@@ -48,8 +48,8 @@ go test ./internal/session -run 'Test(EventArgumentsResume|BoundEventRootAndChan
 ```
 
 This is the event-call slice of [ADR 0054](../decisions/0054-typed-event-and-screen-arguments.md).
-Expression-form `say.who` and player screen continuation saves remain pending.
-The sections below describe implemented planning targets and session continuations.
+Expression-form `say.who` remains pending. The sections below describe implemented
+planning targets and screen continuations.
 The event-call example uses `where` filtering for entity selection. It does not expand event
 bodies or add a generator. The session contract tests load these same example
 files; the CLI E2E runs both residents and checks their resulting attributes.
@@ -74,11 +74,10 @@ screen with an explicit `open` action when a literal-only destination is require
 Plain portrait lists can still use fixed entity targets. Parameters do not expand
 screens or generate YAML.
 
-The player still rejects saving while a screen is open, including during
-confirmation or entry dialogue; the current slot is preserved. Ordinary event
-saves before opening and completed-root saves after closing remain supported.
-The internal session harness supports these screen continuations as described
-below; player restoration remains a separate implementation step.
+The player and session can save these plain screens, including confirmation and
+entry dialogue, when opened from a schema-10 named root. Unsupported boundaries,
+older schemas, anonymous roots and native planning surfaces still refuse saving
+while a screen is open. The current slot stays intact on refusal.
 
 The rules and input tests load the documented example:
 
@@ -88,8 +87,8 @@ go test ./internal/play -run '^TestAuthorScreenArguments$'
 atago run --ci --parallel 1 --skip-tag graphics,web e2e/atago/planning.atago.yaml
 ```
 
-The CLI scenario confirms cancellation and nested close using simulated player
-input; it is not a rendered screenshot or a screen-save restoration test.
+The CLI scenarios check cancellation, nested close, and save/resume in a second
+process using simulated player input. They do not verify rendered screenshots.
 
 ## Assigning different activities with one screen
 
@@ -109,32 +108,48 @@ Literal IDs continue to work. Expression targets require schema 10 and must
 return existing IDs of the correct kind without randomness. Targets are resolved
 once before mutation, outside entity iteration; `self` is not available there.
 Invalid targets roll back the entire planning operation or rule. Cancel leaves
-both activities unchanged. Close the screen and finish its calling event before
-saving in the player; its restoration of an open screen remains unsupported.
+both activities unchanged. The plain candidate list can be saved while its
+confirmation is waiting, under the named-root contract below.
 
 
-## Non-rendering session continuation
+## Saving a screen continuation
 
-The internal session harness can now save an open schema-10 author screen when
+The player and internal session harness can save an open schema-10 plain screen when
 its caller is a named event. The stock/receipt example above is also its neutral
 save/resume example: confirm a collection, save on the nested receipt, restore,
 close the receipt and stock, and observe the caller's `Returned` line. Cancelling
 before saving does not collect stock; restoring a confirmation does not answer it.
-This applies to the internal session harness, not the player save menu yet.
+Use the save action on an idle plain list or during dialogue/confirmation.
+The input script uses `press save`; the save menu itself is an overlay and does
+not become part of the saved continuation.
 
 ```sh
 go test ./internal/session -run 'TestScreen(Arguments|Continuation)'
 go test ./internal/rpg -run TestScreenReplayCacheOwnership
-go test ./internal/play -run TestLoadRejectsSessionScreenReplay
+go test ./internal/play -run TestAuthorScreenContinuationAcrossFrontends
 ```
 
 The save stores the root snapshot and random state with an input transcript, not
 expanded YAML. Restoration rebuilds screens and frozen arguments without issuing
 external callbacks. The transcript is limited to 20,000 inputs and screen nesting
 to 64. Unsupported replay boundaries and older schemas still refuse mid-screen
-saves. Finishing the event permits an ordinary state save again. Player restoration
-and CLI save/resume verification remain pending; the player rejects these session
-saves rather than loading an incomplete continuation.
+saves. Finishing the event permits an ordinary state save again. Session and player
+share reconstruction in the event layer. Validation runs on private state before
+replacing the live game; a damaged transcript preserves its caller, state and RNG.
+The player restores persistent images and standing portraits without replaying
+sounds or transient effects. Keyboard focus, scroll position and elapsed display
+ticks are presentation state and reset when loading.
+
+The example's parameterless `stock_demo` root is suitable for CLI verification:
+
+```sh
+gozen sim script docs/examples/event-arguments --start workshop --event stock_demo --script input.txt --save-dir saves
+```
+
+Start `input.txt` with `wait 30`, `press z`, `wait 12`, `press save`, `press z`,
+`wait 90`, and `quit`, each on its own line, to save the first stock preview.
+The atago scenario also saves confirmation, loads it in another process, and
+checks both returned caller lines and the final stock total.
 
 ## Bounded nested screens
 
@@ -145,8 +160,7 @@ it does not create an unlimited stack merely because the definition is shared.
 At the limit, another open reports `author screens nested too deep` and continues
 the command after that open. Existing screens remain open, and closing one frees
 a slot. Save menus and other built-in overlays do not consume authored slots or
-hide their count. This bounds live navigation; it does not enable player screen
-save restoration, which remains unsupported.
+hide their count. The same depth bound applies during saved reconstruction.
 
 ## Definition reload during an authored screen
 
@@ -155,8 +169,8 @@ calling event finishes. For example, requesting reload while the stock entry sho
 a receipt keeps the current action and its caller alive; closing the screen still
 executes the caller's `Returned` line once. The queued reload applies at idle.
 This also protects a screen beneath a save menu. Picture and sound reload remains
-available through the existing asset-only path. This is a reload safety boundary,
-not support for saving or restoring the player's screen continuation.
+available through the existing asset-only path. Definition reload and save
+restoration remain separate operations.
 
 
 ### Visible entry identity
@@ -168,5 +182,5 @@ a stock list with a hidden `Collect` entry followed by `Inspect` must execute
 arguments remain frozen while visibility is evaluated against current state.
 The shared event-layer selection iterator preserves definition order and label
 rendering. Frontends retain their existing presentation and diagnostic policies;
-entry guards are checked again before execution. This refactoring does not enable
-player saves while an authored screen is open.
+entry guards are checked again before execution. Transcript answers use this
+same visible-row contract during restoration.

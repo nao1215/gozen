@@ -65,7 +65,12 @@ func (g *Game) openAuthorScreen(name string, done func(), args map[string]any) {
 		}
 		return
 	}
-	g.push(newAuthorScreen(g, name, done, args))
+	s := newAuthorScreen(g, name, done, args)
+	g.push(s)
+	if q, ok := g.req.(event.Open); !ok || q.Screen != name {
+		g.screenTrace.blocked = true
+	}
+	g.recordScreen(s)
 }
 
 func newAuthorScreen(g *Game, name string, done func(), args map[string]any) *authorScreen {
@@ -298,6 +303,13 @@ func (s *authorScreen) update(g *Game) {
 			return
 		}
 		s.refresh(g)
+		g.recordScreen(s)
+		return
+	}
+	if g.in.pressed[btnSave] || g.in.pressed[btnLoad] {
+		menu := newSaveMenu(g, g.in.pressed[btnSave], func() {})
+		menu.inPlay = true
+		g.push(menu)
 		return
 	}
 	if g.db.Game.Screens[s.name].View.Fullscreen {
@@ -317,6 +329,7 @@ func (s *authorScreen) update(g *Game) {
 		s.candidatePage = 0
 	}
 	if cancel {
+		g.recordScreenAnswer(-1)
 		g.pop()
 		if s.done != nil {
 			s.done()
@@ -344,9 +357,11 @@ func (s *authorScreen) activate(g *Game) {
 		s.refresh(g)
 		return
 	}
+	g.recordScreenAnswer(s.list.sel)
 	entry := def.Entries[index]
 	visible, err := entry.When.Bool(s.env(g))
 	if err != nil || !visible {
+		g.screenTrace.blocked = true
 		s.refresh(g)
 		return
 	}

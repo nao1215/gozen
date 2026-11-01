@@ -396,17 +396,18 @@ type Game struct {
 	memoUnfocused bool
 	started       time.Time
 
-	pcg       *rand.PCG
-	evSnap    []byte
-	evRand    []byte
-	evArgs    map[string]any
-	evName    string
-	evLines   int
-	evAnswers []int
-	fast      *fastTo
-	untilShot bool
-	quick     []*memoBox
-	quickN    int
+	pcg         *rand.PCG
+	evSnap      []byte
+	evRand      []byte
+	evArgs      map[string]any
+	evName      string
+	evLines     int
+	screenTrace screenTranscript
+	evAnswers   []int
+	fast        *fastTo
+	untilShot   bool
+	quick       []*memoBox
+	quickN      int
 
 	live liveState
 
@@ -1375,6 +1376,7 @@ func (g *Game) newEventRunner() *event.Runner {
 	// Writing stats and levels with set is allowed only in authoring mode (--dev) (ADR 0021, author's decision 5).
 	runner.Dev, runner.UseItem = g.opts.Development, itemuse.For(g.db, g.st)
 	runner.Log = func(err error) {
+		g.screenTrace.blocked = true
 		if g.opts.capture != nil {
 			g.failure = errors.Join(g.failure, err)
 			return
@@ -1388,6 +1390,7 @@ func (g *Game) newEventRunner() *event.Runner {
 }
 
 func (g *Game) startState() {
+	g.screenTrace = screenTranscript{}
 	g.st.Calm = g.opts.Calm
 	g.backlog, g.logView = nil, nil
 	g.evCmds, g.evNoBack, g.evHist = nil, false, nil
@@ -1765,6 +1768,7 @@ func (g *Game) pump() bool {
 					g.endRecruit(answer == 0)
 				}
 				g.emit("answer", traceLine{"index": answer})
+				g.recordScreenAnswer(answer)
 				g.evAnswers = append(g.evAnswers, answer)
 				g.events.Answer(answer)
 			}
@@ -1845,6 +1849,11 @@ func (g *Game) updateTap() bool {
 }
 
 func (g *Game) begin(r event.Request) {
+	if q, ok := event.ReplayRequest(r); ok {
+		g.recordScreenView(q)
+	} else if _, ok := r.(event.Open); !ok {
+		g.screenTrace.blocked = true
+	}
 	g.skipBefore(r)
 	g.traceRequest(r)
 	switch r.(type) {
@@ -2151,6 +2160,7 @@ var (
 func (g *Game) Handle(e event.Effect) {
 	switch e := e.(type) {
 	case event.MoveEffect:
+		g.screenTrace.blocked = true
 		g.boundary()
 		g.Move(e.Location)
 	case event.MusicEffect:

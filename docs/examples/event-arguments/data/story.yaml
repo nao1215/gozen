@@ -33,3 +33,9 @@ events:
     do:
     - open: {screen: candidates, args: {task: arg.task, resident: arg.resident}}
     - say: Returned
+  stock_demo:
+    do:
+    - say: Ready.
+    - call: {event: stock_visit, args: {amount: '2'}}
+    - call: {event: stock_visit, args: {amount: '3'}}
+    - say: 'Total {var.total}'

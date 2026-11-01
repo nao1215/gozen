@@ -890,19 +890,18 @@ func TestLoadRejectsDamagedReplay(t *testing.T) {
 	}
 }
 
-// Until presentation can restore the transcript, importing one must fail before
-// replacing the live game. It must not silently treat its root snapshot as current.
-func TestLoadRejectsSessionScreenReplay(t *testing.T) {
+// Missing replay root and RNG must fail before replacing live play.
+func TestLoadRejectsMalformedScreenReplay(t *testing.T) {
 	g := sysInn(t, Options{})
 	st := testgame.State(g.db, 17)
 	st.Resume = &rpg.Resume{Cursor: rpg.Cursor{Inputs: []rpg.ReplayInput{{Request: strings.Repeat("0", 64)}}}}
 	before := g.st
 	if err := g.checkSavedReplay(st); err == nil {
-		t.Fatal("probe accepted unsupported screen replay")
+		t.Fatal("probe accepted malformed screen replay")
 	}
 	g.loadSavedGame(st)
 	if g.failure == nil || g.st != before {
-		t.Fatal("unsupported replay replaced the live state")
+		t.Fatal("malformed replay replaced the live state")
 	}
 	g.failure = nil // The direct internal call deliberately exercised the guard.
 }

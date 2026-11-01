@@ -2,8 +2,6 @@ package session
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -381,7 +379,7 @@ func (s *Session) Next() Request {
 		if s.replayBlocked || s.db.Game.SchemaVersion < gamedata.SchemaVersion10 {
 			return q
 		}
-		digest, err := requestDigest(q)
+		digest, err := event.ReplayView(q).Digest()
 		if err != nil {
 			s.replayBlocked = true
 		} else {
@@ -561,11 +559,10 @@ func (s *Session) fight(q event.Battle) int {
 
 // request turns the runner's request into a Request.
 func (s *Session) request(r event.Request) Request {
+	if q, ok := event.ReplayRequest(r); ok {
+		return Request(q)
+	}
 	switch r := r.(type) {
-	case event.Say:
-		return Request{Kind: "say", Text: r.Text, Who: r.Name, Face: r.Face, ID: r.Actor}
-	case event.Choice:
-		return Request{Kind: "choice", Text: r.Prompt, Options: r.Options}
 	case event.Battle:
 		s.battle = r
 		var flags []string
@@ -581,16 +578,10 @@ func (s *Session) request(r event.Request) Request {
 		return Request{Kind: "battle", ID: r.Troop, Flags: strings.Join(flags, ",")}
 	case event.Shop:
 		return Request{Kind: "shop", ID: r.ID}
-	case event.Wait:
-		return Request{Kind: "wait", Seconds: r.Seconds}
 	case event.Save:
 		return Request{Kind: "save"}
 	case event.Open:
 		return Request{Kind: "open", ID: r.Screen}
-	case event.Notice:
-		return Request{Kind: "notice", Text: r.Text}
-	case event.Tap:
-		return Request{Kind: "tap", Seconds: r.Auto}
 	case event.Clear:
 		s.last.Cleared = true
 		return Request{Kind: "clear"}
@@ -888,46 +879,32 @@ func (s *Session) recordInput(input rpg.ReplayInput) {
 	s.inputs = append(s.inputs, input)
 }
 
-func requestDigest(q Request) (string, error) {
-	b, err := json.Marshal(q)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%x", sha256.Sum256(b)), nil
-}
-
-// resumeScreens rebuilds suspended runners through the ordinary input path on
-// Restore's private state. Hooks stay silent; no external effects are replayed.
+// resumeScreens rebuilds the suspended chain on Restore's private state.
 func (s *Session) resumeScreens(inputs []rpg.ReplayInput) error {
-	var last Request
-	for _, input := range inputs {
-		if input.Answer != nil {
-			q := s.pending
-			n := *input.Answer
-			if q == nil || q.Kind != "open" && q.Kind != "choice" || n < 0 && (n != -1 || q.Kind != "open") || n >= len(q.Options) {
-				return errors.New("load: invalid screen replay answer")
-			}
-			s.Answer(n)
-			last = Request{}
+	var pending event.Request
+	if s.pending != nil && s.pending.Kind == "choice" {
+		pending = event.Choice{Prompt: s.pending.Text, Options: s.pending.Options}
+	}
+	replay, err := s.runner.ReplayScreens(inputs, pending)
+	if err != nil {
+		return err
+	}
+	s.runner = replay.Runner
+	s.screens = nil
+	for _, frame := range replay.Frames {
+		s.screens = append(s.screens, screenFrame{args: frame.Args, name: frame.Name, origin: frame.Origin, runner: frame.Runner, indices: frame.Indices, at: cursor{noBack: true}})
+	}
+	s.at.noBack = true
+	s.inputs = slices.Clone(inputs)
+	s.sawScreen = true
+	s.pending, s.held = nil, nil
+	if replay.View.Kind != "" {
+		q := Request(replay.View)
+		if q.Kind == "choice" || q.Kind == "open" {
+			s.pending = &q
 		} else {
-			last = s.Next()
-			digest, err := requestDigest(last)
-			if err != nil {
-				return err
-			}
-			if digest != input.Request {
-				return errors.New("load: screen replay request changed")
-			}
+			s.held = &q
 		}
-		if s.replayBlocked {
-			return errors.New("load: screen replay crossed an unsupported boundary")
-		}
-	}
-	if !s.sawScreen || len(s.screens) == 0 && !s.runner.Running() {
-		return errors.New("load: missing screen continuation")
-	}
-	if last.Kind != "" && s.pending == nil {
-		s.held = &last
 	}
 	return nil
 }

@@ -1,6 +1,6 @@
 # ADR 0054: Typed arguments for reusable events and screens
 
-Status: Accepted for phased implementation (2026-11-01). Event calls and plain screen arguments implemented; plan entity/activity expression targets implemented; non-rendering session screen continuation saves implemented; player restoration and other expression-form target fields remain planned.
+Status: Accepted for phased implementation (2026-11-01). Event calls and plain screen arguments implemented; plan entity/activity expression targets implemented; session and player plain screen continuation saves implemented; planning surface continuation and other expression-form target fields remain planned.
 
 See [the executable event-call slice](../development/event-arguments.md) for supported syntax and remaining limits.
 
@@ -646,3 +646,28 @@ The iterator leaves screen lifetime, body text, input and save state in each
 frontend. Lazy evaluation preserves interleaving with player detail rendering.
 The cross-frontend stock test fixes the prior behavior before this extraction.
 Player transcript recording and restoration remain pending; the save guard stays.
+
+
+## Player plain screen continuation
+
+Schema-10 named roots now support player saves before confirmation, during entry
+dialogue, on nested plain screens, after entry completion, and after closing back
+to the caller. The event layer reconstructs the shared transcript on private state;
+session uses the same implementation. Player slot probes and direct installation
+both reject damaged request digests, answers and unreachable continuations before
+replacing live state. The player records requests and visible-row answers from
+its existing input path. Child actions retain one outer snapshot and random source,
+so reconstruction does not apply pre-open effects to the current state again.
+
+The stock/receipt example and cross-frontend tests cover cancellation, two amounts,
+hidden entries, duplicate answers, re-saving, an ordinary dialogue-save prefix,
+and immediate post-answer saves. Atago runs preview and confirmation saves and
+restores confirmation in a second CLI process. These are simulated input tests,
+not rendering or audio verification. Persistent images and standing portraits are
+restored; sounds and transient effects are not replayed. List focus, scrolling and
+elapsed display ticks reset on load, as they are not semantic transcript inputs.
+
+Older schemas, anonymous roots, unsupported replay boundaries and native planning
+surfaces keep the save refusal. Implicit navigation for planning surfaces and their
+parameterized bindings remain separate work. Historical slice notes above record
+restrictions at the time of those implementations.
