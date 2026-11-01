@@ -64,7 +64,7 @@ confirm a costly action. Browsing the list itself does not advance planning.
 
 Opening a candidate list from a grouped timeline lane keeps the timeline on
 the left and places the list in a 360-logical-pixel pane on the right. The whole
-calendar range remains visible. The selected activity description stays below
+selected calendar range remains visible. The selected activity description stays below
 the timeline; candidate text uses six lines per page above the scrolling list. Left/Right,
 the arrow buttons, or the wheel over the explanation read every page at
 15 logical pixels. The page counter shows when more text is available. Changing
@@ -88,3 +88,15 @@ Markers sharing a date must agree on the destination. Omitting `screen` keeps
 the date read-only. Opening or closing a date detail does not advance time;
 only commands explicitly authored in its entries can change the game state.
 For a date link without an annotation tick or label, omit the marker label.
+
+Grouped timelines support a presentation-only zoom: press Plus/Equals to show
+21 days centered on the current date, or Minus to restore the authored calendar.
+The small plus/minus buttons at the axis's upper right provide the same controls.
+At calendar boundaries the focused window shifts inward; shorter calendars stay
+complete. Day numbers appear daily when at least 40 logical pixels are available
+per day, otherwise weekly. Bars are clipped to the viewport without rescaling
+their progress, expected position or historical marks. The date band opens the
+date under the pointer in either mode. Candidate browsing and screen refresh
+retain the zoom; reopening the timeline starts with the full calendar. This
+does not change time, assignments, observations or saves. Z retains its existing
+confirm binding.

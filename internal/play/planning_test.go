@@ -300,7 +300,7 @@ func TestGroupedTimelineCalendarFitAndPrivacy(t *testing.T) {
 	a.Deadline = "2031-01-01"
 	g.st.Planning.Activities["0"] = a
 	groups, _, _ = s.groupedTimeline(g, 0, 108, 1280, 494)
-	if groups[0].lanes[0].right != 1 {
+	if groups[0].lanes[0].bounds.Max.X != 1260 || groups[0].lanes[0].right <= 1 {
 		t.Fatal("extended deadline is not clipped")
 	}
 	p.Activities["extra"] = data.Activity{Name: "Extra", Effort: 1}
@@ -816,5 +816,110 @@ func TestTimelineCandidatePaneBrowsing(t *testing.T) {
 	}
 	if newAuthorScreen(g, "pick", nil).timelineContext != nil {
 		t.Fatal("standalone picker changed")
+	}
+}
+
+func TestTimelineZoomBrowsing(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{
+		Calendar: data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}},
+		Activities: map[string]data.Activity{
+			"kiln":  {Name: "Kiln", Effort: 100, From: "2030-08-01", To: "2030-11-30"},
+			"early": {Name: "Clay", Effort: 10, From: "2030-08-01", To: "2030-08-02"},
+			"late":  {Name: "Glaze", Effort: 10, From: "2030-11-29", To: "2030-11-30"},
+		},
+	}
+	db.Game.Screens = map[string]*data.AuthorScreen{
+		"tasks": {Kind: "timeline", View: data.PlanningView{Fullscreen: true, Rows: []data.TimelineRow{
+			{Label: "Pottery", Items: []data.TimelineItem{{Activity: "kiln", Screen: "pick"}, {Activity: "early"}, {Activity: "late"}}},
+		}}},
+		"pick": {View: data.PlanningView{Portrait: "icon"}, Entries: []data.ScreenEntry{{Label: "Maker"}}},
+	}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	g.st.Planning.Date = "2030-09-15"
+	g.st.Planning.Activities["kiln"].Observed = 50
+	s := newAuthorScreen(g, "tasks", nil)
+	g.stack = []scene{s}
+	before, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	overview := s.timelineLanes(g)
+	g.in.pressed[btnMapZoomIn] = true
+	s.updateSurface(g)
+	g.in.pressed[btnMapZoomIn] = false
+	start, end, err := s.timelineRange(g)
+	if err != nil || start.Format(time.DateOnly) != "2030-09-05" || end.Format(time.DateOnly) != "2030-09-25" {
+		t.Fatalf("wrong focus window: %s %s %v", start, end, err)
+	}
+	lanes := s.timelineLanes(g)
+	if lanes[0].left >= 0 || lanes[0].right <= 1 || lanes[0].reported != .5 || lanes[0].expected != overview[0].expected {
+		t.Fatalf("zoom distorted progress: %+v", lanes[0])
+	}
+	if lanes[0].bounds.Min.X != 260 || lanes[0].bounds.Max.X != 1260 || !lanes[1].bounds.Empty() || !lanes[2].bounds.Empty() {
+		t.Fatalf("off-window hit areas: %+v", lanes)
+	}
+	g.in.mouse = image.Pt(260, 140)
+	if s.timelinePointerDate(g) != "2030-09-05" {
+		t.Fatal("left date does not match zoom")
+	}
+	g.in.mouse = image.Pt(1259, 140)
+	if s.timelinePointerDate(g) != "2030-09-25" {
+		t.Fatal("right date does not match zoom")
+	}
+	s.refresh(g)
+	if !s.timelineZoom {
+		t.Fatal("refresh lost zoom")
+	}
+	// Candidate browsing and cancel retain the same parent range.
+	g.in.pressed[btnOK] = true
+	s.updateSurface(g)
+	g.in.pressed[btnOK] = false
+	child, ok := g.stack[len(g.stack)-1].(*authorScreen)
+	if !ok || child == s || child.timelineContext != s {
+		t.Fatal("focused lane did not open candidates")
+	}
+	g.in.pressed[btnCancel] = true
+	child.update(g)
+	g.in.pressed[btnCancel] = false
+	if g.stack[len(g.stack)-1] != s || !s.timelineZoom {
+		t.Fatal("cancel lost zoom")
+	}
+	g.in.click = true
+	g.in.mouse = timelineZoomBounds(0, 108, 1280)[1].Min.Add(image.Pt(4, 4))
+	if s.timelinePointerDate(g) != "" {
+		t.Fatal("zoom button is a date target")
+	}
+	s.updateSurface(g)
+	g.in.click = false
+	if s.timelineZoom {
+		t.Fatal("minus button failed")
+	}
+	restored := s.timelineLanes(g)
+	for i, lane := range restored {
+		if lane.bounds != overview[i].bounds {
+			t.Fatal("overview geometry not restored")
+		}
+	}
+	after, err := json.Marshal(g.st.Planning)
+	if err != nil || string(after) != string(before) {
+		t.Fatal("browsing mutated planning")
+	}
+	// Boundary windows retain 21 days, and a short calendar stays complete.
+	s.timelineZoom = true
+	for _, tc := range []struct{ today, start, end string }{
+		{"2030-08-01", "2030-08-01", "2030-08-21"},
+		{"2030-11-30", "2030-11-10", "2030-11-30"},
+	} {
+		g.st.Planning.Date = tc.today
+		start, end, err = s.timelineRange(g)
+		if err != nil || start.Format(time.DateOnly) != tc.start || end.Format(time.DateOnly) != tc.end {
+			t.Fatalf("boundary: %s %s", start, end)
+		}
+	}
+	db.Game.Planning.Calendar.End = "2030-08-05"
+	start, end, err = s.timelineRange(g)
+	if err != nil || start.Format(time.DateOnly) != "2030-08-01" || end.Format(time.DateOnly) != "2030-08-05" {
+		t.Fatal("short calendar expanded")
 	}
 }

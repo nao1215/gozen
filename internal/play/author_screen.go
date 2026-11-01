@@ -26,6 +26,7 @@ type authorScreen struct {
 	timelineFocus    int
 	timelineAssignee string
 	timelineExpanded string
+	timelineZoom     bool
 	target           string
 	focus            int
 	popup            *list
@@ -229,6 +230,7 @@ func (s *authorScreen) refreshed(g *Game) *authorScreen {
 	n.timelineFocus = s.timelineFocus
 	n.timelineAssignee = s.timelineAssignee
 	n.timelineExpanded = s.timelineExpanded
+	n.timelineZoom = s.timelineZoom
 	n.list.sel = min(s.list.sel, max(0, len(n.entries)-1))
 	if s.list.sel < len(s.indices) {
 		for i, index := range n.indices {

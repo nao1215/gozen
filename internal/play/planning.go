@@ -506,7 +506,37 @@ func timelineLaneHeight(items []data.TimelineItem) float64 {
 	return 44
 }
 
-// Grouped axes stay fixed to the authored calendar, even after deadline changes.
+// timelineRange is presentation-only: zoom shows three weeks around today,
+// shifted at the authored boundaries so short calendars never gain extra days.
+func (s *authorScreen) timelineRange(g *Game) (time.Time, time.Time, error) {
+	p := g.db.Game.Planning
+	start, err := time.Parse(time.DateOnly, p.Calendar.Start)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	end, err := time.Parse(time.DateOnly, p.Calendar.End)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	if !s.timelineZoom || end.Sub(start).Hours()/24 < 21 {
+		return start, end, nil
+	}
+	today, err := time.Parse(time.DateOnly, g.st.Planning.Date)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	from := today.AddDate(0, 0, -10)
+	if from.Before(start) {
+		from = start
+	}
+	to := from.AddDate(0, 0, 20)
+	if to.After(end) {
+		to = end
+		from = end.AddDate(0, 0, -20)
+	}
+	return from, to, nil
+}
+
 // All geometry is logical, shared by drawing, pointer input and keyboard focus.
 func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineGroup, float64, float64) {
 	p := g.db.Game.Planning
@@ -515,11 +545,15 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 	visible := g.visibleResidents(v)
 	s.timelineAssignees(g)
 	axisX, axisW := x+260, max(1, w-280)
-	start, err := time.Parse(time.DateOnly, p.Calendar.Start)
+	calendarStart, err := time.Parse(time.DateOnly, p.Calendar.Start)
 	if err != nil {
 		return nil, axisX, axisW
 	}
-	end, err := time.Parse(time.DateOnly, p.Calendar.End)
+	calendarEnd, err := time.Parse(time.DateOnly, p.Calendar.End)
+	if err != nil {
+		return nil, axisX, axisW
+	}
+	start, end, err := s.timelineRange(g)
 	if err != nil {
 		return nil, axisX, axisW
 	}
@@ -561,7 +595,7 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 				}
 				group.residents = append(group.residents, timelineResident{id: a.Assignee, portrait: portrait})
 			}
-			from, to := start, end
+			from, to := calendarStart, calendarEnd
 			if d.From != "" {
 				date, err := time.Parse(time.DateOnly, d.From)
 				if err == nil {
@@ -574,8 +608,8 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 					to = date
 				}
 			}
-			left := max(0, min(1, from.Sub(start).Hours()/24/days))
-			right := max(left, min(1, (to.Sub(start).Hours()/24+1)/days))
+			left := from.Sub(start).Hours() / 24 / days
+			right := max(left, (to.Sub(start).Hours()/24+1)/days)
 			reported := max(0, min(1, a.Observed/g.st.ActivityEffort(item.Activity)))
 			expected := max(0, min(1, today.Sub(from).Hours()/24/max(1, to.Sub(from).Hours()/24+1)))
 			sample := -1.0
@@ -593,7 +627,10 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 					}
 				}
 			}
-			forecast, forecastLabel := timelineForecast(from, today, start, end, reported, a.Cancelled, data.Render(g.db.Tr(item.ForecastLabel), env))
+			forecast, forecastLabel := timelineForecast(from, today, calendarStart, calendarEnd, reported, a.Cancelled, data.Render(g.db.Tr(item.ForecastLabel), env))
+			if forecast >= 0 {
+				forecast = (calendarStart.Sub(start).Hours()/24 + forecast*(calendarEnd.Sub(calendarStart).Hours()/24+1)) / days
+			}
 			ly := y + 3 + float64(j)*10
 			if group.expanded {
 				ly = y + 52 + float64(j)*group.laneHeight
@@ -602,7 +639,7 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 			if group.expanded {
 				labelBounds = image.Rect(int(x+24), int(ly-12), int(x+248), int(ly-12+group.laneHeight))
 			}
-			group.lanes = append(group.lanes, timelineLane{text: data.Render(g.db.Tr(item.Text), env), labelBounds: labelBounds, item: item, bounds: image.Rect(int(axisX+axisW*left), int(ly), int(math.Ceil(axisX+axisW*right)), int(ly+9)), left: left, right: right, reported: reported, expected: expected, forecast: forecast, forecastLabel: forecastLabel, dimmed: s.timelineAssignee != "" && a.Assignee != s.timelineAssignee, sample: sample, sampleFreshness: freshness, sampleLabel: data.Render(g.db.Tr(item.SampleLabel), env)})
+			group.lanes = append(group.lanes, timelineLane{text: data.Render(g.db.Tr(item.Text), env), labelBounds: labelBounds, item: item, bounds: image.Rect(int(axisX+axisW*max(0, min(1, left))), int(ly), int(math.Ceil(axisX+axisW*max(0, min(1, right)))), int(ly+9)), left: left, right: right, reported: reported, expected: expected, forecast: forecast, forecastLabel: forecastLabel, dimmed: s.timelineAssignee != "" && a.Assignee != s.timelineAssignee, sample: sample, sampleFreshness: freshness, sampleLabel: data.Render(g.db.Tr(item.SampleLabel), env)})
 		}
 		out = append(out, group)
 		y += rh
@@ -640,11 +677,7 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 	v := g.db.Game.Screens[s.name].View
 	groups, ax, aw := s.groupedTimeline(g, x, y, w, h)
 	s.drawTimelineFilter(g, dst, x, y)
-	start, err := time.Parse(time.DateOnly, p.Calendar.Start)
-	if err != nil {
-		return
-	}
-	end, err := time.Parse(time.DateOnly, p.Calendar.End)
+	start, end, err := s.timelineRange(g)
 	if err != nil {
 		return
 	}
@@ -666,10 +699,12 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 			rect(dst, xx, y+23, dx, bottom-y-23, color.NRGBA{48, 53, 62, 255})
 		}
 		if d.Day() == 1 || d.Equal(start) {
-			g.text(dst, d.Format("2006/1"), xx+2, y, 15, g.th.text)
+			if xx+90 < x+w-100 {
+				g.text(dst, d.Format("2006/1"), xx+2, y, 15, g.th.text)
+			}
 			gfx.StrokeLine(dst, float32(xx), float32(y+20), float32(xx), float32(bottom), 1, muted, true)
 		}
-		if d.Weekday() == time.Monday {
+		if d.Weekday() == time.Monday || (s.timelineZoom && dx >= 40) {
 			g.text(dst, d.Format("2"), xx+2, y+23, 15, g.th.dim)
 		}
 	}
@@ -692,6 +727,16 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 			for yy := y + 54; yy < bottom; yy += 8 {
 				rect(dst, xx, yy, 1, min(4, bottom-yy), g.th.dim)
 			}
+		}
+	}
+	if s.timelineContext == nil {
+		for i, r := range timelineZoomBounds(x, y, w) {
+			g.window(dst, float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()))
+			tint := g.th.dim
+			if (i == 0) == s.timelineZoom {
+				tint = g.th.accent
+			}
+			g.text(dst, []string{"+", "−"}[i], float64(r.Min.X+8), float64(r.Min.Y), 18, tint)
 		}
 	}
 	index := 0
@@ -720,7 +765,7 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 		for j, lane := range group.lanes {
 			labels = append(labels, lane.item.Label)
 			r := lane.bounds
-			lx, ly, lw, lh := float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())
+			lx, ly, lw, lh := ax+aw*lane.left, float64(r.Min.Y), aw*(lane.right-lane.left), float64(r.Dy())
 			a := g.st.Planning.Activities[lane.item.Activity]
 			if group.expanded {
 				top := group.y + 40 + float64(j)*group.laneHeight
@@ -731,48 +776,53 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 					g.drawPlanningText(dst, lane.text, x+24, top+40, 224, 15, 1, g.th.text)
 				}
 			}
+			k := gfx.Scale()
+			bars, ok := dst.SubImage(image.Rect(int(ax*k), int((ly-1)*k), int((ax+aw)*k), int((ly+lh+2)*k))).(*ebiten.Image)
+			if !ok {
+				continue
+			}
 			border := g.th.dim
 			if index == s.timelineFocus {
 				border = g.th.text
 			}
-			rect(dst, lx, ly, lw, lh, border)
-			rect(dst, lx+1, ly+1, max(0, lw-2), lh-2, color.NRGBA{30, 34, 40, 255})
+			rect(bars, lx, ly, lw, lh, border)
+			rect(bars, lx+1, ly+1, max(0, lw-2), lh-2, color.NRGBA{30, 34, 40, 255})
 			if a.Cancelled {
-				for xx := lx; xx < lx+lw; xx += 6 {
-					gfx.StrokeLine(dst, float32(xx), float32(ly+lh-1), float32(min(xx+4, lx+lw)), float32(ly+1), 1, muted, true)
+				for xx := max(ax, lx); xx < min(ax+aw, lx+lw); xx += 6 {
+					gfx.StrokeLine(bars, float32(xx), float32(ly+lh-1), float32(min(xx+4, lx+lw)), float32(ly+1), 1, muted, true)
 				}
 			} else {
-				rect(dst, lx+1, ly+1, max(0, (lw-2)*lane.reported), lh-2, g.th.accent)
+				rect(bars, lx+1, ly+1, max(0, (lw-2)*lane.reported), lh-2, g.th.accent)
 				if lane.reported < lane.expected {
-					for xx := lx + lw*lane.reported; xx < lx+lw*lane.expected; xx += 4 {
-						gfx.StrokeLine(dst, float32(xx), float32(ly+lh-1), float32(min(xx+3, lx+lw*lane.expected)), float32(ly+1), 1, red, true)
+					for xx := max(ax, lx+lw*lane.reported); xx < min(ax+aw, lx+lw*lane.expected); xx += 4 {
+						gfx.StrokeLine(bars, float32(xx), float32(ly+lh-1), float32(min(xx+3, lx+lw*lane.expected)), float32(ly+1), 1, red, true)
 					}
 				}
 				if lane.expected > 0 && lane.expected < 1 {
-					rect(dst, lx+lw*lane.expected, ly-1, 1, lh+2, g.th.text)
+					rect(bars, lx+lw*lane.expected, ly-1, 1, lh+2, g.th.text)
 				}
 			}
 			if lane.forecast >= 0 {
 				// Dashes distinguish the extrapolation from the solid planned bar.
-				fx := ax + aw*lane.forecast
+				fx := ax + aw*min(1, lane.forecast)
 				tx := ax + today.Sub(start).Hours()/24*dx
 				for xx := max(ax, tx); xx < fx; xx += 6 {
-					rect(dst, xx, ly+lh/2, min(3, fx-xx), 1, g.th.dim)
+					rect(bars, xx, ly+lh/2, min(3, fx-xx), 1, g.th.dim)
 				}
-				rect(dst, min(ax+aw-1, fx), ly, 1, lh, g.th.dim)
+				rect(bars, min(ax+aw-1, fx), ly, 1, lh, g.th.dim)
 			}
 			if lane.sample >= 0 && lw >= 5 {
 				// A small downward wedge remains inside its lane at both endpoints.
 				sx := lx + 2 + (lw-5)*lane.sample
 				tint := timelineSampleTint(g.th.text, g.th.dim, lane.sampleFreshness)
 				for step := range 3 {
-					rect(dst, sx-float64(2-step), ly+float64(step), float64(5-2*step), 1, tint)
+					rect(bars, sx-float64(2-step), ly+float64(step), float64(5-2*step), 1, tint)
 				}
 			}
 			if lane.dimmed {
 				// Preserve the whole calendar and row positions; de-emphasize only
 				// this lane, including its forecast, without hiding assignments.
-				rect(dst, ax, ly, aw, lh, color.NRGBA{30, 34, 40, 185})
+				rect(bars, ax, ly, aw, lh, color.NRGBA{30, 34, 40, 185})
 			}
 			index++
 		}
@@ -981,7 +1031,27 @@ func (s *authorScreen) toggleTimelineGroup(g *Game) bool {
 	return false
 }
 
+func timelineZoomBounds(x, y, w float64) [2]image.Rectangle {
+	return [2]image.Rectangle{
+		image.Rect(int(x+w-92), int(y), int(x+w-60), int(y+22)),
+		image.Rect(int(x+w-56), int(y), int(x+w-24), int(y+22)),
+	}
+}
+
 func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
+	if g.in.pressed[btnMapZoomIn] || g.in.pressed[btnMapZoomOut] {
+		s.timelineZoom = g.in.pressed[btnMapZoomIn]
+		return true
+	}
+	if g.in.click {
+		w, _ := g.screen()
+		for i, r := range timelineZoomBounds(0, 108, w) {
+			if g.in.mouse.In(r) {
+				s.timelineZoom = i == 0
+				return true
+			}
+		}
+	}
 	if g.in.click && s.openCalendarDate(g, s.timelinePointerDate(g)) {
 		return true
 	}
@@ -1373,15 +1443,15 @@ func (s *authorScreen) openCalendarDate(g *Game, date string) bool {
 
 func (s *authorScreen) timelinePointerDate(g *Game) string {
 	w, _ := g.screen()
+	for _, r := range timelineZoomBounds(0, 108, w) {
+		if g.in.mouse.In(r) {
+			return ""
+		}
+	}
 	if g.in.mouse.Y < 108 || g.in.mouse.Y >= 164 || g.in.mouse.X < 260 || float64(g.in.mouse.X) >= w-20 {
 		return ""
 	}
-	p := g.db.Game.Planning
-	start, err := time.Parse(time.DateOnly, p.Calendar.Start)
-	if err != nil {
-		return ""
-	}
-	end, err := time.Parse(time.DateOnly, p.Calendar.End)
+	start, end, err := s.timelineRange(g)
 	if err != nil {
 		return ""
 	}
