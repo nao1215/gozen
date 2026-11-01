@@ -284,12 +284,13 @@ data. This decision itself introduces no runtime test coverage for future syntax
 
 The screen-call slice must first extend the save model; adding argument maps to
 `Open` and `AuthorScreen` alone is insufficient. The existing
-`TestAuthorScreenDialogueSaveAndOpener` now characterizes all three save phases:
+`TestAuthorScreenDialogueSaveAndOpener` originally characterized all three save phases:
 preview, entry dialogue, and completed entry. Without loading, closing the screen
 executes the opener's following command once. After loading, each phase loses the
 screen and opener. Active entry dialogue still resumes and completes once; committed
-effects and the next random draw survive. The test explicitly labels the missing
-continuation as a legacy limitation, not an accepted result for typed screens.
+effects and the next random draw survive. That characterization demonstrated a legacy limitation, not an accepted result
+for typed screens. The current test instead requires refusing these unsafe saves,
+then verifies saving after close and event completion.
 
 The concrete ownership gaps are:
 
@@ -322,15 +323,46 @@ arrival roots need explicit handling; unsupported roots must reject saving with 
 diagnostic. Validate all descriptors before replacing a live session. Checkpoint
 restore must discard the entire suspended chain.
 
-For the implementation, change the characterization's restored `closed` expectation
-from zero to one and replace its absent-screen assertion with restored screen
-identity. Keep its uninterrupted baseline, repeated independent restores, exactly-once
-entry effects and next-random comparison. Also add save-after-restore, nested opens,
-two activities through one screen, cancellation and repeated confirmation input,
-and malformed or edited continuation rejection. Passing the characterization alone
-does not establish any of these new capabilities. Input and CLI coverage must use
-the existing player script and atago harness; ordinary play package tests do not
-establish rendering success.
+The first implementation slice refuses saves while an author screen is on the
+play stack, including beneath another screen or the save menu. `saveBytes` enforces
+the same refusal as the UI before touching a slot, so callers cannot bypass it.
+It also enforces the existing refusal for dialogue following a replay boundary.
+`Session.Save` refuses a running root after an `open` request, including its later
+dialogue. Normal completion permits saving again. Ordinary autosave already waits
+for an idle location; this is a serialization guard, not a change to that schedule.
+
+For example, this neutral screen can be used now, but the player must close it and
+finish `inspect` before saving:
+
+```yaml
+screens:
+  stock:
+    title: Stock
+    entries: [{label: Boards, text: 'Boards: {var.boards}'}]
+```
+
+```yaml
+events:
+  inspect:
+    do:
+      - open: stock
+      - say: Inspection complete.
+```
+
+This deliberately limits availability rather than accepting a save that drops the
+opener. It does not implement screen arguments or continuation restoration and does
+not repair previously written incomplete saves. No save or schema version changes.
+The rejection leaves the slot, live action and random stream unchanged. Tests cover
+preview, active entry dialogue, completed entry, nested screens, the save menu,
+repeated rejection, and successful save/restore after the event finishes.
+
+The next continuation slice must replace refusal with successful restoration, not
+remove the guard while still writing state-only saves. Restore the opener and active
+screen identity in all three phases; preserve exactly-once entry effects and next
+random draws. Also cover save-after-restore, nested opens, two activities through one
+screen, cancellation, repeated confirmation input, and malformed or edited
+continuation rejection. Input and CLI coverage must use the existing player script
+and atago harness; ordinary play package tests do not establish rendering success.
 
 ## Alternatives and consequences
 

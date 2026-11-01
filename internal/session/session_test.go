@@ -1158,3 +1158,56 @@ func TestBoundEventRootAndChangedSave(t *testing.T) {
 		t.Fatalf("original %+v", q)
 	}
 }
+
+func TestSaveRefusesScreenContinuation(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml": {Data: []byte("schema_version: 8\nid: screen-save\nstart: {location: workshop}\nscreens: {stock: {title: Stock, entries: [{label: Boards}]}}\n")},
+		"data/world.yaml": {Data: []byte(`locations: {workshop: {name: Workshop}}
+events:
+  visit:
+    do:
+      - set: {var.opened: 'var.opened + 1'}
+      - open: stock
+      - say: Returned.
+      - set: {var.closed: 'var.closed + 1'}
+`)},
+	}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := gozen.New(g, gozen.Config{Seed: 17})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start("- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range []string{"open", "say"} {
+		if q := s.Next(); q.Kind != kind {
+			t.Fatalf("request: %+v, want %s", q, kind)
+		}
+		for range 2 {
+			if b, err := s.Save(); err == nil || b != nil {
+				t.Fatal("save silently discarded a screen continuation")
+			}
+		}
+		if query[int](t, s, "var.opened") != 1 || query[int](t, s, "var.closed") != 0 {
+			t.Fatal("rejection changed event state")
+		}
+	}
+	if q := s.Next(); q.Kind != "" {
+		t.Fatalf("event did not finish: %+v", q)
+	}
+	b, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := gozen.Restore(g, b, gozen.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if query[int](t, r, "var.opened") != 1 || query[int](t, r, "var.closed") != 1 {
+		t.Fatal("finished event was lost or repeated")
+	}
+}

@@ -137,6 +137,14 @@ func TestAuthorScreenDialogueSaveAndOpener(t *testing.T) {
 `})
 			g := wldOpenWith(t, Options{FS: fsys, Location: "camp", Seed: 17})
 			wldFrames(t, g, 30)
+			path := g.slotPath(0)
+			if err := g.writeSave(path); err != nil {
+				t.Fatal(err)
+			}
+			previous, err := g.storeRead(path)
+			if err != nil {
+				t.Fatal(err)
+			}
 			wldStartEvent(t, g, "stock_open")
 			wldFrames(t, g, 4)
 			if phase != "preview" {
@@ -171,9 +179,39 @@ func TestAuthorScreenDialogueSaveAndOpener(t *testing.T) {
 			assertValue("boards", wantBoards)
 			assertValue("finished", wantFinished)
 			assertValue("closed", 0)
-			saved, err := g.saveBytes()
+			randomBefore, err := g.pcg.MarshalBinary()
 			if err != nil {
 				t.Fatal(err)
+			}
+			// Rejection must happen before overwriting a usable slot, without
+			// changing the pending action, state, or random sequence.
+			for range 2 {
+				if saved, err := g.saveBytes(); err == nil || saved != nil {
+					t.Fatal("save accepted an unrepresentable screen continuation")
+				}
+				if err := g.writeSave(path); err == nil {
+					t.Fatal("slot write accepted an unrepresentable continuation")
+				}
+				after, err := g.storeRead(path)
+				if err != nil || !bytes.Equal(previous, after) {
+					t.Fatalf("rejected save changed the slot: %v", err)
+				}
+			}
+			// A save menu above the screen cannot bypass the same check.
+			menu := newSaveMenu(g, true, func() {})
+			g.push(menu)
+			menu.write(g, 0)
+			if !strings.Contains(menu.msg, "Close this screen") {
+				t.Fatalf("missing save refusal: %s", menu.msg)
+			}
+			g.pop()
+			after, err := g.storeRead(path)
+			if err != nil || !bytes.Equal(previous, after) {
+				t.Fatalf("save menu changed the slot: %v", err)
+			}
+			randomAfter, err := g.pcg.MarshalBinary()
+			if err != nil || !bytes.Equal(randomBefore, randomAfter) {
+				t.Fatalf("rejection consumed randomness: %v", err)
 			}
 			// An uninterrupted action and close resumes the opener exactly once.
 			if phase == "dialogue" {
@@ -182,43 +220,28 @@ func TestAuthorScreenDialogueSaveAndOpener(t *testing.T) {
 			wldPlay(t, g, "press x\nwait 8\n", 40)
 			assertValue("opened", 1)
 			assertValue("closed", 1)
+			assertValue("boards", wantBoards)
+			if phase == "dialogue" {
+				wantFinished = 1
+			}
+			assertValue("finished", wantFinished)
+			// Once closed, saving and repeated restoration are safe again.
+			saved, err := g.saveBytes()
+			if err != nil {
+				t.Fatal(err)
+			}
 			wantRandom := g.st.Rand.Float64()
-			// Repeated restores must neither apply the completed effect twice nor
-			// consume extra random draws. Each save is parsed into fresh state.
 			for range 2 {
 				restored, err := rpg.Parse(g.db, saved, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if phase == "dialogue" && (restored.Resume == nil || restored.Resume.Cursor.Event != "screen:stock:0") {
-					t.Fatalf("missing action cursor: %+v", restored.Resume)
-				}
 				g.loadSavedGame(restored)
 				wldFrames(t, g, 8)
 				assertValue("opened", 1)
+				assertValue("closed", 1)
 				assertValue("boards", wantBoards)
 				assertValue("finished", wantFinished)
-				assertValue("closed", 0)
-				if phase == "dialogue" {
-					if !g.talk.active {
-						t.Fatal("saved action dialogue was lost")
-					}
-					wldPlay(t, g, "wait 40\npress z\nwait 8\n", 100)
-					assertValue("finished", 1)
-				}
-				wldPlay(t, g, "press x\nwait 8\n", 40)
-				assertValue("opened", 1)
-				assertValue("boards", wantBoards)
-				// Known legacy limitation, not the ADR 0054 target contract:
-				// saves retain effects and active entry dialogue, but lose the
-				// author screen and its opener. The desired value 1 fails in
-				// all three phases. Flip this to 1 with continuation support.
-				assertValue("closed", 0)
-				for _, view := range g.stack {
-					if _, ok := view.(*authorScreen); ok {
-						t.Fatal("legacy save unexpectedly restored an author screen; update the continuation contract")
-					}
-				}
 				if got := g.st.Rand.Float64(); got != wantRandom {
 					t.Fatalf("next random draw: got %v, want %v", got, wantRandom)
 				}
@@ -269,6 +292,9 @@ func TestAuthorScreenNestedActionsAndMove(t *testing.T) {
 	wldPlay(t, g, "press z\nwait 5\npress z\nwait 5\n", 70)
 	if !g.st.Flags["marked"] || g.st.Flags["returned"] {
 		t.Fatalf("nested action order: %v", g.st.Flags)
+	}
+	if _, err := g.saveBytes(); err == nil {
+		t.Fatal("nested screen save was accepted")
 	}
 	wldPlay(t, g, "press x\nwait 8\n", 40)
 	if !g.st.Flags["returned"] || closed != 0 {

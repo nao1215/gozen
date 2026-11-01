@@ -1,6 +1,7 @@
 package play
 
 import (
+	"errors"
 	"log"
 	"math/rand/v2"
 	"slices"
@@ -178,6 +179,9 @@ func (g *Game) cursor() (rpg.Cursor, []byte, []byte, bool) {
 
 // saveBytes is the save of now: with a cursor in the middle of an event.
 func (g *Game) saveBytes() ([]byte, error) {
+	if why := g.saveBlocked(); why != "" {
+		return nil, errors.New(why)
+	}
 	c, snap, rnd, ok := g.cursor()
 	if !ok {
 		b, err := g.st.Save()
@@ -224,6 +228,14 @@ func (g *Game) resume(r *rpg.Resume) {
 // after a battle, a shop, a screen or a move, a save cannot hold where the event goes on
 // (the event cannot be read again up to that line), so it would lose the event's rest.
 func (g *Game) saveBlocked() string {
+	// A screen can suspend an opener even while its own entry has a valid
+	// cursor. Until the complete chain is serializable, neither cursor nor
+	// state-only saves can represent this stack. Inspect beneath save menus.
+	for _, view := range g.stack {
+		if _, ok := view.(*authorScreen); ok {
+			return lang.T("この 画面を 閉じて、操作が 終わってから セーブ しよう。")
+		}
+	}
 	if g.events == nil || !g.events.Running() || !g.talk.active || !g.evNoBack || g.replaying {
 		return ""
 	}

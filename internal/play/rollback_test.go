@@ -195,6 +195,9 @@ events:
 	if g.saveBlocked() == "" {
 		t.Fatal("a save after the battle is not refused")
 	}
+	if b, err := g.saveBytes(); err == nil || b != nil {
+		t.Fatal("direct save bypassed the boundary refusal")
+	}
 	g.in.pressed[btnSave] = true
 	g.novelInput()
 	g.in.pressed = [numButtons]bool{}

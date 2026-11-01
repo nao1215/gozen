@@ -5,6 +5,8 @@ package catalog
 
 // english is the built-in English words of the engine.
 var english = map[string]string{
+	"この 画面を 閉じて、操作が 終わってから セーブ しよう。": "Close this screen and finish the current action before saving.",
+
 	"全体":             "All",
 	"現在地":            "Here",
 	"P / R3: 選択に戻る":  "P / R3: switch to selection",

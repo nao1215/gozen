@@ -74,6 +74,7 @@ type cursor struct {
 	lines       int
 	answers     []int
 	noBack      bool
+	screen      bool // this root crossed an open request; continuation is not serializable
 	arriving    bool
 	before, rbf []byte
 }
@@ -346,6 +347,9 @@ func (s *Session) Next() Request {
 				continue
 			}
 			q := s.request(r)
+			if q.Kind == "open" {
+				s.at.screen = true
+			}
 			switch q.Kind {
 			case "say", "choice":
 				s.at.lines++
@@ -537,8 +541,12 @@ func (s *Session) effect(e event.Effect) {
 // Save is the state as JSON (Restore reads it). In the middle of an event that can be begun
 // again (it passed no battle, shop, save, screen or move), it is the state when the event
 // began with a cursor to the line shown last (save format version 2, ADR 0025); otherwise
-// the events being run are not saved.
+// the events being run are not saved. A running root that opened an author
+// screen is rejected until it finishes: state alone would lose its continuation.
 func (s *Session) Save() ([]byte, error) {
+	if s.runner.Running() && s.at.screen {
+		return nil, errors.New("gozen: finish the event that opened the author screen before saving")
+	}
 	c := s.at
 	if !s.runner.Running() || c.noBack || c.lines == 0 || c.snap == nil || c.name == "" && !c.arrival {
 		return s.saveBetween()
