@@ -42,3 +42,12 @@ Up and down select direct actions and seats; confirm opens or executes the
 selection, and cancel dismisses a seat menu before closing the screen. Mouse
 users select the same rectangles. A timeline includes the full planned activity
 range, even when an activity finishes after the playable calendar ends.
+
+Fullscreen peers can declare the same ordered `view.tabs: [workshop, team, plan]`
+on each screen. Use two to five existing fullscreen screen IDs, including the
+current screen. Titles supply the tab labels. Click a bottom tab or use left/right
+to switch without consuming time or stacking return screens. Cancel closes the
+surface and resumes its original opener. An open seat menu must be dismissed
+before switching. Nested detail screens still use ordinary `open` and cancel.
+Reserve the bottom-right 152 logical pixels per tab, from height minus 72 to
+height minus 24, for the controls; place authored action bounds elsewhere.

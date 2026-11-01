@@ -102,6 +102,9 @@ func (c *checker) declarations() {
 			c.errorf(diag.Shape, w+".view.fullscreen", "full-screen planning surfaces require a planning kind")
 		}
 		c.planningView(w+".view", screen.View)
+		if len(screen.View.Tabs) > 0 && !slices.Contains(screen.View.Tabs, name) {
+			c.errorf(diag.Shape, w+".view.tabs", "tabs must include the current screen")
+		}
 		c.text(w+".title", screen.Title, FieldNames)
 		for i, e := range screen.Entries {
 			ew := fmt.Sprintf("%s.entries[%d]", w, i)

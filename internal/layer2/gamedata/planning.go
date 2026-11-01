@@ -420,6 +420,9 @@ func (c *checker) planningPure(w string, e Expr) {
 // PlanningView selects only explicitly named player values for presentation.
 // Order controls seating; fields and portrait bindings never read hidden state.
 type PlanningView struct {
+	// Tabs names two to five fullscreen peers, including this screen. Play replaces
+	// the current surface when switching, preserving its original close callback.
+	Tabs []string `yaml:"tabs"`
 	// Rows groups timeline activities in authored order; omission keeps the task list.
 	Rows []TimelineRow `yaml:"rows"`
 	// Markers annotates dates without changing scheduling or simulation rules.
@@ -487,6 +490,21 @@ func (c *checker) planningView(w string, v PlanningView) {
 	p := c.db.Game.Planning
 	if p == nil {
 		return
+	}
+	if len(v.Tabs) > 0 {
+		if !v.Fullscreen || len(v.Tabs) < 2 || len(v.Tabs) > 5 {
+			c.errorf(diag.Shape, w+".tabs", "tabs require a fullscreen view and two to five screens")
+		}
+		seenTabs := map[string]bool{}
+		for _, id := range v.Tabs {
+			screen := c.db.Game.Screens[id]
+			if screen == nil || !screen.View.Fullscreen || seenTabs[id] {
+				c.errorf(diag.UnknownReference, w+".tabs", "unknown, duplicate or non-fullscreen tab %q", id)
+			} else if !slices.Equal(screen.View.Tabs, v.Tabs) {
+				c.errorf(diag.Shape, w+".tabs", "tab screens must declare the same ordered tabs")
+			}
+			seenTabs[id] = true
+		}
 	}
 	if len(v.Weekdays) != 0 && len(v.Weekdays) != 7 {
 		c.errorf(diag.Shape, w+".weekdays", "provide seven weekday labels")

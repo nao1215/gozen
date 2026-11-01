@@ -3,6 +3,7 @@ package play
 import (
 	"image"
 	"image/color"
+	"slices"
 
 	"github.com/nao1215/gozen/internal/event"
 
@@ -279,6 +280,9 @@ func (s *authorScreen) updateSurface(g *Game) {
 		s.closeSurface(g)
 		return
 	}
+	if s.updateTabs(g) {
+		return
+	}
 	if g.db.Game.Screens[s.name].Kind == "timeline" && len(g.db.Game.Screens[s.name].View.Rows) > 0 {
 		if s.updateGroupedTimeline(g) {
 			return
@@ -344,6 +348,9 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 	g.text(dst, data.Render(g.db.Tr(v.Header), g.st.Env()), sw*.5, 12, sizeS, g.th.text)
 	g.window(dst, 0, sh-108, sw, 108)
 	footerWidth := sw * .70
+	if tabs := s.tabBounds(g); len(tabs) > 0 {
+		footerWidth = float64(tabs[0].Min.X) - 40
+	}
 	for _, e := range s.entries {
 		r := entryBounds(e)
 		if e.Target == "" && !r.Empty() && float64(r.Min.Y) >= sh-108 {
@@ -381,6 +388,60 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 		g.window(dst, s.popup.x, s.popup.y-40, s.popup.w, 42)
 		g.drawPlanningText(dst, g.db.Game.Planning.Entities[s.target].Name, s.popup.x+12, s.popup.y-30, s.popup.w-24, sizeS, 1, g.th.accent)
 		s.popup.draw(g, dst, true)
+	}
+	s.drawTabs(g, dst)
+}
+
+func (s *authorScreen) tabBounds(g *Game) []image.Rectangle {
+	tabs := g.db.Game.Screens[s.name].View.Tabs
+	sw, sh := g.screen()
+	width := min(152.0, (sw-32)/float64(max(1, len(tabs))))
+	bounds := make([]image.Rectangle, len(tabs))
+	for i := range bounds {
+		x := int(sw - 16 - float64(len(tabs)-i)*width)
+		bounds[i] = image.Rect(x, int(sh-72), x+int(width)-8, int(sh-24))
+	}
+	return bounds
+}
+
+func (s *authorScreen) updateTabs(g *Game) bool {
+	tabs := g.db.Game.Screens[s.name].View.Tabs
+	if len(tabs) == 0 {
+		return false
+	}
+	selected := slices.Index(tabs, s.name)
+	next := selected
+	if g.in.left() {
+		next = (selected + len(tabs) - 1) % len(tabs)
+	} else if g.in.right() {
+		next = (selected + 1) % len(tabs)
+	}
+	if g.in.click {
+		for i, r := range s.tabBounds(g) {
+			if g.in.mouse.In(r) {
+				next = i
+			}
+		}
+	}
+	if next < 0 || next == selected {
+		return false
+	}
+	// Keep the existing stack slot and opener; switching is not an event action.
+	*s = *newAuthorScreen(g, tabs[next], s.done)
+	return true
+}
+
+func (s *authorScreen) drawTabs(g *Game, dst *ebiten.Image) {
+	tabs := g.db.Game.Screens[s.name].View.Tabs
+	for i, r := range s.tabBounds(g) {
+		g.window(dst, float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()))
+		tint := g.th.text
+		if tabs[i] == s.name {
+			tint = g.th.accent
+			rect(dst, float64(r.Min.X), float64(r.Max.Y-3), float64(r.Dx()), 3, tint)
+		}
+		label := data.Render(g.db.Tr(g.db.Game.Screens[tabs[i]].Title), g.st.Env())
+		g.drawPlanningText(dst, label, float64(r.Min.X+12), float64(r.Min.Y+12), float64(r.Dx()-24), 18, 1, tint)
 	}
 }
 

@@ -73,6 +73,7 @@ PolicyRule:
   when: "Condition evaluated from visible entity and activity observations. Omitted means true."
   event: "Existing event to run through the ordinary interpreter."
 PlanningView:
+  tabs: "Two to five fullscreen screen IDs in the same order on every peer, including this screen. Bottom tabs or left/right replace the surface without consuming time or nesting screens."
   rows: Optional grouped timeline rows. The calendar range stays fixed and oversized tables scroll by group.
   markers: Named date annotations on the grouped timeline calendar band.
   visible: Optional public boolean binding; only true residents are displayed and selectable. Missing values hide the resident.

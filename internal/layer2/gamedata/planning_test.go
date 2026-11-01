@@ -44,6 +44,27 @@ func TestPlanningViewRejectsHiddenColumnsAndBindings(t *testing.T) {
 	}
 }
 
+func TestPlanningTabs(t *testing.T) {
+	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\nscreens:\n"
+	for _, tc := range []struct {
+		views string
+		valid bool
+	}{
+		{"  board: {title: Board, kind: islands, view: {fullscreen: true, tabs: [board, people]}}\n  people: {title: People, kind: entities, view: {fullscreen: true, tabs: [board, people]}}\n", true},
+		{"  board: {title: Board, kind: islands, view: {fullscreen: true, tabs: [board, missing]}}\n", false},
+		{"  board: {title: Board, kind: islands, view: {fullscreen: true, tabs: [board, board]}}\n", false},
+		{"  board: {title: Board, kind: islands, view: {fullscreen: true, tabs: [board]}}\n", false},
+		{"  board: {title: Board, kind: islands, view: {fullscreen: true, tabs: [board, people]}}\n  people: {title: People, kind: entities}\n", false},
+		{"  board: {title: Board, kind: islands, view: {fullscreen: true, tabs: [board, people]}}\n  people: {title: People, kind: entities, view: {fullscreen: true, tabs: [people, board]}}\n", false},
+		{"  board: {title: Board, kind: islands, view: {fullscreen: true, tabs: [people, dates]}}\n  people: {title: People, kind: entities, view: {fullscreen: true, tabs: [people, dates]}}\n  dates: {title: Dates, kind: calendar, view: {fullscreen: true, tabs: [people, dates]}}\n", false},
+	} {
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header + tc.views)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
+		if (err == nil) != tc.valid {
+			t.Fatalf("tabs validity %v: %v", tc.valid, err)
+		}
+	}
+}
+
 func TestSayRequiresEnsembleScreen(t *testing.T) {
 	for _, kind := range []string{"ensemble", "entities"} {
 		src := "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\nscreens: {gathering: {title: Gathering, kind: " + kind + "}}\n"

@@ -2,6 +2,8 @@ package play
 
 import (
 	"bytes"
+	"encoding/json"
+	"image"
 	"strings"
 	"testing"
 
@@ -10,6 +12,51 @@ import (
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 )
+
+func TestSurfaceTabsPreserveStateAndOpener(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{}
+	db.Game.Screens = map[string]*data.AuthorScreen{}
+	for _, name := range []string{"work", "people", "dates"} {
+		db.Game.Screens[name] = &data.AuthorScreen{Title: name, Kind: "entities", View: data.PlanningView{Fullscreen: true, Tabs: []string{"work", "people", "dates"}}}
+	}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	closed := 0
+	s := newAuthorScreen(g, "work", func() { closed++ })
+	g.stack = []scene{&authorScreen{}, s}
+	state, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 20 {
+		g.in = input{pressed: [numButtons]bool{btnRight: true}}
+		s.updateSurface(g)
+		if len(g.stack) != 2 || closed != 0 {
+			t.Fatal("tab navigation stacked a screen or resumed its opener")
+		}
+	}
+	if s.name != "dates" {
+		t.Fatalf("wrong keyboard tab: %s", s.name)
+	}
+	r := s.tabBounds(g)[0]
+	g.in = input{click: true, mouse: image.Pt(r.Min.X+10, r.Min.Y+10)}
+	s.updateSurface(g)
+	if s.name != "work" {
+		t.Fatal("pointer did not select the first tab")
+	}
+	after, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(state, after) {
+		t.Fatal("navigation changed simulation state")
+	}
+	g.in = input{pressed: [numButtons]bool{btnCancel: true}}
+	s.updateSurface(g)
+	if len(g.stack) != 1 || closed != 1 {
+		t.Fatal("close did not resume the original opener exactly once")
+	}
+}
 
 func TestAuthorScreenVisibilityAndReload(t *testing.T) {
 	db := testgame.Load(t, nil)
