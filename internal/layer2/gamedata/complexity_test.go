@@ -2,6 +2,7 @@ package gamedata
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -168,5 +169,80 @@ func TestComplexityIndexedAssignmentTarget(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Fatalf("missing %s: %s", want, text)
 		}
+	}
+}
+
+func TestComplexityStateKeyFamilies(t *testing.T) {
+	source := "screens:\n  room:\n    entries:\n    - do:\n"
+	ids := []string{"oak", "pine", "birch", "elm", "ash", "cedar", "maple", "willow"}
+	for i, id := range ids {
+		source += fmt.Sprintf("      - set: {var.sample_%s: 'var.sample_%s + 1', var.count_%d: 'var[\"booking_\" + arg.worker + \"_%d\"]'}\n", id, id, i, i)
+	}
+	db := complexitySource(t, source)
+	db.Game.Planning = &Planning{Entities: map[string]Entity{}}
+	for _, id := range ids {
+		db.Game.Planning.Entities[id] = Entity{}
+	}
+	got := fmt.Sprint(errors.Join(complexityWarningsForTest(t, db, ComplexityConfig{})...))
+	for _, want := range []string{`indexed state keys "var.sample_*" = 8`, `indexed state keys "var.count_#" = 8`, `indexed state keys "var.booking_*_#" = 8`, "game.yaml:5:"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q: %s", want, got)
+		}
+	}
+	if strings.Contains(got, "= 16") {
+		t.Fatal("read/write or repeated key double counted", got)
+	}
+	if got := complexityWarningsForTest(t, db, ComplexityConfig{IndexedNames: -1}); len(got) != 0 {
+		t.Fatal(got)
+	}
+}
+
+func TestComplexitySmallCopiedEvents(t *testing.T) {
+	db := complexitySource(t, "title: Neutral\n")
+	source := "events:\n"
+	for i := range 8 {
+		source += fmt.Sprintf("  inspect_%d: {do: [{call: inspect}]}\n", i)
+	}
+	db.FS = fstest.MapFS{"story.yaml": {Data: []byte(source)}}
+	db.sourceFiles = map[string]*sourceDocument{"story.yaml": {}}
+	got := fmt.Sprint(errors.Join(complexityWarningsForTest(t, db, ComplexityConfig{})...))
+	if !strings.Contains(got, "same-shaped events blocks = 8") {
+		t.Fatal(got)
+	}
+	if got := complexityWarningsForTest(t, db, ComplexityConfig{MinBlockNodes: -1, IndexedNames: -1, UnusedDefinitions: -1}); len(got) != 0 {
+		t.Fatal(got)
+	}
+}
+
+func TestComplexitySmallIDCopiesAndFalseFriends(t *testing.T) {
+	ids := []string{"fir_tree", "fir", "ash", "birch", "cedar", "maple", "elm", "willow"}
+	source := "events:\n"
+	for _, id := range ids {
+		source += fmt.Sprintf("  inspect_%s: {do: [{set: {var.checked_%s: '1'}}]}\n", id, id)
+	}
+	db := complexitySource(t, "title: Neutral\n")
+	db.Game.Planning = &Planning{Activities: map[string]Activity{}}
+	for _, id := range ids {
+		db.Game.Planning.Activities[id] = Activity{}
+	}
+	db.FS = fstest.MapFS{"story.yaml": {Data: []byte(source)}}
+	db.sourceFiles = map[string]*sourceDocument{"story.yaml": {}}
+	got := fmt.Sprint(errors.Join(complexityWarningsForTest(t, db, ComplexityConfig{})...))
+	for _, want := range []string{"same-shaped events blocks = 8", `indexed state keys "var.checked_*" = 8`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q: %s", want, got)
+		}
+	}
+	// Names without a complete ID token do not become a collection family.
+	db = complexitySource(t, `screens:
+  room:
+    entries:
+    - label: 'var.checked_1 var.checked_2'
+      do:
+      - set: {var.first: 'var.first + var.ashes + var.maples', var.total: 'var["checked"] + var["checked"]'}
+`)
+	db.Game.Planning = &Planning{Entities: map[string]Entity{"fir": {}, "ash": {}, "maple": {}}}
+	if got := complexityWarningsForTest(t, db, ComplexityConfig{IndexedNames: 2}); len(got) != 0 {
+		t.Fatal(got)
 	}
 }

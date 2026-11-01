@@ -16,6 +16,7 @@ import (
 	"github.com/goccy/go-yaml/ast"
 
 	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/expr"
 )
 
 // ComplexityConfig controls authoring warnings consumed by checkdata. Zero uses
@@ -67,6 +68,9 @@ type complexityScan struct {
 	warnings []error
 	blocks   []complexityBlock
 	values   map[string]bool
+	ids      []string
+	keys     map[string]map[string]bool
+	keySites map[string]complexityBlock
 }
 
 // ComplexityWarnings rereads the sources identified by Load, without
@@ -77,7 +81,16 @@ type complexityScan struct {
 // where written and are not expanded. Only events, screens and planning rules
 // participate in duplicate and unused-definition checks.
 func (db *DB) ComplexityWarnings(cfg ComplexityConfig) ([]error, error) {
-	s := complexityScan{cfg: cfg.defaults(), values: map[string]bool{}}
+	s := complexityScan{cfg: cfg.defaults(), values: map[string]bool{}, keys: map[string]map[string]bool{}, keySites: map[string]complexityBlock{}}
+	if p := db.Game.Planning; p != nil {
+		s.ids = append(slices.Sorted(maps.Keys(p.Entities)), slices.Sorted(maps.Keys(p.Activities))...)
+		slices.SortFunc(s.ids, func(a, b string) int {
+			if len(a) != len(b) {
+				return len(b) - len(a)
+			}
+			return strings.Compare(a, b)
+		})
+	}
 	for _, name := range slices.Sorted(maps.Keys(db.sourceFiles)) {
 		b, err := fs.ReadFile(db.FS, name)
 		if err != nil {
@@ -101,6 +114,7 @@ func (db *DB) ComplexityWarnings(cfg ComplexityConfig) ([]error, error) {
 		doc.root, doc.tokenPaths, doc.bareKeys = nil, nil, nil
 	}
 	s.definitions(db)
+	s.indexedKeys()
 	return sortedDiagnostics(s.warnings), nil
 }
 
@@ -142,13 +156,14 @@ func (s *complexityScan) walk(doc *sourceDocument, node ast.Node, p string, typ 
 				families[family] = append(families[family], child)
 			}
 			if typ == reflect.TypeFor[Assignments]() {
+				s.stateKeys(doc, child, key)
 				if index, err := assignmentIndex(key); err == nil && index.Set() {
 					s.expression(doc, child, index.String())
 				}
 			}
 			s.walk(doc, e.Value, child, complexityField(typ, key))
 			if p == "events" || p == "screens" || p == "planning.rules" {
-				shape, count, last, operations := complexityShape(e.Value)
+				shape, count, last, operations := s.complexityShape(e.Value)
 				s.blocks = append(s.blocks, complexityBlock{doc, child, key, p, shape, count})
 				s.limit(doc, child, "block lines", last-e.Key.GetToken().Position.Line+1, s.cfg.BlockLines, "extract shared behavior and keep each event or screen focused")
 				if p == "screens" {
@@ -182,6 +197,7 @@ func (s *complexityScan) walk(doc *sourceDocument, node ast.Node, p string, typ 
 }
 
 func (s *complexityScan) expression(doc *sourceDocument, p, value string) {
+	s.stateKeys(doc, p, value)
 	s.limit(doc, p, "expression characters", utf8.RuneCountInString(value), s.cfg.ExpressionLength, "name intermediate values or move repeated calculations into a rule")
 	s.limit(doc, p, "expression nesting", expressionNesting(value), s.cfg.ExpressionDepth, "split nested calculations into named steps")
 }
@@ -238,12 +254,12 @@ func expressionNesting(value string) int {
 
 // Hash structural keys and scalar kinds, retaining sequence order and sorting
 // map entries. Literal values vary between copies. Size excludes map keys.
-func complexityShape(node ast.Node) (shape [32]byte, nodes, last, operations int) {
+func (s *complexityScan) complexityShape(node ast.Node) (shape [32]byte, nodes, last, operations int) {
 	if node == nil {
 		return shape, nodes, last, operations
 	}
 	if literal, ok := node.(*ast.LiteralNode); ok && literal.Value != nil {
-		shape, nodes, _, operations = complexityShape(literal.Value)
+		shape, nodes, _, operations = s.complexityShape(literal.Value)
 		// The parser positions a block scalar's value at its final line.
 		return shape, nodes, literal.Value.GetToken().Position.Line, operations
 	}
@@ -251,7 +267,7 @@ func complexityShape(node ast.Node) (shape [32]byte, nodes, last, operations int
 	last = node.GetToken().Position.Line + strings.Count(strings.TrimRight(node.GetToken().Origin, "\r\n"), "\n")
 	var parts []string
 	add := func(v ast.Node) {
-		h, count, line, ops := complexityShape(v)
+		h, count, line, ops := s.complexityShape(v)
 		nodes += count
 		last = max(last, line)
 		operations += ops
@@ -265,6 +281,9 @@ func complexityShape(node ast.Node) (shape [32]byte, nodes, last, operations int
 				operations++
 			}
 			add(e.Value)
+			if strings.HasPrefix(key, "var.") || strings.HasPrefix(key, "flag.") {
+				key = s.nameFamily(key)
+			}
 			parts[len(parts)-1] = strconv.Quote(key) + ":" + parts[len(parts)-1]
 		}
 		slices.Sort(parts)
@@ -285,8 +304,14 @@ func (s *complexityScan) definitions(db *DB) {
 	groups := map[string][]complexityBlock{}
 	unused := map[string][]complexityBlock{}
 	for _, b := range s.blocks {
-		if s.cfg.MinBlockNodes > 0 && b.nodes >= s.cfg.MinBlockNodes {
+		// Small ID/date copies are still burdensome even below the general size floor.
+		family := s.nameFamily(b.name)
+		small := family != b.name
+		if s.cfg.MinBlockNodes > 0 && (b.nodes >= s.cfg.MinBlockNodes || small) {
 			key := fmt.Sprintf("%s/%x", b.section, b.shape)
+			if b.nodes < s.cfg.MinBlockNodes {
+				key += "/" + family
+			}
 			groups[key] = append(groups[key], b)
 		}
 		if s.values[b.name] {
@@ -313,6 +338,55 @@ func (s *complexityScan) definitions(db *DB) {
 			}
 			b := blocks[0]
 			s.warn(b.doc, b.path, fmt.Sprintf("possibly unreferenced %s definitions = %d (limit %d): %s; connect consumers or remove obsolete definitions; external script entry points may be intentional", section, len(blocks), s.cfg.UnusedDefinitions, strings.Join(names, ", ")))
+		}
+	}
+}
+
+// Match complete underscore-delimited IDs, longest first, so "fir" never
+// absorbs "fir_tree" or a word such as "first". Numeric runs retain the
+// existing sibling-key convention.
+func (s *complexityScan) nameFamily(name string) string {
+	padded := "_" + name + "_"
+	for _, id := range s.ids {
+		padded = strings.ReplaceAll(padded, "_"+id+"_", "_*_")
+	}
+	return indexedName.ReplaceAllString(padded[1:len(padded)-1], "#")
+}
+
+func (s *complexityScan) stateKeys(doc *sourceDocument, path, source string) {
+	if s.cfg.IndexedNames < 0 {
+		return
+	}
+	e, err := expr.Parse(source)
+	if err != nil {
+		return
+	} // Shape diagnostics own malformed expressions.
+	for _, root := range []string{"var", "flag"} {
+		for _, key := range e.KeyPatterns(root) {
+			family := s.nameFamily(key)
+			if family == key && !strings.Contains(key, "*") || strings.Trim(family, "*#_") == "" {
+				continue
+			}
+			family = root + "." + family
+			if s.keys[family] == nil {
+				s.keys[family] = map[string]bool{}
+				s.keySites[family] = complexityBlock{doc: doc, path: path}
+			}
+			member := key
+			if strings.Contains(key, "*") {
+				member = doc.name + ":" + path + ":" + key
+			}
+			s.keys[family][member] = true
+		}
+	}
+}
+
+func (s *complexityScan) indexedKeys() {
+	for _, family := range slices.Sorted(maps.Keys(s.keys)) {
+		count := len(s.keys[family])
+		if s.cfg.IndexedNames > 0 && count >= s.cfg.IndexedNames {
+			site := s.keySites[family]
+			s.warn(site.doc, site.path, fmt.Sprintf("indexed state keys %q = %d (limit %d); replace ID/date keys with typed collection attributes or dated reservations", family, count, s.cfg.IndexedNames))
 		}
 	}
 }

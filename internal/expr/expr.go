@@ -171,6 +171,49 @@ type Ref struct {
 	Path []Step
 }
 
+// KeyPatterns returns distinct direct keys of root in source order for authoring
+// diagnostics. Literal keys are retained; concatenated indexes replace unknown
+// operands with "*". It never evaluates expressions, including random calls.
+// Patterns describe syntax, not the possible values of an index.
+func (e *Expr) KeyPatterns(root string) []string {
+	if e == nil {
+		return nil
+	}
+	var pattern func(node) string
+	pattern = func(n node) string {
+		switch x := n.(type) {
+		case *lit:
+			if text, ok := x.v.(string); ok {
+				return text
+			}
+		case *binop:
+			if x.op == "+" {
+				return pattern(x.l) + pattern(x.r)
+			}
+		}
+		return "*"
+	}
+	var out []string
+	seen := map[string]bool{}
+	walk(e.root, func(n node) {
+		var base node
+		var key string
+		switch x := n.(type) {
+		case *field:
+			base, key = x.x, x.name
+		case *index:
+			base, key = x.x, pattern(x.i)
+		default:
+			return
+		}
+		if id, ok := base.(*ident); ok && id.name == root && !seen[key] {
+			seen[key] = true
+			out = append(out, key)
+		}
+	})
+	return out
+}
+
 // Refs returns the names an expression refers to, with the sequence of fields that follows, in
 // order of appearance (built-in functions excluded).
 // Data checks use it to find mistyped fields on fixed-type items (such as party).

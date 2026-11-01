@@ -37,10 +37,10 @@ need, rather than concealing generated copies.
 | --- | --- |
 | File lines | Physical lines, including comments and blank lines, in the source documents identified by the loader. A final newline does not add an empty line. |
 | Block lines | Source span from the definition key to its last value token, including multiline scalar text, for events, screens and planning rules. Trailing comments and blank lines are excluded. |
-| Repetitions | A structural fingerprint of each event, screen or planning rule, grouped across files. Mapping keys and scalar kinds remain; scalar values are erased. Mapping order is ignored and sequence order remains. Only blocks with at least `min_block_nodes` value/container nodes participate. One warning represents a whole group. |
+| Repetitions | A structural fingerprint of each event, screen or planning rule, grouped across files. Mapping keys and scalar kinds remain; scalar values are erased. Numeric/declared-ID families in dotted variable and flag assignment keys are normalized as well. Mapping order is ignored and sequence order remains. Blocks with at least `min_block_nodes` value/container nodes participate. Smaller blocks also participate when their names share a numeric or declared entity/activity ID family; these are grouped by both family and shape. One warning represents a whole group. |
 | Expression length/depth | Unicode character count and maximum parenthesis/bracket nesting in schema-typed expressions. Quoted delimiters do not add depth. This is syntactic nesting, not execution cost or binary-operator AST depth. Long prose is not an expression. |
 | Screen operations | Number of authored `set` and `plan` command keys within a screen, including branches. Called event bodies are not expanded. |
-| Indexed names | Sibling keys whose numeric runs become the same name, such as `plot_1` through `plot_8`. Dates and ID fragments can indicate a manually expanded collection. One warning represents each family. |
+| Indexed names | Sibling keys whose numeric runs become the same name, such as `plot_1` through `plot_8`. Dates and ID fragments can indicate a manually expanded collection. One warning represents each family. Expression reads and assignment targets also group `var`/`flag` keys by numeric runs and underscore-delimited declared entity/activity IDs. Literal keys count once across reads and writes. Concatenated indexes preserve literal fragments and replace unknown operands with `*`; each distinct source site counts once. Plain dynamic lookups without a literal fragment are ignored. |
 | Unused definitions | Events, screens and planning rules without an exact scalar-value reference anywhere in loaded source. Events with triggers are excluded. One warning lists each section's candidates once it reaches the budget. |
 
 The checker rereads source files after validation; keep the game unchanged during
@@ -75,3 +75,11 @@ overrun, so CI detects growth without changing the warning-only CLI exit status.
 The atago check suite verifies plain and JSON warnings, threshold changes,
 configuration errors and unchanged source files. The workshop scenario checks
 that simulation and month closing retain their existing results.
+
+For example, `var.checked_oak` through `var.checked_willow`, with eight declared
+residents, report one indexed-state family even if no variable declarations exist.
+`var["booking_" + arg.resident + "_12"]` also contributes to a family. Prefer a
+typed resident attribute or a dated reservation over encoding identity in a key.
+Quoted prose that merely mentions these expressions is ignored. Dynamic index
+patterns are syntactic hints, not an enumeration of runtime keys. Existing
+`indexed_names` and `repetitions` budgets and negative disabling options apply.
