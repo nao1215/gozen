@@ -95,8 +95,8 @@ func (db *DB) CommandsFingerprint(name string) (string, error) {
 			if cmd.Call.Event != "" {
 				visitEvent(cmd.Call.Event)
 			}
-			if cmd.Open != "" {
-				visitScreen(cmd.Open)
+			if cmd.Open.Screen != "" {
+				visitScreen(cmd.Open.Screen)
 			}
 		})
 	}

@@ -436,3 +436,52 @@ scenarios:
         - 'Returned potter/2'
         - 'Returned weaver/3'
         - 'Totals 2/3'
+- name: typed screen arguments survive confirmation cancellation and nested close
+  steps:
+  - fixture:
+      file: screens.txt
+      content: |
+        gap 1
+        wait 10
+        do call: {event: stock_visit, args: {amount: 2}}
+        wait 10
+        press z
+        wait 4
+        press down
+        press z
+        wait 12
+        press z
+        wait 4
+        press z
+        wait 12
+        press x
+        wait 4
+        press z
+        wait 12
+        press z
+        wait 4
+        press z
+        wait 12
+        press x
+        wait 4
+        press z
+        wait 12
+        press x
+        wait 4
+        press z
+        wait 12
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script screens.txt --trace screens.jsonl
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+      file:
+        path: screens.jsonl
+        contains:
+        - 'Stock 2'
+        - 'Received 12'
+        - 'Returned 2'
+        - '"total":2'

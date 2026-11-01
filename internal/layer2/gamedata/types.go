@@ -1706,6 +1706,8 @@ func (p Picture) Brightness() float64 {
 // AuthorScreen is a titled list of information, pictures or actions rendered by play.
 // Entries keep authored order; when hides entries until their condition holds.
 type AuthorScreen struct {
+	// Params are immutable bindings for the title, entries and their commands.
+	Params map[string]string `yaml:"params" json:",omitempty"`
 	// Kind optionally binds a planning view: entities, timeline, calendar or ensemble.
 	Kind string       `yaml:"kind"`
 	View PlanningView `yaml:"view"`

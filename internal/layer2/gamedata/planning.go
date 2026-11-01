@@ -548,6 +548,8 @@ func (c *checker) planningView(w string, v PlanningView) {
 			screen := c.db.Game.Screens[id]
 			if screen == nil || !screen.View.Fullscreen || seenTabs[id] {
 				c.errorf(diag.UnknownReference, w+".tabs", "unknown, duplicate or non-fullscreen tab %q", id)
+			} else if len(screen.Params) > 0 {
+				c.errorf(diag.Shape, w+".tabs", "tab screens cannot require arguments")
 			} else if !slices.Equal(screen.View.Tabs, v.Tabs) {
 				c.errorf(diag.Shape, w+".tabs", "tab screens must declare the same ordered tabs")
 			}
@@ -581,6 +583,8 @@ func (c *checker) planningView(w string, v PlanningView) {
 			c.text(at+".forecast_label", item.ForecastLabel, FieldNames)
 			if item.Screen != "" && c.db.Game.Screens[item.Screen] == nil {
 				c.errorf(diag.UnknownReference, at, "unknown timeline screen %q", item.Screen)
+			} else if screen := c.db.Game.Screens[item.Screen]; screen != nil && len(screen.Params) > 0 {
+				c.errorf(diag.Shape, at, "timeline screen requires arguments; use a parameterless wrapper")
 			}
 		}
 	}
@@ -593,6 +597,8 @@ func (c *checker) planningView(w string, v PlanningView) {
 			at := fmt.Sprintf("%s.markers[%d].screen", w, i)
 			if c.db.Game.Screens[marker.Screen] == nil {
 				c.errorf(diag.UnknownReference, at, "unknown calendar screen %q", marker.Screen)
+			} else if len(c.db.Game.Screens[marker.Screen].Params) > 0 {
+				c.errorf(diag.Shape, at, "calendar screen requires arguments; use a parameterless wrapper")
 			}
 			if previous := destinations[marker.Date]; previous != "" && previous != marker.Screen {
 				c.errorf(diag.Shape, at, "calendar date has conflicting screens")

@@ -990,16 +990,11 @@ func (db *DB) Check() []error {
 		c.ref(w+".location", "location", e.Location, ok)
 		c.expr(w+".when", e.When, FieldNames)
 		if e.Params != nil {
-			c.needsVersion(w+".params", "event parameters", SchemaVersion10)
 			if e.Trigger != "" {
 				c.errorf(diag.Shape, w+".trigger", "triggered events cannot require arguments; use a parameterless wrapper")
 			}
-			for name, kind := range e.Params {
-				if !varName.MatchString(name) || !slices.Contains([]string{"number", "bool", "string", "entity", "activity", "actor", "date"}, kind) {
-					c.errorf(diag.Shape, w+".params."+name, "invalid parameter name or type %q", kind)
-				}
-			}
 		}
+		c.parameters(w+".params", e.Params)
 		c.params = e.Params
 		c.commands(w+".do", e.Do, FieldNames)
 		c.params = nil
@@ -1745,24 +1740,25 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			_, ok = db.Skills[cmd.Learn.Skill]
 			c.ref(w+".learn.skill", "skill", cmd.Learn.Skill, ok)
 		case "open":
-			if db.Game.NoMenus() && slices.Contains([]string{"save", "load", "title"}, cmd.Open) {
-				c.errorf(diag.Shape, w+".open", "open: %s does not go with menus: none in game.yaml (there is no title, and the play is kept in the autosave alone)", cmd.Open)
-			} else if cmd.Open == "profiles" && len(db.Profiles) == 0 {
+			c.screenCall(w+".open", cmd.Open, names)
+			if db.Game.NoMenus() && slices.Contains([]string{"save", "load", "title"}, cmd.Open.Screen) {
+				c.errorf(diag.Shape, w+".open", "open: %s does not go with menus: none in game.yaml (there is no title, and the play is kept in the autosave alone)", cmd.Open.Screen)
+			} else if cmd.Open.Screen == "profiles" && len(db.Profiles) == 0 {
 				c.errorf(diag.UnknownReference, w+".open", "open: profiles needs profiles in data/ (the character book is empty)")
-			} else if cmd.Open == "bestiary" && len(db.Enemies) == 0 {
+			} else if cmd.Open.Screen == "bestiary" && len(db.Enemies) == 0 {
 				c.errorf(diag.UnknownReference, w+".open", "open: bestiary needs enemies in data/ (the monster book is empty)")
-			} else if cmd.Open == "ranch" && db.Breeding == nil {
+			} else if cmd.Open.Screen == "ranch" && db.Breeding == nil {
 				c.errorf(diag.MonsterRules, w+".open", "open: ranch needs breeding in data/")
-			} else if cmd.Open == "streams" && db.Streams == nil {
+			} else if cmd.Open.Screen == "streams" && db.Streams == nil {
 				c.errorf(diag.UnknownReference, w+".open", "open: streams needs streams in game.yaml")
-			} else if cmd.Open == "streams" {
+			} else if cmd.Open.Screen == "streams" {
 				c.needsVersion(w+".open", "open: streams", SchemaVersion9)
-			} else if cmd.Open == "ranch" {
+			} else if cmd.Open.Screen == "ranch" {
 				c.needsVersion(w+".open", "open: ranch", SchemaVersion6)
-			} else if db.Game.Screens[cmd.Open] != nil {
+			} else if db.Game.Screens[cmd.Open.Screen] != nil {
 				c.needsVersion2(w+".open", "a declared screen")
-			} else if !slices.Contains(OpenScreens, cmd.Open) {
-				c.errorf(diag.NotAWord, w+".open", "want one of %s (or a screen declared in game.yaml screens), not %q", strings.Join(OpenScreens, ", "), cmd.Open)
+			} else if !slices.Contains(OpenScreens, cmd.Open.Screen) {
+				c.errorf(diag.NotAWord, w+".open", "want one of %s (or a screen declared in game.yaml screens), not %q", strings.Join(OpenScreens, ", "), cmd.Open.Screen)
 			}
 		case "dive":
 			if l, ok := db.Locations[cmd.Dive]; !ok {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"image"
+	"os"
 	"strings"
 	"testing"
 
@@ -22,7 +23,7 @@ func TestSurfaceTabsPreserveStateAndOpener(t *testing.T) {
 	}
 	g := &Game{db: db, st: testgame.State(db, 1)}
 	closed := 0
-	s := newAuthorScreen(g, "work", func() { closed++ })
+	s := newAuthorScreen(g, "work", func() { closed++ }, nil)
 	g.stack = []scene{&authorScreen{}, s}
 	state, err := json.Marshal(g.st)
 	if err != nil {
@@ -68,7 +69,7 @@ func TestAuthorScreenVisibilityAndReload(t *testing.T) {
 	}}
 	g := &Game{db: db, st: testgame.State(db, 1)}
 	g.st.Vars["visits"] = float64(3)
-	s := newAuthorScreen(g, "notes", nil)
+	s := newAuthorScreen(g, "notes", nil, nil)
 	if s.title != "Visits 3" || len(s.entries) != 1 || s.entries[0].Label != "Arrival" {
 		t.Fatalf("unexpected screen: %+v", s)
 	}
@@ -398,7 +399,7 @@ func TestFullScreenContextUsesVisibleTargetActions(t *testing.T) {
 		},
 	}}
 	g := &Game{db: db, st: testgame.State(db, 1)}
-	s := newAuthorScreen(g, "workshop", nil)
+	s := newAuthorScreen(g, "workshop", nil, nil)
 	ids, cells := s.surfaceTargets(g)
 	if len(ids) != 2 || ids[0] != "artisan" {
 		t.Fatalf("default seat order: %v", ids)
@@ -436,7 +437,7 @@ func TestEntityDetailSelectionSurvivesRefresh(t *testing.T) {
 		Kind: "entities", View: data.PlanningView{Fullscreen: true, Detail: "notes"},
 	}}
 	g := &Game{db: db, st: testgame.State(db, 1)}
-	s := newAuthorScreen(g, "team", nil)
+	s := newAuthorScreen(g, "team", nil, nil)
 	ids, cells := s.surfaceTargets(g)
 	if len(ids) != 2 || len(cells) != 2 {
 		t.Fatal("missing member targets")
@@ -457,7 +458,7 @@ func TestTargetActionsScrollInsideViewport(t *testing.T) {
 		db.Game.Screens["team"].Entries = append(db.Game.Screens["team"].Entries, data.ScreenEntry{Label: "Assign", Target: "artisan"})
 	}
 	g := &Game{db: db, st: testgame.State(db, 1)}
-	s := newAuthorScreen(g, "team", nil)
+	s := newAuthorScreen(g, "team", nil, nil)
 	s.openTarget(g, "artisan", entryBounds(data.ScreenEntry{Bounds: []int{900, 450, 200, 80}}))
 	_, sh := g.screen()
 	if s.popup.y < 0 || s.popup.y+s.popup.height() > sh || s.popup.rows > 6 {
@@ -535,7 +536,7 @@ func TestTargetActionPreviewConfirmation(t *testing.T) {
 	for i := range g.db.Game.Screens["work"].Entries {
 		g.db.Game.Screens["work"].Entries[i].Target = "artisan"
 	}
-	s := newAuthorScreen(g, "work", nil)
+	s := newAuthorScreen(g, "work", nil, nil)
 	open := func() { s.openTarget(g, "artisan", image.Rect(0, 0, 100, 100)) }
 	click := func(row int) {
 		r := s.popup.rowRect(row)
@@ -582,7 +583,7 @@ func TestTargetActionPreviewConfirmation(t *testing.T) {
 		t.Fatalf("action: %v", g.st.Vars)
 	}
 
-	s = newAuthorScreen(g, "work", nil)
+	s = newAuthorScreen(g, "work", nil, nil)
 	open()
 	click(0)
 	g.in = input{pressed: [numButtons]bool{btnOK: true}}
@@ -609,7 +610,7 @@ func TestCandidateListPublicValuesAndSelection(t *testing.T) {
 		db.Game.Screens["pick"].Entries = append(db.Game.Screens["pick"].Entries, data.ScreenEntry{Target: "maker", Label: "Maker"})
 	}
 	g := &Game{db: db, st: testgame.State(db, 1)}
-	s := newAuthorScreen(g, "pick", nil)
+	s := newAuthorScreen(g, "pick", nil, nil)
 	before, err := json.Marshal(g.st.Planning)
 	if err != nil {
 		t.Fatal(err)
@@ -646,7 +647,7 @@ func TestCandidateListPublicValuesAndSelection(t *testing.T) {
 		t.Fatal("candidate browsing mutated simulation")
 	}
 	db.Game.Screens["pick"].View.Portrait = ""
-	if newAuthorScreen(g, "pick", nil).list.rowH != 44 {
+	if newAuthorScreen(g, "pick", nil, nil).list.rowH != 44 {
 		t.Fatal("ordinary list compatibility lost")
 	}
 }
@@ -664,7 +665,7 @@ func TestCandidateExplanationPaging(t *testing.T) {
 		}},
 	}
 	g := &Game{db: db, st: testgame.State(db, 1)}
-	s := newAuthorScreen(g, "pick", nil)
+	s := newAuthorScreen(g, "pick", nil, nil)
 	parent := &authorScreen{}
 	s.timelineContext = parent
 	s.layoutTimelineCandidates(g)
@@ -745,5 +746,44 @@ func TestCandidateExplanationPaging(t *testing.T) {
 	s = s.refreshed(g)
 	if s.candidatePage != 0 {
 		t.Fatal("removed entry retained page")
+	}
+}
+
+func TestAuthorScreenArguments(t *testing.T) {
+	g := wldOpenWith(t, Options{FS: os.DirFS("../../docs/examples/event-arguments"), Location: "workshop", Seed: 17})
+	wldFrames(t, g, 30)
+	if err := g.events.StartBound("stock_visit", map[string]any{"amount": float64(2)}); err != nil {
+		t.Fatal(err)
+	}
+	wldFrames(t, g, 10)
+	screen := func(title string) *authorScreen {
+		t.Helper()
+		s := sysAs[*authorScreen](t, g.stack[len(g.stack)-1])
+		if s.title != title {
+			t.Fatalf("title %q, want %q", s.title, title)
+		}
+		return s
+	}
+	s := screen("Stock 2")
+	if s.entries[0].Label != "Collect 2" {
+		t.Fatal(s.entries)
+	}
+	wldPlay(t, g, "press z\nwait 4\npress down\npress z\nwait 12\n", 50)
+	screen("Receipt 12")
+	if g.st.Vars["total"] != nil && g.st.Vars["total"] != float64(0) {
+		t.Fatal("cancel applied stock effect")
+	}
+	wldPlay(t, g, "press x\nwait 4\npress z\nwait 12\n", 50)
+	screen("Stock 2")
+	wldPlay(t, g, "press z\nwait 4\npress z\nwait 12\n", 50)
+	screen("Receipt 12")
+	if g.st.Vars["total"] != float64(2) {
+		t.Fatalf("confirmed total: %v", g.st.Vars)
+	}
+	wldPlay(t, g, "press x\nwait 4\npress z\nwait 12\n", 50)
+	screen("Stock 2")
+	wldPlay(t, g, "press x\nwait 4\npress z\nwait 12\n", 50)
+	if g.st.Vars["total"] != float64(2) {
+		t.Fatal("closing repeated the effect")
 	}
 }

@@ -1233,6 +1233,25 @@
           },
           "x-type": "string"
         },
+        "params": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Required typed parameters for a plain authored list (schema 10); immutable arg fields are available in the title and entries.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → string"
+        },
         "title": {
           "description": "The title, with text interpolation and translation.",
           "type": "string",
@@ -5423,17 +5442,17 @@
           "x-type": "[Command](#command)[]"
         },
         "open": {
+          "$ref": "#/$defs/ScreenCall",
           "description": "Opens a game screen by name.",
-          "type": "string",
           "x-contract": {
-            "default": "empty string",
-            "legacy_default": "empty string",
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
             "zero": "-",
             "required": "exactly one verb per command",
             "reference": "-",
             "version": "0, 1, 2"
           },
-          "x-type": "string"
+          "x-type": "[ScreenCall](#screencall) or string"
         },
         "open_wall": {
           "description": "Turns the wall next to the party's cell in a dungeon into the tile of the given map character, such as a hidden stair.",
@@ -15623,6 +15642,58 @@
         }
       },
       "type": "object"
+    },
+    "ScreenCall": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "args": {
+              "additionalProperties": {
+                "description": "An expression. gozen check checks its syntax, names and types.",
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              },
+              "description": "Pure expressions for every declared parameter, evaluated once in the caller scope before opening.",
+              "type": [
+                "object",
+                "null"
+              ],
+              "x-contract": {
+                "default": "empty map",
+                "legacy_default": "empty map",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string → expression"
+            },
+            "screen": {
+              "description": "Literal authored screen ID. Built-in screens use the scalar form.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            }
+          },
+          "type": "object"
+        }
+      ],
+      "description": "A plain authored screen invocation with frozen typed arguments (schema 10), or a scalar name for parameterless screens."
     },
     "ScreenEntry": {
       "additionalProperties": false,

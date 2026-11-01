@@ -1916,7 +1916,11 @@ func (g *Game) begin(r event.Request) {
 		}
 		g.push(newSaveMenu(g, true, done))
 	case event.Open:
-		g.openScreen(r.Screen, done)
+		if g.db.Game.Screens[r.Screen] != nil {
+			g.push(newAuthorScreen(g, r.Screen, done, r.Args))
+		} else {
+			g.openScreen(r.Screen, done)
+		}
 	case event.Clear:
 		g.req = nil
 		g.events.Stop()

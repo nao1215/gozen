@@ -5,6 +5,7 @@ import (
 	"errors"
 	"maps"
 	"slices"
+	"strings"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	lang "github.com/nao1215/gozen/internal/text"
@@ -107,7 +108,7 @@ func (c Cursor) validateBindings(db *data.DB, version int) error {
 			return errors.New("bound cursor requires save format 3 and a named root")
 		}
 	}
-	if ev := db.Events[c.Event]; ev != nil {
+	if db.Events[c.Event] != nil || strings.HasPrefix(c.Event, "screen:") {
 		if _, err := db.ValidateArguments(c.Event, c.Args); err != nil {
 			return err
 		}

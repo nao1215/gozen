@@ -5,3 +5,25 @@ planning:
   calendar: {start: '2030-01-01', end: '2030-01-02', phases: [day]}
   attributes: {vigor: {type: number, initial: 0}}
   entities: {potter: {name: Potter}, weaver: {name: Weaver}}
+screens:
+  stock:
+    params: {amount: number}
+    title: 'Stock {arg.amount}'
+    entries:
+    - label: 'Collect {arg.amount}'
+      when: 'arg.amount > 0'
+      do:
+      - choice:
+        - label: Confirm
+          do:
+          - set: {var.total: 'var.total + arg.amount'}
+        - label: Cancel
+      - open: {screen: receipt, args: {amount: 'arg.amount + 10'}}
+      - say: 'Stock {arg.amount}'
+  receipt:
+    params: {amount: number}
+    title: 'Receipt {arg.amount}'
+    entries:
+    - label: Read
+      do:
+      - call: {event: stock_report, args: {amount: 'arg.amount'}}

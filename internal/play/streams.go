@@ -711,7 +711,7 @@ func barHeight(bs []barButton) float64 {
 
 // opensConfig reports whether the entry opens the settings.
 func opensConfig(e world.Entry) bool {
-	return e.Action != nil && slices.ContainsFunc(e.Action.Do, func(c data.Command) bool { return c.Open == "config" })
+	return e.Action != nil && slices.ContainsFunc(e.Action.Do, func(c data.Command) bool { return c.Open.Screen == "config" })
 }
 
 // langShort is a language as the bar's button names it.

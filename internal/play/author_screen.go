@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"maps"
 	"slices"
 	"strings"
 
 	"github.com/nao1215/gozen/internal/event"
+	"github.com/nao1215/gozen/internal/expr"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -17,6 +19,7 @@ import (
 
 // authorScreen presents an authored list without requiring a custom Go screen.
 type authorScreen struct {
+	args               map[string]any
 	timelineContext    *authorScreen
 	timelineActivity   string
 	candidatePage      int
@@ -47,19 +50,19 @@ type authorScreen struct {
 	done               func()
 }
 
-func newAuthorScreen(g *Game, name string, done func()) *authorScreen {
-	s := &authorScreen{name: name, done: done}
+func newAuthorScreen(g *Game, name string, done func(), args map[string]any) *authorScreen {
+	s := &authorScreen{name: name, done: done, args: maps.Clone(args)}
 	def := g.db.Game.Screens[name]
 	var items []listItem
 	if def != nil {
-		s.title = data.Render(g.db.Tr(def.Title), g.st.Env())
+		s.title = data.Render(g.db.Tr(def.Title), s.env(g))
 		for i, entry := range def.Entries {
-			visible, err := entry.When.Bool(g.st.Env())
+			visible, err := entry.When.Bool(s.env(g))
 			if err != nil || !visible {
 				continue
 			}
-			entry.Label = data.Render(g.db.Tr(entry.Label), g.st.Env())
-			entry.Text = data.Render(g.db.Tr(entry.Text), g.st.Env())
+			entry.Label = data.Render(g.db.Tr(entry.Label), s.env(g))
+			entry.Text = data.Render(g.db.Tr(entry.Text), s.env(g))
 			s.entries = append(s.entries, entry)
 			s.indices = append(s.indices, i)
 			items = append(items, listItem{label: entry.Label})
@@ -71,6 +74,11 @@ func newAuthorScreen(g *Game, name string, done func()) *authorScreen {
 		s.list.w, s.list.rowH, s.list.rows = sw*.56-36, 64, max(1, int((sh-140)/64))
 	}
 	return s
+}
+
+// env keeps frozen screen bindings separate from the opener and current state.
+func (s *authorScreen) env(g *Game) expr.Env {
+	return expr.Chain{expr.Map{"arg": expr.Map(s.args)}, g.st.Env()}
 }
 
 // Plain authored lists may bind entries to public planning portraits and fields.
@@ -150,7 +158,7 @@ func (s *authorScreen) drawTimelineCandidates(g *Game, dst *ebiten.Image) {
 		}
 		s.drawCandidates(g, dst)
 	}
-	g.drawPlanningText(dst, data.Render(g.db.Tr(g.db.Game.Screens[s.name].View.Footer), g.st.Env()), sw-348, sh-32, 336, 15, 1, g.th.dim)
+	g.drawPlanningText(dst, data.Render(g.db.Tr(g.db.Game.Screens[s.name].View.Footer), s.env(g)), sw-348, sh-32, 336, 15, 1, g.th.dim)
 	g.window(dst, 0, sh-108, sw-360, 108)
 	for _, lane := range parent.timelineLanes(g) {
 		if lane.item.Activity == s.timelineActivity {
@@ -220,7 +228,7 @@ func (s *authorScreen) overlay() bool { return s.running }
 func (s *authorScreen) liveKeep(g *Game) scene { return s.refreshed(g) }
 
 func (s *authorScreen) refreshed(g *Game) *authorScreen {
-	n := newAuthorScreen(g, s.name, s.done)
+	n := newAuthorScreen(g, s.name, s.done, s.args)
 	n.timelineContext, n.timelineActivity = s.timelineContext, s.timelineActivity
 	if n.timelineContext != nil {
 		n.layoutTimelineCandidates(g)
@@ -324,7 +332,7 @@ func (s *authorScreen) activate(g *Game) {
 		return
 	}
 	entry := def.Entries[index]
-	visible, err := entry.When.Bool(g.st.Env())
+	visible, err := entry.When.Bool(s.env(g))
 	if err != nil || !visible {
 		s.refresh(g)
 		return
@@ -336,7 +344,9 @@ func (s *authorScreen) activate(g *Game) {
 	// named save cursor. Closing the screen resumes the opener after its open.
 	s.parent, s.request, s.origin, s.running = g.events, g.req, g.st.Location, true
 	g.events, g.req = g.newEventRunner(), nil
-	g.events.Start(entry.Do)
+	if err := g.events.StartBound(fmt.Sprintf("screen:%s:%d", s.name, index), s.args); err != nil {
+		g.events.Log(err)
+	}
 	g.emit("screen_action", traceLine{"screen": s.name, "entry": index})
 }
 
@@ -563,7 +573,7 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 			footerWidth = min(footerWidth, float64(r.Min.X)-40)
 		}
 	}
-	footer := data.Render(g.db.Tr(v.Footer), g.st.Env())
+	footer := data.Render(g.db.Tr(v.Footer), s.env(g))
 	if def.Kind == "timeline" && len(v.Rows) > 0 {
 		footer = s.timelineDescription(g)
 	}
@@ -647,7 +657,7 @@ func (s *authorScreen) updateTabs(g *Game) bool {
 		return false
 	}
 	// Keep the existing stack slot and opener; switching is not an event action.
-	*s = *newAuthorScreen(g, tabs[next], s.done)
+	*s = *newAuthorScreen(g, tabs[next], s.done, nil)
 	return true
 }
 
@@ -660,7 +670,7 @@ func (s *authorScreen) drawTabs(g *Game, dst *ebiten.Image) {
 			tint = g.th.accent
 			rect(dst, float64(r.Min.X), float64(r.Max.Y-3), float64(r.Dx()), 3, tint)
 		}
-		label := data.Render(g.db.Tr(g.db.Game.Screens[tabs[i]].Title), g.st.Env())
+		label := data.Render(g.db.Tr(g.db.Game.Screens[tabs[i]].Title), s.env(g))
 		g.drawPlanningText(dst, label, float64(r.Min.X+12), float64(r.Min.Y+12), float64(r.Dx()-24), 18, 1, tint)
 	}
 }
@@ -683,5 +693,5 @@ func (s *authorScreen) drawPlanningHeader(g *Game, dst *ebiten.Image) {
 	st := g.st.Planning
 	g.window(dst, 0, 0, sw, 48)
 	g.drawPlanningText(dst, planningDate(st.Date, g.db.Game.Planning.Calendar.Phases[st.Phase], v), 24, 12, 200, sizeS, 1, g.th.text)
-	g.drawPlanningText(dst, data.Render(g.db.Tr(v.Header), g.st.Env()), 240, 12, sw-264, sizeS, 1, g.th.text)
+	g.drawPlanningText(dst, data.Render(g.db.Tr(v.Header), s.env(g)), 240, 12, sw-264, sizeS, 1, g.th.text)
 }

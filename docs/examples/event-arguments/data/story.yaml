@@ -20,3 +20,11 @@ events:
         - say: 'Ready {arg.resident}'
     - set: {var.roll: 'rand(1000)'}
     - say: 'Roll {var.roll}'
+  stock_report:
+    params: {amount: number}
+    do: [{say: 'Received {arg.amount}'}]
+  stock_visit:
+    params: {amount: number}
+    do:
+    - open: {screen: stock, args: {amount: 'arg.amount'}}
+    - say: 'Returned {arg.amount}'

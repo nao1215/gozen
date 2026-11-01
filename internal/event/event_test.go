@@ -641,3 +641,63 @@ func TestPlanningRuleShadowsEventArguments(t *testing.T) {
 		t.Fatalf("rule leaked or root retained input map: %+v", line)
 	}
 }
+
+func TestScreenBindingFailureAndOwnership(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml": "schema_version: 10\nid: screen-bindings\n" + testgame.Game + `screens:
+  stock:
+    params: {amount: number}
+    title: Stock
+    entries:
+    - label: Take
+      do:
+      - say: '{arg.amount}'
+      - set: {var.total: 'arg.amount'}
+`,
+		"data/bindings.yaml": `events:
+  open_stock:
+    do:
+    - open: {screen: stock, args: {amount: 'var.amount'}}
+    - say: Returned.
+`,
+	})
+	st := testgame.State(db, 5)
+	control := testgame.State(db, 5)
+	r := event.New(db, st, &host{})
+	var problems []error
+	r.Log = func(err error) { problems = append(problems, err) }
+	st.Vars["amount"] = "invalid"
+	r.Start(db.Events["open_stock"].Do)
+	line, ok := r.Next().(event.Say)
+	if !ok || line.Text != "Returned." || len(problems) != 1 || st.Vars["total"] != nil {
+		t.Fatalf("invalid open changed state or ran a screen: %+v, %v", line, problems)
+	}
+	if st.Rand.IntN(1000) != control.Rand.IntN(1000) {
+		t.Fatal("invalid open consumed RNG")
+	}
+	r.Stop()
+	st.Vars["amount"] = float64(2)
+	r.Start(db.Events["open_stock"].Do)
+	opened, ok := r.Next().(event.Open)
+	if !ok {
+		t.Fatal("missing open")
+	}
+	st.Vars["amount"] = float64(99)
+	r.Stop()
+	if err := r.StartBound("screen:stock:0", opened.Args); err != nil {
+		t.Fatal(err)
+	}
+	opened.Args["amount"] = float64(88)
+	line, ok = r.Next().(event.Say)
+	if !ok || line.Text != "2" {
+		t.Fatalf("entry replay lost frozen args: %+v", line)
+	}
+	if q := r.Next(); q != nil || st.Vars["total"] != float64(2) {
+		t.Fatalf("entry result: %v, %v", q, st.Vars)
+	}
+	for _, name := range []string{"screen:stock:1", "screen:stock:00", "screen:missing:0"} {
+		if err := r.StartBound(name, map[string]any{"amount": float64(3)}); err == nil || r.Running() {
+			t.Fatalf("accepted invalid root %s", name)
+		}
+	}
+}

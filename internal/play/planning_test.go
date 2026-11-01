@@ -108,7 +108,7 @@ func TestTimelineScrollReachesLastTask(t *testing.T) {
 		Kind: "timeline", View: data.PlanningView{Fullscreen: true},
 	}}
 	g := &Game{db: db, st: testgame.State(db, 1)}
-	s := newAuthorScreen(g, "tasks", nil)
+	s := newAuthorScreen(g, "tasks", nil, nil)
 	g.in.wheel = -1
 	for range 40 {
 		s.updateSurface(g)
@@ -176,7 +176,7 @@ func TestGroupedTimelineCalendarFitAndPrivacy(t *testing.T) {
 	g := &Game{db: db, st: testgame.State(db, 1)}
 	g.st.Planning.Date = "2030-09-01"
 	g.st.Vars["inspected"] = 3.0
-	s := newAuthorScreen(g, "tasks", nil)
+	s := newAuthorScreen(g, "tasks", nil, nil)
 	groups, ax, aw := s.groupedTimeline(g, 0, 108, 1280, 494)
 	if len(groups) != 12 {
 		t.Fatalf("only %d groups fit", len(groups))
@@ -323,7 +323,7 @@ func TestEntityTableInlineDetailAndNavigation(t *testing.T) {
 	db.Game.Planning = p
 	db.Game.Screens = map[string]*data.AuthorScreen{"roster": {Kind: "entities", View: data.PlanningView{Fullscreen: true, Order: order, Detail: "record"}}}
 	g := &Game{db: db, st: testgame.State(db, 1)}
-	s := newAuthorScreen(g, "roster", nil)
+	s := newAuthorScreen(g, "roster", nil, nil)
 	ids, cells, detail := s.entityTableLayout(g)
 	if len(ids) < 8 || !detail.Empty() {
 		t.Fatalf("initial layout: %v %v", ids, detail)
@@ -427,7 +427,7 @@ func TestEntityTableSortingAndCompleteRecords(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := newAuthorScreen(g, "roster", nil)
+	s := newAuthorScreen(g, "roster", nil, nil)
 	header := s.entityTableHeaders(g)[1]
 	g.in = input{click: true, mouse: header.Min.Add(image.Pt(8, 8))}
 	for _, want := range [][]string{{"weaver", "smith", "potter", "helper"}, {"potter", "weaver", "smith", "helper"}, order[:4]} {
@@ -524,7 +524,7 @@ func TestCalendarBrowsePreservesDateAndRefresh(t *testing.T) {
 	db.Game.Planning = &data.Planning{Calendar: data.Calendar{Start: "2030-08-31", End: "2030-11-30", Phases: []string{"morning"}}}
 	db.Game.Screens = map[string]*data.AuthorScreen{"calendar": {Kind: "calendar", View: data.PlanningView{Fullscreen: true, WeekStart: 1}}}
 	g := &Game{db: db, st: testgame.State(db, 1)}
-	s := newAuthorScreen(g, "calendar", nil)
+	s := newAuthorScreen(g, "calendar", nil, nil)
 	g.in.click = true
 	width, _ := g.screen()
 	g.in.mouse = calendarButtons(width)[1].Min.Add(image.Pt(20, 20))
@@ -549,7 +549,7 @@ func TestCalendarBrowsePreservesDateAndRefresh(t *testing.T) {
 	if s.calendarMonth != "2030-08-01" || g.st.Planning.Date != "2030-08-31" || g.st.Planning.Phase != 0 {
 		t.Fatal("browsing changed state or escaped calendar range")
 	}
-	if newAuthorScreen(g, "calendar", nil).calendarDate(g) != "2030-08-31" {
+	if newAuthorScreen(g, "calendar", nil, nil).calendarDate(g) != "2030-08-31" {
 		t.Fatal("reopening must show current month")
 	}
 }
@@ -603,7 +603,7 @@ func TestTimelineAssigneeFilter(t *testing.T) {
 	for _, id := range v.Order {
 		g.st.Planning.Entities[id].Observations["shown"] = true
 	}
-	s := newAuthorScreen(g, "tasks", nil)
+	s := newAuthorScreen(g, "tasks", nil, nil)
 	before, err := json.Marshal(g.st.Planning)
 	if err != nil {
 		t.Fatal(err)
@@ -667,7 +667,7 @@ func TestTimelineAssigneeFilter(t *testing.T) {
 	if got := s.timelineAssignees(g); !slices.Equal(got, []string{"", "a"}) || s.timelineAssignee != "" {
 		t.Fatal("hidden resident retained", got)
 	}
-	if newAuthorScreen(g, "tasks", nil).timelineAssignee != "" {
+	if newAuthorScreen(g, "tasks", nil, nil).timelineAssignee != "" {
 		t.Fatal("reopening retained filter")
 	}
 	db.Game.Screens["tasks"].View.FilterLabel = ""
@@ -696,7 +696,7 @@ func TestTimelineRowResidentsUsePublicIdentity(t *testing.T) {
 		e.Observations["icon"] = "neutral-" + id
 		e.Attributes["icon"] = "private-expression"
 	}
-	s := newAuthorScreen(g, "tasks", nil)
+	s := newAuthorScreen(g, "tasks", nil, nil)
 	groups, _, _ := s.groupedTimeline(g, 0, 108, 1280, 494)
 	if len(groups[0].residents) != 4 || groups[0].residents[0].portrait != "neutral-a" {
 		t.Fatalf("deduplication or public portrait: %+v", groups[0].residents)
@@ -758,7 +758,7 @@ func TestTimelineInlineExpansionPreservesCalendarAndState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := newAuthorScreen(g, "tasks", nil)
+	s := newAuthorScreen(g, "tasks", nil, nil)
 	groups, ax, aw := s.groupedTimeline(g, 0, 108, 1280, 494)
 	g.in.click, g.in.mouse = true, image.Pt(24, int(groups[11].y)+4)
 	s.updateSurface(g)
@@ -820,7 +820,7 @@ func TestCalendarDateLinksPreserveState(t *testing.T) {
 		t.Fatal(err)
 	}
 	w, h := g.screen()
-	calendar := newAuthorScreen(g, "calendar", nil)
+	calendar := newAuthorScreen(g, "calendar", nil, nil)
 	g.stack = []scene{calendar}
 	cells := calendarCells(db.Game.Planning, view, calendar.calendarDate(g), 0, 108, w, h-226)
 	g.in.click = true
@@ -833,7 +833,7 @@ func TestCalendarDateLinksPreserveState(t *testing.T) {
 	if calendar.updateCalendar(g) || len(g.stack) != 1 {
 		t.Fatal("unlinked date opened screen")
 	}
-	timeline := newAuthorScreen(g, "timeline", nil)
+	timeline := newAuthorScreen(g, "timeline", nil, nil)
 	g.in.mouse = image.Pt(int(260+(w-280)*1.5/122), 150)
 	if timeline.timelinePointerDate(g) != "2030-08-02" || !timeline.updateGroupedTimeline(g) || len(g.stack) != 2 {
 		t.Fatal("band did not open same date")
@@ -868,7 +868,7 @@ func TestTimelineCandidatePaneBrowsing(t *testing.T) {
 		db.Game.Screens["pick"].Entries = append(db.Game.Screens["pick"].Entries, data.ScreenEntry{Label: "Maker"})
 	}
 	g := &Game{db: db, st: testgame.State(db, 1)}
-	parent := newAuthorScreen(g, "tasks", nil)
+	parent := newAuthorScreen(g, "tasks", nil, nil)
 	g.stack = []scene{parent}
 	before, err := json.Marshal(g.st.Planning)
 	if err != nil {
@@ -915,7 +915,7 @@ func TestTimelineCandidatePaneBrowsing(t *testing.T) {
 	if string(before) != string(after) {
 		t.Fatal("browsing changed planning")
 	}
-	if newAuthorScreen(g, "pick", nil).timelineContext != nil {
+	if newAuthorScreen(g, "pick", nil, nil).timelineContext != nil {
 		t.Fatal("standalone picker changed")
 	}
 }
@@ -939,7 +939,7 @@ func TestTimelineZoomBrowsing(t *testing.T) {
 	g := &Game{db: db, st: testgame.State(db, 1)}
 	g.st.Planning.Date = "2030-09-15"
 	g.st.Planning.Activities["kiln"].Observed = 50
-	s := newAuthorScreen(g, "tasks", nil)
+	s := newAuthorScreen(g, "tasks", nil, nil)
 	g.stack = []scene{s}
 	before, err := json.Marshal(g.st.Planning)
 	if err != nil {

@@ -81,3 +81,39 @@ func TestLiteralEntryPointsRejectRequiredEventParameters(t *testing.T) {
 		}
 	}
 }
+
+func TestScreenArgumentDiagnostics(t *testing.T) {
+	const game = "schema_version: 10\nid: screen-bindings\nstart: {location: room}\nscreens:\n  stock:\n    params: {amount: number}\n    title: 'Stock {arg.amount}'\n    entries: [{label: 'Take {arg.amount}', do: [{set: {var.total: 'var.total + arg.amount'}}]}]\n"
+	const story = "locations: {room: {name: Room}}\nevents:\n  visit:\n    do:\n    - "
+	for _, tc := range []struct{ command, want string }{
+		{"open: {screen: stock, args: {amount: '2'}}", ""},
+		{"open: stock", "missing argument"},
+		{"open: {screen: stock, args: {amount: true}}", "expected number"},
+		{"open: {screen: stock, args: {extra: 2}}", "unknown argument"},
+		{"open: {screen: stock, args: {amount: 'rand(3)'}}", "pure"},
+		{"open: {screen: stock, args: {amount: 'arg.amount'}}", "unknown name"},
+		{"open: {screen: config, args: {amount: 1}}", "authored screen"},
+		{"open: {screen: missing}", "not"},
+	} {
+		t.Run(tc.command, func(t *testing.T) {
+			_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(game)}, "data/world.yaml": {Data: []byte(story + tc.command + "\n")}})
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), "data/world.yaml:") {
+				t.Fatalf("want %s with source: %v", tc.want, err)
+			}
+		})
+	}
+	for _, tc := range []struct{ old, new, want string }{
+		{"schema_version: 10", "schema_version: 9", "schema_version: 10"},
+		{"amount: number", "amount: invalid", "invalid parameter"},
+		{"Stock {arg.amount}", "Stock {arg.missing}", "no field"},
+	} {
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(strings.Replace(game, tc.old, tc.new, 1))}, "data/world.yaml": {Data: []byte(story + "open: {screen: stock, args: {amount: 2}}\n")}})
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("want %s: %v", tc.want, err)
+		}
+	}
+}

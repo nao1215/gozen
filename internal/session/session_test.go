@@ -1673,3 +1673,62 @@ events:
 		t.Fatal("original continuation changed")
 	}
 }
+
+func TestScreenArguments(t *testing.T) {
+	g, err := gozen.Load(os.DirFS("../../docs/examples/event-arguments"), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := session(t, g, gozen.Config{Seed: 17})
+	expect := func(kind, text string) {
+		t.Helper()
+		q := s.Next()
+		if q.Kind != kind || q.Text != text {
+			t.Fatalf("got %+v, want %s %q", q, kind, text)
+		}
+	}
+	for _, amount := range []string{"2", "3"} {
+		if err := s.Start("- call: {event: stock_visit, args: {amount: " + amount + "}}"); err != nil {
+			t.Fatal(err)
+		}
+		expect("open", "Stock "+amount)
+		s.Answer(0)
+		expect("choice", "")
+		s.Answer(1) // Cancellation leaves the stock unchanged.
+		expect("open", "Receipt 1"+amount)
+		s.Answer(0)
+		expect("say", "Received 1"+amount)
+		expect("open", "Receipt 1"+amount)
+		s.Answer(-1)
+		expect("say", "Stock "+amount)
+		expect("open", "Stock "+amount)
+		s.Answer(0)
+		expect("choice", "")
+		s.Answer(0)
+		s.Answer(0) // A duplicate answer cannot execute the pending action twice.
+		expect("open", "Receipt 1"+amount)
+		if saved, err := s.Save(); err == nil || saved != nil {
+			t.Fatal("saved an unsupported screen continuation")
+		}
+		s.Answer(-1)
+		expect("say", "Stock "+amount)
+		expect("open", "Stock "+amount)
+		s.Answer(-1)
+		expect("say", "Returned "+amount)
+		expect("", "")
+	}
+	if got := query[int](t, s, "var.total"); got != 5 {
+		t.Fatalf("total = %d, want 5", got)
+	}
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := gozen.Restore(g, saved, gozen.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := query[int](t, r, "var.total"); got != 5 {
+		t.Fatalf("restored total = %d", got)
+	}
+}

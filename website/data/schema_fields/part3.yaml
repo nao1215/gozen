@@ -219,6 +219,7 @@ General:
   tactic: "The tactic the sortie screen picks for them first, an ID of campaign.clash.tactics (or of the engine's)."
 
 AuthorScreen:
+  params: "Required typed parameters for a plain authored list (schema 10); immutable arg fields are available in the title and entries."
   view: "Explicit public value columns, seating and portrait bindings for planning views."
   kind: "Bind entities, timeline, calendar, ensemble or islands planning data."
   _: "An author-defined information or picture list opened by name."
@@ -239,3 +240,7 @@ Respond:
   who: "A speaker with a book in game.yaml reactions."
   text: "Text submitted to the rules, with interpolation and translation."
   from: "Sender name for repeat detection; omitted means player."
+ScreenCall:
+  _: "A plain authored screen invocation with frozen typed arguments (schema 10), or a scalar name for parameterless screens."
+  screen: "Literal authored screen ID. Built-in screens use the scalar form."
+  args: "Pure expressions for every declared parameter, evaluated once in the caller scope before opening."

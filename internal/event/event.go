@@ -255,7 +255,11 @@ type Checkpoint struct {
 type Save struct{}
 
 // Open opens one of the screens of the game (formation, skills, fusion).
-type Open struct{ Screen string }
+type Open struct {
+	Screen string
+	// Args are detached frozen screen bindings, consumed by session and play.
+	Args map[string]any
+}
 
 // Notice is a short notice shown at the top of the screen without stopping (the notice command). The screen shows it and moves on at once (no answer needed).
 type Notice struct{ Text string }
@@ -391,14 +395,14 @@ func (r *Runner) Start(cmds []data.Command) {
 	r.start(cmds, nil)
 }
 
-// StartBound resumes a named event with frozen scalar bindings. Validation occurs
+// StartBound resumes a named event or screen entry with frozen scalar bindings. Validation occurs
 // before callbacks, run counts or frames change; input maps are never retained.
 func (r *Runner) StartBound(name string, values map[string]any) error {
 	args, err := r.db.ValidateArguments(name, values)
 	if err != nil {
 		return err
 	}
-	r.start(r.db.Events[name].Do, args)
+	r.start(r.db.NamedCommands(name), args)
 	return nil
 }
 
@@ -1130,7 +1134,12 @@ func (r *Runner) run(c *data.Command) Request {
 	case "save":
 		return Save{}
 	case "open":
-		return Open{Screen: c.Open}
+		args, err := r.db.BindScreen(c.Open, env)
+		if err != nil {
+			r.logf(err)
+			return nil
+		}
+		return Open{Screen: c.Open.Screen, Args: args}
 	case "dive": // a made dungeon: a new dive from outside, the next floor from inside
 		floor := 1.0
 		if c.Floor.Set() {

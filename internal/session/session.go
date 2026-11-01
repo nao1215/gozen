@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"strconv"
 	"strings"
 
 	"github.com/nao1215/gozen/internal/battle"
 	"github.com/nao1215/gozen/internal/event"
+	"github.com/nao1215/gozen/internal/expr"
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
 	"github.com/nao1215/gozen/internal/layer3/field"
@@ -84,6 +86,7 @@ type cursor struct {
 // screenFrame retains the opener while an authored entry runs independently.
 // It is live session state, not a serialized save representation.
 type screenFrame struct {
+	args         map[string]any
 	name, origin string
 	runner       *event.Runner
 	at           cursor
@@ -393,12 +396,12 @@ func (s *Session) Next() Request {
 			case "battle", "shop", "save", "open", "clear", "game_over":
 				s.at.noBack = true
 			}
-			if q.Kind == "open" && s.db.Game.Screens[q.ID] != nil {
+			if opened, ok := r.(event.Open); ok && s.db.Game.Screens[q.ID] != nil {
 				if len(s.screens) >= 64 {
 					s.runner.Log(errors.New("author screens nested too deep"))
 					continue
 				}
-				s.screens = append(s.screens, screenFrame{name: q.ID, origin: s.st.Location, runner: s.runner, at: s.at})
+				s.screens = append(s.screens, screenFrame{args: maps.Clone(opened.Args), name: q.ID, origin: s.st.Location, runner: s.runner, at: s.at})
 				q = s.screenRequest()
 				s.pending = &q
 			}
@@ -789,17 +792,18 @@ func (s *Session) checkpoint(q event.Checkpoint) error {
 func (s *Session) screenRequest() Request {
 	frame := &s.screens[len(s.screens)-1]
 	def := s.db.Game.Screens[frame.name]
-	q := Request{Kind: "open", ID: frame.name, Text: gamedata.Render(s.db.Tr(def.Title), s.st.Env())}
+	env := expr.Chain{expr.Map{"arg": expr.Map(frame.args)}, s.st.Env()}
+	q := Request{Kind: "open", ID: frame.name, Text: gamedata.Render(s.db.Tr(def.Title), env)}
 	frame.indices = nil
 	for i, entry := range def.Entries {
-		visible, err := entry.When.Bool(s.st.Env())
+		visible, err := entry.When.Bool(env)
 		if err != nil {
 			s.runner.Log(err)
 			continue
 		}
 		if visible {
 			frame.indices = append(frame.indices, i)
-			q.Options = append(q.Options, gamedata.Render(s.db.Tr(entry.Label), s.st.Env()))
+			q.Options = append(q.Options, gamedata.Render(s.db.Tr(entry.Label), env))
 		}
 	}
 	return q
@@ -817,7 +821,7 @@ func (s *Session) answerScreen(n int) {
 		return
 	}
 	entry := s.db.Game.Screens[frame.name].Entries[frame.indices[n]]
-	visible, err := entry.When.Bool(s.st.Env())
+	visible, err := entry.When.Bool(expr.Chain{expr.Map{"arg": expr.Map(frame.args)}, s.st.Env()})
 	if err != nil {
 		s.runner.Log(err)
 	}
@@ -831,5 +835,7 @@ func (s *Session) answerScreen(n int) {
 	}
 	s.pending = nil
 	s.start()
-	s.runner.Start(entry.Do)
+	if err := s.runner.StartBound(fmt.Sprintf("screen:%s:%d", frame.name, frame.indices[n]), frame.args); err != nil {
+		s.runner.Log(err)
+	}
 }

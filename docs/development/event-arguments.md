@@ -46,8 +46,45 @@ go test ./internal/session -run 'Test(EventArgumentsResume|BoundEventRootAndChan
 ```
 
 This is the event-call slice of [ADR 0054](../decisions/0054-typed-event-and-screen-arguments.md).
-Screen arguments, expression-form `say.who` and planning target fields, screen
-continuations, and pending confirmation saves remain later slices. Use existing
+Expression-form `say.who` and planning target fields, screen continuations,
+and pending confirmation saves remain later slices. Use existing
 `where` filtering for entity selection in this slice. It does not expand event
 bodies or add a generator. The session contract tests load these same example
 files; the CLI E2E runs both residents and checks their resulting attributes.
+
+## Reusing plain screens
+
+Schema 10 also supports typed arguments on plain authored lists. The same example
+now contains a stock screen opened with `open: {screen: stock, args: {amount: '2'}}`.
+Its `params: {amount: number}` binds `arg.amount` in the title, entry labels,
+entry text, visibility conditions and entry commands. The stock example confirms
+or cancels a quantity, opens a nested receipt with a different amount, and returns
+to its original scope. No selected value is stored in a global variable.
+
+Bindings are frozen at open and retained on refresh. Entry commands inherit them;
+a named event or nested screen receives only explicitly passed values. Closing
+resumes the original caller once. A malformed dynamic argument logs an execution
+error and skips opening the screen before any entry effect or random draw.
+
+Parameterized planning surfaces, implicit tab/calendar/timeline destinations and
+expression-form target IDs are not supported yet. Use a parameterless wrapper
+screen with an explicit `open` action when a literal-only destination is required.
+Plain portrait lists can still use fixed entity targets. Parameters do not expand
+screens or generate YAML.
+
+Saving while a screen is open remains rejected, including during confirmation or
+entry dialogue; the current slot is preserved. This slice does not implement
+screen continuation saves. Ordinary event saves before opening and completed-root
+saves after closing remain supported. Replay and rollback of an entry keep its
+frozen bindings, but do not turn an entry into a saved screen continuation.
+
+The rules and input tests load the documented example:
+
+```sh
+go test ./internal/session -run '^TestScreenArguments$'
+go test ./internal/play -run '^TestAuthorScreenArguments$'
+atago run --ci --parallel 1 --skip-tag graphics,web e2e/atago/planning.atago.yaml
+```
+
+The CLI scenario confirms cancellation and nested close using simulated player
+input; it is not a rendered screenshot or a screen-save restoration test.

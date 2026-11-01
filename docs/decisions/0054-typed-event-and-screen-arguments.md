@@ -1,6 +1,6 @@
 # ADR 0054: Typed arguments for reusable events and screens
 
-Status: Accepted for phased implementation (2026-11-01). Event calls implemented; screen calls and expression-form target fields remain planned.
+Status: Accepted for phased implementation (2026-11-01). Event calls and plain screen arguments implemented; screen continuation saves and expression-form target fields remain planned.
 
 See [the executable event-call slice](../development/event-arguments.md) for supported syntax and remaining limits.
 
@@ -494,3 +494,18 @@ The interactive runtime reports replay failure through its existing error channe
 this does not yet provide transactional rollback to the previously running game
 when loading fails. Save slots are not rewritten by replay. Screen continuation
 serialization and typed screen arguments remain unimplemented.
+
+
+## Plain screen invocation slice
+
+Plain authored lists now implement the declaration, pure binding, isolated entry
+scope and nested open/close contracts above. See the
+[executable stock and receipt example](../development/event-arguments.md#reusing-plain-screens).
+Session and play share event-level binding and entry validation; the presentation
+adapter owns labels and input, while session owns non-rendering requests.
+
+This slice intentionally retains the screen-save rejection described above.
+Parameterized planning surfaces and their implicit destinations are rejected.
+Their rendering and navigation scopes must be implemented before accepting such
+declarations. Frozen entry arguments also work with the existing named-root replay
+path; entry replay alone is not a screen continuation descriptor.

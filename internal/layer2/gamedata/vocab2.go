@@ -103,7 +103,12 @@ func (c *checker) declarations() {
 		if screen.View.Fullscreen && (g.Planning == nil || screen.Kind == "") {
 			c.errorf(diag.Shape, w+".view.fullscreen", "full-screen planning surfaces require a planning kind")
 		}
+		c.parameters(w+".params", screen.Params)
+		if len(screen.Params) > 0 && (screen.Kind != "" || screen.View.Fullscreen) {
+			c.errorf(diag.Shape, w+".params", "parameters currently require a plain authored list")
+		}
 		c.planningView(w+".view", screen.View)
+		c.params = screen.Params
 		if len(screen.View.Tabs) > 0 && !slices.Contains(screen.View.Tabs, name) {
 			c.errorf(diag.Shape, w+".view.tabs", "tabs must include the current screen")
 		}
@@ -134,6 +139,7 @@ func (c *checker) declarations() {
 			c.expr(ew+".when", e.When, FieldNames)
 			c.commands(ew+".do", e.Do, FieldNames)
 		}
+		c.params = nil
 	}
 }
 

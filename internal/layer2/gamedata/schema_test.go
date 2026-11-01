@@ -206,7 +206,7 @@ func (b *schemaBuilder) node(t reflect.Type) schemaNode {
 			n := schemaNode{"type": "object", "properties": props, "additionalProperties": false}
 			b.constraints(t, n, props)
 			switch t {
-			case reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
+			case reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
 				reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[StreamLine]():
 				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "string"}, n}}
 			case reflect.TypeFor[CrowdLines](): // a list is the lines of any hour
@@ -624,7 +624,7 @@ func schemaTypeLabel(t reflect.Type) string {
 	case reflect.Struct:
 		result := "[" + schemaName(t) + "](#" + strings.ToLower(schemaName(t)) + ")"
 		switch t {
-		case reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
+		case reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
 			reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[StreamLine]():
 			result += " または文字列"
 		case reflect.TypeFor[WaitCue]():

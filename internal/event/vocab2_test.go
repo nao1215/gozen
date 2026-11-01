@@ -231,7 +231,11 @@ func TestVersion2ResultAndCustom(t *testing.T) {
 	if len(errs) != 0 || st.Vars["rolled"] != float64(6) {
 		t.Fatalf("a reusable command executes its event: %v", errs)
 	}
-	if len(seen) != 1 || seen[0] != (event.Open{Screen: "album"}) {
+	if len(seen) != 1 {
+		t.Fatalf("a declared screen opens: %v", seen)
+	}
+	opened, ok := seen[0].(event.Open)
+	if !ok || opened.Screen != "album" || len(opened.Args) != 0 {
 		t.Fatalf("a declared screen opens: %v", seen)
 	}
 }
