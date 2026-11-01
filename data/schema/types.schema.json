@@ -13648,6 +13648,25 @@
           },
           "x-type": "string"
         },
+        "markers": {
+          "description": "Named date annotations on the grouped timeline calendar band.",
+          "items": {
+            "$ref": "#/$defs/TimelineMarker"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[TimelineMarker](#timelinemarker)[]"
+        },
         "mask": {
           "description": "Public boolean value selecting coarse background masking.",
           "type": "string",
@@ -13711,6 +13730,25 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "rows": {
+          "description": "Optional grouped timeline rows. The calendar range stays fixed and oversized tables scroll by group.",
+          "items": {
+            "$ref": "#/$defs/TimelineRow"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[TimelineRow](#timelinerow)[]"
         },
         "visible": {
           "description": "Optional public boolean binding; only true residents are displayed and selectable. Missing values hide the resident.",
@@ -20207,6 +20245,137 @@
             "version": "0, 1, 2"
           },
           "x-type": "expression"
+        }
+      },
+      "type": "object"
+    },
+    "TimelineItem": {
+      "additionalProperties": false,
+      "description": "An activity lane rendered from its reported observation, never its hidden progress.",
+      "properties": {
+        "activity": {
+          "description": "Existing planning activity ID; each activity may appear only once in the view.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "label": {
+          "description": "Short lane identifier shown below the group heading.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "screen": {
+          "description": "Optional authored screen to open when the lane is clicked or confirmed.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "TimelineMarker": {
+      "additionalProperties": false,
+      "description": "A named date annotation independent of scheduling rules.",
+      "properties": {
+        "date": {
+          "description": "ISO date; annotations outside the calendar range are not drawn.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "label": {
+          "description": "Text shown when pointing at that date in the calendar band.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "milestone": {
+          "description": "Draw a dashed vertical line through the timeline rows.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "TimelineRow": {
+      "additionalProperties": false,
+      "description": "A named timeline group in display order, with one compact lane per item.",
+      "properties": {
+        "items": {
+          "description": "Activity lanes in display order. Activities omitted from all rows appear in fallback rows.",
+          "items": {
+            "$ref": "#/$defs/TimelineItem"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[TimelineItem](#timelineitem)[]"
+        },
+        "label": {
+          "description": "Group heading. Long text is truncated at a readable font size.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         }
       },
       "type": "object"

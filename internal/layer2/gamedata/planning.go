@@ -420,6 +420,11 @@ func (c *checker) planningPure(w string, e Expr) {
 // PlanningView selects only explicitly named player values for presentation.
 // Order controls seating; fields and portrait bindings never read hidden state.
 type PlanningView struct {
+	// Rows groups timeline activities in authored order; omission keeps the task list.
+	Rows []TimelineRow `yaml:"rows"`
+	// Markers annotates dates without changing scheduling or simulation rules.
+	Markers []TimelineMarker `yaml:"markers"`
+
 	// Visible binds an optional public boolean; only true values show a resident.
 	Visible string `yaml:"visible"`
 	// Fullscreen uses the play surface, with authored hotspots and entity actions.
@@ -446,6 +451,29 @@ type PlanningView struct {
 	Door     string          `yaml:"door"`
 }
 
+// TimelineRow is an authored group rendered by the timeline view.
+// Items appear in separate compact lanes; omitted activities remain in fallback rows.
+type TimelineRow struct {
+	Label string         `yaml:"label"`
+	Items []TimelineItem `yaml:"items"`
+}
+
+// TimelineItem binds a lane to an activity and optionally opens an authored screen.
+// Label is a short lane identifier. Screen omission makes the lane read-only.
+type TimelineItem struct {
+	Activity string `yaml:"activity"`
+	Label    string `yaml:"label"`
+	Screen   string `yaml:"screen"`
+}
+
+// TimelineMarker is a named calendar annotation consumed by the timeline renderer.
+// Milestones extend a dashed line through all rows; ordinary markers shade one day.
+type TimelineMarker struct {
+	Date      string `yaml:"date"`
+	Label     string `yaml:"label"`
+	Milestone bool   `yaml:"milestone"`
+}
+
 // PlanningField describes a public value column and optional numeric gauge.
 // Marks and Maximum use the same units as the observed value.
 type PlanningField struct {
@@ -462,6 +490,27 @@ func (c *checker) planningView(w string, v PlanningView) {
 	}
 	if len(v.Weekdays) != 0 && len(v.Weekdays) != 7 {
 		c.errorf(diag.Shape, w+".weekdays", "provide seven weekday labels")
+	}
+	used := map[string]bool{}
+	for i, row := range v.Rows {
+		at := fmt.Sprintf("%s.rows[%d]", w, i)
+		if row.Label == "" || len(row.Items) == 0 {
+			c.errorf(diag.Shape, at, "timeline row requires a label and items")
+		}
+		for _, item := range row.Items {
+			if _, ok := p.Activities[item.Activity]; !ok || used[item.Activity] {
+				c.errorf(diag.UnknownReference, at, "unknown or duplicate timeline activity %q", item.Activity)
+			}
+			used[item.Activity] = true
+			if item.Screen != "" && c.db.Game.Screens[item.Screen] == nil {
+				c.errorf(diag.UnknownReference, at, "unknown timeline screen %q", item.Screen)
+			}
+		}
+	}
+	for i, marker := range v.Markers {
+		if _, err := time.Parse(time.DateOnly, marker.Date); err != nil || marker.Label == "" {
+			c.errorf(diag.Shape, fmt.Sprintf("%s.markers[%d]", w, i), "timeline marker requires an ISO date and label")
+		}
 	}
 	c.text(w+".header", v.Header, FieldNames)
 	c.text(w+".footer", v.Footer, FieldNames)

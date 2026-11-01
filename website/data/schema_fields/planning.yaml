@@ -73,6 +73,8 @@ PolicyRule:
   when: "Condition evaluated from visible entity and activity observations. Omitted means true."
   event: "Existing event to run through the ordinary interpreter."
 PlanningView:
+  rows: Optional grouped timeline rows. The calendar range stays fixed and oversized tables scroll by group.
+  markers: Named date annotations on the grouped timeline calendar band.
   visible: Optional public boolean binding; only true residents are displayed and selectable. Missing values hide the resident.
   detail: Public text binding for the selected entity pane, shown alongside its assigned activities.
   fullscreen: Use the entire play surface with authored action bounds and contextual entity actions.
@@ -98,3 +100,17 @@ PlanningField:
   label: The authored label displayed above this public value column.
   maximum: Positive gauge maximum, or zero for text only.
   marks: Threshold positions in gauge units.
+TimelineRow:
+  _: A named timeline group in display order, with one compact lane per item.
+  label: Group heading. Long text is truncated at a readable font size.
+  items: Activity lanes in display order. Activities omitted from all rows appear in fallback rows.
+TimelineItem:
+  _: An activity lane rendered from its reported observation, never its hidden progress.
+  activity: Existing planning activity ID; each activity may appear only once in the view.
+  label: Short lane identifier shown below the group heading.
+  screen: Optional authored screen to open when the lane is clicked or confirmed.
+TimelineMarker:
+  _: A named date annotation independent of scheduling rules.
+  date: ISO date; annotations outside the calendar range are not drawn.
+  label: Text shown when pointing at that date in the calendar band.
+  milestone: Draw a dashed vertical line through the timeline rows.

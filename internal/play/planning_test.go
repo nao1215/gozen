@@ -150,3 +150,86 @@ func TestResidentVisibilityUsesPublicState(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestGroupedTimelineCalendarFitAndPrivacy(t *testing.T) {
+	db := testgame.Load(t, nil)
+	p := &data.Planning{Calendar: data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}}, Activities: map[string]data.Activity{}}
+	v := data.PlanningView{Fullscreen: true}
+	for i := range 12 {
+		row := data.TimelineRow{Label: strconv.Itoa(i)}
+		for j := range 3 {
+			id := strconv.Itoa(i*3 + j)
+			p.Activities[id] = data.Activity{Name: id, Effort: 10, From: p.Calendar.Start, To: p.Calendar.End}
+			row.Items = append(row.Items, data.TimelineItem{Activity: id, Label: id})
+		}
+		v.Rows = append(v.Rows, row)
+	}
+	db.Game.Planning = p
+	db.Game.Screens = map[string]*data.AuthorScreen{"tasks": {Kind: "timeline", View: v}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	g.st.Planning.Date = "2030-09-01"
+	s := newAuthorScreen(g, "tasks", nil)
+	groups, ax, aw := s.groupedTimeline(g, 0, 108, 1280, 494)
+	if len(groups) != 12 {
+		t.Fatalf("only %d groups fit", len(groups))
+	}
+	for _, group := range groups {
+		if group.y+group.height > 602 {
+			t.Fatal("group overlaps footer")
+		}
+		for i, lane := range group.lanes {
+			if float64(lane.bounds.Min.X) < ax || float64(lane.bounds.Max.X) > ax+aw {
+				t.Fatal("bar outside fixed calendar")
+			}
+			if lane.reported != 0 || lane.expected <= 0 {
+				t.Fatal("zero-report delay lost")
+			}
+			for _, other := range group.lanes[:i] {
+				if lane.bounds.Overlaps(other.bounds) {
+					t.Fatal("lanes overlap")
+				}
+			}
+		}
+	}
+	before := s.timelineDescription(g)
+	a := g.st.Planning.Activities["0"]
+	a.Progress = 9
+	g.st.Planning.Activities["0"] = a
+	if got := s.timelineDescription(g); got != before {
+		t.Fatalf("hidden progress leaked: %s", got)
+	}
+	// Pointer and keyboard selection share the rendered lane rectangles.
+	db.Game.Screens["detail"] = &data.AuthorScreen{Title: "Detail", Entries: []data.ScreenEntry{{Label: "Inspect"}}}
+	db.Game.Screens["tasks"].View.Rows[0].Items[0].Screen = "detail"
+	g.in.click = true
+	g.in.mouse = groups[0].lanes[0].bounds.Min
+	s.updateSurface(g)
+	if len(g.stack) != 1 {
+		t.Fatal("bar did not open detail")
+	}
+	if top, ok := g.stack[0].(*authorScreen); !ok || top.name != "detail" {
+		t.Fatal("wrong detail screen")
+	}
+	g.in.click = false
+	g.in.wheel = -1
+	s.updateSurface(g)
+	if s.timelineFocus != 1 || s.timelineTop != 0 {
+		t.Fatal("keyboard did not select next lane")
+	}
+	s.refresh(g)
+	if s.timelineFocus != 1 {
+		t.Fatal("refresh lost selected lane")
+	}
+	// Live deadlines clip to the fixed calendar, not a different axis per row.
+	a.Deadline = "2031-01-01"
+	g.st.Planning.Activities["0"] = a
+	groups, _, _ = s.groupedTimeline(g, 0, 108, 1280, 494)
+	if groups[0].lanes[0].right != 1 {
+		t.Fatal("extended deadline is not clipped")
+	}
+	p.Activities["extra"] = data.Activity{Name: "Extra", Effort: 1}
+	rows := timelineGroups(p, v)
+	if len(rows) != 13 || rows[12].Items[0].Activity != "extra" {
+		t.Fatal("unlisted task disappeared")
+	}
+}

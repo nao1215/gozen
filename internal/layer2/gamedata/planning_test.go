@@ -68,3 +68,23 @@ func TestPlanningSurfaceEntryDiagnostics(t *testing.T) {
 		}
 	}
 }
+
+func TestTimelineRowsAndMarkers(t *testing.T) {
+	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  activities: {clay: {name: Clay, effort: 2}}\nscreens:\n  detail: {title: Detail, entries: [{label: Inspect}]}\n  board:\n    title: Board\n    kind: timeline\n    view: "
+	for _, tc := range []struct {
+		view  string
+		valid bool
+	}{
+		{`{rows: [{label: Pottery, items: [{activity: clay, label: C, screen: detail}]}], markers: [{date: '2030-08-01', label: Fair, milestone: true}]}`, true},
+		{`{rows: [{label: Pottery, items: [{activity: unknown}]}]}`, false},
+		{`{rows: [{label: Pottery, items: [{activity: clay}, {activity: clay}]}]}`, false},
+		{`{rows: [{label: Pottery, items: [{activity: clay, screen: unknown}]}]}`, false},
+		{`{rows: [{items: [{activity: clay}]}]}`, false},
+		{`{markers: [{date: tomorrow, label: Fair}]}`, false},
+	} {
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header + tc.view + "\n")}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
+		if (err == nil) != tc.valid {
+			t.Fatalf("%s: %v", tc.view, err)
+		}
+	}
+}

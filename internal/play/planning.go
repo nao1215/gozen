@@ -42,6 +42,10 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 	h -= 70
 	switch kind {
 	case "timeline":
+		if len(v.Rows) > 0 {
+			s.drawGroupedTimeline(g, dst, x, y, w, h)
+			return
+		}
 		start, err := time.Parse(time.DateOnly, p.Calendar.Start)
 		if err != nil {
 			return
@@ -456,4 +460,284 @@ func (g *Game) drawPlanningText(dst *ebiten.Image, text string, x, y, width, siz
 	for i, line := range lines {
 		g.text(dst, line, x, y+float64(i)*gfx.LineHeight(size), size, tint)
 	}
+}
+
+// timelineGroups preserves authored order and never drops unlisted activities.
+func timelineGroups(p *data.Planning, v data.PlanningView) []data.TimelineRow {
+	rows := slices.Clone(v.Rows)
+	seen := map[string]bool{}
+	for _, row := range rows {
+		for _, item := range row.Items {
+			seen[item.Activity] = true
+		}
+	}
+	for _, id := range slices.Sorted(maps.Keys(p.Activities)) {
+		if !seen[id] {
+			rows = append(rows, data.TimelineRow{Label: p.Activities[id].Name, Items: []data.TimelineItem{{Activity: id}}})
+		}
+	}
+	return rows
+}
+
+type timelineLane struct {
+	item                            data.TimelineItem
+	bounds                          image.Rectangle
+	left, right, reported, expected float64
+}
+
+type timelineGroup struct {
+	label     string
+	y, height float64
+	lanes     []timelineLane
+}
+
+// Grouped axes stay fixed to the authored calendar, even after deadline changes.
+// All geometry is logical, shared by drawing, pointer input and keyboard focus.
+func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineGroup, float64, float64) {
+	p := g.db.Game.Planning
+	rows := timelineGroups(p, g.db.Game.Screens[s.name].View)
+	axisX, axisW := x+260, max(1, w-280)
+	start, err := time.Parse(time.DateOnly, p.Calendar.Start)
+	if err != nil {
+		return nil, axisX, axisW
+	}
+	end, err := time.Parse(time.DateOnly, p.Calendar.End)
+	if err != nil {
+		return nil, axisX, axisW
+	}
+	today, err := time.Parse(time.DateOnly, g.st.Planning.Date)
+	if err != nil {
+		return nil, axisX, axisW
+	}
+	days := end.Sub(start).Hours()/24 + 1
+	rowHeight := func(row data.TimelineRow) float64 { return max(36, float64(len(row.Items))*10+4) }
+	y += 56
+	h -= 56
+	// Keep readable minimums: larger authored tables scroll whole groups.
+	s.timelineTop = min(s.timelineTop, max(0, len(rows)-1))
+	var out []timelineGroup
+	bottom := y + h
+	for _, row := range rows[s.timelineTop:] {
+		rh := rowHeight(row)
+		if y+rh > bottom {
+			break
+		}
+		group := timelineGroup{label: row.Label, y: y, height: rh}
+		for j, item := range row.Items {
+			d := p.Activities[item.Activity]
+			a := g.st.Planning.Activities[item.Activity]
+			from, to := start, end
+			if d.From != "" {
+				date, err := time.Parse(time.DateOnly, d.From)
+				if err == nil {
+					from = date
+				}
+			}
+			if deadline := g.st.ActivityDeadline(item.Activity); deadline != "" {
+				date, err := time.Parse(time.DateOnly, deadline)
+				if err == nil {
+					to = date
+				}
+			}
+			left := max(0, min(1, from.Sub(start).Hours()/24/days))
+			right := max(left, min(1, (to.Sub(start).Hours()/24+1)/days))
+			reported := max(0, min(1, a.Observed/g.st.ActivityEffort(item.Activity)))
+			expected := max(0, min(1, today.Sub(from).Hours()/24/max(1, to.Sub(from).Hours()/24+1)))
+			ly := y + 3 + float64(j)*10
+			group.lanes = append(group.lanes, timelineLane{item: item, bounds: image.Rect(int(axisX+axisW*left), int(ly), int(math.Ceil(axisX+axisW*right)), int(ly+9)), left: left, right: right, reported: reported, expected: expected})
+		}
+		out = append(out, group)
+		y += rh
+	}
+	return out, axisX, axisW
+}
+
+func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, h float64) {
+	p := g.db.Game.Planning
+	v := g.db.Game.Screens[s.name].View
+	groups, ax, aw := s.groupedTimeline(g, x, y, w, h)
+	start, err := time.Parse(time.DateOnly, p.Calendar.Start)
+	if err != nil {
+		return
+	}
+	end, err := time.Parse(time.DateOnly, p.Calendar.End)
+	if err != nil {
+		return
+	}
+	days := end.Sub(start).Hours()/24 + 1
+	dx := aw / days
+	bottom := y + 56
+	for _, group := range groups {
+		bottom = group.y + group.height
+	}
+	muted := color.NRGBA{62, 72, 85, 255}
+	red := color.NRGBA{240, 116, 108, 255}
+	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
+		xx := ax + d.Sub(start).Hours()/24*dx
+		if slices.Contains(p.Calendar.WeekdaysOff, int(d.Weekday())) || slices.Contains(p.Calendar.Closed, d.Format(time.DateOnly)) {
+			rect(dst, xx, y+23, dx, bottom-y-23, color.NRGBA{48, 53, 62, 255})
+		}
+		if d.Day() == 1 || d.Equal(start) {
+			g.text(dst, d.Format("2006/1"), xx+2, y, 15, g.th.text)
+			gfx.StrokeLine(dst, float32(xx), float32(y+20), float32(xx), float32(bottom), 1, muted, true)
+		}
+		if d.Weekday() == time.Monday {
+			g.text(dst, d.Format("2"), xx+2, y+23, 15, g.th.dim)
+		}
+	}
+	// Annotation text follows the pointer's date in the footer; compact ticks
+	// keep dense holidays from overwriting adjacent labels on the shared axis.
+	for _, marker := range v.Markers {
+		d, err := time.Parse(time.DateOnly, marker.Date)
+		if err != nil {
+			continue
+		}
+		if d.Before(start) || d.After(end) {
+			continue
+		}
+		xx := ax + d.Sub(start).Hours()/24*dx
+		rect(dst, xx, y+46, max(2, dx), 5, g.th.accent)
+		if marker.Milestone {
+			for yy := y + 54; yy < bottom; yy += 8 {
+				rect(dst, xx, yy, 1, min(4, bottom-yy), g.th.dim)
+			}
+		}
+	}
+	index := 0
+	for _, group := range groups {
+		g.drawPlanningText(dst, group.label, x+16, group.y, 232, 16, 1, g.th.text)
+		var labels []string
+		for _, lane := range group.lanes {
+			labels = append(labels, lane.item.Label)
+			r := lane.bounds
+			lx, ly, lw, lh := float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())
+			a := g.st.Planning.Activities[lane.item.Activity]
+			border := g.th.dim
+			if index == s.timelineFocus {
+				border = g.th.text
+			}
+			rect(dst, lx, ly, lw, lh, border)
+			rect(dst, lx+1, ly+1, max(0, lw-2), lh-2, color.NRGBA{30, 34, 40, 255})
+			if a.Cancelled {
+				for xx := lx; xx < lx+lw; xx += 6 {
+					gfx.StrokeLine(dst, float32(xx), float32(ly+lh-1), float32(min(xx+4, lx+lw)), float32(ly+1), 1, muted, true)
+				}
+			} else {
+				rect(dst, lx+1, ly+1, max(0, (lw-2)*lane.reported), lh-2, g.th.accent)
+				if lane.reported < lane.expected {
+					for xx := lx + lw*lane.reported; xx < lx+lw*lane.expected; xx += 4 {
+						gfx.StrokeLine(dst, float32(xx), float32(ly+lh-1), float32(min(xx+3, lx+lw*lane.expected)), float32(ly+1), 1, red, true)
+					}
+				}
+				if lane.expected > 0 && lane.expected < 1 {
+					rect(dst, lx+lw*lane.expected, ly-1, 1, lh+2, g.th.text)
+				}
+			}
+			index++
+		}
+		g.drawPlanningText(dst, strings.Join(labels, " / "), x+16, group.y+18, 232, 15, 1, g.th.dim)
+		rect(dst, x+16, group.y+group.height-1, w-32, 1, muted)
+	}
+	today, err := time.Parse(time.DateOnly, g.st.Planning.Date)
+	if err != nil {
+		return
+	}
+	if !today.Before(start) && !today.After(end) {
+		tx := ax + today.Sub(start).Hours()/24*dx
+		rect(dst, tx, y+41, 2, max(0, bottom-y-41), red)
+	}
+}
+
+func (s *authorScreen) timelineLanes(g *Game) []timelineLane {
+	sw, sh := g.screen()
+	groups, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
+	var lanes []timelineLane
+	for _, group := range groups {
+		lanes = append(lanes, group.lanes...)
+	}
+	return lanes
+}
+
+func (s *authorScreen) timelineDescription(g *Game) string {
+	p := g.db.Game.Planning
+	v := g.db.Game.Screens[s.name].View
+	sw, _ := g.screen()
+	if g.in.mouse.Y >= 108 && g.in.mouse.Y < 164 && g.in.mouse.X >= 260 && float64(g.in.mouse.X) < sw-20 {
+		start, err := time.Parse(time.DateOnly, p.Calendar.Start)
+		if err != nil {
+			return ""
+		}
+		end, err := time.Parse(time.DateOnly, p.Calendar.End)
+		if err != nil {
+			return ""
+		}
+		days := end.Sub(start).Hours()/24 + 1
+		d := start.AddDate(0, 0, int((float64(g.in.mouse.X)-260)/(sw-280)*days))
+		labels := []string{planningDate(d.Format(time.DateOnly), "", v)}
+		for _, marker := range v.Markers {
+			if marker.Date == d.Format(time.DateOnly) {
+				labels = append(labels, marker.Label)
+			}
+		}
+		return strings.Join(labels, " · ")
+	}
+	lanes := s.timelineLanes(g)
+	if len(lanes) == 0 {
+		return ""
+	}
+	s.timelineFocus = max(0, min(s.timelineFocus, len(lanes)-1))
+	lane := lanes[s.timelineFocus]
+	d := p.Activities[lane.item.Activity]
+	a := g.st.Planning.Activities[lane.item.Activity]
+	// Only the reported observation enters the label. Progress remains hidden.
+	return fmt.Sprintf("%s · %s · %.0f%%\n%s — %s", d.Name, p.Entities[a.Assignee].Name, 100*lane.reported, d.From, g.st.ActivityDeadline(lane.item.Activity))
+}
+
+func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
+	lanes := s.timelineLanes(g)
+	if len(lanes) == 0 {
+		return false
+	}
+	open := func(lane timelineLane) {
+		if lane.item.Screen != "" {
+			g.openScreen(lane.item.Screen, nil)
+		}
+	}
+	if g.in.down() {
+		if s.timelineFocus+1 < len(lanes) {
+			s.timelineFocus++
+		} else {
+			rows := timelineGroups(g.db.Game.Planning, g.db.Game.Screens[s.name].View)
+			sw, sh := g.screen()
+			groups, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
+			if s.timelineTop+len(groups) < len(rows) {
+				s.timelineTop++
+				s.timelineFocus = 0
+			}
+		}
+		return true
+	}
+	if g.in.up() {
+		if s.timelineFocus > 0 {
+			s.timelineFocus--
+		} else if s.timelineTop > 0 {
+			s.timelineTop--
+			s.timelineFocus = 0
+		}
+		return true
+	}
+	if g.in.click {
+		for i, lane := range lanes {
+			if g.in.mouse.In(lane.bounds) {
+				s.timelineFocus = i
+				open(lane)
+				return true
+			}
+		}
+	}
+	if g.in.ok() {
+		open(lanes[min(s.timelineFocus, len(lanes)-1)])
+		return true
+	}
+	return false
 }

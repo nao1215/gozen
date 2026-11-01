@@ -13,21 +13,22 @@ import (
 
 // authorScreen presents an authored list without requiring a custom Go screen.
 type authorScreen struct {
-	timelineTop  int
-	target       string
-	focus        int
-	popup        *list
-	popupIndices []int
-	name         string
-	title        string
-	indices      []int
-	running      bool
-	parent       *event.Runner
-	request      event.Request
-	origin       string
-	entries      []data.ScreenEntry
-	list         *list
-	done         func()
+	timelineTop   int
+	timelineFocus int
+	target        string
+	focus         int
+	popup         *list
+	popupIndices  []int
+	name          string
+	title         string
+	indices       []int
+	running       bool
+	parent        *event.Runner
+	request       event.Request
+	origin        string
+	entries       []data.ScreenEntry
+	list          *list
+	done          func()
 }
 
 func newAuthorScreen(g *Game, name string, done func()) *authorScreen {
@@ -63,6 +64,7 @@ func (s *authorScreen) refreshed(g *Game) *authorScreen {
 	n.target = s.target
 	n.focus = s.focus
 	n.timelineTop = s.timelineTop
+	n.timelineFocus = s.timelineFocus
 	n.list.sel = min(s.list.sel, max(0, len(n.entries)-1))
 	if s.list.sel < len(s.indices) {
 		for i, index := range n.indices {
@@ -277,7 +279,11 @@ func (s *authorScreen) updateSurface(g *Game) {
 		s.closeSurface(g)
 		return
 	}
-	if g.db.Game.Screens[s.name].Kind == "timeline" {
+	if g.db.Game.Screens[s.name].Kind == "timeline" && len(g.db.Game.Screens[s.name].View.Rows) > 0 {
+		if s.updateGroupedTimeline(g) {
+			return
+		}
+	} else if g.db.Game.Screens[s.name].Kind == "timeline" {
 		_, sh := g.screen()
 		s.scrollTimeline(g, sh-250)
 	}
@@ -344,7 +350,11 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 			footerWidth = min(footerWidth, float64(r.Min.X)-40)
 		}
 	}
-	g.drawPlanningText(dst, data.Render(g.db.Tr(v.Footer), g.st.Env()), 24, sh-88, max(1, footerWidth), sizeS, 2, g.th.text)
+	footer := data.Render(g.db.Tr(v.Footer), g.st.Env())
+	if def.Kind == "timeline" && len(v.Rows) > 0 {
+		footer = s.timelineDescription(g)
+	}
+	g.drawPlanningText(dst, footer, 24, sh-88, max(1, footerWidth), sizeS, 2, g.th.text)
 	j := 0
 	for _, e := range s.entries {
 		if e.Target != "" || len(e.Bounds) != 4 {

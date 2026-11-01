@@ -128,3 +128,20 @@ When set, only an exact true value displays the resident and its selection targe
 a missing or non-boolean value hides it. Omission preserves all residents and
 explicit order. Authors can reveal newly available residents using saved state
 and explicit observation refresh, without exposing hidden rule attributes.
+
+Grouped timelines may specify `view.rows`, each with a `label` and `items` of
+`activity`, short `label`, and optional authored `screen`. Items occupy separate
+lanes within each row. Unlisted activities appear in fallback rows; duplicates
+and unknown references are rejected. The axis stays at the inclusive calendar
+range, clipping extended deadlines. Month and Monday ticks, closed-day shading,
+planned outlines, reported fills, expected-position ticks and shortfall hatching
+share that axis. Cancelled lanes remain hatched in this grouped view so exclusions
+do not silently change the row order. The legacy ungrouped view still omits them.
+
+`view.markers` adds ISO `date`, `label` and optional `milestone` annotations.
+Pointing at the calendar band reads that day's names; milestones have dashed
+vertical lines. Fullscreen grouped views allow pointer selection or up/down and
+Enter to open a lane's authored screen. The footer shows the selected activity,
+assignee, reported percentage and dates. No hidden progress, inferred forecast or
+verification history is exposed. At the standard logical viewport twelve groups
+with three lanes fit without scrolling; larger tables scroll whole groups.
