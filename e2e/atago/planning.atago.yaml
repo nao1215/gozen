@@ -700,3 +700,22 @@ scenarios:
       file:
         path: lane-args.jsonl
         contains: ['Reviewed prepare', 'Reviewed shape', '"assignee":"potter"', '"assignee":"weaver"']
+- name: shared event body retains different participants across a choice
+  steps:
+  - fixture:
+      file: inspection.txt
+      content: |
+        gap 1
+        wait 10
+        do call: inspection_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script inspection.txt --trace inspection.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: inspection.jsonl
+        contains: ['Potter: 1', 'Weaver: 1', 'Inspected 1/1', '"potter_seen":true', '"weaver_seen":true']

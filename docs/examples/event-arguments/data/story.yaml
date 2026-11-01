@@ -39,3 +39,24 @@ events:
     - call: {event: stock_visit, args: {amount: '2'}}
     - call: {event: stock_visit, args: {amount: '3'}}
     - say: 'Total {var.total}'
+  inspection_demo:
+    do:
+    - call: {event: inspect, args: {resident: '"potter"', name: '"Potter"'}}
+    - call: {event: inspect, args: {resident: '"weaver"', name: '"Weaver"'}}
+    - say: 'Inspected {entity.potter.vigor}/{entity.weaver.vigor}; seen {flag.potter_seen}/{flag.weaver_seen}'
+  inspect:
+    params: {resident: entity, name: string}
+    do:
+    - plan: {op: set, entity: {expr: arg.resident}, attribute: vigor, value: 'self.vigor + 1'}
+    - if: 'arg.resident == "potter"'
+      then:
+      - set: {flag.potter_seen: 'true'}
+      - say: {who: Potter, text: 'Ready for inspection.'}
+    - if: 'arg.resident == "weaver"'
+      then:
+      - set: {flag.weaver_seen: 'true'}
+      - say: {who: Weaver, text: 'Ready for inspection.'}
+    - choice:
+      - label: 'Inspect {arg.name}'
+        do:
+        - say: '{arg.name}: {entity[arg.resident].vigor}'

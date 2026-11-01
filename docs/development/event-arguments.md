@@ -226,3 +226,33 @@ The lookup reads the same public observations as literal columns: a missing key
 or a hidden attribute is omitted. Literal keys retain reference validation;
 dynamic keys are checked as templates and resolved on display. Native planning
 surfaces still require literal column keys.
+
+## Sharing a cast-dependent event body
+
+The example's `inspection_demo` calls `inspect` for two residents. An `entity`
+parameter selects the planning target and reads `entity[arg.resident].vigor`;
+a separate string supplies its display name. The same choice and effects serve
+both calls. Arguments stay bound while the choice waits, and the caller chooses
+the participants before entering the shared body. This also works for trainees,
+farm workers and other planning entities.
+
+Keep literal-only commands in small conditional branches when necessary. In
+`inspect`, the speaker and the flag write have separate branches, while the
+planning operation and choice remain shared. `say.who` and `set` destination
+keys still require literals; writing `{arg.resident}` in either is not dynamic
+target syntax. A read such as `var["seen_" + arg.resident]` supports a computed
+key, but does not make the corresponding write dynamic. Avoid copying the
+whole event to accommodate those few commands. For substantial per-person
+state, prefer planning attributes and expression-form entity targets.
+
+The planning atago suite runs both calls and checks their dialogue, flags and
+resulting values. It uses the ordinary CLI and does not expand a template into
+per-resident event definitions.
+
+When migrating existing dialogue, preserve its read identity as well as its
+rendered text. Dialogue keys use the authored speaker and text, and choice keys
+use the authored prompt and label. Replacing distinct lines with one interpolated
+line deliberately gives them a shared read identity. Keep literal lines or labels
+in guarded branches when that would change the game's read/skip behavior. Several
+guarded labels can call one parameterized choice-effect event, without duplicating
+those effects.
