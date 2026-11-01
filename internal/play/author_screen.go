@@ -16,6 +16,8 @@ import (
 
 // authorScreen presents an authored list without requiring a custom Go screen.
 type authorScreen struct {
+	timelineContext  *authorScreen
+	timelineActivity string
 	calendarMonth    string
 	residentTop      int
 	timelineTop      int
@@ -107,6 +109,37 @@ func (s *authorScreen) drawCandidates(g *Game, dst *ebiten.Image) {
 	}
 }
 
+// A candidate screen opened from a grouped lane keeps the entire date axis
+// visible beside a 360-logical-pixel pane. The parent remains input-inactive.
+func (s *authorScreen) layoutTimelineCandidates(g *Game) {
+	sw, sh := g.screen()
+	s.list.x, s.list.y, s.list.w = sw-348, 280, 336
+	s.list.rowH, s.list.rows = 64, max(1, int((sh-296)/64))
+	s.list.scroll()
+}
+
+func (s *authorScreen) drawTimelineCandidates(g *Game, dst *ebiten.Image) {
+	sw, sh := g.screen()
+	parent := s.timelineContext
+	fill(dst, color.NRGBA{30, 34, 40, 255})
+	parent.drawPlanningHeader(g, dst)
+	parent.drawGroupedTimeline(g, dst, 0, 108, sw-360, sh-226)
+	g.window(dst, sw-360, 48, 360, sh-48)
+	g.drawPlanningText(dst, s.title, sw-348, 60, 336, 18, 2, g.th.accent)
+	if len(s.entries) > 0 {
+		g.drawPlanningText(dst, s.entries[s.list.sel].Text, sw-348, 108, 336, 15, 7, g.th.text)
+		s.drawCandidates(g, dst)
+	}
+	g.drawPlanningText(dst, data.Render(g.db.Tr(g.db.Game.Screens[s.name].View.Footer), g.st.Env()), sw-348, sh-32, 336, 15, 1, g.th.dim)
+	g.window(dst, 0, sh-108, sw-360, 108)
+	for _, lane := range parent.timelineLanes(g) {
+		if lane.item.Activity == s.timelineActivity {
+			g.drawPlanningText(dst, timelineLaneDescription(g, lane), 24, sh-96, sw-408, 15, 4, g.th.text)
+			break
+		}
+	}
+}
+
 func (s *authorScreen) modal() bool   { return !s.running }
 func (s *authorScreen) overlay() bool { return s.running }
 
@@ -114,6 +147,10 @@ func (s *authorScreen) liveKeep(g *Game) scene { return s.refreshed(g) }
 
 func (s *authorScreen) refreshed(g *Game) *authorScreen {
 	n := newAuthorScreen(g, s.name, s.done)
+	n.timelineContext, n.timelineActivity = s.timelineContext, s.timelineActivity
+	if n.timelineContext != nil {
+		n.layoutTimelineCandidates(g)
+	}
 	n.target = s.target
 	n.focus = s.focus
 	n.calendarMonth = s.calendarMonth
@@ -217,6 +254,10 @@ func (s *authorScreen) activate(g *Game) {
 }
 
 func (s *authorScreen) draw(g *Game, dst *ebiten.Image) {
+	if s.timelineContext != nil {
+		s.drawTimelineCandidates(g, dst)
+		return
+	}
 	if s.running {
 		if g.db.Game.Screens[s.name].View.Fullscreen {
 			s.drawSurface(g, dst)

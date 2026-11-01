@@ -62,6 +62,14 @@ Hidden attributes are never used as a fallback for missing observations.
 Selecting an entry runs its ordinary `do`; authors can use a `choice` there to
 confirm a costly action. Browsing the list itself does not advance planning.
 
+Opening a candidate list from a grouped timeline lane keeps the timeline on
+the left and places the list in a 360-logical-pixel pane on the right. The whole
+calendar range remains visible. The selected activity description stays below
+the timeline; candidate text uses seven lines above the scrolling list, so keep
+it concise. The candidate screen's `view.footer` supplies a short navigation hint.
+Escape returns to the same timeline selection and expansion. Standalone lists
+retain their original layout; no new schema field is needed.
+
 Grouped timeline `view.rows[].items[].text` adds one interpolated explanation
 below the activity name and public assignment/report summary when its group is
 expanded. For example, `text: "Planned {activity.clay.effort} units"` explains

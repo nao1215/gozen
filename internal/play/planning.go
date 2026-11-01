@@ -912,6 +912,11 @@ func (s *authorScreen) timelineDescription(g *Game) string {
 			break
 		}
 	}
+	return timelineLaneDescription(g, lane)
+}
+
+func timelineLaneDescription(g *Game, lane timelineLane) string {
+	p := g.db.Game.Planning
 	d := p.Activities[lane.item.Activity]
 	a := g.st.Planning.Activities[lane.item.Activity]
 	// Only authored saved samples and reported observations enter the label.
@@ -990,6 +995,12 @@ func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
 	open := func(lane timelineLane) {
 		if lane.item.Screen != "" {
 			g.openScreen(lane.item.Screen, nil)
+			if len(g.stack) > 0 {
+				if child, ok := g.stack[len(g.stack)-1].(*authorScreen); ok && child != s && child.candidateList(g) {
+					child.timelineContext, child.timelineActivity = s, lane.item.Activity
+					child.layoutTimelineCandidates(g)
+				}
+			}
 		}
 	}
 	if g.in.down() {

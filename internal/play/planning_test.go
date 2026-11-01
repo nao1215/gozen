@@ -752,3 +752,69 @@ func TestCalendarDateLinksPreserveState(t *testing.T) {
 		t.Fatal("browsing changed saved state")
 	}
 }
+
+func TestTimelineCandidatePaneBrowsing(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{
+		Calendar:   data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}},
+		Activities: map[string]data.Activity{"kiln": {Name: "Kiln", Effort: 10, From: "2030-08-01", To: "2030-11-30"}},
+	}
+	db.Game.Screens = map[string]*data.AuthorScreen{
+		"tasks": {Kind: "timeline", View: data.PlanningView{Fullscreen: true, Rows: []data.TimelineRow{{Label: "Pottery", Items: []data.TimelineItem{{Activity: "kiln", Screen: "pick"}}}}}},
+		"pick":  {View: data.PlanningView{Portrait: "icon"}},
+	}
+	for range 12 {
+		db.Game.Screens["pick"].Entries = append(db.Game.Screens["pick"].Entries, data.ScreenEntry{Label: "Maker"})
+	}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	parent := newAuthorScreen(g, "tasks", nil)
+	g.stack = []scene{parent}
+	before, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lane := parent.timelineLanes(g)[0]
+	g.in = input{click: true, mouse: lane.bounds.Min}
+	if !parent.updateGroupedTimeline(g) || len(g.stack) != 2 {
+		t.Fatal("lane did not open picker")
+	}
+	child, ok := g.stack[1].(*authorScreen)
+	if !ok {
+		t.Fatal("candidate screen missing")
+	}
+	if child.timelineContext != parent || child.timelineActivity != "kiln" {
+		t.Fatal("lost selected activity")
+	}
+	child.list.sel = 11
+	child.list.scroll()
+	child = child.refreshed(g)
+	g.stack[1] = child
+	r := child.list.rowRect(11)
+	if r.Min.X < 920 || r.Max.X > 1280 || r.Max.Y > 688 || child.list.top == 0 {
+		t.Fatal("pane rows inaccessible", r)
+	}
+	groups, ax, aw := parent.groupedTimeline(g, 0, 108, 920, 494)
+	if len(groups) != 1 || groups[0].lanes[0].bounds.Min.X != int(ax) || groups[0].lanes[0].bounds.Max.X > int(ax+aw)+1 {
+		t.Fatal("date range clipped")
+	}
+	g.in = input{click: true, mouse: image.Pt(r.Min.X+20, r.Min.Y+20)}
+	chosen, cancel := child.list.update(g)
+	if !chosen || cancel || child.list.sel != 11 {
+		t.Fatal("last candidate not selectable")
+	}
+	g.in = input{rclick: true}
+	child.update(g)
+	if len(g.stack) != 1 || g.stack[0] != parent {
+		t.Fatal("cancel lost timeline")
+	}
+	after, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("browsing changed planning")
+	}
+	if newAuthorScreen(g, "pick", nil).timelineContext != nil {
+		t.Fatal("standalone picker changed")
+	}
+}
