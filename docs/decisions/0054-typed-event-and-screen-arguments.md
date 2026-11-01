@@ -1,6 +1,6 @@
 # ADR 0054: Typed arguments for reusable events and screens
 
-Status: Accepted for phased implementation (2026-11-01). Event calls and plain screen arguments implemented; screen continuation saves and expression-form target fields remain planned.
+Status: Accepted for phased implementation (2026-11-01). Event calls and plain screen arguments implemented; plan entity/activity expression targets implemented; screen continuation saves and other expression-form target fields remain planned.
 
 See [the executable event-call slice](../development/event-arguments.md) for supported syntax and remaining limits.
 
@@ -556,3 +556,25 @@ save selection. It does not make arbitrary developer replay, live editing or dir
 internal `loadSavedGame` calls transactional. It replays the saved prefix once more
 than before; latency has not been benchmarked. Screen continuation descriptors,
 open-screen saves and target-based candidate screens remain separate pending work.
+
+## Planning targets in reusable candidate screens
+
+`plan.entity` and `plan.activity` now accept their existing literal ID or the
+schema-10 mapping `{expr: arg.resident}` / `{expr: arg.task}`. The interpreter
+resolves each target once in the invocation scope, before selecting entities or
+updating planning state. The result must be a nonempty string naming an existing
+entity or activity of the required kind. No numeric coercion, implicit ID
+interpolation, or random evaluation is allowed. An omitted literal entity still
+clears an assignment; an expression returning an empty string is an error.
+
+Event and screen arguments share the same expression diagnostics as these target
+fields. Rule parameters remain finite scalars and dynamic references are checked
+at execution. A failed target rolls back the complete enclosing rule, including
+its earlier steps, and consumes no randomness. Literal target JSON stays a string,
+so existing named replay fingerprints do not change solely due to this type.
+
+The workshop example uses one `candidates` screen for `prepare` and `shape`, with
+an explicit confirmation choice. Cancelling leaves the assignment unchanged.
+This completes the target-selection slice, not screen continuation serialization:
+finish the opener before saving. Save/load of the completed assignments is
+supported; an open screen still refuses saving in both session and play.

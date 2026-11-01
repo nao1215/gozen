@@ -1732,3 +1732,58 @@ func TestScreenArguments(t *testing.T) {
 		t.Fatalf("restored total = %d", got)
 	}
 }
+
+// One candidate screen must assign either activity without copying its commands.
+func TestScreenActivityTargets(t *testing.T) {
+	g, err := gozen.Load(os.DirFS("../../docs/examples/event-arguments"), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := session(t, g, gozen.Config{Seed: 17})
+	for _, task := range []string{"prepare", "shape"} {
+		if err := s.Start(`- call: {event: assign_visit, args: {task: '"` + task + `"', resident: '"weaver"'}}`); err != nil {
+			t.Fatal(err)
+		}
+		if q := s.Next(); q.Kind != "open" || q.Text != "Assign "+task {
+			t.Fatalf("open: %+v", q)
+		}
+		s.Answer(0)
+		if q := s.Next(); q.Kind != "choice" {
+			t.Fatalf("choice: %+v", q)
+		}
+		if got := query[string](t, s, "activity."+task+".assignee"); got != "potter" {
+			t.Fatal(got)
+		}
+		s.Answer(1)
+		s.Next()
+		if got := query[string](t, s, "activity."+task+".assignee"); got != "potter" {
+			t.Fatal(got)
+		}
+		s.Next()
+		s.Answer(0)
+		s.Next()
+		s.Answer(0)
+		s.Answer(0)
+		s.Next()
+		if got := query[string](t, s, "activity."+task+".assignee"); got != "weaver" {
+			t.Fatal(got)
+		}
+		s.Next()
+		s.Answer(-1)
+		s.Next()
+		s.Next()
+	}
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := gozen.Restore(g, saved, gozen.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, task := range []string{"prepare", "shape"} {
+		if got := query[string](t, restored, "activity."+task+".assignee"); got != "weaver" {
+			t.Fatal(got)
+		}
+	}
+}

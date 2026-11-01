@@ -28,3 +28,8 @@ events:
     do:
     - open: {screen: stock, args: {amount: 'arg.amount'}}
     - say: 'Returned {arg.amount}'
+  assign_visit:
+    params: {task: activity, resident: entity}
+    do:
+    - open: {screen: candidates, args: {task: arg.task, resident: arg.resident}}
+    - say: Returned

@@ -88,3 +88,24 @@ atago run --ci --parallel 1 --skip-tag graphics,web e2e/atago/planning.atago.yam
 
 The CLI scenario confirms cancellation and nested close using simulated player
 input; it is not a rendered screenshot or a screen-save restoration test.
+
+## Assigning different activities with one screen
+
+The [workshop example](../examples/event-arguments/game.yaml) defines a single
+`candidates` screen with `task: activity` and `resident: entity` parameters.
+Call `assign_visit` with `task: '"prepare"'` or `task: '"shape"'` and
+`resident: '"weaver"'` to reuse its confirmation flow. Its confirmed action is:
+
+```yaml
+- plan:
+    op: assign
+    activity: {expr: arg.task}
+    entity: {expr: arg.resident}
+```
+
+Literal IDs continue to work. Expression targets require schema 10 and must
+return existing IDs of the correct kind without randomness. Targets are resolved
+once before mutation, outside entity iteration; `self` is not available there.
+Invalid targets roll back the entire planning operation or rule. Cancel leaves
+both activities unchanged. Close the screen and finish its calling event before
+saving; restoration of an open screen remains unsupported.

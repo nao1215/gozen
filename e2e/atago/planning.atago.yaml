@@ -499,3 +499,60 @@ scenarios:
         contains: 'save random state:'
       stdout:
         equals: ''
+
+- name: one candidate screen assigns two activity arguments
+  steps:
+  - fixture:
+      file: targets.txt
+      content: |
+        gap 1
+        wait 10
+        do call: {event: assign_visit, args: {task: '"prepare"', resident: '"weaver"'}}
+        wait 12
+        press z
+        wait 4
+        press down
+        press z
+        wait 4
+        press z
+        wait 12
+        press z
+        wait 4
+        press z
+        wait 4
+        press z
+        wait 12
+        press x
+        wait 4
+        press z
+        wait 12
+        do call: {event: assign_visit, args: {task: '"shape"', resident: '"weaver"'}}
+        wait 12
+        press z
+        wait 4
+        press z
+        wait 4
+        press z
+        wait 12
+        press x
+        wait 4
+        press z
+        wait 12
+        do say: 'Assignments {activity.prepare.assignee}/{activity.shape.assignee}'
+        wait 4
+        press z
+        wait 12
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script targets.txt --trace targets.jsonl
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+      file:
+        path: targets.jsonl
+        contains:
+        - 'Reviewed prepare'
+        - 'Reviewed shape'
+        - 'Assignments weaver/weaver'

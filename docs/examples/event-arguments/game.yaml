@@ -5,6 +5,9 @@ planning:
   calendar: {start: '2030-01-01', end: '2030-01-02', phases: [day]}
   attributes: {vigor: {type: number, initial: 0}}
   entities: {potter: {name: Potter}, weaver: {name: Weaver}}
+  activities:
+    prepare: {name: Prepare, effort: 2, assignee: potter}
+    shape: {name: Shape, effort: 2, assignee: potter}
 screens:
   stock:
     params: {amount: number}
@@ -27,3 +30,15 @@ screens:
     - label: Read
       do:
       - call: {event: stock_report, args: {amount: 'arg.amount'}}
+  candidates:
+    params: {task: activity, resident: entity}
+    title: 'Assign {arg.task}'
+    entries:
+    - label: 'Choose {arg.resident}'
+      do:
+      - choice:
+        - label: Confirm
+          do:
+          - plan: {op: assign, activity: {expr: arg.task}, entity: {expr: arg.resident}}
+        - label: Cancel
+      - say: 'Reviewed {arg.task}'

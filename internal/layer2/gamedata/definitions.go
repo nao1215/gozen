@@ -53,7 +53,7 @@ func (doc *sourceDocument) definitionShape(raw any, typ reflect.Type, where stri
 		return doc.definitionShape(raw, reflect.TypeFor[[]Rule](), where)
 	}
 	switch typ {
-	case reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](), reflect.TypeFor[Token](),
+	case reflect.TypeFor[IDRef](), reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](), reflect.TypeFor[Token](),
 		reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd]():
 		if _, ok := raw.(string); ok {
 			return nil

@@ -126,12 +126,12 @@ type PlanCommand struct {
 	Policy string          `yaml:"policy"`
 
 	Op        string `yaml:"op"`
-	Entity    string `yaml:"entity"`
+	Entity    IDRef  `yaml:"entity"`
 	Tag       string `yaml:"tag"`
 	Where     Expr   `yaml:"where"`
 	Attribute string `yaml:"attribute"`
 	Value     Expr   `yaml:"value"`
-	Activity  string `yaml:"activity"`
+	Activity  IDRef  `yaml:"activity"`
 	Ledger    string `yaml:"ledger"`
 	Period    string `yaml:"period"`
 }
@@ -334,7 +334,7 @@ func (c *checker) planCommand(w string, cmd *PlanCommand, params []string) {
 		"record": {"entity", "tag", "where", "ledger", "period", "value"}, "close": {"ledger", "period"},
 		"rule": {"rule", "args"}, "policy": {"policy"},
 	}
-	fields := map[string]bool{"entity": cmd.Entity != "", "tag": cmd.Tag != "", "where": cmd.Where.Set(), "attribute": cmd.Attribute != "", "value": cmd.Value.Set(), "activity": cmd.Activity != "", "ledger": cmd.Ledger != "", "period": cmd.Period != "", "rule": cmd.Rule != "", "args": len(cmd.Args) > 0, "policy": cmd.Policy != ""}
+	fields := map[string]bool{"entity": cmd.Entity.set(), "tag": cmd.Tag != "", "where": cmd.Where.Set(), "attribute": cmd.Attribute != "", "value": cmd.Value.Set(), "activity": cmd.Activity.set(), "ledger": cmd.Ledger != "", "period": cmd.Period != "", "rule": cmd.Rule != "", "args": len(cmd.Args) > 0, "policy": cmd.Policy != ""}
 	for _, key := range slices.Sorted(maps.Keys(fields)) {
 		if fields[key] && !slices.Contains(allowed[cmd.Op], key) {
 			c.errorf(diag.Shape, w+"."+key, "field is not used by %s", cmd.Op)
@@ -348,11 +348,11 @@ func (c *checker) planCommand(w string, cmd *PlanCommand, params []string) {
 	if !slices.Contains([]string{"set", "observe", "assign", "progress", "effort", "cancel", "deadline", "advance", "dispatch", "record", "close", "rule", "policy"}, cmd.Op) {
 		c.errorf(diag.NotAWord, w+".op", "unknown planning operation %q", cmd.Op)
 	}
-	if cmd.Op == "observe" && cmd.Activity != "" && (cmd.Entity != "" || cmd.Tag != "") {
+	if cmd.Op == "observe" && cmd.Activity.set() && (cmd.Entity.set() || cmd.Tag != "") {
 		c.errorf(diag.Shape, w, "observe activity cannot be combined with entity or tag")
 	}
-	if cmd.Entity != "" {
-		if _, ok := p.Entities[cmd.Entity]; !ok {
+	if cmd.Entity.ID != "" {
+		if _, ok := p.Entities[cmd.Entity.ID]; !ok {
 			c.errorf(diag.UnknownReference, w+".entity", "unknown entity")
 		}
 	}
@@ -361,8 +361,8 @@ func (c *checker) planCommand(w string, cmd *PlanCommand, params []string) {
 			c.errorf(diag.UnknownReference, w+".attribute", "unknown attribute")
 		}
 	}
-	if cmd.Op == "deadline" || cmd.Op == "cancel" || cmd.Op == "effort" || cmd.Op == "progress" || cmd.Op == "assign" || cmd.Op == "observe" && cmd.Activity != "" {
-		if _, ok := p.Activities[cmd.Activity]; !ok {
+	if cmd.Op == "deadline" || cmd.Op == "cancel" || cmd.Op == "effort" || cmd.Op == "progress" || cmd.Op == "assign" || cmd.Op == "observe" && cmd.Activity.set() {
+		if _, ok := p.Activities[cmd.Activity.ID]; !ok && !cmd.Activity.Expr.Set() {
 			c.errorf(diag.UnknownReference, w+".activity", "unknown activity")
 		}
 	}
@@ -407,6 +407,17 @@ func (c *checker) planCommand(w string, cmd *PlanCommand, params []string) {
 			fields[param] = tAny
 		}
 		over["arg"] = objType("rule arguments", fields, nil)
+	}
+	for kind, target := range map[string]IDRef{"entity": cmd.Entity, "activity": cmd.Activity} {
+		if !target.Expr.Set() {
+			continue
+		}
+		at := w + "." + kind + ".expr"
+		c.needsVersion(at, "expression targets", SchemaVersion10)
+		targetNames := slices.DeleteFunc(slices.Clone(names), func(name string) bool { return name == "self" })
+		targetOver := maps.Clone(over)
+		delete(targetOver, "self")
+		c.argumentExpression(at, target.Expr, kind, targetNames, targetOver)
 	}
 	for key, e := range cmd.Args {
 		c.exprIn(w+".args."+key, e, names, over)

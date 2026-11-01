@@ -14,6 +14,65 @@ import (
 	"github.com/nao1215/gozen/internal/expr"
 )
 
+// IDRef is a literal ID or a pure expression consumed by planning operations.
+// Literal IDs retain their existing JSON representation for replay fingerprints.
+// Resolve checks dynamic type and existence before an operation changes state.
+type IDRef struct {
+	ID   string `yaml:"-"`
+	Expr Expr   `yaml:"expr"`
+}
+
+func (v *IDRef) UnmarshalYAML(unmarshal func(any) error) error {
+	var id string
+	if err := unmarshal(&id); err == nil {
+		*v = IDRef{ID: id}
+		return nil
+	}
+	type plain IDRef
+	var out plain
+	if err := unmarshal(&out); err != nil {
+		return err
+	}
+	if !out.Expr.Set() {
+		return errors.New("ID expression requires expr")
+	}
+	*v = IDRef(out)
+	return nil
+}
+
+func (v IDRef) MarshalJSON() ([]byte, error) {
+	if !v.Expr.Set() {
+		return json.Marshal(v.ID)
+	}
+	return json.Marshal(struct {
+		Expr Expr `json:"expr"`
+	}{v.Expr})
+}
+
+// set distinguishes an omitted target from an expression awaiting evaluation.
+func (v IDRef) set() bool { return v.ID != "" || v.Expr.Set() }
+
+// Resolve evaluates a target in the caller's scope. Literal empty IDs preserve
+// operations such as clearing an assignment; dynamic empty or missing IDs fail.
+// The planning interpreter uses this before the operation mutates planning state.
+func (v IDRef) Resolve(db *DB, kind string, env expr.Env) (string, error) {
+	if !v.Expr.Set() {
+		return v.ID, nil
+	}
+	if v.ID != "" {
+		return "", errors.New("target has both a literal and an expression")
+	}
+	args, err := db.bindArguments(map[string]string{"target": kind}, map[string]Expr{"target": v.Expr}, env)
+	if err != nil {
+		return "", err
+	}
+	id, ok := args["target"].(string)
+	if !ok {
+		return "", errors.New("target must resolve to an ID")
+	}
+	return id, nil
+}
+
 // EventCall is a named invocation consumed by the event interpreter. Args are pure
 // expressions evaluated in the caller's scope before any callee command executes.
 type EventCall struct {
@@ -223,37 +282,41 @@ func (c *checker) callArguments(w string, params map[string]string, args map[str
 			continue
 		}
 		at := w + ".args." + name
-		c.expr(at, e, names)
-		c.planningPure(at, e)
-		expected := expr.StringType
-		switch kind {
-		case "number":
-			expected = expr.NumberType
-		case "bool":
-			expected = expr.BoolType
-		}
-		if got := c.resultType(e, names); got != expr.UnknownType && got != expected {
-			c.errorf(diag.Expression, at, "expected %s; pass a matching typed value", kind)
-		}
-		if slices.Contains([]string{"entity", "activity", "actor", "date"}, kind) {
-			for _, ref := range e.Refs() {
-				if ref.Name != "arg" || len(ref.Path) == 0 {
-					continue
-				}
-				source := c.params[ref.Path[0].Name]
-				if slices.Contains([]string{"entity", "activity", "actor", "date"}, source) && source != kind {
-					c.errorf(diag.Expression, at, "expected %s, got %s parameter; pass a matching typed value", kind, source)
-				}
+		c.argumentExpression(at, e, kind, names, nil)
+	}
+}
+
+func (c *checker) argumentExpression(at string, e Expr, kind string, names []string, over map[string]*vtype) {
+	c.exprIn(at, e, names, over)
+	c.planningPure(at, e)
+	expected := expr.StringType
+	switch kind {
+	case "number":
+		expected = expr.NumberType
+	case "bool":
+		expected = expr.BoolType
+	}
+	if got := c.resultType(e, names); got != expr.UnknownType && got != expected {
+		c.errorf(diag.Expression, at, "expected %s; pass a matching typed value", kind)
+	}
+	if slices.Contains([]string{"entity", "activity", "actor", "date"}, kind) {
+		for _, ref := range e.Refs() {
+			if ref.Name != "arg" || len(ref.Path) == 0 {
+				continue
+			}
+			source := c.params[ref.Path[0].Name]
+			if slices.Contains([]string{"entity", "activity", "actor", "date"}, source) && source != kind {
+				c.errorf(diag.Expression, at, "expected %s, got %s parameter; pass a matching typed value", kind, source)
 			}
 		}
-		if len(e.Names()) == 0 {
-			v, err := e.Eval(nil)
-			if err == nil {
-				_, err = c.db.argumentValue(kind, v)
-			}
-			if err != nil {
-				c.errorf(diag.Expression, at, "expected %s: %v", kind, err)
-			}
+	}
+	if len(e.Names()) == 0 {
+		v, err := e.Eval(nil)
+		if err == nil {
+			_, err = c.db.argumentValue(kind, v)
+		}
+		if err != nil {
+			c.errorf(diag.Expression, at, "expected %s: %v", kind, err)
 		}
 	}
 }

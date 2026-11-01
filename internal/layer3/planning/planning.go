@@ -50,6 +50,15 @@ func ApplyIn(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, e
 func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, error) {
 	p, st := s.DB.Game.Planning, s.Planning
 	base := expr.Chain{args, s.Env()}
+	entity, err := c.Entity.Resolve(s.DB, "entity", base)
+	if err != nil {
+		return nil, err
+	}
+	activity, err := c.Activity.Resolve(s.DB, "activity", base)
+	if err != nil {
+		return nil, err
+	}
+
 	switch c.Op {
 	case "rule":
 		r, ok := p.Rules[c.Rule]
@@ -145,14 +154,14 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 		}
 		return out, nil
 	case "assign":
-		a := st.Activities[c.Activity]
+		a := st.Activities[activity]
 		if a == nil {
-			return nil, fmt.Errorf("unknown activity %q", c.Activity)
+			return nil, fmt.Errorf("unknown activity %q", activity)
 		}
-		if c.Entity != "" && st.Entities[c.Entity] == nil {
-			return nil, fmt.Errorf("unknown entity %q", c.Entity)
+		if entity != "" && st.Entities[entity] == nil {
+			return nil, fmt.Errorf("unknown entity %q", entity)
 		}
-		a.Assignee = c.Entity
+		a.Assignee = entity
 		return nil, nil
 	case "close":
 		if _, ok := p.Ledgers[c.Ledger]; !ok {
@@ -181,9 +190,9 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 		}
 		return nil, nil
 	case "progress", "effort", "cancel", "deadline":
-		a := st.Activities[c.Activity]
+		a := st.Activities[activity]
 		if a == nil {
-			return nil, fmt.Errorf("unknown activity %q", c.Activity)
+			return nil, fmt.Errorf("unknown activity %q", activity)
 		}
 		env := expr.Chain{expr.Map{"self": s.EntityValues(a.Assignee, true)}, base}
 		v, err := c.Value.Eval(env)
@@ -193,7 +202,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 		if c.Op == "deadline" {
 			deadline, ok := v.(string)
 			date, parseErr := time.Parse(time.DateOnly, deadline)
-			if !ok || parseErr != nil || date.Format(time.DateOnly) != deadline || deadline < p.Activities[c.Activity].From {
+			if !ok || parseErr != nil || date.Format(time.DateOnly) != deadline || deadline < p.Activities[activity].From {
 				return nil, errors.New("deadline requires an ISO date on or after the activity start")
 			}
 			a.Deadline = deadline
@@ -223,23 +232,23 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 			n = 0
 		}
 		if n > 0 {
-			for _, dep := range p.Activities[c.Activity].After {
+			for _, dep := range p.Activities[activity].After {
 				ratio := 1.0
-				if p.Activities[c.Activity].DependencyRatio != nil {
-					ratio = *p.Activities[c.Activity].DependencyRatio
+				if p.Activities[activity].DependencyRatio != nil {
+					ratio = *p.Activities[activity].DependencyRatio
 				}
 				if !st.Activities[dep].Cancelled && st.Activities[dep].Progress < s.ActivityEffort(dep)*ratio {
 					return nil, nil
 				}
 			}
 		}
-		a.Progress = max(0, min(s.ActivityEffort(c.Activity), a.Progress+n))
-		if a.Progress < s.ActivityEffort(c.Activity) {
+		a.Progress = max(0, min(s.ActivityEffort(activity), a.Progress+n))
+		if a.Progress < s.ActivityEffort(activity) {
 			a.Completed = ""
 		} else if a.Completed == "" {
 			a.Completed = st.Date
 		}
-		if !p.Activities[c.Activity].Observation.Set() {
+		if !p.Activities[activity].Observation.Set() {
 			a.Observed = a.Progress
 		}
 		return nil, nil
@@ -247,16 +256,16 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 	default:
 		return nil, fmt.Errorf("unknown planning operation %q", c.Op)
 	}
-	if c.Op == "observe" && (c.Activity != "" || c.Entity == "" && c.Tag == "" && !c.Where.Set()) {
-		if c.Activity != "" && (c.Entity != "" || c.Tag != "") {
+	if c.Op == "observe" && (activity != "" || entity == "" && c.Tag == "" && !c.Where.Set()) {
+		if activity != "" && (entity != "" || c.Tag != "") {
 			return nil, errors.New("observe activity cannot be combined with entity or tag")
 		}
 		ids := slices.Sorted(maps.Keys(p.Activities))
-		if c.Activity != "" {
-			if _, ok := p.Activities[c.Activity]; !ok {
-				return nil, fmt.Errorf("unknown activity %q", c.Activity)
+		if activity != "" {
+			if _, ok := p.Activities[activity]; !ok {
+				return nil, fmt.Errorf("unknown activity %q", activity)
 			}
-			ids = []string{c.Activity}
+			ids = []string{activity}
 		}
 		for _, id := range ids {
 			def := p.Activities[id]
@@ -284,14 +293,14 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 			a.Observed = max(0, min(s.ActivityEffort(id), n))
 		}
 	}
-	if c.Op == "observe" && c.Activity != "" {
+	if c.Op == "observe" && activity != "" {
 		return nil, nil
 	}
-	if c.Entity != "" && st.Entities[c.Entity] == nil {
-		return nil, fmt.Errorf("unknown entity %q", c.Entity)
+	if entity != "" && st.Entities[entity] == nil {
+		return nil, fmt.Errorf("unknown entity %q", entity)
 	}
 	for _, id := range slices.Sorted(maps.Keys(st.Entities)) {
-		if c.Entity != "" && id != c.Entity || c.Tag != "" && !slices.Contains(p.Entities[id].Tags, c.Tag) {
+		if entity != "" && id != entity || c.Tag != "" && !slices.Contains(p.Entities[id].Tags, c.Tag) {
 			continue
 		}
 		env := expr.Chain{expr.Map{"self": s.EntityValues(id, true)}, base}

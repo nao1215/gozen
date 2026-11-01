@@ -260,3 +260,57 @@ func TestPlanningArgumentScope(t *testing.T) {
 		})
 	}
 }
+
+func TestPlanningExpressionTargetDiagnostics(t *testing.T) {
+	const header = `schema_version: 10
+id: targets
+start: {location: room}
+planning:
+  calendar: {start: '2030-01-01', end: '2030-01-02', phases: [day]}
+  entities: {potter: {name: Potter}}
+  activities: {prepare: {effort: 2}}
+`
+	for _, tc := range []struct{ target, want string }{
+		{`potter`, ""},
+		{`{expr: arg.resident}`, ""},
+		{`{expr: '"potter"'}`, ""},
+		{`{expr: arg.task}`, "expected entity, got activity"},
+		{`{expr: arg.missing}`, "no field"},
+		{`{expr: self.id}`, "unknown name"},
+		{`{expr: true}`, "expected entity"},
+		{`{expr: '"missing"'}`, "invalid entity"},
+		{`{expr: '""'}`, "invalid entity"},
+		{`{expr: 'rand(2)'}`, "pure"},
+		{`{}`, "requires expr"},
+		{`{expr: arg.resident, typo: 1}`, "unknown field"},
+	} {
+		t.Run(tc.target, func(t *testing.T) {
+			story := "locations: {room: {name: Workshop}}\nevents:\n  assign:\n    params: {task: activity, resident: entity}\n    do:\n    - plan: {op: assign, activity: {expr: arg.task}, entity: " + tc.target + "}\n"
+			_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header)}, "data/story.yaml": {Data: []byte(story)}})
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), "data/story.yaml:") {
+				t.Fatalf("want %q and source: %v", tc.want, err)
+			}
+		})
+	}
+	for _, command := range []string{
+		`op: advance, entity: {expr: '"potter"'}`,
+		`op: observe, activity: {expr: '"prepare"'}, entity: potter`,
+	} {
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header)}, "data/story.yaml": {Data: []byte("locations: {room: {name: Workshop}}\nevents: {bad: {do: [{plan: {" + command + "}}]}}")}})
+		if err == nil {
+			t.Fatalf("accepted conflicting or unused target: %s", command)
+		}
+	}
+	_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(strings.Replace(header, "version: 10", "version: 9", 1))}, "data/story.yaml": {Data: []byte(`locations: {room: {name: Workshop}}
+events: {bad: {do: [{plan: {op: assign, activity: {expr: '"prepare"'}, entity: potter}}]}}
+`)}})
+	if err == nil || !strings.Contains(err.Error(), "10") {
+		t.Fatalf("accepted old schema: %v", err)
+	}
+}

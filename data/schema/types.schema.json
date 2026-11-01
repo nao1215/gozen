@@ -10819,6 +10819,38 @@
       ],
       "type": "object"
     },
+    "IDRef": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "expr": {
+              "description": "Schema 10: a pure expression returning an entity or activity ID for the owning plan field. Empty and unknown IDs are rejected before mutation.",
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ],
+              "x-contract": {
+                "default": "no expression (true as a condition, 0 as a number)",
+                "legacy_default": "no expression (true as a condition, 0 as a number)",
+                "zero": "expression value 0 (false as a condition)",
+                "required": "optional",
+                "reference": "expression; checked by gozen check",
+                "version": "10"
+              },
+              "x-type": "expression"
+            }
+          },
+          "type": "object"
+        }
+      ],
+      "description": "A literal ID or an explicit pure expression resolving to an existing typed target."
+    },
     "Item": {
       "additionalProperties": false,
       "description": "A thing the party carries: a consumable, a piece of equipment or a key item.",
@@ -13112,17 +13144,17 @@
       "description": "PlanCommand definition for deterministic planning simulations.",
       "properties": {
         "activity": {
+          "$ref": "#/$defs/IDRef",
           "description": "Activity of this plancommand.",
-          "type": "string",
           "x-contract": {
-            "default": "empty string",
-            "legacy_default": "empty string",
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
             "zero": "-",
             "required": "optional",
             "reference": "-",
             "version": "0, 1, 2"
           },
-          "x-type": "string"
+          "x-type": "[IDRef](#idref) or string"
         },
         "args": {
           "additionalProperties": {
@@ -13163,17 +13195,17 @@
           "x-type": "string"
         },
         "entity": {
+          "$ref": "#/$defs/IDRef",
           "description": "Entity of this plancommand.",
-          "type": "string",
           "x-contract": {
-            "default": "empty string",
-            "legacy_default": "empty string",
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
             "zero": "-",
             "required": "optional",
             "reference": "-",
             "version": "0, 1, 2"
           },
-          "x-type": "string"
+          "x-type": "[IDRef](#idref) or string"
         },
         "ledger": {
           "description": "Ledger of this plancommand.",

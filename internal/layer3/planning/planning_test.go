@@ -2,6 +2,7 @@ package planning_test
 
 import (
 	"encoding/json"
+	"math/rand/v2"
 	"reflect"
 	"strings"
 	"testing"
@@ -127,15 +128,15 @@ func TestObservationSelection(t *testing.T) {
 			def.Observation = value(t, "self.progress")
 			s.DB.Game.Planning.Activities["prepare"] = def
 			apply(t, s, data.PlanCommand{Op: "observe"})
-			apply(t, s, data.PlanCommand{Op: "set", Entity: "potter", Attribute: "vigor", Value: value(t, "20")})
-			apply(t, s, data.PlanCommand{Op: "progress", Activity: "prepare", Value: value(t, "1")})
+			apply(t, s, data.PlanCommand{Op: "set", Entity: data.IDRef{ID: "potter"}, Attribute: "vigor", Value: value(t, "20")})
+			apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "1")})
 			before := snapshot(t, s)
 			restored, err := rpg.Parse(s.DB, before, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
 			for _, st := range []*rpg.State{s, restored} {
-				cmd := data.PlanCommand{Op: "observe", Entity: tc.entity, Tag: tc.tag, Activity: tc.activity}
+				cmd := data.PlanCommand{Op: "observe", Entity: data.IDRef{ID: tc.entity}, Tag: tc.tag, Activity: data.IDRef{ID: tc.activity}}
 				if tc.where != "" {
 					cmd.Where = value(t, tc.where)
 				}
@@ -168,7 +169,7 @@ func TestObservationFailureIsAtomic(t *testing.T) {
 			def := s.DB.Game.Planning.Activities["prepare"]
 			def.Observation = value(t, "self.progress")
 			s.DB.Game.Planning.Activities["prepare"] = def
-			apply(t, s, data.PlanCommand{Op: "progress", Activity: "prepare", Value: value(t, "1")})
+			apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "1")})
 			cmd := data.PlanCommand{Op: "observe"}
 			switch target {
 			case "activity":
@@ -182,15 +183,15 @@ func TestObservationFailureIsAtomic(t *testing.T) {
 			case "predicate":
 				cmd.Where = value(t, "self.missing")
 			case "unknown entity":
-				cmd.Entity = "missing"
+				cmd.Entity = data.IDRef{ID: "missing"}
 			case "unknown activity":
-				cmd.Activity = "missing"
+				cmd.Activity = data.IDRef{ID: "missing"}
 			case "mixed entity":
-				cmd.Activity, cmd.Entity = "prepare", "potter"
+				cmd.Activity, cmd.Entity = data.IDRef{ID: "prepare"}, data.IDRef{ID: "potter"}
 			case "mixed tag":
-				cmd.Activity, cmd.Tag = "prepare", "resident"
+				cmd.Activity, cmd.Tag = data.IDRef{ID: "prepare"}, "resident"
 			case "activity predicate":
-				cmd.Activity = "prepare"
+				cmd.Activity = data.IDRef{ID: "prepare"}
 				cmd.Where = value(t, "self.missing")
 			}
 			before := snapshot(t, s)
@@ -210,17 +211,17 @@ func TestObservationFailureIsAtomic(t *testing.T) {
 
 func TestDependenciesReworkAndSave(t *testing.T) {
 	s := state(t)
-	apply(t, s, data.PlanCommand{Op: "progress", Activity: "shape", Value: value(t, "4")})
+	apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "shape"}, Value: value(t, "4")})
 	if s.Planning.Activities["shape"].Progress != 0 {
 		t.Fatal("dependency ignored")
 	}
-	apply(t, s, data.PlanCommand{Op: "progress", Activity: "prepare", Value: value(t, "10")})
-	apply(t, s, data.PlanCommand{Op: "progress", Activity: "shape", Value: value(t, "4")})
-	apply(t, s, data.PlanCommand{Op: "progress", Activity: "shape", Value: value(t, "-1")})
+	apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "10")})
+	apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "shape"}, Value: value(t, "4")})
+	apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "shape"}, Value: value(t, "-1")})
 	if s.Planning.Activities["shape"].Completed != "" {
 		t.Fatal("rework kept completion")
 	}
-	apply(t, s, data.PlanCommand{Op: "assign", Activity: "shape", Entity: "weaver"})
+	apply(t, s, data.PlanCommand{Op: "assign", Activity: data.IDRef{ID: "shape"}, Entity: data.IDRef{ID: "weaver"}})
 	restored, err := rpg.Parse(s.DB, snapshot(t, s), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -229,7 +230,7 @@ func TestDependenciesReworkAndSave(t *testing.T) {
 		t.Fatal("round trip lost planning state")
 	}
 	for _, st := range []*rpg.State{s, restored} {
-		apply(t, st, data.PlanCommand{Op: "progress", Activity: "shape", Value: value(t, "1")})
+		apply(t, st, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "shape"}, Value: value(t, "1")})
 	}
 	if !reflect.DeepEqual(s.Planning, restored.Planning) {
 		t.Fatal("resume differs")
@@ -238,14 +239,14 @@ func TestDependenciesReworkAndSave(t *testing.T) {
 
 func TestCalendarDispatchAndPeriodClose(t *testing.T) {
 	s := state(t)
-	apply(t, s, data.PlanCommand{Op: "record", Ledger: "usage", Entity: "potter", Value: value(t, "2")})
+	apply(t, s, data.PlanCommand{Op: "record", Ledger: "usage", Entity: data.IDRef{ID: "potter"}, Value: value(t, "2")})
 	apply(t, s, data.PlanCommand{Op: "advance"})
 	apply(t, s, data.PlanCommand{Op: "advance"})
 	if s.Planning.Date != "2030-08-01" || s.Planning.Phase != 0 {
 		t.Fatal("month transition failed")
 	}
 	// A delayed declaration belongs to the previous month, before explicit closing.
-	apply(t, s, data.PlanCommand{Op: "record", Ledger: "usage", Period: "2030-07", Entity: "potter", Value: value(t, "3")})
+	apply(t, s, data.PlanCommand{Op: "record", Ledger: "usage", Period: "2030-07", Entity: data.IDRef{ID: "potter"}, Value: value(t, "3")})
 	apply(t, s, data.PlanCommand{Op: "close", Ledger: "usage", Period: "2030-07"})
 	for _, op := range []string{"record", "close"} {
 		if _, err := planning.Apply(s, data.PlanCommand{Op: op, Ledger: "usage", Period: "2030-07", Value: value(t, "1")}); err == nil {
@@ -325,7 +326,7 @@ func TestReportedActivityProgress(t *testing.T) {
 	a := s.DB.Game.Planning.Activities["prepare"]
 	a.Observation = value(t, "self.progress + 1")
 	s.DB.Game.Planning.Activities["prepare"] = a
-	apply(t, s, data.PlanCommand{Op: "progress", Activity: "prepare", Value: value(t, "0.5")})
+	apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "0.5")})
 	if s.Planning.Activities["prepare"].Observed != 0 {
 		t.Fatal("drawing progress changed without refresh")
 	}
@@ -338,26 +339,26 @@ func TestReportedActivityProgress(t *testing.T) {
 func TestLedgerRetentionKeepsClosure(t *testing.T) {
 	s := state(t)
 	for _, month := range []string{"2030-05", "2030-06", "2030-07"} {
-		apply(t, s, data.PlanCommand{Op: "record", Ledger: "usage", Entity: "potter", Period: month, Value: value(t, "1")})
+		apply(t, s, data.PlanCommand{Op: "record", Ledger: "usage", Entity: data.IDRef{ID: "potter"}, Period: month, Value: value(t, "1")})
 		apply(t, s, data.PlanCommand{Op: "close", Ledger: "usage", Period: month})
 	}
 	if len(s.Planning.Ledgers["usage"]) != 2 {
 		t.Fatal("retention did not prune totals")
 	}
 	before := snapshot(t, s)
-	if _, err := planning.Apply(s, data.PlanCommand{Op: "record", Ledger: "usage", Entity: "potter", Period: "2030-05", Value: value(t, "1")}); err == nil || string(before) != string(snapshot(t, s)) {
+	if _, err := planning.Apply(s, data.PlanCommand{Op: "record", Ledger: "usage", Entity: data.IDRef{ID: "potter"}, Period: "2030-05", Value: value(t, "1")}); err == nil || string(before) != string(snapshot(t, s)) {
 		t.Fatal("pruned closed period was reopened")
 	}
 }
 
 func TestEffortChangesCompletionDependenciesAndSave(t *testing.T) {
 	s := state(t)
-	apply(t, s, data.PlanCommand{Op: "progress", Activity: "prepare", Value: value(t, "2")})
-	apply(t, s, data.PlanCommand{Op: "effort", Activity: "prepare", Value: value(t, "activity.prepare.effort * 2")})
+	apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "2")})
+	apply(t, s, data.PlanCommand{Op: "effort", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "activity.prepare.effort * 2")})
 	if s.Planning.Activities["prepare"].Completed != "" || s.ActivityEffort("prepare") != 4 {
 		t.Fatal("increased budget did not reopen completed work")
 	}
-	apply(t, s, data.PlanCommand{Op: "progress", Activity: "shape", Value: value(t, "4")})
+	apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "shape"}, Value: value(t, "4")})
 	if s.Planning.Activities["shape"].Progress != 0 {
 		t.Fatal("dependency used the old budget")
 	}
@@ -366,12 +367,12 @@ func TestEffortChangesCompletionDependenciesAndSave(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, st := range []*rpg.State{s, restored} {
-		apply(t, st, data.PlanCommand{Op: "effort", Activity: "prepare", Value: value(t, "1")})
+		apply(t, st, data.PlanCommand{Op: "effort", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "1")})
 		a := st.Planning.Activities["prepare"]
 		if a.Progress != 1 || a.Observed != 1 || a.Completed == "" {
 			t.Fatalf("reduced budget did not clamp and complete: %+v", a)
 		}
-		apply(t, st, data.PlanCommand{Op: "progress", Activity: "shape", Value: value(t, "4")})
+		apply(t, st, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "shape"}, Value: value(t, "4")})
 		if st.Planning.Activities["shape"].Completed == "" {
 			t.Fatal("reduced dependency did not unlock work")
 		}
@@ -381,7 +382,7 @@ func TestEffortChangesCompletionDependenciesAndSave(t *testing.T) {
 	}
 	for _, input := range []string{"0", "-1", `"invalid"`, "1/0"} {
 		before := snapshot(t, s)
-		if _, err := planning.Apply(s, data.PlanCommand{Op: "effort", Activity: "shape", Value: value(t, input)}); err == nil || string(before) != string(snapshot(t, s)) {
+		if _, err := planning.Apply(s, data.PlanCommand{Op: "effort", Activity: data.IDRef{ID: "shape"}, Value: value(t, input)}); err == nil || string(before) != string(snapshot(t, s)) {
 			t.Fatalf("invalid effort %s was accepted or mutated state", input)
 		}
 	}
@@ -433,8 +434,8 @@ func TestEffortChangesCompletionDependenciesAndSave(t *testing.T) {
 
 func TestCancellationPreservesWorkAndRestoresDependencies(t *testing.T) {
 	s := state(t)
-	apply(t, s, data.PlanCommand{Op: "progress", Activity: "prepare", Value: value(t, ".5")})
-	apply(t, s, data.PlanCommand{Op: "cancel", Activity: "prepare", Value: value(t, "true")})
+	apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "prepare"}, Value: value(t, ".5")})
+	apply(t, s, data.PlanCommand{Op: "cancel", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "true")})
 	restored, err := rpg.Parse(s.DB, snapshot(t, s), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -445,23 +446,23 @@ func TestCancellationPreservesWorkAndRestoresDependencies(t *testing.T) {
 		if len(commands) != 1 || commands[0].Call.Event != "bell" {
 			t.Fatal("policy cannot observe cancellation")
 		}
-		apply(t, st, data.PlanCommand{Op: "progress", Activity: "prepare", Value: value(t, "2")})
+		apply(t, st, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "2")})
 		if a := st.Planning.Activities["prepare"]; a.Progress != .5 || a.Completed != "" || !a.Cancelled {
 			t.Fatalf("cancel lost work: %+v", a)
 		}
-		apply(t, st, data.PlanCommand{Op: "progress", Activity: "shape", Value: value(t, "1")})
+		apply(t, st, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "shape"}, Value: value(t, "1")})
 		if st.Planning.Activities["shape"].Progress != 1 {
 			t.Fatal("cancelled dependency blocked work")
 		}
-		apply(t, st, data.PlanCommand{Op: "cancel", Activity: "prepare", Value: value(t, "false")})
-		apply(t, st, data.PlanCommand{Op: "progress", Activity: "shape", Value: value(t, "1")})
+		apply(t, st, data.PlanCommand{Op: "cancel", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "false")})
+		apply(t, st, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "shape"}, Value: value(t, "1")})
 		if st.Planning.Activities["shape"].Progress != 1 {
 			t.Fatal("restored dependency ignored")
 		}
 	}
 	for _, input := range []string{"1", `"true"`} {
 		before := snapshot(t, s)
-		if _, err := planning.Apply(s, data.PlanCommand{Op: "cancel", Activity: "prepare", Value: value(t, input)}); err == nil || string(before) != string(snapshot(t, s)) {
+		if _, err := planning.Apply(s, data.PlanCommand{Op: "cancel", Activity: data.IDRef{ID: "prepare"}, Value: value(t, input)}); err == nil || string(before) != string(snapshot(t, s)) {
 			t.Fatal("invalid cancellation was not atomic")
 		}
 	}
@@ -472,7 +473,7 @@ func TestDeadlineChangesPersistAndRejectInvalidDates(t *testing.T) {
 	def := s.DB.Game.Planning.Activities["prepare"]
 	def.From, def.To = "2030-07-31", "2030-08-03"
 	s.DB.Game.Planning.Activities["prepare"] = def
-	apply(t, s, data.PlanCommand{Op: "deadline", Activity: "prepare", Value: value(t, `"2030-08-01"`)})
+	apply(t, s, data.PlanCommand{Op: "deadline", Activity: data.IDRef{ID: "prepare"}, Value: value(t, `"2030-08-01"`)})
 	if s.ActivityDeadline("prepare") != "2030-08-01" || s.DB.Game.Planning.Activities["prepare"].To != "2030-08-03" {
 		t.Fatal("deadline did not override the authored date independently")
 	}
@@ -485,7 +486,7 @@ func TestDeadlineChangesPersistAndRejectInvalidDates(t *testing.T) {
 	}
 	for _, input := range []string{`"2030-07-30"`, `"2030-02-30"`, `"2030-8-01"`, `42`, `true`, `""`} {
 		before := snapshot(t, s)
-		if _, err := planning.Apply(s, data.PlanCommand{Op: "deadline", Activity: "prepare", Value: value(t, input)}); err == nil || string(before) != string(snapshot(t, s)) {
+		if _, err := planning.Apply(s, data.PlanCommand{Op: "deadline", Activity: data.IDRef{ID: "prepare"}, Value: value(t, input)}); err == nil || string(before) != string(snapshot(t, s)) {
 			t.Fatalf("invalid deadline %s accepted or mutated state", input)
 		}
 	}
@@ -513,7 +514,7 @@ func TestNonFiniteScalarRollback(t *testing.T) {
 					entity := s.DB.Game.Planning.Entities["weaver"]
 					entity.Observations = map[string]data.Expr{"report": value(t, formula)}
 					s.DB.Game.Planning.Entities["weaver"] = entity
-					apply(t, s, data.PlanCommand{Op: "set", Entity: "potter", Attribute: "vigor", Value: value(t, "20")})
+					apply(t, s, data.PlanCommand{Op: "set", Entity: data.IDRef{ID: "potter"}, Attribute: "vigor", Value: value(t, "20")})
 				case "argument":
 					s.DB.Game.Planning.Rules = map[string]data.PlanRule{"step": {Params: []string{"unused"}, Do: []data.PlanCommand{{Op: "advance"}}}}
 					cmd = data.PlanCommand{Op: "rule", Rule: "step", Args: map[string]data.Expr{"unused": value(t, formula)}}
@@ -550,7 +551,7 @@ func TestNumericOperationTypes(t *testing.T) {
 		for _, op := range []string{"progress", "effort", "record", "observe"} {
 			t.Run(op+"/"+formula, func(t *testing.T) {
 				s := state(t)
-				cmd := data.PlanCommand{Op: op, Activity: "prepare", Value: value(t, formula)}
+				cmd := data.PlanCommand{Op: op, Activity: data.IDRef{ID: "prepare"}, Value: value(t, formula)}
 				if op == "record" {
 					cmd = data.PlanCommand{Op: op, Ledger: "usage", Value: value(t, formula)}
 				}
@@ -558,7 +559,7 @@ func TestNumericOperationTypes(t *testing.T) {
 					def := s.DB.Game.Planning.Activities["prepare"]
 					def.Observation = value(t, formula)
 					s.DB.Game.Planning.Activities["prepare"] = def
-					cmd = data.PlanCommand{Op: op, Activity: "prepare"}
+					cmd = data.PlanCommand{Op: op, Activity: data.IDRef{ID: "prepare"}}
 				}
 				s.DB.Game.Planning.Rules = map[string]data.PlanRule{"update": {Do: []data.PlanCommand{{Op: "advance"}, cmd}}}
 				before := snapshot(t, s)
@@ -610,5 +611,77 @@ func TestNumericOperationTypes(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestExpressionTargetsAreAtomic(t *testing.T) {
+	for _, formula := range []string{`arg.resident`, `true`, `nil`, `""`, `"missing"`, `rand(2) == 0 ? "potter" : "weaver"`} {
+		t.Run(formula, func(t *testing.T) {
+			s := state(t)
+			rng := rand.NewPCG(7, 11)
+			s.Rand = rand.New(rng) //nolint:gosec // Deterministic gameplay test, not secrets.
+			randomBefore, err := rng.MarshalBinary()
+			if err != nil {
+				t.Fatal(err)
+			}
+			s.DB.Game.Planning.Rules = map[string]data.PlanRule{}
+			// A later bad target must roll back earlier rule steps as well.
+			s.DB.Game.Planning.Rules["assign"] = data.PlanRule{Params: []string{"task", "resident"}, Do: []data.PlanCommand{
+				{Op: "advance"},
+				{Op: "assign", Activity: data.IDRef{Expr: value(t, "arg.task")}, Entity: data.IDRef{Expr: value(t, formula)}},
+			}}
+			before := snapshot(t, s)
+			_, err = planning.Apply(s, data.PlanCommand{Op: "rule", Rule: "assign", Args: map[string]data.Expr{
+				"task": value(t, `"shape"`), "resident": value(t, `"missing"`),
+			}})
+			if err == nil || string(before) != string(snapshot(t, s)) {
+				t.Fatalf("target failure changed state: %v", err)
+			}
+			randomAfter, err := rng.MarshalBinary()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(randomBefore) != string(randomAfter) {
+				t.Fatal("target failure consumed randomness")
+			}
+		})
+	}
+	s := state(t)
+	_, err := planning.ApplyIn(s, data.PlanCommand{Op: "assign", Activity: data.IDRef{Expr: value(t, "arg.task")}, Entity: data.IDRef{Expr: value(t, "arg.resident")}}, expr.Map{"arg": expr.Map{"task": "shape", "resident": "weaver"}})
+	if err != nil || s.Planning.Activities["shape"].Assignee != "weaver" || s.Planning.Activities["prepare"].Assignee != "potter" {
+		t.Fatalf("assignment: %v", err)
+	}
+	apply(t, s, data.PlanCommand{Op: "assign", Activity: data.IDRef{ID: "shape"}})
+	if s.Planning.Activities["shape"].Assignee != "" {
+		t.Fatal("literal omitted entity no longer clears assignment")
+	}
+}
+
+func TestLiteralAndExpressionTargetsAgree(t *testing.T) {
+	for _, command := range []data.PlanCommand{
+		{Op: "assign", Activity: data.IDRef{ID: "prepare"}, Entity: data.IDRef{ID: "weaver"}},
+		{Op: "progress", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "1")},
+		{Op: "effort", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "3")},
+		{Op: "cancel", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "true")},
+		{Op: "deadline", Activity: data.IDRef{ID: "prepare"}, Value: value(t, `"2030-08-02"`)},
+		{Op: "set", Entity: data.IDRef{ID: "weaver"}, Attribute: "vigor", Value: value(t, "20")},
+		{Op: "observe", Entity: data.IDRef{ID: "weaver"}},
+		{Op: "observe", Activity: data.IDRef{ID: "prepare"}},
+		{Op: "record", Entity: data.IDRef{ID: "weaver"}, Ledger: "usage", Value: value(t, "2")},
+	} {
+		t.Run(command.Op, func(t *testing.T) {
+			literal, dynamic := state(t), state(t)
+			apply(t, literal, command)
+			if command.Entity.ID != "" {
+				command.Entity = data.IDRef{Expr: value(t, `"`+command.Entity.ID+`"`)}
+			}
+			if command.Activity.ID != "" {
+				command.Activity = data.IDRef{Expr: value(t, `"`+command.Activity.ID+`"`)}
+			}
+			apply(t, dynamic, command)
+			if string(snapshot(t, literal)) != string(snapshot(t, dynamic)) {
+				t.Fatal("literal and expression targets produce different saved states")
+			}
+		})
 	}
 }
