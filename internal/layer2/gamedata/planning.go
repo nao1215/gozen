@@ -226,7 +226,7 @@ func (c *checker) planning() {
 			if cmd.Op == "rule" || cmd.Op == "policy" {
 				c.errorf(diag.Shape, at, "nested rule and policy calls are not allowed")
 			}
-			c.planCommand(fmt.Sprintf("%s.do[%d]", at, i), &cmd)
+			c.planCommand(fmt.Sprintf("%s.do[%d]", at, i), &cmd, append([]string{}, r.Params...))
 		}
 	}
 	for id, rules := range p.Policies {
@@ -319,7 +319,8 @@ func (c *checker) planning() {
 	}
 }
 
-func (c *checker) planCommand(w string, cmd *PlanCommand) {
+// A nil params slice denotes an event command; a nonnil slice scopes a rule body.
+func (c *checker) planCommand(w string, cmd *PlanCommand, params []string) {
 	if cmd == nil {
 		return
 	}
@@ -393,15 +394,24 @@ func (c *checker) planCommand(w string, cmd *PlanCommand) {
 	if cmd.Op == "progress" || cmd.Op == "effort" || cmd.Op == "record" {
 		c.planningNumber(w+".value", cmd.Value)
 	}
-	names := append(slices.Clone(FieldNames), "self", "arg")
+	names := append(slices.Clone(FieldNames), "self")
+	over := map[string]*vtype{"self": tAny}
+	if params != nil {
+		names = append(names, "arg")
+		fields := make(map[string]*vtype, len(params))
+		for _, param := range params {
+			fields[param] = tAny
+		}
+		over["arg"] = objType("rule arguments", fields, nil)
+	}
 	for key, e := range cmd.Args {
-		c.exprIn(w+".args."+key, e, names, map[string]*vtype{"self": tAny, "arg": tAny})
+		c.exprIn(w+".args."+key, e, names, over)
 	}
 	for _, e := range append([]Expr{cmd.Where, cmd.Value}, slices.Collect(maps.Values(cmd.Args))...) {
 		c.planningPure(w, e)
 	}
-	c.exprIn(w+".where", cmd.Where, names, map[string]*vtype{"self": tAny, "arg": tAny})
-	c.exprIn(w+".value", cmd.Value, names, map[string]*vtype{"self": tAny, "arg": tAny})
+	c.exprIn(w+".where", cmd.Where, names, over)
+	c.exprIn(w+".value", cmd.Value, names, over)
 }
 
 // PlanRule is a bounded reusable sequence with scalar arguments, consumed by plan rule.

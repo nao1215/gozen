@@ -203,3 +203,60 @@ func TestPlanningNumericTypes(t *testing.T) {
 		}
 	}
 }
+
+func TestPlanningRuleArgumentNames(t *testing.T) {
+	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  activities: {clay: {effort: 2}}\n"
+	for _, tc := range []struct{ name, params, field, formula, want string }{
+		{"declared", "[amount]", "value", "arg.amount", ""},
+		{"literal index", "[amount]", "value", "arg[\"amount\"]", ""},
+		{"dynamic index", "[amount]", "value", "arg[var.key]", ""},
+		{"typo", "[amount]", "value", "arg.amonut", "has no field \"amonut\""},
+		{"index typo", "[amount]", "value", "arg[\"amonut\"]", "has no field \"amonut\""},
+		{"predicate typo", "[amount]", "where", "arg.amonut > 0", "has no field \"amonut\""},
+		{"no parameters", "[]", "value", "arg.amount", "has no field \"amount\""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := header + "  rules:\n    work:\n      params: " + tc.params + "\n      do:\n      - {op: progress, activity: clay, value: 1, " + tc.field + ": '" + tc.formula + "'}\n"
+			if tc.field == "where" {
+				body = strings.Replace(body, "op: progress, activity: clay, value: 1", "op: observe, activity: clay", 1)
+			}
+			if tc.field == "value" {
+				body = strings.Replace(body, "value: 1, ", "", 1)
+			}
+			_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(body)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), "game.yaml:11:") {
+				t.Fatalf("missing located argument diagnostic %q: %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func TestPlanningArgumentScope(t *testing.T) {
+	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  activities: {clay: {effort: 2}}\n  rules:\n    work: {params: [amount], do: [{op: progress, activity: clay, value: 'arg.amount'}]}\n    inspect: {do: [{op: observe, activity: clay}]}\n"
+	for _, tc := range []struct{ command, want string }{
+		{"op: rule, rule: work, args: {amount: '2'}", ""},
+		{"op: rule, rule: work, args: {amount: 'arg.amount'}", "unknown name \"arg\""},
+		{"op: progress, activity: clay, value: 'arg.amount'", "unknown name \"arg\""},
+		{"op: rule, rule: work, args: {amonut: '2'}", "missing parameter \"amount\""},
+		{"op: rule, rule: inspect", ""},
+	} {
+		t.Run(tc.command, func(t *testing.T) {
+			_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\nevents: {work: {do: [{plan: {" + tc.command + "}}]}}\n")}})
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), "data/world.yaml:2:") {
+				t.Fatalf("missing scoped diagnostic %q: %v", tc.want, err)
+			}
+		})
+	}
+}

@@ -376,3 +376,32 @@ scenarios:
         - {path: '$.data[?(@.line == 6 && @.file == "data/world.yaml")].message', equals: "planning value requires a number; use a numeric expression or an explicit conversion such as int(value)"}
         - {path: '$.data[?(@.line == 7)].message', equals: "planning value requires a number; use a numeric expression or an explicit conversion such as int(value)"}
         - {path: '$.data[?(@.file == "game.yaml")].message', equals: "planning value requires a number; use a numeric expression or an explicit conversion such as int(value)"}
+- name: rule argument typos fail check before execution
+  steps:
+  - fixture:
+      file: arguments/game.yaml
+      content: |
+        schema_version: 9
+        id: workshop-arguments
+        start: {location: room}
+        planning:
+          calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}
+          activities: {clay: {effort: 2}}
+          rules:
+            work:
+              params: [amount]
+              do:
+              - {op: progress, activity: clay, value: 'arg.amonut'}
+  - fixture:
+      file: arguments/data/world.yaml
+      content: |
+        locations: {room: {name: Workshop}}
+  - run:
+      command: gozen check arguments --format json
+  - assert:
+      exit_code: 1
+      stdout:
+        json:
+        - {path: '$.data[0].file', equals: game.yaml}
+        - {path: '$.data[0].line', equals: 11}
+        - {path: '$.data[0].message', equals: '"arg.amonut": arg: rule arguments has no field "amonut" (known: amount)'}

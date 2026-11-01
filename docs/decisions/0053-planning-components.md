@@ -66,6 +66,28 @@ The first command requires the declared boolean attribute `active` and the
 `inspections` ledger. Direct `value: 'self.active'` is invalid at execution.
 This contract does not change conversions inside ordinary arithmetic expressions.
 
+### Rule argument names
+
+Rule bodies can read only their own declared parameters through `arg`.
+The checker validates dotted names and literal string indexes against `params`,
+including references inside predicates. For example, a workshop can reuse:
+
+```yaml
+rules:
+  work:
+    params: [amount]
+    do:
+    - {op: progress, activity: prepare, value: 'arg.amount'}
+```
+
+Call it with `{plan: {op: rule, rule: work, args: {amount: '2'}}}`.
+A misspelling such as `arg.amonut` is a located check error listing the
+declared names. Outside a rule body, including expressions supplying call
+arguments, `arg` is unavailable. A rule with no parameters exposes no argument
+fields. Values remain finite scalars checked at execution; computed indexes
+such as `arg[var.key]` require runtime lookup and are not statically resolved.
+This does not change parameter evaluation order, rule results or saved state.
+
 ### Scoped observation contract
 
 - Bare `observe` retains the existing global refresh of activities and entities.

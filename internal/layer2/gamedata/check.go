@@ -1533,7 +1533,7 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			c.commands(w+".then", cmd.Then, names)
 			c.commands(w+".else", cmd.Else, names)
 		case "plan":
-			c.planCommand(w+".plan", cmd.Plan)
+			c.planCommand(w+".plan", cmd.Plan, nil)
 		case "set":
 			c.assignments(w+".set", cmd.SetV, names)
 		case "give", "take":
