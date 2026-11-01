@@ -135,3 +135,15 @@ to 64. Unsupported replay boundaries and older schemas still refuse mid-screen
 saves. Finishing the event permits an ordinary state save again. Player restoration
 and CLI save/resume verification remain pending; the player rejects these session
 saves rather than loading an incomplete continuation.
+
+## Bounded nested screens
+
+Session and player permit at most 64 simultaneously open authored screens.
+For example, a stock screen may open a receipt screen and return to stock after
+closing the receipt. Reusing a screen recursively counts each open instance;
+it does not create an unlimited stack merely because the definition is shared.
+At the limit, another open reports `author screens nested too deep` and continues
+the command after that open. Existing screens remain open, and closing one frees
+a slot. Save menus and other built-in overlays do not consume authored slots or
+hide their count. This bounds live navigation; it does not enable player screen
+save restoration, which remains unsupported.

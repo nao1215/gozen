@@ -254,6 +254,11 @@ type Checkpoint struct {
 // Save opens the save screen.
 type Save struct{}
 
+// MaxScreenDepth bounds suspended authored screens in session and play. Frontends
+// reject the next open at this depth, report it, and continue its caller without
+// changing the existing screen stack. Built-in menus do not count toward it.
+const MaxScreenDepth = 64
+
 // Open opens one of the screens of the game (formation, skills, fusion).
 type Open struct {
 	Screen string

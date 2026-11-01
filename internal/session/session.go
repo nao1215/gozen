@@ -422,7 +422,7 @@ func (s *Session) next() Request {
 				s.at.noBack = true
 			}
 			if opened, ok := r.(event.Open); ok && s.db.Game.Screens[q.ID] != nil {
-				if len(s.screens) >= 64 {
+				if len(s.screens) >= event.MaxScreenDepth {
 					s.runner.Log(errors.New("author screens nested too deep"))
 					continue
 				}

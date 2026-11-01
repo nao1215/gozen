@@ -787,3 +787,69 @@ func TestAuthorScreenArguments(t *testing.T) {
 		t.Fatal("closing repeated the effect")
 	}
 }
+
+// Exercise recursive authored input, not a synthetic stack of empty views.
+func TestAuthorScreenDepthBoundary(t *testing.T) {
+	fsys := wldWorldFiles(t, `screens:
+  shelf:
+    title: Shelf
+    entries:
+    - label: Inspect inner shelf
+      do:
+      - open: shelf
+      - set: {var.returned: 'var.returned + 1'}
+`, map[string]string{"data/shelves.yaml": `events:
+  inspect_shelves:
+    do:
+    - open: shelf
+    - set: {var.closed: 'var.closed + 1'}
+`})
+	g := wldOpenWith(t, Options{FS: fsys, Location: "camp", Seed: 17})
+	wldFrames(t, g, 30)
+	wldStartEvent(t, g, "inspect_shelves")
+	wldFrames(t, g, 4)
+	for range 63 {
+		wldPlay(t, g, "press z\nwait 4\n", 30)
+	}
+	if len(g.stack) != 65 {
+		t.Fatalf("64 screens plus place: %d", len(g.stack))
+	}
+	before, err := g.pcg.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wldPlay(t, g, "press z\nwait 8\n", 40)
+	if len(g.stack) != 65 || g.st.Vars["returned"] != float64(1) {
+		t.Fatalf("excess open did not return to its action: depth=%d vars=%v", len(g.stack), g.st.Vars)
+	}
+	// The non-event opening path uses the same bound, including beneath menus.
+	done := 0
+	var diagnostics []string
+	originalLog := g.events.Log
+	g.events.Log = func(err error) { diagnostics = append(diagnostics, err.Error()) }
+	g.push(newSaveMenu(g, true, func() {}))
+	g.openScreen("shelf", func() { done++ })
+	g.events.Log = originalLog
+	if len(diagnostics) != 1 || !strings.Contains(diagnostics[0], "nested too deep") {
+		t.Fatalf("depth diagnostic: %v", diagnostics)
+	}
+	if done != 1 || len(g.stack) != 66 {
+		t.Fatalf("direct open: done=%d depth=%d", done, len(g.stack))
+	}
+	g.pop()
+	after, err := g.pcg.MarshalBinary()
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatalf("open consumed random state: %v", err)
+	}
+	// Freeing one slot permits opening again; the rejected request is not queued.
+	wldPlay(t, g, "press x\nwait 8\npress z\nwait 8\n", 70)
+	if len(g.stack) != 65 || g.st.Vars["returned"] != float64(2) {
+		t.Fatalf("reopening: depth=%d vars=%v", len(g.stack), g.st.Vars)
+	}
+	for range 64 {
+		wldPlay(t, g, "press x\nwait 4\n", 30)
+	}
+	if len(g.stack) != 1 || g.st.Vars["closed"] != float64(1) || g.st.Vars["returned"] != float64(65) {
+		t.Fatalf("unwinding lost or repeated a caller: depth=%d vars=%v", len(g.stack), g.st.Vars)
+	}
+}

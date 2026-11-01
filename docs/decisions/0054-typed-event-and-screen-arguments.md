@@ -615,3 +615,13 @@ while an author screen is suspended, and imported session transcripts are reject
 Player restoration, visual preview state and a CLI save/resume E2E remain required
 before this ADR's screen work is complete. Existing historical slice notes above
 record the restrictions at the time of those slices.
+
+## Matching the live screen depth boundary
+
+Player and session now share the 64-screen limit. Both event `open` requests and
+player navigation check it before constructing another authored view. A rejected
+open reports a diagnostic and completes that request once, so its caller can
+continue and the player can close existing screens. Built-in overlays do not
+count; returning from a child makes room for another child. This closes a live
+navigation mismatch discovered before implementing player continuation replay.
+It is not evidence that the player can restore a saved screen transcript.

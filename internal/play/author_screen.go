@@ -50,6 +50,24 @@ type authorScreen struct {
 	done               func()
 }
 
+// openAuthorScreen owns the depth check for both event and navigation opens.
+func (g *Game) openAuthorScreen(name string, done func(), args map[string]any) {
+	depth := 0
+	for _, view := range g.stack {
+		if _, ok := view.(*authorScreen); ok {
+			depth++
+		}
+	}
+	if depth >= event.MaxScreenDepth {
+		g.events.Log(fmt.Errorf("author screens nested too deep: limit %d", event.MaxScreenDepth))
+		if done != nil {
+			done()
+		}
+		return
+	}
+	g.push(newAuthorScreen(g, name, done, args))
+}
+
 func newAuthorScreen(g *Game, name string, done func(), args map[string]any) *authorScreen {
 	s := &authorScreen{name: name, done: done, args: maps.Clone(args)}
 	def := g.db.Game.Screens[name]

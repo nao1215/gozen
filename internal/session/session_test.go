@@ -1989,3 +1989,61 @@ func TestScreenContinuationRejectsDamage(t *testing.T) {
 		t.Fatalf("live game changed: %+v", q)
 	}
 }
+
+func TestScreenDepthBoundary(t *testing.T) {
+	g, err := gozen.Load(fstest.MapFS{
+		"game.yaml": {Data: []byte(`schema_version: 10
+id: shelves
+title: Shelves
+start: {location: workshop}
+screens:
+  shelf:
+    title: Shelf
+    entries:
+    - label: Inspect inner shelf
+      do:
+      - open: shelf
+      - set: {var.returned: 'var.returned + 1'}
+`)},
+		"data/world.yaml": {Data: []byte(`locations: {workshop: {name: Workshop}}
+events:
+  inspect_shelves:
+    do:
+    - open: shelf
+    - set: {var.closed: 'var.closed + 1'}
+`)},
+	}, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var diagnostics []string
+	s := session(t, g, gozen.Config{Seed: 17, OnLog: func(err error) { diagnostics = append(diagnostics, err.Error()) }})
+	if err := s.Start("- call: inspect_shelves"); err != nil {
+		t.Fatal(err)
+	}
+	for range 64 {
+		if q := s.Next(); q.Kind != "open" {
+			t.Fatalf("open: %+v", q)
+		}
+		s.Answer(0)
+	}
+	if q := s.Next(); q.Kind != "open" {
+		t.Fatalf("returned screen: %+v", q)
+	}
+	if len(diagnostics) != 1 || !strings.Contains(diagnostics[0], "nested too deep") {
+		t.Fatalf("diagnostics: %v", diagnostics)
+	}
+	if got := query[float64](t, s, "var.returned"); got != 1 {
+		t.Fatalf("rejected opener did not continue: %v", got)
+	}
+	for range 64 {
+		s.Answer(-1)
+		s.Next()
+	}
+	if got := query[float64](t, s, "var.returned"); got != 64 {
+		t.Fatalf("unwinding repeated or lost an entry: %v", got)
+	}
+	if got := query[float64](t, s, "var.closed"); got != 1 {
+		t.Fatalf("root continuation: %v", got)
+	}
+}
