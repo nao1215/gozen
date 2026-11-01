@@ -142,7 +142,11 @@ and explicit observation refresh, without exposing hidden rule attributes.
 
 Grouped timelines may specify `view.rows`, each with a `label` and `items` of
 `activity`, short `label`, and optional authored `screen`. Items occupy separate
-lanes within each row. Unlisted activities appear in fallback rows; duplicates
+lanes within each row. Optional row `text` interpolates an authored summary
+in place of the lane-label line, at a minimum of 15 logical pixels. It uses
+the same saved-state environment as other authored text and does not change
+activity state or timeline geometry. For example, a workshop can display
+inspection counts while retaining its production schedule. Unlisted activities appear in fallback rows; duplicates
 and unknown references are rejected. The axis stays at the inclusive calendar
 range, clipping extended deadlines. Month and Monday ticks, closed-day shading,
 planned outlines, reported fills, expected-position ticks and shortfall hatching

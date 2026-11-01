@@ -122,7 +122,7 @@ func TestTimelineRowsAndMarkers(t *testing.T) {
 		valid bool
 	}{
 		{`{rows: [{label: Pottery, items: [{activity: clay, label: C, screen: detail}]}], markers: [{date: '2030-08-01', label: Fair, milestone: true}]}`, true},
-		{`{rows: [{label: Pottery, items: [{activity: clay, sample: '0.4', sample_label: 'Checked today'}]}]}`, true},
+		{`{rows: [{label: Pottery, text: "Checked {1+2}", items: [{activity: clay, sample: '0.4', sample_label: 'Checked today'}]}]}`, true},
 		{`{rows: [{label: Pottery, items: [{activity: clay, sample: 'rand()'}]}]}`, false},
 		{`{rows: [{label: Pottery, items: [{activity: unknown}]}]}`, false},
 		{`{rows: [{label: Pottery, items: [{activity: clay}, {activity: clay}]}]}`, false},

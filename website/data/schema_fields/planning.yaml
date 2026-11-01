@@ -105,6 +105,7 @@ PlanningField:
 TimelineRow:
   _: A named timeline group in display order, with one compact lane per item.
   label: Group heading. Long text is truncated at a readable font size.
+  text: Optional interpolated summary replacing the lane-label line; truncated at 15 logical pixels without changing row or bar positions.
   items: Activity lanes in display order. Activities omitted from all rows appear in fallback rows.
 TimelineItem:
   sample: Optional saved observation ratio expression (0 to 1). Negative, missing or invalid values hide the marker; never implicitly reads live progress.

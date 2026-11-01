@@ -20439,6 +20439,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "text": {
+          "description": "Optional interpolated summary replacing the lane-label line; truncated at 15 logical pixels without changing row or bar positions.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         }
       },
       "type": "object"

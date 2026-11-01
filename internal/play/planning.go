@@ -510,6 +510,7 @@ type timelineLane struct {
 
 type timelineGroup struct {
 	label     string
+	text      string
 	y, height float64
 	lanes     []timelineLane
 }
@@ -546,7 +547,7 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 		if y+rh > bottom {
 			break
 		}
-		group := timelineGroup{label: row.Label, y: y, height: rh}
+		group := timelineGroup{label: row.Label, text: data.Render(g.db.Tr(row.Text), env), y: y, height: rh}
 		for j, item := range row.Items {
 			d := p.Activities[item.Activity]
 			a := g.st.Planning.Activities[item.Activity]
@@ -672,7 +673,11 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 			}
 			index++
 		}
-		g.drawPlanningText(dst, strings.Join(labels, " / "), x+16, group.y+18, 232, 15, 1, g.th.dim)
+		summary := strings.Join(labels, " / ")
+		if group.text != "" {
+			summary = group.text
+		}
+		g.drawPlanningText(dst, summary, x+16, group.y+18, 232, 15, 1, g.th.dim)
 		rect(dst, x+16, group.y+group.height-1, w-32, 1, muted)
 	}
 	today, err := time.Parse(time.DateOnly, g.st.Planning.Date)

@@ -460,7 +460,9 @@ type PlanningView struct {
 // TimelineRow is an authored group rendered by the timeline view.
 // Items appear in separate compact lanes; omitted activities remain in fallback rows.
 type TimelineRow struct {
-	Label string         `yaml:"label"`
+	Label string `yaml:"label"`
+	// Text replaces lane labels with an authored, interpolated row summary.
+	Text  string         `yaml:"text"`
 	Items []TimelineItem `yaml:"items"`
 }
 
@@ -519,6 +521,7 @@ func (c *checker) planningView(w string, v PlanningView) {
 	used := map[string]bool{}
 	for i, row := range v.Rows {
 		at := fmt.Sprintf("%s.rows[%d]", w, i)
+		c.text(at+".text", row.Text, FieldNames)
 		if row.Label == "" || len(row.Items) == 0 {
 			c.errorf(diag.Shape, at, "timeline row requires a label and items")
 		}

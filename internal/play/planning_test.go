@@ -158,7 +158,7 @@ func TestGroupedTimelineCalendarFitAndPrivacy(t *testing.T) {
 	p := &data.Planning{Calendar: data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}}, Activities: map[string]data.Activity{}}
 	v := data.PlanningView{Fullscreen: true}
 	for i := range 12 {
-		row := data.TimelineRow{Label: strconv.Itoa(i)}
+		row := data.TimelineRow{Label: strconv.Itoa(i), Text: "Inspected {var.inspected}"}
 		for j := range 3 {
 			id := strconv.Itoa(i*3 + j)
 			p.Activities[id] = data.Activity{Name: id, Effort: 10, From: p.Calendar.Start, To: p.Calendar.End}
@@ -170,12 +170,16 @@ func TestGroupedTimelineCalendarFitAndPrivacy(t *testing.T) {
 	db.Game.Screens = map[string]*data.AuthorScreen{"tasks": {Kind: "timeline", View: v}}
 	g := &Game{db: db, st: testgame.State(db, 1)}
 	g.st.Planning.Date = "2030-09-01"
+	g.st.Vars["inspected"] = 3.0
 	s := newAuthorScreen(g, "tasks", nil)
 	groups, ax, aw := s.groupedTimeline(g, 0, 108, 1280, 494)
 	if len(groups) != 12 {
 		t.Fatalf("only %d groups fit", len(groups))
 	}
 	for _, group := range groups {
+		if group.text != "Inspected 3" {
+			t.Fatalf("row summary: %q", group.text)
+		}
 		if group.y+group.height > 602 {
 			t.Fatal("group overlaps footer")
 		}
