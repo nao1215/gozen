@@ -20368,6 +20368,24 @@
           },
           "x-type": "expression"
         },
+        "sample_freshness": {
+          "description": "Pure expression from 0 (old) to 1 (fresh), blending between dim and text colors without hiding the saved marker. Values are clamped; errors and non-numeric or non-finite values use 0. Omission uses 1. Authors choose the aging interval and explain age in sample_label.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
         "sample_label": {
           "description": "Text template describing the saved observation, such as its date and source, shown with its percentage in the footer.",
           "type": "string",

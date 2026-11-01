@@ -481,6 +481,10 @@ type TimelineItem struct {
 	// SampleLabel gives its authored provenance, such as the observation date.
 	Sample      Expr   `yaml:"sample"`
 	SampleLabel string `yaml:"sample_label"`
+	// SampleFreshness lets the renderer fade a saved sample from fresh (1) to
+	// old (0). Omission preserves full brightness; invalid values use old.
+	// Authors define the aging interval and explain age in SampleLabel.
+	SampleFreshness Expr `yaml:"sample_freshness"`
 	// ForecastLabel enables a calendar-day linear forecast from reported work.
 	// The author supplies the explanatory label; empty disables the forecast.
 	ForecastLabel string `yaml:"forecast_label"`
@@ -544,6 +548,8 @@ func (c *checker) planningView(w string, v PlanningView) {
 			c.planningPure(at+".sample", item.Sample)
 			c.exprIn(at+".sample", item.Sample, FieldNames, nil)
 			c.text(at+".sample_label", item.SampleLabel, FieldNames)
+			c.planningPure(at+".sample_freshness", item.SampleFreshness)
+			c.exprIn(at+".sample_freshness", item.SampleFreshness, FieldNames, nil)
 			c.text(at+".forecast_label", item.ForecastLabel, FieldNames)
 			if item.Screen != "" && c.db.Game.Screens[item.Screen] == nil {
 				c.errorf(diag.UnknownReference, at, "unknown timeline screen %q", item.Screen)

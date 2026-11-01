@@ -3,6 +3,7 @@ package play
 import (
 	"encoding/json"
 	"image"
+	"image/color"
 	"math"
 	"math/rand/v2"
 	"slices"
@@ -237,6 +238,41 @@ func TestGroupedTimelineCalendarFitAndPrivacy(t *testing.T) {
 	g.st.Vars["sample"] = 0.0
 	if !strings.Contains(s.timelineDescription(g), "Checked 2030-08-20 0%") {
 		t.Fatal("zero sample lost")
+	}
+	// Aging changes only the marker tint, not its historical position or value.
+	item.SampleFreshness = data.MustExpr("var.freshness")
+	item.SampleLabel = "Checked {var.sample_date} ({var.age} days ago)"
+	g.st.Vars["age"] = 14.0
+	for _, tc := range []struct {
+		value any
+		want  float64
+	}{
+		{1.0, 1},
+		{.5, .5},
+		{0.0, 0},
+		{-1.0, 0},
+		{2.0, 1},
+		{"unknown", 0},
+		{nil, 0},
+		{math.NaN(), 0},
+		{math.Inf(1), 0},
+	} {
+		g.st.Vars["freshness"] = tc.value
+		lane := s.timelineLanes(g)[0]
+		if lane.sampleFreshness != tc.want || lane.sample != 0 {
+			t.Fatalf("freshness %v: %+v", tc.value, lane)
+		}
+	}
+	if !strings.Contains(s.timelineDescription(g), "14 days ago") {
+		t.Fatal("age explanation lost")
+	}
+	item.SampleFreshness = data.Expr{}
+	if s.timelineLanes(g)[0].sampleFreshness != 1 {
+		t.Fatal("old author data no longer uses full brightness")
+	}
+	fresh, old := color.NRGBA{240, 240, 240, 255}, color.NRGBA{160, 160, 160, 255}
+	if timelineSampleTint(fresh, old, 0) != old || timelineSampleTint(fresh, old, 1) != fresh || timelineSampleTint(fresh, old, .5).R != 200 {
+		t.Fatal("historical marker tint must remain readable at every age")
 	}
 	// Pointer and keyboard selection share the rendered lane rectangles.
 	db.Game.Screens["detail"] = &data.AuthorScreen{Title: "Detail", Entries: []data.ScreenEntry{{Label: "Inspect"}}}

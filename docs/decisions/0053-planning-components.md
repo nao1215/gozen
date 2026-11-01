@@ -162,7 +162,13 @@ a saved ratio from 0 to 1, with `sample_label` for its date and source. Valid
 samples draw a downward wedge and a footer percentage; absent, negative or
 invalid values hide it. Authors snapshot the ratio and provenance in ordinary
 save variables at the observation event. Rendering never reads live progress
-to populate or refresh a sample. At the standard logical viewport twelve groups
+to populate or refresh a sample. Optional `sample_freshness` is a pure expression
+from 0 (old) to 1 (fresh), blending the marker between the theme's dim and text
+colors without removing it. Values are clamped; errors and non-finite or
+non-numeric values use 0. Omission retains full brightness. Authors choose the
+aging interval from saved observation times, and include the age in `sample_label`
+so color is not the only signal. This does not move the historical marker.
+At the standard logical viewport twelve groups
 with three lanes fit without scrolling; larger tables scroll whole groups.
 
 An optional lane `forecast_label` enables a linear finish extrapolation using

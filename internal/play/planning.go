@@ -474,6 +474,7 @@ type timelineLane struct {
 	left, right, reported, expected float64
 	sample                          float64
 	sampleLabel                     string
+	sampleFreshness                 float64
 	forecast                        float64
 	forecastLabel                   string
 	dimmed                          bool
@@ -546,14 +547,29 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 					sample = number
 				}
 			}
+			freshness := 1.0
+			if item.SampleFreshness.Expr != nil {
+				freshness = 0
+				if value, err := item.SampleFreshness.Eval(env); err == nil {
+					if number, ok := value.(float64); ok && !math.IsNaN(number) && !math.IsInf(number, 0) {
+						freshness = max(0, min(1, number))
+					}
+				}
+			}
 			forecast, forecastLabel := timelineForecast(from, today, start, end, reported, a.Cancelled, data.Render(g.db.Tr(item.ForecastLabel), env))
 			ly := y + 3 + float64(j)*10
-			group.lanes = append(group.lanes, timelineLane{item: item, bounds: image.Rect(int(axisX+axisW*left), int(ly), int(math.Ceil(axisX+axisW*right)), int(ly+9)), left: left, right: right, reported: reported, expected: expected, forecast: forecast, forecastLabel: forecastLabel, dimmed: s.timelineAssignee != "" && a.Assignee != s.timelineAssignee, sample: sample, sampleLabel: data.Render(g.db.Tr(item.SampleLabel), env)})
+			group.lanes = append(group.lanes, timelineLane{item: item, bounds: image.Rect(int(axisX+axisW*left), int(ly), int(math.Ceil(axisX+axisW*right)), int(ly+9)), left: left, right: right, reported: reported, expected: expected, forecast: forecast, forecastLabel: forecastLabel, dimmed: s.timelineAssignee != "" && a.Assignee != s.timelineAssignee, sample: sample, sampleFreshness: freshness, sampleLabel: data.Render(g.db.Tr(item.SampleLabel), env)})
 		}
 		out = append(out, group)
 		y += rh
 	}
 	return out, axisX, axisW
+}
+
+// Blend between readable theme colors, never fade the historical mark away.
+func timelineSampleTint(fresh, old color.NRGBA, freshness float64) color.NRGBA {
+	mix := func(a, b uint8) uint8 { return uint8(math.Round(float64(b) + (float64(a)-float64(b))*freshness)) }
+	return color.NRGBA{mix(fresh.R, old.R), mix(fresh.G, old.G), mix(fresh.B, old.B), mix(fresh.A, old.A)}
 }
 
 // timelineForecast uses elapsed calendar days and public reported work only.
@@ -673,8 +689,9 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 			if lane.sample >= 0 && lw >= 5 {
 				// A small downward wedge remains inside its lane at both endpoints.
 				sx := lx + 2 + (lw-5)*lane.sample
+				tint := timelineSampleTint(g.th.text, g.th.dim, lane.sampleFreshness)
 				for step := range 3 {
-					rect(dst, sx-float64(2-step), ly+float64(step), float64(5-2*step), 1, g.th.text)
+					rect(dst, sx-float64(2-step), ly+float64(step), float64(5-2*step), 1, tint)
 				}
 			}
 			if lane.dimmed {

@@ -112,6 +112,7 @@ TimelineRow:
 TimelineItem:
   sample: Optional saved observation ratio expression (0 to 1). Negative, missing or invalid values hide the marker; never implicitly reads live progress.
   forecast_label: Optional explanatory label enabling a linear finish forecast from reported work and elapsed calendar days. Empty disables it; zero reports, completed and excluded work have no forecast.
+  sample_freshness: "Pure expression from 0 (old) to 1 (fresh), blending between dim and text colors without hiding the saved marker. Values are clamped; errors and non-numeric or non-finite values use 0. Omission uses 1. Authors choose the aging interval and explain age in sample_label."
   sample_label: Text template describing the saved observation, such as its date and source, shown with its percentage in the footer.
   _: An activity lane rendered from its reported observation, never its hidden progress.
   activity: Existing planning activity ID; each activity may appear only once in the view.
