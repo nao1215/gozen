@@ -530,3 +530,29 @@ reload test and the new damaged-slot test cover the successful and rejected path
 This prerequisite does not implement screen continuation descriptors or make
 other replay failures transactional. Screen saves remain rejected until the
 suspended opener and active entry can both be reconstructed.
+
+
+## Slot replay validation before replacing live play
+
+The slot loader now checks a saved cursor on a private copy of state, definitions
+and random source before offering it for confirmation or replacing the live game.
+`event.Runner.ReplayTo` owns the non-rendering dialogue/answer traversal shared
+by session restoration and this probe. Session's previous traversal is removed.
+Play still reconstructs presentation through its existing interactive replay after
+the probe succeeds. The probe does not render, play sound, write saves or deliver
+presentation effects. Legacy saves without random bytes get one frozen fallback
+source for both validation and installation; missing legacy roots keep the existing
+restart-at-location behavior.
+
+For example, a workshop receipt saved after choosing `Collect` must have exactly
+one valid answer. Missing, out-of-range or extra answers and unreachable lines
+make the slot unavailable. If a displayed slot changes before selection, selection
+reports a recoverable load error. The current resource count, dialogue runner,
+next random draw and slot bytes remain unchanged. A valid receipt can still be
+loaded and saved again without collecting twice.
+
+The preflight is scoped to slots read by `load`, including the load menu and newest
+save selection. It does not make arbitrary developer replay, live editing or direct
+internal `loadSavedGame` calls transactional. It replays the saved prefix once more
+than before; latency has not been benchmarked. Screen continuation descriptors,
+open-screen saves and target-based candidate screens remain separate pending work.

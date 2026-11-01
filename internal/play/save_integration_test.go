@@ -781,3 +781,85 @@ func TestLoadMenuRejectsDamagedRandomState(t *testing.T) {
 		t.Fatal("failed load rewrote the slot", err)
 	}
 }
+
+// Replay errors are recoverable slot errors, even after earlier commands ran.
+func TestLoadMenuRejectsDamagedReplay(t *testing.T) {
+	g := storyGame(t, Options{Seed: 31, Script: "wait 10\npress ok\nwait 10\npress ok\nwait 10\npress down\nwait 10\npress ok\nwait 10\nquit\n", Location: "camp", Event: "first"}, "schema_version: 4\n")
+	runToEnd(t, g)
+	saved, err := g.saveBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name    string
+		answers []int
+		line    int
+	}{
+		{"missing", nil, 4},
+		{"out of range", []int{2}, 4},
+		{"unused", []int{1, 0}, 4},
+		{"unreachable", []int{1}, 99},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var doc map[string]any
+			if err := json.Unmarshal(saved, &doc); err != nil {
+				t.Fatal(err)
+			}
+			cursor, ok := doc["cursor"].(map[string]any)
+			if !ok {
+				t.Fatal("missing cursor")
+			}
+			cursor["answers"], cursor["line"] = tc.answers, tc.line
+			damaged, err := json.Marshal(doc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := g.store.Write(g.slotPath(0), saved); err != nil {
+				t.Fatal(err)
+			}
+			menu := newSaveMenu(g, false, func() {})
+			menu.slots.sel = 0
+			if err := g.store.Write(g.slotPath(0), damaged); err != nil {
+				t.Fatal(err)
+			}
+			g.st.Gold = 29
+			g.st.Rand.Uint64()
+			current, runner, before := g.st, g.events, *g.pcg
+			g.push(menu)
+			sysKey(g, btnOK)
+			menu.update(g)
+			if menu.msgT == 0 {
+				t.Fatal("damaged replay was offered for confirmation")
+			}
+			if g.failure != nil || g.st != current || g.events != runner || g.st.Gold != 29 || at(g) != "Three." || g.st.Vars["way"] != float64(2) {
+				t.Fatal("failed replay replaced live state or dialogue", g.failure)
+			}
+			if g.st.Rand.Uint64() != before.Uint64() {
+				t.Fatal("failed replay changed randomness")
+			}
+			after, err := g.storeRead(g.slotPath(0))
+			if err != nil || !bytes.Equal(after, damaged) {
+				t.Fatal("failed replay rewrote slot", err)
+			}
+			g.pop()
+		})
+	}
+	// The original event is still usable after all rejected loads.
+	g.req, g.talk = nil, talk{}
+	g.pump()
+	if !g.st.Flags["first_done"] {
+		t.Fatal("original event could not continue")
+	}
+	if err := g.store.Write(g.slotPath(0), saved); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := g.load(0)
+	if err != nil {
+		t.Fatal("valid slot rejected", err)
+	}
+	// The private probe must not consume the state or random stream installed next.
+	g.loadSavedGame(restored)
+	if g.failure != nil || at(g) != "Three." || g.st.Vars["way"] != float64(2) {
+		t.Fatal("valid slot did not resume", g.failure)
+	}
+}

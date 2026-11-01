@@ -8,9 +8,13 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	"github.com/nao1215/gozen/internal/event"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer4/itemuse"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 	"github.com/nao1215/gozen/internal/rpg"
 	lang "github.com/nao1215/gozen/internal/text"
+	"github.com/nao1215/gozen/internal/world"
 )
 
 type loadNotice struct {
@@ -106,4 +110,52 @@ func (g *Game) loadSavedGame(st *rpg.State) {
 	if r != nil {
 		g.resume(r)
 	}
+}
+
+// checkSavedReplay probes a slot on private state before the load menu replaces
+// the live game. It runs no presentation, input, autosave or external effects.
+func (g *Game) checkSavedReplay(st *rpg.State) error {
+	if st.Resume == nil {
+		return nil
+	}
+	c := st.Resume.Cursor
+	// Preserve the legacy missing-root fallback used by resume.
+	if !c.Arrival && st.DB.NamedCommands(c.Event) == nil {
+		return nil
+	}
+	b, err := st.Save()
+	if err != nil {
+		return err
+	}
+	p := g.newPCG()
+	if len(st.Resume.Rand) > 0 {
+		if err := p.UnmarshalBinary(st.Resume.Rand); err != nil {
+			return err
+		}
+	}
+	probe, err := rpg.Parse(data.Fork(st.DB), b, rand.New(p)) //nolint:gosec // Private deterministic gameplay replay, not secrets.
+	if err != nil {
+		return err
+	}
+	probe.Calm = g.opts.Calm
+	var picture data.CG
+	runner := event.New(probe.DB, probe, event.HostFunc(func(e event.Effect) {
+		if e, ok := e.(event.ImageEffect); ok {
+			picture = e.Picture
+		}
+	}))
+	runner.Sortie, runner.Dev = true, g.opts.Development
+	runner.UseItem = itemuse.For(probe.DB, probe)
+	runner.BlockAside = func() bool { return picture.File != "" && !picture.Faces }
+	if c.Arrival {
+		runner.Start(world.Arrive(probe.DB, probe, true))
+	} else if len(c.Args) > 0 {
+		if err := runner.StartBound(c.Event, c.Args); err != nil {
+			return err
+		}
+	} else {
+		runner.Start(probe.DB.NamedCommands(c.Event))
+	}
+	_, err = runner.ReplayTo(c.Line, c.Answers)
+	return err
 }

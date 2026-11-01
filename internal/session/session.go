@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"math/rand/v2"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -144,7 +145,7 @@ func Restore(g *Game, save []byte, cfg Config) (*Session, error) {
 // resume begins the event of a cursor again and reads on to its line.
 func (s *Session) resume(c rpg.Cursor) error {
 	if c.Arrival {
-		s.arrived = true
+		s.arrive()
 	} else {
 		cmds := s.db.NamedCommands(c.Event)
 		if cmds == nil {
@@ -158,48 +159,23 @@ func (s *Session) resume(c rpg.Cursor) error {
 			s.runner.Start(cmds)
 		}
 	}
-	onRequest, onEffect := s.cfg.OnRequest, s.cfg.OnEffect
-	s.cfg.OnRequest, s.cfg.OnEffect = nil, nil
-	defer func() { s.cfg.OnRequest, s.cfg.OnEffect = onRequest, onEffect }()
-	for range maxSteps {
-		q := s.Next()
-		switch q.Kind {
-		case "":
-			return fmt.Errorf("the event ended before line %d", c.Line)
-		case "battle", "shop", "save", "open", "clear", "game_over":
-			return fmt.Errorf("line %d is past a %s", c.Line, q.Kind)
-		case "say", "choice":
-			if s.at.lines >= c.Line {
-				// A session may be saved after Answer and before the next Next.
-				// Restore that consumed choice without displaying it a second time.
-				if q.Kind == "choice" && len(c.Answers) == len(s.at.answers)+1 {
-					answer := c.Answers[len(s.at.answers)]
-					if answer < 0 || answer >= len(q.Options) {
-						return fmt.Errorf("invalid answer %d at line %d", answer, c.Line)
-					}
-					s.Answer(answer)
-				}
-				if len(s.at.answers) != len(c.Answers) {
-					return fmt.Errorf("unused answers at line %d", c.Line)
-				}
-				if q.Kind == "say" {
-					s.held = &q
-				}
-				return nil
-			}
-			if q.Kind == "choice" {
-				k := len(s.at.answers)
-				if k >= len(c.Answers) {
-					return fmt.Errorf("no answer for the choice before line %d", c.Line)
-				}
-				if c.Answers[k] < 0 || c.Answers[k] >= len(q.Options) {
-					return fmt.Errorf("invalid answer %d at line %d", c.Answers[k], s.at.lines)
-				}
-				s.Answer(c.Answers[k])
-			}
+	onEffect := s.cfg.OnEffect
+	s.cfg.OnEffect = nil
+	defer func() { s.cfg.OnEffect = onEffect }()
+	request, err := s.runner.ReplayTo(c.Line, c.Answers)
+	if err != nil {
+		return err
+	}
+	s.at.lines, s.at.answers = c.Line, slices.Clone(c.Answers)
+	if request != nil {
+		q := s.request(request)
+		if q.Kind == "choice" {
+			s.pending = &q
+		} else {
+			s.held = &q
 		}
 	}
-	return fmt.Errorf("line %d was not reached", c.Line)
+	return nil
 }
 
 func newSession(g *Game, cfg Config) *Session {

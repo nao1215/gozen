@@ -701,3 +701,73 @@ func TestScreenBindingFailureAndOwnership(t *testing.T) {
 		}
 	}
 }
+
+func TestReplayTo(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/replay.yaml": `events:
+  receipt:
+    do:
+    - choice:
+      - label: Collect
+        do: [{set: {var.boards: 2}}]
+      - label: Cancel
+    - say: Receipt.
+    - set: {flag.finished: true}
+`})
+	for _, tc := range []struct {
+		name    string
+		line    int
+		answers []int
+		valid   bool
+	}{
+		{"preview", 1, nil, true},
+		{"answered", 1, []int{0}, true},
+		{"receipt", 2, []int{0}, true},
+		{"cancelled", 2, []int{1}, true},
+		{"missing", 2, nil, false},
+		{"extra", 2, []int{0, 1}, false},
+		{"out of range", 2, []int{2}, false},
+		{"unreachable", 3, []int{0}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := testgame.State(db, 7)
+			r := event.New(db, st, &host{})
+			r.Start(db.Events["receipt"].Do)
+			q, err := r.ReplayTo(tc.line, tc.answers)
+			if (err == nil) != tc.valid {
+				t.Fatalf("request %v, error %v", q, err)
+			}
+			if !tc.valid {
+				return
+			}
+			if st.Flags["finished"] {
+				t.Fatal("replay ran beyond the receipt")
+			}
+			if tc.name == "answered" {
+				if q != nil {
+					t.Fatal("answered choice displayed again")
+				}
+				q = r.Next()
+			}
+			if tc.name != "preview" {
+				if say, ok := q.(event.Say); !ok || say.Text != "Receipt." {
+					t.Fatal(q)
+				}
+				var want any = float64(2)
+				if tc.name == "cancelled" {
+					want = nil
+				}
+				if st.Vars["boards"] != want {
+					t.Fatal(st.Vars)
+				}
+			}
+		})
+	}
+	for _, command := range []data.Command{{Move: "camp"}, {Open: data.ScreenCall{Screen: "status"}}, {Save: true}} {
+		st := testgame.State(db, 7)
+		r := event.New(db, st, &host{})
+		r.Start(append([]data.Command{command}, db.Events["receipt"].Do...))
+		if _, err := r.ReplayTo(1, nil); err == nil {
+			t.Fatal("accepted boundary", command)
+		}
+	}
+}

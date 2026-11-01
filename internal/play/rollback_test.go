@@ -249,6 +249,7 @@ func TestBoundEventSaveAndRollback(t *testing.T) {
     params: {amount: number}
     do:
     - gold: arg.amount
+    - set: {var.draw: 'rand(1000000)'}
     - say: 'Credit {arg.amount}'
     - say: 'After {arg.amount}'
 `,
@@ -262,6 +263,8 @@ func TestBoundEventSaveAndRollback(t *testing.T) {
 	if at(g) != "Credit 2" || g.st.Gold != before+2 {
 		t.Fatalf("bound line %q, gold %d", at(g), g.st.Gold)
 	}
+	draw := g.st.Vars["draw"]
+	next := *g.pcg
 	for range 2 {
 		if err := g.save(0); err != nil {
 			t.Fatal(err)
@@ -271,6 +274,9 @@ func TestBoundEventSaveAndRollback(t *testing.T) {
 			t.Fatal(err)
 		}
 		g.loadSavedGame(st)
+		if g.st.Vars["draw"] != draw || *g.pcg != next {
+			t.Fatal("slot probe changed the saved random stream")
+		}
 		if at(g) != "Credit 2" || g.st.Gold != before+2 {
 			t.Fatalf("resumed line %q, gold %d", at(g), g.st.Gold)
 		}

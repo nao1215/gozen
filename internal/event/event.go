@@ -1364,3 +1364,59 @@ func (r *Runner) emit(effect Effect) {
 		r.host.Handle(effect)
 	}
 }
+
+// ReplayTo advances an already started save root to a dialogue line using exactly
+// the saved answers. Session restoration and play's private slot probe use this
+// without presentation or input. The caller must supply isolated state and RNG:
+// earlier effects are applied even on error. A nil request on success means the
+// choice at the target line was already answered. Non-dialogue boundaries fail.
+func (r *Runner) ReplayTo(line int, answers []int) (Request, error) {
+	if line < 1 {
+		return nil, errors.New("load: invalid saved line")
+	}
+	host := r.host
+	moved := false
+	r.host = HostFunc(func(e Effect) {
+		if _, ok := e.(MoveEffect); ok {
+			moved = true
+		}
+		if host != nil {
+			host.Handle(e)
+		}
+	})
+	defer func() { r.host = host }()
+	seen, answer := 0, 0
+	for range 100000 {
+		request := r.Next()
+		if moved {
+			return nil, errors.New("load: saved cursor crosses a move")
+		}
+		switch q := request.(type) {
+		case nil:
+			return nil, fmt.Errorf("load: event ended before saved line %d", line)
+		case Checkpoint, Battle, Shop, Save, Open, Clear, GameOver, SortieScene:
+			return nil, fmt.Errorf("load: saved cursor crosses a replay boundary (%T)", q)
+		case Say:
+			seen++
+		case Choice:
+			seen++
+			if seen < line || len(answers) == answer+1 {
+				if answer >= len(answers) || answers[answer] < 0 || answers[answer] >= len(q.Options) {
+					return nil, fmt.Errorf("load: invalid saved answer at line %d", seen)
+				}
+				r.Answer(answers[answer])
+				answer++
+				request = nil
+			}
+		default:
+			continue
+		}
+		if seen == line {
+			if answer != len(answers) {
+				return nil, fmt.Errorf("load: unused saved answers at line %d", seen)
+			}
+			return request, nil
+		}
+	}
+	return nil, errors.New("load: saved replay exceeded the request limit")
+}
