@@ -572,7 +572,7 @@ func (e fieldEnv) Lookup(name string) (any, bool) {
 		return data.CampaignEnv(s.DB, s.Campaign()).Lookup(name)
 	}
 	switch name {
-	case "planning", "entity", "activity", "period_value", "calendar_days", "calendar_workdays":
+	case "planning", "entity", "activity", "period_value", "calendar_days", "calendar_workdays", "calendar_shift":
 		return s.planningLookup(name)
 	case "last_battle":
 		return battleOutcomeView{s.LastBattle}, true

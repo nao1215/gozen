@@ -813,4 +813,4 @@ scenarios:
       stderr: {equals: ''}
       file:
         path: calendar.jsonl
-        contains: ['Days 6; workdays 5', 'Days -6; workdays 0']
+        contains: ['Days 6; workdays 5', 'Days -6; workdays 0', 'Days 1; workdays 2', 'Next date 2031-01-01; previous date 2028-02-29']

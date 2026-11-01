@@ -55,3 +55,42 @@ func TestPlanningCalendarCounts(t *testing.T) {
 		t.Fatalf("duplicate closures: %v, %v", got, err)
 	}
 }
+
+func TestPlanningCalendarShift(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{Calendar: data.Calendar{Start: "2030-01-01", End: "2030-01-02", Phases: []string{"day"}}}
+	st := testgame.State(db, 17)
+	before, err := st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ source, want string }{
+		{`calendar_shift("2028-02-28", 1)`, "2028-02-29"},
+		{`calendar_shift("2028-03-01", -1)`, "2028-02-29"},
+		{`calendar_shift("2030-12-31", 1)`, "2031-01-01"},
+		{`calendar_shift("0001-01-01", 3652058)`, "9999-12-31"},
+		{`calendar_shift("9999-12-31", -3652058)`, "0001-01-01"},
+		{`calendar_shift("2030-01-01", 0)`, "2030-01-01"},
+	} {
+		got, err := mustExpr(t, tc.source).Eval(st.Env())
+		if err != nil || got != tc.want {
+			t.Errorf("%s = %v, %v; want %s", tc.source, got, err, tc.want)
+		}
+	}
+	for _, source := range []string{
+		`calendar_shift("0001-01-01", -1)`, `calendar_shift("9999-12-31", 1)`,
+		`calendar_shift("2030-01-01", 1.5)`, `calendar_shift("2030-01-01", 999999999999999999999999999999)`,
+		`calendar_shift("2030-02-30", 1)`, `calendar_shift("0000-01-01", 1)`,
+		`calendar_shift("2030-1-01", 1)`, `calendar_shift(0, 1)`,
+		`calendar_shift("2030-01-01", "1")`, `calendar_shift("2030-01-01", true)`,
+		`calendar_shift("2030-01-01")`, `calendar_shift("2030-01-01", 1, 2)`,
+	} {
+		if _, err := mustExpr(t, source).Eval(st.Env()); err == nil {
+			t.Errorf("%s accepted", source)
+		}
+	}
+	after, err := st.Save()
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatalf("date arithmetic changed saved state: %v", err)
+	}
+}

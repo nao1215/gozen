@@ -126,6 +126,8 @@ events:
     do:
     - call: {event: calendar_report, args: {first: '"2030-01-01"', last: '"2030-01-07"'}}
     - call: {event: calendar_report, args: {first: '"2030-01-07"', last: '"2030-01-01"'}}
+    - call: {event: calendar_report, args: {first: 'calendar_shift("2028-02-28", 1)', last: 'calendar_shift("2028-02-28", 2)'}}
+    - say: 'Next date {calendar_shift("2030-12-31", 1)}; previous date {calendar_shift("2028-03-01", -1)}'
   calendar_report:
     params: {first: date, last: date}
     do:

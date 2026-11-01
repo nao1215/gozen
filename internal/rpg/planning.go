@@ -138,6 +138,8 @@ func (s *State) planningLookup(name string) (any, bool) {
 	switch name {
 	case "calendar_days", "calendar_workdays":
 		return expr.Func(func(args []any) (any, error) { return s.calendarCount(name, args) }), true
+	case "calendar_shift":
+		return expr.Func(calendarShift), true
 	case "period_value":
 		return expr.Func(s.periodValue), true
 	case "planning":
@@ -166,13 +168,9 @@ func (s *State) calendarCount(name string, args []any) (any, error) {
 	}
 	var dates [2]time.Time
 	for i, value := range args {
-		text, ok := value.(string)
-		if !ok {
-			return nil, fmt.Errorf("%s date %d must be a string", name, i+1)
-		}
-		date, err := time.Parse(time.DateOnly, text)
-		if err != nil || date.Year() < 1 || date.Format(time.DateOnly) != text {
-			return nil, fmt.Errorf("%s date %d must be YYYY-MM-DD in years 0001 through 9999", name, i+1)
+		date, err := calendarDate(value)
+		if err != nil {
+			return nil, fmt.Errorf("%s date %d: %w", name, i+1, err)
 		}
 		dates[i] = date
 	}
@@ -210,6 +208,40 @@ func (s *State) calendarCount(name string, args []any) (any, error) {
 		}
 	}
 	return float64(count), nil
+}
+
+// calendarDate keeps the same ISO range for counting and shifting dates.
+func calendarDate(value any) (time.Time, error) {
+	text, ok := value.(string)
+	if !ok {
+		return time.Time{}, errors.New("date must be a string")
+	}
+	date, err := time.Parse(time.DateOnly, text)
+	if err != nil || date.Year() < 1 || date.Format(time.DateOnly) != text {
+		return time.Time{}, errors.New("date must be YYYY-MM-DD in years 0001 through 9999")
+	}
+	return date, nil
+}
+
+// calendarShift computes a civil date without advancing the planning clock.
+func calendarShift(args []any) (any, error) {
+	if len(args) != 2 {
+		return nil, errors.New("calendar_shift needs an ISO date and an integer day offset")
+	}
+	date, err := calendarDate(args[0])
+	if err != nil {
+		return nil, fmt.Errorf("calendar_shift: %w", err)
+	}
+	days, ok := args[1].(float64)
+	// This bound also prevents overflow in conversion and date arithmetic.
+	if !ok || math.IsNaN(days) || math.Abs(days) > 3652058 || math.Trunc(days) != days {
+		return nil, errors.New("calendar_shift offset must be an integer within -3652058..3652058")
+	}
+	result := date.AddDate(0, 0, int(days))
+	if result.Year() < 1 || result.Year() > 9999 {
+		return nil, errors.New("calendar_shift result must be in years 0001 through 9999")
+	}
+	return result.Format(time.DateOnly), nil
 }
 
 // PlanningClosedDay is shared by phase advancement and calendar presentation.

@@ -340,3 +340,20 @@ Long pure calculations can similarly pass intermediate results as numeric event
 arguments, then call another event with the next result. This avoids adding
 scratch variables to saves. Evaluate a result before mutation only when that
 snapshot is intended; later calls otherwise see the current state.
+
+
+`calendar_shift(date, days)` returns the ISO date a signed, integer number of
+calendar days away. It does not advance the game clock or change saved state.
+For example, `calendar_shift("2028-02-28", 1)` returns `"2028-02-29"` and
+`calendar_shift("2030-12-31", 1)` returns `"2031-01-01"`. Weekends and configured
+closures count as calendar days; use `calendar_workdays` to inspect whether the
+result is open. Both the input and result must be in years 0001 through 9999;
+invalid dates, fractional offsets, wrong types and out-of-range results are
+runtime errors. The offset must be within -3652058 through 3652058.
+
+The workshop's `calendar_demo` passes shifted dates to a typed event and shows
+forward and backward shifts. A calendar card can calculate its next date and
+weekday, then keep only authored exceptions such as festivals in conditional
+rows. This avoids copying an entire card for every date. Preserve the original
+range and integer-day guard when replacing a fixed date table, including its
+behavior for inputs outside the authored calendar.
