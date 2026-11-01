@@ -574,3 +574,19 @@ for the selected sources themselves; the checker reports these entries as
 unknown static sources. Templates returned by the expression are
 not recursively evaluated as source expressions. Their interpolation has the
 same behavior as ordinary text, but its field names cannot be checked statically.
+
+## Keep dialogue selection separate from its effects
+
+A shared conversation can receive a resident, a speaker, a trust threshold and
+short source strings for its topics. Draw once before binding any argument that
+selects a string from that draw. The selection event can set the chosen words;
+the common action then records history, presents the line and applies the
+chosen response. Use `self` inside a targeted `plan.set` value to avoid repeating
+an indexed entity expression. Keep the source template and resolved speaker
+unchanged when preserving read history.
+
+For a fixed history, append each nonempty saved note in explicit oldest-to-newest
+order with `call.each`, instead of concatenating every slot in one long
+expression. Keep the header initialization before that loop. Compare the final
+history, displayed dialogue, choice effects and next random draw against the
+original action, including threshold equality and overlapping topic conditions.

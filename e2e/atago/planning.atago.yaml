@@ -323,25 +323,25 @@ scenarios:
       image:
         path: shots/workshop.png
         format: png
-        width: 1920
+        width: 2560
         height: 1080
   - assert:
       image:
         path: shots/timeline.png
         format: png
-        width: 1920
+        width: 2560
         height: 1080
   - assert:
       image:
         path: shots/calendar.png
         format: png
-        width: 1920
+        width: 2560
         height: 1080
   - assert:
       image:
         path: shots/assembly.png
         format: png
-        width: 1920
+        width: 2560
         height: 1080
 
 - name: numeric planning inputs report source locations and fail check
