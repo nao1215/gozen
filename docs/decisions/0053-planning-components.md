@@ -27,6 +27,45 @@ Observations refresh explicitly. Hidden attributes are absent from player views;
 this is not encryption. Policy conditions see observations, while event rules
 can read full state. Diagnostic snapshots intentionally contain full state.
 
+### Scoped observation contract (implementation pending)
+
+The current executor refreshes every activity even when an entity selector
+matches nothing. `TestObservationSelectionBaseline` characterizes that defect,
+including save/resume, without treating it as the intended API. The next change
+must replace its filtered activity expectations with zero and implement the
+following contract in both the checker and executor:
+
+- Bare `observe` retains the existing global refresh of activities and entities.
+- `entity`, `tag`, or `where` selects entities only. These filters intersect;
+  no matching entity means no change. Assignment does not implicitly select work.
+- `activity: ID` selects exactly that activity and no entities. An optional
+  `where` binds `self` to that activity's progress, effort, assignee and cancelled
+  fields. False means no change. Combining `activity` with `entity` or `tag`
+  is an error, as is an unknown target.
+- Each selected collection is visited in ascending ID order. Global refresh
+  visits activities before entities, preserving existing formula visibility.
+- Any expression or target failure restores the entire planning state, including
+  earlier observations. Saving and advancing remain possible after failure.
+  Refresh never changes true progress or assignment. Save/resume retains both
+  stale observations and their subsequent explicit refresh behavior.
+
+For a neutral workshop, the intended author syntax is:
+
+```yaml
+# Existing syntax: refresh both collections.
+- plan: {op: observe}
+# Intended scoped semantics: inspect one resident, leaving work reports stale.
+- plan: {op: observe, entity: potter}
+# New syntax, pending implementation: inspect just the clay preparation report.
+- plan: {op: observe, activity: prepare, where: 'self.progress > 0'}
+```
+
+The activity form is not yet accepted by the checker. Entity-filtered calls
+currently still refresh activities. Running the baseline test with
+`wantObserved = 0` for its four filtered cases fails with observed progress 1;
+the global case and `TestObservationFailureIsAtomic` pass. This is a reproduced
+contract gap, not verification of the pending scoped behavior.
+
 Calendars use ISO dates, inclusive endpoints, explicit phases, weekday closures and
 exception dates. Closed days consume one phase. Advancement and reservation
 dispatch are separate so authors can settle pending decisions before dispatch.

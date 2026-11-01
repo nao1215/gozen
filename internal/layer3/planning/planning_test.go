@@ -98,6 +98,100 @@ func TestObservationAndAtomicSelection(t *testing.T) {
 	}
 }
 
+// TestObservationSelectionBaseline records the current selection behavior before
+// the scoped-observation contract in ADR 0053 is implemented. The activity refresh
+// in filtered cases is a known defect, not the desired contract.
+func TestObservationSelectionBaseline(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		entity    string
+		tag       string
+		where     string
+		condition string
+	}{
+		{name: "all", condition: "tired"},
+		{name: "one entity", entity: "potter", condition: "tired"},
+		{name: "other entity", entity: "weaver", condition: "ready"},
+		{name: "empty predicate", entity: "potter", where: "false", condition: "ready"},
+		{name: "empty tag", tag: "absent", condition: "ready"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := state(t)
+			def := s.DB.Game.Planning.Activities["prepare"]
+			def.Observation = value(t, "self.progress")
+			s.DB.Game.Planning.Activities["prepare"] = def
+			apply(t, s, data.PlanCommand{Op: "observe"})
+			apply(t, s, data.PlanCommand{Op: "set", Entity: "potter", Attribute: "vigor", Value: value(t, "20")})
+			apply(t, s, data.PlanCommand{Op: "progress", Activity: "prepare", Value: value(t, "1")})
+			before := snapshot(t, s)
+			restored, err := rpg.Parse(s.DB, before, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, st := range []*rpg.State{s, restored} {
+				cmd := data.PlanCommand{Op: "observe", Entity: tc.entity, Tag: tc.tag}
+				if tc.where != "" {
+					cmd.Where = value(t, tc.where)
+				}
+				apply(t, st, cmd)
+				if got := st.EntityValues("potter", false)["condition"]; got != tc.condition {
+					t.Fatalf("entity condition = %v, want %s", got, tc.condition)
+				}
+				wantObserved := 1.0
+				// Baseline only: filtered observations currently refresh all activities.
+				// The scoped contract changes this expectation to zero for filtered cases.
+				if got := st.Planning.Activities["prepare"].Observed; got != wantObserved {
+					t.Fatalf("activity observed = %g, want %g", got, wantObserved)
+				}
+				if st.Planning.Activities["prepare"].Progress != 1 {
+					t.Fatal("observation changed true progress")
+				}
+			}
+			if !reflect.DeepEqual(s.Planning, restored.Planning) {
+				t.Fatal("observation differs after resume")
+			}
+		})
+	}
+}
+
+func TestObservationFailureIsAtomic(t *testing.T) {
+	for _, target := range []string{"activity", "entity", "predicate", "unknown entity"} {
+		t.Run(target, func(t *testing.T) {
+			s := state(t)
+			def := s.DB.Game.Planning.Activities["prepare"]
+			def.Observation = value(t, "self.progress")
+			s.DB.Game.Planning.Activities["prepare"] = def
+			apply(t, s, data.PlanCommand{Op: "progress", Activity: "prepare", Value: value(t, "1")})
+			cmd := data.PlanCommand{Op: "observe"}
+			switch target {
+			case "activity":
+				def = s.DB.Game.Planning.Activities["shape"]
+				def.Observation = value(t, "self.missing")
+				s.DB.Game.Planning.Activities["shape"] = def
+			case "entity":
+				entity := s.DB.Game.Planning.Entities["weaver"]
+				entity.Observations = map[string]data.Expr{"condition": value(t, "self.missing")}
+				s.DB.Game.Planning.Entities["weaver"] = entity
+			case "predicate":
+				cmd.Where = value(t, "self.missing")
+			case "unknown entity":
+				cmd.Entity = "missing"
+			}
+			before := snapshot(t, s)
+			if _, err := planning.Apply(s, cmd); err == nil {
+				t.Fatal("invalid observation succeeded")
+			}
+			if string(snapshot(t, s)) != string(before) {
+				t.Fatal("failed observation changed saved state")
+			}
+			apply(t, s, data.PlanCommand{Op: "advance"})
+			if _, err := rpg.Parse(s.DB, snapshot(t, s), nil); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 func TestDependenciesReworkAndSave(t *testing.T) {
 	s := state(t)
 	apply(t, s, data.PlanCommand{Op: "progress", Activity: "shape", Value: value(t, "4")})
