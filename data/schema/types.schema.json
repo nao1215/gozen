@@ -13785,6 +13785,19 @@
           },
           "x-type": "string"
         },
+        "date_link": {
+          "$ref": "#/$defs/ScreenCall",
+          "description": "Default date destination; arguments read selected date, offset, weekday, closed and summary. Explicit marker links take precedence.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[ScreenCall](#screencall) or string"
+        },
         "detail": {
           "description": "Public text binding for the selected entity pane, shown alongside its assigned activities.",
           "type": "string",
@@ -14865,8 +14878,34 @@
           },
           "x-type": "string"
         },
+        "hide_closed": {
+          "description": "Hide the annotation on closed dates; does not affect dispatch.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
         "id": {
           "description": "Stable reservation ID.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "label": {
+          "description": "Public calendar annotation; does not affect dispatch.",
           "type": "string",
           "x-contract": {
             "default": "empty string",

@@ -746,7 +746,7 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 	}
 	// Annotation text follows the pointer's date in the footer; compact ticks
 	// keep dense holidays from overwriting adjacent labels on the shared axis.
-	for _, marker := range v.Markers {
+	for _, marker := range planningMarkers(p, v, start, end) {
 		if marker.Label == "" && !marker.Milestone {
 			continue
 		}
@@ -962,7 +962,11 @@ func (s *authorScreen) timelineDescription(g *Game) string {
 	sw, _ := g.screen()
 	if date := s.timelinePointerDate(g); date != "" {
 		labels := []string{planningDate(date, "", v)}
-		for _, marker := range v.Markers {
+		d, err := time.Parse(time.DateOnly, date)
+		if err != nil {
+			return ""
+		}
+		for _, marker := range planningMarkers(p, v, d, d) {
 			if marker.Date == date && marker.Label != "" {
 				labels = append(labels, marker.Label)
 			}
@@ -1455,6 +1459,23 @@ func (s *authorScreen) drawEntityTable(g *Game, dst *ebiten.Image) {
 	}
 }
 
+// planningMarkers derives public schedule labels in calendar order. It does not
+// run events or inspect hidden state; authored markers keep their original order.
+func planningMarkers(p *data.Planning, v data.PlanningView, start, end time.Time) []data.TimelineMarker {
+	markers := slices.Clone(v.Markers)
+	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
+		date := d.Format(time.DateOnly)
+		closed := slices.Contains(p.Calendar.WeekdaysOff, int(d.Weekday())) || slices.Contains(p.Calendar.Closed, date)
+		for _, r := range p.Schedule {
+			if r.Label == "" || r.HideClosed && closed || r.Date != "" && r.Date != date || len(r.Weekdays) > 0 && !slices.Contains(r.Weekdays, int(d.Weekday())) {
+				continue
+			}
+			markers = append(markers, data.TimelineMarker{Date: date, Label: r.Label})
+		}
+	}
+	return markers
+}
+
 // calendarCells shares hit regions with drawing, including six-week months.
 type calendarCell struct {
 	date   string
@@ -1471,12 +1492,13 @@ func calendarCells(p *data.Planning, v data.PlanningView, month string, x, y, w,
 	start = time.Date(start.Year(), start.Month(), 1, 0, 0, 0, 0, time.UTC)
 	cw, ch := (w-40)/7, (h-30)/6
 	var cells []calendarCell
+	markers := planningMarkers(p, v, start, start.AddDate(0, 1, -1))
 	for d := start; d.Month() == start.Month(); d = d.AddDate(0, 0, 1) {
 		n := (int(start.Weekday())-v.WeekStart+7)%7 + d.Day() - 1
 		xx, yy := x+20+float64(n%7)*cw, y+30+float64(n/7)*ch
 		date := d.Format(time.DateOnly)
 		cell := calendarCell{date: date, bounds: image.Rect(int(xx), int(yy), int(xx+cw-6), int(yy+ch-2)), closed: slices.Contains(p.Calendar.WeekdaysOff, int(d.Weekday())) || slices.Contains(p.Calendar.Closed, date)}
-		for _, marker := range v.Markers {
+		for _, marker := range markers {
 			if marker.Date == date && marker.Label != "" && !slices.Contains(cell.labels, marker.Label) {
 				cell.labels = append(cell.labels, marker.Label)
 			}
@@ -1626,7 +1648,34 @@ func (s *authorScreen) openCalendarDate(g *Game, date string) bool {
 			return true
 		}
 	}
-	return false
+	v := g.db.Game.Screens[s.name].View
+	p := g.db.Game.Planning
+	d, err := time.Parse(time.DateOnly, date)
+	if v.DateLink == nil || err != nil || date < p.Calendar.Start || date > p.Calendar.End {
+		return false
+	}
+	start, err := time.Parse(time.DateOnly, p.Calendar.Start)
+	if err != nil {
+		return false
+	}
+	labels := []string{}
+	for _, marker := range planningMarkers(p, v, d, d) {
+		if marker.Date == date && marker.Label != "" {
+			labels = append(labels, marker.Label)
+		}
+	}
+	selected := expr.Map{
+		"date": date, "offset": float64(d.Unix()-start.Unix()) / 86400, "weekday": float64(d.Weekday()),
+		"closed":  slices.Contains(p.Calendar.WeekdaysOff, int(d.Weekday())) || slices.Contains(p.Calendar.Closed, date),
+		"summary": strings.Join(labels, " / "),
+	}
+	args, err := g.db.BindScreen(*v.DateLink, expr.Chain{expr.Map{"selected": selected}, s.env(g)})
+	if err != nil {
+		g.events.Log(err)
+		return true
+	}
+	g.openAuthorScreen(v.DateLink.Screen, nil, args)
+	return true
 }
 
 func (s *authorScreen) timelinePointerDate(g *Game) string {

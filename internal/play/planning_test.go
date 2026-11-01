@@ -1083,3 +1083,57 @@ func TestEnsembleRegionsKeepFacesAboveSummary(t *testing.T) {
 		}
 	}
 }
+
+func TestSelectedDateLinkAndScheduleLabels(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{Calendar: data.Calendar{Start: "2030-08-01", End: "2030-08-04", Phases: []string{"morning"}, WeekdaysOff: []int{0, 6}}, Schedule: []data.Reservation{{Label: "Gathering", Weekdays: []int{5, 6}, HideClosed: true}}}
+	view := data.PlanningView{DateLink: &data.ScreenCall{Screen: "detail", Args: map[string]data.Expr{"day": data.MustExpr("selected.date"), "offset": data.MustExpr("selected.offset"), "closed": data.MustExpr("selected.closed"), "summary": data.MustExpr("selected.summary"), "weekday": data.MustExpr("selected.weekday")}}}
+	db.Game.Screens = map[string]*data.AuthorScreen{"calendar": {Kind: "calendar", View: view}, "detail": {Params: map[string]string{"day": "date", "offset": "number", "closed": "bool", "summary": "string", "weekday": "number"}, Title: "{arg.day} / {arg.offset} / {arg.closed} / {arg.summary} / {arg.weekday}"}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "calendar", nil, nil)
+	before, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ date, title string }{
+		{"2030-08-02", "2030-08-02 / 1 / false / Gathering / 5"},
+		{"2030-08-03", "2030-08-03 / 2 / true /  / 6"},
+		{"2030-08-04", "2030-08-04 / 3 / true /  / 0"},
+	} {
+		g.stack = []scene{s}
+		if !s.openCalendarDate(g, tc.date) {
+			t.Fatal(tc.date)
+		}
+		detail, ok := g.stack[1].(*authorScreen)
+		if !ok || detail.title != tc.title {
+			t.Fatalf("%s: %#v", tc.date, detail)
+		}
+	}
+	for _, date := range []string{"2030-07-31", "2030-08-05", "bad"} {
+		if s.openCalendarDate(g, date) {
+			t.Fatal("out-of-range date opened", date)
+		}
+	}
+	// Date offsets, unlike time.Duration, must cover the full ISO year range.
+	db.Game.Planning.Calendar.Start = "0001-01-01"
+	g.stack = []scene{s}
+	if !s.openCalendarDate(g, "2030-08-02") {
+		t.Fatal("wide range did not open")
+	}
+	wide, ok := g.stack[1].(*authorScreen)
+	if !ok || !strings.Contains(wide.title, " / 741290 / ") {
+		t.Fatalf("wide date offset: %#v", wide)
+	}
+	db.Game.Planning.Calendar.Start = "2030-08-01"
+	cells := calendarCells(db.Game.Planning, view, "2030-08-01", 0, 0, 1000, 600)
+	if !slices.Equal(cells[1].labels, []string{"Gathering"}) || slices.Contains(cells[2].labels, "Gathering") {
+		t.Fatal(cells[:3])
+	}
+	after, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("browsing changed state")
+	}
+}

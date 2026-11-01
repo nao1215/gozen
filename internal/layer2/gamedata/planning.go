@@ -146,11 +146,15 @@ type Ledger struct {
 // Reservation is an event on a date or recurring weekday and phase.
 // Its stable ID prevents duplicate dispatch after saving and loading.
 type Reservation struct {
-	ID       string `yaml:"id"`
-	Date     string `yaml:"date"`
-	Weekdays []int  `yaml:"weekdays"`
-	Phase    string `yaml:"phase"`
-	Event    string `yaml:"event"`
+	// Label is an optional public calendar annotation; it never changes dispatch.
+	Label string `yaml:"label"`
+	// HideClosed omits this annotation on closed dates, without changing dispatch.
+	HideClosed bool   `yaml:"hide_closed"`
+	ID         string `yaml:"id"`
+	Date       string `yaml:"date"`
+	Weekdays   []int  `yaml:"weekdays"`
+	Phase      string `yaml:"phase"`
+	Event      string `yaml:"event"`
 }
 
 // PlanCommand is an immediate operation. Where and Value bind self to each
@@ -519,6 +523,10 @@ type PlanningView struct {
 	FilterLabel string `yaml:"filter_label"`
 	// Markers annotates dates without changing scheduling or simulation rules.
 	Markers []TimelineMarker `yaml:"markers"`
+	// DateLink opens one screen for any selected date inside the planning range.
+	// Arguments can read selected.date, offset, weekday, closed and summary.
+	// Explicit marker destinations take precedence.
+	DateLink *ScreenCall `yaml:"date_link"`
 
 	// Visible binds an optional public boolean; only true values show a resident.
 	Visible string `yaml:"visible"`
@@ -660,6 +668,15 @@ func (c *checker) planningView(w string, v PlanningView, plain bool) {
 			} else if len(item.Args) > 0 {
 				c.errorf(diag.Shape, at, "arguments require a destination screen")
 			}
+		}
+	}
+	if v.DateLink != nil {
+		at := w + ".date_link"
+		c.needsVersion(at, "selected calendar dates", SchemaVersion10)
+		if c.db.Game.Screens[v.DateLink.Screen] == nil {
+			c.errorf(diag.UnknownReference, at, "date link requires an authored screen")
+		} else {
+			c.screenCall(at, *v.DateLink, append(slices.Clone(FieldNames), "selected"))
 		}
 	}
 	destinations := map[string]TimelineMarker{}

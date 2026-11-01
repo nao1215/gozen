@@ -693,3 +693,31 @@ interpolation and the choice read key use the selected source, just as `say` use
 `text_expr`. Selecting the former literal source preserves its read identity;
 putting a new interpolation placeholder in `label` would create a different
 source key. Literal choices retain their existing fingerprint representation.
+
+### Calendar date links and schedule annotations
+
+Calendar and timeline views can share one typed destination, without a marker
+for every day. The neutral event-arguments example uses:
+
+```yaml
+view:
+  date_link:
+    screen: day_detail
+    args: {day: selected.date}
+```
+
+Within these pure argument expressions, `selected` contains `date` (ISO text),
+`offset` (calendar days since the planning start), `weekday` (Sunday 0 through
+Saturday 6), `closed` (weekend or explicit closure), and `summary` (public labels
+joined with ` / `, or empty). The source screen's arguments remain available.
+Only dates inside the inclusive planning range use this fallback; an explicit
+marker destination takes precedence. Browsing never advances time, dispatches
+an event or changes saved state. Destination bindings use ordinary typed screen
+validation. This does not add save continuation for the parent planning surface.
+
+A schedule reservation may specify `label` and `hide_closed: true` to show its
+public name on matching calendar and timeline dates. These fields only affect
+annotations, never event dispatch. An omitted label preserves the existing count
+fallback; internal event IDs are not displayed. Authored markers precede schedule
+labels, and schedule labels retain reservation order. The workshop assembly
+illustrates a dated reservation; weekday reservations use the same mechanism.

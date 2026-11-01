@@ -82,6 +82,11 @@ func (db *DB) StateUses() map[string]*NameUse {
 		if screen == nil {
 			continue
 		}
+		if screen.View.DateLink != nil {
+			for key, value := range screen.View.DateLink.Args {
+				u.expr("game.yaml.screens."+name+".view.date_link.args."+key, value)
+			}
+		}
 		u.text("game.yaml.screens."+name+".title", screen.Title)
 		for i, entry := range screen.Entries {
 			w := fmt.Sprintf("game.yaml.screens.%s.entries[%d]", name, i)

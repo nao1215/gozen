@@ -54,13 +54,9 @@ screens:
     kind: calendar
     view:
       fullscreen: true
-      markers:
-      - date: '2030-01-01'
+      date_link:
         screen: day_detail
-        args: {day: '"2030-01-01"'}
-      - date: '2030-01-02'
-        screen: day_detail
-        args: {day: '"2030-01-02"'}
+        args: {day: selected.date}
   day_detail:
     params: {day: date}
     title: 'Schedule {arg.day}'

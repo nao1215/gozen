@@ -1966,6 +1966,9 @@ var (
 
 // typeOf is the type of name n among names (the names usable at that location).
 func typeOf(n string, names []string) *vtype {
+	if n == "selected" && slices.Contains(names, n) {
+		return objType("selected date", map[string]*vtype{"date": tStr, "offset": tNum, "weekday": tNum, "closed": tBool, "summary": tStr}, nil)
+	}
 	battle := slices.Contains(names, "turn")
 	switch n {
 	case "flag":

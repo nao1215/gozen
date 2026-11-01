@@ -45,6 +45,8 @@ Ledger:
   _: "Ledger definition for deterministic planning simulations."
   retain: "Retain of this ledger."
 Reservation:
+  label: "Public calendar annotation; does not affect dispatch."
+  hide_closed: "Hide the annotation on closed dates; does not affect dispatch."
   _: "An event reservation dispatched once per matching date."
   id: "Stable reservation ID."
   date: "Date of this ledger."
@@ -74,6 +76,7 @@ PolicyRule:
   when: "Condition evaluated from visible entity and activity observations. Omitted means true."
   event: "Existing event to run through the ordinary interpreter."
 PlanningView:
+  date_link: "Default date destination; arguments read selected date, offset, weekday, closed and summary. Explicit marker links take precedence."
   tabs: "Two to five fullscreen screen IDs in the same order on every peer, including this screen. Bottom tabs or left/right replace the surface without consuming time or nesting screens."
   filter_label: Optional label for the unfiltered grouped timeline. Enables arrow buttons to cycle public residents from order and visible; clicking the portrait or name resets to all. Other lanes become faint without moving or changing state.
   rows: Optional grouped timeline rows. The calendar range stays fixed and oversized tables scroll by group.

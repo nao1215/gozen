@@ -420,3 +420,34 @@ func TestCollectionFieldDiagnostics(t *testing.T) {
 		}
 	}
 }
+
+func TestSelectedDateDestinationValidation(t *testing.T) {
+	const header = `schema_version: 10
+id: workshop
+start: {location: room}
+planning:
+  calendar: {start: '2030-08-01', end: '2030-08-03', phases: [morning]}
+screens:
+  detail: {params: {day: date}, title: 'Day {arg.day}', entries: [{label: Read}]}
+  calendar:
+    title: Calendar
+    kind: calendar
+    view:
+      date_link: `
+	for _, tc := range []struct {
+		link  string
+		valid bool
+	}{
+		{`{screen: detail, args: {day: selected.date}}`, true},
+		{`{screen: missing, args: {day: selected.date}}`, false},
+		{`{screen: detail, args: {day: selected.offset}}`, false},
+		{`{screen: detail, args: {day: selected.missing}}`, false},
+		{`{screen: detail, args: {day: 'rand(2)'}}`, false},
+		{`{screen: detail}`, false},
+	} {
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header + tc.link + "\n")}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
+		if (err == nil) != tc.valid {
+			t.Fatalf("%s: %v", tc.link, err)
+		}
+	}
+}

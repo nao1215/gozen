@@ -816,3 +816,13 @@ includes the selected ID. Refresh preserves source index plus bindings, rather
 than treating the display offset as identity. Plain lists, session replay and
 contextual planning actions share the event-layer iterator and activation check.
 See the author guide and the neutral workshop roster for syntax and limits.
+
+### Selected calendar dates
+
+Planning views accept `date_link`, an ordinary typed screen call whose pure
+arguments additionally bind `selected` to the chosen date, offset, weekday,
+closure and public summary. Explicit marker links keep precedence. The binding
+is presentation-owned, and only destination values pass into ordinary screen
+execution. Schedule annotations share the existing calendar definition and do
+not change rule dispatch or introduce saved state. See the author guide for
+ranges and label order. No package boundary or dependency changes are needed.

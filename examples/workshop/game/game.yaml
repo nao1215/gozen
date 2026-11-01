@@ -29,7 +29,7 @@ planning:
     shape: {name: Shape bowls, effort: 6, assignee: potter, after: [prepare], from: '2030-08-01', to: '2030-08-02'}
   ledgers: {usage: {retain: 12}}
   schedule:
-    - {id: assembly, date: '2030-08-01', phase: morning, event: assembly}
+    - {id: assembly, date: '2030-08-01', phase: morning, event: assembly, label: Assembly, hide_closed: true}
   rules:
     recover:
       params: [amount]
