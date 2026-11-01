@@ -2,6 +2,8 @@ package session
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -48,23 +50,27 @@ const maxSteps = 20000
 // Session is one play of a game: its state, random numbers and running events. Use it
 // from one goroutine.
 type Session struct {
-	g       *Game
-	db      *gamedata.DB
-	st      *rpg.State
-	pcg     *rand.PCG
-	seed    uint64
-	cfg     Config
-	runner  *event.Runner
-	last    scope.Last
-	arrived bool
-	quiet   bool // the next arrival has no random battle (the start of a game)
-	pending *Request
-	battle  event.Battle
-	acts    []act // moves decided by the act command for the next battle
-	errs    []error
-	at      cursor
-	screens []screenFrame // suspended author screens, outermost first
-	held    *Request      // the line a restored save goes on at, shown by the next Next
+	g             *Game
+	db            *gamedata.DB
+	st            *rpg.State
+	pcg           *rand.PCG
+	seed          uint64
+	cfg           Config
+	runner        *event.Runner
+	last          scope.Last
+	arrived       bool
+	quiet         bool // the next arrival has no random battle (the start of a game)
+	pending       *Request
+	battle        event.Battle
+	acts          []act // moves decided by the act command for the next battle
+	errs          []error
+	at            cursor
+	replayRoot    cursor
+	inputs        []rpg.ReplayInput
+	replayBlocked bool
+	sawScreen     bool
+	screens       []screenFrame // suspended author screens, outermost first
+	held          *Request      // the line a restored save goes on at, shown by the next Next
 }
 
 // cursor is where the running event is, for a save made in its middle (ADR 0025): the state
@@ -79,7 +85,6 @@ type cursor struct {
 	lines       int
 	answers     []int
 	noBack      bool
-	screen      bool // this root crossed an open request; continuation is not serializable
 	arriving    bool
 	before, rbf []byte
 }
@@ -144,6 +149,11 @@ func Restore(g *Game, save []byte, cfg Config) (*Session, error) {
 
 // resume begins the event of a cursor again and reads on to its line.
 func (s *Session) resume(c rpg.Cursor) error {
+	if len(c.Inputs) > 0 {
+		cfg := s.cfg
+		s.cfg.OnEffect, s.cfg.OnRequest, s.cfg.OnLog = nil, nil, nil
+		defer func() { s.cfg = cfg }()
+	}
 	if c.Arrival {
 		s.arrive()
 	} else {
@@ -159,6 +169,9 @@ func (s *Session) resume(c rpg.Cursor) error {
 			s.runner.Start(cmds)
 		}
 	}
+	if len(c.Inputs) > 0 && c.Line == 0 {
+		return s.resumeScreens(c.Inputs)
+	}
 	onEffect := s.cfg.OnEffect
 	s.cfg.OnEffect = nil
 	defer func() { s.cfg.OnEffect = onEffect }()
@@ -167,6 +180,7 @@ func (s *Session) resume(c rpg.Cursor) error {
 		return err
 	}
 	s.at.lines, s.at.answers = c.Line, slices.Clone(c.Answers)
+	s.replayRoot.lines, s.replayRoot.answers = c.Line, slices.Clone(c.Answers)
 	if request != nil {
 		q := s.request(request)
 		if q.Kind == "choice" {
@@ -174,6 +188,10 @@ func (s *Session) resume(c rpg.Cursor) error {
 		} else {
 			s.held = &q
 		}
+	}
+	if len(c.Inputs) > 0 {
+		s.held = nil
+		return s.resumeScreens(c.Inputs)
 	}
 	return nil
 }
@@ -193,6 +211,7 @@ func newSession(g *Game, cfg Config) *Session {
 func (s *Session) start() {
 	s.runner = event.New(s.db, s.st, event.HostFunc(s.effect))
 	s.runner.Log = func(err error) {
+		s.replayBlocked = true
 		s.errs = append(s.errs, err)
 		if s.cfg.OnLog != nil {
 			s.cfg.OnLog(err)
@@ -221,6 +240,11 @@ func (s *Session) onStart(cmds []gamedata.Command, args map[string]any) {
 		c.noBack = true
 	}
 	s.at = c
+	if len(s.screens) == 0 {
+		s.replayRoot = c
+		s.inputs = nil
+		s.replayBlocked, s.sawScreen = c.noBack, false
+	}
 }
 
 // arrive starts the commands of arriving at the location, keeping the state before them.
@@ -341,6 +365,33 @@ func (s *Session) settle(ctx context.Context) error {
 // waiting. A choice, battle or authored screen waits for Answer (Next returns it
 // again until then). Built-in screens remain presentation-only requests.
 func (s *Session) Next() Request {
+	repeat := s.pending != nil || s.held != nil
+	q := s.next()
+	if !repeat && q.Kind != "" {
+		switch q.Kind {
+		case "say", "choice", "notice", "wait", "tap":
+		case "open":
+			s.sawScreen = true
+			if s.pending == nil {
+				s.replayBlocked = true
+			}
+		default:
+			s.replayBlocked = true
+		}
+		if s.replayBlocked || s.db.Game.SchemaVersion < gamedata.SchemaVersion10 {
+			return q
+		}
+		digest, err := requestDigest(q)
+		if err != nil {
+			s.replayBlocked = true
+		} else {
+			s.recordInput(rpg.ReplayInput{Request: digest})
+		}
+	}
+	return q
+}
+
+func (s *Session) next() Request {
 	if s.pending != nil {
 		return cloneRequest(*s.pending)
 	}
@@ -357,15 +408,13 @@ func (s *Session) Next() Request {
 			}
 			if q, ok := r.(event.Checkpoint); ok {
 				s.at.noBack = true
+				s.replayBlocked = true
 				if err := s.checkpoint(q); err != nil {
 					s.runner.Log(err)
 				}
 				continue
 			}
 			q := s.request(r)
-			if q.Kind == "open" {
-				s.at.screen = true
-			}
 			switch q.Kind {
 			case "say", "choice":
 				s.at.lines++
@@ -439,11 +488,18 @@ func (s *Session) Answer(n int) {
 		return
 	}
 	if q.Kind == "open" {
+		if n >= -1 && n < len(q.Options) {
+			s.recordInput(rpg.ReplayInput{Answer: &n})
+		}
 		s.answerScreen(n)
 		return
 	}
 	s.pending = nil
 	if q.Kind == "choice" {
+		if n < 0 || n >= len(q.Options) {
+			s.replayBlocked = true
+		}
+		s.recordInput(rpg.ReplayInput{Answer: &n})
 		s.at.answers = append(s.at.answers, n)
 		s.runner.Answer(n)
 		return
@@ -552,6 +608,7 @@ func (s *Session) effect(e event.Effect) {
 	var out Effect
 	switch e := e.(type) {
 	case event.MoveEffect:
+		s.replayBlocked = true
 		s.at.noBack = true
 		s.st.Location = e.Location
 		s.st.Steps++
@@ -589,10 +646,19 @@ func (s *Session) effect(e event.Effect) {
 // again (it passed no battle, shop, save, screen or move), it is the state when the event
 // began with a cursor to the line shown last (save format version 2, ADR 0025); otherwise
 // the events being run are not saved. A running root that opened an author
-// screen is rejected until it finishes: state alone would lose its continuation.
+// screen uses a bounded input transcript for schema-10 named roots. Unsupported
+// boundaries and older schemas reject the save rather than losing its caller.
 func (s *Session) Save() ([]byte, error) {
-	if len(s.screens) > 0 || s.runner.Running() && s.at.screen {
-		return nil, errors.New("gozen: finish the event that opened the author screen before saving")
+	if len(s.screens) > 0 || s.runner.Running() && s.sawScreen {
+		c := s.replayRoot
+		if s.db.Game.SchemaVersion < gamedata.SchemaVersion10 || s.replayBlocked || c.name == "" || c.arrival || len(s.inputs) == 0 {
+			return nil, errors.New("gozen: finish the event that opened the author screen before saving")
+		}
+		cur := rpg.Cursor{Event: c.name, Args: c.args, Line: c.lines, Answers: c.answers, Inputs: s.inputs}
+		if err := cur.Seal(s.db); err != nil {
+			return nil, err
+		}
+		return rpg.WithCursor(c.snap, cur, c.rnd)
 	}
 	c := s.at
 	if !s.runner.Running() || c.noBack || c.lines == 0 || c.snap == nil || c.name == "" && !c.arrival {
@@ -814,4 +880,61 @@ func (s *Session) answerScreen(n int) {
 	if err := s.runner.StartBound(fmt.Sprintf("screen:%s:%d", frame.name, frame.indices[n]), frame.args); err != nil {
 		s.runner.Log(err)
 	}
+}
+
+// recordInput bounds replay work and memory without changing live gameplay.
+func (s *Session) recordInput(input rpg.ReplayInput) {
+	if s.replayBlocked || s.db.Game.SchemaVersion < gamedata.SchemaVersion10 {
+		return
+	}
+	if len(s.inputs) >= maxSteps {
+		s.replayBlocked = true
+		s.inputs = nil
+		return
+	}
+	s.inputs = append(s.inputs, input)
+}
+
+func requestDigest(q Request) (string, error) {
+	b, err := json.Marshal(q)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(b)), nil
+}
+
+// resumeScreens rebuilds suspended runners through the ordinary input path on
+// Restore's private state. Hooks stay silent; no external effects are replayed.
+func (s *Session) resumeScreens(inputs []rpg.ReplayInput) error {
+	var last Request
+	for _, input := range inputs {
+		if input.Answer != nil {
+			q := s.pending
+			n := *input.Answer
+			if q == nil || q.Kind != "open" && q.Kind != "choice" || n < 0 && (n != -1 || q.Kind != "open") || n >= len(q.Options) {
+				return errors.New("load: invalid screen replay answer")
+			}
+			s.Answer(n)
+			last = Request{}
+		} else {
+			last = s.Next()
+			digest, err := requestDigest(last)
+			if err != nil {
+				return err
+			}
+			if digest != input.Request {
+				return errors.New("load: screen replay request changed")
+			}
+		}
+		if s.replayBlocked {
+			return errors.New("load: screen replay crossed an unsupported boundary")
+		}
+	}
+	if !s.sawScreen || len(s.screens) == 0 && !s.runner.Running() {
+		return errors.New("load: missing screen continuation")
+	}
+	if last.Kind != "" && s.pending == nil {
+		s.held = &last
+	}
+	return nil
 }

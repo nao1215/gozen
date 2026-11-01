@@ -3,6 +3,7 @@ package rpg_test
 import (
 	"math/rand/v2"
 	"slices"
+	"strings"
 	"testing"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
@@ -122,5 +123,31 @@ func TestCursorChecksOwningScreen(t *testing.T) {
 	}
 	if _, err := rpg.Parse(db, b, nil); err != nil {
 		t.Fatalf("original definition no longer loads: %v", err)
+	}
+}
+
+func TestScreenReplayCacheOwnership(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.SchemaVersion = data.SchemaVersion10
+	answer := 0
+	c := rpg.Cursor{Event: "greet", Inputs: []rpg.ReplayInput{{Request: strings.Repeat("0", 64)}, {Answer: &answer}}}
+	if err := c.Seal(db); err != nil {
+		t.Fatal(err)
+	}
+	b, err := rpg.WithCursor(saveBytes(t, testgame.State(db, 17)), c, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		st, err := rpg.Parse(db, b, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		in := st.Resume.Cursor.Inputs
+		if in[0].Request != strings.Repeat("0", 64) || *in[1].Answer != 0 {
+			t.Fatal("parse retained caller-owned replay inputs")
+		}
+		in[0].Request = "changed"
+		*in[1].Answer = 99
 	}
 }

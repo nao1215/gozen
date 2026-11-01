@@ -76,6 +76,13 @@ func (r *Resume) clone() *Resume {
 	c := *r
 	c.Cursor.Answers = slices.Clone(r.Cursor.Answers)
 	c.Cursor.Args = maps.Clone(r.Cursor.Args)
+	c.Cursor.Inputs = slices.Clone(r.Cursor.Inputs)
+	for i, input := range c.Cursor.Inputs {
+		if input.Answer != nil {
+			n := *input.Answer
+			c.Cursor.Inputs[i].Answer = &n
+		}
+	}
 	c.Rand = slices.Clone(r.Rand)
 	return &c
 }

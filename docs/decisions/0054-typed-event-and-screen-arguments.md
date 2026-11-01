@@ -1,6 +1,6 @@
 # ADR 0054: Typed arguments for reusable events and screens
 
-Status: Accepted for phased implementation (2026-11-01). Event calls and plain screen arguments implemented; plan entity/activity expression targets implemented; screen continuation saves and other expression-form target fields remain planned.
+Status: Accepted for phased implementation (2026-11-01). Event calls and plain screen arguments implemented; plan entity/activity expression targets implemented; non-rendering session screen continuation saves implemented; player restoration and other expression-form target fields remain planned.
 
 See [the executable event-call slice](../development/event-arguments.md) for supported syntax and remaining limits.
 
@@ -206,16 +206,34 @@ Store canonical definition fingerprints for the replay root and its reachable
 called events to detect changed actions before replay; a fingerprint is independent
 of YAML whitespace and mapping order, but includes command order and expressions.
 
-`open` remains a rollback boundary. At that boundary, resumable context must retain
-the screen ID/arguments and a declarative opener continuation: its root invocation,
-start snapshot, RNG, answer prefix and ordinal of the opening command. Restore
-reconstructs that suspended opener privately by replaying to the boundary, verifies
-the screen invocation, and installs the saved current state. It must not apply
-pre-opening effects to that current state a second time. Nested screens use a
-bounded list of these descriptors, not recursively embedded whole save envelopes;
-use the runner's existing nesting limit. Completed entry effects belong to current
-state; an active entry has its own replay root. The same model is required in
-interactive play and non-rendering sessions.
+`open` remains a rollback boundary. The initial proposal stored a snapshot and
+opening ordinal for each suspended opener. That does not account for an earlier
+screen that was closed within the same root: its completed entry may change a
+later condition, argument or random draw. The implemented session representation
+therefore retains one named root snapshot and its PCG bytes, plus a bounded,
+ordered input transcript. It reconstructs the entire suspended stack on private
+state through ordinary request and answer handling. No intermediate snapshot,
+runner frame, closure or pointer is serialized. Replayed effects affect only the
+private state; request, effect and log callbacks stay silent during restoration.
+
+Each transcript element contains either a SHA-256 digest of the complete session
+request (including visible labels and their order) or a visible answer index.
+Closing a screen is answer -1. Definition fingerprints protect authored indices;
+request digests protect the resolved bindings and visible choices before an answer
+is applied. An optional existing line/answer cursor precedes the transcript when
+recording continues after a conventional dialogue restore. The root snapshot is
+never also applied as current state, so committed effects are reconstructed once.
+The ordinary session stack still has its 64-screen bound. Transcripts have at most
+20,000 elements; exceeding the limit disables mid-screen saving without stopping
+live play. Moving, checkpoints, battles, built-in screens and other unsupported
+boundaries also disable it. Only schema-10 named roots qualify; arrivals and older
+schemas retain the save rejection.
+
+The transcript is an additive field of format 3. Older parsers reject unknown
+fields, so they cannot silently discard it. RPG validates its shape and detaches
+cached values; session validates its meaning by replay. Player slot validation
+currently rejects transcripts before replacing live state. Presentation restoration
+must implement this input contract before removing that rejection.
 
 Save pending confirmation identity and whether its action has started. A save before
 confirmation restores the preview without executing it; a save during dialogue
@@ -578,3 +596,21 @@ an explicit confirmation choice. Cancelling leaves the assignment unchanged.
 This completes the target-selection slice, not screen continuation serialization:
 finish the opener before saving. Save/load of the completed assignments is
 supported; an open screen still refuses saving in both session and play.
+
+
+## Non-rendering screen continuation verification
+
+The session implementation now saves before confirmation, immediately after an
+answer, inside entry dialogue, on nested screens, after an entry completes, and
+after closing back to the opener. The neutral stock/receipt flow exercises cancel
+then confirm, two opens with different amounts in one root, duplicate answers,
+re-save before reading the restored request, and two deterministic random draws.
+It also starts from a conventional dialogue save before the first open. Damaged
+request digests, missing/out-of-range answers, argument changes and definition
+changes are rejected. Parsed transcripts do not alias the checked-save cache.
+
+This is a non-rendering session contract. Player save menus still refuse saving
+while an author screen is suspended, and imported session transcripts are rejected.
+Player restoration, visual preview state and a CLI save/resume E2E remain required
+before this ADR's screen work is complete. Existing historical slice notes above
+record the restrictions at the time of those slices.

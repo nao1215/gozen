@@ -1,6 +1,7 @@
 package play
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math/rand/v2"
@@ -96,6 +97,10 @@ func (g *Game) writeSave(path string) error {
 
 func (g *Game) loadSavedGame(st *rpg.State) {
 	r := st.Resume
+	if r != nil && len(r.Cursor.Inputs) > 0 {
+		g.failure = errors.New("load: screen continuation is not supported by this player yet")
+		return
+	}
 	st.Rand = g.stateRng()
 	saved := st.SavedRand
 	if r != nil {
@@ -119,6 +124,9 @@ func (g *Game) checkSavedReplay(st *rpg.State) error {
 		return nil
 	}
 	c := st.Resume.Cursor
+	if len(c.Inputs) > 0 {
+		return errors.New("load: screen continuation is not supported by this player yet")
+	}
 	// Preserve the legacy missing-root fallback used by resume.
 	if !c.Arrival && st.DB.NamedCommands(c.Event) == nil {
 		return nil

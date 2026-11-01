@@ -8,7 +8,9 @@ import (
 	"io/fs"
 	"maps"
 	"os"
+	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -1253,7 +1255,7 @@ func TestResumeRejectsDamagedAnswers(t *testing.T) {
 	}
 }
 
-func TestSaveRefusesScreenContinuation(t *testing.T) {
+func TestLegacySaveRefusesScreenContinuation(t *testing.T) {
 	files := fstest.MapFS{
 		"game.yaml": {Data: []byte("schema_version: 8\nid: screen-save\nstart: {location: workshop}\nscreens: {stock: {title: Stock, entries: [{label: Boards}]}}\n")},
 		"data/world.yaml": {Data: []byte(`locations: {workshop: {name: Workshop}}
@@ -1542,7 +1544,7 @@ func TestAuthorScreenNestingIsBounded(t *testing.T) {
 }
 
 // A cursor before open must reject changed reachable screen actions before replay,
-// even though saving while the screen is open is still unsupported.
+// including the entries that a later screen continuation may replay.
 func TestResumeChecksReachableScreens(t *testing.T) {
 	const header = `schema_version: 10
 id: screen-fingerprint
@@ -1707,9 +1709,15 @@ func TestScreenArguments(t *testing.T) {
 		s.Answer(0)
 		s.Answer(0) // A duplicate answer cannot execute the pending action twice.
 		expect("open", "Receipt 1"+amount)
-		if saved, err := s.Save(); err == nil || saved != nil {
-			t.Fatal("saved an unsupported screen continuation")
+		saved, err := s.Save()
+		if err != nil {
+			t.Fatal(err)
 		}
+		s, err = gozen.Restore(g, saved, gozen.Config{Seed: 999})
+		if err != nil {
+			t.Fatal(err)
+		}
+		expect("open", "Receipt 1"+amount)
 		s.Answer(-1)
 		expect("say", "Stock "+amount)
 		expect("open", "Stock "+amount)
@@ -1785,5 +1793,199 @@ func TestScreenActivityTargets(t *testing.T) {
 		if got := query[string](t, restored, "activity."+task+".assignee"); got != "weaver" {
 			t.Fatal(got)
 		}
+	}
+}
+
+// Saving at every input boundary must agree with uninterrupted play, including
+// cancellation, nested screens, repeated opens, duplicate answers and RNG draws.
+func TestScreenContinuationRoundTrip(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml": {Data: []byte(`schema_version: 10
+id: screen-round-trip
+start: {location: workshop}
+screens:
+  stock:
+    params: {amount: number}
+    title: 'Stock {arg.amount}'
+    entries:
+    - label: Add
+      do:
+      - choice:
+        - {label: Confirm, do: [{set: {var.total: 'var.total + arg.amount'}}]}
+        - {label: Cancel}
+      - open: receipt
+      - say: Back.
+  receipt:
+    title: Receipt
+    entries: [{label: Read, do: [{say: Receipt.}]}]
+`)},
+		"data/world.yaml": {Data: []byte(`locations: {workshop: {name: Workshop}}
+events:
+  visit:
+    do:
+    - set: {var.opened: 'var.opened + 1', var.roll: 'rand(1000)'}
+    - say: Ready.
+    - choice: [{label: Continue}]
+    - open: {screen: stock, args: {amount: '2'}}
+    - open: {screen: stock, args: {amount: '3'}}
+    - set: {var.closed: 'var.closed + 1', var.next: 'rand(1000)'}
+    - say: Finished.
+`)},
+	}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, restoreFirst := range []bool{false, true} {
+		t.Run(strconv.FormatBool(restoreFirst), func(t *testing.T) {
+			control := session(t, g, gozen.Config{Seed: 17})
+			live := session(t, g, gozen.Config{Seed: 17})
+			for _, s := range []*gozen.Session{control, live} {
+				if err := s.Start("- call: visit"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			roundtrip := func() {
+				t.Helper()
+				b, err := live.Save()
+				if err != nil {
+					t.Fatal(err)
+				}
+				live, err = gozen.Restore(g, b, gozen.Config{Seed: 99, OnRequest: func(gozen.Request) { t.Error("replay reported a request") }, OnEffect: func(gozen.Effect) { t.Error("replay reported an effect") }})
+				if err != nil {
+					t.Fatal(err)
+				}
+				// Re-save before consuming the restored request as well.
+				b, err = live.Save()
+				if err != nil {
+					t.Fatal(err)
+				}
+				live, err = gozen.Restore(g, b, gozen.Config{Seed: 101})
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			next := func(kind, text string, restore bool) {
+				t.Helper()
+				a, b := control.Next(), live.Next()
+				if a.Kind != kind || a.Text != text || !reflect.DeepEqual(a, b) {
+					t.Fatalf("requests: %+v / %+v, want %s %s", a, b, kind, text)
+				}
+				if restore {
+					roundtrip()
+					if q := live.Next(); !reflect.DeepEqual(a, q) {
+						t.Fatalf("restored request: %+v / %+v", a, q)
+					}
+				}
+			}
+			answer := func(n int) { control.Answer(n); live.Answer(n); roundtrip() }
+			next("say", "Ready.", restoreFirst)
+			next("choice", "", restoreFirst)
+			control.Answer(0)
+			live.Answer(0)
+			for _, amount := range []string{"2", "3"} {
+				next("open", "Stock "+amount, true)
+				for _, option := range []int{1, 0} {
+					answer(0)
+					next("choice", "", true)
+					answer(option)
+					control.Answer(option)
+					live.Answer(option) // duplicate
+					next("open", "Receipt", true)
+					answer(0)
+					next("say", "Receipt.", true)
+					next("open", "Receipt", true)
+					answer(-1)
+					next("say", "Back.", true)
+					next("open", "Stock "+amount, true)
+				}
+				answer(-1)
+			}
+			next("say", "Finished.", true)
+			next("", "", false)
+			for _, key := range []string{"opened", "closed", "total", "roll", "next"} {
+				if a, b := query[float64](t, control, "var."+key), query[float64](t, live, "var."+key); a != b {
+					t.Fatalf("%s: %v != %v", key, a, b)
+				}
+			}
+			if query[float64](t, live, "var.total") != 5 || query[float64](t, live, "var.closed") != 1 {
+				t.Fatal("lost or repeated effects")
+			}
+		})
+	}
+}
+
+func TestScreenContinuationRejectsDamage(t *testing.T) {
+	g, err := gozen.Load(os.DirFS("../../docs/examples/event-arguments"), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := session(t, g, gozen.Config{Seed: 17})
+	if err := s.Start("- call: {event: stock_visit, args: {amount: '2'}}"); err != nil {
+		t.Fatal(err)
+	}
+	s.Next()
+	s.Answer(0)
+	s.Next()
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, mutate := range map[string]func(map[string]any){
+		"invalid digest":  func(c map[string]any) { c["inputs"] = []any{map[string]any{"request": "broken"}} },
+		"wrong request":   func(c map[string]any) { c["inputs"] = []any{map[string]any{"request": strings.Repeat("0", 64)}} },
+		"missing request": func(c map[string]any) { c["inputs"] = []any{map[string]any{"answer": 0}} },
+		"missing answer": func(c map[string]any) {
+			in, ok := c["inputs"].([]any)
+			if !ok {
+				t.Fatal("missing inputs")
+			}
+			c["inputs"] = []any{in[0], in[2]}
+		},
+		"wrong answer": func(c map[string]any) {
+			in, ok := c["inputs"].([]any)
+			if !ok {
+				t.Fatal("missing inputs")
+			}
+			in[1] = map[string]any{"answer": 99}
+		},
+		"both fields": func(c map[string]any) {
+			in, ok := c["inputs"].([]any)
+			if !ok {
+				t.Fatal("missing inputs")
+			}
+			row, ok := in[0].(map[string]any)
+			if !ok {
+				t.Fatal("missing request")
+			}
+			row["answer"] = 0
+		},
+		"too many inputs":    func(c map[string]any) { c["inputs"] = make([]any, 20001) },
+		"changed arguments":  func(c map[string]any) { c["args"] = map[string]any{"amount": 3} },
+		"changed definition": func(c map[string]any) { c["fingerprint"] = "changed" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			var doc map[string]any
+			if err := json.Unmarshal(saved, &doc); err != nil {
+				t.Fatal(err)
+			}
+			c, ok := doc["cursor"].(map[string]any)
+			if !ok {
+				t.Fatal("missing cursor")
+			}
+			mutate(c)
+			b, err := json.Marshal(doc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := gozen.Restore(g, b, gozen.Config{}); !errors.Is(err, gozen.ErrIncompatibleSave) {
+				t.Fatalf("accepted damaged continuation: %v", err)
+			}
+		})
+	}
+	// Failed restores neither answer nor discard the live pending confirmation.
+	s.Answer(0)
+	if q := s.Next(); q.Text != "Receipt 12" || query[int](t, s, "var.total") != 2 {
+		t.Fatalf("live game changed: %+v", q)
 	}
 }

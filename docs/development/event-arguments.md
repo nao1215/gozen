@@ -46,9 +46,9 @@ go test ./internal/session -run 'Test(EventArgumentsResume|BoundEventRootAndChan
 ```
 
 This is the event-call slice of [ADR 0054](../decisions/0054-typed-event-and-screen-arguments.md).
-Expression-form `say.who` and planning target fields, screen continuations,
-and pending confirmation saves remain later slices. Use existing
-`where` filtering for entity selection in this slice. It does not expand event
+Expression-form `say.who` and player screen continuation saves remain pending.
+The sections below describe implemented planning targets and session continuations.
+The event-call example uses `where` filtering for entity selection. It does not expand event
 bodies or add a generator. The session contract tests load these same example
 files; the CLI E2E runs both residents and checks their resulting attributes.
 
@@ -67,16 +67,16 @@ resumes the original caller once. A malformed dynamic argument logs an execution
 error and skips opening the screen before any entry effect or random draw.
 
 Parameterized planning surfaces, implicit tab/calendar/timeline destinations and
-expression-form target IDs are not supported yet. Use a parameterless wrapper
+expression-form screen entry target IDs are not supported yet. Use a parameterless wrapper
 screen with an explicit `open` action when a literal-only destination is required.
 Plain portrait lists can still use fixed entity targets. Parameters do not expand
 screens or generate YAML.
 
-Saving while a screen is open remains rejected, including during confirmation or
-entry dialogue; the current slot is preserved. This slice does not implement
-screen continuation saves. Ordinary event saves before opening and completed-root
-saves after closing remain supported. Replay and rollback of an entry keep its
-frozen bindings, but do not turn an entry into a saved screen continuation.
+The player still rejects saving while a screen is open, including during
+confirmation or entry dialogue; the current slot is preserved. Ordinary event
+saves before opening and completed-root saves after closing remain supported.
+The internal session harness supports these screen continuations as described
+below; player restoration remains a separate implementation step.
 
 The rules and input tests load the documented example:
 
@@ -108,4 +108,28 @@ return existing IDs of the correct kind without randomness. Targets are resolved
 once before mutation, outside entity iteration; `self` is not available there.
 Invalid targets roll back the entire planning operation or rule. Cancel leaves
 both activities unchanged. Close the screen and finish its calling event before
-saving; restoration of an open screen remains unsupported.
+saving in the player; its restoration of an open screen remains unsupported.
+
+
+## Non-rendering session continuation
+
+The internal session harness can now save an open schema-10 author screen when
+its caller is a named event. The stock/receipt example above is also its neutral
+save/resume example: confirm a collection, save on the nested receipt, restore,
+close the receipt and stock, and observe the caller's `Returned` line. Cancelling
+before saving does not collect stock; restoring a confirmation does not answer it.
+This applies to the internal session harness, not the player save menu yet.
+
+```sh
+go test ./internal/session -run 'TestScreen(Arguments|Continuation)'
+go test ./internal/rpg -run TestScreenReplayCacheOwnership
+go test ./internal/play -run TestLoadRejectsSessionScreenReplay
+```
+
+The save stores the root snapshot and random state with an input transcript, not
+expanded YAML. Restoration rebuilds screens and frozen arguments without issuing
+external callbacks. The transcript is limited to 20,000 inputs and screen nesting
+to 64. Unsupported replay boundaries and older schemas still refuse mid-screen
+saves. Finishing the event permits an ordinary state save again. Player restoration
+and CLI save/resume verification remain pending; the player rejects these session
+saves rather than loading an incomplete continuation.

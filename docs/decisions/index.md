@@ -63,7 +63,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0051](0051-smaller-faster-web-exports.md) | Smaller and faster web exports: a gzipped player, WebP pictures and gzipped files, the media fetched last, and a startup without go-yaml's per-condition reformatting | Accepted | Implemented 2026-10-27 |
 | [0052](0052-stream-voices-slots-and-chat.md) | Stream voices, slots and the chat's memory: recorded lines named by the SHA-1 of their text and waited for, a stream that plays an hour of episodes with bridges between them, a chat that remembers the viewer and does not repeat its lines soon, and a local record of the comments no book answered | Accepted | Implemented 2026-10-27 |
 | [0053](0053-planning-components.md) | Composable typed state, calendar, activities, ledgers and planning views | In development | |
-| [0054](0054-typed-event-and-screen-arguments.md) | Typed arguments, scopes and resumable invocations for events and screens | Accepted for phased implementation; event and plain screen arguments implemented, screen continuation saves pending | |
+| [0054](0054-typed-event-and-screen-arguments.md) | Typed arguments, scopes and resumable invocations for events and screens | Accepted for phased implementation; event and plain screen arguments and session continuation saves implemented, player continuation pending | |
 
 [ADR 0041](0041-yaml-authoring-and-distribution.md) retires the public Go APIs; current implementation boundaries are in [Boundaries](../architecture/boundaries.md). Earlier entries record historical decisions.
 

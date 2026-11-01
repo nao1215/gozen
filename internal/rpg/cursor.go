@@ -1,6 +1,7 @@
 package rpg
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"maps"
@@ -14,8 +15,14 @@ import (
 // Cursor is where a save made in the middle of an event goes on (save format version 2,
 // ADR 0025). The save's state is the one when the event began; a loader starts the event
 // again (Event, or the commands of arriving at the state's location when Arrival) and reads
-// on to Line with Answers, the same replay as a note of F9 and F5.
+// on to Line with Answers, the same replay as a note of F9 and F5. Session screen
+// continuations additionally replay Inputs after that optional dialogue prefix.
 type Cursor struct {
+	// Inputs is a bounded session continuation transcript from the named root's
+	// snapshot. Session replays it on private state; other frontends must reject it
+	// until they implement the same input contract. Line/Answers optionally describe
+	// an earlier dialogue cursor to replay before these inputs.
+	Inputs []ReplayInput `json:"inputs,omitempty"`
 	// Args are frozen root bindings, validated against the current declaration.
 	Args map[string]any `json:"args,omitempty"`
 	// Fingerprint protects schema-10 named replay roots against changed commands.
@@ -31,6 +38,15 @@ type Cursor struct {
 	Answers []int `json:"answers,omitempty"`
 }
 
+// ReplayInput records either a request digest or a visible choice/screen answer.
+// Session owns request encoding and replay; rpg validates the stored value shape.
+// Request is a SHA-256 hex digest. Answer is nil for requests, and may be -1 to
+// close an authored screen. No runner frames or UI pointers are serialized.
+type ReplayInput struct {
+	Request string `json:"request,omitempty"`
+	Answer  *int   `json:"answer,omitempty"`
+}
+
 // Resume is the cursor of a loaded save and the random generator's bytes when the event
 // began (nil bytes: none were saved).
 type Resume struct {
@@ -38,9 +54,30 @@ type Resume struct {
 	Rand   []byte
 }
 
-// valid reports whether the cursor can be read on: a line, an event or the arrival (one
-// of them), and answers that are options (none below 0).
+// valid checks the dialogue cursor or bounded input transcript shape. The frontend
+// must also check reachability against the named root before installing the state.
 func (c Cursor) valid() bool {
+	if len(c.Inputs) > 0 {
+		if len(c.Inputs) > 20000 || c.Event == "" || c.Arrival || c.Line < 0 {
+			return false
+		}
+		if c.Line == 0 && (len(c.Answers) != 0 || c.Inputs[0].Request == "") {
+			return false
+		}
+		if slices.ContainsFunc(c.Answers, func(n int) bool { return n < 0 }) {
+			return false
+		}
+		for _, input := range c.Inputs {
+			if input.Answer != nil {
+				if input.Request != "" || *input.Answer < -1 {
+					return false
+				}
+			} else if digest, err := hex.DecodeString(input.Request); err != nil || len(digest) != 32 {
+				return false
+			}
+		}
+		return true
+	}
 	return c.Line >= 1 && (c.Event == "") == c.Arrival && !slices.ContainsFunc(c.Answers, func(n int) bool { return n < 0 })
 }
 
@@ -103,6 +140,9 @@ func (c *Cursor) Seal(db *data.DB) error {
 }
 
 func (c Cursor) validateBindings(db *data.DB, version int) error {
+	if len(c.Inputs) > 0 && (version < 3 || db.Game.SchemaVersion < data.SchemaVersion10 || c.Fingerprint == "") {
+		return errors.New("screen replay requires format 3, schema 10 and a sealed named root")
+	}
 	if len(c.Args) > 0 || c.Fingerprint != "" {
 		if version < 3 || c.Arrival {
 			return errors.New("bound cursor requires save format 3 and a named root")
