@@ -280,6 +280,58 @@ harness; package tests alone do not prove pointer behavior or rendering. Compare
 complexity diagnostics without loosening thresholds when migrating examples or game
 data. This decision itself introduces no runtime test coverage for future syntax.
 
+## Screen continuation prerequisite found in the legacy path
+
+The screen-call slice must first extend the save model; adding argument maps to
+`Open` and `AuthorScreen` alone is insufficient. The existing
+`TestAuthorScreenDialogueSaveAndOpener` now characterizes all three save phases:
+preview, entry dialogue, and completed entry. Without loading, closing the screen
+executes the opener's following command once. After loading, each phase loses the
+screen and opener. Active entry dialogue still resumes and completes once; committed
+effects and the next random draw survive. The test explicitly labels the missing
+continuation as a legacy limitation, not an accepted result for typed screens.
+
+The concrete ownership gaps are:
+
+- `internal/play/author_screen.go`, `activate` and `update`, suspend a runner and
+  request in memory. The `done` callback resumes the opener only in that live view.
+- `internal/play/rollback.go`, `cursor` and `saveBytes`, save either an active entry
+  root or current state. Neither representation includes the suspended screen.
+- `internal/play/save_report.go`, `loadSavedGame`, reconstructs current state and
+  a single event cursor. `startState` in `play.go` replaces the scene stack.
+- `internal/session/session.go`, `Next` and `Save`, treat `open` as a boundary and
+  save only current state after it. The session currently has no screen selection
+  or close lifecycle. Extending only play would leave the non-rendering contract
+  unimplemented.
+
+The continuation implementation must distinguish three identities: a replay root,
+the particular opening request reached within that root, and the selected authored
+entry within the opened screen. The root includes frozen arguments and its start
+snapshot and RNG; the opening ordinal distinguishes repeated opens of the same
+screen. The entry index belongs to the unchanged definition fingerprint, not the
+filtered display row. The suspended opener's replay metadata must be restored along
+with its runner after an entry ends; retaining only the runner loses the information
+needed by the next save.
+
+Reconstruction must execute the opener against private state up to the recorded
+opening request, check its screen and bindings, then attach the continuation to the
+saved current state. Replaying pre-open effects onto current state is forbidden.
+Do not serialize callbacks or runner frames, embed recursively nested save envelopes,
+or silently discard an unrepresentable root. Named events, screen entry roots, and
+arrival roots need explicit handling; unsupported roots must reject saving with a
+diagnostic. Validate all descriptors before replacing a live session. Checkpoint
+restore must discard the entire suspended chain.
+
+For the implementation, change the characterization's restored `closed` expectation
+from zero to one and replace its absent-screen assertion with restored screen
+identity. Keep its uninterrupted baseline, repeated independent restores, exactly-once
+entry effects and next-random comparison. Also add save-after-restore, nested opens,
+two activities through one screen, cancellation and repeated confirmation input,
+and malformed or edited continuation rejection. Passing the characterization alone
+does not establish any of these new capabilities. Input and CLI coverage must use
+the existing player script and atago harness; ordinary play package tests do not
+establish rendering success.
+
 ## Alternatives and consequences
 
 Global selection variables are short to write but leak across nested calls and
