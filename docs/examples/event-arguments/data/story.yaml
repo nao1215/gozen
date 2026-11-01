@@ -255,8 +255,7 @@ events:
     - say: {text_expr: 'arg.name + " visits the workshop."'}
   speaker_demo:
     do:
-    - call: {event: greet, args: {speaker: '"potter"'}}
-    - call: {event: greet, args: {speaker: '"weaver"'}}
+    - call: {event: greet, each: {param: speaker, items: [potter, weaver]}}
     - open: {screen: resident_card, args: {resident: '"weaver"'}}
     - say: 'Visits {var.greetings}'
   greet:

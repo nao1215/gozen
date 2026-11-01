@@ -590,3 +590,30 @@ order with `call.each`, instead of concatenating every slot in one long
 expression. Keep the header initialization before that loop. Compare the final
 history, displayed dialogue, choice effects and next random draw against the
 original action, including threshold equality and overlapping topic conditions.
+
+
+## Repeating presentation updates in authored order
+
+The workshop's `speaker_demo` uses one ordered call instead of a call per actor:
+
+```yaml
+- call:
+    event: greet
+    each: {param: speaker, items: [potter, weaver]}
+```
+
+Use the same pattern for attendance summaries and status updates. Initialize
+summary counters before the loop, append inside the shared event, and format
+the final summary after the loop. Keep the authored item order when only the
+first few names are displayed. Put eligibility inside the callee if it reads
+state changed by earlier items. A wrapper event can bind derived inputs in its
+own scope before calling the action; other arguments on the repeated call do
+not receive its selected item as a caller variable.
+
+For a meeting, finish the summary pass before starting the speech pass. Reuse
+`say.text_expr` when the former literal source contains a resident ID and its
+read key must survive the change. Preserve the resolved speaker, source text,
+ensemble, selection condition and order. An actor parameter identifies an actor;
+only query a planning entity with that ID when the game explicitly defines both.
+Compare both summary and full meeting modes, absent residents, boundary states,
+dialogue/read records and the next random draw before replacing copied bodies.
