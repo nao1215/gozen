@@ -49,8 +49,9 @@ func (c Chain) Lookup(name string) (any, bool) {
 
 // Expr is a parsed expression.
 type Expr struct {
-	src  string
-	root node
+	src         string
+	root        node
+	collections bool
 }
 
 // Parse parses src.
@@ -67,7 +68,7 @@ func Parse(src string) (*Expr, error) {
 	if p.tok.kind != tEOF {
 		return nil, fmt.Errorf("%q: unexpected %q at %d", src, p.tok.text, p.tok.pos)
 	}
-	return &Expr{src: src, root: n}, nil
+	return &Expr{src: src, root: n, collections: p.hasCollections}, nil
 }
 
 // String returns the parsed source; a nil expression returns an empty string.
@@ -124,6 +125,9 @@ func (e *Expr) Bare() []string {
 				visit(x.x)
 			}
 			visit(x.i)
+		case *collection:
+			visit(x.source)
+			visit(x.body)
 		case *call:
 			if _, ok := x.fn.(*ident); !ok {
 				visit(x.fn)
@@ -192,6 +196,9 @@ func (e *Expr) Refs() []Ref {
 		case *index:
 			visit(x.x)
 			visit(x.i)
+		case *collection:
+			visit(x.source)
+			visit(x.body)
 		case *call:
 			if id, ok := x.fn.(*ident); !ok || !builtin(id.name) {
 				visit(x.fn)
@@ -223,6 +230,18 @@ func (e *Expr) Refs() []Ref {
 // expression).
 func chain(n node) (Ref, []node, bool) {
 	switch x := n.(type) {
+	case *element:
+		source := x.source
+		for {
+			c, ok := source.(*collection)
+			if !ok {
+				break
+			}
+			source = c.source
+		}
+		r, inner, ok := chain(source)
+		r.Path = append(r.Path, Step{Index: true})
+		return r, inner, ok
 	case *ident:
 		return Ref{Name: x.name}, nil, true
 	case *field:
@@ -253,6 +272,9 @@ func chain(n node) (Ref, []node, bool) {
 func (e *Expr) Eval(env Env) (any, error) {
 	if e == nil {
 		return nil, errors.New("empty expression")
+	}
+	if e.collections {
+		env = Chain{Map{"\x00collectionBudget": new(int)}, env}
 	}
 	v, err := e.root.eval(env)
 	if err != nil {
@@ -459,10 +481,12 @@ func (l *lexer) next() (token, error) {
 const maxDepth = 256
 
 type parser struct {
-	lex   lexer
-	tok   token
-	err   error
-	depth int
+	lex            lexer
+	tok            token
+	err            error
+	depth          int
+	itemSource     node
+	hasCollections bool
 }
 
 // enter counts one level of nesting; the caller defers p.leave.
@@ -625,6 +649,10 @@ func (p *parser) postfix() (node, error) {
 			}
 			x = &index{x: x, i: i}
 		case p.is("("):
+			if id, ok := x.(*ident); ok && collectionName(id.name) {
+				x, err = p.collection(id.name)
+				continue
+			}
 			p.next()
 			var args []node
 			for !p.is(")") {
@@ -670,6 +698,9 @@ func (p *parser) primary() (node, error) {
 			return &lit{false}, nil
 		case "nil":
 			return &lit{nil}, nil
+		}
+		if t.text == "it" && p.itemSource != nil {
+			return &element{source: p.itemSource}, nil
 		}
 		return &ident{t.text}, nil
 	case tOp:

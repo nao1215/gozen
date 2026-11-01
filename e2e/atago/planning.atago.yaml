@@ -909,3 +909,27 @@ scenarios:
       file:
         path: evidence.jsonl
         contains: ['Sampled 1; missing 1', 'After work 1; missing 1', 'After cancellation 0; missing 1']
+- name: finite collections read current state and authored activity dates
+  steps:
+  - fixture:
+      file: collections.txt
+      content: |
+        gap 1
+        wait 10
+        do call: collection_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen check "${specdir}/../../docs/examples/event-arguments"
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script collections.txt --trace collections.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: collections.jsonl
+        contains: ['Effort 4; residents 2; remaining 2; days 2', '"remaining":2']

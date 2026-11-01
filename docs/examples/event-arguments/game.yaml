@@ -66,6 +66,8 @@ screens:
   tasks:
     title: Workshop tasks
     entries:
+    - label: Read collection totals
+      do: [{call: collection_demo}]
     - label: Read calendar ranges
       do: [{call: calendar_demo}]
     - label: Draw an available resident

@@ -94,3 +94,51 @@ func TestPlanningCalendarShift(t *testing.T) {
 		t.Fatalf("date arithmetic changed saved state: %v", err)
 	}
 }
+
+func TestPlanningCollections(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{
+		Calendar: data.Calendar{Start: "2030-01-01", End: "2030-01-03", Phases: []string{"day"}},
+		Entities: map[string]data.Entity{"weaver": {Name: "Weaver"}, "potter": {Name: "Potter"}},
+		Activities: map[string]data.Activity{
+			"shape": {Effort: 3, From: "2030-01-01", To: "2030-01-02", Assignee: "potter"},
+			"pack":  {Effort: 2, From: "2030-01-02", To: "2030-01-03", Assignee: "weaver"},
+		},
+	}
+	st := testgame.State(db, 17)
+	before, err := st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		source string
+		want   any
+	}{
+		{`sum(activities, it.effort)`, 5.0},
+		{`count(entities, it.id == "potter")`, 1.0},
+		{`sum(filter(activities, it.assignee == "potter"), it.effort)`, 3.0},
+		{`activities[0].id`, "pack"},
+		{`entities[0].id`, "potter"},
+		{`sum(activities, calendar_days(it.from,it.to))`, 2.0},
+	} {
+		got, err := mustExpr(t, tc.source).Eval(st.Env())
+		if err != nil || got != tc.want {
+			t.Errorf("%s = %v, %v; want %v", tc.source, got, err, tc.want)
+		}
+	}
+	after, err := st.Save()
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatalf("collection changed save: %v", err)
+	}
+}
+
+func TestActivityAuthoredEffortSurvivesResize(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{Calendar: data.Calendar{Start: "2030-01-01", End: "2030-01-02", Phases: []string{"day"}}, Activities: map[string]data.Activity{"shape": {Effort: 3}}}
+	st := testgame.State(db, 17)
+	st.Planning.Activities["shape"].Effort = 7
+	got, err := mustExpr(t, `sum(activities, it.effort-it.planned_effort)`).Eval(st.Env())
+	if err != nil || got != 4.0 {
+		t.Fatalf("authored effort changed: %v, %v", got, err)
+	}
+}

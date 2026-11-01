@@ -47,6 +47,9 @@ func walk(n node, f func(node)) {
 	case *index:
 		walk(x.x, f)
 		walk(x.i, f)
+	case *collection:
+		walk(x.source, f)
+		walk(x.body, f)
 	case *call:
 		walk(x.fn, f)
 		for _, a := range x.args {

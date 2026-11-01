@@ -403,3 +403,14 @@ screens:
 		}
 	}
 }
+
+func TestCollectionFieldDiagnostics(t *testing.T) {
+	for _, source := range []string{`sum(activities, it.efforrt)`, `sum(filter(activities, it.cancelled), it.efforrt)`} {
+		game := "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-01-01', end: '2030-01-02', phases: [day]}\n"
+		story := "locations: {room: {name: Room}}\nevents:\n  total:\n    do:\n    - set: {var.total: '" + source + "'}\n"
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(game)}, "data/world.yaml": {Data: []byte(story)}})
+		if err == nil || !strings.Contains(err.Error(), "efforrt") {
+			t.Fatalf("missing collection field diagnostic: %v", err)
+		}
+	}
+}

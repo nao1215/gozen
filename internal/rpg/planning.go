@@ -148,16 +148,35 @@ func (s *State) planningLookup(name string) (any, bool) {
 			return nil, false
 		}
 		return expr.Map{"date": st.Date, "period": d.Format("2006-01"), "weekday": float64(d.Weekday()), "phase": p.Calendar.Phases[st.Phase], "finished": st.Finished, "closed": s.PlanningClosedDay()}, true
+	case "entities":
+		values := make([]any, 0, len(st.Entities))
+		for _, id := range slices.Sorted(maps.Keys(st.Entities)) {
+			values = append(values, s.EntityValues(id, true))
+		}
+		return values, true
+	case "activities":
+		values := make([]any, 0, len(st.Activities))
+		for _, id := range slices.Sorted(maps.Keys(st.Activities)) {
+			values = append(values, s.activityValues(id))
+		}
+		return values, true
 	case "entity":
 		for id := range st.Entities {
 			out[id] = s.EntityValues(id, true)
 		}
 	case "activity":
-		for id, a := range st.Activities {
-			out[id] = expr.Map{"deadline": s.ActivityDeadline(id), "progress": a.Progress, "effort": s.ActivityEffort(id), "assignee": a.Assignee, "completed": a.Completed != "", "cancelled": a.Cancelled}
+		for id := range st.Activities {
+			out[id] = s.activityValues(id)
 		}
 	}
 	return out, true
+}
+
+// activityValues is the shared rule view for indexed and collection reads.
+func (s *State) activityValues(id string) expr.Map {
+	a := s.Planning.Activities[id]
+	def := s.DB.Game.Planning.Activities[id]
+	return expr.Map{"id": id, "from": def.From, "to": def.To, "planned_effort": def.Effort, "deadline": s.ActivityDeadline(id), "progress": a.Progress, "effort": s.ActivityEffort(id), "assignee": a.Assignee, "completed": a.Completed != "", "cancelled": a.Cancelled}
 }
 
 // calendarCount reads the configured closure rules without advancing state.

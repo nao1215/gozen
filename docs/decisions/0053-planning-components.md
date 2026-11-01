@@ -321,3 +321,43 @@ into view; collapsing restores the overview. Groups too tall to fit the
 available detail area retain the compact layout. Expansion and focus survive
 screen refresh but are presentation state, not save data. A twelve-group
 overview still fits at the standard logical viewport when collapsed.
+
+## Finite collection queries
+
+Rules can read `activities` and `entities` as lists sorted by ID. The lists are
+fresh views of the current state; reading them does not mutate state or draw
+random numbers. Activity items expose `id`, authored `from` and `to`, current
+`deadline`, authored `planned_effort`, current `effort`, `progress`, `assignee`, `completed` and `cancelled`. Entity
+items expose the same rule values as `entity[id]`, including hidden attributes.
+These lists are for rule expressions, not automatic public display bindings.
+
+`sum(list, expression)`, `count(list, predicate)` and `filter(list, predicate)`
+bind `it` to each item. Nested queries shadow `it` only inside their own body;
+`self` and `arg` retain the caller's meaning. Filters preserve list order. Sums
+accumulate left to right, require finite numeric terms and reject overflow.
+Predicates must return booleans. Empty sums and counts return zero; an empty
+filter returns an empty list. An unknown field is an error, not a zero value.
+
+Each input list is limited to 4,096 items, and a whole expression is limited to
+65,536 item visits, including nested queries. Exceeding either limit fails the
+expression rather than returning a truncated result. The functions are syntax
+forms, not first-class callback values. Existing ordinary functions and scalar
+expressions retain their behavior. This does not yet introduce command iteration
+or weighted selection.
+
+For example, a workshop, farm or training schedule can report remaining effort
+without enumerating activity IDs:
+
+```yaml
+- set:
+    var.remaining: 'sum(filter(activities, !it.cancelled), it.effort-it.progress)'
+    var.overdue: 'count(activities, !it.completed && planning.date > it.deadline)'
+```
+
+The executable neutral example is `collection_demo` in
+[the argument workshop](../examples/event-arguments/data/story.yaml). Its CLI
+scenario checks current cancellation state, entity counts and authored dates.
+The expression tests cover empty lists, nested scopes, type failures and both
+resource bounds. Floating-point results can differ in their last bits when an
+authored expanded sum used an order other than ID order; authors migrating such
+sums must verify their observable decisions and saved results.

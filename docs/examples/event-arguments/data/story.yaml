@@ -220,3 +220,9 @@ events:
         - set: {var.sample_total: 'var.sample_total + min(activity[arg.task].effort, var["sample_" + arg.task])'}
         else:
         - set: {var.sample_missing: 'var.sample_missing + 1'}
+  collection_demo:
+    do:
+    - set: {var.effort: 'sum(activities, it.effort)', var.residents: 'count(entities, true)'}
+    - plan: {op: cancel, activity: shape, value: 'true'}
+    - set: {var.remaining: 'sum(filter(activities, !it.cancelled), it.effort)'}
+    - say: 'Effort {var.effort}; residents {var.residents}; remaining {var.remaining}; days {sum(activities, calendar_days(it.from,it.to))}'

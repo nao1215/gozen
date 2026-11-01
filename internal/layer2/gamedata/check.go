@@ -25,7 +25,7 @@ import (
 // The names an expression may use, by where it is written.
 var (
 	// FieldNames are known to the conditions of events, locations and the field music.
-	FieldNames = append([]string{"planning", "entity", "activity", "period_value", "calendar_days", "calendar_workdays", "calendar_shift", "last_battle", "flag", "var", "gold", "party", "reserve", "monster", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose", "bestiary"}, CampaignNames...)
+	FieldNames = append([]string{"planning", "entity", "activity", "entities", "activities", "period_value", "calendar_days", "calendar_workdays", "calendar_shift", "last_battle", "flag", "var", "gold", "party", "reserve", "monster", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose", "bestiary"}, CampaignNames...)
 	// BattleNames are known in battle: the AI, the troop events, the battle music.
 	BattleNames = append(slices.Clone(FieldNames), "turn", "self", "allies", "foes", "enemies", "result", "phase", "boss")
 	// EffectNames are known to the formulas of skills and items: a is the user, b the target.
@@ -2008,6 +2008,10 @@ func typeOf(n string, names []string) *vtype {
 		return &vtype{kind: vDyn, desc: "orders", elem: tOrder, key: "order"}
 	case "general":
 		return tGeneral
+	case "activities":
+		return &vtype{kind: vList, desc: "activities", elem: objType("activity", map[string]*vtype{"id": tStr, "from": tStr, "to": tStr, "planned_effort": tNum, "deadline": tStr, "progress": tNum, "effort": tNum, "assignee": tStr, "completed": tBool, "cancelled": tBool}, nil)}
+	case "entities":
+		return &vtype{kind: vList, desc: "entities", elem: tAny}
 	case "planning", "entity", "activity":
 		return tAny
 	case "campaign":

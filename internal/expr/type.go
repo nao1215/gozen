@@ -83,6 +83,11 @@ func (e *Expr) ResultType(resolve func(Ref) ValueType) ValueType {
 				}
 			}
 			return numericType(infer(x.l) | infer(x.r))
+		case *collection:
+			if x.name != "filter" {
+				return NumberType
+			}
+			return UnknownType
 		case *call:
 			if id, ok := x.fn.(*ident); ok {
 				switch id.name {
