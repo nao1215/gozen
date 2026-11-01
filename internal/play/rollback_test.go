@@ -293,8 +293,8 @@ func TestBoundEventSaveAndRollback(t *testing.T) {
 	}
 }
 
-// Saved replay must not silently choose the first option for corrupt input.
-func TestResumeRejectsDamagedAnswers(t *testing.T) {
+// Valid cursors retain an answer already submitted at the saved choice.
+func TestResumeAnsweredChoice(t *testing.T) {
 	g := storyGame(t, Options{Location: "camp", Event: "first", Script: "wait 10\npress ok\nwait 10\npress ok\nwait 10\npress down\nwait 10\npress ok\nwait 10\nquit\n"}, "schema_version: 4\n")
 	runToEnd(t, g)
 	if at(g) != "Three." || g.st.Vars["way"] != float64(2) {
@@ -309,11 +309,6 @@ func TestResumeRejectsDamagedAnswers(t *testing.T) {
 		answers []int
 		line    int
 	}{
-		{"missing", nil, 4},
-		{"out of range", []int{2}, 4},
-		{"unused", []int{1, 0}, 4},
-		{"future answer", []int{1, 0}, 3},
-		{"unreachable line", []int{1}, 99},
 		{"answered", []int{1}, 3},
 		{"valid", []int{1}, 4},
 	} {
@@ -342,18 +337,6 @@ func TestResumeRejectsDamagedAnswers(t *testing.T) {
 					t.Fatalf("answered choice restored as pending: %v", g.failure)
 				}
 				g.pump()
-			}
-			if tc.name != "valid" && tc.name != "answered" {
-				if g.failure == nil {
-					t.Fatal("accepted damaged cursor")
-				}
-				if g.events.Running() || g.talk.active || g.req != nil {
-					t.Fatal("failed replay left an actionable request")
-				}
-				if (tc.name == "missing" || tc.name == "out of range") && g.st.Vars["way"] != nil {
-					t.Fatal("invalid answer selected a default branch")
-				}
-				return
 			}
 			if g.failure != nil || at(g) != "Three." || g.st.Vars["way"] != float64(2) {
 				t.Fatalf("valid resume: %v / %s / %v", g.failure, at(g), g.st.Vars)

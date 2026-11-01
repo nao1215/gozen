@@ -569,11 +569,12 @@ reports a recoverable load error. The current resource count, dialogue runner,
 next random draw and slot bytes remain unchanged. A valid receipt can still be
 loaded and saved again without collecting twice.
 
-The preflight is scoped to slots read by `load`, including the load menu and newest
-save selection. It does not make arbitrary developer replay, live editing or direct
-internal `loadSavedGame` calls transactional. It replays the saved prefix once more
-than before; latency has not been benchmarked. Screen continuation descriptors,
-open-screen saves and target-based candidate screens remain separate pending work.
+The preflight covers slots read by `load` and direct `loadSavedGame`
+installation. Both use the same validator before replacing state; the latter
+reports failure through the player's existing failure field. Developer replay
+and live editing are separate paths. Slot loading probes once at selection and
+again at installation; replay latency has not been benchmarked. Screen
+continuation restoration remains separate pending work.
 
 ## Planning targets in reusable candidate screens
 

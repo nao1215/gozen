@@ -782,8 +782,9 @@ func TestLoadMenuRejectsDamagedRandomState(t *testing.T) {
 	}
 }
 
-// Replay errors are recoverable slot errors, even after earlier commands ran.
-func TestLoadMenuRejectsDamagedReplay(t *testing.T) {
+// Slot selection and direct installation reject invalid replay without losing
+// the current game, even after earlier commands ran.
+func TestLoadRejectsDamagedReplay(t *testing.T) {
 	g := storyGame(t, Options{Seed: 31, Script: "wait 10\npress ok\nwait 10\npress ok\nwait 10\npress down\nwait 10\npress ok\nwait 10\nquit\n", Location: "camp", Event: "first"}, "schema_version: 4\n")
 	runToEnd(t, g)
 	saved, err := g.saveBytes()
@@ -798,6 +799,7 @@ func TestLoadMenuRejectsDamagedReplay(t *testing.T) {
 		{"missing", nil, 4},
 		{"out of range", []int{2}, 4},
 		{"unused", []int{1, 0}, 4},
+		{"future answer", []int{1, 0}, 3},
 		{"unreachable", []int{1}, 99},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -842,6 +844,30 @@ func TestLoadMenuRejectsDamagedReplay(t *testing.T) {
 				t.Fatal("failed replay rewrote slot", err)
 			}
 			g.pop()
+			// Direct installation must enforce the same contract, even when
+			// its caller parsed bytes without going through the slot menu.
+			candidate, err := rpg.Parse(g.db, damaged, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			before = *g.pcg
+			top := g.stack[len(g.stack)-1]
+			g.loadSavedGame(candidate)
+			loadErr := g.failure
+			g.failure = nil // Expected diagnostic from this direct internal call.
+			if loadErr == nil {
+				t.Fatal("direct load accepted damaged replay")
+			}
+			if g.st != current || g.events != runner || g.stack[len(g.stack)-1] != top || g.st.Gold != 29 || at(g) != "Three." || g.st.Vars["way"] != float64(2) {
+				t.Fatal("direct load replaced live state or dialogue", loadErr)
+			}
+			if g.st.Rand.Uint64() != before.Uint64() {
+				t.Fatal("direct load changed randomness")
+			}
+			after, err = g.storeRead(g.slotPath(0))
+			if err != nil || !bytes.Equal(after, damaged) {
+				t.Fatal("direct load rewrote slot", err)
+			}
 		})
 	}
 	// The original event is still usable after all rejected loads.

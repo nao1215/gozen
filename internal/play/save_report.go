@@ -96,11 +96,11 @@ func (g *Game) writeSave(path string) error {
 }
 
 func (g *Game) loadSavedGame(st *rpg.State) {
-	r := st.Resume
-	if r != nil && len(r.Cursor.Inputs) > 0 {
-		g.failure = errors.New("load: screen continuation is not supported by this player yet")
+	if err := g.checkSavedReplay(st); err != nil {
+		g.failure = err
 		return
 	}
+	r := st.Resume
 	st.Rand = g.stateRng()
 	saved := st.SavedRand
 	if r != nil {
@@ -117,8 +117,9 @@ func (g *Game) loadSavedGame(st *rpg.State) {
 	}
 }
 
-// checkSavedReplay probes a slot on private state before the load menu replaces
-// the live game. It runs no presentation, input, autosave or external effects.
+// checkSavedReplay probes parsed saves on private state before either slot
+// selection or direct installation can replace the live game. It runs no
+// presentation, input, autosave or external effects.
 func (g *Game) checkSavedReplay(st *rpg.State) error {
 	if st.Resume == nil {
 		return nil
@@ -126,6 +127,15 @@ func (g *Game) checkSavedReplay(st *rpg.State) error {
 	c := st.Resume.Cursor
 	if len(c.Inputs) > 0 {
 		return errors.New("load: screen continuation is not supported by this player yet")
+	}
+	// Freeze the fallback once so every probe and installation uses the same
+	// legacy random stream, including direct loads that bypass slot selection.
+	if len(st.Resume.Rand) == 0 {
+		rnd, err := g.newPCG().MarshalBinary()
+		if err != nil {
+			return err
+		}
+		st.Resume.Rand = rnd
 	}
 	// Preserve the legacy missing-root fallback used by resume.
 	if !c.Arrival && st.DB.NamedCommands(c.Event) == nil {

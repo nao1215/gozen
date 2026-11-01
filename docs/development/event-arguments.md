@@ -35,8 +35,10 @@ saved root; its evaluated values are saved, rather than reevaluated on resume.
 Save format 3 records frozen root arguments and a fingerprint of a named root
 and its reachable calls. Replay reconstructs nested scopes from the event-start
 snapshot and RNG. Editing a reachable command or declaration rejects that cursor;
-reordering YAML mapping keys does not. Older save formats remain readable for
-legacy games. As before, anonymous scripts have no named replay root and screen
+reordering YAML mapping keys does not. Both slot selection and direct player
+installation validate saved answers and reachability on private state before
+replacing the current game. A rejected replay preserves the current dialogue,
+state and random stream. Older save formats remain readable for legacy games. As before, anonymous scripts have no named replay root and screen
 opening is a replay boundary.
 
 Run the example's rules and save/resume checks with:

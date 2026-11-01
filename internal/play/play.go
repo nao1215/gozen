@@ -2061,14 +2061,6 @@ func (g *Game) load(i int) (*rpg.State, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Freeze the fallback seed once so validation and installation replay the
-	// same legacy save even when it did not record random bytes.
-	if st.Resume != nil && len(st.Resume.Rand) == 0 {
-		st.Resume.Rand, err = g.newPCG().MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-	}
 	if err := g.checkSavedReplay(st); err != nil {
 		return nil, err
 	}
