@@ -157,3 +157,16 @@ executes the caller's `Returned` line once. The queued reload applies at idle.
 This also protects a screen beneath a save menu. Picture and sound reload remains
 available through the existing asset-only path. This is a reload safety boundary,
 not support for saving or restoring the player's screen continuation.
+
+
+### Visible entry identity
+
+A screen answer selects a visible row. Hidden entries do not consume an answer
+position, but execution still uses the original authored entry index. For example,
+a stock list with a hidden `Collect` entry followed by `Inspect` must execute
+`Inspect` for answer zero in both the player and a non-rendering session. Screen
+arguments remain frozen while visibility is evaluated against current state.
+The shared event-layer selection iterator preserves definition order and label
+rendering. Frontends retain their existing presentation and diagnostic policies;
+entry guards are checked again before execution. This refactoring does not enable
+player saves while an authored screen is open.

@@ -833,20 +833,13 @@ func (s *Session) checkpoint(q event.Checkpoint) error {
 // indices even if state changes before confirmation.
 func (s *Session) screenRequest() Request {
 	frame := &s.screens[len(s.screens)-1]
-	def := s.db.Game.Screens[frame.name]
 	env := expr.Chain{expr.Map{"arg": expr.Map(frame.args)}, s.st.Env()}
+	def := s.db.Game.Screens[frame.name]
 	q := Request{Kind: "open", ID: frame.name, Text: gamedata.Render(s.db.Tr(def.Title), env)}
 	frame.indices = nil
-	for i, entry := range def.Entries {
-		visible, err := entry.When.Bool(env)
-		if err != nil {
-			s.runner.Log(err)
-			continue
-		}
-		if visible {
-			frame.indices = append(frame.indices, i)
-			q.Options = append(q.Options, gamedata.Render(s.db.Tr(entry.Label), env))
-		}
+	for index, entry := range event.ScreenEntries(s.db, frame.name, env, s.runner.Log) {
+		frame.indices = append(frame.indices, index)
+		q.Options = append(q.Options, entry.Label)
 	}
 	return q
 }

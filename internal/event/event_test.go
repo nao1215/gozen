@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/event"
+	"github.com/nao1215/gozen/internal/expr"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/testgame"
@@ -768,6 +769,41 @@ func TestReplayTo(t *testing.T) {
 		r.Start(append([]data.Command{command}, db.Events["receipt"].Do...))
 		if _, err := r.ReplayTo(1, nil); err == nil {
 			t.Fatal("accepted boundary", command)
+		}
+	}
+}
+
+func TestScreenEntriesVisibilityAndOwnership(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Screens = map[string]*data.AuthorScreen{"stock": {Entries: []data.ScreenEntry{
+		{Label: "Hidden", When: data.Expr{Expr: testgame.Expr("false")}},
+		{Label: "Broken", When: data.Expr{Expr: testgame.Expr("missing()")}},
+		{Label: "Stock {amount}"},
+		{Label: "After {amount}", When: data.Expr{Expr: testgame.Expr("amount == 3")}},
+	}}}
+	env := expr.Map{"amount": float64(2)}
+	var problems []error
+	report := func(err error) { problems = append(problems, err) }
+	var labels []string
+	for index, entry := range event.ScreenEntries(db, "stock", env, report) {
+		labels = append(labels, entry.Label)
+		if index == 2 {
+			// Frontend detail evaluation must finish before the next guard is read.
+			env["amount"] = float64(3)
+			entry.Label = "Caller copy"
+		}
+	}
+	if len(problems) != 1 || strings.Join(labels, "/") != "Stock 2/After 3" || db.Game.Screens["stock"].Entries[2].Label != "Stock {amount}" {
+		t.Fatalf("errors=%v labels=%v definition=%v", problems, labels, db.Game.Screens["stock"])
+	}
+	for _, name := range []string{"missing", "stock"} {
+		count := 0
+		for range event.ScreenEntries(db, name, env, nil) {
+			count++
+			break
+		}
+		if name == "missing" && count != 0 || name == "stock" && count != 1 {
+			t.Fatal("missing screen or stopped iteration")
 		}
 	}
 }

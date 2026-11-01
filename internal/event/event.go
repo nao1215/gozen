@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"iter"
 	"maps"
 	"math"
 	"path"
@@ -264,6 +265,39 @@ type Open struct {
 	Screen string
 	// Args are detached frozen screen bindings, consumed by session and play.
 	Args map[string]any
+}
+
+// ScreenEntries supplies the visible choices shared by session and play, in
+// authored order. Each yielded index identifies the original entry, not its
+// display row. env includes frozen arguments and current state. Labels are
+// translated and rendered; body text is left to the frontend. Iteration is lazy
+// so frontend rendering stays interleaved with guard/label evaluation as before.
+// Failed guards hide their entries and call report when non-nil. Missing screens
+// yield nothing. Entries are shallow copies: nested definitions remain read-only.
+// Callers must recheck visibility before activation; this is a display snapshot.
+func ScreenEntries(db *data.DB, name string, env expr.Env, report func(error)) iter.Seq2[int, data.ScreenEntry] {
+	return func(yield func(int, data.ScreenEntry) bool) {
+		def := db.Game.Screens[name]
+		if def == nil {
+			return
+		}
+		for i, entry := range def.Entries {
+			visible, err := entry.When.Bool(env)
+			if err != nil {
+				if report != nil {
+					report(err)
+				}
+				continue
+			}
+			if !visible {
+				continue
+			}
+			entry.Label = data.Render(db.Tr(entry.Label), env)
+			if !yield(i, entry) {
+				return
+			}
+		}
+	}
 }
 
 // Notice is a short notice shown at the top of the screen without stopping (the notice command). The screen shows it and moves on at once (no answer needed).

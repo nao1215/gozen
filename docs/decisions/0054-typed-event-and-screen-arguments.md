@@ -634,3 +634,15 @@ keeping runner pointers would instead bind them to the discarded state. Reload
 therefore waits for screen close and caller completion through the existing idle
 queue. This covers preview, active dialogue and completed entry phases. It does
 not change the save format or claim that player screen restoration is implemented.
+
+
+### Shared visible selection before player replay
+
+The session transcript records visible answer positions, while execution identifies
+an authored entry. Session and play therefore use `event.ScreenEntries` for the
+same filtering, label rendering and original-index mapping. Event already owns the
+open request and binding contract; no sibling frontend dependency is introduced.
+The iterator leaves screen lifetime, body text, input and save state in each
+frontend. Lazy evaluation preserves interleaving with player detail rendering.
+The cross-frontend stock test fixes the prior behavior before this extraction.
+Player transcript recording and restoration remain pending; the save guard stays.

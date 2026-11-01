@@ -74,17 +74,12 @@ func newAuthorScreen(g *Game, name string, done func(), args map[string]any) *au
 	var items []listItem
 	if def != nil {
 		s.title = data.Render(g.db.Tr(def.Title), s.env(g))
-		for i, entry := range def.Entries {
-			visible, err := entry.When.Bool(s.env(g))
-			if err != nil || !visible {
-				continue
-			}
-			entry.Label = data.Render(g.db.Tr(entry.Label), s.env(g))
-			entry.Text = data.Render(g.db.Tr(entry.Text), s.env(g))
-			s.entries = append(s.entries, entry)
-			s.indices = append(s.indices, i)
-			items = append(items, listItem{label: entry.Label})
-		}
+	}
+	for index, entry := range event.ScreenEntries(g.db, name, s.env(g), nil) {
+		entry.Text = data.Render(g.db.Tr(entry.Text), s.env(g))
+		s.indices = append(s.indices, index)
+		s.entries = append(s.entries, entry)
+		items = append(items, listItem{label: entry.Label})
 	}
 	sw, sh := g.screen()
 	s.list = newList(items, 24, 88, sw*0.32, max(1, int((sh-140)/44)))
