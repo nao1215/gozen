@@ -474,6 +474,8 @@ type timelineLane struct {
 	left, right, reported, expected float64
 	sample                          float64
 	sampleLabel                     string
+	forecast                        float64
+	forecastLabel                   string
 }
 
 type timelineGroup struct {
@@ -542,13 +544,33 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 					sample = number
 				}
 			}
+			forecast, forecastLabel := timelineForecast(from, today, start, end, reported, a.Cancelled, data.Render(g.db.Tr(item.ForecastLabel), env))
 			ly := y + 3 + float64(j)*10
-			group.lanes = append(group.lanes, timelineLane{item: item, bounds: image.Rect(int(axisX+axisW*left), int(ly), int(math.Ceil(axisX+axisW*right)), int(ly+9)), left: left, right: right, reported: reported, expected: expected, sample: sample, sampleLabel: data.Render(g.db.Tr(item.SampleLabel), env)})
+			group.lanes = append(group.lanes, timelineLane{item: item, bounds: image.Rect(int(axisX+axisW*left), int(ly), int(math.Ceil(axisX+axisW*right)), int(ly+9)), left: left, right: right, reported: reported, expected: expected, forecast: forecast, forecastLabel: forecastLabel, sample: sample, sampleLabel: data.Render(g.db.Tr(item.SampleLabel), env)})
 		}
 		out = append(out, group)
 		y += rh
 	}
 	return out, axisX, axisW
+}
+
+// timelineForecast uses elapsed calendar days and public reported work only.
+// Zero reports, future starts and finished/excluded work have no defensible rate.
+// The endpoint is clipped before date conversion, even for tiny positive rates.
+func timelineForecast(from, today, start, end time.Time, reported float64, cancelled bool, label string) (float64, string) {
+	elapsed := today.Sub(from).Hours() / 24
+	if label == "" || cancelled || elapsed <= 0 || reported <= 0 || reported >= 1 || math.IsNaN(reported) || math.IsInf(reported, 0) {
+		return -1, ""
+	}
+	finish := from.Sub(start).Hours()/24 + math.Ceil(elapsed/reported)
+	days := end.Sub(start).Hours()/24 + 1
+	if finish > days {
+		return 1, label + " > " + end.Format(time.DateOnly)
+	}
+	if finish <= 0 {
+		return -1, ""
+	}
+	return finish / days, label + " " + start.AddDate(0, 0, int(finish)-1).Format(time.DateOnly)
 }
 
 func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, h float64) {
@@ -565,6 +587,10 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 	}
 	days := end.Sub(start).Hours()/24 + 1
 	dx := aw / days
+	today, err := time.Parse(time.DateOnly, g.st.Planning.Date)
+	if err != nil {
+		return
+	}
 	bottom := y + 56
 	for _, group := range groups {
 		bottom = group.y + group.height
@@ -632,6 +658,15 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 					rect(dst, lx+lw*lane.expected, ly-1, 1, lh+2, g.th.text)
 				}
 			}
+			if lane.forecast >= 0 {
+				// Dashes distinguish the extrapolation from the solid planned bar.
+				fx := ax + aw*lane.forecast
+				tx := ax + today.Sub(start).Hours()/24*dx
+				for xx := max(ax, tx); xx < fx; xx += 6 {
+					rect(dst, xx, ly+lh/2, min(3, fx-xx), 1, g.th.dim)
+				}
+				rect(dst, min(ax+aw-1, fx), ly, 1, lh, g.th.dim)
+			}
 			if lane.sample >= 0 && lw >= 5 {
 				// A small downward wedge remains inside its lane at both endpoints.
 				sx := lx + 2 + (lw-5)*lane.sample
@@ -647,10 +682,6 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 		}
 		g.drawPlanningText(dst, summary, x+16, group.y+18, 232, 15, 1, g.th.dim)
 		rect(dst, x+16, group.y+group.height-1, w-32, 1, muted)
-	}
-	today, err := time.Parse(time.DateOnly, g.st.Planning.Date)
-	if err != nil {
-		return
 	}
 	if !today.Before(start) && !today.After(end) {
 		tx := ax + today.Sub(start).Hours()/24*dx
@@ -703,6 +734,9 @@ func (s *authorScreen) timelineDescription(g *Game) string {
 	description := fmt.Sprintf("%s · %s · %.0f%%\n%s — %s", d.Name, p.Entities[a.Assignee].Name, 100*lane.reported, d.From, g.st.ActivityDeadline(lane.item.Activity))
 	if lane.sample >= 0 {
 		description += fmt.Sprintf(" · %s %.0f%%", lane.sampleLabel, 100*lane.sample)
+	}
+	if lane.forecastLabel != "" {
+		description += " · " + lane.forecastLabel
 	}
 	return description
 }

@@ -110,6 +110,7 @@ TimelineRow:
   items: Activity lanes in display order. Activities omitted from all rows appear in fallback rows.
 TimelineItem:
   sample: Optional saved observation ratio expression (0 to 1). Negative, missing or invalid values hide the marker; never implicitly reads live progress.
+  forecast_label: Optional explanatory label enabling a linear finish forecast from reported work and elapsed calendar days. Empty disables it; zero reports, completed and excluded work have no forecast.
   sample_label: Text template describing the saved observation, such as its date and source, shown with its percentage in the footer.
   _: An activity lane rendered from its reported observation, never its hidden progress.
   activity: Existing planning activity ID; each activity may appear only once in the view.

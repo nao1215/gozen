@@ -2,11 +2,13 @@ package play
 
 import (
 	"image"
+	"math"
 	"math/rand/v2"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
@@ -197,8 +199,14 @@ func TestGroupedTimelineCalendarFitAndPrivacy(t *testing.T) {
 			}
 		}
 	}
-	before := s.timelineDescription(g)
 	a := g.st.Planning.Activities["0"]
+	a.Observed = 5
+	g.st.Planning.Activities["0"] = a
+	db.Game.Screens["tasks"].View.Rows[0].Items[0].ForecastLabel = "Reported pace"
+	before := s.timelineDescription(g)
+	if !strings.Contains(before, "Reported pace") {
+		t.Fatal(before)
+	}
 	a.Progress = 9
 	g.st.Planning.Activities["0"] = a
 	if got := s.timelineDescription(g); got != before {
@@ -405,5 +413,41 @@ func TestCalendarBrowsePreservesDateAndRefresh(t *testing.T) {
 	}
 	if newAuthorScreen(g, "calendar", nil).calendarDate(g) != "2030-08-31" {
 		t.Fatal("reopening must show current month")
+	}
+}
+
+func TestTimelineForecast(t *testing.T) {
+	date := func(s string) time.Time {
+		d, err := time.Parse(time.DateOnly, s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return d
+	}
+	start, end := date("2030-08-01"), date("2030-08-31")
+	for _, tc := range []struct {
+		name, today string
+		report      float64
+		cancelled   bool
+		label       string
+		position    float64
+		text        string
+	}{
+		{"half", "2030-08-11", .5, false, "Reported pace", 20.0 / 31, "Reported pace 2030-08-20"},
+		{"beyond", "2030-08-11", .1, false, "Reported pace", 1, "Reported pace > 2030-08-31"},
+		{"tiny", "2030-08-11", math.SmallestNonzeroFloat64, false, "Reported pace", 1, "Reported pace > 2030-08-31"},
+		{"zero", "2030-08-11", 0, false, "Reported pace", -1, ""},
+		{"complete", "2030-08-11", 1, false, "Reported pace", -1, ""},
+		{"cancelled", "2030-08-11", .5, true, "Reported pace", -1, ""},
+		{"start", "2030-08-01", .5, false, "Reported pace", -1, ""},
+		{"future", "2030-07-31", .5, false, "Reported pace", -1, ""},
+		{"disabled", "2030-08-11", .5, false, "", -1, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, text := timelineForecast(start, date(tc.today), start, end, tc.report, tc.cancelled, tc.label)
+			if got != tc.position || text != tc.text {
+				t.Fatalf("got %v %q", got, text)
+			}
+		})
 	}
 }

@@ -478,6 +478,9 @@ type TimelineItem struct {
 	// SampleLabel gives its authored provenance, such as the observation date.
 	Sample      Expr   `yaml:"sample"`
 	SampleLabel string `yaml:"sample_label"`
+	// ForecastLabel enables a calendar-day linear forecast from reported work.
+	// The author supplies the explanatory label; empty disables the forecast.
+	ForecastLabel string `yaml:"forecast_label"`
 }
 
 // TimelineMarker is a named calendar annotation consumed by the timeline renderer.
@@ -538,6 +541,7 @@ func (c *checker) planningView(w string, v PlanningView) {
 			c.planningPure(at+".sample", item.Sample)
 			c.exprIn(at+".sample", item.Sample, FieldNames, nil)
 			c.text(at+".sample_label", item.SampleLabel, FieldNames)
+			c.text(at+".forecast_label", item.ForecastLabel, FieldNames)
 			if item.Screen != "" && c.db.Game.Screens[item.Screen] == nil {
 				c.errorf(diag.UnknownReference, at, "unknown timeline screen %q", item.Screen)
 			}

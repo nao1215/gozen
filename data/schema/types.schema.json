@@ -20311,6 +20311,19 @@
           },
           "x-type": "string"
         },
+        "forecast_label": {
+          "description": "Optional explanatory label enabling a linear finish forecast from reported work and elapsed calendar days. Empty disables it; zero reports, completed and excluded work have no forecast.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "label": {
           "description": "Short lane identifier shown below the group heading.",
           "type": "string",
