@@ -27,6 +27,10 @@ func Load(fsys fs.FS, out, diagnostics io.Writer) (*gamedata.DB, error) {
 	if err != nil {
 		return nil, unreadable(err)
 	}
+	complexity, err := complexityWarnings(fsys, db)
+	if err != nil {
+		return nil, err
+	}
 	// gamedata.Load checks a puppet's YAML and files; the picture sizes and positions
 	// are checked by loading it as the game does (without the GPU).
 	puppets := loadPuppets(fsys, db)
@@ -45,7 +49,7 @@ func Load(fsys fs.FS, out, diagnostics io.Writer) (*gamedata.DB, error) {
 			return nil, err
 		}
 	}
-	for _, warnings := range [][]error{db.AIWarnings(), db.SetWarnings(), db.SceneWarnings(), db.FlagWarnings(), db.VoiceWarnings()} {
+	for _, warnings := range [][]error{db.AIWarnings(), db.SetWarnings(), db.SceneWarnings(), db.FlagWarnings(), db.VoiceWarnings(), complexity} {
 		for _, w := range warnings {
 			if _, err = fmt.Fprintf(diagnostics, "warning: %v\n", w); err != nil {
 				return nil, err
@@ -65,6 +69,10 @@ func Diagnose(fsys fs.FS) (*gamedata.DB, gamedata.Diagnostics) {
 	if err != nil {
 		return nil, gamedata.Diagnose(unreadable(err), "error")
 	}
+	complexity, err := complexityWarnings(fsys, db)
+	if err != nil {
+		return nil, gamedata.Diagnose(err, "error")
+	}
 	var out gamedata.Diagnostics
 	puppets := loadPuppets(fsys, db)
 	for _, id := range slices.Sorted(maps.Keys(db.Actors)) {
@@ -80,7 +88,7 @@ func Diagnose(fsys fs.FS) (*gamedata.DB, gamedata.Diagnostics) {
 	for _, w := range languageWarnings(fsys, &db.Game) {
 		out = append(out, gamedata.Diagnostic{File: "game.yaml", Path: "language", Message: w, Severity: "warning", Code: diag.LanguageWords.String()})
 	}
-	for _, warnings := range [][]error{db.AIWarnings(), db.SetWarnings(), db.SceneWarnings(), db.FlagWarnings(), db.VoiceWarnings()} {
+	for _, warnings := range [][]error{db.AIWarnings(), db.SetWarnings(), db.SceneWarnings(), db.FlagWarnings(), db.VoiceWarnings(), complexity} {
 		out = append(out, gamedata.Diagnose(errors.Join(warnings...), "warning")...)
 	}
 	return db, out

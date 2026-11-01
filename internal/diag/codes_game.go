@@ -3,6 +3,11 @@ package diag
 // GZN01xx: warnings of check. The game loads and the command exits 0, but
 // something is likely not what the author meant.
 var (
+	YAMLComplexity = register(122, "YAMLComplexity", Entry{
+		Summary: "authored YAML is complex or repetitive",
+		Detail:  "Source metrics exceed an authoring budget; these heuristics do not change game behavior.",
+		Fix:     "Extract shared behavior or review the budgets in check-complexity.yaml; see docs/development/yaml-complexity.md.",
+	})
 	TextOverflow = register(101, "TextOverflow", Entry{
 		Summary: "a text does not fit the message window",
 		Detail:  "The layout check lays out every line of dialogue and every choice with the game's font and display rules. This one needs more lines than the window shows, so the player would see it cut or paged where the author did not plan it.",

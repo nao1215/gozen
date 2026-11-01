@@ -15,7 +15,7 @@ Codes are assigned one family at a time. A diagnostic without a code still exits
 
 | Codes | Exit | Meaning | Assigned |
 |---------|---------|---------|---------|
-| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 21 codes |
+| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 22 codes |
 | `GZN02xx` | 0 | warnings of a measurement or a record | not yet |
 | `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 13 codes |
 | `GZN12xx` | 1 | fonts and text layout | 1 codes |
@@ -203,6 +203,14 @@ The picture of a browser export's link card is small.
 The picture of game.yaml's web.image is smaller than 1200x630 pixels, the size the sites a link is shared on (X, Slack, Facebook) show a large card with; they show it blurred, small or not at all.
 
 Fix: Use a picture of 1200x630 or more (1280x720 suits a 16:9 game).
+
+### GZN0122
+
+Authored YAML is complex or repetitive.
+
+Source metrics exceed an authoring budget; these heuristics do not change game behavior.
+
+Fix: Extract shared behavior or review the budgets in check-complexity.yaml; see docs/development/yaml-complexity.md.
 
 ## GZN11xx
 
