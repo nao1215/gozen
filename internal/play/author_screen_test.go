@@ -565,3 +565,100 @@ func TestCandidateListPublicValuesAndSelection(t *testing.T) {
 		t.Fatal("ordinary list compatibility lost")
 	}
 }
+
+func TestCandidateExplanationPaging(t *testing.T) {
+	db := testgame.Load(t, nil)
+	if err := LoadFonts(db, gameFiles(t)); err != nil {
+		t.Fatal(err)
+	}
+	db.Game.Planning = &data.Planning{}
+	explanation := "One\nTwo\nThree\nFour\nFive\nSix\nSeven\nEight\nNine\nTen\nEleven\nTwelve\nFinal instruction"
+	db.Game.Screens = map[string]*data.AuthorScreen{
+		"pick": {View: data.PlanningView{Portrait: "icon"}, Entries: []data.ScreenEntry{
+			{Label: "Maker", Text: explanation}, {Label: "Helper", Text: "Short explanation"},
+		}},
+	}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "pick", nil)
+	parent := &authorScreen{}
+	s.timelineContext = parent
+	s.layoutTimelineCandidates(g)
+	g.stack = []scene{parent, s}
+	before, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines, pages := s.candidateTextPage()
+	if pages != 3 || strings.Join(lines, "\n") != "One\nTwo\nThree\nFour\nFive\nSix" {
+		t.Fatal(lines, pages)
+	}
+	// Mouse button and wheel expose the complete final instruction, without
+	// selecting another candidate or running its authored action.
+	r := s.candidatePageButtons(g)[1]
+	g.in = input{click: true, mouse: r.Min.Add(image.Pt(8, 8))}
+	s.update(g)
+	if s.candidatePage != 1 {
+		t.Fatal("next button failed")
+	}
+	g.in = input{wheel: -1, mouse: image.Pt(1000, 180)}
+	s.update(g)
+	lines, _ = s.candidateTextPage()
+	if s.candidatePage != 2 || len(lines) != 1 || lines[0] != "Final instruction" || s.list.sel != 0 || s.running {
+		t.Fatal("lost text or changed candidate", lines)
+	}
+	s.update(g)
+	if s.candidatePage != 2 {
+		t.Fatal("last page wrapped")
+	}
+	s = s.refreshed(g)
+	g.stack[1] = s
+	if s.candidatePage != 2 {
+		t.Fatal("refresh lost page")
+	}
+	g.in = input{pressed: [numButtons]bool{btnLeft: true}}
+	s.update(g)
+	if s.candidatePage != 1 {
+		t.Fatal("keyboard previous failed")
+	}
+	g.in = input{pressed: [numButtons]bool{btnRight: true}}
+	s.update(g)
+	if s.candidatePage != 2 {
+		t.Fatal("keyboard next failed")
+	}
+	// Moving between candidates starts their explanation at the beginning.
+	g.in = input{pressed: [numButtons]bool{btnDown: true}}
+	s.update(g)
+	if s.list.sel != 1 || s.candidatePage != 0 {
+		t.Fatal("selection retained stale page")
+	}
+	g.in = input{wheel: -1, mouse: image.Pt(1000, 180)}
+	s.update(g)
+	if s.list.sel != 1 || s.candidatePage != 0 {
+		t.Fatal("short text wheel selected a candidate")
+	}
+	// Wheel over the list still navigates candidates.
+	g.in = input{wheel: 1, mouse: image.Pt(1000, 310)}
+	s.update(g)
+	if s.list.sel != 0 {
+		t.Fatal("candidate list wheel stopped working")
+	}
+	g.in = input{rclick: true}
+	s.update(g)
+	if len(g.stack) != 1 || g.stack[0] != parent {
+		t.Fatal("cancel lost parent")
+	}
+	after, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("reading explanation changed saved state")
+	}
+	// A live refresh that removes the selected entry must reset its page.
+	s.candidatePage = 2
+	db.Game.Screens["pick"].Entries[0].When = data.Expr{Expr: testgame.Expr("false")}
+	s = s.refreshed(g)
+	if s.candidatePage != 0 {
+		t.Fatal("removed entry retained page")
+	}
+}

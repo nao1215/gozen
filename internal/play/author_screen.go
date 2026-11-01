@@ -12,12 +12,14 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer5/gfx"
 )
 
 // authorScreen presents an authored list without requiring a custom Go screen.
 type authorScreen struct {
 	timelineContext  *authorScreen
 	timelineActivity string
+	candidatePage    int
 	calendarMonth    string
 	residentTop      int
 	timelineTop      int
@@ -127,7 +129,21 @@ func (s *authorScreen) drawTimelineCandidates(g *Game, dst *ebiten.Image) {
 	g.window(dst, sw-360, 48, 360, sh-48)
 	g.drawPlanningText(dst, s.title, sw-348, 60, 336, 18, 2, g.th.accent)
 	if len(s.entries) > 0 {
-		g.drawPlanningText(dst, s.entries[s.list.sel].Text, sw-348, 108, 336, 15, 7, g.th.text)
+		lines, pages := s.candidateTextPage()
+		for i, line := range lines {
+			g.text(dst, line, sw-348, 108+float64(i)*gfx.LineHeight(15), 15, g.th.text)
+		}
+		if pages > 1 {
+			for i, r := range s.candidatePageButtons(g) {
+				g.window(dst, float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()))
+				label := "<"
+				if i == 1 {
+					label = ">"
+				}
+				g.text(dst, label, float64(r.Min.X)+12, float64(r.Min.Y)+2, 15, g.th.accent)
+			}
+			g.text(dst, fmt.Sprintf("%d / %d", s.candidatePage+1, pages), sw-270, 246, 15, g.th.dim)
+		}
 		s.drawCandidates(g, dst)
 	}
 	g.drawPlanningText(dst, data.Render(g.db.Tr(g.db.Game.Screens[s.name].View.Footer), g.st.Env()), sw-348, sh-32, 336, 15, 1, g.th.dim)
@@ -138,6 +154,60 @@ func (s *authorScreen) drawTimelineCandidates(g *Game, dst *ebiten.Image) {
 			break
 		}
 	}
+}
+
+// Keep full authored explanations readable without displacing the candidate list.
+// Paging is view state only; it never selects or activates a candidate.
+func (s *authorScreen) candidateTextPage() ([]string, int) {
+	if len(s.entries) == 0 {
+		return nil, 1
+	}
+	lines := gfx.Wrap(s.entries[s.list.sel].Text, 15, 336)
+	pages := max(1, (len(lines)+5)/6)
+	s.candidatePage = min(max(0, s.candidatePage), pages-1)
+	start := s.candidatePage * 6
+	return lines[start:min(start+6, len(lines))], pages
+}
+
+func (s *authorScreen) candidatePageButtons(g *Game) [2]image.Rectangle {
+	sw, _ := g.screen()
+	return [2]image.Rectangle{
+		image.Rect(int(sw)-348, 244, int(sw)-300, 276),
+		image.Rect(int(sw)-60, 244, int(sw)-12, 276),
+	}
+}
+
+func (s *authorScreen) updateCandidatePage(g *Game) bool {
+	if s.timelineContext == nil || g.in.cancel() {
+		return false
+	}
+	_, pages := s.candidateTextPage()
+	sw, _ := g.screen()
+	delta := 0
+	if g.in.pressed[btnLeft] {
+		delta = -1
+	}
+	if g.in.pressed[btnRight] {
+		delta = 1
+	}
+	if g.in.click && pages > 1 {
+		for i, r := range s.candidatePageButtons(g) {
+			if g.in.mouse.In(r) {
+				delta = 2*i - 1
+			}
+		}
+	}
+	if g.in.wheel != 0 && g.in.mouse.In(image.Rect(int(sw)-348, 108, int(sw)-12, 276)) {
+		delta = 1
+		if g.in.wheel > 0 {
+			delta = -1
+		}
+	}
+	if delta == 0 {
+		return false
+	}
+	s.candidatePage = min(max(0, s.candidatePage+delta), pages-1)
+	return true
 }
 
 func (s *authorScreen) modal() bool   { return !s.running }
@@ -167,6 +237,10 @@ func (s *authorScreen) refreshed(g *Game) *authorScreen {
 				break
 			}
 		}
+	}
+	if n.timelineContext != nil && len(n.indices) > 0 && len(s.indices) > s.list.sel && n.indices[n.list.sel] == s.indices[s.list.sel] {
+		n.candidatePage = s.candidatePage
+		n.candidateTextPage()
 	}
 	n.running, n.origin = s.running, s.origin
 	n.list.scroll()
@@ -207,7 +281,14 @@ func (s *authorScreen) update(g *Game) {
 		_, sh := g.screen()
 		s.scrollTimeline(g, sh-214)
 	}
+	if s.updateCandidatePage(g) {
+		return
+	}
+	oldSelection := s.list.sel
 	chose, cancel := s.list.update(g)
+	if s.list.sel != oldSelection {
+		s.candidatePage = 0
+	}
 	if cancel {
 		g.pop()
 		if s.done != nil {

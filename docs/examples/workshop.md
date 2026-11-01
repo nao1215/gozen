@@ -65,8 +65,10 @@ confirm a costly action. Browsing the list itself does not advance planning.
 Opening a candidate list from a grouped timeline lane keeps the timeline on
 the left and places the list in a 360-logical-pixel pane on the right. The whole
 calendar range remains visible. The selected activity description stays below
-the timeline; candidate text uses seven lines above the scrolling list, so keep
-it concise. The candidate screen's `view.footer` supplies a short navigation hint.
+the timeline; candidate text uses six lines per page above the scrolling list. Left/Right,
+the arrow buttons, or the wheel over the explanation read every page at
+15 logical pixels. The page counter shows when more text is available. Changing
+candidates resets to the first page; paging does not select or confirm a candidate. The candidate screen's `view.footer` supplies a short navigation hint.
 Escape returns to the same timeline selection and expansion. Standalone lists
 retain their original layout; no new schema field is needed.
 
