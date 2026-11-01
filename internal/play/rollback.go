@@ -2,6 +2,7 @@ package play
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"math/rand/v2"
 	"slices"
@@ -220,7 +221,16 @@ func (g *Game) resume(r *rpg.Resume) {
 			g.events.Start(cmds)
 		}
 	}
-	g.liveCatchUp(&fastTo{lines: c.Line, answers: c.Answers}, name, nil)
+	g.liveCatchUp(&fastTo{lines: c.Line, answers: c.Answers, strict: true}, name, nil)
+	if !c.Arrival && g.evName != name {
+		g.failure = fmt.Errorf("load: replay left event %q before the saved line", name)
+	}
+	if g.failure != nil {
+		g.events.Stop()
+		g.req = nil
+		g.talk = talk{}
+		return
+	}
 	g.emit("resume", traceLine{"event": c.Event, "arrival": c.Arrival, "line": c.Line, "at": g.evLines})
 }
 

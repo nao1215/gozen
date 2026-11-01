@@ -2,10 +2,12 @@ package play
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 	"testing/fstest"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/rpg"
 )
 
 // storyData is two events: the first sets a flag after its lines and a choice; the second
@@ -282,5 +284,74 @@ func TestBoundEventSaveAndRollback(t *testing.T) {
 	g.rollBack()
 	if at(g) != "Credit 2" || g.st.Gold != before+2 {
 		t.Fatalf("rolled back %q, gold %d", at(g), g.st.Gold)
+	}
+}
+
+// Saved replay must not silently choose the first option for corrupt input.
+func TestResumeRejectsDamagedAnswers(t *testing.T) {
+	g := storyGame(t, Options{Location: "camp", Event: "first", Script: "wait 10\npress ok\nwait 10\npress ok\nwait 10\npress down\nwait 10\npress ok\nwait 10\nquit\n"}, "schema_version: 4\n")
+	runToEnd(t, g)
+	if at(g) != "Three." || g.st.Vars["way"] != float64(2) {
+		t.Fatal(at(g), g.st.Vars)
+	}
+	saved, err := g.saveBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name    string
+		answers []int
+		line    int
+	}{
+		{"missing", nil, 4},
+		{"out of range", []int{2}, 4},
+		{"unused", []int{1, 0}, 4},
+		{"future answer", []int{1, 0}, 3},
+		{"unreachable line", []int{1}, 99},
+		{"answered", []int{1}, 3},
+		{"valid", []int{1}, 4},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var doc map[string]any
+			if err := json.Unmarshal(saved, &doc); err != nil {
+				t.Fatal(err)
+			}
+			c, ok := doc["cursor"].(map[string]any)
+			if !ok {
+				t.Fatal("missing cursor")
+			}
+			c["answers"], c["line"] = tc.answers, tc.line
+			b, err := json.Marshal(doc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			st, err := rpg.Parse(g.db, b, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			g.failure = nil
+			g.loadSavedGame(st)
+			if tc.name == "answered" {
+				if g.failure != nil || g.talk.active {
+					t.Fatalf("answered choice restored as pending: %v", g.failure)
+				}
+				g.pump()
+			}
+			if tc.name != "valid" && tc.name != "answered" {
+				if g.failure == nil {
+					t.Fatal("accepted damaged cursor")
+				}
+				if g.events.Running() || g.talk.active || g.req != nil {
+					t.Fatal("failed replay left an actionable request")
+				}
+				if (tc.name == "missing" || tc.name == "out of range") && g.st.Vars["way"] != nil {
+					t.Fatal("invalid answer selected a default branch")
+				}
+				return
+			}
+			if g.failure != nil || at(g) != "Three." || g.st.Vars["way"] != float64(2) {
+				t.Fatalf("valid resume: %v / %s / %v", g.failure, at(g), g.st.Vars)
+			}
+		})
 	}
 }

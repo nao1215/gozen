@@ -468,3 +468,29 @@ Fingerprints for roots with no authored screen dependency remain unchanged. Lega
 save-format and schema gates are unchanged. This check does not enable saves while
 a screen is open, implement screen arguments, or reconstruct opener continuations.
 Those remain the next implementation step.
+
+## Rejecting damaged answer histories
+
+Before extending replay to suspended screens, both session and interactive saved
+replay now require an exact answer prefix. A missing answer, an index outside the
+visible choice, or unused answers beyond the saved position are errors. Interactive
+loading also reports an unreachable line instead of treating the nearest available
+position as a successful resume. A failed replay stops its runner
+and clears the pending dialogue; normal gameplay cannot continue with an invented
+answer. Non-rendering restoration returns an incompatible-save error and no session.
+
+For example, a workshop choice with `Collect` and `Cancel` followed by a receipt
+line accepts exactly one preceding answer, `0` or `1`, at that receipt. An empty
+history must not collect by default; `[2]` must not become `Cancel`; `[0, 0]` must
+not silently drop the extra confirmation. A save at the choice can carry its one
+valid answer when saved between answering and requesting the next line. Restoration consumes that answer once without
+showing the choice again; additional answers are rejected. Valid histories retain
+the same effects, bindings and deterministic random draws.
+
+This policy applies to loading saves. Developer memo seeking, live edits, scene
+skip and rollback keep their existing policies. Validation occurs during replay,
+not during structural JSON parsing: visible choices may depend on saved state.
+The interactive runtime reports replay failure through its existing error channel;
+this does not yet provide transactional rollback to the previously running game
+when loading fails. Save slots are not rewritten by replay. Screen continuation
+serialization and typed screen arguments remain unimplemented.

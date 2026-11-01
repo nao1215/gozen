@@ -1159,6 +1159,100 @@ func TestBoundEventRootAndChangedSave(t *testing.T) {
 	}
 }
 
+// Restore must consume exactly the recorded answers, never select a default for
+// a damaged cursor or accept answers belonging after the saved line.
+func TestResumeRejectsDamagedAnswers(t *testing.T) {
+	g, err := gozen.Load(os.DirFS("../../docs/examples/event-arguments"), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := gozen.Config{Seed: 19}
+	s, err := gozen.New(g, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start(`- call: {event: encourage, args: {resident: '"potter"', amount: '2'}}`); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Kind != "choice" {
+		t.Fatal(q)
+	}
+	s.Answer(0)
+	// Preserve the supported boundary between Answer and Next, including re-save.
+	answered, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		restored, err := gozen.Restore(g, answered, cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		answered, err = restored.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q := restored.Next(); q.Text != "Ready potter" {
+			t.Fatalf("answered choice replayed: %+v", q)
+		}
+	}
+
+	if q := s.Next(); q.Text != "Ready potter" {
+		t.Fatal(q)
+	}
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name    string
+		answers []int
+		line    int
+	}{
+		{"valid", []int{0}, 2},
+		{"missing", nil, 2},
+		{"out of range", []int{1}, 2},
+		{"unused", []int{0, 0}, 2},
+		{"future answer", []int{0, 0}, 1},
+		{"unreachable line", []int{0}, 99},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var doc map[string]any
+			if err := json.Unmarshal(saved, &doc); err != nil {
+				t.Fatal(err)
+			}
+			c, ok := doc["cursor"].(map[string]any)
+			if !ok {
+				t.Fatal("missing cursor")
+			}
+			c["answers"], c["line"] = tc.answers, tc.line
+			b, err := json.Marshal(doc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r, err := gozen.Restore(g, b, cfg)
+			if tc.name != "valid" {
+				if !errors.Is(err, gozen.ErrIncompatibleSave) || r != nil {
+					t.Fatalf("accepted damaged cursor: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if q := r.Next(); q.Text != "Ready potter" {
+				t.Fatal(q)
+			}
+			if q, want := r.Next(), s.Next(); q.Text != want.Text {
+				t.Fatalf("RNG %v / %v", q, want)
+			}
+		})
+	}
+	if got := query[float64](t, s, "entity.potter.vigor"); got != 2 {
+		t.Fatalf("original state changed: %v", got)
+	}
+}
+
 func TestSaveRefusesScreenContinuation(t *testing.T) {
 	files := fstest.MapFS{
 		"game.yaml": {Data: []byte("schema_version: 8\nid: screen-save\nstart: {location: workshop}\nscreens: {stock: {title: Stock, entries: [{label: Boards}]}}\n")},

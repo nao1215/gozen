@@ -167,6 +167,18 @@ func (s *Session) resume(c rpg.Cursor) error {
 			return fmt.Errorf("line %d is past a %s", c.Line, q.Kind)
 		case "say", "choice":
 			if s.at.lines >= c.Line {
+				// A session may be saved after Answer and before the next Next.
+				// Restore that consumed choice without displaying it a second time.
+				if q.Kind == "choice" && len(c.Answers) == len(s.at.answers)+1 {
+					answer := c.Answers[len(s.at.answers)]
+					if answer < 0 || answer >= len(q.Options) {
+						return fmt.Errorf("invalid answer %d at line %d", answer, c.Line)
+					}
+					s.Answer(answer)
+				}
+				if len(s.at.answers) != len(c.Answers) {
+					return fmt.Errorf("unused answers at line %d", c.Line)
+				}
 				if q.Kind == "say" {
 					s.held = &q
 				}
@@ -176,6 +188,9 @@ func (s *Session) resume(c rpg.Cursor) error {
 				k := len(s.at.answers)
 				if k >= len(c.Answers) {
 					return fmt.Errorf("no answer for the choice before line %d", c.Line)
+				}
+				if c.Answers[k] < 0 || c.Answers[k] >= len(q.Options) {
+					return fmt.Errorf("invalid answer %d at line %d", c.Answers[k], s.at.lines)
 				}
 				s.Answer(c.Answers[k])
 			}
