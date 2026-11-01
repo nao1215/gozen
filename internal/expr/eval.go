@@ -389,6 +389,8 @@ var builtins = map[string]Func{
 		}
 		return math.Max(x[1], math.Min(x[2], x[0])), nil
 	},
+	"range": boundedRange,
+	"first": firstOr,
 	"len": func(args []any) (any, error) {
 		if len(args) != 1 {
 			return nil, errors.New("len takes 1 argument")

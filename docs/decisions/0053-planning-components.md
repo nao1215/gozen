@@ -361,3 +361,15 @@ The expression tests cover empty lists, nested scopes, type failures and both
 resource bounds. Floating-point results can differ in their last bits when an
 authored expanded sum used an order other than ID order; authors migrating such
 sums must verify their observable decisions and saved results.
+
+
+`range(start, end)` constructs ascending integer offsets, including `start` and
+excluding `end`. Bounds must be finite integers within the exact integer range
+of binary64 (absolute value at most 9,007,199,254,740,991); reversed bounds and
+more than 4,096 items are errors. Equal bounds produce an empty list.
+`first(list, fallback)` returns its first item or the fallback for an empty list,
+with the same list-size limit. Like ordinary functions, both arguments evaluate
+eagerly; use pure fallbacks for searches. Neither function draws randomness.
+Together with `filter`, these replace expanded date-search conditionals while
+keeping an explicit bounded search horizon. The workshop collection example and
+its CLI scenario search for the next open day and cover exhausted candidates.

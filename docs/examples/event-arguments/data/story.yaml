@@ -226,6 +226,7 @@ events:
     - plan: {op: cancel, activity: shape, value: 'true'}
     - set: {var.remaining: 'sum(filter(activities, !it.cancelled), it.effort)'}
     - say: 'Effort {var.effort}; residents {var.residents}; remaining {var.remaining}; days {sum(activities, calendar_days(it.from,it.to))}'
+    - say: 'Next open offset {first(filter(range(0, 7), it > 3 && calendar_workdays(calendar_shift("2026-01-01",it),calendar_shift("2026-01-01",it)) == 1), -1)}; exhausted {first(filter(range(0, 7), it > 9), -1)}'
   each_demo:
     do:
     - say: Ready for inspections.

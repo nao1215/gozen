@@ -383,6 +383,14 @@ rows. This avoids copying an entire card for every date. Preserve the original
 range and integer-day guard when replacing a fixed date table, including its
 behavior for inputs outside the authored calendar.
 
+For a bounded search, `range(0, 30)` supplies offsets 0 through 29 and
+`first(filter(range(0, 30), it > var.day), -1)` returns the first later offset,
+or -1 when there is none. Add a `calendar_workdays` predicate to skip closures;
+the workshop's `collection_demo` shows this with a seven-day horizon. The bounds
+must be exact finite integers, with at most 4,096 results; reversed bounds fail.
+`first` also accepts entity/activity lists. Its fallback is evaluated eagerly,
+so keep fallback expressions pure. These queries do not change time or state.
+
 ## Gate random scores inside a shared event
 
 The workshop's `lottery_demo` calls `rank_resident` for two residents. Only the

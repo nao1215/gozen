@@ -932,7 +932,7 @@ scenarios:
       stderr: {equals: ''}
       file:
         path: collections.jsonl
-        contains: ['Effort 4; residents 2; remaining 2; days 2', '"remaining":2']
+        contains: ['Effort 4; residents 2; remaining 2; days 2', '"remaining":2', 'Next open offset 4; exhausted -1']
 - name: repeated calls freeze membership and resume a choice in another process
   steps:
   - fixture:

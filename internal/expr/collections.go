@@ -106,3 +106,44 @@ func (p *parser) collection(name string) (node, error) {
 	}
 	return &collection{name: name, source: source, body: body}, nil
 }
+
+// boundedRange supports finite date offsets and other authored integer domains.
+func boundedRange(args []any) (any, error) {
+	if len(args) != 2 {
+		return nil, errors.New("range takes two integer bounds")
+	}
+	bounds := [2]float64{}
+	for i, value := range args {
+		n, ok := ToNumber(value)
+		if !ok || TypeOfValue(value) != NumberType || !IsFiniteScalar(value) || math.Trunc(n) != n || math.Abs(n) > 9007199254740991 {
+			return nil, errors.New("range bounds must be exactly representable integers")
+		}
+		bounds[i] = n
+	}
+	size := bounds[1] - bounds[0]
+	if size < 0 || size > collectionLimit {
+		return nil, errors.New("range must contain 0..4096 items in ascending order")
+	}
+	values := make([]any, int(size))
+	for i := range values {
+		values[i] = bounds[0] + float64(i)
+	}
+	return values, nil
+}
+
+func firstOr(args []any) (any, error) {
+	if len(args) != 2 {
+		return nil, errors.New("first takes a list and a fallback")
+	}
+	values := reflect.ValueOf(args[0])
+	if values.Kind() != reflect.Slice {
+		return nil, errors.New("first needs a list")
+	}
+	if values.Len() > collectionLimit {
+		return nil, errors.New("first exceeds 4096 items")
+	}
+	if values.Len() == 0 {
+		return args[1], nil
+	}
+	return values.Index(0).Interface(), nil
+}
