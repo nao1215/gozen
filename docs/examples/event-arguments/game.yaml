@@ -70,6 +70,8 @@ screens:
       do: [{call: calendar_demo}]
     - label: Draw an available resident
       do: [{call: lottery_demo}]
+    - label: Record stock counters
+      do: [{call: counter_demo}]
     - label: Compare priorities
       do: [{call: priority_demo}]
     kind: timeline

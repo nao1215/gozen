@@ -169,7 +169,12 @@ func (u *stateUses) commands(where string, cs []Command) {
 		}
 		u.expr(w+".if", c.If)
 		for _, k := range slices.Sorted(maps.Keys(c.SetV)) {
-			u.set(setName(k), w+".set")
+			if index, err := assignmentIndex(k); err == nil && index.Set() {
+				u.set("var", w+".set")
+				u.expr(w+".set."+k, index)
+			} else {
+				u.set(setName(k), w+".set")
+			}
 			u.expr(w+".set."+k, c.SetV[k])
 		}
 		if c.Give != nil {

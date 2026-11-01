@@ -238,12 +238,11 @@ farm workers and other planning entities.
 
 Keep literal-only commands in small conditional branches when necessary. In
 `inspect`, the speaker and the flag write have separate branches, while the
-planning operation and choice remain shared. `say.who` and `set` destination
-keys still require literals; writing `{arg.resident}` in either is not dynamic
-target syntax. A read such as `var["seen_" + arg.resident]` supports a computed
-key, but does not make the corresponding write dynamic. Avoid copying the
-whole event to accommodate those few commands. For substantial per-person
-state, prefer planning attributes and expression-form entity targets.
+planning operation and choice remain shared. `say.who` and flag destinations
+still require literals. Variable destinations can use the indexed syntax below;
+`{arg.resident}` interpolation is not destination syntax. Avoid copying a whole
+event to accommodate literal-only commands. For substantial per-person state,
+prefer planning attributes and expression-form entity targets.
 
 The planning atago suite runs both calls and checks their dialogue, flags and
 resulting values. It uses the ordinary CLI and does not expand a template into
@@ -374,3 +373,44 @@ forwarded explicitly. Keep random predicates inside their original gates, and
 keep score draws after eligibility checks. This pattern applies to choosing a
 farm task, assigning a workshop resident, or selecting a training encounter;
 it does not require scratch values in saved state for the frozen inputs.
+
+
+## Indexed variable destinations
+
+Schema 10 permits a computed variable name in `set`. The workshop's
+`counter_demo` records stock by resident and slot with one shared event:
+
+```yaml
+params: {resident: entity, slot: number, amount: number}
+do:
+- set: {'var["stock_" + arg.resident + "_" + arg.slot]': 'var["stock_" + arg.resident + "_" + arg.slot] + arg.amount'}
+```
+
+The index must be a pure expression yielding an identifier: an ASCII letter or
+underscore followed by letters, digits or underscores. Empty names, dots,
+spaces, non-string results and random draws are rejected. A bad destination
+logs an execution error before evaluating its value; that assignment changes
+neither state nor randomness. Other assignments continue normally. Values use
+the existing variable type and save checks, including declared types.
+
+Assignments execute in lexical order of their **authored** keys. Each target
+is resolved immediately before its value, so earlier writes are visible to
+later targets and values. Split order-dependent operations into separate
+commands. The saved key is the resolved name, exactly as with a literal write;
+there is no new save representation. Only `var[...]` supports this syntax,
+and strict state declarations still require literal destinations. The state
+usage index records a computed write against the variable table and records
+reads made by its index expression.
+
+This is useful when replacing an existing family of saved scalar counters.
+The complexity checker measures index expressions as well as values. This
+does not turn those keys into a collection, and does not suppress complexity
+warnings about pseudo-arrays. New entity state usually belongs in planning
+attributes. The atago example checks separate counters and repeated updates;
+the runtime tests also cover a save/load round trip and failed destinations.
+
+When preserving literal dialogue identities in a shared event, put consecutive
+lines and effects for one cast under one argument-only guard. Arguments cannot
+change while the call runs, so that guard remains valid across dialogue waits.
+Do not combine state-dependent guards this way: their conditions may change
+between commands.

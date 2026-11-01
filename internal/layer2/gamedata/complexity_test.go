@@ -151,3 +151,22 @@ func TestComplexitySourceFailure(t *testing.T) {
 		t.Fatal("invalid replacement source accepted")
 	}
 }
+
+func TestComplexityIndexedAssignmentTarget(t *testing.T) {
+	db := complexitySource(t, `screens:
+  room:
+    entries:
+    - do:
+      - set: {'var["stock_" + str(max(1,2))]': '1'}
+`)
+	got := complexityWarningsForTest(t, db, ComplexityConfig{ExpressionLength: 8, ExpressionDepth: 1, UnusedDefinitions: -1})
+	if len(got) != 2 {
+		t.Fatalf("target complexity: %v", got)
+	}
+	text := errors.Join(got...).Error()
+	for _, want := range []string{"game.yaml:5:", "expression characters", "expression nesting = 2"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("missing %s: %s", want, text)
+		}
+	}
+}

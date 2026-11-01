@@ -129,8 +129,7 @@ func (s *complexityScan) walk(doc *sourceDocument, node ast.Node, p string, typ 
 		if literal, ok := node.(*ast.LiteralNode); ok && literal.Value != nil {
 			value = literal.Value.Value
 		}
-		s.limit(doc, p, "expression characters", utf8.RuneCountInString(value), s.cfg.ExpressionLength, "name intermediate values or move repeated calculations into a rule")
-		s.limit(doc, p, "expression nesting", expressionNesting(value), s.cfg.ExpressionDepth, "split nested calculations into named steps")
+		s.expression(doc, p, value)
 	}
 	switch n := node.(type) {
 	case *ast.MappingNode:
@@ -141,6 +140,11 @@ func (s *complexityScan) walk(doc *sourceDocument, node ast.Node, p string, typ 
 			if indexedName.MatchString(key) {
 				family := indexedName.ReplaceAllString(key, "#")
 				families[family] = append(families[family], child)
+			}
+			if typ == reflect.TypeFor[Assignments]() {
+				if index, err := assignmentIndex(key); err == nil && index.Set() {
+					s.expression(doc, child, index.String())
+				}
 			}
 			s.walk(doc, e.Value, child, complexityField(typ, key))
 			if p == "events" || p == "screens" || p == "planning.rules" {
@@ -175,6 +179,11 @@ func (s *complexityScan) walk(doc *sourceDocument, node ast.Node, p string, typ 
 	default:
 		s.values[node.GetToken().Value] = true
 	}
+}
+
+func (s *complexityScan) expression(doc *sourceDocument, p, value string) {
+	s.limit(doc, p, "expression characters", utf8.RuneCountInString(value), s.cfg.ExpressionLength, "name intermediate values or move repeated calculations into a rule")
+	s.limit(doc, p, "expression nesting", expressionNesting(value), s.cfg.ExpressionDepth, "split nested calculations into named steps")
 }
 
 func complexityField(typ reflect.Type, key string) reflect.Type {

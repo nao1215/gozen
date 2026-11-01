@@ -833,3 +833,22 @@ scenarios:
       file:
         path: lottery.jsonl
         contains: ['Lottery weaver/134; next 193', '"top_title":"weaver"']
+- name: indexed counters share one body and preserve separate saved names
+  steps:
+  - fixture:
+      file: counters.txt
+      content: |
+        gap 1
+        wait 10
+        do call: counter_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script counters.txt --trace counters.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: counters.jsonl
+        contains: ['Counters 6/3', '"stock_potter_1":6', '"stock_weaver_2":3']

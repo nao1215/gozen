@@ -807,3 +807,65 @@ func TestScreenEntriesVisibilityAndOwnership(t *testing.T) {
 		}
 	}
 }
+
+func TestIndexedVariableAssignment(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: counters\n" + testgame.Game, "data/counters.yaml": `events:
+  count:
+    params: {resident: string, day: number}
+    do:
+    - set: {'var["stock_" + arg.resident + "_" + arg.day]': 'var["stock_" + arg.resident + "_" + arg.day] + 2'}
+  visit:
+    do:
+    - call: {event: count, args: {resident: '"potter"', day: '1'}}
+    - call: {event: count, args: {resident: '"weaver"', day: '2'}}
+    - call: {event: count, args: {resident: '"potter"', day: '1'}}
+    - set: {var.key: '"stock_next"', 'var[var.key]': '5'}
+`})
+	st := testgame.State(db, 17)
+	runner := event.New(db, st, &host{})
+	runner.Log = func(err error) { t.Error(err) }
+	runner.Start(db.Events["visit"].Do)
+	runner.Next()
+	if st.Vars["stock_potter_1"] != 4.0 || st.Vars["stock_weaver_2"] != 2.0 || st.Vars["stock_next"] != 5.0 {
+		t.Fatalf("counters: %v", st.Vars)
+	}
+	saved, err := st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := rpg.Parse(db, saved, testgame.State(db, 17).Rand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Vars["stock_potter_1"] != 4.0 || loaded.Vars["stock_weaver_2"] != 2.0 {
+		t.Fatalf("loaded counters: %v", loaded.Vars)
+	}
+}
+
+func TestInvalidIndexedTargetPreservesStateAndRandomness(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: counters\n" + testgame.Game})
+	for _, target := range []string{`var[true]`, `var[""]`, `var["nested.key"]`, `var["bad key"]`, `var[rand(10)]`, `var["x"`, `var[nil]`} {
+		t.Run(target, func(t *testing.T) {
+			st, control := testgame.State(db, 17), testgame.State(db, 17)
+			before, err := st.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			runner := event.New(db, st, &host{})
+			var problems []error
+			runner.Log = func(err error) { problems = append(problems, err) }
+			runner.Start([]data.Command{{SetV: data.Assignments{target: data.MustExpr("rand(100)")}}})
+			runner.Next()
+			after, err := st.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(problems) != 1 || !bytes.Equal(before, after) {
+				t.Fatalf("invalid target changed state: %v", problems)
+			}
+			if st.Rand.Uint64() != control.Rand.Uint64() {
+				t.Fatal("invalid target consumed randomness")
+			}
+		})
+	}
+}

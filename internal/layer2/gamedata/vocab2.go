@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/expr"
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
@@ -403,6 +404,48 @@ func DevSet(key string) bool {
 // while left-hand sides that take only strings (location, party, actor.<ID>.tactics) take the string as written
 // (location: camp, party: [scout, guide]). There is no way to choose a place by an expression (kept simple by a constraint; ADR 0021).
 type Assignments map[string]Expr
+
+// ResolveSetTarget resolves an indexed variable destination for the event runner.
+// Literal destinations are returned unchanged. An index must be pure and yield a
+// nonempty state identifier; it is evaluated before the assignment's value.
+// This does not write state or replace SetPath's declaration/type checks.
+func ResolveSetTarget(key string, env expr.Env) (string, error) {
+	index, err := assignmentIndex(key)
+	if err != nil {
+		return "", err
+	}
+	if !index.Set() {
+		return key, nil
+	}
+	value, err := index.Eval(env)
+	if err != nil {
+		return "", fmt.Errorf("set target %s: %w", key, err)
+	}
+	name, ok := value.(string)
+	if !ok || !varName.MatchString(name) {
+		return "", fmt.Errorf("set target %s must yield a nonempty variable name (letters, digits and underscores)", key)
+	}
+	return "var." + name, nil
+}
+
+func assignmentIndex(key string) (Expr, error) {
+	if !strings.HasPrefix(key, "var[") {
+		return Expr{}, nil
+	}
+	if !strings.HasSuffix(key, "]") {
+		return Expr{}, fmt.Errorf("set target %s requires a closing bracket", key)
+	}
+	index, err := parseExpr(key[4 : len(key)-1])
+	if err != nil {
+		return Expr{}, fmt.Errorf("set target %s: %w", key, err)
+	}
+	for _, name := range index.Names() {
+		if name == "rand" || name == "chance" {
+			return Expr{}, fmt.Errorf("set target %s must be pure", key)
+		}
+	}
+	return index, nil
+}
 
 // LiteralSet reports whether the left-hand side of set accepts the value as a string as written.
 func LiteralSet(key string) bool {

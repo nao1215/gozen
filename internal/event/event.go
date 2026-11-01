@@ -841,11 +841,16 @@ func (r *Runner) run(c *data.Command) Request {
 			keys = append(keys, k)
 		}
 		slices.Sort(keys)
-		for _, k := range keys {
+		for _, written := range keys {
+			k, err := data.ResolveSetTarget(written, env)
+			r.logf(err)
+			if err != nil {
+				continue
+			}
 			if !r.setAllowed(k) {
 				continue
 			}
-			v, err := c.SetV[k].Eval(env)
+			v, err := c.SetV[written].Eval(env)
 			r.logf(err)
 			if err == nil {
 				err = r.st.SetPath(k, v)

@@ -222,3 +222,29 @@ func TestScreenEntryCommands(t *testing.T) {
 		}
 	}
 }
+
+func TestIndexedVariableTargets(t *testing.T) {
+	for _, tc := range []struct{ target, want string }{
+		{`var["stock_" + var.a]`, ""},
+		{`var[unknown]`, "unknown"},
+		{`var[1]`, "string"},
+		{`var[rand()]`, "pure"},
+		{`var["x"`, "closing"},
+	} {
+		t.Run(tc.target, func(t *testing.T) {
+			_, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: 10\nid: indexed\n" + testgame.Game, "data/indexed.yaml": "events: {write: {do: [{set: {'" + tc.target + "': '2'}}]}}"})
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("want %s: %v", tc.want, err)
+			}
+		})
+	}
+	for _, tc := range []struct{ game, want string }{{"schema_version: 10\nid: strict\n" + testgame.DeclaredGame, "strict state"}, {"schema_version: 9\nid: old\n" + testgame.Game, "schema_version: 10"}} {
+		if _, err := testgame.TryLoad(map[string]string{"game.yaml": tc.game, "data/indexed.yaml": `events: {write: {do: [{set: {'var["a"]': '2'}}]}}`}); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("want %s: %v", tc.want, err)
+		}
+	}
+}

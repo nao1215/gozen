@@ -147,3 +147,13 @@ events:
       then:
       - set: {var.score: 'rand(1000)'}
       - call: {event: consider_task, args: {score: var.score, title: arg.resident}}
+  counter_demo:
+    do:
+    - call: {event: add_counter, args: {resident: '"potter"', slot: '1', amount: '2'}}
+    - call: {event: add_counter, args: {resident: '"weaver"', slot: '2', amount: '3'}}
+    - call: {event: add_counter, args: {resident: '"potter"', slot: '1', amount: '4'}}
+    - say: 'Counters {var.stock_potter_1}/{var.stock_weaver_2}'
+  add_counter:
+    params: {resident: entity, slot: number, amount: number}
+    do:
+    - set: {'var["stock_" + arg.resident + "_" + arg.slot]': 'var["stock_" + arg.resident + "_" + arg.slot] + arg.amount'}
