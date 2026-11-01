@@ -776,3 +776,22 @@ scenarios:
       file:
         path: adjustment.jsonl
         contains: ['Before start 2/0', 'After adjustment 2/0.5']
+- name: shared priority selection keeps the first tie and accepts a higher score
+  steps:
+  - fixture:
+      file: priority.txt
+      content: |
+        gap 1
+        wait 10
+        do call: priority_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script priority.txt --trace priority.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: priority.jsonl
+        contains: ['First among equals: Water', 'Higher priority: Repair (30)', '"top_title":"Repair"']

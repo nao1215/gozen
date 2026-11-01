@@ -301,3 +301,18 @@ Consecutive selection candidates can share an outer condition when none of their
 checks or effects changes its inputs. Keep candidate-specific cooldowns and
 priority checks inside, and keep source order: regrouping nonconsecutive
 candidates can change which one wins or consumes the next random draw.
+
+## Sharing priority selection
+
+The workshop's `priority_demo` passes a score and plain title to one
+`consider_task` event. It retains the first candidate on a tie, ignores lower
+scores, and replaces the winner for a higher score. The same pattern supports
+farm chores, training recommendations, and a fixed number of notification slots.
+For several slots, shift lower-ranked entries from last to first before inserting
+the new candidate. Preserve caller order when that order breaks ties.
+
+Arguments capture inputs at the call. Freeze a score only when the shared body
+cannot change its inputs before the original comparison. A title stored in a
+variable should already be plain text; embedding another template does not
+request a second interpolation. Keep period-specific bookkeeping outside a
+shared scan if the scan depends on the current ledger and participant order.

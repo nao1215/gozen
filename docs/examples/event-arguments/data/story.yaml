@@ -107,3 +107,18 @@ events:
     - if: '!activity[arg.task].completed && activity[arg.task].progress > 0'
       then:
       - plan: {op: progress, activity: {expr: arg.task}, value: arg.amount}
+  priority_demo:
+    do:
+    - set: {var.top_score: '0', var.top_title: '""'}
+    - call: {event: consider_task, args: {score: '20', title: '"Water"'}}
+    - call: {event: consider_task, args: {score: '20', title: '"Weed"'}}
+    - call: {event: consider_task, args: {score: '10', title: '"Harvest"'}}
+    - say: 'First among equals: {var.top_title}'
+    - call: {event: consider_task, args: {score: '30', title: '"Repair"'}}
+    - say: 'Higher priority: {var.top_title} ({var.top_score})'
+  consider_task:
+    params: {score: number, title: string}
+    do:
+    - if: arg.score > var.top_score
+      then:
+      - set: {var.top_score: arg.score, var.top_title: arg.title}
