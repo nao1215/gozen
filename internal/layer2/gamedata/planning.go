@@ -323,7 +323,7 @@ func (c *checker) planCommand(w string, cmd *PlanCommand) {
 		return
 	}
 	allowed := map[string][]string{
-		"set": {"entity", "tag", "where", "attribute", "value"}, "observe": {"entity", "tag", "where"},
+		"set": {"entity", "tag", "where", "attribute", "value"}, "observe": {"entity", "tag", "where", "activity"},
 		"deadline": {"activity", "value"}, "cancel": {"activity", "value"}, "effort": {"activity", "value"}, "progress": {"activity", "value"}, "assign": {"activity", "entity"}, "advance": {}, "dispatch": {},
 		"record": {"entity", "tag", "where", "ledger", "period", "value"}, "close": {"ledger", "period"},
 		"rule": {"rule", "args"}, "policy": {"policy"},
@@ -342,6 +342,9 @@ func (c *checker) planCommand(w string, cmd *PlanCommand) {
 	if !slices.Contains([]string{"set", "observe", "assign", "progress", "effort", "cancel", "deadline", "advance", "dispatch", "record", "close", "rule", "policy"}, cmd.Op) {
 		c.errorf(diag.NotAWord, w+".op", "unknown planning operation %q", cmd.Op)
 	}
+	if cmd.Op == "observe" && cmd.Activity != "" && (cmd.Entity != "" || cmd.Tag != "") {
+		c.errorf(diag.Shape, w, "observe activity cannot be combined with entity or tag")
+	}
 	if cmd.Entity != "" {
 		if _, ok := p.Entities[cmd.Entity]; !ok {
 			c.errorf(diag.UnknownReference, w+".entity", "unknown entity")
@@ -352,7 +355,7 @@ func (c *checker) planCommand(w string, cmd *PlanCommand) {
 			c.errorf(diag.UnknownReference, w+".attribute", "unknown attribute")
 		}
 	}
-	if cmd.Op == "deadline" || cmd.Op == "cancel" || cmd.Op == "effort" || cmd.Op == "progress" || cmd.Op == "assign" {
+	if cmd.Op == "deadline" || cmd.Op == "cancel" || cmd.Op == "effort" || cmd.Op == "progress" || cmd.Op == "assign" || cmd.Op == "observe" && cmd.Activity != "" {
 		if _, ok := p.Activities[cmd.Activity]; !ok {
 			c.errorf(diag.UnknownReference, w+".activity", "unknown activity")
 		}

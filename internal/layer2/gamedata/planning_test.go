@@ -34,6 +34,30 @@ func TestPlanningDiagnostics(t *testing.T) {
 	}
 }
 
+func TestObservationTargets(t *testing.T) {
+	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  entities: {potter: {name: Potter}}\n  activities: {clay: {effort: 2}}\n"
+	for _, tc := range []struct{ command, want string }{
+		{"op: observe", ""},
+		{"op: observe, entity: potter, tag: resident, where: 'false'", ""},
+		{"op: observe, activity: clay", ""},
+		{"op: observe, activity: clay, where: 'self.progress > 0'", ""},
+		{"op: observe, activity: missing", "unknown activity"},
+		{"op: observe, activity: clay, entity: potter", "cannot be combined"},
+		{"op: observe, activity: clay, tag: resident", "cannot be combined"},
+	} {
+		t.Run(tc.command, func(t *testing.T) {
+			_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\nevents: {inspect: {do: [{plan: {" + tc.command + "}}]}}\n")}})
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("missing diagnostic %q: %v", tc.want, err)
+			}
+		})
+	}
+}
+
 func TestPlanningViewRejectsHiddenColumnsAndBindings(t *testing.T) {
 	for _, view := range []string{"week_start: -1", "week_start: 7", "highlight: reserve", "highlight: unknown", "visible: reserve", "visible: unknown", "fields: [{key: reserve, label: Reserve}]", "portrait: reserve", "detail: reserve", "weekdays: [Sun]", "order: [missing]", "fields: [{key: name, maximum: 10, marks: [11]}]"} {
 		src := "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  attributes: {reserve: {type: number, initial: 5, hidden: true}}\n  entities: {potter: {name: Potter}}\nscreens:\n  board:\n    title: Board\n    kind: entities\n    view: {" + view + "}\n"

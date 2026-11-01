@@ -241,15 +241,32 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 	default:
 		return nil, fmt.Errorf("unknown planning operation %q", c.Op)
 	}
-	if c.Op == "observe" {
-		for _, id := range slices.Sorted(maps.Keys(p.Activities)) {
+	if c.Op == "observe" && (c.Activity != "" || c.Entity == "" && c.Tag == "" && !c.Where.Set()) {
+		if c.Activity != "" && (c.Entity != "" || c.Tag != "") {
+			return nil, errors.New("observe activity cannot be combined with entity or tag")
+		}
+		ids := slices.Sorted(maps.Keys(p.Activities))
+		if c.Activity != "" {
+			if _, ok := p.Activities[c.Activity]; !ok {
+				return nil, fmt.Errorf("unknown activity %q", c.Activity)
+			}
+			ids = []string{c.Activity}
+		}
+		for _, id := range ids {
 			def := p.Activities[id]
 			a := st.Activities[id]
+			env := expr.Chain{expr.Map{"self": expr.Map{"progress": a.Progress, "effort": s.ActivityEffort(id), "assignee": a.Assignee, "cancelled": a.Cancelled}}, base}
+			yes, err := c.Where.Bool(env)
+			if err != nil {
+				return nil, err
+			}
+			if !yes {
+				continue
+			}
 			if !def.Observation.Set() {
 				a.Observed = a.Progress
 				continue
 			}
-			env := expr.Chain{expr.Map{"self": expr.Map{"progress": a.Progress, "effort": s.ActivityEffort(id), "assignee": a.Assignee, "cancelled": a.Cancelled}}, base}
 			v, err := def.Observation.Eval(env)
 			if err != nil {
 				return nil, err
@@ -260,6 +277,9 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 			}
 			a.Observed = max(0, min(s.ActivityEffort(id), n))
 		}
+	}
+	if c.Op == "observe" && c.Activity != "" {
+		return nil, nil
 	}
 	if c.Entity != "" && st.Entities[c.Entity] == nil {
 		return nil, fmt.Errorf("unknown entity %q", c.Entity)

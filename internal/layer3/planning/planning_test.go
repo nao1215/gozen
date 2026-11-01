@@ -98,18 +98,23 @@ func TestObservationAndAtomicSelection(t *testing.T) {
 	}
 }
 
-// TestObservationSelectionBaseline records the current selection behavior before
-// the scoped-observation contract in ADR 0053 is implemented. The activity refresh
-// in filtered cases is a known defect, not the desired contract.
-func TestObservationSelectionBaseline(t *testing.T) {
+func TestObservationSelection(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
+		activity  string
+		observed  float64
 		entity    string
 		tag       string
 		where     string
 		condition string
 	}{
-		{name: "all", condition: "tired"},
+		{name: "all", condition: "tired", observed: 1},
+		{name: "activity", activity: "prepare", condition: "ready", observed: 1},
+		{name: "activity predicate", activity: "prepare", where: "self.progress > 0", condition: "ready", observed: 1},
+		{name: "empty activity predicate", activity: "prepare", where: "false", condition: "ready"},
+		{name: "predicate only", where: "false", condition: "ready"},
+		{name: "matching tag", tag: "resident", condition: "tired"},
+		{name: "intersected filters", entity: "potter", tag: "absent", condition: "ready"},
 		{name: "one entity", entity: "potter", condition: "tired"},
 		{name: "other entity", entity: "weaver", condition: "ready"},
 		{name: "empty predicate", entity: "potter", where: "false", condition: "ready"},
@@ -129,7 +134,7 @@ func TestObservationSelectionBaseline(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, st := range []*rpg.State{s, restored} {
-				cmd := data.PlanCommand{Op: "observe", Entity: tc.entity, Tag: tc.tag}
+				cmd := data.PlanCommand{Op: "observe", Entity: tc.entity, Tag: tc.tag, Activity: tc.activity}
 				if tc.where != "" {
 					cmd.Where = value(t, tc.where)
 				}
@@ -137,11 +142,12 @@ func TestObservationSelectionBaseline(t *testing.T) {
 				if got := st.EntityValues("potter", false)["condition"]; got != tc.condition {
 					t.Fatalf("entity condition = %v, want %s", got, tc.condition)
 				}
-				wantObserved := 1.0
-				// Baseline only: filtered observations currently refresh all activities.
-				// The scoped contract changes this expectation to zero for filtered cases.
+				wantObserved := tc.observed
 				if got := st.Planning.Activities["prepare"].Observed; got != wantObserved {
 					t.Fatalf("activity observed = %g, want %g", got, wantObserved)
+				}
+				if st.Planning.Activities["shape"].Observed != 0 || st.Planning.Activities["prepare"].Assignee != "potter" {
+					t.Fatal("observation changed another activity or assignment")
 				}
 				if st.Planning.Activities["prepare"].Progress != 1 {
 					t.Fatal("observation changed true progress")
@@ -155,7 +161,7 @@ func TestObservationSelectionBaseline(t *testing.T) {
 }
 
 func TestObservationFailureIsAtomic(t *testing.T) {
-	for _, target := range []string{"activity", "entity", "predicate", "unknown entity"} {
+	for _, target := range []string{"activity", "entity", "predicate", "unknown entity", "unknown activity", "mixed entity", "mixed tag", "activity predicate"} {
 		t.Run(target, func(t *testing.T) {
 			s := state(t)
 			def := s.DB.Game.Planning.Activities["prepare"]
@@ -176,6 +182,15 @@ func TestObservationFailureIsAtomic(t *testing.T) {
 				cmd.Where = value(t, "self.missing")
 			case "unknown entity":
 				cmd.Entity = "missing"
+			case "unknown activity":
+				cmd.Activity = "missing"
+			case "mixed entity":
+				cmd.Activity, cmd.Entity = "prepare", "potter"
+			case "mixed tag":
+				cmd.Activity, cmd.Tag = "prepare", "resident"
+			case "activity predicate":
+				cmd.Activity = "prepare"
+				cmd.Where = value(t, "self.missing")
 			}
 			before := snapshot(t, s)
 			if _, err := planning.Apply(s, cmd); err == nil {
