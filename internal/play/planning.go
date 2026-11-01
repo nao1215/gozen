@@ -198,6 +198,10 @@ func (g *Game) visibleResidents(v data.PlanningView) []string {
 func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x, y, w, h float64) {
 	p := g.db.Game.Planning
 	v := g.db.Game.Screens[s.name].View
+	if kind == "entities" && v.Fullscreen {
+		s.drawEntityTable(g, dst)
+		return
+	}
 	ids := g.visibleResidents(v)
 	if s.target != "" && !slices.Contains(ids, s.target) {
 		s.target = ""
@@ -430,16 +434,28 @@ func (s *authorScreen) drawEntityDetail(g *Game, dst *ebiten.Image, x, y, w, h f
 	p := g.db.Game.Planning
 	v := g.db.Game.Screens[s.name].View
 	g.window(dst, x, y, w-12, h)
-	g.text(dst, p.Entities[s.target].Name, x+16, y+16, sizeM, g.th.accent)
-	yy := y + 54
+	textWidth := w - 44
+	inline := v.Fullscreen && g.db.Game.Screens[s.name].Kind == "entities"
+	if inline {
+		textWidth = w*.30 - 32
+		g.drawPlanningText(dst, fmt.Sprint(g.st.EntityValues(s.target, false)[v.Detail]), x+w*.30, y+12, w*.70-24, 16, max(1, int((h-24)/gfx.LineHeight(16))), g.th.text)
+	}
+	g.drawPlanningText(dst, p.Entities[s.target].Name, x+16, y+12, textWidth, 18, 1, g.th.accent)
+	yy := y + 40
 	for _, id := range slices.Sorted(maps.Keys(g.st.Planning.Activities)) {
 		a := g.st.Planning.Activities[id]
 		if a.Cancelled || a.Assignee != s.target || a.Completed != "" {
 			continue
 		}
+		if yy+48 > y+h {
+			break
+		}
 		d := p.Activities[id]
-		g.drawPlanningText(dst, fmt.Sprintf("%s  %.0f%%", d.Name, 100*a.Observed/g.st.ActivityEffort(id)), x+16, yy, w-44, 16, 1, g.th.text)
+		g.drawPlanningText(dst, fmt.Sprintf("%s  %.0f%%", d.Name, 100*a.Observed/g.st.ActivityEffort(id)), x+16, yy, textWidth, 16, 1, g.th.text)
 		yy += 24
+	}
+	if inline {
+		return
 	}
 	g.drawPlanningText(dst, fmt.Sprint(g.st.EntityValues(s.target, false)[v.Detail]), x+16, yy+16, w-44, 16, max(1, int((y+h-yy-24)/24)), g.th.text)
 }
@@ -740,4 +756,163 @@ func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
 		return true
 	}
 	return false
+}
+
+// entityTableLayout is shared by drawing and hit testing. Expanded details take
+// their own space below a row; scrolling never shrinks the text or column widths.
+func (s *authorScreen) entityTableLayout(g *Game) ([]string, []image.Rectangle, image.Rectangle) {
+	v := g.db.Game.Screens[s.name].View
+	all := g.visibleResidents(v)
+	sw, sh := g.screen()
+	s.residentTop = min(s.residentTop, max(0, len(all)-1))
+	var ids []string
+	var cells []image.Rectangle
+	var detail image.Rectangle
+	y, bottom := 90, int(sh)-112
+	for _, id := range all[s.residentTop:] {
+		if y+56 > bottom {
+			break
+		}
+		ids = append(ids, id)
+		cells = append(cells, image.Rect(16, y, int(sw)-16, y+56))
+		y += 56
+		if id == s.target && v.Detail != "" {
+			detail = image.Rect(16, y, int(sw)-16, min(y+180, bottom))
+			y += 180
+		}
+	}
+	return ids, cells, detail
+}
+
+func (s *authorScreen) updateEntityTable(g *Game) {
+	v := g.db.Game.Screens[s.name].View
+	all := g.visibleResidents(v)
+	var actions []int
+	for i, e := range s.entries {
+		if e.Target == "" && len(e.Bounds) == 4 {
+			actions = append(actions, i)
+		}
+	}
+	count := len(all) + len(actions)
+	if count == 0 {
+		s.target = ""
+		return
+	}
+	if !slices.Contains(all, s.target) {
+		s.target = ""
+	}
+	if g.in.wheel != 0 {
+		step := 1
+		if g.in.wheel > 0 {
+			step = -1
+		}
+		s.residentTop = max(0, min(len(all)-1, s.residentTop+step))
+	}
+	s.focus = min(s.focus, count-1)
+	moved := g.in.wheel == 0 && (g.in.down() || g.in.up())
+	if g.in.wheel == 0 && g.in.down() {
+		s.focus = (s.focus + 1) % count
+	}
+	if g.in.wheel == 0 && g.in.up() {
+		s.focus = (s.focus + count - 1) % count
+	}
+	ids, cells, _ := s.entityTableLayout(g)
+	rowFocus := s.focus - len(actions)
+	if moved && rowFocus >= 0 && !slices.Contains(ids, all[rowFocus]) {
+		s.residentTop = rowFocus
+	}
+	chosen := ""
+	if g.in.ok() {
+		if rowFocus < 0 {
+			s.list.sel = actions[s.focus]
+			s.activate(g)
+			return
+		}
+		chosen = all[rowFocus]
+	}
+	if g.in.click {
+		for j, i := range actions {
+			if g.in.mouse.In(entryBounds(s.entries[i])) {
+				s.focus = j
+				s.list.sel = i
+				s.activate(g)
+				return
+			}
+		}
+		for i, r := range cells {
+			if g.in.mouse.In(r) {
+				chosen = ids[i]
+				s.focus = len(actions) + slices.Index(all, chosen)
+				break
+			}
+		}
+	}
+	if chosen != "" && v.Detail != "" {
+		if s.target == chosen {
+			s.target = ""
+		} else {
+			s.target = chosen
+			// Reveal the whole detail even when opening the last visible row.
+			_, rows, detail := s.entityTableLayout(g)
+			if detail.Dy() < 180 || len(rows) == 0 {
+				s.residentTop = slices.Index(all, chosen)
+			}
+		}
+	}
+}
+
+func (s *authorScreen) drawEntityTable(g *Game, dst *ebiten.Image) {
+	v := g.db.Game.Screens[s.name].View
+	sw, _ := g.screen()
+	ids, cells, detail := s.entityTableLayout(g)
+	start, width := 210.0, (sw-230)/float64(max(1, len(v.Fields)))
+	g.drawPlanningText(dst, s.title, 20, 60, 180, 18, 1, g.th.accent)
+	for j, f := range v.Fields {
+		g.drawPlanningText(dst, f.Label, start+float64(j)*width, 62, width-8, 15, 1, g.th.dim)
+	}
+	all := g.visibleResidents(v)
+	for i, id := range ids {
+		r := cells[i]
+		y := float64(r.Min.Y)
+		values := g.st.EntityValues(id, false)
+		portrait, ok := values[v.Portrait].(string)
+		if !ok {
+			portrait = ""
+		}
+		g.planningFace(dst, portrait, 42, y+28, 24)
+		tint := g.th.text
+		if id == s.target {
+			tint = g.th.accent
+		}
+		g.drawPlanningText(dst, g.db.Game.Planning.Entities[id].Name, 78, y+16, 124, 18, 1, tint)
+		for j, f := range v.Fields {
+			x := start + float64(j)*width
+			value := ""
+			if values[f.Key] != nil {
+				value = fmt.Sprint(values[f.Key])
+			}
+			g.drawPlanningText(dst, value, x, y+4, width-8, 16, 1, g.th.text)
+			if f.Maximum > 0 {
+				n, _ := expr.ToNumber(values[f.Key])
+				bar(dst, x, y+28, width-10, 6, n/f.Maximum, g.th.accent)
+				for _, m := range f.Marks {
+					mx := x + (width-10)*m/f.Maximum
+					gfx.StrokeLine(dst, float32(mx), float32(y+25), float32(mx), float32(y+36), 1, g.th.dim, true)
+					g.drawPlanningText(dst, strconv.FormatFloat(m, 'f', 0, 64), min(mx-8, x+width-34), y+36, 32, 15, 1, g.th.dim)
+				}
+			}
+		}
+		actionCount := 0
+		for _, e := range s.entries {
+			if e.Target == "" && len(e.Bounds) == 4 {
+				actionCount++
+			}
+		}
+		if slices.Index(all, id)+actionCount == s.focus {
+			rect(dst, 16, y+54, sw-32, 2, g.th.accent)
+		}
+	}
+	if !detail.Empty() {
+		s.drawEntityDetail(g, dst, float64(detail.Min.X), float64(detail.Min.Y), float64(detail.Dx()), float64(detail.Dy()))
+	}
 }

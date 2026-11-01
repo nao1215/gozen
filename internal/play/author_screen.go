@@ -14,6 +14,7 @@ import (
 
 // authorScreen presents an authored list without requiring a custom Go screen.
 type authorScreen struct {
+	residentTop   int
 	timelineTop   int
 	timelineFocus int
 	target        string
@@ -64,6 +65,7 @@ func (s *authorScreen) refreshed(g *Game) *authorScreen {
 	n := newAuthorScreen(g, s.name, s.done)
 	n.target = s.target
 	n.focus = s.focus
+	n.residentTop = s.residentTop
 	n.timelineTop = s.timelineTop
 	n.timelineFocus = s.timelineFocus
 	n.list.sel = min(s.list.sel, max(0, len(n.entries)-1))
@@ -208,7 +210,8 @@ func (s *authorScreen) surfaceTargets(g *Game) ([]string, []image.Rectangle) {
 	sw, sh := g.screen()
 	ids := g.visibleResidents(def.View)
 	if def.Kind == "entities" {
-		return ids, planningCells(12, 108, sw*.64-24, sh-226, len(ids), 1)
+		ids, cells, _ := s.entityTableLayout(g)
+		return ids, cells
 	}
 	return ids, planningCells(12, 48+60+116, sw*.72-24, sh-156-70-116, len(ids), 4)
 }
@@ -281,6 +284,10 @@ func (s *authorScreen) updateSurface(g *Game) {
 		return
 	}
 	if s.updateTabs(g) {
+		return
+	}
+	if g.db.Game.Screens[s.name].Kind == "entities" {
+		s.updateEntityTable(g)
 		return
 	}
 	if g.db.Game.Screens[s.name].Kind == "timeline" && len(g.db.Game.Screens[s.name].View.Rows) > 0 {
@@ -380,7 +387,7 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 		j++
 	}
 	_, cells := s.surfaceTargets(g)
-	if i := s.focus - j; i >= 0 && i < len(cells) {
+	if i := s.focus - j; def.Kind != "entities" && i >= 0 && i < len(cells) {
 		r := cells[i]
 		rect(dst, float64(r.Min.X), float64(r.Max.Y-3), float64(r.Dx()), 3, g.th.accent)
 	}

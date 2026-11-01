@@ -1,6 +1,7 @@
 package play
 
 import (
+	"image"
 	"math/rand/v2"
 	"slices"
 	"strconv"
@@ -231,5 +232,87 @@ func TestGroupedTimelineCalendarFitAndPrivacy(t *testing.T) {
 	rows := timelineGroups(p, v)
 	if len(rows) != 13 || rows[12].Items[0].Activity != "extra" {
 		t.Fatal("unlisted task disappeared")
+	}
+}
+
+func TestEntityTableInlineDetailAndNavigation(t *testing.T) {
+	db := testgame.Load(t, nil)
+	p := &data.Planning{Entities: map[string]data.Entity{}}
+	order := []string{}
+	for i := range 12 {
+		id := strconv.Itoa(i)
+		order = append(order, id)
+		p.Entities[id] = data.Entity{Name: id}
+	}
+	db.Game.Planning = p
+	db.Game.Screens = map[string]*data.AuthorScreen{"roster": {Kind: "entities", View: data.PlanningView{Fullscreen: true, Order: order, Detail: "record"}}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "roster", nil)
+	ids, cells, detail := s.entityTableLayout(g)
+	if len(ids) < 8 || !detail.Empty() {
+		t.Fatalf("initial layout: %v %v", ids, detail)
+	}
+	_, sh := g.screen()
+	for _, r := range cells {
+		if r.Min.X != 16 || r.Dx() < 1000 || r.Max.Y > int(sh)-112 {
+			t.Fatalf("table does not fit: %v", r)
+		}
+	}
+	// Open the last visible row: its detail must be fully revealed, without
+	// consuming a phase or obscuring any other row.
+	g.in.click = true
+	g.in.mouse = cells[len(cells)-1].Min.Add(image.Pt(8, 8))
+	s.updateEntityTable(g)
+	if s.target != ids[len(ids)-1] {
+		t.Fatal("wrong row opened")
+	}
+	_, expanded, detail := s.entityTableLayout(g)
+	if detail.Dy() != 180 {
+		t.Fatalf("detail clipped: %v", detail)
+	}
+	for _, r := range expanded {
+		if r.Overlaps(detail) {
+			t.Fatal("detail covers a row")
+		}
+	}
+	g.in.mouse = expanded[0].Min.Add(image.Pt(8, 8))
+	s.updateEntityTable(g)
+	if s.target != "" {
+		t.Fatal("second click did not close detail")
+	}
+	g.in.click = false
+	g.in.wheel = -1
+	for range 20 {
+		s.updateEntityTable(g)
+	}
+	ids, _, _ = s.entityTableLayout(g)
+	if !slices.Contains(ids, "11") {
+		t.Fatal("cannot reach final resident")
+	}
+	s.refresh(g)
+	if s.residentTop == 0 {
+		t.Fatal("refresh lost scroll position")
+	}
+	g.in.wheel = 1
+	for range 20 {
+		s.updateEntityTable(g)
+	}
+	if s.residentTop != 0 {
+		t.Fatal("cannot return to first resident")
+	}
+	g.in.wheel = 0
+	g.in.pressed[btnDown] = true
+	for range order {
+		s.updateEntityTable(g)
+		visible, _, _ := s.entityTableLayout(g)
+		if !slices.Contains(visible, order[s.focus]) {
+			t.Fatal("keyboard focus moved offscreen")
+		}
+	}
+	g.in.pressed[btnDown] = false
+	g.in.pressed[btnOK] = true
+	s.updateEntityTable(g)
+	if s.target != order[s.focus] {
+		t.Fatal("keyboard opened wrong resident")
 	}
 }
