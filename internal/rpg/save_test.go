@@ -545,3 +545,40 @@ func TestCheckpointRoundTripAndFailures(t *testing.T) {
 		t.Fatal("missing snapshot accepted")
 	}
 }
+
+// A damaged RNG snapshot must fail before a frontend replaces its live state.
+func TestSaveRejectsDamagedRandomState(t *testing.T) {
+	db := testgame.Load(t, nil)
+	original := saveBytes(t, testgame.State(db, 7))
+	valid, err := rand.NewPCG(73, 91).MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, cursor := range []bool{false, true} {
+		for name, rnd := range map[string][]byte{
+			"truncated":       valid[:len(valid)-1],
+			"extended":        append(slices.Clone(valid), 0),
+			"wrong generator": append([]byte("BAD!"), valid[4:]...),
+		} {
+			t.Run(fmt.Sprintf("cursor=%t/%s", cursor, name), func(t *testing.T) {
+				damaged := rewriteSave(t, original, func(m map[string]any) {
+					m["rand"] = rnd
+					if cursor {
+						m["cursor"] = map[string]any{"event": "greet", "line": 1}
+					}
+				})
+				source := rand.NewPCG(19, 23)
+				before := *source
+				for range 2 {
+					st, err := rpg.Parse(db, damaged, rand.New(source)) //nolint:gosec // Checks deterministic gameplay randomness, not secrets.
+					if err == nil || st != nil {
+						t.Fatal("accepted damaged random state")
+					}
+				}
+				if source.Uint64() != before.Uint64() {
+					t.Fatal("validation consumed caller randomness")
+				}
+			})
+		}
+	}
+}

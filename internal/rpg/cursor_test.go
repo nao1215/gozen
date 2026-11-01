@@ -1,6 +1,7 @@
 package rpg_test
 
 import (
+	"math/rand/v2"
 	"slices"
 	"testing"
 
@@ -30,13 +31,17 @@ func TestSaveFormatTwo(t *testing.T) {
 		t.Fatalf("a save of version 1 is not read: %v", err)
 	}
 	c := rpg.Cursor{Event: "greet", Line: 3, Answers: []int{1}}
-	withCursor, err := rpg.WithCursor(b, c, []byte{1, 2, 3})
+	rnd, err := rand.NewPCG(3, 5).MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	withCursor, err := rpg.WithCursor(b, c, rnd)
 	if err != nil {
 		t.Fatal(err)
 	}
 	got, err = rpg.Parse(db, withCursor, nil)
 	if err != nil || got.Resume == nil || got.Resume.Cursor.Event != "greet" || got.Resume.Cursor.Line != 3 ||
-		!slices.Equal(got.Resume.Cursor.Answers, []int{1}) || !slices.Equal(got.Resume.Rand, []byte{1, 2, 3}) {
+		!slices.Equal(got.Resume.Cursor.Answers, []int{1}) || !slices.Equal(got.Resume.Rand, rnd) {
 		t.Fatalf("the cursor did not come back: %v %+v", err, got)
 	}
 	for name, edit := range map[string]func(map[string]any){

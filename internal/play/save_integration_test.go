@@ -3,6 +3,7 @@ package play
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -723,5 +724,60 @@ func TestCheckpointRestoresAfterManualLoad(t *testing.T) {
 		if !ok || q.Text != "Ready again" {
 			t.Fatalf("retry entry: %#v", q)
 		}
+	}
+}
+
+// Selecting a malformed slot keeps the current game and next random draw usable.
+func TestLoadMenuRejectsDamagedRandomState(t *testing.T) {
+	g := sysInn(t, Options{SaveDir: t.TempDir(), Seed: 31})
+	g.st.Gold = 11
+	if err := g.save(0); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := g.storeRead(g.slotPath(0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(saved, &doc); err != nil {
+		t.Fatal(err)
+	}
+	// Keep the already displayed slot selectable, then damage its backing file.
+	menu := newSaveMenu(g, false, func() {})
+	menu.slots.sel = 0
+	doc["rand"] = []byte("broken")
+	damaged, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := g.store.Write(g.slotPath(0), damaged); err != nil {
+		t.Fatal(err)
+	}
+	g.st.Gold = 29
+	g.st.Rand.Uint64()
+	before := *g.pcg
+	current := g.st
+	fresh := newSaveMenu(g, false, func() {})
+	if !fresh.slots.items[0].disabled {
+		t.Fatal("damaged slot is offered for loading")
+	}
+	g.push(menu)
+	sysKey(g, btnOK)
+	menu.update(g)
+	if menu.msgT == 0 || !strings.Contains(menu.msg, "random state") {
+		t.Fatalf("missing load diagnostic: %q", menu.msg)
+	}
+	if g.st != current || g.st.Gold != 29 || g.stack[len(g.stack)-1] != menu {
+		t.Fatal("failed load replaced the live game")
+	}
+	if g.failure != nil {
+		t.Fatal("recoverable slot failure terminated play", g.failure)
+	}
+	if g.st.Rand.Uint64() != before.Uint64() {
+		t.Fatal("failed load changed randomness")
+	}
+	after, err := g.storeRead(g.slotPath(0))
+	if err != nil || !bytes.Equal(after, damaged) {
+		t.Fatal("failed load rewrote the slot", err)
 	}
 }

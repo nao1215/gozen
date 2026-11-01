@@ -485,3 +485,17 @@ scenarios:
         - 'Received 12'
         - 'Returned 2'
         - '"total":2'
+
+- name: corrupted saved randomness is rejected before simulation
+  steps:
+  - fixture:
+      file: damaged-random.json
+      content: '{"format_version":3,"game_id":"cli-expedition","data_version":0,"rand":"YnJva2Vu","state":{"actors":{"scout":{"id":"scout","level":1}},"party":["scout"],"location":"camp"}}'
+  - run:
+      command: gozen sim battle "${specdir}/fixtures/game" --troop lesson -n 2 --state damaged-random.json
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: 'save random state:'
+      stdout:
+        equals: ''

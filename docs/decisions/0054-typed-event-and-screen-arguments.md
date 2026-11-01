@@ -509,3 +509,24 @@ Parameterized planning surfaces and their implicit destinations are rejected.
 Their rendering and navigation scopes must be implemented before accepting such
 declarations. Frozen entry arguments also work with the existing named-root replay
 path; entry replay alone is not a screen continuation descriptor.
+
+
+## Random snapshot validation before continuation loading
+
+Save parsing validates every nonempty envelope `rand` as a PCG snapshot before
+returning a state to session, play or simulation. Truncated, extended and
+wrong-generator bytes are rejected instead of allowing a frontend to choose a
+fresh seed. This also applies to a cursor's event-start snapshot. Validation uses
+an independent source and consumes no gameplay randomness. Saves without `rand`
+retain the legacy seed-based behavior; this change does not require a new format.
+
+For example, reloading a workshop save must preserve the next resource draw.
+Selecting a damaged slot reports a load error while retaining the current game,
+its random stream and the original slot bytes. The shared parser owns this check,
+as it already owns save identity and cursor validation. Cached parses may reuse
+only snapshots that passed the same validation. The existing deterministic battle
+reload test and the new damaged-slot test cover the successful and rejected paths.
+
+This prerequisite does not implement screen continuation descriptors or make
+other replay failures transactional. Screen saves remain rejected until the
+suspended opener and active entry can both be reconstructed.

@@ -149,6 +149,14 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 				return nil, err
 			}
 		}
+		// Frontends restore PCG snapshots after parsing. Reject damaged bytes here,
+		// before a load can replace live state or fall back to another random stream.
+		// Absent bytes retain the legacy seed-based loading contract.
+		if len(envelope.Rand) > 0 {
+			if err := rand.NewPCG(1, 2).UnmarshalBinary(envelope.Rand); err != nil {
+				return nil, fmt.Errorf("save random state: %w", err)
+			}
+		}
 		report.SavedDataVersion = envelope.DataVersion
 		payload = envelope.State
 		if envelope.Cursor != nil {
