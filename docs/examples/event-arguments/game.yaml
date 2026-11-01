@@ -42,3 +42,23 @@ screens:
           - plan: {op: assign, activity: {expr: arg.task}, entity: {expr: arg.resident}}
         - label: Cancel
       - say: 'Reviewed {arg.task}'
+
+  calendar:
+    title: Calendar
+    kind: calendar
+    view:
+      fullscreen: true
+      markers:
+      - date: '2030-01-01'
+        screen: day_detail
+        args: {day: '"2030-01-01"'}
+      - date: '2030-01-02'
+        screen: day_detail
+        args: {day: '"2030-01-02"'}
+  day_detail:
+    params: {day: date}
+    title: 'Schedule {arg.day}'
+    entries:
+    - label: 'Inspect {arg.day}'
+      do:
+      - say: 'Selected {arg.day}'

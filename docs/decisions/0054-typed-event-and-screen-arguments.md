@@ -671,3 +671,19 @@ Older schemas, anonymous roots, unsupported replay boundaries and native plannin
 surfaces keep the save refusal. Implicit navigation for planning surfaces and their
 parameterized bindings remain separate work. Historical slice notes above record
 restrictions at the time of those implementations.
+
+
+## Calendar destination binding
+
+Calendar and timeline date markers in schema 10 accept an `args` map alongside
+`screen`. They reuse the ordinary screen argument checker and runtime binder.
+The presentation adapter evaluates pure expressions in the current screen scope
+when the date is clicked, before pushing the destination. Multiple links on one
+date must agree on the destination and argument expressions. Invalid runtime
+bindings log an error and leave the stack and planning state intact.
+
+This enables one ordinary detail screen for many dates without duplicating its
+commands. It does not parameterize native planning surfaces, timeline lane
+links, or tabs, and it does not make implicit navigation replayable for saving.
+The calendar click and timeline band tests cover the same binding and preserve
+state; the CLI example selects two dates through one detail screen.

@@ -120,6 +120,7 @@ TimelineItem:
   label: Short lane identifier shown below the group heading.
   screen: Optional authored screen to open when the lane is clicked or confirmed.
 TimelineMarker:
+  args: "Schema 10: pure expressions for every destination screen parameter, evaluated at click time. Same-date links must have identical arguments."
   _: A named date annotation independent of scheduling rules.
   date: ISO date; annotations outside the calendar range are not drawn.
   label: Text shown when pointing at that date in the calendar band. May be omitted for a screen-only link, which adds no annotation tick or calendar label.

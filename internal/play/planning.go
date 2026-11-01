@@ -1603,7 +1603,12 @@ func (s *authorScreen) openCalendarDate(g *Game, date string) bool {
 	}
 	for _, marker := range g.db.Game.Screens[s.name].View.Markers {
 		if marker.Date == date && marker.Screen != "" {
-			g.openScreen(marker.Screen, nil)
+			args, err := g.db.BindScreen(data.ScreenCall{Screen: marker.Screen, Args: marker.Args}, s.env(g))
+			if err != nil {
+				g.events.Log(err)
+				return true
+			}
+			g.openAuthorScreen(marker.Screen, nil, args)
 			return true
 		}
 	}

@@ -314,3 +314,42 @@ events: {bad: {do: [{plan: {op: assign, activity: {expr: '"prepare"'}, entity: p
 		t.Fatalf("accepted old schema: %v", err)
 	}
 }
+
+func TestCalendarDestinationArguments(t *testing.T) {
+	const header = `schema_version: 10
+id: workshop
+start: {location: room}
+planning:
+  calendar: {start: '2030-08-01', end: '2030-08-03', phases: [morning]}
+screens:
+  detail:
+    params: {day: date}
+    title: 'Day {arg.day}'
+    entries: [{label: Read}]
+  calendar:
+    title: Calendar
+    kind: calendar
+    view:
+      markers:
+`
+	for _, tc := range []struct {
+		markers string
+		valid   bool
+	}{
+		{`      - {date: '2030-08-02', screen: detail, args: {day: '"2030-08-02"'}}`, true},
+		{`      - {date: '2030-08-02', screen: detail}`, false},
+		{`      - {date: '2030-08-02', screen: detail, args: {day: '2'}}`, false},
+		{`      - {date: '2030-08-02', screen: detail, args: {day: '"bad"'}}`, false},
+		{`      - {date: '2030-08-02', screen: detail, args: {day: 'rand(2)'}}`, false},
+		{`      - {date: '2030-08-02', label: Fair, args: {day: '"2030-08-02"'}}`, false},
+		{`      - {date: '2030-08-02', screen: detail, args: {day: '"2030-08-02"'}}
+      - {date: '2030-08-02', screen: detail, args: {day: '"2030-08-03"'}}`, false},
+		{`      - {date: '2030-08-02', screen: detail, args: {day: '"2030-08-02"'}}
+      - {date: '2030-08-02', screen: detail, args: {day: '"2030-08-02"'}}`, true},
+	} {
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header + tc.markers + "\n")}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
+		if (err == nil) != tc.valid {
+			t.Fatalf("markers %s: %v", tc.markers, err)
+		}
+	}
+}

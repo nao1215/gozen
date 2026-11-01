@@ -68,7 +68,7 @@ a named event or nested screen receives only explicitly passed values. Closing
 resumes the original caller once. A malformed dynamic argument logs an execution
 error and skips opening the screen before any entry effect or random draw.
 
-Parameterized planning surfaces, implicit tab/calendar/timeline destinations and
+Parameterized planning surfaces, implicit tab/timeline lane destinations and
 expression-form screen entry target IDs are not supported yet. Use a parameterless wrapper
 screen with an explicit `open` action when a literal-only destination is required.
 Plain portrait lists can still use fixed entity targets. Parameters do not expand
@@ -184,3 +184,26 @@ The shared event-layer selection iterator preserves definition order and label
 rendering. Frontends retain their existing presentation and diagnostic policies;
 entry guards are checked again before execution. Transcript answers use this
 same visible-row contract during restoration.
+
+## Calendar date destinations
+
+Schema 10 calendar and timeline date markers can pass `args` to one ordinary
+screen. The workshop example uses two dates with one `day_detail` definition:
+
+```yaml
+markers:
+- date: '2030-01-01'
+  screen: day_detail
+  args: {day: '"2030-01-01"'}
+- date: '2030-01-02'
+  screen: day_detail
+  args: {day: '"2030-01-02"'}
+```
+
+Declare `params: {day: date}` on the destination and use `{arg.day}` in its
+text. Marker arguments follow the existing pure expression and type checks;
+missing, extra and invalid literal arguments fail `check`. Dynamic values bind
+at click time. A failed binding reports an error without opening or changing
+state. Multiple links on the same date must agree on both screen and arguments.
+Browsing does not advance the planning calendar. Native navigation still cannot
+be saved while open; this does not extend the named-event replay contract.

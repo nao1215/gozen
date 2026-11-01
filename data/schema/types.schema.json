@@ -20608,6 +20608,31 @@
       "additionalProperties": false,
       "description": "A named date annotation independent of scheduling rules.",
       "properties": {
+        "args": {
+          "additionalProperties": {
+            "description": "An expression. gozen check checks its syntax, names and types.",
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          "description": "Schema 10: pure expressions for every destination screen parameter, evaluated at click time. Same-date links must have identical arguments.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → expression"
+        },
         "date": {
           "description": "ISO date; annotations outside the calendar range are not drawn.",
           "type": "string",

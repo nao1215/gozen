@@ -534,6 +534,8 @@ type TimelineMarker struct {
 	// Screen opens an authored date detail from calendar and timeline input.
 	// Omission keeps the annotation read-only. One destination is allowed per date.
 	Screen string `yaml:"screen"`
+	// Args bind the date destination in the current screen scope before opening.
+	Args map[string]Expr `yaml:"args"`
 }
 
 // PlanningField describes a public value column and optional numeric gauge.
@@ -599,22 +601,25 @@ func (c *checker) planningView(w string, v PlanningView) {
 			}
 		}
 	}
-	destinations := map[string]string{}
+	destinations := map[string]TimelineMarker{}
 	for i, marker := range v.Markers {
 		if _, err := time.Parse(time.DateOnly, marker.Date); err != nil || (marker.Label == "" && marker.Screen == "") {
 			c.errorf(diag.Shape, fmt.Sprintf("%s.markers[%d]", w, i), "timeline marker requires an ISO date and a label or screen")
+		}
+		if marker.Screen == "" && len(marker.Args) > 0 {
+			c.errorf(diag.Shape, fmt.Sprintf("%s.markers[%d].args", w, i), "arguments require a destination screen")
 		}
 		if marker.Screen != "" {
 			at := fmt.Sprintf("%s.markers[%d].screen", w, i)
 			if c.db.Game.Screens[marker.Screen] == nil {
 				c.errorf(diag.UnknownReference, at, "unknown calendar screen %q", marker.Screen)
-			} else if len(c.db.Game.Screens[marker.Screen].Params) > 0 {
-				c.errorf(diag.Shape, at, "calendar screen requires arguments; use a parameterless wrapper")
+			} else {
+				c.screenCall(fmt.Sprintf("%s.markers[%d]", w, i), ScreenCall{Screen: marker.Screen, Args: marker.Args}, FieldNames)
 			}
-			if previous := destinations[marker.Date]; previous != "" && previous != marker.Screen {
+			if previous, ok := destinations[marker.Date]; ok && (previous.Screen != marker.Screen || !reflect.DeepEqual(previous.Args, marker.Args)) {
 				c.errorf(diag.Shape, at, "calendar date has conflicting screens")
 			}
-			destinations[marker.Date] = marker.Screen
+			destinations[marker.Date] = marker
 		}
 	}
 	c.text(w+".header", v.Header, FieldNames)

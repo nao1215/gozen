@@ -631,3 +631,32 @@ scenarios:
       file:
         path: saves/save3.json
         json: {path: $.state.vars.total, equals: 2}
+- name: calendar dates reuse one typed detail screen
+  steps:
+  - fixture:
+      file: calendar-args.txt
+      content: |
+        gap 4
+        wait 10
+        do open: calendar
+        wait 10
+        click 400 150
+        wait 10
+        press ok
+        until idle
+        press cancel
+        wait 10
+        click 580 150
+        wait 10
+        press ok
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script calendar-args.txt --trace calendar-args.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: calendar-args.jsonl
+        contains: ['Selected 2030-01-01', 'Selected 2030-01-02', '"date":"2030-01-01"', '"phase":0']
