@@ -469,6 +469,7 @@ func timelineGroups(p *data.Planning, v data.PlanningView) []data.TimelineRow {
 }
 
 type timelineLane struct {
+	text                            string
 	labelBounds                     image.Rectangle
 	item                            data.TimelineItem
 	bounds                          image.Rectangle
@@ -486,13 +487,23 @@ type timelineResident struct {
 }
 
 type timelineGroup struct {
-	key       string
-	expanded  bool
-	label     string
-	text      string
-	y, height float64
-	lanes     []timelineLane
-	residents []timelineResident
+	key        string
+	expanded   bool
+	label      string
+	text       string
+	y, height  float64
+	laneHeight float64
+	lanes      []timelineLane
+	residents  []timelineResident
+}
+
+func timelineLaneHeight(items []data.TimelineItem) float64 {
+	for _, item := range items {
+		if item.Text != "" {
+			return 64
+		}
+	}
+	return 44
 }
 
 // Grouped axes stay fixed to the authored calendar, even after deadline changes.
@@ -519,7 +530,7 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 	days := end.Sub(start).Hours()/24 + 1
 	rowHeight := func(row data.TimelineRow) float64 {
 		if len(row.Items) > 0 && row.Items[0].Activity == s.timelineExpanded {
-			return 40 + float64(len(row.Items))*44
+			return 40 + float64(len(row.Items))*timelineLaneHeight(row.Items)
 		}
 		return max(36, float64(len(row.Items))*10+4)
 	}
@@ -535,7 +546,7 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 		if y+rh > bottom {
 			break
 		}
-		group := timelineGroup{label: row.Label, text: data.Render(g.db.Tr(row.Text), env), y: y, height: rh}
+		group := timelineGroup{label: row.Label, text: data.Render(g.db.Tr(row.Text), env), y: y, height: rh, laneHeight: timelineLaneHeight(row.Items)}
 		if len(row.Items) > 0 {
 			group.key = row.Items[0].Activity
 			group.expanded = group.key == s.timelineExpanded
@@ -585,13 +596,13 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 			forecast, forecastLabel := timelineForecast(from, today, start, end, reported, a.Cancelled, data.Render(g.db.Tr(item.ForecastLabel), env))
 			ly := y + 3 + float64(j)*10
 			if group.expanded {
-				ly = y + 52 + float64(j)*44
+				ly = y + 52 + float64(j)*group.laneHeight
 			}
 			labelBounds := image.Rectangle{}
 			if group.expanded {
-				labelBounds = image.Rect(int(x+24), int(ly-12), int(x+248), int(ly+32))
+				labelBounds = image.Rect(int(x+24), int(ly-12), int(x+248), int(ly-12+group.laneHeight))
 			}
-			group.lanes = append(group.lanes, timelineLane{labelBounds: labelBounds, item: item, bounds: image.Rect(int(axisX+axisW*left), int(ly), int(math.Ceil(axisX+axisW*right)), int(ly+9)), left: left, right: right, reported: reported, expected: expected, forecast: forecast, forecastLabel: forecastLabel, dimmed: s.timelineAssignee != "" && a.Assignee != s.timelineAssignee, sample: sample, sampleFreshness: freshness, sampleLabel: data.Render(g.db.Tr(item.SampleLabel), env)})
+			group.lanes = append(group.lanes, timelineLane{text: data.Render(g.db.Tr(item.Text), env), labelBounds: labelBounds, item: item, bounds: image.Rect(int(axisX+axisW*left), int(ly), int(math.Ceil(axisX+axisW*right)), int(ly+9)), left: left, right: right, reported: reported, expected: expected, forecast: forecast, forecastLabel: forecastLabel, dimmed: s.timelineAssignee != "" && a.Assignee != s.timelineAssignee, sample: sample, sampleFreshness: freshness, sampleLabel: data.Render(g.db.Tr(item.SampleLabel), env)})
 		}
 		out = append(out, group)
 		y += rh
@@ -709,10 +720,13 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 			lx, ly, lw, lh := float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())
 			a := g.st.Planning.Activities[lane.item.Activity]
 			if group.expanded {
-				top := group.y + 40 + float64(j)*44
+				top := group.y + 40 + float64(j)*group.laneHeight
 				title, summary := timelineLaneSummary(g, lane)
 				g.drawPlanningText(dst, title, x+24, top, 224, 16, 1, g.th.text)
 				g.drawPlanningText(dst, summary, x+24, top+20, 224, 15, 1, g.th.dim)
+				if lane.text != "" {
+					g.drawPlanningText(dst, lane.text, x+24, top+40, 224, 15, 1, g.th.text)
+				}
 			}
 			border := g.th.dim
 			if index == s.timelineFocus {
@@ -909,6 +923,9 @@ func (s *authorScreen) timelineDescription(g *Game) string {
 	a := g.st.Planning.Activities[lane.item.Activity]
 	// Only authored saved samples and reported observations enter the label.
 	description := fmt.Sprintf("%s · %s · %.0f%%\n%s — %s", d.Name, p.Entities[a.Assignee].Name, 100*lane.reported, d.From, g.st.ActivityDeadline(lane.item.Activity))
+	if lane.text != "" {
+		description += " · " + lane.text
+	}
 	if lane.sample >= 0 {
 		description += fmt.Sprintf(" · %s %.0f%%", lane.sampleLabel, 100*lane.sample)
 	}
@@ -943,11 +960,11 @@ func (s *authorScreen) toggleTimelineGroup(g *Game) bool {
 			s.timelineTop = 0
 		} else {
 			// Very large authored groups retain the compact representation.
-			if 40+float64(len(group.lanes))*44 > sh-282 {
+			if 40+float64(len(group.lanes))*group.laneHeight > sh-282 {
 				return true
 			}
 			s.timelineExpanded = group.key
-			if group.y+40+float64(len(group.lanes))*44 > sh-118 {
+			if group.y+40+float64(len(group.lanes))*group.laneHeight > sh-118 {
 				s.timelineTop += i
 			}
 		}

@@ -61,3 +61,12 @@ in the detail pane. Include full explanations there when a row summary is long.
 Hidden attributes are never used as a fallback for missing observations.
 Selecting an entry runs its ordinary `do`; authors can use a `choice` there to
 confirm a costly action. Browsing the list itself does not advance planning.
+
+Grouped timeline `view.rows[].items[].text` adds one interpolated explanation
+below the activity name and public assignment/report summary when its group is
+expanded. For example, `text: "Planned {activity.clay.effort} units"` explains
+an activity's scale in the author's own units. Rows with this field reserve 64
+logical pixels per activity instead of 44; the collapsed overview is unchanged.
+The extra line uses at least 15-pixel text and truncates overflow. Hover or
+keyboard focus includes the full explanation in the timeline description.
+Use public values or saved observations for player-facing explanations.

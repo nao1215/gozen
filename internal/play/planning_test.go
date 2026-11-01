@@ -640,7 +640,7 @@ func TestTimelineInlineExpansionPreservesCalendarAndState(t *testing.T) {
 		for j := range 3 {
 			id := strconv.Itoa(i*3 + j)
 			p.Activities[id] = data.Activity{Name: "Item " + id, Assignee: "maker", Effort: 10}
-			row.Items = append(row.Items, data.TimelineItem{Activity: id, Screen: "detail"})
+			row.Items = append(row.Items, data.TimelineItem{Activity: id, Screen: "detail", Text: "Planned {2*5} units"})
 		}
 		v.Rows = append(v.Rows, row)
 	}
@@ -666,8 +666,8 @@ func TestTimelineInlineExpansionPreservesCalendarAndState(t *testing.T) {
 		t.Fatal("last group was not revealed on the fixed axis")
 	}
 	for i, lane := range expanded[0].lanes {
-		if lane.labelBounds.Max.Y > 602 || lane.labelBounds.Empty() {
-			t.Fatal("detail clipped", lane.labelBounds)
+		if lane.labelBounds.Max.Y > 602 || lane.labelBounds.Dy() != 64 || lane.text != "Planned 10 units" {
+			t.Fatal("detail clipped", lane.labelBounds, lane.text)
 		}
 		for _, other := range expanded[0].lanes[:i] {
 			if lane.labelBounds.Overlaps(other.labelBounds) {
@@ -683,7 +683,7 @@ func TestTimelineInlineExpansionPreservesCalendarAndState(t *testing.T) {
 		t.Fatal("refresh lost expansion")
 	}
 	g.in.mouse = expanded[0].lanes[1].labelBounds.Min
-	if !strings.Contains(s.timelineDescription(g), "Item 34") {
+	if description := s.timelineDescription(g); !strings.Contains(description, "Item 34") || !strings.Contains(description, "Planned 10 units") {
 		t.Fatal("hover did not reveal full activity detail")
 	}
 	s.updateSurface(g)

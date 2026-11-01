@@ -477,6 +477,9 @@ type TimelineItem struct {
 	Activity string `yaml:"activity"`
 	Label    string `yaml:"label"`
 	Screen   string `yaml:"screen"`
+	// Text adds one authored, interpolated line to an expanded activity.
+	// The renderer also includes the full text in the activity description.
+	Text string `yaml:"text"`
 	// Sample is a saved observed ratio (0..1), negative or absent when unknown.
 	// SampleLabel gives its authored provenance, such as the observation date.
 	Sample      Expr   `yaml:"sample"`
@@ -547,6 +550,7 @@ func (c *checker) planningView(w string, v PlanningView) {
 			used[item.Activity] = true
 			c.planningPure(at+".sample", item.Sample)
 			c.exprIn(at+".sample", item.Sample, FieldNames, nil)
+			c.text(at+".text", item.Text, FieldNames)
 			c.text(at+".sample_label", item.SampleLabel, FieldNames)
 			c.planningPure(at+".sample_freshness", item.SampleFreshness)
 			c.exprIn(at+".sample_freshness", item.SampleFreshness, FieldNames, nil)

@@ -20411,6 +20411,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "text": {
+          "description": "Optional interpolated explanation below the public assignment and report summary in expanded rows. Reserves an extra 20 logical pixels per lane and uses 15-pixel text; overflow is truncated. Also included in the activity description.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         }
       },
       "type": "object"
