@@ -2,6 +2,7 @@ package play
 
 import (
 	"encoding/json"
+	"fmt"
 	"image"
 	"image/color"
 	"math"
@@ -389,6 +390,106 @@ func TestEntityTableInlineDetailAndNavigation(t *testing.T) {
 	s.updateEntityTable(g)
 	if s.target != order[s.focus] {
 		t.Fatal("keyboard opened wrong resident")
+	}
+}
+
+func TestEntityTableSortingAndCompleteRecords(t *testing.T) {
+	db := testgame.Load(t, nil)
+	if err := LoadFonts(db, gameFiles(t)); err != nil {
+		t.Fatal(err)
+	}
+	order := []string{"potter", "weaver", "smith", "helper", "visitor"}
+	p := &data.Planning{Entities: map[string]data.Entity{}, Activities: map[string]data.Activity{}, Attributes: map[string]data.Attribute{"secret": {Hidden: true}}}
+	for _, id := range order {
+		p.Entities[id] = data.Entity{Name: id}
+	}
+	for i := range 13 {
+		id := fmt.Sprintf("task%02d", i)
+		p.Activities[id] = data.Activity{Name: id, Assignee: "potter", Effort: 10}
+	}
+	db.Game.Planning = p
+	db.Game.Screens = map[string]*data.AuthorScreen{"roster": {Kind: "entities", View: data.PlanningView{Fullscreen: true, Order: order, Visible: "visible", Detail: "record", Fields: []data.PlanningField{{Key: "hours", Label: "Hours"}, {Key: "secret", Label: "Unavailable"}}}}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	for i, id := range order {
+		e := g.st.Planning.Entities[id]
+		e.Observations["visible"] = id != "visitor"
+		e.Attributes["secret"] = 100 - i
+	}
+	for id, n := range map[string]float64{"potter": 2, "weaver": 12, "smith": 12, "visitor": 100} {
+		g.st.Planning.Entities[id].Observations["hours"] = n
+	}
+	record := []string{}
+	for i := range 17 {
+		record = append(record, fmt.Sprintf("Recorded line %02d", i))
+	}
+	g.st.Planning.Entities["potter"].Observations["record"] = strings.Join(record, "\n")
+	before, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := newAuthorScreen(g, "roster", nil)
+	header := s.entityTableHeaders(g)[1]
+	g.in = input{click: true, mouse: header.Min.Add(image.Pt(8, 8))}
+	for _, want := range [][]string{{"weaver", "smith", "potter", "helper"}, {"potter", "weaver", "smith", "helper"}, order[:4]} {
+		s.updateEntityTable(g)
+		if got := s.tableResidents(g); !slices.Equal(got, want) {
+			t.Fatalf("sort got %v want %v", got, want)
+		}
+		s.refresh(g)
+		ids, _, _ := s.entityTableLayout(g)
+		if !slices.Equal(ids, want) {
+			t.Fatal("layout ignores ordering", ids)
+		}
+	}
+	// A column cannot sort by a hidden attribute even if it has the same key.
+	g.in.mouse = s.entityTableHeaders(g)[2].Min.Add(image.Pt(8, 8))
+	s.updateEntityTable(g)
+	if got := s.tableResidents(g); !slices.Equal(got, order[:4]) {
+		t.Fatal("hidden data influenced order", got)
+	}
+	s.residentSort = 0
+	_, cells, _ := s.entityTableLayout(g)
+	g.in.mouse = cells[0].Min.Add(image.Pt(8, 8))
+	s.updateEntityTable(g)
+	_, _, detail := s.entityTableLayout(g)
+	var notes, tasks []string
+	_, _, pages := s.entityDetailPage(g, float64(detail.Dx()), float64(detail.Dy()))
+	g.in.mouse = entityDetailButtons(detail)[1].Min.Add(image.Pt(8, 8))
+	for range pages {
+		a, b, _ := s.entityDetailPage(g, float64(detail.Dx()), float64(detail.Dy()))
+		tasks = append(tasks, a...)
+		notes = append(notes, b...)
+		s.updateEntityTable(g)
+	}
+	if !slices.Equal(notes, record) || len(tasks) != 13 || !strings.Contains(tasks[12], "task12") {
+		t.Fatalf("content truncated: %v %v", tasks, notes)
+	}
+	if s.residentPage != pages-1 || s.residentTop != 0 || s.target != "potter" {
+		t.Fatal("paging moved selection or overflowed")
+	}
+	s.refresh(g)
+	if s.residentPage != pages-1 {
+		t.Fatal("refresh lost record page")
+	}
+	g.in = input{wheel: 1, mouse: detail.Min.Add(image.Pt(8, 8))}
+	for range 30 {
+		s.updateEntityTable(g)
+	}
+	if s.residentPage != 0 || s.residentTop != 0 {
+		t.Fatal("detail wheel scrolled table or underflowed")
+	}
+	_, rows, _ := s.entityTableLayout(g)
+	g.in = input{click: true, mouse: rows[1].Min.Add(image.Pt(8, 8))}
+	s.updateEntityTable(g)
+	if s.target != "weaver" || s.residentPage != 0 {
+		t.Fatal("new resident kept old page")
+	}
+	after, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("browsing changed saved state")
 	}
 }
 

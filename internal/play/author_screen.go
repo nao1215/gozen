@@ -17,31 +17,34 @@ import (
 
 // authorScreen presents an authored list without requiring a custom Go screen.
 type authorScreen struct {
-	timelineContext  *authorScreen
-	timelineActivity string
-	candidatePage    int
-	calendarMonth    string
-	residentTop      int
-	timelineTop      int
-	timelineFocus    int
-	timelineAssignee string
-	timelineExpanded string
-	timelineZoom     bool
-	target           string
-	focus            int
-	popup            *list
-	popupIndices     []int
-	popupArmed       bool
-	name             string
-	title            string
-	indices          []int
-	running          bool
-	parent           *event.Runner
-	request          event.Request
-	origin           string
-	entries          []data.ScreenEntry
-	list             *list
-	done             func()
+	timelineContext    *authorScreen
+	timelineActivity   string
+	candidatePage      int
+	calendarMonth      string
+	residentTop        int
+	residentSort       int
+	residentDescending bool
+	residentPage       int
+	timelineTop        int
+	timelineFocus      int
+	timelineAssignee   string
+	timelineExpanded   string
+	timelineZoom       bool
+	target             string
+	focus              int
+	popup              *list
+	popupIndices       []int
+	popupArmed         bool
+	name               string
+	title              string
+	indices            []int
+	running            bool
+	parent             *event.Runner
+	request            event.Request
+	origin             string
+	entries            []data.ScreenEntry
+	list               *list
+	done               func()
 }
 
 func newAuthorScreen(g *Game, name string, done func()) *authorScreen {
@@ -226,6 +229,7 @@ func (s *authorScreen) refreshed(g *Game) *authorScreen {
 	n.focus = s.focus
 	n.calendarMonth = s.calendarMonth
 	n.residentTop = s.residentTop
+	n.residentSort, n.residentDescending, n.residentPage = s.residentSort, s.residentDescending, s.residentPage
 	n.timelineTop = s.timelineTop
 	n.timelineFocus = s.timelineFocus
 	n.timelineAssignee = s.timelineAssignee

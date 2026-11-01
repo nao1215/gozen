@@ -100,3 +100,17 @@ date under the pointer in either mode. Candidate browsing and screen refresh
 retain the zoom; reopening the timeline starts with the full calendar. This
 does not change time, assignments, observations or saves. Z retains its existing
 confirm binding.
+
+Fullscreen `entities` tables support sorting by clicking the name or a field's
+column heading: descending, ascending, then authored order. The active heading
+shows `v` or `^`. Equal values keep authored order and missing values stay last.
+Only displayed public values participate. Author quantities as numeric
+observations and put units in the heading; strings sort as text. Sorting resets
+the row selection and scroll, and does not change residents, time or saved state.
+
+An expanded entity row pages both its unfinished assignments and its `view.detail`
+text without reducing font size. Use the bottom arrow buttons, or the wheel
+inside the detail, to read every page; the wheel outside continues to scroll
+rows. Opening a different person starts at page one. Refresh retains the sort
+and current page, while reopening the screen starts in authored order. Left and
+right keys retain their screen-tab behavior. These controls need no new fields.

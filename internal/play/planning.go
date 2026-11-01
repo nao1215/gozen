@@ -1,6 +1,7 @@
 package play
 
 import (
+	"cmp"
 	"fmt"
 	"image"
 	"image/color"
@@ -410,8 +411,27 @@ func (s *authorScreen) drawEntityDetail(g *Game, dst *ebiten.Image, x, y, w, h f
 	textWidth := w - 44
 	inline := v.Fullscreen && g.db.Game.Screens[s.name].Kind == "entities"
 	if inline {
-		textWidth = w*.30 - 32
-		g.drawPlanningText(dst, fmt.Sprint(g.st.EntityValues(s.target, false)[v.Detail]), x+w*.30, y+12, w*.70-24, 16, max(1, int((h-24)/gfx.LineHeight(16))), g.th.text)
+		tasks, notes, pages := s.entityDetailPage(g, w, h)
+		g.drawPlanningText(dst, p.Entities[s.target].Name, x+16, y+8, w*.30-32, 18, 1, g.th.accent)
+		for i, line := range tasks {
+			g.text(dst, line, x+16, y+36+float64(i)*gfx.LineHeight(16), 16, g.th.text)
+		}
+		for i, line := range notes {
+			g.text(dst, line, x+w*.30, y+12+float64(i)*gfx.LineHeight(16), 16, g.th.text)
+		}
+		if pages > 1 {
+			r := image.Rect(int(x), int(y), int(x+w), int(y+h))
+			for i, button := range entityDetailButtons(r) {
+				g.window(dst, float64(button.Min.X), float64(button.Min.Y), float64(button.Dx()), float64(button.Dy()))
+				label := "<"
+				if i == 1 {
+					label = ">"
+				}
+				g.text(dst, label, float64(button.Min.X)+16, float64(button.Min.Y)+4, 15, g.th.accent)
+			}
+			g.text(dst, fmt.Sprintf("%d / %d", s.residentPage+1, pages), x+w/2-30, y+h-28, 15, g.th.dim)
+		}
+		return
 	}
 	g.drawPlanningText(dst, p.Entities[s.target].Name, x+16, y+12, textWidth, 18, 1, g.th.accent)
 	yy := y + 40
@@ -426,9 +446,6 @@ func (s *authorScreen) drawEntityDetail(g *Game, dst *ebiten.Image, x, y, w, h f
 		d := p.Activities[id]
 		g.drawPlanningText(dst, fmt.Sprintf("%s  %.0f%%", d.Name, 100*a.Observed/g.st.ActivityEffort(id)), x+16, yy, textWidth, 16, 1, g.th.text)
 		yy += 24
-	}
-	if inline {
-		return
 	}
 	g.drawPlanningText(dst, fmt.Sprint(g.st.EntityValues(s.target, false)[v.Detail]), x+16, yy+16, w-44, 16, max(1, int((y+h-yy-24)/24)), g.th.text)
 }
@@ -1113,11 +1130,102 @@ func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
 	return false
 }
 
+// tableResidents sorts only displayed observations. Equal values retain the
+// authored order, missing values stay last, and zero restores the authored order.
+func (s *authorScreen) tableResidents(g *Game) []string {
+	v := g.db.Game.Screens[s.name].View
+	ids := g.visibleResidents(v)
+	if s.residentSort == 0 || s.residentSort > len(v.Fields)+1 {
+		return ids
+	}
+	values := make(map[string]any, len(ids))
+	for _, id := range ids {
+		if s.residentSort == 1 {
+			values[id] = g.db.Game.Planning.Entities[id].Name
+		} else {
+			values[id] = g.st.EntityValues(id, false)[v.Fields[s.residentSort-2].Key]
+		}
+	}
+	slices.SortStableFunc(ids, func(a, b string) int {
+		av, bv := values[a], values[b]
+		if av == nil && bv == nil {
+			return 0
+		}
+		if av == nil {
+			return 1
+		}
+		if bv == nil {
+			return -1
+		}
+		n, nok := expr.ToNumber(av)
+		m, mok := expr.ToNumber(bv)
+		order := strings.Compare(fmt.Sprint(av), fmt.Sprint(bv))
+		if nok && mok {
+			order = cmp.Compare(n, m)
+		} else if nok != mok {
+			// A mixed-type observation must still define a transitive order.
+			order = 1
+			if nok {
+				order = -1
+			}
+		}
+		if s.residentDescending {
+			return -order
+		}
+		return order
+	})
+	return ids
+}
+
+func (s *authorScreen) entityTableHeaders(g *Game) []image.Rectangle {
+	sw, _ := g.screen()
+	fields := g.db.Game.Screens[s.name].View.Fields
+	headers := []image.Rectangle{image.Rect(16, 54, 202, 88)}
+	width := (sw - 230) / float64(max(1, len(fields)))
+	for i := range fields {
+		headers = append(headers, image.Rect(int(210+float64(i)*width), 54, int(210+float64(i+1)*width), 88))
+	}
+	return headers
+}
+
+// Both detail columns page together, so neither records nor assignments vanish
+// below a fixed-height row. These are public reports, not live hidden progress.
+func (s *authorScreen) entityDetailPage(g *Game, w, h float64) ([]string, []string, int) {
+	v := g.db.Game.Screens[s.name].View
+	var tasks []string
+	for _, id := range slices.Sorted(maps.Keys(g.st.Planning.Activities)) {
+		a := g.st.Planning.Activities[id]
+		if a.Cancelled || a.Assignee != s.target || a.Completed != "" {
+			continue
+		}
+		text := fmt.Sprintf("%s  %.0f%%", g.db.Game.Planning.Activities[id].Name, 100*a.Observed/g.st.ActivityEffort(id))
+		tasks = append(tasks, gfx.Wrap(text, 16, w*.30-32)...)
+	}
+	value := g.st.EntityValues(s.target, false)[v.Detail]
+	text := ""
+	if value != nil {
+		text = fmt.Sprint(value)
+	}
+	notes := gfx.Wrap(text, 16, w*.70-24)
+	count := max(1, int((h-68)/gfx.LineHeight(16)))
+	pages := max(1, (max(len(tasks), len(notes))+count-1)/count)
+	s.residentPage = max(0, min(s.residentPage, pages-1))
+	start := s.residentPage * count
+	return tasks[min(start, len(tasks)):min(start+count, len(tasks))], notes[min(start, len(notes)):min(start+count, len(notes))], pages
+}
+
+func entityDetailButtons(r image.Rectangle) [2]image.Rectangle {
+	return [2]image.Rectangle{
+		image.Rect(r.Min.X+16, r.Max.Y-32, r.Min.X+64, r.Max.Y),
+		image.Rect(r.Max.X-64, r.Max.Y-32, r.Max.X-16, r.Max.Y),
+	}
+}
+
 // entityTableLayout is shared by drawing and hit testing. Expanded details take
 // their own space below a row; scrolling never shrinks the text or column widths.
 func (s *authorScreen) entityTableLayout(g *Game) ([]string, []image.Rectangle, image.Rectangle) {
 	v := g.db.Game.Screens[s.name].View
-	all := g.visibleResidents(v)
+	all := s.tableResidents(g)
 	sw, sh := g.screen()
 	s.residentTop = min(s.residentTop, max(0, len(all)-1))
 	var ids []string
@@ -1141,7 +1249,45 @@ func (s *authorScreen) entityTableLayout(g *Game) ([]string, []image.Rectangle, 
 
 func (s *authorScreen) updateEntityTable(g *Game) {
 	v := g.db.Game.Screens[s.name].View
-	all := g.visibleResidents(v)
+	all := s.tableResidents(g)
+	if g.in.click {
+		for i, r := range s.entityTableHeaders(g) {
+			if !g.in.mouse.In(r) {
+				continue
+			}
+			if s.residentSort != i+1 {
+				s.residentSort, s.residentDescending = i+1, true
+			} else if s.residentDescending {
+				s.residentDescending = false
+			} else {
+				s.residentSort = 0
+			}
+			s.residentTop, s.focus = 0, 0
+			s.target, s.residentPage = "", 0
+			return
+		}
+	}
+	_, _, detail := s.entityTableLayout(g)
+	if !detail.Empty() && g.in.mouse.In(detail) {
+		_, _, pages := s.entityDetailPage(g, float64(detail.Dx()), float64(detail.Dy()))
+		delta := 0
+		if g.in.wheel < 0 {
+			delta = 1
+		} else if g.in.wheel > 0 {
+			delta = -1
+		}
+		if g.in.click && pages > 1 {
+			for i, r := range entityDetailButtons(detail) {
+				if g.in.mouse.In(r) {
+					delta = 2*i - 1
+				}
+			}
+		}
+		if delta != 0 {
+			s.residentPage = max(0, min(s.residentPage+delta, pages-1))
+			return
+		}
+	}
 	var actions []int
 	for i, e := range s.entries {
 		if e.Target == "" && len(e.Bounds) == 4 {
@@ -1203,6 +1349,7 @@ func (s *authorScreen) updateEntityTable(g *Game) {
 		}
 	}
 	if chosen != "" && v.Detail != "" {
+		s.residentPage = 0
 		if s.target == chosen {
 			s.target = ""
 		} else {
@@ -1221,11 +1368,23 @@ func (s *authorScreen) drawEntityTable(g *Game, dst *ebiten.Image) {
 	sw, _ := g.screen()
 	ids, cells, detail := s.entityTableLayout(g)
 	start, width := 210.0, (sw-230)/float64(max(1, len(v.Fields)))
-	g.drawPlanningText(dst, s.title, 20, 60, 180, 18, 1, g.th.accent)
-	for j, f := range v.Fields {
-		g.drawPlanningText(dst, f.Label, start+float64(j)*width, 62, width-8, 15, 1, g.th.dim)
+	for i, r := range s.entityTableHeaders(g) {
+		label := s.title
+		if i > 0 {
+			label = v.Fields[i-1].Label
+		}
+		tint := g.th.dim
+		if s.residentSort == i+1 {
+			tint = g.th.accent
+			marker := "^"
+			if s.residentDescending {
+				marker = "v"
+			}
+			g.text(dst, marker, float64(r.Max.X)-16, 62, 15, tint)
+		}
+		g.drawPlanningText(dst, label, float64(r.Min.X)+4, 62, float64(r.Dx())-24, 15, 1, tint)
 	}
-	all := g.visibleResidents(v)
+	all := s.tableResidents(g)
 	for i, id := range ids {
 		r := cells[i]
 		y := float64(r.Min.Y)
