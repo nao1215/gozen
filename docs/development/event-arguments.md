@@ -316,3 +316,27 @@ cannot change its inputs before the original comparison. A title stored in a
 variable should already be plain text; embedding another template does not
 request a second interpolation. Keep period-specific bookkeeping outside a
 shared scan if the scan depends on the current ledger and participant order.
+
+## Reading calendar ranges
+
+`calendar_days(first, last)` returns the signed number of days from `first` to
+`last`; equal dates give zero. `calendar_workdays(first, last)` counts both
+endpoints, excluding `planning.calendar.weekdays_off` and `closed`. A reversed
+range gives zero working days. A date closed by both settings is counted once.
+Both functions require a planning calendar and two ISO date strings in years
+0001 through 9999. Invalid dates, non-string values and wrong argument counts
+fail at execution. Dates may be outside the playable range; its closure rules
+still apply. Neither function advances time, draws randomness or writes state.
+
+The [calendar example](../examples/event-arguments/data/story.yaml) passes typed
+date arguments to one shared report. A farming or workshop game can use
+`calendar_workdays(start, today) / max(1, calendar_workdays(start, finish))`
+as a planned fraction instead of writing one expression per day. Authors decide
+whether to cap this fraction and whether the start day contributes. This is an
+explicit working-day model; it does not change timeline rendering or activity
+progress automatically.
+
+Long pure calculations can similarly pass intermediate results as numeric event
+arguments, then call another event with the next result. This avoids adding
+scratch variables to saves. Evaluate a result before mutation only when that
+snapshot is intended; later calls otherwise see the current state.

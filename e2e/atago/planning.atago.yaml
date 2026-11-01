@@ -795,3 +795,22 @@ scenarios:
       file:
         path: priority.jsonl
         contains: ['First among equals: Water', 'Higher priority: Repair (30)', '"top_title":"Repair"']
+- name: calendar expressions count inclusive workdays and signed date differences
+  steps:
+  - fixture:
+      file: calendar.txt
+      content: |
+        gap 1
+        wait 10
+        do call: calendar_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script calendar.txt --trace calendar.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: calendar.jsonl
+        contains: ['Days 6; workdays 5', 'Days -6; workdays 0']

@@ -25,7 +25,7 @@ import (
 // The names an expression may use, by where it is written.
 var (
 	// FieldNames are known to the conditions of events, locations and the field music.
-	FieldNames = append([]string{"planning", "entity", "activity", "period_value", "last_battle", "flag", "var", "gold", "party", "reserve", "monster", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose", "bestiary"}, CampaignNames...)
+	FieldNames = append([]string{"planning", "entity", "activity", "period_value", "calendar_days", "calendar_workdays", "last_battle", "flag", "var", "gold", "party", "reserve", "monster", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose", "bestiary"}, CampaignNames...)
 	// BattleNames are known in battle: the AI, the troop events, the battle music.
 	BattleNames = append(slices.Clone(FieldNames), "turn", "self", "allies", "foes", "enemies", "result", "phase", "boss")
 	// EffectNames are known to the formulas of skills and items: a is the user, b the target.
@@ -1994,7 +1994,7 @@ func typeOf(n string, names []string) *vtype {
 		return tBool
 	case "roamers":
 		return &vtype{kind: vList, desc: "roamers", elem: objType("a roamer", map[string]*vtype{"kind": tNum, "name": tStr, "troop": tStr, "x": tNum, "y": tNum}, nil)}
-	case "rand", "chance", "pages", "next_to", "period_value":
+	case "rand", "chance", "pages", "next_to", "period_value", "calendar_days", "calendar_workdays":
 		return tFunc
 	case "region":
 		return &vtype{kind: vDyn, desc: "region", elem: tRegion, key: "region"}

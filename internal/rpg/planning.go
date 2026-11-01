@@ -136,6 +136,8 @@ func (s *State) planningLookup(name string) (any, bool) {
 	}
 	out := expr.Map{}
 	switch name {
+	case "calendar_days", "calendar_workdays":
+		return expr.Func(func(args []any) (any, error) { return s.calendarCount(name, args) }), true
 	case "period_value":
 		return expr.Func(s.periodValue), true
 	case "planning":
@@ -154,6 +156,60 @@ func (s *State) planningLookup(name string) (any, bool) {
 		}
 	}
 	return out, true
+}
+
+// calendarCount reads the configured closure rules without advancing state.
+// Whole weeks plus at most six days avoid scanning long authored ranges.
+func (s *State) calendarCount(name string, args []any) (any, error) {
+	if len(args) != 2 {
+		return nil, fmt.Errorf("%s needs two ISO dates", name)
+	}
+	var dates [2]time.Time
+	for i, value := range args {
+		text, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("%s date %d must be a string", name, i+1)
+		}
+		date, err := time.Parse(time.DateOnly, text)
+		if err != nil || date.Year() < 1 || date.Format(time.DateOnly) != text {
+			return nil, fmt.Errorf("%s date %d must be YYYY-MM-DD in years 0001 through 9999", name, i+1)
+		}
+		dates[i] = date
+	}
+	// Sub uses a duration and saturates beyond about 290 years.
+	days := (dates[1].Unix() - dates[0].Unix()) / 86400
+	if name == "calendar_days" {
+		return float64(days), nil
+	}
+	if days < 0 {
+		return float64(0), nil
+	}
+	days++ // Both endpoints are included in working-day counts.
+	calendar := s.DB.Game.Planning.Calendar
+	count := int64(0)
+	for weekday := range 7 {
+		if !slices.Contains(calendar.WeekdaysOff, weekday) {
+			count += days / 7
+		}
+	}
+	for offset := range int(days % 7) {
+		weekday := (int(dates[0].Weekday()) + offset) % 7
+		if !slices.Contains(calendar.WeekdaysOff, weekday) {
+			count++
+		}
+	}
+	seen := make(map[string]bool, len(calendar.Closed))
+	for _, closed := range calendar.Closed {
+		if seen[closed] {
+			continue
+		}
+		seen[closed] = true
+		date, err := time.Parse(time.DateOnly, closed)
+		if err == nil && !date.Before(dates[0]) && !date.After(dates[1]) && !slices.Contains(calendar.WeekdaysOff, int(date.Weekday())) {
+			count--
+		}
+	}
+	return float64(count), nil
 }
 
 // PlanningClosedDay is shared by phase advancement and calendar presentation.

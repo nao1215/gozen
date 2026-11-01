@@ -122,3 +122,11 @@ events:
     - if: arg.score > var.top_score
       then:
       - set: {var.top_score: arg.score, var.top_title: arg.title}
+  calendar_demo:
+    do:
+    - call: {event: calendar_report, args: {first: '"2030-01-01"', last: '"2030-01-07"'}}
+    - call: {event: calendar_report, args: {first: '"2030-01-07"', last: '"2030-01-01"'}}
+  calendar_report:
+    params: {first: date, last: date}
+    do:
+    - say: 'Days {calendar_days(arg.first, arg.last)}; workdays {calendar_workdays(arg.first, arg.last)}'
