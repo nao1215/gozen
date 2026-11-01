@@ -261,3 +261,24 @@ func TestLiteralSayOmitsSelectedSourceFromReplayDefinition(t *testing.T) {
 		t.Fatalf("literal replay definition gained a field: %s", encoded)
 	}
 }
+
+func TestChoiceSourceDiagnostics(t *testing.T) {
+	for _, tc := range []struct{ field, want string }{
+		{`label_expr: '"Ready"'`, ""},
+		{`label_expr: '42'`, "expected string"},
+		{`label_expr: 'rand()'`, "pure"},
+		{`label: Ready, label_expr: '"Ready"'`, "not both"},
+	} {
+		_, err := data.Load(fstest.MapFS{
+			"game.yaml":       {Data: []byte("schema_version: 10\nid: sources\nstart: {location: room}\n")},
+			"data/world.yaml": {Data: []byte("locations: {room: {name: Room}}\nevents: {main: {do: [{choice: [{" + tc.field + "}]}]}}\n")},
+		})
+		if tc.want == "" && err != nil || tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+			t.Fatalf("%s: %v", tc.field, err)
+		}
+	}
+	encoded, err := json.Marshal(data.ChoiceOption{Label: "Ready"})
+	if err != nil || strings.Contains(string(encoded), "LabelExpr") {
+		t.Fatalf("literal definition changed: %s, %v", encoded, err)
+	}
+}

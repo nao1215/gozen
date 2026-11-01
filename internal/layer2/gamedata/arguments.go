@@ -84,10 +84,11 @@ type EventCall struct {
 	mapped bool
 }
 
-// CallEach selects IDs for repeated calls. Items preserves explicit order; In
-// reads a pure collection of IDs or records with an id field. Exactly one is
-// required. Param names the callee parameter supplied by each selected ID.
-// The event runner freezes membership, but evaluates other arguments per call.
+// CallEach selects IDs for repeated calls and screen rows. Items preserves
+// explicit order; In reads a pure collection of IDs or records with an id field.
+// Exactly one is required. Param names the binding supplied by each selected ID.
+// Calls validate the callee parameter type; screen rows bind a string. The event
+// runner freezes membership but evaluates other call arguments per invocation.
 type CallEach struct {
 	Param string   `yaml:"param"`
 	In    Expr     `yaml:"in"`
@@ -115,6 +116,31 @@ func (db *DB) ExpandCall(call EventCall, env expr.Env) ([]Command, error) {
 			return nil, fmt.Errorf("unknown argument %q", name)
 		}
 	}
+	ids, err := each.IDs(env)
+	if err != nil {
+		return nil, err
+	}
+	commands := make([]Command, 0, len(ids))
+	for _, id := range ids {
+		if _, err := db.argumentValue(kind, id); err != nil {
+			return nil, err
+		}
+		args := maps.Clone(call.Args)
+		if args == nil {
+			args = map[string]Expr{}
+		}
+		// The expression lexer only escapes the next byte; Go string escapes
+		// would change control characters into letters. Preserve their bytes.
+		args[each.Param] = MustExpr(`"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(id) + `"`)
+		commands = append(commands, Command{Call: EventCall{Event: call.Event, Args: args}})
+	}
+	return commands, nil
+}
+
+// IDs evaluates a bounded, pure selection for event calls and screen rows.
+// Explicit order and duplicates are retained; records contribute their id field.
+// Failure returns no partial selection and consumes no random draws.
+func (each *CallEach) IDs(env expr.Env) ([]string, error) {
 	if each.In.Set() == (each.Items != nil) {
 		return nil, errors.New("each requires exactly one of in or items")
 	}
@@ -152,21 +178,7 @@ func (db *DB) ExpandCall(call EventCall, env expr.Env) ([]Command, error) {
 	if len(ids) > 4096 {
 		return nil, errors.New("each exceeds 4096 items")
 	}
-	commands := make([]Command, 0, len(ids))
-	for _, id := range ids {
-		if _, err := db.argumentValue(kind, id); err != nil {
-			return nil, err
-		}
-		args := maps.Clone(call.Args)
-		if args == nil {
-			args = map[string]Expr{}
-		}
-		// The expression lexer only escapes the next byte; Go string escapes
-		// would change control characters into letters. Preserve their bytes.
-		args[each.Param] = MustExpr(`"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(id) + `"`)
-		commands = append(commands, Command{Call: EventCall{Event: call.Event, Args: args}})
-	}
-	return commands, nil
+	return slices.Clone(ids), nil
 }
 
 func (v *EventCall) UnmarshalYAML(unmarshal func(any) error) error {
@@ -454,7 +466,7 @@ func (db *DB) ValidateArguments(event string, values map[string]any) (expr.Map, 
 		index, err := strconv.Atoi(parts[2])
 		screen := db.Game.Screens[parts[1]]
 		if err == nil && strconv.Itoa(index) == parts[2] && screen != nil && index >= 0 && index < len(screen.Entries) {
-			return db.validateArguments(screen.Params, values)
+			return db.validateArguments(screen.entryParams(index), values)
 		}
 	}
 	return nil, fmt.Errorf("unknown bound root %q", event)
@@ -480,4 +492,17 @@ func (db *DB) validateArguments(params map[string]string, values map[string]any)
 		out[name] = value
 	}
 	return out, nil
+}
+
+// entryParams supplies the frozen binding contract for named screen actions.
+// Each adds a string ID scoped to this entry without changing screen arguments.
+func (s *AuthorScreen) entryParams(index int) map[string]string {
+	params := maps.Clone(s.Params)
+	if each := s.Entries[index].Each; each != nil {
+		if params == nil {
+			params = map[string]string{}
+		}
+		params[each.Param] = "string"
+	}
+	return params
 }

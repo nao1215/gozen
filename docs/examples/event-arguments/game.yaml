@@ -92,6 +92,8 @@ screens:
       do: [{call: evidence_demo}]
     - label: Inspect the available residents
       do: [{call: each_demo}]
+    - label: Encourage available residents
+      do: [{call: roster_demo}]
     - label: Compare priorities
       do: [{call: priority_demo}]
     kind: timeline
@@ -118,3 +120,19 @@ screens:
       do:
       - plan: {op: set, entity: {expr: arg.resident}, attribute: vigor, value: 'self.vigor + 1'}
       - say: 'Encouraged {arg.resident}'
+  roster:
+    params: {amount: number}
+    title: 'Workshop roster {arg.amount}'
+    view: {portrait: portrait}
+    entries:
+    - each: {param: resident, in: 'filter(entities, it.vigor < 2)'}
+      target: {expr: arg.resident}
+      label: 'Encourage {entity[arg.resident].name}'
+      text: 'Give {arg.resident} {arg.amount} encouragement.'
+      do:
+      - choice:
+        - label_expr: '"Confirm " + arg.resident'
+          do:
+          - plan: {op: set, entity: {expr: arg.resident}, attribute: vigor, value: 'self.vigor + arg.amount'}
+        - label: Cancel
+      - say: 'Reviewed {arg.resident}'

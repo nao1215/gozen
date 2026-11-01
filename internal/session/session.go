@@ -95,6 +95,7 @@ type screenFrame struct {
 	runner       *event.Runner
 	at           cursor
 	indices      []int
+	rows         []event.ScreenRow
 }
 
 // New starts a session at the game's start (game.yaml start), running nothing yet;
@@ -828,8 +829,10 @@ func (s *Session) screenRequest() Request {
 	def := s.db.Game.Screens[frame.name]
 	q := Request{Kind: "open", ID: frame.name, Text: gamedata.Render(s.db.Tr(def.Title), env)}
 	frame.indices = nil
+	frame.rows = nil
 	for index, entry := range event.ScreenEntries(s.db, frame.name, env, s.runner.Log) {
 		frame.indices = append(frame.indices, index)
+		frame.rows = append(frame.rows, entry)
 		q.Options = append(q.Options, entry.Label)
 	}
 	return q
@@ -847,7 +850,7 @@ func (s *Session) answerScreen(n int) {
 		return
 	}
 	entry := s.db.Game.Screens[frame.name].Entries[frame.indices[n]]
-	visible, err := entry.When.Bool(expr.Chain{expr.Map{"arg": expr.Map(frame.args)}, s.st.Env()})
+	visible, err := frame.rows[n].Visible(s.db, entry, expr.Chain{expr.Map{"arg": expr.Map(frame.args)}, s.st.Env()})
 	if err != nil {
 		s.runner.Log(err)
 	}
@@ -861,7 +864,7 @@ func (s *Session) answerScreen(n int) {
 	}
 	s.pending = nil
 	s.start()
-	if err := s.runner.StartBound(fmt.Sprintf("screen:%s:%d", frame.name, frame.indices[n]), frame.args); err != nil {
+	if err := s.runner.StartBound(fmt.Sprintf("screen:%s:%d", frame.name, frame.indices[n]), frame.rows[n].Args); err != nil {
 		s.runner.Log(err)
 	}
 }
@@ -892,7 +895,7 @@ func (s *Session) resumeScreens(inputs []rpg.ReplayInput) error {
 	s.runner = replay.Runner
 	s.screens = nil
 	for _, frame := range replay.Frames {
-		s.screens = append(s.screens, screenFrame{args: frame.Args, name: frame.Name, origin: frame.Origin, runner: frame.Runner, indices: frame.Indices, at: cursor{noBack: true}})
+		s.screens = append(s.screens, screenFrame{args: frame.Args, name: frame.Name, origin: frame.Origin, runner: frame.Runner, indices: frame.Indices, rows: frame.Rows, at: cursor{noBack: true}})
 	}
 	s.at.noBack = true
 	s.inputs = slices.Clone(inputs)

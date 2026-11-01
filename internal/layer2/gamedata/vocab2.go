@@ -116,6 +116,28 @@ func (c *checker) declarations() {
 		c.text(w+".title", screen.Title, FieldNames)
 		for i, e := range screen.Entries {
 			ew := fmt.Sprintf("%s.entries[%d]", w, i)
+			c.params = screen.Params
+			if each := e.Each; each != nil {
+				c.needsVersion(ew+".each", "repeated screen entries", SchemaVersion10)
+				if !varName.MatchString(each.Param) || screen.Params[each.Param] != "" {
+					c.errorf(diag.Shape, ew+".each.param", "use a new parameter name without shadowing screen arguments")
+				}
+				if each.In.Set() == (each.Items != nil) {
+					c.errorf(diag.Shape, ew+".each", "provide exactly one of in or items")
+				}
+				if len(each.Items) > 4096 {
+					c.errorf(diag.Shape, ew+".each.items", "exceeds 4096 items")
+				}
+				if each.In.Set() {
+					c.expr(ew+".each.in", each.In, FieldNames)
+					c.planningPure(ew+".each.in", each.In)
+					if c.resultType(each.In, FieldNames) != expr.UnknownType {
+						c.errorf(diag.Expression, ew+".each.in", "must return a list")
+					}
+				}
+				c.params = screen.entryParams(i)
+			}
+
 			if len(e.Bounds) != 0 && (len(e.Bounds) != 4 || e.Bounds[0] < 0 || e.Bounds[1] < 0 || e.Bounds[2] <= 0 || e.Bounds[3] <= 0) {
 				c.errorf(diag.Shape, ew+".bounds", "want nonnegative x/y and positive width/height")
 			}

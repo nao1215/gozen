@@ -884,3 +884,27 @@ func TestAuthorScreenDepthBoundary(t *testing.T) {
 		t.Fatalf("unwinding lost or repeated a caller: depth=%d vars=%v", len(g.stack), g.st.Vars)
 	}
 }
+
+func TestRepeatedCandidateRefreshKeepsIdentity(t *testing.T) {
+	db := testgame.Load(t, nil)
+	if err := LoadFonts(db, gameFiles(t)); err != nil {
+		t.Fatal(err)
+	}
+	db.Game.Planning = &data.Planning{}
+	db.Game.Screens = map[string]*data.AuthorScreen{"pick": {View: data.PlanningView{Portrait: "icon"}, Entries: []data.ScreenEntry{
+		{Each: &data.CallEach{Param: "resident", Items: []string{"potter", "weaver"}}, Label: "{arg.resident}", Text: strings.Repeat("Details\n", 20), When: data.MustExpr(`!flag.hide || arg.resident != "weaver"`)},
+	}}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "pick", nil, nil)
+	s.timelineContext = &authorScreen{}
+	s.list.sel, s.candidatePage = 1, 2
+	s = s.refreshed(g)
+	if s.list.sel != 1 || s.candidatePage != 2 {
+		t.Fatal("selected identity lost")
+	}
+	g.st.Flags["hide"] = true
+	s = s.refreshed(g)
+	if len(s.entries) != 1 || s.rows[0].Args["resident"] != "potter" || s.candidatePage != 0 {
+		t.Fatal("removed resident retained detail page")
+	}
+}

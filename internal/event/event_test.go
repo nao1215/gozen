@@ -3,6 +3,7 @@ package event_test
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -1093,5 +1094,77 @@ func TestInvalidSelectedSourceDoesNotConsumeRandomness(t *testing.T) {
 		if a != b {
 			t.Fatalf("source consumed randomness: %v != %v", a, b)
 		}
+	}
+}
+
+func TestRepeatedScreenRowsRecheckMembership(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Screens = map[string]*data.AuthorScreen{"roster": {Title: "Roster", Entries: []data.ScreenEntry{
+		{Each: &data.CallEach{Param: "resident", In: data.MustExpr("residents")}, Label: "Visit {arg.resident}"},
+	}}}
+	env := expr.Map{"residents": []string{"weaver", "potter"}, "arg": expr.Map{"amount": float64(2)}}
+	var rows []event.ScreenRow
+	for index, row := range event.ScreenEntries(db, "roster", env, func(err error) { t.Error(err) }) {
+		if index != 0 {
+			t.Fatal(index)
+		}
+		rows = append(rows, row)
+	}
+	if len(rows) != 2 || rows[0].Label != "Visit weaver" || rows[1].Label != "Visit potter" {
+		t.Fatal(rows)
+	}
+	env["residents"] = []string{"potter"}
+	source := db.Game.Screens["roster"].Entries[0]
+	if visible, err := rows[0].Visible(db, source, env); err != nil || visible {
+		t.Fatal(visible, err)
+	}
+	if visible, err := rows[1].Visible(db, source, env); err != nil || !visible {
+		t.Fatal(visible, err)
+	}
+	rows[0].Args["amount"] = float64(7)
+	if rows[1].Args["amount"] != float64(2) || testgame.As[expr.Map](t, env["arg"])["amount"] != float64(2) {
+		t.Fatal("aliased bindings")
+	}
+	env["residents"] = []int{1}
+	problems := 0
+	for range event.ScreenEntries(db, "roster", env, func(error) { problems++ }) {
+		t.Fatal("invalid row shown")
+	}
+	if problems != 1 {
+		t.Fatal(problems)
+	}
+}
+
+func TestSelectedChoiceSourcePreservesReadIdentity(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml": "schema_version: 10\nid: selected-choice\n" + testgame.Game,
+		"data/selected.yaml": `events:
+  literal:
+    do:
+    - choice: [{label: 'Encourage Weaver {gold}'}, {label: Cancel}]
+  selected:
+    params: {name: string}
+    do:
+    - choice:
+      - label_expr: '"Encourage " + arg.name + " {gold}"'
+        do: [{say: 'Selected {arg.name}'}]
+      - label: Cancel
+`,
+	})
+	st := testgame.State(db, 17)
+	r := event.New(db, st, &host{})
+	r.Log = func(err error) { t.Error(err) }
+	r.Start(db.Events["literal"].Do)
+	literal := testgame.As[event.Choice](t, r.Next())
+	if err := r.StartBound("selected", map[string]any{"name": "Weaver"}); err != nil {
+		t.Fatal(err)
+	}
+	selected := testgame.As[event.Choice](t, r.Next())
+	if !reflect.DeepEqual(literal.Options, selected.Options) || !reflect.DeepEqual(literal.Keys, selected.Keys) {
+		t.Fatal(literal, selected)
+	}
+	r.Answer(0)
+	if line := testgame.As[event.Say](t, r.Next()); line.Text != "Selected Weaver" {
+		t.Fatal(line)
 	}
 }

@@ -647,3 +647,49 @@ The workshop's `selected_text_demo` reads each resident's own source through one
 shared event. Its CLI scenario saves during dialogue and resumes in another
 process, checking both selected sources. This mechanism also fits crop varieties,
 training thresholds and shop descriptions without resident-specific branches.
+
+## Repeated screen entries
+
+Schema 10 accepts `each` on a screen entry, using the same bounded ID selection
+as repeated calls. This works on plain lists and contextual planning actions.
+For example, the runnable workshop's `roster` screen has one entry:
+
+```yaml
+- each: {param: resident, in: 'filter(entities, it.vigor < 2)'}
+  target: {expr: arg.resident}
+  label: 'Encourage {entity[arg.resident].name}'
+  do:
+  - plan: {op: set, entity: {expr: arg.resident}, attribute: vigor, value: 'self.vigor + arg.amount'}
+```
+
+The screen declares `amount`; `each` adds a row-local **string** parameter named
+`resident`. It cannot shadow a screen parameter. Receiving entity/actor targets
+and event arguments still validate the ID against their declared namespaces.
+`in` is pure and returns IDs or records with `id`. Alternatively, use
+`items: [weaver, potter]` to choose an explicit order. Exactly one form is required.
+Collection order and duplicates are retained. Empty collections yield no rows;
+invalid selections produce a diagnostic. Each selection and the entire displayed
+screen are bounded to 4,096 candidate rows before filtering by `when`.
+
+Each refresh selects membership from current state. Labels, detail text, targets,
+guards and actions see the same frozen row argument. Confirmation rechecks
+membership, visibility and target validity against current state, without replacing
+the selected ID by a newly computed row offset. Refresh keeps a selected source
+entry and its bindings when still present. Membership is rechecked at activation;
+subsequent choices follow the normal event contract, so authors must guard any
+eligibility that can change while their action waits.
+
+The action retains `screen:<name>:<source entry index>` as its named root and
+saves its bound arguments. Screen replay records visible choices and reconstructs
+the same row binding; a shared command list is never copied into anonymous
+commands. Definition changes are covered by the existing screen fingerprint.
+The workshop `roster_demo` exercises selection, confirmation, refreshed membership
+and cross-process continuation in planning atago.
+
+A choice can use `label_expr` instead of `label` when its **source template**
+varies by row. For example, `label_expr: '"Confirm " + arg.resident'` selects
+`Confirm weaver`. The expression is pure and must return a string. Translation,
+interpolation and the choice read key use the selected source, just as `say` uses
+`text_expr`. Selecting the former literal source preserves its read identity;
+putting a new interpolation placeholder in `label` would create a different
+source key. Literal choices retain their existing fingerprint representation.

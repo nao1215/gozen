@@ -1050,3 +1050,62 @@ scenarios:
       file:
         path: after.jsonl
         contains: ['Potter visits the workshop.', 'Weaver visits the workshop.']
+- name: repeated screen rows keep selected identity across processes
+  steps:
+  - run:
+      command: gozen check "${specdir}/../../docs/examples/event-arguments"
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+  - fixture:
+      file: save-roster.txt
+      content: |
+        gap 4
+        wait 30
+        press z
+        wait 12
+        press down
+        press z
+        wait 12
+        press save
+        press z
+        wait 90
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --event roster_demo --script save-roster.txt --save-dir saves --trace saved.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: saved.jsonl
+        contains: ['Confirm weaver']
+  - assert:
+      file:
+        path: saves/save1.json
+        json: {path: $.cursor.event, equals: roster_demo}
+  - fixture:
+      file: resume-roster.txt
+      content: |
+        gap 4
+        wait 20
+        press z
+        press z
+        wait 12
+        press z
+        wait 12
+        snapshot
+        press z
+        wait 12
+        snapshot
+        press x
+        wait 12
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --script resume-roster.txt --save-dir saves --trace resumed.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: resumed.jsonl
+        contains: ['Reviewed weaver', 'Roster closed.', '"weaver":{"attributes":{"portrait":"","vigor":2}', '"potter":{"attributes":{"portrait":"","vigor":0}']

@@ -88,6 +88,10 @@ func (db *DB) StateUses() map[string]*NameUse {
 			u.text(w+".label", entry.Label)
 			u.text(w+".text", entry.Text)
 			u.expr(w+".when", entry.When)
+			u.expr(w+".target.expr", entry.Target.Expr)
+			if entry.Each != nil {
+				u.expr(w+".each.in", entry.Each.In)
+			}
 			u.commands(w+".do", entry.Do)
 		}
 	}
@@ -210,6 +214,8 @@ func (u *stateUses) commands(where string, cs []Command) {
 		for j, o := range c.Choice {
 			ow := fmt.Sprintf("%s.choice[%d]", w, j)
 			u.expr(ow+".when", o.When)
+			u.text(ow+".label", o.Label)
+			u.expr(ow+".label_expr", o.LabelExpr)
 			u.commands(ow+".do", o.Do)
 		}
 	}

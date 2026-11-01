@@ -257,10 +257,13 @@ func (s *Say) UnmarshalYAML(unmarshal func(any) error) error {
 
 // ChoiceOption is one answer of a choice.
 type ChoiceOption struct {
-	ID    string    `yaml:"id"` // unique identifier within the same question
-	Label string    `yaml:"label"`
-	When  Expr      `yaml:"when"`
-	Do    []Command `yaml:"do"`
+	// LabelExpr selects a source template before translation and choice read-key hashing.
+	// It is exclusive with Label, pure, and must return a string.
+	LabelExpr Expr      `yaml:"label_expr,omitempty" json:",omitzero"`
+	ID        string    `yaml:"id"` // unique identifier within the same question
+	Label     string    `yaml:"label"`
+	When      Expr      `yaml:"when"`
+	Do        []Command `yaml:"do"`
 }
 
 // ItemCount is an item and how many.

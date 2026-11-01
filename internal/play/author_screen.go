@@ -46,6 +46,7 @@ type authorScreen struct {
 	request            event.Request
 	origin             string
 	entries            []data.ScreenEntry
+	rows               []event.ScreenRow
 	list               *list
 	done               func()
 }
@@ -85,9 +86,10 @@ func newAuthorScreen(g *Game, name string, done func(), args map[string]any) *au
 		report = g.events.Log
 	}
 	for index, entry := range event.ScreenEntries(g.db, name, s.env(g), report) {
-		entry.Text = data.Render(g.db.Tr(entry.Text), s.env(g))
+		entry.Text = data.Render(g.db.Tr(entry.Text), entry.Env(s.env(g)))
 		s.indices = append(s.indices, index)
-		s.entries = append(s.entries, entry)
+		s.entries = append(s.entries, entry.ScreenEntry)
+		s.rows = append(s.rows, entry)
 		items = append(items, listItem{label: entry.Label})
 	}
 	sw, sh := g.screen()
@@ -266,15 +268,16 @@ func (s *authorScreen) refreshed(g *Game) *authorScreen {
 	n.timelineExpanded = s.timelineExpanded
 	n.timelineZoom = s.timelineZoom
 	n.list.sel = min(s.list.sel, max(0, len(n.entries)-1))
+	retained := false
 	if s.list.sel < len(s.indices) {
 		for i, index := range n.indices {
-			if index == s.indices[s.list.sel] {
-				n.list.sel = i
+			if index == s.indices[s.list.sel] && maps.Equal(n.rows[i].Args, s.rows[s.list.sel].Args) {
+				n.list.sel, retained = i, true
 				break
 			}
 		}
 	}
-	if n.timelineContext != nil && len(n.indices) > 0 && len(s.indices) > s.list.sel && n.indices[n.list.sel] == s.indices[s.list.sel] {
+	if n.timelineContext != nil && retained {
 		n.candidatePage = s.candidatePage
 		n.candidateTextPage()
 	}
@@ -363,10 +366,8 @@ func (s *authorScreen) activate(g *Game) {
 	}
 	g.recordScreenAnswer(s.list.sel)
 	entry := def.Entries[index]
-	visible, err := entry.When.Bool(s.env(g))
-	if err == nil && visible {
-		_, err = entry.Target.Resolve(g.db, "entity", s.env(g))
-	}
+	row := s.rows[s.list.sel]
+	visible, err := row.Visible(g.db, entry, s.env(g))
 	if err != nil || !visible {
 		g.screenTrace.blocked = true
 		s.refresh(g)
@@ -379,7 +380,7 @@ func (s *authorScreen) activate(g *Game) {
 	// named save cursor. Closing the screen resumes the opener after its open.
 	s.parent, s.request, s.origin, s.running = g.events, g.req, g.st.Location, true
 	g.events, g.req = g.newEventRunner(), nil
-	if err := g.events.StartBound(fmt.Sprintf("screen:%s:%d", s.name, index), s.args); err != nil {
+	if err := g.events.StartBound(fmt.Sprintf("screen:%s:%d", s.name, index), row.Args); err != nil {
 		g.events.Log(err)
 	}
 	g.emit("screen_action", traceLine{"screen": s.name, "entry": index})

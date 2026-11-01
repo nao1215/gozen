@@ -177,6 +177,7 @@ CardBubble:
   state: "A state ID. The particles appear while the actor has this state."
   when: "An expression. The particles appear while it holds."
 ChoiceOption:
+  label_expr: Pure expression selecting a string source template before translation and read-key hashing; exclusive with label.
   _: "One answer of a `choice` command."
   do: "The commands that run when this answer is picked."
   id: "An identifier that is unique within the same question."

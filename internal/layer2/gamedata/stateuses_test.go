@@ -79,3 +79,20 @@ func TestIndexedStateWritesUseTheirOwnTable(t *testing.T) {
 		t.Fatalf("missing index reads: %v", u)
 	}
 }
+
+func TestRepeatedRowsAndSelectedLabelsStateUses(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Screens = map[string]*data.AuthorScreen{"roster": {Entries: []data.ScreenEntry{
+		{
+			Each: &data.CallEach{Param: "resident", In: data.MustExpr(`filter(entities,it.id != var.omit)`)}, Target: data.IDRef{Expr: data.MustExpr("var.target")},
+			Do: []data.Command{{Choice: []data.ChoiceOption{{LabelExpr: data.MustExpr("var.caption")}}}},
+		},
+	}}}
+	uses := db.StateUses()
+	for name, field := range map[string]string{"var.omit": "each.in", "var.target": "target.expr", "var.caption": "do[0].choice[0].label_expr"} {
+		want := "game.yaml.screens.roster.entries[0]." + field
+		if u := uses[name]; u == nil || !slices.Contains(u.Reads, want) {
+			t.Fatalf("%s missing read %s", name, want)
+		}
+	}
+}

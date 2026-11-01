@@ -254,3 +254,39 @@ func TestIndexedVariableTargets(t *testing.T) {
 		}
 	}
 }
+
+func TestRepeatedScreenEntryValidation(t *testing.T) {
+	for _, tc := range []struct {
+		each  string
+		valid bool
+	}{
+		{`{param: resident, items: [potter, weaver]}`, true},
+		{`{param: resident, items: []}`, true},
+		{`{param: resident, in: 'filter(entities, true)'}`, true},
+		{`{param: amount, items: [potter]}`, false},
+		{`{param: 'bad-name', items: [potter]}`, false},
+		{`{param: resident}`, false},
+		{`{param: resident, items: [], in: entities}`, false},
+		{`{param: resident, in: 'rand()'}`, false},
+		{`{param: resident, in: '3'}`, false},
+		{`{param: resident, in: 'arg.resident'}`, false},
+	} {
+		t.Run(tc.each, func(t *testing.T) {
+			_, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: 10\nid: rows\n" + testgame.Game + `planning:
+  calendar: {start: '2030-01-01', end: '2030-01-02', phases: [day]}
+  entities: {potter: {name: Potter}, weaver: {name: Weaver}}
+screens:
+  roster:
+    params: {amount: number}
+    title: Roster
+    entries:
+    - each: ` + tc.each + `
+      label: 'Visit {arg.resident}'
+      do: [{say: 'Visit {arg.resident}: {arg.amount}'}]
+`})
+			if (err == nil) != tc.valid {
+				t.Fatalf("valid=%v: %v", tc.valid, err)
+			}
+		})
+	}
+}

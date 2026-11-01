@@ -1546,6 +1546,13 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 					}
 					ids[o.ID] = true
 				}
+				if o.LabelExpr.Set() {
+					c.needsVersion(ww+".label_expr", "choice source expressions", SchemaVersion10)
+					if o.Label != "" {
+						c.errorf(diag.Shape, ww, "use label or label_expr, not both")
+					}
+					c.argumentExpression(ww+".label_expr", o.LabelExpr, "string", names, nil)
+				}
 				c.text(ww+".label", o.Label, names)
 				c.expr(ww+".when", o.When, names)
 				c.commands(ww+".do", o.Do, names)

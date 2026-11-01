@@ -253,6 +253,11 @@ events:
     params: {resident: entity}
     do:
     - say: {text_expr: 'entity[arg.resident].data.reports[0]'}
+  roster_demo:
+    do:
+    - say: Ready for roster.
+    - open: {screen: roster, args: {amount: '2'}}
+    - say: Roster closed.
   speaker_demo:
     do:
     - call: {event: greet, each: {param: speaker, items: [potter, weaver]}}

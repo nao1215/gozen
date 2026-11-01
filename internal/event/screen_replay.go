@@ -42,6 +42,7 @@ type ScreenReplayFrame struct {
 	Args         map[string]any
 	Runner       *Runner
 	Indices      []int
+	Rows         []ScreenRow
 }
 
 // ScreenReplay is a validated continuation on the caller's private state.
@@ -78,8 +79,10 @@ func (s *ScreenReplay) screen() {
 	s.Request = Open{Screen: f.Name, Args: maps.Clone(f.Args)}
 	s.View = ReplayView{Kind: "open", ID: f.Name, Text: data.Render(s.Runner.db.Tr(s.Runner.db.Game.Screens[f.Name].Title), env)}
 	f.Indices = nil
+	f.Rows = nil
 	for index, entry := range ScreenEntries(s.Runner.db, f.Name, env, s.Runner.Log) {
 		f.Indices = append(f.Indices, index)
+		f.Rows = append(f.Rows, entry)
 		s.View.Options = append(s.View.Options, entry.Label)
 	}
 }
@@ -138,14 +141,9 @@ func (r *Runner) ReplayScreens(inputs []rpg.ReplayInput, pending Request) (Scree
 					s.Request, s.View = nil, ReplayView{}
 				} else {
 					entry := r.db.Game.Screens[f.Name].Entries[f.Indices[n]]
-					visible, err := entry.When.Bool(expr.Chain{expr.Map{"arg": expr.Map(f.Args)}, r.st.Env()})
+					visible, err := f.Rows[n].Visible(r.db, entry, expr.Chain{expr.Map{"arg": expr.Map(f.Args)}, r.st.Env()})
 					if err != nil {
 						return s, err
-					}
-					if visible {
-						if _, err := entry.Target.Resolve(r.db, "entity", expr.Chain{expr.Map{"arg": expr.Map(f.Args)}, r.st.Env()}); err != nil {
-							return s, err
-						}
 					}
 					if !visible {
 						s.screen()
@@ -154,7 +152,7 @@ func (r *Runner) ReplayScreens(inputs []rpg.ReplayInput, pending Request) (Scree
 						child.Sortie, child.Dev, child.UseItem, child.Act = r.Sortie, r.Dev, r.UseItem, r.Act
 						child.BlockAside = r.BlockAside
 						attach(child)
-						if err := child.StartBound(fmt.Sprintf("screen:%s:%d", f.Name, f.Indices[n]), f.Args); err != nil {
+						if err := child.StartBound(fmt.Sprintf("screen:%s:%d", f.Name, f.Indices[n]), f.Rows[n].Args); err != nil {
 							return s, err
 						}
 						child.OnStart = r.OnStart

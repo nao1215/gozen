@@ -267,43 +267,111 @@ type Open struct {
 	Args map[string]any
 }
 
-// ScreenEntries supplies the visible choices shared by session and play, in
-// authored order. Each yielded index identifies the original entry, not its
-// display row. env includes frozen arguments and current state. Labels are
-// translated and rendered; body text is left to the frontend. Iteration is lazy
-// so frontend rendering stays interleaved with guard/label evaluation as before.
-// Failed guards or target bindings hide entries and call report when non-nil.
-// Targets in yielded copies are resolved literal IDs. Missing screens
-// yield nothing. Entries are shallow copies: nested definitions remain read-only.
-// Callers must recheck visibility before activation; this is a display snapshot.
-func ScreenEntries(db *data.DB, name string, env expr.Env, report func(error)) iter.Seq2[int, data.ScreenEntry] {
-	return func(yield func(int, data.ScreenEntry) bool) {
+// ScreenRow is a displayed authored entry with detached frozen bindings. Session,
+// play and replay retain these values so a later selection cannot change its ID.
+// ScreenEntry is a shallow copy; nested command definitions remain read-only.
+type ScreenRow struct {
+	data.ScreenEntry
+	Args map[string]any
+}
+
+// Env overlays the selected row's immutable arguments on current game state.
+func (row ScreenRow) Env(env expr.Env) expr.Env {
+	return expr.Chain{expr.Map{"arg": expr.Map(row.Args)}, env}
+}
+
+// Visible rechecks membership, guard and target before an action starts. The
+// source entry and parent environment are used for collection membership, while
+// the row's frozen arguments are used for the action guard and target.
+func (row ScreenRow) Visible(db *data.DB, source data.ScreenEntry, env expr.Env) (bool, error) {
+	if source.Each != nil {
+		ids, err := source.Each.IDs(env)
+		if err != nil {
+			return false, err
+		}
+		id, ok := row.Args[source.Each.Param].(string)
+		if !ok {
+			return false, errors.New("screen row requires a string ID")
+		}
+		if !slices.Contains(ids, id) {
+			return false, nil
+		}
+	}
+	bound := row.Env(env)
+	visible, err := source.When.Bool(bound)
+	if err != nil || !visible {
+		return visible, err
+	}
+	_, err = source.Target.Resolve(db, "entity", bound)
+	return err == nil, err
+}
+
+// ScreenEntries yields visible rows in authored/collection order. The index
+// identifies the source command root; Args distinguishes repeated rows. Guards,
+// targets and labels use current state and frozen row bindings. Errors hide the
+// affected source entry/row and call report. Total expansion is bounded to 4096
+// rows. Iteration stays lazy to preserve existing rendering evaluation order.
+func ScreenEntries(db *data.DB, name string, env expr.Env, report func(error)) iter.Seq2[int, ScreenRow] {
+	return func(yield func(int, ScreenRow) bool) {
 		def := db.Game.Screens[name]
 		if def == nil {
 			return
 		}
+		log := func(err error) {
+			if report != nil {
+				report(err)
+			}
+		}
+		value, _ := env.Lookup("arg")
+		parent, ok := value.(expr.Map)
+		if !ok && value != nil {
+			log(errors.New("screen arguments must be a binding map"))
+			return
+		}
+		total := 0
 		for i, entry := range def.Entries {
-			visible, err := entry.When.Bool(env)
-			if err != nil {
-				if report != nil {
-					report(err)
+			ids := []string{""}
+			if entry.Each != nil {
+				var err error
+				ids, err = entry.Each.IDs(env)
+				if err != nil {
+					log(err)
+					continue
 				}
-				continue
 			}
-			if !visible {
-				continue
-			}
-			target, err := entry.Target.Resolve(db, "entity", env)
-			if err != nil {
-				if report != nil {
-					report(err)
-				}
-				continue
-			}
-			entry.Target = data.IDRef{ID: target}
-			entry.Label = data.Render(db.Tr(entry.Label), env)
-			if !yield(i, entry) {
+			total += len(ids)
+			if total > 4096 {
+				log(errors.New("screen exceeds 4096 rows"))
 				return
+			}
+			for _, id := range ids {
+				args := maps.Clone(parent)
+				if entry.Each != nil {
+					if args == nil {
+						args = expr.Map{}
+					}
+					args[entry.Each.Param] = id
+				}
+				row := ScreenRow{ScreenEntry: entry, Args: args}
+				bound := row.Env(env)
+				visible, err := entry.When.Bool(bound)
+				if err != nil {
+					log(err)
+					continue
+				}
+				if !visible {
+					continue
+				}
+				target, err := entry.Target.Resolve(db, "entity", bound)
+				if err != nil {
+					log(err)
+					continue
+				}
+				row.Target = data.IDRef{ID: target}
+				row.Label = data.Render(db.Tr(entry.Label), bound)
+				if !yield(i, row) {
+					return
+				}
 			}
 		}
 	}
@@ -815,12 +883,17 @@ func (r *Runner) run(c *data.Command) Request {
 			ok, err := o.When.Bool(env)
 			r.logf(err)
 			if ok {
+				source, err := selectedSource(o.Label, o.LabelExpr, env)
+				if err != nil {
+					r.logf(fmt.Errorf("choice.label_expr: %w", err))
+					continue
+				}
 				r.options = append(r.options, o)
 				r.optionAt = append(r.optionAt, i)
-				label, p := data.Fill(r.db, o.Label, env)
+				label, p := data.Fill(r.db, source, env)
 				labels, words = append(labels, label), append(words, p)
 				ids = append(ids, o.ID)
-				keys = append(keys, ChoiceKey(c.Prompt, o.Label))
+				keys = append(keys, ChoiceKey(c.Prompt, source))
 			}
 		}
 		if len(labels) == 0 {
@@ -1282,6 +1355,30 @@ func (r *Runner) say(s *data.Say, env expr.Env) Request {
 	return out
 }
 
+// selectedSource shares source identity rules between dialogue and choices.
+func selectedSource(literal string, selected data.Expr, env expr.Env) (string, error) {
+	if !selected.Set() {
+		return literal, nil
+	}
+	if literal != "" {
+		return "", errors.New("use a literal or source expression, not both")
+	}
+	for _, name := range selected.Names() {
+		if name == "rand" || name == "chance" {
+			return "", errors.New("source expression must be pure")
+		}
+	}
+	value, err := selected.Eval(env)
+	if err != nil {
+		return "", err
+	}
+	source, ok := value.(string)
+	if !ok {
+		return "", errors.New("expected a string source")
+	}
+	return source, nil
+}
+
 // line builds one line (false when it has nothing to show).
 func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
 	who, err := s.Who.Resolve(r.db, "actor", env)
@@ -1289,25 +1386,14 @@ func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
 		r.logf(err)
 		return Say{}, false
 	}
-	source := s.Text
-	if s.TextExpr.Set() {
-		for _, name := range s.TextExpr.Names() {
-			if name == "rand" || name == "chance" {
-				r.logf(errors.New("say.text_expr must be pure"))
-				return Say{}, false
-			}
-		}
-		value, evalErr := s.TextExpr.Eval(env)
-		selected, ok := value.(string)
-		if evalErr != nil {
-			r.logf(fmt.Errorf("say.text_expr: %w", evalErr))
-			return Say{}, false
-		}
-		if !ok || s.Text != "" || s.Values != nil {
-			r.logf(errors.New("say.text_expr: expected a string source without text or reaction values"))
-			return Say{}, false
-		}
-		source = selected
+	source, err := selectedSource(s.Text, s.TextExpr, env)
+	if err != nil {
+		r.logf(fmt.Errorf("say.text_expr: %w", err))
+		return Say{}, false
+	}
+	if s.TextExpr.Set() && s.Values != nil {
+		r.logf(errors.New("say.text_expr: expected a string source without reaction values"))
+		return Say{}, false
 	}
 	out := Say{Name: who, Key: SourceKey(who, source), Ensemble: s.Ensemble}
 	if s.Values != nil { // filled by the fields' whole names, not evaluated

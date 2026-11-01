@@ -1718,6 +1718,10 @@ type AuthorScreen struct {
 
 // ScreenEntry is one selectable detail page in an author-defined screen.
 type ScreenEntry struct {
+	// Each repeats this entry over a bounded pure ID selection. Its parameter is
+	// a string scoped to the row, accessible through arg in text, guards and actions.
+	Each *CallEach `yaml:"each" json:",omitempty"`
+
 	// Target binds a contextual action to a planning entity; Bounds places a
 	// direct action in logical screen coordinates [x, y, width, height].
 	Target IDRef `yaml:"target"`

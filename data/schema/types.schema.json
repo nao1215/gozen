@@ -3540,6 +3540,24 @@
           },
           "x-type": "string"
         },
+        "label_expr": {
+          "description": "Pure expression selecting a string source template before translation and read-key hashing; exclusive with label.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
         "when": {
           "description": "An expression that decides whether the answer is offered.",
           "type": [
@@ -15891,6 +15909,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "[Command](#command)[]"
+        },
+        "each": {
+          "$ref": "#/$defs/CallEach",
+          "description": "Repeat a row over a bounded pure ID collection; param is a row-local string argument.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[CallEach](#calleach)"
         },
         "label": {
           "description": "Required label shown in the list.",

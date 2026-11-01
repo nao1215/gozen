@@ -804,3 +804,15 @@ This separates source text and fixed thresholds from mutable planning attributes
 Shared argument-driven events can select resident-specific definitions without
 identity comparisons. Save reloads use the current installed definitions, as they
 do for ordinary event source text. There are no new packages or dependencies.
+
+### Repeated screen rows
+
+Screen entries now accept the existing bounded `each` selection syntax. The
+row-local parameter is a string ID; receiving reference fields validate their own
+namespace. It cannot shadow a screen argument. Membership is frozen for display
+and rechecked on activation, with current guard and target validation. The named
+command root remains the authored entry index, while its saved argument map
+includes the selected ID. Refresh preserves source index plus bindings, rather
+than treating the display offset as identity. Plain lists, session replay and
+contextual planning actions share the event-layer iterator and activation check.
+See the author guide and the neutral workshop roster for syntax and limits.

@@ -2086,3 +2086,67 @@ func TestAnonymousRepeatedCallIsNotASingleBoundRoot(t *testing.T) {
 		t.Fatalf("second visit: %+v", q)
 	}
 }
+
+func TestRepeatedScreenRowsResumeSelectedIdentity(t *testing.T) {
+	g, err := gozen.Load(os.DirFS("../../docs/examples/event-arguments"), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := gozen.Config{Seed: 17, OnLog: func(err error) { t.Error(err) }}
+	s := session(t, g, cfg)
+	if err := s.Start("- call: roster_demo"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Text != "Ready for roster." {
+		t.Fatal(q)
+	}
+	if q := s.Next(); q.Kind != "open" || !reflect.DeepEqual(q.Options, []string{"Encourage Potter", "Encourage Weaver"}) {
+		t.Fatal(q)
+	}
+	s.Answer(1)
+	if q := s.Next(); q.Kind != "choice" || q.Options[0] != "Confirm weaver" {
+		t.Fatal(q)
+	}
+	for range 2 {
+		saved, err := s.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		s, err = gozen.Restore(g, saved, cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q := s.Next(); q.Kind != "choice" || q.Options[0] != "Confirm weaver" {
+			t.Fatal(q)
+		}
+	}
+	s.Answer(0)
+	s.Answer(0) // cannot apply the action twice
+	if q := s.Next(); q.Text != "Reviewed weaver" {
+		t.Fatal(q)
+	}
+	if q := s.Next(); !reflect.DeepEqual(q.Options, []string{"Encourage Potter"}) {
+		t.Fatal(q)
+	}
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err = gozen.Restore(g, saved, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); !reflect.DeepEqual(q.Options, []string{"Encourage Potter"}) {
+		t.Fatal(q)
+	}
+	if got := query[float64](t, s, "entity.weaver.vigor"); got != 2 {
+		t.Fatal(got)
+	}
+	if got := query[float64](t, s, "entity.potter.vigor"); got != 0 {
+		t.Fatal(got)
+	}
+	s.Answer(-1)
+	if q := s.Next(); q.Text != "Roster closed." {
+		t.Fatal(q)
+	}
+}
