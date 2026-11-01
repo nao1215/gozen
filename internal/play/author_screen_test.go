@@ -415,9 +415,9 @@ func TestFullScreenContextUsesVisibleTargetActions(t *testing.T) {
 		Kind: "islands", Title: "Workshop", View: data.PlanningView{Fullscreen: true},
 		Entries: []data.ScreenEntry{
 			{Label: "Plan", Bounds: []int{20, 20, 120, 40}},
-			{Label: "Rest", Target: "artisan"},
-			{Label: "Water", Target: "gardener"},
-			{Label: "Repair", Target: "artisan", When: data.Expr{Expr: testgame.Expr("flag.broken")}},
+			{Label: "Rest", Target: data.IDRef{ID: "artisan"}},
+			{Label: "Water", Target: data.IDRef{ID: "gardener"}},
+			{Label: "Repair", Target: data.IDRef{ID: "artisan"}, When: data.Expr{Expr: testgame.Expr("flag.broken")}},
 		},
 	}}
 	g := &Game{db: db, st: testgame.State(db, 1)}
@@ -477,7 +477,7 @@ func TestTargetActionsScrollInsideViewport(t *testing.T) {
 		Kind: "islands", View: data.PlanningView{Fullscreen: true},
 	}}
 	for range 30 {
-		db.Game.Screens["team"].Entries = append(db.Game.Screens["team"].Entries, data.ScreenEntry{Label: "Assign", Target: "artisan"})
+		db.Game.Screens["team"].Entries = append(db.Game.Screens["team"].Entries, data.ScreenEntry{Label: "Assign", Target: data.IDRef{ID: "artisan"}})
 	}
 	g := &Game{db: db, st: testgame.State(db, 1)}
 	s := newAuthorScreen(g, "team", nil, nil)
@@ -556,7 +556,7 @@ func TestTargetActionPreviewConfirmation(t *testing.T) {
 	g.db.Game.Screens["work"].Kind = "islands"
 	g.db.Game.Screens["work"].View.Fullscreen = true
 	for i := range g.db.Game.Screens["work"].Entries {
-		g.db.Game.Screens["work"].Entries[i].Target = "artisan"
+		g.db.Game.Screens["work"].Entries[i].Target = data.IDRef{ID: "artisan"}
 	}
 	s := newAuthorScreen(g, "work", nil, nil)
 	open := func() { s.openTarget(g, "artisan", image.Rect(0, 0, 100, 100)) }
@@ -629,7 +629,7 @@ func TestCandidateListPublicValuesAndSelection(t *testing.T) {
 	}
 	db.Game.Screens = map[string]*data.AuthorScreen{"pick": {Title: "Choose a maker", View: data.PlanningView{Portrait: "icon", Fields: []data.PlanningField{{Key: "load", Label: "Load"}}}}}
 	for range 12 {
-		db.Game.Screens["pick"].Entries = append(db.Game.Screens["pick"].Entries, data.ScreenEntry{Target: "maker", Label: "Maker"})
+		db.Game.Screens["pick"].Entries = append(db.Game.Screens["pick"].Entries, data.ScreenEntry{Target: data.IDRef{ID: "maker"}, Label: "Maker"})
 	}
 	g := &Game{db: db, st: testgame.State(db, 1)}
 	s := newAuthorScreen(g, "pick", nil, nil)

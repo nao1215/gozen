@@ -15582,17 +15582,17 @@
               "x-type": "string"
             },
             "who": {
+              "$ref": "#/$defs/IDRef",
               "description": "Who speaks: an actor ID, or any name to show.",
-              "type": "string",
               "x-contract": {
-                "default": "empty string",
-                "legacy_default": "empty string",
+                "default": "empty (its fields take their defaults)",
+                "legacy_default": "empty (its fields take their defaults)",
                 "zero": "-",
                 "required": "optional",
                 "reference": "`actors` or any name",
                 "version": "0, 1, 2"
               },
-              "x-type": "string"
+              "x-type": "[IDRef](#idref) or string"
             }
           },
           "type": "object"
@@ -15866,17 +15866,17 @@
           "x-type": "string"
         },
         "target": {
+          "$ref": "#/$defs/IDRef",
           "description": "Planning entity ID whose seat opens this contextual action.",
-          "type": "string",
           "x-contract": {
-            "default": "empty string",
-            "legacy_default": "empty string",
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
             "zero": "-",
             "required": "optional",
             "reference": "-",
             "version": "0, 1, 2"
           },
-          "x-type": "string"
+          "x-type": "[IDRef](#idref) or string"
         },
         "text": {
           "description": "Detail text, with interpolation and translation.",

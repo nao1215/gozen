@@ -226,7 +226,7 @@ func customFields(c *Command) []string { return c.custom }
 type Say struct {
 	// Ensemble names a planning participant screen shown behind this line.
 	Ensemble string `yaml:"ensemble"`
-	Who      string `yaml:"who"`  // an actor id, or any name
+	Who      IDRef  `yaml:"who"`  // a literal name, or an actor expression
 	Face     string `yaml:"face"` // a face of the actor (or a picture path)
 	Text     string `yaml:"text"`
 	Side     string `yaml:"side"` // left, right (default: left for party, right for others)

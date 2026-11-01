@@ -204,8 +204,8 @@ func (c Choice) Reword(db *data.DB) Choice {
 	return c
 }
 
-// SourceKey is the key of a line's source: a 64-bit FNV-1a hash of who and text as written in
-// the YAML, joined by a zero byte. A line keeps its key whatever its {expressions} hold and
+// SourceKey hashes the resolved speaker ID (or literal name) and authored text
+// with FNV-1a, joined by a zero byte. A line keeps its key whatever its {expressions} hold and
 // in whatever language it is shown (ADR 0026).
 func SourceKey(who, text string) uint64 {
 	h := fnv.New64a()
@@ -272,7 +272,8 @@ type Open struct {
 // display row. env includes frozen arguments and current state. Labels are
 // translated and rendered; body text is left to the frontend. Iteration is lazy
 // so frontend rendering stays interleaved with guard/label evaluation as before.
-// Failed guards hide their entries and call report when non-nil. Missing screens
+// Failed guards or target bindings hide entries and call report when non-nil.
+// Targets in yielded copies are resolved literal IDs. Missing screens
 // yield nothing. Entries are shallow copies: nested definitions remain read-only.
 // Callers must recheck visibility before activation; this is a display snapshot.
 func ScreenEntries(db *data.DB, name string, env expr.Env, report func(error)) iter.Seq2[int, data.ScreenEntry] {
@@ -292,6 +293,14 @@ func ScreenEntries(db *data.DB, name string, env expr.Env, report func(error)) i
 			if !visible {
 				continue
 			}
+			target, err := entry.Target.Resolve(db, "entity", env)
+			if err != nil {
+				if report != nil {
+					report(err)
+				}
+				continue
+			}
+			entry.Target = data.IDRef{ID: target}
 			entry.Label = data.Render(db.Tr(entry.Label), env)
 			if !yield(i, entry) {
 				return
@@ -632,7 +641,7 @@ func (r *Runner) offerCaptures(beaten []string) {
 		}
 		name := e.Name + " " + sign
 		commands := []data.Command{
-			{Say: &data.Say{Who: name, Text: e.Name + " rises and looks toward your party."}},
+			{Say: &data.Say{Who: data.IDRef{ID: name}, Text: e.Name + " rises and looks toward your party."}},
 			{Choice: []data.ChoiceOption{{ID: "yes", Label: "Yes", Do: []data.Command{{Capture: id}}}, {ID: "no", Label: "No"}}, Prompt: "Let " + name + " join?"},
 			{Wait: data.WaitCue{Seconds: 36.0 / 60}},
 		}
@@ -787,7 +796,11 @@ func (r *Runner) run(c *data.Command) Request {
 		if line, ok := req.(Say); ok {
 			line.Recruit = r.recruitOffer(c)
 			if line.Voice != "" {
-				r.emit(VoiceEffect{File: line.Voice, Who: c.Say.Who})
+				who := line.Actor
+				if who == "" {
+					who = c.Say.Who.ID
+				}
+				r.emit(VoiceEffect{File: line.Voice, Who: who})
 			}
 			r.aside(line, env)
 			req = line
@@ -928,10 +941,10 @@ func (r *Runner) run(c *data.Command) Request {
 				if firstCompanion {
 					message += " First companion of this species."
 				}
-				r.push([]data.Command{{Say: &data.Say{Who: e.Name + " " + sign, Face: e.Image.File, Text: message}}})
+				r.push([]data.Command{{Say: &data.Say{Who: data.IDRef{ID: e.Name + " " + sign}, Face: e.Image.File, Text: message}}})
 			} else if r.st.RecruitmentFull(c.Capture) {
 				r.st.Vars["capture_result"] = "party_full"
-				r.push([]data.Command{{Say: &data.Say{Who: e.Name, Face: e.Image.File, Text: e.Name + " cannot join: your party is full."}}})
+				r.push([]data.Command{{Say: &data.Say{Who: data.IDRef{ID: e.Name}, Face: e.Image.File, Text: e.Name + " cannot join: your party is full."}}})
 			}
 		}
 	case "reserve":
@@ -1271,7 +1284,12 @@ func (r *Runner) say(s *data.Say, env expr.Env) Request {
 
 // line builds one line (false when it has nothing to show).
 func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
-	out := Say{Name: s.Who, Key: SourceKey(s.Who, s.Text), Ensemble: s.Ensemble}
+	who, err := s.Who.Resolve(r.db, "actor", env)
+	if err != nil {
+		r.logf(err)
+		return Say{}, false
+	}
+	out := Say{Name: who, Key: SourceKey(who, s.Text), Ensemble: s.Ensemble}
 	if s.Values != nil { // filled by the fields' whole names, not evaluated
 		out.text = data.Phrase{Source: s.Text, Values: s.Values}
 		out.Text = data.Again(r.db, out.text)
@@ -1279,11 +1297,11 @@ func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
 		out.Text, out.text = data.Fill(r.db, s.Text, env)
 	}
 	if s.Voice != "" {
-		out.Voice, _ = r.db.VoicePath(s.Who, s.Voice)
+		out.Voice, _ = r.db.VoicePath(who, s.Voice)
 	}
-	if a, ok := r.db.Actors[s.Who]; ok {
+	if a, ok := r.db.Actors[who]; ok {
 		out.Name = a.Name
-		out.Actor = s.Who
+		out.Actor = who
 		face := s.Face
 		if face == "" {
 			face = a.Face

@@ -564,7 +564,7 @@ func TestWonBattleCountsTheFoesBeaten(t *testing.T) {
 func TestSayCarriesEnsembleWithoutChangingText(t *testing.T) {
 	db := testgame.Load(t, nil)
 	r := event.New(db, testgame.State(db, 1), &host{})
-	r.Start([]data.Command{{Say: &data.Say{Who: "scout", Text: "Welcome, everyone.", Ensemble: "gathering"}}})
+	r.Start([]data.Command{{Say: &data.Say{Who: data.IDRef{ID: "scout"}, Text: "Welcome, everyone.", Ensemble: "gathering"}}})
 	got, ok := r.Next().(event.Say)
 	if !ok || got.Ensemble != "gathering" || got.Actor != "scout" || got.Text != "Welcome, everyone." {
 		t.Fatalf("line lost presentation or identity: %+v", got)
@@ -917,5 +917,129 @@ func TestRepeatedCallNestedBudgetStopsExecution(t *testing.T) {
 	r.Start([]data.Command{{Call: data.EventCall{Event: "branch", Each: &data.CallEach{Param: "item", Items: items}}}})
 	if q := r.Next(); q != nil || r.Running() || failure == nil || !strings.Contains(failure.Error(), "65536") {
 		t.Fatalf("unbounded execution: %v %v", q, failure)
+	}
+}
+
+func TestSpeakerIdentityAcrossCalls(t *testing.T) {
+	for _, dynamic := range []bool{false, true} {
+		t.Run(map[bool]string{false: "literal", true: "expression"}[dynamic], func(t *testing.T) {
+			who := "scout"
+			if dynamic {
+				who = "{expr: arg.speaker}"
+			}
+			db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: speakers\n" + testgame.Game, "data/speakers.yaml": `events:
+  speak:
+    params: {speaker: actor}
+    do:
+    - say: {who: ` + who + `, text: 'Ready {gold}.'}
+  visit:
+    do:
+    - call: {event: speak, args: {speaker: '"scout"'}}
+    - call: {event: speak, args: {speaker: '"guide"'}}
+`})
+			r := event.New(db, testgame.State(db, 1), &host{})
+			r.Log = func(err error) { t.Error(err) }
+			r.Start(db.Events["visit"].Do)
+			for _, actor := range []string{"scout", "guide"} {
+				if !dynamic {
+					actor = "scout"
+				}
+				line, ok := r.Next().(event.Say)
+				if !ok || line.Actor != actor || line.Key != event.SourceKey(actor, "Ready {gold}.") || line.Text != "Ready 100." {
+					t.Fatalf("speaker identity: %+v", line)
+				}
+			}
+		})
+	}
+}
+
+func TestScreenExpressionTarget(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: targets\n" + testgame.Game + `planning:
+  calendar: {start: "2030-06-01", end: "2030-06-30", phases: [morning]}
+  attributes:
+    portrait: {type: string, initial: ''}
+  entities:
+    potter: {name: Potter}
+screens:
+  pick:
+    title: Pick
+    params: {resident: entity}
+    view: {portrait: portrait}
+    entries:
+    - label: Visit
+      target: {expr: arg.resident}
+`})
+	env := expr.Map{"arg": expr.Map{"resident": "potter"}}
+	count := 0
+	for index, entry := range event.ScreenEntries(db, "pick", env, func(err error) { t.Error(err) }) {
+		count++
+		if index != 0 || entry.Label != "Visit" || entry.Target.ID != "potter" || entry.Target.Expr.Set() {
+			t.Fatal(index, entry)
+		}
+	}
+	if count != 1 {
+		t.Fatal(count)
+	}
+	if !db.Game.Screens["pick"].Entries[0].Target.Expr.Set() {
+		t.Fatal("definition mutated")
+	}
+	env["arg"] = expr.Map{"resident": "missing"}
+	problems := 0
+	for range event.ScreenEntries(db, "pick", env, func(error) { problems++ }) {
+		t.Fatal("invalid target shown")
+	}
+	if problems != 1 {
+		t.Fatal(problems)
+	}
+}
+
+func TestInvalidSpeakerDoesNotConsumeRandomness(t *testing.T) {
+	db := testgame.Load(t, nil)
+	for _, value := range []string{`"missing"`, `""`, `42`, `rand(3)`} {
+		t.Run(value, func(t *testing.T) {
+			st, control := testgame.State(db, 17), testgame.State(db, 17)
+			r := event.New(db, st, &host{})
+			var problems []error
+			r.Log = func(err error) { problems = append(problems, err) }
+			r.Start([]data.Command{{Say: &data.Say{Who: data.IDRef{Expr: data.MustExpr(value)}, Text: "Ready"}}})
+			if got := r.Next(); got != nil || len(problems) != 1 {
+				t.Fatalf("request=%v errors=%v", got, problems)
+			}
+			if st.Rand.Uint64() != control.Rand.Uint64() {
+				t.Fatal("speaker consumed randomness")
+			}
+		})
+	}
+}
+
+func TestSpeakerVoiceAndPortraitUseResolvedActor(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml": "schema_version: 10\nid: voices\n" + testgame.Game,
+		"data/voice.yaml": `actors:
+  potter: {name: Potter, faces: potter, voices: potter}
+events:
+  greeting:
+    params: {speaker: actor}
+    do:
+    - say: {who: {expr: arg.speaker}, face: smile, voice: hello, text: Welcome}
+`,
+		"assets/potter/smile.png": "stub", "assets/potter/normal.png": "stub", "assets/potter/hello.wav": "stub",
+	})
+	var effects []event.Effect
+	r := event.New(db, testgame.State(db, 1), event.HostFunc(func(e event.Effect) { effects = append(effects, e) }))
+	r.Log = func(err error) { t.Error(err) }
+	if err := r.StartBound("greeting", map[string]any{"speaker": "potter"}); err != nil {
+		t.Fatal(err)
+	}
+	line, ok := r.Next().(event.Say)
+	if !ok || line.Actor != "potter" || line.Face != "potter/smile.png" || line.Voice != "potter/hello.wav" {
+		t.Fatal(line)
+	}
+	if len(effects) != 1 {
+		t.Fatal(effects)
+	}
+	voice, ok := effects[0].(event.VoiceEffect)
+	if !ok || voice.Who != "potter" || voice.File != line.Voice {
+		t.Fatal(effects)
 	}
 }

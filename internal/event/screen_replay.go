@@ -142,6 +142,11 @@ func (r *Runner) ReplayScreens(inputs []rpg.ReplayInput, pending Request) (Scree
 					if err != nil {
 						return s, err
 					}
+					if visible {
+						if _, err := entry.Target.Resolve(r.db, "entity", expr.Chain{expr.Map{"arg": expr.Map(f.Args)}, r.st.Env()}); err != nil {
+							return s, err
+						}
+					}
 					if !visible {
 						s.screen()
 					} else if len(entry.Do) > 0 {

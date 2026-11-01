@@ -80,7 +80,11 @@ func newAuthorScreen(g *Game, name string, done func(), args map[string]any) *au
 	if def != nil {
 		s.title = data.Render(g.db.Tr(def.Title), s.env(g))
 	}
-	for index, entry := range event.ScreenEntries(g.db, name, s.env(g), nil) {
+	var report func(error)
+	if g.events != nil {
+		report = g.events.Log
+	}
+	for index, entry := range event.ScreenEntries(g.db, name, s.env(g), report) {
 		entry.Text = data.Render(g.db.Tr(entry.Text), s.env(g))
 		s.indices = append(s.indices, index)
 		s.entries = append(s.entries, entry)
@@ -108,7 +112,7 @@ func (s *authorScreen) candidateList(g *Game) bool {
 
 func (s *authorScreen) candidateInfo(g *Game, e data.ScreenEntry) (string, string) {
 	v := g.db.Game.Screens[s.name].View
-	values := g.st.EntityValues(e.Target, false)
+	values := g.st.EntityValues(e.Target.ID, false)
 	portrait, ok := values[v.Portrait].(string)
 	if !ok {
 		portrait = ""
@@ -360,6 +364,9 @@ func (s *authorScreen) activate(g *Game) {
 	g.recordScreenAnswer(s.list.sel)
 	entry := def.Entries[index]
 	visible, err := entry.When.Bool(s.env(g))
+	if err == nil && visible {
+		_, err = entry.Target.Resolve(g.db, "entity", s.env(g))
+	}
 	if err != nil || !visible {
 		g.screenTrace.blocked = true
 		s.refresh(g)
@@ -459,7 +466,7 @@ func (s *authorScreen) openTarget(g *Game, id string, r image.Rectangle) {
 	s.popupIndices = nil
 	var items []listItem
 	for i, e := range s.entries {
-		if e.Target == id {
+		if e.Target.ID == id {
 			s.popupIndices = append(s.popupIndices, i)
 			items = append(items, listItem{label: e.Label})
 		}
@@ -548,7 +555,7 @@ func (s *authorScreen) updateSurface(g *Game) {
 	ids, cells := s.surfaceTargets(g)
 	var actions []int
 	for i, e := range s.entries {
-		if e.Target == "" && len(e.Bounds) == 4 {
+		if e.Target.ID == "" && len(e.Bounds) == 4 {
 			actions = append(actions, i)
 		}
 	}
@@ -604,7 +611,7 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 	}
 	for _, e := range s.entries {
 		r := entryBounds(e)
-		if e.Target == "" && !r.Empty() && float64(r.Min.Y) >= sh-108 {
+		if e.Target.ID == "" && !r.Empty() && float64(r.Min.Y) >= sh-108 {
 			footerWidth = min(footerWidth, float64(r.Min.X)-40)
 		}
 	}
@@ -623,7 +630,7 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 	g.drawPlanningText(dst, footer, 24, sh-88, max(1, footerWidth), sizeS, 2, g.th.text)
 	j := 0
 	for _, e := range s.entries {
-		if e.Target != "" || len(e.Bounds) != 4 {
+		if e.Target.ID != "" || len(e.Bounds) != 4 {
 			continue
 		}
 		r := entryBounds(e)

@@ -1446,20 +1446,23 @@ func (c *checker) say(w string, s *Say, names []string) {
 			c.errorf(diag.UnknownReference, w+".ensemble", "expected an ensemble screen")
 		}
 	}
-	if a, ok := db.Actors[s.Who]; ok {
+	if s.Who.Expr.Set() {
+		c.needsVersion(w+".who", "expression speakers", SchemaVersion10)
+		c.argumentExpression(w+".who.expr", s.Who.Expr, "actor", names, nil)
+	} else if a, ok := db.Actors[s.Who.ID]; ok {
 		switch {
 		case s.Face == "":
 		case a.Puppet != "": // a speaker with an animated portrait uses the portrait's expressions (unreadable portraits are reported by the party check)
-			if names, ok := c.puppetFaces(s.Who, a); ok && !slices.Contains(names, s.Face) {
-				c.errorf(diag.UnknownReference, w, "%s has no face %q (%s)", s.Who, s.Face, a.Puppet)
+			if names, ok := c.puppetFaces(s.Who.ID, a); ok && !slices.Contains(names, s.Face) {
+				c.errorf(diag.UnknownReference, w, "%s has no face %q (%s)", s.Who.ID, s.Face, a.Puppet)
 			}
 		case a.Faces != "" && !db.Exists("assets/"+a.Faces+"/"+s.Face+".png"):
-			c.errorf(diag.UnknownReference, w, "%s has no face %q", s.Who, s.Face)
+			c.errorf(diag.UnknownReference, w, "%s has no face %q", s.Who.ID, s.Face)
 		}
 	} else if s.Face != "" { // for a speaker who is not a party member, face is an image path
 		c.file(w+".face", s.Face)
 	}
-	c.text(w+".who", s.Who, names)
+	c.text(w+".who", s.Who.ID, names)
 	c.voice(w, s)
 	if s.Side != "" && s.Side != "left" && s.Side != "right" {
 		c.errorf(diag.NotAWord, w+".side", "want left or right")
@@ -1505,8 +1508,8 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			for j := range cmd.Say.Instead {
 				ww := fmt.Sprintf("%s.say.instead[%d]", w, j)
 				alt := &cmd.Say.Instead[j]
-				if _, ok := db.Actors[alt.Who]; !ok {
-					c.errorf(diag.UnknownReference, ww+".who", "%q is not an actor (instead is spoken by another party member)", alt.Who)
+				if _, ok := db.Actors[alt.Who.ID]; !ok && !alt.Who.Expr.Set() {
+					c.errorf(diag.UnknownReference, ww+".who", "%q is not an actor (instead is spoken by another party member)", alt.Who.ID)
 				}
 				if len(alt.Instead) > 0 {
 					c.errorf(diag.Shape, ww, "instead in instead")

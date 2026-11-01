@@ -15,7 +15,7 @@ import (
 	"github.com/nao1215/gozen/internal/expr"
 )
 
-// IDRef is a literal ID or a pure expression consumed by planning operations.
+// IDRef is a literal ID or a pure expression consumed by planning, dialogue and screen targets.
 // Literal IDs retain their existing JSON representation for replay fingerprints.
 // Resolve checks dynamic type and existence before an operation changes state.
 type IDRef struct {
@@ -55,7 +55,7 @@ func (v IDRef) set() bool { return v.ID != "" || v.Expr.Set() }
 
 // Resolve evaluates a target in the caller's scope. Literal empty IDs preserve
 // operations such as clearing an assignment; dynamic empty or missing IDs fail.
-// The planning interpreter uses this before the operation mutates planning state.
+// Event and planning interpreters use this before presenting or mutating a target.
 func (v IDRef) Resolve(db *DB, kind string, env expr.Env) (string, error) {
 	if !v.Expr.Set() {
 		return v.ID, nil

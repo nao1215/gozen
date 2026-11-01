@@ -2,6 +2,7 @@ package play
 
 import (
 	"math"
+	"sort"
 	"strings"
 
 	"github.com/nao1215/gozen/internal/event"
@@ -86,9 +87,19 @@ func commandLines(db *data.DB, cmds []data.Command) []uint64 {
 		for i := range cs {
 			c := &cs[i]
 			if s := c.Say; s != nil && strings.TrimSpace(s.Text) != "" {
-				if k := event.SourceKey(s.Who, s.Text); !seen[k] {
-					seen[k] = true
-					keys = append(keys, k)
+				speakers := []string{s.Who.ID}
+				if s.Who.Expr.Set() {
+					speakers = nil
+					for id := range db.Actors {
+						speakers = append(speakers, id)
+					}
+					sort.Strings(speakers)
+				}
+				for _, who := range speakers {
+					if k := event.SourceKey(who, s.Text); !seen[k] {
+						seen[k] = true
+						keys = append(keys, k)
+					}
 				}
 			}
 			if ev := db.Events[c.Call.Event]; ev != nil && !called[c.Call.Event] {

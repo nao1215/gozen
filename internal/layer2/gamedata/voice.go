@@ -54,18 +54,18 @@ func (db *DB) VoicePath(who, voice string) (string, bool) {
 
 // voice checks a line's voice.
 func (c *checker) voice(w string, s *Say) {
-	if a, ok := c.db.Actors[s.Who]; ok && a.Voices != "" {
-		c.voiceLines(s.Who, w, s.Voice != "")
+	if a, ok := c.db.Actors[s.Who.ID]; ok && a.Voices != "" {
+		c.voiceLines(s.Who.ID, w, s.Voice != "")
 	}
 	if s.Voice == "" || !c.needsVersion(w+".voice", "voice", SchemaVersion4) {
 		return
 	}
-	p, ok := c.db.VoicePath(s.Who, s.Voice)
+	p, ok := c.db.VoicePath(s.Who.ID, s.Voice)
 	if ext := strings.ToLower(path.Ext(p)); ext != "" && !slices.Contains(voiceExts, ext) {
 		c.errorf(diag.NotAWord, w+".voice", "a voice is .ogg or .wav, not %q", p)
 		return
 	}
-	if !ok {
+	if !ok && !s.Who.Expr.Set() {
 		c.errorf(diag.MissingAsset, w+".voice", "no voice assets/%s", p)
 	}
 }

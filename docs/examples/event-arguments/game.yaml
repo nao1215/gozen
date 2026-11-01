@@ -3,7 +3,7 @@ id: argument-workshop
 start: {location: workshop}
 planning:
   calendar: {start: '2030-01-01', end: '2030-01-02', phases: [day], weekdays_off: [0, 6]}
-  attributes: {vigor: {type: number, initial: 0}}
+  attributes: {vigor: {type: number, initial: 0}, portrait: {type: string, initial: ""}}
   entities: {potter: {name: Potter}, weaver: {name: Weaver}}
   activities:
     prepare: {name: Prepare, effort: 2, assignee: potter, from: '2030-01-01', to: '2030-01-02'}
@@ -66,6 +66,8 @@ screens:
   tasks:
     title: Workshop tasks
     entries:
+    - label: Greet the residents
+      do: [{call: speaker_demo}]
     - label: Read collection totals
       do: [{call: collection_demo}]
     - label: Read calendar ranges
@@ -98,3 +100,13 @@ screens:
           label: Shape
           screen: candidates
           args: {task: '"shape"', resident: '"weaver"'}
+  resident_card:
+    params: {resident: entity}
+    title: 'Visit {arg.resident}'
+    view: {portrait: portrait}
+    entries:
+    - target: {expr: arg.resident}
+      label: 'Encourage {arg.resident}'
+      do:
+      - plan: {op: set, entity: {expr: arg.resident}, attribute: vigor, value: 'self.vigor + 1'}
+      - say: 'Encouraged {arg.resident}'

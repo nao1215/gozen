@@ -169,7 +169,7 @@ func (c *checker) stand(w string, s *Stand) {
 		c.errorf(diag.Shape, w+".who", "stand needs who (or none)")
 		return
 	}
-	c.say(w, &Say{Who: s.Who, Face: s.Face}, nil)
+	c.say(w, &Say{Who: IDRef{ID: s.Who}, Face: s.Face}, nil)
 	if a, ok := db.Actors[s.Who]; ok && (a.Faces == "" || a.NoStanding) && a.Puppet == "" {
 		c.errorf(diag.UnknownReference, w+".who", "%s has no standing picture (faces)", s.Who)
 	}

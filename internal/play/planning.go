@@ -1314,7 +1314,7 @@ func (s *authorScreen) updateEntityTable(g *Game) {
 	}
 	var actions []int
 	for i, e := range s.entries {
-		if e.Target == "" && len(e.Bounds) == 4 {
+		if e.Target.ID == "" && len(e.Bounds) == 4 {
 			actions = append(actions, i)
 		}
 	}
@@ -1442,7 +1442,7 @@ func (s *authorScreen) drawEntityTable(g *Game, dst *ebiten.Image) {
 		}
 		actionCount := 0
 		for _, e := range s.entries {
-			if e.Target == "" && len(e.Bounds) == 4 {
+			if e.Target.ID == "" && len(e.Bounds) == 4 {
 				actionCount++
 			}
 		}

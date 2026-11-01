@@ -192,3 +192,27 @@ func TestRepeatedCallValidationAndFrozenMembership(t *testing.T) {
 		}
 	}
 }
+
+func TestSpeakerExpressionDiagnostics(t *testing.T) {
+	for _, tc := range []struct{ who, params, want string }{
+		{`{expr: arg.speaker}`, `speaker: actor`, ``},
+		{`{expr: arg.speaker}`, `speaker: entity`, `got entity`},
+		{`{expr: arg.missing}`, `speaker: actor`, `no field`},
+		{`{expr: 'rand(2)'}`, ``, `pure`},
+		{`{expr: '"unknown"'}`, ``, `invalid actor`},
+		{`{expr: '42'}`, ``, `expected actor`},
+		{`A visitor`, ``, ``},
+	} {
+		t.Run(tc.who+tc.params, func(t *testing.T) {
+			fsys := fstest.MapFS{"game.yaml": {Data: []byte("schema_version: 10\nid: speakers\nstart: {location: room}\n")}, "data/world.yaml": {Data: []byte("locations: {room: {name: Room}}\nactors: {guide: {name: Guide}}\nevents:\n  speak:\n    params: {" + tc.params + "}\n    do:\n    - say: {who: " + tc.who + ", text: Ready}\n")}}
+			_, err := Load(fsys)
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("want %s: %v", tc.want, err)
+			}
+		})
+	}
+}

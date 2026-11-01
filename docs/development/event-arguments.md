@@ -494,3 +494,22 @@ can observe intermediate totals. An eligibility condition belongs inside the
 shared body when an earlier call can change the state it reads. Preserve literal
 per-person dialogue in small branches if replacing it with interpolation would
 change read/skip identity.
+
+
+## Reusing speakers and portrait targets
+
+Run `speaker_demo` in `docs/examples/event-arguments` to call the same greeting
+with two actors and then open one resident card. A greeting declares
+`params: {speaker: actor}` and uses
+`say: {who: {expr: arg.speaker}, text: 'Welcome to the workshop.'}`.
+A portrait entry uses `target: {expr: arg.resident}` with an `entity` parameter.
+The usual planning portrait field and view restrictions still apply.
+
+Pass the actor and entity separately when an event needs both. ID spelling alone
+does not convert between these namespaces. Literal speaker names keep working;
+expression speakers must name declared actors. Bindings are pure and errors do
+not consume random draws. Read history uses the resolved actor and original text
+template, preserving the key of the equivalent literal line. Save replay retains
+bindings; editing the event definition requires restarting that event. See
+[the speaker contract](../decisions/0054-typed-event-and-screen-arguments.md#resolved-speakers-and-entry-targets)
+for conservative scene-skip summaries and remaining repeated-row work.

@@ -119,7 +119,7 @@ func (c *checker) declarations() {
 			if len(e.Bounds) != 0 && (len(e.Bounds) != 4 || e.Bounds[0] < 0 || e.Bounds[1] < 0 || e.Bounds[2] <= 0 || e.Bounds[3] <= 0) {
 				c.errorf(diag.Shape, ew+".bounds", "want nonnegative x/y and positive width/height")
 			}
-			if e.Target != "" {
+			if e.Target.set() {
 				island := screen.View.Fullscreen && screen.Kind == "islands"
 				candidate := !screen.View.Fullscreen && screen.Kind == "" && screen.View.Portrait != ""
 				if (!island && !candidate) || len(e.Bounds) > 0 {
@@ -127,9 +127,13 @@ func (c *checker) declarations() {
 				}
 				if g.Planning == nil {
 					c.errorf(diag.Shape, ew+".target", "target requires planning data")
-				} else if _, ok := g.Planning.Entities[e.Target]; !ok {
-					c.errorf(diag.UnknownReference, ew+".target", "unknown entity %q", e.Target)
+				} else if _, ok := g.Planning.Entities[e.Target.ID]; !ok && !e.Target.Expr.Set() {
+					c.errorf(diag.UnknownReference, ew+".target", "unknown entity %q", e.Target.ID)
 				}
+			}
+			if e.Target.Expr.Set() {
+				c.needsVersion(ew+".target", "expression targets", SchemaVersion10)
+				c.argumentExpression(ew+".target.expr", e.Target.Expr, "entity", FieldNames, nil)
 			}
 			if e.Label == "" {
 				c.errorf(diag.Shape, ew, "an entry needs a label")

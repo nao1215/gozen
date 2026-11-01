@@ -972,3 +972,44 @@ scenarios:
       file:
         path: after.jsonl
         contains: ['Visited potter: 1', 'Visited weaver: 2', 'Finished 2 inspections', '"visits":2']
+- name: resolved speakers and portrait targets survive cross-process resume
+  steps:
+  - fixture:
+      file: speaker-save.txt
+      content: |
+        gap 4
+        wait 30
+        press save
+        press z
+        wait 90
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --event speaker_demo --script speaker-save.txt --save-dir saves --trace before.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: saves/save1.json
+        json: {path: $.cursor.event, equals: speaker_demo}
+  - fixture:
+      file: speaker-resume.txt
+      content: |
+        gap 4
+        wait 20
+        press z
+        press z
+        until idle
+        press z
+        until idle
+        press x
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --script speaker-resume.txt --save-dir saves --trace after.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: after.jsonl
+        contains: ['"who":"Potter"', '"who":"Weaver"', 'Encouraged weaver', 'Visits 2', '"greetings":2']

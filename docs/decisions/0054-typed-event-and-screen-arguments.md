@@ -1,6 +1,6 @@
 # ADR 0054: Typed arguments for reusable events and screens
 
-Status: Accepted for phased implementation (2026-11-01). Event calls and plain screen arguments implemented; plan entity/activity expression targets implemented; session and player plain screen continuation saves implemented; planning surface continuation and other expression-form target fields remain planned.
+Status: Accepted for phased implementation (2026-11-01). Event calls and plain screen arguments implemented; plan entity/activity expression targets implemented; session and player plain screen continuation saves implemented; expression-form speakers and screen entry targets implemented; planning surface continuation remains planned.
 
 See [the executable event-call slice](../development/event-arguments.md) for supported syntax and remaining limits.
 
@@ -26,8 +26,8 @@ Current evidence (before implementation):
   boundaries, including `open`.
 
 This decision extends [narrative authoring](0043-narrative-authoring.md) and
-[planning](0053-planning-components.md). It does not claim that the syntax below
-loads today. Existing literal forms and parameterless games keep their behavior.
+[planning](0053-planning-components.md). The implementation slices below distinguish
+supported syntax from remaining work. Existing literal forms and parameterless games keep their behavior.
 No package moves, dependency exceptions or public Go interfaces are required.
 
 ## Declaration and invocation
@@ -80,7 +80,8 @@ No new general evaluator, arbitrary callback or text substitution engine is adde
 
 ## Neutral author example
 
-These are **future schema fragments**, not a runnable example for the current CLI.
+These are supported schema fragments. The linked author guide supplies a complete
+runnable example for the current CLI.
 Assume planning entities `potter` and `weaver`, activities `prepare` and `pack`,
 actor `guide`, and a declared numeric entity attribute `vigor`. Event declarations
 belong in a data file; `screens` belongs in `game.yaml`.
@@ -738,3 +739,32 @@ The existing definition fingerprint includes both the selector and the reachable
 callee. The neutral `each_demo` uses workshop residents, changes eligibility
 inside the first visit, and still visits both original residents. Its atago
 scenario saves at a choice and resumes in a separate process.
+
+
+## Resolved speakers and entry targets
+
+Schema 10 accepts `say.who: {expr: arg.speaker}` for an actor parameter and
+`target: {expr: arg.resident}` for a planning entity parameter. Both reuse IDRef's
+pure, typed binding. Literal speakers still accept display names. Expressions
+must resolve to an existing, nonempty ID in the receiving namespace. Invalid
+speakers report an error and show no line; invalid targets report an error and
+hide the entry. Neither binding consumes randomness. Actor and entity parameters
+remain distinct even when their IDs happen to match.
+
+A line's read key hashes the resolved speaker ID and the authored text template.
+Changing bindings to a different actor gives a different key; an expression and
+a literal resolving to the same actor have the same key. Translation, displayed
+names and interpolated values do not affect it. Existing read records for literal
+lines remain valid. Editing a reachable definition still invalidates its old
+continuation fingerprint. Replay resolves the speaker from frozen arguments;
+voice lookup and portraits use that same resolved actor. Static scene-read
+summaries conservatively include every declared actor for an expression speaker,
+so scene skipping may remain unavailable even when one particular cast is read.
+Ordinary line skipping uses the exact resolved key.
+
+Entry targets resolve into copies for display, leaving authored definitions
+untouched, and are checked again on activation. Expressions alone do not add
+repeated screen rows: collection-generated entries remain separate work. The
+neutral `speaker_demo` and `resident_card` example exercises both namespaces;
+atago saves during dialogue and resumes in a second process before activating
+the portrait action. This is headless input verification, not graphical acceptance.
