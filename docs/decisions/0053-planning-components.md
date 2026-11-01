@@ -145,3 +145,12 @@ Enter to open a lane's authored screen. The footer shows the selected activity,
 assignee, reported percentage and dates. No hidden progress, inferred forecast or
 verification history is exposed. At the standard logical viewport twelve groups
 with three lanes fit without scrolling; larger tables scroll whole groups.
+
+Targeted actions on fullscreen islands use their existing entry `text` as an
+optional confirmation preview. Selecting an action with text shows that text
+below the menu without running commands; selecting the same row again or
+pressing Enter confirms it. Moving to another row clears the pending
+confirmation. Escape or clicking outside the menu cancels it. Authors should
+include the effect, cost and confirmation instruction in the text. Entries
+without text retain immediate activation. The preview uses 18 logical pixels
+and at most five lines; authors must keep the explanation within that space.

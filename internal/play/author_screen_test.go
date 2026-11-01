@@ -434,3 +434,80 @@ func TestAuthorScreenUntilIdleDoesNotActivateEntry(t *testing.T) {
 		t.Fatal("script did not reach menu")
 	}
 }
+
+func TestTargetActionPreviewConfirmation(t *testing.T) {
+	fsys := wldWorldFiles(t, `screens:
+  work:
+    title: Work
+    entries:
+      - {label: Rest, text: 'Rest for this turn. Select again to confirm.', do: [{set: {var.boards: 'var.boards + 1'}}]}
+      - {label: Repair, text: 'Repair for this turn.', do: [{set: {var.boards: 'var.boards + 2'}}]}
+`, nil)
+	g := wldOpenWith(t, Options{FS: fsys, Location: "camp"})
+	wldFrames(t, g, 30)
+	g.db.Game.Screens["work"].Kind = "islands"
+	g.db.Game.Screens["work"].View.Fullscreen = true
+	for i := range g.db.Game.Screens["work"].Entries {
+		g.db.Game.Screens["work"].Entries[i].Target = "artisan"
+	}
+	s := newAuthorScreen(g, "work", nil)
+	open := func() { s.openTarget(g, "artisan", image.Rect(0, 0, 100, 100)) }
+	click := func(row int) {
+		r := s.popup.rowRect(row)
+		g.in = input{click: true, mouse: image.Pt(r.Min.X+10, r.Min.Y+10)}
+		s.updateSurface(g)
+	}
+	open()
+	before, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	click(0)
+	after, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.popupArmed || s.running || !bytes.Equal(before, after) {
+		t.Fatal("preview mutated state or started an event")
+	}
+	click(1)
+	if !s.popupArmed || s.running {
+		t.Fatal("switching rows confirmed the other action")
+	}
+	g.in = input{pressed: [numButtons]bool{btnCancel: true}}
+	s.updateSurface(g)
+	if s.popup != nil || s.running {
+		t.Fatal("cancel started an action")
+	}
+	open()
+	click(0)
+	g.in = input{pressed: [numButtons]bool{btnDown: true}}
+	s.updateSurface(g)
+	if s.popupArmed {
+		t.Fatal("moving selection retained confirmation")
+	}
+	click(0)
+	click(0)
+	if !s.running || s.popup != nil {
+		t.Fatal("second selection did not start action")
+	}
+	g.in = input{}
+	s.update(g)
+	if g.st.Vars["boards"] != float64(1) {
+		t.Fatalf("action: %v", g.st.Vars)
+	}
+
+	s = newAuthorScreen(g, "work", nil)
+	open()
+	click(0)
+	g.in = input{pressed: [numButtons]bool{btnOK: true}}
+	s.updateSurface(g)
+	if !s.running {
+		t.Fatal("Enter did not confirm the preview")
+	}
+	g.in = input{}
+	s.update(g)
+	if g.st.Vars["boards"] != float64(2) {
+		t.Fatal("Enter did not execute exactly once")
+	}
+}

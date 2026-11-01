@@ -21,6 +21,7 @@ type authorScreen struct {
 	focus         int
 	popup         *list
 	popupIndices  []int
+	popupArmed    bool
 	name          string
 	title         string
 	indices       []int
@@ -225,6 +226,7 @@ func entryBounds(e data.ScreenEntry) image.Rectangle {
 
 func (s *authorScreen) openTarget(g *Game, id string, r image.Rectangle) {
 	s.target = id
+	s.popupArmed = false
 	if g.db.Game.Screens[s.name].Kind == "entities" {
 		return
 	}
@@ -266,7 +268,11 @@ func (s *authorScreen) updateSurface(g *Game) {
 			s.target = ""
 			return
 		}
+		previous := s.popup.sel
 		chose, cancel := s.popup.update(g)
+		if previous != s.popup.sel {
+			s.popupArmed = false
+		}
 		if cancel {
 			s.popup = nil
 			s.target = ""
@@ -274,6 +280,11 @@ func (s *authorScreen) updateSurface(g *Game) {
 		}
 		if chose && len(s.popupIndices) > 0 {
 			s.list.sel = s.popupIndices[s.popup.sel]
+			// Authored explanatory text opts a target action into preview.
+			if s.entries[s.list.sel].Text != "" && !s.popupArmed {
+				s.popupArmed = true
+				return
+			}
 			s.popup = nil
 			s.activate(g)
 		}
@@ -395,6 +406,12 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 		g.window(dst, s.popup.x, s.popup.y-40, s.popup.w, 42)
 		g.drawPlanningText(dst, g.db.Game.Planning.Entities[s.target].Name, s.popup.x+12, s.popup.y-30, s.popup.w-24, sizeS, 1, g.th.accent)
 		s.popup.draw(g, dst, true)
+		if s.popupArmed {
+			e := s.entries[s.popupIndices[s.popup.sel]]
+			y := s.popup.y + s.popup.height()
+			g.window(dst, s.popup.x, y, s.popup.w, 144)
+			g.drawPlanningText(dst, e.Text, s.popup.x+12, y+12, s.popup.w-24, 18, 5, g.th.text)
+		}
 	}
 	s.drawTabs(g, dst)
 }
