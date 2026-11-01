@@ -72,9 +72,43 @@ func (a Attribute) Value(v any) (any, error) {
 	return nil, fmt.Errorf("expected %s", a.Type)
 }
 
+// DefinitionData is immutable scalar/list metadata exposed by RPG entity expressions.
+// The loader validates finite values and homogeneous lists; rules cannot assign it.
+type DefinitionData map[string]any
+
+// UnmarshalYAML normalizes unsigned YAML integers to expression numbers.
+func (d *DefinitionData) UnmarshalYAML(unmarshal func(any) error) error {
+	var values map[string]any
+	if err := unmarshal(&values); err != nil {
+		return err
+	}
+	number := func(v any) any {
+		rv := reflect.ValueOf(v)
+		if rv.IsValid() && (rv.Kind() == reflect.Uint || rv.Kind() == reflect.Uint64) {
+			return float64(rv.Uint())
+		}
+		return v
+	}
+	for key, value := range values {
+		if list, ok := value.([]any); ok {
+			for i, item := range list {
+				list[i] = number(item)
+			}
+		} else {
+			values[key] = number(value)
+		}
+	}
+	*d = values
+	return nil
+}
+
 // Entity joins optional actor presentation with independently typed state.
 // Observations are evaluated on explicit refresh, not during drawing.
 type Entity struct {
+	// Data holds read-only definition values for rule and presentation expressions.
+	// Values are finite scalars or homogeneous scalar lists (at most 4096 items);
+	// they are not saved or changed by plan operations.
+	Data         DefinitionData  `yaml:"data"`
 	Name         string          `yaml:"name"`
 	Actor        string          `yaml:"actor"`
 	Tags         []string        `yaml:"tags"`
@@ -174,7 +208,7 @@ func (c *checker) planning() {
 	for _, id := range slices.Sorted(maps.Keys(p.Attributes)) {
 		a := p.Attributes[id]
 		at := w + ".attributes." + id
-		if !declaredName.MatchString(id) || id == "id" || id == "name" {
+		if !declaredName.MatchString(id) || id == "id" || id == "name" || id == "data" {
 			c.errorf(diag.Shape, at, "invalid or reserved attribute ID")
 		}
 		if _, err := a.Value(a.Initial); err != nil {
@@ -203,8 +237,30 @@ func (c *checker) planning() {
 				c.errorf(diag.Shape, at+".attributes."+k, "%v", err)
 			}
 		}
+		for _, k := range slices.Sorted(maps.Keys(e.Data)) {
+			at := at + ".data." + k
+			if !declaredName.MatchString(k) {
+				c.errorf(diag.Shape, at, "invalid definition data key")
+			}
+			value := e.Data[k]
+			if list, ok := value.([]any); ok {
+				if len(list) > 4096 {
+					c.errorf(diag.OutOfRange, at, "definition data list exceeds 4096 items")
+				}
+				kind := expr.UnknownType
+				for _, item := range list {
+					if item == nil || !expr.IsFiniteScalar(item) || (kind != expr.UnknownType && expr.TypeOfValue(item) != kind) {
+						c.errorf(diag.Shape, at, "definition data requires homogeneous finite scalar lists")
+						break
+					}
+					kind = expr.TypeOfValue(item)
+				}
+			} else if value == nil || !expr.IsFiniteScalar(value) {
+				c.errorf(diag.Shape, at, "definition data requires finite scalars or scalar lists")
+			}
+		}
 		for _, k := range slices.Sorted(maps.Keys(e.Observations)) {
-			if _, ok := p.Attributes[k]; ok || k == "id" || k == "name" {
+			if _, ok := p.Attributes[k]; ok || k == "id" || k == "name" || k == "data" {
 				c.errorf(diag.Shape, at+".observations."+k, "observation must not shadow an attribute")
 			}
 			c.planningPure(at+".observations."+k, e.Observations[k])

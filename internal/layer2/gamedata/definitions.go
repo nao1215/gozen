@@ -46,6 +46,12 @@ func (doc *sourceDocument) definitionShape(raw any, typ reflect.Type, where stri
 			return errs
 		}
 	}
+	if typ == reflect.TypeFor[DefinitionData]() {
+		if _, ok := raw.(yaml.MapSlice); !ok {
+			return bad("a definition data map")
+		}
+		return nil // Finite scalar/list values are checked by planning validation.
+	}
 	if typ == reflect.TypeFor[AIRef]() {
 		if _, ok := raw.(string); ok {
 			return nil

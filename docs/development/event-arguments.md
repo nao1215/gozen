@@ -262,13 +262,11 @@ both calls. Arguments stay bound while the choice waits, and the caller chooses
 the participants before entering the shared body. This also works for trainees,
 farm workers and other planning entities.
 
-Keep literal-only commands in small conditional branches when necessary. In
-`inspect`, the speaker and the flag write have separate branches, while the
-planning operation and choice remain shared. `say.who` and flag destinations
-still require literals. Variable destinations can use the indexed syntax below;
-`{arg.resident}` interpolation is not destination syntax. Avoid copying a whole
-event to accommodate literal-only commands. For substantial per-person state,
-prefer planning attributes and expression-form entity targets.
+Use expression-form `say.who` and entity targets when the caller chooses a
+resident. Indexed flag and variable destinations share the same saved namespaces;
+`{arg.resident}` interpolation is not destination syntax. For substantial mutable
+per-person state, prefer planning attributes. Fixed facts and source alternatives
+belong in read-only definition data, described below.
 
 The planning atago suite runs both calls and checks their dialogue, flags and
 resulting values. It uses the ordinary CLI and does not expand a template into
@@ -617,3 +615,35 @@ ensemble, selection condition and order. An actor parameter identifies an actor;
 only query a planning entity with that ID when the game explicitly defines both.
 Compare both summary and full meeting modes, absent residents, boundary states,
 dialogue/read records and the next random draw before replacing copied bodies.
+
+### Read-only resident definition data
+
+Put authored facts and alternative text sources in `planning.entities.<id>.data`.
+Each value is a string, finite number, boolean, or a homogeneous list of those
+scalars (up to 4096 elements). Keys must be identifiers. Nested maps, nested
+lists and null values are rejected. Types are inferred from the YAML values;
+quote numeric-looking text. Empty lists are allowed; guard indexing them.
+
+```yaml
+planning:
+  entities:
+    potter:
+      name: Potter
+      data:
+        threshold: 40
+        reports: ['The kiln is ready.', 'The clay is drying.']
+```
+
+Read `entity[arg.resident].data.threshold` or select a source with
+`entity[arg.resident].data.reports[0]`. Lists support `len`, indexing and bounded
+collection expressions. These values are definition data, not mutable attributes
+or refreshed observations: `plan set` cannot write them, and saves do not copy
+them. Updating the game definitions also updates these facts after loading a
+save. Keep stateful facts in typed attributes instead. `data` is a reserved
+attribute/observation name. Missing keys and invalid indexes follow the ordinary
+expression lookup rules; check presence before using optional data.
+
+The workshop's `selected_text_demo` reads each resident's own source through one
+shared event. Its CLI scenario saves during dialogue and resumes in another
+process, checking both selected sources. This mechanism also fits crop varieties,
+training thresholds and shop descriptions without resident-specific branches.

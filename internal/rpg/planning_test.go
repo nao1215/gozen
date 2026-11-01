@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/nao1215/gozen/internal/expr"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 )
@@ -140,5 +141,45 @@ func TestActivityAuthoredEffortSurvivesResize(t *testing.T) {
 	got, err := mustExpr(t, `sum(activities, it.effort-it.planned_effort)`).Eval(st.Env())
 	if err != nil || got != 4.0 {
 		t.Fatalf("authored effort changed: %v, %v", got, err)
+	}
+}
+
+func TestEntityDefinitionData(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{Calendar: data.Calendar{Start: "2030-01-01", End: "2030-01-02", Phases: []string{"day"}}, Entities: map[string]data.Entity{
+		"potter": {Data: map[string]any{"threshold": 40, "greetings": []any{"Hello", "Welcome"}}},
+	}}
+	st := testgame.State(db, 17)
+	before, err := st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for source, want := range map[string]any{`entity.potter.data.threshold`: 40, `entity.potter.data.greetings[1]`: "Welcome", `count(entity.potter.data.greetings, true)`: 2.0} {
+		got, err := mustExpr(t, source).Eval(st.Env())
+		if err != nil || got != want {
+			t.Fatalf("%s = %v, %v; want %v", source, got, err, want)
+		}
+	}
+	// Consumers may edit a detached result without modifying authored definitions.
+	values, ok := st.EntityValues("potter", true)["data"].(expr.Map)
+	if !ok {
+		t.Fatal("definition data is not an expression map")
+	}
+	values["threshold"] = 99
+	greetings, ok := values["greetings"].([]any)
+	if !ok {
+		t.Fatal("greetings is not a list")
+	}
+	greetings[0] = "Changed"
+	got, err := mustExpr(t, `entity.potter.data.greetings[0]`).Eval(st.Env())
+	if err != nil || got != "Hello" {
+		t.Fatalf("definition mutated through returned map: %v, %v", got, err)
+	}
+	after, err := st.Save()
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatalf("definition read changed save: %v", err)
+	}
+	if bytes.Contains(after, []byte("Welcome")) {
+		t.Fatal("definition data leaked into save")
 	}
 }

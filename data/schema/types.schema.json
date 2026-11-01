@@ -8332,6 +8332,41 @@
           },
           "x-type": "string → boolean, number, or string literal"
         },
+        "data": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              {
+                "items": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean"
+                  ]
+                },
+                "maxItems": 4096,
+                "type": "array"
+              }
+            ]
+          },
+          "description": "Read-only finite scalars or homogeneous scalar lists, accessed through entity expressions; not saved or writable by plan operations.",
+          "type": "object",
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → boolean, number, or string literal"
+        },
         "name": {
           "description": "Name of this entity.",
           "type": "string",

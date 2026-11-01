@@ -794,3 +794,13 @@ Literal `text` semantics and serialization remain unchanged. Static scene-read
 summaries treat selected sources as unknown, and language extraction cannot
 enumerate them. The author guide records these limitations. No package boundary
 or save format changes are needed; replay uses the existing argument scope.
+
+## Immutable entity definition data
+
+Entity expressions additionally expose `data`, an authored map of finite scalars
+and homogeneous scalar lists. The loader infers types and rejects nested values;
+the RPG expression adapter supplies detached values without adding saved state.
+This separates source text and fixed thresholds from mutable planning attributes.
+Shared argument-driven events can select resident-specific definitions without
+identity comparisons. Save reloads use the current installed definitions, as they
+do for ordinary event source text. There are no new packages or dependencies.

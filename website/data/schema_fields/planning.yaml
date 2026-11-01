@@ -17,6 +17,7 @@ Attribute:
   max: "Max of this attribute."
   hidden: "Hidden of this attribute."
 Entity:
+  data: Read-only finite scalars or homogeneous scalar lists, accessed through entity expressions; not saved or writable by plan operations.
   _: "Entity definition for deterministic planning simulations."
   name: "Name of this entity."
   actor: "Actor of this entity."

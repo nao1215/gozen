@@ -119,6 +119,15 @@ func (s *State) EntityValues(id string, full bool) expr.Map {
 		return out
 	}
 	out["name"] = def.Name
+	// Keep the expression object detached, including authored lists.
+	values := expr.Map{}
+	for key, value := range def.Data {
+		if list, ok := value.([]any); ok {
+			value = slices.Clone(list)
+		}
+		values[key] = value
+	}
+	out["data"] = values
 	for key, value := range st.Attributes {
 		if full || !p.Attributes[key].Hidden {
 			out[key] = value

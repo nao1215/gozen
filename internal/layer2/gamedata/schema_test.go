@@ -173,6 +173,10 @@ func (b *schemaBuilder) node(t reflect.Type) schemaNode {
 	if t == reflect.TypeFor[Expr]() {
 		return schemaNode{"type": []string{"string", "number", "boolean", "null"}, "description": "An expression. gozen check checks its syntax, names and types."}
 	}
+	if t == reflect.TypeFor[DefinitionData]() {
+		scalar := schemaNode{"type": []string{"string", "number", "boolean"}}
+		return schemaNode{"type": "object", "additionalProperties": schemaNode{"anyOf": []any{scalar, schemaNode{"type": "array", "items": scalar, "maxItems": 4096}}}}
+	}
 	if t == reflect.TypeFor[Color]() {
 		return schemaNode{"type": "string", "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"}
 	}

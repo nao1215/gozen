@@ -247,12 +247,12 @@ events:
     - say: 'Visited {arg.resident}: {var.visits}'
   selected_text_demo:
     do:
-    - call: {event: report_resident, args: {name: '"Potter"'}}
-    - call: {event: report_resident, args: {name: '"Weaver"'}}
+    - call: {event: report_resident, args: {resident: '"potter"'}}
+    - call: {event: report_resident, args: {resident: '"weaver"'}}
   report_resident:
-    params: {name: string}
+    params: {resident: entity}
     do:
-    - say: {text_expr: 'arg.name + " visits the workshop."'}
+    - say: {text_expr: 'entity[arg.resident].data.reports[0]'}
   speaker_demo:
     do:
     - call: {event: greet, each: {param: speaker, items: [potter, weaver]}}

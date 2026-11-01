@@ -4,7 +4,13 @@ start: {location: workshop}
 planning:
   calendar: {start: '2030-01-01', end: '2030-01-02', phases: [day], weekdays_off: [0, 6]}
   attributes: {vigor: {type: number, initial: 0}, portrait: {type: string, initial: ""}}
-  entities: {potter: {name: Potter}, weaver: {name: Weaver}}
+  entities:
+    potter:
+      name: Potter
+      data: {reports: ['Potter visits the workshop.', 'The kiln is ready.'], limit: 2}
+    weaver:
+      name: Weaver
+      data: {reports: ['Weaver visits the workshop.', 'The loom is ready.'], limit: 2}
   activities:
     prepare: {name: Prepare, effort: 2, assignee: potter, from: '2030-01-01', to: '2030-01-02'}
     shape: {name: Shape, effort: 2, assignee: potter, from: '2030-01-01', to: '2030-01-02'}
