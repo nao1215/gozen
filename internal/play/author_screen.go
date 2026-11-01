@@ -1,9 +1,11 @@
 package play
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"slices"
+	"strings"
 
 	"github.com/nao1215/gozen/internal/event"
 
@@ -57,7 +59,52 @@ func newAuthorScreen(g *Game, name string, done func()) *authorScreen {
 	}
 	sw, sh := g.screen()
 	s.list = newList(items, 24, 88, sw*0.32, max(1, int((sh-140)/44)))
+	if s.candidateList(g) {
+		s.list.w, s.list.rowH, s.list.rows = sw*.56-36, 64, max(1, int((sh-140)/64))
+	}
 	return s
+}
+
+// Plain authored lists may bind entries to public planning portraits and fields.
+// The existing list owns selection, scrolling, hit regions and confirmation.
+func (s *authorScreen) candidateList(g *Game) bool {
+	d := g.db.Game.Screens[s.name]
+	return d != nil && d.Kind == "" && !d.View.Fullscreen && d.View.Portrait != "" && g.db.Game.Planning != nil
+}
+
+func (s *authorScreen) candidateInfo(g *Game, e data.ScreenEntry) (string, string) {
+	v := g.db.Game.Screens[s.name].View
+	values := g.st.EntityValues(e.Target, false)
+	portrait, ok := values[v.Portrait].(string)
+	if !ok {
+		portrait = ""
+	}
+	var fields []string
+	for _, f := range v.Fields {
+		if value := values[f.Key]; value != nil {
+			fields = append(fields, f.Label+" "+fmt.Sprint(value))
+		}
+	}
+	return portrait, strings.Join(fields, " · ")
+}
+
+func (s *authorScreen) drawCandidates(g *Game, dst *ebiten.Image) {
+	l := s.list
+	g.traceList(l)
+	g.window(dst, l.x, l.y, l.w, l.height())
+	for _, i := range l.shown() {
+		r := l.rowRect(i)
+		x, y := float64(r.Min.X), float64(r.Min.Y)
+		tint := g.th.text
+		if i == l.sel {
+			tint = g.th.accent
+			rect(dst, x+4, y+4, 3, l.rowH-8, tint)
+		}
+		portrait, summary := s.candidateInfo(g, s.entries[i])
+		g.planningFace(dst, portrait, x+34, y+30, 22)
+		g.drawPlanningText(dst, s.entries[i].Label, x+68, y+2, l.w-80, 18, 1, tint)
+		g.drawPlanningText(dst, summary, x+68, y+30, l.w-80, 15, 1, g.th.dim)
+	}
 }
 
 func (s *authorScreen) modal() bool   { return !s.running }
@@ -184,9 +231,16 @@ func (s *authorScreen) draw(g *Game, dst *ebiten.Image) {
 	fill(dst, color.NRGBA{0, 0, 0, 220})
 	g.drawLinesFit(dst, s.title, 36, 28, sw-72, sizeL, 1, g.th.accent)
 	if len(s.entries) > 0 {
-		s.list.draw(g, dst, true)
+		if s.candidateList(g) {
+			s.drawCandidates(g, dst)
+		} else {
+			s.list.draw(g, dst, true)
+		}
 	}
 	x, w := sw*0.36, sw*0.64-36
+	if s.candidateList(g) {
+		x, w = sw*.56, sw*.44-36
+	}
 	if def := g.db.Game.Screens[s.name]; def != nil && def.Kind != "" {
 		if len(s.entries) == 0 {
 			x, w = 24, sw-48

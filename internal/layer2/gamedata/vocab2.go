@@ -112,8 +112,10 @@ func (c *checker) declarations() {
 				c.errorf(diag.Shape, ew+".bounds", "want nonnegative x/y and positive width/height")
 			}
 			if e.Target != "" {
-				if !screen.View.Fullscreen || screen.Kind != "islands" || len(e.Bounds) > 0 {
-					c.errorf(diag.Shape, ew+".target", "contextual targets require a full-screen island view and no direct bounds")
+				island := screen.View.Fullscreen && screen.Kind == "islands"
+				candidate := !screen.View.Fullscreen && screen.Kind == "" && screen.View.Portrait != ""
+				if (!island && !candidate) || len(e.Bounds) > 0 {
+					c.errorf(diag.Shape, ew+".target", "targets require a full-screen island view or a plain portrait list, and no direct bounds")
 				}
 				if g.Planning == nil {
 					c.errorf(diag.Shape, ew+".target", "target requires planning data")

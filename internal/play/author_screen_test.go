@@ -511,3 +511,57 @@ func TestTargetActionPreviewConfirmation(t *testing.T) {
 		t.Fatal("Enter did not execute exactly once")
 	}
 }
+
+func TestCandidateListPublicValuesAndSelection(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{
+		Calendar:   data.Calendar{Start: "2030-08-01", End: "2030-08-31", Phases: []string{"morning"}},
+		Attributes: map[string]data.Attribute{"icon": {Type: "string", Initial: "private.png", Hidden: true}, "load": {Type: "number", Initial: 3}},
+		Entities:   map[string]data.Entity{"maker": {Name: "Maker"}},
+	}
+	db.Game.Screens = map[string]*data.AuthorScreen{"pick": {Title: "Choose a maker", View: data.PlanningView{Portrait: "icon", Fields: []data.PlanningField{{Key: "load", Label: "Load"}}}}}
+	for range 12 {
+		db.Game.Screens["pick"].Entries = append(db.Game.Screens["pick"].Entries, data.ScreenEntry{Target: "maker", Label: "Maker"})
+	}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "pick", nil)
+	before, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	portrait, summary := s.candidateInfo(g, s.entries[0])
+	if portrait != "" || summary != "Load 3" {
+		t.Fatalf("hidden fallback or missing public value: %q %q", portrait, summary)
+	}
+	g.st.Planning.Entities["maker"].Observations["icon"] = "public.png"
+	portrait, _ = s.candidateInfo(g, s.entries[0])
+	if portrait != "public.png" {
+		t.Fatal("public portrait missing")
+	}
+	delete(g.st.Planning.Entities["maker"].Observations, "icon")
+	s.list.sel = 11
+	s.list.scroll()
+	if s.list.top == 0 || s.list.rowH != 64 {
+		t.Fatal("candidate rows did not scroll")
+	}
+	r := s.list.rowRect(11)
+	if r.Max.Y > 720 {
+		t.Fatal("candidate clipped below viewport")
+	}
+	g.in = input{click: true, mouse: image.Pt(r.Min.X+20, r.Min.Y+20)}
+	chose, cancel := s.list.update(g)
+	if !chose || cancel || s.list.sel != 11 {
+		t.Fatal("candidate hit region diverged")
+	}
+	after, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("candidate browsing mutated simulation")
+	}
+	db.Game.Screens["pick"].View.Portrait = ""
+	if newAuthorScreen(g, "pick", nil).list.rowH != 44 {
+		t.Fatal("ordinary list compatibility lost")
+	}
+}

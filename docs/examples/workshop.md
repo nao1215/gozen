@@ -51,3 +51,13 @@ surface and resumes its original opener. An open seat menu must be dismissed
 before switching. Nested detail screens still use ordinary `open` and cancel.
 Reserve the bottom-right 152 logical pixels per tab, from height minus 72 to
 height minus 24, for the controls; place authored action bounds elsewhere.
+
+Plain authored screens (with no `kind` and no `fullscreen`) can present a
+candidate list by setting `view.portrait` and binding each entry's `target` to a
+planning entity. `view.fields` supplies the public values shown below each
+entry label. Rows use 18-pixel labels, 15-pixel summaries and a public portrait;
+long lists scroll with keyboard selection. The selected entry's `text` remains
+in the detail pane. Include full explanations there when a row summary is long.
+Hidden attributes are never used as a fallback for missing observations.
+Selecting an entry runs its ordinary `do`; authors can use a `choice` there to
+confirm a costly action. Browsing the list itself does not advance planning.

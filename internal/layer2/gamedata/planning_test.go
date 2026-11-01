@@ -137,3 +137,13 @@ func TestTimelineRowsAndMarkers(t *testing.T) {
 		}
 	}
 }
+
+func TestPlanningCandidateTargets(t *testing.T) {
+	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  attributes: {icon: {type: string, initial: ''}}\n  entities: {potter: {name: Potter}}\nscreens:\n  board:\n    title: Choose\n    view: {portrait: icon}\n    entries:\n"
+	for _, target := range []string{"potter", "missing"} {
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header + "      - {label: Potter, target: " + target + "}\n")}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
+		if (err == nil) != (target == "potter") {
+			t.Fatalf("target %s: %v", target, err)
+		}
+	}
+}
