@@ -19,13 +19,32 @@ meaning of health, productivity, work places or a successful outcome.
 
 Attributes are finite typed scalars. An invalid assignment fails instead of
 clamping. Operations select stable entity IDs in ascending order. A failed batch
-restores the complete planning state. Reusable rules bind scalar arguments and
+restores the complete planning state. Observations and rule arguments also require finite scalars: numbers cannot be
+NaN or infinity; strings, booleans and nil keep their existing meanings. An
+overflow fails even when a rule does not use that argument. Validation happens
+before accepting the candidate state, so saving and advancing still work after
+a rejected refresh or rule call. Reusable rules bind scalar arguments and
 contain at most 256 immediate operations; nested rule and policy calls are rejected.
 Random draws belong to preceding ordinary event commands, not planning formulas.
 
 Observations refresh explicitly. Hidden attributes are absent from player views;
 this is not encryption. Policy conditions see observations, while event rules
 can read full state. Diagnostic snapshots intentionally contain full state.
+
+For example, a workshop resident can expose a numeric estimate without changing
+the underlying attribute:
+
+```yaml
+entities:
+  potter:
+    name: Potter
+    observations:
+      estimated_output: 'self.vigor * 2'
+```
+
+Here `vigor` is a declared numeric attribute. If an authored formula overflows,
+the whole `observe` operation fails; the previous report remains available.
+The same validation applies to rule arguments even if their body ignores them.
 
 ### Scoped observation contract
 

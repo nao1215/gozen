@@ -60,8 +60,8 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 			if err != nil {
 				return nil, err
 			}
-			if expr.TypeOfValue(v) == expr.UnknownType {
-				return nil, errors.New("argument must be scalar")
+			if !expr.IsFiniteScalar(v) {
+				return nil, fmt.Errorf("argument %s must be a finite scalar", key)
 			}
 			params[key] = v
 		}
@@ -303,8 +303,8 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 				if err != nil {
 					return nil, err
 				}
-				if expr.TypeOfValue(v) == expr.UnknownType {
-					return nil, fmt.Errorf("observation %s must be scalar", key)
+				if !expr.IsFiniteScalar(v) {
+					return nil, fmt.Errorf("observation %s must be a finite scalar", key)
 				}
 				values[key] = v
 			}

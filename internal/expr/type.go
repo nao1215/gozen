@@ -1,5 +1,7 @@
 package expr
 
+import "math"
+
 // ValueType is a value type determined without evaluation. Both branches of a conditional are represented as a bitwise union.
 type ValueType uint8
 
@@ -26,6 +28,22 @@ func TypeOfValue(v any) ValueType {
 		return NumberType
 	}
 	return UnknownType
+}
+
+// IsFiniteScalar reports whether v is a scalar accepted by planning attributes,
+// observations and rule arguments. Numbers must be finite; booleans, strings
+// and nil retain their types. Collections and other values are rejected.
+func IsFiniteScalar(v any) bool {
+	switch TypeOfValue(v) {
+	case NumberType:
+		n, _ := ToNumber(v)
+		return !math.IsNaN(n) && !math.IsInf(n, 0)
+	case BoolType, StringType, NilType:
+		return true
+	case UnknownType, InvalidType:
+		return false
+	}
+	return false
 }
 
 // ResultType looks up the types of references via resolve and returns the candidate result types without executing the expression.

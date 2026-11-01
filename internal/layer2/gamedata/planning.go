@@ -50,7 +50,7 @@ func (a Attribute) Value(v any) (any, error) {
 			v = float64(rv.Uint())
 		}
 		n, ok := expr.ToNumber(v)
-		if !ok || expr.TypeOfValue(v) != expr.NumberType || math.IsNaN(n) || math.IsInf(n, 0) {
+		if !ok || expr.TypeOfValue(v) != expr.NumberType || !expr.IsFiniteScalar(v) {
 			return nil, errors.New("expected a finite number")
 		}
 		if a.Min != nil && n < *a.Min || a.Max != nil && n > *a.Max {

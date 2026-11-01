@@ -3,6 +3,7 @@ package planning_test
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -495,5 +496,50 @@ func TestDeadlineChangesPersistAndRejectInvalidDates(t *testing.T) {
 	s.Planning.Activities["prepare"].Deadline = ""
 	if s.ActivityDeadline("prepare") != "2030-08-03" {
 		t.Fatal("legacy save must retain authored deadline")
+	}
+}
+
+// Overflow must not poison the saved state or prevent the next operation.
+func TestNonFiniteScalarRollback(t *testing.T) {
+	huge := "1" + strings.Repeat("0", 200)
+	for _, formula := range []string{huge + " * " + huge, "-" + huge + " * " + huge, "(" + huge + " * " + huge + ") - (" + huge + " * " + huge + ")"} {
+		for _, target := range []string{"observation", "argument", "attribute", "activity"} {
+			t.Run(target+"/"+formula[:8], func(t *testing.T) {
+				s := state(t)
+				apply(t, s, data.PlanCommand{Op: "observe"})
+				cmd := data.PlanCommand{Op: "observe"}
+				switch target {
+				case "observation":
+					entity := s.DB.Game.Planning.Entities["weaver"]
+					entity.Observations = map[string]data.Expr{"report": value(t, formula)}
+					s.DB.Game.Planning.Entities["weaver"] = entity
+					apply(t, s, data.PlanCommand{Op: "set", Entity: "potter", Attribute: "vigor", Value: value(t, "20")})
+				case "argument":
+					s.DB.Game.Planning.Rules = map[string]data.PlanRule{"step": {Params: []string{"unused"}, Do: []data.PlanCommand{{Op: "advance"}}}}
+					cmd = data.PlanCommand{Op: "rule", Rule: "step", Args: map[string]data.Expr{"unused": value(t, formula)}}
+				case "attribute":
+					cmd = data.PlanCommand{Op: "set", Attribute: "vigor", Value: value(t, formula)}
+				case "activity":
+					def := s.DB.Game.Planning.Activities["shape"]
+					def.Observation = value(t, formula)
+					s.DB.Game.Planning.Activities["shape"] = def
+				}
+				before := snapshot(t, s)
+				if _, err := planning.Apply(s, cmd); err == nil {
+					t.Fatal("non-finite scalar accepted")
+				}
+				if string(snapshot(t, s)) != string(before) {
+					t.Fatal("rejected operation changed saved state")
+				}
+				apply(t, s, data.PlanCommand{Op: "advance"})
+				restored, err := rpg.Parse(s.DB, snapshot(t, s), nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(s.Planning, restored.Planning) {
+					t.Fatal("resume changed planning state")
+				}
+			})
+		}
 	}
 }
