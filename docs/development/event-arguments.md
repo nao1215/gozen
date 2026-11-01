@@ -517,3 +517,24 @@ template, preserving the key of the equivalent literal line. Save replay retains
 bindings; editing the event definition requires restarting that event. See
 [the speaker contract](../decisions/0054-typed-event-and-screen-arguments.md#resolved-speakers-and-entry-targets)
 for conservative scene-skip summaries and remaining repeated-row work.
+
+Choice labels can interpolate the name of a bound planning entity. Write one
+option for the action instead of copying the same option for every resident:
+
+```yaml
+offer_visit:
+  params: {resident: entity}
+  do:
+    - choice:
+        - label: 'Visit {entity[arg.resident].name}'
+          do:
+            - say: 'The visit is arranged.'
+```
+
+Call this event with a declared resident ID, for example
+`call: {event: offer_visit, args: {resident: '"weaver"'}}` in
+`docs/examples/event-arguments`. The label reads the entity's authored name; the action and its order
+stay in one body. This does not generate repeated screen entries. Dialogue
+templates have a separate read-history contract: replacing a literal `say`
+with an interpolated template can change its read key even if the displayed
+sentence is identical.
