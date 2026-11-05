@@ -27,7 +27,7 @@ import (
 	"github.com/nao1215/gozen/internal/layer5/puppet"
 )
 
-// The streamer's pictures and puppet.yaml (CC BY 4.0, see assets/LICENSE).
+// The streamer's pictures and puppet.yaml (no copyright claimed, CC0 1.0; see assets/LICENSE).
 //
 //go:embed assets
 var assets embed.FS

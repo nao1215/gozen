@@ -92,6 +92,7 @@ var groups = map[string]clihelp.Page{
 			{"routes", "Explore event choices and report reachable endings and options"},
 			{"breed", "Show monsters reachable from captures and their shortest recipes"},
 			{"script", "Play a run --script script without a window and write its trace"},
+			{"batch", "Play many sim script cases in one process, reading each game once"},
 		},
 		Examples: []clihelp.Example{
 			{"fight 100 battles", "gozen sim battle game --troop lesson -n 100"},
@@ -155,7 +156,7 @@ var pages = map[string]clihelp.Page{
 			{"restore the pictures of the cave theme", "gozen theme add game --name cave --force"},
 		},
 		Groups: []clihelp.Group{{Title: "Files", Flags: []string{"name", "force"}}, general},
-		Notes:  []string{"The theme's pictures are CC BY 4.0; see ASSETS.md of the gozen repository.", noRequirements},
+		Notes:  []string{"The theme's pictures claim no copyright (CC0 1.0); see ASSETS.md of the gozen repository.", noRequirements},
 	},
 	"theme list": {
 		Summary: "list the dungeon themes",
@@ -269,6 +270,25 @@ var pages = map[string]clihelp.Page{
 		},
 		Notes: []string{noRequirements},
 	},
+	"sim batch": {
+		Summary: "play many sim script cases in one process",
+		Usage:   []string{"gozen sim batch [OPTIONS] --cases FILE"},
+		About: "Reads cases as JSON Lines, one object a line: {\"id\": NAME, \"args\": [ARGUMENTS]}, " +
+			"where ARGUMENTS are those of gozen sim script (the game directory first). Each case plays as " +
+			"gozen sim script with those arguments would, and writes one JSON line to the standard output " +
+			"when it ends: {\"id\", \"exit\", \"stdout\", \"stderr\"}, the exit status and what it would " +
+			"have printed; its trace goes where its --trace says. A game directory is read and checked once " +
+			"and again only when one of its files changes, so many short cases take the time of one start. " +
+			"Every case starts a new game from those definitions with its own seed, saves and state; " +
+			"nothing of one case reaches the next. A line that does not parse gives a result with exit 2. " +
+			"Cases are played one at a time; run several processes to play them in parallel.",
+		Examples: []clihelp.Example{
+			{"play the cases of a file", "gozen sim batch --cases cases.jsonl"},
+			{"stream cases and read each result before sending the next", "program | gozen sim batch --cases -"},
+		},
+		Groups: []clihelp.Group{{Title: "Cases", Flags: []string{"cases", "games"}}, general},
+		Notes:  []string{noRequirements},
+	},
 	"sim routes": {
 		Summary: "find unreachable endings and choice options",
 		Usage:   []string{"gozen sim routes [OPTIONS] <game-dir>"},
@@ -379,8 +399,9 @@ var pages = map[string]clihelp.Page{
 		Examples: []clihelp.Example{
 			{"package for Windows", "gozen export game --out output --runtime runtime --target windows-amd64"},
 			{"export a website", "gozen export game --out site --runtime web-runtime --target web"},
+			{"export a website again, converting only the changed files", "gozen export game --out site2 --runtime web-runtime --target web --reuse site"},
 		},
-		Groups: []clihelp.Group{{Title: "Runtime", Flags: []string{"runtime", "target"}}, {Title: "Output", Flags: []string{"out", "format"}}, general},
+		Groups: []clihelp.Group{{Title: "Runtime", Flags: []string{"runtime", "target"}}, {Title: "Output", Flags: []string{"out", "reuse", "format"}}, general},
 		Notes:  []string{"Requirements: an unpacked matching Gozen runtime bundle. Desktop play needs a display and platform graphics and audio libraries; web play needs an HTTP or HTTPS server. See " + clihelp.README, "The output must be new and outside the game and runtime directories. For games with an asset policy, prepare the input with gozen release first."},
 	},
 	"release": {
