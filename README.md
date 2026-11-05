@@ -30,6 +30,8 @@ Documentation: https://nao1215.github.io/gozen/
 | ![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](docs/images/go-zen.gif) | ![After the Pass, the novel sample: a line, a choice, Back over the choice, and Skip to the first line not read](docs/images/novel.gif) |
 | Campaign: [Five Banners](https://nao1215.github.io/gozen/play/campaign/) (play in browser) | Monster collection: [Go Zen](https://nao1215.github.io/gozen/play/go-zen/) (play in browser) |
 | ![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](docs/images/campaign.gif) | ![Breeding monsters in Go Zen: Yorn, the two parents, a silhouette reveal and the newborn Succubus](docs/images/go-zen-breeding.gif) |
+| Management: [Harbor app team](examples/office) | |
+| [![the office sample: the standup, the team, handing out work, a message, a video call with a shared screen, the calendar and the plan](docs/images/office.gif)](docs/images/office.mp4) | |
 
 ## Try it
 
@@ -90,6 +92,24 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 | Event picture with its line | |
 | ![Brenna's ending: a picture of her cheering at the bar, with the line under it](docs/images/novel-picture.jpg) | |
 
+### Management workspaces
+
+Workspace, call, calendar and timeline screens with a day `flow` (schema 10) make a management game. From the office sample ([examples/office](examples/office)); the YAML is in [workspace recipes](https://nao1215.github.io/gozen/workspaces/).
+
+| Standup: busts, meters, dots, signs, burnup | People: press for a peek |
+|:--|:--|
+| ![six team cards with busts, progress meters, status dots and a burnup chart](docs/images/workboard-cards.jpg) | ![the team with Daniel's peek open](docs/images/workboard-peek.jpg) |
+| Hand out work by dragging (or with keys) | Tickets, dependencies and a carousel |
+| ![Acceptance tests is refused by Daniel, then Payments is handed to him](docs/images/workboard-drag.gif) | ![tickets joined by a dependency line, and the help carousel turning to an unavailable choice](docs/images/workboard-carousel.gif) |
+| A message asks for a decision | Video call |
+| ![Elena's message is opened and a choice appears](docs/images/workboard-message.gif) | ![the team call: the speaker on the stage, the others in the side column](docs/images/workboard-call.gif) |
+| Screen sharing | First-visit guide |
+| ![Elena shares the booking form in the call](docs/images/workboard-share.jpg) | ![Martin's guide line over the veiled standup](docs/images/workboard-guide.jpg) |
+| Calendar with scheduled events | Plan timeline |
+| ![the sprint calendar with the review and the demo](docs/images/workboard-calendar.jpg) | ![the sprint plan with five activities](docs/images/workboard-timeline.jpg) |
+| Character grid | Glass panels |
+| ![the character book in a grid](docs/images/workboard-profiles.jpg) | ![two overlapping glass panels over the office](docs/images/workboard-materials.jpg) |
+
 ### Campaigns
 
 `regions`, `factions` and `campaign` (schema version 5) make a war of regions over turns. A campaign can share a game with dungeons and towns: generals are the same actors, and `move` goes between them. From [Five Banners](examples/campaign), the campaign sample.
@@ -131,7 +151,7 @@ Enemies can change form at an HP threshold, combine with allies, change pictures
 |:--|:--|
 | ![The Tollkeeper changes into its second form](docs/images/go-zen-transform.gif) | ![Drip Slimes gather into King Slime](docs/images/go-zen-merge.gif) |
 | Pictures by HP | Motion and sway |
-| ![A damaged monster shows its low HP picture](docs/images/go-zen-hp-pictures.jpg) | ![The Succubus blinks, sways and reacts to a hit](docs/images/go-zen-motion.gif) |
+| ![A damaged monster shows its low HP picture](docs/images/go-zen-hp-pictures.jpg) | ![The Succubus blinks, a soft region sways, and she reacts to a hit](docs/images/go-zen-motion.gif) |
 
 See [the battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-enemy).
 
@@ -143,49 +163,17 @@ See [the battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-
 
 Start the game with `--dev` and these keys work while you play.
 
-**F5: edit the game's YAML, the line changes in place**
-
-![Hedda's line is edited in the YAML and F5 shows the new text at the same place](docs/images/playtest-reload.gif)
-
-**F9: a note with the screen and the state**
-
-![F9 opens a note, a comment is typed and saved](docs/images/playtest-memo.gif)
-
-**F7: win rates of the battles here**
-
-![win rates by troop](docs/images/go-zen-balance.jpg)
-
-**F8 State: flip a flag, step a number**
-
-![flag.thanked_hedda and chose.toast in the development panel](docs/images/novel-panel.jpg)
-
-**F8 Flags: what each event sets and reads**
-
-![the flags each event sets and reads](docs/images/novel-flags.jpg)
-
-**F8 Scenes: jump to an event**
-
-![the Scenes tab jumps to the late night](docs/images/playtest-jump.gif)
-
-**F8 Command: run a line of YAML**
-
-![a set typed into the Command tab, then the State tab shows the flag](docs/images/playtest-command.gif)
-
-**F8 Frames: ticks and frames a second, the slowest Update and Draw**
-
-![the frame meter over the tavern](docs/images/playtest-frames.jpg)
-
-**F6: the character book, every page open: each character's profile, faces and relations**
-
-![Wren's page in the character book: her picture, fields, introduction and how she sees the others](docs/images/novel-characters.jpg)
-
-**Tab: relationship chart; arrows choose a face, Z focuses its neighbors, Z again opens its page, and X returns to the full chart**
-
-![Go Zen's full relationship chart with face icons and colored connections](docs/images/go-zen-relations.jpg)
-
-**Ox's incoming and outgoing neighbors gather around him**
-
-![Ox focused at the center of the relationship chart with his neighbors in a circle](docs/images/go-zen-relations-focus.jpg)
+| F5: edit the YAML, the line changes in place | F9: a note with the screen and the state |
+|:--|:--|
+| ![Hedda's line is edited in the YAML and F5 shows the new text at the same place](docs/images/playtest-reload.gif) | ![F9 opens a note, a comment is typed and saved](docs/images/playtest-memo.gif) |
+| F7: win rates of the battles here | F8 State: flip a flag, step a number |
+| ![win rates by troop](docs/images/go-zen-balance.jpg) | ![flag.thanked_hedda and chose.toast in the development panel](docs/images/novel-panel.jpg) |
+| F8 Flags: what each event sets and reads | F8 Scenes: jump to an event |
+| ![the flags each event sets and reads](docs/images/novel-flags.jpg) | ![the Scenes tab jumps to the late night](docs/images/playtest-jump.gif) |
+| F8 Command: run a line of YAML | F8 Frames: ticks, frames, the slowest Update and Draw |
+| ![a set typed into the Command tab, then the State tab shows the flag](docs/images/playtest-command.gif) | ![the frame meter over the tavern](docs/images/playtest-frames.jpg) |
+| F6: the character book | Tab: the relationship chart (Z focuses a face) |
+| ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](docs/images/novel-characters.jpg) | ![Ox focused at the center of the relationship chart with his neighbors in a circle](docs/images/go-zen-relations-focus.jpg) |
 
 ## Install
 
@@ -276,6 +264,7 @@ gozen notes notes --out notes-html                   # notes as one HTML page
 - First-person grid dungeons, fixed or generated, with themes (`theme: cave`, `gozen theme add`)
 - Moving portraits from one picture ([portrait YAML](https://nao1215.github.io/gozen/cookbook/#give-a-character-faces-and-a-moving-portrait))
 - Campaigns: regions held by factions over turns, orders with generals, a sortie screen with tactics, marches shown as clashes of armies (or decided by numbers or a battle), the other factions' rules, and `gozen sim campaign` ([recipes](https://nao1215.github.io/gozen/cookbook/#make-a-campaign))
+- Management games: workspace cards, drag and drop, tickets, messages, video calls with screen sharing, calendars, timelines and first-visit guides ([recipes](https://nao1215.github.io/gozen/workspaces/))
 - Visual novels: roll back, skip what was read, save in a scene, choices read as `chose`, staging with `stand` ([recipes](https://nao1215.github.io/gozen/cookbook/#let-the-player-roll-back-and-save-in-a-scene))
 - Inspectable demo builds: `gozen trial` selects content using `trial.yaml`, reports unresolved conditions, and rejects explicitly forbidden definitions or assets before writing ([recipe](https://nao1215.github.io/gozen/cookbook/#check-the-contents-of-a-trial))
 - Engine words in English and Japanese (`language` in game.yaml), and the game's text in two languages (`lang/`)
@@ -302,7 +291,7 @@ A star or a [GitHub Sponsors](https://github.com/sponsors/nao1215) sponsorship h
 
 ## License
 
-The code is [MIT](LICENSE). The Go Zen, After the Pass and Five Banners pictures and music are CC BY 4.0 ([Go Zen](examples/go-zen/game/assets/LICENSE), [After the Pass](examples/novel/game/assets/LICENSE), [Five Banners](examples/campaign/game/assets/LICENSE)). Font notices are in [ASSETS.md](ASSETS.md).
+The code is [MIT](LICENSE). The Go Zen, After the Pass and Five Banners pictures claim no copyright (CC0 1.0) and their music is CC BY 4.0 ([Go Zen](examples/go-zen/game/assets/LICENSE), [After the Pass](examples/novel/game/assets/LICENSE), [Five Banners](examples/campaign/game/assets/LICENSE)). Font notices are in [ASSETS.md](ASSETS.md).
 
 ## The name
 

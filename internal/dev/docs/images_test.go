@@ -206,6 +206,12 @@ func makeImages(t *testing.T, m manifest, rootAbs, work, out string) []string {
 				if err == nil {
 					err = encodeGIF(t, work, frames, *im.GIF, dst)
 				}
+			case im.MP4 != nil:
+				var frames []string
+				frames, err = montage(runs, im)
+				if err == nil {
+					err = encodeMP4(t, work, frames, *im.MP4, dst)
+				}
 			default:
 				sel := pick{Shots: im.Shot}
 				if im.Pick != nil {
@@ -693,11 +699,7 @@ func encodeGIF(t *testing.T, work string, frames []string, e gifEncoding, dst st
 		}
 		// Some frames have an alpha channel. A mixed sequence breaks ffmpeg's single
 		// palette (every GIF frame alike, or false colors), so every frame becomes RGB first.
-		conversions := make([]func() error, len(frames))
-		for i, f := range frames {
-			conversions[i] = func() error { return opaqueFrame(t, f, filepath.Join(dir, fmt.Sprintf("frame-%04d.png", i))) }
-		}
-		if err := parallel(docsJobs(), conversions); err != nil {
+		if err := opaqueFrames(t, frames, dir); err != nil {
 			return err
 		}
 		filter := "format=rgb24,"
@@ -737,6 +739,52 @@ func encodeGIF(t *testing.T, work string, frames []string, e gifEncoding, dst st
 	}
 	if len(distinct) < len(got)/3 {
 		return fmt.Errorf("the GIF frames are too alike (%d distinct of %d)", len(distinct), len(got))
+	}
+	return nil
+}
+
+// opaqueFrames writes the frames as RGB pictures frame-0000.png, frame-0001.png, ...
+// in dir, side by side, for ffmpeg to read as one sequence.
+func opaqueFrames(t *testing.T, frames []string, dir string) error {
+	conversions := make([]func() error, len(frames))
+	for i, f := range frames {
+		conversions[i] = func() error { return opaqueFrame(t, f, filepath.Join(dir, fmt.Sprintf("frame-%04d.png", i))) }
+	}
+	return parallel(docsJobs(), conversions)
+}
+
+// encodeMP4 writes the frames as a silent H.264 video (yuv420p, fast start) for the
+// website, where a GIF's palette would band the glass and the faces.
+func encodeMP4(t *testing.T, work string, frames []string, e mp4Encoding, dst string) error {
+	if len(frames) < 2 {
+		return fmt.Errorf("only %d frames", len(frames))
+	}
+	dir := filepath.Join(work, "mp4-"+strings.TrimSuffix(filepath.Base(dst), ".mp4"))
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return err
+	}
+	if err := opaqueFrames(t, frames, dir); err != nil {
+		return err
+	}
+	crf := e.CRF
+	if crf <= 0 {
+		crf = 20
+	}
+	if err := ffmpeg(t, "-framerate", strconv.Itoa(e.FPS), "-i", filepath.Join(dir, "frame-%04d.png"),
+		"-vf", fmt.Sprintf("scale=%d:%d:flags=lanczos,format=yuv420p", e.Width, e.Height),
+		"-c:v", "libx264", "-preset", "slow", "-crf", strconv.Itoa(crf), "-threads", "1",
+		"-movflags", "+faststart", "-an", dst); err != nil {
+		return err
+	}
+	got, err := decodeFrames(t.Context(), dst)
+	if err != nil {
+		return err
+	}
+	if len(got) != len(frames) {
+		return fmt.Errorf("the video has %d frames, want %d", len(got), len(frames))
+	}
+	if b := got[0].Bounds(); b.Dx() != e.Width || b.Dy() != e.Height {
+		return fmt.Errorf("wrote %dx%d, want %dx%d", b.Dx(), b.Dy(), e.Width, e.Height)
 	}
 	return nil
 }

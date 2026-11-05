@@ -42,7 +42,7 @@ The usual keys still work: O or F2 for settings, F11 for full screen, M to mute.
 |:--|:--|
 | ![flag.thanked_hedda and chose.toast in the development panel](/images/novel-panel.jpg) | ![the flags each event sets and reads](/images/novel-flags.jpg) |
 | Scenes: jump to an event | Command: run a line of YAML |
-| ![the Scenes tab jumps to the late night](/images/playtest-jump.gif) | ![a set typed into the Command tab, then the State tab shows the flag](/images/playtest-command.gif) |
+| ![the Scenes tab jumps to the late night](/images/playtest-jump.mp4) | ![a set typed into the Command tab, then the State tab shows the flag](/images/playtest-command.mp4) |
 | Frames: ticks and frames a second, the slowest Update and Draw | |
 | ![the frame meter over the tavern](/images/playtest-frames.jpg) | |
 
@@ -56,7 +56,7 @@ The book shows each character of `profiles` with the standing picture, the faces
 
 ## F5: reload
 
-![Hedda's line is edited in the YAML and F5 shows the new text at the same place](/images/playtest-reload.gif)
+![Hedda's line is edited in the YAML and F5 shows the new text at the same place](/images/playtest-reload.mp4)
 
 With `--dir`, the game watches `game.yaml`, `data/` and `assets/`. Pictures and sounds are reloaded on their own. For definitions, press F5: the game loads them, checks them, and swaps them in. The field menu, the settings, the gallery and the character book are rebuilt with the new definitions at once and stay open. In a battle the reload waits until the battle ends, and on another screen, such as a shop or the save screen, until you close it.
 
@@ -87,7 +87,7 @@ The panel measures a little each frame (at most 3 ms) and never changes the game
 
 ## F9: notes
 
-![F9 opens a note, a comment is typed and saved](/images/playtest-memo.gif)
+![F9 opens a note, a comment is typed and saved](/images/playtest-memo.mp4)
 
 F9 opens a note on the current moment. Pick a kind, type a short comment (it may be empty) and press Enter. The game writes `notes/<date>/<number>.png` (the screen), `.json` (the place, the line, the party, your comment) and `.save` (the state).
 
@@ -188,6 +188,6 @@ Run your game with `--help` to see the same list in the terminal.
 | Test play (`--dev`) | `--start LOCATION`, `--battle TROOP`, `--party IDS`, `--level LEVEL`, `--flags FLAGS`, `--gold GOLD`, `--items ITEMS`, `--floor FLOOR`, `--calm`, `--scene SCENE`, `--event EVENT`, `--line LINE`, `--picture FILE`, `--answers ANSWERS` |
 | Autoplay (`--dev`) | `--autoplay SECONDS`, `--report FILE`, `--shot-every SECONDS`, `--auto-floors FLOORS`, `--speed TIMES` |
 | Scripts and records (`--dev`) | `--script FILE`, `--shots DIR`, `--record FILE`, `--trace FILE`, `--trace-shots`, `--replay FILE`, `--replay-battle N`, `--until TICK` |
-| Notes and review (`--dev`) | `--memos DIR`, `--from-memo FILE`, `--allow-legacy-save`, `--gallery-all`, `--review`, `--review-log FILE`, `--review-sources FILE`, `--build-info`, `--external-input` |
+| Notes and review (`--dev`) | `--memos DIR`, `--from-memo FILE`, `--allow-legacy-save`, `--gallery-all`, `--book-as-played`, `--review`, `--review-log FILE`, `--review-sources FILE`, `--build-info`, `--external-input` |
 
 Options follow the GNU style: `--seed 7` and `--seed=7` both work, and a single-dash long option such as `-dev` is rejected.

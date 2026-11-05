@@ -72,7 +72,9 @@ else:
     else:
         event = next(line for line in steps if isinstance(line.get("target"), dict) and
                      line["target"].get("id") == "succubus" and line.get("amount", 0) > 0 and 0 < line.get("hp", 0) < 139)
-        before, after = 130, 130
+        # From just before the hit: the Succubus's own attack before it would move her
+        # whole body, and this picture shows the soft region alone.
+        before, after = 10, 130
     chosen = [source for tick, source in shots if event["tick"] - before <= tick <= event["tick"] + after]
     if len(chosen) < 4:
         sys.exit(f"capture has too few {feature} frames")

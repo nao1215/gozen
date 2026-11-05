@@ -11,7 +11,11 @@
     {{- errorf "%s: image %s is not in docs/images" .Page.File.Path $u -}}
   {{- end -}}
 {{- end -}}
-{{- if $img -}}
+{{- if and $img (strings.HasSuffix $u ".mp4") -}}
+{{- /* A video (docs/images/*.mp4) plays like the GIFs, silent and looping, in
+       full color; the alt text is its label. */ -}}
+<video src="{{ $img.RelPermalink }}" aria-label="{{ .Text }}" width="720" height="405" autoplay loop muted playsinline preload="metadata"></video>
+{{- else if $img -}}
 <img src="{{ $img.RelPermalink }}" alt="{{ .Text }}"{{ with .Title }} title="{{ . }}"{{ end }} width="{{ $img.Width }}" height="{{ $img.Height }}" loading="lazy">
 {{- else -}}
   {{- if and (hasPrefix $u "/") (not (hasPrefix $u "//")) -}}

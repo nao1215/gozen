@@ -9,6 +9,9 @@ Find what you want to make, copy the YAML into a file under `data/` (or into `ga
 
 The recipes refer to a few IDs they do not define: the actor and class `walker`, the class `mender`, the skills `attack` and `guard`, the item `key`, the enemy `mote`, the troop `wolves` and the locations `field`, `ridge`, `shop` and `gate`. Use your own in their place.
 
+See [Planning screens and narrative checks](/planning/) for rosters, work, scene
+dependencies, materials and optional character voice checks.
+
 ## By task
 
 | You want to | Uses |
@@ -1049,6 +1052,8 @@ gallery:
 
 `profiles` gives each character a page on the Characters screen: the standing picture with its faces, a few lines of your own labels, an introduction and how they see the others. A profile whose ID is an actor's shows that actor; `picture` shows anyone else. Under `--dev` the title and the menu offer Characters, F6 opens it anywhere and every page is open, so you can check your characters while you write. Run `gozen faces` once to center the list's face icons on the faces. Every text is translated through `lang/` like the lines.
 
+To open a page when the player meets the character, write `met: true` (schema 10): the page opens the first time a line of the actor is shown, and stays open in later plays. A face with `seen: true` is offered once a line shows the actor with it, and `label` names its button. `ui.profile_book: {title: Who's who, layout: grid}` names the book and lays it out as a grid of face cards grouped by `affiliation`.
+
 <!-- verify: load group=profiles as=game.yaml -->
 ```yaml
 # game.yaml
@@ -1176,14 +1181,14 @@ Run `gozen check game`, `gozen sim breed game --format json`, `gozen book game` 
 The monster book shows the shortest recipe first as a picture tree of up to seven monsters: the current species, its parents and its grandparents. Captured leaves show their locations; family rules name the families and example parents. Arrows move between pictures, Z places the chosen species at the top, X returns along the breadcrumb, Tab changes the top species' recipe, and Q opens the chosen known species' page. A parent with a deeper recipe has a `more` mark. An unseen species is shown as `?`; `--dev` reveals all species. `gozen book game --format json` supplies the same tree as structured data. In Go Zen, Yorn at the Breeding Altar opens the ranch. Whisper Imp comes from a male Incense Bloom and Pale Sylph, Vampire from Night Bat and Ghoul, and those two children can produce Succubus. `gozen sim breed examples/go-zen/game` reports that two-generation path.
 
 ![Go Zen's two-generation family tree](/images/go-zen-lineage.jpg)
-![Breeding at the altar: Yorn in the center, the parents, a silhouette reveal and the child](/images/go-zen-breeding.gif)
+![Breeding at the altar: Yorn in the center, the parents, a silhouette reveal and the child](/images/go-zen-breeding.mp4)
 ![The author's breeding illustration](/images/breeding.jpg)
 
 ## Transform an enemy
 
 Use an HP trigger for a change that happens immediately after damage. The resulting enemy keeps the slot and its share of HP.
 
-![The Tollkeeper changes into its second form](/images/go-zen-transform.gif)
+![The Tollkeeper changes into its second form](/images/go-zen-transform.mp4)
 
 <!-- verify: parse The fragment uses example enemy IDs and is completed by the game's other definitions. -->
 ```yaml
@@ -1201,7 +1206,7 @@ Use `schema_version: 7`. The Tollkeeper in Go Zen uses this form change.
 
 Give a self-scoped skill a merge effect. Its `from` list names the eligible sources; `count` includes the user. The new enemy occupies their middle slot.
 
-![Drip Slimes gather into King Slime](/images/go-zen-merge.gif)
+![Drip Slimes gather into King Slime](/images/go-zen-merge.mp4)
 
 <!-- verify: parse The fragment uses example enemy IDs and is completed by the game's other definitions. -->
 ```yaml
@@ -1237,7 +1242,7 @@ actors:
 
 Set `puppet` on an enemy or actor and define its motion in the puppet YAML. The same `soft_sway` region accepts `rect: [x, y, width, height]` or `ellipse: [x, y, width, height]`. `follow: body` makes it trail breathing and action or hit reactions. Coordinates are pixels of the base picture.
 
-![The Succubus blinks, sways and reacts to a hit](/images/go-zen-motion.gif)
+![The Succubus blinks, a soft region sways, and she reacts to a hit](/images/go-zen-motion.mp4)
 
 <!-- verify: parse The fragment names pictures supplied by the game. -->
 ```yaml

@@ -8,9 +8,11 @@ The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan
 
 | RPG: [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) | Novel: [After the Pass](https://github.com/nao1215/gozen/tree/main/examples/novel) |
 |:--|:--|
-| ![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](/images/go-zen.gif) | ![After the Pass, the novel sample: a line, a choice, Back over the choice, and Skip to the first line not read](/images/novel.gif) |
+| ![Go Zen, the Gozen sample game: the town map, a dungeon, a battle with a cut-in, and a talk](/images/go-zen.mp4) | ![After the Pass, the novel sample: a line, a choice, Back over the choice, and Skip to the first line not read](/images/novel.mp4) |
 | Campaign: [Five Banners](https://github.com/nao1215/gozen/tree/main/examples/campaign) ([play in browser](/play/campaign/)) | Monster collection: [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) ([play in browser](/play/go-zen/)) |
-| ![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](/images/campaign.gif) | ![Breeding monsters in Go Zen: Yorn, the two parents, a silhouette reveal and the newborn Succubus](/images/go-zen-breeding.gif) |
+| ![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](/images/campaign.mp4) | ![Breeding monsters in Go Zen: Yorn, the two parents, a silhouette reveal and the newborn Succubus](/images/go-zen-breeding.mp4) |
+| Management: [Harbor app team](https://github.com/nao1215/gozen/tree/main/examples/office) | |
+| ![the office sample: the standup, the team, handing out work, a message, a video call with a shared screen, the calendar and the plan](/images/office.mp4) | |
 
 ## Create your first game
 
@@ -55,11 +57,11 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 
 | Conversation | Painted scene |
 |:--|:--|
-| ![Maren talks, a moving portrait that blinks and changes its face](/images/go-zen-face.gif) | ![Maren walks the plaza and Ox says a line in a balloon](/images/go-zen-plaza.gif) |
+| ![Maren talks, a moving portrait that blinks and changes its face](/images/go-zen-face.mp4) | ![Maren walks the plaza and Ox says a line in a balloon](/images/go-zen-plaza.mp4) |
 | Town map | First-person dungeon |
-| ![the party's face walks the road to the well](/images/go-zen-map.gif) | ![steps and turns in a brick corridor](/images/go-zen-dungeon.gif) |
+| ![the party's face walks the road to the well](/images/go-zen-map.mp4) | ![steps and turns in a brick corridor](/images/go-zen-dungeon.mp4) |
 | Battle | Cut-in |
-| ![four against the Brass Warden, with damage numbers](/images/go-zen-battle.gif) | ![Ox's Shield Rush cut-in](/images/go-zen-cutin.gif) |
+| ![four against the Brass Warden, with damage numbers](/images/go-zen-battle.mp4) | ![Ox's Shield Rush cut-in](/images/go-zen-cutin.mp4) |
 | Shop | Skill tree |
 | ![the shop's goods](/images/go-zen-shop.jpg) | ![Maren's skill tree with Ink Burst chosen](/images/go-zen-tree.jpg) |
 | Title | |
@@ -71,11 +73,29 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 
 | Roll back (Q, wheel) | Skip to the line not read (N) |
 |:--|:--|
-| ![Back goes over two lines and a choice, with the state](/images/novel-back.gif) | ![the option taken again, then Skip stops at the first line not read](/images/novel-skip.gif) |
+| ![Back goes over two lines and a choice, with the state](/images/novel-back.mp4) | ![the option taken again, then Skip stops at the first line not read](/images/novel-skip.mp4) |
 | Two languages | Staging (`stand`, `effect`) |
-| ![the settings switch to Japanese, the line on the screen turns Japanese at once, and so does the next](/images/novel-language.gif) | ![Brenna slides in and her portrait shakes](/images/novel-stage.gif) |
+| ![the settings switch to Japanese, the line on the screen turns Japanese at once, and so does the next](/images/novel-language.mp4) | ![Brenna slides in and her portrait shakes](/images/novel-stage.mp4) |
 | Event picture with its line | |
 | ![Brenna's ending: a picture of her cheering at the bar, with the line under it](/images/novel-picture.jpg) | |
+
+### Management workspaces
+
+Workspace, call, calendar and timeline screens with a day `flow` (schema 10) make a management game. From the office sample ([examples/office](https://github.com/nao1215/gozen/tree/main/examples/office)); the YAML is in [workspace recipes](/workspaces/).
+
+| Standup: busts, meters, dots, signs, burnup | People: press for a peek |
+|:--|:--|
+| ![six team cards with busts, progress meters, status dots and a burnup chart](/images/workboard-cards.jpg) | ![the team with Daniel's peek open](/images/workboard-peek.jpg) |
+| Hand out work by dragging (or with keys) | Tickets, dependencies and a carousel |
+| ![Acceptance tests is refused by Daniel, then Payments is handed to him](/images/workboard-drag.mp4) | ![tickets joined by a dependency line, and the help carousel turning to an unavailable choice](/images/workboard-carousel.mp4) |
+| A message asks for a decision | Video call |
+| ![Elena's message is opened and a choice appears](/images/workboard-message.mp4) | ![the team call: the speaker on the stage, the others in the side column](/images/workboard-call.mp4) |
+| Screen sharing | First-visit guide |
+| ![Elena shares the booking form in the call](/images/workboard-share.jpg) | ![Martin's guide line over the veiled standup](/images/workboard-guide.jpg) |
+| Calendar with scheduled events | Plan timeline |
+| ![the sprint calendar with the review and the demo](/images/workboard-calendar.jpg) | ![the sprint plan with five activities](/images/workboard-timeline.jpg) |
+| Character grid | Glass panels |
+| ![the character book in a grid](/images/workboard-profiles.jpg) | ![two overlapping glass panels over the office](/images/workboard-materials.jpg) |
 
 ### Campaigns
 
@@ -91,7 +111,7 @@ Monsters ask to join after a battle, wait at the ranch, and two raised monsters,
 
 | A monster asks to join | Breeding at Yorn's altar |
 |:--|:--|
-| ![a Drip Slime rises after the battle and asks to join, with Yes and No](/images/go-zen-recruit.jpg) | ![Yorn talks in the center, the parents turn into light, then the Succubus is born](/images/go-zen-breeding.gif) |
+| ![a Drip Slime rises after the battle and asks to join, with Yes and No](/images/go-zen-recruit.jpg) | ![Yorn talks in the center, the parents turn into light, then the Succubus is born](/images/go-zen-breeding.mp4) |
 | The monster book | The family tree, two generations up |
 | ![the Succubus page of the monster book](/images/go-zen-bestiary.jpg) | ![the Succubus family tree with its parents and grandparents](/images/go-zen-lineage.jpg) |
 
@@ -101,33 +121,31 @@ Enemies can change form at an HP threshold, combine with allies, change pictures
 
 | Transform | Merge |
 |:--|:--|
-| ![The Tollkeeper changes into its second form](/images/go-zen-transform.gif) | ![Drip Slimes gather into King Slime](/images/go-zen-merge.gif) |
+| ![The Tollkeeper changes into its second form](/images/go-zen-transform.mp4) | ![Drip Slimes gather into King Slime](/images/go-zen-merge.mp4) |
 | Pictures by HP | Motion and sway |
-| ![A damaged monster shows its low HP picture](/images/go-zen-hp-pictures.jpg) | ![The Succubus blinks, sways and reacts to a hit](/images/go-zen-motion.gif) |
+| ![A damaged monster shows its low HP picture](/images/go-zen-hp-pictures.jpg) | ![The Succubus blinks, a soft region sways, and she reacts to a hit](/images/go-zen-motion.mp4) |
 
 See [the battle recipes](/cookbook/#transform-an-enemy).
 
 ### Multi-level maps
 
-[![Walking up to the second and third floors across the town](/images/space-stairs.gif)](https://github.com/nao1215/gozen/raw/main/docs/media/stacked-space-short.mp4)
+[![Walking up to the second and third floors across the town](/images/space-stairs.mp4)](https://github.com/nao1215/gozen/raw/main/docs/media/stacked-space-short.mp4)
 
 ## Playtesting
 
 Start the game with `--dev` and these keys work while you play.
 
-| F5: edit the YAML under `--dir`, the line changes in place | F9: a note with the screen and the state |
+| F5: edit the YAML, the line changes in place | F9: a note with the screen and the state |
 |:--|:--|
-| ![Hedda's line is edited in the YAML and F5 shows the new text at the same place](/images/playtest-reload.gif) | ![F9 opens a note, a comment is typed and saved](/images/playtest-memo.gif) |
+| ![Hedda's line is edited in the YAML and F5 shows the new text at the same place](/images/playtest-reload.mp4) | ![F9 opens a note, a comment is typed and saved](/images/playtest-memo.mp4) |
 | F7: win rates of the battles here | F8 State: flip a flag, step a number |
 | ![win rates by troop](/images/go-zen-balance.jpg) | ![flag.thanked_hedda and chose.toast in the development panel](/images/novel-panel.jpg) |
 | F8 Flags: what each event sets and reads | F8 Scenes: jump to an event |
-| ![the flags each event sets and reads](/images/novel-flags.jpg) | ![the Scenes tab jumps to the late night](/images/playtest-jump.gif) |
-| F8 Command: run a line of YAML | F8 Frames: ticks and frames a second, the slowest Update and Draw |
-| ![a set typed into the Command tab, then the State tab shows the flag](/images/playtest-command.gif) | ![the frame meter over the tavern](/images/playtest-frames.jpg) |
-| F6: the character book, every page open: each character's profile, faces and relations | |
-| ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](/images/novel-characters.jpg) | |
-| Tab: relationship chart; arrows choose a face, Z opens its page, and the wheel zooms | |
-| ![Go Zen's relationship chart with face icons and coloured connections](/images/go-zen-relations.jpg) | |
+| ![the flags each event sets and reads](/images/novel-flags.jpg) | ![the Scenes tab jumps to the late night](/images/playtest-jump.mp4) |
+| F8 Command: run a line of YAML | F8 Frames: ticks, frames, the slowest Update and Draw |
+| ![a set typed into the Command tab, then the State tab shows the flag](/images/playtest-command.mp4) | ![the frame meter over the tavern](/images/playtest-frames.jpg) |
+| F6: the character book | Tab: the relationship chart (Z focuses a face) |
+| ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](/images/novel-characters.jpg) | ![Go Zen's relationship chart with face icons and coloured connections](/images/go-zen-relations.jpg) |
 
 More on each key in [the edit–play loop](/edit-play-loop/).
 
@@ -147,6 +165,7 @@ More on each key in [the edit–play loop](/edit-play-loop/).
 - Turn-based battles with a party, auto battle and per-enemy tactics
 - Skill trees, shops, a field menu and a picture gallery
 - First-person grid dungeons, fixed or generated floors
+- Management games: workspace cards, drag and drop, tickets, messages, video calls with screen sharing, calendars, timelines and first-visit guides ([recipes](/workspaces/))
 - Moving portraits from one picture and a few difference pictures: blinking, talking, breathing, head, hair and swaying parts, reactions and face changes
 - Characters that react to typed words and events, and a chat log
 - Campaigns: regions held by factions over turns, orders with generals, a sortie screen with tactics, clashes of armies, and `gozen sim campaign` for the win rate

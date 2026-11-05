@@ -1,6 +1,15 @@
 battle-log off
-# Film the full-health sway, then lower HP before the first hit.
-wait 40
+# Stop the auto battle so nobody acts while the full-health sway is filmed, then
+# lower HP, start it again and film the first hit.
+wait 2
+press x
+wait 10
+press x
+wait 30
+press x
+wait 60
+press x
+wait 240
 shot full_01
 wait 5
 shot full_02
@@ -50,5 +59,6 @@ wait 5
 shot full_24
 wait 5
 battle-hp enemy 0 125
+press auto
 play motion 5
 quit
