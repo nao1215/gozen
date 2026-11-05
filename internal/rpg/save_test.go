@@ -582,3 +582,31 @@ func TestSaveRejectsDamagedRandomState(t *testing.T) {
 		}
 	}
 }
+
+func TestLegacySaveCacheOwnsInput(t *testing.T) {
+	db := testgame.Load(t, nil)
+	st := testgame.State(db, 1)
+	st.Vars["cache_marker"] = "original"
+	envelope := map[string]json.RawMessage{}
+	if err := json.Unmarshal(saveBytes(t, st), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	input := envelope["state"]
+	original := bytes.Clone(input)
+	opt := rpg.Config{AllowLegacy: true}
+	if _, err := rpg.ParseWithConfig(db, input, nil, opt); err != nil {
+		t.Fatal(err)
+	}
+	pos := bytes.Index(input, []byte("original"))
+	if pos < 0 {
+		t.Fatal("missing marker")
+	}
+	copy(input[pos:], "modified")
+	restored, err := rpg.ParseWithConfig(db, original, nil, opt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := restored.Vars["cache_marker"]; got != "original" {
+		t.Fatalf("cached save changed after caller reused input: got %v", got)
+	}
+}
