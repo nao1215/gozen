@@ -192,7 +192,7 @@ ProfileField:
 ProfileRelation:
   _: "How a profile's character sees another character."
   who: "The other character: a profile ID, an actor ID, or `you`."
-  kind: "The chart line colour: like, love, rival, enemy, family, friend, or other. Love is assigned by the author; an omitted kind uses other."
+  kind: "The chart line color: like, love, rival, enemy, family, friend, or other. Love is assigned by the author; an omitted kind uses other."
   calls: "What the character calls them."
   text: "A note on how the character sees them."
 Order:

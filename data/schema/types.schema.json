@@ -937,7 +937,7 @@
           "x-type": "string"
         },
         "region_numbers": {
-          "description": "Which regions' plates show their garrison on a campaign's map: all (the default) or near (the region chosen and its neighbours; the others show their names only, in the same place).",
+          "description": "Which regions' plates show their garrison on a campaign's map: all (the default) or near (the region chosen and its neighbors; the others show their names only, in the same place).",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -950,7 +950,7 @@
           "x-type": "string"
         },
         "region_roads": {
-          "description": "On a campaign's map, when the roads are shown: `selected` (the default, a thin arrow to each neighbour the region chosen can march on) or `always` (the lines of all the roads, as draw_roads does on other maps). draw_roads is not read on a campaign's map.",
+          "description": "On a campaign's map, when the roads are shown: `selected` (the default, a thin arrow to each neighbor the region chosen can march on) or `always` (the lines of all the roads, as draw_roads does on other maps). draw_roads is not read on a campaign's map.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -8579,7 +8579,7 @@
           "x-type": "AI ID or Rule[]"
         },
         "army": {
-          "description": "The kind of army (a key of campaign.clash.armies) its unit is shown as in a clash shown as units, when it leads a region's defence or a faction's march: monsters for monsters.",
+          "description": "The kind of army (a key of campaign.clash.armies) its unit is shown as in a clash shown as units, when it leads a region's defense or a faction's march: monsters for monsters.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -10254,7 +10254,7 @@
           "x-type": "string"
         },
         "color": {
-          "description": "The faction's colour, for the marks of its regions.",
+          "description": "The faction's color, for the marks of its regions.",
           "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
           "type": "string",
           "x-contract": {
@@ -16714,7 +16714,7 @@
           "x-type": "string"
         },
         "kind": {
-          "description": "The chart line colour: like, love, rival, enemy, family, friend, or other. Love is assigned by the author; an omitted kind uses other.",
+          "description": "The chart line color: like, love, rival, enemy, family, friend, or other. Love is assigned by the author; an omitted kind uses other.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -16974,10 +16974,10 @@
     },
     "Region": {
       "additionalProperties": false,
-      "description": "A region of a campaign: its neighbours, its first owner and garrison, and its own numbers.",
+      "description": "A region of a campaign: its neighbors, its first owner and garrison, and its own numbers.",
       "properties": {
         "area": {
-          "description": "The region's shape on the campaign map's picture, its pixels as [[x, y], ...] (three points or more): the map fills it in the owner's colour and draws its border, and a click inside chooses it. Areas may share borders but not overlap. Without it the region shows as its point's flag.",
+          "description": "The region's shape on the campaign map's picture, its pixels as [[x, y], ...] (three points or more): the map fills it in the owner's color and draws its border, and a click inside chooses it. Areas may share borders but not overlap. Without it the region shows as its point's flag.",
           "items": {
             "items": {
               "type": "number"
@@ -17030,7 +17030,7 @@
           "x-type": "string"
         },
         "landmark_ground": {
-          "description": "How much the map settles the landmark onto the terrain (foot shadow, faded bottom edge, colours eased toward the ground), 0 to 1. Default 1.",
+          "description": "How much the map settles the landmark onto the terrain (foot shadow, faded bottom edge, colors eased toward the ground), 0 to 1. Default 1.",
           "type": "number",
           "x-contract": {
             "default": "nil; nothing is defined",
@@ -17474,7 +17474,7 @@
         },
         "encounters": {
           "$ref": "#/$defs/Encounter",
-          "description": "Random encounters that can happen while travelling the road.",
+          "description": "Random encounters that can happen while traveling the road.",
           "x-contract": {
             "default": "empty (its fields take their defaults)",
             "legacy_default": "empty (its fields take their defaults)",

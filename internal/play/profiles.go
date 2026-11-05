@@ -284,7 +284,7 @@ func (s *profileScreen) faceButtonsAt(labels []string, cx, y, h float64) []image
 	return out
 }
 
-// faceButtons are the buttons of the faces labelled labels in the list layout.
+// faceButtons are the buttons of the faces labeled labels in the list layout.
 func (s *profileScreen) faceButtons(g *Game, labels []string) []image.Rectangle {
 	sw, sh := g.screen()
 	return s.faceButtonsAt(labels, sw*0.36, sh-84, 30)
