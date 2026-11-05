@@ -169,11 +169,22 @@ Profile:
   title: "A short epithet shown under the name. It may hold `{expressions}`."
   affiliation: "An optional group used to keep characters together in the relationship chart."
   picture: "A standing picture under `assets/` for a character who is neither an actor nor an enemy."
-  faces: "The faces the screen can switch between: names of the actor's faces or of its puppet's faces. By default the actor's face."
-  when: "The condition that unlocks the profile. Without it the profile is always unlocked; a locked profile is a shadow named ???. Under `--dev` every profile is unlocked."
+  faces: "The faces the screen can switch between: names of the actor's faces or of its puppet's faces, or maps of a face with its label and the condition that unlocks it. By default the actor's face."
+  met: "Unlock the profile the first time a line of its actor is shown: the player has met the character (schema_version 10). It stays unlocked in the gallery's record, also in later plays. With a when too, either opens it."
+  when: "The condition that unlocks the profile. Without it (and without met) the profile is always unlocked; a locked profile is a shadow named ???. Under `--dev` every profile is unlocked."
   fields: "Lines of label and value, such as Role or Likes; the labels are the game's own."
   text: "The introduction. It may hold `{expressions}`."
   relations: "How the character sees the others: whom, what they call them, and a note."
+ProfileFace:
+  _: "A face of a profile, written as its name or as a map (schema_version 10)."
+  face: "The name of the actor's face or of its puppet's face."
+  label: "The label of its button under the standing picture; by default the face's name."
+  when: "The condition that unlocks the face. Without it (and without seen) the face is always offered; a locked face is not offered. Once unlocked it stays unlocked, in the gallery's record. Under `--dev` every face is offered."
+  seen: "Unlock the face the first time a line of the actor is shown with this face (schema_version 10); it stays unlocked, in the gallery's record."
+ProfileBook:
+  _: "The shape of the character book (schema_version 10)."
+  title: "The book's name in the title, the menus and on its band; by default Characters."
+  layout: "list (a column of names beside the picture, the default) or grid (a grid of face cards grouped by affiliation, with the standing picture and a board of the profile on the right)."
 ProfileField:
   _: "A line of a profile: a label and its value."
   label: "The label, such as Role or Likes."
@@ -181,7 +192,7 @@ ProfileField:
 ProfileRelation:
   _: "How a profile's character sees another character."
   who: "The other character: a profile ID, an actor ID, or `you`."
-  kind: "The chart line colour: like, love, rival, enemy, family, friend, or other. Love is assigned by the author; an omitted kind uses other."
+  kind: "The chart line color: like, love, rival, enemy, family, friend, or other. Love is assigned by the author; an omitted kind uses other."
   calls: "What the character calls them."
   text: "A note on how the character sees them."
 Order:

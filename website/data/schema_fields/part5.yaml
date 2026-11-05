@@ -15,7 +15,7 @@ Road:
   _: "A road joining two points of a map, usable in both directions."
   between: "The two point IDs the road connects."
   do: "Commands to run when the party travels along the road."
-  encounters: "Random encounters that can happen while travelling the road."
+  encounters: "Random encounters that can happen while traveling the road."
   steps: "How many steps the trip takes. The default is 1."
   via: "The map coordinates `[x, y]` the road bends at on its way, in order."
   when: "A condition that must hold for the road to be open."
@@ -49,6 +49,10 @@ Rule:
   weight: "The weight when one of the top-priority rules is drawn at random. The default is 1."
   when: "A condition for the rule, with `self`, `allies`, `foes`, `turn`, `flag` and `var` available."
 Say:
+  face_expr: Pure string expression selecting a speaker face (or an image path for a named speaker); exclusive with face. Empty uses the actor default (schema 10).
+  instant: Show each page in full immediately; one advance moves to the next page or line.
+  text_expr: Pure string expression selecting the source template before read-key hashing and translation; exclusive with text (schema 10).
+  ensemble: "Optional ensemble planning screen displayed behind a box-style dialogue line with the active speaker highlighted."
   _: "A line of dialogue, written as a plain string or as a map with the speaker, face and text."
   who: "Who speaks: an actor ID, or any name to show."
   face: "A face of the speaking actor (the actor's own face when left out), or for a speaker who is not an actor, a picture path under `assets/`."
@@ -66,6 +70,7 @@ SceneReviewCfg:
   tags: "The tags a reviewer can put on a scene, each with an ID, a label and whether it counts as OK."
   title: "The name of the review section. It defaults to a translatable built-in title."
 Screen:
+  native: "Render a 16:9 viewport at native device resolution."
   _: "The logical screen size the game is drawn at."
   height: "The logical screen height in pixels."
   width: "The logical screen width in pixels."
@@ -174,7 +179,7 @@ WaitCue:
   seconds: "How many seconds to wait."
   skip: "Whether skip mode passes the wait. The default is true."
 Region:
-  _: "A region of a campaign: its neighbours, its first owner and garrison, and its own numbers."
+  _: "A region of a campaign: its neighbors, its first owner and garrison, and its own numbers."
   defend: "The troop a general fights on marching here with an order of fight: battle, and whose members hold it, sharing its garrison, in a clash shown as units. An ID of troops."
   terrain: "The kind of ground (field, town, castle or any word): the background of a clash shown as units (clash.backgrounds)."
   name: "The name shown. The ID when omitted."
@@ -183,7 +188,7 @@ Region:
   owner: "The faction holding it at the start, an ID of factions. Omitted for a free region."
   troops: "The garrison at the start."
   values: "The region's own numbers at the start (such as wealth), read and set as region.<id>.<name>."
-  area: "The region's shape on the campaign map's picture, its pixels as [[x, y], ...] (three points or more): the map fills it in the owner's colour and draws its border, and a click inside chooses it. Areas may share borders but not overlap. Without it the region shows as its point's flag."
+  area: "The region's shape on the campaign map's picture, its pixels as [[x, y], ...] (three points or more): the map fills it in the owner's color and draws its border, and a click inside chooses it. Areas may share borders but not overlap. Without it the region shows as its point's flag."
   landmark: "A picture under assets/ (cut out) the campaign map stands on the region's point: its city, fortress or village, with the owner's flag beside it; darkened with smoke while the region was fought over this turn or the last."
   landmark_scale: "The landmark's width as a share of the map picture's, 0 to 1. Default 0.12."
-  landmark_ground: "How much the map settles the landmark onto the terrain (foot shadow, faded bottom edge, colours eased toward the ground), 0 to 1. Default 1."
+  landmark_ground: "How much the map settles the landmark onto the terrain (foot shadow, faded bottom edge, colors eased toward the ground), 0 to 1. Default 1."

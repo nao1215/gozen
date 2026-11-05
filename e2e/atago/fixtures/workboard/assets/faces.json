@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "model": "authored-geometric-fixture",
+  "pictures": {
+    "emblem.png": {
+      "box": [
+        16,
+        12,
+        80,
+        76
+      ],
+      "size": [
+        96,
+        144
+      ],
+      "sha256": "4571068f555931e07292676e3503acd4f0b2afa2b952ec5a3f9b2df0d199b690"
+    }
+  }
+}

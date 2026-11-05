@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 )
 
 // Hurt is a command that reduces the HP of the given party member outside battle. The self in amount is the target member.
@@ -32,6 +33,9 @@ type Affect struct {
 // Command is a single event command. The command tags are the only registry of verbs and their accompanying fields.
 // verb is a public verb, internal is Go-only, and any other value lists the verbs that allow the accompanying field.
 type Command struct {
+	// Plan performs one deterministic planning operation.
+	Plan *PlanCommand `yaml:"plan" command:"verb"`
+
 	Respond *Respond       `yaml:"respond" command:"verb"`
 	Say     *Say           `yaml:"say" command:"verb"`
 	Choice  []ChoiceOption `yaml:"choice" command:"verb"`
@@ -89,16 +93,25 @@ type Command struct {
 	Facing  string    `yaml:"facing" command:"move,dive"` // and the way to face
 	Music   *MusicCue `yaml:"music" command:"verb"`
 	Mood    string    `yaml:"mood" command:"verb"`
+	// Carry keeps the values game.yaml carry names for the next new game (ADR 0053).
+	Carry   bool      `yaml:"carry" command:"verb"`
 	Image   *CG       `yaml:"image" command:"verb"`
 	Shop    string    `yaml:"shop" command:"verb"`
-	Call    string    `yaml:"call" command:"verb"`
+	Call    EventCall `yaml:"call" command:"verb"`
 	Wait    WaitCue   `yaml:"wait" command:"verb"`
 	waitSet bool      // waitSet bool // in spec version 1, a wait time of 0 also counts as a command.
 	// Notice is a short message shown at the top of the screen (no dialog window, and play continues without stopping; narration-only notices such as the pain of a floor trap).
 	Notice string `yaml:"notice" command:"verb"`
-	SFX    SFXCue `yaml:"sfx" command:"verb"`
-	Exp    Expr   `yaml:"exp" command:"verb"`
-	Learn  *Learn `yaml:"learn" command:"verb"`
+	// Message queues a chat message (schema 10): a notification in the top-right
+	// corner of a full-screen surface, opened into a bubble in the middle of the
+	// screen. Queuing does not stop the event; opening uses no game time.
+	Message *MessageCue `yaml:"message" command:"verb" json:",omitempty"`
+	// CallView changes only how a video call looks (no state changes): for
+	// example a participant's camera turning on in the middle of a call.
+	CallView *CallViewCue `yaml:"call_view" command:"verb" json:",omitempty"`
+	SFX      SFXCue       `yaml:"sfx" command:"verb"`
+	Exp      Expr         `yaml:"exp" command:"verb"`
+	Learn    *Learn       `yaml:"learn" command:"verb"`
 	// ResetTree gives back the skill points put into the skill tree of an actor (an id, or
 	// "all" for everyone who has joined): to raise it again another way.
 	ResetTree string `yaml:"reset_tree" command:"verb"`
@@ -113,10 +126,14 @@ type Command struct {
 	Stand *Stand `yaml:"stand" command:"verb"`
 	End   bool   `yaml:"end" command:"verb"`
 	Clear bool   `yaml:"clear" command:"verb"`
-	Save  bool   `yaml:"save" command:"verb"`
-	Open  string `yaml:"open" command:"verb"`
-	Dive  string `yaml:"dive" command:"verb"`
-	Floor Expr   `yaml:"floor" command:"dive"`
+	// Checkpoint replaces the saved retry point; its value is the event run on restoration.
+	Checkpoint string `yaml:"checkpoint" command:"verb"`
+	// RestoreCheckpoint abandons the current execution and resumes the saved retry point.
+	RestoreCheckpoint bool       `yaml:"restore_checkpoint" command:"verb"`
+	Save              bool       `yaml:"save" command:"verb"`
+	Open              ScreenCall `yaml:"open" command:"verb"`
+	Dive              string     `yaml:"dive" command:"verb"`
+	Floor             Expr       `yaml:"floor" command:"dive"`
 	// OpenWall turns the wall next to the cell the player is standing on in the dungeon (the facing one first, otherwise the nearest wall facing a floor)
 	// into the tile of that character and faces it. It persists per floor and in saves (e.g. stairs that appear at 100% exploration).
 	OpenWall string `yaml:"open_wall" command:"verb"`
@@ -216,10 +233,17 @@ func customFields(c *Command) []string { return c.custom }
 
 // Say is a line of dialog.
 type Say struct {
-	Who  string `yaml:"who"`  // an actor id, or any name
-	Face string `yaml:"face"` // a face of the actor (or a picture path)
-	Text string `yaml:"text"`
-	Side string `yaml:"side"` // left, right (default: left for party, right for others)
+	Instant  bool `yaml:"instant"`
+	FaceExpr Expr `yaml:"face_expr,omitempty" json:",omitzero"`
+	// Ensemble names a planning participant screen shown behind this line.
+	Ensemble string `yaml:"ensemble"`
+	Who      IDRef  `yaml:"who"`  // a literal name, or an actor expression
+	Face     string `yaml:"face"` // a face of the actor (or a picture path)
+	Text     string `yaml:"text"`
+	// TextExpr selects a source template before translation and read-key hashing.
+	// Narrative consumers require a pure string expression, exclusive with Text.
+	TextExpr Expr   `yaml:"text_expr,omitempty" json:",omitzero"`
+	Side     string `yaml:"side"` // left, right (default: left for party, right for others)
 	// Voice is the line's voice: a name in the speaker's voices folder, or a path under
 	// assets/ (schema_version 4, ADR 0028).
 	Voice string `yaml:"voice"`
@@ -244,10 +268,13 @@ func (s *Say) UnmarshalYAML(unmarshal func(any) error) error {
 
 // ChoiceOption is one answer of a choice.
 type ChoiceOption struct {
-	ID    string    `yaml:"id"` // unique identifier within the same question
-	Label string    `yaml:"label"`
-	When  Expr      `yaml:"when"`
-	Do    []Command `yaml:"do"`
+	// LabelExpr selects a source template before translation and choice read-key hashing.
+	// It is exclusive with Label, pure, and must return a string.
+	LabelExpr Expr      `yaml:"label_expr,omitempty" json:",omitzero"`
+	ID        string    `yaml:"id"` // unique identifier within the same question
+	Label     string    `yaml:"label"`
+	When      Expr      `yaml:"when"`
+	Do        []Command `yaml:"do"`
 }
 
 // ItemCount is an item and how many.
@@ -310,6 +337,35 @@ var commandFields = func() []commandField {
 func (c *Command) UnmarshalYAML(unmarshal func(any) error) error {
 	type plain Command
 	var out plain
+	// Inspect only the keys of ordinary commands. Decoding their entire subtree
+	// into an untyped map first repeats that work at every nesting level. Keep
+	// the caller's decoder for values so aliases retain their document context.
+	var node ast.Node
+	if err := unmarshal(&node); err != nil {
+		return err
+	}
+	if mapping, ok := node.(*ast.MappingNode); ok {
+		allKnown := true
+		for _, entry := range mapping.Values {
+			key, _ := decodedKey(entry.Key)
+			if !commandKeys[key] {
+				allKnown = false
+				break
+			}
+		}
+		if allKnown {
+			if err := unmarshal(&out); err != nil {
+				return err
+			}
+			for _, entry := range mapping.Values {
+				key, _ := decodedKey(entry.Key)
+				out.given = append(out.given, key)
+			}
+			*c = Command(out)
+			return nil
+		}
+	}
+	// Aliases and custom commands need the decoded key/value representation.
 	var raw yaml.MapSlice
 	if err := unmarshal(&raw); err != nil {
 		return err
@@ -402,7 +458,40 @@ func (c *Command) Verb() (string, error) {
 	return verb, nil
 }
 
-// Respond submits text to a speaker's reaction rules and shows the reply as dialog.
+// MessageCue is a queued chat message: who (an actor, or an actor expression),
+// the interpolated text and the event that asks for the decision.
+type MessageCue struct {
+	Who  IDRef  `yaml:"who"`
+	Text string `yaml:"text"`
+	// Event is the parameterless event run when the message is opened, under
+	// the bubble: a message asks for a decision (its choice), never only reads.
+	Event string `yaml:"event"`
+	// Tag is a short interpolated mark on the notification and the bubble, such
+	// as DM for a one-to-one message (empty shows none).
+	Tag string `yaml:"tag"`
+}
+
+// CallViewCue is a presentation-only change of the call on screen.
+type CallViewCue struct {
+	Camera *CallCamera `yaml:"camera" json:",omitempty"`
+	Share  *CallShare  `yaml:"share" json:",omitempty"`
+}
+
+// CallShare puts a shared screen (a picture under assets/) on the call's stage in
+// place of the speaker's view until the call's lines end; Who is the participant
+// who shares, and an empty Picture ends the sharing.
+type CallShare struct {
+	Who     string `yaml:"who"`
+	Picture string `yaml:"picture"`
+}
+
+// CallCamera turns one participant's camera view on or off until the call's
+// lines end; Who is a planning entity or an actor.
+type CallCamera struct {
+	Who string `yaml:"who"`
+	On  bool   `yaml:"on"`
+}
+
 type Respond struct {
 	Who  string `yaml:"who"`
 	Text string `yaml:"text"`

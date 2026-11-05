@@ -258,3 +258,109 @@ scenarios:
       exit_code: 2
       stderr:
         contains: '[GZN2202]'
+- name: YAML complexity budgets warn without changing validation or game data
+  steps:
+  - fixture:
+      file: garden/game.yaml
+      content: |
+        schema_version: 7
+        id: garden-budget
+        start: {location: garden}
+  - fixture:
+      file: garden/data/world.yaml
+      content: 'locations: {garden: {name: Garden}}'
+  - run:
+      command: gozen check garden --only structure --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json: {path: $.data, equals: []}
+      stderr: {equals: ''}
+  - fixture:
+      file: garden/check-complexity.yaml
+      content: 'file_lines: 2'
+  - run:
+      command: gozen check garden --only structure
+  - assert:
+      exit_code: 0
+      stderr:
+        contains: ['[GZN0122]', 'game.yaml:1:1', 'file lines = 3 (limit 2)']
+      file:
+        path: garden/game.yaml
+        equals: "schema_version: 7\nid: garden-budget\nstart: {location: garden}\n"
+  - run:
+      command: gozen check garden --only structure --format json
+      deterministic: {runs: 2, compare: [stdout, stderr, exit_code]}
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: '$.data[0].code', equals: GZN0122}
+        - {path: '$.data[0].file', equals: game.yaml}
+        - {path: '$.data[0].line', equals: 1}
+        - {path: '$.data[0].severity', equals: warning}
+  - fixture:
+      file: garden/check-complexity.yaml
+      content: 'file_lines: -1'
+  - run:
+      command: gozen check garden --only structure --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json: {path: $.data, equals: []}
+  - fixture:
+      file: garden/check-complexity.yaml
+      content: 'file_linse: 2'
+  - run:
+      command: gozen check garden --only structure
+  - assert:
+      exit_code: 1
+      stderr: {contains: ['check-complexity.yaml', 'file_linse']}
+      stdout: {equals: ''}
+
+- name: indexed state reads and small copied events expose hidden YAML expansion
+  steps:
+  - fixture:
+      file: garden/game.yaml
+      content: |
+        schema_version: 10
+        id: garden-indexed
+        start: {location: garden}
+  - fixture:
+      file: garden/data/world.yaml
+      content: |
+        locations: {garden: {name: Garden}}
+        events:
+          inspect_1: {do: [{call: inspect}]}
+          inspect_2: {do: [{call: inspect}]}
+          inspect_3: {do: [{call: inspect}]}
+          inspect_4: {do: [{call: inspect}]}
+          inspect_5: {do: [{call: inspect}]}
+          inspect_6: {do: [{call: inspect}]}
+          inspect_7: {do: [{call: inspect}]}
+          inspect_8: {do: [{call: inspect}]}
+          inspect:
+            do:
+            - set: {var.total: 'var.checked_1 + var.checked_2 + var.checked_3 + var.checked_4 + var.checked_5 + var.checked_6 + var.checked_7 + var.checked_8'}
+  - run:
+      command: gozen check garden --only structure --format json
+      deterministic: {runs: 2, compare: [stdout, stderr, exit_code]}
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: ['same-shaped events blocks = 8', 'indexed state keys', 'var.checked_#']
+      stderr: {equals: ''}
+  - fixture:
+      file: garden/check-complexity.yaml
+      content: |
+        indexed_names: -1
+        repetitions: -1
+        unused_definitions: -1
+  - run:
+      command: gozen check garden --only structure --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json: {path: $.data, equals: []}
+      stderr: {equals: ''}

@@ -6,7 +6,9 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log"
 	"os"
+	"runtime/pprof"
 	"slices"
 	"strings"
 
@@ -25,6 +27,7 @@ type command struct {
 	out, stderr *cliio.Output
 	path        string // the command path reached, "sim battle"; "" at the top
 	report      cliio.Report
+	games       *gameCache // the definitions kept between the runs of gozen sim batch; nil reads each game
 }
 
 // reporting registers structured result output for a migrated command.
@@ -34,7 +37,38 @@ func (c *command) reporting(f *pflag.FlagSet) {
 	clihelp.Choices(f.Lookup("format"), "text", "json", "jsonl")
 }
 
-func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }
+func main() {
+	stop := startProfile(os.Getenv("GOZEN_CPUPROFILE"))
+	code := run(os.Args[1:], os.Stdout, os.Stderr)
+	stop()
+	os.Exit(code)
+}
+
+// startProfile writes a CPU profile of the whole command to path, for finding
+// what makes a game slow on a weak machine. An empty path profiles nothing.
+func startProfile(path string) func() {
+	if path == "" {
+		return func() {}
+	}
+	f, err := os.Create(path) //nolint:gosec // A path the developer chose in the environment.
+	if err != nil {
+		log.Print("CPU profile:", err)
+		return func() {}
+	}
+	if err := pprof.StartCPUProfile(f); err != nil {
+		log.Print("CPU profile:", err)
+		if err := f.Close(); err != nil {
+			log.Print("CPU profile close:", err)
+		}
+		return func() {}
+	}
+	return func() {
+		pprof.StopCPUProfile()
+		if err := f.Close(); err != nil {
+			log.Print("CPU profile close:", err)
+		}
+	}
+}
 
 // node is one command of the tree: a group holds subs, a leaf runs.
 type node struct {
@@ -47,8 +81,9 @@ var tree = map[string]node{
 	"":               {subs: []string{"new", "run", "export", "check", "sim", "trace", "notes", "release", "trial", "capture", "book", "prompt", "mosaic", "models", "faces", "puppet", "theme", "version", "help"}},
 	"new":            {build: (*command).newGame},
 	"check":          {build: (*command).checkCmd},
-	"sim":            {subs: []string{"battle", "dive", "floors", "design", "campaign", "routes", "breed", "script"}},
+	"sim":            {subs: []string{"battle", "dive", "floors", "design", "campaign", "routes", "breed", "script", "batch"}},
 	"sim script":     {build: (*command).simScript},
+	"sim batch":      {build: (*command).simBatch},
 	"sim breed":      {build: (*command).breedCmd},
 	"sim campaign":   {build: (*command).campaignCmd},
 	"sim routes":     {build: (*command).routes},
@@ -125,8 +160,11 @@ func (c *command) parse(fs *pflag.FlagSet, args []string, page clihelp.Page) err
 	return nil
 }
 
-func run(args []string, out, stderr io.Writer) int {
-	c := &command{out: &cliio.Output{Writer: out}, stderr: &cliio.Output{Writer: stderr}, registry: tree}
+func run(args []string, out, stderr io.Writer) int { return runWith(args, out, stderr, nil) }
+
+// runWith is run with the definitions that gozen sim batch keeps between its runs.
+func runWith(args []string, out, stderr io.Writer, games *gameCache) int {
+	c := &command{out: &cliio.Output{Writer: out}, stderr: &cliio.Output{Writer: stderr}, registry: tree, games: games}
 	// Walk the tree to a leaf or a group.
 	n := tree[""]
 	for n.subs != nil && len(args) > 0 && !strings.HasPrefix(args[0], "-") {

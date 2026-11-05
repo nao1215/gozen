@@ -2,6 +2,7 @@ package play
 
 import (
 	"math"
+	"sort"
 	"strings"
 
 	"github.com/nao1215/gozen/internal/event"
@@ -85,14 +86,29 @@ func commandLines(db *data.DB, cmds []data.Command) []uint64 {
 	walk = func(cs []data.Command) {
 		for i := range cs {
 			c := &cs[i]
+			if s := c.Say; s != nil && s.TextExpr.Set() {
+				// Zero is an unknown source, never a read line. Without a call scope
+				// the static scene summary cannot enumerate a selected template.
+				keys = append(keys, 0)
+			}
 			if s := c.Say; s != nil && strings.TrimSpace(s.Text) != "" {
-				if k := event.SourceKey(s.Who, s.Text); !seen[k] {
-					seen[k] = true
-					keys = append(keys, k)
+				speakers := []string{s.Who.ID}
+				if s.Who.Expr.Set() {
+					speakers = nil
+					for id := range db.Actors {
+						speakers = append(speakers, id)
+					}
+					sort.Strings(speakers)
+				}
+				for _, who := range speakers {
+					if k := event.SourceKey(who, s.Text); !seen[k] {
+						seen[k] = true
+						keys = append(keys, k)
+					}
 				}
 			}
-			if ev := db.Events[c.Call]; ev != nil && !called[c.Call] {
-				called[c.Call] = true
+			if ev := db.Events[c.Call.Event]; ev != nil && !called[c.Call.Event] {
+				called[c.Call.Event] = true
 				walk(ev.Do)
 			}
 			walk(c.Then)
@@ -113,7 +129,7 @@ func commandLines(db *data.DB, cmds []data.Command) []uint64 {
 func (g *Game) readRate(name string) (read, all int) {
 	for _, k := range g.eventLines(name) {
 		all++
-		if g.read[k] {
+		if k != 0 && g.read[k] {
 			read++
 		}
 	}

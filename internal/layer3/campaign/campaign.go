@@ -442,7 +442,7 @@ func Ending(db *data.DB, st *rpg.State) []data.Command {
 		st.Done[DoneKey] = true
 		var cmds []data.Command
 		if db.Events[event] != nil {
-			cmds = append(cmds, data.Command{Call: event})
+			cmds = append(cmds, data.Command{Call: data.EventCall{Event: event}})
 		}
 		return append(cmds, last)
 	}

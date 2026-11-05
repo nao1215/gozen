@@ -12,7 +12,7 @@ import (
 )
 
 type theme struct {
-	window, border, text, accent, cursor, shadow, nameTag, dim color.NRGBA
+	window, border, text, accent, cursor, shadow, nameTag, dim, disabled color.NRGBA
 }
 
 func (g *Game) loadTheme() {
@@ -26,7 +26,19 @@ func (g *Game) loadTheme() {
 		shadow:  u.Shadow.Or(color.NRGBA{0, 0, 0, 0x90}),
 		nameTag: u.NameTag.Or(color.NRGBA{0x40, 0x90, 0xb0, 0xff}),
 	}
-	g.th.dim = color.NRGBA{g.th.text.R, g.th.text.G, g.th.text.B, 0x70}
+	// Without ui.material the dim text keeps its v0.15 weight; the office
+	// look raises it because translucent panels already soften the contrast.
+	g.th.dim = withAlpha(g.th.text, 0x70)
+	if g.hasMaterial() {
+		g.th.dim = withAlpha(g.th.text, 0xc8)
+	}
+	g.th.disabled = withAlpha(g.th.text, 0x70)
+}
+
+// hasMaterial reports whether the game opted into ui.material. Visual changes
+// made for the material look stay behind this so other games draw as before.
+func (g *Game) hasMaterial() bool {
+	return g.db != nil && g.db.Game.UI.Material != nil
 }
 
 const (
@@ -37,8 +49,14 @@ const (
 )
 
 func (g *Game) window(dst *ebiten.Image, x, y, w, h float64) {
+	if g.materialPanel(dst, x, y, w, h, g.th.window) {
+		return
+	}
 	gfx.FillRoundRect(dst, float32(x+4), float32(y+6), float32(w), float32(h), 16, g.th.shadow)
 	gfx.FillRoundRect(dst, float32(x), float32(y), float32(w), float32(h), 16, g.th.window)
+	if g.th.border.A == 0 && g.hasMaterial() {
+		return
+	}
 	gfx.StrokeRoundRect(dst, float32(x+3), float32(y+3), float32(w-6), float32(h-6), 13, 2, withAlpha(g.th.border, 0xc0))
 }
 
@@ -244,7 +262,7 @@ func (l *list) drawRows(g *Game, dst *ebiten.Image, active bool) {
 			c = it.color
 		}
 		if it.disabled {
-			c = g.th.dim
+			c = g.th.disabled
 		}
 
 		room := float64(l.w) - 42 - 22

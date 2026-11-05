@@ -1,0 +1,138 @@
+schema_version: 10
+id: argument-workshop
+start: {location: workshop}
+planning:
+  calendar: {start: '2030-01-01', end: '2030-01-02', phases: [day], weekdays_off: [0, 6]}
+  attributes: {vigor: {type: number, initial: 0}, portrait: {type: string, initial: ""}}
+  entities:
+    potter:
+      name: Potter
+      data: {reports: ['Potter visits the workshop.', 'The kiln is ready.'], limit: 2}
+    weaver:
+      name: Weaver
+      data: {reports: ['Weaver visits the workshop.', 'The loom is ready.'], limit: 2}
+  activity_attributes:
+    inspections: {type: number, initial: 0, min: 0, max: 10}
+  activities:
+    prepare: {name: Prepare, effort: 2, assignee: potter, from: '2030-01-01', to: '2030-01-02'}
+    shape: {name: Shape, effort: 2, assignee: potter, from: '2030-01-01', to: '2030-01-02'}
+screens:
+  stock:
+    params: {amount: number}
+    title: 'Stock {arg.amount}'
+    entries:
+    - label: 'Collect {arg.amount}'
+      when: 'arg.amount > 0'
+      do:
+      - choice:
+        - label: Confirm
+          do:
+          - set: {var.total: 'var.total + arg.amount'}
+        - label: Cancel
+      - open: {screen: receipt, args: {amount: 'arg.amount + 10'}}
+      - say: 'Stock {arg.amount}'
+  receipt:
+    params: {amount: number}
+    title: 'Receipt {arg.amount}'
+    entries:
+    - label: Read
+      do:
+      - call: {event: stock_report, args: {amount: 'arg.amount'}}
+  candidates:
+    params: {task: activity, resident: entity}
+    title: 'Assign {arg.task}'
+    entries:
+    - label: 'Choose {arg.resident}'
+      do:
+      - choice:
+        - label: Confirm
+          do:
+          - plan: {op: assign, activity: {expr: arg.task}, entity: {expr: arg.resident}}
+        - label: Cancel
+      - say: 'Reviewed {arg.task}'
+
+  calendar:
+    title: Calendar
+    kind: calendar
+    view:
+      fullscreen: true
+      date_link:
+        screen: day_detail
+        args: {day: selected.date}
+  day_detail:
+    params: {day: date}
+    title: 'Schedule {arg.day}'
+    entries:
+    - label: 'Inspect {arg.day}'
+      do:
+      - say: 'Selected {arg.day}'
+
+  tasks:
+    title: Workshop tasks
+    entries:
+    - label: Greet the residents
+      do: [{call: speaker_demo}]
+    - label: Selected source templates
+      do: [{call: selected_text_demo}]
+    - label: Read collection totals
+      do: [{call: collection_demo}]
+    - label: Read calendar ranges
+      do: [{call: calendar_demo}]
+    - label: Draw an available resident
+      do: [{call: lottery_demo}]
+    - label: Record stock counters
+      do: [{call: counter_demo}]
+    - label: Check threshold warnings
+      do: [{call: threshold_demo}]
+    - label: Release unfinished assignments
+      do: [{call: release_demo}]
+    - label: Compare sampled and live work
+      do: [{call: evidence_demo}]
+    - label: Inspect the available residents
+      do: [{call: each_demo}]
+    - label: Encourage available residents
+      do: [{call: roster_demo}]
+    - label: Compare priorities
+      do: [{call: priority_demo}]
+    - label: Inspect the preparation work
+      do: [{call: {event: inspect_activity, args: {task: '"prepare"'}}}]
+    kind: timeline
+    view:
+      fullscreen: true
+      rows:
+      - label: Pottery
+        items:
+        - activity: prepare
+          label: Prepare
+          screen: candidates
+          args: {task: '"prepare"', resident: '"weaver"'}
+        - activity: shape
+          label: Shape
+          screen: candidates
+          args: {task: '"shape"', resident: '"weaver"'}
+  resident_card:
+    params: {resident: entity}
+    title: 'Visit {arg.resident}'
+    view: {portrait: portrait}
+    entries:
+    - target: {expr: arg.resident}
+      label: 'Encourage {arg.resident}'
+      do:
+      - plan: {op: set, entity: {expr: arg.resident}, attribute: vigor, value: 'self.vigor + 1'}
+      - say: 'Encouraged {arg.resident}'
+  roster:
+    params: {amount: number}
+    title: 'Workshop roster {arg.amount}'
+    view: {portrait: portrait}
+    entries:
+    - each: {param: resident, in: 'filter(entities, it.vigor < 2)'}
+      target: {expr: arg.resident}
+      label: 'Encourage {entity[arg.resident].name}'
+      text: 'Give {arg.resident} {arg.amount} encouragement.'
+      do:
+      - choice:
+        - label_expr: '"Confirm " + arg.resident'
+          do:
+          - plan: {op: set, entity: {expr: arg.resident}, attribute: vigor, value: 'self.vigor + arg.amount'}
+        - label: Cancel
+      - say: 'Reviewed {arg.resident}'

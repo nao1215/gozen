@@ -32,7 +32,7 @@ func (r *Runner) respond(q *data.Respond) {
 	// as any line of the source (ADR 0027)
 	var commands []data.Command
 	for i, line := range reply.Written {
-		commands = append(commands, data.Command{Say: &data.Say{Who: q.Who, Text: line, Face: reply.Face, Values: reply.Fields[i]}})
+		commands = append(commands, data.Command{Say: &data.Say{Who: data.IDRef{ID: q.Who}, Text: line, Face: reply.Face, Values: reply.Fields[i]}})
 	}
 	r.push(commands)
 }

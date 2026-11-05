@@ -27,3 +27,5 @@ The Wayfinder art was changed from shapes drawn in code to generated images. The
 ## Addendum (2026-10-20)
 
 Wayfinder (`examples/play`) was removed. The sample game is Go Zen (`examples/go-zen`), a module of its own so that its pictures and music are not in the gozen module. Its pictures and music are CC BY 4.0 (`examples/go-zen/game/assets/LICENSE`), its font is M+ 1p under the M+ FONTS LICENSE (`examples/go-zen/ASSETS.md`). The README and site pictures are taken from it. The graphics tests run it, or their own small games, through `play/testdata/host`.
+
+From 2026-11 the pictures of every sample and of the dungeon themes claim no copyright: they are dedicated to the public domain under CC0 1.0. The music and sound effects stay CC BY 4.0. Releases before this change keep the terms they were published with.

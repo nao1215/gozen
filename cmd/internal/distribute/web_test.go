@@ -61,7 +61,7 @@ func TestWebManifestAndRuntimeValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := filepath.Join(t.TempDir(), "site")
-	if err := Web(src, out, bundle, "devel"); err != nil {
+	if err := Web(src, out, bundle, "devel", ""); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(filepath.Join(out, "game", "files.json")) //nolint:gosec // Test-owned exported file.
@@ -148,7 +148,7 @@ func TestWebManifestAndRuntimeValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	parent := t.TempDir()
-	if err := Web(src, filepath.Join(parent, "site"), bundle, "devel"); err == nil || !strings.Contains(err.Error(), "checksum") {
+	if err := Web(src, filepath.Join(parent, "site"), bundle, "devel", ""); err == nil || !strings.Contains(err.Error(), "checksum") {
 		t.Fatalf("mismatched JavaScript: %v", err)
 	}
 	files, err := os.ReadDir(parent)
@@ -174,7 +174,7 @@ func TestWebFetchesVoicesLater(t *testing.T) {
 		}
 	}
 	out := filepath.Join(t.TempDir(), "site")
-	if err := Web(src, out, webBundle(t), "devel"); err != nil {
+	if err := Web(src, out, webBundle(t), "devel", ""); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(filepath.Join(out, "game", "files.json")) //nolint:gosec // Test-owned exported file.

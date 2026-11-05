@@ -457,3 +457,124 @@ scenarios:
       exit_code: 0
       stdout: {contains: [Welcome., Welcome back.]}
       stderr: {equals: ''}
+- name: capture the office sample's management screens in a window
+  tags: [graphics]
+  steps:
+  # One picture of each management screen, drawn by the real renderer: the standup
+  # with its burnup, a peek, a carried ticket, the tickets and carousel, a message,
+  # the full call with its shared screen, the calendar and the plan.
+  - fixture:
+      file: office.txt
+      content: |
+        gap 4
+        wait 30
+        do open: standup
+        wait 30
+        shot standup
+        pick Next
+        wait 20
+        pick Daniel Cho
+        wait 10
+        shot peek
+        press x
+        wait 10
+        pick Next
+        wait 20
+        pick Payments
+        wait 10
+        shot carry
+        pick Daniel Cho
+        wait 30
+        press x
+        wait 30
+        do call: notify
+        wait 30
+        shot message
+        pick Message: Elena Ruiz
+        wait 20
+        pick Call now
+        wait 30
+        shot call
+        press ok
+        wait 40
+        shot share
+        press ok
+        wait 30
+        press ok
+        wait 30
+        press ok
+        wait 30
+        press x
+        wait 30
+        do open: calendar
+        wait 40
+        shot calendar
+        press x
+        wait 30
+        do open: timeline
+        wait 40
+        shot timeline
+        press x
+        wait 30
+        do open: materials
+        wait 40
+        shot materials
+        quit
+  - run:
+      command: gozen run "${specdir}/../../examples/office/game" --dev --mute --seed 7 --window 1 --start office --script office.txt --shots shots --save-dir saves
+      timeout: 300s
+  - assert:
+      exit_code: 0
+  - assert:
+      image: {path: shots/share.png, format: png}
+  - assert:
+      image: {path: shots/calendar.png, format: png}
+  - assert:
+      image: {path: shots/materials.png, format: png}
+- name: capture the workshop sample's planning screens in a window
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: planning.txt
+      content: |
+        gap 4
+        wait 30
+        do open: studio
+        wait 30
+        shot studio
+        press x
+        wait 20
+        do open: timeline
+        wait 30
+        shot timeline
+        press x
+        wait 20
+        do open: calendar
+        wait 30
+        shot calendar
+        press right
+        wait 20
+        press x
+        wait 20
+        do open: workshop
+        wait 30
+        shot entities
+        press down
+        wait 10
+        press x
+        wait 20
+        do call: assembly
+        wait 40
+        shot assembly
+        quit
+  - run:
+      command: gozen run "${specdir}/../../examples/workshop/game" --dev --mute --seed 7 --window 1 --start workshop --script planning.txt --shots shots --save-dir saves
+      timeout: 300s
+  - assert:
+      exit_code: 0
+  - assert:
+      image: {path: shots/studio.png, format: png}
+  - assert:
+      image: {path: shots/calendar.png, format: png}
+  - assert:
+      image: {path: shots/assembly.png, format: png}

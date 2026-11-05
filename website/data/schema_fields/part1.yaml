@@ -8,6 +8,7 @@ Action:
   new: "An expression that holds while the action has new content. It is not shown on screen and is only a hint for automatic players."
   when: "An expression that decides whether the action is shown. If omitted, the action is always available."
 Actor:
+  speech: "Optional language-keyed first-person, address and tone lint rules; undeclared speakers are not inspected."
   _: "A party member or other character: their class, level, faces, equipment and portrait settings."
   ai: "The rules this actor follows in auto battle, either an ID of ai or a list of rules inline. Party members inherit their class AI when omitted."
   back: "If true, the actor starts in the back row."
@@ -50,7 +51,7 @@ Aside:
   when: "An expression that decides whether the aside is inserted."
 Atlas:
   activation: "travel (default) follows roads; instant executes the chosen point directly, including the current point, without walking, steps, encounters or changing the standing point. A to entrance still moves to its destination."
-  region_numbers: "Which regions' plates show their garrison on a campaign's map: all (the default) or near (the region chosen and its neighbours; the others show their names only, in the same place)."
+  region_numbers: "Which regions' plates show their garrison on a campaign's map: all (the default) or near (the region chosen and its neighbors; the others show their names only, in the same place)."
   talk: "How the map shows under a conversation that is not its own question (a region's orders): omitted (as it is), dim (darkened) or hide (darkened, without the markers, flags and name plates)."
   safe_area: "The edges of the screen kept for the windows over the map, [top, right, bottom, left] as fractions of the screen (each at most 0.45). The picture is fitted to the rest; zoomed in far enough, the camera keeps it over the whole screen, the edges included, however far it is moved. Omitted: the whole screen."
   selection_panel: "Optional fixed panel showing the focused point's first matching advice variant. Clicking selects; Confirm executes; Back hides the panel."
@@ -63,7 +64,7 @@ Atlas:
   picture: "The map picture, a file under assets/."
   points: "The places on the map, keyed by point ID."
   region_borders: "On a campaign's map, when the outline of each region's area is drawn: `selected` (the default, only the region chosen) or `always` (every region, the old look)."
-  region_roads: "On a campaign's map, when the roads are shown: `selected` (the default, a thin arrow to each neighbour the region chosen can march on) or `always` (the lines of all the roads, as draw_roads does on other maps). draw_roads is not read on a campaign's map."
+  region_roads: "On a campaign's map, when the roads are shown: `selected` (the default, a thin arrow to each neighbor the region chosen can march on) or `always` (the lines of all the roads, as draw_roads does on other maps). draw_roads is not read on a campaign's map."
   roads: "The roads that connect points. The token walks along them."
   token: "The piece that stands for the party on the map: a picture, the leader's face, or `doll` for the leader's doll."
   unknown: "How a point not yet visited is shown: `hidden`, `dim`, `mark` (a question-mark plate, the default) or `named`."
@@ -177,6 +178,7 @@ CardBubble:
   state: "A state ID. The particles appear while the actor has this state."
   when: "An expression. The particles appear while it holds."
 ChoiceOption:
+  label_expr: Pure expression selecting a string source template before translation and read-key hashing; exclusive with label.
   _: "One answer of a `choice` command."
   do: "The commands that run when this answer is picked."
   id: "An identifier that is unique within the same question."

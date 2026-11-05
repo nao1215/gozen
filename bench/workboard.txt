@@ -1,0 +1,16 @@
+gap 4
+wait 20
+do open: look_board
+wait 8
+pick Onward
+wait 8
+pick Onward
+wait 8
+pick Work
+wait 8
+pick Clear
+wait 8
+look
+press x
+wait 10
+quit

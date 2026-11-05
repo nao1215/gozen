@@ -17,6 +17,7 @@ import (
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"github.com/nao1215/gozen/internal/rpg"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 
@@ -166,8 +167,9 @@ func (g *Game) commandsName(cmds []data.Command) string { return g.db.CommandsNa
 
 func (g *Game) commandsNamed(name string) []data.Command { return g.db.NamedCommands(name) }
 
-func (g *Game) onEventStart(cmds []data.Command) {
+func (g *Game) onEventStart(cmds []data.Command, args map[string]any) {
 	g.keepEvent()
+	g.evArgs = args
 	g.evCmds, g.evLog, g.evNoBack, g.evHist = cmds, slices.Clip(g.backlog), false, nil
 	g.evArrival = g.arriving
 	g.evLines, g.evAnswers = 0, nil
@@ -189,6 +191,9 @@ func (g *Game) onEventStart(cmds []data.Command) {
 			return
 		}
 		g.evRand = r
+	}
+	if !g.hasAuthorScreen() {
+		g.screenTrace = screenTranscript{cursor: rpg.Cursor{Event: g.evName, Args: g.evArgs, Arrival: g.evArrival}, snap: g.evSnap, rnd: g.evRand}
 	}
 }
 

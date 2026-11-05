@@ -1,0 +1,40 @@
+locations:
+  workshop: {name: Workshop}
+actors:
+  guide: {name: Guide}
+events:
+  board:
+    do: [{say: Welcome}, {open: look_board}]
+  desk:
+    do: [{open: desk}]
+  notify:
+    do:
+    - message: {who: guide, text: Ready to review?, event: decision, tag: Workshop}
+    - open: desk
+  decision:
+    do:
+    - choice:
+      - label: Review
+        do: [{call: {event: review, ensemble: studio}}]
+      - label: Later
+        do: [{set: {var.later: 1}}]
+  review:
+    do:
+    - call_view: {camera: {who: guide, on: false}}
+    - call_view: {share: {who: guide, picture: emblem.png}}
+    - say: {who: guide, text: The bowl is ready.}
+    - call_view: {share: {who: guide, picture: ''}}
+    - set: {var.reviewed: 1}
+profiles:
+  guide:
+    name: Guide
+    picture: emblem.png
+    affiliation: Workshop
+    text: Coordinates the workshop.
+    fields: [{label: Role, value: Coordinator}]
+  visitor:
+    name: Visitor
+    picture: emblem.png
+    affiliation: Visitors
+    when: 'var.reviewed > 0'
+    text: Joins after reviewing the bowl.

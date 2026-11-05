@@ -4,7 +4,7 @@ import "testing"
 
 // An event's place is decided by nearest distance, and not decided if it splits at the same distance (EventPlaces).
 func TestEventPlaces(t *testing.T) {
-	call := func(n string) Command { return Command{Call: n} }
+	call := func(n string) Command { return Command{Call: EventCall{Event: n}} }
 	db := &DB{
 		Locations: map[string]*Location{
 			"bar":   {People: []Person{{Talk: []Command{{Then: []Command{call("chat")}}}}}},

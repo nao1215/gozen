@@ -1,0 +1,40 @@
+actors:
+  visitor: {name: Visiting potter}
+locations: {workshop: {name: Workshop}}
+events:
+  opening:
+    do:
+      - plan: {op: observe}
+      - open: workshop
+  work:
+    do:
+      - if: '!planning.finished'
+        then:
+          - if: '!planning.closed'
+            then:
+              - plan: {op: progress, activity: prepare, value: self.craft}
+              - plan: {op: progress, activity: shape, value: self.craft}
+              - plan: {op: set, tag: residents, attribute: vigor, value: 'max(0, self.vigor - 12)'}
+              - plan: {op: record, ledger: usage, value: 1}
+          - call: finish_phase
+  rest:
+    do:
+      - if: '!planning.finished'
+        then:
+          - plan: {op: rule, rule: recover, args: {amount: 20}}
+          - call: finish_phase
+  finish_phase:
+    do:
+      - if: 'planning.date == "2030-07-31" && planning.phase == "evening"'
+        then:
+          - plan: {op: close, ledger: usage}
+      - plan: {op: advance}
+      - plan: {op: observe}
+      - plan: {op: dispatch}
+      - if: planning.finished
+        then:
+          - say: The workshop closes for the week. Thank you for playing.
+          - clear: true
+  assembly:
+    do:
+      - say: {who: visitor, text: The residents discuss the next batch of bowls., ensemble: assembly, instant: true}

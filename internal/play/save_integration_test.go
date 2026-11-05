@@ -3,6 +3,7 @@ package play
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -17,6 +18,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/savefile"
 	"github.com/nao1215/gozen/internal/testgame"
@@ -688,4 +690,218 @@ func TestPendingGalleryRetriesFromUpdate(t *testing.T) {
 	if g.unlockDirty || s.writes[g.galleryPath()] != 2 {
 		t.Fatal("Update did not retry the pending gallery record")
 	}
+}
+
+func TestCheckpointRestoresAfterManualLoad(t *testing.T) {
+	g := sysInnWith(t, Options{SaveDir: t.TempDir(), Seed: 7}, map[string]string{
+		"data/retry.yaml": "events: {retry: {do: [{say: Ready again}]}}",
+	})
+	g.st.Gold = 17
+	if err := g.checkpoint(event.Checkpoint{Event: "retry"}); err != nil {
+		t.Fatal(err)
+	}
+	want := g.st.Rand.Float64()
+	g.st.Gold = 1
+	saved, err := g.saveBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := rpg.Parse(g.db, saved, g.st.Rand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.loadGame(st)
+	// Restoration must discard every suspended overlay and caller.
+	g.openScreen("save", func() { t.Error("discarded caller resumed") })
+	for range 2 {
+		if err := g.checkpoint(event.Checkpoint{Restore: true}); err != nil {
+			t.Fatal(err)
+		}
+		if len(g.stack) != 1 || g.st.Gold != 17 || g.st.Rand.Float64() != want {
+			t.Fatal("retry did not reset the state and screen stack")
+		}
+		q, ok := g.events.Next().(event.Say)
+		if !ok || q.Text != "Ready again" {
+			t.Fatalf("retry entry: %#v", q)
+		}
+	}
+}
+
+// Selecting a malformed slot keeps the current game and next random draw usable.
+func TestLoadMenuRejectsDamagedRandomState(t *testing.T) {
+	g := sysInn(t, Options{SaveDir: t.TempDir(), Seed: 31})
+	g.st.Gold = 11
+	if err := g.save(0); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := g.storeRead(g.slotPath(0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(saved, &doc); err != nil {
+		t.Fatal(err)
+	}
+	// Keep the already displayed slot selectable, then damage its backing file.
+	menu := newSaveMenu(g, false, func() {})
+	menu.slots.sel = 0
+	doc["rand"] = []byte("broken")
+	damaged, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := g.store.Write(g.slotPath(0), damaged); err != nil {
+		t.Fatal(err)
+	}
+	g.st.Gold = 29
+	g.st.Rand.Uint64()
+	before := *g.pcg
+	current := g.st
+	fresh := newSaveMenu(g, false, func() {})
+	if !fresh.slots.items[0].disabled {
+		t.Fatal("damaged slot is offered for loading")
+	}
+	g.push(menu)
+	sysKey(g, btnOK)
+	menu.update(g)
+	if menu.msgT == 0 || !strings.Contains(menu.msg, "random state") {
+		t.Fatalf("missing load diagnostic: %q", menu.msg)
+	}
+	if g.st != current || g.st.Gold != 29 || g.stack[len(g.stack)-1] != menu {
+		t.Fatal("failed load replaced the live game")
+	}
+	if g.failure != nil {
+		t.Fatal("recoverable slot failure terminated play", g.failure)
+	}
+	if g.st.Rand.Uint64() != before.Uint64() {
+		t.Fatal("failed load changed randomness")
+	}
+	after, err := g.storeRead(g.slotPath(0))
+	if err != nil || !bytes.Equal(after, damaged) {
+		t.Fatal("failed load rewrote the slot", err)
+	}
+}
+
+// Slot selection and direct installation reject invalid replay without losing
+// the current game, even after earlier commands ran.
+func TestLoadRejectsDamagedReplay(t *testing.T) {
+	g := storyGame(t, Options{Seed: 31, Script: "wait 10\npress ok\nwait 10\npress ok\nwait 10\npress down\nwait 10\npress ok\nwait 10\nquit\n", Location: "camp", Event: "first"}, "schema_version: 4\n")
+	runToEnd(t, g)
+	saved, err := g.saveBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name    string
+		answers []int
+		line    int
+	}{
+		{"missing", nil, 4},
+		{"out of range", []int{2}, 4},
+		{"unused", []int{1, 0}, 4},
+		{"future answer", []int{1, 0}, 3},
+		{"unreachable", []int{1}, 99},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var doc map[string]any
+			if err := json.Unmarshal(saved, &doc); err != nil {
+				t.Fatal(err)
+			}
+			cursor, ok := doc["cursor"].(map[string]any)
+			if !ok {
+				t.Fatal("missing cursor")
+			}
+			cursor["answers"], cursor["line"] = tc.answers, tc.line
+			damaged, err := json.Marshal(doc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := g.store.Write(g.slotPath(0), saved); err != nil {
+				t.Fatal(err)
+			}
+			menu := newSaveMenu(g, false, func() {})
+			menu.slots.sel = 0
+			if err := g.store.Write(g.slotPath(0), damaged); err != nil {
+				t.Fatal(err)
+			}
+			g.st.Gold = 29
+			g.st.Rand.Uint64()
+			current, runner, before := g.st, g.events, *g.pcg
+			g.push(menu)
+			sysKey(g, btnOK)
+			menu.update(g)
+			if menu.msgT == 0 {
+				t.Fatal("damaged replay was offered for confirmation")
+			}
+			if g.failure != nil || g.st != current || g.events != runner || g.st.Gold != 29 || at(g) != "Three." || g.st.Vars["way"] != float64(2) {
+				t.Fatal("failed replay replaced live state or dialogue", g.failure)
+			}
+			if g.st.Rand.Uint64() != before.Uint64() {
+				t.Fatal("failed replay changed randomness")
+			}
+			after, err := g.storeRead(g.slotPath(0))
+			if err != nil || !bytes.Equal(after, damaged) {
+				t.Fatal("failed replay rewrote slot", err)
+			}
+			g.pop()
+			// Direct installation must enforce the same contract, even when
+			// its caller parsed bytes without going through the slot menu.
+			candidate, err := rpg.Parse(g.db, damaged, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			before = *g.pcg
+			top := g.stack[len(g.stack)-1]
+			g.loadSavedGame(candidate)
+			loadErr := g.failure
+			g.failure = nil // Expected diagnostic from this direct internal call.
+			if loadErr == nil {
+				t.Fatal("direct load accepted damaged replay")
+			}
+			if g.st != current || g.events != runner || g.stack[len(g.stack)-1] != top || g.st.Gold != 29 || at(g) != "Three." || g.st.Vars["way"] != float64(2) {
+				t.Fatal("direct load replaced live state or dialogue", loadErr)
+			}
+			if g.st.Rand.Uint64() != before.Uint64() {
+				t.Fatal("direct load changed randomness")
+			}
+			after, err = g.storeRead(g.slotPath(0))
+			if err != nil || !bytes.Equal(after, damaged) {
+				t.Fatal("direct load rewrote slot", err)
+			}
+		})
+	}
+	// The original event is still usable after all rejected loads.
+	g.req, g.talk = nil, talk{}
+	g.pump()
+	if !g.st.Flags["first_done"] {
+		t.Fatal("original event could not continue")
+	}
+	if err := g.store.Write(g.slotPath(0), saved); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := g.load(0)
+	if err != nil {
+		t.Fatal("valid slot rejected", err)
+	}
+	// The private probe must not consume the state or random stream installed next.
+	g.loadSavedGame(restored)
+	if g.failure != nil || at(g) != "Three." || g.st.Vars["way"] != float64(2) {
+		t.Fatal("valid slot did not resume", g.failure)
+	}
+}
+
+// Missing replay root and RNG must fail before replacing live play.
+func TestLoadRejectsMalformedScreenReplay(t *testing.T) {
+	g := sysInn(t, Options{})
+	st := testgame.State(g.db, 17)
+	st.Resume = &rpg.Resume{Cursor: rpg.Cursor{Inputs: []rpg.ReplayInput{{Request: strings.Repeat("0", 64)}}}}
+	before := g.st
+	if err := g.checkSavedReplay(st); err == nil {
+		t.Fatal("probe accepted malformed screen replay")
+	}
+	g.loadSavedGame(st)
+	if g.failure == nil || g.st != before {
+		t.Fatal("malformed replay replaced the live state")
+	}
+	g.failure = nil // The direct internal call deliberately exercised the guard.
 }

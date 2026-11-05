@@ -97,6 +97,15 @@ type gifEncoding struct {
 	Crop    string `yaml:"crop"`
 }
 
+// mp4Encoding writes the frames as an H.264 video in full color (a GIF keeps at
+// most 256 colors); the website plays it like a GIF, silent and looping.
+type mp4Encoding struct {
+	FPS    int `yaml:"fps"`
+	Width  int `yaml:"width"`
+	Height int `yaml:"height"`
+	CRF    int `yaml:"crf"` // x264 quality, lower is better; 0 means 20
+}
+
 type image struct {
 	Run       string        `yaml:"run"`
 	Shot      string        `yaml:"shot"`
@@ -104,6 +113,7 @@ type image struct {
 	Frames    []pick        `yaml:"frames"`
 	JPEG      *jpegEncoding `yaml:"jpeg"`
 	GIF       *gifEncoding  `yaml:"gif"`
+	MP4       *mp4Encoding  `yaml:"mp4"`
 	Tolerance float64       `yaml:"tolerance"`
 }
 
@@ -185,10 +195,11 @@ func (m manifest) validate(readFile func(string) ([]byte, error)) []string {
 			bad = append(bad, where+": give exactly one of shot, pick and frames")
 		}
 		switch ext := path.Ext(file); {
-		case ext == ".jpg" && im.JPEG != nil && im.GIF == nil && len(im.Frames) == 0:
-		case ext == ".gif" && im.GIF != nil && im.JPEG == nil && len(im.Frames) > 0:
+		case ext == ".jpg" && im.JPEG != nil && im.GIF == nil && im.MP4 == nil && len(im.Frames) == 0:
+		case ext == ".gif" && im.GIF != nil && im.JPEG == nil && im.MP4 == nil && len(im.Frames) > 0:
+		case ext == ".mp4" && im.MP4 != nil && im.JPEG == nil && im.GIF == nil && len(im.Frames) > 0:
 		default:
-			bad = append(bad, where+": a .jpg is one frame with jpeg, a .gif is frames with gif")
+			bad = append(bad, where+": a .jpg is one frame with jpeg, a .gif is frames with gif, a .mp4 is frames with mp4")
 		}
 		if im.Shot != "" && ok && r.Script != "" && !regexp.MustCompile(`(?m)^shot `+regexp.QuoteMeta(im.Shot)+`\s*$`).MatchString(scripts[im.Run]) {
 			bad = append(bad, fmt.Sprintf("%s: %s has no `shot %s`", where, r.Script, im.Shot))

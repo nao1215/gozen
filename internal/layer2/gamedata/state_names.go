@@ -196,6 +196,9 @@ func scalarType(t expr.ValueType) *vtype {
 func (c *checker) resultType(e Expr, names []string) expr.ValueType {
 	return e.ResultType(func(r expr.Ref) expr.ValueType {
 		t := typeOf(r.Name, names)
+		if r.Name == "arg" && c.params != nil {
+			t = c.argumentType()
+		}
 		if r.Name == "flag" || r.Name == "var" {
 			t = c.stateType(r.Name)
 		}
@@ -223,6 +226,23 @@ func (c *checker) resultType(e Expr, names []string) expr.ValueType {
 func (c *checker) assignments(w string, set map[string]Expr, names []string) {
 	for _, k := range slices.Sorted(maps.Keys(set)) {
 		e := set[k]
+		index, err := assignmentIndex(k)
+		if err != nil {
+			c.errorf(diag.Expression, w+"."+k, "%v", err)
+			continue
+		}
+		if index.Set() {
+			c.needsVersion(w+"."+k, "indexed state assignment", SchemaVersion10)
+			if c.db.Game.State.Strict {
+				c.errorf(diag.Expression, w+"."+k, "strict state requires a literal assignment target")
+			}
+			c.expr(w+"."+k, index, names)
+			if got := c.resultType(index, names); got != expr.StringType && got&expr.UnknownType == 0 {
+				c.errorf(diag.Expression, w+"."+k, "set target index must be a string")
+			}
+			c.expr(w+"."+k, e, names)
+			continue
+		}
 		c.setKey(w, k, e)
 		if c.noDev && DevSet(k) {
 			c.errorf(diag.Shape, w+"."+k, "set %s changes an actor's stats or level, which a session does only with Config.Dev (development and tests)", k)

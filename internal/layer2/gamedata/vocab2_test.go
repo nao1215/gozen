@@ -69,7 +69,7 @@ func TestVersion2Checks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if db.Events["e"].Do[0].Call != "sub" {
+	if db.Events["e"].Do[0].Call.Event != "sub" {
 		t.Fatal("custom command was not resolved")
 	}
 }
@@ -220,5 +220,73 @@ func TestScreenEntryCommands(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "screens.stock.entries[0].do[0]") {
 			t.Fatalf("missing action diagnostic for %s: %v", bad, err)
 		}
+	}
+}
+
+func TestIndexedVariableTargets(t *testing.T) {
+	for _, tc := range []struct{ target, want string }{
+		{`var["stock_" + var.a]`, ""},
+		{`flag["stock_" + var.a]`, ""},
+		{`flag[1]`, "string"},
+		{`flag[rand()]`, "pure"},
+		{`flag["x"`, "closing"},
+		{`var[unknown]`, "unknown"},
+		{`var[1]`, "string"},
+		{`var[rand()]`, "pure"},
+		{`var["x"`, "closing"},
+	} {
+		t.Run(tc.target, func(t *testing.T) {
+			_, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: 10\nid: indexed\n" + testgame.Game, "data/indexed.yaml": "events: {write: {do: [{set: {'" + tc.target + "': '2'}}]}}"})
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("want %s: %v", tc.want, err)
+			}
+		})
+	}
+	for _, tc := range []struct{ game, want string }{{"schema_version: 10\nid: strict\n" + testgame.DeclaredGame, "strict state"}, {"schema_version: 9\nid: old\n" + testgame.Game, "schema_version: 10"}} {
+		for _, table := range []string{"var", "flag"} {
+			if _, err := testgame.TryLoad(map[string]string{"game.yaml": tc.game, "data/indexed.yaml": `events: {write: {do: [{set: {'` + table + `["a"]': '2'}}]}}`}); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("%s: want %s: %v", table, tc.want, err)
+			}
+		}
+	}
+}
+
+func TestRepeatedScreenEntryValidation(t *testing.T) {
+	for _, tc := range []struct {
+		each  string
+		valid bool
+	}{
+		{`{param: resident, items: [potter, weaver]}`, true},
+		{`{param: resident, items: []}`, true},
+		{`{param: resident, in: 'filter(entities, true)'}`, true},
+		{`{param: amount, items: [potter]}`, false},
+		{`{param: 'bad-name', items: [potter]}`, false},
+		{`{param: resident}`, false},
+		{`{param: resident, items: [], in: entities}`, false},
+		{`{param: resident, in: 'rand()'}`, false},
+		{`{param: resident, in: '3'}`, false},
+		{`{param: resident, in: 'arg.resident'}`, false},
+	} {
+		t.Run(tc.each, func(t *testing.T) {
+			_, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: 10\nid: rows\n" + testgame.Game + `planning:
+  calendar: {start: '2030-01-01', end: '2030-01-02', phases: [day]}
+  entities: {potter: {name: Potter}, weaver: {name: Weaver}}
+screens:
+  roster:
+    params: {amount: number}
+    title: Roster
+    entries:
+    - each: ` + tc.each + `
+      label: 'Visit {arg.resident}'
+      do: [{say: 'Visit {arg.resident}: {arg.amount}'}]
+`})
+			if (err == nil) != tc.valid {
+				t.Fatalf("valid=%v: %v", tc.valid, err)
+			}
+		})
 	}
 }

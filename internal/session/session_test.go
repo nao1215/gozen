@@ -2,11 +2,15 @@ package session_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
+	"os"
+	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -949,5 +953,1324 @@ troops:
 				}
 			})
 		}
+	}
+}
+
+func TestCheckpointDiscardsContinuationAndSurvivesSave(t *testing.T) {
+	files := fstest.MapFS{}
+	for k, v := range trail {
+		fileCopy := *v
+		files[k] = &fileCopy
+	}
+	files["game.yaml"] = &fstest.MapFile{Data: []byte("schema_version: 9\nid: retry-test\nstart: {location: camp, party: [walker]}\n")}
+	files["data/retry.yaml"] = &fstest.MapFile{Data: []byte("events: {retry: {do: [{say: Ready}]}}")}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := session(t, g, gozen.Config{Seed: 7})
+	if err := s.Do(t.Context(), "- set: {var.counter: 17}\n- checkpoint: retry\n- set: {var.draw: 'rand()', var.counter: 1}"); err != nil {
+		t.Fatal(err)
+	}
+	want := query[float64](t, s, "var.draw")
+	b, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err = gozen.Restore(g, b, gozen.Config{Seed: 8})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start("- restore_checkpoint: true\n- set: {var.counter: 999}"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Kind != "say" || q.Text != "Ready" {
+		t.Fatal(q)
+	}
+	if q := s.Next(); q.Kind != "" {
+		t.Fatal(q)
+	}
+	if got := query[float64](t, s, "var.counter"); got != 17 {
+		t.Fatal(got)
+	}
+	if err := s.Do(t.Context(), "- set: {var.draw: 'rand()'}"); err != nil {
+		t.Fatal(err)
+	}
+	if got := query[float64](t, s, "var.draw"); got != want {
+		t.Fatalf("random draw %v want %v", got, want)
+	}
+}
+
+// TestEventArgumentsResume observes a reused rule, a nested choice and caller restoration.
+func TestEventArgumentsResume(t *testing.T) {
+	fsys := os.DirFS("../../docs/examples/event-arguments")
+	g, err := gozen.Load(fsys, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := gozen.Config{Seed: 7, OnLog: func(err error) { t.Error(err) }}
+	s, err := gozen.New(g, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start("- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Ready potter", "Returned potter/2", "Ready weaver", "Returned weaver/3", "Totals 2/3"} {
+		q := s.Next()
+		if q.Kind == "choice" {
+			s.Answer(0)
+			q = s.Next()
+		}
+		if strings.HasPrefix(q.Text, "Roll ") {
+			q = s.Next()
+		}
+		if q.Text != want {
+			t.Fatalf("got %+v, want %s", q, want)
+		}
+		saved, err := s.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		restored, err := gozen.Restore(g, saved, cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := restored.Next(); got.Text != want {
+			t.Fatalf("resume %+v, want %s", got, want)
+		}
+		// Save and restore twice at the same line; earlier effects must not accumulate.
+		saved, err = restored.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		restored, err = gozen.Restore(g, saved, cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := restored.Next(); got.Text != want {
+			t.Fatalf("second resume %+v", got)
+		}
+		if strings.HasPrefix(want, "Ready ") {
+			a, b := s.Next(), restored.Next()
+			if a.Text != b.Text || !strings.HasPrefix(a.Text, "Roll ") {
+				t.Fatalf("RNG %v / %v", a, b)
+			}
+		}
+		s = restored
+	}
+}
+
+func TestBoundEventRootAndChangedSave(t *testing.T) {
+	fsys := os.DirFS("../../docs/examples/event-arguments")
+	g, err := gozen.Load(fsys, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := gozen.Config{Seed: 19, OnLog: func(err error) { t.Error(err) }}
+	s, err := gozen.New(g, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start("- call: {event: encourage, args: {resident: '\"potter\"', amount: '2'}}"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Kind != "choice" {
+		t.Fatalf("choice %+v", q)
+	}
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := gozen.Restore(g, saved, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A pending choice is restored without applying the effect twice.
+	r.Answer(0)
+	if q := r.Next(); q.Text != "Ready potter" {
+		t.Fatalf("ready %+v", q)
+	}
+	again, err := r.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err = gozen.Restore(g, again, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q := r.Next(); q.Text != "Ready potter" {
+		t.Fatalf("ready %+v", q)
+	}
+	r.Next()
+	if q := r.Next(); q.Text != "Returned potter/2" {
+		t.Fatalf("bindings %+v", q)
+	}
+
+	for _, mutate := range []func(map[string]any){
+		func(c map[string]any) { c["args"] = map[string]any{"resident": "missing", "amount": 2} },
+		func(c map[string]any) { c["args"] = map[string]any{"resident": "potter", "amount": true} },
+		func(c map[string]any) { delete(c, "args") },
+		func(c map[string]any) { c["fingerprint"] = "changed" },
+	} {
+		var doc map[string]any
+		if err := json.Unmarshal(saved, &doc); err != nil {
+			t.Fatal(err)
+		}
+		cursor, ok := doc["cursor"].(map[string]any)
+		if !ok {
+			t.Fatal("missing cursor")
+		}
+		mutate(cursor)
+		broken, err := json.Marshal(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := gozen.Restore(g, broken, cfg); err == nil {
+			t.Fatal("accepted damaged bindings")
+		}
+	}
+	header, err := os.ReadFile("../../docs/examples/event-arguments/game.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story, err := os.ReadFile("../../docs/examples/event-arguments/data/story.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		from, to string
+		reject   bool
+	}{
+		{"Ready {arg.resident}", "Changed {arg.resident}", true},
+		{"params: {resident: entity, amount: number}", "params: {amount: number, resident: entity}", false},
+	} {
+		edited, err := gozen.Load(fstest.MapFS{"game.yaml": {Data: header}, "data/story.yaml": {Data: []byte(strings.Replace(string(story), tc.from, tc.to, 1))}}, ".")
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = gozen.Restore(edited, saved, cfg)
+		if (err != nil) != tc.reject {
+			t.Fatalf("changed definition: %v, want reject=%v", err, tc.reject)
+		}
+	}
+	// A refused restore has not damaged the original session.
+	s.Answer(0)
+	if q := s.Next(); q.Text != "Ready potter" {
+		t.Fatalf("original %+v", q)
+	}
+}
+
+// Restore must consume exactly the recorded answers, never select a default for
+// a damaged cursor or accept answers belonging after the saved line.
+func TestResumeRejectsDamagedAnswers(t *testing.T) {
+	g, err := gozen.Load(os.DirFS("../../docs/examples/event-arguments"), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := gozen.Config{Seed: 19}
+	s, err := gozen.New(g, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start(`- call: {event: encourage, args: {resident: '"potter"', amount: '2'}}`); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Kind != "choice" {
+		t.Fatal(q)
+	}
+	s.Answer(0)
+	// Preserve the supported boundary between Answer and Next, including re-save.
+	answered, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		restored, err := gozen.Restore(g, answered, cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		answered, err = restored.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q := restored.Next(); q.Text != "Ready potter" {
+			t.Fatalf("answered choice replayed: %+v", q)
+		}
+	}
+
+	if q := s.Next(); q.Text != "Ready potter" {
+		t.Fatal(q)
+	}
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name    string
+		answers []int
+		line    int
+	}{
+		{"valid", []int{0}, 2},
+		{"missing", nil, 2},
+		{"out of range", []int{1}, 2},
+		{"unused", []int{0, 0}, 2},
+		{"future answer", []int{0, 0}, 1},
+		{"unreachable line", []int{0}, 99},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var doc map[string]any
+			if err := json.Unmarshal(saved, &doc); err != nil {
+				t.Fatal(err)
+			}
+			c, ok := doc["cursor"].(map[string]any)
+			if !ok {
+				t.Fatal("missing cursor")
+			}
+			c["answers"], c["line"] = tc.answers, tc.line
+			b, err := json.Marshal(doc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r, err := gozen.Restore(g, b, cfg)
+			if tc.name != "valid" {
+				if !errors.Is(err, gozen.ErrIncompatibleSave) || r != nil {
+					t.Fatalf("accepted damaged cursor: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if q := r.Next(); q.Text != "Ready potter" {
+				t.Fatal(q)
+			}
+			if q, want := r.Next(), s.Next(); q.Text != want.Text {
+				t.Fatalf("RNG %v / %v", q, want)
+			}
+		})
+	}
+	if got := query[float64](t, s, "entity.potter.vigor"); got != 2 {
+		t.Fatalf("original state changed: %v", got)
+	}
+}
+
+func TestLegacySaveRefusesScreenContinuation(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml": {Data: []byte("schema_version: 8\nid: screen-save\nstart: {location: workshop}\nscreens: {stock: {title: Stock, entries: [{label: Boards}]}}\n")},
+		"data/world.yaml": {Data: []byte(`locations: {workshop: {name: Workshop}}
+events:
+  visit:
+    do:
+      - set: {var.opened: 'var.opened + 1'}
+      - open: stock
+      - say: Returned.
+      - set: {var.closed: 'var.closed + 1'}
+`)},
+	}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := gozen.New(g, gozen.Config{Seed: 17})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start("- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range []string{"open", "say"} {
+		if q := s.Next(); q.Kind != kind {
+			t.Fatalf("request: %+v, want %s", q, kind)
+		}
+		for range 2 {
+			if b, err := s.Save(); err == nil || b != nil {
+				t.Fatal("save silently discarded a screen continuation")
+			}
+		}
+		if query[int](t, s, "var.opened") != 1 || query[int](t, s, "var.closed") != 0 {
+			t.Fatal("rejection changed event state")
+		}
+		if kind == "open" {
+			s.Answer(-1)
+		}
+	}
+	if q := s.Next(); q.Kind != "" {
+		t.Fatalf("event did not finish: %+v", q)
+	}
+	b, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := gozen.Restore(g, b, gozen.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if query[int](t, r, "var.opened") != 1 || query[int](t, r, "var.closed") != 1 {
+		t.Fatal("finished event was lost or repeated")
+	}
+}
+
+func TestAuthorScreenLifecycle(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml": {Data: []byte(`schema_version: 8
+id: screen-actions
+start: {location: workshop}
+screens:
+  stock:
+    title: Stock
+    entries:
+    - {label: Hidden, when: 'false', do: [{set: {var.wrong: '1'}}]}
+    - label: Boards
+      when: 'var.boards == 0'
+      do:
+      - choice:
+        - {label: Confirm, do: [{set: {var.boards: 'var.boards + 1'}}]}
+        - {label: Cancel}
+      - open: receipt
+      - set: {var.finished: 'var.finished + 1'}
+    - {label: Read only}
+  receipt:
+    title: Receipt
+    entries:
+    - {label: Read, do: [{say: Ready.}]}
+`)},
+		"data/world.yaml": {Data: []byte(`locations: {workshop: {name: Workshop}}
+events:
+  visit:
+    do:
+    - set: {var.opened: 'var.opened + 1'}
+    - open: stock
+    - set: {var.closed: 'var.closed + 1'}
+`)},
+	}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := session(t, g, gozen.Config{Seed: 17, OnRequest: func(q gozen.Request) {
+		if q.Kind == "open" && len(q.Options) > 0 {
+			q.Options[0] = "observer mutation"
+		}
+	}})
+	control := session(t, g, gozen.Config{Seed: 17})
+	if err := s.Start("- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	expect := func(kind, id string) gozen.Request {
+		t.Helper()
+		q := s.Next()
+		if q.Kind != kind || q.ID != id {
+			t.Fatalf("request %+v, want %s/%s", q, kind, id)
+		}
+		if kind == "open" {
+			if saved, err := s.Save(); err == nil || saved != nil {
+				t.Fatal("open screen save lost continuation")
+			}
+		}
+		return q
+	}
+	q := expect("open", "stock")
+	if !slices.Equal(q.Options, []string{"Boards", "Read only"}) {
+		t.Fatalf("options: %v", q.Options)
+	}
+	q.Options[0] = "tampered"
+	for range 2 {
+		if q := expect("open", "stock"); q.Options[0] != "Boards" {
+			t.Fatal("request alias")
+		}
+	}
+	if query[int](t, s, "var.closed") != 0 {
+		t.Fatal("Next closed the screen")
+	}
+	s.Answer(99)
+	expect("open", "stock")
+	s.Answer(1) // A read-only entry leaves the screen open.
+	expect("open", "stock")
+	if err := s.Start("- set: {var.wrong: '1'}"); !errors.Is(err, gozen.ErrInvalid) {
+		t.Fatalf("Start during screen: %v", err)
+	}
+	if err := s.Do(t.Context(), "- set: {var.wrong: '1'}"); !errors.Is(err, gozen.ErrInvalid) {
+		t.Fatalf("Do during screen: %v", err)
+	}
+	s.Answer(0)
+	s.Answer(0) // Repeated confirmation cannot queue another action.
+	expect("choice", "")
+	if b, err := s.Save(); err == nil || b != nil {
+		t.Fatal("entry save lost parent")
+	}
+	s.Answer(1) // Cancel the authored confirmation.
+	expect("open", "receipt")
+	if query[int](t, s, "var.boards") != 0 {
+		t.Fatal("cancel committed boards")
+	}
+	s.Answer(-1)
+	expect("open", "stock")
+	s.Answer(0)
+	expect("choice", "")
+	s.Answer(0)
+	expect("open", "receipt")
+	s.Answer(0)
+	if q := expect("say", ""); q.Text != "Ready." {
+		t.Fatalf("receipt: %+v", q)
+	}
+	expect("open", "receipt")
+	s.Answer(-1)
+	q = expect("open", "stock")
+	if !slices.Equal(q.Options, []string{"Read only"}) {
+		t.Fatalf("stale entries: %v", q.Options)
+	}
+	if query[int](t, s, "var.boards") != 1 || query[int](t, s, "var.finished") != 2 || query[int](t, s, "var.closed") != 0 {
+		t.Fatal("entry effects or opener continuation")
+	}
+	s.Answer(-1)
+	expect("", "")
+	if query[int](t, s, "var.opened") != 1 || query[int](t, s, "var.closed") != 1 || query[int](t, s, "var.wrong") != 0 {
+		t.Fatal("opener lost or repeated")
+	}
+	b, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := gozen.Restore(g, b, gozen.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if query[int](t, r, "var.boards") != 1 || query[int](t, r, "var.closed") != 1 {
+		t.Fatal("finished save lost effects")
+	}
+	for _, current := range []*gozen.Session{s, r, control} {
+		if err := current.Do(t.Context(), "- set: {var.draw: 'rand(1000000)'}"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if query[int](t, s, "var.draw") != query[int](t, control, "var.draw") || query[int](t, r, "var.draw") != query[int](t, control, "var.draw") {
+		t.Fatal("screen consumed randomness")
+	}
+	// Default unattended execution explicitly closes authored screens.
+	if err := control.Do(t.Context(), "- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	if query[int](t, control, "var.closed") != 1 || query[int](t, control, "var.boards") != 0 {
+		t.Fatal("default policy performed a screen action")
+	}
+}
+
+func TestAuthorScreenActionLeavesLocationOrRestoresCheckpoint(t *testing.T) {
+	for _, tc := range []struct {
+		name, action     string
+		closed, finished int
+	}{
+		{"move", "- move: yard", 1, 1},
+		{"checkpoint", "- restore_checkpoint: true", 0, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files := fstest.MapFS{
+				"game.yaml": {Data: []byte("schema_version: 10\nid: screen-exit\nstart: {location: workshop}\nscreens:\n  stock:\n    title: Stock\n    entries:\n    - label: Leave\n      do:\n      " + tc.action + "\n      - set: {var.finished: '1'}\n")},
+				"data/world.yaml": {Data: []byte(`locations: {workshop: {name: Workshop}, yard: {name: Yard}}
+events:
+  retry:
+    do: [{say: Retry.}]
+  visit:
+    do:
+    - checkpoint: retry
+    - open: stock
+    - set: {var.closed: '1'}
+`)},
+			}
+			g, err := gozen.Load(files, ".")
+			if err != nil {
+				t.Fatal(err)
+			}
+			s := session(t, g, gozen.Config{Seed: 17})
+			if err := s.Start("- call: visit"); err != nil {
+				t.Fatal(err)
+			}
+			if q := s.Next(); q.Kind != "open" {
+				t.Fatalf("open: %+v", q)
+			}
+			s.Answer(0)
+			if tc.name == "checkpoint" {
+				if q := s.Next(); q.Text != "Retry." {
+					t.Fatalf("checkpoint: %+v", q)
+				}
+			}
+			if q := s.Next(); q.Kind != "" {
+				t.Fatalf("screen survived exit: %+v", q)
+			}
+			if query[int](t, s, "var.closed") != tc.closed || query[int](t, s, "var.finished") != tc.finished {
+				t.Fatal("wrong continuation after exit")
+			}
+			if _, err := s.Save(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestAuthorScreenNestingIsBounded(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml":       {Data: []byte("schema_version: 8\nid: screen-depth\nstart: {location: workshop}\nscreens: {stock: {title: Stock, entries: [{label: Again, do: [{open: stock}]}]}}\n")},
+		"data/world.yaml": {Data: []byte("locations: {workshop: {name: Workshop}}\nevents: {visit: {do: [{open: stock}, {set: {var.closed: '1'}}]}}\n")},
+	}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var logs []error
+	s := session(t, g, gozen.Config{OnLog: func(err error) { logs = append(logs, err) }})
+	if err := s.Start("- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	for range 65 {
+		if q := s.Next(); q.Kind != "open" {
+			t.Fatalf("open: %+v", q)
+		}
+		s.Answer(0)
+	}
+	if q := s.Next(); q.Kind != "open" {
+		t.Fatalf("open after limit: %+v", q)
+	}
+	if len(logs) == 0 || !strings.Contains(logs[0].Error(), "nested too deep") {
+		t.Fatalf("missing depth rejection: %v", logs)
+	}
+	for range 64 {
+		s.Answer(-1)
+		s.Next()
+	}
+	if q := s.Next(); q.Kind != "" || query[int](t, s, "var.closed") != 1 {
+		t.Fatalf("could not close after rejection: %+v", q)
+	}
+}
+
+// A cursor before open must reject changed reachable screen actions before replay,
+// including the entries that a later screen continuation may replay.
+func TestResumeChecksReachableScreens(t *testing.T) {
+	const header = `schema_version: 10
+id: screen-fingerprint
+start: {location: workshop}
+screens:
+  stock:
+    title: Stock
+    entries:
+    - label: Boards
+      when: 'true'
+      do:
+      - choice:
+        - {label: Inspect, do: [{open: receipt}]}
+        - {label: Cancel}
+  receipt:
+    title: Receipt
+    entries:
+    - {label: Read, do: [{call: report}]}
+  unused:
+    title: Unused
+    entries: [{label: Spare}]
+`
+	const story = `locations: {workshop: {name: Workshop}}
+events:
+  visit:
+    do:
+    - set: {var.opened: 'var.opened + 1'}
+    - say: Ready.
+    - open: stock
+    - set: {var.closed: 'var.closed + 1'}
+  report:
+    do:
+    - say: Checked.
+    - if: 'false'
+      then: [{call: visit}]
+  unused:
+    do: [{say: Unused.}]
+`
+	loadGame := func(head, body string) *gozen.Game {
+		t.Helper()
+		g, err := gozen.Load(fstest.MapFS{
+			"game.yaml":       {Data: []byte(head)},
+			"data/world.yaml": {Data: []byte(body)},
+		}, ".")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return g
+	}
+	cfg := gozen.Config{Seed: 17}
+	g := loadGame(header, story)
+	s := session(t, g, cfg)
+	if err := s.Start("- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Text != "Ready." {
+		t.Fatalf("before open: %+v", q)
+	}
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, from, to   string
+		inHeader, reject bool
+	}{
+		{"entry identity", "label: Boards", "label: Tools", true, true},
+		{"entry guard", "when: 'true'", "when: 'false'", true, true},
+		{"nested screen", "label: Read", "label: Inspect receipt", true, true},
+		{"screen callee", "say: Checked.", "say: Changed.", false, true},
+		{"unrelated screen", "title: Unused", "title: Elsewhere", true, false},
+		{"unrelated event", "say: Unused.", "say: Elsewhere.", false, false},
+		{"mapping order", "label: Read, do: [{call: report}]", "do: [{call: report}], label: Read", true, false},
+		{"whitespace", "title: Stock", "title:   Stock # same title", true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			head, body := header, story
+			if tc.inHeader {
+				head = strings.Replace(head, tc.from, tc.to, 1)
+			} else {
+				body = strings.Replace(body, tc.from, tc.to, 1)
+			}
+			r, err := gozen.Restore(loadGame(head, body), saved, cfg)
+			if tc.reject {
+				if !errors.Is(err, gozen.ErrIncompatibleSave) {
+					t.Fatalf("changed action accepted: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if q := r.Next(); q.Text != "Ready." {
+				t.Fatalf("resume: %+v", q)
+			}
+			if q := r.Next(); q.Kind != "open" || q.ID != "stock" {
+				t.Fatalf("open: %+v", q)
+			}
+			r.Answer(0)
+			if q := r.Next(); q.Kind != "choice" {
+				t.Fatalf("confirmation: %+v", q)
+			}
+			r.Answer(0)
+			if q := r.Next(); q.ID != "receipt" {
+				t.Fatalf("nested screen: %+v", q)
+			}
+			r.Answer(0)
+			if q := r.Next(); q.Text != "Checked." {
+				t.Fatalf("callee: %+v", q)
+			}
+			r.Next()
+			r.Answer(-1)
+			r.Next()
+			r.Answer(-1)
+			r.Next()
+			if opened, closed := query[float64](t, r, "var.opened"), query[float64](t, r, "var.closed"); opened != 1 || closed != 1 {
+				t.Fatalf("opener effects: %v/%v", opened, closed)
+			}
+		})
+	}
+	// Rejected restores leave the original session and its continuation usable.
+	if q := s.Next(); q.ID != "stock" {
+		t.Fatalf("original screen: %+v", q)
+	}
+	s.Answer(-1)
+	s.Next()
+	if query[float64](t, s, "var.opened") != 1 || query[float64](t, s, "var.closed") != 1 {
+		t.Fatal("original continuation changed")
+	}
+}
+
+func TestScreenArguments(t *testing.T) {
+	g, err := gozen.Load(os.DirFS("../../docs/examples/event-arguments"), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := session(t, g, gozen.Config{Seed: 17})
+	expect := func(kind, text string) {
+		t.Helper()
+		q := s.Next()
+		if q.Kind != kind || q.Text != text {
+			t.Fatalf("got %+v, want %s %q", q, kind, text)
+		}
+	}
+	for _, amount := range []string{"2", "3"} {
+		if err := s.Start("- call: {event: stock_visit, args: {amount: " + amount + "}}"); err != nil {
+			t.Fatal(err)
+		}
+		expect("open", "Stock "+amount)
+		s.Answer(0)
+		expect("choice", "")
+		s.Answer(1) // Cancellation leaves the stock unchanged.
+		expect("open", "Receipt 1"+amount)
+		s.Answer(0)
+		expect("say", "Received 1"+amount)
+		expect("open", "Receipt 1"+amount)
+		s.Answer(-1)
+		expect("say", "Stock "+amount)
+		expect("open", "Stock "+amount)
+		s.Answer(0)
+		expect("choice", "")
+		s.Answer(0)
+		s.Answer(0) // A duplicate answer cannot execute the pending action twice.
+		expect("open", "Receipt 1"+amount)
+		saved, err := s.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		s, err = gozen.Restore(g, saved, gozen.Config{Seed: 999})
+		if err != nil {
+			t.Fatal(err)
+		}
+		expect("open", "Receipt 1"+amount)
+		s.Answer(-1)
+		expect("say", "Stock "+amount)
+		expect("open", "Stock "+amount)
+		s.Answer(-1)
+		expect("say", "Returned "+amount)
+		expect("", "")
+	}
+	if got := query[int](t, s, "var.total"); got != 5 {
+		t.Fatalf("total = %d, want 5", got)
+	}
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := gozen.Restore(g, saved, gozen.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := query[int](t, r, "var.total"); got != 5 {
+		t.Fatalf("restored total = %d", got)
+	}
+}
+
+// One candidate screen must assign either activity without copying its commands.
+func TestScreenActivityTargets(t *testing.T) {
+	g, err := gozen.Load(os.DirFS("../../docs/examples/event-arguments"), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := session(t, g, gozen.Config{Seed: 17})
+	for _, task := range []string{"prepare", "shape"} {
+		if err := s.Start(`- call: {event: assign_visit, args: {task: '"` + task + `"', resident: '"weaver"'}}`); err != nil {
+			t.Fatal(err)
+		}
+		if q := s.Next(); q.Kind != "open" || q.Text != "Assign "+task {
+			t.Fatalf("open: %+v", q)
+		}
+		s.Answer(0)
+		if q := s.Next(); q.Kind != "choice" {
+			t.Fatalf("choice: %+v", q)
+		}
+		if got := query[string](t, s, "activity."+task+".assignee"); got != "potter" {
+			t.Fatal(got)
+		}
+		s.Answer(1)
+		s.Next()
+		if got := query[string](t, s, "activity."+task+".assignee"); got != "potter" {
+			t.Fatal(got)
+		}
+		s.Next()
+		s.Answer(0)
+		s.Next()
+		s.Answer(0)
+		s.Answer(0)
+		s.Next()
+		if got := query[string](t, s, "activity."+task+".assignee"); got != "weaver" {
+			t.Fatal(got)
+		}
+		s.Next()
+		s.Answer(-1)
+		s.Next()
+		s.Next()
+	}
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := gozen.Restore(g, saved, gozen.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, task := range []string{"prepare", "shape"} {
+		if got := query[string](t, restored, "activity."+task+".assignee"); got != "weaver" {
+			t.Fatal(got)
+		}
+	}
+}
+
+// Saving at every input boundary must agree with uninterrupted play, including
+// cancellation, nested screens, repeated opens, duplicate answers and RNG draws.
+func TestScreenContinuationRoundTrip(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml": {Data: []byte(`schema_version: 10
+id: screen-round-trip
+start: {location: workshop}
+screens:
+  stock:
+    params: {amount: number}
+    title: 'Stock {arg.amount}'
+    entries:
+    - label: Add
+      do:
+      - choice:
+        - {label: Confirm, do: [{set: {var.total: 'var.total + arg.amount'}}]}
+        - {label: Cancel}
+      - open: receipt
+      - say: Back.
+  receipt:
+    title: Receipt
+    entries: [{label: Read, do: [{say: Receipt.}]}]
+`)},
+		"data/world.yaml": {Data: []byte(`locations: {workshop: {name: Workshop}}
+events:
+  visit:
+    do:
+    - set: {var.opened: 'var.opened + 1', var.roll: 'rand(1000)'}
+    - say: Ready.
+    - choice: [{label: Continue}]
+    - open: {screen: stock, args: {amount: '2'}}
+    - open: {screen: stock, args: {amount: '3'}}
+    - set: {var.closed: 'var.closed + 1', var.next: 'rand(1000)'}
+    - say: Finished.
+`)},
+	}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, restoreFirst := range []bool{false, true} {
+		t.Run(strconv.FormatBool(restoreFirst), func(t *testing.T) {
+			control := session(t, g, gozen.Config{Seed: 17})
+			live := session(t, g, gozen.Config{Seed: 17})
+			for _, s := range []*gozen.Session{control, live} {
+				if err := s.Start("- call: visit"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			roundtrip := func() {
+				t.Helper()
+				b, err := live.Save()
+				if err != nil {
+					t.Fatal(err)
+				}
+				live, err = gozen.Restore(g, b, gozen.Config{Seed: 99, OnRequest: func(gozen.Request) { t.Error("replay reported a request") }, OnEffect: func(gozen.Effect) { t.Error("replay reported an effect") }})
+				if err != nil {
+					t.Fatal(err)
+				}
+				// Re-save before consuming the restored request as well.
+				b, err = live.Save()
+				if err != nil {
+					t.Fatal(err)
+				}
+				live, err = gozen.Restore(g, b, gozen.Config{Seed: 101})
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			next := func(kind, text string, restore bool) {
+				t.Helper()
+				a, b := control.Next(), live.Next()
+				if a.Kind != kind || a.Text != text || !reflect.DeepEqual(a, b) {
+					t.Fatalf("requests: %+v / %+v, want %s %s", a, b, kind, text)
+				}
+				if restore {
+					roundtrip()
+					if q := live.Next(); !reflect.DeepEqual(a, q) {
+						t.Fatalf("restored request: %+v / %+v", a, q)
+					}
+				}
+			}
+			answer := func(n int) { control.Answer(n); live.Answer(n); roundtrip() }
+			next("say", "Ready.", restoreFirst)
+			next("choice", "", restoreFirst)
+			control.Answer(0)
+			live.Answer(0)
+			for _, amount := range []string{"2", "3"} {
+				next("open", "Stock "+amount, true)
+				for _, option := range []int{1, 0} {
+					answer(0)
+					next("choice", "", true)
+					answer(option)
+					control.Answer(option)
+					live.Answer(option) // duplicate
+					next("open", "Receipt", true)
+					answer(0)
+					next("say", "Receipt.", true)
+					next("open", "Receipt", true)
+					answer(-1)
+					next("say", "Back.", true)
+					next("open", "Stock "+amount, true)
+				}
+				answer(-1)
+			}
+			next("say", "Finished.", true)
+			next("", "", false)
+			for _, key := range []string{"opened", "closed", "total", "roll", "next"} {
+				if a, b := query[float64](t, control, "var."+key), query[float64](t, live, "var."+key); a != b {
+					t.Fatalf("%s: %v != %v", key, a, b)
+				}
+			}
+			if query[float64](t, live, "var.total") != 5 || query[float64](t, live, "var.closed") != 1 {
+				t.Fatal("lost or repeated effects")
+			}
+		})
+	}
+}
+
+func TestScreenContinuationRejectsDamage(t *testing.T) {
+	g, err := gozen.Load(os.DirFS("../../docs/examples/event-arguments"), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := session(t, g, gozen.Config{Seed: 17})
+	if err := s.Start("- call: {event: stock_visit, args: {amount: '2'}}"); err != nil {
+		t.Fatal(err)
+	}
+	s.Next()
+	s.Answer(0)
+	s.Next()
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, mutate := range map[string]func(map[string]any){
+		"invalid digest":  func(c map[string]any) { c["inputs"] = []any{map[string]any{"request": "broken"}} },
+		"wrong request":   func(c map[string]any) { c["inputs"] = []any{map[string]any{"request": strings.Repeat("0", 64)}} },
+		"missing request": func(c map[string]any) { c["inputs"] = []any{map[string]any{"answer": 0}} },
+		"missing answer": func(c map[string]any) {
+			in, ok := c["inputs"].([]any)
+			if !ok {
+				t.Fatal("missing inputs")
+			}
+			c["inputs"] = []any{in[0], in[2]}
+		},
+		"wrong answer": func(c map[string]any) {
+			in, ok := c["inputs"].([]any)
+			if !ok {
+				t.Fatal("missing inputs")
+			}
+			in[1] = map[string]any{"answer": 99}
+		},
+		"both fields": func(c map[string]any) {
+			in, ok := c["inputs"].([]any)
+			if !ok {
+				t.Fatal("missing inputs")
+			}
+			row, ok := in[0].(map[string]any)
+			if !ok {
+				t.Fatal("missing request")
+			}
+			row["answer"] = 0
+		},
+		"too many inputs":    func(c map[string]any) { c["inputs"] = make([]any, 20001) },
+		"changed arguments":  func(c map[string]any) { c["args"] = map[string]any{"amount": 3} },
+		"changed definition": func(c map[string]any) { c["fingerprint"] = "changed" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			var doc map[string]any
+			if err := json.Unmarshal(saved, &doc); err != nil {
+				t.Fatal(err)
+			}
+			c, ok := doc["cursor"].(map[string]any)
+			if !ok {
+				t.Fatal("missing cursor")
+			}
+			mutate(c)
+			b, err := json.Marshal(doc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := gozen.Restore(g, b, gozen.Config{}); !errors.Is(err, gozen.ErrIncompatibleSave) {
+				t.Fatalf("accepted damaged continuation: %v", err)
+			}
+		})
+	}
+	// Failed restores neither answer nor discard the live pending confirmation.
+	s.Answer(0)
+	if q := s.Next(); q.Text != "Receipt 12" || query[int](t, s, "var.total") != 2 {
+		t.Fatalf("live game changed: %+v", q)
+	}
+}
+
+func TestScreenDepthBoundary(t *testing.T) {
+	g, err := gozen.Load(fstest.MapFS{
+		"game.yaml": {Data: []byte(`schema_version: 10
+id: shelves
+title: Shelves
+start: {location: workshop}
+screens:
+  shelf:
+    title: Shelf
+    entries:
+    - label: Inspect inner shelf
+      do:
+      - open: shelf
+      - set: {var.returned: 'var.returned + 1'}
+`)},
+		"data/world.yaml": {Data: []byte(`locations: {workshop: {name: Workshop}}
+events:
+  inspect_shelves:
+    do:
+    - open: shelf
+    - set: {var.closed: 'var.closed + 1'}
+`)},
+	}, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var diagnostics []string
+	s := session(t, g, gozen.Config{Seed: 17, OnLog: func(err error) { diagnostics = append(diagnostics, err.Error()) }})
+	if err := s.Start("- call: inspect_shelves"); err != nil {
+		t.Fatal(err)
+	}
+	for range 64 {
+		if q := s.Next(); q.Kind != "open" {
+			t.Fatalf("open: %+v", q)
+		}
+		s.Answer(0)
+	}
+	if q := s.Next(); q.Kind != "open" {
+		t.Fatalf("returned screen: %+v", q)
+	}
+	if len(diagnostics) != 1 || !strings.Contains(diagnostics[0], "nested too deep") {
+		t.Fatalf("diagnostics: %v", diagnostics)
+	}
+	if got := query[float64](t, s, "var.returned"); got != 1 {
+		t.Fatalf("rejected opener did not continue: %v", got)
+	}
+	for range 64 {
+		s.Answer(-1)
+		s.Next()
+	}
+	if got := query[float64](t, s, "var.returned"); got != 64 {
+		t.Fatalf("unwinding repeated or lost an entry: %v", got)
+	}
+	if got := query[float64](t, s, "var.closed"); got != 1 {
+		t.Fatalf("root continuation: %v", got)
+	}
+}
+
+func TestAnonymousRepeatedCallIsNotASingleBoundRoot(t *testing.T) {
+	g, err := gozen.Load(os.DirFS("../../docs/examples/event-arguments"), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := gozen.New(g, gozen.Config{Seed: 19, OnLog: func(err error) { t.Error(err) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start("- call: {event: each_visit, each: {param: resident, items: [weaver, potter]}, args: {amount: '1'}}"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Kind != "choice" {
+		t.Fatalf("choice: %+v", q)
+	}
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(saved, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if doc["cursor"] != nil {
+		t.Fatal("anonymous repetition was misidentified as one named call")
+	}
+	s.Answer(0)
+	if q := s.Next(); q.Text != "Visited weaver: 1" {
+		t.Fatalf("first visit: %+v", q)
+	}
+	if q := s.Next(); q.Kind != "choice" {
+		t.Fatalf("second choice: %+v", q)
+	}
+	s.Answer(0)
+	if q := s.Next(); q.Text != "Visited potter: 1" {
+		t.Fatalf("second visit: %+v", q)
+	}
+}
+
+func TestRepeatedScreenRowsResumeSelectedIdentity(t *testing.T) {
+	g, err := gozen.Load(os.DirFS("../../docs/examples/event-arguments"), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := gozen.Config{Seed: 17, OnLog: func(err error) { t.Error(err) }}
+	s := session(t, g, cfg)
+	if err := s.Start("- call: roster_demo"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Text != "Ready for roster." {
+		t.Fatal(q)
+	}
+	if q := s.Next(); q.Kind != "open" || !reflect.DeepEqual(q.Options, []string{"Encourage Potter", "Encourage Weaver"}) {
+		t.Fatal(q)
+	}
+	s.Answer(1)
+	if q := s.Next(); q.Kind != "choice" || q.Options[0] != "Confirm weaver" {
+		t.Fatal(q)
+	}
+	for range 2 {
+		saved, err := s.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		s, err = gozen.Restore(g, saved, cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q := s.Next(); q.Kind != "choice" || q.Options[0] != "Confirm weaver" {
+			t.Fatal(q)
+		}
+	}
+	s.Answer(0)
+	s.Answer(0) // cannot apply the action twice
+	if q := s.Next(); q.Text != "Reviewed weaver" {
+		t.Fatal(q)
+	}
+	if q := s.Next(); !reflect.DeepEqual(q.Options, []string{"Encourage Potter"}) {
+		t.Fatal(q)
+	}
+	saved, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err = gozen.Restore(g, saved, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); !reflect.DeepEqual(q.Options, []string{"Encourage Potter"}) {
+		t.Fatal(q)
+	}
+	if got := query[float64](t, s, "entity.weaver.vigor"); got != 2 {
+		t.Fatal(got)
+	}
+	if got := query[float64](t, s, "entity.potter.vigor"); got != 0 {
+		t.Fatal(got)
+	}
+	s.Answer(-1)
+	if q := s.Next(); q.Text != "Roster closed." {
+		t.Fatal(q)
+	}
+}
+
+func TestScreenDestinationSurvivesPendingChoiceSave(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml": {Data: []byte(`schema_version: 10
+id: workshop-navigation
+planning:
+  calendar: {start: "2030-01-01", end: "2030-01-02", phases: [morning]}
+  entities: {potter: {name: Potter}}
+  activities: {shape: {name: Shape bowls, effort: 2}}
+start: {location: workshop}
+screens:
+  board:
+    title: Board
+    kind: workspace
+    entries:
+    - label: Prepare
+      destination: receipt
+      do:
+      - choice:
+        - label: Confirm
+          do: [{set: {var.prepared: 'var.prepared+1'}}]
+  receipt:
+    title: Receipt
+    kind: workspace
+    entries: [{label: Board, destination: board}]
+`)},
+		"data/world.yaml": {Data: []byte("locations: {workshop: {name: Workshop}}\nevents: {visit: {do: [{open: board}, {set: {var.closed: 'var.closed+1'}}]}}\n")},
+	}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := session(t, g, gozen.Config{Seed: 17})
+	if err = s.Start("- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Kind != "open" || q.Text != "Board" {
+		t.Fatal(q)
+	}
+	s.Answer(0)
+	if q := s.Next(); q.Kind != "choice" {
+		t.Fatal(q)
+	}
+	b, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err = gozen.Restore(g, b, gozen.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.Next()
+	s.Answer(0)
+	if q := s.Next(); q.Kind != "open" || q.Text != "Receipt" {
+		t.Fatal(q)
+	}
+	b, err = s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err = gozen.Restore(g, b, gozen.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Text != "Receipt" {
+		t.Fatal(q)
+	}
+	s.Answer(0)
+	if q := s.Next(); q.Text != "Board" {
+		t.Fatal(q)
+	}
+	s.Answer(-1)
+	s.Next()
+	if query[float64](t, s, "var.prepared") != 1 || query[float64](t, s, "var.closed") != 1 {
+		t.Fatal("navigation repeated or abandoned effects")
+	}
+}
+
+func TestUnavailableScreenSurvivesReplayWithoutMutation(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml": {Data: []byte(`schema_version: 10
+id: refused-action
+start: {location: room}
+screens:
+  stock:
+    title: Stock
+    entries: [{label: Refused, bounds: [0, 0, 100, 50], unavailable: 'true', do: [{set: {var.executed: '1'}}]}]
+`)},
+		"data/world.yaml": {Data: []byte("locations: {room: {name: Room}}\nevents: {visit: {do: [{open: stock}]}}\n")},
+	}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	live := session(t, g, gozen.Config{Seed: 17})
+	if err := live.Start("- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	if q := live.Next(); q.Kind != "open" {
+		t.Fatal(q)
+	}
+	live.Answer(0)
+	if q := live.Next(); q.Kind != "open" {
+		t.Fatal("refused action left screen", q)
+	}
+	b, err := live.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := gozen.Restore(g, b, gozen.Config{Seed: 17})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q := restored.Next(); q.Kind != "open" {
+		t.Fatal(q)
+	}
+	after, err := restored.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(after), `"executed": 1`) {
+		t.Fatal("refused action executed during replay")
 	}
 }

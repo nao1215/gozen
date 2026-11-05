@@ -76,7 +76,7 @@ func newMenu(g *Game) *menu {
 		items[5].disabled = true
 	}
 	if g.profilesInMenus() {
-		items = slices.Insert(items, 6, listItem{label: lang.T("キャラクター"), id: "profiles"})
+		items = slices.Insert(items, 6, listItem{label: g.profileTitle(), id: "profiles"})
 	}
 	if g.bestiaryInMenus() {
 		at := 6

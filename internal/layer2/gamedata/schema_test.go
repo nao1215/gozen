@@ -173,6 +173,10 @@ func (b *schemaBuilder) node(t reflect.Type) schemaNode {
 	if t == reflect.TypeFor[Expr]() {
 		return schemaNode{"type": []string{"string", "number", "boolean", "null"}, "description": "An expression. gozen check checks its syntax, names and types."}
 	}
+	if t == reflect.TypeFor[DefinitionData]() {
+		scalar := schemaNode{"type": []string{"string", "number", "boolean"}}
+		return schemaNode{"type": "object", "additionalProperties": schemaNode{"anyOf": []any{scalar, schemaNode{"type": "array", "items": scalar, "maxItems": 4096}}}}
+	}
 	if t == reflect.TypeFor[Color]() {
 		return schemaNode{"type": "string", "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"}
 	}
@@ -206,8 +210,8 @@ func (b *schemaBuilder) node(t reflect.Type) schemaNode {
 			n := schemaNode{"type": "object", "properties": props, "additionalProperties": false}
 			b.constraints(t, n, props)
 			switch t {
-			case reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
-				reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[StreamLine]():
+			case reflect.TypeFor[IDRef](), reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
+				reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[StreamLine](), reflect.TypeFor[CallControl](), reflect.TypeFor[ProfileFace]():
 				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "string"}, n}}
 			case reflect.TypeFor[CrowdLines](): // a list is the lines of any hour
 				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "array", "items": schemaNode{"type": "string"}}, n}}
@@ -345,6 +349,9 @@ func schemaContract(owner reflect.Type, field reflect.StructField, name string) 
 	}
 
 	key := owner.Name() + "." + name
+	if owner == reflect.TypeFor[IDRef]() || owner == reflect.TypeFor[NovelWindow]() || key == "UIStyle.quick_menu" || key == "UIStyle.novel_window" || key == "UIStyle.choice_position" || key == "UIStyle.title" || owner == reflect.TypeFor[TitleMenu]() || key == "MaterialStyle.opacities" {
+		c.Version = "10"
+	}
 	if value, ok := schemaDefaults[key]; ok {
 		c.Default = value
 	}
@@ -490,7 +497,7 @@ func (b *schemaBuilder) constraints(t reflect.Type, n, props schemaNode) {
 			branches = append(branches, schemaNode{"required": []string{verb.name}, "properties": allowed, "additionalProperties": false})
 		}
 		n["oneOf"] = branches
-		for _, name := range []string{"end", "clear", "save"} {
+		for _, name := range []string{"end", "clear", "save", "restore_checkpoint"} {
 			child(props, name)["const"] = true
 		}
 	case reflect.TypeFor[Recruit]():
@@ -624,8 +631,8 @@ func schemaTypeLabel(t reflect.Type) string {
 	case reflect.Struct:
 		result := "[" + schemaName(t) + "](#" + strings.ToLower(schemaName(t)) + ")"
 		switch t {
-		case reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
-			reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[StreamLine]():
+		case reflect.TypeFor[IDRef](), reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
+			reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[StreamLine](), reflect.TypeFor[CallControl](), reflect.TypeFor[ProfileFace]():
 			result += " または文字列"
 		case reflect.TypeFor[WaitCue]():
 			result += " または数値"

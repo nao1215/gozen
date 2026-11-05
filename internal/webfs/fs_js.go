@@ -60,8 +60,10 @@ func Load(base string, progress func(done, total int64)) (fs.FS, error) {
 	h := &httpFS{
 		base: base, entries: fstest.MapFS{}, served: make(map[string]file, len(files)),
 		cache: make(map[string][]byte, len(files)), coming: make(map[string]chan struct{}, len(files)), fetching: map[string]*fetchCall{}, fetchers: make(chan struct{}, workers),
+		started: map[string]bool{}, taken: map[string]bool{},
 	}
 	counter := &count{report: progress}
+	h.counter = counter
 	for _, f := range files {
 		if !fs.ValidPath(f.Name) || !fs.ValidPath(f.File) || f.Size < 0 {
 			return nil, fmt.Errorf("files.json: invalid entry %q", f.Name)
@@ -92,6 +94,13 @@ func Load(base string, progress func(done, total int64)) (fs.FS, error) {
 	for range min(workers, len(files)) {
 		all.Go(func() {
 			for f := range jobs {
+				h.mu.Lock()
+				taken := h.taken[f.Name] // the game opened it before its turn and fetches it itself
+				h.started[f.Name] = !taken
+				h.mu.Unlock()
+				if taken {
+					continue
+				}
 				priority := "high" // the media come last, and give way to a file the game opens meanwhile
 				if media(f.Name) == 1 {
 					priority = "low"
@@ -148,6 +157,11 @@ type httpFS struct {
 	// fetchers bounds the files fetched at once (workers): by Load and for the game
 	// opening them alike.
 	fetchers chan struct{}
+	// started are the files of Load whose download has begun, and taken the media the
+	// game opened before Load came to them: the game fetches those at once, and Load
+	// passes over them.
+	started, taken map[string]bool
+	counter        *count
 }
 
 // fetchCall is a file being fetched for the game opening it: done is closed once data or
@@ -158,31 +172,32 @@ type fetchCall struct {
 	err  error
 }
 
-// fetchOnce fetches the file served for name once for all who open it meanwhile, and keeps
+// fetchOnce fetches the file served for name once for all who open it meanwhile (its bytes
+// added to c when c is not nil), and keeps
 // it unless it is fetched later (a recorded voice, which a game plays once in a while: kept,
 // the voices of a long stream would fill the memory).
-func (f *httpFS) fetchOnce(name string, served file) ([]byte, error) {
+func (f *httpFS) fetchOnce(name string, served file, c *count) ([]byte, error) {
 	f.mu.Lock()
-	c := f.fetching[name]
-	if c != nil {
+	call := f.fetching[name]
+	if call != nil {
 		f.mu.Unlock()
-		<-c.done
-		return c.data, c.err
+		<-call.done
+		return call.data, call.err
 	}
-	c = &fetchCall{done: make(chan struct{})}
-	f.fetching[name] = c
+	call = &fetchCall{done: make(chan struct{})}
+	f.fetching[name] = call
 	f.mu.Unlock()
 	f.fetchers <- struct{}{}
-	c.data, c.err = get(f.base, served, nil, "high")
+	call.data, call.err = get(f.base, served, c, "high")
 	<-f.fetchers
 	f.mu.Lock()
 	delete(f.fetching, name)
-	if c.err == nil && !served.Later {
-		f.cache[name] = c.data
+	if call.err == nil && !served.Later {
+		f.cache[name] = call.data
 	}
 	f.mu.Unlock()
-	close(c.done)
-	return c.data, c.err
+	close(call.done)
+	return call.data, call.err
 }
 
 // Stat reads only manifest metadata; checking a deferred voice must not fetch it.
@@ -198,7 +213,29 @@ func (f *httpFS) Open(name string) (fs.File, error) {
 		f.mu.Lock()
 		data, cached := f.cache[name]
 		coming := f.coming[name]
+		// A picture or a sound Load has not come to yet is fetched now, at once and
+		// first: waiting for it, the game stood still until Load had fetched every
+		// media file before it (a call's pictures, opened early in a large game, waited
+		// for most of the game's pictures and sounds).
+		take := !cached && coming != nil && !f.started[name] && !f.taken[name] && media(name) == 1
+		if take {
+			f.taken[name] = true
+		}
 		f.mu.Unlock()
+		if take {
+			var err error
+			data, err = f.fetchOnce(name, served, f.counter)
+			f.mu.Lock()
+			if f.coming[name] == coming {
+				close(coming)
+				delete(f.coming, name)
+			}
+			f.mu.Unlock()
+			if err != nil {
+				return nil, err
+			}
+			cached = true
+		}
 		if !cached && coming != nil {
 			<-coming
 			f.mu.Lock()
@@ -207,7 +244,7 @@ func (f *httpFS) Open(name string) (fs.File, error) {
 		}
 		if !cached {
 			var err error
-			if data, err = f.fetchOnce(name, served); err != nil {
+			if data, err = f.fetchOnce(name, served, nil); err != nil {
 				return nil, err
 			}
 		}

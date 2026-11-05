@@ -1,0 +1,44 @@
+actors:
+  martin: {name: Martin Shaw, faces: martin}
+  elena: {name: Elena Ruiz, faces: elena}
+  daniel: {name: Daniel Cho, faces: daniel}
+  iris: {name: Iris Vale, faces: iris}
+  nora: {name: Nora Quinn, faces: nora}
+  mia: {name: Mia Hart, faces: mia}
+locations:
+  office: {name: Office, background: bg/office.jpg}
+events:
+  sprint_review:
+    do:
+    - say: {who: martin, text: 'Sprint review. Show what is done, not what is nearly done.'}
+  opening:
+    do:
+    - say: {who: martin, text: Morning. Ten days to the client demo.}
+    - open: standup
+  notify:
+    do:
+    - message: {who: elena, text: 'The client wants one more field on the booking form. Can we talk now?', event: decision, tag: DM}
+    - open: tickets
+  decision:
+    do:
+    - choice:
+      - label: Call now
+        do: [{call: {event: review, ensemble: team_call}}]
+      - label: After lunch
+        do: [{set: {var.later: 1}}]
+  review:
+    do:
+    - say: {who: elena, text: 'It is a phone number field. Small, but it touches the API.', ensemble: team_call}
+    - call_view: {share: {who: elena, picture: share/form.png}}
+    - say: {who: elena, text: This is the form. The new field goes at the bottom., ensemble: team_call}
+    - call_view: {share: {who: elena, picture: ''}}
+    - say: {who: daniel, text: I can add it after the payments work. Not before., ensemble: team_call}
+    - say: {who: nora, text: Then I test both on the same day., ensemble: team_call}
+    - set: {var.reviewed: 1}
+profiles:
+  martin: {name: Martin Shaw, picture: martin/normal.png, affiliation: Harbor app team, text: Engineering manager. Keeps the plan honest., fields: [{label: Role, value: Manager}, {label: Since, value: '2024'}]}
+  elena: {name: Elena Ruiz, picture: elena/normal.png, affiliation: Harbor app team, text: Owns the backlog and the client requests., fields: [{label: Role, value: Product owner}]}
+  daniel: {name: Daniel Cho, picture: daniel/normal.png, affiliation: Harbor app team, text: Builds the booking API., fields: [{label: Role, value: Backend engineer}]}
+  iris: {name: Iris Vale, picture: iris/normal.png, affiliation: Harbor app team, text: Draws the screens and checks them on phones., fields: [{label: Role, value: Designer}]}
+  nora: {name: Nora Quinn, picture: nora/normal.png, affiliation: Harbor app team, text: Writes and runs the acceptance tests., fields: [{label: Role, value: QA engineer}]}
+  mia: {name: Mia Hart, picture: mia/normal.png, affiliation: Client side, text: Account manager. Talks to the client., fields: [{label: Role, value: Account manager}]}

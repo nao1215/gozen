@@ -47,9 +47,9 @@ func (g *Game) titleMenu() *list {
 			hasSave = true
 		}
 	}
-	items := []listItem{{label: lang.T("はじめから")}, {label: lang.T("つづきから"), disabled: !hasSave}, {label: lang.T("ギャラリー"), disabled: !g.hasGallery()}, {label: lang.T("せってい")}}
+	items := []listItem{{label: lang.T("はじめから"), id: "new"}, {label: lang.T("つづきから"), id: "continue", disabled: !hasSave}, {label: lang.T("ギャラリー"), id: "gallery", disabled: !g.hasGallery()}, {label: lang.T("せってい"), id: "config"}}
 	if g.profilesInMenus() {
-		items = slices.Insert(items, 3, listItem{label: lang.T("キャラクター"), id: "profiles"})
+		items = slices.Insert(items, 3, listItem{label: g.profileTitle(), id: "profiles"})
 	}
 	if g.bestiaryInMenus() {
 		at := 3
@@ -59,7 +59,11 @@ func (g *Game) titleMenu() *list {
 		items = slices.Insert(items, at, listItem{label: lang.T("まもののほん"), id: "bestiary"})
 	}
 	if canQuit {
-		items = append(items, listItem{label: lang.T("おわる")})
+		items = append(items, listItem{label: lang.T("おわる"), id: "quit"})
+	}
+	if t := g.db.Game.UI.Title; t != nil && t.HideDisabled {
+		// ui.title.hide_disabled: an entry that cannot be chosen now is left out, not grayed.
+		items = slices.DeleteFunc(items, func(it listItem) bool { return it.disabled })
 	}
 	m := newList(items, sw*0.08, sh*0.5, 340, max(5, len(items)))
 	// a long menu rises so the key hint under it stays clear
@@ -68,7 +72,7 @@ func (g *Game) titleMenu() *list {
 		m.x = (sw - 340) / 2
 	}
 	if hasSave {
-		m.sel = 1
+		m.sel = slices.IndexFunc(items, func(it listItem) bool { return it.id == "continue" })
 	}
 	return m
 }
@@ -84,35 +88,24 @@ func (t *title) update(g *Game) {
 	if !chose {
 		return
 	}
-	sel := t.menu.sel
-	if t.menu.items[sel].id == "profiles" {
+	switch t.menu.items[t.menu.sel].id {
+	case "profiles":
 		g.sfx("decide")
 		g.push(newProfiles(g, nil))
-		return
-	}
-	if t.menu.items[sel].id == "bestiary" {
+	case "bestiary":
 		g.sfx("decide")
 		g.push(newBestiary(g, nil))
-		return
-	}
-	if g.profilesInMenus() && sel >= 3 {
-		sel--
-	}
-	if g.bestiaryInMenus() && sel >= 3 {
-		sel--
-	}
-	switch sel {
-	case 0:
+	case "new":
 		g.newGame()
-	case 1:
+	case "continue":
 		g.push(newSaveMenu(g, false, func() {}))
-	case 2:
+	case "gallery":
 		g.sfx("decide")
 		g.push(newGallery(g))
-	case 3:
+	case "config":
 		g.sfx("decide")
 		g.push(newConfigScreen(g))
-	case 4:
+	case "quit":
 		g.quit = true
 	}
 }

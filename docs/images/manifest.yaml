@@ -15,6 +15,9 @@
 # images, their references and the checks stay the same.
 
 samples:
+  office:
+    package: ./cmd/gozen
+    game: examples/office/game
   space:
     package: ./cmd/gozen
     game: examples/space/game
@@ -35,6 +38,14 @@ samples:
 # run afterwards with the run directory as its last argument and fails the
 # run when the play did not go as planned.
 runs:
+  workboard:
+    sample: office
+    script: scripts/capture-office.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, office, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
+  office-tour:
+    sample: office
+    script: scripts/capture-office-tour.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, office, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
   space:
     sample: space
     script: scripts/capture-space.txt
@@ -185,6 +196,7 @@ runs:
 #                             another in the order they first appear
 #   jpeg: {width, height, quality}             (quality is ffmpeg's -q:v)
 #   gif: {fps, width, height, colors, crop}    (crop is ffmpeg's w:h:x:y)
+#   mp4: {fps, width, height, crf}             (H.264 in full color, for the website)
 #   tolerance: share of pixels that may differ in the stale check (default 0.02)
 #
 # The captures take a frame every 5 ticks (12 a second), and the GIFs play
@@ -194,11 +206,237 @@ runs:
 # GIF, slimGIF (internal/dev/docs/gifslim_test.go) keeps only the pixels that
 # changed by more than a small tolerance, which halves the size again.
 images:
+  workboard-carousel.mp4:
+    run: workboard
+    frames:
+      - {shots: workboard-tickets}
+      - {shots: workboard-carousel}
+    mp4: {fps: 1, width: 1280, height: 720}
+  space-stairs.mp4:
+    run: space
+    frames:
+      - {shots: stairs-*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  go-zen.mp4:
+    run: map
+    frames:
+      - {every: 2, shots: m*}
+      - {run: dungeon, shots: da*}
+      - {every: 2, from: -725, near: cutin, run: battle, shots: fight_b*, to: -665}
+      - {every: 2, from: -560, near: cutin, run: battle, shots: fight_b*, to: -500}
+      - {every: 2, from: -185, near: cutin, run: battle, shots: fight_b*, to: -125}
+      - {from: -5, near: cutin, run: battle, shots: fight_b*, to: 110}
+      - {run: face, shots: 'fa01[4-9]'}
+      - {run: face, shots: 'fb0[01][0-9]'}
+    mp4: {fps: 10, width: 1280, height: 720}
+  go-zen-face.mp4:
+    run: face
+    frames:
+      - {shots: f*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  go-zen-plaza.mp4:
+    run: plaza
+    frames:
+      - {shots: p*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  go-zen-map.mp4:
+    run: map
+    frames:
+      - {shots: m*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  go-zen-dungeon.mp4:
+    run: dungeon
+    frames:
+      - {shots: d*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  go-zen-battle.mp4:
+    run: battle
+    frames:
+      - {from: -290, near: cutin, shots: fight_b*, to: -110}
+    mp4: {fps: 12, width: 1280, height: 720}
+  go-zen-transform.mp4:
+    run: battle-transform
+    frames:
+      - {every: 2, shots: feature_*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  go-zen-merge.mp4:
+    run: battle-merge
+    frames:
+      - {shots: feature_*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  go-zen-cutin.mp4:
+    run: battle
+    frames:
+      - {from: -10, near: cutin, shots: fight_b*, to: 120}
+    mp4: {fps: 12, width: 1280, height: 720}
+  go-zen-breeding.mp4:
+    run: breeding
+    frames:
+      - {shots: b0*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  campaign.mp4:
+    run: campaign
+    frames:
+      - {shots: ca*}
+      - {shots: cb*}
+      - {shots: cc*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  novel.mp4:
+    run: novel
+    frames:
+      - {shots: na*}
+      - {shots: nb*}
+      - {shots: nc*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  novel-back.mp4:
+    run: novel
+    frames:
+      - {shots: 'na04[4-9]'}
+      - {shots: 'na05[0-9]'}
+      - {shots: nb*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  novel-skip.mp4:
+    run: novel
+    frames:
+      - {shots: 'nb01[6-9]'}
+      - {shots: nb02*}
+      - {shots: nc*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  novel-language.mp4:
+    run: novel-language
+    frames:
+      - {shots: la*}
+      - {shots: lb*}
+      - {shots: lc*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  novel-stage.mp4:
+    run: novel-stage
+    frames:
+      - {shots: st*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  playtest-reload.mp4:
+    run: playtest-reload
+    frames:
+      - {shots: rl*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  playtest-memo.mp4:
+    run: playtest-memo
+    frames:
+      - {shots: me*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  playtest-command.mp4:
+    run: playtest-panel
+    frames:
+      - {shots: pc*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  playtest-jump.mp4:
+    run: playtest-panel
+    frames:
+      - {shots: pj*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  go-zen-motion.mp4:
+    run: battle-motion
+    tolerance: 0.08
+    frames:
+      - {shots: "full_*"}
+      - {shots: "feature_*"}
+    mp4: {fps: 12, width: 1280, height: 720}
+  office.mp4:
+    run: office-tour
+    frames:
+      - {shots: "o*"}
+    mp4: {fps: 12, width: 1280, height: 720}
+  workboard-call.mp4:
+    run: office-tour
+    frames:
+      - {shots: "oe*"}
+    mp4: {fps: 12, width: 1280, height: 720}
+  workboard-drag.mp4:
+    run: office-tour
+    frames:
+      - {shots: "oc*"}
+    mp4: {fps: 12, width: 1280, height: 720}
+  workboard-message.mp4:
+    run: office-tour
+    frames:
+      - {shots: "od*"}
+    mp4: {fps: 12, width: 1280, height: 720}
+  office.gif:
+    run: office-tour
+    frames:
+      - {shots: "oa*", every: 5}
+      - {shots: "ob*", every: 3}
+      - {shots: "oc*", every: 3}
+      - {shots: "od*", every: 3}
+      - {shots: "oe*", every: 2}
+      - {shots: "of*", every: 5}
+    gif: {fps: 5, width: 720, height: 405, colors: 256}
+  workboard-drag.gif:
+    run: office-tour
+    frames:
+      - {shots: "oc*", every: 3}
+    gif: {fps: 4, width: 720, height: 405, colors: 256}
+  workboard-message.gif:
+    run: office-tour
+    frames:
+      - {shots: "od*", every: 3}
+    gif: {fps: 4, width: 720, height: 405, colors: 256}
+  workboard-call.gif:
+    run: office-tour
+    frames:
+      - {shots: "oe*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  workboard-share.jpg:
+    run: office-tour
+    pick: {shots: "oe03[0-9]", middle: true}
+    jpeg: {width: 720, height: 405, quality: 3}
+  workboard-calendar.jpg:
+    run: office-tour
+    pick: {shots: "of00[0-9]", middle: true}
+    jpeg: {width: 720, height: 405, quality: 3}
+  workboard-profiles.jpg:
+    run: workboard
+    shot: workboard-profiles
+    jpeg: {width: 720, height: 405, quality: 3}
+  workboard-tickets.jpg:
+    run: workboard
+    shot: workboard-tickets
+    jpeg: {width: 720, height: 405, quality: 3}
+  workboard-timeline.jpg:
+    run: workboard
+    shot: workboard-timeline
+    jpeg: {width: 720, height: 405, quality: 3}
+  workboard-materials.jpg:
+    run: workboard
+    shot: workboard-materials
+    jpeg: {width: 720, height: 405, quality: 3}
+  workboard-carousel.gif:
+    run: workboard
+    frames:
+      - {shots: workboard-tickets}
+      - {shots: workboard-carousel}
+    gif: {fps: 1, width: 720, height: 405, colors: 256}
+  workboard-guide.jpg:
+    run: workboard
+    shot: workboard-guide
+    jpeg: {width: 720, height: 405, quality: 3}
+  workboard-cards.jpg:
+    run: workboard
+    shot: workboard-cards
+    jpeg: {width: 720, height: 405, quality: 3}
+  workboard-flow.jpg:
+    run: workboard
+    shot: workboard-flow
+    jpeg: {width: 720, height: 405, quality: 3}
+  workboard-peek.jpg:
+    run: workboard
+    shot: workboard-peek
+    jpeg: {width: 720, height: 405, quality: 3}
   space-stairs.gif:
     run: space
     frames:
       - {shots: "stairs-*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   # The README's first picture: the town map, the dungeon, a battle with its
   # cut-in, and a talk, about 12 seconds.
   go-zen.gif:
@@ -212,42 +450,42 @@ images:
       - {run: battle, shots: "fight_b*", near: cutin, from: -5, to: 110}
       - {run: face, shots: "fa01[4-9]"}
       - {run: face, shots: "fb0[01][0-9]"}
-    gif: {fps: 10, width: 720, height: 405, colors: 96}
+    gif: {fps: 10, width: 720, height: 405, colors: 256}
   go-zen-face.gif:
     run: face
     frames:
       - {shots: "f*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   go-zen-plaza.gif:
     run: plaza
     frames:
       - {shots: "p*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 96}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   go-zen-map.gif:
     run: map
     frames:
       - {shots: "m*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   go-zen-dungeon.gif:
     run: dungeon
     frames:
       - {shots: "d*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 96}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   go-zen-battle.gif:
     run: battle
     frames:
       - {shots: "fight_b*", near: cutin, from: -290, to: -110}
-    gif: {fps: 12, width: 720, height: 405, colors: 96}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   go-zen-transform.gif:
     run: battle-transform
     frames:
       - {shots: "feature_*", every: 2}
-    gif: {fps: 12, width: 720, height: 405, colors: 96}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   go-zen-merge.gif:
     run: battle-merge
     frames:
       - {shots: "feature_*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 96}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   go-zen-hp-pictures.jpg:
     run: battle-hp-pictures
     pick: {shots: "s-hurt"}
@@ -259,12 +497,12 @@ images:
     frames:
       - {shots: "full_*"}
       - {shots: "feature_*", every: 2}
-    gif: {fps: 12, width: 720, height: 405, colors: 96, split_at: 24}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, split_at: 24}
   go-zen-cutin.gif:
     run: battle
     frames:
       - {shots: "fight_b*", near: cutin, from: -10, to: 120}
-    gif: {fps: 12, width: 720, height: 405, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   go-zen-tree.jpg:
     run: tree
     shot: s-tree
@@ -281,7 +519,7 @@ images:
     run: breeding
     frames:
       - {shots: "b0*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   go-zen-recruit.jpg:
     run: recruit
     shot: s-rise
@@ -306,7 +544,7 @@ images:
       - {shots: "ca*"}
       - {shots: "cb*"}
       - {shots: "cc*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   campaign-map.jpg:
     run: campaign
     shot: s-map
@@ -323,33 +561,33 @@ images:
       - {shots: "na*"}
       - {shots: "nb*"}
       - {shots: "nc*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   novel-back.gif:
     run: novel
     frames:
       - {shots: "na04[4-9]"}
       - {shots: "na05[0-9]"}
       - {shots: "nb*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   novel-skip.gif:
     run: novel
     frames:
       - {shots: "nb01[6-9]"}
       - {shots: "nb02*"}
       - {shots: "nc*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   novel-language.gif:
     run: novel-language
     frames:
       - {shots: "la*"}
       - {shots: "lb*"}
       - {shots: "lc*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   novel-stage.gif:
     run: novel-stage
     frames:
       - {shots: "st*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   novel-panel.jpg:
     run: novel-panel
     shot: s-panel-state
@@ -368,22 +606,22 @@ images:
     run: playtest-reload
     frames:
       - {shots: "rl*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   playtest-memo.gif:
     run: playtest-memo
     frames:
       - {shots: "me*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   playtest-command.gif:
     run: playtest-panel
     frames:
       - {shots: "pc*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 96}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   playtest-jump.gif:
     run: playtest-panel
     frames:
       - {shots: "pj*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 128}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   # The meter's numbers change from run to run; they are a small part of the picture.
   playtest-frames.jpg:
     run: playtest-panel
@@ -407,14 +645,14 @@ images:
     run: puppet-tour
     frames:
       - {shots: "f*", every: 3}
-    gif: {fps: 10, width: 500, height: 281, colors: 128, crop: "960:540:0:0"}
+    gif: {fps: 10, width: 500, height: 281, colors: 256, crop: "960:540:0:0"}
 
 # Pictures that are not captures. They are drawn once from vector sources and
 # committed as they are; `make docs-images` does not remake them.
 static:
   breeding.jpg:
     source: the author's original breeding illustration (`vampire_breed.jpg`)
-    license: CC BY 4.0
+    license: no copyright claimed (CC0 1.0)
   gozen-logo.svg:
     source: the mark (a brush circle in Go's blue, #00ADD8, around a cross key) and the word Gozen as paths, from Quicksand Bold; for light backgrounds
     license: MIT; the letter outlines come from Quicksand (SIL Open Font License 1.1), see ASSETS.md
@@ -432,4 +670,4 @@ static:
     license: MIT; the word mark is set in Quicksand (SIL Open Font License 1.1), see ASSETS.md
   dungeon-themes.jpg:
     source: one corridor of the Go Zen sample (floor B1) shown in each of the five dungeon themes, taken one by one with the game binary under Xvfb after gozen theme add and a theme key in the dungeon, joined into one sheet of 640x360 cells
-    license: CC BY 4.0 (the theme pictures, see ASSETS.md); the interface drawn in it is the Go Zen sample (CC BY 4.0 too)
+    license: no copyright claimed (CC0 1.0) for the theme pictures and the Go Zen interface drawn in it, see ASSETS.md

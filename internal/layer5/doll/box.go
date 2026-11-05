@@ -1,27 +1,15 @@
 package doll
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"math"
-	"slices"
-
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 // Part is a piece added to a doll.
 type Part struct {
 	Kind  string
 	Color color.RGBA
-}
-
-// ValidPart reports an error for a part kind that is not one of the schema's.
-func ValidPart(k string) error {
-	if slices.Contains(data.DollPartKinds, k) {
-		return nil
-	}
-	return fmt.Errorf("part %q (want one of %v)", k, data.DollPartKinds)
 }
 
 // Sides and Poses are the columns (sides, 45 degrees apart: the camera at 0, 45, ... 315
@@ -356,16 +344,6 @@ func (p *posed) hit(o vec) (float64, vec) {
 		nin = swingCS(nin, vec{}, p.cf, p.sf)
 	}
 	return tin, nin
-}
-
-// Bake draws a doll from Sides sides in Poses poses, fw x fh pixels each, seen from elev
-// degrees above (a fixed camera looking down on a painted background). Its feet are at the
-// bottom of each picture, the top of the head at about 0.9 of the height.
-func Bake(pal Palette, hair string, parts []Part, fw, fh int, elev float64) *image.RGBA {
-	b := NewBaker(pal, hair, parts, fw, fh, elev)
-	for !b.Step() {
-	}
-	return b.Sheet()
 }
 
 // Baker bakes a doll's sheet a picture at a time (Step), so that a program with one

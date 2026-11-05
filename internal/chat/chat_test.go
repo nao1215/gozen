@@ -5,7 +5,6 @@ import (
 	"io/fs"
 	"strings"
 	"testing"
-	"testing/fstest"
 	"time"
 
 	"github.com/nao1215/gozen/internal/layer1/yamlpath"
@@ -70,7 +69,7 @@ lines:
 
 // A crowd talks at about its rate, follows its mood and bursts on demand.
 func TestCrowd(t *testing.T) {
-	s, err := Load(fstest.MapFS{"c.yaml": {Data: []byte(script)}}, "c.yaml")
+	s, err := Parse([]byte(script))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -338,13 +337,7 @@ func TestYAMLPaths(t *testing.T) {
 	}
 }
 
-func TestLoadErrors(t *testing.T) {
-	if _, err := Load(fstest.MapFS{}, "none.yaml"); !errors.Is(err, fs.ErrNotExist) {
-		t.Errorf("%v", err)
-	}
-	if _, err := Load(fstest.MapFS{"c.yaml": {Data: []byte("rate: 0\n")}}, "c.yaml"); err == nil || !strings.Contains(err.Error(), "c.yaml") {
-		t.Errorf("a bad script names its file: %v", err)
-	}
+func TestParseErrors(t *testing.T) {
 	if _, err := Parse([]byte("names: [a]\nrate: 101\nstart: idle\nlines: {idle: [x]}\n")); err == nil {
 		t.Error("a rate above 100")
 	}

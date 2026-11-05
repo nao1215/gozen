@@ -157,3 +157,25 @@ func TestCloseFinishesScreenshots(t *testing.T) {
 		})
 	}
 }
+
+func TestLetterboxShotPreservesPixelsAndOuterSize(t *testing.T) {
+	c := color.NRGBA{20, 40, 60, 255}
+	src := sysSolid(1920, 1080, c)
+	dst := letterboxShot(src, 2560, 1080)
+	if dst.Bounds() != image.Rect(0, 0, 2560, 1080) {
+		t.Fatal(dst.Bounds())
+	}
+	for _, p := range []image.Point{{0, 0}, {319, 700}, {2240, 0}, {2559, 1079}} {
+		if dst.NRGBAAt(p.X, p.Y) != (color.NRGBA{A: 255}) {
+			t.Fatal("bar", p)
+		}
+	}
+	for _, p := range []image.Point{{320, 0}, {2239, 1079}} {
+		if dst.NRGBAAt(p.X, p.Y) != c {
+			t.Fatal("content", p)
+		}
+	}
+	if letterboxShot(src, 1920, 1080) != src {
+		t.Fatal("unnecessary copy")
+	}
+}

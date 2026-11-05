@@ -46,6 +46,12 @@ func (doc *sourceDocument) definitionShape(raw any, typ reflect.Type, where stri
 			return errs
 		}
 	}
+	if typ == reflect.TypeFor[DefinitionData]() {
+		if _, ok := raw.(yaml.MapSlice); !ok {
+			return bad("a definition data map")
+		}
+		return nil // Finite scalar/list values are checked by planning validation.
+	}
 	if typ == reflect.TypeFor[AIRef]() {
 		if _, ok := raw.(string); ok {
 			return nil
@@ -53,8 +59,8 @@ func (doc *sourceDocument) definitionShape(raw any, typ reflect.Type, where stri
 		return doc.definitionShape(raw, reflect.TypeFor[[]Rule](), where)
 	}
 	switch typ {
-	case reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](), reflect.TypeFor[Token](),
-		reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd]():
+	case reflect.TypeFor[IDRef](), reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](), reflect.TypeFor[Token](),
+		reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[CallControl](), reflect.TypeFor[ProfileFace]():
 		if _, ok := raw.(string); ok {
 			return nil
 		}

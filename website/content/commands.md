@@ -312,7 +312,7 @@ What needs the window is left out:
 
 - `shot NAME` takes no picture, and neither do the automatic shots of `lines`, `play` and walking; the trace has no `shot` line.
 - The trace lines that come from drawing, `view`, `stand` and `menu`, are not written, and `--trace-shots` is not available. `music` lines say which song was asked for; whether it had started depends on how fast songs decode in the background.
-- Every other command, `wait`, `gap`, `press`, `hold`, `read`, `until`, `walk`, `do`, `order`, `end_turn`, `skip`, `quit` and the rest, runs as in `run`, tick for tick. `click X Y` runs too, but a position that is only known once drawn is not checked.
+- Every other command, `wait`, `gap`, `press`, `hold`, `read`, `until`, `walk`, `do`, `order`, `end_turn`, `skip`, `quit` and the rest, runs as in `run`, tick for tick. `click X Y` and `drag X Y TO_X TO_Y` (press, move over eight ticks, let go) run too, but a position that is only known once drawn is not checked.
 
 With `--script -` the script is read line by line from the standard input and the trace goes to the standard output (unless `--trace FILE` is given). Each time the game is ready for the next command, a line `{"t":"ready","tick":N,"busy":false,"location":"camp","waiting":""}` is written and the trace flushed; `waiting` is `text`, `choice`, `command` (a battle waits for a command) or empty. A program can read the trace up to `ready`, decide, and send the next line, so one process plays as long as needed. The command `snapshot` writes `{"t":"snapshot","state":{...}}` with the whole state, the same as the state of `end`; it works in `run --script` as well. A line that does not parse is written as `script_error` and skipped. The end of the input, or `quit`, ends the run with `end`.
 
@@ -329,6 +329,29 @@ Saves are kept in memory unless `--save-dir` is given. Startup options that `run
 | `--trace FILE` | Write the trace to this file; `-` is the standard output (default with `--script -`) |
 | `--seed N` | The random seed (default: 1) |
 | `--save-dir DIR` | Keep the saves in this directory (default: in memory) |
+
+### sim batch
+
+Plays many `sim script` cases in one process. Starting `sim script` reads and checks the whole game, which for a large game takes longer than a short script plays; `sim batch` reads each game directory once and plays every case from a new game on those definitions. A directory is read again only when one of its files changes.
+
+The cases are JSON Lines, one object a line, from `--cases FILE` (`-` is the standard input). `args` are the arguments of `sim script`, the game directory first; `id` is any name the result carries back:
+
+```json
+{"id": "night", "args": ["game", "--start", "camp", "--seed", "5", "--script", "night.txt", "--trace", "night.jsonl"]}
+{"id": "fight", "args": ["game", "--start", "camp", "--seed", "6", "--script", "fight.txt", "--trace", "fight.jsonl"]}
+```
+
+<!-- verify: skip needs the cases file above -->
+```shell
+gozen sim batch --cases cases.jsonl
+```
+
+When a case ends, one line is written to the standard output: `{"id":"night","exit":0,"stdout":"31 ticks, 13 trace lines in night.jsonl\n","stderr":""}`, the exit status and what `sim script` with the same arguments would have printed. The trace goes where the case's `--trace` says, and is the same as `sim script` writes. Each case has its own seed, saves and state, and nothing of one case reaches the next. A line that does not parse gives a result with exit 2, and the next line is played. Cases cannot use `-` for their script or trace. A program can stream cases and read each result before it sends the next. Cases play one at a time; to play them in parallel, run several processes.
+
+| Option | Meaning |
+|:--|:--|
+| `--cases FILE` | The cases as JSON Lines; `-` reads the standard input (required) |
+| `--games N` | Keep the definitions of at most this many game directories (default: 4) |
 
 ## run
 
@@ -581,7 +604,7 @@ gozen theme add game --name cave --force  # replace the files that are already t
 |:--|:--|
 | `--force` | Replace the files the game already has. |
 
-An unknown theme name exits 2 (`GZN2402`), and a directory without `game.yaml` exits 1 (`GZN1110`). A game that says `theme: cave` without the folder fails `gozen check` with `GZN1111` and the line `run gozen theme add <game-dir> --name cave`. The pictures are CC BY 4.0, see [ASSETS.md](https://github.com/nao1215/gozen/blob/main/ASSETS.md).
+An unknown theme name exits 2 (`GZN2402`), and a directory without `game.yaml` exits 1 (`GZN1110`). A game that says `theme: cave` without the folder fails `gozen check` with `GZN1111` and the line `run gozen theme add <game-dir> --name cave`. The pictures claim no copyright (CC0 1.0), see [ASSETS.md](https://github.com/nao1215/gozen/blob/main/ASSETS.md).
 
 ## version and help
 
@@ -705,3 +728,22 @@ use. The file selection and approval requirements are the same as
 Saves use browser local storage. They persist on the same origin (scheme, host
 and port) with the same game ID. They do not sync across devices or move with a
 changed origin. YAML and assets remain downloadable; export does not hide them.
+
+## CPU profiles and reusable exports
+
+Set `GOZEN_CPUPROFILE=cpu.pprof` before a command to record its CPU activity:
+
+<!-- verify: skip needs a game checkout and a script of your own; internal/play's WorkspaceFrameTime test profiles the same way -->
+```sh
+GOZEN_CPUPROFILE=cpu.pprof gozen sim script examples/workshop/game --start workshop --script tour.txt
+go tool pprof cpu.pprof
+```
+
+A profile includes setup and decoding as well as gameplay. Compare the same
+fixture and seed; use `-benchmem` benchmarks for allocations. Profile creation
+and closing failures are reported on stderr.
+
+`gozen export game --target web --runtime web-runtime --out site2 --reuse site` reuses compatible generated output where the
+exporter permits it. Keep the earlier export directory when iterating; omit
+`--reuse` for a fresh export. See `gozen export --help` for output and
+runtime options. Reuse does not replace checking the authored game.

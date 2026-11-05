@@ -41,10 +41,10 @@ func (b *noticeBoard) add(text string) {
 	}
 }
 
-func (b *noticeBoard) update() {
+func (b *noticeBoard) update(visible int) {
 	out := b.list[:0]
 	for i, n := range b.list {
-		if i >= noticeMax {
+		if i >= visible {
 			out = append(out, n)
 			continue
 		}
@@ -56,8 +56,32 @@ func (b *noticeBoard) update() {
 	b.list = out
 }
 
+// A fullscreen authored surface owns its footer, including short results.
+// Other screens keep the ordinary floating notice stack.
+func (g *Game) noticeSurface() *authorScreen {
+	if len(g.stack) == 0 {
+		return nil
+	}
+	s, ok := g.stack[len(g.stack)-1].(*authorScreen)
+	if !ok {
+		return nil
+	}
+	def := g.db.Game.Screens[s.name]
+	if def == nil || !def.View.Fullscreen {
+		return nil
+	}
+	return s
+}
+
+func (g *Game) noticeVisible() int {
+	if g.noticeSurface() != nil {
+		return 1
+	}
+	return noticeMax
+}
+
 func (b *noticeBoard) draw(g *Game, dst *ebiten.Image) {
-	if len(b.list) == 0 {
+	if len(b.list) == 0 || g.noticeSurface() != nil {
 		return
 	}
 	sw, _ := g.screen()

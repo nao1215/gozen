@@ -2,10 +2,14 @@ package event_test
 
 import (
 	"bytes"
+	"fmt"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/nao1215/gozen/internal/event"
+	"github.com/nao1215/gozen/internal/expr"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/testgame"
@@ -557,5 +561,738 @@ func TestWonBattleCountsTheFoesBeaten(t *testing.T) {
 	}
 	if offers != 1 {
 		t.Errorf("%d recruit offers, want 1", offers)
+	}
+}
+
+func TestSayCarriesEnsembleWithoutChangingText(t *testing.T) {
+	db := testgame.Load(t, nil)
+	r := event.New(db, testgame.State(db, 1), &host{})
+	r.Start([]data.Command{{Say: &data.Say{Who: data.IDRef{ID: "scout"}, Text: "Welcome, everyone.", Ensemble: "gathering"}}})
+	got, ok := r.Next().(event.Say)
+	if !ok || got.Ensemble != "gathering" || got.Actor != "scout" || got.Text != "Welcome, everyone." {
+		t.Fatalf("line lost presentation or identity: %+v", got)
+	}
+}
+
+// TestCallEnsembleReachesTheCalleesLines: call.ensemble shows the called event's lines,
+// and those of the events it calls, over the call; a line naming its own call keeps it,
+// and the caller's own lines after the call return name none.
+func TestCallEnsembleReachesTheCalleesLines(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Events["shared"] = &data.Event{Do: []data.Command{
+		{Say: &data.Say{Text: "Shared line."}},
+		{Call: data.EventCall{Event: "deeper"}},
+		{Say: &data.Say{Text: "Own call.", Ensemble: "other"}},
+	}}
+	db.Events["deeper"] = &data.Event{Do: []data.Command{{Say: &data.Say{Text: "Deeper line."}}}}
+	r := event.New(db, testgame.State(db, 1), &host{})
+	r.Start([]data.Command{{Call: data.EventCall{Event: "shared", Ensemble: "gathering"}}, {Say: &data.Say{Text: "Back at the desk."}}})
+	var got []string
+	for req := r.Next(); req != nil; req = r.Next() {
+		if s, ok := req.(event.Say); ok {
+			got = append(got, s.Text+"@"+s.Ensemble)
+		}
+	}
+	want := []string{"Shared line.@gathering", "Deeper line.@gathering", "Own call.@other", "Back at the desk.@"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("lines %v, want %v", got, want)
+	}
+}
+
+func TestInvalidEventBindingLeavesStateAndRNG(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: bindings\n" + testgame.Game, "data/bindings.yaml": `events:
+  add:
+    params: {amount: number}
+    do: [{gold: arg.amount}]
+`})
+	for _, value := range []string{"true", "nil", "pow(10, 309)", "rand(10)"} {
+		t.Run(value, func(t *testing.T) {
+			st, control := testgame.State(db, 17), testgame.State(db, 17)
+			before, err := st.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			runner := event.New(db, st, &host{})
+			var problems []error
+			runner.Log = func(err error) { problems = append(problems, err) }
+			runner.Start([]data.Command{{Call: data.EventCall{Event: "add", Args: map[string]data.Expr{"amount": data.MustExpr(value)}}}})
+			if q := runner.Next(); q != nil {
+				t.Fatalf("invalid call produced %v", q)
+			}
+			after, err := st.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(problems) != 1 || !bytes.Equal(before, after) {
+				t.Fatalf("invalid binding changed state: %v", problems)
+			}
+			if st.Rand.Uint64() != control.Rand.Uint64() {
+				t.Fatal("invalid binding consumed RNG")
+			}
+			runner.Start([]data.Command{{Call: data.EventCall{Event: "add", Args: map[string]data.Expr{"amount": data.MustExpr("2")}}}})
+			runner.Next()
+			if st.Gold != control.Gold+2 {
+				t.Fatal("runner unusable after rejection")
+			}
+		})
+	}
+}
+
+func TestPlanningRuleShadowsEventArguments(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml": "schema_version: 10\nid: bindings\n" + testgame.Game + `planning:
+  calendar: {start: '2030-01-01', end: '2030-01-02', phases: [day]}
+  attributes: {vigor: {type: number, initial: 0}}
+  entities: {potter: {name: Potter}}
+  rules:
+    boost:
+      params: [amount]
+      do: [{op: set, entity: potter, attribute: vigor, value: arg.amount}]
+`,
+		"data/bindings.yaml": `events:
+  encourage:
+    params: {amount: number}
+    do:
+    - plan: {op: rule, rule: boost, args: {amount: 'arg.amount + 1'}}
+    - say: '{arg.amount}/{entity.potter.vigor}'
+`,
+	})
+	st := testgame.State(db, 5)
+	r := event.New(db, st, &host{})
+	r.Log = func(err error) { t.Error(err) }
+	args := map[string]any{"amount": 2.0}
+	if err := r.StartBound("encourage", args); err != nil {
+		t.Fatal(err)
+	}
+	args["amount"] = 99.0
+	line, ok := r.Next().(event.Say)
+	if !ok || line.Text != "2/3" {
+		t.Fatalf("rule leaked or root retained input map: %+v", line)
+	}
+}
+
+func TestScreenBindingFailureAndOwnership(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml": "schema_version: 10\nid: screen-bindings\n" + testgame.Game + `screens:
+  stock:
+    params: {amount: number}
+    title: Stock
+    entries:
+    - label: Take
+      do:
+      - say: '{arg.amount}'
+      - set: {var.total: 'arg.amount'}
+`,
+		"data/bindings.yaml": `events:
+  open_stock:
+    do:
+    - open: {screen: stock, args: {amount: 'var.amount'}}
+    - say: Returned.
+`,
+	})
+	st := testgame.State(db, 5)
+	control := testgame.State(db, 5)
+	r := event.New(db, st, &host{})
+	var problems []error
+	r.Log = func(err error) { problems = append(problems, err) }
+	st.Vars["amount"] = "invalid"
+	r.Start(db.Events["open_stock"].Do)
+	line, ok := r.Next().(event.Say)
+	if !ok || line.Text != "Returned." || len(problems) != 1 || st.Vars["total"] != nil {
+		t.Fatalf("invalid open changed state or ran a screen: %+v, %v", line, problems)
+	}
+	if st.Rand.IntN(1000) != control.Rand.IntN(1000) {
+		t.Fatal("invalid open consumed RNG")
+	}
+	r.Stop()
+	st.Vars["amount"] = float64(2)
+	r.Start(db.Events["open_stock"].Do)
+	opened, ok := r.Next().(event.Open)
+	if !ok {
+		t.Fatal("missing open")
+	}
+	st.Vars["amount"] = float64(99)
+	r.Stop()
+	if err := r.StartBound("screen:stock:0", opened.Args); err != nil {
+		t.Fatal(err)
+	}
+	opened.Args["amount"] = float64(88)
+	line, ok = r.Next().(event.Say)
+	if !ok || line.Text != "2" {
+		t.Fatalf("entry replay lost frozen args: %+v", line)
+	}
+	if q := r.Next(); q != nil || st.Vars["total"] != float64(2) {
+		t.Fatalf("entry result: %v, %v", q, st.Vars)
+	}
+	for _, name := range []string{"screen:stock:1", "screen:stock:00", "screen:missing:0"} {
+		if err := r.StartBound(name, map[string]any{"amount": float64(3)}); err == nil || r.Running() {
+			t.Fatalf("accepted invalid root %s", name)
+		}
+	}
+}
+
+func TestReplayTo(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/replay.yaml": `events:
+  receipt:
+    do:
+    - choice:
+      - label: Collect
+        do: [{set: {var.boards: 2}}]
+      - label: Cancel
+    - say: Receipt.
+    - set: {flag.finished: true}
+`})
+	for _, tc := range []struct {
+		name    string
+		line    int
+		answers []int
+		valid   bool
+	}{
+		{"preview", 1, nil, true},
+		{"answered", 1, []int{0}, true},
+		{"receipt", 2, []int{0}, true},
+		{"cancelled", 2, []int{1}, true},
+		{"missing", 2, nil, false},
+		{"extra", 2, []int{0, 1}, false},
+		{"out of range", 2, []int{2}, false},
+		{"unreachable", 3, []int{0}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := testgame.State(db, 7)
+			r := event.New(db, st, &host{})
+			r.Start(db.Events["receipt"].Do)
+			q, err := r.ReplayTo(tc.line, tc.answers)
+			if (err == nil) != tc.valid {
+				t.Fatalf("request %v, error %v", q, err)
+			}
+			if !tc.valid {
+				return
+			}
+			if st.Flags["finished"] {
+				t.Fatal("replay ran beyond the receipt")
+			}
+			if tc.name == "answered" {
+				if q != nil {
+					t.Fatal("answered choice displayed again")
+				}
+				q = r.Next()
+			}
+			if tc.name != "preview" {
+				if say, ok := q.(event.Say); !ok || say.Text != "Receipt." {
+					t.Fatal(q)
+				}
+				var want any = float64(2)
+				if tc.name == "cancelled" {
+					want = nil
+				}
+				if st.Vars["boards"] != want {
+					t.Fatal(st.Vars)
+				}
+			}
+		})
+	}
+	for _, command := range []data.Command{{Move: "camp"}, {Open: data.ScreenCall{Screen: "status"}}, {Save: true}} {
+		st := testgame.State(db, 7)
+		r := event.New(db, st, &host{})
+		r.Start(append([]data.Command{command}, db.Events["receipt"].Do...))
+		if _, err := r.ReplayTo(1, nil); err == nil {
+			t.Fatal("accepted boundary", command)
+		}
+	}
+}
+
+func TestScreenEntriesVisibilityAndOwnership(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Screens = map[string]*data.AuthorScreen{"stock": {Entries: []data.ScreenEntry{
+		{Label: "Hidden", When: data.Expr{Expr: testgame.Expr("false")}},
+		{Label: "Broken", When: data.Expr{Expr: testgame.Expr("missing()")}},
+		{Label: "Stock {amount}"},
+		{Label: "After {amount}", When: data.Expr{Expr: testgame.Expr("amount == 3")}},
+	}}}
+	env := expr.Map{"amount": float64(2)}
+	var problems []error
+	report := func(err error) { problems = append(problems, err) }
+	var labels []string
+	for index, entry := range event.ScreenEntries(db, "stock", env, report) {
+		labels = append(labels, entry.Label)
+		if index == 2 {
+			// Frontend detail evaluation must finish before the next guard is read.
+			env["amount"] = float64(3)
+			entry.Label = "Caller copy"
+		}
+	}
+	if len(problems) != 1 || strings.Join(labels, "/") != "Stock 2/After 3" || db.Game.Screens["stock"].Entries[2].Label != "Stock {amount}" {
+		t.Fatalf("errors=%v labels=%v definition=%v", problems, labels, db.Game.Screens["stock"])
+	}
+	for _, name := range []string{"missing", "stock"} {
+		count := 0
+		for range event.ScreenEntries(db, name, env, nil) {
+			count++
+			break
+		}
+		if name == "missing" && count != 0 || name == "stock" && count != 1 {
+			t.Fatal("missing screen or stopped iteration")
+		}
+	}
+}
+
+func TestIndexedVariableAssignment(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: counters\n" + testgame.Game, "data/counters.yaml": `events:
+  count:
+    params: {resident: string, day: number}
+    do:
+    - set: {'var["stock_" + arg.resident + "_" + arg.day]': 'var["stock_" + arg.resident + "_" + arg.day] + 2'}
+    - set: {'flag["visited_" + arg.resident]': '!flag["visited_" + arg.resident]'}
+  visit:
+    do:
+    - call: {event: count, args: {resident: '"potter"', day: '1'}}
+    - call: {event: count, args: {resident: '"weaver"', day: '2'}}
+    - call: {event: count, args: {resident: '"potter"', day: '1'}}
+    - set: {var.key: '"stock_next"', 'var[var.key]': '5'}
+`})
+	st := testgame.State(db, 17)
+	runner := event.New(db, st, &host{})
+	runner.Log = func(err error) { t.Error(err) }
+	runner.Start(db.Events["visit"].Do)
+	runner.Next()
+	if st.Vars["stock_potter_1"] != 4.0 || st.Vars["stock_weaver_2"] != 2.0 || st.Vars["stock_next"] != 5.0 {
+		t.Fatalf("counters: %v", st.Vars)
+	}
+	saved, err := st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := rpg.Parse(db, saved, testgame.State(db, 17).Rand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Flags["visited_potter"] || !loaded.Flags["visited_weaver"] {
+		t.Fatalf("loaded visit flags: %v", loaded.Flags)
+	}
+	if loaded.Vars["stock_potter_1"] != 4.0 || loaded.Vars["stock_weaver_2"] != 2.0 {
+		t.Fatalf("loaded counters: %v", loaded.Vars)
+	}
+}
+
+func TestInvalidIndexedTargetPreservesStateAndRandomness(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: counters\n" + testgame.Game})
+	for _, target := range []string{`var[true]`, `var[""]`, `var["nested.key"]`, `var["bad key"]`, `var[rand(10)]`, `var["x"`, `var[nil]`, `flag[true]`, `flag[""]`, `flag["nested.key"]`, `flag[rand(10)]`, `flag["x"`, `flag[nil]`} {
+		t.Run(target, func(t *testing.T) {
+			st, control := testgame.State(db, 17), testgame.State(db, 17)
+			before, err := st.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			runner := event.New(db, st, &host{})
+			var problems []error
+			runner.Log = func(err error) { problems = append(problems, err) }
+			runner.Start([]data.Command{{SetV: data.Assignments{target: data.MustExpr("rand(100)")}}})
+			runner.Next()
+			after, err := st.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(problems) != 1 || !bytes.Equal(before, after) {
+				t.Fatalf("invalid target changed state: %v", problems)
+			}
+			if st.Rand.Uint64() != control.Rand.Uint64() {
+				t.Fatal("invalid target consumed randomness")
+			}
+		})
+	}
+}
+
+func TestRepeatedCallKeepsOrderAndEvaluatesArgumentsAtEachCall(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: bindings\n" + testgame.Game, "data/bindings.yaml": `events:
+  visit:
+    params: {worker: string, amount: number, note: string}
+    do:
+    - set: {var.total: arg.amount}
+    - say: '{arg.note} {arg.worker}: {arg.amount}'
+  tour:
+    params: {prefix: string}
+    do:
+    - set: {var.total: '0'}
+    - call:
+        event: visit
+        each: {param: worker, items: [second, first, second]}
+        args: {amount: 'var.total+1', note: arg.prefix}
+    - say: '{arg.prefix} Finished {var.total}'
+`})
+	r := event.New(db, testgame.State(db, 17), &host{})
+	r.Log = func(err error) { t.Fatal(err) }
+	if err := r.StartBound("tour", map[string]any{"prefix": "Outer"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Outer second: 1", "Outer first: 2", "Outer second: 3", "Outer Finished 3"} {
+		q, ok := r.Next().(event.Say)
+		if !ok || q.Text != want {
+			t.Fatalf("got %+v; want %q", q, want)
+		}
+	}
+	if q := r.Next(); q != nil {
+		t.Fatalf("unexpected continuation: %+v", q)
+	}
+}
+
+func TestRepeatedCallNestedBudgetStopsExecution(t *testing.T) {
+	db := testgame.Load(t, nil)
+	items := make([]string, 4096)
+	for i := range items {
+		items[i] = "unit"
+	}
+	db.Events["leaf"] = &data.Event{Params: map[string]string{"item": "string"}, Do: []data.Command{{SetV: data.Assignments{"var.visits": data.MustExpr("var.visits+1")}}}}
+	db.Events["branch"] = &data.Event{Params: map[string]string{"item": "string"}, Do: []data.Command{{Call: data.EventCall{Event: "leaf", Each: &data.CallEach{Param: "item", Items: items}}}}}
+	r := event.New(db, testgame.State(db, 17), &host{})
+	var failure error
+	r.Log = func(err error) { failure = err }
+	r.Start([]data.Command{{Call: data.EventCall{Event: "branch", Each: &data.CallEach{Param: "item", Items: items}}}})
+	if q := r.Next(); q != nil || r.Running() || failure == nil || !strings.Contains(failure.Error(), "65536") {
+		t.Fatalf("unbounded execution: %v %v", q, failure)
+	}
+}
+
+func TestSpeakerIdentityAcrossCalls(t *testing.T) {
+	for _, dynamic := range []bool{false, true} {
+		t.Run(map[bool]string{false: "literal", true: "expression"}[dynamic], func(t *testing.T) {
+			who := "scout"
+			if dynamic {
+				who = "{expr: arg.speaker}"
+			}
+			db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: speakers\n" + testgame.Game, "data/speakers.yaml": `events:
+  speak:
+    params: {speaker: actor}
+    do:
+    - say: {who: ` + who + `, text: 'Ready {gold}.'}
+  visit:
+    do:
+    - call: {event: speak, args: {speaker: '"scout"'}}
+    - call: {event: speak, args: {speaker: '"guide"'}}
+`})
+			r := event.New(db, testgame.State(db, 1), &host{})
+			r.Log = func(err error) { t.Error(err) }
+			r.Start(db.Events["visit"].Do)
+			for _, actor := range []string{"scout", "guide"} {
+				if !dynamic {
+					actor = "scout"
+				}
+				line, ok := r.Next().(event.Say)
+				if !ok || line.Actor != actor || line.Key != event.SourceKey(actor, "Ready {gold}.") || line.Text != "Ready 100." {
+					t.Fatalf("speaker identity: %+v", line)
+				}
+			}
+		})
+	}
+}
+
+func TestScreenExpressionTarget(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: targets\n" + testgame.Game + `planning:
+  calendar: {start: "2030-06-01", end: "2030-06-30", phases: [morning]}
+  attributes:
+    portrait: {type: string, initial: ''}
+  entities:
+    potter: {name: Potter}
+screens:
+  pick:
+    title: Pick
+    params: {resident: entity}
+    view: {portrait: portrait}
+    entries:
+    - label: Visit
+      target: {expr: arg.resident}
+`})
+	env := expr.Map{"arg": expr.Map{"resident": "potter"}}
+	count := 0
+	for index, entry := range event.ScreenEntries(db, "pick", env, func(err error) { t.Error(err) }) {
+		count++
+		if index != 0 || entry.Label != "Visit" || entry.Target.ID != "potter" || entry.Target.Expr.Set() {
+			t.Fatal(index, entry)
+		}
+	}
+	if count != 1 {
+		t.Fatal(count)
+	}
+	if !db.Game.Screens["pick"].Entries[0].Target.Expr.Set() {
+		t.Fatal("definition mutated")
+	}
+	env["arg"] = expr.Map{"resident": "missing"}
+	problems := 0
+	for range event.ScreenEntries(db, "pick", env, func(error) { problems++ }) {
+		t.Fatal("invalid target shown")
+	}
+	if problems != 1 {
+		t.Fatal(problems)
+	}
+}
+
+func TestInvalidSpeakerDoesNotConsumeRandomness(t *testing.T) {
+	db := testgame.Load(t, nil)
+	for _, value := range []string{`"missing"`, `""`, `42`, `rand(3)`} {
+		t.Run(value, func(t *testing.T) {
+			st, control := testgame.State(db, 17), testgame.State(db, 17)
+			r := event.New(db, st, &host{})
+			var problems []error
+			r.Log = func(err error) { problems = append(problems, err) }
+			r.Start([]data.Command{{Say: &data.Say{Who: data.IDRef{Expr: data.MustExpr(value)}, Text: "Ready"}}})
+			if got := r.Next(); got != nil || len(problems) != 1 {
+				t.Fatalf("request=%v errors=%v", got, problems)
+			}
+			if st.Rand.Uint64() != control.Rand.Uint64() {
+				t.Fatal("speaker consumed randomness")
+			}
+		})
+	}
+}
+
+func TestSpeakerVoiceAndPortraitUseResolvedActor(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml": "schema_version: 10\nid: voices\n" + testgame.Game,
+		"data/voice.yaml": `actors:
+  potter: {name: Potter, faces: potter, voices: potter}
+events:
+  greeting:
+    params: {speaker: actor}
+    do:
+    - say: {who: {expr: arg.speaker}, face: smile, voice: hello, text: Welcome}
+`,
+		"assets/potter/smile.png": "stub", "assets/potter/normal.png": "stub", "assets/potter/hello.wav": "stub",
+	})
+	var effects []event.Effect
+	r := event.New(db, testgame.State(db, 1), event.HostFunc(func(e event.Effect) { effects = append(effects, e) }))
+	r.Log = func(err error) { t.Error(err) }
+	if err := r.StartBound("greeting", map[string]any{"speaker": "potter"}); err != nil {
+		t.Fatal(err)
+	}
+	line, ok := r.Next().(event.Say)
+	if !ok || line.Actor != "potter" || line.Face != "potter/smile.png" || line.Voice != "potter/hello.wav" {
+		t.Fatal(line)
+	}
+	if len(effects) != 1 {
+		t.Fatal(effects)
+	}
+	voice, ok := effects[0].(event.VoiceEffect)
+	if !ok || voice.Who != "potter" || voice.File != line.Voice {
+		t.Fatal(effects)
+	}
+}
+
+func TestSelectedSourceKeepsLiteralReadIdentity(t *testing.T) {
+	for _, dynamic := range []bool{false, true} {
+		field := `text: 'Potter has {gold} coins.'`
+		if dynamic {
+			field = `text_expr: 'arg.name + " has {gold} coins."'`
+		}
+		db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: sources\n" + testgame.Game, "data/source.yaml": `events:
+  speak:
+    params: {name: string}
+    do:
+    - say: {who: scout, ` + field + `}
+  visit:
+    do:
+    - call: {event: speak, args: {name: '"Potter"'}}
+`})
+		for _, gold := range []int{5, 9} {
+			st := testgame.State(db, 17)
+			st.Gold = gold
+			r := event.New(db, st, &host{})
+			r.Log = func(err error) { t.Error(err) }
+			r.Start(db.Events["visit"].Do)
+			line := testgame.As[event.Say](t, r.Next())
+			if line.Key != event.SourceKey("scout", "Potter has {gold} coins.") || line.Text != fmt.Sprintf("Potter has %d coins.", gold) {
+				t.Fatalf("source identity: %+v", line)
+			}
+		}
+	}
+}
+
+func TestInvalidSelectedSourceDoesNotConsumeRandomness(t *testing.T) {
+	db := testgame.Load(t, nil)
+	for _, source := range []string{`42`, `rand()`, `"x" + missing.name`} {
+		st, control := testgame.State(db, 17), testgame.State(db, 17)
+		r := event.New(db, st, &host{})
+		var failures int
+		r.Log = func(error) { failures++ }
+		r.Start([]data.Command{{Say: &data.Say{TextExpr: data.MustExpr(source)}}})
+		if got := r.Next(); got != nil || failures != 1 {
+			t.Fatalf("invalid source %s: %v, failures %d", source, got, failures)
+		}
+		a, b := st.Rand.Uint64(), control.Rand.Uint64()
+		if a != b {
+			t.Fatalf("source consumed randomness: %v != %v", a, b)
+		}
+	}
+}
+
+func TestRepeatedScreenRowsRecheckMembership(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Screens = map[string]*data.AuthorScreen{"roster": {Title: "Roster", Entries: []data.ScreenEntry{
+		{Each: &data.CallEach{Param: "resident", In: data.MustExpr("residents")}, Label: "Visit {arg.resident}"},
+	}}}
+	env := expr.Map{"residents": []string{"weaver", "potter"}, "arg": expr.Map{"amount": float64(2)}}
+	var rows []event.ScreenRow
+	for index, row := range event.ScreenEntries(db, "roster", env, func(err error) { t.Error(err) }) {
+		if index != 0 {
+			t.Fatal(index)
+		}
+		rows = append(rows, row)
+	}
+	if len(rows) != 2 || rows[0].Label != "Visit weaver" || rows[1].Label != "Visit potter" {
+		t.Fatal(rows)
+	}
+	env["residents"] = []string{"potter"}
+	source := db.Game.Screens["roster"].Entries[0]
+	if visible, err := rows[0].Visible(db, source, env); err != nil || visible {
+		t.Fatal(visible, err)
+	}
+	if visible, err := rows[1].Visible(db, source, env); err != nil || !visible {
+		t.Fatal(visible, err)
+	}
+	rows[0].Args["amount"] = float64(7)
+	if rows[1].Args["amount"] != float64(2) || testgame.As[expr.Map](t, env["arg"])["amount"] != float64(2) {
+		t.Fatal("aliased bindings")
+	}
+	env["residents"] = []int{1}
+	problems := 0
+	for range event.ScreenEntries(db, "roster", env, func(error) { problems++ }) {
+		t.Fatal("invalid row shown")
+	}
+	if problems != 1 {
+		t.Fatal(problems)
+	}
+}
+
+func TestSelectedChoiceSourcePreservesReadIdentity(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml": "schema_version: 10\nid: selected-choice\n" + testgame.Game,
+		"data/selected.yaml": `events:
+  literal:
+    do:
+    - choice: [{label: 'Encourage Weaver {gold}'}, {label: Cancel}]
+  selected:
+    params: {name: string}
+    do:
+    - choice:
+      - label_expr: '"Encourage " + arg.name + " {gold}"'
+        do: [{say: 'Selected {arg.name}'}]
+      - label: Cancel
+`,
+	})
+	st := testgame.State(db, 17)
+	r := event.New(db, st, &host{})
+	r.Log = func(err error) { t.Error(err) }
+	r.Start(db.Events["literal"].Do)
+	literal := testgame.As[event.Choice](t, r.Next())
+	if err := r.StartBound("selected", map[string]any{"name": "Weaver"}); err != nil {
+		t.Fatal(err)
+	}
+	selected := testgame.As[event.Choice](t, r.Next())
+	if !reflect.DeepEqual(literal.Options, selected.Options) || !reflect.DeepEqual(literal.Keys, selected.Keys) {
+		t.Fatal(literal, selected)
+	}
+	r.Answer(0)
+	if line := testgame.As[event.Say](t, r.Next()); line.Text != "Selected Weaver" {
+		t.Fatal(line)
+	}
+}
+
+func TestInstantNarration(t *testing.T) {
+	db := testgame.Load(t, nil)
+	st, control := testgame.State(db, 17), testgame.State(db, 17)
+	r := event.New(db, st, &host{})
+	r.Start([]data.Command{{Say: &data.Say{Text: "A new season begins.", Instant: true}}})
+	line := testgame.As[event.Say](t, r.Next())
+	if !line.Instant || line.Reword(db).Instant != true || st.Rand.Uint64() != control.Rand.Uint64() {
+		t.Fatal("presentation changed state or lost instant flag")
+	}
+}
+
+func TestSelectedPortraitDoesNotChangeReadIdentityOrRandomness(t *testing.T) {
+	db := testgame.Load(t, nil)
+	for _, source := range []string{`"happy"`, `true ? "happy" : "calm"`, `42`, `rand()`} {
+		st, control := testgame.State(db, 17), testgame.State(db, 17)
+		r := event.New(db, st, &host{})
+		failed := false
+		r.Log = func(error) { failed = true }
+		r.Start([]data.Command{{Say: &data.Say{Who: data.IDRef{ID: "scout"}, FaceExpr: data.MustExpr(source), Text: "A new season."}}})
+		result := r.Next()
+		if source == `42` || source == `rand()` {
+			if result != nil || !failed {
+				t.Fatal("invalid portrait expression accepted")
+			}
+		} else {
+			line := testgame.As[event.Say](t, result)
+			if line.Key != event.SourceKey("scout", "A new season.") || line.Face != db.FacePicture(db.Actors["scout"], "happy", "") {
+				t.Fatalf("portrait: %+v", line)
+			}
+		}
+		if st.Rand.Uint64() != control.Rand.Uint64() {
+			t.Fatal("portrait consumed randomness")
+		}
+	}
+}
+
+// Authored state selection is shared by any speaker and reads current state on
+// each call. Merely hearing a line must not change a relationship or draw RNG.
+func TestAuthoredStateDialogueIsReadOnly(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+events:
+  greeting:
+    do:
+      - if: var.energy < 20
+        then: [{say: {who: scout, text: "Let us take a break."}}]
+        else:
+          - if: flag.returned
+            then: [{say: {who: guide, text: "Welcome back."}}]
+            else: [{say: {who: scout, text: "Ready to explore?"}}]
+`})
+	for _, tc := range []struct {
+		energy   float64
+		returned bool
+		want     string
+	}{
+		{10, true, "Let us take a break."},
+		{50, true, "Welcome back."},
+		{50, false, "Ready to explore?"},
+	} {
+		st := testgame.State(db, 17)
+		st.Vars["energy"] = tc.energy
+		st.Vars["relationship"] = 50.0
+		st.Flags["returned"] = tc.returned
+		r := event.New(db, st, &host{})
+		r.Log = func(err error) { t.Error(err) }
+		for range 2 {
+			r.Start(db.Events["greeting"].Do)
+			got, ok := r.Next().(event.Say)
+			if !ok || got.Text != tc.want {
+				t.Fatalf("line = %#v, want %q", got, tc.want)
+			}
+			if r.Next() != nil {
+				t.Fatal("unexpected extra dialogue")
+			}
+			if st.Vars["relationship"] != 50.0 || st.Vars["energy"] != tc.energy || st.Flags["returned"] != tc.returned {
+				t.Fatal("dialogue mutated state")
+			}
+		}
+	}
+}
+
+func TestScreenRowUnavailableFailsClosed(t *testing.T) {
+	db := testgame.Load(t, nil)
+	for _, tc := range []struct {
+		condition string
+		available bool
+		failure   bool
+	}{
+		{"", true, false}, {"false", true, false}, {"true", false, false}, {"missing.value", false, true},
+	} {
+		source := data.ScreenEntry{}
+		if tc.condition != "" {
+			source.Unavailable = data.MustExpr(tc.condition)
+		}
+		row := event.ScreenRow{ScreenEntry: source}
+		got, err := row.Available(db, source, expr.Map{})
+		if got != tc.available || (err != nil) != tc.failure {
+			t.Errorf("%s: %v %v", tc.condition, got, err)
+		}
 	}
 }

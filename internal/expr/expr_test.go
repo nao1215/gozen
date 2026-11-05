@@ -190,3 +190,51 @@ func TestUnmarshalYAML(t *testing.T) {
 		}
 	}
 }
+
+func TestGroupedNumber(t *testing.T) {
+	for source, want := range map[string]string{
+		"grouped(420000)": "420,000", "grouped(-1234567.25)": "-1,234,567.25",
+		"grouped(0)": "0", "grouped(999)": "999", "grouped(1000)": "1,000",
+	} {
+		e, err := Parse(source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := e.Eval(nil)
+		if err != nil || got != want {
+			t.Fatalf("%s: %v, %v", source, got, err)
+		}
+	}
+	for _, source := range []string{"grouped()", "grouped(1,2)", "grouped(\"oops\")"} {
+		e, err := Parse(source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.Eval(nil); err == nil {
+			t.Fatalf("accepted %s", source)
+		}
+	}
+}
+
+// Key patterns expose authoring structure without evaluating indexes or RNG.
+func TestKeyPatterns(t *testing.T) {
+	for _, tc := range []struct{ source, want string }{
+		{`var.stock_oak + var["stock_pine"]`, "stock_oak,stock_pine"},
+		{`var["visit_" + arg.worker + "_12"] + var["visit_" + arg.worker + "_12"]`, "visit_*_12"},
+		{`"var.fake_12" + entity[arg.worker].name`, ""},
+		{`var[arg.key] + var[str(rand())]`, "*"},
+		{`var["a" + "b"]`, "ab"},
+	} {
+		e, err := Parse(tc.source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.Join(e.KeyPatterns("var"), ","); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.source, got, tc.want)
+		}
+	}
+	var empty *Expr
+	if got := empty.KeyPatterns("var"); len(got) != 0 {
+		t.Fatal(got)
+	}
+}

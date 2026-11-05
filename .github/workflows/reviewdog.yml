@@ -45,6 +45,9 @@ jobs:
           reporter: github-pr-review
           level: warning
           locale: "US"
+          # cancelled is an authored name (activity.<id>.cancelled, saved activities) and
+          # dialogue is the lines of a game, not a dialog box.
+          ignore: cancelled,dialogue
           exclude: |
             ./website/*
             ./docs/*

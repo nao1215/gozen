@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "model": "face/model.onnx",
+  "pictures": {
+    "daniel/normal.png": {
+      "box": [
+        195,
+        63,
+        313,
+        197
+      ],
+      "size": [
+        412,
+        1400
+      ],
+      "sha256": "560847f5ad0a7caf67ceaa4a8c94f90fff4811f484a55f6e506b846f112a5dce",
+      "score": 0.84022725
+    },
+    "elena/normal.png": {
+      "box": [
+        195,
+        90,
+        320,
+        226
+      ],
+      "size": [
+        473,
+        1400
+      ],
+      "sha256": "d4adb5c504832af0ed790b2c024b84246b3c624b1479f112431cde40c691f1af",
+      "score": 0.8600378
+    },
+    "iris/normal.png": {
+      "box": [
+        211,
+        106,
+        332,
+        230
+      ],
+      "size": [
+        572,
+        1400
+      ],
+      "sha256": "fc97ad7c7d3b3d82d6da9795bdbd0986e34f43d4b05fcb4ba0c463854884a6f2",
+      "score": 0.85559314
+    },
+    "martin/normal.png": {
+      "box": [
+        159,
+        86,
+        268,
+        207
+      ],
+      "size": [
+        468,
+        1400
+      ],
+      "sha256": "a596f2754adfa6b405c0a265e0bd8b8e7af860c8be627268b2412a37941e8f72",
+      "score": 0.81901515
+    },
+    "mia/normal.png": {
+      "box": [
+        402,
+        91,
+        533,
+        225
+      ],
+      "size": [
+        695,
+        1400
+      ],
+      "sha256": "36dcbc419a454c33be22c025417c8380fbbf4047e964ad5af4daa13fcc4b24cc",
+      "score": 0.8570113
+    },
+    "nora/normal.png": {
+      "box": [
+        179,
+        95,
+        302,
+        226
+      ],
+      "size": [
+        455,
+        1400
+      ],
+      "sha256": "b5077322dd1b7dcc90566d1cafe09d599f3123abf33b796bd158a9473a15c286",
+      "score": 0.8588622
+    }
+  }
+}

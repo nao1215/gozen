@@ -1,0 +1,1185 @@
+package play
+
+import (
+	"encoding/json"
+	"fmt"
+	"image"
+	"image/color"
+	"math"
+	"math/rand/v2"
+	"slices"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/testgame"
+)
+
+func TestNativeViewport(t *testing.T) {
+	for _, tc := range []struct {
+		w, h, dsf float64
+		pw, ph    int
+		k         float64
+	}{{1920, 1080, 1, 1920, 1080, 1.5}, {3840, 2160, 1, 3840, 2160, 3}, {2560, 1080, 1, 1920, 1080, 1.5}, {1280, 720, 1.5, 1920, 1080, 1.5}, {1920, 1080, 2, 3840, 2160, 3}} {
+		v := nativeView(tc.w, tc.h, tc.dsf)
+		if v.w != tc.pw || v.h != tc.ph || v.ui != tc.k {
+			t.Fatalf("%+v: %+v", tc, v)
+		}
+	}
+	if nativeView(0, 720, 1) != (gameView{}) {
+		t.Fatal("invalid window accepted")
+	}
+}
+
+func TestPlanningCellsStayInsideAndDisjoint(t *testing.T) {
+	for _, count := range []int{1, 8, 9, 16} {
+		for _, cols := range []int{1, 4} {
+			cells := planningCells(24, 148, 1232, 452, count, cols)
+			for i, r := range cells {
+				if r.Min.X < 24 || r.Min.Y < 148 || r.Max.X > 1256 || r.Max.Y > 600 || r.Empty() {
+					t.Fatalf("outside: %v", r)
+				}
+				for _, other := range cells[:i] {
+					if r.Overlaps(other) {
+						t.Fatalf("overlap: %v %v", r, other)
+					}
+				}
+			}
+		}
+	}
+	// Eight member rows reserve a gauge's text, bar and threshold labels.
+	for _, r := range planningCells(24, 148, 1232, 502, 8, 1) {
+		if r.Dy() < 50 {
+			t.Fatalf("member row cannot fit labels: %v", r)
+		}
+	}
+}
+
+func TestPlanningSeedDerivation(t *testing.T) {
+	g := &Game{opts: Options{Seed: 17}}
+	baseline := g.newPCG().Uint64()
+	g.db = &data.DB{}
+	xor := uint64(12345)
+	g.db.Game.Planning = &data.Planning{SeedXor: &xor}
+	want := rand.NewPCG(17, 17^xor)
+	got := g.newPCG()
+	for range 20 {
+		if got.Uint64() != want.Uint64() {
+			t.Fatal("imported stream diverged")
+		}
+	}
+	if g.newPCG().Uint64() == baseline {
+		t.Fatal("stream setting ignored")
+	}
+}
+
+func TestEnsembleCellsLeaveDialogueClear(t *testing.T) {
+	// The box dialogue starts at 470; the view reserves its heading and margins.
+	cells := planningCells(36, 76, 1208, 344, 8, 4)
+	for _, r := range cells {
+		if r.Max.Y >= 446 || r.Dy() < 100 {
+			t.Fatalf("participant overlaps dialogue or loses name: %v", r)
+		}
+	}
+}
+
+func TestPlanningAuthoredDateLabels(t *testing.T) {
+	v := data.PlanningView{DateFormat: "1/2({weekday})", Weekdays: []string{"Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"}, Phases: map[string]string{"dawn": "Early"}}
+	if got := planningDate("2030-04-01", "dawn", v); got != "4/1(Mo) Early" {
+		t.Fatal(got)
+	}
+	if got := planningDate("2030-04-01", "", v); got != "4/1(Mo)" {
+		t.Fatal(got)
+	}
+	if got := planningEventLabel(data.PlanningView{}); got != "events" {
+		t.Fatal(got)
+	}
+}
+
+func TestTimelineScrollReachesLastTask(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{Activities: map[string]data.Activity{}}
+	for i := range 28 {
+		db.Game.Planning.Activities[strconv.Itoa(i)] = data.Activity{Effort: 1}
+	}
+	db.Game.Screens = map[string]*data.AuthorScreen{"tasks": {
+		Kind: "timeline", View: data.PlanningView{Fullscreen: true},
+	}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "tasks", nil, nil)
+	g.in.wheel = -1
+	for range 40 {
+		s.updateSurface(g)
+	}
+	_, sh := g.screen()
+	if s.timelineTop+timelineRows(sh-250) != 28 {
+		t.Fatalf("last task cannot be reached: %d", s.timelineTop)
+	}
+	s.refresh(g)
+	if s.timelineTop == 0 {
+		t.Fatal("refresh lost scroll position")
+	}
+	g.in.wheel = 1
+	for range 40 {
+		s.updateSurface(g)
+	}
+	if s.timelineTop != 0 {
+		t.Fatal("cannot return to first task")
+	}
+}
+
+func TestResidentVisibilityUsesPublicState(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{Entities: map[string]data.Entity{"potter": {}, "weaver": {}}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	g.st.Planning.Entities["potter"].Observations["shown"] = true
+	g.st.Planning.Entities["weaver"].Attributes["secret"] = true
+	db.Game.Planning.Attributes = map[string]data.Attribute{"secret": {Hidden: true}}
+	if got := g.visibleResidents(data.PlanningView{Visible: "secret"}); len(got) != 0 {
+		t.Fatal(got)
+	}
+	v := data.PlanningView{Order: []string{"weaver", "potter"}, Visible: "shown"}
+	if got := g.visibleResidents(v); !slices.Equal(got, []string{"potter"}) {
+		t.Fatal(got)
+	}
+	g.st.Planning.Entities["weaver"].Observations["shown"] = true
+	if got := g.visibleResidents(v); !slices.Equal(got, v.Order) {
+		t.Fatal(got)
+	}
+	delete(g.st.Planning.Entities["potter"].Observations, "shown")
+	if got := g.visibleResidents(v); !slices.Equal(got, []string{"weaver"}) {
+		t.Fatal(got)
+	}
+	v.Visible = ""
+	if got := g.visibleResidents(v); !slices.Equal(got, v.Order) {
+		t.Fatal(got)
+	}
+}
+
+func TestGroupedTimelineCalendarFitAndPrivacy(t *testing.T) {
+	db := testgame.Load(t, nil)
+	p := &data.Planning{Calendar: data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}}, Activities: map[string]data.Activity{}}
+	v := data.PlanningView{Fullscreen: true}
+	for i := range 12 {
+		row := data.TimelineRow{Label: strconv.Itoa(i), Text: "Inspected {var.inspected}"}
+		for j := range 3 {
+			id := strconv.Itoa(i*3 + j)
+			p.Activities[id] = data.Activity{Name: id, Effort: 10, From: p.Calendar.Start, To: p.Calendar.End}
+			row.Items = append(row.Items, data.TimelineItem{Activity: id, Label: id})
+		}
+		v.Rows = append(v.Rows, row)
+	}
+	db.Game.Planning = p
+	db.Game.Screens = map[string]*data.AuthorScreen{"tasks": {Kind: "timeline", View: v}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	g.st.Planning.Date = "2030-09-01"
+	g.st.Vars["inspected"] = 3.0
+	s := newAuthorScreen(g, "tasks", nil, nil)
+	groups, ax, aw := s.groupedTimeline(g, 0, 108, 1280, 494)
+	if len(groups) != 12 {
+		t.Fatalf("only %d groups fit", len(groups))
+	}
+	for _, group := range groups {
+		if group.text != "Inspected 3" {
+			t.Fatalf("row summary: %q", group.text)
+		}
+		if group.y+group.height > 602 {
+			t.Fatal("group overlaps footer")
+		}
+		for i, lane := range group.lanes {
+			if float64(lane.bounds.Min.X) < ax || float64(lane.bounds.Max.X) > ax+aw {
+				t.Fatal("bar outside fixed calendar")
+			}
+			if lane.reported != 0 || lane.expected <= 0 {
+				t.Fatal("zero-report delay lost")
+			}
+			for _, other := range group.lanes[:i] {
+				if lane.bounds.Overlaps(other.bounds) {
+					t.Fatal("lanes overlap")
+				}
+			}
+		}
+	}
+	a := g.st.Planning.Activities["0"]
+	a.Observed = 5
+	g.st.Planning.Activities["0"] = a
+	db.Game.Screens["tasks"].View.Rows[0].Items[0].ForecastLabel = "Reported pace"
+	before := s.timelineDescription(g)
+	if !strings.Contains(before, "Reported pace") {
+		t.Fatal(before)
+	}
+	a.Progress = 9
+	g.st.Planning.Activities["0"] = a
+	if got := s.timelineDescription(g); got != before {
+		t.Fatalf("hidden progress leaked: %s", got)
+	}
+	// A stored sample stays fixed while hidden progress, effort and dates change.
+	item := &db.Game.Screens["tasks"].View.Rows[0].Items[0]
+	item.Sample = data.MustExpr("var.sample")
+	item.SampleLabel = "Checked {var.sample_date}"
+	g.st.Vars["sample"] = .4
+	g.st.Vars["sample_date"] = "2030-08-20"
+	before = s.timelineDescription(g)
+	if !strings.Contains(before, "Checked 2030-08-20 40%") {
+		t.Fatal(before)
+	}
+	a.Progress = 2
+	g.st.Planning.Activities["0"] = a
+	if got := s.timelineDescription(g); got != before {
+		t.Fatal("live progress replaced saved sample", got)
+	}
+	for _, value := range []any{-1.0, 1.1, "unknown", nil} {
+		g.st.Vars["sample"] = value
+		if strings.Contains(s.timelineDescription(g), "Checked") {
+			t.Fatal("invalid sample displayed", value)
+		}
+	}
+	g.st.Vars["sample"] = 0.0
+	if !strings.Contains(s.timelineDescription(g), "Checked 2030-08-20 0%") {
+		t.Fatal("zero sample lost")
+	}
+	// Aging changes only the marker tint, not its historical position or value.
+	item.SampleFreshness = data.MustExpr("var.freshness")
+	item.SampleLabel = "Checked {var.sample_date} ({var.age} days ago)"
+	g.st.Vars["age"] = 14.0
+	for _, tc := range []struct {
+		value any
+		want  float64
+	}{
+		{1.0, 1},
+		{.5, .5},
+		{0.0, 0},
+		{-1.0, 0},
+		{2.0, 1},
+		{"unknown", 0},
+		{nil, 0},
+		{math.NaN(), 0},
+		{math.Inf(1), 0},
+	} {
+		g.st.Vars["freshness"] = tc.value
+		lane := s.timelineLanes(g)[0]
+		if lane.sampleFreshness != tc.want || lane.sample != 0 {
+			t.Fatalf("freshness %v: %+v", tc.value, lane)
+		}
+	}
+	if !strings.Contains(s.timelineDescription(g), "14 days ago") {
+		t.Fatal("age explanation lost")
+	}
+	item.SampleFreshness = data.Expr{}
+	if s.timelineLanes(g)[0].sampleFreshness != 1 {
+		t.Fatal("old author data no longer uses full brightness")
+	}
+	fresh, old := color.NRGBA{240, 240, 240, 255}, color.NRGBA{160, 160, 160, 255}
+	if timelineSampleTint(fresh, old, 0) != old || timelineSampleTint(fresh, old, 1) != fresh || timelineSampleTint(fresh, old, .5).R != 200 {
+		t.Fatal("historical marker tint must remain readable at every age")
+	}
+	// Pointer and keyboard selection share the rendered lane rectangles.
+	db.Game.Screens["detail"] = &data.AuthorScreen{Title: "Detail", Entries: []data.ScreenEntry{{Label: "Inspect"}}}
+	db.Game.Screens["tasks"].View.Rows[0].Items[0].Screen = "detail"
+	g.in.click = true
+	g.in.mouse = groups[0].lanes[0].bounds.Min
+	s.updateSurface(g)
+	if len(g.stack) != 1 {
+		t.Fatal("bar did not open detail")
+	}
+	if top, ok := g.stack[0].(*authorScreen); !ok || top.name != "detail" {
+		t.Fatal("wrong detail screen")
+	}
+	g.in.click = false
+	g.in.wheel = -1
+	s.updateSurface(g)
+	if s.timelineFocus != 1 || s.timelineTop != 0 {
+		t.Fatal("keyboard did not select next lane")
+	}
+	s.refresh(g)
+	if s.timelineFocus != 1 {
+		t.Fatal("refresh lost selected lane")
+	}
+	// Live deadlines clip to the fixed calendar, not a different axis per row.
+	a.Deadline = "2031-01-01"
+	g.st.Planning.Activities["0"] = a
+	groups, _, _ = s.groupedTimeline(g, 0, 108, 1280, 494)
+	if groups[0].lanes[0].bounds.Max.X != 1260 || groups[0].lanes[0].right <= 1 {
+		t.Fatal("extended deadline is not clipped")
+	}
+	p.Activities["extra"] = data.Activity{Name: "Extra", Effort: 1}
+	rows := timelineGroups(p, v)
+	if len(rows) != 13 || rows[12].Items[0].Activity != "extra" {
+		t.Fatal("unlisted task disappeared")
+	}
+}
+
+func TestEntityTableInlineDetailAndNavigation(t *testing.T) {
+	db := testgame.Load(t, nil)
+	p := &data.Planning{Entities: map[string]data.Entity{}}
+	order := []string{}
+	for i := range 12 {
+		id := strconv.Itoa(i)
+		order = append(order, id)
+		p.Entities[id] = data.Entity{Name: id}
+	}
+	db.Game.Planning = p
+	db.Game.Screens = map[string]*data.AuthorScreen{"roster": {Kind: "entities", View: data.PlanningView{Fullscreen: true, Order: order, Detail: "record"}}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "roster", nil, nil)
+	ids, cells, detail := s.entityTableLayout(g)
+	if len(ids) < 8 || !detail.Empty() {
+		t.Fatalf("initial layout: %v %v", ids, detail)
+	}
+	_, sh := g.screen()
+	for _, r := range cells {
+		if r.Min.X != 16 || r.Dx() < 1000 || r.Max.Y > int(sh)-112 {
+			t.Fatalf("table does not fit: %v", r)
+		}
+	}
+	// Open the last visible row: its detail must be fully revealed, without
+	// consuming a phase or obscuring any other row.
+	g.in.click = true
+	g.in.mouse = cells[len(cells)-1].Min.Add(image.Pt(8, 8))
+	s.updateEntityTable(g)
+	if s.target != ids[len(ids)-1] {
+		t.Fatal("wrong row opened")
+	}
+	_, expanded, detail := s.entityTableLayout(g)
+	if detail.Dy() != 180 {
+		t.Fatalf("detail clipped: %v", detail)
+	}
+	for _, r := range expanded {
+		if r.Overlaps(detail) {
+			t.Fatal("detail covers a row")
+		}
+	}
+	g.in.mouse = expanded[0].Min.Add(image.Pt(8, 8))
+	s.updateEntityTable(g)
+	if s.target != "" {
+		t.Fatal("second click did not close detail")
+	}
+	g.in.click = false
+	g.in.wheel = -1
+	for range 20 {
+		s.updateEntityTable(g)
+	}
+	ids, _, _ = s.entityTableLayout(g)
+	if !slices.Contains(ids, "11") {
+		t.Fatal("cannot reach final resident")
+	}
+	s.refresh(g)
+	if s.residentTop == 0 {
+		t.Fatal("refresh lost scroll position")
+	}
+	g.in.wheel = 1
+	for range 20 {
+		s.updateEntityTable(g)
+	}
+	if s.residentTop != 0 {
+		t.Fatal("cannot return to first resident")
+	}
+	g.in.wheel = 0
+	g.in.pressed[btnDown] = true
+	for range order {
+		s.updateEntityTable(g)
+		visible, _, _ := s.entityTableLayout(g)
+		if !slices.Contains(visible, order[s.focus]) {
+			t.Fatal("keyboard focus moved offscreen")
+		}
+	}
+	g.in.pressed[btnDown] = false
+	g.in.pressed[btnOK] = true
+	s.updateEntityTable(g)
+	if s.target != order[s.focus] {
+		t.Fatal("keyboard opened wrong resident")
+	}
+}
+
+func TestEntityTableSortingAndCompleteRecords(t *testing.T) {
+	db := testgame.Load(t, nil)
+	if err := LoadFonts(db, gameFiles(t)); err != nil {
+		t.Fatal(err)
+	}
+	order := []string{"potter", "weaver", "smith", "helper", "visitor"}
+	p := &data.Planning{Entities: map[string]data.Entity{}, Activities: map[string]data.Activity{}, Attributes: map[string]data.Attribute{"secret": {Hidden: true}}}
+	for _, id := range order {
+		p.Entities[id] = data.Entity{Name: id}
+	}
+	for i := range 13 {
+		id := fmt.Sprintf("task%02d", i)
+		p.Activities[id] = data.Activity{Name: id, Assignee: "potter", Effort: 10}
+	}
+	db.Game.Planning = p
+	db.Game.Screens = map[string]*data.AuthorScreen{"roster": {Kind: "entities", View: data.PlanningView{Fullscreen: true, Order: order, Visible: "visible", Detail: "record", Fields: []data.PlanningField{{Key: "hours", Label: "Hours"}, {Key: "secret", Label: "Unavailable"}}}}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	for i, id := range order {
+		e := g.st.Planning.Entities[id]
+		e.Observations["visible"] = id != "visitor"
+		e.Attributes["secret"] = 100 - i
+	}
+	for id, n := range map[string]float64{"potter": 2, "weaver": 12, "smith": 12, "visitor": 100} {
+		g.st.Planning.Entities[id].Observations["hours"] = n
+	}
+	record := []string{}
+	for i := range 17 {
+		record = append(record, fmt.Sprintf("Recorded line %02d", i))
+	}
+	g.st.Planning.Entities["potter"].Observations["record"] = strings.Join(record, "\n")
+	before, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := newAuthorScreen(g, "roster", nil, nil)
+	header := s.entityTableHeaders(g)[1]
+	g.in = input{click: true, mouse: header.Min.Add(image.Pt(8, 8))}
+	for _, want := range [][]string{{"weaver", "smith", "potter", "helper"}, {"potter", "weaver", "smith", "helper"}, order[:4]} {
+		s.updateEntityTable(g)
+		if got := s.tableResidents(g); !slices.Equal(got, want) {
+			t.Fatalf("sort got %v want %v", got, want)
+		}
+		s.refresh(g)
+		ids, _, _ := s.entityTableLayout(g)
+		if !slices.Equal(ids, want) {
+			t.Fatal("layout ignores ordering", ids)
+		}
+	}
+	// A column cannot sort by a hidden attribute even if it has the same key.
+	g.in.mouse = s.entityTableHeaders(g)[2].Min.Add(image.Pt(8, 8))
+	s.updateEntityTable(g)
+	if got := s.tableResidents(g); !slices.Equal(got, order[:4]) {
+		t.Fatal("hidden data influenced order", got)
+	}
+	s.residentSort = 0
+	_, cells, _ := s.entityTableLayout(g)
+	g.in.mouse = cells[0].Min.Add(image.Pt(8, 8))
+	s.updateEntityTable(g)
+	_, _, detail := s.entityTableLayout(g)
+	var notes, tasks []string
+	_, _, pages := s.entityDetailPage(g, float64(detail.Dx()), float64(detail.Dy()))
+	g.in.mouse = entityDetailButtons(detail)[1].Min.Add(image.Pt(8, 8))
+	for range pages {
+		a, b, _ := s.entityDetailPage(g, float64(detail.Dx()), float64(detail.Dy()))
+		tasks = append(tasks, a...)
+		notes = append(notes, b...)
+		s.updateEntityTable(g)
+	}
+	if !slices.Equal(notes, record) || len(tasks) != 13 || !strings.Contains(tasks[12], "task12") {
+		t.Fatalf("content truncated: %v %v", tasks, notes)
+	}
+	if s.residentPage != pages-1 || s.residentTop != 0 || s.target != "potter" {
+		t.Fatal("paging moved selection or overflowed")
+	}
+	s.refresh(g)
+	if s.residentPage != pages-1 {
+		t.Fatal("refresh lost record page")
+	}
+	g.in = input{wheel: 1, mouse: detail.Min.Add(image.Pt(8, 8))}
+	for range 30 {
+		s.updateEntityTable(g)
+	}
+	if s.residentPage != 0 || s.residentTop != 0 {
+		t.Fatal("detail wheel scrolled table or underflowed")
+	}
+	_, rows, _ := s.entityTableLayout(g)
+	g.in = input{click: true, mouse: rows[1].Min.Add(image.Pt(8, 8))}
+	s.updateEntityTable(g)
+	if s.target != "weaver" || s.residentPage != 0 {
+		t.Fatal("new resident kept old page")
+	}
+	after, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("browsing changed saved state")
+	}
+}
+
+func TestCalendarNamesClosuresAndSixWeekLayout(t *testing.T) {
+	p := &data.Planning{Calendar: data.Calendar{Start: "2030-08-01", End: "2030-11-30", WeekdaysOff: []int{0, 6}, Closed: []string{"2030-09-02"}}, Schedule: []data.Reservation{{Date: "2030-09-03", Event: "private_event"}}}
+	v := data.PlanningView{WeekStart: 1, Markers: []data.TimelineMarker{{Date: "2030-09-02", Label: "Fair"}, {Date: "2030-09-02", Label: "Fair"}, {Date: "2030-09-02", Label: "Delivery"}}}
+	cells := calendarCells(p, v, "2030-09-30", 0, 108, 1280, 494)
+	if len(cells) != 30 || cells[0].bounds.Min.X < 1000 || cells[29].bounds.Min.X != 20 || cells[29].bounds.Min.Y <= cells[22].bounds.Min.Y {
+		t.Fatalf("Sunday start / Monday end must occupy six weeks: %+v", cells)
+	}
+	if !cells[0].closed || !cells[1].closed || cells[2].closed || !slices.Equal(cells[1].labels, []string{"Fair", "Delivery"}) || !slices.Equal(cells[2].labels, []string{"1 events"}) {
+		t.Fatalf("closures or public names wrong: %+v", cells[:3])
+	}
+	for i, cell := range cells {
+		if cell.bounds.Max.Y > 602 || cell.bounds.Dy() < 72 {
+			t.Fatalf("cell cannot fit date and three 15px lines: %v", cell)
+		}
+		for _, other := range cells[:i] {
+			if cell.bounds.Overlaps(other.bounds) {
+				t.Fatal("overlapping cells")
+			}
+		}
+	}
+	v.WeekStart = 0
+	if calendarCells(p, v, "2030-09-01", 0, 108, 1280, 494)[0].bounds.Min.X != 20 {
+		t.Fatal("default Sunday column changed")
+	}
+}
+
+func TestCalendarBrowsePreservesDateAndRefresh(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{Calendar: data.Calendar{Start: "2030-08-31", End: "2030-11-30", Phases: []string{"morning"}}}
+	db.Game.Screens = map[string]*data.AuthorScreen{"calendar": {Kind: "calendar", View: data.PlanningView{Fullscreen: true, WeekStart: 1}}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "calendar", nil, nil)
+	g.in.click = true
+	width, _ := g.screen()
+	g.in.mouse = calendarButtons(width)[1].Min.Add(image.Pt(20, 20))
+	s.updateSurface(g)
+	if s.calendarMonth != "2030-09-01" {
+		t.Fatalf("month-end rolled over incorrectly: %s", s.calendarMonth)
+	}
+	s.refresh(g)
+	if s.calendarMonth != "2030-09-01" {
+		t.Fatal("refresh reset browsing")
+	}
+	for range 6 {
+		s.updateSurface(g)
+	}
+	if s.calendarMonth != "2030-11-01" {
+		t.Fatal("past calendar end")
+	}
+	g.in.mouse = calendarButtons(width)[0].Min.Add(image.Pt(20, 20))
+	for range 6 {
+		s.updateSurface(g)
+	}
+	if s.calendarMonth != "2030-08-01" || g.st.Planning.Date != "2030-08-31" || g.st.Planning.Phase != 0 {
+		t.Fatal("browsing changed state or escaped calendar range")
+	}
+	if newAuthorScreen(g, "calendar", nil, nil).calendarDate(g) != "2030-08-31" {
+		t.Fatal("reopening must show current month")
+	}
+}
+
+func TestTimelineForecast(t *testing.T) {
+	date := func(s string) time.Time {
+		d, err := time.Parse(time.DateOnly, s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return d
+	}
+	start, end := date("2030-08-01"), date("2030-08-31")
+	for _, tc := range []struct {
+		name, today string
+		report      float64
+		cancelled   bool
+		label       string
+		position    float64
+		text        string
+	}{
+		{"half", "2030-08-11", .5, false, "Reported pace", 20.0 / 31, "Reported pace 2030-08-20"},
+		{"beyond", "2030-08-11", .1, false, "Reported pace", 1, "Reported pace > 2030-08-31"},
+		{"tiny", "2030-08-11", math.SmallestNonzeroFloat64, false, "Reported pace", 1, "Reported pace > 2030-08-31"},
+		{"zero", "2030-08-11", 0, false, "Reported pace", -1, ""},
+		{"complete", "2030-08-11", 1, false, "Reported pace", -1, ""},
+		{"cancelled", "2030-08-11", .5, true, "Reported pace", -1, ""},
+		{"start", "2030-08-01", .5, false, "Reported pace", -1, ""},
+		{"future", "2030-07-31", .5, false, "Reported pace", -1, ""},
+		{"disabled", "2030-08-11", .5, false, "", -1, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, text := timelineForecast(start, date(tc.today), start, end, tc.report, tc.cancelled, tc.label)
+			if got != tc.position || text != tc.text {
+				t.Fatalf("got %v %q", got, text)
+			}
+		})
+	}
+}
+
+func TestTimelineAssigneeFilter(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{
+		Calendar:   data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}},
+		Entities:   map[string]data.Entity{"a": {Name: "Weaver"}, "b": {Name: "Potter"}},
+		Activities: map[string]data.Activity{"cloth": {Name: "Cloth", Effort: 10, Assignee: "a"}, "vase": {Name: "Vase", Effort: 10, Assignee: "b"}},
+	}
+	v := data.PlanningView{Fullscreen: true, FilterLabel: "All residents", Order: []string{"b", "a"}, Visible: "shown", Rows: []data.TimelineRow{{Label: "Crafts", Items: []data.TimelineItem{{Activity: "cloth"}, {Activity: "vase"}}}}}
+	db.Game.Screens = map[string]*data.AuthorScreen{"tasks": {Kind: "timeline", View: v}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	for _, id := range v.Order {
+		g.st.Planning.Entities[id].Observations["shown"] = true
+	}
+	s := newAuthorScreen(g, "tasks", nil, nil)
+	before, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := s.timelineLanes(g)
+	click := func(button int) {
+		t.Helper()
+		g.in.click = true
+		g.in.mouse = timelineFilterBounds(0, 108)[button].Min.Add(image.Pt(4, 4))
+		s.updateSurface(g)
+		g.in.click = false
+	}
+	click(2)
+	if s.timelineAssignee != "b" {
+		t.Fatal("authored order ignored")
+	}
+	lanes := s.timelineLanes(g)
+	if !lanes[0].dimmed || lanes[1].dimmed {
+		t.Fatal("wrong assignment emphasized")
+	}
+	for i, lane := range lanes {
+		if lane.bounds != original[i].bounds || lane.reported != original[i].reported {
+			t.Fatal("filter changed timeline geometry or report")
+		}
+	}
+	s.refresh(g)
+	if s.timelineAssignee != "b" {
+		t.Fatal("refresh lost filter")
+	}
+	click(2)
+	if s.timelineAssignee != "a" {
+		t.Fatal("cannot select second resident")
+	}
+	click(2)
+	if s.timelineAssignee != "" {
+		t.Fatal("cannot cycle to all")
+	}
+	click(0)
+	if s.timelineAssignee != "a" {
+		t.Fatal("reverse cycle broken")
+	}
+	click(1)
+	if s.timelineAssignee != "" {
+		t.Fatal("name did not reset")
+	}
+	after, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) || len(g.stack) != 0 {
+		t.Fatal("viewing changed game state")
+	}
+	click(2)
+	a := g.st.Planning.Activities["cloth"]
+	a.Assignee = "b"
+	g.st.Planning.Activities["cloth"] = a
+	if s.timelineLanes(g)[0].dimmed {
+		t.Fatal("reassignment not reflected")
+	}
+	delete(g.st.Planning.Entities["b"].Observations, "shown")
+	if got := s.timelineAssignees(g); !slices.Equal(got, []string{"", "a"}) || s.timelineAssignee != "" {
+		t.Fatal("hidden resident retained", got)
+	}
+	if newAuthorScreen(g, "tasks", nil, nil).timelineAssignee != "" {
+		t.Fatal("reopening retained filter")
+	}
+	db.Game.Screens["tasks"].View.FilterLabel = ""
+	if s.timelineAssignees(g) != nil {
+		t.Fatal("selector enabled without label")
+	}
+}
+
+func TestTimelineRowResidentsUsePublicIdentity(t *testing.T) {
+	db := testgame.Load(t, nil)
+	p := &data.Planning{Calendar: data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}}, Entities: map[string]data.Entity{}, Activities: map[string]data.Activity{}}
+	row := data.TimelineRow{Label: "Workshop", Text: "Public summary"}
+	for i, id := range []string{"a", "b", "c", "d", "a"} {
+		p.Entities[id] = data.Entity{Name: "Resident " + id}
+		task := strconv.Itoa(i)
+		p.Activities[task] = data.Activity{Name: task, Effort: 10, Assignee: id}
+		row.Items = append(row.Items, data.TimelineItem{Activity: task})
+	}
+	db.Game.Planning = p
+	v := data.PlanningView{Fullscreen: true, Portrait: "icon", Visible: "shown", Rows: []data.TimelineRow{row}}
+	db.Game.Screens = map[string]*data.AuthorScreen{"tasks": {Kind: "timeline", View: v}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	p.Attributes = map[string]data.Attribute{"icon": {Hidden: true}}
+	for id, e := range g.st.Planning.Entities {
+		e.Observations["shown"] = true
+		e.Observations["icon"] = "neutral-" + id
+		e.Attributes["icon"] = "private-expression"
+	}
+	s := newAuthorScreen(g, "tasks", nil, nil)
+	groups, _, _ := s.groupedTimeline(g, 0, 108, 1280, 494)
+	if len(groups[0].residents) != 4 || groups[0].residents[0].portrait != "neutral-a" {
+		t.Fatalf("deduplication or public portrait: %+v", groups[0].residents)
+	}
+	g.in.mouse = image.Pt(200, 170)
+	if got := s.timelineDescription(g); !strings.Contains(got, "Resident d") || !strings.Contains(got, "Public summary") {
+		t.Fatal("overflow identities and row text must remain readable", got)
+	}
+	g.st.Planning.Entities["b"].Observations["shown"] = false
+	a := g.st.Planning.Activities["2"]
+	a.Cancelled = true
+	g.st.Planning.Activities["2"] = a
+	a = g.st.Planning.Activities["3"]
+	a.Assignee = "a"
+	g.st.Planning.Activities["3"] = a
+	groups, _, _ = s.groupedTimeline(g, 0, 108, 1280, 494)
+	if len(groups[0].residents) != 1 || groups[0].residents[0].id != "a" {
+		t.Fatal("hidden, cancelled or reassigned residents retained", groups[0].residents)
+	}
+	delete(g.st.Planning.Entities["a"].Observations, "icon")
+	groups, _, _ = s.groupedTimeline(g, 0, 108, 1280, 494)
+	if groups[0].residents[0].portrait != "" {
+		t.Fatal("missing observation fell back to hidden portrait")
+	}
+	db.Game.Screens["tasks"].View.Portrait = ""
+	groups, _, _ = s.groupedTimeline(g, 0, 108, 1280, 494)
+	if len(groups[0].residents) != 0 {
+		t.Fatal("portrait omission must preserve text-only rows")
+	}
+}
+
+func TestTimelineInlineExpansionPreservesCalendarAndState(t *testing.T) {
+	db := testgame.Load(t, nil)
+	p := &data.Planning{
+		Calendar:   data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}},
+		Entities:   map[string]data.Entity{"maker": {Name: "Weaver"}},
+		Activities: map[string]data.Activity{},
+	}
+	v := data.PlanningView{Fullscreen: true}
+	for i := range 12 {
+		row := data.TimelineRow{Label: "Craft " + strconv.Itoa(i)}
+		for j := range 3 {
+			id := strconv.Itoa(i*3 + j)
+			p.Activities[id] = data.Activity{Name: "Item " + id, Assignee: "maker", Effort: 10}
+			row.Items = append(row.Items, data.TimelineItem{Activity: id, Screen: "detail", Text: "Planned {2*5} units"})
+		}
+		v.Rows = append(v.Rows, row)
+	}
+	db.Game.Planning = p
+	db.Game.Screens = map[string]*data.AuthorScreen{
+		"tasks":  {Kind: "timeline", View: v},
+		"detail": {Title: "Details", Entries: []data.ScreenEntry{{Label: "Inspect"}}},
+	}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	a := g.st.Planning.Activities["33"]
+	a.Progress, a.Observed = 9, 2
+	g.st.Planning.Activities["33"] = a
+	before, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := newAuthorScreen(g, "tasks", nil, nil)
+	groups, ax, aw := s.groupedTimeline(g, 0, 108, 1280, 494)
+	g.in.click, g.in.mouse = true, image.Pt(24, int(groups[11].y)+4)
+	s.updateSurface(g)
+	expanded, bx, bw := s.groupedTimeline(g, 0, 108, 1280, 494)
+	if s.timelineTop != 11 || len(expanded) != 1 || !expanded[0].expanded || ax != bx || aw != bw {
+		t.Fatal("last group was not revealed on the fixed axis")
+	}
+	for i, lane := range expanded[0].lanes {
+		if lane.labelBounds.Max.Y > 602 || lane.labelBounds.Dy() != 64 || lane.text != "Planned 10 units" {
+			t.Fatal("detail clipped", lane.labelBounds, lane.text)
+		}
+		for _, other := range expanded[0].lanes[:i] {
+			if lane.labelBounds.Overlaps(other.labelBounds) {
+				t.Fatal("overlapping labels")
+			}
+		}
+	}
+	if title, text := timelineLaneSummary(g, expanded[0].lanes[0]); title != "Item 33" || text != "Weaver · 20%" {
+		t.Fatal("summary leaked hidden work", title, text)
+	}
+	s.refresh(g)
+	if s.timelineExpanded != "33" {
+		t.Fatal("refresh lost expansion")
+	}
+	g.in.mouse = expanded[0].lanes[1].labelBounds.Min
+	if description := s.timelineDescription(g); !strings.Contains(description, "Item 34") || !strings.Contains(description, "Planned 10 units") {
+		t.Fatal("hover did not reveal full activity detail")
+	}
+	s.updateSurface(g)
+	if len(g.stack) != 1 {
+		t.Fatal("label did not open authored detail")
+	}
+	g.in.mouse = image.Pt(24, int(expanded[0].y)+4)
+	s.updateSurface(g)
+	groups, _, _ = s.groupedTimeline(g, 0, 108, 1280, 494)
+	if s.timelineExpanded != "" || s.timelineTop != 0 || len(groups) != 12 {
+		t.Fatal("collapse did not restore overview")
+	}
+	after, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("browsing mutated planning")
+	}
+}
+
+func TestCalendarDateLinksPreserveState(t *testing.T) {
+	for _, parameterized := range []bool{false, true} {
+		t.Run(strconv.FormatBool(parameterized), func(t *testing.T) {
+			db := testgame.Load(t, nil)
+			db.Game.Planning = &data.Planning{Calendar: data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}}}
+			view := data.PlanningView{Fullscreen: true, Markers: []data.TimelineMarker{{Date: "2030-08-02", Label: "Fair", Screen: "detail", Args: map[string]data.Expr{"day": data.MustExpr(`"2030-08-02"`)}}}}
+			db.Game.Screens = map[string]*data.AuthorScreen{
+				"calendar": {Kind: "calendar", View: view}, "timeline": {Kind: "timeline", View: view},
+				"detail": {Params: map[string]string{"day": "date"}, Title: "Day {arg.day}", Entries: []data.ScreenEntry{{Label: "Read schedule"}}},
+			}
+			expectedTitle := "Day 2030-08-02"
+			if !parameterized {
+				db.Game.Screens["detail"].Params = nil
+				db.Game.Screens["detail"].Title = "Day detail"
+				view.Markers[0].Args = nil
+				expectedTitle = "Day detail"
+			}
+			g := &Game{db: db, st: testgame.State(db, 1)}
+			before, err := json.Marshal(g.st)
+			if err != nil {
+				t.Fatal(err)
+			}
+			w, h := g.screen()
+			calendar := newAuthorScreen(g, "calendar", nil, nil)
+			g.stack = []scene{calendar}
+			cells := calendarCells(db.Game.Planning, view, calendar.calendarDate(g), 0, 108, w, h-226)
+			g.in.click = true
+			g.in.mouse = cells[1].bounds.Min.Add(image.Pt(8, 8))
+			if !calendar.updateCalendar(g) || len(g.stack) != 2 {
+				t.Fatal("date did not open detail")
+			}
+			if detail, ok := g.stack[len(g.stack)-1].(*authorScreen); !ok || detail.title != expectedTitle {
+				t.Fatalf("date binding: %#v", detail)
+			}
+			g.pop()
+			g.in.mouse = cells[0].bounds.Min.Add(image.Pt(8, 8))
+			if calendar.updateCalendar(g) || len(g.stack) != 1 {
+				t.Fatal("unlinked date opened screen")
+			}
+			timeline := newAuthorScreen(g, "timeline", nil, nil)
+			g.in.mouse = image.Pt(int(260+(w-280)*1.5/122), 150)
+			if timeline.timelinePointerDate(g) != "2030-08-02" || !timeline.updateGroupedTimeline(g) || len(g.stack) != 2 {
+				t.Fatal("band did not open same date")
+			}
+			if detail, ok := g.stack[len(g.stack)-1].(*authorScreen); !ok || detail.title != expectedTitle {
+				t.Fatalf("date binding: %#v", detail)
+			}
+			g.pop()
+			for _, pt := range []image.Point{image.Pt(259, 150), image.Pt(int(w)-20, 150), image.Pt(270, 164)} {
+				g.in.mouse = pt
+				if timeline.timelinePointerDate(g) != "" {
+					t.Fatal("outside band maps to date")
+				}
+			}
+			after, err := json.Marshal(g.st)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(before) != string(after) {
+				t.Fatal("browsing changed saved state")
+			}
+		})
+	}
+}
+
+func TestTimelineCandidatePaneBrowsing(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{
+		Calendar:   data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}},
+		Activities: map[string]data.Activity{"kiln": {Name: "Kiln", Effort: 10, From: "2030-08-01", To: "2030-11-30"}},
+	}
+	db.Game.Screens = map[string]*data.AuthorScreen{
+		"tasks": {Kind: "timeline", View: data.PlanningView{Fullscreen: true, Rows: []data.TimelineRow{{Label: "Pottery", Items: []data.TimelineItem{{Activity: "kiln", Screen: "pick"}}}}}},
+		"pick":  {View: data.PlanningView{Portrait: "icon"}},
+	}
+	for range 12 {
+		db.Game.Screens["pick"].Entries = append(db.Game.Screens["pick"].Entries, data.ScreenEntry{Label: "Maker"})
+	}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	parent := newAuthorScreen(g, "tasks", nil, nil)
+	g.stack = []scene{parent}
+	before, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lane := parent.timelineLanes(g)[0]
+	g.in = input{click: true, mouse: lane.bounds.Min}
+	if !parent.updateGroupedTimeline(g) || len(g.stack) != 2 {
+		t.Fatal("lane did not open picker")
+	}
+	child, ok := g.stack[1].(*authorScreen)
+	if !ok {
+		t.Fatal("candidate screen missing")
+	}
+	if child.timelineContext != parent || child.timelineActivity != "kiln" {
+		t.Fatal("lost selected activity")
+	}
+	child.list.sel = 11
+	child.list.scroll()
+	child = child.refreshed(g)
+	g.stack[1] = child
+	r := child.list.rowRect(11)
+	if r.Min.X < 920 || r.Max.X > 1280 || r.Max.Y > 688 || child.list.top == 0 {
+		t.Fatal("pane rows inaccessible", r)
+	}
+	groups, ax, aw := parent.groupedTimeline(g, 0, 108, 920, 494)
+	if len(groups) != 1 || groups[0].lanes[0].bounds.Min.X != int(ax) || groups[0].lanes[0].bounds.Max.X > int(ax+aw)+1 {
+		t.Fatal("date range clipped")
+	}
+	g.in = input{click: true, mouse: image.Pt(r.Min.X+20, r.Min.Y+20)}
+	chosen, cancel := child.list.update(g)
+	if !chosen || cancel || child.list.sel != 11 {
+		t.Fatal("last candidate not selectable")
+	}
+	g.in = input{rclick: true}
+	child.update(g)
+	if len(g.stack) != 1 || g.stack[0] != parent {
+		t.Fatal("cancel lost timeline")
+	}
+	after, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("browsing changed planning")
+	}
+	if newAuthorScreen(g, "pick", nil, nil).timelineContext != nil {
+		t.Fatal("standalone picker changed")
+	}
+	db.Game.Screens["pick"].Params = map[string]string{"task": "activity"}
+	db.Game.Screens["pick"].Title = "Choose for {arg.task}"
+	db.Game.Screens["tasks"].View.Rows[0].Items[0].Args = map[string]data.Expr{"task": data.MustExpr(`"kiln"`)}
+	g.in = input{click: true, mouse: lane.bounds.Min}
+	if !parent.updateGroupedTimeline(g) {
+		t.Fatal("bound lane did not open")
+	}
+	bound, ok := g.stack[len(g.stack)-1].(*authorScreen)
+	if !ok {
+		t.Fatal("bound candidate screen missing")
+	}
+	if bound.title != "Choose for kiln" || bound.args["task"] != "kiln" || bound.timelineContext != parent {
+		t.Fatal("lane lost bound destination or context")
+	}
+}
+
+func TestTimelineZoomBrowsing(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{
+		Calendar: data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}},
+		Activities: map[string]data.Activity{
+			"kiln":  {Name: "Kiln", Effort: 100, From: "2030-08-01", To: "2030-11-30"},
+			"early": {Name: "Clay", Effort: 10, From: "2030-08-01", To: "2030-08-02"},
+			"late":  {Name: "Glaze", Effort: 10, From: "2030-11-29", To: "2030-11-30"},
+		},
+	}
+	db.Game.Screens = map[string]*data.AuthorScreen{
+		"tasks": {Kind: "timeline", View: data.PlanningView{Fullscreen: true, Rows: []data.TimelineRow{
+			{Label: "Pottery", Items: []data.TimelineItem{{Activity: "kiln", Screen: "pick"}, {Activity: "early"}, {Activity: "late"}}},
+		}}},
+		"pick": {View: data.PlanningView{Portrait: "icon"}, Entries: []data.ScreenEntry{{Label: "Maker"}}},
+	}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	g.st.Planning.Date = "2030-09-15"
+	g.st.Planning.Activities["kiln"].Observed = 50
+	s := newAuthorScreen(g, "tasks", nil, nil)
+	g.stack = []scene{s}
+	before, err := json.Marshal(g.st.Planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	overview := s.timelineLanes(g)
+	g.in.pressed[btnMapZoomIn] = true
+	s.updateSurface(g)
+	g.in.pressed[btnMapZoomIn] = false
+	start, end, err := s.timelineRange(g)
+	if err != nil || start.Format(time.DateOnly) != "2030-09-05" || end.Format(time.DateOnly) != "2030-09-25" {
+		t.Fatalf("wrong focus window: %s %s %v", start, end, err)
+	}
+	lanes := s.timelineLanes(g)
+	if lanes[0].left >= 0 || lanes[0].right <= 1 || lanes[0].reported != .5 || lanes[0].expected != overview[0].expected {
+		t.Fatalf("zoom distorted progress: %+v", lanes[0])
+	}
+	if lanes[0].bounds.Min.X != 260 || lanes[0].bounds.Max.X != 1260 || !lanes[1].bounds.Empty() || !lanes[2].bounds.Empty() {
+		t.Fatalf("off-window hit areas: %+v", lanes)
+	}
+	g.in.mouse = image.Pt(260, 140)
+	if s.timelinePointerDate(g) != "2030-09-05" {
+		t.Fatal("left date does not match zoom")
+	}
+	g.in.mouse = image.Pt(1259, 140)
+	if s.timelinePointerDate(g) != "2030-09-25" {
+		t.Fatal("right date does not match zoom")
+	}
+	s.refresh(g)
+	if !s.timelineZoom {
+		t.Fatal("refresh lost zoom")
+	}
+	// Candidate browsing and cancel retain the same parent range.
+	g.in.pressed[btnOK] = true
+	s.updateSurface(g)
+	g.in.pressed[btnOK] = false
+	child, ok := g.stack[len(g.stack)-1].(*authorScreen)
+	if !ok || child == s || child.timelineContext != s {
+		t.Fatal("focused lane did not open candidates")
+	}
+	g.in.pressed[btnCancel] = true
+	child.update(g)
+	g.in.pressed[btnCancel] = false
+	if g.stack[len(g.stack)-1] != s || !s.timelineZoom {
+		t.Fatal("cancel lost zoom")
+	}
+	g.in.click = true
+	g.in.mouse = timelineZoomBounds(0, 108, 1280)[1].Min.Add(image.Pt(4, 4))
+	if s.timelinePointerDate(g) != "" {
+		t.Fatal("zoom button is a date target")
+	}
+	s.updateSurface(g)
+	g.in.click = false
+	if s.timelineZoom {
+		t.Fatal("minus button failed")
+	}
+	restored := s.timelineLanes(g)
+	for i, lane := range restored {
+		if lane.bounds != overview[i].bounds {
+			t.Fatal("overview geometry not restored")
+		}
+	}
+	after, err := json.Marshal(g.st.Planning)
+	if err != nil || string(after) != string(before) {
+		t.Fatal("browsing mutated planning")
+	}
+	// Boundary windows retain 21 days, and a short calendar stays complete.
+	s.timelineZoom = true
+	for _, tc := range []struct{ today, start, end string }{
+		{"2030-08-01", "2030-08-01", "2030-08-21"},
+		{"2030-11-30", "2030-11-10", "2030-11-30"},
+	} {
+		g.st.Planning.Date = tc.today
+		start, end, err = s.timelineRange(g)
+		if err != nil || start.Format(time.DateOnly) != tc.start || end.Format(time.DateOnly) != tc.end {
+			t.Fatalf("boundary: %s %s", start, end)
+		}
+	}
+	db.Game.Planning.Calendar.End = "2030-08-05"
+	start, end, err = s.timelineRange(g)
+	if err != nil || start.Format(time.DateOnly) != "2030-08-01" || end.Format(time.DateOnly) != "2030-08-05" {
+		t.Fatal("short calendar expanded")
+	}
+}
+
+func TestPortraitTransform(t *testing.T) {
+	bounds := image.Rect(0, 0, 1000, 2000)
+	for _, face := range []image.Rectangle{image.Rect(400, 80, 600, 280), image.Rect(50, 900, 350, 1200), image.Rect(800, 0, 1000, 200)} {
+		s, x, y := portraitTransform(bounds, face, 20, 40, 300, 60)
+		if math.Abs(float64(face.Min.Y)*s+y-40) > 0.001 || math.Abs(float64(face.Dy())*s-60) > 0.001 || math.Abs(float64(face.Min.X+face.Dx()/2)*s+x-170) > 0.001 {
+			t.Fatalf("face %v: %v %v %v", face, s, x, y)
+		}
+	}
+	for _, face := range []image.Rectangle{{}, image.Rect(2000, 0, 2100, 100)} {
+		s, _, _ := portraitTransform(bounds, face, 0, 0, 300, 60)
+		if s <= 0 || math.IsNaN(s) {
+			t.Fatal("invalid fallback")
+		}
+	}
+}
+
+func TestEnsembleRegionsKeepFacesAboveSummary(t *testing.T) {
+	for _, h := range []float64{120, 160, 240, 400} {
+		face, summary := ensembleHeights(h, 2)
+		if face < 0 || summary < min(48, h-28) || math.Abs(face+summary+28-h) > 0.001 {
+			t.Fatalf("height %v: face %v summary %v", h, face, summary)
+		}
+		face, summary = ensembleHeights(h, 0)
+		if face != h-28 || summary != 0 {
+			t.Fatal("empty summary reserves portrait space")
+		}
+	}
+}
+
+func TestSelectedDateLinkAndScheduleLabels(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{Calendar: data.Calendar{Start: "2030-08-01", End: "2030-08-04", Phases: []string{"morning"}, WeekdaysOff: []int{0, 6}}, Schedule: []data.Reservation{{Label: "Gathering", Weekdays: []int{5, 6}, HideClosed: true}}}
+	view := data.PlanningView{DateLink: &data.ScreenCall{Screen: "detail", Args: map[string]data.Expr{"day": data.MustExpr("selected.date"), "offset": data.MustExpr("selected.offset"), "closed": data.MustExpr("selected.closed"), "summary": data.MustExpr("selected.summary"), "weekday": data.MustExpr("selected.weekday")}}}
+	db.Game.Screens = map[string]*data.AuthorScreen{"calendar": {Kind: "calendar", View: view}, "detail": {Params: map[string]string{"day": "date", "offset": "number", "closed": "bool", "summary": "string", "weekday": "number"}, Title: "{arg.day} / {arg.offset} / {arg.closed} / {arg.summary} / {arg.weekday}"}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "calendar", nil, nil)
+	before, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ date, title string }{
+		{"2030-08-02", "2030-08-02 / 1 / false / Gathering / 5"},
+		{"2030-08-03", "2030-08-03 / 2 / true /  / 6"},
+		{"2030-08-04", "2030-08-04 / 3 / true /  / 0"},
+	} {
+		g.stack = []scene{s}
+		if !s.openCalendarDate(g, tc.date) {
+			t.Fatal(tc.date)
+		}
+		detail, ok := g.stack[1].(*authorScreen)
+		if !ok || detail.title != tc.title {
+			t.Fatalf("%s: %#v", tc.date, detail)
+		}
+	}
+	for _, date := range []string{"2030-07-31", "2030-08-05", "bad"} {
+		if s.openCalendarDate(g, date) {
+			t.Fatal("out-of-range date opened", date)
+		}
+	}
+	// Date offsets, unlike time.Duration, must cover the full ISO year range.
+	db.Game.Planning.Calendar.Start = "0001-01-01"
+	g.stack = []scene{s}
+	if !s.openCalendarDate(g, "2030-08-02") {
+		t.Fatal("wide range did not open")
+	}
+	wide, ok := g.stack[1].(*authorScreen)
+	if !ok || !strings.Contains(wide.title, " / 741290 / ") {
+		t.Fatalf("wide date offset: %#v", wide)
+	}
+	db.Game.Planning.Calendar.Start = "2030-08-01"
+	cells := calendarCells(db.Game.Planning, view, "2030-08-01", 0, 0, 1000, 600)
+	if !slices.Equal(cells[1].labels, []string{"Gathering"}) || slices.Contains(cells[2].labels, "Gathering") {
+		t.Fatal(cells[:3])
+	}
+	after, err := json.Marshal(g.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("browsing changed state")
+	}
+}
+
+// On a light surface the timeline is pale with filled bars: the planned span
+// is not a dark color, the shortfall is orange and the report deep blue; the
+// dark palette of other surfaces stays as it was.
+func TestTimelineLightPalette(t *testing.T) {
+	dark := timelinePalette(false, color.NRGBA{230, 230, 230, 255}, color.NRGBA{150, 150, 150, 255}, color.NRGBA{90, 160, 255, 255})
+	if dark.inside != (color.NRGBA{30, 34, 40, 255}) || dark.holiday != (color.NRGBA{48, 53, 62, 255}) || dark.lateFill {
+		t.Fatal("the dark timeline changed", dark)
+	}
+	light := timelinePalette(true, color.NRGBA{40, 49, 58, 255}, color.NRGBA{91, 104, 116, 255}, color.NRGBA{37, 105, 109, 255})
+	luma := func(c color.NRGBA) int { return (299*int(c.R) + 587*int(c.G) + 114*int(c.B)) / 1000 }
+	if luma(light.inside) < 180 || luma(light.holiday) < 180 || luma(light.line) < 160 {
+		t.Fatal("the light timeline is dark inside", light)
+	}
+	if !light.lateFill || light.late.R <= light.late.B || luma(light.reported) > 120 {
+		t.Fatal("the shortfall is not orange or the report not deep", light)
+	}
+
+	fsys := wldWorldFiles(t, `planning:
+  calendar: {start: '2030-08-01', end: '2030-11-30', phases: [morning], weekdays_off: [0, 6]}
+  entities: {a: {name: Weaver}}
+  activities:
+    cloth: {name: Cloth, effort: 10, assignee: a, from: '2030-08-01'}
+    vase: {name: Vase, effort: 10, assignee: a, from: '2030-08-01'}
+screens:
+  tasks:
+    title: Tasks
+    kind: timeline
+    view: {fullscreen: true, light: true, rows: [{label: Crafts, items: [{activity: cloth}, {activity: vase}]}]}
+`, nil)
+	fsys["game.yaml"].Data = []byte(strings.Replace(string(fsys["game.yaml"].Data), "schema_version: 4", "schema_version: 10", 1))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "camp"})
+	wldFrames(t, g, 30)
+	g.st.Planning.Date = "2030-09-10"
+	c := g.st.Planning.Activities["vase"]
+	c.Cancelled = true
+	g.st.Planning.Activities["vase"] = c
+	g.openScreen("tasks", func() {})
+	wldFrames(t, g, 4)
+	s := top(t, g)
+	if lanes := s.timelineLanes(g); len(lanes) != 2 || lanes[0].reported >= lanes[0].expected {
+		t.Fatal("the fixture has no shortfall", lanes)
+	}
+	g.Draw(covScreen())
+}

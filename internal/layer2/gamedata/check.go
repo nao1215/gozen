@@ -25,7 +25,7 @@ import (
 // The names an expression may use, by where it is written.
 var (
 	// FieldNames are known to the conditions of events, locations and the field music.
-	FieldNames = append([]string{"last_battle", "flag", "var", "gold", "party", "reserve", "monster", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose", "bestiary"}, CampaignNames...)
+	FieldNames = append([]string{"planning", "entity", "activity", "entities", "activities", "period_value", "calendar_days", "calendar_workdays", "calendar_shift", "last_battle", "flag", "var", "gold", "party", "reserve", "monster", "item", "actor", "location", "rand", "chance", "steps", "members", "pos", "pages", "spot", "chose", "bestiary"}, CampaignNames...)
 	// BattleNames are known in battle: the AI, the troop events, the battle music.
 	BattleNames = append(slices.Clone(FieldNames), "turn", "self", "allies", "foes", "enemies", "result", "phase", "boss")
 	// EffectNames are known to the formulas of skills and items: a is the user, b the target.
@@ -41,6 +41,7 @@ var (
 )
 
 type checker struct {
+	params        map[string]string
 	stateNames    map[string]StateName
 	pictureErrors map[string]error
 	db            *DB
@@ -83,6 +84,14 @@ func (c *checker) expr(where string, e Expr, names []string) {
 func (c *checker) exprIn(where string, e Expr, names []string, over map[string]*vtype) {
 	if !e.Set() {
 		return
+	}
+	if c.params != nil && over["arg"] == nil {
+		names = append(slices.Clone(names), "arg")
+		over = maps.Clone(over)
+		if over == nil {
+			over = map[string]*vtype{}
+		}
+		over["arg"] = c.argumentType()
 	}
 	for _, n := range e.Names() {
 		if !slices.Contains(names, n) {
@@ -129,6 +138,9 @@ func (c *checker) functionValues(where string, e Expr, names []string, over map[
 }
 
 func (c *checker) ref(where, kind, id string, ok bool) {
+	if kind == "event" && id != "" && ok && len(c.db.Events[id].Params) > 0 {
+		c.errorf(diag.Shape, where, "event %q requires arguments; use a parameterless wrapper here", id)
+	}
 	if id != "" && !ok {
 		c.errorf(diag.UnknownReference, where, "unknown %s %q", kind, id)
 	}
@@ -278,6 +290,7 @@ func (db *DB) Check() []error {
 	}
 	c.requiredDefinitions()
 	c.declarations()
+	c.planning()
 	c.stateDeclarations()
 	c.campaign()
 	c.callLoops()
@@ -320,6 +333,42 @@ func (db *DB) Check() []error {
 	if _, err := catalog.Words(g.Language); err != nil {
 		c.errorf(diag.UnknownReference, "game.yaml language", "%q is not a built-in language (use %s or %s)", g.Language, catalog.English, catalog.Japanese)
 	}
+	if g.UI.Chrome != nil {
+		c.needsVersion("game.yaml ui.chrome", "ui.chrome", SchemaVersion10)
+	}
+	if g.UI.Tones != nil {
+		c.needsVersion("game.yaml ui.tones", "ui.tones", SchemaVersion10)
+	}
+	if g.UI.Light != nil {
+		c.needsVersion("game.yaml ui.light", "ui.light", SchemaVersion10)
+	}
+	if b := g.UI.ProfileBook; b != nil {
+		c.needsVersion("game.yaml ui.profile_book", "ui.profile_book", SchemaVersion10)
+		if b.Layout != "" && b.Layout != "list" && b.Layout != "grid" {
+			c.errorf(diag.OutOfRange, "game.yaml ui.profile_book.layout", "want list or grid, got %q", b.Layout)
+		}
+	}
+	if m := g.UI.Material; m != nil {
+		c.needsVersion("game.yaml ui.material", "ui.material", SchemaVersion10)
+		if !validMaterialKind(m.Kind) {
+			c.errorf(diag.OutOfRange, "game.yaml ui.material.kind", "want mica, acrylic, glass or opaque")
+		}
+		for role, kind := range m.Surfaces {
+			if !materialRole(role) || !validMaterialKind(kind) {
+				c.errorf(diag.OutOfRange, "game.yaml ui.material.surfaces", "want base, card, control, chart, message or choice with a valid material kind")
+			}
+		}
+		if len(m.Wallpaper) != 0 && len(m.Wallpaper) != 3 {
+			c.errorf(diag.OutOfRange, "game.yaml ui.material.wallpaper", "want three gradient colors")
+		}
+		if m.Refraction < 0 || m.Refraction > 32 || m.WallpaperStrength < 0 || m.WallpaperStrength > 1 {
+			c.errorf(diag.OutOfRange, "game.yaml ui.material", "refraction must be in [0,32]; wallpaper_strength in [0,1]")
+		}
+		if m.Blur < 0 || m.Blur > 64 || m.Opacity < 0 || m.Opacity > 1 || m.Border < 0 || m.Border > 1 || m.Shadow < 0 || m.Shadow > 1 {
+			c.errorf(diag.OutOfRange, "game.yaml ui.material", "blur must be in [0,64]; opacity, border and shadow in [0,1]")
+		}
+	}
+	c.novelWindow(&g.UI)
 	if g.UI.Balloon != 0 {
 		c.needsVersion("game.yaml ui.balloon", "ui.balloon", SchemaVersion3)
 		if g.UI.Balloon < 0.01 || g.UI.Balloon > 0.2 {
@@ -976,7 +1025,15 @@ func (db *DB) Check() []error {
 		_, ok := db.Locations[e.Location]
 		c.ref(w+".location", "location", e.Location, ok)
 		c.expr(w+".when", e.When, FieldNames)
+		if e.Params != nil {
+			if e.Trigger != "" {
+				c.errorf(diag.Shape, w+".trigger", "triggered events cannot require arguments; use a parameterless wrapper")
+			}
+		}
+		c.parameters(w+".params", e.Params)
+		c.params = e.Params
 		c.commands(w+".do", e.Do, FieldNames)
+		c.params = nil
 	}
 	for _, id := range db.Ordered("shops") {
 		s := db.Shops[id]
@@ -1037,6 +1094,7 @@ func (db *DB) Check() []error {
 			}
 		}
 	}
+	c.speechDefinitions()
 	c.faceWarnings()
 	c.iconWarnings()
 	c.campaignWarnings()
@@ -1418,26 +1476,54 @@ func (c *checker) aiTarget(w string, t Target) {
 
 // say checks one line of dialogue.
 func (c *checker) say(w string, s *Say, names []string) {
+	c.speechLine(w, s)
 	db := c.db
-	if a, ok := db.Actors[s.Who]; ok {
+	if s.Instant {
+		c.needsVersion(w+".instant", "instant lines", SchemaVersion10)
+	}
+	if s.Ensemble != "" {
+		c.needsVersion(w+".ensemble", "ensemble lines", SchemaVersion10)
+		screen := db.Game.Screens[s.Ensemble]
+		if screen == nil || screen.Kind != "ensemble" {
+			c.errorf(diag.UnknownReference, w+".ensemble", "expected an ensemble screen")
+		}
+	}
+	if s.Who.Expr.Set() {
+		c.needsVersion(w+".who", "expression speakers", SchemaVersion10)
+		c.argumentExpression(w+".who.expr", s.Who.Expr, "actor", names, nil)
+	} else if a, ok := db.Actors[s.Who.ID]; ok {
 		switch {
 		case s.Face == "":
 		case a.Puppet != "": // a speaker with an animated portrait uses the portrait's expressions (unreadable portraits are reported by the party check)
-			if names, ok := c.puppetFaces(s.Who, a); ok && !slices.Contains(names, s.Face) {
-				c.errorf(diag.UnknownReference, w, "%s has no face %q (%s)", s.Who, s.Face, a.Puppet)
+			if names, ok := c.puppetFaces(s.Who.ID, a); ok && !slices.Contains(names, s.Face) {
+				c.errorf(diag.UnknownReference, w, "%s has no face %q (%s)", s.Who.ID, s.Face, a.Puppet)
 			}
 		case a.Faces != "" && !db.Exists("assets/"+a.Faces+"/"+s.Face+".png"):
-			c.errorf(diag.UnknownReference, w, "%s has no face %q", s.Who, s.Face)
+			c.errorf(diag.UnknownReference, w, "%s has no face %q", s.Who.ID, s.Face)
 		}
 	} else if s.Face != "" { // for a speaker who is not a party member, face is an image path
 		c.file(w+".face", s.Face)
 	}
-	c.text(w+".who", s.Who, names)
+	c.text(w+".who", s.Who.ID, names)
 	c.voice(w, s)
 	if s.Side != "" && s.Side != "left" && s.Side != "right" {
 		c.errorf(diag.NotAWord, w+".side", "want left or right")
 	}
 	c.text(w, s.Text, names)
+	if s.FaceExpr.Set() {
+		c.needsVersion(w+".face_expr", "portrait expressions", SchemaVersion10)
+		if s.Face != "" {
+			c.errorf(diag.Shape, w, "use face or face_expr, not both")
+		}
+		c.argumentExpression(w+".face_expr", s.FaceExpr, "string", names, nil)
+	}
+	if s.TextExpr.Set() {
+		c.needsVersion(w+".text_expr", "source text expressions", SchemaVersion10)
+		if s.Text != "" {
+			c.errorf(diag.Shape, w, "use text or text_expr, not both")
+		}
+		c.argumentExpression(w+".text_expr", s.TextExpr, "string", names, nil)
+	}
 }
 
 func (c *checker) commands(where string, cmds []Command, names []string) {
@@ -1478,8 +1564,8 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			for j := range cmd.Say.Instead {
 				ww := fmt.Sprintf("%s.say.instead[%d]", w, j)
 				alt := &cmd.Say.Instead[j]
-				if _, ok := db.Actors[alt.Who]; !ok {
-					c.errorf(diag.UnknownReference, ww+".who", "%q is not an actor (instead is spoken by another party member)", alt.Who)
+				if _, ok := db.Actors[alt.Who.ID]; !ok && !alt.Who.Expr.Set() {
+					c.errorf(diag.UnknownReference, ww+".who", "%q is not an actor (instead is spoken by another party member)", alt.Who.ID)
 				}
 				if len(alt.Instead) > 0 {
 					c.errorf(diag.Shape, ww, "instead in instead")
@@ -1509,6 +1595,13 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 					}
 					ids[o.ID] = true
 				}
+				if o.LabelExpr.Set() {
+					c.needsVersion(ww+".label_expr", "choice source expressions", SchemaVersion10)
+					if o.Label != "" {
+						c.errorf(diag.Shape, ww, "use label or label_expr, not both")
+					}
+					c.argumentExpression(ww+".label_expr", o.LabelExpr, "string", names, nil)
+				}
 				c.text(ww+".label", o.Label, names)
 				c.expr(ww+".when", o.When, names)
 				c.commands(ww+".do", o.Do, names)
@@ -1521,10 +1614,49 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			c.text(w+".respond.from", cmd.Respond.From, names)
 		case "notice":
 			c.text(w+".notice", cmd.Notice, names)
+		case "call_view":
+			cam, share := cmd.CallView.Camera, cmd.CallView.Share
+			if (cam == nil) == (share == nil) {
+				c.errorf(diag.Shape, w+".call_view", "call_view needs camera or share (one of them)")
+				break
+			}
+			var who string
+			field := ".call_view.camera.who"
+			if cam != nil {
+				who = cam.Who
+			} else {
+				who, field = share.Who, ".call_view.share.who"
+				c.picture(w+".call_view.share.picture", Picture{File: share.Picture})
+			}
+			_, actor := db.Actors[who]
+			entity := false
+			if db.Game.Planning != nil {
+				_, entity = db.Game.Planning.Entities[who]
+			}
+			if !actor && !entity {
+				c.errorf(diag.UnknownReference, w+field, "%q is not a participant or an actor", who)
+			}
+		case "message":
+			if _, ok := db.Actors[cmd.Message.Who.ID]; !ok && !cmd.Message.Who.Expr.Set() {
+				c.errorf(diag.UnknownReference, w+".message.who", "%q is not an actor", cmd.Message.Who.ID)
+			}
+			if cmd.Message.Who.Expr.Set() {
+				c.argumentExpression(w+".message.who.expr", cmd.Message.Who.Expr, "actor", names, nil)
+			}
+			if cmd.Message.Text == "" {
+				c.errorf(diag.Shape, w+".message.text", "a message needs text")
+			}
+			if ev := db.Events[cmd.Message.Event]; ev == nil || len(ev.Params) > 0 {
+				c.errorf(diag.UnknownReference, w+".message.event", "a message needs a parameterless event that asks for the decision")
+			}
+			c.text(w+".message.text", cmd.Message.Text, names)
+			c.text(w+".message.tag", cmd.Message.Tag, names)
 		case "if":
 			c.expr(w+".if", cmd.If, names)
 			c.commands(w+".then", cmd.Then, names)
 			c.commands(w+".else", cmd.Else, names)
+		case "plan":
+			c.planCommand(w+".plan", cmd.Plan, nil)
 		case "set":
 			c.assignments(w+".set", cmd.SetV, names)
 		case "give", "take":
@@ -1669,9 +1801,14 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 		case "shop":
 			_, ok := db.Shops[cmd.Shop]
 			c.ref(w+".shop", "shop", cmd.Shop, ok)
+		case "checkpoint":
+			c.needsVersion(w+".checkpoint", "checkpoint", SchemaVersion10)
+			_, ok := db.Events[cmd.Checkpoint]
+			c.ref(w+".checkpoint", "event", cmd.Checkpoint, ok)
+		case "restore_checkpoint":
+			c.needsVersion(w+".restore_checkpoint", "restore_checkpoint", SchemaVersion10)
 		case "call":
-			_, ok := db.Events[cmd.Call]
-			c.ref(w+".call", "event", cmd.Call, ok)
+			c.eventCall(w+".call", cmd.Call, names)
 		case "stone_suggest", "stone_apply", "stone_choose", "stone_wearer", "stone_decline":
 			name := cmd.StoneSuggest + cmd.StoneApply + cmd.StoneChoose + cmd.StoneWearer + cmd.StoneDecline
 			if !varName.MatchString(name) {
@@ -1706,24 +1843,25 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			_, ok = db.Skills[cmd.Learn.Skill]
 			c.ref(w+".learn.skill", "skill", cmd.Learn.Skill, ok)
 		case "open":
-			if db.Game.NoMenus() && slices.Contains([]string{"save", "load", "title"}, cmd.Open) {
-				c.errorf(diag.Shape, w+".open", "open: %s does not go with menus: none in game.yaml (there is no title, and the play is kept in the autosave alone)", cmd.Open)
-			} else if cmd.Open == "profiles" && len(db.Profiles) == 0 {
+			c.screenCall(w+".open", cmd.Open, names)
+			if db.Game.NoMenus() && slices.Contains([]string{"save", "load", "title"}, cmd.Open.Screen) {
+				c.errorf(diag.Shape, w+".open", "open: %s does not go with menus: none in game.yaml (there is no title, and the play is kept in the autosave alone)", cmd.Open.Screen)
+			} else if cmd.Open.Screen == "profiles" && len(db.Profiles) == 0 {
 				c.errorf(diag.UnknownReference, w+".open", "open: profiles needs profiles in data/ (the character book is empty)")
-			} else if cmd.Open == "bestiary" && len(db.Enemies) == 0 {
+			} else if cmd.Open.Screen == "bestiary" && len(db.Enemies) == 0 {
 				c.errorf(diag.UnknownReference, w+".open", "open: bestiary needs enemies in data/ (the monster book is empty)")
-			} else if cmd.Open == "ranch" && db.Breeding == nil {
+			} else if cmd.Open.Screen == "ranch" && db.Breeding == nil {
 				c.errorf(diag.MonsterRules, w+".open", "open: ranch needs breeding in data/")
-			} else if cmd.Open == "streams" && db.Streams == nil {
+			} else if cmd.Open.Screen == "streams" && db.Streams == nil {
 				c.errorf(diag.UnknownReference, w+".open", "open: streams needs streams in game.yaml")
-			} else if cmd.Open == "streams" {
+			} else if cmd.Open.Screen == "streams" {
 				c.needsVersion(w+".open", "open: streams", SchemaVersion9)
-			} else if cmd.Open == "ranch" {
+			} else if cmd.Open.Screen == "ranch" {
 				c.needsVersion(w+".open", "open: ranch", SchemaVersion6)
-			} else if db.Game.Screens[cmd.Open] != nil {
+			} else if db.Game.Screens[cmd.Open.Screen] != nil {
 				c.needsVersion2(w+".open", "a declared screen")
-			} else if !slices.Contains(OpenScreens, cmd.Open) {
-				c.errorf(diag.NotAWord, w+".open", "want one of %s (or a screen declared in game.yaml screens), not %q", strings.Join(OpenScreens, ", "), cmd.Open)
+			} else if !slices.Contains(OpenScreens, cmd.Open.Screen) {
+				c.errorf(diag.NotAWord, w+".open", "want one of %s (or a screen declared in game.yaml screens), not %q", strings.Join(OpenScreens, ", "), cmd.Open.Screen)
 			}
 		case "dive":
 			if l, ok := db.Locations[cmd.Dive]; !ok {
@@ -1741,6 +1879,11 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			c.effectCue(w+".effect", cmd.Effect)
 		case "order", "end_turn", "game_over":
 			c.campaignCommand(w, verb, cmd)
+		case "carry":
+			c.needsVersion(w+".carry", "carried values", SchemaVersion10)
+			if len(c.db.Game.Carry) == 0 {
+				c.errorf(diag.Shape, w+".carry", "carry needs game.yaml carry to name the values")
+			}
 		case "mood", "end", "clear", "save", "done", "ran", "cross", "reach", "clash":
 			// Commands without extra reference or expression checks are listed explicitly too, so missed registrations are detected.
 		default:
@@ -1914,6 +2057,9 @@ var (
 
 // typeOf is the type of name n among names (the names usable at that location).
 func typeOf(n string, names []string) *vtype {
+	if n == "selected" && slices.Contains(names, n) {
+		return objType("selected date", map[string]*vtype{"date": tStr, "offset": tNum, "weekday": tNum, "closed": tBool, "summary": tStr}, nil)
+	}
 	battle := slices.Contains(names, "turn")
 	switch n {
 	case "flag":
@@ -1959,7 +2105,7 @@ func typeOf(n string, names []string) *vtype {
 		return tBool
 	case "roamers":
 		return &vtype{kind: vList, desc: "roamers", elem: objType("a roamer", map[string]*vtype{"kind": tNum, "name": tStr, "troop": tStr, "x": tNum, "y": tNum}, nil)}
-	case "rand", "chance", "pages", "next_to":
+	case "rand", "chance", "pages", "next_to", "period_value", "calendar_days", "calendar_workdays", "calendar_shift":
 		return tFunc
 	case "region":
 		return &vtype{kind: vDyn, desc: "region", elem: tRegion, key: "region"}
@@ -1973,6 +2119,12 @@ func typeOf(n string, names []string) *vtype {
 		return &vtype{kind: vDyn, desc: "orders", elem: tOrder, key: "order"}
 	case "general":
 		return tGeneral
+	case "activities":
+		return &vtype{kind: vList, desc: "activities", elem: objType("activity", map[string]*vtype{"name": tStr, "parent": tStr, "split": tBool, "active": tBool, "id": tStr, "from": tStr, "to": tStr, "planned_effort": tNum, "deadline": tStr, "progress": tNum, "observed": tNum, "effort": tNum, "assignee": tStr, "completed": tBool, "cancelled": tBool}, activityAttribute)}
+	case "entities":
+		return &vtype{kind: vList, desc: "entities", elem: tAny}
+	case "planning", "entity", "activity":
+		return tAny
 	case "campaign":
 		return tCampaign
 	case "pos":
@@ -2272,4 +2424,24 @@ func (c *checker) combatActor(where, id string) {
 	if a := c.db.Actors[id]; a != nil && a.Class == "" {
 		c.errorf(diag.Shape, where, "actor %q needs a class to join or fight", id)
 	}
+}
+
+func activityAttribute(c *checker, name string) (*vtype, string) {
+	if p := c.db.Game.Planning; p != nil {
+		if a, ok := p.ActivityAttributes[name]; ok {
+			switch a.Type {
+			case "number":
+				return tNum, ""
+			case "bool":
+				return tBool, ""
+			case "string":
+				return tStr, ""
+			}
+		}
+	}
+	return nil, ""
+}
+
+func validMaterialKind(kind string) bool {
+	return kind == "mica" || kind == "acrylic" || kind == "glass" || kind == "opaque"
 }

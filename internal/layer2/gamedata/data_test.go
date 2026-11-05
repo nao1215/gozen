@@ -86,7 +86,7 @@ events:
       - image: ""
 `, "assets/x.png": "x"})
 	cmds := db.Events["e"].Do
-	if cmds[0].Say.Text != "plain" || cmds[1].Say.Who != "scout" {
+	if cmds[0].Say.Text != "plain" || cmds[1].Say.Who.ID != "scout" {
 		t.Errorf("say shorthand: %+v %+v", cmds[0].Say, cmds[1].Say)
 	}
 	if m := cmds[2].Music; m.Song != "field" || m.Mood != "calm" {

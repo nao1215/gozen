@@ -145,20 +145,15 @@ func TestBoxAndApply(t *testing.T) {
 		t.Fatal("box")
 	}
 	img := pattern()
-	byRects := Apply(img, []image.Rectangle{image.Rect(1, 1, 7, 7)}, 4)
-	byShapes := ApplyShapes(img, []Shape{Box(image.Rect(1, 1, 7, 7))}, 4)
-	if !reflect.DeepEqual(byRects.Pix, byShapes.Pix) {
-		t.Fatal("Apply and ApplyShapes differ")
-	}
 	// Zero and negative blocks use the default.
-	if !reflect.DeepEqual(ApplyShapes(img, []Shape{b}, 0).Pix, ApplyShapes(img, []Shape{b}, DefaultBlock(24, 24)).Pix) {
+	if !reflect.DeepEqual(ApplyShapesAt(img, []Shape{b}, 0, image.Point{}).Pix, ApplyShapesAt(img, []Shape{b}, DefaultBlock(24, 24), image.Point{}).Pix) {
 		t.Fatal("block 0 is not the default")
 	}
-	if !reflect.DeepEqual(ApplyShapesAt(img, []Shape{b}, -2, image.Point{}).Pix, ApplyShapes(img, []Shape{b}, 0).Pix) {
+	if !reflect.DeepEqual(ApplyShapesAt(img, []Shape{b}, -2, image.Point{}).Pix, ApplyShapesAt(img, []Shape{b}, 0, image.Point{}).Pix) {
 		t.Fatal("ApplyShapesAt with no offset differs from ApplyShapes")
 	}
 	// With no shapes the copy equals the input and is a new image.
-	none := ApplyShapes(img, nil, 4)
+	none := ApplyShapesAt(img, nil, 4, image.Point{})
 	if !reflect.DeepEqual(none.Pix, img.Pix) || &none.Pix[0] == &img.Pix[0] {
 		t.Fatal("copy")
 	}
@@ -526,7 +521,7 @@ func TestReferencesRules(t *testing.T) {
 // A block of 1 averages each pixel with itself: the picture is unchanged (the documented way to leave it).
 func TestBlockOneLeavesThePixelsUnchanged(t *testing.T) {
 	img := pattern()
-	out := ApplyShapes(img, []Shape{Box(img.Bounds())}, 1)
+	out := ApplyShapesAt(img, []Shape{Box(img.Bounds())}, 1, image.Point{})
 	if !reflect.DeepEqual(out.Pix, img.Pix) {
 		t.Fatal("block 1 changed the picture")
 	}

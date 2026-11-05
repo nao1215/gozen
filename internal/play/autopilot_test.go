@@ -162,7 +162,7 @@ func TestAutopilotHelpers(t *testing.T) {
 		t.Fatal("hasHeal does not look into branches")
 	}
 	db.Events["rest"] = &data.Event{Do: heal}
-	if !hasHeal(db, []data.Command{{Call: "rest"}}) {
+	if !hasHeal(db, []data.Command{{Call: data.EventCall{Event: "rest"}}}) {
 		t.Fatal("hasHeal does not follow a call")
 	}
 	if shopOf(g, "rope") != "store" || shopOf(g, "key") != "" {

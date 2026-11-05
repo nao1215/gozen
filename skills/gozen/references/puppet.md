@@ -47,7 +47,7 @@ motion:
 
 ## Idle motion
 
-Give a part `idle: {amplitude, period, phase}` to move it at full HP while the body is still. `amplitude` is pixels of the base picture, `period` seconds (default 2) and `phase` degrees. It pauses during a freeze reaction. Zero `motion.breath.depth` and `motion.sway` when you want a still body.
+Give a part `idle: {amplitude, period, phase}` to move it at full HP while the body is still. `amplitude` is pixels of the base picture, `period` seconds (default 2) and `phase` degrees. It pauses during a freeze reaction. An omitted motion block keeps its default motion, so for a still body write `breath: {depth: 0}`, `sway: {angle: 0, shift: 0}` and `tilt: {angle: 0}`; deleting the lines brings the default sway back.
 
 <!-- verify: parse a puppet file fragment, not game data -->
 ```yaml

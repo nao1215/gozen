@@ -340,8 +340,8 @@ func (db *DB) SourceTexts() []SourceText {
 				add(cw+".respond.from", c.Respond.From)
 			}
 			if c.Say != nil {
-				if _, actor := db.Actors[c.Say.Who]; !actor {
-					add(cw+".say.who", c.Say.Who)
+				if _, actor := db.Actors[c.Say.Who.ID]; !actor && !c.Say.Who.Expr.Set() {
+					add(cw+".say.who", c.Say.Who.ID)
 				}
 				add(cw+".say", c.Say.Text)
 				for j, alt := range c.Say.Instead {

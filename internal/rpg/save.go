@@ -23,8 +23,9 @@ import (
 
 // saveFormatVersion is the save format version of the JSON wrapper and the state. It is managed separately from the YAML spec version.
 // Version 2 adds the cursor and the random bytes of a save made in the middle of an event and the state's chose (ADR 0025);
-// a reader takes 1 and 2.
-const saveFormatVersion = 2
+// version 3 adds typed root arguments and action fingerprints (ADR 0054).
+// A reader accepts versions 1 through 3.
+const saveFormatVersion = 3
 
 // oldestSaveFormat is the oldest save format version read.
 const oldestSaveFormat = 1
@@ -79,7 +80,21 @@ func (s *State) Save() ([]byte, error) {
 			}
 		}
 	}
-	b, err := json.Marshal(s)
+	if err := s.validatePlanning(); err != nil {
+		return nil, err
+	}
+	copyState := *s
+	if s.Planning != nil {
+		ps := *s.Planning
+		p := s.DB.Game.Planning
+		ps.Basis = &planningBasis{Start: p.Calendar.Start, End: p.Calendar.End, Efforts: map[string]float64{}, From: map[string]string{}}
+		for id, a := range p.Activities {
+			ps.Basis.Efforts[id] = a.Effort
+			ps.Basis.From[id] = a.From
+		}
+		copyState.Planning = &ps
+	}
+	b, err := json.Marshal(&copyState)
 	if err != nil {
 		return nil, err
 	}
@@ -139,6 +154,19 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 		}
 		if envelope.Cursor != nil && (v < 2 || !envelope.Cursor.valid()) {
 			return nil, errors.New(lang.T("カーソルの行またはイベントが不正"))
+		}
+		if envelope.Cursor != nil {
+			if err := envelope.Cursor.validateBindings(db, v); err != nil {
+				return nil, err
+			}
+		}
+		// Frontends restore PCG snapshots after parsing. Reject damaged bytes here,
+		// before a load can replace live state or fall back to another random stream.
+		// Absent bytes retain the legacy seed-based loading contract.
+		if len(envelope.Rand) > 0 {
+			if err := rand.NewPCG(1, 2).UnmarshalBinary(envelope.Rand); err != nil {
+				return nil, fmt.Errorf("save random state: %w", err)
+			}
 		}
 		report.SavedDataVersion = envelope.DataVersion
 		payload = envelope.State
@@ -251,6 +279,13 @@ func (s *State) bind() (*State, error) {
 	if err := s.validateStateNames(); err != nil {
 		return nil, err
 	}
+	if err := s.reconcilePlanning(); err != nil {
+		return nil, err
+	}
+	if err := s.validatePlanning(); err != nil {
+		return nil, err
+	}
+	s.initPlanning()
 	s.reconcileSave()
 	s.initStateNames()
 	if len(s.Party) == 0 && db.CombatEnabled() {
@@ -511,4 +546,63 @@ func (s *State) SaveFile(path string) (string, error) {
 		}
 	}
 	return "", savefile.Write(path, b)
+}
+
+// Checkpoint holds one retry point for event frontends. Save contains the ordinary
+// save envelope without another checkpoint, keeping repeated captures bounded.
+type Checkpoint struct {
+	Event string `json:"event"`
+	Save  []byte `json:"save"`
+}
+
+// KeepCheckpoint replaces the retry point only after state and PCG bytes validate.
+// Frontends supply their random source and an authored entry event, not runner frames.
+func (s *State) KeepCheckpoint(event string, rnd []byte) error {
+	if s.DB.Events[event] == nil {
+		return fmt.Errorf("checkpoint: unknown event %q", event)
+	}
+	p := rand.NewPCG(1, 2)
+	if err := p.UnmarshalBinary(rnd); err != nil {
+		return fmt.Errorf("checkpoint random state: %w", err)
+	}
+	snapshot := *s
+	snapshot.Checkpoint = nil
+	b, err := snapshot.Save()
+	if err != nil {
+		return err
+	}
+	b, err = WithRand(b, rnd)
+	if err != nil {
+		return err
+	}
+	s.Checkpoint = &Checkpoint{Event: event, Save: b}
+	return nil
+}
+
+// RetryCheckpoint returns an independent restored state. It leaves the current
+// state untouched on failure. It restores the random stream shared by the state
+// and frontend. Frontends start Event
+// from the retained Checkpoint and discard their old execution and presentation.
+func (s *State) RetryCheckpoint() (*State, *rand.PCG, error) {
+	c := s.Checkpoint
+	if c == nil {
+		return nil, nil, errors.New("no checkpoint has been recorded")
+	}
+	if s.DB.Events[c.Event] == nil {
+		return nil, nil, fmt.Errorf("checkpoint: unknown event %q", c.Event)
+	}
+	st, err := Parse(s.DB, c.Save, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("checkpoint: %w", err)
+	}
+	if st.Checkpoint != nil || st.Resume != nil {
+		return nil, nil, errors.New("checkpoint contains nested state or a cursor")
+	}
+	p := rand.NewPCG(1, 2)
+	if err := p.UnmarshalBinary(st.SavedRand); err != nil {
+		return nil, nil, fmt.Errorf("checkpoint random state: %w", err)
+	}
+	st.Checkpoint = &Checkpoint{Event: c.Event, Save: slices.Clone(c.Save)}
+	st.Rand = rand.New(p) //nolint:gosec // Restores deterministic gameplay.
+	return st, p, nil
 }

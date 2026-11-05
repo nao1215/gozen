@@ -106,7 +106,7 @@ func TestCustomVerbsAreReadWithTheirValues(t *testing.T) {
 	v2 := "schema_version: 2\nid: v\n" + testgame.Game + "verbs: {dance: sub, wave: sub}\n"
 	db := testgame.Load(t, map[string]string{"game.yaml": v2, "data/z.yaml": "events: {e: {do: [{dance: true}, {wave: true}]}}\n"})
 	for _, cmd := range db.Events["e"].Do {
-		if cmd.Call != "sub" {
+		if cmd.Call.Event != "sub" {
 			t.Fatal("command was not resolved to its event")
 		}
 	}

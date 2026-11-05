@@ -36,7 +36,7 @@ func TestRoutesAndPlace(t *testing.T) {
 		if st.Spot != c.want {
 			t.Errorf("from %s at %q: on %s, want %s", c.from, c.at, st.Spot, c.want)
 		}
-		if !atlas.Visited(db, st, "town", c.want) {
+		if !visited(db, st, "town", c.want) {
 			t.Errorf("%s is not marked visited", c.want)
 		}
 	}
@@ -109,4 +109,15 @@ func TestHideClosedChoices(t *testing.T) {
 			t.Fatalf("%s: reclosed point offered", activation)
 		}
 	}
+}
+
+// visited reports whether the party has been at a point of a map.
+func visited(db *data.DB, st *rpg.State, loc, point string) bool {
+	l := db.Locations[loc]
+	if l == nil || l.Map == nil {
+		return false
+	}
+	i := slices.Index(l.Map.PointIDs(), point)
+	m := st.Mapped[loc]
+	return i >= 0 && i < len(m) && m[i] != 0
 }

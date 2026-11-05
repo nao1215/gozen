@@ -1,0 +1,200 @@
+version: '1'
+suite:
+  name: Neutral workboard operations and persistence
+scenarios:
+- name: automatic held flow completion survives a falling condition and another process
+  steps:
+  - fixture:
+      file: flow-save.txt
+      content: |
+        gap 4
+        wait 20
+        do open: look_board
+        wait 8
+        pick Onward
+        wait 8
+        pick Onward
+        wait 8
+        pick Work
+        wait 8
+        pick Clear
+        wait 8
+        look
+        press x
+        wait 10
+        do open: save
+        wait 10
+        press z
+        wait 90
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/workboard" --start workshop --script flow-save.txt --save-dir saves --trace flow-save.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: flow-save.jsonl
+        contains: ['"on":"screen:rest_board"', '"reached":4']
+  - assert:
+      file:
+        path: saves/save1.json
+        json: {path: $.state.flows.day.reached, equals: 3}
+  - assert:
+      file:
+        path: saves/save1.json
+        json: {path: $.state.vars.worked, equals: 0}
+  - fixture:
+      file: flow-resume.txt
+      content: |
+        gap 4
+        wait 20
+        press z
+        wait 20
+        press z
+        wait 20
+        do open: act_board
+        wait 10
+        look
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/workboard" --script flow-resume.txt --save-dir saves --trace flow-resume.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: flow-resume.jsonl
+        contains: ['"on":"screen:rest_board"', '"reached":4']
+- name: guide focus drag refusal and message call preserve authored state
+  steps:
+  - fixture:
+      file: operations.txt
+      content: |
+        gap 4
+        wait 20
+        guides on
+        do open: look_board
+        wait 10
+        click 100 200
+        wait 8
+        look
+        pick Onward
+        wait 10
+        press x
+        wait 10
+        do open: desk
+        wait 10
+        drag 140 350 520 210
+        wait 8
+        snapshot
+        drag 140 200 520 210
+        wait 8
+        look
+        press x
+        wait 10
+        do call: notify
+        wait 10
+        pick Guide
+        wait 10
+        pick Review
+        wait 10
+        look
+        press z
+        wait 10
+        press z
+        wait 10
+        press x
+        wait 10
+        press x
+        wait 10
+        do open: save
+        wait 10
+        press z
+        wait 90
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/workboard" --start workshop --script operations.txt --save-dir saves --trace operations.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: operations.jsonl
+        contains: ['"t":"guide_done"', '"t":"screen_drop"', '"source":"bowl"', '"t":"message_open"', 'The bowl is ready.']
+  - assert:
+      file:
+        path: saves/save1.json
+        json: {path: $.state.vars.got, equals: bowl}
+  - assert:
+      file:
+        path: saves/save1.json
+        json: {path: $.state.vars.reviewed, equals: 1}
+  - fixture:
+      file: resume.txt
+      content: |
+        gap 4
+        wait 20
+        press z
+        wait 20
+        press z
+        wait 20
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/workboard" --script resume.txt --save-dir saves --trace resumed.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: resumed.jsonl
+        contains: ['"got":"bowl"', '"reviewed":1']
+- name: CPU profiling writes a profile and reports an invalid destination
+  steps:
+  - run:
+      command: env GOZEN_CPUPROFILE=cpu.pprof gozen version
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file: {path: cpu.pprof, exists: true}
+  - run:
+      command: env GOZEN_CPUPROFILE=missing/cpu.pprof gozen version
+  - assert:
+      exit_code: 0
+      stderr: {contains: 'CPU profile:'}
+- name: batch reports an invalid case and continues with the next one
+  steps:
+  # The game is copied under the work directory so the case names it by a relative
+  # path: an absolute path would put Windows backslashes unescaped into the JSON.
+  - fixture: {file: g/game.yaml, from: fixtures/workboard/game.yaml}
+  - fixture: {file: g/data/world.yaml, from: fixtures/workboard/data/world.yaml}
+  - fixture: {file: g/assets/emblem.png, from: fixtures/workboard/assets/emblem.png}
+  - fixture: {file: g/assets/faces.json, from: fixtures/workboard/assets/faces.json}
+  - fixture:
+      file: done.txt
+      content: |
+        wait 10
+        snapshot
+        quit
+  - fixture:
+      file: cases.jsonl
+      content: |
+        {"id":"bad","args":1}
+        {"id":"good","args":["g","--start","workshop","--script","done.txt","--trace","batch.jsonl"]}
+  - run:
+      command: gozen sim batch --cases cases.jsonl
+  - assert:
+      exit_code: 0
+      stdout: {contains: ['"id":"bad"', '"exit":2', '"id":"good"', '"exit":0']}
+      file: {path: batch.jsonl, contains: '"t":"end"'}
+- name: the office sample checks and plays its capture tour
+  steps:
+  - run:
+      command: gozen check "${specdir}/../../examples/office/game"
+  - assert:
+      exit_code: 0
+  - run:
+      command: gozen sim script "${specdir}/../../examples/office/game" --start office --script "${specdir}/../../scripts/capture-office.txt" --save-dir saves --trace office.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: office.jsonl
+        contains: ['"t":"screen_drop"', '"source":"payments"', '"t":"message_open"', 'It is a phone number field.', '"t":"screen_peek"']

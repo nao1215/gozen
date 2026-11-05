@@ -38,38 +38,39 @@ func fraction(fallback float64) numericContract {
 
 // The meaning of each item and the regression tests are in doc/numeric-presence.md.
 var numericContracts = map[reflect.Type]map[string]numericContract{
-	reflect.TypeFor[Game]():         {"max_party": positive(4)},
-	reflect.TypeFor[Screen]():       {"width": positive(1280), "height": positive(720)},
-	reflect.TypeFor[Class]():        {"sp": nonnegative(1), "start_sp": nonnegative(0), "max_level": positive(99)},
-	reflect.TypeFor[TreeNode]():     {"max": positive(10)},
-	reflect.TypeFor[Require]():      {"level": positive(1)},
-	reflect.TypeFor[Learning]():     {"level": positive(1)},
-	reflect.TypeFor[Actor]():        {"level": positive(1), "face_shade": fraction(0), "face_shade_top": fraction(0)},
-	reflect.TypeFor[Enemy]():        {"level": positive(1), "scale": positive(1), "image_height": fraction(0), "actions": nonnegative(1)},
-	reflect.TypeFor[Usage]():        {"hits": positive(1)},
-	reflect.TypeFor[ItemCount]():    {"count": nonnegative(1)},
-	reflect.TypeFor[Affect]():       {"turns": nonnegative(0)},
-	reflect.TypeFor[WaitCue]():      {"seconds": nonnegative(0)},
-	reflect.TypeFor[State]():        {"turns": nonnegative(0), "damage_rate": nonnegative(1), "restrict_chance": fraction(0)},
-	reflect.TypeFor[Effect]():       {"summon_max": positive(5)},
-	reflect.TypeFor[BattleCfg]():    {"tempo": positive(1), "auto_tempo": {fallback: 1, lower: 1, upper: math.Inf(1)}},
-	reflect.TypeFor[Picture]():      {"brightness": nonnegative(1)},
-	reflect.TypeFor[CG]():           {"brightness": nonnegative(1), "fade": nonnegative(0.25), "over_size": positive(0.55), "auto": nonnegative(0), "page": nonnegative(0)},
-	reflect.TypeFor[Dungeon]():      {"depth": positive(5), "darkness": fraction(0.5)},
-	reflect.TypeFor[DungeonLook]():  {"darkness": fraction(0)},
-	reflect.TypeFor[Generate]():     {"width": {lower: 9, upper: math.Inf(1)}, "height": {lower: 9, upper: math.Inf(1)}, "rooms": nonnegative(0), "loops": fraction(0.08)},
-	reflect.TypeFor[Tile]():         {"size": positive(0.6)},
-	reflect.TypeFor[Roamer]():       {"size": positive(0.8), "sight": positive(4), "far": nonnegative(0)},
-	reflect.TypeFor[Rule]():         {"weight": positive(1)},
-	reflect.TypeFor[TroopPick]():    {"weight": positive(1)},
-	reflect.TypeFor[UIStyle]():      {"backlog": nonnegative(300)},
-	reflect.TypeFor[Meter]():        {"max": positive(100)},
-	reflect.TypeFor[TitleFigure]():  {"bottom": nonnegative(1), "height": positive(0.95)},
-	reflect.TypeFor[CardBubble]():   {"count": nonnegative(4), "size": positive(3), "speed": positive(30), "rise": positive(50)},
-	reflect.TypeFor[Music]():        {"bars": positive(8), "beats_per_bar": positive(4)},
-	reflect.TypeFor[BattleFx]():     {"shake": nonnegative(1), "flash": nonnegative(1), "pop": nonnegative(1), "hitstop": nonnegative(1), "charge": nonnegative(1), "finish": nonnegative(1)},
-	reflect.TypeFor[BattleFxAuto](): {"hitstop": nonnegative(0), "charge": nonnegative(0), "finish": nonnegative(0), "win": nonnegative(0.4)},
-	reflect.TypeFor[SfxVary]():      {"pitch": fraction(0.03), "volume": fraction(0.1)},
+	reflect.TypeFor[MaterialStyle](): {"blur": {fallback: 14, upper: 64}, "opacity": fraction(.78), "border": fraction(.45), "shadow": fraction(.65)},
+	reflect.TypeFor[Game]():          {"max_party": positive(4)},
+	reflect.TypeFor[Screen]():        {"width": positive(1280), "height": positive(720)},
+	reflect.TypeFor[Class]():         {"sp": nonnegative(1), "start_sp": nonnegative(0), "max_level": positive(99)},
+	reflect.TypeFor[TreeNode]():      {"max": positive(10)},
+	reflect.TypeFor[Require]():       {"level": positive(1)},
+	reflect.TypeFor[Learning]():      {"level": positive(1)},
+	reflect.TypeFor[Actor]():         {"level": positive(1), "face_shade": fraction(0), "face_shade_top": fraction(0)},
+	reflect.TypeFor[Enemy]():         {"level": positive(1), "scale": positive(1), "image_height": fraction(0), "actions": nonnegative(1)},
+	reflect.TypeFor[Usage]():         {"hits": positive(1)},
+	reflect.TypeFor[ItemCount]():     {"count": nonnegative(1)},
+	reflect.TypeFor[Affect]():        {"turns": nonnegative(0)},
+	reflect.TypeFor[WaitCue]():       {"seconds": nonnegative(0)},
+	reflect.TypeFor[State]():         {"turns": nonnegative(0), "damage_rate": nonnegative(1), "restrict_chance": fraction(0)},
+	reflect.TypeFor[Effect]():        {"summon_max": positive(5)},
+	reflect.TypeFor[BattleCfg]():     {"tempo": positive(1), "auto_tempo": {fallback: 1, lower: 1, upper: math.Inf(1)}},
+	reflect.TypeFor[Picture]():       {"brightness": nonnegative(1)},
+	reflect.TypeFor[CG]():            {"brightness": nonnegative(1), "fade": nonnegative(0.25), "over_size": positive(0.55), "auto": nonnegative(0), "page": nonnegative(0)},
+	reflect.TypeFor[Dungeon]():       {"depth": positive(5), "darkness": fraction(0.5)},
+	reflect.TypeFor[DungeonLook]():   {"darkness": fraction(0)},
+	reflect.TypeFor[Generate]():      {"width": {lower: 9, upper: math.Inf(1)}, "height": {lower: 9, upper: math.Inf(1)}, "rooms": nonnegative(0), "loops": fraction(0.08)},
+	reflect.TypeFor[Tile]():          {"size": positive(0.6)},
+	reflect.TypeFor[Roamer]():        {"size": positive(0.8), "sight": positive(4), "far": nonnegative(0)},
+	reflect.TypeFor[Rule]():          {"weight": positive(1)},
+	reflect.TypeFor[TroopPick]():     {"weight": positive(1)},
+	reflect.TypeFor[UIStyle]():       {"backlog": nonnegative(300)},
+	reflect.TypeFor[Meter]():         {"max": positive(100)},
+	reflect.TypeFor[TitleFigure]():   {"bottom": nonnegative(1), "height": positive(0.95)},
+	reflect.TypeFor[CardBubble]():    {"count": nonnegative(4), "size": positive(3), "speed": positive(30), "rise": positive(50)},
+	reflect.TypeFor[Music]():         {"bars": positive(8), "beats_per_bar": positive(4)},
+	reflect.TypeFor[BattleFx]():      {"shake": nonnegative(1), "flash": nonnegative(1), "pop": nonnegative(1), "hitstop": nonnegative(1), "charge": nonnegative(1), "finish": nonnegative(1)},
+	reflect.TypeFor[BattleFxAuto]():  {"hitstop": nonnegative(0), "charge": nonnegative(0), "finish": nonnegative(0), "win": nonnegative(0.4)},
+	reflect.TypeFor[SfxVary]():       {"pitch": fraction(0.03), "volume": fraction(0.1)},
 }
 
 // walkNumberDefinitions follows the YAML tags. It also fills in omitted structs and does not create nil optional definitions.
@@ -96,11 +97,20 @@ func walkNumberDefinitions(v reflect.Value, raw any, where string, visit func(re
 		}
 		visit(v, m, where)
 		for _, field := range yamlFields(v.Type()) {
+			child := v.FieldByIndex(field.index)
+			// Empty optional containers have no definitions to visit. Avoid building
+			// diagnostic paths for the many unused alternatives of each command.
+			if (child.Kind() == reflect.Pointer || child.Kind() == reflect.Map || child.Kind() == reflect.Slice) && child.IsNil() {
+				continue
+			}
+			if (child.Kind() == reflect.Map || child.Kind() == reflect.Slice) && child.Len() == 0 {
+				continue
+			}
 			if field.inline {
-				walkNumberDefinitions(v.FieldByIndex(field.index), raw, where, visit)
+				walkNumberDefinitions(child, raw, where, visit)
 			} else {
 				entry, _ := numberEntry(m, field.name)
-				walkNumberDefinitions(v.FieldByIndex(field.index), entry, numberPath(where, field.name), visit)
+				walkNumberDefinitions(child, entry, numberPath(where, field.name), visit)
 			}
 		}
 	case reflect.Map:
@@ -149,7 +159,7 @@ func yamlFields(t reflect.Type) []yamlField {
 	var fs []yamlField
 	for field := range t.Fields() {
 		tag, ok := field.Tag.Lookup("yaml")
-		if !ok || tag == "-" {
+		if !ok || tag == "-" || !numberContainer(field.Type) {
 			continue
 		}
 		name, options, _ := strings.Cut(tag, ",")
@@ -157,6 +167,15 @@ func yamlFields(t reflect.Type) []yamlField {
 	}
 	yamlFieldsOf.Store(t, fs)
 	return fs
+}
+
+// numberContainer excludes scalar leaves: their numeric contracts are handled
+// by visit on the containing struct. Expr and Color own their scalar decoding.
+func numberContainer(t reflect.Type) bool {
+	for t.Kind() == reflect.Pointer || t.Kind() == reflect.Map || t.Kind() == reflect.Slice || t.Kind() == reflect.Array {
+		t = t.Elem()
+	}
+	return t.Kind() == reflect.Struct && t != reflect.TypeFor[Expr]() && t != reflect.TypeFor[Color]()
 }
 
 // contractField is a field of a type in numericContracts that has a contract.
@@ -312,6 +331,9 @@ func (c *checker) numericValues(into any, where string) {
 		}
 		if v.Type() == reflect.TypeFor[UIStyle]() {
 			if style, ok := reflect.TypeAssert[*UIStyle](v.Addr()); ok {
+				if style.FaceShape != "" && style.FaceShape != "round" && style.FaceShape != "square" {
+					c.errorf(diag.Shape, w+".face_shape", "face_shape must be round, square or empty")
+				}
 				for file, scale := range style.StageScale {
 					if scale == 0 {
 						c.errorf(diag.OutOfRange, w+".stage_scale."+file, "want a positive number, got 0")

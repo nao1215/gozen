@@ -16,6 +16,12 @@ import (
 
 // State is a game in progress.
 type State struct {
+	// Checkpoint is the latest authored retry point, retained in manual saves.
+	Checkpoint *Checkpoint `json:"checkpoint,omitempty"`
+
+	// Planning is simulation progress, shared by event and presentation consumers.
+	Planning *PlanningState `json:"planning,omitempty"`
+
 	// LastBattle is the saved outcome before recovery or rewards. Battle runners write it; expressions read it.
 	LastBattle *BattleOutcome `json:"last_battle,omitempty"`
 	// Reactions stores per-speaker interpreter memory; event execution owns its contents.
@@ -50,6 +56,10 @@ type State struct {
 	Roamers []Roamer `json:"roamers,omitempty"`
 	// Chose is the option last taken at each choice with an id (chose.<id>; ADR 0025).
 	Chose map[string]string `json:"chose,omitempty"`
+	// Flows is how far each flow of screens has come (game.yaml flows).
+	Flows map[string]FlowProgress `json:"flows,omitempty"`
+	// Inbox holds the chat messages not yet opened, oldest first (message command).
+	Inbox []InboxMessage `json:"inbox,omitempty"`
 	// RecruitSeed and RecruitDraws keep capture and birth draws separate from
 	// battle, encounter and story randomness. Both are saved for replay.
 	RecruitSeed  uint64 `json:"recruit_seed,omitempty"`
@@ -74,6 +84,9 @@ type State struct {
 	SavedRand []byte `json:"-"`
 
 	stateNames map[string]data.StateName
+	// reading memoizes the planning values made for expressions while the state
+	// is only read (Reading); nil otherwise.
+	reading *planningRead
 }
 
 // BattleOutcome stores participant IDs and final HP for outcome callbacks, even after
@@ -142,6 +155,7 @@ func New(db *data.DB, rng *rand.Rand) *State {
 		RecruitSeed: collectionSeed(db.Game.ID),
 	}
 	s.initStateNames()
+	s.initPlanning()
 	st := db.Game.Start
 	for _, id := range st.Party {
 		s.Join(id)
@@ -565,6 +579,8 @@ func (e fieldEnv) Lookup(name string) (any, bool) {
 		return data.CampaignEnv(s.DB, s.Campaign()).Lookup(name)
 	}
 	switch name {
+	case "planning", "entity", "activity", "entities", "activities", "period_value", "calendar_days", "calendar_workdays", "calendar_shift":
+		return s.planningLookup(name)
 	case "last_battle":
 		return battleOutcomeView{s.LastBattle}, true
 	case "flag":
@@ -949,4 +965,25 @@ func (s *State) Take(id string, n int) {
 		}
 		a.clamp()
 	}
+}
+
+// FlowProgress is a flow's progress: Reached is the first step not finished,
+// Key the flow's restart value it was made under.
+// Entered are the steps whose enter event has run under Key.
+// InboxMessage is a chat message waiting to be opened: the actor, the text and
+// the event that asks for the decision when it is opened.
+type InboxMessage struct {
+	Who   string `json:"who"`
+	Text  string `json:"text"`
+	Event string `json:"event"`
+	Tag   string `json:"tag,omitempty"`
+}
+
+// InboxLimit bounds the unopened messages; the oldest fall away first.
+const InboxLimit = 50
+
+type FlowProgress struct {
+	Reached int    `json:"reached"`
+	Key     string `json:"key,omitempty"`
+	Entered []int  `json:"entered,omitempty"`
 }

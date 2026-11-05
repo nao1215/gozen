@@ -20,8 +20,14 @@ var webPage []byte
 // The runtime must carry the wasm_exec.js from the same Go build. The player is served
 // gzipped (gozen-player.wasm.gz) and the game's files made smaller (shrinkWeb): the page
 // and the player undo the gzip themselves, so any static host serves the site.
-func Web(src, dst, bundle, version string) error {
-	return cli.Publish(dst, []string{src, bundle}, func(stage string) error {
+// reuse, when not empty, is an earlier web export of the game: a file whose content has
+// not changed since is taken from it instead of being converted again.
+func Web(src, dst, bundle, version, reuse string) error {
+	earlier, err := readEarlier(reuse)
+	if err != nil {
+		return err
+	}
+	return cli.Publish(dst, []string{src, bundle, reuse}, func(stage string) error {
 		r, err := prepareRuntime(bundle, stage, "js-wasm", version, "gozen-player.wasm")
 		if err != nil {
 			return err
@@ -58,7 +64,7 @@ func Web(src, dst, bundle, version string) error {
 		if err != nil {
 			return err
 		}
-		manifest, err := shrinkWeb(filepath.Join(stage, "game"), files, voiceDir(db))
+		manifest, err := shrinkWeb(filepath.Join(stage, "game"), files, voiceDir(db), earlier)
 		if err != nil {
 			return err
 		}

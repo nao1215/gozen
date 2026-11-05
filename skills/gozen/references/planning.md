@@ -1,0 +1,33 @@
+# Planning, workspaces and management games
+
+Start with the author-facing guides: `website/content/planning.md` (calendar,
+entities, activities, rules) and `website/content/workspaces.md` (screens).
+Copy from `examples/office/game`, a small app team's sprint that uses every
+workspace feature, or `examples/workshop/game` for planning state alone. Read
+ADR 0053 for state, ADR 0054 for typed bindings and ADR 0055 for guides. Use
+schema 10.
+
+- A day is a `flows.<name>` of full-screen steps (`hold` and `done` for a step
+  that only time or an action finishes, `restart` for a new day).
+- `kind: workspace` screens place bounded entries. `style: plate` is read-only,
+  `style: button` acts; `gozen check` refuses a plate that acts. Decorate plates
+  with `bust`, `meter`, `dot`, `sign` and `peek`; `ticket` draws a work card,
+  `carousel` a rotating choice with `unavailable` and `reason`; `drag` and
+  `drop` hand a value to `arg.<drop>`.
+- `message` queues a decision in the notification corner. A video call is a
+  `kind: ensemble` screen with `view.call`; `layout: full` with
+  `captions: overlay` needs `ui.message: novel`, and `call_view` changes the
+  camera or shares a picture without touching state. Give the call its people
+  through planning attributes named by `view.portrait`, `icon`, `camera` and
+  `backdrop`.
+- `screens.<name>.guide` walks a first visit once; scripted plays skip it
+  unless the script says `guides on`.
+- A full-screen calendar or timeline over `view.background` stands on glass
+  when `ui.material` is set.
+- Prefer a plain list over positioned controls unless the interaction needs
+  them. Use reservation dependencies for scene ordering and activity
+  dependencies for work ordering. Voice checks are opt-in per actor and
+  language; never infer rules for a private game's undeclared characters.
+- Check a layout with `gozen sim script <game> --script - --save-dir DIR`:
+  `look` lists the controls, `pick LABEL` presses one, and a trace shows
+  `screen_drop`, `message_open` and `guide_done`.

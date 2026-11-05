@@ -18,14 +18,6 @@ func DefaultBlock(w, h int) int {
 	return max(MinBlock, long/settings.Defaults.BlockDivisor+min(1, long%settings.Defaults.BlockDivisor))
 }
 
-func Apply(img image.Image, rects []image.Rectangle, block int) *image.RGBA {
-	shapes := make([]Shape, len(rects))
-	for i, r := range rects {
-		shapes[i] = Box(r)
-	}
-	return ApplyShapes(img, shapes, block)
-}
-
 type Shape interface {
 	Bounds() image.Rectangle
 	Hits(cell image.Rectangle) bool
@@ -81,19 +73,6 @@ func (p Polygon) Contains(x, y float64) bool {
 	return in
 }
 
-func ApplyShapes(img image.Image, shapes []Shape, block int) *image.RGBA {
-	b := img.Bounds()
-	out := image.NewRGBA(b)
-	draw.Draw(out, b, img, b.Min, draw.Src)
-	if block < 1 {
-		block = DefaultBlock(b.Dx(), b.Dy())
-	}
-	for _, c := range Cells(b, shapes, block) {
-		fill(out, c, average(img, c))
-	}
-	return out
-}
-
 // ApplyShapesAt returns a fresh RGBA image, averaging each selected cell once
 // from the original pixels. Block values below 1 select the default.
 func ApplyShapesAt(img image.Image, shapes []Shape, block int, off image.Point) *image.RGBA {
@@ -107,10 +86,6 @@ func ApplyShapesAt(img image.Image, shapes []Shape, block int, off image.Point) 
 		fill(out, c, average(img, c))
 	}
 	return out
-}
-
-func Cells(b image.Rectangle, shapes []Shape, block int) []image.Rectangle {
-	return CellsAt(b, shapes, block, image.Point{})
 }
 
 // CellsAt clips and deduplicates cells. Block values below 1 use DefaultBlock;

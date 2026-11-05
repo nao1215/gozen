@@ -1,6 +1,8 @@
 package play
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"math/rand/v2"
 	"slices"
@@ -18,6 +20,7 @@ import (
 
 // backEvent is an earlier event the player can roll back into.
 type backEvent struct {
+	args      map[string]any
 	snap, rnd []byte
 	cmds      []data.Command
 	name      string
@@ -42,7 +45,7 @@ func (g *Game) keepEvent() {
 		return
 	}
 	g.backRing = append(g.backRing, backEvent{
-		snap: g.evSnap, rnd: g.evRand, cmds: g.evCmds, name: g.evName,
+		snap: g.evSnap, rnd: g.evRand, cmds: g.evCmds, name: g.evName, args: g.evArgs,
 		lines: g.evLines, answers: slices.Clone(g.evAnswers), log: g.evLog,
 	})
 	if len(g.backRing) > n {
@@ -61,7 +64,7 @@ func (g *Game) boundary() {
 // isBoundary reports whether a request is a boundary.
 func isBoundary(r event.Request) bool {
 	switch r.(type) {
-	case event.Battle, event.Shop, event.Save, event.Open, event.Clear, event.GameOver, event.SortieScene:
+	case event.Checkpoint, event.Battle, event.Shop, event.Save, event.Open, event.Clear, event.GameOver, event.SortieScene:
 		return true
 	}
 	return false
@@ -86,7 +89,7 @@ func (g *Game) rollBack() {
 	var to backEvent
 	into := false
 	if from > 1 && !g.evNoBack && g.evSnap != nil && g.evCmds != nil && len(g.evHist) >= from-1 {
-		to = backEvent{snap: g.evSnap, rnd: g.evRand, cmds: g.evCmds, name: g.evName, lines: from - 1, answers: slices.Clone(g.evAnswers[:g.evHist[from-2]]), log: g.evLog}
+		to = backEvent{snap: g.evSnap, rnd: g.evRand, cmds: g.evCmds, name: g.evName, args: g.evArgs, lines: from - 1, answers: slices.Clone(g.evAnswers[:g.evHist[from-2]]), log: g.evLog}
 	} else {
 		last := len(g.backRing) - 1
 		to, into = g.backRing[last], true
@@ -120,7 +123,16 @@ func (g *Game) replayEvent(e backEvent) bool {
 	g.loadGame(st)
 	g.enterAt = ""
 	g.backlog = slices.Clip(e.log)
-	g.events.Start(e.cmds)
+	if len(e.args) > 0 {
+		if err := g.events.StartBound(e.name, e.args); err != nil {
+			g.failure = err
+			g.rollingBack = false
+			g.backRing = ring
+			return false
+		}
+	} else {
+		g.events.Start(e.cmds)
+	}
 	g.rollingBack = false
 	g.backRing = ring
 	g.liveCatchUp(&fastTo{lines: e.lines, answers: e.answers}, g.evName, nil)
@@ -155,7 +167,7 @@ func (g *Game) cursor() (rpg.Cursor, []byte, []byte, bool) {
 	if g.events == nil || !g.events.Running() || !g.talk.active || g.evNoBack || g.evLines == 0 || g.replaying || g.fast != nil || g.evSnap == nil {
 		return rpg.Cursor{}, nil, nil, false
 	}
-	c := rpg.Cursor{Event: g.evName, Line: g.evLines, Answers: slices.Clone(g.evAnswers)}
+	c := rpg.Cursor{Event: g.evName, Args: g.evArgs, Line: g.evLines, Answers: slices.Clone(g.evAnswers)}
 	switch {
 	case g.evName != "":
 		return c, g.evSnap, g.evRand, true
@@ -168,6 +180,15 @@ func (g *Game) cursor() (rpg.Cursor, []byte, []byte, bool) {
 
 // saveBytes is the save of now: with a cursor in the middle of an event.
 func (g *Game) saveBytes() ([]byte, error) {
+	if g.homeCheckpoint() {
+		return g.saveCheckpoint()
+	}
+	if why := g.saveBlocked(); why != "" {
+		return nil, errors.New(why)
+	}
+	if g.screenContinuation() {
+		return g.saveScreen()
+	}
 	c, snap, rnd, ok := g.cursor()
 	if !ok {
 		b, err := g.st.Save()
@@ -178,6 +199,9 @@ func (g *Game) saveBytes() ([]byte, error) {
 			return nil, err
 		}
 		return rpg.WithRand(b, rnd)
+	}
+	if err := c.Seal(g.db); err != nil {
+		return nil, err
 	}
 	return rpg.WithCursor(snap, c, rnd)
 }
@@ -194,9 +218,30 @@ func (g *Game) resume(r *rpg.Resume) {
 			return
 		}
 		g.enterAt = ""
-		g.events.Start(cmds)
+		if len(c.Args) > 0 {
+			if err := g.events.StartBound(c.Event, c.Args); err != nil {
+				g.failure = err
+				return
+			}
+		} else {
+			g.events.Start(cmds)
+		}
 	}
-	g.liveCatchUp(&fastTo{lines: c.Line, answers: c.Answers}, name, nil)
+	checkpoint := !c.Arrival && c.Line == 0 // a checkpoint save: the event plays from its start
+	if !checkpoint {
+		g.liveCatchUp(&fastTo{lines: c.Line, answers: c.Answers, strict: true}, name, nil)
+	}
+	if !c.Arrival && !checkpoint && g.evName != name {
+		g.failure = fmt.Errorf("load: replay left event %q before the saved line", name)
+	}
+	if g.failure != nil {
+		g.events.Stop()
+		g.req = nil
+		g.talk = talk{}
+		return
+	}
+	g.screenTrace.cursor = c
+	g.screenTrace.inputs = nil
 	g.emit("resume", traceLine{"event": c.Event, "arrival": c.Arrival, "line": c.Line, "at": g.evLines})
 }
 
@@ -204,8 +249,38 @@ func (g *Game) resume(r *rpg.Resume) {
 // after a battle, a shop, a screen or a move, a save cannot hold where the event goes on
 // (the event cannot be read again up to that line), so it would lose the event's rest.
 func (g *Game) saveBlocked() string {
+	if g.screenContinuation() {
+		if g.screenSaveAllowed() || g.homeCheckpoint() {
+			return ""
+		}
+		return lang.T("この 画面を 閉じて、操作が 終わってから セーブ しよう。")
+	}
 	if g.events == nil || !g.events.Running() || !g.talk.active || !g.evNoBack || g.replaying {
 		return ""
 	}
 	return lang.T("この 会話の 途中では セーブ できない。会話が 終わってから セーブ しよう。")
+}
+
+// checkpoint shares ordinary save serialization, but resumes at an authored event
+// after discarding all suspended screen actions and event callers.
+func (g *Game) checkpoint(q event.Checkpoint) error {
+	if !q.Restore {
+		rnd, err := g.pcg.MarshalBinary()
+		if err != nil {
+			return err
+		}
+		return g.st.KeepCheckpoint(q.Event, rnd)
+	}
+	st, p, err := g.st.RetryCheckpoint()
+	if err != nil {
+		return err
+	}
+	g.stopSkip("checkpoint")
+	g.pcg = p
+	g.talk = talk{}
+	g.loadGame(st)
+	g.enterAt = ""
+	g.events.Start(g.db.Events[st.Checkpoint.Event].Do)
+	g.emit("checkpoint_restored", traceLine{"event": st.Checkpoint.Event})
+	return nil
 }

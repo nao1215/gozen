@@ -112,7 +112,7 @@ func avoid(st *rpg.State, c Cell, through bool) bool {
 func movesAway(cmds []data.Command) bool {
 	for i := range cmds {
 		c := &cmds[i]
-		if c.Move != "" || c.Dive != "" || c.Call != "" || len(c.Then) > 0 || len(c.Else) > 0 || len(c.Choice) > 0 {
+		if c.Move != "" || c.Dive != "" || c.Call.Event != "" || len(c.Then) > 0 || len(c.Else) > 0 || len(c.Choice) > 0 {
 			return true
 		}
 	}

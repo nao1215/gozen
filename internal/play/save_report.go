@@ -1,6 +1,7 @@
 package play
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math/rand/v2"
@@ -8,9 +9,13 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	"github.com/nao1215/gozen/internal/event"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer4/itemuse"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 	"github.com/nao1215/gozen/internal/rpg"
 	lang "github.com/nao1215/gozen/internal/text"
+	"github.com/nao1215/gozen/internal/world"
 )
 
 type loadNotice struct {
@@ -91,6 +96,19 @@ func (g *Game) writeSave(path string) error {
 }
 
 func (g *Game) loadSavedGame(st *rpg.State) {
+	if st.Resume != nil && len(st.Resume.Cursor.Inputs) > 0 {
+		probe, replay, root, err := g.savedScreens(st)
+		if err != nil {
+			g.failure = err
+			return
+		}
+		g.installScreenReplay(probe, replay, root)
+		return
+	}
+	if err := g.checkSavedReplay(st); err != nil {
+		g.failure = err
+		return
+	}
 	r := st.Resume
 	st.Rand = g.stateRng()
 	saved := st.SavedRand
@@ -106,4 +124,140 @@ func (g *Game) loadSavedGame(st *rpg.State) {
 	if r != nil {
 		g.resume(r)
 	}
+}
+
+// checkSavedReplay probes parsed saves on private state before either slot
+// selection or direct installation can replace the live game. It runs no
+// presentation, input, autosave or external effects.
+func (g *Game) checkSavedReplay(st *rpg.State) error {
+	if st.Resume == nil {
+		return nil
+	}
+	c := st.Resume.Cursor
+	if len(c.Inputs) > 0 {
+		_, _, _, err := g.savedScreens(st)
+		return err
+	}
+	// Freeze the fallback once so every probe and installation uses the same
+	// legacy random stream, including direct loads that bypass slot selection.
+	if len(st.Resume.Rand) == 0 {
+		rnd, err := g.newPCG().MarshalBinary()
+		if err != nil {
+			return err
+		}
+		st.Resume.Rand = rnd
+	}
+	// Preserve the legacy missing-root fallback used by resume.
+	if !c.Arrival && st.DB.NamedCommands(c.Event) == nil {
+		return nil
+	}
+	if !c.Arrival && c.Line == 0 { // a checkpoint save begins its event from the start
+		return nil
+	}
+	probe, err := g.newSavedReplay(st)
+	if err != nil {
+		return err
+	}
+	_, err = probe.runner.ReplayTo(c.Line, c.Answers)
+	return err
+}
+
+// savedReplay owns private reconstruction state until installation succeeds.
+type savedReplay struct {
+	st      *rpg.State
+	pcg     *rand.PCG
+	runner  *event.Runner
+	target  *Game
+	picture data.CG
+	effects []event.Effect
+}
+
+func (g *Game) newSavedReplay(st *rpg.State) (*savedReplay, error) {
+	b, err := st.Save()
+	if err != nil {
+		return nil, err
+	}
+	p := rand.NewPCG(1, 2)
+	if err := p.UnmarshalBinary(st.Resume.Rand); err != nil {
+		return nil, err
+	}
+	state, err := rpg.Parse(data.Fork(st.DB), b, rand.New(p)) //nolint:gosec // Private deterministic gameplay replay, not secrets.
+	if err != nil {
+		return nil, err
+	}
+	state.Calm = g.opts.Calm
+	probe := &savedReplay{st: state, pcg: p}
+	runner := event.New(state.DB, state, event.HostFunc(func(e event.Effect) {
+		if probe.target != nil {
+			probe.target.Handle(e)
+			return
+		}
+		if image, ok := e.(event.ImageEffect); ok {
+			probe.picture = image.Picture
+		}
+		if len(st.Resume.Cursor.Inputs) > 0 {
+			probe.effects = append(probe.effects, e)
+		}
+	}))
+	probe.runner = runner
+	runner.Sortie, runner.Dev = true, g.opts.Development
+	runner.UseItem = itemuse.For(state.DB, state)
+	runner.BlockAside = func() bool {
+		if probe.target != nil {
+			return probe.target.AsideBlocked()
+		}
+		return probe.picture.File != "" && !probe.picture.Faces
+	}
+	runner.Log = func(err error) {
+		if probe.target != nil {
+			probe.target.screenTrace.blocked = true
+			log.Print(err)
+		}
+	}
+	c := st.Resume.Cursor
+	if c.Arrival {
+		runner.Start(world.Arrive(state.DB, state, true))
+	} else if len(c.Args) > 0 {
+		if err := runner.StartBound(c.Event, c.Args); err != nil {
+			return nil, err
+		}
+	} else {
+		runner.Start(state.DB.NamedCommands(c.Event))
+	}
+	return probe, nil
+}
+
+func (g *Game) savedScreens(st *rpg.State) (*savedReplay, event.ScreenReplay, screenTranscript, error) {
+	var replay event.ScreenReplay
+	root := screenTranscript{cursor: st.Resume.Cursor, rnd: st.Resume.Rand, inputs: st.Resume.Cursor.Inputs, saw: true}
+	root.cursor.Inputs = nil
+	var err error
+	root.snap, err = st.Save()
+	if err != nil {
+		return nil, replay, root, err
+	}
+	probe, err := g.newSavedReplay(st)
+	if err != nil {
+		return nil, replay, root, err
+	}
+	var pending event.Request
+	if root.cursor.Line > 0 {
+		pending, err = probe.runner.ReplayTo(root.cursor.Line, root.cursor.Answers)
+		if err != nil {
+			return nil, replay, root, err
+		}
+		if _, ok := pending.(event.Choice); !ok {
+			pending = nil
+		}
+	}
+	replay, err = probe.runner.ReplayScreens(root.inputs, pending)
+	if err == nil {
+		for _, frame := range replay.Frames {
+			def := st.DB.Game.Screens[frame.Name]
+			if def.Kind != "" || def.View.Fullscreen {
+				return nil, replay, root, errors.New("load: planning screen continuation is not supported")
+			}
+		}
+	}
+	return probe, replay, root, err
 }

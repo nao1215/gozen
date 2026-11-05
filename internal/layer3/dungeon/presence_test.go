@@ -22,7 +22,7 @@ func TestNumericPresenceMapLoops(t *testing.T) {
 	different := false
 	for seed := range uint64(32) {
 		makeMap := func(g *data.Generate) string {
-			return Maze(g, rand.New(rand.NewPCG(seed, 1)), func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
+			return MazeKinds(g, rand.New(rand.NewPCG(seed, 1)), func(rune) Kind { return Kind{} }, func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
 		}
 		a, b, c := makeMap(old), makeMap(migrated), makeMap(zero)
 		if a != b {

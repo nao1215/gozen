@@ -17,7 +17,7 @@ Enemy:
   recruit: "The chance, level and optional bonus for joining after a victory. Bosses cannot be recruited. Needs schema version 6."
   lore: "A short description shown in the monster book after the enemy has been encountered."
   actions: "How many actions the enemy takes per turn. The default is 1."
-  army: "The kind of army (a key of campaign.clash.armies) its unit is shown as in a clash shown as units, when it leads a region's defence or a faction's march: monsters for monsters."
+  army: "The kind of army (a key of campaign.clash.armies) its unit is shown as in a clash shown as units, when it leads a region's defense or a faction's march: monsters for monsters."
   ai: "How the enemy chooses what to do, either an ID of ai or a list of rules written inline."
   boss: "Set to `true` to make this enemy a boss, which gets the guardian banner and boss treatment in battle."
   drops: "Items the enemy may leave behind when defeated, each with its own chance."
@@ -66,7 +66,19 @@ EquipStones:
   _: "Puts the stones of a stone set on an actor."
   actor: "An expression giving the ID of the actor who receives the stones."
   set: "An expression giving the ID of the stone set to put on."
+CallEach:
+  _: "A bounded snapshot of IDs for repeated event calls (schema 10)."
+  param: "The callee ID or string parameter filled from each item; omit it from args."
+  in: "A pure list expression, such as entities or filter(activities, !it.cancelled). Mutually exclusive with items."
+  items: "An explicit ordered ID list, including optional duplicates. At most 4096 items; an empty list performs no calls."
+EventCall:
+  _: "A named event invocation; a literal event ID remains shorthand for a call without arguments."
+  event: "The literal event ID. Required in the mapping form."
+  each: "Repeat over frozen IDs. Other arguments are evaluated before each call; at most 65536 items across nested calls per execution."
+  args: "Required parameter values as pure expressions, evaluated once in the caller scope, in sorted parameter-name order."
+  ensemble: "Optional ensemble screen (a call) that the lines of the called event, and of the events it calls in turn, show over when they name no ensemble of their own (schema 10), so one shared event of lines can be said in whichever call calls it. Lines after the call returns are not affected."
 Event:
+  params: "Required parameter names and types: number, bool, string, entity, activity, actor or date (schema 10)."
   _: "A named list of commands, run from another event with `call` or by itself when its trigger fires."
   do: "The commands the event runs."
   location: "The ID of the location (an ID of locations) where a triggered event fires. For `auto`, empty means anywhere. An `enter` event needs a location."
@@ -140,6 +152,8 @@ GalleryScene:
   title: "The title shown for the scene in the gallery."
   when: "An expression that must hold for the scene to open."
 Game:
+  carry: "Variables and flags (var.NAME, flag.NAME, or a prefix ending in *) a new game starts with from the last play that ran carry (schema 10)."
+  planning: "Optional typed entities, calendar, activities and period ledgers."
   _: "The contents of game.yaml: the game's title, screen and starting state."
   asides: "Events inserted after the lines of certain speakers, such as a moment of thought or a picture in the character's mind."
   battle: "The rules every battle shares."
@@ -164,6 +178,7 @@ Game:
   schema_version: "The version of the YAML specification the game is written for. 0 or omitted means the legacy rules."
   screen: "The logical screen size."
   screens: "Named information screens, each with a title and ordered entries. Open with `open: NAME`."
+  flows: "Schema 10: named orders of full-screen surfaces gone through step by step; a step not reached opens the current step."
   stand_ins: "A file under assets/ listing placeholder pictures, one path per line. A placeholder picture does not hide character portraits."
   start: "The state a new game begins in."
   state: "Declarations of the game's variables and whether unknown names are rejected."
@@ -191,7 +206,7 @@ Faction:
   _: "A side of a campaign. One is the player's; the others move by their ai rules at the end of each turn."
   ai: "The rules the faction follows at the end of each turn, each in its order. The player's faction's rules are used only by gozen sim campaign --as ai."
   capital: "A region the faction holds at the start. Losing it is the player's default defeat."
-  color: "The faction's colour, for the marks of its regions."
+  color: "The faction's color, for the marks of its regions."
   name: "The name shown. The ID when omitted."
   generals: "The enemies who lead the faction's marches when the campaign shows marches as clashes of units: a march takes the strongest (by atk), up to clash.units, and is fought as a clash. IDs of enemies."
 FactionRule:
@@ -213,19 +228,126 @@ General:
   tactic: "The tactic the sortie screen picks for them first, an ID of campaign.clash.tactics (or of the engine's)."
 
 AuthorScreen:
+  params: "Required typed parameters for a plain authored list (schema 10); immutable arg fields are available in the title and entries."
+  view: "Explicit public value columns, seating and portrait bindings for planning views."
+  kind: "Bind entities, timeline, calendar, ensemble or islands planning data."
   _: "An author-defined information or picture list opened by name."
   title: "The title, with text interpolation and translation."
   entries: "Selectable detail pages in authored order."
+  back: "Parameterless screen that cancel opens in this screen's place (schema 10); empty closes the screen."
+  home: "Cancel opens the system menu over this screen instead of returning to the location (schema 10)."
+  guide: "Schema 10: first-visit walk-through of a full-screen surface, lines in the notification corner that light the places to press next; recorded with the gallery's unlocks once finished and never shown again, in any later play (ADR 0055)."
+ScreenGuide:
+  _: "Schema 10: a screen's first-visit walk-through. Scripted, replayed and automatic plays skip it unless the script says guides on."
+  when: "Pure condition that holds the guide back until it is true; omitted shows it the first time the screen shows."
+  steps: "One to eight lines shown one after another."
+GuideStep:
+  _: "One line of a screen guide."
+  who: "Actor ID of the speaker, whose square face and name head the line."
+  text: "Interpolated line. Speak as the character thinking about the work, not as a manual."
+  focus: "Marks of the screen's bounded entries, or next for the flow's next action, lit while the line shows; every other place is refused. Without focus the line itself is pressed (anywhere, or OK) to go on."
+  until: "Pure condition that ends a line with focus when it holds; the lit places can be used any number of times before. Without it, the line goes on when a lit place runs its action."
+Flow:
+  _: "Schema 10: an order of parameterless full-screen surfaces with a step band at the top and a next action at the bottom right."
+  steps: "Two to ten steps; each screen is a step of one flow only."
+  restart: "Pure value; when it differs from the value the progress was made under, the flow starts again from the first step."
+  skip: "Pure condition that lets every step open while it holds."
+  next: "Interpolated label of the action that finishes a step (default: the built-in Next ›)."
+FlowStep:
+  _: "One step of a flow."
+  label: "Interpolated label in the step band."
+  screen: "The parameterless full-screen surface of the step."
+  enter: "Parameterless event run over the step's screen the first time it shows under each restart value (also when skip let it open)."
+  done: "Pure condition that permanently finishes the step for the current restart value when it holds, as its next action would: a choice made on a screen the step opens."
+  hold: "Make done the only way to finish the step: no next action; once finished, it and the steps before it do not open again under the same restart value, and a step screen that would no longer open as itself gives way to the one that opens after an action."
+  when: "Pure condition keeping the step in the flow while it holds; left out, the step is passed over as if finished and not shown in the step band (not on the first step; a last step left out lets the day end on another, such as a holiday)."
 ScreenEntry:
+  portrait: Center an enlarged portrait above the label and detail in a bounded control.
+  destination: Replace the screen after its action, retaining the original opener; no destination parameters.
+  muted: Pure condition drawing a muted unavailable portrait while retaining the control.
+  icon: Interpolated portrait path beside a bounded workspace control.
+  tone: Optional surface control emphasis, note or primary; empty uses the ordinary panel.
+  each: Repeat a row over a bounded pure ID collection; param is a row-local string argument.
+  target: Planning entity ID whose seat opens this contextual action.
+  bounds: Direct action rectangle as logical x, y, width and height for full-screen views.
+  style: "Schema 10: plate draws a read-only board without an edge or focus; button draws a pressable pill. A plate never acts and a button always does."
+  ticket: "Schema 10: draw the bounded entry as a work ticket card; the label is the title and the icon the holder's portrait."
+  carousel: "Schema 10: name of the rotating selector this bounded action joins; one per screen, every member with the same bounds."
+  cost: "Short interpolated label of what confirming the action spends, shown beside its name."
+  unavailable: "Pure condition for bounded actions only; keeps the action visible but refuses it while it holds."
+  reason: "Interpolated explanation shown in place of the detail while the action is unavailable."
+  drag: "Schema 10: interpolated value that makes the bounded entry carried on a full-screen surface: dragged with the pointer, or picked up with a tap or OK and dropped with another; empty is not carried. No do, destination, carousel, target, drop or peek."
+  drop: "Schema 10: parameter name that makes the bounded entry a drop place; only a drop runs its do, with arg.<name> bound to the carried drag value. Not in label, text, icon, when, muted, unavailable or reason."
+  accepts: "Pure condition, with the carried value bound, that lets the drop place take it; while false the place is faded, marked and refuses the drop."
+  hint: "Short interpolated line, with the carried value bound, shown on the drop place while something is carried."
+  bust: "Schema 10: head-to-chest crop on ordinary bounded entries and carousels (not buttons or tickets); literal assets must exist. In ordinary entries it is placed by its face box: picture (interpolated), width (share of the entry width, default .4), top and face (fractions of the crop height, defaults .12 and .3). A muted entry veils it."
+  meter: "Schema 10: progress bar on an ordinary bounded entry only (not buttons, tickets or carousels), the ticket card bar: progress (0..1), planned (the planned mark) and behind (colors it late)."
+  sign: "Schema 10: interpolated picture path of a small square sign on ordinary bounded entries only, in the top-right corner, left of the dot, such as a place (office, home, off)."
+  picture_fit: "Schema 10: how a bounded picture fills its area: omitted or cover crops it to fill, contain shows it whole with its transparency (icons, transparent figures)."
+  dot: "Schema 10: interpolated #rrggbb color of a small status mark on ordinary bounded entries only, in the top-right corner, beside a word; empty draws none."
+  peek: "Schema 10: interpolated text opened in a small glass panel beside the bounded entry when it is pressed; runs nothing. Empty is not a peek. No do, destination, carousel or target."
   _: "One detail page in an author-defined screen."
   do: "Optional event commands run once on confirmation; conditions and text refresh afterward."
   label: "Required label shown in the list."
   text: "Detail text, with interpolation and translation."
   picture: "Optional image path under assets/."
   when: "Condition for showing this entry; omitted means visible."
+  mark: "Schema 10: name of the bounded entry for a screen guide's focus; the rows of an each, or several entries, may share one. Not next."
+
+MessageCue:
+  _: "A chat message queued into the inbox: a notification in the top-right corner of a full-screen surface, opened into a bubble with its decision under it."
+  who: "The speaker: an actor, or an actor expression."
+  text: "Interpolated text; the first line shows in the notification."
+  event: "The parameterless event run under the bubble when the message is opened; it asks for the decision (a choice). Required."
+  tag: "Short interpolated mark on the notification and the bubble, such as DM for a one-to-one message."
+
+CallViewCue:
+  _: "A presentation-only change of the video call on screen."
+  camera: "Turns one participant's camera view on or off."
+  share: "Puts a shared screen (a picture) on the call's stage in place of the speaker's view."
+
+CallCamera:
+  _: "One participant's camera view, on or off, until a line outside a call; no state changes."
+  who: "A planning entity or an actor in the call."
+  on: "True turns the camera view on, false off."
+
+CallShare:
+  _: "A shared screen on a call's stage, as when a participant presents, until a line outside a call; no state changes."
+  who: "The participant (a planning entity or an actor) who shares; the share shows only on a call they are in."
+  picture: "Path of the picture under assets/, drawn whole on the stage above the message window. Empty ends the sharing."
+
+EntryBust:
+  _: "A head-to-chest crop of a standing picture in the left part of a bounded entry, placed by the picture's face box."
+  picture: "Interpolated path of the standing picture."
+  width: "Share of the entry's width the crop takes (0 is .4)."
+  top: "Where the face's top sits, as a fraction of the crop's height (0 is .12)."
+  face: "How tall the face is, as a fraction of the crop's height (0 is .3)."
+  height: "Above zero, the crop goes across the top of the entry instead of at its left: the full width and this fraction of the height, with the label and text under it."
+  bare: "Draw the picture straight on the screen, its transparent background showing what is behind: no card and no backing under it."
+  fit: "contain shows the whole picture centered in the crop area instead of framing a face (icons and marks)."
+
+EntryMeter:
+  _: "The ticket card's progress bar along the bottom of a bounded entry."
+  progress: "Pure fraction from 0 to 1 of the work reported done, drawn as the filled bar."
+  planned: "Pure fraction from 0 to 1 of the work expected by now, drawn as a mark on the bar."
+  behind: "Pure condition coloring the bar as late."
+
+EntryTicket:
+  _: "The face of a work ticket card on a workspace."
+  due: "Interpolated due date or deadline shown under the holder's face."
+  state: "Interpolated short state shown as a chip, such as open or done."
+  planned: "Pure fraction from 0 to 1 of the work expected by now, drawn as a mark on the bar."
+  progress: "Pure fraction from 0 to 1 of the work reported done, drawn as the filled bar."
+  behind: "Pure condition coloring the card as late."
+  blocked: "Pure condition marking the card as waiting for its prerequisites."
+  after: "Interpolated names of the tickets this one waits for; a visible ticket card with the same label is joined by a line. Empty names are dropped."
 
 Respond:
   _: "Submit text to a speaker's reaction rules and show the reply as dialog."
   who: "A speaker with a book in game.yaml reactions."
   text: "Text submitted to the rules, with interpolation and translation."
   from: "Sender name for repeat detection; omitted means player."
+ScreenCall:
+  _: "A plain authored screen invocation with frozen typed arguments (schema 10), or a scalar name for parameterless screens."
+  screen: "Literal authored screen ID. Built-in screens use the scalar form."
+  args: "Pure expressions for every declared parameter, evaluated once in the caller scope before opening."

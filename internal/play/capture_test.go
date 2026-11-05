@@ -97,3 +97,37 @@ func TestCaptureScriptPreparationBoundary(t *testing.T) {
 		t.Fatalf("animation started during preparation: %+v", s)
 	}
 }
+
+func TestCapturePreparationBurstPreservesTicksAndSamplingBoundary(t *testing.T) {
+	g, err := New(Options{FS: gameFiles(t), Location: "camp", NoSound: true, ShotDir: t.TempDir(), Seed: 17, Script: "wait 1000\nwait 2147483647\n"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := g.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	b := &captureBatch{ctx: context.Background(), game: g, jobs: []CaptureJob{{ID: "neutral"}}, next: 1, prepare: 1}
+	if err := b.Update(); err != nil {
+		t.Fatal(err)
+	}
+	if b.tick != 60 || g.tick != 60 || b.sampling {
+		t.Fatalf("preparation skipped ticks: %d/%d %v", b.tick, g.tick, b.sampling)
+	}
+	for !b.sampling {
+		if err := b.Update(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tick := g.tick
+	if !b.due {
+		t.Fatal("sampling did not wait for a draw")
+	}
+	if err := b.Update(); err != nil {
+		t.Fatal(err)
+	}
+	if g.tick != tick {
+		t.Fatal("advanced across a pending sample")
+	}
+}

@@ -6,26 +6,26 @@ Go Zen is the sample game of Gozen. Its Go code and YAML (`main.go`, `files.go`,
 
 | Files | What | License |
 |:--|:--|:--|
-| `maren/`, `ox/`, `tilly/`, `kes/`, `vance/` | Moving portraits (`puppet.yaml`, the base picture and its difference pictures) and the whole-figure picture of each face | CC BY 4.0 |
-| `pomm/`, `barnaby/`, `ansel/` | Standing pictures of the townsfolk | CC BY 4.0 |
-| `yorn/normal.png` | Yorn's standing portrait, from the author's `stone_merchant.png` | CC BY 4.0 |
-| `icons/` | Round face icons for the balloons and the map's token | CC BY 4.0 |
-| `maps/town.jpg` | The town map of Pellmere, also behind the title | CC BY 4.0 |
-| `cg/cg1_fountain.jpg` | The event picture (also in the gallery) | CC BY 4.0 |
-| `bg/` | The plaza as a painted scene with its depth (`plaza_depth.png`), the plaza with the water back, the shop, the inn, the well, the gate, Hobb's Landing, the valve hall, and the battle backgrounds | CC BY 4.0 |
-| `bg/altar.jpg` | The breeding altar, from the author's `stone_shop.jpg` | CC BY 4.0 |
-| `dungeon/`, `tiles/`, `props/` | The dungeon's walls, floors, ceilings, doors and stairs, chests, crates, levers, the key, the valve and the vent, and the townsfolk's things (the water cart, Hobb's desk, the notice) | CC BY 4.0 |
-| `enemies/` (the original sample foes), `<id>/cutin.png` | Existing enemy pictures and cut-in pictures | CC BY 4.0 |
+| `maren/`, `ox/`, `tilly/`, `kes/`, `vance/` | Moving portraits (`puppet.yaml`, the base picture and its difference pictures) and the whole-figure picture of each face | CC0 1.0 |
+| `pomm/`, `barnaby/`, `ansel/` | Standing pictures of the townsfolk | CC0 1.0 |
+| `yorn/normal.png` | Yorn's standing portrait, from the author's `stone_merchant.png` | CC0 1.0 |
+| `icons/` | Round face icons for the balloons and the map's token | CC0 1.0 |
+| `maps/town.jpg` | The town map of Pellmere, also behind the title | CC0 1.0 |
+| `cg/cg1_fountain.jpg` | The event picture (also in the gallery) | CC0 1.0 |
+| `bg/` | The plaza as a painted scene with its depth (`plaza_depth.png`), the plaza with the water back, the shop, the inn, the well, the gate, Hobb's Landing, the valve hall, and the battle backgrounds | CC0 1.0 |
+| `bg/altar.jpg` | The breeding altar, from the author's `stone_shop.jpg` | CC0 1.0 |
+| `dungeon/`, `tiles/`, `props/` | The dungeon's walls, floors, ceilings, doors and stairs, chests, crates, levers, the key, the valve and the vent, and the townsfolk's things (the water cart, Hobb's desk, the notice) | CC0 1.0 |
+| `enemies/` (the original sample foes), `<id>/cutin.png` | Existing enemy pictures and cut-in pictures | CC0 1.0 |
 | `bgm/title.ogg`, `town.ogg`, `dungeon.ogg`, `garden.ogg`, `castle.ogg`, `dream.ogg`, `gate.ogg`, `battle.ogg`, `boss.ogg`, `victory.ogg`, `fanfare.ogg`, `finale.ogg` | Music written by the author for the author's own RPG | CC BY 4.0 |
 | `sfx/boss.ogg`, `break.ogg`, `buff.ogg`, `crit.ogg`, `cutin.ogg`, `debuff.ogg`, `encounter.ogg`, `escape.ogg`, `fall.ogg`, `heal.ogg`, `hit.ogg`, `levelup.ogg`, `magic.ogg`, `miss.ogg`, `punch.ogg`, `tink.ogg`, `treasure.ogg`, `win.ogg` | Sound effects by the author for the author's own RPG, used by battle, healing, treasure and encounter cues | CC BY 4.0 |
 | `fonts/mplus-1p-regular.ttf` | M+ 1p regular 1.060, M+ FONTS PROJECT | M+ FONTS LICENSE (below) |
 | `fonts/uncial-antiqua-regular.ttf` | Uncial Antiqua, the title's letters; Brian J. Bonislawsky (Astigmatic), from Google Fonts | SIL Open Font License 1.1 (`fonts/OFL-uncial-antiqua.txt`) |
 | `fonts/cinzel.ttf` | Cinzel (variable), the subtitle's letters; the Cinzel Project Authors, from Google Fonts | SIL Open Font License 1.1 (`fonts/OFL-cinzel.txt`) |
 
-The pictures, music and sound effects are Copyright (c) 2026 CHIKAMATSU Naohiro and licensed under the
+No copyright is claimed in the pictures; to the extent any rights exist, they are dedicated to the public domain under CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/; the text is in `game/assets/LICENSE`): use them for any purpose, with or without credit. The music and sound effects are Copyright (c) 2026 CHIKAMATSU Naohiro and licensed under the
 Creative Commons Attribution 4.0 International license
 (https://creativecommons.org/licenses/by/4.0/; the text is in `game/assets/LICENSE`). Credit
-"Go Zen sample art and music, CHIKAMATSU Naohiro" when you reuse them. Most pictures are
+"Go Zen sample music and sounds, CHIKAMATSU Naohiro" when you reuse them. Most pictures are
 generated images made for this repository. The music was rendered with FluidSynth and the
 GeneralUser GS v2.0.3 SoundFont by S. Christian Collins (http://www.schristiancollins.com),
 whose license lets the music made with it be used without restriction; the SoundFont itself
@@ -45,12 +45,12 @@ THESE FONTS ARE PROVIDED "AS IS" WITHOUT WARRANTY.
 
 ## Enemy illustrations
 
-`game/assets/enemies/night_bat.png`, `ghoul.png`, `incense_bloom.png` and `pale_sylph.png` were generated by the author from the author's own game, licensed CC BY 4.0. Their transparency is retained and their dimensions fit the other enemy portraits.
+`game/assets/enemies/night_bat.png`, `ghoul.png`, `incense_bloom.png` and `pale_sylph.png` were generated by the author from the author's own game, no copyright claimed (CC0 1.0). Their transparency is retained and their dimensions fit the other enemy portraits.
 
-`game/assets/enemies/vampire.png` is an author generated illustration from the author's `vampire.png`, licensed CC BY 4.0. Its transparency is retained and its dimensions fit the other enemy portraits.
+`game/assets/enemies/vampire.png` is an author generated illustration from the author's `vampire.png`, no copyright claimed (CC0 1.0). Its transparency is retained and its dimensions fit the other enemy portraits.
 
-`game/assets/enemies/king_slime.png` was generated by the author and is licensed CC BY 4.0. Its transparent 425 by 420 pixel original already fits the enemy portrait size limit.
+`game/assets/enemies/king_slime.png` was generated by the author and is no copyright claimed (CC0 1.0). Its transparent 425 by 420 pixel original already fits the enemy portrait size limit.
 
-`game/assets/succubus/` contains a puppet definition, a copy of the author's Succubus illustration with a small open-eye drawing, the original for blinking, and an original small mouth overlay, licensed CC BY 4.0.
+`game/assets/succubus/` contains a puppet definition, a copy of the author's Succubus illustration with a small open-eye drawing, the original for blinking, and an original small mouth overlay, no copyright claimed (CC0 1.0).
 
-These 35 pictures are by the author from the author's own game and are licensed CC BY 4.0: `abyss_lord.png`, `blast_beetle.png`, `crown_thief.png`, `crystal_dragon.png`, `crystal_golem.png`, `cursed_doll.png`, `dream_eater.png`, `dream_wisp.png`, `frost_bat.png`, `frost_giant.png`, `frost_slime.png`, `frozen_king.png`, `frozen_knight.png`, `ghost_soldier.png`, `gold_bat.png`, `grave_reaper.png`, `ice_lich.png`, `ice_spider.png`, `ice_wolf.png`, `maneater.png`, `mimic1.png`, `mimic2.png`, `mimic3.png`, `mimic4.png`, `mimic5.png`, `mine_rat.png`, `mirror_shade.png`, `nectar_moth.png`, `nightmare_hound.png`, `snow_ape.png`, `snow_witch.png`, `spore_shroom.png`, `steam_slime.png`, `succubus.png` and `whisper_imp.png` (all in `game/assets/enemies/`). Their PNG alpha channels are retained; pictures larger than 800 pixels on either axis were resized proportionally to fit within 800 by 800 pixels.
+These 35 pictures are by the author from the author's own game and are no copyright claimed (CC0 1.0): `abyss_lord.png`, `blast_beetle.png`, `crown_thief.png`, `crystal_dragon.png`, `crystal_golem.png`, `cursed_doll.png`, `dream_eater.png`, `dream_wisp.png`, `frost_bat.png`, `frost_giant.png`, `frost_slime.png`, `frozen_king.png`, `frozen_knight.png`, `ghost_soldier.png`, `gold_bat.png`, `grave_reaper.png`, `ice_lich.png`, `ice_spider.png`, `ice_wolf.png`, `maneater.png`, `mimic1.png`, `mimic2.png`, `mimic3.png`, `mimic4.png`, `mimic5.png`, `mine_rat.png`, `mirror_shade.png`, `nectar_moth.png`, `nightmare_hound.png`, `snow_ape.png`, `snow_witch.png`, `spore_shroom.png`, `steam_slime.png`, `succubus.png` and `whisper_imp.png` (all in `game/assets/enemies/`). Their PNG alpha channels are retained; pictures larger than 800 pixels on either axis were resized proportionally to fit within 800 by 800 pixels.

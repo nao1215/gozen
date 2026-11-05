@@ -14,6 +14,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/nao1215/gozen/internal/event"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 // novelData is a short story: two lines, a third, a choice and a line after it, and an event
@@ -226,5 +227,15 @@ func TestSceneSkipNeedsEveryLineRead(t *testing.T) {
 	runToEnd(t, g)
 	if skips := traceLines(t, out.Bytes(), "skip"); len(skips) != 0 || g.evLines != 1 {
 		t.Fatalf("skipped %v to line %d", skips, g.evLines)
+	}
+}
+
+func TestSelectedSourcesKeepSceneSummaryUnknown(t *testing.T) {
+	g := novelGame(t, Options{})
+	g.db.Events["selected"] = &data.Event{Do: []data.Command{{Say: &data.Say{TextExpr: data.MustExpr(`"A selected source."`)}}}}
+	g.read = map[uint64]bool{0: true, source("A selected source."): true}
+	read, all := g.readRate("selected")
+	if read != 0 || all != 1 {
+		t.Fatalf("dynamic source reported fully read: %d/%d", read, all)
 	}
 }

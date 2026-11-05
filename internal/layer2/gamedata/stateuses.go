@@ -82,12 +82,25 @@ func (db *DB) StateUses() map[string]*NameUse {
 		if screen == nil {
 			continue
 		}
+		if screen.View.DateLink != nil {
+			for key, value := range screen.View.DateLink.Args {
+				u.expr("game.yaml.screens."+name+".view.date_link.args."+key, value)
+			}
+		}
 		u.text("game.yaml.screens."+name+".title", screen.Title)
 		for i, entry := range screen.Entries {
 			w := fmt.Sprintf("game.yaml.screens.%s.entries[%d]", name, i)
 			u.text(w+".label", entry.Label)
 			u.text(w+".text", entry.Text)
 			u.expr(w+".when", entry.When)
+			u.expr(w+".target.expr", entry.Target.Expr)
+			if entry.Each != nil {
+				u.expr(w+".each.in", entry.Each.In)
+			}
+			u.expr(w+".accepts", entry.Accepts)
+			u.text(w+".hint", entry.Hint)
+			u.text(w+".drag", entry.Drag)
+			u.text(w+".peek", entry.Peek)
 			u.commands(w+".do", entry.Do)
 		}
 	}
@@ -163,13 +176,23 @@ func (u *stateUses) commands(where string, cs []Command) {
 		}
 		if c.Say != nil {
 			u.text(w+".say", c.Say.Text)
+			u.expr(w+".say.text_expr", c.Say.TextExpr)
+			u.expr(w+".say.face_expr", c.Say.FaceExpr)
 			for j, alt := range c.Say.Instead {
 				u.text(fmt.Sprintf("%s.say.instead[%d]", w, j), alt.Text)
+				u.expr(fmt.Sprintf("%s.say.instead[%d].text_expr", w, j), alt.TextExpr)
+				u.expr(fmt.Sprintf("%s.say.instead[%d].face_expr", w, j), alt.FaceExpr)
 			}
 		}
 		u.expr(w+".if", c.If)
 		for _, k := range slices.Sorted(maps.Keys(c.SetV)) {
-			u.set(setName(k), w+".set")
+			if index, err := assignmentIndex(k); err == nil && index.Set() {
+				table, _, _ := strings.Cut(k, "[")
+				u.set(table, w+".set")
+				u.expr(w+".set."+k, index)
+			} else {
+				u.set(setName(k), w+".set")
+			}
 			u.expr(w+".set."+k, c.SetV[k])
 		}
 		if c.Give != nil {
@@ -188,8 +211,11 @@ func (u *stateUses) commands(where string, cs []Command) {
 		if c.Move != "" {
 			u.set("location", w+".move")
 		}
-		if c.Call != "" {
-			u.set("ran."+c.Call, w+".call")
+		if c.Call.Event != "" {
+			u.set("ran."+c.Call.Event, w+".call")
+			if c.Call.Each != nil {
+				u.expr(w+".call.each.in", c.Call.Each.In)
+			}
 		}
 		u.commands(w+".then", c.Then)
 		u.commands(w+".else", c.Else)
@@ -199,6 +225,8 @@ func (u *stateUses) commands(where string, cs []Command) {
 		for j, o := range c.Choice {
 			ow := fmt.Sprintf("%s.choice[%d]", w, j)
 			u.expr(ow+".when", o.When)
+			u.text(ow+".label", o.Label)
+			u.expr(ow+".label_expr", o.LabelExpr)
 			u.commands(ow+".do", o.Do)
 		}
 	}

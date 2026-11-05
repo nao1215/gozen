@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"testing/fstest"
 
 	"github.com/nao1215/gozen/internal/savefile"
 )
@@ -46,15 +45,5 @@ func TestWriteFailurePreservesDirectoryAndCleansTemporary(t *testing.T) {
 	}
 	if len(entries) != 1 || entries[0].Name() != "occupied" || !entries[0].IsDir() {
 		t.Fatalf("failed write leaked or modified entries: %v", entries)
-	}
-}
-
-func TestLoadPreservesIOCause(t *testing.T) {
-	_, err := savefile.Load(fstest.MapFS{}, "absent.json")
-	if !errors.Is(err, fs.ErrNotExist) {
-		t.Fatal(err)
-	}
-	if _, err = savefile.Load(fstest.MapFS{}, "../outside"); !errors.Is(err, fs.ErrInvalid) {
-		t.Fatal(err)
 	}
 }

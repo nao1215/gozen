@@ -108,7 +108,7 @@ header nav .sponsor {
 
 /* Embedded doc images (demo/snapshot GIFs) keep their intrinsic ratio while
    scaling down, so the reserved width/height box never overflows the column. */
-main img {
+main img, main video {
   max-width: 100%;
   height: auto;
 }
@@ -159,7 +159,7 @@ a {
   color: var(--link);
 }
 
-img {
+img, video {
   max-width: 100%;
   height: auto;
 }

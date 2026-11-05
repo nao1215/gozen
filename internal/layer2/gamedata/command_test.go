@@ -1,11 +1,13 @@
 package gamedata_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"slices"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/goccy/go-yaml"
 
@@ -16,9 +18,13 @@ import (
 // Positive cases are not built from the registry; they pin down how each command can actually be
 // written.
 var commandExamples = map[string]string{
-	"capture": "capture: mote",
-	"respond": "respond: {who: scout, text: Hello}",
-	"say":     `say: hi`, "choice": `choice: [{label: Yes, do: []}]`,
+	"checkpoint":         `checkpoint: sub`,
+	"carry":              `carry: true`,
+	"restore_checkpoint": `restore_checkpoint: true`,
+	"plan":               `plan: {op: observe}`,
+	"capture":            "capture: mote",
+	"respond":            "respond: {who: scout, text: Hello}",
+	"say":                `say: hi`, "choice": `choice: [{label: Yes, do: []}]`,
 	"if": `if: true`, "set": `set: {flag.ok: true}`, "give": `give: {item: key}`,
 	"take": `take: {item: key}`, "gold": `gold: 0`, "join": `join: guide`,
 	"leave": `leave: guide`, "heal": `heal: all`, "hurt": `hurt: {who: all, amount: 1}`,
@@ -26,7 +32,7 @@ var commandExamples = map[string]string{
 	"breed":  `breed: {parents: [monster_1, monster_2], skills: [fire]}`,
 	"affect": `affect: {who: all, remove: bad}`, "battle": `battle: one`,
 	"move": `move: deep`, "music": `music: ""`, "mood": `mood: calm`, "image": `image: ""`,
-	"shop": `shop: store`, "call": `call: sub`, "wait": `wait: 1`, "notice": `notice: hi`,
+	"shop": `shop: store`, "call": `call: sub`, "wait": `wait: 1`, "notice": `notice: hi`, "message": `message: {who: scout, text: hi, event: sub}`, "call_view": `call_view: {camera: {who: scout, on: true}}`,
 	"sfx": `sfx: decide`, "exp": `exp: 0`, "learn": `learn: {actor: scout, skill: fire}`,
 	"reset_tree": `reset_tree: all`, "reset_actor": `reset_actor: scout`, "effect": `effect: fade`, "stand": `stand: none`, "end": `end: true`,
 	"clear": `clear: true`, "save": `save: true`, "open": `open: skills`,
@@ -87,10 +93,10 @@ func TestCommandFieldMatrix(t *testing.T) {
 		db.Events["matrix"] = &data.Event{Do: []data.Command{cmd}}
 		errs := db.Check()
 		campaign := wantVerb == "order" || wantVerb == "end_turn" || wantVerb == "game_over"
-		if slices.Contains(data.NewVerbs, wantVerb) || wantVerb == "stand" || campaign { // a spec version 2 (stand: 4, a campaign's: 5) command yields only a version error in older versions
+		if slices.Contains(data.NewVerbs, wantVerb) || wantVerb == "stand" || campaign || wantVerb == "checkpoint" || wantVerb == "restore_checkpoint" { // a spec version 2 (stand: 4, a campaign's: 5) command yields only a version error in older versions
 			var rest []error
 			for _, e := range errs {
-				if !strings.Contains(e.Error(), "needs schema_version: 2") && !strings.Contains(e.Error(), "stand needs schema_version: 4") && !strings.Contains(e.Error(), "needs schema_version: 5") {
+				if !strings.Contains(e.Error(), "needs schema_version: 2") && !strings.Contains(e.Error(), "stand needs schema_version: 4") && !strings.Contains(e.Error(), "needs schema_version: 5") && !strings.Contains(e.Error(), "needs schema_version: 10") {
 					rest = append(rest, e)
 				}
 			}
@@ -108,9 +114,9 @@ func TestCommandFieldMatrix(t *testing.T) {
 		}
 	}
 	for verb, src := range commandExamples {
-		if verb == "capture" || verb == "respond" || verb == "reserve" || verb == "release" || verb == "breed" {
+		if verb == "plan" || verb == "capture" || verb == "respond" || verb == "reserve" || verb == "release" || verb == "breed" || verb == "carry" {
 			continue
-		} // covered with schema version 6 in monster_test.go
+		} // covered with schema version 6 in monster_test.go; carry needs schema 10 and game.yaml carry (TestCarryCheck)
 		t.Run(verb, func(t *testing.T) {
 			check(t, src, verb, "")
 			for _, field := range fields {
@@ -196,5 +202,84 @@ func TestCaptureCommandAdmissionValidation(t *testing.T) {
 	files["data/capture.yaml"] = "events: {admit: {do: [{capture: mote}]}}\n"
 	if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "events.admit.do[0].capture") {
 		t.Fatalf("capture before schema version 6: %v", err)
+	}
+}
+
+func BenchmarkNestedCommands(b *testing.B) {
+	source := `{say: {who: guide, text: "Ready?"}}`
+	for range 7 {
+		source = `{if: true, then: [` + source + `], else: [{wait: 0}]}`
+	}
+	source = "[" + strings.Repeat(source+",", 40) + "]"
+	b.ReportAllocs()
+	for b.Loop() {
+		var commands []data.Command
+		if err := yaml.UnmarshalWithOptions([]byte(source), &commands, yaml.Strict()); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestNestedCommandAliases(t *testing.T) {
+	var commands []data.Command
+	source := `
+- say: &line {who: guide, text: Ready}
+- say: *line
+- &branch {if: true, then: [{say: *line}]}
+- *branch
+`
+	if err := yaml.UnmarshalWithOptions([]byte(source), &commands, yaml.Strict()); err != nil {
+		t.Fatal(err)
+	}
+	if len(commands) != 4 || commands[0].Say.Text != "Ready" || commands[1].Say.Text != "Ready" || commands[2].Then[0].Say.Text != "Ready" || commands[3].Then[0].Say.Text != "Ready" {
+		t.Fatalf("alias content changed: %+v", commands)
+	}
+}
+
+func TestSourceTextDiagnostics(t *testing.T) {
+	for _, tc := range []struct{ field, want string }{
+		{`text_expr: '"Ready"'`, ""},
+		{`text_expr: '42'`, "expected string"},
+		{`text_expr: 'rand()'`, "pure"},
+		{`text: Ready, text_expr: '"Ready"'`, "not both"},
+	} {
+		_, err := data.Load(fstest.MapFS{
+			"game.yaml":       {Data: []byte("schema_version: 10\nid: sources\nstart: {location: room}\n")},
+			"data/world.yaml": {Data: []byte("locations: {room: {name: Room}}\nevents: {main: {do: [{say: {" + tc.field + "}}]}}\n")},
+		})
+		if tc.want == "" && err != nil || tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+			t.Fatalf("%s: %v", tc.field, err)
+		}
+	}
+}
+
+func TestLiteralSayOmitsSelectedSourceFromReplayDefinition(t *testing.T) {
+	encoded, err := json.Marshal(data.Say{Text: "Ready"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "TextExpr") {
+		t.Fatalf("literal replay definition gained a field: %s", encoded)
+	}
+}
+
+func TestChoiceSourceDiagnostics(t *testing.T) {
+	for _, tc := range []struct{ field, want string }{
+		{`label_expr: '"Ready"'`, ""},
+		{`label_expr: '42'`, "expected string"},
+		{`label_expr: 'rand()'`, "pure"},
+		{`label: Ready, label_expr: '"Ready"'`, "not both"},
+	} {
+		_, err := data.Load(fstest.MapFS{
+			"game.yaml":       {Data: []byte("schema_version: 10\nid: sources\nstart: {location: room}\n")},
+			"data/world.yaml": {Data: []byte("locations: {room: {name: Room}}\nevents: {main: {do: [{choice: [{" + tc.field + "}]}]}}\n")},
+		})
+		if tc.want == "" && err != nil || tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+			t.Fatalf("%s: %v", tc.field, err)
+		}
+	}
+	encoded, err := json.Marshal(data.ChoiceOption{Label: "Ready"})
+	if err != nil || strings.Contains(string(encoded), "LabelExpr") {
+		t.Fatalf("literal definition changed: %s, %v", encoded, err)
 	}
 }

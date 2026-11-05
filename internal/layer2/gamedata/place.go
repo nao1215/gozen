@@ -8,32 +8,32 @@ import (
 
 var commandType = reflect.TypeFor[Command]()
 
-// eachCall passes to fn the names of events called by commands inside v (including nested then, else, choice, on_win, etc.).
-func eachCall(v reflect.Value, fn func(string)) {
+// eachCommand visits commands inside v, including nested then, else, choice and battle branches.
+func eachCommand(v reflect.Value, fn func(Command)) {
 	switch v.Kind() { //nolint:exhaustive // Only schema container/scalar kinds need handling; other reflection kinds are intentionally ignored.
 	case reflect.Pointer, reflect.Interface:
 		if !v.IsNil() {
-			eachCall(v.Elem(), fn)
+			eachCommand(v.Elem(), fn)
 		}
 	case reflect.Struct:
 		if v.Type() == commandType {
-			if c, ok := reflect.TypeAssert[Command](v); ok && c.Call != "" {
-				fn(c.Call)
+			if c, ok := reflect.TypeAssert[Command](v); ok {
+				fn(c)
 			}
 		}
 		for i := range v.NumField() {
 			if v.Type().Field(i).IsExported() {
-				eachCall(v.Field(i), fn)
+				eachCommand(v.Field(i), fn)
 			}
 		}
 	case reflect.Slice, reflect.Array:
 		for i := range v.Len() {
-			eachCall(v.Index(i), fn)
+			eachCommand(v.Index(i), fn)
 		}
 	case reflect.Map:
 		it := v.MapRange()
 		for it.Next() {
-			eachCall(it.Value(), fn)
+			eachCommand(it.Value(), fn)
 		}
 	}
 }
@@ -55,7 +55,8 @@ func (db *DB) EventPlaces() map[string]string {
 		}
 	}
 	for _, id := range slices.Sorted(maps.Keys(db.Locations)) {
-		eachCall(reflect.ValueOf(db.Locations[id]), func(ev string) {
+		eachCommand(reflect.ValueOf(db.Locations[id]), func(cmd Command) {
+			ev := cmd.Call.Event
 			if db.Events[ev] != nil && db.Events[ev].Location == "" {
 				add(ev, id)
 			}
@@ -85,7 +86,8 @@ func (db *DB) EventPlaces() map[string]string {
 			if !ok {
 				continue // do not follow from undetermined ones
 			}
-			eachCall(reflect.ValueOf(db.Events[from].Do), func(ev string) {
+			eachCommand(reflect.ValueOf(db.Events[from].Do), func(cmd Command) {
+				ev := cmd.Call.Event
 				if db.Events[ev] != nil && !done[ev] {
 					add(ev, l)
 				}
@@ -99,7 +101,8 @@ func (db *DB) EventPlaces() map[string]string {
 			continue
 		}
 		seen := map[string]bool{}
-		eachCall(reflect.ValueOf(db.Events[id].Do), func(ev string) {
+		eachCommand(reflect.ValueOf(db.Events[id].Do), func(cmd Command) {
+			ev := cmd.Call.Event
 			if l, ok := out[ev]; ok {
 				seen[l] = true
 			}

@@ -1,0 +1,6 @@
+SpeechStyle:
+  _: Optional language-specific dialogue lint rules; no rules run unless declared.
+  match: "Literal matching: word (default, Unicode boundaries) or substring."
+  first_person: Preferred self-reference and explicit discouraged alternatives.
+  addresses: Preferred forms of address keyed by recipient ID; lexical checks only.
+  endings: Preferred tone or ending and explicit discouraged forms or RE2 patterns.

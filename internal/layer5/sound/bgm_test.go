@@ -165,7 +165,7 @@ func TestSongBasics(t *testing.T) {
 }
 
 func TestDecodeOgg(t *testing.T) {
-	pcm, err := Decode(readTone(t))
+	pcm, err := decode(readTone(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func TestDecodeOgg(t *testing.T) {
 	if slices.Max(pcm) < 1000 {
 		t.Fatal("decoded tone is silent")
 	}
-	if _, err := Decode([]byte("not ogg")); err == nil {
+	if _, err := decode([]byte("not ogg")); err == nil {
 		t.Fatal("garbage decoded")
 	}
 }

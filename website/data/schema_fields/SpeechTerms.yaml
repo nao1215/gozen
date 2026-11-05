@@ -1,0 +1,5 @@
+SpeechTerms:
+  _: A preferred form and opt-in lexical patterns to flag for review.
+  preferred: The preferred form shown in warnings; never substitutes dialogue.
+  avoid: Literal discouraged forms; matching follows the language style.
+  patterns: RE2 patterns matching discouraged forms, for language-specific rules.

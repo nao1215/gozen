@@ -42,19 +42,6 @@ type candidate struct {
 	Target *Unit
 }
 
-// candidates returns the rules that currently hold, with their targets. It runs expressions and lotteries, so it is not re-run for explanations.
-func (b *Battle) candidates(u *Unit) []candidate {
-	return b.evaluateRules(u, nil)
-}
-
-// explainRules performs the same evaluation as Candidates exactly once and also returns each row's result.
-// It does not consume once, but expressions and lotteries advance the RNG. Use OnDecision to explain a decision already made.
-func (b *Battle) explainRules(u *Unit) ([]candidate, []RuleEvaluation) {
-	var results []RuleEvaluation
-	cands := b.evaluateRules(u, &results)
-	return cands, results
-}
-
 func (b *Battle) evaluateRules(u *Unit, results *[]RuleEvaluation) []candidate {
 	rules := b.rules(u)
 	env := b.Env(u)

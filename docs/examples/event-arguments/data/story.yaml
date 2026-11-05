@@ -1,0 +1,278 @@
+locations: {workshop: {name: Workshop}}
+events:
+  inspect_activity:
+    params: {task: activity}
+    do:
+    - plan: {op: set, activity: {expr: arg.task}, attribute: inspections, value: 'self.inspections + 1'}
+    - say: 'Inspections {sum(activities, it.inspections)}'
+  visit:
+    do:
+    - call: {event: encourage, args: {resident: '"potter"', amount: '2'}}
+    - call: {event: encourage, args: {resident: '"weaver"', amount: '3'}}
+    - say: 'Totals {entity.potter.vigor}/{entity.weaver.vigor}'
+  encourage:
+    params: {resident: entity, amount: number}
+    do:
+    - plan: {op: set, where: 'self.id == arg.resident', attribute: vigor, value: 'self.vigor + arg.amount'}
+    - call: {event: report, args: {resident: 'arg.resident'}}
+    - say: 'Returned {arg.resident}/{arg.amount}'
+  report:
+    params: {resident: entity}
+    do:
+    - choice:
+      - label: 'Confirm {arg.resident}'
+        do:
+        - say: 'Ready {arg.resident}'
+    - set: {var.roll: 'rand(1000)'}
+    - say: 'Roll {var.roll}'
+  stock_report:
+    params: {amount: number}
+    do: [{say: 'Received {arg.amount}'}]
+  stock_visit:
+    params: {amount: number}
+    do:
+    - open: {screen: stock, args: {amount: 'arg.amount'}}
+    - say: 'Returned {arg.amount}'
+  assign_visit:
+    params: {task: activity, resident: entity}
+    do:
+    - open: {screen: candidates, args: {task: arg.task, resident: arg.resident}}
+    - say: Returned
+  stock_demo:
+    do:
+    - say: Ready.
+    - call: {event: stock_visit, args: {amount: '2'}}
+    - call: {event: stock_visit, args: {amount: '3'}}
+    - say: 'Total {var.total}'
+  inspection_demo:
+    do:
+    - call: {event: inspect, args: {resident: '"potter"', name: '"Potter"'}}
+    - call: {event: inspect, args: {resident: '"weaver"', name: '"Weaver"'}}
+    - say: 'Inspected {entity.potter.vigor}/{entity.weaver.vigor}; seen {flag.potter_seen}/{flag.weaver_seen}'
+  inspect:
+    params: {resident: entity, name: string}
+    do:
+    - plan: {op: set, entity: {expr: arg.resident}, attribute: vigor, value: 'self.vigor + 1'}
+    - if: 'arg.resident == "potter"'
+      then:
+      - set: {flag.potter_seen: 'true'}
+      - say: {who: Potter, text: 'Ready for inspection.'}
+    - if: 'arg.resident == "weaver"'
+      then:
+      - set: {flag.weaver_seen: 'true'}
+      - say: {who: Weaver, text: 'Ready for inspection.'}
+    - choice:
+      - label: 'Inspect {arg.name}'
+        do:
+        - say: '{arg.name}: {entity[arg.resident].vigor}'
+  progress_demo:
+    do:
+    - set: {var.finished: '6'}
+    - call: {event: progress_report, args: {budget: '3 + 9'}}
+    - say: 'First ratio {var.ratio}'
+    - call: {event: progress_report, args: {budget: '0'}}
+    - say: 'Empty ratio {var.ratio}'
+  progress_report:
+    params: {budget: number}
+    do:
+    - set: {var.ratio: 'arg.budget < 1 ? 1 : var.finished / arg.budget'}
+  shift_demo:
+    do:
+    - call: {event: shift, args: {resident: '"potter"', available: 'false', amount: '9'}}
+    - say: 'Unavailable {entity.potter.vigor}'
+    - call: {event: shift, args: {resident: '"potter"', available: 'true', amount: '2'}}
+    - call: {event: shift, args: {resident: '"weaver"', available: 'true', amount: 'entity.potter.vigor + 1'}}
+    - say: 'Shifts {entity.potter.vigor}/{entity.weaver.vigor}'
+  shift:
+    params: {resident: entity, available: bool, amount: number}
+    do:
+    - if: arg.available
+      then:
+      - call: {event: apply_shift, args: {resident: arg.resident, amount: arg.amount}}
+  apply_shift:
+    params: {resident: entity, amount: number}
+    do:
+    - plan: {op: set, entity: {expr: arg.resident}, attribute: vigor, value: 'self.vigor + arg.amount'}
+  adjustment_demo:
+    do:
+    - plan: {op: progress, activity: prepare, value: '2'}
+    - call: {event: adjust_started, args: {amount: '-0.5'}}
+    - say: 'Before start {activity.prepare.progress}/{activity.shape.progress}'
+    - plan: {op: progress, activity: shape, value: '1'}
+    - call: {event: adjust_started, args: {amount: '-0.5'}}
+    - say: 'After adjustment {activity.prepare.progress}/{activity.shape.progress}'
+  adjust_started:
+    params: {amount: number}
+    do:
+    - call: {event: adjust_task, args: {task: '"prepare"', amount: arg.amount}}
+    - call: {event: adjust_task, args: {task: '"shape"', amount: arg.amount}}
+  adjust_task:
+    params: {task: activity, amount: number}
+    do:
+    - if: '!activity[arg.task].completed && activity[arg.task].progress > 0'
+      then:
+      - plan: {op: progress, activity: {expr: arg.task}, value: arg.amount}
+  priority_demo:
+    do:
+    - set: {var.top_score: '0', var.top_title: '""'}
+    - call: {event: consider_task, args: {score: '20', title: '"Water"'}}
+    - call: {event: consider_task, args: {score: '20', title: '"Weed"'}}
+    - call: {event: consider_task, args: {score: '10', title: '"Harvest"'}}
+    - say: 'First among equals: {var.top_title}'
+    - call: {event: consider_task, args: {score: '30', title: '"Repair"'}}
+    - say: 'Higher priority: {var.top_title} ({var.top_score})'
+  consider_task:
+    params: {score: number, title: string}
+    do:
+    - if: arg.score > var.top_score
+      then:
+      - set: {var.top_score: arg.score, var.top_title: arg.title}
+  calendar_demo:
+    do:
+    - call: {event: calendar_report, args: {first: '"2030-01-01"', last: '"2030-01-07"'}}
+    - call: {event: calendar_report, args: {first: '"2030-01-07"', last: '"2030-01-01"'}}
+    - call: {event: calendar_report, args: {first: 'calendar_shift("2028-02-28", 1)', last: 'calendar_shift("2028-02-28", 2)'}}
+    - say: 'Next date {calendar_shift("2030-12-31", 1)}; previous date {calendar_shift("2028-03-01", -1)}'
+  calendar_report:
+    params: {first: date, last: date}
+    do:
+    - say: 'Days {calendar_days(arg.first, arg.last)}; workdays {calendar_workdays(arg.first, arg.last)}'
+  lottery_demo:
+    do:
+    - plan: {op: set, entity: weaver, attribute: vigor, value: '1'}
+    - set: {var.top_score: '-1', var.top_title: '""'}
+    - call: {event: rank_resident, args: {resident: '"potter"'}}
+    - call: {event: rank_resident, args: {resident: '"weaver"'}}
+    - set: {var.next_draw: 'rand(1000)'}
+    - say: 'Lottery {var.top_title}/{var.top_score}; next {var.next_draw}'
+  rank_resident:
+    params: {resident: entity}
+    do:
+    - if: entity[arg.resident].vigor > 0
+      then:
+      - set: {var.score: 'rand(1000)'}
+      - call: {event: consider_task, args: {score: var.score, title: arg.resident}}
+  counter_demo:
+    do:
+    - call: {event: add_counter, args: {resident: '"potter"', slot: '1', amount: '2'}}
+    - call: {event: add_counter, args: {resident: '"weaver"', slot: '2', amount: '3'}}
+    - call: {event: add_counter, args: {resident: '"potter"', slot: '1', amount: '4'}}
+    - say: 'Counters {var.stock_potter_1}/{var.stock_weaver_2}'
+  add_counter:
+    params: {resident: entity, slot: number, amount: number}
+    do:
+    - set: {'var["stock_" + arg.resident + "_" + arg.slot]': 'var["stock_" + arg.resident + "_" + arg.slot] + arg.amount'}
+    - set: {'flag["stocked_" + arg.resident]': 'true'}
+  threshold_demo:
+    do:
+    - call: {event: post_threshold, args: {key: '"water"', level: '1'}}
+    - say: 'First warning {var.posted_water}'
+    - set: {var.posted_water: '0'}
+    - call: {event: post_threshold, args: {key: '"water"', level: '1'}}
+    - say: 'Acknowledged warning {var.posted_water}'
+    - call: {event: post_threshold, args: {key: '"water"', level: '2'}}
+    - call: {event: post_threshold, args: {key: '"stock"', level: '1'}}
+    - say: 'Escalated warning {var.posted_water}; independent warning {var.posted_stock}'
+  post_threshold:
+    params: {key: string, level: number}
+    do:
+    - if: 'arg.level > var["shown_" + arg.key]'
+      then:
+      - set: {'var["posted_" + arg.key]': arg.level}
+      - set: {'var["shown_" + arg.key]': arg.level}
+  release_demo:
+    do:
+    - plan: {op: assign, activity: shape, entity: weaver}
+    - call: {event: release_jobs, args: {resident: '"potter"'}}
+    - say: 'Released [{activity.prepare.assignee}]; other owner {activity.shape.assignee}'
+    - plan: {op: assign, activity: prepare, entity: potter}
+    - plan: {op: progress, activity: prepare, value: '2'}
+    - call: {event: release_jobs, args: {resident: '"potter"'}}
+    - say: 'Finished owner {activity.prepare.assignee}; other owner {activity.shape.assignee}'
+  release_jobs:
+    params: {resident: entity}
+    do:
+    - call: {event: release_job, args: {resident: arg.resident, task: '"prepare"'}}
+    - call: {event: release_job, args: {resident: arg.resident, task: '"shape"'}}
+  release_job:
+    params: {resident: entity, task: activity}
+    do:
+    - if: 'activity[arg.task].assignee == arg.resident && !activity[arg.task].completed'
+      then:
+      - plan: {op: assign, activity: {expr: arg.task}, entity: ''}
+  evidence_demo:
+    do:
+    - set: {var.sample_prepare: '1', flag.sampled_prepare: 'true', flag.sampled_shape: 'false'}
+    - call: summarize_samples
+    - say: 'Sampled {var.sample_total}; missing {var.sample_missing}'
+    - plan: {op: progress, activity: prepare, value: '2'}
+    - call: summarize_samples
+    - say: 'After work {var.sample_total}; missing {var.sample_missing}'
+    - plan: {op: cancel, activity: prepare, value: 'true'}
+    - call: summarize_samples
+    - say: 'After cancellation {var.sample_total}; missing {var.sample_missing}'
+  summarize_samples:
+    do:
+    - set: {var.sample_total: '0', var.sample_missing: '0'}
+    - call: {event: include_sample, args: {task: '"prepare"', sampled: flag.sampled_prepare}}
+    - call: {event: include_sample, args: {task: '"shape"', sampled: flag.sampled_shape}}
+  include_sample:
+    params: {task: activity, sampled: bool}
+    do:
+    - if: '!activity[arg.task].cancelled'
+      then:
+      - if: arg.sampled
+        then:
+        - set: {var.sample_total: 'var.sample_total + min(activity[arg.task].effort, var["sample_" + arg.task])'}
+        else:
+        - set: {var.sample_missing: 'var.sample_missing + 1'}
+  collection_demo:
+    do:
+    - set: {var.effort: 'sum(activities, it.effort)', var.residents: 'count(entities, true)'}
+    - plan: {op: cancel, activity: shape, value: 'true'}
+    - set: {var.remaining: 'sum(filter(activities, !it.cancelled), it.effort)'}
+    - say: 'Effort {var.effort}; residents {var.residents}; remaining {var.remaining}; days {sum(activities, calendar_days(it.from,it.to))}'
+    - say: 'Next open offset {first(filter(range(0, 7), it > 3 && calendar_workdays(calendar_shift("2026-01-01",it),calendar_shift("2026-01-01",it)) == 1), -1)}; exhausted {first(filter(range(0, 7), it > 9), -1)}'
+  each_demo:
+    do:
+    - say: Ready for inspections.
+    - set: {var.visits: '0'}
+    - call:
+        event: each_visit
+        each: {param: resident, in: 'filter(entities, it.vigor == 0)'}
+        args: {amount: 'var.visits + 1'}
+    - say: 'Finished {var.visits} inspections'
+  each_visit:
+    params: {resident: entity, amount: number}
+    do:
+    - plan: {op: set, attribute: vigor, value: '1'}
+    - choice:
+      - label: 'Confirm {arg.resident}'
+        do: [{set: {var.visits: 'arg.amount'}}]
+    - say: 'Visited {arg.resident}: {var.visits}'
+  selected_text_demo:
+    do:
+    - call: {event: report_resident, args: {resident: '"potter"'}}
+    - call: {event: report_resident, args: {resident: '"weaver"'}}
+  report_resident:
+    params: {resident: entity}
+    do:
+    - say: {text_expr: 'entity[arg.resident].data.reports[0]'}
+  roster_demo:
+    do:
+    - say: Ready for roster.
+    - open: {screen: roster, args: {amount: '2'}}
+    - say: Roster closed.
+  speaker_demo:
+    do:
+    - call: {event: greet, each: {param: speaker, items: [potter, weaver]}}
+    - open: {screen: resident_card, args: {resident: '"weaver"'}}
+    - say: 'Visits {var.greetings}'
+  greet:
+    params: {speaker: actor}
+    do:
+    - say: {who: {expr: arg.speaker}, text: 'Welcome to the workshop.'}
+    - set: {var.greetings: 'var.greetings + 1'}
+actors:
+  potter: {name: Potter}
+  weaver: {name: Weaver}

@@ -1,0 +1,149 @@
+schema_version: 10
+id: office-workboard
+title: Harbor app team
+language: en
+screen: {width: 1280, height: 720, native: true}
+start: {location: office, event: opening}
+planning:
+  calendar: {start: '2030-03-04', end: '2030-03-15', phases: [morning], weekdays_off: [0, 6]}
+  attributes:
+    portrait: {type: string, initial: ''}
+    icon: {type: string, initial: ''}
+    camera: {type: bool, initial: true}
+    backdrop: {type: string, initial: bg/office.jpg}
+  entities:
+    martin: {name: Martin Shaw, actor: martin, tags: [team], attributes: {portrait: martin/normal.png, icon: icons/martin.png}}
+    elena: {name: Elena Ruiz, actor: elena, tags: [team], attributes: {portrait: elena/normal.png, icon: icons/elena.png, backdrop: bg/meeting.jpg}}
+    daniel: {name: Daniel Cho, actor: daniel, tags: [team], attributes: {portrait: daniel/normal.png, icon: icons/daniel.png}}
+    iris: {name: Iris Vale, actor: iris, tags: [team], attributes: {portrait: iris/normal.png, icon: icons/iris.png}}
+    nora: {name: Nora Quinn, actor: nora, tags: [team], attributes: {portrait: nora/normal.png, icon: icons/nora.png, backdrop: bg/pantry.jpg}}
+    mia: {name: Mia Hart, actor: mia, tags: [team], attributes: {portrait: mia/normal.png, icon: icons/mia.png}}
+  activities:
+    screens: {name: Booking screens, effort: 4, assignee: iris, from: '2030-03-04', to: '2030-03-06'}
+    api: {name: Booking API, effort: 6, assignee: daniel, from: '2030-03-04', to: '2030-03-08'}
+    payments: {name: Payments, effort: 5, assignee: daniel, after: [api], from: '2030-03-08', to: '2030-03-12'}
+    tests: {name: Acceptance tests, effort: 4, assignee: nora, after: [screens, api], from: '2030-03-11', to: '2030-03-13'}
+    demo: {name: Client demo, effort: 2, assignee: mia, after: [tests], from: '2030-03-14', to: '2030-03-15'}
+  schedule:
+  - {id: review, date: '2030-03-08', phase: morning, event: sprint_review, label: Sprint review}
+  - {id: demo_day, date: '2030-03-14', phase: morning, event: sprint_review, label: Client demo}
+flows:
+  day:
+    steps:
+    - {label: Standup, screen: standup}
+    - {label: People, screen: people}
+    - {label: Assign, screen: assign, hold: true, done: 'var.assigned_n > 0'}
+    - {label: Wrap up, screen: wrap}
+    restart: 'var.day'
+    next: Next
+screens:
+  standup:
+    title: Morning standup
+    kind: workspace
+    view:
+      fullscreen: true
+      background: bg/office.jpg
+      burnup: {bounds: [968, 206, 280, 120], compact: true, title: Sprint, total: Scope, planned_label: Planned, observed: Done}
+    guide:
+      steps:
+      - {who: martin, text: "Each card is one person. The bar shows today's work against the plan."}
+      - {who: martin, text: 'When you have read the room, go on to the people.', focus: [next]}
+    entries:
+    - {label: Martin Shaw, style: plate, text: Manager. Planning the demo., bounds: [32, 90, 296, 190], bust: {picture: martin/normal.png}, dot: '#7fc8a9', sign: icons/at-office.png, meter: {progress: '0.6', planned: '0.5'}}
+    - {label: Elena Ruiz, style: plate, text: Product owner. Two new requests., bounds: [344, 90, 296, 190], bust: {picture: elena/normal.png}, sign: icons/at-office.png, dot: '#7fc8a9', meter: {progress: '0.5', planned: '0.5'}}
+    - {label: Daniel Cho, style: plate, text: Backend. The API is behind., bounds: [656, 90, 296, 190], bust: {picture: daniel/normal.png}, sign: icons/at-office.png, dot: '#e8a07a', meter: {progress: '0.3', planned: '0.6', behind: 'true'}}
+    - {label: Iris Vale, style: plate, text: Design. Screens nearly done., bounds: [32, 296, 296, 190], bust: {picture: iris/normal.png}, sign: icons/at-office.png, dot: '#7fc8a9', meter: {progress: '0.8', planned: '0.7'}}
+    - {label: Nora Quinn, style: plate, text: QA. Waiting for the API., bounds: [344, 296, 296, 190], bust: {picture: nora/normal.png}, sign: icons/at-office.png, dot: '#f0d070', meter: {progress: '0.2', planned: '0.3'}}
+    - {label: Mia Hart, style: plate, text: Client side. Off today., bounds: [656, 296, 296, 190], bust: {picture: mia/normal.png}, muted: 'true', dot: '#9aa0a6', meter: {progress: '0.4', planned: '0.4'}}
+    - {label: Sprint, style: plate, text: 'Day {var.day + 1} of 10', bounds: [968, 90, 280, 100]}
+  people:
+    title: The team
+    kind: workspace
+    view: {fullscreen: true, background: bg/meeting.jpg}
+    entries:
+    - {label: Martin Shaw, style: plate, text: Engineering manager, peek: 'Keeps the plan honest. Ask him before moving a deadline.', bounds: [32, 90, 296, 200], bust: {picture: martin/normal.png}}
+    - {label: Elena Ruiz, style: plate, text: Product owner, peek: 'Owns the backlog. Brings the client requests on Mondays.', bounds: [344, 90, 296, 200], bust: {picture: elena/normal.png}}
+    - {label: Daniel Cho, style: plate, text: Backend engineer, peek: 'Builds the booking API. Quiet when he is stuck.', bounds: [656, 90, 296, 200], bust: {picture: daniel/normal.png}}
+    - {label: Iris Vale, style: plate, text: Designer, peek: 'Draws the screens and checks them on real phones.', bounds: [32, 306, 296, 200], bust: {picture: iris/normal.png}}
+    - {label: Nora Quinn, style: plate, text: QA engineer, peek: 'Writes the acceptance tests and runs them every evening.', bounds: [344, 306, 296, 200], bust: {picture: nora/normal.png}}
+    - {label: Mia Hart, style: plate, text: Account manager, peek: 'Talks to the client. Back on Thursday.', bounds: [656, 306, 296, 200], bust: {picture: mia/normal.png}}
+  assign:
+    title: Hand out the work
+    kind: workspace
+    view: {fullscreen: true, band: none, background: bg/office.jpg}
+    entries:
+    - {label: Payments, drag: payments, bounds: [40, 110, 300, 130], ticket: {due: Mar 12, state: open, progress: '0', planned: '0.2'}}
+    - {label: Acceptance tests, drag: tests, bounds: [40, 260, 300, 130], ticket: {due: Mar 13, state: waiting, progress: '0', blocked: 'true', after: [Booking API]}}
+    - {label: Daniel Cho, drop: job, accepts: 'arg.job != "tests"', hint: 'Give {arg.job}', bounds: [420, 110, 300, 150], bust: {picture: daniel/normal.png}, text: Backend, do: [{set: {var.assigned: 'arg.job', var.assigned_n: 1}}]}
+    - {label: Nora Quinn, drop: job, hint: 'Give {arg.job}', bounds: [420, 280, 300, 150], bust: {picture: nora/normal.png}, text: QA, do: [{set: {var.assigned: 'arg.job', var.assigned_n: 1}}]}
+    - {label: Friday, style: plate, peek: 'Release rehearsal at four. Mia is back.', bounds: [800, 110, 200, 80]}
+  wrap:
+    title: Wrap up
+    kind: workspace
+    view: {fullscreen: true, background: bg/pantry.jpg}
+    entries:
+    - {label: Go home, style: button, bounds: [40, 150, 220, 48], do: [{set: {var.day: 'var.day+1', var.assigned_n: 0}}]}
+  team_call:
+    title: Team call
+    kind: ensemble
+    view:
+      fullscreen: true
+      order: [martin, elena, daniel, nora]
+      portrait: portrait
+      icon: icon
+      camera: camera
+      backdrop: backdrop
+      chat: {title: Messages, joined: joined, left: left, camera_off: Camera off, camera_on: Camera on}
+      call:
+        address: call.example.test/harbor
+        controls:
+        - {label: Mic, icon: mic}
+        - {label: Camera, icon: camera}
+        - {label: Share, icon: share}
+        - {label: Hand, icon: hand}
+        - {label: Chat, icon: chat}
+        - {label: Leave, icon: leave}
+        still: true
+        layout: full
+        captions: overlay
+        others: side
+        others_title: Team
+        window_opacity: 0.8
+  tickets:
+    title: Tickets and help
+    kind: workspace
+    view: {fullscreen: true, background: bg/office.jpg}
+    entries:
+    - {label: Booking API, bounds: [40, 120, 280, 150], icon: daniel/normal.png, ticket: {due: Mar 8, state: open, progress: '0.3', planned: '0.6', behind: 'true'}}
+    - {label: Payments, bounds: [360, 120, 280, 150], icon: daniel/normal.png, ticket: {due: Mar 12, state: waiting, progress: '0', blocked: 'true', after: [Booking API]}}
+    - {label: Booking screens, bounds: [680, 120, 280, 150], icon: iris/normal.png, ticket: {due: Mar 6, state: open, progress: '0.8', planned: '0.7'}}
+    - {label: Pair with Daniel, carousel: help, picture: icons/daniel.png, cost: 1 slot, text: Sit with him on the API for an hour., bounds: [200, 500, 880, 196], do: [{set: {var.help: 1}}]}
+    - {label: Ask Iris, carousel: help, picture: icons/iris.png, cost: 1 slot, text: Ask her to look at the error screens., bounds: [200, 500, 880, 196], do: [{set: {var.help: 2}}]}
+    - {label: Ask Mia, carousel: help, picture: icons/mia.png, text: Ask her to move the demo., bounds: [200, 500, 880, 196], unavailable: 'true', reason: Mia is off today., do: [{set: {var.help: 3}}]}
+  timeline:
+    title: Sprint plan
+    kind: timeline
+    view: {fullscreen: true, background: bg/meeting.jpg}
+  calendar:
+    title: Sprint calendar
+    kind: calendar
+    view: {fullscreen: true, background: bg/office.jpg}
+  materials:
+    title: Overlapping panels
+    kind: workspace
+    view: {fullscreen: true, background: bg/office.jpg}
+    entries:
+    - {label: Notes, style: plate, text: The panel behind shows through the glass in front., bounds: [80, 150, 500, 300]}
+    - {label: Release checklist, style: plate, text: 'Tests green. Demo booked. Rollback written.', bounds: [400, 260, 500, 300]}
+ui:
+  message: novel
+  profiles: true
+  profile_book: {layout: grid}
+  quick_menu: below
+  material:
+    kind: glass
+    blur: 12
+    opacity: 0.3
+    border: 0.55
+    shadow: 0.7
+    surfaces: {base: mica, card: acrylic, control: glass}

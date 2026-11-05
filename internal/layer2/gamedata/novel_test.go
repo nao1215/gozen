@@ -15,7 +15,7 @@ func TestRollbackSetting(t *testing.T) {
 		{"schema_version: 4\nid: b\nui: {rollback: -1}\n", "ui.rollback: want 0 to 64"},
 		{"schema_version: 4\nid: b\nui: {rollback: 65}\n", "ui.rollback: want 0 to 64"},
 		{"schema_version: 3\nid: b\nui: {rollback: 8}\n", "ui.rollback needs schema_version: 4"},
-		{"schema_version: 10\nid: b\n", "0〜9"},
+		{"schema_version: 11\nid: b\n", "0〜10"},
 	} {
 		_, err := testgame.TryLoad(map[string]string{"game.yaml": c.head + testgame.Game})
 		if c.want == "" && err != nil || c.want != "" && (err == nil || !strings.Contains(err.Error(), c.want)) {
@@ -39,6 +39,33 @@ func TestChoiceID(t *testing.T) {
 		_, err := testgame.TryLoad(map[string]string{"game.yaml": c.head + testgame.Game, "data/z.yaml": "events: " + c.events})
 		if c.want == "" && err != nil || c.want != "" && (err == nil || !strings.Contains(err.Error(), c.want)) {
 			t.Errorf("%s: %v", c.events, err)
+		}
+	}
+}
+
+func TestMaterialSettings(t *testing.T) {
+	for _, c := range []struct {
+		body  string
+		valid bool
+	}{
+		{"{kind: mica, blur: 12, opacity: 0.6, surfaces: {card: acrylic, control: glass}, wallpaper: ['#e5e9ef', '#b6d4d5', '#d9ccbb']}", true},
+		{"{kind: opaque}", true},
+		{"{kind: glass, refraction: 32, wallpaper_strength: 1}", true},
+		{"{kind: glass, refraction: -1}", false},
+		{"{kind: glass, refraction: 33}", false},
+		{"{kind: glass, wallpaper_strength: 1.01}", false},
+		{"{kind: glass, wallpaper_strength: -0.01}", false},
+		{"{kind: glass, blur: 65}", false},
+		{"{kind: glass, opacity: -0.1}", false},
+		{"{kind: glass, shadow: 1.1}", false},
+		{"{kind: glass, surfaces: {unknown: mica}}", false},
+		{"{kind: glass, surfaces: {card: unknown}}", false},
+		{"{kind: glass, wallpaper: ['#ffffff']}", false},
+		{"{kind: unknown}", false},
+	} {
+		_, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: 10\nid: material\nui: {material: " + c.body + "}\n" + testgame.Game})
+		if (err == nil) != c.valid {
+			t.Errorf("%s: %v", c.body, err)
 		}
 	}
 }

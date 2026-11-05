@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"iter"
 	"maps"
 	"math"
 	"path"
@@ -23,6 +24,7 @@ import (
 	"github.com/nao1215/gozen/internal/layer3/atlas"
 	"github.com/nao1215/gozen/internal/layer3/campaign"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
+	"github.com/nao1215/gozen/internal/layer3/planning"
 	"github.com/nao1215/gozen/internal/layer3/scope"
 	"github.com/nao1215/gozen/internal/rpg"
 )
@@ -56,6 +58,20 @@ type MoodEffect struct{ Name string }
 
 // ImageEffect sets the current picture; an empty file clears it.
 type ImageEffect struct{ Picture data.CG }
+
+// CallCameraEffect turns a call participant's camera view on or off; it is
+// presentation only.
+type CallCameraEffect struct {
+	Who string
+	On  bool
+}
+
+// CallShareEffect puts a shared screen on a call's stage (Picture under assets/;
+// empty ends the sharing); it is presentation only.
+type CallShareEffect struct {
+	Who     string
+	Picture string
+}
 
 // SoundEffect requests a named sound.
 type SoundEffect struct{ Name string }
@@ -95,15 +111,17 @@ type StandEffect struct {
 	Default bool
 }
 
-func (MoveEffect) isEffect()   {}
-func (MusicEffect) isEffect()  {}
-func (MoodEffect) isEffect()   {}
-func (ImageEffect) isEffect()  {}
-func (SoundEffect) isEffect()  {}
-func (BreedEffect) isEffect()  {}
-func (VisualEffect) isEffect() {}
-func (StandEffect) isEffect()  {}
-func (VoiceEffect) isEffect()  {}
+func (MoveEffect) isEffect()       {}
+func (MusicEffect) isEffect()      {}
+func (MoodEffect) isEffect()       {}
+func (ImageEffect) isEffect()      {}
+func (SoundEffect) isEffect()      {}
+func (CallCameraEffect) isEffect() {}
+func (CallShareEffect) isEffect()  {}
+func (BreedEffect) isEffect()      {}
+func (VisualEffect) isEffect()     {}
+func (StandEffect) isEffect()      {}
+func (VoiceEffect) isEffect()      {}
 
 // CampaignEffect tells that a campaign's order was given (Kind order: its id, general,
 // target and result) or that a turn ended (Kind end_turn: the turn that begins).
@@ -117,6 +135,11 @@ func (CampaignEffect) isEffect() {}
 // VoiceEffect is the voice of the line that comes next: File under assets/, Who the speaker.
 type VoiceEffect struct{ File, Who string }
 
+// CarryEffect asks the frontend to keep the carried values for the next new game.
+type CarryEffect struct{}
+
+func (CarryEffect) isEffect() {}
+
 // Request is something the screen must show before the event goes on.
 type Request interface{ isRequest() }
 
@@ -128,12 +151,15 @@ type RecruitOffer struct {
 
 // Say is a line to read.
 type Say struct {
-	Name    string // "" for narration
-	Face    string // a picture under assets/ ("" for none)
-	Text    string
-	Right   bool // the picture stands on the right
-	Actor   string
-	Recruit *RecruitOffer // present only for a defeated monster's invitation
+	Instant bool
+	// Ensemble is the authored participant screen for this dialogue line.
+	Ensemble string
+	Name     string // "" for narration
+	Face     string // a picture under assets/ ("" for none)
+	Text     string
+	Right    bool // the picture stands on the right
+	Actor    string
+	Recruit  *RecruitOffer // present only for a defeated monster's invitation
 	// Voice is the line's voice, a file under assets/ ("" for none; ADR 0028).
 	Voice string
 	// Key is the key of the line's source (SourceKey of who and text as written, before
@@ -200,8 +226,8 @@ func (c Choice) Reword(db *data.DB) Choice {
 	return c
 }
 
-// SourceKey is the key of a line's source: a 64-bit FNV-1a hash of who and text as written in
-// the YAML, joined by a zero byte. A line keeps its key whatever its {expressions} hold and
+// SourceKey hashes the resolved speaker ID (or literal name) and authored text
+// with FNV-1a, joined by a zero byte. A line keeps its key whatever its {expressions} hold and
 // in whatever language it is shown (ADR 0026).
 func SourceKey(who, text string) uint64 {
 	h := fnv.New64a()
@@ -241,11 +267,151 @@ type Wait struct {
 	Sound string
 }
 
+// Checkpoint asks the frontend to keep the state and random stream for retry.
+// Event is the entry event on restoration; Restore abandons the current execution.
+type Checkpoint struct {
+	Event   string
+	Restore bool
+}
+
 // Save opens the save screen.
 type Save struct{}
 
+// MaxScreenDepth bounds suspended authored screens in session and play. Frontends
+// reject the next open at this depth, report it, and continue its caller without
+// changing the existing screen stack. Built-in menus do not count toward it.
+const MaxScreenDepth = 64
+
 // Open opens one of the screens of the game (formation, skills, fusion).
-type Open struct{ Screen string }
+type Open struct {
+	Screen string
+	// Args are detached frozen screen bindings, consumed by session and play.
+	Args map[string]any
+}
+
+// ScreenRow is a displayed authored entry with detached frozen bindings. Session,
+// play and replay retain these values so a later selection cannot change its ID.
+// ScreenEntry is a shallow copy; nested command definitions remain read-only.
+type ScreenRow struct {
+	data.ScreenEntry
+	Args map[string]any
+}
+
+// Env overlays the selected row's immutable arguments on current game state.
+func (row ScreenRow) Env(env expr.Env) expr.Env {
+	return expr.Chain{expr.Map{"arg": expr.Map(row.Args)}, env}
+}
+
+// Visible rechecks membership, guard and target before an action starts. The
+// source entry and parent environment are used for collection membership, while
+// the row's frozen arguments are used for the action guard and target.
+func (row ScreenRow) Visible(db *data.DB, source data.ScreenEntry, env expr.Env) (bool, error) {
+	if source.Each != nil {
+		ids, err := source.Each.IDs(env)
+		if err != nil {
+			return false, err
+		}
+		id, ok := row.Args[source.Each.Param].(string)
+		if !ok {
+			return false, errors.New("screen row requires a string ID")
+		}
+		if !slices.Contains(ids, id) {
+			return false, nil
+		}
+	}
+	bound := row.Env(env)
+	visible, err := source.When.Bool(bound)
+	if err != nil || !visible {
+		return visible, err
+	}
+	_, err = source.Target.Resolve(db, "entity", bound)
+	return err == nil, err
+}
+
+// Available checks the activation contract shared by play, session and replay.
+// Missing unavailable means enabled; evaluation errors refuse the operation.
+func (row ScreenRow) Available(db *data.DB, source data.ScreenEntry, env expr.Env) (bool, error) {
+	visible, err := row.Visible(db, source, env)
+	if err != nil || !visible {
+		return false, err
+	}
+	if !source.Unavailable.Set() {
+		return true, nil
+	}
+	blocked, err := source.Unavailable.Bool(row.Env(env))
+	return !blocked && err == nil, err
+}
+
+// ScreenEntries yields visible rows in authored/collection order. The index
+// identifies the source command root; Args distinguishes repeated rows. Guards,
+// targets and labels use current state and frozen row bindings. Errors hide the
+// affected source entry/row and call report. Total expansion is bounded to 4096
+// rows. Iteration stays lazy to preserve existing rendering evaluation order.
+func ScreenEntries(db *data.DB, name string, env expr.Env, report func(error)) iter.Seq2[int, ScreenRow] {
+	return func(yield func(int, ScreenRow) bool) {
+		def := db.Game.Screens[name]
+		if def == nil {
+			return
+		}
+		log := func(err error) {
+			if report != nil {
+				report(err)
+			}
+		}
+		value, _ := env.Lookup("arg")
+		parent, ok := value.(expr.Map)
+		if !ok && value != nil {
+			log(errors.New("screen arguments must be a binding map"))
+			return
+		}
+		total := 0
+		for i, entry := range def.Entries {
+			ids := []string{""}
+			if entry.Each != nil {
+				var err error
+				ids, err = entry.Each.IDs(env)
+				if err != nil {
+					log(err)
+					continue
+				}
+			}
+			total += len(ids)
+			if total > 4096 {
+				log(errors.New("screen exceeds 4096 rows"))
+				return
+			}
+			for _, id := range ids {
+				args := maps.Clone(parent)
+				if entry.Each != nil {
+					if args == nil {
+						args = expr.Map{}
+					}
+					args[entry.Each.Param] = id
+				}
+				row := ScreenRow{ScreenEntry: entry, Args: args}
+				bound := row.Env(env)
+				visible, err := entry.When.Bool(bound)
+				if err != nil {
+					log(err)
+					continue
+				}
+				if !visible {
+					continue
+				}
+				target, err := entry.Target.Resolve(db, "entity", bound)
+				if err != nil {
+					log(err)
+					continue
+				}
+				row.Target = data.IDRef{ID: target}
+				row.Label = data.Render(db.Tr(entry.Label), bound)
+				if !yield(i, row) {
+					return
+				}
+			}
+		}
+	}
+}
 
 // Notice is a short notice shown at the top of the screen without stopping (the notice command). The screen shows it and moves on at once (no answer needed).
 type Notice struct{ Text string }
@@ -260,17 +426,18 @@ type Clear struct{}
 // GameOver ends the game.
 type GameOver struct{}
 
-func (Say) isRequest()      {}
-func (Choice) isRequest()   {}
-func (Battle) isRequest()   {}
-func (Shop) isRequest()     {}
-func (Wait) isRequest()     {}
-func (Save) isRequest()     {}
-func (Open) isRequest()     {}
-func (Clear) isRequest()    {}
-func (Tap) isRequest()      {}
-func (Notice) isRequest()   {}
-func (GameOver) isRequest() {}
+func (Say) isRequest()        {}
+func (Choice) isRequest()     {}
+func (Battle) isRequest()     {}
+func (Shop) isRequest()       {}
+func (Wait) isRequest()       {}
+func (Checkpoint) isRequest() {}
+func (Save) isRequest()       {}
+func (Open) isRequest()       {}
+func (Clear) isRequest()      {}
+func (Tap) isRequest()        {}
+func (Notice) isRequest()     {}
+func (GameOver) isRequest()   {}
 
 // ClashScene is a march decided by a clash shown as units (fight: clash_view, ADR 0030):
 // the rules have played it and written it back; the screen plays it back (it needs no
@@ -300,6 +467,10 @@ const (
 )
 
 type frame struct {
+	args expr.Map
+	// ensemble is the call screen the frame's lines show over when they name none
+	// (call.ensemble), passed on to the events it calls.
+	ensemble     string
 	cmds         []data.Command
 	pc           int
 	prepared     bool
@@ -313,7 +484,9 @@ type Runner struct {
 	st    *rpg.State
 	host  Host
 	stack []frame
-	notes []string
+	// repeated counts frozen loop membership across this execution, including nested calls.
+	repeated int
+	notes    []string
 	// ups are the notes that tell of a level gained: a sound goes with them when they are shown
 	ups map[string]bool
 	// waiting for an answer
@@ -363,7 +536,7 @@ type Runner struct {
 	last scope.Last
 	// OnStart is told of an event started when nothing was running (before any of it runs):
 	// a test player's note keeps the state there, to begin the event again from it.
-	OnStart func(cmds []data.Command)
+	OnStart func(cmds []data.Command, args map[string]any)
 	// optionAt is the place of each option shown in its choice as written (chose.<id> of an
 	// option without an id is that number).
 	optionAt []int
@@ -376,15 +549,33 @@ func New(db *data.DB, st *rpg.State, host Host) *Runner {
 
 // Start begins running cmds (after whatever is running).
 func (r *Runner) Start(cmds []data.Command) {
+	r.start(cmds, nil)
+}
+
+// StartBound resumes a named event or screen entry with frozen scalar bindings. Validation occurs
+// before callbacks, run counts or frames change; input maps are never retained.
+func (r *Runner) StartBound(name string, values map[string]any) error {
+	args, err := r.db.ValidateArguments(name, values)
+	if err != nil {
+		return err
+	}
+	r.start(r.db.NamedCommands(name), args)
+	return nil
+}
+
+func (r *Runner) start(cmds []data.Command, args expr.Map) {
+	if !r.Running() {
+		r.repeated = 0
+	}
 	// OnStart keeps the state the event begins from, so it comes before the run is counted:
 	// begun again from that state (a save made in the middle of the event, ADR 0025), the event
 	// is counted once, not once more for every save and load.
 	if len(cmds) > 0 && r.OnStart != nil && !r.Running() {
-		r.OnStart(cmds)
+		r.OnStart(cmds, maps.Clone(args))
 	}
 	r.countRun(cmds)
 	if len(cmds) > 0 {
-		r.stack = append([]frame{{cmds: cmds}}, r.stack...)
+		r.stack = append([]frame{{cmds: cmds, args: args}}, r.stack...)
 	}
 }
 
@@ -426,10 +617,14 @@ func (r *Runner) Won() {
 }
 
 func (r *Runner) env() expr.Env {
-	if r.Extra != nil {
-		return expr.Chain{r.Extra, scope.Env(r.db, r.st, &r.last), r.st.Env()}
+	var args expr.Env
+	if len(r.stack) > 0 && len(r.stack[len(r.stack)-1].args) > 0 {
+		args = expr.Map{"arg": r.stack[len(r.stack)-1].args}
 	}
-	return expr.Chain{scope.Env(r.db, r.st, &r.last), r.st.Env()}
+	if r.Extra != nil {
+		return expr.Chain{args, r.Extra, scope.Env(r.db, r.st, &r.last), r.st.Env()}
+	}
+	return expr.Chain{args, scope.Env(r.db, r.st, &r.last), r.st.Env()}
 }
 
 func (r *Runner) logf(err error) {
@@ -553,7 +748,7 @@ func (r *Runner) offerCaptures(beaten []string) {
 		}
 		name := e.Name + " " + sign
 		commands := []data.Command{
-			{Say: &data.Say{Who: name, Text: e.Name + " rises and looks toward your party."}},
+			{Say: &data.Say{Who: data.IDRef{ID: name}, Text: e.Name + " rises and looks toward your party."}},
 			{Choice: []data.ChoiceOption{{ID: "yes", Label: "Yes", Do: []data.Command{{Capture: id}}}, {ID: "no", Label: "No"}}, Prompt: "Let " + name + " join?"},
 			{Wait: data.WaitCue{Seconds: 36.0 / 60}},
 		}
@@ -595,7 +790,17 @@ func (r *Runner) chose(n int) {
 func (r *Runner) push(cmds []data.Command) {
 	r.countRun(cmds)
 	if len(cmds) > 0 {
-		r.stack = append(r.stack, frame{cmds: cmds})
+		var args expr.Map
+		ensemble := ""
+		if len(r.stack) > 0 {
+			args = r.stack[len(r.stack)-1].args
+			ensemble = r.stack[len(r.stack)-1].ensemble
+		}
+		// Named events entered by hooks do not capture their caller's bindings.
+		if r.events[&cmds[0]] != "" {
+			args = nil
+		}
+		r.stack = append(r.stack, frame{cmds: cmds, args: args, ensemble: ensemble})
 	}
 }
 
@@ -700,7 +905,11 @@ func (r *Runner) run(c *data.Command) Request {
 		if line, ok := req.(Say); ok {
 			line.Recruit = r.recruitOffer(c)
 			if line.Voice != "" {
-				r.emit(VoiceEffect{File: line.Voice, Who: c.Say.Who})
+				who := line.Actor
+				if who == "" {
+					who = c.Say.Who.ID
+				}
+				r.emit(VoiceEffect{File: line.Voice, Who: who})
 			}
 			r.aside(line, env)
 			req = line
@@ -715,12 +924,17 @@ func (r *Runner) run(c *data.Command) Request {
 			ok, err := o.When.Bool(env)
 			r.logf(err)
 			if ok {
+				source, err := selectedSource(o.Label, o.LabelExpr, env)
+				if err != nil {
+					r.logf(fmt.Errorf("choice.label_expr: %w", err))
+					continue
+				}
 				r.options = append(r.options, o)
 				r.optionAt = append(r.optionAt, i)
-				label, p := data.Fill(r.db, o.Label, env)
+				label, p := data.Fill(r.db, source, env)
 				labels, words = append(labels, label), append(words, p)
 				ids = append(ids, o.ID)
-				keys = append(keys, ChoiceKey(c.Prompt, o.Label))
+				keys = append(keys, ChoiceKey(c.Prompt, source))
 			}
 		}
 		if len(labels) == 0 {
@@ -746,6 +960,12 @@ func (r *Runner) run(c *data.Command) Request {
 		} else {
 			r.push(c.Else)
 		}
+	case "plan":
+		cmds, err := planning.ApplyIn(r.st, *c.Plan, env)
+		r.logf(err)
+		if err == nil {
+			r.push(cmds)
+		}
 	case "set":
 		// Both the old/new version and the recollection assign in lexicographic order, one at a time. The right side is evaluated once, and earlier assignments are visible to later right sides.
 		keys := make([]string, 0, len(c.SetV))
@@ -753,11 +973,16 @@ func (r *Runner) run(c *data.Command) Request {
 			keys = append(keys, k)
 		}
 		slices.Sort(keys)
-		for _, k := range keys {
+		for _, written := range keys {
+			k, err := data.ResolveSetTarget(written, env)
+			r.logf(err)
+			if err != nil {
+				continue
+			}
 			if !r.setAllowed(k) {
 				continue
 			}
-			v, err := c.SetV[k].Eval(env)
+			v, err := c.SetV[written].Eval(env)
 			r.logf(err)
 			if err == nil {
 				err = r.st.SetPath(k, v)
@@ -830,10 +1055,10 @@ func (r *Runner) run(c *data.Command) Request {
 				if firstCompanion {
 					message += " First companion of this species."
 				}
-				r.push([]data.Command{{Say: &data.Say{Who: e.Name + " " + sign, Face: e.Image.File, Text: message}}})
+				r.push([]data.Command{{Say: &data.Say{Who: data.IDRef{ID: e.Name + " " + sign}, Face: e.Image.File, Text: message}}})
 			} else if r.st.RecruitmentFull(c.Capture) {
 				r.st.Vars["capture_result"] = "party_full"
-				r.push([]data.Command{{Say: &data.Say{Who: e.Name, Face: e.Image.File, Text: e.Name + " cannot join: your party is full."}}})
+				r.push([]data.Command{{Say: &data.Say{Who: data.IDRef{ID: e.Name}, Face: e.Image.File, Text: e.Name + " cannot join: your party is full."}}})
 			}
 		}
 	case "reserve":
@@ -962,6 +1187,10 @@ func (r *Runner) run(c *data.Command) Request {
 		r.emit(MusicEffect{*c.Music})
 	case "mood":
 		r.emit(MoodEffect{c.Mood})
+	case "carry":
+		if c.Carry {
+			r.emit(CarryEffect{})
+		}
 	case "image":
 		if len(c.Image.Files) == 0 {
 			r.show(*c.Image)
@@ -1003,11 +1232,56 @@ func (r *Runner) run(c *data.Command) Request {
 	case "shop":
 		return Shop{ID: c.Shop}
 	case "call":
-		r.push(r.db.Events[c.Call].Do)
+		if c.Call.Each != nil {
+			commands, err := r.db.ExpandCall(c.Call, env)
+			if err != nil {
+				r.logf(err)
+				break
+			}
+			r.repeated += len(commands)
+			if r.repeated > 65536 {
+				r.logf(errors.New("repeated calls exceed 65536 items per execution"))
+				r.Stop()
+				break
+			}
+			r.push(commands)
+			break
+		}
+		args, err := r.db.Bind(c.Call, env)
+		if err != nil {
+			r.logf(err)
+			break
+		}
+		ev := r.db.Events[c.Call.Event]
+		r.push(ev.Do)
+		if len(ev.Do) > 0 {
+			r.stack[len(r.stack)-1].args = args
+			if c.Call.Ensemble != "" {
+				r.stack[len(r.stack)-1].ensemble = c.Call.Ensemble
+			}
+		}
 	case "wait":
 		return Wait{Seconds: c.Wait.Seconds, NoSkip: !c.Wait.Skippable()}
 	case "notice":
 		return Notice{Text: data.Render(r.db.Tr(c.Notice), env)}
+	case "call_view":
+		if cam := c.CallView.Camera; cam != nil {
+			r.emit(CallCameraEffect{Who: cam.Who, On: cam.On})
+		}
+		if share := c.CallView.Share; share != nil {
+			r.emit(CallShareEffect{Who: share.Who, Picture: share.Picture})
+		}
+	case "message":
+		who, err := c.Message.Who.Resolve(r.db, "actor", env)
+		if err != nil {
+			r.logf(err)
+			break
+		}
+		text, _ := data.Fill(r.db, c.Message.Text, env)
+		r.st.Inbox = append(r.st.Inbox, rpg.InboxMessage{Who: who, Text: text, Event: c.Message.Event, Tag: data.Render(r.db.Tr(c.Message.Tag), env)})
+		if len(r.st.Inbox) > rpg.InboxLimit {
+			r.st.Inbox = r.st.Inbox[len(r.st.Inbox)-rpg.InboxLimit:]
+		}
 	case "sfx":
 		r.emit(SoundEffect{c.SFX.Name})
 		if c.SFX.Wait {
@@ -1069,10 +1343,19 @@ func (r *Runner) run(c *data.Command) Request {
 		r.stack = nil
 		r.last.Cleared = true
 		return Clear{}
+	case "checkpoint":
+		return Checkpoint{Event: c.Checkpoint}
+	case "restore_checkpoint":
+		return Checkpoint{Restore: true}
 	case "save":
 		return Save{}
 	case "open":
-		return Open{Screen: c.Open}
+		args, err := r.db.BindScreen(c.Open, env)
+		if err != nil {
+			r.logf(err)
+			return nil
+		}
+		return Open{Screen: c.Open.Screen, Args: args}
 	case "dive": // a made dungeon: a new dive from outside, the next floor from inside
 		floor := 1.0
 		if c.Floor.Set() {
@@ -1138,22 +1421,67 @@ func (r *Runner) say(s *data.Say, env expr.Env) Request {
 	return out
 }
 
+// selectedSource shares source identity rules between dialogue and choices.
+func selectedSource(literal string, selected data.Expr, env expr.Env) (string, error) {
+	if !selected.Set() {
+		return literal, nil
+	}
+	if literal != "" {
+		return "", errors.New("use a literal or source expression, not both")
+	}
+	for _, name := range selected.Names() {
+		if name == "rand" || name == "chance" {
+			return "", errors.New("source expression must be pure")
+		}
+	}
+	value, err := selected.Eval(env)
+	if err != nil {
+		return "", err
+	}
+	source, ok := value.(string)
+	if !ok {
+		return "", errors.New("expected a string source")
+	}
+	return source, nil
+}
+
 // line builds one line (false when it has nothing to show).
 func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
-	out := Say{Name: s.Who, Key: SourceKey(s.Who, s.Text)}
+	who, err := s.Who.Resolve(r.db, "actor", env)
+	if err != nil {
+		r.logf(err)
+		return Say{}, false
+	}
+	source, err := selectedSource(s.Text, s.TextExpr, env)
+	if err != nil {
+		r.logf(fmt.Errorf("say.text_expr: %w", err))
+		return Say{}, false
+	}
+	if s.TextExpr.Set() && s.Values != nil {
+		r.logf(errors.New("say.text_expr: expected a string source without reaction values"))
+		return Say{}, false
+	}
+	face, err := selectedSource(s.Face, s.FaceExpr, env)
+	if err != nil {
+		r.logf(fmt.Errorf("say.face_expr: %w", err))
+		return Say{}, false
+	}
+	out := Say{Name: who, Key: SourceKey(who, source), Ensemble: s.Ensemble, Instant: s.Instant}
+	if out.Ensemble == "" && len(r.stack) > 0 {
+		out.Ensemble = r.stack[len(r.stack)-1].ensemble // call.ensemble of a caller
+	}
 	if s.Values != nil { // filled by the fields' whole names, not evaluated
-		out.text = data.Phrase{Source: s.Text, Values: s.Values}
+		out.text = data.Phrase{Source: source, Values: s.Values}
 		out.Text = data.Again(r.db, out.text)
 	} else {
-		out.Text, out.text = data.Fill(r.db, s.Text, env)
+		out.Text, out.text = data.Fill(r.db, source, env)
 	}
 	if s.Voice != "" {
-		out.Voice, _ = r.db.VoicePath(s.Who, s.Voice)
+		out.Voice, _ = r.db.VoicePath(who, s.Voice)
 	}
-	if a, ok := r.db.Actors[s.Who]; ok {
+	if a, ok := r.db.Actors[who]; ok {
 		out.Name = a.Name
-		out.Actor = s.Who
-		face := s.Face
+		out.Actor = who
 		if face == "" {
 			face = a.Face
 		}
@@ -1166,8 +1494,8 @@ func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
 		}
 		out.Right = s.Side == "right"
 	} else {
-		if s.Face != "" {
-			out.Face = s.Face
+		if face != "" {
+			out.Face = face
 		}
 		out.Right = s.Side != "left"
 	}
@@ -1296,4 +1624,60 @@ func (r *Runner) emit(effect Effect) {
 	if r.host != nil {
 		r.host.Handle(effect)
 	}
+}
+
+// ReplayTo advances an already started save root to a dialogue line using exactly
+// the saved answers. Session restoration and play's private slot probe use this
+// without presentation or input. The caller must supply isolated state and RNG:
+// earlier effects are applied even on error. A nil request on success means the
+// choice at the target line was already answered. Non-dialogue boundaries fail.
+func (r *Runner) ReplayTo(line int, answers []int) (Request, error) {
+	if line < 1 {
+		return nil, errors.New("load: invalid saved line")
+	}
+	host := r.host
+	moved := false
+	r.host = HostFunc(func(e Effect) {
+		if _, ok := e.(MoveEffect); ok {
+			moved = true
+		}
+		if host != nil {
+			host.Handle(e)
+		}
+	})
+	defer func() { r.host = host }()
+	seen, answer := 0, 0
+	for range 100000 {
+		request := r.Next()
+		if moved {
+			return nil, errors.New("load: saved cursor crosses a move")
+		}
+		switch q := request.(type) {
+		case nil:
+			return nil, fmt.Errorf("load: event ended before saved line %d", line)
+		case Checkpoint, Battle, Shop, Save, Open, Clear, GameOver, SortieScene:
+			return nil, fmt.Errorf("load: saved cursor crosses a replay boundary (%T)", q)
+		case Say:
+			seen++
+		case Choice:
+			seen++
+			if seen < line || len(answers) == answer+1 {
+				if answer >= len(answers) || answers[answer] < 0 || answers[answer] >= len(q.Options) {
+					return nil, fmt.Errorf("load: invalid saved answer at line %d", seen)
+				}
+				r.Answer(answers[answer])
+				answer++
+				request = nil
+			}
+		default:
+			continue
+		}
+		if seen == line {
+			if answer != len(answers) {
+				return nil, fmt.Errorf("load: unused saved answers at line %d", seen)
+			}
+			return request, nil
+		}
+	}
+	return nil, errors.New("load: saved replay exceeded the request limit")
 }

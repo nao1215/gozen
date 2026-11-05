@@ -136,7 +136,7 @@ func TestSaveEnvelopeCompatibility(t *testing.T) {
 	if err := json.Unmarshal(b, &envelope); err != nil {
 		t.Fatal(err)
 	}
-	if envelope.FormatVersion != 2 || envelope.GameID != db.Game.ID || envelope.DataVersion != 2 || len(envelope.State) == 0 {
+	if envelope.FormatVersion != 3 || envelope.GameID != db.Game.ID || envelope.DataVersion != 2 || len(envelope.State) == 0 {
 		t.Fatalf("識別項目 %s", b)
 	}
 	t.Run("新形式の往復と乱数", func(t *testing.T) {
@@ -217,7 +217,7 @@ func TestSaveEnvelopeCompatibility(t *testing.T) {
 			}
 		})
 	}
-	for _, bad := range [][]byte{nil, []byte(`null`), []byte(`[]`), []byte(`{}`), b[:len(b)-1], append(bytes.Clone(b), []byte(` {}`)...), bytes.Replace(b, []byte(`"format_version": 2`), []byte(`"format_version": 2, "format_version": 2`), 1), bytes.Replace(b, []byte(`"gold": 100`), []byte(`"gold": 100, "gold": 200`), 1)} {
+	for _, bad := range [][]byte{nil, []byte(`null`), []byte(`[]`), []byte(`{}`), b[:len(b)-1], append(bytes.Clone(b), []byte(` {}`)...), bytes.Replace(b, []byte(`"format_version": 3`), []byte(`"format_version": 3, "format_version": 3`), 1), bytes.Replace(b, []byte(`"gold": 100`), []byte(`"gold": 100, "gold": 200`), 1)} {
 		if got, err := rpg.ParseWithConfig(db, bad, nil, rpg.Config{AllowLegacy: true}); err == nil || got != nil {
 			t.Errorf("破損を受け入れた %s", bad)
 		}
@@ -495,6 +495,90 @@ func TestSaveRejectsInvalidBattleOutcome(t *testing.T) {
 		raw := rewriteSave(t, saved, func(m map[string]any) { object(m, "state")["last_battle"] = bad })
 		if _, err := rpg.Parse(db, raw, nil); err == nil {
 			t.Fatalf("accepted invalid outcome: %v", bad)
+		}
+	}
+}
+
+func TestCheckpointRoundTripAndFailures(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/retry.yaml": "events: {retry: {do: [{say: Ready}]}}"})
+	st := testgame.State(db, 5)
+	p := rand.NewPCG(5, 9)
+	rnd, err := p.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	st.Gold = 17
+	for range 20 {
+		if err := st.KeepCheckpoint("retry", rnd); err != nil {
+			t.Fatal(err)
+		}
+	}
+	st.Gold = 1
+	loaded, err := rpg.Parse(db, saveBytes(t, st), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		restored, _, err := loaded.RetryCheckpoint()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if restored.Gold != 17 || !bytes.Equal(restored.SavedRand, rnd) || restored.Checkpoint.Event != "retry" {
+			t.Fatal("retry lost saved state")
+		}
+		restored.Gold = 999
+		restored.Checkpoint.Save[0] = '!'
+	}
+	old := loaded.Checkpoint
+	if err := loaded.KeepCheckpoint("absent", rnd); err == nil || loaded.Checkpoint != old {
+		t.Fatal("failed capture replaced checkpoint")
+	}
+	if err := loaded.KeepCheckpoint("retry", nil); err == nil || loaded.Checkpoint != old {
+		t.Fatal("invalid randomness accepted")
+	}
+	loaded.Checkpoint.Save = []byte("broken")
+	if _, _, err := loaded.RetryCheckpoint(); err == nil || loaded.Gold != 1 {
+		t.Fatal("bad snapshot changed state")
+	}
+	loaded.Checkpoint = nil
+	if _, _, err := loaded.RetryCheckpoint(); err == nil {
+		t.Fatal("missing snapshot accepted")
+	}
+}
+
+// A damaged RNG snapshot must fail before a frontend replaces its live state.
+func TestSaveRejectsDamagedRandomState(t *testing.T) {
+	db := testgame.Load(t, nil)
+	original := saveBytes(t, testgame.State(db, 7))
+	valid, err := rand.NewPCG(73, 91).MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, cursor := range []bool{false, true} {
+		for name, rnd := range map[string][]byte{
+			"truncated":       valid[:len(valid)-1],
+			"extended":        append(slices.Clone(valid), 0),
+			"wrong generator": append([]byte("BAD!"), valid[4:]...),
+		} {
+			t.Run(fmt.Sprintf("cursor=%t/%s", cursor, name), func(t *testing.T) {
+				damaged := rewriteSave(t, original, func(m map[string]any) {
+					m["rand"] = rnd
+					if cursor {
+						m["cursor"] = map[string]any{"event": "greet", "line": 1}
+					}
+				})
+				source := rand.NewPCG(19, 23)
+				before := *source
+				for range 2 {
+					st, err := rpg.Parse(db, damaged, rand.New(source)) //nolint:gosec // Checks deterministic gameplay randomness, not secrets.
+					if err == nil || st != nil {
+						t.Fatal("accepted damaged random state")
+					}
+				}
+				if source.Uint64() != before.Uint64() {
+					t.Fatal("validation consumed caller randomness")
+				}
+			})
 		}
 	}
 }

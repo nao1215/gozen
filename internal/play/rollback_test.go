@@ -2,10 +2,12 @@ package play
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 	"testing/fstest"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/rpg"
 )
 
 // storyData is two events: the first sets a flag after its lines and a choice; the second
@@ -195,6 +197,9 @@ events:
 	if g.saveBlocked() == "" {
 		t.Fatal("a save after the battle is not refused")
 	}
+	if b, err := g.saveBytes(); err == nil || b != nil {
+		t.Fatal("direct save bypassed the boundary refusal")
+	}
 	g.in.pressed[btnSave] = true
 	g.novelInput()
 	g.in.pressed = [numButtons]bool{}
@@ -233,5 +238,109 @@ func TestSortieIsABoundary(t *testing.T) {
 	}
 	if _, _, _, ok := g.cursor(); ok || g.saveBlocked() == "" {
 		t.Fatalf("after the sortie a save keeps a cursor (%v) or is not refused", ok)
+	}
+}
+
+func TestBoundEventSaveAndRollback(t *testing.T) {
+	g := sysOpen(t, Options{Location: "camp", Script: "wait 1000000\n"}, map[string]string{
+		"game.yaml": "schema_version: 10\n" + string(gameFiles(t)["game.yaml"].Data),
+		"data/arguments.yaml": `events:
+  credit:
+    params: {amount: number}
+    do:
+    - gold: arg.amount
+    - set: {var.draw: 'rand(1000000)'}
+    - say: 'Credit {arg.amount}'
+    - say: 'After {arg.amount}'
+`,
+	})
+	sysFrames(t, g, 2)
+	before := g.st.Gold
+	if err := g.events.StartBound("credit", map[string]any{"amount": 2.0}); err != nil {
+		t.Fatal(err)
+	}
+	sysFrames(t, g, 2)
+	if at(g) != "Credit 2" || g.st.Gold != before+2 {
+		t.Fatalf("bound line %q, gold %d", at(g), g.st.Gold)
+	}
+	draw := g.st.Vars["draw"]
+	next := *g.pcg
+	for range 2 {
+		if err := g.save(0); err != nil {
+			t.Fatal(err)
+		}
+		st, err := g.load(0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		g.loadSavedGame(st)
+		if g.st.Vars["draw"] != draw || *g.pcg != next {
+			t.Fatal("slot probe changed the saved random stream")
+		}
+		if at(g) != "Credit 2" || g.st.Gold != before+2 {
+			t.Fatalf("resumed line %q, gold %d", at(g), g.st.Gold)
+		}
+	}
+	btlKey(g, btnOK)
+	btlKey(g, btnOK)
+	sysFrames(t, g, 2)
+	if at(g) != "After 2" {
+		t.Fatalf("after: %q", at(g))
+	}
+	g.rollBack()
+	if at(g) != "Credit 2" || g.st.Gold != before+2 {
+		t.Fatalf("rolled back %q, gold %d", at(g), g.st.Gold)
+	}
+}
+
+// Valid cursors retain an answer already submitted at the saved choice.
+func TestResumeAnsweredChoice(t *testing.T) {
+	g := storyGame(t, Options{Location: "camp", Event: "first", Script: "wait 10\npress ok\nwait 10\npress ok\nwait 10\npress down\nwait 10\npress ok\nwait 10\nquit\n"}, "schema_version: 4\n")
+	runToEnd(t, g)
+	if at(g) != "Three." || g.st.Vars["way"] != float64(2) {
+		t.Fatal(at(g), g.st.Vars)
+	}
+	saved, err := g.saveBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name    string
+		answers []int
+		line    int
+	}{
+		{"answered", []int{1}, 3},
+		{"valid", []int{1}, 4},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var doc map[string]any
+			if err := json.Unmarshal(saved, &doc); err != nil {
+				t.Fatal(err)
+			}
+			c, ok := doc["cursor"].(map[string]any)
+			if !ok {
+				t.Fatal("missing cursor")
+			}
+			c["answers"], c["line"] = tc.answers, tc.line
+			b, err := json.Marshal(doc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			st, err := rpg.Parse(g.db, b, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			g.failure = nil
+			g.loadSavedGame(st)
+			if tc.name == "answered" {
+				if g.failure != nil || g.talk.active {
+					t.Fatalf("answered choice restored as pending: %v", g.failure)
+				}
+				g.pump()
+			}
+			if g.failure != nil || at(g) != "Three." || g.st.Vars["way"] != float64(2) {
+				t.Fatalf("valid resume: %v / %s / %v", g.failure, at(g), g.st.Vars)
+			}
+		})
 	}
 }

@@ -44,14 +44,6 @@ func Prepare(id string, cfg Config) (string, error) {
 	return dir, nil
 }
 
-// Load reads bytes from path within fsys without closing or modifying fsys.
-func Load(fsys fs.FS, path string) ([]byte, error) {
-	if fsys == nil || !fs.ValidPath(path) {
-		return nil, &fs.PathError{Op: "read", Path: path, Err: fs.ErrInvalid}
-	}
-	return fs.ReadFile(fsys, path)
-}
-
 // Write syncs and closes a private temporary file before replacing path.
 // Parent directories are created with mode 0700. Failed writes preserve the old
 // destination. Rename durability across power failure is filesystem-dependent.

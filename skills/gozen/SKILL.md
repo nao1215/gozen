@@ -1,6 +1,6 @@
 ---
 name: gozen
-description: Make or fix an RPG, a visual novel or a strategy game (a campaign) written for Gozen, the no-code game toolkit whose games are game.yaml and data/*.yaml. Use it when you write or change a Gozen game's YAML; it runs gozen check until the game has no errors.
+description: Make or fix an RPG, a visual novel, a strategy game (a campaign) or a management game (planning workspaces) written for Gozen, the no-code game toolkit whose games are game.yaml and data/*.yaml. Use it when you write or change a Gozen game's YAML; it runs gozen check until the game has no errors.
 ---
 
 # Making a Gozen game
@@ -70,6 +70,7 @@ A first-person dungeon can take a ready look: `gozen theme list` shows the theme
 
 ## Read a reference when the game needs it
 
+- references/planning.md: management games: day flows, workspace cards, tickets, drag and drop, messages, video calls, guides, calendars and the office sample.
 - references/minimal.md: a complete two-file game to copy from.
 - references/yaml.md: YAML traps and which feature needs which `schema_version`.
 - references/measure.md: balance and route numbers with `gozen sim` (battle, dive, campaign, routes, breed).

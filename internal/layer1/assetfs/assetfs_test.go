@@ -171,17 +171,6 @@ func TestBuildLeavesNoRawPicture(t *testing.T) {
 	}
 }
 
-func TestBlocking(t *testing.T) {
-	ins := []Approval{{File: "a", Approved: true}, {File: "b", Status: "todo"}, {File: "c", Approved: true}, {File: "d", Status: "review"}}
-	var got []string
-	for _, in := range Blocking(ins) {
-		got = append(got, in.File)
-	}
-	if strings.Join(got, ",") != "b,d" {
-		t.Errorf("Blocking = %v", got)
-	}
-}
-
 func sum(s string) string {
 	h := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(h[:])

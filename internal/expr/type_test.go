@@ -1,6 +1,9 @@
 package expr
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 func TestResultTypeWithoutEvaluation(t *testing.T) {
 	resolve := func(r Ref) ValueType {
@@ -36,5 +39,31 @@ func TestResultTypeWithoutEvaluation(t *testing.T) {
 		if got := mustParse(tc.source).ResultType(resolve); got != tc.want {
 			t.Errorf("%s の型 %v、期待 %v", tc.source, got, tc.want)
 		}
+	}
+}
+
+func TestIsFiniteScalar(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		value any
+		want  bool
+	}{
+		{"zero", 0, true},
+		{"largest", math.MaxFloat64, true},
+		{"smallest", math.SmallestNonzeroFloat64, true},
+		{"negative", -math.MaxFloat64, true},
+		{"bool", false, true},
+		{"string", "ready", true},
+		{"nil", nil, true},
+		{"infinity", math.Inf(1), false},
+		{"negative infinity", math.Inf(-1), false},
+		{"not a number", math.NaN(), false},
+		{"collection", Map{"x": 1}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := IsFiniteScalar(tc.value); got != tc.want {
+				t.Fatalf("got %v, want %v", got, tc.want)
+			}
+		})
 	}
 }

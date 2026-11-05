@@ -95,23 +95,43 @@ scenarios:
 - name: a save of a newer format is refused and one of version 1 is still read
   steps:
   - fixture:
-      file: v3.json
-      content: '{"format_version":3,"game_id":"cli-expedition","data_version":0,"state":{"actors":{"scout":{"id":"scout","level":1}},"party":["scout"],"location":"camp"}}'
+      file: v99.json
+      content: '{"format_version":99,"game_id":"cli-expedition","data_version":0,"state":{"actors":{"scout":{"id":"scout","level":1}},"party":["scout"],"location":"camp"}}'
   - fixture:
       file: v1.json
       content: '{"format_version":1,"game_id":"cli-expedition","data_version":0,"state":{"actors":{"scout":{"id":"scout","level":1}},"party":["scout"],"location":"camp"}}'
   - run:
-      command: gozen sim battle "${specdir}/fixtures/game" --troop lesson -n 2 --state v3.json
+      command: gozen sim battle "${specdir}/fixtures/game" --troop lesson -n 2 --state v99.json
   - assert:
       exit_code: 1
       stderr:
-        contains: 'save format 3 is not supported (supported: 1 to 2)'
+        contains: 'save format 99 is not supported (supported: 1 to 3)'
   - run:
       command: gozen sim battle "${specdir}/fixtures/game" --troop lesson -n 2 --state v1.json
   - assert:
       exit_code: 0
       stdout:
         contains: 'lesson: 2 battles'
+- name: save format 2 remains readable
+  steps:
+  - fixture:
+      file: state.json
+      content: '{"format_version":2,"game_id":"cli-expedition","data_version":0,"state":{"actors":{"scout":{"id":"scout","level":1}},"party":["scout"],"location":"camp"}}'
+  - run:
+      command: gozen sim battle "${specdir}/fixtures/game" --troop lesson -n 2 --state state.json
+  - assert:
+      exit_code: 0
+      stdout: {contains: 'lesson: 2 battles'}
+- name: save format 3 remains readable
+  steps:
+  - fixture:
+      file: state.json
+      content: '{"format_version":3,"game_id":"cli-expedition","data_version":0,"state":{"actors":{"scout":{"id":"scout","level":1}},"party":["scout"],"location":"camp"}}'
+  - run:
+      command: gozen sim battle "${specdir}/fixtures/game" --troop lesson -n 2 --state state.json
+  - assert:
+      exit_code: 0
+      stdout: {contains: 'lesson: 2 battles'}
 - name: check reports the words of staging with their codes
   steps:
   - fixture:

@@ -1,0 +1,119 @@
+schema_version: 10
+id: neutral-workboard
+title: Workshop board
+language: en
+screen: {width: 1280, height: 720, native: true}
+start: {location: workshop}
+planning:
+  calendar: {start: '2030-01-01', end: '2030-01-09', phases: [morning]}
+  entities: {potter: {name: Potter, actor: guide}}
+  activities: {glaze: {name: Bowl glazing, effort: 2}}
+flows:
+  day:
+    steps:
+    - {label: Look, screen: look_board}
+    - {label: People, screen: people_board, when: 'var.closed == 0'}
+    - {label: Work, screen: act_board, hold: true, done: 'var.worked > 0'}
+    - {label: Rest, screen: rest_board}
+    restart: 'var.day'
+    next: Onward
+screens:
+  look_board:
+    title: Look
+    kind: workspace
+    view: {fullscreen: true, light: true}
+    guide:
+      steps:
+      - {who: guide, text: Continue to the people., focus: [next]}
+    entries:
+    - {label: Hours, style: plate, bounds: [40, 150, 200, 100], text: Eight hours}
+    - {label: Emblem, style: plate, bounds: [280, 150, 240, 200], bust: {picture: emblem.png, fit: contain}, dot: '#4488cc', sign: emblem.png, meter: {progress: '0.5'}}
+    - {label: Picture, picture: emblem.png, picture_fit: contain, bounds: [560, 150, 240, 200]}
+
+  people_board:
+    title: People
+    kind: workspace
+    view: {fullscreen: true, light: true}
+    entries: [{label: Staff, style: plate, bounds: [40, 150, 200, 100]}]
+  act_board:
+    title: Act
+    kind: workspace
+    view: {fullscreen: true, light: true}
+    entries: [{label: Work, style: button, bounds: [40, 150, 200, 48], do: [{set: {var.worked: 1}}]}]
+  rest_board:
+    title: Rest
+    kind: workspace
+    view: {fullscreen: true, light: true}
+    entries: [{label: Clear, style: button, bounds: [300, 150, 200, 48], do: [{set: {var.worked: 0}}]}, {label: Sleep, style: button, bounds: [40, 150, 200, 48], do: [{set: {var.day: 'var.day+1', var.worked: 0}}]}]
+  desk:
+    title: Desk
+    kind: workspace
+    view: {fullscreen: true, light: true, band: none}
+    entries:
+    - {label: Bowl, drag: bowl, bounds: [40, 150, 200, 100]}
+    - {label: Cup, drag: cup, bounds: [40, 300, 200, 100]}
+    - {label: Shelf, drop: item, accepts: 'arg.item != "cup"', hint: 'Put {arg.item}', bounds: [400, 150, 240, 120], do: [{set: {var.got: 'arg.item'}}]}
+    - {label: Day, style: plate, peek: Busy day, bounds: [700, 300, 200, 80]}
+  studio:
+    title: Studio
+    kind: ensemble
+    view:
+      order: [potter]
+      chat: {title: Messages}
+      call: {address: call.example.test, layout: full, captions: overlay, others: side}
+  performance:
+    title: Twenty cards
+    kind: workspace
+    view: {fullscreen: true, light: true}
+    entries:
+    - {label: 'Card 1', style: plate, bounds: [24, 80, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 2', style: plate, bounds: [272, 80, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 3', style: plate, bounds: [520, 80, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 4', style: plate, bounds: [768, 80, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 5', style: plate, bounds: [1016, 80, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 6', style: plate, bounds: [24, 220, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 7', style: plate, bounds: [272, 220, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 8', style: plate, bounds: [520, 220, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 9', style: plate, bounds: [768, 220, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 10', style: plate, bounds: [1016, 220, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 11', style: plate, bounds: [24, 360, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 12', style: plate, bounds: [272, 360, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 13', style: plate, bounds: [520, 360, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 14', style: plate, bounds: [768, 360, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 15', style: plate, bounds: [1016, 360, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 16', style: plate, bounds: [24, 500, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 17', style: plate, bounds: [272, 500, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 18', style: plate, bounds: [520, 500, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 19', style: plate, bounds: [768, 500, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+    - {label: 'Card 20', style: plate, bounds: [1016, 500, 232, 128], picture: emblem.png, picture_fit: contain, meter: {progress: '0.5'}}
+  cards:
+    title: Tickets and tools
+    kind: workspace
+    view: {fullscreen: true, light: true}
+    entries:
+    - {label: Glaze, bounds: [40, 150, 280, 150], ticket: {due: Jan 3, state: open, progress: '0.25', planned: '0.5', behind: 'true'}}
+    - {label: Fire, bounds: [360, 150, 280, 150], ticket: {due: Jan 5, state: waiting, progress: '0', blocked: 'true', after: [Glaze]}}
+    - {label: Prepare, carousel: tools, picture: emblem.png, picture_fit: contain, bounds: [200, 500, 800, 190], do: [{set: {var.tool: 1}}]}
+    - {label: Pack, carousel: tools, bust: {picture: emblem.png, fit: contain}, bounds: [200, 500, 800, 190], unavailable: 'true', reason: Still drying, do: [{set: {var.tool: 2}}]}
+  timeline:
+    title: Work plan
+    kind: timeline
+  materials:
+    title: Overlapping panels
+    kind: workspace
+    view: {fullscreen: true, light: true}
+    entries:
+    - {label: Back panel, style: plate, text: This text is below the front panel., bounds: [80, 150, 500, 300]}
+    - {label: Front panel, style: plate, bounds: [400, 260, 500, 300]}
+ui:
+  profiles: true
+  profile_book: {layout: grid}
+  quick_menu: below
+  material:
+    kind: glass
+    blur: 12
+    opacity: 0.24
+    border: 0.55
+    shadow: 0.7
+    surfaces: {base: mica, card: acrylic, control: glass}
+    wallpaper: ['#e5e9ef', '#b6d4d5', '#d9ccbb']

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/expr"
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
@@ -76,6 +77,8 @@ func (c *checker) declarations() {
 		}
 		if g.Verbs[v] == "" || c.db.Events[g.Verbs[v]] == nil {
 			c.errorf(diag.UnknownReference, w, "unknown event %q", g.Verbs[v])
+		} else {
+			c.ref(w, "event", g.Verbs[v], true)
 		}
 	}
 	for _, name := range slices.Sorted(maps.Keys(g.Screens)) {
@@ -92,22 +95,145 @@ func (c *checker) declarations() {
 			c.errorf(diag.Shape, w, "a screen needs a title and at least one entry")
 			continue
 		}
-		if screen.Title == "" || len(screen.Entries) == 0 {
+		if screen.Kind != "" && (!slices.Contains([]string{"entities", "timeline", "calendar", "ensemble", "islands", "workspace"}, screen.Kind) || g.Planning == nil) {
+			c.errorf(diag.Shape, w+".kind", "planning view requires planning data and a known kind")
+		}
+		if screen.Title == "" || len(screen.Entries) == 0 && screen.Kind == "" {
 			c.errorf(diag.Shape, w, "a screen needs a title and at least one entry")
+		}
+		if screen.View.Fullscreen && (g.Planning == nil || screen.Kind == "") {
+			c.errorf(diag.Shape, w+".view.fullscreen", "full-screen planning surfaces require a planning kind")
+		}
+		c.parameters(w+".params", screen.Params)
+		if len(screen.Params) > 0 && (screen.Kind != "" || screen.View.Fullscreen) {
+			c.errorf(diag.Shape, w+".params", "parameters currently require a plain authored list")
+		}
+		c.params = screen.Params
+		if screen.View.Call != nil && (g.Screen.Width < 640 || g.Screen.Height < 360) {
+			c.errorf(diag.OutOfRange, w+".view.call", "call views require a screen of at least 640 by 360")
+		}
+		if screen.Kind != "ensemble" && (screen.View.Call != nil || screen.View.Chat != nil) {
+			c.errorf(diag.Shape, w+".view", "call and chat require kind ensemble")
+		}
+		v := screen.View
+		if screen.Kind != "timeline" && (len(v.Rows) > 0 || v.FilterLabel != "") {
+			c.errorf(diag.Shape, w+".view", "rows and filter_label require kind timeline")
+		}
+		if screen.Kind != "timeline" && screen.Kind != "calendar" && (len(v.Markers) > 0 || v.DateLink != nil || v.WeekStart != 0) {
+			c.errorf(diag.Shape, w+".view", "markers, date_link and week_start require timeline or calendar")
+		}
+		if screen.Kind != "islands" && screen.Kind != "workspace" && v.Burnup != nil {
+			c.errorf(diag.Shape, w+".view.burnup", "burnup requires islands or workspace")
+		}
+		if screen.Kind != "ensemble" && (len(v.Guests) > 0 || len(v.GuestBackdrops) > 0 || v.Camera != "" || v.Highlight != "") {
+			c.errorf(diag.Shape, w+".view", "guests, guest_backdrops, camera and highlight require ensemble")
+		}
+		c.planningView(w+".view", screen.View, screen.Kind == "")
+		if screen.View.Window != "" && (!screen.View.Fullscreen || screen.Kind != "islands" && screen.Kind != "workspace") {
+			c.errorf(diag.OutOfRange, w+".view.window", "requires fullscreen islands or workspace")
+		}
+		if len(screen.View.Tabs) > 0 && !slices.Contains(screen.View.Tabs, name) {
+			c.errorf(diag.Shape, w+".view.tabs", "tabs must include the current screen")
+		}
+		if screen.Back != "" || screen.Home {
+			c.needsVersion(w+".back", "screen back and home", SchemaVersion10)
+		}
+		if screen.Back != "" {
+			if next := g.Screens[screen.Back]; next == nil || len(next.Params) > 0 || screen.Back == name {
+				c.errorf(diag.Shape, w+".back", "back requires another parameterless screen")
+			}
+			if screen.Home {
+				c.errorf(diag.Shape, w+".back", "a home screen has no back")
+			}
 		}
 		c.text(w+".title", screen.Title, FieldNames)
 		for i, e := range screen.Entries {
 			ew := fmt.Sprintf("%s.entries[%d]", w, i)
+			c.params = screen.Params
+			if each := e.Each; each != nil {
+				c.needsVersion(ew+".each", "repeated screen entries", SchemaVersion10)
+				if !varName.MatchString(each.Param) || screen.Params[each.Param] != "" {
+					c.errorf(diag.Shape, ew+".each.param", "use a new parameter name without shadowing screen arguments")
+				}
+				if each.In.Set() == (each.Items != nil) {
+					c.errorf(diag.Shape, ew+".each", "provide exactly one of in or items")
+				}
+				if len(each.Items) > 4096 {
+					c.errorf(diag.Shape, ew+".each.items", "exceeds 4096 items")
+				}
+				if each.In.Set() {
+					c.expr(ew+".each.in", each.In, FieldNames)
+					c.planningPure(ew+".each.in", each.In)
+					if c.resultType(each.In, FieldNames) != expr.UnknownType {
+						c.errorf(diag.Expression, ew+".each.in", "must return a list")
+					}
+				}
+				c.params = screen.rowParams(i)
+			}
+
+			if e.Tone != "" && e.Tone != "note" && e.Tone != "primary" {
+				c.errorf(diag.Shape, ew+".tone", "tone must be note, primary or empty")
+			}
+			if len(e.Bounds) != 0 && (len(e.Bounds) != 4 || e.Bounds[0] < 0 || e.Bounds[1] < 0 || e.Bounds[2] <= 0 || e.Bounds[3] <= 0) {
+				c.errorf(diag.Shape, ew+".bounds", "want nonnegative x/y and positive width/height")
+			}
+			if e.Target.set() {
+				island := screen.View.Fullscreen && screen.Kind == "islands"
+				candidate := !screen.View.Fullscreen && screen.Kind == "" && screen.View.Portrait != ""
+				if (!island && !candidate) || len(e.Bounds) > 0 {
+					c.errorf(diag.Shape, ew+".target", "targets require a full-screen island view or a plain portrait list, and no direct bounds")
+				}
+				if g.Planning == nil {
+					c.errorf(diag.Shape, ew+".target", "target requires planning data")
+				} else if _, ok := g.Planning.Entities[e.Target.ID]; !ok && !e.Target.Expr.Set() {
+					c.errorf(diag.UnknownReference, ew+".target", "unknown entity %q", e.Target.ID)
+				}
+			}
+			if e.Target.Expr.Set() {
+				c.needsVersion(ew+".target", "expression targets", SchemaVersion10)
+				c.argumentExpression(ew+".target.expr", e.Target.Expr, "entity", FieldNames, nil)
+			}
 			if e.Label == "" {
 				c.errorf(diag.Shape, ew, "an entry needs a label")
 			}
 			c.text(ew+".label", e.Label, FieldNames)
 			c.text(ew+".text", e.Text, FieldNames)
+			c.text(ew+".icon", e.Icon, FieldNames)
+			c.expr(ew+".muted", e.Muted, FieldNames)
+			c.planningPure(ew+".muted", e.Muted)
+			if e.Destination != "" {
+				if next := g.Screens[e.Destination]; next == nil || len(next.Params) > 0 {
+					c.errorf(diag.Shape, ew+".destination", "destination requires a parameterless screen")
+				}
+			}
 			c.file(ew+".picture", e.Picture)
+			if e.Picture != "" && len(e.Bounds) == 4 {
+				// A bounded entry draws its picture inside the card (photo cards, profile pages).
+				c.needsVersion(ew+".picture", "bounded entry pictures", SchemaVersion10)
+				if e.Bounds[3] < 120 {
+					c.errorf(diag.OutOfRange, ew+".bounds", "a bounded picture needs a height of at least 120")
+				}
+			}
+			if e.PictureFit != "" && e.PictureFit != "cover" && e.PictureFit != "contain" {
+				c.errorf(diag.OutOfRange, ew+".picture_fit", "want cover or contain, got %q", e.PictureFit)
+			}
+			if e.PictureFit != "" && e.Picture == "" {
+				c.errorf(diag.Shape, ew+".picture_fit", "picture_fit needs a picture")
+			}
 			c.expr(ew+".when", e.When, FieldNames)
+			row := c.params
+			// Only the drop's own action, guard and hint see the carried value.
+			c.entryDrag(ew, screen, i)
+			c.params = screen.entryParams(i)
 			c.commands(ew+".do", e.Do, FieldNames)
+			c.params = row
+			c.entryParts(ew, e)
 		}
+		c.params = nil
+		c.carousels(w, screen)
+		c.guide(w, name, screen)
 	}
+	c.flows()
 }
 
 // unknownFields checks fields the command does not know. If the name declared in game.yaml's verbs is
@@ -371,6 +497,50 @@ func DevSet(key string) bool {
 // (location: camp, party: [scout, guide]). There is no way to choose a place by an expression (kept simple by a constraint; ADR 0021).
 type Assignments map[string]Expr
 
+// ResolveSetTarget resolves an indexed variable or flag destination for the event runner.
+// Literal destinations are returned unchanged. An index must be pure and yield a
+// nonempty state identifier; it is evaluated before the assignment's value.
+// This does not write state or replace SetPath's declaration/type checks.
+func ResolveSetTarget(key string, env expr.Env) (string, error) {
+	index, err := assignmentIndex(key)
+	if err != nil {
+		return "", err
+	}
+	if !index.Set() {
+		return key, nil
+	}
+	value, err := index.Eval(env)
+	if err != nil {
+		return "", fmt.Errorf("set target %s: %w", key, err)
+	}
+	name, ok := value.(string)
+	if !ok || !varName.MatchString(name) {
+		return "", fmt.Errorf("set target %s must yield a nonempty state name (letters, digits and underscores)", key)
+	}
+	table, _, _ := strings.Cut(key, "[")
+	return table + "." + name, nil
+}
+
+func assignmentIndex(key string) (Expr, error) {
+	table, _, indexed := strings.Cut(key, "[")
+	if !indexed || table != "var" && table != "flag" {
+		return Expr{}, nil
+	}
+	if !strings.HasSuffix(key, "]") {
+		return Expr{}, fmt.Errorf("set target %s requires a closing bracket", key)
+	}
+	index, err := parseExpr(key[len(table)+1 : len(key)-1])
+	if err != nil {
+		return Expr{}, fmt.Errorf("set target %s: %w", key, err)
+	}
+	for _, name := range index.Names() {
+		if name == "rand" || name == "chance" {
+			return Expr{}, fmt.Errorf("set target %s must be pure", key)
+		}
+	}
+	return index, nil
+}
+
 // LiteralSet reports whether the left-hand side of set accepts the value as a string as written.
 func LiteralSet(key string) bool {
 	if key == "location" || key == "party" || key == "pos.facing" || key == "roamers" || key == "spot" {
@@ -467,7 +637,7 @@ func (db *DB) resolveVerb(c *Command) bool {
 	if target == "" {
 		return false
 	}
-	*c = Command{Call: target}
+	*c = Command{Call: EventCall{Event: target}}
 	return true
 }
 

@@ -280,9 +280,10 @@ type bookResponse struct {
 }
 
 type bookSay struct {
-	Who  string `json:"actor"`
-	Name string `json:"name"`
-	Text string `json:"text"`
+	Speaker bookExpr `json:"speaker_expression,omitempty"`
+	Who     string   `json:"actor"`
+	Name    string   `json:"name"`
+	Text    string   `json:"text"`
 }
 type bookChoice struct {
 	Label string        `json:"label"`
@@ -318,7 +319,7 @@ func bookCommands(db *gamedata.DB, cs []gamedata.Command) []bookCommand {
 		if err != nil {
 			kind = "invalid"
 		}
-		v := bookCommand{Kind: kind, Prompt: c.Prompt, If: bookExpression(c.If), Then: bookCommands(db, c.Then), Else: bookCommands(db, c.Else), Battle: c.Battle, Fighters: slices.Clone(c.Fighters), OnWin: bookCommands(db, c.OnWin), OnLose: bookCommands(db, c.OnLose), OnEscape: bookCommands(db, c.OnRun), Call: c.Call, Move: c.Move, Dive: c.Dive, Floor: bookExpression(c.Floor)}
+		v := bookCommand{Kind: kind, Prompt: c.Prompt, If: bookExpression(c.If), Then: bookCommands(db, c.Then), Else: bookCommands(db, c.Else), Battle: c.Battle, Fighters: slices.Clone(c.Fighters), OnWin: bookCommands(db, c.OnWin), OnLose: bookCommands(db, c.OnLose), OnEscape: bookCommands(db, c.OnRun), Call: c.Call.Event, Move: c.Move, Dive: c.Dive, Floor: bookExpression(c.Floor)}
 		if c.Respond != nil {
 			v.Respond = &bookResponse{c.Respond.Who, c.Respond.Text, c.Respond.From}
 		}
@@ -326,11 +327,14 @@ func bookCommands(db *gamedata.DB, cs []gamedata.Command) []bookCommand {
 			v.Image = bookPicture{c.Image.File}
 		}
 		if c.Say != nil {
-			name := c.Say.Who
+			name := c.Say.Who.ID
 			if a := db.Actors[name]; a != nil {
 				name = a.Name
 			}
-			v.Say = &bookSay{c.Say.Who, name, c.Say.Text}
+			if c.Say.Who.Expr.Set() {
+				name = "Expression: " + c.Say.Who.Expr.String()
+			}
+			v.Say = &bookSay{Who: c.Say.Who.ID, Name: name, Text: c.Say.Text, Speaker: bookExpression(c.Say.Who.Expr)}
 		}
 		if c.Give != nil {
 			v.Give = bookGive{c.Give.Item, c.Give.N()}

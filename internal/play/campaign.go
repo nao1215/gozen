@@ -341,14 +341,7 @@ func regionLines(g *Game, id string) []string {
 	return lines
 }
 
-// regionWindowBox is where the window of the region id goes: at the top left, unless the
-// region's own point lies under it; then at the right under the meters, else at the bottom
-// left, whichever covers the point least. The window never hides the region it tells.
-func (s *atlasScene) regionWindowBox(g *Game, id string) plateBox {
-	return s.regionWindowFor(g, id, len(regionLines(g, id)))
-}
-
-// regionWindowFor is regionWindowBox for a window of n lines (made once by the caller).
+// regionWindowFor places a region window away from its point when possible.
 func (s *atlasScene) regionWindowFor(g *Game, id string, n int) plateBox {
 	sw, sh := g.screen()
 	w, h := 300.0, 70+float64(n)*gfx.LineHeight(sizeS)

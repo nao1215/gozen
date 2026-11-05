@@ -2,6 +2,7 @@ package play
 
 import (
 	"math"
+	"strconv"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -11,16 +12,17 @@ import (
 )
 
 type talk struct {
-	say    event.Say
-	pages  [][]string
-	page   int
-	shown  int
-	total  int
-	choice *list
-	active bool
-	age    int
-	full   int
-	hidden bool
+	meeting *ensembleLog
+	say     event.Say
+	pages   [][]string
+	page    int
+	shown   int
+	total   int
+	choice  *list
+	active  bool
+	age     int
+	full    int
+	hidden  bool
 
 	still  bool
 	closed int
@@ -49,8 +51,25 @@ func (g *Game) talkBox() (x, y, w, h float64) {
 }
 
 func (t *talk) open(g *Game, s event.Say) {
+	if s.Ensemble == "" {
+		// A line outside a call ends the call's presentation-only camera changes.
+		g.callCamera = nil
+		g.callShare = nil
+	}
+	meeting := t.meeting
+	if s.Ensemble == "" {
+		meeting = nil
+	} else if def := g.db.Game.Screens[s.Ensemble]; def != nil && def.View.Chat != nil {
+		key := s.Ensemble + "/" + g.st.Planning.Date + "/" + strconv.Itoa(g.st.Planning.Phase)
+		if meeting == nil || meeting.key != key {
+			meeting = newEnsembleLog(g, s.Ensemble)
+		}
+		meeting.sync(g, def.View)
+		// A reaction is authored public text, posted once per changed value.
+		meeting.react(g, s.Actor)
+	}
 	still := g.tick-t.closed <= 1 && s.Face != "" && t.say.Face != "" && speakerKey(s) == speakerKey(t.say) && s.Right == t.say.Right
-	*t = talk{say: s, active: true, still: still, read: g.isRead(s)}
+	*t = talk{meeting: meeting, say: s, active: true, still: still, read: g.isRead(s)}
 	g.lineVoice(t, s, g.in.fast && (t.read || g.cfg.SkipAll))
 	g.remember(logLine{name: s.Name, text: s.Text, line: &s})
 	t.layout(g)
@@ -114,11 +133,30 @@ func (t *talk) setPage(i int) {
 	for _, ln := range t.pages[i] {
 		t.total += len([]rune(ln))
 	}
+	if t.say.Instant {
+		t.shown = t.total
+	}
 }
 
 // layout breaks the line into the window's pages and shows the first.
 func (t *talk) layout(g *Game) {
 	t.pages, t.size = MessagePages(&g.db.Game, t.say.Text)
+	if def := g.db.Game.Screens[t.say.Ensemble]; g.novel() && def != nil && captionsOnStage(def.View) {
+		sw, sh := g.screen()
+		width := sw - 48 - min(340.0, (sw-48)*.30) - 68
+		size, rows := t.size, 2
+		if def.View.Call != nil {
+			l := callGeometry(sw, sh)
+			width, rows = max(1, l.caption.w-32), max(1, int((l.caption.h-36*sh/720)/gfx.LineHeight(size)))
+		}
+		lines := gfx.Wrap(t.say.Text, size, width)
+		t.pages = nil
+		for len(lines) > 0 {
+			n := min(rows, len(lines))
+			t.pages = append(t.pages, lines[:n])
+			lines = lines[n:]
+		}
+	}
 	if len(t.pages) == 0 {
 		t.pages = [][]string{{""}}
 	}
@@ -142,7 +180,14 @@ func (t *talk) question(g *Game, c event.Choice, again bool) {
 		*t = talk{say: prev.say, pages: prev.pages, size: prev.size, active: true, still: true}
 		t.setPage(prev.page)
 	default:
-		*t = talk{active: true, bare: true, pages: [][]string{{""}}}
+		// A choice right after a line of a call keeps the call on the screen, as the
+		// line's own text would (the window is bare, the call stays behind it).
+		ensemble := ""
+		if g.tick-t.closed <= 3 {
+			ensemble = t.say.Ensemble
+		}
+		*t = talk{active: true, bare: true, pages: [][]string{{""}}, meeting: t.meeting}
+		t.say.Ensemble = ensemble
 	}
 	if c.Recruit != nil {
 		t.say.Name = recruitName(c.Recruit)
@@ -179,10 +224,23 @@ func (t *talk) question(g *Game, c event.Choice, again bool) {
 
 		l.rowH = 40
 		l.x = bw - 40 - w
+		f := g.novelFrame()
+		if f.place != "" {
+			l.x = f.win.x + f.win.w - 40 - w
+		}
 		l.y = by + bh - 48 - l.height()
+		if f.place != "" || !f.strip {
+			l.y = f.bar.y - 2 - l.height()
+		}
 
-		if !t.bare && len(t.pages) > 0 && novelTextReaches(t.pages[t.page], t.size, l.x-30) {
-			l.y = by - 32 - l.height()
+		switch {
+		case g.db.Game.UI.ChoicePosition == "center":
+			// In the middle of the screen, never over the window.
+			sw, sh := g.screen()
+			l.x = (sw - w) / 2
+			l.y = min((sh-l.height())/2, f.win.y-16-l.height())
+		case !t.bare && len(t.pages) > 0 && novelTextReaches(t.pages[t.page], t.size, l.x-30-(f.textL+20-150)):
+			l.y = f.win.y - 32 - l.height()
 		}
 	}
 	t.choice = l
@@ -334,7 +392,16 @@ func (t *talk) draw(g *Game, dst *ebiten.Image) {
 	x, y, w, h := g.talkBox()
 	sw, sh := g.screen()
 	s := t.say
-	if s.Face != "" && (g.cg.File == "" || g.cg.Faces) && g.recruit == nil {
+	if s.Ensemble != "" {
+		if def := g.db.Game.Screens[s.Ensemble]; def != nil && def.Kind == "ensemble" {
+			screen := &authorScreen{name: s.Ensemble}
+			screen.drawPlanning(g, dst, "ensemble", 24, 16, sw-48, y-56)
+			if def.View.Fullscreen {
+				screen.drawPlanningHeader(g, dst)
+			}
+		}
+	}
+	if s.Ensemble == "" && s.Face != "" && (g.cg.File == "" || g.cg.Faces) && g.recruit == nil {
 		img := g.pics.get(s.Face)
 		ih := float64(img.Bounds().Dy())
 		cx := x + 230
@@ -369,6 +436,7 @@ func (t *talk) draw(g *Game, dst *ebiten.Image) {
 			g.drawStanding(dst, s.Face, cx, y+10, math.Min(ih, 280), float32(rise), false, nil)
 		}
 	}
+	g.prepareMaterial(dst, "")
 	g.window(dst, x, y, w, h)
 	if s.Name != "" {
 		nw := gfx.TextWidth(s.Name, sizeM) + 48
@@ -376,7 +444,11 @@ func (t *talk) draw(g *Game, dst *ebiten.Image) {
 		if s.Right && s.Face != "" {
 			nx = x + w - nw - 28
 		}
-		gfx.FillRoundRect(dst, float32(nx), float32(y-24), float32(nw), 46, 14, g.th.nameTag)
+		if g.hasMaterial() {
+			g.window(dst, nx, y-24, nw, 46)
+		} else {
+			gfx.FillRoundRect(dst, float32(nx), float32(y-24), float32(nw), 46, 14, g.th.nameTag)
+		}
 		g.text(dst, s.Name, nx+24, y-17, sizeM, g.th.text)
 	}
 	left := t.shown

@@ -1,0 +1,1137 @@
+version: '1'
+suite:
+  name: Planning state and native views
+scenarios:
+- name: planning workshop checks and finishes across a month boundary
+  steps:
+  - run:
+      command: gozen check "${specdir}/../../examples/workshop/game"
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+  - fixture:
+      file: play.txt
+      content: 'gap 1
+
+        wait 10
+
+        do plan: {op: observe}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        do plan: {op: policy, policy: steady}
+
+        until idle
+
+        snapshot
+
+        quit
+
+        '
+  - run:
+      command: gozen sim script "${specdir}/../../examples/workshop/game" --start
+        workshop --script play.txt --trace trace.jsonl
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+      file:
+        path: trace.jsonl
+        contains:
+        - '"finished":true'
+        - '"date":"2030-08-04"'
+        - '"usage/2030-07":true'
+- name: planning views at 1920 by 1080
+  tags:
+  - graphics
+  steps:
+  - fixture:
+      file: screens.txt
+      content: 'gap 1
+
+        wait 10
+
+        window 1920 1080
+
+        do plan: {op: observe}
+
+        until idle
+
+        do open: workshop
+
+        wait 20
+
+        shot workshop
+
+        press cancel
+
+        wait 10
+
+        do open: timeline
+
+        wait 20
+
+        shot timeline
+
+        press cancel
+
+        wait 10
+
+        do open: calendar
+
+        wait 20
+
+        shot calendar
+
+        press cancel
+
+        wait 10
+
+        do open: assembly
+
+        wait 20
+
+        shot assembly
+
+        press cancel
+
+        wait 10
+
+        quit
+
+        '
+  - run:
+      command: gozen run "${specdir}/../../examples/workshop/game" --dev --start workshop
+        --mute --script screens.txt --shots shots --save-dir saves
+      timeout: 45s
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+  - assert:
+      image:
+        path: shots/workshop.png
+        format: png
+        width: 1920
+        height: 1080
+  - assert:
+      image:
+        path: shots/timeline.png
+        format: png
+        width: 1920
+        height: 1080
+  - assert:
+      image:
+        path: shots/calendar.png
+        format: png
+        width: 1920
+        height: 1080
+  - assert:
+      image:
+        path: shots/assembly.png
+        format: png
+        width: 1920
+        height: 1080
+- name: planning views at 3840 by 2160
+  tags:
+  - graphics
+  steps:
+  - fixture:
+      file: screens.txt
+      content: 'gap 1
+
+        wait 10
+
+        window 3840 2160
+
+        do plan: {op: observe}
+
+        until idle
+
+        do open: workshop
+
+        wait 20
+
+        shot workshop
+
+        press cancel
+
+        wait 10
+
+        do open: timeline
+
+        wait 20
+
+        shot timeline
+
+        press cancel
+
+        wait 10
+
+        do open: calendar
+
+        wait 20
+
+        shot calendar
+
+        press cancel
+
+        wait 10
+
+        do open: assembly
+
+        wait 20
+
+        shot assembly
+
+        press cancel
+
+        wait 10
+
+        quit
+
+        '
+  - run:
+      command: gozen run "${specdir}/../../examples/workshop/game" --dev --start workshop
+        --mute --script screens.txt --shots shots --save-dir saves
+      timeout: 45s
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+  - assert:
+      image:
+        path: shots/workshop.png
+        format: png
+        width: 3840
+        height: 2160
+  - assert:
+      image:
+        path: shots/timeline.png
+        format: png
+        width: 3840
+        height: 2160
+  - assert:
+      image:
+        path: shots/calendar.png
+        format: png
+        width: 3840
+        height: 2160
+  - assert:
+      image:
+        path: shots/assembly.png
+        format: png
+        width: 3840
+        height: 2160
+- name: planning views at 2560 by 1080
+  tags:
+  - graphics
+  steps:
+  - fixture:
+      file: screens.txt
+      content: 'gap 1
+
+        wait 10
+
+        window 2560 1080
+
+        do plan: {op: observe}
+
+        until idle
+
+        do open: workshop
+
+        wait 20
+
+        shot workshop
+
+        press cancel
+
+        wait 10
+
+        do open: timeline
+
+        wait 20
+
+        shot timeline
+
+        press cancel
+
+        wait 10
+
+        do open: calendar
+
+        wait 20
+
+        shot calendar
+
+        press cancel
+
+        wait 10
+
+        do open: assembly
+
+        wait 20
+
+        shot assembly
+
+        press cancel
+
+        wait 10
+
+        quit
+
+        '
+  - run:
+      command: gozen run "${specdir}/../../examples/workshop/game" --dev --start workshop
+        --mute --script screens.txt --shots shots --save-dir saves
+      timeout: 45s
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+  - assert:
+      image:
+        path: shots/workshop.png
+        format: png
+        width: 2560
+        height: 1080
+  - assert:
+      image:
+        path: shots/timeline.png
+        format: png
+        width: 2560
+        height: 1080
+  - assert:
+      image:
+        path: shots/calendar.png
+        format: png
+        width: 2560
+        height: 1080
+  - assert:
+      image:
+        path: shots/assembly.png
+        format: png
+        width: 2560
+        height: 1080
+
+- name: numeric planning inputs report source locations and fail check
+  steps:
+  - fixture:
+      file: numeric/game.yaml
+      content: |
+        schema_version: 10
+        id: numeric-workshop
+        start: {location: room}
+        planning:
+          calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}
+          activities: {clay: {effort: 2, observation: 'nil'}}
+          ledgers: {hours: {retain: 2}}
+  - fixture:
+      file: numeric/data/world.yaml
+      content: |
+        locations: {room: {name: Workshop}}
+        events:
+          work:
+            do:
+            - plan: {op: progress, activity: clay, value: 'true'}
+            - plan: {op: effort, activity: clay, value: 'false'}
+            - plan: {op: record, ledger: hours, value: 'nil'}
+  - run:
+      command: gozen check numeric --format json
+  - assert:
+      exit_code: 1
+      stdout:
+        json:
+        - {path: '$.data[?(@.line == 5)].file', equals: data/world.yaml}
+        - {path: '$.data[?(@.line == 6 && @.file == "data/world.yaml")].message', equals: "planning value requires a number; use a numeric expression or an explicit conversion such as int(value)"}
+        - {path: '$.data[?(@.line == 7)].message', equals: "planning value requires a number; use a numeric expression or an explicit conversion such as int(value)"}
+        - {path: '$.data[?(@.file == "game.yaml")].message', equals: "planning value requires a number; use a numeric expression or an explicit conversion such as int(value)"}
+- name: rule argument typos fail check before execution
+  steps:
+  - fixture:
+      file: arguments/game.yaml
+      content: |
+        schema_version: 10
+        id: workshop-arguments
+        start: {location: room}
+        planning:
+          calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}
+          activities: {clay: {effort: 2}}
+          rules:
+            work:
+              params: [amount]
+              do:
+              - {op: progress, activity: clay, value: 'arg.amonut'}
+  - fixture:
+      file: arguments/data/world.yaml
+      content: |
+        locations: {room: {name: Workshop}}
+  - run:
+      command: gozen check arguments --format json
+  - assert:
+      exit_code: 1
+      stdout:
+        json:
+        - {path: '$.data[0].file', equals: game.yaml}
+        - {path: '$.data[0].line', equals: 11}
+        - {path: '$.data[0].message', equals: '"arg.amonut": arg: rule arguments has no field "amonut" (known: amount)'}
+- name: one typed event updates two residents without expanded bodies
+  steps:
+  - run:
+      command: gozen check "${specdir}/../../docs/examples/event-arguments" --only structure
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+  - fixture:
+      file: arguments.txt
+      content: |
+        gap 1
+        wait 10
+        do call: visit
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script arguments.txt --trace arguments.jsonl
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+      file:
+        path: arguments.jsonl
+        contains:
+        - 'Ready potter'
+        - 'Ready weaver'
+        - 'Returned potter/2'
+        - 'Returned weaver/3'
+        - 'Totals 2/3'
+- name: typed screen arguments survive confirmation cancellation and nested close
+  steps:
+  - fixture:
+      file: screens.txt
+      content: |
+        gap 1
+        wait 10
+        do call: {event: stock_visit, args: {amount: 2}}
+        wait 10
+        press z
+        wait 4
+        press down
+        press z
+        wait 12
+        press z
+        wait 4
+        press z
+        wait 12
+        press x
+        wait 4
+        press z
+        wait 12
+        press z
+        wait 4
+        press z
+        wait 12
+        press x
+        wait 4
+        press z
+        wait 12
+        press x
+        wait 4
+        press z
+        wait 12
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script screens.txt --trace screens.jsonl
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+      file:
+        path: screens.jsonl
+        contains:
+        - 'Stock 2'
+        - 'Received 12'
+        - 'Returned 2'
+        - '"total":2'
+
+- name: corrupted saved randomness is rejected before simulation
+  steps:
+  - fixture:
+      file: damaged-random.json
+      content: '{"format_version":3,"game_id":"cli-expedition","data_version":0,"rand":"YnJva2Vu","state":{"actors":{"scout":{"id":"scout","level":1}},"party":["scout"],"location":"camp"}}'
+  - run:
+      command: gozen sim battle "${specdir}/fixtures/game" --troop lesson -n 2 --state damaged-random.json
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: 'save random state:'
+      stdout:
+        equals: ''
+
+- name: one candidate screen assigns two activity arguments
+  steps:
+  - fixture:
+      file: targets.txt
+      content: |
+        gap 1
+        wait 10
+        do call: {event: assign_visit, args: {task: '"prepare"', resident: '"weaver"'}}
+        wait 12
+        press z
+        wait 4
+        press down
+        press z
+        wait 4
+        press z
+        wait 12
+        press z
+        wait 4
+        press z
+        wait 4
+        press z
+        wait 12
+        press x
+        wait 4
+        press z
+        wait 12
+        do call: {event: assign_visit, args: {task: '"shape"', resident: '"weaver"'}}
+        wait 12
+        press z
+        wait 4
+        press z
+        wait 4
+        press z
+        wait 12
+        press x
+        wait 4
+        press z
+        wait 12
+        do say: 'Assignments {activity.prepare.assignee}/{activity.shape.assignee}'
+        wait 4
+        press z
+        wait 12
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script targets.txt --trace targets.jsonl
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+      file:
+        path: targets.jsonl
+        contains:
+        - 'Reviewed prepare'
+        - 'Reviewed shape'
+        - 'Assignments weaver/weaver'
+
+- name: plain screen saves resume confirmation and the caller in another process
+  steps:
+  - fixture:
+      file: save-screen.txt
+      content: |
+        gap 4
+        wait 30
+        press z
+        wait 12
+        press save
+        press z
+        wait 90
+        press z
+        wait 12
+        press save
+        press down
+        press z
+        wait 90
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --event stock_demo --script save-screen.txt --save-dir saves --trace saved.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: saves/save1.json
+        json: {path: $.cursor.event, equals: stock_demo}
+  - assert:
+      file:
+        path: saves/save2.json
+        json: {path: $.cursor.event, equals: stock_demo}
+  - fixture:
+      file: resume-screen.txt
+      content: |
+        gap 4
+        wait 20
+        press z
+        press z
+        wait 12
+        press z
+        wait 12
+        press x
+        wait 4
+        press z
+        wait 12
+        press x
+        wait 4
+        press z
+        wait 12
+        press x
+        wait 4
+        press z
+        wait 12
+        snapshot
+        press z
+        wait 12
+        do open: save
+        press down
+        press down
+        press z
+        wait 90
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --script resume-screen.txt --save-dir saves --trace resumed.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: resumed.jsonl
+        contains: ['Returned 2', 'Returned 3', 'Total 2', '"total":2']
+  - assert:
+      file:
+        path: saves/save3.json
+        json: {path: $.state.vars.total, equals: 2}
+- name: calendar dates reuse one typed detail screen
+  steps:
+  - fixture:
+      file: calendar-args.txt
+      content: |
+        gap 4
+        wait 10
+        do open: calendar
+        wait 10
+        click 400 150
+        wait 10
+        press ok
+        until idle
+        press cancel
+        wait 10
+        click 580 150
+        wait 10
+        press ok
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script calendar-args.txt --trace calendar-args.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: calendar-args.jsonl
+        contains: ['Selected 2030-01-01', 'Selected 2030-01-02', '"date":"2030-01-01"', '"phase":0']
+- name: timeline lanes reuse one candidate screen
+  steps:
+  - fixture:
+      file: lane-args.txt
+      content: |
+        gap 4
+        wait 10
+        do open: tasks
+        wait 10
+        press ok
+        wait 10
+        press ok
+        wait 10
+        press down
+        press ok
+        until idle
+        snapshot
+        press ok
+        wait 10
+        press ok
+        until idle
+        press cancel
+        wait 10
+        press down
+        press ok
+        wait 10
+        press ok
+        wait 10
+        press ok
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script lane-args.txt --trace lane-args.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: lane-args.jsonl
+        contains: ['Reviewed prepare', 'Reviewed shape', '"assignee":"potter"', '"assignee":"weaver"']
+- name: shared event body retains different participants across a choice
+  steps:
+  - fixture:
+      file: inspection.txt
+      content: |
+        gap 1
+        wait 10
+        do call: inspection_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script inspection.txt --trace inspection.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: inspection.jsonl
+        contains: ['Potter: 1', 'Weaver: 1', 'Inspected 1/1', '"potter_seen":true', '"weaver_seen":true']
+- name: shared calculation accepts computed and empty budgets
+  steps:
+  - fixture:
+      file: progress.txt
+      content: |
+        gap 1
+        wait 10
+        do call: progress_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script progress.txt --trace progress.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: progress.jsonl
+        contains: ['First ratio 0.5', 'Empty ratio 1', '"ratio":1']
+- name: shared ordered shifts preserve unavailable and sequential participants
+  steps:
+  - fixture:
+      file: shifts.txt
+      content: |
+        gap 1
+        wait 10
+        do call: shift_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script shifts.txt --trace shifts.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: shifts.jsonl
+        contains: ['Unavailable 0', 'Shifts 2/3']
+- name: shared adjustments preserve completed and unstarted tasks
+  steps:
+  - fixture:
+      file: adjustment.txt
+      content: |
+        gap 1
+        wait 10
+        do call: adjustment_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script adjustment.txt --trace adjustment.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: adjustment.jsonl
+        contains: ['Before start 2/0', 'After adjustment 2/0.5']
+- name: shared priority selection keeps the first tie and accepts a higher score
+  steps:
+  - fixture:
+      file: priority.txt
+      content: |
+        gap 1
+        wait 10
+        do call: priority_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script priority.txt --trace priority.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: priority.jsonl
+        contains: ['First among equals: Water', 'Higher priority: Repair (30)', '"top_title":"Repair"']
+- name: calendar expressions count inclusive workdays and signed date differences
+  steps:
+  - fixture:
+      file: calendar.txt
+      content: |
+        gap 1
+        wait 10
+        do call: calendar_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script calendar.txt --trace calendar.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: calendar.jsonl
+        contains: ['Days 6; workdays 5', 'Days -6; workdays 0', 'Days 1; workdays 2', 'Next date 2031-01-01; previous date 2028-02-29']
+- name: shared random ranking draws only for eligible residents
+  steps:
+  - fixture:
+      file: lottery.txt
+      content: |
+        gap 1
+        wait 10
+        do call: lottery_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --seed 17 --start workshop --script lottery.txt --trace lottery.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: lottery.jsonl
+        contains: ['Lottery weaver/134; next 193', '"top_title":"weaver"']
+- name: indexed counters share one body and preserve separate saved names
+  steps:
+  - fixture:
+      file: counters.txt
+      content: |
+        gap 1
+        wait 10
+        do call: counter_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script counters.txt --trace counters.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: counters.jsonl
+        contains: ['Counters 6/3', '"stock_potter_1":6', '"stock_weaver_2":3', '"stocked_potter":true', '"stocked_weaver":true']
+- name: keyed thresholds retain acknowledgements until severity increases
+  steps:
+  - fixture:
+      file: threshold.txt
+      content: |
+        gap 1
+        wait 10
+        do call: threshold_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script threshold.txt --trace threshold.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: threshold.jsonl
+        contains: ['First warning 1', 'Acknowledged warning 0', 'Escalated warning 2; independent warning 1', '"shown_water":2', '"shown_stock":1']
+- name: shared release preserves completed work and another residents assignments
+  steps:
+  - fixture:
+      file: release.txt
+      content: |
+        gap 1
+        wait 10
+        do call: release_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script release.txt --trace release.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: release.jsonl
+        contains: ['Released []; other owner weaver', 'Finished owner potter; other owner weaver']
+- name: sampled totals exclude later work and cancelled activities
+  steps:
+  - fixture:
+      file: evidence.txt
+      content: |
+        gap 1
+        wait 10
+        do call: evidence_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script evidence.txt --trace evidence.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: evidence.jsonl
+        contains: ['Sampled 1; missing 1', 'After work 1; missing 1', 'After cancellation 0; missing 1']
+- name: finite collections read current state and authored activity dates
+  steps:
+  - fixture:
+      file: collections.txt
+      content: |
+        gap 1
+        wait 10
+        do call: collection_demo
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen check "${specdir}/../../docs/examples/event-arguments"
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script collections.txt --trace collections.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: collections.jsonl
+        contains: ['Effort 4; residents 2; remaining 2; days 2', '"remaining":2', 'Next open offset 4; exhausted -1']
+- name: repeated calls freeze membership and resume a choice in another process
+  steps:
+  - fixture:
+      file: each-save.txt
+      content: |
+        gap 4
+        wait 30
+        press z
+        wait 12
+        press save
+        press z
+        wait 90
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --event each_demo --script each-save.txt --save-dir saves --trace before.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: saves/save1.json
+        json: {path: $.cursor.event, equals: each_demo}
+  - fixture:
+      file: each-resume.txt
+      content: |
+        gap 4
+        wait 20
+        press z
+        press z
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --script each-resume.txt --save-dir saves --trace after.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: after.jsonl
+        contains: ['Visited potter: 1', 'Visited weaver: 2', 'Finished 2 inspections', '"visits":2']
+- name: resolved speakers and portrait targets survive cross-process resume
+  steps:
+  - fixture:
+      file: speaker-save.txt
+      content: |
+        gap 4
+        wait 30
+        press save
+        press z
+        wait 90
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --event speaker_demo --script speaker-save.txt --save-dir saves --trace before.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: saves/save1.json
+        json: {path: $.cursor.event, equals: speaker_demo}
+  - fixture:
+      file: speaker-resume.txt
+      content: |
+        gap 4
+        wait 20
+        press z
+        press z
+        until idle
+        press z
+        until idle
+        press x
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --script speaker-resume.txt --save-dir saves --trace after.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: after.jsonl
+        contains: ['"who":"Potter"', '"who":"Weaver"', 'Encouraged weaver', 'Visits 2', '"greetings":2']
+- name: selected source text survives cross-process resume
+  steps:
+  - fixture:
+      file: source-save.txt
+      content: |
+        gap 4
+        wait 30
+        press save
+        press z
+        wait 90
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --event selected_text_demo --script source-save.txt --save-dir saves --trace before.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: saves/save1.json
+        json: {path: $.cursor.event, equals: selected_text_demo}
+  - fixture:
+      file: source-resume.txt
+      content: |
+        gap 4
+        wait 20
+        press z
+        press z
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --script source-resume.txt --save-dir saves --trace after.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: after.jsonl
+        contains: ['Potter visits the workshop.', 'Weaver visits the workshop.']
+- name: repeated screen rows keep selected identity across processes
+  steps:
+  - run:
+      command: gozen check "${specdir}/../../docs/examples/event-arguments"
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+  - fixture:
+      file: save-roster.txt
+      content: |
+        gap 4
+        wait 30
+        press z
+        wait 12
+        press down
+        press z
+        wait 12
+        press save
+        press z
+        wait 90
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --event roster_demo --script save-roster.txt --save-dir saves --trace saved.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: saved.jsonl
+        contains: ['Confirm weaver']
+  - assert:
+      file:
+        path: saves/save1.json
+        json: {path: $.cursor.event, equals: roster_demo}
+  - fixture:
+      file: resume-roster.txt
+      content: |
+        gap 4
+        wait 20
+        press z
+        press z
+        wait 12
+        press z
+        wait 12
+        snapshot
+        press z
+        wait 12
+        snapshot
+        press x
+        wait 12
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --script resume-roster.txt --save-dir saves --trace resumed.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: resumed.jsonl
+        contains: ['Reviewed weaver', 'Roster closed.', '"weaver":{"attributes":{"portrait":"","vigor":2}', '"potter":{"attributes":{"portrait":"","vigor":0}']
+- name: typed activity attributes persist independently of assignment
+  steps:
+  - fixture:
+      file: inspect.txt
+      content: |
+        gap 1
+        wait 10
+        do call: {event: inspect_activity, args: {task: '"prepare"'}}
+        until idle
+        do plan: {op: assign, activity: prepare, entity: weaver}
+        do call: {event: inspect_activity, args: {task: '"shape"'}}
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script inspect.txt --trace inspect.jsonl
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+      file:
+        path: inspect.jsonl
+        contains:
+        - 'Inspections 1'
+        - 'Inspections 2'
+        - '"attributes":{"inspections":1}'

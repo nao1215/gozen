@@ -1151,8 +1151,8 @@ func (c *checker) callLoops() {
 	calls := map[string][]string{}
 	for id, ev := range db.Events {
 		for _, cmd := range ev.Do {
-			if cmd.Call != "" && db.Events[cmd.Call] != nil {
-				calls[id] = append(calls[id], cmd.Call)
+			if cmd.Call.Each == nil && cmd.Call.Event != "" && db.Events[cmd.Call.Event] != nil {
+				calls[id] = append(calls[id], cmd.Call.Event)
 			}
 		}
 	}

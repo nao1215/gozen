@@ -11,6 +11,8 @@ import (
 )
 
 type fastTo struct {
+	// strict validates saved cursors; editing, memo seeking and skip keep their own policies.
+	strict  bool
 	lines   int
 	answers []int
 	battle  bool
@@ -81,6 +83,9 @@ func (g *Game) fastStep() {
 			return
 		}
 		g.fast = nil
+		if f.strict && (why != "line" || g.evLines != f.lines || len(g.evAnswers) != len(f.answers)) {
+			g.failure = fmt.Errorf("load: invalid replay cursor at line %d: %s", g.evLines, why)
+		}
 		if g.opts.capture != nil {
 			g.opts.capture.seek = why
 		}
@@ -95,8 +100,15 @@ func (g *Game) fastStep() {
 		}
 		reached = f.seen >= max(1, f.lines) && g.evLines == f.seenAt
 	}
+	invalidAnswer := what == "choice" && (g.talk.choice == nil || len(g.evAnswers) >= len(f.answers) || f.answers[len(g.evAnswers)] < 0 || f.answers[len(g.evAnswers)] >= len(g.talk.choice.items))
 	switch {
-	case f.page && what == "choice" && (g.talk.choice == nil || len(g.evAnswers) >= len(f.answers) || f.answers[len(g.evAnswers)] < 0 || f.answers[len(g.evAnswers)] >= len(g.talk.choice.items)):
+	case f.strict && g.evNoBack:
+		stop("replay boundary")
+		return
+	case f.strict && !reached && invalidAnswer:
+		stop("invalid saved answer")
+		return
+	case f.page && invalidAnswer:
 		stop("choice")
 		return
 	case f.ticks > 60*300:
@@ -109,6 +121,17 @@ func (g *Game) fastStep() {
 		stop("battle")
 		return
 	case reached && !f.battle && (what == "text" || what == "choice") && g.talk.active:
+		// Session saves can land immediately after answering the saved choice.
+		if f.strict && what == "choice" && len(f.answers) == len(g.evAnswers)+1 {
+			if invalidAnswer {
+				stop("invalid saved answer")
+				return
+			}
+			answer := f.answers[len(g.evAnswers)]
+			g.evAnswers = append(g.evAnswers, answer)
+			g.events.Answer(answer)
+			g.req, g.talk = nil, talk{}
+		}
 		stop("line")
 		return
 	case f.ticks > 30 && !g.busy():
