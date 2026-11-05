@@ -187,3 +187,53 @@ func TestSimBatchKeepsWhatTheGameLogsInTheCase(t *testing.T) {
 		t.Error("the log was not given back")
 	}
 }
+
+func TestRunCaseRejectsTrailingJSON(t *testing.T) {
+	previous := batchRun
+	t.Cleanup(func() { batchRun = previous })
+	called := false
+	batchRun = func([]string, io.Writer, io.Writer, *gameCache) int {
+		called = true
+		return 0
+	}
+	for _, suffix := range []string{`{}`, `null`, `garbage`, `42`} {
+		called = false
+		got := runCase([]byte(`{"id":"bad","args":[]} `+suffix), nil)
+		if got.Exit != 2 || called || got.ID != "bad" {
+			t.Errorf("suffix %q: result %+v, called %v", suffix, got, called)
+		}
+	}
+	called = false
+	if got := runCase([]byte("{\"id\":\"ok\",\"args\":[]} \t\r"), nil); got.Exit != 0 || !called {
+		t.Fatalf("trailing whitespace rejected: %+v", got)
+	}
+}
+
+func BenchmarkBatchDefinitions(b *testing.B) {
+	dir := "../../e2e/atago/fixtures/game"
+	fsys := os.DirFS(dir)
+	for _, cached := range []bool{false, true} {
+		b.Run(fmt.Sprintf("cached=%v", cached), func(b *testing.B) {
+			games := &gameCache{keep: 4}
+			b.ReportAllocs()
+			for b.Loop() {
+				if !cached {
+					games.entries = nil
+				}
+				if games.definitions(dir, fsys) == nil {
+					b.Fatal("fixture did not load")
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkCheckGame(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		exit, _, stderr := runArgs([]string{"check", "../../e2e/atago/fixtures/game"})
+		if exit != 0 {
+			b.Fatal(stderr)
+		}
+	}
+}
