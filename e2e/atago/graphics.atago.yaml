@@ -457,3 +457,70 @@ scenarios:
       exit_code: 0
       stdout: {contains: [Welcome., Welcome back.]}
       stderr: {equals: ''}
+- name: capture the office sample's management screens in a window
+  tags: [graphics]
+  steps:
+  # The standup, the team, the drag, the tickets and carousel, the message, the full
+  # call with its shared screen, the calendar and the plan, drawn by the real renderer.
+  - run:
+      command: gozen run "${specdir}/../../examples/office/game" --dev --mute --seed 7 --window 1 --start office --script "${specdir}/../../scripts/capture-office-tour.txt" --shots tour --save-dir tour-saves
+      timeout: 120s
+  - assert:
+      exit_code: 0
+      file: {path: tour/oe030.png, exists: true}
+  - assert:
+      image: {path: tour/of000.png, format: png}
+  - run:
+      command: gozen run "${specdir}/../../examples/office/game" --dev --mute --seed 7 --window 1 --start office --script "${specdir}/../../scripts/capture-office.txt" --shots board --save-dir board-saves
+      timeout: 120s
+  - assert:
+      exit_code: 0
+  - assert:
+      image: {path: board/workboard-materials.png, format: png}
+- name: capture the workshop sample's planning screens in a window
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: planning.txt
+      content: |
+        gap 4
+        wait 30
+        do open: studio
+        wait 30
+        shot studio
+        press x
+        wait 20
+        do open: timeline
+        wait 30
+        shot timeline
+        press x
+        wait 20
+        do open: calendar
+        wait 30
+        shot calendar
+        press right
+        wait 20
+        press x
+        wait 20
+        do open: workshop
+        wait 30
+        shot entities
+        press down
+        wait 10
+        press x
+        wait 20
+        do call: assembly
+        wait 40
+        shot assembly
+        quit
+  - run:
+      command: gozen run "${specdir}/../../examples/workshop/game" --dev --mute --seed 7 --window 1 --start workshop --script planning.txt --shots shots --save-dir saves
+      timeout: 120s
+  - assert:
+      exit_code: 0
+  - assert:
+      image: {path: shots/studio.png, format: png}
+  - assert:
+      image: {path: shots/calendar.png, format: png}
+  - assert:
+      image: {path: shots/assembly.png, format: png}
