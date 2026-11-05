@@ -161,6 +161,12 @@ scenarios:
       stderr: {contains: 'CPU profile:'}
 - name: batch reports an invalid case and continues with the next one
   steps:
+  # The game is copied under the work directory so the case names it by a relative
+  # path: an absolute path would put Windows backslashes unescaped into the JSON.
+  - fixture: {file: g/game.yaml, from: fixtures/workboard/game.yaml}
+  - fixture: {file: g/data/world.yaml, from: fixtures/workboard/data/world.yaml}
+  - fixture: {file: g/assets/emblem.png, from: fixtures/workboard/assets/emblem.png}
+  - fixture: {file: g/assets/faces.json, from: fixtures/workboard/assets/faces.json}
   - fixture:
       file: done.txt
       content: |
@@ -171,7 +177,7 @@ scenarios:
       file: cases.jsonl
       content: |
         {"id":"bad","args":1}
-        {"id":"good","args":["${specdir}/fixtures/workboard","--start","workshop","--script","done.txt","--trace","batch.jsonl"]}
+        {"id":"good","args":["g","--start","workshop","--script","done.txt","--trace","batch.jsonl"]}
   - run:
       command: gozen sim batch --cases cases.jsonl
   - assert:

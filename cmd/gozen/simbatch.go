@@ -186,11 +186,17 @@ func (g *gameCache) definitions(dir string, fsys fs.FS) *data.DB {
 }
 
 // dirStamp names every file of a game directory with its size and modification time.
+// A directory is named alone: its own time changes on some systems (Windows) when its
+// files are only read, and an added or removed file changes the names anyway.
 func dirStamp(fsys fs.FS) (string, error) {
 	var b bytes.Buffer
 	err := fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if d.IsDir() {
+			fmt.Fprintf(&b, "%s/\n", p)
+			return nil
 		}
 		info, err := d.Info()
 		if err != nil {
