@@ -2,6 +2,7 @@ package play
 
 import (
 	"io/fs"
+	"maps"
 	"os"
 	"strings"
 	"testing"
@@ -35,9 +36,16 @@ func clashFiles(t *testing.T, repl map[string]string) fstest.MapFS {
 // of its frames, and reports the scene it ended in.
 func clashPlay(t *testing.T, repl map[string]string) *Game {
 	t.Helper()
-	g := wldOpenWith(t, Options{FS: clashFiles(t, repl), Location: "war"})
+	// Keep must border player territory; otherwise the scripted order is refused
+	// and merely checking that no clash remains produces a false positive.
+	changes := map[string]string{"field: {name: Field,": "field: {name: Field, owner: blue,"}
+	maps.Copy(changes, repl)
+	g := wldOpenWith(t, Options{FS: clashFiles(t, changes), Location: "war"})
 	wldFrames(t, g, 40)
 	wldPlay(t, g, "order storm - keep\nwait 30\npress cancel\nwait 20\norder storm hero keep\nwait 60\n", 400)
+	if _, ok := g.stack[len(g.stack)-1].(*clashScene); !ok {
+		t.Fatalf("march never opened a clash: got %T", g.stack[len(g.stack)-1])
+	}
 	screen := wldScreen(g)
 	for i := range 80 {
 		wldPlay(t, g, "wait 20\n", 100)
