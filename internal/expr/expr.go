@@ -317,7 +317,7 @@ func (e *Expr) Eval(env Env) (any, error) {
 		return nil, errors.New("empty expression")
 	}
 	if e.collections {
-		env = Chain{Map{"\x00collectionBudget": new(int)}, env}
+		env = &collectionBudget{Env: env}
 	}
 	v, err := e.root.eval(env)
 	if err != nil {

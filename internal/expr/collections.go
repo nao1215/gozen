@@ -17,6 +17,36 @@ type collection struct {
 }
 type element struct{ source node }
 
+// Evaluation scopes are private to one Eval call. Reusing the item scope avoids
+// allocating a map and a chain for every row, while nested collections keep
+// separate items and share only their visit budget.
+type collectionBudget struct {
+	Env
+	steps int
+}
+
+func (e *collectionBudget) Lookup(name string) (any, bool) {
+	if name == "\x00collectionBudget" {
+		return &e.steps, true
+	}
+	if e.Env == nil {
+		return nil, false
+	}
+	return e.Env.Lookup(name)
+}
+
+type collectionItem struct {
+	Env
+	value any
+}
+
+func (e *collectionItem) Lookup(name string) (any, bool) {
+	if name == "\x00item" {
+		return e.value, true
+	}
+	return e.Env.Lookup(name)
+}
+
 func collectionName(name string) bool { return name == "sum" || name == "count" || name == "filter" }
 
 func (n *element) eval(env Env) (any, error) {
@@ -46,13 +76,15 @@ func (n *collection) eval(env Env) (any, error) {
 	if !ok {
 		return nil, errors.New("missing collection evaluation budget")
 	}
+	scope := &collectionItem{Env: env}
 	for i := range values.Len() {
 		*steps++
 		if *steps > 65536 {
 			return nil, errors.New("collection evaluation exceeds 65536 item visits")
 		}
 		item := values.Index(i).Interface()
-		v, err := n.body.eval(Chain{Map{"\x00item": item}, env})
+		scope.value = item
+		v, err := n.body.eval(scope)
 		if err != nil {
 			return nil, fmt.Errorf("%s item %d: %w", n.name, i, err)
 		}
