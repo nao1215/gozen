@@ -15,6 +15,7 @@ func (c *command) exportGame() clihelp.Operation {
 	bundle := f.String("runtime", "", "the unpacked matching runtime bundle `DIR`; required")
 	target := f.String("target", runtime.GOOS+"-"+runtime.GOARCH, "web, or linux/windows/darwin with amd64/arm64")
 	out := f.StringP("out", "o", "", "write the game to this new `DIR`; required")
+	reuse := f.String("reuse", "", "web: take the converted files whose source is unchanged from this earlier export `DIR`")
 	c.reporting(f)
 	return clihelp.Operation{Flags: f, Run: func(_ context.Context) (err error) {
 		if f.NArg() != 1 {
@@ -23,9 +24,12 @@ func (c *command) exportGame() clihelp.Operation {
 		if *bundle == "" || *out == "" {
 			return cliio.Invalid(diag.OptionRequired, "export requires --runtime DIR and --out DIR")
 		}
+		if *reuse != "" && *target != "web" {
+			return cliio.Invalid(diag.BadValue, "--reuse is for --target web")
+		}
 		switch *target {
 		case "web":
-			err = distribute.Web(f.Arg(0), *out, *bundle, clihelp.Version())
+			err = distribute.Web(f.Arg(0), *out, *bundle, clihelp.Version(), *reuse)
 		case "linux-amd64", "linux-arm64", "windows-amd64", "windows-arm64", "darwin-amd64", "darwin-arm64":
 			err = distribute.Desktop(f.Arg(0), *out, *bundle, *target, clihelp.Version())
 		default:

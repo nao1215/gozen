@@ -1,3 +1,8 @@
+NovelWindow:
+  _: "Where the novel message window stands, in fractions of the screen (schema_version 10); 0 keeps the default of each."
+  x: "The window's left edge as a fraction of the screen's width; 0 centers it. It needs width."
+  width: "The window's width as a fraction of the screen's width, from 0.3 to 1; 0 keeps it across the screen, or inside 104 pixels each side with ui.material."
+  bottom: "The room left under the window and its buttons, as a fraction of the screen's height, up to 0.4; 0 leaves none, or 8 pixels with ui.material."
 Troop:
   _: "A group of enemies met together in one battle."
   background: "The picture shown behind the battle."
@@ -19,14 +24,28 @@ TroopPick:
   troop: "An ID of troops."
   weight: "The relative chance of drawing this troop. The default is 1, and 0 or less counts as 1."
   when: "A condition for the troop to be eligible."
+TitleMenu:
+  _: "Schema 10: the title screen's menu."
+  hide_disabled: "Leave out the entries that cannot be chosen now (Continue with no save, Gallery with nothing to show) instead of graying them. Off by default."
 UIStyle:
+  title: "Schema 10: the title screen's menu. Omitted, every entry is shown and the ones that cannot be chosen are grayed."
+  profile_book: "Schema 10: the character book's title and layout (list or grid). Omission keeps Characters as a list."
+  material: Optional layered panel finish; omission retains classic windows.
+  chrome: "Schema 10: colors and marks of the title bar and browser decoration of windowed planning surfaces and calls. Omission keeps the built-in light desktop look."
+  tones: "Schema 10: fills of workspace entries with tone note or primary. Omission keeps the built-in colors."
+  light: "Schema 10: paper palette of view.light surfaces. Omission keeps the built-in colors."
   stage_framing: "Per-picture static novel portrait framing, keyed by paths under assets/. Sets the source head anchor, displayed head height and top; preserves authored horizontal positions and clips off-screen content. Omitted pictures keep legacy framing. Needs schema version 8."
   hide_bar_on_choice: "Hide the buttons under the novel window (back, log, save and the rest) while a choice is shown; their keys still work. Off by default."
+  quick_menu: "Schema 10: where the buttons of the novel window stand. Omitted, in a row at the screen's lower right as before, a window with its own band raised above them. below: in a band under the message window with its left and right edges, the window raised by the band. inside: in the window's lower edge, the window taller by the band. The captions of a call follow the same choice."
+  choice_position: "Schema 10: where the novel window's choices stand. Omitted, at the window's right end as before; center, in the middle of the screen above the window."
+  wheel_up: "Schema 10: what turning the mouse wheel up does in the novel window. Omitted, it rolls back one line when it can and opens the backlog otherwise; log always opens the backlog. Turning it down advances the line either way."
+  novel_window: "Schema 10: where the novel message window stands, in fractions of the screen. Omitted, it keeps its place. The buttons of quick_menu below or inside follow it."
   battle_message: "The battle's message window: fit (as tall as the lines it shows, the default) or fixed (three lines tall)."
   battle_foe_names: "A plate under each foe that is not a boss: name (its name, the default), hp (its name and a bar of its HP) or none."
   hide_gold: "The kinds of place (field, dungeon, map, stage) where the windows of the money are not shown: the field's, with the play time, and the menu's. Omitted: shown everywhere."
   battle_ai_history: "Show the battle AI history button and enable B/PageUp, controller L1 and pointer activation. True when omitted. False hides the panel entry and the tactic explanation appended to action messages, without changing decisions or replay traces."
   _: "The colors and layout of the windows and message display."
+  face_shape: "How faces are cut on planning screens: round (the default) or square, a rounded square. A screen view may choose its own; a video call always keeps round faces."
   bestiary: "Show Monsters, the monster book, in the title and field menu. Off by default; under `--dev` the menus show it anyway. Needs schema version 4."
   accent: "The accent color."
   backlog: "How many lines the backlog keeps. The default is 300."
@@ -116,3 +135,40 @@ WebPage:
   url: "Where the page is published, an https:// address ending in /: the page's og:url and the start of its picture's address."
   description: "A sentence or two about the game, the page's description and the card's text."
   image: "The card's picture under assets/, a PNG or a JPEG of 1200x630 or more (smaller is warned of, GZN0121). gozen export copies it as it is beside the page as og-image with its extension; it needs url."
+
+MaterialStyle:
+  opacities: "Schema 10: opacity for one role of panel (base, card, control, chart, message for the novel message window and its band, choice for the novel window's choices), each in [0,1]. A role left out uses opacity. Higher is a deeper tint over the same finish."
+  refraction: Additional glass edge displacement in logical pixels, from 0 to 32.
+  wallpaper_strength: Strength of the procedural wallpaper color fields, from 0 to 1.
+  _: Reusable frosted panel finish for planning and dialogue.
+  kind: Mica uses at least 90 percent tint, acrylic at least 72 percent, glass uses authored opacity and edge refraction, opaque uses tint only.
+  blur: Blur footprint in logical pixels, from 0 to 64.
+  opacity: Tint strength from 0 to 1.
+  border: Fine illuminated edge strength from 0 to 1.
+  shadow: Soft outer shadow strength from 0 to 1.
+  surfaces: Optional base, card, control and chart material kind overrides. An omitted chart override inherits base.
+  wallpaper: Optional three colors for a cached soft gradient on light planning surfaces.
+
+ChromeStyle:
+  _: Title bar and browser decoration; unset colors keep the built-in look.
+  bar: Title bar fill.
+  text: Title, address and button marks.
+  field: Browser tab and address field fill.
+  frame: Outline of the window.
+  buttons: "Decorative window buttons as text. Empty hides them; omission keeps the minimize, maximize and close marks."
+  nav: "Browser back and forward marks as text. Empty hides them."
+
+ToneStyle:
+  _: Fills of workspace entry tones; unset colors keep the built-in look.
+  note: Fill of a note entry.
+  primary: Fill of a primary entry on islands surfaces.
+  primary_card: Card fill of a primary entry on workspace surfaces.
+  primary_text: Label color of a primary entry on workspace surfaces.
+
+LightStyle:
+  _: Paper palette of view.light surfaces; unset colors keep the built-in look.
+  paper: Background color of the whole screen behind the panels.
+  window: Fill color of the panels and the authored controls.
+  text: Color of the ordinary text on the panels.
+  dim: Secondary text color.
+  accent: Color of focused controls and highlighted values.

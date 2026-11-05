@@ -519,7 +519,7 @@ func TestCheckpointRoundTripAndFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 2 {
-		restored, err := loaded.RetryCheckpoint()
+		restored, _, err := loaded.RetryCheckpoint()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -537,11 +537,11 @@ func TestCheckpointRoundTripAndFailures(t *testing.T) {
 		t.Fatal("invalid randomness accepted")
 	}
 	loaded.Checkpoint.Save = []byte("broken")
-	if _, err := loaded.RetryCheckpoint(); err == nil || loaded.Gold != 1 {
+	if _, _, err := loaded.RetryCheckpoint(); err == nil || loaded.Gold != 1 {
 		t.Fatal("bad snapshot changed state")
 	}
 	loaded.Checkpoint = nil
-	if _, err := loaded.RetryCheckpoint(); err == nil {
+	if _, _, err := loaded.RetryCheckpoint(); err == nil {
 		t.Fatal("missing snapshot accepted")
 	}
 }

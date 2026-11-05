@@ -78,10 +78,14 @@ func (v IDRef) Resolve(db *DB, kind string, env expr.Env) (string, error) {
 // expressions evaluated in the caller's scope before any callee command executes.
 type EventCall struct {
 	// Each repeats the call over a bounded snapshot of IDs.
-	Each   *CallEach       `yaml:"each" json:"Each,omitempty"`
-	Event  string          `yaml:"event"`
-	Args   map[string]Expr `yaml:"args"`
-	mapped bool
+	Each  *CallEach       `yaml:"each" json:"Each,omitempty"`
+	Event string          `yaml:"event"`
+	Args  map[string]Expr `yaml:"args"`
+	// Ensemble names an ensemble screen (a call) that the lines of the called event, and
+	// of the events it calls in turn, show over when they name none of their own: one
+	// shared event of lines can then be said in whichever call calls it.
+	Ensemble string `yaml:"ensemble" json:"Ensemble,omitempty"`
+	mapped   bool
 }
 
 // CallEach selects IDs for repeated calls and screen rows. Items preserves
@@ -132,7 +136,7 @@ func (db *DB) ExpandCall(call EventCall, env expr.Env) ([]Command, error) {
 		// The expression lexer only escapes the next byte; Go string escapes
 		// would change control characters into letters. Preserve their bytes.
 		args[each.Param] = MustExpr(`"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(id) + `"`)
-		commands = append(commands, Command{Call: EventCall{Event: call.Event, Args: args}})
+		commands = append(commands, Command{Call: EventCall{Event: call.Event, Args: args, Ensemble: call.Ensemble}})
 	}
 	return commands, nil
 }
@@ -339,6 +343,11 @@ func (c *checker) eventCall(w string, call EventCall, names []string) {
 	if call.mapped || len(call.Args) > 0 {
 		c.needsVersion(w, "event arguments", SchemaVersion10)
 	}
+	if call.Ensemble != "" {
+		if screen := c.db.Game.Screens[call.Ensemble]; screen == nil || screen.Kind != "ensemble" {
+			c.errorf(diag.UnknownReference, w+".ensemble", "expected an ensemble screen")
+		}
+	}
 	if call.Each == nil {
 		c.callArguments(w, ev.Params, call.Args, names)
 		return
@@ -496,7 +505,21 @@ func (db *DB) validateArguments(params map[string]string, values map[string]any)
 
 // entryParams supplies the frozen binding contract for named screen actions.
 // Each adds a string ID scoped to this entry without changing screen arguments.
+// A drop place adds the carried value as one more string.
 func (s *AuthorScreen) entryParams(index int) map[string]string {
+	params := s.rowParams(index)
+	if drop := s.Entries[index].Drop; drop != "" {
+		if params == nil {
+			params = map[string]string{}
+		}
+		params[drop] = "string"
+	}
+	return params
+}
+
+// rowParams are the bindings every part of a row sees: the screen arguments
+// and the each parameter. The drop parameter is bound only while dropping.
+func (s *AuthorScreen) rowParams(index int) map[string]string {
 	params := maps.Clone(s.Params)
 	if each := s.Entries[index].Each; each != nil {
 		if params == nil {

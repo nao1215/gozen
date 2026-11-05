@@ -2,6 +2,7 @@ package play
 
 import (
 	"image"
+	"image/color"
 	"math"
 	"slices"
 
@@ -86,14 +87,10 @@ func (g *Game) novelBarShown() bool {
 }
 
 func (g *Game) novelButtonRects() []image.Rectangle {
-	sw, sh := g.screen()
-	var out []image.Rectangle
-	x := sw - 40
-	for _, btn := range slices.Backward(g.novelButtons()) {
-		w := gfx.TextWidth(lang.T(btn.label), sizeS) + 28
-		x -= w
-		out = append([]image.Rectangle{image.Rect(int(x), int(sh-40), int(x+w), int(sh-10))}, out...)
-		x -= 10
+	f := g.novelFrame()
+	out := make([]image.Rectangle, len(f.buttons))
+	for i, r := range f.buttons {
+		out[i] = r.buttonRect()
 	}
 	return out
 }
@@ -120,7 +117,7 @@ func (g *Game) novelInput() bool {
 		}
 	}
 	if g.in.wheel > 0 && (!t.active || t.choice == nil) {
-		if g.canRollBack() {
+		if g.db.Game.UI.WheelUp != "log" && g.canRollBack() {
 			press[btnBack] = true
 		} else {
 			press[btnLog] = true
@@ -174,7 +171,7 @@ func (g *Game) novelInput() bool {
 
 func (g *Game) autoAdvance() bool {
 	t := &g.talk
-	if t.choice != nil || t.shown < t.total {
+	if t.hidden || t.choice != nil || t.shown < t.total {
 		return false
 	}
 	wait := float64(60+t.total*4) * g.cfg.autoScale()
@@ -193,62 +190,128 @@ func (t *talk) drawNovel(g *Game, dst *ebiten.Image) {
 	if g.tr != nil && s.Face != "" {
 		g.traceStandSpeaker(s.Face, g.stageBig(speakerKey(s), s.Face), speakerKey(s))
 	}
-	if k := g.stageAlpha(); k > 0 {
+	if k := g.stageAlpha(); k > 0 && s.Ensemble == "" {
 		g.stageK = k
 		t.drawNovelStage(g, dst)
 		g.stageK = 1
 	}
+	frame := g.novelFrame()
+	if def := g.db.Game.Screens[s.Ensemble]; s.Ensemble != "" && def != nil && def.Kind == "ensemble" {
+		rect(dst, 0, 0, sw, sh, withAlpha(g.th.window, 255))
+		screen := &authorScreen{name: s.Ensemble}
+		height := frame.win.y - 40
+		if def.View.Chat != nil {
+			height = sh - 72
+		}
+		if def.View.Background != "" {
+			g.materialBackground(dst, def.View.Background)
+		} else {
+			g.prepareMaterial(dst, "")
+		}
+		if def.View.Call != nil {
+			screen.drawCall(g, dst)
+		} else {
+			screen.drawPlanning(g, dst, "ensemble", 24, 16, sw-48, height)
+			g.drawPlanningText(dst, def.Title, 48, 28, sw-96, 22, 1, g.th.text)
+		}
+	}
+	g.prepareMaterial(dst, "")
 	if t.hidden {
 		return
 	}
 	if t.bare {
 		if t.choice != nil {
-			t.choice.draw(g, dst, true)
+			g.drawNovelChoice(dst, t.choice)
 		}
 		return
 	}
-	y := sh - novelH
+	if def := g.db.Game.Screens[s.Ensemble]; def != nil && captionsOnStage(def.View) {
+		// Captions overlay only the video area; the transcript remains readable.
+		c := frame.win
+		cx, y, width, height := c.x, c.y, c.w, c.h
+		size, k := t.size, 1.0
+		if def.View.Call != nil {
+			k = sh / 720
+		}
+		// A dark caption scrim protects text without tinting the camera itself.
+		gfx.FillRoundRect(dst, float32(cx), float32(y), float32(width), float32(height), 10, color.NRGBA{15, 20, 26, 220})
+		g.drawPlanningText(dst, s.Name, cx+16, y+8*k, width-32, 18*k, 1, g.th.nameTag)
+		visible := ""
+		left := t.shown
+		for _, line := range t.pages[t.page] {
+			runes := []rune(line)
+			n := min(left, len(runes))
+			visible += string(runes[:n])
+			left -= n
+		}
+		g.drawPlanningText(dst, visible, cx+16, y+36*k, width-32, size, max(1, int((height-36*k)/gfx.LineHeight(size))), g.th.text)
+	} else {
+		w := frame.win
+		y := w.y
 
-	for i := range 24 {
-		a := uint8(float64(g.th.window.A) * float64(i) / 24)
-		rect(dst, 0, y-24+float64(i), sw, 1, withAlpha(g.th.window, a))
-	}
-	gfx.FillRoundRect(dst, 0, float32(y), float32(sw), float32(novelH), 0, g.th.window)
-	gfx.FillRoundRect(dst, 120, float32(y+58), float32(sw-240), 1, 0, withAlpha(g.th.border, 0x80))
-	if s.Name != "" {
-		g.text(dst, s.Name, 130, y+14, sizeL, g.th.nameTag)
-	}
-	left := t.shown
-	size := novelSize
-	if t.size > 0 {
-		size = t.size
-	}
-	for i, ln := range t.pages[t.page] {
-		r := []rune(ln)
-		n := min(len(r), left)
-		left -= n
-		g.text(dst, string(r[:n]), 150, y+74+float64(i)*size*1.5, size, g.th.text)
-	}
-	if t.shown >= t.total && t.choice == nil {
-		bob := math.Sin(float64(g.tick)/6) * 4
-		gfx.DrawText(dst, "▼", sw-150, y+novelH-80+bob, sizeS, g.th.cursor)
+		if frame.strip {
+			// The v0.15 band: a soft fade into a full-width strip.
+			for i := range 24 {
+				a := uint8(float64(g.th.window.A) * float64(i) / 24)
+				rect(dst, 0, y-24+float64(i), sw, 1, withAlpha(g.th.window, a))
+			}
+			gfx.FillRoundRect(dst, 0, float32(y), float32(sw), float32(w.h), 0, g.th.window)
+		} else if def := g.db.Game.Screens[s.Ensemble]; def != nil && callOverlay(def.View) {
+			// Over a full call the window is docked on the screen's lower edge: its
+			// lower corners run off the screen, and call.window_opacity deepens it.
+			if !g.materialSurfaceDeep(dst, w.x, y, w.w, w.h+24, g.th.window, "message", def.View.Call.WindowOpacity) {
+				g.window(dst, w.x, y, w.w, w.h+24)
+			}
+		} else {
+			g.surfaceWindow(dst, w.x, y, w.w, w.h, "message")
+		}
+		gfx.FillRoundRect(dst, float32(frame.textL-10), float32(y+58), float32(frame.textR-frame.textL+20), 1, 0, withAlpha(g.th.border, 0x80))
+		if s.Name != "" {
+			g.text(dst, s.Name, frame.textL, y+14, sizeL, g.th.nameTag)
+		}
+		left := t.shown
+		size := novelSize
+		if t.size > 0 {
+			size = t.size
+		}
+		for i, ln := range t.pages[t.page] {
+			r := []rune(ln)
+			n := min(len(r), left)
+			left -= n
+			g.text(dst, string(r[:n]), frame.textL+20, y+74+float64(i)*size*1.5, size, g.th.text)
+		}
+		if t.shown >= t.total && t.choice == nil {
+			bob := math.Sin(float64(g.tick)/6) * 4
+			gfx.DrawText(dst, "▼", frame.textR-20, y+novelH-80+bob, sizeS, g.th.cursor)
+		}
+
 	}
 	buttons := g.novelButtons()
+	if g.novelBarShown() && len(frame.buttons) > 0 {
+		g.drawQuickBand(dst, frame, s.Ensemble != "")
+	}
 	for i, r := range g.novelButtonRects() {
 		if !g.novelBarShown() {
 			break
 		}
 		c := g.th.dim
+		if g.hasMaterial() {
+			c = g.th.text
+		}
 		if buttons[i].b == btnAuto && g.autoRead || buttons[i].b == btnSkip && g.skipping {
 			c = g.th.accent
 		}
 		if g.in.mouse.In(r) {
 			c = g.th.cursor
 		}
-		gfx.DrawText(dst, lang.T(buttons[i].label), float64(r.Min.X+r.Dx()/2), float64(r.Min.Y)+2, sizeS, c)
+		if buttons[i].b == btnBack && !g.canRollBack() {
+			c = g.th.disabled
+		}
+		// The label is centered on its hit rectangle (gfx.DrawText centers on x).
+		gfx.DrawText(dst, lang.T(buttons[i].label), float64(r.Min.X)+float64(r.Dx())/2, float64(r.Min.Y)+2, sizeS, c)
 	}
 	if t.choice != nil {
-		t.choice.draw(g, dst, true)
+		g.drawNovelChoice(dst, t.choice)
 	}
 }
 

@@ -28,6 +28,20 @@ A profile unlocked once stays unlocked, in the record of the gallery (`gallery.j
 
 A session reads `profile.<id>.unlocked` (the profile's `when` on the state now) and `profile.<id>.name`. A session has no record of unlocks, so a profile unlocked in an earlier play is not unlocked there.
 
+### The shape of the book and faces of their own (2026-11-04, schema version 10)
+
+A game whose characters look different as the play goes (a disguise, a curse, a mind that sees others otherwise) wants the second look in the book only once it was seen, and wants the book to read as its own screens do. So:
+
+- `ui.profile_book` has `title` (the name in the title, the field menu, the system menu and on the band; by default Characters) and `layout` (`list`, the layout above and the default, or `grid`).
+- The grid: a band with the way back (a button), the title and how many are open; face cards in rows, a heading before each `affiliation` in the order written, the view scrolling by whole rows; on the right the standing picture with a button per face under it, and a board (`style: plate`'s look: no edge, no focus) with the profile. With `ui.material` it is drawn on the wallpaper with the light palette, as the planning screens are.
+- `met: true` opens a profile the first time a line of its actor is shown (the line's request, so a line that names the actor through an expression counts too). A game kept a flag per character for this and set it before the first line of each; meeting is what most books mean, so the engine records it. A met profile without a when does not open by any condition.
+- A face is a name or `{face, label, when, seen}`. A face with a when is not offered (no button, no Z) until it holds; one with `seen: true` until a line shows the actor with that face picture. Once offered it stays offered, recorded as `profile:<id>/face:<face>` beside `profile:<id>`. The first face is the one on the card. A face of its own condition was preferred to a condition per field (dropped above): it is one line per look, and a look is what changes.
+- The system menu over a planning screen (Esc) offers the book after loading, as the field menu does.
+- An actor without faces or a puppet may have a page; the card and the picture are an outline. A page without a picture is better than no page for one heard in the lines and never drawn.
+- The grid centers the opaque part of the standing picture between the grid and the board, and makes a picture wider than that room smaller, so a wide pose does not run under the board.
+- Wrapping keeps a number with the unit written after it (a count and its counter word, with or without a space between), a rule of Japanese setting the book's introductions showed missing.
+- `--book-as-played` keeps the unlocks as recorded under `--dev`, because screenshots of the book (which need `--dev`) should show its shadows.
+
 ## Alternatives
 
 1. Read the author's own notes format (one folder of YAML files per character). It ties the engine to one way of keeping notes; a game that has them can write `profiles` from them.

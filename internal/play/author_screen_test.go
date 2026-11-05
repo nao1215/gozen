@@ -908,3 +908,85 @@ func TestRepeatedCandidateRefreshKeepsIdentity(t *testing.T) {
 		t.Fatal("removed resident retained detail page")
 	}
 }
+
+func TestAuthorScreenMouseBack(t *testing.T) {
+	fsys := wldWorldFiles(t, `screens:
+  stock:
+    title: Stock
+    entries: [{label: Inspect, text: Inspect the stock.}]
+`, nil)
+	g := wldOpenWith(t, Options{FS: fsys, Location: "camp"})
+	closed := false
+	s := newAuthorScreen(g, "stock", func() { closed = true }, nil)
+	g.push(s)
+	r := s.backBounds(g)
+	g.in.click = true
+	g.in.mouse.X, g.in.mouse.Y = r.Min.X+r.Dx()/2, r.Min.Y+r.Dy()/2
+	s.update(g)
+	if !closed {
+		t.Fatal("mouse back did not return to caller")
+	}
+	for _, view := range g.stack {
+		if view == s {
+			t.Fatal("closed screen remains on stack")
+		}
+	}
+}
+
+func TestWorkspacePanelDoesNotInterceptAction(t *testing.T) {
+	fsys := wldWorldFiles(t, `planning:
+  calendar: {start: '2030-01-01', end: '2030-01-02', phases: [morning]}
+  entities: {potter: {name: Potter}}
+  activities: {shape: {name: Shape bowls, effort: 2}}
+screens:
+  studio:
+    title: Studio
+    kind: workspace
+    view: {fullscreen: true}
+    entries:
+    - {label: Supplies, bounds: [32, 150, 300, 450]}
+    - label: Select clay
+      bounds: [42, 200, 260, 64]
+      do: [{set: {var.selected: 'var.selected+1'}}]
+`, nil)
+	fsys["game.yaml"].Data = []byte(strings.Replace(string(fsys["game.yaml"].Data), "schema_version: 4", "schema_version: 10", 1))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "camp"})
+	wldFrames(t, g, 30)
+	g.openScreen("studio", func() {})
+	wldPlay(t, g, "click 100 220\nwait 8\n", 40)
+	if g.st.Vars["selected"] != float64(1) {
+		t.Fatal("decorative panel intercepted the control", g.st.Vars)
+	}
+	wldPlay(t, g, "press z\nwait 8\n", 40)
+	if g.st.Vars["selected"] != float64(2) {
+		t.Fatal("keyboard focused a decorative panel", g.st.Vars)
+	}
+}
+
+// A bounded workspace entry draws its picture inside the card, above the caption.
+func TestWorkspaceEntryPictureIsDrawnInsideBounds(t *testing.T) {
+	fsys := wldWorldFiles(t, `planning:
+  calendar: {start: '2030-01-01', end: '2030-01-02', phases: [morning]}
+  entities: {potter: {name: Potter}}
+screens:
+  studio:
+    title: Studio
+    kind: workspace
+    view: {fullscreen: true}
+    entries:
+    - {label: Visitor, text: Brings clay on Fridays., bounds: [32, 150, 300, 420], picture: pics/tall1.png}
+`, nil)
+	fsys["game.yaml"].Data = []byte(strings.Replace(string(fsys["game.yaml"].Data), "schema_version: 4", "schema_version: 10", 1))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "camp"})
+	wldFrames(t, g, 30)
+	g.openScreen("studio", func() {})
+	drawn := map[string]bool{}
+	g.pics.seen = func(path string, ok bool) { drawn[path] = drawn[path] || ok }
+	g.Draw(covScreen())
+	if !drawn["pics/tall1.png"] {
+		t.Fatal("bounded entry picture was not drawn", drawn)
+	}
+	if h := entryPictureHeight(image.Rect(32, 150, 332, 570)); h != 420-12-entryCaptionHeight {
+		t.Fatal("picture height leaves no caption", h)
+	}
+}

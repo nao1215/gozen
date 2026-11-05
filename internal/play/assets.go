@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"log"
 	"math"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -39,11 +40,14 @@ type pictures struct {
 	bytes        int
 	budget       int
 	clock        int
+	frame        int
 	heads        map[string]image.Rectangle
-	boxes        map[string][]float64
-	blurs        map[string]*ebiten.Image
-	shades       map[string][2]float64
-	shaded       map[string]*ebiten.Image
+	// contents are the opaque parts of the pictures loaded (nil: the whole picture).
+	contents map[string]image.Rectangle
+	boxes    map[string][]float64
+	blurs    map[string]*ebiten.Image
+	shades   map[string][2]float64
+	shaded   map[string]*ebiten.Image
 	// found are the face boxes gozen art faces wrote (assets/faces.json), read once.
 	found     map[string]data.FaceBox
 	foundRead bool
@@ -61,6 +65,7 @@ type picEntry struct {
 	img   *ebiten.Image
 	bytes int
 	used  int
+	frame int
 }
 
 type picLoad struct {
@@ -73,7 +78,7 @@ const picBudget = 256 << 20
 func newPictures(fsys fs.FS) *pictures {
 	return &pictures{
 		fsys: fsys, imgs: map[string]*picEntry{}, loading: map[string]*picLoad{}, decoded: map[string]image.Image{}, budget: picBudget,
-		heads: map[string]image.Rectangle{}, blurs: map[string]*ebiten.Image{}, boxes: map[string][]float64{},
+		heads: map[string]image.Rectangle{}, contents: map[string]image.Rectangle{}, blurs: map[string]*ebiten.Image{}, boxes: map[string][]float64{},
 		shades: map[string][2]float64{}, shaded: map[string]*ebiten.Image{},
 	}
 }
@@ -96,24 +101,39 @@ func (p *pictures) get(path string) *ebiten.Image {
 }
 
 func (p *pictures) fetch(path string) *ebiten.Image {
+	img, l, gen := p.claim(path)
+	if l == nil {
+		return img
+	}
+	src, head, content := p.prepare(path)
+	return p.settle(path, l, gen, p.upload(src), head, content)
+}
+
+// claim returns the picture at path when it is loaded, waiting for it when it is being
+// loaded; otherwise it marks it as being loaded and returns the load to settle.
+func (p *pictures) claim(path string) (*ebiten.Image, *picLoad, int) {
 	p.mu.Lock()
 	if e, ok := p.imgs[path]; ok {
 		p.clock++
 		e.used = p.clock
+		e.frame = p.frame
 		p.mu.Unlock()
-		return e.img
+		return e.img, nil, 0
 	}
 	if l := p.loading[path]; l != nil {
 		p.mu.Unlock()
 		<-l.done
-		return l.img
+		return l.img, nil, 0
 	}
 	l := &picLoad{done: make(chan struct{})}
 	p.loading[path] = l
 	gen := p.gen
 	p.mu.Unlock()
+	return nil, l, gen
+}
 
-	img, head := p.load(path)
+// settle keeps the picture loaded for the load l claimed and wakes whoever waits for it.
+func (p *pictures) settle(path string, l *picLoad, gen int, img *ebiten.Image, head, content image.Rectangle) *ebiten.Image {
 	p.mu.Lock()
 	if gen != p.gen {
 		if p.loading[path] == l {
@@ -126,13 +146,14 @@ func (p *pictures) fetch(path string) *ebiten.Image {
 	}
 	delete(p.loading, path)
 	p.clock++
-	e := &picEntry{img: img, used: p.clock}
+	e := &picEntry{img: img, used: p.clock, frame: p.frame}
 	if img != missing {
 		b := img.Bounds()
 		e.bytes = b.Dx() * b.Dy() * 4
 	}
 	p.imgs[path] = e
 	p.heads[path] = head
+	p.contents[path] = content
 	p.bytes += e.bytes
 	if p.bytes+p.decodedBytes > p.budget {
 		clear(p.decoded)
@@ -145,6 +166,72 @@ func (p *pictures) fetch(path string) *ebiten.Image {
 	return img
 }
 
+// warmers bounds the pictures warm decodes at once: the desktop's cores, and in a browser
+// the decodes it runs on its own threads (createImageBitmap) for the one thread of Go.
+func warmers() int {
+	if runtime.GOOS == "js" {
+		return 6
+	}
+	return max(2, min(runtime.NumCPU(), 8))
+}
+
+// warm decodes bounded batches on workers and uploads them on the game thread.
+// Byte reservations prevent a large screen retaining every CPU image at once.
+func (p *pictures) warm(paths ...string) {
+	if p.undrawn {
+		return
+	}
+	type job struct {
+		path          string
+		l             *picLoad
+		gen           int
+		src           image.Image
+		head, content image.Rectangle
+	}
+	var jobs []*job
+	p.mu.Lock()
+	for _, path := range paths {
+		if path == "" || p.imgs[path] != nil || p.loading[path] != nil {
+			continue
+		}
+		l := &picLoad{done: make(chan struct{})}
+		p.loading[path] = l
+		jobs = append(jobs, &job{path: path, l: l, gen: p.gen})
+	}
+	p.mu.Unlock()
+	if len(jobs) == 0 {
+		return
+	}
+	// Reserve decoded bytes before starting each batch. Eight bytes per pixel
+	// also covers 16-bit PNGs; release CPU buffers as each batch is uploaded.
+	for len(jobs) > 0 {
+		count, reserved := 0, 0
+		for count < len(jobs) && count < warmers() {
+			n := p.warmBytes(jobs[count].path)
+			if count > 0 && reserved+n > picBudget {
+				break
+			}
+			reserved += n
+			count++
+		}
+		batch := jobs[:count]
+		var wg sync.WaitGroup
+		for _, j := range batch {
+			wg.Go(func() { j.src, j.head, j.content = p.prepare(j.path) })
+		}
+		wg.Wait()
+		for _, j := range batch {
+			img := p.upload(j.src)
+			j.src = nil
+			p.settle(j.path, j.l, j.gen, img, j.head, j.content)
+			if p.seen != nil {
+				p.seen(j.path, img != missing)
+			}
+		}
+		jobs = jobs[count:]
+	}
+}
+
 func (p *pictures) reset() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -152,6 +239,7 @@ func (p *pictures) reset() {
 	p.imgs = map[string]*picEntry{}
 	p.loading = map[string]*picLoad{}
 	p.heads = map[string]image.Rectangle{}
+	p.contents = map[string]image.Rectangle{}
 	p.blurs = map[string]*ebiten.Image{}
 	p.shaded = map[string]*ebiten.Image{}
 	p.found, p.foundRead = nil, false
@@ -160,11 +248,21 @@ func (p *pictures) reset() {
 	p.decodedBytes = 0
 }
 
+// beginFrame retains the current and previous frame's working set even when
+// several native-resolution images exceed the idle cache budget. Once the
+// scene changes, unused pictures become eligible for ordinary LRU eviction.
+func (p *pictures) beginFrame() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.frame++
+	p.trim()
+}
+
 func (p *pictures) trim() {
 	for p.bytes > p.budget && len(p.imgs) > 1 {
 		oldest, at := "", 0
 		for path, e := range p.imgs {
-			if e.bytes > 0 && (oldest == "" || e.used < at) {
+			if e.bytes > 0 && (p.frame == 0 || e.frame < p.frame-1) && (oldest == "" || e.used < at) {
 				oldest, at = path, e.used
 			}
 		}
@@ -179,7 +277,10 @@ func (p *pictures) trim() {
 	}
 }
 
-func (p *pictures) load(path string) (*ebiten.Image, image.Rectangle) {
+// prepare decodes the picture at path (or takes it preloaded) and finds its head and its
+// opaque part: the work in CPU memory, which can run on any goroutine. A run that never
+// draws (undrawn) returns an empty image of the picture's size.
+func (p *pictures) prepare(path string) (image.Image, image.Rectangle, image.Rectangle) {
 	p.mu.Lock()
 	src := p.decoded[path]
 	if src != nil {
@@ -188,15 +289,80 @@ func (p *pictures) load(path string) (*ebiten.Image, image.Rectangle) {
 	}
 	p.mu.Unlock()
 	if p.undrawn {
-		return p.blank(path), image.Rectangle{}
+		return blankPicture{p.blank(path)}, image.Rectangle{}, image.Rectangle{}
 	}
 	if src == nil {
 		src = p.decode(path)
 	}
 	if src == nil {
-		return missing, image.Rectangle{}
+		return nil, image.Rectangle{}, image.Rectangle{}
 	}
-	return ebiten.NewImageFromImage(src), findHead(src)
+	return src, findHead(src), findContent(src)
+}
+
+// blankPicture carries the empty image of a run that never draws through prepare.
+type blankPicture struct{ *ebiten.Image }
+
+// upload puts a prepared picture on the GPU (missing when it could not be read).
+func (p *pictures) upload(src image.Image) *ebiten.Image {
+	switch src := src.(type) {
+	case nil:
+		return missing
+	case blankPicture:
+		return src.Image
+	}
+	return ebiten.NewImageFromImage(src)
+}
+
+// content is the opaque part of a picture, in its pixels (the whole picture when it
+// has no transparent margin or is not loaded yet).
+func (p *pictures) content(path string) image.Rectangle {
+	img := p.get(path)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if r, ok := p.contents[path]; ok && !r.Empty() {
+		return r
+	}
+	return img.Bounds()
+}
+
+// alphaOf reads the alpha (0 to 0xffff) of img at x, y in its own coordinates. The
+// pictures decoded are mostly NRGBA or RGBA, read straight from their pixels: through At
+// every pixel is a color made and dropped, which on a large picture took longer than
+// decoding parts of it, and several times longer in a browser.
+func alphaOf(img image.Image) func(x, y int) uint32 {
+	switch m := img.(type) {
+	case *image.NRGBA:
+		return func(x, y int) uint32 { return uint32(m.Pix[m.PixOffset(x, y)+3]) * 0x101 }
+	case *image.RGBA:
+		return func(x, y int) uint32 { return uint32(m.Pix[m.PixOffset(x, y)+3]) * 0x101 }
+	case *image.YCbCr, *image.Gray:
+		return func(int, int) uint32 { return 0xffff }
+	}
+	return func(x, y int) uint32 {
+		_, _, _, a := img.At(x, y).RGBA()
+		return a
+	}
+}
+
+// findContent is the bounding box of the pixels more than one eighth opaque, sampled
+// every fourth pixel.
+func findContent(img image.Image) image.Rectangle {
+	b := img.Bounds()
+	alpha := alphaOf(img)
+	minX, minY, maxX, maxY := b.Max.X, b.Max.Y, b.Min.X, b.Min.Y
+	for y := b.Min.Y; y < b.Max.Y; y += 4 {
+		for x := b.Min.X; x < b.Max.X; x += 4 {
+			if a := alpha(x, y); a > 0x2000 {
+				minX, minY = min(minX, x), min(minY, y)
+				maxX, maxY = max(maxX, x+4), max(maxY, y+4)
+			}
+		}
+	}
+	if minX >= maxX || minY >= maxY {
+		return image.Rectangle{}
+	}
+	return image.Rect(minX, minY, min(maxX, b.Max.X), min(maxY, b.Max.Y)).Sub(b.Min)
 }
 
 // blank is an empty image of the picture's size, for a run that never draws.
@@ -329,10 +495,8 @@ func (p *pictures) foundHead(path string) image.Rectangle {
 func findHead(img image.Image) image.Rectangle {
 	b := img.Bounds()
 	w, h := b.Dx(), b.Dy()
-	opaque := func(x, y int) bool {
-		_, _, _, a := img.At(b.Min.X+x, b.Min.Y+y).RGBA()
-		return a > 0x8000
-	}
+	alpha := alphaOf(img)
+	opaque := func(x, y int) bool { return alpha(b.Min.X+x, b.Min.Y+y) > 0x8000 }
 	if opaque(0, 0) && opaque(w-1, 0) {
 		return image.Rectangle{}
 	}
@@ -497,4 +661,18 @@ func (p *pictures) close() {
 	clear(p.shaded)
 	clear(p.decoded)
 	p.decodedBytes = 0
+}
+
+// warmBytes reserves the maximum decoded pixel storage before allocation.
+func (p *pictures) warmBytes(path string) int {
+	f, err := p.fsys.Open("assets/" + path)
+	if err != nil {
+		return picBudget
+	}
+	cfg, _, err := image.DecodeConfig(f)
+	closeErr := f.Close()
+	if err != nil || closeErr != nil || picturelimit.Dimensions(cfg.Width, cfg.Height) != nil {
+		return picBudget
+	}
+	return cfg.Width * cfg.Height * 8
 }

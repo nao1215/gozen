@@ -95,7 +95,7 @@ func (c *checker) declarations() {
 			c.errorf(diag.Shape, w, "a screen needs a title and at least one entry")
 			continue
 		}
-		if screen.Kind != "" && (!slices.Contains([]string{"entities", "timeline", "calendar", "ensemble", "islands"}, screen.Kind) || g.Planning == nil) {
+		if screen.Kind != "" && (!slices.Contains([]string{"entities", "timeline", "calendar", "ensemble", "islands", "workspace"}, screen.Kind) || g.Planning == nil) {
 			c.errorf(diag.Shape, w+".kind", "planning view requires planning data and a known kind")
 		}
 		if screen.Title == "" || len(screen.Entries) == 0 && screen.Kind == "" {
@@ -109,9 +109,42 @@ func (c *checker) declarations() {
 			c.errorf(diag.Shape, w+".params", "parameters currently require a plain authored list")
 		}
 		c.params = screen.Params
+		if screen.View.Call != nil && (g.Screen.Width < 640 || g.Screen.Height < 360) {
+			c.errorf(diag.OutOfRange, w+".view.call", "call views require a screen of at least 640 by 360")
+		}
+		if screen.Kind != "ensemble" && (screen.View.Call != nil || screen.View.Chat != nil) {
+			c.errorf(diag.Shape, w+".view", "call and chat require kind ensemble")
+		}
+		v := screen.View
+		if screen.Kind != "timeline" && (len(v.Rows) > 0 || v.FilterLabel != "") {
+			c.errorf(diag.Shape, w+".view", "rows and filter_label require kind timeline")
+		}
+		if screen.Kind != "timeline" && screen.Kind != "calendar" && (len(v.Markers) > 0 || v.DateLink != nil || v.WeekStart != 0) {
+			c.errorf(diag.Shape, w+".view", "markers, date_link and week_start require timeline or calendar")
+		}
+		if screen.Kind != "islands" && screen.Kind != "workspace" && v.Burnup != nil {
+			c.errorf(diag.Shape, w+".view.burnup", "burnup requires islands or workspace")
+		}
+		if screen.Kind != "ensemble" && (len(v.Guests) > 0 || len(v.GuestBackdrops) > 0 || v.Camera != "" || v.Highlight != "") {
+			c.errorf(diag.Shape, w+".view", "guests, guest_backdrops, camera and highlight require ensemble")
+		}
 		c.planningView(w+".view", screen.View, screen.Kind == "")
+		if screen.View.Window != "" && (!screen.View.Fullscreen || screen.Kind != "islands" && screen.Kind != "workspace") {
+			c.errorf(diag.OutOfRange, w+".view.window", "requires fullscreen islands or workspace")
+		}
 		if len(screen.View.Tabs) > 0 && !slices.Contains(screen.View.Tabs, name) {
 			c.errorf(diag.Shape, w+".view.tabs", "tabs must include the current screen")
+		}
+		if screen.Back != "" || screen.Home {
+			c.needsVersion(w+".back", "screen back and home", SchemaVersion10)
+		}
+		if screen.Back != "" {
+			if next := g.Screens[screen.Back]; next == nil || len(next.Params) > 0 || screen.Back == name {
+				c.errorf(diag.Shape, w+".back", "back requires another parameterless screen")
+			}
+			if screen.Home {
+				c.errorf(diag.Shape, w+".back", "a home screen has no back")
+			}
 		}
 		c.text(w+".title", screen.Title, FieldNames)
 		for i, e := range screen.Entries {
@@ -135,9 +168,12 @@ func (c *checker) declarations() {
 						c.errorf(diag.Expression, ew+".each.in", "must return a list")
 					}
 				}
-				c.params = screen.entryParams(i)
+				c.params = screen.rowParams(i)
 			}
 
+			if e.Tone != "" && e.Tone != "note" && e.Tone != "primary" {
+				c.errorf(diag.Shape, ew+".tone", "tone must be note, primary or empty")
+			}
 			if len(e.Bounds) != 0 && (len(e.Bounds) != 4 || e.Bounds[0] < 0 || e.Bounds[1] < 0 || e.Bounds[2] <= 0 || e.Bounds[3] <= 0) {
 				c.errorf(diag.Shape, ew+".bounds", "want nonnegative x/y and positive width/height")
 			}
@@ -162,12 +198,42 @@ func (c *checker) declarations() {
 			}
 			c.text(ew+".label", e.Label, FieldNames)
 			c.text(ew+".text", e.Text, FieldNames)
+			c.text(ew+".icon", e.Icon, FieldNames)
+			c.expr(ew+".muted", e.Muted, FieldNames)
+			c.planningPure(ew+".muted", e.Muted)
+			if e.Destination != "" {
+				if next := g.Screens[e.Destination]; next == nil || len(next.Params) > 0 {
+					c.errorf(diag.Shape, ew+".destination", "destination requires a parameterless screen")
+				}
+			}
 			c.file(ew+".picture", e.Picture)
+			if e.Picture != "" && len(e.Bounds) == 4 {
+				// A bounded entry draws its picture inside the card (photo cards, profile pages).
+				c.needsVersion(ew+".picture", "bounded entry pictures", SchemaVersion10)
+				if e.Bounds[3] < 120 {
+					c.errorf(diag.OutOfRange, ew+".bounds", "a bounded picture needs a height of at least 120")
+				}
+			}
+			if e.PictureFit != "" && e.PictureFit != "cover" && e.PictureFit != "contain" {
+				c.errorf(diag.OutOfRange, ew+".picture_fit", "want cover or contain, got %q", e.PictureFit)
+			}
+			if e.PictureFit != "" && e.Picture == "" {
+				c.errorf(diag.Shape, ew+".picture_fit", "picture_fit needs a picture")
+			}
 			c.expr(ew+".when", e.When, FieldNames)
+			row := c.params
+			// Only the drop's own action, guard and hint see the carried value.
+			c.entryDrag(ew, screen, i)
+			c.params = screen.entryParams(i)
 			c.commands(ew+".do", e.Do, FieldNames)
+			c.params = row
+			c.entryParts(ew, e)
 		}
 		c.params = nil
+		c.carousels(w, screen)
+		c.guide(w, name, screen)
 	}
+	c.flows()
 }
 
 // unknownFields checks fields the command does not know. If the name declared in game.yaml's verbs is

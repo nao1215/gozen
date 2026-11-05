@@ -251,7 +251,7 @@ func (g *Game) traceInput() {
 			held = append(held, buttonNames[b])
 		}
 	}
-	if press == nil && held == nil && !in.fast && !in.esc && !in.shift && !in.click && !in.rclick && !in.moved && in.wheel == 0 && in.digit == 0 {
+	if press == nil && held == nil && !in.fast && !in.esc && !in.shift && !in.click && !in.rclick && !in.moved && in.wheel == 0 && in.digit == 0 && !in.pheld && !in.pup {
 		return
 	}
 	l := traceLine{}
@@ -281,6 +281,20 @@ func (g *Game) traceInput() {
 	}
 	if in.rclick {
 		l["rclick"] = true
+	}
+	if in.pheld || in.pup {
+		l["mouse"] = []int{in.mouse.X, in.mouse.Y}
+	}
+	// A press goes down with a click unless a finger began it; only the
+	// difference is written.
+	if in.pdown != in.click {
+		l["pointer_down"] = in.pdown
+	}
+	if in.pheld {
+		l["pointer_held"] = true
+	}
+	if in.pup {
+		l["pointer_up"] = true
 	}
 	if in.wheel != 0 {
 		l["wheel"] = in.wheel
@@ -775,6 +789,7 @@ func (r *replay) prepare(g *Game) error {
 func (r *replay) feed(in *input, tick int) {
 	in.pressed, in.held = [numButtons]bool{}, [numButtons]bool{}
 	in.fast, in.click, in.rclick, in.moved, in.wheel = false, false, false, false, 0
+	in.pdown, in.pheld, in.pup = false, false, false
 	in.esc, in.shift = false, false
 	in.digit = 0
 	l, ok := r.inputs[tick]
@@ -796,6 +811,10 @@ func (r *replay) feed(in *input, tick int) {
 	in.shift = l["shift"] == true
 	in.click = l["click"] == true
 	in.rclick = l["rclick"] == true
+	in.pdown, in.pheld, in.pup = in.click, l["pointer_held"] == true, l["pointer_up"] == true
+	if down, ok := l["pointer_down"].(bool); ok {
+		in.pdown = down
+	}
 	in.wheel = num(l["wheel"])
 	in.digit = int(num(l["digit"]))
 	if m, ok := l["mouse"].([]any); ok && len(m) == 2 {

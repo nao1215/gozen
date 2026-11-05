@@ -81,6 +81,7 @@ func Entry(fsys fs.FS, dir string, cfg EntryConfig) clihelp.Operation {
 	mute := fl.Bool("mute", false, "play no sound")
 	fullscreen := fl.Bool("fullscreen", false, "start in full screen (F11 or Alt+Enter switches)")
 	galleryAll := fl.Bool("gallery-all", false, "open every picture and scene of the gallery for this run (not saved)")
+	bookAsPlayed := fl.Bool("book-as-played", false, "under --dev, open only the profiles and faces of the character book a player has unlocked")
 	windowScale := fl.Float64("window", 0, "the window size as a `SCALE` of the game's size; 0 uses the game's size, or smaller to fit the monitor")
 	saveDir := fl.String("save-dir", "", "keep the saves in this `DIR`")
 	start := fl.String("start", "", "start a new game at this `LOCATION`")
@@ -164,7 +165,7 @@ func Entry(fsys fs.FS, dir string, cfg EntryConfig) clihelp.Operation {
 		opts := Options{
 			Development: *dev, CollectBuildInfo: *collect, ExternalInput: *external, Report: out, FS: game, Seed: *seed, NoSound: *mute || cfg.Mute, SaveDir: *saveDir, ShotDir: *shots,
 			Location: *start, Battle: *fight, Party: split(*party), Level: *level, Flags: split(*flags), Gold: *gold, Items: split(*items), Calm: *calm, Floor: *floor,
-			Replay: *replay, ReplayBattle: *replayBattle, TraceShots: *traceShots, Fullscreen: *fullscreen, Window: *windowScale, GalleryAll: *galleryAll, MemoDir: *memos,
+			Replay: *replay, ReplayBattle: *replayBattle, TraceShots: *traceShots, Fullscreen: *fullscreen, Window: *windowScale, GalleryAll: *galleryAll, BookAsPlayed: *bookAsPlayed, MemoDir: *memos,
 			FromMemo: *fromMemo, AllowLegacySave: *allowLegacySave, TracePath: *trace, Until: *until, Scene: *scene, Event: *event, Line: *line, Picture: *picture,
 			LiveDir: "", Review: *review, ReviewLog: *reviewLog, ReviewSources: *reviewSources,
 		}
@@ -264,7 +265,7 @@ var runnerPage = clihelp.Page{
 		{Title: "Test play (--dev)", Flags: []string{"start", "battle", "party", "level", "flags", "gold", "items", "floor", "calm", "scene", "event", "line", "picture", "answers"}},
 		{Title: "Autoplay (--dev)", Flags: []string{"autoplay", "report", "shot-every", "auto-floors", "speed"}},
 		{Title: "Scripts and records (--dev)", Flags: []string{"script", "shots", "record", "trace", "trace-shots", "replay", "replay-battle", "until"}},
-		{Title: "Notes and review (--dev)", Flags: []string{"memos", "from-memo", "allow-legacy-save", "gallery-all", "review", "review-log", "review-sources", "build-info", "external-input"}},
+		{Title: "Notes and review (--dev)", Flags: []string{"memos", "from-memo", "allow-legacy-save", "gallery-all", "book-as-played", "review", "review-log", "review-sources", "build-info", "external-input"}},
 		{Title: "General", Flags: []string{"help"}},
 	},
 	Notes: []string{

@@ -2,6 +2,7 @@ package planning_test
 
 import (
 	"encoding/json"
+	"math"
 	"math/rand/v2"
 	"reflect"
 	"strings"
@@ -14,7 +15,7 @@ import (
 	"github.com/nao1215/gozen/internal/rpg"
 )
 
-const workshop = `schema_version: 9
+const workshop = `schema_version: 10
 id: workshop
 start: {location: room}
 planning:
@@ -58,7 +59,7 @@ func value(t *testing.T, s string) data.Expr {
 
 func apply(t *testing.T, s *rpg.State, c data.PlanCommand) []data.Command {
 	t.Helper()
-	out, err := planning.Apply(s, c)
+	out, err := applyUnbound(s, c)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +91,7 @@ func TestObservationAndAtomicSelection(t *testing.T) {
 		t.Fatal("observation not refreshed")
 	}
 	before := snapshot(t, s)
-	_, err := planning.Apply(s, data.PlanCommand{Op: "set", Attribute: "vigor", Value: value(t, `self.id == "potter" ? 30 : 200`)})
+	_, err := applyUnbound(s, data.PlanCommand{Op: "set", Attribute: "vigor", Value: value(t, `self.id == "potter" ? 30 : 200`)})
 	if err == nil || string(before) != string(snapshot(t, s)) {
 		t.Fatal("failed batch mutated state")
 	}
@@ -195,7 +196,7 @@ func TestObservationFailureIsAtomic(t *testing.T) {
 				cmd.Where = value(t, "self.missing")
 			}
 			before := snapshot(t, s)
-			if _, err := planning.Apply(s, cmd); err == nil {
+			if _, err := applyUnbound(s, cmd); err == nil {
 				t.Fatal("invalid observation succeeded")
 			}
 			if string(snapshot(t, s)) != string(before) {
@@ -249,7 +250,7 @@ func TestCalendarDispatchAndPeriodClose(t *testing.T) {
 	apply(t, s, data.PlanCommand{Op: "record", Ledger: "usage", Period: "2030-07", Entity: data.IDRef{ID: "potter"}, Value: value(t, "3")})
 	apply(t, s, data.PlanCommand{Op: "close", Ledger: "usage", Period: "2030-07"})
 	for _, op := range []string{"record", "close"} {
-		if _, err := planning.Apply(s, data.PlanCommand{Op: op, Ledger: "usage", Period: "2030-07", Value: value(t, "1")}); err == nil {
+		if _, err := applyUnbound(s, data.PlanCommand{Op: op, Ledger: "usage", Period: "2030-07", Value: value(t, "1")}); err == nil {
 			t.Fatal("closed month accepted mutation")
 		}
 	}
@@ -312,12 +313,41 @@ func TestRulesAndPolicyUseObservations(t *testing.T) {
 		t.Fatal("policy ignored observation")
 	}
 	s.DB.Game.Planning.Policies["hidden"] = []data.PolicyRule{{When: value(t, "entity.potter.vigor < 50"), Event: "gather"}}
-	if _, err := planning.Apply(s, data.PlanCommand{Op: "policy", Policy: "hidden"}); err == nil {
+	if _, err := applyUnbound(s, data.PlanCommand{Op: "policy", Policy: "hidden"}); err == nil {
 		t.Fatal("policy read hidden attribute")
 	}
 	before := snapshot(t, s)
-	if _, err := planning.Apply(s, data.PlanCommand{Op: "rule", Rule: "recover", Args: map[string]data.Expr{}}); err == nil || string(before) != string(snapshot(t, s)) {
+	if _, err := applyUnbound(s, data.PlanCommand{Op: "rule", Rule: "recover", Args: map[string]data.Expr{}}); err == nil || string(before) != string(snapshot(t, s)) {
 		t.Fatal("invalid arguments changed state")
+	}
+}
+
+func TestPolicyCollectionsUseOnlyObservedState(t *testing.T) {
+	s := state(t)
+	s.DB.Game.Planning.Policies = map[string][]data.PolicyRule{}
+	apply(t, s, data.PlanCommand{Op: "observe"})
+	s.Planning.Activities["prepare"].Progress = 1.5
+	s.Planning.Activities["prepare"].Observed = .5
+	for _, formula := range []string{
+		`sum(activities, it.progress) == .5`,
+		`sum(activities, it.observed) == .5`,
+		`first(activities, nil).id == "prepare"`,
+		`count(entities, it.active) == 2`,
+		`first(filter(entities, it.id == "potter"), nil).condition == "ready"`,
+	} {
+		s.DB.Game.Planning.Policies["public"] = []data.PolicyRule{{When: value(t, formula), Event: "gather"}}
+		before := snapshot(t, s)
+		calls := apply(t, s, data.PlanCommand{Op: "policy", Policy: "public"})
+		if len(calls) != 1 || calls[0].Call.Event != "gather" || string(before) != string(snapshot(t, s)) {
+			t.Fatalf("public query changed state or read true work: %s", formula)
+		}
+	}
+	for _, formula := range []string{`sum(entities, it.vigor) > 0`, `count(activities, it.completed) > 0`} {
+		s.DB.Game.Planning.Policies["private"] = []data.PolicyRule{{When: value(t, formula), Event: "gather"}}
+		before := snapshot(t, s)
+		if _, err := applyUnbound(s, data.PlanCommand{Op: "policy", Policy: "private"}); err == nil || string(before) != string(snapshot(t, s)) {
+			t.Fatalf("private query accepted or mutated state: %s", formula)
+		}
 	}
 }
 
@@ -331,7 +361,7 @@ func TestReportedActivityProgress(t *testing.T) {
 		t.Fatal("drawing progress changed without refresh")
 	}
 	apply(t, s, data.PlanCommand{Op: "observe"})
-	if s.Planning.Activities["prepare"].Observed != 1.5 || s.Planning.Activities["prepare"].Progress != .5 {
+	if s.ActivityValues("prepare")["observed"] != 1.5 || s.ActivityValues("prepare")["progress"] != .5 {
 		t.Fatal("reported and true progress conflated")
 	}
 }
@@ -346,7 +376,7 @@ func TestLedgerRetentionKeepsClosure(t *testing.T) {
 		t.Fatal("retention did not prune totals")
 	}
 	before := snapshot(t, s)
-	if _, err := planning.Apply(s, data.PlanCommand{Op: "record", Ledger: "usage", Entity: data.IDRef{ID: "potter"}, Period: "2030-05", Value: value(t, "1")}); err == nil || string(before) != string(snapshot(t, s)) {
+	if _, err := applyUnbound(s, data.PlanCommand{Op: "record", Ledger: "usage", Entity: data.IDRef{ID: "potter"}, Period: "2030-05", Value: value(t, "1")}); err == nil || string(before) != string(snapshot(t, s)) {
 		t.Fatal("pruned closed period was reopened")
 	}
 }
@@ -382,7 +412,7 @@ func TestEffortChangesCompletionDependenciesAndSave(t *testing.T) {
 	}
 	for _, input := range []string{"0", "-1", `"invalid"`, "1/0"} {
 		before := snapshot(t, s)
-		if _, err := planning.Apply(s, data.PlanCommand{Op: "effort", Activity: data.IDRef{ID: "shape"}, Value: value(t, input)}); err == nil || string(before) != string(snapshot(t, s)) {
+		if _, err := applyUnbound(s, data.PlanCommand{Op: "effort", Activity: data.IDRef{ID: "shape"}, Value: value(t, input)}); err == nil || string(before) != string(snapshot(t, s)) {
 			t.Fatalf("invalid effort %s was accepted or mutated state", input)
 		}
 	}
@@ -462,7 +492,7 @@ func TestCancellationPreservesWorkAndRestoresDependencies(t *testing.T) {
 	}
 	for _, input := range []string{"1", `"true"`} {
 		before := snapshot(t, s)
-		if _, err := planning.Apply(s, data.PlanCommand{Op: "cancel", Activity: data.IDRef{ID: "prepare"}, Value: value(t, input)}); err == nil || string(before) != string(snapshot(t, s)) {
+		if _, err := applyUnbound(s, data.PlanCommand{Op: "cancel", Activity: data.IDRef{ID: "prepare"}, Value: value(t, input)}); err == nil || string(before) != string(snapshot(t, s)) {
 			t.Fatal("invalid cancellation was not atomic")
 		}
 	}
@@ -486,7 +516,7 @@ func TestDeadlineChangesPersistAndRejectInvalidDates(t *testing.T) {
 	}
 	for _, input := range []string{`"2030-07-30"`, `"2030-02-30"`, `"2030-8-01"`, `42`, `true`, `""`} {
 		before := snapshot(t, s)
-		if _, err := planning.Apply(s, data.PlanCommand{Op: "deadline", Activity: data.IDRef{ID: "prepare"}, Value: value(t, input)}); err == nil || string(before) != string(snapshot(t, s)) {
+		if _, err := applyUnbound(s, data.PlanCommand{Op: "deadline", Activity: data.IDRef{ID: "prepare"}, Value: value(t, input)}); err == nil || string(before) != string(snapshot(t, s)) {
 			t.Fatalf("invalid deadline %s accepted or mutated state", input)
 		}
 	}
@@ -526,7 +556,7 @@ func TestNonFiniteScalarRollback(t *testing.T) {
 					s.DB.Game.Planning.Activities["shape"] = def
 				}
 				before := snapshot(t, s)
-				if _, err := planning.Apply(s, cmd); err == nil {
+				if _, err := applyUnbound(s, cmd); err == nil {
 					t.Fatal("non-finite scalar accepted")
 				}
 				if string(snapshot(t, s)) != string(before) {
@@ -563,7 +593,7 @@ func TestNumericOperationTypes(t *testing.T) {
 				}
 				s.DB.Game.Planning.Rules = map[string]data.PlanRule{"update": {Do: []data.PlanCommand{{Op: "advance"}, cmd}}}
 				before := snapshot(t, s)
-				_, err := planning.Apply(s, data.PlanCommand{Op: "rule", Rule: "update"})
+				_, err := applyUnbound(s, data.PlanCommand{Op: "rule", Rule: "update"})
 				valid := formula == "2" || formula == "int(true)"
 				if valid {
 					if err != nil {
@@ -631,7 +661,7 @@ func TestExpressionTargetsAreAtomic(t *testing.T) {
 				{Op: "assign", Activity: data.IDRef{Expr: value(t, "arg.task")}, Entity: data.IDRef{Expr: value(t, formula)}},
 			}}
 			before := snapshot(t, s)
-			_, err = planning.Apply(s, data.PlanCommand{Op: "rule", Rule: "assign", Args: map[string]data.Expr{
+			_, err = applyUnbound(s, data.PlanCommand{Op: "rule", Rule: "assign", Args: map[string]data.Expr{
 				"task": value(t, `"shape"`), "resident": value(t, `"missing"`),
 			}})
 			if err == nil || string(before) != string(snapshot(t, s)) {
@@ -684,4 +714,246 @@ func TestLiteralAndExpressionTargetsAgree(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestActivityAttributes(t *testing.T) {
+	s := state(t)
+	// A crop's moisture is task-local state, independent of its assignee.
+	s.DB.Game.Planning.ActivityAttributes = map[string]data.Attribute{"moisture": {Type: "number", Initial: float64(0)}}
+	s = rpg.New(s.DB, nil)
+	apply(t, s, data.PlanCommand{Op: "set", Activity: data.IDRef{ID: "prepare"}, Attribute: "moisture", Value: value(t, "self.moisture+3")})
+	got, err := value(t, "sum(activities, it.moisture)").Eval(s.Env())
+	if err != nil || got != float64(3) {
+		t.Fatalf("aggregate: %v, %v", got, err)
+	}
+	if _, err := applyUnbound(s, data.PlanCommand{Op: "set", Activity: data.IDRef{ID: "missing"}, Attribute: "moisture", Value: value(t, "1")}); err == nil {
+		t.Fatal("unknown activity accepted")
+	}
+
+	before := snapshot(t, s)
+	for _, v := range []string{`"wet"`, strings.Repeat("9", 200) + "*" + strings.Repeat("9", 200)} {
+		if _, err := applyUnbound(s, data.PlanCommand{Op: "set", Activity: data.IDRef{ID: "prepare"}, Attribute: "moisture", Value: value(t, v)}); err == nil {
+			t.Fatal("invalid attribute accepted")
+		}
+		if !reflect.DeepEqual(before, snapshot(t, s)) {
+			t.Fatal("failed write changed state")
+		}
+	}
+	// A failed multi-step rule restores earlier activity writes as well.
+	if s.DB.Game.Planning.Rules == nil {
+		s.DB.Game.Planning.Rules = map[string]data.PlanRule{}
+	}
+	s.DB.Game.Planning.Rules["water"] = data.PlanRule{Do: []data.PlanCommand{
+		{Op: "set", Activity: data.IDRef{ID: "shape"}, Attribute: "moisture", Value: value(t, "5")},
+		{Op: "set", Activity: data.IDRef{ID: "prepare"}, Attribute: "missing", Value: value(t, "2")},
+	}}
+	if _, err := applyUnbound(s, data.PlanCommand{Op: "rule", Rule: "water"}); err == nil {
+		t.Fatal("invalid rule accepted")
+	}
+	if !reflect.DeepEqual(before, snapshot(t, s)) {
+		t.Fatal("failed rule retained a write")
+	}
+	// Missing overrides read defaults; stored overrides must remain typed and known.
+	for _, attrs := range []map[string]any{{"moisture": "wet"}, {"unknown": float64(1)}} {
+		s.Planning.Activities["shape"].Attributes = attrs
+		if _, err := s.Save(); err == nil {
+			t.Fatal("invalid saved attributes accepted")
+		}
+	}
+	s.Planning.Activities["shape"].Attributes = nil
+
+	restored, err := rpg.Parse(s.DB, before, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err = value(t, "activity.prepare.moisture").Eval(restored.Env())
+	if err != nil || got != float64(3) {
+		t.Fatalf("restored: %v, %v", got, err)
+	}
+}
+
+func TestWorkHistoryUsesObservationsAndSurvivesSave(t *testing.T) {
+	s := state(t)
+	s.DB.Game.Screens = map[string]*data.AuthorScreen{"studio": {Kind: "islands", View: data.PlanningView{Burnup: &data.BurnupView{}}}}
+	def := s.DB.Game.Planning.Activities["prepare"]
+	def.Observation = value(t, "self.progress * 0.5")
+	s.DB.Game.Planning.Activities["prepare"] = def
+	apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "2")})
+	apply(t, s, data.PlanCommand{Op: "observe"})
+	first := s.Planning.WorkHistory[s.Planning.Date]
+	if first.Total != 6 || first.Observed != 1 {
+		t.Fatalf("true progress leaked: %+v", first)
+	}
+	apply(t, s, data.PlanCommand{Op: "observe"})
+	if len(s.Planning.WorkHistory) != 1 {
+		t.Fatal("repeated observation appended a sample")
+	}
+	restored, err := rpg.Parse(s.DB, snapshot(t, s), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(restored.Planning.WorkHistory, s.Planning.WorkHistory) {
+		t.Fatal("history lost on load")
+	}
+	s.Planning.Date = "2030-08-01"
+	apply(t, s, data.PlanCommand{Op: "cancel", Activity: data.IDRef{ID: "shape"}, Value: value(t, "true")})
+	apply(t, s, data.PlanCommand{Op: "observe"})
+	if s.Planning.WorkHistory["2030-08-01"].Total != 2 || s.Planning.WorkHistory["2030-07-31"] != first {
+		t.Fatal("scope change rewrote history")
+	}
+	savedSample := s.Planning.WorkHistory["2030-07-31"]
+	s.Planning.WorkHistory["2030-07-31"] = rpg.WorkSample{Total: 1, Observed: 2}
+	if _, err := s.Save(); err == nil {
+		t.Fatal("corrupt chart history accepted")
+	}
+	s.Planning.WorkHistory["2030-07-31"] = savedSample
+	before := snapshot(t, s)
+	def.Observation = value(t, `"invalid"`)
+	s.DB.Game.Planning.Activities["prepare"] = def
+	if _, err := applyUnbound(s, data.PlanCommand{Op: "observe"}); err == nil {
+		t.Fatal("invalid observation accepted")
+	}
+	if string(before) != string(snapshot(t, s)) {
+		t.Fatal("failed observation changed history")
+	}
+}
+
+func TestRevisedChildBudgetPreservesRemainingWork(t *testing.T) {
+	s := state(t)
+	s.DB.Game.Planning.Activities["mix"] = data.Activity{Name: "Mix", Parent: "prepare", Effort: .5}
+	s.DB.Game.Planning.Activities["knead"] = data.Activity{Name: "Knead", Parent: "prepare", Effort: 1.5}
+	s.Planning.Activities["mix"] = &rpg.ActivityState{}
+	s.Planning.Activities["knead"] = &rpg.ActivityState{}
+	apply(t, s, data.PlanCommand{Op: "split", Activity: data.IDRef{ID: "prepare"}})
+	for _, command := range [][3]string{{"effort", "mix", "2"}, {"progress", "mix", "1.9"}, {"progress", "prepare", ".5"}} {
+		apply(t, s, data.PlanCommand{Op: command[0], Activity: data.IDRef{ID: command[1]}, Value: value(t, command[2])})
+	}
+	if s.Planning.Activities["mix"].Progress < 1.9 || math.Abs(s.Planning.Activities["prepare"].Progress-2.4) > 1e-9 {
+		t.Fatal("parent work used obsolete child budgets", s.Planning.Activities["mix"], s.Planning.Activities["prepare"])
+	}
+	apply(t, s, data.PlanCommand{Op: "effort", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "7")})
+	if s.ActivityEffort("mix") != 4 || s.ActivityEffort("knead") != 3 {
+		t.Fatal("parent revision discarded child estimates")
+	}
+}
+
+func TestDecompositionCompletionRoundingSurvivesSave(t *testing.T) {
+	for _, amount := range []string{"0.499999999999", "0.499999"} {
+		t.Run(amount, func(t *testing.T) {
+			s := state(t)
+			s.DB.Game.Planning.Activities["mix"] = data.Activity{Name: "Mix", Parent: "prepare", Effort: .5}
+			s.DB.Game.Planning.Activities["knead"] = data.Activity{Name: "Knead", Parent: "prepare", Effort: 1.5}
+			s.Planning.Activities["mix"] = &rpg.ActivityState{}
+			s.Planning.Activities["knead"] = &rpg.ActivityState{}
+			apply(t, s, data.PlanCommand{Op: "split", Activity: data.IDRef{ID: "prepare"}})
+			apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "knead"}, Value: value(t, "1.5")})
+			apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "mix"}, Value: value(t, amount)})
+			complete := amount == "0.499999999999"
+			for _, id := range []string{"mix", "prepare"} {
+				a := s.Planning.Activities[id]
+				if (a.Completed != "") != complete || (a.Progress == s.ActivityEffort(id)) != complete {
+					t.Fatalf("%s completion and work disagree: %+v", id, a)
+				}
+			}
+			if _, err := rpg.Parse(s.DB, snapshot(t, s), nil); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestDecompositionConservesWorkAndReports(t *testing.T) {
+	s := state(t)
+	s.DB.Game.Planning.Activities["mix"] = data.Activity{Name: "Mix", Parent: "prepare", Effort: .5}
+	s.DB.Game.Planning.Activities["knead"] = data.Activity{Name: "Knead", Parent: "prepare", Effort: 1.5}
+	s.Planning.Activities["mix"] = &rpg.ActivityState{}
+	s.Planning.Activities["knead"] = &rpg.ActivityState{}
+	cmd := func(op, id, amount string) {
+		t.Helper()
+		apply(t, s, data.PlanCommand{Op: op, Activity: data.IDRef{ID: id}, Value: value(t, amount)})
+	}
+	cmd("progress", "prepare", "1")
+	apply(t, s, data.PlanCommand{Op: "split", Activity: data.IDRef{ID: "prepare"}})
+	if s.Planning.Activities["mix"].Progress != .25 || s.Planning.Activities["knead"].Progress != .75 || s.Planning.Activities["prepare"].Assignee != "" {
+		t.Fatal(s.Planning.Activities)
+	}
+	saved := snapshot(t, s)
+	restored, err := rpg.Parse(s.DB, saved, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s = restored
+	apply(t, s, data.PlanCommand{Op: "split", Activity: data.IDRef{ID: "prepare"}})
+	if !reflect.DeepEqual(saved, snapshot(t, s)) {
+		t.Fatal("repeated split changed state")
+	}
+	cmd("progress", "mix", ".25")
+	if s.Planning.Activities["prepare"].Progress != 1.25 {
+		t.Fatal("child work did not roll up")
+	}
+	cmd("progress", "prepare", "-.5")
+	if s.Planning.Activities["prepare"].Progress != .75 {
+		t.Fatal("rework lost work")
+	}
+	cmd("effort", "prepare", "4")
+	if s.ActivityEffort("mix") != 1 || s.ActivityEffort("knead") != 3 {
+		t.Fatal("budget not conserved")
+	}
+	cmd("effort", "mix", "1.5")
+	if s.ActivityEffort("prepare") != 4.5 {
+		t.Fatal("child budget did not roll up")
+	}
+	apply(t, s, data.PlanCommand{Op: "observe", Activity: data.IDRef{ID: "prepare"}})
+	if s.Planning.Activities["prepare"].Observed != .75 {
+		t.Fatal("root did not observe children")
+	}
+	cmd("cancel", "prepare", "true")
+	cmd("progress", "mix", "100")
+	if !s.Planning.Activities["knead"].Cancelled || s.Planning.Activities["prepare"].Progress != .75 {
+		t.Fatal("cancel did not reach children")
+	}
+	before := snapshot(t, s)
+	if _, err := applyUnbound(s, data.PlanCommand{Op: "split", Activity: data.IDRef{ID: "mix"}}); err == nil {
+		t.Fatal("split child accepted")
+	}
+	if !reflect.DeepEqual(before, snapshot(t, s)) {
+		t.Fatal("failed split changed state")
+	}
+}
+
+func TestScheduleDependenciesPresenceAndExclusion(t *testing.T) {
+	s := state(t)
+	s.DB.Game.Planning.Schedule = []data.Reservation{
+		{ID: "first", Phase: "morning", Event: "gather", Exclusive: "meeting", When: value(t, "flag.present")},
+		{ID: "second", Phase: "morning", Event: "later", After: []string{"first"}, Exclusive: "meeting"},
+	}
+	dispatch := func() []data.Command {
+		t.Helper()
+		out, err := applyUnbound(s, data.PlanCommand{Op: "dispatch"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	if out := dispatch(); len(out) != 0 {
+		t.Fatal("absent participant selected", out)
+	}
+	s.Flags["present"] = true
+	if out := dispatch(); len(out) != 1 || out[0].Call.Event != "gather" {
+		t.Fatal(out)
+	}
+	s.MarkRan("gather")
+	if out := dispatch(); len(out) != 0 {
+		t.Fatal("same-day exclusion", out)
+	}
+	s.DB.Game.Planning.Schedule[0].When = value(t, "false")
+	s.Planning.Date = "2030-08-01"
+	if out := dispatch(); len(out) != 1 || out[0].Call.Event != "later" {
+		t.Fatal("dependent scene", out)
+	}
+}
+
+// applyUnbound exercises the same entry point as events without call arguments.
+func applyUnbound(s *rpg.State, c data.PlanCommand) ([]data.Command, error) {
+	return planning.ApplyIn(s, c, nil)
 }

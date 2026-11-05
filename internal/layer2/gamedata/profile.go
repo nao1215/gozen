@@ -28,16 +28,43 @@ type Profile struct {
 	Picture string `yaml:"picture"`
 	// Faces are the faces the screen can switch between: names of the actor's faces
 	// (assets/<faces>/<face>.png) or of its puppet's faces. Default: the actor's face.
-	Faces []string `yaml:"faces"`
+	// A face may be written as a map with a label for its button and a when that
+	// unlocks it (schema_version 10); a locked face is not offered.
+	Faces []ProfileFace `yaml:"faces"`
 	// When unlocks the profile (always unlocked without it). A locked profile is a
 	// shadow named "???". Under --dev every profile is unlocked.
 	When Expr `yaml:"when"`
+	// Met unlocks the profile the first time its actor's line is shown: the player has
+	// met the character (schema_version 10). With a when too, either opens it.
+	Met bool `yaml:"met"`
 	// Fields are lines of label and value.
 	Fields []ProfileField `yaml:"fields"`
 	// Text is the introduction; {expr} is filled in like a line.
 	Text string `yaml:"text"`
 	// Relations are how the character sees the others: what they call them, and a note.
 	Relations []ProfileRelation `yaml:"relations"`
+}
+
+// ProfileFace is a face of a profile: its name, the label of its button (by default
+// the name) and the condition that unlocks it (always unlocked without it). Once
+// unlocked it stays unlocked, like the profile.
+type ProfileFace struct {
+	Face  string `yaml:"face"`
+	Label string `yaml:"label"`
+	When  Expr   `yaml:"when"`
+	// Seen unlocks the face the first time a line of the actor is shown with it.
+	Seen bool `yaml:"seen"`
+}
+
+// UnmarshalYAML reads a face name or a map.
+func (f *ProfileFace) UnmarshalYAML(unmarshal func(any) error) error {
+	var name string
+	if err := unmarshal(&name); err == nil {
+		*f = ProfileFace{Face: name}
+		return nil
+	}
+	type plain ProfileFace
+	return unmarshal((*plain)(f))
 }
 
 // ProfileField is a line of a profile: Role shield-bearer, Likes cheese. The labels are
@@ -98,7 +125,11 @@ func (db *DB) ProfileFaces(id string) []string {
 		return nil
 	}
 	if len(p.Faces) > 0 {
-		return p.Faces
+		out := make([]string, len(p.Faces))
+		for i, f := range p.Faces {
+			out[i] = f.Face
+		}
+		return out
 	}
 	if a := db.Actors[db.ProfileActor(id)]; a != nil {
 		face := a.Face
@@ -108,6 +139,69 @@ func (db *DB) ProfileFaces(id string) []string {
 		return []string{face}
 	}
 	return []string{""}
+}
+
+// ProfileFaceLabel is the label of the button of face i of profile id: its label,
+// else the face's name.
+func (db *DB) ProfileFaceLabel(id string, i int) string {
+	p := db.Profiles[id]
+	if p != nil && i >= 0 && i < len(p.Faces) && p.Faces[i].Label != "" {
+		return p.Faces[i].Label
+	}
+	if faces := db.ProfileFaces(id); i >= 0 && i < len(faces) {
+		return faces[i]
+	}
+	return ""
+}
+
+// ProfileFaceLocked reports whether face i of profile id opens on its own: it has a
+// when or opens when seen.
+func (db *DB) ProfileFaceLocked(id string, i int) bool {
+	p := db.Profiles[id]
+	return p != nil && i >= 0 && i < len(p.Faces) && (p.Faces[i].When.Set() || p.Faces[i].Seen)
+}
+
+// ProfileFaceHolds reports whether face i of profile id is unlocked in env: true for
+// a face that does not open on its own, false for one opened only by being seen.
+func (db *DB) ProfileFaceHolds(id string, i int, env expr.Env) bool {
+	if !db.ProfileFaceLocked(id, i) {
+		return true
+	}
+	f := db.Profiles[id].Faces[i]
+	return f.When.Set() && holds(f.When, env)
+}
+
+// ProfilesMet are the profiles a line of actor with the picture face (a file under
+// assets/, "" for none) opens, and for each the faces it opens: the profiles with met
+// that show the actor, and their faces with seen drawn with that picture.
+func (db *DB) ProfilesMet(actor, face string) map[string][]string {
+	if actor == "" {
+		return nil
+	}
+	var out map[string][]string
+	for _, id := range db.Order["profiles"] {
+		p := db.Profiles[id]
+		if db.ProfileActor(id) != actor {
+			continue
+		}
+		var faces []string
+		dir := ""
+		if a := db.Actors[actor]; a != nil {
+			dir = a.Faces
+		}
+		for _, f := range p.Faces {
+			if f.Seen && face != "" && dir != "" && face == dir+"/"+f.Face+".png" {
+				faces = append(faces, f.Face)
+			}
+		}
+		if p.Met || len(faces) > 0 {
+			if out == nil {
+				out = map[string][]string{}
+			}
+			out[id] = faces
+		}
+	}
+	return out
 }
 
 // profiles checks the character book: the actor, enemy, pictures and faces it points
@@ -134,6 +228,12 @@ func (c *checker) profiles() {
 		c.file(w+".picture", p.Picture)
 		if p.Actor == "" && p.Enemy == "" && p.Picture == "" && db.Actors[id] == nil {
 			c.errorf(diag.Shape, w, "no actor %q of the same id: write actor, enemy or picture", id)
+		}
+		if p.Met {
+			c.needsVersion(w+".met", "met", SchemaVersion10)
+			if db.ProfileActor(id) == "" {
+				c.errorf(diag.Shape, w+".met", "met needs an actor (it opens when the actor speaks)")
+			}
 		}
 		c.profileFaces(w, id, p)
 		c.expr(w+".when", p.When, profileNames)
@@ -172,8 +272,23 @@ func (c *checker) profileFaces(w, id string, p *Profile) {
 		}
 		return
 	}
+	for i, f := range p.Faces {
+		fw := fmt.Sprintf("%s.faces[%d]", w, i)
+		if f.Label != "" || f.When.Set() || f.Seen {
+			c.needsVersion(fw, "a face with label, when or seen", SchemaVersion10)
+		}
+		if f.Face == "" {
+			c.errorf(diag.Shape, fw, "face is missing")
+		}
+		c.expr(fw+".when", f.When, profileNames)
+		c.text(fw+".label", f.Label, profileNames)
+	}
 	if a.Faces == "" && a.Puppet == "" {
-		c.errorf(diag.Shape, w, "actor %s has no faces nor puppet to show", db.ProfileActor(id))
+		// An actor without pictures (a voice, a name in the lines) still has a page:
+		// the screen draws an outline in place of the picture. Faces need pictures.
+		if len(p.Faces) > 0 {
+			c.errorf(diag.Shape, w, "actor %s has no faces nor puppet to show", db.ProfileActor(id))
+		}
 		return
 	}
 	var puppet []string
@@ -208,6 +323,9 @@ func (p *Profile) texts() []*string {
 	for i := range p.Fields {
 		out = append(out, &p.Fields[i].Label, &p.Fields[i].Value)
 	}
+	for i := range p.Faces {
+		out = append(out, &p.Faces[i].Label)
+	}
 	for i := range p.Relations {
 		out = append(out, &p.Relations[i].Calls, &p.Relations[i].Text)
 	}
@@ -224,10 +342,14 @@ func holds(e Expr, env expr.Env) bool {
 	return err == nil && ok
 }
 
-// ProfileHolds reports whether profile id's when holds in env (an unknown id never does).
+// ProfileHolds reports whether profile id's when holds in env (an unknown id never does;
+// a profile opened only by meeting its actor does not).
 func (db *DB) ProfileHolds(id string, env expr.Env) bool {
 	p := db.Profiles[id]
-	return p != nil && holds(p.When, env)
+	if p == nil || p.Met && !p.When.Set() {
+		return false
+	}
+	return holds(p.When, env)
 }
 
 // profileNames are the names a profile's when and {expressions} may use: the state's,

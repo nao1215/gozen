@@ -38,7 +38,7 @@ func TestCampaignRegionWindowKeepsOffTheRegion(t *testing.T) {
 			if got := as.choices[as.sel].Point; got != "field" {
 				t.Fatalf("the map opened on %q, want field", got)
 			}
-			b := as.regionWindowBox(g, "field")
+			b := as.regionWindowFor(g, "field", len(regionLines(g, "field")))
 			px, py := as.screen(g, as.points[as.pointIndex("field")].at)
 			if b.overlap(plateBox{x: px - 1, y: py - 1, w: 2, h: 2}) > 0 {
 				t.Errorf("the window %+v covers the region's point (%g, %g)", b, px, py)
@@ -222,7 +222,7 @@ func TestCampaignRegionWindowKeepsOffTheGenerals(t *testing.T) {
 	if b := (plateBox{x: 0, y: top, w: 2000, h: 70 + 2*gfx.LineHeight(sizeS)}); b.overlap(gen) == 0 || top+b.h > sh {
 		t.Fatalf("the fixture does not put the place under the meters into the generals' window (top %g, generals %+v)", top, gen)
 	}
-	b := as.regionWindowBox(g, "field")
+	b := as.regionWindowFor(g, "field", len(regionLines(g, "field")))
 	px, py := as.screen(g, as.points[as.pointIndex("field")].at)
 	if b.overlap(gen) > 0 || b.overlap(plateBox{x: px - 1, y: py - 1, w: 2, h: 2}) > 0 {
 		t.Errorf("window %+v meets the generals %+v or the region's point (%g, %g)", b, gen, px, py)

@@ -180,6 +180,9 @@ func (g *Game) cursor() (rpg.Cursor, []byte, []byte, bool) {
 
 // saveBytes is the save of now: with a cursor in the middle of an event.
 func (g *Game) saveBytes() ([]byte, error) {
+	if g.homeCheckpoint() {
+		return g.saveCheckpoint()
+	}
 	if why := g.saveBlocked(); why != "" {
 		return nil, errors.New(why)
 	}
@@ -224,8 +227,11 @@ func (g *Game) resume(r *rpg.Resume) {
 			g.events.Start(cmds)
 		}
 	}
-	g.liveCatchUp(&fastTo{lines: c.Line, answers: c.Answers, strict: true}, name, nil)
-	if !c.Arrival && g.evName != name {
+	checkpoint := !c.Arrival && c.Line == 0 // a checkpoint save: the event plays from its start
+	if !checkpoint {
+		g.liveCatchUp(&fastTo{lines: c.Line, answers: c.Answers, strict: true}, name, nil)
+	}
+	if !c.Arrival && !checkpoint && g.evName != name {
 		g.failure = fmt.Errorf("load: replay left event %q before the saved line", name)
 	}
 	if g.failure != nil {
@@ -244,7 +250,7 @@ func (g *Game) resume(r *rpg.Resume) {
 // (the event cannot be read again up to that line), so it would lose the event's rest.
 func (g *Game) saveBlocked() string {
 	if g.screenContinuation() {
-		if g.screenSaveAllowed() {
+		if g.screenSaveAllowed() || g.homeCheckpoint() {
 			return ""
 		}
 		return lang.T("この 画面を 閉じて、操作が 終わってから セーブ しよう。")
@@ -265,15 +271,10 @@ func (g *Game) checkpoint(q event.Checkpoint) error {
 		}
 		return g.st.KeepCheckpoint(q.Event, rnd)
 	}
-	st, err := g.st.RetryCheckpoint()
+	st, p, err := g.st.RetryCheckpoint()
 	if err != nil {
 		return err
 	}
-	p := rand.NewPCG(1, 2)
-	if err := p.UnmarshalBinary(st.SavedRand); err != nil {
-		return err
-	}
-	st.Rand = rand.New(p) //nolint:gosec // Deterministic gameplay, not secrets.
 	g.stopSkip("checkpoint")
 	g.pcg = p
 	g.talk = talk{}

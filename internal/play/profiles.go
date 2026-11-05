@@ -30,6 +30,29 @@ func (g *Game) profilesInMenus() bool {
 
 func profileKey(id string) string { return "profile:" + id }
 
+// profileFaceKey records a face of a profile with a when of its own.
+func profileFaceKey(id, face string) string { return "profile:" + id + "/face:" + face }
+
+// profileTitle is the book's name in the menus and on its band.
+func (g *Game) profileTitle() string {
+	if b := g.db.Game.UI.ProfileBook; b != nil && b.Title != "" {
+		return b.Title
+	}
+	return lang.T("キャラクター")
+}
+
+// bookAll reports whether every profile and face is open: under --dev (unless
+// --book-as-played) and with --gallery-all.
+func (g *Game) bookAll() bool {
+	return g.opts.Development && !g.opts.BookAsPlayed || g.opts.GalleryAll
+}
+
+// profileGrid reports whether the book is laid out as a grid of face cards.
+func (g *Game) profileGrid() bool {
+	b := g.db.Game.UI.ProfileBook
+	return b != nil && b.Layout == "grid"
+}
+
 // bookKey opens the book with F6 over whatever is on the screen (the book itself closes
 // with F6 in its update), when the menus offer it.
 func (g *Game) bookKey() {
@@ -48,8 +71,30 @@ func (g *Game) bookKey() {
 func (g *Game) checkProfiles() {
 	env := g.st.Env()
 	for _, id := range g.db.Order["profiles"] {
-		if g.db.ProfileHolds(id, env) {
+		if !g.db.ProfileHolds(id, env) {
+			continue
+		}
+		g.unlock(profileKey(id))
+		for i, face := range g.db.ProfileFaces(id) {
+			if g.db.ProfileFaceLocked(id, i) && g.db.ProfileFaceHolds(id, i, env) {
+				g.unlock(profileFaceKey(id, face))
+			}
+		}
+	}
+}
+
+// meetLine records the profiles and faces a line opens: a profile with met when its
+// actor speaks, a face with seen when the line shows it.
+func (g *Game) meetLine(r event.Say) {
+	if !g.hasProfiles() || g.replaying {
+		return
+	}
+	for id, faces := range g.db.ProfilesMet(r.Actor, r.Face) {
+		if g.db.Profiles[id].Met {
 			g.unlock(profileKey(id))
+		}
+		for _, f := range faces {
+			g.unlock(profileFaceKey(id, f))
 		}
 	}
 }
@@ -67,6 +112,7 @@ type profileScreen struct {
 	ids        []string
 	sel        int
 	top        int
+	scroll     float64 // the grid's scroll, in the screen's units
 	face       int
 	env        expr.Env
 	done       func()
@@ -109,7 +155,7 @@ func (s *profileScreen) liveKeep(g *Game) scene {
 }
 
 func (s *profileScreen) opened(g *Game, id string) bool {
-	if g.opts.Development || g.opts.GalleryAll || g.unlocked[profileKey(id)] {
+	if g.bookAll() || g.unlocked[profileKey(id)] {
 		return true
 	}
 	return g.st != nil && !g.replaying && g.db.ProfileHolds(id, g.st.Env())
@@ -122,12 +168,48 @@ func (s *profileScreen) current() string {
 	return s.ids[s.sel]
 }
 
+// faceOpen reports whether face i of profile id is offered: a face without a when of
+// its own, or one unlocked now or in an earlier play (always under --dev).
+func (s *profileScreen) faceOpen(g *Game, id string, i int) bool {
+	if !g.db.ProfileFaceLocked(id, i) || g.bookAll() {
+		return true
+	}
+	faces := g.db.ProfileFaces(id)
+	if i < 0 || i >= len(faces) {
+		return false
+	}
+	if g.unlocked[profileFaceKey(id, faces[i])] {
+		return true
+	}
+	return g.st != nil && !g.replaying && g.db.ProfileFaceHolds(id, i, g.st.Env())
+}
+
+// shownFaces are the indexes of the faces of profile id the screen offers.
+func (s *profileScreen) shownFaces(g *Game, id string) []int {
+	var out []int
+	for i := range g.db.ProfileFaces(id) {
+		if s.faceOpen(g, id, i) {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// faceIndex is the index among the profile's faces of the face shown (-1 for none).
+func (s *profileScreen) faceIndex(g *Game) int {
+	shown := s.shownFaces(g, s.current())
+	if len(shown) == 0 {
+		return -1
+	}
+	return shown[min(s.face, len(shown)-1)]
+}
+
 func (s *profileScreen) faceName(g *Game) string {
-	faces := g.db.ProfileFaces(s.current())
-	if len(faces) == 0 {
+	i := s.faceIndex(g)
+	if i < 0 {
 		return ""
 	}
-	return faces[min(s.face, len(faces)-1)]
+	return g.db.ProfileFaces(s.current())[i]
 }
 
 func (s *profileScreen) trace(g *Game) {
@@ -172,25 +254,45 @@ func (s *profileScreen) arrows(g *Game) (prev, next image.Rectangle) {
 	return image.Rect(int(cx-230), 8, int(cx-180), 52), image.Rect(int(cx+180), 8, int(cx+230), 52)
 }
 
-// faceButtons are the buttons of the faces under the standing picture (none for one face).
-func (s *profileScreen) faceButtons(g *Game, faces []string) []image.Rectangle {
-	sw, sh := g.screen()
-	if len(faces) < 2 {
+// faceLabels are the labels of the faces offered for profile id.
+func (s *profileScreen) faceLabels(g *Game, id string) []string {
+	var out []string
+	for _, i := range s.shownFaces(g, id) {
+		out = append(out, g.db.ProfileFaceLabel(id, i))
+	}
+	return out
+}
+
+// faceButtons are the buttons of the faces under the standing picture, centered on
+// cx with their top at y (none for one face).
+func (s *profileScreen) faceButtonsAt(labels []string, cx, y, h float64) []image.Rectangle {
+	if len(labels) < 2 {
 		return nil
 	}
-	ws := make([]float64, len(faces))
+	ws := make([]float64, len(labels))
 	total := 0.0
-	for i, f := range faces {
+	for i, f := range labels {
 		ws[i] = gfx.TextWidth(f, sizeS) + 24
 		total += ws[i] + 8
 	}
-	x := sw*0.36 - (total-8)/2
-	out := make([]image.Rectangle, len(faces))
-	for i := range faces {
-		out[i] = image.Rect(int(x), int(sh-84), int(x+ws[i]), int(sh-54))
+	x := cx - (total-8)/2
+	out := make([]image.Rectangle, len(labels))
+	for i := range labels {
+		out[i] = image.Rect(int(x), int(y), int(x+ws[i]), int(y+h))
 		x += ws[i] + 8
 	}
 	return out
+}
+
+// faceButtons are the buttons of the faces labelled labels in the list layout.
+func (s *profileScreen) faceButtons(g *Game, labels []string) []image.Rectangle {
+	sw, sh := g.screen()
+	return s.faceButtonsAt(labels, sw*0.36, sh-84, 30)
+}
+
+// listFaceButtons are the face buttons of profile id in the list layout.
+func (s *profileScreen) listFaceButtons(g *Game, id string) []image.Rectangle {
+	return s.faceButtons(g, s.faceLabels(g, id))
 }
 
 func (s *profileScreen) pick(g *Game, i int) {
@@ -208,6 +310,10 @@ func (s *profileScreen) update(g *Game) {
 	}
 	if s.chart {
 		s.updateChart(g)
+		return
+	}
+	if g.profileGrid() {
+		s.updateGrid(g)
 		return
 	}
 	n := len(s.ids)
@@ -228,7 +334,7 @@ func (s *profileScreen) update(g *Game) {
 		return
 	}
 	id := s.current()
-	faces := g.db.ProfileFaces(id)
+	faces := s.shownFaces(g, id)
 	prev, next := s.arrows(g)
 	swipe := s.swipe(g)
 	// L and R of a pad are the buttons of the log and auto; A on a keyboard is both left
@@ -250,7 +356,7 @@ func (s *profileScreen) update(g *Game) {
 			}
 		}
 		if s.opened(g, id) {
-			for i, r := range s.faceButtons(g, faces) {
+			for i, r := range s.listFaceButtons(g, id) {
 				if g.in.mouse.In(r) && i != s.face {
 					s.face = i
 					g.sfx("cursor")
@@ -337,12 +443,16 @@ func (s *profileScreen) draw(g *Game, dst *ebiten.Image) {
 		s.drawChart(g, dst)
 		return
 	}
+	if g.profileGrid() {
+		s.drawGrid(g, dst)
+		return
+	}
 	sw, sh := g.screen()
 	g.drawPicture(dst, g.db.Game.TitleBG, 0, 0, sw, sh, 1)
 	fill(dst, withAlpha(colorBlack, 0xa8))
 	gfx.FillRect(dst, 0, 0, float32(sw), profileBand, withAlpha(g.th.window, 0xe0), false)
 	gfx.FillRect(dst, 0, profileBand-1, float32(sw), 2, withAlpha(g.th.border, 0xa0), false)
-	gfx.DrawTextOutlineColor(dst, lang.T("キャラクター"), 20+sw*0.075, 12, sizeL, g.th.text, g.th.window, 1)
+	gfx.DrawTextOutlineColor(dst, g.profileTitle(), 20+sw*0.075, 12, sizeL, g.th.text, g.th.window, 1)
 	for i := s.top; i < min(len(s.ids), s.top+s.rows(g)); i++ {
 		s.drawRow(g, dst, i)
 	}
@@ -455,14 +565,14 @@ func (s *profileScreen) drawFigure(g *Game, dst *ebiten.Image, id string) {
 	if !open {
 		return
 	}
-	faces := g.db.ProfileFaces(id)
-	for i, r := range s.faceButtons(g, faces) {
+	labels := s.faceLabels(g, id)
+	for i, r := range s.listFaceButtons(g, id) {
 		c, bg := g.th.text, withAlpha(g.th.window, 0xd8)
 		if i == s.face {
 			c, bg = g.th.cursor, withAlpha(g.th.accent, 0x90)
 		}
 		gfx.FillRoundRect(dst, float32(r.Min.X), float32(r.Min.Y), float32(r.Dx()), float32(r.Dy()), 8, bg)
-		gfx.DrawText(dst, faces[i], float64(r.Min.X+r.Dx()/2), float64(r.Min.Y)+4, sizeS*0.9, c)
+		gfx.DrawText(dst, labels[i], float64(r.Min.X+r.Dx()/2), float64(r.Min.Y)+4, sizeS*0.9, c)
 	}
 }
 
@@ -491,6 +601,12 @@ func (s *profileScreen) drawInfo(g *Game, dst *ebiten.Image, id string) {
 	sw, sh := g.screen()
 	x, y, w, h := sw*0.55, profileTop, sw*0.45-20, sh-profileTop-50
 	g.window(dst, x, y, w, h)
+	s.drawProfileText(g, dst, id, x, y, w, h)
+}
+
+// drawProfileText draws the name, title, fields, introduction and relations of
+// profile id inside the board at x, y, w, h.
+func (s *profileScreen) drawProfileText(g *Game, dst *ebiten.Image, id string, x, y, w, h float64) {
 	bottom := y + h - 8
 	x, w = x+24, w-48
 	y += 16

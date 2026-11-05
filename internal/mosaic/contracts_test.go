@@ -24,8 +24,8 @@ func TestPixelationContracts(t *testing.T) {
 	img := pattern()
 	before := bytes.Clone(img.Pix)
 	shape := Box(image.Rect(1, 1, 7, 7))
-	single := ApplyShapes(img, []Shape{shape}, 4)
-	double := ApplyShapes(img, []Shape{shape, shape}, 4)
+	single := ApplyShapesAt(img, []Shape{shape}, 4, image.Point{})
+	double := ApplyShapesAt(img, []Shape{shape, shape}, 4, image.Point{})
 	if !bytes.Equal(single.Pix, double.Pix) {
 		t.Fatal("overlap applied more than once")
 	}
@@ -48,7 +48,7 @@ func TestPixelationContracts(t *testing.T) {
 			seen[r] = true
 		}
 	}
-	if !reflect.DeepEqual(Cells(img.Bounds(), []Shape{shape}, 0), Cells(img.Bounds(), []Shape{shape}, DefaultBlock(24, 24))) {
+	if !reflect.DeepEqual(CellsAt(img.Bounds(), []Shape{shape}, 0, image.Point{}), CellsAt(img.Bounds(), []Shape{shape}, DefaultBlock(24, 24), image.Point{})) {
 		t.Fatal("low-level default block differs")
 	}
 	for _, tc := range []struct{ w, h, want int }{{0, 0, 4}, {400, 20, 4}, {401, 20, 5}, {1, 1200, 12}} {

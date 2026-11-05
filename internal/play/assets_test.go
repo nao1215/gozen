@@ -2,6 +2,7 @@ package play
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -257,5 +258,50 @@ func TestDecodeEmptyPicture(t *testing.T) {
 	p := newPictures(nil)
 	if got := p.decode(""); got != nil {
 		t.Fatal("empty picture decoded")
+	}
+}
+
+func TestPicturesRetainVisibleWorkingSet(t *testing.T) {
+	p := sysPics(t, map[string][]byte{"a.png": sysPNG(t, 10, 10, sysBlue), "b.png": sysPNG(t, 10, 10, sysBlue)})
+	p.budget = 401
+	p.beginFrame()
+	a, b := p.get("a.png"), p.get("b.png")
+	for range 3 {
+		p.beginFrame()
+		if p.get("a.png") != a || p.get("b.png") != b {
+			t.Fatal("visible image was decoded again")
+		}
+	}
+	p.beginFrame()
+	p.get("b.png")
+	p.beginFrame()
+	p.get("b.png")
+	if p.imgs["a.png"] != nil || p.bytes > p.budget {
+		t.Fatal("unused working set was retained")
+	}
+}
+
+// The fixture crosses the decoded batch budget without retaining every CPU image.
+func TestPicturesWarmMany(t *testing.T) {
+	const count = 40
+	encoded := sysPNG(t, 1024, 1024, sysBlue)
+	files := map[string][]byte{}
+	paths := make([]string, count)
+	for i := range paths {
+		paths[i] = fmt.Sprintf("card-%02d.png", i)
+		files[paths[i]] = encoded
+	}
+	p := sysPics(t, files)
+	if got := p.warmBytes(paths[0]); got != 1024*1024*8 {
+		t.Fatalf("reservation = %d", got)
+	}
+	p.warm(paths...)
+	for _, path := range paths {
+		if p.get(path) == missing {
+			t.Fatalf("missing warmed picture %s", path)
+		}
+	}
+	if len(p.loading) != 0 || len(p.decoded) != 0 {
+		t.Fatalf("CPU jobs remain: %d / %d", len(p.loading), len(p.decoded))
 	}
 }

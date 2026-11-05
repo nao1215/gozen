@@ -59,6 +59,20 @@ type MoodEffect struct{ Name string }
 // ImageEffect sets the current picture; an empty file clears it.
 type ImageEffect struct{ Picture data.CG }
 
+// CallCameraEffect turns a call participant's camera view on or off; it is
+// presentation only.
+type CallCameraEffect struct {
+	Who string
+	On  bool
+}
+
+// CallShareEffect puts a shared screen on a call's stage (Picture under assets/;
+// empty ends the sharing); it is presentation only.
+type CallShareEffect struct {
+	Who     string
+	Picture string
+}
+
 // SoundEffect requests a named sound.
 type SoundEffect struct{ Name string }
 
@@ -97,15 +111,17 @@ type StandEffect struct {
 	Default bool
 }
 
-func (MoveEffect) isEffect()   {}
-func (MusicEffect) isEffect()  {}
-func (MoodEffect) isEffect()   {}
-func (ImageEffect) isEffect()  {}
-func (SoundEffect) isEffect()  {}
-func (BreedEffect) isEffect()  {}
-func (VisualEffect) isEffect() {}
-func (StandEffect) isEffect()  {}
-func (VoiceEffect) isEffect()  {}
+func (MoveEffect) isEffect()       {}
+func (MusicEffect) isEffect()      {}
+func (MoodEffect) isEffect()       {}
+func (ImageEffect) isEffect()      {}
+func (SoundEffect) isEffect()      {}
+func (CallCameraEffect) isEffect() {}
+func (CallShareEffect) isEffect()  {}
+func (BreedEffect) isEffect()      {}
+func (VisualEffect) isEffect()     {}
+func (StandEffect) isEffect()      {}
+func (VoiceEffect) isEffect()      {}
 
 // CampaignEffect tells that a campaign's order was given (Kind order: its id, general,
 // target and result) or that a turn ended (Kind end_turn: the turn that begins).
@@ -119,6 +135,11 @@ func (CampaignEffect) isEffect() {}
 // VoiceEffect is the voice of the line that comes next: File under assets/, Who the speaker.
 type VoiceEffect struct{ File, Who string }
 
+// CarryEffect asks the frontend to keep the carried values for the next new game.
+type CarryEffect struct{}
+
+func (CarryEffect) isEffect() {}
+
 // Request is something the screen must show before the event goes on.
 type Request interface{ isRequest() }
 
@@ -130,6 +151,7 @@ type RecruitOffer struct {
 
 // Say is a line to read.
 type Say struct {
+	Instant bool
 	// Ensemble is the authored participant screen for this dialogue line.
 	Ensemble string
 	Name     string // "" for narration
@@ -306,6 +328,20 @@ func (row ScreenRow) Visible(db *data.DB, source data.ScreenEntry, env expr.Env)
 	return err == nil, err
 }
 
+// Available checks the activation contract shared by play, session and replay.
+// Missing unavailable means enabled; evaluation errors refuse the operation.
+func (row ScreenRow) Available(db *data.DB, source data.ScreenEntry, env expr.Env) (bool, error) {
+	visible, err := row.Visible(db, source, env)
+	if err != nil || !visible {
+		return false, err
+	}
+	if !source.Unavailable.Set() {
+		return true, nil
+	}
+	blocked, err := source.Unavailable.Bool(row.Env(env))
+	return !blocked && err == nil, err
+}
+
 // ScreenEntries yields visible rows in authored/collection order. The index
 // identifies the source command root; Args distinguishes repeated rows. Guards,
 // targets and labels use current state and frozen row bindings. Errors hide the
@@ -431,7 +467,10 @@ const (
 )
 
 type frame struct {
-	args         expr.Map
+	args expr.Map
+	// ensemble is the call screen the frame's lines show over when they name none
+	// (call.ensemble), passed on to the events it calls.
+	ensemble     string
 	cmds         []data.Command
 	pc           int
 	prepared     bool
@@ -752,14 +791,16 @@ func (r *Runner) push(cmds []data.Command) {
 	r.countRun(cmds)
 	if len(cmds) > 0 {
 		var args expr.Map
+		ensemble := ""
 		if len(r.stack) > 0 {
 			args = r.stack[len(r.stack)-1].args
+			ensemble = r.stack[len(r.stack)-1].ensemble
 		}
 		// Named events entered by hooks do not capture their caller's bindings.
 		if r.events[&cmds[0]] != "" {
 			args = nil
 		}
-		r.stack = append(r.stack, frame{cmds: cmds, args: args})
+		r.stack = append(r.stack, frame{cmds: cmds, args: args, ensemble: ensemble})
 	}
 }
 
@@ -1146,6 +1187,10 @@ func (r *Runner) run(c *data.Command) Request {
 		r.emit(MusicEffect{*c.Music})
 	case "mood":
 		r.emit(MoodEffect{c.Mood})
+	case "carry":
+		if c.Carry {
+			r.emit(CarryEffect{})
+		}
 	case "image":
 		if len(c.Image.Files) == 0 {
 			r.show(*c.Image)
@@ -1211,11 +1256,32 @@ func (r *Runner) run(c *data.Command) Request {
 		r.push(ev.Do)
 		if len(ev.Do) > 0 {
 			r.stack[len(r.stack)-1].args = args
+			if c.Call.Ensemble != "" {
+				r.stack[len(r.stack)-1].ensemble = c.Call.Ensemble
+			}
 		}
 	case "wait":
 		return Wait{Seconds: c.Wait.Seconds, NoSkip: !c.Wait.Skippable()}
 	case "notice":
 		return Notice{Text: data.Render(r.db.Tr(c.Notice), env)}
+	case "call_view":
+		if cam := c.CallView.Camera; cam != nil {
+			r.emit(CallCameraEffect{Who: cam.Who, On: cam.On})
+		}
+		if share := c.CallView.Share; share != nil {
+			r.emit(CallShareEffect{Who: share.Who, Picture: share.Picture})
+		}
+	case "message":
+		who, err := c.Message.Who.Resolve(r.db, "actor", env)
+		if err != nil {
+			r.logf(err)
+			break
+		}
+		text, _ := data.Fill(r.db, c.Message.Text, env)
+		r.st.Inbox = append(r.st.Inbox, rpg.InboxMessage{Who: who, Text: text, Event: c.Message.Event, Tag: data.Render(r.db.Tr(c.Message.Tag), env)})
+		if len(r.st.Inbox) > rpg.InboxLimit {
+			r.st.Inbox = r.st.Inbox[len(r.st.Inbox)-rpg.InboxLimit:]
+		}
 	case "sfx":
 		r.emit(SoundEffect{c.SFX.Name})
 		if c.SFX.Wait {
@@ -1395,7 +1461,15 @@ func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
 		r.logf(errors.New("say.text_expr: expected a string source without reaction values"))
 		return Say{}, false
 	}
-	out := Say{Name: who, Key: SourceKey(who, source), Ensemble: s.Ensemble}
+	face, err := selectedSource(s.Face, s.FaceExpr, env)
+	if err != nil {
+		r.logf(fmt.Errorf("say.face_expr: %w", err))
+		return Say{}, false
+	}
+	out := Say{Name: who, Key: SourceKey(who, source), Ensemble: s.Ensemble, Instant: s.Instant}
+	if out.Ensemble == "" && len(r.stack) > 0 {
+		out.Ensemble = r.stack[len(r.stack)-1].ensemble // call.ensemble of a caller
+	}
 	if s.Values != nil { // filled by the fields' whole names, not evaluated
 		out.text = data.Phrase{Source: source, Values: s.Values}
 		out.Text = data.Again(r.db, out.text)
@@ -1408,7 +1482,6 @@ func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
 	if a, ok := r.db.Actors[who]; ok {
 		out.Name = a.Name
 		out.Actor = who
-		face := s.Face
 		if face == "" {
 			face = a.Face
 		}
@@ -1421,8 +1494,8 @@ func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
 		}
 		out.Right = s.Side == "right"
 	} else {
-		if s.Face != "" {
-			out.Face = s.Face
+		if face != "" {
+			out.Face = face
 		}
 		out.Right = s.Side != "left"
 	}

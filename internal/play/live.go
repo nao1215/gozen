@@ -228,6 +228,7 @@ func (g *Game) replayScene() (*sceneReplay, int) {
 }
 
 func (g *Game) reloadAssets() {
+	g.releaseGuideVeil()
 	if f, ok := g.opts.FS.(interface{ Forget() }); ok {
 		f.Forget()
 	}
@@ -289,6 +290,7 @@ func (g *Game) reload() {
 	}
 	g.live.pending = false
 	name, lines, answers, rnd := g.evName, g.evLines, g.evAnswers, g.evRand
+	g.glass.close()
 	g.db = db
 	g.unlockNeedsBackup = db.Game.Gallery.MigrateUnlocks(g.unlocked) || g.unlockNeedsBackup
 	g.spUsed = nil

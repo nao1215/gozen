@@ -1,7 +1,6 @@
 package play
 
 import (
-	"cmp"
 	"fmt"
 	"image"
 	"image/color"
@@ -41,7 +40,18 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 	}
 	y += 60
 	h -= 70
+	if v.Fullscreen && g.hasMaterial() && (kind == "calendar" || kind == "timeline") {
+		// A full-screen calendar or timeline over a picture stands on one glass card,
+		// as the workspace entries do, so its lines stay readable.
+		g.surfaceWindow(dst, x+12, y-52, w-24, h+60, "card")
+	}
 	switch kind {
+	case "workspace":
+		if v.Burnup != nil && len(v.Burnup.Bounds) == 4 {
+			b := v.Burnup.Bounds
+			s.drawBurnup(g, dst, float64(b[0]), float64(b[1]), float64(b[2]), float64(b[3]))
+		}
+		return
 	case "timeline":
 		if len(v.Rows) > 0 {
 			s.drawGroupedTimeline(g, dst, x, y, w, h)
@@ -157,7 +167,7 @@ func (g *Game) visibleResidents(v data.PlanningView) []string {
 	}
 	out := make([]string, 0, len(ids))
 	for _, id := range ids {
-		if v.Visible == "" || g.st.EntityValues(id, false)[v.Visible] == true {
+		if v.Visible == "" || g.st.EntityValue(id, v.Visible) == true {
 			out = append(out, id)
 		}
 	}
@@ -168,7 +178,7 @@ func (g *Game) visibleResidents(v data.PlanningView) []string {
 func ensembleHeights(height float64, fields int) (face, summary float64) {
 	content := max(0, height-28)
 	if fields > 0 {
-		summary = min(80, content/3)
+		summary = min(content, max(float64(min(2, fields))*24, min(80, content/3)))
 	}
 	return content - summary, summary
 }
@@ -181,6 +191,9 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 		return
 	}
 	ids := g.visibleResidents(v)
+	if kind == "ensemble" {
+		ids = append(append([]string{}, v.Guests...), ids...)
+	}
 	if s.target != "" && !slices.Contains(ids, s.target) {
 		s.target = ""
 	}
@@ -188,53 +201,67 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 	if kind == "ensemble" || kind == "islands" {
 		cols = 4
 	}
+
+	if kind == "ensemble" && len(ids) > 8 {
+		cols = max(1, min(4, int(math.Ceil(math.Sqrt(float64(len(ids)))))))
+	}
 	if kind == "islands" {
-		rect(dst, x+12, y, w-24, h, color.NRGBA{216, 210, 196, 255})
-		// Wall boards use the same observed state as the detailed views.
-		rect(dst, x+24, y+8, w*.46, 86, color.NRGBA{248, 248, 244, 255})
-		total, done := 0.0, 0.0
-		for id, a := range g.st.Planning.Activities {
-			total += g.st.ActivityEffort(id)
-			done += a.Observed
-		}
-		if total > 0 {
-			bar(dst, x+36, y+42, w*.42, 12, done/total, g.th.accent)
-		}
-		g.text(dst, g.db.Game.Screens[s.name].Title, x+36, y+14, 18, color.Black)
-		rect(dst, x+w*.52, y+8, w*.25, 86, color.NRGBA{248, 248, 244, 255})
-		g.text(dst, planningDate(g.st.Planning.Date, "", v), x+w*.53, y+16, 16, color.Black)
-		date, err := time.Parse(time.DateOnly, g.st.Planning.Date)
-		if err != nil {
-			return
-		}
-		monday := date.AddDate(0, 0, -(int(date.Weekday())+6)%7)
-		for i := range 7 {
-			d := monday.AddDate(0, 0, i)
-			cx := x + w*.53 + float64(i)*w*.032
-			tint := color.NRGBA{225, 229, 234, 255}
-			if d.Equal(date) {
-				tint = color.NRGBA{145, 183, 236, 255}
+		if v.Burnup != nil {
+			if v.Window != "" {
+				s.drawBurnup(g, dst, x+32, 104, w*.72-44, 180)
+			} else {
+				s.drawBurnup(g, dst, x+24, 58, w*.72-36, 198)
 			}
-			rect(dst, cx, y+45, w*.029, 34, tint)
-			g.text(dst, strconv.Itoa(d.Day()), cx+2, y+53, 15, color.Black)
 		}
-		rect(dst, x+w*.81, y+4, w*.15, 100, color.NRGBA{151, 118, 81, 255})
-		g.drawPlanningText(dst, v.Door, x+w*.82, y+20, w*.13, 16, 2, color.White)
-		y += 116
-		h -= 116
+		y, h = 268, 334
 		if v.Fullscreen {
-			rect(dst, x+w*.75, y+h*.20, w*.23, h*.72, color.NRGBA{174, 145, 105, 255})
-			rect(dst, x+w*.77, y+h*.24, w*.19, h*.50, color.NRGBA{53, 58, 60, 255})
 			w *= .72
 		}
 	}
+
 	if kind == "entities" && v.Detail != "" {
 		s.drawEntityDetail(g, dst, x+w*.64, y, w*.36, h)
 		w *= .64
 	}
-	for i, r := range planningCells(x+12, y, w-24, h, len(ids), cols) {
+	cells := planningCells(x+12, y, w-24, h, len(ids), cols)
+	if kind == "islands" {
+		_, cells = s.surfaceTargets(g)
+	}
+	if kind == "ensemble" && v.Chat != nil {
+		chatW := min(340.0, w*.30)
+		log := newEnsembleLog(g, s.name)
+		if g.talk.active && g.talk.say.Ensemble == s.name && g.talk.meeting != nil {
+			log = g.talk.meeting
+		}
+		log.draw(g, dst, v.Chat, x+w-chatW, y, chatW, h)
+		gridH := h
+		if g.talk.active && g.talk.say.Ensemble == s.name {
+			gridH -= 116
+		}
+		cells = ensembleCells(x+12, y, w-chatW-36, gridH, len(ids))
+	}
+	for i, r := range cells {
 		id := ids[i]
 		values := g.st.EntityValues(id, false)
+		name, actor := "", ""
+		if entity, ok := p.Entities[id]; ok {
+			name, actor = entity.Name, entity.Actor
+		}
+		if kind == "ensemble" && slices.Contains(v.Guests, id) {
+			if guest := g.db.Actors[id]; guest != nil {
+				name, actor = guest.Name, id
+				values = map[string]any{v.Camera: true, v.Portrait: g.db.FacePicture(guest, guest.Face, "")}
+				for _, resident := range g.visibleResidents(v) {
+					if backdrop, ok := g.st.EntityValues(resident, false)[v.Backdrop].(string); ok && backdrop != "" {
+						values[v.Backdrop] = backdrop
+						break
+					}
+				}
+			}
+			if bg := v.GuestBackdrops[id]; bg != "" {
+				values[v.Backdrop] = bg
+			}
+		}
 		xx, yy, cw, ch := float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())
 		value := func(key string) string {
 			if key == "" || values[key] == nil {
@@ -245,18 +272,14 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 		portrait, badge := value(v.Portrait), value(v.Badge)
 		switch kind {
 		case "islands":
-			rect(dst, xx, yy+ch-78, cw, 76, color.NRGBA{174, 145, 105, 255})
-			if badge != "" {
-				g.drawPlanningText(dst, badge, xx+8, yy+8, cw-16, 18, 1, color.Black)
-			} else {
-				g.planningFace(dst, portrait, xx+cw/2, yy+ch*.20, min(26, ch*.18))
-			}
-			g.drawPlanningText(dst, p.Entities[id].Name, xx+4, yy+ch-72, cw-8, 18, 1, color.Black)
-			for j, f := range v.Fields {
-				g.drawPlanningText(dst, f.Label+" "+value(f.Key), xx+4, yy+ch-48+float64(j)*20, cw-8, 15, 1, color.Black)
-			}
+			g.drawResidentCard(dst, r, name, portrait, badge, values, v.Fields)
+
 		case "ensemble":
-			faceH, summaryH := ensembleHeights(ch, len(v.Fields))
+			fields := v.Fields
+			if v.Chat != nil {
+				fields = nil
+			}
+			faceH, summaryH := ensembleHeights(ch, len(fields))
 			rect(dst, xx, yy, cw, ch, color.NRGBA{53, 58, 60, 255})
 			if values[v.Camera] == true {
 				bg := value(v.Backdrop)
@@ -274,29 +297,33 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 					}
 				}
 				if portrait != "" && g.pics.get(portrait) != missing {
-					g.planningTorso(dst, portrait, xx+cw*.16, yy, cw*.68, faceH)
+					g.planningTorso(dst, portrait, xx, yy, cw, faceH)
 				} else {
 					g.planningFace(dst, "", xx+cw/2, yy+faceH*.38, min(30, faceH*.23))
 					rect(dst, xx+cw*.26, yy+faceH*.58, cw*.48, faceH*.20, color.NRGBA{55, 69, 93, 255})
 				}
 			} else {
-				g.planningFace(dst, value(v.Icon), xx+cw/2, yy+faceH*.43, min(32, faceH*.26))
+				g.planningFace(dst, value(v.Icon), xx+cw/2, yy+faceH*.5, min(52, faceH*.34))
 			}
-			if len(v.Fields) > 0 {
-				count := min(2, len(v.Fields))
+			if len(fields) > 0 {
+				count := min(2, len(fields))
 				fieldH := summaryH / float64(count)
 				rect(dst, xx, yy+ch-28-summaryH, cw, summaryH, color.NRGBA{30, 34, 40, 245})
-				for j, f := range v.Fields[:count] {
+				for j, f := range fields[:count] {
 					g.drawPlanningText(dst, f.Label+value(f.Key), xx+8, yy+ch-24-summaryH+float64(j)*fieldH, cw-16, 15, max(1, int((fieldH-8)/gfx.LineHeight(15))), color.White)
 				}
 			}
-			g.drawPlanningText(dst, p.Entities[id].Name, xx+8, yy+ch-24, cw-16, 16, 1, color.White)
-			if badge != "" {
+			label := name
+			if v.Chat != nil && badge != "" {
+				label += " · " + badge
+			}
+			g.drawPlanningText(dst, label, xx+8, yy+ch-24, cw-16, 16, 1, color.White)
+			if badge != "" && v.Chat == nil {
 				// Badges use only the explicitly observed binding, like seat cards.
 				rect(dst, xx, yy, cw, 28, g.th.accent)
 				g.drawPlanningText(dst, badge, xx+8, yy+4, cw-16, 15, 1, color.Black)
 			}
-			if values[v.Highlight] == true || (g.talk.active && g.talk.say.Actor != "" && p.Entities[id].Actor == g.talk.say.Actor) {
+			if values[v.Highlight] == true || (g.talk.active && g.talk.say.Actor != "" && actor == g.talk.say.Actor) {
 				rect(dst, xx, yy, cw, 3, g.th.accent)
 				rect(dst, xx, yy+ch-3, cw, 3, g.th.accent)
 				rect(dst, xx, yy, 3, ch, g.th.accent)
@@ -304,7 +331,7 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 			}
 		default:
 			g.planningFace(dst, portrait, xx+24, yy+ch/2, min(22, ch*.40))
-			g.drawPlanningText(dst, p.Entities[id].Name, xx+58, yy+8, cw*.24, 16, 1, g.th.text)
+			g.drawPlanningText(dst, name, xx+58, yy+8, cw*.24, 16, 1, g.th.text)
 			fw := (cw * .66) / float64(max(1, len(v.Fields)))
 			for j, f := range v.Fields {
 				fx := xx + cw*.34 + float64(j)*fw
@@ -323,24 +350,65 @@ func (s *authorScreen) drawResidents(g *Game, dst *ebiten.Image, kind string, x,
 	}
 }
 
+// faceOutline is the badge outline of a face of half size r around the
+// center: a circle, or a rounded square while faces are square.
+func (g *Game) faceOutline(r float64) [][2]float64 {
+	var pts [][2]float64
+	if !g.faceSquare {
+		for i := range 33 {
+			angle := float64(i) * 2 * math.Pi / 32
+			pts = append(pts, [2]float64{math.Cos(angle) * r, math.Sin(angle) * r})
+		}
+		return pts
+	}
+	cr := r * .22
+	for k, c := range [4][2]float64{{1, 1}, {-1, 1}, {-1, -1}, {1, -1}} {
+		for i := range 9 {
+			angle := float64(k)*math.Pi/2 + float64(i)*math.Pi/16
+			pts = append(pts, [2]float64{c[0]*(r-cr) + math.Cos(angle)*cr, c[1]*(r-cr) + math.Sin(angle)*cr})
+		}
+	}
+	return append(pts, pts[0])
+}
+
+// fillFace fills the face badge (a circle or a rounded square) with c.
+func (g *Game) fillFace(dst *ebiten.Image, cx, cy, r float64, c color.NRGBA) {
+	if !g.faceSquare {
+		gfx.FillCircle(dst, float32(cx), float32(cy), float32(r), c, true)
+		return
+	}
+	gfx.FillRoundRect(dst, float32(cx-r), float32(cy-r), float32(2*r), float32(2*r), float32(r*.22), c)
+}
+
 func (g *Game) planningFace(dst *ebiten.Image, path string, cx, cy, r float64) {
-	gfx.FillCircle(dst, float32(cx), float32(cy), float32(r), color.NRGBA{238, 232, 219, 255}, true)
+	// The backing shows around a transparent portrait: warm paper on the
+	// classic look, a cool neutral with ui.material, matching its glass.
+	backing := color.NRGBA{238, 232, 219, 255}
+	if g.hasMaterial() {
+		backing = color.NRGBA{226, 232, 240, 255}
+	}
+	g.fillFace(dst, cx, cy, r, backing)
 	if path != "" && g.pics.get(path) != missing {
-		// Face crop is centered; circular clipping keeps transparent portraits within a badge.
+		// Face crop is centered; the badge's outline clips transparent portraits.
 		img := g.pics.get(path)
 		head := g.pics.head(path)
+		if g.faceSquare {
+			// A square cut shows a little hair and neck around the face box.
+			grow := head.Dx() * 3 / 20
+			head = head.Inset(-grow)
+		}
 		scale := 2 * r / float64(max(1, head.Dx()))
-		vertices := make([]ebiten.Vertex, 34)
+		outline := g.faceOutline(r)
+		vertices := make([]ebiten.Vertex, len(outline)+1)
 		for i := range vertices {
-			angle := float64(i-1) * 2 * math.Pi / 32
-			dx, dy := math.Cos(angle)*r, math.Sin(angle)*r
-			if i == 0 {
-				dx, dy = 0, 0
+			dx, dy := 0.0, 0.0
+			if i > 0 {
+				dx, dy = outline[i-1][0], outline[i-1][1]
 			}
 			vertices[i] = ebiten.Vertex{DstX: float32((cx + dx) * gfx.Scale()), DstY: float32((cy + dy) * gfx.Scale()), SrcX: float32(float64(head.Min.X+head.Dx()/2) + dx/scale), SrcY: float32(float64(head.Min.Y+head.Dy()/2) + dy/scale), ColorR: 1, ColorG: 1, ColorB: 1, ColorA: 1}
 		}
-		indices := make([]uint16, 0, 96)
-		for i := 1; i <= 32; i++ {
+		indices := make([]uint16, 0, 3*len(outline))
+		for i := 1; i < len(outline); i++ {
 			indices = append(indices, 0, uint16(i), uint16(i+1))
 		}
 		dst.DrawTriangles(vertices, indices, img, &ebiten.DrawTrianglesOptions{Filter: ebiten.FilterLinear})
@@ -353,29 +421,41 @@ func (g *Game) planningFace(dst *ebiten.Image, path string, cx, cy, r float64) {
 	gfx.StrokeLine(dst, float32(cx-r*.20), float32(cy+r*.30), float32(cx+r*.20), float32(cy+r*.30), 2, color.Black, true)
 }
 
-// planningTorsoBounds keeps the head and chest in view even for an off-center
-// full-length portrait. The head includes the authored face margin.
-func planningTorsoBounds(bounds, head image.Rectangle) image.Rectangle {
-	if head.Intersect(bounds).Empty() {
-		return bounds
+func portraitTransform(bounds, face image.Rectangle, x, y, w, faceHeight float64) (scale, left, top float64) {
+	if face.Empty() || !face.In(bounds) {
+		face = image.Rect(bounds.Min.X+bounds.Dx()/4, bounds.Min.Y, bounds.Min.X+3*bounds.Dx()/4, bounds.Min.Y+max(1, bounds.Dy()/4))
 	}
-	side := max(head.Dx(), head.Dy())
-	cx := head.Min.X + head.Dx()/2
-	return image.Rect(cx-side, head.Min.Y-side/5, cx+side, head.Max.Y+side).Intersect(bounds)
+	scale = faceHeight / float64(face.Dy())
+	left = x + w/2 - float64(face.Min.X+face.Dx()/2)*scale
+	top = y - float64(face.Min.Y)*scale
+	return
 }
 
 func (g *Game) planningTorso(dst *ebiten.Image, path string, x, y, w, h float64) {
+	g.planningBust(dst, path, x, y, w, h, .28, .42)
+}
+
+// planningBust draws a standing picture clipped to x, y, w, h with its face box
+// faceTop down and faceHeight of the height (both fractions of h).
+func (g *Game) planningBust(dst *ebiten.Image, path string, x, y, w, h, faceTop, faceHeight float64) {
 	img := g.pics.get(path)
-	bounds := planningTorsoBounds(img.Bounds(), g.pics.head(path))
-	sub, ok := img.SubImage(bounds).(*ebiten.Image)
-	if !ok {
-		return
+	face := g.pics.head(path)
+	g.pics.mu.Lock()
+	if f, ok := g.pics.found[path]; ok && f.Box != nil && f.Size[0] > 0 && f.Size[1] > 0 {
+		sx, sy := float64(img.Bounds().Dx())/float64(f.Size[0]), float64(img.Bounds().Dy())/float64(f.Size[1])
+		face = image.Rect(int(float64(f.Box[0])*sx), int(float64(f.Box[1])*sy), int(float64(f.Box[2])*sx), int(float64(f.Box[3])*sy))
 	}
+	g.pics.mu.Unlock()
+	scale, left, top := portraitTransform(img.Bounds(), face, x, y+h*faceTop, w, h*faceHeight)
 	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
-	scale := min(w/float64(bounds.Dx()), h/float64(bounds.Dy()))
 	op.GeoM.Scale(scale, scale)
-	op.GeoM.Translate(x+(w-float64(bounds.Dx())*scale)/2, y+h-float64(bounds.Dy())*scale)
-	gfx.DrawImage(dst, sub, op)
+	op.GeoM.Translate(left, top)
+	clip := image.Rect(int(x*gfx.Scale()), int(y*gfx.Scale()), int((x+w)*gfx.Scale()), int((y+h)*gfx.Scale())).Intersect(dst.Bounds())
+	if !clip.Empty() {
+		if target, ok := dst.SubImage(clip).(*ebiten.Image); ok {
+			gfx.DrawImage(target, img, op)
+		}
+	}
 }
 
 func (g *Game) planningBackdrop(dst *ebiten.Image, path string, masked bool, x, y, w, h float64) {
@@ -384,7 +464,7 @@ func (g *Game) planningBackdrop(dst *ebiten.Image, path string, masked bool, x, 
 		return
 	}
 	img := g.pics.blurred(path)
-	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterNearest}
+	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
 	op.GeoM.Scale(w/float64(img.Bounds().Dx()), h/float64(img.Bounds().Dy()))
 	op.GeoM.Translate(x, y)
 	gfx.DrawImage(dst, img, op)
@@ -487,1211 +567,9 @@ func (g *Game) drawPlanningText(dst *ebiten.Image, text string, x, y, width, siz
 	}
 }
 
-// timelineGroups preserves authored order and never drops unlisted activities.
-func timelineGroups(p *data.Planning, v data.PlanningView) []data.TimelineRow {
-	rows := slices.Clone(v.Rows)
-	seen := map[string]bool{}
-	for _, row := range rows {
-		for _, item := range row.Items {
-			seen[item.Activity] = true
-		}
-	}
-	for _, id := range slices.Sorted(maps.Keys(p.Activities)) {
-		if !seen[id] {
-			rows = append(rows, data.TimelineRow{Label: p.Activities[id].Name, Items: []data.TimelineItem{{Activity: id}}})
-		}
-	}
-	return rows
-}
-
-type timelineLane struct {
-	text                            string
-	labelBounds                     image.Rectangle
-	item                            data.TimelineItem
-	bounds                          image.Rectangle
-	left, right, reported, expected float64
-	sample                          float64
-	sampleLabel                     string
-	sampleFreshness                 float64
-	forecast                        float64
-	forecastLabel                   string
-	dimmed                          bool
-}
-
-type timelineResident struct {
-	id, portrait string
-}
-
-type timelineGroup struct {
-	key        string
-	expanded   bool
-	label      string
-	text       string
-	y, height  float64
-	laneHeight float64
-	lanes      []timelineLane
-	residents  []timelineResident
-}
-
-func timelineLaneHeight(items []data.TimelineItem) float64 {
-	for _, item := range items {
-		if item.Text != "" {
-			return 64
-		}
-	}
-	return 44
-}
-
-// timelineRange is presentation-only: zoom shows three weeks around today,
-// shifted at the authored boundaries so short calendars never gain extra days.
-func (s *authorScreen) timelineRange(g *Game) (time.Time, time.Time, error) {
-	p := g.db.Game.Planning
-	start, err := time.Parse(time.DateOnly, p.Calendar.Start)
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-	end, err := time.Parse(time.DateOnly, p.Calendar.End)
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-	if !s.timelineZoom || end.Sub(start).Hours()/24 < 21 {
-		return start, end, nil
-	}
-	today, err := time.Parse(time.DateOnly, g.st.Planning.Date)
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-	from := today.AddDate(0, 0, -10)
-	if from.Before(start) {
-		from = start
-	}
-	to := from.AddDate(0, 0, 20)
-	if to.After(end) {
-		to = end
-		from = end.AddDate(0, 0, -20)
-	}
-	return from, to, nil
-}
-
-// All geometry is logical, shared by drawing, pointer input and keyboard focus.
-func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineGroup, float64, float64) {
-	p := g.db.Game.Planning
-	v := g.db.Game.Screens[s.name].View
-	rows := timelineGroups(p, v)
-	visible := g.visibleResidents(v)
-	s.timelineAssignees(g)
-	axisX, axisW := x+260, max(1, w-280)
-	calendarStart, err := time.Parse(time.DateOnly, p.Calendar.Start)
-	if err != nil {
-		return nil, axisX, axisW
-	}
-	calendarEnd, err := time.Parse(time.DateOnly, p.Calendar.End)
-	if err != nil {
-		return nil, axisX, axisW
-	}
-	start, end, err := s.timelineRange(g)
-	if err != nil {
-		return nil, axisX, axisW
-	}
-	today, err := time.Parse(time.DateOnly, g.st.Planning.Date)
-	if err != nil {
-		return nil, axisX, axisW
-	}
-	days := end.Sub(start).Hours()/24 + 1
-	rowHeight := func(row data.TimelineRow) float64 {
-		if len(row.Items) > 0 && row.Items[0].Activity == s.timelineExpanded {
-			return 40 + float64(len(row.Items))*timelineLaneHeight(row.Items)
-		}
-		return max(36, float64(len(row.Items))*10+4)
-	}
-	y += 56
-	h -= 56
-	// Keep readable minimums: larger authored tables scroll whole groups.
-	s.timelineTop = min(s.timelineTop, max(0, len(rows)-1))
-	var out []timelineGroup
-	bottom := y + h
-	env := g.st.Env()
-	for _, row := range rows[s.timelineTop:] {
-		rh := rowHeight(row)
-		if y+rh > bottom {
-			break
-		}
-		group := timelineGroup{label: row.Label, text: data.Render(g.db.Tr(row.Text), env), y: y, height: rh, laneHeight: timelineLaneHeight(row.Items)}
-		if len(row.Items) > 0 {
-			group.key = row.Items[0].Activity
-			group.expanded = group.key == s.timelineExpanded
-		}
-		for j, item := range row.Items {
-			d := p.Activities[item.Activity]
-			a := g.st.Planning.Activities[item.Activity]
-			if v.Portrait != "" && !a.Cancelled && slices.Contains(visible, a.Assignee) && !slices.ContainsFunc(group.residents, func(r timelineResident) bool { return r.id == a.Assignee }) {
-				portrait, ok := g.st.EntityValues(a.Assignee, false)[v.Portrait].(string)
-				if !ok {
-					portrait = ""
-				}
-				group.residents = append(group.residents, timelineResident{id: a.Assignee, portrait: portrait})
-			}
-			from, to := calendarStart, calendarEnd
-			if d.From != "" {
-				date, err := time.Parse(time.DateOnly, d.From)
-				if err == nil {
-					from = date
-				}
-			}
-			if deadline := g.st.ActivityDeadline(item.Activity); deadline != "" {
-				date, err := time.Parse(time.DateOnly, deadline)
-				if err == nil {
-					to = date
-				}
-			}
-			left := from.Sub(start).Hours() / 24 / days
-			right := max(left, (to.Sub(start).Hours()/24+1)/days)
-			reported := max(0, min(1, a.Observed/g.st.ActivityEffort(item.Activity)))
-			expected := max(0, min(1, today.Sub(from).Hours()/24/max(1, to.Sub(from).Hours()/24+1)))
-			sample := -1.0
-			if value, err := item.Sample.Eval(env); err == nil {
-				if number, ok := value.(float64); ok && !math.IsNaN(number) && !math.IsInf(number, 0) && number >= 0 && number <= 1 {
-					sample = number
-				}
-			}
-			freshness := 1.0
-			if item.SampleFreshness.Expr != nil {
-				freshness = 0
-				if value, err := item.SampleFreshness.Eval(env); err == nil {
-					if number, ok := value.(float64); ok && !math.IsNaN(number) && !math.IsInf(number, 0) {
-						freshness = max(0, min(1, number))
-					}
-				}
-			}
-			forecast, forecastLabel := timelineForecast(from, today, calendarStart, calendarEnd, reported, a.Cancelled, data.Render(g.db.Tr(item.ForecastLabel), env))
-			if forecast >= 0 {
-				forecast = (calendarStart.Sub(start).Hours()/24 + forecast*(calendarEnd.Sub(calendarStart).Hours()/24+1)) / days
-			}
-			ly := y + 3 + float64(j)*10
-			if group.expanded {
-				ly = y + 52 + float64(j)*group.laneHeight
-			}
-			labelBounds := image.Rectangle{}
-			if group.expanded {
-				labelBounds = image.Rect(int(x+24), int(ly-12), int(x+248), int(ly-12+group.laneHeight))
-			}
-			group.lanes = append(group.lanes, timelineLane{text: data.Render(g.db.Tr(item.Text), env), labelBounds: labelBounds, item: item, bounds: image.Rect(int(axisX+axisW*max(0, min(1, left))), int(ly), int(math.Ceil(axisX+axisW*max(0, min(1, right)))), int(ly+9)), left: left, right: right, reported: reported, expected: expected, forecast: forecast, forecastLabel: forecastLabel, dimmed: s.timelineAssignee != "" && a.Assignee != s.timelineAssignee, sample: sample, sampleFreshness: freshness, sampleLabel: data.Render(g.db.Tr(item.SampleLabel), env)})
-		}
-		out = append(out, group)
-		y += rh
-	}
-	return out, axisX, axisW
-}
-
-// Blend between readable theme colors, never fade the historical mark away.
-func timelineSampleTint(fresh, old color.NRGBA, freshness float64) color.NRGBA {
-	mix := func(a, b uint8) uint8 { return uint8(math.Round(float64(b) + (float64(a)-float64(b))*freshness)) }
-	return color.NRGBA{mix(fresh.R, old.R), mix(fresh.G, old.G), mix(fresh.B, old.B), mix(fresh.A, old.A)}
-}
-
-// timelineForecast uses elapsed calendar days and public reported work only.
-// Zero reports, future starts and finished/excluded work have no defensible rate.
-// The endpoint is clipped before date conversion, even for tiny positive rates.
-func timelineForecast(from, today, start, end time.Time, reported float64, cancelled bool, label string) (float64, string) {
-	elapsed := today.Sub(from).Hours() / 24
-	if label == "" || cancelled || elapsed <= 0 || reported <= 0 || reported >= 1 || math.IsNaN(reported) || math.IsInf(reported, 0) {
-		return -1, ""
-	}
-	finish := from.Sub(start).Hours()/24 + math.Ceil(elapsed/reported)
-	days := end.Sub(start).Hours()/24 + 1
-	if finish > days {
-		return 1, label + " > " + end.Format(time.DateOnly)
-	}
-	if finish <= 0 {
-		return -1, ""
-	}
-	return finish / days, label + " " + start.AddDate(0, 0, int(finish)-1).Format(time.DateOnly)
-}
-
-func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, h float64) {
-	p := g.db.Game.Planning
-	v := g.db.Game.Screens[s.name].View
-	groups, ax, aw := s.groupedTimeline(g, x, y, w, h)
-	s.drawTimelineFilter(g, dst, x, y)
-	start, end, err := s.timelineRange(g)
-	if err != nil {
-		return
-	}
-	days := end.Sub(start).Hours()/24 + 1
-	dx := aw / days
-	today, err := time.Parse(time.DateOnly, g.st.Planning.Date)
-	if err != nil {
-		return
-	}
-	bottom := y + 56
-	for _, group := range groups {
-		bottom = group.y + group.height
-	}
-	muted := color.NRGBA{62, 72, 85, 255}
-	red := color.NRGBA{240, 116, 108, 255}
-	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
-		xx := ax + d.Sub(start).Hours()/24*dx
-		if slices.Contains(p.Calendar.WeekdaysOff, int(d.Weekday())) || slices.Contains(p.Calendar.Closed, d.Format(time.DateOnly)) {
-			rect(dst, xx, y+23, dx, bottom-y-23, color.NRGBA{48, 53, 62, 255})
-		}
-		if d.Day() == 1 || d.Equal(start) {
-			if xx+90 < x+w-100 {
-				g.text(dst, d.Format("2006/1"), xx+2, y, 15, g.th.text)
-			}
-			gfx.StrokeLine(dst, float32(xx), float32(y+20), float32(xx), float32(bottom), 1, muted, true)
-		}
-		if d.Weekday() == time.Monday || (s.timelineZoom && dx >= 40) {
-			g.text(dst, d.Format("2"), xx+2, y+23, 15, g.th.dim)
-		}
-	}
-	// Annotation text follows the pointer's date in the footer; compact ticks
-	// keep dense holidays from overwriting adjacent labels on the shared axis.
-	for _, marker := range planningMarkers(p, v, start, end) {
-		if marker.Label == "" && !marker.Milestone {
-			continue
-		}
-		d, err := time.Parse(time.DateOnly, marker.Date)
-		if err != nil {
-			continue
-		}
-		if d.Before(start) || d.After(end) {
-			continue
-		}
-		xx := ax + d.Sub(start).Hours()/24*dx
-		rect(dst, xx, y+46, max(2, dx), 5, g.th.accent)
-		if marker.Milestone {
-			for yy := y + 54; yy < bottom; yy += 8 {
-				rect(dst, xx, yy, 1, min(4, bottom-yy), g.th.dim)
-			}
-		}
-	}
-	if s.timelineContext == nil {
-		for i, r := range timelineZoomBounds(x, y, w) {
-			g.window(dst, float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()))
-			tint := g.th.dim
-			if (i == 0) == s.timelineZoom {
-				tint = g.th.accent
-			}
-			g.text(dst, []string{"+", "−"}[i], float64(r.Min.X+8), float64(r.Min.Y), 18, tint)
-		}
-	}
-	index := 0
-	for _, group := range groups {
-		nameWidth := 232.0
-		if len(group.residents) > 0 {
-			nameWidth -= float64(min(3, len(group.residents)))*28 + 8
-		}
-		indicator := "+ "
-		if group.expanded {
-			indicator = "− "
-		}
-		g.drawPlanningText(dst, indicator+group.label, x+16, group.y, nameWidth, 16, 1, g.th.text)
-		for i, resident := range group.residents[:min(3, len(group.residents))] {
-			cx := x + 248 - float64(min(3, len(group.residents))-i)*28 + 14
-			if i == 2 && len(group.residents) > 3 {
-				g.text(dst, fmt.Sprintf("+%d", len(group.residents)-2), cx-12, group.y, 15, g.th.text)
-				continue
-			}
-			g.planningFace(dst, resident.portrait, cx, group.y+12, 12)
-			if resident.id == s.timelineAssignee {
-				gfx.StrokeCircle(dst, float32(cx), float32(group.y+12), 13, 1, g.th.accent, true)
-			}
-		}
-		var labels []string
-		for j, lane := range group.lanes {
-			labels = append(labels, lane.item.Label)
-			r := lane.bounds
-			lx, ly, lw, lh := ax+aw*lane.left, float64(r.Min.Y), aw*(lane.right-lane.left), float64(r.Dy())
-			a := g.st.Planning.Activities[lane.item.Activity]
-			if group.expanded {
-				top := group.y + 40 + float64(j)*group.laneHeight
-				title, summary := timelineLaneSummary(g, lane)
-				g.drawPlanningText(dst, title, x+24, top, 224, 16, 1, g.th.text)
-				g.drawPlanningText(dst, summary, x+24, top+20, 224, 15, 1, g.th.dim)
-				if lane.text != "" {
-					g.drawPlanningText(dst, lane.text, x+24, top+40, 224, 15, 1, g.th.text)
-				}
-			}
-			k := gfx.Scale()
-			bars, ok := dst.SubImage(image.Rect(int(ax*k), int((ly-1)*k), int((ax+aw)*k), int((ly+lh+2)*k))).(*ebiten.Image)
-			if !ok {
-				continue
-			}
-			border := g.th.dim
-			if index == s.timelineFocus {
-				border = g.th.text
-			}
-			rect(bars, lx, ly, lw, lh, border)
-			rect(bars, lx+1, ly+1, max(0, lw-2), lh-2, color.NRGBA{30, 34, 40, 255})
-			if a.Cancelled {
-				for xx := max(ax, lx); xx < min(ax+aw, lx+lw); xx += 6 {
-					gfx.StrokeLine(bars, float32(xx), float32(ly+lh-1), float32(min(xx+4, lx+lw)), float32(ly+1), 1, muted, true)
-				}
-			} else {
-				rect(bars, lx+1, ly+1, max(0, (lw-2)*lane.reported), lh-2, g.th.accent)
-				if lane.reported < lane.expected {
-					for xx := max(ax, lx+lw*lane.reported); xx < min(ax+aw, lx+lw*lane.expected); xx += 4 {
-						gfx.StrokeLine(bars, float32(xx), float32(ly+lh-1), float32(min(xx+3, lx+lw*lane.expected)), float32(ly+1), 1, red, true)
-					}
-				}
-				if lane.expected > 0 && lane.expected < 1 {
-					rect(bars, lx+lw*lane.expected, ly-1, 1, lh+2, g.th.text)
-				}
-			}
-			if lane.forecast >= 0 {
-				// Dashes distinguish the extrapolation from the solid planned bar.
-				fx := ax + aw*min(1, lane.forecast)
-				tx := ax + today.Sub(start).Hours()/24*dx
-				for xx := max(ax, tx); xx < fx; xx += 6 {
-					rect(bars, xx, ly+lh/2, min(3, fx-xx), 1, g.th.dim)
-				}
-				rect(bars, min(ax+aw-1, fx), ly, 1, lh, g.th.dim)
-			}
-			if lane.sample >= 0 && lw >= 5 {
-				// A small downward wedge remains inside its lane at both endpoints.
-				sx := lx + 2 + (lw-5)*lane.sample
-				tint := timelineSampleTint(g.th.text, g.th.dim, lane.sampleFreshness)
-				for step := range 3 {
-					rect(bars, sx-float64(2-step), ly+float64(step), float64(5-2*step), 1, tint)
-				}
-			}
-			if lane.dimmed {
-				// Preserve the whole calendar and row positions; de-emphasize only
-				// this lane, including its forecast, without hiding assignments.
-				rect(bars, ax, ly, aw, lh, color.NRGBA{30, 34, 40, 185})
-			}
-			index++
-		}
-		summary := strings.Join(labels, " / ")
-		if group.text != "" {
-			summary = group.text
-		}
-		g.drawPlanningText(dst, summary, x+16, group.y+18, nameWidth, 15, 1, g.th.dim)
-		rect(dst, x+16, group.y+group.height-1, w-32, 1, muted)
-	}
-	if !today.Before(start) && !today.After(end) {
-		tx := ax + today.Sub(start).Hours()/24*dx
-		rect(dst, tx, y+41, 2, max(0, bottom-y-41), red)
-	}
-}
-
-// The selector changes presentation only. A disappearing resident clears the
-// filter rather than leaving the player with every lane dimmed.
-func (s *authorScreen) timelineAssignees(g *Game) []string {
-	v := g.db.Game.Screens[s.name].View
-	if v.FilterLabel == "" {
-		s.timelineAssignee = ""
-		return nil
-	}
-	ids := append([]string{""}, g.visibleResidents(v)...)
-	if !slices.Contains(ids, s.timelineAssignee) {
-		s.timelineAssignee = ""
-	}
-	return ids
-}
-
-func timelineFilterBounds(x, y float64) [3]image.Rectangle {
-	return [3]image.Rectangle{
-		image.Rect(int(x+16), int(y+4), int(x+48), int(y+48)),
-		image.Rect(int(x+48), int(y+4), int(x+216), int(y+48)),
-		image.Rect(int(x+216), int(y+4), int(x+248), int(y+48)),
-	}
-}
-
-func (s *authorScreen) drawTimelineFilter(g *Game, dst *ebiten.Image, x, y float64) {
-	ids := s.timelineAssignees(g)
-	if len(ids) == 0 {
-		return
-	}
-	v := g.db.Game.Screens[s.name].View
-	for _, r := range timelineFilterBounds(x, y) {
-		g.window(dst, float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()))
-	}
-	g.text(dst, "‹", x+24, y+16, 18, g.th.text)
-	g.text(dst, "›", x+224, y+16, 18, g.th.text)
-	label := g.db.Tr(v.FilterLabel)
-	if s.timelineAssignee != "" {
-		label = g.db.Game.Planning.Entities[s.timelineAssignee].Name
-		path, ok := g.st.EntityValues(s.timelineAssignee, false)[v.Portrait].(string)
-		if !ok {
-			path = ""
-		}
-		g.planningFace(dst, path, x+68, y+26, 16)
-	}
-	g.drawPlanningText(dst, label, x+88, y+8, 122, 16, 1, g.th.text)
-	g.text(dst, fmt.Sprintf("%d / %d", slices.Index(ids, s.timelineAssignee), len(ids)-1), x+88, y+28, 15, g.th.dim)
-}
-
-func (s *authorScreen) updateTimelineFilter(g *Game) bool {
-	ids := s.timelineAssignees(g)
-	if len(ids) == 0 || !g.in.click {
-		return false
-	}
-	for i, r := range timelineFilterBounds(0, 108) {
-		if !g.in.mouse.In(r) {
-			continue
-		}
-		index := slices.Index(ids, s.timelineAssignee)
-		switch i {
-		case 0:
-			index = (index + len(ids) - 1) % len(ids)
-		case 1:
-			index = 0 // The current portrait/name resets to the complete view.
-		case 2:
-			index = (index + 1) % len(ids)
-		}
-		s.timelineAssignee = ids[index]
-		return true
-	}
-	return false
-}
-
-func (s *authorScreen) timelineLanes(g *Game) []timelineLane {
-	sw, sh := g.screen()
-	groups, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
-	var lanes []timelineLane
-	for _, group := range groups {
-		lanes = append(lanes, group.lanes...)
-	}
-	return lanes
-}
-
-func (s *authorScreen) timelineDescription(g *Game) string {
-	p := g.db.Game.Planning
-	v := g.db.Game.Screens[s.name].View
-	sw, _ := g.screen()
-	if date := s.timelinePointerDate(g); date != "" {
-		labels := []string{planningDate(date, "", v)}
-		d, err := time.Parse(time.DateOnly, date)
-		if err != nil {
-			return ""
-		}
-		for _, marker := range planningMarkers(p, v, d, d) {
-			if marker.Date == date && marker.Label != "" {
-				labels = append(labels, marker.Label)
-			}
-		}
-		return strings.Join(labels, " · ")
-	}
-	if g.in.mouse.X >= 16 && g.in.mouse.X < 248 {
-		_, sh := g.screen()
-		groups, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
-		for _, group := range groups {
-			headerHeight := group.height
-			if group.expanded {
-				headerHeight = 36
-			}
-			if float64(g.in.mouse.Y) >= group.y && float64(g.in.mouse.Y) < group.y+headerHeight {
-				names := []string{group.label}
-				for _, resident := range group.residents {
-					names = append(names, p.Entities[resident.id].Name)
-				}
-				return strings.Join(names, " · ") + "\n" + group.text
-			}
-		}
-	}
-	lanes := s.timelineLanes(g)
-	if len(lanes) == 0 {
-		return ""
-	}
-	s.timelineFocus = max(0, min(s.timelineFocus, len(lanes)-1))
-	lane := lanes[s.timelineFocus]
-	for _, candidate := range lanes {
-		if g.in.mouse.In(candidate.labelBounds) || g.in.mouse.In(candidate.bounds) {
-			lane = candidate
-			break
-		}
-	}
-	return timelineLaneDescription(g, lane)
-}
-
-func timelineLaneDescription(g *Game, lane timelineLane) string {
-	p := g.db.Game.Planning
-	d := p.Activities[lane.item.Activity]
-	a := g.st.Planning.Activities[lane.item.Activity]
-	// Only authored saved samples and reported observations enter the label.
-	description := fmt.Sprintf("%s · %s · %.0f%%\n%s — %s", d.Name, p.Entities[a.Assignee].Name, 100*lane.reported, d.From, g.st.ActivityDeadline(lane.item.Activity))
-	if lane.text != "" {
-		description += " · " + lane.text
-	}
-	if lane.sample >= 0 {
-		description += fmt.Sprintf(" · %s %.0f%%", lane.sampleLabel, 100*lane.sample)
-	}
-	if lane.forecastLabel != "" {
-		description += " · " + lane.forecastLabel
-	}
-	return description
-}
-
-// Expanded labels use public reports and assignments, never live hidden work.
-func timelineLaneSummary(g *Game, lane timelineLane) (string, string) {
-	p := g.db.Game.Planning
-	a := g.st.Planning.Activities[lane.item.Activity]
-	return p.Activities[lane.item.Activity].Name,
-		fmt.Sprintf("%s · %.0f%%", p.Entities[a.Assignee].Name, 100*lane.reported)
-}
-
-// A group header toggles its inline lanes. If it is near the footer, reveal it
-// at the top rather than clipping details. Collapsing restores the overview.
-func (s *authorScreen) toggleTimelineGroup(g *Game) bool {
-	if !g.in.click || g.in.mouse.X < 16 || g.in.mouse.X >= 248 {
-		return false
-	}
-	sw, sh := g.screen()
-	groups, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
-	for i, group := range groups {
-		if float64(g.in.mouse.Y) < group.y || float64(g.in.mouse.Y) >= group.y+36 {
-			continue
-		}
-		if group.expanded {
-			s.timelineExpanded = ""
-			s.timelineTop = 0
-		} else {
-			// Very large authored groups retain the compact representation.
-			if 40+float64(len(group.lanes))*group.laneHeight > sh-282 {
-				return true
-			}
-			s.timelineExpanded = group.key
-			if group.y+40+float64(len(group.lanes))*group.laneHeight > sh-118 {
-				s.timelineTop += i
-			}
-		}
-		s.timelineFocus = 0
-		if s.timelineExpanded != "" {
-			visible, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
-			for _, row := range visible {
-				if row.expanded {
-					break
-				}
-				s.timelineFocus += len(row.lanes)
-			}
-		}
-		return true
-	}
-	return false
-}
-
-func timelineZoomBounds(x, y, w float64) [2]image.Rectangle {
-	return [2]image.Rectangle{
-		image.Rect(int(x+w-92), int(y), int(x+w-60), int(y+22)),
-		image.Rect(int(x+w-56), int(y), int(x+w-24), int(y+22)),
-	}
-}
-
-func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
-	if g.in.pressed[btnMapZoomIn] || g.in.pressed[btnMapZoomOut] {
-		s.timelineZoom = g.in.pressed[btnMapZoomIn]
-		return true
-	}
-	if g.in.click {
-		w, _ := g.screen()
-		for i, r := range timelineZoomBounds(0, 108, w) {
-			if g.in.mouse.In(r) {
-				s.timelineZoom = i == 0
-				return true
-			}
-		}
-	}
-	if g.in.click && s.openCalendarDate(g, s.timelinePointerDate(g)) {
-		return true
-	}
-	if s.updateTimelineFilter(g) || s.toggleTimelineGroup(g) {
-		return true
-	}
-	lanes := s.timelineLanes(g)
-	if len(lanes) == 0 {
-		return false
-	}
-	open := func(lane timelineLane) {
-		if lane.item.Screen != "" {
-			args, err := g.db.BindScreen(data.ScreenCall{Screen: lane.item.Screen, Args: lane.item.Args}, s.env(g))
-			if err != nil {
-				g.events.Log(err)
-				return
-			}
-			g.openAuthorScreen(lane.item.Screen, nil, args)
-			if len(g.stack) > 0 {
-				if child, ok := g.stack[len(g.stack)-1].(*authorScreen); ok && child != s && child.candidateList(g) {
-					child.timelineContext, child.timelineActivity = s, lane.item.Activity
-					child.layoutTimelineCandidates(g)
-				}
-			}
-		}
-	}
-	if g.in.down() {
-		if s.timelineFocus+1 < len(lanes) {
-			s.timelineFocus++
-		} else {
-			rows := timelineGroups(g.db.Game.Planning, g.db.Game.Screens[s.name].View)
-			sw, sh := g.screen()
-			groups, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
-			if s.timelineTop+len(groups) < len(rows) {
-				s.timelineTop++
-				s.timelineFocus = 0
-			}
-		}
-		return true
-	}
-	if g.in.up() {
-		if s.timelineFocus > 0 {
-			s.timelineFocus--
-		} else if s.timelineTop > 0 {
-			s.timelineTop--
-			s.timelineFocus = 0
-		}
-		return true
-	}
-	if g.in.click {
-		for i, lane := range lanes {
-			hit := g.in.mouse.In(lane.bounds) || g.in.mouse.In(lane.labelBounds)
-			if hit {
-				s.timelineFocus = i
-				open(lane)
-				return true
-			}
-		}
-	}
-	if g.in.ok() {
-		open(lanes[min(s.timelineFocus, len(lanes)-1)])
-		return true
-	}
-	return false
-}
-
-// tableResidents sorts only displayed observations. Equal values retain the
-// authored order, missing values stay last, and zero restores the authored order.
-func (s *authorScreen) tableResidents(g *Game) []string {
-	v := g.db.Game.Screens[s.name].View
-	ids := g.visibleResidents(v)
-	if s.residentSort == 0 || s.residentSort > len(v.Fields)+1 {
-		return ids
-	}
-	values := make(map[string]any, len(ids))
-	for _, id := range ids {
-		if s.residentSort == 1 {
-			values[id] = g.db.Game.Planning.Entities[id].Name
-		} else {
-			values[id] = g.st.EntityValues(id, false)[v.Fields[s.residentSort-2].Key]
-		}
-	}
-	slices.SortStableFunc(ids, func(a, b string) int {
-		av, bv := values[a], values[b]
-		if av == nil && bv == nil {
-			return 0
-		}
-		if av == nil {
-			return 1
-		}
-		if bv == nil {
-			return -1
-		}
-		n, nok := expr.ToNumber(av)
-		m, mok := expr.ToNumber(bv)
-		order := strings.Compare(fmt.Sprint(av), fmt.Sprint(bv))
-		if nok && mok {
-			order = cmp.Compare(n, m)
-		} else if nok != mok {
-			// A mixed-type observation must still define a transitive order.
-			order = 1
-			if nok {
-				order = -1
-			}
-		}
-		if s.residentDescending {
-			return -order
-		}
-		return order
-	})
-	return ids
-}
-
-func (s *authorScreen) entityTableHeaders(g *Game) []image.Rectangle {
-	sw, _ := g.screen()
-	fields := g.db.Game.Screens[s.name].View.Fields
-	headers := []image.Rectangle{image.Rect(16, 54, 202, 88)}
-	width := (sw - 230) / float64(max(1, len(fields)))
-	for i := range fields {
-		headers = append(headers, image.Rect(int(210+float64(i)*width), 54, int(210+float64(i+1)*width), 88))
-	}
-	return headers
-}
-
-// Both detail columns page together, so neither records nor assignments vanish
-// below a fixed-height row. These are public reports, not live hidden progress.
-func (s *authorScreen) entityDetailPage(g *Game, w, h float64) ([]string, []string, int) {
-	v := g.db.Game.Screens[s.name].View
-	var tasks []string
-	for _, id := range slices.Sorted(maps.Keys(g.st.Planning.Activities)) {
-		a := g.st.Planning.Activities[id]
-		if a.Cancelled || a.Assignee != s.target || a.Completed != "" {
-			continue
-		}
-		text := fmt.Sprintf("%s  %.0f%%", g.db.Game.Planning.Activities[id].Name, 100*a.Observed/g.st.ActivityEffort(id))
-		tasks = append(tasks, gfx.Wrap(text, 16, w*.30-32)...)
-	}
-	value := g.st.EntityValues(s.target, false)[v.Detail]
-	text := ""
-	if value != nil {
-		text = fmt.Sprint(value)
-	}
-	notes := gfx.Wrap(text, 16, w*.70-24)
-	count := max(1, int((h-68)/gfx.LineHeight(16)))
-	pages := max(1, (max(len(tasks), len(notes))+count-1)/count)
-	s.residentPage = max(0, min(s.residentPage, pages-1))
-	start := s.residentPage * count
-	return tasks[min(start, len(tasks)):min(start+count, len(tasks))], notes[min(start, len(notes)):min(start+count, len(notes))], pages
-}
-
-func entityDetailButtons(r image.Rectangle) [2]image.Rectangle {
-	return [2]image.Rectangle{
-		image.Rect(r.Min.X+16, r.Max.Y-32, r.Min.X+64, r.Max.Y),
-		image.Rect(r.Max.X-64, r.Max.Y-32, r.Max.X-16, r.Max.Y),
-	}
-}
-
-// entityTableLayout is shared by drawing and hit testing. Expanded details take
-// their own space below a row; scrolling never shrinks the text or column widths.
-func (s *authorScreen) entityTableLayout(g *Game) ([]string, []image.Rectangle, image.Rectangle) {
-	v := g.db.Game.Screens[s.name].View
-	all := s.tableResidents(g)
-	sw, sh := g.screen()
-	s.residentTop = min(s.residentTop, max(0, len(all)-1))
-	var ids []string
-	var cells []image.Rectangle
-	var detail image.Rectangle
-	y, bottom := 90, int(sh)-112
-	for _, id := range all[s.residentTop:] {
-		if y+56 > bottom {
-			break
-		}
-		ids = append(ids, id)
-		cells = append(cells, image.Rect(16, y, int(sw)-16, y+56))
-		y += 56
-		if id == s.target && v.Detail != "" {
-			detail = image.Rect(16, y, int(sw)-16, min(y+180, bottom))
-			y += 180
-		}
-	}
-	return ids, cells, detail
-}
-
-func (s *authorScreen) updateEntityTable(g *Game) {
-	v := g.db.Game.Screens[s.name].View
-	all := s.tableResidents(g)
-	if g.in.click {
-		for i, r := range s.entityTableHeaders(g) {
-			if !g.in.mouse.In(r) {
-				continue
-			}
-			if s.residentSort != i+1 {
-				s.residentSort, s.residentDescending = i+1, true
-			} else if s.residentDescending {
-				s.residentDescending = false
-			} else {
-				s.residentSort = 0
-			}
-			s.residentTop, s.focus = 0, 0
-			s.target, s.residentPage = "", 0
-			return
-		}
-	}
-	_, _, detail := s.entityTableLayout(g)
-	if !detail.Empty() && g.in.mouse.In(detail) {
-		_, _, pages := s.entityDetailPage(g, float64(detail.Dx()), float64(detail.Dy()))
-		delta := 0
-		if g.in.wheel < 0 {
-			delta = 1
-		} else if g.in.wheel > 0 {
-			delta = -1
-		}
-		if g.in.click && pages > 1 {
-			for i, r := range entityDetailButtons(detail) {
-				if g.in.mouse.In(r) {
-					delta = 2*i - 1
-				}
-			}
-		}
-		if delta != 0 {
-			s.residentPage = max(0, min(s.residentPage+delta, pages-1))
-			return
-		}
-	}
-	var actions []int
-	for i, e := range s.entries {
-		if e.Target.ID == "" && len(e.Bounds) == 4 {
-			actions = append(actions, i)
-		}
-	}
-	count := len(all) + len(actions)
-	if count == 0 {
-		s.target = ""
-		return
-	}
-	if !slices.Contains(all, s.target) {
-		s.target = ""
-	}
-	if g.in.wheel != 0 {
-		step := 1
-		if g.in.wheel > 0 {
-			step = -1
-		}
-		s.residentTop = max(0, min(len(all)-1, s.residentTop+step))
-	}
-	s.focus = min(s.focus, count-1)
-	moved := g.in.wheel == 0 && (g.in.down() || g.in.up())
-	if g.in.wheel == 0 && g.in.down() {
-		s.focus = (s.focus + 1) % count
-	}
-	if g.in.wheel == 0 && g.in.up() {
-		s.focus = (s.focus + count - 1) % count
-	}
-	ids, cells, _ := s.entityTableLayout(g)
-	rowFocus := s.focus - len(actions)
-	if moved && rowFocus >= 0 && !slices.Contains(ids, all[rowFocus]) {
-		s.residentTop = rowFocus
-	}
-	chosen := ""
-	if g.in.ok() {
-		if rowFocus < 0 {
-			s.list.sel = actions[s.focus]
-			s.activate(g)
-			return
-		}
-		chosen = all[rowFocus]
-	}
-	if g.in.click {
-		for j, i := range actions {
-			if g.in.mouse.In(entryBounds(s.entries[i])) {
-				s.focus = j
-				s.list.sel = i
-				s.activate(g)
-				return
-			}
-		}
-		for i, r := range cells {
-			if g.in.mouse.In(r) {
-				chosen = ids[i]
-				s.focus = len(actions) + slices.Index(all, chosen)
-				break
-			}
-		}
-	}
-	if chosen != "" && v.Detail != "" {
-		s.residentPage = 0
-		if s.target == chosen {
-			s.target = ""
-		} else {
-			s.target = chosen
-			// Reveal the whole detail even when opening the last visible row.
-			_, rows, detail := s.entityTableLayout(g)
-			if detail.Dy() < 180 || len(rows) == 0 {
-				s.residentTop = slices.Index(all, chosen)
-			}
-		}
-	}
-}
-
-func (s *authorScreen) drawEntityTable(g *Game, dst *ebiten.Image) {
-	v := g.db.Game.Screens[s.name].View
-	sw, _ := g.screen()
-	ids, cells, detail := s.entityTableLayout(g)
-	start, width := 210.0, (sw-230)/float64(max(1, len(v.Fields)))
-	for i, r := range s.entityTableHeaders(g) {
-		label := s.title
-		if i > 0 {
-			label = v.Fields[i-1].Label
-		}
-		tint := g.th.dim
-		if s.residentSort == i+1 {
-			tint = g.th.accent
-			marker := "^"
-			if s.residentDescending {
-				marker = "v"
-			}
-			g.text(dst, marker, float64(r.Max.X)-16, 62, 15, tint)
-		}
-		g.drawPlanningText(dst, label, float64(r.Min.X)+4, 62, float64(r.Dx())-24, 15, 1, tint)
-	}
-	all := s.tableResidents(g)
-	for i, id := range ids {
-		r := cells[i]
-		y := float64(r.Min.Y)
-		values := g.st.EntityValues(id, false)
-		portrait, ok := values[v.Portrait].(string)
-		if !ok {
-			portrait = ""
-		}
-		g.planningFace(dst, portrait, 42, y+28, 24)
-		tint := g.th.text
-		if id == s.target {
-			tint = g.th.accent
-		}
-		g.drawPlanningText(dst, g.db.Game.Planning.Entities[id].Name, 78, y+16, 124, 18, 1, tint)
-		for j, f := range v.Fields {
-			x := start + float64(j)*width
-			value := ""
-			if values[f.Key] != nil {
-				value = fmt.Sprint(values[f.Key])
-			}
-			g.drawPlanningText(dst, value, x, y+4, width-8, 16, 1, g.th.text)
-			if f.Maximum > 0 {
-				n, _ := expr.ToNumber(values[f.Key])
-				bar(dst, x, y+28, width-10, 6, n/f.Maximum, g.th.accent)
-				for _, m := range f.Marks {
-					mx := x + (width-10)*m/f.Maximum
-					gfx.StrokeLine(dst, float32(mx), float32(y+25), float32(mx), float32(y+36), 1, g.th.dim, true)
-					g.drawPlanningText(dst, strconv.FormatFloat(m, 'f', 0, 64), min(mx-8, x+width-34), y+36, 32, 15, 1, g.th.dim)
-				}
-			}
-		}
-		actionCount := 0
-		for _, e := range s.entries {
-			if e.Target.ID == "" && len(e.Bounds) == 4 {
-				actionCount++
-			}
-		}
-		if slices.Index(all, id)+actionCount == s.focus {
-			rect(dst, 16, y+54, sw-32, 2, g.th.accent)
-		}
-	}
-	if !detail.Empty() {
-		s.drawEntityDetail(g, dst, float64(detail.Min.X), float64(detail.Min.Y), float64(detail.Dx()), float64(detail.Dy()))
-	}
-}
-
-// planningMarkers derives public schedule labels in calendar order. It does not
-// run events or inspect hidden state; authored markers keep their original order.
-func planningMarkers(p *data.Planning, v data.PlanningView, start, end time.Time) []data.TimelineMarker {
-	markers := slices.Clone(v.Markers)
-	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
-		date := d.Format(time.DateOnly)
-		closed := slices.Contains(p.Calendar.WeekdaysOff, int(d.Weekday())) || slices.Contains(p.Calendar.Closed, date)
-		for _, r := range p.Schedule {
-			if r.Label == "" || r.HideClosed && closed || r.Date != "" && r.Date != date || len(r.Weekdays) > 0 && !slices.Contains(r.Weekdays, int(d.Weekday())) {
-				continue
-			}
-			markers = append(markers, data.TimelineMarker{Date: date, Label: r.Label})
-		}
-	}
-	return markers
-}
-
-// calendarCells shares hit regions with drawing, including six-week months.
-type calendarCell struct {
-	date   string
-	bounds image.Rectangle
-	closed bool
-	labels []string
-}
-
-func calendarCells(p *data.Planning, v data.PlanningView, month string, x, y, w, h float64) []calendarCell {
-	start, err := time.Parse(time.DateOnly, month)
-	if err != nil {
-		return nil
-	}
-	start = time.Date(start.Year(), start.Month(), 1, 0, 0, 0, 0, time.UTC)
-	cw, ch := (w-40)/7, (h-30)/6
-	var cells []calendarCell
-	markers := planningMarkers(p, v, start, start.AddDate(0, 1, -1))
-	for d := start; d.Month() == start.Month(); d = d.AddDate(0, 0, 1) {
-		n := (int(start.Weekday())-v.WeekStart+7)%7 + d.Day() - 1
-		xx, yy := x+20+float64(n%7)*cw, y+30+float64(n/7)*ch
-		date := d.Format(time.DateOnly)
-		cell := calendarCell{date: date, bounds: image.Rect(int(xx), int(yy), int(xx+cw-6), int(yy+ch-2)), closed: slices.Contains(p.Calendar.WeekdaysOff, int(d.Weekday())) || slices.Contains(p.Calendar.Closed, date)}
-		for _, marker := range markers {
-			if marker.Date == date && marker.Label != "" && !slices.Contains(cell.labels, marker.Label) {
-				cell.labels = append(cell.labels, marker.Label)
-			}
-		}
-		// Authored markers supply player-facing names. Preserve the old count
-		// for games that have not authored names; never expose internal event IDs.
-		if len(cell.labels) == 0 {
-			count := 0
-			for _, r := range p.Schedule {
-				if r.Date != "" && r.Date != date || len(r.Weekdays) > 0 && !slices.Contains(r.Weekdays, int(d.Weekday())) {
-					continue
-				}
-				count++
-			}
-			if count > 0 {
-				cell.labels = append(cell.labels, strconv.Itoa(count)+" "+planningEventLabel(v))
-			}
-		}
-		cells = append(cells, cell)
-	}
-	return cells
-}
-
-func (s *authorScreen) calendarDate(g *Game) string {
-	if s.calendarMonth != "" {
-		return s.calendarMonth
-	}
-	return g.st.Planning.Date
-}
-
-func calendarButtons(w float64) []image.Rectangle {
-	return []image.Rectangle{image.Rect(int(w)-180, 58, int(w)-108, 100), image.Rect(int(w)-92, 58, int(w)-20, 100)}
-}
-
-func (s *authorScreen) updateCalendar(g *Game) bool {
-	delta := 0
-	if g.in.left() {
-		delta = -1
-	} else if g.in.right() {
-		delta = 1
-	}
-	w, _ := g.screen()
-	if g.in.click {
-		for i, r := range calendarButtons(w) {
-			if g.in.mouse.In(r) {
-				delta = i*2 - 1
-			}
-		}
-	}
-	if delta == 0 {
-		if g.in.click {
-			_, h := g.screen()
-			v := g.db.Game.Screens[s.name].View
-			for _, cell := range calendarCells(g.db.Game.Planning, v, s.calendarDate(g), 0, 108, w, h-226) {
-				if g.in.mouse.In(cell.bounds) {
-					return s.openCalendarDate(g, cell.date)
-				}
-			}
-		}
-		return false
-	}
-	d, err := time.Parse(time.DateOnly, s.calendarDate(g))
-	if err != nil {
-		return true
-	}
-	d = time.Date(d.Year(), d.Month(), 1, 0, 0, 0, 0, time.UTC).AddDate(0, delta, 0)
-	p := g.db.Game.Planning
-	month := d.Format("2006-01")
-	if month >= p.Calendar.Start[:7] && month <= p.Calendar.End[:7] {
-		s.calendarMonth = d.Format(time.DateOnly)
-	}
-	return true
-}
-
-func (s *authorScreen) drawCalendar(g *Game, dst *ebiten.Image, x, y, w, h float64) {
-	v := g.db.Game.Screens[s.name].View
-	month := s.calendarDate(g)
-	if len(month) < 7 {
-		return
-	}
-	if v.Fullscreen {
-		g.text(dst, month[:7], x+24, 66, 22, g.th.text)
-		for i, r := range calendarButtons(w) {
-			g.window(dst, float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()))
-			g.text(dst, []string{"<", ">"}[i], float64(r.Min.X+28), float64(r.Min.Y+9), 22, g.th.text)
-		}
-	}
-	weekdays := v.Weekdays
-	if len(weekdays) != 7 {
-		weekdays = []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
-	}
-	for col := range 7 {
-		g.text(dst, weekdays[(col+v.WeekStart)%7], x+20+float64(col)*(w-40)/7, y, 16, g.th.dim)
-	}
-	for _, cell := range calendarCells(g.db.Game.Planning, v, month, x, y, w, h) {
-		r := cell.bounds
-		xx, yy := float64(r.Min.X), float64(r.Min.Y)
-		if cell.closed {
-			rect(dst, xx, yy, float64(r.Dx()), float64(r.Dy()), color.NRGBA{77, 46, 50, 255})
-		}
-		tint := g.th.text
-		if cell.date == g.st.Planning.Date {
-			tint = g.th.accent
-			rect(dst, xx, yy, 3, float64(r.Dy()), tint)
-		}
-		gfx.StrokeLine(dst, float32(xx), float32(yy), float32(r.Max.X), float32(yy), 1, tint, true)
-		g.text(dst, strings.TrimLeft(cell.date[8:], "0"), xx+6, yy+2, 18, tint)
-		limit := min(3, max(0, (r.Dy()-24)/16))
-		for i := range min(limit, len(cell.labels)) {
-			label := g.db.Tr(cell.labels[i])
-			if i == limit-1 && len(cell.labels) > limit {
-				label = fmt.Sprintf("+%d", len(cell.labels)-i)
-			}
-			g.drawPlanningText(dst, label, xx+6, yy+24+float64(i)*16, float64(r.Dx()-12), 15, 1, g.th.text)
-		}
-	}
-}
-
-func (s *authorScreen) calendarDescription(g *Game) string {
-	w, h := g.screen()
-	v := g.db.Game.Screens[s.name].View
-	for _, cell := range calendarCells(g.db.Game.Planning, v, s.calendarDate(g), 0, 108, w, h-226) {
-		if g.in.mouse.In(cell.bounds) {
-			labels := []string{planningDate(cell.date, "", v)}
-			for _, label := range cell.labels {
-				labels = append(labels, g.db.Tr(label))
-			}
-			return strings.Join(labels, " · ")
-		}
-	}
-	return ""
-}
-
-// Date links open authored screens without advancing or rewriting planning time.
-func (s *authorScreen) openCalendarDate(g *Game, date string) bool {
-	if date == "" {
-		return false
-	}
-	for _, marker := range g.db.Game.Screens[s.name].View.Markers {
-		if marker.Date == date && marker.Screen != "" {
-			args, err := g.db.BindScreen(data.ScreenCall{Screen: marker.Screen, Args: marker.Args}, s.env(g))
-			if err != nil {
-				g.events.Log(err)
-				return true
-			}
-			g.openAuthorScreen(marker.Screen, nil, args)
-			return true
-		}
-	}
-	v := g.db.Game.Screens[s.name].View
-	p := g.db.Game.Planning
-	d, err := time.Parse(time.DateOnly, date)
-	if v.DateLink == nil || err != nil || date < p.Calendar.Start || date > p.Calendar.End {
-		return false
-	}
-	start, err := time.Parse(time.DateOnly, p.Calendar.Start)
-	if err != nil {
-		return false
-	}
-	labels := []string{}
-	for _, marker := range planningMarkers(p, v, d, d) {
-		if marker.Date == date && marker.Label != "" {
-			labels = append(labels, marker.Label)
-		}
-	}
-	selected := expr.Map{
-		"date": date, "offset": float64(d.Unix()-start.Unix()) / 86400, "weekday": float64(d.Weekday()),
-		"closed":  slices.Contains(p.Calendar.WeekdaysOff, int(d.Weekday())) || slices.Contains(p.Calendar.Closed, date),
-		"summary": strings.Join(labels, " / "),
-	}
-	args, err := g.db.BindScreen(*v.DateLink, expr.Chain{expr.Map{"selected": selected}, s.env(g)})
-	if err != nil {
-		g.events.Log(err)
-		return true
-	}
-	g.openAuthorScreen(v.DateLink.Screen, nil, args)
-	return true
-}
-
-func (s *authorScreen) timelinePointerDate(g *Game) string {
-	w, _ := g.screen()
-	for _, r := range timelineZoomBounds(0, 108, w) {
-		if g.in.mouse.In(r) {
-			return ""
-		}
-	}
-	if g.in.mouse.Y < 108 || g.in.mouse.Y >= 164 || g.in.mouse.X < 260 || float64(g.in.mouse.X) >= w-20 {
-		return ""
-	}
-	start, end, err := s.timelineRange(g)
-	if err != nil {
-		return ""
-	}
-	days := end.Sub(start).Hours()/24 + 1
-	return start.AddDate(0, 0, int((float64(g.in.mouse.X)-260)/(w-280)*days)).Format(time.DateOnly)
+// drawPlanningTextCentered draws one line centered on x, shortened to width.
+func (g *Game) drawPlanningTextCentered(dst *ebiten.Image, text string, x, y, width, size float64, tint color.Color) {
+	line, _, _ := strings.Cut(text, "\n")
+	line = gfx.Ellipsis(line, size, width)
+	g.text(dst, line, x-gfx.TextWidth(line, size)/2, y, size, tint)
 }

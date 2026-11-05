@@ -151,6 +151,9 @@ func (g *Game) checkSavedReplay(st *rpg.State) error {
 	if !c.Arrival && st.DB.NamedCommands(c.Event) == nil {
 		return nil
 	}
+	if !c.Arrival && c.Line == 0 { // a checkpoint save begins its event from the start
+		return nil
+	}
 	probe, err := g.newSavedReplay(st)
 	if err != nil {
 		return err

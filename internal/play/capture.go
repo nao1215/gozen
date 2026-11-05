@@ -217,7 +217,21 @@ func (b *captureBatch) begin() {
 	}
 }
 
+// Update advances preparation in bounded bursts, preserving every simulation
+// tick. Sampling keeps its original cadence and always gets a draw boundary.
 func (b *captureBatch) Update() error {
+	for range 60 {
+		if err := b.updateTick(); err != nil {
+			return err
+		}
+		if b.game == nil || b.sampling || b.due || b.finished {
+			break
+		}
+	}
+	return nil
+}
+
+func (b *captureBatch) updateTick() error {
 	if err := b.ctx.Err(); err != nil {
 		return err
 	}

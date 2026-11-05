@@ -8,9 +8,14 @@ import (
 )
 
 func TestPlanningDiagnostics(t *testing.T) {
-	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n"
+	const header = "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n"
 	source := regexp.MustCompile(`game\.yaml:\d+:\d+:`)
 	for _, tc := range []struct{ body, want string }{
+		{"  activity_attributes: {progress: {type: number, initial: 0}}\n", "reserved attribute"},
+		{"  activity_attributes: {observed: {type: number, initial: 0}}\n", "reserved attribute"},
+		{"  activity_attributes: {moisture: {type: number, initial: false}}\n", "expected a finite number"},
+		{"  activities: {a: {effort: 2}}\n  activity_attributes: {moisture: {type: number, initial: 0}}\n  rules: {water: {do: [{op: set, activity: a, tag: crop, attribute: moisture, value: 1}]}}\n", "cannot be combined"},
+		{"  activities: {a: {effort: 2}}\n  rules: {water: {do: [{op: set, activity: a, attribute: missing, value: 1}]}}\n", "unknown attribute"},
 		{"  entities: {potter: {data: {words: [null]}}}\n", "homogeneous finite scalar lists"},
 		{"  entities: {potter: {data: {words: [[hello]]}}}\n", "homogeneous finite scalar lists"},
 		{"  entities: {potter: {data: {words: null}}}\n", "finite scalars or scalar lists"},
@@ -41,11 +46,12 @@ func TestPlanningDiagnostics(t *testing.T) {
 }
 
 func TestObservationTargets(t *testing.T) {
-	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  entities: {potter: {name: Potter}}\n  activities: {clay: {effort: 2}}\n"
+	const header = "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  entities: {potter: {name: Potter}}\n  activities: {clay: {effort: 2}}\n"
 	for _, tc := range []struct{ command, want string }{
 		{"op: observe", ""},
 		{"op: observe, entity: potter, tag: resident, where: 'false'", ""},
 		{"op: observe, activity: clay", ""},
+		{"op: observe, activity: clay, where: 'sum(activities, it.observed) == 0'", ""},
 		{"op: observe, activity: clay, where: 'self.progress > 0'", ""},
 		{"op: observe, activity: missing", "unknown activity"},
 		{"op: observe, activity: clay, entity: potter", "cannot be combined"},
@@ -65,8 +71,8 @@ func TestObservationTargets(t *testing.T) {
 }
 
 func TestPlanningViewRejectsHiddenColumnsAndBindings(t *testing.T) {
-	for _, view := range []string{"week_start: -1", "week_start: 7", "highlight: reserve", "highlight: unknown", "visible: reserve", "visible: unknown", "fields: [{key: reserve, label: Reserve}]", "portrait: reserve", "detail: reserve", "weekdays: [Sun]", "order: [missing]", "fields: [{key: name, maximum: 10, marks: [11]}]"} {
-		src := "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  attributes: {reserve: {type: number, initial: 5, hidden: true}}\n  entities: {potter: {name: Potter}}\nscreens:\n  board:\n    title: Board\n    kind: entities\n    view: {" + view + "}\n"
+	for _, view := range []string{`fields: [{key: name, maximum_key: reserve}]`, `fields: [{key: name, warning_key: reserve}]`, `fields: [{key: name, text_key: reserve}]`, `fields: [{key: name, critical_ratio: 2}]`, `burnup: {planned: rand()}`, "week_start: -1", "week_start: 7", "highlight: reserve", "highlight: unknown", "visible: reserve", "visible: unknown", "fields: [{key: reserve, label: Reserve}]", "portrait: reserve", "detail: reserve", "weekdays: [Sun]", "order: [missing]", "fields: [{key: name, maximum: 10, marks: [11]}]"} {
+		src := "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  attributes: {reserve: {type: number, initial: 5, hidden: true}}\n  entities: {potter: {name: Potter}}\nscreens:\n  board:\n    title: Board\n    kind: entities\n    view: {" + view + "}\n"
 		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(src)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
 		if err == nil {
 			t.Fatalf("accepted invalid view: %s", view)
@@ -75,7 +81,7 @@ func TestPlanningViewRejectsHiddenColumnsAndBindings(t *testing.T) {
 }
 
 func TestPlanningEnsembleHighlightObservation(t *testing.T) {
-	const src = `schema_version: 9
+	const src = `schema_version: 10
 id: workshop
 start: {location: room}
 planning:
@@ -88,11 +94,14 @@ screens:
   gathering:
     title: Gathering
     kind: ensemble
-    view: {highlight: attention}
+    view: {highlight: attention, guests: [visitor]}
 `
-	db, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(src)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
+	db, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(src)}, "data/world.yaml": {Data: []byte("actors: {visitor: {name: Visitor}}\nlocations: {room: {name: Workshop}}\n")}})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(db.Game.Planning.Entities) != 1 || db.Game.Screens["gathering"].View.Guests[0] != "visitor" {
+		t.Fatal("guest became a simulation entity")
 	}
 	if got := db.Game.Screens["gathering"].View.Highlight; got != "attention" {
 		t.Fatalf("highlight binding = %q", got)
@@ -100,7 +109,7 @@ screens:
 }
 
 func TestPlanningTabs(t *testing.T) {
-	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\nscreens:\n"
+	const header = "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\nscreens:\n"
 	for _, tc := range []struct {
 		views string
 		valid bool
@@ -122,7 +131,7 @@ func TestPlanningTabs(t *testing.T) {
 
 func TestSayRequiresEnsembleScreen(t *testing.T) {
 	for _, kind := range []string{"ensemble", "entities"} {
-		src := "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\nscreens: {gathering: {title: Gathering, kind: " + kind + "}}\n"
+		src := "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\nscreens: {gathering: {title: Gathering, kind: " + kind + "}}\n"
 		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(src)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\nevents: {gather: {do: [{say: {text: Welcome, ensemble: gathering}}]}}\n")}})
 		if (err == nil) != (kind == "ensemble") {
 			t.Fatalf("%s: %v", kind, err)
@@ -131,7 +140,7 @@ func TestSayRequiresEnsembleScreen(t *testing.T) {
 }
 
 func TestPlanningSurfaceEntryDiagnostics(t *testing.T) {
-	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  entities: {potter: {name: Potter}}\nscreens:\n  board:\n    title: Board\n    kind: islands\n    view: {fullscreen: true}\n    entries:\n"
+	const header = "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  entities: {potter: {name: Potter}}\nscreens:\n  board:\n    title: Board\n    kind: islands\n    view: {fullscreen: true}\n    entries:\n"
 	for _, entry := range []string{
 		"{label: Work, bounds: [1, 2, 3]}",
 		"{label: Work, bounds: [1, 2, 0, 4]}",
@@ -146,7 +155,7 @@ func TestPlanningSurfaceEntryDiagnostics(t *testing.T) {
 }
 
 func TestTimelineRowsAndMarkers(t *testing.T) {
-	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  activities: {clay: {name: Clay, effort: 2}}\nscreens:\n  detail: {title: Detail, entries: [{label: Inspect}]}\n  board:\n    title: Board\n    kind: timeline\n    view: "
+	const header = "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  activities: {clay: {name: Clay, effort: 2}}\nscreens:\n  detail: {title: Detail, entries: [{label: Inspect}]}\n  board:\n    title: Board\n    kind: timeline\n    view: "
 	for _, tc := range []struct {
 		view  string
 		valid bool
@@ -176,7 +185,7 @@ func TestTimelineRowsAndMarkers(t *testing.T) {
 }
 
 func TestPlanningCandidateTargets(t *testing.T) {
-	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  attributes: {icon: {type: string, initial: ''}}\n  entities: {potter: {name: Potter}}\nscreens:\n  board:\n    title: Choose\n    view: {portrait: icon}\n    entries:\n"
+	const header = "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  attributes: {icon: {type: string, initial: ''}}\n  entities: {potter: {name: Potter}}\nscreens:\n  board:\n    title: Choose\n    view: {portrait: icon}\n    entries:\n"
 	for _, target := range []string{"potter", "missing"} {
 		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header + "      - {label: Potter, target: " + target + "}\n")}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
 		if (err == nil) != (target == "potter") {
@@ -186,7 +195,7 @@ func TestPlanningCandidateTargets(t *testing.T) {
 }
 
 func TestPlanningNumericTypes(t *testing.T) {
-	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  ledgers: {hours: {retain: 2}}\n"
+	const header = "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  ledgers: {hours: {retain: 2}}\n"
 	for _, formula := range []string{"true", "false", "nil", "\"2\"", "true ? 2 : nil", "2", "int(true)"} {
 		for _, op := range []string{"progress", "effort", "record", "observe"} {
 			t.Run(op+"/"+formula, func(t *testing.T) {
@@ -211,7 +220,7 @@ func TestPlanningNumericTypes(t *testing.T) {
 }
 
 func TestPlanningRuleArgumentNames(t *testing.T) {
-	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  activities: {clay: {effort: 2}}\n"
+	const header = "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  activities: {clay: {effort: 2}}\n"
 	for _, tc := range []struct{ name, params, field, formula, want string }{
 		{"declared", "[amount]", "value", "arg.amount", ""},
 		{"literal index", "[amount]", "value", "arg[\"amount\"]", ""},
@@ -244,7 +253,7 @@ func TestPlanningRuleArgumentNames(t *testing.T) {
 }
 
 func TestPlanningArgumentScope(t *testing.T) {
-	const header = "schema_version: 9\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  activities: {clay: {effort: 2}}\n  rules:\n    work: {params: [amount], do: [{op: progress, activity: clay, value: 'arg.amount'}]}\n    inspect: {do: [{op: observe, activity: clay}]}\n"
+	const header = "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  activities: {clay: {effort: 2}}\n  rules:\n    work: {params: [amount], do: [{op: progress, activity: clay, value: 'arg.amount'}]}\n    inspect: {do: [{op: observe, activity: clay}]}\n"
 	for _, tc := range []struct{ command, want string }{
 		{"op: rule, rule: work, args: {amount: '2'}", ""},
 		{"op: rule, rule: work, args: {amount: 'arg.amount'}", "unknown name \"arg\""},
@@ -448,6 +457,120 @@ screens:
 		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header + tc.link + "\n")}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
 		if (err == nil) != tc.valid {
 			t.Fatalf("%s: %v", tc.link, err)
+		}
+	}
+}
+
+func TestMaterialDiagnostics(t *testing.T) {
+	for _, tc := range []struct {
+		material string
+		valid    bool
+	}{
+		{"{kind: glass, blur: 14, opacity: 0.78, border: 0.4, shadow: 0.6}", true},
+		{"{kind: opaque, blur: 0, opacity: 0, border: 0, shadow: 0}", true},
+		{"{kind: glass, opacity: .nan}", false},
+		{"{kind: glass, blur: .inf}", false},
+		{"{kind: plastic}", false},
+		{"{kind: glass, surfaces: {chart: mica, card: glass}}", true},
+		{"{kind: glass, surfaces: {chart: plastic}}", false},
+		{"{kind: glass, surfaces: {unknown: mica}}", false},
+		{"{kind: glass, blur: -1}", false},
+		{"{kind: glass, blur: 65}", false},
+		{"{kind: glass, opacity: 1.1}", false},
+		{"{kind: glass, border: -0.1}", false},
+		{"{kind: glass, shadow: 2}", false},
+	} {
+		source := "schema_version: 10\nid: studio\nstart: {location: room}\nui:\n  material: " + tc.material + "\n"
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(source)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Studio}}\n")}})
+		if (err == nil) != tc.valid {
+			t.Fatalf("%s: %v", tc.material, err)
+		}
+	}
+}
+
+func TestDesktopCallSettings(t *testing.T) {
+	const header = "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\nscreens:\n  call:\n    title: Workshop call\n    kind: ensemble\n    view:\n"
+	for _, tc := range []struct{ body, want string }{
+		{"      call: {address: call.example.test/workshop, mouth: {base.png: mouth.png}, blink: {base.png: blink.png}}\n      chat: {title: Messages}\n", ""},
+		{"      call: {}\n", "requires chat"},
+		{"      call: {controls: [a,b,c,d,e,f,g]}\n      chat: {}\n", "at most six"},
+		{"      call: {layout: full, captions: overlay, others: side, others_title: People, window_opacity: 0.8}\n      chat: {}\n", ""},
+		{"      call: {others: side, captions: window}\n      chat: {}\n", ""},
+		{"      call: {layout: full}\n      chat: {}\n", "go together"},
+		{"      call: {captions: overlay}\n      chat: {}\n", "go together"},
+		{"      call: {layout: wide, captions: overlay}\n      chat: {}\n", "want full"},
+		{"      call: {others: grid}\n      chat: {}\n", "want side"},
+		{"      call: {captions: below}\n      chat: {}\n", "want window or overlay"},
+		{"      call: {layout: full, captions: overlay, window_opacity: 1.5}\n      chat: {}\n", "want 0 to 1"},
+		{"      call: {window_opacity: 0.5}\n      chat: {}\n", "needs captions: overlay"},
+	} {
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header + tc.body)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
+		if tc.want == "" && err != nil || tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+			t.Fatalf("%s: %v", tc.body, err)
+		}
+	}
+}
+
+// TestCallEnsembleNamesACall: call.ensemble takes an ensemble screen only.
+func TestCallEnsembleNamesACall(t *testing.T) {
+	const header = "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\nscreens:\n  call: {title: Call, kind: ensemble, view: {chat: {}, call: {}}}\n  board: {title: Board, kind: entities}\n"
+	for _, tc := range []struct{ target, want string }{{"call", ""}, {"board", "expected an ensemble screen"}, {"nowhere", "expected an ensemble screen"}} {
+		world := "locations: {room: {name: Workshop}}\nevents:\n  shared: {do: [{say: Hello.}]}\n  meet: {do: [{call: {event: shared, ensemble: " + tc.target + "}}]}\n"
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header)}, "data/world.yaml": {Data: []byte(world)}})
+		if tc.want == "" && err != nil || tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+			t.Fatalf("%s: %v", tc.target, err)
+		}
+	}
+}
+
+func TestDesktopToolWindowSettings(t *testing.T) {
+	for _, tc := range []struct {
+		kind, view string
+		valid      bool
+	}{
+		{"islands", "{fullscreen: true, window: Workshop}", true},
+		{"islands", "{window: Workshop}", false},
+		{"ensemble", "{fullscreen: true, window: Workshop}", false},
+	} {
+		source := "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\nscreens:\n  board:\n    title: Workshop\n    kind: " + tc.kind + "\n    view: " + tc.view + "\n"
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(source)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Studio}}\n")}})
+		if (err == nil) != tc.valid {
+			t.Fatalf("%s %s: %v", tc.kind, tc.view, err)
+		}
+	}
+}
+
+// Workspace progress strips reuse public planning values and reject malformed bounds.
+func TestWorkspaceProgressBounds(t *testing.T) {
+	const header = "schema_version: 10\nid: studio\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\nscreens:\n  board:\n    title: Studio\n    kind: workspace\n    view:\n      fullscreen: true\n      burnup: {compact: true, bounds: "
+	for _, tc := range []struct {
+		bounds string
+		valid  bool
+	}{
+		{"[0, 0, 120, 48]", true},
+		{"[10, 20, 500, 70]", true},
+		{"[0, 0, 119, 48]", false},
+		{"[0, 0, 120, 47]", false},
+		{"[-1, 0, 120, 48]", false},
+		{"[0, 0, 120]", false},
+	} {
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header + tc.bounds + "}\n    entries: [{label: Potter, bounds: [0, 0, 250, 350], portrait: true}]\n")}, "data/main.yaml": {Data: []byte("locations: {room: {name: Studio}}\n")}})
+		if (err == nil) != tc.valid {
+			t.Errorf("%s: %v", tc.bounds, err)
+		}
+	}
+}
+
+// Bounded entry pictures are schema 10 vocabulary and need room for a caption.
+func TestBoundedEntryPictureVersionAndHeight(t *testing.T) {
+	for _, tc := range []struct {
+		version, height string
+		valid           bool
+	}{{"10", "300", true}, {"9", "300", false}, {"10", "100", false}} {
+		src := "schema_version: " + tc.version + "\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\nscreens:\n  board:\n    title: Board\n    kind: workspace\n    view: {fullscreen: true}\n    entries:\n      - {label: Visitor, picture: visitor.png, bounds: [1, 2, 200, " + tc.height + "]}\n"
+		_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(src)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}, "assets/visitor.png": {Data: []byte("x")}})
+		if (err == nil) != tc.valid {
+			t.Fatalf("%+v: %v", tc, err)
 		}
 	}
 }

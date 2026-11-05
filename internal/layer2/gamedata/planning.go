@@ -22,12 +22,14 @@ type Planning struct {
 	Rules    map[string]PlanRule     `yaml:"rules"`
 	Policies map[string][]PolicyRule `yaml:"policies"`
 
-	Attributes map[string]Attribute `yaml:"attributes"`
-	Entities   map[string]Entity    `yaml:"entities"`
-	Calendar   Calendar             `yaml:"calendar"`
-	Activities map[string]Activity  `yaml:"activities"`
-	Ledgers    map[string]Ledger    `yaml:"ledgers"`
-	Schedule   []Reservation        `yaml:"schedule"`
+	// ActivityAttributes supplies typed task-local defaults to state, save validation and rules.
+	ActivityAttributes map[string]Attribute `yaml:"activity_attributes"`
+	Attributes         map[string]Attribute `yaml:"attributes"`
+	Entities           map[string]Entity    `yaml:"entities"`
+	Calendar           Calendar             `yaml:"calendar"`
+	Activities         map[string]Activity  `yaml:"activities"`
+	Ledgers            map[string]Ledger    `yaml:"ledgers"`
+	Schedule           []Reservation        `yaml:"schedule"`
 }
 
 // Attribute is a typed scalar declaration. Hidden values are omitted from observations.
@@ -123,10 +125,34 @@ type Calendar struct {
 	Phases      []string `yaml:"phases"`
 	WeekdaysOff []int    `yaml:"weekdays_off"`
 	Closed      []string `yaml:"closed"`
+	// Looks dresses each phase (and "closed" for a closed day) so the player
+	// sees the time pass: the clock beside the date, the color of its light
+	// washed over workspace surfaces, and a short turn card when play moves
+	// into it. Omitted phases keep the plain look and show no card.
+	Looks map[string]PhaseLook `yaml:"looks"`
 }
+
+// PhaseLook is how one phase looks. Time is a short clock text shown after
+// the date ("18:30"); Color is the light of the phase, Wash how strongly
+// workspace surfaces are covered with it (0..0.8). Card false shows no turn
+// card for the phase; Note is an interpolated line under the card's clock.
+// Label names the phase on the card (default: a view's phase label).
+type PhaseLook struct {
+	Label string  `yaml:"label"`
+	Time  string  `yaml:"time"`
+	Color Color   `yaml:"color"`
+	Wash  float64 `yaml:"wash"`
+	Card  *bool   `yaml:"card"`
+	Note  string  `yaml:"note"`
+}
+
+// MaxPhaseWash keeps a washed surface readable.
+const MaxPhaseWash = 0.8
 
 // Activity is a bounded amount of work with strict completion dependencies.
 type Activity struct {
+	// Parent identifies a one-level decomposition; children remain dormant until split.
+	Parent          string   `yaml:"parent"`
 	Observation     Expr     `yaml:"observation"`
 	DependencyRatio *float64 `yaml:"dependency_ratio"`
 
@@ -146,6 +172,13 @@ type Ledger struct {
 // Reservation is an event on a date or recurring weekday and phase.
 // Its stable ID prevents duplicate dispatch after saving and loading.
 type Reservation struct {
+	// After lists reservation IDs whose events must have run before selection.
+	After []string `yaml:"after"`
+	// Exclusive admits at most one reservation in this group on a calendar date.
+	Exclusive string `yaml:"exclusive"`
+	// When is a pure eligibility condition, for example public presence attributes.
+	When Expr `yaml:"when"`
+
 	// Label is an optional public calendar annotation; it never changes dispatch.
 	Label string `yaml:"label"`
 	// HideClosed omits this annotation on closed dates, without changing dispatch.
@@ -176,6 +209,7 @@ type PlanCommand struct {
 }
 
 func (c *checker) planning() {
+	c.planningVersions()
 	p := c.db.Game.Planning
 	if p == nil {
 		return
@@ -201,6 +235,24 @@ func (c *checker) planning() {
 		}
 		seen[v] = true
 	}
+	for _, name := range slices.Sorted(maps.Keys(p.Calendar.Looks)) {
+		look := p.Calendar.Looks[name]
+		lw := w + ".calendar.looks." + name
+		if !seen[name] && name != "closed" {
+			c.errorf(diag.Shape, lw, "a look names a phase of the calendar or closed")
+		}
+		if look.Wash < 0 || look.Wash > MaxPhaseWash {
+			c.errorf(diag.OutOfRange, lw+".wash", "wash must be 0 through %g", MaxPhaseWash)
+		}
+		if look.Wash > 0 && !look.Color.Valid {
+			c.errorf(diag.Shape, lw+".color", "a wash needs a color")
+		}
+		if len([]rune(look.Time)) > 12 {
+			c.errorf(diag.OutOfRange, lw+".time", "a clock text is at most 12 characters")
+		}
+		c.text(lw+".note", look.Note, FieldNames)
+		c.text(lw+".label", look.Label, FieldNames)
+	}
 	for _, d := range p.Calendar.Closed {
 		checkDate(w+".calendar.closed", d)
 	}
@@ -209,19 +261,8 @@ func (c *checker) planning() {
 			c.errorf(diag.OutOfRange, w+".calendar.weekdays_off", "weekday must be 0 (Sunday) through 6")
 		}
 	}
-	for _, id := range slices.Sorted(maps.Keys(p.Attributes)) {
-		a := p.Attributes[id]
-		at := w + ".attributes." + id
-		if !declaredName.MatchString(id) || id == "id" || id == "name" || id == "data" {
-			c.errorf(diag.Shape, at, "invalid or reserved attribute ID")
-		}
-		if _, err := a.Value(a.Initial); err != nil {
-			c.errorf(diag.Shape, at+".initial", "%v", err)
-		}
-		if a.Type != "number" && (a.Min != nil || a.Max != nil) {
-			c.errorf(diag.Shape, at, "bounds require number type")
-		}
-	}
+	c.planningAttributes(w+".activity_attributes", p.ActivityAttributes, []string{"id", "from", "to", "planned_effort", "deadline", "progress", "observed", "effort", "assignee", "completed", "cancelled", "parent", "split", "active"})
+	c.planningAttributes(w+".attributes", p.Attributes, []string{"id", "name", "data"})
 	for _, id := range slices.Sorted(maps.Keys(p.Entities)) {
 		e := p.Entities[id]
 		at := w + ".entities." + id
@@ -351,13 +392,37 @@ func (c *checker) planning() {
 		if a.To != "" && a.From > a.To {
 			c.errorf(diag.OutOfRange, at+".to", "end precedes start")
 		}
+
+		if a.Parent != "" {
+			parent, ok := p.Activities[a.Parent]
+			if !ok || a.Parent == id || parent.Parent != "" {
+				c.errorf(diag.Shape, at+".parent", "parent must reference a root activity")
+			}
+			if a.Assignee != "" {
+				c.errorf(diag.Shape, at+".assignee", "dormant children must be unassigned")
+			}
+		}
 		visit(id)
+	}
+
+	for id, parent := range p.Activities {
+		total, count := 0.0, 0
+		for _, child := range p.Activities {
+			if child.Parent == id {
+				total += child.Effort
+				count++
+			}
+		}
+		if count > 0 && (count < 2 || math.Abs(total-parent.Effort) > 1e-8) {
+			c.errorf(diag.Shape, w+".activities."+id, "children must conserve parent effort and number at least two")
+		}
 	}
 	for id, l := range p.Ledgers {
 		if l.Retain < 1 || l.Retain > 120 {
 			c.errorf(diag.OutOfRange, w+".ledgers."+id+".retain", "retain must be 1 through 120")
 		}
 	}
+	c.scheduleDependencies(w, p)
 	seen = map[string]bool{}
 	for i, r := range p.Schedule {
 		at := fmt.Sprintf("%s.schedule[%d]", w, i)
@@ -365,6 +430,8 @@ func (c *checker) planning() {
 			c.errorf(diag.Shape, at+".id", "reservation ID must be unique and nonempty")
 		}
 		seen[r.ID] = true
+		c.expr(at+".when", r.When, FieldNames)
+		c.planningPure(at+".when", r.When)
 		if r.Date != "" {
 			checkDate(at+".date", r.Date)
 		}
@@ -390,8 +457,8 @@ func (c *checker) planCommand(w string, cmd *PlanCommand, params []string) {
 		return
 	}
 	allowed := map[string][]string{
-		"set": {"entity", "tag", "where", "attribute", "value"}, "observe": {"entity", "tag", "where", "activity"},
-		"deadline": {"activity", "value"}, "cancel": {"activity", "value"}, "effort": {"activity", "value"}, "progress": {"activity", "value"}, "assign": {"activity", "entity"}, "advance": {}, "dispatch": {},
+		"set": {"entity", "tag", "where", "attribute", "value", "activity"}, "observe": {"entity", "tag", "where", "activity"},
+		"split": {"activity"}, "deadline": {"activity", "value"}, "cancel": {"activity", "value"}, "effort": {"activity", "value"}, "progress": {"activity", "value"}, "assign": {"activity", "entity"}, "advance": {}, "dispatch": {},
 		"record": {"entity", "tag", "where", "ledger", "period", "value"}, "close": {"ledger", "period"},
 		"rule": {"rule", "args"}, "policy": {"policy"},
 	}
@@ -406,7 +473,7 @@ func (c *checker) planCommand(w string, cmd *PlanCommand, params []string) {
 		c.errorf(diag.Shape, w, "plan requires game.yaml planning")
 		return
 	}
-	if !slices.Contains([]string{"set", "observe", "assign", "progress", "effort", "cancel", "deadline", "advance", "dispatch", "record", "close", "rule", "policy"}, cmd.Op) {
+	if !slices.Contains([]string{"split", "set", "observe", "assign", "progress", "effort", "cancel", "deadline", "advance", "dispatch", "record", "close", "rule", "policy"}, cmd.Op) {
 		c.errorf(diag.NotAWord, w+".op", "unknown planning operation %q", cmd.Op)
 	}
 	if cmd.Op == "observe" && cmd.Activity.set() && (cmd.Entity.set() || cmd.Tag != "") {
@@ -418,11 +485,18 @@ func (c *checker) planCommand(w string, cmd *PlanCommand, params []string) {
 		}
 	}
 	if cmd.Op == "set" {
-		if _, ok := p.Attributes[cmd.Attribute]; !ok {
+		attrs := p.Attributes
+		if cmd.Activity.set() {
+			attrs = p.ActivityAttributes
+			if cmd.Entity.set() || cmd.Tag != "" {
+				c.errorf(diag.Shape, w, "set activity cannot be combined with entity or tag")
+			}
+		}
+		if _, ok := attrs[cmd.Attribute]; !ok {
 			c.errorf(diag.UnknownReference, w+".attribute", "unknown attribute")
 		}
 	}
-	if cmd.Op == "deadline" || cmd.Op == "cancel" || cmd.Op == "effort" || cmd.Op == "progress" || cmd.Op == "assign" || cmd.Op == "observe" && cmd.Activity.set() {
+	if cmd.Op == "split" || cmd.Op == "deadline" || cmd.Op == "cancel" || cmd.Op == "effort" || cmd.Op == "progress" || cmd.Op == "assign" || (cmd.Op == "observe" || cmd.Op == "set") && cmd.Activity.set() {
 		if _, ok := p.Activities[cmd.Activity.ID]; !ok && !cmd.Activity.Expr.Set() {
 			c.errorf(diag.UnknownReference, w+".activity", "unknown activity")
 		}
@@ -510,9 +584,88 @@ func (c *checker) planningPure(w string, e Expr) {
 	}
 }
 
-// PlanningView selects only explicitly named player values for presentation.
-// Order controls seating; fields and portrait bindings never read hidden state.
+// EnsembleChat configures a read-only meeting chat. All labels are authored;
+// Reaction names a public entity observation, never a hidden attribute.
+type EnsembleChat struct {
+	Title     string `yaml:"title"`
+	Joined    string `yaml:"joined"`
+	Left      string `yaml:"left"`
+	CameraOff string `yaml:"camera_off"`
+	CameraOn  string `yaml:"camera_on"`
+	Reaction  string `yaml:"reaction"`
+}
+
+// EnsembleCall presents a desktop call. Variant maps use the base portrait path
+// as key and a same-canvas replacement image as value; omission uses motion only.
+type EnsembleCall struct {
+	Address string `yaml:"address"`
+	// Controls are decorative round buttons, each a label or {label, icon, color}.
+	Controls []CallControl     `yaml:"controls"`
+	Mouth    map[string]string `yaml:"mouth"`
+	Blink    map[string]string `yaml:"blink"`
+	// Self shows a small self view in the corner of the speaker view: a planning
+	// entity, a guest actor or a picture path. Empty shows none.
+	Self string `yaml:"self"`
+	// SelfLabel names the self view; empty uses the entity's or actor's name.
+	SelfLabel string `yaml:"self_label"`
+	// SelfStage puts the self view on the stage, large, while the caller speaks (a
+	// line of the call whose speaker is not one of its participants); every
+	// participant then stands in the strip. Off, the stage keeps whoever spoke last
+	// and only the small self view shows that the caller speaks. Needs self.
+	SelfStage bool `yaml:"self_stage"`
+	// Colors recolors the call; unset colors keep the built-in look.
+	Colors *CallColors `yaml:"colors"`
+	// Still keeps the people on camera from swaying and bobbing, so the speaker's
+	// face stays where it is framed; blinks and mouths still move.
+	Still bool `yaml:"still"`
+	// Captions is where the lines of the call show: empty, in captions over the
+	// speaker view; window, in the novel message window under the call, the call
+	// fitted above it (its controls move under the messages); overlay, in the novel
+	// message window laid over the lower part of a full call (layout: full), the
+	// window reaching the screen's lower edge.
+	Captions string `yaml:"captions"`
+	// Layout full fills the screen with the call, the browser maximized: the stage
+	// runs to the screen's lower edge under the message window (captions: overlay)
+	// and the people on camera are framed in the part above it. Empty keeps the
+	// browser window on the wallpaper.
+	Layout string `yaml:"layout"`
+	// Others is where the participants not on the stage stand: empty, in a strip
+	// under the stage; side, in a list of round faces and names in the side column,
+	// in place of the chat transcript. A join or a leave shows as a face coming or
+	// going there, an authored reaction (chat.reaction) under the name.
+	Others string `yaml:"others"`
+	// OthersTitle heads the side list (others: side); empty shows no heading.
+	OthersTitle string `yaml:"others_title"`
+	// WindowOpacity deepens the message window laid over the call (captions:
+	// overlay), 0 to 1; zero keeps ui.material.opacities.message.
+	WindowOpacity float64 `yaml:"window_opacity"`
+}
+
+// PlanningView selects public values and geometry for an authored screen kind.
+// Fields without a consumer for that kind are rejected by the loader.
 type PlanningView struct {
+	// Window adds a desktop title bar to fullscreen islands. Controls are decorative;
+	// authored actions and tabs remain the navigation within the tool.
+	Window string `yaml:"window"`
+
+	Call *EnsembleCall `yaml:"call"`
+
+	// Background supplies a decorative image, independent of simulation state.
+	Background string `yaml:"background"`
+	// Burnup adds a dated work chart to an islands surface and records observed
+	// totals on observe operations. Labels belong to the author, not the engine.
+	Burnup *BurnupView `yaml:"burnup"`
+	// Light uses a quiet paper surface for cards and authored controls.
+	Light bool `yaml:"light"`
+	// FaceShape overrides ui.face_shape on this screen: round or square.
+	FaceShape string `yaml:"face_shape"`
+
+	// Chat enables a side message column and camera tiles with a bounded aspect ratio.
+	Chat *EnsembleChat `yaml:"chat"`
+
+	Guests []string `yaml:"guests"`
+	// GuestBackdrops supplies optional picture paths for non-resident participants.
+	GuestBackdrops map[string]string `yaml:"guest_backdrops"`
 	// Tabs names two to five fullscreen peers, including this screen. Play replaces
 	// the current surface when switching, preserving its original close callback.
 	Tabs []string `yaml:"tabs"`
@@ -538,6 +691,14 @@ type PlanningView struct {
 	// Header and Footer are rendered through the ordinary text interpolator.
 	Header string `yaml:"header"`
 	Footer string `yaml:"footer"`
+	// Band "none" leaves out the full-screen bottom strip (a result screen whose
+	// buttons stand on their own); omitted keeps the strip.
+	Band string `yaml:"band"`
+	// HeaderFace is an interpolated picture path of a small square face crop
+	// drawn at the start of the header text, a state shown by a face instead
+	// of a word; HeaderTint is an interpolated "#rrggbb" ring around it.
+	HeaderFace string `yaml:"header_face"`
+	HeaderTint string `yaml:"header_tint"`
 	// DateFormat uses Go time layout tokens. Weekdays and Phases replace display labels.
 	DateFormat string `yaml:"date_format"`
 	// WeekStart chooses the first calendar column: 0 (default Sunday) through 6.
@@ -556,7 +717,24 @@ type PlanningView struct {
 	Badge    string          `yaml:"badge"`
 	Backdrop string          `yaml:"backdrop"`
 	Mask     string          `yaml:"mask"`
-	Door     string          `yaml:"door"`
+}
+
+// BurnupView labels public work totals. Planned optionally evaluates the cumulative
+// budget with selected.date; omission uses working-day interpolation per activity.
+type BurnupView struct {
+	// Bounds positions an optional compact chart on workspace surfaces.
+	Bounds       []int  `yaml:"bounds"`
+	Compact      bool   `yaml:"compact"`
+	Unit         string `yaml:"unit"`
+	Title        string `yaml:"title"`
+	Total        string `yaml:"total"`
+	PlannedLabel string `yaml:"planned_label"`
+	Observed     string `yaml:"observed"`
+	Today        string `yaml:"today"`
+	Deadline     string `yaml:"deadline"`
+	Planned      Expr   `yaml:"planned"`
+	// Colors recolors the lines; unset colors keep the built-in look.
+	Colors *BurnupColors `yaml:"colors"`
 }
 
 // TimelineRow is an authored group rendered by the timeline view.
@@ -608,13 +786,73 @@ type TimelineMarker struct {
 // PlanningField describes a public value column and optional numeric gauge.
 // Marks and Maximum use the same units as the observed value.
 type PlanningField struct {
-	Key     string    `yaml:"key"`
-	Label   string    `yaml:"label"`
-	Maximum float64   `yaml:"maximum"`
+	Key     string  `yaml:"key"`
+	Label   string  `yaml:"label"`
+	Maximum float64 `yaml:"maximum"`
+	// MaximumKey and WarningKey bind public per-entity gauge limits; zero
+	// maximum disables the gauge. CriticalRatio colors proximity to the limit.
+	MaximumKey    string  `yaml:"maximum_key"`
+	WarningKey    string  `yaml:"warning_key"`
+	CriticalRatio float64 `yaml:"critical_ratio"`
+	// TextKey supplies a public formatted value while Key remains numeric.
+	TextKey string    `yaml:"text_key"`
 	Marks   []float64 `yaml:"marks"`
 }
 
 func (c *checker) planningView(w string, v PlanningView, plain bool) {
+	if v.FaceShape != "" && v.FaceShape != "round" && v.FaceShape != "square" {
+		c.errorf(diag.Shape, w+".face_shape", "face_shape must be round, square or empty")
+	}
+	if v.Call != nil {
+		if v.Chat == nil {
+			c.errorf(diag.OutOfRange, w+".call", "requires chat")
+		}
+		if len(v.Call.Controls) > 6 {
+			c.errorf(diag.OutOfRange, w+".call.controls", "at most six controls")
+		}
+		c.callControls(w+".call.controls", v.Call)
+		if v.Call.Self != "" && !c.callSelf(v.Call.Self) {
+			c.file(w+".call.self", v.Call.Self)
+		}
+		c.text(w+".call.self_label", v.Call.SelfLabel, FieldNames)
+		if v.Call.SelfStage && v.Call.Self == "" {
+			c.errorf(diag.Shape, w+".call.self_stage", "needs self, the view put on the stage")
+		}
+		if v.Call.Captions != "" && v.Call.Captions != "window" && v.Call.Captions != "overlay" {
+			c.errorf(diag.OutOfRange, w+".call.captions", "want window or overlay, got %q", v.Call.Captions)
+		}
+		if v.Call.Layout != "" && v.Call.Layout != "full" {
+			c.errorf(diag.OutOfRange, w+".call.layout", "want full, got %q", v.Call.Layout)
+		}
+		if (v.Call.Layout == "full") != (v.Call.Captions == "overlay") {
+			c.errorf(diag.Shape, w+".call.layout", "layout: full and captions: overlay go together: a full call shows its lines in the window over it")
+		}
+		if v.Call.Others != "" && v.Call.Others != "side" {
+			c.errorf(diag.OutOfRange, w+".call.others", "want side, got %q", v.Call.Others)
+		}
+		c.text(w+".call.others_title", v.Call.OthersTitle, FieldNames)
+		if v.Call.WindowOpacity < 0 || v.Call.WindowOpacity > 1 {
+			c.errorf(diag.OutOfRange, w+".call.window_opacity", "want 0 to 1, got %v", v.Call.WindowOpacity)
+		}
+		if v.Call.WindowOpacity != 0 && v.Call.Captions != "overlay" {
+			c.errorf(diag.Shape, w+".call.window_opacity", "needs captions: overlay, the window over the call")
+		}
+	}
+
+	if v.Burnup != nil {
+		if b := v.Burnup.Bounds; len(b) != 0 && (len(b) != 4 || b[0] < 0 || b[1] < 0 || b[2] < 120 || b[3] < 48) {
+			c.errorf(diag.OutOfRange, w+".burnup.bounds", "requires x, y and a size of at least 120 by 48")
+		}
+		c.planningPure(w+".burnup.planned", v.Burnup.Planned)
+		c.planningNumber(w+".burnup.planned", v.Burnup.Planned)
+		c.exprIn(w+".burnup.planned", v.Burnup.Planned, append(slices.Clone(FieldNames), "selected"), nil)
+	}
+
+	for _, actor := range v.Guests {
+		if c.db.Actors[actor] == nil {
+			c.errorf(diag.UnknownReference, w+".guests", "unknown actor %q", actor)
+		}
+	}
 	p := c.db.Game.Planning
 	if p == nil {
 		return
@@ -700,8 +938,23 @@ func (c *checker) planningView(w string, v PlanningView, plain bool) {
 			destinations[marker.Date] = marker
 		}
 	}
+	c.text(w+".window", v.Window, FieldNames)
 	c.text(w+".header", v.Header, FieldNames)
+	c.text(w+".header_face", v.HeaderFace, FieldNames)
+	if v.HeaderFace != "" && !strings.Contains(v.HeaderFace, "{") {
+		c.file(w+".header_face", v.HeaderFace)
+	}
+	c.text(w+".header_tint", v.HeaderTint, FieldNames)
+	if v.HeaderTint != "" && !strings.Contains(v.HeaderTint, "{") && !dotColor.MatchString(v.HeaderTint) {
+		c.errorf(diag.Shape, w+".header_tint", "a header tint is a #rrggbb color")
+	}
+	if (v.HeaderFace != "" || v.HeaderTint != "") && !v.Fullscreen {
+		c.errorf(diag.Shape, w+".header_face", "a header face belongs to a full-screen view")
+	}
 	c.text(w+".footer", v.Footer, FieldNames)
+	if v.Band != "" && v.Band != "none" {
+		c.errorf(diag.OutOfRange, w+".band", "want none, got %q", v.Band)
+	}
 	seen := map[string]bool{}
 	for _, id := range v.Order {
 		if _, ok := p.Entities[id]; !ok || seen[id] {
@@ -716,13 +969,16 @@ func (c *checker) planningView(w string, v PlanningView, plain bool) {
 			c.needsVersion(at+".key", "field key interpolation", SchemaVersion10)
 			c.text(at+".key", f.Key, FieldNames)
 		} else {
-			keys = append(keys, f.Key)
+			keys = append(keys, f.Key, f.MaximumKey, f.WarningKey, f.TextKey)
 		}
 		if plain {
 			if strings.Contains(f.Label, "{") {
 				c.needsVersion(at+".label", "field label interpolation", SchemaVersion10)
 			}
 			c.text(at+".label", f.Label, FieldNames)
+		}
+		if f.CriticalRatio < 0 || f.CriticalRatio > 1 || math.IsNaN(f.CriticalRatio) {
+			c.errorf(diag.Shape, w, "critical ratio must be between zero and one")
 		}
 		if f.Maximum < 0 || math.IsNaN(f.Maximum) || math.IsInf(f.Maximum, 0) {
 			c.errorf(diag.Shape, w, "gauge maximum must be finite and nonnegative")
@@ -764,5 +1020,51 @@ func (c *checker) planningNumber(w string, e Expr) {
 	t := c.resultType(e, append(slices.Clone(FieldNames), "self", "arg"))
 	if t & ^(expr.NumberType|expr.UnknownType) != 0 {
 		c.errorf(diag.Expression, w, "planning value requires a number; use a numeric expression or an explicit conversion such as int(value)")
+	}
+}
+
+func (c *checker) planningAttributes(w string, attrs map[string]Attribute, reserved []string) {
+	for _, id := range slices.Sorted(maps.Keys(attrs)) {
+		a := attrs[id]
+		at := w + "." + id
+		if !declaredName.MatchString(id) || slices.Contains(reserved, id) {
+			c.errorf(diag.Shape, at, "invalid or reserved attribute ID")
+		}
+		if _, err := a.Value(a.Initial); err != nil {
+			c.errorf(diag.Shape, at+".initial", "%v", err)
+		}
+		if a.Type != "number" && (a.Min != nil || a.Max != nil) {
+			c.errorf(diag.Shape, at, "bounds require number type")
+		}
+	}
+}
+
+// planningVersions keeps the planning vocabulary, the planning views of
+// screens and their bounded entries behind schema 10, so a game that still
+// says 9 is known to load in v0.15.
+func (c *checker) planningVersions() {
+	g := &c.db.Game
+	if g.Planning != nil {
+		c.needsVersion("game.yaml planning", "planning", SchemaVersion10)
+	}
+	for _, name := range slices.Sorted(maps.Keys(g.Screens)) {
+		screen := g.Screens[name]
+		if screen == nil {
+			continue
+		}
+		w := "game.yaml.screens." + name
+		if screen.Kind != "" {
+			c.needsVersion(w+".kind", "planning views", SchemaVersion10)
+		}
+		if !reflect.ValueOf(screen.View).IsZero() {
+			c.needsVersion(w+".view", "screen views", SchemaVersion10)
+		}
+		for i, e := range screen.Entries {
+			if e.Destination != "" || e.Muted.Set() || e.Icon != "" || e.Portrait || e.Tone != "" || len(e.Bounds) > 0 ||
+				e.Style != "" || e.Ticket != nil || e.Carousel != "" || e.Cost != "" || e.Unavailable.Set() || e.Reason != "" ||
+				e.Drag != "" || e.Drop != "" || e.Accepts.Set() || e.Hint != "" || e.Peek != "" || e.Dot != "" || e.Sign != "" || e.Bust != nil || e.Meter != nil || e.Mark != "" {
+				c.needsVersion(fmt.Sprintf("%s.entries[%d]", w, i), "workspace entries", SchemaVersion10)
+			}
+		}
 	}
 }

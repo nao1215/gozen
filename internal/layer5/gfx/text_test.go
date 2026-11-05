@@ -44,6 +44,9 @@ func TestWrapRespectsLineBreakRules(t *testing.T) {
 		{"keep a late word whole", "abc defghijk", 8, []string{"abc ", "defghijk"}},
 		{"split a long word", "ab cdefghijkl", 8, []string{"ab cdefg", "hijkl"}},
 		{"exact fit", "abcde", 5, []string{"abcde"}},
+		{"a number keeps its unit", "あいうえ12年です", 6, []string{"あいうえ", "12年です"}},
+		{"a number keeps its unit across a space", "あいう 12 年です", 7, []string{"あいう ", "12 年です"}},
+		{"a closing mark may follow a number", "あいうえ12。です", 6, []string{"あいうえ", "12。です"}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

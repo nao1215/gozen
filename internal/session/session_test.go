@@ -1466,7 +1466,7 @@ func TestAuthorScreenActionLeavesLocationOrRestoresCheckpoint(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			files := fstest.MapFS{
-				"game.yaml": {Data: []byte("schema_version: 9\nid: screen-exit\nstart: {location: workshop}\nscreens:\n  stock:\n    title: Stock\n    entries:\n    - label: Leave\n      do:\n      " + tc.action + "\n      - set: {var.finished: '1'}\n")},
+				"game.yaml": {Data: []byte("schema_version: 10\nid: screen-exit\nstart: {location: workshop}\nscreens:\n  stock:\n    title: Stock\n    entries:\n    - label: Leave\n      do:\n      " + tc.action + "\n      - set: {var.finished: '1'}\n")},
 				"data/world.yaml": {Data: []byte(`locations: {workshop: {name: Workshop}, yard: {name: Yard}}
 events:
   retry:
@@ -2148,5 +2148,129 @@ func TestRepeatedScreenRowsResumeSelectedIdentity(t *testing.T) {
 	s.Answer(-1)
 	if q := s.Next(); q.Text != "Roster closed." {
 		t.Fatal(q)
+	}
+}
+
+func TestScreenDestinationSurvivesPendingChoiceSave(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml": {Data: []byte(`schema_version: 10
+id: workshop-navigation
+planning:
+  calendar: {start: "2030-01-01", end: "2030-01-02", phases: [morning]}
+  entities: {potter: {name: Potter}}
+  activities: {shape: {name: Shape bowls, effort: 2}}
+start: {location: workshop}
+screens:
+  board:
+    title: Board
+    kind: workspace
+    entries:
+    - label: Prepare
+      destination: receipt
+      do:
+      - choice:
+        - label: Confirm
+          do: [{set: {var.prepared: 'var.prepared+1'}}]
+  receipt:
+    title: Receipt
+    kind: workspace
+    entries: [{label: Board, destination: board}]
+`)},
+		"data/world.yaml": {Data: []byte("locations: {workshop: {name: Workshop}}\nevents: {visit: {do: [{open: board}, {set: {var.closed: 'var.closed+1'}}]}}\n")},
+	}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := session(t, g, gozen.Config{Seed: 17})
+	if err = s.Start("- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Kind != "open" || q.Text != "Board" {
+		t.Fatal(q)
+	}
+	s.Answer(0)
+	if q := s.Next(); q.Kind != "choice" {
+		t.Fatal(q)
+	}
+	b, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err = gozen.Restore(g, b, gozen.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.Next()
+	s.Answer(0)
+	if q := s.Next(); q.Kind != "open" || q.Text != "Receipt" {
+		t.Fatal(q)
+	}
+	b, err = s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err = gozen.Restore(g, b, gozen.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Text != "Receipt" {
+		t.Fatal(q)
+	}
+	s.Answer(0)
+	if q := s.Next(); q.Text != "Board" {
+		t.Fatal(q)
+	}
+	s.Answer(-1)
+	s.Next()
+	if query[float64](t, s, "var.prepared") != 1 || query[float64](t, s, "var.closed") != 1 {
+		t.Fatal("navigation repeated or abandoned effects")
+	}
+}
+
+func TestUnavailableScreenSurvivesReplayWithoutMutation(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml": {Data: []byte(`schema_version: 10
+id: refused-action
+start: {location: room}
+screens:
+  stock:
+    title: Stock
+    entries: [{label: Refused, bounds: [0, 0, 100, 50], unavailable: 'true', do: [{set: {var.executed: '1'}}]}]
+`)},
+		"data/world.yaml": {Data: []byte("locations: {room: {name: Room}}\nevents: {visit: {do: [{open: stock}]}}\n")},
+	}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	live := session(t, g, gozen.Config{Seed: 17})
+	if err := live.Start("- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	if q := live.Next(); q.Kind != "open" {
+		t.Fatal(q)
+	}
+	live.Answer(0)
+	if q := live.Next(); q.Kind != "open" {
+		t.Fatal("refused action left screen", q)
+	}
+	b, err := live.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := gozen.Restore(g, b, gozen.Config{Seed: 17})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q := restored.Next(); q.Kind != "open" {
+		t.Fatal(q)
+	}
+	after, err := restored.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(after), `"executed": 1`) {
+		t.Fatal("refused action executed during replay")
 	}
 }

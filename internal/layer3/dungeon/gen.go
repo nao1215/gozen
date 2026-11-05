@@ -180,24 +180,6 @@ func fmtF(v any) string {
 	return strconv.FormatFloat(f, 'f', -1, 64)
 }
 
-// Maze is a floor's map: rooms joined by a winding maze of corridors (a grid of odd cells,
-// walls between), some walls opened to make loops, the dead ends mostly filled back, the
-// start in a room and the other characters placed on the floor (far ones as far as can be
-// walked from the start).
-func Maze(g *data.Generate, rng *rand.Rand, count func(data.Expr) int) string {
-	return MazeSolid(g, rng, nil, count)
-}
-
-// MazeSolid is Maze knowing which characters cannot be walked through (solid, nil for none):
-// one is never put where it would shut a way (the stairs down, the far ones, any open cell
-// would stay walkable from the start), and the ones put anywhere go to dead ends first.
-func MazeSolid(g *data.Generate, rng *rand.Rand, solid func(rune) bool, count func(data.Expr) int) string {
-	if solid == nil {
-		solid = func(rune) bool { return false }
-	}
-	return MazeKinds(g, rng, func(r rune) Kind { return Kind{Solid: solid(r)} }, count)
-}
-
 // Kind is how a character of a made map is walked (for placing it where it shuts no way).
 type Kind struct {
 	Solid bool   // cannot be walked into (a chest, a hut)
@@ -205,7 +187,7 @@ type Kind struct {
 	Carry bool   // stepping on it takes the party elsewhere (a warp, a pit): not walked through
 }
 
-// MazeKinds is MazeSolid knowing more of the characters (kind): slides are placed only where
+// MazeKinds generates connected rooms and corridors. Slides are placed only where
 // every open cell can still be walked to from the start and back, and so are the tiles that
 // carry the party away (a pit is not put in the only way on).
 func MazeKinds(g *data.Generate, rng *rand.Rand, kind func(rune) Kind, count func(data.Expr) int) string {

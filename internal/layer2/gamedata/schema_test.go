@@ -211,7 +211,7 @@ func (b *schemaBuilder) node(t reflect.Type) schemaNode {
 			b.constraints(t, n, props)
 			switch t {
 			case reflect.TypeFor[IDRef](), reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
-				reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[StreamLine]():
+				reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[StreamLine](), reflect.TypeFor[CallControl](), reflect.TypeFor[ProfileFace]():
 				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "string"}, n}}
 			case reflect.TypeFor[CrowdLines](): // a list is the lines of any hour
 				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "array", "items": schemaNode{"type": "string"}}, n}}
@@ -349,7 +349,7 @@ func schemaContract(owner reflect.Type, field reflect.StructField, name string) 
 	}
 
 	key := owner.Name() + "." + name
-	if owner == reflect.TypeFor[IDRef]() {
+	if owner == reflect.TypeFor[IDRef]() || owner == reflect.TypeFor[NovelWindow]() || key == "UIStyle.quick_menu" || key == "UIStyle.novel_window" || key == "UIStyle.choice_position" || key == "UIStyle.title" || owner == reflect.TypeFor[TitleMenu]() || key == "MaterialStyle.opacities" {
 		c.Version = "10"
 	}
 	if value, ok := schemaDefaults[key]; ok {
@@ -632,7 +632,7 @@ func schemaTypeLabel(t reflect.Type) string {
 		result := "[" + schemaName(t) + "](#" + strings.ToLower(schemaName(t)) + ")"
 		switch t {
 		case reflect.TypeFor[IDRef](), reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
-			reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[StreamLine]():
+			reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[StreamLine](), reflect.TypeFor[CallControl](), reflect.TypeFor[ProfileFace]():
 			result += " または文字列"
 		case reflect.TypeFor[WaitCue]():
 			result += " または数値"

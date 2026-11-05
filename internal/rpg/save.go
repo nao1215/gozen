@@ -83,7 +83,18 @@ func (s *State) Save() ([]byte, error) {
 	if err := s.validatePlanning(); err != nil {
 		return nil, err
 	}
-	b, err := json.Marshal(s)
+	copyState := *s
+	if s.Planning != nil {
+		ps := *s.Planning
+		p := s.DB.Game.Planning
+		ps.Basis = &planningBasis{Start: p.Calendar.Start, End: p.Calendar.End, Efforts: map[string]float64{}, From: map[string]string{}}
+		for id, a := range p.Activities {
+			ps.Basis.Efforts[id] = a.Effort
+			ps.Basis.From[id] = a.From
+		}
+		copyState.Planning = &ps
+	}
+	b, err := json.Marshal(&copyState)
 	if err != nil {
 		return nil, err
 	}
@@ -266,6 +277,9 @@ func (s *State) bind() (*State, error) {
 		s.Rand = rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())) //nolint:gosec // Gameplay randomness; no security-sensitive values.
 	}
 	if err := s.validateStateNames(); err != nil {
+		return nil, err
+	}
+	if err := s.reconcilePlanning(); err != nil {
 		return nil, err
 	}
 	if err := s.validatePlanning(); err != nil {
@@ -566,27 +580,29 @@ func (s *State) KeepCheckpoint(event string, rnd []byte) error {
 }
 
 // RetryCheckpoint returns an independent restored state. It leaves the current
-// state untouched on failure. Frontends restore SavedRand before starting Event
+// state untouched on failure. It restores the random stream shared by the state
+// and frontend. Frontends start Event
 // from the retained Checkpoint and discard their old execution and presentation.
-func (s *State) RetryCheckpoint() (*State, error) {
+func (s *State) RetryCheckpoint() (*State, *rand.PCG, error) {
 	c := s.Checkpoint
 	if c == nil {
-		return nil, errors.New("no checkpoint has been recorded")
+		return nil, nil, errors.New("no checkpoint has been recorded")
 	}
 	if s.DB.Events[c.Event] == nil {
-		return nil, fmt.Errorf("checkpoint: unknown event %q", c.Event)
+		return nil, nil, fmt.Errorf("checkpoint: unknown event %q", c.Event)
 	}
 	st, err := Parse(s.DB, c.Save, nil)
 	if err != nil {
-		return nil, fmt.Errorf("checkpoint: %w", err)
+		return nil, nil, fmt.Errorf("checkpoint: %w", err)
 	}
 	if st.Checkpoint != nil || st.Resume != nil {
-		return nil, errors.New("checkpoint contains nested state or a cursor")
+		return nil, nil, errors.New("checkpoint contains nested state or a cursor")
 	}
 	p := rand.NewPCG(1, 2)
 	if err := p.UnmarshalBinary(st.SavedRand); err != nil {
-		return nil, fmt.Errorf("checkpoint random state: %w", err)
+		return nil, nil, fmt.Errorf("checkpoint random state: %w", err)
 	}
 	st.Checkpoint = &Checkpoint{Event: c.Event, Save: slices.Clone(c.Save)}
-	return st, nil
+	st.Rand = rand.New(p) //nolint:gosec // Restores deterministic gameplay.
+	return st, p, nil
 }

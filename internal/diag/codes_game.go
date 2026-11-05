@@ -3,6 +3,11 @@ package diag
 // GZN01xx: warnings of check. The game loads and the command exits 0, but
 // something is likely not what the author meant.
 var (
+	SpeechConsistency = register(123, "SpeechConsistency", Entry{
+		Summary: "dialogue differs from the speaker's declared language style",
+		Detail:  "An opt-in speech rule found an explicitly discouraged form in a literal line.",
+		Fix:     "Review the line or the actor's speech rules; quoted dialogue may be intentional.",
+	})
 	YAMLComplexity = register(122, "YAMLComplexity", Entry{
 		Summary: "authored YAML is complex or repetitive",
 		Detail:  "Source metrics exceed an authoring budget; these heuristics do not change game behavior.",

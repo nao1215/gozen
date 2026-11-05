@@ -55,8 +55,9 @@ func (c *command) simScript() clihelp.Operation {
 		if _, err := gameFS(dir); err != nil {
 			return err
 		}
+		fsys := os.DirFS(dir)
 		opts := play.Options{
-			FS: os.DirFS(dir), Seed: *seed, SaveDir: *saveDir,
+			FS: fsys, DB: c.games.definitions(dir, fsys), Seed: *seed, SaveDir: *saveDir,
 			Location: *start, Battle: *fight, Party: commaList(*party), Level: *level, Flags: commaList(*flags),
 			Gold: *gold, Items: commaList(*items), Floor: *floor, Calm: *calm, Event: *event, Line: *line,
 		}

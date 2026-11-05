@@ -14,7 +14,7 @@ import (
 func messageMetrics(gm *data.Game) (size, width float64) {
 	sw := logicalWidth(gm)
 	if gm.UI.Message == "novel" {
-		return novelSize, sw - 300
+		return novelSize, novelTextWidth(gm, sw)
 	}
 	return talkSize, sw - 80 - 100
 }

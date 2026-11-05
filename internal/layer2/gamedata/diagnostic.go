@@ -3,6 +3,7 @@ package gamedata
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -99,6 +100,10 @@ type sourceDocument struct {
 	// converts such a key to a string for a map, but silently skips the whole struct
 	// that holds one.
 	bareKeys map[string]bool
+	// sorted is the keys of positions in order, so keepSources finds the paths under a
+	// prefix by binary search instead of scanning every path for every definition.
+	// It is rebuilt when positions grows (paths are only ever added).
+	sorted []string
 }
 
 func (db *DB) readSource(b []byte, name string) (*sourceDocument, error) {
@@ -347,9 +352,17 @@ func (db *DB) diagnostic(where, message string) error {
 
 // keepSources re-attaches only paths that change on merging, such as the serial numbers of composition.
 func (db *DB) keepSources(doc *sourceDocument, from, to string) {
-	for p, at := range doc.positions {
-		if p == from || strings.HasPrefix(p, from+".") || strings.HasPrefix(p, from+"[") {
-			db.sources[to+strings.TrimPrefix(p, from)] = at
+	if len(doc.sorted) != len(doc.positions) {
+		doc.sorted = slices.Sorted(maps.Keys(doc.positions))
+	}
+	// Every path that starts with from sorts in one run beginning at from.
+	i, _ := slices.BinarySearch(doc.sorted, from)
+	for _, p := range doc.sorted[i:] {
+		if !strings.HasPrefix(p, from) {
+			break
+		}
+		if rest := p[len(from):]; rest == "" || rest[0] == '.' || rest[0] == '[' {
+			db.sources[to+rest] = doc.positions[p]
 		}
 	}
 }

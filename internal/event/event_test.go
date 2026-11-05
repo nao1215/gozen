@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -570,6 +571,31 @@ func TestSayCarriesEnsembleWithoutChangingText(t *testing.T) {
 	got, ok := r.Next().(event.Say)
 	if !ok || got.Ensemble != "gathering" || got.Actor != "scout" || got.Text != "Welcome, everyone." {
 		t.Fatalf("line lost presentation or identity: %+v", got)
+	}
+}
+
+// TestCallEnsembleReachesTheCalleesLines: call.ensemble shows the called event's lines,
+// and those of the events it calls, over the call; a line naming its own call keeps it,
+// and the caller's own lines after the call return name none.
+func TestCallEnsembleReachesTheCalleesLines(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Events["shared"] = &data.Event{Do: []data.Command{
+		{Say: &data.Say{Text: "Shared line."}},
+		{Call: data.EventCall{Event: "deeper"}},
+		{Say: &data.Say{Text: "Own call.", Ensemble: "other"}},
+	}}
+	db.Events["deeper"] = &data.Event{Do: []data.Command{{Say: &data.Say{Text: "Deeper line."}}}}
+	r := event.New(db, testgame.State(db, 1), &host{})
+	r.Start([]data.Command{{Call: data.EventCall{Event: "shared", Ensemble: "gathering"}}, {Say: &data.Say{Text: "Back at the desk."}}})
+	var got []string
+	for req := r.Next(); req != nil; req = r.Next() {
+		if s, ok := req.(event.Say); ok {
+			got = append(got, s.Text+"@"+s.Ensemble)
+		}
+	}
+	want := []string{"Shared line.@gathering", "Deeper line.@gathering", "Own call.@other", "Back at the desk.@"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("lines %v, want %v", got, want)
 	}
 }
 
@@ -1166,5 +1192,107 @@ func TestSelectedChoiceSourcePreservesReadIdentity(t *testing.T) {
 	r.Answer(0)
 	if line := testgame.As[event.Say](t, r.Next()); line.Text != "Selected Weaver" {
 		t.Fatal(line)
+	}
+}
+
+func TestInstantNarration(t *testing.T) {
+	db := testgame.Load(t, nil)
+	st, control := testgame.State(db, 17), testgame.State(db, 17)
+	r := event.New(db, st, &host{})
+	r.Start([]data.Command{{Say: &data.Say{Text: "A new season begins.", Instant: true}}})
+	line := testgame.As[event.Say](t, r.Next())
+	if !line.Instant || line.Reword(db).Instant != true || st.Rand.Uint64() != control.Rand.Uint64() {
+		t.Fatal("presentation changed state or lost instant flag")
+	}
+}
+
+func TestSelectedPortraitDoesNotChangeReadIdentityOrRandomness(t *testing.T) {
+	db := testgame.Load(t, nil)
+	for _, source := range []string{`"happy"`, `true ? "happy" : "calm"`, `42`, `rand()`} {
+		st, control := testgame.State(db, 17), testgame.State(db, 17)
+		r := event.New(db, st, &host{})
+		failed := false
+		r.Log = func(error) { failed = true }
+		r.Start([]data.Command{{Say: &data.Say{Who: data.IDRef{ID: "scout"}, FaceExpr: data.MustExpr(source), Text: "A new season."}}})
+		result := r.Next()
+		if source == `42` || source == `rand()` {
+			if result != nil || !failed {
+				t.Fatal("invalid portrait expression accepted")
+			}
+		} else {
+			line := testgame.As[event.Say](t, result)
+			if line.Key != event.SourceKey("scout", "A new season.") || line.Face != db.FacePicture(db.Actors["scout"], "happy", "") {
+				t.Fatalf("portrait: %+v", line)
+			}
+		}
+		if st.Rand.Uint64() != control.Rand.Uint64() {
+			t.Fatal("portrait consumed randomness")
+		}
+	}
+}
+
+// Authored state selection is shared by any speaker and reads current state on
+// each call. Merely hearing a line must not change a relationship or draw RNG.
+func TestAuthoredStateDialogueIsReadOnly(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+events:
+  greeting:
+    do:
+      - if: var.energy < 20
+        then: [{say: {who: scout, text: "Let us take a break."}}]
+        else:
+          - if: flag.returned
+            then: [{say: {who: guide, text: "Welcome back."}}]
+            else: [{say: {who: scout, text: "Ready to explore?"}}]
+`})
+	for _, tc := range []struct {
+		energy   float64
+		returned bool
+		want     string
+	}{
+		{10, true, "Let us take a break."},
+		{50, true, "Welcome back."},
+		{50, false, "Ready to explore?"},
+	} {
+		st := testgame.State(db, 17)
+		st.Vars["energy"] = tc.energy
+		st.Vars["relationship"] = 50.0
+		st.Flags["returned"] = tc.returned
+		r := event.New(db, st, &host{})
+		r.Log = func(err error) { t.Error(err) }
+		for range 2 {
+			r.Start(db.Events["greeting"].Do)
+			got, ok := r.Next().(event.Say)
+			if !ok || got.Text != tc.want {
+				t.Fatalf("line = %#v, want %q", got, tc.want)
+			}
+			if r.Next() != nil {
+				t.Fatal("unexpected extra dialogue")
+			}
+			if st.Vars["relationship"] != 50.0 || st.Vars["energy"] != tc.energy || st.Flags["returned"] != tc.returned {
+				t.Fatal("dialogue mutated state")
+			}
+		}
+	}
+}
+
+func TestScreenRowUnavailableFailsClosed(t *testing.T) {
+	db := testgame.Load(t, nil)
+	for _, tc := range []struct {
+		condition string
+		available bool
+		failure   bool
+	}{
+		{"", true, false}, {"false", true, false}, {"true", false, false}, {"missing.value", false, true},
+	} {
+		source := data.ScreenEntry{}
+		if tc.condition != "" {
+			source.Unavailable = data.MustExpr(tc.condition)
+		}
+		row := event.ScreenRow{ScreenEntry: source}
+		got, err := row.Available(db, source, expr.Map{})
+		if got != tc.available || (err != nil) != tc.failure {
+			t.Errorf("%s: %v %v", tc.condition, got, err)
+		}
 	}
 }

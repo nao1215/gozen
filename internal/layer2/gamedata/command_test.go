@@ -19,6 +19,7 @@ import (
 // written.
 var commandExamples = map[string]string{
 	"checkpoint":         `checkpoint: sub`,
+	"carry":              `carry: true`,
 	"restore_checkpoint": `restore_checkpoint: true`,
 	"plan":               `plan: {op: observe}`,
 	"capture":            "capture: mote",
@@ -31,7 +32,7 @@ var commandExamples = map[string]string{
 	"breed":  `breed: {parents: [monster_1, monster_2], skills: [fire]}`,
 	"affect": `affect: {who: all, remove: bad}`, "battle": `battle: one`,
 	"move": `move: deep`, "music": `music: ""`, "mood": `mood: calm`, "image": `image: ""`,
-	"shop": `shop: store`, "call": `call: sub`, "wait": `wait: 1`, "notice": `notice: hi`,
+	"shop": `shop: store`, "call": `call: sub`, "wait": `wait: 1`, "notice": `notice: hi`, "message": `message: {who: scout, text: hi, event: sub}`, "call_view": `call_view: {camera: {who: scout, on: true}}`,
 	"sfx": `sfx: decide`, "exp": `exp: 0`, "learn": `learn: {actor: scout, skill: fire}`,
 	"reset_tree": `reset_tree: all`, "reset_actor": `reset_actor: scout`, "effect": `effect: fade`, "stand": `stand: none`, "end": `end: true`,
 	"clear": `clear: true`, "save": `save: true`, "open": `open: skills`,
@@ -95,7 +96,7 @@ func TestCommandFieldMatrix(t *testing.T) {
 		if slices.Contains(data.NewVerbs, wantVerb) || wantVerb == "stand" || campaign || wantVerb == "checkpoint" || wantVerb == "restore_checkpoint" { // a spec version 2 (stand: 4, a campaign's: 5) command yields only a version error in older versions
 			var rest []error
 			for _, e := range errs {
-				if !strings.Contains(e.Error(), "needs schema_version: 2") && !strings.Contains(e.Error(), "stand needs schema_version: 4") && !strings.Contains(e.Error(), "needs schema_version: 5") && !strings.Contains(e.Error(), "needs schema_version: 9") {
+				if !strings.Contains(e.Error(), "needs schema_version: 2") && !strings.Contains(e.Error(), "stand needs schema_version: 4") && !strings.Contains(e.Error(), "needs schema_version: 5") && !strings.Contains(e.Error(), "needs schema_version: 10") {
 					rest = append(rest, e)
 				}
 			}
@@ -113,9 +114,9 @@ func TestCommandFieldMatrix(t *testing.T) {
 		}
 	}
 	for verb, src := range commandExamples {
-		if verb == "plan" || verb == "capture" || verb == "respond" || verb == "reserve" || verb == "release" || verb == "breed" {
+		if verb == "plan" || verb == "capture" || verb == "respond" || verb == "reserve" || verb == "release" || verb == "breed" || verb == "carry" {
 			continue
-		} // covered with schema version 6 in monster_test.go
+		} // covered with schema version 6 in monster_test.go; carry needs schema 10 and game.yaml carry (TestCarryCheck)
 		t.Run(verb, func(t *testing.T) {
 			check(t, src, verb, "")
 			for _, field := range fields {

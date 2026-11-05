@@ -27,6 +27,40 @@ func (g *Game) hasAuthorScreen() bool {
 	return false
 }
 
+// homeCheckpoint reports whether a save now falls back to the last checkpoint:
+// a home screen is open, its own replay cannot be saved, and a checkpoint exists.
+func (g *Game) homeCheckpoint() bool {
+	if g.st == nil || g.st.Checkpoint == nil || g.screenSaveAllowed() {
+		return false
+	}
+	for _, view := range g.stack {
+		if s, ok := view.(*authorScreen); ok {
+			if def := g.db.Game.Screens[s.name]; def != nil && def.Home {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// saveCheckpoint saves the last checkpoint: loading it starts the checkpoint's
+// event again, as a retry would, and keeps the checkpoint for later retries.
+func (g *Game) saveCheckpoint() ([]byte, error) {
+	st, _, err := g.st.RetryCheckpoint()
+	if err != nil {
+		return nil, err
+	}
+	b, err := st.Save()
+	if err != nil {
+		return nil, err
+	}
+	c := rpg.Cursor{Event: st.Checkpoint.Event}
+	if err := c.Seal(g.db); err != nil {
+		return nil, err
+	}
+	return rpg.WithCursor(b, c, st.SavedRand)
+}
+
 func (g *Game) screenContinuation() bool {
 	return g.hasAuthorScreen() || g.screenTrace.saw && g.events != nil && g.events.Running()
 }
@@ -100,6 +134,7 @@ func (g *Game) installScreenReplay(probe *savedReplay, replay event.ScreenReplay
 		frame.Runner.OnStart = g.onEventStart
 		s := newAuthorScreen(g, frame.Name, func() { g.req = nil }, frame.Args)
 		s.origin = frame.Origin
+		s.destination = frame.Destination
 		s.running = i < len(replay.Frames)-1 || replay.View.Kind != "open"
 		if s.running {
 			s.parent = frame.Runner

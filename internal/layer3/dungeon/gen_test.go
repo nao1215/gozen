@@ -16,7 +16,7 @@ func TestAMadeFloorIsAllReachable(t *testing.T) {
 		Place: []data.Put{{Char: ">", Far: true}, {Char: "T"}, {Char: "T"}},
 	}
 	for seed := range uint64(40) {
-		m := Maze(g, rand.New(rand.NewPCG(seed, 1)), func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
+		m := MazeKinds(g, rand.New(rand.NewPCG(seed, 1)), func(rune) Kind { return Kind{} }, func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
 		rows := strings.Split(strings.TrimRight(m, "\n"), "\n")
 		var sx, sy int
 		open := 0
@@ -56,8 +56,8 @@ func TestAMadeFloorIsAllReachable(t *testing.T) {
 		}
 	}
 	// the same seed makes the same floor
-	a := Maze(g, rand.New(rand.NewPCG(5, 2)), func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
-	b := Maze(g, rand.New(rand.NewPCG(5, 2)), func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
+	a := MazeKinds(g, rand.New(rand.NewPCG(5, 2)), func(rune) Kind { return Kind{} }, func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
+	b := MazeKinds(g, rand.New(rand.NewPCG(5, 2)), func(rune) Kind { return Kind{} }, func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
 	if a != b {
 		t.Fatal("the same seed made two floors")
 	}
@@ -70,7 +70,7 @@ func TestEventsAtSetPlaces(t *testing.T) {
 		Place: []data.Put{{Char: "E", At: &at}, {Char: "W", Steps: 6}, {Char: ">", Far: true}},
 	}
 	for seed := range uint64(20) {
-		m := Maze(g, rand.New(rand.NewPCG(seed, 3)), func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
+		m := MazeKinds(g, rand.New(rand.NewPCG(seed, 3)), func(rune) Kind { return Kind{} }, func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
 		rows := strings.Split(strings.TrimRight(m, "\n"), "\n")
 		if rows[3][3] != 'E' && rows[3][3] != 'S' {
 			t.Fatalf("seed %d: no E at (3,3):\n%s", seed, m)
@@ -142,7 +142,7 @@ func TestSolidThingsNeverShutTheWay(t *testing.T) {
 			},
 		}
 		for seed := range uint64(150) {
-			m := MazeSolid(g, rand.New(rand.NewPCG(seed, uint64(floor)*7919+1)), solid, func(e data.Expr) int { //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
+			m := MazeKinds(g, rand.New(rand.NewPCG(seed, uint64(floor)*7919+1)), func(r rune) Kind { return Kind{Solid: solid(r)} }, func(e data.Expr) int { //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
 				if !e.Set() {
 					return 1
 				}
@@ -283,7 +283,7 @@ func TestPutNearTheStairs(t *testing.T) {
 	}
 	placed, cut := 0, 0
 	for seed := range uint64(60) {
-		m := Maze(g, rand.New(rand.NewPCG(seed, 1)), func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
+		m := MazeKinds(g, rand.New(rand.NewPCG(seed, 1)), func(rune) Kind { return Kind{} }, func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
 		rows := strings.Split(strings.TrimRight(m, "\n"), "\n")
 		sx, sy, ax, ay, gx, gy := 0, 0, -1, -1, -1, -1
 		for y, r := range rows {

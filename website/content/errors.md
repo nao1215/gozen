@@ -15,7 +15,7 @@ Codes are assigned one family at a time. A diagnostic without a code still exits
 
 | Codes | Exit | Meaning | Assigned |
 |---------|---------|---------|---------|
-| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 22 codes |
+| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 23 codes |
 | `GZN02xx` | 0 | warnings of a measurement or a record | not yet |
 | `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 13 codes |
 | `GZN12xx` | 1 | fonts and text layout | 1 codes |
@@ -211,6 +211,14 @@ Authored YAML is complex or repetitive.
 Source metrics exceed an authoring budget; these heuristics do not change game behavior.
 
 Fix: Extract shared behavior or review the budgets in check-complexity.yaml; see docs/development/yaml-complexity.md.
+
+### GZN0123
+
+Dialogue differs from the speaker's declared language style.
+
+An opt-in speech rule found an explicitly discouraged form in a literal line.
+
+Fix: Review the line or the actor's speech rules; quoted dialogue may be intentional.
 
 ## GZN11xx
 

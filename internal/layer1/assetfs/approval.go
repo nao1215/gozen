@@ -38,17 +38,6 @@ func field(m map[string]any, key string) any {
 	return v
 }
 
-// Blocking returns the unapproved records.
-func Blocking(ins []Approval) []Approval {
-	var out []Approval
-	for _, a := range ins {
-		if !a.Approved {
-			out = append(out, a)
-		}
-	}
-	return out
-}
-
 // Gate is the approval check shared by distribution and capture. Under Watch, a source image with
 // no record is not accepted.
 type Gate struct {

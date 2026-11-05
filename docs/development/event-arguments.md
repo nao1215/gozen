@@ -721,3 +721,7 @@ annotations, never event dispatch. An omitted label preserves the existing count
 fallback; internal event IDs are not displayed. Authored markers precede schedule
 labels, and schedule labels retain reservation order. The workshop assembly
 illustrates a dated reservation; weekday reservations use the same mechanism.
+
+Plain authored lists also have a mouse back arrow in the upper-right corner. For
+example, open the stock list and click the arrow to resume its caller. It follows
+the same cancellation and screen-transcript path as Escape.

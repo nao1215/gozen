@@ -1,3 +1,5 @@
+actors:
+  visitor: {name: Visiting potter}
 locations: {workshop: {name: Workshop}}
 events:
   opening:
@@ -35,4 +37,4 @@ events:
           - clear: true
   assembly:
     do:
-      - say: The residents discuss the next batch of bowls.
+      - say: {who: visitor, text: The residents discuss the next batch of bowls., ensemble: assembly, instant: true}

@@ -269,7 +269,7 @@ func wrapWith(s string, fits func([]rune) bool) []string {
 
 				cut := -1
 				for i := len(line) - 1; i > 0; i-- {
-					if line[i] == ' ' {
+					if line[i] == ' ' && !numberUnit(line, i, r) {
 						cut = i
 						break
 					}
@@ -307,7 +307,10 @@ func wrapWith(s string, fits func([]rune) bool) []string {
 					if k < len(line) {
 						after = line[k]
 					}
-					if isWordRune(line[k-1]) && isWordRune(after) {
+					// A number keeps the unit after it (a count and its counter word): the line breaks before the number.
+					if j := numberStart(line, k); j >= 0 && after >= 0x80 && !isClosing(after) && j*2 >= len(line) {
+						k = j
+					} else if isWordRune(line[k-1]) && isWordRune(after) {
 						j := k
 						for j > 0 && isWordRune(line[j-1]) {
 							j--
@@ -331,6 +334,32 @@ func wrapWith(s string, fits func([]rune) bool) []string {
 		out = append(out, string(line))
 	}
 	return out
+}
+
+// numberUnit reports whether the space at line[i] joins a number to a unit written
+// after it in another script; next is the rune after the line.
+func numberUnit(line []rune, i int, next rune) bool {
+	after := next
+	if i+1 < len(line) {
+		after = line[i+1]
+	}
+	return i > 0 && line[i-1] >= '0' && line[i-1] <= '9' && after >= 0x80
+}
+
+// numberStart is where the number ending at line[k-1] (or before a space there)
+// begins, -1 when no number ends there.
+func numberStart(line []rune, k int) int {
+	j := k
+	if j > 1 && line[j-1] == ' ' {
+		j--
+	}
+	if j == 0 || line[j-1] < '0' || line[j-1] > '9' {
+		return -1
+	}
+	for j > 0 && isWordRune(line[j-1]) {
+		j--
+	}
+	return j
 }
 
 func isWordRune(r rune) bool {

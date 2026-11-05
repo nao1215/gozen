@@ -10,7 +10,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"testing/fstest"
 
 	"github.com/nao1215/gozen/internal/savefile"
 )
@@ -71,24 +70,6 @@ func TestPrepareFailsWhenTheRootIsAFile(t *testing.T) {
 	}
 	if _, err := savefile.Prepare("game", savefile.Config{Root: root}); err == nil {
 		t.Fatal("a file where the save root should be a directory was accepted")
-	}
-}
-
-func TestLoadReadsOnlyValidPaths(t *testing.T) {
-	fsys := fstest.MapFS{"a/save.json": {Data: []byte("1")}}
-	if b, err := savefile.Load(fsys, "a/save.json"); err != nil || string(b) != "1" {
-		t.Fatalf("%q %v", b, err)
-	}
-	for _, p := range []string{"", "/a/save.json", "../a", "a/../a/save.json", "a//save.json"} {
-		if _, err := savefile.Load(fsys, p); !errors.Is(err, fs.ErrInvalid) {
-			t.Errorf("%q: %v", p, err)
-		}
-	}
-	if _, err := savefile.Load(nil, "a"); !errors.Is(err, fs.ErrInvalid) {
-		t.Error("a nil file system is invalid")
-	}
-	if _, err := savefile.Load(fsys, "a/none.json"); !errors.Is(err, fs.ErrNotExist) {
-		t.Error("a missing file is fs.ErrNotExist")
 	}
 }
 

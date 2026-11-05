@@ -42,3 +42,30 @@ func TestChoiceID(t *testing.T) {
 		}
 	}
 }
+
+func TestMaterialSettings(t *testing.T) {
+	for _, c := range []struct {
+		body  string
+		valid bool
+	}{
+		{"{kind: mica, blur: 12, opacity: 0.6, surfaces: {card: acrylic, control: glass}, wallpaper: ['#e5e9ef', '#b6d4d5', '#d9ccbb']}", true},
+		{"{kind: opaque}", true},
+		{"{kind: glass, refraction: 32, wallpaper_strength: 1}", true},
+		{"{kind: glass, refraction: -1}", false},
+		{"{kind: glass, refraction: 33}", false},
+		{"{kind: glass, wallpaper_strength: 1.01}", false},
+		{"{kind: glass, wallpaper_strength: -0.01}", false},
+		{"{kind: glass, blur: 65}", false},
+		{"{kind: glass, opacity: -0.1}", false},
+		{"{kind: glass, shadow: 1.1}", false},
+		{"{kind: glass, surfaces: {unknown: mica}}", false},
+		{"{kind: glass, surfaces: {card: unknown}}", false},
+		{"{kind: glass, wallpaper: ['#ffffff']}", false},
+		{"{kind: unknown}", false},
+	} {
+		_, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: 10\nid: material\nui: {material: " + c.body + "}\n" + testgame.Game})
+		if (err == nil) != c.valid {
+			t.Errorf("%s: %v", c.body, err)
+		}
+	}
+}

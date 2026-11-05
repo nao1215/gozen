@@ -39,6 +39,7 @@ func (v ReplayView) Digest() (string, error) {
 // by the result; definitions remain read-only. Frames are outermost first.
 type ScreenReplayFrame struct {
 	Name, Origin string
+	Destination  string
 	Args         map[string]any
 	Runner       *Runner
 	Indices      []int
@@ -141,13 +142,14 @@ func (r *Runner) ReplayScreens(inputs []rpg.ReplayInput, pending Request) (Scree
 					s.Request, s.View = nil, ReplayView{}
 				} else {
 					entry := r.db.Game.Screens[f.Name].Entries[f.Indices[n]]
-					visible, err := f.Rows[n].Visible(r.db, entry, expr.Chain{expr.Map{"arg": expr.Map(f.Args)}, r.st.Env()})
+					visible, err := f.Rows[n].Available(r.db, entry, expr.Chain{expr.Map{"arg": expr.Map(f.Args)}, r.st.Env()})
 					if err != nil {
 						return s, err
 					}
 					if !visible {
 						s.screen()
-					} else if len(entry.Do) > 0 {
+					} else if len(entry.Do) > 0 || entry.Destination != "" {
+						f.Destination = entry.Destination
 						child := New(r.db, r.st, host)
 						child.Sortie, child.Dev, child.UseItem, child.Act = r.Sortie, r.Dev, r.UseItem, r.Act
 						child.BlockAside = r.BlockAside
@@ -179,7 +181,11 @@ func (r *Runner) ReplayScreens(inputs []rpg.ReplayInput, pending Request) (Scree
 						if len(s.Frames) == 0 {
 							return s, errors.New("load: missing screen continuation")
 						}
-						s.Runner = s.Frames[len(s.Frames)-1].Runner
+						f := &s.Frames[len(s.Frames)-1]
+						s.Runner = f.Runner
+						if f.Destination != "" {
+							f.Name, f.Args, f.Destination = f.Destination, nil, ""
+						}
 						s.screen()
 						break
 					}

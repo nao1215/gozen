@@ -1056,17 +1056,18 @@ func TestTimelineZoomBrowsing(t *testing.T) {
 	}
 }
 
-func TestPlanningTorsoBounds(t *testing.T) {
+func TestPortraitTransform(t *testing.T) {
 	bounds := image.Rect(0, 0, 1000, 2000)
-	for _, head := range []image.Rectangle{image.Rect(600, 120, 800, 320), image.Rect(0, 0, 200, 200), image.Rect(800, 1700, 1000, 1900)} {
-		crop := planningTorsoBounds(bounds, head)
-		if !head.In(crop) || !crop.In(bounds) || crop.Dy() > 500 {
-			t.Fatalf("head %v: invalid chest crop %v", head, crop)
+	for _, face := range []image.Rectangle{image.Rect(400, 80, 600, 280), image.Rect(50, 900, 350, 1200), image.Rect(800, 0, 1000, 200)} {
+		s, x, y := portraitTransform(bounds, face, 20, 40, 300, 60)
+		if math.Abs(float64(face.Min.Y)*s+y-40) > 0.001 || math.Abs(float64(face.Dy())*s-60) > 0.001 || math.Abs(float64(face.Min.X+face.Dx()/2)*s+x-170) > 0.001 {
+			t.Fatalf("face %v: %v %v %v", face, s, x, y)
 		}
 	}
-	for _, head := range []image.Rectangle{{}, image.Rect(2000, 0, 2100, 100)} {
-		if got := planningTorsoBounds(bounds, head); got != bounds {
-			t.Fatalf("unusable head %v: %v", head, got)
+	for _, face := range []image.Rectangle{{}, image.Rect(2000, 0, 2100, 100)} {
+		s, _, _ := portraitTransform(bounds, face, 0, 0, 300, 60)
+		if s <= 0 || math.IsNaN(s) {
+			t.Fatal("invalid fallback")
 		}
 	}
 }
@@ -1074,7 +1075,7 @@ func TestPlanningTorsoBounds(t *testing.T) {
 func TestEnsembleRegionsKeepFacesAboveSummary(t *testing.T) {
 	for _, h := range []float64{120, 160, 240, 400} {
 		face, summary := ensembleHeights(h, 2)
-		if face < (h-28)*2/3-0.001 || summary > (h-28)/3+0.001 || math.Abs(face+summary+28-h) > 0.001 {
+		if face < 0 || summary < min(48, h-28) || math.Abs(face+summary+28-h) > 0.001 {
 			t.Fatalf("height %v: face %v summary %v", h, face, summary)
 		}
 		face, summary = ensembleHeights(h, 0)
@@ -1136,4 +1137,49 @@ func TestSelectedDateLinkAndScheduleLabels(t *testing.T) {
 	if string(before) != string(after) {
 		t.Fatal("browsing changed state")
 	}
+}
+
+// On a light surface the timeline is pale with filled bars: the planned span
+// is not a dark color, the shortfall is orange and the report deep blue; the
+// dark palette of other surfaces stays as it was.
+func TestTimelineLightPalette(t *testing.T) {
+	dark := timelinePalette(false, color.NRGBA{230, 230, 230, 255}, color.NRGBA{150, 150, 150, 255}, color.NRGBA{90, 160, 255, 255})
+	if dark.inside != (color.NRGBA{30, 34, 40, 255}) || dark.holiday != (color.NRGBA{48, 53, 62, 255}) || dark.lateFill {
+		t.Fatal("the dark timeline changed", dark)
+	}
+	light := timelinePalette(true, color.NRGBA{40, 49, 58, 255}, color.NRGBA{91, 104, 116, 255}, color.NRGBA{37, 105, 109, 255})
+	luma := func(c color.NRGBA) int { return (299*int(c.R) + 587*int(c.G) + 114*int(c.B)) / 1000 }
+	if luma(light.inside) < 180 || luma(light.holiday) < 180 || luma(light.line) < 160 {
+		t.Fatal("the light timeline is dark inside", light)
+	}
+	if !light.lateFill || light.late.R <= light.late.B || luma(light.reported) > 120 {
+		t.Fatal("the shortfall is not orange or the report not deep", light)
+	}
+
+	fsys := wldWorldFiles(t, `planning:
+  calendar: {start: '2030-08-01', end: '2030-11-30', phases: [morning], weekdays_off: [0, 6]}
+  entities: {a: {name: Weaver}}
+  activities:
+    cloth: {name: Cloth, effort: 10, assignee: a, from: '2030-08-01'}
+    vase: {name: Vase, effort: 10, assignee: a, from: '2030-08-01'}
+screens:
+  tasks:
+    title: Tasks
+    kind: timeline
+    view: {fullscreen: true, light: true, rows: [{label: Crafts, items: [{activity: cloth}, {activity: vase}]}]}
+`, nil)
+	fsys["game.yaml"].Data = []byte(strings.Replace(string(fsys["game.yaml"].Data), "schema_version: 4", "schema_version: 10", 1))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "camp"})
+	wldFrames(t, g, 30)
+	g.st.Planning.Date = "2030-09-10"
+	c := g.st.Planning.Activities["vase"]
+	c.Cancelled = true
+	g.st.Planning.Activities["vase"] = c
+	g.openScreen("tasks", func() {})
+	wldFrames(t, g, 4)
+	s := top(t, g)
+	if lanes := s.timelineLanes(g); len(lanes) != 2 || lanes[0].reported >= lanes[0].expected {
+		t.Fatal("the fixture has no shortfall", lanes)
+	}
+	g.Draw(covScreen())
 }

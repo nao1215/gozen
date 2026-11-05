@@ -45,7 +45,10 @@ func TestPaletteFrom(t *testing.T) {
 func TestBakeFillsEveryFrame(t *testing.T) {
 	const fw, fh = 48, 84
 	start := time.Now()
-	sheet := Bake(PaletteFrom(person()), HairLong, []Part{{Kind: "apron", Color: color.RGBA{200, 40, 40, 255}}}, fw, fh, 30)
+	baker := NewBaker(PaletteFrom(person()), HairLong, []Part{{Kind: "apron", Color: color.RGBA{200, 40, 40, 255}}}, fw, fh, 30)
+	for !baker.Step() {
+	}
+	sheet := baker.Sheet()
 	t.Logf("baked a doll (%dx%d x 40) in %v", fw, fh, time.Since(start))
 	if sheet.Bounds().Dx() != fw*Sides || sheet.Bounds().Dy() != fh*Poses {
 		t.Fatalf("sheet %v", sheet.Bounds())
@@ -82,16 +85,10 @@ func TestBakeFillsEveryFrame(t *testing.T) {
 
 func TestPartsMatchTheSchema(t *testing.T) {
 	for _, k := range data.DollPartKinds {
-		if err := ValidPart(k); err != nil {
-			t.Error(err)
-		}
 		// each kind adds something to the doll
 		if len(shapes(HairShort, []Part{{Kind: k}})) <= len(shapes(HairShort, nil)) {
 			t.Errorf("part %s adds nothing", k)
 		}
-	}
-	if ValidPart("wings") == nil {
-		t.Error("an unknown part is valid")
 	}
 }
 

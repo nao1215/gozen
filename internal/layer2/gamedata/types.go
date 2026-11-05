@@ -175,10 +175,14 @@ type Game struct {
 	Web *WebPage `yaml:"web"`
 	// Gallery is what the title's gallery shows: the event pictures seen and the scenes
 	// whose flag was set, in any play (kept beside the saves).
-	Gallery  Gallery `yaml:"gallery"`
-	Start    Start   `yaml:"start"`
-	Slots    []Slot  `yaml:"equip_slots"`
-	MaxParty int     `yaml:"max_party"`
+	Gallery Gallery `yaml:"gallery"`
+	// Carry names the variables and flags a new game starts with from the last
+	// play that ran the carry command: var.NAME, flag.NAME, or a prefix ending
+	// in * (var.memo_*). Everything else starts afresh.
+	Carry    []string `yaml:"carry" json:",omitempty"`
+	Start    Start    `yaml:"start"`
+	Slots    []Slot   `yaml:"equip_slots"`
+	MaxParty int      `yaml:"max_party"`
 	// JoinExp is an expression for the lower bound of experience when a member joins (the event's join), evaluated on the party before joining (party.avg_exp and so on).
 	// If the joining member has less experience than that, it is raised to that value (never lowered).
 	JoinExp  Expr      `yaml:"join_exp"`
@@ -209,6 +213,9 @@ type Game struct {
 	Verbs map[string]string `yaml:"verbs"`
 	// Screens defines author-owned information, picture and action lists opened by name.
 	Screens map[string]*AuthorScreen `yaml:"screens"`
+	// Flows are fixed orders of full-screen surfaces gone through one after
+	// another: a step opens only once the steps before it were finished.
+	Flows map[string]*Flow `yaml:"flows"`
 	// Reactions maps speaker IDs to validated reaction books under assets/.
 	Reactions map[string]string `yaml:"reactions"`
 	// Streams names the live-stream file, relative to the game (schema_version 9, ADR 0048).
@@ -498,8 +505,51 @@ type GameOver struct {
 	Music      MusicCue `yaml:"music"`
 }
 
+// MaterialStyle controls reusable frosted or opaque panels in presentation.
+// Blur is in logical pixels; opacity, border and shadow are fractions in [0,1].
+type MaterialStyle struct {
+	Kind              string            `yaml:"kind"`
+	Surfaces          map[string]string `yaml:"surfaces"`
+	Wallpaper         []Color           `yaml:"wallpaper"`
+	Blur              float64           `yaml:"blur"`
+	Refraction        float64           `yaml:"refraction"`
+	WallpaperStrength float64           `yaml:"wallpaper_strength"`
+	Opacity           float64           `yaml:"opacity"`
+	Border            float64           `yaml:"border"`
+	Shadow            float64           `yaml:"shadow"`
+	// Opacities overrides opacity for one role of panel: base, card, control, chart,
+	// message (the novel message window and its band) or choice (the novel window's
+	// choices). Higher is a deeper tint over the same finish.
+	Opacities map[string]float64 `yaml:"opacities"`
+}
+
+// ProfileBook is the shape of the character book (ADR 0031).
+type ProfileBook struct {
+	// Title names the book in the title, the menus and on its band (default: Characters).
+	Title string `yaml:"title"`
+	// Layout is list (a column of names beside the picture, the default) or grid (a
+	// grid of face cards, grouped by affiliation, with the picture and the profile on
+	// the right).
+	Layout string `yaml:"layout"`
+}
+
+// TitleMenu shapes the title screen's menu (schema_version 10).
+type TitleMenu struct {
+	// HideDisabled leaves out the entries that cannot be chosen now (Continue with no
+	// save, Gallery with nothing to show) instead of graying them.
+	HideDisabled bool `yaml:"hide_disabled"`
+}
+
 // UIStyle are the colors of the windows.
 type UIStyle struct {
+	Material *MaterialStyle `yaml:"material"`
+	// Chrome recolors the title bar and browser decoration of windowed planning
+	// surfaces and calls (schema_version 10).
+	Chrome *ChromeStyle `yaml:"chrome"`
+	// Tones fills workspace entries with tone note or primary (schema_version 10).
+	Tones *ToneStyle `yaml:"tones"`
+	// Light is the paper palette of view.light surfaces (schema_version 10).
+	Light *LightStyle `yaml:"light"`
 	// BattleAIHistory shows the battle AI history button and enables its input (default true).
 	BattleAIHistory *bool `yaml:"battle_ai_history"`
 	// Message is the message window: "box" (a framed box, the default) or "novel" (as a
@@ -521,6 +571,9 @@ type UIStyle struct {
 	// Profiles puts Characters, the character book, in the title, the field menu and the
 	// novel bar (ADR 0031). Under --dev the menus offer it anyway.
 	Profiles bool `yaml:"profiles"`
+	// ProfileBook shapes the character book (schema_version 10): its title in the
+	// menus and on its band, and its layout. Omitted, the book is "Characters", a list.
+	ProfileBook *ProfileBook `yaml:"profile_book"`
 	// Bestiary puts Monsters in the title and field menu. Under --dev it is offered automatically.
 	Bestiary bool `yaml:"bestiary"`
 	// BattleFoeNames puts a plate under each foe that is not a boss: name (its name, the
@@ -532,6 +585,27 @@ type UIStyle struct {
 	// HideBarOnChoice hides the buttons under the novel window (back, log, save and the
 	// rest) while a choice is shown; their keys still work.
 	HideBarOnChoice bool `yaml:"hide_bar_on_choice"`
+	// QuickMenu is where the buttons of the novel window (back, log, auto, skip, save,
+	// load, hide, settings) stand (schema_version 10). Empty, they stand in a row at the
+	// screen's lower right as before, and a window with a band never runs under it.
+	// below puts them in a band under the message window with the window's left and
+	// right edges, the window raised by the band; inside puts them in the window's lower
+	// edge, the window taller by the band. Captions of a call follow the same choice.
+	QuickMenu string `yaml:"quick_menu"`
+	// NovelWindow places the novel message window (schema_version 10); omitted, it keeps
+	// its place. The buttons of quick_menu below or inside follow it.
+	NovelWindow *NovelWindow `yaml:"novel_window"`
+	// ChoicePosition is where the novel window's choices stand (schema_version 10):
+	// empty, at the window's right end as before; center, in the middle of the screen
+	// above the window.
+	ChoicePosition string `yaml:"choice_position"`
+	// WheelUp is what turning the mouse wheel up does in the novel window (schema_version
+	// 10): empty, it rolls back one line when it can and opens the backlog otherwise, as
+	// before; log always opens the backlog. Turning it down advances the line either way.
+	WheelUp string `yaml:"wheel_up"`
+	// Title shapes the title screen's menu (schema_version 10). Omitted, the menu shows
+	// every entry, the ones that cannot be chosen grayed.
+	Title *TitleMenu `yaml:"title"`
 	// HideGold are the kinds of place (field, dungeon, map, stage) where the windows of
 	// the money (the field's, with the play time, and the menu's) are not shown.
 	HideGold []string `yaml:"hide_gold"`
@@ -551,6 +625,10 @@ type UIStyle struct {
 	// StageFraming gives play explicit head anchors for static novel portraits.
 	// Keys are asset paths; omitted pictures retain legacy canvas-based framing.
 	StageFraming map[string]StageFraming `yaml:"stage_framing"`
+	// FaceShape is how faces are cut on planning screens: round (the default)
+	// or square (a rounded square). A screen view may choose its own; a video
+	// call always keeps round faces, as call apps do.
+	FaceShape string `yaml:"face_shape"`
 	// StagePuppets lets the novel stage draw the moving portrait (Actor.Puppet) of an
 	// actor whose face the puppet has, in place of the face picture, in the same frame
 	// (schema_version 8). Off, the stage shows the face pictures as before.
@@ -564,6 +642,19 @@ type UIStyle struct {
 	// SfxVary is the variation when the same sound effect plays repeatedly in a short time (sound's vary.go).
 	// pitch is the pitch (default 0.03 for ±3%) and volume is the volume (default 0.1 for ±10%). 0 turns it off.
 	SfxVary SfxVary `yaml:"sfx_vary"`
+}
+
+// NovelWindow is where the novel message window stands, in fractions of the screen;
+// 0 keeps the default of each.
+type NovelWindow struct {
+	// X is the window's left edge as a fraction of the screen's width (0: centered).
+	X float64 `yaml:"x"`
+	// Width is the window's width as a fraction of the screen's width (0: across the
+	// screen, or inside a margin of 104 pixels each side with ui.material).
+	Width float64 `yaml:"width"`
+	// Bottom is the room left under the window and its buttons, as a fraction of the
+	// screen's height (0: none, or 8 pixels with ui.material).
+	Bottom float64 `yaml:"bottom"`
 }
 
 // StageFraming tells play how to place a static novel portrait independently of
@@ -895,6 +986,9 @@ type Learning struct {
 
 // Actor describes a speaker. A class adds combat abilities and permits joining the party.
 type Actor struct {
+	// Speech declares optional per-language authoring checks; never changes dialogue.
+	Speech map[string]SpeechStyle `yaml:"speech"`
+
 	Name    string            `yaml:"name"`
 	Class   string            `yaml:"class"`
 	Level   int               `yaml:"level"`
@@ -1703,6 +1797,40 @@ func (p Picture) Brightness() float64 {
 	return p.Bright
 }
 
+// Flow is an order of steps, each a parameterless full-screen surface. A
+// player finishes a step with its next action and comes back to a finished one
+// from the step band; a step not reached yet opens the current step instead.
+type Flow struct {
+	Steps []FlowStep `yaml:"steps"`
+	// Restart is a pure value; when it differs from the value the progress was
+	// made under, the flow starts again from its first step.
+	Restart Expr `yaml:"restart"`
+	// Skip, a pure condition, lets every step open while it holds.
+	Skip Expr `yaml:"skip"`
+	// Next is the interpolated label of the action that finishes a step.
+	Next string `yaml:"next"`
+}
+
+// FlowStep is one step of a flow: its label in the step band and its screen.
+type FlowStep struct {
+	Label  string `yaml:"label"`
+	Screen string `yaml:"screen"`
+	// Enter is a parameterless event run over the step's screen the first
+	// time it shows under each restart value.
+	Enter string `yaml:"enter"`
+	// Done, a pure condition, finishes the step by itself while it holds, as
+	// its next action would: a choice made on a screen the step opens.
+	Done Expr `yaml:"done"`
+	// Hold makes done the only way to finish the step: it has no next action,
+	// and once finished it and the steps before it are not opened again under
+	// the same restart value (time that has passed). A step screen that would
+	// no longer open as itself gives way to the one that opens after an action.
+	Hold bool `yaml:"hold"`
+	// When, a pure condition, keeps the step in the flow only while it holds:
+	// left out, it is passed over as if finished and not shown in the band.
+	When Expr `yaml:"when"`
+}
+
 // AuthorScreen is a titled list of information, pictures or actions rendered by play.
 // Entries keep authored order; when hides entries until their condition holds.
 type AuthorScreen struct {
@@ -1714,10 +1842,145 @@ type AuthorScreen struct {
 
 	Title   string        `yaml:"title"`
 	Entries []ScreenEntry `yaml:"entries"`
+
+	// Back is the parameterless screen that cancel (and the back control) opens in
+	// this screen's place when no authored screen lies under it, keeping the
+	// original opener; empty, or a screen under it, closes the screen.
+	Back string `yaml:"back" json:",omitempty"`
+	// Home marks the screen the player never leaves by cancel: cancel opens the
+	// system menu over it instead of returning to the location under it.
+	Home bool `yaml:"home" json:",omitempty"`
+	// Guide walks a player through a full-screen surface the first time it
+	// shows: lines in the notification corner, each lighting the places to
+	// press next while every other place waits. Once finished it never shows
+	// again, in any later play.
+	Guide *ScreenGuide `yaml:"guide" json:",omitempty"`
+}
+
+// ScreenGuide is a screen's first-visit walk-through (ADR 0055).
+type ScreenGuide struct {
+	// When, a pure condition, holds the guide back until it is true.
+	When  Expr        `yaml:"when"`
+	Steps []GuideStep `yaml:"steps"`
+}
+
+// GuideStep is one line of a guide: who says it, the text, and the places
+// lit while it shows. Without focus the line itself is pressed to go on; with
+// focus, pressing a lit place goes on, or until holds when it is set.
+type GuideStep struct {
+	Who  string `yaml:"who"`
+	Text string `yaml:"text"`
+	// Focus names entry marks of the screen, or next (the flow's next action).
+	Focus []string `yaml:"focus"`
+	// Until, a pure condition, ends the step when it holds; the lit places
+	// can then be used any number of times before it does.
+	Until Expr `yaml:"until"`
+}
+
+// EntryTicket is the face of a work ticket card: the entry label is its title
+// and the entry icon the portrait of whoever holds it. Planned and Progress are
+// fractions from 0 to 1 drawn as one bar; Behind colors the card as late and
+// Blocked marks it as waiting for the tickets named in After. A visible ticket
+// card on the same screen whose label equals a name in After is joined to this
+// card by a line.
+// EntryBust is a head-to-chest crop of a standing picture, drawn in the left
+// Width of a bounded entry (a fraction; 0 is .4). The picture's face box
+// (faces.json) places it: the face top sits Top down the crop and the face is
+// Face of the crop's height (fractions; 0 are .12 and .3). A muted entry
+// veils the crop. On a carousel member the crop fills the member's square
+// box in place of its picture (Width is not used there).
+type EntryBust struct {
+	Picture string  `yaml:"picture"`
+	Width   float64 `yaml:"width"`
+	Top     float64 `yaml:"top"`
+	Face    float64 `yaml:"face"`
+	// Height, when above zero, puts the crop across the top of the entry
+	// instead of at its left: the full width and this fraction of the height,
+	// with the label and text under it (a tall, narrow card).
+	Height float64 `yaml:"height"`
+	// Bare draws the picture straight on the screen, its transparent
+	// background showing what is behind: no card and no backing under it.
+	Bare bool `yaml:"bare"`
+	// Fit "contain" shows the whole picture centered in the crop area instead
+	// of framing a face (an icon or a mark, which has no face to find).
+	Fit string `yaml:"fit"`
+}
+
+// EntryMeter is the same progress bar as a ticket card's: Progress fills it
+// (0..1), Planned marks where it should be, and Behind colors it late.
+type EntryMeter struct {
+	Progress Expr `yaml:"progress"`
+	Planned  Expr `yaml:"planned"`
+	Behind   Expr `yaml:"behind"`
+}
+
+type EntryTicket struct {
+	Due      string   `yaml:"due"`
+	State    string   `yaml:"state"`
+	Planned  Expr     `yaml:"planned"`
+	Progress Expr     `yaml:"progress"`
+	Behind   Expr     `yaml:"behind"`
+	Blocked  Expr     `yaml:"blocked"`
+	After    []string `yaml:"after"`
 }
 
 // ScreenEntry is one selectable detail page in an author-defined screen.
 type ScreenEntry struct {
+	// Destination replaces this screen after its action, retaining the original opener.
+	Destination string `yaml:"destination"`
+	// Muted marks an unavailable portrait without hiding its action.
+	Muted Expr `yaml:"muted"`
+	// Icon is an interpolated portrait path for a bounded workspace control.
+	Icon string `yaml:"icon"`
+	// Portrait enlarges and centers an icon above the entry text.
+	Portrait bool `yaml:"portrait"`
+	// Tone optionally emphasizes a surface control as a note or primary action.
+	Tone string `yaml:"tone"`
+	// Style separates what is read from what is pressed on a bounded entry:
+	// plate is a read-only board without an edge or focus, button a pressable
+	// control. Empty keeps the ordinary card.
+	Style string `yaml:"style"`
+	// Ticket draws the bounded entry as a work ticket card.
+	Ticket *EntryTicket `yaml:"ticket" json:",omitempty"`
+	// Carousel joins the bounded actions of one name into a rotating selector
+	// of square boxes; every member shares the same bounds.
+	Carousel string `yaml:"carousel"`
+	// Cost is a short interpolated label of what confirming the action spends.
+	Cost string `yaml:"cost"`
+	// Unavailable keeps the action visible but refuses it while it holds;
+	// Reason is the interpolated explanation shown instead of the detail.
+	Unavailable Expr   `yaml:"unavailable"`
+	Reason      string `yaml:"reason"`
+	// Drag makes the bounded entry something the player picks up and carries;
+	// its value is the interpolated text handed to the place it is dropped on.
+	Drag string `yaml:"drag"`
+	// Drop makes the bounded entry a place to drop on: only a drop runs its do,
+	// with arg.<Drop> bound to the carried drag value (a string). Accepts, with
+	// the same binding, refuses a drop while false; Hint is a short interpolated
+	// line shown on the place while something is carried.
+	Drop    string `yaml:"drop"`
+	Accepts Expr   `yaml:"accepts"`
+	Hint    string `yaml:"hint"`
+	// Peek is interpolated text opened in a small glass panel beside the entry
+	// when it is pressed, without leaving the screen or running anything.
+	Peek string `yaml:"peek"`
+	// Dot is an interpolated "#rrggbb" color of a small status mark drawn in
+	// the entry's top-right corner (empty draws none). It is a read-only sign
+	// beside a word, never the only carrier of meaning.
+	Dot string `yaml:"dot"`
+	// Sign is an interpolated picture path of a small square sign drawn in the
+	// entry's top-right corner, left of the dot (empty draws none): a status
+	// such as at the office, at home or off.
+	Sign string `yaml:"sign"`
+	// Bust draws a head-to-chest crop of a standing picture in the left part
+	// of the bounded entry, placed by the picture's face box, instead of the
+	// round icon. Meter draws a progress bar under the entry's text.
+	Bust  *EntryBust  `yaml:"bust" json:",omitempty"`
+	Meter *EntryMeter `yaml:"meter" json:",omitempty"`
+	// Mark names the bounded entry for a screen guide's focus; the rows of
+	// an each, or several entries, may share one mark.
+	Mark string `yaml:"mark"`
+
 	// Each repeats this entry over a bounded pure ID selection. Its parameter is
 	// a string scoped to the row, accessible through arg in text, guards and actions.
 	Each *CallEach `yaml:"each" json:",omitempty"`
@@ -1732,5 +1995,9 @@ type ScreenEntry struct {
 	Label   string    `yaml:"label"`
 	Text    string    `yaml:"text"`
 	Picture string    `yaml:"picture"`
-	When    Expr      `yaml:"when"`
+	// PictureFit is how a bounded picture fills its area: omitted or "cover"
+	// crops it to fill, "contain" shows it whole (an icon or a transparent
+	// figure that must not lose its edges).
+	PictureFit string `yaml:"picture_fit"`
+	When       Expr   `yaml:"when"`
 }

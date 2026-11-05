@@ -93,6 +93,8 @@ type Command struct {
 	Facing  string    `yaml:"facing" command:"move,dive"` // and the way to face
 	Music   *MusicCue `yaml:"music" command:"verb"`
 	Mood    string    `yaml:"mood" command:"verb"`
+	// Carry keeps the values game.yaml carry names for the next new game (ADR 0053).
+	Carry   bool      `yaml:"carry" command:"verb"`
 	Image   *CG       `yaml:"image" command:"verb"`
 	Shop    string    `yaml:"shop" command:"verb"`
 	Call    EventCall `yaml:"call" command:"verb"`
@@ -100,9 +102,16 @@ type Command struct {
 	waitSet bool      // waitSet bool // in spec version 1, a wait time of 0 also counts as a command.
 	// Notice is a short message shown at the top of the screen (no dialog window, and play continues without stopping; narration-only notices such as the pain of a floor trap).
 	Notice string `yaml:"notice" command:"verb"`
-	SFX    SFXCue `yaml:"sfx" command:"verb"`
-	Exp    Expr   `yaml:"exp" command:"verb"`
-	Learn  *Learn `yaml:"learn" command:"verb"`
+	// Message queues a chat message (schema 10): a notification in the top-right
+	// corner of a full-screen surface, opened into a bubble in the middle of the
+	// screen. Queuing does not stop the event; opening uses no game time.
+	Message *MessageCue `yaml:"message" command:"verb" json:",omitempty"`
+	// CallView changes only how a video call looks (no state changes): for
+	// example a participant's camera turning on in the middle of a call.
+	CallView *CallViewCue `yaml:"call_view" command:"verb" json:",omitempty"`
+	SFX      SFXCue       `yaml:"sfx" command:"verb"`
+	Exp      Expr         `yaml:"exp" command:"verb"`
+	Learn    *Learn       `yaml:"learn" command:"verb"`
 	// ResetTree gives back the skill points put into the skill tree of an actor (an id, or
 	// "all" for everyone who has joined): to raise it again another way.
 	ResetTree string `yaml:"reset_tree" command:"verb"`
@@ -224,6 +233,8 @@ func customFields(c *Command) []string { return c.custom }
 
 // Say is a line of dialog.
 type Say struct {
+	Instant  bool `yaml:"instant"`
+	FaceExpr Expr `yaml:"face_expr,omitempty" json:",omitzero"`
 	// Ensemble names a planning participant screen shown behind this line.
 	Ensemble string `yaml:"ensemble"`
 	Who      IDRef  `yaml:"who"`  // a literal name, or an actor expression
@@ -447,7 +458,40 @@ func (c *Command) Verb() (string, error) {
 	return verb, nil
 }
 
-// Respond submits text to a speaker's reaction rules and shows the reply as dialog.
+// MessageCue is a queued chat message: who (an actor, or an actor expression),
+// the interpolated text and the event that asks for the decision.
+type MessageCue struct {
+	Who  IDRef  `yaml:"who"`
+	Text string `yaml:"text"`
+	// Event is the parameterless event run when the message is opened, under
+	// the bubble: a message asks for a decision (its choice), never only reads.
+	Event string `yaml:"event"`
+	// Tag is a short interpolated mark on the notification and the bubble, such
+	// as DM for a one-to-one message (empty shows none).
+	Tag string `yaml:"tag"`
+}
+
+// CallViewCue is a presentation-only change of the call on screen.
+type CallViewCue struct {
+	Camera *CallCamera `yaml:"camera" json:",omitempty"`
+	Share  *CallShare  `yaml:"share" json:",omitempty"`
+}
+
+// CallShare puts a shared screen (a picture under assets/) on the call's stage in
+// place of the speaker's view until the call's lines end; Who is the participant
+// who shares, and an empty Picture ends the sharing.
+type CallShare struct {
+	Who     string `yaml:"who"`
+	Picture string `yaml:"picture"`
+}
+
+// CallCamera turns one participant's camera view on or off until the call's
+// lines end; Who is a planning entity or an actor.
+type CallCamera struct {
+	Who string `yaml:"who"`
+	On  bool   `yaml:"on"`
+}
+
 type Respond struct {
 	Who  string `yaml:"who"`
 	Text string `yaml:"text"`

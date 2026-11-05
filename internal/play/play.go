@@ -81,6 +81,9 @@ type Options struct {
 	Fullscreen bool
 
 	GalleryAll bool
+	// BookAsPlayed keeps the character book as a player sees it under Development:
+	// only the profiles and faces unlocked are open (for screenshots of the book).
+	BookAsPlayed bool
 
 	Location string
 	Party    []string
@@ -255,7 +258,31 @@ type Game struct {
 	puppets  puppetSet
 	in       input
 	th       theme
+	glass    materialCache
 	tick     int
+
+	// callLast is the last speaker of each call, kept on its stage through a
+	// narrated line (presentation only).
+	callLast map[string]string
+	// callCamera overrides participants' cameras for the call's lines
+	// (call_view; presentation only, cleared by a line outside a call).
+	callCamera map[string]bool
+	// callShare is the screen shared on the call's stage (call_view.share;
+	// presentation only, cleared like callCamera); nil shares nothing.
+	callShare *event.CallShareEffect
+	// callerSpeaks is set while the self view of a call is drawn and its
+	// line's speaker is not a participant (the caller).
+	callerSpeaks bool
+	// inboxShown is the chat message being decided (its event runs under it).
+	inboxShown *rpg.InboxMessage
+	// guide is the screen guide showing now (guide.go); guideScripted shows
+	// guides in a scripted play (the script command guides on).
+	guideVeil     *ebiten.Image // Owned by this game; released on reload and Close.
+	guide         *guideRun
+	guideScripted bool
+	// faceSquare cuts planning faces as rounded squares while a screen with
+	// face_shape square draws (ui.face_shape or the screen's view).
+	faceSquare bool
 
 	stack []scene
 
@@ -323,7 +350,9 @@ type Game struct {
 	stageGen   int
 	sides      map[string]float64
 	unlocked   map[string]bool
-	replaying  bool
+	// carry holds the values kept for the next new game (game.yaml carry).
+	carry     *carryRecord
+	replaying bool
 	// sortieTactics are the tactics last chosen on the sortie screen, by general.
 	sortieTactics   map[string]string
 	autoBattle      bool
@@ -378,6 +407,9 @@ type Game struct {
 	figShake  map[string]int
 	shakeFor  int
 	fadeColor *colorFade
+	// turn is the card of a new phase on the way; turnSeen the calendar place last seen.
+	turn     *phaseTurn
+	turnSeen string
 
 	walkGoal [3]int
 	lastView *ebiten.Image
@@ -605,6 +637,13 @@ func New(opts Options) (_ *Game, err error) {
 		}
 		s.memoNote = func(kind, text string) { g.quickMemo(kind, text, memo.LLM) }
 		s.snapshot = func() { g.emit("snapshot", traceLine{"state": g.traceSummary()}) }
+		s.pick = func(in *input, text string) {
+			if err := g.scriptPick(in, text); err != nil {
+				g.emit("pick_error", traceLine{"text": err.Error()})
+			}
+		}
+		s.look = g.scriptLook
+		s.guides = func(on bool) { g.guideScripted = on }
 		if !opts.headless {
 			s.window = func(w, h int) { ebiten.SetWindowSize(w, h) }
 		}
@@ -1008,6 +1047,9 @@ func (g *Game) Update() error {
 		g.fadeT--
 		return nil
 	}
+	if g.stepTurn() {
+		return nil
+	}
 	if g.logView != nil {
 		g.logView.update(g)
 	} else if len(g.stack) > 0 {
@@ -1031,6 +1073,8 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	g.pics.beginFrame()
+	g.beginMaterialFrame()
 	g.rendering = true
 	if g.meter.on {
 		start := time.Now()
@@ -1070,7 +1114,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	var top []scene
 	for _, s := range g.stack[from:] {
-		if m, ok := s.(modal); ok && m.modal() {
+		// A scene pushed over a modal one draws over it too, in stack order.
+		if m, ok := s.(modal); ok && m.modal() || len(top) > 0 {
 			top = append(top, s)
 			continue
 		}
@@ -1105,6 +1150,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	g.drawRecruit(dst)
 	g.drawBirth(dst)
+	g.drawInboxBubble(dst)
 	g.talk.draw(g, dst)
 	if g.noticesShown() {
 		g.notices.draw(g, dst)
@@ -1115,6 +1161,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	for _, s := range top {
 		s.draw(g, dst)
 	}
+	// Over the modal screen on top: the chat notification belongs to the surface.
+	g.drawInboxToast(dst)
+	g.drawGuide(dst)
 	if shaken != nil {
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Translate(math.Sin(float64(g.shake)*1.7)*float64(g.shake)*0.8*g.ui, math.Cos(float64(g.shake)*2.3)*float64(g.shake)*0.5*g.ui)
@@ -1129,6 +1178,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		fill(screen, withAlpha(colorBlack, uint8(255*a)))
 	}
 	g.drawFadeColor(screen)
+	g.drawTurn(screen)
 	if g.opts.Video != nil {
 		if err := g.recordFrame(screen); err != nil {
 			g.failure = err
@@ -1277,6 +1327,7 @@ func (g *Game) newGame() {
 	g.st.SetRecruitSeed(g.collectionSeed())
 	g.bannerFloor = 0
 	g.startState()
+	g.applyCarry(g.st)
 	if ev := g.db.Game.Start.Event; ev != "" {
 		g.events.Start(g.db.Events[ev].Do)
 	}
@@ -1363,6 +1414,8 @@ func (g *Game) loadGame(st *rpg.State) {
 	g.st = st
 	g.db = st.DB
 	g.bannerFloor = 0
+	// A loaded game shows its phase without a turn card.
+	g.turn, g.turnSeen = nil, ""
 	g.startState()
 	g.reportLoad(st.LoadReport)
 }
@@ -1696,7 +1749,7 @@ func (g *Game) walking() bool {
 }
 
 func (g *Game) busy() bool {
-	return g.walking() || g.req != nil || (g.events != nil && g.events.Running()) || g.talk.active || len(g.stack) > 1
+	return g.walking() || g.req != nil || (g.events != nil && g.events.Running()) || g.talk.active || len(g.stack) > 1 || g.turn != nil
 }
 
 func (g *Game) waiting() (string, int) {
@@ -1856,6 +1909,9 @@ func (g *Game) begin(r event.Request) {
 	}
 	g.skipBefore(r)
 	g.traceRequest(r)
+	if say, ok := r.(event.Say); ok {
+		g.meetLine(say)
+	}
 	switch r.(type) {
 	case event.Say, event.Choice:
 		g.evLines++
@@ -1925,6 +1981,10 @@ func (g *Game) begin(r event.Request) {
 		}
 		g.push(newSaveMenu(g, true, done))
 	case event.Open:
+		if g.goingHome(r) {
+			done()
+			return
+		}
 		if g.db.Game.Screens[r.Screen] != nil {
 			g.openAuthorScreen(r.Screen, done, r.Args)
 		} else {
@@ -2167,12 +2227,24 @@ func (g *Game) Handle(e event.Effect) {
 		g.music(e.Cue)
 	case event.StandEffect:
 		g.stand(e)
+	case event.CarryEffect:
+		g.keepCarry(g.st)
 	case event.MoodEffect:
 		g.Mood(e.Name)
 	case event.ImageEffect:
 		g.Image(e.Picture)
 	case event.SoundEffect:
 		g.SFX(e.Name)
+	case event.CallCameraEffect:
+		if g.callCamera == nil {
+			g.callCamera = map[string]bool{}
+		}
+		g.callCamera[e.Who] = e.On
+	case event.CallShareEffect:
+		g.callShare = nil
+		if e.Picture != "" {
+			g.callShare = &e
+		}
 	case event.VisualEffect:
 		g.visual(e)
 	case event.BreedEffect:
@@ -2192,6 +2264,7 @@ func (g *Game) Handle(e event.Effect) {
 
 // Close releases this run's resources. Call on the game thread after its loop stops.
 func (g *Game) Close() error {
+	g.releaseGuideVeil()
 	if g.closed {
 		return nil
 	}
@@ -2216,6 +2289,7 @@ func (g *Game) Close() error {
 	if g.pics != nil {
 		g.pics.close()
 	}
+	g.glass.close()
 	gfx.Reset()
 	activeGame.Store(false)
 	return err

@@ -11,17 +11,33 @@ import (
 	"github.com/nao1215/gozen/internal/expr"
 )
 
-// PlanningState is saved within the existing state envelope. Rules own mutations;
-// presentation consumes observations instead of Attributes.
+// WorkSample is a saved public observation for presentation charts, never true progress.
+type WorkSample struct {
+	Total    float64 `json:"total"`
+	Observed float64 `json:"observed"`
+}
+
+// planningBasis records the authored limits at save time, separate from overrides.
+type planningBasis struct {
+	Start   string             `json:"start"`
+	End     string             `json:"end"`
+	Efforts map[string]float64 `json:"efforts"`
+	From    map[string]string  `json:"from"`
+}
+
+// PlanningState is saved in the state envelope. Rules own mutations; presentation
+// consumes observations instead of hidden attributes.
 type PlanningState struct {
-	Date       string                                   `json:"date"`
-	Phase      int                                      `json:"phase"`
-	Finished   bool                                     `json:"finished"`
-	Entities   map[string]*EntityState                  `json:"entities"`
-	Activities map[string]*ActivityState                `json:"activities"`
-	Ledgers    map[string]map[string]map[string]float64 `json:"ledgers"`
-	Closed     map[string]bool                          `json:"closed"`
-	Dispatched map[string]bool                          `json:"dispatched"`
+	Basis       *planningBasis                           `json:"basis,omitempty"`
+	WorkHistory map[string]WorkSample                    `json:"work_history,omitempty"`
+	Date        string                                   `json:"date"`
+	Phase       int                                      `json:"phase"`
+	Finished    bool                                     `json:"finished"`
+	Entities    map[string]*EntityState                  `json:"entities"`
+	Activities  map[string]*ActivityState                `json:"activities"`
+	Ledgers     map[string]map[string]map[string]float64 `json:"ledgers"`
+	Closed      map[string]bool                          `json:"closed"`
+	Dispatched  map[string]bool                          `json:"dispatched"`
 }
 
 // EntityState retains true attributes and explicitly refreshed observations.
@@ -32,10 +48,13 @@ type EntityState struct {
 
 // ActivityState tracks assignment and reversible completion independently of actors.
 type ActivityState struct {
-	Deadline  string  `json:"deadline,omitempty"`  // Empty retains the authored end date.
-	Cancelled bool    `json:"cancelled,omitempty"` // Excluded work retains its budget and progress.
-	Observed  float64 `json:"observed"`
-	Effort    float64 `json:"effort,omitempty"` // Zero retains the authored effort for older saves.
+	Split bool `json:"split,omitempty"`
+	// Attributes stores typed rule overrides; absent keys read the authored defaults.
+	Attributes map[string]any `json:"attributes,omitempty"`
+	Deadline   string         `json:"deadline,omitempty"`  // Empty retains the authored end date.
+	Cancelled  bool           `json:"cancelled,omitempty"` // Excluded work retains its budget and progress.
+	Observed   float64        `json:"observed"`
+	Effort     float64        `json:"effort,omitempty"` // Zero retains the authored effort for older saves.
 
 	Assignee  string  `json:"assignee"`
 	Progress  float64 `json:"progress"`
@@ -137,6 +156,35 @@ func (s *State) EntityValues(id string, full bool) expr.Map {
 	return out
 }
 
+// EntityValue reads one public field for views without building the complete object.
+// Composite metadata retains EntityValues' detached-copy contract.
+func (s *State) EntityValue(id, key string) any {
+	p := s.DB.Game.Planning
+	if p == nil || s.Planning == nil {
+		return s.EntityValues(id, false)[key]
+	}
+	st := s.Planning.Entities[id]
+	if st == nil {
+		return s.EntityValues(id, false)[key]
+	}
+	if value, ok := st.Observations[key]; ok {
+		return value
+	}
+	if value, ok := st.Attributes[key]; ok && !p.Attributes[key].Hidden {
+		return value
+	}
+	if key == "id" {
+		return id
+	}
+	if key == "name" {
+		return p.Entities[id].Name
+	}
+	if key == "data" {
+		return s.EntityValues(id, false)[key]
+	}
+	return nil
+}
+
 func (s *State) planningLookup(name string) (any, bool) {
 	p := s.DB.Game.Planning
 	st := s.Planning
@@ -158,34 +206,131 @@ func (s *State) planningLookup(name string) (any, bool) {
 		}
 		return expr.Map{"date": st.Date, "period": d.Format("2006-01"), "weekday": float64(d.Weekday()), "phase": p.Calendar.Phases[st.Phase], "finished": st.Finished, "closed": s.PlanningClosedDay()}, true
 	case "entities":
+		if r := s.reading; r != nil && r.entities != nil {
+			return r.entities, true
+		}
 		values := make([]any, 0, len(st.Entities))
 		for _, id := range slices.Sorted(maps.Keys(st.Entities)) {
-			values = append(values, s.EntityValues(id, true))
+			values = append(values, s.entityRead(id))
+		}
+		if s.reading != nil {
+			s.reading.entities = values
 		}
 		return values, true
 	case "activities":
+		if r := s.reading; r != nil && r.activities != nil {
+			return r.activities, true
+		}
 		values := make([]any, 0, len(st.Activities))
 		for _, id := range slices.Sorted(maps.Keys(st.Activities)) {
-			values = append(values, s.activityValues(id))
+			values = append(values, s.activityRead(id))
+		}
+		if s.reading != nil {
+			s.reading.activities = values
 		}
 		return values, true
 	case "entity":
-		for id := range st.Entities {
-			out[id] = s.EntityValues(id, true)
-		}
+		return entityView{s}, true
 	case "activity":
-		for id := range st.Activities {
-			out[id] = s.activityValues(id)
-		}
+		return activityView{s}, true
 	}
 	return out, true
 }
 
-// activityValues is the shared rule view for indexed and collection reads.
-func (s *State) activityValues(id string) expr.Map {
+// entityView and activityView are entity.<id> and activity.<id>: the values of
+// the one named, made when it is read (an expression rarely reads more than a
+// few, and building all of them for each read made screens slow).
+type entityView struct{ s *State }
+
+func (v entityView) Field(id string) (any, bool) {
+	if _, ok := v.s.Planning.Entities[id]; !ok {
+		return nil, false
+	}
+	return v.s.entityRead(id), true
+}
+
+type activityView struct{ s *State }
+
+func (v activityView) Field(id string) (any, bool) {
+	if _, ok := v.s.Planning.Activities[id]; !ok {
+		return nil, false
+	}
+	return v.s.activityRead(id), true
+}
+
+// planningRead holds the values expressions read while the state is only read:
+// a screen evaluates hundreds of expressions a frame, each reading the same few
+// entities and the whole activity list, and making those maps again for every
+// read was most of a frame.
+type planningRead struct {
+	entity, activity     map[string]expr.Map
+	entities, activities []any
+}
+
+// Reading runs fn with the planning values made for expressions memoized: fn
+// must not change the state (drawing a screen, building its entries). The
+// values are shared between the expressions fn evaluates, which never change
+// them. Nested calls share the outer memo.
+func (s *State) Reading(fn func()) {
+	if s.reading != nil {
+		fn()
+		return
+	}
+	s.reading = &planningRead{entity: map[string]expr.Map{}, activity: map[string]expr.Map{}}
+	defer func() { s.reading = nil }()
+	fn()
+}
+
+func (s *State) entityRead(id string) expr.Map {
+	r := s.reading
+	if r == nil {
+		return s.EntityValues(id, true)
+	}
+	v, ok := r.entity[id]
+	if !ok {
+		v = s.EntityValues(id, true)
+		r.entity[id] = v
+	}
+	return v
+}
+
+func (s *State) activityRead(id string) expr.Map {
+	r := s.reading
+	if r == nil {
+		return s.ActivityValues(id)
+	}
+	v, ok := r.activity[id]
+	if !ok {
+		v = s.ActivityValues(id)
+		r.activity[id] = v
+	}
+	return v
+}
+
+// ActivityValues returns detached full activity values for rules and their self scope.
+// Presentation must use explicit observations instead. Unconfigured or unknown IDs return nil.
+func (s *State) ActivityValues(id string) expr.Map {
+	if s.Planning == nil {
+		return nil
+	}
 	a := s.Planning.Activities[id]
+	if a == nil {
+		return nil
+	}
 	def := s.DB.Game.Planning.Activities[id]
-	return expr.Map{"id": id, "from": def.From, "to": def.To, "planned_effort": def.Effort, "deadline": s.ActivityDeadline(id), "progress": a.Progress, "effort": s.ActivityEffort(id), "assignee": a.Assignee, "completed": a.Completed != "", "cancelled": a.Cancelled}
+	active := !a.Split
+	if def.Parent != "" {
+		active = s.Planning.Activities[def.Parent].Split
+	}
+	out := expr.Map{"name": def.Name, "parent": def.Parent, "split": a.Split, "active": active, "id": id, "from": def.From, "to": def.To, "planned_effort": def.Effort, "deadline": s.ActivityDeadline(id), "progress": a.Progress, "observed": a.Observed, "effort": s.ActivityEffort(id), "assignee": a.Assignee, "completed": a.Completed != "", "cancelled": a.Cancelled}
+	for key, attr := range s.DB.Game.Planning.ActivityAttributes {
+		v, err := attr.Value(attr.Initial)
+		if err == nil {
+			out[key] = v
+		}
+	}
+	maps.Copy(out, a.Attributes)
+	return out
 }
 
 // calendarCount reads the configured closure rules without advancing state.
@@ -294,6 +439,12 @@ func (s *State) validatePlanning() error {
 	if p == nil {
 		return errors.New("planning: definitions missing")
 	}
+	for date, sample := range st.WorkHistory {
+		parsed, err := time.Parse(time.DateOnly, date)
+		if err != nil || parsed.Format(time.DateOnly) != date || date < p.Calendar.Start || date > st.Date || sample.Total < 0 || sample.Observed < 0 || sample.Observed > sample.Total || math.IsNaN(sample.Total) || math.IsNaN(sample.Observed) || math.IsInf(sample.Total, 0) || math.IsInf(sample.Observed, 0) {
+			return errors.New("planning: invalid work history")
+		}
+	}
 	d, err := time.Parse(time.DateOnly, st.Date)
 	if err != nil || d.Format(time.DateOnly) != st.Date || st.Date < p.Calendar.Start || st.Date > p.Calendar.End || st.Phase < 0 || st.Phase >= len(p.Calendar.Phases) {
 		return errors.New("planning: invalid date or phase")
@@ -319,9 +470,22 @@ func (s *State) validatePlanning() error {
 		}
 	}
 	for id, a := range st.Activities {
+		if a == nil {
+			return fmt.Errorf("planning.activities.%s: invalid state", id)
+		}
+		for key, v := range a.Attributes {
+			attr, ok := p.ActivityAttributes[key]
+			if !ok {
+				return fmt.Errorf("planning.activities.%s.%s: unknown attribute", id, key)
+			}
+			if _, err := attr.Value(v); err != nil {
+				return fmt.Errorf("planning.activities.%s.%s: %w", id, key, err)
+			}
+		}
+
 		_, ok := p.Activities[id]
 		effort := s.ActivityEffort(id)
-		if !ok || a == nil || math.IsNaN(a.Effort) || math.IsInf(a.Effort, 0) || a.Effort < 0 || math.IsNaN(a.Progress) || math.IsInf(a.Progress, 0) || a.Progress < 0 || a.Progress > effort || math.IsNaN(a.Observed) || math.IsInf(a.Observed, 0) || a.Observed < 0 || a.Observed > effort {
+		if !ok || math.IsNaN(a.Effort) || math.IsInf(a.Effort, 0) || a.Effort < 0 || math.IsNaN(a.Progress) || math.IsInf(a.Progress, 0) || a.Progress < 0 || a.Progress > effort || math.IsNaN(a.Observed) || math.IsInf(a.Observed, 0) || a.Observed < 0 || a.Observed > effort {
 			return fmt.Errorf("planning.activities.%s: invalid progress", id)
 		}
 		if a.Deadline != "" {
@@ -390,4 +554,74 @@ func (s *State) periodValue(args []any) (any, error) {
 		return nil, err
 	}
 	return s.Planning.Ledgers[ledger][date.AddDate(0, int(offset), 0).Format("2006-01")][owner], nil
+}
+
+// RecordWorkSample is called by the planning interpreter after successful observe
+// operations. A date has one latest sample; loading old saves leaves earlier dates unknown.
+func (s *State) RecordWorkSample() {
+	if s.Planning == nil {
+		return
+	}
+	enabled := false
+	for _, screen := range s.DB.Game.Screens {
+		if screen.View.Burnup != nil {
+			enabled = true
+			break
+		}
+	}
+	if !enabled {
+		return
+	}
+	var sample WorkSample
+	for _, id := range slices.Sorted(maps.Keys(s.Planning.Activities)) {
+		a := s.Planning.Activities[id]
+		if s.DB.Game.Planning.Activities[id].Parent != "" {
+			continue
+		}
+		if a.Cancelled {
+			continue
+		}
+		sample.Total += s.ActivityEffort(id)
+		sample.Observed += a.Observed
+	}
+	if s.Planning.WorkHistory == nil {
+		s.Planning.WorkHistory = map[string]WorkSample{}
+	}
+	s.Planning.WorkHistory[s.Planning.Date] = sample
+}
+
+// PlannedWork supplies the default chart budget using public effort and deadlines.
+// It interpolates working days, with zero at start and completion at the deadline.
+func (s *State) PlannedWork(date string) float64 {
+	total := 0.0
+	for _, id := range slices.Sorted(maps.Keys(s.Planning.Activities)) {
+		a := s.Planning.Activities[id]
+		if s.DB.Game.Planning.Activities[id].Parent != "" {
+			continue
+		}
+		if a.Cancelled {
+			continue
+		}
+		from, to := s.DB.Game.Planning.Activities[id].From, s.ActivityDeadline(id)
+		if from == "" {
+			from = s.DB.Game.Planning.Calendar.Start
+		}
+		if to == "" {
+			to = s.DB.Game.Planning.Calendar.End
+		}
+		ratio := 0.0
+		if date >= to {
+			ratio = 1
+		} else if date > from {
+			n, err := s.calendarCount("calendar_workdays", []any{from, date})
+			d, derr := s.calendarCount("calendar_workdays", []any{from, to})
+			if err == nil && derr == nil {
+				nn, _ := expr.ToNumber(n)
+				dd, _ := expr.ToNumber(d)
+				ratio = min(1, nn/max(1, dd))
+			}
+		}
+		total += ratio * s.ActivityEffort(id)
+	}
+	return total
 }

@@ -11,6 +11,8 @@ planning:
     weaver:
       name: Weaver
       data: {reports: ['Weaver visits the workshop.', 'The loom is ready.'], limit: 2}
+  activity_attributes:
+    inspections: {type: number, initial: 0, min: 0, max: 10}
   activities:
     prepare: {name: Prepare, effort: 2, assignee: potter, from: '2030-01-01', to: '2030-01-02'}
     shape: {name: Shape, effort: 2, assignee: potter, from: '2030-01-01', to: '2030-01-02'}
@@ -92,6 +94,8 @@ screens:
       do: [{call: roster_demo}]
     - label: Compare priorities
       do: [{call: priority_demo}]
+    - label: Inspect the preparation work
+      do: [{call: {event: inspect_activity, args: {task: '"prepare"'}}}]
     kind: timeline
     view:
       fullscreen: true

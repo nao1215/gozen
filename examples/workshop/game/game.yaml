@@ -1,4 +1,4 @@
-schema_version: 9
+schema_version: 10
 id: workshop-planning
 title: The pottery workshop
 language: en
@@ -48,10 +48,54 @@ screens:
       - {label: Work this phase, do: [{call: work}]}
       - {label: Rest this phase, do: [{call: rest}]}
       - {label: Assign bowls to Weaver, do: [{plan: {op: assign, activity: shape, entity: weaver}}]}
+      - {label: Studio overview, do: [{open: studio}]}
       - {label: Timeline, do: [{open: timeline}]}
       - {label: Calendar, do: [{open: calendar}]}
       - {label: Assembly, do: [{open: assembly}]}
       - {label: Save, do: [{open: save}]}
   timeline: {title: Work plan, kind: timeline}
   calendar: {title: Calendar, kind: calendar}
-  assembly: {title: Workshop assembly, kind: ensemble}
+  assembly:
+    title: Workshop assembly
+    kind: ensemble
+    view:
+      fullscreen: true
+      guests: [visitor]
+      call:
+        address: call.example.test/workshop
+        controls: [Mic, Camera, Share, Hand, Chat, Leave]
+      chat:
+        title: Workshop messages
+        joined: joined
+        left: left
+        camera_off: Camera off
+        camera_on: Camera on
+
+  studio:
+    title: Studio
+    kind: islands
+    view:
+      fullscreen: true
+      light: true
+      header: Pottery and weaving
+      footer: Select a resident to work or rest. View the plan without spending a phase.
+      burnup: {title: Workshop work, total: Scope, planned_label: Planned, observed: Observed, today: Today, deadline: Delivery}
+      fields:
+        - {key: craft, label: Craft, maximum: 5}
+    entries:
+      - {label: Work, target: potter, do: [{call: work}]}
+      - {label: Rest, target: weaver, do: [{call: rest}]}
+      - {label: Work plan, bounds: [940, 60, 320, 48], do: [{open: timeline}]}
+      - {label: Calendar, bounds: [940, 120, 320, 48], do: [{open: calendar}]}
+
+ui:
+  material:
+    kind: glass
+    blur: 5
+    opacity: 0.24
+    refraction: 16
+    wallpaper_strength: 1
+    border: 0.55
+    shadow: 0.7
+    surfaces: {base: glass, card: glass, control: glass}
+    wallpaper: ["#b5cbf4", "#49c9ca", "#dc97bc"]

@@ -85,3 +85,38 @@ export with the prebuilt CLI and runtime bundle.
 ## Stacked-space performance
 
 See [occupancy measurements](space-performance.md) for generated scaling fixtures, explicit CPU and native graphics benchmarks, and cache-invalidation coverage.
+
+## Neutral workspace regression measurements
+
+`e2e/atago/fixtures/workboard` contains twenty geometric cards, a held flow,
+a conditional drop, a message decision and a shared-picture call. Its state
+and process restart checks live in `e2e/atago/workboard.atago.yaml`.
+
+```sh
+go test ./internal/rpg -run '^$' -bench BenchmarkEntityPublicRead -benchmem -count=3 -o build/rpg.test -cpuprofile build/entity.cpu
+go test ./internal/play -run '^TestWorkspaceFrameTime$' -count=1 -v -o build/play.test -cpuprofile build/workboard.cpu
+go test -c -o build/play.test ./internal/play
+/usr/bin/time -v build/play.test -test.run '^TestPicturesWarmMany$' -test.count=1
+```
+
+The first measurement compares complete objects with a single public field.
+The second requires the script to finish and fails on Update errors. These are
+CPU-side calls, not displayed frame-rate or GPU measurements. The last loads
+forty 1024-square neutral pictures and records process peak RSS separately from
+compilation. Warm-up reserves eight decoded bytes per pixel in batches of at
+most 256 MiB. Decoder scratch buffers, the preload cache and GPU resources are
+outside that reservation; it is not a total-process memory limit.
+
+For actual pixels and lifecycle checks on Linux:
+
+```sh
+xvfb-run -a go test -tags graphics ./internal/play/ -count=1
+GOZEN_DOCS_IMAGES_ONLY='workboard-*.jpg' xvfb-run -a make docs-images
+```
+
+The manifest uses `scripts/capture-office.txt` on the office sample (`examples/office/game`, six people and three rooms). Review the resulting cards,
+flow, drag, peek, message, call and guide pictures at their documentation
+locations. Also run that script with `gozen run`, `--window 1.5` and `--window 3`
+for 1920x1080 and 3840x2160 captures; use a separate `--shots` and `--save-dir`
+for each run and an Xvfb screen at least as large as the requested window.
+No display availability is inferred from passing headless tests.

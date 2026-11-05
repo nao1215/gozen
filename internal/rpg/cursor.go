@@ -78,7 +78,8 @@ func (c Cursor) valid() bool {
 		}
 		return true
 	}
-	return c.Line >= 1 && (c.Event == "") == c.Arrival && !slices.ContainsFunc(c.Answers, func(n int) bool { return n < 0 })
+	// Line 0 begins a named event from its start (a save at a checkpoint).
+	return (c.Line >= 1 || c.Line == 0 && c.Event != "" && len(c.Answers) == 0) && (c.Event == "") == c.Arrival && !slices.ContainsFunc(c.Answers, func(n int) bool { return n < 0 })
 }
 
 // WithCursor adds a cursor and the random bytes to a save made by Save at the start of the

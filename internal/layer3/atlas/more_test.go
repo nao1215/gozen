@@ -118,7 +118,7 @@ func TestGoAndReach(t *testing.T) {
 	if st.Steps <= steps {
 		t.Error("crossing roads counts steps")
 	}
-	if st.Spot != "sign" || !atlas.Visited(db, st, "town", "sign") || !st.Done["town/sign"] {
+	if st.Spot != "sign" || !visited(db, st, "town", "sign") || !st.Done["town/sign"] {
 		t.Errorf("spot %q done %v", st.Spot, st.Done)
 	}
 	if again := atlas.Reach(db, st, "sign"); len(again) != 0 {
@@ -209,18 +209,18 @@ func TestVisitGrowsWithTheMap(t *testing.T) {
 	st := testgame.State(db, 1)
 	st.Mapped = nil
 	atlas.Visit(db, st, "town", "fork")
-	if st.Mapped == nil || !atlas.Visited(db, st, "town", "fork") || atlas.Visited(db, st, "town", "square") {
+	if st.Mapped == nil || !visited(db, st, "town", "fork") || visited(db, st, "town", "square") {
 		t.Fatalf("%v", st.Mapped)
 	}
 	st.Mapped["town"] = st.Mapped["town"][:2] // an older save with fewer points
 	atlas.Visit(db, st, "town", "gate")
-	if len(st.Mapped["town"]) != len(db.Locations["town"].Map.PointIDs()) || !atlas.Visited(db, st, "town", "gate") {
+	if len(st.Mapped["town"]) != len(db.Locations["town"].Map.PointIDs()) || !visited(db, st, "town", "gate") {
 		t.Errorf("the record grows to the points now written: %v", st.Mapped["town"])
 	}
 	atlas.Visit(db, st, "town", "ghost")
 	atlas.Visit(db, st, "camp", "square")
 	atlas.Visit(db, st, "nowhere", "square")
-	if atlas.Visited(db, st, "camp", "square") || atlas.Visited(db, st, "nowhere", "x") || atlas.Visited(db, st, "town", "ghost") {
+	if visited(db, st, "camp", "square") || visited(db, st, "nowhere", "x") || visited(db, st, "town", "ghost") {
 		t.Error("visits to what does not exist are not recorded")
 	}
 	if _, ok := st.Mapped["camp"]; ok {

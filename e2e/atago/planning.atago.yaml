@@ -349,7 +349,7 @@ scenarios:
   - fixture:
       file: numeric/game.yaml
       content: |
-        schema_version: 9
+        schema_version: 10
         id: numeric-workshop
         start: {location: room}
         planning:
@@ -381,7 +381,7 @@ scenarios:
   - fixture:
       file: arguments/game.yaml
       content: |
-        schema_version: 9
+        schema_version: 10
         id: workshop-arguments
         start: {location: room}
         planning:
@@ -1109,3 +1109,29 @@ scenarios:
       file:
         path: resumed.jsonl
         contains: ['Reviewed weaver', 'Roster closed.', '"weaver":{"attributes":{"portrait":"","vigor":2}', '"potter":{"attributes":{"portrait":"","vigor":0}']
+- name: typed activity attributes persist independently of assignment
+  steps:
+  - fixture:
+      file: inspect.txt
+      content: |
+        gap 1
+        wait 10
+        do call: {event: inspect_activity, args: {task: '"prepare"'}}
+        until idle
+        do plan: {op: assign, activity: prepare, entity: weaver}
+        do call: {event: inspect_activity, args: {task: '"shape"'}}
+        until idle
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../docs/examples/event-arguments" --start workshop --script inspect.txt --trace inspect.jsonl
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
+      file:
+        path: inspect.jsonl
+        contains:
+        - 'Inspections 1'
+        - 'Inspections 2'
+        - '"attributes":{"inspections":1}'

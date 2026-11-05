@@ -1,5 +1,10 @@
 locations: {workshop: {name: Workshop}}
 events:
+  inspect_activity:
+    params: {task: activity}
+    do:
+    - plan: {op: set, activity: {expr: arg.task}, attribute: inspections, value: 'self.inspections + 1'}
+    - say: 'Inspections {sum(activities, it.inspections)}'
   visit:
     do:
     - call: {event: encourage, args: {resident: '"potter"', amount: '2'}}

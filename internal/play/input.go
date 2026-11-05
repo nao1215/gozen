@@ -46,6 +46,8 @@ const (
 	btnMapFocus
 	btnMapPan
 	btnEndTurn
+	// btnInbox opens the oldest chat message (the top-right notification).
+	btnInbox
 
 	numButtons
 
@@ -59,6 +61,7 @@ var keys = [numButtons][]ebiten.Key{
 	btnMapFocus:    {ebiten.KeyEnd},
 	btnMapPan:      {ebiten.KeyP},
 	btnEndTurn:     {ebiten.KeyE},
+	btnInbox:       {ebiten.KeyI},
 	btnUp:          {ebiten.KeyArrowUp, ebiten.KeyW, ebiten.KeyK},
 	btnDown:        {ebiten.KeyArrowDown, ebiten.KeyS, ebiten.KeyJ},
 	btnLeft:        {ebiten.KeyArrowLeft, ebiten.KeyA, ebiten.KeyH},
@@ -130,11 +133,16 @@ type input struct {
 	moved  bool
 	click  bool
 	rclick bool
-	wheel  float64
-	script *script
-	replay *replay
-	tick   int
-	lastXY image.Point
+	// pdown, pheld and pup follow the left button or the followed finger: pdown
+	// on the tick it goes down, pheld while it stays, pup on the tick it
+	// lifts. Dragging reads them; a click stays what it was (the mouse's press,
+	// a finger's lift).
+	pdown, pheld, pup bool
+	wheel             float64
+	script            *script
+	replay            *replay
+	tick              int
+	lastXY            image.Point
 
 	stick [4]int
 	pads  []ebiten.GamepadID
@@ -157,6 +165,7 @@ type input struct {
 func (in *input) update() {
 	in.pressed, in.pad = [numButtons]bool{}, [numButtons]bool{}
 	in.click, in.rclick, in.moved, in.wheel = false, false, false, 0
+	in.pdown, in.pheld, in.pup = false, false, false
 	in.began, in.swipe, in.swiped = false, 0, in.swiped && in.touching
 	in.esc, in.shift = false, false
 	in.digit = 0
@@ -215,8 +224,14 @@ func (in *input) update() {
 	in.click = inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft)
 	in.rclick = inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight)
 	_, in.wheel = ebiten.Wheel()
+	in.pdown = in.click
+	in.pheld = ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft)
+	in.pup = inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft)
 	in.touch()
 }
+
+// dragTicks is how many ticks a script's drag moves before it lifts.
+const dragTicks = 8
 
 // longPress is how many ticks a touch is held to be a long press (half a second).
 const longPress = 30
@@ -239,6 +254,7 @@ func (in *input) touch() {
 	if in.touching {
 		if inpututil.IsTouchJustReleased(in.touchID) {
 			in.touching = false
+			in.pup, in.mouse = true, in.touchAt
 			if !in.touchDone && !in.longUsed {
 				in.click, in.mouse, in.moved = true, in.touchAt, true
 			}
@@ -247,6 +263,7 @@ func (in *input) touch() {
 		}
 		x, y := ebiten.TouchPosition(in.touchID)
 		at := in.toUI(x, y)
+		in.pheld = true
 		in.swipe = float64(at.Y - in.touchAt.Y)
 		if d := at.Sub(in.touchFrom); d.X*d.X+d.Y*d.Y > swipeFrom*swipeFrom {
 			in.swiped = true
@@ -267,6 +284,7 @@ func (in *input) touch() {
 		in.touchID, in.touching, in.touchDone, in.longUsed, in.touchAt = id, true, false, false, in.toUI(x, y)
 		in.touchFrom, in.began, in.swiped = in.touchAt, true, false
 		in.mouse, in.moved = in.touchAt, true
+		in.pdown, in.pheld = true, true
 		return
 	}
 }
@@ -402,6 +420,12 @@ type script struct {
 
 	// snapshot writes the whole game state to the trace (the snapshot command).
 	snapshot func()
+	// pick confirms the visible control whose label contains a text, and look
+	// writes what can be acted on now (the pick and look commands).
+	pick func(in *input, text string)
+	look func()
+	// guides shows screen guides in this scripted play, or hides them again.
+	guides func(on bool)
 	// window sets the window's inside to w×h device-independent pixels (nil without a window),
 	// and size is the inside the script asked for (zero: the game's screen), which the game
 	// lays out for (Layout).
@@ -416,9 +440,11 @@ type script struct {
 type scriptCmd struct {
 	name string
 	x, y int
-	verb string
-	arg  string
-	n    int
+	// toX and toY end a drag.
+	toX, toY int
+	verb     string
+	arg      string
+	n        int
 }
 
 func parseScript(src string) (*script, error) {
@@ -518,6 +544,14 @@ func parseScript(src string) (*script, error) {
 			s.cmds = append(s.cmds, c)
 			continue
 		}
+		if c.verb == "pick" {
+			c.name = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(sc.Text()), "pick"))
+			if c.name == "" {
+				return nil, fmt.Errorf("script line %d: pick TEXT", line)
+			}
+			s.cmds = append(s.cmds, c)
+			continue
+		}
 		if c.verb == "memo" {
 			if len(f) < 3 {
 				return nil, fmt.Errorf("script line %d: memo KIND TEXT", line)
@@ -557,6 +591,19 @@ func parseScript(src string) (*script, error) {
 				return nil, fmt.Errorf("script line %d: %w", line, err)
 			}
 			c.n = n
+		case "drag":
+			if len(f) != 5 {
+				return nil, fmt.Errorf("script line %d: drag X Y TO_X TO_Y", line)
+			}
+			var at [4]int
+			for i := range at {
+				n, err := strconv.Atoi(f[i+1])
+				if err != nil {
+					return nil, fmt.Errorf("script line %d: drag X Y TO_X TO_Y: %w", line, err)
+				}
+				at[i] = n
+			}
+			c.x, c.y, c.toX, c.toY, c.n = at[0], at[1], at[2], at[3], dragTicks
 		case "click":
 			if len(f) < 3 {
 				return nil, fmt.Errorf("script line %d: click X Y", line)
@@ -581,6 +628,14 @@ func parseScript(src string) (*script, error) {
 				return nil, fmt.Errorf("script line %d: wait-graphs takes no arguments", line)
 			}
 		case "press", "shot", "until", "quit":
+		case "guides":
+			if len(f) != 2 || c.arg != "on" && c.arg != "off" {
+				return nil, fmt.Errorf("script line %d: guides on|off", line)
+			}
+		case "look":
+			if len(f) != 1 {
+				return nil, fmt.Errorf("script line %d: look takes no arguments", line)
+			}
 		case "snapshot":
 			if len(f) != 1 {
 				return nil, fmt.Errorf("script line %d: snapshot takes no arguments", line)
@@ -712,8 +767,27 @@ func (s *script) step(in *input) {
 			return
 		case "click":
 			in.click, in.mouse = true, image.Pt(c.x, c.y)
+			in.pdown, in.pup = true, true
 			s.pc++
 			s.wait = 8
+			return
+		case "drag":
+			// Press at the start, move in even steps while held, lift at the end.
+			k := dragTicks - c.n
+			in.mouse, in.moved = image.Pt(c.x+(c.toX-c.x)*k/dragTicks, c.y+(c.toY-c.y)*k/dragTicks), true
+			switch c.n {
+			case dragTicks:
+				in.click, in.pdown, in.pheld = true, true, true
+			case 0:
+				in.pup = true
+				c.n = dragTicks
+				s.pc++
+				s.wait = 8
+				return
+			default:
+				in.pheld = true
+			}
+			c.n--
 			return
 		case "press":
 			b, ok := scriptButtons[c.arg]
@@ -1005,6 +1079,25 @@ func (s *script) step(in *input) {
 			}
 			s.pc++
 			continue
+		case "look":
+			if s.look != nil {
+				s.look()
+			}
+			s.pc++
+			continue
+		case "guides":
+			if s.guides != nil {
+				s.guides(c.arg == "on")
+			}
+			s.pc++
+			continue
+		case "pick":
+			s.pc++
+			if s.pick != nil {
+				s.pick(in, c.name) // a pick that finds nothing is written to the trace
+			}
+			s.wait = 8
+			return
 		case "window":
 			s.size = [2]int{c.x, c.y}
 			if s.window != nil {
@@ -1039,6 +1132,19 @@ func (s *script) more() bool {
 		}
 		if len(more.cmds) > 0 {
 			s.cmds = append(s.cmds, more.cmds...)
+			return true
+		}
+	}
+	return false
+}
+
+// surfaceInput reports input that can change an authored surface's focus or geometry.
+func (in *input) surfaceInput() bool {
+	if in.click || in.rclick || in.moved || in.pdown || in.pheld || in.pup || in.wheel != 0 || in.digit != 0 || in.esc {
+		return true
+	}
+	for i := range in.pressed {
+		if in.pressed[i] || in.held[i] {
 			return true
 		}
 	}

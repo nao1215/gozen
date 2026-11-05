@@ -803,3 +803,15 @@ scenarios:
       exit_code: 1
       stderr:
         contains: '[GZN1704]'
+- name: GZN0123 for an opted-in speech inconsistency
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 10\nid: g\nlanguage: en\nstart: {location: room}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "locations: {room: {name: Room}}\nactors: {potter: {name: Potter, speech: {en: {first_person: {preferred: I, avoid: [we]}}}}}\nevents: {hello: {do: [{say: {who: potter, text: 'we agree'}}]}}\n"
+  - run: {command: "gozen check --only structure g"}
+  - assert:
+      exit_code: 0
+      stderr: {contains: '[GZN0123]'}

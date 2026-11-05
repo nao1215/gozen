@@ -90,6 +90,7 @@ type cursor struct {
 // screenFrame retains the opener while an authored entry runs independently.
 // It is live session state, not a serialized save representation.
 type screenFrame struct {
+	destination  string
 	args         map[string]any
 	name, origin string
 	runner       *event.Runner
@@ -448,6 +449,9 @@ func (s *Session) next() Request {
 				s.screens = s.screens[:len(s.screens)-1]
 				continue
 			}
+			if frame.destination != "" {
+				frame.name, frame.args, frame.destination = frame.destination, nil, ""
+			}
 			q := s.screenRequest()
 			s.pending = &q
 			if s.cfg.OnRequest != nil {
@@ -804,14 +808,11 @@ func (s *Session) checkpoint(q event.Checkpoint) error {
 		}
 		return s.st.KeepCheckpoint(q.Event, rnd)
 	}
-	st, err := s.st.RetryCheckpoint()
+	st, p, err := s.st.RetryCheckpoint()
 	if err != nil {
 		return err
 	}
-	if err := s.pcg.UnmarshalBinary(st.SavedRand); err != nil {
-		return err
-	}
-	st.Rand = rand.New(s.pcg) //nolint:gosec // Deterministic gameplay, not secrets.
+	s.pcg = p
 	s.st = st
 	s.pending, s.held, s.screens = nil, nil, nil
 	s.arrived = false
@@ -850,7 +851,7 @@ func (s *Session) answerScreen(n int) {
 		return
 	}
 	entry := s.db.Game.Screens[frame.name].Entries[frame.indices[n]]
-	visible, err := frame.rows[n].Visible(s.db, entry, expr.Chain{expr.Map{"arg": expr.Map(frame.args)}, s.st.Env()})
+	visible, err := frame.rows[n].Available(s.db, entry, expr.Chain{expr.Map{"arg": expr.Map(frame.args)}, s.st.Env()})
 	if err != nil {
 		s.runner.Log(err)
 	}
@@ -859,9 +860,10 @@ func (s *Session) answerScreen(n int) {
 		s.pending = &q
 		return
 	}
-	if len(entry.Do) == 0 {
+	if len(entry.Do) == 0 && entry.Destination == "" {
 		return
 	}
+	frame.destination = entry.Destination
 	s.pending = nil
 	s.start()
 	if err := s.runner.StartBound(fmt.Sprintf("screen:%s:%d", frame.name, frame.indices[n]), frame.rows[n].Args); err != nil {
@@ -895,7 +897,7 @@ func (s *Session) resumeScreens(inputs []rpg.ReplayInput) error {
 	s.runner = replay.Runner
 	s.screens = nil
 	for _, frame := range replay.Frames {
-		s.screens = append(s.screens, screenFrame{args: frame.Args, name: frame.Name, origin: frame.Origin, runner: frame.Runner, indices: frame.Indices, rows: frame.Rows, at: cursor{noBack: true}})
+		s.screens = append(s.screens, screenFrame{args: frame.Args, name: frame.Name, destination: frame.Destination, origin: frame.Origin, runner: frame.Runner, indices: frame.Indices, rows: frame.Rows, at: cursor{noBack: true}})
 	}
 	s.at.noBack = true
 	s.inputs = slices.Clone(inputs)

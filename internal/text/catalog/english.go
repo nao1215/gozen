@@ -391,6 +391,7 @@ var english = map[string]string{
 	"すばやさ %d\u3000SP %d":                "AGI %d  SP %d",
 	"%s が Lv%d に なった！":                  "%s is now Lv%d!",
 	"SPが たりない。":                         "Not enough SP.",
+
 	"まだ とれない。（さきに ひつような スキルを あげよう）": "Not yet. (Raise the required skills first.)",
 	"これいじょう あげられない。":                "Already at the maximum.",
 	"スキルツリー\u3000%s（%s）":            "Skill tree  %s (%s)",
@@ -444,9 +445,11 @@ var english = map[string]string{
 	"Z: みる   X: もどる":                     "Z: view   X: back",
 	"とまっています":                            "Stopped",
 	// screens: the character book (ADR 0031)
-	"キャラクター": "Characters",
-	"まもののほん": "Monsters",
-	"相関図":    "Relationships",
+	"キャラクター":                    "Characters",
+	"まだ出会っていない。":                "Not met yet.",
+	"←→↑↓: えらぶ   Z: 姿   X: もどる": "Arrows: choose   Z: look   X: back",
+	"まもののほん":                    "Monsters",
+	"相関図":                       "Relationships",
 	"Tab: ページ   矢印: 選択   Z: 注目/詳細   X: 全体/もどる   F6: とじる":     "Tab: page   arrows: choose   Z: focus/page   X: full/back   F6: close",
 	"←→ / LR: キャラ   ↑↓: 一覧   Z: 表情   Tab: 相関図   X / F6: もどる": "Left/Right / LR: character   Up/Down: list   Z: face   Tab: chart   X / F6: back",
 	"あなた":    "You",
@@ -497,6 +500,7 @@ var english = map[string]string{
 	"イベントの始まりから始め直し、メモの台詞まで読み進める":                        "Restart the event from its beginning and read up to the noted line",
 	"名前の分からないイベント（場所に着いた時など）の始まりの状態から。着いた時のイベントはそこから始まる": "From the start of an unnamed event (such as arriving at a place); the arrival event starts from there",
 	"メモの時の状態で同じ戦いを始める（戦いの途中の HP は戻らない）":                  "Start the same battle from the noted state (HP from mid-battle is not restored)",
+
 	"メモの瞬間の状態そのまま":            "Exactly the state when the note was made",
 	"テストのメモ":                  "Playtest note",
 	"一言（空でもよい。OK で保存、取消でやめる）": "Note (may be empty. OK saves, Cancel discards)",
@@ -507,6 +511,7 @@ var english = map[string]string{
 	"（種類を選ぶと一言を書ける）":          "(choose a kind to write a note)",
 	"（別の窓で一言を書いている）":          "(writing the note in another window)",
 	"↑↓で選んで決定\u3000Escでやめる":   "Up/Down and Enter to choose   Esc to cancel",
+
 	"一言を書いてEnterで保存（空でもよい）\u3000Escでやめる":      "Type a note, Enter saves (may be empty)   Esc to cancel",
 	"別の窓で書いて OK で保存、取消でやめる（窓が見えなければ Alt+Tab）": "Write in the other window: OK saves, Cancel discards (Alt+Tab if hidden)",
 
@@ -537,6 +542,9 @@ var english = map[string]string{
 	"← → / Tab: メンバー   X: もどる":   "Left/Right / Tab: member   X: back",
 	"はい":    "Yes",
 	"いいえ":   "No",
+	"次へ ›":  "Next ›",
+	"今日":    "Today",
+	"通知":    "Message",
 	"バックログ": "Backlog",
 	"↑↓ ホイール: スクロール\u3000X / クリック: もどる": "Up/Down, wheel: scroll   X / click: back",
 	"ログ":     "Log",
@@ -629,12 +637,14 @@ var english = map[string]string{
 	"↑ ↓ 行を選択":    "Up/Down: row",
 	"取消で全変更を破棄":   "Cancel: discard all",
 	"決定で操作":       "Confirm: act",
+
 	"まだ使えない行は飛ばします。技を覚えると使えます。": "Rows not usable yet are skipped until the skill is learned.",
-	"作戦の型を選ぶ":                                                      "Choose tactics",
-	"型を一つ選び、確定するだけ":                                                "Pick one preset and apply it",
-	"回復を優先し、使える技で戦います。":                                            "Heals first, then fights with the skills at hand.",
-	"５行まで編集できます。上から順に試します。":                                        "Edit up to 5 rows. They are tried from the top.",
-	"薬・MPが足りない行は飛ばします。誰に使うかは自動です。":                                 "Rows short of items or MP are skipped. Targets are chosen automatically.",
+	"作戦の型を選ぶ":                      "Choose tactics",
+	"型を一つ選び、確定するだけ":                "Pick one preset and apply it",
+	"回復を優先し、使える技で戦います。":            "Heals first, then fights with the skills at hand.",
+	"５行まで編集できます。上から順に試します。":        "Edit up to 5 rows. They are tried from the top.",
+	"薬・MPが足りない行は飛ばします。誰に使うかは自動です。": "Rows short of items or MP are skipped. Targets are chosen automatically.",
+
 	"← → 欄を移動\u3000↑ ↓ 選択\u3000決定で型を選ぶ\u3000取消で全変更を破棄\u3000* は未確定": "Left/Right: column   Up/Down: select   Confirm: choose   Cancel: discard all   * unsaved",
 	"必要 MP %d":         "Needs %d MP",
 	"%s 必要 1個（所持 %d個）": "%s needs 1 (have %d)",
@@ -654,6 +664,7 @@ var english = map[string]string{
 	"説明の全文":            "Full text",
 	"1個":               "1",
 	"作戦の行を編集":          "Edit tactic row",
+
 	"← → 欄を移動\u3000↑ ↓ 選択\u3000決定で変更\u3000B / L1 説明全文\u3000取消で戻る": "Left/Right: column   Up/Down: select   Confirm: change   B / L1: full text   Cancel: back",
 	"↑ ↓ スクロール\u3000決定・取消で戻る":                                     "Up/Down: scroll   Confirm/Cancel: back",
 	"行動時":           "on action",
@@ -687,6 +698,7 @@ var english = map[string]string{
 	"戦闘AI履歴（閲覧中は戦闘を停止）": "Battle AI history (battle paused)",
 	"最新128件・新しい順":       "Latest 128, newest first",
 	"評価した行・必要量・結果":      "Rows checked, cost, result",
+
 	"← → 欄を移動\u3000↑ ↓ 選択\u3000行を決定で全文\u3000B / L1・取消で戦闘へ戻る": "Left/Right: column   Up/Down: select   Confirm on a row: full text   B / L1 / Cancel: back to battle",
 	// screens: title
 	"おわる":   "Quit",

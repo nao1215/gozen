@@ -101,3 +101,9 @@ benchmarks:
     commands:
       gozen:
         command: ["${artifact}", book, "${head_root}/../e2e/atago/fixtures/game"]
+
+  - name: workboard flow
+    description: Complete a held flow and return with a falling done condition.
+    commands:
+      gozen:
+        command: ["${artifact}", sim, script, "${head_root}/../e2e/atago/fixtures/workboard", --start, workshop, --script, "${head_root}/workboard.txt"]

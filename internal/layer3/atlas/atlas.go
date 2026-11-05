@@ -369,17 +369,6 @@ func Visit(db *data.DB, st *rpg.State, loc, point string) {
 	st.Mapped[loc] = m
 }
 
-// Visited reports whether the party has been at a point of a map.
-func Visited(db *data.DB, st *rpg.State, loc, point string) bool {
-	l := db.Locations[loc]
-	if l == nil || l.Map == nil {
-		return false
-	}
-	i := slices.Index(l.Map.PointIDs(), point)
-	m := st.Mapped[loc]
-	return i >= 0 && i < len(m) && m[i] != 0
-}
-
 // Place puts the party where a move into loc arrives, from the location from: in a stage
 // on the spot at, else the start spot; on a map on the point at, else the point leading
 // back to from, else the start point. Other locations (a dungeon places the party with

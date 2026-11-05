@@ -3,6 +3,7 @@ Planning:
   rules: "Bounded reusable operation sequences with scalar parameters."
   policies: "Ordered choices of events, evaluated from player observations."
   _: "Planning definition for deterministic planning simulations."
+  activity_attributes: "Typed activity-local scalar defaults; plan set writes saved overrides."
   attributes: "Attributes of this planning."
   entities: "Entities of this planning."
   calendar: "Calendar of this planning."
@@ -31,7 +32,17 @@ Calendar:
   phases: "Phases of this calendar."
   weekdays_off: "Weekdays off of this calendar."
   closed: "Closed of this calendar."
+  looks: "How each phase looks (keys are phases, or closed for a closed day): a clock beside the date, a light washed over workspace surfaces, and a short turn card when play moves into it."
+PhaseLook:
+  _: "How one calendar phase looks, so the passing of time is seen rather than read."
+  label: "Name of the phase on its turn card; omitted uses a view's phase label."
+  time: "Short clock text shown after the date, such as 18:30 (at most 12 characters)."
+  color: "Light of the phase as #rrggbb: the mark before the date, the wash and the card."
+  wash: "How strongly workspace surfaces are covered with the light, 0 through 0.8."
+  card: "false shows no turn card when play moves into the phase."
+  note: "Interpolated line under the clock on the turn card."
 Activity:
+  parent: Optional root activity for an authored decomposition; split activates the children.
   observation: "Displayed progress formula; self contains progress, effort and assignee. Refreshed by observe."
   dependency_ratio: "Fraction of each prerequisite needed before positive progress; omitted means 1."
   _: "Activity definition for deterministic planning simulations."
@@ -45,6 +56,9 @@ Ledger:
   _: "Ledger definition for deterministic planning simulations."
   retain: "Retain of this ledger."
 Reservation:
+  after: "Reservation IDs whose events must already have started; eligible on a subsequent dispatch."
+  exclusive: "Optional group allowing at most one selected reservation per calendar date, in authored order."
+  when: "Optional pure eligibility condition, including public presence attributes; false leaves the reservation pending."
   label: "Public calendar annotation; does not affect dispatch."
   hide_closed: "Hide the annotation on closed dates; does not affect dispatch."
   _: "An event reservation dispatched once per matching date."
@@ -75,7 +89,23 @@ PolicyRule:
   _: "An ordered policy candidate; the first matching candidate supplies its event."
   when: "Condition evaluated from visible entity and activity observations. Omitted means true."
   event: "Existing event to run through the ordinary interpreter."
+EnsembleChat:
+  _: Read-only meeting chat with presence notices and authored public participant responses. Spoken dialogue is not copied into chat.
+  title: Heading of the transcript column.
+  joined: Notice after a participant joins.
+  left: Notice after a participant leaves.
+  camera_off: Notice when a camera is disabled.
+  camera_on: Notice when a camera is enabled.
+  reaction: Public entity observation containing a short response. Empty means silence.
 PlanningView:
+  window: Optional desktop title for fullscreen islands. Window controls are decorative; navigation uses authored actions and tabs.
+  call: Optional desktop browser call presentation. Requires chat.
+  background: Optional decorative background image path.
+  burnup: Optional observed work chart for an islands surface; records one latest public sample per date on observe operations.
+  light: Use a paper background, white cards and dark text on this surface.
+  guest_backdrops: Optional picture paths keyed by guest actor ID.
+  chat: Enables the transcript column and a camera grid with bounded tile aspect ratios.
+  guests: Actor IDs shown as additional ensemble participants without creating simulation entities.
   date_link: "Default date destination; arguments read selected date, offset, weekday, closed and summary. Explicit marker links take precedence."
   tabs: "Two to five fullscreen screen IDs in the same order on every peer, including this screen. Bottom tabs or left/right replace the surface without consuming time or nesting screens."
   filter_label: Optional label for the unfiltered grouped timeline. Enables arrow buttons to cycle public residents from order and visible; clicking the portrait or name resets to all. Other lanes become faint without moving or changing state.
@@ -86,7 +116,10 @@ PlanningView:
   detail: Public text binding for the selected entity pane, shown alongside its assigned activities.
   fullscreen: Use the entire play surface with authored action bounds and contextual entity actions.
   header: Interpolated status text on the full-screen top strip.
+  header_face: "Interpolated picture path of a small square face crop after the date, before the header text: a state shown by a face instead of a word."
+  header_tint: "Interpolated #rrggbb ring around the header face; empty draws none."
   footer: Interpolated guidance text on the full-screen bottom strip.
+  band: "Schema 10: none leaves out the full-screen bottom strip (buttons that stand on their own, such as a result screen); omitted keeps it."
   date_format: Go time layout for dates; the literal {weekday} is replaced using weekdays.
   week_start: First monthly calendar column, from 0 (Sunday, default) to 6 (Saturday). Weekday labels remain in Sunday-first order.
   weekdays: Seven weekday labels starting with Sunday; omitted uses English.
@@ -94,6 +127,7 @@ PlanningView:
   event_label: Calendar count suffix; omitted uses events.
   icon: Fixed public portrait binding for video-off participants.
   _: Explicit player-facing columns, seating and observed image bindings for planning screens.
+  face_shape: "Overrides ui.face_shape on this screen: round or square. A video call always keeps round faces."
   order: Entity IDs in seat order; omitted order uses ascending IDs.
   fields: Player value columns; hidden attributes are rejected.
   portrait: Public value containing a portrait asset path.
@@ -101,8 +135,11 @@ PlanningView:
   badge: Public value shown instead of a face at an unoccupied seat.
   backdrop: Public value containing a participant background asset path.
   mask: Public boolean value selecting coarse background masking.
-  door: Authored label on the island view's door.
 PlanningField:
+  maximum_key: Public per-resident numeric limit, overriding maximum; zero disables the gauge.
+  warning_key: Public numeric value at which the gauge turns amber.
+  critical_ratio: Fraction of the limit at which the gauge turns red; zero disables this threshold.
+  text_key: Public formatted text replacing the numeric value label on resident cards.
   _: A labeled public value with an optional numeric gauge.
   key: Attribute or observation name; hidden attributes are rejected. Schema-10 plain portrait lists also accept a text template; missing or hidden resolved values are omitted.
   label: The authored label displayed above this public value column; plain portrait lists support interpolation.
@@ -135,3 +172,56 @@ TimelineMarker:
 IDRef:
   _: "A literal ID or an explicit pure expression resolving to an existing typed target."
   expr: "Schema 10: a pure expression returning an entity or activity ID for the owning plan field. Empty and unknown IDs are rejected before mutation."
+
+BurnupView:
+  bounds: Optional workspace rectangle as x, y, width and height; minimum size is 120 by 48 logical pixels.
+  compact: Draw a small public progress strip with a condensed legend.
+  unit: Authored unit suffix for today’s planned and observed totals.
+  _: An islands chart of public scope, planned work and observed history. Old saves do not fabricate earlier observations.
+  title: Heading above the work chart and its legend.
+  total: Scope line legend.
+  planned_label: Planned work legend.
+  observed: Observed work legend.
+  today: Current date marker label.
+  deadline: Calendar end label, followed by the end date.
+  planned: Optional pure numeric expression evaluated with selected.date for cumulative planned work. Omission interpolates working days for each activity.
+  colors: "Schema 10: optional line colors {planned, observed, total, today, grid}. Unset colors keep the built-in chart colors."
+
+EnsembleCall:
+  _: Desktop browser call presentation with animated camera portraits.
+  still: "Keep the people on camera from swaying and bobbing, so the speaker's face stays where it is framed; blinks and mouths still move. Off by default."
+  captions: "Where the call's lines show: omitted, in captions over the speaker view; window, in the novel message window under the call, the call fitted above it with its controls under the messages; overlay, in the novel message window laid over the lower part of a full call (layout: full), its top and width those of the plain window, reaching the screen's lower edge."
+  layout: "full fills the screen with the call, the browser maximized: the stage runs to the screen's lower edge under the message window and the people on camera are framed above the window's top; the side column and the controls stand above it. Needs captions: overlay. Omitted, the browser window stands on the wallpaper."
+  others: "Where the participants not on the stage stand: omitted, in a strip under the stage; side, in a list of round faces and names in the side column in place of the chat transcript (a join or a leave shows as a face coming or going; an authored chat.reaction shows under the name), the stage taking the strip's room. A call of two (one participant besides the self view) folds the column for every line: the stage widens to its edge but for a slim column of the controls, and while the caller takes the stage (self_stage) the participant stands in the small view."
+  others_title: Optional heading of the side list (others side), interpolated; empty shows none.
+  window_opacity: "Opacity from 0 to 1 of the message window laid over the call (captions: overlay), over ui.material.opacities.message; 0 or omitted keeps it."
+  address: Display-only browser address.
+  controls: "Display-only round call controls, at most six. Each is a label, or {label, icon, color} with icon one of mic, camera, share, hand, chat, leave or none. A bare label takes its icon from its place (mic, camera, share, hand, chat, leave) and the last one is filled as the way out."
+  self: "Optional small self view in the lower right of the speaker view: a planning entity, a guest actor or a picture path. That participant leaves the strip and the stage. Empty shows none."
+  self_label: Optional name under the self view; empty uses the entity's or actor's name.
+  self_stage: "Put the self view on the stage, large, while the caller speaks (a line of the call whose speaker is not one of its participants, or the participant self); every participant then stands in the strip. Off by default: the stage keeps whoever spoke last and the small self view shows that the caller speaks. Needs self."
+  colors: "Optional call colors {body, tile, speaking, control, leave}. Unset colors keep the built-in look."
+  mouth: Base portrait paths mapped to same-canvas open-mouth variants.
+  blink: Base portrait paths mapped to same-canvas closed-eye variants.
+
+CallControl:
+  _: "A decorative round call control: a label, or a map naming its icon."
+  label: Display-only label of the control.
+  icon: "One of mic, camera, share, hand, chat, leave or none. Empty takes the icon from the control's place."
+  color: Optional fill of the round button; unset uses call.colors.control, or call.colors.leave for the leave icon.
+
+CallColors:
+  _: Colors of a call surface; unset colors keep the built-in look.
+  body: Browser body behind the call.
+  tile: Empty camera tile of a participant.
+  speaking: Ring, edge and level mark around the participant who speaks.
+  control: Fill of the round controls.
+  leave: Fill of the leave control.
+
+BurnupColors:
+  _: Colors of a burnup chart; unset colors keep the built-in look.
+  planned: Planned work line.
+  observed: Observed work line and points.
+  total: Color of the scope line, the total work in plan.
+  today: Current date marker.
+  grid: Horizontal grid lines.

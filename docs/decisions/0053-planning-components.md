@@ -156,15 +156,20 @@ writing a closed month fails. Retention removes old totals but retains closed
 period markers so pruned periods cannot be reopened. Closure is explicit, allowing
 pending declarations to settle first.
 
-The additions are optional fields in schema 9 and optional state in save format 2.
-Old games retain fixed rendering and their existing state. The native screen
+The additions are optional fields in schema 10 (planning, the screen kinds and views, the workspace entries, `say.ensemble`, `say.instant` and `ui.material` are all refused below 10, so a game that says 9 still loads in v0.15) and optional state in save format 3.
+Old games retain fixed rendering and their existing state. A save made before a release that added or removed
+entities, activities, ledgers or attributes still loads: missing records take
+the initial values of a new game, records whose definition is gone are dropped,
+a date past a shortened calendar end moves to the end, and every repair is
+listed in the load report. Values that no definition change explains (NaN,
+out of range, a phase past the calendar on an unchanged date) are still refused. The native screen
 option renders a 16:9 inner framebuffer at device resolution; Ebitengine owns
 letterboxing and pointer conversion. Scripted captures with an explicit window size include opaque black outer bars,
 centered around the native framebuffer without resampling its pixels.
 
 ## Authored retry points
 
-Schema 9 events may use `checkpoint: resume_event` to replace one retry point.
+Schema 10 events may use `checkpoint: resume_event` to replace one retry point.
 `restore_checkpoint: true` abandons the current event and suspended screen actions,
 restores the state and PCG stream, and starts that event. Both the interactive
 runtime and non-rendering sessions implement this contract. Missing or damaged
@@ -226,7 +231,8 @@ one at a time, without blocking event execution. Queued results retain their
 display time until shown; dialogue pauses notification time. Keep result text
 short enough for the footer's two lines. Other screens retain floating notices.
 Timeline rows and entity action menus scroll when they exceed the available height.
-Reservation cancellation, general activity splitting and full policy metrics are not implemented. No external game's rule
+Reservation cancellation and full policy metrics are not implemented. Activity
+splitting is described below. No external game's rule
 compatibility is claimed by the neutral component tests.
 
 Resident views may bind `visible` to a public boolean attribute or observation.
@@ -373,3 +379,111 @@ eagerly; use pure fallbacks for searches. Neither function draws randomness.
 Together with `filter`, these replace expanded date-search conditionals while
 keeping an explicit bounded search horizon. The workshop collection example and
 its CLI scenario search for the next open day and cover exhausted candidates.
+
+### Activity-local attributes
+
+`planning.activity_attributes` declares typed scalar defaults shared by activities.
+It uses the same `type`, `initial`, bounds and explicit assignment rules as entity
+attributes. Activity field names such as `progress`, `effort` and `id` are reserved.
+An activity stores only assigned overrides; an absent override reads the declared
+default. Saves reject unknown override keys and invalid values. Existing saves
+without overrides continue to read defaults, without adding mutable global keys.
+
+`plan: {op: set, activity: prepare, attribute: moisture, value: 'self.moisture + 1'}`
+updates one activity. `activity: {expr: arg.task}` selects a typed dynamic target.
+`where` and `value` bind `self` to the same full activity object exposed through
+`activity[ID]` and `activities`. Entity/tag selection cannot accompany an activity
+assignment. Failed operations and rules roll back their writes. Assigning work
+to another resident leaves the activity's attributes unchanged.
+
+These attributes are rule state, not automatic player-facing observations. Use
+an explicit activity observation or authored display expression to expose them.
+For example, a workshop can declare `moisture: {type: number, initial: 0}` and
+compute `sum(activities, it.moisture)` without `moisture_prepare` globals. The
+[argument workshop](../examples/event-arguments/game.yaml) demonstrates this
+with a bounded inspection counter and an argument-based update event.
+
+### Decomposing work without increasing its budget
+
+A root activity may declare two or more authored children using `parent`. Only
+one level is supported. Their initial efforts must sum to the root's effort;
+children start unassigned and dormant. For example:
+
+```yaml
+activities:
+  prepare: {name: Prepare clay, effort: 2, assignee: potter}
+  mix: {name: Mix clay, parent: prepare, effort: 0.5}
+  knead: {name: Knead clay, parent: prepare, effort: 1.5}
+```
+
+`plan: {op: split, activity: prepare}` activates the children, clears the root
+assignee and distributes existing actual and observed work by authored effort.
+Repeating the operation is inert. The `active` expression field identifies the
+current work units; `parent` and `split` support authored filters. A split root
+aggregates child progress and observations. Observing that root refreshes its
+children. Root effort, cancellation and deadline changes propagate to the
+children. Root rework is distributed in proportion to existing child work;
+positive adjustments use remaining budgets. Work history counts only roots.
+Save/load preserves the decomposition. New authored child definitions require a
+new game; there is no automatic migration of an older content schema.
+
+Quality, difficulty, priorities and assignment drafts can be ordinary typed
+activity attributes or event variables. They are not engine-specific concepts.
+Authors decide how these quantities aggregate and how available time is spent.
+Use `active` when selecting work and retain root IDs for dependency checks.
+
+### Workspace controls and navigation
+
+`kind: workspace` uses the planning window and authored bounded entries, with a
+quiet opaque card surface. An entry's interpolated `icon` draws a portrait;
+`muted` evaluates in that entry's bindings and adds an unavailable indicator.
+The same entries remain keyboard accessible. A pointer drag from a portrait to
+another action applies the source and destination actions in sequence, matching
+two-click selection. Authors must keep those actions reversible until confirmation.
+
+`destination` replaces the current authored screen after its `do` completes.
+The destination must be parameterless. Unlike nested `open`, repeated navigation
+does not accumulate screens; closing resumes the original opener. Pending choices
+and destination changes survive session save/load. For example:
+
+```yaml
+screens:
+  studio:
+    kind: workspace
+    title: Studio
+    entries:
+    - label: Supplies
+      bounds: [32, 160, 240, 48]
+      destination: supplies
+  supplies:
+    kind: workspace
+    title: Supplies
+    entries:
+    - label: Studio
+      bounds: [32, 160, 240, 48]
+      destination: studio
+```
+
+## Review refinements: dependencies, presentation and saves
+
+Reservation selection now accepts `after` reservation IDs, `exclusive` per-day
+groups and a pure `when`. Dependencies use the existing saved event-start history;
+selection alone does not count as a started event. Declaration order breaks
+exclusive ties. Static checks reject cycles and fixed-date contradictions but
+do not solve arbitrary conditions. This keeps flag-based games compatible and
+avoids a second event interpreter or a genre-specific scheduler.
+
+Save reconciliation records the authored effort/calendar basis, validates saved
+progress against the old effort first, and only normalizes limits known to have
+changed. Older saves without this evidence use current limits strictly.
+
+Presentation keeps one backdrop per composition layer. Theme roles supply card
+colors; call controls declare their own icons. Plain strings have no positional
+meaning. The minimum call viewport is 640 by 360. Drawing and hit tests share
+island geometry. Timeline, entity-table and calendar code have separate files
+within play; they introduce no new dependency edges.
+
+Optional actor speech declarations are keyed by language, with explicit lexical
+alternatives and RE2 patterns. They produce warnings on literal source lines,
+not runtime edits. There is no built-in Japanese pronoun list or automatic
+addressee inference. See the planning author guide for limits and examples.

@@ -1,6 +1,8 @@
 package play
 
 import (
+	"slices"
+
 	lang "github.com/nao1215/gozen/internal/text"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -12,6 +14,10 @@ type sysMenu struct {
 
 var sysScreens = []string{"save", "load", "config", "title"}
 
+// sysProfiles is the place of the character book in the menu, after loading, when
+// game.yaml asks for it (ui.profiles).
+const sysProfiles = 2
+
 func newSysMenu(g *Game) *sysMenu {
 	items := []listItem{{label: lang.T("記録する")}, {label: lang.T("記録を読む")}, {label: lang.T("せってい")}, {label: lang.T("タイトルへ")}, {label: lang.T("とじる")}}
 	if loc := g.db.Locations[g.st.Location]; loc == nil || !loc.Safe {
@@ -19,6 +25,9 @@ func newSysMenu(g *Game) *sysMenu {
 	}
 	if !g.anySave() {
 		items[1].disabled = true
+	}
+	if g.profilesInMenus() {
+		items = slices.Insert(items, sysProfiles, listItem{label: g.profileTitle(), id: "profiles"})
 	}
 	sw, sh := g.screen()
 	const w = 300.0
@@ -37,12 +46,22 @@ func (m *sysMenu) update(g *Game) {
 	if !chose {
 		return
 	}
-	if m.l.sel >= len(sysScreens) {
+	sel := m.l.sel
+	if m.l.items[sel].id == "profiles" {
+		g.pop()
+		g.sfx("decide")
+		g.push(newProfiles(g, nil))
+		return
+	}
+	if g.profilesInMenus() && sel > sysProfiles {
+		sel--
+	}
+	if sel >= len(sysScreens) {
 		g.pop()
 		return
 	}
 	g.pop()
-	g.openScreen(sysScreens[m.l.sel], func() {})
+	g.openScreen(sysScreens[sel], func() {})
 }
 
 func (m *sysMenu) draw(g *Game, dst *ebiten.Image) {

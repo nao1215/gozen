@@ -815,8 +815,6 @@ func clamp(v float32) float32 {
 	return max(-1, min(1, v))
 }
 
-func Decode(b []byte) ([]int16, error) { return decode(b) }
-
 func AssetPath(file string) string {
 	if file == "" {
 		return ""

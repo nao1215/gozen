@@ -183,3 +183,55 @@ func TestEntityDefinitionData(t *testing.T) {
 		t.Fatal("definition data leaked into save")
 	}
 }
+
+func TestEntityValueMatchesPublicObject(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{
+		Calendar: data.Calendar{Start: "2030-01-01", End: "2030-01-02", Phases: []string{"day"}},
+		Attributes: map[string]data.Attribute{
+			"visible": {Type: "bool", Initial: true},
+			"secret":  {Type: "number", Initial: 7, Hidden: true},
+		},
+		Entities: map[string]data.Entity{"potter": {Name: "Potter", Data: map[string]any{"items": []any{"bowl"}}}},
+	}
+	st := testgame.State(db, 17)
+	st.Planning.Entities["potter"].Observations["visible"] = false
+	for _, id := range []string{"potter", "missing"} {
+		for _, key := range []string{"id", "name", "unknown", "visible", "secret"} {
+			if got, want := st.EntityValue(id, key), st.EntityValues(id, false)[key]; got != want {
+				t.Fatalf("%s.%s: %v != %v", id, key, got, want)
+			}
+		}
+	}
+	values, ok := st.EntityValue("potter", "data").(expr.Map)
+	if !ok {
+		t.Fatal("missing metadata")
+	}
+	items, ok := values["items"].([]any)
+	if !ok {
+		t.Fatal("missing list")
+	}
+	items[0] = "changed"
+	original, ok := db.Game.Planning.Entities["potter"].Data["items"].([]any)
+	if !ok || original[0] != "bowl" {
+		t.Fatal("metadata aliased")
+	}
+}
+
+func BenchmarkEntityPublicRead(b *testing.B) {
+	db := testgame.Load(b, nil)
+	db.Game.Planning = &data.Planning{Entities: map[string]data.Entity{"potter": {Name: "Potter"}}}
+	st := testgame.State(db, 17)
+	b.Run("object", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			_ = st.EntityValues("potter", false)["name"]
+		}
+	})
+	b.Run("field", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			_ = st.EntityValue("potter", "name")
+		}
+	})
+}

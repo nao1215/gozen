@@ -3,6 +3,7 @@ package play
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -85,4 +86,46 @@ func TestMenusNoneOpensOnTheNewestSave(t *testing.T) {
 	if _, title := g.stack[0].(*title); !title {
 		t.Errorf("a game with its menus opens on %T, want the title", g.stack[0])
 	}
+}
+
+// ui.title.hide_disabled leaves out the entries that cannot be chosen (Continue with no
+// save, Gallery with nothing to show), and each entry still opens its own screen: choosing
+// goes by the entry, not by its row. Omitted, they stay in the menu, grayed.
+func TestTitleHideDisabledLeavesOutWhatCannotBeChosen(t *testing.T) {
+	labels := func(m *list) (out []string) {
+		for _, it := range m.items {
+			out = append(out, it.id)
+		}
+		return out
+	}
+	t.Run("omitted", func(t *testing.T) {
+		g, _ := btlOpen(t, Options{Location: "-"}, "schema_version: 10\nui: {}\n", "")
+		if got := labels(g.titleMenu()); !slices.Contains(got, "continue") || !slices.Contains(got, "gallery") {
+			t.Fatalf("without hide_disabled the menu is %v, want continue and gallery grayed in it", got)
+		}
+	})
+	g, _ := btlOpen(t, Options{Location: "-"}, "schema_version: 10\nui: {title: {hide_disabled: true}}\n", "")
+	m := g.titleMenu()
+	if got := labels(m); slices.Contains(got, "continue") || slices.Contains(got, "gallery") || got[0] != "new" || got[1] != "config" {
+		t.Fatalf("with hide_disabled and no save the menu is %v", got)
+	}
+	for _, it := range m.items {
+		if it.disabled {
+			t.Errorf("%s is shown disabled", it.id)
+		}
+	}
+	tt := newTitle(g)
+	g.stack = []scene{tt}
+	tt.menu.sel = 1
+	before := len(g.stack)
+	g.in.pressed[btnOK] = true
+	tt.update(g)
+	g.in.pressed[btnOK] = false
+	if len(g.stack) != before+1 {
+		t.Fatalf("choosing the second row opened %d screens", len(g.stack)-before)
+	}
+	if _, ok := g.stack[len(g.stack)-1].(*configScreen); !ok {
+		t.Errorf("the second row opened %T, want the settings", g.stack[len(g.stack)-1])
+	}
+	newTitle(g).draw(g, btlImage())
 }

@@ -3,7 +3,6 @@ package chat
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"math"
 	"math/rand/v2"
 	"slices"
@@ -37,19 +36,6 @@ type scriptDoc struct {
 // YAML is the part of the script at a logical path, as written: "names", "lines.idle",
 // "" for the whole script. An unknown path is an error that is fs.ErrNotExist.
 func (s *Script) YAML(path string) ([]byte, error) { return yamlpath.At(s.src, path) }
-
-// Load reads and validates a crowd script from fsys.
-func Load(fsys fs.FS, path string) (*Script, error) {
-	b, err := fs.ReadFile(fsys, path)
-	if err != nil {
-		return nil, err
-	}
-	s, err := Parse(b)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
-	}
-	return s, nil
-}
 
 // Parse reads and validates a crowd script from YAML (a script a game puts together
 // itself, such as a common script with a route's own lines added).

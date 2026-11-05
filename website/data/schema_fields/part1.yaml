@@ -8,6 +8,7 @@ Action:
   new: "An expression that holds while the action has new content. It is not shown on screen and is only a hint for automatic players."
   when: "An expression that decides whether the action is shown. If omitted, the action is always available."
 Actor:
+  speech: "Optional language-keyed first-person, address and tone lint rules; undeclared speakers are not inspected."
   _: "A party member or other character: their class, level, faces, equipment and portrait settings."
   ai: "The rules this actor follows in auto battle, either an ID of ai or a list of rules inline. Party members inherit their class AI when omitted."
   back: "If true, the actor starts in the back row."
