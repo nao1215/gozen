@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.16.0 - 2026-11-05
+
+Management games on the workspace screens: day flows, workspace cards, drag and drop, tickets, carousels, messages, full-screen video calls with screen sharing, first-visit guides and glass calendars, shown by the new office sample. The sample and theme pictures no longer claim copyright (CC0 1.0).
+
 ### Development schema 10 migration
 
 - Automatically completed flow steps now persist even when `done` later becomes
@@ -31,7 +35,6 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
   until all workers finish. GPU caches and decoder scratch memory are separate.
 - Guide veil images belong to the game and are released on asset reload and
   close. Public single-field entity reads avoid building complete maps.
-
 
 - Planning reservations accept `after`, `exclusive`, and pure `when` conditions. The checker rejects unknown prerequisites, cycles, and impossible fixed ordering. See the planning author guide for dispatch semantics and the limits of static checking.
 - Actors may opt into language-keyed `speech` declarations for first-person terms, forms of address, and endings. `gozen check` reports explicit alternatives and regular-expression matches as GZN0123 warnings; actors without declarations are unchanged.
