@@ -66,7 +66,7 @@ func Simulate(ctx context.Context, opts Options, cfg SimulateConfig) (res Simula
 		err = errors.Join(err, g.Close(), flush())
 	}()
 	if cfg.Lines != nil {
-		g.in.script.next = g.simulateLines(ctx, cfg.Lines, flush)
+		g.in.script.next = g.simulateLines(g.context, cfg.Lines, flush)
 		g.in.script.rejected = func(line string, err error) {
 			g.emit("script_error", traceLine{"line": line, "error": err.Error()})
 		}
