@@ -2,6 +2,7 @@ package gamedata_test
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -144,4 +145,63 @@ func TestStandAndStagingMistakes(t *testing.T) {
 	if _, err := testgame.TryLoad(files("events: {e: {do: [{stand: none}, {stand: {who: helper, at: 0.3, enter: slide}}]}}")); err != nil {
 		t.Errorf("correct staging: %v", err)
 	}
+}
+
+func TestInterpolationQuotedBraces(t *testing.T) {
+	for _, source := range []string{
+		`"}"`, `'left}right'`, `"{" + "}"`, `"escaped\"}brace"`, `'escaped\'}brace'`,
+	} {
+		t.Run(source, func(t *testing.T) {
+			e, err := expr.Parse(source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want, err := e.Eval(nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			text := "before {" + source + "} after"
+			if got := data.Interpolations(text); !slices.Equal(got, []string{source}) {
+				t.Errorf("expressions = %q, want %q", got, source)
+			}
+			if got := data.Render(text, nil); got != "before "+expr.Format(want)+" after" {
+				t.Errorf("render = %q, value = %v", got, want)
+			}
+		})
+	}
+}
+
+func BenchmarkRender(b *testing.B) {
+	env := expr.Map{"gold": 100.0, "name": "Scout"}
+	for b.Loop() {
+		data.Render("Hello {name}, you have {gold} coins.", env)
+	}
+}
+
+// BenchmarkRenderLargeSource keeps the cache alive after rendering distinct
+// long lines; its inuse_space profile reveals retained source backing strings.
+func BenchmarkRenderLargeSource(b *testing.B) {
+	for i := range b.N {
+		line := strings.Repeat("x", 64<<10) + "{value + " + strconv.Itoa(i) + "}"
+		data.Render(line, expr.Map{"value": 1.0})
+	}
+}
+
+func FuzzRenderQuotedText(f *testing.F) {
+	for _, s := range []string{"", "}", "{", "left}right", "quote' and \\ slash", "{{nested}}"} {
+		f.Add(s)
+	}
+	f.Fuzz(func(t *testing.T, s string) {
+		if len(s) > 4096 {
+			return
+		}
+		source := "'" + strings.ReplaceAll(strings.ReplaceAll(s, `\`, `\\`), "'", `\'`) + "'"
+		text := "prefix {" + source + "} suffix"
+		if got := data.Render(text, nil); got != "prefix "+s+" suffix" {
+			t.Fatalf("render = %q, value = %q", got, s)
+		}
+		if got := data.Interpolations(text); !slices.Equal(got, []string{source}) {
+			t.Fatalf("expressions = %q, want %q", got, source)
+		}
+	})
 }
