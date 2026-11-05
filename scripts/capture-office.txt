@@ -1,0 +1,75 @@
+gap 4
+wait 30
+press characters
+wait 20
+shot workboard-profiles
+press x
+wait 10
+guides on
+do open: standup
+wait 20
+press z
+wait 20
+shot workboard-guide
+pick Next
+wait 20
+press x
+wait 10
+do set: {var.day: 1}
+do open: standup
+wait 20
+shot workboard-cards
+pick Next
+wait 15
+pick Daniel Cho
+wait 15
+shot workboard-peek
+press x
+wait 10
+pick Next
+wait 20
+shot workboard-flow
+pick Payments
+wait 10
+shot workboard-drag
+pick Daniel Cho
+wait 20
+press x
+wait 10
+do call: notify
+wait 20
+shot workboard-message
+pick Elena Ruiz
+wait 20
+pick Call now
+wait 20
+shot workboard-call
+press z
+wait 30
+press z
+wait 30
+press z
+wait 30
+press z
+wait 30
+press z
+wait 30
+do open: tickets
+wait 40
+shot workboard-tickets
+press right
+wait 30
+shot workboard-carousel
+press x
+wait 30
+press x
+wait 30
+do open: timeline
+wait 40
+shot workboard-timeline
+press x
+wait 30
+do open: materials
+wait 40
+shot workboard-materials
+quit
