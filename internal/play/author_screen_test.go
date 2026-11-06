@@ -990,3 +990,110 @@ screens:
 		t.Fatal("picture height leaves no caption", h)
 	}
 }
+
+func TestAuthorScreenReturnToOpener(t *testing.T) {
+	for _, tc := range []struct {
+		name, destination          string
+		running, bound, home, want bool
+	}{
+		{name: "same screen", destination: "parent", want: true},
+		{name: "bound parent is a different invocation", destination: "parent", bound: true},
+		{name: "unrelated screen", destination: "other"},
+		{name: "running parent", destination: "parent", running: true, bound: true, want: true},
+		{name: "running parent and home", destination: "other", running: true, home: true, want: true},
+		{name: "running parent and ordinary destination", destination: "other", running: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db := testgame.Load(t, nil)
+			db.Game.Screens = map[string]*data.AuthorScreen{
+				"parent": {Title: "Parent {var.visits}"}, "child": {}, "other": {Home: tc.home},
+			}
+			g := &Game{db: db, st: testgame.State(db, 1)}
+			parent := newAuthorScreen(g, "parent", nil, nil)
+			parent.running = tc.running
+			if tc.bound {
+				parent.args = map[string]any{"person": "weaver"}
+			}
+			closed := 0
+			child := newAuthorScreen(g, "child", func() { closed++ }, nil)
+			g.stack = []scene{parent, child}
+			g.st.Vars["visits"] = float64(4)
+			if got := child.returnTo(g, tc.destination); got != tc.want {
+				t.Fatalf("return = %t, want %t", got, tc.want)
+			}
+			if tc.want {
+				if len(g.stack) != 1 || g.stack[0] != parent || closed != 1 || parent.running != tc.running {
+					t.Fatalf("lost opener or callback: stack=%v closed=%d running=%t", g.stack, closed, parent.running)
+				}
+				if !tc.running && parent.title != "Parent 4" {
+					t.Fatalf("idle parent was not refreshed: %q", parent.title)
+				}
+			} else if len(g.stack) != 2 || closed != 0 {
+				t.Fatal("refused return changed the stack or called completion")
+			}
+		})
+	}
+}
+
+func TestAuthorScreenSaveShortcutsKeepOpener(t *testing.T) {
+	for _, saving := range []bool{false, true} {
+		t.Run(map[bool]string{false: "load", true: "save"}[saving], func(t *testing.T) {
+			fsys := wldWorldFiles(t, "screens: {notes: {title: Notes, entries: [{label: Read, text: Welcome}]}}\n", nil)
+			g := wldOpenWith(t, Options{FS: fsys, Location: "camp"})
+			wldFrames(t, g, 30)
+			closed := 0
+			g.openScreen("notes", func() { closed++ })
+			s := sysAs[*authorScreen](t, g.stack[len(g.stack)-1])
+			depth := len(g.stack)
+			before, err := json.Marshal(g.st)
+			if err != nil {
+				t.Fatal(err)
+			}
+			button := btnLoad
+			if saving {
+				button = btnSave
+			}
+			g.in = input{}
+			g.in.pressed[button] = true
+			s.update(g)
+			menu := sysAs[*saveMenu](t, g.stack[len(g.stack)-1])
+			if len(g.stack) != depth+1 || !menu.inPlay || menu.saving != saving || closed != 0 {
+				t.Fatal("shortcut lost the screen or save/load mode")
+			}
+			g.in = input{pressed: [numButtons]bool{btnCancel: true}}
+			menu.update(g)
+			after, err := json.Marshal(g.st)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(g.stack) != depth || g.stack[depth-1] != s || closed != 0 || !bytes.Equal(before, after) {
+				t.Fatal("canceling save/load changed the screen or simulation")
+			}
+		})
+	}
+}
+
+func TestTargetPopupOutsideClickDoesNotActivate(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Planning = &data.Planning{Entities: map[string]data.Entity{"artisan": {}}}
+	db.Game.Screens = map[string]*data.AuthorScreen{"work": {
+		Kind: "islands", View: data.PlanningView{Fullscreen: true},
+		Entries: []data.ScreenEntry{{Label: "Rest", Text: "Confirm rest", Target: data.IDRef{ID: "artisan"}}},
+	}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "work", nil, nil)
+	s.openTarget(g, "artisan", image.Rect(100, 100, 200, 200))
+	if s.popup == nil {
+		t.Fatal("target actions did not open")
+	}
+	s.popupArmed = true
+	g.in = input{click: true, mouse: image.Pt(0, 0)}
+	s.updateSurface(g)
+	if s.popup != nil || s.target != "" || s.running {
+		t.Fatal("outside click activated or retained target actions")
+	}
+	s.openTarget(g, "absent", image.Rect(100, 100, 200, 200))
+	if s.popup != nil || s.target != "" || s.popupArmed {
+		t.Fatal("empty target retained stale confirmation")
+	}
+}
