@@ -193,3 +193,12 @@ func TestDefinitionFieldSuggestions(t *testing.T) {
 		t.Fatalf("distant hint %q", got)
 	}
 }
+
+func TestDefinitionCyclicMergeAliases(t *testing.T) {
+	for _, source := range []string{
+		"<<: &loop\n  *loop",
+		"00<<: &loop\n  *loop",
+	} {
+		wantDefinitionError(t, source, "$")
+	}
+}
