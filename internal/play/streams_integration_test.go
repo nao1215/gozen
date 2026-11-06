@@ -1211,10 +1211,9 @@ func TestStreamsTipLineVoiced(t *testing.T) {
 	}
 }
 
-// TestStreamsCaptionsButton: the CC button beside the full screen's on the stage, as large
-// and clear of it, turns the stage's caption off and on (the chat keeps the lines), with a
-// click or C, and the choice is kept in the settings.
-func TestStreamsCaptionsButton(t *testing.T) {
+// TestStreamsViewControls: caption and full-view controls persist their choices;
+// a failed write is surfaced without changing the stream transcript.
+func TestStreamsViewControls(t *testing.T) {
 	g, w, _ := voicedShow(t)
 	w.caption = "Hello."
 	cc := w.controlRect
@@ -1238,6 +1237,42 @@ func TestStreamsCaptionsButton(t *testing.T) {
 	if w.shownCaption(g) != "Hello." {
 		t.Fatal("C does not turn the captions on again")
 	}
+	transcript := chatText(w)
+	g.in.click, g.in.mouse = true, image.Pt(int(fx+cw/2), int(fy+ch/2))
+	w.input(g)
+	g.in.click = false
+	if !g.cfg.StreamFull {
+		t.Fatal("full-view button did not expand the stage")
+	}
+	var persisted config
+	b, err := g.storeRead(g.configPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(b, &persisted); err != nil {
+		t.Fatal(err)
+	}
+	if !persisted.StreamFull || persisted.StreamCaptionsOff {
+		t.Fatalf("saved view settings: %+v", persisted)
+	}
+	g.in.pressed[btnHide] = true
+	w.input(g)
+	g.in.pressed[btnHide] = false
+	if g.cfg.StreamFull || chatText(w) != transcript {
+		t.Fatal("returning to the page changed the stream transcript or stayed full")
+	}
+	store := g.store
+	defer func() { g.store = store }()
+	wantErr := errors.New("view settings write failed")
+	g.store = sysWriteFails{Store: store, err: wantErr}
+	for _, toggle := range []func(){g.toggleStreamFull, g.toggleStreamCaptions} {
+		g.failure = nil
+		toggle()
+		if !errors.Is(g.failure, wantErr) || chatText(w) != transcript {
+			t.Fatalf("failed setting write: failure=%v, transcript=%q", g.failure, chatText(w))
+		}
+	}
+	g.failure = nil
 }
 
 // TestStreamsPlateKeepsTheName: the name plate shows a host's whole name, in English with a
