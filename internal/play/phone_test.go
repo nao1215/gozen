@@ -628,3 +628,27 @@ func TestPhoneHidesHUD(t *testing.T) {
 		t.Fatal("the place's HUD did not come back")
 	}
 }
+
+// TestPhoneSizeOnItsSide: on its side the phone is nearly as wide as the
+// screen and its screen is 16:9, on a 1280x720 and a 1920x1080 layout alike.
+func TestPhoneSizeOnItsSide(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "video", Video: &data.PhoneVideo{Picture: "x.png"}})
+	view, ui := g.view, g.ui
+	defer func() { g.view, g.ui = view, ui }()
+	for _, v := range []gameView{{w: 1280, h: 720, ui: 1}, {w: 1920, h: 1080, ui: 1.5}, {w: 1920, h: 1080, ui: 1}} {
+		g.view, g.ui = v, v.ui
+		sw, sh := g.screen()
+		w, h := g.phoneSize(true)
+		_, _, scw, sch := g.phoneScreenRect(true)
+		if w/sw < 0.88 || w > sw*0.94+0.01 || h > sh*0.93+0.01 {
+			t.Errorf("%dx%d: the phone on its side is %.0fx%.0f of %.0fx%.0f", v.w, v.h, w, h, sw, sh)
+		}
+		if a := scw / sch; math.Abs(a-16.0/9) > 0.01 {
+			t.Errorf("%dx%d: its screen is %.3f:1, want 16:9", v.w, v.h, a)
+		}
+		uw, uh := g.phoneSize(false)
+		if math.Abs(uh/sh-0.94) > 1e-9 || math.Abs(uw/uh-0.49) > 1e-9 {
+			t.Errorf("%dx%d: upright %.0fx%.0f", v.w, v.h, uw, uh)
+		}
+	}
+}

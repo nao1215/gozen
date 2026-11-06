@@ -349,18 +349,22 @@ var (
 )
 
 // phoneSize is the phone's outside in UI units as it rests: upright, it is 94%
-// of the screen's height; on its side, a quarter larger than that phone turned,
-// or less where the screen is narrow.
+// of the screen's height; on its side, as wide as fits (94% of the screen's
+// width at most, 93% of its height) with a 16:9 screen inside the bezel, so a
+// video fills it.
 func (g *Game) phoneSize(side bool) (w, h float64) {
 	sw, sh := g.screen()
-	h = sh * 0.94
-	w = h * 0.49
-	if side {
-		w, h = h*1.25, w*1.25
-		if w > sw*0.94 {
-			k := sw * 0.94 / w
-			w, h = w*k, h*k
-		}
+	if !side {
+		h = sh * 0.94
+		return h * 0.49, h
+	}
+	// The bezel is 3.5% of the height on each side: h - 0.07h = (w - 0.07h) * 9/16.
+	const k = 0.5625 / (0.93 + 0.07*0.5625)
+	w = sw * 0.94
+	h = w * k
+	if h > sh*0.93 {
+		h = sh * 0.93
+		w = h / k
 	}
 	return w, h
 }
