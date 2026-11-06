@@ -9,25 +9,20 @@ locations:
   office: {name: Office, background: bg/office.jpg}
 events:
   sprint_review:
-    do:
     - say: {who: martin, text: 'Sprint review. Show what is done, not what is nearly done.'}
   opening:
-    do:
     - say: {who: martin, text: Morning. Ten days to the client demo.}
     - open: standup
   notify:
-    do:
     - message: {who: elena, text: 'The client wants one more field on the booking form. Can we talk now?', event: decision, tag: DM}
     - open: tickets
   decision:
-    do:
     - choice:
       - label: Call now
         do: [{call: {event: review, ensemble: team_call}}]
       - label: After lunch
         do: [{set: {var.later: 1}}]
   review:
-    do:
     - say: {who: elena, text: 'It is a phone number field. Small, but it touches the API.', ensemble: team_call}
     - call_view: {share: {who: elena, picture: share/form.png}}
     - say: {who: elena, text: This is the form. The new field goes at the bottom., ensemble: team_call}

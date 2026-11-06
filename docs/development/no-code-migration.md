@@ -66,3 +66,11 @@ language. Preserve the useful engine implementation and its tests internally.
 The sample integration tests still cover story branches, translations and campaign
 outcomes. Graphics tests start the real CLI; image capture builds it once for all
 four game directories. No sample-specific native or WASM startup remains.
+
+## YAML usability after the no-code transition
+
+Schema 11 adds compact events and item transfers and enables authored tactic rows
+by default. Use `gozen migrate GAME --out NEW` for a validated copy that preserves
+old defaults; do not replace the version header by hand. See the
+[authoring guide](../authoring-yaml.md), [decision](../decisions/0056-compact-yaml-authoring.md)
+and [measured review](../reviews/2026-11-06-yaml-usability.md).

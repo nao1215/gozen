@@ -1,6 +1,6 @@
 # Novel games
 
-A novel game (ADV) sets `schema_version: 4` and `ui.message: novel` in game.yaml; its places mostly run events. Start from `gozen new GAME --template novel`: speakers are classless and the party may be empty, so no combat rules are needed. The player can roll back, skip read lines, save in a scene and change the language without any YAML of yours.
+A novel game (ADV) sets `schema_version: 11` and `ui.message: novel` in game.yaml; its places mostly run events. Start from `gozen new GAME --template novel`: speakers are classless and the party may be empty, so no combat rules are needed. The player can roll back, skip read lines, save in a scene and change the language without any YAML of yours.
 
 - Give a `choice` an `id` to read the option taken as `chose.<id>`. Keep other facts in flags with `set`. `gozen check` warns of a flag set but never read (GZN0112) and read but never set (GZN0113).
 - Stage a scene with `stand` (who stands where, how they come and go), `effect` (shake one portrait, fade through a color), `music` with `fade` and `wait` with `skip: false`. A line's `face` still changes the expression of a portrait standing.

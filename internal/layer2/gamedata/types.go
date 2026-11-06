@@ -1585,6 +1585,7 @@ type TroopPick struct {
 // Event is a named list of commands: run from another event (call), or by itself when
 // its trigger fires.
 type Event struct {
+	short bool // A command list without event metadata (schema 11).
 	// Params are required typed bindings for named calls; inline branches inherit them.
 	Params   map[string]string `yaml:"params"`
 	Trigger  string            `yaml:"trigger"` // "", enter, auto
@@ -1592,6 +1593,18 @@ type Event struct {
 	When     Expr              `yaml:"when"`
 	Once     bool              `yaml:"once"`
 	Do       []Command         `yaml:"do"`
+}
+
+// UnmarshalYAML accepts a command list for an event without metadata, or the
+// full mapping for triggers, conditions and typed arguments.
+func (e *Event) UnmarshalYAML(unmarshal func(any) error) error {
+	var commands []Command
+	if err := unmarshal(&commands); err == nil {
+		*e = Event{Do: commands, short: true}
+		return nil
+	}
+	type plain Event
+	return unmarshal((*plain)(e))
 }
 
 // Shop is a list of goods.

@@ -5,6 +5,26 @@ package catalog
 
 // english is the built-in English words of the engine.
 var english = map[string]string{
+	"定義のキーに null は使えません。文字列の ID を指定してください":         "definition keys cannot be null; use a string ID",
+	"移行でゲームの定義が変わるため中止しました。元のゲームは変更していません":         "migration would change the game definitions; source unchanged",
+	"YAML の移行範囲が重なっています。元のゲームは変更していません":            "overlapping YAML migration edits; source unchanged",
+	"YAML の元の文字列を復元できないため移行を中止しました。元のゲームは変更していません": "cannot reconstruct the original YAML tokens; migration stopped and source unchanged",
+	"schema_version はアンカーを使わず整数で指定してから移行してください":    "write schema_version as an integer without an anchor before migrating",
+
+	"ゲームを最新の YAML 仕様へコピーして移行": "copy a game to the current YAML schema",
+	"元のゲームを検証し、新規ディレクトリへコピーして YAML を短縮します。以前の既定値は保持します。元のゲームと既存の出力先は上書きしません。コピーを確認してから置き換えてください。": "Validates the source, copies it to a new directory, shortens YAML and preserves old defaults. The source and existing destinations are never overwritten. Review the copy before replacing your game.",
+	"ゲームを移行する": "migrate a game",
+
+	"（%q の誤りですか？）": " (did you mean %q?)",
+
+	"schema_version: 0 は自動移行できません。数値０の既定値を確認して版１へ移行してください。元のゲームは変更していません": "schema_version: 0 cannot be migrated automatically; review zero-value defaults before upgrading to version 1. The source game is unchanged",
+	"移行したゲームの新規出力ディレクトリ":                                     "new output directory for the migrated game",
+	"migrate にはゲームのディレクトリと --out NEW が必要です":                  "migrate expects one game directory and --out NEW",
+	"移行結果の検証に失敗しました。出力は公開していません: %w":                         "migrated game failed validation; output was not published: %w",
+	"%s に仕様版 %d のゲームを作成しました（変更した YAML: %d）。元のゲームは変更していません\n": "created %s with schema %d (changed YAML files: %d); source unchanged\n",
+
+	"%s: 短縮形には game.yaml の schema_version: 11 が必要です。gozen migrate GAME --out NEW で移行してください": "%s: shorthand needs schema_version: 11 in game.yaml; migrate with gozen migrate GAME --out NEW",
+
 	"この 画面を 閉じて、操作が 終わってから セーブ しよう。": "Close this screen and finish the current action before saving.",
 
 	"全体":             "All",

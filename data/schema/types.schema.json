@@ -5965,7 +5965,7 @@
             "reference": "-",
             "version": "0, 1, 2"
           },
-          "x-type": "[ItemCount](#itemcount)"
+          "x-type": "[ItemCount](#itemcount) or string"
         },
         "gold": {
           "description": "An expression for gold to add. A negative value takes gold away.",
@@ -6676,7 +6676,7 @@
             "reference": "-",
             "version": "0, 1, 2"
           },
-          "x-type": "[ItemCount](#itemcount)"
+          "x-type": "[ItemCount](#itemcount) or string"
         },
         "target": {
           "description": "With `use`, the party member who receives the item. The first member when omitted.",
@@ -6974,7 +6974,7 @@
             "reference": "-",
             "version": "0, 1, 2"
           },
-          "x-type": "string → [Event](#event)"
+          "x-type": "string → [Event](#event) or Command[] (schema 11)"
         },
         "factions": {
           "additionalProperties": {
@@ -9904,106 +9904,116 @@
       "type": "object"
     },
     "Event": {
-      "additionalProperties": false,
-      "description": "A named list of commands, run from another event with `call` or by itself when its trigger fires.",
-      "properties": {
-        "do": {
-          "description": "The commands the event runs.",
+      "anyOf": [
+        {
           "items": {
             "$ref": "#/$defs/Command"
           },
-          "type": [
-            "array",
-            "null"
-          ],
-          "x-contract": {
-            "default": "empty list",
-            "legacy_default": "empty list",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2"
-          },
-          "x-type": "[Command](#command)[]"
+          "type": "array"
         },
-        "location": {
-          "description": "The ID of the location (an ID of locations) where a triggered event fires. For `auto`, empty means anywhere. An `enter` event needs a location.",
-          "type": "string",
-          "x-contract": {
-            "default": "empty string",
-            "legacy_default": "empty string",
-            "zero": "-",
-            "required": "optional",
-            "reference": "locations",
-            "version": "0, 1, 2"
+        {
+          "additionalProperties": false,
+          "properties": {
+            "do": {
+              "description": "The commands the event runs.",
+              "items": {
+                "$ref": "#/$defs/Command"
+              },
+              "type": [
+                "array",
+                "null"
+              ],
+              "x-contract": {
+                "default": "empty list",
+                "legacy_default": "empty list",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "[Command](#command)[]"
+            },
+            "location": {
+              "description": "The ID of the location (an ID of locations) where a triggered event fires. For `auto`, empty means anywhere. An `enter` event needs a location.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "locations",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            },
+            "once": {
+              "description": "If `true`, a triggered event fires only once and is then marked as done.",
+              "type": "boolean",
+              "x-contract": {
+                "default": "false",
+                "legacy_default": "false",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "boolean"
+            },
+            "params": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Required parameter names and types: number, bool, string, entity, activity, actor or date (schema 10).",
+              "type": [
+                "object",
+                "null"
+              ],
+              "x-contract": {
+                "default": "empty map",
+                "legacy_default": "empty map",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string → string"
+            },
+            "trigger": {
+              "description": "When the event runs by itself: empty for only when called, `enter` on entering a location, or `auto` whenever its conditions hold.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            },
+            "when": {
+              "description": "An expression that must hold for a triggered event to fire.",
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ],
+              "x-contract": {
+                "default": "no expression (true as a condition, 0 as a number)",
+                "legacy_default": "no expression (true as a condition, 0 as a number)",
+                "zero": "expression value 0 (false as a condition)",
+                "required": "optional",
+                "reference": "expression; checked by gozen check",
+                "version": "0, 1, 2"
+              },
+              "x-type": "expression"
+            }
           },
-          "x-type": "string"
-        },
-        "once": {
-          "description": "If `true`, a triggered event fires only once and is then marked as done.",
-          "type": "boolean",
-          "x-contract": {
-            "default": "false",
-            "legacy_default": "false",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2"
-          },
-          "x-type": "boolean"
-        },
-        "params": {
-          "additionalProperties": {
-            "type": "string"
-          },
-          "description": "Required parameter names and types: number, bool, string, entity, activity, actor or date (schema 10).",
-          "type": [
-            "object",
-            "null"
-          ],
-          "x-contract": {
-            "default": "empty map",
-            "legacy_default": "empty map",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2"
-          },
-          "x-type": "string → string"
-        },
-        "trigger": {
-          "description": "When the event runs by itself: empty for only when called, `enter` on entering a location, or `auto` whenever its conditions hold.",
-          "type": "string",
-          "x-contract": {
-            "default": "empty string",
-            "legacy_default": "empty string",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2"
-          },
-          "x-type": "string"
-        },
-        "when": {
-          "description": "An expression that must hold for a triggered event to fire.",
-          "type": [
-            "string",
-            "number",
-            "boolean",
-            "null"
-          ],
-          "x-contract": {
-            "default": "no expression (true as a condition, 0 as a number)",
-            "legacy_default": "no expression (true as a condition, 0 as a number)",
-            "zero": "expression value 0 (false as a condition)",
-            "required": "optional",
-            "reference": "expression; checked by gozen check",
-            "version": "0, 1, 2"
-          },
-          "x-type": "expression"
+          "type": "object"
         }
-      },
-      "type": "object"
+      ],
+      "description": "A named list of commands, run from another event with `call` or by itself when its trigger fires. In schema 11, an event without metadata can be written directly as a command list."
     },
     "EventCall": {
       "anyOf": [
@@ -11298,7 +11308,8 @@
               7,
               8,
               9,
-              10
+              10,
+              11
             ]
           }
         },
@@ -11678,7 +11689,8 @@
             7,
             8,
             9,
-            10
+            10,
+            11
           ],
           "type": "integer",
           "x-contract": {
@@ -12796,40 +12808,47 @@
       "type": "object"
     },
     "ItemCount": {
-      "additionalProperties": false,
-      "description": "An item and how many.",
-      "properties": {
-        "count": {
-          "description": "How many of the item. When omitted it is 1.",
-          "type": "integer",
-          "x-contract": {
-            "default": "1",
-            "legacy_default": "1",
-            "zero": "v1 keeps 0; v0 has per-field rules",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2 (omitting it and writing 0 differ in v0)"
-          },
-          "x-type": "integer"
+      "anyOf": [
+        {
+          "type": "string"
         },
-        "item": {
-          "description": "The ID of the item (an ID of items).",
-          "type": "string",
-          "x-contract": {
-            "default": "empty string",
-            "legacy_default": "empty string",
-            "zero": "-",
-            "required": "required",
-            "reference": "items",
-            "version": "0, 1, 2"
+        {
+          "additionalProperties": false,
+          "properties": {
+            "count": {
+              "description": "How many of the item. When omitted it is 1.",
+              "type": "integer",
+              "x-contract": {
+                "default": "1",
+                "legacy_default": "1",
+                "zero": "v1 keeps 0; v0 has per-field rules",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2 (omitting it and writing 0 differ in v0)"
+              },
+              "x-type": "integer"
+            },
+            "item": {
+              "description": "The ID of the item (an ID of items).",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "required",
+                "reference": "items",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            }
           },
-          "x-type": "string"
+          "required": [
+            "item"
+          ],
+          "type": "object"
         }
-      },
-      "required": [
-        "item"
       ],
-      "type": "object"
+      "description": "An item and how many. In schema 11, a string item ID means one item."
     },
     "Learn": {
       "additionalProperties": false,
@@ -22811,15 +22830,15 @@
           "x-type": "string"
         },
         "enabled": {
-          "description": "Whether the row is active. It is off by default.",
+          "description": "Whether the row is active. Omitted means true in schema 11 and false in earlier schemas.",
           "type": "boolean",
           "x-contract": {
-            "default": "false",
+            "default": "true in schema 11",
             "legacy_default": "false",
             "zero": "-",
             "required": "optional",
             "reference": "-",
-            "version": "0, 1, 2"
+            "version": "all; omitted enabled changes in schema 11"
           },
           "x-type": "boolean"
         },

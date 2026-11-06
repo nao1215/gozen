@@ -16,7 +16,7 @@ import (
 )
 
 // TacticRow is one row of a selectable tactic. It stores no display name or expression, only a stable ID into the catalog.
-// The zero value of Enabled means disabled. Percent is needed only for threshold conditions, and nil is distinguished from 0.
+// The Go zero value of Enabled means disabled; YAML schema 11 defaults an omitted enabled to true. Percent is needed only for threshold conditions, and nil is distinguished from 0.
 type TacticRow struct {
 	Enabled   bool   `yaml:"enabled" json:"enabled"`
 	Condition string `yaml:"condition" json:"condition"`

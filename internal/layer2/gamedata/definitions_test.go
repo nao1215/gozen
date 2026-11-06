@@ -55,6 +55,7 @@ func wantDefinitionError(t *testing.T, src string, want ...string) {
 }
 
 func TestNullDefinitions(t *testing.T) {
+	wantDefinitionError(t, "events:\n ~:\n  do:", "events", "null")
 	for _, section := range pointerDefinitionSections() {
 		for _, value := range []string{"null", "~", ""} {
 			t.Run(section+"/"+value, func(t *testing.T) {
@@ -171,5 +172,24 @@ func TestNullDefinitionsCoverage(t *testing.T) {
 	slices.Sort(want)
 	if !slices.Equal(paths, want) {
 		t.Fatalf("ポインタ値の定義が増えた。入れ子の再現例を追加する。対象 %v、検査済み %v", paths, want)
+	}
+}
+
+func TestDefinitionFieldSuggestions(t *testing.T) {
+	for _, tc := range []struct{ body, field, suggestion string }{
+		{"events: {e: {doo: []}}", "doo", "do"},
+		{"locations: {camp: {backgroud: sky.png}}", "backgroud", "background"}, //nolint:misspell // Intentional author typo.
+		{"actors: {guide: {name: Guide, clas: guest}}", "clas", "class"},       //nolint:misspell // Intentional author typo.
+	} {
+		_, err := Load(diagnosticFS(map[string]string{"data/typo.yaml": tc.body}))
+		if err == nil || !strings.Contains(err.Error(), `unknown field "`+tc.field+`"`) || !strings.Contains(err.Error(), `"`+tc.suggestion+`"`) || !strings.Contains(err.Error(), "GZN1104") {
+			t.Fatalf("%s: %v", tc.body, err)
+		}
+	}
+	if got := nearestName("cat", []string{"car", "bat"}); got != "" {
+		t.Fatalf("ambiguous hint %q", got)
+	}
+	if got := nearestName("unrelated", []string{"do"}); got != "" {
+		t.Fatalf("distant hint %q", got)
 	}
 }

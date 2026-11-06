@@ -78,7 +78,8 @@ type node struct {
 
 // tree maps a command path to its node.
 var tree = map[string]node{
-	"":               {subs: []string{"new", "run", "export", "check", "sim", "trace", "notes", "release", "trial", "capture", "book", "prompt", "mosaic", "models", "faces", "puppet", "theme", "version", "help"}},
+	"":               {subs: []string{"new", "migrate", "run", "export", "check", "sim", "trace", "notes", "release", "trial", "capture", "book", "prompt", "mosaic", "models", "faces", "puppet", "theme", "version", "help"}},
+	"migrate":        {build: (*command).migrateGame},
 	"new":            {build: (*command).newGame},
 	"check":          {build: (*command).checkCmd},
 	"sim":            {subs: []string{"battle", "dive", "floors", "design", "campaign", "routes", "breed", "script", "batch"}},
@@ -225,7 +226,7 @@ func (c *command) top(args []string) error {
 	}
 	switch {
 	case help:
-		c.out.Print(topPage.String(fs))
+		c.out.Print(topHelpPage().String(fs))
 	case *ver:
 		c.out.Println("gozen", clihelp.Version())
 	default:

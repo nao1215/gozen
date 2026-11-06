@@ -4,6 +4,24 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Breaking: YAML schema 11
+
+- Authored tactic rows default to `enabled: true` in schema 11. Schemas 0–10
+  retain their old default. **Do not just change the version number.** Run
+  `gozen migrate game --out game-v11`, then `gozen check game-v11`. The command
+  preserves disabled rows with explicit `enabled: false`, keeps game identity
+  and data version, and never overwrites the source or an existing destination.
+- Events without metadata may be command lists, and `give: key` / `take: key`
+  transfer one item. Full mappings remain valid. All examples and new-game
+  templates use schema 11; they require the updated engine and runtime bundle.
+- Migration accepts schema 1–11. Schema 0 still loads but requires a separate
+  numeric-default review before upgrading. Existing explicit item counts stay
+  explicit to preserve command replay fingerprints. YAML-byte trace recordings
+  must be recorded again after migration.
+- `gozen check` suggests a unique close field/reference name for common typos.
+  See [the authoring and migration guide](docs/authoring-yaml.md) and
+  [the usability review](docs/reviews/2026-11-06-yaml-usability.md).
+
 ## v0.16.0 - 2026-11-05
 
 Management games on the workspace screens: day flows, workspace cards, drag and drop, tickets, carousels, messages, full-screen video calls with screen sharing, first-visit guides and glass calendars, shown by the new office sample. The sample and theme pictures no longer claim copyright (CC0 1.0).

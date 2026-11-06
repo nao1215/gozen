@@ -246,3 +246,21 @@ func TestComplexitySmallIDCopiesAndFalseFriends(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestComplexityCompactEventExpressions(t *testing.T) {
+	fsys := fstest.MapFS{
+		"game.yaml":       {Data: []byte("schema_version: 11\nid: small\nstart: {location: room}\n")},
+		"data/world.yaml": {Data: []byte("locations: {room: {name: Room}}\nevents:\n  award:\n    - gold: 'max(1, (2 + 3))'\n")},
+	}
+	db, err := Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	warnings, err := db.ComplexityWarnings(ComplexityConfig{ExpressionLength: 8})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(warnings) != 1 || !strings.Contains(warnings[0].Error(), "expression characters = 15") || !strings.Contains(warnings[0].Error(), "data/world.yaml:4:") {
+		t.Fatalf("compact expression warnings: %v", warnings)
+	}
+}

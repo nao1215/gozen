@@ -1,17 +1,15 @@
 # The talk around the turns.
 events:
   opening:
-    do:
-      - say: "Ten turns to take a land of walled cities, farm plains, elf woods, dwarf mines and black moors. Our banner flies over Ashvale alone."
-      - say: {who: corin, text: "Five regions and three banners. Ours is the smallest."}
-      - say: {who: hilde, text: "Then we stop being small. Pick the marches with care, Corin."}
-      - say: {who: corin, text: "Always. Hilde, you hold the line. I will draw the map."}
-      - say: {who: hilde, text: "Draw it kindly. My feet have to walk it."}
+    - say: "Ten turns to take a land of walled cities, farm plains, elf woods, dwarf mines and black moors. Our banner flies over Ashvale alone."
+    - say: {who: corin, text: "Five regions and three banners. Ours is the smallest."}
+    - say: {who: hilde, text: "Then we stop being small. Pick the marches with care, Corin."}
+    - say: {who: corin, text: "Always. Hilde, you hold the line. I will draw the map."}
+    - say: {who: hilde, text: "Draw it kindly. My feet have to walk it."}
 
   # The land pays its wealth at the start of each turn.
   turn_start:
-    do:
-      - gold: faction.crown.sum_wealth
+    - gold: faction.crown.sum_wealth
 
   sable_arrives:
     trigger: auto
@@ -62,14 +60,12 @@ events:
         id: truce
 
   victory:
-    do:
-      - music: {song: fanfare}
-      - say: {who: corin, text: "Five banners, one colour. It is over."}
-      - say: {who: hilde, text: "And my feet are finally done walking."}
-      - say: "The Crown's flag rises over every region, and for once the land is quiet."
+    - music: {song: fanfare}
+    - say: {who: corin, text: "Five banners, one colour. It is over."}
+    - say: {who: hilde, text: "And my feet are finally done walking."}
+    - say: "The Crown's flag rises over every region, and for once the land is quiet."
 
   fallen:
-    do:
-      - music: lose
-      - say: "Ashvale has fallen. The Crown is no more."
-      - say: {who: corin, text: "We ran out of time, not courage. Remember that."}
+    - music: lose
+    - say: "Ashvale has fallen. The Crown is no more."
+    - say: {who: corin, text: "We ran out of time, not courage. Remember that."}

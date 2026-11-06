@@ -4,7 +4,7 @@ Two files make a game that loads and checks. Write them under `game/`.
 
 <!-- verify: file game/game.yaml -->
 ```yaml
-schema_version: 3
+schema_version: 11
 id: first-steps
 title: First steps
 start: {location: village, party: [hero]}

@@ -178,6 +178,9 @@ func (s *complexityScan) walk(doc *sourceDocument, node ast.Node, p string, typ 
 			}
 		}
 	case *ast.SequenceNode:
+		if typ == reflect.TypeFor[Event]() {
+			typ = reflect.TypeFor[[]Command]()
+		}
 		var elem reflect.Type
 		if typ != nil && (typ.Kind() == reflect.Slice || typ.Kind() == reflect.Array) {
 			elem = typ.Elem()

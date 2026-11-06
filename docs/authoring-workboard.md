@@ -34,6 +34,8 @@ as the full chart. Bounds are logical pixels and must be at least 120 by 48.
 
 ## State-dependent conversations
 
+The compact event below uses schema 11; see [YAML authoring](authoring-yaml.md).
+
 Use ordinary event `if` branches to select a line from current authored state.
 Order overlapping conditions explicitly: a low-energy greeting can take priority
  over a return greeting. Keep relationship values in variables or hidden planning
@@ -43,13 +45,12 @@ Opening a profile should not call an event that changes that relationship.
 ```yaml
 events:
   greeting:
-    do:
-      - if: var.energy < 20
-        then: [{say: {who: scout, text: "Let us take a break."}}]
-        else:
-          - if: flag.returned
-            then: [{say: {who: guide, text: "Welcome back."}}]
-            else: [{say: {who: scout, text: "Ready to explore?"}}]
+    - if: var.energy < 20
+      then: [{say: {who: scout, text: "Let us take a break."}}]
+      else:
+        - if: flag.returned
+          then: [{say: {who: guide, text: "Welcome back."}}]
+          else: [{say: {who: scout, text: "Ready to explore?"}}]
 ```
 
 Workspace entries use `ui.material.surfaces.card` when materials are enabled,
