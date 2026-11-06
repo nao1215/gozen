@@ -235,6 +235,11 @@ func (s *authorScreen) updatePointer(g *Game, actions []int, cells []image.Recta
 		s.carry = nil
 		return true
 	}
+	// A tap belongs to the part where both press and release occurred. Moving
+	// off a drop place or peek cancels it without activating the old target.
+	if p.on >= 0 && s.partAt(in.mouse) != p.on {
+		return true
+	}
 	switch e := p.on; {
 	case e == pressSwallowed:
 	case e < 0:

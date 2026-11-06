@@ -187,3 +187,15 @@ func TestDragDraws(t *testing.T) {
 		t.Fatal("the place takes the cup")
 	}
 }
+
+func TestPointerReleaseOutsidePartCancelsTap(t *testing.T) {
+	g := openDragBoard(t, nil)
+	wldPlay(t, g, "click 140 200\nwait 4\ndrag 520 210 300 650\nwait 8\n", 80)
+	if g.st.Vars["got"] != nil || top(t, g).carry == nil {
+		t.Fatal("releasing outside the drop place committed the drop", g.st.Vars)
+	}
+	wldPlay(t, g, "press x\nwait 4\ndrag 800 340 300 650\nwait 8\n", 80)
+	if top(t, g).peek != nil {
+		t.Fatal("releasing outside the peek opened it")
+	}
+}
