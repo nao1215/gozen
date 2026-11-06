@@ -178,8 +178,8 @@ func TestNullDefinitionsCoverage(t *testing.T) {
 func TestDefinitionFieldSuggestions(t *testing.T) {
 	for _, tc := range []struct{ body, field, suggestion string }{
 		{"events: {e: {doo: []}}", "doo", "do"},
-		{"locations: {camp: {backgroud: sky.png}}", "backgroud", "background"}, //nolint:misspell // Intentional author typo.
-		{"actors: {guide: {name: Guide, clas: guest}}", "clas", "class"},       //nolint:misspell // Intentional author typo.
+		{"locations: {camp: {backgrond: sky.png}}", "backgrond", "background"}, // an author typo
+		{"actors: {guide: {name: Guide, clss: guest}}", "clss", "class"},       // an author typo
 	} {
 		_, err := Load(diagnosticFS(map[string]string{"data/typo.yaml": tc.body}))
 		if err == nil || !strings.Contains(err.Error(), `unknown field "`+tc.field+`"`) || !strings.Contains(err.Error(), `"`+tc.suggestion+`"`) || !strings.Contains(err.Error(), "GZN1104") {
