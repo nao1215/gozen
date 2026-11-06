@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.19.0 - 2026-11-06
+
+A phone feed whose likes the story keeps (a post's `set`), and fixes to phones that keep results: saves after a phone put down unread, headless runs and sessions that run past a phone, carousel taps mid-slide and button labels that fill to nothing.
+
 ### Added
 
 - A phone feed's post takes `set`, written as the `set` command, which runs when the phone is put down with the post liked, so the story can react to a like given by mistake. The like as the phone goes down counts: a second tap takes it back and keeps nothing, and Skip keeps only the likes given before it. A feed answers its event with one number, a bit for each post with a `set`, so a save made after the feed and Back over it come back with the same sets. `gozen check` rejects a `set` on a feed with `browse: true` (which likes nothing) and more than 31 posts with `set` in one feed, warns of a post's, a button's and a call's `set` as of a `set` command's, and the error for a `var` on a feed points at the posts' `set`. Likes are given with the pointer only. A trace marks a phone's result as one (`phone result N`) instead of a choice. The office example likes a complaint on its timeline.
