@@ -8,7 +8,7 @@ The core of the game becomes a library usable from several games. The inference 
 
 ## Decision
 
-There is one module, `github.com/nao1215/gozen`, starting on the Go 1.26 series with 1.26.4 as the minimum. CI checks both the exact minimum and stable. The dependencies are Ebitengine v2.10.4, goccy/go-yaml v1.19.2, and x/image v0.45.0 (`go.mod:1`).
+There is one module, `github.com/nao1215/gozen`, starting on the Go 1.26 series with 1.26.4 as the minimum. CI checks both the exact minimum and stable. The dependencies are Ebitengine v2.10.4, goccy/go-yaml v1.19.2, x/image v0.45.0 and rsc.io/qr v0.2.0 (BSD-3-Clause, for the QR codes on a phone's page) (`go.mod:1`).
 
 The library sits directly under the module root without an `engine/` directory, and the implementation is hidden in `internal/`. The CLI is a single `cmd/gozen` (changed from 4 binaries by [ADR 0016](0016-single-cli.md)). The authoring-support implementation lives in `internal/promptgen`, `internal/mosaic`, and their subtrees, and is not public API. No nested modules and no `go.work` are created.
 

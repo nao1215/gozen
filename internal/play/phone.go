@@ -46,6 +46,8 @@ type phoneView struct {
 	// none), seenPic the pictures opened already, and pics where the chat's
 	// pictures were drawn, for a click on them.
 	viewPic string
+	// qrs are the page's QR codes, by their text (nil for one that cannot be made).
+	qrs     map[string]*ebiten.Image
 	seenPic map[int]bool
 	pics    map[int]picRect
 	// watch is the clip playing on the phone turned on its side: the video app's
@@ -92,7 +94,7 @@ const (
 func newPhoneView(cue data.PhoneCue) *phoneView {
 	p := &phoneView{cue: cue, liked: map[int]bool{}, clips: map[string]*phoneClip{},
 		icons: map[string]*ebiten.Image{}, frames: map[string]*ebiten.Image{}, watchMsg: -1, turned: phoneTurn, aim: -1, grab: -1, result: -1, focus: -1,
-		seenPic: map[int]bool{}, pics: map[int]picRect{}}
+		seenPic: map[int]bool{}, pics: map[int]picRect{}, qrs: map[string]*ebiten.Image{}}
 	switch cue.App {
 	case "chat", "lock":
 		p.shown = 1
@@ -736,9 +738,11 @@ func (p *phoneView) close() {
 			img.Deallocate()
 		}
 	}
-	for _, m := range []map[string]*ebiten.Image{p.icons, p.frames} {
+	for _, m := range []map[string]*ebiten.Image{p.icons, p.frames, p.qrs} {
 		for _, img := range m {
-			img.Deallocate()
+			if img != nil {
+				img.Deallocate()
+			}
 		}
 	}
 	for _, c := range p.clips {

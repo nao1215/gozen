@@ -12,6 +12,8 @@ import (
 	"slices"
 	"strings"
 
+	"rsc.io/qr"
+
 	"github.com/nao1215/gozen/internal/layer1/picturelimit"
 
 	"github.com/nao1215/gozen/internal/diag"
@@ -254,8 +256,14 @@ func (c *checker) phonePage(where string, p PhoneCue, names []string) {
 	c.text(where+".url", p.URL, names)
 	for i, r := range p.Rows {
 		at := fmt.Sprintf("%s.rows[%d]", where, i)
-		if n := btoi(r.Text != "") + btoi(r.Picture != "") + btoi(len(r.Pictures) > 0) + btoi(r.Item != nil) + btoi(r.Button != ""); n != 1 {
-			c.errorf(diag.Shape, at, "a row needs text, picture, pictures, item or button (one of them)")
+		if n := btoi(r.Text != "") + btoi(r.Picture != "") + btoi(len(r.Pictures) > 0) + btoi(r.Item != nil) + btoi(r.Button != "") + btoi(r.QR != ""); n != 1 {
+			c.errorf(diag.Shape, at, "a row needs text, picture, pictures, item, button or qr (one of them)")
+		}
+		if r.QR != "" {
+			if _, err := qr.Encode(r.QR, qr.M); err != nil {
+				c.errorf(diag.Shape, at+".qr", "the qr text is too long for a QR code (%d bytes)", len(r.QR))
+			}
+			c.text(at+".qr", r.QR, names)
 		}
 		switch r.Size {
 		case "", "large", "small":

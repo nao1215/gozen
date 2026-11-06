@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"image"
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/nao1215/gozen/internal/event"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"rsc.io/qr"
 )
 
 // phoneTicks runs n ticks of the phone with nothing pressed and tells whether it
@@ -783,4 +785,44 @@ func TestPhoneFramesFade(t *testing.T) {
 	defer dst.Deallocate()
 	phoneTicks(g, phoneRise+20)
 	g.drawPhone(dst)
+}
+
+// TestPhoneQR: a QR row's pixels are rsc.io/qr's modules, black on white with
+// a quiet zone of four, and each module takes a whole number of pixels.
+func TestPhoneQR(t *testing.T) {
+	const url = "https://github.com/nao1215/gozen"
+	pix, n, err := qrPixels(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, err := qr.Encode(url, qr.M)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != code.Size+2*qrQuiet {
+		t.Fatalf("%d pixels a side for %d modules", n, code.Size)
+	}
+	for y := range n {
+		for x := range n {
+			black := pix[(y*n+x)*4] == 0
+			want := code.Black(x-qrQuiet, y-qrQuiet)
+			if black != want {
+				t.Fatalf("module %d,%d: black %v, want %v", x, y, black, want)
+			}
+		}
+	}
+	if m := qrModule(330, n); m*n > 330 || (m+1)*n <= 330 {
+		t.Fatalf("a module of %d pixels for %d modules in 330", m, n)
+	}
+	if _, _, err := qrPixels(strings.Repeat("x", 4000)); err == nil {
+		t.Fatal("a text too long made a QR code")
+	}
+	g := phoneGame(t, data.PhoneCue{App: "page", Rows: []data.PhoneRow{{QR: url, Caption: "Scan to add Mia"}, {Button: "Add"}}})
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	phoneTicks(g, phoneRise)
+	g.drawPhone(dst)
+	if g.phone.qrs[url] == nil {
+		t.Fatal("the QR code was not drawn")
+	}
 }

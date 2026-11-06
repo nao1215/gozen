@@ -1667,6 +1667,7 @@ func (r *Runner) fillPhone(p data.PhoneCue, env expr.Env) data.PhoneCue {
 	for i := range p.Rows {
 		row := &p.Rows[i]
 		row.Text, row.Caption, row.Button, row.Label = fill(row.Text), fill(row.Caption), fill(row.Button), fill(row.Label)
+		row.QR = fill(row.QR)
 		if row.Locked.Set() {
 			shut, err := row.Locked.Bool(env)
 			r.logf(err)

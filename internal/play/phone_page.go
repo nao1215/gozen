@@ -10,17 +10,19 @@ import (
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"rsc.io/qr"
 )
 
 // The page of the phone (ADR 0057) is any app or web page: a browser's
 // address bar or an app bar over rows of text, pictures, a list and buttons,
 // scrolled as the feed is.
 const (
-	phonePagePad  = 16.0 // the rows' margin at the sides
-	phonePageGap  = 12.0 // between two rows
-	phonePageCell = 6.0  // between the pictures of a grid
-	phonePageItem = 62.0 // a list row's height
-	phonePageBtn  = 50.0 // a button's height
+	phonePagePad  = 16.0  // the rows' margin at the sides
+	phonePageGap  = 12.0  // between two rows
+	phonePageCell = 6.0   // between the pictures of a grid
+	phonePageItem = 62.0  // a list row's height
+	phonePageBtn  = 50.0  // a button's height
+	phonePageQR   = 220.0 // a QR code's side at most
 )
 
 // pageRow is a row laid out on the page, from the page's top unscrolled: its
@@ -75,6 +77,12 @@ func (p *phoneView) pageLayout(g *Game, w float64) []pageRow {
 			l.h = float64(lines)*cell*1.25 + float64(lines-1)*phonePageCell
 		case r.Item != nil:
 			l.h = phonePageItem
+		case r.QR != "":
+			l.h = math.Min(iw, phonePageQR)
+			if r.Caption != "" {
+				l.lines = gfx.Wrap(r.Caption, 13, iw)
+				l.h += 8 + float64(len(l.lines))*gfx.LineHeight(13)
+			}
 		default:
 			l.h = phonePageBtn
 		}
@@ -277,6 +285,12 @@ func (g *Game) drawPageRow(dst *ebiten.Image, p *phoneView, i int, l pageRow, y,
 		g.drawPageGrid(dst, r, x, y, iw)
 	case r.Item != nil:
 		g.drawPageItem(dst, p, r.Item, x, y, iw)
+	case r.QR != "":
+		side := math.Min(iw, phonePageQR)
+		p.drawQR(dst, r.QR, w/2, y, side)
+		for k, line := range l.lines {
+			gfx.DrawText(dst, line, w/2, y+side+8+float64(k)*gfx.LineHeight(13), 13, phoneMuted)
+		}
 	default:
 		accent, _ := p.pageAccent()
 		if p.keyed && p.focus == i {
@@ -335,4 +349,61 @@ func (g *Game) drawPageItem(dst *ebiten.Image, p *phoneView, it *data.PhoneItem,
 	gfx.DrawTextLeft(dst, gfx.Ellipsis(it.Text, 13, room), tx, y+34, 13, phoneMuted)
 	gfx.DrawTextRight(dst, it.Value, x+iw, y+20, 16, phoneInk)
 	gfx.FillRect(dst, float32(tx), float32(y+phonePageItem+phonePageGap/2), float32(x+iw-tx), 1, phoneLine, false)
+}
+
+// qrQuiet is the quiet zone around a QR code, in modules.
+const qrQuiet = 4
+
+// qrPixels are the pixels of a QR code of text, one a module, black on white
+// with the quiet zone around: n x n RGBA bytes.
+func qrPixels(text string) (pix []byte, n int, err error) {
+	code, err := qr.Encode(text, qr.M)
+	if err != nil {
+		return nil, 0, err
+	}
+	n = code.Size + qrQuiet*2
+	pix = make([]byte, n*n*4)
+	for i := range pix {
+		pix[i] = 0xff
+	}
+	for y := range code.Size {
+		for x := range code.Size {
+			if code.Black(x, y) {
+				o := ((y+qrQuiet)*n + x + qrQuiet) * 4
+				pix[o], pix[o+1], pix[o+2] = 0, 0, 0
+			}
+		}
+	}
+	return pix, n, nil
+}
+
+// qrModule is how many pixels a module takes for a code of n modules in side
+// pixels: a whole number, so the code stays crisp.
+func qrModule(side float64, n int) int { return max(1, int(side)/n) }
+
+// drawQR draws the QR code of text centered at cx, at y, side UI units at most,
+// each module a whole number of pixels (nearest, never smoothed).
+func (p *phoneView) drawQR(dst *ebiten.Image, text string, cx, y, side float64) {
+	img, ok := p.qrs[text]
+	if !ok {
+		pix, n, err := qrPixels(text)
+		if err != nil {
+			p.qrs[text] = nil
+			return
+		}
+		img = ebiten.NewImage(n, n)
+		img.WritePixels(pix)
+		p.qrs[text] = img
+	}
+	if img == nil {
+		return
+	}
+	n := img.Bounds().Dx()
+	k := gfx.Scale()
+	m := qrModule(side*k, n)
+	px := float64(m * n)
+	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterNearest}
+	op.GeoM.Scale(float64(m), float64(m))
+	op.GeoM.Translate(math.Round(cx*k-px/2), math.Round(y*k+(side*k-px)/2))
+	dst.DrawImage(img, op)
 }

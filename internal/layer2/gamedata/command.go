@@ -518,7 +518,8 @@ type PhoneCue struct {
 
 // PhoneRow is one row of a page, stacked top to bottom: Text (paragraphs, of
 // Size large or small, Bold), a Picture shown whole with its Caption,
-// Pictures in a grid of Columns (2 or 3, 0 is 3) a line, an Item of a list, or
+// Pictures in a grid of Columns (2 or 3, 0 is 3) a line, an Item of a list, a
+// QR code of a text (a link, a contact) with its Caption, or
 // a Button that puts the phone down when pressed, setting Set and the phone's
 // Var to its ID. A row is one of them. A picture or a grid is Locked (blurred,
 // with a lock and its Label) while the condition holds when the phone comes up.
@@ -532,6 +533,7 @@ type PhoneRow struct {
 	Columns  int         `yaml:"columns"`
 	Item     *PhoneItem  `yaml:"item" json:",omitempty"`
 	Button   string      `yaml:"button"`
+	QR       string      `yaml:"qr"`
 	ID       string      `yaml:"id"`
 	Set      Assignments `yaml:"set" json:",omitempty"`
 	Locked   Expr        `yaml:"locked"`
