@@ -69,25 +69,17 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 
 ### Novel games
 
-`ui.message: novel` makes a visual novel. All from [After the Pass](https://github.com/nao1215/gozen/tree/main/examples/novel), the novel sample, at 1920x1080 ([Novel games](/writing-a-game/#novel-games)).
+`ui.message: novel` makes a visual novel. All from [After the Pass](https://github.com/nao1215/gozen/tree/main/examples/novel), the novel sample, at 1920x1080 ([Novel games](/writing-a-game/#novel-games)). `phone` shows a phone over the scene, with a chat, a photo feed or a video playing footage ([A phone on the screen](/writing-a-game/#a-phone-on-the-screen)), from the office sample.
 
 | Roll back (Q, wheel) | Skip to the line not read (N) |
 |:--|:--|
 | ![Back goes over two lines and a choice, with the state](/images/novel-back.mp4) | ![the option taken again, then Skip stops at the first line not read](/images/novel-skip.mp4) |
 | Two languages | Staging (`stand`, `effect`) |
 | ![the settings switch to Japanese, the line on the screen turns Japanese at once, and so does the next](/images/novel-language.mp4) | ![Brenna slides in and her portrait shakes](/images/novel-stage.mp4) |
-| Event picture with its line | |
-| ![Brenna's ending: a picture of her cheering at the bar, with the line under it](/images/novel-picture.jpg) | |
-
-#### A phone on the screen
-
-`phone` ([A phone on the screen](/writing-a-game/#a-phone-on-the-screen)) shows a phone over the scene, held upright or turned on its side: a chat, a photo feed and a video, with a puppet moving in its clips. From the office sample.
-
-| Chat: messages, then a clip sent in it | Feed: swipe, like, a clip in a post |
-|:--|:--|
-| ![a team chat on a phone: messages arrive one by one, then a clip sent in the chat turns the phone on its side and plays](/images/phone-chat.mp4) | ![a photo feed: posts turn with a swipe, one is liked, and a clip plays in its post](/images/phone-feed.mp4) |
-| Video on its side | |
-| ![a video app: the phone comes up upright, turns on its side and plays a clip with a moving puppet](/images/phone-video.mp4) | |
+| Event picture with its line | Phone: a video turned on its side |
+| ![Brenna's ending: a picture of her cheering at the bar, with the line under it](/images/novel-picture.jpg) | ![a video app: the phone comes up upright, turns on its side and plays footage of a battle from the Go Zen sample](/images/phone-video.mp4) |
+| Phone: chat, a clip sent in it | Phone: feed, scrolled |
+| ![a team chat on a phone: messages arrive one by one, then a clip sent in the chat turns the phone on its side and plays a recorded call](/images/phone-chat.mp4) | ![a photo feed scrolled down a post at a time, a clip of a battle cut-in looping in its post](/images/phone-feed.mp4) |
 
 ### Management workspaces
 

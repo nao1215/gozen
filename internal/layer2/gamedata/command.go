@@ -3,6 +3,7 @@ package gamedata
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"reflect"
 	"slices"
 	"sort"
@@ -526,18 +527,52 @@ type PhonePost struct {
 }
 
 // PhoneVideo is a clip: its Picture under assets/ fills the frame (pushed in
-// slowly, so a still plays as a clip), and Puppet, a puppet file under assets/,
-// stands in front of it and moves as it does on the stage: breathing, swaying
-// and, at each second in Bounce, a jiggle. Zoom is how many times the frame's
-// height the puppet is drawn (0 is 1.5: its upper body). Text is the title
-// (interpolated) and Seconds its length on the seek bar (0 is 30).
+// slowly, so a still plays as a clip), or Frames, pictures under assets/ (a
+// pattern such as clips/battle/*.jpg stands for the files it matches, sorted),
+// play as footage at FPS frames a second (0 is 12) over the Picture, which is
+// then its poster. Puppet, a puppet file under assets/, stands in front and
+// moves as it does on the stage: breathing, swaying and, at each second in
+// Bounce, a jiggle. Zoom is how many times the frame's height the puppet is
+// drawn (0 is 1.5: its upper body). Text is the title (interpolated) and
+// Seconds its length on the seek bar (0 is the frames' length, or 30).
 type PhoneVideo struct {
 	Picture string    `yaml:"picture"`
+	Frames  []string  `yaml:"frames" json:",omitempty"`
+	FPS     float64   `yaml:"fps"`
 	Puppet  string    `yaml:"puppet"`
 	Zoom    float64   `yaml:"zoom"`
 	Bounce  []float64 `yaml:"bounce" json:",omitempty"`
 	Text    string    `yaml:"text"`
 	Seconds float64   `yaml:"seconds"`
+}
+
+// FrameRate is the frames the clip shows a second (0 is 12).
+func (v PhoneVideo) FrameRate() float64 {
+	if v.FPS > 0 {
+		return v.FPS
+	}
+	return 12
+}
+
+// Length is the clip's length in seconds when it has frames pictures: Seconds,
+// else the frames' length, else 30.
+func (v PhoneVideo) Length(frames int) float64 {
+	switch {
+	case v.Seconds > 0:
+		return v.Seconds
+	case frames > 0:
+		return float64(frames) / v.FrameRate()
+	}
+	return 30
+}
+
+// FramePictures are the pictures of Frames, the patterns matched in fsys under
+// assets/ as an image's files are (CG.Pages). With no fsys, Frames as written.
+func (v PhoneVideo) FramePictures(fsys fs.FS) []string {
+	if len(v.Frames) == 0 || fsys == nil {
+		return v.Frames
+	}
+	return CG{Files: v.Frames}.Pages(fsys)
 }
 
 // CallViewCue is a presentation-only change of the call on screen.

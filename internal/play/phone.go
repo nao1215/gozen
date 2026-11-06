@@ -35,14 +35,15 @@ type phoneView struct {
 	// own, or a chat message's opened by the player (watchMsg is its index).
 	watch    *phoneClip
 	watchMsg int
-	// post is the feed's post on the screen, slide the eased offset of the
-	// change to it (-1..1 of the screen's width), drag the finger's pull in UI
-	// units, and liked the posts the player liked.
-	post   int
-	slide  float64
-	drag   float64
-	dragAt float64
-	liked  map[int]bool
+	// The feed: scroll is how far its posts are scrolled up in UI units, aim
+	// the scroll a key glides to (-1 for none), glide the speed it goes on at
+	// after a drag, grab the pointer's last height while it drags (-1 for
+	// none) and moved how far it moved since it went down; liked are the posts
+	// the player liked, and layout the posts laid out for a screen layoutW wide.
+	scroll, aim, glide, grab, moved float64
+	liked                           map[int]bool
+	layout                          []feedPost
+	layoutW                         float64
 	// clips are the clips the phone has played, by where they are (so a feed's
 	// post keeps its place when it comes back), each with its own puppet.
 	clips map[string]*phoneClip
@@ -52,12 +53,13 @@ type phoneView struct {
 	frames         map[string]*ebiten.Image
 }
 
-// phoneClip is a video playing: where it is in ticks, whether it is paused, and
-// the body of its puppet.
+// phoneClip is a video playing: where it is in ticks, whether it is paused,
+// whether it starts again at its end (a feed's post), and the body of its puppet.
 type phoneClip struct {
 	v      *data.PhoneVideo
 	played int
 	paused bool
+	loop   bool
 	body   *puppet.Puppet
 }
 
@@ -69,7 +71,7 @@ const (
 
 func newPhoneView(cue data.PhoneCue) *phoneView {
 	p := &phoneView{cue: cue, liked: map[int]bool{}, clips: map[string]*phoneClip{},
-		icons: map[string]*ebiten.Image{}, frames: map[string]*ebiten.Image{}, watchMsg: -1, turned: phoneTurn}
+		icons: map[string]*ebiten.Image{}, frames: map[string]*ebiten.Image{}, watchMsg: -1, turned: phoneTurn, aim: -1, grab: -1}
 	switch cue.App {
 	case "chat":
 		p.shown = 1
@@ -92,16 +94,49 @@ func (p *phoneView) clip(key string, v *data.PhoneVideo) *phoneClip {
 }
 
 func (c *phoneClip) length() int {
-	s := 30.0
-	if c.v.Seconds > 0 {
-		s = c.v.Seconds
+	return int(c.v.Length(len(c.v.Frames)) * 60)
+}
+
+// frame is the picture of the clip's footage on the screen now: the frames go
+// by at the clip's rate, starting again in a loop, else staying on the last.
+// It is empty for a clip without frames.
+func (c *phoneClip) frame() string {
+	n := len(c.v.Frames)
+	if n == 0 {
+		return ""
 	}
-	return int(s * 60)
+	i := int(float64(c.played) * c.v.FrameRate() / 60)
+	if c.loop {
+		i %= n
+	}
+	return c.v.Frames[min(i, n-1)]
+}
+
+// phonePictures are the pictures the phone shows: icons, pictures, posters and
+// every frame of its clips, to decode before it comes up.
+func phonePictures(cue data.PhoneCue) []string {
+	var out []string
+	video := func(v *data.PhoneVideo) {
+		if v != nil {
+			out = append(append(out, v.Picture), v.Frames...)
+		}
+	}
+	for _, m := range cue.Messages {
+		out = append(out, m.Icon, m.Picture)
+		video(m.Video)
+	}
+	for _, post := range cue.Posts {
+		out = append(out, post.Icon, post.Picture)
+		video(post.Video)
+	}
+	video(cue.Video)
+	return out
 }
 
 // step plays the clip one tick: the puppet moves and jiggles at its seconds.
 // loop starts it again at its end (a feed's post), else it stops there.
 func (c *phoneClip) step(g *Game, key string, loop bool) {
+	c.loop = loop
 	if c.v.Puppet != "" && c.body == nil {
 		if rig := g.rig(c.v.Puppet); rig != nil {
 			c.body = seededPuppet(rig, "phone."+key)
@@ -157,18 +192,11 @@ func (g *Game) updatePhone() bool {
 		p.closing = 1
 		return false
 	}
-	p.slide *= 0.78
-	if math.Abs(p.slide) < 0.002 {
-		p.slide = 0
-	}
 	if p.watch != nil && p.resting() && p.age >= phoneRise {
 		p.watch.step(g, p.watchKey(), false)
 	}
 	if p.cue.App == "feed" && p.watch == nil {
-		if post := p.cue.Posts[p.post]; post.Video != nil {
-			key := fmt.Sprintf("post%d", p.post)
-			p.clip(key, post.Video).step(g, key, true)
-		}
+		g.stepFeedClips(p)
 	}
 	if !p.ready() {
 		return false
@@ -260,51 +288,6 @@ func (g *Game) phoneAuto(p *phoneView) bool {
 	return g.autoRead && p.age%int(120*g.cfg.autoScale()+1) == 0
 }
 
-func (g *Game) updatePhoneFeed(p *phoneView) {
-	in := &g.in
-	n := len(p.cue.Posts)
-	turn := func(d int) {
-		next := p.post + d
-		if next < 0 || next >= n {
-			return
-		}
-		p.post = next
-		p.slide = float64(d)
-	}
-	x := float64(in.mouse.X)
-	switch {
-	case in.pdown:
-		p.dragAt, p.drag = x, 0
-	case in.pheld && p.dragAt != 0:
-		p.drag = x - p.dragAt
-	case in.pup && p.dragAt != 0:
-		d := p.drag
-		p.dragAt, p.drag = 0, 0
-		switch {
-		case d < -40:
-			turn(1)
-		case d > 40:
-			turn(-1)
-		case in.click && math.Abs(d) < 8:
-			p.liked[p.post] = !p.liked[p.post]
-		}
-		return
-	}
-	if in.left() {
-		turn(-1)
-	}
-	if in.right() {
-		turn(1)
-	}
-	if in.ok() {
-		if p.post == n-1 {
-			p.closing = phoneRise
-		} else {
-			turn(1)
-		}
-	}
-}
-
 // Phone colors: a light app on a dark body. They are fixed rather than taken
 // from the game's theme so that the phone reads as a phone in every game.
 var (
@@ -336,6 +319,17 @@ func (g *Game) phoneSize(side bool) (w, h float64) {
 		}
 	}
 	return w, h
+}
+
+func phoneBezel(w, h float64) float64 { return math.Min(w, h) * 0.035 }
+
+// phoneScreenRect is the phone's screen as it rests, in UI units of the game's
+// screen: its top left and its size.
+func (g *Game) phoneScreenRect(side bool) (x, y, w, h float64) {
+	sw, sh := g.screen()
+	pw, ph := g.phoneSize(side)
+	b := phoneBezel(pw, ph)
+	return (sw-pw)/2 + b, (sh-ph)/2 + b, pw - b*2, ph - b*2
 }
 
 func (g *Game) drawPhone(dst *ebiten.Image) {
@@ -400,7 +394,7 @@ func (g *Game) phoneHint(p *phoneView) string {
 	case p.watch != nil:
 		return lang.T("クリック: 一時停止　Esc: 閉じる")
 	case p.cue.App == "feed":
-		return lang.T("左右・スワイプ: 投稿を送る　クリック: いいね　Esc: 閉じる")
+		return lang.T("上下・ホイール・ドラッグ: スクロール　写真をクリック: いいね　Esc: 閉じる")
 	}
 	return lang.T("クリック: 次のメッセージ　Esc: 閉じる")
 }
@@ -412,7 +406,7 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 	r := math.Min(w, h) * 0.13
 	gfx.FillRoundRect(dst, 0, 0, float32(w), float32(h), float32(r), phoneBody)
 	gfx.StrokeRoundRect(dst, 1, 1, float32(w-2), float32(h-2), float32(r), 2, phoneEdge)
-	bezel := math.Min(w, h) * 0.035
+	bezel := phoneBezel(w, h)
 	scw, sch := w-bezel*2, h-bezel*2
 	k := gfx.Scale()
 	p.screen = sized(p.screen, int(math.Ceil(scw*k)), int(math.Ceil(sch*k)))
@@ -575,66 +569,6 @@ func (g *Game) drawTypingDots(dst *ebiten.Image, p *phoneView, x, y float64) {
 	}
 }
 
-func (g *Game) drawPhoneFeed(p *phoneView, dst *ebiten.Image, w, h float64) {
-	top := g.drawPhoneHeader(dst, w, p.cue.Title, 34)
-	offset := p.slide*w - p.drag
-	for i := p.post - 1; i <= p.post+1; i++ {
-		if i < 0 || i >= len(p.cue.Posts) {
-			continue
-		}
-		x := float64(i-p.post)*w + offset
-		if x <= -w || x >= w {
-			continue
-		}
-		g.drawPhonePost(dst, p, i, x, top, w, h-top)
-	}
-	// The dots of the posts, the one on the screen filled.
-	if n := len(p.cue.Posts); n > 1 {
-		x0 := w/2 - float64(n-1)*8
-		for i := range n {
-			clr := phoneLine
-			if i == p.post {
-				clr = phoneMine
-			}
-			gfx.FillCircle(dst, float32(x0+float64(i)*16), float32(h-18), 4.5, clr, true)
-		}
-	}
-}
-
-func (g *Game) drawPhonePost(dst *ebiten.Image, p *phoneView, i int, x, y, w, h float64) {
-	post := p.cue.Posts[i]
-	gfx.FillRect(dst, float32(x), float32(y), float32(w), float32(h), phoneBubble, false)
-	g.drawPhoneIcon(dst, p, post.Icon, x+12, y+10, 38)
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(post.Who, 16, w-80), x+60, y+18, 16, phoneInk)
-	py := y + 58
-	ph := math.Min(w*1.25, h-170)
-	if post.Video != nil {
-		key := fmt.Sprintf("post%d", i)
-		g.drawPhoneMedia(dst, p, key, p.clip(key, post.Video), x, py, w, ph, 0)
-		drawPlay(dst, x+w-24, py+22, 9)
-	} else if img := g.pics.get(post.Picture); img != nil {
-		drawCoverTop(dst, img, x, py, w, ph)
-	}
-	// The heart, the likes and the caption under the picture.
-	ly := py + ph + 14
-	likes := post.Likes
-	if p.liked[i] {
-		likes++
-		drawHeart(dst, x+26, ly+11, 12, phoneHeart, true)
-	} else {
-		drawHeart(dst, x+26, ly+11, 12, phoneInk, false)
-	}
-	gfx.DrawTextLeft(dst, likeCount(likes), x+48, ly, 16, phoneInk)
-	caption := post.Text
-	if post.Who != "" {
-		caption = post.Who + "  " + caption
-	}
-	lines, _ := gfx.FitLines(caption, 15, w-28, 3)
-	for k, l := range lines {
-		gfx.DrawTextLeft(dst, l, x+14, ly+30+float64(k)*gfx.LineHeight(15), 15, phoneInk)
-	}
-}
-
 func likeCount(n int) string {
 	return fmt.Sprintf(lang.T("いいね！ %s 件"), strconv.Itoa(n))
 }
@@ -667,15 +601,22 @@ func (g *Game) drawPhoneWatch(p *phoneView, dst *ebiten.Image, w, h float64) {
 	gfx.DrawTextLeft(dst, clipTime(c.played)+" / "+clipTime(length), 18, h-34, 14, phoneOnVideo)
 }
 
-// drawPhoneMedia draws a clip in x, y, w, h: its picture pushed in slowly and
-// its puppet in front, cut to the box (with corners of radius r).
+// drawPhoneMedia draws a clip in x, y, w, h: its footage's frame over its
+// picture (or the picture alone, pushed in slowly) and its puppet in front, cut
+// to the box (with corners of radius r).
 func (g *Game) drawPhoneMedia(dst *ebiten.Image, p *phoneView, key string, c *phoneClip, x, y, w, h, r float64) {
 	frame := p.frame(key, w, h)
 	frame.Fill(color.Black)
 	if img := g.pics.get(c.v.Picture); img != nil {
-		zoom := 1 + 0.06*float64(c.played)/float64(max(1, c.length()))
+		zoom := 1.0
+		if len(c.v.Frames) == 0 {
+			zoom += 0.06 * float64(c.played) / float64(max(1, c.length()))
+		}
 		zw, zh := w*zoom, h*zoom
 		drawCoverTop(frame, img, (w-zw)/2, (h-zh)/2, zw, zh)
+	}
+	if img := g.pics.get(c.frame()); img != nil {
+		drawCoverTop(frame, img, 0, 0, w, h)
 	}
 	if c.v.Puppet != "" && c.body == nil {
 		if rig := g.rig(c.v.Puppet); rig != nil {

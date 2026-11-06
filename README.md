@@ -11,7 +11,6 @@
 [![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/nao1215/gozen/total)](https://github.com/nao1215/gozen/releases)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/nao1215/gozen/badge)](https://scorecard.dev/viewer/?uri=github.com/nao1215/gozen)
 
-
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/gozen-logo-dark.svg">
@@ -82,25 +81,17 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 
 ### Novel games
 
-`ui.message: novel` makes a visual novel. All from [After the Pass](examples/novel), the novel sample, at 1920x1080.
+`ui.message: novel` makes a visual novel. All from [After the Pass](examples/novel), the novel sample, at 1920x1080. `phone` shows a phone over the scene, with a chat, a photo feed or a video playing footage ([ADR 0057](docs/decisions/0057-phone-apps.md)), from the office sample.
 
 | Roll back (Q, wheel) | Skip to the line not read (N) |
 |:--|:--|
 | ![Back goes over two lines and a choice, with the state](docs/images/novel-back.gif) | ![the option taken again, then Skip stops at the first line not read](docs/images/novel-skip.gif) |
 | Two languages | Staging (`stand`, `effect`) |
 | ![the settings switch to Japanese, the line on the screen turns Japanese at once, and so does the next](docs/images/novel-language.gif) | ![Brenna slides in and her portrait shakes](docs/images/novel-stage.gif) |
-| Event picture with its line | |
-| ![Brenna's ending: a picture of her cheering at the bar, with the line under it](docs/images/novel-picture.jpg) | |
-
-#### A phone on the screen
-
-`phone` (ADR 0057) shows a phone over the scene, held upright or turned on its side: a chat, a photo feed and a video, with a puppet moving in its clips. From the office sample.
-
-| Chat: messages, then a clip sent in it | Feed: swipe, like, a clip in a post |
-|:--|:--|
-| ![a team chat on a phone: messages arrive one by one, then a clip sent in the chat turns the phone on its side and plays](docs/images/phone-chat.gif) | ![a photo feed: posts turn with a swipe, one is liked, and a clip plays in its post](docs/images/phone-feed.gif) |
-| Video on its side | |
-| ![a video app: the phone comes up upright, turns on its side and plays a clip with a moving puppet](docs/images/phone-video.gif) | |
+| Event picture with its line | Phone: a video turned on its side |
+| ![Brenna's ending: a picture of her cheering at the bar, with the line under it](docs/images/novel-picture.jpg) | ![a video app: the phone comes up upright, turns on its side and plays footage of a battle from the Go Zen sample](docs/images/phone-video.gif) |
+| Phone: chat, a clip sent in it | Phone: feed, scrolled |
+| ![a team chat on a phone: messages arrive one by one, then a clip sent in the chat turns the phone on its side and plays a recorded call](docs/images/phone-chat.gif) | ![a photo feed scrolled down a post at a time, a clip of a battle cut-in looping in its post](docs/images/phone-feed.gif) |
 
 ### Management workspaces
 

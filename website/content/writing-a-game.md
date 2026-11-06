@@ -450,7 +450,9 @@ A line counts as read by its source: the speaker and the text as written, before
     video: {picture: bg/stage.png, puppet: ann/puppet.yaml, text: Live clip, seconds: 30, bounce: [4, 9.5]}
 ```
 
-A chat shows its first message when the phone comes up, and each press brings the next, someone else's after typing dots; a message is text, a picture or a video, and a press on the newest video turns the phone on its side and plays it until Cancel turns it back. A feed shows one post at a time; left and right or a swipe turn them, a click likes one, and a post's video plays in its place. A video is a picture pushed in slowly with an optional puppet in front, `zoom` times the frame's height (1.5, its upper body, by default), breathing and swaying as on the stage and jiggling at each second in `bounce`.
+A chat shows its first message when the phone comes up, and each press brings the next, someone else's after typing dots; a message is text, a picture or a video, and a press on the newest video turns the phone on its side and plays it until Cancel turns it back. A feed stacks its posts top to bottom and scrolls with the wheel, the up and down keys or a drag; a click on a picture likes it, OK at the bottom puts the phone down, and a post's video plays in its place while it is on the screen. A video is a picture pushed in slowly with an optional puppet in front, `zoom` times the frame's height (1.5, its upper body, by default), breathing and swaying as on the stage and jiggling at each second in `bounce`.
+
+For real footage, `frames` lists pictures under assets/ (or a pattern such as `clips/battle/*.jpg`, sorted) that play in order at `fps` (12 by default) over the `picture`, which becomes the poster; a feed loops them, elsewhere the clip stops on its last frame, and `seconds` defaults to their length. Cut a video into pictures beforehand (for example `ffmpeg -i clip.mp4 -vf fps=12,scale=640:-1 clips/battle/%03d.jpg`); the engine decodes no video files.
 
 ## Campaigns
 
