@@ -23,6 +23,7 @@ const (
 	phoneFeedHead  = 58.0 // the poster's icon and name over the picture
 	phoneFeedWheel = 60.0 // UI units a notch of the wheel scrolls
 	phoneFeedTap   = 8.0  // UI units a pointer may move and still tap
+	phoneFeedLikes = 40.0 // the row of the heart and the likes under a picture
 )
 
 // feedPost is a post laid out in the feed, from the feed's top unscrolled: its
@@ -227,15 +228,16 @@ func (g *Game) phoneColumnAt(p *phoneView, at image.Point) (float64, bool) {
 	return y + p.scroll - phoneFeedTop, true
 }
 
-// feedPictureAt is the post whose picture is under at (a point on the game's
-// screen), or -1.
+// feedPictureAt is the post whose picture, or the row of its heart and likes
+// under it, is under at (a point on the game's screen), or -1: a tap there
+// likes the post, as one on the heart does in a photo app.
 func (g *Game) feedPictureAt(p *phoneView, posts []feedPost, at image.Point) int {
 	y, ok := g.phoneColumnAt(p, at)
 	if !ok {
 		return -1
 	}
 	for i, l := range posts {
-		if y >= l.pic && y < l.pic+l.picH {
+		if y >= l.pic && y < l.pic+l.picH+phoneFeedLikes {
 			return i
 		}
 	}

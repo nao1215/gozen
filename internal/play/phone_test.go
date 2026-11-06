@@ -1,6 +1,7 @@
 package play
 
 import (
+	"fmt"
 	"image"
 	"math"
 	"testing"
@@ -650,5 +651,43 @@ func TestPhoneSizeOnItsSide(t *testing.T) {
 		if math.Abs(uh/sh-0.94) > 1e-9 || math.Abs(uw/uh-0.49) > 1e-9 {
 			t.Errorf("%dx%d: upright %.0fx%.0f", v.w, v.h, uw, uh)
 		}
+	}
+}
+
+// TestPhoneFeedLikeScripted: a capture script's click on a post's picture, a
+// click on its heart and a short drag on it each like or unlike the post.
+func TestPhoneFeedLikeScripted(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "feed", Posts: []data.PhonePost{{Picture: "x.png", Likes: 3}, {Picture: "x.png"}}})
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	posts, _, _, _ := g.feedView(p)
+	sx, sy, w, _ := g.phoneScreenRect(false)
+	x := int(sx + w/2)
+	onPicture := int(sy + phoneFeedTop + posts[0].pic + 60)
+	onHeart := int(sy + phoneFeedTop + posts[0].pic + posts[0].picH + 20)
+	run := func(src string) {
+		t.Helper()
+		sc, err := parseScript(src + "\nwait 20\nquit\n")
+		if err != nil {
+			t.Fatal(err)
+		}
+		g.in.script = sc
+		for range 12 {
+			g.in.update()
+			g.updatePhone()
+		}
+		g.in.script = nil
+	}
+	run(fmt.Sprintf("click %d %d", x, onPicture))
+	if !p.liked[0] {
+		t.Fatal("a scripted click on the picture did not like the post")
+	}
+	run(fmt.Sprintf("click %d %d", x, onHeart))
+	if p.liked[0] {
+		t.Fatal("a scripted click on the heart did not take the like back")
+	}
+	run(fmt.Sprintf("drag %d %d %d %d", x, onPicture, x, onPicture-3))
+	if !p.liked[0] || p.scroll > 4 {
+		t.Fatalf("a short scripted drag did not like the post (scroll %v)", p.scroll)
 	}
 }
