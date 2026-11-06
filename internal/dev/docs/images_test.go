@@ -477,6 +477,9 @@ func (p *played) matching(s pick) ([]string, error) {
 			}
 		}
 		names = kept
+		if len(names) == 0 {
+			return nil, fmt.Errorf("no %q frame in the selected window near %s", s.Shots, s.Near)
+		}
 	}
 	return names, nil
 }
@@ -977,4 +980,21 @@ func compareFiles(ctx context.Context, committed, fresh string, tolerance float6
 		return fmt.Errorf("the fresh picture: %w", err)
 	}
 	return compareFrames(old, now, tolerance)
+}
+
+func TestFrameSelectionRejectsEmptyTimeWindow(t *testing.T) {
+	p := &played{
+		order: []string{"frame-1"}, files: map[string]string{"frame-1": "frame-1.png"},
+		ticks: map[string]int{"frame-1": 10}, events: map[string]int{"event": 100},
+	}
+	from, to := 0, 5
+	for _, middle := range []bool{false, true} {
+		sel := pick{Shots: "frame-*", Near: "event", From: &from, To: &to, Middle: middle}
+		if _, err := p.one(sel); err == nil {
+			t.Fatal("empty still selection succeeded")
+		}
+		if _, err := p.frames([]pick{sel}); err == nil {
+			t.Fatal("empty animation selection succeeded")
+		}
+	}
 }
