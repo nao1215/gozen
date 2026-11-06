@@ -223,6 +223,19 @@ func shrinkWeb(dir string, names []string, later string, earlier *earlierExport)
 	for _, name := range names {
 		s.taken[name] = true
 	}
+	// Converted names must not replace directories, including empty ones that
+	// are absent from the manifest's file list.
+	if err := fs.WalkDir(os.DirFS(dir), ".", func(name string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			s.taken[name] = true
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
 	files := make([]webFile, len(names))
 	errs := make([]error, len(names))
 	jobs := make(chan int)
