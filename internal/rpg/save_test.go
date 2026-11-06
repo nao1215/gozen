@@ -610,3 +610,64 @@ func TestLegacySaveCacheOwnsInput(t *testing.T) {
 		t.Fatalf("cached save changed after caller reused input: got %v", got)
 	}
 }
+
+func FuzzSaveRoundTrip(f *testing.F) {
+	db := testgame.Load(f, nil)
+	seed, err := testgame.State(db, 1).Save()
+	if err != nil {
+		f.Fatal(err)
+	}
+	f.Add(seed)
+	f.Add([]byte(`{"actors":{},"party":[],"location":"camp"}`))
+	f.Fuzz(func(t *testing.T, input []byte) {
+		if len(input) > 64*1024 {
+			return
+		}
+		st, err := rpg.ParseWithConfig(db, input, nil, rpg.Config{AllowLegacy: true})
+		if err != nil {
+			return
+		}
+		first, err := st.Save()
+		if err != nil {
+			t.Fatalf("accepted save cannot be saved: %v", err)
+		}
+		again, err := rpg.Parse(db, first, nil)
+		if err != nil {
+			t.Fatalf("saved state cannot be loaded: %v", err)
+		}
+		second, err := again.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(first, second) {
+			t.Fatalf("save normalization is not stable: %s\n%s", first, second)
+		}
+	})
+}
+
+func FuzzLoadedGameSave(f *testing.F) {
+	f.Add(true, []byte(testgame.Game))
+	f.Add(false, []byte(testgame.Data))
+	f.Add(true, []byte("schema_version: 10\nid: neutral\n"+testgame.Game))
+	f.Fuzz(func(t *testing.T, game bool, source []byte) {
+		if len(source) > 64*1024 {
+			return
+		}
+		name := "data/main.yaml"
+		if game {
+			name = "game.yaml"
+		}
+		db, err := testgame.TryLoad(map[string]string{name: string(source)})
+		if err != nil {
+			return
+		}
+		st := testgame.State(db, 17)
+		saved, err := st.Save()
+		if err != nil {
+			t.Fatalf("accepted game cannot save initial state: %v", err)
+		}
+		if _, err := rpg.Parse(db, saved, nil); err != nil {
+			t.Fatalf("accepted game cannot restore initial state: %v", err)
+		}
+	})
+}
