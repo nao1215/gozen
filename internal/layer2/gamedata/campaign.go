@@ -622,10 +622,10 @@ func (c *checker) campaign() {
 		if r.Landmark != "" {
 			c.picture("regions."+id+".landmark", Picture{File: r.Landmark})
 		}
-		if r.LandmarkGround != nil && (*r.LandmarkGround < 0 || *r.LandmarkGround > 1) {
+		if r.LandmarkGround != nil && (!finiteNumber(*r.LandmarkGround) || *r.LandmarkGround < 0 || *r.LandmarkGround > 1) {
 			c.errorf(diag.OutOfRange, "regions."+id+".landmark_ground", "landmark_ground is 0 to 1 (1 when absent), not %g", *r.LandmarkGround)
 		}
-		if r.LandmarkScale < 0 || r.LandmarkScale > 1 {
+		if !finiteNumber(r.LandmarkScale) || r.LandmarkScale < 0 || r.LandmarkScale > 1 {
 			c.errorf(diag.OutOfRange, "regions."+id+".landmark_scale", "landmark_scale is a share of the map's width, 0 (0.12) to 1, not %g", r.LandmarkScale)
 		}
 	}
@@ -667,6 +667,9 @@ func (c *checker) campaign() {
 			c.errorf(diag.OutOfRange, w+".troops", "troops are 0 or more, not %d", r.Troops)
 		}
 		for _, k := range slices.Sorted(maps.Keys(r.Values)) {
+			if !finiteNumber(r.Values[k]) {
+				c.errorf(diag.OutOfRange, w+".values."+k, "value must be finite")
+			}
 			if !declaredName.MatchString(k) || slices.Contains(regionFields, k) {
 				c.errorf(diag.NotAWord, w+".values."+k, "a value's name is lowercase letters, digits and _, and not one of %s", strings.Join(regionFields, ", "))
 			}
@@ -743,6 +746,9 @@ func (c *checker) campaign() {
 		if cp.Generals[id].Troops < 0 {
 			c.errorf(diag.OutOfRange, w+".generals."+id+".troops", "troops are 0 or more")
 		}
+		if !finiteNumber(cp.Generals[id].Might) {
+			c.errorf(diag.OutOfRange, w+".generals."+id+".might", "might must be finite")
+		}
 	}
 	clash := append(slices.Clone(FieldNames), "a", "b", "power", "defense")
 	for _, f := range []struct {
@@ -754,7 +760,7 @@ func (c *checker) campaign() {
 	if cp.Clash.Rounds < 0 {
 		c.errorf(diag.OutOfRange, w+".clash.rounds", "rounds are 0 (5) or more")
 	}
-	if p := cp.Clash.Capture; p != nil && (*p < 0 || *p > 1) {
+	if p := cp.Clash.Capture; p != nil && (!finiteNumber(*p) || *p < 0 || *p > 1) {
 		c.errorf(diag.OutOfRange, w+".clash.capture", "capture is a chance from 0 to 1, not %g", *p)
 	}
 	c.exprIn(w+".clash.hit", cp.Clash.Hit, append(slices.Clone(FieldNames), "a", "b", "round"), hitOver)
@@ -790,7 +796,7 @@ func (c *checker) campaign() {
 		if (t.Pick == "least" || t.Pick == "most") && !t.By.Set() {
 			c.errorf(diag.Shape, at+".by", "pick %s needs by", t.Pick)
 		}
-		if t.Deal < 0 || t.Take < 0 {
+		if !finiteNumber(t.Deal) || !finiteNumber(t.Take) || t.Deal < 0 || t.Take < 0 {
 			c.errorf(diag.OutOfRange, at, "deal and take are 0 (1) or more")
 		}
 		c.exprIn(at+".where", t.Where, unit, tacticOver)
@@ -831,7 +837,7 @@ func (c *checker) campaign() {
 	for _, k := range slices.Sorted(maps.Keys(cp.Clash.Backgrounds)) {
 		c.picture(w+".clash.backgrounds."+k, Picture{File: cp.Clash.Backgrounds[k]})
 	}
-	if g := cp.Clash.Garrison; g != nil && (*g < 0 || *g > 1) {
+	if g := cp.Clash.Garrison; g != nil && (!finiteNumber(*g) || *g < 0 || *g > 1) {
 		c.errorf(diag.OutOfRange, w+".clash.garrison", "garrison is a share from 0 to 1, not %g", *g)
 	}
 	if len(cp.Orders) == 0 {
@@ -912,8 +918,11 @@ func (c *checker) factionRule(w string, r *FactionRule, names []string) {
 	if (r.Pick == "min" || r.Pick == "max") && !r.By.Set() {
 		c.errorf(diag.Shape, w+".by", "pick: %s needs by", r.Pick)
 	}
-	if r.Send < 0 || r.Send > 1 {
+	if !finiteNumber(r.Send) || r.Send < 0 || r.Send > 1 {
 		c.errorf(diag.OutOfRange, w+".send", "send is a share from 0 to 1, not %g", r.Send)
+	}
+	if !finiteNumber(r.Keep) {
+		c.errorf(diag.OutOfRange, w+".keep", "keep must be finite")
 	}
 	if !r.March && (r.Where.Set() || r.By.Set() || r.Keep != 0 || r.Send != 0 || r.Pick != "") {
 		c.errorf(diag.Shape, w, "where, by, pick, keep and send are for march: true")
@@ -1001,7 +1010,7 @@ func CampaignWin(db *DB) Expr {
 	if cp == nil {
 		return Expr{}
 	}
-	return MustExpr(fmt.Sprintf("faction.%s.regions == %d", cp.Player, len(db.Regions)))
+	return MustExpr(fmt.Sprintf("faction[%s].regions == %d", quoteExprString(cp.Player), len(db.Regions)))
 }
 
 // CampaignLose is the condition that loses the campaign (its default when unset; none
@@ -1018,7 +1027,7 @@ func CampaignLose(db *DB) Expr {
 	if f == nil || f.Capital == "" {
 		return Expr{}
 	}
-	return MustExpr(fmt.Sprintf("region.%s.owner != %s", f.Capital, quoteExprString(cp.Player)))
+	return MustExpr(fmt.Sprintf("region[%s].owner != %s", quoteExprString(f.Capital), quoteExprString(cp.Player)))
 }
 
 // campaignSetKey checks a left-hand side of set that names the campaign's state:

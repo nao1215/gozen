@@ -68,7 +68,7 @@ func campaignActions(db *DB) {
 		if label == "" {
 			label = id
 		}
-		when := fmt.Sprintf("orders.%s.open", id)
+		when := fmt.Sprintf("orders[%s].open", quoteExprString(id))
 		if o.When.Set() {
 			when += " && (" + o.When.String() + ")"
 		}

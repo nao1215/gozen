@@ -378,3 +378,43 @@ func TestCampaignClashView(t *testing.T) {
 		t.Fatalf("results %v: the garrisons from 100 to 1200 should not all end alike", results)
 	}
 }
+
+func TestCampaignQueriesReturnOwnedCompleteSnapshots(t *testing.T) {
+	g := campaignGame(t, nil)
+	s := session(t, g, gozen.Config{Seed: 31})
+	regions := query[map[string]map[string]any](t, s, "region")
+	factions := query[map[string]map[string]any](t, s, "faction")
+	generals := query[map[string]map[string]any](t, s, "generals")
+	orders := query[map[string]map[string]any](t, s, "orders")
+	campaign := query[map[string]any](t, s, "campaign")
+	if len(regions) != 4 || len(factions) != 2 || len(generals) != 1 || len(orders) != 3 {
+		t.Fatalf("incomplete snapshots: %v %v %v %v", regions, factions, generals, orders)
+	}
+	if regions["home"]["wealth"] != 20.0 || factions["blue"]["sum_wealth"] != 20.0 || generals["scout"]["troops"] != 400.0 || orders["develop"]["open"] != true || campaign["turn"] != 1.0 {
+		t.Fatalf("incorrect snapshot values: %v %v %v %v %v", regions, factions, generals, orders, campaign)
+	}
+	// Query through *any exercises recursive object copying directly, rather
+	// than relying on JSON decoding into a caller's typed map.
+	value := query[any](t, s, "faction")
+	copied, ok := value.(map[string]any)
+	if !ok {
+		t.Fatalf("faction snapshot is %T", value)
+	}
+	blue, ok := copied["blue"].(map[string]any)
+	if !ok {
+		t.Fatalf("faction is %T", copied["blue"])
+	}
+	blue["sum_wealth"] = -999.0
+	delete(copied, "red")
+	if query[float64](t, s, "faction.blue.sum_wealth") != 20 || query[string](t, s, "faction.red.name") != "Red" {
+		t.Fatal("caller mutation changed campaign state")
+	}
+	do(t, s, "- order: {id: develop, target: home}\n")
+	fresh := query[map[string]map[string]any](t, s, "region")
+	if fresh["home"]["wealth"] != 30.0 || regions["home"]["wealth"] != 20.0 {
+		t.Fatal("snapshots did not separate later transitions")
+	}
+	if factions["blue"]["sum_wealth"] != 20.0 || query[float64](t, s, "faction.blue.sum_wealth") != 30 {
+		t.Fatal("aggregate snapshot was stale or aliased")
+	}
+}
