@@ -271,8 +271,13 @@ func moveRoamers(d *data.Dungeon, st *rpg.State, from [2]int) {
 // it stood still, or stepped into the party).
 // Only the first cell of a step may jump into the party (it was shown beside the party before).
 func stepRoamer(d *data.Dungeon, st *rpg.State, dist []int, from [2]int, i int, first bool) bool {
-	w, _ := d.Size()
+	w, h := d.Size()
 	r := &st.Roamers[i]
+	// Saves and reloaded maps can leave a roamer outside the current grid.
+	// Check each coordinate before multiplication to avoid overflow or row wrapping.
+	if r.X < 0 || r.Y < 0 || r.X >= w || r.Y >= h {
+		return false
+	}
 	k := d.Roamers[r.Kind]
 	sight := k.Sight
 	if sight <= 0 {

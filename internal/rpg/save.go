@@ -198,7 +198,7 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 	if err := decodeSave(payload, s); err != nil {
 		return nil, err
 	}
-	remember(&checkedSave{db: db, opt: opt, b: slices.Clone(b), payload: payload, report: report, resume: resume.clone(), savedRand: slices.Clone(savedRand)})
+	remember(&checkedSave{db: db, opt: opt, b: slices.Clone(b), payload: slices.Clone(payload), report: report, resume: resume.clone(), savedRand: slices.Clone(savedRand)})
 	return s.bind()
 }
 

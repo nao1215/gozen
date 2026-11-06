@@ -3,6 +3,7 @@ package gamedata
 import (
 	"fmt"
 	"maps"
+	"math"
 	"reflect"
 	"slices"
 	"strings"
@@ -162,6 +163,8 @@ func (c *checker) stateDeclarations() {
 		}
 		if expr.TypeOfValue(d.Initial) != d.ValueType() || d.Initial == nil {
 			c.errorf(diag.Expression, w+".initial", lang.T("初期値は型 %s のリテラルが必要"), d.Type)
+		} else if n, ok := expr.ToNumber(d.Initial); ok && d.ValueType() == expr.NumberType && (math.IsNaN(n) || math.IsInf(n, 0)) {
+			c.errorf(diag.Expression, w+".initial", "%s", lang.T("数の初期値は有限の数にする（.nan と .inf は使えない）"))
 		}
 	}
 }

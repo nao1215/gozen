@@ -1,6 +1,8 @@
 package dungeon_test
 
 import (
+	"fmt"
+	"math"
 	"strings"
 	"testing"
 
@@ -188,5 +190,39 @@ func TestRoamersStayOnTheirFloor(t *testing.T) {
 	}
 	if moved, _ := dungeon.Forward(db, st); !moved {
 		t.Fatal("could not walk the hall")
+	}
+}
+
+func TestLoadedRoamersOutsideGridDoNotPanic(t *testing.T) {
+	for _, pos := range [][2]int{{-1, 0}, {0, -1}, {15, 1}, {1, 15}, {math.MaxInt, math.MaxInt}} {
+		t.Run(fmt.Sprint(pos), func(t *testing.T) {
+			db := testgame.Load(t, map[string]string{"data/r.yaml": roamGame})
+			st := testgame.State(db, 3)
+			st.Location, st.Calm = "deep", true
+			dungeon.Dive(db, st, "deep", 1)
+			st.Roamers = []rpg.Roamer{{Kind: 0, Troop: "one", X: pos[0], Y: pos[1]}}
+			saved, err := st.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			restored, err := rpg.Parse(db, saved, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			moved := false
+			for range 4 {
+				if ok, _ := dungeon.Forward(db, restored); ok {
+					moved = true
+					break
+				}
+				dungeon.Turn(restored, 1)
+			}
+			if !moved {
+				t.Fatal("fixture never moved the player")
+			}
+			if r := restored.Roamers[0]; r.X != pos[0] || r.Y != pos[1] {
+				t.Fatalf("invalid roamer moved: %+v", r)
+			}
+		})
 	}
 }

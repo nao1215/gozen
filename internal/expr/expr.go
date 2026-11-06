@@ -392,6 +392,8 @@ func Truthy(v any) bool {
 		return x != 0
 	case int:
 		return x != 0
+	case int64:
+		return x != 0
 	case string:
 		return x != ""
 	}

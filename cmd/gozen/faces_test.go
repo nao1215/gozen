@@ -153,3 +153,15 @@ func BenchmarkFaceCheck(b *testing.B) {
 		})
 	}
 }
+func TestFaceCheckExtremeAspectRatios(t *testing.T) {
+	for _, height := range []int{1, 2, 3, 6000} {
+		img := solid(2, height, color.NRGBA{255, 255, 255, 255})
+		out := faceCheck(img, nil)
+		if out.Bounds().Empty() || out.Bounds().Dy() != 480 {
+			t.Fatalf("height %d: %v", height, out.Bounds())
+		}
+		if _, err := encodePNG(out); err != nil {
+			t.Fatal(err)
+		}
+	}
+}

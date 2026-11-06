@@ -124,3 +124,21 @@ func within(r Range, v any) bool {
 	}
 	return false
 }
+
+func TestAbstractLargeRemainder(t *testing.T) {
+	e := mustParse("a % b")
+	for _, divisor := range []float64{3, 7, 1e20} {
+		rg := e.Abstract(func(ref Ref) Range {
+			if ref.Name == "a" {
+				return Between(1<<63, 1e20)
+			}
+			return Number(divisor)
+		})
+		for _, a := range []float64{1 << 63, 1e19, 1e20} {
+			got, err := e.Eval(Map{"a": a, "b": divisor})
+			if err != nil || !within(rg, got) {
+				t.Fatalf("a=%g b=%g: %v, %v outside %s", a, divisor, got, err, rg)
+			}
+		}
+	}
+}

@@ -39,7 +39,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 	}
 	out, err := applyCommand(s, c, args)
 	if err == nil && c.Op != "rule" {
-		reconcileParts(s, before, c.Op)
+		err = reconcileParts(s, before, c.Op)
 	}
 	return out, err
 }
@@ -474,7 +474,7 @@ func childIDs(s *rpg.State, parent string) []string {
 
 // Parent commands preserve old authored hooks; child work rolls up without adding
 // a second budget. Root rework is spread in proportion to existing completed work.
-func reconcileParts(s *rpg.State, before map[string]rpg.ActivityState, op string) {
+func reconcileParts(s *rpg.State, before map[string]rpg.ActivityState, op string) error {
 	for _, id := range slices.Sorted(maps.Keys(s.Planning.Activities)) {
 		a := s.Planning.Activities[id]
 		old := before[id]
@@ -515,7 +515,8 @@ func reconcileParts(s *rpg.State, before map[string]rpg.ActivityState, op string
 			}
 			ch.Progress = min(ch.Progress, s.ActivityEffort(child))
 			ch.Observed = min(ch.Observed, s.ActivityEffort(child))
-			if ch.Progress < s.ActivityEffort(child)-1e-9 {
+			effort := s.ActivityEffort(child)
+			if ch.Progress < effort-min(1e-9, effort*1e-9) {
 				ch.Completed = ""
 			} else {
 				// Completion and saved work must agree exactly, even when a
@@ -525,6 +526,9 @@ func reconcileParts(s *rpg.State, before map[string]rpg.ActivityState, op string
 					ch.Completed = s.Planning.Date
 				}
 			}
+			if !s.DB.Game.Planning.Activities[child].Observation.Set() {
+				ch.Observed = ch.Progress
+			}
 		}
 		a.Progress, a.Observed = 0, 0
 		totalEffort := 0.0
@@ -533,10 +537,14 @@ func reconcileParts(s *rpg.State, before map[string]rpg.ActivityState, op string
 			a.Progress += s.Planning.Activities[child].Progress
 			a.Observed += s.Planning.Activities[child].Observed
 		}
+		if math.IsInf(totalEffort, 0) || math.IsNaN(totalEffort) || math.IsInf(a.Progress, 0) || math.IsNaN(a.Progress) || math.IsInf(a.Observed, 0) || math.IsNaN(a.Observed) {
+			return errors.New("activity totals must remain finite")
+		}
 		if totalEffort != s.ActivityEffort(id) {
 			a.Effort = totalEffort
 		}
-		if a.Progress < s.ActivityEffort(id)-1e-9 {
+		effort := s.ActivityEffort(id)
+		if a.Progress < effort-min(1e-9, effort*1e-9) {
 			a.Completed = ""
 		} else {
 			a.Progress = s.ActivityEffort(id)
@@ -548,4 +556,5 @@ func reconcileParts(s *rpg.State, before map[string]rpg.ActivityState, op string
 	if op == "observe" {
 		s.RecordWorkSample()
 	}
+	return nil
 }

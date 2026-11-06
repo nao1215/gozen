@@ -3,6 +3,7 @@ package rpg_test
 import (
 	"bytes"
 	"testing"
+	"testing/fstest"
 
 	"github.com/nao1215/gozen/internal/expr"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
@@ -234,4 +235,25 @@ func BenchmarkEntityPublicRead(b *testing.B) {
 			_ = st.EntityValue("potter", "name")
 		}
 	})
+}
+
+func TestCalendarShiftWithAuthoredIntegerOffset(t *testing.T) {
+	db, err := data.Load(fstest.MapFS{
+		"game.yaml": {Data: []byte(`schema_version: 10
+id: calendar_offset
+start: {location: room}
+planning:
+  calendar: {start: '2030-03-01', end: '2030-03-02', phases: [day]}
+  entities: {planner: {name: Planner, data: {offset: -1}}}
+`)},
+		"data/story.yaml": {Data: []byte("locations: {room: {name: Room}}")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := testgame.State(db, 17)
+	got, err := mustExpr(t, "calendar_shift(planning.date, entity.planner.data.offset)").Eval(st.Env())
+	if err != nil || got != "2030-02-28" {
+		t.Fatalf("authored offset: got %v, %v", got, err)
+	}
 }

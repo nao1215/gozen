@@ -258,15 +258,18 @@ func (n *binop) eval(env Env) (any, error) {
 		}
 		return a / b, nil
 	case "%":
-		bi := int64(b)
+		bi := math.Trunc(b)
 		if bi == 0 {
 			return 0.0, nil
 		}
-		m := int64(a) % bi
+		m := math.Mod(math.Trunc(a), bi)
+		if m == 0 {
+			return 0.0, nil
+		}
 		if m < 0 {
 			m += bi
 		}
-		return float64(m), nil
+		return m, nil
 	case "<":
 		return a < b, nil
 	case "<=":

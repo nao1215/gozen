@@ -220,6 +220,16 @@ func share(db *data.DB, st *rpg.State, generals []string, left float64) {
 		before[i] = data.GeneralTroops(db, cs, g)
 		total += before[i]
 	}
+	// Scale overflowing totals before computing proportions. Keep ordinary
+	// arithmetic unchanged so integer rounding for existing campaigns is stable.
+	scale := 1.0
+	if math.IsInf(total, 0) {
+		scale = slices.Max(before)
+		total = 0
+		for _, n := range before {
+			total += n / scale
+		}
+	}
 	given := 0.0
 	for i, g := range generals {
 		n := 0.0
@@ -227,7 +237,13 @@ func share(db *data.DB, st *rpg.State, generals []string, left float64) {
 		case i == len(generals)-1:
 			n = left - given
 		case total > 0:
-			n = math.Floor(left * before[i] / total)
+			weight := before[i] / scale
+			product := left * weight
+			if math.IsInf(product, 0) {
+				n = math.Floor(left * (weight / total))
+			} else {
+				n = math.Floor(product / total)
+			}
 		}
 		given += n
 		st.Vars[data.GeneralVar(g, "troops")] = max(0, n)

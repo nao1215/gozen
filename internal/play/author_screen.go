@@ -854,6 +854,9 @@ func (s *authorScreen) updateSurface(g *Game) {
 	if n == 0 {
 		return
 	}
+	// An action can remove itself or another focus stop during the refresh.
+	// Keep confirmation on a remaining control even before an arrow is pressed.
+	s.focus = max(0, min(s.focus, n-1))
 	if s.updateCarousel(g, actions) {
 		return
 	}

@@ -4,6 +4,7 @@ import (
 	"image"
 	"math"
 	"strconv"
+	"strings"
 	"testing"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
@@ -84,5 +85,19 @@ func TestHiddenNovelPausesAndRestores(t *testing.T) {
 				t.Fatal("restore advanced dialogue")
 			}
 		})
+	}
+}
+
+func TestBacklogOpensOnOversizedLastEntry(t *testing.T) {
+	g := wldNovel(t, "ev_auto")
+	g.backlog = nil
+	g.remember(logLine{text: "An earlier line."})
+	g.remember(logLine{text: strings.Repeat("A long remembered line.\n", 100)})
+	g.in = input{pressed: [numButtons]bool{btnLog: true}}
+	if !g.novelInput() || g.logView == nil {
+		t.Fatal("backlog did not open")
+	}
+	if g.logView.top != 1 {
+		t.Fatalf("backlog starts at %d of %d entries, want the last entry", g.logView.top, len(g.backlog))
 	}
 }

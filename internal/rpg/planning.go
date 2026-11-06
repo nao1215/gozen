@@ -405,9 +405,9 @@ func calendarShift(args []any) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("calendar_shift: %w", err)
 	}
-	days, ok := args[1].(float64)
+	days, ok := expr.ToNumber(args[1])
 	// This bound also prevents overflow in conversion and date arithmetic.
-	if !ok || math.IsNaN(days) || math.Abs(days) > 3652058 || math.Trunc(days) != days {
+	if !ok || expr.TypeOfValue(args[1]) != expr.NumberType || math.IsNaN(days) || math.Abs(days) > 3652058 || math.Trunc(days) != days {
 		return nil, errors.New("calendar_shift offset must be an integer within -3652058..3652058")
 	}
 	result := date.AddDate(0, 0, int(days))
