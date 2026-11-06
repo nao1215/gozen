@@ -84,7 +84,7 @@ func (s *authorScreen) timelineRange(g *Game) (time.Time, time.Time, error) {
 	if err != nil {
 		return time.Time{}, time.Time{}, err
 	}
-	if !s.timelineZoom || end.Sub(start).Hours()/24 < 21 {
+	if !s.timelineZoom || planningDays(start, end) < 21 {
 		return start, end, nil
 	}
 	today, err := time.Parse(time.DateOnly, g.st.Planning.Date)
@@ -127,7 +127,7 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 	if err != nil {
 		return nil, axisX, axisW
 	}
-	days := end.Sub(start).Hours()/24 + 1
+	days := planningDays(start, end) + 1
 	rowHeight := func(row data.TimelineRow) float64 {
 		if len(row.Items) > 0 && row.Items[0].Activity == s.timelineExpanded {
 			return 40 + float64(len(row.Items))*timelineLaneHeight(row.Items)
@@ -174,10 +174,10 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 					to = date
 				}
 			}
-			left := from.Sub(start).Hours() / 24 / days
-			right := max(left, (to.Sub(start).Hours()/24+1)/days)
+			left := planningDays(start, from) / days
+			right := max(left, (planningDays(start, to)+1)/days)
 			reported := max(0, min(1, a.Observed/g.st.ActivityEffort(item.Activity)))
-			expected := max(0, min(1, today.Sub(from).Hours()/24/max(1, to.Sub(from).Hours()/24+1)))
+			expected := max(0, min(1, planningDays(from, today)/max(1, planningDays(from, to)+1)))
 			sample := -1.0
 			if value, err := item.Sample.Eval(env); err == nil {
 				if number, ok := value.(float64); ok && !math.IsNaN(number) && !math.IsInf(number, 0) && number >= 0 && number <= 1 {
@@ -195,7 +195,7 @@ func (s *authorScreen) groupedTimeline(g *Game, x, y, w, h float64) ([]timelineG
 			}
 			forecast, forecastLabel := timelineForecast(from, today, calendarStart, calendarEnd, reported, a.Cancelled, data.Render(g.db.Tr(item.ForecastLabel), env))
 			if forecast >= 0 {
-				forecast = (calendarStart.Sub(start).Hours()/24 + forecast*(calendarEnd.Sub(calendarStart).Hours()/24+1)) / days
+				forecast = (planningDays(start, calendarStart) + forecast*(planningDays(calendarStart, calendarEnd)+1)) / days
 			}
 			ly := y + 3 + float64(j)*10
 			if group.expanded {
@@ -223,12 +223,12 @@ func timelineSampleTint(fresh, old color.NRGBA, freshness float64) color.NRGBA {
 // Zero reports, future starts and finished/excluded work have no defensible rate.
 // The endpoint is clipped before date conversion, even for tiny positive rates.
 func timelineForecast(from, today, start, end time.Time, reported float64, cancelled bool, label string) (float64, string) {
-	elapsed := today.Sub(from).Hours() / 24
+	elapsed := planningDays(from, today)
 	if label == "" || cancelled || elapsed <= 0 || reported <= 0 || reported >= 1 || math.IsNaN(reported) || math.IsInf(reported, 0) {
 		return -1, ""
 	}
-	finish := from.Sub(start).Hours()/24 + math.Ceil(elapsed/reported)
-	days := end.Sub(start).Hours()/24 + 1
+	finish := planningDays(start, from) + math.Ceil(elapsed/reported)
+	days := planningDays(start, end) + 1
 	if finish > days {
 		return 1, label + " > " + end.Format(time.DateOnly)
 	}
@@ -257,7 +257,7 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 	if err != nil {
 		return
 	}
-	days := end.Sub(start).Hours()/24 + 1
+	days := planningDays(start, end) + 1
 	dx := aw / days
 	today, err := time.Parse(time.DateOnly, g.st.Planning.Date)
 	if err != nil {
@@ -270,7 +270,7 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 	muted := tc.line
 	red := tc.today
 	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
-		xx := ax + d.Sub(start).Hours()/24*dx
+		xx := ax + planningDays(start, d)*dx
 		if slices.Contains(p.Calendar.WeekdaysOff, int(d.Weekday())) || slices.Contains(p.Calendar.Closed, d.Format(time.DateOnly)) {
 			rect(dst, xx, y+23, dx, bottom-y-23, tc.holiday)
 		}
@@ -280,7 +280,7 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 	}
 	labelRight := ax
 	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
-		xx := ax + d.Sub(start).Hours()/24*dx
+		xx := ax + planningDays(start, d)*dx
 		if d.Day() == 1 || d.Equal(start) {
 			if xx+90 < x+w-100 {
 				g.text(dst, d.Format("2006/1"), xx+2, y, 15, g.th.text)
@@ -304,7 +304,7 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 		if d.Before(start) || d.After(end) {
 			continue
 		}
-		xx := ax + d.Sub(start).Hours()/24*dx
+		xx := ax + planningDays(start, d)*dx
 		rect(dst, xx, y+46, max(2, dx), 5, g.th.accent)
 		if marker.Milestone {
 			for yy := y + 54; yy < bottom; yy += 8 {
@@ -395,7 +395,7 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 			if lane.forecast >= 0 {
 				// Dashes distinguish the extrapolation from the solid planned bar.
 				fx := ax + aw*min(1, lane.forecast)
-				tx := ax + today.Sub(start).Hours()/24*dx
+				tx := ax + planningDays(start, today)*dx
 				for xx := max(ax, tx); xx < fx; xx += 6 {
 					rect(bars, xx, ly+lh/2, min(3, fx-xx), 1, g.th.dim)
 				}
@@ -424,7 +424,7 @@ func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, 
 		rect(dst, x+16, group.y+group.height-1, w-32, 1, muted)
 	}
 	if !today.Before(start) && !today.After(end) {
-		tx := ax + today.Sub(start).Hours()/24*dx
+		tx := ax + planningDays(start, today)*dx
 		rect(dst, tx, y+41, 2, max(0, bottom-y-41), red)
 		if v.Light {
 			label := lang.T("今日")
@@ -740,6 +740,3 @@ func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
 	}
 	return false
 }
-
-// tableResidents sorts only displayed observations. Equal values retain the
-// authored order, missing values stay last, and zero restores the authored order.

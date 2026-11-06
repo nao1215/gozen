@@ -73,7 +73,7 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 				end = d
 			}
 		}
-		days := end.Sub(start).Hours()/24 + 1
+		days := planningDays(start, end) + 1
 		axisX, axisW := x+w*.48, w*.46
 		g.text(dst, start.Format("1/2")+" — "+end.Format("1/2"), axisX, y, 15, g.th.dim)
 		y += 24
@@ -109,8 +109,8 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 					to = date
 				}
 			}
-			left := max(0, min(1, from.Sub(start).Hours()/24/days))
-			right := max(left, min(1, (to.Sub(start).Hours()/24+1)/days))
+			left := max(0, min(1, planningDays(start, from)/days))
+			right := max(left, min(1, (planningDays(start, to)+1)/days))
 			gfx.StrokeLine(dst, float32(axisX), float32(yy+14), float32(axisX+axisW), float32(yy+14), 1, g.th.dim, true)
 			if right > left {
 				rect(dst, axisX+axisW*left, yy+6, axisW*(right-left), 10, color.NRGBA{160, 190, 235, 255})
@@ -120,7 +120,7 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 				if err != nil {
 					return
 				}
-				expected := max(0, min(1, (today.Sub(from).Hours()/24)/max(1, to.Sub(from).Hours()/24+1)))
+				expected := max(0, min(1, planningDays(from, today)/max(1, planningDays(from, to)+1)))
 				if actual < expected {
 					tint = color.NRGBA{220, 65, 65, 255}
 				}
@@ -136,7 +136,7 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 		if err != nil {
 			return
 		}
-		tx := axisX + axisW*max(0, min(1, today.Sub(start).Hours()/24/days))
+		tx := axisX + axisW*max(0, min(1, planningDays(start, today)/days))
 		gfx.StrokeLine(dst, float32(tx), float32(y), float32(tx), float32(y+h), 2, color.NRGBA{220, 65, 65, 255}, true)
 	case "calendar":
 		s.drawCalendar(g, dst, x, y, w, h)
@@ -439,13 +439,7 @@ func (g *Game) planningTorso(dst *ebiten.Image, path string, x, y, w, h float64)
 // faceTop down and faceHeight of the height (both fractions of h).
 func (g *Game) planningBust(dst *ebiten.Image, path string, x, y, w, h, faceTop, faceHeight float64) {
 	img := g.pics.get(path)
-	face := g.pics.head(path)
-	g.pics.mu.Lock()
-	if f, ok := g.pics.found[path]; ok && f.Box != nil && f.Size[0] > 0 && f.Size[1] > 0 {
-		sx, sy := float64(img.Bounds().Dx())/float64(f.Size[0]), float64(img.Bounds().Dy())/float64(f.Size[1])
-		face = image.Rect(int(float64(f.Box[0])*sx), int(float64(f.Box[1])*sy), int(float64(f.Box[2])*sx), int(float64(f.Box[3])*sy))
-	}
-	g.pics.mu.Unlock()
+	face := g.pics.portraitFace(path, img.Bounds().Size())
 	scale, left, top := portraitTransform(img.Bounds(), face, x, y+h*faceTop, w, h*faceHeight)
 	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
 	op.GeoM.Scale(scale, scale)
@@ -475,6 +469,12 @@ func planningEventLabel(v data.PlanningView) string {
 		return v.EventLabel
 	}
 	return "events"
+}
+
+// planningDays measures UTC calendar dates across the full four-digit year range.
+// Sub would saturate at the roughly 292-year limit of time.Duration.
+func planningDays(from, to time.Time) float64 {
+	return float64(to.Unix()-from.Unix()) / 86400
 }
 
 func planningDate(date, phase string, v data.PlanningView) string {

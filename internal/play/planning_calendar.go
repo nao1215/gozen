@@ -18,6 +18,10 @@ import (
 
 func planningMarkers(p *data.Planning, v data.PlanningView, start, end time.Time) []data.TimelineMarker {
 	markers := slices.Clone(v.Markers)
+	// Unnamed reservations contribute counts in calendarCells, not markers.
+	if !slices.ContainsFunc(p.Schedule, func(r data.Reservation) bool { return r.Label != "" }) {
+		return markers
+	}
 	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
 		date := d.Format(time.DateOnly)
 		closed := slices.Contains(p.Calendar.WeekdaysOff, int(d.Weekday())) || slices.Contains(p.Calendar.Closed, date)
@@ -225,7 +229,7 @@ func (s *authorScreen) openCalendarDate(g *Game, date string) bool {
 		}
 	}
 	selected := expr.Map{
-		"date": date, "offset": float64(d.Unix()-start.Unix()) / 86400, "weekday": float64(d.Weekday()),
+		"date": date, "offset": planningDays(start, d), "weekday": float64(d.Weekday()),
 		"closed":  slices.Contains(p.Calendar.WeekdaysOff, int(d.Weekday())) || slices.Contains(p.Calendar.Closed, date),
 		"summary": strings.Join(labels, " / "),
 	}
@@ -252,7 +256,7 @@ func (s *authorScreen) timelinePointerDate(g *Game) string {
 	if err != nil {
 		return ""
 	}
-	days := end.Sub(start).Hours()/24 + 1
+	days := planningDays(start, end) + 1
 	return start.AddDate(0, 0, int((float64(g.in.mouse.X)-260)/(w-280)*days)).Format(time.DateOnly)
 }
 
