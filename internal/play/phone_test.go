@@ -1,6 +1,7 @@
 package play
 
 import (
+	"image"
 	"testing"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -105,39 +106,127 @@ func TestPhoneChatVideo(t *testing.T) {
 	}
 }
 
-// TestPhoneFeed: left and right turn the posts within the feed, a click likes
-// the post on the screen, and OK on the last post puts the phone down.
+// TestPhoneFeed: the feed scrolls down a post at a time with the down key,
+// stops at its top and its bottom, follows a drag and glides on after it, a
+// click on a post's picture likes it, and OK at the bottom puts the phone down.
 func TestPhoneFeed(t *testing.T) {
 	g := phoneGame(t, data.PhoneCue{App: "feed", Posts: []data.PhonePost{
-		{Picture: "x.png", Likes: 3}, {Video: &data.PhoneVideo{Picture: "x.png", Seconds: 1}},
+		{Picture: "x.png", Likes: 3}, {Picture: "x.png"}, {Video: &data.PhoneVideo{Picture: "x.png", Seconds: 1}},
 	}})
 	p := g.phone
 	phoneTicks(g, phoneRise)
-	phonePress(g, btnLeft)
-	if p.post != 0 {
-		t.Fatalf("left on the first post moved to %d", p.post)
+	posts, _, _, end := g.feedView(p)
+	phonePress(g, btnUp)
+	phoneTicks(g, 30)
+	if p.scroll != 0 {
+		t.Fatalf("up at the top scrolled to %v", p.scroll)
 	}
-	phonePress(g, btnRight)
-	if p.post != 1 || p.slide == 0 {
-		t.Fatalf("right did not slide to the next post: %d %v", p.post, p.slide)
+	phonePress(g, btnDown)
+	phoneTicks(g, 40)
+	if p.scroll != posts[1].top {
+		t.Fatalf("down did not bring the second post up: %v, want %v", p.scroll, posts[1].top)
 	}
-	phoneTicks(g, 90)
-	if c := p.clips["post1"]; c == nil || c.played == 0 || c.played > c.length() {
-		t.Fatal("the post's video did not loop in its place")
+	for range 4 {
+		phonePress(g, btnDown)
+		phoneTicks(g, 40)
 	}
-	g.in = input{pdown: true}
-	g.in.mouse.X = 200
+	if p.scroll != end {
+		t.Fatalf("down past the last post scrolled to %v, want the bottom %v", p.scroll, end)
+	}
+	g.in = input{wheel: -5}
 	g.updatePhone()
-	g.in = input{pup: true, click: true}
-	g.in.mouse.X = 200
+	if p.scroll != end {
+		t.Fatalf("the wheel scrolled past the bottom: %v", p.scroll)
+	}
+
+	// A drag up scrolls down by as much and glides on after the finger lifts.
+	g.in = input{wheel: 20}
 	g.updatePhone()
-	if !p.liked[1] {
-		t.Fatal("a click did not like the post")
+	if p.scroll != 0 {
+		t.Fatalf("the wheel up did not scroll to the top: %v", p.scroll)
+	}
+	drag := func(from, to int) {
+		g.in = input{pdown: true, pheld: true}
+		g.in.mouse.Y = from
+		g.updatePhone()
+		for y := from; y != to; y += (to - from) / 10 {
+			g.in = input{pheld: true}
+			g.in.mouse.Y = y + (to-from)/10
+			g.updatePhone()
+		}
+		g.in = input{pup: true}
+		g.in.mouse.Y = to
+		g.updatePhone()
+	}
+	drag(500, 300)
+	after := p.scroll
+	if after < 190 || p.glide == 0 {
+		t.Fatalf("a drag of 200 up scrolled %v with glide %v", after, p.glide)
+	}
+	phoneTicks(g, 10)
+	if p.scroll <= after {
+		t.Fatalf("the feed did not glide on after the drag: %v then %v", after, p.scroll)
+	}
+	drag(100, 700)
+	phoneTicks(g, 120)
+	if p.scroll != 0 || p.glide != 0 {
+		t.Fatalf("a drag down past the top did not stop there: %v glide %v", p.scroll, p.glide)
+	}
+
+	// A click on the first post's picture likes it.
+	sx, sy, w, _ := g.phoneScreenRect(false)
+	at := image.Pt(int(sx+w/2), int(sy+phoneFeedTop+posts[0].pic+40))
+	g.in = input{pdown: true, pup: true, click: true, mouse: at}
+	g.updatePhone()
+	if !p.liked[0] || g.feedPictureAt(p, posts, w, at) != 0 {
+		t.Fatal("a click on the picture did not like the post")
 	}
 	phonePress(g, btnOK)
-	if p.closing == 0 {
-		t.Fatal("OK on the last post did not put the phone down")
+	if p.closing != 0 {
+		t.Fatal("OK at the top put the phone down")
 	}
+	phoneTicks(g, 40)
+	if p.scroll != posts[1].top {
+		t.Fatalf("OK did not scroll a post down: %v", p.scroll)
+	}
+	g.in = input{wheel: -50}
+	g.updatePhone()
+	phonePress(g, btnOK)
+	if p.closing == 0 {
+		t.Fatal("OK at the bottom did not put the phone down")
+	}
+}
+
+// TestPhoneFeedClip: a post's clip plays, looping, only while its picture is on the screen.
+func TestPhoneFeedClip(t *testing.T) {
+	posts := []data.PhonePost{{Video: &data.PhoneVideo{Picture: "x.png", Seconds: 1}}}
+	for range 4 {
+		posts = append(posts, data.PhonePost{Picture: "x.png"})
+	}
+	posts = append(posts, data.PhonePost{Video: &data.PhoneVideo{Picture: "x.png", Seconds: 1}})
+	g := phoneGame(t, data.PhoneCue{App: "feed", Posts: posts})
+	p := g.phone
+	phoneTicks(g, phoneRise+90)
+	first := p.clips["post0"]
+	if first == nil || first.played == 0 || first.played != (phoneRise+90)%first.length() {
+		t.Fatal("the first post's clip did not loop on the screen")
+	}
+	if p.clips["post5"] != nil {
+		t.Fatal("the last post's clip played off the screen")
+	}
+	g.in = input{wheel: -100}
+	g.updatePhone()
+	held := first.played
+	phoneTicks(g, 30)
+	if first.played != held {
+		t.Fatal("the first post's clip went on off the screen")
+	}
+	if c := p.clips["post5"]; c == nil || c.played == 0 {
+		t.Fatal("the last post's clip did not play once on the screen")
+	}
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	g.drawPhone(dst)
 }
 
 // TestPhoneVideoLandscape: the video app comes up upright, turns on its side,

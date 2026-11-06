@@ -23,10 +23,13 @@ the player's hand and cannot play anything.
      typing dots. A message is `text`, a `picture` or a `video`. A press on the
      newest video turns the phone on its side and plays it; Cancel turns it back
      to the chat.
-   - `feed` with `posts`: one post fills the screen (`who`, `icon`, a `picture`
-     or a `video`, `text`, `likes`). Left and right, or a swipe, turn the posts;
-     a click likes the post on the screen; a post's video plays in its place,
-     looping.
+   - `feed` with `posts`: the posts stacked top to bottom, as a photo app
+     scrolls them (`who`, `icon`, a `picture` or a `video`, `text`, `likes`).
+     The wheel, the up and down keys (a post at a time) and a finger or the
+     mouse dragged up and down scroll them, gliding on after a drag and
+     stopping at the top and the bottom; a click on a post's picture likes it;
+     OK scrolls a post down and, at the bottom, puts the phone down; a post's
+     video plays in its place, looping, while it is on the screen.
    - `video` with `video`: a player with the title, a pause on a press and a
      seek bar.
 4. A `video` is a clip made of what a game already has: a `picture` pushed in

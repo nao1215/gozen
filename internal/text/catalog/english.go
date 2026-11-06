@@ -281,7 +281,7 @@ var english = map[string]string{
 	"game.yaml id: 仕様版 %d では作品の ID が必要です。英数字で始まる英数字・_・- だけの、予約語でない 255 バイト以内の名前を指定してください": "game.yaml id: schema %d needs a game ID of at most 255 bytes that is not a reserved device name, starts with a letter or digit and uses only letters, digits, _ and -",
 	"クリック: 一時停止　Esc: チャットに戻る":                                                             "Click: pause   Esc: back to the chat",
 	"クリック: 一時停止　Esc: 閉じる":                                                                 "Click: pause   Esc: close",
-	"左右・スワイプ: 投稿を送る　クリック: いいね　Esc: 閉じる":                                                   "Left, right or swipe: next post   Click: like   Esc: close",
+	"上下・ホイール・ドラッグ: スクロール　写真をクリック: いいね　Esc: 閉じる":                                           "Up, down, wheel or drag: scroll   Click a photo: like   Esc: close",
 	"クリック: 次のメッセージ　Esc: 閉じる":                                                              "Click: next message   Esc: close",
 	"いいね！ %s 件": "%s likes",
 	"game.yaml id: 仕様版 %d では作品の ID が必要です。英数字で始まる英数字・_・- だけの名前を指定してください": "game.yaml id: schema %d needs a game ID that starts with a letter or digit and uses only letters, digits, _ and -",

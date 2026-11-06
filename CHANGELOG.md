@@ -24,7 +24,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
-- The event command `phone` shows a phone over the scene, held upright or turned on its side: a chat whose messages arrive one by one (text, pictures and videos), a photo feed turned with a swipe, and a video player. A video is a picture with a puppet in front that moves as on the stage and jiggles at the seconds given, or footage: `frames` (pictures or a pattern such as `clips/battle/*.jpg`) played at `fps` over the picture, looping in a feed (ADR 0057).
+- The event command `phone` shows a phone over the scene, held upright or turned on its side: a chat whose messages arrive one by one (text, pictures and videos), a photo feed scrolled up and down, and a video player. A video is a picture with a puppet in front that moves as on the stage and jiggles at the seconds given, or footage: `frames` (pictures or a pattern such as `clips/battle/*.jpg`) played at `fps` over the picture, looping in a feed (ADR 0057).
 
 ## v0.16.0 - 2026-11-05
 

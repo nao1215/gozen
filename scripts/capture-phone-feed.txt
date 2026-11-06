@@ -1,4 +1,4 @@
-# Office sample capture (run phone-feed): a photo feed; the posts turn, and a post whose
+# Office sample capture (run phone-feed): a photo feed scrolled down a post at a time; a post whose
 # clip plays its footage in its place, looping (pf###). A frame every 5 ticks.
 gap 1
 wait 30
@@ -23,7 +23,7 @@ shot pf008
 wait 2
 shot pf009
 wait 2
-press right
+press down
 shot pf010
 wait 2
 shot pf011
@@ -44,7 +44,7 @@ shot pf018
 wait 2
 shot pf019
 wait 2
-press right
+press down
 shot pf020
 wait 2
 shot pf021
@@ -65,7 +65,7 @@ shot pf028
 wait 2
 shot pf029
 wait 2
-press right
+press down
 shot pf030
 wait 2
 shot pf031
@@ -86,7 +86,7 @@ shot pf038
 wait 2
 shot pf039
 wait 2
-press right
+press down
 shot pf040
 wait 2
 shot pf041
@@ -167,7 +167,7 @@ shot pf078
 wait 2
 shot pf079
 wait 2
-press right
+press down
 shot pf080
 wait 2
 shot pf081
@@ -188,7 +188,7 @@ shot pf088
 wait 2
 shot pf089
 wait 2
-press left
+press up
 shot pf090
 wait 2
 shot pf091
