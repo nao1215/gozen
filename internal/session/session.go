@@ -76,12 +76,16 @@ type Session struct {
 // shown and the answers given, and whether it passed a boundary (a battle, a shop, a save,
 // a screen, a move, the end), after which it cannot be begun again.
 type cursor struct {
-	args        map[string]any
-	snap, rnd   []byte
-	name        string
-	arrival     bool
-	lines       int
-	answers     []int
+	args      map[string]any
+	snap, rnd []byte
+	name      string
+	arrival   bool
+	lines     int
+	answers   []int
+	// unread tells that the last request was a phone with results, which a
+	// session does not show: the next request puts it down with nothing kept
+	// (-1 in answers then, so a save at the phone keeps its line's answers).
+	unread      bool
 	noBack      bool
 	arriving    bool
 	before, rbf []byte
@@ -407,6 +411,10 @@ func (s *Session) next() Request {
 	}
 	for range maxSteps {
 		if s.runner.Running() {
+			if s.at.unread {
+				// The runner drops the phone on this Next; a load replays -1 for it.
+				s.at.answers, s.at.unread = append(s.at.answers, -1), false
+			}
 			r := s.runner.Next()
 			if r == nil {
 				continue
@@ -420,10 +428,7 @@ func (s *Session) next() Request {
 				continue
 			}
 			if tap, ok := r.(event.Tap); ok && tap.Results > 0 {
-				// A session shows no phone, so it is put down unread (the
-				// runner drops it on the next Next); its answer is kept as
-				// play keeps one, so a load replays the same answers.
-				s.at.answers = append(s.at.answers, -1)
+				s.at.unread = true
 			}
 			q := s.request(r)
 			switch q.Kind {

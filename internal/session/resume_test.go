@@ -197,6 +197,7 @@ func TestSaveAfterAPhoneReplays(t *testing.T) {
 		"data/story.yaml": {Data: []byte(`events:
   story:
     do:
+      - say: "Before."
       - phone: {app: feed, posts: [{picture: x.png, set: {var.liked: 1}}, {picture: x.png, set: {var.liked: 2}}]}
       - choice:
           - {id: left, label: Left, do: [{set: {var.way: 1}}]}
@@ -216,6 +217,20 @@ func TestSaveAfterAPhoneReplays(t *testing.T) {
 	}
 	if err := s.Start("- call: story"); err != nil {
 		t.Fatal(err)
+	}
+	if q := s.Next(); q.Text != "Before." {
+		t.Fatalf("first %+v", q)
+	}
+	if q := s.Next(); q.Kind != "tap" {
+		t.Fatalf("the feed: %+v", q)
+	}
+	// A save at the phone itself loads at the line before it.
+	atPhone, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gozen.Restore(g, atPhone, gozen.Config{Seed: 3}); err != nil {
+		t.Fatalf("a save at the phone: %v", err)
 	}
 	for q := s.Next(); q.Kind != "say"; q = s.Next() {
 		if q.Kind == "choice" {
