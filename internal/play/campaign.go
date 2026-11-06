@@ -577,6 +577,16 @@ func (s *atlasScene) settled(g *Game, id, file string, img *ebiten.Image, x, y, 
 			tr, tg, tb = sr/n/255, sg/n/255, sb/n/255
 		}
 	}
+	settlePixels(pix, b.Size(), tr, tg, tb, ground)
+	out := ebiten.NewImage(b.Dx(), b.Dy())
+	out.WritePixels(pix)
+	s.ground[key] = out
+	return out
+}
+
+// settlePixels applies terrain tint and foot fading to premultiplied RGBA bytes.
+// The caller owns pixels and supplies the dimensions of the decoded landmark.
+func settlePixels(pix []byte, size image.Point, tr, tg, tb, ground float64) {
 	tl := 0.299*tr + 0.587*tg + 0.114*tb
 	if tl < 0.05 {
 		tl = 0.05
@@ -584,16 +594,16 @@ func (s *atlasScene) settled(g *Game, id, file string, img *ebiten.Image, x, y, 
 	k := 0.4 * ground
 	// the tint keeps the ground's hue; the brightness eases toward it, never below 0.8
 	bright := math.Max(0.8, 1+(tl/0.5-1)*k)
-	fade := int(float64(b.Dy()) * 0.07)
-	for yy := range b.Dy() {
+	fade := int(float64(size.Y) * 0.07)
+	for yy := range size.Y {
 		fa := 1.0
-		if d := b.Dy() - 1 - yy; d < fade {
+		if d := size.Y - 1 - yy; d < fade {
 			fa = float64(d) / float64(fade)
 			fa = fa * fa * (3 - 2*fa)
 			fa = 0.15 + 0.85*fa
 		}
-		for xx := range b.Dx() {
-			i := (yy*b.Dx() + xx) * 4
+		for xx := range size.X {
+			i := (yy*size.X + xx) * 4
 			a := float64(pix[i+3]) / 255
 			if a == 0 {
 				continue
@@ -607,16 +617,12 @@ func (s *atlasScene) settled(g *Game, id, file string, img *ebiten.Image, x, y, 
 			gg = gg*(1-k) + gg*(tg/tl)*k
 			bb = bb*(1-k) + bb*(tb/tl)*k
 			a *= fa
-			pix[i] = clampByte(r * bright * a)
-			pix[i+1] = clampByte(gg * bright * a)
-			pix[i+2] = clampByte(bb * bright * a)
+			pix[i] = clampByte(min(1, r*bright) * a)
+			pix[i+1] = clampByte(min(1, gg*bright) * a)
+			pix[i+2] = clampByte(min(1, bb*bright) * a)
 			pix[i+3] = clampByte(a)
 		}
 	}
-	out := ebiten.NewImage(b.Dx(), b.Dy())
-	out.WritePixels(pix)
-	s.ground[key] = out
-	return out
 }
 
 func clampByte(v float64) byte {
