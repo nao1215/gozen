@@ -150,6 +150,11 @@ func migrateSource(source []byte, typ reflect.Type, version int) ([]byte, error)
 	}
 	pos := 0
 	for tk := first; tk != nil; tk = tk.Next {
+		// The decoder accepts prefixes such as 0<< as merge keys but drops the
+		// prefix from their value and position. They cannot be safely edited.
+		if tk.Type == token.MergeKeyType && strings.TrimSpace(tk.Origin) != tk.Value {
+			return nil, errUnrestorable{}
+		}
 		if tk.Type == token.ImplicitNullType {
 			m.offsets[tk] = pos
 			continue // The parser supplies null for an empty authored value.
@@ -201,6 +206,16 @@ func (m *yamlMigration) offset(t *token.Token) int {
 
 func (m *yamlMigration) edit(start, end int, text string) {
 	m.edits = append(m.edits, yamlEdit{start, end, text})
+}
+
+// line uses reconstructed source offsets: parser line numbers can drift after
+// a comment followed by CRLF in a file with mixed line endings.
+func (m *yamlMigration) line(t *token.Token) int {
+	line, exact := slices.BinarySearch(m.lines, m.offset(t))
+	if exact {
+		line++
+	}
+	return line
 }
 
 func (m *yamlMigration) lineEnd(line int) int {
@@ -314,20 +329,31 @@ func (m *yamlMigration) event(n *ast.MappingNode, seq *ast.SequenceNode) {
 		m.edit(m.offset(seq.End)+1, m.offset(n.End)+1, "")
 		return
 	}
-	key := entry.Key.GetToken().Position
+	key := entry.Key.GetToken()
+	keyLine, seqLine := m.line(key), m.line(seq.Start)
 	if seq.IsFlowStyle {
 		m.edit(m.offset(entry.Key.GetToken()), m.offset(seq.Start), "")
 		return
 	}
 	// The wrapper occupies its own line. Preserve scalar text verbatim while
 	// shifting ordinary list entries by the same number of spaces.
-	if seq.Start.Position.Line <= key.Line {
+	if seqLine <= keyLine {
 		return
 	}
-	if strings.TrimSpace(m.source[m.lines[key.Line-1]:m.offset(entry.Key.GetToken())]) != "" {
+	if strings.TrimSpace(m.source[m.lines[keyLine-1]:m.offset(entry.Key.GetToken())]) != "" {
 		return // The event's own separator shares this line with do.
 	}
-	m.edit(m.lines[key.Line-1], m.lineEnd(key.Line), "")
+	// Tabs accepted between indentation and a list marker must keep their columns.
+	// Removing leading spaces can turn that valid source into invalid indentation.
+	last := m.lastLine(seq)
+	for line := seqLine; line <= last && line <= len(m.lines); line++ {
+		text := m.source[m.lines[line-1]:m.lineEnd(line)]
+		indent := text[:len(text)-len(strings.TrimLeft(text, " \t"))]
+		if strings.ContainsRune(indent, '\t') {
+			return
+		}
+	}
+	m.edit(m.lines[keyLine-1], m.lineEnd(keyLine), "")
 	// Indentation inside multiline scalars is content. Keep its original columns
 	// rather than relying on the parser's folded/literal token line conventions.
 	if len(ast.Filter(ast.LiteralType, seq)) > 0 {
@@ -338,12 +364,11 @@ func (m *yamlMigration) event(n *ast.MappingNode, seq *ast.SequenceNode) {
 			return
 		}
 	}
-	shift := max(0, seq.Start.Position.Column-key.Column)
+	shift := max(0, (m.offset(seq.Start)-m.lines[seqLine-1])-(m.offset(key)-m.lines[keyLine-1]))
 	if shift == 0 {
 		return
 	}
-	last := migrationLastLine(seq)
-	for line := seq.Start.Position.Line; line <= last && line <= len(m.lines); line++ {
+	for line := seqLine; line <= last && line <= len(m.lines); line++ {
 		start, end := m.lines[line-1], m.lineEnd(line)
 		count := 0
 		for start+count < end && count < shift && m.source[start+count] == ' ' {
@@ -355,26 +380,26 @@ func (m *yamlMigration) event(n *ast.MappingNode, seq *ast.SequenceNode) {
 	}
 }
 
-func migrationLastLine(node ast.Node) int {
+func (m *yamlMigration) lastLine(node ast.Node) int {
 	if node == nil {
 		return 0
 	}
 
 	origin := strings.TrimSpace(node.GetToken().Origin)
-	last := node.GetToken().Position.Line + strings.Count(origin, "\n") + strings.Count(origin, "\r") - strings.Count(origin, "\r\n")
+	last := m.line(node.GetToken()) + strings.Count(origin, "\n") + strings.Count(origin, "\r") - strings.Count(origin, "\r\n")
 	switch n := node.(type) {
 	case *ast.MappingNode:
 		for _, entry := range n.Values {
-			last = max(last, migrationLastLine(entry.Value))
+			last = max(last, m.lastLine(entry.Value))
 		}
 	case *ast.SequenceNode:
 		for _, entry := range n.Values {
-			last = max(last, migrationLastLine(entry))
+			last = max(last, m.lastLine(entry))
 		}
 	case *ast.AnchorNode:
-		last = max(last, migrationLastLine(n.Value))
+		last = max(last, m.lastLine(n.Value))
 	case *ast.TagNode:
-		last = max(last, migrationLastLine(n.Value))
+		last = max(last, m.lastLine(n.Value))
 	}
 	return last
 }
@@ -407,14 +432,16 @@ func (m *yamlMigration) tactic(n *ast.MappingNode, raw yaml.MapSlice) {
 				m.edit(m.offset(n.End), m.offset(n.End), text)
 			} else if len(n.Values) > 0 {
 				first := n.Values[0].Key.GetToken()
-				line := m.source[m.lines[first.Position.Line-1]:m.lineEnd(first.Position.Line)]
+				firstLine := m.line(first)
+				line := m.source[m.lines[firstLine-1]:m.lineEnd(firstLine)]
 				ending := "\n"
 				if strings.HasSuffix(line, "\r\n") {
 					ending = "\r\n"
 				} else if strings.HasSuffix(line, "\r") {
 					ending = "\r"
 				}
-				m.edit(m.offset(first), m.offset(first), "enabled: false"+ending+strings.Repeat(" ", first.Position.Column-1))
+				column := utf8.RuneCountInString(m.source[m.lines[firstLine-1]:m.offset(first)])
+				m.edit(m.offset(first), m.offset(first), "enabled: false"+ending+strings.Repeat(" ", column))
 			}
 		}
 	}
@@ -438,7 +465,7 @@ func (m *yamlMigration) tactic(n *ast.MappingNode, raw yaml.MapSlice) {
 			start--
 		}
 	} else {
-		line := entry.Key.GetToken().Position.Line
+		line := m.line(entry.Key.GetToken())
 		prefix := m.source[m.lines[line-1]:start]
 		if strings.TrimSpace(prefix) == "" {
 			start = m.lines[line-1]

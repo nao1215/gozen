@@ -244,9 +244,10 @@ func TestMigrateSourceText(t *testing.T) {
 func FuzzMigratePreservesDefinitions(f *testing.F) {
 	fixture := func(source string) (fstest.MapFS, string) {
 		fsys := fstest.MapFS{
-			"game.yaml":       {Data: []byte("schema_version: 10\nid: fuzz-story\nstart: {location: room}\n")},
-			"data/base.yaml":  {Data: []byte("locations: {room: {name: Room}}\nitems: {ticket: {name: Ticket}}\n")},
-			"data/story.yaml": {Data: []byte(source)},
+			"game.yaml":        {Data: []byte("schema_version: 10\nid: fuzz-story\nstart: {location: room}\n")},
+			"assets/scene.png": {Data: []byte("neutral placeholder")},
+			"data/base.yaml":   {Data: []byte("locations: {room: {name: Room}}\nitems: {ticket: {name: Ticket}}\n")},
+			"data/story.yaml":  {Data: []byte(source)},
 		}
 		name := "data/story.yaml"
 		if strings.HasPrefix(source, "battle:") {
@@ -275,6 +276,9 @@ func FuzzMigratePreservesDefinitions(f *testing.F) {
 		"events: {opening: {do: [{give: {item: ticket, count: 0}}, {take: {item: ticket, count: 1}}]}}\n",
 		"events: {opening: {when: true, do: [{choice: [{label: Go, do: [{say: Hello}]}]}]}}\n",
 		"events: {opening: {do: []}}\n",
+		"events: {opening: {do: [{phone: {app: chat, messages: [{text: Hello}]}}]}}\n",
+		"events: {opening: {do: [{phone: {app: feed, posts: [{picture: scene.png, text: Morning}]}}]}}\n",
+		"events: {opening: {do: [{phone: {app: video, hold: landscape, video: {picture: scene.png, seconds: 2, bounce: [0, 1, 2]}}}]}}\n",
 		"battle: {auto_tactics: {scout: [{condition: any, action: guard}]}}\n",
 		"battle: {auto_tactics: {scout: [{enabled: true, condition: any, action: guard}]}}\n",
 		"battle:\n  auto_tactics:\n    scout:\n      - &row {enabled: false, condition: any, action: guard}\n      - {<<: *row}\n",
@@ -319,4 +323,67 @@ func FuzzMigratePreservesDefinitions(f *testing.F) {
 			t.Fatal("source mutated")
 		}
 	})
+}
+
+func TestMigratePhoneEvents(t *testing.T) {
+	for _, event := range []string{
+		`{do: [{phone: {app: chat, messages: [{text: Welcome}, {video: {picture: scene.png, seconds: 2, bounce: [0, 1, 2]}}]}}]}`,
+		`{do: [{phone: {app: feed, posts: [{picture: scene.png, text: 'A quiet morning'}]}}]}`,
+		`{do: [{phone: {app: video, hold: landscape, video: {picture: scene.png, seconds: 3}}}]}`,
+	} {
+		t.Run(event, func(t *testing.T) {
+			source := fstest.MapFS{
+				"game.yaml":        {Data: []byte("schema_version: 10\nid: phone-migration\nstart: {location: room}\nui: {message: novel}\n")},
+				"data/world.yaml":  {Data: []byte("locations: {room: {name: Room}}\nevents:\n  phone_demo: " + event + "\n")},
+				"assets/scene.png": {Data: []byte("neutral placeholder")},
+			}
+			before, err := Load(source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			original := bytes.Clone(source["data/world.yaml"].Data)
+			changes, err := Migrate(source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(original, source["data/world.yaml"].Data) || bytes.Contains(changes["data/world.yaml"], []byte("do:")) {
+				t.Fatal("migration changed its source or failed to compact the phone event")
+			}
+			migrated := migrationFS{source, changes}
+			after, err := Load(migrated)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(before.Events["phone_demo"].Do, after.Events["phone_demo"].Do) {
+				t.Fatal("migration changed the phone command")
+			}
+			a, err := before.CommandsFingerprint("phone_demo")
+			if err != nil {
+				t.Fatal(err)
+			}
+			b, err := after.CommandsFingerprint("phone_demo")
+			if err != nil || a != b {
+				t.Fatalf("phone replay fingerprint changed: %v", err)
+			}
+			if again, err := Migrate(migrated); err != nil || len(again) != 0 {
+				t.Fatalf("phone migration is not idempotent: %v, %v", again, err)
+			}
+		})
+	}
+}
+
+func TestMigrateRefusesUnrestorableMergeToken(t *testing.T) {
+	// The decoder accepts this prefix as a merge key, but its token drops the 0.
+	source := []byte("rows:\n  - &base {condition: any, action: attack}\n  - 0<<: *base\n")
+	original := bytes.Clone(source)
+	type rows struct {
+		Rows []TacticRow `yaml:"rows"`
+	}
+	changed, err := migrateSource(source, reflect.TypeFor[rows](), 10)
+	if !errors.As(err, new(errUnrestorable)) || changed != nil {
+		t.Fatalf("ambiguous token must refuse edits: changed=%q error=%v", changed, err)
+	}
+	if !bytes.Equal(source, original) {
+		t.Fatal("refusal mutated the source")
+	}
 }
