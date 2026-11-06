@@ -475,7 +475,7 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 	}
 	if !p.side {
 		_, bar := p.pageAccent()
-		g.drawPhoneStatus(screen, scw, p.cue.App == "video" || p.cue.App == "lock" || p.cue.App == "page" && bar && p.cue.URL == "")
+		g.drawPhoneStatus(screen, scw, p.clock(g), p.cue.App == "video" || p.cue.App == "lock" || p.cue.App == "page" && bar && p.cue.URL == "")
 	}
 	gfx.RoundedMask(screen, float32((r-bezel)*k))
 	op := &ebiten.DrawImageOptions{}
@@ -483,12 +483,20 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 	dst.DrawImage(screen, op)
 }
 
-func (g *Game) drawPhoneStatus(dst *ebiten.Image, w float64, dark bool) {
+// clock is the time on the phone: a lock screen's own time, else the phone's clock.
+func (p *phoneView) clock(g *Game) string {
+	if p.cue.App == "lock" && p.cue.Time != "" {
+		return p.cue.Time
+	}
+	return g.phoneClock()
+}
+
+func (g *Game) drawPhoneStatus(dst *ebiten.Image, w float64, clock string, dark bool) {
 	ink := phoneInk
 	if dark {
 		ink = phoneOnVideo
 	}
-	gfx.DrawTextLeft(dst, g.phoneClock(), 22, 9, 15, ink)
+	gfx.DrawTextLeft(dst, clock, 22, 9, 15, ink)
 	x := w - 24
 	gfx.StrokeRoundRect(dst, float32(x-22), 12, 24, 12, 3, 1.3, ink)
 	gfx.FillRect(dst, float32(x-20), 14, 17, 8, ink, false)

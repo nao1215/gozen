@@ -107,10 +107,7 @@ func (g *Game) drawPhoneLock(p *phoneView, dst *ebiten.Image, w, h float64) {
 		g.drawPhoneCall(p, dst, w, h)
 		return
 	}
-	clock := p.cue.Time
-	if clock == "" {
-		clock = g.phoneClock()
-	}
+	clock := p.clock(g)
 	gfx.DrawText(dst, p.cue.Date, w/2, 62, 17, phoneOnVideo)
 	gfx.DrawText(dst, clock, w/2, 84, 72, phoneOnVideo)
 	y := 200.0
