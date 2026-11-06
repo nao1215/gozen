@@ -4,7 +4,7 @@ The workflows are the [CI workflow](../../.github/workflows/ci.yml), the [Securi
 
 ## Minimal while private
 
-A private repository has a limit on Actions time. While it is private, only `quick` (Linux vet and tests), `lint` and `govulncheck` run on pushes and pull requests. The other jobs are stopped by `github.event.repository.private` and run only after the repository is public or on a manual run (workflow_dispatch). Scorecard and gitleaks require a public repository, so they do not run even manually while it is private.
+A private repository has a limit on Actions time. While it is private, only `quick` (Linux vet and tests), `lint`, `docs-images-fresh` (seconds, no display) and `govulncheck` run on pushes and pull requests. The other jobs are stopped by `github.event.repository.private` and run only after the repository is public or on a manual run (workflow_dispatch). Scorecard and gitleaks require a public repository, so they do not run even manually while it is private.
 
 ## Jobs and targets
 
@@ -20,6 +20,7 @@ A private repository has a limit on Actions time. While it is private, only `qui
 | examples | 3 OSes, stable | building `./examples/...` and running minimal and headless. Running the screen is left to graphics |
 | govulncheck | Linux, Go 1.26.10 (the lower bound in `go.mod`) and stable, cgo enabled, govulncheck v1.9.0 | known vulnerabilities reachable from `./...`. Judged from JSON; fails on anything not in `ACCEPTED` (empty now). The ONNX binding is analyzed too |
 | codeql | Linux, stable, cgo enabled | builds `./...` explicitly and runs Go static analysis |
+| docs-images-fresh | Linux, Go of `go.mod`, no display. `make docs-images-fresh`, on every push and pull request, documentation only or not | the input hashes of every documentation picture equal `docs/images/inputs.sum`; a failure names each stale picture and says to run `make docs-images` |
 
 The lower bound of Go is `go.mod:3`. Keep it in step with the lower bounds of unit and govulncheck when updating. security uses stable, which can run the analysis tools. lint uses one pinned Go, the same one `make lint` uses locally, so formatting is judged by the same gofmt everywhere; bump `LINT_GO` and the lint job's `go-version` together. Normal tests do not initialize a screen. graphics keeps Ebitengine's limit of one loop per process: `TestMain` of `internal/play/graphics_test.go` builds `internal/play/testdata/host` once, and the scenarios run side by side, each in a process of its own.
 
@@ -43,7 +44,7 @@ The longest jobs are the pictures of the Docs workflow and graphics; most of the
 - Release Smoke keeps a dedicated snapshot build cache for pull requests and main pushes, with main as its only writer. Cache keys include the Go version, module sums and revision. Tag releases and manual runs use clean caches. The first main run populates the cache for subsequent pull requests.
 - capture and cli-e2e install atago from its release binary with setup-atago (the checksum is checked) instead of building it with `go install`.
 - race, go-zen, the Docs jobs and Coverage keep Go caches of their own (`actions/cache`, keyed by the job, Go version, `go.sum` files and revision, saved from main; a dependency-specific prefix restores the newest compatible cache so source changes can refresh it). setup-go's cache is one per Go version and `go.sum`, shared by every job and saved by whichever job ends first, often a short cross-build, so it held little of what these jobs build. The Website workflow, which deploys the site, is left with setup-go's cache.
-- On a pull request, the images job of the Docs workflow remakes the pictures only when the pull request changes a file that can change them. It skips them when every changed file is a Markdown file, under `website/`, `.github/` (other than `docs.yml`), `e2e/`, `bench/` or `skills/`, `LICENSE`, or a `_test.go` file outside `internal/dev/docs`. Any other file, `docs/images/` and `internal/dev/docs/` run them, and so does every push to main and manual run.
+- The images jobs of the Docs workflow remake the pictures on a push or pull request only when it changes `docs/images/` (including `docs/images/inputs.sum`), `internal/dev/docs/` or `docs.yml`, and every night and on manual runs. Every other change that can alter a picture changes its input hash, which `docs-images-fresh` of the CI workflow checks in seconds on every push and pull request, also while private; it passes only once `make docs-images` has rewritten `inputs.sum`, which then starts the remake ([README and site pictures and steps](docs.md#the-fast-check-the-inputs-of-the-pictures)).
 
 ## Other workflows
 
@@ -54,7 +55,7 @@ The longest jobs are the pictures of the Docs workflow and graphics; most of the
 | [gitleaks](../../.github/workflows/gitleaks.yml) | pull request. Does not run while private | checks that the commits of a pull request contain no secret strings |
 | [Scorecard](../../.github/workflows/scorecard.yml) | push to main, every Saturday and manually. Does not run while private | publishes the OpenSSF Scorecard score and shows it in the README badge |
 | [Benchmark](../../.github/workflows/bench.yml) | pull request and manual. Manual only while private | measures `bench/himorime.yaml` with himorime and, on pull requests with unchanged benchmark definitions, compares base and head ([bench/README.md](../../bench/README.md)) |
-| [Docs](../../.github/workflows/docs.yml) | push, pull request and manual. Manual only while private | images retakes every image of `docs/images/manifest.yaml` in Xvfb and compares them with the committed ones (`make docs-images-check`; if stale, the generated images are kept as an artifact). steps runs the steps of the README and site (`make docs-steps`). See [README and site pictures and steps](docs.md) |
+| [Docs](../../.github/workflows/docs.yml) | push, pull request, every night at 03:17 UTC and manual. Manual only while private | images retakes every image of `docs/images/manifest.yaml` in Xvfb and compares them with the committed ones (`make docs-images-check`; if stale, the generated images are kept as an artifact). steps runs the steps of the README and site (`make docs-steps`). See [README and site pictures and steps](docs.md) |
 | [Release Smoke](../../.github/workflows/release-smoke.yml) | pull request, push to main, manual, and called by Release | builds the release artifacts with GoReleaser in snapshot mode (nothing published), checks their contents and checksums on Linux, and runs `gozen --version`, `gozen help`, `gozen version` and `gozen check` on Linux, macOS and Windows |
 | [Release](../../.github/workflows/release.yml) | push of a tag `v*` | runs Release Smoke, then publishes ([How releases work](release-checklist.md#how-releases-work)) |
 

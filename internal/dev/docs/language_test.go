@@ -6,8 +6,10 @@ import (
 	"io/fs"
 	"os"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -43,8 +45,11 @@ func adultAllowed(file string) (whole bool, section string) {
 }
 
 // repositoryText walks the repository's text files (not built output, not binary).
+// The files are read and visited side by side, one worker per CPU, so visit must be
+// safe to call concurrently.
 func repositoryText(fsys fs.FS, visit func(name string, body []byte)) error {
-	return fs.WalkDir(fsys, ".", func(name string, d fs.DirEntry, err error) error {
+	var names []string
+	err := fs.WalkDir(fsys, ".", func(name string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -58,16 +63,27 @@ func repositoryText(fsys fs.FS, visit func(name string, body []byte)) error {
 		if name == ".git" || imageExt.MatchString(name) {
 			return nil
 		}
-		b, err := fs.ReadFile(fsys, name)
-		if err != nil {
-			return err
-		}
-		if bytes.IndexByte(b[:min(len(b), 8000)], 0) >= 0 {
-			return nil // binary
-		}
-		visit(name, b)
+		names = append(names, name)
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	jobs := make([]func() error, len(names))
+	for i, name := range names {
+		jobs[i] = func() error {
+			b, err := fs.ReadFile(fsys, name)
+			if err != nil {
+				return err
+			}
+			if bytes.IndexByte(b[:min(len(b), 8000)], 0) >= 0 {
+				return nil // binary
+			}
+			visit(name, b)
+			return nil
+		}
+	}
+	return parallel(runtime.NumCPU(), jobs)
 }
 
 // markdownSection returns where the section that starts at heading begins and ends
@@ -94,8 +110,17 @@ func markdownSection(doc, heading string) (start, end int) {
 }
 
 func checkLanguage(fsys fs.FS) []string {
-	var bad []string
+	var (
+		mu  sync.Mutex
+		bad []string
+	)
 	err := repositoryText(fsys, func(name string, b []byte) {
+		var found []string
+		defer func() {
+			mu.Lock()
+			bad = append(bad, found...)
+			mu.Unlock()
+		}()
 		text := string(b)
 		// Markdown documents and the published JSON (the schema in data/schema) are
 		// English only.
@@ -106,7 +131,7 @@ func checkLanguage(fsys fs.FS) []string {
 			}
 			for i, line := range strings.Split(clean, "\n") {
 				if japanese.MatchString(line) {
-					bad = append(bad, fmt.Sprintf("%s:%d: Japanese in a document; documents are English only (an intended word goes in japaneseAllowed)", name, i+1))
+					found = append(found, fmt.Sprintf("%s:%d: Japanese in a document; documents are English only (an intended word goes in japaneseAllowed)", name, i+1))
 					break
 				}
 			}
@@ -124,7 +149,7 @@ func checkLanguage(fsys fs.FS) []string {
 				continue
 			}
 			line := strings.Count(text[:loc[0]], "\n") + 1
-			bad = append(bad, fmt.Sprintf("%s:%d: %q belongs only to the mosaic tool (internal/mosaic and the mosaic sections of the production-tools pages)", name, line, text[loc[0]:loc[1]]))
+			found = append(found, fmt.Sprintf("%s:%d: %q belongs only to the mosaic tool (internal/mosaic and the mosaic sections of the production-tools pages)", name, line, text[loc[0]:loc[1]]))
 		}
 	})
 	if err != nil {
@@ -137,6 +162,7 @@ func checkLanguage(fsys fs.FS) []string {
 // TestDocumentLanguage keeps the documents and the published JSON English and the adult vocabulary of the
 // mosaic tool inside the mosaic tool.
 func TestDocumentLanguage(t *testing.T) {
+	t.Parallel()
 	if bad := checkLanguage(os.DirFS(root)); len(bad) > 0 {
 		t.Fatalf("%d problems:\n%s", len(bad), strings.Join(bad, "\n"))
 	}
