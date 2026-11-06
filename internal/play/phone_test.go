@@ -2,6 +2,7 @@ package play
 
 import (
 	"image"
+	"math"
 	"testing"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -338,4 +339,42 @@ func TestPhoneFramesVideo(t *testing.T) {
 	dst := ebiten.NewImage(1280, 720)
 	defer dst.Deallocate()
 	g.drawPhone(dst)
+}
+
+// TestPhoneFeedAspect: a post's box takes its media's shape between 16:9 and
+// 4:5, a clip of a picture and a puppet keeps 4:5, and footage is drawn whole.
+func TestPhoneFeedAspect(t *testing.T) {
+	wide, tall := ebiten.NewImage(160, 90), ebiten.NewImage(90, 160)
+	g := phoneGame(t, data.PhoneCue{App: "feed", Posts: []data.PhonePost{
+		{Video: &data.PhoneVideo{Frames: []string{"wide.png"}}}, {Picture: "tall.png"},
+		{Video: &data.PhoneVideo{Picture: "wide.png", Puppet: "p.yaml"}},
+	}})
+	g.pics.imgs["wide.png"] = &picEntry{img: wide}
+	g.pics.imgs["tall.png"] = &picEntry{img: tall}
+	posts, w, _, _ := g.feedView(g.phone)
+	for i, want := range []float64{9.0 / 16, 5.0 / 4, 5.0 / 4} {
+		if got := posts[i].picH / w; math.Abs(got-want) > 1e-9 {
+			t.Errorf("post %d: box %v of its width, want %v", i, got, want)
+		}
+	}
+	if posts[1].top != posts[0].top+posts[0].h+phoneFeedGap {
+		t.Error("the posts do not stack at their own heights")
+	}
+
+	// Footage in a box wider or taller than it is drawn whole and centered.
+	for _, tc := range []struct {
+		iw, ih        int
+		w, h, x, y, s float64
+	}{
+		{1280, 720, 400, 100, 200 - 1280*(100.0/720)/2, 0, 100.0 / 720},
+		{1280, 720, 320, 400, 0, 200 - 720*0.25/2, 0.25},
+	} {
+		x, y, k := containAt(tc.iw, tc.ih, 0, 0, tc.w, tc.h)
+		if math.Abs(x-tc.x) > 1e-9 || math.Abs(y-tc.y) > 1e-9 || math.Abs(k-tc.s) > 1e-9 {
+			t.Errorf("%dx%d in %vx%v: at %v,%v scale %v, want %v,%v scale %v", tc.iw, tc.ih, tc.w, tc.h, x, y, k, tc.x, tc.y, tc.s)
+		}
+	}
+	dst := ebiten.NewImage(400, 300)
+	defer dst.Deallocate()
+	g.drawPhoneMedia(dst, g.phone, "test", &phoneClip{v: &data.PhoneVideo{Frames: []string{"wide.png"}}}, 0, 0, 400, 300, 0)
 }

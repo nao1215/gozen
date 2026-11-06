@@ -607,16 +607,17 @@ func (g *Game) drawPhoneWatch(p *phoneView, dst *ebiten.Image, w, h float64) {
 func (g *Game) drawPhoneMedia(dst *ebiten.Image, p *phoneView, key string, c *phoneClip, x, y, w, h, r float64) {
 	frame := p.frame(key, w, h)
 	frame.Fill(color.Black)
-	if img := g.pics.get(c.v.Picture); img != nil {
-		zoom := 1.0
-		if len(c.v.Frames) == 0 {
-			zoom += 0.06 * float64(c.played) / float64(max(1, c.length()))
-		}
+	// Footage is drawn whole, letterboxed as a player does; a still fills the
+	// box and is pushed in.
+	if img := g.pics.get(c.v.Picture); img != nil && len(c.v.Frames) > 0 {
+		drawContain(frame, img, 0, 0, w, h)
+	} else if img != nil {
+		zoom := 1 + 0.06*float64(c.played)/float64(max(1, c.length()))
 		zw, zh := w*zoom, h*zoom
 		drawCoverTop(frame, img, (w-zw)/2, (h-zh)/2, zw, zh)
 	}
 	if img := g.pics.get(c.frame()); img != nil {
-		drawCoverTop(frame, img, 0, 0, w, h)
+		drawContain(frame, img, 0, 0, w, h)
 	}
 	if c.v.Puppet != "" && c.body == nil {
 		if rig := g.rig(c.v.Puppet); rig != nil {
@@ -726,6 +727,29 @@ func (p *phoneView) close() {
 			c.body.Close()
 		}
 	}
+}
+
+// drawContain draws the whole picture in x, y, w, h, centered at its own
+// shape (the rest of the box is left as it is).
+func drawContain(dst, img *ebiten.Image, x, y, w, h float64) {
+	cx, cy, s := containAt(img.Bounds().Dx(), img.Bounds().Dy(), x, y, w, h)
+	if s <= 0 {
+		return
+	}
+	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+	op.GeoM.Scale(s*gfx.Scale(), s*gfx.Scale())
+	op.GeoM.Translate(cx*gfx.Scale(), cy*gfx.Scale())
+	dst.DrawImage(img, op)
+}
+
+// containAt is where a picture iw x ih drawn whole in x, y, w, h goes: its top
+// left and its scale (0 when there is nothing to draw).
+func containAt(iw, ih int, x, y, w, h float64) (cx, cy, s float64) {
+	if iw <= 0 || ih <= 0 || w <= 0 || h <= 0 {
+		return 0, 0, 0
+	}
+	s = math.Min(w/float64(iw), h/float64(ih))
+	return x + (w-float64(iw)*s)/2, y + (h-float64(ih)*s)/2, s
 }
 
 // drawCoverTop fills x, y, w, h with the picture as a cover crop, keeping the
