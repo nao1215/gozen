@@ -355,7 +355,7 @@ func (g *Game) drawPhoneFeed(p *phoneView, dst *ebiten.Image, w, h float64) {
 	g.drawPhoneHeader(dst, w, p.cue.Title, 34)
 }
 
-// drawFeedDots draws a dot a page across, centred on a screen w wide at y, the
+// drawFeedDots draws a dot a page across, centered on a screen w wide at y, the
 // page at (a page and a fraction while it slides) dark.
 func drawFeedDots(dst *ebiten.Image, n int, at, w, y float64) {
 	if n < 2 {
