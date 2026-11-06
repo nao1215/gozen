@@ -161,9 +161,9 @@ func bestFace(boxes []detect.Box, b image.Rectangle) (detect.Box, bool) {
 // the balloon face is cut from (green).
 func faceCheck(img image.Image, box *[4]int) image.Image {
 	b := img.Bounds()
-	top := image.Rect(b.Min.X, b.Min.Y, b.Max.X, b.Min.Y+b.Dy()/3)
+	top := image.Rect(b.Min.X, b.Min.Y, b.Max.X, b.Min.Y+max(1, b.Dy()/3))
 	k := 480 / float64(top.Dy())
-	out := image.NewRGBA(image.Rect(0, 0, int(float64(top.Dx())*k), 480))
+	out := image.NewRGBA(image.Rect(0, 0, max(1, int(float64(top.Dx())*k)), 480))
 	for i := range out.Pix {
 		out.Pix[i] = 200
 	}
