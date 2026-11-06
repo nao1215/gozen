@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"maps"
 	"slices"
 	"strings"
@@ -36,6 +37,9 @@ type Cursor struct {
 	Line int `json:"line"`
 	// Answers are the options taken in the event, in order.
 	Answers []int `json:"answers,omitempty"`
+	// Opened are the parameterless events a phone banner's click opened while the
+	// event ran, in order: a loader queues them after the event again, as the click did.
+	Opened []string `json:"opened,omitempty"`
 }
 
 // ReplayInput records either a request digest or a visible choice/screen answer.
@@ -141,6 +145,11 @@ func (c *Cursor) Seal(db *data.DB) error {
 }
 
 func (c Cursor) validateBindings(db *data.DB, version int) error {
+	for _, name := range c.Opened {
+		if ev := db.Events[name]; ev == nil || len(ev.Params) > 0 {
+			return fmt.Errorf("opened event %q is not a parameterless event", name)
+		}
+	}
 	if len(c.Inputs) > 0 && (version < 3 || db.Game.SchemaVersion < data.SchemaVersion10 || c.Fingerprint == "") {
 		return errors.New("screen replay requires format 3, schema 10 and a sealed named root")
 	}

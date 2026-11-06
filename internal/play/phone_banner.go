@@ -60,6 +60,10 @@ func (g *Game) updateBanners() {
 		return
 	}
 	g.in.click, g.in.pdown, g.in.pup = false, false, false
+	if g.events.Running() {
+		g.evOpened = append(g.evOpened, bannerOpen{line: g.evLines, event: b.n.Event})
+	}
+	g.emit("banner_open", traceLine{"event": b.n.Event})
 	if err := g.events.StartBound(b.n.Event, nil); err != nil {
 		g.events.Log(err)
 	}
@@ -84,4 +88,34 @@ func (g *Game) drawBanners(dst *ebiten.Image) {
 	gfx.DrawTextLeft(dst, gfx.Ellipsis(b.n.Title, 15, bannerW-32), x+16, y+38, 15, phoneInk)
 	gfx.DrawTextLeft(dst, gfx.Ellipsis(b.n.Title, 15, bannerW-32), x+16.6, y+38, 15, phoneInk)
 	gfx.DrawTextLeft(dst, gfx.Ellipsis(b.n.Text, 14, bannerW-32), x+16, y+60, 14, phoneInk)
+}
+
+// bannerOpen is an event a banner's click opened while an event ran, and the
+// line on the screen then.
+type bannerOpen struct {
+	line  int
+	event string
+}
+
+// openedBy are the events opened by the line given, for a roll back to it.
+func openedBy(opened []bannerOpen, line int) []bannerOpen {
+	var out []bannerOpen
+	for _, o := range opened {
+		if o.line <= line {
+			out = append(out, o)
+		}
+	}
+	return out
+}
+
+// reopen queues again the events banners opened, after the event begun again,
+// and keeps them for the next save.
+func (g *Game) reopen(opened []bannerOpen) {
+	for _, o := range opened {
+		if err := g.events.StartBound(o.event, nil); err != nil {
+			g.events.Log(err)
+			continue
+		}
+		g.evOpened = append(g.evOpened, o)
+	}
 }

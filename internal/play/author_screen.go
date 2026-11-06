@@ -380,7 +380,7 @@ func (s *authorScreen) update(g *Game) {
 		// would otherwise restore state from before the entry action.
 		g.evCmds, g.evSnap, g.evRand = nil, nil, nil
 		g.evName, g.evLines, g.evArrival = "", 0, false
-		g.evAnswers, g.evHist = nil, nil
+		g.evAnswers, g.evHist, g.evOpened = nil, nil, nil
 		if g.st.Location != s.origin {
 			g.pop()
 			if s.done != nil {

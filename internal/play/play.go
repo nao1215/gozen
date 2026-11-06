@@ -441,10 +441,14 @@ type Game struct {
 	evLines     int
 	screenTrace screenTranscript
 	evAnswers   []int
-	fast        *fastTo
-	untilShot   bool
-	quick       []*memoBox
-	quickN      int
+	// evOpened are the events a phone banner's click opened while the event
+	// ran, each with the line it was clicked at (a save and a roll back queue
+	// them again).
+	evOpened  []bannerOpen
+	fast      *fastTo
+	untilShot bool
+	quick     []*memoBox
+	quickN    int
 
 	live liveState
 
@@ -1879,6 +1883,12 @@ func (g *Game) pump() bool {
 				result := g.phone.result
 				g.phone.close()
 				g.phone, g.req = nil, nil
+				if f := g.fast; f != nil && r.Results > 0 {
+					// A replay reads on: the phone is put down with the saved result.
+					if k := len(g.evAnswers); k < len(f.answers) {
+						result = f.answers[k]
+					}
+				}
 				if r.Results > 0 {
 					g.emit("answer", traceLine{"index": result})
 					g.evAnswers = append(g.evAnswers, result)
@@ -2255,6 +2265,9 @@ func (g *Game) Handle(e event.Effect) {
 	case event.PhoneEffect:
 		g.pics.warm(phonePictures(e.Phone)...)
 		if e.Phone.App == "banner" {
+			if g.fast != nil {
+				break // a replay reads on: the click it had is in the cursor
+			}
 			for _, n := range e.Phone.Notices {
 				g.banners = append(g.banners, phoneBanner{n: n})
 			}
