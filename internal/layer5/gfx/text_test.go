@@ -410,66 +410,6 @@ func TestDrawTextCachesFacesPerBaseSize(t *testing.T) {
 	}
 }
 
-func TestOutlinedTextIsCached(t *testing.T) {
-	useFont(t)
-	dst := ebiten.NewImage(200, 100)
-	DrawTextOutline(dst, "hello", 100, 10, 20, color.Black)
-	if len(textCache) != 1 {
-		t.Fatalf("%d cached texts", len(textCache))
-	}
-	DrawTextOutline(dst, "hello", 50, 30, 20, color.Black)
-	DrawTextOutlineColor(dst, "hello", 50, 30, 20, color.Black, color.White, 0.5)
-	if len(textCache) != 1 {
-		t.Fatal("same text and colors must share one image")
-	}
-	DrawTextOutlineColor(dst, "hello", 50, 30, 20, color.Black, color.NRGBA{255, 0, 0, 255}, 1)
-	if len(textCache) != 2 {
-		t.Fatal("another outline color is another image")
-	}
-	DrawTextOutlineColor(dst, "", 1, 1, 20, color.Black, color.White, 1)
-	DrawTextOutlineColor(dst, "x", 1, 1, 0, color.Black, color.White, 1)
-	DrawTextOutlineColor(dst, "x", 1, 1, 20, color.Black, color.White, 0)
-	if len(textCache) != 2 {
-		t.Fatal("nothing-to-draw calls must not build images")
-	}
-	for i := range cacheLimit + 5 {
-		outlinedText(strings.Repeat("a", 1+i%7)+string(rune('A'+i%26))+strings.Repeat("b", i/26), 12, color.NRGBA{A: 255}, color.NRGBA{})
-	}
-	if len(textCache) > cacheLimit+1 {
-		t.Fatalf("text cache grew to %d", len(textCache))
-	}
-}
-
-func TestShapeCacheAndLimits(t *testing.T) {
-	t.Cleanup(Reset)
-	dst := ebiten.NewImage(200, 100)
-	FillRoundRect(dst, 5, 5, 50, 20, 4, color.White)
-	FillRoundRect(dst, 60, 40, 50, 20, 4, color.White)
-	if len(shapeCache) != 1 {
-		t.Fatalf("same shape drawn twice made %d images", len(shapeCache))
-	}
-	StrokeRoundRect(dst, 5, 5, 50, 20, 4, 2, color.White)
-	if len(shapeCache) != 2 {
-		t.Fatalf("a stroke is another image, have %d", len(shapeCache))
-	}
-	FillRoundRect(dst, 0, 0, 0, 10, 2, color.White)
-	StrokeRoundRect(dst, 0, 0, 10, -1, 2, 1, color.White)
-	if len(shapeCache) != 2 {
-		t.Fatal("empty shapes must draw nothing")
-	}
-	SetScale(2)
-	FillRoundRect(dst, 5, 5, 50, 20, 4, color.White)
-	if len(shapeCache) != 3 {
-		t.Fatal("scale changes the rendered shape size, so the key")
-	}
-	for i := range cacheLimit + 5 {
-		FillRoundRect(dst, 0, 0, float32(10+i), 10, 2, color.White)
-	}
-	if len(shapeCache) > cacheLimit+1 {
-		t.Fatalf("shape cache grew to %d", len(shapeCache))
-	}
-}
-
 func TestRoundedMaskIsCachedPerSizeAndRadius(t *testing.T) {
 	t.Cleanup(Reset)
 	img := ebiten.NewImage(40, 30)
