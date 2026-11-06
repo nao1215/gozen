@@ -1871,12 +1871,7 @@ func (g *Game) pump() bool {
 			}
 		}
 	case event.Tap:
-		if g.phone != nil {
-			if g.updatePhone() {
-				g.phone.close()
-				g.phone, g.req = nil, nil
-			}
-		} else if g.updateTap() {
+		if g.updateTap() {
 			g.req = nil
 		}
 	}
@@ -1901,6 +1896,13 @@ func (g *Game) beginTap(r event.Tap) {
 }
 
 func (g *Game) updateTap() bool {
+	if g.phone != nil {
+		if !g.updatePhone() {
+			return false
+		}
+		g.closePhone()
+		return true
+	}
 	if g.novelInput() {
 		return false
 	}

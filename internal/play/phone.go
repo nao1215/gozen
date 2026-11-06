@@ -31,6 +31,7 @@ type phoneView struct {
 	// shown is the number of chat messages on the screen; typing counts the
 	// ticks the dots show before the next message from someone else.
 	shown, typing int
+	chatRead      float64 // height already read in the newest oversized message
 	// watch is the clip playing on the phone turned on its side: the video app's
 	// own, or a chat message's opened by the player (watchMsg is its index).
 	watch    *phoneClip
@@ -44,21 +45,27 @@ type phoneView struct {
 	dragAt float64
 	liked  map[int]bool
 	// clips are the clips the phone has played, by where they are (so a feed's
-	// post keeps its place when it comes back), each with its own puppet.
+	// post keeps its place when it comes back), each with its own puppet motion.
 	clips map[string]*phoneClip
 
 	canvas, screen *ebiten.Image
 	icons          map[string]*ebiten.Image
 	frames         map[string]*ebiten.Image
+	bubbles        map[int]phoneBubbleLayout
+	bubbleWidth    float64
+	imageUse       map[*ebiten.Image]bool
+	bodies         map[*phoneClip]bool
 }
 
 // phoneClip is a video playing: where it is in ticks, whether it is paused, and
 // the body of its puppet.
 type phoneClip struct {
 	v      *data.PhoneVideo
+	key    string
 	played int
 	paused bool
 	body   *puppet.Puppet
+	motion *puppet.Motion // retained while an offscreen body releases its images
 }
 
 const (
@@ -68,8 +75,13 @@ const (
 )
 
 func newPhoneView(cue data.PhoneCue) *phoneView {
-	p := &phoneView{cue: cue, liked: map[int]bool{}, clips: map[string]*phoneClip{},
-		icons: map[string]*ebiten.Image{}, frames: map[string]*ebiten.Image{}, watchMsg: -1, turned: phoneTurn}
+	p := &phoneView{
+		cue: cue, watchMsg: -1, turned: phoneTurn,
+		liked: map[int]bool{}, clips: map[string]*phoneClip{},
+		icons: map[string]*ebiten.Image{}, frames: map[string]*ebiten.Image{},
+		bubbles: map[int]phoneBubbleLayout{}, imageUse: map[*ebiten.Image]bool{},
+		bodies: map[*phoneClip]bool{},
+	}
 	switch cue.App {
 	case "chat":
 		p.shown = 1
@@ -85,7 +97,7 @@ func (p *phoneView) clip(key string, v *data.PhoneVideo) *phoneClip {
 	}
 	c := p.clips[key]
 	if c == nil {
-		c = &phoneClip{v: v}
+		c = &phoneClip{v: v, key: key}
 		p.clips[key] = c
 	}
 	return c
@@ -96,17 +108,24 @@ func (c *phoneClip) length() int {
 	if c.v.Seconds > 0 {
 		s = c.v.Seconds
 	}
-	return int(s * 60)
+	return max(1, int(s*60))
 }
 
-// step plays the clip one tick: the puppet moves and jiggles at its seconds.
-// loop starts it again at its end (a feed's post), else it stops there.
-func (c *phoneClip) step(g *Game, key string, loop bool) {
+// prepare gives thumbnails and playback the same deterministic puppet.
+func (c *phoneClip) prepare(g *Game) {
 	if c.v.Puppet != "" && c.body == nil {
 		if rig := g.rig(c.v.Puppet); rig != nil {
-			c.body = seededPuppet(rig, "phone."+key)
+			c.body = seededPuppet(rig, "phone."+c.key)
+			if c.motion != nil {
+				c.body.Motion, c.motion = c.motion, nil
+			}
 		}
 	}
+}
+
+// step advances one tick, looping feed clips and stopping other clips at the end.
+func (c *phoneClip) step(g *Game, loop bool) {
+	c.prepare(g)
 	if c.paused {
 		return
 	}
@@ -119,7 +138,7 @@ func (c *phoneClip) step(g *Game, key string, loop bool) {
 	c.played++
 	if c.body != nil {
 		for _, at := range c.v.Bounce {
-			if int(at*60) == c.played {
+			if max(1, int(at*60)) == c.played {
 				c.body.Motion.React(puppetdef.Reaction{Kind: "jiggle", Amount: 1})
 			}
 		}
@@ -162,18 +181,26 @@ func (g *Game) updatePhone() bool {
 		p.slide = 0
 	}
 	if p.watch != nil && p.resting() && p.age >= phoneRise {
-		p.watch.step(g, p.watchKey(), false)
+		p.watch.step(g, false)
 	}
 	if p.cue.App == "feed" && p.watch == nil {
 		if post := p.cue.Posts[p.post]; post.Video != nil {
 			key := fmt.Sprintf("post%d", p.post)
-			p.clip(key, post.Video).step(g, key, true)
+			p.clip(key, post.Video).step(g, true)
 		}
 	}
 	if !p.ready() {
 		return false
 	}
 	in := &g.in
+	if in.pressed[btnAuto] {
+		g.autoRead = !g.autoRead
+		return false
+	}
+	if in.pressed[btnSkip] {
+		g.toggleSkip()
+		return false
+	}
 	if in.cancel() || in.esc {
 		if p.watchMsg >= 0 {
 			g.stopWatching(p)
@@ -228,10 +255,19 @@ func (g *Game) updatePhoneChat(p *phoneView) {
 		p.typing--
 		if p.typing == 0 {
 			p.shown++
+			p.chatRead = 0
 		}
 		return
 	}
 	if !g.in.advance() && !g.phoneAuto(p) {
+		return
+	}
+	// Read an oversized message from its beginning, one overlapping page at a time.
+	w, h := g.phoneSize(p.side)
+	bezel := math.Min(w, h) * 0.035
+	room := math.Max(1, h-2*bezel-113)
+	if p.chatOverflow(w-2*bezel, room) > 0 {
+		p.chatRead += room * 0.8
 		return
 	}
 	// The newest message is a video not yet seen: the press opens it.
@@ -250,6 +286,7 @@ func (g *Game) updatePhoneChat(p *phoneView) {
 	}
 	if p.cue.Messages[p.shown].Mine {
 		p.shown++
+		p.chatRead = 0
 		return
 	}
 	p.typing = phoneTyping
@@ -278,7 +315,7 @@ func (g *Game) updatePhoneFeed(p *phoneView) {
 	case in.pheld && p.dragAt != 0:
 		p.drag = x - p.dragAt
 	case in.pup && p.dragAt != 0:
-		d := p.drag
+		d := x - p.dragAt
 		p.dragAt, p.drag = 0, 0
 		switch {
 		case d < -40:
@@ -330,10 +367,10 @@ func (g *Game) phoneSize(side bool) (w, h float64) {
 	w = h * 0.49
 	if side {
 		w, h = h*1.25, w*1.25
-		if w > sw*0.94 {
-			k := sw * 0.94 / w
-			w, h = w*k, h*k
-		}
+	}
+	if w > sw*0.94 {
+		k := sw * 0.94 / w
+		w, h = w*k, h*k
 	}
 	return w, h
 }
@@ -343,6 +380,8 @@ func (g *Game) drawPhone(dst *ebiten.Image) {
 	if p == nil {
 		return
 	}
+	clear(p.imageUse)
+	defer p.trimImages()
 	sw, sh := g.screen()
 	rise := easeOut(math.Min(1, float64(p.age)/phoneRise))
 	if p.closing > 0 {
@@ -384,13 +423,14 @@ func (g *Game) drawPhone(dst *ebiten.Image) {
 }
 
 func sized(img *ebiten.Image, w, h int) *ebiten.Image {
+	w, h = max(1, w), max(1, h)
 	if img != nil && img.Bounds().Dx() == w && img.Bounds().Dy() == h {
 		return img
 	}
 	if img != nil {
 		img.Deallocate()
 	}
-	return ebiten.NewImage(max(1, w), max(1, h))
+	return ebiten.NewImage(w, h)
 }
 
 func (g *Game) phoneHint(p *phoneView) string {
@@ -457,8 +497,8 @@ func (g *Game) drawPhoneStatus(dst *ebiten.Image, w float64, dark bool) {
 // it, else a fixed evening hour.
 func (g *Game) phoneClock() string {
 	if g.st != nil {
-		if v, ok := g.st.Vars["clock_minutes"].(float64); ok && v >= 0 {
-			m := int(v) % (24 * 60)
+		if v, ok := g.st.Vars["clock_minutes"].(float64); ok && v >= 0 && !math.IsInf(v, 0) {
+			m := int(math.Mod(v, 24*60))
 			return fmt.Sprintf("%d:%02d", m/60, m%60)
 		}
 	}
@@ -484,45 +524,71 @@ func (g *Game) drawPhoneChat(p *phoneView, dst *ebiten.Image, w, h float64) {
 		gfx.DrawTextLeft(dst, "<", 18, 44, 22, phoneMine)
 	}()
 	top := 85.0
-	maxW := w * 0.68
-	type bubble struct {
-		i      int
-		lines  []string
-		bw, bh float64
-	}
-	var bubbles []bubble
-	for i, m := range p.cue.Messages[:min(p.shown, len(p.cue.Messages))] {
-		b := bubble{i: i}
-		switch {
-		case m.Video != nil:
-			b.bw, b.bh = maxW, maxW*0.5625
-		case m.Picture != "":
-			b.bw, b.bh = maxW*0.85, maxW*0.85
-		default:
-			b.lines = gfx.Wrap(m.Text, phoneChatSize, maxW-phoneChatPad*2)
-			for _, l := range b.lines {
-				b.bw = math.Max(b.bw, gfx.TextWidth(l, phoneChatSize))
-			}
-			b.bw += phoneChatPad * 2
-			b.bh = float64(len(b.lines))*gfx.LineHeight(phoneChatSize) + phoneChatPad*1.4
-		}
-		if !m.Mine && m.From != "" {
-			b.bh += 20
-		}
-		bubbles = append(bubbles, b)
-	}
 	// The newest message sits at the bottom; the older ones scroll up.
-	y := h - 28
+	y := h - 28 + p.chatOverflow(w, math.Max(1, h-28-top))
 	if p.typing > 0 {
 		y -= 48
 		g.drawTypingDots(dst, p, 64, y+8)
 	}
-	for i := len(bubbles) - 1; i >= 0 && y > top-200; i-- {
-		b := bubbles[i]
+	first := min(p.shown, len(p.cue.Messages))
+	for i := first - 1; i >= 0 && y > top-200; i-- {
+		b := p.chatBubble(i, w)
+		first = i
 		y -= b.bh
-		g.drawChatBubble(dst, p, b.i, b.lines, w, y, b.bw, b.bh)
+		g.drawChatBubble(dst, p, i, b.lines, w, y, b.bw, b.bh)
 		y -= 12
 	}
+	// Keep only visible layouts; long conversations must not grow a second history.
+	for i := range p.bubbles {
+		if i < first || i >= p.shown {
+			delete(p.bubbles, i)
+		}
+	}
+}
+
+// chatOverflow keeps the beginning of a tall message visible until it is read.
+func (p *phoneView) chatOverflow(w, room float64) float64 {
+	if p.shown < 1 || p.shown > len(p.cue.Messages) || p.cue.Messages[p.shown-1].Text == "" {
+		return 0
+	}
+	return math.Max(0, p.chatBubble(p.shown-1, w).bh-room-p.chatRead)
+}
+
+type phoneBubbleLayout struct {
+	lines  []string
+	bw, bh float64
+}
+
+// chatBubble measures immutable, already translated content once per width.
+func (p *phoneView) chatBubble(i int, w float64) phoneBubbleLayout {
+	if p.bubbleWidth != w {
+		clear(p.bubbles)
+		p.bubbleWidth = w
+	}
+	if b, ok := p.bubbles[i]; ok {
+		return b
+	}
+	m := p.cue.Messages[i]
+	maxW := w * 0.68
+	b := phoneBubbleLayout{}
+	switch {
+	case m.Video != nil:
+		b.bw, b.bh = maxW, maxW*0.5625
+	case m.Picture != "":
+		b.bw, b.bh = maxW*0.85, maxW*0.85
+	default:
+		b.lines = gfx.Wrap(m.Text, phoneChatSize, maxW-phoneChatPad*2)
+		for _, line := range b.lines {
+			b.bw = math.Max(b.bw, gfx.TextWidth(line, phoneChatSize))
+		}
+		b.bw += phoneChatPad * 2
+		b.bh = float64(len(b.lines))*gfx.LineHeight(phoneChatSize) + phoneChatPad*1.4
+	}
+	if !m.Mine && m.From != "" {
+		b.bh += 20
+	}
+	p.bubbles[i] = b
+	return b
 }
 
 func (g *Game) drawChatBubble(dst *ebiten.Image, p *phoneView, i int, lines []string, w, y, bw, bh float64) {
@@ -534,7 +600,7 @@ func (g *Game) drawChatBubble(dst *ebiten.Image, p *phoneView, i int, lines []st
 	} else {
 		g.drawPhoneIcon(dst, p, m.Icon, 14, y, 40)
 		if m.From != "" {
-			gfx.DrawTextLeft(dst, m.From, x, y, 13, phoneMuted)
+			gfx.DrawTextLeft(dst, gfx.Ellipsis(m.From, 13, bw), x, y, 13, phoneMuted)
 			y += 20
 			bh -= 20
 		}
@@ -555,9 +621,23 @@ func (g *Game) drawChatBubble(dst *ebiten.Image, p *phoneView, i int, lines []st
 			drawFrame(dst, frame, x, y)
 		}
 	default:
-		gfx.FillRoundRect(dst, float32(x), float32(y), float32(bw), float32(bh), 18, fill)
-		for k, l := range lines {
-			gfx.DrawTextLeft(dst, l, x+phoneChatPad, y+phoneChatPad*0.6+float64(k)*gfx.LineHeight(phoneChatSize), phoneChatSize, ink)
+		// Bound the cached background image even for a message many screens tall.
+		bottom := math.Min(y+bh, float64(dst.Bounds().Dy())/gfx.Scale()+18)
+		drawY := math.Max(y, -18)
+		if bottom > drawY {
+			gfx.FillRoundRect(dst, float32(x), float32(drawY), float32(bw), float32(bottom-drawY), 18, fill)
+		}
+		lineH := gfx.LineHeight(phoneChatSize)
+		// Begin just before the viewport instead of scanning an entire long message.
+		first := max(0, int(math.Floor((85-y-phoneChatPad*0.6)/lineH))-1)
+		for k := first; k < len(lines); k++ {
+			ly := y + phoneChatPad*0.6 + float64(k)*lineH
+			if ly > float64(dst.Bounds().Dy())/gfx.Scale() {
+				break
+			}
+			if ly+lineH >= 85 {
+				gfx.DrawTextLeft(dst, lines[k], x+phoneChatPad, ly, phoneChatSize, ink)
+			}
 		}
 	}
 }
@@ -575,9 +655,11 @@ func (g *Game) drawTypingDots(dst *ebiten.Image, p *phoneView, x, y float64) {
 	}
 }
 
+func (p *phoneView) feedOffset(w float64) float64 { return p.slide*w + p.drag }
+
 func (g *Game) drawPhoneFeed(p *phoneView, dst *ebiten.Image, w, h float64) {
 	top := g.drawPhoneHeader(dst, w, p.cue.Title, 34)
-	offset := p.slide*w - p.drag
+	offset := p.feedOffset(w)
 	for i := p.post - 1; i <= p.post+1; i++ {
 		if i < 0 || i >= len(p.cue.Posts) {
 			continue
@@ -677,12 +759,9 @@ func (g *Game) drawPhoneMedia(dst *ebiten.Image, p *phoneView, key string, c *ph
 		zw, zh := w*zoom, h*zoom
 		drawCoverTop(frame, img, (w-zw)/2, (h-zh)/2, zw, zh)
 	}
-	if c.v.Puppet != "" && c.body == nil {
-		if rig := g.rig(c.v.Puppet); rig != nil {
-			c.body = seededPuppet(rig, "phone."+key)
-		}
-	}
+	c.prepare(g)
 	if c.body != nil {
+		p.bodies[c] = true
 		zoom := c.v.Zoom
 		if zoom == 0 {
 			zoom = 1.5
@@ -701,6 +780,7 @@ func (p *phoneView) frame(key string, w, h float64) *ebiten.Image {
 	k := gfx.Scale()
 	img := sized(p.frames[key], int(math.Ceil(w*k)), int(math.Ceil(h*k)))
 	p.frames[key] = img
+	p.imageUse[img] = true
 	img.Clear()
 	return img
 }
@@ -751,20 +831,45 @@ func (p *phoneView) icon(g *Game, path string, size float64) *ebiten.Image {
 	if path == "" {
 		return nil
 	}
-	key := fmt.Sprintf("%s@%.0f", path, size)
+	px := max(1, int(math.Ceil(size*gfx.Scale())))
+	key := path + "@" + strconv.Itoa(px)
 	if img, ok := p.icons[key]; ok {
+		p.imageUse[img] = true
 		return img
 	}
 	src := g.pics.get(path)
 	if src == nil {
 		return nil
 	}
-	px := int(math.Ceil(size * gfx.Scale()))
 	img := ebiten.NewImage(px, px)
 	drawCoverTop(img, src, 0, 0, size, size)
 	gfx.RoundedMask(img, float32(px)/2)
 	p.icons[key] = img
+	p.imageUse[img] = true
 	return img
+}
+
+// trimImages releases surfaces outside this frame. Clip positions remain in clips.
+func (p *phoneView) trimImages() {
+	for _, images := range []map[string]*ebiten.Image{p.icons, p.frames} {
+		for key, img := range images {
+			if !p.imageUse[img] {
+				img.Deallocate()
+				delete(images, key)
+			}
+		}
+	}
+	clear(p.imageUse)
+	for c, drawn := range p.bodies {
+		if !drawn {
+			c.motion = c.body.Motion
+			c.body.Close()
+			c.body = nil
+			delete(p.bodies, c)
+		} else {
+			p.bodies[c] = false
+		}
+	}
 }
 
 // closePhone discards the presentation when its wait ends or the game resets.
@@ -782,14 +887,21 @@ func (p *phoneView) close() {
 			img.Deallocate()
 		}
 	}
+	p.canvas, p.screen = nil, nil
 	for _, m := range []map[string]*ebiten.Image{p.icons, p.frames} {
 		for _, img := range m {
 			img.Deallocate()
 		}
+		clear(m)
 	}
+	clear(p.bubbles)
+	clear(p.imageUse)
+	clear(p.bodies)
 	for _, c := range p.clips {
+		c.motion = nil
 		if c.body != nil {
 			c.body.Close()
+			c.body = nil
 		}
 	}
 }
