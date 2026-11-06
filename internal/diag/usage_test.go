@@ -97,7 +97,11 @@ func TestCodes_AreProvokedByE2E(t *testing.T) {
 			for _, asserted := range assertions(t, sc) {
 				for _, c := range reported(asserted.text) {
 					seen[c] = true
-					if asserted.exit != c.ExitCode() && !(asserted.enforced && c.ExitCode() == 0 && asserted.exit == 1) {
+					want := c.ExitCode()
+					if asserted.enforced && want == 0 && asserted.exit == 1 {
+						want = 1
+					}
+					if asserted.exit != want {
 						t.Errorf("%s: %q asserts %s with exit_code %d", filepath.Base(f), sc["name"], c, asserted.exit)
 					}
 				}

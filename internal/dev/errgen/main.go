@@ -60,6 +60,29 @@ func markdown() []byte {
 		b.H2(f.Prefix).PlainTextf("%s. Exits %d.", upper(f.Meaning), f.Exit)
 		for _, e := range section {
 			b.H3(e.Code.String()).PlainText(upper(e.Summary) + ".").PlainText(e.Detail).PlainText("Fix: " + e.Fix)
+			if e.NotYAML != "" {
+				b.PlainText("Not YAML-reproducible: " + e.NotYAML)
+				continue
+			}
+			b.PlainText("Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.")
+			for _, file := range e.Example {
+				language := "text"
+				if strings.HasSuffix(file.Name, ".yaml") {
+					language = "yaml"
+				}
+				if file.Encoding == "base64" {
+					language = "base64"
+				}
+				b.PlainText("File: `" + file.Name + "`")
+				if language == "yaml" {
+					mark := "parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode."
+					if file.Malformed {
+						mark = "skip Intentionally malformed YAML; TestErrorReferenceExamplesProvokeTheirCode checks GZN1109."
+					}
+					b.PlainText("<!-- verify: " + mark + " -->")
+				}
+				b.PlainText("```" + language + "\n" + strings.TrimSuffix(file.Content, "\n") + "\n```")
+			}
 		}
 	}
 	return []byte(strings.TrimRight(strings.ReplaceAll(b.String(), "\r\n", "\n"), "\n") + "\n")

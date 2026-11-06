@@ -42,8 +42,8 @@ func (c Code) String() string {
 	return fmt.Sprintf("GZN%04d", int(c))
 }
 
-// ExitCode is the exit value a diagnostic with this code produces: the
-// thousands digit.
+// ExitCode is the default exit family: the thousands digit. check warning
+// enforcement promotes zero to 1 without changing the diagnostic identity.
 func (c Code) ExitCode() int { return int(c) / 1000 }
 
 // Mark adds the code to the end of a message: "msg [GZN1101]". The position
@@ -102,8 +102,26 @@ type Entry struct {
 	Detail string
 	// Fix tells the reader what to change.
 	Fix string
+	// Example contains the exact files for a standalone failing or warning game.
+	// errgen publishes these files; the CLI tests check the published examples.
+	Example []ExampleFile
+	// NotYAML explains why a command-line, runtime or filesystem problem cannot
+	// be reproduced by checking a YAML game. Exactly one of Example and NotYAML is set.
+	NotYAML string
 	// Since is the gozen version the code first shipped in.
 	Since string
+}
+
+// ExampleFile is one game-relative file published in the diagnostic reference.
+// Encoding is empty for literal UTF-8 content or "base64" for a binary asset.
+// The generator and CLI reference tests consume the same bytes.
+type ExampleFile struct {
+	// Malformed marks intentionally invalid YAML. The CLI reproduction test,
+	// rather than the generic documentation syntax check, verifies this input.
+	Malformed bool
+	Name      string
+	Content   string
+	Encoding  string
 }
 
 // since is the version every code registered before the first release ships in.
@@ -119,6 +137,7 @@ var (
 // mistake fails the first test that imports diag.
 func register(number int, name string, e Entry) Code {
 	c := Code(number)
+	e.Example = examples[number]
 	switch {
 	case number < 1 || number > 2999:
 		panic(fmt.Sprintf("diag: code %d is outside GZN0001-GZN2999", number))
@@ -128,11 +147,15 @@ func register(number int, name string, e Entry) Code {
 		panic(fmt.Sprintf("diag: %s is in no family", c))
 	case name == "":
 		panic(fmt.Sprintf("diag: %s has no identifier name", c))
-	case e.Summary == "":
+	case strings.TrimSpace(e.Summary) == "":
 		panic(fmt.Sprintf("diag: %s has no summary", c))
-	case e.Detail == "":
+	case strings.TrimSpace(e.Detail) == "":
 		panic(fmt.Sprintf("diag: %s has no detail", c))
-	case e.Fix == "":
+	case len(e.Example) == 0 && strings.TrimSpace(e.NotYAML) == "":
+		panic(fmt.Sprintf("diag: %s needs a reproducible example or a non-YAML reason", c))
+	case len(e.Example) > 0 && e.NotYAML != "":
+		panic(fmt.Sprintf("diag: %s has both an example and a non-YAML reason", c))
+	case strings.TrimSpace(e.Fix) == "":
 		panic(fmt.Sprintf("diag: %s has no fix", c))
 	}
 	if prev, dup := byCode[c]; dup {

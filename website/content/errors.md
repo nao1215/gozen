@@ -15,7 +15,7 @@ Codes are assigned one family at a time. A diagnostic without a code still exits
 
 | Codes | Exit | Meaning | Assigned |
 |---------|---------|---------|---------|
-| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 23 codes |
+| `GZN01xx` | 0 | warnings of check: the game loads, but something is likely a mistake | 24 codes |
 | `GZN02xx` | 0 | warnings of a measurement or a record | not yet |
 | `GZN11xx` | 1 | the definitions of the game: YAML, references, expressions, assets | 13 codes |
 | `GZN12xx` | 1 | fonts and text layout | 1 codes |
@@ -44,6 +44,26 @@ The layout check lays out every line of dialogue and every choice with the game'
 
 Fix: Shorten the text, split it into two lines of dialogue, or change the window in game.yaml.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 2
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {}}
+events: {e: {do: [{say: 'aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp qqqq rrrr ssss tttt uuuu vvvv wwww xxxx yyyy zzzz aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp qqqq rrrr ssss tttt uuuu vvvv wwww xxxx yyyy zzzz aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp qqqq rrrr ssss tttt uuuu vvvv wwww xxxx yyyy zzzz aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp qqqq rrrr ssss tttt uuuu vvvv wwww xxxx yyyy zzzz aaaa bbbb cccc dddd'}]}}
+```
+
 ### GZN0102
 
 A balloon face has no face box, or the box is stale.
@@ -51,6 +71,45 @@ A balloon face has no face box, or the box is stale.
 A painted scene cuts each person's balloon face around the face that gozen faces found and wrote to assets/faces.json. The file is missing, has no box for a picture, has none found, or the picture changed since, so the face is guessed.
 
 Fix: Run gozen faces <game-dir> again, or give the doll face_at.
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 3
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations:
+  camp:
+    background: bg.png
+    stage:
+      scale: [{at: [50, 90], height: 40}, {at: [50, 10], height: 10}]
+      walk: [[[0, 0], [100, 0], [100, 100], [0, 100]]]
+      spots: {gate: {at: [50, 50]}}
+      people: [{id: guard, at: [20, 20]}]
+    people: [{id: guard, name: Guard, image: guard.png, bubbles: [Hello]}]
+```
+
+File: `assets/bg.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
+
+File: `assets/guard.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
 
 ### GZN0103
 
@@ -60,6 +119,37 @@ A point no road leads to, a point without a way back, an exit or a thing that do
 
 Fix: Connect it (a road, an exit back, walk that touches it) or remove it; give a spot a do to make it an entry.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 3
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations:
+  camp:
+    background: bg.png
+    stage:
+      scale: [{at: [50, 90], height: 40}, {at: [50, 10], height: 10}]
+      walk: [[[0, 0], [100, 0], [100, 100], [0, 100]]]
+      spots: {gate: {at: [50, 50]}, corner: {at: [60, 60], name: Corner}}
+```
+
+File: `assets/bg.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
+
 ### GZN0104
 
 A picture or a shape will be drawn otherwise than written.
@@ -67,6 +157,37 @@ A picture or a shape will be drawn otherwise than written.
 A polygon that crosses itself, a person without an image (its doll takes plain colors), or an icon that is not square (it is cut round from its middle) is drawn, but probably not as meant.
 
 Fix: Fix the polygon's points, give the person an image, or make the icon square.
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 3
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations:
+  camp:
+    background: bg.png
+    stage:
+      scale: [{at: [50, 90], height: 40}, {at: [50, 10], height: 10}]
+      walk: [[[0, 0], [100, 0], [0, 100], [100, 100]]]
+      spots: {gate: {at: [50, 20]}}
+```
+
+File: `assets/bg.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
 
 ### GZN0105
 
@@ -76,6 +197,29 @@ language is not set while the game is written in Japanese, so the engine's own w
 
 Fix: Set language in game.yaml, or choose a font that has the letters.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 2
+id: g
+title: "\u65C5\u306E\u5BBF"
+start:
+  location: camp
+  party:
+  - scout
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {}}
+```
+
 ### GZN0106
 
 A part of an AI rule's target is not used.
@@ -83,6 +227,32 @@ A part of an AI rule's target is not used.
 For some actions the target of a rule only decides whether the rule fires: a random enemy is drawn anew, a self skill always hits its user, and by is read only with pick min or max.
 
 Fix: Remove the part the message names, or use a skill whose target the rule chooses.
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 2
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}, boost: {scope: self}}
+locations: {camp: {}}
+enemies: {slime: {image: s.png, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, ai: [{use: boost, target: {pick: min, by: t.hp}}]}}
+```
+
+File: `assets/s.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
 
 ### GZN0107
 
@@ -92,6 +262,25 @@ The targets of one set are assigned one after another in key order, so a right-h
 
 Fix: Split it into two set commands in the order you mean.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 2
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {actions: [{label: Go, do: [{set: {var.a: 1, var.b: var.a + 1}}]}]}}
+```
+
 ### GZN0108
 
 A set changes an actor's stats or level outside the development mode.
@@ -99,6 +288,25 @@ A set changes an actor's stats or level outside the development mode.
 Setting a party member's stats or level is for the development mode (--dev) and tests. The game skips it when played normally.
 
 Fix: Use a command the game keeps (an item, a class change, experience), or keep it in a development-only event.
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 2
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {actions: [{label: Train, do: [{set: {actor.scout.level: 5}}]}]}}
+```
 
 ### GZN0109
 
@@ -108,6 +316,36 @@ An actor with a voices folder has lines without say.voice. They are shown withou
 
 Fix: Record the lines it names and add voice to each, or leave them silent on purpose.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 4
+id: voiced
+start: {location: room, party: [reader]}
+```
+
+File: `assets/reader/voice/hello.wav`
+
+```text
+a stub
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {reader: {class: walker, voices: reader/voice}}
+skills: {attack: {}, guard: {}}
+locations: {room: {}}
+events:
+  scene:
+    do:
+      - say: {who: reader, voice: hello, text: Hello.}
+      - say: {who: reader, text: Goodbye.}
+```
+
 ### GZN0110
 
 A translation is of a text the game does not have.
@@ -115,6 +353,41 @@ A translation is of a text the game does not have.
 A key of lang/<code>.yaml is neither a text of the game (a line, a choice, a name) nor a word of the engine. The text was changed or removed after it was translated.
 
 Fix: Change the key to the text as it is written now, or remove the entry.
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 4
+id: twolang
+start: {location: room, party: [reader]}
+written_in: en
+languages: [en, ja]
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {reader: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {room: {name: Room}}
+events:
+  scene:
+    do:
+      - say: Hi.
+      - choice: [{label: Stay}]
+```
+
+File: `lang/ja.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+text:
+  Hi.: "\u3053\u3093\u306B\u3061\u306F\u3002"
+  Room: "\u90E8\u5C4B"
+  Gone line: "\u6D88\u3048\u305F\u53F0\u8A5E"
+```
 
 ### GZN0111
 
@@ -124,6 +397,41 @@ A language of game.yaml's languages has no translation of this text in lang/<cod
 
 Fix: Add the text as a key of lang/<code>.yaml with its translation; gozen check --format json lists every one with its path.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 4
+id: twolang
+start: {location: room, party: [reader]}
+written_in: en
+languages: [en, ja]
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {reader: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {room: {name: Room}}
+events:
+  scene:
+    do:
+      - say: Hi.
+      - choice: [{label: Stay}]
+```
+
+File: `lang/ja.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+text:
+  Hi.: "\u3053\u3093\u306B\u3061\u306F\u3002"
+  Room: "\u90E8\u5C4B"
+  Gone line: "\u6D88\u3048\u305F\u53F0\u8A5E"
+```
+
 ### GZN0112
 
 A flag is set but nothing reads it.
@@ -131,6 +439,36 @@ A flag is set but nothing reads it.
 A set writes flag.<name>, and no condition, expression or line of the game reads it. It may be a typo of another flag, or left over.
 
 Fix: Read the flag where it should matter, fix its name, or remove the set.
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 4
+id: flags
+start: {location: room, party: [reader]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {reader: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {room: {name: Room}}
+events:
+  talk:
+    do:
+      - set: {flag.met: true}
+      - if: flag.trusted
+        then: [{say: Welcome back.}]
+      - call: farewell
+  farewell:
+    trigger: enter
+    location: room
+    do: [{say: Goodbye.}, {move: room}]
+```
 
 ### GZN0113
 
@@ -140,6 +478,36 @@ A condition or expression reads flag.<name>, and no set, gallery scene or state.
 
 Fix: Set the flag where it should become true, fix its name, or declare it in state.names.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 4
+id: flags
+start: {location: room, party: [reader]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {reader: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {room: {name: Room}}
+events:
+  talk:
+    do:
+      - set: {flag.met: true}
+      - if: flag.trusted
+        then: [{say: Welcome back.}]
+      - call: farewell
+  farewell:
+    trigger: enter
+    location: room
+    do: [{say: Goodbye.}, {move: room}]
+```
+
 ### GZN0114
 
 An expression uses a function's name as a value.
@@ -147,6 +515,30 @@ An expression uses a function's name as a value.
 A built-in function (floor, max, len and the others) or a function of the game (rand, chance, pages) is written alone, not called, as in floor + 1. The expression fails when it is evaluated. floor is the floor's number only in generate's size, the count of generate.place and a roamer's count, appear, wait and every; elsewhere it is the function and the floor's number is var.floor.
 
 Fix: Call the function (floor(x)), or use the value you meant (var.floor).
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 4
+id: fnvalue
+start: {location: room, party: [reader]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {reader: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {room: {name: Room}}
+events:
+  pay:
+    trigger: enter
+    location: room
+    do: [{gold: floor + 1}]
+```
 
 ### GZN0115
 
@@ -156,6 +548,34 @@ The monster book is enabled and a troop can include this enemy, but its lore fie
 
 Fix: Add a short lore description to the enemy, or turn off ui.bestiary.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 4
+id: bestiary
+start: {location: room, party: [reader]}
+ui: {bestiary: true}
+```
+
+File: `assets/mote.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {reader: {class: walker}}
+skills: {attack: {}, guard: {}}
+enemies: {mote: {name: Mote, image: mote.png, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}}
+troops: {lesson: {members: [mote]}}
+locations: {room: {name: Room, encounters: {troops: [{troop: lesson}]}}}
+```
+
 ### GZN0116
 
 A monster cannot be captured or bred from capturable monsters.
@@ -163,6 +583,33 @@ A monster cannot be captured or bred from capturable monsters.
 The breeding graph has no path from a monster with a positive recruit chance to this species, including the male and female sexes needed at each step. A species whose only recipes loop back through species that cannot be obtained has no lineage and is reported too.
 
 Fix: Make it recruitable or add a breeding recipe reachable from capturable parents.
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 6
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+monster_families: {slime: Slime}
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {}}
+enemies: {mote: {name: Mote, image: x.png, family: slime, rank: 1, monster_class: walker, recruit: {chance: 1}, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}, wisp: {name: Wisp, image: x.png, family: slime, rank: 2, monster_class: walker, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}}
+```
+
+File: `assets/x.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
 
 ### GZN0117
 
@@ -172,6 +619,33 @@ A positive recruit chance only matters after winning a battle with that species.
 
 Fix: Add the species to a troop in a reachable location encounter, or confirm that a scripted battle is intentional.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 6
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+monster_families: {slime: Slime}
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {}}
+enemies: {mote: {name: Mote, image: x.png, family: slime, rank: 1, monster_class: walker, recruit: {chance: 1}, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}, wisp: {name: Wisp, image: x.png, family: slime, rank: 2, monster_class: walker, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}}
+```
+
+File: `assets/x.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
+
 ### GZN0118
 
 A stream episode lasts less than 10 minutes.
@@ -179,6 +653,61 @@ A stream episode lasts less than 10 minutes.
 The beats of the episode, timed by the timing of the streams file, add up to less than 10 minutes, so a viewer sees it end soon after opening the game.
 
 Fix: Add beats to the episode, or lengthen the timing.
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 9
+id: g
+start: {location: room}
+streams: data/streams.yaml
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+actors: {host: {name: Host, puppet: p/rig.yaml}}
+locations: {room: {}}
+```
+
+File: `data/streams.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+timing: {say: 2, per_char: 0.1, chat: 2, ask: 10}
+tips: [10]
+crowd: {names: [leaf], lines: [Hi], tip_lines: [Here], rate: 0.5}
+channels: [{id: host, actor: host, room: x.png, frame: {cx: 1, top: 0, bottom: 1}, episodes: [streams/one.yaml]}]
+```
+
+File: `streams/one.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+title: Short
+lobby: [Short]
+parts: [[{say: Hello.}]]
+```
+
+File: `assets/p/rig.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+base: base.png
+face: normal
+faces: {normal: {}}
+```
+
+File: `assets/p/base.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
+
+File: `assets/x.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
 
 ### GZN0119
 
@@ -188,6 +717,68 @@ The voices folder of the streams file does not exist, holds something other than
 
 Fix: Record the voices again for the lines as they are now and remove the old files, or correct voices in the streams file.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 9
+id: g
+start: {location: room}
+streams: data/streams.yaml
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+actors: {host: {name: Host, puppet: p/rig.yaml}}
+locations: {room: {}}
+```
+
+File: `data/streams.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+voices: voice
+timing: {say: 2, per_char: 0.1, chat: 2, ask: 10}
+tips: [10]
+crowd: {names: [leaf], lines: [Hi], tip_lines: [Here], rate: 0.5}
+channels: [{id: host, actor: host, room: x.png, frame: {cx: 1, top: 0, bottom: 1}, episodes: [streams/one.yaml]}]
+```
+
+File: `streams/one.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+title: Short
+lobby: [Short]
+parts: [[{say: Hello.}]]
+```
+
+File: `assets/p/rig.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+base: base.png
+face: normal
+faces: {normal: {}}
+```
+
+File: `assets/p/base.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
+
+File: `assets/x.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
+
+File: `assets/voice/host/0000000000000000.ogg`
+
+```text
+x
+```
+
 ### GZN0120
 
 A stream voice is not Ogg Vorbis.
@@ -195,6 +786,68 @@ A stream voice is not Ogg Vorbis.
 A recorded voice of a line is not an Ogg Vorbis file: Ogg Opus (what many recorders and speech engines write), a WAV or another file named .ogg. gozen cannot play it, so the line is read by speech synthesis in a browser and only captioned elsewhere.
 
 Fix: Convert the voice to Ogg Vorbis (for example: ffmpeg -i in.ogg -c:a libvorbis -q:a 4 out.ogg).
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 9
+id: g
+start: {location: room}
+streams: data/streams.yaml
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+actors: {host: {name: Host, puppet: p/rig.yaml}}
+locations: {room: {}}
+```
+
+File: `data/streams.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+voices: voice
+timing: {say: 2, per_char: 0.1, chat: 2, ask: 10}
+tips: [10]
+crowd: {names: [leaf], lines: [Hi], tip_lines: [Here], rate: 0.5}
+channels: [{id: host, actor: host, room: x.png, frame: {cx: 1, top: 0, bottom: 1}, episodes: [streams/one.yaml]}]
+```
+
+File: `streams/one.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+title: Short
+lobby: [Short]
+parts: [[{say: Hello.}]]
+```
+
+File: `assets/p/rig.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+base: base.png
+face: normal
+faces: {normal: {}}
+```
+
+File: `assets/p/base.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
+
+File: `assets/x.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
+
+File: `assets/voice/host/9b56d519ccd9e1e5.ogg`
+
+```text
+RIFF....WAVEfmt
+```
 
 ### GZN0121
 
@@ -204,6 +857,29 @@ The picture of game.yaml's web.image is smaller than 1200x630 pixels, the size t
 
 Fix: Use a picture of 1200x630 or more (1280x720 suits a 16:9 game).
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 9
+id: g
+start: {location: room}
+web: {url: 'https://example.org/g/', image: card.png}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+locations: {room: {}}
+```
+
+File: `assets/card.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
+
 ### GZN0122
 
 Authored YAML is complex or repetitive.
@@ -212,6 +888,28 @@ Source metrics exceed an authoring budget; these heuristics do not change game b
 
 Fix: Extract shared behavior or review the budgets in check-complexity.yaml; see docs/development/yaml-complexity.md.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 11
+id: complexity
+start: {location: room}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+locations: {room: {}}
+```
+
+File: `check-complexity.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+file_lines: 1
+```
+
 ### GZN0123
 
 Dialogue differs from the speaker's declared language style.
@@ -219,6 +917,50 @@ Dialogue differs from the speaker's declared language style.
 An opt-in speech rule found an explicitly discouraged form in a literal line.
 
 Fix: Review the line or the actor's speech rules; quoted dialogue may be intentional.
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 10
+id: g
+language: en
+start: {location: room}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+locations: {room: {name: Room}}
+actors: {potter: {name: Potter, speech: {en: {first_person: {preferred: I, avoid: [we]}}}}}
+events: {hello: {do: [{say: {who: potter, text: 'we agree'}}]}}
+```
+
+### GZN0124
+
+A definition has no YAML consumer.
+
+An event, authored screen (including an ensemble), location, item, troop, shop or AI set has no incoming reference in the loaded YAML. Start points, triggered events, calls, screen navigation, flows and literal expression references count as consumers. Dynamic lookups retain their entire definition kind. This is not a proof of unreachable content; external scripts may use a definition.
+
+Fix: Connect the definition to its intended consumer, remove it if obsolete, or record an intentional external-script entry in a reviewed check baseline.
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 11
+id: unused
+start: {location: camp, event: intro}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+locations: {camp: {}}
+events: {intro: [{say: Hello}], leftover: [{say: Unused}]}
+```
 
 ## GZN11xx
 
@@ -232,6 +974,26 @@ A troop, item, actor, skill, location, event, song, picture set, state, stat, no
 
 Fix: Fix the spelling or define the thing. gozen book lists every ID of the game.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 2
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {}}
+events: {bad: {do: [{battle: wolves}]}}
+```
+
 ### GZN1102
 
 Something is defined twice.
@@ -239,6 +1001,31 @@ Something is defined twice.
 The same ID or key appears twice, in one file or across the files of data/. The message names the previous definition.
 
 Fix: Rename or remove one of them.
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 2
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {}}
+```
+
+File: `data/more.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+locations: {camp: {}}
+```
 
 ### GZN1103
 
@@ -248,6 +1035,25 @@ An expression (when, a formula, a condition) has a syntax error, uses a name tha
 
 Fix: Fix the expression; the message lists the names known at that place.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 2
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {actions: [{label: Go, when: nope > 1, do: []}]}}
+```
+
 ### GZN1104
 
 A definition is missing a part, or has parts that do not go together.
@@ -255,6 +1061,25 @@ A definition is missing a part, or has parts that do not go together.
 A key that is required is missing or empty, two keys exclude each other, a key is used where it means nothing, or a value has the wrong YAML type (a list where a map belongs, text where a number belongs).
 
 Fix: Write the definition in the shape the Schema page shows for it.
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 2
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {exits: [{label: Out}]}}
+```
 
 ### GZN1105
 
@@ -264,6 +1089,26 @@ A picture, a sound, a face, a font or another file named by the definitions is n
 
 Fix: Add the file, or fix the name.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 2
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {}}
+events: {e: {do: [{image: absent.png}]}}
+```
+
 ### GZN1106
 
 A number is out of its range.
@@ -271,6 +1116,26 @@ A number is out of its range.
 The value is a number, but outside what the key accepts: a rate between 0 and 1, a count of 1 or more, a size above 0, a level within the class's maximum.
 
 Fix: Use a number in the range the message states.
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 3
+id: g
+start: {location: camp, party: [scout]}
+ui: {balloon: 5}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {}}
+```
 
 ### GZN1107
 
@@ -280,6 +1145,26 @@ The key takes one word from a fixed list, such as a direction, a mode or a scree
 
 Fix: Use one of the listed words.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 2
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {}}
+events: {e: {trigger: sometimes, do: []}}
+```
+
 ### GZN1108
 
 A word needs a newer schema_version.
@@ -287,6 +1172,25 @@ A word needs a newer schema_version.
 The word was added in a later version of the YAML schema, and game.yaml declares an earlier schema_version, so an older engine would not read the game the same way.
 
 Fix: Raise schema_version in game.yaml to the version the message names.
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 1
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {actions: [{label: Look, do: [{pick: Look}]}]}}
+```
 
 ### GZN1109
 
@@ -296,6 +1200,25 @@ The file is not valid YAML: an indentation, a quote, a colon or a bracket is wro
 
 Fix: Fix the YAML at the line and column the message names.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 2
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: skip Intentionally malformed YAML; TestErrorReferenceExamplesProvokeTheirCode checks GZN1109. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: [
+```
+
 ### GZN1110
 
 The game directory or game.yaml cannot be read.
@@ -303,6 +1226,8 @@ The game directory or game.yaml cannot be read.
 The directory given is not a game directory: it does not exist, cannot be read, or has no game.yaml.
 
 Fix: Pass the directory that holds game.yaml, data/ and assets/.
+
+Not YAML-reproducible: This reports an absent or unreadable game directory or game.yaml, rather than YAML content.
 
 ### GZN1111
 
@@ -312,6 +1237,25 @@ A dungeon or one of its looks says theme: <name>, but assets/dungeon/themes/<nam
 
 Fix: Run gozen theme add <game-dir> --name <name> (gozen theme list shows the names), or put your own folder of that name there.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 2
+id: g
+start: {location: cave, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {cave: {name: Cave, dungeon: {theme: cave, map: "#####\n#S..#\n#####", tiles: {S: {start: true}}}}}
+```
+
 ### GZN1112
 
 A monster collection or breeding rule is invalid.
@@ -320,6 +1264,33 @@ A recruit setting, monster family, rank, sex, sex ratio, pair or breeding requir
 
 Fix: Define known classes, families and species; use positive ranks and valid probabilities; give each unordered pair one result and ensure its parents can have opposite sexes.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 6
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+monster_families: {slime: Slime}
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {}}
+enemies: {mote: {name: Mote, image: x.png, family: missing, rank: 1, monster_class: walker, recruit: {chance: 1}, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}}
+```
+
+File: `assets/x.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
+
 ### GZN1113
 
 A monster cannot use its configured growth.
@@ -327,6 +1298,33 @@ A monster cannot use its configured growth.
 The recruit level or a learned skill exceeds the monster class maximum, or its experience requirement fails to rise with the level. Such a monster cannot progress as authored.
 
 Fix: Keep recruit and skill levels within the class maximum and make exp_for increase from level two through that maximum.
+
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 6
+id: g
+start: {location: camp, party: [scout]}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+monster_families: {slime: Slime}
+classes: {walker: {max_level: 2, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {}}
+enemies: {mote: {name: Mote, image: x.png, family: slime, rank: 1, monster_class: walker, recruit: {chance: 1, level: 3}, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}}
+```
+
+File: `assets/x.png`
+
+```base64
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAA+UlEQVR4nO3RQQ0AIAzAwElHClKQhow9ekkFNLk592mxWT+IBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtAABoBwBAOwAA2gEA0A4AgHYAALQDAKAdAADtPqk7BwnBg7bkAAAAAElFTkSuQmCC
+```
 
 ## GZN12xx
 
@@ -340,6 +1338,32 @@ The layout check reads the game's fonts to lay out the dialogue, and one of them
 
 Fix: Fix the font files of game.yaml, or check the structure alone with gozen check --only structure.
 
+Reproduction: create these files in an empty game directory, then run `gozen check GAME`. Decode any base64 block into the named binary file first. Other diagnostics may also be reported.
+
+File: `game.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+schema_version: 2
+id: g
+start: {location: camp, party: [scout]}
+fonts: {regular: regular.ttf}
+```
+
+File: `data/world.yaml`
+<!-- verify: parse Executed as a standalone diagnostic game by TestErrorReferenceExamplesProvokeTheirCode. -->
+```yaml
+classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+actors: {scout: {class: walker}}
+skills: {attack: {}, guard: {}}
+locations: {camp: {}}
+```
+
+File: `assets/regular.ttf`
+
+```text
+not a font
+```
+
 ## GZN14xx
 
 A trace of a play is broken or shows faults. Exits 1.
@@ -352,6 +1376,8 @@ trace reads the JSON Lines the game writes with --trace. A line is not JSON, has
 
 Fix: Record the trace again with the game's --trace; do not edit it by hand.
 
+Not YAML-reproducible: This reads malformed JSON Lines from a recorded trace, not game YAML.
+
 ### GZN1402
 
 A standing picture went wrong in the play.
@@ -359,6 +1385,8 @@ A standing picture went wrong in the play.
 trace --check found a standing picture that moved while speaking, was left over after its line, hid an event picture, or was missing for a speaker.
 
 Fix: Look at the event at the time the line names, and fix its show and hide commands or the speaker's pictures.
+
+Not YAML-reproducible: This requires standing-picture events in a runtime trace; checking YAML does not execute the play.
 
 ### GZN1403
 
@@ -368,6 +1396,8 @@ trace --check found a song heard later than --music-late seconds after the game 
 
 Fix: Make the song shorter to load (a smaller file) or ask for it earlier.
 
+Not YAML-reproducible: This measures music delivery times in a runtime trace; YAML alone has no timing evidence.
+
 ### GZN1404
 
 Skipping passed a line that was not read.
@@ -375,6 +1405,8 @@ Skipping passed a line that was not read.
 trace --check found a line marked not read while skip mode or scene skip was on. Skipping stops before every line not read.
 
 Fix: Record the trace again with this engine; if it happens again, report it with the trace.
+
+Not YAML-reproducible: This requires skip and unread-line events in a runtime trace.
 
 ### GZN1405
 
@@ -384,6 +1416,8 @@ trace --check found a rollback line whose event stayed and whose line did not go
 
 Fix: Record the trace again with this engine; if it happens again, report it with the trace.
 
+Not YAML-reproducible: This requires rollback events and positions in a runtime trace.
+
 ### GZN1406
 
 A voice could not be read in the play.
@@ -391,6 +1425,8 @@ A voice could not be read in the play.
 trace --check found a voice line marked missing: the file of a line's voice was not there or was not a sound the engine reads.
 
 Fix: Add the file under assets/ (ogg or wav), or fix the say.voice that names it; gozen check lists missing voices too.
+
+Not YAML-reproducible: This requires a missing-voice event in a runtime trace.
 
 ## GZN15xx
 
@@ -404,6 +1440,8 @@ Commands that write a directory or a list never overwrite: the output must not e
 
 Fix: Choose a new path, or remove the old output yourself.
 
+Not YAML-reproducible: This depends on an output path already existing on the filesystem.
+
 ### GZN1502
 
 The output is inside an input, or holds one.
@@ -411,6 +1449,8 @@ The output is inside an input, or holds one.
 Writing into the game directory, the overlay or the list would change what is being read.
 
 Fix: Write the output outside the inputs.
+
+Not YAML-reproducible: This depends on the relationship between command-line input and output paths.
 
 ## GZN17xx
 
@@ -424,6 +1464,8 @@ release copies only approved assets. An asset of the overlay that the game refer
 
 Fix: Inspect the asset and add an approved record, or stop referring to it.
 
+Not YAML-reproducible: This requires release approval records and an asset overlay, not just checked game definitions.
+
 ### GZN1702
 
 The approval settings or records cannot be read.
@@ -431,6 +1473,8 @@ The approval settings or records cannot be read.
 The game's asset-policy.yaml, the overlay's records, or the --inspect file is missing or malformed, or no overlay is given.
 
 Fix: Give --overlay and --inspect, and check the files the message names.
+
+Not YAML-reproducible: This reports release policy or inspection-record I/O and parsing, which gozen check does not perform.
 
 ### GZN1703
 
@@ -440,6 +1484,8 @@ The tree being built refers to an asset that is neither in the game nor in the o
 
 Fix: Add the asset, or remove the reference; gozen check lists missing pictures too.
 
+Not YAML-reproducible: This is raised while composing a release tree from a game and an asset overlay.
+
 ### GZN1704
 
 Trial.yaml cannot be read.
@@ -447,6 +1493,8 @@ Trial.yaml cannot be read.
 The range settings of trial are not valid: YAML, an assume that is not var.<name> or flag.<name>, a dive_max without blocked, or a bad pattern.
 
 Fix: Fix trial.yaml as the message says.
+
+Not YAML-reproducible: This is raised by trial when reading its selection settings; gozen check does not read trial.yaml.
 
 ## GZN21xx
 
@@ -460,6 +1508,8 @@ The word is not a command of gozen or of the group it follows. Top-level command
 
 Fix: Use the command the message names, or run gozen --help (or the group with --help) for the list.
 
+Not YAML-reproducible: This diagnoses command-line arguments before game validation; YAML content cannot provoke it.
+
 ### GZN2102
 
 The command takes another number of arguments.
@@ -467,6 +1517,8 @@ The command takes another number of arguments.
 A command takes a fixed list of positional arguments, such as a game directory and a troop for sim battle. Too few or too many were given; an option that needs a value may have taken the next word.
 
 Fix: Give the arguments the usage line of the command's --help shows, in that order. Put -- before an argument that starts with a dash.
+
+Not YAML-reproducible: This diagnoses command-line arguments before game validation; YAML content cannot provoke it.
 
 ### GZN2103
 
@@ -476,6 +1528,8 @@ Options belong to a command: an option of sim battle is not an option of sim div
 
 Fix: Check the option in the command's --help.
 
+Not YAML-reproducible: This diagnoses command-line arguments before game validation; YAML content cannot provoke it.
+
 ### GZN2104
 
 A long option was written with one dash.
@@ -483,6 +1537,8 @@ A long option was written with one dash.
 Options follow the GNU style (ADR 0018). A long name with one dash, such as -seed, would be read as the short options -s -e -e -d, so it is refused instead.
 
 Fix: Write the long option with two dashes, such as --seed.
+
+Not YAML-reproducible: This diagnoses command-line arguments before game validation; YAML content cannot provoke it.
 
 ### GZN2105
 
@@ -492,6 +1548,8 @@ gozen itself takes only --help and --version. Options of a command come after th
 
 Fix: Write gozen <command> [OPTIONS], for example gozen sim battle game --troop lesson --seed 7.
 
+Not YAML-reproducible: This diagnoses command-line arguments before game validation; YAML content cannot provoke it.
+
 ### GZN2106
 
 A command is required.
@@ -499,6 +1557,8 @@ A command is required.
 gozen, and a group such as sim or art, does nothing by itself. The message lists the commands it holds.
 
 Fix: Add one of the listed commands, or run the group with --help to read about them.
+
+Not YAML-reproducible: This diagnoses command-line arguments before game validation; YAML content cannot provoke it.
 
 ## GZN22xx
 
@@ -512,6 +1572,8 @@ The value cannot be read as the option's type (a number, a duration), or it is o
 
 Fix: Give a value of the type and range the option's description in --help states.
 
+Not YAML-reproducible: This diagnoses command-line arguments before game validation; YAML content cannot provoke it.
+
 ### GZN2202
 
 An option has a value that is not one of its choices.
@@ -519,6 +1581,8 @@ An option has a value that is not one of its choices.
 The option takes one word from a fixed list, such as --format text or json, or check --only structure or layout. A misspelled choice is refused instead of falling back to a default.
 
 Fix: Use one of the values the message lists.
+
+Not YAML-reproducible: This diagnoses command-line arguments before game validation; YAML content cannot provoke it.
 
 ## GZN23xx
 
@@ -532,6 +1596,8 @@ The options ask for things that exclude each other, such as a saved state and a 
 
 Fix: Keep one of the options the message names.
 
+Not YAML-reproducible: This diagnoses command-line arguments before game validation; YAML content cannot provoke it.
+
 ### GZN2302
 
 An option needs another option.
@@ -540,6 +1606,8 @@ Some options mean something only in company: --as-is keeps the HP of a --state, 
 
 Fix: Add the option the message names, or drop the one that needs it.
 
+Not YAML-reproducible: This diagnoses command-line arguments before game validation; YAML content cannot provoke it.
+
 ### GZN2303
 
 A required option is missing.
@@ -547,6 +1615,8 @@ A required option is missing.
 The command cannot run without the option: capture needs the job file (--config) and destination (--out), release the inspection records (--inspect), and prompt the catalog (--config).
 
 Fix: Add the option the message names.
+
+Not YAML-reproducible: This diagnoses command-line arguments before game validation; YAML content cannot provoke it.
 
 ## GZN24xx
 
@@ -560,6 +1630,8 @@ The option names a file or a directory inside the game, such as release --prefix
 
 Fix: Write the path relative to the game directory, without .., such as trial.yaml.
 
+Not YAML-reproducible: This diagnoses command-line arguments before game validation; YAML content cannot provoke it.
+
 ### GZN2402
 
 The command line names something the game does not have.
@@ -567,6 +1639,8 @@ The command line names something the game does not have.
 An ID given on the command line, such as the troop of sim battle, the location of sim dive or sim floors, a boss or a shop, a persona of sim design --only, a shot of capture --only, or a model of models fetch, is not defined. A typo in an argument is an argument error, so it exits 2 in every command.
 
 Fix: Check the spelling against the game's data (gozen book lists every ID), or the list the message names.
+
+Not YAML-reproducible: This diagnoses command-line arguments before game validation; YAML content cannot provoke it.
 
 ## GZN25xx
 
@@ -579,3 +1653,5 @@ There is no such diagnostic code.
 gozen help explains a code of the form GZN and four digits, and this one is not registered. The message lists the codes of the same family when there are any.
 
 Fix: Copy the code from the end of the diagnostic, or look it up on the error codes page.
+
+Not YAML-reproducible: This diagnoses command-line arguments before game validation; YAML content cannot provoke it.

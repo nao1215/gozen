@@ -3,6 +3,7 @@ package diag
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"strings"
 	"testing"
 )
@@ -65,6 +66,22 @@ func TestRegisteredEntries(t *testing.T) {
 				t.Errorf("%s: detail and fix are sentences: %q", e.Code, s)
 			}
 		}
+		if (len(e.Example) == 0) == (strings.TrimSpace(e.NotYAML) == "") {
+			t.Errorf("%s needs exactly one reproduction or non-YAML reason", e.Code)
+		}
+		names := map[string]bool{}
+		for _, file := range e.Example {
+			if !fs.ValidPath(file.Name) || names[file.Name] {
+				t.Errorf("%s: invalid or duplicate file %q", e.Code, file.Name)
+			}
+			names[file.Name] = true
+			if file.Encoding != "" && file.Encoding != "base64" {
+				t.Errorf("%s: unknown encoding %q", e.Code, file.Encoding)
+			}
+		}
+		if len(e.Example) > 0 && !names["game.yaml"] {
+			t.Errorf("%s: missing game.yaml", e.Code)
+		}
 		text := Text(e)
 		if !strings.HasPrefix(text, e.Code.String()+" - ") || !strings.Contains(text, URL) {
 			t.Errorf("%s: %q", e.Code, text)
@@ -80,14 +97,23 @@ func TestRegisteredEntries(t *testing.T) {
 	}
 }
 
+func TestExamplesBelongToRegisteredCodes(t *testing.T) {
+	t.Parallel()
+	for number := range examples {
+		if _, ok := Lookup(Code(number)); !ok {
+			t.Errorf("example for unregistered code %d", number)
+		}
+	}
+}
+
 func TestRegisterRefusesIncompleteEntries(t *testing.T) {
 	full := Entry{Summary: "s", Detail: "d.", Fix: "f."}
 	for name, call := range map[string]func(){
-		"range":    func() { register(3001, "X", full) },
-		"family":   func() { register(1100, "X", full) },
-		"no name":  func() { register(1198, "", full) },
-		"no fix":   func() { register(1198, "X", Entry{Summary: "s", Detail: "d."}) },
-		"no group": func() { register(1001, "X", full) },
+		"range":           func() { register(3001, "X", full) },
+		"family":          func() { register(1100, "X", full) },
+		"no name":         func() { register(1198, "", full) },
+		"no group":        func() { register(1001, "X", full) },
+		"no reproduction": func() { register(1198, "X", full) },
 	} {
 		func() {
 			defer func() {
@@ -109,7 +135,10 @@ func TestRegisterRefusesMissingTextAndDuplicates(t *testing.T) {
 	}{
 		"no summary": {func() { register(1198, "X", Entry{Detail: "d.", Fix: "f."}) }, "has no summary"},
 		"no detail":  {func() { register(1198, "X", Entry{Summary: "s", Fix: "f."}) }, "has no detail"},
-		"duplicate":  {func() { register(int(existing.Code), "Copy", full) }, "already registered as " + existing.Name},
+		"no fix": {func() {
+			register(1198, "X", Entry{Summary: "s", Detail: "d.", NotYAML: "Requires a command-line argument."})
+		}, "has no fix"},
+		"duplicate": {func() { register(int(existing.Code), "Copy", full) }, "already registered as " + existing.Name},
 	} {
 		func() {
 			defer func() {
