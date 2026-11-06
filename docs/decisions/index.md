@@ -37,8 +37,8 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0027](0027-text-languages.md) | The languages of a game's text (source to translation) | Accepted (done) | |
 | [0028](0028-staging-and-voice-words.md) | The words of staging and voice (`stand`, the map forms of `effect`, `music`, `wait`, `sfx`; `say.voice`) | Accepted (done) | |
 | [0029](0029-dev-panel.md) | The development panel (F8) and one index of where names are written and read | Accepted (done) | |
-| [0031](0031-character-book.md) | The character book: `profiles` in data/ and the Characters screen | Accepted (done) | |
 | [0030](0030-campaigns.md) | Campaigns: regions held by factions over turns (`schema_version: 5`) | Accepted (stage 1 done) | |
+| [0031](0031-character-book.md) | The character book: `profiles` in data/ and the Characters screen | Accepted (done) | |
 | [0032](0032-dungeon-themes.md) | Dungeon themes: `theme` in `dungeon` and `looks`, pictures added by `gozen theme add` | Accepted (done) | |
 | [0033](0033-route-exploration-command.md) | Headless route exploration | Accepted | |
 | [0034](0034-campaign-comparison.md) | Campaign strategy and tactic comparison | Accepted (2026-10-22) | |
@@ -47,16 +47,14 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0037](0037-battle-forms-and-motion.md) | Battle forms, merging, HP pictures and enemy motion | Accepted (2026-10-22) | |
 | [0038](0038-character-relationship-chart.md) | Relationship chart in the character book | Accepted | |
 | [0039](0039-shared-yaml-paths.md) | Shared YAML path selection and removal of the unused dungeon relay | Accepted | |
-
 | [0040](0040-stacked-spaces.md) | Bounded stacked spaces: streets, interiors and continuous stairs | Accepted | Upright tile pictures added 2026-10-25 |
-
 | [0041](0041-yaml-authoring-and-distribution.md) | YAML authoring and distribution; public Go API retirement last | Accepted for phased implementation | |
 | [0042](0042-command-and-output-contract.md) | Direct commands, capture and structured output | Accepted for phased implementation | |
 | [0043](0043-narrative-authoring.md) | Narrative authoring and executable YAML extensions | Accepted | |
 | [0044](0044-continuous-space-movement.md) | Opt-in continuous movement, collision and held-input acceleration | Accepted | Implemented 2026-10-25 |
 | [0045](0045-building-surfaces-and-roofs.md) | Building surfaces and bounded roofs | Accepted | Implemented 2026-10-25 |
 | [0046](0046-moving-portraits-on-the-novel-stage.md) | Opt-in moving portraits on the novel stage (`ui.stage_puppets`) | Accepted | Implemented 2026-10-26 |
-| [0046](0047-headless-scripted-runs.md) | Headless scripted runs (`gozen sim script`) | Accepted | Implemented 2026-10-26 |
+| [0047](0047-headless-scripted-runs.md) | Headless scripted runs (`gozen sim script`) | Accepted | Implemented 2026-10-26 |
 | [0048](0048-live-streams.md) | Live streams: the stream lobby and watch view, the stream data, and the reaction book's whole, exact and except words | Accepted | Implemented 2026-10-27 |
 | [0049](0049-games-without-menus.md) | Games without menus (`menus: none`): no title screen and no game menu, opening on the newest save | Accepted | Implemented 2026-10-27 |
 | [0050](0050-stream-screens-fit-the-window.md) | Stream screens fit the window: a portrait layout on a phone held upright, a landscape one fitted on its side, touch scrolling and the keyboard | Accepted | Implemented 2026-10-27 |
@@ -65,9 +63,8 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0053](0053-planning-components.md) | Composable typed state, calendar, activities, ledgers and planning views | In development | |
 | [0054](0054-typed-event-and-screen-arguments.md) | Typed arguments, scopes and resumable invocations for events and screens | Accepted for phased implementation; event and plain screen arguments, expression speakers and entry targets, and session/player plain screen continuation saves implemented; planning surface continuation pending | |
 | [0055](0055-screen-guides.md) | First-visit screen guides (lit places, other places refused, recorded across plays) and header faces | Accepted and implemented | |
-| [0057](0057-phone-apps.md) | A phone on the screen: a chat, a photo feed and a video held upright or on its side, with puppets in its clips | Accepted and implemented | |
-
 | [0056](0056-compact-yaml-authoring.md) | Compact events, single-item commands, enabled-by-default tactics and copy-based YAML migration | Accepted | |
+| [0057](0057-phone-apps.md) | A phone on the screen: a chat, a photo feed and a video held upright or on its side, with puppets in its clips | Accepted and implemented | |
 
 [ADR 0041](0041-yaml-authoring-and-distribution.md) retires the public Go APIs; current implementation boundaries are in [Boundaries](../architecture/boundaries.md). Earlier entries record historical decisions.
 

@@ -21,7 +21,7 @@ Start a new game with `gozen new <game-dir> --template rpg|novel|campaign`. The 
 
 Use `gozen help --format json` to inspect registered commands and options without loading a game. `gozen book GAME --format json` describes the whole game; add `--section lineage` to select only monster family trees.
 
-For every `sim` command, `--format json` returns a version-1 result with `command`, `status` and `data`; JSONL emits items and a terminal summary. Keep stdout and stderr separate and check the exit status. To inspect a recorded play, use `gozen trace run.jsonl --format json`, or `gozen trace - --format jsonl` for standard input. Repeat `--only KIND` to select kinds; `--check` rejects these display filters and preserves diagnostic codes in its issue records.
+For the measurement commands (`sim battle`, `dive`, `floors`, `design`, `campaign`, `routes` and `breed`), `--format json` returns a version-1 result with `command`, `status` and `data`; JSONL emits items and a terminal summary. Keep stdout and stderr separate and check the exit status. To inspect a recorded play, use `gozen trace run.jsonl --format json`, or `gozen trace - --format jsonl` for standard input. Repeat `--only KIND` to select kinds; `--check` rejects these display filters and preserves diagnostic codes in its issue records.
 
 <!-- verify: run fixture=cave -->
 ```shell
@@ -81,6 +81,8 @@ A first-person dungeon can take a ready look: `gozen theme list` shows the theme
 
 ## Read a reference when the game needs it
 
+- references/cli.md: every CLI command and option, checked against live help.
+- references/commands.md: every event verb and its purpose.
 - references/planning.md: management games: day flows, workspace cards, tickets, drag and drop, messages, video calls, guides, calendars and the office sample.
 - references/minimal.md: a complete two-file game to copy from.
 - references/yaml.md: YAML traps and which feature needs which `schema_version`.
