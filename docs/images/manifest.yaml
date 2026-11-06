@@ -247,7 +247,8 @@ runs:
 #                             pick from another run, and the runs follow one
 #                             another in the order they first appear
 #   jpeg: {width, height, quality}             (quality is ffmpeg's -q:v)
-#   gif: {fps, width, height, colors, crop}    (crop is ffmpeg's w:h:x:y)
+#   gif: {fps, width, height, colors, crop, palette}  (crop is ffmpeg's w:h:x:y;
+#                             palette: scene gives each scene its own palette)
 #   mp4: {fps, width, height, crf}             (H.264 in full color, for the website)
 #   tolerance: share of pixels that may differ in the stale check (default 0.02)
 #
@@ -704,67 +705,67 @@ images:
     run: phone-chat
     frames:
       - {shots: "pc*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
   phone-feed.gif:
     run: phone-feed
     frames:
       - {shots: "pf*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
   phone-video.gif:
     run: phone-video
     frames:
       - {shots: "pv*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
   phone-puppet.gif:
     run: phone-puppet
     frames:
       - {shots: "pp*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
   phone-shop.gif:
     run: phone-shop
     frames:
       - {shots: "ps*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
   phone-bank.gif:
     run: phone-bank
     frames:
       - {shots: "pb*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
   phone-lock.gif:
     run: phone-lock
     frames:
       - {shots: "pl*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
   phone-call.gif:
     run: phone-call
     frames:
       - {shots: "pk*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
   phone-sso.gif:
     run: phone-sso
     frames:
       - {shots: "pa*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
   phone-timeline.gif:
     run: phone-timeline
     frames:
       - {shots: "pt*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
   phone-banner.gif:
     run: phone-banner
     frames:
       - {shots: "pn*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
   phone-support.gif:
     run: phone-support
     frames:
       - {shots: "pu*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
   phone-contact.gif:
     run: phone-contact
     frames:
       - {shots: "pq*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
   novel-stage.gif:
     run: novel-stage
     frames:

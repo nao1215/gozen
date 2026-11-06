@@ -13,6 +13,7 @@ import (
 	"image/gif"
 	_ "image/jpeg" // decode the committed JPEG pictures
 	"image/png"
+	"math"
 	"os"
 	"os/exec"
 	"path"
@@ -678,43 +679,21 @@ func encodeGIF(t *testing.T, work string, frames []string, e gifEncoding, dst st
 	if len(frames) < 2 {
 		return fmt.Errorf("only %d frames", len(frames))
 	}
-	if e.SplitAt != 0 {
+	var cuts []int
+	switch {
+	case e.SplitAt != 0:
 		if e.SplitAt < 2 || e.SplitAt > len(frames)-2 {
 			return fmt.Errorf("split_at %d outside %d frames", e.SplitAt, len(frames))
 		}
-		part := e
-		part.SplitAt = 0
-		stem := strings.TrimSuffix(filepath.Base(dst), ".gif")
-		first, second := filepath.Join(work, stem+"-first.gif"), filepath.Join(work, stem+"-second.gif")
-		if err := encodeGIF(t, work, frames[:e.SplitAt], part, first); err != nil {
+		cuts = []int{e.SplitAt}
+	case e.Palette == "scene":
+		var err error
+		if cuts, err = sceneCuts(frames); err != nil {
 			return err
 		}
-		if err := encodeGIF(t, work, frames[e.SplitAt:], part, second); err != nil {
-			return err
-		}
-		if err := joinGIF(first, second, dst); err != nil {
-			return err
-		}
-	} else {
-		dir := filepath.Join(work, "gif-"+strings.TrimSuffix(filepath.Base(dst), ".gif"))
-		if err := os.MkdirAll(dir, 0o750); err != nil {
-			return err
-		}
-		// Some frames have an alpha channel. A mixed sequence breaks ffmpeg's single
-		// palette (every GIF frame alike, or false colors), so every frame becomes RGB first.
-		if err := opaqueFrames(t, frames, dir); err != nil {
-			return err
-		}
-		filter := "format=rgb24,"
-		if e.Crop != "" {
-			filter += "crop=" + e.Crop + ","
-		}
-		filter += fmt.Sprintf("scale=%d:%d:flags=lanczos,split[a][b];[a]palettegen=max_colors=%d:stats_mode=diff[p];"+
-			"[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle", e.Width, e.Height, max(e.Colors, 2))
-		if err := ffmpeg(t, "-framerate", strconv.Itoa(e.FPS), "-i", filepath.Join(dir, "frame-%04d.png"),
-			"-fps_mode", "cfr", "-filter_complex", filter, "-loop", "0", dst); err != nil {
-			return err
-		}
+	}
+	if err := phasedGIF(t, work, frames, cuts, e, dst); err != nil {
+		return err
 	}
 	if err := slimGIF(dst, slimTolerance); err != nil {
 		return err
@@ -744,6 +723,118 @@ func encodeGIF(t *testing.T, work string, frames []string, e gifEncoding, dst st
 		return fmt.Errorf("the GIF frames are too alike (%d distinct of %d)", len(distinct), len(got))
 	}
 	return nil
+}
+
+// phasedGIF writes the frames as a GIF with a palette of its own for each phase
+// between the cuts, joined in order.
+func phasedGIF(t *testing.T, work string, frames []string, cuts []int, e gifEncoding, dst string) error {
+	if len(cuts) == 0 {
+		return paletteGIF(t, work, frames, e, dst)
+	}
+	stem := strings.TrimSuffix(filepath.Base(dst), ".gif")
+	bounds := append(append([]int{0}, cuts...), len(frames))
+	joined := ""
+	for k := range len(bounds) - 1 {
+		part := filepath.Join(work, fmt.Sprintf("%s-part%d.gif", stem, k))
+		if err := paletteGIF(t, work, frames[bounds[k]:bounds[k+1]], e, part); err != nil {
+			return err
+		}
+		if k == 0 {
+			joined = part
+			continue
+		}
+		next := dst
+		if k < len(bounds)-2 {
+			next = filepath.Join(work, fmt.Sprintf("%s-join%d.gif", stem, k))
+		}
+		if err := joinGIF(joined, part, next); err != nil {
+			return err
+		}
+		joined = next
+	}
+	return nil
+}
+
+// paletteGIF writes the frames as one GIF with one palette.
+func paletteGIF(t *testing.T, work string, frames []string, e gifEncoding, dst string) error {
+	dir := filepath.Join(work, "gif-"+strings.TrimSuffix(filepath.Base(dst), ".gif"))
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return err
+	}
+	// Some frames have an alpha channel. A mixed sequence breaks ffmpeg's single
+	// palette (every GIF frame alike, or false colors), so every frame becomes RGB first.
+	if err := opaqueFrames(t, frames, dir); err != nil {
+		return err
+	}
+	filter := "format=rgb24,"
+	if e.Crop != "" {
+		filter += "crop=" + e.Crop + ","
+	}
+	filter += fmt.Sprintf("scale=%d:%d:flags=lanczos,split[a][b];[a]palettegen=max_colors=%d:stats_mode=diff[p];"+
+		"[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle", e.Width, e.Height, max(e.Colors, 2))
+	return ffmpeg(t, "-framerate", strconv.Itoa(e.FPS), "-i", filepath.Join(dir, "frame-%04d.png"),
+		"-fps_mode", "cfr", "-filter_complex", filter, "-loop", "0", dst)
+}
+
+// Scene cuts: a frame that differs from the one before by sceneCut (the mean
+// change of a coarse grid's brightness, 0 to 1) begins a new phase, at least
+// scenePhase frames after the last one, so a phone over a dimmed scene and the
+// lit scene with its figure each get their colors.
+const (
+	sceneCut   = 0.06
+	scenePhase = 12
+)
+
+// sceneCuts are the frames where a new scene begins.
+func sceneCuts(frames []string) ([]int, error) {
+	grids := make([][]float64, len(frames))
+	jobs := make([]func() error, len(frames))
+	for i, f := range frames {
+		jobs[i] = func() error {
+			g, err := lumaGrid(f)
+			grids[i] = g
+			return err
+		}
+	}
+	if err := parallel(docsJobs(), jobs); err != nil {
+		return nil, err
+	}
+	var cuts []int
+	last := 0
+	for i := 1; i < len(grids); i++ {
+		d := 0.0
+		for k := range grids[i] {
+			d += math.Abs(grids[i][k] - grids[i-1][k])
+		}
+		d /= float64(len(grids[i]))
+		if d >= sceneCut && i-last >= scenePhase && len(grids)-i >= scenePhase {
+			cuts = append(cuts, i)
+			last = i
+		}
+	}
+	return cuts, nil
+}
+
+// lumaGrid is the brightness (0 to 1) of a 32x18 grid of a frame's pixels.
+func lumaGrid(path string) ([]float64, error) {
+	b, err := os.ReadFile(path) //nolint:gosec // A frame the sample wrote.
+	if err != nil {
+		return nil, err
+	}
+	img, err := png.Decode(bytes.NewReader(b))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	r := img.Bounds()
+	out := make([]float64, 0, 32*18)
+	for y := range 18 {
+		for x := range 32 {
+			c := img.At(r.Min.X+(2*x+1)*r.Dx()/64, r.Min.Y+(2*y+1)*r.Dy()/36)
+			cr, cg, cb, _ := c.RGBA()
+			out = append(out, (0.299*float64(cr)+0.587*float64(cg)+0.114*float64(cb))/65535)
+		}
+	}
+	return out, nil
 }
 
 // opaqueFrames writes the frames as RGB pictures frame-0000.png, frame-0001.png, ...

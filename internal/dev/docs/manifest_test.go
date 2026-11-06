@@ -95,6 +95,11 @@ type gifEncoding struct {
 	Colors  int    `yaml:"colors"`
 	SplitAt int    `yaml:"split_at"` // keep two visually distinct phases in order
 	Crop    string `yaml:"crop"`
+	// Palette "scene" gives each scene of the clip its own palette: a clip
+	// whose scenes differ (a phone over a dimmed scene, then the lit scene with
+	// a figure) would else band the figure into gray with the colors the other
+	// frames took.
+	Palette string `yaml:"palette"`
 }
 
 // mp4Encoding writes the frames as an H.264 video in full color (a GIF keeps at
