@@ -540,6 +540,12 @@ func (g *Game) logLastTop() int {
 	_, sh := g.screen()
 	room := sh - 120
 	i := len(g.backlog)
+	// A line taller than the viewport must still be shown. Drawing already
+	// permits the first entry to exceed the available height.
+	if i > 0 {
+		i--
+		room -= g.logEntryH(i)
+	}
 	for i > 0 && room-g.logEntryH(i-1) >= 0 {
 		room -= g.logEntryH(i - 1)
 		i--
