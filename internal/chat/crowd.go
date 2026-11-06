@@ -76,7 +76,7 @@ type Crowd struct {
 	s     *Script
 	rng   *rand.Rand
 	mood  string
-	next  time.Duration
+	next  float64 // nanoseconds; waits may exceed the time.Duration range
 	burst []string
 }
 
@@ -124,11 +124,11 @@ func (c *Crowd) Poll(now time.Duration) []Message {
 	}
 	c.burst = c.burst[:0]
 	if c.next < 0 {
-		c.next = now + c.gap()
+		c.next = float64(now) + c.gap()
 	}
-	for c.next <= now {
+	for c.next <= float64(now) {
 		if len(out) >= maxPerPoll {
-			c.next = now + c.gap()
+			c.next = float64(now) + c.gap()
 			break
 		}
 		lines := c.s.doc.Lines[c.mood]
@@ -139,6 +139,6 @@ func (c *Crowd) Poll(now time.Duration) []Message {
 }
 
 // gap is an exponential wait with mean 1/Rate seconds.
-func (c *Crowd) gap() time.Duration {
-	return time.Duration(-math.Log(1-c.rng.Float64()) / c.s.doc.Rate * float64(time.Second))
+func (c *Crowd) gap() float64 {
+	return -math.Log(1-c.rng.Float64()) / c.s.doc.Rate * float64(time.Second)
 }

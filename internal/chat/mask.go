@@ -3,6 +3,7 @@ package chat
 import (
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/text/unicode/norm"
 )
@@ -68,19 +69,16 @@ func equal(a, b []rune) bool {
 	return true
 }
 
-// foldRunes normalizes s with NFKC cluster by cluster (a base character with the marks
-// that follow it, so a voiced mark written apart and a half-width kana compose), folds
-// each resulting rune and drops the ignored ones. at and end map each folded rune to the
-// first and last rune index in s of the cluster it came from, so the whole original
-// range is hidden even when normalizing changed the length.
+// foldRunes normalizes complete NFKC segments, folds each resulting rune and
+// drops ignored ones. at and end map normalized runes to their original segment,
+// including Hangul sequences whose components are letters rather than marks.
 func foldRunes(s string) (out []rune, at, end []int) {
-	src := []rune(s)
-	for i := 0; i < len(src); {
-		j := i + 1
-		for j < len(src) && isMark(src[j]) {
-			j++
-		}
-		for _, r := range norm.NFKC.String(string(src[i:j])) {
+	i := 0
+	for s != "" {
+		n := norm.NFKC.NextBoundaryInString(s, true)
+		segment := s[:n]
+		j := i + utf8.RuneCountInString(segment)
+		for _, r := range norm.NFKC.String(segment) {
 			switch {
 			case r >= 'ァ' && r <= 'ヶ':
 				r = r - 'ァ' + 'ぁ'
@@ -93,12 +91,7 @@ func foldRunes(s string) (out []rune, at, end []int) {
 			end = append(end, j-1)
 		}
 		i = j
+		s = s[n:]
 	}
 	return out, at, end
-}
-
-// isMark reports whether r attaches to the character before it: a combining mark or a
-// half-width voiced or semi-voiced sound mark.
-func isMark(r rune) bool {
-	return unicode.In(r, unicode.Mn, unicode.Me) || r == 'ﾞ' || r == 'ﾟ'
 }
