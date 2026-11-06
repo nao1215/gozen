@@ -15516,8 +15516,21 @@
     },
     "PhoneMessage": {
       "additionalProperties": false,
-      "description": "One bubble of a chat: exactly one of text, picture and video.",
+      "description": "One bubble of a chat: exactly one of text, picture and video, or only a day's separator.",
       "properties": {
+        "day": {
+          "description": "Interpolated day's separator over the message, such as Yesterday; a message of only a day is the separator alone.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "from": {
           "description": "Interpolated name of the sender, over the bubble.",
           "type": "string",
@@ -15558,7 +15571,7 @@
           "x-type": "boolean"
         },
         "picture": {
-          "description": "Path of a picture under assets/ sent in the chat.",
+          "description": "Path of a picture under assets/ sent in the chat, at its own shape; a press on the newest one, or a click on any, opens it over the screen.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -15570,8 +15583,34 @@
           },
           "x-type": "string"
         },
+        "read": {
+          "description": "True marks the owner's message as read.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
         "text": {
           "description": "Interpolated text of the bubble.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "time": {
+          "description": "Interpolated time shown small beside the bubble, such as 9:41.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -15817,6 +15856,19 @@
           },
           "x-type": "string"
         },
+        "time": {
+          "description": "Interpolated age of the post beside the poster's name, such as 2h or Yesterday.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "video": {
           "$ref": "#/$defs/PhoneVideo",
           "description": "A clip playing in the post's place, looping, instead of a picture.",
@@ -15864,7 +15916,7 @@
           "x-type": "boolean"
         },
         "button": {
-          "description": "Interpolated label of a button; a tap on it puts the phone down.",
+          "description": "Interpolated label of a button; a tap on it, or OK on it after the keys moved to it, puts the phone down.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -15877,7 +15929,7 @@
           "x-type": "string"
         },
         "caption": {
-          "description": "Interpolated line under the picture.",
+          "description": "Interpolated line under the picture or the QR code.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -15991,6 +16043,19 @@
           },
           "x-type": "string[]"
         },
+        "qr": {
+          "description": "Interpolated text drawn as a QR code (a link, a contact), black on white and crisp, with the caption under it.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "set": {
           "additionalProperties": {
             "description": "An expression. gozen check checks its syntax, names and types.",
@@ -16094,6 +16159,19 @@
           },
           "x-type": "number[]"
         },
+        "fade": {
+          "description": "Seconds at the end of each frame over which the next fades in (0 to a frame's length).",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
         "fps": {
           "description": "Frames shown a second (0 is 12).",
           "type": "number",
@@ -16125,6 +16203,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string[]"
+        },
+        "pan": {
+          "description": "True pushes in slowly on each frame, as on a single picture.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
         },
         "picture": {
           "description": "Path of the picture under assets/ that fills the frame; with frames, the poster drawn behind them.",

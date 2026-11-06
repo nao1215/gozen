@@ -74,6 +74,9 @@ The head's horizontal center follows `stand.at` or automatic placement. `stage_s
 - A `page` (a browser bar with `url`, or `title` with `color`) scrolls `rows`: `text` (`size`, `bold`), `picture` (whole, `caption`), `pictures` (grid, `columns` 2 or 3), `item` (icon, title, text, value), `button` (puts the phone down). `locked: '!flag.x'` darkens a picture or grid with a lock and `label`.
 - A `lock` screen shows `time`/`date` and `notices` one a press (`auto` by themselves); `call: true` is an incoming call (OK answers, Cancel declines; list the call twice to ring again).
 - `var: var.x` keeps a button's `id` (or label), `answer` or `decline`; a button's or call's `set` is the `set` command's map. Branch on it after the phone.
+- A page's buttons take the keys and the pad (left, right, Tab ring one; OK presses it). `qr: text` draws a crisp QR code with `caption`.
+- Chat: `time`, `read: true` (owner's), `day` (a separator; a message of only `day` is the separator). Pictures keep their shape and open full screen on a press or a click. Posts: `time`. No `icon`: a circle with the name's first letter.
+- Footage: `fade: 0.3` cross-fades frames, `pan: true` pushes in on each, so a few pictures at a low `fps` look smooth.
 - A feed post with only `text` is a timeline card (`replies`, `reposts`). `app: banner` does not wait: a push banner at the top over any scene; a click opens the notice's `event`.
 
 <!-- verify: parse a fragment of an event; the pictures are the author's files; ann_chat is the author's event -->
