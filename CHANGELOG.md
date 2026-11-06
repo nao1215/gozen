@@ -26,6 +26,44 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 - The event command `phone` shows a phone over the scene, held upright or turned on its side: a chat whose messages arrive one by one (text, pictures and videos), a photo feed turned with a swipe, and a video player. A video is a picture with a puppet in front that moves as on the stage and jiggles at the seconds given (ADR 0057).
 
+### Fixed
+
+- YAML loading terminates with a diagnostic for cyclic merge aliases.
+- Migration no longer panics after comments in YAML with mixed line endings.
+- Migration preserves tab-separated event indentation instead of producing invalid YAML.
+- Migration refuses ambiguous merge-key tokens before preparing edits.
+
+- Dialogue interpolation accepts closing braces inside quoted expression strings.
+- Expression caches no longer retain unlimited expressions or entire dialogue source buffers.
+- Batch simulation rejects trailing JSON and unsafe inline standard-stream arguments.
+- Simulation input workers stop when their game closes.
+- YAML loading rejects extra documents and non-finite initial, presentation, campaign and stream values.
+- Expression truthiness handles integer zero, and remainder arithmetic handles values beyond int64.
+- Game IDs rejected by portable save directories now fail during loading.
+- Cached legacy saves own their payload instead of retaining caller-owned bytes.
+- Battle effects apply states deterministically and saturate oversized numeric results.
+- Dungeon roamers outside a reloaded map no longer index outside its grid.
+- Integer calendar offsets and very wide calendar ranges preserve their intended dates.
+- Split planning work preserves tiny unfinished efforts, observed progress and finite totals.
+- Campaign defaults safely quote references, preserve large troop counts and avoid overflow when sharing survivors.
+- Campaign reports count unowned regions using their actual faction key.
+- Route inspection includes endings and choices nested in authored screens and choice branches.
+- Face inspection previews remain bounded and nonempty for extreme image proportions.
+- Web asset conversion preserves directories that collide with converted file names.
+- Very low chat rates no longer overflow; Unicode masking handles complete normalization segments.
+- Workspace focus and pending sortie swaps recover when their available entries change.
+- Releasing a workspace tap outside its original target cancels the action.
+- Opening the backlog includes an oversized final entry.
+- Landmark tinting preserves premultiplied transparency; text caches distinguish font variants.
+- Phone views release owned resources on load and close, and pass through cursor replay and skip.
+- Saving during a phone refuses to discard the waiting event continuation.
+- Phone validation rejects invalid numeric values and broken puppet assets, with translated diagnostics.
+- Long phone messages can be read from their beginning; feed swipes follow the pointer and use its release position.
+- Phone Auto and Skip shortcuts work, subframe clips play once, and zero-second bounces run.
+- Phone drawing reuses visible layouts and releases offscreen media and puppet drawing resources.
+- Large phone clock values wrap within a day before integer conversion.
+- Upright phones fit narrow viewports as landscape phones already did.
+
 ## v0.16.0 - 2026-11-05
 
 Management games on the workspace screens: day flows, workspace cards, drag and drop, tickets, carousels, messages, full-screen video calls with screen sharing, first-visit guides and glass calendars, shown by the new office sample. The sample and theme pictures no longer claim copyright (CC0 1.0).
