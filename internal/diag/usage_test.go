@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -133,7 +134,7 @@ var reportedText = regexp.MustCompile(`\[(GZN\d{4})\]|"code": ?\\?"(GZN\d{4})`)
 func reported(text string) []Code {
 	var out []Code
 	for _, m := range reportedText.FindAllStringSubmatch(text, -1) {
-		out = append(out, Codes(m[1]+m[2])...)
+		out = append(out, codesInText(m[1]+m[2])...)
 	}
 	return out
 }
@@ -315,5 +316,38 @@ func TestAssertionsRecognizeStructuredCodeMatchers(t *testing.T) {
 	got := assertions(t, sc)
 	if len(got) != 1 || got[0].exit != 2 || !slices.Equal(reported(got[0].text), []Code{Operands}) {
 		t.Fatalf("%+v", got)
+	}
+}
+
+// codeText matches diagnostic codes embedded in E2E assertions.
+var codeText = regexp.MustCompile(`\bGZN(\d{4})\b`)
+
+// codesInText returns every registered code mentioned in text, in order of
+// appearance and without repeats.
+func codesInText(text string) []Code {
+	var out []Code
+	for _, m := range codeText.FindAllStringSubmatch(text, -1) {
+		n, err := strconv.Atoi(m[1])
+		if err != nil {
+			continue
+		}
+		c := Code(n)
+		if _, ok := byCode[c]; ok && !slices.Contains(out, c) {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func TestCodesFindsRegisteredCodesOnceInOrder(t *testing.T) {
+	all := All()
+	a, b := all[0].Code, all[len(all)-1].Code
+	text := "first " + b.String() + " then " + a.String() + " and again " + b.String() + " but GZN9999 is unknown and xGZN" + "0001 is glued"
+	got := codesInText(text)
+	if len(got) != 2 || got[0] != b || got[1] != a {
+		t.Errorf("%v (want [%s %s])", got, b, a)
+	}
+	if len(codesInText("nothing here")) != 0 {
+		t.Error("codes in plain text")
 	}
 }

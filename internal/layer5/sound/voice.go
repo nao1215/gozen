@@ -92,13 +92,6 @@ func stopVoiceLocked() {
 	}
 }
 
-// VoicePlaying reports whether a voice is heard now.
-func VoicePlaying() bool {
-	mu.Lock()
-	defer mu.Unlock()
-	return voicePlayer != nil && voicePlayer.IsPlaying()
-}
-
 // SetVoiceVolume sets the volume of voices (0 to 1).
 func SetVoiceVolume(v float64) {
 	mu.Lock()

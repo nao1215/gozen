@@ -22,7 +22,6 @@ package diag
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -106,9 +105,6 @@ type Entry struct {
 
 // since is the version every code registered before the first release ships in.
 const since = "v0.1.0"
-
-// codeText matches a code in its published form anywhere in a string.
-var codeText = regexp.MustCompile(`\bGZN(\d{4})\b`)
 
 var (
 	registry []Entry
@@ -201,23 +197,6 @@ func Near(c Code) []Entry {
 	for _, e := range All() {
 		if int(e.Code)/100 == int(c)/100 {
 			out = append(out, e)
-		}
-	}
-	return out
-}
-
-// Codes returns every registered code mentioned in text, in order of
-// appearance and without repeats.
-func Codes(text string) []Code {
-	var out []Code
-	for _, m := range codeText.FindAllStringSubmatch(text, -1) {
-		n, err := strconv.Atoi(m[1])
-		if err != nil {
-			continue
-		}
-		c := Code(n)
-		if _, ok := byCode[c]; ok && !slices.Contains(out, c) {
-			out = append(out, c)
 		}
 	}
 	return out
