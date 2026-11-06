@@ -990,3 +990,30 @@ screens:
 		t.Fatal("picture height leaves no caption", h)
 	}
 }
+
+func TestWorkspaceFocusAfterLastActionDisappears(t *testing.T) {
+	fsys := wldWorldFiles(t, `planning:
+  calendar: {start: '2030-01-01', end: '2030-01-02', phases: [morning]}
+  entities: {potter: {name: Potter}}
+screens:
+  studio:
+    title: Studio
+    kind: workspace
+    view: {fullscreen: true}
+    entries:
+    - {label: Count, bounds: [32, 150, 260, 64], do: [{set: {var.counted: 'var.counted+1'}}]}
+    - {label: Finish, bounds: [32, 250, 260, 64], when: '!flag.finished', do: [{set: {flag.finished: true}}]}
+`, nil)
+	fsys["game.yaml"].Data = []byte(strings.Replace(string(fsys["game.yaml"].Data), "schema_version: 4", "schema_version: 10", 1))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "camp"})
+	wldFrames(t, g, 30)
+	g.openScreen("studio", func() {})
+	wldPlay(t, g, "press down\nwait 2\npress z\nwait 8\n", 40)
+	if !g.st.Flags["finished"] || len(top(t, g).entries) != 1 {
+		t.Fatal("last action did not disappear")
+	}
+	wldPlay(t, g, "press z\nwait 8\n", 30)
+	if g.st.Vars["counted"] != float64(1) {
+		t.Fatal("confirmation stayed focused on a removed action", g.st.Vars)
+	}
+}
