@@ -1,5 +1,5 @@
 # Office sample capture (run phone-feed): a photo feed; the posts turn, and a post whose
-# clip plays in its place (pf###). A frame every 5 ticks.
+# clip plays its footage in its place, looping (pf###). A frame every 5 ticks.
 gap 1
 wait 30
 press ok

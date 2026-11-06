@@ -1,6 +1,6 @@
 # Office sample capture (run phone-chat): the team chat on a phone held upright; messages
-# arrive one by one, then a clip sent in the chat turns the phone on its side and plays (pc###).
-# A frame every 5 ticks.
+# arrive one by one, then a clip sent in the chat turns the phone on its side and plays its
+# footage (a recorded call) to the end before Cancel turns it back (pc###). A frame every 5 ticks.
 gap 1
 wait 30
 press ok
@@ -295,7 +295,6 @@ shot pc140
 wait 2
 shot pc141
 wait 2
-press cancel
 shot pc142
 wait 2
 shot pc143
@@ -323,5 +322,50 @@ wait 2
 shot pc154
 wait 2
 shot pc155
+wait 2
+shot pc156
+wait 2
+shot pc157
+wait 2
+shot pc158
+wait 2
+shot pc159
+wait 2
+shot pc160
+wait 2
+shot pc161
+wait 2
+shot pc162
+wait 2
+shot pc163
+wait 2
+press cancel
+shot pc164
+wait 2
+shot pc165
+wait 2
+shot pc166
+wait 2
+shot pc167
+wait 2
+shot pc168
+wait 2
+shot pc169
+wait 2
+shot pc170
+wait 2
+shot pc171
+wait 2
+shot pc172
+wait 2
+shot pc173
+wait 2
+shot pc174
+wait 2
+shot pc175
+wait 2
+shot pc176
+wait 2
+shot pc177
 wait 2
 quit
