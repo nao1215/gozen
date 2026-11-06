@@ -393,7 +393,7 @@ func checkReferences(fsys fs.FS, m manifest, refs []reference) []string {
 		bad = append(bad, err.Error())
 	}
 	for _, e := range entries {
-		if e.Name() == path.Base(manifestPath) {
+		if e.Name() == path.Base(manifestPath) || e.Name() == path.Base(inputsPath) {
 			continue
 		}
 		if !m.listed(e.Name()) {

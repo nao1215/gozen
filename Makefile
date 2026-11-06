@@ -17,7 +17,7 @@ DEADCODE ?= $(GO) run golang.org/x/tools/cmd/deadcode@$(DEADCODE_VERSION)
 # The base the complexity check compares with (CI fetches the history).
 BASE ?= origin/main
 
-.PHONY: deadcode complexity website-player web-runtime e2e-web desktop-runtime website-go-zen website-novel website-campaign website-play-check go-zen go-zen-graphics novel novel-graphics campaign campaign-graphics test coverage lint tidy workflows arch boundary graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
+.PHONY: deadcode complexity website-player web-runtime e2e-web desktop-runtime website-go-zen website-novel website-campaign website-play-check go-zen go-zen-graphics novel novel-graphics campaign campaign-graphics test coverage lint tidy workflows arch boundary graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-images-fresh docs-steps
 
 # One module: ./... includes the gozen command and its internal implementations.
 # Keep ONNX-dependent runtime tests separate; see docs/development/testing.md.
@@ -205,6 +205,11 @@ docs-images:
 
 docs-images-check:
 	GOZEN_DOCS_IMAGES=check $(if $(ONLY),GOZEN_DOCS_IMAGES_ONLY=$(ONLY)) $(XVFB) $(DOCS_TEST) -run '^TestDocImages$$' -v
+
+# The fast check: without a display, hash what makes every picture and compare it
+# with docs/images/inputs.sum (written by docs-images). Seconds instead of minutes.
+docs-images-fresh:
+	$(GO) test ./internal/dev/docs -count=1 -run '^TestDocImageInputs$$'
 
 # Runs the shell steps of README.md and website/content against this checkout.
 docs-steps:
