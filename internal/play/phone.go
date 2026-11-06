@@ -687,8 +687,9 @@ func (g *Game) drawPhoneMedia(dst *ebiten.Image, p *phoneView, key string, c *ph
 		if zoom == 0 {
 			zoom = 1.5
 		}
+		// The head sits a little under the frame's top, clear of the title.
 		ph := h * zoom
-		g.drawPuppet(frame, c.body, w/2, ph*0.96, ph, 1, false, nil)
+		g.drawPuppet(frame, c.body, w/2, ph+h*0.1, ph, 1, false, nil)
 	}
 	if r > 0 {
 		gfx.RoundedMask(frame, float32(r*gfx.Scale()))

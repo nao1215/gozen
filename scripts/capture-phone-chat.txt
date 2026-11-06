@@ -1,5 +1,6 @@
 # Office sample capture (run phone-chat): the team chat on a phone held upright; messages
 # arrive one by one, then a clip sent in the chat turns the phone on its side and plays (pc###).
+# A frame every 5 ticks.
 gap 1
 wait 30
 press ok
@@ -19,6 +20,7 @@ shot pc006
 wait 2
 shot pc007
 wait 2
+press ok
 shot pc008
 wait 2
 shot pc009
@@ -27,7 +29,6 @@ shot pc010
 wait 2
 shot pc011
 wait 2
-press ok
 shot pc012
 wait 2
 shot pc013
@@ -44,11 +45,11 @@ shot pc018
 wait 2
 shot pc019
 wait 2
+press ok
 shot pc020
 wait 2
 shot pc021
 wait 2
-press ok
 shot pc022
 wait 2
 shot pc023
@@ -57,6 +58,7 @@ shot pc024
 wait 2
 shot pc025
 wait 2
+press ok
 shot pc026
 wait 2
 shot pc027
@@ -81,6 +83,7 @@ shot pc036
 wait 2
 shot pc037
 wait 2
+press ok
 shot pc038
 wait 2
 shot pc039
@@ -93,7 +96,6 @@ shot pc042
 wait 2
 shot pc043
 wait 2
-press ok
 shot pc044
 wait 2
 shot pc045
@@ -106,6 +108,7 @@ shot pc048
 wait 2
 shot pc049
 wait 2
+press ok
 shot pc050
 wait 2
 shot pc051
@@ -114,7 +117,6 @@ shot pc052
 wait 2
 shot pc053
 wait 2
-press ok
 shot pc054
 wait 2
 shot pc055
@@ -131,6 +133,7 @@ shot pc060
 wait 2
 shot pc061
 wait 2
+press ok
 shot pc062
 wait 2
 shot pc063
@@ -204,7 +207,6 @@ shot pc096
 wait 2
 shot pc097
 wait 2
-press ok
 shot pc098
 wait 2
 shot pc099
@@ -249,7 +251,6 @@ shot pc118
 wait 2
 shot pc119
 wait 2
-press ok
 shot pc120
 wait 2
 shot pc121
@@ -294,6 +295,7 @@ shot pc140
 wait 2
 shot pc141
 wait 2
+press cancel
 shot pc142
 wait 2
 shot pc143
@@ -321,54 +323,5 @@ wait 2
 shot pc154
 wait 2
 shot pc155
-wait 2
-shot pc156
-wait 2
-shot pc157
-wait 2
-shot pc158
-wait 2
-shot pc159
-wait 2
-press cancel
-shot pc160
-wait 2
-shot pc161
-wait 2
-shot pc162
-wait 2
-shot pc163
-wait 2
-shot pc164
-wait 2
-shot pc165
-wait 2
-shot pc166
-wait 2
-shot pc167
-wait 2
-shot pc168
-wait 2
-shot pc169
-wait 2
-shot pc170
-wait 2
-shot pc171
-wait 2
-shot pc172
-wait 2
-shot pc173
-wait 2
-shot pc174
-wait 2
-shot pc175
-wait 2
-shot pc176
-wait 2
-shot pc177
-wait 2
-shot pc178
-wait 2
-shot pc179
 wait 2
 quit

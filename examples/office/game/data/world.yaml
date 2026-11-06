@@ -43,25 +43,34 @@ events:
         - {mine: true, text: Friday is tight. What about payments?}
         - {from: Daniel Cho, icon: icons/daniel.png, text: Payments first. The form can wait one day.}
         - {from: Nora Quinn, icon: icons/nora.png, picture: share/form.png}
-        - {from: Mia Hart, icon: icons/mia.png, video: {picture: bg/pantry.jpg, text: The client lunch, seconds: 6}}
+        - {from: Mia Hart, icon: icons/mia.png, text: The client says thanks. Here is me telling them it works.}
+        - {from: Mia Hart, icon: icons/mia.png, video: {picture: bg/meeting.jpg, puppet: clip1/puppet.yaml, zoom: 2.2, text: 'Booking demo, client side', seconds: 6, bounce: [1, 3, 4.5]}}
     - say: {who: martin, text: One day. I can sell one day.}
   phone_feed:
-    - say: {who: martin, text: Lunch. Everyone is posting again.}
+    - say: {who: martin, text: Lunch. Mia is posting again.}
     - phone:
         app: feed
         title: Photos
         posts:
-        - {who: mia.hart, icon: icons/mia.png, picture: mia/normal.png, likes: 128, text: 'First week with Harbor. The coffee is serious here.'}
-        - {who: iris.designs, icon: icons/iris.png, picture: bg/pantry.jpg, likes: 64, text: Our pantry finally has a window seat.}
-        - {who: daniel_codes, icon: icons/daniel.png, video: {picture: bg/office.jpg}, likes: 12, text: 'Late night, quiet floor, green tests.'}
-    - say: {who: martin, text: Green tests. At least someone is honest.}
+        - {who: mia.hart, icon: icons/mia.png, picture: phone/photo1.jpg, likes: 128, text: 'Monday fit. Ready for the client call.'}
+        - {who: mia.hart, icon: icons/mia.png, picture: phone/photo2.jpg, likes: 342, text: 'Friday means denim.'}
+        - {who: mia.hart, icon: icons/mia.png, picture: phone/photo3.jpg, likes: 96, text: 'Coffee run before the demo.'}
+        - {who: mia.hart, icon: icons/mia.png, picture: phone/photo4.jpg, likes: 210, text: 'New boots, same deadlines.'}
+        - {who: mia.hart, icon: icons/mia.png, video: {picture: bg/pantry.jpg, puppet: clip3/puppet.yaml, zoom: 1.6, seconds: 8, bounce: [1, 3.5, 6]}, likes: 902, text: 'Pantry dance break. Do not tell Martin.'}
+        - {who: mia.hart, icon: icons/mia.png, picture: phone/photo5.jpg, likes: 505, text: 'Rooftop break between meetings.'}
+        - {who: mia.hart, icon: icons/mia.png, picture: phone/photo6.jpg, likes: 77, text: 'Booth duty at the expo.'}
+        - {who: mia.hart, icon: icons/mia.png, picture: phone/photo7.jpg, likes: 188, text: 'Sweater weather in the office.'}
+        - {who: mia.hart, icon: icons/mia.png, picture: phone/photo8.jpg, likes: 640, text: 'Dressed up for the launch dinner.'}
+        - {who: mia.hart, icon: icons/mia.png, picture: phone/photo9.jpg, likes: 233, text: 'Weekend, no laptop. Almost.'}
+        - {who: mia.hart, icon: icons/mia.png, picture: phone/photo10.jpg, likes: 412, text: 'Last day of the sprint. We shipped.'}
+    - say: {who: martin, text: She posts more than she emails.}
   phone_video:
-    - say: {who: martin, text: The client sent a video of the demo.}
+    - say: {who: martin, text: Mia sent a video from the client office.}
     - phone:
         app: video
         hold: landscape
-        video: {picture: bg/meeting.jpg, text: 'Harbor booking: the demo run', seconds: 42}
-    - say: {who: martin, text: They recorded the whole thing. Good.}
+        video: {picture: bg/office.jpg, puppet: clip2/puppet.yaml, zoom: 2.2, text: 'Mia at the client office: the new booking form', seconds: 20, bounce: [1.5, 4, 6.5, 9]}
+    - say: {who: martin, text: Twenty seconds of her saying it works. Good.}
 profiles:
   martin: {name: Martin Shaw, picture: martin/normal.png, affiliation: Harbor app team, text: Engineering manager. Keeps the plan honest., fields: [{label: Role, value: Manager}, {label: Since, value: '2024'}]}
   elena: {name: Elena Ruiz, picture: elena/normal.png, affiliation: Harbor app team, text: Owns the backlog and the client requests., fields: [{label: Role, value: Product owner}]}

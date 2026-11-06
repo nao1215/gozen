@@ -12,6 +12,8 @@ captured from it (`scripts/capture-office.txt`). The YAML (`game/game.yaml`,
 | `martin/`, `elena/`, `daniel/`, `iris/`, `nora/`, `mia/` | The standing picture of each team member (`normal.png`) | CC0 1.0 |
 | `icons/` | Face crops of the same pictures, for the carousel | CC0 1.0 |
 | `bg/office.jpg`, `bg/meeting.jpg`, `bg/pantry.jpg` | The office floor, the meeting room and the pantry, darkened for the glass panels | CC0 1.0 |
+| `phone/photo1.jpg` to `phone/photo10.jpg` | Mia's photos on the phone's feed (standing pictures on a plain backing) | CC0 1.0 |
+| `clip1/` to `clip4/` | The standing pictures and puppets of the phone's video clips | CC0 1.0 |
 | `faces.json` | The face box of each standing picture, written by `gozen faces` | MIT |
 
 No copyright is claimed in the pictures. To the extent any rights exist, they

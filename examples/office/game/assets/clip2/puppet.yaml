@@ -1,0 +1,10 @@
+base: base.png
+head: {center: [476, 123], radius: 55, neck: [467, 205]}
+soft_sway:
+  - {ellipse: [262, 279, 312, 147], root: top, follow: body, axis: y, stiffness: 38, damping: 5, amount: 0.8, limit: 3, idle: {amplitude: 1.2, period: 1.6}}
+motion:
+  hit: soft_only
+  # Only the soft region moves: the body's breath, sway and tilt are turned off by name.
+  breath: {depth: 0}
+  sway: {angle: 0, shift: 0}
+  tilt: {angle: 0}
