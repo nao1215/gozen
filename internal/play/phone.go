@@ -153,7 +153,7 @@ func (g *Game) updatePhone() bool {
 		p.closing--
 		return p.closing == 0
 	}
-	if g.skipping || g.replaying {
+	if g.skipping || g.replaying || g.fast != nil || g.in.fast {
 		p.closing = 1
 		return false
 	}
@@ -765,6 +765,14 @@ func (p *phoneView) icon(g *Game, path string, size float64) *ebiten.Image {
 	gfx.RoundedMask(img, float32(px)/2)
 	p.icons[key] = img
 	return img
+}
+
+// closePhone discards the presentation when its wait ends or the game resets.
+func (g *Game) closePhone() {
+	if g.phone != nil {
+		g.phone.close()
+		g.phone = nil
+	}
 }
 
 // close frees the phone's own images and puppets.

@@ -1447,6 +1447,7 @@ func (g *Game) newEventRunner() *event.Runner {
 }
 
 func (g *Game) startState() {
+	g.closePhone()
 	g.screenTrace = screenTranscript{}
 	g.st.Calm = g.opts.Calm
 	g.backlog, g.logView = nil, nil
@@ -2243,9 +2244,7 @@ func (g *Game) Handle(e event.Effect) {
 	case event.ImageEffect:
 		g.Image(e.Picture)
 	case event.PhoneEffect:
-		if g.phone != nil {
-			g.phone.close()
-		}
+		g.closePhone()
 		g.phone = newPhoneView(e.Phone)
 	case event.SoundEffect:
 		g.SFX(e.Name)
@@ -2296,6 +2295,7 @@ func (g *Game) Close() error {
 	if g.tr != nil {
 		err = errors.Join(err, g.tr.err)
 	}
+	g.closePhone()
 	g.closePuppets()
 	if g.drawn != nil { // no first frame to wait for any more
 		g.drawnOnce.Do(func() { close(g.drawn) })
