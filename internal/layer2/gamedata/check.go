@@ -234,7 +234,11 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 	c.phoneLock(where, p, names)
 	if p.Var != "" {
 		if !hasPhoneResult(p) {
-			c.errorf(diag.Shape, where+".var", "var needs a page button or a call to keep (a feed keeps a like with the post's set)")
+			hint := ""
+			if p.App == "feed" {
+				hint = " (a feed keeps a like with the post's set)"
+			}
+			c.errorf(diag.Shape, where+".var", "var needs a page button or a call to keep%s", hint)
 		}
 		c.assignments(where+".var", map[string]Expr{p.Var: MustExpr(`""`)}, names)
 	}

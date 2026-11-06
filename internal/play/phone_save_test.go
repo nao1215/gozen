@@ -221,3 +221,53 @@ func TestPhoneFeedLikesSaveReplays(t *testing.T) {
 		t.Fatalf("loaded at %q, vars %v", at(h), h.st.Vars)
 	}
 }
+
+// TestPhoneSaveAfterPutDownUnread: a page put down without its buttons answers
+// -1, and a save made after it holds that answer and loads with nothing kept.
+func TestPhoneSaveAfterPutDownUnread(t *testing.T) {
+	g := phoneSaveGame(t)
+	for range 60 {
+		if g.phone != nil && g.phone.ready() {
+			break
+		}
+		if g.phone == nil && g.fast == nil && at(g) == "Start." {
+			btlKey(g, btnOK)
+		}
+		sysFrames(t, g, 1)
+	}
+	if g.phone == nil {
+		t.Fatal("the page did not come up")
+	}
+	g.phone.closing = phoneRise
+	for range 60 {
+		if at(g) == "Before." {
+			break
+		}
+		sysFrames(t, g, 1)
+	}
+	if at(g) != "Before." {
+		t.Fatalf("at %q", at(g))
+	}
+	saved, err := g.saveBytes()
+	if err != nil {
+		t.Fatalf("a save after a page put down unread: %v", err)
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	h := phoneSaveGame(t)
+	t.Cleanup(func() {
+		if err := h.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	sysFrames(t, h, 2)
+	st, err := rpg.Parse(h.db, saved, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.loadSavedGame(st)
+	if h.failure != nil || at(h) != "Before." || h.st.Vars["pick"] != nil {
+		t.Fatalf("loaded at %q, vars %v: %v", at(h), h.st.Vars, h.failure)
+	}
+}

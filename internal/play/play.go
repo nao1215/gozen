@@ -1930,7 +1930,10 @@ func (g *Game) answerPhone(result int) {
 			result = f.answers[k]
 		}
 	}
-	g.emit("answer", traceLine{"index": result})
+	// phone tells a trace's reader that index is the phone's result (a
+	// button's or a call's place, or a feed's likes, a bit a kept post), not a
+	// choice's option.
+	g.emit("answer", traceLine{"index": result, "phone": true})
 	g.evAnswers = append(g.evAnswers, result)
 	g.events.Answer(result)
 }
@@ -1947,7 +1950,12 @@ func (g *Game) updateTap() bool {
 }
 
 func (g *Game) begin(r event.Request) {
-	if q, ok := event.ReplayRequest(r); ok {
+	if tap, ok := r.(event.Tap); ok && tap.Results > 0 {
+		// A screen transcript keeps answers to choices and screens only, so
+		// one replayed past a phone's result (a button, a call, a feed's
+		// likes) would lose it: such a screen root is not saved mid-screen.
+		g.screenTrace.blocked = true
+	} else if q, ok := event.ReplayRequest(r); ok {
 		g.recordScreenView(q)
 	} else if _, ok := r.(event.Open); !ok {
 		g.screenTrace.blocked = true

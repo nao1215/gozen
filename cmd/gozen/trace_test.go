@@ -98,6 +98,7 @@ func TestPlayTracePrintsEveryKindOfRecord(t *testing.T) {
 		`{"t":"diverge","tick":95,"why":"x"}`,
 		`{"t":"end","tick":96}`,
 		`{"t":"custom","tick":97,"anything":1}`,
+		`{"t":"answer","tick":98,"index":5,"phone":true}`,
 	)
 	out, stderr := invoke(t, 0, "trace", file)
 	if stderr != "" {
@@ -130,6 +131,7 @@ func TestPlayTracePrintsEveryKindOfRecord(t *testing.T) {
 		{"00:01.22 resume", "load at line 5 of intro (reached say)"},
 		{"00:01.23 notice", "notice: Saved"},
 		{"00:01.25 answer", "choice #2"},
+		{"00:01.63 answer", "phone result 5"},
 		{"00:01.27 scene", "title > field  @camp"},
 		{"00:01.28 battle", "The foe appears."},
 		{"00:01.30 battle", "[cut-in] Spark"},

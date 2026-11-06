@@ -231,3 +231,67 @@ events:
 		t.Fatalf("the banner waited: %+v, effects %d", say, len(h.got))
 	}
 }
+
+// TestPhoneUnansweredPutDown: a driver that runs on past a phone's Tap
+// without answering it (headless runs, a session) puts the phone down unread:
+// the next choice's answer goes to the choice, not to the feed or the page,
+// and an event that ends on such a phone ends.
+func TestPhoneUnansweredPutDown(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+events:
+  e:
+    do:
+      - phone: {app: feed, posts: [{picture: x.png, set: {flag.liked0: true}}, {picture: x.png, set: {flag.liked1: true}}]}
+      - phone: {app: page, rows: [{button: Go, set: {flag.went: true}}]}
+      - choice:
+          - {label: A, do: [{set: {flag.a: true}}]}
+          - {label: B, do: [{set: {flag.b: true}}]}
+      - phone: {app: feed, posts: [{picture: x.png, set: {flag.last: true}}]}
+`})
+	st := testgame.State(db, 1)
+	r := event.New(db, st, &phoneHost{})
+	r.Log = func(err error) { t.Error(err) }
+	r.Start(db.Events["e"].Do)
+	for range 20 {
+		if !r.Running() {
+			break
+		}
+		if _, ok := r.Next().(event.Choice); ok {
+			r.Answer(1)
+		}
+	}
+	if r.Running() {
+		t.Fatal("the runner kept running after an unanswered phone ended the event")
+	}
+	if st.Flags["b"] != true || st.Flags["a"] == true || st.Flags["liked0"] == true || st.Flags["liked1"] == true || st.Flags["went"] == true || st.Flags["last"] == true {
+		t.Fatalf("flags %v: the choice's answer went to a phone, or an unread phone kept something", st.Flags)
+	}
+}
+
+// TestPhoneEmptyButtonLabelKeepsResults: a button whose label fills to
+// nothing is still a button on the screen, so the screen and the runner count
+// the same results and the second button keeps its own set.
+func TestPhoneEmptyButtonLabelKeepsResults(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+events:
+  e:
+    do:
+      - set: {var.none: '""'}
+      - phone: {app: page, rows: [{button: "{var.none}", id: first, set: {flag.first: true}}, {button: Second, set: {flag.second: true}}]}
+`})
+	st := testgame.State(db, 1)
+	h := &phoneHost{}
+	r := event.New(db, st, h)
+	r.Log = func(err error) { t.Error(err) }
+	r.Start(db.Events["e"].Do)
+	r.Next()
+	shown := h.got[0].Phone
+	if shown.Rows[0].Button != "first" || len(shown.Results()) != 2 {
+		t.Fatalf("the empty label dropped the button: %q, %d results", shown.Rows[0].Button, len(shown.Results()))
+	}
+	r.Answer(1)
+	r.Next()
+	if st.Flags["second"] != true || st.Flags["first"] == true {
+		t.Fatalf("flags %v", st.Flags)
+	}
+}

@@ -136,6 +136,9 @@ func (c *command) traceCmd() clihelp.Operation {
 				what = "notice: " + str(l["text"])
 			case "answer":
 				what = fmt.Sprintf("choice #%v", num(l["index"])+1)
+				if l["phone"] == true {
+					what = fmt.Sprintf("phone result %v", num(l["index"]))
+				}
 			case "scene":
 				what = strings.Join(strs(l["stack"]), " > ") + "  @" + str(l["location"])
 			case "battle":

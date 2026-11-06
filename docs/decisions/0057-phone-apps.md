@@ -45,7 +45,10 @@ the player's hand and cannot play anything.
      each post with a `set` (at most 31), and a save and a replay keep that one
      number as they keep a button's index. A feed has no `var`: a per-post
      `set` already says what each like means, and one var could not hold
-     several likes without a list type the expressions lack. `browse: true`
+     several likes without a list type the expressions lack. Only the
+     pointer likes, as on a phone: the keys and the pad scroll and step, so
+     a like is the player's choice and a story should not need one.
+     `browse: true`
      keeps nothing, and `gozen check` rejects a `set` under it. (Added in
      v0.19.0.) A caption
      too long for its lines is wrapped smaller and drawn at that size.

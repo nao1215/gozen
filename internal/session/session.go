@@ -419,6 +419,12 @@ func (s *Session) next() Request {
 				}
 				continue
 			}
+			if tap, ok := r.(event.Tap); ok && tap.Results > 0 {
+				// A session shows no phone, so it is put down unread (the
+				// runner drops it on the next Next); its answer is kept as
+				// play keeps one, so a load replays the same answers.
+				s.at.answers = append(s.at.answers, -1)
+			}
 			q := s.request(r)
 			switch q.Kind {
 			case "say", "choice":

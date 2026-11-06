@@ -52,7 +52,7 @@ func TestPhoneChecks(t *testing.T) {
 		{"bad post set", `phone: {app: feed, posts: [{picture: x.png, set: {nope: 1}}]}`, `phone.posts[0].set`},
 		{"var on a feed", `phone: {app: feed, var: var.x, posts: [{picture: x.png, set: {flag.liked: true}}]}`, `phone.var: var needs a page button or a call to keep (a feed keeps a like with the post's set)`},
 		{"too many kept likes", "phone: {app: feed, posts: [" + strings.Repeat("{text: Hi, set: {flag.x: true}}, ", 32) + "]}", `phone.posts[31].set: a feed keeps the likes of at most 31 posts with set`},
-		{"var without result", `phone: {app: chat, var: var.x, messages: [{text: Hi}]}`, `phone.var: var needs a page button or a call to keep`},
+		{"var without result", `phone: {app: chat, var: var.x, messages: [{text: Hi}]}`, `phone.var: var needs a page button or a call to keep [`},
 		{"set on text", `phone: {app: page, rows: [{text: Hi, set: {var.x: 1}}]}`, `only a button has set or id`},
 		{"bad set", `phone: {app: page, rows: [{button: Go, set: {nope: 1}}]}`, `phone.rows[0].set`},
 		{"locked", `phone: {app: page, rows: [{pictures: [x.png], locked: '!flag.supported', label: Supporters only}, {picture: x.png, locked: true}]}`, ""},

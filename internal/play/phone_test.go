@@ -1384,6 +1384,18 @@ func TestPhoneFeedAcross(t *testing.T) {
 	if got := g.feedPictureAt(p, posts, at); got != 1 {
 		t.Fatalf("the picture under the pointer is post %d, want the page on the screen 1", got)
 	}
+	// Mid-slide two pages show: the one under the pointer is tapped, not
+	// the nearest (page 1 here, while the right edge shows page 2).
+	settled := p.scroll
+	p.scroll = settled + 0.4*w
+	right := image.Pt(int(sx+w-10), y)
+	if got := g.feedPictureAt(p, posts, right); got != 2 {
+		t.Fatalf("mid-slide the right edge is post %d, want 2", got)
+	}
+	if got := g.feedPictureAt(p, posts, image.Pt(int(sx+10), y)); got != 1 {
+		t.Fatalf("mid-slide the left edge is post %d, want 1", got)
+	}
+	p.scroll = settled
 	g.in = input{pdown: true, pup: true, click: true, mouse: at}
 	g.updatePhone()
 	if !p.liked[1] || p.liked[0] {
@@ -1447,5 +1459,10 @@ func TestPhoneFeedLikeTapAnswers(t *testing.T) {
 	g.updatePhone()
 	if !p.liked[1] || p.answer() != 1 {
 		t.Fatalf("a tap on the kept post: liked %v answer %d", p.liked, p.answer())
+	}
+	g.in = input{pdown: true, pup: true, click: true, mouse: at}
+	g.updatePhone()
+	if p.liked[1] || p.answer() != 0 {
+		t.Fatalf("a second tap did not take the like back: liked %v answer %d", p.liked, p.answer())
 	}
 }

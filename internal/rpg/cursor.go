@@ -35,7 +35,9 @@ type Cursor struct {
 	Arrival bool `json:"arrival,omitempty"`
 	// Line is the count of lines and choices shown, the one on the screen included.
 	Line int `json:"line"`
-	// Answers are the options taken in the event, in order.
+	// Answers are the options taken in the event, in order, and the results
+	// of its phones (-1 for a phone put down with nothing kept; a feed's likes
+	// as bits). The replay checks a choice's against its options.
 	Answers []int `json:"answers,omitempty"`
 	// Opened are the parameterless events a phone banner's click opened while the
 	// event ran, in order: a loader queues them after the event again, as the click did.
@@ -58,6 +60,10 @@ type Resume struct {
 	Rand   []byte
 }
 
+// badAnswer tells an answer no request takes: below -1, the result of a
+// phone put down with nothing kept, which a choice's replay rejects itself.
+func badAnswer(n int) bool { return n < -1 }
+
 // valid checks the dialogue cursor or bounded input transcript shape. The frontend
 // must also check reachability against the named root before installing the state.
 func (c Cursor) valid() bool {
@@ -68,7 +74,7 @@ func (c Cursor) valid() bool {
 		if c.Line == 0 && (len(c.Answers) != 0 || c.Inputs[0].Request == "") {
 			return false
 		}
-		if slices.ContainsFunc(c.Answers, func(n int) bool { return n < 0 }) {
+		if slices.ContainsFunc(c.Answers, badAnswer) {
 			return false
 		}
 		for _, input := range c.Inputs {
@@ -83,7 +89,7 @@ func (c Cursor) valid() bool {
 		return true
 	}
 	// Line 0 begins a named event from its start (a save at a checkpoint).
-	return (c.Line >= 1 || c.Line == 0 && c.Event != "" && len(c.Answers) == 0) && (c.Event == "") == c.Arrival && !slices.ContainsFunc(c.Answers, func(n int) bool { return n < 0 })
+	return (c.Line >= 1 || c.Line == 0 && c.Event != "" && len(c.Answers) == 0) && (c.Event == "") == c.Arrival && !slices.ContainsFunc(c.Answers, badAnswer)
 }
 
 // WithCursor adds a cursor and the random bytes to a save made by Save at the start of the

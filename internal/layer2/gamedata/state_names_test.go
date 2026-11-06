@@ -166,3 +166,22 @@ func TestDeclaredStateInitialNumbersAreFinite(t *testing.T) {
 		})
 	}
 }
+
+// TestSetWarningsReadPhoneSets: a page button's, a call's and a feed post's
+// set run as a set command does, so they are warned of the same way.
+func TestSetWarningsReadPhoneSets(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/phone.yaml": `
+events:
+  p:
+    do:
+      - phone: {app: feed, posts: [{picture: x.png, set: {var.b: var.a, var.a: 1}}]}
+      - phone: {app: page, rows: [{button: Go, set: {var.d: var.c, var.c: 1}}]}
+      - phone: {app: lock, notices: [{title: A, call: true, set: {var.f: var.e, var.e: 1}}]}
+`})
+	warnings := fmt.Sprint(db.SetWarnings())
+	for _, want := range []string{"posts[0].set.var.b", "rows[0].set.var.d", "notices[0].set.var.f"} {
+		if !strings.Contains(warnings, want) {
+			t.Errorf("no warning at %s: %s", want, warnings)
+		}
+	}
+}

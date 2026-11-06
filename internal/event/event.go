@@ -5,6 +5,7 @@
 package event
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -509,8 +510,12 @@ type Runner struct {
 	asked *data.Command // the choice whose answer is waited for
 	// likes is the feed whose answer is waited for: a number with a bit for
 	// each post it keeps liked (data.PhoneCue.Liking), not an option's index.
-	likes  *data.PhoneCue
-	battle *data.Command
+	likes *data.PhoneCue
+	// phoneWait tells that the options or likes waiting are a phone's: a
+	// driver that runs on without answering its Tap (headless, a session) puts
+	// the phone down unread, so the next choice's answer is not taken for it.
+	phoneWait bool
+	battle    *data.Command
 	// battleBefore is the record of the battle before the one asked for: a new record
 	// when the answer comes means a battle was fought and left its last_kill counts
 	battleBefore *rpg.BattleOutcome
@@ -614,7 +619,7 @@ func (r *Runner) Stop() {
 	r.afterPending = false
 	r.offers = nil
 	r.stack, r.notes, r.options, r.battle, r.later, r.pick, r.ups, r.walks = nil, nil, nil, nil, nil, nil, nil, nil
-	r.likes = nil
+	r.likes, r.phoneWait = nil, false
 }
 
 // runLater runs cmds separately from the current event (and its end), after the current event finishes.
@@ -651,6 +656,7 @@ func (r *Runner) logf(err error) {
 
 // Answer answers the last Choice (the option's index) or Battle (BattleWon ...).
 func (r *Runner) Answer(n int) {
+	r.phoneWait = false
 	switch {
 	case r.likes != nil:
 		feed := r.likes
@@ -837,6 +843,9 @@ func (r *Runner) Frames() (cmds [][]data.Command, pc []int) {
 // Next runs commands until one needs the screen, and returns it (nil when the events are
 // over).
 func (r *Runner) Next() Request {
+	if r.phoneWait {
+		r.phoneWait, r.likes, r.options, r.pick = false, nil, nil, nil
+	}
 	if r.gameOver {
 		r.gameOver = false
 		r.Stop()
@@ -1291,7 +1300,7 @@ func (r *Runner) run(c *data.Command) Request {
 		}
 		if likes := c.Phone.Liking(); len(likes) > 0 {
 			r.asked, r.optionAt, r.pick, r.options = nil, nil, nil, nil
-			r.likes = c.Phone
+			r.likes, r.phoneWait = c.Phone, true
 			return Tap{Results: len(likes)}
 		}
 		results := c.Phone.Results()
@@ -1301,6 +1310,7 @@ func (r *Runner) run(c *data.Command) Request {
 			for i, res := range results {
 				r.options[i] = data.ChoiceOption{ID: res.ID, Do: c.Phone.Do(res)}
 			}
+			r.phoneWait = true
 		}
 		return Tap{Results: len(results)}
 	case "call_view":
@@ -1680,7 +1690,15 @@ func (r *Runner) fillPhone(p data.PhoneCue, env expr.Env) data.PhoneCue {
 	p.Rows = append([]data.PhoneRow(nil), p.Rows...)
 	for i := range p.Rows {
 		row := &p.Rows[i]
-		row.Text, row.Caption, row.Button, row.Label = fill(row.Text), fill(row.Caption), fill(row.Button), fill(row.Label)
+		button := fill(row.Button)
+		if button == "" && row.Button != "" {
+			// A label that fills to nothing stays a button (its id, else as
+			// written): the screen counts its results from the filled rows and
+			// the runner from the written ones, so a button dropped here would
+			// shift every later button's result onto the one before it.
+			button = cmp.Or(row.ID, row.Button)
+		}
+		row.Text, row.Caption, row.Button, row.Label = fill(row.Text), fill(row.Caption), button, fill(row.Label)
 		row.QR = fill(row.QR)
 		if row.Locked.Set() {
 			shut, err := row.Locked.Bool(env)

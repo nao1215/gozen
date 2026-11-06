@@ -20,7 +20,8 @@ import (
 
 // phoneView is a phone shown over the scene by the phone command (ADR 0057):
 // held upright or on its side, with a chat, a photo feed or a video on it. It
-// changes no state; the event waits on a Tap until the player puts it down.
+// changes no state itself: the event waits on a Tap until the player puts it
+// down and keeps what answer says (a button, a call, the posts liked).
 type phoneView struct {
 	cue data.PhoneCue
 	// age counts ticks since the phone came up; closing counts down the ticks
