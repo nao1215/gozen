@@ -41,6 +41,37 @@ ui:
 
 The head's horizontal center follows `stand.at` or automatic placement. `stage_scale` multiplies size around the head; `stage_drop` shifts the head top. It does not apply to moving puppets, battle cut-ins or the `box` window.
 
+## A phone on the screen
+
+`phone` shows a phone over the scene and waits until the player puts it down (ADR 0056). It changes no state; Skip passes it. `app` is `chat`, `feed` or `video`, each with its own list; `hold: landscape` turns the phone on its side.
+
+<!-- verify: parse a fragment of an event; the pictures and the puppet are the author's files -->
+```yaml
+- phone:
+    app: chat
+    title: Team
+    messages:
+    - {from: Ann, icon: icons/ann.png, text: Are you up?}
+    - {mine: true, text: Now I am.}
+    - {from: Ann, icon: icons/ann.png, picture: photos/cake.png}
+    - {from: Ann, icon: icons/ann.png, video: {picture: bg/room.png, puppet: ann/puppet.yaml, text: Look, seconds: 8, bounce: [2, 5]}}
+- phone:
+    app: feed
+    title: Photos
+    posts:
+    - {who: ann, icon: icons/ann.png, picture: photos/beach.png, likes: 120, text: Day off.}
+    - {who: ann, icon: icons/ann.png, video: {picture: bg/room.png, puppet: ann/puppet.yaml}, likes: 300, text: Dance.}
+- phone:
+    app: video
+    hold: landscape
+    video: {picture: bg/stage.png, puppet: ann/puppet.yaml, zoom: 1.6, text: Live clip, seconds: 30, bounce: [4, 9.5]}
+```
+
+- A chat shows its first message when the phone comes up; a press brings the next, another's after typing dots. A press on the newest video turns the phone on its side and plays it; Cancel goes back to the chat. A message is exactly one of `text`, `picture` and `video`.
+- A feed shows one post at a time: left and right or a swipe turn them, a click likes one, OK on the last puts the phone down. A post is a `picture` or a `video` (it plays in place, looping).
+- A video is made of a `picture` (pushed in slowly) and an optional `puppet` in front, `zoom` times the frame's height (1.5 by default: the upper body), jiggling at each second in `bounce`. `seconds` is 30 by default.
+- Use a portrait's face or bust for `icon`; tall standing pictures are cropped from their top. The status bar shows `var.clock_minutes` (minutes since midnight) when the game sets it.
+
 ## Picture limits
 
 Pictures may be up to 8192 pixels per side, 33,554,432 pixels in all and 64 MiB encoded, so a 4096 by 6144 portrait works as it is. `gozen check` tests every actor face PNG against these limits, even one no profile uses. A decoded image takes up to 128 MiB of memory; export pictures near the size they are shown and test the target devices.

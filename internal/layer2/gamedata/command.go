@@ -113,9 +113,9 @@ type Command struct {
 	// on it: a chat, a photo feed or a video (ADR 0056). It changes no state; the
 	// event waits until the player puts the phone down.
 	Phone *PhoneCue `yaml:"phone" command:"verb" json:",omitempty"`
-	SFX      SFXCue       `yaml:"sfx" command:"verb"`
-	Exp      Expr         `yaml:"exp" command:"verb"`
-	Learn    *Learn       `yaml:"learn" command:"verb"`
+	SFX   SFXCue    `yaml:"sfx" command:"verb"`
+	Exp   Expr      `yaml:"exp" command:"verb"`
+	Learn *Learn    `yaml:"learn" command:"verb"`
 	// ResetTree gives back the skill points put into the skill tree of an actor (an id, or
 	// "all" for everyone who has joined): to raise it again another way.
 	ResetTree string `yaml:"reset_tree" command:"verb"`

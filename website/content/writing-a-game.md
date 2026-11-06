@@ -411,6 +411,32 @@ Every standing figure breathes, blinks and sways its hair and swaying parts; onl
 
 A line counts as read by its source: the speaker and the text as written, before `{expressions}` are filled in. The read lines are kept in `read.json` beside the saves, so they last across saves and new games. Runs for testing (`--script`, `--start`, autoplay) do not touch them unless you pass `--save-dir`. In a trace, every `say` line says whether it was read, and `gozen trace --check` fails when skipping passed a line that was not.
 
+### A phone on the screen
+
+`phone` shows a phone over the scene and waits until the player puts it down ([ADR 0056](https://github.com/nao1215/gozen/blob/main/docs/decisions/0056-phone-apps.md)). It changes no state, and Skip passes it. `app` names what is on it, each with its own list, and `hold: landscape` turns the phone on its side.
+
+<!-- verify: parse a fragment of an event; the pictures and the puppet are the author's files -->
+```yaml
+- phone:
+    app: chat
+    title: Team
+    messages:
+    - {from: Ann, icon: icons/ann.png, text: Are you up?}
+    - {mine: true, text: Now I am.}
+    - {from: Ann, icon: icons/ann.png, video: {picture: bg/room.png, puppet: ann/puppet.yaml, text: Look, seconds: 8, bounce: [2, 5]}}
+- phone:
+    app: feed
+    title: Photos
+    posts:
+    - {who: ann, icon: icons/ann.png, picture: photos/beach.png, likes: 120, text: Day off.}
+- phone:
+    app: video
+    hold: landscape
+    video: {picture: bg/stage.png, puppet: ann/puppet.yaml, text: Live clip, seconds: 30, bounce: [4, 9.5]}
+```
+
+A chat shows its first message when the phone comes up, and each press brings the next, someone else's after typing dots; a message is text, a picture or a video, and a press on the newest video turns the phone on its side and plays it until Cancel turns it back. A feed shows one post at a time; left and right or a swipe turn them, a click likes one, and a post's video plays in its place. A video is a picture pushed in slowly with an optional puppet in front, `zoom` times the frame's height (1.5, its upper body, by default), breathing and swaying as on the stage and jiggling at each second in `bounce`.
+
 ## Campaigns
 
 A campaign (`schema_version: 5`) is a war of regions over turns in the same game as its towns and dungeons. `regions` are the land (who borders whom, the owner, the garrison, the values such as wealth, the terrain, the troop that defends it), `factions` the sides with their colours, capitals and `ai` rules, and `campaign` in `game.yaml` the player's side, the turns, the generals (actors, with their troops), the orders and how a march is decided ([the recipe](/cookbook/#make-a-campaign)).
