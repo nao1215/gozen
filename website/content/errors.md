@@ -480,7 +480,7 @@ Fix: Check the option in the command's --help.
 
 A long option was written with one dash.
 
-Options follow the GNU style (ADR 0018). A long name with one dash, such as -seed, would be read as the short options -s -e -e -d, so it is refused instead.
+Options follow the GNU style. A long name with one dash, such as -seed, would be read as the short options -s -e -e -d, so it is refused instead.
 
 Fix: Write the long option with two dashes, such as --seed.
 

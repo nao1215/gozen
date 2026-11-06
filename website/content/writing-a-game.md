@@ -428,7 +428,7 @@ A line counts as read by its source: the speaker and the text as written, before
 
 ### A phone on the screen
 
-`phone` shows a phone over the scene and waits until the player puts it down ([ADR 0057](https://github.com/nao1215/gozen/blob/main/docs/decisions/0057-phone-apps.md)). It changes no state, and Skip passes it. `app` names what is on it, each with its own list, and `hold: landscape` turns the phone on its side.
+`phone` shows a phone over the scene and waits until the player puts it down. It changes no state, and Skip passes it. `app` names what is on it, each with its own list, and `hold: landscape` turns the phone on its side.
 
 <!-- verify: parse a fragment of an event; the pictures and the puppet are the author's files -->
 ```yaml

@@ -81,7 +81,7 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 
 ### Novel games
 
-`ui.message: novel` makes a visual novel. All from [After the Pass](examples/novel), the novel sample, at 1920x1080. `phone` shows a phone over the scene, with a chat, a photo feed or a video playing footage ([ADR 0057](docs/decisions/0057-phone-apps.md)), from the office sample.
+`ui.message: novel` makes a visual novel. All from [After the Pass](examples/novel), the novel sample, at 1920x1080. `phone` shows a phone over the scene, with a chat, a photo feed or a video playing footage ([A phone on the screen](https://nao1215.github.io/gozen/writing-a-game/#a-phone-on-the-screen)), from the office sample.
 
 | Roll back (Q, wheel) | Skip to the line not read (N) |
 |:--|:--|
