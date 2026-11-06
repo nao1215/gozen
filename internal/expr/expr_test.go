@@ -38,6 +38,8 @@ func TestEval(t *testing.T) {
 		{"(1 + 2) * 3", 9.0},
 		{"-2 + 5", 3.0},
 		{"7 % 3", 1.0},
+		{"9223372036854775808 % 3", 2.0},
+		{"100000000000000000000 % 7", 2.0},
 		{"-1 % 3", 2.0},
 		{"10 / 0", 0.0},
 		{"self.hp_rate < 0.3", true},
@@ -236,5 +238,17 @@ func TestKeyPatterns(t *testing.T) {
 	var empty *Expr
 	if got := empty.KeyPatterns("var"); len(got) != 0 {
 		t.Fatal(got)
+	}
+}
+
+func TestNumericTruthinessRepresentation(t *testing.T) {
+	for _, v := range []any{int(0), int64(0), float64(0), int(1), int64(1), float64(1)} {
+		n, _ := ToNumber(v)
+		for _, source := range []string{"!!v", "v ? true : false", "v || false", "v && true"} {
+			got, err := mustParse(source).Eval(Map{"v": v})
+			if err != nil || got != (n != 0) {
+				t.Errorf("%s with %T(%v): got %v, %v", source, v, v, got, err)
+			}
+		}
 	}
 }

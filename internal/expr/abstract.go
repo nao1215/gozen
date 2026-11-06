@@ -417,6 +417,17 @@ func remainder(a, b, c, d float64) Range {
 	if c != d || math.IsInf(c, 0) {
 		return anyNumber()
 	}
+	// Outside exactly represented integer bounds, narrowing through int64
+	// can wrap and float rounding can include the divisor itself.
+	if math.Abs(a) >= 1<<53 || math.Abs(b) >= 1<<53 || math.Abs(c) >= 1<<53 {
+		if math.Trunc(c) == 0 {
+			return Number(0)
+		}
+		if c > 0 {
+			return Between(0, math.Trunc(c))
+		}
+		return anyNumber()
+	}
 	bi := int64(c)
 	if bi == 0 {
 		return Number(0)
