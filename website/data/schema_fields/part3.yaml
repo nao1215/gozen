@@ -301,6 +301,42 @@ MessageCue:
   event: "The parameterless event run under the bubble when the message is opened; it asks for the decision (a choice). Required."
   tag: "Short interpolated mark on the notification and the bubble, such as DM for a one-to-one message."
 
+PhoneCue:
+  _: "A phone over the scene (ADR 0057); the event waits until it is put down."
+  hold: "portrait (the default) or landscape: on its side, the phone comes up upright and turns a quarter."
+  app: "chat, feed or video; names the one list the phone shows."
+  title: "Interpolated header of the app."
+  messages: "The chat's messages, the first shown when the phone comes up and each press bringing the next."
+  posts: "The feed's posts, one on the screen at a time."
+  video: "The video app's clip."
+
+PhoneMessage:
+  _: "One bubble of a chat: exactly one of text, picture and video."
+  from: "Interpolated name of the sender, over the bubble."
+  icon: "Path of the sender's round picture under assets/."
+  mine: "True puts the bubble on the right, as sent by the phone's owner; it comes without typing dots."
+  text: "Interpolated text of the bubble."
+  picture: "Path of a picture under assets/ sent in the chat."
+  video: "A clip sent in the chat; a press on it while it is the newest turns the phone on its side and plays it."
+
+PhonePost:
+  _: "One post of a photo feed."
+  who: "Interpolated name of who posted it."
+  icon: "Path of the poster's round picture under assets/."
+  picture: "Path of the post's picture under assets/; a tall picture is cropped from its top."
+  video: "A clip playing in the post's place, looping, instead of a picture."
+  text: "Interpolated caption under the picture, after the poster's name."
+  likes: "Number of likes; a click on the post adds the player's."
+
+PhoneVideo:
+  _: "A clip on the phone: a picture pushed in slowly with an optional puppet in front."
+  picture: "Path of the picture under assets/ that fills the frame."
+  puppet: "Path of a puppet file under assets/; it breathes and sways as on the stage."
+  zoom: "How many times the frame's height the puppet is drawn (0 is 1.5, its upper body)."
+  bounce: "Seconds into the clip at which the puppet jiggles."
+  text: "Interpolated title over the player."
+  seconds: "Length of the clip on the seek bar (0 is 30)."
+
 CallViewCue:
   _: "A presentation-only change of the video call on screen."
   camera: "Turns one participant's camera view on or off."

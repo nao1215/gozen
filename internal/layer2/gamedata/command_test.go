@@ -32,7 +32,7 @@ var commandExamples = map[string]string{
 	"breed":  `breed: {parents: [monster_1, monster_2], skills: [fire]}`,
 	"affect": `affect: {who: all, remove: bad}`, "battle": `battle: one`,
 	"move": `move: deep`, "music": `music: ""`, "mood": `mood: calm`, "image": `image: ""`,
-	"shop": `shop: store`, "call": `call: sub`, "wait": `wait: 1`, "notice": `notice: hi`, "message": `message: {who: scout, text: hi, event: sub}`, "call_view": `call_view: {camera: {who: scout, on: true}}`,
+	"shop": `shop: store`, "call": `call: sub`, "wait": `wait: 1`, "notice": `notice: hi`, "message": `message: {who: scout, text: hi, event: sub}`, "call_view": `call_view: {camera: {who: scout, on: true}}`, "phone": `phone: {app: chat, messages: [{text: hi}]}`,
 	"sfx": `sfx: decide`, "exp": `exp: 0`, "learn": `learn: {actor: scout, skill: fire}`,
 	"reset_tree": `reset_tree: all`, "reset_actor": `reset_actor: scout`, "effect": `effect: fade`, "stand": `stand: none`, "end": `end: true`,
 	"clear": `clear: true`, "save": `save: true`, "open": `open: skills`,

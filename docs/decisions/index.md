@@ -65,6 +65,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0053](0053-planning-components.md) | Composable typed state, calendar, activities, ledgers and planning views | In development | |
 | [0054](0054-typed-event-and-screen-arguments.md) | Typed arguments, scopes and resumable invocations for events and screens | Accepted for phased implementation; event and plain screen arguments, expression speakers and entry targets, and session/player plain screen continuation saves implemented; planning surface continuation pending | |
 | [0055](0055-screen-guides.md) | First-visit screen guides (lit places, other places refused, recorded across plays) and header faces | Accepted and implemented | |
+| [0057](0057-phone-apps.md) | A phone on the screen: a chat, a photo feed and a video held upright or on its side, with puppets in its clips | Accepted and implemented | |
 
 | [0056](0056-compact-yaml-authoring.md) | Compact events, single-item commands, enabled-by-default tactics and copy-based YAML migration | Accepted | |
 

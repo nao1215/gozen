@@ -109,9 +109,13 @@ type Command struct {
 	// CallView changes only how a video call looks (no state changes): for
 	// example a participant's camera turning on in the middle of a call.
 	CallView *CallViewCue `yaml:"call_view" command:"verb" json:",omitempty"`
-	SFX      SFXCue       `yaml:"sfx" command:"verb"`
-	Exp      Expr         `yaml:"exp" command:"verb"`
-	Learn    *Learn       `yaml:"learn" command:"verb"`
+	// Phone shows a phone over the scene, held upright or on its side, with one app
+	// on it: a chat, a photo feed or a video (ADR 0057). It changes no state; the
+	// event waits until the player puts the phone down.
+	Phone *PhoneCue `yaml:"phone" command:"verb" json:",omitempty"`
+	SFX   SFXCue    `yaml:"sfx" command:"verb"`
+	Exp   Expr      `yaml:"exp" command:"verb"`
+	Learn *Learn    `yaml:"learn" command:"verb"`
 	// ResetTree gives back the skill points put into the skill tree of an actor (an id, or
 	// "all" for everyone who has joined): to raise it again another way.
 	ResetTree string `yaml:"reset_tree" command:"verb"`
@@ -481,6 +485,59 @@ type MessageCue struct {
 	// Tag is a short interpolated mark on the notification and the bubble, such
 	// as DM for a one-to-one message (empty shows none).
 	Tag string `yaml:"tag"`
+}
+
+// PhoneCue is a phone shown over the scene (ADR 0057). Hold is portrait (the
+// default) or landscape; App is chat, feed or video and names the one list the
+// phone shows: Messages, Posts or Video. Title is the app's header (interpolated).
+type PhoneCue struct {
+	Hold     string         `yaml:"hold"`
+	App      string         `yaml:"app"`
+	Title    string         `yaml:"title"`
+	Messages []PhoneMessage `yaml:"messages" json:",omitempty"`
+	Posts    []PhonePost    `yaml:"posts" json:",omitempty"`
+	Video    *PhoneVideo    `yaml:"video" json:",omitempty"`
+}
+
+// PhoneMessage is one bubble of a chat. Mine puts it on the right, as sent by
+// the phone's owner; From names the sender of the others (interpolated) and Icon
+// is their round picture under assets/. Text, Picture (under assets/) or Video
+// is the bubble's content; a video plays on the phone turned on its side when
+// the player opens it.
+type PhoneMessage struct {
+	From    string      `yaml:"from"`
+	Icon    string      `yaml:"icon"`
+	Mine    bool        `yaml:"mine"`
+	Text    string      `yaml:"text"`
+	Picture string      `yaml:"picture"`
+	Video   *PhoneVideo `yaml:"video" json:",omitempty"`
+}
+
+// PhonePost is one post of a photo feed: who posted it (interpolated) with their
+// round Icon, the Picture under assets/ or a Video playing in its place, its
+// caption Text and the number of Likes.
+type PhonePost struct {
+	Who     string      `yaml:"who"`
+	Icon    string      `yaml:"icon"`
+	Picture string      `yaml:"picture"`
+	Video   *PhoneVideo `yaml:"video" json:",omitempty"`
+	Text    string      `yaml:"text"`
+	Likes   int         `yaml:"likes"`
+}
+
+// PhoneVideo is a clip: its Picture under assets/ fills the frame (pushed in
+// slowly, so a still plays as a clip), and Puppet, a puppet file under assets/,
+// stands in front of it and moves as it does on the stage: breathing, swaying
+// and, at each second in Bounce, a jiggle. Zoom is how many times the frame's
+// height the puppet is drawn (0 is 1.5: its upper body). Text is the title
+// (interpolated) and Seconds its length on the seek bar (0 is 30).
+type PhoneVideo struct {
+	Picture string    `yaml:"picture"`
+	Puppet  string    `yaml:"puppet"`
+	Zoom    float64   `yaml:"zoom"`
+	Bounce  []float64 `yaml:"bounce" json:",omitempty"`
+	Text    string    `yaml:"text"`
+	Seconds float64   `yaml:"seconds"`
 }
 
 // CallViewCue is a presentation-only change of the call on screen.

@@ -22,6 +22,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
   See [the authoring and migration guide](docs/authoring-yaml.md) and
   [the usability review](docs/reviews/2026-11-06-yaml-usability.md).
 
+### Added
+
+- The event command `phone` shows a phone over the scene, held upright or turned on its side: a chat whose messages arrive one by one (text, pictures and videos), a photo feed turned with a swipe, and a video player. A video is a picture with a puppet in front that moves as on the stage and jiggles at the seconds given (ADR 0057).
+
 ## v0.16.0 - 2026-11-05
 
 Management games on the workspace screens: day flows, workspace cards, drag and drop, tickets, carousels, messages, full-screen video calls with screen sharing, first-visit guides and glass calendars, shown by the new office sample. The sample and theme pictures no longer claim copyright (CC0 1.0).
