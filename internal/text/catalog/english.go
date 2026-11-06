@@ -257,6 +257,7 @@ var english = map[string]string{
 	"game.yaml %s: 版が整数の範囲を超えています":                                                        "game.yaml %s: the version is too large",
 	"game.yaml schema_version: 仕様版 %d には対応していません（対応版 %d〜%d）。対応するエンジンを使用してください":            "game.yaml schema_version: schema %d is not supported (supported: %d to %d); use an engine that supports it",
 	"game.yaml data_version: 作品のデータ版は０以上にしてください（指定値 %d）":                                  "game.yaml data_version: the data version must be 0 or more (got %d)",
+	"数の初期値は有限の数にする（.nan と .inf は使えない）":                                                    "a number's initial value must be finite (not .nan or .inf)",
 	"game.yaml id: 仕様版 %d では作品の ID が必要です。英数字で始まる英数字・_・- だけの、予約語でない 255 バイト以内の名前を指定してください": "game.yaml id: schema %d needs a game ID of at most 255 bytes that is not a reserved device name, starts with a letter or digit and uses only letters, digits, _ and -",
 	// screens: battle
 	"CRITICAL!":     "CRITICAL!",
