@@ -8,9 +8,10 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	"rsc.io/qr"
+
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
-	"rsc.io/qr"
 )
 
 // The page of the phone (ADR 0057) is any app or web page: a browser's
@@ -103,17 +104,17 @@ func (g *Game) pictureAspect(path string) float64 {
 }
 
 // pageView is the page's screen: the rows laid out and the farthest they scroll.
-func (g *Game) pageView(p *phoneView) (rows []pageRow, w, end float64) {
+func (g *Game) pageView(p *phoneView) (rows []pageRow, end float64) {
 	_, _, w, h := g.phoneScreenRect(p.side)
 	rows = p.pageLayout(g, w)
 	if n := len(rows); n > 0 {
 		end = math.Max(0, rows[n-1].top+rows[n-1].h+phonePageGap-(h-phoneFeedTop))
 	}
-	return rows, w, end
+	return rows, end
 }
 
 func (g *Game) updatePhonePage(p *phoneView) {
-	rows, _, end := g.pageView(p)
+	rows, end := g.pageView(p)
 	if g.pageKeys(p, rows, end) {
 		return
 	}
@@ -183,7 +184,7 @@ func (g *Game) pageKeys(p *phoneView, rows []pageRow, end float64) bool {
 	if len(buttons) == 0 {
 		return false
 	}
-	d := 0
+	var d int
 	switch {
 	case in.pressed[btnRight] || in.pressed[btnNext]:
 		d = 1

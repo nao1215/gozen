@@ -162,8 +162,10 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 		c.errorf(diag.Shape, where+".hold", lang.T("hold は portrait または landscape を指定してください（指定値 %q）"), p.Hold)
 	}
 	apps := []string{"chat", "feed", "video", "page", "lock", "banner"}
-	lists := map[string]bool{"chat": len(p.Messages) > 0, "feed": len(p.Posts) > 0, "video": p.Video != nil,
-		"page": len(p.Rows) > 0, "lock": len(p.Notices) > 0, "banner": len(p.Notices) > 0}
+	lists := map[string]bool{
+		"chat": len(p.Messages) > 0, "feed": len(p.Posts) > 0, "video": p.Video != nil,
+		"page": len(p.Rows) > 0, "lock": len(p.Notices) > 0, "banner": len(p.Notices) > 0,
+	}
 	keys := map[string]string{"chat": "messages", "feed": "posts", "video": "video", "page": "rows", "lock": "notices", "banner": "notices"}
 	if _, ok := lists[p.App]; !ok {
 		c.errorf(diag.Shape, where+".app", lang.T("app は chat・feed・video・page・lock・banner のいずれかを指定してください（指定値 %q）"), p.App)
@@ -310,7 +312,7 @@ func (c *checker) phoneLock(where string, p PhoneCue, names []string) {
 		if n.Title == "" && n.Text == "" {
 			c.errorf(diag.Shape, at, "a notice needs a title or a text")
 		}
-		if len(n.Set) > 0 && !(n.Call && p.App == "lock") {
+		if len(n.Set) > 0 && (!n.Call || p.App != "lock") {
 			c.errorf(diag.Shape, at+".set", "only a call on the lock screen has set (when it is answered)")
 		}
 		if n.Event != "" && p.App != "banner" {

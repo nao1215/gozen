@@ -95,7 +95,11 @@ func TestPhoneSaveReplays(t *testing.T) {
 		t.Fatal(err)
 	}
 	h := phoneSaveGame(t)
-	t.Cleanup(func() { _ = h.Close() })
+	t.Cleanup(func() {
+		if err := h.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	sysFrames(t, h, 2)
 	st, err := rpg.Parse(h.db, saved, nil)
 	if err != nil {

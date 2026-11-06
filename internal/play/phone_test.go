@@ -11,12 +11,21 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"golang.org/x/image/font/gofont/goregular"
 
+	"rsc.io/qr"
+
 	"github.com/nao1215/gozen/internal/event"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 	"github.com/nao1215/gozen/internal/testgame"
-	"rsc.io/qr"
 )
+
+// frame is the picture of the clip's footage on the screen now: the frames go
+// by at the clip's rate, starting again in a loop, else staying on the last.
+// It is empty for a clip without frames.
+func (c *phoneClip) frame() string {
+	cur, _, _, _ := c.frames()
+	return cur
+}
 
 // phoneTicks runs n ticks of the phone with nothing pressed and tells whether it
 // was put down.
@@ -31,10 +40,10 @@ func phoneTicks(g *Game, n int) bool {
 }
 
 // phonePress runs one tick with b pressed.
-func phonePress(g *Game, b button) bool {
+func phonePress(g *Game, b button) {
 	g.in = input{}
 	g.in.pressed[b] = true
-	return g.updatePhone()
+	g.updatePhone()
 }
 
 func phoneGame(t *testing.T, cue data.PhoneCue) *Game {
@@ -292,7 +301,6 @@ func TestPhoneFrames(t *testing.T) {
 	if (&phoneClip{v: &data.PhoneVideo{Frames: frames}}).length() != 20 {
 		t.Fatal("frames without fps do not go at 12 a second")
 	}
-
 }
 
 // TestPhoneFramesFeed: a feed's post starts its footage again at its end.
@@ -349,7 +357,8 @@ func TestPhoneFramesVideo(t *testing.T) {
 func TestPhoneFeedAspect(t *testing.T) {
 	wide, tall := ebiten.NewImage(160, 90), ebiten.NewImage(90, 160)
 	g := phoneGame(t, data.PhoneCue{App: "feed", Posts: []data.PhonePost{
-		{Video: &data.PhoneVideo{Frames: []string{"wide.png"}}}, {Picture: "tall.png"},
+		{Video: &data.PhoneVideo{Frames: []string{"wide.png"}}},
+		{Picture: "tall.png"},
 		{Video: &data.PhoneVideo{Picture: "wide.png", Puppet: "p.yaml"}},
 	}})
 	g.pics.imgs["wide.png"] = &picEntry{img: wide}
@@ -393,7 +402,7 @@ func TestPhonePage(t *testing.T) {
 	g := phoneGame(t, data.PhoneCue{App: "page", Title: "Bank", Color: "#1a73e8", Rows: rows})
 	p := g.phone
 	phoneTicks(g, phoneRise)
-	laid, _, end := g.pageView(p)
+	laid, end := g.pageView(p)
 	if end <= 0 {
 		t.Fatal("the long page does not scroll")
 	}
@@ -480,13 +489,15 @@ func TestPhoneLockAuto(t *testing.T) {
 // page's button, a call answered, or the last call declined.
 func TestPhoneResultsPressed(t *testing.T) {
 	cue := data.PhoneCue{App: "page", Var: "var.mfa", Rows: []data.PhoneRow{
-		{Text: "Approve?"}, {Button: "Approve"}, {Button: "Deny"},
+		{Text: "Approve?"},
+		{Button: "Approve"},
+		{Button: "Deny"},
 		{Pictures: []string{"x.png", "x.png"}, Shut: true, Label: "Supporters only"},
 	}}
 	g := phoneGame(t, cue)
 	p := g.phone
 	phoneTicks(g, phoneRise)
-	rows, _, _ := g.pageView(p)
+	rows, _ := g.pageView(p)
 	sx, sy, w, _ := g.phoneScreenRect(false)
 	y := sy + phoneFeedTop + rows[2].top - p.scroll + rows[2].h/2
 	g.in = input{pdown: true, pup: true, click: true, mouse: image.Pt(int(sx+w/2), int(y))}
@@ -607,7 +618,7 @@ func TestPhonePageKeysScroll(t *testing.T) {
 	phoneTicks(g, phoneRise)
 	phonePress(g, btnLeft)
 	phoneTicks(g, 40)
-	laid, _, _ := g.pageView(p)
+	laid, _ := g.pageView(p)
 	if p.focus != len(rows)-1 || !g.pageInView(p, laid[p.focus]) {
 		t.Fatalf("left did not ring and show the last button: focus %d scroll %v", p.focus, p.scroll)
 	}
@@ -749,7 +760,7 @@ func TestPhoneInitial(t *testing.T) {
 			t.Errorf("%q: %q, want %q", in, got, want)
 		}
 	}
-	if nameColor("sam") != nameColor("sam") {
+	if first, again := nameColor("sam"), nameColor("sam"); first != again {
 		t.Error("a name's color is not kept")
 	}
 }

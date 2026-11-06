@@ -105,10 +105,12 @@ const (
 )
 
 func newPhoneView(cue data.PhoneCue) *phoneView {
-	p := &phoneView{cue: cue, liked: map[int]bool{}, clips: map[string]*phoneClip{},
+	p := &phoneView{
+		cue: cue, liked: map[int]bool{}, clips: map[string]*phoneClip{},
 		icons: map[string]*ebiten.Image{}, frames: map[string]*ebiten.Image{}, watchMsg: -1, turned: phoneTurn, aim: -1, grab: -1, result: -1, focus: -1,
 		seenPic: map[int]bool{}, pics: map[int]picRect{}, qrs: map[string]*ebiten.Image{},
-		bubbles: map[int]chatBubble{}, imageUse: map[*ebiten.Image]bool{}, bodies: map[*phoneClip]bool{}}
+		bubbles: map[int]chatBubble{}, imageUse: map[*ebiten.Image]bool{}, bodies: map[*phoneClip]bool{},
+	}
 	switch cue.App {
 	case "chat", "lock":
 		p.shown = 1
@@ -145,14 +147,6 @@ func (p *phoneView) clip(key string, v *data.PhoneVideo) *phoneClip {
 // a tick still plays.
 func (c *phoneClip) length() int {
 	return max(1, int(c.v.Length(len(c.v.Frames))*60))
-}
-
-// frame is the picture of the clip's footage on the screen now: the frames go
-// by at the clip's rate, starting again in a loop, else staying on the last.
-// It is empty for a clip without frames.
-func (c *phoneClip) frame() string {
-	cur, _, _, _ := c.frames()
-	return cur
 }
 
 // frames are the clip's footage now: the frame on the screen, the next one
@@ -578,11 +572,10 @@ func (g *Game) phoneClock() string {
 	return "21:30"
 }
 
-func (g *Game) drawPhoneHeader(dst *ebiten.Image, w float64, title string, top float64) float64 {
+func (g *Game) drawPhoneHeader(dst *ebiten.Image, w float64, title string, top float64) {
 	gfx.FillRect(dst, 0, 0, float32(w), float32(top+50), phoneBubble, false)
 	gfx.DrawText(dst, gfx.Ellipsis(title, 19, w-90), w/2, top+12, 19, phoneInk)
 	gfx.FillRect(dst, 0, float32(top+50), float32(w), 1, phoneLine, false)
-	return top + 51
 }
 
 const (

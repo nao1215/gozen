@@ -19,7 +19,9 @@ func readerDocs(fsys fs.FS) map[string]string {
 	if b, err := fs.ReadFile(fsys, "README.md"); err == nil {
 		out["README.md"] = string(b)
 	}
-	_ = fs.WalkDir(fsys, "website/content", func(p string, d fs.DirEntry, err error) error {
+	// The walk's own function never fails, and a missing website leaves README.md.
+	//nolint:errcheck // nothing is returned to check
+	fs.WalkDir(fsys, "website/content", func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(p, ".md") {
 			return nil //nolint:nilerr // a page that cannot be read is left to the site's own test
 		}
