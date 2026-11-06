@@ -1,5 +1,6 @@
 # Office sample capture (run phone-feed): a photo feed scrolled down a post at a time; a post whose
-# clip plays its footage in its place, looping (pf###). A frame every 5 ticks.
+# clip plays its footage in its place, looping, then Mia's dance clip with its puppet (pf###).
+# A frame every 5 ticks.
 gap 1
 wait 30
 press ok
@@ -188,7 +189,6 @@ shot pf088
 wait 2
 shot pf089
 wait 2
-press up
 shot pf090
 wait 2
 shot pf091
@@ -204,5 +204,66 @@ wait 2
 shot pf096
 wait 2
 shot pf097
+wait 2
+shot pf098
+wait 2
+shot pf099
+wait 2
+shot pf100
+wait 2
+shot pf101
+wait 2
+shot pf102
+wait 2
+shot pf103
+wait 2
+shot pf104
+wait 2
+shot pf105
+wait 2
+shot pf106
+wait 2
+shot pf107
+wait 2
+shot pf108
+wait 2
+shot pf109
+wait 2
+shot pf110
+wait 2
+shot pf111
+wait 2
+shot pf112
+wait 2
+shot pf113
+wait 2
+shot pf114
+wait 2
+shot pf115
+wait 2
+shot pf116
+wait 2
+shot pf117
+wait 2
+shot pf118
+wait 2
+shot pf119
+wait 2
+press up
+shot pf120
+wait 2
+shot pf121
+wait 2
+shot pf122
+wait 2
+shot pf123
+wait 2
+shot pf124
+wait 2
+shot pf125
+wait 2
+shot pf126
+wait 2
+shot pf127
 wait 2
 quit

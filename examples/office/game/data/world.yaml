@@ -57,6 +57,7 @@ events:
         - {who: mia.hart, icon: icons/mia.png, picture: phone/photo3.jpg, likes: 96, text: 'Coffee run before the demo.'}
         - {who: mia.hart, icon: icons/mia.png, picture: phone/photo4.jpg, likes: 210, text: 'New boots, same deadlines.'}
         - {who: mia.hart, icon: icons/mia.png, video: {frames: [clips/cutin/*.jpg], fps: 12}, likes: 902, text: 'Game night with the team. Ox finally landed Shield Rush.'}
+        - {who: mia.hart, icon: icons/mia.png, video: {picture: bg/pantry.jpg, puppet: clip3/puppet.yaml, zoom: 1.6, seconds: 8, bounce: [1, 3.5, 6]}, likes: 904, text: 'Pantry dance break. Do not tell Martin.'}
         - {who: mia.hart, icon: icons/mia.png, picture: phone/photo5.jpg, likes: 505, text: 'Rooftop break between meetings.'}
         - {who: mia.hart, icon: icons/mia.png, picture: phone/photo6.jpg, likes: 77, text: 'Booth duty at the expo.'}
         - {who: mia.hart, icon: icons/mia.png, picture: phone/photo7.jpg, likes: 188, text: 'Sweater weather in the office.'}
