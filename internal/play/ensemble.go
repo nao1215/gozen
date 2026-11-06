@@ -95,10 +95,13 @@ func (l *ensembleLog) post(name, text string, system bool) {
 	if strings.TrimSpace(text) == "" {
 		return
 	}
-	l.messages = append(l.messages, ensembleMessage{name, text, system})
-	if len(l.messages) > 100 {
-		l.messages = append([]ensembleMessage(nil), l.messages[len(l.messages)-100:]...)
+	message := ensembleMessage{name, text, system}
+	if len(l.messages) == 100 {
+		copy(l.messages, l.messages[1:])
+		l.messages[len(l.messages)-1] = message
+		return
 	}
+	l.messages = append(l.messages, message)
 }
 
 func (l *ensembleLog) sync(g *Game, v data.PlanningView) { l.update(g.ensembleMembers(v), v.Chat) }
@@ -688,13 +691,7 @@ func (g *Game) callTorso(dst *ebiten.Image, path string, call *data.EnsembleCall
 	if img == missing {
 		img = g.pics.get(path)
 	}
-	face := g.pics.head(path)
-	g.pics.mu.Lock()
-	if f, ok := g.pics.found[path]; ok && f.Box != nil && f.Size[0] > 0 && f.Size[1] > 0 {
-		sx, sy := float64(img.Bounds().Dx())/float64(f.Size[0]), float64(img.Bounds().Dy())/float64(f.Size[1])
-		face = image.Rect(int(float64(f.Box[0])*sx), int(float64(f.Box[1])*sy), int(float64(f.Box[2])*sx), int(float64(f.Box[3])*sy))
-	}
-	g.pics.mu.Unlock()
+	face := g.pics.portraitFace(path, img.Bounds().Size())
 	fh := seenOr(seen, h)
 	scale, left, top := portraitTransform(img.Bounds(), face, x, y+fh*.22, w, fh*.48)
 	cx, cy := x+w/2, y+fh*.46

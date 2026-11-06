@@ -305,3 +305,26 @@ func TestPicturesWarmMany(t *testing.T) {
 		t.Fatalf("CPU jobs remain: %d / %d", len(p.loading), len(p.decoded))
 	}
 }
+
+func TestPortraitFaceScalesMetadataForDisplayedVariant(t *testing.T) {
+	p := sysPics(t, map[string][]byte{
+		"portrait.png": sysPNG(t, 100, 100, sysBlue),
+		"plain.png":    sysPNG(t, 100, 100, sysBlue),
+		"faces.json":   []byte(`{"version":1,"pictures":{"portrait.png":{"box":[10,10,30,50],"size":[100,100]}}}`),
+	})
+	for _, tc := range []struct {
+		size image.Point
+		want image.Rectangle
+	}{
+		{image.Pt(100, 100), image.Rect(10, 10, 30, 50)},
+		{image.Pt(200, 300), image.Rect(20, 30, 60, 150)},
+		{image.Pt(50, 50), image.Rect(5, 5, 15, 25)},
+	} {
+		if got := p.portraitFace("portrait.png", tc.size); got != tc.want {
+			t.Fatalf("size %v: got %v, want %v", tc.size, got, tc.want)
+		}
+	}
+	if got := p.portraitFace("plain.png", image.Pt(100, 100)); got != p.head("plain.png") {
+		t.Fatalf("missing metadata changed fallback: %v", got)
+	}
+}
