@@ -115,3 +115,22 @@ func (f *versionOnlyFS) Open(name string) (fs.File, error) {
 	}
 	return fstest.MapFS{"game.yaml": {Data: f.game}}.Open(name)
 }
+
+func TestGameIDRejectsUnsafeSaveNames(t *testing.T) {
+	for _, id := range []string{"CON", "nul", "Com1", "lpt9", "AUX", "PRN", strings.Repeat("a", 256)} {
+		t.Run(id, func(t *testing.T) {
+			if data.ValidGameID(id) {
+				t.Errorf("accepted unsafe save identity %q", id)
+			}
+			_, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: 1\nid: " + id + "\n" + testgame.Game})
+			if err == nil {
+				t.Fatal("loaded a game whose default save directory is invalid")
+			}
+		})
+	}
+	for _, id := range []string{"COM10", "console", "auxiliary", "game_1", strings.Repeat("a", 255)} {
+		if !data.ValidGameID(id) {
+			t.Errorf("rejected ordinary identity %q", id)
+		}
+	}
+}

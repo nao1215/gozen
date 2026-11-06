@@ -12,21 +12,32 @@ import (
 // Config selects the application's save root. An empty Root uses UserConfigDir/gozen.
 type Config struct{ Root string }
 
-// Prepare creates a private directory for id. It never probes or migrates other
-// applications' saves. id must be a single portable ASCII path component.
-func Prepare(id string, cfg Config) (string, error) {
-	if id == "" || id == "." || id == ".." || strings.ContainsAny(id, "/\\:") {
-		return "", fmt.Errorf("save id %q: %w", id, fs.ErrInvalid)
+// ValidID reports whether id is a portable save-directory component. The game
+// loader uses the same check as Prepare so accepted identities can be saved on
+// every supported desktop platform. IDs contain at most 255 ASCII bytes.
+// It performs no filesystem operations.
+func ValidID(id string) bool {
+	if id == "" || len(id) > 255 || id == "." || id == ".." || strings.ContainsAny(id, "/\\:") {
+		return false
 	}
 	for _, r := range id {
 		valid := r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_'
 		if !valid {
-			return "", fmt.Errorf("save id %q: %w", id, fs.ErrInvalid)
+			return false
 		}
 	}
 	upper := strings.ToUpper(id)
 	if upper == "CON" || upper == "PRN" || upper == "AUX" || upper == "NUL" ||
 		(len(upper) == 4 && (strings.HasPrefix(upper, "COM") || strings.HasPrefix(upper, "LPT")) && upper[3] >= '1' && upper[3] <= '9') {
+		return false
+	}
+	return true
+}
+
+// Prepare creates a private directory for id. It never probes or migrates other
+// applications' saves. id must be a single portable ASCII path component.
+func Prepare(id string, cfg Config) (string, error) {
+	if !ValidID(id) {
 		return "", fmt.Errorf("save id %q: %w", id, fs.ErrInvalid)
 	}
 	root := cfg.Root
