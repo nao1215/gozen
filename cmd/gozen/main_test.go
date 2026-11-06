@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/nao1215/gozen/internal/cliio"
 	"github.com/nao1215/gozen/internal/diag"
@@ -174,6 +175,13 @@ func TestHelpPagesHaveTheSameShape(t *testing.T) {
 		}
 		if _, ok := groups[sub]; (ok || sub == "" || sub == "mosaic" || sub == "prompt") != strings.Contains(out, "[Commands]\n") {
 			t.Errorf("%s: [Commands] belongs to the top and the groups only", sub)
+		}
+		// Help is English, as every option's usage is: a translated usage
+		// would show in the reader's language among English ones.
+		if i := strings.IndexFunc(out, func(r rune) bool {
+			return unicode.In(r, unicode.Han, unicode.Hiragana, unicode.Katakana)
+		}); i >= 0 {
+			t.Errorf("%s: help is not English at %q", sub, out[max(0, i-40):min(len(out), i+40)])
 		}
 		for line := range strings.SplitSeq(out, "\n") {
 			// Example command lines may run longer, as in the other tools' help.

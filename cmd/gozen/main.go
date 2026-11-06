@@ -20,7 +20,6 @@ import (
 	"github.com/nao1215/gozen/internal/diag"
 	mosaiccmd "github.com/nao1215/gozen/internal/mosaic/command"
 	promptcmd "github.com/nao1215/gozen/internal/promptgen/command"
-	lang "github.com/nao1215/gozen/internal/text"
 )
 
 type command struct {
@@ -354,9 +353,9 @@ func (c *command) notesCmd() clihelp.Operation {
 func (c *command) checkCmd() clihelp.Operation {
 	f := clihelp.NewFlagSet("gozen check")
 	only := f.String("only", "", "check only `PART`: structure (definitions, references, expressions, and assets; the font is not read) or layout (the text layout)")
-	strict := f.Bool("strict", false, lang.T("警告があれば検査を失敗にする"))
-	baseline := f.String("baseline", "", lang.T("警告件数の基準 `FILE` と比較する"))
-	writeBaseline := f.String("write-baseline", "", lang.T("警告件数を新規 `FILE` に保存する"))
+	strict := f.Bool("strict", false, "fail with exit 1 when warnings exceed zero, or the baseline given")
+	baseline := f.String("baseline", "", "compare warning counts per code and file with baseline `FILE`; only growth fails")
+	writeBaseline := f.String("write-baseline", "", "write warning counts to a new `FILE` (an existing one is not overwritten)")
 	c.reporting(f)
 	clihelp.Choices(f.Lookup("only"), "", "structure", "layout")
 	return clihelp.Operation{Flags: f, Run: func(_ context.Context) (err error) {

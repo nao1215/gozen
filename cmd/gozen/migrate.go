@@ -17,7 +17,7 @@ import (
 func (c *command) migrateGame() clihelp.Operation {
 	f := clihelp.NewFlagSet("gozen migrate")
 	c.reporting(f)
-	out := f.String("out", "", lang.T("移行したゲームの新規出力ディレクトリ"))
+	out := f.String("out", "", "new `DIR` to write the migrated game to")
 	page := clihelp.Page{
 		Name: "gozen migrate",
 

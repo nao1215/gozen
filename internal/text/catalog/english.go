@@ -7,9 +7,6 @@ package catalog
 var english = map[string]string{
 	"check: 構造検査に合格しました。レイアウトは検査していません":                             "check: structure passed; layout was not checked",
 	"%s %q を参照する定義がありません。利用箇所を接続するか、不要なら削除してください":                   "no definition refers to %s %q; connect a consumer or remove it if obsolete",
-	"警告があれば検査を失敗にする":                                                "fail the check when warnings exceed the baseline (zero by default)",
-	"警告件数の基準 `FILE` と比較する":                                          "compare warning counts with baseline `FILE`",
-	"警告件数を新規 `FILE` に保存する":                                          "write warning counts to a new `FILE`",
 	"基準ファイルには JSON オブジェクトを一つだけ指定してください":                             "baseline must contain exactly one JSON object",
 	"基準ファイルの版または --only の範囲が一致しません":                                 "baseline version or --only scope does not match",
 	"基準ファイルの警告コードが不正です: %s":                                         "invalid warning code in baseline: %s",
@@ -45,10 +42,9 @@ var english = map[string]string{
 	"（%q の誤りですか？）": " (did you mean %q?)",
 
 	"schema_version: 0 は自動移行できません。数値０の既定値を確認して版１へ移行してください。元のゲームは変更していません": "schema_version: 0 cannot be migrated automatically; review zero-value defaults before upgrading to version 1. The source game is unchanged",
-	"移行したゲームの新規出力ディレクトリ":                                     "new output directory for the migrated game",
-	"migrate にはゲームのディレクトリと --out NEW が必要です":                  "migrate expects one game directory and --out NEW",
-	"移行結果の検証に失敗しました。出力は公開していません: %w":                         "migrated game failed validation; output was not published: %w",
-	"%s に仕様版 %d のゲームを作成しました（変更した YAML: %d）。元のゲームは変更していません\n": "created %s with schema %d (changed YAML files: %d); source unchanged\n",
+	"migrate にはゲームのディレクトリと --out NEW が必要です":                               "migrate expects one game directory and --out NEW",
+	"移行結果の検証に失敗しました。出力は公開していません: %w":                                      "migrated game failed validation; output was not published: %w",
+	"%s に仕様版 %d のゲームを作成しました（変更した YAML: %d）。元のゲームは変更していません\n":              "created %s with schema %d (changed YAML files: %d); source unchanged\n",
 
 	"%s: 短縮形には game.yaml の schema_version: 11 が必要です。gozen migrate GAME --out NEW で移行してください": "%s: shorthand needs schema_version: 11 in game.yaml; migrate with gozen migrate GAME --out NEW",
 
