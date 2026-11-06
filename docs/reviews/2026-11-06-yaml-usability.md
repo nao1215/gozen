@@ -1,5 +1,7 @@
 # YAML authoring usability review, 2026-11-06
 
+> Note (2026-11-06): the `gozen migrate` command and its migration code described here were removed afterwards. Before v1.0.0 gozen has no migration tools.
+
 ## Scope and measurement
 
 This review covers the author-facing schema, loader diagnostics, migration,

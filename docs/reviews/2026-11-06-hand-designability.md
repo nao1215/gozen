@@ -169,8 +169,8 @@ history. Replacing indexed flag names with string concatenation only hides their
 number; it does not model ownership or dates.
 
 This changes the saved state representation. An existing game needs an explicit
-old-key-to-attribute migration and save/reload checks; the YAML upgrader does not
-infer that mapping. `state.names` gives types, initial values and strict name
+old-key-to-attribute migration and save/reload checks; gozen does not
+do that mapping (and gozen has no YAML upgrader before v1.0.0). `state.names` gives types, initial values and strict name
 checking for deliberately retained flags; it does not compress twenty flags into
 one fact. See `internal/layer2/gamedata/state_names.go:20`,
 `internal/layer2/gamedata/planning.go:109` and `:174`.

@@ -30,7 +30,7 @@ type command struct {
 	games       *gameCache // the definitions kept between the runs of gozen sim batch; nil reads each game
 }
 
-// reporting registers structured result output for a migrated command.
+// reporting registers structured result output for a command.
 func (c *command) reporting(f *pflag.FlagSet) {
 	c.report.Command = strings.TrimPrefix(f.Name(), "gozen ")
 	f.StringVar(&c.report.Format, "format", "text", "result encoding: text, json, or jsonl")
@@ -78,8 +78,7 @@ type node struct {
 
 // tree maps a command path to its node.
 var tree = map[string]node{
-	"":               {subs: []string{"new", "migrate", "run", "export", "check", "sim", "trace", "notes", "release", "trial", "capture", "book", "prompt", "mosaic", "models", "faces", "puppet", "theme", "version", "help"}},
-	"migrate":        {build: (*command).migrateGame},
+	"":               {subs: []string{"new", "run", "export", "check", "sim", "trace", "notes", "release", "trial", "capture", "book", "prompt", "mosaic", "models", "faces", "puppet", "theme", "version", "help"}},
 	"new":            {build: (*command).newGame},
 	"check":          {build: (*command).checkCmd},
 	"sim":            {subs: []string{"battle", "dive", "floors", "design", "campaign", "routes", "breed", "script", "batch"}},
@@ -226,7 +225,7 @@ func (c *command) top(args []string) error {
 	}
 	switch {
 	case help:
-		c.out.Print(topHelpPage().String(fs))
+		c.out.Print(topPage.String(fs))
 	case *ver:
 		c.out.Println("gozen", clihelp.Version())
 	default:

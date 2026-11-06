@@ -1,2 +1,0 @@
-go test fuzz v1
-string("battle:\n auto_tactics:\n  scout:\n      - &row {condition:any,action:guard}\n      - 0<<: *row")

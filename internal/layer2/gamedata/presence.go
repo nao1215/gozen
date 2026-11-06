@@ -253,7 +253,7 @@ func (db *DB) resolveNumbers(raw yaml.MapSlice, into any, source string) error {
 			}
 		}
 		if short && db.Game.SchemaVersion < SchemaVersion11 {
-			errs = append(errs, fmt.Errorf(lang.T("%s: 短縮形には game.yaml の schema_version: 11 が必要です。gozen migrate GAME --out NEW で移行してください"), where))
+			errs = append(errs, fmt.Errorf(lang.T("%s: 短縮形には game.yaml の schema_version: 11 が必要です"), where))
 		}
 		if db.Game.SchemaVersion == LegacySchemaVersion {
 			if v.Type() == reflect.TypeFor[ItemCount]() {

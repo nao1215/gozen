@@ -50,12 +50,10 @@ transfers as `give: key` or `take: key`. Keep the full event mapping for `when`,
 `trigger`, `once`, `location` or `params`. An authored tactic row is enabled
 unless it says `enabled: false`.
 
-Upgrade existing games with `gozen migrate GAME --out NEW`, then check and play
-the copy. Do not upgrade by editing only `schema_version`: old omitted tactic
-switches must become explicit false. The command preserves identity and assets;
-it supports schema 1–11 and refuses schema 0 for separate numeric-default review.
-Old engines cannot read schema 11. Record source-hashed traces again after a
-rewrite. See references/yaml.md for the full forms and migration checks.
+Before v1.0.0 gozen has no migration command; do not add one. To move a game
+to schema 11, change `schema_version` and write `enabled: false` on tactic rows
+that omitted `enabled`, then check and play it. Old engines cannot read schema
+11. See references/yaml.md for the full forms.
 
 Battle forms, HP pictures and moving enemies need schema version 7 (references/battle.md, references/puppet.md).
 

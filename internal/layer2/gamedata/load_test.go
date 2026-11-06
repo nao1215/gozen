@@ -63,7 +63,7 @@ func TestCompactEventAndItems(t *testing.T) {
 			t.Fatalf("item count changed: %+v", commands)
 		}
 		fsys["game.yaml"].Data = []byte(strings.Replace(string(fsys["game.yaml"].Data), "11", "10", 1))
-		if _, err := Load(fsys); err == nil || !strings.Contains(err.Error(), "gozen migrate") {
+		if _, err := Load(fsys); err == nil || !strings.Contains(err.Error(), "schema_version: 11") {
 			t.Fatalf("old schema: %v", err)
 		}
 	}

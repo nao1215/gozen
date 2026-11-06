@@ -76,8 +76,7 @@ events:
 
 `give: ticket` and `take: ticket` mean one item. For another quantity, use
 `give: {item: ticket, count: 2}`. An explicit zero transfers nothing. The
-mapping form remains valid for one item too. Migration retains explicit counts
-because old command replay fingerprints distinguish them from omission.
+mapping form remains valid for one item too.
 
 Tactic rows under `battle.auto_tactics` and `battle.tactic_presets.*.rows` are
 enabled by default in schema 11:
@@ -95,49 +94,15 @@ The IDs in this fragment must be defined in the game's tactic catalog. A false
 row remains editable but does not run. Old schema versions retain the old
 omitted-is-false rule.
 
-## Upgrade a versioned game
+## Moving a game to schema 11
 
-```sh
-gozen check game
-gozen migrate game --out game-v11
-gozen check game-v11
-gozen run game-v11 --dev --save-dir test-saves
-```
-
-`game-v11` must be a new directory outside `game`. The command validates the
-source and result, copies assets and other files, and publishes only a valid
-result. It never modifies the original or overwrites an existing destination.
-Keep the original for rollback and review the YAML diff before adopting the copy.
-Do not change only the version header: that could enable old disabled tactics.
-
-The migration supports schemas 1 through 11. It writes `enabled: false` when an
-old row omitted the switch, shortens events without metadata and item-only
-transfers, and preserves `id`, `data_version`, text and command order. Annotated
-wrappers, tagged events and explicit counts can remain in their longer form. Anchors and
-comments are retained where the transformation can preserve them; formatting
-may change. Running migration again produces an equivalent copy without further
-YAML changes.
-
-Schema 0/unversioned files still load but cannot be automatically upgraded by
-this command: their treatment of numeric zero needs a separate review. Invalid
-games must pass `gozen check` before migration. Write `schema_version` as a direct
-integer rather than an anchor before migrating. Old engines cannot load schema
-11; update both the authoring CLI and exported runtime bundle together.
-
-Replay fingerprints of named commands are preserved by these transformations.
-Trace recordings also hash the source file bytes, so record those again after
-migration. This distinction applies even to a whitespace-only YAML edit.
-Use the same seeds for before/after simulation; for example:
-
-```sh
-gozen sim battle game --troop training -n 100 --seed 17 --format json
-gozen sim battle game-v11 --troop training -n 100 --seed 17 --format json
-```
-
-Replace `training` with a troop in your game. For narrative and workspace games,
-use `gozen sim script` with the same script and seed. The repository regression
-checks every example, including actual gameplay snapshots, and compares loaded
-rules and named replay fingerprints separately.
+Before v1.0.0 the YAML and save formats may change between versions, and gozen
+has no migration command. Older schema versions still load with their old
+defaults. To move a game to schema 11, change `schema_version` and add
+`enabled: false` to every tactic row that omitted `enabled` (in schema 11 an
+omitted switch is true), then run `gozen check game` and play it. Old engines
+cannot load schema 11; update the authoring CLI and the exported runtime bundle
+together.
 
 ## Fix errors at their source
 

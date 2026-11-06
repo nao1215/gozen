@@ -19,7 +19,6 @@ options can appear on several image tools; their effect depends on the action.
 | `gozen export` | Export a playable game with a prebuilt runtime | `--help`, `-h`, `--runtime`, `--target`, `--out`, `-o`, `--reuse`, `--format` |
 | `gozen faces` | Find the faces for the balloons and icons | `--help`, `-h`, `--model`, `--ort`, `--min`, `--preview` |
 | `gozen help` | Describe commands or diagnostic codes | `--help`, `-h`, `--format` |
-| `gozen migrate` | Copy and upgrade a versioned game to the current schema | `--help`, `-h`, `--format`, `--out` |
 | `gozen models` | Inspect the inference model cache | `--help`, `-h` |
 | `gozen models fetch` | Download the pinned detection models into the cache | `--help`, `-h`, `--format` |
 | `gozen models list` | List pinned models and their cache status | `--help`, `-h`, `--format` |

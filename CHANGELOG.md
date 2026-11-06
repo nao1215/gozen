@@ -7,19 +7,15 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 ### Breaking: YAML schema 11
 
 - Authored tactic rows default to `enabled: true` in schema 11. Schemas 0–10
-  retain their old default. **Do not just change the version number.** Run
-  `gozen migrate game --out game-v11`, then `gozen check game-v11`. The command
-  preserves disabled rows with explicit `enabled: false`, keeps game identity
-  and data version, and never overwrites the source or an existing destination.
+  retain their old default, so a row that omitted `enabled` needs
+  `enabled: false` when its game moves to schema 11.
 - Events without metadata may be command lists, and `give: key` / `take: key`
   transfer one item. Full mappings remain valid. All examples and new-game
   templates use schema 11; they require the updated engine and runtime bundle.
-- Migration accepts schema 1–11. Schema 0 still loads but requires a separate
-  numeric-default review before upgrading. Existing explicit item counts stay
-  explicit to preserve command replay fingerprints. YAML-byte trace recordings
-  must be recorded again after migration.
+- Older schema versions still load as before. Before v1.0.0 there is no
+  migration command: formats may change between versions.
 - `gozen check` suggests a unique close field/reference name for common typos.
-  See [the authoring and migration guide](docs/authoring-yaml.md) and
+  See [the authoring guide](docs/authoring-yaml.md) and
   [the usability review](docs/reviews/2026-11-06-yaml-usability.md).
 
 ### Added

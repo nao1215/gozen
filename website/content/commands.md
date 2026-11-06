@@ -18,7 +18,6 @@ gozen help GZN1101                     # explain a diagnostic code
 |:--|:--|
 | [check](#check) | Check definitions, references, expressions, assets and text layout |
 | [sim](#sim) | Measure play without a window: [battle](#sim-battle), [dive](#sim-dive), [floors](#sim-floors), [design](#sim-design), [campaign](#sim-campaign), [routes](#sim-routes), [breed](#sim-breed), [script](#sim-script) |
-| [migrate](#migrate) | Copy and upgrade a versioned game to the current schema |
 | [new](#new) | Create a playable template without Go source |
 | [run](#run) | Run a game directory in a window |
 | [trace](#trace), [notes](#notes) | Inspect traces and build HTML reports from test-play notes |
@@ -71,14 +70,6 @@ JSON is one versioned result document. JSONL theme listings contain one item per
 theme and a final summary. Machine-mode errors are JSONL on stderr with the same
 GZN codes and exit statuses; output formatting does not change the created game.
 Other commands currently retain the result shapes described in their sections.
-
-## migrate
-
-`gozen migrate GAME --out NEW` copies schema 1–11 games into a new directory
-and upgrades their YAML to schema 11. It preserves identity, assets and old
-tactic defaults. Check and play the copy before replacing the original.
-Schema 0 needs a separate numeric-default review. See
-[compact authoring](/writing-a-game/#the-game-directory).
 
 ## check
 
@@ -801,7 +792,6 @@ options can appear on several image tools; their effect depends on the action.
 | `gozen export` | Export a playable game with a prebuilt runtime | `--help`, `-h`, `--runtime`, `--target`, `--out`, `-o`, `--reuse`, `--format` |
 | `gozen faces` | Find the faces for the balloons and icons | `--help`, `-h`, `--model`, `--ort`, `--min`, `--preview` |
 | `gozen help` | Describe commands or diagnostic codes | `--help`, `-h`, `--format` |
-| `gozen migrate` | Copy and upgrade a versioned game to the current schema | `--help`, `-h`, `--format`, `--out` |
 | `gozen models` | Inspect the inference model cache | `--help`, `-h` |
 | `gozen models fetch` | Download the pinned detection models into the cache | `--help`, `-h`, `--format` |
 | `gozen models list` | List pinned models and their cache status | `--help`, `-h`, `--format` |

@@ -1,5 +1,7 @@
 # Quality pass, 2026-11-06
 
+> Note (2026-11-06): the `gozen migrate` command and its migration code described here were removed afterwards. Before v1.0.0 gozen has no migration tools.
+
 This pass preserves CLI, YAML and save contracts and adds no exported Go API.
 It follows the existing dependency policy; no architecture exception, dependency
 version or asset was changed.

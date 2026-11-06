@@ -12,7 +12,6 @@ import (
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/cliio"
 	"github.com/nao1215/gozen/internal/diag"
-	lang "github.com/nao1215/gozen/internal/text"
 )
 
 // The help pages (ADR 0018, 0024). The examples use the neutral fixture in
@@ -35,7 +34,6 @@ var topPage = clihelp.Page{
 		"diagnostics to stderr.",
 	Commands: [][2]string{
 		{"new", "Create a playable game from a YAML template"},
-		{"migrate", "ゲームを最新の YAML 仕様へコピーして移行"},
 		{"run", "Run a game directory in a window"},
 		{"check", "Check a game directory: definitions, references, expressions, assets, text layout"},
 		{"sim", "Measure play without a window: battle, dive, floors, design, campaign"},
@@ -525,7 +523,7 @@ func describeCommand(path string, n node, registry map[string]node) (helpCommand
 		if path == "" {
 			f = clihelp.NewFlagSet("gozen")
 			f.Bool("version", false, "print the gozen version and exit")
-			p = topHelpPage()
+			p = topPage
 		}
 	}
 	result := helpCommand{Command: path, Summary: p.Summary, Usage: append([]string{}, p.Usage...), About: p.About, Subcommands: append([]string{}, n.subs...), Options: []helpOption{}, Examples: append([]clihelp.Example{}, p.Examples...), Notes: append([]string{}, p.Notes...)}
@@ -595,16 +593,4 @@ func (c *command) helpCmd() clihelp.Operation {
 			Commands []helpCommand `json:"commands"`
 		}{commands})
 	}}
-}
-
-// Resolve the newly localized description at display time, not package init.
-func topHelpPage() clihelp.Page {
-	p := topPage
-	p.Commands = slices.Clone(p.Commands)
-	for i := range p.Commands {
-		if p.Commands[i][0] == "migrate" {
-			p.Commands[i][1] = lang.T("ゲームを最新の YAML 仕様へコピーして移行")
-		}
-	}
-	return p
 }
