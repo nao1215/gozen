@@ -30,6 +30,38 @@ events:
     - say: {who: daniel, text: I can add it after the payments work. Not before., ensemble: team_call}
     - say: {who: nora, text: Then I test both on the same day., ensemble: team_call}
     - set: {var.reviewed: 1}
+  # The phone command (ADR 0057): a chat held upright, a photo feed and a video
+  # turned on its side. Each waits until the phone is put down.
+  phone_chat:
+    - say: {who: martin, text: My phone buzzes. The team chat.}
+    - phone:
+        app: chat
+        title: Harbor app team
+        messages:
+        - {from: Elena Ruiz, icon: icons/elena.png, text: The client liked the demo build.}
+        - {from: Elena Ruiz, icon: icons/elena.png, text: They want the booking form live by Friday.}
+        - {mine: true, text: Friday is tight. What about payments?}
+        - {from: Daniel Cho, icon: icons/daniel.png, text: Payments first. The form can wait one day.}
+        - {from: Nora Quinn, icon: icons/nora.png, picture: share/form.png}
+        - {from: Mia Hart, icon: icons/mia.png, video: {picture: bg/pantry.jpg, text: The client lunch, seconds: 6}}
+    - say: {who: martin, text: One day. I can sell one day.}
+  phone_feed:
+    - say: {who: martin, text: Lunch. Everyone is posting again.}
+    - phone:
+        app: feed
+        title: Photos
+        posts:
+        - {who: mia.hart, icon: icons/mia.png, picture: mia/normal.png, likes: 128, text: 'First week with Harbor. The coffee is serious here.'}
+        - {who: iris.designs, icon: icons/iris.png, picture: bg/pantry.jpg, likes: 64, text: Our pantry finally has a window seat.}
+        - {who: daniel_codes, icon: icons/daniel.png, video: {picture: bg/office.jpg}, likes: 12, text: 'Late night, quiet floor, green tests.'}
+    - say: {who: martin, text: Green tests. At least someone is honest.}
+  phone_video:
+    - say: {who: martin, text: The client sent a video of the demo.}
+    - phone:
+        app: video
+        hold: landscape
+        video: {picture: bg/meeting.jpg, text: 'Harbor booking: the demo run', seconds: 42}
+    - say: {who: martin, text: They recorded the whole thing. Good.}
 profiles:
   martin: {name: Martin Shaw, picture: martin/normal.png, affiliation: Harbor app team, text: Engineering manager. Keeps the plan honest., fields: [{label: Role, value: Manager}, {label: Since, value: '2024'}]}
   elena: {name: Elena Ruiz, picture: elena/normal.png, affiliation: Harbor app team, text: Owns the backlog and the client requests., fields: [{label: Role, value: Product owner}]}

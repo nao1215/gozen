@@ -42,6 +42,18 @@ runs:
     sample: office
     script: scripts/capture-office.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --start, office, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
+  phone-chat:
+    sample: office
+    script: scripts/capture-phone-chat.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_chat, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-feed:
+    sample: office
+    script: scripts/capture-phone-feed.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_feed, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-video:
+    sample: office
+    script: scripts/capture-phone-video.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_video, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   office-tour:
     sample: office
     script: scripts/capture-office-tour.txt
@@ -341,6 +353,21 @@ images:
       - {shots: "full_*"}
       - {shots: "feature_*"}
     mp4: {fps: 12, width: 1280, height: 720}
+  phone-chat.mp4:
+    run: phone-chat
+    frames:
+      - {shots: pc*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-feed.mp4:
+    run: phone-feed
+    frames:
+      - {shots: pf*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-video.mp4:
+    run: phone-video
+    frames:
+      - {shots: pv*}
+    mp4: {fps: 12, width: 1280, height: 720}
   office.mp4:
     run: office-tour
     frames:
@@ -582,6 +609,21 @@ images:
       - {shots: "la*"}
       - {shots: "lb*"}
       - {shots: "lc*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-chat.gif:
+    run: phone-chat
+    frames:
+      - {shots: "pc*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-feed.gif:
+    run: phone-feed
+    frames:
+      - {shots: "pf*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-video.gif:
+    run: phone-video
+    frames:
+      - {shots: "pv*"}
     gif: {fps: 12, width: 720, height: 405, colors: 256}
   novel-stage.gif:
     run: novel-stage
