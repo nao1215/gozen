@@ -59,7 +59,7 @@ type MoodEffect struct{ Name string }
 // ImageEffect sets the current picture; an empty file clears it.
 type ImageEffect struct{ Picture data.CG }
 
-// PhoneEffect shows a phone over the scene (the phone command, ADR 0056) with
+// PhoneEffect shows a phone over the scene (the phone command, ADR 0057) with
 // its texts already filled; the event waits on a Tap while it is up.
 type PhoneEffect struct{ Phone data.PhoneCue }
 

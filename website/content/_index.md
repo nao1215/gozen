@@ -79,6 +79,16 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 | Event picture with its line | |
 | ![Brenna's ending: a picture of her cheering at the bar, with the line under it](/images/novel-picture.jpg) | |
 
+#### A phone on the screen
+
+`phone` ([A phone on the screen](/writing-a-game/#a-phone-on-the-screen)) shows a phone over the scene, held upright or turned on its side: a chat, a photo feed and a video, with a puppet moving in its clips. From the office sample.
+
+| Chat: messages, then a clip sent in it | Feed: swipe, like, a clip in a post |
+|:--|:--|
+| ![a team chat on a phone: messages arrive one by one, then a clip sent in the chat turns the phone on its side and plays](/images/phone-chat.mp4) | ![a photo feed: posts turn with a swipe, one is liked, and a clip plays in its post](/images/phone-feed.mp4) |
+| Video on its side | |
+| ![a video app: the phone comes up upright, turns on its side and plays a clip with a moving puppet](/images/phone-video.mp4) | |
+
 ### Management workspaces
 
 Workspace, call, calendar and timeline screens with a day `flow` (schema 10) make a management game. From the office sample ([examples/office](https://github.com/nao1215/gozen/tree/main/examples/office)); the YAML is in [workspace recipes](/workspaces/).

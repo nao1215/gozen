@@ -267,7 +267,7 @@ type Game struct {
 	// callCamera overrides participants' cameras for the call's lines
 	// (call_view; presentation only, cleared by a line outside a call).
 	callCamera map[string]bool
-	// phone is the phone over the scene (the phone command, ADR 0056), nil
+	// phone is the phone over the scene (the phone command, ADR 0057), nil
 	// while none is up.
 	phone *phoneView
 	// callShare is the screen shared on the call's stage (call_view.share;

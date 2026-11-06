@@ -6279,7 +6279,7 @@
         },
         "phone": {
           "$ref": "#/$defs/PhoneCue",
-          "description": "Shows a phone over the scene until the player puts it down, without changing any state (ADR 0056): app chat (messages), feed (posts) or video (video), held upright or with hold landscape on its side.",
+          "description": "Shows a phone over the scene until the player puts it down, without changing any state (ADR 0057): app chat (messages), feed (posts) or video (video), held upright or with hold landscape on its side.",
           "x-contract": {
             "default": "nil; nothing is defined",
             "legacy_default": "nil; nothing is defined",
@@ -15225,7 +15225,7 @@
     },
     "PhoneCue": {
       "additionalProperties": false,
-      "description": "A phone over the scene (ADR 0056); the event waits until it is put down.",
+      "description": "A phone over the scene (ADR 0057); the event waits until it is put down.",
       "properties": {
         "app": {
           "description": "chat, feed or video; names the one list the phone shows.",
@@ -15449,7 +15449,7 @@
           "x-type": "string"
         },
         "text": {
-          "description": "Interpolated caption.",
+          "description": "Interpolated caption under the picture, after the poster's name.",
           "type": "string",
           "x-contract": {
             "default": "empty string",

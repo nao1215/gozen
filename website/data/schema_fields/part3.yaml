@@ -302,7 +302,7 @@ MessageCue:
   tag: "Short interpolated mark on the notification and the bubble, such as DM for a one-to-one message."
 
 PhoneCue:
-  _: "A phone over the scene (ADR 0056); the event waits until it is put down."
+  _: "A phone over the scene (ADR 0057); the event waits until it is put down."
   hold: "portrait (the default) or landscape: on its side, the phone comes up upright and turns a quarter."
   app: "chat, feed or video; names the one list the phone shows."
   title: "Interpolated header of the app."

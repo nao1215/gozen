@@ -43,7 +43,7 @@ The head's horizontal center follows `stand.at` or automatic placement. `stage_s
 
 ## A phone on the screen
 
-`phone` shows a phone over the scene and waits until the player puts it down (ADR 0056). It changes no state; Skip passes it. `app` is `chat`, `feed` or `video`, each with its own list; `hold: landscape` turns the phone on its side.
+`phone` shows a phone over the scene and waits until the player puts it down (ADR 0057). It changes no state; Skip passes it. `app` is `chat`, `feed` or `video`, each with its own list; `hold: landscape` turns the phone on its side.
 
 <!-- verify: parse a fragment of an event; the pictures and the puppet are the author's files -->
 ```yaml

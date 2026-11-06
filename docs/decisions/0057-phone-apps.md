@@ -1,4 +1,4 @@
-# ADR 0056: A phone on the screen
+# ADR 0057: A phone on the screen
 
 Status: Accepted and implemented (2026-11-06).
 

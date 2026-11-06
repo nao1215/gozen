@@ -146,7 +146,7 @@ func (c *checker) ref(where, kind, id string, ok bool) {
 	}
 }
 
-// phone checks a phone command (ADR 0056): a known hold and app, the list the
+// phone checks a phone command (ADR 0057): a known hold and app, the list the
 // app shows and nothing else, the pictures it draws and its texts.
 func (c *checker) phone(where string, p PhoneCue, names []string) {
 	switch p.Hold {

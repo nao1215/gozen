@@ -110,7 +110,7 @@ type Command struct {
 	// example a participant's camera turning on in the middle of a call.
 	CallView *CallViewCue `yaml:"call_view" command:"verb" json:",omitempty"`
 	// Phone shows a phone over the scene, held upright or on its side, with one app
-	// on it: a chat, a photo feed or a video (ADR 0056). It changes no state; the
+	// on it: a chat, a photo feed or a video (ADR 0057). It changes no state; the
 	// event waits until the player puts the phone down.
 	Phone *PhoneCue `yaml:"phone" command:"verb" json:",omitempty"`
 	SFX   SFXCue    `yaml:"sfx" command:"verb"`
@@ -475,7 +475,7 @@ type MessageCue struct {
 	Tag string `yaml:"tag"`
 }
 
-// PhoneCue is a phone shown over the scene (ADR 0056). Hold is portrait (the
+// PhoneCue is a phone shown over the scene (ADR 0057). Hold is portrait (the
 // default) or landscape; App is chat, feed or video and names the one list the
 // phone shows: Messages, Posts or Video. Title is the app's header (interpolated).
 type PhoneCue struct {
