@@ -659,7 +659,9 @@ type PhonePost struct {
 // slowly, so a still plays as a clip), or Frames, pictures under assets/ (a
 // pattern such as clips/battle/*.jpg stands for the files it matches, sorted),
 // play as footage at FPS frames a second (0 is 12) over the Picture, which is
-// then its poster. Puppet, a puppet file under assets/, stands in front and
+// then its poster. Fade cross-fades each frame into the next over its last
+// seconds, and Pan pushes in slowly on each frame, so a few pictures at a low
+// FPS play smoothly. Puppet, a puppet file under assets/, stands in front and
 // moves as it does on the stage: breathing, swaying and, at each second in
 // Bounce, a jiggle. Zoom is how many times the frame's height the puppet is
 // drawn (0 is 1.5: its upper body). Text is the title (interpolated) and
@@ -668,6 +670,8 @@ type PhoneVideo struct {
 	Picture string    `yaml:"picture"`
 	Frames  []string  `yaml:"frames" json:",omitempty"`
 	FPS     float64   `yaml:"fps"`
+	Fade    float64   `yaml:"fade"`
+	Pan     bool      `yaml:"pan"`
 	Puppet  string    `yaml:"puppet"`
 	Zoom    float64   `yaml:"zoom"`
 	Bounce  []float64 `yaml:"bounce" json:",omitempty"`

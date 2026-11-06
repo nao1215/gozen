@@ -133,15 +133,33 @@ func (c *phoneClip) length() int {
 // by at the clip's rate, starting again in a loop, else staying on the last.
 // It is empty for a clip without frames.
 func (c *phoneClip) frame() string {
+	cur, _, _, _ := c.frames()
+	return cur
+}
+
+// frames are the clip's footage now: the frame on the screen, the next one
+// fading in over it by mix (with fade, over the frame's last fade seconds),
+// and how far into the frame it is (0 to 1, for the push-in of pan).
+func (c *phoneClip) frames() (cur, next string, mix, into float64) {
 	n := len(c.v.Frames)
 	if n == 0 {
-		return ""
+		return "", "", 0, 0
 	}
-	i := int(float64(c.played) * c.v.FrameRate() / 60)
+	at := float64(c.played) * c.v.FrameRate() / 60
+	i := int(at)
+	into = at - float64(i)
 	if c.loop {
 		i %= n
 	}
-	return c.v.Frames[min(i, n-1)]
+	if i >= n-1 && !c.loop {
+		return c.v.Frames[n-1], "", 0, math.Min(1, at-float64(n-1))
+	}
+	cur = c.v.Frames[i]
+	if fade := c.v.Fade * c.v.FrameRate(); fade > 0 {
+		next = c.v.Frames[(i+1)%n]
+		mix = math.Max(0, math.Min(1, (into-(1-fade))/fade))
+	}
+	return cur, next, mix, into
 }
 
 // phonePictures are the pictures the phone shows: icons, pictures, posters and
@@ -587,8 +605,16 @@ func (g *Game) drawPhoneMedia(dst *ebiten.Image, p *phoneView, key string, c *ph
 		zw, zh := w*zoom, h*zoom
 		drawCoverTop(frame, img, (w-zw)/2, (h-zh)/2, zw, zh)
 	}
-	if img := g.pics.get(c.frame()); img != nil {
-		drawContain(frame, img, 0, 0, w, h)
+	cur, next, mix, into := c.frames()
+	zoom := 1.0
+	if c.v.Pan {
+		zoom += 0.06 * into
+	}
+	if img := g.pics.get(cur); img != nil {
+		drawContainZoom(frame, img, w, h, zoom, 1)
+	}
+	if img := g.pics.get(next); img != nil && mix > 0 {
+		drawContainZoom(frame, img, w, h, 1, float32(mix))
 	}
 	if c.v.Puppet != "" && c.body == nil {
 		if rig := g.rig(c.v.Puppet); rig != nil {
@@ -732,6 +758,22 @@ func drawContain(dst, img *ebiten.Image, x, y, w, h float64) {
 	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
 	op.GeoM.Scale(s*gfx.Scale(), s*gfx.Scale())
 	op.GeoM.Translate(cx*gfx.Scale(), cy*gfx.Scale())
+	dst.DrawImage(img, op)
+}
+
+// drawContainZoom draws a frame of footage whole in a box w x h, pushed in
+// zoom times about its middle, at alpha.
+func drawContainZoom(dst, img *ebiten.Image, w, h, zoom float64, alpha float32) {
+	cx, cy, s := containAt(img.Bounds().Dx(), img.Bounds().Dy(), 0, 0, w, h)
+	if s <= 0 {
+		return
+	}
+	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+	op.GeoM.Scale(s, s)
+	op.GeoM.Translate(cx-w/2, cy-h/2)
+	op.GeoM.Scale(zoom*gfx.Scale(), zoom*gfx.Scale())
+	op.GeoM.Translate(w/2*gfx.Scale(), h/2*gfx.Scale())
+	op.ColorScale.ScaleAlpha(alpha)
 	dst.DrawImage(img, op)
 }
 

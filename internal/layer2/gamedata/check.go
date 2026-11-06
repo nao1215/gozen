@@ -338,6 +338,12 @@ func (c *checker) phoneVideo(where string, v *PhoneVideo, names []string) {
 	if v.FPS < 0 {
 		c.errorf(diag.Shape, where+".fps", "fps must not be negative")
 	}
+	if len(v.Frames) == 0 && (v.Fade != 0 || v.Pan) {
+		c.errorf(diag.Shape, where, "fade and pan are for frames")
+	}
+	if v.Fade < 0 || v.Fade > 1/v.FrameRate() {
+		c.errorf(diag.Shape, where+".fade", "fade must be between 0 and a frame's length (%g seconds)", 1/v.FrameRate())
+	}
 	if v.Zoom < 0 {
 		c.errorf(diag.Shape, where+".zoom", "zoom must not be negative")
 	}

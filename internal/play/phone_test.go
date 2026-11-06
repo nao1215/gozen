@@ -751,3 +751,36 @@ func TestPhoneInitial(t *testing.T) {
 		t.Error("a name's color is not kept")
 	}
 }
+
+// TestPhoneFramesFade: with fade the next frame fades in over the last fade
+// seconds of each frame, and a clip stopping on its last frame fades no more.
+func TestPhoneFramesFade(t *testing.T) {
+	c := &phoneClip{v: &data.PhoneVideo{Frames: []string{"a", "b", "c"}, FPS: 1, Fade: 0.5, Pan: true}}
+	for _, tc := range []struct {
+		played    int
+		cur, next string
+		mix, into float64
+	}{
+		{0, "a", "b", 0, 0},
+		{30, "a", "b", 0, 0.5},
+		{45, "a", "b", 0.5, 0.75},
+		{60, "b", "c", 0, 0},
+		{105, "b", "c", 0.5, 0.75},
+		{150, "c", "", 0, 0.5},
+	} {
+		c.played = tc.played
+		cur, next, mix, into := c.frames()
+		if cur != tc.cur || next != tc.next || math.Abs(mix-tc.mix) > 1e-9 || math.Abs(into-tc.into) > 1e-9 {
+			t.Errorf("at %d: %q %q mix %v into %v, want %q %q %v %v", tc.played, cur, next, mix, into, tc.cur, tc.next, tc.mix, tc.into)
+		}
+	}
+	c.loop, c.played = true, 165
+	if cur, next, mix, _ := c.frames(); cur != "c" || next != "a" || math.Abs(mix-0.5) > 1e-9 {
+		t.Errorf("a looping clip's last frame fades to %q from %q by %v", next, cur, mix)
+	}
+	g := phoneGame(t, data.PhoneCue{App: "video", Video: &data.PhoneVideo{Frames: []string{"x.png", "x.png"}, FPS: 2, Fade: 0.25, Pan: true}})
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	phoneTicks(g, phoneRise+20)
+	g.drawPhone(dst)
+}
